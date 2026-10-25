@@ -1,6 +1,6 @@
 // The page's sharing host offers projects only once the project wiring hands over their deps, and tells its listeners.
 import { createShareHost, type ProjectShareDeps, type ShareFlowPorts } from "@labshelf/core";
-import { createPageSharingHost } from "../../../../src/libraryUi/host/handlers/browserShareHost";
+import { createPageShareHost } from "../../../../src/libraryUi/host/handlers/browserShareHost";
 
 const logger = { log: async () => undefined, error: async () => undefined };
 const build = (projects?: ProjectShareDeps) => createShareHost({
@@ -14,13 +14,13 @@ const deps: ProjectShareDeps = {
 
 describe("page sharing host", () => {
   it("refuses projects before the project wiring adds them", async () => {
-    const { host } = createPageSharingHost(build);
+    const { host } = createPageShareHost(build);
     expect(host.offers().projects).toBe(false);
     await expect(host.projects()).rejects.toThrow("does not share projects");
   });
 
   it("offers projects after addProjects and tells the offers listeners", async () => {
-    const page = createPageSharingHost(build);
+    const page = createPageShareHost(build);
     const listener = jest.fn();
     page.host.onOffersChange(listener);
     page.addProjects(deps);

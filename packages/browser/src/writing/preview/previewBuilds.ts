@@ -1,7 +1,7 @@
 // Shows each PDF, build status and build root of a project on a preview frame.
 import { derivePreviewProblems, type BuildOptions, type ILogger, type PreviewBuildRoots } from "@labshelf/core";
 import type { CompileMode, HelperCompileResult } from "@labshelf/core/helper";
-import type { PreviewBuildStatus, PreviewFrame } from "./previewFrame";
+import type { PreviewBuildState, PreviewFrame } from "./previewFrame";
 
 export type PreviewBuildEvent = { type: "building" } | { type: "pdf"; bytes: Uint8Array; mode: CompileMode } | { type: "result"; result: HelperCompileResult };
 
@@ -10,7 +10,7 @@ export interface PreviewBuildSource {
   onBuild(listener: (event: PreviewBuildEvent) => void): () => void;
 }
 
-function statusOf(result: HelperCompileResult): PreviewBuildStatus {
+function statusOf(result: HelperCompileResult): PreviewBuildState {
   switch (result.status) {
     case "succeeded": return { state: "succeeded", errors: 0, builtAt: Date.now() };
     case "cancelled": return { state: "failed", errors: 0, stale: true };
@@ -40,7 +40,7 @@ export interface FollowedBuilds {
 }
 
 /** Starts a build and keeps the frame in step with every build until disposed. */
-export function followBuilds(
+export function watchBuilds(
   source: PreviewBuildSource, frame: Pick<PreviewFrame, "showPdf" | "setBuildStatus" | "setPreviewRoots">,
   project: { id: string; main: string | undefined; limits?: () => PreviewLimits; options?: () => BuildOptions }, logger: ILogger,
 ): FollowedBuilds {

@@ -5,7 +5,7 @@ import type { ILogger } from "@labshelf/core";
 import { resolveBridgeLogPath } from "@labshelf/core/node";
 import { BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, refreshNativeHost, createSystemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 
-import { scriptLaunch } from "./hostLaunch.js";
+import { createScriptLaunch } from "./hostLaunch.js";
 
 const LOG_MODULE = "native-host-refresh";
 
@@ -16,7 +16,7 @@ export async function refreshNativeHosts(context: vscode.ExtensionContext, creat
   const specs = [[BRIDGE_HOST_SPEC, "bridgeHost"], [HELPER_HOST_SPEC, "helperHost"]] as const;
   for (const [spec, host] of specs) {
     try {
-      const result = await refreshNativeHost(env, spec, scriptLaunch(context, host));
+      const result = await refreshNativeHost(env, spec, createScriptLaunch(context, host));
       if (result === "refreshed") await logger.log("INFO", LOG_MODULE, "Refreshed the native host launcher", { host: spec.hostName });
     } catch (error) {
       await logger.error(LOG_MODULE, error, { action: "refresh the native host launcher", host: spec.hostName });

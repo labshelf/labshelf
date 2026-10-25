@@ -1,11 +1,11 @@
 // Pins how the preview tab answers frame requests: problems open their source line, Mark and Compare reach the history, limits and build options are saved.
 import type { ILogger, LibraryFileSystem, PreviewBuildRoots } from "@labshelf/core";
-import { revealInOpenEditor } from "../../../src/writing/session";
-import { markProjectVersion } from "../../../src/writing/history/markProjectVersion";
-import { previewRequestHandler, type PreviewRequestDeps } from "../../../src/writing/preview/previewRequests";
+import { showInOpenEditor } from "../../../src/writing/session";
+import { writeProjectVersion } from "../../../src/writing/history/writeProjectVersion";
+import { createPreviewRequestHandler, type PreviewRequestDeps } from "../../../src/writing/preview/previewRequests";
 
-jest.mock("../../../src/writing/session/openEditors", () => ({ revealInOpenEditor: jest.fn() }));
-jest.mock("../../../src/writing/history/markProjectVersion", () => ({ markProjectVersion: jest.fn(async () => true) }));
+jest.mock("../../../src/writing/session/openEditors", () => ({ showInOpenEditor: jest.fn() }));
+jest.mock("../../../src/writing/history/writeProjectVersion", () => ({ writeProjectVersion: jest.fn(async () => true) }));
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 const roots: PreviewBuildRoots = {
@@ -25,18 +25,18 @@ function setup(folder: string | null = "projects/a") {
     options: { autoCompile: "typing", engine: null, haltOnError: false },
     updateSettings: jest.fn(async () => undefined),
   };
-  return { deps, handle: previewRequestHandler(deps) };
+  return { deps, handle: createPreviewRequestHandler(deps) };
 }
 
 beforeEach(() => jest.clearAllMocks());
 
-describe("previewRequestHandler", () => {
+describe("createPreviewRequestHandler", () => {
   it("opens the problem's file and reveals its zero-based line", async () => {
     const { deps, handle } = setup();
     handle({ command: "openProblem", root: "main.tex", index: 1 });
     await flush();
     expect(deps.workspace.openTab).toHaveBeenCalledWith("source", { projectId: "a", path: "intro.tex" }, 0);
-    expect(revealInOpenEditor).toHaveBeenCalledWith("a", "intro.tex", 6);
+    expect(showInOpenEditor).toHaveBeenCalledWith("a", "intro.tex", 6);
   });
 
   it("opens nothing for a problem without a file", async () => {
@@ -51,7 +51,7 @@ describe("previewRequestHandler", () => {
     const { handle } = setup();
     handle({ command: "runCommand", id: "markVersion" });
     await flush();
-    expect(markProjectVersion).toHaveBeenCalledWith(expect.objectContaining({ lastFullPdf: expect.any(Function) }), { id: "a", folder: "projects/a" });
+    expect(writeProjectVersion).toHaveBeenCalledWith(expect.objectContaining({ lastFullPdf: expect.any(Function) }), { id: "a", folder: "projects/a" });
   });
 
   it("opens the history to compare versions", async () => {
@@ -76,7 +76,7 @@ describe("previewRequestHandler", () => {
     handle({ command: "runCommand", id: "markVersion" });
     await flush();
     expect(deps.data.updateProjectSettings).not.toHaveBeenCalled();
-    expect(markProjectVersion).not.toHaveBeenCalled();
+    expect(writeProjectVersion).not.toHaveBeenCalled();
   });
 
   it.each([

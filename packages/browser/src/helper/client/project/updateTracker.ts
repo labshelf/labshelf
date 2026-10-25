@@ -5,7 +5,7 @@ const MAX_REMEMBERED_EDITS = 256;
 
 interface PathState { version: number; text: string }
 
-export type EditFrame = { text: string } | { changes: TextChange[] };
+export type UpdateFrame = { text: string } | { changes: TextChange[] };
 
 /** INVARIANT: change positions refer to the text of the previous version, so applying them from the end keeps earlier positions valid. */
 function applyChanges(text: string, changes: TextChange[]): string {
@@ -15,12 +15,12 @@ function applyChanges(text: string, changes: TextChange[]): string {
   }, text);
 }
 
-export class EditTracker {
+export class UpdateTracker {
   private readonly states = new Map<string, PathState>();
   private readonly sent = new Map<string, string>();
 
   /** Records the edit and returns the frame body to send. */
-  apply(projectId: string, path: string, version: number, edit: HelperChange): EditFrame {
+  apply(projectId: string, path: string, version: number, edit: HelperChange): UpdateFrame {
     const key = `${projectId}:${path}`;
     if ("text" in edit) {
       this.states.set(key, { version, text: edit.text });

@@ -1,20 +1,20 @@
 import type { HostEndpoint } from "@labshelf/core";
-import { attachRouter, folderFromHash, hashForFolder } from "../../src/libraryUi/folderHash";
+import { attachHashHandlers, parseFolderHash, createFolderHash } from "../../src/libraryUi/folderHash";
 
 describe("router hash <-> folder", () => {
   it("round-trips folders, encoding each segment", () => {
     for (const f of ["papers", "papers/A", "papers/Reading group/Refs & notes"]) {
-      expect(folderFromHash(hashForFolder(f))).toBe(f);
+      expect(parseFolderHash(createFolderHash(f))).toBe(f);
     }
-    expect(hashForFolder("papers/Reading group")).toBe("#/papers/Reading%20group");
+    expect(createFolderHash("papers/Reading group")).toBe("#/papers/Reading%20group");
   });
   it("falls back to the root for empty, foreign or traversal hashes", () => {
     for (const h of ["", "#", "#/", "#/elsewhere", "#/papers-old/x", "#/papers/../x", "#/papers//x", "#/papers/./x", "#/papers/a%5Cb"]) {
-      expect(folderFromHash(h)).toBe("papers");
+      expect(parseFolderHash(h)).toBe("papers");
     }
   });
   it("tolerates a trailing slash", () => {
-    expect(folderFromHash("#/papers/A/")).toBe("papers/A");
+    expect(parseFolderHash("#/papers/A/")).toBe("papers/A");
   });
 });
 
@@ -23,7 +23,7 @@ describe("router hashchange", () => {
     const listeners: Array<() => void> = [];
     const post = jest.fn();
     Object.assign(globalThis, { location: { hash }, window: { addEventListener: (_: string, fn: () => void) => listeners.push(fn), removeEventListener: jest.fn() } });
-    attachRouter({ post, subscribe: () => () => undefined } as unknown as HostEndpoint, paperIdAtPath);
+    attachHashHandlers({ post, subscribe: () => () => undefined } as unknown as HostEndpoint, paperIdAtPath);
     return { post, fire: async () => { listeners.forEach((fn) => fn()); await new Promise((r) => setTimeout(r, 0)); } };
   }
 

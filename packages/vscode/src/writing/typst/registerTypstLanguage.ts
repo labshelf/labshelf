@@ -10,7 +10,7 @@ import {
   type TypstLanguageService,
   type TypstSources,
 } from "@labshelf/core/typst/language";
-import { owningProject } from "../buildRootDocument.js";
+import { findOwningProject } from "../buildRootDocument.js";
 
 const SKIPPED_FOLDERS = new Set(["node_modules"]);
 
@@ -58,7 +58,7 @@ export type TypstContextOf = (document: vscode.TextDocument) => TypstDocumentCon
 /** The folder whose files a document can reference: its LabShelf project, else its workspace folder, else its own folder. */
 function rootOf(projects: Pick<WritingProjects, "list" | "paths">, document: vscode.TextDocument): vscode.Uri | undefined {
   if (document.uri.scheme !== "file") { return undefined; }
-  const project = owningProject(projects, document.uri.fsPath);
+  const project = findOwningProject(projects, document.uri.fsPath);
   if (project) { return vscode.Uri.file(project.folder); }
   return vscode.workspace.getWorkspaceFolder(document.uri)?.uri ?? vscode.Uri.file(projects.paths.dirname(document.uri.fsPath));
 }

@@ -35,6 +35,6 @@ export class WritingModel {
 }
 
 /** @returns the name shown for a project: its title, else its id, else the folder name of a broken one */
-export function projectName(entry: ProjectEntry): string {
+export function formatProjectName(entry: ProjectEntry): string {
   return entry.kind === "ready" ? entry.settings.title ?? entry.settings.id : path.basename(entry.folder);
 }

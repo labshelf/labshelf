@@ -3,30 +3,30 @@ import type { ILogger, PaperRecord } from "@labshelf/core";
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 
 // The real IndexedDbFileSystem runs over a Map-backed store, so attachPdfToPaper exercises its real write path.
-jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ openDb: async () => require("../support/fakeIdb").fakeDb }));
 
 let mockRecords: PaperRecord[] = [];
 jest.mock("../../src/storage/paperRecordStore", () => ({
-  listAllRecords: async () => mockRecords,
-  upsertRecord: async () => undefined,
+  listCachedPaperRecords: async () => mockRecords,
+  writeCachedPaperRecord: async () => undefined,
 }));
 
 import { attachPdfToPaper } from "../../src/capture/attachPdfToPaper";
-import { safeFolder } from "../../src/capture/captureService";
+import { normalizeFolder } from "../../src/capture/captureService";
 import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
 const mutations = createLibraryMutations(log);
 
-describe("safeFolder", () => {
+describe("normalizeFolder", () => {
   it("accepts collections under papers/ and falls back to the root otherwise", () => {
-    expect(safeFolder("papers/Thesis/Ch2/")).toBe("papers/Thesis/Ch2");
-    expect(safeFolder(undefined)).toBe("papers");
-    expect(safeFolder(".research/secrets")).toBe("papers");
-    expect(safeFolder("papers/../.research")).toBe("papers");
-    expect(safeFolder("papers\\..\\.research")).toBe("papers");
-    expect(safeFolder("papers/a\\b")).toBe("papers");
+    expect(normalizeFolder("papers/Thesis/Ch2/")).toBe("papers/Thesis/Ch2");
+    expect(normalizeFolder(undefined)).toBe("papers");
+    expect(normalizeFolder(".research/secrets")).toBe("papers");
+    expect(normalizeFolder("papers/../.research")).toBe("papers");
+    expect(normalizeFolder("papers\\..\\.research")).toBe("papers");
+    expect(normalizeFolder("papers/a\\b")).toBe("papers");
   });
 });
 

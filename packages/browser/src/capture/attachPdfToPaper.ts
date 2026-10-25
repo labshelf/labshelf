@@ -1,7 +1,7 @@
 /** Attaches a found PDF to a paper already in the library, at the paper's current folder. */
 import type { PaperRecord, PdfVersion } from "@labshelf/core";
 import { PDF_FILE } from "@labshelf/core";
-import { createLibraryFileSystem, listAllRecords, type LibraryMutations } from "../storage";
+import { createLibraryFileSystem, listCachedPaperRecords, type LibraryMutations } from "../storage";
 
 /**
  * Attaches a PDF to a paper already in the library (the "Find PDF" / "Attach
@@ -18,7 +18,7 @@ export async function attachPdfToPaper(
   bytes: Uint8Array,
   options: { version?: PdfVersion | undefined; replace?: boolean } = {},
 ): Promise<{ record: PaperRecord; written: boolean }> {
-  const record = (await listAllRecords()).find((r) => r.id === paperId);
+  const record = (await listCachedPaperRecords()).find((r) => r.id === paperId);
   if (!record) {
     throw new Error(`Paper "${paperId}" is no longer in the library.`);
   }

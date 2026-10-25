@@ -7,10 +7,10 @@ import "@labshelf/core/styles/template-gallery.css";
 import "@labshelf/core/styles/template-publish.css";
 import { findElement, mountTemplateGallery } from "@labshelf/core/dom";
 import type { GalleryToHost, GalleryTransport, HostToGallery } from "@labshelf/core";
-import { webviewTransport } from "../../../webview/index.js";
+import { createWebviewTransport } from "../../../webview/index.js";
 
 function createGalleryChannel(): GalleryTransport {
-  return webviewTransport<GalleryToHost, HostToGallery>(acquireVsCodeApi());
+  return createWebviewTransport<GalleryToHost, HostToGallery>(acquireVsCodeApi());
 }
 
 mountTemplateGallery(findElement("root"), createGalleryChannel());

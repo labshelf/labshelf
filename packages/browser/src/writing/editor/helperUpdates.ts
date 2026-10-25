@@ -6,7 +6,7 @@ import type { EditorHelperPort } from "../../helper/project";
 
 const MODULE = "editor.helperEdits";
 
-export interface HelperEdits {
+export interface HelperUpdates {
   /** Sends the change from the previous text to `doc`. */
   changed(changes: ChangeSet, doc: Text): void;
   /** Tells the helper the file was written, `explicit` when the user asked to save; the next edit carries the whole text again. */
@@ -30,7 +30,7 @@ function firstChangedLine(changes: ChangeSet, doc: Text): number | undefined {
 /** What the editor needs from the helper. */
 export type EditorHelper = EditorHelperPort;
 
-export function createHelperEdits(helper: EditorHelper | undefined, projectId: string, path: string, logger: ILogger): HelperEdits {
+export function createHelperUpdates(helper: EditorHelper | undefined, projectId: string, path: string, logger: ILogger): HelperUpdates {
   let version = 0;
   let wholeText = true;
   let loggedAbsent = false;

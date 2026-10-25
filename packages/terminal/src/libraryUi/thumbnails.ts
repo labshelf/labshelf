@@ -67,7 +67,7 @@ function renderWithWorker(workerUrl: URL): Renderer {
  * pdftoppm when installed, otherwise the pdfjs worker.
  * @returns the renderer and its name (for doctor)
  */
-export function defaultRenderer(tmpDir: string, workerUrl: URL): { name: string; render: Renderer } {
+export function createDefaultRenderer(tmpDir: string, workerUrl: URL): { name: string; render: Renderer } {
   return hasCommand("pdftoppm")
     ? { name: "pdftoppm", render: renderWithPdftoppm(tmpDir) }
     : { name: "pdfjs", render: renderWithWorker(workerUrl) };

@@ -37,7 +37,7 @@ import {
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import type { LibraryRoot } from "./libraryRoot.js";
-import { expandHome } from "../platform/index.js";
+import { resolveHomePath } from "../platform/index.js";
 
 interface SortedInputs {
   /** Absolute paths that exist: files, folders, or entries the import reports as skipped. */
@@ -46,12 +46,12 @@ interface SortedInputs {
 }
 
 /** @returns the non-blank inputs, local paths resolved against the working directory */
-export async function sortImportInputs(ctx: MutationContext, inputs: string[]): Promise<SortedInputs> {
+export async function orderImportInputs(ctx: MutationContext, inputs: string[]): Promise<SortedInputs> {
   const sorted: SortedInputs = { local: [], network: [] };
   for (const raw of inputs) {
     const input = raw.trim();
     if (!input) { continue; }
-    const local = path.resolve(expandHome(input));
+    const local = path.resolve(resolveHomePath(input));
     if (await ctx.fs.exists(local)) { sorted.local.push(local); } else { sorted.network.push(input); }
   }
   return sorted;
@@ -203,7 +203,7 @@ export class TerminalPaperService {
    */
   async importAny(inputs: string[], targetRel: string, onProgress?: (progress: ImportProgress) => void): Promise<ImportOutcome[]> {
     const targetDir = this.paths.collectionDir(targetRel);
-    const { local, network } = await sortImportInputs(this.ctx, inputs);
+    const { local, network } = await orderImportInputs(this.ctx, inputs);
     const outcomes = await importPaths(this.ctx, this.importDeps(), local, targetDir, {
       onProgress: (progress) => onProgress?.({ ...progress, total: progress.total + network.length }),
     });

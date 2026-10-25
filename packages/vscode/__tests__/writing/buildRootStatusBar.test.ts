@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { registerMainStatusBar } from "../../src/writing";
+import { registerBuildRootStatusBar } from "../../src/writing";
 import { readyEntry } from "../support/writingFixtures";
 import type { ProjectEntry } from "@labshelf/core";
 
@@ -11,7 +11,7 @@ const window = vscode.window as unknown as { activeTextEditor: unknown; _fireAct
 function setup(entries: ProjectEntry[]) {
   const changes = new vscode.EventEmitter<void>();
   let current = entries;
-  registerMainStatusBar({ subscriptions: [] } as never, { list: () => current, paths: path, onDidChange: changes.event });
+  registerBuildRootStatusBar({ subscriptions: [] } as never, { list: () => current, paths: path, onDidChange: changes.event });
   const item = (vscode.window.createStatusBarItem as jest.Mock).mock.results[0]!.value;
   return { item, setProjects: (next: ProjectEntry[]) => { current = next; changes.fire(); } };
 }
@@ -26,7 +26,7 @@ beforeEach(() => {
   window.activeTextEditor = undefined;
 });
 
-describe("registerMainStatusBar", () => {
+describe("registerBuildRootStatusBar", () => {
   it("opens the main picker on click and starts hidden when no editor is active", () => {
     const { item } = setup([readyEntry("/code/repo")]);
     expect(item.command).toBe("labshelf.writing.pickMain");

@@ -4,11 +4,11 @@ import * as vscode from "vscode";
 
 import { buildProject } from "@labshelf/core/node";
 import { TypstBuilds } from "../../../../src/writing/typst/node/typstBuilds";
-import { recordTypstVersion } from "../../../../src/writing/typst/typstVersionPin";
+import { writeTypstVersion } from "../../../../src/writing/typst/typstVersionPin";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildProject: jest.fn() }));
-jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ writeTypstVersion: jest.fn(async () => {}) }));
 
 const run = buildProject as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
@@ -76,7 +76,7 @@ describe("TypstBuilds saved builds", () => {
     expect(await builds.request("/p/paper", "main.typ", "save")).toBeUndefined();
     expect(deps.previews.finished).not.toHaveBeenCalled();
     expect(deps.diagnostics.publish).not.toHaveBeenCalled();
-    expect(recordTypstVersion).not.toHaveBeenCalled();
+    expect(writeTypstVersion).not.toHaveBeenCalled();
   });
 });
 
@@ -86,7 +86,7 @@ describe("TypstBuilds results", () => {
     await builds.request("/p/paper", "main.typ", "live");
     expect(deps.previews.finished).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/paper" }), "main.typ", succeeded, "save");
     expect(deps.diagnostics.publish).not.toHaveBeenCalled();
-    expect(recordTypstVersion).not.toHaveBeenCalled();
+    expect(writeTypstVersion).not.toHaveBeenCalled();
   });
 
   it("leaves the preview and Problems alone after a failed live compile", async () => {
@@ -104,7 +104,7 @@ describe("TypstBuilds results", () => {
     expect(deps.diagnostics.publish).toHaveBeenCalledWith(path.join("/p/paper", "main.typ"), problems);
     expect(deps.previews.finished).toHaveBeenCalledWith(expect.anything(), "main.typ", failed, "save");
     expect(window["setStatusBarMessage"]).toHaveBeenLastCalledWith("$(error) Build of main.typ failed: 1 error", 5000);
-    expect(recordTypstVersion).not.toHaveBeenCalled();
+    expect(writeTypstVersion).not.toHaveBeenCalled();
   });
 
   it("resolves a saved build with its result, and a live compile or a thrown error with nothing", async () => {
@@ -119,7 +119,7 @@ describe("TypstBuilds results", () => {
   it.each(["save", "command"] as const)("records the Typst version after a successful %s build", async (trigger) => {
     const { builds, deps } = setup();
     await builds.request("/p/paper", "main.typ", trigger);
-    expect(recordTypstVersion).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/paper" }), deps);
+    expect(writeTypstVersion).toHaveBeenCalledWith(expect.objectContaining({ folder: "/p/paper" }), deps);
     expect(deps.diagnostics.publish).toHaveBeenCalledWith(path.join("/p/paper", "main.typ"), []);
     expect(window["setStatusBarMessage"]).toHaveBeenLastCalledWith("$(check) Built main.pdf", 5000);
   });

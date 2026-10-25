@@ -3,7 +3,7 @@ import {
   createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
-import { createBrowserLogger, getSettings } from "../platform";
+import { createBrowserLogger, readSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library/libraryLocation";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
 import { createLibraryFileSystem } from "../storage";
@@ -11,14 +11,14 @@ import { applyTheme } from "../ui";
 import { reportPageWrites } from "../collab";
 import { createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "../libraryUi/details";
 import { attachLibraryHost } from "../libraryUi/host";
-import { attachLinkHandling } from "../libraryUi/paperLink";
+import { attachPaperLinkHandling } from "../libraryUi/paperLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "../libraryUi/prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "../libraryUi/sidebar";
 import { createPageSpaces } from "../spaces";
-import { attachRouter, planPage, type PagePlan } from "../libraryUi";
+import { attachHashHandlers, derivePagePlan, type PagePlan } from "../libraryUi";
 import type { ProjectServices, TabKindName } from "../libraryUi/editorArea";
-import { createPageShell, createWorkspace, takeJoinInvite, type Workspace } from "../libraryUi/editorArea";
+import { createPageShell, createWorkspace, extractJoinInvite, type Workspace } from "../libraryUi/editorArea";
 
 const log = createBrowserLogger();
 
@@ -33,12 +33,12 @@ function mountSourceSurfaces(root: HTMLElement, reloadSnapshots: () => Promise<v
 }
 
 /** Reads which sidebar sections to show before anything mounts; a failed read shows both. */
-async function readPagePlan(): Promise<ReturnType<typeof planPage>> {
+async function readPagePlan(): Promise<ReturnType<typeof derivePagePlan>> {
   try {
-    return planPage((await getSettings()).sidebarSections);
+    return derivePagePlan((await readSettings()).sidebarSections);
   } catch (err) {
     void log.log("WARN", "library", "could not read the sidebar sections; showing both", { error: String(err) });
-    return planPage({ library: true, projects: true });
+    return derivePagePlan({ library: true, projects: true });
   }
 }
 
@@ -84,8 +84,8 @@ function createRelayParts(project: () => ProjectWiring | null): { relay: PageRel
 }
 
 // The share key sits in the fragment, so a join link is taken off the address before anything can keep it in history.
-function takeInviteOffAddress(): ReturnType<typeof takeJoinInvite> {
-  const invite = takeJoinInvite(location.hash);
+function takeInviteOffAddress(): ReturnType<typeof extractJoinInvite> {
+  const invite = extractJoinInvite(location.hash);
   if (invite !== undefined) history.replaceState(null, "", location.pathname + location.search);
   return invite;
 }
@@ -126,7 +126,7 @@ async function boot(): Promise<void> {
     shareRelay: { requireRelay: () => relay.requireBrowserRelay(), connectedRelay: () => relayAccounts.get() },
     onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
   });
-  attachRouter(host, libraryHost.paperIdAtPath);
+  attachHashHandlers(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
   const libraryView = renderElement("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
@@ -150,7 +150,7 @@ async function boot(): Promise<void> {
   workspace.restore(location.hash);
   project?.start(invite);
   mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
-  attachLinkHandling(log);
+  attachPaperLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }
 

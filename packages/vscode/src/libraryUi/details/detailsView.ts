@@ -15,11 +15,11 @@ import {
   type HostToAllProjects,
 } from "@labshelf/core";
 import {
-  libraryBundleDirectory,
+  readLibraryBundleDir,
   listPanelHtml,
   type ListPanelDeps,
-  feedHostContext,
-  handleListMessage,
+  createFeedHostCompositionRoot,
+  answerListMessage,
   LibraryFeed,
 } from "../index.js";
 import type { ListHostContext } from "../host/index.js";
@@ -58,7 +58,7 @@ interface LibraryChannelOptions {
 function startLibraryChannel(deps: ListPanelDeps, { post, onReady, onFolderOpen }: LibraryChannelOptions): LibraryChannel {
   const feed = new LibraryFeed(deps, (msg) => post({ channel: "library", msg }));
   // The page follows the selection it is shown; it neither navigates nor selects on its own.
-  const ctx: ListHostContext = feedHostContext(deps, feed, {
+  const ctx: ListHostContext = createFeedHostCompositionRoot(deps, feed, {
     onReady: async () => {
       feed.queue.markReady();
       await feed.push();
@@ -72,7 +72,7 @@ function startLibraryChannel(deps: ListPanelDeps, { post, onReady, onFolderOpen 
     get ready() { return feed.queue.ready; },
     handle: async (message) => {
       if (message.type === "folder.open") { onFolderOpen(message.folder); return; }
-      await handleListMessage(ctx, message);
+      await answerListMessage(ctx, message);
     },
     dispose: () => feed.dispose(),
   };
@@ -184,7 +184,7 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this._session?.dispose();
     const { webview } = view;
-    webview.options = { enableScripts: true, localResourceRoots: [libraryBundleDirectory(this._deps.extensionUri)] };
+    webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri)] };
     const session = new DetailsSession(webview, {
       ...this._deps, target: () => this._target, onFolderOpen: (folder) => this._folderRequests.fire(folder),
     });

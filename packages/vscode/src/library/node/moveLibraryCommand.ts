@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { LibraryRootController } from "../../activation/index.js";
-import { libraryTargetFolder } from "./syncFolders/index.js";
+import { resolveLibraryDir } from "./syncFolders/index.js";
 import { moveLibraryTo } from "./moveLibraryTo.js";
 
 export async function runMoveLibraryCommand(controller: LibraryRootController): Promise<void> {
@@ -15,7 +15,7 @@ export async function runMoveLibraryCommand(controller: LibraryRootController): 
   });
   const picked = folders?.[0];
   if (!picked) { return; }
-  const target = await libraryTargetFolder(picked.fsPath);
+  const target = await resolveLibraryDir(picked.fsPath);
   if (await moveLibraryTo(controller, target)) {
     vscode.window.showInformationMessage(`LabShelf: Library moved to ${target}`);
   }

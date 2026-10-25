@@ -34,7 +34,7 @@ export interface HelperProject {
   /** Requests a full build after any active preview; its result arrives through `onBuild`. */
   build(projectId: string): Promise<void>;
   /** Applies a changed build setting to the open project; an engine or halt change rebuilds it. */
-  setBuild(projectId: string, patch: BuildPatch): void;
+  setBuild(projectId: string, patch: BuildUpdate): void;
   onBuild(listener: (event: BuildEvent) => void): () => void;
   onOpened(listener: (projectId: string) => void): () => void;
   /** The session opened `entry`, or closed its project (undefined). */
@@ -42,7 +42,7 @@ export interface HelperProject {
 }
 
 export interface BuildSettings { autoCompile: AutoCompileMode; haltOnError: boolean }
-export type BuildPatch = Partial<BuildSettings> & { engine?: LatexEngine };
+export type BuildUpdate = Partial<BuildSettings> & { engine?: LatexEngine };
 
 export interface HelperProjectOptions {
   helper: ILatexHelper;

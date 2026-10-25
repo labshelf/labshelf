@@ -1,7 +1,7 @@
 // Hosts the positioned Research chat panel with the active Space context.
 import * as vscode from "vscode";
 import { type ILogger, createNonce } from "@labshelf/core";
-import { bundleExists, bundleMissingHtml } from "../ui/index.js";
+import { hasBundleFile, renderBundleMissingHtml } from "../ui/index.js";
 
 function researchChatBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "spaces");
@@ -10,8 +10,8 @@ function researchChatBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
 async function researchChatHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = researchChatBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "chat.js");
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: "Research chat", heading: "Research chat bundle not built", file: "dist/spaces/chat.js", reopen: "Research chat" });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: "Research chat", heading: "Research chat bundle not built", file: "dist/spaces/chat.js", reopen: "Research chat" });
   }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;

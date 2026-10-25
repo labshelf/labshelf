@@ -2,17 +2,17 @@
 import type { BuildState, LocatedProblem, PathOps, TypstCite } from "@labshelf/core";
 import type { FinishedBuild } from "../build/index.js";
 
-export interface RootBuildState {
+export interface BuildRootBuildState {
   state: BuildState;
   errors: number;
 }
 
-export class RootBuilds {
+export class BuildRootBuilds {
   private readonly problems = new Map<string, readonly LocatedProblem[]>();
   // INVARIANT: the cites of a root's last successful Typst build, i.e. of the PDF a preview shows; a failed build leaves them.
   private readonly cites = new Map<string, readonly TypstCite[]>();
   // A preview opened during a build or after a failed one shows that state at once.
-  private readonly states = new Map<string, RootBuildState>();
+  private readonly states = new Map<string, BuildRootBuildState>();
   // The roots each project has built, in build order; the reader lists exactly these.
   private readonly built = new Map<string, Set<string>>();
 
@@ -38,7 +38,7 @@ export class RootBuilds {
   }
 
   /** The running or failed build of a root; undefined once its last build succeeded. */
-  stateOf(projectFolder: string, root: string): RootBuildState | undefined {
+  stateOf(projectFolder: string, root: string): BuildRootBuildState | undefined {
     return this.states.get(this.paths.join(projectFolder, root));
   }
 

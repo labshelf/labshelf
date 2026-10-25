@@ -1,18 +1,18 @@
 // Shows the main document of the project that owns the active editor's file in the status bar, and hides it elsewhere.
 import * as vscode from "vscode";
 
-import { owningProject } from "./buildRootDocument.js";
+import { findOwningProject } from "./buildRootDocument.js";
 import type { WritingProjects } from "./session/index.js";
 
 const PICK_MAIN_COMMAND = "labshelf.writing.pickMain";
 
-export function registerMainStatusBar(context: vscode.ExtensionContext, projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">): void {
+export function registerBuildRootStatusBar(context: vscode.ExtensionContext, projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">): void {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   item.command = PICK_MAIN_COMMAND;
 
   const update = (): void => {
     const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? owningProject(projects, file.fsPath) : undefined;
+    const project = file?.scheme === "file" ? findOwningProject(projects, file.fsPath) : undefined;
     if (!project) {
       item.hide();
       return;

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { serveShare, type ILogger, type ShareHost } from "@labshelf/core";
 
-export function serveSharingOn(webview: vscode.Webview, host: ShareHost, logger: ILogger): vscode.Disposable {
+export function serveShareOn(webview: vscode.Webview, host: ShareHost, logger: ILogger): vscode.Disposable {
   const stop = serveShare(host, {
     post: (reply) => { void webview.postMessage(reply); },
     subscribe: (handler) => {

@@ -12,7 +12,7 @@ import {
   createSystemNativeHostEnv,
   type NativeHostInstallResult,
 } from "@labshelf/core/nativeHost/node";
-import { scriptLaunch } from "./hostLaunch.js";
+import { createScriptLaunch } from "./hostLaunch.js";
 import { reportWarnings, SUPPORTED_BROWSERS } from "./reportInstall.js";
 
 const LOG_MODULE = "helper-install";
@@ -21,7 +21,7 @@ const USE_VS_CODE = "Use VS Code instead";
 async function buildLatexForBrowser(context: vscode.ExtensionContext, createLogger: (logPath: string) => ILogger, replaceStandalone = false): Promise<void> {
   const logger = createLogger(resolveBridgeLogPath());
   try {
-    const result = await installNativeHost(createSystemNativeHostEnv(logger), HELPER_HOST_SPEC, scriptLaunch(context, "helperHost"), { replaceStandalone });
+    const result = await installNativeHost(createSystemNativeHostEnv(logger), HELPER_HOST_SPEC, createScriptLaunch(context, "helperHost"), { replaceStandalone });
     await report(result, () => buildLatexForBrowser(context, createLogger, true));
   } catch (error) {
     await logger.error(LOG_MODULE, error, { action: "build LaTeX for the browser" });

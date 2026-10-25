@@ -27,7 +27,7 @@ export interface BrowserProjectLibraryDeps {
   askBlank(): Promise<{ title: string; format: "latex" | "typst" } | undefined>;
 }
 
-export function createBrowserProjectData({ fs, logger }: Pick<BrowserProjectLibraryDeps, "fs" | "logger">): ProjectContentPort {
+export function createBrowserProjectContent({ fs, logger }: Pick<BrowserProjectLibraryDeps, "fs" | "logger">): ProjectContentPort {
   return createProjectContent({ fs, path: posixPathOps, logger, deviceDirs: DEVICE_DIRS });
 }
 
@@ -35,7 +35,7 @@ const none = async (): Promise<undefined> => undefined;
 
 export function createBrowserProjectLibrary(deps: BrowserProjectLibraryDeps): ProjectLibraryPort {
   const { fs, logger, workspace, session } = deps;
-  const data = createBrowserProjectData(deps);
+  const data = createBrowserProjectContent(deps);
   const listeners = new Set<() => void>();
   let entries: ProjectEntry[] = [];
   const reload = async (): Promise<void> => { entries = await data.listProjects(ROOT); listeners.forEach((listener) => listener()); };

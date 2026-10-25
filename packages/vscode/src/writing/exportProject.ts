@@ -5,9 +5,9 @@ import * as vscode from "vscode";
 import { DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
 
 import type { ReadyProject } from "./buildRootDocument.js";
-import { builtPdf } from "./preview/builtPdf.js";
+import { readBuiltPdf } from "./preview/readBuiltPdf.js";
 import type { WritingProjects } from "./session/index.js";
-import { arxivZipEntries, projectZipEntries } from "./exportBundle.js";
+import { listArxivZipEntries, listProjectZipEntries } from "./exportBundle.js";
 
 const MODULE = "writing.export";
 
@@ -34,7 +34,7 @@ async function askDestination(project: ReadyProject, suffix: string, extension: 
 }
 
 async function withBuiltPdf(deps: ExportProjectDeps, project: ReadyProject, root: string, use: (pdf: string) => PromiseLike<unknown>): Promise<void> {
-  const pdf = await builtPdf(deps.projects, project, root);
+  const pdf = await readBuiltPdf(deps.projects, project, root);
   if (!pdf) {
     void vscode.window.showInformationMessage(`Build ${root} to get its PDF.`);
     return;
@@ -46,8 +46,8 @@ async function saveZip(deps: ExportProjectDeps, project: ReadyProject, root: str
   const destination = await askDestination(project, target === "arxivZip" ? "-arxiv" : "", "zip", "Zip");
   if (!destination) { return; }
   const entries = target === "arxivZip"
-    ? await arxivZipEntries(deps.projects.paths, project, root)
-    : await projectZipEntries(deps.projects.paths, project);
+    ? await listArxivZipEntries(deps.projects.paths, project, root)
+    : await listProjectZipEntries(deps.projects.paths, project);
   await vscode.workspace.fs.writeFile(destination, zipSync(entries));
 }
 

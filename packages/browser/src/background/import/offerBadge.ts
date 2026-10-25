@@ -17,7 +17,7 @@ export async function showOfferBadge(log: ILogger, tabId: number, title: string)
   }
 }
 
-export async function clearOfferBadge(log: ILogger, tabId: number): Promise<void> {
+export async function removeOfferBadge(log: ILogger, tabId: number): Promise<void> {
   try {
     // PLATFORM: null (not "") removes the tab's own value in Chrome and Firefox, so the toolbar button shows its default state again.
     await bx.action.setBadgeText({ tabId, text: null });

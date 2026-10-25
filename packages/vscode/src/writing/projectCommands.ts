@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { PROJECT_FILE, createBlankTemplate, detectFormat, type ProjectFormat } from "@labshelf/core";
-import { executeSafely } from "../command/index.js";
+import { runSafely } from "../command/index.js";
 import type { WritingHost, WritingProjects } from "./session/index.js";
 import { OPEN_PROJECT_COMMAND } from "./session/index.js";
 
@@ -23,7 +23,7 @@ async function pickFormat(placeHolder: string): Promise<ProjectFormat | undefine
 async function newBlankProject({ host, projects }: ProjectCommandsDeps): Promise<void> {
   const session = await host.require();
   if (!session) { return; }
-  await executeSafely(session.logger, "labshelf.writing.newBlankProject", async () => {
+  await runSafely(session.logger, "labshelf.writing.newBlankProject", async () => {
     const title = (await vscode.window.showInputBox({ prompt: "Project title", placeHolder: "Deep nets survey" }))?.trim();
     if (!title) { return; }
     const format = await pickFormat("Format of the new project");
@@ -37,7 +37,7 @@ async function newBlankProject({ host, projects }: ProjectCommandsDeps): Promise
 async function addFolder({ host, projects }: ProjectCommandsDeps): Promise<void> {
   const session = await host.require();
   if (!session) { return; }
-  await executeSafely(session.logger, "labshelf.writing.addExistingFolder", async () => {
+  await runSafely(session.logger, "labshelf.writing.addExistingFolder", async () => {
     const picked = await vscode.window.showOpenDialog({
       canSelectFolders: true, canSelectFiles: false, canSelectMany: false, openLabel: "Add project folder",
     });

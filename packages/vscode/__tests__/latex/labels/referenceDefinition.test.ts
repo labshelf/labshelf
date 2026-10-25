@@ -1,7 +1,7 @@
 // Tests that go-to-definition from a reference lands on every matching \label of the project.
 import * as vscode from "vscode";
 
-import { RefDefinitionProvider } from "../../../src/latex/labels/referenceDefinition";
+import { ReferenceDefinitionProvider } from "../../../src/latex/labels/referenceDefinition";
 import { at, latexProject, resetOpenDocuments, restoreDiskReads } from "../../support/latexProjectFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 
@@ -15,10 +15,10 @@ afterEach(() => { resetOpenDocuments(); restoreDiskReads(); });
 async function definition(marked: string) {
   const { sources } = latexProject(DISK);
   const { text, position } = withCursor(marked);
-  return new RefDefinitionProvider(sources).provideDefinition(fakeDocument(at("main.tex"), text), position);
+  return new ReferenceDefinitionProvider(sources).provideDefinition(fakeDocument(at("main.tex"), text), position);
 }
 
-describe("RefDefinitionProvider", () => {
+describe("ReferenceDefinitionProvider", () => {
   it("points a reference at the name inside its \\label", async () => {
     const [location] = (await definition("See \\ref{sec:|a}."))!;
     expect(location!.uri.fsPath).toBe(at("sections/a.tex"));
@@ -35,6 +35,6 @@ describe("RefDefinitionProvider", () => {
     expect(await definition("plain| \\ref{sec:a}")).toBeUndefined();
     const { sources } = latexProject(DISK);
     const { text, position } = withCursor("\\ref{sec:a|}");
-    expect(await new RefDefinitionProvider(sources).provideDefinition(fakeDocument("/elsewhere/a.tex", text), position)).toBeUndefined();
+    expect(await new ReferenceDefinitionProvider(sources).provideDefinition(fakeDocument("/elsewhere/a.tex", text), position)).toBeUndefined();
   });
 });

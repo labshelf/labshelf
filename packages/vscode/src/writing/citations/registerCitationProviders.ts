@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import { CitationCompletionProvider, UPDATE_BIBLIOGRAPHY_COMMAND } from "./citationCompletion.js";
 import { CitationHoverProvider } from "./hover/index.js";
-import { type CitationWorkspace, citingProject } from "./citationWorkspace.js";
-import { registerCiteFromLibrary } from "./citationFromLibrary.js";
+import { type CitationWorkspace, findCitingProject } from "./citationWorkspace.js";
+import { registerCitationFromLibrary } from "./citationFromLibrary.js";
 import { DEFAULT_BIBLIOGRAPHY, findCiteKeyOccurrences } from "@labshelf/core";
 import { openEditorSources } from "./openEditorSources.js";
 import type { ReadyProject } from "../buildRootDocument.js";
@@ -14,7 +14,7 @@ export class CitationLinkProvider implements vscode.DocumentLinkProvider {
   constructor(private readonly workspace: CitationWorkspace) {}
 
   async provideDocumentLinks(document: vscode.TextDocument): Promise<vscode.DocumentLink[]> {
-    const project = citingProject(this.workspace.projects, document.uri.fsPath);
+    const project = findCitingProject(this.workspace.projects, document.uri.fsPath);
     const session = this.workspace.session();
     if (!project || !session) { return []; }
     const papers = new Map((await session.listPapers()).map((paper) => [paper.citeKey, paper]));
@@ -37,7 +37,7 @@ class BibliographySync {
 
   /** Updates the bibliography of the project owning the file; a file outside a ready project is ignored. */
   update(file: string): Promise<void> {
-    const project = citingProject(this.workspace.projects, file);
+    const project = findCitingProject(this.workspace.projects, file);
     const session = this.workspace.session();
     if (!project || !session) { return Promise.resolve(); }
     // Runs one update at a time: two concurrent ones could both add the bibliography line to the main file.
@@ -97,5 +97,5 @@ export function registerCitationProviders(
     vscode.commands.registerCommand(UPDATE_BIBLIOGRAPHY_COMMAND, (uri: vscode.Uri) => sync.update(uri.fsPath)),
     vscode.workspace.onDidSaveTextDocument((document) => void sync.update(document.uri.fsPath)),
   );
-  registerCiteFromLibrary(context, workspace);
+  registerCitationFromLibrary(context, workspace);
 }

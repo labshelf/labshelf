@@ -7,7 +7,7 @@ import { PAPERS_DIR, formatFolderPathLabel, formatAuthors, normalizeTags, format
 import type { DraftView } from "../platform";
 
 /** "Edelman et al. · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past two. */
-export function metaLine(d: Pick<DraftView, "authors" | "venue" | "year">): string {
+export function formatMetaLine(d: Pick<DraftView, "authors" | "venue" | "year">): string {
   return [formatAuthors(d.authors), formatVenueLine({ journal: d.venue, year: d.year })].filter(Boolean).join(" · ");
 }
 
@@ -17,6 +17,6 @@ export function parseTags(text: string): string[] {
 }
 
 /** The folder's display name: its path inside the library ("Thesis / Chapter 2"), "All papers" for the root. */
-export function folderName(path: string): string {
+export function formatFolderName(path: string): string {
   return formatFolderPathLabel(PAPERS_DIR, path, "/");
 }

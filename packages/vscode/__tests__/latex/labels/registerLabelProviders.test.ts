@@ -1,7 +1,7 @@
 // Tests that undefined references and missing includes become diagnostics, debounced, and clear when the project's documents close.
 import * as vscode from "vscode";
 
-import { LabelDiagnostics } from "../../../src/latex/labels/registerLabelProviders";
+import { LabelProblems } from "../../../src/latex/labels/registerLabelProviders";
 import { at, latexProject, resetOpenDocuments, restoreDiskReads } from "../../support/latexProjectFixtures";
 
 const DISK = {
@@ -13,7 +13,7 @@ const workspace = vscode.workspace as unknown as { _fireDocumentEvent: (kind: st
 
 function setup() {
   const project = latexProject(DISK);
-  const diagnostics = new LabelDiagnostics(project.sources);
+  const diagnostics = new LabelProblems(project.sources);
   const collection = (vscode.languages.createDiagnosticCollection as jest.Mock).mock.results.at(-1)!.value as {
     set: jest.Mock; delete: jest.Mock;
   };
@@ -25,7 +25,7 @@ const settle = async (): Promise<void> => { await jest.advanceTimersByTimeAsync(
 beforeEach(() => jest.useFakeTimers());
 afterEach(() => { jest.useRealTimers(); resetOpenDocuments(); restoreDiskReads(); });
 
-describe("LabelDiagnostics", () => {
+describe("LabelProblems", () => {
   it("names its collection labshelf-labels", () => {
     setup();
     expect(vscode.languages.createDiagnosticCollection).toHaveBeenCalledWith("labshelf-labels");
@@ -49,7 +49,7 @@ describe("LabelDiagnostics", () => {
   it("publishes for documents that are already open", async () => {
     const project = latexProject(DISK);
     project.open("main.tex");
-    new LabelDiagnostics(project.sources);
+    new LabelProblems(project.sources);
     const collection = (vscode.languages.createDiagnosticCollection as jest.Mock).mock.results.at(-1)!.value as { set: jest.Mock };
     await settle();
     expect(collection.set).toHaveBeenCalled();

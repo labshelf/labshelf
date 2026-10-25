@@ -1,7 +1,7 @@
 // Shows the project's search page, answered in the same page over a loopback channel.
 import { createLoopbackTransport, type HostToSearch, type SearchToHost } from "@labshelf/core";
 import { renderElement, mountProjectSearch } from "@labshelf/core/dom";
-import { revealInOpenEditor } from "../../writing/session";
+import { showInOpenEditor } from "../../writing/session";
 import { mountSearchHost } from "../../writing";
 import { findProject } from "../../writing/project";
 import type { TabModule } from "./tabKind";
@@ -21,7 +21,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, proj
       const { ui, host: endpoint } = createLoopbackTransport<SearchToHost, HostToSearch>();
       const openMatch = (path: string, line: number): void => {
         workspace.openTab("source", { projectId, path }, 0);
-        revealInOpenEditor(projectId, path, line);
+        showInOpenEditor(projectId, path, line);
       };
       hostEnd = mountSearchHost({ fs, logger, endpoint, project: { id: projectId, folder: entry.folder }, openMatch });
       loading.remove();

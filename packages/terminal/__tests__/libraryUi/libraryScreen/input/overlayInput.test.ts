@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 
 import type { AppContext } from "../../../../src/compositionRoot";
 import { App } from "../../../../src/libraryUi/libraryScreen";
-import { helpRows } from "../../../../src/libraryUi/overlays";
+import { listHelpRows } from "../../../../src/libraryUi/overlays";
 import {
   ATTENTION, click, hoveredId, idle, makeTmpRoot, openApp, press, screenText, seedLibrary, typeText, wheel,
 } from "../../../fixtures/appHarness";
@@ -50,7 +50,7 @@ describe("App help (?)", () => {
   });
 
   it("scrolls with j and k and pages with space", () => {
-    const target = helpRows().findIndex((row) => row.keys === "m d");
+    const target = listHelpRows().findIndex((row) => row.keys === "m d");
     const pages = Math.floor(target / 10);
     press(app, "?");
     expect(screenText(app)).not.toContain("Mark done");

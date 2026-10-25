@@ -2,10 +2,10 @@
 import * as vscode from "vscode";
 
 import { BUILD_COMMAND } from "../../build/index.js";
-import { owningProject } from "../../buildRootDocument.js";
+import { findOwningProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../buildPreviews.js";
-import { builtPdf } from "../builtPdf.js";
+import { readBuiltPdf } from "../readBuiltPdf.js";
 
 const SHOW_IN_PREVIEW_COMMAND = "labshelf.writing.showInPreview";
 
@@ -18,8 +18,8 @@ interface ShowInPreviewDeps {
 async function showInPreview(deps: ShowInPreviewDeps): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const file = editor?.document.uri;
-  const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
-  const pdf = await builtPdf(deps.projects, project, project?.main);
+  const project = file?.scheme === "file" ? findOwningProject(deps.projects, file.fsPath) : undefined;
+  const pdf = await readBuiltPdf(deps.projects, project, project?.main);
   if (!editor || !file || !project?.main || !pdf) {
     // The build command opens the preview on success and explains a missing project, main file or format.
     await vscode.commands.executeCommand(BUILD_COMMAND);

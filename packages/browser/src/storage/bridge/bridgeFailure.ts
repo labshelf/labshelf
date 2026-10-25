@@ -10,7 +10,7 @@ export interface BridgeFailure {
   detail?: string;
 }
 
-export function classifyBridgeFailure(error: unknown): BridgeFailure {
+export function deriveBridgeFailure(error: unknown): BridgeFailure {
   if (error instanceof BridgeClosedError && isHostNotFound(error.reason)) return { reason: "not-installed" };
   if (error instanceof BridgeError && error.code === "protocol") return { reason: "protocol-mismatch", detail: error.message };
   if (error instanceof BridgeError && error.code === "noLibrary") return { reason: "no-library", detail: error.message };

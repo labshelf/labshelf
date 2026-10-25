@@ -1,9 +1,9 @@
 /** Pins that the browser project mirror follows the caller's tab lease without releasing it, and that VS Code's folder lease keeps it busy. */
-import { acquireTabLease, tabLeaseName, takeOverTabLease } from "../../../src/storage";
+import { openTabLease, createTabLeaseName, updateTabLease } from "../../../src/storage";
 import { FOLDER, LIBRARY_ID, openTestbed, running, SHARE_ID, until, type Testbed } from "./mirrorTestbed";
 
 const FILE = `${FOLDER}/main.typ`;
-const TAB = tabLeaseName(LIBRARY_ID, SHARE_ID);
+const TAB = createTabLeaseName(LIBRARY_ID, SHARE_ID);
 
 describe("browser project mirror ownership", () => {
   let bed: Testbed;
@@ -12,14 +12,14 @@ describe("browser project mirror ownership", () => {
   it("leaves the tab lease held by the caller when it closes", async () => {
     bed = await openTestbed("browser");
     await running(await bed.start()).close();
-    expect(await acquireTabLease(TAB)).toEqual({ kind: "busy" });
+    expect(await openTabLease(TAB)).toEqual({ kind: "busy" });
     expect(bed.stops).toEqual([]);
   });
 
   it("stops and writes nothing to disk once another tab took the tab lease", async () => {
     bed = await openTestbed("browser");
     const mirror = running(await bed.start());
-    const stolen = await takeOverTabLease(TAB);
+    const stolen = await updateTabLease(TAB);
     await until(() => bed.stops.length > 0);
     expect(bed.stops).toEqual(["tab-taken"]);
     bed.peerEdit("main.typ", "Hello");

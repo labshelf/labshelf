@@ -18,7 +18,7 @@ export interface HeadingEntry {
   selection: vscode.Range;
 }
 
-export function nestedSymbols(entries: readonly HeadingEntry[], endOfFile: vscode.Position): vscode.DocumentSymbol[] {
+export function deriveNestedSymbols(entries: readonly HeadingEntry[], endOfFile: vscode.Position): vscode.DocumentSymbol[] {
   const toSymbol = ({ entry, next, children }: HeadingNode<HeadingEntry>): vscode.DocumentSymbol => {
     const kind = KIND_BY_DEPTH[Math.min(entry.depth, KIND_BY_DEPTH.length - 1)]!;
     const range = new vscode.Range(entry.selection.start, next ? next.selection.start : endOfFile);

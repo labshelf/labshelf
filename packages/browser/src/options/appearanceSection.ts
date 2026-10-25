@@ -1,7 +1,7 @@
 /** Builds the Appearance section: the theme preference shared by every browser surface, as a segmented control. */
 import { renderIcon, type IconName } from "@labshelf/core";
 import { renderElement, renderSettingRow, renderSettingsSection, type ThemePref } from "@labshelf/core/dom";
-import { getThemePref, onThemeChange, setThemePref } from "../ui";
+import { readThemePref, onThemeChange, setThemePref } from "../ui";
 
 const THEME_OPTIONS: Array<[ThemePref, string, IconName]> = [["auto", "System", "globe"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]];
 
@@ -19,7 +19,7 @@ export function createAppearanceSection(onPicked: () => void): HTMLElement {
     }));
   };
   onThemeChange((_theme, pref) => render(pref));
-  render(getThemePref());
+  render(readThemePref());
   return renderSettingsSection(
     { title: "Appearance" },
     renderSettingRow({ label: "Theme", description: "The library, popup and this page follow the system by default." }, seg),

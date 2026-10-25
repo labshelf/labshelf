@@ -21,10 +21,10 @@ jest.mock("../../../src/platform", () => ({
 const staged = new Map<string, Uint8Array>();
 const records: unknown[] = [];
 jest.mock("../../../src/storage", () => ({
-  listAllRecords: async () => records,
-  stagePdf: async (id: string, bytes: Uint8Array) => { staged.set(id, bytes); },
-  unstagePdf: async (id: string) => { staged.delete(id); },
-  keepStagedPdfs: async () => undefined,
+  listCachedPaperRecords: async () => records,
+  writeStagedPdf: async (id: string, bytes: Uint8Array) => { staged.set(id, bytes); },
+  removeStagedPdf: async (id: string) => { staged.delete(id); },
+  removeStagedPdfsExcept: async () => undefined,
 }));
 const fetchPdf = jest.fn();
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), fetchPdf: (...a: unknown[]) => fetchPdf(...a) }));

@@ -8,9 +8,9 @@ import {
   type ProjectEntry,
 } from "@labshelf/core";
 import { CONNECT_RELAY_COMMAND } from "../../../relay/index.js";
-import { projectName, reportFailure, showRefusedOffer, type CollabHost } from "../collabHost.js";
+import { formatProjectName, reportFailure, showRefusedOffer, type CollabHost } from "../collabHost.js";
 import * as path from "node:path";
-import { owningProject, type WritingProjects } from "../../../writing/index.js";
+import { findOwningProject, type WritingProjects } from "../../../writing/index.js";
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 /** A project folder path (from a script or another command) or a project entry (from a view). */
@@ -23,11 +23,11 @@ async function pickProject(
   if (typeof target === "string") { return ready.find((entry) => entry.folder === path.resolve(target)); }
   if (target) { return ready.find((entry) => entry.folder === target.folder); }
   const file = vscode.window.activeTextEditor?.document.uri;
-  const active = file?.scheme === "file" ? owningProject(projects, file.fsPath) : undefined;
+  const active = file?.scheme === "file" ? findOwningProject(projects, file.fsPath) : undefined;
   if (active && filter(active)) { return active; }
   if (ready.length === 0) { return undefined; }
   const picked = await vscode.window.showQuickPick(
-    ready.map((project) => ({ label: projectName(project), description: project.folder, project })), { placeHolder },
+    ready.map((project) => ({ label: formatProjectName(project), description: project.folder, project })), { placeHolder },
   );
   return picked?.project;
 }
@@ -43,7 +43,7 @@ async function pickShare(host: CollabHost, placeHolder: string): Promise<{ share
     void vscode.window.showInformationMessage("No shared project is connected in this window.");
     return undefined;
   }
-  return { share, name: projectName(project) };
+  return { share, name: formatProjectName(project) };
 }
 
 /** The relay of the connected Cloudflare account; undefined, with an offer to connect, when there is none. */
@@ -72,7 +72,7 @@ export async function offerRelay(host: CollabHost): Promise<void> {
   }
 }
 
-export async function withdrawRelay(host: CollabHost): Promise<void> {
+export async function leaveRelay(host: CollabHost): Promise<void> {
   const relayUrl = await ownRelayUrl(host);
   const picked = relayUrl && (await pickShare(host, "Shared project to withdraw your relay from"));
   if (!picked) { return; }

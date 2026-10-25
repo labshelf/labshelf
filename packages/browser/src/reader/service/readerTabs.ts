@@ -17,7 +17,7 @@ declare global {
 /**
  * @returns the extension URL of the reader page for a paper.
  */
-export function readerUrl(paperId: string, page?: number): string {
+export function createReaderUrl(paperId: string, page?: number): string {
   const q = new URLSearchParams({ paper: paperId });
   if (page && Number.isInteger(page) && page > 0) q.set("page", String(page));
   return `${bx.runtime.getURL(READER_PAGE)}?${q.toString()}`;
@@ -45,5 +45,5 @@ export async function openReader(paperId: string, page?: number): Promise<void> 
       return;
     }
   }
-  await bx.tabs.create({ url: readerUrl(paperId, page) });
+  await bx.tabs.create({ url: createReaderUrl(paperId, page) });
 }

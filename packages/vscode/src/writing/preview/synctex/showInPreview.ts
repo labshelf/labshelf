@@ -3,17 +3,17 @@ import * as vscode from "vscode";
 
 import { findPagePoint, type ILogger, type PagePoint } from "@labshelf/core";
 import { NOT_BUILT_MESSAGE, NOT_IN_PREVIEW_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE } from "../previewStrings.js";
-import type { SynctexLookup } from "./projectSynctex.js";
+import type { SynctexFinder } from "./projectSynctex.js";
 
-export interface RevealInPreviewDeps {
+export interface ShowInPreviewDeps {
   logger: ILogger;
   projectFolder: string;
-  synctex: () => Promise<SynctexLookup>;
+  synctex: () => Promise<SynctexFinder>;
   reveal: (point: PagePoint) => void;
 }
 
 /** `line` is 1-based. */
-export async function revealInPreview(deps: RevealInPreviewDeps, file: string, line: number): Promise<void> {
+export async function showInPreview(deps: ShowInPreviewDeps, file: string, line: number): Promise<void> {
   const { logger, projectFolder } = deps;
   const lookup = await deps.synctex();
   const point = lookup.status === "found" ? findPagePoint(lookup.index, file, line) : undefined;

@@ -3,12 +3,12 @@ import * as vscode from "vscode";
 
 import type { CheckProblem, ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
-import { executeSafely } from "../../../command/index.js";
-import { activeProject, ProjectDiagnostics, type ProjectBuilders } from "../../build/index.js";
+import { runSafely } from "../../../command/index.js";
+import { readActiveProject, ProjectProblems, type ProjectBuilders } from "../../build/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
-import { builtPdf } from "../../preview/index.js";
+import { readBuiltPdf } from "../../preview/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
-import { CHECK_COMMAND, checkDiagnostics } from "../index.js";
+import { CHECK_COMMAND, deriveCheckProblems } from "../index.js";
 
 interface CheckCommandDeps {
   context: vscode.ExtensionContext;
@@ -30,11 +30,11 @@ function runCheck(deps: CheckCommandDeps, project: ReadyProject, pdfPath: string
     checkProject({ folder: project.folder, pdfPath, settings: project.settings.check }, deps.pdfjs, logger));
 }
 
-async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: ProjectDiagnostics, entry: ProjectEntry | undefined): Promise<void> {
+async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: ProjectProblems, entry: ProjectEntry | undefined): Promise<void> {
   const session = deps.host.current();
   if (!session) { return; }
-  await executeSafely(session.logger, CHECK_COMMAND, async () => {
-    const project = entry?.kind === "ready" ? entry : activeProject(deps.projects);
+  await runSafely(session.logger, CHECK_COMMAND, async () => {
+    const project = entry?.kind === "ready" ? entry : readActiveProject(deps.projects);
     if (!project) {
       await vscode.window.showInformationMessage("Open a file of a writing project to check it.");
       return;
@@ -46,13 +46,13 @@ async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: Projec
       await vscode.window.showWarningMessage("The check needs a successful build. The build problems are listed in Problems.");
       return;
     }
-    const pdfPath = await builtPdf(deps.projects, project, project.main);
+    const pdfPath = await readBuiltPdf(deps.projects, project, project.main);
     if (!pdfPath) {
       await vscode.window.showInformationMessage("Build the project first; the check reads its PDF.");
       return;
     }
     const findings = await runCheck(deps, project, pdfPath, session.logger);
-    diagnostics.replace(project.folder, checkDiagnostics(findings, pdfPath));
+    diagnostics.replace(project.folder, deriveCheckProblems(findings, pdfPath));
     deps.onFindings?.(project.folder, findings.length);
     if (findings.length === 0) {
       void vscode.window.showInformationMessage("No problems found before submitting.");
@@ -64,7 +64,7 @@ async function checkBeforeSubmitting(deps: CheckCommandDeps, diagnostics: Projec
 }
 
 export function registerCheckCommand(deps: CheckCommandDeps): void {
-  const diagnostics = new ProjectDiagnostics("labshelf-check");
+  const diagnostics = new ProjectProblems("labshelf-check");
   deps.context.subscriptions.push(
     diagnostics,
     vscode.commands.registerCommand(CHECK_COMMAND, (entry?: ProjectEntry) => checkBeforeSubmitting(deps, diagnostics, entry)),

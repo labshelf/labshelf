@@ -12,7 +12,7 @@ jest.mock("../../src/platform", () => ({
 
 import { deriveShareId, readFileText, joinSharedProject, leaveSharedProject, parseProjectFile, startProjectShare, type ShareConnection } from "@labshelf/core";
 import { reportPageWrites } from "../../src/collab";
-import { replaceInFiles } from "../../src/writing/mountSearchHost";
+import { writeReplacements } from "../../src/writing/mountSearchHost";
 import { relayNet, type RelayNet } from "../support/relayNetwork";
 import { until } from "./pageSharesTestbed";
 import { FOLDER, installSharingGlobals, MAIN, openLibrary, PROJECT_FILE, type SharingLibrary, type SharingPage } from "./shareTestbed";
@@ -46,7 +46,7 @@ async function shareSeeded(owner: SharingLibrary): Promise<{ page: SharingPage; 
   return { page, invite: outcome.invite, shareId: outcome.connection.shareId, connection: outcome.connection };
 }
 
-describe("createPageSharing", () => {
+describe("createPageShare", () => {
   it("shares a project from the browser that another device joins with its files", async () => {
     const owner = await library(true);
     const { invite, shareId } = await shareSeeded(owner);
@@ -157,7 +157,7 @@ describe("createPageSharing", () => {
     // The mirror's first scan is over, so only the page's report brings the edit in: browser storage has no watcher.
     await new Promise((resolve) => setTimeout(resolve, 300));
     const pageFs = reportPageWrites(owner.fs);
-    expect(await replaceInFiles(pageFs, [{ path: MAIN, line: 0, column: 2, length: 5 }], /Hello/g, "World")).toBe(1);
+    expect(await writeReplacements(pageFs, [{ path: MAIN, line: 0, column: 2, length: 5 }], /Hello/g, "World")).toBe(1);
     await until(() => text() === "= World\n");
   });
 });

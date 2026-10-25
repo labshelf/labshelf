@@ -3,7 +3,7 @@ import {
   PaperSidecarStore, createBrokenProjectItem, buildReadingList, derivePapersByCiteKey, createReadyProjectItem,
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
-import { createSidecarPort, listAllRecords, type BrowserProjects } from "../../storage";
+import { createSidecarPort, listCachedPaperRecords, type BrowserProjects } from "../../storage";
 
 const MODULE = "writing.projectList";
 
@@ -48,7 +48,7 @@ async function readingListOf({ fileSystem, logger }: ProjectsSourceDeps, entry: 
       project: entry.settings.id,
       backlinks: new Map(),
       listed: entry.settings.papers ?? [],
-      papersByKey: derivePapersByCiteKey(await listAllRecords()),
+      papersByKey: derivePapersByCiteKey(await listCachedPaperRecords()),
       isOpened: async (paperId) => (await store.getReadingState(paperId)) !== null,
     });
   } catch (error) {

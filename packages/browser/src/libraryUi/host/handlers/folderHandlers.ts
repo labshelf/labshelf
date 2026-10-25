@@ -17,7 +17,7 @@ export async function renameFolder(ctx: HostContext, oldPath: string, name: stri
   if (isUnderDir(ctx.folder, oldPath, "/")) ctx.endpoint.post({ type: "navigate", folder: newPath + ctx.folder.slice(oldPath.length) });
 }
 
-export async function deleteFolder(ctx: HostContext, path: string): Promise<void> {
+export async function removeFolder(ctx: HostContext, path: string): Promise<void> {
   await ctx.mutations.trashFolder(path);
   await ctx.snapshots.refresh();
   if (isUnderDir(ctx.folder, path, "/")) ctx.endpoint.post({ type: "navigate", folder: deriveParentDir(path, "/") });

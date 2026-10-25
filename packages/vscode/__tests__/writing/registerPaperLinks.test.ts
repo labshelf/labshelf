@@ -3,9 +3,9 @@ import * as vscode from "vscode";
 
 import {
   LabshelfUriHandler,
-  LabshelfLinkHoverProvider,
-  LabshelfLinkProvider,
-  type LinkLibrary,
+  PaperLinkHoverProvider,
+  PaperLinkProvider,
+  type PaperLinkLibrary,
 } from "../../src/writing/registerPaperLinks";
 import { citationWorkspace } from "../support/citationFixtures";
 import { fakeDocument, withCursor } from "../support/textDocument";
@@ -57,9 +57,9 @@ describe("labshelf URI handler", () => {
   });
 });
 
-async function hover(marked: string, library: LinkLibrary = citationWorkspace()) {
+async function hover(marked: string, library: PaperLinkLibrary = citationWorkspace()) {
   const { text, position } = withCursor(marked);
-  return new LabshelfLinkHoverProvider(library).provideHover(fakeDocument("/code/repo/model.py", text), position);
+  return new PaperLinkHoverProvider(library).provideHover(fakeDocument("/code/repo/model.py", text), position);
 }
 
 describe("labshelf link hover", () => {
@@ -82,8 +82,8 @@ describe("labshelf link hover", () => {
   });
 });
 
-const provide = (text: string, library: LinkLibrary = citationWorkspace()) =>
-  new LabshelfLinkProvider(library).provideDocumentLinks(fakeDocument("/code/repo/model.py", text));
+const provide = (text: string, library: PaperLinkLibrary = citationWorkspace()) =>
+  new PaperLinkProvider(library).provideDocumentLinks(fakeDocument("/code/repo/model.py", text));
 
 describe("labshelf link provider", () => {
   it("links a key with a page to the reader at that page", async () => {

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ILogger, LibraryFileSystem } from "@labshelf/core";
 import type { ProjectSession } from "../session/index.js";
-import { projectFolderUri, type ProjectFileNode } from "./projectFilesProvider.js";
+import { createProjectFolderUri, type ProjectFileNode } from "./projectFilesProvider.js";
 
 const MODULE = "writing/tree";
 
@@ -62,7 +62,7 @@ async function create(deps: ProjectFileCommandsDeps, kind: "file" | "folder", ta
   if (!project) { return; }
   const name = await askName(kind === "file" ? "New file name" : "New folder name");
   if (!name) { return; }
-  const uri = vscode.Uri.joinPath(target?.uri ?? projectFolderUri(project), name);
+  const uri = vscode.Uri.joinPath(target?.uri ?? createProjectFolderUri(project), name);
   if (await exists(uri)) {
     void vscode.window.showErrorMessage(`${name} already exists.`);
     return;

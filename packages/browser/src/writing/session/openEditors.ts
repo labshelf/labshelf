@@ -29,7 +29,7 @@ export function registerOpenEditor(projectId: string, path: string, editor: Open
 }
 
 /** Reveals the line in the file's editor; when none is mounted yet (its tab is still loading), the editor reveals it on mount. */
-export function revealInOpenEditor(projectId: string, path: string, line: number): void {
+export function showInOpenEditor(projectId: string, path: string, line: number): void {
   const key = keyOf(projectId, path);
   const editor = editors.get(key);
   if (editor) editor.revealLine(line);
@@ -37,12 +37,12 @@ export function revealInOpenEditor(projectId: string, path: string, line: number
 }
 
 /** Saves the pending edits of every open editor of the project; resolves whether all of them are saved. */
-export async function flushProjectEditors(projectId: string): Promise<boolean> {
+export async function writeProjectEditors(projectId: string): Promise<boolean> {
   const saved = await Promise.all(editorsOf(projectId).map((editor) => editor.flush()));
   return saved.every(Boolean);
 }
 
 /** Reloads every open editor of the project from disk. */
-export async function reloadProjectEditors(projectId: string): Promise<void> {
+export async function refreshProjectEditors(projectId: string): Promise<void> {
   await Promise.all(editorsOf(projectId).map((editor) => editor.reload()));
 }

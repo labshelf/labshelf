@@ -2,9 +2,9 @@
 import { buildRootOf } from "@labshelf/core";
 import * as vscode from "vscode";
 
-import { autoCompileGate } from "../build/index.js";
+import { createAutoCompileGate } from "../build/index.js";
 import type { BuildTrigger } from "../build/index.js";
-import { owningProject, type ReadyProject } from "../buildRootDocument.js";
+import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 
 /** "live" compiles unsaved text for the preview only; the others write `<root>.pdf` from the saved files. */
@@ -24,14 +24,14 @@ export interface TypstTriggerDeps {
 
 function typstProjectOf(projects: WritingProjects, file: vscode.Uri): ReadyProject | undefined {
   if (file.scheme !== "file") { return undefined; }
-  const project = owningProject(projects, file.fsPath);
+  const project = findOwningProject(projects, file.fsPath);
   return project?.settings.format === "typst" ? project : undefined;
 }
 
 export function registerTypstTriggers(deps: TypstTriggerDeps): void {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   let disposed = false;
-  const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
+  const autoCompile = createAutoCompileGate(() => deps.host.current()?.logger);
   const schedule = async (project: ReadyProject, file: vscode.Uri, trigger: "live" | "save", delay: number): Promise<void> => {
     if (!autoCompile.allows(trigger === "live" ? "typing" : "save")) { return; }
     const folder = project.folder;

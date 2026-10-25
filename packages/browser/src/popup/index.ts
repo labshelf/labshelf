@@ -1,27 +1,27 @@
 // Saves the paper on the current tab from the toolbar popup.
 // States (data-state on #popup): loading, form | library | empty, saving, saved. A matched PDF offer shows as library.
 import { bx, createBrowserLogger, sendRuntime } from "../platform";
-import type { FoldersData } from "../platform";
+import type { FoldersReply } from "../platform";
 import { findElement } from "@labshelf/core/dom";
 import { mountSourceBanner } from "../library/libraryLocation";
 import { applyTheme } from "../ui";
 import { formatError, renderIcon } from "@labshelf/core";
-import { renderFolders, showStatus, autoGrow } from "./render";
-import { attachPdf, inspect, save, undo } from "./captureFlow";
-import { dismissOffer, fetchOffer, showOffer } from "./offerCard";
+import { renderFolders, showNotice, updateTextAreaHeight } from "./render";
+import { attachPdf, detectCapture, writeCapture, removeCapture } from "./captureFlow";
+import { closeOffer, fetchOffer, showOffer } from "./offerCard";
 import { popupState, setState } from "./popupState";
 
 function wire(): void {
-  findElement("form").addEventListener("submit", (e) => { e.preventDefault(); void save(); });
+  findElement("form").addEventListener("submit", (e) => { e.preventDefault(); void writeCapture(); });
   const note = findElement<HTMLTextAreaElement>("note");
-  note.addEventListener("input", () => autoGrow(note));
+  note.addEventListener("input", () => updateTextAreaHeight(note));
   note.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save(); }
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void writeCapture(); }
   });
-  findElement("tryAnyway").addEventListener("click", () => { void save(); });
+  findElement("tryAnyway").addEventListener("click", () => { void writeCapture(); });
   findElement("attachPdf").addEventListener("click", () => { void attachPdf(); });
-  findElement("dismissOffer").addEventListener("click", () => { void dismissOffer(); });
-  findElement("undo").addEventListener("click", () => { void undo(); });
+  findElement("dismissOffer").addEventListener("click", () => { void closeOffer(); });
+  findElement("undo").addEventListener("click", () => { void removeCapture(); });
   findElement("open").addEventListener("click", () => {
     const { folder, paper } = findElement("open").dataset;
     void sendRuntime({ type: "library.open", ...(folder ? { folder } : {}), ...(paper ? { paperId: paper } : {}) }).then(() => window.close());
@@ -58,17 +58,17 @@ async function init(): Promise<void> {
     }
     findElement("title").textContent = "Nothing to save here";
     setState("empty");
-    showStatus({ glyph: "globe", tone: "muted", title: "This page can't be saved", detail: "Open an article's page or its PDF in a normal tab." });
+    showNotice({ glyph: "globe", tone: "muted", title: "This page can't be saved", detail: "Open an article's page or its PDF in a normal tab." });
     return;
   }
   popupState.tabId = tab.id;
 
-  const foldersReady = sendRuntime<FoldersData>({ type: "library.folders" })
+  const foldersReady = sendRuntime<FoldersReply>({ type: "library.folders" })
     .then((f) => { popupState.folders = f; })
     .catch(() => undefined)
     .then(renderFolders);
   try {
-    await Promise.all([foldersReady, inspect(offerReady)]);
+    await Promise.all([foldersReady, detectCapture(offerReady)]);
   } catch (err) {
     const offer = await offerReady;
     if (offer) {
@@ -77,7 +77,7 @@ async function init(): Promise<void> {
     }
     findElement("title").textContent = tab.title || "This page";
     setState("empty");
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: formatError(err), tryAnyway: true });
+    showNotice({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: formatError(err), tryAnyway: true });
   }
 }
 

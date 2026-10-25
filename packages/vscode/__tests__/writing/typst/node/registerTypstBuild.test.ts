@@ -11,7 +11,7 @@ jest.mock("@labshelf/core/typst/node", () => ({ ...jest.requireActual("@labshelf
 jest.mock("../../../../src/writing/typst/node/typstCompilerHost", () => ({
   createTypstCompilerHost: jest.fn(() => ({ get: async () => ({ session: {}, packages: {} }) })),
 }));
-jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ recordTypstVersion: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ writeTypstVersion: jest.fn(async () => {}) }));
 
 const run = runTypstBuild as jest.Mock;
 const rootOf = buildRootOf as jest.Mock;

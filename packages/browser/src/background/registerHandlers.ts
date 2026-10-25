@@ -2,16 +2,16 @@
 // capture/library handlers, gating which message types the search page content script may send.
 import { formatError, type ILogger } from "@labshelf/core";
 import { bx } from "../platform";
-import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform";
+import type { LibraryChangedEvent, RuntimeMessage, RuntimeResponse } from "../platform";
 import { isSearchPageUrl } from "../content";
 import type { LibraryMutations } from "../storage";
 import {
-  handleCaptureAttachPdf, handleCaptureFindPdf, handleCaptureInspect, handleCaptureSave, handleCaptureTab,
-  handleFindBetterPdf, handleFindPdfForPaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
-  handleOpenForPdf, handleRemovePaper, handleSearchHitSave, accessTabDeps,
+  answerCaptureAttachPdf, answerCaptureFindPdf, answerCaptureInspect, answerCaptureWrite, answerCaptureTab,
+  answerFindBetterPdf, answerFindPdfForPaper, answerLibraryFolders, answerLibraryFind, answerLibraryOpen, answerListTabs,
+  answerOpenForPdf, answerRemovePaper, answerSearchHitWrite, createAccessTabDeps,
 } from "./handlers/index";
-import { handleAskAuthor } from "./copyRequest";
-import { handlePdfOfferMessage, isPdfOfferMessage } from "./import";
+import { answerCopyRequest } from "./copyRequest";
+import { answerPdfOfferMessage, isPdfOfferMessage } from "./import";
 
 // Web pages reach the background only through the search page content script (Scholar and Google),
 // and only for what its buttons need; everything else is for extension pages.
@@ -22,17 +22,17 @@ function allowedFrom(msg: RuntimeMessage, sender: { url?: string }): boolean {
   return PAGE_MESSAGES.has(msg?.type) && isSearchPageUrl(sender.url);
 }
 
-export interface MessageRouterDeps {
+export interface HandlersDeps {
   log: ILogger;
   mutations: LibraryMutations;
 }
 
-export function registerMessageRouter(deps: MessageRouterDeps): void {
+export function registerHandlers(deps: HandlersDeps): void {
   bx.runtime.onMessage.addListener(async (message: unknown, sender: { url?: string; tab?: { id?: number } }) => {
     const msg = message as RuntimeMessage;
     // The background's own library.changed broadcast is not a request; if the
     // runtime delivers it back here, ignore it before the exhaustive switch.
-    if ((message as LibraryChangedBroadcast | undefined)?.type === "library.changed") return undefined;
+    if ((message as LibraryChangedEvent | undefined)?.type === "library.changed") return undefined;
     if (!allowedFrom(msg, sender)) {
       void deps.log.log("WARN", "background", "message refused", { type: msg?.type ?? null, from: sender.url ?? null });
       return { ok: false, error: "Not allowed from this page" } satisfies RuntimeResponse;
@@ -48,40 +48,40 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
   });
 }
 
-async function handle(msg: RuntimeMessage, deps: MessageRouterDeps, senderTabId: number | undefined): Promise<unknown> {
+async function handle(msg: RuntimeMessage, deps: HandlersDeps, senderTabId: number | undefined): Promise<unknown> {
   const { log, mutations } = deps;
-  if (isPdfOfferMessage(msg)) return handlePdfOfferMessage({ log, mutations }, msg);
+  if (isPdfOfferMessage(msg)) return answerPdfOfferMessage({ log, mutations }, msg);
   switch (msg.type) {
     case "capture.inspect":
-      return handleCaptureInspect(log, msg);
+      return answerCaptureInspect(log, msg);
     case "capture.findPdf":
-      return handleCaptureFindPdf(log, msg);
+      return answerCaptureFindPdf(log, msg);
     case "capture.save":
-      return handleCaptureSave(log, mutations, msg);
+      return answerCaptureWrite(log, mutations, msg);
     case "capture.tab":
-      return handleCaptureTab(log, mutations, msg);
+      return answerCaptureTab(log, mutations, msg);
     case "searchHit.save":
-      return handleSearchHitSave(log, mutations, msg, senderTabId);
+      return answerSearchHitWrite(log, mutations, msg, senderTabId);
     case "capture.attachPdf":
-      return handleCaptureAttachPdf(log, mutations, msg);
+      return answerCaptureAttachPdf(log, mutations, msg);
     case "paper.findPdf":
       return msg.replace
-        ? handleFindBetterPdf(log, mutations, msg.id)
-        : handleFindPdfForPaper(log, mutations, msg.id);
+        ? answerFindBetterPdf(log, mutations, msg.id)
+        : answerFindPdfForPaper(log, mutations, msg.id);
     case "paper.openForPdf":
-      return handleOpenForPdf(accessTabDeps(log, mutations), msg);
+      return answerOpenForPdf(createAccessTabDeps(log, mutations), msg);
     case "paper.askAuthor":
-      return handleAskAuthor({ log, mutations }, msg.id, senderTabId);
+      return answerCopyRequest({ log, mutations }, msg.id, senderTabId);
     case "paper.remove":
-      return handleRemovePaper(msg.id, mutations, log);
+      return answerRemovePaper(msg.id, mutations, log);
     case "library.folders":
-      return handleLibraryFolders();
+      return answerLibraryFolders();
     case "library.lookup":
-      return handleLibraryLookup(msg.items);
+      return answerLibraryFind(msg.items);
     case "library.open":
-      return handleLibraryOpen(msg);
+      return answerLibraryOpen(msg);
     case "tabs.list":
-      return handleListTabs();
+      return answerListTabs();
     default: {
       const exhaustive: never = msg;
       throw new Error(`Unhandled message type: ${JSON.stringify(exhaustive)}`);

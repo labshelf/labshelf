@@ -8,7 +8,7 @@ import {
   type PaperRecord,
 } from '@labshelf/core';
 import { onPaperChange } from '../library/index.js';
-import { libraryPaths, type LibraryPaths } from './libraryPaths.js';
+import { createLibraryPaths, type LibraryPaths } from './createLibraryPaths.js';
 import type { ListPanelDeps } from './listPanelDeps.js';
 
 const LOG_MODULE = 'libraryUi/listSnapshots';
@@ -113,7 +113,7 @@ export class LibraryFeed implements vscode.Disposable {
   /** The path mapping of the open library, or null while none is configured. */
   paths(): LibraryPaths | null {
     const root = this._deps.getPapersRoot();
-    return root ? libraryPaths(root, this._deps.pathOps) : null;
+    return root ? createLibraryPaths(root, this._deps.pathOps) : null;
   }
 
   /** Reads the library and posts the snapshot and jobs; a push that a newer one overtook posts nothing. */

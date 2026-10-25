@@ -17,7 +17,7 @@ const LIBRARY_VIEW_FOCUS = "labshelf.library.focus";
 
 const isHello = (raw: unknown): boolean => isShareMessage(raw) && (raw as { type?: unknown }).type === "hello";
 
-export class SharingWebviews {
+export class ShareWebviews {
   private readonly attached = new Set<Attached>();
   private serveOn: ServeOn | undefined;
   private pending: ShareDialogRequest | undefined;
@@ -63,4 +63,4 @@ export class SharingWebviews {
   }
 }
 
-export const sharingWebviews = new SharingWebviews();
+export const sharingWebviews = new ShareWebviews();

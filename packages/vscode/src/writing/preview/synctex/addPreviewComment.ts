@@ -9,7 +9,7 @@ import type { ShowSourceDeps } from "./showSource.js";
 
 const NO_SOURCE_LINE_MESSAGE = "No source line found for this text, so the note was not added. Comment on the source in the editor.";
 
-export async function addReviewComment(deps: ShowSourceDeps, point: PagePoint, quote: string, note: string): Promise<void> {
+export async function addPreviewComment(deps: ShowSourceDeps, point: PagePoint, quote: string, note: string): Promise<void> {
   const { logger, projectFolder } = deps;
   const context = { projectFolder, page: point.page, x: point.x, y: point.y };
   const lookup = await deps.synctex();

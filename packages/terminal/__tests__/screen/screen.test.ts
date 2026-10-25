@@ -1,5 +1,5 @@
-import { mergeStyle, Screen, sgr, styleId } from "../../src/screen/screen";
-import { stringWidth } from "../../src/screen/text";
+import { mergeStyle, Screen, createSgr, styleId } from "../../src/screen/screen";
+import { deriveStringWidth } from "../../src/screen/text";
 
 // Every escape sequence the diff is allowed to emit: cursor moves and SGR.
 const LEGIT_SEQUENCE = /\x1b\[\d+;\d+H|\x1b\[[\d;]*m/g;
@@ -96,7 +96,7 @@ describe("Screen clipping", () => {
     const screen = new Screen(10, 1);
     expect(screen.text(0, 0, "日本", undefined, 3)).toBe(3);
     expect(screen.rowText(0)).toBe("日" + " ".repeat(8));
-    expect(stringWidth(screen.rowText(0))).toBe(10);
+    expect(deriveStringWidth(screen.rowText(0))).toBe(10);
     expect(screen.toText()).toBe("日");
   });
 
@@ -105,7 +105,7 @@ describe("Screen clipping", () => {
     screen.text(0, 0, "日本語日");
     screen.text(3, 1, "a日b日c日d");
     for (let y = 0; y < 2; y++) {
-      expect(stringWidth(screen.rowText(y))).toBe(9);
+      expect(deriveStringWidth(screen.rowText(y))).toBe(9);
     }
   });
 });
@@ -147,7 +147,7 @@ describe("Screen.fill", () => {
     screen.text(0, 0, "日本語");
     screen.fill(1, 0, 1, 1, undefined, "x");
     expect(screen.rowText(0)).toBe(" x本語");
-    expect(stringWidth(screen.rowText(0))).toBe(6);
+    expect(deriveStringWidth(screen.rowText(0))).toBe(6);
   });
 });
 
@@ -156,7 +156,7 @@ describe("Screen wide characters", () => {
     const screen = new Screen(5, 1);
     expect(screen.text(1, 0, "日")).toBe(2);
     expect(screen.toText()).toBe(" 日");
-    expect(stringWidth(screen.rowText(0))).toBe(5);
+    expect(deriveStringWidth(screen.rowText(0))).toBe(5);
   });
 
   it("turns the left half into a blank when its right half is overwritten", () => {
@@ -178,7 +178,7 @@ describe("Screen wide characters", () => {
     screen.text(0, 0, "日");
     screen.text(0, 0, "本");
     expect(screen.rowText(0)).toBe("本   ");
-    expect(stringWidth(screen.rowText(0))).toBe(5);
+    expect(deriveStringWidth(screen.rowText(0))).toBe(5);
   });
 
   it("blanks the left half when a wide character is drawn one cell to the right", () => {
@@ -186,7 +186,7 @@ describe("Screen wide characters", () => {
     screen.text(0, 0, "日");
     screen.text(1, 0, "本");
     expect(screen.rowText(0)).toBe(" 本  ");
-    expect(stringWidth(screen.rowText(0))).toBe(5);
+    expect(deriveStringWidth(screen.rowText(0))).toBe(5);
   });
 
   it("gives both halves of a wide character the same style", () => {
@@ -200,7 +200,7 @@ describe("Screen wide characters", () => {
     const screen = new Screen(6, 1);
     screen.text(0, 0, "a😀b");
     expect(screen.toText()).toBe("a😀b");
-    expect(stringWidth(screen.rowText(0))).toBe(6);
+    expect(deriveStringWidth(screen.rowText(0))).toBe(6);
   });
 
   it("draws a combining accent together with its base letter and skips zero-width characters", () => {
@@ -260,34 +260,34 @@ describe("mergeStyle", () => {
   });
 });
 
-describe("sgr", () => {
+describe("createSgr", () => {
   it("resets for the default style", () => {
-    expect(sgr(0)).toBe("\x1b[0m");
+    expect(createSgr(0)).toBe("\x1b[0m");
   });
 
   it("emits attributes in a fixed order", () => {
     const id = styleId({ reverse: true, underline: true, italic: true, dim: true, bold: true });
-    expect(sgr(id)).toBe("\x1b[0;1;2;3;4;7m");
+    expect(createSgr(id)).toBe("\x1b[0;1;2;3;4;7m");
   });
 
   it("maps the 16 theme colors to the classic SGR codes", () => {
-    expect(sgr(styleId({ fg: 1 }))).toBe("\x1b[0;31m");
-    expect(sgr(styleId({ bg: 2 }))).toBe("\x1b[0;42m");
-    expect(sgr(styleId({ fg: 9 }))).toBe("\x1b[0;91m");
-    expect(sgr(styleId({ bg: 12 }))).toBe("\x1b[0;104m");
+    expect(createSgr(styleId({ fg: 1 }))).toBe("\x1b[0;31m");
+    expect(createSgr(styleId({ bg: 2 }))).toBe("\x1b[0;42m");
+    expect(createSgr(styleId({ fg: 9 }))).toBe("\x1b[0;91m");
+    expect(createSgr(styleId({ bg: 12 }))).toBe("\x1b[0;104m");
   });
 
   it("uses the 256-color palette for indexes from 16", () => {
-    expect(sgr(styleId({ fg: 200 }))).toBe("\x1b[0;38;5;200m");
-    expect(sgr(styleId({ bg: 16 }))).toBe("\x1b[0;48;5;16m");
+    expect(createSgr(styleId({ fg: 200 }))).toBe("\x1b[0;38;5;200m");
+    expect(createSgr(styleId({ bg: 16 }))).toBe("\x1b[0;48;5;16m");
   });
 
   it("uses truecolor for hex colors", () => {
-    expect(sgr(styleId({ fg: "#ff8000", bg: "#000102" }))).toBe("\x1b[0;38;2;255;128;0;48;2;0;1;2m");
+    expect(createSgr(styleId({ fg: "#ff8000", bg: "#000102" }))).toBe("\x1b[0;38;2;255;128;0;48;2;0;1;2m");
   });
 
   it("combines attributes with foreground and background", () => {
-    expect(sgr(styleId({ bold: true, fg: 4, bg: 7 }))).toBe("\x1b[0;1;34;47m");
+    expect(createSgr(styleId({ bold: true, fg: 4, bg: 7 }))).toBe("\x1b[0;1;34;47m");
   });
 });
 
@@ -400,7 +400,7 @@ describe("Screen.diff", () => {
         if (token.startsWith("\x1b[")) { continue; }
         for (const ch of token) {
           rows[row]![col] = ch;
-          col += stringWidth(ch);
+          col += deriveStringWidth(ch);
         }
       }
       return rows.map((r) => r.join("").trimEnd());
@@ -474,7 +474,7 @@ describe("Screen regressions", () => {
     const s = new Screen(6, 1);
     s.text(0, 0, "日日");
     s.text(1, 0, "本");
-    expect(stringWidth(s.rowText(0))).toBe(6);
+    expect(deriveStringWidth(s.rowText(0))).toBe(6);
     expect(s.rowText(0).startsWith(" 本 ")).toBe(true);
   });
 

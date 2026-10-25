@@ -1,7 +1,7 @@
 // Tests that label completion fires inside the ref family only and lists every label of the project.
 import * as vscode from "vscode";
 
-import { RefCompletionProvider } from "../../../src/latex/labels/referenceCompletion";
+import { ReferenceCompletionProvider } from "../../../src/latex/labels/referenceCompletion";
 import { latexProject, resetOpenDocuments, restoreDiskReads } from "../../support/latexProjectFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 import { at } from "../../support/latexProjectFixtures";
@@ -17,10 +17,10 @@ afterEach(() => { resetOpenDocuments(); restoreDiskReads(); });
 async function complete(marked: string) {
   const { sources } = latexProject(DISK);
   const { text, position } = withCursor(marked);
-  return new RefCompletionProvider(sources).provideCompletionItems(fakeDocument(at("sections/c.tex"), text), position);
+  return new ReferenceCompletionProvider(sources).provideCompletionItems(fakeDocument(at("sections/c.tex"), text), position);
 }
 
-describe("RefCompletionProvider", () => {
+describe("ReferenceCompletionProvider", () => {
   it("lists each label of the whole project once inside \\ref{", async () => {
     const items = (await complete("See \\ref{|"))!;
     expect(items.map((item) => item.label)).toEqual(["sec:a", "eq:one", "sec:b"]);
@@ -56,6 +56,6 @@ describe("RefCompletionProvider", () => {
   it("offers nothing for a file outside a project", async () => {
     const { sources } = latexProject(DISK);
     const { text, position } = withCursor("\\ref{|");
-    expect(await new RefCompletionProvider(sources).provideCompletionItems(fakeDocument("/elsewhere/a.tex", text), position)).toBeUndefined();
+    expect(await new ReferenceCompletionProvider(sources).provideCompletionItems(fakeDocument("/elsewhere/a.tex", text), position)).toBeUndefined();
   });
 });

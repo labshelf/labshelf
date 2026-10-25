@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ProjectBuilders } from "../build/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
-import { builtPdf } from "../preview/index.js";
+import { readBuiltPdf } from "../preview/index.js";
 import type { WritingProjects } from "../session/index.js";
 
 /** `action` names what needs the build ("Marking a version") and `use` why it needs the PDF ("a version keeps its PDF"). */
@@ -22,7 +22,7 @@ export async function buildCurrentPdf(
     await vscode.window.showWarningMessage(`${purpose.action} needs a successful build. The build problems are listed in Problems.`);
     return undefined;
   }
-  const pdfPath = await builtPdf(projects, project, project.main);
+  const pdfPath = await readBuiltPdf(projects, project, project.main);
   if (!pdfPath) { await vscode.window.showInformationMessage(`Build the project first; ${purpose.use}.`); }
   return pdfPath;
 }

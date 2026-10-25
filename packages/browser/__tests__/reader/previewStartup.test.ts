@@ -4,7 +4,7 @@
  */
 // Pins the reader side of the preview channel: what it takes from the library page and what it asks of it.
 import type { ILogger } from "@labshelf/core";
-import { bindPreviewPage, previewPorts } from "../../src/reader/previewStartup";
+import { attachPreviewPage, createPreviewPorts } from "../../src/reader/previewStartup";
 
 const parent = { postMessage: jest.fn() };
 Object.defineProperty(window, "parent", { value: parent, configurable: true });
@@ -18,17 +18,17 @@ function host() {
 
 const roots = { main: "main.tex", focused: "main.tex", shown: "main.tex", roots: [{ path: "main.tex", failed: true, rawLog: false, sourceLinks: false, problems: [] }] };
 
-describe("bindPreviewPage", () => {
+describe("attachPreviewPage", () => {
   it("shows the build roots the parent page sends", () => {
     const h = host();
-    bindPreviewPage(h);
+    attachPreviewPage(h);
     window.dispatchEvent(message({ type: "previewRoots", roots }));
     expect(h.setPreviewRoots).toHaveBeenCalledWith(roots);
   });
 
   it("ignores roots from another window or origin and malformed roots", () => {
     const h = host();
-    bindPreviewPage(h);
+    attachPreviewPage(h);
     window.dispatchEvent(message({ type: "previewRoots", roots }, window));
     window.dispatchEvent(message({ type: "previewRoots", roots }, parent, "https://evil.example"));
     window.dispatchEvent(message({ type: "previewRoots", roots: { main: "main.tex" } }));
@@ -36,18 +36,18 @@ describe("bindPreviewPage", () => {
   });
 });
 
-describe("previewPorts", () => {
+describe("createPreviewPorts", () => {
   const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
   beforeEach(() => { parent.postMessage.mockClear(); });
 
   it("asks the parent page to recompile", async () => {
-    await previewPorts(logger).recompile();
+    await createPreviewPorts(logger).recompile();
     expect(parent.postMessage).toHaveBeenCalledWith({ command: "recompile" }, location.origin);
   });
 
   it("forwards the other requests and answers citation lookups with no entries", async () => {
-    const ports = previewPorts(logger);
+    const ports = createPreviewPorts(logger);
     await ports.openProblem("main.tex", 2);
     await ports.showSource({ page: 1, x: 2, y: 3 });
     expect(parent.postMessage.mock.calls).toEqual([

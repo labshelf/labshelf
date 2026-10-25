@@ -7,7 +7,7 @@ import {
 import {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror,
 } from "../../../src/collab/mirror";
-import { acquireTabLease, tabLeaseName, type LibrarySource, type TabLease } from "../../../src/storage";
+import { openTabLease, createTabLeaseName, type LibraryLocation, type TabLease } from "../../../src/storage";
 import { openBrowserCollabStorage } from "../../../src/storage/collab";
 import { installFakeLocks } from "../../support/fakeLocks";
 import { loopback } from "../../support/loopbackRelay";
@@ -17,8 +17,8 @@ export const LIBRARY_ID = "lib-1";
 export const SHARE_ID = "f".repeat(32);
 export const FOLDER = "projects/thesis";
 const SHARE_KEY = new Uint8Array(16).fill(1);
-const BROWSER: LibrarySource = { kind: "browser", reason: "not-installed" };
-const FOLDER_SOURCE: LibrarySource = { kind: "folder", root: "/home/me/library", via: "picked" };
+const BROWSER: LibraryLocation = { kind: "browser", reason: "not-installed" };
+const FOLDER_SOURCE: LibraryLocation = { kind: "folder", root: "/home/me/library", via: "picked" };
 
 /** A memory file system whose stat reports a fresh mtime per write and the real size, and which can lose its permission. */
 export interface TestFs extends LibraryFileSystem {
@@ -110,7 +110,7 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
     getLibrarySource: async () => (source === "browser" ? BROWSER : FOLDER_SOURCE),
     onLibraryFilesChanged: (listener: (paths: string[]) => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
-  const held = await acquireTabLease(tabLeaseName(LIBRARY_ID, SHARE_ID));
+  const held = await openTabLease(createTabLeaseName(LIBRARY_ID, SHARE_ID));
   if (held.kind !== "owned") { throw new Error("expected the testbed to own the tab lease"); }
   const tab = held.lease;
   const mirrors: BrowserProjectMirror[] = [];

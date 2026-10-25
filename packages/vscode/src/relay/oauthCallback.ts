@@ -47,7 +47,7 @@ function listen(server: http.Server): Promise<void> {
 }
 
 /** Resolves once the port listens; throws `LoopbackUnavailableError` when it cannot (port in use, no permission). */
-export async function listenForCallback({ handle, cancel }: CallbackOptions): Promise<LoopbackCallback> {
+export async function startOauthCallback({ handle, cancel }: CallbackOptions): Promise<LoopbackCallback> {
   let settle: (outcome: { error?: unknown }) => void = () => undefined;
   const done = new Promise<void>((resolve, reject) => {
     settle = ({ error }) => (error === undefined ? resolve() : reject(error));

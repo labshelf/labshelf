@@ -5,7 +5,7 @@
 // The symbol picker and the table size prompt that feed text into the source editor.
 import { MATH_SYMBOLS } from "@labshelf/core";
 import { askInputBox, pickQuickEntry, type InputBoxOptions } from "@labshelf/core/dom";
-import { insertSymbol, insertTable, symbolEntries } from "../../../../src/writing/source/actions/insertActions";
+import { addSymbol, addTable, listSymbolEntries } from "../../../../src/writing/source/actions/insertActions";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(), askInputBox: jest.fn() }));
 
@@ -13,9 +13,9 @@ const edits = () => ({ insertText: jest.fn(), insertSnippet: jest.fn(), wrap: je
 
 afterEach(() => jest.clearAllMocks());
 
-describe("symbolEntries", () => {
+describe("listSymbolEntries", () => {
   it("puts one heading before the first symbol of each category", () => {
-    const entries = symbolEntries("latex");
+    const entries = listSymbolEntries("latex");
     const headings = entries.filter((entry) => "kind" in entry).map((entry) => entry.label);
     expect(headings).toEqual([...new Set(MATH_SYMBOLS.map((symbol) => symbol.category))]);
     expect(entries).toHaveLength(MATH_SYMBOLS.length + headings.length);
@@ -24,27 +24,27 @@ describe("symbolEntries", () => {
 
   it("shows the glyph with the source of the file's language", () => {
     const alpha = MATH_SYMBOLS.find((symbol) => symbol.glyph === "α")!;
-    expect(symbolEntries("latex")).toContainEqual({ label: "α", description: alpha.latex, value: alpha.latex });
-    expect(symbolEntries("typst")).toContainEqual({ label: "α", description: "#sym.alpha", value: "#sym.alpha" });
+    expect(listSymbolEntries("latex")).toContainEqual({ label: "α", description: alpha.latex, value: alpha.latex });
+    expect(listSymbolEntries("typst")).toContainEqual({ label: "α", description: "#sym.alpha", value: "#sym.alpha" });
   });
 });
 
-describe("insertSymbol", () => {
+describe("addSymbol", () => {
   it("inserts the picked source and nothing when the picker is dismissed", async () => {
     const target = edits();
     (pickQuickEntry as jest.Mock).mockResolvedValueOnce("\\alpha").mockResolvedValueOnce(undefined);
-    await insertSymbol(target, "latex");
-    await insertSymbol(target, "latex");
+    await addSymbol(target, "latex");
+    await addSymbol(target, "latex");
     expect(target.insertText.mock.calls).toEqual([["\\alpha"]]);
     expect(pickQuickEntry).toHaveBeenCalledWith(expect.any(Array), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
   });
 });
 
-describe("insertTable", () => {
+describe("addTable", () => {
   it("inserts a table of the typed size as a snippet", async () => {
     const target = edits();
     (askInputBox as jest.Mock).mockResolvedValueOnce("2x1");
-    await insertTable(target, "typst");
+    await addTable(target, "typst");
     expect(target.insertSnippet).toHaveBeenCalledTimes(1);
     expect(target.insertSnippet.mock.calls[0][0]).toContain("columns: 2,");
   });
@@ -52,7 +52,7 @@ describe("insertTable", () => {
   it("starts at 3x3 and rejects a size outside 1 to 20", async () => {
     const target = edits();
     (askInputBox as jest.Mock).mockResolvedValueOnce(undefined);
-    await insertTable(target, "latex");
+    await addTable(target, "latex");
     const options = (askInputBox as jest.Mock).mock.calls[0][0] as InputBoxOptions;
     expect(options.value).toBe("3x3");
     expect(options.validate!("3x2")).toBeNull();

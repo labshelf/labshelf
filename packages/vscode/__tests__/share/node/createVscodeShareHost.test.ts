@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 import type { ShareHost } from '@labshelf/core';
 import { withLibraryPaths } from '../../../src/share/node/createVscodeShareHost';
-import { libraryPaths } from '../../../src/libraryUi/libraryPaths';
+import { createLibraryPaths } from '../../../src/libraryUi/createLibraryPaths';
 
 const root = '/lib/papers';
 
@@ -17,7 +17,7 @@ function host() {
       { id: 'b', folder: '/elsewhere/X', link: 'l', createdAt: 't', relayHost: 'h' },
     ]),
   };
-  return { inner, wrapped: withLibraryPaths(inner as unknown as ShareHost, () => libraryPaths(root, path.posix)) };
+  return { inner, wrapped: withLibraryPaths(inner as unknown as ShareHost, () => createLibraryPaths(root, path.posix)) };
 }
 
 describe('withLibraryPaths', () => {

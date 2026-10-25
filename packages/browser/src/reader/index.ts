@@ -16,13 +16,13 @@ import {
 import { PDF_FILE, formatError } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile } from "../platform";
-import { createLibraryFileSystem, createSidecarPort, getRecord } from "../storage";
-import { getThemePref, onThemeChange } from "../ui";
+import { createLibraryFileSystem, createSidecarPort, readCachedPaperRecord } from "../storage";
+import { readThemePref, onThemeChange } from "../ui";
 import { loadReaderPrefs, onReaderPrefsChange } from "./service";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
 import { parseReaderQuery } from "./service";
-import { announceSidecarChange } from "./sidecarChangeNotice";
-import { bindPreviewPage, previewPaper, previewPorts } from "./previewStartup";
+import { sendSidecarChange } from "./sidecarChangeNotice";
+import { attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./previewStartup";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();
@@ -45,7 +45,7 @@ function showFatal(message: string): void {
 }
 
 function autoTheme(): EffectiveTheme {
-  return resolveTheme(getThemePref());
+  return resolveTheme(readThemePref());
 }
 
 async function writeClipboard(text: string): Promise<void> {
@@ -70,7 +70,7 @@ async function readPdfBytes(paper: PaperRecord): Promise<ArrayBuffer> {
 
 // Resolves the paper and prefs to open, showing the fatal message for each way the open can fail.
 async function loadOpenablePaper(paperId: string): Promise<{ paper: PaperRecord; prefs: ReaderPrefs } | undefined> {
-  const [paper, prefs] = await Promise.all([getRecord(paperId), loadReaderPrefs()]);
+  const [paper, prefs] = await Promise.all([readCachedPaperRecord(paperId), loadReaderPrefs()]);
   if (!paper) {
     showFatal("This paper is no longer in your LabShelf library. It may have been removed from this device.");
     void logger.log("WARN", "reader", "reader opened for an unknown paper", { paperId });
@@ -104,7 +104,7 @@ function createHostWithChannel(
     openExternal,
     saveAnnotations: (markdown) => downloadTextFile(`${paper.citeKey}-annotations.md`, markdown, "text/markdown"),
     logger,
-    sidecarChanged: (change) => announceSidecarChange(paper.id, change),
+    sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
@@ -160,8 +160,8 @@ function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: Read
 async function openPreview(paper: PaperRecord): Promise<void> {
   // INVARIANT: the parent page posts once this page loads, so the listener is bound before the first await; the host asks for prefs only after they load.
   let currentPrefs: ReaderPrefs | undefined;
-  const { host, channel } = createHostWithChannel(paper, undefined, () => currentPrefs!, createPreviewStore(), previewPorts(logger));
-  const readBytes = bindPreviewPage(host);
+  const { host, channel } = createHostWithChannel(paper, undefined, () => currentPrefs!, createPreviewStore(), createPreviewPorts(logger));
+  const readBytes = attachPreviewPage(host);
   currentPrefs = await loadReaderPrefs();
   forwardChangesToHost(host, (next) => { currentPrefs = next; });
   void logger.log("INFO", "reader", "preview reader opened", { paperId: paper.id });
@@ -175,7 +175,7 @@ async function openPreview(paper: PaperRecord): Promise<void> {
 
 async function main(): Promise<void> {
   installPageGuards();
-  const preview = previewPaper(location.search);
+  const preview = findPreviewPaper(location.search);
   if (preview) { await openPreview(preview); return; }
   const { paperId, page } = parseReaderQuery(location.search);
   if (!paperId) { showFatal("No paper was given to open. Open a paper from the LabShelf library."); return; }

@@ -11,7 +11,7 @@ export const LIBRARY_FOLDER_NAME = "LabShelf";
  * `LabShelf` subfolder, so a library never mixes with unrelated files.
  * @returns the absolute target folder
  */
-export async function libraryTargetFor(raw: string): Promise<string> {
+export async function resolveLibraryDir(raw: string): Promise<string> {
   const folder = path.resolve(raw);
   const info = await detectLibraryFolder(folder);
   if (!info.exists || info.isLibrary) { return folder; }

@@ -4,22 +4,22 @@ import { findElement, askNoPdf, type NoPdfChoice } from "@labshelf/core/dom";
 import { formatError, formatPdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
 
 import {
-  sendRuntime, type AttachPdfData, type DraftView, type LibraryRef, type PdfOfferView, type PdfStatusData, type SaveOutcome,
+  sendRuntime, type AttachPdfReply, type DraftView, type LibraryReference, type PdfOfferView, type FindPdfReply, type WriteOutcome,
 } from "../platform";
-import { folderName, parseTags } from "./format";
-import { renderPaper, renderPdf, showError, showLibraryCopy, showStatus } from "./render";
+import { formatFolderName, parseTags } from "./format";
+import { renderPaper, renderPdf, showError, showLibraryCopy, showNotice } from "./render";
 import { popupState, setState } from "./popupState";
-import { attachOffered, offerFits, settleOffer, showOffer } from "./offerCard";
+import { attachOffered, offerFits, attachOffer, showOffer } from "./offerCard";
 
 // A paper already saved without its PDF: a PDF this tab showed or the user downloaded for it is attached in one click;
 // otherwise the background searches this very page for one, and the popup offers to attach it when found.
-async function showExisting(existing: LibraryRef): Promise<void> {
+async function showExisting(existing: LibraryReference): Promise<void> {
   showLibraryCopy(existing);
   if (existing.hasPdf) return;
   const found = popupState.offer?.hasBytes ? true : await pagePdfFound();
   if (found === undefined) return;
-  showStatus(found
-    ? { glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: folderName(existing.folder), open: "Open in library", attach: "Attach PDF" }
+  showNotice(found
+    ? { glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: formatFolderName(existing.folder), open: "Open in library", attach: "Attach PDF" }
     : {
       glyph: "warning", tone: "warn", title: "In your library — without its PDF",
       detail: "No PDF on this page either — attach a file from the library.", open: "Open in library",
@@ -32,7 +32,7 @@ async function showExisting(existing: LibraryRef): Promise<void> {
 async function pagePdfFound(): Promise<boolean | undefined> {
   renderPdf("searching");
   try {
-    popupState.pdfStatus = await sendRuntime<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
+    popupState.pdfStatus = await sendRuntime<FindPdfReply>({ type: "capture.findPdf", tabId: popupState.tabId });
   } catch {
     findElement("pdf").hidden = true;
     return undefined;
@@ -42,7 +42,7 @@ async function pagePdfFound(): Promise<boolean | undefined> {
   return popupState.pdfStatus.found;
 }
 
-export async function inspect(offerReady: Promise<PdfOfferView | null>): Promise<void> {
+export async function detectCapture(offerReady: Promise<PdfOfferView | null>): Promise<void> {
   const draft = await sendRuntime<DraftView>({ type: "capture.inspect", tabId: popupState.tabId });
   const offer = (await offerReady) ?? undefined;
   if (draft.existing) {
@@ -60,7 +60,7 @@ export async function inspect(offerReady: Promise<PdfOfferView | null>): Promise
   if (!draft.isPaper) {
     findElement("meta").textContent = "";
     setState("empty");
-    showStatus({
+    showNotice({
       glyph: "globe", tone: "muted", title: "No paper detected on this page",
       detail: "Open the article's page or its PDF, or use the LabShelf buttons on Google Scholar.", tryAnyway: true,
     });
@@ -70,7 +70,7 @@ export async function inspect(offerReady: Promise<PdfOfferView | null>): Promise
   findElement("save").focus();
   renderPdf("searching");
   try {
-    popupState.pdfStatus = await sendRuntime<PdfStatusData>({ type: "capture.findPdf", tabId: popupState.tabId });
+    popupState.pdfStatus = await sendRuntime<FindPdfReply>({ type: "capture.findPdf", tabId: popupState.tabId });
     renderPdf(popupState.pdfStatus);
   } catch {
     findElement("pdf").hidden = true;
@@ -95,13 +95,13 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
     popupState.pdfStatus = undefined;
     if (from !== "empty") setState("form");
     renderPdf("searching");
-    return save("ask", true);
+    return writeCapture("ask", true);
   }
   // "open" and "author" save too; the background then opens the page in the way or the request email, which closes the popup.
-  return save(choice);
+  return writeCapture(choice);
 }
 
-export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {
+export async function writeCapture(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {
   const from = findElement("popup").dataset["state"];
 
   // Case A: the search already ended with no PDF before Save was pressed — ask
@@ -117,7 +117,7 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
   try {
     const tags = parseTags(findElement<HTMLInputElement>("tags").value);
     const note = findElement<HTMLTextAreaElement>("note").value.trim();
-    const r = await sendRuntime<SaveOutcome>({
+    const r = await sendRuntime<WriteOutcome>({
       type: "capture.save", tabId: popupState.tabId, folder: findElement<HTMLSelectElement>("folder").value, ifNoPdf,
       ...(tags.length ? { tags } : {}), ...(note ? { note } : {}), ...(retryPdf ? { retryPdf } : {}),
     });
@@ -132,8 +132,8 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
     popupState.saved = r;
     setState("saved");
     findElement("pdf").hidden = true;
-    showStatus({
-      glyph: "check", tone: "ok", title: `Saved to ${folderName(popupState.saved.folder)}`,
+    showNotice({
+      glyph: "check", tone: "ok", title: `Saved to ${formatFolderName(popupState.saved.folder)}`,
       detail: popupState.saved.pdfSource ? `PDF via ${formatPdfSourceLabel(popupState.saved.pdfSource)}` : "Saved without a PDF",
       open: "Open in library", undo: true,
     });
@@ -142,7 +142,7 @@ export async function save(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<
   } catch (err) {
     if (from === "empty") {
       setState("empty");
-      showStatus({ glyph: "warning", tone: "muted", title: "Nothing could be saved", detail: formatError(err) });
+      showNotice({ glyph: "warning", tone: "muted", title: "Nothing could be saved", detail: formatError(err) });
     } else {
       setState("form");
       showError(formatError(err));
@@ -157,27 +157,27 @@ export async function attachPdf(): Promise<void> {
   btn.disabled = true;
   const offer = popupState.offer?.hasBytes ? popupState.offer : undefined;
   try {
-    const r = offer ? await attachOffered(offer) : await sendRuntime<AttachPdfData>({ type: "capture.attachPdf", tabId: popupState.tabId });
+    const r = offer ? await attachOffered(offer) : await sendRuntime<AttachPdfReply>({ type: "capture.attachPdf", tabId: popupState.tabId });
     findElement("pdf").hidden = true;
     findElement("dismissOffer").hidden = true;
     // The paper has its PDF, so a leftover offer only keeps the badge; the next pdfOffer.get drops it anyway.
-    if (!offer && r.attached) await settleOffer().catch(() => undefined);
+    if (!offer && r.attached) await attachOffer().catch(() => undefined);
     if (r.attached) {
       const detail = r.source ? `via ${formatPdfSourceLabel(r.source)}` : "";
-      showStatus({ glyph: "check", tone: "ok", title: "PDF attached", detail, open: "Open in library" });
+      showNotice({ glyph: "check", tone: "ok", title: "PDF attached", detail, open: "Open in library" });
     } else if (r.alreadyHadPdf) {
-      showStatus({ glyph: "check", tone: "ok", title: "Already has its PDF", detail: "", open: "Open in library" });
+      showNotice({ glyph: "check", tone: "ok", title: "Already has its PDF", detail: "", open: "Open in library" });
     } else {
-      showStatus({ glyph: "warning", tone: "warn", title: "No PDF found", detail: "No PDF could be downloaded for this paper.", open: "Open in library" });
+      showNotice({ glyph: "warning", tone: "warn", title: "No PDF found", detail: "No PDF could be downloaded for this paper.", open: "Open in library" });
     }
   } catch (err) {
-    showStatus({ glyph: "warning", tone: "warn", title: "Could not attach the PDF", detail: formatError(err), open: "Open in library" });
+    showNotice({ glyph: "warning", tone: "warn", title: "Could not attach the PDF", detail: formatError(err), open: "Open in library" });
   } finally {
     btn.disabled = false;
   }
 }
 
-export async function undo(): Promise<void> {
+export async function removeCapture(): Promise<void> {
   if (!popupState.saved) return;
   findElement<HTMLButtonElement>("undo").disabled = true;
   try {
@@ -186,7 +186,7 @@ export async function undo(): Promise<void> {
     setState("form");
     if (popupState.pdfStatus) renderPdf(popupState.pdfStatus);
   } catch (err) {
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not remove the paper", detail: formatError(err), open: "Open in library" });
+    showNotice({ glyph: "warning", tone: "muted", title: "Could not remove the paper", detail: formatError(err), open: "Open in library" });
   } finally {
     findElement<HTMLButtonElement>("undo").disabled = false;
   }

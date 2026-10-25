@@ -5,7 +5,7 @@ import type { PathOps } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { ProjectSession } from "../session/index.js";
 import type { FigureNode } from "./figureNode.js";
-import { figureTreeItem } from "./figureTreeItem.js";
+import { createFigureTreeItem } from "./createFigureTreeItem.js";
 import type { ProjectFigures } from "./projectFigures.js";
 
 const HAS_FIGURES_KEY = "labshelf.writing.hasFigures";
@@ -37,7 +37,7 @@ export class ProjectFiguresView implements vscode.TreeDataProvider<FigureNode>, 
   }
 
   getTreeItem(node: FigureNode): vscode.TreeItem {
-    return figureTreeItem(node, this.deps.paths, this.deps.arcIcon);
+    return createFigureTreeItem(node, this.deps.paths, this.deps.arcIcon);
   }
 
   getChildren(parent?: FigureNode): FigureNode[] {

@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { deriveVersionSlug, type ProjectEntry } from "@labshelf/core";
-import { executeSafely } from "../../command/index.js";
-import { activeProject } from "../build/index.js";
+import { runSafely } from "../../command/index.js";
+import { readActiveProject } from "../build/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectBuilders } from "../build/index.js";
@@ -50,8 +50,8 @@ async function confirmReplace(deps: MarkVersionDeps, project: ReadyProject, name
 async function markProjectVersion(deps: MarkVersionDeps, entry: ProjectEntry | undefined): Promise<void> {
   const session = deps.host.current();
   if (!session) { return; }
-  await executeSafely(session.logger, MARK_VERSION_COMMAND, async () => {
-    const project = entry?.kind === "ready" ? entry : activeProject(deps.projects);
+  await runSafely(session.logger, MARK_VERSION_COMMAND, async () => {
+    const project = entry?.kind === "ready" ? entry : readActiveProject(deps.projects);
     if (!project) {
       await vscode.window.showInformationMessage("Open a file of a writing project to mark a version.");
       return;

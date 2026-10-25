@@ -5,7 +5,7 @@ import { keymap, type EditorView } from "@codemirror/view";
 import { deriveSelectionWrap, type WrapStyle } from "@labshelf/core";
 
 /** `$1` and `${1:Caption}` become CodeMirror fields, `$0` the final cursor, and `\\`, `\$`, `\}` their literal characters. */
-export function codeMirrorTemplate(textMate: string): string {
+export function deriveCodeMirrorTemplate(textMate: string): string {
   return textMate
     .replace(/\\([\\$}])|\$(\d+)|\$\{(\d+)(?::([^}]*))?\}/g, (_match, literal?: string, bare?: string, field?: string, placeholder?: string) => {
       if (literal !== undefined) return literal;
@@ -19,11 +19,11 @@ export function codeMirrorTemplate(textMate: string): string {
 export type SourceLanguage = "latex" | "typst";
 
 /** Typst for a `.typ` file, LaTeX for any other. */
-export function sourceLanguageOf(path: string): SourceLanguage {
+export function deriveSourceLanguage(path: string): SourceLanguage {
   return path.endsWith(".typ") ? "typst" : "latex";
 }
 
-export interface SourceEdits {
+export interface SourceUpdates {
   /** Replaces every selection with the text and puts a cursor after each. */
   insertText(text: string): void;
   /** Inserts a core snippet at the main selection and starts its tab stops. */
@@ -53,12 +53,12 @@ function wrapSelections(view: EditorView, language: SourceLanguage, style: WrapS
   ));
 }
 
-export function createSourceEdits(view: EditorView, language: SourceLanguage): SourceEdits {
+export function createSourceUpdates(view: EditorView, language: SourceLanguage): SourceUpdates {
   return {
     insertText: (text) => { insertText(view, text); view.focus(); },
     insertSnippet: (textMateSnippet) => {
       const { from, to } = view.state.selection.main;
-      snippet(codeMirrorTemplate(textMateSnippet))(view, null, from, to);
+      snippet(deriveCodeMirrorTemplate(textMateSnippet))(view, null, from, to);
       view.focus();
     },
     wrap: (style) => { wrapSelections(view, language, style); view.focus(); },
@@ -66,7 +66,7 @@ export function createSourceEdits(view: EditorView, language: SourceLanguage): S
 }
 
 /** Cmd/Ctrl+B and Cmd/Ctrl+I wrap the selection, as in the VS Code editor. */
-export function formattingKeymap(language: SourceLanguage): Extension {
+export function createFormattingKeymap(language: SourceLanguage): Extension {
   const wrapWith = (style: WrapStyle) => (view: EditorView): boolean => { wrapSelections(view, language, style); return true; };
   return keymap.of([
     { key: "Mod-b", preventDefault: true, run: wrapWith("bold") },

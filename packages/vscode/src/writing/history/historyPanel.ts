@@ -10,7 +10,7 @@ import {
   type ILogger,
   createNonce,
 } from "@labshelf/core";
-import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
 
 /** <extension>/dist/history, for localResourceRoots. */
@@ -21,8 +21,8 @@ function historyBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
 async function historyHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = historyBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "history.js");
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: "History", heading: "History bundle not built", file: "dist/history/history.js", reopen: "the history" });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: "History", heading: "History bundle not built", file: "dist/history/history.js", reopen: "the history" });
   }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
@@ -69,7 +69,7 @@ export class HistoryPanel {
     const panel = vscode.window.createWebviewPanel("labshelfHistory", `History: ${project.settings.id}`, vscode.ViewColumn.Active, {
       enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [historyBundleDirectory(extensionUri)],
     });
-    panel.iconPath = labshelfTabIcon(extensionUri);
+    panel.iconPath = createTabIcon(extensionUri);
     const view = new HistoryPanel(panel, project, store, logger, onDispose);
     panel.webview.html = await historyHtml(panel.webview, extensionUri);
     return view;

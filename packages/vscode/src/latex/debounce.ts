@@ -4,7 +4,7 @@ export interface KeyedDebounce<K> {
   dispose(): void;
 }
 
-export function trailingDebounce<K>(ms: number, run: (key: K) => void): KeyedDebounce<K> {
+export function createTrailingDebounce<K>(ms: number, run: (key: K) => void): KeyedDebounce<K> {
   const timers = new Map<K, ReturnType<typeof setTimeout>>();
   return {
     call(key) {

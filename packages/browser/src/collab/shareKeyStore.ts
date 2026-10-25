@@ -1,14 +1,14 @@
 // Keeps the key and relay list of each share per library, and the member's display name, in extension storage.
 import { base64UrlToBytes, bytesToBase64Url, type ShareKeyStore, type StoredInvite } from "@labshelf/core";
-import { adoptUnscopedShares } from "./adoptUnscopedShares";
-import { libraryShares, readSharesRecord, toShare, withLibraryShares, writeSharesRecord } from "./storedShareKeys";
+import { updateUnscopedShares } from "./updateUnscopedShares";
+import { readLibraryShares, readSharesRecord, toShare, withLibraryShares, writeSharesRecord } from "./storedShareKeys";
 
 /** `libraryId` names the library open at the time of each call; the user can switch libraries while the page is open. */
 export function createShareKeyStore(libraryId: () => Promise<string>): ShareKeyStore {
   const update = async (change: (shares: Record<string, unknown>) => void): Promise<void> => {
     const library = await libraryId();
     const record = await readSharesRecord();
-    const shares = { ...libraryShares(record, library) };
+    const shares = { ...readLibraryShares(record, library) };
     change(shares);
     await writeSharesRecord(withLibraryShares(record, library, shares));
   };
@@ -18,8 +18,8 @@ export function createShareKeyStore(libraryId: () => Promise<string>): ShareKeyS
     invite: async (shareId) => {
       const library = await libraryId();
       // INVARIANT: the share workflows ask only for share ids of this library's projects or connections, which the migration needs.
-      await adoptUnscopedShares(library, [shareId]);
-      const share = toShare(libraryShares(await readSharesRecord(), library)[shareId]);
+      await updateUnscopedShares(library, [shareId]);
+      const share = toShare(readLibraryShares(await readSharesRecord(), library)[shareId]);
       return share === undefined ? undefined : decoded(shareId, share);
     },
   };

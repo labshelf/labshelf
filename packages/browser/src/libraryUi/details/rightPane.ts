@@ -1,7 +1,7 @@
 // Connects the right pane's controls to browser workspace context.
 import type { SpaceStore } from "@labshelf/core";
 import { renderElement, renderIcon, mountResearchChat } from "@labshelf/core/dom";
-import { parseTabId } from "../editorArea";
+import { parseTab } from "../editorArea";
 import type { PageShell } from "../editorArea";
 
 export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list" | "onChange">) {
@@ -34,7 +34,7 @@ export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list"
   return {
     buttons,
     activateTab(id: string): void {
-      const parsed = parseTabId(id);
+      const parsed = parseTab(id);
       activeSpace = parsed?.kind === "space" ? parsed.params["id"] : undefined;
       syncContext();
     },

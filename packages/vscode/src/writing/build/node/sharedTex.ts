@@ -4,10 +4,10 @@ import * as os from "node:os";
 import { createSharedTexProvider } from "@labshelf/core/node";
 
 import type { WritingHost } from "../../session/index.js";
-import { sessionLogger } from "./sessionLogger.js";
+import { createSessionLogger } from "./createSessionLogger.js";
 
 export function createVscodeTex(host: Pick<WritingHost, "current">): ReturnType<typeof createSharedTexProvider> {
   return createSharedTexProvider({
-    env: process.env, platform: process.platform, homeDir: os.homedir(), logger: sessionLogger(host), fetchImpl: fetch,
+    env: process.env, platform: process.platform, homeDir: os.homedir(), logger: createSessionLogger(host), fetchImpl: fetch,
   });
 }

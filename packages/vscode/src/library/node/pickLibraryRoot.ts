@@ -11,8 +11,8 @@ import {
 } from "@labshelf/core/node";
 import type { SharedLibraryConfig } from "../../storage/paths/index.js";
 import {
-  libraryTargetFolder,
-  displayPath,
+  resolveLibraryDir,
+  formatPath,
   LIBRARY_FOLDER_NAME,
   syncToolName,
 } from "./syncFolders/index.js";
@@ -23,21 +23,21 @@ type FirstRunChoice =
   | { kind: "browse"; label: string }
   | { kind: "guide"; label: string };
 
-export function firstRunChoices(detected: readonly SyncFolder[], home: string): FirstRunChoice[] {
+export function listFirstRunChoices(detected: readonly SyncFolder[], home: string): FirstRunChoice[] {
   const synced = detected.map((folder): FirstRunChoice => {
     const target = path.join(folder.path, LIBRARY_FOLDER_NAME);
-    return { kind: "folder", path: target, label: displayPath(target, home), detail: `synced by ${syncToolName(folder.tool)}` };
+    return { kind: "folder", path: target, label: formatPath(target, home), detail: `synced by ${syncToolName(folder.tool)}` };
   });
   const local = path.join(home, LIBRARY_FOLDER_NAME);
   return [
     ...synced,
-    { kind: "folder", path: local, label: displayPath(local, home), detail: "only on this computer" },
+    { kind: "folder", path: local, label: formatPath(local, home), detail: "only on this computer" },
     { kind: "browse", label: "Choose a folder…" },
     { kind: "guide", label: "How to sync between computers…" },
   ];
 }
 
-export interface ChooseLibraryRootDeps {
+export interface PickLibraryRootDeps {
   sharedLibraryConfig: SharedLibraryConfig;
   createLogger(appLogPath: string): ILogger;
 }
@@ -53,7 +53,7 @@ async function browseForFolder(): Promise<string | undefined> {
     title: "LabShelf: Choose Library Folder",
   });
   const picked = folders?.[0];
-  return picked ? libraryTargetFolder(picked.fsPath) : undefined;
+  return picked ? resolveLibraryDir(picked.fsPath) : undefined;
 }
 
 // An existing library is opened as it is, so the user never ends up with two libraries by accident.
@@ -66,7 +66,7 @@ async function confirmExistingLibrary(target: string): Promise<boolean> {
   return answer === "Open";
 }
 
-async function record(target: string, deps: ChooseLibraryRootDeps): Promise<vscode.Uri | undefined> {
+async function record(target: string, deps: PickLibraryRootDeps): Promise<vscode.Uri | undefined> {
   const logger = deps.createLogger(createDeviceLocalLayout(target).appLogPath);
   try {
     await deps.sharedLibraryConfig.recordRoot(target, logger);
@@ -80,11 +80,11 @@ async function record(target: string, deps: ChooseLibraryRootDeps): Promise<vsco
 }
 
 /** @returns the chosen library root, or undefined when the user cancelled or the choice could not be saved */
-export async function chooseLibraryRoot(deps: ChooseLibraryRootDeps): Promise<vscode.Uri | undefined> {
+export async function pickLibraryRoot(deps: PickLibraryRootDeps): Promise<vscode.Uri | undefined> {
   const home = os.homedir();
   const detected = await detectSyncFolders({ home, env: process.env, platform: process.platform });
   for (;;) {
-    const items: PickedChoice[] = firstRunChoices(detected, home).map((choice) => ({
+    const items: PickedChoice[] = listFirstRunChoices(detected, home).map((choice) => ({
       label: choice.label, ...(choice.kind === "folder" ? { detail: choice.detail } : {}), choice,
     }));
     const picked = await vscode.window.showQuickPick(items, { title: "LabShelf: Where should your library live?" });

@@ -1,4 +1,4 @@
-import { autoReaderTheme, onAutoReaderThemeChange, readerThemeOfKind } from '../../src/reader/vscodeTheme';
+import { readAutoReaderTheme, onAutoReaderThemeChange, deriveReaderTheme } from '../../src/reader/vscodeTheme';
 
 const vscode = require('vscode');
 
@@ -9,14 +9,14 @@ describe('vscodeTheme', () => {
 
   it.each([[1, 'light'], [2, 'dark'], [3, 'high-contrast'], [4, 'light'], [99, 'light']])(
     'maps ColorThemeKind %i to %s', (kind, theme) => {
-      expect(readerThemeOfKind(kind)).toBe(theme);
+      expect(deriveReaderTheme(kind)).toBe(theme);
     },
   );
 
   it('resolves the auto theme from the active VS Code theme', () => {
-    expect(autoReaderTheme()).toBe('dark');
+    expect(readAutoReaderTheme()).toBe('dark');
     vscode.window.activeColorTheme = { kind: vscode.ColorThemeKind.Light };
-    expect(autoReaderTheme()).toBe('light');
+    expect(readAutoReaderTheme()).toBe('light');
   });
 
   it('reports the mapped theme when the VS Code theme changes', () => {

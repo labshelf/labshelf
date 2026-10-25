@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { PassThrough } from "node:stream";
 
 import { UsageError, type Output } from "../../../src/cli";
-import { runCite, type CiteTty } from "../../../src/cli/citation";
+import { runCitation, type CitationTty } from "../../../src/cli/citation";
 import { cleanupTempDirs, makeTempDir } from "../../fixtures/library";
 import { harness } from "../../fixtures/paperService";
 
@@ -13,13 +13,13 @@ afterEach(cleanupTempDirs);
 const ENTER = "\r";
 const CTRL_C = "\x03";
 
-function fakeTty(keys: string): CiteTty & { drawn: () => string } {
+function fakeTty(keys: string): CitationTty & { drawn: () => string } {
   const input = Object.assign(new PassThrough(), { setRawMode: jest.fn() });
   const output = Object.assign(new PassThrough(), { columns: 80, rows: 24 });
   const chunks: string[] = [];
   output.on("data", (chunk: Buffer) => chunks.push(chunk.toString()));
   input.write(keys);
-  return { input, output, close: jest.fn(), drawn: () => chunks.join("") } as unknown as CiteTty & { drawn: () => string };
+  return { input, output, close: jest.fn(), drawn: () => chunks.join("") } as unknown as CitationTty & { drawn: () => string };
 }
 
 async function setup(project?: { yaml: string; main?: string }) {
@@ -38,7 +38,7 @@ async function setup(project?: { yaml: string; main?: string }) {
   const ctx = { store: h.store, logger: { log: async () => undefined, error: async () => undefined } };
   const run = (keys: string, flags: Record<string, string | boolean> = {}, positionals: string[] = [dir]) => {
     const tty = fakeTty(keys);
-    return runCite(ctx, positionals, flags, io, tty).then((code) => ({ code, tty }));
+    return runCitation(ctx, positionals, flags, io, tty).then((code) => ({ code, tty }));
   };
   return { dir, out, err, run };
 }

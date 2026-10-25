@@ -1,14 +1,14 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
-import { listAllRecords } from "../../storage";
+import { listCachedPaperRecords } from "../../storage";
 import { findProject } from "../../writing/project";
-import { recordProjectEdit } from "../../writing/history";
-import { observingNotice, remountOnTakeover, sourceActions, sourceFileMode, sourceLanguageOf, takeSharedProjectHere, unresolvedNotice, type SourceFileMode } from "../../writing/source";
+import { addProjectUpdateEvent } from "../../writing/history";
+import { renderObservingNotice, mountOnTakeover, createSourceActions, readSourceFileMode, deriveSourceLanguage, openSharedProjectHere, renderUnresolvedNotice, type SourceFileMode } from "../../writing/source";
 import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../writing/editor/index.js";
 import type { TabContext, TabModule } from "./tabKind";
 
-export { sourceFileMode };
+export { readSourceFileMode };
 
 const MODULE = "tabs.source";
 
@@ -27,7 +27,7 @@ function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: 
   const { projectId, path } = file;
   const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
   return {
-    projectId, path, files: projectFiles(fs, entry), papers: listAllRecords,
+    projectId, path, files: projectFiles(fs, entry), papers: listCachedPaperRecords,
     helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
     ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
@@ -38,7 +38,7 @@ function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: 
         open: () => workspace.openTab("comments", { projectId }, 1),
       },
     }),
-    onSaved: () => void recordProjectEdit({ fs, logger }, { id: projectId, folder: entry.folder }),
+    onSaved: () => void addProjectUpdateEvent({ fs, logger }, { id: projectId, folder: entry.folder }),
   };
 }
 
@@ -55,7 +55,7 @@ async function loadEditor(
     const entry = await findProject(fs, logger, session.current(), projectId);
     const { mountSourceEditor } = await loadingModule;
     if (disposed()) return undefined;
-    const mode = await sourceFileMode(sharing, entry, path, logger, retried);
+    const mode = await readSourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
     const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode));
     loading.remove();
@@ -88,8 +88,8 @@ function guardUnsavedEdits({ logger, tab }: TabContext, { projectId, path }: { p
 }
 
 function prependNotice(body: HTMLElement, mode: SourceFileMode, on: { retry: () => void; useHere: () => void }): void {
-  if (mode.kind === "unresolved") body.prepend(unresolvedNotice(on.retry));
-  if (mode.kind === "observing") body.prepend(observingNotice(on.useHere));
+  if (mode.kind === "unresolved") body.prepend(renderUnresolvedNotice(on.retry));
+  if (mode.kind === "observing") body.prepend(renderObservingNotice(on.useHere));
 }
 
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
@@ -111,7 +111,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       loaded = readOnly ? undefined : opened.entry;
       body.classList.toggle("ls-source-unresolved", readOnly);
-      prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void takeSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
+      prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
   const retry = async (retried: boolean): Promise<void> => {
@@ -124,13 +124,13 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     body.classList.remove("ls-source-unresolved");
     open(retried);
   };
-  const stopShares = remountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
+  const stopShares = mountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
   open(false);
-  const actions = sourceActions({
-    projectId, path, language: sourceLanguageOf(path), fs, logger,
+  const actions = createSourceActions({
+    projectId, path, language: deriveSourceLanguage(path), fs, logger,
     target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded } : undefined),
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
-    papers: listAllRecords,
+    papers: listCachedPaperRecords,
   });
   return {
     actions,

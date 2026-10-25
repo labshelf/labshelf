@@ -9,9 +9,9 @@ import {
   type PaperRecord,
 } from "@labshelf/core";
 import type { CitationSession, CitationWorkspace } from "../citationWorkspace.js";
-import { citingProject } from "../citationWorkspace.js";
+import { findCitingProject } from "../citationWorkspace.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
-import { escapeMarkdown, excerpt, paperByline } from "./paperText.js";
+import { escapeMarkdown, formatExcerpt, formatPaperByline } from "./paperText.js";
 
 const ABSTRACT_CHARS = 200;
 const HIGHLIGHT_CHARS = 140;
@@ -34,11 +34,11 @@ function alsoCitedIn(sections: readonly ChecklistSection[]): string {
 function citationHoverContent({ paper, highlights, otherSections }: CitationHoverData): vscode.MarkdownString {
   const openArgs = encodeURIComponent(JSON.stringify([paper.id]));
   const blocks = [`**${escapeMarkdown(paper.title)}**`, `[Open paper](command:${OPEN_PAPER_COMMAND}?${openArgs})`];
-  const byline = paperByline(paper);
+  const byline = formatPaperByline(paper);
   if (byline) { blocks.push(escapeMarkdown(byline)); }
-  if (paper.summary?.trim()) { blocks.push(escapeMarkdown(excerpt(paper.summary, ABSTRACT_CHARS))); }
+  if (paper.summary?.trim()) { blocks.push(escapeMarkdown(formatExcerpt(paper.summary, ABSTRACT_CHARS))); }
   if (highlights.length > 0) {
-    blocks.push(highlights.map((quote) => `- ${escapeMarkdown(excerpt(quote.text, HIGHLIGHT_CHARS))} (${escapeMarkdown(`p. ${quote.page}`)})`).join("\n"));
+    blocks.push(highlights.map((quote) => `- ${escapeMarkdown(formatExcerpt(quote.text, HIGHLIGHT_CHARS))} (${escapeMarkdown(`p. ${quote.page}`)})`).join("\n"));
   }
   if (otherSections.length > 0) { blocks.push(alsoCitedIn(otherSections)); }
   const markdown = new vscode.MarkdownString(blocks.join("\n\n"));
@@ -72,7 +72,7 @@ export class CitationHoverProvider implements vscode.HoverProvider {
   constructor(private readonly workspace: CitationWorkspace) {}
 
   async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
-    const project = citingProject(this.workspace.projects, document.uri.fsPath);
+    const project = findCitingProject(this.workspace.projects, document.uri.fsPath);
     const session = this.workspace.session();
     if (!project || !session) { return undefined; }
     const offset = document.offsetAt(position);

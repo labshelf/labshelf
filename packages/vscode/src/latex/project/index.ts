@@ -2,4 +2,4 @@
 export { LatexProjectSources } from "./latexProjectSources.js";
 export type { LatexProject, LatexProjectWorkspace } from "./latexProjectSources.js";
 export { createProjectSourceReader } from "./projectSourceReader.js";
-export { toVscodeRange } from "./toVscodeRange.js";
+export { deriveVscodeRange } from "./deriveVscodeRange.js";

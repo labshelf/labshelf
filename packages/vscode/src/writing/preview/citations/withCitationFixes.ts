@@ -2,7 +2,7 @@
 import { deriveSuggestedCiteKey, type CitationCardFix, type CitationEntry } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import type { CitationFixDeps } from "./citationFixDeps.js";
-import { publishedVenueOf } from "./updateBibEntry.js";
+import { readPublishedVenue } from "./updateBibEntry.js";
 
 async function fixOf(deps: CitationFixDeps, entry: CitationEntry): Promise<CitationCardFix | undefined> {
   if (!entry.paper && !entry.bib) {
@@ -11,7 +11,7 @@ async function fixOf(deps: CitationFixDeps, entry: CitationEntry): Promise<Citat
   }
   if (entry.bib && !entry.paper) { return { kind: "add" }; }
   if (!entry.bib) { return undefined; }
-  const venue = await publishedVenueOf(deps, entry.key);
+  const venue = await readPublishedVenue(deps, entry.key);
   return venue ? { kind: "update", venue } : undefined;
 }
 

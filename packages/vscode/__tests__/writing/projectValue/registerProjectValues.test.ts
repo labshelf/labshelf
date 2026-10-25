@@ -1,7 +1,7 @@
 // Tests that values complete only inside \lsvalue{ and over json() members of listed files.
 import * as vscode from "vscode";
 
-import { ValueCompletionProvider } from "../../../src/writing/projectValue/registerProjectValues";
+import { ProjectValueCompletionProvider } from "../../../src/writing/projectValue/registerProjectValues";
 import { valuesFixture } from "../../support/valueFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 
@@ -15,7 +15,7 @@ async function complete(
   const fixture = valuesFixture(over.files ?? { "results.json": RESULTS, "sub/other.json": '{"z":1}' }, { format, values: over.values ?? ["results.json", "sub/other.json"] });
   const { text, position } = withCursor(marked);
   const file = fixture.source(over.file ?? (format === "latex" ? "main.tex" : "main.typ"));
-  return new ValueCompletionProvider(fixture.values).provideCompletionItems(fakeDocument(file, text), position);
+  return new ProjectValueCompletionProvider(fixture.values).provideCompletionItems(fakeDocument(file, text), position);
 }
 
 describe("LaTeX completion", () => {

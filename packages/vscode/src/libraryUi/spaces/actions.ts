@@ -49,7 +49,7 @@ async function run(m: SidebarSpaceMessage, spaces: SidebarSpacesDep): Promise<vo
   }
 }
 
-export async function handleSidebarSpaceMessage(m: SidebarSpaceMessage, spaces: SidebarSpacesDep): Promise<void> {
+export async function answerSidebarSpaceMessage(m: SidebarSpaceMessage, spaces: SidebarSpacesDep): Promise<void> {
   const logger = spaces.current()?.logger;
   try { await run(m, spaces); }
   catch (error) {

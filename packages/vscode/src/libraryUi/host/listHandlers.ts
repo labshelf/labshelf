@@ -118,7 +118,7 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
   }
 }
 
-export async function handleListMessage(ctx: ListHostContext, raw: unknown): Promise<void> {
+export async function answerListMessage(ctx: ListHostContext, raw: unknown): Promise<void> {
   const m = parseUiMessage(raw);
   const paths = ctx.paths();
   if (!m) {

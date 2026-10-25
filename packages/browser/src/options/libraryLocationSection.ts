@@ -1,24 +1,24 @@
 // Builds the Library section: where the library lives, the choice of a folder, and a re-check of the connection.
 import { formatError, type ILogger } from "@labshelf/core";
 import { renderActionButton, renderElement, renderInlineCode, renderSettingRow, renderSettingsSection, createToneLine } from "@labshelf/core/dom";
-import { canPickFolder, folderPathForm, pickLibraryFolder, recheckSource, sourceReason } from "../library/libraryLocation";
-import { getLibrarySource, type LibrarySource } from "../storage";
+import { canPickFolder, renderFolderPathForm, pickLibraryFolder, refreshLibraryLocation, describeSourceReason } from "../library/libraryLocation";
+import { readLibraryLocation, type LibraryLocation } from "../storage";
 
-function sourceRow(source: LibrarySource): HTMLElement {
+function sourceRow(source: LibraryLocation): HTMLElement {
   if (source.kind === "folder") return renderSettingRow({ label: "Stored in" }, renderElement("span", {}, "Folder: ", renderInlineCode(source.root)));
-  return renderSettingRow({ label: "Stored in", description: sourceReason(source) }, renderElement("span", { text: "This browser" }));
+  return renderSettingRow({ label: "Stored in", description: describeSourceReason(source) }, renderElement("span", { text: "This browser" }));
 }
 
-export function createLibrarySourceSection(logger: ILogger): HTMLElement {
+export function createLibraryLocationSection(logger: ILogger): HTMLElement {
   const status = createToneLine();
   const row = renderElement("div");
-  const show = (source: LibrarySource): void => {
+  const show = (source: LibraryLocation): void => {
     row.replaceChildren(sourceRow(source));
-    if (source.kind === "browser" && source.reason === "no-library") row.append(folderPathForm(logger, show));
+    if (source.kind === "browser" && source.reason === "no-library") row.append(renderFolderPathForm(logger, show));
     // A bridge folder belongs to the desktop apps, which change it themselves.
     if (canPickFolder() && (source.kind === "browser" || source.via === "picked")) row.append(renderSettingRow({}, pick(source)));
   };
-  const pick = (source: LibrarySource): HTMLElement => renderActionButton({
+  const pick = (source: LibraryLocation): HTMLElement => renderActionButton({
     label: source.kind === "folder" ? "Choose another folder" : "Choose a folder on this computer", icon: "folder",
     onClick: async () => {
       try {
@@ -35,7 +35,7 @@ export function createLibrarySourceSection(logger: ILogger): HTMLElement {
     onClick: async () => {
       status.set("Checking…", "idle");
       try {
-        show(await recheckSource(logger));
+        show(await refreshLibraryLocation(logger));
         status.set("", "idle");
       } catch (err) {
         await logger.error("options", err);
@@ -44,7 +44,7 @@ export function createLibrarySourceSection(logger: ILogger): HTMLElement {
     },
   });
   status.set("Checking…", "idle");
-  getLibrarySource().then(
+  readLibraryLocation().then(
     (source) => { show(source); status.set("", "idle"); },
     (err: unknown) => { void logger.error("options", err); status.set("Could not check", "error", formatError(err)); },
   );

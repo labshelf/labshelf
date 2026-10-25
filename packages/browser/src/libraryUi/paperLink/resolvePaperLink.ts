@@ -1,11 +1,11 @@
 // Resolves the text of a labshelf: link to the paper and page it points at, or to the message that explains why it cannot open.
 import { derivePapersByCiteKey, parsePaperLink, type PaperRecord } from "@labshelf/core";
 
-export type LinkResolution =
+export type PaperLinkResolution =
   | { readonly ok: true; readonly paperId: string; readonly page?: number }
   | { readonly ok: false; readonly message: string };
 
-export function resolveLink(text: string, papers: readonly PaperRecord[]): LinkResolution {
+export function resolvePaperLink(text: string, papers: readonly PaperRecord[]): PaperLinkResolution {
   const link = parsePaperLink(text);
   if (!link) return { ok: false, message: `"${text}" is not a LabShelf link.` };
   const paper = derivePapersByCiteKey(papers).get(link.citeKey);

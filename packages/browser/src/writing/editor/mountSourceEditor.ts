@@ -3,17 +3,17 @@ import { Annotation, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PaperRecord, PresenceStore } from "@labshelf/core";
 import type * as Y from "yjs";
-import { collabExtensions } from "../../collab";
-import { commentSupport, type EditorComments } from "../../collab/comments";
-import { editorExtensions } from "./editorExtensions";
-import { createHelperEdits, type EditorHelper, type HelperEdits } from "./helperUpdates";
-import { createSourceEdits, formattingKeymap, sourceLanguageOf, type SourceEdits } from "../source";
-import { createLabelIndex, latexSupport, type LabelIndex } from "../../latex";
+import { createCollabExtensions } from "../../collab";
+import { createCommentSupport, type EditorComments } from "../../collab/comments";
+import { createEditorExtensions } from "./createEditorExtensions";
+import { createHelperUpdates, type EditorHelper, type HelperUpdates } from "./helperUpdates";
+import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "../source";
+import { createLabelIndex, createLatexSupport, type LabelIndex } from "../../latex";
 import { applyProblems, type ProblemSource } from "./editorProblems";
 import { registerOpenEditor } from "../session";
-import { revealLine } from "./showLine";
-import { createSaveScheduler, type SaveScheduler } from "./writeScheduler";
-import { typstLanguage, typstSupport, type DefinitionTarget } from "../../typst";
+import { showLine } from "./showLine";
+import { createWriteScheduler, type WriteScheduler } from "./writeScheduler";
+import { typstLanguage, createTypstSupport, type DefinitionTarget } from "../../typst";
 
 export interface SourceFileAccess {
   /** Project-relative paths of the project's files. */
@@ -45,7 +45,7 @@ export interface SourceEditorDeps {
   onSaved?(): void;
 }
 
-export interface SourceEditor extends SourceEdits {
+export interface SourceEditor extends SourceUpdates {
   /** Writes pending edits now; resolves whether the file is saved afterwards (false when the write failed). */
   flush(): Promise<boolean>;
   /** Saves pending edits, then removes the editor. */
@@ -58,16 +58,16 @@ const fromDisk = Annotation.define<boolean>();
 
 /** LaTeX, or Typst with the language service. */
 function sourceLanguage(deps: SourceEditorDeps, labels: LabelIndex): Extension {
-  if (!deps.path.endsWith(".typ")) return latexSupport({ labels: labels.labels, papers: deps.papers });
+  if (!deps.path.endsWith(".typ")) return createLatexSupport({ labels: labels.labels, papers: deps.papers });
   if (!deps.openTab) return typstLanguage;
   const { projectId, path, files, logger, papers, openTab } = deps;
-  return typstSupport({ projectId, path, files, openTab, logger, papers });
+  return createTypstSupport({ projectId, path, files, openTab, logger, papers });
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */
 function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string, onSave: () => void): Extension[] {
-  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...editorExtensions(languageSupport, { onSave })];
-  return [collabExtensions({ ...collab, file: path }), ...editorExtensions(languageSupport, { history: false, onSave })];
+  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...createEditorExtensions(languageSupport, { onSave })];
+  return [createCollabExtensions({ ...collab, file: path }), ...createEditorExtensions(languageSupport, { history: false, onSave })];
 }
 
 /**
@@ -86,7 +86,7 @@ async function loadFromDisk(view: EditorView, { files, path, projectId, logger }
 }
 
 /** Tells the helper which write the user asked for with Mod-s. */
-function explicitSaves(helperEdits: HelperEdits): { written(): void; flush(save: Pick<SaveScheduler, "flush" | "dirty">): void } {
+function explicitSaves(helperEdits: HelperUpdates): { written(): void; flush(save: Pick<WriteScheduler, "flush" | "dirty">): void } {
   // INVARIANT: set only while a Mod-s flush runs, so exactly the write it causes reaches the helper as an explicit save.
   let requested = false;
   return {
@@ -113,39 +113,39 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const text = collab ? collab.text.toString() : await deps.files.read(path);
   void deps.files.list().then((files) => labels.load(files, deps.files.read))
     .catch((error: unknown) => logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));
-  const helperEdits = createHelperEdits(deps.helper, deps.projectId, path, logger);
+  const helperEdits = createHelperUpdates(deps.helper, deps.projectId, path, logger);
   // The document is split on the file's own line break, so saving writes back the endings the file was read with; a shared text is LF only.
   const lineBreak = !collab && text.includes("\r\n") ? "\r\n" : "\n";
   let view: EditorView | undefined;
   const currentText = (): string => (view ? view.state.doc.sliceString(0, undefined, view.state.lineBreak) : text);
   const language = sourceLanguage(deps, labels);
-  const kind = sourceLanguageOf(path);
+  const kind = deriveSourceLanguage(path);
   let savedText = text;
   const explicit = explicitSaves(helperEdits);
   // The share's doc file writer saves a shared file, so the editor has nothing to write.
-  const save: Pick<SaveScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createSaveScheduler({
+  const save: Pick<WriteScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createWriteScheduler({
     file: path, logger, text: currentText,
     write: async (content) => { await deps.files.write(path, content); savedText = content; },
     onDirty: deps.onDirty, onSaved: () => { explicit.written(); deps.onSaved?.(); },
   });
   const saveNow = (): void => explicit.flush(save);
-  const commentsSupport = deps.comments && commentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
+  const commentsSupport = deps.comments && createCommentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
   const onUpdate = EditorView.updateListener.of((update) => {
     if (!update.docChanged) return;
     if (!update.transactions.some((tr) => tr.annotation(fromDisk))) save.changed();
     helperEdits.changed(update.changes, update.state.doc);
     if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
   });
-  const extensions = [formattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
+  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, {
-    revealLine: (line) => revealLine(view!, line), flush: save.flush, reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }),
+    revealLine: (line) => showLine(view!, line), flush: save.flush, reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }),
   });
   return {
-    ...createSourceEdits(view, kind),
+    ...createSourceUpdates(view, kind),
     flush: save.flush,
     async dispose() {
       unregister();

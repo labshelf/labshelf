@@ -1,12 +1,12 @@
 // Lets the user pick the library folder on disk in a browser that can open folders, and switches the library to it.
 import type { ILogger } from "@labshelf/core";
-import { announcePickedFolder, rebuildFromFiles, savePickedFolder, switchToPickedFolder, type LibrarySource } from "../../storage";
+import { sendPickedDirChange, refreshFromFiles, writePickedDir, attachPickedDir, type LibraryLocation } from "../../storage";
 
 /** PLATFORM: Chromium browsers open folders on disk; Firefox does not, so there the folder goes through the bridge. */
 export const canPickFolder = (): boolean => typeof window.showDirectoryPicker === "function";
 
 /** Needs a click. @returns undefined when the user closes the picker */
-export async function pickLibraryFolder(logger: ILogger): Promise<LibrarySource | undefined> {
+export async function pickLibraryFolder(logger: ILogger): Promise<LibraryLocation | undefined> {
   let handle: FileSystemDirectoryHandle;
   try {
     // The id makes the picker open where the user picked last time.
@@ -15,10 +15,10 @@ export async function pickLibraryFolder(logger: ILogger): Promise<LibrarySource 
     if ((err as { name?: unknown }).name === "AbortError") return undefined;
     throw err;
   }
-  await savePickedFolder(handle);
-  announcePickedFolder();
-  const source = await switchToPickedFolder();
+  await writePickedDir(handle);
+  sendPickedDirChange();
+  const source = await attachPickedDir();
   await logger.log("INFO", "library.libraryLocation", "library folder picked", { name: handle.name });
-  await rebuildFromFiles(logger);
+  await refreshFromFiles(logger);
   return source;
 }

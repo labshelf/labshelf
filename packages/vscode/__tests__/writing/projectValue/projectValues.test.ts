@@ -1,7 +1,7 @@
 // Tests the value cache: one read per project, dropped when a value file or the project list changes, and the registration.
 import * as vscode from "vscode";
 
-import { registerWritingValues } from "../../../src/writing/projectValue/index";
+import { registerProjectValues } from "../../../src/writing/projectValue/index";
 import { valuesFixture } from "../../support/valueFixtures";
 
 const watchers = (): Array<{ pattern: { base: string; pattern: string }; dispose: jest.Mock; _fire: (kind: string, uri: vscode.Uri) => void }> =>
@@ -44,7 +44,7 @@ describe("ProjectValues", () => {
   });
 });
 
-describe("registerWritingValues", () => {
+describe("registerProjectValues", () => {
   it("registers completion, with its triggers, and hover for LaTeX and Typst sources and disposes through the context", () => {
     const { projects, logger } = setup();
     const context = { subscriptions: [] as vscode.Disposable[] };
@@ -52,7 +52,7 @@ describe("registerWritingValues", () => {
     const hover = vscode.languages.registerHoverProvider as jest.Mock;
     completion.mockClear();
     hover.mockClear();
-    registerWritingValues(context as unknown as vscode.ExtensionContext, { projects, logger: () => logger });
+    registerProjectValues(context as unknown as vscode.ExtensionContext, { projects, logger: () => logger });
     expect(completion.mock.calls.map(([selector, , ...triggers]) => [selector.pattern, triggers])).toEqual([
       ["**/*.tex", ["{", "."]], ["**/*.typ", ["."]],
     ]);

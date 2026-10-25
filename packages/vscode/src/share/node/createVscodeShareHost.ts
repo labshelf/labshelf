@@ -12,11 +12,11 @@ import {
   resolveRelayBackend,
   type FolderShareLinkDeps,
 } from "@labshelf/core";
-import { libraryPaths, type LibraryPaths } from "../../libraryUi/index.js";
+import { createLibraryPaths, type LibraryPaths } from "../../libraryUi/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../writing/session/index.js";
 import type { LibraryRootController } from "../../activation/index.js";
 import type { ActiveServices } from "../../command/index.js";
-import { connectedRelay, shareRegistry, type ShareLinkHost } from "./index.js";
+import { readConnectedRelay, readShareRegistry, type ShareLinkHost } from "./index.js";
 
 type SharingController = Pick<LibraryRootController, "currentRoot" | "currentServices" | "require">;
 
@@ -42,12 +42,12 @@ function vscodeFolderLinks(controller: SharingController, relay: RelayAccountSto
       return { fs, paths, annotations: (paperId: string) => paperDataStore.getAnnotations(paperId) };
     },
     get registry() {
-      const registry = shareRegistry(host);
+      const registry = readShareRegistry(host);
       if (!registry) { throw new Error(NO_LIBRARY); }
       return registry;
     },
     relay: {
-      require: () => connectedRelay(host, "share links are served by your own relay."),
+      require: () => readConnectedRelay(host, "share links are served by your own relay."),
       connected: () => relay.get(),
     },
     backendFor: resolveRelayBackend,
@@ -96,12 +96,12 @@ export function withLibraryPaths(host: ShareHost, paths: () => LibraryPaths): Sh
   };
 }
 
-export interface SharingCollab {
+export interface ShareCollab {
   ports: ShareFlowPorts;
   relay: RelayAccountStore;
 }
 
-export function createVscodeSharingHost(controller: SharingController, collab: SharingCollab, logger: ILogger): ShareHost {
+export function createVscodeShareHost(controller: SharingController, collab: ShareCollab, logger: ILogger): ShareHost {
   const host = createShareHost({
     place: "this device",
     logger,
@@ -116,6 +116,6 @@ export function createVscodeSharingHost(controller: SharingController, collab: S
   });
   return withLibraryPaths(host, () => {
     const { mutations } = openServices(controller);
-    return libraryPaths(mutations.papersRoot, mutations.paths);
+    return createLibraryPaths(mutations.papersRoot, mutations.paths);
   });
 }

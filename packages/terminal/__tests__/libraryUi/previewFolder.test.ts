@@ -1,6 +1,6 @@
 import type { FolderNode, LibrarySnapshot, PaperEntry, PaperRecord, ReadingStatus } from "@labshelf/core";
 
-import { folderPreview, libraryOverview } from "../../src/libraryUi/preview";
+import { createFolderPreview, createLibraryOverview } from "../../src/libraryUi/preview";
 import { theme } from "../../src/libraryUi/theme";
 import { entry, text } from "../fixtures/previewEntries";
 
@@ -43,7 +43,7 @@ describe("folderPreview and libraryOverview", () => {
   ]);
 
   it("summarizes a folder: counts, status breakdown, subfolders and its own papers", () => {
-    const lines = text(folderPreview(snapshot.collections.get("ML")!, snapshot, [p1]));
+    const lines = text(createFolderPreview(snapshot.collections.get("ML")!, snapshot, [p1]));
     expect(lines).toEqual([
       "ML",
       "2 papers · 1 subfolder",
@@ -56,33 +56,33 @@ describe("folderPreview and libraryOverview", () => {
   });
 
   it("uses the given label as the title", () => {
-    expect(text(folderPreview(snapshot.collections.get("ML/NLP")!, snapshot, [p2], "ML › NLP"))[0]).toBe("ML › NLP");
+    expect(text(createFolderPreview(snapshot.collections.get("ML/NLP")!, snapshot, [p2], "ML › NLP"))[0]).toBe("ML › NLP");
   });
 
   it("uses the singular for one paper and omits the subfolder count when there are none", () => {
-    const lines = text(folderPreview(snapshot.collections.get("ML/NLP")!, snapshot, [p2]));
+    const lines = text(createFolderPreview(snapshot.collections.get("ML/NLP")!, snapshot, [p2]));
     expect(lines[1]).toBe("1 paper");
     expect(lines).toEqual(["NLP", "1 paper", "◐ 0 reading  ○ 0 unread  ● 1 done", "", "● Paper p2"]);
   });
 
   it("counts statuses over the whole subtree and over everything for the root", () => {
-    const root = text(folderPreview(snapshot.collections.get("")!, snapshot, [p0]));
+    const root = text(createFolderPreview(snapshot.collections.get("")!, snapshot, [p0]));
     expect(root[2]).toBe("◐ 1 reading  ○ 1 unread  ● 1 done");
   });
 
   it("says when a folder is empty", () => {
-    expect(text(folderPreview(snapshot.collections.get("Empty")!, snapshot, []))).toEqual(["Empty", "0 papers", "", "Empty folder"]);
+    expect(text(createFolderPreview(snapshot.collections.get("Empty")!, snapshot, []))).toEqual(["Empty", "0 papers", "", "Empty folder"]);
   });
 
   it("draws papers without a PDF in the no-PDF style", () => {
     const noPdf = paper("p3", "unread", "Empty", { hasPdf: false });
-    const lines = folderPreview(node("Empty", [], ["p3"], 1), snapshotOf([noPdf], []), [noPdf]);
+    const lines = createFolderPreview(node("Empty", [], ["p3"], 1), snapshotOf([noPdf], []), [noPdf]);
     const row = lines[lines.length - 1]!;
     expect(row[1]!.style).toEqual(theme.noPdf);
   });
 
   it("summarizes the library", () => {
-    expect(text(libraryOverview(snapshot))).toEqual([
+    expect(text(createLibraryOverview(snapshot))).toEqual([
       "Library",
       "3 papers",
       "",
@@ -96,13 +96,13 @@ describe("folderPreview and libraryOverview", () => {
 
   it("counts only papers with a PDF here in the overview", () => {
     const withoutPdf = snapshotOf([p0, paper("p9", "done", "", { hasPdf: false })], []);
-    const lines = text(libraryOverview(withoutPdf));
+    const lines = text(createLibraryOverview(withoutPdf));
     expect(lines[1]).toBe("2 papers");
     expect(lines[lines.length - 1]).toBe("1 with PDF");
   });
 
   it("summarizes an empty library", () => {
-    expect(text(libraryOverview(snapshotOf([], [])))).toEqual([
+    expect(text(createLibraryOverview(snapshotOf([], [])))).toEqual([
       "Library", "0 papers", "", "◐ 0 reading", "○ 0 unread", "● 0 done", "", "0 with PDF",
     ]);
   });

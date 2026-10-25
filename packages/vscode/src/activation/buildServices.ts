@@ -5,8 +5,8 @@ import { LibraryStore, PaperSidecarStore, PdfImportParser, BibtexService, create
 import { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
 import { ensureLibraryStructure } from "../storage/paths/index.js";
 import { VscodeFileSystem } from "../storage/index.js";
-import { queueTextLayers } from "../command/index.js";
-import { reindexLibrary, type ReindexSummary } from "../storage/index.js";
+import { addTextLayerJobs } from "../command/index.js";
+import { refreshLibrary, type ReindexSummary } from "../storage/index.js";
 import type { ActiveServices } from "../command/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import type { ILogger } from "@labshelf/core";
@@ -24,10 +24,10 @@ function createReindexer(
   logger: ILogger,
   getTextLayers: () => PaperTextLayers,
 ): () => Promise<ReindexSummary> {
-  return () => reindexLibrary({
+  return () => refreshLibrary({
     store,
     events,
-    queueCheck: (papers) => void queueTextLayers(getTextLayers(), papers, { mode: "check", logger }),
+    queueCheck: (papers) => void addTextLayerJobs(getTextLayers(), papers, { mode: "check", logger }),
   });
 }
 

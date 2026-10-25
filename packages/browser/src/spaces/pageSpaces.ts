@@ -21,7 +21,7 @@ import { downloadTextFile } from '../platform';
 import type { Workspace } from '../libraryUi/editorArea';
 import { watchSpaces } from './watchSpaces';
 import { onLocalFileChanges } from '../collab';
-import { createBrowserProjectData } from '../writing/project';
+import { createBrowserProjectContent } from '../writing/project';
 
 async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: Extract<ProjectEntry, { kind: 'ready' }>, library: LibraryPapers): Promise<Progress | undefined> {
   const signals = await readChecklistSignals({ fs, logger, paths: posixPathOps }, entry);
@@ -53,7 +53,7 @@ function rowOf(entry: ReadyProject): ProjectRow {
 
 function createSpaceProjects(options: SpaceProjectsOptions) {
   const { fs, logger } = options;
-  const data = createBrowserProjectData({ fs, logger });
+  const data = createBrowserProjectContent({ fs, logger });
   const entries = async (): Promise<ReadyProject[]> => (await data.listProjects('')).filter((entry): entry is ReadyProject => entry.kind === 'ready');
   return {
     async projects() {

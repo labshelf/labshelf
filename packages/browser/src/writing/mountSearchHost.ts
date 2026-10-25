@@ -17,11 +17,11 @@ import {
   matchReplacement,
 } from "@labshelf/core";
 import { askDialog, showToast } from "@labshelf/core/dom";
-import { flushProjectEditors, reloadProjectEditors } from "./session";
-import { recordProjectEdit } from "./history";
+import { writeProjectEditors, refreshProjectEditors } from "./session";
+import { addProjectUpdateEvent } from "./history";
 
 /** Replaces the matches in their files; a match whose text changed since the search is left alone. */
-export async function replaceInFiles(fs: LibraryFileSystem, matches: readonly MatchPosition[], pattern: RegExp, replacement: string): Promise<number> {
+export async function writeReplacements(fs: LibraryFileSystem, matches: readonly MatchPosition[], pattern: RegExp, replacement: string): Promise<number> {
   const byPath = new Map<string, MatchPosition[]>();
   for (const match of matches) byPath.set(match.path, [...(byPath.get(match.path) ?? []), match]);
   let count = 0;
@@ -88,7 +88,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     const { query, options } = request;
     if (query === "") { ({ pattern, paths: searched } = createEmptySearchRun()); endpoint.post(createEmptySearchRun().message); return; }
     // Unsaved editor text reaches the disk first, so the search reads what the editors show.
-    await flushProjectEditors(project.id);
+    await writeProjectEditors(project.id);
     const run = searchProjectTexts(query, options, { folder: project.folder, paths: posixPathOps }, await projectSearchTexts(fs, project.folder));
     if (mine !== ticket) return;
     pattern = run.pattern;
@@ -115,7 +115,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
   async function replace(message: Replacing): Promise<void> {
     const regex = pattern;
     if (!regex) return;
-    if (!(await flushProjectEditors(project.id))) {
+    if (!(await writeProjectEditors(project.id))) {
       void logger.log("WARN", MODULE, "replace aborted: an open file could not be saved", { projectId: project.id });
       showToast(`Could not save an open file of ${project.id}, so nothing was replaced.`, "error");
       return;
@@ -128,9 +128,9 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
       const question = `Replace ${matches.length} ${matches.length === 1 ? "match" : "matches"} in ${files} ${files === 1 ? "file" : "files"}?`;
       if (!(await askDialog(question, "The change is saved to the files at once. The project history keeps the previous text.", "Replace All"))) return;
     }
-    const count = await replaceInFiles(fs, matches, regex, message.replacement);
-    await reloadProjectEditors(project.id);
-    await recordProjectEdit({ fs, logger }, project);
+    const count = await writeReplacements(fs, matches, regex, message.replacement);
+    await refreshProjectEditors(project.id);
+    await addProjectUpdateEvent({ fs, logger }, project);
     void logger.log("INFO", MODULE, "replaced matches in a project", { projectId: project.id, matches: count });
     await search();
   }

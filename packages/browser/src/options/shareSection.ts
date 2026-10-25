@@ -34,7 +34,7 @@ function displayNameRow(logger: ILogger): HTMLElement {
   );
 }
 
-export function createSharingSection(logger: ILogger): HTMLElement {
+export function createShareSection(logger: ILogger): HTMLElement {
   const store = openBrowserRelayAccountStore(logger);
   const status = renderElement("span", { text: "Checking…" });
   const row = renderElement("div");

@@ -3,7 +3,7 @@ import { deriveProjectValueFilePath, type PathOps } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 
 /** The listed value file a `json("…")` path in a .typ file reads, relative to the project folder; undefined when `values:` does not list it. */
-export function listedValueFile(path: PathOps, project: ReadyProject, typFile: string, source: string): string | undefined {
+export function findProjectValueFile(path: PathOps, project: ReadyProject, typFile: string, source: string): string | undefined {
   // PLATFORM: Typst resolves a path from the .typ file's folder, and a leading `/` from the project root.
   const absolute = source.startsWith("/") ? path.join(project.folder, source) : path.resolve(path.dirname(typFile), source);
   const relative = deriveProjectValueFilePath(path.relative(project.folder, absolute));

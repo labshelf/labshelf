@@ -18,7 +18,7 @@ import {
 import { HELPER_VERSION } from "@labshelf/core/helper";
 import { createSystemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 
-import { registerStandaloneHosts, servedHost, uninstallStandaloneHelper, unregisterStandaloneHosts } from "./nativeHost/index.js";
+import { registerStandaloneHosts, detectServedHost, uninstallStandaloneHelper, uninstallStandaloneHosts } from "./nativeHost/index.js";
 import { createSelfUpdater } from "./release/index.js";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
@@ -83,7 +83,7 @@ async function main(): Promise<number | undefined> {
     return runHelperBiber(process.argv.slice(3), biberAssets);
   }
   // PLATFORM: process.execPath resolves the labshelf-bridge symlink to the helper binary; argv0 keeps the name the browser used.
-  const host = servedHost(process.argv0, process.argv.slice(2));
+  const host = detectServedHost(process.argv0, process.argv.slice(2));
   const managing = host === "helper" && MANAGEMENT_FLAGS.includes(flag ?? "");
   if (!managing) {
     // INVARIANT: this runs before the logger exists, because the logger's first write would chmod the data folder this check refuses.
@@ -97,7 +97,7 @@ async function main(): Promise<number | undefined> {
   if (managing) {
     const env = createSystemNativeHostEnv(logger);
     if (flag === "--register") return registerStandaloneHosts(env, process.execPath);
-    if (flag === "--unregister") return unregisterStandaloneHosts(env, process.execPath);
+    if (flag === "--unregister") return uninstallStandaloneHosts(env, process.execPath);
     return uninstallStandaloneHelper(env, process.execPath, dataDir);
   }
   const updater = createSelfUpdater({

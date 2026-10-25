@@ -6,7 +6,7 @@ import type { TexSetupAsk } from "@labshelf/core";
 const LIGHT = "Install Light";
 const FULL = "Install Full";
 
-export function vscodeToolchainPrompt(): TexSetupAsk {
+export function createVscodeToolchainAsk(): TexSetupAsk {
   return {
     async chooseInstall() {
       const choice = await vscode.window.showInformationMessage(

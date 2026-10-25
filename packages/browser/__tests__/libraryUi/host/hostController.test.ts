@@ -7,11 +7,11 @@ jest.mock("../../../src/platform", () => ({
 }));
 jest.mock("../../../src/storage", () => ({
   createLibraryMutations: () => ({}),
-  listAllRecords: async () => mockRecords,
+  listCachedPaperRecords: async () => mockRecords,
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
   createLibraryFileSystem: () => ({}),
   createSidecarPort: () => ({}),
-  onFolderRecordsRebuilt: () => () => undefined,
+  onPaperRecordsRebuilt: () => () => undefined,
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 jest.mock("../../../src/reader/service", () => ({ openReader: jest.fn() }));

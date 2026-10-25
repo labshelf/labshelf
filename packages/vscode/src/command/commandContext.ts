@@ -29,10 +29,10 @@ export type ActiveServices = {
   citationCacheDir: string;
 };
 
-export type RequireServices = () => Promise<ActiveServices | null>;
+export type EnsureServices = () => Promise<ActiveServices | null>;
 
 // Wraps an async command action with error logging and a user-facing error message on failure.
-export async function executeSafely(logger: ILogger, commandName: string, action: () => Promise<void>): Promise<void> {
+export async function runSafely(logger: ILogger, commandName: string, action: () => Promise<void>): Promise<void> {
   try {
     await action();
   } catch (error) {

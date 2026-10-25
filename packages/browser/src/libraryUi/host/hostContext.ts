@@ -19,7 +19,7 @@ export interface HostContext {
   papers(ids: readonly string[]): PaperRecord[];
 }
 
-export function createHostContext(endpoint: HostEndpoint, log: ILogger): HostContext {
+export function createHostCompositionRoot(endpoint: HostEndpoint, log: ILogger): HostContext {
   const sidecars = createSidecarReads(log);
   const snapshots = createLibrarySnapshots(endpoint, sidecars);
   return {
@@ -34,4 +34,4 @@ export function createHostContext(endpoint: HostEndpoint, log: ILogger): HostCon
   };
 }
 
-export const asRefs = (papers: readonly PaperRecord[]): Reference[] => papers.map((p) => ({ id: p.id, path: p.path }));
+export const deriveReferences = (papers: readonly PaperRecord[]): Reference[] => papers.map((p) => ({ id: p.id, path: p.path }));

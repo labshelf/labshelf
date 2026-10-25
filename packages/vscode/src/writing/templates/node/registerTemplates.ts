@@ -12,16 +12,16 @@ import {
   createLibraryTemplateSources,
   TEMPLATE_SOURCES,
 } from "@labshelf/core";
-import { sessionLogger } from "../../build/node/index.js";
+import { createSessionLogger } from "../../build/node/index.js";
 import type { ToolchainDeps } from "../../build/toolchain/index.js";
-import { executeSafely } from "../../../command/index.js";
+import { runSafely } from "../../../command/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../session/index.js";
 import { createTemplateGallery, type TemplateGalleryDeps } from "../index.js";
 import { detectEngines } from "./engineAvailability.js";
 import { createPublishPorts, type PublishBuilders } from "./publishPorts.js";
 import { registerPublishCommand } from "./registerPublishCommand.js";
-import { registerSaveProjectCommand } from "./registerTemplateFromProject.js";
+import { registerProjectTemplateCommand } from "./registerTemplateFromProject.js";
 
 /** The disk and path style the library is on. */
 interface LibraryDisk {
@@ -83,7 +83,7 @@ export function registerTemplates(deps: TemplatesDeps): void {
   };
   const gallery = createTemplateGallery({
     context,
-    logger: sessionLogger(host),
+    logger: createSessionLogger(host),
     sources: createTemplateSources(host, deps.projects, fetch),
     engines: () => detectEngines(deps.tex),
     createProject: createProjectInstaller(deps),
@@ -94,9 +94,9 @@ export function registerTemplates(deps: TemplatesDeps): void {
     vscode.commands.registerCommand(OPEN_GALLERY_COMMAND, async () => {
       const session = await host.require();
       if (!session) { return; }
-      await executeSafely(session.logger, OPEN_GALLERY_COMMAND, async () => gallery.open());
+      await runSafely(session.logger, OPEN_GALLERY_COMMAND, async () => gallery.open());
     }),
   );
   registerPublishCommand({ context, host, openPublish: gallery.openPublish });
-  registerSaveProjectCommand({ ...deps, onSaved: () => gallery.refresh() });
+  registerProjectTemplateCommand({ ...deps, onSaved: () => gallery.refresh() });
 }

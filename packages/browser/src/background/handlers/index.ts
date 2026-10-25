@@ -1,8 +1,8 @@
 // Exports the background message handlers' public API.
 export {
-  handleCaptureInspect, handleCaptureFindPdf, handleCaptureSave, handleCaptureTab, handleSearchHitSave, handleCaptureAttachPdf,
+  answerCaptureInspect, answerCaptureFindPdf, answerCaptureWrite, answerCaptureTab, answerSearchHitWrite, answerCaptureAttachPdf,
 } from "./capture";
 export {
-  handleFindBetterPdf, handleFindPdfForPaper, handleRemovePaper, handleLibraryFolders, handleLibraryLookup, handleLibraryOpen, handleListTabs,
+  answerFindBetterPdf, answerFindPdfForPaper, answerRemovePaper, answerLibraryFolders, answerLibraryFind, answerLibraryOpen, answerListTabs,
 } from "./library";
-export { accessTabDeps, handleOpenForPdf } from "./access";
+export { createAccessTabDeps, answerOpenForPdf } from "./access";

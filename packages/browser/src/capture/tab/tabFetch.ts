@@ -4,7 +4,7 @@
  */
 import { base64ToBytes, isPdfBytes } from "@labshelf/core";
 import type { InTabAnswer } from "@labshelf/core";
-import { scriptingApi } from "./scripting";
+import { readScriptingApi } from "./scripting";
 
 const MAX_HTML_BYTES = 4 * 1024 * 1024;
 
@@ -16,7 +16,7 @@ interface InTabResult {
 
 /** @returns the PDF or the HTML answer, or undefined when the tab cannot be scripted or the URL gave neither */
 export async function fetchInTab(tabId: number, url: string): Promise<InTabAnswer | undefined> {
-  const scripting = scriptingApi();
+  const scripting = readScriptingApi();
   if (!scripting) return undefined;
   try {
     const results = (await scripting.executeScript({

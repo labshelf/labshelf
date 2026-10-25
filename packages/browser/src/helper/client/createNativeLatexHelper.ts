@@ -5,7 +5,7 @@ import {
 } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
 import { statusFromReady, type RequestBody } from "./connection";
-import { compileStep, EditTracker, progressOf } from "./project";
+import { createCompileStep, UpdateTracker, deriveProgress } from "./project";
 import { NativeHelperSession, type NativeHelperSessionDeps } from "./nativeHelperSession";
 
 function compileBody({ projectId, main, mode, engine, editedFile, editedLine, haltOnError }: HelperCompileRequest): RequestBody {
@@ -16,7 +16,7 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
 }
 
 class NativeLatexHelper implements ILatexHelper {
-  private readonly edits = new EditTracker();
+  private readonly edits = new UpdateTracker();
   private readonly session: NativeHelperSession;
   private readonly logger: ILogger;
 
@@ -65,14 +65,14 @@ class NativeLatexHelper implements ILatexHelper {
 
   compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
     return this.logged("compile", { projectId: request.projectId }, async () =>
-      (await this.session.readySocket()).request(compileBody(request), compileStep(onProgress)));
+      (await this.session.readySocket()).request(compileBody(request), createCompileStep(onProgress)));
   }
 
   async cancel(projectId: string): Promise<void> { (await this.session.readySocket()).post({ type: "cancel", projectId }); }
 
   private async install(request: RequestBody, onProgress: HelperProgressListener): Promise<void> {
     const ready = await (await this.session.readySocket()).request(request, (m) => {
-      if (m.type === "progress") onProgress(progressOf(m));
+      if (m.type === "progress") onProgress(deriveProgress(m));
       return m.type === "ready" ? { done: m } : undefined;
     });
     this.session.status = statusFromReady(ready, PROTOCOL_VERSION);

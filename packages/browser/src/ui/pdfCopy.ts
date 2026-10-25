@@ -2,10 +2,10 @@
  * Words the popup's one-line PDF status, which the shared core PDF copy builds on: searching, found, or not found.
  */
 import { formatPdfSourceLabel } from "@labshelf/core";
-import type { PdfStatusData } from "../platform";
+import type { FindPdfReply } from "../platform";
 
 /** The status line while searching, when found, and when the search ended empty (the user is asked before saving). */
-export function pdfLineText(status: PdfStatusData | "searching"): string {
+export function describePdfLine(status: FindPdfReply | "searching"): string {
   if (status === "searching") return "Looking for the PDF…";
   if (status.found) return `PDF found · ${formatPdfSourceLabel(status.source)}`;
   const tried = status.miss?.tried ?? 0;

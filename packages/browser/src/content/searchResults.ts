@@ -1,16 +1,16 @@
 // Content script of search result pages: picks the page adapter for the current page and watches its results.
-import { isGoogleSearchUrl, googleResults, isPaperHit, readGoogleResult } from "./googleParse";
-import { isScholarUrl, readResult } from "./scholarParse";
+import { isGoogleSearchUrl, findGoogleHits, isPaperHit, readGoogleHit } from "./googleParse";
+import { isScholarUrl, readScholarHit } from "./scholarParse";
 import { closeMenu, askNoPdf, showMenu } from "@labshelf/core/dom";
 import {
   sendRuntime,
-  type FoldersData,
-  type LibraryRef,
-  type SaveOutcome,
-  type LookupData,
+  type FoldersReply,
+  type LibraryReference,
+  type WriteOutcome,
+  type LibraryFindReply,
   type SearchHit,
 } from "../platform";
-import { lookupItemFor } from "./searchHitIds";
+import { createLibraryFindItem } from "./searchHitIds";
 import {
   type IfNoPdf,
   PAPERS_DIR,
@@ -88,7 +88,7 @@ interface ResultButton {
   box: HTMLElement;
   main: HTMLButtonElement;
   caret: HTMLButtonElement;
-  saved?: Pick<LibraryRef, "folder" | "id" | "hasPdf">;
+  saved?: Pick<LibraryReference, "folder" | "id" | "hasPdf">;
 }
 
 /** Marks page elements the content script added or already handled. */
@@ -113,7 +113,7 @@ function setState(m: ResultButton, state: ButtonState, title: string): void {
 }
 
 /** Shows the button as "In LabShelf"; a click then opens the paper. */
-function markSaved(m: ResultButton, ref: Pick<LibraryRef, "folder" | "id" | "hasPdf">, detail: string): void {
+function markSaved(m: ResultButton, ref: Pick<LibraryReference, "folder" | "id" | "hasPdf">, detail: string): void {
   m.saved = ref;
   const title = ref.hasPdf
     ? `In your LabShelf library${detail ? ` — ${detail}` : ""}. Click to open it.`
@@ -129,7 +129,7 @@ async function save(m: ResultButton, folder?: string, ifNoPdf: IfNoPdf = "ask", 
   if (state === "saving" || state === "confirm") return;
   setState(m, "saving", "Saving to LabShelf — looking for the PDF…");
   try {
-    const r = await sendRuntime<SaveOutcome>({
+    const r = await sendRuntime<WriteOutcome>({
       type: "searchHit.save", hit: m.hit,
       ...(folder ? { folder } : {}), ifNoPdf, ...(retryPdf ? { retryPdf } : {}),
     });
@@ -160,9 +160,9 @@ function overlayRoot(): ShadowRoot {
 }
 
 async function openFolderMenu(m: ResultButton): Promise<void> {
-  let data: FoldersData;
+  let data: FoldersReply;
   try {
-    data = await sendRuntime<FoldersData>({ type: "library.folders" });
+    data = await sendRuntime<FoldersReply>({ type: "library.folders" });
   } catch {
     return;
   }
@@ -236,7 +236,7 @@ async function scan(page: SearchPage): Promise<void> {
   const fresh = page.results().map((r) => mount(page, r)).filter((m): m is ResultButton => !!m);
   if (!fresh.length) return;
   try {
-    const known = await sendRuntime<LookupData>({ type: "library.lookup", items: fresh.map((m) => lookupItemFor(m.hit)) });
+    const known = await sendRuntime<LibraryFindReply>({ type: "library.lookup", items: fresh.map((m) => createLibraryFindItem(m.hit)) });
     for (const [key, ref] of Object.entries(known)) {
       const m = mounted.get(key);
       if (m) markSaved(m, ref, "");
@@ -260,7 +260,7 @@ function watchResults(page: SearchPage): void {
 
 const SCHOLAR_PAGE: SearchPage = {
   results: () => [...document.querySelectorAll(".gs_r.gs_or")],
-  readHit: readResult,
+  readHit: readScholarHit,
   place(result, host) {
     // Scholar's right column; results without a PDF link get one built the same way.
     let column = result.querySelector(".gs_ggs .gs_ggsd");
@@ -279,9 +279,9 @@ const SCHOLAR_PAGE: SearchPage = {
 };
 
 const GOOGLE_PAGE: SearchPage = {
-  results: () => googleResults(document),
+  results: () => findGoogleHits(document),
   readHit(result) {
-    const hit = readGoogleResult(result);
+    const hit = readGoogleHit(result);
     return hit && isPaperHit(hit) ? hit : undefined;
   },
   place(result, host) {

@@ -10,8 +10,8 @@ import {
   type ShareSession,
   type TextRange,
 } from "@labshelf/core";
-import { takeOverTabLease, tabLeaseName, waitForTabLease, type TabLease } from "../storage";
-import type { CommentThreads, ReviewThread } from "./comments";
+import { updateTabLease, createTabLeaseName, watchTabLease, type TabLease } from "../storage";
+import type { CommentThreads, LocatedThread } from "./comments";
 
 const MODULE = "collab.liveComments";
 
@@ -31,7 +31,7 @@ function createLiveCommentThreads({ session, projectId, author, logger }: LiveCo
   const checkProject = (id: string): void => {
     if (id !== projectId) { throw new Error(`Project ${id} is not the shared project ${projectId}, so its comments cannot be used`); }
   };
-  const located = (thread: CommentThread): ReviewThread => {
+  const located = (thread: CommentThread): LocatedThread => {
     const range = comments.locate(thread);
     const text = comments.textOf(thread.file);
     return { ...thread, line: range === "detached" || text === undefined ? undefined : lineAt(text, range.start) };
@@ -139,7 +139,7 @@ export class ProjectShare {
     const waiting = this.waiting = new AbortController();
     this.options.notify();
     const { logger, shareId } = this.options;
-    waitForTabLease(this.leaseName(), waiting.signal).then(
+    watchTabLease(this.leaseName(), waiting.signal).then(
       (lease) => this.reopen(lease).catch((error: unknown) => logger.error(LOG_MODULE, error, { action: "reopen a share after the lease came free", shareId })),
       (error: unknown) => { if (!waiting.signal.aborted) { void logger.error(LOG_MODULE, error, { action: "wait for the share's tab lease", shareId }); } },
     ).finally(() => { if (this.waiting === waiting) { this.waiting = undefined; } });
@@ -149,7 +149,7 @@ export class ProjectShare {
   async takeOver(): Promise<void> {
     if (this.connection || this.closed) { return; }
     this.waiting?.abort();
-    await this.reopen(await takeOverTabLease(this.leaseName()));
+    await this.reopen(await updateTabLease(this.leaseName()));
   }
 
   /** Stops waiting, closes the connection and frees the lease; rejects when the close leaves an update unstored. */
@@ -165,7 +165,7 @@ export class ProjectShare {
   }
 
   private leaseName(): string {
-    return tabLeaseName(this.options.libraryId, this.options.shareId);
+    return createTabLeaseName(this.options.libraryId, this.options.shareId);
   }
 
   private async reopen(lease: TabLease): Promise<void> {

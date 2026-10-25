@@ -2,11 +2,11 @@
 import * as vscode from "vscode";
 
 import type { ILogger, PathOps, ProjectValueLeaf } from "@labshelf/core";
-import { owningProject, type ReadyProject } from "../buildRootDocument.js";
+import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
 
 /** What the providers read per request: the project list and the open library's logger. */
-export interface ValuesWorkspace {
+export interface ProjectValueWorkspace {
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "onDidChange">;
   logger(): ILogger | undefined;
 }
@@ -18,7 +18,7 @@ export class ProjectValues implements vscode.Disposable {
   private watchers: vscode.Disposable[] = [];
   private readonly subscription: vscode.Disposable;
 
-  constructor(private readonly workspace: ValuesWorkspace) {
+  constructor(private readonly workspace: ProjectValueWorkspace) {
     this.watch();
     this.subscription = workspace.projects.onDidChange(() => {
       this.cache.clear();
@@ -33,7 +33,7 @@ export class ProjectValues implements vscode.Disposable {
 
   /** The ready project that lists value files and owns the file as a source of its format. */
   sourceProject(file: string): ReadyProject | undefined {
-    const project = owningProject(this.workspace.projects, file);
+    const project = findOwningProject(this.workspace.projects, file);
     const listsValues = (project?.settings.values?.length ?? 0) > 0;
     return project && listsValues && this.paths.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
   }

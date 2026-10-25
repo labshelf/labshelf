@@ -1,8 +1,8 @@
-import { firstRunChoices } from '../../../src/library/node/pickLibraryRoot';
+import { listFirstRunChoices } from '../../../src/library/node/pickLibraryRoot';
 
-describe('firstRunChoices', () => {
+describe('listFirstRunChoices', () => {
   it('lists a LabShelf folder per sync folder, then the local one, then the two escape hatches', () => {
-    const choices = firstRunChoices(
+    const choices = listFirstRunChoices(
       [{ tool: 'dropbox', path: '/home/me/Dropbox' }, { tool: 'syncthing', path: '/home/me/Sync' }],
       '/home/me',
     );
@@ -17,11 +17,11 @@ describe('firstRunChoices', () => {
   });
 
   it('offers the local folder, a browse and the guide when nothing is detected', () => {
-    expect(firstRunChoices([], '/home/me').map((choice) => choice.kind)).toEqual(['folder', 'browse', 'guide']);
+    expect(listFirstRunChoices([], '/home/me').map((choice) => choice.kind)).toEqual(['folder', 'browse', 'guide']);
   });
 
   it('shows the full path for a sync folder outside the home folder', () => {
-    const [choice] = firstRunChoices([{ tool: 'onedrive', path: '/mnt/OneDrive' }], '/home/me');
+    const [choice] = listFirstRunChoices([{ tool: 'onedrive', path: '/mnt/OneDrive' }], '/home/me');
     expect(choice?.label).toBe('/mnt/OneDrive/LabShelf');
   });
 });

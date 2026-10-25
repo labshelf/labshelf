@@ -17,12 +17,12 @@ import {
 
 import type { AppContext } from "../../compositionRoot.js";
 import { UsageError, type Output } from "../usage.js";
-import { openDevTty, type CiteTty } from "./tty.js";
+import { openDevTty, type CitationTty } from "./tty.js";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { createNodeProjectReadCompositionRoot, readOptionalFile, writeFileAtomic } from "@labshelf/core/node";
 import { Terminal, Screen, type InputEvent } from "../../screen/index.js";
-import { theme, editText, textInput, type TextInputState } from "../../libraryUi/index.js";
+import { theme, updateText, createTextInput, type TextInputState } from "../../libraryUi/index.js";
 
 interface PickerState {
   query: TextInputState;
@@ -32,7 +32,7 @@ interface PickerState {
 
 type PickerStep = { kind: "state"; state: PickerState } | { kind: "pick"; paper: PaperRecord } | { kind: "cancel" };
 
-const initialPicker = (): PickerState => ({ query: textInput(), selected: 0 });
+const initialPicker = (): PickerState => ({ query: createTextInput(), selected: 0 });
 
 const label = (paper: PaperRecord): string =>
   [paper.citeKey, paper.title, ...(paper.authors ?? []), paper.year ?? ""].join(" ");
@@ -66,7 +66,7 @@ function stepPicker(papers: readonly PaperRecord[], state: PickerState, event: I
       default: break;
     }
   }
-  const query = editText(state.query, event);
+  const query = updateText(state.query, event);
   return { kind: "state", state: query ? { query, selected: 0 } : state };
 }
 
@@ -100,7 +100,7 @@ function drawPicker(papers: readonly PaperRecord[], state: PickerState, width: n
 }
 
 /** The terminal is restored before the promise settles, so the caller prints on a clean screen. */
-function pickPaper(papers: readonly PaperRecord[], tty: CiteTty): Promise<PaperRecord | undefined> {
+function pickPaper(papers: readonly PaperRecord[], tty: CitationTty): Promise<PaperRecord | undefined> {
   return new Promise((resolve) => {
     const terminal = new Terminal(tty.input, tty.output);
     let state: PickerState = initialPicker();
@@ -188,12 +188,12 @@ function parseFormat(value: string | boolean | undefined, project: ReadyProject 
  * @param tty the terminal to draw on; the controlling terminal when omitted
  * @returns the exit code: 1 when the picker is cancelled or the library is empty
  */
-export async function runCite(
+export async function runCitation(
   ctx: Pick<AppContext, "store" | "logger">,
   positionals: string[],
   flags: Record<string, string | boolean>,
   io: Output,
-  tty?: CiteTty,
+  tty?: CitationTty,
 ): Promise<number> {
   const papers: PaperRecord[] = [...ctx.store.snapshot.papers.values()]
     .map((entry) => entry.record).filter((record) => record.citeKey !== "");

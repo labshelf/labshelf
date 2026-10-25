@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { BuildDiagnostics } from "../../../../src/writing/build/buildProblems";
+import { BuildProblems } from "../../../../src/writing/build/buildProblems";
 import { LatexBuilds } from "../../../../src/writing/build/node/registerLatexBuild";
 import { reportToolchainMissing } from "../../../../src/writing/build/node/ensureToolchain";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
@@ -133,9 +133,9 @@ describe("LatexBuilds", () => {
   });
 });
 
-describe("BuildDiagnostics", () => {
+describe("BuildProblems", () => {
   it("replaces the files a project's previous build reported", () => {
-    const diagnostics = new BuildDiagnostics();
+    const diagnostics = new BuildProblems();
     const collection = (vscode.languages.createDiagnosticCollection as jest.Mock).mock.results.at(-1)!.value;
     diagnostics.publish("/p", [{ severity: "error", message: "Unknown command \\x.", hint: "Check the spelling.", file: "/p/a.tex", line: 3 }]);
     const [uri, [diagnostic]] = collection.set.mock.calls[0];
@@ -147,7 +147,7 @@ describe("BuildDiagnostics", () => {
   });
 
   it("keeps the problems of one root when another root of the project publishes", () => {
-    const diagnostics = new BuildDiagnostics();
+    const diagnostics = new BuildProblems();
     const collection = (vscode.languages.createDiagnosticCollection as jest.Mock).mock.results.at(-1)!.value;
     diagnostics.publish("/p/a/main.tex", [{ severity: "error", message: "in a", file: "/p/a/main.tex", line: 1 }]);
     diagnostics.publish("/p/b/main.tex", [{ severity: "error", message: "in b", file: "/p/b/main.tex", line: 1 }]);

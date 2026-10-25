@@ -1,17 +1,17 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ILogger } from "@labshelf/core";
-import { registerLinkHandler } from "../../../src/libraryUi/paperLink/attachPaperLink";
+import { registerPaperLinkHandler } from "../../../src/libraryUi/paperLink/attachPaperLink";
 
 const url = "chrome-extension://abc/libraryPage/index.html?link=%s";
 
 function setup(declaredInManifest: boolean, register = jest.fn()) {
   const log = { log: jest.fn() } as unknown as ILogger;
-  registerLinkHandler({ declaredInManifest, handlerUrl: url, register, log });
+  registerPaperLinkHandler({ declaredInManifest, handlerUrl: url, register, log });
   return { register, log };
 }
 
-describe("registerLinkHandler", () => {
+describe("registerPaperLinkHandler", () => {
   it("registers the page for web+labshelf when the manifest does not declare it", () => {
     expect(setup(false).register).toHaveBeenCalledWith("web+labshelf", url);
   });

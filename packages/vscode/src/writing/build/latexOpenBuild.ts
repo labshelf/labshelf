@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { WritingHost, WritingProjects } from "../session/index.js";
-import { autoCompileGate } from "./buildMode.js";
+import { createAutoCompileGate } from "./buildMode.js";
 
 export interface LatexOpenBuildDeps {
   context: Pick<vscode.ExtensionContext, "subscriptions">;
@@ -14,7 +14,7 @@ export interface LatexOpenBuildDeps {
 /** Builds each open LaTeX project once per session, so its PDF matches its sources without waiting for a save. */
 export function registerLatexOpenBuild(deps: LatexOpenBuildDeps): void {
   const built = new Set<string>();
-  const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
+  const autoCompile = createAutoCompileGate(() => deps.host.current()?.logger);
   const buildOpened = (): void => {
     const open = new Set((vscode.workspace.workspaceFolders ?? []).map((folder) => folder.uri.fsPath));
     for (const project of deps.projects.list()) {

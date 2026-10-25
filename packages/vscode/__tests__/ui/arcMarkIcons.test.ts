@@ -6,11 +6,11 @@ import { join, resolve } from "node:path";
 import * as vscode from "vscode";
 import { ARC_PROGRESSES, ARC_TONES, ARC_TONE_COLORS, renderArcMarkSvg } from "@labshelf/core";
 
-import { arcIcons } from "../../src/ui";
+import { createArcIcons } from "../../src/ui";
 
-describe("arcIcons", () => {
+describe("createArcIcons", () => {
   it("returns the light and dark file of a tone and progress under the extension's out/marks/", () => {
-    const icon = arcIcons(vscode.Uri.file("/ext"))("warn", "half");
+    const icon = createArcIcons(vscode.Uri.file("/ext"))("warn", "half");
     expect(icon.light.fsPath).toBe("/ext/out/marks/warn-half-light.svg");
     expect(icon.dark.fsPath).toBe("/ext/out/marks/warn-half-dark.svg");
   });

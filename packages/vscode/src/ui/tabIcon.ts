@@ -8,7 +8,7 @@ import * as vscode from 'vscode';
  * The light/dark icon pair to assign to a WebviewPanel's iconPath.
  * @returns URIs of the blue chevron SVGs under media/
  */
-export function labshelfTabIcon(extensionUri: vscode.Uri): { light: vscode.Uri; dark: vscode.Uri } {
+export function createTabIcon(extensionUri: vscode.Uri): { light: vscode.Uri; dark: vscode.Uri } {
   return {
     light: vscode.Uri.joinPath(extensionUri, 'media', 'labshelf-tab-light.svg'),
     dark: vscode.Uri.joinPath(extensionUri, 'media', 'labshelf-tab-dark.svg'),

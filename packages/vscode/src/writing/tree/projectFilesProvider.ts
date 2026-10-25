@@ -20,7 +20,7 @@ interface ProjectFilesDeps {
 
 const isFolder = (type: vscode.FileType): boolean => (type & vscode.FileType.Directory) !== 0;
 
-export function projectFolderUri(project: ReadyProject): vscode.Uri {
+export function createProjectFolderUri(project: ReadyProject): vscode.Uri {
   return vscode.Uri.file(project.folder);
 }
 
@@ -42,7 +42,7 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   async getChildren(parent?: ProjectFileNode): Promise<ProjectFileNode[]> {
     const project = this.deps.session.project;
     if (!project) { return []; }
-    const folder = parent?.uri ?? projectFolderUri(project);
+    const folder = parent?.uri ?? createProjectFolderUri(project);
     try {
       const entries = await vscode.workspace.fs.readDirectory(folder);
       return listVisibleEntries(entries.map(([name, type]) => ({ name, type, folder: isFolder(type) })))
@@ -56,7 +56,7 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   getTreeItem(node: ProjectFileNode): vscode.TreeItem {
     const project = this.deps.session.project;
     const folder = isFolder(node.type);
-    const path = project ? relativePath(projectFolderUri(project), node.uri) : node.uri.path;
+    const path = project ? relativePath(createProjectFolderUri(project), node.uri) : node.uri.path;
     const { kind, node: row } = createProjectFileRow(path, folder, { format: project?.settings.format, main: project?.main });
     const item = new vscode.TreeItem(row.label, folder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.resourceUri = node.uri;

@@ -1,7 +1,7 @@
 // Declares a tab kind of the library page's workspace, the module its body chunk exports and what a body receives.
 import type { ILogger, IconName, LibraryFileSystem, SelectionHub, ShareHost } from "@labshelf/core";
 import type { EditorTabBody } from "@labshelf/core/dom";
-import type { PageSharing } from "../../collab";
+import type { PageShare } from "../../collab";
 import type { HelperProject } from "../../helper/project";
 import type { PagePrefs } from "../prefs";
 import type { CommentThreads } from "../../collab/comments";
@@ -28,7 +28,7 @@ export interface ProjectServices {
   /** The open project's comment threads, shared by every tab. */
   comments: CommentThreads;
   /** The shared projects of this page: their connections and the share workflows. */
-  sharing: PageSharing;
+  sharing: PageShare;
 }
 
 export interface TabContext {

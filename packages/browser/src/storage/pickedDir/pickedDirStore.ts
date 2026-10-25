@@ -26,7 +26,7 @@ function open(): Promise<IDBPDatabase<FolderSchema>> {
   return db;
 }
 
-export async function loadPickedFolder(): Promise<FileSystemDirectoryHandle | undefined> {
+export async function readPickedDir(): Promise<FileSystemDirectoryHandle | undefined> {
   const handle = await (await open()).get(STORE, KEY);
   return typeof handle === "string" ? undefined : handle;
 }
@@ -35,12 +35,12 @@ export async function loadPickedFolder(): Promise<FileSystemDirectoryHandle | un
 export async function loadPickedFolderId(): Promise<string | undefined> {
   const id = await (await open()).get(STORE, ID_KEY);
   if (typeof id === "string") return id;
-  return backfillPickedFolderId(await loadPickedFolder(), (newId) => saveId(newId));
+  return backfillPickedFolderId(await readPickedDir(), (newId) => saveId(newId));
 }
 
 /** Picking the folder already stored keeps its library id, so its share keys stay reachable; another folder gets a fresh id. */
-export async function savePickedFolder(handle: FileSystemDirectoryHandle): Promise<void> {
-  const previous = await loadPickedFolder();
+export async function writePickedDir(handle: FileSystemDirectoryHandle): Promise<void> {
+  const previous = await readPickedDir();
   const kept = previous !== undefined && (await previous.isSameEntry(handle)) ? await (await open()).get(STORE, ID_KEY) : undefined;
   const db = await open();
   await db.put(STORE, handle, KEY);

@@ -7,9 +7,9 @@ import type { PaperEntry, ReadingStatus } from "@labshelf/core";
 import { createPaperFiles, derivePaperUrl } from "@labshelf/core";
 
 import { openExternal, runEditor } from "../../../platform/index.js";
-import { truncate } from "../../../screen/index.js";
+import { formatTruncated } from "../../../screen/index.js";
 import type { App } from "../app.js";
-import { openPrompt } from "../input/index.js";
+import { openAsk } from "../input/index.js";
 
 export function openPdf(app: App, paper: PaperEntry): void {
   if (paper.record.hasPdf === false) {
@@ -19,17 +19,17 @@ export function openPdf(app: App, paper: PaperEntry): void {
   }
   const viewer = process.env["LABSHELF_PDF_VIEWER"] || app.ctx.config.terminal?.pdfViewer;
   openExternal(createPaperFiles(paper.record.path, path.join).pdf, viewer);
-  app.taskStatus.notify(`Opened ${truncate(paper.record.title, 60)}`);
+  app.taskStatus.notify(`Opened ${formatTruncated(paper.record.title, 60)}`);
 }
 
-export function needPapers(app: App): PaperEntry[] {
+export function readSelectedPapers(app: App): PaperEntry[] {
   const papers = app.listModel.targetPapers();
   if (!papers.length && app.focus === "folders") { app.taskStatus.notify("Move to the papers (l) or select some first", "warn"); }
   return papers;
 }
 
-export function setStatus(app: App, status: ReadingStatus): void {
-  const papers = needPapers(app);
+export function setReadingStatus(app: App, status: ReadingStatus): void {
+  const papers = readSelectedPapers(app);
   if (!papers.length) { return; }
   void app.taskStatus.task("status", "saving", async () => {
     const outcome = await app.ctx.papers.setStatus(papers.map((p) => p.record.id), status);
@@ -38,20 +38,20 @@ export function setStatus(app: App, status: ReadingStatus): void {
   });
 }
 
-export function promptTags(app: App): void {
-  const papers = needPapers(app);
+export function askTags(app: App): void {
+  const papers = readSelectedPapers(app);
   if (!papers.length) { return; }
   if (papers.length === 1) {
     const record = papers[0]!.record;
-    openPrompt(app, "tags", `Tags of ${truncate(record.title, 50)}`, (record.tags ?? []).join(", ") + (record.tags?.length ? ", " : ""),
+    openAsk(app, "tags", `Tags of ${formatTruncated(record.title, 50)}`, (record.tags ?? []).join(", ") + (record.tags?.length ? ", " : ""),
       "Comma-separated; Tab completes existing tags", [record.id]);
   } else {
-    openPrompt(app, "tagsBatch", `Tags of ${papers.length} papers`, "+", "+tag adds, -tag removes; Tab completes", papers.map((p) => p.record.id));
+    openAsk(app, "tagsBatch", `Tags of ${papers.length} papers`, "+", "+tag adds, -tag removes; Tab completes", papers.map((p) => p.record.id));
   }
 }
 
-export function editNote(app: App): void {
-  const paper = needPapers(app)[0];
+export function updateNote(app: App): void {
+  const paper = readSelectedPapers(app)[0];
   if (!paper) { return; }
   const record = paper.record;
   const file = path.join(os.tmpdir(), `labshelf-note-${record.id.replace(/[^\w.-]/g, "_")}.md`);

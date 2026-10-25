@@ -32,7 +32,7 @@ export type ProjectAction = "browseTemplates" | "allProjects" | "newBlank" | "ad
 export type ProjectFolderAction = "new" | "rename" | "delete";
 
 /** What the project menu asks for beyond the project commands. */
-export type ProjectEdit = "move" | "archive";
+export type ProjectUpdate = "move" | "archive";
 
 export type SidebarToHost =
   | { type: "ready" }
@@ -53,7 +53,7 @@ export type SidebarToHost =
   | { type: "projectCommand"; id: string; command: string }
   | { type: "projectAction"; action: ProjectAction }
   | { type: "projectFolder"; action: ProjectFolderAction; path: string }
-  | { type: "projectEdit"; id: string; edit: ProjectEdit }
+  | { type: "projectEdit"; id: string; edit: ProjectUpdate }
   | ProjectTreeMessage
   | SidebarSpaceMessage;
 

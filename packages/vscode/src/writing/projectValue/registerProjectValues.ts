@@ -1,11 +1,11 @@
 // Registers value completion and hover for `\lsvalue` in LaTeX and json() paths in Typst.
 import * as vscode from "vscode";
 
-import { ProjectValues, type ValuesWorkspace } from "./projectValues.js";
-import { ValueHoverProvider } from "./projectValueHover.js";
+import { ProjectValues, type ProjectValueWorkspace } from "./projectValues.js";
+import { ProjectValueHoverProvider } from "./projectValueHover.js";
 import { findLatexProjectValueStart, findTypstProjectValuePrefix, deriveProjectValueMembers, type ProjectValueLeaf } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
-import { listedValueFile } from "./typstProjectValueFile.js";
+import { findProjectValueFile } from "./typstProjectValueFile.js";
 
 function item(label: string, leaf: ProjectValueLeaf | undefined, file: string, range: vscode.Range): vscode.CompletionItem {
   const completion = new vscode.CompletionItem(label, leaf ? vscode.CompletionItemKind.Value : vscode.CompletionItemKind.Field);
@@ -16,7 +16,7 @@ function item(label: string, leaf: ProjectValueLeaf | undefined, file: string, r
   return completion;
 }
 
-export class ValueCompletionProvider implements vscode.CompletionItemProvider {
+export class ProjectValueCompletionProvider implements vscode.CompletionItemProvider {
   constructor(private readonly values: ProjectValues) {}
 
   async provideCompletionItems(
@@ -38,7 +38,7 @@ export class ValueCompletionProvider implements vscode.CompletionItemProvider {
 
   private async typstMembers(project: ReadyProject, document: vscode.TextDocument, position: vscode.Position) {
     const typing = findTypstProjectValuePrefix(document.getText(), document.offsetAt(position));
-    const file = typing && listedValueFile(this.values.paths, project, document.uri.fsPath, typing.source);
+    const file = typing && findProjectValueFile(this.values.paths, project, document.uri.fsPath, typing.source);
     if (!typing || file === undefined) { return undefined; }
     const range = new vscode.Range(document.positionAt(typing.start), position);
     return deriveProjectValueMembers(await this.values.leaves(project), file, typing.parent).map((member) => item(member.name, member.leaf, file, range));
@@ -51,10 +51,10 @@ const SOURCES = [
   { selector: { scheme: "file", pattern: "**/*.typ" }, triggers: ["."] },
 ];
 
-export function registerWritingValues(context: vscode.ExtensionContext, workspace: ValuesWorkspace): void {
+export function registerProjectValues(context: vscode.ExtensionContext, workspace: ProjectValueWorkspace): void {
   const values = new ProjectValues(workspace);
-  const completion = new ValueCompletionProvider(values);
-  const hover = new ValueHoverProvider(values);
+  const completion = new ProjectValueCompletionProvider(values);
+  const hover = new ProjectValueHoverProvider(values);
   context.subscriptions.push(values);
   for (const { selector, triggers } of SOURCES) {
     context.subscriptions.push(

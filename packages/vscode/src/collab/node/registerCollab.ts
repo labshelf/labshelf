@@ -18,8 +18,8 @@ import {
   showRefusedOffer,
   type CollabHost,
   reportFailure,
-  errorText,
-  projectName,
+  formatErrorText,
+  formatProjectName,
 } from "./collabHost.js";
 import {
   OFFER_RELAY_COMMAND,
@@ -27,7 +27,7 @@ import {
   registerProjectDialogCommands,
   registerShareStatusBar,
   WITHDRAW_RELAY_COMMAND,
-  withdrawRelay,
+  leaveRelay,
   JOIN_COMMAND,
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
@@ -55,12 +55,12 @@ function resumeShares(host: CollabHost): vscode.Disposable {
   const resumer = createShareResumer(host.ports, {
     missingKey: (project) => {
       const join = "Join";
-      void vscode.window.showInformationMessage(`Shared project "${projectName(project)}": paste the invite to reconnect.`, join).then((choice) => {
+      void vscode.window.showInformationMessage(`Shared project "${formatProjectName(project)}": paste the invite to reconnect.`, join).then((choice) => {
         if (choice === join) { void vscode.commands.executeCommand(JOIN_COMMAND); }
       });
     },
     failed: (project, error) => {
-      void vscode.window.showErrorMessage(`LabShelf could not reconnect the shared project "${projectName(project)}": ${errorText(error)}`);
+      void vscode.window.showErrorMessage(`LabShelf could not reconnect the shared project "${formatProjectName(project)}": ${formatErrorText(error)}`);
     },
   });
   const subscription = host.projects.onDidChange(() => void resumer.sync());
@@ -149,7 +149,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
 }
 
 /** Returns the collaboration host, which the desktop sharing host shares projects over. */
-export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
+export function registerCollab(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
   const noticeFailures = createStoreFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
@@ -162,7 +162,7 @@ export function registerCollaboration(context: vscode.ExtensionContext, controll
   context.subscriptions.push(
     registerProjectDialogCommands(host.requireLibrary),
     vscode.commands.registerCommand(OFFER_RELAY_COMMAND, () => offerRelay(host)),
-    vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => withdrawRelay(host)),
+    vscode.commands.registerCommand(WITHDRAW_RELAY_COMMAND, () => leaveRelay(host)),
     resumeShares(host),
     host.shares.onDidChange(noticeFailures),
   );

@@ -3,23 +3,23 @@
  * @jest-environment jsdom
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
-import { RESOLVER_TEMPLATE_ERROR, judgeResolverTemplate, savableResolvers } from "../../src/options/resolverSection";
+import { RESOLVER_TEMPLATE_ERROR, checkResolverTemplate, listWritableResolvers } from "../../src/options/resolverSection";
 
-describe("judgeResolverTemplate", () => {
+describe("checkResolverTemplate", () => {
   it("accepts an http(s) address with {doi} and says nothing for an empty field", () => {
-    expect(judgeResolverTemplate("https://host.example/find/{doi}")).toBeUndefined();
-    expect(judgeResolverTemplate("  ")).toBeUndefined();
+    expect(checkResolverTemplate("https://host.example/find/{doi}")).toBeUndefined();
+    expect(checkResolverTemplate("  ")).toBeUndefined();
   });
 
   it("reports an error for text without {doi} or without an http(s) scheme", () => {
-    expect(judgeResolverTemplate("https://host.example/find")).toBe(RESOLVER_TEMPLATE_ERROR);
-    expect(judgeResolverTemplate("host.example/{doi}")).toBe(RESOLVER_TEMPLATE_ERROR);
+    expect(checkResolverTemplate("https://host.example/find")).toBe(RESOLVER_TEMPLATE_ERROR);
+    expect(checkResolverTemplate("host.example/{doi}")).toBe(RESOLVER_TEMPLATE_ERROR);
   });
 });
 
-describe("savableResolvers", () => {
+describe("listWritableResolvers", () => {
   it("drops invalid rows, keeps the order and trims the fields", () => {
-    expect(savableResolvers([
+    expect(listWritableResolvers([
       { name: " A ", template: " https://a.example/{doi} ", enabled: true },
       { name: "bad", template: "nope", enabled: true },
       { name: "", template: "https://b.example/?q={doi}", enabled: false },

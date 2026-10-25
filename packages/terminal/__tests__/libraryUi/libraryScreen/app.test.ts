@@ -12,19 +12,19 @@ import {
 jest.mock("../../../src/platform/system", () => ({
   ...jest.requireActual<typeof import("../../../src/platform/system")>("../../../src/platform/system"),
   openExternal: jest.fn(),
-  revealInFileManager: jest.fn(),
+  showInFileSystem: jest.fn(),
   copyToClipboard: jest.fn(),
   runEditor: jest.fn(),
-  trashSupported: jest.fn(),
+  canTrash: jest.fn(),
   moveToTrash: jest.fn(),
 }));
 
 const mocked = {
   openExternal: jest.mocked(system.openExternal),
-  revealInFileManager: jest.mocked(system.revealInFileManager),
+  showInFileSystem: jest.mocked(system.showInFileSystem),
   copyToClipboard: jest.mocked(system.copyToClipboard),
   runEditor: jest.mocked(system.runEditor),
-  trashSupported: jest.mocked(system.trashSupported),
+  canTrash: jest.mocked(system.canTrash),
   moveToTrash: jest.mocked(system.moveToTrash),
 };
 
@@ -36,10 +36,10 @@ let app: App;
 
 beforeEach(async () => {
   mocked.openExternal.mockReset();
-  mocked.revealInFileManager.mockReset();
+  mocked.showInFileSystem.mockReset();
   mocked.copyToClipboard.mockReset().mockResolvedValue("system");
   mocked.runEditor.mockReset().mockReturnValue(true);
-  mocked.trashSupported.mockReset().mockReturnValue(true);
+  mocked.canTrash.mockReset().mockReturnValue(true);
   mocked.moveToTrash.mockReset().mockRejectedValue(new Error("the real trash must never be used by the tests"));
   ({ tmp, root } = await makeTmpRoot());
   await seedLibrary(root);

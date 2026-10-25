@@ -58,7 +58,7 @@ export function parseAuthorsLine(text: string): AuthorsLine {
  * Reads one result block; undefined for blocks that are not results
  * (author profiles, "related searches").
  */
-export function readResult(el: Element): SearchHit | undefined {
+export function readScholarHit(el: Element): SearchHit | undefined {
   const heading = el.querySelector("h3.gs_rt");
   if (!heading) return undefined;
   const titleNode = heading.cloneNode(true) as Element;

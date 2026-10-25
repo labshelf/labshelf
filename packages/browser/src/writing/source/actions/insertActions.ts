@@ -1,10 +1,10 @@
 // Prompts for a symbol or a table size and inserts it into the source editor.
 import { MATH_SYMBOLS, MAX_TABLE_SIDE, parseTableSize, deriveSymbolSource, createTableSnippet } from "@labshelf/core";
 import { askInputBox, pickQuickEntry, type QuickPickEntry } from "@labshelf/core/dom";
-import type { SourceEdits, SourceLanguage } from "../sourceUpdates";
+import type { SourceUpdates, SourceLanguage } from "../sourceUpdates";
 
 /** Every symbol as a pick item, a category heading before its first one. */
-export function symbolEntries(language: SourceLanguage): QuickPickEntry<string>[] {
+export function listSymbolEntries(language: SourceLanguage): QuickPickEntry<string>[] {
   const entries: QuickPickEntry<string>[] = [];
   let category: string | undefined;
   for (const symbol of MATH_SYMBOLS) {
@@ -18,12 +18,12 @@ export function symbolEntries(language: SourceLanguage): QuickPickEntry<string>[
   return entries;
 }
 
-export async function insertSymbol(edits: SourceEdits, language: SourceLanguage): Promise<void> {
-  const source = await pickQuickEntry(symbolEntries(language), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
+export async function addSymbol(edits: SourceUpdates, language: SourceLanguage): Promise<void> {
+  const source = await pickQuickEntry(listSymbolEntries(language), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
   if (source !== undefined) edits.insertText(source);
 }
 
-export async function insertTable(edits: SourceEdits, language: SourceLanguage): Promise<void> {
+export async function addTable(edits: SourceUpdates, language: SourceLanguage): Promise<void> {
   const answer = await askInputBox({
     title: "Insert Table",
     prompt: "Columns x rows",

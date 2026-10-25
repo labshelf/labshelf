@@ -10,6 +10,6 @@ export interface LibraryNode {
 }
 
 /** Builds the node that represents papers/ itself. */
-export function rootNode(rootDir: string): LibraryNode {
+export function createLibraryRootNode(rootDir: string): LibraryNode {
   return { label: ROOT_LABEL, dirPath: rootDir, isRoot: true };
 }

@@ -5,10 +5,10 @@ import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/project-search.css";
 import { findElement, mountProjectSearch } from "@labshelf/core/dom";
 import type { HostToSearch, SearchToHost, SearchTransport } from "@labshelf/core";
-import { webviewTransport } from "../../../webview/index.js";
+import { createWebviewTransport } from "../../../webview/index.js";
 
 function createSearchChannel(): SearchTransport {
-  return webviewTransport<SearchToHost, HostToSearch>(acquireVsCodeApi());
+  return createWebviewTransport<SearchToHost, HostToSearch>(acquireVsCodeApi());
 }
 
 mountProjectSearch(findElement("root"), createSearchChannel());

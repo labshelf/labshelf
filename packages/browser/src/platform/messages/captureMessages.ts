@@ -1,6 +1,6 @@
 // Declares the runtime messages that capture papers and their PDFs, with their replies.
 import type { IfNoPdf, PdfAccess, PdfMiss } from "@labshelf/core";
-import type { LibraryRef } from "./libraryMessages";
+import type { LibraryReference } from "./libraryMessages";
 
 export type CaptureMessage =
   /** Reads the paper shown in a tab (the popup's first call). */
@@ -34,10 +34,10 @@ export interface DraftView {
   authors: string[];
   year?: number;
   venue?: string;
-  existing?: LibraryRef;
+  existing?: LibraryReference;
 }
 
-export interface PdfStatusData {
+export interface FindPdfReply {
   found: boolean;
   /** Who supplied it: page, scholar, publisher, arxiv, crossref, unpaywall, custom. */
   source?: string;
@@ -45,7 +45,7 @@ export interface PdfStatusData {
   miss?: PdfMiss;
 }
 
-export interface SavedPaperData extends LibraryRef {
+export interface WrittenPaperReply extends LibraryReference {
   status: "saved";
   title: string;
   /** Resolver that supplied the PDF, or null when the paper was saved without one. */
@@ -62,10 +62,10 @@ interface NoPdfData {
 }
 
 /** Reply to capture.save, capture.tab and searchHit.save. */
-export type SaveOutcome = SavedPaperData | NoPdfData;
+export type WriteOutcome = WrittenPaperReply | NoPdfData;
 
 /** Reply to capture.attachPdf and paper.findPdf. */
-export interface AttachPdfData {
+export interface AttachPdfReply {
   id: string;
   /** paper.pdf was written now. */
   attached: boolean;
@@ -82,7 +82,7 @@ export interface AttachPdfData {
  * Reply to paper.askAuthor: "mail" opened the request email, "article" opened the article page because no author
  * address was found, "none" means the paper has neither an address nor a page to open.
  */
-export interface AskAuthorData {
+export interface CopyRequestReply {
   id: string;
   opened: "mail" | "article" | "none";
 }

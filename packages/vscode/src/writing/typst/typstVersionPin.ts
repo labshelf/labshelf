@@ -24,7 +24,7 @@ function warnOnce(project: ReadyProject, recorded: string): void {
 }
 
 /** Called after every successful Typst build; writes labshelf.yaml only when the recorded version differs. */
-export async function recordTypstVersion(project: ReadyProject, deps: VersionPinDeps): Promise<void> {
+export async function writeTypstVersion(project: ReadyProject, deps: VersionPinDeps): Promise<void> {
   const recorded = project.settings.typst;
   if (recorded === TYPST_VERSION) { return; }
   const logger = deps.host.current()?.logger;

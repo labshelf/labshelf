@@ -4,9 +4,9 @@ import * as vscode from 'vscode';
 import type { ImportOutcome, PaperRecord } from '@labshelf/core';
 import { addPaperByIdentifier } from '../../src/command/importCommands';
 import type { ImportServices } from '../../src/command/importProgress';
-import { queueTextLayers } from '../../src/command/textLayerQueue';
+import { addTextLayerJobs } from '../../src/command/textLayerQueue';
 
-jest.mock('../../src/command/textLayerQueue', () => ({ queueTextLayers: jest.fn(async () => undefined) }));
+jest.mock('../../src/command/textLayerQueue', () => ({ addTextLayerJobs: jest.fn(async () => undefined) }));
 
 const paper: PaperRecord = { id: 'lee2020study', title: 'A Study', path: '/lib/papers/lee2020study', citeKey: 'lee2020study', status: 'unread', hasPdf: true };
 
@@ -30,7 +30,7 @@ describe('addPaperByIdentifier', () => {
     expect(s.importer.importFromNetwork).toHaveBeenCalledWith('10.1000/x');
     expect((vscode.window.withProgress as jest.Mock).mock.calls[0]![0].location).toBe(vscode.ProgressLocation.Notification);
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('LabShelf: Added "A Study"');
-    expect(queueTextLayers).toHaveBeenCalledWith(s.textLayers, [paper], expect.objectContaining({ mode: 'ocr' }));
+    expect(addTextLayerJobs).toHaveBeenCalledWith(s.textLayers, [paper], expect.objectContaining({ mode: 'ocr' }));
   });
 
   it('warns with the reason when the paper cannot be found', async () => {

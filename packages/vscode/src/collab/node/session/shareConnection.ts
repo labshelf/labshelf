@@ -25,7 +25,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { watchConflictDismissals } from "./dismissalWatch.js";
 
-export function desktopMirrorFactory(libraryRoot: string, logger: ILogger, isEditorOwned: (folder: string, path: string) => boolean): MirrorFactory {
+export function createDesktopMirrorFactory(libraryRoot: string, logger: ILogger, isEditorOwned: (folder: string, path: string) => boolean): MirrorFactory {
   const candidates = new Map<string, Set<string>>();
   const held = (folder: string): Set<string> => {
     if (!candidates.has(folder)) candidates.set(folder, new Set());
@@ -64,6 +64,6 @@ export function connectDesktopShare(options: ConnectOptions, start: ShareStart):
     shareId, shareKey, relays, name, logger,
     storage: createNodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
     projects: { context: createNodeProjectCatalogCompositionRoot(logger), libraryRoot },
-    startMirror: desktopMirrorFactory(libraryRoot, logger, (folder, path) => options.isEditorOwned(folder, path)),
+    startMirror: createDesktopMirrorFactory(libraryRoot, logger, (folder, path) => options.isEditorOwned(folder, path)),
   }, start);
 }

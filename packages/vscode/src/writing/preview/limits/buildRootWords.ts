@@ -9,7 +9,7 @@ interface RootWordsDeps {
 }
 
 /** `root` is the project-relative path of the root file. A Typst root counts as its own file, since its includes are not followed. */
-export async function rootWords(deps: RootWordsDeps, project: ReadyProject, root: string): Promise<number> {
+export async function countBuildRootWords(deps: RootWordsDeps, project: ReadyProject, root: string): Promise<number> {
   const countUpTo = project.settings.check?.countUpTo ?? "references";
   const reader = deps.readerFor(project.folder);
   if (project.settings.format === "typst") {

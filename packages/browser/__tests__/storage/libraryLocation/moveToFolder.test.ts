@@ -1,14 +1,14 @@
 import type { ILogger } from "@labshelf/core";
-import { IndexedDbFileSystem } from "../../../src/storage/idbFileSystem";
+import { IdbFileSystem } from "../../../src/storage/idbFileSystem";
 import { MoveToFolderError, countPapers, moveToFolder } from "../../../src/storage/libraryLocation";
 import { clearFakeDb, fakeFiles, putFile, textAt } from "../../support/fakeIdb";
 import { MemoryFolderFs } from "./memoryFolderFs";
 
 jest.mock("webextension-polyfill", () => ({}));
-jest.mock("../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: async () => undefined, error: jest.fn(async () => undefined) };
-const from = new IndexedDbFileSystem();
+const from = new IdbFileSystem();
 let to: MemoryFolderFs;
 
 beforeEach(() => {

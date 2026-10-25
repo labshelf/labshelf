@@ -7,7 +7,7 @@ import { EditorView } from "@codemirror/view";
 import type { ILogger } from "@labshelf/core";
 import type { HelperChange } from "@labshelf/core/helper";
 import { mountSourceEditor, type SourceFileAccess } from "../../../src/writing/editor/mountSourceEditor";
-import { revealInOpenEditor } from "../../../src/writing/session";
+import { showInOpenEditor } from "../../../src/writing/session";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
@@ -52,7 +52,7 @@ describe("source editor", () => {
 
   it("selects the line an outline click asks for", async () => {
     const { editor, view } = await mount("a\nbb\nccc\n");
-    revealInOpenEditor("p", "main.tex", 1);
+    showInOpenEditor("p", "main.tex", 1);
     expect(view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to)).toBe("bb");
     await editor.dispose();
   });

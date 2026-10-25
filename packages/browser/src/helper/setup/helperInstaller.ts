@@ -9,7 +9,7 @@ const ASSET_BY_OS: Record<string, string> = {
 };
 
 /** The installer for `os` (a `runtime.getPlatformInfo()` value); other systems get the releases page. */
-export function helperDownloadUrl(os: string): string {
+export function createHelperDownloadUrl(os: string): string {
   const asset = ASSET_BY_OS[os];
   return asset ? `${RELEASES}/download/${asset}` : RELEASES;
 }

@@ -1,14 +1,14 @@
 // Pins the library file system over a picked folder: nested paths, missing entries, renames and refused access.
-import { DirectoryFileSystem } from "../../../src/storage/pickedDir/dirFileSystem";
+import { DirFileSystem } from "../../../src/storage/pickedDir/dirFileSystem";
 import { FakeDir } from "../../support/fakeDirectoryHandle";
 
 function setup(caseInsensitive = false) {
   const root = new FakeDir("Library", caseInsensitive);
-  const fs = new DirectoryFileSystem(async () => root as unknown as FileSystemDirectoryHandle);
+  const fs = new DirFileSystem(async () => root as unknown as FileSystemDirectoryHandle);
   return { root, fs };
 }
 
-describe("DirectoryFileSystem", () => {
+describe("DirFileSystem", () => {
   it("writes into folders it creates and reads the bytes back", async () => {
     const { root, fs } = setup();
     await fs.writeText("papers/ml/smith2020/metadata.yaml", "title: X");
@@ -71,7 +71,7 @@ describe("DirectoryFileSystem", () => {
   });
 
   it("passes on the refusal of a folder the browser no longer lets it use", async () => {
-    const fs = new DirectoryFileSystem(async () => { throw new Error("LabShelf may not use the folder"); });
+    const fs = new DirFileSystem(async () => { throw new Error("LabShelf may not use the folder"); });
     await expect(fs.readText("a.txt")).rejects.toThrow("may not use the folder");
     await expect(fs.writeText("a.txt", "x")).rejects.toThrow("may not use the folder");
   });

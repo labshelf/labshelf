@@ -2,9 +2,9 @@
 import type { ILogger } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
-import { readerUrl } from "../../reader/service";
-import { listAllRecords } from "../../storage";
-import { openLinkParam } from "./openPaperLinkParam";
+import { createReaderUrl } from "../../reader/service";
+import { listCachedPaperRecords } from "../../storage";
+import { openPaperLinkParam } from "./openPaperLinkParam";
 
 const LINK_SCHEME = "web+labshelf";
 
@@ -17,7 +17,7 @@ interface ProtocolRegistration {
 }
 
 /** Never throws: a browser that refuses the registration only loses the click-through. */
-export function registerLinkHandler(reg: ProtocolRegistration): void {
+export function registerPaperLinkHandler(reg: ProtocolRegistration): void {
   if (reg.declaredInManifest) return;
   try {
     reg.register(LINK_SCHEME, reg.handlerUrl);
@@ -29,17 +29,17 @@ export function registerLinkHandler(reg: ProtocolRegistration): void {
 }
 
 /** Opens the page's `?link=` target, then makes sure the browser sends web+labshelf: links here. */
-export function attachLinkHandling(log: ILogger): void {
+export function attachPaperLinkHandling(log: ILogger): void {
   const handlerUrl = `${bx.runtime.getURL("libraryPage/index.html")}?link=%s`;
-  registerLinkHandler({
+  registerPaperLinkHandler({
     declaredInManifest: Boolean((bx.runtime.getManifest() as { protocol_handlers?: unknown }).protocol_handlers),
     handlerUrl,
     register: (scheme, url) => navigator.registerProtocolHandler(scheme, url),
     log,
   });
-  void openLinkParam(location.search, {
-    listRecords: listAllRecords,
-    goToReader: (paperId, page) => location.replace(readerUrl(paperId, page)),
+  void openPaperLinkParam(location.search, {
+    listRecords: listCachedPaperRecords,
+    goToReader: (paperId, page) => location.replace(createReaderUrl(paperId, page)),
     notifyError: (message) => { showToast(message, "error"); },
     log,
   });

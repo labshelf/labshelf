@@ -7,7 +7,7 @@ import {
   type GalleryHostDeps,
   createNonce,
 } from "@labshelf/core";
-import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
 import type { TemplateGalleryDeps } from "./index.js";
 
 /** <extension>/dist/templates, for localResourceRoots. */
@@ -18,8 +18,8 @@ function galleryBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
 async function galleryHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = galleryBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "templates.js");
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: "Templates", heading: "Template gallery bundle not built", file: "dist/templates/templates.js", reopen: "the gallery" });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: "Templates", heading: "Template gallery bundle not built", file: "dist/templates/templates.js", reopen: "the gallery" });
   }
   const nonce = createNonce();
   // Thumbnails arrive as data: URIs, so images allow data: next to the extension's own resources.
@@ -79,7 +79,7 @@ export class GalleryPanel {
       retainContextWhenHidden: true,
       localResourceRoots: [galleryBundleDirectory(deps.context.extensionUri)],
     });
-    panel.iconPath = labshelfTabIcon(deps.context.extensionUri);
+    panel.iconPath = createTabIcon(deps.context.extensionUri);
     return new GalleryPanel(panel, deps, onDispose);
   }
 

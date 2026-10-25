@@ -1,12 +1,12 @@
 // Copies a picked image into the project's images folder and inserts the figure that shows it; a shared project's mirror shares the copy.
 import { IMAGE_EXTENSIONS, IMAGE_FOLDER, findFreeImageName, deriveImageBaseFolder, createImageSnippet, posixPathOps, type ILogger, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
-import type { SourceEdits, SourceLanguage } from "../sourceUpdates";
+import type { SourceUpdates, SourceLanguage } from "../sourceUpdates";
 
 const MODULE = "tabs.source";
 
 export interface ImageInsertion {
-  edits: SourceEdits;
+  edits: SourceUpdates;
   language: SourceLanguage;
   entry: Extract<ProjectEntry, { kind: "ready" }>;
   /** The edited file, relative to the project folder. */
@@ -37,7 +37,7 @@ async function copyIntoProject({ edits, language, entry, path, fs, logger }: Ima
   edits.insertSnippet(createImageSnippet(language, relative(base, target)));
 }
 
-export async function insertImage(insertion: ImageInsertion): Promise<void> {
+export async function addImage(insertion: ImageInsertion): Promise<void> {
   const file = await pickImage(insertion.language);
   if (!file) return;
   try {

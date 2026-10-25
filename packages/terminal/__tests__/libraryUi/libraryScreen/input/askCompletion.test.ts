@@ -5,10 +5,10 @@ import * as path from "node:path";
 
 import type { AppContext } from "../../../../src/compositionRoot";
 import { App } from "../../../../src/libraryUi/libraryScreen";
-import { completePath } from "../../../../src/libraryUi/libraryScreen/input/askCompletion";
+import { findPathCompletion } from "../../../../src/libraryUi/libraryScreen/input/askCompletion";
 import { idle, makeTmpRoot, openApp, press, screenText, seedLibrary, typeText } from "../../../fixtures/appHarness";
 
-describe("completePath", () => {
+describe("findPathCompletion", () => {
   let dir: string;
 
   beforeEach(async () => {
@@ -22,52 +22,52 @@ describe("completePath", () => {
   });
 
   it("completes the common prefix and lists the candidates when several match", async () => {
-    expect(await completePath(`${dir}/al`)).toEqual({ completed: `${dir}/alp`, candidates: ["alpha/", "alps/"] });
+    expect(await findPathCompletion(`${dir}/al`)).toEqual({ completed: `${dir}/alp`, candidates: ["alpha/", "alps/"] });
   });
 
   it("completes a single folder with a trailing slash", async () => {
-    expect(await completePath(`${dir}/gam`)).toEqual({ completed: `${dir}/gamma/`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/gam`)).toEqual({ completed: `${dir}/gamma/`, candidates: [] });
   });
 
   it("completes a single PDF without a slash", async () => {
-    expect(await completePath(`${dir}/be`)).toEqual({ completed: `${dir}/beta.pdf`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/be`)).toEqual({ completed: `${dir}/beta.pdf`, candidates: [] });
   });
 
   it("recognizes PDFs by extension regardless of case", async () => {
-    expect(await completePath(`${dir}/Up`)).toEqual({ completed: `${dir}/Upper.PDF`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/Up`)).toEqual({ completed: `${dir}/Upper.PDF`, candidates: [] });
   });
 
   it("lists folders and PDFs only, without hidden entries, when the path ends with a slash", async () => {
-    const result = await completePath(`${dir}/`);
+    const result = await findPathCompletion(`${dir}/`);
     expect(result.candidates).toEqual(["alpha/", "alps/", "beta.pdf", "gamma/", "Upper.PDF"]);
     expect(result.completed).toBe(`${dir}/`);
   });
 
   it("shows hidden entries once the prefix starts with a dot", async () => {
-    const result = await completePath(`${dir}/.`);
+    const result = await findPathCompletion(`${dir}/.`);
     expect(result.candidates).toEqual([".hidden/", ".secret.pdf"]);
     expect(result.completed).toBe(`${dir}/.`);
   });
 
   it("leaves the text alone when nothing matches", async () => {
-    expect(await completePath(`${dir}/zzz`)).toEqual({ completed: `${dir}/zzz`, candidates: [] });
-    expect(await completePath(`${dir}/not`)).toEqual({ completed: `${dir}/not`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/zzz`)).toEqual({ completed: `${dir}/zzz`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/not`)).toEqual({ completed: `${dir}/not`, candidates: [] });
   });
 
   it("leaves the text alone when the folder does not exist", async () => {
-    expect(await completePath(`${dir}/missing/x`)).toEqual({ completed: `${dir}/missing/x`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/missing/x`)).toEqual({ completed: `${dir}/missing/x`, candidates: [] });
   });
 
   it("completes inside a subfolder", async () => {
     await fs.mkdir(path.join(dir, "gamma", "delta"));
-    expect(await completePath(`${dir}/gamma/de`)).toEqual({ completed: `${dir}/gamma/delta/`, candidates: [] });
+    expect(await findPathCompletion(`${dir}/gamma/de`)).toEqual({ completed: `${dir}/gamma/delta/`, candidates: [] });
   });
 
   it("expands ~ to the home folder but keeps it as typed", async () => {
     const homedir = jest.spyOn(osModule, "homedir").mockReturnValue(dir);
     try {
-      expect(await completePath("~/al")).toEqual({ completed: "~/alp", candidates: ["alpha/", "alps/"] });
-      expect(await completePath("~/gam")).toEqual({ completed: "~/gamma/", candidates: [] });
+      expect(await findPathCompletion("~/al")).toEqual({ completed: "~/alp", candidates: ["alpha/", "alps/"] });
+      expect(await findPathCompletion("~/gam")).toEqual({ completed: "~/gamma/", candidates: [] });
     } finally {
       homedir.mockRestore();
     }

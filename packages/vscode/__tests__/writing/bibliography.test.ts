@@ -3,9 +3,9 @@ import * as vscode from "vscode";
 
 import { BIBLIOGRAPHY_HEADER, createPublishedVersionFinder, type RegistryEnv } from "@labshelf/core";
 import {
-  BibCodeActions,
-  registerBibliographyLint,
-  BibDiagnostics,
+  BibliographyCodeActions,
+  registerBibliographyCheck,
+  BibliographyProblems,
 } from "../../src/writing/registerBibliographyCheck";
 
 const ARXIV = "https://export.arxiv.org/api/query?id_list=1706.03762";
@@ -55,12 +55,12 @@ afterEach(() => { workspace.textDocuments = []; jest.clearAllMocks(); });
 function setup(routes: Record<string, string | object> = {}) {
   const env = fakeEnv(routes);
   const logger = { error: jest.fn(async () => {}) };
-  const diagnostics = new BibDiagnostics(createPublishedVersionFinder(env), () => logger as never);
-  const actions = new BibCodeActions(diagnostics, env, () => logger as never);
+  const diagnostics = new BibliographyProblems(createPublishedVersionFinder(env), () => logger as never);
+  const actions = new BibliographyCodeActions(diagnostics, env, () => logger as never);
   return { diagnostics, actions, logger, collection: lastCollection() };
 }
 
-describe("BibDiagnostics", () => {
+describe("BibliographyProblems", () => {
   it("publishes findings with range, severity, source and code when a .bib opens", async () => {
     const { collection } = setup(PUBLISHED_ROUTES);
     const document = bibDocument(`${PREPRINT}\n@article{x, title = {X}}`);
@@ -119,7 +119,7 @@ describe("BibDiagnostics", () => {
   });
 });
 
-describe("BibCodeActions", () => {
+describe("BibliographyCodeActions", () => {
   async function linted(text: string, routes: Record<string, string | object>) {
     const setupResult = setup(routes);
     const document = bibDocument(text);
@@ -149,8 +149,8 @@ describe("BibCodeActions", () => {
   it("computes the DOI edit only when the look-up action resolves", async () => {
     const calls: string[] = [];
     const env = fakeEnv({ [SEARCH]: { message: { items: [{ title: ["Deep Residual Learning"], DOI: "10.1109/cvpr.2016.90", issued: { "date-parts": [[2016]] } }] } } }, calls);
-    const diagnostics = new BibDiagnostics(createPublishedVersionFinder(env), () => undefined);
-    const actions = new BibCodeActions(diagnostics, env, () => undefined);
+    const diagnostics = new BibliographyProblems(createPublishedVersionFinder(env), () => undefined);
+    const actions = new BibliographyCodeActions(diagnostics, env, () => undefined);
     const document = bibDocument(NO_DOI);
     workspace._fireDocumentEvent("open", document);
     await settle();
@@ -174,12 +174,12 @@ describe("BibCodeActions", () => {
   });
 });
 
-describe("registerBibliographyLint", () => {
+describe("registerBibliographyCheck", () => {
   it("registers a quick-fix provider for .bib files and disposes with the extension", () => {
     const context = { subscriptions: [] as { dispose(): void }[] } as unknown as vscode.ExtensionContext;
-    registerBibliographyLint(context, { logger: () => undefined });
+    registerBibliographyCheck(context, { logger: () => undefined });
     expect(vscode.languages.registerCodeActionsProvider).toHaveBeenCalledWith(
-      { pattern: "**/*.bib" }, expect.any(BibCodeActions), { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
+      { pattern: "**/*.bib" }, expect.any(BibliographyCodeActions), { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
     );
     expect(context.subscriptions).toHaveLength(2);
   });

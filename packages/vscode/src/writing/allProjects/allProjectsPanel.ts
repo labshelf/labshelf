@@ -11,7 +11,7 @@ import {
   createNonce,
 } from "@labshelf/core";
 import { sharingWebviews } from "../../share/index.js";
-import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
 
 /** <extension>/dist/projects, for localResourceRoots. */
 function allProjectsBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
@@ -21,8 +21,8 @@ function allProjectsBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
 async function allProjectsHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = allProjectsBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "projects.js");
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: "All projects", heading: "All projects bundle not built", file: "dist/projects/projects.js", reopen: "All projects" });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: "All projects", heading: "All projects bundle not built", file: "dist/projects/projects.js", reopen: "All projects" });
   }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
@@ -83,7 +83,7 @@ export class AllProjectsPanel {
       retainContextWhenHidden: true,
       localResourceRoots: [allProjectsBundleDirectory(extensionUri)],
     });
-    panel.iconPath = labshelfTabIcon(extensionUri);
+    panel.iconPath = createTabIcon(extensionUri);
     return new AllProjectsPanel(panel, extensionUri, port, logger, selection, onDispose);
   }
 

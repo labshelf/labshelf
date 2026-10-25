@@ -6,7 +6,7 @@ import type { HelperProblem } from "../../helper/project";
 /** Listens to one file's problems; returns the function that stops listening. */
 export type ProblemSource = (path: string, listener: (problems: readonly HelperProblem[]) => void) => () => void;
 
-export function toDiagnostics(problems: readonly HelperProblem[], view: Pick<EditorView, "state">): Diagnostic[] {
+export function toProblems(problems: readonly HelperProblem[], view: Pick<EditorView, "state">): Diagnostic[] {
   const doc = view.state.doc;
   return problems.map((problem) => {
     const line = doc.line(Math.min(Math.max(problem.line ?? 1, 1), doc.lines));
@@ -18,5 +18,5 @@ export function toDiagnostics(problems: readonly HelperProblem[], view: Pick<Edi
 }
 
 export function applyProblems(view: EditorView, problems: readonly HelperProblem[]): void {
-  view.dispatch(setDiagnostics(view.state, toDiagnostics(problems, view)));
+  view.dispatch(setDiagnostics(view.state, toProblems(problems, view)));
 }

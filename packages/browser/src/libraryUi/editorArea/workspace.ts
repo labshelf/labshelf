@@ -17,7 +17,7 @@ import {
   type WorkspaceHashState,
   formatWorkspaceHash,
 } from "./workspaceHash";
-import { parseTabId, TAB_KINDS } from "./tabKinds";
+import { parseTab, TAB_KINDS } from "./tabKinds";
 
 const STORED_HASH_KEY = "labshelf.library.tabs";
 
@@ -98,7 +98,7 @@ const LIBRARY = "library";
 const shown = (plan: PagePlan, tabs: readonly string[]): string[] => tabs.filter((id) => isKindShown(plan, id.split(":")[0]!));
 
 /** `stored` is the last tabs hash this browser tab wrote; it lets a folder deep link reload without losing the open tabs. Tabs of a hidden section are dropped. */
-export function planRestore(hash: string, stored: string | null, plan: PagePlan): RestorePlan {
+export function deriveRestorePlan(hash: string, stored: string | null, plan: PagePlan): RestorePlan {
   const fromHash = parseWorkspaceHash(hash);
   const listed = fromHash ? shown(plan, fromHash.tabs) : [];
   if (fromHash && listed.length > 0) return { tabs: listed, active: fromHash.active !== null && listed.includes(fromHash.active) ? fromHash.active : listed[0]!, folderLink: false };
@@ -110,10 +110,10 @@ export function planRestore(hash: string, stored: string | null, plan: PagePlan)
 }
 
 function restoreTabs(target: string, area: EditorArea, opener: TabOpener, hash: HashSync, plan: PagePlan, logger: ILogger): void {
-  const restored = planRestore(target, hash.stored(), plan);
+  const restored = deriveRestorePlan(target, hash.stored(), plan);
   hash.silently(() => {
     for (const id of restored.tabs) {
-      const parsed = parseTabId(id);
+      const parsed = parseTab(id);
       if (parsed) opener.open(parsed.kind, parsed.params, undefined, true);
       else void logger.log("WARN", "libraryUi.editorArea", "dropped a tab id no kind reads", { id });
     }

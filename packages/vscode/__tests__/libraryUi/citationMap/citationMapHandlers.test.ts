@@ -1,7 +1,7 @@
 /** The list host builds the citation map on request and imports a missing work by its DOI, answering with the map's messages. */
 import * as path from 'node:path';
 import type { ImportOutcome } from '@labshelf/core';
-import { handleListMessage } from '../../../src/libraryUi/host/listHandlers';
+import { answerListMessage } from '../../../src/libraryUi/host/listHandlers';
 import { showCitationMap } from '../../../src/libraryUi/citationMap/citationMapHandlers';
 import type { ListHostContext } from '../../../src/libraryUi/host/hostContext';
 
@@ -22,7 +22,7 @@ function context(importOutcome: ImportOutcome | Error = { status: 'added', recor
 describe('citationMap.refresh', () => {
   it('posts the loading state, then the map', async () => {
     const { ctx, post, citationMap } = context();
-    await handleListMessage(ctx, { type: 'citationMap.refresh' });
+    await answerListMessage(ctx, { type: 'citationMap.refresh' });
     expect(post.mock.calls.map(([m]) => m)).toEqual([
       { type: 'citationMap.show', state: { status: 'loading' } },
       { type: 'citationMap.show', state: { status: 'ready', map } },
@@ -44,7 +44,7 @@ describe('citationMap.import', () => {
 
   it('imports by DOI and reports the work imported', async () => {
     const { ctx, post, notice, citationMap } = context();
-    await handleListMessage(ctx, importMessage);
+    await answerListMessage(ctx, importMessage);
     expect(citationMap.importByDoi).toHaveBeenCalledWith('10.1000/x');
     expect(notice).toHaveBeenCalledWith('ok', 'Imported "Cited work"');
     expect(post).toHaveBeenCalledWith({ type: 'citationMap.imported', workId: 'W1' });
@@ -52,14 +52,14 @@ describe('citationMap.import', () => {
 
   it('counts a DOI already in the library as imported', async () => {
     const { ctx, post, notice } = context({ status: 'duplicate', existingId: 'p9', input: '10.1000/x' });
-    await handleListMessage(ctx, importMessage);
+    await answerListMessage(ctx, importMessage);
     expect(notice).toHaveBeenCalledWith('info', 'This paper is already in your library');
     expect(post).toHaveBeenCalledWith({ type: 'citationMap.imported', workId: 'W1' });
   });
 
   it('reports a failed import with the DOI and clears the busy button', async () => {
     const { ctx, post, notice, logger } = context({ status: 'failed', error: 'no PDF found', input: '10.1000/x' });
-    await handleListMessage(ctx, importMessage);
+    await answerListMessage(ctx, importMessage);
     expect(notice).toHaveBeenCalledWith('error', 'Could not import 10.1000/x — no PDF found');
     expect(post).toHaveBeenCalledWith({ type: 'citationMap.importFailed', workId: 'W1' });
     expect(post).not.toHaveBeenCalledWith({ type: 'citationMap.imported', workId: 'W1' });
@@ -68,7 +68,7 @@ describe('citationMap.import', () => {
 
   it('reports an importer that throws the same way', async () => {
     const { ctx, post, notice } = context(new Error('network down'));
-    await handleListMessage(ctx, importMessage);
+    await answerListMessage(ctx, importMessage);
     expect(notice).toHaveBeenCalledWith('error', 'Could not import 10.1000/x — network down');
     expect(post).toHaveBeenCalledWith({ type: 'citationMap.importFailed', workId: 'W1' });
   });

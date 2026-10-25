@@ -1,16 +1,16 @@
 // Maintains authenticated helper sessions for an extension page.
 import { type HelperState, type ToPageMessage } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import { handshake } from "./handshake";
-import type { HelperConnection, HelperPortFactory, HelperWebSocketConstructor } from "./connection";
-import type { EditTracker } from "./project";
+import { runHandshake } from "./runHandshake";
+import type { HelperConnection, HelperPortFactory, HelperConnectionConstructor } from "./connection";
+import type { UpdateTracker } from "./project";
 
 export interface NativeHelperSessionDeps {
   logger: ILogger;
   extensionVersion: string;
   origin: string;
   connectNative: HelperPortFactory;
-  webSocket?: HelperWebSocketConstructor;
+  webSocket?: HelperConnectionConstructor;
 }
 
 interface Session { native: HelperConnection; socket: HelperConnection }
@@ -21,7 +21,7 @@ export class NativeHelperSession {
   private generation = 0;
   private connecting: Promise<HelperState> | undefined;
 
-  constructor(private readonly deps: NativeHelperSessionDeps, private readonly edits: EditTracker) {}
+  constructor(private readonly deps: NativeHelperSessionDeps, private readonly edits: UpdateTracker) {}
 
   private drop(reason: string | undefined, generation: number): void {
     if (generation !== this.generation) return;
@@ -58,7 +58,7 @@ export class NativeHelperSession {
     this.session = undefined;
     previous?.native.disconnect();
     previous?.socket.disconnect();
-    const outcome = await handshake({ ...this.deps, webSocket: this.deps.webSocket ?? globalThis.WebSocket }, {
+    const outcome = await runHandshake({ ...this.deps, webSocket: this.deps.webSocket ?? globalThis.WebSocket }, {
       onUnmatchedError: (message) => this.resendStale(message), onClose: (reason) => this.drop(reason, mine),
     });
     if (mine !== this.generation) {

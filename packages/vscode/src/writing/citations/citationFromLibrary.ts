@@ -13,9 +13,9 @@ import {
   formatHighlightPage,
   type Annotation,
 } from "@labshelf/core";
-import { paperPickItem } from "../../command/index.js";
+import { createPaperPickItem } from "../../command/index.js";
 import { UPDATE_BIBLIOGRAPHY_COMMAND } from "./citationCompletion.js";
-import { citingProject, type CitationSession, type CitationWorkspace } from "./citationWorkspace.js";
+import { findCitingProject, type CitationSession, type CitationWorkspace } from "./citationWorkspace.js";
 
 const QUOTE_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("quote"), tooltip: "Cite with quotation" };
 
@@ -69,7 +69,7 @@ async function pickPaper(session: CitationSession): Promise<PaperRecord | undefi
     void vscode.window.showInformationMessage("LabShelf library is empty.");
     return undefined;
   }
-  const picked = await vscode.window.showQuickPick(papers.map(paperPickItem), {
+  const picked = await vscode.window.showQuickPick(papers.map(createPaperPickItem), {
     title: "Cite from Library", placeHolder: "Pick the paper to cite", matchOnDescription: true, matchOnDetail: true,
   });
   return picked?.paper;
@@ -104,7 +104,7 @@ async function citeFromLibrary(workspace: CitationWorkspace): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const session = workspace.session();
   // The project's source extension stands in for the language id: Typst has no built-in one.
-  const project = editor && citingProject(workspace.projects, editor.document.uri.fsPath);
+  const project = editor && findCitingProject(workspace.projects, editor.document.uri.fsPath);
   if (!editor || !session || !project) { return; }
   const paper = await pickPaper(session);
   if (!paper) { return; }
@@ -116,6 +116,6 @@ async function citeFromLibrary(workspace: CitationWorkspace): Promise<void> {
   }
 }
 
-export function registerCiteFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace): void {
+export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace): void {
   context.subscriptions.push(vscode.commands.registerCommand(CITE_FROM_LIBRARY_COMMAND, () => citeFromLibrary(workspace)));
 }

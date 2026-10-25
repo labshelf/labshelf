@@ -1,7 +1,7 @@
 // Pins how the browser lists library projects and reads and writes their files through the folder file system.
 import type { ILogger } from "@labshelf/core";
 import { MemoryFolderFs } from "./libraryLocation/memoryFolderFs";
-import { createBrowserProjects, ProjectFileNotFoundError } from "../../src/storage/browserProjects";
+import { createBrowserProjects, MissingProjectFileError } from "../../src/storage/browserProjects";
 
 function makeLogger(): ILogger & { log: jest.Mock; error: jest.Mock } {
   return { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
@@ -97,7 +97,7 @@ describe("readProjectFile and writeProjectFile", () => {
 
   it("rejects a missing file with ProjectFileNotFoundError and does not log it as a failure", async () => {
     const { logger, projects } = setup();
-    await expect(projects.readProjectFile("thesis", ".vscode/settings.json")).rejects.toBeInstanceOf(ProjectFileNotFoundError);
+    await expect(projects.readProjectFile("thesis", ".vscode/settings.json")).rejects.toBeInstanceOf(MissingProjectFileError);
     expect(logger.error).not.toHaveBeenCalled();
   });
 

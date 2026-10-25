@@ -4,19 +4,19 @@
  */
 import { openDB, type IDBPTransaction } from "idb";
 import type { IDBPDatabase } from "idb";
-import type { LabShelfSchema } from "./idbSchema";
+import type { IdbSchema } from "./idbSchema";
 
 export const DB_VERSION = 4;
 
-type UpgradeTx = IDBPTransaction<LabShelfSchema, string[], "versionchange">;
+type UpgradeTx = IDBPTransaction<IdbSchema, string[], "versionchange">;
 
-function createHistoryStores(db: IDBPDatabase<LabShelfSchema>): void {
+function createHistoryStores(db: IDBPDatabase<IdbSchema>): void {
   db.createObjectStore("historyLog", { keyPath: "projectId" });
   db.createObjectStore("historyObjects", { keyPath: "hash" });
 }
 
 /** Brings a database from `oldVersion` (0 for a new one) to DB_VERSION. */
-export function upgradeDb(db: IDBPDatabase<LabShelfSchema>, oldVersion: number, tx: UpgradeTx): void {
+export function applyDbUpgrade(db: IDBPDatabase<IdbSchema>, oldVersion: number, tx: UpgradeTx): void {
   if (oldVersion < 1) {
     db.createObjectStore("files", { keyPath: "path" });
     db.createObjectStore("metadata", { keyPath: "paperId" });
@@ -39,13 +39,13 @@ export function upgradeDb(db: IDBPDatabase<LabShelfSchema>, oldVersion: number, 
 
 const DB_NAME = "labshelf";
 
-let _db: Promise<IDBPDatabase<LabShelfSchema>> | null = null;
+let _db: Promise<IDBPDatabase<IdbSchema>> | null = null;
 
 /** Returns a shared connection to the labshelf IndexedDB. */
-export function getDb(): Promise<IDBPDatabase<LabShelfSchema>> {
+export function openDb(): Promise<IDBPDatabase<IdbSchema>> {
   if (!_db) {
-    _db = openDB<LabShelfSchema>(DB_NAME, DB_VERSION, {
-      upgrade: (db, oldVersion, _newVersion, tx) => upgradeDb(db, oldVersion, tx),
+    _db = openDB<IdbSchema>(DB_NAME, DB_VERSION, {
+      upgrade: (db, oldVersion, _newVersion, tx) => applyDbUpgrade(db, oldVersion, tx),
     });
   }
   return _db;

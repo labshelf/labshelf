@@ -6,7 +6,7 @@ import type { PaperRecord, MutationContext } from "@labshelf/core";
 import { harness, metaFile } from "../fixtures/paperService";
 import { cleanupTempDirs, listFiles, pathExists, readYaml, type PaperFixture } from "../fixtures/library";
 import * as os from "node:os";
-import { sortImportInputs } from "../../src/library/paperService";
+import { orderImportInputs } from "../../src/library/paperService";
 
 afterEach(cleanupTempDirs);
 
@@ -216,9 +216,9 @@ describe("bibtexFor", () => {
 
 const ctx = { fs: { exists: async () => false } } as unknown as MutationContext;
 
-describe("sortImportInputs", () => {
+describe("orderImportInputs", () => {
   it("routes identifiers and links, including a PubMed link, to the network import", async () => {
-    const sorted = await sortImportInputs(ctx, [
+    const sorted = await orderImportInputs(ctx, [
       "1706.03762v5",
       "10.1038/nature12373,",
       "https://arxiv.org/html/1706.03762",
@@ -235,6 +235,6 @@ describe("sortImportInputs", () => {
   it("resolves an existing path, expanding ~ to the home folder", async () => {
     const existing = { fs: { exists: async () => true } } as unknown as MutationContext;
 
-    expect(await sortImportInputs(existing, ["~/gone/../link", "~"])).toEqual({ local: [`${os.homedir()}/link`, os.homedir()], network: [] });
+    expect(await orderImportInputs(existing, ["~/gone/../link", "~"])).toEqual({ local: [`${os.homedir()}/link`, os.homedir()], network: [] });
   });
 });

@@ -2,13 +2,13 @@
 import * as vscode from "vscode";
 
 import { createFolder, formatError, moveFolder, renameFolder, moveFolderToTrash } from "@labshelf/core";
-import { validateFolderNameInput, type LibraryNode } from "../libraryUi/index.js";
-import type { ActiveServices, RequireServices } from "./commandContext.js";
+import { checkFolderNameInput, type LibraryNode } from "../libraryUi/index.js";
+import type { ActiveServices, EnsureServices } from "./commandContext.js";
 
 const LOG_MODULE = "command/folderCommands";
 
 export interface FolderCommandHost {
-  requireServices: RequireServices;
+  requireServices: EnsureServices;
   /** papers/ of the configured library, or null while none is configured. */
   papersRoot: () => string | null;
   /** Re-reads the folder tree and the list panel. */
@@ -47,7 +47,7 @@ export async function moveFolders(host: FolderCommandHost, sourceDirs: string[],
 }
 
 /** The folder changes, without prompts, for a caller that asks the user itself (the list panel). Each one throws when it fails. */
-export function folderActions(host: FolderCommandHost): {
+export function createFolderActions(host: FolderCommandHost): {
   create(parent: string, name: string): Promise<void>;
   rename(dir: string, name: string): Promise<void>;
   trash(dir: string): Promise<void>;
@@ -93,7 +93,7 @@ async function newFolder(host: FolderCommandHost, node?: LibraryNode): Promise<v
   const services = await host.requireServices();
   const parent = node?.dirPath ?? host.papersRoot();
   if (!services || !parent) { return; }
-  const name = await vscode.window.showInputBox({ prompt: "Folder name", placeHolder: "My Folder", validateInput: validateFolderNameInput });
+  const name = await vscode.window.showInputBox({ prompt: "Folder name", placeHolder: "My Folder", validateInput: checkFolderNameInput });
   if (!name?.trim()) { return; }
   await guarded(services, "Could not create the folder", { parent, name }, () => createFolderIn(host, parent, name));
 }
@@ -102,7 +102,7 @@ async function renameFolderNode(host: FolderCommandHost, node?: LibraryNode): Pr
   if (!node || node.isRoot) { return; }
   const services = await host.requireServices();
   if (!services) { return; }
-  const name = await vscode.window.showInputBox({ prompt: "New folder name", value: node.label, validateInput: validateFolderNameInput });
+  const name = await vscode.window.showInputBox({ prompt: "New folder name", value: node.label, validateInput: checkFolderNameInput });
   if (!name?.trim() || name.trim() === node.label) { return; }
   await guarded(services, `Could not rename "${node.label}"`, { dir: node.dirPath, name }, () => renameFolderTo(host, node.dirPath, name));
 }

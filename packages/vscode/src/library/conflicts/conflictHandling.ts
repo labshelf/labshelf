@@ -38,7 +38,7 @@ export async function walkConflicts(copies: ConflictCopy[], deps: ConflictWalkDe
   return remaining;
 }
 
-export function conflictMessage(count: number): string {
+export function describeConflicts(count: number): string {
   return count === 1 ? "1 file has a conflicting copy" : `${count} files have conflicting copies`;
 }
 
@@ -72,11 +72,11 @@ interface ConflictChoice {
   resolution: ConflictAskResolution;
 }
 
-export function conflictChoices(copy: ConflictCopy): ConflictChoice[] {
+export function listConflictChoices(copy: ConflictCopy): ConflictChoice[] {
   return listConflictAskChoices(copy);
 }
 
-export function toolName(tool: SyncTool): string {
+export function formatToolName(tool: SyncTool): string {
   return TOOL_NAMES[tool];
 }
 
@@ -100,7 +100,7 @@ export class ConflictHandling {
   onConflicts(copies: ConflictCopy[]): void {
     if (this.resolving) { return; }
     if (!this.notifier.shouldNotify(copies.length)) { return; }
-    void vscode.window.showInformationMessage(conflictMessage(copies.length), "Resolve").then((choice) => {
+    void vscode.window.showInformationMessage(describeConflicts(copies.length), "Resolve").then((choice) => {
       if (choice === "Resolve") { void this.resolve(); }
     });
   }
@@ -136,10 +136,10 @@ export class ConflictHandling {
   private async ask(copy: ConflictCopy, index: number, total: number, services: ActiveServices): Promise<ConflictResolution | "mergeMyself" | undefined> {
     const title = formatConflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? services.library.paper(copy.owner.id)?.record.title : undefined);
     const picked = await vscode.window.showQuickPick(
-      conflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
+      listConflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
       {
         title: `${title} (${index + 1} of ${total})`,
-        placeHolder: copy.match && copy.match !== "name" ? describeContentConflict(copy) : `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
+        placeHolder: copy.match && copy.match !== "name" ? describeContentConflict(copy) : `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${formatToolName(copy.tool)}`,
       },
     );
     return picked?.resolution;

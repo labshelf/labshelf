@@ -12,13 +12,13 @@ import {
 jest.mock("../../../../src/platform/system", () => ({
   ...jest.requireActual<typeof import("../../../../src/platform/system")>("../../../../src/platform/system"),
   openExternal: jest.fn(),
-  revealInFileManager: jest.fn(),
+  showInFileSystem: jest.fn(),
   copyToClipboard: jest.fn(),
 }));
 
 const mocked = {
   openExternal: jest.mocked(system.openExternal),
-  revealInFileManager: jest.mocked(system.revealInFileManager),
+  showInFileSystem: jest.mocked(system.showInFileSystem),
   copyToClipboard: jest.mocked(system.copyToClipboard),
 };
 
@@ -30,7 +30,7 @@ let app: App;
 
 beforeEach(async () => {
   mocked.openExternal.mockReset();
-  mocked.revealInFileManager.mockReset();
+  mocked.showInFileSystem.mockReset();
   mocked.copyToClipboard.mockReset().mockResolvedValue("system");
   ({ tmp, root } = await makeTmpRoot());
   await seedLibrary(root);
@@ -185,10 +185,10 @@ describe("App copying (y) and opening", () => {
 
   it("reveals the paper's folder, or the hovered folder, in the file manager", () => {
     press(app, "O");
-    expect(mocked.revealInFileManager).toHaveBeenLastCalledWith(paperDir(root, "ML/Transformers", ATTENTION));
+    expect(mocked.showInFileSystem).toHaveBeenLastCalledWith(paperDir(root, "ML/Transformers", ATTENTION));
     goToFolder(app, "ML");
     press(app, "O");
-    expect(mocked.revealInFileManager).toHaveBeenLastCalledWith(path.join(root, "papers", "ML"));
+    expect(mocked.showInFileSystem).toHaveBeenLastCalledWith(path.join(root, "papers", "ML"));
   });
 });
 

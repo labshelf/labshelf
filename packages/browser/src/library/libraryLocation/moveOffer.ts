@@ -1,8 +1,8 @@
 // Offers to move the papers still stored in this browser into the library folder, and reports what stayed behind.
 import { formatError, type ILogger } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
-import { bannerShell, setButton } from "./bannerShell";
-import { countBrowserPapers, getLibrarySource, moveBrowserLibraryToFolder } from "../../storage";
+import { createBannerShell, setButton } from "./createBannerShell";
+import { countBrowserPapers, readLibraryLocation, moveBrowserLibraryToFolder } from "../../storage";
 
 export interface MoveOfferOptions {
   logger: ILogger;
@@ -19,7 +19,7 @@ const papers = (n: number): string => `${n} ${n === 1 ? "paper" : "papers"}`;
 
 export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): MoveOffer {
   const show = (root: string, count: number, skipped: readonly string[]): void => {
-    const { root: banner, text } = bannerShell("neutral", "upload");
+    const { root: banner, text } = createBannerShell("neutral", "upload");
     const move = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
     setButton(move, "upload", `Move ${papers(count)} to ${root}`, false);
     move.addEventListener("click", () => void run(root, move));
@@ -51,7 +51,7 @@ export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): Mo
   };
   const refresh = async (skipped: readonly string[] = []): Promise<void> => {
     try {
-      const source = await getLibrarySource();
+      const source = await readLibraryLocation();
       const count = source.kind === "folder" ? await countBrowserPapers() : 0;
       if (source.kind !== "folder" || count === 0) host.replaceChildren();
       else show(source.root, count, skipped);

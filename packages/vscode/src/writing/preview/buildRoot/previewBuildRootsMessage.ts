@@ -10,7 +10,7 @@ import {
   type PdfProblem,
 } from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
-import { rawLogFile, type RawLogDeps } from "./rawLogFile.js";
+import { readRawLogFile, type RawLogDeps } from "./readRawLogFile.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
 interface RootFindingsInput {
@@ -40,7 +40,7 @@ async function rootFindings(input: RootFindingsInput, root: string): Promise<{ p
   };
 }
 
-export interface PreviewRootsInput extends RawLogDeps, RootFindingsInput {
+export interface PreviewBuildRootsInput extends RawLogDeps, RootFindingsInput {
   project: ReadyProject;
   /** The roots built so far, in build order. */
   built: Iterable<string>;
@@ -58,19 +58,19 @@ function projectRelative(paths: PathOps, folder: string, file: string): string {
   return (relative.startsWith("..") || paths.isAbsolute(relative) ? file : relative).split(paths.sep).join("/");
 }
 
-async function previewRoot(input: PreviewRootsInput, root: string): Promise<PreviewBuildRoot> {
+async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot> {
   const { paths, project } = input;
   return {
     ...(await rootFindings(input, root)),
     path: root,
     failed: input.failed(root),
-    rawLog: (await rawLogFile(input, project, root)) !== undefined,
+    rawLog: (await readRawLogFile(input, project, root)) !== undefined,
     sourceLinks: project.settings.format === "latex",
     problems: derivePreviewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
   };
 }
 
-export async function previewRootsMessage(input: PreviewRootsInput): Promise<PreviewBuildRoots> {
+export async function createPreviewBuildRootsMessage(input: PreviewBuildRootsInput): Promise<PreviewBuildRoots> {
   const roots = await Promise.all([...input.built].map((root) => previewRoot(input, root)));
   const { pages: pageLimit, words: wordLimit, countUpTo } = input.project.settings.check ?? {};
   return {

@@ -6,7 +6,7 @@
 import type { ILogger } from "@labshelf/core";
 import type { TabContext } from "../../../src/libraryUi/editorArea";
 import { createWorkspace, type Workspace } from "../../../src/libraryUi/editorArea";
-import { planPage } from "../../../src/libraryUi/pagePlan";
+import { derivePagePlan } from "../../../src/libraryUi/pagePlan";
 
 const captured: TabContext[] = [];
 jest.mock("../../../src/libraryUi/editorArea/templatesTab", () => ({
@@ -20,7 +20,7 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 async function setup(): Promise<{ workspace: Workspace; ctx: TabContext }> {
   captured.length = 0;
   const workspace = createWorkspace(document.body.appendChild(document.createElement("div")), {
-    prefs: { load: () => null, save: () => undefined }, logger, plan: planPage({ library: true, projects: true }), storage,
+    prefs: { load: () => null, save: () => undefined }, logger, plan: derivePagePlan({ library: true, projects: true }), storage,
     services: () => ({ spaces: {} as never, libraryView: document.createElement("div"), logger, fs: {} as never, prefs: {} as never, selection: {} as never, sharing: {} as never, project: () => ({}) as never }),
   });
   workspace.openTab("templates");

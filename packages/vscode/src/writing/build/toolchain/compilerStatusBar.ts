@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { formatEngineLabel } from "@labshelf/core";
-import { owningProject } from "../../buildRootDocument.js";
+import { findOwningProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import { PICK_COMPILER_COMMAND } from "./pickCompiler.js";
 
@@ -13,7 +13,7 @@ export function registerCompilerStatusBar(context: vscode.ExtensionContext, proj
 
   const update = (): void => {
     const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? owningProject(projects, file.fsPath) : undefined;
+    const project = file?.scheme === "file" ? findOwningProject(projects, file.fsPath) : undefined;
     if (project?.settings.format !== "latex") {
       item.hide();
       return;

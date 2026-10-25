@@ -2,12 +2,12 @@
 import type { HistoryToHost, HostToHistory, ILogger } from "@labshelf/core";
 import { createLoopbackTransport } from "@labshelf/core";
 import { showToast, askDialog } from "@labshelf/core/dom";
-import { mountHistoryHost, recordProjectEdit } from "../../../src/writing/history";
+import { mountHistoryHost, addProjectUpdateEvent } from "../../../src/writing/history";
 import { clearFakeDb } from "../../support/fakeIdb";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
 
 jest.mock("@labshelf/core/dom", () => ({ showToast: jest.fn(), askDialog: jest.fn(), askInputBox: jest.fn() }));
-jest.mock("../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 const project = { id: "thesis", folder: "proj" };
@@ -42,7 +42,7 @@ describe("mountHistoryHost", () => {
     ui.post({ type: "ready" });
     await settle();
     await fs.writeText("proj/main.typ", "two");
-    await recordProjectEdit({ fs, logger }, project);
+    await addProjectUpdateEvent({ fs, logger }, project);
     await settle();
     expect(history().map((message) => message.rows.length)).toEqual([1, 2]);
   });

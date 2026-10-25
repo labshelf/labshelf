@@ -4,14 +4,14 @@ import * as vscode from "vscode";
 import { findSourcePosition, type ILogger, type PagePoint, type PathOps } from "@labshelf/core";
 import { openSourceLine } from "./openSourceLine.js";
 import { NOT_BUILT_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE } from "../previewStrings.js";
-import type { SynctexLookup } from "./projectSynctex.js";
+import type { SynctexFinder } from "./projectSynctex.js";
 
 
 export interface ShowSourceDeps {
   logger: ILogger;
   paths: PathOps;
   projectFolder: string;
-  synctex: () => Promise<SynctexLookup>;
+  synctex: () => Promise<SynctexFinder>;
 }
 
 export async function showSource(deps: ShowSourceDeps, point: PagePoint): Promise<void> {

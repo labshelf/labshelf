@@ -53,13 +53,13 @@ export interface ImagePlan {
   png: Uint8Array;
 }
 
-export function parentFolder(rel: string): string {
+export function deriveParentFolder(rel: string): string {
   if (rel === ALL || rel === "") { return ALL; }
   const i = rel.lastIndexOf("/");
   return i < 0 ? ALL : rel.slice(0, i);
 }
 
-export function folderTitle(key: string): string {
+export function formatFolderTitle(key: string): string {
   if (key === ALL) { return "All papers"; }
   if (key === "") { return "Unfiled"; }
   return key.split("/").join(" › ");

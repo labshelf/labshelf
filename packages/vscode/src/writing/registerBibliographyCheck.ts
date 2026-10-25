@@ -32,7 +32,7 @@ function toDiagnostic(document: vscode.TextDocument, finding: BibliographyProble
 }
 
 // The linter hits the network for preprints, so it runs on open and save, never while a key or an arXiv id is half typed.
-export class BibDiagnostics implements vscode.Disposable {
+export class BibliographyProblems implements vscode.Disposable {
   private readonly collection = vscode.languages.createDiagnosticCollection("labshelf-bib");
   private readonly linted = new Map<string, Linted>();
   private readonly subscriptions: vscode.Disposable[];
@@ -91,11 +91,11 @@ function replaceEdit(document: vscode.TextDocument, start: number, end: number, 
   return edit;
 }
 
-export class BibCodeActions implements vscode.CodeActionProvider {
+export class BibliographyCodeActions implements vscode.CodeActionProvider {
   private readonly lookups = new WeakMap<vscode.CodeAction, DoiLookup>();
 
   constructor(
-    private readonly diagnostics: BibDiagnostics,
+    private readonly diagnostics: BibliographyProblems,
     private readonly env: RegistryEnv,
     private readonly logger: () => ILogger | undefined,
   ) {}
@@ -144,11 +144,11 @@ export class BibCodeActions implements vscode.CodeActionProvider {
   }
 }
 
-export function registerBibliographyLint(context: vscode.ExtensionContext, host: { logger: () => ILogger | undefined }): void {
+export function registerBibliographyCheck(context: vscode.ExtensionContext, host: { logger: () => ILogger | undefined }): void {
   // The library root, and with it the logger, can change after activation.
   const env: RegistryEnv = { fetch: globalThis.fetch, get logger() { return host.logger(); } };
-  const diagnostics = new BibDiagnostics(createPublishedVersionFinder(env), host.logger);
-  const actions = new BibCodeActions(diagnostics, env, host.logger);
+  const diagnostics = new BibliographyProblems(createPublishedVersionFinder(env), host.logger);
+  const actions = new BibliographyCodeActions(diagnostics, env, host.logger);
   context.subscriptions.push(
     diagnostics,
     vscode.languages.registerCodeActionsProvider({ pattern: "**/*.bib" }, actions, { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }),

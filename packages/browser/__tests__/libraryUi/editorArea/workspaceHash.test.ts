@@ -1,5 +1,5 @@
 // Pins the workspace hash: open tab ids and the active one, round-tripped through `#/tabs/...`.
-import { formatWorkspaceHash, parseWorkspaceHash, takeJoinInvite } from "../../../src/libraryUi/editorArea/workspaceHash";
+import { formatWorkspaceHash, parseWorkspaceHash, extractJoinInvite } from "../../../src/libraryUi/editorArea/workspaceHash";
 
 describe("workspace hash", () => {
   it("round-trips tab ids that contain the separators", () => {
@@ -31,13 +31,13 @@ describe("workspace hash", () => {
 
 describe("join hash", () => {
   it("takes the invite from a join hash, decoded", () => {
-    expect(takeJoinInvite("#/join/abc%20def")).toBe("abc def");
-    expect(takeJoinInvite("#/join/labshelf%3Ajoin%2Fx")).toBe("labshelf:join/x");
+    expect(extractJoinInvite("#/join/abc%20def")).toBe("abc def");
+    expect(extractJoinInvite("#/join/labshelf%3Ajoin%2Fx")).toBe("labshelf:join/x");
   });
 
   it("takes nothing from any other hash or from an empty or badly encoded invite", () => {
     for (const hash of ["", "#/papers/A", "#/tabs/library", "#/join/", "#/join/%E0%A4%A"]) {
-      expect(takeJoinInvite(hash)).toBeUndefined();
+      expect(extractJoinInvite(hash)).toBeUndefined();
     }
   });
 });

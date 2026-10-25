@@ -8,7 +8,7 @@ import {
   RESEARCH_DIR,
   posixPathOps,
 } from "@labshelf/core";
-import { copyIfMissing, copyVerified, holdsCopy, removeCopies } from "./copyVerified";
+import { copyIfMissing, copyVerified, hasCopy, removeCopies } from "./copyVerified";
 
 /** A paper's folder under papers/ and its sidecar folder under .research/papers/, as file paths. */
 interface PaperFiles {
@@ -110,7 +110,7 @@ async function movePaper(deps: MoveDeps, paper: PaperFiles): Promise<void> {
 }
 
 async function holdsEvery(deps: MoveDeps, files: readonly string[]): Promise<boolean> {
-  for (const file of files) if (!(await holdsCopy(deps.from, deps.to, file))) return false;
+  for (const file of files) if (!(await hasCopy(deps.from, deps.to, file))) return false;
   return true;
 }
 
@@ -132,7 +132,7 @@ async function placePaper(deps: MoveDeps, paper: PaperFiles, taken: ReadonlySet<
 /** Deletes from the source the files that belong to no paper and that the target holds with the same bytes. */
 async function clearOthers(deps: MoveDeps, files: readonly string[]): Promise<void> {
   for (const file of files) {
-    if (!(await holdsCopy(deps.from, deps.to, file))) {
+    if (!(await hasCopy(deps.from, deps.to, file))) {
       void deps.logger.log("WARN", MODULE, "File kept in browser storage: the folder holds a different copy", { file });
       continue;
     }

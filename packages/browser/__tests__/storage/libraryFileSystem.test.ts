@@ -1,15 +1,15 @@
 // Pins how the library picks the folder or browser storage, keeps that choice and routes every call to one source.
 import type { LibraryFileSystem } from "@labshelf/core";
-import { createLibrarySources, type PickedFolder } from "../../src/storage/libraryFileSystem";
+import { createLibraryLocations, type PickedDir } from "../../src/storage/libraryFileSystem";
 import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
 
 function setup(configure: (host: FakeBridgeHost, index: number) => void = () => undefined) {
   const hosts: FakeBridgeHost[] = [];
-  const picked: { folder?: PickedFolder; failure?: Error; announce: () => void } = { announce: () => undefined };
+  const picked: { folder?: PickedDir; failure?: Error; announce: () => void } = { announce: () => undefined };
   const browserFs = { readText: jest.fn(async () => "from browser") } as unknown as LibraryFileSystem;
   const rebuild = jest.fn(async (_fs: LibraryFileSystem) => undefined);
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
-  const sources = createLibrarySources({
+  const sources = createLibraryLocations({
     connect: () => {
       const host = new FakeBridgeHost();
       host.files.set("a.txt", new TextEncoder().encode("from folder"));

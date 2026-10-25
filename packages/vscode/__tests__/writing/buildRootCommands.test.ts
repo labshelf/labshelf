@@ -1,7 +1,7 @@
 // Tests Set as Main Document and the status bar's main picker: what they write, and what they refuse.
 import * as vscode from "vscode";
 
-import { registerMainCommands } from "../../src/writing";
+import { registerBuildRootCommands } from "../../src/writing";
 import { commandHandler, fakeHost, fakeProjects, readyEntry } from "../support/writingFixtures";
 
 const window = vscode.window as unknown as Record<string, jest.Mock | unknown>;
@@ -14,7 +14,7 @@ function setup(entries = [readyEntry("/code/repo")]) {
   const host = fakeHost();
   const projects = fakeProjects(entries);
   data = projects.data;
-  registerMainCommands({ context: { subscriptions: [] } as never, host, projects: projects as never });
+  registerBuildRootCommands({ context: { subscriptions: [] } as never, host, projects: projects as never });
   return { host, projects };
 }
 

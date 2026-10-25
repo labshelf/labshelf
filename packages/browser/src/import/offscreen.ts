@@ -1,15 +1,15 @@
 // Answers the background's page-1 text requests in Chrome's offscreen document, where pdf.js can start its worker.
 import { formatError } from "@labshelf/core";
 import { bx } from "../platform";
-import { stagedPdf } from "../storage";
-import { firstPageText } from "./firstPageText";
+import { readStagedPdf } from "../storage";
+import { extractFirstPageText } from "./extractFirstPageText";
 import { isFirstPageTextRequest, type FirstPageTextReply } from "./offscreenRequest";
 
 async function answer(id: string): Promise<FirstPageTextReply> {
   try {
-    const bytes = await stagedPdf(id);
+    const bytes = await readStagedPdf(id);
     if (!bytes) return { ok: false, error: `No staged PDF "${id}".` };
-    return { ok: true, text: await firstPageText(bytes) };
+    return { ok: true, text: await extractFirstPageText(bytes) };
   } catch (error) {
     return { ok: false, error: formatError(error) };
   }

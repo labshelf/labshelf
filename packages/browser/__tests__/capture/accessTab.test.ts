@@ -15,7 +15,7 @@ jest.mock("../../src/platform", () => ({
 const fetchInTab = jest.fn();
 jest.mock("../../src/capture/tab", () => ({ fetchInTab: (tabId: number, url: string) => fetchInTab(tabId, url) }));
 const probeTab = jest.fn();
-jest.mock("../../src/capture/tabProbe", () => ({ probeTab: (...args: unknown[]) => probeTab(...args) }));
+jest.mock("../../src/capture/tabProbe", () => ({ readTabPage: (...args: unknown[]) => probeTab(...args) }));
 
 import { onTabLoaded, openAccessTab, type AccessTabDeps } from "../../src/capture";
 

@@ -1,4 +1,4 @@
-import { DB_VERSION, upgradeDb } from "../../src/storage/idbDatabase";
+import { DB_VERSION, applyDbUpgrade } from "../../src/storage/idbDatabase";
 
 function fakeStore(indexes: string[]) {
   const names = new Set(indexes);
@@ -18,11 +18,11 @@ function fakeDatabase(stores: Record<string, ReturnType<typeof fakeStore>>) {
   };
 }
 
-describe("upgradeDb", () => {
+describe("applyDbUpgrade", () => {
   it("creates the files, metadata and history stores in a new database", () => {
     const stores: Record<string, ReturnType<typeof fakeStore>> = {};
     const db = fakeDatabase(stores);
-    upgradeDb(db as never, 0, {} as never);
+    applyDbUpgrade(db as never, 0, {} as never);
     expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
   });
 
@@ -31,7 +31,7 @@ describe("upgradeDb", () => {
     const metadata = fakeStore(["byFolder"]);
     const stores = { files, metadata, manifest: fakeStore([]) };
     const db = fakeDatabase(stores);
-    upgradeDb(db as never, 1, { objectStore: (n: string) => stores[n as keyof typeof stores] } as never);
+    applyDbUpgrade(db as never, 1, { objectStore: (n: string) => stores[n as keyof typeof stores] } as never);
     expect(files.deleteIndex).toHaveBeenCalledWith("byHash");
     expect(metadata.deleteIndex).toHaveBeenCalledWith("byFolder");
     expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
@@ -46,7 +46,7 @@ describe("upgradeDb", () => {
     manifest.rows.set("drive", { providerId: "drive", json: "{}" });
     const stores = { files, metadata, manifest };
     const db = fakeDatabase(stores);
-    upgradeDb(db as never, 2, {} as never);
+    applyDbUpgrade(db as never, 2, {} as never);
     expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
     expect(files.rows.size).toBe(1);
     expect(metadata.rows.size).toBe(1);
@@ -58,7 +58,7 @@ describe("upgradeDb", () => {
     const files = fakeStore([]);
     const stores = { files, metadata: fakeStore([]) };
     const db = fakeDatabase(stores);
-    upgradeDb(db as never, 3, {} as never);
+    applyDbUpgrade(db as never, 3, {} as never);
     expect(Object.keys(stores)).toEqual(["files", "metadata", "historyLog", "historyObjects"]);
   });
 });

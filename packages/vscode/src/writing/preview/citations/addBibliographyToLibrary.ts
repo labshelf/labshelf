@@ -11,7 +11,7 @@ import { findBibEntry } from "./projectBibliographyFiles.js";
 
 const MODULE = "writing/preview";
 
-export interface AddBibDeps {
+export interface AddBibliographyDeps {
   projectFolder: string;
   logger: ILogger;
   importer: Pick<PaperImporter, "importFromNetwork">;
@@ -32,7 +32,7 @@ function identifierOf(entry: BibEntry): string | undefined {
   return arxiv ? `arXiv:${arxiv}` : undefined;
 }
 
-async function writeFromFields(deps: AddBibDeps, entry: BibEntry, file: string): Promise<string> {
+async function writeFromFields(deps: AddBibliographyDeps, entry: BibEntry, file: string): Promise<string> {
   const card = createBibliographyCardEntry(entry);
   const url = extractPlainField(entry.fields.get("url"));
   const publisher = extractPlainField(entry.fields.get("publisher"));
@@ -52,7 +52,7 @@ async function writeFromFields(deps: AddBibDeps, entry: BibEntry, file: string):
   return record.id;
 }
 
-export async function addBibToLibrary(deps: AddBibDeps, key: string): Promise<void> {
+export async function addBibliographyToLibrary(deps: AddBibliographyDeps, key: string): Promise<void> {
   let file: string | undefined;
   try {
     const found = await findBibEntry(deps.projectFolder, key);

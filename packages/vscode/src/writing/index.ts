@@ -1,9 +1,9 @@
 // Exports the writing view: the project list, its commands and the store behind them.
-export { registerMainCommands } from "./buildRootCommands.js";
-export { registerMainStatusBar } from "./buildRootStatusBar.js";
+export { registerBuildRootCommands } from "./buildRootCommands.js";
+export { registerBuildRootStatusBar } from "./buildRootStatusBar.js";
 export { registerAddExistingFolder, registerProjectCommands } from "./projectCommands.js";
-export { duplicateProject, registerProjectItemCommands } from "./projectItemCommands.js";
-export { mainPathIn, owningProject } from "./buildRootDocument.js";
+export { copyProjectEntry, registerProjectItemCommands } from "./projectItemCommands.js";
+export { deriveBuildRootPath, findOwningProject } from "./buildRootDocument.js";
 export type { ReadyProject } from "./buildRootDocument.js";
 export { WritingProjects } from "./session/index.js";
 export type { WritingHost, WritingSession } from "./session/index.js";
@@ -11,11 +11,11 @@ export { ProjectReadingLists, registerReadingListCommands } from "./readingList/
 export { ProjectBacklinkIndex } from "./citations/index.js";
 export { registerEditorActions } from "./registerEditorActions.js";
 export { registerInsertActions } from "./registerInsertActions.js";
-export { projectZipEntries } from "./exportBundle.js";
+export { listProjectZipEntries } from "./exportBundle.js";
 export { registerExportCommands } from "./registerExportCommands.js";
 export type { ConvertDocument } from "./exportProject.js";
 export { registerInstallCommand } from "./installCommand.js";
 export type { InstallServices } from "./installCommand.js";
 export type { BuildRootOf, PlatformWriting, ProjectHistoryRecorder, RegisterPlatformWriting } from "./platformWritingPort.js";
-export { registerBibliographyLint } from "./registerBibliographyCheck.js";
-export { registerLabshelfLinks } from "./registerPaperLinks.js";
+export { registerBibliographyCheck } from "./registerBibliographyCheck.js";
+export { registerPaperLinks } from "./registerPaperLinks.js";

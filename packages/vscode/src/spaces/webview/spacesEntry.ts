@@ -10,11 +10,11 @@ import "@labshelf/core/styles/spaces.css";
 import "@labshelf/core/styles/spaces-overview.css";
 import { SPACE_TABS, type HostToSpaces, type SpacesToHost, type SpaceTab } from "@labshelf/core";
 import { findElement, mountSpace, mountSpacesCatalog } from "@labshelf/core/dom";
-import { webviewTransport } from "../../webview/index.js";
+import { createWebviewTransport } from "../../webview/index.js";
 
 const api = acquireVsCodeApi();
 const config = JSON.parse(findElement("spaces-config").textContent ?? "{}") as { view: string; id?: string; tab?: SpaceTab };
-const end = webviewTransport<SpacesToHost, HostToSpaces>(api);
+const end = createWebviewTransport<SpacesToHost, HostToSpaces>(api);
 if (config.view === "space" && config.id) {
   const id = config.id;
   const saved = api.getState() as { tab?: unknown } | undefined;

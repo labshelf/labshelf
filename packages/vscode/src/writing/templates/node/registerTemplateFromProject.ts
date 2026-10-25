@@ -5,8 +5,8 @@ import {
   CATEGORY_LABELS, TEMPLATE_CATEGORIES, isLicenseExpression, type ProjectEntry, type TemplateCategory,
 } from "@labshelf/core";
 import { writeProjectAsTemplate, type WriteTemplateInput } from "@labshelf/core/node";
-import { executeSafely } from "../../../command/index.js";
-import { activeProject } from "../../build/index.js";
+import { runSafely } from "../../../command/index.js";
+import { readActiveProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
 import type { ToolchainDeps } from "../../build/toolchain/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
@@ -55,8 +55,8 @@ async function askDetails(defaultName: string): Promise<Details | undefined> {
 async function saveProject(deps: SaveProjectDeps, entry: ProjectEntry | undefined): Promise<void> {
   const session = await deps.host.require();
   if (!session) { return; }
-  await executeSafely(session.logger, SAVE_TEMPLATE_COMMAND, async () => {
-    const project: ReadyProject | undefined = entry?.kind === "ready" ? entry : activeProject(deps.projects);
+  await runSafely(session.logger, SAVE_TEMPLATE_COMMAND, async () => {
+    const project: ReadyProject | undefined = entry?.kind === "ready" ? entry : readActiveProject(deps.projects);
     if (!project) {
       await vscode.window.showInformationMessage("Choose a project to save as a template.");
       return;
@@ -76,7 +76,7 @@ async function saveProject(deps: SaveProjectDeps, entry: ProjectEntry | undefine
   });
 }
 
-export function registerSaveProjectCommand(deps: SaveProjectDeps): void {
+export function registerProjectTemplateCommand(deps: SaveProjectDeps): void {
   deps.context.subscriptions.push(
     vscode.commands.registerCommand(SAVE_TEMPLATE_COMMAND, (entry?: ProjectEntry) => saveProject(deps, entry)),
   );

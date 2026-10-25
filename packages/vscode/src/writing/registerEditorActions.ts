@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { deriveSelectionWrap, type WrapStyle } from "@labshelf/core";
 
 import type { WritingHost } from "./session/index.js";
-import { writingLanguageOf } from "./editorLanguage.js";
+import { readWritingLanguage } from "./editorLanguage.js";
 
 const COMMANDS: Record<WrapStyle, string> = { bold: "labshelf.writing.bold", italic: "labshelf.writing.italic" };
 
@@ -15,7 +15,7 @@ interface EditorActionDeps {
 
 async function wrapActiveSelections(deps: EditorActionDeps, style: WrapStyle): Promise<void> {
   const editor = vscode.window.activeTextEditor;
-  const language = writingLanguageOf(editor);
+  const language = readWritingLanguage(editor);
   if (!editor || !language) { return; }
   const { document } = editor;
   const ordered = [...editor.selections].sort((a, b) => document.offsetAt(a.start) - document.offsetAt(b.start));

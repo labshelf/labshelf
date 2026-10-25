@@ -4,14 +4,14 @@ import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost } from "../../session/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
-export type SynctexLookup =
+export type SynctexFinder =
   | { status: "found"; index: SynctexMap }
   | { status: "missing"; path: string }
   | { status: "unsupported" }
   | { status: "unreadable" };
 
 export class ProjectSynctex {
-  private readonly lookups = new Map<string, Promise<SynctexLookup>>();
+  private readonly lookups = new Map<string, Promise<SynctexFinder>>();
 
   constructor(
     private readonly host: Pick<WritingHost, "current">,
@@ -25,7 +25,7 @@ export class ProjectSynctex {
   }
 
   /** The data of a root's build. A missing or unreadable file is not kept, so a later build is picked up. */
-  load(project: ReadyProject, root: string | undefined): Promise<SynctexLookup> {
+  load(project: ReadyProject, root: string | undefined): Promise<SynctexFinder> {
     const known = this.lookups.get(project.folder);
     if (known) { return known; }
     const pending = this.read(project, root);
@@ -36,7 +36,7 @@ export class ProjectSynctex {
     return pending;
   }
 
-  private async read(project: ReadyProject, root: string | undefined): Promise<SynctexLookup> {
+  private async read(project: ReadyProject, root: string | undefined): Promise<SynctexFinder> {
     // Typst writes no SyncTeX; its compiler has no PDF-to-source map LabShelf can read.
     if (project.settings.format !== "latex") { return { status: "unsupported" }; }
     if (!root) { return { status: "missing", path: project.folder }; }

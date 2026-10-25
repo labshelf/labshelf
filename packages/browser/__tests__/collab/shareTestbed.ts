@@ -1,9 +1,9 @@
 // Opens library pages of separate browser profiles that share, join, resume and leave projects through in-process relays.
 import "fake-indexeddb/auto";
 import type { LibraryFileSystem, ProjectEntry } from "@labshelf/core";
-import { createPageSharing, type PageSharing } from "../../src/collab";
-import type { LibrarySource, LibrarySources } from "../../src/storage";
-import { collabDb, namespaceRange } from "../../src/storage/collab/collabDb";
+import { createPageShare, type PageShare } from "../../src/collab";
+import type { LibraryLocation, LibraryLocations } from "../../src/storage";
+import { openCollabDb, createNamespaceRange } from "../../src/storage/collab/openCollabDb";
 import { installFakeLocks } from "../support/fakeLocks";
 import type { RelayNet } from "../support/relayNetwork";
 import { libraryFs } from "./pageSharesTestbed";
@@ -11,10 +11,10 @@ import { libraryFs } from "./pageSharesTestbed";
 export const FOLDER = "projects/thesis";
 export const MAIN = `${FOLDER}/main.typ`;
 export const PROJECT_FILE = `${FOLDER}/labshelf.yaml`;
-const BROWSER: LibrarySource = { kind: "browser", reason: "not-installed" };
+const BROWSER: LibraryLocation = { kind: "browser", reason: "not-installed" };
 
 export interface SharingPage {
-  sharing: PageSharing;
+  sharing: PageShare;
   reports: { missingKey: jest.Mock; failed: jest.Mock };
   requireRelay: jest.Mock<Promise<boolean>, []>;
 }
@@ -49,7 +49,7 @@ export async function openLibrary(net: RelayNet, seed: boolean): Promise<Sharing
   const sources = {
     fileSystem: fs, browserFileSystem: fs, folderFileSystem: fs,
     getLibrarySource: async () => BROWSER, onLibraryFilesChanged: () => () => undefined,
-  } as unknown as LibrarySources;
+  } as unknown as LibraryLocations;
   const pages: SharingPage[] = [];
   const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
   return {
@@ -57,7 +57,7 @@ export async function openLibrary(net: RelayNet, seed: boolean): Promise<Sharing
     open: ({ relay = true } = {}) => {
       const reports = { missingKey: jest.fn(), failed: jest.fn() };
       const requireRelay = jest.fn(async () => false);
-      const sharing = createPageSharing({
+      const sharing = createPageShare({
         sources, libraryId: async () => libraryId, logger, reports, requireRelay,
         relay: { get: async () => (relay ? net.account : undefined) }, network: net.network, fetch: net.claimFetch,
       });
@@ -72,8 +72,8 @@ export async function openLibrary(net: RelayNet, seed: boolean): Promise<Sharing
       return page.sharing.ports.projects.list().filter((entry) => entry.kind === "ready");
     },
     storedState: async (shareId) => {
-      const db = await collabDb();
-      const range = namespaceRange(`${libraryId}/${shareId}`);
+      const db = await openCollabDb();
+      const range = createNamespaceRange(`${libraryId}/${shareId}`);
       const counts = await Promise.all((["docs", "updates", "maps"] as const).map((store) => db.count(store, range)));
       return counts.reduce((sum, count) => sum + count, 0);
     },

@@ -35,7 +35,7 @@ export async function ensureLibraryStructure(library: LibraryRoot): Promise<void
 }
 
 /** Whether a folder looks like a LabShelf library (it has one of the marker folders). */
-export async function looksLikeLibrary(root: string): Promise<boolean> {
+export async function isLibraryRoot(root: string): Promise<boolean> {
   for (const dir of createLibraryLayout(root, path.join).markerDirs()) {
     try {
       if ((await fs.stat(dir)).isDirectory()) { return true; }

@@ -2,15 +2,15 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { expandHome } from "../../../platform/index.js";
-import type { PromptOverlay } from "../../overlays.js";
-import { importInputs, targetFolder } from "../actions/index.js";
-import { targetsForExport } from "../actions/index.js";
+import { resolveHomePath } from "../../../platform/index.js";
+import type { AskOverlay } from "../../overlays.js";
+import { importInputs, readAddFolder } from "../actions/index.js";
+import { listExportPapers } from "../actions/index.js";
 import { runCommand } from "../actions/index.js";
 import type { App } from "../app.js";
-import { looksLikePath } from "./askCompletion.js";
+import { isPath } from "./askCompletion.js";
 
-export function submitPrompt(app: App, prompt: PromptOverlay): void {
+export function applyAsk(app: App, prompt: AskOverlay): void {
   const value = prompt.input.value.trim();
   switch (prompt.purpose) {
     case "add": return submitAdd(app, prompt, value);
@@ -22,12 +22,12 @@ export function submitPrompt(app: App, prompt: PromptOverlay): void {
   }
 }
 
-function submitAdd(app: App, prompt: PromptOverlay, value: string): void {
+function submitAdd(app: App, prompt: AskOverlay, value: string): void {
   if (!value) { return; }
-  const parent = prompt.targets[0] ?? targetFolder(app);
+  const parent = prompt.targets[0] ?? readAddFolder(app);
   // yazi's convention: a single name ending in "/" creates a folder; anything else is a path, URL or identifier.
   const folderOnly = prompt.targets[1] === "folder";
-  if (folderOnly || (/^[^/]+\/$/.test(value) && !looksLikePath(value))) {
+  if (folderOnly || (/^[^/]+\/$/.test(value) && !isPath(value))) {
     const name = value.replace(/\/+$/, "");
     void app.taskStatus.task("folder", "creating folder", async () => {
       app.folder = await app.ctx.papers.createCollection(parent, name);
@@ -39,7 +39,7 @@ function submitAdd(app: App, prompt: PromptOverlay, value: string): void {
   void importInputs(app, [value], parent);
 }
 
-function submitTags(app: App, prompt: PromptOverlay, value: string): void {
+function submitTags(app: App, prompt: AskOverlay, value: string): void {
   const id = prompt.targets[0];
   if (!id) { return; }
   const tags = value.split(",").map((t) => t.trim()).filter(Boolean);
@@ -49,7 +49,7 @@ function submitTags(app: App, prompt: PromptOverlay, value: string): void {
   });
 }
 
-function submitTagsBatch(app: App, prompt: PromptOverlay, value: string): void {
+function submitTagsBatch(app: App, prompt: AskOverlay, value: string): void {
   const add: string[] = [];
   const remove: string[] = [];
   for (const token of value.split(/\s+/).filter((t) => t && t !== "+" && t !== "-")) {
@@ -63,7 +63,7 @@ function submitTagsBatch(app: App, prompt: PromptOverlay, value: string): void {
   });
 }
 
-function submitRename(app: App, prompt: PromptOverlay, value: string): void {
+function submitRename(app: App, prompt: AskOverlay, value: string): void {
   const rel = prompt.targets[0];
   if (rel === undefined || !value) { return; }
   void app.taskStatus.task("rename", "renaming", async () => {
@@ -74,9 +74,9 @@ function submitRename(app: App, prompt: PromptOverlay, value: string): void {
 
 function submitExport(app: App, value: string): void {
   if (!value) { return; }
-  const records = targetsForExport(app);
+  const records = listExportPapers(app);
   void app.taskStatus.task("export", "exporting", async () => {
-    const file = path.resolve(expandHome(value));
+    const file = path.resolve(resolveHomePath(value));
     await fs.writeFile(file, app.ctx.papers.bibtexFor(records));
     app.taskStatus.notify(`${records.length} BibTeX entries written to ${file}`);
   });

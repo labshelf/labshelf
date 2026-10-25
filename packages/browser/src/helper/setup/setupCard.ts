@@ -16,7 +16,7 @@ import type {
   HelperState,
   TexToolchain,
 } from "@labshelf/core/helper";
-import { MACOS_GUIDE_URL, helperDownloadUrl } from "./helperInstaller";
+import { MACOS_GUIDE_URL, createHelperDownloadUrl } from "./helperInstaller";
 
 const LOOK_BACK_NOTE = "Come back here. This section notices the helper on its own and offers to install TeX if this computer has none.";
 
@@ -251,7 +251,7 @@ function createActions(card: () => Card, helper: ILatexHelper, deps: HelperSetup
   const install = (action: string, label: string, run: (onProgress: HelperProgressListener) => Promise<void>): Promise<void> =>
     runInstall(card(), helper, deps.logger, action, label, run);
   return {
-    download: () => deps.openUrl(helperDownloadUrl(card().os)),
+    download: () => deps.openUrl(createHelperDownloadUrl(card().os)),
     openMacosGuide: () => deps.openUrl(MACOS_GUIDE_URL),
     retry: () => connect(card(), helper, true),
     install: (kind) => install(`install-${kind}`, `Installing ${TEX_LABEL[kind]}…`, (onProgress) => helper.installTex(kind, onProgress)),

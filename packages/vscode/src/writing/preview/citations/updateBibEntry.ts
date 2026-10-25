@@ -6,7 +6,7 @@ import { findBibEntry } from "./projectBibliographyFiles.js";
 
 const MODULE = "writing/preview";
 
-export interface UpdateBibDeps {
+export interface UpdateBibliographyDeps {
   projectFolder: string;
   logger: ILogger;
   publishedLookup: PublishedVersionFinder;
@@ -19,7 +19,7 @@ interface PublishedFix {
 }
 
 // Lints the entry alone: one lookup instead of one per entry in the file, and the lookup's answer is the entry's own.
-async function publishedFixOf(deps: UpdateBibDeps, key: string): Promise<PublishedFix | undefined> {
+async function publishedFixOf(deps: UpdateBibliographyDeps, key: string): Promise<PublishedFix | undefined> {
   const found = await findBibEntry(deps.projectFolder, key);
   if (!found) { return undefined; }
   const { document, entry } = found;
@@ -33,7 +33,7 @@ async function publishedFixOf(deps: UpdateBibDeps, key: string): Promise<Publish
 }
 
 /** The journal the preprint was published in; undefined when it has no known published version or the lookup fails. */
-export async function publishedVenueOf(deps: UpdateBibDeps, key: string): Promise<string | undefined> {
+export async function readPublishedVenue(deps: UpdateBibliographyDeps, key: string): Promise<string | undefined> {
   try {
     return (await publishedFixOf(deps, key))?.version?.record?.journal;
   } catch (error) {
@@ -43,7 +43,7 @@ export async function publishedVenueOf(deps: UpdateBibDeps, key: string): Promis
 }
 
 /** Edits the entry in its open document, so the source shows it as changed and the user can undo or save it. */
-export async function updateBibEntry(deps: UpdateBibDeps, key: string): Promise<void> {
+export async function updateBibEntry(deps: UpdateBibliographyDeps, key: string): Promise<void> {
   let file: string | undefined;
   try {
     const found = await publishedFixOf(deps, key);
@@ -62,7 +62,7 @@ export async function updateBibEntry(deps: UpdateBibDeps, key: string): Promise<
   }
 }
 
-async function fail(deps: UpdateBibDeps, key: string, file: string | undefined, error: unknown): Promise<void> {
+async function fail(deps: UpdateBibliographyDeps, key: string, file: string | undefined, error: unknown): Promise<void> {
   await deps.logger.error(MODULE, error, { key, file, action: "update-bib-entry" });
   void vscode.window.showErrorMessage(`Could not update ${key}: ${error instanceof Error ? error.message : String(error)}`);
 }

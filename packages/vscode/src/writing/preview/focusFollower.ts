@@ -2,10 +2,10 @@
 import * as vscode from "vscode";
 
 import type { ProjectFormat } from "@labshelf/core";
-import { owningProject, type ReadyProject } from "../buildRootDocument.js";
+import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { BuildRootOf } from "../platformWritingPort.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
-import { builtPdf } from "./builtPdf.js";
+import { readBuiltPdf } from "./readBuiltPdf.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
 
 export interface FocusFollowerDeps {
@@ -31,15 +31,15 @@ export class FocusFollower implements vscode.Disposable {
   async follow(file: string): Promise<void> {
     const { session, projects, previews } = this.deps;
     const project = session.project;
-    if (!project?.main || owningProject(projects, file)?.folder !== project.folder) { return; }
+    if (!project?.main || findOwningProject(projects, file)?.folder !== project.folder) { return; }
     try {
       const root = await this.deps.buildRootOf(project.folder, project.main, file);
-      const pdf = await builtPdf(projects, project, root);
+      const pdf = await readBuiltPdf(projects, project, root);
       if (pdf) {
         previews.show(project, root, pdf, { beside: true });
         return;
       }
-      const mainPdf = await builtPdf(projects, project, project.main);
+      const mainPdf = await readBuiltPdf(projects, project, project.main);
       if (mainPdf) { previews.show(project, project.main, mainPdf, { beside: true }); }
       void this.deps.host.current()?.logger.log("INFO", PREVIEW_LOG_MODULE, "Building the focused root", { projectFolder: project.folder, root });
       await this.deps.builders[project.settings.format].request(project.folder, root, "focus");

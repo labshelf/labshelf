@@ -2,15 +2,15 @@
 
 import type { Annotation, ILogger, PaperRecord } from "@labshelf/core";
 import type { WritingProjects } from "../session/index.js";
-import type { CiteSections } from "./citationSectionsCache.js";
-import { owningProject, type ProjectLookup, type ReadyProject } from "../buildRootDocument.js";
+import type { CitationSections } from "./citationSectionsCache.js";
+import { findOwningProject, type ProjectFinder, type ReadyProject } from "../buildRootDocument.js";
 
 export interface CitationSession {
   listPapers(): Promise<PaperRecord[]>;
   /** The paper's annotations; the page-argument completion keeps the highlights that have text. */
   highlightsOf(paperId: string): Promise<Annotation[]>;
   /** Which sections of the project cite each key, from its saved sources. */
-  citeSections(project: ReadyProject): Promise<CiteSections>;
+  citeSections(project: ReadyProject): Promise<CitationSections>;
   logger: ILogger;
 }
 
@@ -23,7 +23,7 @@ export interface CitationWorkspace {
 const SOURCE_EXTENSION = { latex: ".tex", typst: ".typ" } as const;
 
 /** The ready project that owns the file as one of its sources; a source in the other format is not one. */
-export function citingProject(projects: ProjectLookup, file: string): ReadyProject | undefined {
-  const project = owningProject(projects, file);
+export function findCitingProject(projects: ProjectFinder, file: string): ReadyProject | undefined {
+  const project = findOwningProject(projects, file);
   return project && projects.paths.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
 }

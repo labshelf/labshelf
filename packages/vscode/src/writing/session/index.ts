@@ -3,4 +3,4 @@ export { ProjectSession } from "./projectSession.js";
 export { OPEN_PROJECT_COMMAND, registerProjectSession } from "./registerProjectSession.js";
 export { WritingProjects } from "./projectStore.js";
 export type { WritingHost, WritingSession } from "./projectStore.js";
-export { registerProjectSaveEvents } from "./projectWriteEvents.js";
+export { registerProjectWriteEvents } from "./projectWriteEvents.js";

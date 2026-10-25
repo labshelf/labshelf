@@ -23,7 +23,7 @@ source: Explore scout
 
 ## Comment UI
 - vscode: collab/comments/{commentsController,threadView,fileComments,sharedComments}.ts.
-- browser: collab/comments/{commentThreads,routedCommentThreads,commentSupport,addComment (Mod-Alt-m),commentMarks}.ts; collab/liveCommentThreads.ts; libraryUi/editorArea/commentsTab.ts.
+- browser: collab/comments/{commentThreads,routedCommentThreads,createCommentSupport,addComment (Mod-Alt-m),commentMarks}.ts; collab/liveCommentThreads.ts; libraryUi/editorArea/commentsTab.ts.
 
 ## Checklist
 - Contract library-format.md:222-241: `.labshelf/checklist.json` `{items:[{id,text,done,createdAt[,doneAt,group,section]}]}`; group in todo|ref|figure|pages|reading. Code: checklistFile.ts, readManualItems.ts, updateChecklist.ts.

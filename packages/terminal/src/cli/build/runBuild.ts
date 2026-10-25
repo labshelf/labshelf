@@ -4,7 +4,7 @@ import * as path from "node:path";
 import type { ProjectBuildResult, LocatedProblem, ToolchainMissing } from "@labshelf/core";
 
 import type { Output } from "../usage.js";
-import { processAsk, terminalBuildEnvironment, type BuildContext, type BuildEnvironment } from "./buildEnvironment.js";
+import { createTtyAsk, createTerminalBuildEnvironment, type BuildContext, type BuildEnvironment } from "./buildEnvironment.js";
 import { findProject, type ReadyProject } from "./findProject.js";
 
 /** `path:line: severity: message`, then the hint indented on the next line; paths are relative to `cwd` so editors can jump to them. */
@@ -78,7 +78,7 @@ async function watchAndRebuild(env: BuildEnvironment, project: ReadyProject, ctx
  */
 export async function runBuild(
   ctx: BuildContext, positionals: string[], flags: Record<string, string | boolean>, io: Output,
-  env: BuildEnvironment = terminalBuildEnvironment(ctx, { ask: processAsk() }),
+  env: BuildEnvironment = createTerminalBuildEnvironment(ctx, { ask: createTtyAsk() }),
 ): Promise<number> {
   const project = await findProject(ctx.paths.root, ctx.logger, positionals[0], process.cwd());
   const code = await buildOnce(env, project, ctx, io);

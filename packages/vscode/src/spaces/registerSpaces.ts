@@ -13,7 +13,7 @@ import {
   type Progress,
 } from "@labshelf/core";
 
-export async function projectChecklist(writing: WritingViewHandles, row: ProjectRow): Promise<Progress | undefined> {
+export async function readProjectChecklist(writing: WritingViewHandles, row: ProjectRow): Promise<Progress | undefined> {
   const project = writing.projects.list().find(entry => entry.folder === row.id);
   if (project?.kind !== "ready") { return undefined; }
   const [signals, list] = await Promise.all([
@@ -33,7 +33,7 @@ export function registerSpaces(
       const entry = writing.projects.list().find(project => project.folder === hostId);
       return entry?.kind === "ready" ? entry.settings.id : undefined;
     },
-    readChecklist: row => projectChecklist(writing, row),
+    readChecklist: row => readProjectChecklist(writing, row),
   });
   const panels = registerSpacesPanels(context, spaces);
   const chat = new ResearchChatView(context.extensionUri, panels, writing.logger);

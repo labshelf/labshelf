@@ -3,10 +3,10 @@ import {
   connectShare, posixPathOps,
   type ILogger, type Invite, type MirrorFactory, type MirrorStart, type ProjectFolderRegistry, type RelayNetwork, type ShareConnection, type ShareStart,
 } from "@labshelf/core";
-import { openBrowserCollabStorage, type LibrarySources, type TabLease } from "../storage";
+import { openBrowserCollabStorage, type LibraryLocations, type TabLease } from "../storage";
 import { startBrowserProjectMirror, type BrowserMirrorStart } from "./mirror";
 
-export type ShareSources = Pick<LibrarySources, "fileSystem" | "folderFileSystem" | "browserFileSystem" | "getLibrarySource" | "onLibraryFilesChanged">;
+export type ShareSources = Pick<LibraryLocations, "fileSystem" | "folderFileSystem" | "browserFileSystem" | "getLibrarySource" | "onLibraryFilesChanged">;
 
 export interface BrowserShareOptions {
   invite: Pick<Invite, "shareId" | "shareKey" | "relays">;

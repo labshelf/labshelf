@@ -16,7 +16,7 @@ import {
   ConflictFeed, LibraryRoot, LibraryWatcher, SidecarReader, TerminalPaperService, createLibraryStore, ensureLibraryStructure,
 } from "./library/index.js";
 import { moveToTrash } from "./platform/index.js";
-import { defaultRenderer, ThumbnailService } from "./libraryUi/index.js";
+import { createDefaultRenderer, ThumbnailService } from "./libraryUi/index.js";
 import { detectImageProtocol, type ImageProtocol } from "./screen/index.js";
 
 export interface AppContext {
@@ -86,7 +86,7 @@ function createPaperService(
 }
 
 function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogger) {
-  const renderer = defaultRenderer(path.join(resolveCacheDir(env), "tmp"), workerUrl);
+  const renderer = createDefaultRenderer(path.join(resolveCacheDir(env), "tmp"), workerUrl);
   return { renderer, thumbnails: new ThumbnailService(resolveCacheDir(env), renderer.render, logger) };
 }
 

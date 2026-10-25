@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openFolderLease, type ILogger, type MirrorInput } from '@labshelf/core';
 import { NodeLibraryFileSystem } from '@labshelf/core/node';
-import { desktopMirrorFactory } from '../../../../src/collab/node/session/shareConnection';
+import { createDesktopMirrorFactory } from '../../../../src/collab/node/session/shareConnection';
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 
-describe('desktopMirrorFactory', () => {
+describe('createDesktopMirrorFactory', () => {
   let folder: string;
   beforeEach(async () => {
     folder = await mkdtemp(join(tmpdir(), 'labshelf-mirror-'));
@@ -23,7 +23,7 @@ describe('desktopMirrorFactory', () => {
     const lease = await readFile(leaseFile, 'utf8');
     const closed = new AbortController();
 
-    const start = await desktopMirrorFactory(folder, logger, () => false)({
+    const start = await createDesktopMirrorFactory(folder, logger, () => false)({
       folder, signal: closed.signal, onStopped: jest.fn(), session: {}, blobs: {}, store: {},
     } as unknown as MirrorInput);
 

@@ -1,7 +1,7 @@
 // Scripts a LabShelf Helper behind a fake native port and a fake WebSocket class so client tests run without a browser.
 import { decodeConnectionMessage, encodeConnectionMessage, PROTOCOL_VERSION, type HelperBuildState, type TexToolchain } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import type { HelperWebSocketConstructor } from "../../../src/helper/client/connection";
+import type { HelperConnectionConstructor } from "../../../src/helper/client/connection";
 import type { NativePort } from "../../../src/platform";
 
 /** `announce` replaces the offsets the helper declares, to script a lying helper. */
@@ -88,11 +88,11 @@ export class FakeHelper implements NativePort {
     reply({ type: "pages", pdfSha256: SHA, pageCount: pages.pageCount, changed: pages.announce ?? changed }, payload);
   }
 
-  private makeSocketClass(): HelperWebSocketConstructor {
+  private makeSocketClass(): HelperConnectionConstructor {
     const helper = this;
     return class extends FakeSocket {
       constructor(url: string) { super(url, helper); helper.sockets.push(this); }
-    } as unknown as HelperWebSocketConstructor;
+    } as unknown as HelperConnectionConstructor;
   }
 }
 

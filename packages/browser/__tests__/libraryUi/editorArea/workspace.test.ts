@@ -1,8 +1,8 @@
 // Pins which tabs a page load opens for a tabs hash, a folder deep link and a bare URL.
-import { planPage } from "../../../src/libraryUi/pagePlan";
-import { planRestore as restore } from "../../../src/libraryUi/editorArea/workspace";
+import { derivePagePlan } from "../../../src/libraryUi/pagePlan";
+import { deriveRestorePlan as restore } from "../../../src/libraryUi/editorArea/workspace";
 
-const both = planPage({ library: true, projects: true });
+const both = derivePagePlan({ library: true, projects: true });
 const planRestore = (hash: string, kept: string | null) => restore(hash, kept, both);
 
 const stored = "#/tabs/library,templates;active=templates";
@@ -29,8 +29,8 @@ describe("restore plan", () => {
 });
 
 describe("restore plan with a hidden section", () => {
-  const noProjects = planPage({ library: true, projects: false });
-  const noLibrary = planPage({ library: false, projects: true });
+  const noProjects = derivePagePlan({ library: true, projects: false });
+  const noLibrary = derivePagePlan({ library: false, projects: true });
 
   it("drops the tabs of a hidden Projects section and falls back to the Library", () => {
     expect(restore("#/tabs/library,templates;active=templates", null, noProjects)).toEqual({ tabs: ["library"], active: "library", folderLink: false });

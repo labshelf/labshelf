@@ -4,7 +4,7 @@ import { LibrarySidebarView } from '../../src/libraryUi/index';
 import { createLibraryEvents } from '../../src/library/index';
 
 jest.mock('../../src/libraryUi/listPanelHtml', () => ({
-  libraryBundleDirectory: () => vscode.Uri.file('/bundle'), listPanelHtml: async () => '',
+  readLibraryBundleDir: () => vscode.Uri.file('/bundle'), listPanelHtml: async () => '',
 }));
 jest.mock('../../src/share/shareWebviews', () => ({ sharingWebviews: { attach: () => ({ dispose() {} }) } }));
 

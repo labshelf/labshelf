@@ -41,7 +41,7 @@ function isWide(cp: number): boolean {
  * Cells taken by one grapheme cluster: 0 for marks and format characters, 2 for wide characters, 1 otherwise.
  * @returns 0, 1 or 2
  */
-export function graphemeWidth(grapheme: string): 0 | 1 | 2 {
+export function deriveGraphemeWidth(grapheme: string): 0 | 1 | 2 {
   const cp = grapheme.codePointAt(0) ?? 0;
   if (cp < 0x7f && cp >= 0x20) { return 1; }
   if (isControl(cp)) { return 0; }
@@ -55,7 +55,7 @@ export function graphemeWidth(grapheme: string): 0 | 1 | 2 {
  * Splits text into grapheme clusters with their widths, replacing control characters with a visible placeholder.
  * @returns the clusters in order
  */
-export function graphemes(text: string): Array<{ g: string; w: 0 | 1 | 2 }> {
+export function splitGraphemes(text: string): Array<{ g: string; w: 0 | 1 | 2 }> {
   const out: Array<{ g: string; w: 0 | 1 | 2 }> = [];
   if (/^[\x20-\x7e]*$/.test(text)) {
     for (const ch of text) { out.push({ g: ch, w: 1 }); }
@@ -67,7 +67,7 @@ export function graphemes(text: string): Array<{ g: string; w: 0 | 1 | 2 }> {
       out.push({ g: cp === 0x09 ? " " : "�", w: 1 });
       continue;
     }
-    out.push({ g: segment, w: graphemeWidth(segment) });
+    out.push({ g: segment, w: deriveGraphemeWidth(segment) });
   }
   return out;
 }
@@ -75,10 +75,10 @@ export function graphemes(text: string): Array<{ g: string; w: 0 | 1 | 2 }> {
 /**
  * @returns the number of terminal cells the text takes
  */
-export function stringWidth(text: string): number {
+export function deriveStringWidth(text: string): number {
   if (/^[\x20-\x7e]*$/.test(text)) { return text.length; }
   let width = 0;
-  for (const { w } of graphemes(text)) { width += w; }
+  for (const { w } of splitGraphemes(text)) { width += w; }
   return width;
 }
 
@@ -86,14 +86,14 @@ export function stringWidth(text: string): number {
  * Cuts text to at most `width` cells, ending with an ellipsis when something was cut.
  * @returns the truncated text
  */
-export function truncate(text: string, width: number, ellipsis = "…"): string {
+export function formatTruncated(text: string, width: number, ellipsis = "…"): string {
   if (width <= 0) { return ""; }
-  if (stringWidth(text) <= width) { return text; }
-  const room = width - stringWidth(ellipsis);
+  if (deriveStringWidth(text) <= width) { return text; }
+  const room = width - deriveStringWidth(ellipsis);
   if (room <= 0) { return ellipsis.slice(0, width); }
   let used = 0;
   let out = "";
-  for (const { g, w } of graphemes(text)) {
+  for (const { g, w } of splitGraphemes(text)) {
     if (used + w > room) { break; }
     out += g;
     used += w;
@@ -105,16 +105,16 @@ export function truncate(text: string, width: number, ellipsis = "…"): string 
  * Pads (or truncates) text to exactly `width` cells.
  * @returns the padded text
  */
-export function fit(text: string, width: number): string {
-  const cut = truncate(text, width);
-  return cut + " ".repeat(Math.max(0, width - stringWidth(cut)));
+export function formatFitted(text: string, width: number): string {
+  const cut = formatTruncated(text, width);
+  return cut + " ".repeat(Math.max(0, width - deriveStringWidth(cut)));
 }
 
 /**
  * Word-wraps text into lines of at most `width` cells; words longer than a line are broken. Newlines are kept.
  * @returns the wrapped lines
  */
-export function wrap(text: string, width: number): string[] {
+export function splitWrapped(text: string, width: number): string[] {
   if (width <= 0) { return []; }
   const lines: string[] = [];
   for (const paragraph of text.replace(/\r\n?/g, "\n").split("\n")) {
@@ -126,7 +126,7 @@ export function wrap(text: string, width: number): string[] {
     let line = "";
     let lineWidth = 0;
     for (const word of words) {
-      const wordWidth = stringWidth(word);
+      const wordWidth = deriveStringWidth(word);
       const sep = line ? 1 : 0;
       if (lineWidth + sep + wordWidth <= width) {
         line += (sep ? " " : "") + word;
@@ -142,7 +142,7 @@ export function wrap(text: string, width: number): string[] {
       // Hard-break a word wider than the line.
       line = "";
       lineWidth = 0;
-      for (const { g, w } of graphemes(word)) {
+      for (const { g, w } of splitGraphemes(word)) {
         if (lineWidth + w > width && line) {
           lines.push(line);
           line = "";
@@ -163,6 +163,6 @@ export function wrap(text: string, width: number): string[] {
  * cursor moves, window titles).
  * @returns the safe text
  */
-export function sanitizeForTerminal(text: string): string {
+export function normalizeForTerminal(text: string): string {
   return text.replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, "\uFFFD");
 }

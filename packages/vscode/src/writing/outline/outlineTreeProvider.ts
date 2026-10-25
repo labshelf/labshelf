@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
-import { outlineNodes, type OutlineNode } from "./outlineNodes.js";
+import { createOutlineNodes, type OutlineNode } from "./createOutlineNodes.js";
 import { REVEAL_OUTLINE_COMMAND } from "./showOutline.js";
 
 const MODULE = "writing/outline";
@@ -62,7 +62,7 @@ export class OutlineTreeProvider implements vscode.TreeDataProvider<OutlineNode>
   }
 
   private mark(editor: vscode.TextEditor | undefined): void {
-    this.roots = editor ? outlineNodes(this.symbols, editor.selection.active) : [];
+    this.roots = editor ? createOutlineNodes(this.symbols, editor.selection.active) : [];
     this.changed.fire();
   }
 

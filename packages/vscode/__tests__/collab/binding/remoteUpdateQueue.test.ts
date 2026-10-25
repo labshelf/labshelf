@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 // This package does not depend on yjs; the test uses core's copy, the one core's binding imports.
 import * as Y from "yjs";
 import type { ILogger } from "@labshelf/core";
-import { bindDocument, RemoteEditQueue } from "../../../src/collab/binding";
+import { attachDocument, RemoteUpdateQueue } from "../../../src/collab/binding";
 
 interface Replacement { range: { start: vscode.Position; end: vscode.Position }; text: string }
 
@@ -74,8 +74,8 @@ function setup(initial: string) {
   yText.insert(0, initial);
   const document = fakeDocument(initial);
   const { logger, warnings, errors } = recordingLogger();
-  const queue = new RemoteEditQueue(logger);
-  const binding = bindDocument(document as unknown as vscode.TextDocument, yText, { queue, logger });
+  const queue = new RemoteUpdateQueue(logger);
+  const binding = attachDocument(document as unknown as vscode.TextDocument, yText, { queue, logger });
   const peer = new Y.Doc();
   Y.applyUpdate(peer, Y.encodeStateAsUpdate(doc));
   const fromPeer = (edit: (text: Y.Text) => void) => {
@@ -86,7 +86,7 @@ function setup(initial: string) {
   return { doc, yText, document, binding, warnings, errors, fromPeer };
 }
 
-describe("RemoteEditQueue", () => {
+describe("RemoteUpdateQueue", () => {
   afterEach(() => { (vscode.workspace.applyEdit as jest.Mock).mockReset(); });
 
   it("shows a peer's edit in the document without writing the echo back", async () => {

@@ -13,7 +13,7 @@ function diagnostic(finding: CheckProblem, line: number): vscode.Diagnostic {
 }
 
 /** Groups the findings by file; a PDF finding without a source line belongs to the PDF, on its first line. */
-export function checkDiagnostics(findings: readonly CheckProblem[], pdfPath: string): Map<string, vscode.Diagnostic[]> {
+export function deriveCheckProblems(findings: readonly CheckProblem[], pdfPath: string): Map<string, vscode.Diagnostic[]> {
   const byFile = new Map<string, vscode.Diagnostic[]>();
   for (const finding of findings) {
     const { location } = finding;

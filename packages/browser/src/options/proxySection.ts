@@ -10,14 +10,14 @@ export const PROXY_TEMPLATE_ERROR = "Not a proxy address — paste a URL with $@
 /** What to show beside a template field: its kind, an error, or nothing while the field is empty. */
 type TemplateVerdict = { kind: ProxyKind; label: string } | { error: string } | undefined;
 
-export function judgeTemplate(template: string): TemplateVerdict {
+export function checkTemplate(template: string): TemplateVerdict {
   if (!template.trim()) return undefined;
   const kind = deriveProxyKind(template);
   return kind ? { kind, label: PROXY_KIND_LABELS[kind] } : { error: PROXY_TEMPLATE_ERROR };
 }
 
 /** The rows with a valid template, trimmed and in order; a blank name falls back to the template so every proxy is nameable in logs. */
-export function savableProxies(rows: readonly LibraryProxy[]): LibraryProxy[] {
+export function listWritableProxies(rows: readonly LibraryProxy[]): LibraryProxy[] {
   return rows.flatMap((row) => {
     const template = row.template.trim();
     return deriveProxyKind(template) ? [{ name: row.name.trim() || template, template, enabled: row.enabled }] : [];
@@ -43,10 +43,10 @@ export function createProxySection(onChange: () => void): EditableListSection {
     addressPlaceholder: "https://login.ezproxy.uni.edu/login?url=$@",
     addressAriaLabel: "Proxy address",
     judge(template) {
-      const verdict = judgeTemplate(template);
+      const verdict = checkTemplate(template);
       if (!verdict) return undefined;
       return "error" in verdict ? { text: verdict.error, isError: true } : { text: verdict.label, isError: false };
     },
-    savable: savableProxies,
+    savable: listWritableProxies,
   }, onChange);
 }

@@ -20,11 +20,11 @@ import {
 } from "@labshelf/core";
 
 import type { AppContext } from "../compositionRoot.js";
-import { isSortKey, type TerminalConfig } from "../config.js";
-import { copyToClipboard, openExternal, viewerTakesPage } from "../platform/index.js";
-import { fit, stringWidth } from "../screen/index.js";
+import { isSortField, type TerminalConfig } from "../config.js";
+import { copyToClipboard, openExternal, canReaderOpenPage } from "../platform/index.js";
+import { formatFitted, deriveStringWidth } from "../screen/index.js";
 import { STATUS_GLYPH } from "../libraryUi/index.js";
-import { stringFlag, type ParsedArgs } from "./args.js";
+import { readStringFlag, type CliArgs } from "./args.js";
 import { runProjectCommand } from "./project/index.js";
 import { Output, UsageError } from "./usage.js";
 
@@ -86,7 +86,7 @@ async function runOpen(ctx: AppContext, positionals: string[], io: Output): Prom
   const viewer = process.env["LABSHELF_PDF_VIEWER"] || ctx.config.terminal?.pdfViewer;
   try {
     openExternal(createPaperFiles(entry.record.path, path.join).pdf, viewer, page);
-    const pageUsed = viewerTakesPage(viewer);
+    const pageUsed = canReaderOpenPage(viewer);
     void ctx.logger.log("INFO", "terminal.open", "opened PDF", { id, page: page ?? null, pageUsed });
     if (link?.page !== undefined && !pageUsed) { io.out(`Opened ${citeKey} — go to page ${link.page}`); }
   } catch (error) {
@@ -99,11 +99,11 @@ async function runOpen(ctx: AppContext, positionals: string[], io: Output): Prom
 
 const STATUS_WORDS: Record<string, ReadingStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
 
-function sortSpec(flags: ParsedArgs["flags"], config: TerminalConfig): SortSpec {
-  const raw = stringFlag(flags, "sort") ?? config.terminal?.sort ?? "title";
+function sortSpec(flags: CliArgs["flags"], config: TerminalConfig): SortSpec {
+  const raw = readStringFlag(flags, "sort") ?? config.terminal?.sort ?? "title";
   const reverse = raw.endsWith("!") || flags["reverse"] === true;
   const key = raw.replace(/!$/, "");
-  return { key: isSortKey(key) ? key : "title", reverse };
+  return { key: isSortField(key) ? key : "title", reverse };
 }
 
 function asJson(entry: PaperEntry): Record<string, unknown> {
@@ -111,11 +111,11 @@ function asJson(entry: PaperEntry): Record<string, unknown> {
 }
 
 function table(entries: PaperEntry[], columns: number): string {
-  const idWidth = Math.min(28, Math.max(4, ...entries.map((e) => stringWidth(e.record.id))));
+  const idWidth = Math.min(28, Math.max(4, ...entries.map((e) => deriveStringWidth(e.record.id))));
   const titleWidth = Math.max(20, columns - idWidth - 12);
   return entries.map((e) => {
     const r = e.record;
-    return `${STATUS_GLYPH[r.status]} ${String(r.year ?? "").padEnd(4)}  ${fit(r.id, idWidth)}  ${fit(r.title, titleWidth).trimEnd()}`;
+    return `${STATUS_GLYPH[r.status]} ${String(r.year ?? "").padEnd(4)}  ${formatFitted(r.id, idWidth)}  ${formatFitted(r.title, titleWidth).trimEnd()}`;
   }).join("\n");
 }
 
@@ -130,7 +130,7 @@ function requireCollection(ctx: AppContext, raw: string | undefined): string {
  * per-command function.
  * @returns the exit code
  */
-export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: Output): Promise<number> {
+export async function runLibraryCommand(ctx: AppContext, args: CliArgs, io: Output): Promise<number> {
   const { command, positionals, flags } = args;
   const json = flags["json"] === true;
   const sort = sortSpec(flags, ctx.config);
@@ -149,7 +149,7 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
   }
 }
 
-async function runLs(ctx: AppContext, positionals: string[], flags: ParsedArgs["flags"], io: Output, json: boolean, sort: SortSpec): Promise<number> {
+async function runLs(ctx: AppContext, positionals: string[], flags: CliArgs["flags"], io: Output, json: boolean, sort: SortSpec): Promise<number> {
   const rel = requireCollection(ctx, positionals[0]);
   if (flags["recursive"] === true || flags["all"] === true) {
     const papers = listPapersUnderFolder(ctx.store.snapshot, rel).sort(createPaperComparator(sort));
@@ -189,9 +189,9 @@ async function runShow(ctx: AppContext, positionals: string[], io: Output, json:
   return 0;
 }
 
-async function runAdd(ctx: AppContext, positionals: string[], flags: ParsedArgs["flags"], io: Output): Promise<number> {
+async function runAdd(ctx: AppContext, positionals: string[], flags: CliArgs["flags"], io: Output): Promise<number> {
   if (!positionals.length) { throw new UsageError("add needs at least one PDF, folder, URL, DOI or arXiv id"); }
-  const target = requireCollection(ctx, stringFlag(flags, "to"));
+  const target = requireCollection(ctx, readStringFlag(flags, "to"));
   const outcomes = await ctx.papers.importAny(positionals, target, (p) => io.err(`[${p.index}/${p.total}] ${p.input}`));
   let failed = 0;
   for (const outcome of outcomes) {
@@ -210,15 +210,15 @@ async function runAdd(ctx: AppContext, positionals: string[], flags: ParsedArgs[
   return failed ? 1 : 0;
 }
 
-async function runBib(ctx: AppContext, positionals: string[], flags: ParsedArgs["flags"], io: Output, sort: SortSpec): Promise<number> {
+async function runBib(ctx: AppContext, positionals: string[], flags: CliArgs["flags"], io: Output, sort: SortSpec): Promise<number> {
   let records: PaperRecord[];
   if (positionals.length) {
     records = positionals.map((id) => requirePaper(ctx, id).record);
   } else {
-    records = listPapersUnderFolder(ctx.store.snapshot, requireCollection(ctx, stringFlag(flags, "collection"))).sort(createPaperComparator(sort)).map((e) => e.record);
+    records = listPapersUnderFolder(ctx.store.snapshot, requireCollection(ctx, readStringFlag(flags, "collection"))).sort(createPaperComparator(sort)).map((e) => e.record);
   }
   const text = ctx.papers.bibtexFor(records);
-  const output = stringFlag(flags, "output");
+  const output = readStringFlag(flags, "output");
   if (output) {
     await fs.writeFile(path.resolve(output), text);
     io.err(`${records.length} entries written to ${path.resolve(output)}`);

@@ -8,7 +8,7 @@ const MODULE = "tabs.source";
 
 interface TabFile { projectId: string; path: string }
 
-export async function takeSharedProjectHere(
+export async function openSharedProjectHere(
   { logger, project }: TabContext, { projectId, path }: TabFile, observing: SourceFileMode, reopen: () => Promise<void>,
 ): Promise<void> {
   if (observing.kind !== "observing") return;
@@ -22,7 +22,7 @@ export async function takeSharedProjectHere(
 }
 
 /** A takeover in either direction flips the tab between running the share and observing it, so `remount` runs; returns the function that stops watching. */
-export function remountOnTakeover(
+export function mountOnTakeover(
   { project }: TabContext, current: () => { loaded: ProjectEntry | undefined; mode: SourceFileMode | undefined; disposed: boolean }, remount: () => void,
 ): () => void {
   return project().sharing.shares.onChange(() => {

@@ -1,7 +1,7 @@
 /** Exports the links between a build preview and its source: opening the source behind a point, adding a review note there and finding the output of a source line. */
-export { addReviewComment } from "./addPreviewComment.js";
+export { addPreviewComment } from "./addPreviewComment.js";
 export { openSourceLine } from "./openSourceLine.js";
 export { ProjectSynctex } from "./projectSynctex.js";
-export type { SynctexLookup } from "./projectSynctex.js";
-export { revealInPreview } from "./showInPreview.js";
+export type { SynctexFinder } from "./projectSynctex.js";
+export { showInPreview } from "./showInPreview.js";
 export { showSource } from "./showSource.js";

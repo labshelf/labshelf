@@ -10,14 +10,14 @@ const MODULE = "collab.comments";
 const AUTHOR = "You";
 
 /** A thread with its place in the file's saved text. */
-export interface ReviewThread extends CommentThread {
+export interface LocatedThread extends CommentThread {
   /** One-based line of the commented text; undefined when the text is gone from the file. */
   line: number | undefined;
 }
 
 export interface CommentThreads {
   /** The project's threads in file order of the store, optionally of one file. Throws when comments.json is not valid. */
-  threads(projectId: string, path?: string): Promise<ReviewThread[]>;
+  threads(projectId: string, path?: string): Promise<LocatedThread[]>;
   /** Calls the listener now and after each change with the ranges of the file's open threads. */
   commentAnchorsFor(projectId: string, path: string): { subscribe(listener: (ranges: TextRange[]) => void): () => void };
   addComment(projectId: string, path: string, range: TextRange, text: string): Promise<void>;

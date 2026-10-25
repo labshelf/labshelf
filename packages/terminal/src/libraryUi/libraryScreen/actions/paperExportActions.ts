@@ -6,10 +6,10 @@ import * as path from "node:path";
 import { copyToClipboard } from "../../../platform/index.js";
 import { ALL } from "../screenModel.js";
 import type { App } from "../app.js";
-import { needPapers } from "./paperFieldActions.js";
+import { readSelectedPapers } from "./paperFieldActions.js";
 
-export async function yank(app: App, kind: string): Promise<void> {
-  const papers = needPapers(app);
+export async function copyPaperText(app: App, kind: string): Promise<void> {
+  const papers = readSelectedPapers(app);
   if (!papers.length) { return; }
   const records = papers.map((p) => p.record);
   let text: string;
@@ -57,7 +57,7 @@ export function exportName(app: App): string {
 }
 
 // What B exports: the selection, else the papers pane as shown (with subfolders when a folder is hovered unfiltered).
-export function targetsForExport(app: App): PaperRecord[] {
+export function listExportPapers(app: App): PaperRecord[] {
   if (app.selection.size) { return app.listModel.targetPapers().map((p) => p.record); }
   if (app.filter || app.search !== undefined || app.folder === ALL || app.flatten || app.folder === "") {
     return app.listModel.papers().map((p) => p.record);

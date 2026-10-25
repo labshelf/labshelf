@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { fetchCloudflareTokens, readAuthorizationCode, startCloudflareAuthorization, writeCloudflareTokens } from "@labshelf/core";
 import type { RelayDeps } from "./connectRelay.js";
 import { LOG_MODULE } from "./relayAccounts.js";
-import { listenForCallback } from "./oauthCallback.js";
+import { startOauthCallback } from "./oauthCallback.js";
 
 /** Throws `LoopbackUnavailableError` before opening the browser when the redirect port cannot be used. */
 export async function signInToCloudflare(deps: RelayDeps): Promise<void> {
@@ -12,7 +12,7 @@ export async function signInToCloudflare(deps: RelayDeps): Promise<void> {
   const authorization = await startCloudflareAuthorization();
   const progress = { location: vscode.ProgressLocation.Notification, title: "Sign in to Cloudflare in your browser", cancellable: true };
   await vscode.window.withProgress(progress, async (_progress, cancel) => {
-    const callback = await listenForCallback({
+    const callback = await startOauthCallback({
       cancel,
       handle: async (callbackUrl) => {
         const code = readAuthorizationCode(callbackUrl, authorization.state);

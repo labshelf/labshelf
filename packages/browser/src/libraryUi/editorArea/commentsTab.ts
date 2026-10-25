@@ -1,11 +1,11 @@
 // Lists the open project's comment threads with a reply box and a Resolve button on each.
 import { renderElement, renderIcon } from "@labshelf/core/dom";
 import type { TabModule } from "./tabKind";
-import type { CommentThreads, ReviewThread } from "../../collab/comments";
+import type { CommentThreads, LocatedThread } from "../../collab/comments";
 
 const MODULE = "libraryUi.comments";
 
-function threadItem(thread: ReviewThread, act: (run: () => Promise<void>) => void, threads: CommentThreads): HTMLElement {
+function threadItem(thread: LocatedThread, act: (run: () => Promise<void>) => void, threads: CommentThreads): HTMLElement {
   const place = thread.line === undefined ? `${thread.file} (text changed)` : `${thread.file}:${thread.line}`;
   const comments = renderElement("ul", { class: "ls-comment-list", "aria-label": `Comments on ${place}` },
     ...thread.comments.map((each) => renderElement("li", {}, renderElement("strong", { text: each.author }), " ", renderElement("span", { text: each.body }))));

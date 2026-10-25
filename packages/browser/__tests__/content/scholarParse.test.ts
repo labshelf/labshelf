@@ -1,6 +1,6 @@
 import { isScholarUrl, parseAuthorsLine } from "../../src/content/scholarParse";
-import { idsFromHit, lookupItemFor } from "../../src/content/searchHitIds";
-import { metadataFromHit } from "../../src/capture/searchHitCapture";
+import { extractIdentifiersFromHit, createLibraryFindItem } from "../../src/content/searchHitIds";
+import { deriveMetadataFromHit } from "../../src/capture/searchHitCapture";
 import type { SearchHit } from "../../src/platform";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
@@ -45,20 +45,20 @@ const hit = (over: Partial<SearchHit> = {}): SearchHit => ({
 
 describe("Scholar hit → capture", () => {
   it("takes the DOI from the result's links", () => {
-    expect(idsFromHit(hit())).toEqual({ doi: "10.1145/10515.10546" });
-    expect(idsFromHit(withoutPdf(hit({ url: "https://www.sciencedirect.com/science/article/pii/0196677482900074" })))).toEqual({});
-    expect(idsFromHit(withoutPdf(hit({ url: "https://arxiv.org/abs/1706.03762" })))).toEqual({ arxivId: "1706.03762" });
+    expect(extractIdentifiersFromHit(hit())).toEqual({ doi: "10.1145/10515.10546" });
+    expect(extractIdentifiersFromHit(withoutPdf(hit({ url: "https://www.sciencedirect.com/science/article/pii/0196677482900074" })))).toEqual({});
+    expect(extractIdentifiersFromHit(withoutPdf(hit({ url: "https://arxiv.org/abs/1706.03762" })))).toEqual({ arxivId: "1706.03762" });
   });
 
   it("keeps a truncated venue out of the record", () => {
-    expect(metadataFromHit(hit())).toEqual({
+    expect(deriveMetadataFromHit(hit())).toEqual({
       title: "Geometric applications of a matrix searching algorithm", authors: ["A Aggarwal", "P Shor"], year: 1986,
       url: "https://dl.acm.org/doi/abs/10.1145/10515.10546",
     });
-    expect(metadataFromHit(hit({ venue: "Journal of algorithms" })).journal).toBe("Journal of algorithms");
+    expect(deriveMetadataFromHit(hit({ venue: "Journal of algorithms" })).journal).toBe("Journal of algorithms");
   });
 
   it("builds the library lookup item", () => {
-    expect(lookupItemFor(hit())).toEqual({ key: "cid1", title: hit().title, year: 1986, doi: "10.1145/10515.10546" });
+    expect(createLibraryFindItem(hit())).toEqual({ key: "cid1", title: hit().title, year: 1986, doi: "10.1145/10515.10546" });
   });
 });

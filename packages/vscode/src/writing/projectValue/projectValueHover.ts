@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { findLatexProjectValue, findTypstProjectValue, type ProjectValueLeaf } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectValues } from "./projectValues.js";
-import { listedValueFile } from "./typstProjectValueFile.js";
+import { findProjectValueFile } from "./typstProjectValueFile.js";
 
 function leafHover(leaf: ProjectValueLeaf): vscode.MarkdownString {
   const markdown = new vscode.MarkdownString();
@@ -18,7 +18,7 @@ function unknownHover(name: string): vscode.MarkdownString {
   return new vscode.MarkdownString().appendText(`No value "${name}" in the files listed under values in labshelf.yaml.`);
 }
 
-export class ValueHoverProvider implements vscode.HoverProvider {
+export class ProjectValueHoverProvider implements vscode.HoverProvider {
   constructor(private readonly values: ProjectValues) {}
 
   async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
@@ -41,7 +41,7 @@ export class ValueHoverProvider implements vscode.HoverProvider {
 
   private typst(project: ReadyProject, document: vscode.TextDocument, offset: number, leaves: readonly ProjectValueLeaf[]) {
     const reference = findTypstProjectValue(document.getText(), offset);
-    const file = reference && listedValueFile(this.values.paths, project, document.uri.fsPath, reference.source);
+    const file = reference && findProjectValueFile(this.values.paths, project, document.uri.fsPath, reference.source);
     if (!reference || file === undefined) { return undefined; }
     const leaf = leaves.find((candidate) => candidate.file === file && candidate.path === reference.path);
     // A member that holds more members has no single value to show.

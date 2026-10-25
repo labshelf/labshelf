@@ -3,7 +3,7 @@ import type { ProjectEntry } from "@labshelf/core";
 import { listLibraryProjects } from "@labshelf/core/node";
 
 import type { AppContext } from "../compositionRoot.js";
-import type { ParsedArgs } from "./args.js";
+import type { CliArgs } from "./args.js";
 import type { Output } from "./usage.js";
 
 /** What `--json` prints for one project: ready projects carry their settings, broken ones the reason. */
@@ -25,7 +25,7 @@ function projectLine(project: ReturnType<typeof describeProject>): string {
 
 /** @returns the exit code: 1 when the library's projects cannot be listed */
 export async function runProjects(
-  ctx: Pick<AppContext, "paths" | "logger">, _positionals: string[], flags: ParsedArgs["flags"], io: Output,
+  ctx: Pick<AppContext, "paths" | "logger">, _positionals: string[], flags: CliArgs["flags"], io: Output,
 ): Promise<number> {
   let projects: ReturnType<typeof describeProject>[];
   try {

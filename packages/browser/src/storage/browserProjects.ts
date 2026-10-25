@@ -34,7 +34,7 @@ async function listFolderEntries(fileSystem: LibraryFileSystem, folder: string):
 const MODULE = "browser.storage.projects";
 
 /** A read of a path with no file (missing, or a folder): an expected answer (the editor probes for settings files), not a failure. */
-export class ProjectFileNotFoundError extends Error {
+export class MissingProjectFileError extends Error {
   constructor(readonly projectId: string, readonly path: string) {
     super(`${path} does not exist in project ${projectId}`);
     this.name = "ProjectFileNotFoundError";
@@ -77,7 +77,7 @@ export function createBrowserProjects({ fileSystem, logger }: BrowserProjectsDep
       target = folderItself ? folder : `${folder}/${path}`;
       return await run(target, folder);
     } catch (error) {
-      if (action === "read" && target !== undefined && await noFileAt(target)) throw new ProjectFileNotFoundError(id, path);
+      if (action === "read" && target !== undefined && await noFileAt(target)) throw new MissingProjectFileError(id, path);
       await logger.error(MODULE, error, { project: id, path, action });
       throw error;
     }

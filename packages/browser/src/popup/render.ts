@@ -3,12 +3,12 @@
 import { findElement } from "@labshelf/core/dom";
 import { escapeHtml, renderIcon, type IconName } from "@labshelf/core";
 
-import type { DraftView, LibraryRef, PdfStatusData } from "../platform";
-import { folderName, metaLine } from "./format";
-import { pdfLineText } from "../ui";
+import type { DraftView, LibraryReference, FindPdfReply } from "../platform";
+import { formatFolderName, formatMetaLine } from "./format";
+import { describePdfLine } from "../ui";
 import { popupState, setState } from "./popupState";
 
-export function showStatus(opts: {
+export function showNotice(opts: {
   glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string;
   open?: string; attach?: string; dismiss?: string; undo?: boolean; tryAnyway?: boolean;
 }): void {
@@ -34,21 +34,21 @@ export function showStatus(opts: {
 export function renderPaper(d: DraftView): void {
   findElement("title").textContent = d.title || "Untitled";
   findElement("title").classList.remove("muted");
-  findElement("meta").textContent = metaLine(d);
+  findElement("meta").textContent = formatMetaLine(d);
 }
 
-export function renderPdf(status: PdfStatusData | "searching"): void {
+export function renderPdf(status: FindPdfReply | "searching"): void {
   const el = findElement("pdf");
   el.hidden = false;
   if (status === "searching") {
     el.dataset["tone"] = "muted";
-    el.innerHTML = `<span class="spin">${renderIcon("refresh")}</span><span>${escapeHtml(pdfLineText("searching"))}</span>`;
+    el.innerHTML = `<span class="spin">${renderIcon("refresh")}</span><span>${escapeHtml(describePdfLine("searching"))}</span>`;
   } else if (status.found) {
     el.dataset["tone"] = "ok";
-    el.innerHTML = `${renderIcon("file-text")}<span>${escapeHtml(pdfLineText(status))}</span>`;
+    el.innerHTML = `${renderIcon("file-text")}<span>${escapeHtml(describePdfLine(status))}</span>`;
   } else {
     el.dataset["tone"] = "warn";
-    el.innerHTML = `${renderIcon("warning")}<span>${escapeHtml(pdfLineText(status))}</span>`;
+    el.innerHTML = `${renderIcon("warning")}<span>${escapeHtml(describePdfLine(status))}</span>`;
   }
 }
 
@@ -59,18 +59,18 @@ export function renderFolders(): void {
     const option = document.createElement("option");
     option.value = f.path;
     // <option> cannot be indented, so nesting reads as a path ("Thesis / Chapter 2").
-    option.textContent = folderName(f.path);
+    option.textContent = formatFolderName(f.path);
     select.append(option);
   }
   select.value = popupState.folders.lastFolder;
 }
 
-export function showLibraryCopy(existing: LibraryRef): void {
+export function showLibraryCopy(existing: LibraryReference): void {
   setState("library");
   if (existing.hasPdf) {
-    showStatus({ glyph: "check", tone: "ok", title: "Already in your library", detail: folderName(existing.folder), open: "Open in library" });
+    showNotice({ glyph: "check", tone: "ok", title: "Already in your library", detail: formatFolderName(existing.folder), open: "Open in library" });
   } else {
-    showStatus({ glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: folderName(existing.folder), open: "Open in library" });
+    showNotice({ glyph: "warning", tone: "warn", title: "In your library — without its PDF", detail: formatFolderName(existing.folder), open: "Open in library" });
   }
   findElement("open").dataset["folder"] = existing.folder;
   findElement("open").dataset["paper"] = existing.id;
@@ -83,7 +83,7 @@ export function showError(message: string): void {
   el.hidden = false;
 }
 
-export function autoGrow(area: HTMLTextAreaElement): void {
+export function updateTextAreaHeight(area: HTMLTextAreaElement): void {
   area.style.height = "auto";
   area.style.height = `${Math.min(area.scrollHeight, 96)}px`;
 }

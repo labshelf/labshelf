@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
 import { BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, installNativeHost, type NativeHostEnv } from "@labshelf/core/nativeHost/node";
-import { bridgeShim, registerStandaloneHosts, unregisterStandaloneHosts } from "../../../src/helper/nativeHost";
+import { createBridgeShim, registerStandaloneHosts, uninstallStandaloneHosts } from "../../../src/helper/nativeHost";
 import { makeTempDir } from "../../fixtures/library";
 
 const logger = { log: async () => undefined, error: async () => undefined } as unknown as NativeHostEnv["logger"];
@@ -55,12 +55,12 @@ describe("registerStandaloneHosts", () => {
   });
 });
 
-describe("unregisterStandaloneHosts", () => {
+describe("uninstallStandaloneHosts", () => {
   it("removes both manifests and the bridge name but keeps the binary", async () => {
     const { env, binary, bridge, manifest } = await setup();
     await registerStandaloneHosts(env, binary);
 
-    expect(await unregisterStandaloneHosts(env, binary)).toBe(0);
+    expect(await uninstallStandaloneHosts(env, binary)).toBe(0);
 
     expect(await exists(manifest(HELPER_HOST_SPEC.hostName))).toBe(false);
     expect(await exists(manifest(BRIDGE_HOST_SPEC.hostName))).toBe(false);
@@ -73,14 +73,14 @@ describe("unregisterStandaloneHosts", () => {
     await registerStandaloneHosts(env, binary);
     await installNativeHost(env, BRIDGE_HOST_SPEC, { kind: "binary", path: "/elsewhere/labshelf-bridge" });
 
-    await unregisterStandaloneHosts(env, binary);
+    await uninstallStandaloneHosts(env, binary);
 
     expect(await pathOf(manifest(BRIDGE_HOST_SPEC.hostName))).toBe("/elsewhere/labshelf-bridge");
   });
 });
 
-describe("bridgeShim", () => {
+describe("createBridgeShim", () => {
   it("starts the helper executable next to it with --host=bridge and passes the browser arguments on", () => {
-    expect(bridgeShim("labshelf-helper.exe")).toBe('@echo off\r\n"%~dp0labshelf-helper.exe" --host=bridge %*\r\n');
+    expect(createBridgeShim("labshelf-helper.exe")).toBe('@echo off\r\n"%~dp0labshelf-helper.exe" --host=bridge %*\r\n');
   });
 });

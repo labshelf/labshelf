@@ -5,10 +5,10 @@ export { sendRuntime } from "./sendRuntime";
 export { downloadTextFile } from "./downloadTextFile";
 export { connectBrowserNative, type NativePort } from "./nativePort";
 export { isHostNotFound } from "./nativeHostMissing";
-export { getSettings, updateSettings, type LabShelfSettings } from "./settings";
+export { readSettings, updateSettings, type ExtensionSettings } from "./settings";
 export { withSidebarSection, type SidebarSections } from "./sidebarSections";
 export type {
-  AskAuthorData, AttachPdfData, DraftView, FolderOption, FoldersData,
-  LibraryChangedBroadcast, LibraryRef, LookupData, LookupItem, PdfOfferView, PdfStatusData, RuntimeMessage,
-  RuntimeResponse, SaveOutcome, SavedPaperData, SearchHit, TabSummary,
+  CopyRequestReply, AttachPdfReply, DraftView, FolderOption, FoldersReply,
+  LibraryChangedEvent, LibraryReference, LibraryFindReply, LibraryFindItem, PdfOfferView, FindPdfReply, RuntimeMessage,
+  RuntimeResponse, WriteOutcome, WrittenPaperReply, SearchHit, TabSummary,
 } from "./messages";

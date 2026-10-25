@@ -2,5 +2,5 @@
 export { registerLatexCommandCompletion } from "./registerLatexCommandCompletion.js";
 export { registerLatexEditing } from "./registerLatexEditing.js";
 export { LatexProjectSources } from "./project/index.js";
-export { mathHoverProvider } from "./mathHover.js";
+export { createMathHoverProvider } from "./mathHover.js";
 export { registerWordCount } from "./registerWordCount.js";

@@ -25,18 +25,18 @@ export interface CollabHost {
 }
 
 /** The name a project goes by in messages. */
-export const projectName = (project: { settings: { id: string; title?: string | undefined } }): string => project.settings.title ?? project.settings.id;
+export const formatProjectName = (project: { settings: { id: string; title?: string | undefined } }): string => project.settings.title ?? project.settings.id;
 
-export const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+export const formatErrorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /** Logs the failure with its context and shows it without waiting, so a command never blocks on the toast. */
 export function reportFailure(logger: ILogger, action: string, error: unknown, context: Record<string, unknown> = {}): void {
   void logger.error(LOG_MODULE, error, { action, ...context });
-  void vscode.window.showErrorMessage(`LabShelf could not ${action}: ${errorText(error)}`);
+  void vscode.window.showErrorMessage(`LabShelf could not ${action}: ${formatErrorText(error)}`);
 }
 
 /** Shows a refused offer of the owner's relay; the workflow logged it already. */
 export function showRefusedOffer(offer: OwnRelayOffer): void {
   if (offer.kind !== "refused") { return; }
-  void vscode.window.showWarningMessage(`Your relay did not take the project, so it syncs without it: ${errorText(offer.error)}`);
+  void vscode.window.showWarningMessage(`Your relay did not take the project, so it syncs without it: ${formatErrorText(offer.error)}`);
 }

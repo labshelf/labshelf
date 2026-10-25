@@ -3,14 +3,14 @@
 import { extractPaperIdentifiers, deriveResolvedMetadata } from "@labshelf/core";
 import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { CaptureDraft } from "./captureService";
-import { landingFacts } from "./landingFacts";
+import { fetchLandingFacts } from "./fetchLandingFacts";
 
 /**
  * Builds the PDF-search draft for a saved paper. The record's own identifiers
  * win over whatever the landing page states.
  */
-export async function draftFromRecord(log: ILogger, r: PaperRecord): Promise<CaptureDraft> {
-  const landing = r.url ? await landingFacts(log, r.url) : undefined;
+export async function createDraftFromPaper(log: ILogger, r: PaperRecord): Promise<CaptureDraft> {
+  const landing = r.url ? await fetchLandingFacts(log, r.url) : undefined;
   return {
     pageUrl: r.url ?? "",
     ids: { ...(landing?.ids ?? {}), ...extractPaperIdentifiers(r) },

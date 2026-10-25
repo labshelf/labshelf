@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { PROJECT_FILE, projectFileWithId, updateProjectFile, type ProjectEntry, type TemplateFile } from "@labshelf/core";
-import { executeSafely } from "../command/index.js";
-import { projectZipEntries } from "./exportBundle.js";
+import { runSafely } from "../command/index.js";
+import { listProjectZipEntries } from "./exportBundle.js";
 import type { ReadyProject } from "./buildRootDocument.js";
 import { OPEN_PROJECT_COMMAND, type WritingHost, type WritingProjects } from "./session/index.js";
 
@@ -16,7 +16,7 @@ interface ItemCommandsDeps {
 async function removeProject({ host, projects }: ItemCommandsDeps, entry: ProjectEntry | undefined): Promise<void> {
   const session = host.current();
   if (!session || entry?.location !== "external") { return; }
-  await executeSafely(session.logger, "labshelf.writing.removeProject", async () => {
+  await runSafely(session.logger, "labshelf.writing.removeProject", async () => {
     const remove = "Remove from LabShelf";
     const answer = await vscode.window.showWarningMessage(
       `Remove "${entry.kind === "ready" ? entry.settings.id : entry.folder}" from LabShelf?`,
@@ -31,12 +31,12 @@ async function removeProject({ host, projects }: ItemCommandsDeps, entry: Projec
 
 /** The files of the copy: the project's exportable files without labshelf.yaml, which the copy writes under its own id. */
 async function copyFiles(projects: WritingProjects, entry: ReadyProject): Promise<TemplateFile[]> {
-  const entries = await projectZipEntries(projects.paths, entry);
+  const entries = await listProjectZipEntries(projects.paths, entry);
   return Object.entries(entries).filter(([path]) => path !== PROJECT_FILE).map(([path, bytes]) => ({ path, bytes }));
 }
 
 /** Copies a project under `title` and opens the copy; the copy starts in the projects list, not in the archive or the trash. */
-export async function duplicateProject({ host, projects }: Pick<ItemCommandsDeps, "host" | "projects">, entry: ProjectEntry, title: string): Promise<void> {
+export async function copyProjectEntry({ host, projects }: Pick<ItemCommandsDeps, "host" | "projects">, entry: ProjectEntry, title: string): Promise<void> {
   const session = host.current();
   if (!session) { throw new Error("open a library before copying a project"); }
   if (entry.kind !== "ready") { throw new Error(`${entry.folder} cannot be read, so it cannot be copied`); }
@@ -60,12 +60,12 @@ export async function duplicateProject({ host, projects }: Pick<ItemCommandsDeps
 async function copyProject(deps: ItemCommandsDeps, entry: ProjectEntry | undefined): Promise<void> {
   const session = deps.host.current();
   if (!session || entry?.kind !== "ready") { return; }
-  await executeSafely(session.logger, "labshelf.writing.copyProject", async () => {
+  await runSafely(session.logger, "labshelf.writing.copyProject", async () => {
     const { id } = entry.settings;
     if (!entry.main) { void vscode.window.showWarningMessage(`Set the main document of ${id} to copy it.`); return; }
     const title = (await vscode.window.showInputBox({ prompt: `Title of the copy of ${id}`, value: `${entry.settings.title ?? id} copy` }))?.trim();
     if (!title) { return; }
-    await duplicateProject(deps, entry, title);
+    await copyProjectEntry(deps, entry, title);
   });
 }
 

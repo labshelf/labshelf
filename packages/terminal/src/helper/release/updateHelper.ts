@@ -75,7 +75,7 @@ const HELPER_UPDATE_PUBLIC_KEY = "MCowBQYDK2VwAyEAHU0VuPFsCFIVHHw36Qfdo6boVWQgo9
 
 const MODULE = "helper/update";
 
-export interface SelfUpdater {
+export interface HelperUpdater {
   /**
    * Runs one check and resolves with what happened; never rejects. It is throttled to once a day unless `bypassThrottle` is set,
    * which a helper that the page refused for its protocol version uses to look for the update that fixes it.
@@ -110,7 +110,7 @@ async function checkOnce(deps: SelfUpdateDeps, bypassThrottle = false): Promise<
   }
 }
 
-export function createSelfUpdater(deps: SelfUpdateDeps): SelfUpdater {
+export function createSelfUpdater(deps: SelfUpdateDeps): HelperUpdater {
   return {
     check: (options) => checkOnce(deps, options?.bypassThrottle),
     checkInBackground: () => { void checkOnce(deps); },

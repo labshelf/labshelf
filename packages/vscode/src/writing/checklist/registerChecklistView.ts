@@ -9,7 +9,7 @@ import type { ProjectSession, WritingProjects } from "../session/index.js";
 import type { BuiltTreeSpec } from "../sidebar/index.js";
 import { ChecklistView } from "./checklistView.js";
 import { OpenProjectSignals } from "./openProjectSignals.js";
-import { signalsReader } from "./signalsReader.js";
+import { createSignalsReader } from "./createSignalsReader.js";
 
 export interface ChecklistViewRegistration {
   context: vscode.ExtensionContext;
@@ -28,7 +28,7 @@ export interface ChecklistViewRegistration {
 export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTreeSpec {
   const { context, session, logger } = deps;
   const signals = new OpenProjectSignals({
-    session, readSignals: signalsReader(deps.projects), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
+    session, readSignals: createSignalsReader(deps.projects), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
     onDidCountBodyPages: deps.previews.onDidCountBodyPages, logger, paths: deps.projects.paths,
   });
   const view = new ChecklistView({

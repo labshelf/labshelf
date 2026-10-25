@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectSession } from "../session/index.js";
-import { projectFolderUri } from "./projectFilesProvider.js";
+import { createProjectFolderUri } from "./projectFilesProvider.js";
 
 // Coalesces a burst of events (a checkout, a build of figures) into one refresh.
 const DEBOUNCE_MS = 200;
@@ -20,7 +20,7 @@ export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onD
     watcher?.dispose();
     watcher = undefined;
     if (!project) { return; }
-    watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(projectFolderUri(project), glob));
+    watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(createProjectFolderUri(project), glob));
     // Content changes do not change the tree, so only creations and deletions refresh it.
     watcher.onDidCreate(schedule);
     watcher.onDidDelete(schedule);

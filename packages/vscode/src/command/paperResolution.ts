@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { type PaperRecord, isSafeExternalUrl, derivePaperUrl } from "@labshelf/core";
 import type { PaperService } from "../library/index.js";
-import { paperPickItem } from "./paperPickItem.js";
+import { createPaperPickItem } from "./createPaperPickItem.js";
 import type { ActiveServices } from "./commandContext.js";
 
 const LOG_MODULE = "command";
@@ -57,7 +57,7 @@ export async function resolvePaper(
   const direct = paperId ? papers.find((paper) => paper.id === paperId) : undefined;
   if (direct) { return direct; }
 
-  const items = papers.map(paperPickItem);
+  const items = papers.map(createPaperPickItem);
   const picked = await vscode.window.showQuickPick(items, { placeHolder: placeholder, matchOnDescription: true });
   return picked?.paper;
 }

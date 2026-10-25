@@ -1,12 +1,12 @@
 import type { CitationEntry } from "@labshelf/core";
 
 import { withCitationFixes } from "../../../../src/writing/preview/citations/withCitationFixes";
-import { publishedVenueOf } from "../../../../src/writing/preview/citations/updateBibEntry";
+import { readPublishedVenue } from "../../../../src/writing/preview/citations/updateBibEntry";
 import type { CitationFixDeps } from "../../../../src/writing/preview/citations/citationFixDeps";
 import { fakeLogger } from "../../../support/writingFixtures";
 
-jest.mock("../../../../src/writing/preview/citations/updateBibEntry", () => ({ publishedVenueOf: jest.fn(async () => undefined), updateBibEntry: jest.fn() }));
-jest.mock("../../../../src/writing/preview/citations/addBibliographyToLibrary", () => ({ addBibToLibrary: jest.fn() }));
+jest.mock("../../../../src/writing/preview/citations/updateBibEntry", () => ({ readPublishedVenue: jest.fn(async () => undefined), updateBibEntry: jest.fn() }));
+jest.mock("../../../../src/writing/preview/citations/addBibliographyToLibrary", () => ({ addBibliographyToLibrary: jest.fn() }));
 
 const paper = { id: "p" } as NonNullable<CitationEntry["paper"]>;
 const bib = { key: "k" } as unknown as NonNullable<CitationEntry["bib"]>;
@@ -16,7 +16,7 @@ function deps(shelfKeys: CitationFixDeps["shelfKeys"]): CitationFixDeps {
 }
 
 describe("withCitationFixes", () => {
-  beforeEach(() => (publishedVenueOf as jest.Mock).mockResolvedValue(undefined));
+  beforeEach(() => (readPublishedVenue as jest.Mock).mockResolvedValue(undefined));
 
   it("suggests a shelf key for a missing citation", async () => {
     const out = await withCitationFixes(deps(async () => [{ key: "smith2020", authors: ["Smith"], year: "2020" }]), [{ key: "smith2021" }]);
@@ -34,7 +34,7 @@ describe("withCitationFixes", () => {
   });
 
   it("offers a venue update for a known published venue", async () => {
-    (publishedVenueOf as jest.Mock).mockResolvedValue("Nature");
+    (readPublishedVenue as jest.Mock).mockResolvedValue("Nature");
     const out = await withCitationFixes(deps(async () => []), [{ key: "k", paper, bib }]);
     expect(out[0]?.fix).toEqual({ kind: "update", venue: "Nature" });
   });

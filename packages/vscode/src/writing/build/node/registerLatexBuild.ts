@@ -4,23 +4,23 @@ import * as vscode from "vscode";
 
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../../preview/index.js";
-import type { BuildDiagnostics } from "../buildProblems.js";
+import type { BuildProblems } from "../buildProblems.js";
 import type { IncludeOnlyTarget } from "../includeOnly.js";
-import { registerLatexSaveBuilds } from "../latexWriteBuilds.js";
-import { registerLatexTypingSaves } from "../latexTypingWrites.js";
-import { projectBuildDeps } from "./projectBuildDeps.js";
+import { registerLatexWriteBuilds } from "../latexWriteBuilds.js";
+import { registerLatexTypingWrites } from "../latexTypingWrites.js";
+import { createProjectBuildDeps } from "./createProjectBuildDeps.js";
 import * as path from "node:path";
 import type { ProjectBuildResult, ProjectEntry } from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../buildListener.js";
-import { haltOnErrorOn } from "../haltOnError.js";
+import { shouldHaltOnError } from "../haltOnError.js";
 import { reportToolchainMissing } from "./ensureToolchain.js";
 
 interface LatexBuildsDeps {
   host: Pick<WritingHost, "current">;
   projects: { list: () => readonly ProjectEntry[] };
   queue: Pick<ProjectBuildQueue, "request" | "cancelAll">;
-  diagnostics: Pick<BuildDiagnostics, "publish">;
+  diagnostics: Pick<BuildProblems, "publish">;
   previews: BuildListener;
 }
 
@@ -52,7 +52,7 @@ export class LatexBuilds {
     }
     let spinner: vscode.Disposable | undefined;
     const run = this.deps.queue.request(project, {
-      root, haltOnError: haltOnErrorOn(), ...(includeOnly !== undefined && { includeOnly }),
+      root, haltOnError: shouldHaltOnError(), ...(includeOnly !== undefined && { includeOnly }),
       onCompile: () => {
         spinner = vscode.window.setStatusBarMessage(`$(sync~spin) Building ${root}`);
         this.deps.previews.building(projectFolder, root);
@@ -100,25 +100,25 @@ interface LatexBuildDeps {
   tex: ProjectBuildDeps["tex"];
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs" | "reload">;
   previews: Pick<BuildPreviews, "building" | "finished">;
-  diagnostics: Pick<BuildDiagnostics, "publish">;
+  diagnostics: Pick<BuildProblems, "publish">;
   /** The `\include` path a save builds alone while the preview's include-only toggle is on. */
   includeOnlyTarget?: IncludeOnlyTarget;
 }
 
 /** Registers the save builds and returns the builds, which the Build Project command also uses. */
 export function registerLatexBuild(deps: LatexBuildDeps): LatexBuilds {
-  const queue = new ProjectBuildQueue(projectBuildDeps({
+  const queue = new ProjectBuildQueue(createProjectBuildDeps({
     host: deps.host, projects: deps.projects, tex: deps.tex,
     // INVARIANT: this queue only builds LaTeX projects (the save builds pick LaTeX projects), so the Typst compiler is never requested.
     typst: { get: () => Promise.reject(new Error("The LaTeX build queue does not compile Typst projects.")) },
   }));
   const builds = new LatexBuilds({ host: deps.host, projects: deps.projects, queue, diagnostics: deps.diagnostics, previews: deps.previews });
-  registerLatexSaveBuilds({
+  registerLatexWriteBuilds({
     context: deps.context, host: deps.host, projects: deps.projects,
     request: (folder, root, includeOnly) => builds.request(folder, root, "save", includeOnly),
     ...(deps.includeOnlyTarget && { includeOnlyTarget: deps.includeOnlyTarget }),
   });
-  registerLatexTypingSaves({ context: deps.context, host: deps.host, projects: deps.projects });
+  registerLatexTypingWrites({ context: deps.context, host: deps.host, projects: deps.projects });
   deps.context.subscriptions.push({ dispose: () => builds.cancelAll() });
   return builds;
 }

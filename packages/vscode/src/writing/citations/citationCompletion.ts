@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { partialKeyStart, type PaperRecord } from "@labshelf/core";
-import { pageArgumentCompletion } from "./pageArgumentCompletion.js";
-import { citingProject, type CitationWorkspace } from "./citationWorkspace.js";
+import { findPageArgumentCompletion } from "./findPageArgumentCompletion.js";
+import { findCitingProject, type CitationWorkspace } from "./citationWorkspace.js";
 
 export const UPDATE_BIBLIOGRAPHY_COMMAND = "labshelf.citations.updateBibliography";
 
@@ -33,10 +33,10 @@ export class CitationCompletionProvider implements vscode.CompletionItemProvider
   async provideCompletionItems(
     document: vscode.TextDocument, position: vscode.Position,
   ): Promise<vscode.CompletionItem[] | undefined> {
-    const project = citingProject(this.workspace.projects, document.uri.fsPath);
+    const project = findCitingProject(this.workspace.projects, document.uri.fsPath);
     const session = this.workspace.session();
     if (!project || !session) { return undefined; }
-    const pageItems = await pageArgumentCompletion(project.settings.format, session, document, position);
+    const pageItems = await findPageArgumentCompletion(project.settings.format, session, document, position);
     if (pageItems) {
       // A key written by a highlight pick is not in labshelf.bib yet.
       for (const item of pageItems) { item.command = updateBibliography(document); }

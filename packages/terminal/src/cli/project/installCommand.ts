@@ -7,7 +7,7 @@ import {
   type ILogger, type ImportOutcome, type InstallLine, type InstallResult, type LibraryStore, type ListedPaper,
 } from "@labshelf/core";
 
-import type { ParsedArgs } from "../args.js";
+import type { CliArgs } from "../args.js";
 import { UsageError, type Output } from "../usage.js";
 
 /** What the command needs of the opened library. */
@@ -36,7 +36,7 @@ async function listedPapers(projectDir: string): Promise<ListedPaper[]> {
  * per-paper lines with one JSON document.
  * @returns the exit code: 1 when a listed key still does not resolve
  */
-export async function runInstall(ctx: InstallContext, positionals: string[], io: Output, flags: ParsedArgs["flags"] = {}): Promise<number> {
+export async function runInstall(ctx: InstallContext, positionals: string[], io: Output, flags: CliArgs["flags"] = {}): Promise<number> {
   const json = flags["json"] === true;
   const projectDir = path.resolve(positionals[0] ?? process.cwd());
   const records = [...ctx.store.snapshot.papers.values()].map((entry) => entry.record);

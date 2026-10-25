@@ -1,4 +1,4 @@
-import { parseArgs, stringFlag } from "../../src/cli/args";
+import { parseArgs, readStringFlag } from "../../src/cli/args";
 
 describe("parseArgs", () => {
   it("splits the command from positionals and flags", () => {
@@ -118,13 +118,13 @@ describe("parseArgs", () => {
   });
 });
 
-describe("stringFlag", () => {
+describe("readStringFlag", () => {
   it("returns string values only", () => {
     const flags = { to: "ML", json: true, empty: "" };
-    expect(stringFlag(flags, "to")).toBe("ML");
-    expect(stringFlag(flags, "empty")).toBe("");
-    expect(stringFlag(flags, "json")).toBeUndefined();
-    expect(stringFlag(flags, "missing")).toBeUndefined();
+    expect(readStringFlag(flags, "to")).toBe("ML");
+    expect(readStringFlag(flags, "empty")).toBe("");
+    expect(readStringFlag(flags, "json")).toBeUndefined();
+    expect(readStringFlag(flags, "missing")).toBeUndefined();
   });
 });
 

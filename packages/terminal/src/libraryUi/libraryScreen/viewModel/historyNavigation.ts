@@ -2,7 +2,7 @@
 import type { Place } from "../screenModel.js";
 import type { App } from "../app.js";
 
-export class HistoryNav {
+export class HistoryNavigation {
   searchOrigin: Place | undefined;
   private back: Place[] = [];
   private forward: Place[] = [];

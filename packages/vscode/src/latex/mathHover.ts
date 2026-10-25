@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 
 import type { LatexProjectSources } from "./project/index.js";
 
-export function mathHoverProvider(sources: LatexProjectSources): vscode.HoverProvider {
+export function createMathHoverProvider(sources: LatexProjectSources): vscode.HoverProvider {
   return {
     async provideHover(document, position) {
       const text = document.getText();

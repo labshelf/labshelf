@@ -10,19 +10,19 @@ import {
   removeOwnRelayOfferFromShares,
 } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../helper/client";
-import { getSettings } from "../platform";
+import { readSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
 import { createHelperProject } from "../helper/project";
-import { revealInOpenEditor } from "../writing/session";
+import { showInOpenEditor } from "../writing/session";
 import { createProjectsSource, showPdfInTab } from "../writing/projectList";
 import { createCommentThreads, createRoutedCommentThreads } from "../collab/comments";
-import { createOpenProjectSnapshot, createProjectSession, resumeRestoredProject } from "../writing/session";
+import { createOpenProjectSnapshot, createProjectSession, openRestoredProject } from "../writing/session";
 import { createSidebarProjects, type SidebarProjects } from "../libraryUi/sidebar";
 import type { ProjectServices, TabKindName } from "../libraryUi/editorArea";
 import type { Workspace } from "../libraryUi/editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
-import { createBrowserProjects, currentLibraryId, librarySources } from "../storage";
-import { createPageSharing, resumeReports, type PageSharing } from "../collab";
+import { createBrowserProjects, currentLibraryId, readLibraryLocations } from "../storage";
+import { createPageShare, createResumeReports, type PageShare } from "../collab";
 
 interface PageSharingWiringOptions {
   logger: ILogger;
@@ -33,7 +33,7 @@ interface PageSharingWiringOptions {
 }
 
 interface PageSharingWiring {
-  sharing: PageSharing;
+  sharing: PageShare;
   /** Asks for an invite, unless a link carried one, and joins its shared project. */
   join(invite?: string): Promise<void>;
   offerRelayToShares(): Promise<void>;
@@ -46,10 +46,10 @@ function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiri
     await sharing.ready();
     await runJoinProjectDialog(host, invite);
   };
-  const sharing = createPageSharing({
-    sources: librarySources(), libraryId: currentLibraryId, logger, relay: relayAccounts,
+  const sharing = createPageShare({
+    sources: readLibraryLocations(), libraryId: currentLibraryId, logger, relay: relayAccounts,
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
-    reports: resumeReports(() => { void join(); }),
+    reports: createResumeReports(() => { void join(); }),
   });
   sharing.shares.onChange(createStoreFailureNotices(sharing.ports, "page", (message) => showToast(message, "error")));
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });
@@ -96,7 +96,7 @@ export interface ProjectWiring {
 export function mountProjectWiring({ workspace, fs, logger, openTab, relay, relayAccounts, sharing: host }: ProjectWiringOptions): ProjectWiring {
   const helperProject = createHelperProject({
     helper: createBrowserLatexHelper(logger), logger,
-    buildSettings: async () => { const { autoCompile, haltOnError } = await getSettings(); return { autoCompile, haltOnError }; },
+    buildSettings: async () => { const { autoCompile, haltOnError } = await readSettings(); return { autoCompile, haltOnError }; },
   });
   const session = createProjectSession({
     workspace, snapshot: createOpenProjectSnapshot({ fs, logger }), logger,
@@ -105,7 +105,7 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
       const open = session.current();
       if (open?.kind !== "ready") return;
       workspace.openTab("source", { projectId: open.settings.id, path }, 0);
-      revealInOpenEditor(open.settings.id, path, line);
+      showInOpenEditor(open.settings.id, path, line);
     },
   });
   const wired = wirePageSharing({ logger, host, relay, relayAccounts });
@@ -122,7 +122,7 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
       return createSidebarProjects(source, openTab, session, host, sharing.onProjectsChange);
     },
     start: (invite) => {
-      void resumeRestoredProject(workspace, session, fs, logger);
+      void openRestoredProject(workspace, session, fs, logger);
       if (invite !== undefined) void wired.join(invite);
     },
     offerRelayToShares: wired.offerRelayToShares,

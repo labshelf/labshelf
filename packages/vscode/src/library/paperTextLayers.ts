@@ -11,7 +11,7 @@ import type { MutationContext, PaperRecord, TextLayerDetails, TextLayerOutcome, 
 import type { PaperService } from "./paperService.js";
 
 /** What happened when a paper was checked for, and possibly given, a text layer. */
-export type MakeSearchableResult =
+export type CreateTextLayerResult =
   | { status: "added"; paper: PaperRecord; pagesAdded: number; pagesFailed: number }
   | { status: "not-needed" | "cancelled" }
   // skipped: needs OCR but was deliberately not read; unavailable: OCR failed.
@@ -31,7 +31,7 @@ export class PaperTextLayers {
    * recorded on the paper so the library can show it.
    * @returns what was done, or why nothing could be
    */
-  async makeSearchable(paperId: string, hooks?: TextLayerHooks): Promise<MakeSearchableResult> {
+  async makeSearchable(paperId: string, hooks?: TextLayerHooks): Promise<CreateTextLayerResult> {
     if (!this.builder) { return { status: "unavailable", reason: "text layer support is not available" }; }
     const paper = await this.papers.findPaper(paperId);
     if (!paper) { return { status: "unavailable", reason: "paper not found" }; }

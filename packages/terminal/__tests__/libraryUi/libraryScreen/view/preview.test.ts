@@ -4,7 +4,7 @@ import type { AppContext } from "../../../../src/compositionRoot";
 import { App } from "../../../../src/libraryUi/libraryScreen";
 import { theme } from "../../../../src/libraryUi/theme";
 import { ATTENTION, BERT, eventually, highlight, idle, makeTmpRoot, openApp, pane, press, seedLibrary, writeSidecar } from "../../../fixtures/appHarness";
-import { computeLayout } from "../../../../src/libraryUi/render";
+import { deriveLayout } from "../../../../src/libraryUi/render";
 
 let tmp: string;
 let root: string;
@@ -59,7 +59,7 @@ describe("App preview tabs", () => {
 
   it("highlights the active tab in the tab bar", () => {
     expect(pane(app, "preview")).toContain("Info  Abstract  Notes  BibTeX");
-    const rect = computeLayout(120, 30, "papers").preview!;
+    const rect = deriveLayout(120, 30, "papers").preview!;
     const screen = app.frame().screen;
     const row = screen.rowText(rect.y);
     const info = row.indexOf("Info");

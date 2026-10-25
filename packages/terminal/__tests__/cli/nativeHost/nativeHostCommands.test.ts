@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
 import { BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, type NativeHostEnv } from "@labshelf/core/nativeHost/node";
-import { runNativeHostCommand, terminalLaunch, type NativeHostCommand } from "../../../src/cli/nativeHost/nativeHostCommands";
+import { runNativeHostCommand, createTerminalLaunch, type NativeHostCommand } from "../../../src/cli/nativeHost/nativeHostCommands";
 import type { Output } from "../../../src/cli";
 import { makeTempDir } from "../../fixtures/library";
 
@@ -23,12 +23,12 @@ async function linuxEnvWithChrome(): Promise<NativeHostEnv> {
 
 const chromeManifest = (env: NativeHostEnv, host: string): string => path.join(env.home, ".config", "google-chrome", "NativeMessagingHosts", `${host}.json`);
 const nativeHostSpec = (command: NativeHostCommand) => (command === "bridge" ? BRIDGE_HOST_SPEC : HELPER_HOST_SPEC);
-const launch = (command: NativeHostCommand) => terminalLaunch(command, "/opt/labshelf");
+const launch = (command: NativeHostCommand) => createTerminalLaunch(command, "/opt/labshelf");
 
-describe("terminalLaunch", () => {
+describe("createTerminalLaunch", () => {
   it("points at the host script bundled next to labshelf.mjs", () => {
-    expect(terminalLaunch("bridge", "/opt/labshelf")).toMatchObject({ owner: "terminal", hostScript: path.join("/opt/labshelf", "bridgeHost.js"), electronRunAsNode: false });
-    expect(terminalLaunch("helper", "/opt/labshelf").hostScript).toBe(path.join("/opt/labshelf", "helperHost.mjs"));
+    expect(createTerminalLaunch("bridge", "/opt/labshelf")).toMatchObject({ owner: "terminal", hostScript: path.join("/opt/labshelf", "bridgeHost.js"), electronRunAsNode: false });
+    expect(createTerminalLaunch("helper", "/opt/labshelf").hostScript).toBe(path.join("/opt/labshelf", "helperHost.mjs"));
   });
 });
 

@@ -4,10 +4,10 @@
 import * as vscode from "vscode";
 import { createPaperFiles, type ILogger, type PaperSidecarStore, type PaperRecord } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "./ReaderPanel.js";
-import { emitSidecarChanges } from "./readerHostPorts.js";
+import { createSidecarChangeSender } from "./readerHostPorts.js";
 import type { LibraryEvents } from "../library/index.js";
 
-export interface PdfViewerDeps extends ReaderPanelDeps {
+export interface PdfReaderDeps extends ReaderPanelDeps {
   events: LibraryEvents;
   store: PaperSidecarStore;
   logger: ILogger;
@@ -18,11 +18,11 @@ export interface OpenOptions {
   page?: number;
 }
 
-export class PdfViewerPanel {
+export class PdfReaderPanel {
   /**
    * Reveals the paper's panel if one is open, or opens a new one keyed by the paper id.
    */
-  static createOrShow(deps: PdfViewerDeps, paper: PaperRecord, options: OpenOptions = {}): void {
+  static createOrShow(deps: PdfReaderDeps, paper: PaperRecord, options: OpenOptions = {}): void {
     const paperDirUri = vscode.Uri.file(paper.path);
     ReaderPanel.createOrShow(deps, {
       key: paper.id,
@@ -30,7 +30,7 @@ export class PdfViewerPanel {
       store: deps.store,
       pdfUri: createPaperFiles(paperDirUri, vscode.Uri.joinPath).pdf,
       rootDir: paperDirUri,
-      sidecarChanged: emitSidecarChanges(deps.events, paper.id),
+      sidecarChanged: createSidecarChangeSender(deps.events, paper.id),
       onClosed: () => deps.events.pdfViewerClosed.fire({ paperId: paper.id }),
       ...(options.page !== undefined ? { page: options.page } : {}),
     });

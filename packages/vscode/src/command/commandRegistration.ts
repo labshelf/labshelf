@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { registerImportCommands } from "./importCommands.js";
 import { registerTextLayerCommands } from "./textLayerCommands.js";
-import { type RequireServices, executeSafely } from "./commandContext.js";
+import { type EnsureServices, runSafely } from "./commandContext.js";
 import { type PaperRecord, createPaperFiles } from "@labshelf/core";
 import { ensurePaperPdf, resolvePaper } from "./paperResolution.js";
 import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
@@ -33,12 +33,12 @@ async function removePapers(paperService: PaperService, papers: PaperRecord[]): 
   }
 }
 
-function registerMetadataCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+function registerMetadataCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.fetchMetadata", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.fetchMetadata", async () => {
+      await runSafely(services.logger, "labshelf.fetchMetadata", async () => {
         const paper = paperId
           ? (await services.paperService.listPapers()).find((entry) => entry.id === paperId)
           : await resolvePaper(services.paperService, undefined, "Select the paper to look up");
@@ -49,14 +49,14 @@ function registerMetadataCommands(context: vscode.ExtensionContext, requireServi
     vscode.commands.registerCommand("labshelf.resolveMissingMetadata", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.resolveMissingMetadata", async () => {
+      await runSafely(services.logger, "labshelf.resolveMissingMetadata", async () => {
         await resolveMissingMetadata(services.paperService, services.logger);
       });
     }),
     vscode.commands.registerCommand("labshelf.deletePaper", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.deletePaper", async () => {
+      await runSafely(services.logger, "labshelf.deletePaper", async () => {
         const paper = await resolvePaper(services.paperService, paperId, "Remove paper from library");
         if (!paper) {
           return;
@@ -67,12 +67,12 @@ function registerMetadataCommands(context: vscode.ExtensionContext, requireServi
   );
 }
 
-function registerReaderOpenCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+function registerReaderOpenCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openPaper", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.openPaper", async () => {
+      await runSafely(services.logger, "labshelf.openPaper", async () => {
         const paper = await resolvePaper(services.paperService, undefined, "Open paper");
         if (paper) {
           await openPaperPdf(paper);
@@ -82,7 +82,7 @@ function registerReaderOpenCommands(context: vscode.ExtensionContext, requireSer
     vscode.commands.registerCommand("labshelf.searchLibrary", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.searchLibrary", async () => {
+      await runSafely(services.logger, "labshelf.searchLibrary", async () => {
         const paper = await resolvePaper(services.paperService, undefined, "Search library");
         if (paper) {
           await openPaperPdf(paper);
@@ -92,7 +92,7 @@ function registerReaderOpenCommands(context: vscode.ExtensionContext, requireSer
     vscode.commands.registerCommand("labshelf.openPaperPdfExternal", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.openPaperPdfExternal", async () => {
+      await runSafely(services.logger, "labshelf.openPaperPdfExternal", async () => {
         const paper = await resolvePaper(services.paperService, paperId, "Open paper PDF in default viewer");
         if (paper && await ensurePaperPdf(services, paper)) {
           await openPaperPdfExternal(paper);
@@ -102,7 +102,7 @@ function registerReaderOpenCommands(context: vscode.ExtensionContext, requireSer
     vscode.commands.registerCommand("labshelf.openPaperPdf", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.openPaperPdf", async () => {
+      await runSafely(services.logger, "labshelf.openPaperPdf", async () => {
         const paper = await resolvePaper(services.paperService, paperId, "Open paper PDF");
         if (paper) {
           await openPaperPdf(paper);
@@ -112,12 +112,12 @@ function registerReaderOpenCommands(context: vscode.ExtensionContext, requireSer
   );
 }
 
-function registerFolderAndCitationCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+function registerFolderAndCitationCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.openPaperFolder", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.openPaperFolder", async () => {
+      await runSafely(services.logger, "labshelf.openPaperFolder", async () => {
         const paper = await resolvePaper(services.paperService, paperId, "Reveal paper folder");
         if (paper) {
           await vscode.commands.executeCommand("revealInExplorer", vscode.Uri.file(paper.path));
@@ -127,7 +127,7 @@ function registerFolderAndCitationCommands(context: vscode.ExtensionContext, req
     vscode.commands.registerCommand("labshelf.copyCitation", async (paperId?: string) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.copyCitation", async () => {
+      await runSafely(services.logger, "labshelf.copyCitation", async () => {
         const paper = await resolvePaper(services.paperService, paperId, "Copy citation key");
         if (!paper) {
           return;
@@ -139,7 +139,7 @@ function registerFolderAndCitationCommands(context: vscode.ExtensionContext, req
   );
 }
 
-function registerPaperOpenCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+function registerPaperOpenCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   registerReaderOpenCommands(context, requireServices);
   registerFolderAndCitationCommands(context, requireServices);
 }
@@ -155,12 +155,12 @@ async function openPaperPdfExternal(paper: PaperRecord): Promise<void> {
   await vscode.commands.executeCommand("vscode.open", pdf);
 }
 
-function registerMaintenanceCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+function registerMaintenanceCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.generateBibTeX", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.generateBibTeX", async () => {
+      await runSafely(services.logger, "labshelf.generateBibTeX", async () => {
         const regeneratedCount = await services.paperService.regenerateBibTeX();
         await vscode.window.showInformationMessage(`Regenerated BibTeX for ${regeneratedCount} paper(s).`);
       });
@@ -168,7 +168,7 @@ function registerMaintenanceCommands(context: vscode.ExtensionContext, requireSe
     vscode.commands.registerCommand("labshelf.rebuildIndex", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.rebuildIndex", async () => {
+      await runSafely(services.logger, "labshelf.rebuildIndex", async () => {
         const summary = await services.reindexLibrary();
         const changed = summary.added.length + summary.updated.length + summary.removed.length;
         void vscode.window.showInformationMessage(
@@ -187,7 +187,7 @@ function registerMaintenanceCommands(context: vscode.ExtensionContext, requireSe
 /** Registers all labshelf.* commands onto the extension context subscriptions */
 export function registerCommands(
   context: vscode.ExtensionContext,
-  requireServices: RequireServices,
+  requireServices: EnsureServices,
 ): void {
   registerImportCommands(context, requireServices);
   registerTextLayerCommands(context, requireServices);

@@ -21,7 +21,7 @@ function secretsDb(): Promise<IDBPDatabase> {
   return opening;
 }
 
-export function relayAccountSlot(name: "account" | "tokens"): SecretSlot {
+export function createRelayAccountSlot(name: "account" | "tokens"): SecretSlot {
   return {
     get: async () => (await (await secretsDb()).get(STORE, name)) as string | undefined,
     store: async (value) => { await (await secretsDb()).put(STORE, value, name); },
@@ -36,5 +36,5 @@ const refreshLock: StoredLock = {
 };
 
 export function openBrowserRelayAccountStore(logger: ILogger): RelayAccountStore {
-  return createRelayAccountStore({ account: relayAccountSlot("account"), tokens: relayAccountSlot("tokens"), refreshLock }, logger);
+  return createRelayAccountStore({ account: createRelayAccountSlot("account"), tokens: createRelayAccountSlot("tokens"), refreshLock }, logger);
 }

@@ -10,17 +10,17 @@ import {
 import type { Output } from "../usage.js";
 import {
   runNativeHostCommand,
-  terminalLaunch,
+  createTerminalLaunch,
   type NativeHostCommand,
   NATIVE_HOST_COMMANDS,
-  nativeHostSpec,
+  createNativeHostSpec,
 } from "./nativeHostCommands.js";
 
 /** Never rejects and prints nothing: a launcher that cannot be refreshed is logged and left as it is. */
 export async function refreshTerminalLaunchers(env: NativeHostEnv, distDir: string): Promise<void> {
   for (const command of NATIVE_HOST_COMMANDS) {
     try {
-      await refreshNativeHost(env, nativeHostSpec(command), terminalLaunch(command, distDir));
+      await refreshNativeHost(env, createNativeHostSpec(command), createTerminalLaunch(command, distDir));
     } catch (error) {
       await env.logger.error("terminal/refresh-native-host", error, { command });
     }
@@ -38,7 +38,7 @@ function systemEnv(): ReturnType<typeof createSystemNativeHostEnv> {
 export function runSystemNativeHostCommand(
   command: NativeHostCommand, subcommand: string | undefined, flags: { replace: boolean }, io: Output, distDir: string,
 ): Promise<number> {
-  return runNativeHostCommand(command, subcommand, flags, io, systemEnv(), terminalLaunch(command, distDir));
+  return runNativeHostCommand(command, subcommand, flags, io, systemEnv(), createTerminalLaunch(command, distDir));
 }
 
 export function refreshSystemLaunchers(distDir: string): Promise<void> {

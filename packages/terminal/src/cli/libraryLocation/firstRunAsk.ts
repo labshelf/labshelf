@@ -7,9 +7,9 @@ import {
   type SyncFolderTool,
 } from "@labshelf/core/node";
 
-import { expandHome } from "../../platform/index.js";
+import { resolveHomePath } from "../../platform/index.js";
 import type { Output } from "../usage.js";
-import { libraryTargetFor, LIBRARY_FOLDER_NAME } from "./pickLibraryDir.js";
+import { resolveLibraryDir, LIBRARY_FOLDER_NAME } from "./pickLibraryDir.js";
 import type { Ask } from "../ask.js";
 import { syncGuideText } from "../syncGuide/index.js";
 import * as path from "node:path";
@@ -28,7 +28,7 @@ function shown(target: string, home: string): string {
 }
 
 /** @returns one choice per detected sync folder, the local folder, a typed path and the sync guide, in that order */
-export function firstRunChoices(folders: readonly SyncFolder[], home: string): FirstRunChoice[] {
+export function listFirstRunChoices(folders: readonly SyncFolder[], home: string): FirstRunChoice[] {
   const synced = folders.map((folder): FirstRunChoice => {
     const target = path.join(folder.path, LIBRARY_FOLDER_NAME);
     return { kind: "folder", label: shown(target, home), detail: `synced by ${TOOL_NAMES[folder.tool]}`, path: target };
@@ -76,7 +76,7 @@ async function resolveChoice(choice: FirstRunChoice, io: Output, ask: Ask): Prom
     const typed = await ask("Folder: ");
     if (typed === undefined) { return undefined; }
     if (!typed) { return "again"; }
-    target = await libraryTargetFor(expandHome(typed));
+    target = await resolveLibraryDir(resolveHomePath(typed));
   } else {
     target = choice.path;
   }
@@ -87,9 +87,9 @@ async function resolveChoice(choice: FirstRunChoice, io: Output, ask: Ask): Prom
  * Lists the choices until the user picks a folder.
  * @returns the chosen library folder, or undefined when the input ends
  */
-export async function promptForLibrary(site: FirstRunSite, io: Output, ask: Ask): Promise<string | undefined> {
+export async function askLibraryDir(site: FirstRunSite, io: Output, ask: Ask): Promise<string | undefined> {
   const folders = await detectSyncFolders(site);
-  const choices = firstRunChoices(folders, site.home);
+  const choices = listFirstRunChoices(folders, site.home);
   io.err("No LabShelf library is configured yet.");
   for (;;) {
     printChoices(choices, io);

@@ -1,11 +1,11 @@
 // Registers label completion, go-to-definition and undefined-reference diagnostics for LaTeX sources.
 import * as vscode from "vscode";
 
-import { type LatexProjectSources, toVscodeRange, type LatexProject } from "../project/index.js";
-import { RefCompletionProvider } from "./referenceCompletion.js";
-import { RefDefinitionProvider } from "./referenceDefinition.js";
+import { type LatexProjectSources, deriveVscodeRange, type LatexProject } from "../project/index.js";
+import { ReferenceCompletionProvider } from "./referenceCompletion.js";
+import { ReferenceDefinitionProvider } from "./referenceDefinition.js";
 import { findUndefinedReferences } from "@labshelf/core";
-import { trailingDebounce } from "../debounce.js";
+import { createTrailingDebounce } from "../debounce.js";
 
 const REFRESH_DELAY_MS = 300;
 
@@ -16,19 +16,19 @@ function diagnosticsByFile(project: LatexProject): Map<string, vscode.Diagnostic
     byFile.set(path, [...byFile.get(path) ?? [], diagnostic]);
   };
   for (const { path, ref } of findUndefinedReferences(project.files)) {
-    add(path, new vscode.Diagnostic(toVscodeRange(ref.range), `No \\label{${ref.name}} in this project.`, vscode.DiagnosticSeverity.Warning));
+    add(path, new vscode.Diagnostic(deriveVscodeRange(ref.range), `No \\label{${ref.name}} in this project.`, vscode.DiagnosticSeverity.Warning));
   }
   for (const { path, includedFrom } of project.missing) {
     if (!includedFrom) { continue; }
-    add(includedFrom.file, new vscode.Diagnostic(toVscodeRange(includedFrom.range), `File not found: ${path}.`, vscode.DiagnosticSeverity.Information));
+    add(includedFrom.file, new vscode.Diagnostic(deriveVscodeRange(includedFrom.range), `File not found: ${path}.`, vscode.DiagnosticSeverity.Information));
   }
   return byFile;
 }
 
-export class LabelDiagnostics implements vscode.Disposable {
+export class LabelProblems implements vscode.Disposable {
   private readonly collection = vscode.languages.createDiagnosticCollection("labshelf-labels");
   private readonly published = new Map<string, vscode.Uri[]>();
-  private readonly refresh = trailingDebounce<string>(REFRESH_DELAY_MS, (folder) => void this.publish(folder));
+  private readonly refresh = createTrailingDebounce<string>(REFRESH_DELAY_MS, (folder) => void this.publish(folder));
   private readonly subscriptions: vscode.Disposable[];
 
   constructor(private readonly sources: LatexProjectSources) {
@@ -69,8 +69,8 @@ const SELECTOR = { scheme: "file", pattern: "**/*.tex" };
 
 export function registerLabelProviders(context: vscode.ExtensionContext, sources: LatexProjectSources): void {
   context.subscriptions.push(
-    vscode.languages.registerCompletionItemProvider(SELECTOR, new RefCompletionProvider(sources), "{", ","),
-    vscode.languages.registerDefinitionProvider(SELECTOR, new RefDefinitionProvider(sources)),
-    new LabelDiagnostics(sources),
+    vscode.languages.registerCompletionItemProvider(SELECTOR, new ReferenceCompletionProvider(sources), "{", ","),
+    vscode.languages.registerDefinitionProvider(SELECTOR, new ReferenceDefinitionProvider(sources)),
+    new LabelProblems(sources),
   );
 }

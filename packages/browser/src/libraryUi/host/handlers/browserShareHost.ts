@@ -23,7 +23,7 @@ interface PageSharingHost {
 }
 
 /** `build` makes the host with the links half alone, or with the project half too when given its deps. */
-export function createPageSharingHost(build: (projects?: ProjectShareDeps) => ShareHost): PageSharingHost {
+export function createPageShareHost(build: (projects?: ProjectShareDeps) => ShareHost): PageSharingHost {
   let inner = build();
   const listeners = new Set<() => void>();
   const host: ShareHost = {
@@ -63,10 +63,10 @@ export interface ShareLinkRelay {
   connectedRelay(): Promise<RelayAccount | undefined>;
 }
 
-export function createBrowserSharingHost(ctx: HostContext, relay: ShareLinkRelay, logger: ILogger): PageSharingHost {
+export function createBrowserShareHost(ctx: HostContext, relay: ShareLinkRelay, logger: ILogger): PageSharingHost {
   const fs = createLibraryFileSystem();
   const sidecars = new PaperSidecarStore(createSidecarPort(fs), { logger });
-  return createPageSharingHost((projects) => createShareHost({
+  return createPageShareHost((projects) => createShareHost({
     place: "this browser",
     logger,
     ...(projects ? { projects } : {}),

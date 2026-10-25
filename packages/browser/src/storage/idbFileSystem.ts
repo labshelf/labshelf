@@ -4,8 +4,8 @@
  */
 import type { LocalStat } from "@labshelf/core";
 import { deriveSha256Hex } from "@labshelf/core";
-import { getDb } from "./idbDatabase";
-import { ByteBackedFileSystem } from "./bytesFileSystem";
+import { openDb } from "./idbDatabase";
+import { BytesFileSystem } from "./bytesFileSystem";
 import type { FileRow } from "./idbSchema";
 
 /** @returns the key range covering everything below `dir` */
@@ -18,7 +18,7 @@ function belowDir(dir: string): IDBKeyRange {
  * Re-keys the row `from`, or every row below it, to `to` in one transaction, keeping bytes, mtime and hash.
  */
 async function renameTree(from: string, to: string): Promise<void> {
-  const db = await getDb();
+  const db = await openDb();
   const tx = db.transaction("files", "readwrite");
   const rows = await rowsAt(tx.store, from);
   if (rows.length === 0) { throw new Error(`File not found: ${from}`); }
@@ -34,7 +34,7 @@ async function renameTree(from: string, to: string): Promise<void> {
 
 /** Deletes the row `target` and every row below it in one transaction. */
 async function deleteTree(target: string): Promise<void> {
-  const db = await getDb();
+  const db = await openDb();
   const tx = db.transaction("files", "readwrite");
   await tx.store.delete(target);
   await tx.store.delete(belowDir(target));
@@ -46,9 +46,9 @@ async function rowsAt(store: { get(key: string): Promise<FileRow | undefined>; g
   return [...(own ? [own] : []), ...(await store.getAll(belowDir(path)))];
 }
 
-export class IndexedDbFileSystem extends ByteBackedFileSystem {
+export class IdbFileSystem extends BytesFileSystem {
   async listDir(dirPath: string): Promise<string[]> {
-    const db = await getDb();
+    const db = await openDb();
     const prefix = dirPath ? `${dirPath}/` : "";
     // Collect all keys that start with the prefix, then extract the first
     // child component (file name or sub-directory name).
@@ -64,25 +64,25 @@ export class IndexedDbFileSystem extends ByteBackedFileSystem {
   }
 
   async readFile(filePath: string): Promise<Uint8Array> {
-    const db = await getDb();
+    const db = await openDb();
     const row = await db.get("files", filePath);
     if (!row) throw new Error(`File not found: ${filePath}`);
     return row.bytes;
   }
 
   async writeFile(filePath: string, content: Uint8Array): Promise<void> {
-    const db = await getDb();
+    const db = await openDb();
     const hash = await deriveSha256Hex(content);
     await db.put("files", { path: filePath, bytes: content, mtime: Date.now(), hash });
   }
 
   async deleteFile(filePath: string): Promise<void> {
-    const db = await getDb();
+    const db = await openDb();
     await db.delete("files", filePath);
   }
 
   async stat(targetPath: string): Promise<LocalStat | undefined> {
-    const db = await getDb();
+    const db = await openDb();
     const row = await db.get("files", targetPath);
     if (row) {
       return { isFile: true, isDirectory: false, mtimeMs: row.mtime, size: row.bytes.length };

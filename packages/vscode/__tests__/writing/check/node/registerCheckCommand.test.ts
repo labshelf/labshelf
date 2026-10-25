@@ -5,14 +5,14 @@ import type { CheckProblem } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
 import { CHECK_COMMAND } from "../../../../src/writing/check";
 import { registerCheckCommand } from "../../../../src/writing/check/node";
-import { builtPdf } from "../../../../src/writing/preview";
+import { readBuiltPdf } from "../../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), checkProject: jest.fn() }));
-jest.mock("../../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
+jest.mock("../../../../src/writing/preview", () => ({ readBuiltPdf: jest.fn() }));
 
 const check = checkProject as jest.Mock;
-const pdfFor = builtPdf as jest.Mock;
+const pdfFor = readBuiltPdf as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 const saveAll = (vscode.workspace as unknown as { saveAll: jest.Mock }).saveAll;
 const pdfjs = {} as never;

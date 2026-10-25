@@ -1,13 +1,13 @@
 // Pins that the browser's All projects library lists the library folder's projects and opens one in the page's project session.
 import { createBlankTemplate, type ILogger } from "@labshelf/core";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
-import { createBrowserProjectData, createBrowserProjectLibrary } from "../../../src/writing/project";
+import { createBrowserProjectContent, createBrowserProjectLibrary } from "../../../src/writing/project";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 
 async function libraryWithOneProject() {
   const fs = memoryLibraryFs();
-  const created = await createBrowserProjectData({ fs, logger }).createProjectFromTemplate("", { title: "Deep nets", ...createBlankTemplate("typst", "Deep nets") });
+  const created = await createBrowserProjectContent({ fs, logger }).createProjectFromTemplate("", { title: "Deep nets", ...createBlankTemplate("typst", "Deep nets") });
   const workspace = { openTab: jest.fn() };
   const session = { openProject: jest.fn(async () => true), current: jest.fn(() => undefined) };
   const library = createBrowserProjectLibrary({

@@ -33,6 +33,6 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   includeOnly?: Pick<IncludeOnlyState, "option" | "set">;
 }
 
-export function previewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
+export function createPreviewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
   return { id: `preview:${project.settings.id}`, title: paths.basename(pdf), path: paths.dirname(pdf), citeKey: "", status: "reading" };
 }

@@ -8,12 +8,12 @@ const mockBroadcast = jest.fn();
 
 jest.mock("../../../src/platform", () => ({
   bx: { tabs: { create: (...a: unknown[]) => (mockCreate as (...x: unknown[]) => unknown)(...a), update: (...a: unknown[]) => (mockUpdate as (...x: unknown[]) => unknown)(...a) } },
-  getSettings: async () => ({ contactEmail: "me@uni.edu", requesterName: "Ada Requester", requesterAffiliation: "Uni", requestLanguage: "en" }),
+  readSettings: async () => ({ contactEmail: "me@uni.edu", requesterName: "Ada Requester", requesterAffiliation: "Uni", requestLanguage: "en" }),
 }));
-jest.mock("../../../src/storage", () => ({ listAllRecords: async () => mockRecords }));
-jest.mock("../../../src/background/broadcast", () => ({ broadcastChanged: (...a: unknown[]) => mockBroadcast(...a) }));
+jest.mock("../../../src/storage", () => ({ listCachedPaperRecords: async () => mockRecords }));
+jest.mock("../../../src/background/broadcast", () => ({ sendLibraryChanged: (...a: unknown[]) => mockBroadcast(...a) }));
 
-import { askAuthor, handleAskAuthor } from "../../../src/background/copyRequest";
+import { sendCopyRequest, answerCopyRequest } from "../../../src/background/copyRequest";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
 const setPdfRequestedAt = jest.fn(async () => undefined);
@@ -34,9 +34,9 @@ beforeEach(() => {
 });
 afterAll(() => { global.fetch = realFetch; });
 
-describe("askAuthor", () => {
+describe("sendCopyRequest", () => {
   it("opens the mailto in the given tab and records today's day", async () => {
-    const result = await askAuthor(deps, record(), { tabId: 7, page: page("ann@uni.edu") });
+    const result = await sendCopyRequest(deps, record(), { tabId: 7, page: page("ann@uni.edu") });
 
     expect(result).toEqual({ id: "p1", opened: "mail" });
     expect(mockCreate).not.toHaveBeenCalled();
@@ -51,7 +51,7 @@ describe("askAuthor", () => {
   });
 
   it("opens the mailto in a new tab without a tab id", async () => {
-    const result = await askAuthor(deps, record(), { page: page("ann@uni.edu") });
+    const result = await sendCopyRequest(deps, record(), { page: page("ann@uni.edu") });
 
     expect(result.opened).toBe("mail");
     expect(mockUpdate).not.toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe("askAuthor", () => {
   });
 
   it("opens the article page, and records nothing, when no address is found", async () => {
-    const result = await askAuthor(deps, record({ url: "https://journal.example/a" }), {});
+    const result = await sendCopyRequest(deps, record({ url: "https://journal.example/a" }), {});
 
     expect(result).toEqual({ id: "p1", opened: "article" });
     expect(mockCreate).toHaveBeenCalledWith({ url: "https://journal.example/a" });
@@ -68,7 +68,7 @@ describe("askAuthor", () => {
   });
 
   it("opens nothing when there is no address and no page to open", async () => {
-    const result = await askAuthor(deps, record(), {});
+    const result = await sendCopyRequest(deps, record(), {});
 
     expect(result).toEqual({ id: "p1", opened: "none" });
     expect(mockCreate).not.toHaveBeenCalled();
@@ -77,14 +77,14 @@ describe("askAuthor", () => {
   });
 });
 
-describe("handleAskAuthor", () => {
+describe("answerCopyRequest", () => {
   it("throws for a paper that is no longer in the library", async () => {
-    await expect(handleAskAuthor(deps, "gone", 1)).rejects.toThrow("This paper is no longer in your library.");
+    await expect(answerCopyRequest(deps, "gone", 1)).rejects.toThrow("This paper is no longer in your library.");
   });
 
   it("looks the paper up and asks in the library's tab", async () => {
     mockRecords = [record({ url: "https://journal.example/a" })];
-    const result = await handleAskAuthor(deps, "p1", 3);
+    const result = await answerCopyRequest(deps, "p1", 3);
     expect(result).toEqual({ id: "p1", opened: "article" });
   });
 });

@@ -1,6 +1,6 @@
 // Decides how a source tab opens a project file: local, bound to its share's text, observing a share another tab runs, or unresolved.
 import { readFileText, readShareIndexDocFiles, type ILogger, type ProjectEntry } from "@labshelf/core";
-import type { PageSharing } from "../../collab";
+import type { PageShare } from "../../collab";
 import type { SourceEditorDeps } from "../editor/index.js";
 
 const MODULE = "tabs.source";
@@ -13,7 +13,7 @@ export type SourceFileMode =
   | { kind: "unresolved" };
 
 /** `retried`: the user asked to try again, which reconnects the share from its stored key. */
-export async function sourceFileMode(sharing: Pick<PageSharing, "liveShare" | "shares">, entry: ProjectEntry, path: string, logger: ILogger, retried: boolean): Promise<SourceFileMode> {
+export async function readSourceFileMode(sharing: Pick<PageShare, "liveShare" | "shares">, entry: ProjectEntry, path: string, logger: ILogger, retried: boolean): Promise<SourceFileMode> {
   if (entry.kind !== "ready" || entry.settings.shared === undefined) return { kind: "local" };
   const context = { projectId: entry.settings.id, shareId: entry.settings.shared, path, note: "the file opens read-only until the share connects in this tab" };
   try {

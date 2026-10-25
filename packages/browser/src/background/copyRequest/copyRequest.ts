@@ -1,20 +1,20 @@
 // Asks a paper's authors for a copy: finds their address, opens the request email in the user's mail client and
 // records the day on the paper. Without an address it opens the article page, where the user can look further.
 import { findAuthorContacts, createCopyRequestMailto, type ILogger, type PaperRecord, type RawPage } from "@labshelf/core";
-import { bx, getSettings, type AskAuthorData } from "../../platform";
-import { listAllRecords, type LibraryMutations } from "../../storage";
-import { broadcastChanged } from "../broadcast";
+import { bx, readSettings, type CopyRequestReply } from "../../platform";
+import { listCachedPaperRecords, type LibraryMutations } from "../../storage";
+import { sendLibraryChanged } from "../broadcast";
 
 const MODULE = "askAuthor";
 // Several addresses are usually co-corresponding authors; more than this reads as a mass mailing.
 const MAX_RECIPIENTS = 3;
 
-export interface AskAuthorDeps {
+export interface CopyRequestDeps {
   log: ILogger;
   mutations: LibraryMutations;
 }
 
-export interface AskAuthorSource {
+export interface CopyRequestSource {
   /**
    * The tab the email opens in, so no empty tab is left behind.
    * PLATFORM: a tab navigated to mailto: hands off to the mail client and keeps its page. Tests cannot cover it.
@@ -25,8 +25,8 @@ export interface AskAuthorSource {
   articleUrl?: string | undefined;
 }
 
-export async function askAuthor(deps: AskAuthorDeps, paper: PaperRecord, source: AskAuthorSource = {}): Promise<AskAuthorData> {
-  const settings = await getSettings();
+export async function sendCopyRequest(deps: CopyRequestDeps, paper: PaperRecord, source: CopyRequestSource = {}): Promise<CopyRequestReply> {
+  const settings = await readSettings();
   const articleUrl = source.articleUrl || paper.url || (paper.doi ? `https://doi.org/${paper.doi}` : undefined);
   const contacts = await findAuthorContacts(
     { ...(articleUrl ? { articleUrl } : {}), ...(source.page ? { page: source.page } : {}), ...(paper.doi ? { doi: paper.doi } : {}) },
@@ -49,14 +49,14 @@ export async function askAuthor(deps: AskAuthorDeps, paper: PaperRecord, source:
   // INVARIANT: the day is the user's local calendar day, as the detail pane shows it; "en-CA" formats it as YYYY-MM-DD.
   const day = new Date().toLocaleDateString("en-CA");
   await deps.mutations.setPdfRequestedAt(paper, day);
-  broadcastChanged(MODULE, paper.id);
+  sendLibraryChanged(MODULE, paper.id);
   void deps.log.log("INFO", MODULE, "request email opened", { paperId: paper.id, recipients: Math.min(contacts.length, MAX_RECIPIENTS), lang: settings.requestLanguage });
   return { id: paper.id, opened: "mail" };
 }
 
 /** Library page "Ask the author" on a saved paper; the email opens in the library's own tab. */
-export async function handleAskAuthor(deps: AskAuthorDeps, id: string, tabId: number | undefined): Promise<AskAuthorData> {
-  const record = (await listAllRecords()).find((r) => r.id === id);
+export async function answerCopyRequest(deps: CopyRequestDeps, id: string, tabId: number | undefined): Promise<CopyRequestReply> {
+  const record = (await listCachedPaperRecords()).find((r) => r.id === id);
   if (!record) throw new Error("This paper is no longer in your library.");
-  return askAuthor(deps, record, { tabId });
+  return sendCopyRequest(deps, record, { tabId });
 }

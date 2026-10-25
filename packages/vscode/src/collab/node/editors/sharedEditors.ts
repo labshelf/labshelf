@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { readFileText, readShareIndexDocFiles, type ILogger, type ShareConnection } from "@labshelf/core";
-import { bindDocument, overrideUndoRedo, RemoteEditQueue, type DocumentBinding } from "../../binding/index.js";
+import { attachDocument, registerUndoRedo, RemoteUpdateQueue, type DocumentBinding } from "../../binding/index.js";
 
 export interface SharedDocument {
   share: ShareConnection;
@@ -21,7 +21,7 @@ function relativePath(folder: string, document: vscode.TextDocument): string | u
 
 export class SharedEditors implements vscode.Disposable {
   private readonly bound = new Map<string, SharedDocument>();
-  private readonly queue: RemoteEditQueue;
+  private readonly queue: RemoteUpdateQueue;
   private readonly undoRedo;
   private readonly subscriptions: vscode.Disposable[];
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -29,8 +29,8 @@ export class SharedEditors implements vscode.Disposable {
   readonly onDidChange = this.changeEmitter.event;
 
   constructor(private readonly shares: () => readonly ShareConnection[], private readonly logger: ILogger) {
-    this.queue = new RemoteEditQueue(logger);
-    this.undoRedo = overrideUndoRedo((document) => this.bound.get(document.uri.toString())?.binding, logger);
+    this.queue = new RemoteUpdateQueue(logger);
+    this.undoRedo = registerUndoRedo((document) => this.bound.get(document.uri.toString())?.binding, logger);
     this.subscriptions = [
       vscode.workspace.onDidOpenTextDocument((document) => this.shares().forEach((share) => this.bind(share, document))),
       vscode.workspace.onDidCloseTextDocument((document) => this.release(document.uri.toString(), true)),
@@ -73,7 +73,7 @@ export class SharedEditors implements vscode.Disposable {
     const file = relativePath(share.folder, document);
     if (this.bound.has(key) || document.isClosed || !file || readShareIndexDocFiles(share.session.index).get(file)?.kind !== "text") { return; }
     try {
-      const binding = bindDocument(document, readFileText(share.session.openDoc(file)), { queue: this.queue, logger: this.logger });
+      const binding = attachDocument(document, readFileText(share.session.openDoc(file)), { queue: this.queue, logger: this.logger });
       this.bound.set(key, { share, path: file, binding });
       void this.logger.log("INFO", "collab", "Bound an editor to a shared file", { shareId: share.shareId, path: file });
     } catch (error) {

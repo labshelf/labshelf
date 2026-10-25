@@ -23,11 +23,11 @@ import {
   COMMENTS_LOG_MODULE,
   type CommentShare,
   type ProjectComments,
-  projectFileUri,
+  createProjectFileUri,
   readTextFile,
 } from "./projectComments.js";
 import { SharedComments } from "./sharedComments.js";
-import { editorCommentRange, sourceCommentRange } from "./sourceRanges.js";
+import { createEditorCommentRange, findSourceCommentRange } from "./sourceRanges.js";
 import { ThreadView } from "./threadView.js";
 
 /** An unshared project's threads, read from and written to its comments.json. */
@@ -42,7 +42,7 @@ class FileComments implements ProjectComments {
   private reported: string | undefined;
 
   constructor(readonly folder: string, private readonly logger: ILogger) {
-    this.uri = projectFileUri(folder, COMMENTS_PATH);
+    this.uri = createProjectFileUri(folder, COMMENTS_PATH);
     this.access = {
       read: () => readTextFile(this.uri),
       write: async (text) => {
@@ -63,7 +63,7 @@ class FileComments implements ProjectComments {
   }
 
   async textOf(file: string): Promise<string | undefined> {
-    const uri = projectFileUri(this.folder, file);
+    const uri = createProjectFileUri(this.folder, file);
     const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === uri.toString());
     return open ? open.getText() : readTextFile(uri);
   }
@@ -163,7 +163,7 @@ export class CommentsController implements vscode.Disposable {
     const source = await target.view.store.textOf(target.file);
     if (source === undefined) { throw new Error(`${target.file} is not a text file of the project`); }
     const range = thread.range ?? new vscode.Range(0, 0, 0, 0);
-    const anchored = editorCommentRange(source, range.start, range.end);
+    const anchored = createEditorCommentRange(source, range.start, range.end);
     if (!anchored) { void vscode.window.showInformationMessage("Comment on a line that has text."); return; }
     const newId = await this.addThread(target.view, target.file, source, anchored, text);
     thread.dispose();
@@ -183,7 +183,7 @@ export class CommentsController implements vscode.Disposable {
     if (!target || target.folder !== request.projectFolder) { throw new Error(`${request.file} is not inside the open project ${request.projectFolder}`); }
     const source = await target.view.store.textOf(target.file);
     if (source === undefined) { throw new Error(`${target.file} is not a text file of the project`); }
-    const anchored = sourceCommentRange(source, request.line, request.quote);
+    const anchored = findSourceCommentRange(source, request.line, request.quote);
     if (!anchored) { throw new Error(`line ${request.line} of ${target.file} holds no text to comment on`); }
     const id = await this.addThread(target.view, target.file, source, anchored, request.body);
     await target.view.refresh(id);

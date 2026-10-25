@@ -20,13 +20,13 @@ import {
   type FolderLease,
   type LibraryFileSystem,
 } from "@labshelf/core";
-import { browserDeviceIdentity, type LibrarySource, type LibrarySources, type TabLease } from "../../storage";
+import { createBrowserDeviceIdentity, type LibraryLocation, type LibraryLocations, type TabLease } from "../../storage";
 import { createFolderRescan } from "./folderRescan";
 import { onLocalFileChanges } from "./localFileChanges";
 import { diff3Merge } from "node-diff3";
 
 interface MirrorLeaseOptions {
-  sources: Pick<LibrarySources, "folderFileSystem" | "browserFileSystem" | "getLibrarySource">;
+  sources: Pick<LibraryLocations, "folderFileSystem" | "browserFileSystem" | "getLibrarySource">;
   /** Held by the caller for the whole share session; the mirror never acquires or releases it. */
   tab: TabLease;
   folder: string;
@@ -37,7 +37,7 @@ interface MirrorLeaseOptions {
 
 interface MirrorLeases {
   /** The source the leases were taken on; the mirror stops when the library moves to another. */
-  source: LibrarySource;
+  source: LibraryLocation;
   /** The file system of `source` alone, so a later source choice cannot redirect the mirror's writes. */
   fs: LibraryFileSystem;
   tab: TabLease;
@@ -68,7 +68,7 @@ const LOG_MODULE = "browser.collab.mirror";
 export type BrowserMirrorStopReason = "tab-taken" | "folder-taken" | "root-unavailable" | "source-changed";
 
 export interface BrowserProjectMirrorOptions {
-  sources: Pick<LibrarySources, "folderFileSystem" | "browserFileSystem" | "getLibrarySource" | "onLibraryFilesChanged">;
+  sources: Pick<LibraryLocations, "folderFileSystem" | "browserFileSystem" | "getLibrarySource" | "onLibraryFilesChanged">;
   libraryId: string;
   shareId: string;
   /** The share's tab lease, held by the caller; the mirror stops when it is lost but never releases it. */
@@ -99,7 +99,7 @@ export type BrowserMirrorStart =
 /** Thrown by the ownership check once the library uses another source than the one the mirror writes to. */
 class LibrarySourceChanged extends MirrorProjectDirUnavailable {}
 
-const sameSource = (a: LibrarySource, b: LibrarySource): boolean =>
+const sameSource = (a: LibraryLocation, b: LibraryLocation): boolean =>
   a.kind === "browser" ? b.kind === "browser" : b.kind === "folder" && a.root === b.root && a.via === b.via;
 
 export function startBrowserProjectMirror(options: BrowserProjectMirrorOptions): Promise<BrowserMirrorStart> {
@@ -144,7 +144,7 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
         : tabLost ? "tab-taken" : "folder-taken";
   const disk = createLibraryMirrorFileSystem(leases.fs, folder);
   const mirror = startProjectMirror({
-    writeRecords: createWriteRecordStore(leases.fs, folder, browserDeviceIdentity(options.libraryId, logger), logger),
+    writeRecords: createWriteRecordStore(leases.fs, folder, createBrowserDeviceIdentity(options.libraryId, logger), logger),
     folder, disk, mergeText: browserMergeText, session: options.session, blobs: options.blobs, store: options.store, logger,
     // An open editor edits the shared text itself and never writes the file, so the mirror writes every path, open ones included.
     ownership: { assertOwned }, onStopped: (reason) => stop(reasonOf(reason)),

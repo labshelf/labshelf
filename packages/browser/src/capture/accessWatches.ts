@@ -27,13 +27,13 @@ export async function watchOfPaper(paperId: string): Promise<AccessWatch | undef
   return Object.values(await allWatches()).find((w) => w.paperId === paperId);
 }
 
-export async function saveWatch(watch: AccessWatch): Promise<void> {
+export async function writeWatch(watch: AccessWatch): Promise<void> {
   const all = await allWatches();
   all[String(watch.tabId)] = watch;
   await bx.storage.session.set({ [KEY]: all });
 }
 
-export async function dropWatch(tabId: number): Promise<void> {
+export async function removeWatch(tabId: number): Promise<void> {
   const all = await allWatches();
   if (!(String(tabId) in all)) return;
   delete all[String(tabId)];

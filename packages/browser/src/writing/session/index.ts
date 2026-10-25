@@ -2,5 +2,5 @@
 export { createProjectSession } from "./projectSession";
 export type { ProjectSession } from "./projectSession";
 export { createOpenProjectSnapshot } from "./openProjectSnapshot";
-export { resumeRestoredProject } from "./reopenProject";
-export { flushProjectEditors, registerOpenEditor, reloadProjectEditors, revealInOpenEditor } from "./openEditors";
+export { openRestoredProject } from "./reopenProject";
+export { writeProjectEditors, registerOpenEditor, refreshProjectEditors, showInOpenEditor } from "./openEditors";

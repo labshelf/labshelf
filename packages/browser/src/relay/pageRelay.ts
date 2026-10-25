@@ -53,7 +53,7 @@ async function confirmDisconnect(relayUrl: string): Promise<boolean> {
 
 const LOG_MODULE = "relay";
 
-export interface RequireRelayDeps {
+export interface EnsureRelayDeps {
   relay: Pick<BrowserRelayAccount, "account" | "connect">;
   /** Explains the relay and asks whether to connect Cloudflare; false when the owner cancels. */
   confirmConnect(): Promise<boolean>;
@@ -62,7 +62,7 @@ export interface RequireRelayDeps {
 }
 
 /** Logs a failed relay action and shows it; a sign-in tab the owner closed is only logged. */
-function reportRelayFailure(deps: Pick<RequireRelayDeps, "showFailure" | "logger">, action: string, error: unknown): void {
+function reportRelayFailure(deps: Pick<EnsureRelayDeps, "showFailure" | "logger">, action: string, error: unknown): void {
   if (error instanceof RelaySignInCancelledError) {
     void deps.logger.log("INFO", LOG_MODULE, "Relay action cancelled", { action });
     return;
@@ -72,7 +72,7 @@ function reportRelayFailure(deps: Pick<RequireRelayDeps, "showFailure" | "logger
 }
 
 /** Resolves the connected account, or undefined when the owner cancels or the connect fails (logged and shown). */
-export async function requireRelay(deps: RequireRelayDeps): Promise<RelayAccount | undefined> {
+export async function ensureRelay(deps: EnsureRelayDeps): Promise<RelayAccount | undefined> {
   const existing = await deps.relay.account();
   if (existing) { return existing; }
   if (!(await deps.confirmConnect())) {
@@ -106,7 +106,7 @@ export interface PageRelay {
 export function createPageRelay(options: PageRelayOptions): PageRelay {
   const { logger } = options;
   const relay = createBrowserRelayAccount({ ...options, chooseAccount, confirmSignInAgain });
-  const deps: RequireRelayDeps = {
+  const deps: EnsureRelayDeps = {
     relay, logger,
     confirmConnect: async () => {
       if (!(await confirmConnect())) { return false; }
@@ -115,7 +115,7 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
     },
     showFailure: (message) => { showToast(message, "error"); },
   };
-  const requireBrowserRelay = (): Promise<RelayAccount | undefined> => requireRelay(deps);
+  const requireBrowserRelay = (): Promise<RelayAccount | undefined> => ensureRelay(deps);
   const disconnect = async (relayUrl: string): Promise<void> => {
     if (!(await confirmDisconnect(relayUrl))) { return; }
     try {

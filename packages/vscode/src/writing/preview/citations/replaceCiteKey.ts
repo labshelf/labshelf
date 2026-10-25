@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { CitationFix, ILogger, PathOps } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
-export interface ReplaceKeyDeps {
+export interface ReplaceCiteKeyDeps {
   projectFolder: string;
   paths: PathOps;
   logger: ILogger;
@@ -26,7 +26,7 @@ function keyRange(line: string, key: string): [number, number] | undefined {
   return typst ? [typst.index + 1, typst.index + 1 + key.length] : undefined;
 }
 
-export async function replaceCitedKey(deps: ReplaceKeyDeps, fix: Extract<CitationFix, { kind: "replace" }>): Promise<void> {
+export async function updateCiteKey(deps: ReplaceCiteKeyDeps, fix: Extract<CitationFix, { kind: "replace" }>): Promise<void> {
   const uri = vscode.Uri.file(deps.paths.join(deps.projectFolder, fix.file));
   const document = await vscode.workspace.openTextDocument(uri);
   const lineIndex = fix.line - 1;

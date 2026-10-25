@@ -16,20 +16,20 @@ import {
 } from "@labshelf/core";
 
 import {
-  type ProjectLookup,
+  type ProjectFinder,
   isInside,
-  owningProject,
+  findOwningProject,
   type ReadyProject,
 } from "./buildRootDocument.js";
 import type { WritingHost } from "./session/index.js";
-import { writingLanguageOf, type WritingLanguage } from "./editorLanguage.js";
+import { readWritingLanguage, type WritingLanguage } from "./editorLanguage.js";
 
 async function exists(uri: vscode.Uri): Promise<boolean> {
   try { await vscode.workspace.fs.stat(uri); return true; } catch { return false; }
 }
 
 /** Copies into the project's images folder under a free name; an existing file is never overwritten. */
-async function copyIntoProject(projects: ProjectLookup, project: ReadyProject, source: string): Promise<string> {
+async function copyIntoProject(projects: ProjectFinder, project: ReadyProject, source: string): Promise<string> {
   const { paths } = projects;
   const folder = paths.join(project.folder, IMAGE_FOLDER);
   const target = await findFreeImageName(paths, folder, paths.basename(source), (path) => exists(vscode.Uri.file(path)));
@@ -37,9 +37,9 @@ async function copyIntoProject(projects: ProjectLookup, project: ReadyProject, s
   return target;
 }
 
-async function insertImage(editor: vscode.TextEditor, language: WritingLanguage, projects: ProjectLookup, logger: ILogger | undefined): Promise<void> {
+async function insertImage(editor: vscode.TextEditor, language: WritingLanguage, projects: ProjectFinder, logger: ILogger | undefined): Promise<void> {
   const documentPath = editor.document.uri.fsPath;
-  const project = owningProject(projects, documentPath);
+  const project = findOwningProject(projects, documentPath);
   if (!project) { return; }
   const picked = await vscode.window.showOpenDialog({
     canSelectMany: false,
@@ -68,7 +68,7 @@ async function insertImage(editor: vscode.TextEditor, language: WritingLanguage,
 interface InsertActionDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
-  projects: ProjectLookup;
+  projects: ProjectFinder;
 }
 
 interface SymbolItem extends vscode.QuickPickItem {
@@ -111,7 +111,7 @@ export function registerInsertActions(deps: InsertActionDeps): void {
   for (const [command, action] of Object.entries(actions)) {
     deps.context.subscriptions.push(vscode.commands.registerCommand(command, () => {
       const editor = vscode.window.activeTextEditor;
-      const language = writingLanguageOf(editor);
+      const language = readWritingLanguage(editor);
       return editor && language ? action(editor, language) : undefined;
     }));
   }

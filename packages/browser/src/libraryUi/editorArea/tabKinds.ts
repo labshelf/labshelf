@@ -26,7 +26,7 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
 const isKindName = (name: string): name is TabKindName => Object.hasOwn(TAB_KINDS, name);
 
 /** Reads a tab id; null when its kind is unknown, its param count is wrong or a param is badly encoded. */
-export function parseTabId(id: string): { kind: TabKindName; params: TabParams } | null {
+export function parseTab(id: string): { kind: TabKindName; params: TabParams } | null {
   const [kind, ...parts] = id.split(":");
   if (kind === undefined || !isKindName(kind) || parts.length !== TAB_KINDS[kind].params.length) return null;
   try {

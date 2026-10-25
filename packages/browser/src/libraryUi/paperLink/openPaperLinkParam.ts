@@ -1,8 +1,8 @@
 // Opens the paper that a `?link=` parameter of the library page names, or reports why it cannot.
 import { formatError, type ILogger, type PaperRecord } from "@labshelf/core";
-import { resolveLink } from "./resolvePaperLink";
+import { resolvePaperLink } from "./resolvePaperLink";
 
-export interface OpenLinkDeps {
+export interface OpenPaperLinkDeps {
   readonly listRecords: () => Promise<PaperRecord[]>;
   /** Replaces this tab with the reader, so following a link leaves no extra tab. */
   readonly goToReader: (paperId: string, page?: number) => void;
@@ -10,11 +10,11 @@ export interface OpenLinkDeps {
   readonly log: ILogger;
 }
 
-export async function openLinkParam(search: string, deps: OpenLinkDeps): Promise<void> {
+export async function openPaperLinkParam(search: string, deps: OpenPaperLinkDeps): Promise<void> {
   const text = new URLSearchParams(search).get("link");
   if (text === null) return;
   try {
-    const target = resolveLink(text, await deps.listRecords());
+    const target = resolvePaperLink(text, await deps.listRecords());
     if (target.ok) {
       deps.goToReader(target.paperId, target.page);
     } else {

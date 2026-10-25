@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import type { ChecklistSource } from "@labshelf/core";
-import { CiteSectionsCache } from "../../../src/writing/citations/citationSectionsCache";
+import { CitationSectionsCache } from "../../../src/writing/citations/citationSectionsCache";
 import type { ReadyProject } from "../../../src/writing/buildRootDocument";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
 
@@ -24,12 +24,12 @@ function setup(read: () => Promise<ChecklistSource[]> = async () => sources()) {
     listeners.add(listener);
     return { dispose: () => { listeners.delete(listener); dispose(); } };
   });
-  const cache = new CiteSectionsCache({ readSources, onDidSaveTextDocument: onDidSaveTextDocument as never, paths: path });
+  const cache = new CitationSectionsCache({ readSources, onDidSaveTextDocument: onDidSaveTextDocument as never, paths: path });
   const save = (fsPath: string): void => listeners.forEach((listener) => listener({ uri: { fsPath } }));
   return { cache, readSources, save, listeners, dispose, logger: fakeLogger() };
 }
 
-describe("CiteSectionsCache", () => {
+describe("CitationSectionsCache", () => {
   it("reads sources once for repeated requests of the same project folder", async () => {
     const { cache, readSources, logger } = setup();
     const first = await cache.get(project("/code/a"), logger);

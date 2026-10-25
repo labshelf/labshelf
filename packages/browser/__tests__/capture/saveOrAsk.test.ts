@@ -2,11 +2,11 @@
 import type { ILogger, ImportedPaper, PaperRecord, PdfFetchOptions, PdfSearch, ResolvedPdf } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
-jest.mock("../../src/storage/paperRecordStore", () => ({ listAllRecords: async () => [], upsertRecord: async () => undefined }));
+jest.mock("../../src/storage/paperRecordStore", () => ({ listCachedPaperRecords: async () => [], writeCachedPaperRecord: async () => undefined }));
 
 const mockSettings = { customResolvers: [], contactEmail: "me@uni.edu", lastFolder: "papers/Thesis" };
 const mockUpdateSettings = jest.fn(async () => undefined);
-jest.mock("../../src/platform/settings", () => ({ getSettings: async () => mockSettings, updateSettings: () => mockUpdateSettings() }));
+jest.mock("../../src/platform/settings", () => ({ readSettings: async () => mockSettings, updateSettings: () => mockUpdateSettings() }));
 
 let mockPdf: ResolvedPdf | undefined;
 jest.mock("@labshelf/core", () => ({
@@ -17,7 +17,7 @@ jest.mock("@labshelf/core", () => ({
   },
 }));
 
-import { saveOrAsk, type CaptureDraft } from "../../src/capture/captureService";
+import { writeOrAsk, type CaptureDraft } from "../../src/capture/captureService";
 import type { LibraryMutations } from "../../src/storage";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };
@@ -36,14 +36,14 @@ beforeEach(() => {
   mockUpdateSettings.mockClear();
 });
 
-describe("saveOrAsk", () => {
+describe("writeOrAsk", () => {
   it("asks before saving a paper whose PDF cannot be reached, writing nothing", async () => {
-    expect(await saveOrAsk(log, mutations, draft())).toEqual({ kind: "no-pdf", miss: { tried: 1, sources: ["page"], blocked: false, needsLogin: false } });
+    expect(await writeOrAsk(log, mutations, draft())).toEqual({ kind: "no-pdf", miss: { tried: 1, sources: ["page"], blocked: false, needsLogin: false } });
     expect(importPaper).not.toHaveBeenCalled();
   });
 
   it("saves the reference when the user confirms, with normalised tags, a trimmed note and the remembered folder", async () => {
-    const decision = await saveOrAsk(log, mutations, draft(), { tags: ["NLP", "nlp", " Deep   Learning "], note: "  read  " }, "save");
+    const decision = await writeOrAsk(log, mutations, draft(), { tags: ["NLP", "nlp", " Deep   Learning "], note: "  read  " }, "save");
 
     expect(decision).toMatchObject({ kind: "saved", saved: { folder: "papers/Thesis", pdfSource: null } });
     const [folder, paper] = importPaper.mock.calls[0]!;
@@ -56,7 +56,7 @@ describe("saveOrAsk", () => {
   it("saves the PDF it found under the fallback title into a safe folder, and remembers that folder", async () => {
     mockPdf = { bytes: new Uint8Array([37, 80, 68, 70]), url: "https://pub.example/a.pdf", source: "page" };
 
-    const decision = await saveOrAsk(log, mutations, draft({ metadata: {} }), { folder: ".research/secrets" });
+    const decision = await writeOrAsk(log, mutations, draft({ metadata: {} }), { folder: ".research/secrets" });
 
     expect(decision).toMatchObject({ kind: "saved", saved: { folder: "papers", pdfSource: "page" } });
     const [folder, paper] = importPaper.mock.calls[0]!;
@@ -66,7 +66,7 @@ describe("saveOrAsk", () => {
   });
 
   it("refuses a page that is not a paper and has no PDF", async () => {
-    await expect(saveOrAsk(log, mutations, draft({ isPaper: false }), {}, "save")).rejects.toThrow(/No paper found on this page/);
+    await expect(writeOrAsk(log, mutations, draft({ isPaper: false }), {}, "save")).rejects.toThrow(/No paper found on this page/);
     expect(importPaper).not.toHaveBeenCalled();
   });
 });

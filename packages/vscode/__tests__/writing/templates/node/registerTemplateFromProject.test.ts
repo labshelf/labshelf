@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { writeProjectAsTemplate } from "@labshelf/core/node";
 import { ensureToolchain } from "../../../../src/writing/build/node";
-import { registerSaveProjectCommand } from "../../../../src/writing/templates/node/registerTemplateFromProject";
+import { registerProjectTemplateCommand } from "../../../../src/writing/templates/node/registerTemplateFromProject";
 import { commandHandler, fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), writeProjectAsTemplate: jest.fn() }));
@@ -16,7 +16,7 @@ const window = vscode.window as unknown as Record<string, jest.Mock>;
 function setup() {
   const host = fakeHost();
   const onSaved = jest.fn();
-  registerSaveProjectCommand({
+  registerProjectTemplateCommand({
     context: { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") } as never,
     host, tex: {} as never, projects: fakeProjects() as never, onSaved,
   });

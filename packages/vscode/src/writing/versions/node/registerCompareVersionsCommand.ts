@@ -4,9 +4,9 @@ import * as vscode from "vscode";
 
 import { listVersions, type ILogger, type PdfjsLoader, type ProjectEntry } from "@labshelf/core";
 import { buildMarkedUpDiff, comparePdfs, findExecutable, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
-import { executeSafely } from "../../../command/index.js";
+import { runSafely } from "../../../command/index.js";
 import type { ReaderPanelDeps } from "../../../reader/index.js";
-import { activeProject } from "../../build/index.js";
+import { readActiveProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
 import type { ToolchainDeps } from "../../build/toolchain/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
@@ -14,7 +14,7 @@ import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { ProjectBuilders } from "../../build/index.js";
 import { buildCurrentPdf } from "../buildCurrentPdf.js";
 import { ComparePanels } from "../ComparePanels.js";
-import { CURRENT_SLUG, pickMode, pickSides, versionSide, type CompareMode, type CompareSide } from "../compareSides.js";
+import { CURRENT_SLUG, pickMode, pickSides, deriveVersionSide, type CompareMode, type CompareSide } from "../compareSides.js";
 
 export const COMPARE_VERSIONS_COMMAND = "labshelf.writing.compareVersions";
 
@@ -76,8 +76,8 @@ async function markedUp(deps: CompareVersionsDeps, panels: ComparePanels, projec
 async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, project: ReadyProject | undefined): Promise<void> {
   const session = deps.host.current();
   if (!session) { return; }
-  await executeSafely(session.logger, COMPARE_VERSIONS_COMMAND, async () => {
-    const target = project ?? activeProject(deps.projects);
+  await runSafely(session.logger, COMPARE_VERSIONS_COMMAND, async () => {
+    const target = project ?? readActiveProject(deps.projects);
     if (!target) {
       await vscode.window.showInformationMessage("Open a file of a writing project to compare its versions.");
       return;
@@ -90,9 +90,9 @@ async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, 
     const picked = await pickSides(versions);
     const mode = picked && await chooseMode(target);
     if (!picked || !mode) { return; }
-    const other = picked.other ? versionSide(picked.other) : await currentSide(deps, target);
+    const other = picked.other ? deriveVersionSide(picked.other) : await currentSide(deps, target);
     if (!other) { return; }
-    const sides = { base: versionSide(picked.base), other };
+    const sides = { base: deriveVersionSide(picked.base), other };
     await (mode === "highlight" ? highlight : markedUp)(deps, panels, target, sides, session.logger);
   });
 }

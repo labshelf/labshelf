@@ -8,7 +8,7 @@ import type {
   PaperFilesState, PaperRecord, Reference, ReadingStatus, PdfVersion,
 } from "@labshelf/core";
 import { createLibraryFileSystem } from "./libraryFileSystem";
-import { deleteRecord, listAllRecords, upsertRecord } from "./paperRecordStore";
+import { removeCachedPaperRecord, listCachedPaperRecords, writeCachedPaperRecord } from "./paperRecordStore";
 
 export interface LibraryMutations {
   /** Writes a new paper folder under targetDir, with a cite key no cached paper or existing folder holds. */
@@ -39,9 +39,9 @@ export interface LibraryMutations {
 }
 
 const recordIndex: IPaperRecordIndex = {
-  listPapers: () => listAllRecords(),
-  upsertPaper: (paper) => upsertRecord(paper, paper.path),
-  deletePaper: (id) => deleteRecord(id),
+  listPapers: () => listCachedPaperRecords(),
+  upsertPaper: (paper) => writeCachedPaperRecord(paper, paper.path),
+  deletePaper: (id) => removeCachedPaperRecord(id),
 };
 
 type FolderMutations = Pick<LibraryMutations, "createFolder" | "renameFolder" | "trashFolder">;
@@ -60,7 +60,7 @@ function fileMutations(ctx: MutationContext): FileMutations {
     },
     async describeFile(paper, name, description) {
       const record = await describePaperFileOnFileSystem(ctx, paper.path, name, description);
-      if (record) { await upsertRecord(record, record.path); }
+      if (record) { await writeCachedPaperRecord(record, record.path); }
       return record;
     },
   };
@@ -82,16 +82,16 @@ function folderMutations(ctx: MutationContext): FolderMutations {
 }
 
 async function importShareLinkIntoCache(ctx: MutationContext, options: Pick<ImportShareLinkOptions, "text" | "readerFor" | "onProgress">): Promise<ImportShareLinkResult> {
-  const result = await importShareLink({ ...options, ctx, parentDir: PAPERS_DIR, known: await listAllRecords() });
+  const result = await importShareLink({ ...options, ctx, parentDir: PAPERS_DIR, known: await listCachedPaperRecords() });
   if (result.status === "imported") {
-    for (const record of result.summary.added) { await upsertRecord(record, record.path); }
+    for (const record of result.summary.added) { await writeCachedPaperRecord(record, record.path); }
   }
   return result;
 }
 
 async function updateFieldsInCache(ctx: MutationContext, path: string, fields: Parameters<typeof updatePaperFields>[2]): Promise<PaperRecord | undefined> {
   const record = await updatePaperFields(ctx, path, fields);
-  if (record) { await upsertRecord(record, record.path); }
+  if (record) { await writeCachedPaperRecord(record, record.path); }
   return record;
 }
 
@@ -102,19 +102,19 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
 
   return {
     async importPaper(targetDir, paper) {
-      const record = await writeImportedPaper(ctx, (await listAllRecords()).map((r) => r.id), targetDir, paper);
-      await upsertRecord(record, record.path);
+      const record = await writeImportedPaper(ctx, (await listCachedPaperRecords()).map((r) => r.id), targetDir, paper);
+      await writeCachedPaperRecord(record, record.path);
       return record;
     },
     importShareLink: (options) => importShareLinkIntoCache(ctx, options),
     async setStatus(papers, status) {
       const outcome = await setPapersReadingStatus(ctx, papers, status);
-      for (const record of outcome.records) { await upsertRecord(record, record.path); }
+      for (const record of outcome.records) { await writeCachedPaperRecord(record, record.path); }
       return outcome;
     },
     async editTags(papers, add, remove) {
       const outcome = await updatePaperTags(ctx, papers, add, remove);
-      for (const record of outcome.records) { await upsertRecord(record, record.path); }
+      for (const record of outcome.records) { await writeCachedPaperRecord(record, record.path); }
       return outcome;
     },
     setNote: (paper, note) => updateFieldsInCache(ctx, paper.path, { note }),
@@ -122,7 +122,7 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
     async recordPdfAttached(record, version) {
       const { textLayer: _stale, ...current } = (await readPaperOnFileSystem(ctx, record.path)) ?? record;
       const written = await writePaperRecord(ctx, { ...current, hasPdf: true, pdfVersion: version ?? null }, { ownsStatus: false });
-      await upsertRecord(written, written.path);
+      await writeCachedPaperRecord(written, written.path);
       return written;
     },
     async movePapers(papers, targetDir) {
@@ -132,7 +132,7 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
     },
     async trashPapers(papers) {
       const outcome = await movePapersToTrash(ctx, papers);
-      for (const id of outcome.done) { await deleteRecord(id); }
+      for (const id of outcome.done) { await removeCachedPaperRecord(id); }
       return outcome;
     },
     ...folderMutations(ctx),

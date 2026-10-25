@@ -2,14 +2,14 @@
 import * as vscode from "vscode";
 
 import { MARK_VERSION_COMMAND, registerMarkVersionCommand } from "../../../src/writing/versions/registerMarkVersionCommand";
-import { builtPdf } from "../../../src/writing/preview";
+import { readBuiltPdf } from "../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
+jest.mock("../../../src/writing/preview", () => ({ readBuiltPdf: jest.fn() }));
 
 let mark: jest.Mock;
 let list: jest.Mock;
-const pdfFor = builtPdf as jest.Mock;
+const pdfFor = readBuiltPdf as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 const saveAll = (vscode.workspace as unknown as { saveAll: jest.Mock }).saveAll;
 

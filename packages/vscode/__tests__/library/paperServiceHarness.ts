@@ -5,7 +5,7 @@ import { BibtexService, LibraryStore, scanLibrary, type ILogger, type MutationCo
 import { PaperImporter } from '../../src/library/paperImporter';
 import { PaperService } from '../../src/library/paperService';
 import { PaperTextLayers } from '../../src/library/paperTextLayers';
-import { reindexLibrary, type ReindexSummary } from '../../src/storage/reindexLibrary';
+import { refreshLibrary, type ReindexSummary } from '../../src/storage/refreshLibrary';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
 import { createLibraryEvents } from '../../src/library/index.js';
 
@@ -52,7 +52,7 @@ export function makeGlue(): Glue {
   let reindexCalls = 0;
   const reindex = (): Promise<ReindexSummary> => {
     reindexCalls += 1;
-    return reindexLibrary({ store, events });
+    return refreshLibrary({ store, events });
   };
 
   const service = new PaperService(ctx, store, reindex, events, parse);

@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import type { CommentThread, ILogger } from "@labshelf/core";
-import { COMMENTS_LOG_MODULE, projectFileUri, type ProjectComments } from "./projectComments.js";
-import { positionAt } from "./sourceRanges.js";
+import { COMMENTS_LOG_MODULE, createProjectFileUri, type ProjectComments } from "./projectComments.js";
+import { derivePosition } from "./sourceRanges.js";
 
 const OPEN_THREAD_CONTEXT = "labshelf.thread.open";
 const RESOLVED_THREAD_CONTEXT = "labshelf.thread.resolved";
@@ -71,7 +71,7 @@ export class ThreadView implements vscode.Disposable {
     let shown = this.shown.get(thread.id);
     const wasResolved = shown?.state === vscode.CommentThreadState.Resolved;
     if (!shown) {
-      shown = this.controller.createCommentThread(projectFileUri(this.store.folder, thread.file), range, commentsOf(thread));
+      shown = this.controller.createCommentThread(createProjectFileUri(this.store.folder, thread.file), range, commentsOf(thread));
       shown.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
       this.shown.set(thread.id, shown);
     } else {
@@ -89,7 +89,7 @@ export class ThreadView implements vscode.Disposable {
 }
 
 function rangeArgs(text: string, start: number, end: number): [number, number, number, number] {
-  const from = positionAt(text, start);
-  const to = positionAt(text, end);
+  const from = derivePosition(text, start);
+  const to = derivePosition(text, end);
   return [from.line, from.character, to.line, to.character];
 }

@@ -14,10 +14,10 @@ import {
   normalizeReaderPrefs,
   type ReaderPrefs,
 } from "@labshelf/core";
-import { autoReaderTheme, onAutoReaderThemeChange } from "./vscodeTheme.js";
-import { renderReaderShell, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./readerShell.js";
+import { readAutoReaderTheme, onAutoReaderThemeChange } from "./vscodeTheme.js";
+import { renderReaderShell, readReaderBundleDir, type PdfjsFiles, type PdfjsLocator } from "./readerShell.js";
 import { createVsCodeOutputPorts } from "./readerHostPorts.js";
-import { labshelfTabIcon } from "../ui/index.js";
+import { createTabIcon } from "../ui/index.js";
 
 const READER_CONFIG_SECTION = "labshelf.reader";
 
@@ -126,7 +126,7 @@ export class ReaderPanel {
     }
 
     const pdfjs = deps.locatePdfjs();
-    const resourceRoots: vscode.Uri[] = [getReaderBundleDirectory(deps.extensionUri), source.rootDir];
+    const resourceRoots: vscode.Uri[] = [readReaderBundleDir(deps.extensionUri), source.rootDir];
     if (pdfjs) { resourceRoots.push(pdfjs.root); }
 
     const show = source.show ?? getReaderViewColumn();
@@ -142,7 +142,7 @@ export class ReaderPanel {
         // not the PDF text the reader's own find bar covers.
       },
     );
-    panel.iconPath = labshelfTabIcon(deps.extensionUri);
+    panel.iconPath = createTabIcon(deps.extensionUri);
 
     return new ReaderPanel(panel, deps, source, pdfjs);
   }
@@ -155,7 +155,7 @@ export class ReaderPanel {
       store: source.store,
       post: (msg) => this._post(msg),
       getPrefs: getReaderPrefs,
-      autoTheme: autoReaderTheme,
+      autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
       logger: deps.logger,
       ...(source.sidecarChanged ? { sidecarChanged: source.sidecarChanged } : {}),

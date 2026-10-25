@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { PdfViewerPanel, type PdfViewerDeps } from '../../src/reader/readerPaperOpener';
+import { PdfReaderPanel, type PdfReaderDeps } from '../../src/reader/readerPaperOpener';
 import { ReaderPanel } from '../../src/reader/ReaderPanel';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 import { statFromDisk } from '../support/diskStat';
@@ -28,7 +28,7 @@ function makePaper(overrides: Record<string, unknown> = {}) {
 
 const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 
-describe('PdfViewerPanel', () => {
+describe('PdfReaderPanel', () => {
   let extensionDir: string;
 
   beforeAll(() => {
@@ -46,11 +46,11 @@ describe('PdfViewerPanel', () => {
     for (const key of Object.keys(vscode.workspace._config)) { delete vscode.workspace._config[key]; }
   });
 
-  function makeDeps(overrides: Partial<PdfViewerDeps> = {}) {
+  function makeDeps(overrides: Partial<PdfReaderDeps> = {}) {
     const store = makeMemoryPaperDataStore();
     const events = createLibraryEvents();
     const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) } as any;
-    const deps: PdfViewerDeps = {
+    const deps: PdfReaderDeps = {
       extensionUri: vscode.Uri.file(extensionDir),
       events,
       store,
@@ -69,10 +69,10 @@ describe('PdfViewerPanel', () => {
     return panel;
   }
 
-  function open(overrides: Partial<PdfViewerDeps> = {}, paperOverrides: Record<string, unknown> = {}) {
+  function open(overrides: Partial<PdfReaderDeps> = {}, paperOverrides: Record<string, unknown> = {}) {
     const ctx = makeDeps(overrides);
     const paper = makePaper(paperOverrides);
-    PdfViewerPanel.createOrShow(ctx.deps, paper);
+    PdfReaderPanel.createOrShow(ctx.deps, paper);
     return { ...ctx, paper, panel: lastPanel() };
   }
 
@@ -122,7 +122,7 @@ describe('PdfViewerPanel', () => {
     it('assigns the HTML shell without waiting for the sidecar or any other disk read', async () => {
       const ctx = makeDeps();
       jest.spyOn(ctx.store, 'load').mockImplementation(() => new Promise(() => {}));
-      PdfViewerPanel.createOrShow(ctx.deps, makePaper());
+      PdfReaderPanel.createOrShow(ctx.deps, makePaper());
       await flush();
       const html: string = lastPanel().webview.html;
       expect(html).toContain('data-pdf-theme="dark"');
@@ -134,7 +134,7 @@ describe('PdfViewerPanel', () => {
       const closed = jest.fn();
       ctx.events.pdfViewerClosed.event(closed);
       const paper = makePaper();
-      PdfViewerPanel.createOrShow(ctx.deps, paper);
+      PdfReaderPanel.createOrShow(ctx.deps, paper);
       lastPanel().dispose();
       expect(closed).toHaveBeenCalledTimes(1);
       expect(closed).toHaveBeenCalledWith(expect.objectContaining({ paperId: paper.id }));
@@ -145,7 +145,7 @@ describe('PdfViewerPanel', () => {
       panel.webview._fireMessage({ command: 'ready', totalPages: 10 });
       await flush();
       const created = (vscode.window.createWebviewPanel as jest.Mock).mock.calls.length;
-      PdfViewerPanel.createOrShow(deps, paper, { page: 7 });
+      PdfReaderPanel.createOrShow(deps, paper, { page: 7 });
       expect(vscode.window.createWebviewPanel).toHaveBeenCalledTimes(created);
       expect(panel.reveal).toHaveBeenCalled();
       expect(posted(panel, 'scrollToPage')).toEqual([{ type: 'scrollToPage', pageNumber: 7 }]);
@@ -153,7 +153,7 @@ describe('PdfViewerPanel', () => {
 
     it('holds a page asked for by a reveal before the reader is ready, and scrolls there once it is', async () => {
       const { deps, paper, panel } = open();
-      PdfViewerPanel.createOrShow(deps, paper, { page: 7 });
+      PdfReaderPanel.createOrShow(deps, paper, { page: 7 });
       expect(posted(panel, 'scrollToPage')).toHaveLength(0);
       panel.webview._fireMessage({ command: 'ready', totalPages: 10 });
       await flush();
@@ -162,7 +162,7 @@ describe('PdfViewerPanel', () => {
 
     it('delivers a page requested at open time once the webview is ready', async () => {
       const ctx = makeDeps();
-      PdfViewerPanel.createOrShow(ctx.deps, makePaper(), { page: 4 });
+      PdfReaderPanel.createOrShow(ctx.deps, makePaper(), { page: 4 });
       const panel = lastPanel();
       expect(posted(panel, 'scrollToPage')).toHaveLength(0);
       panel.webview._fireMessage({ command: 'ready', totalPages: 10 });

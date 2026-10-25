@@ -25,12 +25,12 @@ const HOSTS: Record<NativeHostCommand, HostCommandInfo> = {
 
 export const NATIVE_HOST_COMMANDS = Object.keys(HOSTS) as NativeHostCommand[];
 
-export function nativeHostSpec(command: NativeHostCommand): NativeHostSpec {
+export function createNativeHostSpec(command: NativeHostCommand): NativeHostSpec {
   return HOSTS[command].spec;
 }
 
 /** @returns the launch that runs this app's bundled host script, found in `distDir` next to labshelf.mjs */
-export function terminalLaunch(command: NativeHostCommand, distDir: string): ScriptLaunch {
+export function createTerminalLaunch(command: NativeHostCommand, distDir: string): ScriptLaunch {
   return { kind: "script", owner: "terminal", nodePath: process.execPath, hostScript: path.join(distDir, HOSTS[command].hostFile), electronRunAsNode: false };
 }
 

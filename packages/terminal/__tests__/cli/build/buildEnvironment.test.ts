@@ -1,7 +1,7 @@
 // Tests the terminal's LaTeX install question: the answer mapping and the decline without a terminal.
-import { terminalTexSetupPrompt } from "../../../src/cli/build/buildEnvironment";
+import { createTerminalTexSetupAsk } from "../../../src/cli/build/buildEnvironment";
 
-const answering = (answer: string | undefined) => terminalTexSetupPrompt(async () => answer);
+const answering = (answer: string | undefined) => createTerminalTexSetupAsk(async () => answer);
 
 describe("terminalTexSetupPrompt.chooseInstall", () => {
   it.each([["l", "tinytex"], ["Light", "tinytex"], ["f", "texlive"], ["FULL", "texlive"]])("maps %s to %s", async (answer, kind) => {
@@ -13,6 +13,6 @@ describe("terminalTexSetupPrompt.chooseInstall", () => {
   });
 
   it("declines without a terminal", async () => {
-    expect(await terminalTexSetupPrompt(undefined).chooseInstall()).toBeUndefined();
+    expect(await createTerminalTexSetupAsk(undefined).chooseInstall()).toBeUndefined();
   });
 });

@@ -37,12 +37,12 @@ async function readAll(project: ReadyProject, relatives: string[]): Promise<ZipE
   return Object.fromEntries(relatives.map((relative, index) => [relative, bytes[index]!]));
 }
 
-export async function projectZipEntries(paths: PathOps, project: ReadyProject): Promise<ZipEntries> {
+export async function listProjectZipEntries(paths: PathOps, project: ReadyProject): Promise<ZipEntries> {
   return await readAll(project, (await exportableFiles(paths, project)).sources);
 }
 
 /** The project's files with each .bib cut to the entries the sources cite. */
-export async function arxivZipEntries(paths: PathOps, project: ReadyProject, root: string): Promise<ZipEntries> {
+export async function listArxivZipEntries(paths: PathOps, project: ReadyProject, root: string): Promise<ZipEntries> {
   const { sources, generated } = await exportableFiles(paths, project);
   const bibPaths = listBibliographyFiles(await readText(project, root), generated).filter((path) => sources.includes(path));
   const bibs = await Promise.all(bibPaths.map(async (path) => ({ path, text: await readText(project, path) })));

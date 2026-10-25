@@ -39,6 +39,6 @@ export async function scanLibrary(rootPath: string = PAPERS_DIR): Promise<{ tree
 }
 
 /** The folders holding a paper.pdf, for the background's library.lookup / draftView (which do not need the tree). */
-export async function pdfDirs(rootPath: string = PAPERS_DIR): Promise<Set<string>> {
+export async function listPdfDirs(rootPath: string = PAPERS_DIR): Promise<Set<string>> {
   return derivePdfDirs(await libraryPaths(rootPath));
 }

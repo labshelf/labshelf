@@ -1,6 +1,6 @@
 // Holds a grid of styled cells and diffs two frames into the shortest ANSI output.
 // Only cells that changed since the previous frame reach the terminal, which keeps redraws flicker-free over SSH.
-import { graphemes } from "./text.js";
+import { splitGraphemes } from "./text.js";
 
 /** 0–255 palette index (0–15 follow the user's terminal theme), "#rrggbb", or undefined for the default color. */
 type Color = number | `#${string}`;
@@ -59,7 +59,7 @@ function colorCode(color: Color, background: boolean): string {
  * The SGR sequence selecting a style from a reset state.
  * @returns the escape sequence
  */
-export function sgr(id: number): string {
+export function createSgr(id: number): string {
   const style = styleTable[id] ?? {};
   let code = "\x1b[0";
   if (style.bold) { code += ";1"; }
@@ -120,7 +120,7 @@ export class Screen {
     const id = styleId(style);
     const limit = Math.min(this.width, x + maxWidth);
     let col = x;
-    for (const { g, w } of graphemes(text)) {
+    for (const { g, w } of splitGraphemes(text)) {
       if (w === 0) { continue; }
       if (col + w > limit) {
         // A wide character that does not fit leaves a blank instead of spilling over.
@@ -201,7 +201,7 @@ export class Screen {
           out += `\x1b[${y + 1};${x + 1}H`;
         }
         if (pen !== style) {
-          out += sgr(style);
+          out += createSgr(style);
           pen = style;
         }
         out += ch;

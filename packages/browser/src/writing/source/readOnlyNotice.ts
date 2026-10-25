@@ -10,10 +10,10 @@ function readOnlyNotice(iconName: IconName, text: string, action: { label: strin
     button);
 }
 
-export function unresolvedNotice(retry: () => void): HTMLElement {
+export function renderUnresolvedNotice(retry: () => void): HTMLElement {
   return readOnlyNotice("cloud-off", "This shared file is not ready to edit. It stays read-only until sharing is ready.", { label: "Retry", icon: "refresh", run: retry });
 }
 
-export function observingNotice(useHere: () => void): HTMLElement {
+export function renderObservingNotice(useHere: () => void): HTMLElement {
   return readOnlyNotice("external", "This shared project is open in another tab. This file is read-only here until you use it here or that tab closes.", { label: "Use here", icon: "target", run: useHere });
 }

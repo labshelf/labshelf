@@ -10,7 +10,7 @@ import {
   createNonce,
 } from "@labshelf/core";
 import type { SpacesService } from "./spacesService.js";
-import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../ui/index.js";
 
 interface SpacesView { view: "catalog" | "space"; id?: string; tab?: SpaceTab }
 const spacesBundleDirectory = (extension: vscode.Uri): vscode.Uri => vscode.Uri.joinPath(extension, "dist", "spaces");
@@ -18,8 +18,8 @@ const spacesBundleDirectory = (extension: vscode.Uri): vscode.Uri => vscode.Uri.
 async function spacesHtml(webview: vscode.Webview, extension: vscode.Uri, view: SpacesView): Promise<string> {
   const dir = spacesBundleDirectory(extension);
   const script = vscode.Uri.joinPath(dir, "spaces.js");
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: "Spaces", heading: "Spaces bundle not built", file: "dist/spaces/spaces.js", reopen: "Spaces" });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: "Spaces", heading: "Spaces bundle not built", file: "dist/spaces/spaces.js", reopen: "Spaces" });
   }
   const nonce = createNonce();
   const config = JSON.stringify(view).replace(/</g, "\\u003c");
@@ -43,7 +43,7 @@ class SpacesPanel {
     const panel = this.panel = vscode.window.createWebviewPanel("labshelfSpaces", title, vscode.ViewColumn.One, {
       enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [spacesBundleDirectory(extension)],
     });
-    panel.iconPath = labshelfTabIcon(extension);
+    panel.iconPath = createTabIcon(extension);
     const handlers = new Set<(message: SpacesToHost) => void>();
     const endpoint: SpacesEndpoint = {
       post: message => { if (!this.disposed) void panel.webview.postMessage(message); },

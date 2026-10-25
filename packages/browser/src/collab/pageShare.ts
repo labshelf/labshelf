@@ -62,7 +62,7 @@ function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPo
 
 const LOG_MODULE = "collab.sharing";
 
-export interface PageSharingOptions {
+export interface PageShareOptions {
   sources: ShareSources;
   libraryId: () => Promise<string>;
   logger: ILogger;
@@ -77,7 +77,7 @@ export interface PageSharingOptions {
   fetch?: typeof fetch;
 }
 
-export interface PageSharing {
+export interface PageShare {
   ports: ShareFlowPorts;
   shares: PageShares;
   /** Resolves once the first read of the project list and the resume it starts are done. */
@@ -91,7 +91,7 @@ export interface PageSharing {
   closeAll(): Promise<void>;
 }
 
-export function createPageSharing(options: PageSharingOptions): PageSharing {
+export function createPageShare(options: PageShareOptions): PageShare {
   const { sources, libraryId, logger } = options;
   const keys = createShareKeyStore(libraryId);
   const closing = new AbortController();

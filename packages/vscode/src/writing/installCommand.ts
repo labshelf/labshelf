@@ -4,9 +4,9 @@ import * as vscode from "vscode";
 import {
   describeInstall, isInstallResolved, createInstallPlan, describeInstallReport, type ILogger, type InstallResult, type PaperRecord, type ProjectEntry,
 } from "@labshelf/core";
-import { executeSafely, queueTextLayersOfAdded } from "../command/index.js";
+import { runSafely, addTextLayersOfAdded } from "../command/index.js";
 import type { PaperImporter, PaperTextLayers } from "../library/index.js";
-import { activeProject } from "./build/index.js";
+import { readActiveProject } from "./build/index.js";
 import type { WritingHost, WritingProjects } from "./session/index.js";
 
 const INSTALL_COMMAND = "labshelf.installProjectPapers";
@@ -49,14 +49,14 @@ async function installPapers(deps: InstallCommandDeps, entry: ProjectEntry | und
   const session = await deps.host.require();
   const services = deps.services();
   if (!session || !services) { return; }
-  await executeSafely(session.logger, INSTALL_COMMAND, async () => {
-    const project = entry?.kind === "ready" ? entry : activeProject(deps.projects);
+  await runSafely(session.logger, INSTALL_COMMAND, async () => {
+    const project = entry?.kind === "ready" ? entry : readActiveProject(deps.projects);
     if (!project) {
       await vscode.window.showInformationMessage("Open a file of a writing project to install its papers.");
       return;
     }
     const results = await importMissing(services, project);
-    queueTextLayersOfAdded(services, results.flatMap(({ outcome }) => (outcome ? [outcome] : [])));
+    addTextLayersOfAdded(services, results.flatMap(({ outcome }) => (outcome ? [outcome] : [])));
     const summary = describeInstallReport(results);
     const unresolved = results.find((result) => !isInstallResolved(result));
     const problem = unresolved && describeInstall(unresolved);

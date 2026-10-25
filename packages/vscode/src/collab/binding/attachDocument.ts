@@ -2,7 +2,7 @@
 import type * as Y from "yjs";
 import * as vscode from "vscode";
 import { NormalizedText, TextUndoManager, type EditorSelection, type ILogger } from "@labshelf/core";
-import type { RemoteEditQueue } from "./remoteUpdateQueue.js";
+import type { RemoteUpdateQueue } from "./remoteUpdateQueue.js";
 
 // The Y.Text of a shared file; named through core, as this package does not depend on yjs.
 
@@ -15,12 +15,12 @@ export interface DocumentBinding {
   dispose(): void;
 }
 
-export interface BindOptions {
-  queue: RemoteEditQueue;
+export interface AttachOptions {
+  queue: RemoteUpdateQueue;
   logger: ILogger;
 }
 
-export function bindDocument(document: vscode.TextDocument, yText: Y.Text, { queue, logger }: BindOptions): DocumentBinding {
+export function attachDocument(document: vscode.TextDocument, yText: Y.Text, { queue, logger }: AttachOptions): DocumentBinding {
   const key = document.uri.toString();
   const undo = new TextUndoManager(yText, Symbol(`labshelf.collab.local:${key}`));
   const text: NormalizedText = new NormalizedText(yText, undo, () => { void queue.enqueueRemoteEdit(document, text); }, logger);

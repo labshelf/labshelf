@@ -2,17 +2,17 @@
 import { orderFuzzy } from "@labshelf/core";
 
 import type { InputEvent } from "../../../screen/index.js";
-import { editText, textInput } from "../../textInput.js";
-import { helpRows, type ConfirmOverlay, type HelpOverlay, type PickerOverlay, type PromptOverlay, type PromptPurpose } from "../../overlays.js";
+import { updateText, createTextInput } from "../../createTextInput.js";
+import { listHelpRows, type ConfirmOverlay, type HelpOverlay, type PickerOverlay, type AskOverlay, type AskPurpose } from "../../overlays.js";
 import type { App } from "../app.js";
-import { complete } from "./askCompletion.js";
-import { submitPrompt } from "./applyAsk.js";
+import { applyAskCompletion } from "./askCompletion.js";
+import { applyAsk } from "./applyAsk.js";
 
-export function openPrompt(app: App, purpose: PromptPurpose, title: string, value: string, hint?: string, targets: string[] = []): void {
-  app.overlay = { kind: "prompt", purpose, title, input: textInput(value), completions: [], targets, ...(hint ? { hint } : {}) };
+export function openAsk(app: App, purpose: AskPurpose, title: string, value: string, hint?: string, targets: string[] = []): void {
+  app.overlay = { kind: "prompt", purpose, title, input: createTextInput(value), completions: [], targets, ...(hint ? { hint } : {}) };
 }
 
-export function handleOverlay(app: App, event: InputEvent): void {
+export function onOverlayInput(app: App, event: InputEvent): void {
   const overlay = app.overlay!;
   const key = event.type === "key" ? event.id : undefined;
   if (overlay.kind === "help") { return handleHelp(app, overlay, key); }
@@ -24,14 +24,14 @@ export function handleOverlay(app: App, event: InputEvent): void {
   if (overlay.kind === "picker") { return handlePicker(app, overlay, event); }
   if (key === "enter") {
     app.overlay = undefined;
-    submitPrompt(app, overlay);
+    applyAsk(app, overlay);
     return;
   }
   if (key === "tab") {
-    void complete(app, overlay);
+    void applyAskCompletion(app, overlay);
     return;
   }
-  const next = editText(overlay.input, event);
+  const next = updateText(overlay.input, event);
   if (next) {
     overlay.input = next;
     overlay.completions = [];
@@ -39,7 +39,7 @@ export function handleOverlay(app: App, event: InputEvent): void {
 }
 
 function handleHelp(app: App, overlay: HelpOverlay, key: string | undefined): void {
-  const max = helpRows().length;
+  const max = listHelpRows().length;
   if (key === "j" || key === "down") { overlay.scroll = Math.min(overlay.scroll + 1, max); }
   else if (key === "k" || key === "up") { overlay.scroll = Math.max(0, overlay.scroll - 1); }
   else if (key === "C-d" || key === "pagedown" || key === "space") { overlay.scroll = Math.min(overlay.scroll + 10, max); }
@@ -72,7 +72,7 @@ function handlePicker(app: App, picker: PickerOverlay, event: InputEvent): void 
     picker.index = Math.max(picker.index - 1, 0);
     return;
   }
-  const next = editText(picker.input, event);
+  const next = updateText(picker.input, event);
   if (next) {
     picker.input = next;
     picker.filtered = orderFuzzy(picker.items, next.value, (item) => `${item.label} ${item.detail ?? ""}`);

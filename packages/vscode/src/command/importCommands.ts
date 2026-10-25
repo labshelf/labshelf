@@ -3,11 +3,11 @@ import * as vscode from "vscode";
 
 import {
   importPapersFromDialog,
-  announceImport,
-  queueTextLayersOfAdded,
+  reportImport,
+  addTextLayersOfAdded,
   type ImportServices,
 } from "./importProgress.js";
-import { executeSafely, type RequireServices } from "./commandContext.js";
+import { runSafely, type EnsureServices } from "./commandContext.js";
 
 /** Does nothing when the person cancels the input. */
 export async function addPaperByIdentifier(
@@ -27,21 +27,21 @@ export async function addPaperByIdentifier(
       return services.importer.importFromNetwork(input.trim());
     },
   );
-  queueTextLayersOfAdded(services, [outcome]);
-  announceImport([outcome]);
+  addTextLayersOfAdded(services, [outcome]);
+  reportImport([outcome]);
 }
 
-export function registerImportCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+export function registerImportCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("labshelf.addPaper", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.addPaper", () => importPapersFromDialog(services));
+      await runSafely(services.logger, "labshelf.addPaper", () => importPapersFromDialog(services));
     }),
     vscode.commands.registerCommand("labshelf.addPaperByIdentifier", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.addPaperByIdentifier", () => addPaperByIdentifier(services));
+      await runSafely(services.logger, "labshelf.addPaperByIdentifier", () => addPaperByIdentifier(services));
     }),
   );
 }

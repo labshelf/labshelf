@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   registerSectionOutline,
-  sectionSymbols,
+  listSectionSymbols,
 } from "../../src/latex/registerSectionOutline";
 import { at, latexProject, resetOpenDocuments, restoreDiskReads } from "../support/latexProjectFixtures";
 import { fakeDocument } from "../support/textDocument";
@@ -21,9 +21,9 @@ const END = new vscode.Position(5, 18);
 
 afterEach(() => { resetOpenDocuments(); restoreDiskReads(); });
 
-describe("sectionSymbols", () => {
+describe("listSectionSymbols", () => {
   it("nests sections under the nearest heading of a higher level", () => {
-    const roots = sectionSymbols(TEXT, END);
+    const roots = listSectionSymbols(TEXT, END);
     expect(roots.map((symbol) => symbol.name)).toEqual(["One", "Two"]);
     expect(roots[0]!.children.map((symbol) => symbol.name)).toEqual(["Alpha", "Beta"]);
     expect(roots[0]!.children[0]!.children.map((symbol) => symbol.name)).toEqual(["Deep"]);
@@ -31,14 +31,14 @@ describe("sectionSymbols", () => {
   });
 
   it("ranges from the command to the next heading of the same or a higher level, or the end of the file", () => {
-    const [one, two] = sectionSymbols(TEXT, END);
+    const [one, two] = listSectionSymbols(TEXT, END);
     expect([one!.range.start.line, one!.range.end.line]).toEqual([0, 4]);
     expect([one!.children[0]!.range.start.line, one!.children[0]!.range.end.line]).toEqual([1, 3]);
     expect(two!.range.end).toBe(END);
   });
 
   it("selects the heading command and gives each level its own kind", () => {
-    const [one] = sectionSymbols(TEXT, END);
+    const [one] = listSectionSymbols(TEXT, END);
     const alpha = one!.children[0]!;
     expect(alpha.selectionRange.start).toEqual(new vscode.Position(1, 0));
     expect(alpha.selectionRange.end.character).toBe("\\section{Alpha}".length);
@@ -46,13 +46,13 @@ describe("sectionSymbols", () => {
   });
 
   it("starts a part above chapters and names an empty heading", () => {
-    const [part] = sectionSymbols("\\part{P}\n\\chapter{C}\n\\section{}", new vscode.Position(2, 10));
+    const [part] = listSectionSymbols("\\part{P}\n\\chapter{C}\n\\section{}", new vscode.Position(2, 10));
     expect(part!.children[0]!.name).toBe("C");
     expect(part!.children[0]!.children[0]!.name).toBe("(untitled)");
   });
 
   it("lists nothing for a text without headings", () => {
-    expect(sectionSymbols("Just prose.", new vscode.Position(0, 11))).toEqual([]);
+    expect(listSectionSymbols("Just prose.", new vscode.Position(0, 11))).toEqual([]);
   });
 });
 

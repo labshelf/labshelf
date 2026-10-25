@@ -4,20 +4,20 @@
  */
 import * as vscode from 'vscode';
 import { createNonce } from '@labshelf/core';
-import { bundleExists, bundleMissingHtml } from '../ui/index.js';
+import { hasBundleFile, renderBundleMissingHtml } from '../ui/index.js';
 
 /** <extension>/dist/library, for localResourceRoots. */
-export function libraryBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
+export function readLibraryBundleDir(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, 'dist', 'library');
 }
 
 const REOPEN = { library: 'the list', sidebar: 'the sidebar', details: 'the Details view' } as const;
 
 export async function listPanelHtml(webview: vscode.Webview, extensionUri: vscode.Uri, bundle: 'library' | 'sidebar' | 'details' = 'library'): Promise<string> {
-  const dir = libraryBundleDirectory(extensionUri);
+  const dir = readLibraryBundleDir(extensionUri);
   const script = vscode.Uri.joinPath(dir, `${bundle}.js`);
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: 'LabShelf', heading: 'Library bundle not built', file: `dist/library/${bundle}.js`, reopen: REOPEN[bundle] });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: 'LabShelf', heading: 'Library bundle not built', file: `dist/library/${bundle}.js`, reopen: REOPEN[bundle] });
   }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};`;

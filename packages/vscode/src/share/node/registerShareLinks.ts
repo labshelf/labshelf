@@ -5,7 +5,7 @@ import type { ShareDialogRequest } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/index.js";
 import type { ActiveServices } from "../../command/index.js";
 import { sharingWebviews } from "../shareWebviews.js";
-import { libraryPaths } from "../../libraryUi/index.js";
+import { createLibraryPaths } from "../../libraryUi/index.js";
 import { IMPORT_SHARE_COMMAND, SHARE_FOLDER_COMMAND } from "../shareCommandIds.js";
 
 const MANAGE_SHARES_COMMAND = "labshelf.share.manage";
@@ -16,7 +16,7 @@ type Controller = Pick<LibraryRootController, "require">;
 function folderRequest(target: unknown, { mutations }: ActiveServices): ShareDialogRequest {
   const dir = typeof target === "object" && target !== null && "dirPath" in target ? (target as { dirPath: unknown }).dirPath : undefined;
   if (typeof dir !== "string" || dir === mutations.papersRoot) { return { kind: "shareFolder" }; }
-  const path = libraryPaths(mutations.papersRoot, mutations.paths).toUi(dir);
+  const path = createLibraryPaths(mutations.papersRoot, mutations.paths).toUi(dir);
   return path === null ? { kind: "shareFolder" } : { kind: "shareFolder", path };
 }
 

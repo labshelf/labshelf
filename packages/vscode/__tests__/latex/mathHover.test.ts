@@ -1,7 +1,7 @@
 // Tests that hovering math in a LaTeX file previews it as an image, with the macros of the whole project.
 import * as vscode from "vscode";
 
-import { mathHoverProvider } from "../../src/latex/index";
+import { createMathHoverProvider } from "../../src/latex/index";
 import { at, latexProject, resetOpenDocuments, restoreDiskReads } from "../support/latexProjectFixtures";
 import { fakeDocument, withCursor } from "../support/textDocument";
 
@@ -15,7 +15,7 @@ afterEach(() => { resetOpenDocuments(); restoreDiskReads(); });
 async function hover(marked: string, path = at("main.tex")) {
   const { sources } = latexProject(DISK);
   const { text, position } = withCursor(marked);
-  return mathHoverProvider(sources).provideHover(fakeDocument(path, text), position, {} as vscode.CancellationToken);
+  return createMathHoverProvider(sources).provideHover(fakeDocument(path, text), position, {} as vscode.CancellationToken);
 }
 
 function markdownOf(result: vscode.Hover | null | undefined): string {
@@ -27,7 +27,7 @@ function svgOf(result: vscode.Hover | null | undefined): string {
   return Buffer.from(base64, "base64").toString("utf8");
 }
 
-describe("mathHoverProvider", () => {
+describe("createMathHoverProvider", () => {
   it("renders inline math as an SVG image covering the whole span", async () => {
     const result = await hover("\\input{macros}\nWe have $\\alpha|^2$.");
     expect(markdownOf(result)).toMatch(/^!\[math\]\(data:image\/svg\+xml;base64,/);

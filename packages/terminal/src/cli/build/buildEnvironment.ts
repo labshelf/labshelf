@@ -7,7 +7,7 @@ import { createSharedTexProvider, createDeviceLocalLayout, NodeLibraryFileSystem
 
 import type { AppContext } from "../../compositionRoot.js";
 import type { ReadyProject } from "./findProject.js";
-import { withPrompt } from "../ask.js";
+import { withAsk } from "../ask.js";
 import { watch } from "node:fs";
 
 // PDFs, logs and aux files are written by the build itself, so only sources trigger a rebuild.
@@ -27,13 +27,13 @@ function watchSources(folder: string, onChange: () => void): () => void {
 }
 
 /** Resolves to the typed answer, or undefined when input ends. */
-type Ask = Parameters<Parameters<typeof withPrompt>[0]>[0];
+type Ask = Parameters<Parameters<typeof withAsk>[0]>[0];
 
 const QUESTION = "LaTeX is not installed. Install Light (TinyTeX, ~100 MB, adds packages on demand) or Full (TeX Live, ~5 GB, offline)? [l/f/N] ";
 
 const CHOICES: Readonly<Record<string, TexInstallKind>> = { l: "tinytex", light: "tinytex", f: "texlive", full: "texlive" };
 
-export function terminalTexSetupPrompt(ask: Ask | undefined): TexSetupAsk {
+export function createTerminalTexSetupAsk(ask: Ask | undefined): TexSetupAsk {
   return {
     async chooseInstall() {
       if (!ask) { return undefined; }
@@ -64,20 +64,20 @@ export interface BuildEnvironment {
 }
 
 /** The terminal's answer channel: absent when stdin or stderr is not a terminal, so questions are declined. */
-export function processAsk(): Ask | undefined {
-  return process.stdin.isTTY && process.stderr.isTTY ? (question) => withPrompt((ask) => ask(question)) : undefined;
+export function createTtyAsk(): Ask | undefined {
+  return process.stdin.isTTY && process.stderr.isTTY ? (question) => withAsk((ask) => ask(question)) : undefined;
 }
 
 const rejectTypst = (): Promise<never> => Promise.reject(new Error("Typst projects cannot be built from the terminal yet."));
 
-export function terminalBuildEnvironment(ctx: BuildContext, tty: { ask: Ask | undefined }): BuildEnvironment {
+export function createTerminalBuildEnvironment(ctx: BuildContext, tty: { ask: Ask | undefined }): BuildEnvironment {
   const data = createProjectContent({
     fs: new NodeLibraryFileSystem(), path, logger: ctx.logger, deviceDirs: createDeviceLocalLayout(ctx.paths.root),
   });
   return {
     queue: new ProjectBuildQueue({
       logger: ctx.logger,
-      prompt: terminalTexSetupPrompt(tty.ask),
+      prompt: createTerminalTexSetupAsk(tty.ask),
       tex: createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger: ctx.logger, fetchImpl: fetch }),
       projects: data,
       typst: { get: rejectTypst },

@@ -3,7 +3,7 @@ import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
 
 const MODULE = "editor.save";
 
-export interface SaveSchedulerDeps {
+export interface WriteSchedulerDeps {
   file: string;
   text(): string;
   write(text: string): Promise<void>;
@@ -14,7 +14,7 @@ export interface SaveSchedulerDeps {
   onSaved(): void;
 }
 
-export interface SaveScheduler {
+export interface WriteScheduler {
   /** Marks the file dirty and restarts the save delay. */
   changed(): void;
   /** Writes now when dirty; resolves whether the file is clean afterwards. */
@@ -22,7 +22,7 @@ export interface SaveScheduler {
   dirty(): boolean;
 }
 
-export function createSaveScheduler(deps: SaveSchedulerDeps): SaveScheduler {
+export function createWriteScheduler(deps: WriteSchedulerDeps): WriteScheduler {
   let edits = 0;
   let savedEdits = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;

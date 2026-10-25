@@ -2,9 +2,9 @@
 import type { ILogger } from "@labshelf/core";
 import { moveLibrary } from "@labshelf/core/node";
 
-import { expandHome } from "../../platform/index.js";
+import { resolveHomePath } from "../../platform/index.js";
 import { UsageError, type Output } from "../usage.js";
-import { libraryTargetFor } from "./pickLibraryDir.js";
+import { resolveLibraryDir } from "./pickLibraryDir.js";
 
 export interface MoveSite {
   logger: (root: string) => ILogger;
@@ -21,7 +21,7 @@ export async function runMove(positionals: string[], root: string | undefined, i
   const raw = positionals[0];
   if (!raw) { throw new UsageError("Usage: labshelf move <path>"); }
   if (!root) { throw new UsageError("No library to move. Run `labshelf init <path>` first."); }
-  const target = await libraryTargetFor(expandHome(raw));
+  const target = await resolveLibraryDir(resolveHomePath(raw));
   let reported = false;
   try {
     await moveLibrary(root, target, {

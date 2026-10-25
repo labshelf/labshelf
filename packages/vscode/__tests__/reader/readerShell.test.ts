@@ -5,7 +5,7 @@ import {
   renderReaderShell,
   resolvePdfjsUris,
   resolveReaderBundleUris,
-  serializeBoot,
+  serializeStartup,
 } from '../../src/reader/readerShell';
 import { DEFAULT_READER_PREFS, PROTOCOL_VERSION } from '@labshelf/core';
 import { statFromDisk } from '../support/diskStat';
@@ -174,9 +174,9 @@ describe('renderReaderShell', () => {
     });
   });
 
-  describe('serializeBoot', () => {
+  describe('serializeStartup', () => {
     it('escapes "<" and the JS line separators', () => {
-      const out = serializeBoot({ paperTitle: 'a<b\u2028c\u2029d' } as any);
+      const out = serializeStartup({ paperTitle: 'a<b\u2028c\u2029d' } as any);
       expect(out).not.toContain('<');
       expect(out).toContain('\\u003c');
       expect(out).not.toMatch(/[\u2028\u2029]/);

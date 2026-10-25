@@ -10,7 +10,7 @@ export type PageLinkEvidence = Pick<RawPage, "pdfLinks" | "doiLinks" | "mailtoLi
  * imported symbols and may only use browser globals. They are two functions because every helper has to be nested
  * inside the one that is injected, and one function would pass the length limit.
  */
-export function probeMeta(): PageMetaEvidence {
+export function readPageMeta(): PageMetaEvidence {
   const meta: Record<string, string[]> = {};
   const authorEmails: Array<{ email: string; name?: string }> = [];
   let lastAuthor: string | undefined;
@@ -31,7 +31,7 @@ export function probeMeta(): PageMetaEvidence {
   return evidence;
 }
 
-export function probeLinks(): PageLinkEvidence {
+export function readPageAnchors(): PageLinkEvidence {
   const pdfLinks: Array<{ url: string; kind: "embed" | "alternate" | "labelled" | "href" }> = [];
   const seen = new Set<string>();
   const add = (raw: string | null | undefined, kind: "embed" | "alternate" | "labelled" | "href"): void => {

@@ -7,7 +7,7 @@ const RUN = "Run Command";
 type Confirmed = Record<string, string[]>;
 
 /** True when the user has confirmed this exact command for this project, now or earlier. */
-export async function confirmFigureCommand(state: vscode.Memento, folder: string, command: string): Promise<boolean> {
+export async function askFigureCommand(state: vscode.Memento, folder: string, command: string): Promise<boolean> {
   const confirmed = state.get<Confirmed>(CONFIRMED_KEY) ?? {};
   if (confirmed[folder]?.includes(command)) { return true; }
   const answer = await vscode.window.showWarningMessage(

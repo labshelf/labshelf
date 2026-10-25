@@ -3,13 +3,13 @@ import { checkPreviewRequest, type HostToWebview, type PreviewRequest, type Prev
 
 const READER_PAGE = "../reader/index.html";
 
-export type PreviewBuildStatus = Omit<Extract<HostToWebview, { type: "buildStatus" }>, "type">;
+export type PreviewBuildState = Omit<Extract<HostToWebview, { type: "buildStatus" }>, "type">;
 type PreviewFrameMessage = Extract<HostToWebview, { type: "reloadDocument" | "buildStatus" | "previewRoots" }>;
 
 export interface PreviewFrame {
   readonly element: HTMLIFrameElement;
   showPdf(bytes: Uint8Array): void;
-  setBuildStatus(status: PreviewBuildStatus): void;
+  setBuildStatus(status: PreviewBuildState): void;
   setPreviewRoots(roots: PreviewBuildRoots): void;
   /** Calls `listener` with each well-formed request the embedded reader sends; returns the unsubscribe. */
   onRequest(listener: (request: PreviewRequest) => void): () => void;

@@ -8,7 +8,7 @@ const listeners = new Set<(theme: ResolvedTheme, pref: ThemePref) => void>();
 let media: MediaQueryList | null = null;
 
 /** Reads the stored preference, defaulting to "auto". */
-export function getThemePref(): ThemePref {
+export function readThemePref(): ThemePref {
   try {
     const raw = localStorage.getItem(THEME_STORAGE_KEY);
     return raw === "light" || raw === "dark" ? raw : "auto";
@@ -18,7 +18,7 @@ export function getThemePref(): ThemePref {
 }
 
 /** Applies the resolved theme to <html> and notifies subscribers. */
-export function applyTheme(pref: ThemePref = getThemePref()): ResolvedTheme {
+export function applyTheme(pref: ThemePref = readThemePref()): ResolvedTheme {
   const theme = resolveTheme(pref);
   applyThemeToDocument(theme);
   for (const cb of listeners) cb(theme, pref);
@@ -37,7 +37,7 @@ export function setThemePref(pref: ThemePref): void {
 /** Subscribes to theme changes (OS, other surfaces, or this page). Fires immediately. */
 export function onThemeChange(cb: (theme: ResolvedTheme, pref: ThemePref) => void): () => void {
   listeners.add(cb);
-  cb(resolveTheme(getThemePref()), getThemePref());
+  cb(resolveTheme(readThemePref()), readThemePref());
   ensureWatchers();
   return () => { listeners.delete(cb); };
 }
@@ -45,6 +45,6 @@ export function onThemeChange(cb: (theme: ResolvedTheme, pref: ThemePref) => voi
 function ensureWatchers(): void {
   if (media) return;
   media = window.matchMedia("(prefers-color-scheme: light)");
-  media.addEventListener("change", () => { if (getThemePref() === "auto") applyTheme("auto"); });
+  media.addEventListener("change", () => { if (readThemePref() === "auto") applyTheme("auto"); });
   window.addEventListener("storage", (e) => { if (e.key === THEME_STORAGE_KEY) applyTheme(); });
 }

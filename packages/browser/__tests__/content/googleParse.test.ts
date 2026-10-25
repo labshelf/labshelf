@@ -5,7 +5,7 @@
 // Google results parsing over saved result pages: which results get a button, and what each hit reads.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { googleResults, isGoogleSearchUrl, isPaperHit, parseByline, readGoogleResult } from "../../src/content/googleParse";
+import { findGoogleHits, isGoogleSearchUrl, isPaperHit, parseByline, readGoogleHit } from "../../src/content/googleParse";
 import type { SearchHit } from "../../src/platform";
 
 function page(html: string): Document {
@@ -17,7 +17,7 @@ function fixture(name: string): Document {
 }
 
 function paperHits(doc: Document): SearchHit[] {
-  return googleResults(doc).map(readGoogleResult).filter((h): h is SearchHit => !!h && isPaperHit(h));
+  return findGoogleHits(doc).map(readGoogleHit).filter((h): h is SearchHit => !!h && isPaperHit(h));
 }
 
 const hostsOf = (hits: SearchHit[]): string[] => hits.map((h) => new URL(h.url!).hostname);
@@ -86,7 +86,7 @@ describe("Google results", () => {
     expect(hits[0]!.title).toBe("[1706.03762] Attention Is All You Need");
     const askedBlock = [...doc.querySelectorAll("#rso [data-rpos]")].find((b) => b.textContent?.includes("As pessoas também perguntam"));
     expect(askedBlock).toBeDefined();
-    expect(readGoogleResult(askedBlock!)).toBeUndefined();
+    expect(readGoogleHit(askedBlock!)).toBeUndefined();
   });
 
   it("gives no button to ads or the AI overview", () => {
@@ -98,7 +98,7 @@ describe("Google results", () => {
         <div data-rpos="1"><div data-text-ad="1"><a href="https://www.sciencedirect.com/y"><h3>Ad inside results</h3></a></div></div>
         <div data-rpos="2"><a href="https://pubmed.ncbi.nlm.nih.gov/7265238/"><h3>Identification of common molecular subsequences</h3></a></div>
       </div></div>`);
-    expect(googleResults(doc).map(readGoogleResult).filter(Boolean).map((h) => h!.title)).toEqual([
+    expect(findGoogleHits(doc).map(readGoogleHit).filter(Boolean).map((h) => h!.title)).toEqual([
       "Identification of common molecular subsequences",
     ]);
   });

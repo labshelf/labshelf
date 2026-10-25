@@ -1,10 +1,10 @@
 // Checks the choices offered for conflict copies.
 import type { ConflictCopy, ConflictResolution } from '@labshelf/core';
 import {
-  conflictChoices,
-  toolName,
+  listConflictChoices,
+  formatToolName,
   ConflictNotifier,
-  conflictMessage,
+  describeConflicts,
   walkConflicts,
 } from '../../../src/library/conflicts/conflictHandling';
 
@@ -12,25 +12,25 @@ const copy = (name: string): ConflictCopy => ({
   owner: { kind: 'paper', id: 'p1' }, original: `/lib/papers/p1/${name}`, copy: `/lib/papers/p1/${name}.sync-conflict`, tool: 'syncthing',
 });
 
-describe('conflictChoices', () => {
+describe('listConflictChoices', () => {
   it("offers the content-match question's three choices", () => {
     const content = { ...copy("main.tex"), owner: { kind: "project" as const, id: "draft" }, match: "similar", tool: "unknown" } as ConflictCopy;
-    expect(conflictChoices(content).map((choice) => choice.label)).toEqual(["Merge Automatically", "Merge Myself", "Not a Version"]);
-    expect(conflictChoices(content).map((choice) => choice.resolution)).toEqual(["mergeAutomatically", "mergeMyself", "notAVersion"]);
+    expect(listConflictChoices(content).map((choice) => choice.label)).toEqual(["Merge Automatically", "Merge Myself", "Not a Version"]);
+    expect(listConflictChoices(content).map((choice) => choice.resolution)).toEqual(["mergeAutomatically", "mergeMyself", "notAVersion"]);
   });
 
   it('offers the three choices for a file', () => {
-    expect(conflictChoices(copy('paper.pdf')).map((c) => c.label)).toEqual(['Keep mine', 'Keep the other', 'Keep both']);
+    expect(listConflictChoices(copy('paper.pdf')).map((c) => c.label)).toEqual(['Keep mine', 'Keep the other', 'Keep both']);
   });
 
   it('omits Keep both for metadata.yaml', () => {
-    expect(conflictChoices(copy('metadata.yaml')).map((c) => c.resolution)).toEqual(['keepMine', 'keepOther']);
+    expect(listConflictChoices(copy('metadata.yaml')).map((c) => c.resolution)).toEqual(['keepMine', 'keepOther']);
   });
 });
 
-describe('toolName', () => {
+describe('formatToolName', () => {
   it('names the sync tool', () => {
-    expect(toolName('dropbox')).toBe('Dropbox');
+    expect(formatToolName('dropbox')).toBe('Dropbox');
   });
 });
 
@@ -58,10 +58,10 @@ describe('ConflictNotifier', () => {
   });
 });
 
-describe('conflictMessage', () => {
+describe('describeConflicts', () => {
   it('uses the singular for one file', () => {
-    expect(conflictMessage(1)).toBe('1 file has a conflicting copy');
-    expect(conflictMessage(2)).toBe('2 files have conflicting copies');
+    expect(describeConflicts(1)).toBe('1 file has a conflicting copy');
+    expect(describeConflicts(2)).toBe('2 files have conflicting copies');
   });
 });
 

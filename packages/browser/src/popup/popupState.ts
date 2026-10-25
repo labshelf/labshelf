@@ -3,15 +3,15 @@
 import { findElement } from "@labshelf/core/dom";
 import { PAPERS_DIR, renderIcon } from "@labshelf/core";
 
-import type { FoldersData, PdfOfferView, PdfStatusData, SavedPaperData } from "../platform";
+import type { FoldersReply, PdfOfferView, FindPdfReply, WrittenPaperReply } from "../platform";
 
 export type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
 
 export const popupState: {
   tabId: number;
-  folders: FoldersData;
-  saved: SavedPaperData | undefined;
-  pdfStatus: PdfStatusData | undefined;
+  folders: FoldersReply;
+  saved: WrittenPaperReply | undefined;
+  pdfStatus: FindPdfReply | undefined;
   /** A PDF this tab showed, or the latest download, that matched a paper without a PDF. */
   offer: PdfOfferView | undefined;
 } = {

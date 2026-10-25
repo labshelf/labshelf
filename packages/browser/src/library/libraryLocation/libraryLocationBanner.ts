@@ -2,26 +2,26 @@
 import { formatError, type ILogger } from "@labshelf/core";
 import { renderElement, renderInlineCode, showToast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
-import { helperDownloadUrl } from "../../helper";
-import { bannerShell, setButton } from "./bannerShell";
-import { folderPathForm } from "./folderPathForm";
+import { createHelperDownloadUrl } from "../../helper";
+import { createBannerShell, setButton } from "./createBannerShell";
+import { renderFolderPathForm } from "./renderFolderPathForm";
 import { canPickFolder, pickLibraryFolder } from "./pickLibraryFolder";
-import { recheckSource } from "./recheckLibraryLocation";
-import { sourceReason, type BrowserSource } from "./libraryLocationReason";
+import { refreshLibraryLocation } from "./recheckLibraryLocation";
+import { describeSourceReason, type BrowserSource } from "./libraryLocationReason";
 import {
-  getLibrarySource,
-  type LibrarySource,
-  folderPermission,
-  loadPickedFolder,
-  rebuildFromFiles,
-  requestFolderPermission,
+  readLibraryLocation,
+  type LibraryLocation,
+  readFolderPermission,
+  readPickedDir,
+  refreshFromFiles,
+  askFolderPermission,
 } from "../../storage";
 
 /** Renders into `host` only while the picked folder lacks permission; `onGranted` runs once the records are rebuilt. */
 async function showFolderAccess(host: HTMLElement, logger: ILogger, onGranted: () => void): Promise<void> {
-  const handle = await loadPickedFolder();
-  if (!handle || (await folderPermission(handle)) === "granted") return;
-  const { root, text } = bannerShell("warn", "warning");
+  const handle = await readPickedDir();
+  if (!handle || (await readFolderPermission(handle)) === "granted") return;
+  const { root, text } = createBannerShell("warn", "warning");
   root.setAttribute("role", "region");
   root.setAttribute("aria-label", "Library folder access");
   const allow = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
@@ -29,9 +29,9 @@ async function showFolderAccess(host: HTMLElement, logger: ILogger, onGranted: (
   allow.addEventListener("click", () => void (async () => {
     setButton(allow, "folder", "Allow access", true);
     try {
-      if (await requestFolderPermission(handle)) {
+      if (await askFolderPermission(handle)) {
         host.replaceChildren();
-        await rebuildFromFiles(logger);
+        await refreshFromFiles(logger);
         onGranted();
         return;
       }
@@ -59,8 +59,8 @@ export interface SourceBannerOptions {
 const PANEL_ID = "lsrc-panel";
 
 function bridgePanel(): HTMLElement {
-  const download = renderElement("a", { href: helperDownloadUrl(""), target: "_blank", rel: "noopener", text: "Download LabShelf Helper" });
-  bx.runtime.getPlatformInfo().then((info) => { download.setAttribute("href", helperDownloadUrl(info.os)); }, () => undefined);
+  const download = renderElement("a", { href: createHelperDownloadUrl(""), target: "_blank", rel: "noopener", text: "Download LabShelf Helper" });
+  bx.runtime.getPlatformInfo().then((info) => { download.setAttribute("href", createHelperDownloadUrl(info.os)); }, () => undefined);
   return renderElement("div", { id: PANEL_ID, class: "lsrc-reason", hidden: true },
     renderElement("div", {}, download, ", install it, then choose Check again and give it the folder."),
     renderElement("div", {}, "Already use LabShelf for VS Code or the terminal? Run Connect the Browser in VS Code, or ",
@@ -82,7 +82,7 @@ function panelToggle(help: HTMLElement, state: { open: boolean }): HTMLButtonEle
 /** Renders nothing until the first source check ends, and nothing at all when the library is a usable folder. */
 export function mountSourceBanner(host: HTMLElement, options: SourceBannerOptions): void {
   const panel = { open: false };
-  const toFolder = (source: LibrarySource): void => {
+  const toFolder = (source: LibraryLocation): void => {
     if (source.kind === "browser") return render(source);
     host.replaceChildren();
     options.onFolder();
@@ -94,23 +94,23 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
     return pick;
   };
   const render = (source: BrowserSource): void => {
-    const { root, text } = bannerShell("warn", "warning");
+    const { root, text } = createBannerShell("warn", "warning");
     root.setAttribute("role", "region");
     root.setAttribute("aria-label", "Library storage");
     const help = bridgePanel();
     const check = renderElement("button", { class: "ls-btn", type: "button" });
     setButton(check, "refresh", "Check again", false);
-    check.addEventListener("click", () => void run(check, "refresh", "Check again", () => recheckSource(options.logger)));
+    check.addEventListener("click", () => void run(check, "refresh", "Check again", () => refreshLibraryLocation(options.logger)));
     text.append(
       "Your library lives in this browser. Uninstalling the extension deletes it.",
-      renderElement("div", { class: "lsrc-reason", text: sourceReason(source) }),
+      renderElement("div", { class: "lsrc-reason", text: describeSourceReason(source) }),
       renderElement("div", { class: "lsrc-actions" }, canPickFolder() ? pickButton() : panelToggle(help, panel), check),
     );
-    if (source.reason === "no-library") text.append(folderPathForm(options.logger, toFolder));
+    if (source.reason === "no-library") text.append(renderFolderPathForm(options.logger, toFolder));
     else if (!canPickFolder()) text.append(help);
     host.replaceChildren(root);
   };
-  const run = async (button: HTMLButtonElement, glyph: "folder" | "refresh", label: string, step: () => Promise<LibrarySource | undefined>): Promise<void> => {
+  const run = async (button: HTMLButtonElement, glyph: "folder" | "refresh", label: string, step: () => Promise<LibraryLocation | undefined>): Promise<void> => {
     setButton(button, glyph, label, true);
     try {
       const next = await step();
@@ -121,7 +121,7 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
     }
     setButton(button, glyph, label, false);
   };
-  getLibrarySource().then(async (source) => {
+  readLibraryLocation().then(async (source) => {
     if (source.kind === "browser") render(source);
     else if (source.via === "picked") await showFolderAccess(host, options.logger, options.onFolder);
   }).catch((err: unknown) => options.logger.error("library.libraryLocation", err));

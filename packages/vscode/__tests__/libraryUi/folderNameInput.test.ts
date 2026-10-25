@@ -1,11 +1,11 @@
-import { validateFolderNameInput } from '../../src/libraryUi/folderNameInput';
+import { checkFolderNameInput } from '../../src/libraryUi/folderNameInput';
 
-describe('validateFolderNameInput', () => {
+describe('checkFolderNameInput', () => {
   it('accepts an ordinary name', () => {
-    expect(validateFolderNameInput('Reading group')).toBeNull();
+    expect(checkFolderNameInput('Reading group')).toBeNull();
   });
 
   it.each(['', '  ', '.', '..', '.hidden', 'a/b', 'a\\b', 'bad\u0001name', 'a'.repeat(256)])('rejects %j with a message', (name) => {
-    expect(validateFolderNameInput(name)).toEqual(expect.any(String));
+    expect(checkFolderNameInput(name)).toEqual(expect.any(String));
   });
 });

@@ -1,16 +1,16 @@
 // Registers the command that opens the sync guide.
 import * as vscode from "vscode";
 import { type ILogger, formatError, createNonce, syncGuide } from "@labshelf/core";
-import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
 
 const GUIDE_URLS: ReadonlySet<string> = new Set([...syncGuide.tools, syncGuide.noCloud.tool].map((tool) => tool.url));
 
-export function isGuideLink(url: unknown): url is string {
+export function isGuideUrl(url: unknown): url is string {
   return typeof url === "string" && GUIDE_URLS.has(url);
 }
 
 /** @returns the URL of an `openLink` message, or null for any other message. */
-export function parseOpenLink(raw: unknown): string | null {
+export function parseOpenUrl(raw: unknown): string | null {
   if (typeof raw !== "object" || raw === null) { return null; }
   const message = raw as { type?: unknown; url?: unknown };
   return message.type === "openLink" && typeof message.url === "string" ? message.url : null;
@@ -24,8 +24,8 @@ function syncGuideBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
 async function syncGuideHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
   const dir = syncGuideBundleDirectory(extensionUri);
   const script = vscode.Uri.joinPath(dir, "syncGuide.js");
-  if (!(await bundleExists(script))) {
-    return bundleMissingHtml({ title: "Sync guide", heading: "Sync guide bundle not built", file: "dist/syncGuide/syncGuide.js", reopen: "the sync guide" });
+  if (!(await hasBundleFile(script))) {
+    return renderBundleMissingHtml({ title: "Sync guide", heading: "Sync guide bundle not built", file: "dist/syncGuide/syncGuide.js", reopen: "the sync guide" });
   }
   const nonce = createNonce();
   const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
@@ -56,16 +56,16 @@ async function openSyncGuide(extensionUri: vscode.Uri, logger: ILogger | undefin
     enableScripts: true, localResourceRoots: [syncGuideBundleDirectory(extensionUri)],
   });
   current = panel;
-  panel.iconPath = labshelfTabIcon(extensionUri);
+  panel.iconPath = createTabIcon(extensionUri);
   panel.onDidDispose(() => { current = undefined; });
   panel.webview.onDidReceiveMessage((raw: unknown) => { void openLink(raw, logger); });
   panel.webview.html = await syncGuideHtml(panel.webview, extensionUri);
 }
 
 async function openLink(raw: unknown, logger: ILogger | undefined): Promise<void> {
-  const url = parseOpenLink(raw);
+  const url = parseOpenUrl(raw);
   if (url === null) { return; }
-  if (!isGuideLink(url)) {
+  if (!isGuideUrl(url)) {
     await logger?.log("WARN", MODULE, "Ignored a link the guide does not list", { url });
     return;
   }

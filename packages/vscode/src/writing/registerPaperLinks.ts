@@ -10,7 +10,7 @@ import {
   type PaperRecord,
 } from "@labshelf/core";
 import { IMPORT_SHARE_COMMAND } from "../share/index.js";
-import { paperHover, type CitationSession } from "./citations/index.js";
+import { createPaperHover, type CitationSession } from "./citations/index.js";
 
 interface PaperLink {
   readonly range: vscode.Range;
@@ -20,12 +20,12 @@ interface PaperLink {
 }
 
 /** The open library, as far as links need it: the papers and the logger. */
-export interface LinkLibrary {
+export interface PaperLinkLibrary {
   session(): Pick<CitationSession, "listPapers" | "logger"> | undefined;
 }
 
 /** Returns no links when no library is open; reads the library only when the text holds a link. */
-async function findPaperLinks(library: LinkLibrary, document: vscode.TextDocument): Promise<PaperLink[]> {
+async function findPaperLinks(library: PaperLinkLibrary, document: vscode.TextDocument): Promise<PaperLink[]> {
   const session = library.session();
   if (!session) { return []; }
   const found = findPaperLinkMatches(document.getText());
@@ -38,8 +38,8 @@ async function findPaperLinks(library: LinkLibrary, document: vscode.TextDocumen
   }));
 }
 
-export class LabshelfLinkProvider implements vscode.DocumentLinkProvider {
-  constructor(private readonly library: LinkLibrary) {}
+export class PaperLinkProvider implements vscode.DocumentLinkProvider {
+  constructor(private readonly library: PaperLinkLibrary) {}
 
   async provideDocumentLinks(document: vscode.TextDocument): Promise<vscode.DocumentLink[]> {
     const links = await findPaperLinks(this.library, document);
@@ -54,14 +54,14 @@ export class LabshelfLinkProvider implements vscode.DocumentLinkProvider {
   }
 }
 
-export class LabshelfLinkHoverProvider implements vscode.HoverProvider {
-  constructor(private readonly library: LinkLibrary) {}
+export class PaperLinkHoverProvider implements vscode.HoverProvider {
+  constructor(private readonly library: PaperLinkLibrary) {}
 
   async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
     const found = (await findPaperLinks(this.library, document)).find(({ range }) => range.contains(position));
     if (!found) { return undefined; }
     const contents = found.paper
-      ? paperHover(found.paper)
+      ? createPaperHover(found.paper)
       : new vscode.MarkdownString(`No paper in the library has key \`${found.link.citeKey}\`.`);
     return new vscode.Hover(contents, found.range);
   }
@@ -70,7 +70,7 @@ export class LabshelfLinkHoverProvider implements vscode.HoverProvider {
 const LOG_MODULE = "LabshelfLinks";
 
 export class LabshelfUriHandler implements vscode.UriHandler {
-  constructor(private readonly library: LinkLibrary) {}
+  constructor(private readonly library: PaperLinkLibrary) {}
 
   async handleUri(uri: vscode.Uri): Promise<void> {
     // CONTRACT: documents/contracts/share-link.md#open-in-labshelf
@@ -109,10 +109,10 @@ export class LabshelfUriHandler implements vscode.UriHandler {
 
 const ANY_DOCUMENT = [{ scheme: "file" }, { scheme: "untitled" }];
 
-export function registerLabshelfLinks(context: vscode.ExtensionContext, library: LinkLibrary): void {
+export function registerPaperLinks(context: vscode.ExtensionContext, library: PaperLinkLibrary): void {
   context.subscriptions.push(
-    vscode.languages.registerDocumentLinkProvider(ANY_DOCUMENT, new LabshelfLinkProvider(library)),
-    vscode.languages.registerHoverProvider(ANY_DOCUMENT, new LabshelfLinkHoverProvider(library)),
+    vscode.languages.registerDocumentLinkProvider(ANY_DOCUMENT, new PaperLinkProvider(library)),
+    vscode.languages.registerHoverProvider(ANY_DOCUMENT, new PaperLinkHoverProvider(library)),
     vscode.window.registerUriHandler(new LabshelfUriHandler(library)),
   );
 }

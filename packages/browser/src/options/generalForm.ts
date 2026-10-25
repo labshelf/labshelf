@@ -1,14 +1,14 @@
 /** Builds the registry contact section (email) and the section for asking authors for a PDF (name, affiliation, email language). */
 import { DEFAULT_CONTACT_EMAIL, REQUEST_LANGUAGES, REQUEST_LANGUAGE_NAME, isRequestLanguage } from "@labshelf/core";
 import { renderPickField, renderSettingRow, renderSettingsSection, renderTextField } from "@labshelf/core/dom";
-import type { LabShelfSettings } from "../platform";
+import type { ExtensionSettings } from "../platform";
 
 export interface GeneralForm {
   sections: HTMLElement[];
   /** Every control, for listening to edits. */
   controls: HTMLElement[];
-  read(): Partial<LabShelfSettings>;
-  fill(settings: LabShelfSettings): void;
+  read(): Partial<ExtensionSettings>;
+  fill(settings: ExtensionSettings): void;
 }
 
 export function createGeneralForm(): GeneralForm {

@@ -4,17 +4,17 @@ import * as vscode from "vscode";
 import { ReaderPanel } from "../../reader/index.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../build/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
-import { type BuildPreviewsDeps, previewPaper } from "./previewPanelInput.js";
+import { type BuildPreviewsDeps, createPreviewPaper } from "./previewPanelInput.js";
 import { type BodyPagesCount, createPreviewPorts } from "./previewPorts.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
-import { ProjectSynctex, revealInPreview } from "./synctex/index.js";
+import { ProjectSynctex, showInPreview } from "./synctex/index.js";
 import { StaleSources } from "./staleSources.js";
 import { vscodeSourceEvents } from "./vscodeSourceEvents.js";
-import { RootBuilds } from "./buildRootBuilds.js";
-import { RootsPublisher } from "./buildRootsSender.js";
+import { BuildRootBuilds } from "./buildRootBuilds.js";
+import { BuildRootsPublisher } from "./buildRootsSender.js";
 import { createPreviewStore, type ILogger } from "@labshelf/core";
 import type { CitationFixDeps } from "./citations/index.js";
-import { projectActions } from "./projectActions.js";
+import { createProjectActions } from "./createProjectActions.js";
 import { createWritingActions } from "./buildRoot/index.js";
 
 type ReaderSource = Parameters<typeof ReaderPanel.createOrShow>[1];
@@ -24,7 +24,7 @@ interface PreviewPanelContext {
   logger: ILogger;
   project: ReadyProject;
   pdf: string;
-  builds: RootBuilds;
+  builds: BuildRootBuilds;
   synctex: ProjectSynctex;
   /** The root (relative to the project folder) the preview shows, or undefined before one is shown. */
   shownRoot: () => string | undefined;
@@ -46,7 +46,7 @@ function previewProjectActions(context: PreviewPanelContext, fixes: () => Citati
   const { deps, logger, project, shownRoot } = context;
   const { includeOnly } = deps;
   if (!includeOnly) { return undefined; }
-  return projectActions({
+  return createProjectActions({
     logger, project: () => currentProject(deps, project.folder), projects: deps.projects,
     setEngine: deps.setEngine, includeOnly, fixes, resendRoots: context.resendRoots,
     recompile: () => {
@@ -63,7 +63,7 @@ function previewPanelSource(context: PreviewPanelContext): ReaderSource {
   const actions = previewProjectActions(context, fixes);
   return {
     key: `preview:${project.folder}`,
-    paper: previewPaper(deps.paths, project, pdf),
+    paper: createPreviewPaper(deps.paths, project, pdf),
     store: createPreviewStore(),
     pdfUri: deps.uriOf(pdf),
     rootDir: deps.uriOf(previewRootDir(deps, project)),
@@ -95,10 +95,10 @@ export class BuildPreviews implements BuildListener {
   // The root (relative to the project folder) whose PDF each project's open preview shows; its banner and reloads follow only that root.
   private readonly shown = new Map<string, string>();
   /** The last build of every root a project has built, for views that summarise builds. */
-  readonly builds: RootBuilds;
+  readonly builds: BuildRootBuilds;
   private readonly synctex: ProjectSynctex;
   private readonly stale: StaleSources;
-  private readonly roots: RootsPublisher;
+  private readonly roots: BuildRootsPublisher;
   private readonly bodyPagesCounted = new vscode.EventEmitter<BodyPagesCount>();
   /** Fires when a preview's reader reports the body pages of the root it shows. */
   readonly onDidCountBodyPages = this.bodyPagesCounted.event;
@@ -107,10 +107,10 @@ export class BuildPreviews implements BuildListener {
   readonly onDidChangeRootBuild = this.rootBuildChanged.event;
 
   constructor(private readonly deps: BuildPreviewsDeps) {
-    this.builds = new RootBuilds(deps.paths);
+    this.builds = new BuildRootBuilds(deps.paths);
     this.synctex = new ProjectSynctex(deps.host, deps.paths, deps.data);
     this.stale = new StaleSources(deps.paths, vscodeSourceEvents, Date.now, (folder, root) => this.resendStatus(folder, root));
-    this.roots = new RootsPublisher(deps, { panels: this.panels, shown: this.shown, builds: this.builds, synctex: this.synctex });
+    this.roots = new BuildRootsPublisher(deps, { panels: this.panels, shown: this.shown, builds: this.builds, synctex: this.synctex });
   }
 
   dispose(): void {
@@ -243,7 +243,7 @@ export class BuildPreviews implements BuildListener {
     const session = this.deps.host.current();
     const panel = this.panels.get(project.folder);
     if (!session || !panel) { return; }
-    await revealInPreview({
+    await showInPreview({
       logger: session.logger, projectFolder: project.folder, synctex: () => this.synctex.load(project, this.shown.get(project.folder) ?? project.main),
       reveal: (point) => panel.controller.revealPoint(point),
     }, file, line);

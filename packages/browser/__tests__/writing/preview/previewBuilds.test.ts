@@ -1,6 +1,6 @@
 // Pins how followBuilds mirrors helper project build events onto a preview frame.
 import type { BuildOptions, ILogger } from "@labshelf/core";
-import { followBuilds, type PreviewBuildEvent, type PreviewBuildSource } from "../../../src/writing/preview";
+import { watchBuilds, type PreviewBuildEvent, type PreviewBuildSource } from "../../../src/writing/preview";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
@@ -14,10 +14,10 @@ function setup() {
   return { source, frame, send: (event: PreviewBuildEvent) => listener?.(event), isListening: () => listener !== undefined };
 }
 
-describe("followBuilds", () => {
+describe("watchBuilds", () => {
   it("shows the bytes of each pdf event and sets the status from the result", () => {
     const { source, frame, send } = setup();
-    followBuilds(source, frame, { id: "a", main: "main.tex" }, logger);
+    watchBuilds(source, frame, { id: "a", main: "main.tex" }, logger);
     const bytes = new Uint8Array([1, 2, 3]);
     send({ type: "building" });
     send({ type: "pdf", bytes, mode: "preview" });
@@ -29,7 +29,7 @@ describe("followBuilds", () => {
 
   it("posts the main root with its problems after a failed and a succeeded result", () => {
     const { source, frame, send } = setup();
-    followBuilds(source, frame, { id: "a", main: "main.tex" }, logger);
+    watchBuilds(source, frame, { id: "a", main: "main.tex" }, logger);
     const problem = { severity: "error" as const, message: "Undefined control sequence", file: "intro.tex", line: 3, kind: "overfull" as const };
     send({ type: "result", result: { status: "failed", problems: [problem], changed: [] } });
     send({ type: "result", result: { status: "succeeded", problems: [], changed: [] } });
@@ -46,7 +46,7 @@ describe("followBuilds", () => {
   it("carries the project's limits and posts them again on resend", () => {
     const { source, frame, send } = setup();
     const limits: { pages?: number; words?: number } = { pages: 8 };
-    const follow = followBuilds(source, frame, { id: "a", main: "main.tex", limits: () => limits }, logger);
+    const follow = watchBuilds(source, frame, { id: "a", main: "main.tex", limits: () => limits }, logger);
     send({ type: "result", result: { status: "succeeded", problems: [], changed: [] } });
     limits.words = 4000;
     follow.resendRoots();
@@ -57,7 +57,7 @@ describe("followBuilds", () => {
   it("carries the build options and posts their changes on resend", () => {
     const { source, frame, send } = setup();
     const options: BuildOptions = { autoCompile: "typing", engine: null, haltOnError: false };
-    const follow = followBuilds(source, frame, { id: "a", main: "main.tex", options: () => options }, logger);
+    const follow = watchBuilds(source, frame, { id: "a", main: "main.tex", options: () => options }, logger);
     send({ type: "result", result: { status: "succeeded", problems: [], changed: [] } });
     options.engine = "lualatex";
     follow.resendRoots();
@@ -69,7 +69,7 @@ describe("followBuilds", () => {
 
   it("stops following when disposed", () => {
     const { source, frame, isListening } = setup();
-    followBuilds(source, frame, { id: "a", main: "main.tex" }, logger).dispose();
+    watchBuilds(source, frame, { id: "a", main: "main.tex" }, logger).dispose();
     expect(isListening()).toBe(false);
   });
 });

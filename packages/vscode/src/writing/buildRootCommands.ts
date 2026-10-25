@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { findEntryCandidates } from "@labshelf/core";
-import { executeSafely } from "../command/index.js";
-import { mainPathIn, owningProject, type ReadyProject } from "./buildRootDocument.js";
+import { runSafely } from "../command/index.js";
+import { deriveBuildRootPath, findOwningProject, type ReadyProject } from "./buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "./session/index.js";
 
 interface MainCommandsDeps {
@@ -15,7 +15,7 @@ interface MainCommandsDeps {
 async function writeMain(deps: MainCommandsDeps, project: ReadyProject, main: string): Promise<void> {
   const session = deps.host.current();
   if (!session) { return; }
-  await executeSafely(session.logger, "labshelf.writing.setMain", async () => {
+  await runSafely(session.logger, "labshelf.writing.setMain", async () => {
     await deps.projects.data.updateProjectSettings(project.folder, { main });
     await deps.projects.reload();
   });
@@ -23,7 +23,7 @@ async function writeMain(deps: MainCommandsDeps, project: ReadyProject, main: st
 
 async function setMain(deps: MainCommandsDeps, file: vscode.Uri | undefined): Promise<void> {
   if (!file) { return; }
-  const project = owningProject(deps.projects, file.fsPath);
+  const project = findOwningProject(deps.projects, file.fsPath);
   if (!project) {
     await vscode.window.showErrorMessage(`${deps.projects.paths.basename(file.fsPath)} is not inside a LabShelf project.`);
     return;
@@ -34,12 +34,12 @@ async function setMain(deps: MainCommandsDeps, file: vscode.Uri | undefined): Pr
     );
     return;
   }
-  await writeMain(deps, project, mainPathIn(deps.projects.paths, project, file.fsPath));
+  await writeMain(deps, project, deriveBuildRootPath(deps.projects.paths, project, file.fsPath));
 }
 
 async function pickMain(deps: MainCommandsDeps): Promise<void> {
   const active = vscode.window.activeTextEditor?.document.uri.fsPath;
-  const project = active ? owningProject(deps.projects, active) : undefined;
+  const project = active ? findOwningProject(deps.projects, active) : undefined;
   if (!project) { return; }
   const candidates = findEntryCandidates(project.settings.format, await deps.projects.data.rootFileNames(project.folder));
   if (candidates.length === 0) {
@@ -53,7 +53,7 @@ async function pickMain(deps: MainCommandsDeps): Promise<void> {
   if (picked && picked.label !== project.main) { await writeMain(deps, project, picked.label); }
 }
 
-export function registerMainCommands(deps: MainCommandsDeps): void {
+export function registerBuildRootCommands(deps: MainCommandsDeps): void {
   deps.context.subscriptions.push(
     // The sidebar Files tree passes its row ({ uri }); editors and the Explorer pass a Uri.
     vscode.commands.registerCommand("labshelf.writing.setMain", (file?: vscode.Uri | { uri: vscode.Uri }) => setMain(deps, file instanceof vscode.Uri ? file : file?.uri)),

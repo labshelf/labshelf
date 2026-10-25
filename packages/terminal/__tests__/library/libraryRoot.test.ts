@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { LibraryRoot, ensureLibraryStructure, looksLikeLibrary } from "../../src/library/libraryRoot";
+import { LibraryRoot, ensureLibraryStructure, isLibraryRoot } from "../../src/library/libraryRoot";
 import { cleanupTempDirs, makeTempDir, pathExists } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
@@ -61,35 +61,35 @@ describe("ensureLibraryStructure", () => {
   });
 });
 
-describe("looksLikeLibrary", () => {
+describe("isLibraryRoot", () => {
   it("is false for an empty folder and for a folder that does not exist", async () => {
     const root = await makeTempDir();
-    expect(await looksLikeLibrary(root)).toBe(false);
-    expect(await looksLikeLibrary(path.join(root, "missing"))).toBe(false);
+    expect(await isLibraryRoot(root)).toBe(false);
+    expect(await isLibraryRoot(path.join(root, "missing"))).toBe(false);
   });
 
   it("is true when papers/ exists", async () => {
     const root = await makeTempDir();
     await fs.mkdir(path.join(root, "papers"));
-    expect(await looksLikeLibrary(root)).toBe(true);
+    expect(await isLibraryRoot(root)).toBe(true);
   });
 
   it("is true when only .research/ exists", async () => {
     const root = await makeTempDir();
     await fs.mkdir(path.join(root, ".research"));
-    expect(await looksLikeLibrary(root)).toBe(true);
+    expect(await isLibraryRoot(root)).toBe(true);
   });
 
   it("ignores a plain file called papers", async () => {
     const root = await makeTempDir();
     await fs.writeFile(path.join(root, "papers"), "not a folder");
-    expect(await looksLikeLibrary(root)).toBe(false);
+    expect(await isLibraryRoot(root)).toBe(false);
   });
 
   it("recognises a library created by ensureLibraryStructure", async () => {
     const root = await makeTempDir();
     expect(await pathExists(path.join(root, "papers"))).toBe(false);
     await ensureLibraryStructure(new LibraryRoot(root));
-    expect(await looksLikeLibrary(root)).toBe(true);
+    expect(await isLibraryRoot(root)).toBe(true);
   });
 });

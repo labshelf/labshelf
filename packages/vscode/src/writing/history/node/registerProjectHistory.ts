@@ -10,9 +10,9 @@ import {
   type DiffLine,
   type HistoryKind,
 } from "@labshelf/core";
-import { executeSafely } from "../../../command/index.js";
-import { activeProject } from "../../build/index.js";
-import { owningProject, type ReadyProject } from "../../buildRootDocument.js";
+import { runSafely } from "../../../command/index.js";
+import { readActiveProject } from "../../build/index.js";
+import { findOwningProject, type ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { HistoryPanel, type ProjectHistoryStore } from "../historyPanel.js";
 import type { ProjectHistoryRecorder } from "../../platformWritingPort.js";
@@ -69,14 +69,14 @@ export function registerProjectHistory({ context, host, projects }: ProjectHisto
       .catch((error: unknown) => logger.error("writing/history", error, { action: "record", folder: project.folder, kind }));
   };
   const recordSoon = (document: vscode.TextDocument): void => {
-    const project = document.uri.scheme === "file" ? owningProject(projects, document.uri.fsPath) : undefined;
+    const project = document.uri.scheme === "file" ? findOwningProject(projects, document.uri.fsPath) : undefined;
     if (!project) { return; }
     clearTimeout(timers.get(project.folder));
     timers.set(project.folder, setTimeout(() => { timers.delete(project.folder); record(project, "edit"); }, SAVE_SETTLE_MS));
   };
 
-  const show = (): Promise<void> => executeSafely(logger, SHOW_HISTORY_COMMAND, async () => {
-    const project = activeProject(projects) ?? projects.list().find((entry): entry is ReadyProject => entry.kind === "ready" && entry.folder === panel?.folder);
+  const show = (): Promise<void> => runSafely(logger, SHOW_HISTORY_COMMAND, async () => {
+    const project = readActiveProject(projects) ?? projects.list().find((entry): entry is ReadyProject => entry.kind === "ready" && entry.folder === panel?.folder);
     if (!project) {
       await vscode.window.showInformationMessage("Open a file of a writing project to see its history.");
       return;

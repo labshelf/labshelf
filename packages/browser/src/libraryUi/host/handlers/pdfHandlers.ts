@@ -3,7 +3,7 @@
 // INVARIANT: PDF bytes never cross runtime messaging; the page and the background write the library files themselves.
 import { PDF_FILE, formatError, isPdfBytes, formatPdfSourceLabel, type LibraryFileSystem, type PdfAccess } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
-import { sendRuntime, type AskAuthorData, type AttachPdfData } from "../../../platform";
+import { sendRuntime, type CopyRequestReply, type AttachPdfReply } from "../../../platform";
 import { openReader } from "../../../reader/service";
 import { createLibraryFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
@@ -23,7 +23,7 @@ export interface PdfHandlers {
   askAuthor(id: string): Promise<void>;
 }
 
-const ASK_AUTHOR_NOTICE: Record<AskAuthorData["opened"], [kind: "ok" | "info" | "error", text: string]> = {
+const ASK_AUTHOR_NOTICE: Record<CopyRequestReply["opened"], [kind: "ok" | "info" | "error", text: string]> = {
   mail: ["ok", "The request email is open in your mail client."],
   article: ["info", "No author address was found, so the article page is open. Look for a contact there."],
   none: ["error", "No author address or article page is known for this paper."],
@@ -41,7 +41,7 @@ async function ingestLocalPdf(ctx: HostContext, id: string, file: File): Promise
   ctx.notice("ok", "PDF attached");
 }
 
-async function reportFind(ctx: HostContext, id: string, result: AttachPdfData, replace: boolean): Promise<void> {
+async function reportFind(ctx: HostContext, id: string, result: AttachPdfReply, replace: boolean): Promise<void> {
   if (replace) {
     if (result.attached) await ctx.snapshots.refresh();
     if (result.attached) ctx.notice("ok", `PDF replaced with a better version (via ${formatPdfSourceLabel(result.source)})`);
@@ -72,9 +72,9 @@ async function findPdfOnline(ctx: HostContext, searching: Set<string>, id: strin
   searching.add(id);
   ctx.endpoint.post({ type: "pdf.busy", id, busy: true });
   ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: replace ? "Looking for the published version…" : "Looking for the PDF…" });
-  let result: AttachPdfData;
+  let result: AttachPdfReply;
   try {
-    result = await sendRuntime<AttachPdfData>(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
+    result = await sendRuntime<AttachPdfReply>(replace ? { type: "paper.findPdf", id, replace } : { type: "paper.findPdf", id });
   } finally {
     searching.delete(id);
     ctx.endpoint.post({ type: "progress", key: `find:${id}`, text: null });
@@ -109,7 +109,7 @@ export function createPdfHandlers(ctx: HostContext): PdfHandlers {
     async askAuthor(id) {
       ctx.endpoint.post({ type: "progress", key: `author:${id}`, text: "Looking for the author's address…" });
       try {
-        const { opened } = await sendRuntime<AskAuthorData>({ type: "paper.askAuthor", id });
+        const { opened } = await sendRuntime<CopyRequestReply>({ type: "paper.askAuthor", id });
         if (opened === "mail") await ctx.snapshots.refresh();
         ctx.notice(...ASK_AUTHOR_NOTICE[opened]);
       } finally {
