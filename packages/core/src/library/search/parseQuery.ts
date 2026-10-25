@@ -1,11 +1,69 @@
 // Parses the search query language shared by the apps into a structured query.
 import { fold } from "./text/index.js";
-import {
-  FIELD_KEYS, HAS_ALIASES, HAS_KEYS, MISSING_KEYS, STATUS_ALIASES, STATUS_KEYS, TAG_KEYS, YEAR_KEYS, isOperatorKey,
-} from "./aliases.js";
-import { emptyQuery, type Query } from "./query.js";
+import { emptyQuery, type Query, type HasKey, type SearchField } from "./query.js";
 import { tokenize } from "./tokenize.js";
-import { parseYearBounds } from "./year.js";
+import type { PaperStatus } from "../readingStatus/index.js";
+
+export interface YearBounds {
+  min?: number;
+  max?: number;
+}
+
+/**
+ * Accepts `2017`, `2015..2020`, `2015..`, `..2020`, `>2018`, `>=2018`, `<2000` and `<=2000`.
+ * @returns the bounds, or undefined when the value is none of those
+ */
+function parseYearBounds(value: string): YearBounds | undefined {
+  const range = /^(\d{4})?\.\.(\d{4})?$/.exec(value);
+  if (range) {
+    return { ...(range[1] ? { min: Number(range[1]) } : {}), ...(range[2] ? { max: Number(range[2]) } : {}) };
+  }
+  const comparison = /^([<>]=?)(\d{4})$/.exec(value);
+  if (comparison) {
+    const year = Number(comparison[2]);
+    switch (comparison[1]) {
+      case ">": return { min: year + 1 };
+      case ">=": return { min: year };
+      case "<": return { max: year - 1 };
+      default: return { max: year };
+    }
+  }
+  if (/^\d{4}$/.test(value)) { return { min: Number(value), max: Number(value) }; }
+  return undefined;
+}
+
+const TAG_KEYS: ReadonlySet<string> = new Set(["tag", "t"]);
+const STATUS_KEYS: ReadonlySet<string> = new Set(["status", "is", "s"]);
+const YEAR_KEYS: ReadonlySet<string> = new Set(["year", "y"]);
+const HAS_KEYS: ReadonlySet<string> = new Set(["has"]);
+const MISSING_KEYS: ReadonlySet<string> = new Set(["no"]);
+
+/** Operators that restrict a substring match to one document field. */
+const FIELD_KEYS: ReadonlyMap<string, SearchField> = new Map<string, SearchField>([
+  ["author", "authors"], ["au", "authors"], ["a", "authors"],
+  ["kw", "keywords"], ["keyword", "keywords"],
+  ["venue", "venue"], ["journal", "venue"],
+  ["note", "note"],
+  ["key", "citeKey"],
+  ["abstract", "summary"],
+]);
+
+const STATUS_ALIASES: ReadonlyMap<string, PaperStatus> = new Map<string, PaperStatus>([
+  ["u", "unread"], ["unread", "unread"], ["new", "unread"],
+  ["r", "reading"], ["reading", "reading"],
+  ["d", "done"], ["done", "done"], ["read", "done"],
+]);
+
+const HAS_ALIASES: ReadonlyMap<string, HasKey> = new Map<string, HasKey>([
+  ["pdf", "pdf"], ["note", "note"], ["notes", "note"], ["doi", "doi"], ["tag", "tags"], ["tags", "tags"],
+  ["abstract", "abstract"], ["summary", "abstract"],
+]);
+
+/** @returns whether `key` is an operator of the query language, whatever its value */
+function isOperatorKey(key: string): boolean {
+  return TAG_KEYS.has(key) || STATUS_KEYS.has(key) || YEAR_KEYS.has(key) || HAS_KEYS.has(key) || MISSING_KEYS.has(key)
+    || FIELD_KEYS.has(key);
+}
 
 // True when the token was an operator (so it is not a plain term). A known key with an empty value is dropped, so a
 // half-typed `author:` does not hide every paper; a known key with a value it cannot read stays a plain term.
