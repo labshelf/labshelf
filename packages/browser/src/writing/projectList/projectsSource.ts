@@ -3,8 +3,7 @@ import {
   PaperDataStore, brokenProjectItem, buildReadingList, papersByCiteKey, readyProjectItem,
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
-import { createSidecarPort, listAllRecords } from "../../storage";
-import type { BrowserProjects } from "../../storage/browserProjects";
+import { createSidecarPort, listAllRecords, type BrowserProjects } from "../../storage";
 
 const MODULE = "writing.projectList";
 

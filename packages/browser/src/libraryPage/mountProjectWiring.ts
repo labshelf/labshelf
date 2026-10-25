@@ -12,7 +12,6 @@ import {
 import { createBrowserLatexHelper } from "../helper/client";
 import { getSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
-import { createBrowserProjects } from "../storage/browserProjects";
 import { createHelperProject } from "../helper/project";
 import { revealInOpenEditor } from "../writing/session";
 import { createProjectsSource, showPdfInTab } from "../writing/projectList";
@@ -22,7 +21,7 @@ import { createSidebarProjects, type SidebarProjects } from "../libraryUi/sideba
 import type { ProjectServices, TabKindName } from "../libraryUi/editorArea";
 import type { Workspace } from "../libraryUi/editorArea";
 import { runJoinProjectDialog, toast } from "@labshelf/core/dom";
-import { currentLibraryId, librarySources } from "../storage";
+import { createBrowserProjects, currentLibraryId, librarySources } from "../storage";
 import { createPageSharing, resumeReports, type PageSharing } from "../collab";
 
 interface PageSharingWiringOptions {

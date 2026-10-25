@@ -72,7 +72,7 @@ class SpacesPanel {
   }
 }
 
-export class SpacesPanelRegistry implements vscode.Disposable {
+class SpacesPanelRegistry implements vscode.Disposable {
   private readonly panels = new Map<string, SpacesPanel>();
   private readonly changed = new vscode.EventEmitter<string | null>();
   readonly onDidChangeContext = this.changed.event;

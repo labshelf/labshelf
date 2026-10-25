@@ -17,3 +17,5 @@ export type { ConvertDocument } from "./exportProject.js";
 export { registerInstallCommand } from "./installCommand.js";
 export type { InstallServices } from "./installCommand.js";
 export type { BuildRootOf, PlatformWriting, ProjectHistoryRecorder, RegisterPlatformWriting } from "./platformWritingPort.js";
+export { registerBibliographyLint } from "./registerBibliographyCheck.js";
+export { registerLabshelfLinks } from "./registerPaperLinks.js";
