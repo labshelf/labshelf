@@ -1,6 +1,6 @@
 /** Verifies that an include tree flattens into the order the text reads, with each include where it is written. */
 import { readLatexProjectSources } from "../../../../src/latex/source/project";
-import { readingOrderTexts, wordsUpTo } from "../../../../src/writing/checks/limits";
+import { deriveReadingOrderTexts, countWordsUpTo } from "../../../../src/writing/checks/limits";
 
 async function flatten(files: Record<string, string>) {
   const texts = new Map<string, string>();
@@ -11,10 +11,10 @@ async function flatten(files: Record<string, string>) {
       return text;
     },
   });
-  return readingOrderTexts(tree.files, texts);
+  return deriveReadingOrderTexts(tree.files, texts);
 }
 
-describe("readingOrderTexts", () => {
+describe("deriveReadingOrderTexts", () => {
   it("places an included file at its include and the rest of the parent after it", async () => {
     const parts = await flatten({ "main.tex": "A\n\\input{intro}\nB", "intro.tex": "I" });
     expect(parts.map((part) => part.text.trim())).toEqual(["A", "I", "B"]);
@@ -26,7 +26,7 @@ describe("readingOrderTexts", () => {
       "a.tex": "A \\input{b}",
       "b.tex": "B",
     });
-    expect(wordsUpTo(parts, "end")).toBe(3);
+    expect(countWordsUpTo(parts, "end")).toBe(3);
   });
 
   it("counts the files after the bibliography out when the main file places them there", async () => {
@@ -35,7 +35,7 @@ describe("readingOrderTexts", () => {
       "body.tex": "b1 b2 b3",
       "appendix.tex": "x1 x2 x3 x4",
     });
-    expect(wordsUpTo(parts, "references")).toBe(4);
-    expect(wordsUpTo(parts, "end")).toBe(8);
+    expect(countWordsUpTo(parts, "references")).toBe(4);
+    expect(countWordsUpTo(parts, "end")).toBe(8);
   });
 });

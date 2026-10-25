@@ -1,5 +1,5 @@
 // Lists the preprints of a project's .bib files that have a published version, as findings the preview places on the PDF.
-import { lintBibliography, type ILogger, type PublishedVersionLookup } from "@labshelf/core";
+import { checkBibliography, type ILogger, type PublishedVersionFinder } from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import { userBibFiles } from "../citations/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -7,7 +7,7 @@ import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 export interface ProjectPreprintsDeps {
   /** The library root, and with it the logger, can change after activation. */
   logger: () => ILogger | undefined;
-  lookup: PublishedVersionLookup;
+  lookup: PublishedVersionFinder;
 }
 
 type Preprint = { key: string; message: string; file?: string; line?: number };
@@ -20,7 +20,7 @@ export function projectPreprints(deps: ProjectPreprintsDeps): (project: ReadyPro
       const preprints: Preprint[] = [];
       for (const document of await userBibFiles(project.folder)) {
         const text = document.getText();
-        for (const finding of await lintBibliography(text, deps.lookup)) {
+        for (const finding of await checkBibliography(text, deps.lookup)) {
           if (finding.rule !== "published-version") { continue; }
           preprints.push({ key: finding.key, message: finding.message, file: document.uri.fsPath, line: lineAt(text, finding.start) });
         }

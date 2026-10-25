@@ -3,7 +3,7 @@ import type { PathOps } from "../../library/index.js";
 import type { ProjectEntry } from "../project/index.js";
 
 /** `root` is project-relative with "/" separators; undefined when the project has no root to build. */
-export function builtPdfPath(paths: Pick<PathOps, "join">, project: Extract<ProjectEntry, { kind: "ready" }>, root: string | undefined = project.main): string | undefined {
+export function deriveBuiltPdfPath(paths: Pick<PathOps, "join">, project: Extract<ProjectEntry, { kind: "ready" }>, root: string | undefined = project.main): string | undefined {
   if (!root) { return undefined; }
   const slash = root.lastIndexOf("/");
   const file = root.slice(slash + 1);

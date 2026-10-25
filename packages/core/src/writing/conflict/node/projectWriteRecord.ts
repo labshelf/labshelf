@@ -2,7 +2,7 @@
 import { createWriteRecordStore, type DeviceIdentity } from '../../../library/writeRecords/index.js';
 import { NodeLibraryFileSystem } from '../../../library/node/index.js';
 import type { ILogger } from '../../../ports/index.js';
-import { textHash } from '../index.js';
+import { deriveTextHash } from '../index.js';
 import type { IProjectVersionStore } from '../index.js';
 
 const recordFileSystem = new NodeLibraryFileSystem();
@@ -24,7 +24,7 @@ export async function prepareProjectSave(save: ProjectSave): Promise<void> {
     if (parentText !== undefined) await store.retain(projectId, relativePath, parentText);
     await store.retain(projectId, relativePath, text);
     await createWriteRecordStore(recordFileSystem, save.folder, save.identity, logger).append({
-      path: relativePath, hash: await textHash(text), parent: parentText === undefined ? null : await textHash(parentText), by: 'app', at: Date.now(),
+      path: relativePath, hash: await deriveTextHash(text), parent: parentText === undefined ? null : await deriveTextHash(parentText), by: 'app', at: Date.now(),
     });
   } catch (error) {
     await logger.error('writing-merge', error, { projectId, path: relativePath, action: 'record project save' });

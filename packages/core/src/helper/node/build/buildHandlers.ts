@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import { ProjectBuildQueue, type ProjectBuildDeps } from "../../../writing/build/node/index.js";
-import type { TexSetupPrompt } from "../../../writing/build/index.js";
+import type { TexSetupAsk } from "../../../writing/build/index.js";
 import type { ManagedTexProvider } from "../../../latex/toolchain/node/managedTex/index.js";
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 
@@ -43,7 +43,7 @@ function reportFontDownload(latest: { id: string; send: HelperSend } | undefined
   latest?.send({ v: PROTOCOL_VERSION, id: latest.id, type: "progress", phase: "building", message: FONT_DOWNLOAD });
 }
 
-function createProjectBuilds(options: BuildHandlerOptions, typst: ProjectBuildDeps["typst"], prompt: TexSetupPrompt): ProjectBuilds {
+function createProjectBuilds(options: BuildHandlerOptions, typst: ProjectBuildDeps["typst"], prompt: TexSetupAsk): ProjectBuilds {
   const deps: ProjectBuildDeps = {
     logger: options.logger, tex: options.tex, prompt,
     projects: { projectBuildDir: (id) => path.join(options.dataDir, "projects", id, "build") },
@@ -81,7 +81,7 @@ export function createBuildHandlers(options: BuildHandlerOptions): BuildHandlers
   let latest: { id: string; send: HelperSend } | undefined;
   const typst = options.openTypst((run) => { reportFontDownload(latest); return run(); });
 
-  function buildsOf(projectId: string, prompt: TexSetupPrompt): ProjectBuilds {
+  function buildsOf(projectId: string, prompt: TexSetupAsk): ProjectBuilds {
     let builds = projects.get(projectId);
     if (!builds) {
       builds = createProjectBuilds(options, typst, prompt);

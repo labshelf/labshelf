@@ -1,5 +1,5 @@
 // Inserts a citation of a picked library paper at every cursor, then adds the paper to the project's labshelf.bib.
-import { choiceCitationOptions, citationSnippet, type ILogger, type LibraryFileSystem, type PaperRecord, type ProjectEntry } from "@labshelf/core";
+import { deriveChoiceCitationSpec, createCitationSnippet, type ILogger, type LibraryFileSystem, type PaperRecord, type ProjectEntry } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import type { SourceEdits } from "../sourceUpdates";
 import { createBrowserProjectData } from "../../project";
@@ -35,6 +35,6 @@ export async function citeFromLibrary(insertion: CitationInsertion): Promise<voi
   if (!paper) return;
   const choice = await pickHighlight(fs, logger, paper);
   if (!choice) return;
-  edits.insertText(citationSnippet(entry.settings.format, paper.citeKey, choiceCitationOptions(choice)));
+  edits.insertText(createCitationSnippet(entry.settings.format, paper.citeKey, deriveChoiceCitationSpec(choice)));
   await updateBibliography(insertion);
 }

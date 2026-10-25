@@ -7,7 +7,7 @@ import { readDirOrEmpty } from "../../../../library/conflicts/node/index.js";
 import { createLibraryLayout } from "../../../../library/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 import { isItemFileName, type IProjectVersionStore } from "../../index.js";
-import { mergeItemFileCopies, seedItemFileBase } from "../item/index.js";
+import { mergeItemFileCopies, writeItemFileBase } from "../item/index.js";
 
 interface SpaceItemFiles {
   /** Every item file that is not a conflict copy. */
@@ -44,7 +44,7 @@ async function mergeSpace(spaceDir: string, spaceId: string, store: IProjectVers
   const target = (file: string) => ({ file, scope: `space_${spaceId}`, relativePath: path.relative(spaceDir, file).split(path.sep).join("/") });
   const unmerged: ConflictCopy[] = [];
   for (const file of found.files) {
-    if (!found.copies.has(file)) { await seedItemFileBase(target(file), store, logger); }
+    if (!found.copies.has(file)) { await writeItemFileBase(target(file), store, logger); }
   }
   for (const [file, copies] of found.copies) {
     unmerged.push(...await mergeItemFileCopies(target(file), copies, store, logger, tmpDir));

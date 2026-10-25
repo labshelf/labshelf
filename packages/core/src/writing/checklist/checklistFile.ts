@@ -61,7 +61,7 @@ const MAX_SECTION_LENGTH = 200;
 const isSection = (value: unknown): value is string => typeof value === "string" && value !== "" && value.length <= MAX_SECTION_LENGTH;
 
 /** @returns the valid items in file order; a group or section this version cannot read is left out */
-export function manualItems(doc: ChecklistDocument): ManualItem[] {
+export function listManualItems(doc: ChecklistDocument): ManualItem[] {
   return doc.items.filter(isManualItem).map(({ id, text, done, createdAt, doneAt, group, section }) => ({
     id, text, done, createdAt, ...(doneAt === undefined ? {} : { doneAt }), ...(isGroup(group) ? { group } : {}), ...(isSection(section) ? { section } : {}),
   }));

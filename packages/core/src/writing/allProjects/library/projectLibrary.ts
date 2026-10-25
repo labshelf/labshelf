@@ -1,10 +1,10 @@
 // Implements the All projects page's storage port over the writing projects of a library, for any host.
 import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
-import type { ProjectDetail, ProjectLibraryPort, ProjectRow } from "../index.js";
-import { createProjectDetailSource } from "./projectDetailPaneSource.js";
+import type { ProjectPaneContent, ProjectLibraryPort, ProjectRow } from "../index.js";
+import { createProjectPaneSource } from "./projectDetailPaneSource.js";
 import { createProjectHostActions } from "./projectHostActions.js";
 import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
-import { toProjectRow } from "./projectRows.js";
+import { deriveProjectRow } from "./projectRows.js";
 
 export function createProjectLibrary(deps: ProjectLibraryDeps): ProjectLibraryPort {
   const { host, projects, session } = deps;
@@ -63,7 +63,7 @@ function findReadyEntry(deps: ProjectLibraryDeps, id: string): ReadyProject {
 
 function createRowsPort(deps: ProjectLibraryDeps): Pick<ProjectLibraryPort, "list" | "detail" | "onDidChange"> {
   const { data, paths, projects, host } = deps;
-  const details = createProjectDetailSource(deps);
+  const details = createProjectPaneSource(deps);
   // Reading modification times walks each project's files, so a time is kept until the host reports a change.
   const modifiedTimes = new Map<string, Promise<number | undefined>>();
   const modified = (folder: string): Promise<number | undefined> => {
@@ -75,12 +75,12 @@ function createRowsPort(deps: ProjectLibraryDeps): Pick<ProjectLibraryPort, "lis
     async list(): Promise<ProjectRow[]> {
       return Promise.all(projects.list().map(async (entry) => {
         const time = await modified(entry.folder);
-        if (entry.kind !== "ready") { return toProjectRow(paths, entry, time); }
+        if (entry.kind !== "ready") { return deriveProjectRow(paths, entry, time); }
         const [build, cites] = await Promise.all([details.build(entry), details.cites(entry, time)]);
-        return toProjectRow(paths, entry, time, { build, cites });
+        return deriveProjectRow(paths, entry, time, { build, cites });
       }));
     },
-    detail: (id): Promise<ProjectDetail> => details.detail(findReadyEntry(deps, id)),
+    detail: (id): Promise<ProjectPaneContent> => details.detail(findReadyEntry(deps, id)),
     onDidChange: (listener) => host.onChange(() => { modifiedTimes.clear(); listener(); }),
   };
 }

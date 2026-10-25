@@ -1,14 +1,14 @@
 /** Verifies the missing, stale and fresh decision of a figure. */
-import { decideFigureState } from "../../../src/writing/figures/index";
+import { deriveFigureBuildState } from "../../../src/writing/figures/index";
 
-describe("decideFigureState", () => {
+describe("deriveFigureBuildState", () => {
   it("is missing when the figure file does not exist, whatever the inputs", () => {
-    expect(decideFigureState({ figureMtimeMs: undefined, inputs: [{ path: "a.py", mtimeMs: 1 }], missingInputs: [] }))
+    expect(deriveFigureBuildState({ figureMtimeMs: undefined, inputs: [{ path: "a.py", mtimeMs: 1 }], missingInputs: [] }))
       .toEqual({ status: "missing", missingInputs: [] });
   });
 
   it("is stale and lists exactly the inputs newer than the figure", () => {
-    const state = decideFigureState({
+    const state = deriveFigureBuildState({
       figureMtimeMs: 100,
       inputs: [{ path: "old.json", mtimeMs: 50 }, { path: "plot.py", mtimeMs: 101 }, { path: "new.json", mtimeMs: 500 }],
       missingInputs: [],
@@ -17,12 +17,12 @@ describe("decideFigureState", () => {
   });
 
   it("is fresh when no input is newer, including an input of the same time", () => {
-    expect(decideFigureState({ figureMtimeMs: 100, inputs: [{ path: "a.py", mtimeMs: 100 }], missingInputs: [] }))
+    expect(deriveFigureBuildState({ figureMtimeMs: 100, inputs: [{ path: "a.py", mtimeMs: 100 }], missingInputs: [] }))
       .toEqual({ status: "fresh", missingInputs: [] });
   });
 
   it("reports a missing literal input without making the figure stale", () => {
-    expect(decideFigureState({ figureMtimeMs: 100, inputs: [], missingInputs: ["gone.py"] }))
+    expect(deriveFigureBuildState({ figureMtimeMs: 100, inputs: [], missingInputs: ["gone.py"] }))
       .toEqual({ status: "fresh", missingInputs: ["gone.py"] });
   });
 });

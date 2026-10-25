@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  citedKeys,
+  findCiteKeyOccurrences,
   quotedHighlights,
   type ChecklistSection,
   type QuotedHighlight,
@@ -76,7 +76,7 @@ export class CitationHoverProvider implements vscode.HoverProvider {
     const session = this.workspace.session();
     if (!project || !session) { return undefined; }
     const offset = document.offsetAt(position);
-    const cited = citedKeys(project.settings.format, document.getText())
+    const cited = findCiteKeyOccurrences(project.settings.format, document.getText())
       .find((candidate) => candidate.start <= offset && offset <= candidate.end);
     if (!cited) { return undefined; }
     const paper = (await session.listPapers()).find((candidate) => candidate.citeKey === cited.key);

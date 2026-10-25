@@ -4,20 +4,20 @@ import { mergeGeneratedBibliography } from "../../collab/model/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
 import { DEFAULT_BIBLIOGRAPHY, updateProjectSettings, type OpenSources, type ProjectFormat } from "../project/index.js";
-import { generateBibliography } from "./bibliographyFile.js";
+import { createBibliography } from "./bibliographyFile.js";
 import { withBibliographyLine } from "./bibliographyLine.js";
-import { scanCitationKeys } from "./scanCitations.js";
+import { scanCiteKeys } from "./scanCitations.js";
 import type { BibliographyUpdate, CitingProject } from "./listedPapersSync.js";
-import { DISK_ONLY, projectSources } from "./projectSources.js";
+import { DISK_ONLY, walkProjectSources } from "./walkProjectSources.js";
 import { syncProjectPapers } from "./projectPapersSync.js";
 
 /** Keys cited anywhere in the project's sources; hidden folders and node_modules are not sources. */
-export async function projectCitationKeys(
+export async function listProjectCiteKeys(
   context: Pick<ProjectReadContext, "fs" | "paths">, folder: string, format: ProjectFormat, open: OpenSources = DISK_ONLY,
 ): Promise<string[]> {
   const keys = new Set<string>();
-  for await (const source of projectSources(context, folder, format, open)) {
-    for (const key of scanCitationKeys(format, source.text)) { keys.add(key); }
+  for await (const source of walkProjectSources(context, folder, format, open)) {
+    for (const key of scanCiteKeys(format, source.text)) { keys.add(key); }
   }
   return [...keys];
 }
@@ -62,8 +62,8 @@ export async function updateProjectBibliography(
   const { fs, paths, logger } = context;
   const bibFile = project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY;
   const bibPath = paths.join(project.folder, bibFile);
-  const keys = await projectCitationKeys(context, project.folder, project.settings.format, open);
-  const generated = generateBibliography(keys, papers);
+  const keys = await listProjectCiteKeys(context, project.folder, project.settings.format, open);
+  const generated = createBibliography(keys, papers);
   const current = await readOptionalText(fs, bibPath);
   const needed = generated.resolved.length > 0 || current !== undefined;
   const text = project.settings.shared === undefined ? generated.text : await mergedIntoShared(context, bibPath, current, generated.text);

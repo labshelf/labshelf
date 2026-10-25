@@ -1,7 +1,7 @@
 // Validates device-local version journals before they influence project file writes.
 import { deriveSha256Hex } from '../../hash/index.js';
 export interface VersionJournal { versions: Array<{ hash: string; text: string }>; pending?: string; known?: string }
-export const textHash = (text: string): Promise<string> => deriveSha256Hex(new TextEncoder().encode(text));
+export const deriveTextHash = (text: string): Promise<string> => deriveSha256Hex(new TextEncoder().encode(text));
 
 export async function parseVersionJournal(text: string): Promise<VersionJournal> {
   const value: unknown = JSON.parse(text);
@@ -9,7 +9,7 @@ export async function parseVersionJournal(text: string): Promise<VersionJournal>
     throw new Error('Invalid project version journal');
   }
   for (const entry of value.versions) {
-    if (!entry || typeof entry.hash !== 'string' || typeof entry.text !== 'string' || await textHash(entry.text) !== entry.hash) {
+    if (!entry || typeof entry.hash !== 'string' || typeof entry.text !== 'string' || await deriveTextHash(entry.text) !== entry.hash) {
       throw new Error('Invalid project version text or hash');
     }
   }

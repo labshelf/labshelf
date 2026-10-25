@@ -5,7 +5,7 @@ import { rootBuildFolder } from "../project/buildRoot/index.js";
 import type { ProjectDataPort } from "../service/index.js";
 
 /** `root` is the compiled file relative to the project folder. */
-export function typstPreviewPdf(
+export function buildTypstPreviewPdf(
   project: Extract<ProjectEntry, { kind: "ready" }>,
   root: string,
   data: Pick<ProjectDataPort, "projectBuildDir">,

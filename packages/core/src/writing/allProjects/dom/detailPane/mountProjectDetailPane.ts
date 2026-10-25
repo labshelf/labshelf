@@ -1,14 +1,14 @@
 // Mounts the All projects detail pane: head, tabs and folds for the selected project, with the pane's actions.
 import { renderLoading, renderMuted, renderTabBarHtml, renderIconButton } from "../../../../libraryUi/dom/index.js";
-import type { ProjectDetail } from "../../projectDetailPane.js";
+import type { ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
-import { citationsTabHtml, overviewTabHtml, projectDetailTabs, versionsTabHtml } from "./tabs/index.js";
+import { renderCitationsTabHtml, renderOverviewTabHtml, deriveProjectPaneTabs, renderVersionsTabHtml } from "./tabs/index.js";
 import { askInputBox, showMenu } from "../../../../ui/dom/index.js";
 import type { Post } from "../projectActions.js";
-import { projectMenuEntries, type ProjectMenuContext } from "../projectMenu.js";
+import { createProjectMenuEntries, type ProjectMenuContext } from "../projectMenu.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
-import { deadlineText } from "../../deadlineText.js";
-import { buildStatusText, metaLine } from "./projectDetailPaneText.js";
+import { formatDeadlineText } from "../../formatDeadlineText.js";
+import { formatProjectBuildStateText, formatMetaLine } from "./projectDetailPaneText.js";
 
 export interface ProjectHeadOptions {
   /** The host's label for the primary button, such as "Open in VS Code". */
@@ -17,7 +17,7 @@ export interface ProjectHeadOptions {
 }
 
 function targetMark(row: ProjectRow, now: number): string {
-  const left = deadlineText(row.target, now);
+  const left = formatDeadlineText(row.target, now);
   const text = [row.target?.venue, left?.text].filter(Boolean).join(" · ");
   if (!text) return "";
   const tone = left && left.tone !== "normal" ? ` tone-${left.tone}` : "";
@@ -25,18 +25,18 @@ function targetMark(row: ProjectRow, now: number): string {
 }
 
 /** The status comes from the row until the detail, which knows the warning count, arrives. */
-export function projectDetailHeadHtml(row: ProjectRow, detail: ProjectDetail | undefined, o: ProjectHeadOptions): string {
+export function renderProjectPaneHeadHtml(row: ProjectRow, detail: ProjectPaneContent | undefined, o: ProjectHeadOptions): string {
   const build = detail?.build ?? row.build;
   return `<div class="detail-head">` +
     `<div class="head-more">${renderIconButton("more", "more", "More actions")}</div>` +
     `<div class="detail-title">${escapeHtml(row.title)}</div>` +
-    `<div class="detail-meta">${escapeHtml(metaLine(row, detail?.pages, o.now))}</div>` +
+    `<div class="detail-meta">${escapeHtml(formatMetaLine(row, detail?.pages, o.now))}</div>` +
     `<div class="detail-toolbar">` +
       `<button class="ls-btn ls-button-soft open-btn" type="button" data-action="open">${escapeHtml(o.openLabel)}</button>` +
       `<button class="ls-btn ls-btn-ghost" type="button" data-action="preview">Preview</button>` +
     `</div>` +
     `<div class="detail-status-row">` +
-      `<span class="status-build"><span class="ls-build-dot b-${build?.state ?? "never"}"></span>${escapeHtml(buildStatusText(build))}</span>` +
+      `<span class="status-build"><span class="ls-build-dot b-${build?.state ?? "never"}"></span>${escapeHtml(formatProjectBuildStateText(build))}</span>` +
       targetMark(row, o.now) +
     `</div></div>`;
 }
@@ -65,24 +65,24 @@ async function editTarget(row: ProjectRow, post: Post): Promise<void> {
 
 function runProjectDetailAction(action: string, anchor: HTMLElement, row: ProjectRow, deps: ProjectDetailActionDeps): void {
   if (action === "open" || action === "preview" || action === "build" || action === "openLog") deps.post({ type: action, id: row.id });
-  else if (action === "more") showMenu(anchor, projectMenuEntries(row, deps.menu()));
+  else if (action === "more") showMenu(anchor, createProjectMenuEntries(row, deps.menu()));
   else if (action === "editTarget") void editTarget(row, deps.post);
 }
 
-export interface ProjectDetailView {
+export interface ProjectPaneView {
   row: ProjectRow | undefined;
-  detail: ProjectDetail | undefined;
+  detail: ProjectPaneContent | undefined;
   error: string | undefined;
   /** The host's label for the primary button, such as "Open in VS Code". */
   openLabel: string;
 }
 
 interface ProjectDetailPane {
-  update(view: ProjectDetailView): void;
+  update(view: ProjectPaneView): void;
 }
 
 interface PaneState {
-  view: ProjectDetailView;
+  view: ProjectPaneView;
   tab: string;
   /** Only the folds the user toggled; sections not listed keep their default. */
   collapsed: Record<string, boolean>;
@@ -92,16 +92,16 @@ function bodyHtml(s: PaneState, row: ProjectRow, now: number): string {
   const { detail, error } = s.view;
   if (error) return renderMuted(error);
   if (!detail) return renderLoading();
-  if (s.tab === "citations") return citationsTabHtml(detail);
-  if (s.tab === "versions") return versionsTabHtml(detail.versions, now);
-  return overviewTabHtml(row, detail, s.collapsed, now);
+  if (s.tab === "citations") return renderCitationsTabHtml(detail);
+  if (s.tab === "versions") return renderVersionsTabHtml(detail.versions, now);
+  return renderOverviewTabHtml(row, detail, s.collapsed, now);
 }
 
 function paneHtml(s: PaneState): string {
   const { row, detail, openLabel } = s.view;
   if (!row) return renderMuted("Select a project to see its details.");
   const now = Date.now();
-  return projectDetailHeadHtml(row, detail, { openLabel, now }) + renderTabBarHtml(projectDetailTabs(detail), s.tab) +
+  return renderProjectPaneHeadHtml(row, detail, { openLabel, now }) + renderTabBarHtml(deriveProjectPaneTabs(detail), s.tab) +
     `<div class="tab-body">${bodyHtml(s, row, now)}</div>`;
 }
 
@@ -114,7 +114,7 @@ function toggleSection(slot: HTMLElement, s: PaneState, head: HTMLElement): void
   slot.querySelector(`[data-sec-body="${sec}"]`)?.classList.toggle("hidden", closed);
 }
 
-export function mountProjectDetail(slot: HTMLElement, deps: ProjectDetailActionDeps): ProjectDetailPane {
+export function mountProjectPane(slot: HTMLElement, deps: ProjectDetailActionDeps): ProjectDetailPane {
   const s: PaneState = { view: { row: undefined, detail: undefined, error: undefined, openLabel: "Open" }, tab: "overview", collapsed: {} };
   const render = (): void => { slot.innerHTML = paneHtml(s); };
 

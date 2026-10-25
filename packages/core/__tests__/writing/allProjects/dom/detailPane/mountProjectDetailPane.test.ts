@@ -2,10 +2,10 @@
  * @jest-environment jsdom
  */
 // Tests the project detail pane: its empty, loading and error states, tab and fold memory across updates, and the actions it posts.
-import { mountProjectDetail } from "../../../../../src/writing/allProjects/dom/detailPane/index";
+import { mountProjectPane } from "../../../../../src/writing/allProjects/dom/detailPane/index";
 import type { AllProjectsToHost } from "../../../../../src/writing/allProjects/protocol/index";
 import { detail, row, NOW } from "./fixtures";
-import { projectDetailHeadHtml } from "../../../../../src/writing/allProjects/dom/detailPane/mountProjectDetailPane";
+import { renderProjectPaneHeadHtml } from "../../../../../src/writing/allProjects/dom/detailPane/mountProjectDetailPane";
 
 function mount() {
   document.body.innerHTML = "";
@@ -13,7 +13,7 @@ function mount() {
   document.body.append(slot);
   const sent: AllProjectsToHost[] = [];
   const post = (m: AllProjectsToHost): void => { sent.push(m); };
-  const pane = mountProjectDetail(slot, { post, menu: () => ({ rows: [row], commands: [], post }) });
+  const pane = mountProjectPane(slot, { post, menu: () => ({ rows: [row], commands: [], post }) });
   const show = (d: typeof detail | null = detail, error?: string): void => pane.update({ row, detail: d ?? undefined, error, openLabel: "Open in VS Code" });
   return { slot, sent, pane, show };
 }
@@ -145,8 +145,8 @@ describe("actions", () => {
 
 const render = (html: string): HTMLElement => { const el = document.createElement("div"); el.innerHTML = html; return el; };
 
-describe("projectDetailHeadHtml", () => {
-  const head = render(projectDetailHeadHtml(row, detail, { openLabel: "Open in VS Code", now: NOW }));
+describe("renderProjectPaneHeadHtml", () => {
+  const head = render(renderProjectPaneHeadHtml(row, detail, { openLabel: "Open in VS Code", now: NOW }));
 
   it("escapes the title and shows the meta line", () => {
     expect(head.querySelector(".detail-title")?.textContent).toBe("Attention <is> all");
@@ -169,7 +169,7 @@ describe("projectDetailHeadHtml", () => {
   });
 
   it("drops the target without a venue or deadline and reads the status from the row before the detail arrives", () => {
-    const bare = render(projectDetailHeadHtml({ id: "x", title: "t", place: "projects", build: { state: "ok" } }, undefined, { openLabel: "Open", now: NOW }));
+    const bare = render(renderProjectPaneHeadHtml({ id: "x", title: "t", place: "projects", build: { state: "ok" } }, undefined, { openLabel: "Open", now: NOW }));
     expect(bare.querySelector(".detail-status-row svg")).toBeNull();
     expect(bare.querySelector(".detail-status-row")?.textContent).toBe("Built");
   });

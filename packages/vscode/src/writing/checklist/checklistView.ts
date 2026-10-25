@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, checklistSidebarNodes, citeSections, deriveNextReadingStatus, removeManualItem, sectionPlacer, setManualItemDone,
+  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNextReadingStatus, removeManualItem, createSectionPlacer, setManualItemDone,
   type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type ReadingStatus, type PathOps,
   type ReadingItem, type ReadingPaper, type SidebarTreeNode,
 } from "@labshelf/core";
@@ -106,7 +106,7 @@ export class ChecklistView implements vscode.Disposable {
     const rendered = this.rendered;
     if (!rendered) { this.items.clear(); this.groups.clear(); return []; }
     const { project, grouping, checklist, pageCount } = rendered;
-    const tree = checklistSidebarNodes({
+    const tree = deriveChecklistSidebarNodes({
       paths: this.deps.paths, checklist, grouping, pageCount, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
       isExpanded: (groupId, byDefault) => this.memory.isExpanded(project.folder, grouping, groupId, byDefault),
     });
@@ -268,7 +268,7 @@ export class ChecklistView implements vscode.Disposable {
     const grouping = this.memory.grouping(project.folder);
     const reading = this.reading?.folder === project.folder ? this.reading.items : [];
     const checklist = buildChecklist({
-      ...signals, pageOverflow, reading, placeSection: sectionPlacer(signals.sources, main), citeSections: citeSections(signals.sources, main),
+      ...signals, pageOverflow, reading, placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
     }, grouping);
     this.rendered = { project, grouping, checklist, pageCount };
     this.changeEmitter.fire();

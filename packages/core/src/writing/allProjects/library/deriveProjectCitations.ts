@@ -1,8 +1,8 @@
 // Lists the keys a project cites and where each resolves: a library paper, a .bib entry or nowhere.
 import { formatAuthors } from "../../../library/paper/index.js";
 import type { PaperRecord } from "../../../model/index.js";
-import { bibEntries } from "../../bibliography/index.js";
-import { papersByCiteKey, scanCitationKeys } from "../../citations/index.js";
+import { parseBibEntries } from "../../bibliography/index.js";
+import { derivePapersByCiteKey, scanCiteKeys } from "../../citations/index.js";
 import { DEFAULT_BIBLIOGRAPHY, type ProjectSettings } from "../../project/index.js";
 import { readOptionalText, rootFileNames, type ProjectReadContext } from "../../project/folder/index.js";
 import type { ProjectCitation } from "../projectDetailPane.js";
@@ -14,7 +14,7 @@ async function bibKeys(context: ProjectReadContext, folder: string, settings: Pr
   const roots = (await rootFileNames(context, folder)).filter((name) => name.endsWith(".bib"));
   const files = new Set([...roots, settings.bibliography ?? DEFAULT_BIBLIOGRAPHY].map((file) => paths.join(folder, file)));
   const texts = await Promise.all([...files].map((file) => readOptionalText(fs, file)));
-  return new Set(texts.flatMap((text) => (text === undefined ? [] : bibEntries(text).map((entry) => entry.key))));
+  return new Set(texts.flatMap((text) => (text === undefined ? [] : parseBibEntries(text).map((entry) => entry.key))));
 }
 
 function libraryCitation(paper: PaperRecord): ProjectCitation {
@@ -26,11 +26,11 @@ function libraryCitation(paper: PaperRecord): ProjectCitation {
 }
 
 /** One entry per distinct cited key, in key order. Rejects when a .bib file cannot be read. */
-export async function projectCitations(
+export async function deriveProjectCitations(
   context: ProjectReadContext, folder: string, settings: ProjectSettings, sources: ProjectSourceTexts, papers: readonly PaperRecord[],
 ): Promise<ProjectCitation[]> {
-  const keys = [...new Set(sources.texts.flatMap(({ text }) => scanCitationKeys(settings.format, text)))].sort();
-  const library = papersByCiteKey(papers);
+  const keys = [...new Set(sources.texts.flatMap(({ text }) => scanCiteKeys(settings.format, text)))].sort();
+  const library = derivePapersByCiteKey(papers);
   const bib = keys.some((key) => !library.has(key)) ? await bibKeys(context, folder, settings) : new Set<string>();
   return keys.map((key) => {
     const paper = library.get(key);

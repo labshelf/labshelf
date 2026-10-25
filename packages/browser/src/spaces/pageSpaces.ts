@@ -13,7 +13,7 @@ import {
   createSpaceProjectList,
   type ProjectRow,
   deriveSpaceChecklistProgress,
-  papersByCiteKey,
+  derivePapersByCiteKey,
   readChecklistSignals,
   type Progress,
 } from '@labshelf/core';
@@ -25,7 +25,7 @@ import { createBrowserProjectData } from '../writing/project';
 
 async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: Extract<ProjectEntry, { kind: 'ready' }>, library: LibraryPapers): Promise<Progress | undefined> {
   const signals = await readChecklistSignals({ fs, logger, paths: posixPathOps }, entry);
-  const papers = papersByCiteKey([...library.values()].map(value => value.record));
+  const papers = derivePapersByCiteKey([...library.values()].map(value => value.record));
   const reading = (entry.settings.papers ?? []).flatMap(({ key }) => {
     const paper = papers.get(key);
     return paper ? [{ key, title: paper.title, status: paper.status }] : [];

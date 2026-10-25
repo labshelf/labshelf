@@ -12,8 +12,8 @@ import type { TypstBuildResult, TypstSession } from "../../../typst/index.js";
 import { runTypstBuild, type TypstPackageStore } from "../../../typst/node/index.js";
 import { updateProjectValues } from "../../projectValue/node/index.js";
 import type { ProjectBuildResult } from "../projectBuildResult.js";
-import { typstPreviewPdf } from "../typstPreviewPdf.js";
-import { compileInstallingPackages } from "./buildWithInstalls.js";
+import { buildTypstPreviewPdf } from "../buildTypstPreviewPdf.js";
+import { buildInstallingPackages } from "./buildWithInstalls.js";
 import { ensureToolchain, type ToolchainDeps } from "./ensureToolchain.js";
 
 const MODULE = "writing/build";
@@ -68,7 +68,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
   const buildDir = deps.projects.projectBuildDir(project.settings.id);
   await clearFlatBuildFiles(buildDir, root, deps.logger);
   const outDir = path.join(buildDir, rootBuildFolder(root));
-  return compileInstallingPackages<LatexBuildResult>({
+  return buildInstallingPackages<LatexBuildResult>({
     compile: ({ force }) => runLatexBuild({
       toolchain, projectFolder: project.folder, main: root, outDir,
       signal: options.signal ?? new AbortController().signal, logger: deps.logger, ...(deps.biber && { biber: deps.biber }),
@@ -86,7 +86,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
 async function buildTypst(project: ReadyProject, root: string, deps: ProjectBuildDeps, options: ProjectBuildOptions): Promise<TypstBuildResult> {
   const { session, packages } = await deps.typst.get(deps.logger);
   options.onCompile?.(root);
-  const previewPdf = typstPreviewPdf(project, root, deps.projects, path);
+  const previewPdf = buildTypstPreviewPdf(project, root, deps.projects, path);
   const { dir, name } = path.parse(root);
   return runTypstBuild({
     session, packages, projectFolder: project.folder, main: root, logger: deps.logger,

@@ -6,17 +6,17 @@ import {
   formatLabel,
 } from "../../../../libraryUi/dom/index.js";
 import { type MenuAnchor, renderElement, renderHighlightedHtml } from "../../../../ui/dom/index.js";
-import type { ProjectGroup, ProjectSortKey, ProjectViewState } from "../../viewModel/index.js";
+import type { ProjectGroup, ProjectSortField, ProjectViewState } from "../../viewModel/index.js";
 import type { ProjectPlace, BuildMark, ProjectBuildState, ProjectRow } from "../../projectRow.js";
 import { createProjectTrayRows, type ProjectTrayFrame, type ProjectTrayHandlers } from "../tray/index.js";
-import { keepRowFocus } from "./projectListFocus.js";
-import { wireProjectKeys } from "./projectListShortcuts.js";
+import { createRowFocusKeeper } from "./projectListFocus.js";
+import { attachProjectShortcuts } from "./projectListShortcuts.js";
 import { projectKey, projectListRows, type ProjectListRow } from "./projectListModel.js";
 import { createWindowedRows } from "./projectListWindow.js";
-import { ariaRowOf, paintRowState } from "./projectRowState.js";
+import { findAriaRow, updateRowMarks } from "./projectRowState.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { formatCompactTime } from "../../../../library/index.js";
-import { deadlineText } from "../../deadlineText.js";
+import { formatDeadlineText } from "../../formatDeadlineText.js";
 
 interface ProjectRowView {
   place: ProjectPlace;
@@ -42,7 +42,7 @@ function engineCell(row: ProjectRow): string {
 function venueChip(row: ProjectRow, now: number): string {
   const venue = row.target?.venue;
   if (!venue) return "";
-  const left = deadlineText(row.target, now);
+  const left = formatDeadlineText(row.target, now);
   const tone = left && left.tone !== "normal" ? ` is-${left.tone}` : "";
   return `<span class="venue-chip${tone}">${escapeHtml(left ? `${venue} · ${left.text}` : venue)}</span>`;
 }
@@ -117,7 +117,7 @@ export interface ProjectListHandlers extends ProjectTrayHandlers {
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onMenu: (id: string, anchor: MenuAnchor | HTMLElement) => void;
-  onSort: (key: ProjectSortKey) => void;
+  onSort: (key: ProjectSortField) => void;
 }
 
 interface ProjectListFrame {
@@ -186,8 +186,8 @@ function createRowWindow(el: HTMLElement, heads: HTMLElement, frame: () => Proje
       : item.kind === "file" ? item.tray.node : buildProjectRow(item.row, { place: frame().view.place, terms: terms(), now: Date.now() }),
     inputs: (item) => item.kind === "group" ? [item.group.key, item.group.rows.length, item.collapsed]
       : item.kind === "file" ? [item.tray.node] : [item.row, frame().view.place, frame().view.query],
-    decorate: (item, node, index) => paintRowState(item, node, index, { selected: frame().selected, expanded: frame().tray.expanded }),
-    focus: keepRowFocus(el),
+    decorate: (item, node, index) => updateRowMarks(item, node, index, { selected: frame().selected, expanded: frame().tray.expanded }),
+    focus: createRowFocusKeeper(el),
   });
 }
 
@@ -235,9 +235,9 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
     if (!collapsed.delete(key)) collapsed.add(key);
     if (!frame) return;
     paint(frame);
-    if (header >= 0) { const node = win.reveal(header); if (node) ariaRowOf(node).focus(); }
+    if (header >= 0) { const node = win.reveal(header); if (node) findAriaRow(node).focus(); }
   }
-  attachSortableHeads(heads, (key) => h.onSort(key as ProjectSortKey));
+  attachSortableHeads(heads, (key) => h.onSort(key as ProjectSortField));
   wireRows(el, h);
   const api: ProjectList = {
     render(next) {
@@ -260,6 +260,6 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
     toggleGroup,
   };
   const pageSize = (): number => Math.max(1, (win.viewportRows() ?? el.querySelectorAll(".paper-rows > [data-key]").length) - 1);
-  wireProjectKeys(el, h, { rows: api.rows, reveal: api.reveal, toggleGroup, pageSize, selected: () => frame?.selected ?? null });
+  attachProjectShortcuts(el, h, { rows: api.rows, reveal: api.reveal, toggleGroup, pageSize, selected: () => frame?.selected ?? null });
   return api;
 }

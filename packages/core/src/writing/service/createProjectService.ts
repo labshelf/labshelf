@@ -1,9 +1,9 @@
 // Implements the project data port with the neutral project functions over an injected library file system.
 import type { PathOps } from "../../library/mutations/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
-import { projectBacklinks } from "../citations/index.js";
+import { deriveProjectBacklinks } from "../citations/index.js";
 import { updateProjectBibliography } from "../citations/index.js";
-import { readFigureStates } from "../figures/index.js";
+import { readFigureBuildStates } from "../figures/index.js";
 import {
   addExistingFolder, createProjectFromTemplate, deleteProjectForever, lastModified, listProjectFiles, listProjects,
   projectFolderRegistry, rootFileNames, updateProjectSettings, type ProjectCatalogContext,
@@ -52,9 +52,9 @@ export function createProjectData({ fs, path, logger, deviceDirs }: ProjectDataD
     listVersions: (folder) => listVersions(reads, folder),
     markVersion: (request) => markVersion(reads, request),
     readProjectValues: (project) => readProjectValues(project, reads),
-    readFigureStates: (folder, figures) => readFigureStates(reads, folder, figures),
+    readFigureStates: (folder, figures) => readFigureBuildStates(reads, folder, figures),
     updateProjectBibliography: (project, papers, open) => updateProjectBibliography(reads, project, papers, open),
-    projectBacklinks: (projects, open) => projectBacklinks(reads, projects, open),
+    projectBacklinks: (projects, open) => deriveProjectBacklinks(reads, projects, open),
     projectBuildDir: (projectId) => path.join(deviceDirs.buildCacheDir, projectId),
     readSynctexFile: (outDir, base, cwd) => readSynctexFile(reads, outDir, base, cwd),
   };

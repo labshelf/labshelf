@@ -2,14 +2,14 @@
 import * as vscode from "vscode";
 
 import {
-  pageArgumentContext,
-  papersByCiteKey,
-  quotableHighlights,
+  derivePageArgument,
+  derivePapersByCiteKey,
+  listQuotableHighlights,
   type Annotation,
   type PaperRecord,
   type ProjectFormat,
-  pageSupplement,
-  quotationBefore,
+  derivePageSupplement,
+  deriveQuotationBefore,
   type PageArgumentContext,
 } from "@labshelf/core";
 import type { CitationSession } from "./citationWorkspace.js";
@@ -25,7 +25,7 @@ function preview(text: string): string {
 function insertion(
   format: ProjectFormat, context: PageArgumentContext, line: number, cursor: number, paper: PaperRecord, page: number,
 ): { range: vscode.Range; text: string } {
-  const supplement = pageSupplement(format, page);
+  const supplement = derivePageSupplement(format, page);
   if (context.hasKeys) {
     return { range: new vscode.Range(line, context.start, line, context.close ?? cursor), text: supplement };
   }
@@ -47,7 +47,7 @@ function highlightItems({ format, context, position, paper, highlights }: Highli
   return highlights.flatMap((highlight, index) => {
     const { range, text } = insertion(format, context, line, character, paper, highlight.pageNumber);
     const quoteAt = new vscode.Position(line, context.commandStart);
-    const quote = vscode.TextEdit.insert(quoteAt, quotationBefore(format, highlight.content));
+    const quote = vscode.TextEdit.insert(quoteAt, deriveQuotationBefore(format, highlight.content));
     // Papers by key, highlights in page order, and the plain page ahead of its quotation.
     const order = `${paper.citeKey}${String(index).padStart(5, "0")}`;
     const item = (suffix: string, rank: string, edits: vscode.TextEdit[]): vscode.CompletionItem => {
@@ -70,7 +70,7 @@ async function highlightsOfPapers(
 ): Promise<Array<{ paper: PaperRecord; highlights: Annotation[] }>> {
   const loaded = await Promise.all(papers.map(async (paper) => {
     try {
-      return { paper, highlights: quotableHighlights(await session.highlightsOf(paper.id)) };
+      return { paper, highlights: listQuotableHighlights(await session.highlightsOf(paper.id)) };
     } catch (error) {
       void session.logger.log("WARN", "citations", "Highlights of a paper could not be read for completion", { paperId: paper.id, error: String(error) });
       return { paper, highlights: [] };
@@ -87,10 +87,10 @@ export async function pageArgumentCompletion(
   format: ProjectFormat, session: CitationSession, document: vscode.TextDocument, position: vscode.Position,
 ): Promise<vscode.CompletionItem[] | undefined> {
   const text = document.lineAt(position.line).text;
-  const context = pageArgumentContext(format, text.slice(0, position.character), text.slice(position.character));
+  const context = derivePageArgument(format, text.slice(0, position.character), text.slice(position.character));
   if (!context) { return undefined; }
   const papers = await session.listPapers();
-  const candidates = context.key === undefined ? papers : [papersByCiteKey(papers).get(context.key)].filter((paper): paper is PaperRecord => paper !== undefined);
+  const candidates = context.key === undefined ? papers : [derivePapersByCiteKey(papers).get(context.key)].filter((paper): paper is PaperRecord => paper !== undefined);
   const withHighlights = await highlightsOfPapers(session, candidates);
   return withHighlights.flatMap(({ paper, highlights }) => highlightItems({ format, context, position, paper, highlights }));
 }

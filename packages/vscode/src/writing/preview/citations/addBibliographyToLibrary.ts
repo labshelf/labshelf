@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import {
-  extractArxivIdentifierFromUrl, bibCardEntry, extractDoi, normalizeArxivIdentifier, plainField, createPaper,
+  extractArxivIdentifierFromUrl, bibCardEntry, extractDoi, normalizeArxivIdentifier, extractPlainField, createPaper,
   type BibEntry, type ILogger, type MutationContext,
 } from "@labshelf/core";
 import type { PaperImporter } from "../../../library/index.js";
@@ -25,7 +25,7 @@ export interface AddBibDeps {
 
 /** The DOI or arXiv id the entry names, in a form the importer takes. */
 function identifierOf(entry: BibEntry): string | undefined {
-  const field = (name: string): string => plainField(entry.fields.get(name));
+  const field = (name: string): string => extractPlainField(entry.fields.get(name));
   const doi = extractDoi(field("doi"));
   if (doi) { return doi; }
   const arxiv = normalizeArxivIdentifier(field("eprint")) ?? extractArxivIdentifierFromUrl(field("url"));
@@ -34,8 +34,8 @@ function identifierOf(entry: BibEntry): string | undefined {
 
 async function writeFromFields(deps: AddBibDeps, entry: BibEntry, file: string): Promise<string> {
   const card = bibCardEntry(entry);
-  const url = plainField(entry.fields.get("url"));
-  const publisher = plainField(entry.fields.get("publisher"));
+  const url = extractPlainField(entry.fields.get("url"));
+  const publisher = extractPlainField(entry.fields.get("publisher"));
   const record = await createPaper(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, {
     citeKey: entry.key,
     fields: {

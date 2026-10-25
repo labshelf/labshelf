@@ -6,9 +6,9 @@ import {
   type RegistryEnv,
   type RegistryEntry,
 } from "../../import/index.js";
-import type { BibEntry } from "./bibEntries.js";
-import type { BibFinding } from "./bibliographyReport.js";
-import { preprintIdsOf } from "./preprintIds.js";
+import type { BibEntry } from "./parseBibEntries.js";
+import type { BibliographyProblem } from "./bibliographyReport.js";
+import { extractPreprintIdentifiers } from "./preprintIds.js";
 
 // Fields that only describe the preprint; the published record replaces or drops them.
 const PREPRINT_FIELDS = ["eprint", "archiveprefix", "eprinttype", "eprintclass", "primaryclass", "howpublished", "doi", "url"];
@@ -52,13 +52,13 @@ export interface PublishedVersion {
   record: RegistryEntry | undefined;
 }
 
-export type PublishedVersionLookup = (preprint: PreprintIds) => Promise<PublishedVersion | undefined>;
+export type PublishedVersionFinder = (preprint: PreprintIds) => Promise<PublishedVersion | undefined>;
 
 /**
  * Looks each preprint up once per lookup instance, because the linter runs on every save.
  * TRAP: a network failure reads as "no published version" and is remembered too; a fresh lookup asks again.
  */
-export function publishedVersionLookup(env: RegistryEnv): PublishedVersionLookup {
+export function createPublishedVersionFinder(env: RegistryEnv): PublishedVersionFinder {
   const known = new Map<string, Promise<PublishedVersion | undefined>>();
   return (preprint) => {
     const id = `${preprint.arxivId ?? ""}|${preprint.doi?.toLowerCase() ?? ""}`;
@@ -79,17 +79,17 @@ async function find(env: RegistryEnv, preprint: PreprintIds): Promise<PublishedV
 }
 
 /** One warning per preprint entry with a published version; no relation recorded means no warning, never a title guess. */
-export async function publishedVersionFindings(entries: readonly BibEntry[], lookup: PublishedVersionLookup): Promise<BibFinding[]> {
+export async function derivePublishedVersionProblems(entries: readonly BibEntry[], lookup: PublishedVersionFinder): Promise<BibliographyProblem[]> {
   const checked = await Promise.all(entries.map(async (entry) => {
-    const ids = preprintIdsOf(entry);
+    const ids = extractPreprintIdentifiers(entry);
     return { entry, version: ids ? await lookup(ids) : undefined };
   }));
   return checked.flatMap(({ entry, version }) => (version ? [finding(entry, version)] : []));
 }
 
-function finding(entry: BibEntry, version: PublishedVersion): BibFinding {
+function finding(entry: BibEntry, version: PublishedVersion): BibliographyProblem {
   const venue = version.record?.journal ? ` in ${version.record.journal}` : "";
-  const result: BibFinding = {
+  const result: BibliographyProblem = {
     rule: "published-version", severity: "warning", key: entry.key, start: entry.start, end: entry.end,
     message: `${entry.key} cites a preprint that was published${venue} (doi:${version.doi}).`,
   };

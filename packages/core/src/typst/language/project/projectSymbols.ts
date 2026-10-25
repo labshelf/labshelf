@@ -1,5 +1,5 @@
 // Gathers what a Typst file sees across the project: imported bindings and modules, linked labels and bib entries.
-import { bibEntries, type BibEntry } from "../../../writing/bibliography/index.js";
+import { parseBibEntries, type BibEntry } from "../../../writing/bibliography/index.js";
 import type { TypstBinding, TypstLabelDefinition } from "../syntax/index.js";
 import type { ProjectFile, ProjectFiles } from "./createProjectFiles.js";
 import { resolveTypstPath } from "./projectPaths.js";
@@ -59,7 +59,7 @@ export async function readProjectBibEntries(files: ProjectFiles): Promise<Locate
     }
   }
   const entries: Located<BibEntry>[] = [];
-  for (const bib of await readAll(files, [...bibPaths])) { entries.push(...bibEntries(bib.text).map((item) => ({ item, file: bib }))); }
+  for (const bib of await readAll(files, [...bibPaths])) { entries.push(...parseBibEntries(bib.text).map((item) => ({ item, file: bib }))); }
   return entries;
 }
 

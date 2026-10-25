@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { CheckFinding } from "@labshelf/core";
+import type { CheckProblem } from "@labshelf/core";
 
 import type { Output } from "../../src/cli";
 import { runCheck, type ProjectChecker } from "../../src/cli/runCheck";
@@ -13,7 +13,7 @@ afterEach(cleanupTempDirs);
 
 const PROJECT = "id: thesis\nformat: latex\nmain: main.tex\ncheck:\n  anonymous: true\n";
 
-const deAnonymised: CheckFinding[] = [
+const deAnonymised: CheckProblem[] = [
   { rule: "anonymity", severity: "error", message: "Author field names an author (Jane Doe).", location: { kind: "pdf" } },
   { rule: "fonts", severity: "warning", message: "Type 3 font cmss10.", location: { kind: "pdf", page: 2 } },
   { rule: "references", severity: "error", message: "Unresolved reference.", location: { kind: "source", file: "", line: 7 } },
@@ -32,7 +32,7 @@ async function setup(options: { built?: boolean } = {}) {
     paths: new LibraryRoot(await makeTempDir("labshelf-check-lib-")),
   };
   const calls: Array<{ folder: string; pdfPath: string; anonymous: boolean | undefined }> = [];
-  const checker = (findings: CheckFinding[]): ProjectChecker => async (check) => {
+  const checker = (findings: CheckProblem[]): ProjectChecker => async (check) => {
     calls.push({ folder: check.folder, pdfPath: check.pdfPath, anonymous: check.settings?.anonymous });
     return findings.map((f) => (f.location.kind === "source" ? { ...f, location: { ...f.location, file: path.join(check.folder, "intro.tex") } } : f));
   };
@@ -83,7 +83,7 @@ describe("runCheck output", () => {
   it("prints the findings array as JSON with --json, an empty array when clean", async () => {
     const dirty = await setup();
     await runCheck(dirty.ctx, [dirty.projectDir], { json: true }, dirty.io, dirty.checker(deAnonymised));
-    const parsed = JSON.parse(dirty.out.join("\n")) as CheckFinding[];
+    const parsed = JSON.parse(dirty.out.join("\n")) as CheckProblem[];
     expect(parsed).toHaveLength(3);
     expect(parsed[0]).toEqual(deAnonymised[0]);
     expect(parsed[2]!.location).toEqual({ kind: "source", file: path.join(dirty.projectDir, "intro.tex"), line: 7 });

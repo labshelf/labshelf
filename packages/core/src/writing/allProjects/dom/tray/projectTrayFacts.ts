@@ -1,9 +1,9 @@
 // Builds the tray entries of a writing project: each file's role and fact, the build log row and the Add file row.
 import { formatCompactTime } from "../../../../library/index.js";
 import type { TrayEntry } from "../../../../libraryUi/dom/index.js";
-import type { ProjectDetail } from "../../projectDetailPane.js";
+import type { ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
-import type { FileTreeEntry } from "./projectFileTree.js";
+import type { FileTreeEntry } from "./deriveProjectFileTree.js";
 
 const MAX_CONTENTS = 4;
 
@@ -12,13 +12,13 @@ const toneOf = (ext: string): TrayEntry["tone"] => ext === "pdf" ? "pdf" : ext =
 const baseName = (path: string): string => /([^/]*?)(\.[^./]*)?$/.exec(path)?.[1] ?? path;
 
 // The build outcome only counts problems when a build ran in this session.
-const hasOutcome = (d: ProjectDetail): boolean => d.build.state === "ok" || d.build.state === "warnings" || d.build.state === "failed";
+const hasOutcome = (d: ProjectPaneContent): boolean => d.build.state === "ok" || d.build.state === "warnings" || d.build.state === "failed";
 
-function outcome(d: ProjectDetail): string[] {
+function outcome(d: ProjectPaneContent): string[] {
   return hasOutcome(d) ? [plural(d.build.warnings, "warning"), plural(d.build.errors, "error")] : [];
 }
 
-function mainFact(d: ProjectDetail): string {
+function mainFact(d: ProjectPaneContent): string {
   const first = d.build.first;
   const where = first?.file ? ` in ${first.file}${first.line !== undefined ? `:${first.line}` : ""}` : "";
   const problems = hasOutcome(d) ? [d.build.warnings > 0 && plural(d.build.warnings, "warning"), d.build.errors > 0 && plural(d.build.errors, "error")] : [];
@@ -26,7 +26,7 @@ function mainFact(d: ProjectDetail): string {
 }
 
 /** The bibliography sentence the tray and the Overview tab share. */
-export function bibliographyFact(bib: NonNullable<ProjectDetail["bibliography"]>, now = Date.now()): string {
+export function deriveBibliographyFact(bib: NonNullable<ProjectPaneContent["bibliography"]>, now = Date.now()): string {
   const entries = `${bib.entries} ${bib.entries === 1 ? "entry" : "entries"}`;
   if (!bib.generated) return entries;
   return `${entries} written from the library${bib.written !== undefined ? ` · synced ${formatCompactTime(bib.written, now)} ago` : ""}`;
@@ -39,25 +39,25 @@ function contentsFact(folder: string, sources: readonly string[]): string | null
   return names.slice(0, MAX_CONTENTS).join(", ") + (names.length > MAX_CONTENTS ? ", …" : "");
 }
 
-function factOf(f: FileTreeEntry, row: ProjectRow, detail: ProjectDetail | undefined): TrayEntry["fact"] {
+function factOf(f: FileTreeEntry, row: ProjectRow, detail: ProjectPaneContent | undefined): TrayEntry["fact"] {
   if (f.path === row.main) return { label: "Main", text: detail ? mainFact(detail) : "" };
   if (!detail) return null;
   if (f.folder) {
     const text = contentsFact(f.path, detail.sources);
     return text ? { label: "Contents", text } : null;
   }
-  return detail.bibliography?.file === f.path ? { label: "Bibliography", text: bibliographyFact(detail.bibliography) } : null;
+  return detail.bibliography?.file === f.path ? { label: "Bibliography", text: deriveBibliographyFact(detail.bibliography) } : null;
 }
 
 /** The row for one file or folder of the tree; the fact fills in once the detail arrives. */
-export function projectFileEntry(f: FileTreeEntry, row: ProjectRow, detail: ProjectDetail | undefined): TrayEntry {
+export function createProjectFileEntry(f: FileTreeEntry, row: ProjectRow, detail: ProjectPaneContent | undefined): TrayEntry {
   if (f.folder) return { kind: "folder", name: f.name, type: "", tone: "dir", fact: factOf(f, row, detail), title: f.path };
   const ext = /\.([^.]+)$/.exec(f.name)?.[1]?.toLowerCase() ?? "";
   return { kind: "file", name: f.name, type: ext.slice(0, 4).toUpperCase(), tone: toneOf(ext), fact: factOf(f, row, detail), title: f.path };
 }
 
 /** The last build's log; absent until the detail says one exists. */
-export function projectLogEntry(detail: ProjectDetail | undefined): TrayEntry | null {
+export function createProjectLogEntry(detail: ProjectPaneContent | undefined): TrayEntry | null {
   if (!detail?.log) return null;
   const text = [...outcome(detail), detail.pages !== undefined && plural(detail.pages, "page")].filter(Boolean).join(", ");
   return { kind: "file", name: detail.log, type: "LOG", tone: "other", fact: { label: "Last build", text }, title: detail.log };

@@ -15,7 +15,7 @@ export interface ProjectSource {
 }
 
 /** Every source file of the format under the folder, with its text; hidden folders and node_modules are not sources. */
-export async function* projectSources(
+export async function* walkProjectSources(
   context: Pick<ProjectReadContext, "fs" | "paths">, folder: string, format: ProjectFormat, open: OpenSources = DISK_ONLY,
 ): AsyncGenerator<ProjectSource> {
   for (const relative of await listProjectFiles(context, folder)) {

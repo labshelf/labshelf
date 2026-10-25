@@ -5,7 +5,7 @@ import { CitationCompletionProvider, UPDATE_BIBLIOGRAPHY_COMMAND } from "./citat
 import { CitationHoverProvider } from "./hover/index.js";
 import { type CitationWorkspace, citingProject } from "./citationWorkspace.js";
 import { registerCiteFromLibrary } from "./citationFromLibrary.js";
-import { DEFAULT_BIBLIOGRAPHY, citedKeys } from "@labshelf/core";
+import { DEFAULT_BIBLIOGRAPHY, findCiteKeyOccurrences } from "@labshelf/core";
 import { openEditorSources } from "./openEditorSources.js";
 import type { ReadyProject } from "../buildRootDocument.js";
 
@@ -18,7 +18,7 @@ export class CitationLinkProvider implements vscode.DocumentLinkProvider {
     const session = this.workspace.session();
     if (!project || !session) { return []; }
     const papers = new Map((await session.listPapers()).map((paper) => [paper.citeKey, paper]));
-    return citedKeys(project.settings.format, document.getText()).flatMap((cited) => {
+    return findCiteKeyOccurrences(project.settings.format, document.getText()).flatMap((cited) => {
       const paper = papers.get(cited.key);
       if (!paper) { return []; }
       const range = new vscode.Range(document.positionAt(cited.start), document.positionAt(cited.end));

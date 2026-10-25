@@ -1,6 +1,6 @@
 /** Finds the cite keys behind a link or citation of a project's compiled PDF, the way that project's format allows. */
 import type { CitationQuery, PagePoint } from "../../reader/index.js";
-import { citedKeys } from "../citations/index.js";
+import { findCiteKeyOccurrences } from "../citations/index.js";
 import type { ProjectFormat } from "../project/index.js";
 import { citationDestKey, typstCiteAt, type TypstCite } from "./pdfCiteLocations.js";
 
@@ -26,7 +26,7 @@ export function keysOnLine(format: ProjectFormat, source: SourceLine): string[] 
   const start = lineStarts[source.line - 1];
   if (start === undefined) { return []; }
   const end = lineStarts[source.line] ?? source.text.length + 1;
-  const keys = citedKeys(format, source.text).filter((cited) => cited.start >= start && cited.start < end).map((cited) => cited.key);
+  const keys = findCiteKeyOccurrences(format, source.text).filter((cited) => cited.start >= start && cited.start < end).map((cited) => cited.key);
   return [...new Set(keys)];
 }
 

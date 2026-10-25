@@ -16,7 +16,7 @@ import { type ProjectBuildDeps, buildProject } from "../../writing/build/node/in
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../index.js";
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
 import { createHelperToolchainAsk } from "./build/index.js";
-import { builtPdfPath } from "../../writing/build/index.js";
+import { deriveBuiltPdfPath } from "../../writing/build/index.js";
 import { readSharedLibraryRoot } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { resolveInLibrary } from "../../bridge/node/index.js";
@@ -75,7 +75,7 @@ async function buildPublication(project: PublishableProject, folder: string, dep
     const problems = "problems" in result ? result.problems.filter((p) => p.severity === "error").map((p) => p.message) : [];
     return { ok: false, problems: problems.length ? problems : [`The template build ended with ${result.status}.`] };
   }
-  const pdf = builtPdfPath(path, entry);
+  const pdf = deriveBuiltPdfPath(path, entry);
   if (!pdf) throw new Error(`No sample PDF for project "${project.id}"`);
   return { ok: true, pdf: new Uint8Array(await readFile(pdf)) };
 }

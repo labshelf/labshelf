@@ -10,7 +10,7 @@ import {
   type PaperRecord,
   type ReadingStatus,
   type SortSpec,
-  papersByCiteKey,
+  derivePapersByCiteKey,
   createPaperFiles,
   derivePaperUrl,
   parsePaperLink,
@@ -60,7 +60,7 @@ function showText(entry: PaperEntry, highlights: number, page: number | undefine
 
 function entryForLink(ctx: AppContext, link: ParsedPaperLink): PaperEntry {
   const records = [...ctx.store.snapshot.papers.values()].map((e) => e.record);
-  const record = papersByCiteKey(records).get(link.citeKey);
+  const record = derivePapersByCiteKey(records).get(link.citeKey);
   const entry = record && ctx.store.paper(record.id);
   if (!entry) { throw new UsageError(`No paper with cite key "${link.citeKey}"`); }
   return entry;

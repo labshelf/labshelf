@@ -1,6 +1,6 @@
 // Reads the source texts of a project from its main file, in the order they read.
 import { readLatexProjectSources } from "../../../latex/source/index.js";
-import { readingOrderTexts } from "../../checks/index.js";
+import { deriveReadingOrderTexts } from "../../checks/index.js";
 import type { ProjectSettings } from "../../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../../project/folder/index.js";
 
@@ -30,5 +30,5 @@ export async function readProjectSources(
       return text;
     },
   });
-  return { paths: files.map((file) => file.path), texts: readingOrderTexts(files, texts) };
+  return { paths: files.map((file) => file.path), texts: deriveReadingOrderTexts(files, texts) };
 }

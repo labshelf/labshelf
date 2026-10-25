@@ -1,6 +1,6 @@
 // Reads a project's hand-added checklist items through the file-system port.
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
-import { CHECKLIST_DIR, CHECKLIST_FILE, manualItems, parseChecklistFile, type ManualItem } from "./checklistFile.js";
+import { CHECKLIST_DIR, CHECKLIST_FILE, listManualItems, parseChecklistFile, type ManualItem } from "./checklistFile.js";
 
 const MODULE = "checklist";
 
@@ -15,7 +15,7 @@ export async function readManualItems({ fs, paths, logger }: ProjectReadContext,
       await logger.log("WARN", MODULE, "checklist.json is not a JSON object with an items array; its items are hidden", { file });
       return [];
     }
-    return manualItems(doc);
+    return listManualItems(doc);
   } catch (error) {
     await logger.error(MODULE, error, { file, action: "read" });
     return [];

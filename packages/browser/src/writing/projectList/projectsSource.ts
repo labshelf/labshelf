@@ -1,6 +1,6 @@
 // Lists the library's writing projects as sidebar rows, each with its built PDF and reading progress, and opens their PDF.
 import {
-  PaperSidecarStore, createBrokenProjectItem, buildReadingList, papersByCiteKey, createReadyProjectItem,
+  PaperSidecarStore, createBrokenProjectItem, buildReadingList, derivePapersByCiteKey, createReadyProjectItem,
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
 import { createSidecarPort, listAllRecords, type BrowserProjects } from "../../storage";
@@ -48,7 +48,7 @@ async function readingListOf({ fileSystem, logger }: ProjectsSourceDeps, entry: 
       project: entry.settings.id,
       backlinks: new Map(),
       listed: entry.settings.papers ?? [],
-      papersByKey: papersByCiteKey(await listAllRecords()),
+      papersByKey: derivePapersByCiteKey(await listAllRecords()),
       isOpened: async (paperId) => (await store.getReadingState(paperId)) !== null,
     });
   } catch (error) {

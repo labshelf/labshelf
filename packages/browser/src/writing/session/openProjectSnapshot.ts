@@ -1,6 +1,6 @@
 // Builds the open project's Files, Outline and Checklist sidebar trees from its folder through core's builders.
 import {
-  buildChecklist, checklistSidebarNodes, citeSections, nestHeadings, outlineHeadings, posixPathOps, projectFileRow, readChecklistSignals, sectionPlacer, visibleEntries,
+  buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, nestHeadings, outlineHeadings, posixPathOps, projectFileRow, readChecklistSignals, createSectionPlacer, visibleEntries,
   type ChecklistGrouping, type HeadingNode, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext,
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
@@ -48,9 +48,9 @@ async function checklistNodes(context: ProjectReadContext, project: ReadyProject
   const signals = await readChecklistSignals(context, project);
   const main = project.main ?? "";
   const checklist = buildChecklist({
-    ...signals, pageOverflow: undefined, reading: [], placeSection: sectionPlacer(signals.sources, main), citeSections: citeSections(signals.sources, main),
+    ...signals, pageOverflow: undefined, reading: [], placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
   }, grouping);
-  return checklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), isExpanded: (_, byDefault) => byDefault }).nodes;
+  return deriveChecklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), isExpanded: (_, byDefault) => byDefault }).nodes;
 }
 
 export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOptions): OpenProjectSnapshot {

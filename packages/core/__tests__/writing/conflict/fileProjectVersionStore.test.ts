@@ -1,7 +1,7 @@
 /** Verifies the merge base store: round trip, location under its folder, no deletion, path rejection. */
 import * as path from "node:path";
 
-import { FileProjectVersionStore, textHash } from "../../../src/writing/conflict/index";
+import { FileProjectVersionStore, deriveTextHash } from "../../../src/writing/conflict/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 const basesDir = "/state/lib-key/merge-bases";
@@ -57,8 +57,8 @@ it('retains the newest twenty texts without promoting an unsuccessful save', asy
   await store.retain('p', 'main.tex', 'unsaved');
   expect(await store.latest('p', 'main.tex')).toBe('saved');
   for (let i = 0; i < 21; i++) await store.remember('p', 'main.tex', `version ${i}`);
-  expect(await store.version('p', 'main.tex', await textHash('version 0'))).toBeUndefined();
-  expect(await store.version('p', 'main.tex', await textHash('version 1'))).toBe('version 1');
+  expect(await store.version('p', 'main.tex', await deriveTextHash('version 0'))).toBeUndefined();
+  expect(await store.version('p', 'main.tex', await deriveTextHash('version 1'))).toBe('version 1');
   expect(await store.latest('p', 'main.tex')).toBe('version 20');
 });
 

@@ -1,6 +1,6 @@
 import { formatVenueLine } from "../../../src/library/paper/index";
 
-describe("venueLine", () => {
+describe("formatProjectVenueLine", () => {
   it("joins venue, year, volume(issue) and pages", () => {
     expect(formatVenueLine({ journal: "Nature", year: 2017, volume: "12", issue: "3", pages: "45–67" }))
       .toBe("Nature · 2017 · 12(3) · pp. 45–67");

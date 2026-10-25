@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  arxivBundle, bibliographyFiles, DEFAULT_BIBLIOGRAPHY, projectFiles, scanCitationKeys,
+  arxivBundle, bibliographyFiles, DEFAULT_BIBLIOGRAPHY, projectFiles, scanCiteKeys,
   type PathOps,
 } from "@labshelf/core";
 
@@ -48,7 +48,7 @@ export async function arxivZipEntries(paths: PathOps, project: ReadyProject, roo
   const bibs = await Promise.all(bibPaths.map(async (path) => ({ path, text: await readText(project, path) })));
   const { format } = project.settings;
   const texts = await Promise.all(sources.filter((path) => path.endsWith(SOURCE_EXTENSION[format])).map((path) => readText(project, path)));
-  const cited = [...new Set(texts.flatMap((text) => scanCitationKeys(format, text)))];
+  const cited = [...new Set(texts.flatMap((text) => scanCiteKeys(format, text)))];
   const bundle = arxivBundle(sources, bibs, cited);
   const entries = await readAll(project, bundle.files);
   for (const bib of bundle.bibs) { entries[bib.path] = encoder.encode(bib.text); }

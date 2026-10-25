@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import {
   createProjectLibrary as createCoreLibrary,
   type ILogger,
-  type NewProjectKind,
+  type CreateProjectKind,
   type PaperRecord,
   type PdfjsLoader,
   type ProjectEntry,
@@ -50,7 +50,7 @@ export interface VscodeProjectLibraryDeps {
 
 const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 
-const CREATE_COMMANDS: Record<NewProjectKind, string> = {
+const CREATE_COMMANDS: Record<CreateProjectKind, string> = {
   blank: "labshelf.writing.newBlankProject",
   template: "labshelf.templates.open",
   folder: "labshelf.writing.addExistingFolder",

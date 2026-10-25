@@ -1,7 +1,7 @@
 // Keeps the index of which projects cite each paper, rebuilt when the projects or their sources change.
 import * as vscode from "vscode";
 
-import type { BacklinkIndex } from "@labshelf/core";
+import type { BacklinkMap } from "@labshelf/core";
 import { openEditorSources } from "./index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 
@@ -9,7 +9,7 @@ const REBUILD_DEBOUNCE_MS = 1000;
 const SOURCE_FILE = /\.(tex|typ)$/;
 
 export class ProjectBacklinkIndex implements vscode.Disposable {
-  private built: BacklinkIndex = new Map();
+  private built: BacklinkMap = new Map();
   private rebuildCount = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -28,7 +28,7 @@ export class ProjectBacklinkIndex implements vscode.Disposable {
   }
 
   /** The index as last built; empty until the first rebuild finishes. */
-  index(): BacklinkIndex {
+  index(): BacklinkMap {
     return this.built;
   }
 
@@ -51,7 +51,7 @@ export class ProjectBacklinkIndex implements vscode.Disposable {
   private async rebuild(): Promise<void> {
     const ticket = ++this.rebuildCount;
     const logger = this.host.current()?.logger;
-    let index: BacklinkIndex = new Map();
+    let index: BacklinkMap = new Map();
     if (logger) {
       try {
         index = await this.projects.data.projectBacklinks(this.projects.list(), openEditorSources);

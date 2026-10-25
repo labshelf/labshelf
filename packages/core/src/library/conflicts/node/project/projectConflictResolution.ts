@@ -9,7 +9,7 @@ import {
 } from "../../../node/index.js";
 import { writeProjectConflictDismissal, type ConflictCopy } from '../../index.js';
 import type { ILogger } from "../../../../ports/index.js";
-import { textHash, type IProjectVersionStore } from "../../../../writing/conflict/index.js";
+import { deriveTextHash, type IProjectVersionStore } from "../../../../writing/conflict/index.js";
 import { lineSimilarity } from '../../../../writing/text/index.js';
 import { mergeProjectContentCopy } from '../../../../writing/conflict/node/index.js';
 import { listProjectsOnDisk } from '../../../../writing/project/node/index.js';
@@ -29,7 +29,7 @@ async function readSharedProjectVersions(root: string, folder: string, relative:
   const versions = await loadVersionHistory(storage, logger);
   const texts: string[] = [];
   for (const version of versions.storedVersions(relative)) {
-    if (await textHash(version.text) === version.hash) texts.push(version.text);
+    if (await deriveTextHash(version.text) === version.hash) texts.push(version.text);
     else await logger.log('WARN', 'conflicts', 'Ignored a shared text version with a mismatched hash', { shareId, path: relative, hash: version.hash });
   }
   const bases = await PersistedMap.load({ storage, name: 'bases', label: 'file merge bases', logger,
@@ -69,7 +69,7 @@ export async function resolveProjectConflictCopy(
     if (!detected || detected.original !== conflict.original) throw new Error(`Conflict copy changed before resolution: ${conflict.copy}`);
     const text = await fs.readFile(conflict.copy, 'utf8');
     if (resolution === 'notAVersion') {
-      await writeProjectConflictDismissal(new NodeLibraryFileSystem(), resolveConflictDismissalFile(context.root), conflict.copy, await textHash(text));
+      await writeProjectConflictDismissal(new NodeLibraryFileSystem(), resolveConflictDismissalFile(context.root), conflict.copy, await deriveTextHash(text));
     } else if (resolution === 'mergeAutomatically') {
       const base = await similarBase(folder, conflict, context.store, text, context.root, context.logger);
       await mergeProjectContentCopy(conflict, path.relative(folder, conflict.original).split(path.sep).join('/'), context.store, context.logger,

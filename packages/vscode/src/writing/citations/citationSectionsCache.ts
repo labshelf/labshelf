@@ -1,7 +1,7 @@
 // Caches, per project folder, which sections cite each key; a save inside the project drops its entry.
 import type * as vscode from "vscode";
 
-import { citeSections, sectionPlacer, type ChecklistSection, type ChecklistSource, type ILogger, type PathOps } from "@labshelf/core";
+import { deriveCitationSections, createSectionPlacer, type ChecklistSection, type ChecklistSource, type ILogger, type PathOps } from "@labshelf/core";
 import { isInside, type ReadyProject } from "../buildRootDocument.js";
 
 export interface CiteSections {
@@ -46,9 +46,9 @@ export class CiteSectionsCache implements vscode.Disposable {
     const sources = await this.deps.readSources(project, logger);
     const main = project.main ?? "";
     const { paths } = this.deps;
-    const place = sectionPlacer(sources, main);
+    const place = createSectionPlacer(sources, main);
     const relative = (file: string): string => paths.relative(project.folder, file).split(paths.sep).join("/");
-    return { byKey: citeSections(sources, main), sectionAt: (file, line) => place(relative(file), line) };
+    return { byKey: deriveCitationSections(sources, main), sectionAt: (file, line) => place(relative(file), line) };
   }
 
   private forget(file: string): void {

@@ -13,7 +13,7 @@ export interface BuildMark {
   at?: number;
 }
 
-export type NewProjectKind = "blank" | "template" | "folder";
+export type CreateProjectKind = "blank" | "template" | "folder";
 
 export interface ProjectRow {
   /** The project's key: its folder. */

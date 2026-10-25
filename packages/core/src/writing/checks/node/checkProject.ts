@@ -8,7 +8,7 @@ import type { ILogger } from "../../../ports/index.js";
 import type { CheckSettings } from "../../project/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
 import { nodeFileReads } from "../../project/node/index.js";
-import type { CheckFinding, CheckSource } from "../checkReport.js";
+import type { CheckProblem, CheckSource } from "../checkReport.js";
 import { readPdfFacts } from "../readPdfFacts.js";
 import { runChecks } from "../runChecks.js";
 
@@ -39,7 +39,7 @@ async function readSources(folder: string): Promise<CheckSource[]> {
 }
 
 /** Source files are absolute paths in the findings. A PDF that cannot be read rejects, with the path in the log. */
-export async function checkProject(check: ProjectCheck, pdfjs: PdfjsLoader, logger: ILogger): Promise<CheckFinding[]> {
+export async function checkProject(check: ProjectCheck, pdfjs: PdfjsLoader, logger: ILogger): Promise<CheckProblem[]> {
   const context = { folder: check.folder, pdf: check.pdfPath };
   try {
     const [facts, sources, gitUser] = await Promise.all([readPdfFacts(nodeFileReads.fs, pdfjs, check.pdfPath), readSources(check.folder), gitUserName(check.folder)]);

@@ -1,7 +1,7 @@
 /** Decides, for each paper a project lists, whether the library has it, holds it under another key, or must import it. */
 import { createDoiFinder } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import { papersByCiteKey } from "../citations/index.js";
+import { derivePapersByCiteKey } from "../citations/index.js";
 import type { ListedPaper } from "./listedPapers.js";
 
 export type InstallEntry =
@@ -18,7 +18,7 @@ const SAFE_KEY = /^[A-Za-z0-9][A-Za-z0-9_.+-]*$/;
 
 /** @returns one entry per listed paper, in the listed order; a key listed twice is planned once */
 export function planInstall(listed: readonly ListedPaper[], records: readonly PaperRecord[]): InstallEntry[] {
-  const byKey = papersByCiteKey(records);
+  const byKey = derivePapersByCiteKey(records);
   const byDoi = createDoiFinder(records);
   const keyOfId = new Map(records.map((record) => [record.id, record.citeKey]));
   const seen = new Set<string>();

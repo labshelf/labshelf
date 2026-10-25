@@ -107,7 +107,7 @@ function bySection(input: ChecklistTreeInput, tree: ChecklistTree): SidebarTreeN
   }));
 }
 
-export function checklistSidebarNodes(input: ChecklistTreeInput): ChecklistTree {
+export function deriveChecklistSidebarNodes(input: ChecklistTreeInput): ChecklistTree {
   const tree: ChecklistTree = { nodes: [], items: new Map(), groups: new Map() };
   tree.nodes = input.grouping === "kind" ? byKind(input, tree) : bySection(input, tree);
   return tree;

@@ -47,6 +47,6 @@ function matchesSegments(pattern: readonly string[], path: readonly string[]): b
 }
 
 /** Whether a path relative to the project folder matches an input pattern; `*` and `?` stay within one segment and `**` spans any number of segments, including none. */
-export function matchesInputPattern(pattern: string, relativePath: string): boolean {
+export function isInputPatternMatch(pattern: string, relativePath: string): boolean {
   return matchesSegments(normalizeInputPath(pattern).split("/"), normalizeInputPath(relativePath).split("/"));
 }

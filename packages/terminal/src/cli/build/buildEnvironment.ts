@@ -2,7 +2,7 @@
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createProjectData, type TexInstallKind, type TexSetupPrompt } from "@labshelf/core";
+import { createProjectData, type TexInstallKind, type TexSetupAsk } from "@labshelf/core";
 import { createSharedTexProvider, createDeviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
 
 import type { AppContext } from "../../compositionRoot.js";
@@ -33,7 +33,7 @@ const QUESTION = "LaTeX is not installed. Install Light (TinyTeX, ~100 MB, adds 
 
 const CHOICES: Readonly<Record<string, TexInstallKind>> = { l: "tinytex", light: "tinytex", f: "texlive", full: "texlive" };
 
-export function terminalTexSetupPrompt(ask: Ask | undefined): TexSetupPrompt {
+export function terminalTexSetupPrompt(ask: Ask | undefined): TexSetupAsk {
   return {
     async chooseInstall() {
       if (!ask) { return undefined; }

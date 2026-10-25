@@ -2,7 +2,7 @@
 import { renderIcon } from "../../../../ui/index.js";
 import { showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
 import { formatEngineLabel } from "../../../../latex/index.js";
-import { AUTO_COMPILE_MODES, LATEX_ENGINES, autoCompileLabel } from "../../../../writing/index.js";
+import { AUTO_COMPILE_MODES, LATEX_ENGINES, formatAutoCompileLabel } from "../../../../writing/index.js";
 import type { BuildOptions, PreviewBuildRoots, WebviewToHost } from "../../../index.js";
 import { renderReaderIconButton } from "../../elements/index.js";
 
@@ -12,7 +12,7 @@ interface OptionsMenuDeps {
 
 function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntry[] {
   const list: MenuEntry[] = AUTO_COMPILE_MODES.map((mode) => ({
-    label: autoCompileLabel(mode), checked: mode === options.autoCompile, radio: true,
+    label: formatAutoCompileLabel(mode), checked: mode === options.autoCompile, radio: true,
     onSelect: () => post({ command: "setAutoCompile", mode }),
   }));
   if (options.engine === undefined) { return list; }

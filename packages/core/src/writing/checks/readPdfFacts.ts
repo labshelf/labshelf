@@ -3,7 +3,7 @@ import type { PdfjsLoader } from "../../import/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
 import type { PdfFacts, PdfPageFacts } from "./checkReport.js";
 import { walkOperators, type OperatorList } from "./operatorWalk.js";
-import { pdfTextLines, type PdfTextItem } from "./pdfTextLines.js";
+import { derivePdfTextLines, type PdfTextItem } from "./derivePdfTextLines.js";
 
 interface FontObject { name?: string; isType3Font?: boolean }
 
@@ -26,7 +26,7 @@ async function pageFacts(page: CheckPage, OPS: Record<string, number>): Promise<
     const font = (page.commonObjs.has(id) ? page.commonObjs.get(id) : undefined) as FontObject | undefined;
     return { name: font?.name ?? id, type3: font?.isType3Font === true };
   });
-  return { lines: pdfTextLines((await page.getTextContent()).items), fonts, images };
+  return { lines: derivePdfTextLines((await page.getTextContent()).items), fonts, images };
 }
 
 function textFields(info: Record<string, unknown> | undefined): Record<string, string> {

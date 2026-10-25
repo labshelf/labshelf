@@ -14,7 +14,7 @@ export interface InstallingCompile<R> {
 }
 
 /** The last build's result: one without a missing file, one whose file could not be installed, or the one after the last allowed round. */
-export async function compileInstallingPackages<R>(run: InstallingCompile<R>): Promise<R> {
+export async function buildInstallingPackages<R>(run: InstallingCompile<R>): Promise<R> {
   // TRAP: latexmk does not rerun a failed build whose sources are unchanged, so a rebuild after an install is forced.
   let result = await run.compile({ force: false });
   for (let round = 1; ; round++) {

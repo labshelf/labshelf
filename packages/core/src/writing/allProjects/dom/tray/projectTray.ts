@@ -1,10 +1,10 @@
 // Builds the expanded project's tray rows (file tree, log and Add file), reusing the last rows while their inputs stay the same.
 import { buildFailedRow, buildLoadingRow, buildTrayRow } from "../../../../libraryUi/dom/index.js";
 import { renderIcon } from "../../../../ui/index.js";
-import type { ProjectDetail } from "../../projectDetailPane.js";
+import type { ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
-import { projectFileTree } from "./projectFileTree.js";
-import { ADD_FILE_ENTRY, projectFileEntry, projectLogEntry } from "./projectTrayFacts.js";
+import { deriveProjectFileTree } from "./deriveProjectFileTree.js";
+import { ADD_FILE_ENTRY, createProjectFileEntry, createProjectLogEntry } from "./projectTrayFacts.js";
 
 export type ProjectFiles = { status: "loading" } | { status: "ready"; files: string[] } | { status: "failed"; message: string };
 
@@ -12,7 +12,7 @@ export interface ProjectTrayFrame {
   expanded: string | null;
   files: Readonly<Record<string, ProjectFiles>>;
   /** The expanded project's last detail; the tray shows names and the Main role without it. */
-  detail: ProjectDetail | undefined;
+  detail: ProjectPaneContent | undefined;
   /** Keys come from `openFolderKey`. */
   openFolders: ReadonlySet<string>;
 }
@@ -35,9 +35,9 @@ export interface ProjectTrayRow {
 
 const trayRow = (node: HTMLElement, depth = 0): ProjectTrayRow => ({ name: node.dataset["name"]!, depth, node });
 
-function fileRows(row: ProjectRow, files: string[], detail: ProjectDetail | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): ProjectTrayRow[] {
-  return projectFileTree(files, open).map((f) => {
-    const r = buildTrayRow(projectFileEntry(f, row, detail), () => (f.folder ? h.onToggleFolder : h.onOpenFile)(row.id, f.path));
+function fileRows(row: ProjectRow, files: string[], detail: ProjectPaneContent | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): ProjectTrayRow[] {
+  return deriveProjectFileTree(files, open).map((f) => {
+    const r = buildTrayRow(createProjectFileEntry(f, row, detail), () => (f.folder ? h.onToggleFolder : h.onOpenFile)(row.id, f.path));
     // Rows are keyed by name, and names repeat across folders.
     r.dataset["name"] = f.path;
     r.style.setProperty("--depth", String(f.depth));
@@ -47,10 +47,10 @@ function fileRows(row: ProjectRow, files: string[], detail: ProjectDetail | unde
 }
 
 // A trashed project only lists its files, so it offers neither the log nor a new file.
-function actionRows(row: ProjectRow, detail: ProjectDetail | undefined, h: ProjectTrayHandlers): ProjectTrayRow[] {
+function actionRows(row: ProjectRow, detail: ProjectPaneContent | undefined, h: ProjectTrayHandlers): ProjectTrayRow[] {
   if (row.place === "trash") return [];
   const out: ProjectTrayRow[] = [];
-  const log = projectLogEntry(detail);
+  const log = createProjectLogEntry(detail);
   if (log) {
     const r = buildTrayRow(log, () => h.onOpenLog(row.id));
     r.dataset["name"] = ":log";
@@ -67,7 +67,7 @@ function stateRow(node: HTMLElement, name: string): ProjectTrayRow {
   return trayRow(node);
 }
 
-function trayRows(row: ProjectRow, state: ProjectFiles | undefined, detail: ProjectDetail | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): ProjectTrayRow[] {
+function trayRows(row: ProjectRow, state: ProjectFiles | undefined, detail: ProjectPaneContent | undefined, open: ReadonlySet<string>, h: ProjectTrayHandlers): ProjectTrayRow[] {
   if (!state || state.status === "loading") return [stateRow(buildLoadingRow(), ":loading")];
   if (state.status === "failed") return [stateRow(buildFailedRow(state.message), ":failed")];
   // The log has its own row, so the tree leaves it out.

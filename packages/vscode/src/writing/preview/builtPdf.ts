@@ -1,5 +1,5 @@
 // Finds the PDF the preview shows for a root: for LaTeX the one its last successful build left next to the root file, for Typst the last live compile.
-import { builtPdfPath, typstPreviewPdf } from "@labshelf/core";
+import { deriveBuiltPdfPath, buildTypstPreviewPdf } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
 
@@ -8,8 +8,8 @@ export async function builtPdf(projects: Pick<WritingProjects, "data" | "paths" 
   if (!project || !root) { return undefined; }
   // INVARIANT: `root` is project-relative with "/" separators on every platform.
   const pdf = project.settings.format === "typst"
-    ? typstPreviewPdf(project, root, projects.data, projects.paths)
-    : builtPdfPath(projects.paths, project, root);
+    ? buildTypstPreviewPdf(project, root, projects.data, projects.paths)
+    : deriveBuiltPdfPath(projects.paths, project, root);
   if (!pdf) { return undefined; }
   return await projects.fs.exists(pdf).then((found) => (found ? pdf : undefined), () => undefined);
 }

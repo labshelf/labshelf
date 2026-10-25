@@ -2,14 +2,14 @@
 import * as vscode from "vscode";
 
 import {
-  publishedVersionLookup,
+  createPublishedVersionFinder,
   type ILogger,
   type RegistryEnv,
-  bibEntries,
-  missingDoiFix,
-  type BibFinding,
-  lintBibliography,
-  type PublishedVersionLookup,
+  parseBibEntries,
+  deriveMissingDoiFix,
+  type BibliographyProblem,
+  checkBibliography,
+  type PublishedVersionFinder,
 } from "@labshelf/core";
 
 const DIAGNOSTIC_SOURCE = "LabShelf";
@@ -18,12 +18,12 @@ const SEVERITY = { warning: vscode.DiagnosticSeverity.Warning, information: vsco
 
 interface Linted {
   version: number;
-  findings: BibFinding[];
+  findings: BibliographyProblem[];
 }
 
 const isBibliography = (document: vscode.TextDocument): boolean => document.uri.path.endsWith(".bib");
 
-function toDiagnostic(document: vscode.TextDocument, finding: BibFinding): vscode.Diagnostic {
+function toDiagnostic(document: vscode.TextDocument, finding: BibliographyProblem): vscode.Diagnostic {
   const range = new vscode.Range(document.positionAt(finding.start), document.positionAt(finding.end));
   const diagnostic = new vscode.Diagnostic(range, finding.message, SEVERITY[finding.severity]);
   diagnostic.source = DIAGNOSTIC_SOURCE;
@@ -37,7 +37,7 @@ export class BibDiagnostics implements vscode.Disposable {
   private readonly linted = new Map<string, Linted>();
   private readonly subscriptions: vscode.Disposable[];
 
-  constructor(private readonly lookup: PublishedVersionLookup, private readonly logger: () => ILogger | undefined) {
+  constructor(private readonly lookup: PublishedVersionFinder, private readonly logger: () => ILogger | undefined) {
     this.subscriptions = [
       vscode.workspace.onDidOpenTextDocument((document) => void this.lint(document)),
       vscode.workspace.onDidSaveTextDocument((document) => void this.lint(document)),
@@ -52,7 +52,7 @@ export class BibDiagnostics implements vscode.Disposable {
   }
 
   /** The finding behind a diagnostic range, only while the document is as it was when linted. */
-  findingAt(document: vscode.TextDocument, range: vscode.Range, rule: unknown): BibFinding | undefined {
+  findingAt(document: vscode.TextDocument, range: vscode.Range, rule: unknown): BibliographyProblem | undefined {
     const linted = this.linted.get(document.uri.toString());
     if (linted?.version !== document.version) { return undefined; }
     const start = document.offsetAt(range.start);
@@ -64,7 +64,7 @@ export class BibDiagnostics implements vscode.Disposable {
     if (!isBibliography(document)) { return; }
     const version = document.version;
     try {
-      const findings = await lintBibliography(document.getText(), this.lookup);
+      const findings = await checkBibliography(document.getText(), this.lookup);
       // A later save lints the newer text; ranges computed on this one would point at the wrong characters.
       if (document.isClosed || document.version !== version) { return; }
       this.linted.set(document.uri.toString(), { version, findings });
@@ -82,7 +82,7 @@ export class BibDiagnostics implements vscode.Disposable {
 
 interface DoiLookup {
   document: vscode.TextDocument;
-  finding: BibFinding;
+  finding: BibliographyProblem;
 }
 
 function replaceEdit(document: vscode.TextDocument, start: number, end: number, text: string): vscode.WorkspaceEdit {
@@ -128,9 +128,9 @@ export class BibCodeActions implements vscode.CodeActionProvider {
     const version = document.version;
     try {
       const text = document.getText();
-      const entry = bibEntries(text).find((candidate) => candidate.start === finding.start);
+      const entry = parseBibEntries(text).find((candidate) => candidate.start === finding.start);
       if (!entry) { return action; }
-      const fix = await missingDoiFix(this.env, text, entry);
+      const fix = await deriveMissingDoiFix(this.env, text, entry);
       if (document.version !== version) { return action; }
       if (fix) {
         action.edit = replaceEdit(document, fix.start, fix.end, fix.text);
@@ -147,7 +147,7 @@ export class BibCodeActions implements vscode.CodeActionProvider {
 export function registerBibliographyLint(context: vscode.ExtensionContext, host: { logger: () => ILogger | undefined }): void {
   // The library root, and with it the logger, can change after activation.
   const env: RegistryEnv = { fetch: globalThis.fetch, get logger() { return host.logger(); } };
-  const diagnostics = new BibDiagnostics(publishedVersionLookup(env), host.logger);
+  const diagnostics = new BibDiagnostics(createPublishedVersionFinder(env), host.logger);
   const actions = new BibCodeActions(diagnostics, env, host.logger);
   context.subscriptions.push(
     diagnostics,

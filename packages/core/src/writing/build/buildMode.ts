@@ -11,6 +11,6 @@ const LABELS: Record<AutoCompileMode, string> = {
   off: "Compile manually",
 };
 
-export function autoCompileLabel(mode: AutoCompileMode): string {
+export function formatAutoCompileLabel(mode: AutoCompileMode): string {
   return LABELS[mode];
 }

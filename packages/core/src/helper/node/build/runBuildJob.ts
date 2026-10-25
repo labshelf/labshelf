@@ -1,7 +1,7 @@
 // Runs one `compile` request to its `built` reply: syncs the working copy, builds (core installs missing packages), classifies the failure and sends the changed pages.
 import * as path from "node:path";
 
-import { builtPdfPath } from "../../../writing/build/index.js";
+import { deriveBuiltPdfPath } from "../../../writing/build/index.js";
 import { type ILogger } from "../../../ports/index.js";
 import { deriveTexProblemClass, type LocatedProblem } from "../../../latex/build/index.js";
 import { type ProjectEntry } from "../../../writing/project/index.js";
@@ -52,7 +52,7 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
   if (result.status === "toolchain-missing") { return reply("toolchain-missing"); }
   const problems = pageProblems("problems" in result ? result.problems : [], job.project.folder);
   if (result.status === "succeeded") {
-    await sendPages(message.id, builtPdfPath(path, job.project)!, problems, job.sent, send);
+    await sendPages(message.id, deriveBuiltPdfPath(path, job.project)!, problems, job.sent, send);
     await job.logger.log("INFO", BUILD_MODULE, "Build stages completed", {
       projectId: message.projectId, mode: message.mode, syncMs: synced - started,
       compileMs: compiled - synced, pagesMs: Date.now() - compiled,

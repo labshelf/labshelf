@@ -3,15 +3,15 @@
 export type CheckRule = "pages" | "anonymity" | "fonts" | "images" | "references";
 
 /** A whole-document finding has no page; a source location is preferred whenever the text can be traced to a line. */
-export type CheckLocation =
+export type CheckPosition =
   | { kind: "pdf"; page?: number | undefined }
   | { kind: "source"; file: string; line: number };
 
-export interface CheckFinding {
+export interface CheckProblem {
   rule: CheckRule;
   severity: "error" | "warning";
   message: string;
-  location: CheckLocation;
+  location: CheckPosition;
 }
 
 /** A raster image as placed on the page: its pixels and the size it is drawn at, in points. */

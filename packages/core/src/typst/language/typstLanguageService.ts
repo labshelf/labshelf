@@ -27,7 +27,7 @@ import {
   type TypstCursorContext,
   type TypstLabelDefinition,
 } from "./syntax/index.js";
-import { plainField, type BibEntry } from "../../writing/bibliography/index.js";
+import { extractPlainField, type BibEntry } from "../../writing/bibliography/index.js";
 
 const WORD_CHAR = /[\p{L}\p{N}_-]/u;
 
@@ -107,8 +107,8 @@ function hoverText(symbol: TypstSymbol): string {
     }
     case "citation": {
       const { fields, key } = symbol.found.item;
-      const title = plainField(fields.get("title")) || key;
-      const byline = [plainField(fields.get("author")), plainField(fields.get("year") ?? fields.get("date"))].filter(Boolean).join(", ");
+      const title = extractPlainField(fields.get("title")) || key;
+      const byline = [extractPlainField(fields.get("author")), extractPlainField(fields.get("year") ?? fields.get("date"))].filter(Boolean).join(", ");
       return byline ? `**${title}**\n\n${byline}` : `**${title}**`;
     }
   }

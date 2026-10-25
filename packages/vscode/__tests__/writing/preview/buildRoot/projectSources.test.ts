@@ -11,7 +11,7 @@ function project(format: "latex" | "typst"): ReadyProject {
   return { ...base, settings: { ...base.settings, format } } as ReadyProject;
 }
 
-describe("projectSources", () => {
+describe("walkProjectSources", () => {
   it("reads a LaTeX root with the files it includes", async () => {
     const sources = await projectSources(readerFor)(project("latex"), "main.tex");
     expect(sources.map((source) => source.file)).toEqual(["main.tex", "intro.tex"]);

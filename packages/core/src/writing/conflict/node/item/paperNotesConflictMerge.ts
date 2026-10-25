@@ -7,7 +7,7 @@ import { readDirOrEmpty } from "../../../../library/conflicts/node/index.js";
 import { createLibraryLayout, PAPER_NOTES_FILE } from "../../../../library/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 import type { IProjectVersionStore } from "../../index.js";
-import { mergeItemFileCopies, seedItemFileBase } from "./itemFileCopyMerge.js";
+import { mergeItemFileCopies, writeItemFileBase } from "./itemFileCopyMerge.js";
 
 /** @returns the notes copies that could not be merged; they stay on disk. */
 export async function mergePaperNotesConflicts(root: string, store: IProjectVersionStore, logger: ILogger): Promise<ConflictCopy[]> {
@@ -26,7 +26,7 @@ export async function mergePaperNotesConflicts(root: string, store: IProjectVers
         }
       }
       if (copies.length === 0) {
-        await seedItemFileBase(target, store, logger);
+        await writeItemFileBase(target, store, logger);
       } else {
         unmerged.push(...await mergeItemFileCopies(target, copies, store, logger, layout.tmpDir()));
       }

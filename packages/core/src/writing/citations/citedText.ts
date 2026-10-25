@@ -11,12 +11,12 @@ const TYPST_SPECIAL = /[\\#$@*_<`]/g;
 const oneLine = (text: string): string => text.replace(/\s+/g, " ").trim();
 
 /** The page as the page argument reads: `p.~4` in LaTeX (no line break after `p.`), `p. 4` in Typst. */
-export function pageSupplement(format: ProjectFormat, page: number): string {
+export function derivePageSupplement(format: ProjectFormat, page: number): string {
   return format === "latex" ? `p.~${page}` : `p. ${page}`;
 }
 
 /** The highlighted text as a quotation placed before the citation, with markup characters escaped. */
-export function quotationBefore(format: ProjectFormat, text: string): string {
+export function deriveQuotationBefore(format: ProjectFormat, text: string): string {
   const quote = oneLine(text);
   if (format === "latex") {
     return `\`\`${quote.replace(LATEX_SPECIAL, (char) => LATEX_ESCAPE[char] ?? `\\${char}`)}''~`;
@@ -25,12 +25,12 @@ export function quotationBefore(format: ProjectFormat, text: string): string {
 }
 
 /** The citation of a key as the format writes it, with the page argument and the quotation of a highlight when given. */
-export function citationSnippet(
+export function createCitationSnippet(
   format: ProjectFormat, key: string, options: { page?: number; quotation?: string } = {},
 ): string {
-  const supplement = options.page === undefined ? undefined : pageSupplement(format, options.page);
+  const supplement = options.page === undefined ? undefined : derivePageSupplement(format, options.page);
   const citation = format === "latex"
     ? `\\cite${supplement === undefined ? "" : `[${supplement}]`}{${key}}`
     : `@${key}${supplement === undefined ? "" : `[${supplement}]`}`;
-  return `${options.quotation === undefined ? "" : quotationBefore(format, options.quotation)}${citation}`;
+  return `${options.quotation === undefined ? "" : deriveQuotationBefore(format, options.quotation)}${citation}`;
 }

@@ -2,15 +2,15 @@
 import * as vscode from "vscode";
 
 import {
-  choiceCitationOptions,
-  citationSnippet,
-  quotableHighlights,
+  deriveChoiceCitationSpec,
+  createCitationSnippet,
+  listQuotableHighlights,
   type HighlightChoice,
   type PaperRecord,
   type ProjectFormat,
   CITE_WITHOUT_PAGE,
-  highlightLabel,
-  highlightPage,
+  formatHighlightLabel,
+  formatHighlightPage,
   type Annotation,
 } from "@labshelf/core";
 import { paperPickItem } from "../../command/index.js";
@@ -27,8 +27,8 @@ function pickItems(highlights: readonly Annotation[]): HighlightPickItem[] {
   return [
     { label: CITE_WITHOUT_PAGE },
     ...highlights.map((highlight) => ({
-      label: highlightLabel(highlight),
-      description: highlightPage(highlight),
+      label: formatHighlightLabel(highlight),
+      description: formatHighlightPage(highlight),
       buttons: [QUOTE_BUTTON],
       highlight,
     })),
@@ -79,7 +79,7 @@ async function pickPaper(session: CitationSession): Promise<PaperRecord | undefi
 async function pickHighlight(session: CitationSession, paper: PaperRecord): Promise<HighlightChoice | undefined> {
   let highlights;
   try {
-    highlights = quotableHighlights(await session.highlightsOf(paper.id));
+    highlights = listQuotableHighlights(await session.highlightsOf(paper.id));
   } catch (error) {
     void session.logger.log("WARN", "citations", "Highlights of a paper could not be read; citing without a page", { paperId: paper.id, error: String(error) });
     return { quote: false };
@@ -90,7 +90,7 @@ async function pickHighlight(session: CitationSession, paper: PaperRecord): Prom
 async function insertCitation(
   editor: vscode.TextEditor, session: CitationSession, format: ProjectFormat, paper: PaperRecord, choice: HighlightChoice,
 ): Promise<boolean> {
-  const text = citationSnippet(format, paper.citeKey, choiceCitationOptions(choice));
+  const text = createCitationSnippet(format, paper.citeKey, deriveChoiceCitationSpec(choice));
   const applied = await editor.edit((edit) => {
     for (const selection of editor.selections) { edit.replace(selection, text); }
   });

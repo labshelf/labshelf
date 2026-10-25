@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  papersByCiteKey,
+  derivePapersByCiteKey,
   parsePaperLink,
   SHARE_IMPORT_PATH,
   findPaperLinkMatches,
@@ -30,7 +30,7 @@ async function findPaperLinks(library: LinkLibrary, document: vscode.TextDocumen
   if (!session) { return []; }
   const found = findPaperLinkMatches(document.getText());
   if (found.length === 0) { return []; }
-  const papers = papersByCiteKey(await session.listPapers());
+  const papers = derivePapersByCiteKey(await session.listPapers());
   return found.map(({ start, end, link }) => ({
     range: new vscode.Range(document.positionAt(start), document.positionAt(end)),
     link,
@@ -92,7 +92,7 @@ export class LabshelfUriHandler implements vscode.UriHandler {
     }
     try {
       // The key comes from outside, and resolvePaper opens a quick pick for ids it does not know.
-      const paper = papersByCiteKey(await session.listPapers()).get(link.citeKey);
+      const paper = derivePapersByCiteKey(await session.listPapers()).get(link.citeKey);
       if (!paper) {
         await session.logger.log("WARN", LOG_MODULE, "Link names a key that no paper has", { citeKey: link.citeKey });
         await vscode.window.showWarningMessage(`No paper in the library has the key "${link.citeKey}".`);

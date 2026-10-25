@@ -1,6 +1,6 @@
 // Gathers a built root's problems, places them on the PDF through SyncTeX or Typst cite targets and counts the keys it cites.
 import {
-  citedKeys, orderPdfProblems, pointFor,
+  findCiteKeyOccurrences, orderPdfProblems, pointFor,
   type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SyncIndex, type TypstCite,
 } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
@@ -59,7 +59,7 @@ function typstPlace(cites: readonly TypstCite[]): Place {
 async function citeCount(deps: PdfProblemsDeps, project: ReadyProject, root: string): Promise<number> {
   const keys = new Set<string>();
   for (const { text } of await deps.readSources(project, root)) {
-    for (const { key } of citedKeys(project.settings.format, text)) { keys.add(key); }
+    for (const { key } of findCiteKeyOccurrences(project.settings.format, text)) { keys.add(key); }
   }
   return keys.size;
 }

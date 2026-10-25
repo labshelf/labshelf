@@ -1,13 +1,13 @@
 // Implements `labshelf cite`: picks a paper on the terminal, prints its citation on stdout and updates labshelf.bib.
 import {
-  citationSnippet,
+  createCitationSnippet,
   formatError,
   type PaperRecord,
   type ProjectFormat,
   DEFAULT_BIBLIOGRAPHY,
   PROJECT_FILE,
-  generateBibliography,
-  projectCitationKeys,
+  createBibliography,
+  listProjectCiteKeys,
   readProject,
   updateProjectBibliography,
   type ILogger,
@@ -162,8 +162,8 @@ async function addToBibliography(
 ): Promise<void> {
   const context = nodeProjectReadContext(logger);
   await updateProjectBibliography(context, project, papers);
-  const keys = [...await projectCitationKeys(context, project.folder, project.settings.format), picked.citeKey];
-  const generated = generateBibliography(keys, papers);
+  const keys = [...await listProjectCiteKeys(context, project.folder, project.settings.format), picked.citeKey];
+  const generated = createBibliography(keys, papers);
   const file = path.join(project.folder, project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY);
   if (await readOptionalFile(file) === generated.text) { return; }
   await writeFileAtomic(file, generated.text);
@@ -212,7 +212,7 @@ export async function runCite(
     terminal.close();
   }
   if (picked === undefined) { return 1; }
-  io.out(format === "key" ? picked.citeKey : citationSnippet(format, picked.citeKey));
+  io.out(format === "key" ? picked.citeKey : createCitationSnippet(format, picked.citeKey));
   if (project === undefined) {
     io.err(`labshelf.bib not updated: ${"reason" in located ? located.reason : ""}.`);
     return 0;

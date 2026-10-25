@@ -5,7 +5,7 @@ import type { CountUpTo } from "../../project/index.js";
 const BIBLIOGRAPHY = /\\(?:print)?bibliography|#bibliography/;
 
 /** `sources` are the root's texts in reading order, each include placed where it is written. */
-export function wordsUpTo(sources: readonly { text: string }[], countUpTo: CountUpTo): number {
+export function countWordsUpTo(sources: readonly { text: string }[], countUpTo: CountUpTo): number {
   const text = removeComments(sources.map((source) => source.text).join("\n"));
   if (countUpTo === "end") { return countWords(text); }
   const body = text.indexOf("\\begin{document}");

@@ -3,7 +3,7 @@ import { createBlankTemplate, createProjectFromTemplate, deleteProjectForever } 
 
 import { LIB, filesUnder, memoryCatalog, writeTree } from "../../../support/memoryProjectCatalog";
 
-describe("deleteProjectForever", () => {
+describe("removeProjectForever", () => {
   it("removes a library project folder and keeps the projects folder", async () => {
     const context = memoryCatalog();
     const entry = await createProjectFromTemplate(context, LIB, { title: "Notes", ...createBlankTemplate("latex", "Notes") });

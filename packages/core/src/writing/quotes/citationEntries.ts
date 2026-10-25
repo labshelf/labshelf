@@ -2,8 +2,8 @@
 import type { PaperRecord } from "../../model/index.js";
 import { PAPERS_DIR } from "../../library/index.js";
 import type { CitationBibEntry, CitationEntry, CitationCardPaper, CitingCommand } from "../../reader/index.js";
-import { plainField, type BibEntry } from "../bibliography/index.js";
-import { papersByCiteKey } from "../citations/index.js";
+import { extractPlainField, type BibEntry } from "../bibliography/index.js";
+import { derivePapersByCiteKey } from "../citations/index.js";
 import type { QuotedHighlight } from "./quotedHighlights.js";
 
 /** What the card shows beyond the library record: highlights by paper id; the rest by cite key. */
@@ -41,7 +41,7 @@ function citedPaper(paper: PaperRecord, details: CitationDetails): CitationCardP
 
 /** One entry per key, in the keys' order; a key no library paper has keeps an entry with its `.bib` record, if any. */
 export function citationEntries(keys: readonly string[], papers: readonly PaperRecord[], details: CitationDetails = {}): CitationEntry[] {
-  const library = papersByCiteKey(papers);
+  const library = derivePapersByCiteKey(papers);
   return [...new Set(keys)].map((key) => {
     const paper = library.get(key);
     const bib = paper ? undefined : details.bib?.get(key);
@@ -61,9 +61,9 @@ const VENUE_FIELDS = ["journal", "journaltitle", "booktitle", "publisher"] as co
 
 /** A `.bib` record in the shape the citation card shows; fields the record lacks are left out. */
 export function bibCardEntry(entry: BibEntry): CitationBibEntry {
-  const title = plainField(entry.fields.get("title"));
-  const authors = plainField(entry.fields.get("author")).split(/\s+and\s+/).filter((name) => name !== "");
-  const year = Number(/\d{4}/.exec(plainField(entry.fields.get("year") ?? entry.fields.get("date")))?.[0]);
-  const venue = VENUE_FIELDS.map((field) => plainField(entry.fields.get(field))).find((value) => value !== "");
+  const title = extractPlainField(entry.fields.get("title"));
+  const authors = extractPlainField(entry.fields.get("author")).split(/\s+and\s+/).filter((name) => name !== "");
+  const year = Number(/\d{4}/.exec(extractPlainField(entry.fields.get("year") ?? entry.fields.get("date")))?.[0]);
+  const venue = VENUE_FIELDS.map((field) => extractPlainField(entry.fields.get(field))).find((value) => value !== "");
   return { authors, ...(title ? { title } : {}), ...(year ? { year } : {}), ...(venue ? { venue } : {}) };
 }

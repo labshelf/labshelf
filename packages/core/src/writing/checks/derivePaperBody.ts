@@ -31,7 +31,7 @@ function findHeading(pages: string[][]): { page: number; line: number } | undefi
 }
 
 /** The page holding the heading counts when body text precedes the heading on it. */
-export function paperBody(pages: string[][]): PaperBody {
+export function derivePaperBody(pages: string[][]): PaperBody {
   const heading = findHeading(pages);
   if (heading === undefined) { return { contentPages: pages.length, headingFound: false, pages }; }
   const repeated = repeatedLines(pages);

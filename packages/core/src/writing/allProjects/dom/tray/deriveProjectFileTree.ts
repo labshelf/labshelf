@@ -39,7 +39,7 @@ function emit(node: FolderNode, prefix: string, depth: number, open: ReadonlySet
 }
 
 /** Folders come before files at every level; `open` holds the paths of the unfolded folders. */
-export function projectFileTree(paths: readonly string[], open: ReadonlySet<string>): FileTreeEntry[] {
+export function deriveProjectFileTree(paths: readonly string[], open: ReadonlySet<string>): FileTreeEntry[] {
   const root = folderNode();
   for (const path of paths) insert(root, path);
   const out: FileTreeEntry[] = [];

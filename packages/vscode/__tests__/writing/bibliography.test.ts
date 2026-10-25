@@ -1,7 +1,7 @@
 // Tests that .bib documents get the linter's diagnostics on open and save, and that quick fixes follow the lint they came from.
 import * as vscode from "vscode";
 
-import { BIBLIOGRAPHY_HEADER, publishedVersionLookup, type RegistryEnv } from "@labshelf/core";
+import { BIBLIOGRAPHY_HEADER, createPublishedVersionFinder, type RegistryEnv } from "@labshelf/core";
 import {
   BibCodeActions,
   registerBibliographyLint,
@@ -55,7 +55,7 @@ afterEach(() => { workspace.textDocuments = []; jest.clearAllMocks(); });
 function setup(routes: Record<string, string | object> = {}) {
   const env = fakeEnv(routes);
   const logger = { error: jest.fn(async () => {}) };
-  const diagnostics = new BibDiagnostics(publishedVersionLookup(env), () => logger as never);
+  const diagnostics = new BibDiagnostics(createPublishedVersionFinder(env), () => logger as never);
   const actions = new BibCodeActions(diagnostics, env, () => logger as never);
   return { diagnostics, actions, logger, collection: lastCollection() };
 }
@@ -149,7 +149,7 @@ describe("BibCodeActions", () => {
   it("computes the DOI edit only when the look-up action resolves", async () => {
     const calls: string[] = [];
     const env = fakeEnv({ [SEARCH]: { message: { items: [{ title: ["Deep Residual Learning"], DOI: "10.1109/cvpr.2016.90", issued: { "date-parts": [[2016]] } }] } } }, calls);
-    const diagnostics = new BibDiagnostics(publishedVersionLookup(env), () => undefined);
+    const diagnostics = new BibDiagnostics(createPublishedVersionFinder(env), () => undefined);
     const actions = new BibCodeActions(diagnostics, env, () => undefined);
     const document = bibDocument(NO_DOI);
     workspace._fireDocumentEvent("open", document);

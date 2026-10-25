@@ -4,7 +4,7 @@ import type { ProjectSourceFile } from "../../../latex/source/index.js";
 import { resolveIncludePath } from "../../../latex/source/index.js";
 
 /** `files` lists the main file first; a file reached twice is placed at its first include only. */
-export function readingOrderTexts(files: readonly ProjectSourceFile[], texts: ReadonlyMap<string, string>): { text: string }[] {
+export function deriveReadingOrderTexts(files: readonly ProjectSourceFile[], texts: ReadonlyMap<string, string>): { text: string }[] {
   const byPath = new Map(files.map((file) => [file.path, file]));
   const placed = new Set<string>();
   const pieces: { text: string }[] = [];

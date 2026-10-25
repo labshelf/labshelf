@@ -1,5 +1,5 @@
 /** Verifies which checklist section an item at a source line belongs to, and which sections cite a key. */
-import { citeSections, sectionPlacer } from "../../../src/writing/checklist/index";
+import { deriveCitationSections, createSectionPlacer } from "../../../src/writing/checklist/index";
 
 const main = {
   path: "main.tex",
@@ -13,8 +13,8 @@ const extra = {
 };
 const sources = [main, extra];
 
-describe("sectionPlacer", () => {
-  const place = sectionPlacer(sources, "main.tex");
+describe("createSectionPlacer", () => {
+  const place = createSectionPlacer(sources, "main.tex");
 
   it("places a main-file item under the nearest heading at or above it", () => {
     expect(place("main.tex", 2)).toMatchObject({ title: "Intro", file: "main.tex", line: 1 });
@@ -46,8 +46,8 @@ describe("sectionPlacer", () => {
   });
 });
 
-describe("citeSections", () => {
-  const cites = citeSections(sources, "main.tex");
+describe("deriveCitationSections", () => {
+  const cites = deriveCitationSections(sources, "main.tex");
 
   it("lists each distinct citing section once, in source order", () => {
     expect(cites.get("a")!.map((s) => s.title)).toEqual(["Intro", "Methods"]);
@@ -60,6 +60,6 @@ describe("citeSections", () => {
   });
 
   it("uses the same sections as the placer", () => {
-    expect(cites.get("a")![0]).toEqual(sectionPlacer(sources, "main.tex")("main.tex", 2));
+    expect(cites.get("a")![0]).toEqual(createSectionPlacer(sources, "main.tex")("main.tex", 2));
   });
 });

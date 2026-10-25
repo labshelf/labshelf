@@ -1,9 +1,9 @@
 // Reads the open-item signals of one writing project: sources, TODOs, broken refs, stale figures and manual items.
-import { readFigureStates } from "../figures/index.js";
+import { readFigureBuildStates } from "../figures/index.js";
 import { readLatexProjectSources, findUndefinedReferences } from "../../latex/source/project/index.js";
 import type { ProjectEntry } from "../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
-import type { BrokenRef, StaleFigure } from "./buildChecklist.js";
+import type { BrokenReference, StaleFigure } from "./buildChecklist.js";
 import type { ManualItem } from "./checklistFile.js";
 import { readManualItems } from "./readManualItems.js";
 import type { ChecklistSource } from "./sectionPlacement.js";
@@ -17,7 +17,7 @@ export interface ChecklistSignals {
   /** The main file first, then LaTeX includes depth-first; a Typst project lists only its main file. */
   sources: ChecklistSource[];
   todos: TodoItem[];
-  brokenRefs: BrokenRef[];
+  brokenRefs: BrokenReference[];
   staleFigures: StaleFigure[];
   manual: ManualItem[];
 }
@@ -25,7 +25,7 @@ export interface ChecklistSignals {
 const readProjectFile = ({ fs, paths }: ProjectReadContext, folder: string, relative: string): Promise<string | undefined> =>
   readOptionalText(fs, paths.join(folder, relative));
 
-async function readLatexSources(context: ProjectReadContext, folder: string, main: string): Promise<{ sources: ChecklistSource[]; brokenRefs: BrokenRef[] }> {
+async function readLatexSources(context: ProjectReadContext, folder: string, main: string): Promise<{ sources: ChecklistSource[]; brokenRefs: BrokenReference[] }> {
   const texts = new Map<string, string>();
   const tree = await readLatexProjectSources(main, {
     read: async (relative) => {
@@ -39,7 +39,7 @@ async function readLatexSources(context: ProjectReadContext, folder: string, mai
   return { sources, brokenRefs };
 }
 
-async function readSources(context: ProjectReadContext, project: ReadyProject, main: string): Promise<{ sources: ChecklistSource[]; brokenRefs: BrokenRef[] }> {
+async function readSources(context: ProjectReadContext, project: ReadyProject, main: string): Promise<{ sources: ChecklistSource[]; brokenRefs: BrokenReference[] }> {
   if (project.settings.format === "latex") { return readLatexSources(context, project.folder, main); }
   const text = await readProjectFile(context, project.folder, main);
   return { sources: text === undefined ? [] : [{ path: main, format: "typst", text }], brokenRefs: [] };
@@ -49,7 +49,7 @@ async function readStaleFigures(context: ProjectReadContext, project: ReadyProje
   const figures = project.settings.figures;
   if (figures === undefined) { return []; }
   try {
-    const states = await readFigureStates(context, project.folder, figures);
+    const states = await readFigureBuildStates(context, project.folder, figures);
     return Object.entries(states).filter(([, state]) => state.status === "stale").map(([name]) => ({ name }));
   } catch (error) {
     await context.logger.error(MODULE, error, { folder: project.folder, action: "read figure states" });
@@ -67,7 +67,7 @@ export async function readChecklistSignals(context: ProjectReadContext, project:
     await logger.log("WARN", MODULE, "Project has no main file; its checklist signals are empty", where);
     return empty;
   }
-  let read: { sources: ChecklistSource[]; brokenRefs: BrokenRef[] };
+  let read: { sources: ChecklistSource[]; brokenRefs: BrokenReference[] };
   try {
     read = await readSources(context, project, main);
   } catch (error) {

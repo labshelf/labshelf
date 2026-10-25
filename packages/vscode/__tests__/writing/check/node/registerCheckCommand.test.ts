@@ -1,7 +1,7 @@
 // Tests Check Before Submitting: it builds first, checks the built PDF and shows the findings in Problems per project.
 import * as vscode from "vscode";
 
-import type { CheckFinding } from "@labshelf/core";
+import type { CheckProblem } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
 import { CHECK_COMMAND } from "../../../../src/writing/check";
 import { registerCheckCommand } from "../../../../src/writing/check/node";
@@ -17,7 +17,7 @@ const window = vscode.window as unknown as Record<string, jest.Mock>;
 const saveAll = (vscode.workspace as unknown as { saveAll: jest.Mock }).saveAll;
 const pdfjs = {} as never;
 
-const TRIO: CheckFinding[] = [
+const TRIO: CheckProblem[] = [
   { rule: "pages", severity: "error", message: "The document has 9 pages; the limit is 8.", location: { kind: "pdf" } },
   { rule: "anonymity", severity: "error", message: "The PDF Author field names the author.", location: { kind: "pdf" } },
   { rule: "fonts", severity: "warning", message: "Type 3 font in use.", location: { kind: "pdf", page: 1 } },

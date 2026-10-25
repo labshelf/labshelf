@@ -1,5 +1,5 @@
 /** Verifies editing a project's checklist.json: creation, edits, keeping fields it does not patch, malformed files. */
-import { addManualItem, manualItems, updateChecklist } from "@labshelf/core";
+import { addManualItem, listManualItems, updateChecklist } from "@labshelf/core";
 
 import { memoryCatalog, readText } from "../../support/memoryProjectCatalog";
 
@@ -19,7 +19,7 @@ describe("updateChecklist", () => {
     expect(received).toEqual({ items: [] });
     expect(JSON.parse(readText(context.fs, FILE))).toEqual({ items: [item] });
     expect(await context.fs.listDir(`${FOLDER}/.labshelf`)).toEqual(["checklist.json"]);
-    expect(manualItems(JSON.parse(readText(context.fs, FILE)))).toEqual([item]);
+    expect(listManualItems(JSON.parse(readText(context.fs, FILE)))).toEqual([item]);
   });
 
   it("keeps unknown keys and invalid items on edit", async () => {
@@ -34,7 +34,7 @@ describe("updateChecklist", () => {
     await context.fs.writeText(FILE, JSON.stringify({ items: [item] }, null, 2) + "\n");
     const writes = context.fs.writes;
     let seen: string[] = [];
-    await updateChecklist(context, FOLDER, (doc) => { seen = manualItems(doc).map((entry) => entry.id); return doc; });
+    await updateChecklist(context, FOLDER, (doc) => { seen = listManualItems(doc).map((entry) => entry.id); return doc; });
     expect(seen).toEqual(["a"]);
     expect(context.fs.writes).toBe(writes);
   });

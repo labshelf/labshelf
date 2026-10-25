@@ -1,12 +1,12 @@
 // Asks the VS Code user whether to install LaTeX and shows install progress in a notification.
 import * as vscode from "vscode";
 
-import type { TexSetupPrompt } from "@labshelf/core";
+import type { TexSetupAsk } from "@labshelf/core";
 
 const LIGHT = "Install Light";
 const FULL = "Install Full";
 
-export function vscodeToolchainPrompt(): TexSetupPrompt {
+export function vscodeToolchainPrompt(): TexSetupAsk {
   return {
     async chooseInstall() {
       const choice = await vscode.window.showInformationMessage(

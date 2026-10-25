@@ -10,7 +10,7 @@ export interface SourceHeading {
 }
 
 /** Headings in text order. */
-export function sourceHeadings(format: ProjectFormat, text: string): SourceHeading[] {
+export function findSourceHeadings(format: ProjectFormat, text: string): SourceHeading[] {
   if (format === "typst") { return scanTypstHeadings(text).map(({ line, title }) => ({ line, title })); }
   return scanLatexSource(text).sections.map((section) => ({ line: section.range.start.line, title: section.title }));
 }

@@ -1,13 +1,13 @@
 // Gathers what the citation card shows beyond the library record: highlights, the cited page and the .bib record.
 import {
-  papersByCiteKey,
+  derivePapersByCiteKey,
   quotedHighlights,
   type CitationBibEntry,
   type CitationDetails,
   type CitingCommand,
   type PaperRecord,
   bibCardEntry,
-  bibEntries,
+  parseBibEntries,
 } from "@labshelf/core";
 import type { PreviewCitationDeps } from "./previewCitations.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -18,7 +18,7 @@ import { userBibFiles } from "./projectBibliographyFiles.js";
 async function projectBibRecords(projectFolder: string, keys: readonly string[]): Promise<Map<string, CitationBibEntry>> {
   const records = new Map<string, CitationBibEntry>();
   for (const document of await userBibFiles(projectFolder)) {
-    for (const entry of bibEntries(document.getText())) {
+    for (const entry of parseBibEntries(document.getText())) {
       if (keys.includes(entry.key) && !records.has(entry.key)) { records.set(entry.key, bibCardEntry(entry)); }
     }
   }
@@ -35,7 +35,7 @@ export async function warn(deps: Pick<PreviewCitationDeps, "logger" | "projectFo
 
 /** Highlights per paper, cited page first. A part that cannot be read is logged and left out, so the card still answers. */
 async function highlightsByPaper(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitingSite>) {
-  const cited = papersByCiteKey(papers);
+  const cited = derivePapersByCiteKey(papers);
   const highlights = new Map<string, ReturnType<typeof quotedHighlights>>();
   for (const key of keys) {
     const paper = cited.get(key);
@@ -51,7 +51,7 @@ async function highlightsByPaper(deps: CardDeps, keys: readonly string[], papers
 }
 
 async function bibRecords(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[]): Promise<Map<string, CitationBibEntry>> {
-  const cited = papersByCiteKey(papers);
+  const cited = derivePapersByCiteKey(papers);
   const missing = keys.filter((key) => !cited.has(key));
   if (missing.length === 0) { return new Map(); }
   try {

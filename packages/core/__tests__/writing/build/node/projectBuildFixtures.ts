@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ProjectEntry, ProjectSettings } from "../../../../src/writing/index";
-import type { TexSetupPrompt } from "../../../../src/writing/build/index";
+import type { TexSetupAsk } from "../../../../src/writing/build/index";
 import type { ProjectBuildDeps } from "../../../../src/writing/build/node/index";
 import type { TexInstallKind } from "../../../../src/latex/toolchain/index";
 import type { ManagedTexProvider } from "../../../../src/latex/toolchain/node/managedTex/index";
@@ -33,7 +33,7 @@ export interface BuildFixture {
   marker: string;
   /** While this file exists, runs fail on a missing `foo.sty`; installing it deletes the file. */
   missing: string;
-  prompt: TexSetupPrompt & { calls: string[] };
+  prompt: TexSetupAsk & { calls: string[] };
   tex: ManagedTexProvider & { calls: string[] };
   deps: ProjectBuildDeps;
   project(settings?: Partial<ProjectSettings>, main?: string | null): ReadyEntry;

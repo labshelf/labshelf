@@ -1,6 +1,6 @@
 /** Declares the project data operations that writing hosts run over project folders and the library's project registry. */
 import type { PaperRecord } from "../../model/index.js";
-import type { BacklinkIndex } from "../citations/index.js";
+import type { BacklinkMap } from "../citations/index.js";
 import type { BibliographyUpdate, CitingProject } from "../citations/index.js";
 import type { FigureState } from "../figures/index.js";
 import type {
@@ -34,7 +34,7 @@ export interface ProjectDataPort {
   readProjectValues(project: Pick<ValueProject, "folder" | "settings">): Promise<ValueLeaf[]>;
   readFigureStates(folder: string, figures: Readonly<Record<string, FigureRecipe>>): Promise<Record<string, FigureState>>;
   updateProjectBibliography(project: CitingProject, papers: readonly PaperRecord[], open?: OpenSources): Promise<BibliographyUpdate>;
-  projectBacklinks(projects: readonly ProjectEntry[], open?: OpenSources): Promise<BacklinkIndex>;
+  projectBacklinks(projects: readonly ProjectEntry[], open?: OpenSources): Promise<BacklinkMap>;
   /** The per-project build folder in the device cache; it depends on the host's environment. */
   projectBuildDir(projectId: string): string;
   /** Reads `<outDir>/<base>.synctex.gz`; `cwd` is the folder the build ran in. */

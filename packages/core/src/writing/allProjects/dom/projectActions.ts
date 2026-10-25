@@ -1,6 +1,6 @@
 // Asks for what a project action needs (a title, a folder, a confirmation) and posts the action to the host.
 import { askDialog, askInputBox, pickQuickEntry, type QuickPickItem } from "../../../ui/dom/index.js";
-import { moveTargets } from "../viewModel/index.js";
+import { listMoveFolders } from "../viewModel/index.js";
 import type { AllProjectsToHost } from "../protocol/index.js";
 import type { ProjectRow } from "../projectRow.js";
 
@@ -13,7 +13,7 @@ export async function renameProject(row: ProjectRow, post: Post): Promise<void> 
   if (title !== undefined && title.trim() !== row.title) post({ type: "rename", id: row.id, title: title.trim() });
 }
 
-export async function duplicateProject(row: ProjectRow, post: Post): Promise<void> {
+export async function copyProject(row: ProjectRow, post: Post): Promise<void> {
   const title = await askInputBox({ title: "Duplicate project", prompt: "Name of the copy", value: `${row.title} copy`, validate: requireName });
   if (title !== undefined) post({ type: "duplicate", id: row.id, title: title.trim() });
 }
@@ -26,7 +26,7 @@ const cleanPath = (path: string): string => path.split("/").map((s) => s.trim())
 export async function moveProject(row: ProjectRow, rows: readonly ProjectRow[], post: Post): Promise<void> {
   const items: QuickPickItem<string | typeof NEW_FOLDER>[] = [
     { label: "Top level", icon: "folder", value: "" },
-    ...moveTargets(rows).map((folder) => ({ label: folder, icon: "folder" as const, value: folder })),
+    ...listMoveFolders(rows).map((folder) => ({ label: folder, icon: "folder" as const, value: folder })),
     { label: "New folder…", icon: "folder-plus", value: NEW_FOLDER },
   ];
   const picked = await pickQuickEntry(items, { title: "Move to folder", placeholder: `Move ${row.title} to…` });
@@ -41,14 +41,14 @@ export async function moveProject(row: ProjectRow, rows: readonly ProjectRow[], 
   post(folder ? { type: "move", id: row.id, folder } : { type: "move", id: row.id });
 }
 
-export async function deleteProjectForever(row: ProjectRow, post: Post): Promise<void> {
+export async function removeProjectForever(row: ProjectRow, post: Post): Promise<void> {
   const ok = row.external
     ? await askDialog(`Remove ${row.title} from LabShelf?`, "Its files stay where they are.", "Remove", true)
     : await askDialog(`Delete ${row.title} forever?`, "Its folder is deleted from this device. The folder stays on disk.", "Delete forever", true);
   if (ok) post({ type: "deleteForever", id: row.id });
 }
 
-export async function emptyTrash(count: number, post: Post): Promise<void> {
+export async function removeAllTrash(count: number, post: Post): Promise<void> {
   const noun = count === 1 ? "project" : "projects";
   const ok = await askDialog(`Delete ${count} ${noun} forever?`,
     "Library projects are deleted from this device; the folders stay on disk. Projects outside the library only leave LabShelf.", "Empty trash", true);

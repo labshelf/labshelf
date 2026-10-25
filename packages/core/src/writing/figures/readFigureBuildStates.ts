@@ -1,8 +1,8 @@
 /** Reads the staleness of a project's figures from the modification times of the figures and their inputs. */
 import { listProjectFiles, type ProjectReadContext } from "../project/folder/index.js";
 import type { FigureRecipe } from "../project/index.js";
-import { decideFigureState, type FigureFacts, type FigureState } from "./figureState.js";
-import { isGlobPattern, matchesInputPattern, normalizeInputPath } from "./inputPattern.js";
+import { deriveFigureBuildState, type FigureFacts, type FigureState } from "./figureState.js";
+import { isGlobPattern, isInputPatternMatch, normalizeInputPath } from "./inputPattern.js";
 
 type FileReads = Pick<ProjectReadContext, "fs" | "paths">;
 
@@ -19,7 +19,7 @@ async function inputFacts(
   for (const input of inputs) {
     if (isGlobPattern(input)) {
       for (const relative of await projectFiles()) {
-        if (!matchesInputPattern(input, relative) || found.has(relative)) { continue; }
+        if (!isInputPatternMatch(input, relative) || found.has(relative)) { continue; }
         const mtimeMs = await modifiedAt(reads, reads.paths.join(folder, relative));
         if (mtimeMs !== undefined) { found.set(relative, mtimeMs); }
       }
@@ -33,7 +33,7 @@ async function inputFacts(
 }
 
 /** The state of every figure, by figure path; the folder is walked at most once and only for glob inputs. */
-export async function readFigureStates(
+export async function readFigureBuildStates(
   reads: FileReads, folder: string, figures: Readonly<Record<string, FigureRecipe>>,
 ): Promise<Record<string, FigureState>> {
   let walked: Promise<readonly string[]> | undefined;
@@ -44,7 +44,7 @@ export async function readFigureStates(
   const states: Record<string, FigureState> = {};
   for (const [figure, recipe] of Object.entries(figures)) {
     const figureMtimeMs = await modifiedAt(reads, reads.paths.join(folder, normalizeInputPath(figure)));
-    states[figure] = decideFigureState({ figureMtimeMs, ...await inputFacts(reads, folder, recipe.inputs, projectFiles) });
+    states[figure] = deriveFigureBuildState({ figureMtimeMs, ...await inputFacts(reads, folder, recipe.inputs, projectFiles) });
   }
   return states;
 }

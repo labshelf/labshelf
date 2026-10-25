@@ -17,7 +17,7 @@ const ENTRY_HEAD = /@\s*([A-Za-z]+)\s*([{(])/y;
 const FIELD_NAME = /\s*([^\s=,{}()"#%]+)\s*=\s*/y;
 
 /** Every citable entry in text order; a malformed entry is skipped and parsing resumes after it. */
-export function bibEntries(text: string): BibEntry[] {
+export function parseBibEntries(text: string): BibEntry[] {
   const entries: BibEntry[] = [];
   let at = nextEntryStart(text, 0);
   while (at >= 0) {
@@ -37,7 +37,7 @@ export function bibEntries(text: string): BibEntry[] {
 }
 
 /** A field value as plain text: inner braces removed and whitespace collapsed, for comparisons and lookups. */
-export function plainField(value: string | undefined): string {
+export function extractPlainField(value: string | undefined): string {
   return (value ?? "").replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
 }
 

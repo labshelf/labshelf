@@ -12,7 +12,7 @@ import { mergeFileText } from "../mergeText.js";
 const MODULE = "conflicts";
 
 /** An item file and where its base lives: `scope` names the base folder, `relativePath` is inside it. */
-export interface ItemFileTarget {
+export interface ItemFileBaseSpec {
   readonly file: string;
   readonly scope: string;
   readonly relativePath: string;
@@ -36,7 +36,7 @@ async function oldestFirst(copies: readonly ConflictCopy[]): Promise<ConflictCop
 }
 
 /** Stores the file as its base when the device has none yet; a file with conflict copies must not be passed. */
-export async function seedItemFileBase(target: ItemFileTarget, store: IProjectVersionStore, logger: ILogger): Promise<void> {
+export async function writeItemFileBase(target: ItemFileBaseSpec, store: IProjectVersionStore, logger: ILogger): Promise<void> {
   try {
     if (await store.read(target.scope, target.relativePath) !== undefined) { return; }
     const text = await readText(target.file);
@@ -52,7 +52,7 @@ export async function seedItemFileBase(target: ItemFileTarget, store: IProjectVe
  * @returns the copies left for the user
  */
 export async function mergeItemFileCopies(
-  target: ItemFileTarget, copies: readonly ConflictCopy[], store: IProjectVersionStore, logger: ILogger, tmpDir: string,
+  target: ItemFileBaseSpec, copies: readonly ConflictCopy[], store: IProjectVersionStore, logger: ILogger, tmpDir: string,
 ): Promise<ConflictCopy[]> {
   const context = { ...target, copies: copies.map((copy) => copy.copy) };
   try {

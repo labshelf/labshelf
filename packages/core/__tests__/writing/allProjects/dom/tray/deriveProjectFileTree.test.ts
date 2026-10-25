@@ -1,12 +1,12 @@
 // Tests that a project's file paths become the tray's visible rows: folders first, open folders unfolded one level deeper.
-import { projectFileTree } from "../../../../../src/writing/allProjects/dom/tray/projectFileTree";
+import { deriveProjectFileTree } from "../../../../../src/writing/allProjects/dom/tray/deriveProjectFileTree";
 
 const paths = ["main.tex", "sec/b.tex", "sec/a.tex", "fig/plot10.pdf", "fig/plot2.pdf", "refs.bib", "sec/deep/x.tex"];
 
 const shown = (open: string[]) =>
-  projectFileTree(paths, new Set(open)).map((e) => `${"  ".repeat(e.depth)}${e.folder ? `${e.name}/${e.open ? "-" : "+"}` : e.name}`);
+  deriveProjectFileTree(paths, new Set(open)).map((e) => `${"  ".repeat(e.depth)}${e.folder ? `${e.name}/${e.open ? "-" : "+"}` : e.name}`);
 
-describe("projectFileTree", () => {
+describe("deriveProjectFileTree", () => {
   it("lists top-level folders first, then files, each sorted by name", () => {
     expect(shown([])).toEqual(["fig/+", "sec/+", "main.tex", "refs.bib"]);
   });
@@ -19,6 +19,6 @@ describe("projectFileTree", () => {
 
   it("keeps a nested open folder hidden while its parent is closed, and gives each entry its full path", () => {
     expect(shown(["sec/deep"])).toEqual(["fig/+", "sec/+", "main.tex", "refs.bib"]);
-    expect(projectFileTree(["sec/deep/x.tex"], new Set(["sec", "sec/deep"])).map((e) => e.path)).toEqual(["sec", "sec/deep", "sec/deep/x.tex"]);
+    expect(deriveProjectFileTree(["sec/deep/x.tex"], new Set(["sec", "sec/deep"])).map((e) => e.path)).toEqual(["sec", "sec/deep", "sec/deep/x.tex"]);
   });
 });

@@ -14,7 +14,7 @@ export type FigureState =
   | { status: "stale"; newerInputs: readonly string[]; missingInputs: readonly string[] }
   | { status: "fresh"; missingInputs: readonly string[] };
 
-export function decideFigureState({ figureMtimeMs, inputs, missingInputs }: FigureFacts): FigureState {
+export function deriveFigureBuildState({ figureMtimeMs, inputs, missingInputs }: FigureFacts): FigureState {
   if (figureMtimeMs === undefined) { return { status: "missing", missingInputs }; }
   const newerInputs = inputs.filter((input) => input.mtimeMs > figureMtimeMs).map((input) => input.path);
   return newerInputs.length > 0 ? { status: "stale", newerInputs, missingInputs } : { status: "fresh", missingInputs };

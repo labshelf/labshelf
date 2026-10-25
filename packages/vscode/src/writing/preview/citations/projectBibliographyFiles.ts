@@ -1,7 +1,7 @@
 // Finds the .bib files the user writes and the entry a cite key names in them, never in the generated labshelf.bib.
 import * as vscode from "vscode";
 
-import { BIBLIOGRAPHY_HEADER, bibEntries, type BibEntry } from "@labshelf/core";
+import { BIBLIOGRAPHY_HEADER, parseBibEntries, type BibEntry } from "@labshelf/core";
 
 export interface ProjectBibEntry {
   document: vscode.TextDocument;
@@ -23,7 +23,7 @@ export async function userBibFiles(projectFolder: string): Promise<vscode.TextDo
 /** The first entry with `key` in the user's `.bib` files. */
 export async function findBibEntry(projectFolder: string, key: string): Promise<ProjectBibEntry | undefined> {
   for (const document of await userBibFiles(projectFolder)) {
-    const entry = bibEntries(document.getText()).find((candidate) => candidate.key === key);
+    const entry = parseBibEntries(document.getText()).find((candidate) => candidate.key === key);
     if (entry) { return { document, entry }; }
   }
   return undefined;

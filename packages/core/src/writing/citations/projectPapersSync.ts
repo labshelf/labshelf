@@ -4,10 +4,10 @@ import type { PaperRecord } from "../../model/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
 import { PROJECT_FILE, parseProjectFile, updateProjectSettings } from "../project/index.js";
 import { syncListedPapers } from "./listedPapersSync.js";
-import { papersByCiteKey } from "./papersByCiteKey.js";
+import { derivePapersByCiteKey } from "./derivePapersByCiteKey.js";
 
 /**
- * Writes `papers` when it differs from the sync of `citedKeys`; true when it wrote. The list is read from disk, so a
+ * Writes `papers` when it differs from the sync of `findCiteKeyOccurrences`; true when it wrote. The list is read from disk, so a
  * stale caller cannot drop an entry added since it loaded the project. A labshelf.yaml that does not parse fails the call.
  */
 export async function syncProjectPapers(
@@ -18,7 +18,7 @@ export async function syncProjectPapers(
   if (text === undefined) { return false; }
   const parsed = parseProjectFile(text);
   if (!parsed.ok) { throw new Error(`${file}: ${parsed.reason}`); }
-  const next = syncListedPapers(parsed.settings.papers ?? [], citedKeys, papersByCiteKey(library));
+  const next = syncListedPapers(parsed.settings.papers ?? [], citedKeys, derivePapersByCiteKey(library));
   if (next === undefined) { return false; }
   await updateProjectSettings(context, folder, { papers: next.length > 0 ? next : undefined });
   return true;

@@ -6,14 +6,14 @@ import { buildFrame } from "../../../libraryUi/dom/index.js";
 import type { ShareHost } from "../../../libraryUi/share/index.js";
 import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
 import { showMenu, showToast, type MenuAnchor, renderElement } from "../../../ui/dom/index.js";
-import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../viewModel/index.js";
+import { DEFAULT_PROJECT_VIEW, deriveProjectView, deriveFirstProjectSortDir, countPlaces, type ProjectSortField, type ProjectViewState } from "../viewModel/index.js";
 import type { AllProjectsToHost, AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
-import type { NewProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
+import type { CreateProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
-import { emptyTrash } from "./projectActions.js";
+import { removeAllTrash } from "./projectActions.js";
 import { mountProjectList, type ProjectListHandlers } from "./list/index.js";
-import { projectMenuEntries } from "./projectMenu.js";
-import { createDetailRequests } from "./detailPane/index.js";
+import { createProjectMenuEntries } from "./projectMenu.js";
+import { createPaneRequests } from "./detailPane/index.js";
 import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
 
@@ -47,7 +47,7 @@ interface PageState {
   view: ProjectViewState;
   rows: ProjectRow[];
   commands: ProjectMenuCommand[];
-  newKinds: NewProjectKind[];
+  newKinds: CreateProjectKind[];
   selected: string | null;
 }
 
@@ -58,13 +58,13 @@ export interface AllProjectsChannel {
   sharing?: ShareHost | undefined;
 }
 
-const NEW_ENTRIES: ReadonlyArray<{ kind: NewProjectKind; label: string; icon: "file" | "layers" | "folder-open" }> = [
+const NEW_ENTRIES: ReadonlyArray<{ kind: CreateProjectKind; label: string; icon: "file" | "layers" | "folder-open" }> = [
   { kind: "blank", label: "Blank project", icon: "file" },
   { kind: "template", label: "From template…", icon: "layers" },
   { kind: "folder", label: "Add existing folder…", icon: "folder-open" },
 ];
 
-function showNewMenu(anchor: HTMLElement, post: AllProjectsTransport["post"], kinds: readonly NewProjectKind[]): void {
+function showNewMenu(anchor: HTMLElement, post: AllProjectsTransport["post"], kinds: readonly CreateProjectKind[]): void {
   showMenu(anchor, NEW_ENTRIES.filter((e) => kinds.includes(e.kind)).map((e) => ({
     label: e.label, icon: e.icon, onSelect: () => post({ type: "create", kind: e.kind }),
   })));
@@ -85,8 +85,8 @@ function routeMessages(transport: AllProjectsTransport, on: {
   });
 }
 
-const toggledSort = (sort: ProjectViewState["sort"], key: ProjectSortKey): ProjectViewState["sort"] =>
-  sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: firstProjectSortDir(key) };
+const toggledSort = (sort: ProjectViewState["sort"], key: ProjectSortField): ProjectViewState["sort"] =>
+  sort.key === key ? { key, dir: sort.dir === "asc" ? "desc" : "asc" } : { key, dir: deriveFirstProjectSortDir(key) };
 
 interface RowHandlerDeps {
   s: PageState;
@@ -105,9 +105,9 @@ function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): Pro
     onOpen: (id) => { const row = rowById(id); if (row && row.place !== "trash" && !row.broken) post({ type: "open", id }); },
     onMenu: (id, anchor: MenuAnchor | HTMLElement) => {
       const row = rowById(id);
-      if (row) showMenu(anchor, projectMenuEntries(row, { rows: s.rows, commands: s.commands, post, sharing: d.sharing }));
+      if (row) showMenu(anchor, createProjectMenuEntries(row, { rows: s.rows, commands: s.commands, post, sharing: d.sharing }));
     },
-    onSort: (key: ProjectSortKey) => d.set({ sort: toggledSort(s.view.sort, key) }),
+    onSort: (key: ProjectSortField) => d.set({ sort: toggledSort(s.view.sort, key) }),
   };
 }
 
@@ -119,7 +119,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
   const set = (view: Partial<ProjectViewState>): void => { s.view = { ...s.view, ...view }; render(); };
   const rowById = (id: string): ProjectRow | undefined => s.rows.find((r) => r.id === id);
   const onNew = (anchor: HTMLElement): void => showNewMenu(anchor, post, s.newKinds);
-  const details = createDetailRequests(post);
+  const details = createPaneRequests(post);
   const select = (id: string): void => { if (id !== s.selected) details.request(id); s.selected = id; render(); };
   const expansion = createProjectExpansion({ post, rowById, select, detailOf: details.get, render });
   details.onChange((id) => { if (id === s.selected || id === expansion.frame().expanded) render(); });
@@ -127,7 +127,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
     onPlace: (place: ProjectPlace) => { if (place !== s.view.place) { s.selected = null; set({ place }); } },
     onQuery: (query) => set({ query }),
     onNew,
-    onEmptyTrash: () => void emptyTrash(placeCounts(s.rows).trash, post),
+    onEmptyTrash: () => void removeAllTrash(countPlaces(s.rows).trash, post),
     onLeaveSearch: () => list.focus(),
   });
   const list = mountProjectList(frame.list, rowHandlers({ s, post, rowById, select, set, sharing }, expansion.handlers));
@@ -138,7 +138,7 @@ export function mountAllProjects(root: HTMLElement, { transport, prefs, sharing 
     const shown = new Set(groups.flatMap((g) => g.rows.map((r) => r.id)));
     if (s.selected && !shown.has(s.selected)) s.selected = null;
     expansion.keepShown(shown);
-    header.paint(s.view.place, placeCounts(s.rows), s.view.query);
+    header.paint(s.view.place, countPlaces(s.rows), s.view.query);
     const empty = shown.size > 0 ? null : buildProjectEmptyState({ place: s.view.place, query: s.view.query, onClearQuery: () => set({ query: "" }), onNew });
     list.render({ view: s.view, groups, selected: s.selected, tray: expansion.frame(), empty });
     selection.update(s.selected);

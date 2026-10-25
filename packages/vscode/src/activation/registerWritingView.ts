@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import type { SelectionSources } from "../libraryUi/details/index.js";
 
 import {
-  buildRootOf, publishedVersionLookup, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionLookup,
+  buildRootOf, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
 } from "@labshelf/core";
 import {
   WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
@@ -109,7 +109,7 @@ interface WritingParts {
   citeSections: CiteSectionsCache;
   includeOnly: IncludeOnlyState;
   includeOnlyTarget: IncludeOnlyTarget;
-  publishedLookup: PublishedVersionLookup;
+  publishedLookup: PublishedVersionFinder;
   adapters: WritingAdapters;
 }
 
@@ -140,7 +140,7 @@ async function recompileRoot(
 
 /** What the preview's citation cards need to fix a citation, while a library is open. */
 function citationFixDeps(
-  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionLookup, projectFolder: string, paths: PathOps,
+  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionFinder, projectFolder: string, paths: PathOps,
 ): CitationFixDeps | undefined {
   const services = controller.currentServices();
   if (!services) { return undefined; }
@@ -266,7 +266,7 @@ export function registerWritingView(
   });
   context.subscriptions.push(citeSections);
   const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects);
-  const publishedLookup = publishedVersionLookup({ fetch: globalThis.fetch, get logger() { return logger; } });
+  const publishedLookup = createPublishedVersionFinder({ fetch: globalThis.fetch, get logger() { return logger; } });
   const parts: WritingParts = {
     context, controller, host, projects, figures, readingLists, listPapers, citeSections, includeOnly, includeOnlyTarget, publishedLookup, adapters,
   };

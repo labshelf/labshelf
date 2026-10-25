@@ -16,7 +16,7 @@ const TYPST_COMMENT = /\/\*[\s\S]*?\*\/|(?<!:)\/\/.*$/gm;
 // A URL in markup is a link, and an `@` in its path is not a reference.
 const TYPST_URL = /https?:\/\/\S+/g;
 
-export interface CitedKey {
+export interface CiteKeyOccurrence {
   key: string;
   /** Character offsets of the key in the text. */
   start: number;
@@ -40,7 +40,7 @@ function pageOf(command: string): number | undefined {
   return undefined;
 }
 
-function latexKeys(text: string): CitedKey[] {
+function latexKeys(text: string): CiteKeyOccurrence[] {
   return [...blank(text, LATEX_COMMENT).matchAll(LATEX_CITE)].flatMap((match) => {
     const listStart = match.index + match[0].length - 1 - match[1]!.length;
     const page = pageOf(match[0]);
@@ -62,7 +62,7 @@ function typstCall(source: string, from: number): string {
   return source.slice(from, lineEnd);
 }
 
-function typstKeys(text: string): CitedKey[] {
+function typstKeys(text: string): CiteKeyOccurrence[] {
   const source = blank(blank(text, TYPST_COMMENT), TYPST_URL);
   const references = [...source.matchAll(TYPST_REFERENCE)].map((match) => {
     // PLATFORM: Typst drops a trailing `.` or `:` from `@key.` so that a reference can end a sentence.
@@ -78,11 +78,11 @@ function typstKeys(text: string): CitedKey[] {
 }
 
 /** Every citation in the text with its position, in text order; `*` (cite everything) is not a key. */
-export function citedKeys(format: ProjectFormat, text: string): CitedKey[] {
+export function findCiteKeyOccurrences(format: ProjectFormat, text: string): CiteKeyOccurrence[] {
   return (format === "latex" ? latexKeys(text) : typstKeys(text)).filter((cited) => cited.key !== "*");
 }
 
 /** Every key cited in the text, without duplicates. */
-export function scanCitationKeys(format: ProjectFormat, text: string): string[] {
-  return [...new Set(citedKeys(format, text).map((cited) => cited.key))];
+export function scanCiteKeys(format: ProjectFormat, text: string): string[] {
+  return [...new Set(findCiteKeyOccurrences(format, text).map((cited) => cited.key))];
 }

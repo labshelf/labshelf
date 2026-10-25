@@ -1,5 +1,5 @@
 // Tests the Checklist tree rows: By kind order, the folded "N read" row and the item keys the host looks rows up by.
-import { checklistSidebarNodes, type Checklist } from "../../../../src/writing/index";
+import { deriveChecklistSidebarNodes, type Checklist } from "../../../../src/writing/index";
 import { posixPathOps } from "../../../../src/library/index";
 
 const checklist: Checklist = {
@@ -12,8 +12,8 @@ const checklist: Checklist = {
   ],
 } as unknown as Checklist;
 
-describe("checklistSidebarNodes", () => {
-  const tree = checklistSidebarNodes({
+describe("deriveChecklistSidebarNodes", () => {
+  const tree = deriveChecklistSidebarNodes({
     paths: posixPathOps, checklist, grouping: "kind", pageCount: undefined, reading: new Map(), isExpanded: (_id, byDefault) => byDefault,
   });
 

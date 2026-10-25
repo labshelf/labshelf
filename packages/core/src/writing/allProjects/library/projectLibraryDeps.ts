@@ -5,7 +5,7 @@ import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
 import type { ProjectDataPort } from "../../service/index.js";
 import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
-import type { NewProjectKind, ProjectMenuCommand } from "../projectRow.js";
+import type { CreateProjectKind, ProjectMenuCommand } from "../projectRow.js";
 
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
@@ -31,7 +31,7 @@ export interface BuildSources {
 /** The editor actions of the host; each receives the project it acts on. */
 export interface ProjectHostFunctions {
   openProject(entry: ProjectEntry): Promise<void>;
-  createProject(kind: NewProjectKind): Promise<void>;
+  createProject(kind: CreateProjectKind): Promise<void>;
   openFile(entry: ReadyProject, file: string): Promise<void>;
   /** Saves the editors and builds one root of the project. */
   build(entry: ReadyProject, root: string): Promise<void>;
@@ -41,7 +41,7 @@ export interface ProjectHostFunctions {
   duplicate(entry: ReadyProject, title: string): Promise<void>;
   runCommand(command: string, entry: ProjectEntry): Promise<void>;
   commands(): ProjectMenuCommand[];
-  newKinds(): NewProjectKind[];
+  newKinds(): CreateProjectKind[];
   openLabel(): string;
   /** Whether the project is the one open in the host; it cannot be deleted. */
   isOpen(entry: ProjectEntry): boolean;

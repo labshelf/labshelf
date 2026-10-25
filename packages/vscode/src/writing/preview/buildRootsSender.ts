@@ -1,7 +1,7 @@
 // Sends an open preview the build roots with their problems, word counts, check findings and build options, and sends them again when any of those changes.
 import * as vscode from "vscode";
 
-import { publishedVersionLookup, type RegistryEnv } from "@labshelf/core";
+import { createPublishedVersionFinder, type RegistryEnv } from "@labshelf/core";
 import type { ReaderPanel } from "../../reader/index.js";
 import { buildOptions, onAutoCompileChange } from "../build/index.js";
 import { createProjectSourceReader } from "../../latex/project/index.js";
@@ -58,7 +58,7 @@ export class RootsPublisher implements vscode.Disposable {
   constructor(private readonly deps: BuildPreviewsDeps, private readonly state: RootsPublisherState) {
     // The library root, and with it the logger, can change after activation.
     const env: RegistryEnv = { fetch: globalThis.fetch, get logger() { return deps.host.current()?.logger; } };
-    this.preprints = projectPreprints({ logger: () => deps.host.current()?.logger, lookup: publishedVersionLookup(env) });
+    this.preprints = projectPreprints({ logger: () => deps.host.current()?.logger, lookup: createPublishedVersionFinder(env) });
     this.subscriptions = [
       onAutoCompileChange(() => this.resendAll()),
       vscode.workspace.onDidChangeConfiguration((event) => { if (event.affectsConfiguration("labshelf.writing.haltOnError")) { this.resendAll(); } }),

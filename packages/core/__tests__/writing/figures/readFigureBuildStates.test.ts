@@ -1,6 +1,6 @@
 /** Verifies figure staleness read from a project folder's file modification times. */
 import { posixPathOps } from "../../../src/library/index";
-import { readFigureStates as readStates } from "../../../src/writing/figures/index";
+import { readFigureBuildStates as readStates } from "../../../src/writing/figures/index";
 import type { FigureRecipe } from "../../../src/writing/project/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
@@ -24,7 +24,7 @@ const readFigureStates = (memory: MemoryLibraryFs, figures: Readonly<Record<stri
 
 const ABLATION = { "fig/ablation.pdf": { run: "python plot.py", inputs: ["plot.py", "results/*.json"] } };
 
-describe("readFigureStates", () => {
+describe("readFigureBuildStates", () => {
   it("is missing when the figure file does not exist", async () => {
     const dir = await makeTempDir();
     await put(dir, "plot.py", 0);

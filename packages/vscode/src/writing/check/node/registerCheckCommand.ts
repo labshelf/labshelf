@@ -1,7 +1,7 @@
 // Registers Check Before Submitting: builds the project, checks its PDF and sources, and lists the findings in Problems.
 import * as vscode from "vscode";
 
-import type { CheckFinding, ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
+import type { CheckProblem, ILogger, PdfjsLoader, ProjectEntry } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
 import { executeSafely } from "../../../command/index.js";
 import { activeProject, ProjectDiagnostics, type ProjectBuilders } from "../../build/index.js";
@@ -24,7 +24,7 @@ function summary(count: number): string {
   return `${count} ${count === 1 ? "problem" : "problems"} found before submitting.`;
 }
 
-function runCheck(deps: CheckCommandDeps, project: ReadyProject, pdfPath: string, logger: ILogger): Thenable<CheckFinding[]> {
+function runCheck(deps: CheckCommandDeps, project: ReadyProject, pdfPath: string, logger: ILogger): Thenable<CheckProblem[]> {
   const options = { location: vscode.ProgressLocation.Notification, title: `Checking "${project.settings.id}" before submitting` };
   return vscode.window.withProgress(options, () =>
     checkProject({ folder: project.folder, pdfPath, settings: project.settings.check }, deps.pdfjs, logger));

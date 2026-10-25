@@ -1,6 +1,6 @@
 /** Finds what can reveal the authors of an anonymous submission: their names, self-references and personal links. */
-import type { CheckFinding, CheckLocation, CheckSource, PdfFacts } from "./checkReport.js";
-import type { PaperBody } from "./paperBody.js";
+import type { CheckProblem, CheckPosition, CheckSource, PdfFacts } from "./checkReport.js";
+import type { PaperBody } from "./derivePaperBody.js";
 
 /** TRAP: a Typst `//` comment must not swallow the `//` of a URL, which Typst reads as a link. */
 const TYPST_COMMENT = /(^|[^:])\/\/.*$/;
@@ -46,14 +46,14 @@ function namePattern(name: string): RegExp {
   return new RegExp(`(?<!\\p{L})${name.trim().split(/\s+/).map(escape).join("[\\s~]+")}(?!\\p{L})`, "iu");
 }
 
-function sourceLocation(match: string, page: number, sources: CheckSource[]): CheckLocation {
+function sourceLocation(match: string, page: number, sources: CheckSource[]): CheckPosition {
   const found = locateInSources(new RegExp(escape(match).replace(/\s+/g, "[\\s~]+"), "i"), sources);
   return found === undefined ? { kind: "pdf", page } : { kind: "source", ...found };
 }
 
 /** One finding per pattern and page, at the first match. */
-function textFindings(pages: string[][], patterns: RegExp[], sources: CheckSource[], describe: (match: string, page: number) => Omit<CheckFinding, "location">): CheckFinding[] {
-  const findings: CheckFinding[] = [];
+function textFindings(pages: string[][], patterns: RegExp[], sources: CheckSource[], describe: (match: string, page: number) => Omit<CheckProblem, "location">): CheckProblem[] {
+  const findings: CheckProblem[] = [];
   for (const [index, lines] of pages.entries()) {
     const text = lines.join("\n");
     for (const pattern of patterns) {
@@ -64,7 +64,7 @@ function textFindings(pages: string[][], patterns: RegExp[], sources: CheckSourc
   return findings;
 }
 
-function metadataFindings(info: Record<string, string>, names: RegExp[]): CheckFinding[] {
+function metadataFindings(info: Record<string, string>, names: RegExp[]): CheckProblem[] {
   const author = info["Author"]?.trim() ?? "";
   const leaking = INFO_FIELDS.filter((field) => field === "Author" ? author !== "" : names.some((name) => name.test(info[field] ?? "")));
   return leaking.map((field) => ({
@@ -76,7 +76,7 @@ function metadataFindings(info: Record<string, string>, names: RegExp[]): CheckF
 }
 
 /** Names in the reference list are allowed: venues ask for self-citations in the third person, not for none. */
-export function anonymityFindings({ facts, body, names, sources }: AnonymityInput): CheckFinding[] {
+export function deriveAnonymityProblems({ facts, body, names, sources }: AnonymityInput): CheckProblem[] {
   const infoNames = (facts.info["Author"] ?? "").split(/\s*(?:,|;|\band\b)\s*/);
   const patterns = [...new Set([...names, ...infoNames].map((name) => name.trim()).filter((name) => name.length > 1))].map(namePattern);
   const allPages = facts.pages.map((page) => page.lines);

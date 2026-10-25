@@ -1,7 +1,7 @@
 // Replaces a preprint entry in the user's .bib with its published version, and tells which venue that is.
 import * as vscode from "vscode";
 
-import { lintBibliography, type BibFix, type ILogger, type PublishedVersion, type PublishedVersionLookup } from "@labshelf/core";
+import { checkBibliography, type BibliographyFix, type ILogger, type PublishedVersion, type PublishedVersionFinder } from "@labshelf/core";
 import { findBibEntry } from "./projectBibliographyFiles.js";
 
 const MODULE = "writing/preview";
@@ -9,12 +9,12 @@ const MODULE = "writing/preview";
 export interface UpdateBibDeps {
   projectFolder: string;
   logger: ILogger;
-  publishedLookup: PublishedVersionLookup;
+  publishedLookup: PublishedVersionFinder;
 }
 
 interface PublishedFix {
   document: vscode.TextDocument;
-  fix: BibFix | undefined;
+  fix: BibliographyFix | undefined;
   version: PublishedVersion | undefined;
 }
 
@@ -24,7 +24,7 @@ async function publishedFixOf(deps: UpdateBibDeps, key: string): Promise<Publish
   if (!found) { return undefined; }
   const { document, entry } = found;
   let version: PublishedVersion | undefined;
-  const findings = await lintBibliography(document.getText().slice(entry.start, entry.end), async (preprint) => {
+  const findings = await checkBibliography(document.getText().slice(entry.start, entry.end), async (preprint) => {
     version = await deps.publishedLookup(preprint);
     return version;
   });
