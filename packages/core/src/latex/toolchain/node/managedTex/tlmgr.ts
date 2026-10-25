@@ -3,7 +3,8 @@ import { join } from "node:path";
 
 import type { ILogger } from "../../../../ports/index.js";
 
-import { runTexTool, TEX_MODULE, type TexToolOutcome } from "./runTexTool.js";
+import type { RunOutcome } from "../../../build/node/index.js";
+import { runTexTool, TEX_MODULE } from "./runTexTool.js";
 
 export class TlmgrFailed extends Error {
   constructor(readonly args: string[], readonly code: number | null, readonly output: string) {
@@ -31,12 +32,12 @@ const STALE_SELF = /tlmgr itself needs to be updated/;
 
 export function createTlmgr(binDir: string, logger: ILogger): Tlmgr {
   const executable = join(binDir, process.platform === "win32" ? "tlmgr.bat" : "tlmgr");
-  const runOnce = async (args: string[], onProgress?: (fraction: number) => void): Promise<TexToolOutcome> => {
+  const runOnce = async (args: string[], onProgress?: (fraction: number) => void): Promise<RunOutcome> => {
     const outcome = await runTexTool({ executable, args, cwd: binDir, logger, onProgress });
     if (outcome.code !== 0) { throw new TlmgrFailed(args, outcome.code, outcome.output); }
     return outcome;
   };
-  const run = async (args: string[], onProgress?: (fraction: number) => void): Promise<TexToolOutcome> => {
+  const run = async (args: string[], onProgress?: (fraction: number) => void): Promise<RunOutcome> => {
     try {
       return await runOnce(args, onProgress);
     } catch (error) {

@@ -5,7 +5,7 @@ export type { ToolLockOptions } from "./toolsDirLock.js";
 export { findManagedTex, resolveManagedTexDir, readTexLiveYear } from "./texLayout.js";
 export type { ManagedTex, ManagedTexKind } from "./texLayout.js";
 export { deriveProgressFraction, runTexTool, TEX_MODULE } from "./runTexTool.js";
-export type { TexToolOutcome, TexToolRun } from "./runTexTool.js";
+export type { TexToolRun } from "./runTexTool.js";
 export { createTexLiveProfile } from "./createTexLiveProfile.js";
 export { createTlmgr, isRollover, TlmgrFailed } from "./tlmgr.js";
 export type { Tlmgr } from "./tlmgr.js";
