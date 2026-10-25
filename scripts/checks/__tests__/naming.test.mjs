@@ -199,14 +199,14 @@ test('readingStatus lives under library/readingStatus; its feature words are spe
   assert.ok(!realPath('templates/dom/publishDone.ts').includes('feature-home'));
 });
 
-test('external: the real vocabulary exempts activate and deactivate in the VS Code entry and lists fetch for the Worker', () => {
+test('external: the real vocabulary exempts activate and deactivate in the VS Code entry and needs no entry for the Worker fetch', () => {
   const at = (name, file) => checkExportName(real, name, 'function', file);
   for (const name of ['activate', 'deactivate']) {
     assert.deepEqual(at(name, 'packages/vscode/src/extension.ts'), [], name);
     assert.deepEqual(rules(at(name, 'packages/vscode/src/other.ts')), ['export-verb'], name);
   }
   assert.deepEqual(at('fetch', 'packages/core/src/relay/worker/index.ts'), []);
-  assert.ok(real.external.some((item) => item.name === 'fetch'));
+  assert.ok(!real.external.some((item) => item.name === 'fetch'), 'fetch is a vocabulary verb; an entry would be a no-op');
 });
 
 test('the real vocabulary reads OpenAlex names as one tool word', () => {
