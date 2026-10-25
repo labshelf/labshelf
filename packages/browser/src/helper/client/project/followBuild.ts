@@ -1,5 +1,5 @@
 // Follows one compile request to its result: progress, the build outcome and the changed pages cut from the payload.
-import type { HelperCompileResult, HelperProgressListener, ToPageMessage } from "@labshelf/core/helper";
+import type { HelperCompileResult, OnHelperProgress, ToPageMessage } from "@labshelf/core/helper";
 import type { FrameStep } from "../connection";
 import { deriveProgress } from "./helperProgress";
 
@@ -15,7 +15,7 @@ function pagesOf(pages: Pages, payload: Uint8Array): HelperCompileResult["change
   });
 }
 
-export function createCompileStep(onProgress: HelperProgressListener): FrameStep<HelperCompileResult> {
+export function createCompileStep(onProgress: OnHelperProgress): FrameStep<HelperCompileResult> {
   let built: Built | undefined;
   return (message, payload) => {
     if (message.type === "progress") { onProgress(deriveProgress(message)); return undefined; }

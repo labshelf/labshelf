@@ -1,7 +1,7 @@
 // Sends at most one message per key and interval, keeping only the latest one that arrives in between.
 import type { SessionScheduler } from "../../peer/index.js";
 
-export class LatestWinsThrottle<K> {
+export class Throttle<K> {
   private lastAt = new Map<K, number>();
   private waiting = new Map<K, { bytes: Uint8Array; cancel: () => void }>();
 

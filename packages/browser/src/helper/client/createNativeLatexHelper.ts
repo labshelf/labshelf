@@ -1,6 +1,6 @@
 // Sends requests through an authenticated helper session.
 import {
-  PROTOCOL_VERSION, type HelperCompileRequest, type HelperChange, type HelperProgressListener,
+  PROTOCOL_VERSION, type HelperCompileRequest, type HelperChange, type OnHelperProgress,
   type ILatexHelper, type TemplatePublishEvent, type TemplatePublishRequest,
 } from "@labshelf/core/helper";
 import { formatError, type ILogger } from "@labshelf/core";
@@ -63,14 +63,14 @@ class NativeLatexHelper implements ILatexHelper {
     });
   }
 
-  compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
+  compile(request: HelperCompileRequest, onProgress: OnHelperProgress) {
     return this.logged("compile", { projectId: request.projectId }, async () =>
       (await this.session.readySocket()).request(compileBody(request), createCompileStep(onProgress)));
   }
 
   async cancel(projectId: string): Promise<void> { (await this.session.readySocket()).post({ type: "cancel", projectId }); }
 
-  private async install(request: RequestBody, onProgress: HelperProgressListener): Promise<void> {
+  private async install(request: RequestBody, onProgress: OnHelperProgress): Promise<void> {
     const ready = await (await this.session.readySocket()).request(request, (m) => {
       if (m.type === "progress") onProgress(deriveProgress(m));
       return m.type === "ready" ? { done: m } : undefined;
@@ -78,11 +78,11 @@ class NativeLatexHelper implements ILatexHelper {
     this.session.status = statusFromReady(ready, PROTOCOL_VERSION);
   }
 
-  installTex(kind: "tinytex" | "texlive", onProgress: HelperProgressListener): Promise<void> {
+  installTex(kind: "tinytex" | "texlive", onProgress: OnHelperProgress): Promise<void> {
     return this.logged("installTex", { kind }, () => this.install({ type: "installTex", kind }, onProgress));
   }
 
-  installAllPackages(onProgress: HelperProgressListener): Promise<void> {
+  installAllPackages(onProgress: OnHelperProgress): Promise<void> {
     return this.logged("installAllPackages", {}, () => this.install({ type: "installAllPackages" }, onProgress));
   }
 

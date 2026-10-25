@@ -1,13 +1,13 @@
 /** Reads typed fields from an untrusted message body, throwing a FieldError that names the refused field. */
 
 import { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
-import { MAX_PROJECT_FILES, type HelperRejectionCode } from "./helperMessages.js";
+import { MAX_PROJECT_FILES, type HelperRejectionKind } from "./helperMessages.js";
 
 export type Body = Record<string, unknown>;
 
 /** Thrown only inside the parser, which turns it into a HelperRejection. */
 export class FieldError extends Error {
-  constructor(readonly code: HelperRejectionCode, message: string) {
+  constructor(readonly code: HelperRejectionKind, message: string) {
     super(message);
   }
 }

@@ -5,7 +5,7 @@ import {
 } from "../../../relay/index.js";
 import { CHANNEL_KIND, systemScheduler, type SessionScheduler } from "../../peer/index.js";
 import type { PeerId, PeerTransport } from "../peerTransport.js";
-import { LatestWinsThrottle } from "./throttle.js";
+import { Throttle } from "./Throttle.js";
 import { RelayRequestError } from "./relayRequestError.js";
 import { fetchTicket } from "./relayRequests.js";
 import { createGlobalRelayConnection, extractMessageBytes, deriveRelayConnectionUrl, type RelayConnectionPort, type RelayConnectionPortFactory } from "./relayConnection.js";
@@ -63,7 +63,7 @@ class RelayConnection implements RelayTransport {
   private readonly connection = new Listeners<[boolean]>();
   private readonly ids = new Set<number>();
   private readonly scheduler: SessionScheduler;
-  private readonly awareness: LatestWinsThrottle<number>;
+  private readonly awareness: Throttle<number>;
   private socket: RelayConnectionPort | undefined;
   private open = false;
   private closed = false;
@@ -72,7 +72,7 @@ class RelayConnection implements RelayTransport {
 
   constructor(private options: RelayTransportOptions) {
     this.scheduler = options.scheduler ?? systemScheduler;
-    this.awareness = new LatestWinsThrottle(RELAY_AWARENESS_INTERVAL_MS, this.scheduler, (to, frame) => this.write({ type: "forward", to, frame }));
+    this.awareness = new Throttle(RELAY_AWARENESS_INTERVAL_MS, this.scheduler, (to, frame) => this.write({ type: "forward", to, frame }));
     void this.connect();
   }
 

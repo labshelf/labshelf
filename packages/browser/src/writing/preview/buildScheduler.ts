@@ -1,6 +1,6 @@
 // Schedules the project preview through the browser helper connection.
 import type { AutoCompileMode, ILogger } from "@labshelf/core";
-import type { CompileMode, HelperCompileRequest, HelperCompileResult, ILatexHelper } from "@labshelf/core/helper";
+import type { BuildKind, HelperCompileRequest, HelperCompileResult, ILatexHelper } from "@labshelf/core/helper";
 
 import { createBuildRunner } from "./buildRunner";
 
@@ -20,7 +20,7 @@ export interface BuildSchedulerOptions {
   /** When edits and saves start builds; `build` always does. */
   mode: AutoCompileMode;
   /** An edit supersedes an in-flight result; a save waits for the active preview. */
-  onResult(result: HelperCompileResult, mode: CompileMode): void;
+  onResult(result: HelperCompileResult, mode: BuildKind): void;
   onStart(): void;
   logger: ILogger;
   timers?: BuildTimers;

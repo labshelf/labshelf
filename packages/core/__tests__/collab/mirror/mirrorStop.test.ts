@@ -1,7 +1,7 @@
 /** Pins that a mirror which loses its folder lease or its folder stops touching disk and keeps every share edit. */
 import { readFileText, readShareIndexDocFiles, setFileText } from "../../../src/collab/model/index";
 import { MirrorProjectDirUnavailable, type MirrorStopReason } from "../../../src/collab/mirror/index";
-import { MirrorOwnershipLost } from "../../../src/collab/mirror/mirrorLostError";
+import { MirrorLostError } from "../../../src/collab/mirror/MirrorLostError";
 import { memoryFiles, nodeFiles } from "./mirrorFiles";
 import { openMirror, type MirrorFixture } from "./mirrorFixture";
 
@@ -17,7 +17,7 @@ describe.each([nodeFiles, memoryFiles()])("a stopping mirror over a $name", (fil
   it("stops writing once the lease is lost mid-queue, and keeps peer edits in the share", async () => {
     const ownership = {
       assertOwned: async () => {
-        if (fixture?.diskChanges.length > 0) { throw new MirrorOwnershipLost(fixture.folder, { app: "browser", renewedAt: 0 }); }
+        if (fixture?.diskChanges.length > 0) { throw new MirrorLostError(fixture.folder, { app: "browser", renewedAt: 0 }); }
       },
     };
     const onStopped = jest.fn<void, [MirrorStopReason]>();
@@ -32,7 +32,7 @@ describe.each([nodeFiles, memoryFiles()])("a stopping mirror over a $name", (fil
 
     expect(fixture.diskChanges).toHaveLength(1);
     expect(onStopped).toHaveBeenCalledTimes(1);
-    expect(onStopped.mock.calls[0]![0]).toBeInstanceOf(MirrorOwnershipLost);
+    expect(onStopped.mock.calls[0]![0]).toBeInstanceOf(MirrorLostError);
     expect([...readShareIndexDocFiles(fixture.session.index).keys()].sort()).toEqual(["a.typ", "b.typ", "c.typ", "d.typ"]);
     expect(readFileText(fixture.session.openDoc("a.typ")).toString()).toBe("edited");
     expect(fixture.logger.log.mock.calls.some(([level, , message]) => level === "WARN" && /stopped mirroring/i.test(message))).toBe(true);

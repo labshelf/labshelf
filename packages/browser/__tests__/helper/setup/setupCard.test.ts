@@ -4,7 +4,7 @@
  */
 // The LaTeX setup card shows the helper's state with its one next action, polls while the helper is missing, and recovers from errors.
 import type { TexInstallKind } from "@labshelf/core";
-import type { HelperHost, HelperProgress, HelperProgressListener, HelperState, ILatexHelper, TexToolchain } from "@labshelf/core/helper";
+import type { HelperHost, HelperProgress, OnHelperProgress, HelperState, ILatexHelper, TexToolchain } from "@labshelf/core/helper";
 import { mountHelperSetupCard, type HelperSetupDeps } from "../../../src/helper/setup";
 
 const ready = (tex: TexToolchain, host: HelperHost = "helper"): HelperState => ({ state: "ready", helperVersion: "1.2.0", tex, host });
@@ -12,8 +12,8 @@ const ASSETS = "https://github.com/labshelf/labshelf/releases/latest/download/";
 
 interface FakeHelper extends ILatexHelper {
   connect: jest.Mock<Promise<HelperState>, []>;
-  installTex: jest.Mock<Promise<void>, [TexInstallKind, HelperProgressListener]>;
-  installAllPackages: jest.Mock<Promise<void>, [HelperProgressListener]>;
+  installTex: jest.Mock<Promise<void>, [TexInstallKind, OnHelperProgress]>;
+  installAllPackages: jest.Mock<Promise<void>, [OnHelperProgress]>;
 }
 
 function fakeHelper(first: HelperState | Error): FakeHelper {
@@ -181,7 +181,7 @@ describe("setup card states", () => {
 
   it("installing: shows a progressbar with the message, then ready", async () => {
     const helper = fakeHelper(ready({ source: "none", complete: false }));
-    let report: HelperProgressListener = () => undefined;
+    let report: OnHelperProgress = () => undefined;
     let finish: () => void = () => undefined;
     helper.installTex.mockImplementation((_kind, onProgress) => {
       report = onProgress;

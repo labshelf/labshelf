@@ -22,7 +22,7 @@ source: Explore scout
 ## Handlers
 - handlers/helperHandlers.ts: HelperHandler(message, send, payload); map keyed by message type. handlers.ts runs in arrival order; UNQUEUED = cancel, templateThumbnail.
 - New `runCell`: add to helperMessages.ts + readToHelper.ts, bump version, factory spread into runHelperHost.ts:51-60 (model: tex/texInstallHandlers.ts), decide queue/UNQUEUED, client in browser/src/helper/client/createNativeLatexHelper.ts + core latexHelper.ts.
-- Streaming: `send` may fire many times per id; ProgressPhase fixed list (helperMessages.ts:28), no cell phase.
+- Streaming: `send` may fire many times per id; HelperPhase fixed list (helperMessages.ts:28), no cell phase.
 - Cancel: only per-project build (build/buildHandlers.ts:97-122), keyed by projectId, not request id.
 
 ## Installer / browser

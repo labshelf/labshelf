@@ -4,7 +4,7 @@ import { BridgeError } from "../bridgeError.js";
 import { splitFileChunks } from "../fileChunks.js";
 import type { BridgeRequest, BridgeResults, HostMessage } from "../protocol.js";
 import { BRIDGE_PROTOCOL } from "../protocol.js";
-import { assertSameProtocol, parseBridgeRequest, requestId } from "../requestValidation.js";
+import { assertSameProtocol, parseBridgeRequest, parseRequestId } from "../requestValidation.js";
 import type { LibraryFileOperations } from "./fileOperations.js";
 import { base64ToBytes, joinBytes } from "../../encoding/index.js";
 import { formatError } from "../../logging/index.js";
@@ -122,7 +122,7 @@ export class BridgeHostSession {
       if (result !== undefined) await this.deps.send({ id: request.id, ok: true, result });
     } catch (error) {
       const failure = toBridgeError(error);
-      const id = requestId(message);
+      const id = parseRequestId(message);
       if (id !== null) this.staged.drop(id);
       await this.deps.logger.log("WARN", MODULE, failure.message, { code: failure.code, request: describe(message) });
       try {

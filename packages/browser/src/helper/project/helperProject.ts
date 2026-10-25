@@ -1,14 +1,14 @@
 // Defines the browser project connection exposed to source editors and preview tabs.
 import type { AutoCompileMode, ILogger, LatexEngine, ProjectEntry } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult, HelperState, ILatexHelper } from "@labshelf/core/helper";
+import type { BuildKind, HelperCompileResult, HelperState, ILatexHelper } from "@labshelf/core/helper";
 import type { BuildTimers } from "../../writing/preview";
 import type { ProblemStore } from "./problemStore";
 
 export type BuildEvent =
   | { type: "building" }
   /** The changed PDF after a succeeded build; sent before that build's `result`. */
-  | { type: "pdf"; bytes: Uint8Array; mode: CompileMode }
-  | { type: "result"; result: HelperCompileResult; mode: CompileMode };
+  | { type: "pdf"; bytes: Uint8Array; mode: BuildKind }
+  | { type: "result"; result: HelperCompileResult; mode: BuildKind };
 
 /** What a source editor needs from the helper, available only while its project is open there. */
 export type EditorHelperPort = Pick<ILatexHelper, "status"> & {

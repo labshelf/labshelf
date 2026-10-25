@@ -4,15 +4,15 @@ import type { ILogger } from "../../ports/index.js";
 import { openFrame, sealFrame, type DerivedShareKey } from "../shareKey/index.js";
 import type { PeerId, PeerTransport } from "../transport/index.js";
 import { decodeEnvelope, DOC_ID_BYTES, encodeEnvelope, MESSAGE_KIND, type Envelope } from "./envelope.js";
-import { docIdCache, openDocFrame, sealDocFrame } from "./docMessage.js";
+import { createDocIdCache, openDocFrame, sealDocFrame } from "./docMessage.js";
 import { createEpochSource, decodeAck, encodeAck, ReliableConnection } from "./reliableChannel.js";
 import type { SessionScheduler } from "./scheduler.js";
-import type { Channel, ChannelSpec, SecureMesh, SessionPhase } from "./channel.js";
+import type { Channel, ChannelSpec, PeerMesh, SessionPhase } from "./channel.js";
 
 const LOG_MODULE = "collab.sync";
 const ACK_DOC_ID = new Uint8Array(DOC_ID_BYTES);
 
-export interface SecureMeshOptions {
+export interface PeerMeshOptions {
   shareId: string;
   /** Seals acks. */
   key: DerivedShareKey;
@@ -23,11 +23,11 @@ export interface SecureMeshOptions {
   ackUnknownKinds?: boolean;
 }
 
-export function createSecureMesh(options: SecureMeshOptions): SecureMesh {
+export function createSecureMesh(options: PeerMeshOptions): PeerMesh {
   return new MeshSession(options);
 }
 
-class MeshSession implements SecureMesh {
+class MeshSession implements PeerMesh {
   private state: SessionPhase = "open";
   private links = new Map<PeerId, ReliableConnection>();
   private channels = new Map<number, ChannelSpec>();
@@ -38,9 +38,9 @@ class MeshSession implements SecureMesh {
   private docIdOf: (docKey: string) => Promise<Uint8Array>;
   private unsubscribe: (() => void)[];
 
-  constructor(private options: SecureMeshOptions) {
+  constructor(private options: PeerMeshOptions) {
     const { transport, logger } = options;
-    this.docIdOf = docIdCache(options.shareId);
+    this.docIdOf = createDocIdCache(options.shareId);
     this.unsubscribe = [
       transport.onPeerJoin((peer) => this.join(peer)),
       transport.onPeerLeave((peer) => this.leave(peer)),

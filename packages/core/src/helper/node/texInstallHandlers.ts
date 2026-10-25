@@ -1,7 +1,7 @@
 // Creates the `installTex` and `installAllPackages` handlers that stream install progress and end with `ready` or `error`.
 // CONTRACT: documents/contracts/helper.md#messages
 import type { ILogger } from "../../ports/index.js";
-import { PROTOCOL_VERSION, type HelperHost, type ProgressPhase, type TexToolchain } from "../index.js";
+import { PROTOCOL_VERSION, type HelperHost, type HelperPhase, type TexToolchain } from "../index.js";
 
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
 import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../latex/toolchain/node/managedTex/index.js";
@@ -15,7 +15,7 @@ export interface TexInstallHandlerOptions {
   logger: ILogger;
 }
 
-type InstallPhase = Extract<ProgressPhase, "installing-tex" | "installing-package">;
+type InstallPhase = Extract<HelperPhase, "installing-tex" | "installing-package">;
 
 const MESSAGES: Record<InstallPhase, string> = {
   "installing-tex": "Installing TeX",

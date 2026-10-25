@@ -6,7 +6,7 @@ import type { WatchReports } from "./relayWatch.js";
 
 const LOG_MODULE = "collab.relays";
 
-export class GroupFollow {
+export class RelayFollow {
   /** Relays peers were seen on that this client retried once for them; cleared when no peer reports the relay any more. */
   private readonly followed = new Set<string>();
   private connected: string | undefined;

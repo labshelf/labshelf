@@ -19,14 +19,14 @@ import {
   writeSettingsChanges,
   writeSettingsMap,
 } from "../model/index.js";
-import type { MirrorOwnershipLost } from "./mirrorLostError.js";
+import type { MirrorLostError } from "./MirrorLostError.js";
 import type { ShareBlobExchange, ShareSession } from "../doc/index.js";
 import type { CollabStore } from "../deviceState/index.js";
 import type { MirrorProjectDirUnavailable, MirrorFileSystem, MirrorFileRead } from "./fileSystem/index.js";
 import { createMirrorLifecycle, withGatedFileSystem, withGatedWriteRecords } from "./mirrorLifecycle.js";
 import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext, deriveMirrorHash, writeMirrored } from "./mirrorContext.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
-import { reconcileShareBlob } from "./blobMirror.js";
+import { reconcileShareBlob } from "./reconcileShareBlob.js";
 import { reconcileText } from "./textMirror.js";
 import { reconcileUntracked } from "./untrackedFile.js";
 
@@ -88,7 +88,7 @@ async function writeFromShare(context: MirrorContext, yaml: string, diskHash: st
 const DEFAULT_STABLE_MS = 300;
 
 /** Why a mirror stopped by itself: another mirror owns the folder, or the folder is gone. */
-export type MirrorStopReason = MirrorOwnershipLost | MirrorProjectDirUnavailable;
+export type MirrorStopReason = MirrorLostError | MirrorProjectDirUnavailable;
 
 export interface ProjectMirrorOptions {
   /** Names the project in logs. */
@@ -106,7 +106,7 @@ export interface ProjectMirrorOptions {
   isEditorOwned?: (path: string) => boolean;
   /** How long a changed file must stay the same before it is read. */
   stableMs?: number;
-  /** Checked before the first scan and before every disk write or delete; throws MirrorOwnershipLost once another mirror owns the folder. */
+  /** Checked before the first scan and before every disk write or delete; throws MirrorLostError once another mirror owns the folder. */
   ownership?: { assertOwned(): Promise<void> };
   /** Called once when the mirror stops by itself; the share docs keep every edit, only the disk stops following them. */
   onStopped?(reason: MirrorStopReason): void;

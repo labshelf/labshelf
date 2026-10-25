@@ -9,7 +9,7 @@ import {
   type ToneLineTone,
 } from "@labshelf/core/dom";
 import type {
-  HelperProgressListener,
+  OnHelperProgress,
   ILatexHelper,
   HelperProgress,
   HelperHost,
@@ -234,7 +234,7 @@ async function poll(card: Card, helper: ILatexHelper): Promise<void> {
   } finally { card.polled = false; }
 }
 
-async function runInstall(card: Card, helper: ILatexHelper, logger: ILogger, action: string, label: string, run: (onProgress: HelperProgressListener) => Promise<void>): Promise<void> {
+async function runInstall(card: Card, helper: ILatexHelper, logger: ILogger, action: string, label: string, run: (onProgress: OnHelperProgress) => Promise<void>): Promise<void> {
   const progress = createSetupProgress(label);
   show(card, helper, { kind: "installing", label }, progress.element);
   try {
@@ -247,7 +247,7 @@ async function runInstall(card: Card, helper: ILatexHelper, logger: ILogger, act
 }
 
 function createActions(card: () => Card, helper: ILatexHelper, deps: HelperSetupDeps): SetupActions {
-  const install = (action: string, label: string, run: (onProgress: HelperProgressListener) => Promise<void>): Promise<void> =>
+  const install = (action: string, label: string, run: (onProgress: OnHelperProgress) => Promise<void>): Promise<void> =>
     runInstall(card(), helper, deps.logger, action, label, run);
   return {
     download: () => deps.openUrl(createHelperDownloadUrl(card().os)),

@@ -3,7 +3,7 @@
 
 import {
   PROTOCOL_VERSION,
-  type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionCode,
+  type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
 import { FieldError, isBody } from "./messageFields.js";
@@ -13,7 +13,7 @@ import { formatError } from "../logging/index.js";
 
 const MAX_ID_LENGTH = 64;
 
-function reject(code: HelperRejectionCode, reason: string, id?: string): HelperRejection {
+function reject(code: HelperRejectionKind, reason: string, id?: string): HelperRejection {
   return id === undefined ? { ok: false, code, reason } : { ok: false, code, reason, id };
 }
 

@@ -4,7 +4,7 @@ import { bytesToHex } from "../../encoding/index.js";
 import type { RelayStoreAnswer } from "../transport/index.js";
 import { INDEX_DOC_KEY, type ShareSession } from "../doc/index.js";
 import {
-  docIdCache,
+  createDocIdCache,
   MESSAGE_KIND,
   systemScheduler,
   decodeEnvelope,
@@ -63,7 +63,7 @@ class RelayDocSync implements RelaySync {
   private queue: Promise<void> = Promise.resolve();
 
   constructor(private session: ShareSession, private options: RelaySyncOptions) {
-    this.frames = { shareId: options.shareId, key: options.contentKey, docIdOf: docIdCache(options.shareId) };
+    this.frames = { shareId: options.shareId, key: options.contentKey, docIdOf: createDocIdCache(options.shareId) };
     const { relay, logger, shareId } = options;
     this.puts = new RelayDocPuts({ relay, logger, shareId, scheduler: options.scheduler ?? systemScheduler, seal: (lane, kind, payload) => this.seal(lane, kind, payload) });
     this.cursors = options.cursors ?? createMemoryCursorStore();

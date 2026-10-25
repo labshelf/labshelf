@@ -5,14 +5,14 @@ export {
   PROGRESS_PHASES, PROTOCOL_VERSION, TEX_SOURCES,
 } from "./helperMessages.js";
 export type {
-  ChangedPage, CompileMode, HelperBuildState, HelperDirection, HelperHost, HelperParseResult, HelperProgress,
-  HelperRejection, HelperRejectionCode, ProgressPhase, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
+  ChangedPage, BuildKind, HelperBuildState, HelperDirection, HelperHost, HelperParseResult, HelperProgress,
+  HelperRejection, HelperRejectionKind, HelperPhase, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
 } from "./helperMessages.js";
 export { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
 export type { MessageFor } from "./parseHelperMessage.js";
 export type {
-  HelperCompileRequest, HelperCompileResult, HelperChange, HelperPageBytes, HelperProgressListener,
+  HelperCompileRequest, HelperCompileResult, HelperChange, HelperPageBytes, OnHelperProgress,
   HelperState, ILatexHelper,
 } from "./latexHelper.js";
 export { decodeConnectionMessage, encodeConnectionMessage } from "./connectionFrame.js";
