@@ -1,5 +1,5 @@
 import type { CitationMapView } from "@labshelf/core";
-import { createCitationMapGraph, missingNodeId } from "../../../src/libraryUi/citationMap";
+import { createCitationMapGraph, createMissingGraphNodeId } from "../../../src/libraryUi/citationMap";
 
 const map: CitationMapView = {
   papers: [{ id: "a", title: "A" }, { id: "b", title: "B" }],
@@ -13,12 +13,12 @@ const map: CitationMapView = {
 describe("citationGraph", () => {
   it("has a node per named paper and per missing work, and only edges between them", () => {
     const g = createCitationMapGraph(map);
-    expect(g.nodes.map((n) => [n.id, n.kind])).toEqual([["a", "paper"], ["b", "paper"], [missingNodeId("W1"), "missing"], [missingNodeId("W2"), "missing"]]);
+    expect(g.nodes.map((n) => [n.id, n.kind])).toEqual([["a", "paper"], ["b", "paper"], [createMissingGraphNodeId("W1"), "missing"], [createMissingGraphNodeId("W2"), "missing"]]);
     expect(g.edges).toEqual([
       { from: "a", to: "b" },
-      { from: "a", to: missingNodeId("W1") },
-      { from: "b", to: missingNodeId("W1") },
-      { from: "b", to: missingNodeId("W2") },
+      { from: "a", to: createMissingGraphNodeId("W1") },
+      { from: "b", to: createMissingGraphNodeId("W1") },
+      { from: "b", to: createMissingGraphNodeId("W2") },
     ]);
   });
 

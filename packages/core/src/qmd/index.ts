@@ -9,7 +9,7 @@ export {
   serializeItemFile,
   type ItemFile,
   type ItemSegment,
-  type LooseSegment,
+  type LooseText,
   type CreateItemInput,
   type Segment,
 } from "./items/index.js";

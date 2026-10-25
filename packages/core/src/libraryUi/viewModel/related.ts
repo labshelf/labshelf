@@ -6,7 +6,7 @@ import { normalizeAuthor } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { SimilarPaper } from "../protocol/index.js";
 
-export interface RelatedGroups {
+export interface RelatedPapers {
   similar: Array<{ paper: PaperRecord; score: number }>;
   authors: PaperRecord[];
   /** Papers sharing tags or keywords, most shared first, with the shared terms. */
@@ -19,7 +19,7 @@ export interface RelatedGroups {
 const newestFirst = (a: PaperRecord, b: PaperRecord): number => (b.year ?? 0) - (a.year ?? 0);
 const venueOf = (p: PaperRecord): string => (p.journal ?? p.publisher ?? "").toLowerCase();
 
-function sharedTerms(p: PaperRecord, others: PaperRecord[]): RelatedGroups["shared"] {
+function sharedTerms(p: PaperRecord, others: PaperRecord[]): RelatedPapers["shared"] {
   const mine = new Set([...(p.tags ?? []), ...(p.keywords ?? [])].map((t) => t.toLowerCase()));
   return others
     .map((q) => {
@@ -36,7 +36,7 @@ function sharedTerms(p: PaperRecord, others: PaperRecord[]): RelatedGroups["shar
     .sort((a, b) => b.common.length - a.common.length);
 }
 
-export function deriveRelatedGroups(p: PaperRecord, library: readonly PaperRecord[], similar: readonly SimilarPaper[] = []): RelatedGroups {
+export function deriveRelatedGroups(p: PaperRecord, library: readonly PaperRecord[], similar: readonly SimilarPaper[] = []): RelatedPapers {
   const others = library.filter((q) => q.id !== p.id);
   const byId = new Map(others.map((q) => [q.id, q]));
   const myAuthors = new Set((p.authors ?? []).filter((a) => a.trim()).map(normalizeAuthor));

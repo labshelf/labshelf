@@ -1,7 +1,7 @@
 // Runs the capture, save and undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
 // draft, attaching a PDF to an already-saved copy, and undoing a save.
-import { findElement, askNoPdf, type NoPdfChoice } from "@labshelf/core/dom";
-import { formatError, formatPdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
+import { findElement, askNoPdf, type MissingPdfChoice } from "@labshelf/core/dom";
+import { formatError, formatPdfSourceLabel, type MissingPdfAction, type PdfMiss } from "@labshelf/core";
 
 import {
   sendRuntime, type AttachPdfReply, type DraftView, type LibraryReference, type PdfOfferView, type FindPdfReply, type WriteOutcome,
@@ -79,7 +79,7 @@ export async function detectCapture(offerReady: Promise<PdfOfferView | null>): P
 
 // The shared "No PDF found" dialog. Returns the chosen action, or undefined on
 // Cancel (nothing is written). The modal-open class guards the popup height.
-async function confirmNoPdf(title: string, miss: PdfMiss): Promise<NoPdfChoice | undefined> {
+async function confirmNoPdf(title: string, miss: PdfMiss): Promise<MissingPdfChoice | undefined> {
   document.body.classList.add("modal-open");
   try {
     return await askNoPdf(title, miss);
@@ -101,7 +101,7 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
   return writeCapture(choice);
 }
 
-export async function writeCapture(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {
+export async function writeCapture(ifNoPdf: MissingPdfAction = "ask", retryPdf = false): Promise<void> {
   const from = findElement("popup").dataset["state"];
 
   // Case A: the search already ended with no PDF before Save was pressed — ask

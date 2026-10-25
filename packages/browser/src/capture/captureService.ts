@@ -9,7 +9,7 @@ import { fetchInTab, fetchViaHelperTab } from "./tab";
 import { readTabPage } from "./tabProbe";
 import { readSettings, updateSettings } from "../platform";
 import { listCachedPaperRecords, type LibraryMutations } from "../storage";
-import type { IfNoPdf, ILogger, PdfMiss } from "@labshelf/core";
+import type { MissingPdfAction, ILogger, PdfMiss } from "@labshelf/core";
 import { PAPERS_DIR, isLibraryPath } from "@labshelf/core";
 
 const MODULE = "capture";
@@ -183,7 +183,7 @@ export async function writeOrAsk(
   mutations: LibraryMutations,
   draft: CaptureDraft,
   opts: SaveOptions = {},
-  ifNoPdf: IfNoPdf = "ask",
+  ifNoPdf: MissingPdfAction = "ask",
 ): Promise<WriteDecision> {
   if (ifNoPdf === "ask" && draft.isPaper && !(await findPdf(log, draft))) {
     void log.log("INFO", MODULE, "no pdf: asking before saving", { page: draft.pageUrl, tried: draft.pdfAttempts.length });

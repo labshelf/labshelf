@@ -9,11 +9,11 @@ import { runTreeRow, onOpenProjectClick, onOpenProjectMenu } from "./sidebarOpen
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
 import {
   ALL_PROJECT_OFFERS,
-  projectFolderKey,
+  createProjectFolderKey,
   type ProjectOffers,
   type SidebarProjectActions,
 } from "./sidebarProjects.js";
-import { rowKey } from "./sidebarRows.js";
+import { readRowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
 import {
   NAV_ROWS,
@@ -49,13 +49,13 @@ function onSidebarKey(e: KeyboardEvent, t: SidebarState, activate: (row: HTMLEle
   if (e.target instanceof Element && e.target.closest("button, input, select, textarea, a, [contenteditable=true]")) return;
   const rows = Array.from(t.el.querySelectorAll<HTMLElement>(NAV_ROWS));
   if (rows.length === 0) return;
-  let idx = t.focused ? rows.findIndex((r) => rowKey(r) === t.focused) : -1;
+  let idx = t.focused ? rows.findIndex((r) => readRowKey(r) === t.focused) : -1;
   if (idx === -1) idx = Math.max(0, rows.findIndex((r) => r.classList.contains("current") || r.getAttribute("aria-selected") === "true"));
   const current = rows[idx]!;
   const path = current.dataset["path"];
   const open = current.getAttribute("aria-expanded") === "true";
   const section = (current.dataset["section"] ?? current.dataset["group"]) as SectionId | GroupId | undefined;
-  const focus = (i: number): void => { t.focused = rowKey(rows[Math.min(rows.length - 1, Math.max(0, i))]!); };
+  const focus = (i: number): void => { t.focused = readRowKey(rows[Math.min(rows.length - 1, Math.max(0, i))]!); };
   if (e.key === "ArrowDown") focus(idx + 1);
   else if (e.key === "ArrowUp") focus(idx - 1);
   else if (e.key === "Home") focus(0);
@@ -167,7 +167,7 @@ function activate(t: SidebarState, r: HTMLElement): void {
   const { allPapers, allProjects, id, project, section, group, tag, templates, projectFolder } = r.dataset;
   if (runSpaceRow(t, r, () => render(t))) return;
   if (runTreeRow(t, r, () => render(t))) return;
-  if (projectFolder !== undefined) { const key = projectFolderKey(projectFolder); setExpanded(t, key, !t.expanded.has(key)); return; }
+  if (projectFolder !== undefined) { const key = createProjectFolderKey(projectFolder); setExpanded(t, key, !t.expanded.has(key)); return; }
   if (templates !== undefined) { t.projects?.browseTemplates(); return; }
   if (allProjects !== undefined) { t.projects?.allProjects(); return; }
   const path = allPapers === undefined ? r.dataset["path"] : PAPERS_DIR;
@@ -199,11 +199,11 @@ function onClick(e: MouseEvent, t: SidebarState): void {
   if (action === "add") { t.projects?.addExisting(); return; }
   if (action === "project-folder") { t.projects?.newFolder(""); return; }
   if (action === "project-refresh") { t.projects?.refresh(); return; }
-  if (action === "project-collapse") { for (const key of [...t.expanded]) if (key.startsWith(projectFolderKey(""))) t.expanded.delete(key); t.saveExpanded([...t.expanded]); render(t); return; }
+  if (action === "project-collapse") { for (const key of [...t.expanded]) if (key.startsWith(createProjectFolderKey(""))) t.expanded.delete(key); t.saveExpanded([...t.expanded]); render(t); return; }
   const r = rowAt(e);
   if (!r) return;
   const path = r.dataset["path"];
-  t.focused = rowKey(r);
+  t.focused = readRowKey(r);
   if (runSpaceRow(t, r, () => render(t), !!target.closest(".tree-twisty"))) return;
   if (r.dataset["treeKey"] !== undefined && runTreeRow(t, r, () => render(t), !!target.closest(".tree-twisty"))) return;
   if (path && target.closest(".tree-twisty") && r.getAttribute("aria-expanded") !== null) { setExpanded(t, path, !t.expanded.has(path)); return; }
@@ -223,7 +223,7 @@ function onContextMenu(e: MouseEvent, t: SidebarState): void {
   const path = r?.dataset["path"];
   if (!r || !path) return;
   e.preventDefault();
-  t.focused = rowKey(r);
+  t.focused = readRowKey(r);
   drawFocus(t);
   showFolderMenu({ x: e.clientX, y: e.clientY }, t.actions, t.sharing, path, () => activate(t, r));
 }

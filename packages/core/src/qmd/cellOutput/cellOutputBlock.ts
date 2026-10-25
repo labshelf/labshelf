@@ -4,7 +4,7 @@ import { readAttribute, formatDivOpener, isBalanced, extractLineContent, parseDi
 
 export const OUTPUT_CLASS = "labshelf-output";
 
-export interface OutputBlock {
+export interface CellOutputBlock {
   /** The label of the cell the result belongs to. */
   readonly cell: string;
   readonly source: string;
@@ -26,11 +26,11 @@ export interface CreateOutputInput {
 }
 
 /** Output blocks at the top level of `body`; a block without `cell` or `source` is text, not an output. */
-export function findOutputs(body: string): OutputBlock[] {
+export function findOutputs(body: string): CellOutputBlock[] {
   const lines = splitLines(body);
   const offsets = [0];
   for (const line of lines) { offsets.push(offsets.at(-1)! + line.length); }
-  const outputs: OutputBlock[] = [];
+  const outputs: CellOutputBlock[] = [];
   for (const { open, close } of findTopLevelDivs(lines)) {
     const attributes = parseDivOpener(extractLineContent(lines[open]!));
     if (!attributes?.classes.includes(OUTPUT_CLASS)) { continue; }

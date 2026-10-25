@@ -85,7 +85,7 @@ export interface AddSource {
  * for the user to sign in or pass the check (attaching the PDF once that page yields it), or saves it and drafts an
  * email asking the authors for a copy.
  */
-export type IfNoPdf = "ask" | "save" | "open" | "author";
+export type MissingPdfAction = "ask" | "save" | "open" | "author";
 
 /** The citation map as the UI draws it; `papers` names every library paper that a link or a missing work's `citedBy` mentions. */
 export interface CitationMapView {

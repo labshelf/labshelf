@@ -132,7 +132,7 @@ function paintAriaRows(list: HTMLElement, heads: HTMLElement, indexOf: ReadonlyM
   });
 }
 
-export interface WindowedListParts {
+export interface WindowedListElements {
   /** The scrolling treegrid. */
   list: HTMLElement;
   /** The sticky column heads, which cover the top of the viewport. */
@@ -178,11 +178,11 @@ interface State {
   painted: string;
 }
 
-const viewHeight = ({ list, heads }: WindowedListParts): number => list.clientHeight - heads.offsetHeight;
+const viewHeight = ({ list, heads }: WindowedListElements): number => list.clientHeight - heads.offsetHeight;
 const openRow = (st: State): number => (st.open.id === null ? -1 : (st.model.papers[st.model.indexOf.get(st.open.id) ?? -1]?.row ?? -1));
 
 /** The groups to render for the current scroll position, and the padding for the rows left out. */
-function sliceOf(parts: WindowedListParts, st: State): Slice {
+function sliceOf(parts: WindowedListElements, st: State): Slice {
   const height = viewHeight(parts);
   const all: Slice = { groups: st.model.groups, padTop: 0, padBottom: 0 };
   // Without layout (jsdom, a hidden pane) every row renders.
@@ -199,7 +199,7 @@ function sliceOf(parts: WindowedListParts, st: State): Slice {
 }
 
 /** Renders the slice when it differs from the painted one (or `force`), keeping keyboard focus with the cursor row. */
-function paintSlice(parts: WindowedListParts, st: State, force: boolean): void {
+function paintSlice(parts: WindowedListElements, st: State, force: boolean): void {
   const s = sliceOf(parts, st);
   const key = `${s.padTop}:${s.padBottom}:${s.groups.map((g) => `${g.key}/${g.papers.length}/${g.papers[0]?.id}`).join("|")}`;
   if (!force && key === st.painted) return;
@@ -217,7 +217,7 @@ function paintSlice(parts: WindowedListParts, st: State, force: boolean): void {
   paintAriaRows(parts.list, parts.heads, st.model.indexOf, st.open);
 }
 
-export function createWindowedList(parts: WindowedListParts): WindowedList {
+export function createWindowedList(parts: WindowedListElements): WindowedList {
   const { list } = parts;
   const st: State = { model: buildListModel([]), open: NO_EXTENT, rowH: 0, painted: "" };
   let frame = 0;

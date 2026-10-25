@@ -7,13 +7,13 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { BRIDGE_HOST_NAME } from "../../../src/bridge/index";
-import { BRIDGE_HOST_SPEC, installNativeHost, type HostLaunch, type NativeHostEnv } from "../../../src/nativeHost/node/index";
+import { BRIDGE_HOST_SPEC, installNativeHost, type HostEntry, type NativeHostEnv } from "../../../src/nativeHost/node/index";
 import { cleanupTempDirs, makeTempDir, pathExists } from "../../support/tempDirs";
 import { CHROME_ID, env, fakeRegistry, launch, logsOf, readJson } from "./nativeHostHarness";
 
 afterEach(cleanupTempDirs);
 
-const installBridge = (e: NativeHostEnv, l: HostLaunch) => installNativeHost(e, BRIDGE_HOST_SPEC, l);
+const installBridge = (e: NativeHostEnv, l: HostEntry) => installNativeHost(e, BRIDGE_HOST_SPEC, l);
 
 describe("installNativeHost on macOS", () => {
   it("writes a Chrome manifest with allowed_origins and an executable sh launcher", async () => {

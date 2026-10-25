@@ -7,5 +7,5 @@ export { uninstallNativeHost, type NativeHostUninstallResult } from "./uninstall
 export { runSystemRegistry } from "./runSystemRegistry.js";
 export { createSystemNativeHostEnv } from "./createSystemNativeHostEnv.js";
 export type {
-  BinaryLaunch, BrowserId, HostLaunch, NativeHostEnv, NativeHostWarning, RegistryRunner, ScriptLaunch,
+  BinaryEntry, BrowserId, HostEntry, NativeHostEnv, NativeHostWarning, RegistryRunner, ScriptEntry,
 } from "./nativeHostEnv.js";

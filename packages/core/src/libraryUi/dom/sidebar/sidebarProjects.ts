@@ -45,7 +45,7 @@ export interface ProjectOffers {
 export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting: true, newBlank: true, projectFolders: true, allProjects: true };
 
 /** Expansion keys of project folders share the sidebar's expanded set with library folder paths. */
-export const projectFolderKey = (path: string): string => `project-folder:${path}`;
+export const createProjectFolderKey = (path: string): string => `project-folder:${path}`;
 
 // The Explorer's own title actions, in its order: new file, new folder, refresh, collapse all.
 export const createProjectListActions = (offers: ProjectOffers, canJoin: boolean): string =>
@@ -78,7 +78,7 @@ export function renderProjectTreeNodes(projects: readonly SidebarProject[], expa
     const children = [...new Set(under.map((p) => p.folder!.slice(prefix ? prefix.length + 1 : 0).split("/")[0]!))].sort();
     for (const name of children) {
       const path = prefix ? `${prefix}/${name}` : name;
-      const open = expanded.has(projectFolderKey(path));
+      const open = expanded.has(createProjectFolderKey(path));
       const count = active.filter((p) => p.folder === path || p.folder?.startsWith(`${path}/`)).length;
       rows.push(renderProjectFolderRow(name, path, { depth, count, open, current: false }));
       if (open) walk(path, depth + 1);

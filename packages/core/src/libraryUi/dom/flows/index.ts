@@ -8,4 +8,4 @@ export { askRemove } from "./askRemove.js";
 export { pickMoveFolder } from "./pickMoveFolder.js";
 export { showPaper } from "./showPaper.js";
 export { askRemoveFolder, askCreateFolder, askRenameFolder } from "./askFolder.js";
-export { askNoPdf, askFindBetterPdf, onFindMiss, onPdfMissing, onAddNoPdf, onAddSources, sendAddPaperRequest, type NoPdfChoice } from "./pdf/index.js";
+export { askNoPdf, askFindBetterPdf, onFindMiss, onPdfMissing, onAddNoPdf, onAddSources, sendAddPaperRequest, type MissingPdfChoice } from "./pdf/index.js";

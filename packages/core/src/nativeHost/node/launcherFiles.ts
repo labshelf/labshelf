@@ -3,19 +3,19 @@ import { promises as fs } from "node:fs";
 
 import { ensurePrivateDir, PRIVATE_FILE_MODE, writeFileAtomic } from "../../library/node/index.js";
 import type { HostLayout } from "./layout/index.js";
-import { INSTALL_LOG_MODULE, type NativeHostEnv, type ScriptLaunch } from "./nativeHostEnv.js";
+import { INSTALL_LOG_MODULE, type NativeHostEnv, type ScriptEntry } from "./nativeHostEnv.js";
 
-function launcherScript(platform: NodeJS.Platform, launch: ScriptLaunch): string {
+function launcherScript(platform: NodeJS.Platform, launch: ScriptEntry): string {
   return platform === "win32" ? windowsLauncher(launch) : shellLauncher(launch);
 }
 
-function shellLauncher({ nodePath, hostScript, electronRunAsNode }: ScriptLaunch): string {
+function shellLauncher({ nodePath, hostScript, electronRunAsNode }: ScriptEntry): string {
   const prefix = electronRunAsNode ? "ELECTRON_RUN_AS_NODE=1 " : "";
   // Chrome passes the caller origin as an argument, so "$@" forwards it.
   return `#!/bin/sh\n${prefix}exec ${shellQuote(nodePath)} ${shellQuote(hostScript)} "$@"\n`;
 }
 
-function windowsLauncher({ nodePath, hostScript, electronRunAsNode }: ScriptLaunch): string {
+function windowsLauncher({ nodePath, hostScript, electronRunAsNode }: ScriptEntry): string {
   const env = electronRunAsNode ? "set ELECTRON_RUN_AS_NODE=1\r\n" : "";
   // PLATFORM: cmd.exe reads the script in the OEM code page; switching to UTF-8 first keeps non-ASCII paths intact.
   return `@chcp 65001>nul\r\n@echo off\r\n${env}${cmdQuote(nodePath)} ${cmdQuote(hostScript)} %*\r\n`;
@@ -30,9 +30,9 @@ function cmdQuote(value: string): string {
   return `"${value.replace(/%/g, "%%")}"`;
 }
 
-export type HostScriptLaunch = Omit<ScriptLaunch, "kind">;
+export type HostScriptEntry = Omit<ScriptEntry, "kind">;
 
-export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, launch: ScriptLaunch): Promise<void> {
+export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, launch: ScriptEntry): Promise<void> {
   const posix = env.platform !== "win32";
   if (posix) await ensurePrivateDir(layout.hostDir);
   await writeFileAtomic(layout.launcherPath, launcherScript(env.platform, launch));
@@ -44,10 +44,10 @@ export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, laun
 }
 
 /** The record, or undefined when it is missing or not a record this installer wrote. */
-export async function readHostScriptLaunch(env: NativeHostEnv, layout: HostLayout): Promise<HostScriptLaunch | undefined> {
+export async function readHostScriptEntry(env: NativeHostEnv, layout: HostLayout): Promise<HostScriptEntry | undefined> {
   const text = await fs.readFile(layout.recordPath, "utf8").catch(() => undefined);
   if (text === undefined) return undefined;
-  let value: Partial<Record<keyof HostScriptLaunch, unknown>>;
+  let value: Partial<Record<keyof HostScriptEntry, unknown>>;
   try {
     value = JSON.parse(text) as typeof value;
   } catch {

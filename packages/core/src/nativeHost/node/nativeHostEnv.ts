@@ -17,7 +17,7 @@ export interface NativeHostEnv {
 }
 
 /** A host script run by an app's Node (or Electron) binary through a launcher. */
-export interface ScriptLaunch {
+export interface ScriptEntry {
   kind: "script";
   /** The app that installed the launcher; only that app refreshes it. */
   owner: "vscode" | "terminal";
@@ -29,12 +29,12 @@ export interface ScriptLaunch {
 }
 
 /** A standalone executable that browsers start directly. */
-export interface BinaryLaunch {
+export interface BinaryEntry {
   kind: "binary";
   path: string;
 }
 
-export type HostLaunch = ScriptLaunch | BinaryLaunch;
+export type HostEntry = ScriptEntry | BinaryEntry;
 
 export type BrowserId = "chrome" | "chromium" | "edge" | "brave" | "vivaldi" | "firefox";
 

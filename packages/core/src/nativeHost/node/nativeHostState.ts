@@ -1,12 +1,12 @@
 /** Reports, per browser, whether it is installed and what its manifest for a native host points at. */
 import type { NativeHostSpec } from "../hostSpecs.js";
 import { resolveHostLayout, isBrowserPresent, detectSandboxWarnings } from "./layout/index.js";
-import type { BrowserId, NativeHostEnv, NativeHostWarning, ScriptLaunch } from "./nativeHostEnv.js";
-import { readHostScriptLaunch } from "./launcherFiles.js";
+import type { BrowserId, NativeHostEnv, NativeHostWarning, ScriptEntry } from "./nativeHostEnv.js";
+import { readHostScriptEntry } from "./launcherFiles.js";
 import { isRegistered, readHostManifest } from "./hostManifestFiles.js";
 
 /** `launcher` when the manifest points at this host's launcher; `other` for a standalone binary or anything else. */
-export type HostManifestState = "missing" | { path: string; kind: "launcher" | "other"; owner?: ScriptLaunch["owner"] };
+export type HostManifestState = "missing" | { path: string; kind: "launcher" | "other"; owner?: ScriptEntry["owner"] };
 
 export interface BrowserHostState {
   browser: BrowserId;
@@ -23,7 +23,7 @@ export interface NativeHostResult {
 
 export async function checkNativeHost(env: NativeHostEnv, spec: NativeHostSpec): Promise<NativeHostResult> {
   const layout = await resolveHostLayout(env, spec);
-  const owner = (await readHostScriptLaunch(env, layout))?.owner;
+  const owner = (await readHostScriptEntry(env, layout))?.owner;
   const browsers: BrowserHostState[] = [];
   for (const target of layout.targets) {
     const read = await readHostManifest(target);

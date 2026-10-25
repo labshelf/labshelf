@@ -1,6 +1,6 @@
 // Handles the capture.* and searchHit.save runtime messages: inspecting a tab, searching for its
 // PDF, saving the draft and attaching a PDF to an already-saved paper.
-import type { IfNoPdf, ILogger } from "@labshelf/core";
+import type { MissingPdfAction, ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
 import type {
   AttachPdfReply, DraftView, FindPdfReply, RuntimeMessage, WriteOutcome, WrittenPaperReply,
@@ -106,7 +106,7 @@ export async function answerCaptureWrite(
 // The "open" and "author" choices: the reference is saved (or was already there) without a PDF, so the page in the way
 // or the request email opens. The email opens in the captured tab.
 async function afterSave(
-  deps: CopyRequestDeps, draft: CaptureDraft, reply: WriteOutcome | WrittenPaperReply, ifNoPdf: IfNoPdf, tabId: number | undefined,
+  deps: CopyRequestDeps, draft: CaptureDraft, reply: WriteOutcome | WrittenPaperReply, ifNoPdf: MissingPdfAction, tabId: number | undefined,
 ): Promise<void> {
   if (reply.status !== "saved" || reply.hasPdf || !draft.existing) return;
   if (ifNoPdf === "open") await openAccessAfterCapture(createAccessTabDeps(deps.log, deps.mutations), draft, { id: reply.id, title: reply.title });
@@ -115,7 +115,7 @@ async function afterSave(
 
 interface UnlessSaved {
   folder?: string | undefined;
-  ifNoPdf?: IfNoPdf | undefined;
+  ifNoPdf?: MissingPdfAction | undefined;
   retryPdf?: boolean | undefined;
   /** The tab the request email opens in. */
   tabId?: number | undefined;

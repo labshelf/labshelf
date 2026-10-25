@@ -3,7 +3,7 @@ import { formatError } from "../../logging/index.js";
 import type { NativeHostSpec } from "../hostSpecs.js";
 import { resolveHostLayout, isBrowserPresent, detectSandboxWarnings, type BrowserHostSite, type HostLayout } from "./layout/index.js";
 import {
-  INSTALL_LOG_MODULE, ensureRegistry, type BrowserId, type HostLaunch, type NativeHostEnv, type NativeHostWarning,
+  INSTALL_LOG_MODULE, ensureRegistry, type BrowserId, type HostEntry, type NativeHostEnv, type NativeHostWarning,
 } from "./nativeHostEnv.js";
 import { writeLauncher } from "./launcherFiles.js";
 import { hasPath, readHostManifest, writeHostManifest } from "./hostManifestFiles.js";
@@ -28,7 +28,7 @@ export interface InstallOptions {
   replaceStandalone?: boolean;
 }
 
-export async function installNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch: HostLaunch, options: InstallOptions = {}): Promise<NativeHostInstallResult> {
+export async function installNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch: HostEntry, options: InstallOptions = {}): Promise<NativeHostInstallResult> {
   const layout = await resolveHostLayout(env, spec);
   if (env.platform === "win32") ensureRegistry(env);
   const present: BrowserHostSite[] = [];

@@ -35,7 +35,7 @@ export interface RowGroup {
   segments: string[];
 }
 
-export interface GroupAccess<T, G> {
+export interface GroupedRowsSource<T, G> {
   items: (group: G) => readonly T[];
   /** The rowgroup's accessible name, such as its path and item count. */
   ariaLabel: (group: G) => string;
@@ -59,7 +59,7 @@ export class GroupedRows<T extends { id: string }, G extends RowGroup> {
   private shells = new Map<string, GroupShell<T>>();
   private readonly groups: RowReconciler<GroupItem<G>>;
 
-  constructor(container: HTMLElement, private readonly makeRows: (body: HTMLElement) => RowReconciler<T>, private readonly access: GroupAccess<T, G>) {
+  constructor(container: HTMLElement, private readonly makeRows: (body: HTMLElement) => RowReconciler<T>, private readonly access: GroupedRowsSource<T, G>) {
     // The shell is rebuilt only when a group switches between the unlabelled top group and a labelled subfolder.
     this.groups = new RowReconciler<GroupItem<G>>(container, (item) => this.buildShell(item), (item) => [item.group.segments.length === 0]);
   }

@@ -4,10 +4,10 @@ import type { Node } from "prosemirror-model";
 import { qmdSchema } from "./schema/index.js";
 import { serializeBlock } from "./serializeBlocks.js";
 import { splitBodyLines, extractRawText } from "./blockLines.js";
-import { splitBlocks, type BlockSlice } from "./parseBlocks.js";
+import { splitBlocks, type BodySlice } from "./parseBlocks.js";
 
 /** INVARIANT: a block whose node does not write back to its exact source bytes is kept as a raw block. */
-function exactBlock(block: BlockSlice, source: string, eol: string): Node {
+function exactBlock(block: BodySlice, source: string, eol: string): Node {
   try {
     const node = block.build(block.gap);
     if (serializeBlock(node, eol) === source) { return node; }

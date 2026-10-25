@@ -1,7 +1,7 @@
 // Mounts the editor area: tabs in up to two groups side by side, bodies mounted on first activation and disposed on close.
 import { renderElement, showMenu, type MenuAnchor } from "../../../ui/dom/index.js";
 import { EditorGroups, deriveOtherGroup, type EditorGroup } from "./editorGroups.js";
-import type { EditorArea, EditorAreaOptions, EditorGroupSide, EditorAreaPrefsPort } from "./editorAreaOptions.js";
+import type { EditorArea, EditorAreaOptions, EditorAreaSide, EditorAreaPrefsPort } from "./editorAreaOptions.js";
 import { attachSash } from "../shell/index.js";
 
 // Handles the editor area's keys: roving focus inside a tablist, Ctrl/Cmd+W to close, Ctrl+Tab to cycle, and the tab menu key.
@@ -95,7 +95,7 @@ function createEditorSash(root: HTMLElement, first: HTMLElement, prefs: EditorAr
 const TAB_MIME = "application/x-labshelf-editor-tab";
 
 /** Wires dragging for every tab of `groups`; `move` runs on a drop onto the other group. */
-function wireTabDrag(root: HTMLElement, groups: readonly EditorGroup[], move: (id: string, group: EditorGroupSide) => void): void {
+function wireTabDrag(root: HTMLElement, groups: readonly EditorGroup[], move: (id: string, group: EditorAreaSide) => void): void {
   root.addEventListener("dragstart", (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('[role="tab"]');
     if (!tab || !e.dataTransfer) return;

@@ -5,7 +5,7 @@ import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import type { SidebarProject } from "../../viewModel/index.js";
 
 /** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `paper:<id>`, `tag:<tag>` or `project:<id>`. */
-export const rowKey = (r: HTMLElement): string => r.dataset["key"] ?? "";
+export const readRowKey = (r: HTMLElement): string => r.dataset["key"] ?? "";
 
 /** The depth of the rows directly under a Library group heading (Folders, Tags): one indent step past its chevron, as in VS Code's trees. */
 export const GROUP_ROW_DEPTH = 1;
