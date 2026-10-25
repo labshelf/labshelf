@@ -7,7 +7,7 @@ import type { Output } from "../usage.js";
 import { firstRunChoices, type FirstRunChoice } from "./firstRunChoices.js";
 import { libraryTargetFor } from "./pickLibraryDir.js";
 import type { Ask } from "../ask.js";
-import { syncGuideText } from "../syncGuide/syncGuideText.js";
+import { syncGuideText } from "../syncGuide/index.js";
 
 export interface FirstRunSite {
   home: string;

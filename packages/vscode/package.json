@@ -1273,12 +1273,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:core": "jest __tests__/core",
-    "test:db": "jest __tests__/db",
     "test:storage": "jest __tests__/storage",
-    "test:pdf": "jest __tests__/pdf",
     "test:bibtex": "jest __tests__/bibtex",
-    "test:commands": "jest __tests__/commands"
+    "test:command": "jest __tests__/command"
   },
   "dependencies": {
     "@labshelf/core": "workspace:*",
