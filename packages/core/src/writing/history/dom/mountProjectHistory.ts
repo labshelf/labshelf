@@ -2,8 +2,69 @@
 import { el } from "../../../ui/dom/dom.js";
 import { icon } from "../../../ui/icons/index.js";
 import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol/index.js";
-import { renderDiff, renderFiles } from "./historyDetailPane.js";
-import { renderTimeline, rowTitle } from "./historyTimeline.js";
+import { escapeHtml } from "../../../ui/escapeHtml.js";
+import type { DiffLine } from "../lineDiff.js";
+
+const time = (iso: string): string => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const dateTime = (iso: string): string => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+
+function dayLabel(iso: string): string {
+  const day = new Date(iso).toDateString();
+  const today = new Date();
+  if (day === today.toDateString()) { return "Today"; }
+  if (day === new Date(today.getTime() - 86_400_000).toDateString()) { return "Yesterday"; }
+  return new Date(iso).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+}
+
+/** What the row says it did: a version name, a restore or the files it touched. */
+function rowTitle(row: HistoryRow, oldest: boolean): string {
+  if (row.kind === "version") { return `Version “${row.label ?? ""}”`; }
+  if (row.kind === "restore") { return `Restored to ${row.label ? dateTime(row.label) : "an earlier point"}`; }
+  if (oldest) { return "Start of history"; }
+  const names = row.changes.map((change) => change.path.split("/").pop() ?? change.path);
+  if (names.length === 0) { return "No file changes"; }
+  return names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+}
+
+function rowElement(row: HistoryRow, index: number, rows: readonly HistoryRow[], selected: boolean): HTMLElement {
+  const badge = index === 0 ? `<span class="ls-history-badge">Current</span>` : "";
+  return el("li", {
+    class: `ls-history-row ls-history-${row.kind}${index === 0 ? " ls-history-current" : ""}`, role: "option", "aria-selected": String(selected), "data-index": index, tabindex: "-1",
+    html: `<span class="ls-history-dot" aria-hidden="true"></span><span class="ls-history-time">${escapeHtml(time(row.at))}</span>` +
+      `<span class="ls-history-title">${escapeHtml(rowTitle(row, index === rows.length - 1))}</span>${badge}`,
+  });
+}
+
+/** Fills `list` with day headings and rows; the row at `selected` is marked and scrolled into view. */
+function renderTimeline(list: HTMLElement, rows: readonly HistoryRow[], selected: number): void {
+  const items: HTMLElement[] = [];
+  let day = "";
+  rows.forEach((row, index) => {
+    const label = dayLabel(row.at);
+    if (label !== day) { items.push(el("li", { class: "ls-history-day", role: "presentation", text: label })); day = label; }
+    items.push(rowElement(row, index, rows, index === selected));
+  });
+  list.replaceChildren(...items);
+  list.querySelector<HTMLElement>(`[data-index="${selected}"]`)?.scrollIntoView({ block: "nearest" });
+}
+
+const SIGN: Record<DiffLine["kind"], string> = { same: " ", added: "+", removed: "−", gap: "" };
+const CHANGE_LABEL = { added: "A", modified: "M", deleted: "D" } as const;
+
+function renderFiles(list: HTMLElement, row: HistoryRow, selectedPath: string | undefined): void {
+  list.replaceChildren(...row.changes.map((change) => el("button", {
+    class: `ls-history-file ls-history-file-${change.change}`, "data-path": change.path, "aria-pressed": String(change.path === selectedPath), title: change.path,
+    html: `<span class="ls-history-file-mark">${CHANGE_LABEL[change.change]}</span><span class="ls-history-file-name">${escapeHtml(change.path)}</span>`,
+  })));
+}
+
+function renderDiff(view: HTMLElement, lines: DiffLine[] | null): void {
+  if (lines === null) { view.replaceChildren(el("p", { class: "ls-history-note", text: "Binary file: no text to compare." })); return; }
+  if (lines.length === 0) { view.replaceChildren(el("p", { class: "ls-history-note", text: "Empty file." })); return; }
+  view.replaceChildren(el("pre", { class: "ls-history-diff" }, ...lines.map((line) => line.kind === "gap"
+    ? el("div", { class: "ls-history-line ls-history-line-gap", text: `${line.text} unchanged ${line.text === "1" ? "line" : "lines"}` })
+    : el("div", { class: `ls-history-line ls-history-line-${line.kind}`, html: `<span class="ls-history-sign">${SIGN[line.kind]}</span>${escapeHtml(line.text)}` }))));
+}
 
 const button = (label: string, name: Parameters<typeof icon>[0], className = "ls-btn"): HTMLButtonElement =>
   el("button", { class: className, title: label, html: `${icon(name)}<span>${label}</span>` });

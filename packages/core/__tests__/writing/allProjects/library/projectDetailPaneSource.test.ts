@@ -1,5 +1,5 @@
 // Tests how a project's build in this session is summarised for the All projects page.
-import { summariseBuild } from "../../../../src/writing/allProjects/library/projectBuildState";
+import { summariseBuild } from "../../../../src/writing/allProjects/library/projectDetailPaneSource";
 import type { BuildSources } from "../../../../src/writing/allProjects/library/projectLibraryDeps";
 import { readyEntry } from "../../../support/projectLibraryHarness";
 

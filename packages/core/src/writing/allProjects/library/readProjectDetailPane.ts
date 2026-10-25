@@ -3,13 +3,28 @@ import type { PdfjsLoader } from "../../../import/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { countedPages, paperBody, readPdfFacts, wordsUpTo } from "../../checks/index.js";
-import type { ProjectSettings } from "../../project/index.js";
-import type { ProjectReadContext } from "../../project/folder/index.js";
+import { type ProjectSettings, DEFAULT_BIBLIOGRAPHY } from "../../project/index.js";
+import { type ProjectReadContext, readOptionalText } from "../../project/folder/index.js";
 import { listVersions } from "../../versions/index.js";
 import type { ProjectBuildSummary, ProjectDetail } from "../projectDetailPane.js";
-import { bibliographySummary } from "./bibliographyFacts.js";
 import { projectCitations } from "./projectCitations.js";
 import { readProjectSources } from "./readProjectSources.js";
+import { bibEntries } from "../../bibliography/index.js";
+import { BIBLIOGRAPHY_HEADER } from "../../citations/index.js";
+
+/** Undefined when the project has no bibliography file yet. */
+async function bibliographySummary(
+  { fs, paths }: ProjectReadContext, folder: string, settings: ProjectSettings,
+): Promise<ProjectDetail["bibliography"]> {
+  const file = settings.bibliography ?? DEFAULT_BIBLIOGRAPHY;
+  const absolute = paths.join(folder, file);
+  const text = await readOptionalText(fs, absolute);
+  if (text === undefined) { return undefined; }
+  const mtimeMs = (await fs.stat(absolute))?.mtimeMs ?? 0;
+  return {
+    file, entries: bibEntries(text).length, generated: text.split(/\r?\n/, 1)[0] === BIBLIOGRAPHY_HEADER, written: Math.round(mtimeMs),
+  };
+}
 
 const MODULE = "writing/allProjects";
 

@@ -1,7 +1,23 @@
 /** Finds what can reveal the authors of an anonymous submission: their names, self-references and personal links. */
 import type { CheckFinding, CheckLocation, CheckSource, PdfFacts } from "./checkReport.js";
 import type { PaperBody } from "./paperBody.js";
-import { locateInSources } from "./sourceLines.js";
+
+/** TRAP: a Typst `//` comment must not swallow the `//` of a URL, which Typst reads as a link. */
+const TYPST_COMMENT = /(^|[^:])\/\/.*$/;
+const LATEX_COMMENT = /(^|[^\\])%.*$/;
+
+function withoutComment(line: string, file: string): string {
+  return line.replace(file.endsWith(".typ") ? TYPST_COMMENT : LATEX_COMMENT, "$1");
+}
+
+/** The first source line whose text outside comments matches; `pattern` must not be global, so `test` keeps no state. */
+function locateInSources(pattern: RegExp, sources: CheckSource[]): { file: string; line: number } | undefined {
+  for (const source of sources) {
+    const index = source.lines.findIndex((line) => pattern.test(withoutComment(line, source.file)));
+    if (index >= 0) { return { file: source.file, line: index + 1 }; }
+  }
+  return undefined;
+}
 
 export interface AnonymityInput {
   facts: PdfFacts;

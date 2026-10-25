@@ -1,5 +1,5 @@
 // Tests which result Enter and Shift+Enter open next.
-import { stepResult } from "../../../../src/writing/search/dom/stepResult";
+import { stepResult } from "../../../../src/writing/search/dom/mountProjectSearch";
 
 describe("stepResult", () => {
   it("opens the first result going forward and the last going back when none is open", () => {
