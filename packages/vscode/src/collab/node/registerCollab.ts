@@ -32,7 +32,7 @@ import {
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
 import { ActiveShares, connectDesktopShare, deleteShareState, ShareKeys } from "./session/index.js";
-import { nodeProjectReadContext } from "@labshelf/core/node";
+import { createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import {
   ADD_SOURCE_COMMENT_COMMAND,
   CommentsController,
@@ -116,7 +116,7 @@ export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
     keys: new ShareKeys(deps.secrets, logger),
     shares: deps.shares,
     projects: deps.projects,
-    files: nodeProjectReadContext(logger),
+    files: createNodeProjectReadCompositionRoot(logger),
     relay: deps.relay,
     requireRelay: async () => (await vscode.commands.executeCommand<boolean>(CONNECT_RELAY_COMMAND)) === true,
     connect: ({ shareId, shareKey, relays }, start) => {

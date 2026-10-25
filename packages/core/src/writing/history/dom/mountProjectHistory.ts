@@ -3,7 +3,7 @@ import { renderElement } from "../../../ui/dom/dom.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol/index.js";
 import { escapeHtml } from "../../../ui/escapeHtml.js";
-import type { DiffLine } from "../lineDiff.js";
+import type { DiffLine } from "../compareLines.js";
 
 const time = (iso: string): string => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const dateTime = (iso: string): string => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });

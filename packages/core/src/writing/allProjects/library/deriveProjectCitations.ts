@@ -4,14 +4,14 @@ import type { PaperRecord } from "../../../model/index.js";
 import { parseBibEntries } from "../../bibliography/index.js";
 import { derivePapersByCiteKey, scanCiteKeys } from "../../citations/index.js";
 import { DEFAULT_BIBLIOGRAPHY, type ProjectSettings } from "../../project/index.js";
-import { readOptionalText, rootFileNames, type ProjectReadContext } from "../../project/folder/index.js";
+import { readOptionalText, listBuildRootFileNames, type ProjectReadContext } from "../../project/folder/index.js";
 import type { ProjectCitation } from "../projectDetailPane.js";
 import type { ProjectSourceTexts } from "./readProjectSources.js";
 
 /** Keys of the root .bib files and of the project's bibliography file. */
 async function bibKeys(context: ProjectReadContext, folder: string, settings: ProjectSettings): Promise<Set<string>> {
   const { fs, paths } = context;
-  const roots = (await rootFileNames(context, folder)).filter((name) => name.endsWith(".bib"));
+  const roots = (await listBuildRootFileNames(context, folder)).filter((name) => name.endsWith(".bib"));
   const files = new Set([...roots, settings.bibliography ?? DEFAULT_BIBLIOGRAPHY].map((file) => paths.join(folder, file)));
   const texts = await Promise.all([...files].map((file) => readOptionalText(fs, file)));
   return new Set(texts.flatMap((text) => (text === undefined ? [] : parseBibEntries(text).map((entry) => entry.key))));

@@ -7,7 +7,7 @@ import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { pickQuickEntry } from "@labshelf/core/dom";
 import { sourceActions, type SourceActionDeps } from "../../../../src/writing/source/actions";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn(), quickPick: jest.fn(async () => undefined), inputBox: jest.fn(async () => undefined) }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn(), pickQuickEntry: jest.fn(async () => undefined), askInputBox: jest.fn(async () => undefined) }));
 
 function setup(over: Partial<SourceActionDeps> = {}) {
   const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };

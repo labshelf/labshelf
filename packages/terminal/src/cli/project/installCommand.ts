@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  describeInstall, keyResolves, parseProjectFile, planInstall, PROJECT_FILE, summarizeInstall,
+  describeInstall, isInstallResolved, parseProjectFile, createInstallPlan, PROJECT_FILE, describeInstallReport,
   type ILogger, type ImportOutcome, type InstallLine, type InstallResult, type LibraryStore, type ListedPaper,
 } from "@labshelf/core";
 
@@ -40,17 +40,17 @@ export async function runInstall(ctx: InstallContext, positionals: string[], io:
   const json = flags["json"] === true;
   const projectDir = path.resolve(positionals[0] ?? process.cwd());
   const records = [...ctx.store.snapshot.papers.values()].map((entry) => entry.record);
-  const plan = planInstall(await listedPapers(projectDir), records);
+  const plan = createInstallPlan(await listedPapers(projectDir), records);
   const results: InstallResult[] = [];
   for (const entry of plan) {
     const outcome = entry.kind === "import" ? await ctx.papers.importDoi(entry.doi, entry.key) : undefined;
     results.push({ entry, outcome });
     if (!json) { io.out(describeInstall({ entry, outcome }).text); }
   }
-  const summary = summarizeInstall(results);
+  const summary = describeInstallReport(results);
   io.out(json ? installJson(results, summary) : summary.text);
   await ctx.logger.log("INFO", "terminal.install", "Project papers installed", { projectDir, summary: summary.text });
-  return results.some((result) => !keyResolves(result)) ? 1 : 0;
+  return results.some((result) => !isInstallResolved(result)) ? 1 : 0;
 }
 
 function installJson(results: readonly InstallResult[], summary: InstallLine): string {
@@ -58,7 +58,7 @@ function installJson(results: readonly InstallResult[], summary: InstallLine): s
     key: result.entry.key,
     kind: result.entry.kind,
     ...describeInstall(result),
-    resolved: keyResolves(result),
+    resolved: isInstallResolved(result),
   }));
   return JSON.stringify({ papers, summary }, null, 2);
 }

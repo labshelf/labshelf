@@ -2,7 +2,7 @@
 import type { PathOps } from "../../library/mutations/mutationDeps.js";
 import type { HostToSearch } from "./protocol/index.js";
 import { searchPattern, type SearchOptions } from "./searchPattern.js";
-import { collectSearchResults } from "./searchResults.js";
+import { deriveSearchMatches } from "./searchResults.js";
 
 const RESULT_LIMIT = 2000;
 
@@ -21,7 +21,7 @@ export interface SearchRun {
 }
 
 /** The answer for a search that covers nothing, such as a file outside every project. */
-export function emptySearchRun(): SearchRun {
+export function createEmptySearchRun(): SearchRun {
   return { message: { type: "results", results: { files: [], total: 0, truncated: false } }, paths: new Set() };
 }
 
@@ -31,5 +31,5 @@ export function searchProjectTexts(query: string, options: SearchOptions, projec
   if (!(pattern instanceof RegExp)) { return { message: { type: "invalid", message: pattern.error }, paths: new Set() }; }
   const { folder, paths } = project;
   const files = texts.map(({ path, text }) => ({ path, text, label: paths.relative(folder, path).split(paths.sep).join("/") }));
-  return { message: { type: "results", results: collectSearchResults(files, pattern, RESULT_LIMIT) }, pattern, paths: new Set(texts.map((t) => t.path)) };
+  return { message: { type: "results", results: deriveSearchMatches(files, pattern, RESULT_LIMIT) }, pattern, paths: new Set(texts.map((t) => t.path)) };
 }

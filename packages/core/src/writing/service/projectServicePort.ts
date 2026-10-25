@@ -8,11 +8,11 @@ import type {
 } from "../project/index.js";
 import type { ProjectTemplate, TemplateFile } from "../../templates/index.js";
 import type { SynctexRead } from "../synctex/index.js";
-import type { ValueLeaf, ValueProject } from "../projectValue/index.js";
+import type { ProjectValueLeaf, ProjectValueSource } from "../projectValue/index.js";
 import type { MarkVersionRequest, ProjectVersion } from "../versions/index.js";
 
 /** Paths are OS paths of the host; the implementation binds the logger. */
-export interface ProjectDataPort {
+export interface ProjectContentPort {
   listProjects(libraryRoot: string): Promise<ProjectEntry[]>;
   createProjectFromTemplate(
     libraryRoot: string, request: { title: string; template: ProjectTemplate; files: readonly TemplateFile[] },
@@ -31,7 +31,7 @@ export interface ProjectDataPort {
   listVersions(folder: string): Promise<ProjectVersion[]>;
   /** Returns the folder of the marked version. */
   markVersion(request: MarkVersionRequest): Promise<string>;
-  readProjectValues(project: Pick<ValueProject, "folder" | "settings">): Promise<ValueLeaf[]>;
+  readProjectValues(project: Pick<ProjectValueSource, "folder" | "settings">): Promise<ProjectValueLeaf[]>;
   readFigureStates(folder: string, figures: Readonly<Record<string, FigureRecipe>>): Promise<Record<string, FigureState>>;
   updateProjectBibliography(project: CitingProject, papers: readonly PaperRecord[], open?: OpenSources): Promise<BibliographyUpdate>;
   projectBacklinks(projects: readonly ProjectEntry[], open?: OpenSources): Promise<BacklinkMap>;

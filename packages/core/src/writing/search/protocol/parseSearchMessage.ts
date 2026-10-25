@@ -1,6 +1,6 @@
 // Validates a message from the project search page before the host acts on it.
 import type { SearchOptions } from "../searchPattern.js";
-import type { MatchLocation, SearchToHost } from "./messages.js";
+import type { MatchPosition, SearchToHost } from "./messages.js";
 
 type Raw = Record<string, unknown>;
 
@@ -15,7 +15,7 @@ function options(raw: unknown): SearchOptions | undefined {
   return { matchCase, regex, wholeWord };
 }
 
-function location(raw: Raw): MatchLocation | undefined {
+function location(raw: Raw): MatchPosition | undefined {
   const { path, line, column, length } = raw;
   return isText(path) && isCount(line) && isCount(column) && isCount(length) ? { path, line, column, length } : undefined;
 }

@@ -4,7 +4,7 @@ import { deriveFileIcon } from "../../libraryUi/index.js";
 import type { ProjectFormat } from "../project/index.js";
 
 /** An entry of a folder as read from disk. */
-export interface DirectoryEntry {
+export interface DirEntry {
   name: string;
   folder: boolean;
 }
@@ -28,7 +28,7 @@ export interface ProjectFileContext {
 const HIDDEN_NAMES = new Set([".git", ".labshelf"]);
 
 /** The entries the Files tree shows: folders first, then by name. */
-export function visibleEntries<T extends DirectoryEntry>(entries: readonly T[]): T[] {
+export function listVisibleEntries<T extends DirEntry>(entries: readonly T[]): T[] {
   return entries
     .filter(({ name }) => !HIDDEN_NAMES.has(name))
     .sort((a, b) => Number(b.folder) - Number(a.folder) || a.name.localeCompare(b.name));
@@ -37,7 +37,7 @@ export function visibleEntries<T extends DirectoryEntry>(entries: readonly T[]):
 const withoutDots = (path: string): string => path.split("/").filter((part) => part !== "" && part !== ".").join("/");
 
 /** @param path the entry's path relative to the project folder, with "/" separators */
-export function projectFileRow(path: string, folder: boolean, context: ProjectFileContext): ProjectFileRow {
+export function createProjectFileRow(path: string, folder: boolean, context: ProjectFileContext): ProjectFileRow {
   const name = path.split("/").pop() ?? path;
   if (folder) { return { kind: "folder", node: { key: path, label: name, icon: { kind: "glyph", name: "folder" }, children: [], open: false } }; }
   const main = context.main !== undefined && withoutDots(context.main) === path;

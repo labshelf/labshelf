@@ -10,9 +10,9 @@ import {
 import { writeProjectConflictDismissal, type ConflictCopy } from '../../index.js';
 import type { ILogger } from "../../../../ports/index.js";
 import { deriveTextHash, type IProjectVersionStore } from "../../../../writing/conflict/index.js";
-import { lineSimilarity } from '../../../../writing/text/index.js';
+import { deriveLineSimilarity } from '../../../../writing/text/index.js';
 import { mergeProjectContentCopy } from '../../../../writing/conflict/node/index.js';
-import { listProjectsOnDisk } from '../../../../writing/project/node/index.js';
+import { listLibraryProjects } from '../../../../writing/project/node/index.js';
 import { resolveConflictDismissalFile, findProjectConflict } from './projectConflictDetection.js';
 import { loadVersionHistory, PersistedMap } from "../../../../collab/deviceState/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../../../writing/project/index.js";
@@ -44,7 +44,7 @@ export interface ProjectConflictResolutionContext {
 }
 async function projectFolder(conflict: ConflictCopy, context: ProjectConflictResolutionContext): Promise<string> {
   if (context.folder) return context.folder;
-  const entry = (await listProjectsOnDisk(context.root, context.logger)).find(entry => entry.kind === 'ready' && entry.settings.id === conflict.owner.id);
+  const entry = (await listLibraryProjects(context.root, context.logger)).find(entry => entry.kind === 'ready' && entry.settings.id === conflict.owner.id);
   if (!entry || entry.kind !== 'ready') throw new Error(`Project not found for conflict: ${conflict.copy}`);
   return entry.folder;
 }
@@ -55,7 +55,7 @@ async function similarBase(folder: string, conflict: ConflictCopy, store: IProje
   const base = await store.read(conflict.owner.id, relative);
   if (base !== undefined) versions.push(base);
   return versions.filter((version): version is string => version !== undefined)
-    .sort((a, b) => lineSimilarity(b, text) - lineSimilarity(a, text))[0];
+    .sort((a, b) => deriveLineSimilarity(b, text) - deriveLineSimilarity(a, text))[0];
 }
 export async function resolveProjectConflictCopy(
   conflict: ConflictCopy, resolution: 'mergeAutomatically' | 'notAVersion', context: ProjectConflictResolutionContext,

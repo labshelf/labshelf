@@ -3,7 +3,7 @@ import { readFileSync, existsSync, promises as fs } from "node:fs";
 import * as path from "node:path";
 import { readShareIndexDocSettings } from "../../../src/collab/model/index";
 import { joinShare, startShare } from "../../../src/collab/share/index";
-import { nodeProjectCatalogContext } from "../../../src/writing/project/node/index";
+import { createNodeProjectCatalogCompositionRoot } from "../../../src/writing/project/node/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { fakeLogger, SHARE_ID } from "../doc/testSession";
 import { FakeRelay } from "../transport/relay/fakeRelay";
@@ -34,7 +34,7 @@ describe("two mirrors", () => {
       const logger = fakeLogger();
       const a = await openMirror({ relay, clock, folder: owner, project: false });
       fixtures.push(a);
-      await startShare(nodeProjectCatalogContext(logger), { folder: owner, shareId: SHARE_ID, index: a.session.index });
+      await startShare(createNodeProjectCatalogCompositionRoot(logger), { folder: owner, shareId: SHARE_ID, index: a.session.index });
       a.mirror.changed("labshelf.yaml");
       await a.mirror.idle();
 
@@ -42,7 +42,7 @@ describe("two mirrors", () => {
       const b = await openMirror({ relay, clock, project: false });
       fixtures.push(b);
       expect(await runUntil(clock, () => readShareIndexDocSettings(b.session.index).get("title") === "Deep Survey")).toBe(true);
-      const joined = await joinShare(nodeProjectCatalogContext(logger), { libraryRoot: library, shareId: SHARE_ID, index: b.session.index });
+      const joined = await joinShare(createNodeProjectCatalogCompositionRoot(logger), { libraryRoot: library, shareId: SHARE_ID, index: b.session.index });
       expect(joined.folder).toBe(path.join(library, "projects", "deep-survey"));
       await b.close();
       fixtures = [a];

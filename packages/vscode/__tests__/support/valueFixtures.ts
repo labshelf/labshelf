@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { flattenValues, type ProjectSettings } from "@labshelf/core";
+import { deriveProjectValueLeaves, type ProjectSettings } from "@labshelf/core";
 import { ProjectValues } from "../../src/writing/projectValue/projectValues";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 
@@ -18,7 +18,7 @@ export function valuesFixture(files: Record<string, string>, settings: Partial<P
   projects.data.readProjectValues.mockImplementation(async (project: { settings: ProjectSettings }) =>
     (project.settings.values ?? []).flatMap((listed) => {
       // The port skips a file it cannot read or parse.
-      try { return flattenValues(listed, JSON.parse(contents.get(listed) ?? "")).leaves; } catch { return []; }
+      try { return deriveProjectValueLeaves(listed, JSON.parse(contents.get(listed) ?? "")).leaves; } catch { return []; }
     }));
   const logger = fakeLogger();
   const values = new ProjectValues({ projects, logger: () => logger });

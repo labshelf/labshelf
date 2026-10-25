@@ -2,7 +2,7 @@
 import { snippet } from "@codemirror/autocomplete";
 import { EditorSelection, type Extension } from "@codemirror/state";
 import { keymap, type EditorView } from "@codemirror/view";
-import { wrapSelection, type WrapStyle } from "@labshelf/core";
+import { deriveSelectionWrap, type WrapStyle } from "@labshelf/core";
 
 /** `$1` and `${1:Caption}` become CodeMirror fields, `$0` the final cursor, and `\\`, `\$`, `\}` their literal characters. */
 export function codeMirrorTemplate(textMate: string): string {
@@ -43,7 +43,7 @@ function wrapSelections(view: EditorView, language: SourceLanguage, style: WrapS
   const { state } = view;
   view.dispatch(state.update(
     state.changeByRange((range) => {
-      const { text, cursor } = wrapSelection(language, style, state.sliceDoc(range.from, range.to));
+      const { text, cursor } = deriveSelectionWrap(language, style, state.sliceDoc(range.from, range.to));
       return {
         changes: { from: range.from, to: range.to, insert: text },
         range: cursor === undefined ? EditorSelection.range(range.from, range.from + text.length) : EditorSelection.cursor(range.from + cursor),

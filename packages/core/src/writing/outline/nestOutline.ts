@@ -9,7 +9,7 @@ export interface HeadingNode<T extends { level: number }> {
 }
 
 /** @param entries headings in text order; a smaller level is higher, and only the order between levels matters */
-export function nestHeadings<T extends { level: number }>(entries: readonly T[]): HeadingNode<T>[] {
+export function deriveNestedHeadings<T extends { level: number }>(entries: readonly T[]): HeadingNode<T>[] {
   const roots: HeadingNode<T>[] = [];
   const open: HeadingNode<T>[] = [];
   entries.forEach((entry, index) => {

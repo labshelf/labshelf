@@ -1,5 +1,5 @@
 // Exports the Node side of writing projects: the disk-backed project contexts.
 export {
-  listProjectsOnDisk, nodeFileReads, nodeProjectCatalogContext, nodeProjectReadContext,
+  listLibraryProjects, nodeFileReads, createNodeProjectCatalogCompositionRoot, createNodeProjectReadCompositionRoot,
 } from "./nodeProjectReads.js";
-export { convertWithPandoc, PANDOC_MISSING_MESSAGE, type PandocRequest } from "./exportWithPandoc.js";
+export { exportWithPandoc, PANDOC_MISSING_MESSAGE, type PandocRequest } from "./exportWithPandoc.js";

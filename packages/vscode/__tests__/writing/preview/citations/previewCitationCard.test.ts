@@ -2,15 +2,15 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { BIBLIOGRAPHY_HEADER, sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
+import { BIBLIOGRAPHY_HEADER, findSourcePosition, type Annotation, type PaperRecord } from "@labshelf/core";
 import { lookupCitation, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
 import type { SynctexLookup } from "../../../../src/writing/preview/synctex";
 import { fakeDocument } from "../../../support/textDocument";
 import { fakeLogger } from "../../../support/writingFixtures";
 
-jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), sourceAt: jest.fn() }));
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), findSourcePosition: jest.fn() }));
 
-const source = sourceAt as jest.Mock;
+const source = findSourcePosition as jest.Mock;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
 const findFiles = jest.fn();
 const openTextDocument = jest.fn();

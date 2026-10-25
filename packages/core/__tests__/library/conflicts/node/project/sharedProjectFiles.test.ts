@@ -12,7 +12,7 @@ import { fakeLogger } from '../../../../support/fakeLogger';
 import { scanLibraryConflicts } from '../../../../../src/writing/conflict/node/index';
 import { FileProjectVersionStore } from '../../../../../src/writing/conflict/index';
 import { NodeLibraryFileSystem } from '../../../../../src/library/node/index';
-import { nodeProjectCatalogContext } from '../../../../../src/writing/project/node/index';
+import { createNodeProjectCatalogCompositionRoot } from '../../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../../src/writing/project/index';
 import { createBlankTemplate } from '../../../../../src/templates/index';
 
@@ -46,7 +46,7 @@ it('rejects a share id that escapes device-local collaboration state', async () 
 it('offers only untracked shared files even when their names sort before the tracked original', async () => {
   const root = await makeTempDir();
   const logger = fakeLogger();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
+  const project = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project unavailable');
   const shareId = 'shared-index-test';
   const dir = path.join(createDeviceLocalLayout(root).collabDir, shareId);

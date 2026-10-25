@@ -1,5 +1,5 @@
 /** Verifies table sizes parse within the limit and tables expand to valid LaTeX and Typst source. */
-import { parseTableSize, tableSnippet } from "../../../src/writing/snippet/index";
+import { parseTableSize, createTableSnippet } from "../../../src/writing/snippet/index";
 import { expandSnippet } from "./snippetExpansion";
 
 describe("parseTableSize", () => {
@@ -12,9 +12,9 @@ describe("parseTableSize", () => {
   });
 });
 
-describe("tableSnippet", () => {
+describe("createTableSnippet", () => {
   it("builds a LaTeX tabular with one row per table row and a tab stop per cell", () => {
-    expect(expandSnippet(tableSnippet("latex", { columns: 2, rows: 1 }))).toBe([
+    expect(expandSnippet(createTableSnippet("latex", { columns: 2, rows: 1 }))).toBe([
       "\\begin{table}[h]",
       "\t\\centering",
       "\t\\begin{tabular}{|c|c|}",
@@ -30,7 +30,7 @@ describe("tableSnippet", () => {
   });
 
   it("numbers the caption and label after the last cell", () => {
-    const snippet = tableSnippet("typst", { columns: 2, rows: 2 });
+    const snippet = createTableSnippet("typst", { columns: 2, rows: 2 });
     expect(snippet).toContain("[${4}],");
     expect(snippet).toContain("caption: [${5:Caption}]");
     expect(snippet).toContain("<tab:${6:label}>");

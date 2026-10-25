@@ -1,13 +1,13 @@
 // Marking a version names the project's last built PDF and its sources, and the history keeps the milestone.
 import type { ILogger } from "@labshelf/core";
-import { historyRows, listVersions, posixPathOps } from "@labshelf/core";
+import { readHistoryRows, listVersions, posixPathOps } from "@labshelf/core";
 import { askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import { idbHistoryStorage } from "../../../src/storage/idbHistoryStorage";
 import { markProjectVersion } from "../../../src/writing/history";
 import { clearFakeDb } from "../../support/fakeIdb";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
 
-jest.mock("@labshelf/core/dom", () => ({ toast: jest.fn(), confirmDialog: jest.fn(), inputBox: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ showToast: jest.fn(), askDialog: jest.fn(), askInputBox: jest.fn() }));
 jest.mock("../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
@@ -39,7 +39,7 @@ describe("markProjectVersion", () => {
     expect(await mark()).toBe(true);
     expect((await versions()).map((v) => v.name)).toEqual(["Submitted"]);
     expect(await fs.exists("proj/.labshelf/tmp-version.pdf")).toBe(false);
-    const rows = await historyRows(idbHistoryStorage("thesis"), logger);
+    const rows = await readHistoryRows(idbHistoryStorage("thesis"), logger);
     expect(rows[0]).toMatchObject({ kind: "version", label: "Submitted" });
     expect(showToast).toHaveBeenCalledWith("Marked version “Submitted”.", "ok");
   });

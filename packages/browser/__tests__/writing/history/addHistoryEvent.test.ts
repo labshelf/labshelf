@@ -1,6 +1,6 @@
 // A saved edit becomes a history entry; a failure is logged and never reaches the editor.
 import type { ILogger } from "@labshelf/core";
-import { historyRows } from "@labshelf/core";
+import { readHistoryRows } from "@labshelf/core";
 import { idbHistoryStorage } from "../../../src/storage/idbHistoryStorage";
 import { recordProjectEdit } from "../../../src/writing/history";
 import { clearFakeDb } from "../../support/fakeIdb";
@@ -17,7 +17,7 @@ describe("recordProjectEdit", () => {
     const fs = memoryLibraryFs();
     await fs.writeText("proj/main.typ", "one");
     await recordProjectEdit({ fs, logger }, { id: "thesis", folder: "proj" });
-    const rows = await historyRows(idbHistoryStorage("thesis"), logger);
+    const rows = await readHistoryRows(idbHistoryStorage("thesis"), logger);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ kind: "edit", changes: [{ path: "main.typ" }] });
   });

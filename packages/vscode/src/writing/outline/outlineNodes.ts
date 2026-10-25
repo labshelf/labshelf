@@ -1,7 +1,7 @@
 // Turns document symbols into outline nodes and marks the deepest one that holds the cursor.
 import type * as vscode from "vscode";
 
-import { deepestContaining } from "@labshelf/core";
+import { findDeepestContaining } from "@labshelf/core";
 
 export interface OutlineNode {
   symbol: vscode.DocumentSymbol;
@@ -14,5 +14,5 @@ function build(symbols: readonly vscode.DocumentSymbol[], current: vscode.Docume
 }
 
 export function outlineNodes(symbols: readonly vscode.DocumentSymbol[], cursor: vscode.Position): OutlineNode[] {
-  return build(symbols, deepestContaining(symbols, (symbol) => symbol.range.contains(cursor)));
+  return build(symbols, findDeepestContaining(symbols, (symbol) => symbol.range.contains(cursor)));
 }

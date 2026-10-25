@@ -1,7 +1,7 @@
 /** Verifies saving a library project as a My template: exclusions, manifest, ids and clean failure. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
-import { nodeProjectCatalogContext } from "../../../src/writing/project/node/index";
+import { createNodeProjectCatalogCompositionRoot } from "../../../src/writing/project/node/index";
 import { createProjectFromTemplate } from "../../../src/writing/project/index";
 import { NodeLibraryFileSystem } from "../../../src/library/node/index";
 import { createBlankTemplate, createMineSource, parseTemplateManifest } from "../../../src/templates/index";
@@ -27,7 +27,7 @@ async function setup(format: "latex" | "typst" = "latex") {
   await fs.mkdir(lib);
   const logger = fakeLogger();
   const { template, files } = createBlankTemplate(format, "Source");
-  await createProjectFromTemplate(nodeProjectCatalogContext(logger), lib, { title: "Source", template, files });
+  await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), lib, { title: "Source", template, files });
   return { lib, logger, project: path.join(lib, "projects", "source"), main: template.main };
 }
 

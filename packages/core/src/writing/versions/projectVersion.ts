@@ -1,7 +1,7 @@
 /** Describes one snapshot a project holds: its version.json fields plus where its PDF and sources are. */
-import type { VersionInfo } from "./versionFile.js";
+import type { VersionEntry } from "./versionFile.js";
 
-export interface ProjectVersion extends VersionInfo {
+export interface ProjectVersion extends VersionEntry {
   pdfPath: string;
   sourcesDir: string;
 }

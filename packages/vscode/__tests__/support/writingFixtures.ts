@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ILogger, LibraryFileSystem, ProjectDataPort, ProjectEntry, ProjectReadContext } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, ProjectContentPort, ProjectEntry, ProjectReadContext } from "@labshelf/core";
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import type { WritingHost, WritingSession } from "../../src/writing/index.js";
 
@@ -16,7 +16,7 @@ export function fakeHost(logger = fakeLogger()): WritingHost & { session: Writin
 }
 
 /** A project data port whose methods are mocks that resolve to empty results. */
-export function fakeProjectData(): { [K in keyof ProjectDataPort]: jest.Mock } {
+export function fakeProjectData(): { [K in keyof ProjectContentPort]: jest.Mock } {
   return {
     listProjects: jest.fn(async () => []),
     createProjectFromTemplate: jest.fn(async () => { throw new Error("createProjectFromTemplate is not stubbed"); }),

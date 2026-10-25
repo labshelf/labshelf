@@ -10,7 +10,7 @@ import { citeFromLibrary, type CitationInsertion } from "../../../../src/writing
 const getAnnotations = jest.fn();
 const updateProjectBibliography = jest.fn();
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn(), quickPick: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn(), pickQuickEntry: jest.fn() }));
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
   PaperSidecarStore: jest.fn().mockImplementation(() => ({ getAnnotations })),

@@ -1,11 +1,11 @@
 // Replaces search matches in one undoable workspace edit and saves the files that were clean before.
 import * as vscode from "vscode";
 
-import { matchReplacement, type ILogger, type MatchLocation } from "@labshelf/core";
+import { matchReplacement, type ILogger, type MatchPosition } from "@labshelf/core";
 import { SEARCH_LOG_MODULE } from "./projectSearchFiles.js";
 
 export interface ReplaceRequest {
-  matches: readonly MatchLocation[];
+  matches: readonly MatchPosition[];
   pattern: RegExp;
   replacement: string;
   logger: ILogger;

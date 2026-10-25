@@ -4,14 +4,14 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
+import { findSourcePosition, type Annotation, type PaperRecord } from "@labshelf/core";
 import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
 import type { SynctexLookup } from "../../../../src/writing/preview/synctex";
 import { fakeLogger } from "../../../support/writingFixtures";
 
-jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), sourceAt: jest.fn() }));
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), findSourcePosition: jest.fn() }));
 
-const source = sourceAt as jest.Mock;
+const source = findSourcePosition as jest.Mock;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
 const execute = vscode.commands.executeCommand as jest.Mock;
 const area = { page: 1, left: 10, top: 10, right: 30, bottom: 20 };

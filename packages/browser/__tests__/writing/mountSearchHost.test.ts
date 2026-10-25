@@ -5,7 +5,7 @@ import { mountSearchHost } from "../../src/writing/mountSearchHost";
 import { clearFakeDb } from "../support/fakeIdb";
 import { memoryLibraryFs } from "../support/memoryLibraryFs";
 
-jest.mock("@labshelf/core/dom", () => ({ toast: jest.fn(), confirmDialog: jest.fn(), inputBox: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ showToast: jest.fn(), askDialog: jest.fn(), askInputBox: jest.fn() }));
 jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;

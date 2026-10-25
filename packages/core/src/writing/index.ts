@@ -17,5 +17,5 @@ export * from "./search/index.js";
 export * from "./allProjects/index.js";
 export * from "./build/index.js";
 export * from "./conflict/index.js";
-export { createTextMerge, lineSimilarity } from "./text/index.js";
+export { createTextMerge, deriveLineSimilarity } from "./text/index.js";
 export * from "./outline/index.js";

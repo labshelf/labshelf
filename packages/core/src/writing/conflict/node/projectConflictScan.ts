@@ -14,7 +14,7 @@ import { readSharedProjectFiles } from "../../../library/conflicts/node/project/
 import { isEligibleProjectConflictPath, parseConflictName, type ConflictCopy } from "../../../library/conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
-import { listProjectsOnDisk, nodeFileReads } from "../../project/node/index.js";
+import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js";
 import { hasMergeableExtension, isMergeableTextFile, type IProjectVersionStore, deriveTextHash } from "../index.js";
 import { mergeProjectCopies } from "./projectCopyMerge.js";
 import { createWriteRecordStore, recordFor } from "../../../library/writeRecords/index.js";
@@ -160,7 +160,7 @@ async function scanProject(root: string, folder: string, projectId: string, stor
 /** @returns the project conflict copies left for the user; a project that cannot be listed is logged and skipped. */
 export async function scanProjectConflicts(libraryRoot: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
   const unresolved: ConflictCopy[] = [];
-  for (const entry of await listProjectsOnDisk(libraryRoot, logger)) {
+  for (const entry of await listLibraryProjects(libraryRoot, logger)) {
     if (entry.kind !== "ready" || entry.settings.shared) { continue; }
     try {
       unresolved.push(...await scanProject(libraryRoot, entry.folder, entry.settings.id, store, logger, onMerged));
@@ -173,7 +173,7 @@ export async function scanProjectConflicts(libraryRoot: string, store: IProjectV
 
 export async function scanSharedProjectConflicts(root: string, store: IProjectVersionStore, logger: ILogger): Promise<ConflictCopy[]> {
   const unresolved: ConflictCopy[] = [];
-  for (const entry of await listProjectsOnDisk(root, logger)) {
+  for (const entry of await listLibraryProjects(root, logger)) {
     if (entry.kind !== 'ready' || !entry.settings.shared) continue;
     try {
       const knownPaths = await readSharedProjectFiles(root, entry.settings.shared, logger);

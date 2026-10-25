@@ -1,5 +1,5 @@
 // Finds the LaTeX source line behind a point of the preview through SyncTeX, reading the open editor's text before the file on disk.
-import { sourceAt, type PagePoint, type SourceLine } from "@labshelf/core";
+import { findSourcePosition, type PagePoint, type SourceLine } from "@labshelf/core";
 import type { SynctexLookup } from "../synctex/index.js";
 import * as vscode from "vscode";
 
@@ -18,6 +18,6 @@ export interface LocatedSourceLine extends SourceLine {
 export async function sourceLineAt(synctex: () => Promise<SynctexLookup>, point: PagePoint): Promise<LocatedSourceLine | undefined> {
   const lookup = await synctex();
   if (lookup.status !== "found") { return undefined; }
-  const source = sourceAt(lookup.index, point);
+  const source = findSourcePosition(lookup.index, point);
   return source ? { file: source.file, text: await currentText(source.file), line: source.line } : undefined;
 }

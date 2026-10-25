@@ -5,16 +5,16 @@ import { deriveProjectBacklinks } from "../citations/index.js";
 import { updateProjectBibliography } from "../citations/index.js";
 import { readFigureBuildStates } from "../figures/index.js";
 import {
-  addExistingFolder, createProjectFromTemplate, deleteProjectForever, lastModified, listProjectFiles, listProjects,
-  projectFolderRegistry, rootFileNames, updateProjectSettings, type ProjectCatalogContext,
+  addExistingFolder, createProjectFromTemplate, removeProjectFolderForever, readLastModified, listProjectFiles, listProjects,
+  createProjectFolderRegistry, listBuildRootFileNames, updateProjectSettings, type ProjectCatalogContext,
 } from "../project/index.js";
 import { readSynctexFile } from "../synctex/index.js";
 import { readProjectValues } from "../projectValue/index.js";
-import { listVersions, markVersion } from "../versions/index.js";
-import type { ProjectDataPort } from "./projectServicePort.js";
+import { listVersions, addProjectVersion } from "../versions/index.js";
+import type { ProjectContentPort } from "./projectServicePort.js";
 import type { ProjectDeviceDirs } from "./projectDeviceDirs.js";
 
-export interface ProjectDataDeps {
+export interface ProjectContentDeps {
   fs: LibraryFileSystem;
   path: PathOps;
   logger: ILogger;
@@ -24,7 +24,7 @@ export interface ProjectDataDeps {
 
 // A device without a registry path lists only the library's own projects and refuses to remember outside folders.
 function registryOf(reads: Omit<ProjectCatalogContext, "registry">, deviceDirs: ProjectDeviceDirs): ProjectCatalogContext["registry"] {
-  const filed = projectFolderRegistry(reads, () => deviceDirs.projectRegistryPath ?? "");
+  const filed = createProjectFolderRegistry(reads, () => deviceDirs.projectRegistryPath ?? "");
   const refuse = (): never => { throw new Error("This device keeps no project folder registry, so only projects inside the library can be used"); };
   const keeps = (): boolean => deviceDirs.projectRegistryPath !== undefined;
   return {
@@ -34,7 +34,7 @@ function registryOf(reads: Omit<ProjectCatalogContext, "registry">, deviceDirs: 
   };
 }
 
-export function createProjectData({ fs, path, logger, deviceDirs }: ProjectDataDeps): ProjectDataPort {
+export function createProjectContent({ fs, path, logger, deviceDirs }: ProjectContentDeps): ProjectContentPort {
   const reads = { fs, paths: path, logger };
   // deviceDirs already names the current library's registry, so the root argument is not needed to locate it.
   const registry = registryOf(reads, deviceDirs);
@@ -44,13 +44,13 @@ export function createProjectData({ fs, path, logger, deviceDirs }: ProjectDataD
     createProjectFromTemplate: (libraryRoot, request) => createProjectFromTemplate(catalog, libraryRoot, request),
     addExistingFolder: (libraryRoot, request) => addExistingFolder(catalog, libraryRoot, request),
     unregisterProjectFolder: (libraryRoot, folder) => registry.unregister(libraryRoot, folder),
-    deleteProjectForever: (libraryRoot, folder) => deleteProjectForever(catalog, libraryRoot, folder),
-    lastModified: (folder) => lastModified(reads, folder),
-    rootFileNames: (folder) => rootFileNames(reads, folder),
+    deleteProjectForever: (libraryRoot, folder) => removeProjectFolderForever(catalog, libraryRoot, folder),
+    lastModified: (folder) => readLastModified(reads, folder),
+    rootFileNames: (folder) => listBuildRootFileNames(reads, folder),
     listProjectFiles: (folder) => listProjectFiles(reads, folder),
     updateProjectSettings: (folder, patch) => updateProjectSettings(reads, folder, patch),
     listVersions: (folder) => listVersions(reads, folder),
-    markVersion: (request) => markVersion(reads, request),
+    markVersion: (request) => addProjectVersion(reads, request),
     readProjectValues: (project) => readProjectValues(project, reads),
     readFigureStates: (folder, figures) => readFigureBuildStates(reads, folder, figures),
     updateProjectBibliography: (project, papers, open) => updateProjectBibliography(reads, project, papers, open),

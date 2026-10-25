@@ -1,6 +1,6 @@
 /** Decides which project root a save of a source file builds: the file itself when it is a root, else the main file. */
 import { listProjectFiles, type ProjectReadContext } from "../folder/index.js";
-import { findRoots } from "./buildRootDetection.js";
+import { findBuildRoots } from "./buildRootDetection.js";
 
 const SOURCE_EXTENSION = /\.(tex|typ)$/i;
 
@@ -21,6 +21,6 @@ export async function buildRootOf(reads: RootReads, projectFolder: string, main:
   if (relative.startsWith("..") || paths.isAbsolute(relative) || !SOURCE_EXTENSION.test(relative)) { return main; }
   const relatives = (await listProjectFiles(reads, projectFolder)).filter((candidate) => SOURCE_EXTENSION.test(candidate));
   const sources = await Promise.all(relatives.map((candidate) => readSource(reads, paths.join(projectFolder, candidate), candidate)));
-  const roots = findRoots(sources.filter((source) => source !== undefined));
+  const roots = findBuildRoots(sources.filter((source) => source !== undefined));
   return roots.includes(relative) ? relative : main;
 }

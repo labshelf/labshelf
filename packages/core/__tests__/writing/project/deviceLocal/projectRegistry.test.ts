@@ -1,6 +1,6 @@
 /** Verifies parsing and editing of the project folder registry. */
 import {
-  parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder,
+  parseProjectRegistry, serializeProjectRegistry, withFolder, withProjectFolderRemoved,
 } from "../../../../src/writing/project/index";
 
 describe("parseProjectRegistry", () => {
@@ -36,7 +36,7 @@ describe("registry edits", () => {
   });
 
   it("removes a folder and keeps the other keys", () => {
-    expect(withoutFolder({ folders: ["/a", "/b"], keep: true }, "/a")).toEqual({ folders: ["/b"], keep: true });
-    expect(withoutFolder({ folders: ["/a"] }, "/zzz")).toEqual({ folders: ["/a"] });
+    expect(withProjectFolderRemoved({ folders: ["/a", "/b"], keep: true }, "/a")).toEqual({ folders: ["/b"], keep: true });
+    expect(withProjectFolderRemoved({ folders: ["/a"] }, "/zzz")).toEqual({ folders: ["/a"] });
   });
 });

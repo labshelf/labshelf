@@ -1,17 +1,17 @@
 /** Lists the names directly under a path of a JSON value file, for member completion. */
 
-import type { ValueLeaf } from "./projectValueLeaves.js";
+import type { ProjectValueLeaf } from "./projectValueLeaves.js";
 
-export interface ValueMember {
+export interface ProjectValueMember {
   name: string;
   /** The value itself when the member is a leaf; undefined when it holds more members. */
-  leaf: ValueLeaf | undefined;
+  leaf: ProjectValueLeaf | undefined;
 }
 
 /** Members of `parent` (dotted, "" for the root) in `file`; array indexes are left out because Typst reads them with `.at()`. */
-export function valueMembers(leaves: readonly ValueLeaf[], file: string, parent: string): ValueMember[] {
+export function deriveProjectValueMembers(leaves: readonly ProjectValueLeaf[], file: string, parent: string): ProjectValueMember[] {
   const prefix = parent === "" ? "" : `${parent}.`;
-  const members = new Map<string, ValueLeaf | undefined>();
+  const members = new Map<string, ProjectValueLeaf | undefined>();
   for (const leaf of leaves) {
     if (leaf.file !== file || !leaf.path.startsWith(prefix)) { continue; }
     const rest = leaf.path.slice(prefix.length);

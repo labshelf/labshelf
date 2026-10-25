@@ -1,5 +1,5 @@
 // Collects the bindings, labels, imports, includes and bibliographies a Typst file defines.
-import { lineOf, lineStarts } from "../../../writing/text/index.js";
+import { findLineOfOffset, deriveLineOffsets } from "../../../writing/text/index.js";
 import type { TypstBinding, TypstFileSymbols, TypstImport } from "./typstFileSymbols.js";
 import { walkTypst } from "./typstWalk.js";
 
@@ -102,20 +102,20 @@ function importedName(item: string): string {
 /** The symbols of `text`, each in the order it appears. */
 export function scanTypstFile(text: string): TypstFileSymbols {
   const symbols: TypstFileSymbols = { bindings: [], labels: [], imports: [], includes: [], bibliographies: [] };
-  const starts = lineStarts(text);
+  const starts = deriveLineOffsets(text);
   walkTypst(text, {
     ident(name, from, to, topLevel) {
       if (name !== "let") { return; }
       const head = readLetHead(text, from, to);
       if (!head) { return; }
-      const line = lineOf(starts, from);
+      const line = findLineOfOffset(starts, from);
       const binding: TypstBinding = { ...head, line, topLevel };
       const doc = docAbove(text, starts, line);
       if (doc !== undefined) { binding.doc = doc; }
       symbols.bindings.push(binding);
     },
     label(name, from, to) {
-      const line = lineOf(starts, from);
+      const line = findLineOfOffset(starts, from);
       symbols.labels.push({ name, from, to, line, context: text.slice(starts[line], from - 1).trim() });
     },
     string(path, from, to, call) {

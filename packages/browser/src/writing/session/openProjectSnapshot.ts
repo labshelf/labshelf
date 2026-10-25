@@ -1,6 +1,6 @@
 // Builds the open project's Files, Outline and Checklist sidebar trees from its folder through core's builders.
 import {
-  buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, nestHeadings, outlineHeadings, posixPathOps, projectFileRow, readChecklistSignals, createSectionPlacer, visibleEntries,
+  buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, createProjectFileRow, readChecklistSignals, createSectionPlacer, listVisibleEntries,
   type ChecklistGrouping, type HeadingNode, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext,
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
@@ -22,8 +22,8 @@ async function filesNodes(context: ProjectReadContext, project: ReadyProject, di
   const stats = await Promise.all(names.map((name) => fs.stat(paths.join(dir, name))));
   const entries = names.flatMap((name, index) => (stats[index] ? [{ name, folder: stats[index].isDirectory }] : []));
   const rowContext = { format: project.settings.format, main: project.main };
-  return Promise.all(visibleEntries(entries).map(async ({ name, folder }) => {
-    const row = projectFileRow(`${prefix}${name}`, folder, rowContext);
+  return Promise.all(listVisibleEntries(entries).map(async ({ name, folder }) => {
+    const row = createProjectFileRow(`${prefix}${name}`, folder, rowContext);
     if (!folder) { return row.node; }
     return { ...row.node, children: await filesNodes(context, project, paths.join(dir, name), `${prefix}${name}/`) };
   }));
@@ -41,7 +41,7 @@ function outlineNodes(main: string, headings: HeadingNode<OutlineHeading>[]): Si
 async function readOutline(context: ProjectReadContext, project: ReadyProject): Promise<SidebarTreeNode[]> {
   if (project.main === undefined) { return []; }
   const text = await context.fs.readText(context.paths.join(project.folder, project.main));
-  return outlineNodes(project.main, nestHeadings(outlineHeadings(project.settings.format, text)));
+  return outlineNodes(project.main, deriveNestedHeadings(findOutlineHeadings(project.settings.format, text)));
 }
 
 async function checklistNodes(context: ProjectReadContext, project: ReadyProject, grouping: ChecklistGrouping): Promise<SidebarTreeNode[]> {

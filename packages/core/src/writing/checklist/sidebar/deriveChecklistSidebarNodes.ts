@@ -2,7 +2,7 @@
 import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, PageOverflow } from "../buildChecklist.js";
-import { itemKey, itemRow, pagesHead, type ReadingPaper } from "./checklistRows.js";
+import { itemKey, itemRow, createPagesHead, type ReadingPaper } from "./checklistRows.js";
 
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 
@@ -67,7 +67,7 @@ function groupNode(input: ChecklistTreeInput, tree: ChecklistTree, group: Checkl
 /** The Pages row from the page count, folding over the manual items added to it; a leaf without them. */
 function pagesNode(input: ChecklistTreeInput, tree: ChecklistTree, group: ChecklistGroup | undefined): SidebarTreeNode | undefined {
   const manual = group?.items.filter((item) => item.kind === "manual") ?? [];
-  const head = input.pageCount ? pagesHead(input.pageCount) : { label: "Pages", icon: { kind: "dot", tone: "muted" } as const };
+  const head = input.pageCount ? createPagesHead(input.pageCount) : { label: "Pages", icon: { kind: "dot", tone: "muted" } as const };
   if (manual.length === 0) {
     if (!input.pageCount) { return undefined; }
     tree.groups.set("kind:pages", "pages");

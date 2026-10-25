@@ -12,7 +12,7 @@ import {
 } from "@labshelf/core";
 import {
   createNodeCollabStorage,
-  nodeProjectCatalogContext,
+  createNodeProjectCatalogCompositionRoot,
   resolveConflictDismissalFile,
   createDeviceIdentity,
   createDeviceLocalLayout,
@@ -63,7 +63,7 @@ export function connectDesktopShare(options: ConnectOptions, start: ShareStart):
   return connectShare({
     shareId, shareKey, relays, name, logger,
     storage: createNodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
-    projects: { context: nodeProjectCatalogContext(logger), libraryRoot },
+    projects: { context: createNodeProjectCatalogCompositionRoot(logger), libraryRoot },
     startMirror: desktopMirrorFactory(libraryRoot, logger, (folder, path) => options.isEditorOwned(folder, path)),
   }, start);
 }

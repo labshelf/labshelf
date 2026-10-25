@@ -37,7 +37,7 @@ function located(paths: PathOps, key: string, label: string, file: string, line:
 const pagesText = (pages: number): string => Number.isInteger(pages) ? String(pages) : pages.toFixed(1);
 
 /** The Pages row's head: the body's page count against its limit, red once over it. */
-export function pagesHead({ pages, limit }: PageOverflow): Omit<SidebarTreeNode, "key"> {
+export function createPagesHead({ pages, limit }: PageOverflow): Omit<SidebarTreeNode, "key"> {
   const over = pages > limit;
   return {
     label: `Pages ${pagesText(pages)} / ${limit}`, tooltip: over ? "Over the page limit" : "Within the page limit",
@@ -67,7 +67,7 @@ export function itemRow(paths: PathOps, key: string, item: ChecklistItem, readin
     case "todo": return located(paths, key, item.todo.text, item.todo.file, item.todo.line);
     case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);
     case "figure": return { key, label: item.figure.name, tooltip: "Stale figure", inlineAction: { action: "regenerate", label: "Regenerate" } };
-    case "pages": return { key, ...pagesHead(item.overflow) };
+    case "pages": return { key, ...createPagesHead(item.overflow) };
     case "manual": return {
       key, label: item.manual.text, checked: item.done, ...(item.done ? { struck: true } : {}),
       menu: [{ label: "Remove Item", action: "removeItem", danger: true }],

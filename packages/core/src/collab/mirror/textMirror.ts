@@ -12,7 +12,7 @@ import {
 } from "./mirrorContext.js";
 import type { MirrorFileRead } from "./fileSystem/index.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
-import { lineSimilarity } from "../../writing/text/index.js";
+import { deriveLineSimilarity } from "../../writing/text/index.js";
 
 function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, parent?: string) {
   const versions = context.store.storedVersions(path);
@@ -20,9 +20,9 @@ function mergeDiskText(context: MirrorContext, path: string, docText: string, di
   if (recorded) { return context.mergeText({ base: recorded.text, local: docText, other: diskText, otherLabel: "disk" }); }
   const agreed = context.store.bases.get(path);
   let base = versions.find((version) => version.text === agreed)?.text;
-  let similarity = base === undefined ? -1 : lineSimilarity(base, diskText);
+  let similarity = base === undefined ? -1 : deriveLineSimilarity(base, diskText);
   for (const version of [...versions].reverse()) {
-    const score = lineSimilarity(version.text, diskText);
+    const score = deriveLineSimilarity(version.text, diskText);
     if (score > similarity) { base = version.text; similarity = score; }
   }
   return base === undefined ? undefined : context.mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });

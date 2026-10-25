@@ -1,17 +1,17 @@
 // Answers the shared project search page in the same page: searches the project's saved files and applies its opens and replacements.
 import {
-  emptySearchRun,
-  matchesIn,
+  createEmptySearchRun,
+  findMatchesIn,
   posixPathOps,
   searchProjectTexts,
   type HostToSearch,
   type ILogger,
   type LibraryFileSystem,
-  type MatchLocation,
+  type MatchPosition,
   type MessageEnd,
   type SearchOptions,
   type SearchToHost,
-  isSearchableFile,
+  isSearchTextFile,
   listProjectFiles,
   type ProjectText,
   matchReplacement,
@@ -21,8 +21,8 @@ import { flushProjectEditors, reloadProjectEditors } from "./session";
 import { recordProjectEdit } from "./history";
 
 /** Replaces the matches in their files; a match whose text changed since the search is left alone. */
-export async function replaceInFiles(fs: LibraryFileSystem, matches: readonly MatchLocation[], pattern: RegExp, replacement: string): Promise<number> {
-  const byPath = new Map<string, MatchLocation[]>();
+export async function replaceInFiles(fs: LibraryFileSystem, matches: readonly MatchPosition[], pattern: RegExp, replacement: string): Promise<number> {
+  const byPath = new Map<string, MatchPosition[]>();
   for (const match of matches) byPath.set(match.path, [...(byPath.get(match.path) ?? []), match]);
   let count = 0;
   for (const [path, inFile] of byPath) {
@@ -51,7 +51,7 @@ const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
 /** The project's searchable files with their saved text; files over 2 MB are skipped. */
 async function projectSearchTexts(fs: LibraryFileSystem, folder: string): Promise<ProjectText[]> {
-  const relatives = (await listProjectFiles({ fs, paths: posixPathOps }, folder)).filter(isSearchableFile);
+  const relatives = (await listProjectFiles({ fs, paths: posixPathOps }, folder)).filter(isSearchTextFile);
   const texts: ProjectText[] = [];
   for (const relative of relatives) {
     const path = posixPathOps.join(folder, relative);
@@ -86,7 +86,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     const mine = ++ticket;
     if (!request) return;
     const { query, options } = request;
-    if (query === "") { ({ pattern, paths: searched } = emptySearchRun()); endpoint.post(emptySearchRun().message); return; }
+    if (query === "") { ({ pattern, paths: searched } = createEmptySearchRun()); endpoint.post(createEmptySearchRun().message); return; }
     // Unsaved editor text reaches the disk first, so the search reads what the editors show.
     await flushProjectEditors(project.id);
     const run = searchProjectTexts(query, options, { folder: project.folder, paths: posixPathOps }, await projectSearchTexts(fs, project.folder));
@@ -106,10 +106,10 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     }, DEBOUNCE_MS);
   };
 
-  async function matchesToReplace(message: Replacing, regex: RegExp): Promise<MatchLocation[]> {
+  async function matchesToReplace(message: Replacing, regex: RegExp): Promise<MatchPosition[]> {
     if (message.type === "replace") return [message];
     const texts = await projectSearchTexts(fs, project.folder);
-    return matchesIn(texts, regex, message.type === "replaceFile" ? message.path : undefined);
+    return findMatchesIn(texts, regex, message.type === "replaceFile" ? message.path : undefined);
   }
 
   async function replace(message: Replacing): Promise<void> {

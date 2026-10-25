@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, LibraryFileSystem, PathOps, ProjectText, SearchScopeMode } from "@labshelf/core";
-import { isSearchableFile, listProjectFiles } from "@labshelf/core";
+import { isSearchTextFile, listProjectFiles } from "@labshelf/core";
 import { isInside } from "../buildRootDocument.js";
 
 export const SEARCH_LOG_MODULE = "writing/search";
@@ -45,7 +45,7 @@ async function scopedPaths(scope: SearchScope, logger: ILogger): Promise<string[
 export async function readScopeTexts(scope: SearchScope, logger: ILogger): Promise<ProjectText[]> {
   const open = new Map(vscode.workspace.textDocuments.filter((d) => d.uri.scheme === "file").map((d) => [d.uri.fsPath, d]));
   // INVARIANT: a search never reads outside the project folder, whatever the scope or the active file.
-  const paths = (await scopedPaths(scope, logger)).filter((path) => isSearchableFile(path) && isInside(scope.paths, scope.folder, path));
+  const paths = (await scopedPaths(scope, logger)).filter((path) => isSearchTextFile(path) && isInside(scope.paths, scope.folder, path));
   const texts: ProjectText[] = [];
   for (const path of paths.sort()) {
     const document = open.get(path);

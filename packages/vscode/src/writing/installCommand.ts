@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  describeInstall, keyResolves, planInstall, summarizeInstall, type ILogger, type InstallResult, type PaperRecord, type ProjectEntry,
+  describeInstall, isInstallResolved, createInstallPlan, describeInstallReport, type ILogger, type InstallResult, type PaperRecord, type ProjectEntry,
 } from "@labshelf/core";
 import { executeSafely, queueTextLayersOfAdded } from "../command/index.js";
 import type { PaperImporter, PaperTextLayers } from "../library/index.js";
@@ -28,7 +28,7 @@ interface InstallCommandDeps {
 
 // One at a time: each import's duplicate check must see the papers the earlier ones added.
 async function importMissing(services: InstallServices, project: Extract<ProjectEntry, { kind: "ready" }>): Promise<InstallResult[]> {
-  const plan = planInstall(project.settings.papers ?? [], await services.paperService.listPapers());
+  const plan = createInstallPlan(project.settings.papers ?? [], await services.paperService.listPapers());
   const total = plan.filter((entry) => entry.kind === "import").length;
   const options = { location: vscode.ProgressLocation.Notification, title: `Installing the papers of "${project.settings.id}"` };
   return vscode.window.withProgress(options, async (progress) => {
@@ -57,8 +57,8 @@ async function installPapers(deps: InstallCommandDeps, entry: ProjectEntry | und
     }
     const results = await importMissing(services, project);
     queueTextLayersOfAdded(services, results.flatMap(({ outcome }) => (outcome ? [outcome] : [])));
-    const summary = summarizeInstall(results);
-    const unresolved = results.find((result) => !keyResolves(result));
+    const summary = describeInstallReport(results);
+    const unresolved = results.find((result) => !isInstallResolved(result));
     const problem = unresolved && describeInstall(unresolved);
     await session.logger.log("INFO", INSTALL_COMMAND, "Project papers installed", { project: project.settings.id, summary: summary.text });
     const show = summary.level === "warn" ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;

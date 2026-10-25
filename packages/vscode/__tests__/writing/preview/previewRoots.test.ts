@@ -4,7 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { rootBuildFolder } from "@labshelf/core";
+import { deriveBuildRootFolder } from "@labshelf/core";
 import { ReaderPanel } from "../../../src/reader";
 import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
@@ -41,7 +41,7 @@ function setup(project: Project, buildRootOf = async (_folder: string, main: str
 }
 
 function writeLog(root: string): void {
-  const file = path.join(cache, "paper", rootBuildFolder(root), `${path.basename(root).replace(/\.\w+$/, "")}.log`);
+  const file = path.join(cache, "paper", deriveBuildRootFolder(root), `${path.basename(root).replace(/\.\w+$/, "")}.log`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, "log");
 }

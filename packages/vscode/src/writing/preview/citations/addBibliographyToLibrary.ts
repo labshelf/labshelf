@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import {
-  extractArxivIdentifierFromUrl, bibCardEntry, extractDoi, normalizeArxivIdentifier, extractPlainField, createPaper,
+  extractArxivIdentifierFromUrl, createBibliographyCardEntry, extractDoi, normalizeArxivIdentifier, extractPlainField, createPaper,
   type BibEntry, type ILogger, type MutationContext,
 } from "@labshelf/core";
 import type { PaperImporter } from "../../../library/index.js";
@@ -33,7 +33,7 @@ function identifierOf(entry: BibEntry): string | undefined {
 }
 
 async function writeFromFields(deps: AddBibDeps, entry: BibEntry, file: string): Promise<string> {
-  const card = bibCardEntry(entry);
+  const card = createBibliographyCardEntry(entry);
   const url = extractPlainField(entry.fields.get("url"));
   const publisher = extractPlainField(entry.fields.get("publisher"));
   const record = await createPaper(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, {

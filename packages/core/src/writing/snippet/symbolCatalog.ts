@@ -1,10 +1,10 @@
 // Lists the math symbols the editor's Insert Symbol picker offers, with their LaTeX and Typst source.
 
-export type SymbolCategory = "Greek" | "Operators" | "Relations" | "Arrows" | "Logic and sets" | "Miscellaneous";
+export type SymbolGroup = "Greek" | "Operators" | "Relations" | "Arrows" | "Logic and sets" | "Miscellaneous";
 
 export interface MathSymbol {
   glyph: string;
-  category: SymbolCategory;
+  category: SymbolGroup;
   /** A math-mode command, as the Overleaf symbol palette inserts it. */
   latex: string;
   /** A name under `sym`; `#sym.<name>` works in Typst markup and math alike. */
@@ -13,7 +13,7 @@ export interface MathSymbol {
 
 type Row = readonly [glyph: string, latex: string, typst: string];
 
-const ROWS: Record<SymbolCategory, readonly Row[]> = {
+const ROWS: Record<SymbolGroup, readonly Row[]> = {
   Greek: [
     ["α", "\\alpha", "alpha"], ["β", "\\beta", "beta"], ["γ", "\\gamma", "gamma"], ["δ", "\\delta", "delta"],
     ["ε", "\\varepsilon", "epsilon"], ["ζ", "\\zeta", "zeta"], ["η", "\\eta", "eta"], ["θ", "\\theta", "theta"],
@@ -54,10 +54,10 @@ const ROWS: Record<SymbolCategory, readonly Row[]> = {
   ],
 };
 
-export const MATH_SYMBOLS: readonly MathSymbol[] = (Object.keys(ROWS) as SymbolCategory[]).flatMap((category) =>
+export const MATH_SYMBOLS: readonly MathSymbol[] = (Object.keys(ROWS) as SymbolGroup[]).flatMap((category) =>
   ROWS[category].map(([glyph, latex, typst]) => ({ glyph, category, latex, typst })));
 
 /** The source text that inserts the symbol in a file of the language. */
-export function symbolSource(symbol: MathSymbol, language: "latex" | "typst"): string {
+export function deriveSymbolSource(symbol: MathSymbol, language: "latex" | "typst"): string {
   return language === "latex" ? symbol.latex : `#sym.${symbol.typst}`;
 }

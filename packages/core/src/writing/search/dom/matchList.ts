@@ -1,16 +1,16 @@
 // Renders project search results as collapsible per-file lists of highlighted matches with their replace actions.
 import { renderElement } from "../../../ui/dom/dom.js";
 import { renderIcon } from "../../../ui/icons/index.js";
-import type { MatchLocation } from "../protocol/index.js";
+import type { MatchPosition } from "../protocol/index.js";
 import type { FileResults, SearchResults } from "../searchResults.js";
 
-export interface ResultsActions {
-  open(at: MatchLocation): void;
-  replace(at: MatchLocation): void;
+export interface MatchListActions {
+  open(at: MatchPosition): void;
+  replace(at: MatchPosition): void;
   replaceFile(path: string): void;
 }
 
-export interface ResultsList {
+export interface MatchList {
   root: HTMLElement;
   render(results: SearchResults): void;
   /** Shows the per-match and per-file replace buttons only while the replace field is open. */
@@ -19,7 +19,7 @@ export interface ResultsList {
   /** The index of the current match, or -1 when none is. */
   selected(): number;
   /** Marks the match at `index` as current, scrolls to it and returns where it is. */
-  select(index: number): MatchLocation | undefined;
+  select(index: number): MatchPosition | undefined;
 }
 
 const ROW = ".ls-psearch-row";
@@ -65,9 +65,9 @@ function fileHeader(file: FileResults, matches: HTMLElement, replaceFile: () => 
   return header;
 }
 
-export function createResultsList(actions: ResultsActions): ResultsList {
+export function createMatchList(actions: MatchListActions): MatchList {
   const root = renderElement("ul", { class: "ls-psearch-results", role: "list", "aria-label": "Results" });
-  let locations: MatchLocation[] = [];
+  let locations: MatchPosition[] = [];
   let matchRows: HTMLElement[] = [];
   let selected = -1;
   root.addEventListener("keydown", (event) => moveFocus(root, event));
@@ -76,7 +76,7 @@ export function createResultsList(actions: ResultsActions): ResultsList {
     const matches = renderElement("ul", { class: "ls-psearch-matches", role: "list" });
     const header = fileHeader(file, matches, () => actions.replaceFile(file.path));
     for (const match of file.matches) {
-      const at: MatchLocation = { path: file.path, line: match.line, column: match.column, length: match.length };
+      const at: MatchPosition = { path: file.path, line: match.line, column: match.column, length: match.length };
       const row = renderElement("li", { class: "ls-psearch-row ls-psearch-match", tabindex: "-1", title: `${file.label}:${match.line + 1}` },
         renderElement("span", { class: "ls-psearch-preview" }, match.before, renderElement("mark", { class: "ls-psearch-hit", text: match.text }), match.after),
         actionButton("Replace", "replace", () => actions.replace(at)));
@@ -88,7 +88,7 @@ export function createResultsList(actions: ResultsActions): ResultsList {
     return renderElement("li", { class: "ls-psearch-group" }, header, matches);
   }
 
-  function select(index: number): MatchLocation | undefined {
+  function select(index: number): MatchPosition | undefined {
     selected = index;
     matchRows.forEach((row, i) => row.classList.toggle("ls-psearch-current", i === index));
     matchRows[index]?.scrollIntoView({ block: "nearest" });

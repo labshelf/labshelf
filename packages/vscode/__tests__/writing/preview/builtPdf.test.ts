@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { rootBuildFolder } from "@labshelf/core";
+import { deriveBuildRootFolder } from "@labshelf/core";
 import { builtPdf } from "../../../src/writing/preview/builtPdf";
 import { fakeProjects, readyEntry } from "../../support/writingFixtures";
 
@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe("builtPdf", () => {
   it("returns the Typst preview PDF from the build folder, not the one next to main", async () => {
-    const preview = path.join(cache, "paper", rootBuildFolder("doc/main.typ"), "main.pdf");
+    const preview = path.join(cache, "paper", deriveBuildRootFolder("doc/main.typ"), "main.pdf");
     existing(preview, path.join(dir, "doc", "main.pdf"));
     expect(await builtPdf(projects, typst(), "doc/main.typ")).toBe(preview);
   });

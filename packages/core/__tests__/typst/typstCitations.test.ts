@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { citedKeysAt } from "../../src/writing/quotes";
+import { findCiteKeysAt } from "../../src/writing/quotes";
 import { readProbeAnswer } from "../../src/typst/typstCitationProbe";
 import type { TypstSession } from "../../src/typst/index";
 import { deriveTypstCompilerPath } from "../../src/typst/node/index";
@@ -45,7 +45,7 @@ describe("Typst citation positions", () => {
     const { result, links } = await compileProject("main.typ", DOCUMENT);
     const cites = result.citations && "cites" in result.citations ? result.citations.cites : [];
     expect(cites.map((cite) => [cite.key, cite.at.page])).toEqual([["smith2020", 1], ["doe19", 1], ["smith2020", 2]]);
-    const keys = await Promise.all(links.map((link) => citedKeysAt({ area: link.area, link: true }, { format: "typst", typstCites: cites })));
+    const keys = await Promise.all(links.map((link) => findCiteKeysAt({ area: link.area, link: true }, { format: "typst", typstCites: cites })));
     expect(keys.filter((found) => found.length > 0)).toEqual([["smith2020"], ["doe19"], ["smith2020"]]);
     // The heading reference and the bibliography's back links are links too, and cite nothing.
     expect(keys.filter((found) => found.length === 0).length).toBe(links.length - 3);

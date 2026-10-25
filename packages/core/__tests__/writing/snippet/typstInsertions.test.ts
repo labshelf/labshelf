@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { TypstSession } from "../../../src/typst/index";
 import { deriveTypstCompilerPath } from "../../../src/typst/node/index";
-import { imageSnippet, MATH_SYMBOLS, symbolSource, tableSnippet } from "../../../src/writing/snippet/index";
+import { createImageSnippet, MATH_SYMBOLS, deriveSymbolSource, createTableSnippet } from "../../../src/writing/snippet/index";
 import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../../support/typstFixtures";
 import { expandSnippet } from "./snippetExpansion";
@@ -27,13 +27,13 @@ async function compile(text: string) {
 describe("Typst insertions", () => {
   // TRAP: the test font has no math glyphs, so math mode fails to compile; `#sym.<name>` is the same expression in both modes.
   it("compiles every symbol without an unknown or deprecated name", async () => {
-    const result = await compile(MATH_SYMBOLS.map((symbol) => symbolSource(symbol, "typst")).join(" "));
+    const result = await compile(MATH_SYMBOLS.map((symbol) => deriveSymbolSource(symbol, "typst")).join(" "));
     expect(result.diagnostics).toEqual([]);
     expect(result.pdf).toBeDefined();
   });
 
   it("compiles a table and an image figure", async () => {
-    const text = `${expandSnippet(tableSnippet("typst", { columns: 3, rows: 2 }))}\n${expandSnippet(imageSnippet("typst", "images/dot.svg"))}`;
+    const text = `${expandSnippet(createTableSnippet("typst", { columns: 3, rows: 2 }))}\n${expandSnippet(createImageSnippet("typst", "images/dot.svg"))}`;
     const result = await compile(text);
     expect(result.diagnostics).toEqual([]);
     expect(result.pdf).toBeDefined();

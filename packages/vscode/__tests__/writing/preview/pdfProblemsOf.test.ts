@@ -1,7 +1,7 @@
 // Tests that a root's build problems are placed through SyncTeX or Typst cite targets and counted for the preview footer.
 import * as path from "node:path";
 
-import type { LocatedProblem, SyncIndex, TypstCite } from "@labshelf/core";
+import type { LocatedProblem, SynctexMap, TypstCite } from "@labshelf/core";
 import { pdfProblemsOf, type PdfProblemsDeps } from "../../../src/writing/preview/index";
 import type { SynctexLookup } from "../../../src/writing/preview/synctex/projectSynctex";
 import type { ReadyProject } from "../../../src/writing/buildRootDocument";
@@ -10,7 +10,7 @@ import { fakeLogger, readyEntry } from "../../support/writingFixtures";
 const latex = readyEntry("/lib/paper") as ReadyProject;
 const typst = { ...latex, main: "main.typ", settings: { ...latex.settings, format: "typst" } } as ReadyProject;
 
-function indexOf(lines: Record<number, { page: number; x: number; y: number }>): SyncIndex {
+function indexOf(lines: Record<number, { page: number; x: number; y: number }>): SynctexMap {
   const positions = new Map(Object.entries(lines).map(([line, at]) => [Number(line), { ...at, mark: false }]));
   const byFile = new Map([["/lib/paper/main.tex", { positions, lines: [...positions.keys()].sort((a, b) => a - b) }]]);
   return { files: new Map(), pages: new Map(), byFile };

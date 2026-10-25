@@ -20,7 +20,7 @@ import { UsageError, type Output } from "../usage.js";
 import { openDevTty, type CiteTty } from "./tty.js";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
-import { nodeProjectReadContext, readOptionalFile, writeFileAtomic } from "@labshelf/core/node";
+import { createNodeProjectReadCompositionRoot, readOptionalFile, writeFileAtomic } from "@labshelf/core/node";
 import { Terminal, Screen, type InputEvent } from "../../screen/index.js";
 import { theme, editText, textInput, type TextInputState } from "../../libraryUi/index.js";
 
@@ -148,7 +148,7 @@ async function locateProject(
   const start = path.resolve(folder ?? process.cwd());
   const found = await enclosingProject(start, folder === undefined);
   if (found === undefined) { return { reason: `no ${PROJECT_FILE} in ${start}` }; }
-  const entry = await readProject(nodeProjectReadContext(logger), found, "external");
+  const entry = await readProject(createNodeProjectReadCompositionRoot(logger), found, "external");
   return entry.kind === "ready" ? { project: entry } : { reason: entry.reason };
 }
 
@@ -160,7 +160,7 @@ async function locateProject(
 async function addToBibliography(
   project: ReadyProject, picked: PaperRecord, papers: readonly PaperRecord[], logger: ILogger,
 ): Promise<void> {
-  const context = nodeProjectReadContext(logger);
+  const context = createNodeProjectReadCompositionRoot(logger);
   await updateProjectBibliography(context, project, papers);
   const keys = [...await listProjectCiteKeys(context, project.folder, project.settings.format), picked.citeKey];
   const generated = createBibliography(keys, papers);

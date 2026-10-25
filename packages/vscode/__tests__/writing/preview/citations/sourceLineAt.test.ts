@@ -8,7 +8,7 @@ const found = (file: string, line: number) => ({ status: "found", index: { file,
 
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
-  sourceAt: (index: { file: string; line: number }) => index,
+  findSourcePosition: (index: { file: string; line: number }) => index,
 }));
 
 const readFile = vscode.workspace.fs.readFile as jest.Mock;

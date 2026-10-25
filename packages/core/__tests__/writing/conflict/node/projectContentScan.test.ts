@@ -5,7 +5,7 @@ import { scanLibraryConflicts, scanSharedProjectConflicts } from '../../../../sr
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
 import { resolveProjectConflictCopy } from '../../../../src/library/conflicts/node/index';
 import { NodeLibraryFileSystem } from '../../../../src/library/node/index';
-import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
+import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { createBlankTemplate } from '../../../../src/templates/index';
 import { fakeLogger } from '../../../support/fakeLogger';
@@ -14,7 +14,7 @@ afterEach(cleanupTempDirs);
 it('offers only the copy repeatedly without merging or seeding a copy as the original', async () => {
   const root = await makeTempDir();
   const logger = fakeLogger();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
+  const project = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project unavailable');
   const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(root, 'bases'));
   const original = path.join(project.folder, 'main.tex');
@@ -33,7 +33,7 @@ it('offers only the copy repeatedly without merging or seeding a copy as the ori
 it('includes shared project copies in the library scan without merging them', async () => {
   const root = await makeTempDir();
   const logger = fakeLogger();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Shared Study', ...createBlankTemplate('latex', 'Shared Study') });
+  const project = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Shared Study', ...createBlankTemplate('latex', 'Shared Study') });
   if (project.kind !== 'ready') throw new Error('Project unavailable');
   await fs.appendFile(path.join(project.folder, 'labshelf.yaml'), 'shared: shared-copy-discovery\n');
   const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(root, 'bases'));
@@ -52,7 +52,7 @@ it('includes shared project copies in the library scan without merging them', as
 it('leaves two established similar files out of the conflict prompt', async () => {
   const root = await makeTempDir();
   const logger = fakeLogger();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
+  const project = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project unavailable');
   const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(root, 'bases'));
   const base = Array.from({ length: 10 }, (_, i) => `Line ${i}`).join('\n');
@@ -68,7 +68,7 @@ it('leaves two established similar files out of the conflict prompt', async () =
 it('offers a dismissed copy again after its content changes despite a seeded version', async () => {
   const root = await makeTempDir();
   const logger = fakeLogger();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
+  const project = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project unavailable');
   const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(root, 'bases'));
   const base = Array.from({ length: 10 }, (_, i) => `Line ${i}`).join('\n');

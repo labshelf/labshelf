@@ -5,13 +5,13 @@ import {
   MATH_SYMBOLS,
   MAX_TABLE_SIDE,
   parseTableSize,
-  symbolSource,
-  tableSnippet,
+  deriveSymbolSource,
+  createTableSnippet,
   IMAGE_EXTENSIONS,
   IMAGE_FOLDER,
-  freeImageName,
-  imageBaseFolder,
-  imageSnippet,
+  findFreeImageName,
+  deriveImageBaseFolder,
+  createImageSnippet,
   type ILogger,
 } from "@labshelf/core";
 
@@ -32,7 +32,7 @@ async function exists(uri: vscode.Uri): Promise<boolean> {
 async function copyIntoProject(projects: ProjectLookup, project: ReadyProject, source: string): Promise<string> {
   const { paths } = projects;
   const folder = paths.join(project.folder, IMAGE_FOLDER);
-  const target = await freeImageName(paths, folder, paths.basename(source), (path) => exists(vscode.Uri.file(path)));
+  const target = await findFreeImageName(paths, folder, paths.basename(source), (path) => exists(vscode.Uri.file(path)));
   await vscode.workspace.fs.copy(vscode.Uri.file(source), vscode.Uri.file(target), { overwrite: false });
   return target;
 }
@@ -61,8 +61,8 @@ async function insertImage(editor: vscode.TextEditor, language: WritingLanguage,
       return;
     }
   }
-  const relative = paths.relative(imageBaseFolder(language, project.folder, project.main, documentPath, paths), image).split(paths.sep).join("/");
-  await editor.insertSnippet(new vscode.SnippetString(imageSnippet(language, relative)));
+  const relative = paths.relative(deriveImageBaseFolder(language, project.folder, project.main, documentPath, paths), image).split(paths.sep).join("/");
+  await editor.insertSnippet(new vscode.SnippetString(createImageSnippet(language, relative)));
 }
 
 interface InsertActionDeps {
@@ -77,7 +77,7 @@ interface SymbolItem extends vscode.QuickPickItem {
 
 function symbolItems(language: WritingLanguage): SymbolItem[] {
   return MATH_SYMBOLS.flatMap((symbol, index) => {
-    const source = symbolSource(symbol, language);
+    const source = deriveSymbolSource(symbol, language);
     const item: SymbolItem = { label: symbol.glyph, description: source, source };
     const startsCategory = MATH_SYMBOLS[index - 1]?.category !== symbol.category;
     return startsCategory ? [{ label: symbol.category, kind: vscode.QuickPickItemKind.Separator }, item] : [item];
@@ -99,7 +99,7 @@ async function insertTable(editor: vscode.TextEditor, language: WritingLanguage)
   });
   const size = input === undefined ? undefined : parseTableSize(input);
   if (!size) { return; }
-  await editor.insertSnippet(new vscode.SnippetString(tableSnippet(language, size)));
+  await editor.insertSnippet(new vscode.SnippetString(createTableSnippet(language, size)));
 }
 
 export function registerInsertActions(deps: InsertActionDeps): void {

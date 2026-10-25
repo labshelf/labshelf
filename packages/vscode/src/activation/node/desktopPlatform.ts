@@ -10,11 +10,11 @@ import { registerNodeWriting } from "../../writing/node/index.js";
 import type { ExtensionPlatform } from "../extensionPlatform.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as path from "node:path";
-import { FileProjectVersionStore, createProjectData } from "@labshelf/core";
+import { FileProjectVersionStore, createProjectContent } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   NodePdfOpener,
-  convertWithPandoc,
+  exportWithPandoc,
   createNodeSidecarPort,
   createDeviceLocalLayout,
   openAiStorage,
@@ -50,7 +50,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     openAiStorage,
     deviceLayout: createDeviceLocalLayout,
     createProjectSaveTracking: (root, logger) => createProjectSaveTracking(fs, root, logger),
-    createProjectData: (logger, deviceDirs, projectFs) => createProjectData({ fs: projectFs, path, logger, deviceDirs }),
+    createProjectData: (logger, deviceDirs, projectFs) => createProjectContent({ fs: projectFs, path, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
       scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir), logger,
         (file) => { void vscode.window.showInformationMessage(`Combined changes from another device in ${path.basename(file)}.`); }),
@@ -61,7 +61,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
       }
       return resolveConflictCopy(copy, resolution, logger, createProjectSaveTracking(fs, () => root, logger));
     },
-    convertDocument: convertWithPandoc,
+    convertDocument: exportWithPandoc,
     sharedLibraryConfig: nodeSharedLibraryConfig,
     reader: { locatePdfjs, isMac: process.platform === "darwin" },
   };

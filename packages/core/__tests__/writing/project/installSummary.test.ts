@@ -1,7 +1,7 @@
 /** Verifies the words install uses for each paper and for the closing message. */
 import type { ImportOutcome } from "../../../src/library";
 import type { PaperRecord } from "../../../src/model";
-import { describeInstall, summarizeInstall, type InstallResult } from "../../../src/writing/project/index";
+import { describeInstall, describeInstallReport, type InstallResult } from "../../../src/writing/project/index";
 
 const record = (citeKey: string, hasPdf: boolean): PaperRecord => ({ id: citeKey, title: "T", path: citeKey, citeKey, status: "unread", hasPdf }) as PaperRecord;
 const added = (citeKey: string, hasPdf = true): ImportOutcome => ({ status: "added", record: record(citeKey, hasPdf), needsReview: false, input: "10.1/x" });
@@ -32,9 +32,9 @@ describe("describeInstall", () => {
   });
 });
 
-describe("summarizeInstall", () => {
+describe("describeInstallReport", () => {
   it("counts what was added, was there already and still does not resolve", () => {
-    const summary = summarizeInstall([
+    const summary = describeInstallReport([
       { entry: { kind: "present", key: "a" } },
       toImport("d", added("d")),
       toImport("e", added("e", false)),
@@ -44,10 +44,10 @@ describe("summarizeInstall", () => {
   });
 
   it("is quiet when every key resolves with its PDF", () => {
-    expect(summarizeInstall([toImport("d", added("d"))])).toEqual({ level: "info", text: "1 added, 0 already in the library" });
+    expect(describeInstallReport([toImport("d", added("d"))])).toEqual({ level: "info", text: "1 added, 0 already in the library" });
   });
 
   it("says so when the project lists nothing", () => {
-    expect(summarizeInstall([])).toEqual({ level: "info", text: "The project lists no papers" });
+    expect(describeInstallReport([])).toEqual({ level: "info", text: "The project lists no papers" });
   });
 });

@@ -1,5 +1,5 @@
 /** Flattens a LaTeX include tree into the pieces of text in the order they read, each include at the place it is written. */
-import { lineStarts } from "../../text/index.js";
+import { deriveLineOffsets } from "../../text/index.js";
 import type { ProjectSourceFile } from "../../../latex/source/index.js";
 import { resolveIncludePath } from "../../../latex/source/index.js";
 
@@ -11,7 +11,7 @@ export function deriveReadingOrderTexts(files: readonly ProjectSourceFile[], tex
   const place = (file: ProjectSourceFile): void => {
     placed.add(file.path);
     const text = texts.get(file.path) ?? "";
-    const starts = lineStarts(text);
+    const starts = deriveLineOffsets(text);
     let cursor = 0;
     for (const include of file.facts.includes) {
       const target = resolveIncludePath(include.path);

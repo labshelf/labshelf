@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { listVersions, type ILogger, type PdfjsLoader, type ProjectEntry } from "@labshelf/core";
-import { buildMarkedUpDiff, comparePdfs, findExecutable, nodeProjectReadContext } from "@labshelf/core/node";
+import { buildMarkedUpDiff, comparePdfs, findExecutable, createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import { executeSafely } from "../../../command/index.js";
 import type { ReaderPanelDeps } from "../../../reader/index.js";
 import { activeProject } from "../../build/index.js";
@@ -82,7 +82,7 @@ async function compareProject(deps: CompareVersionsDeps, panels: ComparePanels, 
       await vscode.window.showInformationMessage("Open a file of a writing project to compare its versions.");
       return;
     }
-    const versions = await listVersions(nodeProjectReadContext(session.logger), target.folder);
+    const versions = await listVersions(createNodeProjectReadCompositionRoot(session.logger), target.folder);
     if (versions.length === 0) {
       await vscode.window.showInformationMessage("Mark a version first with Research: Mark Version.");
       return;

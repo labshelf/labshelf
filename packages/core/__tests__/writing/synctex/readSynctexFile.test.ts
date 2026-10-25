@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 
 import { posixPathOps } from "../../../src/library/index";
-import { pointFor, readSynctexFile } from "../../../src/writing/synctex/index";
+import { findPagePoint, readSynctexFile } from "../../../src/writing/synctex/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 const fixture = fs.readFileSync(path.join(__dirname, "fixtures/main.synctex"));
@@ -17,7 +17,7 @@ describe("readSynctexFile", () => {
     const result = await readSynctexFile({ fs: memory, paths: posixPathOps }, "/build", "main", "/work/project");
     expect(result.status).toBe("found");
     if (result.status === "found") {
-      expect(pointFor(result.index, "/work/project/chapter.tex", 2)?.page).toBe(1);
+      expect(findPagePoint(result.index, "/work/project/chapter.tex", 2)?.page).toBe(1);
     }
   });
 

@@ -3,7 +3,7 @@ import type { PathOps } from "../../../library/mutations/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
 import type { ProjectFolderRegistry } from "../mutation/index.js";
 import {
-  parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder, type ProjectRegistry,
+  parseProjectRegistry, serializeProjectRegistry, withFolder, withProjectFolderRemoved, type ProjectRegistry,
 } from "./projectRegistry.js";
 
 const MODULE = "projectRegistry";
@@ -58,18 +58,18 @@ export async function registerProjectFolder(ctx: ProjectRegistryFileContext, fol
 }
 
 /** Forgets a folder; its files stay where they are. */
-export async function unregisterProjectFolder(ctx: ProjectRegistryFileContext, folder: string): Promise<void> {
-  await updateRegistry(ctx, (registry) => withoutFolder(registry, ctx.paths.resolve(folder)));
+export async function removeProjectFolder(ctx: ProjectRegistryFileContext, folder: string): Promise<void> {
+  await updateRegistry(ctx, (registry) => withProjectFolderRemoved(registry, ctx.paths.resolve(folder)));
 }
 
 /** The registry of each library root lives at `registryPathOf(root)`, read at every call. */
-export function projectFolderRegistry(
+export function createProjectFolderRegistry(
   ctx: Omit<ProjectRegistryFileContext, "registryPath">, registryPathOf: (libraryRoot: string) => string,
 ): ProjectFolderRegistry {
   const at = (libraryRoot: string): ProjectRegistryFileContext => ({ ...ctx, registryPath: registryPathOf(libraryRoot) });
   return {
     folders: async (libraryRoot) => (await loadProjectRegistry(at(libraryRoot))).folders,
     register: (libraryRoot, folder) => registerProjectFolder(at(libraryRoot), folder),
-    unregister: (libraryRoot, folder) => unregisterProjectFolder(at(libraryRoot), folder),
+    unregister: (libraryRoot, folder) => removeProjectFolder(at(libraryRoot), folder),
   };
 }

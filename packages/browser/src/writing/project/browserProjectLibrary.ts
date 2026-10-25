@@ -1,7 +1,7 @@
 // Composes the core All projects library over the library folder: lists its projects and opens one in the page's project session.
 import {
-  createBlankTemplate, createProjectData, createProjectLibrary, posixPathOps,
-  type ILogger, type LibraryFileSystem, type PaperRecord, type PdfjsLoader, type ProjectDataPort, type ProjectEntry, type ProjectLibraryPort,
+  createBlankTemplate, createProjectContent, createProjectLibrary, posixPathOps,
+  type ILogger, type LibraryFileSystem, type PaperRecord, type PdfjsLoader, type ProjectContentPort, type ProjectEntry, type ProjectLibraryPort,
 } from "@labshelf/core";
 import type { ProjectSession } from "../session";
 import type { Workspace } from "../../libraryUi/editorArea";
@@ -27,8 +27,8 @@ export interface BrowserProjectLibraryDeps {
   askBlank(): Promise<{ title: string; format: "latex" | "typst" } | undefined>;
 }
 
-export function createBrowserProjectData({ fs, logger }: Pick<BrowserProjectLibraryDeps, "fs" | "logger">): ProjectDataPort {
-  return createProjectData({ fs, path: posixPathOps, logger, deviceDirs: DEVICE_DIRS });
+export function createBrowserProjectData({ fs, logger }: Pick<BrowserProjectLibraryDeps, "fs" | "logger">): ProjectContentPort {
+  return createProjectContent({ fs, path: posixPathOps, logger, deviceDirs: DEVICE_DIRS });
 }
 
 const none = async (): Promise<undefined> => undefined;

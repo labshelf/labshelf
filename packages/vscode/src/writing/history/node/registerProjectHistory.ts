@@ -3,10 +3,10 @@ import * as vscode from "vscode";
 
 import {
   type ILogger,
-  historyDiff,
-  historyRows,
-  recordSnapshot,
-  restoreSnapshot,
+  readHistoryDiff,
+  readHistoryRows,
+  writeSnapshot,
+  applySnapshot,
   type DiffLine,
   type HistoryKind,
 } from "@labshelf/core";
@@ -17,30 +17,30 @@ import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { HistoryPanel, type ProjectHistoryStore } from "../historyPanel.js";
 import type { ProjectHistoryRecorder } from "../../platformWritingPort.js";
 import * as path from "node:path";
-import { nodeHistoryTarget } from "@labshelf/core/node";
+import { createNodeHistoryProject } from "@labshelf/core/node";
 
 class NodeHistoryStore implements ProjectHistoryStore {
   constructor(private readonly storageDir: string, private readonly logger: ILogger) {}
 
   // History is per device: it lives outside the project folder, so the user's sync tool never copies it between devices.
   private target(project: ReadyProject) {
-    return nodeHistoryTarget(project.folder, path.join(this.storageDir, "history", encodeURIComponent(project.settings.id)));
+    return createNodeHistoryProject(project.folder, path.join(this.storageDir, "history", encodeURIComponent(project.settings.id)));
   }
 
   record(project: ReadyProject, kind: HistoryKind, label?: string): Promise<unknown> {
-    return recordSnapshot(this.target(project), kind, this.logger, label);
+    return writeSnapshot(this.target(project), kind, this.logger, label);
   }
 
   rows(project: ReadyProject) {
-    return historyRows(this.target(project).storage, this.logger);
+    return readHistoryRows(this.target(project).storage, this.logger);
   }
 
   diff(project: ReadyProject, id: string, file: string): Promise<DiffLine[] | null> {
-    return historyDiff(this.target(project).storage, id, file, this.logger);
+    return readHistoryDiff(this.target(project).storage, id, file, this.logger);
   }
 
   async restore(project: ReadyProject, id: string): Promise<void> {
-    await restoreSnapshot(this.target(project), id, this.logger);
+    await applySnapshot(this.target(project), id, this.logger);
   }
 }
 

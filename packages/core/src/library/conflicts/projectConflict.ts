@@ -1,6 +1,6 @@
 // Recognises project text copies from provider names, write history or shared lines.
 import { isMergeableTextFile, deriveTextHash } from '../../writing/conflict/index.js';
-import { lineSimilarity } from '../../writing/text/index.js';
+import { deriveLineSimilarity } from '../../writing/text/index.js';
 import type { WriteRecords } from '../writeRecords/index.js';
 import type { ConflictCopy } from './conflictCopy.js';
 import { parseConflictName } from './conflictNames.js';
@@ -41,7 +41,7 @@ export async function detectProjectConflict(input: ProjectConflictInput): Promis
   const recorded = siblings.find(file => input.records.get(file.path)?.some(entry => entry.hash === hash));
   if (recorded) return conflict(recorded.path, 'record');
   const similar = siblings.filter(file => extensionOf(file.path) === extensionOf(input.path))
-    .map(file => ({ ...file, score: lineSimilarity(input.text, file.text) }))
+    .map(file => ({ ...file, score: deriveLineSimilarity(input.text, file.text) }))
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))[0];
   return similar && similar.score >= VERSION_SIMILARITY ? conflict(similar.path, 'similar') : undefined;
 }

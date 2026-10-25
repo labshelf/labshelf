@@ -3,7 +3,7 @@ import type { PdfjsLoader } from "../../../import/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import type { ProjectDataPort } from "../../service/index.js";
+import type { ProjectContentPort } from "../../service/index.js";
 import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
 import type { CreateProjectKind, ProjectMenuCommand } from "../projectRow.js";
 
@@ -50,7 +50,7 @@ export interface ProjectHostFunctions {
 }
 
 export interface ProjectLibraryDeps {
-  data: Pick<ProjectDataPort, "lastModified" | "deleteProjectForever" | "listProjectFiles">;
+  data: Pick<ProjectContentPort, "lastModified" | "deleteProjectForever" | "listProjectFiles">;
   fs: LibraryFileSystem;
   paths: PathOps;
   logger: ILogger;

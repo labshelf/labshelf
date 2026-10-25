@@ -1,5 +1,5 @@
 // Copies a picked image into the project's images folder and inserts the figure that shows it; a shared project's mirror shares the copy.
-import { IMAGE_EXTENSIONS, IMAGE_FOLDER, freeImageName, imageBaseFolder, imageSnippet, posixPathOps, type ILogger, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
+import { IMAGE_EXTENSIONS, IMAGE_FOLDER, findFreeImageName, deriveImageBaseFolder, createImageSnippet, posixPathOps, type ILogger, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import type { SourceEdits, SourceLanguage } from "../sourceUpdates";
 
@@ -29,12 +29,12 @@ function pickImage(language: SourceLanguage): Promise<File | undefined> {
 
 async function copyIntoProject({ edits, language, entry, path, fs, logger }: ImageInsertion, file: File): Promise<void> {
   const { join, dirname, relative } = posixPathOps;
-  const target = await freeImageName(posixPathOps, join(entry.folder, IMAGE_FOLDER), file.name, (candidate) => fs.exists(candidate));
+  const target = await findFreeImageName(posixPathOps, join(entry.folder, IMAGE_FOLDER), file.name, (candidate) => fs.exists(candidate));
   await fs.ensureDir(dirname(target));
   await fs.writeFile(target, new Uint8Array(await file.arrayBuffer()));
   void logger.log("INFO", MODULE, "copied an image into the project", { source: path, image: target });
-  const base = imageBaseFolder(language, entry.folder, entry.main, join(entry.folder, path), posixPathOps);
-  edits.insertSnippet(imageSnippet(language, relative(base, target)));
+  const base = deriveImageBaseFolder(language, entry.folder, entry.main, join(entry.folder, path), posixPathOps);
+  edits.insertSnippet(createImageSnippet(language, relative(base, target)));
 }
 
 export async function insertImage(insertion: ImageInsertion): Promise<void> {

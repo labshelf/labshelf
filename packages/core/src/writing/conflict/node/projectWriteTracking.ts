@@ -5,7 +5,7 @@ import type { ProjectSaveTracking } from '../index.js';
 import { isMergeableTextFile } from '../index.js';
 import { createDeviceIdentity, createDeviceLocalLayout } from '../../../library/node/index.js';
 import type { ILogger, LibraryFileSystem } from '../../../ports/index.js';
-import { listProjectsOnDisk } from '../../project/node/index.js';
+import { listLibraryProjects } from '../../project/node/index.js';
 import { prepareProjectSave } from './projectWriteRecord.js';
 
 export function createProjectSaveTracking(fs: LibraryFileSystem, root: () => string | undefined, logger: ILogger): ProjectSaveTracking {
@@ -14,7 +14,7 @@ export function createProjectSaveTracking(fs: LibraryFileSystem, root: () => str
   const record = async (file: string, text: string, parentText: string | undefined, committed: boolean): Promise<void> => {
     const libraryRoot = root();
     if (!libraryRoot || !isMergeableTextFile(path.basename(file), new TextEncoder().encode(text))) return;
-    const projects = await listProjectsOnDisk(libraryRoot, logger);
+    const projects = await listLibraryProjects(libraryRoot, logger);
     const project = projects.filter(entry => entry.kind === 'ready' && file.startsWith(`${entry.folder}${path.sep}`))
       .sort((a, b) => b.folder.length - a.folder.length)[0];
     if (!project || project.kind !== 'ready' || project.settings.shared) return;

@@ -12,7 +12,7 @@ export interface InkMap {
 const INK_LUMINANCE = 200;
 
 /** Reads RGBA pixels (as a canvas's getImageData returns them) over a white sheet. */
-export function inkMapFromRgba(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): InkMap {
+export function deriveInkMap(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): InkMap {
   const ink = new Uint8Array(width * height);
   const dark = new Uint8Array(width * height);
   for (let i = 0, p = 0; i < ink.length; i++, p += 4) {

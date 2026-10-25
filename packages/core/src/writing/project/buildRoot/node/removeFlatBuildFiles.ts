@@ -7,7 +7,7 @@ import type { ILogger } from "../../../../ports/index.js";
 const MODULE = "writing.project.clearFlatBuildFiles";
 
 // Flat layouts wrote `<base>.aux`, `<base>.pdf` and friends straight into the project build dir; stale copies would shadow the per-root folder's output.
-export async function clearFlatBuildFiles(projectBuildDir: string, root: string, logger: ILogger): Promise<void> {
+export async function removeFlatBuildFiles(projectBuildDir: string, root: string, logger: ILogger): Promise<void> {
   const base = path.posix.basename(root, path.posix.extname(root));
   let entries;
   try {

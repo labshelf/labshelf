@@ -2,7 +2,7 @@
 
 import { DOCUMENT_CLASS } from "./entryDetection.js";
 
-export interface RootCandidate { readonly path: string; readonly text: string }
+export interface BuildRootCandidate { readonly path: string; readonly text: string }
 
 // Group 1 is "#" or empty (a bare keyword only counts when a string follows, so prose "import data" is ignored);
 // group 2 is a string-literal target; group 3 marks a literal that is part of a `+` concatenation.
@@ -33,7 +33,7 @@ function resolveTypstPath(fromFile: string, target: string): string | undefined 
 
 interface TypstReferences { readonly targets: Set<string>; readonly computed: boolean }
 
-function typstReferences(file: RootCandidate): TypstReferences {
+function typstReferences(file: BuildRootCandidate): TypstReferences {
   const targets = new Set<string>();
   let computed = false;
   for (const match of file.text.replace(TYPST_COMMENT, "").matchAll(TYPST_REFERENCE)) {
@@ -51,7 +51,7 @@ function typstReferences(file: RootCandidate): TypstReferences {
 }
 
 /** Typst roots are the files no other file includes. A computed path cannot be followed, so it makes every other Typst file a non-root. */
-function typstRoots(files: readonly RootCandidate[]): Set<string> {
+function typstRoots(files: readonly BuildRootCandidate[]): Set<string> {
   const included = new Set<string>();
   const computing: string[] = [];
   for (const file of files) {
@@ -65,7 +65,7 @@ function typstRoots(files: readonly RootCandidate[]): Set<string> {
 }
 
 /** Root files of the project in input order; sources that are neither .tex nor .typ are never roots. */
-export function findRoots(sources: readonly RootCandidate[]): string[] {
+export function findBuildRoots(sources: readonly BuildRootCandidate[]): string[] {
   const typstFiles = sources.filter((file) => extensionOf(file.path) === ".typ");
   const typst = typstRoots(typstFiles);
   return sources

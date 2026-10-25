@@ -2,7 +2,7 @@
 import { execFileSync } from "node:child_process";
 import * as path from "node:path";
 
-import { diffPages, inkMapFromRgba, type InkMap, type PdfChanges } from "../../../../src/writing/versions";
+import { comparePdfPages, deriveInkMap, type InkMap, type PdfChanges } from "../../../../src/writing/versions";
 import type { PageArea } from "../../../../src/reader/index.js";
 
 const SCALE = 1.5;
@@ -16,7 +16,7 @@ function render(name: string, ...words: string[]): { pages: InkMap[]; found: Fou
   });
   const dump = JSON.parse(json) as { pages: Array<{ width: number; height: number; rgba: string }>; found: Found[] };
   return {
-    pages: dump.pages.map((page) => inkMapFromRgba(Buffer.from(page.rgba, "base64"), page.width, page.height)),
+    pages: dump.pages.map((page) => deriveInkMap(Buffer.from(page.rgba, "base64"), page.width, page.height)),
     found: dump.found,
   };
 }
@@ -33,11 +33,11 @@ describe("comparePages on real builds", () => {
   let changes: PdfChanges;
 
   beforeAll(() => {
-    changes = diffPages(before.pages, after.pages, SCALE);
+    changes = comparePdfPages(before.pages, after.pages, SCALE);
   });
 
   it("finds nothing between a build and itself", () => {
-    const same = diffPages(before.pages, before.pages, SCALE);
+    const same = comparePdfPages(before.pages, before.pages, SCALE);
     expect(same).toEqual({ before: [], after: [] });
   });
 

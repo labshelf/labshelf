@@ -1,5 +1,5 @@
 /** Verifies grouping matches by file, the result cap and the clipped line previews. */
-import { collectSearchResults, searchPattern } from "../../../src/writing/search/index";
+import { deriveSearchMatches, searchPattern } from "../../../src/writing/search/index";
 
 const re = (query: string): RegExp => {
   const result = searchPattern(query, { matchCase: false, regex: false, wholeWord: false });
@@ -7,9 +7,9 @@ const re = (query: string): RegExp => {
   return result;
 };
 
-describe("collectSearchResults", () => {
+describe("deriveSearchMatches", () => {
   it("groups matches by file and skips files without any", () => {
-    const results = collectSearchResults([
+    const results = deriveSearchMatches([
       { path: "/p/a.tex", label: "a.tex", text: "foo\nbar foo" },
       { path: "/p/b.tex", label: "b.tex", text: "nothing" },
       { path: "/p/c.bib", label: "c.bib", text: "Foo" },
@@ -21,7 +21,7 @@ describe("collectSearchResults", () => {
   });
 
   it("stops at the limit and says so", () => {
-    const results = collectSearchResults([
+    const results = deriveSearchMatches([
       { path: "/p/a.tex", label: "a.tex", text: "x x x" },
       { path: "/p/b.tex", label: "b.tex", text: "x" },
     ], re("x"), 2);
@@ -32,7 +32,7 @@ describe("collectSearchResults", () => {
 
   it("clips long context on both sides of the match", () => {
     const line = `${"a".repeat(200)}needle${"b".repeat(400)}`;
-    const [match] = collectSearchResults([{ path: "/p/a.tex", label: "a.tex", text: line }], re("needle"), 10).files[0]?.matches ?? [];
+    const [match] = deriveSearchMatches([{ path: "/p/a.tex", label: "a.tex", text: line }], re("needle"), 10).files[0]?.matches ?? [];
     expect(match?.column).toBe(200);
     expect(match?.before.startsWith("…")).toBe(true);
     expect(match?.before.length).toBeLessThan(60);

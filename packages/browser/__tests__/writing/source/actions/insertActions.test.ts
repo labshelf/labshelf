@@ -7,7 +7,7 @@ import { MATH_SYMBOLS } from "@labshelf/core";
 import { askInputBox, pickQuickEntry, type InputBoxOptions } from "@labshelf/core/dom";
 import { insertSymbol, insertTable, symbolEntries } from "../../../../src/writing/source/actions/insertActions";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), quickPick: jest.fn(), inputBox: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(), askInputBox: jest.fn() }));
 
 const edits = () => ({ insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() });
 

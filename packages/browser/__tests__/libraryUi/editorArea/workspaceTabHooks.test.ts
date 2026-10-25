@@ -10,7 +10,7 @@ import { planPage } from "../../../src/libraryUi/pagePlan";
 
 const captured: TabContext[] = [];
 jest.mock("../../../src/libraryUi/editorArea/templatesTab", () => ({
-  mountTab: (_host: HTMLElement, _params: unknown, ctx: TabContext) => { captured.push(ctx); return { dispose: jest.fn(), actions: [{ id: "x", icon: "bold", label: "Do x", run: jest.fn() }] }; },
+  mountTab: (_host: HTMLElement, _params: unknown, ctx: TabContext) => { captured.push(ctx); return { dispose: jest.fn(), actions: [{ id: "x", renderIcon: "bold", label: "Do x", run: jest.fn() }] }; },
 }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };

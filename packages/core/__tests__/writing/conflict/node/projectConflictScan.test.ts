@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
 import { recordProjectSave, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
-import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
+import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
 import { createBlankTemplate } from '../../../../src/templates/index';
 import { NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
@@ -16,7 +16,7 @@ afterEach(cleanupTempDirs);
 
 async function fixture() {
   const root = await makeTempDir();
-  const entry = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
+  const entry = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (entry.kind !== 'ready') throw new Error('Project missing');
   const state = await Promise.all(ids.map(() => makeTempDir()));
   const stores = state.map(dir => new FileProjectVersionStore(new NodeLibraryFileSystem(), path, dir));

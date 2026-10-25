@@ -2,7 +2,7 @@
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { createProjectData, type TexInstallKind, type TexSetupAsk } from "@labshelf/core";
+import { createProjectContent, type TexInstallKind, type TexSetupAsk } from "@labshelf/core";
 import { createSharedTexProvider, createDeviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
 
 import type { AppContext } from "../../compositionRoot.js";
@@ -71,7 +71,7 @@ export function processAsk(): Ask | undefined {
 const rejectTypst = (): Promise<never> => Promise.reject(new Error("Typst projects cannot be built from the terminal yet."));
 
 export function terminalBuildEnvironment(ctx: BuildContext, tty: { ask: Ask | undefined }): BuildEnvironment {
-  const data = createProjectData({
+  const data = createProjectContent({
     fs: new NodeLibraryFileSystem(), path, logger: ctx.logger, deviceDirs: createDeviceLocalLayout(ctx.paths.root),
   });
   return {

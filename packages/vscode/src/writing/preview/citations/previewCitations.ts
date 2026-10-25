@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  citationEntries, citedKeysAt,
+  deriveCitationEntries, findCiteKeysAt,
   type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type TypstCite,
 } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -33,11 +33,11 @@ export async function lookupCitation(deps: PreviewCitationDeps, query: CitationQ
     // The source line behind the place is read once: it finds the keys of a LaTeX text and the citing command of every key.
     let located: Promise<LocatedSourceLine | undefined> | undefined;
     const locate = (point: PagePoint): Promise<LocatedSourceLine | undefined> => (located ??= sourceLineAt(deps.synctex, point));
-    const keys = await citedKeysAt(query, { format: deps.format, typstCites: deps.typstCites(), sourceLineAt: locate });
+    const keys = await findCiteKeysAt(query, { format: deps.format, typstCites: deps.typstCites(), sourceLineAt: locate });
     if (keys.length === 0) { return []; }
     const papers = await deps.listPapers();
     const sites = deps.format === "latex" ? await citingSitesAt(deps, keys, () => locate(areaCenter(query.area))) : new Map<string, CitingSite>();
-    return citationEntries(keys, papers, await cardDetails(deps, keys, papers, sites));
+    return deriveCitationEntries(keys, papers, await cardDetails(deps, keys, papers, sites));
   } catch (error) {
     await deps.logger.log("WARN", PREVIEW_LOG_MODULE, "Citation lookup failed", { projectFolder: deps.projectFolder, page: query.area.page, error: String(error) });
     return [];

@@ -30,6 +30,6 @@ export function withFolder(registry: ProjectRegistry, folder: string): ProjectRe
   return registry.folders.includes(folder) ? registry : { ...registry, folders: [...registry.folders, folder] };
 }
 
-export function withoutFolder(registry: ProjectRegistry, folder: string): ProjectRegistry {
+export function withProjectFolderRemoved(registry: ProjectRegistry, folder: string): ProjectRegistry {
   return { ...registry, folders: registry.folders.filter((entry) => entry !== folder) };
 }

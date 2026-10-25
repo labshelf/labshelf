@@ -21,7 +21,7 @@ import { readSharedLibraryRoot } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { resolveInLibrary } from "../../bridge/node/index.js";
 import { readProject } from "../../writing/project/folder/index.js";
-import { nodeProjectReadContext } from "../../writing/project/node/index.js";
+import { createNodeProjectReadCompositionRoot } from "../../writing/project/node/index.js";
 import { formatEngineLabel } from "../../latex/index.js";
 import { deriveTemplateTreeProblem } from "../../templates/templateManifest/index.js";
 
@@ -58,7 +58,7 @@ async function publicationProject(projectId: string, logger: ILogger, sharedConf
   const libraryRoot = await readSharedLibraryRoot(sharedConfigFile, logger);
   if (!libraryRoot) throw new Error("No library folder is set up on this computer");
   const folder = await resolveInLibrary(libraryRoot, `projects/${projectId}`);
-  const entry = await readProject(nodeProjectReadContext(logger), folder, "library");
+  const entry = await readProject(createNodeProjectReadCompositionRoot(logger), folder, "library");
   if (entry.kind !== "ready" || !entry.main || entry.settings.id !== projectId) throw new Error(`Project "${projectId}" is not ready to publish`);
   await resolveInLibrary(folder, entry.main);
   const { format } = entry.settings;

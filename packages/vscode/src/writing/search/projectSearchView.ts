@@ -1,7 +1,7 @@
 // Serves the Project Search panel: runs its searches on the active file's writing project and carries out its opens and replacements.
 import * as vscode from "vscode";
 
-import { emptySearchRun, matchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
+import { createEmptySearchRun, findMatchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
 import { mainPathIn, owningProject, type ProjectLookup, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
@@ -123,7 +123,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
     try {
       const result = target
         ? await runSearch(request.query, request.options, this.scopeOf(target, request.mode), target.logger)
-        : emptySearchRun();
+        : createEmptySearchRun();
       if (ticket !== this.run) { return; }
       this.searched = result.paths;
       this.pattern = result.pattern;
@@ -160,7 +160,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
       return;
     }
     const texts = message.type === "replace" ? [] : await readScopeTexts(this.scopeOf(target, request.mode), target.logger);
-    const matches = message.type === "replace" ? [message] : matchesIn(texts, pattern, message.type === "replaceFile" ? message.path : undefined);
+    const matches = message.type === "replace" ? [message] : findMatchesIn(texts, pattern, message.type === "replaceFile" ? message.path : undefined);
     if (matches.some(({ path }) => !this.searched.has(path))) { return; }
     const done = await replaceInProject({ matches, pattern, replacement: message.replacement, logger: target.logger, confirm: message.type === "replaceAll" });
     if (done) { await this.search(); }

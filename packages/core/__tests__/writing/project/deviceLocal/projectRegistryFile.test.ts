@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import {
-  loadProjectRegistry, projectFolderRegistry, registerProjectFolder, unregisterProjectFolder, type ProjectRegistryFileContext,
+  loadProjectRegistry, createProjectFolderRegistry, registerProjectFolder, removeProjectFolder, type ProjectRegistryFileContext,
 } from "../../../../src/writing/project/deviceLocal/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
@@ -39,7 +39,7 @@ describe("project registry file", () => {
     expect(await saved(fs)).toEqual({ folders: [path.posix.resolve("relative/dir"), "/abs/other"] });
     expect(await loadProjectRegistry(ctx)).toEqual(await saved(fs));
 
-    await unregisterProjectFolder(ctx, "/abs/other");
+    await removeProjectFolder(ctx, "/abs/other");
     expect((await loadProjectRegistry(ctx)).folders).toEqual([path.posix.resolve("relative/dir")]);
   });
 
@@ -47,7 +47,7 @@ describe("project registry file", () => {
     const { fs, ctx } = setup();
     await fs.writeText(registryPath, "{ not json");
     await expect(registerProjectFolder(ctx, "/a")).rejects.toThrow(/corrupt/);
-    await expect(unregisterProjectFolder(ctx, "/a")).rejects.toThrow(/corrupt/);
+    await expect(removeProjectFolder(ctx, "/a")).rejects.toThrow(/corrupt/);
     expect(await fs.readText(registryPath)).toBe("{ not json");
   });
 
@@ -70,13 +70,13 @@ describe("project registry file", () => {
     await registerProjectFolder(ctx, "/a");
     const writes = fs.writes;
     await registerProjectFolder(ctx, "/a");
-    await unregisterProjectFolder(ctx, "/never-added");
+    await removeProjectFolder(ctx, "/never-added");
     expect(fs.writes).toBe(writes);
   });
 
   it("keeps one registry per library root through the folder registry", async () => {
     const { fs, ctx } = setup();
-    const registry = projectFolderRegistry(ctx, (root) => `/state${root}/projects.json`);
+    const registry = createProjectFolderRegistry(ctx, (root) => `/state${root}/projects.json`);
     await registry.register("/one", "/a");
     await registry.register("/two", "/b");
     expect(await registry.folders("/one")).toEqual(["/a"]);

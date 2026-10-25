@@ -1,7 +1,7 @@
 // Registers the commands that choose a project's main file: Set as Main Document and the status bar's quick pick.
 import * as vscode from "vscode";
 
-import { mainCandidates } from "@labshelf/core";
+import { findEntryCandidates } from "@labshelf/core";
 import { executeSafely } from "../command/index.js";
 import { mainPathIn, owningProject, type ReadyProject } from "./buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "./session/index.js";
@@ -28,7 +28,7 @@ async function setMain(deps: MainCommandsDeps, file: vscode.Uri | undefined): Pr
     await vscode.window.showErrorMessage(`${deps.projects.paths.basename(file.fsPath)} is not inside a LabShelf project.`);
     return;
   }
-  if (mainCandidates(project.settings.format, [deps.projects.paths.basename(file.fsPath)]).length === 0) {
+  if (findEntryCandidates(project.settings.format, [deps.projects.paths.basename(file.fsPath)]).length === 0) {
     await vscode.window.showErrorMessage(
       `${deps.projects.paths.basename(file.fsPath)} does not match the ${project.settings.format} format of project "${project.settings.id}".`,
     );
@@ -41,7 +41,7 @@ async function pickMain(deps: MainCommandsDeps): Promise<void> {
   const active = vscode.window.activeTextEditor?.document.uri.fsPath;
   const project = active ? owningProject(deps.projects, active) : undefined;
   if (!project) { return; }
-  const candidates = mainCandidates(project.settings.format, await deps.projects.data.rootFileNames(project.folder));
+  const candidates = findEntryCandidates(project.settings.format, await deps.projects.data.rootFileNames(project.folder));
   if (candidates.length === 0) {
     await vscode.window.showInformationMessage(`Project "${project.settings.id}" has no ${project.settings.format} file in its folder.`);
     return;

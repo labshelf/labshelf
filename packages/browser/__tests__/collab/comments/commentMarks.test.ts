@@ -9,7 +9,7 @@ import type { EditorComments } from "../../../src/collab/comments";
 import { mountSourceEditor, type SourceFileAccess } from "../../../src/writing/editor/mountSourceEditor";
 
 const mockInputBox = jest.fn<Promise<string | undefined>, []>();
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), inputBox: () => mockInputBox() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), askInputBox: () => mockInputBox() }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 

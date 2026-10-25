@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 
 import { findExecutable } from "../../../latex/toolchain/node/index.js";
 import type { ProjectFormat } from "../projectFile.js";
-import { pandocArgs, type DocumentExport } from "../pandocCommand.js";
+import { createPandocArgs, type DocumentExport } from "../pandocCommand.js";
 
 const run = promisify(execFile);
 
@@ -21,11 +21,11 @@ export interface PandocRequest {
 }
 
 /** @throws with PANDOC_MISSING_MESSAGE when pandoc is not on PATH, or with pandoc's error output when it fails */
-export async function convertWithPandoc(request: PandocRequest): Promise<void> {
+export async function exportWithPandoc(request: PandocRequest): Promise<void> {
   const pandoc = await findExecutable("pandoc");
   if (!pandoc) { throw new Error(PANDOC_MISSING_MESSAGE); }
   try {
-    await run(pandoc, pandocArgs(request.format, request.main, request.target, request.output), { cwd: request.folder });
+    await run(pandoc, createPandocArgs(request.format, request.main, request.target, request.output), { cwd: request.folder });
   } catch (error) {
     const stderr = (error as { stderr?: string }).stderr?.trim();
     throw new Error(`pandoc failed on ${request.main}${stderr ? `: ${stderr}` : ""}`, { cause: error });

@@ -1,6 +1,6 @@
 // Parses the decompressed text of a SyncTeX file into boxes per page and the first position of each source line.
 import { normalizeInputPath } from "./normalizeInputPath.js";
-import type { SyncBox, SyncFileLines, SyncIndex, SyncMark, SyncNode } from "./synctexMap.js";
+import type { SyncBox, SyncFileLines, SynctexMap, SyncMark, SyncNode } from "./synctexMap.js";
 
 // 65536 sp per TeX point, 72.27 TeX points per 72 PDF points.
 const SP_PER_POINT = 65781.76;
@@ -88,7 +88,7 @@ class IndexBuilder {
     }
   }
 
-  build(): SyncIndex {
+  build(): SynctexMap {
     for (const lines of this.byFile.values()) { lines.lines = [...lines.positions.keys()].sort((a, b) => a - b); }
     return { files: this.files, pages: this.pages, byFile: this.byFile };
   }
@@ -139,7 +139,7 @@ class IndexBuilder {
 }
 
 /** Reads the records of a SyncTeX file; `cwd` is the folder the build ran in, which relative input paths are resolved against. */
-export function parseSynctex(text: string, cwd: string): SyncIndex {
+export function parseSynctex(text: string, cwd: string): SynctexMap {
   if (!text.startsWith("SyncTeX Version:")) { throw new Error("Not a SyncTeX file: the version line is missing"); }
   const builder = new IndexBuilder(readSyncScale(text), cwd);
   for (const row of text.split("\n")) {

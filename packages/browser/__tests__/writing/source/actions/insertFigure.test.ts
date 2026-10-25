@@ -8,7 +8,7 @@ import { showToast } from "@labshelf/core/dom";
 import { onLocalFileChanges, reportPageWrites } from "../../../../src/collab/mirror/localFileChanges";
 import { insertImage, type ImageInsertion } from "../../../../src/writing/source/actions/insertFigure";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn() }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 

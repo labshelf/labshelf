@@ -1,5 +1,5 @@
 // Builds an empty table as a snippet whose tab stops walk the cells, then the caption and label.
-import { snippetText } from "./snippetText.js";
+import { escapeSnippetText } from "./escapeSnippetText.js";
 
 export interface TableSize {
   columns: number;
@@ -22,7 +22,7 @@ function cellRows({ columns, rows }: TableSize): number[][] {
   return Array.from({ length: rows }, (_, row) => Array.from({ length: columns }, (_, column) => row * columns + column + 1));
 }
 
-export function tableSnippet(language: "latex" | "typst", size: TableSize): string {
+export function createTableSnippet(language: "latex" | "typst", size: TableSize): string {
   const caption = size.columns * size.rows + 1;
   const cells = cellRows(size);
   if (language === "typst") {
@@ -37,17 +37,17 @@ export function tableSnippet(language: "latex" | "typst", size: TableSize): stri
       "$0",
     ].join("\n");
   }
-  const rule = snippetText("\\hline");
+  const rule = escapeSnippetText("\\hline");
   return [
-    snippetText("\\begin{table}[h]"),
-    `\t${snippetText("\\centering")}`,
-    `\t${snippetText(`\\begin{tabular}{|${"c|".repeat(size.columns)}}`)}`,
+    escapeSnippetText("\\begin{table}[h]"),
+    `\t${escapeSnippetText("\\centering")}`,
+    `\t${escapeSnippetText(`\\begin{tabular}{|${"c|".repeat(size.columns)}}`)}`,
     `\t\t${rule}`,
-    ...cells.flatMap((row) => [`\t\t${row.map((stop) => `\${${stop}}`).join(" & ")} ${snippetText("\\\\")}`, `\t\t${rule}`]),
-    `\t${snippetText("\\end{tabular}")}`,
-    `\t${snippetText("\\caption{")}\${${caption}:Caption}${snippetText("}")}`,
-    `\t${snippetText("\\label{tab:")}\${${caption + 1}:label}${snippetText("}")}`,
-    snippetText("\\end{table}"),
+    ...cells.flatMap((row) => [`\t\t${row.map((stop) => `\${${stop}}`).join(" & ")} ${escapeSnippetText("\\\\")}`, `\t\t${rule}`]),
+    `\t${escapeSnippetText("\\end{tabular}")}`,
+    `\t${escapeSnippetText("\\caption{")}\${${caption}:Caption}${escapeSnippetText("}")}`,
+    `\t${escapeSnippetText("\\label{tab:")}\${${caption + 1}:label}${escapeSnippetText("}")}`,
+    escapeSnippetText("\\end{table}"),
     "$0",
   ].join("\n");
 }

@@ -2,7 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { parseSynctex, pointFor } from "../../../src/writing/synctex";
+import { parseSynctex, findPagePoint } from "../../../src/writing/synctex";
 
 const text = fs.readFileSync(path.join(__dirname, "fixtures/main.synctex"), "utf8");
 const CWD = "/work/project";
@@ -34,7 +34,7 @@ describe("parseSynctex", () => {
   // Expected values are what `synctex view` printed for main.tex line 3 on the same file with the preamble edited.
   describe("scale", () => {
     const headingX = (edited: string): number | undefined =>
-      pointFor(parseSynctex(edited, CWD), "/work/project/main.tex", 3)?.x;
+      findPagePoint(parseSynctex(edited, CWD), "/work/project/main.tex", 3)?.x;
 
     it("scales coordinates by magnification and by unit", () => {
       expect(headingX(text)).toBeCloseTo(133.77, 2);

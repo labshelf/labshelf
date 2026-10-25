@@ -1,6 +1,6 @@
 /** Adds the line that loads the generated values file to a LaTeX main file, once. */
 
-export type ValuesInputResult =
+export type ProjectValueInputResult =
   | { kind: "present" | "added"; text: string }
   /** Without `\begin{document}` the file is a fragment; the text is returned as it was. */
   | { kind: "no-document"; text: string };
@@ -18,7 +18,7 @@ function documentStart(text: string): number | undefined {
 }
 
 /** The main file's text with the values file loaded before `\begin{document}`. */
-export function withValuesInput(text: string): ValuesInputResult {
+export function withProjectValueInput(text: string): ProjectValueInputResult {
   if (LOADS_VALUES.test(text)) { return { kind: "present", text }; }
   const start = documentStart(text);
   if (start === undefined) { return { kind: "no-document", text }; }

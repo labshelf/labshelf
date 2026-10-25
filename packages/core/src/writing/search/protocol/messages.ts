@@ -7,7 +7,7 @@ import type { SearchResults } from "../searchResults.js";
 export type SearchScopeMode = "file" | "project";
 
 /** A match the page points at; line and column are 0-based. */
-export interface MatchLocation {
+export interface MatchPosition {
   path: string;
   line: number;
   column: number;
@@ -17,8 +17,8 @@ export interface MatchLocation {
 export type SearchToHost =
   | { type: "ready" }
   | { type: "search"; query: string; options: SearchOptions; scope: SearchScopeMode }
-  | ({ type: "open" } & MatchLocation)
-  | ({ type: "replace"; replacement: string } & MatchLocation)
+  | ({ type: "open" } & MatchPosition)
+  | ({ type: "replace"; replacement: string } & MatchPosition)
   | { type: "replaceFile"; path: string; replacement: string }
   | { type: "replaceAll"; replacement: string };
 

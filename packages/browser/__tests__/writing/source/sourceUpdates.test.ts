@@ -5,7 +5,7 @@
 // Insertions and bold or italic wrapping apply to every selection of the source editor in one transaction.
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { type ILogger, imageSnippet, tableSnippet } from "@labshelf/core";
+import { type ILogger, createImageSnippet, createTableSnippet } from "@labshelf/core";
 import { mountSourceEditor } from "../../../src/writing/editor/mountSourceEditor";
 import { codeMirrorTemplate } from "../../../src/writing/source/sourceUpdates";
 
@@ -85,7 +85,7 @@ describe("insertSnippet", () => {
   it("inserts the table at the cursor with its literal backslashes and braces", async () => {
     const { editor, select, doc } = await mount("before\nafter");
     select([7, 7]);
-    editor.insertSnippet(tableSnippet("latex", { columns: 2, rows: 1 }));
+    editor.insertSnippet(createTableSnippet("latex", { columns: 2, rows: 1 }));
     expect(doc()).toContain("before\n\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{|c|c|}");
     expect(doc()).toContain("\\caption{Caption}");
     expect(doc()).toContain("\\\\\n");
@@ -115,7 +115,7 @@ describe("codeMirrorTemplate", () => {
   });
 
   it("converts a LaTeX image figure", () => {
-    const converted = codeMirrorTemplate(imageSnippet("latex", "images/a.png"));
+    const converted = codeMirrorTemplate(createImageSnippet("latex", "images/a.png"));
     expect(converted).toContain("\\begin{figure}[h]");
     expect(converted).toContain("\\includegraphics[width=0.8\\linewidth]{images/a.png}");
     expect(converted).toContain("\\caption{${1:Caption}}");
@@ -123,7 +123,7 @@ describe("codeMirrorTemplate", () => {
   });
 
   it("converts a Typst table, keeping the cell stops", () => {
-    const converted = codeMirrorTemplate(tableSnippet("typst", { columns: 2, rows: 1 }));
+    const converted = codeMirrorTemplate(createTableSnippet("typst", { columns: 2, rows: 1 }));
     expect(converted).toContain("columns: 2,");
     expect(converted).toContain("[${1}], [${2}],");
     expect(converted).toContain("caption: [${3:Caption}],");

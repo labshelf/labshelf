@@ -1,5 +1,5 @@
 // Answers a project preview frame's requests: recompile, open a problem, compare and mark versions, and save the check limits and build options.
-import type { AutoCompileMode, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectDataPort } from "@labshelf/core";
+import type { AutoCompileMode, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectContentPort } from "@labshelf/core";
 import type { LabShelfSettings } from "../../platform";
 import { revealInOpenEditor } from "../session";
 import type { FollowedBuilds, PreviewLimits } from "./previewBuilds";
@@ -19,7 +19,7 @@ export interface PreviewRequestDeps {
     lastFullPdf(projectId: string): Uint8Array | undefined;
     setBuild(projectId: string, patch: { autoCompile?: AutoCompileMode; engine?: LatexEngine; haltOnError?: boolean }): void;
   };
-  data: Pick<ProjectDataPort, "updateProjectSettings">;
+  data: Pick<ProjectContentPort, "updateProjectSettings">;
   builds: Pick<FollowedBuilds, "roots" | "resendRoots">;
   /** The limits the roots carry; a saved change updates them. */
   limits: PreviewLimits;

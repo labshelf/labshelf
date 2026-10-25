@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   findCiteKeyOccurrences,
-  quotedHighlights,
+  listQuotedHighlights,
   type ChecklistSection,
   type QuotedHighlight,
   type PaperRecord,
@@ -82,7 +82,7 @@ export class CitationHoverProvider implements vscode.HoverProvider {
     const paper = (await session.listPapers()).find((candidate) => candidate.citeKey === cited.key);
     if (!paper) { return undefined; }
     const [highlights, others] = await Promise.all([
-      optional<QuotedHighlight[]>(session, "hover-highlights", [], async () => quotedHighlights(await session.highlightsOf(paper.id), HIGHLIGHTS_SHOWN)),
+      optional<QuotedHighlight[]>(session, "hover-highlights", [], async () => listQuotedHighlights(await session.highlightsOf(paper.id), HIGHLIGHTS_SHOWN)),
       otherSections(session, project, cited.key, document.uri.fsPath, position.line),
     ]);
     const range = new vscode.Range(document.positionAt(cited.start), document.positionAt(cited.end));

@@ -1,6 +1,6 @@
 // Answers the shared history page in the same page: records the project, serves diffs, restores a point and marks versions.
 import {
-  applyRestoredFiles, historyDiff, historyRows, restoreSnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
+  applyRestoredFiles, readHistoryDiff, readHistoryRows, applySnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
 } from "@labshelf/core";
 import { askDialog, showToast } from "@labshelf/core/dom";
 import type { PageShares } from "../../collab";
@@ -27,7 +27,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
   const target = projectHistoryTarget(fs, project.folder, project.id);
 
   const refresh = async (): Promise<void> => {
-    endpoint.post({ type: "history", project: project.id, rows: await historyRows(target.storage, logger) });
+    endpoint.post({ type: "history", project: project.id, rows: await readHistoryRows(target.storage, logger) });
   };
   let disposed = false;
   let stopEdits: (() => void) | undefined;
@@ -51,7 +51,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
   };
 
   async function restore(id: string): Promise<void> {
-    const row = (await historyRows(target.storage, logger)).find((entry) => entry.id === id);
+    const row = (await readHistoryRows(target.storage, logger)).find((entry) => entry.id === id);
     if (!row) return;
     const accepted = await askDialog(
       `Restore ${project.id} to ${when(row)}?`,
@@ -67,7 +67,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
         showToast(`Could not save an open file of ${project.id}, so nothing was restored.`, "error");
         return;
       }
-      await restoreSnapshot(target, id, logger);
+      await applySnapshot(target, id, logger);
       await syncShareToRestore();
       await reloadProjectEditors(project.id);
     } finally {
@@ -83,7 +83,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
       await refresh();
       followEdits();
     } else if (message.type === "diff") {
-      endpoint.post({ ...message, lines: await historyDiff(target.storage, message.id, message.path, logger) });
+      endpoint.post({ ...message, lines: await readHistoryDiff(target.storage, message.id, message.path, logger) });
     } else if (message.type === "restore") {
       await restore(message.id);
     } else if (message.type === "markVersion") {

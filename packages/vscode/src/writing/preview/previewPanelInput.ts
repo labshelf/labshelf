@@ -1,5 +1,5 @@
 // Describes what a build preview needs from its host and names the paper a preview reader opens.
-import type { Annotation, LatexEngine, PaperRecord, PathOps, ProjectDataPort } from "@labshelf/core";
+import type { Annotation, LatexEngine, PaperRecord, PathOps, ProjectContentPort } from "@labshelf/core";
 import type { ReaderPanelDeps } from "../../reader/index.js";
 import type { UriOfPath } from "../../storage/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
@@ -16,7 +16,7 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   paths: PathOps;
   /** The URI VS Code reads a path by. */
   uriOf: UriOfPath;
-  data: ProjectDataPort;
+  data: ProjectContentPort;
   /** The root the editor file builds into. */
   buildRootOf: BuildRootOf;
   /** Builds a root of the project again. */

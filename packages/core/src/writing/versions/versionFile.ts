@@ -8,7 +8,7 @@ export const VERSION_FILE = "version.json";
 export const VERSION_PDF = "paper.pdf";
 export const VERSION_SOURCES = "sources";
 
-export interface VersionInfo {
+export interface VersionEntry {
   /** The snapshot's folder name under `.labshelf/versions/`. */
   slug: string;
   /** The name the user gave it. */
@@ -18,7 +18,7 @@ export interface VersionInfo {
 }
 
 /** @returns undefined when the text is not a JSON object with a non-empty name and a valid created timestamp */
-export function parseVersionFile(slug: string, text: string): VersionInfo | undefined {
+export function parseVersionFile(slug: string, text: string): VersionEntry | undefined {
   const raw = parseJsonObject(text);
   if (!raw) { return undefined; }
   const { name, created } = raw;
@@ -27,6 +27,6 @@ export function parseVersionFile(slug: string, text: string): VersionInfo | unde
   return { slug, name, created };
 }
 
-export function serializeVersionFile(version: Pick<VersionInfo, "name" | "created">): string {
+export function serializeVersionFile(version: Pick<VersionEntry, "name" | "created">): string {
   return `${JSON.stringify({ name: version.name, created: version.created }, null, 2)}\n`;
 }

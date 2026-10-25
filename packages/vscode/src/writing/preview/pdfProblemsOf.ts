@@ -1,7 +1,7 @@
 // Gathers a built root's problems, places them on the PDF through SyncTeX or Typst cite targets and counts the keys it cites.
 import {
-  findCiteKeyOccurrences, orderPdfProblems, pointFor,
-  type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SyncIndex, type TypstCite,
+  findCiteKeyOccurrences, orderPdfProblems, findPagePoint,
+  type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SynctexMap, type TypstCite,
 } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
@@ -26,7 +26,7 @@ function projectRelative({ paths }: PdfProblemsDeps, folder: string, file: strin
 }
 
 /** The SyncTeX index of the root's build; a build without usable data places nothing and the reason is logged once. */
-async function syncIndexOf(deps: PdfProblemsDeps, folder: string, root: string): Promise<SyncIndex | undefined> {
+async function syncIndexOf(deps: PdfProblemsDeps, folder: string, root: string): Promise<SynctexMap | undefined> {
   try {
     const lookup = await deps.synctex();
     if (lookup.status === "found") { return lookup.index; }
@@ -39,10 +39,10 @@ async function syncIndexOf(deps: PdfProblemsDeps, folder: string, root: string):
 
 type Place = Parameters<typeof orderPdfProblems>[0]["place"];
 
-function latexPlace(deps: PdfProblemsDeps, folder: string, index: SyncIndex | undefined): Place {
+function latexPlace(deps: PdfProblemsDeps, folder: string, index: SynctexMap | undefined): Place {
   return ({ file, line }) => {
     if (!index || file === undefined || line === undefined) { return undefined; }
-    const point = pointFor(index, deps.paths.join(folder, file), line);
+    const point = findPagePoint(index, deps.paths.join(folder, file), line);
     return point && atPoint(point);
   };
 }

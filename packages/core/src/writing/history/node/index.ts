@@ -1,3 +1,3 @@
 // Exports the Node side of the project history: disk storage and the target of a project folder.
-export { nodeHistoryStorage } from "./nodeHistoryStorage.js";
-export { nodeHistoryTarget } from "./nodeHistoryDirs.js";
+export { createNodeHistoryStorage } from "./createNodeHistoryStorage.js";
+export { createNodeHistoryProject } from "./nodeHistoryDirs.js";

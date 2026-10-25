@@ -38,7 +38,7 @@ export interface SyncFileLines {
   lines: number[];
 }
 
-export interface SyncIndex {
+export interface SynctexMap {
   /** Input tag to normalised absolute path. */
   files: ReadonlyMap<number, string>;
   /** Page number to the top-level nodes of that page. */
@@ -47,7 +47,7 @@ export interface SyncIndex {
   byFile: ReadonlyMap<string, SyncFileLines>;
 }
 
-export interface SourceLocation {
+export interface SourcePosition {
   /** Normalised absolute path with "/" separators. */
   file: string;
   /** 1-based. */
@@ -56,4 +56,4 @@ export interface SourceLocation {
 
 export const isBox = (node: SyncNode): node is SyncBox => "children" in node;
 
-export type SynctexRead = { status: "found"; index: SyncIndex } | { status: "missing"; path: string };
+export type SynctexRead = { status: "found"; index: SynctexMap } | { status: "missing"; path: string };

@@ -11,7 +11,7 @@ export const IMAGE_EXTENSIONS: Record<WritingLanguage, string[]> = {
 };
 
 /** The first path in `folder` for `deriveFileName` that does not exist: `stem.ext`, `stem-2.ext`, `stem-3.ext`, ... */
-export async function freeImageName(
+export async function findFreeImageName(
   paths: Pick<PathOps, "join" | "extname" | "basename">,
   folder: string,
   fileName: string,
@@ -27,7 +27,7 @@ export async function freeImageName(
 }
 
 /** LaTeX resolves graphics from the main file's folder; Typst from the folder of the file that names the image. */
-export function imageBaseFolder(
+export function deriveImageBaseFolder(
   language: WritingLanguage,
   projectFolder: string,
   main: string | undefined,

@@ -1,5 +1,5 @@
 // Prompts for a symbol or a table size and inserts it into the source editor.
-import { MATH_SYMBOLS, MAX_TABLE_SIDE, parseTableSize, symbolSource, tableSnippet } from "@labshelf/core";
+import { MATH_SYMBOLS, MAX_TABLE_SIDE, parseTableSize, deriveSymbolSource, createTableSnippet } from "@labshelf/core";
 import { askInputBox, pickQuickEntry, type QuickPickEntry } from "@labshelf/core/dom";
 import type { SourceEdits, SourceLanguage } from "../sourceUpdates";
 
@@ -12,7 +12,7 @@ export function symbolEntries(language: SourceLanguage): QuickPickEntry<string>[
       category = symbol.category;
       entries.push({ kind: "separator", label: category });
     }
-    const source = symbolSource(symbol, language);
+    const source = deriveSymbolSource(symbol, language);
     entries.push({ label: symbol.glyph, description: source, value: source });
   }
   return entries;
@@ -31,5 +31,5 @@ export async function insertTable(edits: SourceEdits, language: SourceLanguage):
     validate: (value) => (parseTableSize(value) ? null : `Enter columns x rows, each from 1 to ${MAX_TABLE_SIDE}, e.g. 3x2`),
   });
   const size = answer === undefined ? undefined : parseTableSize(answer);
-  if (size) edits.insertSnippet(tableSnippet(language, size));
+  if (size) edits.insertSnippet(createTableSnippet(language, size));
 }

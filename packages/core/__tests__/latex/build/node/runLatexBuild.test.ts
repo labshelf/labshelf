@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { rootBuildFolder } from "../../../../src/writing/project/buildRoot/index";
+import { deriveBuildRootFolder } from "../../../../src/writing/project/buildRoot/index";
 import { runLatexBuild, type LatexBuildRequest } from "../../../../src/latex/build/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
@@ -66,7 +66,7 @@ posixOnly("runLatexBuild", () => {
     for (const root of ["a/main.tex", "b/main.tex"]) {
       await fs.mkdir(path.join(projectFolder, path.dirname(root)), { recursive: true });
       await fs.writeFile(path.join(projectFolder, root), "x\n");
-      const outDir = path.join(buildDir, rootBuildFolder(root));
+      const outDir = path.join(buildDir, deriveBuildRootFolder(root));
       const result = await runLatexBuild({ toolchain: { engine: "xelatex", executable }, projectFolder, main: root, outDir, signal: new AbortController().signal, logger: fakeLogger() });
       expect(result).toMatchObject({ status: "succeeded", pdf: path.join(projectFolder, root.replace(".tex", ".pdf")) });
     }

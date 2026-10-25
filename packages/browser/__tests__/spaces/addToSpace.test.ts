@@ -1,5 +1,5 @@
 // Checks that Add to Space writes selected paper references through the browser host.
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), quickPick: jest.fn(), inputBox: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(), askInputBox: jest.fn() }));
 import type { SpaceStore } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
 import { addToSpace } from "../../src/spaces/addToSpace";

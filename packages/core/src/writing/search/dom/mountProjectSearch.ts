@@ -2,7 +2,7 @@
 import { renderElement } from "../../../ui/dom/dom.js";
 import type { HostToSearch, SearchScopeLabel, SearchTransport, SearchScopeMode } from "../protocol/index.js";
 import type { SearchResults } from "../searchResults.js";
-import { createResultsList, type ResultsList } from "./matchList.js";
+import { createMatchList, type MatchList } from "./matchList.js";
 import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { SearchOptions } from "../searchPattern.js";
 
@@ -91,7 +91,7 @@ function createSearchForm(onChange: () => void): SearchForm {
 }
 
 /** `current` is -1 when no result is open; returns -1 when `count` is 0. */
-export function stepResult(current: number, count: number, step: 1 | -1): number {
+export function deriveSteppedMatch(current: number, count: number, step: 1 | -1): number {
   if (count === 0) { return -1; }
   if (current < 0 || current >= count) { return step === 1 ? 0 : count - 1; }
   return (current + step + count) % count;
@@ -107,7 +107,7 @@ function summaryText(results: SearchResults): string {
 
 interface SearchPanel {
   form: SearchForm;
-  list: ResultsList;
+  list: MatchList;
   scopeLine: HTMLElement;
   summary: HTMLElement;
   /** Shows the form and results, or the notice for a file outside every writing project. */
@@ -117,7 +117,7 @@ interface SearchPanel {
 function buildPanel(root: HTMLElement, transport: SearchTransport, search: () => void): SearchPanel {
   const form = createSearchForm(search);
   const replacement = (): string => form.state().replacement;
-  const list = createResultsList({
+  const list = createMatchList({
     open: (at) => transport.post({ type: "open", ...at }),
     replace: (at) => transport.post({ type: "replace", ...at, replacement: replacement() }),
     replaceFile: (path) => transport.post({ type: "replaceFile", path, replacement: replacement() }),
@@ -163,7 +163,7 @@ export function mountProjectSearch(root: HTMLElement, transport: SearchTransport
   form.query.addEventListener("keydown", (event) => {
     if (event.key !== "Enter") { return; }
     event.preventDefault();
-    const at = list.select(stepResult(list.selected(), list.count(), event.shiftKey ? -1 : 1));
+    const at = list.select(deriveSteppedMatch(list.selected(), list.count(), event.shiftKey ? -1 : 1));
     if (at) { transport.post({ type: "open", ...at }); }
   });
   transport.subscribe((message: HostToSearch) => {

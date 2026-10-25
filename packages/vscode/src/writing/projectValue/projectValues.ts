@@ -1,7 +1,7 @@
 // Gives the value providers each project's JSON leaves, read once and dropped when a value file or the project list changes.
 import * as vscode from "vscode";
 
-import type { ILogger, PathOps, ValueLeaf } from "@labshelf/core";
+import type { ILogger, PathOps, ProjectValueLeaf } from "@labshelf/core";
 import { owningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
 
@@ -14,7 +14,7 @@ export interface ValuesWorkspace {
 const SOURCE_EXTENSION = { latex: ".tex", typst: ".typ" } as const;
 
 export class ProjectValues implements vscode.Disposable {
-  private readonly cache = new Map<string, Promise<ValueLeaf[]>>();
+  private readonly cache = new Map<string, Promise<ProjectValueLeaf[]>>();
   private watchers: vscode.Disposable[] = [];
   private readonly subscription: vscode.Disposable;
 
@@ -38,7 +38,7 @@ export class ProjectValues implements vscode.Disposable {
     return project && listsValues && this.paths.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
   }
 
-  leaves(project: ReadyProject): Promise<ValueLeaf[]> {
+  leaves(project: ReadyProject): Promise<ProjectValueLeaf[]> {
     if (!this.workspace.logger()) { return Promise.resolve([]); }
     const cached = this.cache.get(project.folder);
     if (cached) { return cached; }
