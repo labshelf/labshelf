@@ -5,4 +5,4 @@ export { NavigationHistory } from "./navigationHistory.js";
 export { ZoomController } from "./zoom.js";
 export { SourceSync } from "./sourceSync.js";
 export { ChangeMarks } from "./changeMarks.js";
-export { derivePagePoint, derivePixelOffset, type PageViewportLike } from "./pagePoints.js";
+export { derivePagePoint, derivePixelOffset, type PageViewLike, type PageViewportLike } from "./pagePoints.js";
