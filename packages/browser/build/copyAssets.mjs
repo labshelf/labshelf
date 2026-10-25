@@ -16,7 +16,7 @@ export async function copyAssets({ srcRoot, outDir, target, pkgRoot }) {
 
   for (const file of await readdir(srcRoot, { recursive: true })) {
     // Only Chrome has offscreen documents.
-    if (target === "firefox" && file.startsWith("import/")) continue;
+    if (target === "firefox" && file === join("import", "offscreen.html")) continue;
     if (STATIC_EXTENSIONS.has(extname(file).toLowerCase())) {
       await cp(join(srcRoot, file), join(outDir, file));
     }
