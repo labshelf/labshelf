@@ -13,7 +13,7 @@ import { Prec, type Extension, EditorSelection, type StateCommand } from "@codem
 import { keymap } from "@codemirror/view";
 import {
   type PaperRecord,
-  partialKeyStart,
+  findPartialCiteKeyStart,
   findEnvironmentToClose,
   findLatexCompletionSpan,
   LATEX_COMMANDS,
@@ -93,7 +93,7 @@ export const closeEnvironmentOnEnter: StateCommand = ({ state, dispatch }) => {
 export function createCitationCompletion(papers: () => Promise<readonly PaperRecord[]>): CompletionSource {
   return async (context: CompletionContext): Promise<CompletionResult | null> => {
     const line = context.state.doc.lineAt(context.pos);
-    const start = partialKeyStart("latex", line.text.slice(0, context.pos - line.from));
+    const start = findPartialCiteKeyStart("latex", line.text.slice(0, context.pos - line.from));
     if (start === undefined) return null;
     return { from: line.from + start, options: await listLibraryCitations(papers), validFor: /^[^,{}\s]*$/ };
   };

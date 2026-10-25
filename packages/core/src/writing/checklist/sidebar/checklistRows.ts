@@ -17,7 +17,7 @@ export interface ReadingPaper {
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 
 /** @returns a key unique to the item within its group and stable across refreshes */
-export function itemKey(item: ChecklistItem): string {
+export function createItemKey(item: ChecklistItem): string {
   switch (item.kind) {
     case "todo": return `todo:${item.todo.file}:${item.todo.line}`;
     case "ref": return `ref:${item.ref.file}:${item.ref.line}:${item.ref.ref}`;
@@ -62,7 +62,7 @@ function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper
   };
 }
 
-export function itemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
+export function createItemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
   switch (item.kind) {
     case "todo": return located(paths, key, item.todo.text, item.todo.file, item.todo.line);
     case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);

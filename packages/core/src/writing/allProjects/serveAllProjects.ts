@@ -1,6 +1,6 @@
 // Serves the All projects page from a host's project library: posts the rows and runs the page's actions.
 import type { ILogger } from "../../ports/index.js";
-import type { ProjectTarget } from "../project/index.js";
+import type { ProjectSubmission } from "../project/index.js";
 import type { AllProjectsEndpoint, AllProjectsToHost } from "./protocol/index.js";
 import type { ProjectLibraryPort } from "./projectLibraryPort.js";
 
@@ -53,7 +53,7 @@ function run(port: ProjectLibraryPort, message: Exclude<AllProjectsToHost, { typ
 }
 
 /** Both fields absent clears the target. */
-function toTarget({ venue, deadline }: { venue?: string; deadline?: string }): ProjectTarget | null {
+function toTarget({ venue, deadline }: { venue?: string; deadline?: string }): ProjectSubmission | null {
   if (venue === undefined && deadline === undefined) { return null; }
   return { ...(venue !== undefined ? { venue } : {}), ...(deadline !== undefined ? { deadline } : {}) };
 }

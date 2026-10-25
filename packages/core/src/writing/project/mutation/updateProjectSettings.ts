@@ -1,10 +1,10 @@
 // Rewrites the settings of a project's labshelf.yaml in place, keeping every field and comment it does not patch.
-import { PROJECT_FILE, parseProjectFile, updateProjectFile, type ProjectSettingsPatch } from "../projectFile.js";
+import { PROJECT_FILE, parseProjectFile, updateProjectFile, type ProjectSettingsUpdate } from "../projectFile.js";
 import type { ProjectReadContext } from "../folder/index.js";
 
 /** A labshelf.yaml that does not parse is left untouched and the call fails. */
 export async function updateProjectSettings(
-  { fs, paths, logger }: ProjectReadContext, folder: string, patch: ProjectSettingsPatch,
+  { fs, paths, logger }: ProjectReadContext, folder: string, patch: ProjectSettingsUpdate,
 ): Promise<void> {
   const file = paths.join(folder, PROJECT_FILE);
   const text = await fs.readText(file);

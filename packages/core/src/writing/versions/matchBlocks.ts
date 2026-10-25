@@ -1,6 +1,6 @@
 /** Pairs the blocks of two renderings of a paper that show the same thing; an unpaired block is a change. */
 import type { PageInk } from "./pageInk.js";
-import type { PixelBox } from "./derivePageBlocks.js";
+import type { PageBox } from "./derivePageBlocks.js";
 
 /** Darkness summed per cell, and per column of cells. */
 interface CellGrid {
@@ -21,7 +21,7 @@ const STRIPE_CELLS = 2;
 const MAX_STRIPE_DIFFERENCE = 0.4;
 
 /** Grid of a block whose cells start `px`, `py` pixels before the block. */
-function cellGrid(page: PageInk, box: PixelBox, px: number, py: number): CellGrid {
+function cellGrid(page: PageInk, box: PageBox, px: number, py: number): CellGrid {
   const width = Math.ceil((box.width + px) / CELL);
   const height = Math.ceil((box.height + py) / CELL);
   const cells = new Float32Array(width * height);
@@ -79,14 +79,14 @@ function withinLimits(differences: Float32Array, total: number): boolean {
 }
 
 /** A block measured for comparison: its cell grid at every pixel phase and its total darkness. */
-export interface BlockInk {
-  box: PixelBox;
+export interface BlockInput {
+  box: PageBox;
   /** Index `py * CELL + px`: the grid starts `px`, `py` pixels before the block. */
   phases: CellGrid[];
   darkness: number;
 }
 
-export interface BlockPairs {
+export interface BlockResult {
   pairedBefore: boolean[];
   pairedAfter: boolean[];
 }
@@ -97,7 +97,7 @@ const MAX_DARKNESS_RATIO = 1.15;
 // How far from where the previous pair left off the partner of an unchanged block is looked for first.
 const NEAR_BLOCKS = 8;
 
-export function deriveBlockInk(page: PageInk, box: PixelBox): BlockInk {
+export function deriveBlockInk(page: PageInk, box: PageBox): BlockInput {
   const phases: CellGrid[] = [];
   for (let py = 0; py < CELL; py++) {
     for (let px = 0; px < CELL; px++) { phases.push(cellGrid(page, box, px, py)); }
@@ -108,7 +108,7 @@ export function deriveBlockInk(page: PageInk, box: PixelBox): BlockInk {
 }
 
 /** Whether two blocks show the same thing, up to a one-pixel shift and anti-aliasing. */
-export function isSameBlock(a: BlockInk, b: BlockInk): boolean {
+export function isSameBlock(a: BlockInput, b: BlockInput): boolean {
   if (Math.abs(a.box.width - b.box.width) > MAX_SIZE_DIFFERENCE || Math.abs(a.box.height - b.box.height) > MAX_SIZE_DIFFERENCE) { return false; }
   if (Math.max(a.darkness, b.darkness) > Math.min(a.darkness, b.darkness) * MAX_DARKNESS_RATIO) { return false; }
   // `b` at the middle phase against every phase of `a` covers shifts of a pixel either way.
@@ -123,7 +123,7 @@ export function isSameBlock(a: BlockInk, b: BlockInk): boolean {
  * @param before blocks in reading order
  * @param after blocks in reading order
  */
-export function matchBlocks(before: readonly BlockInk[], after: readonly BlockInk[]): BlockPairs {
+export function matchBlocks(before: readonly BlockInput[], after: readonly BlockInput[]): BlockResult {
   const pairedBefore = before.map(() => false);
   const pairedAfter = after.map(() => false);
   const free = (i: number): boolean => i >= 0 && i < before.length && !pairedBefore[i];

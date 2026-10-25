@@ -18,7 +18,7 @@ import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js"
 import { hasMergeableExtension, isMergeableTextFile, type IProjectVersionStore, deriveTextHash } from "../index.js";
 import { mergeProjectCopies } from "./projectCopyMerge.js";
 import { createWriteRecordStore, recordFor } from "../../../library/writeRecords/index.js";
-import { prepareProjectSave } from "./projectWriteRecord.js";
+import { addProjectWriteRecord } from "./projectWriteRecord.js";
 import { mergeFileText } from "./mergeText.js";
 
 interface DivergenceFile {
@@ -46,7 +46,7 @@ async function pendingConflict(input: DivergenceFile, text: string): Promise<Con
 
 async function restoreLocal(input: DivergenceFile, local: string, other: string): Promise<void> {
   const { file, store, projectId, relativePath } = input;
-  await prepareProjectSave({ ...input, text: local, parentText: other, identity: createDeviceIdentity(createDeviceLocalLayout(input.root), input.logger) });
+  await addProjectWriteRecord({ ...input, text: local, parentText: other, identity: createDeviceIdentity(createDeviceLocalLayout(input.root), input.logger) });
   await writeFileAtomic(file, local);
   await store.remember(projectId, relativePath, local);
 }
@@ -55,7 +55,7 @@ async function preserveOverlap(input: DivergenceFile, local: string, other: stri
   const { file, projectId, store, relativePath } = input;
   // INVARIANT: publish the other text before restoring local so interruption keeps both versions.
   const copy = `${file}.labshelf-conflict-${randomUUID()}`;
-  await prepareProjectSave({ ...input, relativePath: path.relative(input.folder, copy).split(path.sep).join('/'),
+  await addProjectWriteRecord({ ...input, relativePath: path.relative(input.folder, copy).split(path.sep).join('/'),
     text: other, parentText: undefined, identity: createDeviceIdentity(createDeviceLocalLayout(input.root), input.logger) });
   await fs.writeFile(copy, other, { flag: 'wx' });
   await store.setPending(projectId, relativePath, path.basename(copy));
@@ -87,7 +87,7 @@ async function mergeProjectDivergence(input: DivergenceFile): Promise<ConflictCo
   const merged = mergeFileText(path.basename(file), { base, local, other, otherLabel: 'other device' });
   if (await fs.readFile(file, 'utf8') !== other) throw new Error(`Project file changed during divergence recovery: ${file}`);
   if (merged.conflicted) return preserveOverlap(input, local, other);
-  await prepareProjectSave({ ...input, text: merged.text, parentText: other, identity });
+  await addProjectWriteRecord({ ...input, text: merged.text, parentText: other, identity });
   await writeFileAtomic(file, merged.text);
   await store.remember(projectId, relativePath, merged.text);
   await logger.log('INFO', 'writing-merge', 'Merged divergent project versions', { projectId, path: relativePath });

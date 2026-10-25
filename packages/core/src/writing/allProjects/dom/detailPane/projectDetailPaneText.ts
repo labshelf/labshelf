@@ -1,6 +1,6 @@
 // Writes the sentences of the All projects detail pane: meta line, venue line, limit sentence and build status.
 import { formatCompactTime } from "../../../../library/index.js";
-import type { ProjectTarget } from "../../../project/index.js";
+import type { ProjectSubmission } from "../../../project/index.js";
 import { countDaysUntil } from "../../formatDeadlineText.js";
 import type { CountedLimit, ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectBuildState, ProjectRow } from "../../projectRow.js";
@@ -23,7 +23,7 @@ export function formatMetaLine(row: ProjectRow, pages: number | undefined, now: 
 }
 
 /** "ICLR 2027 · due in 41 days"; the venue or the deadline alone when the other is unset. */
-export function formatProjectVenueLine(target: ProjectTarget | undefined, now: number): string | undefined {
+export function formatProjectVenueLine(target: ProjectSubmission | undefined, now: number): string | undefined {
   const days = countDaysUntil(target, now);
   const due = days === undefined ? undefined : days < 0 ? "deadline passed" : days === 0 ? "due today" : `due in ${formatCount(days, "day")}`;
   const line = [target?.venue, due].filter(Boolean).join(" · ");

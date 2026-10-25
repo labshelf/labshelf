@@ -1,20 +1,20 @@
 // Reads the auto compile mode and tells the build listeners whether a save or an edit may start a build.
 import * as vscode from "vscode";
 
-import { AUTO_COMPILE_MODES, type AutoCompileMode, type ILogger } from "@labshelf/core";
+import { AUTO_COMPILE_MODES, type BuildSchedule, type ILogger } from "@labshelf/core";
 
 const SECTION = "labshelf.writing";
 const KEY = "autoCompile";
 const MODULE = "AutoCompile";
-const DEFAULT_MODE: AutoCompileMode = "typing";
+const DEFAULT_MODE: BuildSchedule = "typing";
 
 /** Configuration is untrusted input: an unknown value reads as the default mode. */
-export function readAutoCompileMode(): AutoCompileMode {
+export function readAutoCompileMode(): BuildSchedule {
   const value = vscode.workspace.getConfiguration(SECTION).get<unknown>(KEY, DEFAULT_MODE);
   return AUTO_COMPILE_MODES.find((mode) => mode === value) ?? DEFAULT_MODE;
 }
 
-export function onAutoCompileChange(fn: (mode: AutoCompileMode) => void): vscode.Disposable {
+export function onAutoCompileChange(fn: (mode: BuildSchedule) => void): vscode.Disposable {
   return vscode.workspace.onDidChangeConfiguration((event) => {
     if (event.affectsConfiguration(`${SECTION}.${KEY}`)) { fn(readAutoCompileMode()); }
   });

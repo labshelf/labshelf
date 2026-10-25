@@ -1,21 +1,21 @@
 /** Verifies project ids derived from titles. */
-import { projectIdSlug } from "../../../src/writing/project/index";
+import { deriveProjectIdSlug } from "../../../src/writing/project/index";
 
-describe("projectIdSlug", () => {
+describe("deriveProjectIdSlug", () => {
   it("folds accents and lowercases", () => {
-    expect(projectIdSlug("Análise Crítica")).toBe("analise-critica");
+    expect(deriveProjectIdSlug("Análise Crítica")).toBe("analise-critica");
   });
 
   it("turns punctuation runs into single hyphens", () => {
-    expect(projectIdSlug("Deep Nets: a   Survey!!")).toBe("deep-nets-a-survey");
+    expect(deriveProjectIdSlug("Deep Nets: a   Survey!!")).toBe("deep-nets-a-survey");
   });
 
   it("trims leading and trailing hyphens", () => {
-    expect(projectIdSlug("  --Hello--  ")).toBe("hello");
+    expect(deriveProjectIdSlug("  --Hello--  ")).toBe("hello");
   });
 
   it("falls back to 'project' without letters or digits", () => {
-    expect(projectIdSlug("***")).toBe("project");
-    expect(projectIdSlug("")).toBe("project");
+    expect(deriveProjectIdSlug("***")).toBe("project");
+    expect(deriveProjectIdSlug("")).toBe("project");
   });
 });

@@ -1,5 +1,5 @@
 // Answers a project preview frame's requests: recompile, open a problem, compare and mark versions, and save the check limits and build options.
-import type { AutoCompileMode, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectContentPort } from "@labshelf/core";
+import type { BuildSchedule, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectContentPort } from "@labshelf/core";
 import type { ExtensionSettings } from "../../platform";
 import { showInOpenEditor } from "../session";
 import type { FollowedBuilds, PreviewLimits } from "./previewBuilds";
@@ -17,7 +17,7 @@ export interface PreviewRequestDeps {
   helperProject: {
     build(projectId: string): Promise<unknown>;
     lastFullPdf(projectId: string): Uint8Array | undefined;
-    setBuild(projectId: string, patch: { autoCompile?: AutoCompileMode; engine?: LatexEngine; haltOnError?: boolean }): void;
+    setBuild(projectId: string, patch: { autoCompile?: BuildSchedule; engine?: LatexEngine; haltOnError?: boolean }): void;
   };
   data: Pick<ProjectContentPort, "updateProjectSettings">;
   builds: Pick<FollowedBuilds, "roots" | "resendRoots">;
@@ -50,7 +50,7 @@ async function saveLimits(deps: PreviewRequestDeps, folder: string, change: Extr
 }
 
 /** Saves a per-user build setting, then applies it to the open build. */
-async function saveUserOption(deps: PreviewRequestDeps, patch: { autoCompile: AutoCompileMode } | { haltOnError: boolean }): Promise<void> {
+async function saveUserOption(deps: PreviewRequestDeps, patch: { autoCompile: BuildSchedule } | { haltOnError: boolean }): Promise<void> {
   await deps.updateSettings(patch);
   Object.assign(deps.options, patch);
   deps.helperProject.setBuild(deps.project.id, patch);

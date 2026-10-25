@@ -1,8 +1,8 @@
 // Records editor save ancestry before VS Code writes project documents.
 import * as vscode from 'vscode';
-import { formatError, type ILogger, type ProjectSaveTracking } from '@labshelf/core';
+import { formatError, type ILogger, type ProjectWriteTracking } from '@labshelf/core';
 
-export function registerProjectWriteEvents(context: vscode.ExtensionContext, saves: ProjectSaveTracking, logger: ILogger): void {
+export function registerProjectWriteEvents(context: vscode.ExtensionContext, saves: ProjectWriteTracking, logger: ILogger): void {
   const fail = async (file: string, action: string, error: unknown): Promise<void> => {
     await logger.error('writing-merge', error, { file, action });
     void vscode.window.showErrorMessage(`Could not record project save for ${file}: ${formatError(error)}`);

@@ -1,5 +1,5 @@
 // Defines the browser project connection exposed to source editors and preview tabs.
-import type { AutoCompileMode, ILogger, LatexEngine, ProjectEntry } from "@labshelf/core";
+import type { BuildSchedule, ILogger, LatexEngine, ProjectEntry } from "@labshelf/core";
 import type { BuildKind, HelperCompileResult, HelperState, ILatexHelper } from "@labshelf/core/helper";
 import type { BuildTimers } from "../../writing/preview";
 import type { ProblemStore } from "./problemStore";
@@ -41,7 +41,7 @@ export interface HelperProject {
   projectChanged(entry: ProjectEntry | undefined): Promise<void>;
 }
 
-export interface BuildSettings { autoCompile: AutoCompileMode; haltOnError: boolean }
+export interface BuildSettings { autoCompile: BuildSchedule; haltOnError: boolean }
 export type BuildUpdate = Partial<BuildSettings> & { engine?: LatexEngine };
 
 export interface HelperProjectOptions {

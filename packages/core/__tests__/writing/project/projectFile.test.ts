@@ -1,6 +1,6 @@
 /** Verifies labshelf.yaml parsing, serializing and in-place updates. */
 import {
-  parseProjectFile, projectFileWithId, serializeProjectFile, updateProjectFile,
+  parseProjectFile, withProjectId, serializeProjectFile, updateProjectFile,
 } from "../../../src/writing/project/index";
 
 describe("parseProjectFile", () => {
@@ -91,10 +91,10 @@ describe("updateProjectFile", () => {
   });
 });
 
-describe("projectFileWithId", () => {
+describe("withProjectId", () => {
   it("keeps every key and comment and sets only the id", () => {
     const source = "# notes\nid: paper\nformat: latex\nfigures:\n  fig/a.pdf: { script: plot.py }\n";
-    const out = projectFileWithId(source, "paper-copy");
+    const out = withProjectId(source, "paper-copy");
     expect(out).toBe(source.replace("id: paper", "id: paper-copy"));
   });
 });

@@ -2,13 +2,13 @@
 import { constants as fsConstants, promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { isMergeableTextFile, type ProjectSaveTracking } from "../../../writing/conflict/index.js";
+import { isMergeableTextFile, type ProjectWriteTracking } from "../../../writing/conflict/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { deriveConflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
 import { parseConflictName } from "../conflictNames.js";
 
 /** Copies `copy` to the first free `<name> (copy N).<ext>` next to the original, then deletes it. */
-async function keepBoth(original: string, copy: string, tracking: Pick<ProjectSaveTracking, "beforeSave" | "afterSave"> | undefined): Promise<void> {
+async function keepBoth(original: string, copy: string, tracking: Pick<ProjectWriteTracking, "beforeSave" | "afterSave"> | undefined): Promise<void> {
   const { dir, name, ext } = path.parse(original);
   for (let n = 1; ; n++) {
     try {
@@ -39,7 +39,7 @@ function assertConflictPair(conflict: ConflictCopy): void {
  * Resolves a conflict copy: keepMine deletes it, keepOther moves it over the original, keepBoth moves it
  * to `<name> (copy N).<ext>`. Refuses a resolution `conflictResolutions` does not offer.
  */
-export async function resolveConflictCopy(conflict: ConflictCopy, resolution: ConflictResolution, logger: ILogger, tracking?: Pick<ProjectSaveTracking, "beforeSave" | "afterSave">): Promise<void> {
+export async function resolveConflictCopy(conflict: ConflictCopy, resolution: ConflictResolution, logger: ILogger, tracking?: Pick<ProjectWriteTracking, "beforeSave" | "afterSave">): Promise<void> {
   try {
     if (resolution === 'mergeAutomatically' || resolution === 'notAVersion') throw new Error(`Project conflict resolution requires project context: ${conflict.copy}`);
     assertConflictPair(conflict);

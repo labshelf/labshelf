@@ -2,7 +2,7 @@
 import type { DotKind, SidebarTreeNode } from "../../../libraryUi/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, PageOverflow } from "../buildChecklist.js";
-import { itemKey, itemRow, createPagesHead, type ReadingPaper } from "./checklistRows.js";
+import { createItemKey, createItemRow, createPagesHead, type ReadingPaper } from "./checklistRows.js";
 
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 
@@ -50,9 +50,9 @@ function groupNode(input: ChecklistTreeInput, tree: ChecklistTree, group: Checkl
   const key = `${input.grouping}:${group.id}`;
   tree.groups.set(key, group.id);
   const row = (item: ChecklistItem): SidebarTreeNode => {
-    const rowKey = `${key}/${itemKey(item)}`;
+    const rowKey = `${key}/${createItemKey(item)}`;
     tree.items.set(rowKey, item);
-    return itemRow(input.paths, rowKey, item, input.reading);
+    return createItemRow(input.paths, rowKey, item, input.reading);
   };
   // Manual items follow the group's own rows, the folded "N read" row included.
   const own = group.items.filter((item) => item.kind !== "manual" || group.id === "manual" || group.id.startsWith("#"));

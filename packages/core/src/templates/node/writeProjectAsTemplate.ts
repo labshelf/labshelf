@@ -7,7 +7,7 @@ import * as path from "node:path";
 import { ensureCiteKey, joinWith, createLibraryLayout } from "../../library/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../writing/project/index.js";
+import { PROJECT_FILE, deriveProjectIdSlug, type LatexEngine, type ProjectEntry } from "../../writing/project/index.js";
 import { listLibraryProjects } from "../../writing/project/node/index.js";
 import { parseTemplateManifest, serializeTemplateManifest, deriveTemplateTreeProblem, type TemplateKind, type TemplateManifest } from "../templateManifest/index.js";
 import { listProjectFiles } from "./projectFiles.js";
@@ -62,7 +62,7 @@ async function claimTemplateId(templatesRoot: string, name: string): Promise<str
     if (error.code === "ENOENT") { return []; }
     throw error;
   });
-  const base = projectIdSlug(name).slice(0, MAX_ID_BASE).replace(/-+$/, "");
+  const base = deriveProjectIdSlug(name).slice(0, MAX_ID_BASE).replace(/-+$/, "");
   return ensureCiteKey(base, taken, (id) => fs.stat(path.join(templatesRoot, id)).then(() => true, () => false));
 }
 

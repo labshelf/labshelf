@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   deriveCitationEntries, findCiteKeysAt,
-  type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type TypstCite,
+  type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type TypstCitation,
 } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import type { SynctexFinder } from "../synctex/index.js";
@@ -18,7 +18,7 @@ export interface PreviewCitationDeps {
   format: ProjectFormat;
   listPapers: () => Promise<PaperRecord[]>;
   /** Where the Typst build behind the shown PDF placed its citations. */
-  typstCites: () => readonly TypstCite[];
+  typstCites: () => readonly TypstCitation[];
   synctex: () => Promise<SynctexFinder>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
 }

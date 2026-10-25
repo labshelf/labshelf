@@ -2,7 +2,7 @@
 import { snippet } from "@codemirror/autocomplete";
 import { EditorSelection, type Extension } from "@codemirror/state";
 import { keymap, type EditorView } from "@codemirror/view";
-import { deriveSelectionWrap, type WrapStyle } from "@labshelf/core";
+import { deriveSelectionWrap, type WrapKind } from "@labshelf/core";
 
 /** `$1` and `${1:Caption}` become CodeMirror fields, `$0` the final cursor, and `\\`, `\$`, `\}` their literal characters. */
 export function deriveCodeMirrorTemplate(textMate: string): string {
@@ -29,7 +29,7 @@ export interface SourceUpdates {
   /** Inserts a core snippet at the main selection and starts its tab stops. */
   insertSnippet(textMateSnippet: string): void;
   /** Wraps each selection in the style's markup, or removes the markup when it is already there; an empty selection gets an empty pair. */
-  wrap(style: WrapStyle): void;
+  wrap(style: WrapKind): void;
 }
 
 function insertText(view: EditorView, text: string): void {
@@ -39,7 +39,7 @@ function insertText(view: EditorView, text: string): void {
   ));
 }
 
-function wrapSelections(view: EditorView, language: SourceLanguage, style: WrapStyle): void {
+function wrapSelections(view: EditorView, language: SourceLanguage, style: WrapKind): void {
   const { state } = view;
   view.dispatch(state.update(
     state.changeByRange((range) => {
@@ -67,7 +67,7 @@ export function createSourceUpdates(view: EditorView, language: SourceLanguage):
 
 /** Cmd/Ctrl+B and Cmd/Ctrl+I wrap the selection, as in the VS Code editor. */
 export function createFormattingKeymap(language: SourceLanguage): Extension {
-  const wrapWith = (style: WrapStyle) => (view: EditorView): boolean => { wrapSelections(view, language, style); return true; };
+  const wrapWith = (style: WrapKind) => (view: EditorView): boolean => { wrapSelections(view, language, style); return true; };
   return keymap.of([
     { key: "Mod-b", preventDefault: true, run: wrapWith("bold") },
     { key: "Mod-i", preventDefault: true, run: wrapWith("italic") },

@@ -4,7 +4,7 @@ import { deriveTemplatePathProblem, deriveTemplateTreeProblem, type ProjectTempl
 import { readProject } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
 import { PROJECT_FILE, serializeProjectFile, type ProjectSettings } from "../projectFile.js";
-import { claimProjectId } from "./claimProjectId.js";
+import { createProjectId } from "./createProjectId.js";
 import type { ProjectCatalogContext } from "./projectCatalogContext.js";
 
 /** Throws, naming the path and the reason, when the files are not an installable tree with template.main among them. */
@@ -39,7 +39,7 @@ export async function createProjectFromTemplate(
   const { fs, paths, logger } = context;
   const { template, files } = request;
   checkTemplateFiles(template, files);
-  const id = await claimProjectId(context, libraryRoot, request.title);
+  const id = await createProjectId(context, libraryRoot, request.title);
   const layout = createLibraryLayout(libraryRoot, (base, ...segments) => paths.join(base, ...segments));
   const staging = paths.join(layout.researchRoot(), "staging", `${id}-${randomSuffix()}`);
   const folder = paths.join(layout.projectsRoot(), id);

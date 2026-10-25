@@ -1,5 +1,5 @@
 // Declares the project storage operations a host implements for the All projects page.
-import type { ProjectTarget } from "../project/index.js";
+import type { ProjectSubmission } from "../project/index.js";
 import type { ProjectPaneContent } from "./projectDetailPane.js";
 import type { CreateProjectKind, ProjectMenuCommand, ProjectRow } from "./projectRow.js";
 
@@ -34,7 +34,7 @@ export interface ProjectLibraryPort {
   /** Creates an empty file at a project-relative `path`, then opens it. */
   createFile(id: string, path: string): Promise<void>;
   /** Writes the project's `target` to labshelf.yaml; `null` removes it. */
-  setTarget(id: string, target: ProjectTarget | null): Promise<void>;
+  setTarget(id: string, target: ProjectSubmission | null): Promise<void>;
   /** The host's name for opening a project in its editor, such as "Open in VS Code". */
   openLabel(): string;
 }

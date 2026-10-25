@@ -4,7 +4,7 @@ import type { SearchOptions } from "../searchPattern.js";
 import type { SearchResults } from "../searchResults.js";
 
 /** "file" searches only the active file, "project" every searchable file of its project. */
-export type SearchScopeMode = "file" | "project";
+export type SearchScopeKind = "file" | "project";
 
 /** A match the page points at; line and column are 0-based. */
 export interface MatchPosition {
@@ -16,7 +16,7 @@ export interface MatchPosition {
 
 export type SearchToHost =
   | { type: "ready" }
-  | { type: "search"; query: string; options: SearchOptions; scope: SearchScopeMode }
+  | { type: "search"; query: string; options: SearchOptions; scope: SearchScopeKind }
   | ({ type: "open" } & MatchPosition)
   | ({ type: "replace"; replacement: string } & MatchPosition)
   | { type: "replaceFile"; path: string; replacement: string }

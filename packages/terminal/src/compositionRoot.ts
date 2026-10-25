@@ -8,7 +8,7 @@ import {
 } from "@labshelf/core";
 import {
   FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, resolveCacheDir, createPdfjsLoader,
-  createProjectSaveTracking, createDeviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
+  createProjectWriteTracking, createDeviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
@@ -176,7 +176,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     rescanConflicts,
     resolveConflict: (copy, resolution) => resolution === "mergeAutomatically" || resolution === "notAVersion"
       ? resolveProjectConflictCopy(copy, resolution, { root: paths.root, store: mergeBaseStore(paths.root), logger })
-      : resolveConflictCopy(copy, resolution, logger, createProjectSaveTracking(new NodeLibraryFileSystem(), () => paths.root, logger)),
+      : resolveConflictCopy(copy, resolution, logger, createProjectWriteTracking(new NodeLibraryFileSystem(), () => paths.root, logger)),
     onRootLost: (listener) => { rootLostListeners.push(listener); },
     async dispose() {
       watcher?.stop();

@@ -25,7 +25,7 @@ export interface CheckSettings {
   anonymous: boolean;
 }
 
-export interface UserKeys {
+export interface UserSettings {
   /** Figure path, relative to the project folder, to its recipe. */
   figures?: Record<string, FigureRecipe> | undefined;
   /** JSON files, relative to the project folder, whose leaves `\lsvalue` and Typst `json()` read. */
@@ -65,8 +65,8 @@ function readCheck(value: unknown): CheckSettings | string {
 }
 
 /** The user keys of a parsed labshelf.yaml mapping, or the reason they are invalid. */
-export function readUserKeys(raw: Record<string, unknown>): UserKeys | string {
-  const keys: UserKeys = {};
+export function readUserSettings(raw: Record<string, unknown>): UserSettings | string {
+  const keys: UserSettings = {};
   if (!isAbsent(raw["figures"])) {
     const figures = readFigures(raw["figures"]);
     if (typeof figures === "string") { return figures; }

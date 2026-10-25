@@ -3,7 +3,7 @@
 
 import { MAX_PATH_LENGTH } from "./helperMessages.js";
 
-// INVARIANT: matches what projectIdSlug produces, so every id LabShelf derives passes and none can name a parent folder.
+// INVARIANT: matches what deriveProjectIdSlug produces, so every id LabShelf derives passes and none can name a parent folder.
 const PROJECT_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DRIVE_LETTER = /^[A-Za-z]:/;
 

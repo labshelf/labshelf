@@ -1,5 +1,5 @@
 // Records the last build of every root a project has built, keyed by the root's absolute path so one root never overwrites another.
-import type { BuildState, LocatedProblem, PathOps, TypstCite } from "@labshelf/core";
+import type { BuildState, LocatedProblem, PathOps, TypstCitation } from "@labshelf/core";
 import type { FinishedBuild } from "../build/index.js";
 
 export interface BuildRootBuildState {
@@ -10,7 +10,7 @@ export interface BuildRootBuildState {
 export class BuildRootBuilds {
   private readonly problems = new Map<string, readonly LocatedProblem[]>();
   // INVARIANT: the cites of a root's last successful Typst build, i.e. of the PDF a preview shows; a failed build leaves them.
-  private readonly cites = new Map<string, readonly TypstCite[]>();
+  private readonly cites = new Map<string, readonly TypstCitation[]>();
   // A preview opened during a build or after a failed one shows that state at once.
   private readonly states = new Map<string, BuildRootBuildState>();
   // The roots each project has built, in build order; the reader lists exactly these.
@@ -47,7 +47,7 @@ export class BuildRootBuilds {
     return this.built.get(projectFolder)?.has(root) ? this.problems.get(this.paths.join(projectFolder, root)) : undefined;
   }
 
-  citesOf(projectFolder: string, root: string): readonly TypstCite[] | undefined {
+  citesOf(projectFolder: string, root: string): readonly TypstCitation[] | undefined {
     return this.cites.get(this.paths.join(projectFolder, root));
   }
 

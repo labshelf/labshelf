@@ -4,17 +4,17 @@
 import type { ReadingStatus } from "../../library/readingStatus/index.js";
 import { MARK_TOKENS } from "../tokens/index.js";
 
-export const ARC_KINDS = ["err", "warn", "ok", "accent"] as const;
-export const ARC_STATES = ["none", "half", "full"] as const;
-export type ArcKind = (typeof ARC_KINDS)[number];
-export type ArcState = (typeof ARC_STATES)[number];
+export const ARC_TONES = ["err", "warn", "ok", "accent"] as const;
+export const ARC_PROGRESSES = ["none", "half", "full"] as const;
+export type ArcKind = (typeof ARC_TONES)[number];
+export type ArcState = (typeof ARC_PROGRESSES)[number];
 
 /** The Arc mark of each reading status, the same in every app. */
 export const STATUS_ARC: Record<ReadingStatus, readonly [ArcKind, ArcState]> = { unread: ["accent", "none"], reading: ["accent", "half"], done: ["ok", "full"] };
 
 /** The resolved colour of each tone, for hosts that cannot read CSS variables (native tree icons). */
 export const ARC_TONE_COLORS = Object.fromEntries(
-  ARC_KINDS.map((tone) => {
+  ARC_TONES.map((tone) => {
     const { value, light } = MARK_TOKENS[`mark-${tone}`];
     return [tone, { dark: value, light: light ?? value }];
   }),

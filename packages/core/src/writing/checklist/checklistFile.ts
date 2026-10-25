@@ -7,7 +7,7 @@ export const CHECKLIST_FILE = "checklist.json";
 
 /** The By kind groups a manual item can sit in; an item without one sits in My items. */
 export const MANUAL_ITEM_GROUPS = ["todo", "ref", "figure", "pages", "reading"] as const;
-export type ManualItemGroup = (typeof MANUAL_ITEM_GROUPS)[number];
+export type ManualItemKind = (typeof MANUAL_ITEM_GROUPS)[number];
 
 /** An item a user added to a project's Checklist by hand. */
 export interface ManualItem {
@@ -16,7 +16,7 @@ export interface ManualItem {
   done: boolean;
   createdAt: string;
   doneAt?: string;
-  group?: ManualItemGroup;
+  group?: ManualItemKind;
   /** The By section group id the item sits in; absent in By kind items. */
   section?: string;
 }
@@ -55,7 +55,7 @@ function isManualItem(value: unknown): value is ManualItem {
   return done ? isTimestamp(doneAt) : doneAt === undefined;
 }
 
-const isGroup = (value: unknown): value is ManualItemGroup => (MANUAL_ITEM_GROUPS as readonly unknown[]).includes(value);
+const isGroup = (value: unknown): value is ManualItemKind => (MANUAL_ITEM_GROUPS as readonly unknown[]).includes(value);
 
 const MAX_SECTION_LENGTH = 200;
 const isSection = (value: unknown): value is string => typeof value === "string" && value !== "" && value.length <= MAX_SECTION_LENGTH;
@@ -69,7 +69,7 @@ export function listManualItems(doc: ChecklistDocument): ManualItem[] {
 
 /** A group places the item in By kind, a section in By section; neither leaves it in My items and Whole project. */
 export function addManualItem(
-  doc: ChecklistDocument, entry: { id: string; text: string; now: string; group?: ManualItemGroup; section?: string },
+  doc: ChecklistDocument, entry: { id: string; text: string; now: string; group?: ManualItemKind; section?: string },
 ): ChecklistDocument {
   const item: ManualItem = {
     id: entry.id, text: entry.text, done: false, createdAt: entry.now,

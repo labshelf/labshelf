@@ -1,7 +1,7 @@
 // Gathers a built root's problems, places them on the PDF through SyncTeX or Typst cite targets and counts the keys it cites.
 import {
   findCiteKeyOccurrences, orderPdfProblems, findPagePoint,
-  type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SynctexMap, type TypstCite,
+  type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SynctexMap, type TypstCitation,
 } from "@labshelf/core";
 import { deriveProjectPath, type ReadyProject } from "../buildRootDocument.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
@@ -13,7 +13,7 @@ export interface PdfProblemsDeps {
   problemsOf: (root: string) => readonly LocatedProblem[];
   preprints: (project: ReadyProject) => Promise<{ key: string; message: string; file?: string; line?: number }[]>;
   synctex: () => Promise<SynctexFinder>;
-  typstCites: () => readonly TypstCite[];
+  typstCites: () => readonly TypstCitation[];
   readSources: (project: ReadyProject, root: string) => Promise<{ file: string; text: string }[]>;
 }
 
@@ -42,7 +42,7 @@ function latexPlace(deps: PdfProblemsDeps, folder: string, index: SynctexMap | u
 }
 
 // Typst reports no source line for a PDF position, so only a citation, found by its key, has a place (D8).
-function typstPlace(cites: readonly TypstCite[]): Place {
+function typstPlace(cites: readonly TypstCitation[]): Place {
   return ({ kind, subject }) => {
     if (kind !== "undefinedCitation" && kind !== "preprint") { return undefined; }
     const cite = cites.find((candidate) => candidate.key === subject);

@@ -4,7 +4,7 @@ import type { PathOps } from "../../../library/mutations/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
 import type { ProjectContentPort } from "../../service/index.js";
-import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
+import type { ProjectEntry, ProjectSettingsUpdate } from "../../project/index.js";
 import type { CreateProjectKind, ProjectMenuCommand } from "../projectRow.js";
 
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
@@ -60,7 +60,7 @@ export interface ProjectLibraryDeps {
     find(folder: string): ProjectEntry | undefined;
     list(): readonly ProjectEntry[];
     /** Writes the patch to the project's labshelf.yaml. */
-    update(folder: string, patch: ProjectSettingsPatch): Promise<void>;
+    update(folder: string, patch: ProjectSettingsUpdate): Promise<void>;
     reload(): Promise<void>;
   };
   outcomes: BuildSources["outcomes"];

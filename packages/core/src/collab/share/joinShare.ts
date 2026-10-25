@@ -1,7 +1,7 @@
 // Creates the library project a member joins a project share into, before the disk mirror fills it.
 import type { Doc } from "yjs";
 import { createLibraryLayout } from "../../library/index.js";
-import { claimProjectId, PROJECT_FILE, type ProjectCatalogContext } from "../../writing/project/index.js";
+import { createProjectId, PROJECT_FILE, type ProjectCatalogContext } from "../../writing/project/index.js";
 import { applySharedSettings, readShareIndexDocSettings, readShareIndexDocKind, readSettingsMap } from "../model/index.js";
 
 export interface JoinShareRequest {
@@ -28,7 +28,7 @@ export async function joinShare(context: ProjectCatalogContext, request: JoinSha
   }
   const settings = readSettingsMap(readShareIndexDocSettings(request.index));
   const title = typeof settings["title"] === "string" ? settings["title"] : "project";
-  const id = await claimProjectId(context, request.libraryRoot, title);
+  const id = await createProjectId(context, request.libraryRoot, title);
   const folder = paths.join(createLibraryLayout(request.libraryRoot, (base, ...segments) => paths.join(base, ...segments)).projectsRoot(), id);
   // INVARIANT: id and shareId are a slug and hex, so they need no YAML quoting.
   await fs.writeText(paths.join(folder, PROJECT_FILE), applySharedSettings(`id: ${id}\nshared: ${request.shareId}\n`, settings));

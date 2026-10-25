@@ -21,7 +21,7 @@ import {
   resolveConflictCopy,
   resolveProjectConflictCopy,
   scanLibraryConflicts,
-  createProjectSaveTracking,
+  createProjectWriteTracking,
 } from "@labshelf/core/node";
 import { createExtensionLogger } from "../../logging/node/index.js";
 import {
@@ -49,7 +49,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     createSidecarPort: createNodeSidecarPort,
     openAiStorage,
     deviceLayout: createDeviceLocalLayout,
-    createProjectSaveTracking: (root, logger) => createProjectSaveTracking(fs, root, logger),
+    createProjectSaveTracking: (root, logger) => createProjectWriteTracking(fs, root, logger),
     createProjectData: (logger, deviceDirs, projectFs) => createProjectContent({ fs: projectFs, path, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
       scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir), logger,
@@ -59,7 +59,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
         const store = new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir);
         return resolveProjectConflictCopy(copy, resolution, { root, store, logger });
       }
-      return resolveConflictCopy(copy, resolution, logger, createProjectSaveTracking(fs, () => root, logger));
+      return resolveConflictCopy(copy, resolution, logger, createProjectWriteTracking(fs, () => root, logger));
     },
     convertDocument: exportWithPandoc,
     sharedLibraryConfig: nodeSharedLibraryConfig,

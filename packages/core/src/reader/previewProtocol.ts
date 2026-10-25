@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/reader-host.md#preview
 import type { ReadingStatus } from "../library/readingStatus/index.js";
 import type { CountUpTo, LatexEngine } from "../writing/project/index.js";
-import type { AutoCompileMode } from "../writing/build/index.js";
+import type { BuildSchedule } from "../writing/build/index.js";
 import type { QuotedHighlight } from "../writing/quotes/index.js";
 
 /** The state of the build whose output a preview reader shows. */
@@ -99,7 +99,7 @@ export interface PdfProblem {
 
 /** The build settings the preview chrome shows and changes; `includeOnly` is present only when the shown root uses `\include`. */
 export interface BuildOptions {
-  autoCompile: AutoCompileMode;
+  autoCompile: BuildSchedule;
   /** Absent for Typst, which has no engine choice; null for a LaTeX project that has not chosen one. */
   engine?: LatexEngine | null;
   /** Present only for LaTeX roots, like `engine`. */

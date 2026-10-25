@@ -1,5 +1,5 @@
 // Implements the All projects page's storage port over the writing projects of a library, for any host.
-import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
+import type { ProjectEntry, ProjectSettingsUpdate } from "../../project/index.js";
 import type { ProjectPaneContent, ProjectLibraryPort, ProjectRow } from "../index.js";
 import { createProjectPaneSource } from "./projectDetailPaneSource.js";
 import { createProjectHostActions } from "./projectHostActions.js";
@@ -16,7 +16,7 @@ export function createProjectLibrary(deps: ProjectLibraryDeps): ProjectLibraryPo
     if (!host.isOpen(entry)) { await host.openProject(entry); }
     await host.openFile(entry, file);
   };
-  const edit = async (id: string, patch: ProjectSettingsPatch): Promise<void> => {
+  const edit = async (id: string, patch: ProjectSettingsUpdate): Promise<void> => {
     await projects.update(findReady(id).folder, patch);
     await projects.reload();
   };

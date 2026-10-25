@@ -17,10 +17,10 @@ export interface ProjectListInput {
   trayRows: (row: ProjectRow) => ProjectTrayRow[];
 }
 
-export const projectKey = (id: string): string => `p:${id}`;
+export const createProjectKey = (id: string): string => `p:${id}`;
 
 // A group without segments holds the top-level projects, so it has no header and its projects sit at level 1.
-export function projectListRows(input: ProjectListInput): ProjectListRow[] {
+export function deriveProjectListRows(input: ProjectListInput): ProjectListRow[] {
   const out: ProjectListRow[] = [];
   for (const group of input.groups) {
     const grouped = group.segments.length > 0;
@@ -31,7 +31,7 @@ export function projectListRows(input: ProjectListInput): ProjectListRow[] {
     }
     const level = grouped ? 2 : 1;
     for (const row of group.rows) {
-      out.push({ kind: "project", key: projectKey(row.id), level, row });
+      out.push({ kind: "project", key: createProjectKey(row.id), level, row });
       if (row.id !== input.expanded) continue;
       for (const tray of input.trayRows(row)) {
         out.push({ kind: "file", key: `f:${row.id}\n${tray.name}`, level: level + 1 + tray.depth, projectId: row.id, tray });

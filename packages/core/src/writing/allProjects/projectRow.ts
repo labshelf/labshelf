@@ -1,5 +1,5 @@
 // Declares a writing project as the All projects page lists it, independent of where the host stores it.
-import type { ProjectFormat, ProjectTarget } from "../project/index.js";
+import type { ProjectFormat, ProjectSubmission } from "../project/index.js";
 
 /** The page keeps each place apart: archived and trashed projects never mix with the others. */
 export type ProjectPlace = "projects" | "archived" | "trash";
@@ -33,7 +33,7 @@ export interface ProjectRow {
   /** Cited keys found neither in the library nor in the project's bibliography. */
   unresolvedCites?: number;
   build?: BuildMark;
-  target?: ProjectTarget;
+  target?: ProjectSubmission;
   /** The project lives outside the library, so deleting it forever only removes it from LabShelf. */
   external?: boolean;
   /** Why the project cannot be read. */

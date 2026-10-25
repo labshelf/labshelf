@@ -1,7 +1,7 @@
 // Tests that a root's build problems are placed through SyncTeX or Typst cite targets and counted for the preview footer.
 import * as path from "node:path";
 
-import type { LocatedProblem, SynctexMap, TypstCite } from "@labshelf/core";
+import type { LocatedProblem, SynctexMap, TypstCitation } from "@labshelf/core";
 import { readPdfProblems, type PdfProblemsDeps } from "../../../src/writing/preview/index";
 import type { SynctexFinder } from "../../../src/writing/preview/synctex/projectSynctex";
 import type { ReadyProject } from "../../../src/writing/buildRootDocument";
@@ -92,7 +92,7 @@ describe("readPdfProblems", () => {
   });
 
   it("places only citation and preprint problems of a Typst root, by cite key", async () => {
-    const cites: TypstCite[] = [{ key: "a", at: { page: 2, x: 10, y: 20 } }];
+    const cites: TypstCitation[] = [{ key: "a", at: { page: 2, x: 10, y: 20 } }];
     const { all } = deps({
       problemsOf: () => [
         problem({ kind: "undefinedCitation", subject: "a", file: "/lib/paper/main.typ", line: 2 }),

@@ -1,6 +1,6 @@
 // Moves projects between My projects folders and archives them by rewriting each project's labshelf.yaml.
 import * as vscode from "vscode";
-import { formatError, type ProjectEntry, type ProjectSettingsPatch } from "@labshelf/core";
+import { formatError, type ProjectEntry, type ProjectSettingsUpdate } from "@labshelf/core";
 import { checkFolderNameInput } from "./folderNameInput.js";
 import type { ProjectUpdate, ProjectFolderAction } from "./sidebarMessages.js";
 
@@ -9,7 +9,7 @@ type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
 /** What the organizer needs from the project list. */
 export interface ProjectOrganizerPort {
   list(): readonly ProjectEntry[];
-  update(folder: string, patch: ProjectSettingsPatch): Promise<void>;
+  update(folder: string, patch: ProjectSettingsUpdate): Promise<void>;
 }
 
 const ready = (port: ProjectOrganizerPort): ReadyEntry[] =>
@@ -17,7 +17,7 @@ const ready = (port: ProjectOrganizerPort): ReadyEntry[] =>
 
 const isUnder = (folder: string | undefined, path: string): boolean => folder === path || (folder?.startsWith(`${path}/`) ?? false);
 
-async function applyAll(port: ProjectOrganizerPort, edits: Array<[ReadyEntry, ProjectSettingsPatch]>): Promise<void> {
+async function applyAll(port: ProjectOrganizerPort, edits: Array<[ReadyEntry, ProjectSettingsUpdate]>): Promise<void> {
   const failures: string[] = [];
   for (const [entry, patch] of edits) {
     try { await port.update(entry.folder, patch); } catch (error) { failures.push(`${entry.settings.id}: ${formatError(error)}`); }

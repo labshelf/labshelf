@@ -1,7 +1,7 @@
 // Verifies project save ancestry is recorded before writes without advancing unsuccessful versions.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { createProjectSaveTracking, recordProjectSave, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
+import { createProjectWriteTracking, addProjectWrite, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
@@ -25,7 +25,7 @@ async function fixture() {
   await disk.writeText(file, 'base');
   const store = new FileProjectVersionStore(disk, path, createDeviceLocalLayout(root).mergeBasesDir);
   await scanLibraryConflicts(root, store, logger);
-  return { root, project, disk, file, store, tracking: createProjectSaveTracking(disk, () => root, logger) };
+  return { root, project, disk, file, store, tracking: createProjectWriteTracking(disk, () => root, logger) };
 }
 
 it('records the on-disk parent before an app write reaches the filesystem', async () => {
@@ -65,7 +65,7 @@ it('records final save-participant text with the captured parent', async () => {
 it('keeps concurrent saves of different files in the same device record', async () => {
   const { store, project, disk } = await fixture();
   const identity = { id: async () => '11111111-1111-4111-8111-111111111111' };
-  await Promise.all(Array.from({ length: 8 }, (_, i) => recordProjectSave({
+  await Promise.all(Array.from({ length: 8 }, (_, i) => addProjectWrite({
     folder: project.folder, projectId: project.settings.id, relativePath: `chapter${i}.tex`,
     text: `chapter ${i}`, parentText: '', store, identity, logger,
   })));

@@ -1,17 +1,17 @@
 /** Exports the runtime-neutral project model: labshelf.yaml, reading a project folder, main and root detection, root build folders, project ids and the registry. */
-export type { CheckSettings, CountUpTo, FigureRecipe, UserKeys } from "./userSettings.js";
+export type { CheckSettings, CountUpTo, FigureRecipe, UserSettings } from "./userSettings.js";
 export type { ListedPaper } from "./listedPapers.js";
 export { buildRootOf, detectFormat, detectEntryFile, findBuildRoots, findEntryCandidates, deriveBuildRootFolder } from "./buildRoot/index.js";
 export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,
-  parseProjectFile, projectFileWithId, serializeProjectFile, updateProjectFile,
+  parseProjectFile, withProjectId, serializeProjectFile, updateProjectFile,
 } from "./projectFile.js";
-export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsPatch, ProjectTarget } from "./projectFile.js";
+export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsUpdate, ProjectSubmission } from "./projectFile.js";
 export { parseJsonObject } from "./deviceLocal/index.js";
 export type { OpenSources } from "./openSources.js";
 export type { ProjectEntry, ProjectPlacement } from "./projectEntry.js";
 export { readProjectEntry, type ProjectFolderReader } from "./readProjectEntry.js";
-export { projectIdSlug } from "./projectId.js";
+export { deriveProjectIdSlug } from "./projectId.js";
 export {
   loadProjectRegistry, parseProjectRegistry, createProjectFolderRegistry, registerProjectFolder, serializeProjectRegistry,
   removeProjectFolder, withFolder, withProjectFolderRemoved,

@@ -62,7 +62,7 @@ describe("updateProjectFile with a check patch", () => {
     expect(out).toContain("id: a");
   });
 
-  it("round-trips through readUserKeys", () => {
+  it("round-trips through readUserSettings", () => {
     const out = updateProjectFile(base, { check: { pages: 9, words: 3000, countUpTo: "references" } });
     const result = parseProjectFile(out);
     expect(result.ok && result.settings.check).toMatchObject({ pages: 9, words: 3000, countUpTo: "references" });

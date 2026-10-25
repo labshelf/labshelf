@@ -1,8 +1,8 @@
 /** Finds the regions that changed between two renderings of a paper, on the pages of each side. */
 import type { PageArea } from "../../reader/index.js";
-import { deriveBlockInk, matchBlocks, type BlockInk } from "./matchBlocks.js";
+import { deriveBlockInk, matchBlocks, type BlockInput } from "./matchBlocks.js";
 import type { PageInk } from "./pageInk.js";
-import { derivePageBlocks, type BlockSizes, type PixelBox } from "./derivePageBlocks.js";
+import { derivePageBlocks, type BlockLimits, type PageBox } from "./derivePageBlocks.js";
 
 /** Changed regions in PDF points from each page's top-left corner, as the reader draws them. */
 export interface PdfChanges {
@@ -18,7 +18,7 @@ const FRAGMENT_POINTS = 3;
 const MERGE_GAP_POINTS = 6;
 const PADDING_POINTS = 1;
 
-interface PlacedBlock extends BlockInk {
+interface PlacedBlock extends BlockInput {
   page: number;
 }
 
@@ -38,7 +38,7 @@ export function comparePdfPages(before: readonly PageInk[], after: readonly Page
   };
 }
 
-function placedBlocks(pages: readonly PageInk[], sizes: BlockSizes): PlacedBlock[] {
+function placedBlocks(pages: readonly PageInk[], sizes: BlockLimits): PlacedBlock[] {
   return pages.flatMap((page, index) =>
     derivePageBlocks(page, sizes).map((box) => ({ ...deriveBlockInk(page, box), page: index + 1 })));
 }
@@ -46,7 +46,7 @@ function placedBlocks(pages: readonly PageInk[], sizes: BlockSizes): PlacedBlock
 /** Merges neighbouring changed blocks of a page and converts them to points. */
 function changedAreas(blocks: readonly PlacedBlock[], pixelsPerPoint: number): PageArea[] {
   const mergeGap = MERGE_GAP_POINTS * pixelsPerPoint;
-  const merged: Array<{ page: number; box: PixelBox }> = [];
+  const merged: Array<{ page: number; box: PageBox }> = [];
   const ordered = [...blocks].sort((a, b) => a.page - b.page || a.box.y - b.box.y || a.box.x - b.box.x);
   for (const block of ordered) {
     const near = merged.find((area) => area.page === block.page && touches(area.box, block.box, mergeGap));
@@ -65,13 +65,13 @@ function changedAreas(blocks: readonly PlacedBlock[], pixelsPerPoint: number): P
   }));
 }
 
-function touches(a: PixelBox, b: PixelBox, gap: number): boolean {
+function touches(a: PageBox, b: PageBox, gap: number): boolean {
   const overlapsHorizontally = a.x < b.x + b.width && b.x < a.x + a.width;
   const verticalGap = Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height);
   return overlapsHorizontally && verticalGap <= gap;
 }
 
-function union(a: PixelBox, b: PixelBox): PixelBox {
+function union(a: PageBox, b: PageBox): PageBox {
   const x = Math.min(a.x, b.x);
   const y = Math.min(a.y, b.y);
   return { x, y, width: Math.max(a.x + a.width, b.x + b.width) - x, height: Math.max(a.y + a.height, b.y + b.height) - y };

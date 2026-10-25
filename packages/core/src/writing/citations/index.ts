@@ -3,7 +3,7 @@ export { BIBLIOGRAPHY_HEADER, createBibliography } from "./bibliographyFile.js";
 export type { GeneratedBibliography } from "./bibliographyFile.js";
 export { withBibliographyLine } from "./bibliographyLine.js";
 export type { BibliographyLineResult } from "./bibliographyLine.js";
-export { partialKeyStart } from "./citationCompletion.js";
+export { findPartialCiteKeyStart } from "./citationCompletion.js";
 export { createCitationSnippet, derivePageSupplement, deriveQuotationBefore } from "./citedText.js";
 export { derivePageArgument } from "./pageArgument.js";
 export type { PageArgumentContext } from "./pageArgument.js";

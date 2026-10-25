@@ -2,7 +2,7 @@
 import { listProjects, readOptionalText, readProject } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
 import { PROJECT_FILE, parseProjectFile, serializeProjectFile, type ProjectFormat } from "../projectFile.js";
-import { claimProjectId } from "./claimProjectId.js";
+import { createProjectId } from "./createProjectId.js";
 import { derivePathRelation } from "./derivePathRelation.js";
 import type { ProjectCatalogContext } from "./projectCatalogContext.js";
 
@@ -25,7 +25,7 @@ export async function addExistingFolder(
   const file = paths.join(folder, PROJECT_FILE);
   const existing = await readOptionalText(fs, file);
   if (existing === undefined) {
-    const id = await claimProjectId(context, libraryRoot, paths.basename(folder));
+    const id = await createProjectId(context, libraryRoot, paths.basename(folder));
     await fs.writeText(file, serializeProjectFile({ id, format: request.format }));
   } else {
     const parsed = parseProjectFile(existing);

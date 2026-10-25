@@ -3,5 +3,5 @@ export { addExistingFolder } from "./addExistingFolder.js";
 export { createProjectFromTemplate } from "./createProjectFromTemplate.js";
 export { removeProjectFolderForever } from "./removeProjectForever.js";
 export type { ProjectCatalogContext, ProjectFolderRegistry } from "./projectCatalogContext.js";
-export { claimProjectId } from "./claimProjectId.js";
+export { createProjectId } from "./createProjectId.js";
 export { updateProjectSettings } from "./updateProjectSettings.js";

@@ -15,7 +15,7 @@ export interface CheckProblem {
 }
 
 /** A raster image as placed on the page: its pixels and the size it is drawn at, in points. */
-export interface PlacedImage {
+export interface PlacedFigure {
   pixelWidth: number;
   pixelHeight: number;
   width: number;
@@ -27,7 +27,7 @@ export interface PdfPageFacts {
   lines: string[];
   /** Whether each font the page draws with is a Type 3 font. */
   fonts: Array<{ name: string; type3: boolean }>;
-  images: PlacedImage[];
+  images: PlacedFigure[];
 }
 
 export interface PdfFacts {
