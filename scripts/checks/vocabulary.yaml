@@ -1,5 +1,5 @@
 # The naming vocabulary scripts/checks/naming.mjs enforces. Every name is camelCase; a multi-word term is one compound (buildRoot).
-# Decisions live in documents; this file only encodes them. A `syn` is a spelling that is rejected in favour of its term.
+# This file is the record of naming decisions: each entry and its `def` state what a word means and where it may be used. A `syn` is a spelling that is rejected in favour of its term.
 # Layers: A mechanism (anywhere), B formats (anywhere), C subjects (folders and files), D features (only in `home`), E tools (files and exports, never folders).
 version: 1
 
@@ -192,7 +192,7 @@ mechanism:
 formats: [pdf, latex, tex, typst, bibtex, biber, synctex, yaml, json, html, css, markdown, qmd, doi, isbn, arxiv, svg, png, webp, url, mailto, http, oauth, pkce, utf8, base64, hex, sha256, ed25519, ics, ocr, wasm, ulid]
 
 subjects:
-  paper: { def: "One stored work with its PDF and metadata.", syn: [article, work] }
+  paper: { def: "One stored work with its PDF and metadata.", syn: [article] }
   math: { def: "Mathematical notation in a writing source (inline or display math)." }
   paperFile: { def: "A file attached to a paper (PDF, supplement)." }
   folder: { def: "A library folder grouping papers. Any disk folder is a dir.", syn: [collection, category] }
