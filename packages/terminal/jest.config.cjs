@@ -16,9 +16,9 @@ module.exports = {
   collectCoverageFrom: [
     'src/**/*.ts',
     // Process entry points and real-terminal / real-network glue: verified by the pty smoke test, not in jest.
-    '!src/main.ts',
-    '!src/tui/terminal.ts',
-    '!src/preview/thumbnailWorker.ts',
+    '!src/terminalEntry.ts',
+    '!src/screen/terminal.ts',
+    '!src/libraryUi/thumbnailWorker.ts',
   ],
   coverageThreshold: { global: { branches: 50, functions: 50, lines: 50, statements: 50 } },
   moduleNameMapper: {

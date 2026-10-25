@@ -3,9 +3,9 @@ import * as path from "node:path";
 
 import { papersByCiteKey, paperFiles, paperLink, parseLabshelfLink, type LabshelfLink, type PaperEntry } from "@labshelf/core";
 
-import type { AppContext } from "../app/index.js";
+import type { AppContext } from "../compositionRoot.js";
 import { openExternal, viewerTakesPage } from "../platform/index.js";
-import { requirePaper } from "./paperLookup.js";
+import { requirePaper } from "./findPaper.js";
 import { UsageError, type Output } from "./usage.js";
 
 function entryForLink(ctx: AppContext, link: LabshelfLink): PaperEntry {

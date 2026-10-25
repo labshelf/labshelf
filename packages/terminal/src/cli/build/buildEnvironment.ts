@@ -5,11 +5,11 @@ import * as path from "node:path";
 import { createProjectData } from "@labshelf/core";
 import { createSharedTexProvider, deviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
 
-import type { AppContext } from "../../app/context.js";
+import type { AppContext } from "../../compositionRoot.js";
 import type { ReadyProject } from "./findProject.js";
-import { terminalTexSetupPrompt, type Ask } from "./toolchainPrompt.js";
+import { terminalTexSetupPrompt, type Ask } from "./askToolchain.js";
 import { watchSources } from "./watchSources.js";
-import { withPrompt } from "../setup/index.js";
+import { withPrompt } from "../ask.js";
 
 export type BuildContext = Pick<AppContext, "logger" | "paths">;
 

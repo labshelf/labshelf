@@ -1,0 +1,56 @@
+/**
+ * Reads the shared config file (see core's sharedConfig) for the terminal's preferences and picks the library.
+ * Resolution order for the library: --library flag, LABSHELF_LIBRARY, config.json, none (the TUI then offers setup).
+ */
+import * as path from "node:path";
+
+import type { SharedConfig, SortSpec } from "@labshelf/core";
+import { loadSharedConfig } from "@labshelf/core/node";
+
+import { expandHome } from "./platform/index.js";
+
+/** The sort keys the terminal offers, a subset of the core ones. */
+export const SORT_KEYS = ["title", "year", "author", "status", "modified"] as const satisfies readonly SortSpec["key"][];
+export type SortKey = (typeof SORT_KEYS)[number];
+
+export function isSortKey(value: string): value is SortKey {
+  return (SORT_KEYS as readonly string[]).includes(value);
+}
+
+interface TerminalPreferences {
+  /** Command used to open PDFs instead of the system default, e.g. "zathura" or "open -a Skim". */
+  pdfViewer?: string;
+  /** "auto" | "kitty" | "iterm" | "off". */
+  images?: string;
+  sort?: SortKey;
+  sortReverse?: boolean;
+}
+
+/** The shared config file as the terminal sees it: its own "terminal" preferences are typed, other keys are not. */
+export type TerminalConfig = SharedConfig & { terminal?: TerminalPreferences };
+
+/**
+ * Reads the shared config; a missing or broken file reads as empty. The terminal namespace is not validated.
+ * @returns the config
+ */
+export async function loadTerminalConfig(): Promise<TerminalConfig> {
+  return (await loadSharedConfig()) as TerminalConfig;
+}
+
+export interface LibraryRootResolution {
+  root: string | undefined;
+  source: "flag" | "env" | "config" | "none";
+}
+
+/**
+ * Finds the library root to open.
+ * @returns the root (not yet validated) and where it came from
+ */
+export function resolveLibraryRoot(flag: string | undefined, env: NodeJS.ProcessEnv, config: TerminalConfig): LibraryRootResolution {
+  if (flag) { return { root: path.resolve(expandHome(flag)), source: "flag" }; }
+  if (env["LABSHELF_LIBRARY"]) { return { root: path.resolve(expandHome(env["LABSHELF_LIBRARY"])), source: "env" }; }
+  if (typeof config.libraryRoot === "string" && config.libraryRoot) {
+    return { root: path.resolve(expandHome(config.libraryRoot)), source: "config" };
+  }
+  return { root: undefined, source: "none" };
+}

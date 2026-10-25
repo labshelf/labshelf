@@ -35,6 +35,6 @@ test('rejects comment tags outside the four allowed', () => {
 
 test('rejects emoji in sources but not in tests', () => {
   assert.ok(fails(`${SRC}/a.ts`, 'label: "\u{1F4C4} Paper"'));
-  assert.equal(fails('packages/terminal/__tests__/tui/text.test.ts', 'width("\u{1F600}")'), false);
+  assert.equal(fails('packages/terminal/__tests__/screen/text.test.ts', 'width("\u{1F600}")'), false);
   assert.equal(fails(`${SRC}/a.ts`, 'const arrow = "→";'), false);
 });

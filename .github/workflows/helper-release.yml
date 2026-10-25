@@ -166,7 +166,7 @@ jobs:
           path: assets
           merge-multiple: true
 
-      # CONTRACT: packages/terminal/src/helper/update/latestManifest.ts reads assets["<process.platform>-<process.arch>"].{url,sha256}.
+      # CONTRACT: packages/terminal/src/helper/release/releaseManifest.ts reads assets["<process.platform>-<process.arch>"].{url,sha256}.
       - name: Write latest.json
         run: |
           node --input-type=module - <<'EOF'

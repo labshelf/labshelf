@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/{sync,library-format,spaces}.md, packages/core/src/writing/merge/**, packages/core/src/library/conflicts/**, packages/core/src/library/node/atomicWrite.ts, packages/{vscode,terminal}/src/activation/**, packages/terminal/src/app/context.ts
+files: documents/contracts/{sync,library-format,spaces}.md, packages/core/src/writing/merge/**, packages/core/src/library/conflicts/**, packages/core/src/library/node/atomicWrite.ts, packages/{vscode,terminal}/src/activation/**, packages/terminal/src/compositionRoot.ts
 source: Explore scout
 
 # Sync and conflict copies

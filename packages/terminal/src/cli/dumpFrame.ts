@@ -1,8 +1,8 @@
 // Renders one app frame to text without a real terminal, for the `--dump-frame` debug flag.
-import type { AppContext } from "../app/index.js";
-import { App, type TerminalLike } from "../ui/app/index.js";
-import { InputDecoder } from "../tui/index.js";
-import type { Screen } from "../tui/index.js";
+import type { AppContext } from "../compositionRoot.js";
+import { App, type TerminalLike } from "../libraryUi/libraryScreen/index.js";
+import { InputDecoder } from "../screen/index.js";
+import type { Screen } from "../screen/index.js";
 
 // A terminal that renders into memory, for --dump-frame.
 class MemoryTerminal implements TerminalLike {

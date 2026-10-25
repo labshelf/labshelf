@@ -1,5 +1,5 @@
 sha: 0b367695
-files: packages/terminal/src/app/context.ts, packages/core/src/bridge/**, packages/vscode/src/extension.ts, packages/browser/manifest*.json
+files: packages/terminal/src/compositionRoot.ts, packages/core/src/bridge/**, packages/vscode/src/extension.ts, packages/browser/manifest*.json
 source: user access questions, 2026-10-19; https://ts.sdk.modelcontextprotocol.io/v2/clients/connect
 
 # Connect an external agent to local research data

@@ -76,7 +76,7 @@ Each app has exactly one composition root, and only that root instantiates adapt
 
 - VS Code: `packages/vscode/src/extension.ts`; it takes the Node adapters from `activation/node/` and hands the rest of the extension the neutral `HostAdapters` interface (see [Node code in VS Code](#node-code-in-vs-code))
 - Browser: the background worker entry, plus one bootstrap per page (library, reader, popup, options)
-- Terminal: `packages/terminal/src/app/context.ts`
+- Terminal: `packages/terminal/src/compositionRoot.ts`
 
 ### Node code in VS Code
 

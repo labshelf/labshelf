@@ -2,7 +2,7 @@
 import type { ProjectEntry } from "@labshelf/core";
 import { listProjectsOnDisk } from "@labshelf/core/node";
 
-import type { AppContext } from "../../app/index.js";
+import type { AppContext } from "../../compositionRoot.js";
 import type { ParsedArgs } from "../args.js";
 import type { Output } from "../usage.js";
 

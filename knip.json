@@ -89,10 +89,10 @@
     },
     "packages/terminal": {
       "entry": [
-        "src/main.ts",
-        "src/helper/main.ts",
+        "src/terminalEntry.ts",
+        "src/helper/helperEntry.ts",
         "src/helperHost.ts",
-        "src/preview/thumbnailWorker.ts",
+        "src/libraryUi/thumbnailWorker.ts",
         "__tests__/**/*.ts"
       ],
       "project": [

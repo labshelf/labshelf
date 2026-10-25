@@ -1,5 +1,5 @@
 sha: 0b367695
-files: packages/terminal/src/cli/**, packages/terminal/src/app/context.ts, packages/core/src/ai/**
+files: packages/terminal/src/cli/**, packages/terminal/src/compositionRoot.ts, packages/core/src/ai/**
 source: repository architecture; user direction, 2026-10-19; linked context-cost reports
 
 # Expose bounded library operations to external agents

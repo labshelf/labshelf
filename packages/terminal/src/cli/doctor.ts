@@ -4,9 +4,9 @@ import * as path from "node:path";
 
 import { libraryLayout } from "@labshelf/core";
 
-import type { TerminalConfig } from "../app/index.js";
+import type { TerminalConfig } from "../config.js";
 import { hasCommand } from "../platform/index.js";
-import { detectImageProtocol } from "../tui/index.js";
+import { detectImageProtocol } from "../screen/index.js";
 import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
 

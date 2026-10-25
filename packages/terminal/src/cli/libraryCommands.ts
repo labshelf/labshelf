@@ -7,15 +7,16 @@ import {
   paperComparator, papersUnder, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
 } from "@labshelf/core";
 
-import { isSortKey, type AppContext, type TerminalConfig } from "../app/index.js";
+import type { AppContext } from "../compositionRoot.js";
+import { isSortKey, type TerminalConfig } from "../config.js";
 import { copyToClipboard } from "../platform/index.js";
-import { fit, stringWidth } from "../tui/index.js";
-import { STATUS_GLYPH } from "../ui/index.js";
+import { fit, stringWidth } from "../screen/index.js";
+import { STATUS_GLYPH } from "../libraryUi/index.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
 import { runOpen } from "./openCommand.js";
-import { requirePaper } from "./paperLookup.js";
+import { requirePaper } from "./findPaper.js";
 import { runProjectCommand } from "./project/index.js";
-import { showText } from "./show/index.js";
+import { showText } from "./showText.js";
 import { Output, UsageError } from "./usage.js";
 
 const STATUS_WORDS: Record<string, PaperStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
