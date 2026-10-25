@@ -2,9 +2,11 @@ import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 
-import { probeLatexmk } from "../../../../../src/latex/toolchain/node/systemTex/probeLatexmk";
-import { systemTexProvider } from "../../../../../src/latex/toolchain/node/systemTex/systemTexProvider";
-import { texLiveBinDirs } from "../../../../../src/latex/toolchain/node/systemTex/texDirs";
+import {
+  probeLatexmk,
+  systemTexProvider,
+  texLiveBinDirs,
+} from "../../../../../src/latex/toolchain/node/systemTex/systemTexProvider";
 
 let root: string;
 

@@ -5,15 +5,55 @@ import * as path from "node:path";
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { LatexToolchain } from "../../toolchain/index.js";
-import type { LatexBuildResult } from "../index.js";
-import { latexBuildCommand, type PartialBuild } from "../index.js";
+import {
+  type LatexBuildResult,
+  latexBuildCommand,
+  type PartialBuild,
+  type BuildCommand,
+  latexPreviewCommand,
+} from "../index.js";
 import { writeSectionStatePackage } from "../section/node/index.js";
 import { sectionStateFileName } from "../section/index.js";
 import { compileLatex } from "./compileLatex.js";
 import type { ProblemPlaces } from "./findProblems.js";
-import { planLatexPreview } from "./planLatexPreview.js";
 import { withIncludeOnlyFile } from "./includeOnlyFile.js";
 import { runSectionPreview, shownPdfName } from "./runSectionPreview.js";
+import { preambleFormat } from "./buildPreambleFormat.js";
+
+export interface PreviewPlanInput {
+  toolchain: LatexToolchain;
+  projectFolder: string;
+  main: string;
+  /** The user's explicit include-only selection. */
+  includeOnly?: string;
+  outDir: string;
+  haltOnError?: boolean;
+  signal: AbortSignal;
+  logger: ILogger;
+}
+
+export interface PreviewPlan {
+  command: BuildCommand;
+  /** The chapter to hand the format through the include-only file; the command carries it when no format is used. */
+  includeOnlyFile: string | undefined;
+}
+
+
+
+async function planLatexPreview(input: PreviewPlanInput): Promise<PreviewPlan | undefined> {
+  const base = path.basename(input.main, path.extname(input.main));
+  const aux = path.join(input.outDir, `${base}.aux`);
+  if (!await fs.stat(aux).then(() => true, () => false)) {
+    await input.logger.log("INFO", MODULE, "LaTeX preview falls back to a full build: no .aux yet", { main: input.main, aux });
+    return undefined;
+  }
+  const includeOnly = input.includeOnly;
+  const mainPath = path.join(input.projectFolder, input.main);
+  const found = await preambleFormat({ ...input, mainPath });
+  const format = found && { name: found.name, searchPath: `${found.dir}${path.delimiter}` };
+  const command = latexPreviewCommand(input.toolchain.engine, path.basename(input.main), input.outDir, { includeOnly, format, haltOnError: input.haltOnError });
+  return { command, includeOnlyFile: format ? includeOnly : undefined };
+}
 
 export interface LatexBuildRequest extends PartialBuild {
   toolchain: LatexToolchain;

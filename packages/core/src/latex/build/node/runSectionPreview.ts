@@ -5,8 +5,7 @@ import { PDFDocument } from "pdf-lib";
 
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
 import { collectProjectSources } from "../../source/index.js";
-import type { LatexBuildResult } from "../index.js";
-import { latexPreviewCommand } from "../index.js";
+import { type LatexBuildResult, latexPreviewCommand } from "../index.js";
 import {
   assembleSectionDocument, definitionsBeforeSection, filterAuxForSection, mapSectionProblems, planSectionPreview, sectionPageRange,
   type SectionState,
@@ -14,10 +13,14 @@ import {
 import { readSectionStates, swapSectionPages } from "../section/node/index.js";
 import { compileLatex } from "./compileLatex.js";
 import type { ProblemPlaces } from "./findProblems.js";
-import { mainFolderPath } from "./buildRootPath.js";
 import { preambleFormat } from "./buildPreambleFormat.js";
 import { withIncludeOnlyFile } from "./includeOnlyFile.js";
 import type { LatexBuildRequest } from "./runLatexBuild.js";
+
+// TRAP: the engine runs in main's folder, so include paths resolve from there, not from the project root.
+function mainFolderPath(projectFolder: string, main: string, file: string): string {
+  return path.relative(path.dirname(path.join(projectFolder, main)), path.join(projectFolder, file)).split(path.sep).join("/");
+}
 
 const MODULE = "writing/build";
 
