@@ -1,6 +1,6 @@
 // Finds the name under a cursor and what it refers to: a binding, a library item, a label or a citation key.
 import type { BibEntry } from "../../writing/bibliography/index.js";
-import type { TypstBuiltin } from "./library/index.js";
+import type { TypstBuiltin } from "./typstStdlib/index.js";
 import { findBuiltin } from "./builtinDocs.js";
 import { importedSymbols, linkedLabels, projectBibEntries, type Located, type ProjectFiles } from "./project/index.js";
 import { typstContextAt, type TypstBinding, type TypstLabelDefinition } from "./syntax/index.js";

@@ -1,5 +1,5 @@
 /** Verifies table sizes parse within the limit and tables expand to valid LaTeX and Typst source. */
-import { parseTableSize, tableSnippet } from "../../../src/writing/insert/index";
+import { parseTableSize, tableSnippet } from "../../../src/writing/snippet/index";
 import { expandSnippet } from "./snippetExpansion";
 
 describe("parseTableSize", () => {

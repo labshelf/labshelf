@@ -1,6 +1,6 @@
 // Completes Typst at a cursor: code names after # or in code, members after a dot, call parameters, labels and citations.
 import { builtinCompletion, findBuiltin } from "./builtinDocs.js";
-import { TYPST_LIBRARY } from "./library/index.js";
+import { TYPST_LIBRARY } from "./typstStdlib/index.js";
 import { pathCompletions } from "./pathCompletion.js";
 import { importedSymbols, linkedLabels, projectBibEntries, type ProjectFiles } from "./project/index.js";
 import { typstContextAt, type TypstBinding, type TypstCursorContext } from "./syntax/index.js";

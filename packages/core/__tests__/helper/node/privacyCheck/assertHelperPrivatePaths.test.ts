@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { assertHelperPrivatePaths } from "../../../../src/helper/node/path/index";
+import { assertHelperPrivatePaths } from "../../../../src/helper/node/privacyCheck/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
 afterEach(() => { jest.restoreAllMocks(); return cleanupTempDirs(); });

@@ -1,8 +1,8 @@
 // Exposes the Typst 0.14 standard-library catalogue used for completion and hover.
-import { COLLECTIONS } from "./arrays";
+import { COLLECTIONS } from "./array";
 import { PAINTS } from "./colors";
 import { VALUES } from "./content";
-import { CALC } from "./derive";
+import { CALC } from "./calc";
 import { EVALUATION } from "./evaluation";
 import { DATA_LOADING } from "./fileLoading";
 import { INTROSPECTION } from "./introspection";

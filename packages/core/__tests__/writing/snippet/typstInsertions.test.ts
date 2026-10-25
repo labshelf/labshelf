@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { TypstSession } from "../../../src/typst/index";
 import { toCompilerPath } from "../../../src/typst/node/index";
-import { imageSnippet, MATH_SYMBOLS, symbolSource, tableSnippet } from "../../../src/writing/insert/index";
+import { imageSnippet, MATH_SYMBOLS, symbolSource, tableSnippet } from "../../../src/writing/snippet/index";
 import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../../support/typstFixtures";
 import { expandSnippet } from "./snippetExpansion";

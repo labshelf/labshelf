@@ -1,5 +1,5 @@
 // Looks up standard-library items by dotted name and renders their signature, hover text and completion entry.
-import { TYPST_LIBRARY, type TypstBuiltin, type TypstParam } from "./library/index.js";
+import { TYPST_LIBRARY, type TypstBuiltin, type TypstParam } from "./typstStdlib/index.js";
 import type { TypstCompletion } from "./typstLanguageSpec.js";
 
 /** The item a dotted name like `calc.max` or `datetime.today` names; in math, `attach` also finds `math.attach`. */

@@ -1,5 +1,5 @@
 // Tests that bold and italic wrap, toggle and place the cursor per source language.
-import { wrapSelection } from "../../../src/writing/insert/index";
+import { wrapSelection } from "../../../src/writing/snippet/index";
 
 describe("wrapSelection", () => {
   it.each([

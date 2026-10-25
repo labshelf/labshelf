@@ -1,5 +1,5 @@
 /** Checks the shape of the Typst standard-library catalogue and pins a few real signatures. */
-import { TYPST_LIBRARY, type TypstBuiltin } from "../../../../src/typst/language/library/index";
+import { TYPST_LIBRARY, type TypstBuiltin } from "../../../../src/typst/language/typstStdlib/index";
 
 function walk(items: readonly TypstBuiltin[], path: string, visit: (item: TypstBuiltin, path: string) => void): void {
   for (const item of items) {

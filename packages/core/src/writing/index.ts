@@ -12,7 +12,7 @@ export * from "./history/index.js";
 export * from "./bibliography/index.js";
 export * from "./service/index.js";
 export * from "./checklist/index.js";
-export * from "./insert/index.js";
+export * from "./snippet/index.js";
 export * from "./search/index.js";
 export * from "./allProjects/index.js";
 export * from "./build/index.js";
