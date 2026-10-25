@@ -1,9 +1,9 @@
 // Registers the outline of LaTeX sources that belong to a writing project.
 import * as vscode from "vscode";
 
-import { type LatexProjectSources, toVscodeRange } from "../project/index.js";
+import { type LatexProjectSources, toVscodeRange } from "./project/index.js";
 import { scanLatexSource } from "@labshelf/core";
-import { nestedSymbols } from "../../writing/outline/index.js";
+import { nestedSymbols } from "../writing/outline/index.js";
 
 export function sectionSymbols(text: string, endOfFile: vscode.Position): vscode.DocumentSymbol[] {
   const { sections } = scanLatexSource(text);

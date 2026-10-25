@@ -12,7 +12,7 @@ import {
   quotationBefore,
   type PageArgumentContext,
 } from "@labshelf/core";
-import type { CitationSession } from "../citationWorkspace.js";
+import type { CitationSession } from "./citationWorkspace.js";
 
 const LABEL_TEXT_LENGTH = 60;
 

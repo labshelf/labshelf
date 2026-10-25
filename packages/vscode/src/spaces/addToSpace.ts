@@ -1,6 +1,6 @@
 // Adds selected paper references to a Space chosen through the host picker.
 import * as vscode from "vscode";
-import type { SpacesService } from "./host/index.js";
+import type { SpacesService } from "./spacesService.js";
 
 export async function addToSpace(service: SpacesService, ids: string[]): Promise<boolean> {
   const current = service.current();

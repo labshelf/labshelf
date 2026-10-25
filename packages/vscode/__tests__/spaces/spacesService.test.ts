@@ -1,9 +1,9 @@
 // Verifies the VS Code Spaces host lifecycle and export destination.
 import * as vscode from 'vscode';
 import { SpaceStore, type ILogger, type ProjectLibraryPort } from '@labshelf/core';
-import type { ActiveServices } from '../../../src/command/index.js';
-import type { LibraryRootController } from '../../../src/activation/index.js';
-import { SpacesService } from '../../../src/spaces/host/index.js';
+import type { ActiveServices } from '../../src/command/index.js';
+import type { LibraryRootController } from '../../src/activation/index.js';
+import { SpacesService } from '../../src/spaces/spacesService.js';
 
 const logger = { log: jest.fn(), error: jest.fn() } as unknown as ILogger;
 const paths = { join: (...parts: string[]) => parts.join('/') };
@@ -49,7 +49,7 @@ test('watcher reloads on create, change and delete and is disposed across roots'
 });
 
 test('manifest declares Spaces commands and Research chat webview', () => {
-  const manifest = require('../../../package.json');
+  const manifest = require('../../package.json');
   expect(manifest.contributes.commands.map((entry: {command: string}) => entry.command)).toEqual(expect.arrayContaining([
     'labshelf.spaces.all', 'labshelf.spaces.open', 'labshelf.spaces.new', 'labshelf.researchChat.toggle',
   ]));

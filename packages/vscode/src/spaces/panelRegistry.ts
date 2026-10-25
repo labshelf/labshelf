@@ -9,8 +9,8 @@ import {
   type SpacesToHost,
   createNonce,
 } from "@labshelf/core";
-import type { SpacesService } from "../host/index.js";
-import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
+import type { SpacesService } from "./spacesService.js";
+import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../ui/index.js";
 
 interface SpacesView { view: "catalog" | "space"; id?: string; tab?: SpaceTab }
 const spacesBundleDirectory = (extension: vscode.Uri): vscode.Uri => vscode.Uri.joinPath(extension, "dist", "spaces");
@@ -129,4 +129,18 @@ export class SpacesPanelRegistry implements vscode.Disposable {
   private bindStore(): void { this.stopStore?.(); this.stopStore = this.binding?.store.onChange(() => this.refresh()); }
   private closePanels(): void { for (const panel of [...this.panels.values()]) panel.dispose(); this.panels.clear(); }
   dispose(): void { this.closePanels(); this.stopStore?.(); this.subscription.dispose(); this.changed.dispose(); }
+}
+
+export interface SpacesPanelContext extends vscode.Disposable {
+  context(): string | null;
+  onDidChangeContext: vscode.Event<string | null>;
+}
+
+export function registerSpacesPanels(context: vscode.ExtensionContext, spaces: SpacesService): SpacesPanelContext {
+  const registry = new SpacesPanelRegistry(context.extensionUri, spaces);
+  context.subscriptions.push(registry,
+    vscode.commands.registerCommand("labshelf.spaces.all", () => registry.open()),
+    vscode.commands.registerCommand("labshelf.spaces.open", (id: unknown, tab?: unknown) => { if (typeof id === "string") registry.open(id, tab); }),
+  );
+  return registry;
 }

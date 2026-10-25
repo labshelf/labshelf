@@ -4,9 +4,9 @@ import * as vscode from "vscode";
 import {
   createTypstSources,
   createTypstContexts,
-} from "../../../../src/writing/typst/language/registerTypstLanguage";
-import { fakeDocument } from "../../../support/textDocument";
-import { fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
+} from "../../../src/writing/typst/registerTypstLanguage";
+import { fakeDocument } from "../../support/textDocument";
+import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const fsMock = vscode.workspace.fs as unknown as { readDirectory: jest.Mock; readFile: jest.Mock };
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[]; getWorkspaceFolder?: jest.Mock };

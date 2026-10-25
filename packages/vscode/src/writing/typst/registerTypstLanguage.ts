@@ -3,14 +3,14 @@ import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
 
-import type { WritingHost, WritingProjects } from "../../session/index.js";
+import type { WritingHost, WritingProjects } from "../session/index.js";
 import {
   type TypstCompletionKind,
   createTypstLanguageService,
   type TypstLanguageService,
   type TypstSources,
 } from "@labshelf/core/typst/language";
-import { owningProject } from "../../buildRootDocument.js";
+import { owningProject } from "../buildRootDocument.js";
 
 const SKIPPED_FOLDERS = new Set(["node_modules"]);
 

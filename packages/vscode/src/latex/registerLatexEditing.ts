@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { registerLabelProviders } from "./labels/index.js";
 import { mathHoverProvider } from "./mathHover.js";
-import { registerSectionOutline } from "./outline/index.js";
+import { registerSectionOutline } from "./registerSectionOutline.js";
 import { LatexProjectSources, type LatexProjectWorkspace } from "./project/index.js";
 import { registerWordCount } from "./registerWordCount.js";
 

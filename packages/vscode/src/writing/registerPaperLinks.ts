@@ -9,8 +9,8 @@ import {
   type LabshelfLink,
   type PaperRecord,
 } from "@labshelf/core";
-import { IMPORT_SHARE_COMMAND } from "../../share/index.js";
-import { paperHover, type CitationSession } from "../citations/index.js";
+import { IMPORT_SHARE_COMMAND } from "../share/index.js";
+import { paperHover, type CitationSession } from "./citations/index.js";
 
 interface PaperLink {
   readonly range: vscode.Range;

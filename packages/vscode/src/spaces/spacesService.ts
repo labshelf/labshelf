@@ -9,8 +9,8 @@ import {
   type SpacesHostPort,
   buildSpaceProjectInfos,
 } from '@labshelf/core';
-import type { LibraryRootController } from '../../activation/index.js';
-import type { ActiveServices } from '../../command/index.js';
+import type { LibraryRootController } from '../activation/index.js';
+import type { ActiveServices } from '../command/index.js';
 
 interface SpacesPortOptions {
   services: ActiveServices;

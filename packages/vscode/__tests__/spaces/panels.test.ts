@@ -1,7 +1,7 @@
 // Verifies Space panel identity, lifecycle and bundle failures.
 import * as vscode from "vscode";
-import { registerSpacesPanels } from "../../../src/spaces/panels/index";
-import type { SpacesService } from "../../../src/spaces/host/index";
+import { registerSpacesPanels } from "../../src/spaces/panelRegistry";
+import type { SpacesService } from "../../src/spaces/spacesService";
 
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), serveSpaces: jest.fn(() => jest.fn()) }));
 const flush = () => new Promise(resolve => setImmediate(resolve));

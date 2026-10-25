@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 import type { LibraryRootController } from "../activation/index.js";
 import type { HostAdapters } from "../activation/index.js";
 import type { WritingViewHandles } from "../activation/index.js";
-import { SpacesService } from "./host/index.js";
-import { registerSpacesPanels } from "./panels/index.js";
+import { SpacesService } from "./spacesService.js";
+import { registerSpacesPanels } from "./panelRegistry.js";
 import { ResearchChatView } from "./researchChatView.js";
 import {
   spaceChecklistProgress,

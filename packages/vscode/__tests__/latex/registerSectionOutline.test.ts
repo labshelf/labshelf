@@ -4,9 +4,9 @@ import * as vscode from "vscode";
 import {
   registerSectionOutline,
   sectionSymbols,
-} from "../../../src/latex/outline/registerSectionOutline";
-import { at, latexProject, resetOpenDocuments, restoreDiskReads } from "../../support/latexProjectFixtures";
-import { fakeDocument } from "../../support/textDocument";
+} from "../../src/latex/registerSectionOutline";
+import { at, latexProject, resetOpenDocuments, restoreDiskReads } from "../support/latexProjectFixtures";
+import { fakeDocument } from "../support/textDocument";
 
 const TEXT = [
   "\\chapter{One}",

@@ -1,9 +1,9 @@
 // Tests that a citation's page argument lists highlights, inserts their page and optionally their quotation.
 import * as vscode from "vscode";
 
-import { CitationCompletionProvider } from "../../../../src/writing/citations/citationCompletion";
-import { citationWorkspace, highlight, PAPERS } from "../../../support/citationFixtures";
-import { fakeDocument, withCursor } from "../../../support/textDocument";
+import { CitationCompletionProvider } from "../../../src/writing/citations/citationCompletion";
+import { citationWorkspace, highlight, PAPERS } from "../../support/citationFixtures";
+import { fakeDocument, withCursor } from "../../support/textDocument";
 
 const HIGHLIGHTS = {
   p1: [

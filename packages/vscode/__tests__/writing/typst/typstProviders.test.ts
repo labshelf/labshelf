@@ -7,8 +7,8 @@ import {
   createTypstDefinitionProvider,
   createTypstHoverProvider,
   type TypstContextOf,
-} from "../../../../src/writing/typst/language/registerTypstLanguage";
-import { fakeDocument } from "../../../support/textDocument";
+} from "../../../src/writing/typst/registerTypstLanguage";
+import { fakeDocument } from "../../support/textDocument";
 
 const TEXT = "= Intro\n#le";
 const document = fakeDocument("/p/main.typ", TEXT);

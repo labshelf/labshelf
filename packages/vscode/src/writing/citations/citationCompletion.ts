@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { partialKeyStart, type PaperRecord } from "@labshelf/core";
-import { pageArgumentCompletion } from "./highlights/index.js";
+import { pageArgumentCompletion } from "./pageArgumentCompletion.js";
 import { citingProject, type CitationWorkspace } from "./citationWorkspace.js";
 
 export const UPDATE_BIBLIOGRAPHY_COMMAND = "labshelf.citations.updateBibliography";

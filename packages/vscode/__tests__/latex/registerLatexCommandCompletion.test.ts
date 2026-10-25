@@ -5,8 +5,8 @@ import {
   LatexCommandCompletionProvider,
   registerLatexCommandCompletion,
   registerLatexEnvironmentAutoClose,
-} from "../../../src/latex/commands/registerLatexCommandCompletion";
-import { fakeDocument, withCursor } from "../../support/textDocument";
+} from "../../src/latex/registerLatexCommandCompletion";
+import { fakeDocument, withCursor } from "../support/textDocument";
 
 function complete(marked: string): vscode.CompletionItem[] | undefined {
   const { text, position } = withCursor(marked);

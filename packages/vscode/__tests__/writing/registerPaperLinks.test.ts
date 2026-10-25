@@ -6,9 +6,9 @@ import {
   LabshelfLinkHoverProvider,
   LabshelfLinkProvider,
   type LinkLibrary,
-} from "../../../src/writing/paperLink/registerPaperLinks";
-import { citationWorkspace } from "../../support/citationFixtures";
-import { fakeDocument, withCursor } from "../../support/textDocument";
+} from "../../src/writing/registerPaperLinks";
+import { citationWorkspace } from "../support/citationFixtures";
+import { fakeDocument, withCursor } from "../support/textDocument";
 
 const uri = (query: string, path = "/open") => ({ path, query }) as vscode.Uri;
 const linkQuery = (link: string) => `link=${encodeURIComponent(link)}`;

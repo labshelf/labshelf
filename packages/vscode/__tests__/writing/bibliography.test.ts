@@ -6,7 +6,7 @@ import {
   BibCodeActions,
   registerBibliographyLint,
   BibDiagnostics,
-} from "../../../src/writing/bibliography/registerBibliographyCheck";
+} from "../../src/writing/registerBibliographyCheck";
 
 const ARXIV = "https://export.arxiv.org/api/query?id_list=1706.03762";
 const PUBLISHED_DOI = "10.5555/3295222.3295349";
