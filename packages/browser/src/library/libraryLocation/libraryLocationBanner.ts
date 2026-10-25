@@ -5,11 +5,50 @@ import { bx } from "../../platform";
 import { helperDownloadUrl } from "../../helper";
 import { bannerShell, setButton } from "./bannerShell";
 import { folderPathForm } from "./folderPathForm";
-import { showFolderAccess } from "./folderAccessBanner";
 import { canPickFolder, pickLibraryFolder } from "./pickLibraryFolder";
 import { recheckSource } from "./recheckLibraryLocation";
 import { sourceReason, type BrowserSource } from "./libraryLocationReason";
-import { getLibrarySource, type LibrarySource } from "../../storage";
+import {
+  getLibrarySource,
+  type LibrarySource,
+  folderPermission,
+  loadPickedFolder,
+  rebuildFromFiles,
+  requestFolderPermission,
+} from "../../storage";
+
+/** Renders into `host` only while the picked folder lacks permission; `onGranted` runs once the records are rebuilt. */
+async function showFolderAccess(host: HTMLElement, logger: ILogger, onGranted: () => void): Promise<void> {
+  const handle = await loadPickedFolder();
+  if (!handle || (await folderPermission(handle)) === "granted") return;
+  const { root, text } = bannerShell("warn", "warning");
+  root.setAttribute("role", "region");
+  root.setAttribute("aria-label", "Library folder access");
+  const allow = el("button", { class: "ls-btn ls-btn-primary", type: "button" });
+  setButton(allow, "folder", "Allow access", false);
+  allow.addEventListener("click", () => void (async () => {
+    setButton(allow, "folder", "Allow access", true);
+    try {
+      if (await requestFolderPermission(handle)) {
+        host.replaceChildren();
+        await rebuildFromFiles(logger);
+        onGranted();
+        return;
+      }
+      toast("LabShelf still may not use the folder.", "error");
+    } catch (err) {
+      await logger.error("library.libraryLocation", err, { action: "allow folder access", folder: handle.name });
+      toast(errorMessage(err), "error");
+    }
+    setButton(allow, "folder", "Allow access", false);
+  })());
+  text.append(
+    "LabShelf needs your permission to use the library folder ", inlineCode(handle.name), " again.",
+    el("div", { class: "lsrc-reason", text: "The browser asks again after it restarts, unless you let it allow LabShelf on every visit." }),
+    el("div", { class: "lsrc-actions" }, allow),
+  );
+  host.replaceChildren(root);
+}
 
 export interface SourceBannerOptions {
   logger: ILogger;

@@ -1,6 +1,12 @@
 // Keeps the library folder the user picked in the browser, and the library id that names it, across restarts in an IndexedDB database of its own.
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import { backfillPickedFolderId } from "./backfillPickedDirId";
+
+async function backfillPickedFolderId(handle: FileSystemDirectoryHandle | undefined, save: (id: string) => Promise<void>): Promise<string | undefined> {
+  if (handle === undefined) return undefined;
+  const id = crypto.randomUUID();
+  await save(id);
+  return id;
+}
 
 // PLATFORM: a folder handle survives only as a structured clone, which IndexedDB keeps and storage.local does not.
 const DB_NAME = "labshelf-library-folder";

@@ -7,9 +7,20 @@ import {
 } from "./handlers";
 import type { PageSpaces } from "../../spaces";
 import { addToSpace } from "../../spaces";
-import { watchChangeNotices } from "./changeNotices";
 import { createHostContext, type HostContext } from "./hostContext";
 import { watchLibraryChanges } from "./snapshots";
+import { bx, type LibraryChangedBroadcast } from "../../platform";
+
+/** @returns a function that stops listening */
+function watchChangeNotices(ctx: HostContext): () => void {
+  // Must stay synchronous and return nothing: a listener returning a Promise would answer popup requests with undefined.
+  const onRuntime = (msg: unknown): void => {
+    const change = msg as LibraryChangedBroadcast | undefined;
+    if (change?.type === "library.changed" && change.notice) ctx.notice("ok", change.notice);
+  };
+  bx.runtime.onMessage.addListener(onRuntime);
+  return () => bx.runtime.onMessage.removeListener(onRuntime);
+}
 
 export interface LibraryHostOptions {
   log: ILogger;

@@ -1,5 +1,9 @@
-/** The options page flags a custom resolver template that cannot be used, and saves only rows whose template is valid. */
-import { RESOLVER_TEMPLATE_ERROR, judgeResolverTemplate, savableResolvers } from "../../src/options/resolverRows";
+/**
+ * The options page flags a custom resolver template that cannot be used, and saves only rows whose template is valid.
+ * @jest-environment jsdom
+ * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
+ */
+import { RESOLVER_TEMPLATE_ERROR, judgeResolverTemplate, savableResolvers } from "../../src/options/resolverSection";
 
 describe("judgeResolverTemplate", () => {
   it("accepts an http(s) address with {doi} and says nothing for an empty field", () => {

@@ -1,13 +1,128 @@
 // Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step and restores them on load.
 import type { ILogger } from "@labshelf/core";
-import { mountEditorArea, type EditorArea, type EditorAreaPrefsPort, type EditorGroupIndex, type EditorTabInfo } from "@labshelf/core/dom";
-import type { PagePlan } from "../pagePlan";
+import {
+  mountEditorArea,
+  type EditorArea,
+  type EditorAreaPrefsPort,
+  type EditorGroupIndex,
+  type EditorTabInfo,
+  type EditorTab,
+} from "@labshelf/core/dom";
+import { type PagePlan, isKindShown } from "../pagePlan";
 import type { TabContext, TabKindName, TabParams } from "./tabKind";
-import { restoreTabs } from "./restoreTabs";
-import { createTabOpener } from "./tabOpener";
-import { createHashSync, type HashStorage } from "./hashSync";
-import { createTabBodies } from "./tabBodies";
-import { isFolderHash } from "./workspaceHash";
+import { createTabBodies, type TabBodies } from "./tabBodies";
+import {
+  isFolderHash,
+  parseWorkspaceHash,
+  type WorkspaceHashState,
+  formatWorkspaceHash,
+} from "./workspaceHash";
+import { parseTabId, TAB_KINDS } from "./tabKinds";
+
+const STORED_HASH_KEY = "labshelf.library.tabs";
+
+type HashStorage = Pick<Storage, "getItem" | "setItem">;
+
+interface HashSync {
+  write(): void;
+  /** The tabs hash the session kept, or null. */
+  stored(): string | null;
+  isQuiet(): boolean;
+  /** Runs `fn` with the hash left alone: a restore writes once at its end, and a hash change must not rewrite the hash it answers. */
+  silently(fn: () => void): void;
+}
+
+function createHashSync(tabs: () => EditorTabInfo[], storage: HashStorage): HashSync {
+  let quiet = false;
+  return {
+    write() {
+      if (quiet) return;
+      const open = tabs();
+      const next = formatWorkspaceHash({ tabs: open.map((t) => t.id), active: open.find((t) => t.focused)?.id ?? null });
+      try { storage.setItem(STORED_HASH_KEY, next); } catch { /* storage unavailable: the hash alone carries the tabs */ }
+      if (location.hash === next) return;
+      // A folder deep link is a history entry the user can come back to; a tabs hash is replaced in place.
+      if (isFolderHash(location.hash)) history.pushState(null, "", next);
+      else history.replaceState(null, "", next);
+    },
+    stored() {
+      try { return storage.getItem(STORED_HASH_KEY); } catch { return null; }
+    },
+    isQuiet: () => quiet,
+    silently(fn) {
+      const was = quiet;
+      quiet = true;
+      try { fn(); } finally { quiet = was; }
+    },
+  };
+}
+
+interface TabOpener {
+  open(kind: TabKindName, params?: TabParams, group?: EditorGroupIndex, background?: boolean): void;
+  setDirty(id: string, kind: TabKindName, params: TabParams, dirty: boolean): void;
+}
+
+function createTabOpener(area: () => EditorArea, bodies: () => TabBodies, hash: HashSync): TabOpener {
+  const describe = (kind: TabKindName, params: TabParams, group: EditorGroupIndex, dirty?: boolean): EditorTab => {
+    const def = TAB_KINDS[kind];
+    const id = def.id(params);
+    return { id, title: def.title(params), icon: def.icon, group, dirty: dirty ?? area().tabs().find((t) => t.id === id)?.dirty === true, mount: (host) => bodies().mount(id, kind, params, host) };
+  };
+
+  return {
+    open(kind, params = {}, group, background = false) {
+      area().open(describe(kind, params, group ?? 0), group, { background });
+    },
+    // The area focuses a tab it updates, so the tabs showing and the focused one are put back afterwards.
+    setDirty(id, kind, params, dirty) {
+      const before = area().tabs();
+      const tab = before.find((t) => t.id === id);
+      if (!tab || tab.dirty === dirty) return;
+      hash.silently(() => {
+        area().open(describe(kind, params, tab.group, dirty), tab.group);
+        for (const shown of before.filter((t) => t.active && !t.focused)) area().activate(shown.id);
+        const focused = before.find((t) => t.focused);
+        if (focused) area().activate(focused.id);
+      });
+    },
+  };
+}
+
+interface RestorePlan extends WorkspaceHashState {
+  /** True when the Library tab shows the folder the URL names, so the router's folder is left in place. */
+  folderLink: boolean;
+}
+
+const LIBRARY = "library";
+
+const shown = (plan: PagePlan, tabs: readonly string[]): string[] => tabs.filter((id) => isKindShown(plan, id.split(":")[0]!));
+
+/** `stored` is the last tabs hash this browser tab wrote; it lets a folder deep link reload without losing the open tabs. Tabs of a hidden section are dropped. */
+export function planRestore(hash: string, stored: string | null, plan: PagePlan): RestorePlan {
+  const fromHash = parseWorkspaceHash(hash);
+  const listed = fromHash ? shown(plan, fromHash.tabs) : [];
+  if (fromHash && listed.length > 0) return { tabs: listed, active: fromHash.active !== null && listed.includes(fromHash.active) ? fromHash.active : listed[0]!, folderLink: false };
+  if (plan.library && isFolderHash(hash)) {
+    const kept = shown(plan, (stored !== null ? parseWorkspaceHash(stored)?.tabs : undefined) ?? []);
+    return { tabs: kept.includes(LIBRARY) ? kept : [LIBRARY, ...kept], active: LIBRARY, folderLink: true };
+  }
+  return { tabs: [plan.defaultTab], active: plan.defaultTab, folderLink: false };
+}
+
+function restoreTabs(target: string, area: EditorArea, opener: TabOpener, hash: HashSync, plan: PagePlan, logger: ILogger): void {
+  const restored = planRestore(target, hash.stored(), plan);
+  hash.silently(() => {
+    for (const id of restored.tabs) {
+      const parsed = parseTabId(id);
+      if (parsed) opener.open(parsed.kind, parsed.params, undefined, true);
+      else void logger.log("WARN", "libraryUi.editorArea", "dropped a tab id no kind reads", { id });
+    }
+    if (area.tabs().length === 0) opener.open(plan.defaultTab);
+    const active = area.tabs().some((t) => t.id === restored.active) ? restored.active : plan.defaultTab;
+    if (active !== null) area.activate(active);
+  });
+  if (!restored.folderLink) hash.write();
+}
 
 export interface Workspace {
   /** Opens the tab (or focuses it when open); `group` places a new tab in that editor group. */

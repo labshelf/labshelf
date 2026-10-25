@@ -1,8 +1,68 @@
 // Connects the template gallery's publication workflow to the helper and GitHub device authorization.
-import type { GitHubSignIn, HostToGallery, ILogger, PublishHost, PublishToHost } from "@labshelf/core";
+import {
+  type GitHubSignIn,
+  type HostToGallery,
+  type ILogger,
+  type PublishHost,
+  type PublishToHost,
+  startGitHubDeviceSignIn,
+  finishGitHubDeviceSignIn,
+} from "@labshelf/core";
 import type { ILatexHelper } from "@labshelf/core/helper";
-import { renderTemplateThumbnail } from "./renderThumbnail";
-import { signInToGitHub } from "./githubSignIn";
+import { el, mountOverlay } from "@labshelf/core/dom";
+import { bx } from "../platform";
+import { loadPdfjs } from "../import";
+
+async function renderTemplateThumbnail(pdf: Uint8Array): Promise<Uint8Array> {
+  const task = (await loadPdfjs()).getDocument({ data: pdf.slice() });
+  const document = await task.promise;
+  try {
+    const page = await document.getPage(1);
+    const viewport = page.getViewport({ scale: 800 / page.getViewport({ scale: 1 }).width });
+    const canvas = globalThis.document.createElement("canvas");
+    canvas.width = Math.ceil(viewport.width);
+    canvas.height = Math.ceil(viewport.height);
+    await page.render({ canvas, viewport, background: "white" }).promise;
+    const png = await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => {
+      if (blob) resolve(blob); else reject(new Error("Could not encode the template thumbnail"));
+    }, "image/png"));
+    return new Uint8Array(await png.arrayBuffer());
+  } finally {
+    await task.destroy();
+  }
+}
+
+const CLIENT_ID = "Ov23ctWLlortFiRo41Qj";
+
+async function signInToGitHub(lifetime: AbortSignal): Promise<GitHubSignIn> {
+  const controller = new AbortController();
+  const signal = AbortSignal.any([lifetime, controller.signal]);
+  const authorization = await startGitHubDeviceSignIn(fetch, CLIENT_ID, signal);
+  const open = el("button", { type: "button", class: "ls-btn ls-btn-primary", text: "Open GitHub" });
+  const cancel = el("button", { type: "button", class: "ls-btn", text: "Cancel" });
+  const title = el("div", { class: "ls-dialog-title", id: "ls-github-device-title", text: "Sign in with GitHub" });
+  const status = el("div", { class: "ls-dialog-msg", role: "status", text: "Waiting for authorization…" });
+  const dialog = el("div", { class: "ls-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": title.id },
+    el("div", { class: "ls-dialog-head" }, el("div", {}, title,
+      el("p", { class: "ls-dialog-msg", text: "Enter this code on GitHub:" }),
+      el("p", { class: "ls-dialog-msg", text: authorization.userCode }), status)),
+    el("div", { class: "ls-dialog-actions" }, cancel, open));
+  const dismiss = () => controller.abort(new Error("GitHub sign-in cancelled."));
+  const overlay = mountOverlay(dialog, dismiss);
+  cancel.addEventListener("click", dismiss);
+  open.addEventListener("click", () => {
+    void bx.tabs.create({ url: authorization.verificationUri }).catch((error: unknown) => {
+      status.textContent = error instanceof Error ? error.message : String(error);
+      controller.abort(new Error("Could not open GitHub authorization."));
+    });
+  });
+  open.focus();
+  try {
+    return await finishGitHubDeviceSignIn({ fetch, clientId: CLIENT_ID, authorization, signal });
+  } finally {
+    overlay.close();
+  }
+}
 
 export interface BrowserPublishOptions {
   helper: ILatexHelper;

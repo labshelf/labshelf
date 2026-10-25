@@ -1,14 +1,65 @@
 // Mirrors a shared project to the library source chosen when it starts, while this tab and no other app own the mirror.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import {
-  createWriteRecordStore, libraryMirrorDisk, MirrorOwnershipLost, MirrorRootUnavailable, startProjectMirror, systemLeaseScheduler,
-  type BlobExchange, type CollabStore, type ILogger, type LeaseHolder, type LeaseScheduler, type MirrorStopReason, type ShareSession,
+  createWriteRecordStore,
+  libraryMirrorDisk,
+  MirrorOwnershipLost,
+  MirrorRootUnavailable,
+  startProjectMirror,
+  systemLeaseScheduler,
+  type BlobExchange,
+  type CollabStore,
+  type ILogger,
+  type LeaseHolder,
+  type LeaseScheduler,
+  type MirrorStopReason,
+  type ShareSession,
+  createTextMerge,
+  type MergeText,
+  acquireFolderLease,
+  type FolderLease,
+  type LibraryFileSystem,
 } from "@labshelf/core";
 import { browserDeviceIdentity, type LibrarySource, type LibrarySources, type TabLease } from "../../storage";
 import { createFolderRescan } from "./folderRescan";
 import { onLocalFileChanges } from "./localFileChanges";
-import { browserMergeText } from "./mergeText";
-import { acquireMirrorLeases, type MirrorLeases } from "./mirrorLeases";
+import { diff3Merge } from "node-diff3";
+
+interface MirrorLeaseOptions {
+  sources: Pick<LibrarySources, "folderFileSystem" | "browserFileSystem" | "getLibrarySource">;
+  /** Held by the caller for the whole share session; the mirror never acquires or releases it. */
+  tab: TabLease;
+  folder: string;
+  logger: ILogger;
+  scheduler?: LeaseScheduler;
+  takeOver: boolean;
+}
+
+interface MirrorLeases {
+  /** The source the leases were taken on; the mirror stops when the library moves to another. */
+  source: LibrarySource;
+  /** The file system of `source` alone, so a later source choice cannot redirect the mirror's writes. */
+  fs: LibraryFileSystem;
+  tab: TabLease;
+  /** Absent for browser storage, which only this profile's tabs can reach. */
+  folder?: FolderLease;
+}
+
+type MirrorLeasesResult =
+  | { kind: "busy"; holder: LeaseHolder }
+  | { kind: "owned"; leases: MirrorLeases };
+
+async function acquireMirrorLeases(options: MirrorLeaseOptions): Promise<MirrorLeasesResult> {
+  const { sources, tab, folder, logger, scheduler, takeOver } = options;
+  const source = await sources.getLibrarySource();
+  if (source.kind === "browser") { return { kind: "owned", leases: { source, fs: sources.browserFileSystem, tab } }; }
+  const fs = sources.folderFileSystem;
+  const result = await acquireFolderLease({ fs, folder, app: "browser", logger, takeOver, ...(scheduler ? { scheduler } : {}) });
+  if (result.kind === "busy") { return result; }
+  return { kind: "owned", leases: { source, fs, tab, folder: result.lease } };
+}
+
+const browserMergeText: MergeText = createTextMerge(diff3Merge);
 
 /** How often the mirror checks the library source and rescans a folder for edits made outside the browser. */
 const RESCAN_INTERVAL_MS = 30_000;

@@ -1,11 +1,100 @@
 // Connects the editor to the project's comment threads: marks anchored ranges and adds a comment on the selection.
-import type { Extension } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
-import type { ILogger, TextRange } from "@labshelf/core";
+import {
+  type Extension,
+  Prec,
+  RangeSet,
+  StateEffect,
+  StateField,
+  type Text,
+} from "@codemirror/state";
+import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker } from "@codemirror/view";
+import { type ILogger, type TextRange, icon } from "@labshelf/core";
 import { inputBox, toast } from "@labshelf/core/dom";
-import { addCommentSupport } from "./addComment";
-import { commentMarks } from "./commentMarks";
-import { docOffsetToFile, fileOffsetToDoc } from "./commentOffsets";
+import { createSourceFooter } from "../../libraryUi/prefs";
+
+/** The document offset of `offset` in the file text `fileText`. */
+function fileOffsetToDoc(fileText: string, offset: number): number {
+  if (!fileText.includes("\r\n")) return offset;
+  const before = fileText.slice(0, offset);
+  return offset - (before.match(/\r\n/g)?.length ?? 0);
+}
+
+/** The file offset of document offset `offset`, for a file whose line break is `lineBreak`. */
+function docOffsetToFile(doc: Text, lineBreak: string, offset: number): number {
+  return lineBreak === "\r\n" ? offset + doc.lineAt(offset).number - 1 : offset;
+}
+
+interface CommentMarks {
+  extension: Extension;
+  /** Replaces the marked ranges, given in document offsets. */
+  setRanges(view: EditorView, ranges: readonly TextRange[]): void;
+}
+
+const replaceRanges = StateEffect.define<readonly TextRange[]>();
+
+// INVARIANT: ranges are kept in document offsets; an edit that deletes a range leaves it empty and it is not drawn.
+const rangesField = StateField.define<readonly TextRange[]>({
+  create: () => [],
+  update(value, transaction) {
+    for (const effect of transaction.effects) if (effect.is(replaceRanges)) return effect.value;
+    if (!transaction.docChanged) return value;
+    return value.map((range) => ({ start: transaction.changes.mapPos(range.start, 1), end: transaction.changes.mapPos(range.end, -1) }));
+  },
+});
+
+class CommentMarker extends GutterMarker {
+  constructor(private readonly open: () => void) { super(); }
+  eq(): boolean { return true; }
+  toDOM(): HTMLElement {
+    const button = document.createElement("button");
+    button.className = "ls-comment-marker";
+    button.type = "button";
+    button.title = "Open comments";
+    button.setAttribute("aria-label", "Open comments");
+    button.innerHTML = icon("message");
+    button.addEventListener("click", this.open);
+    return button;
+  }
+}
+
+const rangeMark = Decoration.mark({ class: "ls-comment-range" });
+
+function commentMarks(open: () => void): CommentMarks {
+  const marker = new CommentMarker(open);
+  const visible = (state: EditorView["state"]): TextRange[] =>
+    state.field(rangesField).filter((range) => range.end > range.start && range.start >= 0 && range.end <= state.doc.length);
+  const decorations = EditorView.decorations.compute([rangesField], (state) =>
+    Decoration.set(visible(state).map((range) => rangeMark.range(range.start, range.end)), true));
+  const markerGutter = gutter({
+    class: "ls-comment-gutter",
+    markers: (view) => RangeSet.of(visible(view.state).map((range) => marker.range(view.state.doc.lineAt(range.start).from)), true),
+  });
+  return {
+    extension: [rangesField, decorations, markerGutter],
+    setRanges: (view, ranges) => view.dispatch({ effects: replaceRanges.of(ranges) }),
+  };
+}
+
+/** @param add receives the selection in document offsets. */
+export function addCommentSupport(add: (range: TextRange) => void): Extension {
+  const run = (view: EditorView): boolean => {
+    const { from, to, empty } = view.state.selection.main;
+    if (empty) return false;
+    add({ start: from, end: to });
+    return true;
+  };
+  const panel = showPanel.of((view) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ls-btn ls-add-comment";
+    button.innerHTML = `${icon("message")}Add comment`;
+    button.title = "Add comment on the selection (Ctrl/Cmd+Alt+M)";
+    button.disabled = view.state.selection.main.empty;
+    button.addEventListener("click", () => run(view));
+    return { ...createSourceFooter(button), update: (update) => { button.disabled = update.state.selection.main.empty; } };
+  });
+  return [Prec.high(keymap.of([{ key: "Mod-Alt-m", run }])), panel];
+}
 
 const MODULE = "editor.comments";
 

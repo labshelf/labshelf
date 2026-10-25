@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import type { ILogger, RelayAccount } from "@labshelf/core";
 import { installFakeLocks } from "../support/fakeLocks";
 import { openBrowserRelayAccountStore } from "../../src/relay";
-import { relayAccountSlot } from "../../src/relay/relayAccountSecrets";
+import { relayAccountSlot } from "../../src/relay/browserRelayAccountStore";
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
 const account: RelayAccount = {

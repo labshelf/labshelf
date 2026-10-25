@@ -1,6 +1,6 @@
 // When a share asks for the owner's relay: the connected account, a confirmed connect, a cancel and a failure.
 import type { ILogger, RelayAccount } from "@labshelf/core";
-import { requireRelay, type RequireRelayDeps } from "../../../src/relay/page/ensureRelay";
+import { requireRelay, type RequireRelayDeps } from "../../../src/relay/page/pageRelay";
 import { RelaySignInCancelledError } from "../../../src/relay/watchRedirectTab";
 
 const ACCOUNT: RelayAccount = {

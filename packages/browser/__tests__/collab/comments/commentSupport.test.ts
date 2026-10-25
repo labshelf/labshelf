@@ -5,7 +5,7 @@
 // The Add comment button leaves focus on the input box it opens, so typing never reaches the editor.
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { addCommentSupport } from "../../../src/collab/comments/addComment";
+import { addCommentSupport } from "../../../src/collab/comments/commentSupport";
 
 describe("add comment button", () => {
   it("leaves focus on the opened input box, not the editor", () => {

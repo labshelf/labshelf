@@ -1,6 +1,6 @@
 // Pins which tabs a page load opens for a tabs hash, a folder deep link and a bare URL.
 import { planPage } from "../../../src/libraryUi/pagePlan";
-import { planRestore as restore } from "../../../src/libraryUi/editorArea/tabPlan";
+import { planRestore as restore } from "../../../src/libraryUi/editorArea/workspace";
 
 const both = planPage({ library: true, projects: true });
 const planRestore = (hash: string, kept: string | null) => restore(hash, kept, both);

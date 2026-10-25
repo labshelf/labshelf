@@ -1,6 +1,6 @@
 // Each entry reaches the console method of its level under a `[labshelf:<module>]` prefix.
 import type { LogEntry } from "@labshelf/core";
-import { ConsoleLogSink } from "../../../src/platform/logging/consoleLogSink";
+import { ConsoleLogSink } from "../../../src/platform/logging/browserLogger";
 
 const entry = (level: LogEntry["level"]): LogEntry => ({ timestamp: "t", level, module: "capture", message: "msg", context: { a: 1 } });
 

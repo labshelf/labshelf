@@ -4,9 +4,47 @@
  */
 import type { LocalStat } from "@labshelf/core";
 import { sha256Hex } from "@labshelf/core";
-import { belowDir, deleteTree, renameTree } from "./idbFileTree";
 import { getDb } from "./idbDatabase";
 import { ByteBackedFileSystem } from "./bytesFileSystem";
+import type { FileRow } from "./idbSchema";
+
+/** @returns the key range covering everything below `dir` */
+function belowDir(dir: string): IDBKeyRange {
+  const prefix = `${dir}/`;
+  return IDBKeyRange.bound(prefix, `${prefix}￿`, false, true);
+}
+
+/**
+ * Re-keys the row `from`, or every row below it, to `to` in one transaction, keeping bytes, mtime and hash.
+ */
+async function renameTree(from: string, to: string): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("files", "readwrite");
+  const rows = await rowsAt(tx.store, from);
+  if (rows.length === 0) { throw new Error(`File not found: ${from}`); }
+  if ((await tx.store.get(to)) !== undefined || (await tx.store.getKey(belowDir(to))) !== undefined) {
+    throw new Error(`Already exists: ${to}`);
+  }
+  for (const row of rows) {
+    await tx.store.delete(row.path);
+    await tx.store.put({ ...row, path: `${to}${row.path.slice(from.length)}` });
+  }
+  await tx.done;
+}
+
+/** Deletes the row `target` and every row below it in one transaction. */
+async function deleteTree(target: string): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("files", "readwrite");
+  await tx.store.delete(target);
+  await tx.store.delete(belowDir(target));
+  await tx.done;
+}
+
+async function rowsAt(store: { get(key: string): Promise<FileRow | undefined>; getAll(range: IDBKeyRange): Promise<FileRow[]> }, path: string): Promise<FileRow[]> {
+  const own = await store.get(path);
+  return [...(own ? [own] : []), ...(await store.getAll(belowDir(path)))];
+}
 
 export class IndexedDbFileSystem extends ByteBackedFileSystem {
   async listDir(dirPath: string): Promise<string[]> {

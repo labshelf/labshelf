@@ -1,9 +1,92 @@
 // Gives a library page its Cloudflare relay: the account a share asks for, and the connect or disconnect the owner starts.
-import type { ILogger, RelayAccount } from "@labshelf/core";
-import { toast } from "@labshelf/core/dom";
-import { createBrowserRelayAccount } from "../browserRelayAccount";
-import { chooseAccount, confirmConnect, confirmDisconnect, confirmSignInAgain } from "./relayDialogs";
-import { reportRelayFailure, requireRelay, type RequireRelayDeps } from "./ensureRelay";
+import {
+  type ILogger,
+  type RelayAccount,
+  errorMessage,
+  type CloudflareAccount,
+} from "@labshelf/core";
+import { toast, quickPick, showDialog } from "@labshelf/core/dom";
+import { createBrowserRelayAccount, type BrowserRelayAccount } from "../browserRelayAccount";
+import { RelaySignInCancelledError } from "../watchRedirectTab";
+
+const RELAY_PURPOSE = "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It carries every edit between "
+  + "collaborators, end-to-end encrypted, and keeps them so collaborators sync even when you are offline.";
+
+async function confirmConnect(): Promise<boolean> {
+  const answer = await showDialog({
+    title: "Connect Cloudflare to give your shared projects a relay",
+    message: `${RELAY_PURPOSE} LabShelf opens Cloudflare in a new tab, where you sign in and allow it to manage Workers in your account. `
+      + "Keep this page open until the tab closes.",
+    severity: "info",
+    buttons: [{ id: "signIn", label: "Sign In with Cloudflare", primary: true }],
+  });
+  return answer === "signIn";
+}
+
+async function chooseAccount(accounts: CloudflareAccount[]): Promise<string | undefined> {
+  return quickPick(accounts.map((account) => ({ label: account.name, description: account.id, icon: "cloud" as const, value: account.id })), {
+    title: "Connect Cloudflare", placeholder: "Account to set up the relay in",
+  });
+}
+
+async function confirmSignInAgain(): Promise<boolean> {
+  const answer = await showDialog({
+    title: "Sign in to Cloudflare again",
+    message: "Cloudflare no longer accepts the stored sign-in. LabShelf opens Cloudflare in a new tab to sign in again.",
+    severity: "info",
+    buttons: [{ id: "signIn", label: "Sign In with Cloudflare", primary: true }],
+  });
+  return answer === "signIn";
+}
+
+/** Shows the connected relay's host and offers to disconnect it; true when the owner chooses Disconnect. */
+async function confirmDisconnect(relayUrl: string): Promise<boolean> {
+  const answer = await showDialog({
+    title: `Cloudflare is connected, with your relay at ${new URL(relayUrl).host}`,
+    message: "Disconnecting deletes the relay from your Cloudflare account, with the encrypted edits it keeps, and takes it out of your "
+      + "shared projects. Shared projects that list no other relay stop syncing until someone offers one.",
+    severity: "danger",
+    buttons: [{ id: "disconnect", label: "Disconnect", danger: true }],
+  });
+  return answer === "disconnect";
+}
+
+const LOG_MODULE = "relay";
+
+export interface RequireRelayDeps {
+  relay: Pick<BrowserRelayAccount, "account" | "connect">;
+  /** Explains the relay and asks whether to connect Cloudflare; false when the owner cancels. */
+  confirmConnect(): Promise<boolean>;
+  showFailure(message: string): void;
+  logger: ILogger;
+}
+
+/** Logs a failed relay action and shows it; a sign-in tab the owner closed is only logged. */
+function reportRelayFailure(deps: Pick<RequireRelayDeps, "showFailure" | "logger">, action: string, error: unknown): void {
+  if (error instanceof RelaySignInCancelledError) {
+    void deps.logger.log("INFO", LOG_MODULE, "Relay action cancelled", { action });
+    return;
+  }
+  void deps.logger.error(LOG_MODULE, error, { action });
+  deps.showFailure(`LabShelf could not ${action}: ${errorMessage(error)}`);
+}
+
+/** Resolves the connected account, or undefined when the owner cancels or the connect fails (logged and shown). */
+export async function requireRelay(deps: RequireRelayDeps): Promise<RelayAccount | undefined> {
+  const existing = await deps.relay.account();
+  if (existing) { return existing; }
+  if (!(await deps.confirmConnect())) {
+    await deps.logger.log("INFO", LOG_MODULE, "The owner declined to connect Cloudflare");
+    return undefined;
+  }
+  try {
+    const relayUrl = await deps.relay.connect();
+    return relayUrl === undefined ? undefined : await deps.relay.account();
+  } catch (error) {
+    reportRelayFailure(deps, "connect Cloudflare", error);
+    return undefined;
+  }
+}
 
 export interface PageRelayOptions {
   logger: ILogger;

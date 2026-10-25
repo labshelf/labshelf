@@ -2,10 +2,12 @@ import { CompletionContext, type CompletionResult } from "@codemirror/autocomple
 import { EditorState } from "@codemirror/state";
 import type { PaperRecord } from "@labshelf/core";
 import { citationOption } from "../../src/latex/citationOption";
-import { citationCompletion } from "../../src/latex/citationCompletion";
-import { closeEnvironmentOnEnter } from "../../src/latex/environmentClose";
-import { latexCommandCompletion } from "../../src/latex/latexCommandCompletion";
-import { referenceCompletion } from "../../src/latex/referenceCompletion";
+import {
+  citationCompletion,
+  closeEnvironmentOnEnter,
+  latexCommandCompletion,
+  referenceCompletion,
+} from "../../src/latex/latexSupport";
 import { snippetTemplate } from "../../src/latex/snippetTemplate";
 
 const at = (text: string): CompletionContext => {

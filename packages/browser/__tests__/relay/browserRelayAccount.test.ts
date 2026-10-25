@@ -38,7 +38,7 @@ jest.mock("../../src/platform", () => ({
 }));
 
 import { createBrowserRelayAccount, RelayAccountBusyError, RelaySignInCancelledError } from "../../src/relay";
-import { relayAccountSlot } from "../../src/relay/relayAccountSecrets";
+import { relayAccountSlot } from "../../src/relay/browserRelayAccountStore";
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
 let cloud: FakeRelayCloud;

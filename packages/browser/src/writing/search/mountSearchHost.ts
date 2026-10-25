@@ -1,13 +1,65 @@
 // Answers the shared project search page in the same page: searches the project's saved files and applies its opens and replacements.
 import {
-  emptySearchRun, matchesIn, posixPathOps, searchProjectTexts, type HostToSearch, type ILogger, type LibraryFileSystem, type MatchLocation, type MessageEnd, type SearchOptions,
+  emptySearchRun,
+  matchesIn,
+  posixPathOps,
+  searchProjectTexts,
+  type HostToSearch,
+  type ILogger,
+  type LibraryFileSystem,
+  type MatchLocation,
+  type MessageEnd,
+  type SearchOptions,
   type SearchToHost,
+  isSearchableFile,
+  listProjectFiles,
+  type ProjectText,
+  matchReplacement,
 } from "@labshelf/core";
 import { confirmDialog, toast } from "@labshelf/core/dom";
 import { flushProjectEditors, reloadProjectEditors } from "../session";
 import { recordProjectEdit } from "../history";
-import { projectSearchTexts } from "./projectSearchTexts";
-import { replaceInFiles } from "./replaceInFiles";
+
+/** Replaces the matches in their files; a match whose text changed since the search is left alone. */
+export async function replaceInFiles(fs: LibraryFileSystem, matches: readonly MatchLocation[], pattern: RegExp, replacement: string): Promise<number> {
+  const byPath = new Map<string, MatchLocation[]>();
+  for (const match of matches) byPath.set(match.path, [...(byPath.get(match.path) ?? []), match]);
+  let count = 0;
+  for (const [path, inFile] of byPath) {
+    const original = await fs.readText(path);
+    // The capture group keeps each line's own ending; text sits at even indexes.
+    const parts = original.split(/(\r?\n)/);
+    const lines = [...parts];
+    // Highest column first, so an edit never shifts the columns of those still to apply.
+    for (const { line, column, length } of [...inFile].sort((a, b) => b.line - a.line || b.column - a.column)) {
+      const text = lines[line * 2];
+      if (text === undefined) continue;
+      // Computed against the original line, so one edit never changes what another match expands to.
+      const replaced = matchReplacement(text, pattern, { column, length }, replacement);
+      if (replaced === undefined) continue;
+      const current = parts[line * 2]!;
+      parts[line * 2] = current.slice(0, column) + replaced + current.slice(column + length);
+      count += 1;
+    }
+    const next = parts.join("");
+    if (next !== original) await fs.writeText(path, next);
+  }
+  return count;
+}
+
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+
+/** The project's searchable files with their saved text; files over 2 MB are skipped. */
+async function projectSearchTexts(fs: LibraryFileSystem, folder: string): Promise<ProjectText[]> {
+  const relatives = (await listProjectFiles({ fs, paths: posixPathOps }, folder)).filter(isSearchableFile);
+  const texts: ProjectText[] = [];
+  for (const relative of relatives) {
+    const path = posixPathOps.join(folder, relative);
+    if (((await fs.stat(path))?.size ?? 0) > MAX_FILE_BYTES) continue;
+    texts.push({ path, text: await fs.readText(path) });
+  }
+  return texts;
+}
 
 const MODULE = "writing.search";
 const DEBOUNCE_MS = 150;

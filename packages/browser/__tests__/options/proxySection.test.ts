@@ -1,5 +1,9 @@
-/** The options page shows a proxy template's kind or an error, and saves only rows whose template is valid. */
-import { PROXY_TEMPLATE_ERROR, judgeTemplate, savableProxies } from "../../src/options/proxyRows";
+/**
+ * The options page shows a proxy template's kind or an error, and saves only rows whose template is valid.
+ * @jest-environment jsdom
+ * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
+ */
+import { PROXY_TEMPLATE_ERROR, judgeTemplate, savableProxies } from "../../src/options/proxySection";
 
 describe("judgeTemplate", () => {
   it("names the kind of each valid shape", () => {

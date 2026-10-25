@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ILogger } from "@labshelf/core";
-import { registerLinkHandler } from "../../../src/libraryUi/paperLink/registerProtocolHandler";
+import { registerLinkHandler } from "../../../src/libraryUi/paperLink/attachPaperLink";
 
 const url = "chrome-extension://abc/libraryPage/index.html?link=%s";
 

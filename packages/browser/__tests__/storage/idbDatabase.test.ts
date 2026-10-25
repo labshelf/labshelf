@@ -1,4 +1,4 @@
-import { DB_VERSION, upgradeDb } from "../../src/storage/idbUpgrade";
+import { DB_VERSION, upgradeDb } from "../../src/storage/idbDatabase";
 
 function fakeStore(indexes: string[]) {
   const names = new Set(indexes);
