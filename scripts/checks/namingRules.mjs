@@ -10,6 +10,8 @@ const CAMEL = /^[a-z][a-zA-Z0-9]*$/;
 const PASCAL = /^[A-Z][a-zA-Z0-9]*$/;
 const FOLDER_KINDS = new Set(["domain", "runtime", "subject", "noun", "feature", "role", "uiPart", "format", "compound"]);
 const FREE_WORD_LIMIT = 1;
+// A compoundOnly word marked `suffix` is a word right after a term of one of these kinds, so <term><suffix> reads as a compound (projectId, projectIdSlug).
+const SUFFIX_HEAD_KINDS = new Set(["domain", "subject", "noun", "feature", "role", "uiPart", "format", "tool", "compound", "typeSuffix"]);
 const SIDE_KINDS = { subjects: "subject", nouns: "noun", formats: "format", tools: "tool", compounds: "compound" };
 
 export const splitWords = (name) => (name.match(WORD) ?? []).map((word) => word.toLowerCase());
@@ -30,7 +32,7 @@ function insertEntries(vocab, add) {
   ];
   for (const [word, hint] of Object.entries(vocab.banned ?? {})) add(word, { kind: "banned", hint });
   for (const [word, rule] of Object.entries(vocab.compoundOnly ?? {})) {
-    add(word, { kind: "compoundOnly", options: [...(rule.use ?? []), ...(rule.instead ?? [])] });
+    add(word, { kind: "compoundOnly", suffix: rule.suffix === true, options: [...(rule.use ?? []), ...(rule.instead ?? [])] });
   }
   for (const [, section] of termSections) {
     for (const [term, value] of Object.entries(section ?? {})) {
@@ -124,11 +126,14 @@ function tokenize(index, words) {
   return tokens;
 }
 
-// A type suffix (options, result, state) is a word only as the last word of a multi-word name.
+// A type suffix (result, state) is a word only as the last word of a multi-word type or file name; a compoundOnly suffix (id, key) is a word right after a term.
 function analyse(index, name, allowSuffix) {
   const words = splitWords(name);
   const tokens = tokenize(index, words);
   const last = tokens.at(-1);
+  tokens.forEach((token, i) => {
+    if (token.entry?.kind === "compoundOnly" && token.entry.suffix && SUFFIX_HEAD_KINDS.has(tokens[i - 1]?.entry?.kind)) token.entry = { kind: "suffix" };
+  });
   if (allowSuffix && words.length > 1 && last.parts.length === 1) {
     const suffix = [last.parts[0], ...singulars(last.parts[0])].some((word) => index.typeSuffixes.has(word));
     if (suffix) last.entry = { kind: "typeSuffix" };
@@ -142,7 +147,7 @@ function wordViolations(tokens, context) {
     if (entry?.kind === "banned") found.push({ rule: "banned", message: `${context}"${text}" is banned`, hint: entry.hint, words: [text] });
     if (entry?.kind === "synonym") found.push({ rule: "synonym", message: `${context}"${text}" is not a term`, hint: `use ${entry.canon}`, words: [text] });
     if (entry?.kind === "compoundOnly") {
-      const hint = `use one of ${entry.options.join(", ")}`;
+      const hint = `use one of ${entry.options.join(", ")}${entry.suffix ? `, or put it right after a term (<term>${text[0].toUpperCase()}${text.slice(1)})` : ""}`;
       found.push({ rule: "compound-only", message: `${context}"${text}" is only valid inside a compound`, hint, words: [text] });
     }
   }

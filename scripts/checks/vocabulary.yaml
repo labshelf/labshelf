@@ -159,6 +159,7 @@ mechanism:
     bundle: { def: "The output of an app build." }
     app: { def: "A LabShelf application (browser extension, VS Code extension, terminal, Helper)." }
     browser: { def: "The web browser; also the name of the browser app. Not a tool." }
+    map: { def: "An in-memory key-to-value lookup (a JS Map or a Yjs map). A search index is an index compound, not a map." }
   roles:
     host: "App-side implementation of a core surface or protocol."
     port: "An interface the caller implements."
@@ -186,12 +187,13 @@ mechanism:
   uiParts: [view, panel, tab, section, row, card, dialog, menu, tray, sidebar, header, footer, banner, form, button, toolbar, bar, popover, overlay, pane, frame, shell, screen, list, tree, grid, column, chrome, toast, picker, meter, badge, marks, mark, quickInput, extPage, offscreen, statusBar, widget, element, editor, editorArea, field, input, notice, layer, action, hover, window, focus, drop, drag]
   qualifiers: [shared, local, remote, live, stored, pending, missing, stale, open, current, own, system, managed, native, standalone, external, first, last, all, empty, private, public, published, verified, custom, optional, inline, direct, network, unscoped, lazy, sealed, max, min, raw, plain]
   connectors: [to, from, in, at, by, for, of, with, without, and, or, only, as, on, into]
-  typeSuffixes: [options, deps, result, outcome, state, context, kind, event, change, request, reply, response, input, spec, id, error]
+  typeSuffixes: [options, deps, result, outcome, state, context, kind, event, change, request, reply, response, input, spec, id, error, like]
 
 formats: [pdf, latex, tex, typst, bibtex, biber, synctex, yaml, json, html, css, markdown, qmd, doi, isbn, arxiv, svg, png, webp, url, mailto, http, oauth, pkce, utf8, base64, hex, sha256, ed25519, ics, ocr, wasm, ulid]
 
 subjects:
-  paper: { def: "One stored work with its PDF and metadata.", syn: [article] }
+  paper: { def: "One stored work with its PDF and metadata.", syn: [article, work] }
+  math: { def: "Mathematical notation in a writing source (inline or display math)." }
   paperFile: { def: "A file attached to a paper (PDF, supplement)." }
   folder: { def: "A library folder grouping papers. Any disk folder is a dir.", syn: [collection, category] }
   metadata: { def: "Bibliographic fields (title, authors, venue), on disk as metadata.yaml." }
@@ -379,17 +381,18 @@ features:
 tools: [pdfjs, prosemirror, tesseract, cloudflare, github, crossref, openalex, pubmed, pmc, semanticScholar, googleScholar, unpaywall, datacite, latexmk, openPgp, vscode, idb, kv, canvas, undoManager]
 
 # A bare word with a banned or ambiguous sense: allowed only inside one of `use`; `instead` names what the other senses became.
+# `suffix: true`: the word is also valid right after a term, as <term><Word> (projectId, rowKey, TaskStatus); the bare word stays rejected.
 compoundOnly:
   root: { use: [libraryRoot, buildRoot], instead: [spaceDir, projectDir] }
   link: { use: [paperLink, shareLink, linkKey], instead: [invite, connection, synctex] }
   record: { use: [paperRecord, writeRecord], instead: [docLogEntry] }
-  status: { use: [], instead: [buildState] }
+  status: { use: [], instead: [buildState], suffix: true }
   manifest: { use: [shareManifest, templateManifest, hostManifest, extensionManifest, releaseManifest] }
   blob: { use: [shareBlob] }
-  key: { use: [citeKey, shareKey, linkKey, docKey, libraryKey], instead: [shortcut, keymap] }
-  id: { use: [paperId] }
+  key: { use: [citeKey, shareKey, linkKey, docKey, libraryKey], instead: [shortcut, keymap], suffix: true }
+  id: { use: [paperId], suffix: true }
   state: { use: [buildState, deviceState], instead: [readingPosition] }
-  options: { use: [optionsPage] }
+  options: { use: [optionsPage], suffix: true }
   index: { use: [shareIndexDoc, catalogIndex, searchIndex, embeddingIndex, vectorIndex], instead: [lineOffsets, synctexMap] }
 
 banned:

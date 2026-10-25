@@ -25,7 +25,7 @@ const vocab = {
   subjects: { paper: { def: 'p' }, libraryRoot: { def: 'l' } },
   features: { space: { def: 's', home: ['**/spaces/**'], syn: ['room'], words: ['spaceDir'] } },
   tools: ['pdfjs'],
-  compoundOnly: { root: { use: ['libraryRoot', 'buildRoot'] } },
+  compoundOnly: { root: { use: ['libraryRoot', 'buildRoot'] }, id: { use: ['paperId'], suffix: true } },
   banned: { data: 'name what the data is', result: 'only as a type suffix' },
 };
 const index = buildIndex(vocab);
@@ -118,6 +118,25 @@ test('type names: suffix allowed only last in a multi-word name; I prefix stripp
   assert.deepEqual(rules(checkExportName(index, 'Result', 'type')), ['banned']);
   assert.deepEqual(checkExportName(index, 'IPaperParser', 'interface'), []);
   assert.deepEqual(rules(checkExportName(index, 'PaperZorpQuux', 'class')), ['free-words']);
+});
+
+test('suffix: a compoundOnly word marked suffix is valid right after a term; bare or after a free word it is not', () => {
+  assert.deepEqual(path('hash/bytesId.ts'), []);
+  assert.deepEqual(checkExportName(index, 'BytesIds', 'type'), []);
+  assert.deepEqual(exportRules('readBytesId'), []);
+  assert.deepEqual(rules(path('hash/id.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/liveId.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/zorpId.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/bytesZorpId.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/rootId.ts')), ['compound-only', 'compound-only']);
+  assert.deepEqual(path('hash/bytesIdZorp.ts'), []);
+  assert.deepEqual(rules(path('hash/liveIdBytes.ts')), ['compound-only']);
+  assert.deepEqual(rules(checkExportName(index, 'BytesZorpQuuxId', 'type')), ['compound-only', 'free-words']);
+});
+
+test('suffix: a function named <term><suffix> still needs a verb', () => {
+  assert.deepEqual(exportRules('bytesId'), ['export-verb']);
+  assert.deepEqual(checkExportName(index, 'BytesId', 'type'), []);
 });
 
 test('parseExports lists exported declarations only', () => {
