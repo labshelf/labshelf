@@ -1,8 +1,15 @@
 /** Decides whether an edit can be previewed by typesetting its section alone, and which recorded section and lines that is. */
 import { type LatexSourceFacts, type SectionFact, scanLatexSource, stripComments } from "../../source/index.js";
 import type { SectionState } from "./index.js";
-import { sourcePathKey, sourcesByKey } from "./sourcePaths.js";
 import { collectDefinitions } from "./collectMacros.js";
+
+function sourcePathKey(path: string): string {
+  return path.trim().replace(/^(\.\/)+/, "").replace(/\.tex$/, "");
+}
+
+function sourcesByKey(sources: Readonly<Record<string, string>>): ReadonlyMap<string, string> {
+  return new Map(Object.entries(sources).map(([path, text]) => [sourcePathKey(path), text]));
+}
 
 type SectionTextFallback = "include" | "input-unreadable" | "input-with-definitions" | "afterpage" | "unclosed-float";
 
