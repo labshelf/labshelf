@@ -1,9 +1,9 @@
 import { createLoopbackTransport } from "../../../src/libraryUi/protocol";
-import { createSharingClient, serveSharing, type SharingCall, type SharingHost, type SharingOffers, type SharingReply } from "../../../src/libraryUi/share";
+import { createShareClient, serveShare, type ShareCall, type ShareHost, type ShareOffers, type ShareReply } from "../../../src/libraryUi/share";
 import type { ILogger } from "../../../src/ports";
 
-function fakeHost(over: Partial<SharingHost> = {}): SharingHost & { setOffers(o: SharingOffers): void } {
-  let offers: SharingOffers = { projects: true, links: false };
+function fakeHost(over: Partial<ShareHost> = {}): ShareHost & { setOffers(o: ShareOffers): void } {
+  let offers: ShareOffers = { projects: true, links: false };
   const listeners = new Set<() => void>();
   const reject = () => Promise.reject(new Error("not faked"));
   return {
@@ -27,11 +27,11 @@ function fakeLogger() {
   return { logger, lines };
 }
 
-function connect(host: SharingHost) {
-  const pair = createLoopbackTransport<SharingCall, SharingReply>();
+function connect(host: ShareHost) {
+  const pair = createLoopbackTransport<ShareCall, ShareReply>();
   const { logger, lines } = fakeLogger();
-  const stop = serveSharing(host, pair.host, logger);
-  const client = createSharingClient(pair.ui);
+  const stop = serveShare(host, pair.host, logger);
+  const client = createShareClient(pair.ui);
   return { client, lines, stop, pair };
 }
 
@@ -77,13 +77,13 @@ describe("sharing client and server", () => {
   });
 
   it("starts with no offers, then hears offers and place after hello and on each change", () => {
-    const pair = createLoopbackTransport<SharingCall, SharingReply>();
-    const client = createSharingClient(pair.ui);
+    const pair = createLoopbackTransport<ShareCall, ShareReply>();
+    const client = createShareClient(pair.ui);
     expect(client.offers()).toEqual({ projects: false, links: false });
     const host = fakeHost();
-    const changes: SharingOffers[] = [];
+    const changes: ShareOffers[] = [];
     client.onOffersChange(() => changes.push(client.offers()));
-    serveSharing(host, pair.host, fakeLogger().logger);
+    serveShare(host, pair.host, fakeLogger().logger);
     expect(client.offers()).toEqual({ projects: true, links: false });
     expect(client.place).toBe("this device");
     host.setOffers({ projects: true, links: true });
@@ -91,8 +91,8 @@ describe("sharing client and server", () => {
   });
 
   it("hands dialog requests to onOpen", () => {
-    const pair = createLoopbackTransport<SharingCall, SharingReply>();
-    const client = createSharingClient(pair.ui);
+    const pair = createLoopbackTransport<ShareCall, ShareReply>();
+    const client = createShareClient(pair.ui);
     const requests: unknown[] = [];
     client.onOpen((r) => requests.push(r));
     pair.host.post({ channel: "sharing", type: "open", request: { kind: "joinProject", invite: "x" } });

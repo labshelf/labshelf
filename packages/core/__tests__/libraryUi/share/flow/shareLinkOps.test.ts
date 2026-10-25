@@ -3,8 +3,8 @@ import { posixPathOps } from "../../../../src/library/index";
 import type { PaperRecord } from "../../../../src/model/index";
 import type { RelayAccount } from "../../../../src/relay/index";
 import type { ImportShareLinkResult } from "../../../../src/share/index";
-import type { SharingProgress } from "../../../../src/libraryUi/share/shareHost";
-import { createFolderLinkOps, type FolderLinkDeps } from "../../../../src/libraryUi/share/flow/index";
+import type { ShareProgress } from "../../../../src/libraryUi/share/shareHost";
+import { createFolderShareLinkOps, type FolderShareLinkDeps } from "../../../../src/libraryUi/share/flow/index";
 import { makeHarness, PAPERS } from "../../../support/mutationHarness";
 import { memoryShareRegistry, memoryShareRelay } from "../../../support/memoryShareRelay";
 
@@ -14,14 +14,14 @@ function record(id: string, folder: string): PaperRecord {
   return { id, citeKey: id, title: `Title ${id}`, path: `${PAPERS}/${folder}/${id}` } as PaperRecord;
 }
 
-async function setup(overrides: Partial<FolderLinkDeps> = {}) {
+async function setup(overrides: Partial<FolderShareLinkDeps> = {}) {
   const h = makeHarness();
   const papers = [record("a", "Group"), record("b", "Group/Week 1")];
   for (const paper of papers) { await h.seedPaper(paper.path, { title: paper.title }); }
   const relay = memoryShareRelay();
   const opened: string[] = [];
   let refreshes = 0;
-  const deps: FolderLinkDeps = {
+  const deps: FolderShareLinkDeps = {
     papers: () => papers, papersRoot: PAPERS, sep: "/",
     sources: { fs: h.fs, paths: posixPathOps, annotations: async () => [] },
     registry: memoryShareRegistry(),
@@ -33,7 +33,7 @@ async function setup(overrides: Partial<FolderLinkDeps> = {}) {
     openFolder: async (path) => { opened.push(path); },
     ...overrides,
   };
-  return { ops: createFolderLinkOps(deps, h.ctx.logger), relay, opened, refreshes: () => refreshes };
+  return { ops: createFolderShareLinkOps(deps, h.ctx.logger), relay, opened, refreshes: () => refreshes };
 }
 
 describe("createFolderLinkOps", () => {
@@ -54,7 +54,7 @@ describe("createFolderLinkOps", () => {
   it("shares an eligible folder, reports its stages and lists the link", async () => {
     const { ops } = await setup();
     expect(await ops.shareableFolder(`${PAPERS}/Group`)).toEqual({ path: `${PAPERS}/Group`, label: "Group", count: 2 });
-    const progress: SharingProgress[] = [];
+    const progress: ShareProgress[] = [];
     const result = await ops.shareFolder(`${PAPERS}/Group`, false, (p) => progress.push(p));
     expect(result.kind).toBe("shared");
     expect(progress).toEqual([{ stage: "reading" }, { stage: "encrypting" }, { stage: "uploading" }]);
@@ -86,7 +86,7 @@ describe("createFolderLinkOps", () => {
     const summary = { folder: `${PAPERS}/Group 2`, added: [record("c", "Group 2")], duplicates: [], missingPdfs: [] };
     const result: ImportShareLinkResult = { status: "imported", summary, withAnnotations: false };
     const s = await setup({ importLink: async ({ onProgress }) => { onProgress?.(1, 1); return result; } });
-    const progress: SharingProgress[] = [];
+    const progress: ShareProgress[] = [];
     expect(await s.ops.importLink("x", (p) => progress.push(p))).toEqual({
       kind: "imported", summary: 'Imported 1 of the shared papers into "Group 2".', folder: `${PAPERS}/Group 2`,
     });

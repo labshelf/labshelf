@@ -1,7 +1,7 @@
 /** Runs one bounded lookup against a service: a deadline, a read of the body, and a single WARN when it fails. */
-import { warn } from "../env.js";
+import { reportWarning } from "../env.js";
 import type { FetchFn, ResolverEnv } from "../pdfResolver.js";
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 
 const LOOKUP_TIMEOUT_MS = 8000;
 const JSON_HEADERS = { Accept: "application/json" };
@@ -21,20 +21,20 @@ async function timedFetch<T>(
   try {
     const res = await env.fetch(url, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS), redirect: "follow", ...(headers ? { headers } : {}) });
     if (!res.ok) {
-      warn(env, "lookup failed", { url, status: res.status });
+      reportWarning(env, "lookup failed", { url, status: res.status });
       return undefined;
     }
     return await read(res);
   } catch (error) {
-    warn(env, "lookup failed", { url, error: errorMessage(error) });
+    reportWarning(env, "lookup failed", { url, error: formatError(error) });
     return undefined;
   }
 }
 
-export function lookupJson<T>(env: ResolverEnv, url: string, headers: Record<string, string> = {}): Promise<T | undefined> {
+export function fetchResolverJson<T>(env: ResolverEnv, url: string, headers: Record<string, string> = {}): Promise<T | undefined> {
   return timedFetch(env, url, async (res) => (await res.json()) as T, { ...JSON_HEADERS, ...headers });
 }
 
-export function lookupText(env: ResolverEnv, url: string): Promise<string | undefined> {
+export function fetchResolverText(env: ResolverEnv, url: string): Promise<string | undefined> {
   return timedFetch(env, url, (res) => res.text());
 }

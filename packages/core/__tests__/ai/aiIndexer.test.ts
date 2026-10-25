@@ -1,7 +1,7 @@
 // The indexer reads each PDF once, skips unchanged content, survives failing jobs and clears deleted papers.
 import { AiIndexer } from "../../src/ai/aiIndexer";
 import type { AiIndexerDependencies } from "../../src/ai/aiIndexer";
-import { sha256Hex } from "../../src/hash/index";
+import { deriveSha256Hex } from "../../src/hash/index";
 
 jest.mock("../../src/ai/ingestion", () => ({
   ...jest.requireActual("../../src/ai/ingestion"),
@@ -53,11 +53,11 @@ describe("AiIndexer indexing", () => {
     expect(deps.fileSystem.readFile).toHaveBeenCalledTimes(1);
     expect(deps.fileSystem.readFile).toHaveBeenCalledWith(nested);
     expect(deps.extractor.extract).toHaveBeenCalledWith("p1", BYTES);
-    expect(stored.get("p1")).toBe(await sha256Hex(BYTES));
+    expect(stored.get("p1")).toBe(await deriveSha256Hex(BYTES));
   });
 
   it("skips a paper whose content hash matches the stored one", async () => {
-    const { indexer, deps } = makeIndexer({ stored: { p1: await sha256Hex(BYTES) } });
+    const { indexer, deps } = makeIndexer({ stored: { p1: await deriveSha256Hex(BYTES) } });
 
     await indexer.rebuildAll();
 
@@ -71,7 +71,7 @@ describe("AiIndexer indexing", () => {
     await indexer.rebuildAll();
 
     expect(deps.extractor.extract).toHaveBeenCalledTimes(1);
-    expect(stored.get("p1")).toBe(await sha256Hex(BYTES));
+    expect(stored.get("p1")).toBe(await deriveSha256Hex(BYTES));
   });
 
   it("skips a paper the resolver cannot locate", async () => {

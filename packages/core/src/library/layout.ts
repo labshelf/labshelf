@@ -45,7 +45,7 @@ export interface LibraryLayout<T> {
   markerDirs(): T[];
 }
 
-export function libraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
+export function createLibraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
   const research = () => join(root, RESEARCH_DIR);
   const paperDataRoot = () => join(research(), PAPERS_DIR);
   const paperDataDir = (paperId: string) => join(paperDataRoot(), paperId);
@@ -71,6 +71,6 @@ export function libraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T> {
 export interface PaperFiles<T> { pdf: T; metadata: T; bib: T }
 
 /** The files inside one paper folder. */
-export function paperFiles<T>(folder: T, join: Join<T>): PaperFiles<T> {
+export function createPaperFiles<T>(folder: T, join: Join<T>): PaperFiles<T> {
   return { pdf: join(folder, PDF_FILE), metadata: join(folder, METADATA_FILE), bib: join(folder, BIB_FILE) };
 }

@@ -1,16 +1,16 @@
 // Renders the sidebar from a library tree, with its expansion, focus, current folder, and selected paper.
-import { PAPERS_DIR, isUnderDir, parentDir } from "../../../library/index.js";
+import { PAPERS_DIR, isUnderDir, deriveParentDir } from "../../../library/index.js";
 import { el } from "../../../ui/dom/index.js";
 import { icon } from "../../../ui/index.js";
 import type { LibraryTree, TagCount } from "../../viewModel/index.js";
-import { tagQuery } from "../../searchQueries.js";
-import { projectListActions, projectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
+import { createTagQuery } from "../../searchQueries.js";
+import { createProjectListActions, renderProjectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
 import type { SidebarProject } from "../../viewModel/index.js";
-import { GROUP_ROW_DEPTH, allProjectsRow, exploreTemplatesRow, folderRow, paperRow, rowKey, allPapersRow, tagRow } from "./sidebarRows.js";
-import { groupRow, sectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
-import { spaceRows, type SidebarSpacesState } from "./spaces/index.js";
-import { appendOpenProject } from "./sidebarOpenProject.js";
-import type { SharingHost } from "../../share/index.js";
+import { GROUP_ROW_DEPTH, renderAllProjectsRow, renderExploreTemplatesRow, renderFolderRow, renderPaperRow, rowKey, renderAllPapersRow, renderTagRow } from "./sidebarRows.js";
+import { renderGroupRow, renderSectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
+import { renderSpaceRows, type SidebarSpacesState } from "./spaces/index.js";
+import { addOpenProject } from "./sidebarOpenProject.js";
+import type { ShareHost } from "../../share/index.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
 
 /** Every focusable row: section headers, group headings and tree rows. */
@@ -48,7 +48,7 @@ export interface SidebarState extends SidebarSpacesState {
   treeOpen: Map<string, boolean>;
   /** The open inline add input of a project tree, with its text so far, kept across renders. */
   treeInput: { view: string; key: string; placeholder: string; text: string } | null;
-  sharing?: SharingHost | undefined;
+  sharing?: ShareHost | undefined;
   /** Lets the host accept drops on a folder row; called on every render. */
   dropTarget?: ((row: HTMLElement, path: string) => void) | undefined;
   /** The focused row's key (see `rowKey`). */
@@ -74,7 +74,7 @@ const folderActions = (a: SidebarActions): string =>
 let nextTreeId = 0;
 const treeIds = new WeakMap<HTMLElement, number>();
 
-export function paintFocus(t: SidebarState): void {
+export function drawFocus(t: SidebarState): void {
   const active = document.activeElement === t.el;
   if (!treeIds.has(t.el)) treeIds.set(t.el, ++nextTreeId);
   t.el.querySelectorAll<HTMLElement>(NAV_ROWS).forEach(r => {
@@ -89,11 +89,11 @@ export function paintFocus(t: SidebarState): void {
 function appendFolders(t: SidebarState, tree: LibraryTree, frag: HTMLElement): void {
   const walk = (path: string, depth: number): void => {
     for (const child of tree.children(path)) {
-      if (child.kind === "paper") { frag.append(paperRow(child.id, child.title, depth, child.id === t.selectedId)); continue; }
+      if (child.kind === "paper") { frag.append(renderPaperRow(child.id, child.title, depth, child.id === t.selectedId)); continue; }
       const open = t.expanded.has(child.path);
       const current = child.path === t.current;
       // An empty folder still shows its twisty, as folders do in VS Code's Explorer.
-      const r = folderRow(child.name, child.path, { depth, count: child.count, open, current });
+      const r = renderFolderRow(child.name, child.path, { depth, count: child.count, open, current });
       t.dropTarget?.(r, child.path);
       frag.append(r);
       if (open) walk(child.path, depth + 1);
@@ -117,18 +117,18 @@ function appendPane(parent: Element | DocumentFragment, id: SectionId | GroupId,
 function appendTags(t: SidebarState, library: HTMLElement): void {
   const query = t.query.trim().toLowerCase();
   const open = !t.collapsed.has("library.tags");
-  const body = appendPane(library, "library.tags", groupRow("library.tags", "Tags", open), open);
-  if (open) for (const { tag, count } of t.tags) body.append(tagRow(tag, count, tagQuery(tag) === query));
+  const body = appendPane(library, "library.tags", renderGroupRow("library.tags", "Tags", open), open);
+  if (open) for (const { tag, count } of t.tags) body.append(renderTagRow(tag, count, createTagQuery(tag) === query));
 }
 
 function appendLibrary(t: SidebarState, tree: LibraryTree, frag: DocumentFragment): void {
   const open = !t.collapsed.has("library");
-  const body = appendPane(frag, "library", sectionRow("library", "Library", open), open);
+  const body = appendPane(frag, "library", renderSectionRow("library", "Library", open), open);
   if (!open) return;
   body.classList.add("tree-pane-stack");
-  body.append(allPapersRow(tree.total(), t.current === PAPERS_DIR));
+  body.append(renderAllPapersRow(tree.total(), t.current === PAPERS_DIR));
   const foldersOpen = !t.collapsed.has("library.folders");
-  const folders = appendPane(body, "library.folders", groupRow("library.folders", "Folders", foldersOpen, folderActions(t.actions)), foldersOpen);
+  const folders = appendPane(body, "library.folders", renderGroupRow("library.folders", "Folders", foldersOpen, folderActions(t.actions)), foldersOpen);
   if (foldersOpen) {
     appendFolders(t, tree, folders);
     if (tree.children(PAPERS_DIR).length === 0) folders.append(el("div", { class: "tree-empty", text: "No folders yet." }));
@@ -140,16 +140,16 @@ const canJoin = (t: SidebarState): boolean => t.sharing?.offers().projects === t
 
 function appendProjects(t: SidebarState, frag: DocumentFragment): void {
   const open = !t.collapsed.has("projects");
-  const body = appendPane(frag, "projects", sectionRow("projects", "Projects", open), open);
+  const body = appendPane(frag, "projects", renderSectionRow("projects", "Projects", open), open);
   if (!open) return;
   body.classList.add("tree-pane-stack");
   // An open project owns the section; the project list and the gallery return when it closes.
-  if (t.openProject) { appendOpenProject(t, body, appendPane, () => render(t)); return; }
-  if (t.offers.templates) body.append(exploreTemplatesRow());
-  if (t.offers.allProjects) body.append(allProjectsRow());
+  if (t.openProject) { addOpenProject(t, body, appendPane, () => render(t)); return; }
+  if (t.offers.templates) body.append(renderExploreTemplatesRow());
+  if (t.offers.allProjects) body.append(renderAllProjectsRow());
   const listOpen = !t.collapsed.has("projects.list");
-  const list = appendPane(body, "projects.list", groupRow("projects.list", "My projects", listOpen, projectListActions(t.offers, canJoin(t))), listOpen);
-  if (listOpen) list.append(...projectTreeNodes(t.projectList, t.expanded, t.offers, canJoin(t)));
+  const list = appendPane(body, "projects.list", renderGroupRow("projects.list", "My projects", listOpen, createProjectListActions(t.offers, canJoin(t))), listOpen);
+  if (listOpen) list.append(...renderProjectTreeNodes(t.projectList, t.expanded, t.offers, canJoin(t)));
 }
 
 export function render(t: SidebarState): void {
@@ -161,11 +161,11 @@ export function render(t: SidebarState): void {
   if (t.spaces) appendSpaces(t, frag);
   t.el.replaceChildren(frag);
   t.el.querySelectorAll<HTMLElement>(".tree-pane").forEach((p) => { p.lastElementChild!.scrollTop = scrolled.get(p.dataset["pane"]) ?? 0; });
-  paintFocus(t);
+  drawFocus(t);
 }
 
 /** Folds or unfolds a section or a group heading; the folders' own expansion is kept. */
-export function toggleSection(t: SidebarState, id: SectionId | GroupId): void {
+export function updateSectionOpen(t: SidebarState, id: SectionId | GroupId): void {
   if (t.collapsed.has(id)) t.collapsed.delete(id); else t.collapsed.add(id);
   t.saveCollapsed([...t.collapsed]);
   render(t);
@@ -178,14 +178,14 @@ export function setExpanded(t: SidebarState, path: string, open: boolean): void 
 }
 
 /** Expands a folder and its ancestors without saving them, as VS Code's tree.reveal does. */
-export function expandTo(t: SidebarState, path: string): void {
-  for (let p = path; p !== PAPERS_DIR && isUnderDir(p, PAPERS_DIR, "/"); p = parentDir(p, "/")) t.expanded.add(p);
+export function openFolderPath(t: SidebarState, path: string): void {
+  for (let p = path; p !== PAPERS_DIR && isUnderDir(p, PAPERS_DIR, "/"); p = deriveParentDir(p, "/")) t.expanded.add(p);
 }
 
 function appendSpaces(t: SidebarState, frag: DocumentFragment): void {
   const open = !t.collapsed.has("spaces");
   const action = `<button class="ls-icon-btn" data-tree="space-new" title="New Space" aria-label="New Space">${icon("plus")}</button>`;
-  const body = appendPane(frag, "spaces", sectionRow("spaces", "Spaces", open, action), open);
+  const body = appendPane(frag, "spaces", renderSectionRow("spaces", "Spaces", open, action), open);
   body.setAttribute("role", "group");
-  if (open) body.append(...spaceRows(t));
+  if (open) body.append(...renderSpaceRows(t));
 }

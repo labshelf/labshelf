@@ -1,6 +1,6 @@
 // Encrypts a share's manifest under its link key and its PDF parts convergently, and opens and verifies both.
 import { openFrame, sealFrame, type FrameContext, type WebCryptoKey } from "../collab/shareKey/index.js";
-import { sha256Hex } from "../hash/index.js";
+import { deriveSha256Hex } from "../hash/index.js";
 import { decodeShareManifest, type ShareManifest, type SharedPdfPart } from "./shareManifest.js";
 
 // CONTRACT: documents/contracts/share-link.md#encryption
@@ -56,18 +56,18 @@ async function blobCipher(contentHash: string): Promise<{ key: WebCryptoKey; iv:
 export interface SealedBlob { part: SharedPdfPart; bytes: Uint8Array }
 
 export async function sealBlob(plaintext: Uint8Array): Promise<SealedBlob> {
-  const content = await sha256Hex(plaintext);
+  const content = await deriveSha256Hex(plaintext);
   const { key, iv } = await blobCipher(content);
   const sealed = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext as Uint8Array<ArrayBuffer>);
   const bytes = new Uint8Array(1 + sealed.byteLength);
   bytes[0] = BLOB_VERSION;
   bytes.set(new Uint8Array(sealed), 1);
-  return { part: { blob: await sha256Hex(bytes), content, size: plaintext.length }, bytes };
+  return { part: { blob: await deriveSha256Hex(bytes), content, size: plaintext.length }, bytes };
 }
 
 /** Undefined unless the bytes hash to the part's blob, open under its key, and decrypt to its content hash and size. */
 export async function openBlob(part: SharedPdfPart, bytes: Uint8Array): Promise<Uint8Array | undefined> {
-  if (bytes[0] !== BLOB_VERSION || (await sha256Hex(bytes)) !== part.blob) { return undefined; }
+  if (bytes[0] !== BLOB_VERSION || (await deriveSha256Hex(bytes)) !== part.blob) { return undefined; }
   const { key, iv } = await blobCipher(part.content);
   let plaintext: Uint8Array;
   try {
@@ -76,5 +76,5 @@ export async function openBlob(part: SharedPdfPart, bytes: Uint8Array): Promise<
     // PLATFORM: WebCrypto reports a failed tag check only by rejecting.
     return undefined;
   }
-  return plaintext.length === part.size && (await sha256Hex(plaintext)) === part.content ? plaintext : undefined;
+  return plaintext.length === part.size && (await deriveSha256Hex(plaintext)) === part.content ? plaintext : undefined;
 }

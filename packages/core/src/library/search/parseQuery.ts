@@ -1,8 +1,8 @@
 // Parses the search query language shared by the apps into a structured query.
-import { fold } from "./text/index.js";
-import { emptyQuery, type Query, type HasKey, type SearchField } from "./query.js";
-import { tokenize } from "./tokenize.js";
-import type { PaperStatus } from "../readingStatus/index.js";
+import { normalizeText } from "./text/index.js";
+import { createEmptyQuery, type Query, type HasField, type SearchField } from "./query.js";
+import { splitQuery } from "./tokenize.js";
+import type { ReadingStatus } from "../readingStatus/index.js";
 
 interface YearBounds {
   min?: number;
@@ -48,13 +48,13 @@ const FIELD_KEYS: ReadonlyMap<string, SearchField> = new Map<string, SearchField
   ["abstract", "summary"],
 ]);
 
-const STATUS_ALIASES: ReadonlyMap<string, PaperStatus> = new Map<string, PaperStatus>([
+const STATUS_ALIASES: ReadonlyMap<string, ReadingStatus> = new Map<string, ReadingStatus>([
   ["u", "unread"], ["unread", "unread"], ["new", "unread"],
   ["r", "reading"], ["reading", "reading"],
   ["d", "done"], ["done", "done"], ["read", "done"],
 ]);
 
-const HAS_ALIASES: ReadonlyMap<string, HasKey> = new Map<string, HasKey>([
+const HAS_ALIASES: ReadonlyMap<string, HasField> = new Map<string, HasField>([
   ["pdf", "pdf"], ["note", "note"], ["notes", "note"], ["doi", "doi"], ["tag", "tags"], ["tags", "tags"],
   ["abstract", "abstract"], ["summary", "abstract"],
 ]);
@@ -69,7 +69,7 @@ function isOperatorKey(key: string): boolean {
 // half-typed `author:` does not hide every paper; a known key with a value it cannot read stays a plain term.
 function applyOperator(token: string, q: Query): boolean {
   if (token.startsWith("#") && token.length > 1) {
-    q.tags.push(fold(token.slice(1)));
+    q.tags.push(normalizeText(token.slice(1)));
     return true;
   }
   const colon = token.indexOf(":");
@@ -79,9 +79,9 @@ function applyOperator(token: string, q: Query): boolean {
   const value = token.slice(colon + 1);
   if (!value) { return true; }
   const lower = value.toLowerCase();
-  if (TAG_KEYS.has(key)) { q.tags.push(fold(value)); return true; }
+  if (TAG_KEYS.has(key)) { q.tags.push(normalizeText(value)); return true; }
   const field = FIELD_KEYS.get(key);
-  if (field) { q.fields.push({ field, value: fold(value) }); return true; }
+  if (field) { q.fields.push({ field, value: normalizeText(value) }); return true; }
   const status = STATUS_ALIASES.get(lower);
   if (STATUS_KEYS.has(key) && status) { q.statuses.push(status); return true; }
   if (YEAR_KEYS.has(key)) {
@@ -109,13 +109,13 @@ function applyOperator(token: string, q: Query): boolean {
 //   author:vaswani               one field: author, kw, venue, note, key, abstract
 //   has:pdf  no:pdf              has:note, has:doi, has:tags, has:abstract
 export function parseQuery(text: string): Query {
-  const q = emptyQuery();
-  for (const token of tokenize(text)) {
+  const q = createEmptyQuery();
+  for (const token of splitQuery(text)) {
     if (applyOperator(token, q)) { continue; }
     if (token.startsWith("-") && token.length > 1) {
-      q.excluded.push(fold(token.slice(1)));
+      q.excluded.push(normalizeText(token.slice(1)));
     } else {
-      q.terms.push(fold(token));
+      q.terms.push(normalizeText(token));
     }
   }
   return q;

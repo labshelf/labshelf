@@ -1,5 +1,5 @@
 // Offers to move the papers still stored in this browser into the library folder, and reports what stayed behind.
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { el, toast } from "@labshelf/core/dom";
 import { bannerShell, setButton } from "./bannerShell";
 import { countBrowserPapers, getLibrarySource, moveBrowserLibraryToFolder } from "../../storage";
@@ -40,7 +40,7 @@ export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): Mo
       if (!skipped.length) toast(`Moved ${papers(result.moved.length)} to the folder.`, "ok");
     } catch (err) {
       await options.logger.error("library.libraryLocation", err);
-      toast(errorMessage(err), "error");
+      toast(formatError(err), "error");
     }
     try {
       await options.onMoved();

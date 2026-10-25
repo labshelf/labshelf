@@ -3,9 +3,9 @@ import { runShareProjectDialog } from "../../../collab/dom/index.js";
 import { el, showMenu } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../sidebarTrees.js";
-import { GROUP_ROW_DEPTH, formatLabel, treeItem } from "./sidebarRows.js";
-import { groupRow } from "./sidebarSections.js";
-import { openTreeInput, treeInputRow } from "./sidebarTreeInput.js";
+import { GROUP_ROW_DEPTH, formatLabel, renderTreeItem } from "./sidebarRows.js";
+import { renderGroupRow } from "./sidebarSections.js";
+import { openTreeInput, renderTreeInputRow } from "./sidebarTreeInput.js";
 import type { SidebarState } from "./sidebarView.js";
 
 const iconHtml = (i: SidebarNodeIcon | undefined): string => {
@@ -28,7 +28,7 @@ function nodeRow(t: SidebarState, view: string, n: SidebarTreeNode, depth: numbe
     ? `<button class="tree-trailing" data-tree="node-action" data-action="${escapeHtml(n.trailing.action)}" title="${escapeHtml(n.trailing.tooltip)}" aria-label="${escapeHtml(n.trailing.tooltip)}">${iconHtml(n.trailing.icon)}</button>` : "";
   const inline = n.inlineAction
     ? `<button class="tree-inline-action" data-tree="node-action" data-action="${escapeHtml(n.inlineAction.action)}">${escapeHtml(n.inlineAction.label)}</button>` : "";
-  const row = treeItem(`tree:${view}:${n.key}`, depth, false, {
+  const row = renderTreeItem(`tree:${view}:${n.key}`, depth, false, {
     "data-tree-view": view, "data-tree-key": n.key, "aria-selected": "false",
     "aria-expanded": folds ? String(open) : undefined, title: n.tooltip,
   }, `<span class="tree-twisty${folds ? "" : " leaf"}">${icon("chevron-down")}</span>${check}${iconHtml(n.icon)}` +
@@ -44,7 +44,7 @@ function appendNodes(t: SidebarState, body: HTMLElement, view: string, nodes: re
   for (const n of nodes) {
     body.append(nodeRow(t, view, n, depth));
     if (n.children && isNodeOpen(t, view, n)) appendNodes(t, body, view, n.children, depth + 1, render);
-    if (t.treeInput?.view === view && t.treeInput.key === n.key) body.append(treeInputRow(t, depth + 1, render));
+    if (t.treeInput?.view === view && t.treeInput.key === n.key) body.append(renderTreeInputRow(t, depth + 1, render));
   }
 }
 
@@ -66,7 +66,7 @@ function openProjectRow(p: SidebarOpenProject, canShare: boolean): HTMLElement {
 }
 
 /** Appends the project row, then one foldable pane per tree, to the Projects body. */
-export function appendOpenProject(
+export function addOpenProject(
   t: SidebarState, body: HTMLElement, appendPane: (parent: HTMLElement, id: `project.${string}`, header: HTMLElement, open: boolean) => HTMLElement, render: () => void,
 ): void {
   const p = t.openProject;
@@ -76,7 +76,7 @@ export function appendOpenProject(
     const id = `project.${tree.view}` as const;
     const open = !t.collapsed.has(id);
     const actions = tree.actions.map((a) => `<button class="ls-icon-btn" data-tree="project-tree-action" data-action="${escapeHtml(a.action)}" title="${escapeHtml(a.label)}">${icon(a.icon)}</button>`).join("");
-    const header = groupRow(id, tree.title, open, actions);
+    const header = renderGroupRow(id, tree.title, open, actions);
     const pane = appendPane(body, id, header, open);
     if (!open) continue;
     if (tree.toggle) pane.append(toggleRow(tree.toggle));
@@ -112,7 +112,7 @@ function toggle(t: SidebarState, view: string, n: SidebarTreeNode, render: () =>
 }
 
 /** Runs a tree row as a click or Enter does: the open project's menu, a row's command, else a fold; `onTwisty` folds without running. */
-export function activateTreeRow(t: SidebarState, r: HTMLElement, render: () => void, onTwisty = false): boolean {
+export function runTreeRow(t: SidebarState, r: HTMLElement, render: () => void, onTwisty = false): boolean {
   if (r.dataset["openProject"] !== undefined) { t.projects?.openProjectMenu(r); return true; }
   const hit = rowNode(t, r);
   if (!hit) return false;

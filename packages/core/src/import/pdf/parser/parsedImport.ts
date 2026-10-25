@@ -1,5 +1,5 @@
 /** Builds the ParsedPdfImport record from the merged metadata of every source. */
-import { makeCiteKey } from "../../../library/index.js";
+import { createCiteKey } from "../../../library/index.js";
 import {
   mergeMetadata,
   SOURCE_TRUST,
@@ -9,7 +9,7 @@ import {
 } from "../../metadata/index.js";
 import type { DetectedIdentifier } from "../../identifiers/index.js";
 import { normalizeAuthors } from "../authors.js";
-import { yearFromText } from "../publicationYear.js";
+import { extractYearFromText } from "../publicationYear.js";
 import { normalizeTitle } from "../titleQuality.js";
 import type { ParsedPdfImport } from "../pdfDocument.js";
 
@@ -27,7 +27,7 @@ function gradeConfidence(
   return metadata.title ? "medium" : "low";
 }
 
-export interface RecordInput {
+export interface PaperRecordInput {
   sources: MetadataSource[];
   fileStem: string;
   frontMatter: string;
@@ -39,15 +39,15 @@ export interface RecordInput {
   usedOcr: boolean;
 }
 
-export function buildParsedRecord(input: RecordInput): ParsedPdfImport {
+export function createParsedPaperRecord(input: PaperRecordInput): ParsedPdfImport {
   const merged = mergeMetadata(input.sources);
   const metadata = merged.metadata;
   const title = normalizeTitle(metadata.title ?? input.fileStem);
-  const year = metadata.year ?? (input.textIsReadable ? yearFromText(input.frontMatter) : undefined);
+  const year = metadata.year ?? (input.textIsReadable ? extractYearFromText(input.frontMatter) : undefined);
   const authors = normalizeAuthors(metadata.authors);
   // CONTRACT: documents/contracts/library-format.md#paper-identity (the key names the folder for good, so a guessed surname stays wrong)
   const keyAuthors = authorTrust(input.sources, merged.fieldSources["authors"]) >= SOURCE_TRUST.xmp ? authors : [];
-  const citeKey = makeCiteKey({ authors: keyAuthors, year, title }, title);
+  const citeKey = createCiteKey({ authors: keyAuthors, year, title }, title);
 
   return {
     title,

@@ -4,7 +4,7 @@ import { escapeHtml, icon, statusMark } from "../../../../ui/index.js";
 import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/viewModel/index.js";
 import type { SidebarSpacesState, SidebarSpaceActions } from "./spaceActions.js";
-import { PAPER_DRAG_MIME, parsePaperDragIds } from "../../drag/index.js";
+import { PAPER_DRAG_MIME, parsePaperDragPayload } from "../../drag/index.js";
 
 function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: string, folder?: string): void {
   const accepts = (event: DragEvent): boolean => Array.from(event.dataTransfer?.types ?? []).includes(PAPER_DRAG_MIME);
@@ -19,7 +19,7 @@ function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: str
     row.classList.remove("drop-target");
     if (!accepts(event)) return;
     event.preventDefault();
-    const ids = parsePaperDragIds(event.dataTransfer?.getData(PAPER_DRAG_MIME) ?? "[]");
+    const ids = parsePaperDragPayload(event.dataTransfer?.getData(PAPER_DRAG_MIME) ?? "[]");
     if (ids.length) actions.dropPapers(id, folder, ids);
   });
 }
@@ -65,7 +65,7 @@ function appendSpace(t: SidebarSpacesState, result: HTMLElement[], space: Sideba
   }
 }
 
-export function spaceRows(t: SidebarSpacesState): HTMLElement[] {
+export function renderSpaceRows(t: SidebarSpacesState): HTMLElement[] {
   const rows = [treeRow("all-spaces", "All Spaces", 0, icon("layers"), { "data-all-spaces": "" })];
   for (const space of t.spaceList) {
     const branch: HTMLElement[] = [];

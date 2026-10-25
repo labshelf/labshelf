@@ -1,8 +1,8 @@
 /** Recognises the identifiers in what a user typed or pasted: bare ids, labelled DOIs and publisher links. */
-import { arxivIdFromUrl, normalizeArxivId } from "./arxiv.js";
+import { extractArxivIdentifierFromUrl, normalizeArxivIdentifier } from "./arxiv.js";
 import { detectIdentifiers } from "./detectIdentifiers.js";
 import { extractDoi } from "./doi.js";
-import { pmidFromUrl } from "./pubmed.js";
+import { extractPmidFromUrl } from "./pubmed.js";
 import type { DetectedIdentifier } from "./detectedIdentifier.js";
 
 // A DOI the user typed on its own, with an optional `doi:` label or doi.org link.
@@ -14,13 +14,13 @@ const TYPED_DOI = /^(?:doi:\s*|https?:\/\/(?:dx\.)?doi\.org\/)?10\./i;
  * scanned like PDF text, with the input also counting as a link target.
  * @returns The identifiers found, best first.
  */
-export function identifiersFromInput(input: string): DetectedIdentifier[] {
+export function extractIdentifiersFromInput(input: string): DetectedIdentifier[] {
   const text = input.trim();
-  const arxiv = normalizeArxivId(text) ?? arxivIdFromUrl(text);
+  const arxiv = normalizeArxivIdentifier(text) ?? extractArxivIdentifierFromUrl(text);
   if (arxiv) {
     return [{ type: "arxiv", value: arxiv }];
   }
-  const pmid = pmidFromUrl(text);
+  const pmid = extractPmidFromUrl(text);
   if (pmid) {
     return [{ type: "pmid", value: pmid }];
   }

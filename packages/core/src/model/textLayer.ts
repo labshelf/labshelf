@@ -10,7 +10,7 @@
 export const TEXT_LAYER_STATES = ["native", "ocr", "missing", "failed"] as const;
 export type TextLayerState = (typeof TEXT_LAYER_STATES)[number];
 
-export interface TextLayerInfo {
+export interface TextLayerDetails {
   state: TextLayerState;
   // ocr: pages that received text, and pages that could not be read.
   ocrPages?: number;
@@ -26,7 +26,7 @@ export interface TextLayerInfo {
  * may come from an older version or a hand-edited file.
  * @returns The verdict, or undefined when the value is not a usable one.
  */
-export function parseTextLayerInfo(value: unknown): TextLayerInfo | undefined {
+export function parseTextLayerDetails(value: unknown): TextLayerDetails | undefined {
   if (!value || typeof value !== "object") {
     return undefined;
   }

@@ -7,7 +7,7 @@ import type { PathOps } from "../mutations/index.js";
 type Limiter = <T>(task: () => Promise<T>) => Promise<T>;
 
 /** @returns a function that runs at most `max` of the tasks passed to it at a time */
-export function concurrencyLimit(max: number): Limiter {
+export function createConcurrencyLimit(max: number): Limiter {
   let running = 0;
   const waiting: Array<() => void> = [];
   return async <T>(task: () => Promise<T>): Promise<T> => {
@@ -42,10 +42,10 @@ const SCAN_MODULE = "library/scan";
 const MAX_PARALLEL_OPERATIONS = 32;
 
 export function createScanEnv(fs: ScanFileSystem, ops: PathOps, logger: ILogger, previous: ReadonlyMap<string, PaperEntry> = new Map()): ScanEnv {
-  return { fs, ops, logger, limit: concurrencyLimit(MAX_PARALLEL_OPERATIONS), previous };
+  return { fs, ops, logger, limit: createConcurrencyLimit(MAX_PARALLEL_OPERATIONS), previous };
 }
 
 /** Logs something the scan skipped, with the context to find it. */
-export async function warnSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
+export async function reportSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
   await env.logger.log("WARN", SCAN_MODULE, message, context);
 }

@@ -24,7 +24,7 @@ const byTitle = (a: TreePaper, b: TreePaper): number => a.title.localeCompare(b.
  * Each paper's `folder` is keyed like `FolderTreeNode.path`: `PAPERS_DIR` for the root, `papers/A/B` below.
  * TRAP: the caller supplies it because `record.path` is absolute in a Node scan and relative in the browser.
  */
-export function libraryTree(input: { folders: readonly FolderTreeNode[]; papers: readonly { record: TreePaper; folder: string }[] }): LibraryTree {
+export function deriveLibraryTree(input: { folders: readonly FolderTreeNode[]; papers: readonly { record: TreePaper; folder: string }[] }): LibraryTree {
   // Indexed once: thousands of papers must not be scanned per expanded folder.
   const papersIn = new Map<string, TreePaper[]>();
   const folderOf = new Map<string, string>();

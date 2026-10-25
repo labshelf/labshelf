@@ -1,5 +1,5 @@
 // Renders only the treegrid rows near the viewport, re-slicing on scroll and resize, with padding standing in for the rest.
-import { RowReconciler, createRowWindow, measureRowHeight, type RowSlice, type RowViewport, type RowWindow } from "../../../../libraryUi/dom/list/index.js";
+import { RowReconciler, createRowWindow, readRowHeight, type RowSlice, type RowViewport, type RowWindow } from "../../../../libraryUi/dom/list/index.js";
 import type { FocusKeeper } from "./projectListFocus.js";
 
 export interface WindowParts<T> {
@@ -35,7 +35,7 @@ export function createWindowedRows<T extends { id: string }>(list: HTMLElement, 
   const viewport = (): RowViewport | null => {
     const height = list.clientHeight - heads.offsetHeight;
     if (!(height > 0)) return null;
-    win ??= createRowWindow({ rowHeight: measureRowHeight(list) });
+    win ??= createRowWindow({ rowHeight: readRowHeight(list) });
     return { scrollTop: list.scrollTop, height };
   };
   const sliceOf = (v: RowViewport | null): RowSlice =>

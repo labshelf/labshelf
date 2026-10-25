@@ -1,6 +1,6 @@
 // Shares a writing project through the user's relay, or shows the invite when it is already shared.
 import { progressDialog, showDialog } from "../../ui/dom/index.js";
-import type { ShareProjectResult, SharingHost } from "../../libraryUi/share/index.js";
+import type { ShareProjectResult, ShareHost } from "../../libraryUi/share/index.js";
 import { infoDialog, reportingFailure } from "../../share/dom/index.js";
 import { showInviteDialog } from "./inviteDialog.js";
 import { runJoinProjectDialog } from "./joinProjectDialog.js";
@@ -8,7 +8,7 @@ import { pickProject } from "./pickProject.js";
 
 const SHARE_NOTICE = "Anyone with the invite link can read and edit this project and pass the link on. There are no roles, so send it only to collaborators. Edits travel through your Cloudflare relay, end-to-end encrypted.";
 
-export function runShareProjectDialog(host: SharingHost, projectId?: string): Promise<void> {
+export function runShareProjectDialog(host: ShareHost, projectId?: string): Promise<void> {
   return reportingFailure("share the project", async () => {
     const project = await pickProject(host, projectId, false, "Share Project");
     if (!project) return;
@@ -36,7 +36,7 @@ export function runShareProjectDialog(host: SharingHost, projectId?: string): Pr
   });
 }
 
-async function showResult(host: SharingHost, project: { id: string; name: string }, result: ShareProjectResult): Promise<void> {
+async function showResult(host: ShareHost, project: { id: string; name: string }, result: ShareProjectResult): Promise<void> {
   if (result.kind === "shared") { await showInviteDialog(host, project.id, project.name, result.invite); return; }
   if (result.kind === "noRelay") {
     await infoDialog("Connect Cloudflare to share", "Sharing needs a Cloudflare relay: every edit travels through it, end-to-end encrypted. Connect Cloudflare to share.");

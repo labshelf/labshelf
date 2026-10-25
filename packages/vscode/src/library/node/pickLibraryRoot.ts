@@ -2,11 +2,11 @@
 import * as os from "node:os";
 import * as vscode from "vscode";
 
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import {
-  deviceLocalLayout,
+  createDeviceLocalLayout,
   detectSyncFolders,
-  inspectLibraryFolder,
+  detectLibraryFolder,
   type SyncFolder,
 } from "@labshelf/core/node";
 import type { SharedLibraryConfig } from "../../storage/paths/index.js";
@@ -58,7 +58,7 @@ async function browseForFolder(): Promise<string | undefined> {
 
 // An existing library is opened as it is, so the user never ends up with two libraries by accident.
 async function confirmExistingLibrary(target: string): Promise<boolean> {
-  const info = await inspectLibraryFolder(target);
+  const info = await detectLibraryFolder(target);
   if (!info.isLibrary) { return true; }
   const answer = await vscode.window.showInformationMessage(
     `Found your library with ${info.paperCount} papers. Open it?`, { modal: true }, "Open",
@@ -67,14 +67,14 @@ async function confirmExistingLibrary(target: string): Promise<boolean> {
 }
 
 async function record(target: string, deps: ChooseLibraryRootDeps): Promise<vscode.Uri | undefined> {
-  const logger = deps.createLogger(deviceLocalLayout(target).appLogPath);
+  const logger = deps.createLogger(createDeviceLocalLayout(target).appLogPath);
   try {
     await deps.sharedLibraryConfig.recordRoot(target, logger);
     await logger.log("INFO", "firstRun", "Library location chosen", { root: target });
     return vscode.Uri.file(target);
   } catch (error) {
     await logger.error("firstRun", error, { action: "record library root", root: target });
-    await vscode.window.showErrorMessage(`LabShelf: Failed to use ${target}: ${errorMessage(error)}`);
+    await vscode.window.showErrorMessage(`LabShelf: Failed to use ${target}: ${formatError(error)}`);
     return undefined;
   }
 }

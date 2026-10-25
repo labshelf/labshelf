@@ -1,7 +1,7 @@
 // Tests that metadata.yaml writes and keeps the `files` map of file descriptions and the keys around it.
 import YAML from 'yaml';
 
-import { BibTeXService, paperRecordFromMetadata, parsePaperMetadata } from '@labshelf/core';
+import { BibtexService, createPaperRecord, parsePaperMetadata } from '@labshelf/core';
 import type { IFileSystem, PaperRecord } from '@labshelf/core';
 
 const YAML_PATH = '/lib/papers/imai1986/metadata.yaml';
@@ -25,7 +25,7 @@ const paper = (overrides: Partial<PaperRecord> = {}): PaperRecord => ({
   id: 'imai1986', title: 'Efficient Algorithms', path: '/lib/papers/imai1986', citeKey: 'imai1986', status: 'unread', ...overrides,
 });
 const write = (fs: ReturnType<typeof memoryFs>, overrides?: Partial<PaperRecord>) =>
-  new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(overrides), 'paper.pdf');
+  new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(overrides), 'paper.pdf');
 const metadata = (fs: ReturnType<typeof memoryFs>) => YAML.parse(fs.files.get(YAML_PATH)!);
 
 describe('metadata.yaml files key', () => {
@@ -34,7 +34,7 @@ describe('metadata.yaml files key', () => {
     await write(fs, { files: { 'notes.md': 'My notes', data: 'Raw' } });
     expect(metadata(fs).files).toEqual({ 'notes.md': 'My notes', data: 'Raw' });
     const meta = parsePaperMetadata(fs.files.get(YAML_PATH)!)!;
-    expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).files).toEqual({ 'notes.md': 'My notes', data: 'Raw' });
+    expect(createPaperRecord(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).files).toEqual({ 'notes.md': 'My notes', data: 'Raw' });
   });
 
   it('replaces the file value with the record value', async () => {

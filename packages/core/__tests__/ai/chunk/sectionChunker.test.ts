@@ -1,4 +1,4 @@
-import { chunkBySection } from "../../../src/ai/chunk/index.js";
+import { splitBySection } from "../../../src/ai/chunk/index.js";
 import type { ExtractedPdfText } from "../../../src/ai/chunk/index.js";
 
 function makeExtracted(text: string): ExtractedPdfText {
@@ -12,7 +12,7 @@ function makeExtracted(text: string): ExtractedPdfText {
 describe("chunkBySection", () => {
   it("emits one chunk per detected section when each fits the budget", () => {
     const extracted = makeExtracted("1 Intro\nshort intro.\n2 Method\nshort method body.");
-    const chunks = chunkBySection(extracted);
+    const chunks = splitBySection(extracted);
     expect(chunks.length).toBe(2);
     expect(chunks.every((c) => c.kind === "section")).toBe(true);
   });
@@ -20,7 +20,7 @@ describe("chunkBySection", () => {
   it("splits oversized sections on paragraph boundaries", () => {
     const para = "lorem ipsum ".repeat(300);
     const extracted = makeExtracted(`1 Big\n${para}\n\n${para}\n\n${para}`);
-    const chunks = chunkBySection(extracted);
+    const chunks = splitBySection(extracted);
     expect(chunks.length).toBeGreaterThan(1);
     for (const c of chunks) {
       expect(c.tokenCount).toBeLessThanOrEqual(384 * 2);
@@ -36,7 +36,7 @@ describe("chunkBySection", () => {
       ],
       sections: [],
     };
-    const chunks = chunkBySection(extracted);
+    const chunks = splitBySection(extracted);
     expect(chunks.length).toBe(2);
     expect(chunks[0]!.page).toBe(1);
   });

@@ -1,5 +1,5 @@
 // Turns a share's manifest into the one read-only folder the library UI shows, with paths safe to build from its fields.
-import { paperStatsOf, type LibraryUiSnapshot, type PaperRecord, type PaperStats, type ShareManifest, type SharedPaper } from "@labshelf/core";
+import { derivePaperStats, type LibraryUiSnapshot, type PaperRecord, type PaperStats, type ShareManifest, type SharedPaper } from "@labshelf/core";
 
 const FALLBACK_FOLDER = "Shared papers";
 
@@ -38,7 +38,7 @@ export function createShareLibrary(manifest: ShareManifest): ShareLibrary {
     const path = `${folderPath}/${id}`;
     records.push({ ...paper.metadata, path, status: "unread", hasPdf: paper.pdf !== undefined });
     if (paper.pdf) { pdfDirs.push(path); }
-    if (paper.annotations) { stats[id] = paperStatsOf({ annotations: paper.annotations }); }
+    if (paper.annotations) { stats[id] = derivePaperStats({ annotations: paper.annotations }); }
   }
   const name = folderPath.slice("papers/".length);
   return {

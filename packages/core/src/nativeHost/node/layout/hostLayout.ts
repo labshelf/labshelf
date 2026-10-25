@@ -6,7 +6,7 @@ import { INSTALL_LOG_MODULE, type BrowserId, type NativeHostEnv } from "../nativ
 
 export type BrowserFamily = "chromium" | "firefox";
 
-export interface BrowserTarget {
+export interface BrowserHostSite {
   browser: BrowserId;
   label: string;
   family: BrowserFamily;
@@ -22,7 +22,7 @@ export interface HostLayout {
   hostDir: string;
   launcherPath: string;
   recordPath: string;
-  targets: BrowserTarget[];
+  targets: BrowserHostSite[];
 }
 
 const BROWSERS: BrowserId[] = ["chrome", "chromium", "edge", "brave", "vivaldi", "firefox"];
@@ -65,12 +65,12 @@ function browserFamily(browser: BrowserId): BrowserFamily {
   return browser === "firefox" ? "firefox" : "chromium";
 }
 
-export async function hostLayout(env: NativeHostEnv, spec: NativeHostSpec): Promise<HostLayout> {
+export async function resolveHostLayout(env: NativeHostEnv, spec: NativeHostSpec): Promise<HostLayout> {
   const { home, platform } = env;
   if (platform === "win32") return windowsLayout(await windowsLocalAppData(env), spec);
   if (platform !== "darwin" && platform !== "linux") throw new Error(`LabShelf native hosts do not support the ${platform} platform`);
   const hostDir = path.join(home, ".config", "labshelf", spec.dirName);
-  const targets = BROWSERS.map((browser): BrowserTarget => {
+  const targets = BROWSERS.map((browser): BrowserHostSite => {
     const { browserDir, hostsDir, presenceDir = browserDir } = platform === "darwin" ? darwinDirs(home, browser) : linuxDirs(env, browser);
     const manifestPath = path.join(browserDir, hostsDir, `${spec.hostName}.json`);
     return { browser, label: LABELS[browser], family: browserFamily(browser), manifestPath, presence: { kind: "dir", path: presenceDir } };
@@ -98,7 +98,7 @@ async function windowsLocalAppData(env: NativeHostEnv): Promise<string> {
 
 function windowsLayout(localAppData: string, spec: NativeHostSpec): HostLayout {
   const hostDir = path.join(localAppData, "LabShelf", spec.dirName);
-  const targets = BROWSERS.map((browser): BrowserTarget => {
+  const targets = BROWSERS.map((browser): BrowserHostSite => {
     const { presence, vendor } = WINDOWS_KEYS[browser];
     return {
       browser,

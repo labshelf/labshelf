@@ -2,7 +2,7 @@
 // Also notices when the library folder disappears (unmounted drive, sync client) and re-arms when it returns.
 import * as vscode from "vscode";
 
-import { RootPresenceMonitor, errorMessage, libraryLayout, processChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
+import { LibraryRootPresenceMonitor, formatError, createLibraryLayout, applyChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
 import { ExternalChangeWatcher } from "../storage/index.js";
 import type { ActiveServices } from "../command/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
@@ -29,7 +29,7 @@ async function folderExists(root: vscode.Uri): Promise<boolean> {
 
 export class ExternalChangeHandling {
   private watcher: ExternalChangeWatcher | undefined;
-  private monitor: RootPresenceMonitor | undefined;
+  private monitor: LibraryRootPresenceMonitor | undefined;
 
   constructor(private readonly deps: ExternalChangeHandlingDeps) {
     deps.context.subscriptions.push({ dispose: () => this.stop() });
@@ -42,8 +42,8 @@ export class ExternalChangeHandling {
     const logger = this.deps.getActiveServices()?.logger;
     if (!logger) { return; }
     const onChange = (): void => { void this.processBatch(root, logger); };
-    this.watcher = new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), onChange);
-    this.monitor = new RootPresenceMonitor({
+    this.watcher = new ExternalChangeWatcher(createLibraryLayout(root, vscode.Uri.joinPath), onChange);
+    this.monitor = new LibraryRootPresenceMonitor({
       exists: () => folderExists(root),
       logger,
       onLost: () => {
@@ -52,14 +52,14 @@ export class ExternalChangeHandling {
         void vscode.window.showWarningMessage("Library folder not found");
       },
       onReturned: () => {
-        this.watcher ??= new ExternalChangeWatcher(libraryLayout(root, vscode.Uri.joinPath), onChange);
+        this.watcher ??= new ExternalChangeWatcher(createLibraryLayout(root, vscode.Uri.joinPath), onChange);
         onChange();
       },
     });
     this.monitor.start();
     // The first scan reports copies a sync tool left while the library was closed.
     void this.deps.scanConflicts(root.fsPath, logger).then(this.deps.onConflicts, (error: unknown) => {
-      void logger.log("WARN", "extension", "Conflict scan failed", { message: errorMessage(error) });
+      void logger.log("WARN", "extension", "Conflict scan failed", { message: formatError(error) });
     });
   }
 
@@ -77,7 +77,7 @@ export class ExternalChangeHandling {
     const services = this.deps.getActiveServices();
     if (!monitor || !services) { return; }
     try {
-      await processChangeBatch({
+      await applyChangeBatch({
         logger,
         isRootPresent: () => monitor.check(),
         scanConflicts: () => this.deps.scanConflicts(root.fsPath, logger),
@@ -85,7 +85,7 @@ export class ExternalChangeHandling {
         reindex: async () => { await services.reindexLibrary(); },
       });
     } catch (error) {
-      await logger.log("WARN", "extension", "Re-index after an external change failed", { message: errorMessage(error) });
+      await logger.log("WARN", "extension", "Re-index after an external change failed", { message: formatError(error) });
       return;
     }
     this.deps.onRefresh();

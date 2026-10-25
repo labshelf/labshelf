@@ -3,7 +3,7 @@
  * highlighting, and a terse element factory. Framework-free on purpose.
  */
 import { escapeHtml } from "../escapeHtml.js";
-import { highlightRanges } from "../../library/search/index.js";
+import { findHighlightRanges } from "../../library/search/index.js";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */
 export function $<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {
@@ -17,7 +17,7 @@ export function highlight(text: unknown, terms: string[]): string {
   const str = String(text ?? "");
   let out = "";
   let pos = 0;
-  for (const [from, to] of highlightRanges(str, terms)) {
+  for (const [from, to] of findHighlightRanges(str, terms)) {
     out += escapeHtml(str.slice(pos, from)) + "<mark>" + escapeHtml(str.slice(from, to)) + "</mark>";
     pos = to;
   }

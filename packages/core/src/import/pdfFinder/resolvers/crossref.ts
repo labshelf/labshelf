@@ -1,5 +1,5 @@
 /** Proposes CrossRef's publisher-supplied "link" entries that are typed as PDF or end in .pdf. */
-import { lookupJson } from "./timedFetch.js";
+import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver } from "../pdfResolver.js";
 
 interface CrossRefLink {
@@ -19,7 +19,7 @@ export const crossrefResolver: PdfResolver = {
   name: "crossref",
   async resolve(ctx, env) {
     if (!ctx.doi) return [];
-    const payload = await lookupJson<CrossRefMessage>(
+    const payload = await fetchResolverJson<CrossRefMessage>(
       env,
       `https://api.crossref.org/works/${encodeURIComponent(ctx.doi)}`,
       { "User-Agent": `LabShelf/0.1 (mailto:${ctx.contactEmail})` },

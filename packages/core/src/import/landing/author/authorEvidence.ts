@@ -1,6 +1,6 @@
 // Reads author-address evidence from HTML without a DOM: mailto links with their wording, and author e-mail meta tags.
-import { attributes, decodeEntities, metaPairs } from "../htmlTags.js";
-import type { RawAuthorEmail, RawMailtoLink } from "../rawPage.js";
+import { parseAttributes, decodeEntities, walkMetaPairs } from "../htmlTags.js";
+import type { RawAuthorEmail, RawMailto } from "../rawPage.js";
 
 const MAX_LINKS = 20;
 const WINDOW_BEFORE = 200;
@@ -18,10 +18,10 @@ function plainText(html: string): string {
 }
 
 /** @returns the page's mailto links, each with the text around it, capped */
-export function mailtoLinksOf(html: string): RawMailtoLink[] {
-  const links: RawMailtoLink[] = [];
+export function findMailtos(html: string): RawMailto[] {
+  const links: RawMailto[] = [];
   for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]{0,300}?)<\/a>/gi)) {
-    const href = attributes(m[1] ?? "")["href"];
+    const href = parseAttributes(m[1] ?? "")["href"];
     if (!href || !/^mailto:/i.test(href)) continue;
     const start = m.index ?? 0;
     const before = plainText(html.slice(Math.max(0, start - 3 * WINDOW_BEFORE), start)).slice(-WINDOW_BEFORE);
@@ -34,10 +34,10 @@ export function mailtoLinksOf(html: string): RawMailtoLink[] {
 }
 
 /** @returns each citation_author_email meta value with the citation_author that came right before it */
-export function authorEmailMetasOf(html: string): RawAuthorEmail[] {
+export function findAuthorEmailMetas(html: string): RawAuthorEmail[] {
   const out: RawAuthorEmail[] = [];
   let name: string | undefined;
-  for (const { key, value } of metaPairs(html)) {
+  for (const { key, value } of walkMetaPairs(html)) {
     if (key === "citation_author") name = value;
     else if (key === "citation_author_email") {
       out.push(name ? { email: value, name } : { email: value });

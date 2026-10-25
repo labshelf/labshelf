@@ -2,7 +2,7 @@
 import { el } from "../../../ui/dom/index.js";
 import { RowReconciler } from "./rowReconciler.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import { groupLabel } from "./groupPapers.js";
+import { deriveGroupLabel } from "./groupPapers.js";
 
 const SEP_HTML = `<span class="group-sep">${icon("chevron-right")}</span>`;
 
@@ -15,7 +15,7 @@ const ancestor = (folder: string, up: number): string => folder.split("/").slice
  * sidebar and breadcrumb are the keyboard path to a folder.
  */
 function buildGroupLabel(folder: string, segments: readonly string[]): HTMLElement {
-  const { shown, title } = groupLabel(segments);
+  const { shown, title } = deriveGroupLabel(segments);
   const last = segments.length - 1;
   const crumbs = shown.map((i, k) => {
     const gap = k > 0 && i > shown[k - 1]! + 1 ? `<span class="group-gap">…</span>${SEP_HTML}` : "";

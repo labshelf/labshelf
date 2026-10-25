@@ -27,7 +27,7 @@ export function decodeUrlEscapes(text: string): string {
  * the DOI itself opens stay, so `10.1016/j.x.2020(1).` keeps its `(1)`.
  * @returns The bare DOI, or undefined when nothing DOI-shaped is left.
  */
-export function cleanDoiCandidate(raw: string): string | undefined {
+export function normalizeDoiCandidate(raw: string): string | undefined {
   let doi = decodeUrlEscapes(raw).replace(/[?#].*$/s, "");
   doi = doi.replace(/[.,;:]+$/, "").replace(/\.pdf$/i, "");
   while (/[)\]]$/.test(doi) && openers(doi) < closers(doi)) {
@@ -45,7 +45,7 @@ export function cleanDoiCandidate(raw: string): string | undefined {
  */
 export function extractDoi(raw: string | undefined): string | undefined {
   const found = raw ? DOI_SCAN.exec(decodeUrlEscapes(raw))?.[1] : undefined;
-  return found ? cleanDoiCandidate(found) : undefined;
+  return found ? normalizeDoiCandidate(found) : undefined;
 }
 
 /**
@@ -54,7 +54,7 @@ export function extractDoi(raw: string | undefined): string | undefined {
  * DOI must also be attempted to reach the article record itself.
  * @returns The DOI plus any parent form, in the order they should be tried.
  */
-export function doiVariants(doi: string): string[] {
+export function deriveDoiVariants(doi: string): string[] {
   const variants = [doi];
   const parent = doi.replace(/\.\d{3}$/, "");
   if (parent !== doi) {

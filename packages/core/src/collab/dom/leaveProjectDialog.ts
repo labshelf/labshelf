@@ -1,10 +1,10 @@
 // Stops sharing a project on this device after a confirmation; the files stay.
 import { showDialog, toast } from "../../ui/dom/index.js";
-import type { SharingHost } from "../../libraryUi/share/index.js";
+import type { ShareHost } from "../../libraryUi/share/index.js";
 import { reportingFailure } from "../../share/dom/index.js";
 import { pickProject } from "./pickProject.js";
 
-export function runLeaveProjectDialog(host: SharingHost, projectId?: string): Promise<void> {
+export function runLeaveProjectDialog(host: ShareHost, projectId?: string): Promise<void> {
   return reportingFailure("stop sharing the project", async () => {
     const project = await pickProject(host, projectId, true, "Stop Sharing on This Device");
     if (!project) return;

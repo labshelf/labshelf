@@ -1,5 +1,5 @@
 // Writes the sentences of the All projects detail pane: meta line, venue line, limit sentence and build status.
-import { compactTime } from "../../../../library/index.js";
+import { formatCompactTime } from "../../../../library/index.js";
 import type { ProjectTarget } from "../../../project/index.js";
 import { daysUntil } from "../../deadlineText.js";
 import type { CountedLimit, ProjectDetail } from "../../projectDetailPane.js";
@@ -14,7 +14,7 @@ const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" 
 
 /** "LaTeX · main.tex · 8 pages · modified 2 h ago", with only the parts the row and the detail know. */
 export function metaLine(row: ProjectRow, pages: number | undefined, now: number): string {
-  const modified = row.modified === undefined ? undefined : compactTime(row.modified, now);
+  const modified = row.modified === undefined ? undefined : formatCompactTime(row.modified, now);
   return [
     row.format && FORMAT_NAME[row.format],
     row.main,

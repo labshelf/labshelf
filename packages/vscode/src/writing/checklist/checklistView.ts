@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import {
-  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, checklistSidebarNodes, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
-  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type PaperStatus, type PathOps,
+  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, checklistSidebarNodes, citeSections, deriveNextReadingStatus, removeManualItem, sectionPlacer, setManualItemDone,
+  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type ReadingStatus, type PathOps,
   type ReadingItem, type ReadingPaper, type SidebarTreeNode,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "../figures/index.js";
@@ -70,7 +70,7 @@ export interface ChecklistViewDeps {
   signals: Pick<OpenProjectSignals, "current" | "onDidChange" | "refresh">;
   reading: Pick<ProjectReadingLists, "of"> & { onDidChange: vscode.Event<void> };
   memory: vscode.Memento;
-  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
+  setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
   updateChecklist: (folder: string, edit: (doc: ChecklistDocument) => ChecklistDocument) => Promise<void>;
   logger: ILogger;
   newId: () => string;
@@ -211,7 +211,7 @@ export class ChecklistView implements vscode.Disposable {
     const { key, status } = item.paper;
     const paperId = this.reading?.papers.get(key)?.paperId;
     if (!paperId) { return; }
-    const target = nextStatus(status);
+    const target = deriveNextReadingStatus(status);
     try {
       const failed = await this.deps.setStatus([paperId], target);
       if (failed.length > 0) { throw new Error(`Could not write the status of ${failed.length} paper(s)`); }

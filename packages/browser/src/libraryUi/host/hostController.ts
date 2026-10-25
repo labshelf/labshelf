@@ -1,5 +1,5 @@
 // Dispatches browser library UI messages to storage and background handlers.
-import { errorMessage, type HostEndpoint, type ILogger, type ProjectSharingDeps, type SharingHost, type UiToHost } from "@labshelf/core";
+import { formatError, type HostEndpoint, type ILogger, type ProjectShareDeps, type ShareHost, type UiToHost } from "@labshelf/core";
 import {
   captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, createBrowserSharingHost, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
   renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PaperFileHandlers,
@@ -35,7 +35,7 @@ export interface LibraryHostOptions {
 
 function run(ctx: HostContext, work: () => Promise<void>): void {
   void work().catch((err: unknown) => {
-    ctx.notice("error", errorMessage(err));
+    ctx.notice("error", formatError(err));
     void ctx.log.error("libraryUi", err);
   });
 }
@@ -96,7 +96,7 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: SharingHost; addProjectSharing(deps: ProjectSharingDeps): void } {
+): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
   const ctx = createHostContext(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
   const { host: sharing, addProjects } = createBrowserSharingHost(ctx, options.shareRelay, options.log);

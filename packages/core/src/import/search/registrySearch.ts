@@ -1,23 +1,23 @@
 /** Fans one free-text query out to every registry that supports it. */
 import {
-  crossRefSearch,
-  dblpSearch,
-  europePmcSearch,
+  searchCrossref,
+  searchDblp,
+  searchEuropePmc,
   openAlexSearch,
-  semanticScholarByTitle,
+  fetchSemanticScholarByTitle,
   type RegistryEnv,
-  type RegistryRecord,
+  type RegistryEntry,
 } from "../registries/index.js";
 
-export function searchAllRegistries(env: RegistryEnv, query: string, rows = 3): Array<Promise<RegistryRecord[]>> {
-  const single = (promise: Promise<RegistryRecord | undefined>): Promise<RegistryRecord[]> =>
+export function searchAllRegistries(env: RegistryEnv, query: string, rows = 3): Array<Promise<RegistryEntry[]>> {
+  const single = (promise: Promise<RegistryEntry | undefined>): Promise<RegistryEntry[]> =>
     promise.then((record) => (record ? [record] : [])).catch(() => []);
 
   return [
-    crossRefSearch(env, query, rows).catch((): RegistryRecord[] => []),
-    openAlexSearch(env, query, rows).catch((): RegistryRecord[] => []),
-    europePmcSearch(env, query, rows).catch((): RegistryRecord[] => []),
-    dblpSearch(env, query, rows).catch((): RegistryRecord[] => []),
-    single(semanticScholarByTitle(env, query)),
+    searchCrossref(env, query, rows).catch((): RegistryEntry[] => []),
+    openAlexSearch(env, query, rows).catch((): RegistryEntry[] => []),
+    searchEuropePmc(env, query, rows).catch((): RegistryEntry[] => []),
+    searchDblp(env, query, rows).catch((): RegistryEntry[] => []),
+    single(fetchSemanticScholarByTitle(env, query)),
   ];
 }

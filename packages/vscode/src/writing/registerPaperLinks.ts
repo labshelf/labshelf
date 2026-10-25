@@ -3,10 +3,10 @@ import * as vscode from "vscode";
 
 import {
   papersByCiteKey,
-  parseLabshelfLink,
+  parsePaperLink,
   SHARE_IMPORT_PATH,
-  findLabshelfLinks,
-  type LabshelfLink,
+  findPaperLinkMatches,
+  type ParsedPaperLink,
   type PaperRecord,
 } from "@labshelf/core";
 import { IMPORT_SHARE_COMMAND } from "../share/index.js";
@@ -14,7 +14,7 @@ import { paperHover, type CitationSession } from "./citations/index.js";
 
 interface PaperLink {
   readonly range: vscode.Range;
-  readonly link: LabshelfLink;
+  readonly link: ParsedPaperLink;
   /** Absent when no paper of the library has the link's cite key. */
   readonly paper: PaperRecord | undefined;
 }
@@ -28,7 +28,7 @@ export interface LinkLibrary {
 async function findPaperLinks(library: LinkLibrary, document: vscode.TextDocument): Promise<PaperLink[]> {
   const session = library.session();
   if (!session) { return []; }
-  const found = findLabshelfLinks(document.getText());
+  const found = findPaperLinkMatches(document.getText());
   if (found.length === 0) { return []; }
   const papers = papersByCiteKey(await session.listPapers());
   return found.map(({ start, end, link }) => ({
@@ -84,7 +84,7 @@ export class LabshelfUriHandler implements vscode.UriHandler {
       return;
     }
     const text = uri.path === "/open" ? new URLSearchParams(uri.query).get("link") : null;
-    const link = text === null ? undefined : parseLabshelfLink(text);
+    const link = text === null ? undefined : parsePaperLink(text);
     if (!link) {
       await session.logger.log("WARN", LOG_MODULE, "Ignored a URI that is not a labshelf: link", { path: uri.path, query: uri.query });
       await vscode.window.showWarningMessage("LabShelf could not read that link. Expected labshelf:<cite key>[#p<page>].");

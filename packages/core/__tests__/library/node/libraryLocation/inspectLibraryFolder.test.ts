@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { inspectLibraryFolder } from "../../../../src/library/node/libraryLocation/index";
+import { detectLibraryFolder } from "../../../../src/library/node/libraryLocation/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
@@ -22,36 +22,36 @@ async function makeLibrary(root: string, paperFolders: string[], orphans: string
 describe("inspectLibraryFolder", () => {
   it("reports a missing folder without an error", async () => {
     const root = path.join(await makeTempDir(), "nope");
-    expect(await inspectLibraryFolder(root)).toEqual({ exists: false, isLibrary: false, paperCount: 0 });
+    expect(await detectLibraryFolder(root)).toEqual({ exists: false, isLibrary: false, paperCount: 0 });
   });
 
   it("reports an empty folder as not a library", async () => {
     const root = await makeTempDir();
-    expect(await inspectLibraryFolder(root)).toEqual({ exists: true, isLibrary: false, paperCount: 0 });
+    expect(await detectLibraryFolder(root)).toEqual({ exists: true, isLibrary: false, paperCount: 0 });
   });
 
   it("reports a folder with only one marker dir as not a library", async () => {
     const root = await makeTempDir();
     await fs.mkdir(path.join(root, "papers"));
-    expect((await inspectLibraryFolder(root)).isLibrary).toBe(false);
+    expect((await detectLibraryFolder(root)).isLibrary).toBe(false);
   });
 
   it("counts papers, including those inside collections, and skips orphans", async () => {
     const root = await makeTempDir();
     await makeLibrary(root, ["a-1", "b-2", "Reviews/c-3"], ["orphan"]);
-    expect(await inspectLibraryFolder(root)).toEqual({ exists: true, isLibrary: true, paperCount: 3 });
+    expect(await detectLibraryFolder(root)).toEqual({ exists: true, isLibrary: true, paperCount: 3 });
   });
 
   it("reports a library with no papers", async () => {
     const root = await makeTempDir();
     await makeLibrary(root, []);
-    expect(await inspectLibraryFolder(root)).toEqual({ exists: true, isLibrary: true, paperCount: 0 });
+    expect(await detectLibraryFolder(root)).toEqual({ exists: true, isLibrary: true, paperCount: 0 });
   });
 
   it("reports a file in place of the folder as missing", async () => {
     const root = await makeTempDir();
     const file = path.join(root, "f");
     await fs.writeFile(file, "x");
-    expect((await inspectLibraryFolder(file)).exists).toBe(false);
+    expect((await detectLibraryFolder(file)).exists).toBe(false);
   });
 });

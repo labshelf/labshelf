@@ -12,7 +12,7 @@ const DAY = 24 * HOUR;
  * `now` is injected so tests and callers share one clock; dates use the local calendar.
  * @returns the text, "" when `iso` is missing or not a date.
  */
-export function relativeTime(iso: string | undefined, now = Date.now()): string {
+export function formatRelativeTime(iso: string | undefined, now = Date.now()): string {
   if (!iso) { return ""; }
   const then = Date.parse(iso);
   if (!Number.isFinite(then)) { return ""; }
@@ -33,7 +33,7 @@ export function relativeTime(iso: string | undefined, now = Date.now()): string 
  * Months count as 30 days and years as 365, so the unit steps are even; the cell's tooltip carries the exact date.
  * @returns the elapsed time in its largest whole unit; "now" under a minute and for a time in the future.
  */
-export function compactTime(then: number, now = Date.now()): string {
+export function formatCompactTime(then: number, now = Date.now()): string {
   const seconds = Math.floor((now - then) / 1000);
   if (seconds < MINUTE) { return "now"; }
   if (seconds < HOUR) { return `${Math.floor(seconds / MINUTE)} min`; }

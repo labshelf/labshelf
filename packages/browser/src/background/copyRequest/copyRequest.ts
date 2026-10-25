@@ -1,6 +1,6 @@
 // Asks a paper's authors for a copy: finds their address, opens the request email in the user's mail client and
 // records the day on the paper. Without an address it opens the article page, where the user can look further.
-import { findAuthorContacts, requestCopyMailto, type ILogger, type PaperRecord, type RawPage } from "@labshelf/core";
+import { findAuthorContacts, createCopyRequestMailto, type ILogger, type PaperRecord, type RawPage } from "@labshelf/core";
 import { bx, getSettings, type AskAuthorData } from "../../platform";
 import { listAllRecords, type LibraryMutations } from "../../storage";
 import { broadcastChanged } from "../broadcast";
@@ -38,7 +38,7 @@ export async function askAuthor(deps: AskAuthorDeps, paper: PaperRecord, source:
     await bx.tabs.create({ url: articleUrl });
     return { id: paper.id, opened: "article" };
   }
-  const mailto = requestCopyMailto({
+  const mailto = createCopyRequestMailto({
     to: contacts.slice(0, MAX_RECIPIENTS).map((c) => c.email),
     paper,
     requester: { name: settings.requesterName, affiliation: settings.requesterAffiliation },

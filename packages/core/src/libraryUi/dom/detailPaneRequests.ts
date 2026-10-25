@@ -6,7 +6,7 @@ import type { LibraryUiCapabilities } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
 import type { LibraryViewStore } from "../store/index.js";
 
-export interface PaperDataRequests {
+export interface PaperDetailsRequests {
   /** Asks for a paper's details unless they are here or on the way. */
   ensureDetails(id: string): void;
   /** Asks for a paper's similar papers unless they are here or on the way. */
@@ -26,7 +26,7 @@ interface Parts {
   caps: LibraryUiCapabilities;
 }
 
-export function createPaperData({ store, transport, caps }: Parts): PaperDataRequests {
+export function createPaperDetailsRequests({ store, transport, caps }: Parts): PaperDetailsRequests {
   const pending = new Set<string>();
   const ask = (id: string): void => {
     pending.add(id);

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
-import { errorMessage, type PaperDataStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext } from "@labshelf/core";
+import { formatError, type PaperDataStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext } from "@labshelf/core";
 import type { ReindexSummary } from "../storage/index.js";
 
 const LOG_MODULE = "command";
@@ -37,7 +37,7 @@ export async function executeSafely(logger: ILogger, commandName: string, action
     await action();
   } catch (error) {
     await logger.error(LOG_MODULE, error, { commandName });
-    const message = errorMessage(error);
+    const message = formatError(error);
     await vscode.window.showErrorMessage(`LabShelf command failed: ${message}`);
   }
 }

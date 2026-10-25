@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import {
-  BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, installNativeHost, nativeHostStatus, uninstallNativeHost,
+  BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, installNativeHost, checkNativeHost, uninstallNativeHost,
   type NativeHostEnv, type NativeHostSpec, type NativeHostWarning, type ScriptLaunch,
 } from "@labshelf/core/nativeHost/node";
 
@@ -61,7 +61,7 @@ async function install(command: NativeHostCommand, replace: boolean, env: Native
 }
 
 async function status(command: NativeHostCommand, env: NativeHostEnv, io: Output): Promise<number> {
-  const result = await nativeHostStatus(env, HOSTS[command].spec);
+  const result = await checkNativeHost(env, HOSTS[command].spec);
   io.out(`launcher  ${result.launcher}`);
   for (const browser of result.browsers) {
     if (!browser.present) {

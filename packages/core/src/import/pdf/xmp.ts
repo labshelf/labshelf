@@ -1,7 +1,7 @@
 // Reads bibliographic data from a PDF's XMP packet, the richest offline metadata source.
 // Publishers embed journal, volume, issue, pages, DOI and ISSN there, beyond the Info dictionary.
 import { extractDoi } from "../identifiers/index.js";
-import { collapseWhitespace, extractYear, type ResolvedMetadata } from "../metadata/index.js";
+import { normalizeWhitespace, extractYear, type ResolvedMetadata } from "../metadata/index.js";
 import type { XmpMetadataLike } from "./pdfDocument.js";
 
 // XMP keys arrive with their namespace prefix (`dc:title`, `prism:doi`). Case
@@ -12,7 +12,7 @@ const AUTHOR_SEPARATOR = /\s*(?:;|\band\b|,(?=\s*[A-ZÀ-Þ][a-zà-ÿ]))\s*/;
  * Converts a pdfjs Metadata object into the same shape online resolvers return.
  * @returns Bibliographic fields found in the XMP packet, or undefined if empty.
  */
-export function metadataFromXmp(xmp: XmpMetadataLike | null | undefined): ResolvedMetadata | undefined {
+export function extractMetadataFromXmp(xmp: XmpMetadataLike | null | undefined): ResolvedMetadata | undefined {
   const entries = readEntries(xmp);
   if (!entries) {
     return undefined;
@@ -74,11 +74,11 @@ function readEntries(xmp: XmpMetadataLike | null | undefined): Map<string, unkno
 // XMP values may be scalars, rdf:Seq arrays, or language-alternative objects.
 function flatten(value: unknown): string | undefined {
   if (typeof value === "string") {
-    return collapseWhitespace(value);
+    return normalizeWhitespace(value);
   }
   if (Array.isArray(value)) {
     const joined = value.map((entry) => flatten(entry)).filter(Boolean).join("; ");
-    return collapseWhitespace(joined);
+    return normalizeWhitespace(joined);
   }
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;

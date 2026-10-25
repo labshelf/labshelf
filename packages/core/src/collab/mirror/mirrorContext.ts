@@ -2,7 +2,7 @@
 import type { ConflictCopy } from "../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type { WaitingWrite } from "./waitForWrite.js";
-import { sha256Hex } from "../../hash/index.js";
+import { deriveSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { indexFiles, recordWritten, type SharedSettings } from "../model/index.js";
 import type { BlobExchange, ShareSession } from "../doc/index.js";
@@ -42,7 +42,7 @@ export interface MirrorContext {
 
 const encode = (content: string | Uint8Array): Uint8Array => typeof content === "string" ? new TextEncoder().encode(content) : content;
 
-export const hashOf = (content: string | Uint8Array): Promise<string> => sha256Hex(encode(content));
+export const hashOf = (content: string | Uint8Array): Promise<string> => deriveSha256Hex(encode(content));
 
 /** Writes the file atomically and records its content as the one disk and doc agree on. */
 export async function writeMirrored(context: MirrorContext, relative: string, content: string | Uint8Array): Promise<void> {

@@ -5,7 +5,7 @@
  *
  * @returns Value in [-1, 1].
  */
-export function cosine(a: Float32Array, b: Float32Array): number {
+export function deriveCosine(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) {
     throw new Error(`cosine: dimension mismatch ${a.length} vs ${b.length}`);
   }

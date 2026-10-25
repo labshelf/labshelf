@@ -1,5 +1,5 @@
 // Declares JSON messages exchanged between the library UI and its host.
-import type { PaperStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/readingStatus/index.js";
 import type {
   AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
@@ -34,7 +34,7 @@ export type UiToHost =
   | { type: "paper.askAuthor"; id: string }
   | { type: "paper.fetchMetadata"; id: string }
   | { type: "paper.makeSearchable"; ids: string[] }
-  | { type: "paper.setStatus"; ids: string[]; status: PaperStatus }
+  | { type: "paper.setStatus"; ids: string[]; status: ReadingStatus }
   | { type: "paper.setTags"; ids: string[]; add: string[]; remove: string[] }
   | { type: "paper.setNote"; id: string; note: string }
   | { type: "paper.addToSpace"; ids: string[] }

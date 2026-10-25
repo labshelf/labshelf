@@ -1,10 +1,10 @@
-import type { CollectionNode, LibrarySnapshot, PaperEntry, PaperRecord, PaperStatus } from "@labshelf/core";
+import type { FolderNode, LibrarySnapshot, PaperEntry, PaperRecord, ReadingStatus } from "@labshelf/core";
 
 import { folderPreview, libraryOverview } from "../../src/libraryUi/preview";
 import { theme } from "../../src/libraryUi/theme";
 import { entry, text } from "../fixtures/previewEntries";
 
-function snapshotOf(entries: PaperEntry[], collections: CollectionNode[]): LibrarySnapshot {
+function snapshotOf(entries: PaperEntry[], collections: FolderNode[]): LibrarySnapshot {
   return {
     root: "/lib",
     papers: new Map(entries.map((e) => [e.record.id, e])),
@@ -15,7 +15,7 @@ function snapshotOf(entries: PaperEntry[], collections: CollectionNode[]): Libra
   };
 }
 
-function node(rel: string, children: string[], paperIds: string[], total: number): CollectionNode {
+function node(rel: string, children: string[], paperIds: string[], total: number): FolderNode {
   const parts = rel.split("/").filter(Boolean);
   return {
     rel,
@@ -27,7 +27,7 @@ function node(rel: string, children: string[], paperIds: string[], total: number
   };
 }
 
-function paper(id: string, status: PaperStatus, collection: string, extra: Partial<PaperRecord> = {}): PaperEntry {
+function paper(id: string, status: ReadingStatus, collection: string, extra: Partial<PaperRecord> = {}): PaperEntry {
   return entry({ id, title: `Paper ${id}`, citeKey: id, status, ...extra }, collection);
 }
 

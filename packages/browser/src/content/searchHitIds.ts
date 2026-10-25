@@ -1,5 +1,5 @@
 // Derives what a search hit identifies: the DOI, arXiv id or PMID its links carry, and its library lookup item.
-import { arxivIdFromUrl, extractDoi, pmidFromUrl, type DetectedIds } from "@labshelf/core";
+import { extractArxivIdentifierFromUrl, extractDoi, extractPmidFromUrl, type DetectedIds } from "@labshelf/core";
 import type { LookupItem, SearchHit } from "../platform";
 
 /**
@@ -8,8 +8,8 @@ import type { LookupItem, SearchHit } from "../platform";
 export function idsFromHit(hit: SearchHit): DetectedIds {
   const urls = [hit.url, hit.pdfUrl].filter((u): u is string => !!u);
   const doi = urls.map((u) => extractDoi(u)).find(Boolean);
-  const arxivId = urls.map(arxivIdFromUrl).find(Boolean);
-  const pmid = urls.map(pmidFromUrl).find(Boolean);
+  const arxivId = urls.map(extractArxivIdentifierFromUrl).find(Boolean);
+  const pmid = urls.map(extractPmidFromUrl).find(Boolean);
   return { ...(doi ? { doi } : {}), ...(arxivId ? { arxivId } : {}), ...(pmid ? { pmid } : {}) };
 }
 

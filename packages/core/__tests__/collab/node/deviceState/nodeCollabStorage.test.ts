@@ -11,7 +11,7 @@ import type { ILogger } from "../../../../src/ports/index";
 import { createShareSession } from "../../../../src/collab/doc/shareSession";
 import { deriveDocId } from "../../../../src/collab/peer/docId";
 import { INDEX_DOC_KEY } from "../../../../src/collab/doc/docSync";
-import { sha256Hex } from "../../../../src/hash/index";
+import { deriveSha256Hex } from "../../../../src/hash/index";
 import { FakeClock, FakeNetwork } from "../../peer/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY } from "../../doc/testSession";
 
@@ -72,7 +72,7 @@ describe("collab store", () => {
     const store = await openCollabStore({ dir, shareId: SHARE_ID, logger: fakeLogger() });
     const bytes = Uint8Array.from([1, 2, 3, 255]);
     const hash = await store.blobs.put(bytes);
-    expect(hash).toBe(await sha256Hex(bytes));
+    expect(hash).toBe(await deriveSha256Hex(bytes));
     expect(await store.blobs.get(hash)).toEqual(bytes);
     expect(await store.blobs.get("0".repeat(64))).toBeUndefined();
     expect(await store.blobs.get("../../etc/passwd")).toBeUndefined();

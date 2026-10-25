@@ -1,10 +1,10 @@
 /** Uninstalls a native host: removes only the manifests that point at this install, their registry keys and its launcher. */
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { NativeHostSpec } from "../hostSpecs.js";
-import { hostLayout, type BrowserTarget } from "./layout/index.js";
+import { resolveHostLayout, type BrowserHostSite } from "./layout/index.js";
 import { INSTALL_LOG_MODULE, type BinaryLaunch, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "./nativeHostEnv.js";
 import { removeLauncher } from "./launcherFiles.js";
-import { readManifest, removeManifest } from "./hostManifestFiles.js";
+import { readHostManifest, removeHostManifest } from "./hostManifestFiles.js";
 
 export interface NativeHostUninstallResult {
   /** Browsers that had a manifest or registry key of this install and no longer do. */
@@ -14,7 +14,7 @@ export interface NativeHostUninstallResult {
 
 /** Without a launch, removes the script install; with a binary launch, removes only the manifests pointing at that binary. */
 export async function uninstallNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch?: BinaryLaunch): Promise<NativeHostUninstallResult> {
-  const layout = await hostLayout(env, spec);
+  const layout = await resolveHostLayout(env, spec);
   const executable = launch ? launch.path : layout.launcherPath;
   const removed: BrowserId[] = [];
   const warnings: NativeHostWarning[] = [];
@@ -23,7 +23,7 @@ export async function uninstallNativeHost(env: NativeHostEnv, spec: NativeHostSp
       if (await unregister(env, spec, target, executable)) removed.push(target.browser);
     } catch (error) {
       await env.logger.error(INSTALL_LOG_MODULE, error, { host: spec.hostName, browser: target.browser, manifestPath: target.manifestPath });
-      warnings.push({ browser: target.browser, kind: "failed", message: `Could not remove ${spec.description} from ${target.label}: ${errorMessage(error)}` });
+      warnings.push({ browser: target.browser, kind: "failed", message: `Could not remove ${spec.description} from ${target.label}: ${formatError(error)}` });
     }
   }
   if (!launch) await removeLauncher(layout);
@@ -31,12 +31,12 @@ export async function uninstallNativeHost(env: NativeHostEnv, spec: NativeHostSp
   return { removed, warnings };
 }
 
-async function unregister(env: NativeHostEnv, spec: NativeHostSpec, target: BrowserTarget, executable: string): Promise<boolean> {
-  const manifest = await readManifest(target);
+async function unregister(env: NativeHostEnv, spec: NativeHostSpec, target: BrowserHostSite, executable: string): Promise<boolean> {
+  const manifest = await readHostManifest(target);
   const context = { host: spec.hostName, browser: target.browser, manifestPath: target.manifestPath };
-  if (manifest.kind === "missing") return removeManifest(env, target, false);
+  if (manifest.kind === "missing") return removeHostManifest(env, target, false);
   if (manifest.kind === "points-at" && manifest.path === executable) {
-    const removed = await removeManifest(env, target, true);
+    const removed = await removeHostManifest(env, target, true);
     await env.logger.log("INFO", INSTALL_LOG_MODULE, "Removed the native host manifest", context);
     return removed;
   }

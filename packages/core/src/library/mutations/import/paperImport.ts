@@ -1,10 +1,10 @@
 /** Imports one PDF file as a paper: <targetDir>/<citeKey>/paper.pdf with metadata.yaml and bib.bib beside it. */
 import type { PaperRecord } from "../../../model/index.js";
-import { citeKeySlug } from "../../paper/index.js";
-import { errorMessage } from "../../../logging/index.js";
+import { deriveCiteKeySlug } from "../../paper/index.js";
+import { formatError } from "../../../logging/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
-import { metadataFields, needsReview, type ParsedImport } from "./importedPaperRecord.js";
-import { writeNewPaper } from "./createPaper.js";
+import { deriveMetadataFields, isLowConfidenceImport, type ParsedImport } from "./importedPaperRecord.js";
+import { createPaper } from "./createPaper.js";
 import { isPdfBytes } from "./pdfBytes.js";
 
 export type PdfParse = (bytes: Uint8Array, fileStem: string) => Promise<ParsedImport>;
@@ -30,7 +30,7 @@ export interface ImportOptions {
 }
 
 /** @returns a findByDoi over the papers an app knows, ignoring case */
-export function doiLookup(papers: Iterable<Pick<PaperRecord, "id" | "doi">>): (doi: string) => string | undefined {
+export function createDoiFinder(papers: Iterable<Pick<PaperRecord, "id" | "doi">>): (doi: string) => string | undefined {
   const byDoi = new Map<string, string>();
   for (const paper of papers) {
     if (paper.doi && !byDoi.has(paper.doi.toLowerCase())) { byDoi.set(paper.doi.toLowerCase(), paper.id); }
@@ -59,9 +59,9 @@ export async function importPdf(
     const existingId = parsed.doi ? deps.findByDoi(parsed.doi) : undefined;
     if (existingId) { return { status: "duplicate", existingId, input }; }
 
-    const record = await writeNewPaper(ctx, deps.takenIds(), targetDir, {
-      citeKey: parsed.citeKey || citeKeySlug(stem) || `paper${Date.now()}`,
-      fields: { title: parsed.title, ...metadataFields(parsed) },
+    const record = await createPaper(ctx, deps.takenIds(), targetDir, {
+      citeKey: parsed.citeKey || deriveCiteKeySlug(stem) || `paper${Date.now()}`,
+      fields: { title: parsed.title, ...deriveMetadataFields(parsed) },
       pdf: bytes,
       sourceName: input,
     });
@@ -69,10 +69,10 @@ export async function importPdf(
     await ctx.logger.log("INFO", MUTATIONS_MODULE, "Paper imported from PDF", {
       id, source: parsed.source, confidence: parsed.confidence, targetDir,
     });
-    return { status: "added", record, needsReview: needsReview(parsed), input };
+    return { status: "added", record, needsReview: isLowConfidenceImport(parsed), input };
   } catch (error) {
-    await ctx.logger.log("WARN", MUTATIONS_MODULE, "PDF import failed", { file, message: errorMessage(error) });
-    return { status: "failed", error: errorMessage(error), input };
+    await ctx.logger.log("WARN", MUTATIONS_MODULE, "PDF import failed", { file, message: formatError(error) });
+    return { status: "failed", error: formatError(error), input };
   }
 }
 

@@ -1,7 +1,7 @@
 // Finds a paper for a command, or guards the command when none is selected; every registration group calls it.
 import * as vscode from "vscode";
 
-import { type PaperRecord, isSafeExternalUrl, paperLink } from "@labshelf/core";
+import { type PaperRecord, isSafeExternalUrl, derivePaperUrl } from "@labshelf/core";
 import type { PaperService } from "../library/index.js";
 import { paperPickItem } from "./paperPickItem.js";
 import type { ActiveServices } from "./commandContext.js";
@@ -38,7 +38,7 @@ export async function ensurePaperPdf(services: ActiveServices, paper: PaperRecor
 // Only safe web schemes are offered, so a hand-edited record cannot smuggle a
 // file: or command: link into an openExternal call.
 function articleLink(paper: PaperRecord): string | undefined {
-  const candidate = paperLink(paper);
+  const candidate = derivePaperUrl(paper);
   return candidate && isSafeExternalUrl(candidate) ? candidate : undefined;
 }
 

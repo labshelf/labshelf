@@ -1,6 +1,6 @@
 // Tests that the library tree counts papers, lists folders with recursive counts, and papers by title.
 import type { PaperRecord } from "@labshelf/core";
-import { libraryTree } from "../../../src/libraryUi/viewModel";
+import { deriveLibraryTree } from "../../../src/libraryUi/viewModel";
 
 // The record path is the absolute folder a Node scan records, so keying by it would find no folder.
 const LIB = "/Users/x/lib";
@@ -19,7 +19,7 @@ const papers = [
   paper("b1", "papers/A/B", "deep", "reading"),
   paper("b2", "papers/A/B", "deeper", "reading"),
 ];
-const tree = () => libraryTree({ folders, papers });
+const tree = () => deriveLibraryTree({ folders, papers });
 
 describe("libraryTree", () => {
   it("counts every paper in the library", () => {
@@ -27,8 +27,8 @@ describe("libraryTree", () => {
   });
 
   it("counts zero papers in an empty library", () => {
-    expect(libraryTree({ folders: [], papers: [] }).total()).toBe(0);
-    expect(libraryTree({ folders: [], papers: [] }).children("papers")).toEqual([]);
+    expect(deriveLibraryTree({ folders: [], papers: [] }).total()).toBe(0);
+    expect(deriveLibraryTree({ folders: [], papers: [] }).children("papers")).toEqual([]);
   });
 
   it("gives the root its top-level folders then its own papers by title", () => {
@@ -64,7 +64,7 @@ describe("libraryTree", () => {
   });
 
   it("keys papers by the folder it is given, not by the parent of their record path", () => {
-    const t = libraryTree({ folders, papers: [paper("b1", "papers/A/B", "deep")] });
+    const t = deriveLibraryTree({ folders, papers: [paper("b1", "papers/A/B", "deep")] });
     expect(t.children("papers/A/B")).toEqual([{ kind: "paper", id: "b1", title: "deep" }]);
     expect(t.children(`${LIB}/papers/A/B`)).toEqual([]);
     expect(t.parentOf("b1")).toBe("papers/A/B");

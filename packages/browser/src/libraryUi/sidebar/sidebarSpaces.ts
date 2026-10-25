@@ -1,5 +1,5 @@
 // Connects browser sidebar Space actions to the page store.
-import { errorMessage, sidebarRows, type ILogger, type SpaceStore } from "@labshelf/core";
+import { formatError, sidebarRows, type ILogger, type SpaceStore } from "@labshelf/core";
 import { inputBox, toast, type LibrarySidebar, type SidebarSpaceActions } from "@labshelf/core/dom";
 import type { PageSpaces } from "../../spaces";
 
@@ -20,7 +20,7 @@ export function createSidebarSpaces({ store, port }: PageSpaces, log: ILogger): 
   const run = (work: () => Promise<unknown>): void => {
     void work().catch((error: unknown) => {
       void log.error("spaces-sidebar", error);
-      toast(errorMessage(error), "error");
+      toast(formatError(error), "error");
     });
   };
   const name = (title: string, value = "") => inputBox({ title, value, validate: (text) => text.trim() ? null : "Enter a name" });

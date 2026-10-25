@@ -3,7 +3,7 @@
  * prefixes of keys.
  */
 import type { LocalStat } from "@labshelf/core";
-import { sha256Hex } from "@labshelf/core";
+import { deriveSha256Hex } from "@labshelf/core";
 import { getDb } from "./idbDatabase";
 import { ByteBackedFileSystem } from "./bytesFileSystem";
 import type { FileRow } from "./idbSchema";
@@ -72,7 +72,7 @@ export class IndexedDbFileSystem extends ByteBackedFileSystem {
 
   async writeFile(filePath: string, content: Uint8Array): Promise<void> {
     const db = await getDb();
-    const hash = await sha256Hex(content);
+    const hash = await deriveSha256Hex(content);
     await db.put("files", { path: filePath, bytes: content, mtime: Date.now(), hash });
   }
 

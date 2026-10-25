@@ -30,7 +30,7 @@ function cmdQuote(value: string): string {
   return `"${value.replace(/%/g, "%%")}"`;
 }
 
-export type HostRecord = Omit<ScriptLaunch, "kind">;
+export type HostScriptLaunch = Omit<ScriptLaunch, "kind">;
 
 export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, launch: ScriptLaunch): Promise<void> {
   const posix = env.platform !== "win32";
@@ -44,10 +44,10 @@ export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, laun
 }
 
 /** The record, or undefined when it is missing or not a record this installer wrote. */
-export async function readHostRecord(env: NativeHostEnv, layout: HostLayout): Promise<HostRecord | undefined> {
+export async function readHostScriptLaunch(env: NativeHostEnv, layout: HostLayout): Promise<HostScriptLaunch | undefined> {
   const text = await fs.readFile(layout.recordPath, "utf8").catch(() => undefined);
   if (text === undefined) return undefined;
-  let value: Partial<Record<keyof HostRecord, unknown>>;
+  let value: Partial<Record<keyof HostScriptLaunch, unknown>>;
   try {
     value = JSON.parse(text) as typeof value;
   } catch {

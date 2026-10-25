@@ -1,11 +1,11 @@
 // Gives the sharing dialogs a SharingHost that forwards every operation over a message channel to the real host.
 import type { MessageEnd } from "../protocol/index.js";
-import type { SharingHost, SharingOffers, SharingProgress } from "./shareHost.js";
-import { parseSharingReply, type SharingArgs, type SharingCall, type SharingDialogRequest, type SharingOp, type SharingReply } from "./shareMessages.js";
+import type { ShareHost, ShareOffers, ShareProgress } from "./shareHost.js";
+import { parseShareReply, type ShareArgs, type ShareCall, type ShareDialogRequest, type ShareOp, type ShareReply } from "./shareMessages.js";
 
-export type SharingClient = SharingHost & {
+export type ShareClient = ShareHost & {
   /** Calls `handler` whenever the host asks for a dialog; returns the function that stops it. */
-  onOpen(handler: (request: SharingDialogRequest) => void): () => void;
+  onOpen(handler: (request: ShareDialogRequest) => void): () => void;
   /** Stops listening and rejects every call still waiting for its result. */
   dispose(): void;
 };
@@ -13,13 +13,13 @@ export type SharingClient = SharingHost & {
 interface Pending {
   resolve(value: unknown): void;
   reject(error: Error): void;
-  onProgress: ((progress: SharingProgress) => void) | undefined;
+  onProgress: ((progress: ShareProgress) => void) | undefined;
 }
 
-type Call = <K extends SharingOp>(op: K, args: SharingArgs[K], signal?: AbortSignal, onProgress?: (progress: SharingProgress) => void) => Promise<never>;
+type Call = <K extends ShareOp>(op: K, args: ShareArgs[K], signal?: AbortSignal, onProgress?: (progress: ShareProgress) => void) => Promise<never>;
 
 // Numbers each call and keeps it waiting until its result arrives.
-function callTable(port: MessageEnd<SharingCall, SharingReply>) {
+function callTable(port: MessageEnd<ShareCall, ShareReply>) {
   const pending = new Map<number, Pending>();
   let nextId = 0;
   // After an abort the call keeps waiting: the host settles it with its own cancellation error.
@@ -27,7 +27,7 @@ function callTable(port: MessageEnd<SharingCall, SharingReply>) {
     const id = nextId++;
     return new Promise((resolve, reject) => {
       pending.set(id, { resolve: resolve as Pending["resolve"], reject, onProgress });
-      port.post({ channel: "sharing", type: "call", id, op, args } as SharingCall);
+      port.post({ channel: "sharing", type: "call", id, op, args } as ShareCall);
       if (!signal) return;
       const cancel = () => port.post({ channel: "sharing", type: "cancel", id });
       if (signal.aborted) cancel();
@@ -36,8 +36,8 @@ function callTable(port: MessageEnd<SharingCall, SharingReply>) {
   };
   return {
     call,
-    progress(id: number, progress: SharingProgress) { pending.get(id)?.onProgress?.(progress); },
-    settle(reply: Extract<SharingReply, { type: "result" }>) {
+    progress(id: number, progress: ShareProgress) { pending.get(id)?.onProgress?.(progress); },
+    settle(reply: Extract<ShareReply, { type: "result" }>) {
       const waiting = pending.get(reply.id);
       pending.delete(reply.id);
       if (reply.ok) waiting?.resolve(reply.value);
@@ -50,7 +50,7 @@ function callTable(port: MessageEnd<SharingCall, SharingReply>) {
   };
 }
 
-type Operations = Omit<SharingHost, "place" | "offers" | "onOffersChange">;
+type Operations = Omit<ShareHost, "place" | "offers" | "onOffersChange">;
 
 function forwardedOperations(call: Call): Operations {
   return {
@@ -73,15 +73,15 @@ function forwardedOperations(call: Call): Operations {
 }
 
 /** Wraps the UI end of the sharing channel; posts `hello` so the host answers with its offers. */
-export function createSharingClient(port: MessageEnd<SharingCall, SharingReply>): SharingClient {
+export function createShareClient(port: MessageEnd<ShareCall, ShareReply>): ShareClient {
   const calls = callTable(port);
   const offerListeners = new Set<() => void>();
-  const openHandlers = new Set<(request: SharingDialogRequest) => void>();
-  let offers: SharingOffers = { projects: false, links: false };
+  const openHandlers = new Set<(request: ShareDialogRequest) => void>();
+  let offers: ShareOffers = { projects: false, links: false };
   let place = "";
 
   const unsubscribe = port.subscribe((raw: unknown) => {
-    const reply = parseSharingReply(raw);
+    const reply = parseShareReply(raw);
     if (!reply) return;
     if (reply.type === "offers") {
       offers = reply.offers;

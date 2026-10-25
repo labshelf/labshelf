@@ -1,5 +1,5 @@
 // Pins the per-device write record contract at the file boundary.
-import { appendWriteRecord, readWriteRecords, recordFor, createWriteRecordStore } from '../../../src/library/writeRecords/index';
+import { addWriteRecord, readWriteRecords, recordFor, createWriteRecordStore } from '../../../src/library/writeRecords/index';
 import { MemoryLibraryFs } from '../../support/memoryLibraryFs';
 import { fakeLogger } from '../../support/fakeLogger';
 
@@ -13,7 +13,7 @@ let logger: ReturnType<typeof fakeLogger>;
 beforeEach(() => { fs = new MemoryLibraryFs(); logger = fakeLogger(); });
 
 it('round trips entries through only the writing device file', async () => {
-  await appendWriteRecord(fs, '/project', a, entry(), logger);
+  await addWriteRecord(fs, '/project', a, entry(), logger);
   const records = await readWriteRecords(fs, '/project', logger);
   expect(recordFor(records, 'src/main.tex', hash(1))).toEqual({ hash: hash(1), parent: null, by: 'mirror', at: 1 });
   expect(JSON.parse(await fs.readText(file(a)))).toEqual({ version: 1, files: { 'src/main.tex': [expect.objectContaining({ hash: hash(1) })] } });
@@ -21,7 +21,7 @@ it('round trips entries through only the writing device file', async () => {
 });
 
 it('keeps the newest 50 entries per path through concurrent appends', async () => {
-  await Promise.all(Array.from({ length: 55 }, (_, i) => appendWriteRecord(fs, '/project', a, entry(i), logger)));
+  await Promise.all(Array.from({ length: 55 }, (_, i) => addWriteRecord(fs, '/project', a, entry(i), logger)));
   const records = await readWriteRecords(fs, '/project', logger);
   expect(records.get('src/main.tex')).toHaveLength(50);
   expect(recordFor(records, 'src/main.tex', hash(4))).toBeUndefined();
@@ -35,9 +35,9 @@ it.each(['{', '{"version":2,"files":{}}', '{"version":1,"files":{"../escape":[]}
 });
 
 it('merges two device files without writing the peer file', async () => {
-  await appendWriteRecord(fs, '/project', b, { ...entry(2), by: 'app', parent: hash(1) }, logger);
+  await addWriteRecord(fs, '/project', b, { ...entry(2), by: 'app', parent: hash(1) }, logger);
   const peer = await fs.readText(file(b));
-  await appendWriteRecord(fs, '/project', a, entry(), logger);
+  await addWriteRecord(fs, '/project', a, entry(), logger);
   const records = await readWriteRecords(fs, '/project', logger);
   expect(records.get('src/main.tex')).toHaveLength(2);
   expect(recordFor(records, 'src/main.tex', hash(2))?.parent).toBe(hash(1));
@@ -51,16 +51,16 @@ it('surfaces unreadable records rather than treating an I/O failure as empty', a
 });
 
 it('reports a listed record file read failure even when existence checks hide it', async () => {
-  await appendWriteRecord(fs, '/project', a, entry(), logger);
+  await addWriteRecord(fs, '/project', a, entry(), logger);
   jest.spyOn(fs, 'exists').mockResolvedValue(false);
   jest.spyOn(fs, 'readText').mockRejectedValue(Object.assign(new Error('record denied'), { code: 'EACCES' }));
   await expect(readWriteRecords(fs, '/project', logger)).rejects.toThrow('record denied');
-  await expect(appendWriteRecord(fs, '/project', a, entry(2), logger)).rejects.toThrow('record denied');
+  await expect(addWriteRecord(fs, '/project', a, entry(2), logger)).rejects.toThrow('record denied');
 });
 
 it('rejects a device id or path that escapes the folder', async () => {
-  await expect(appendWriteRecord(fs, '/project', '../escape', entry(), logger)).rejects.toThrow();
-  await expect(appendWriteRecord(fs, '/project', a, { ...entry(), path: '../escape' }, logger)).rejects.toThrow();
+  await expect(addWriteRecord(fs, '/project', '../escape', entry(), logger)).rejects.toThrow();
+  await expect(addWriteRecord(fs, '/project', a, { ...entry(), path: '../escape' }, logger)).rejects.toThrow();
   expect(fs.fileList()).toEqual([]);
 });
 
@@ -71,12 +71,12 @@ it('binds the device identity in the shared store factory', async () => {
 });
 
 it('serializes appends to different paths in the same device file', async () => {
-  await Promise.all(['a.tex', 'b.tex'].map(path => appendWriteRecord(fs, '/project', a, { ...entry(), path }, logger)));
+  await Promise.all(['a.tex', 'b.tex'].map(path => addWriteRecord(fs, '/project', a, { ...entry(), path }, logger)));
   expect([...(await readWriteRecords(fs, '/project', logger)).keys()].sort()).toEqual(['a.tex', 'b.tex']);
 });
 
 it('retains mirror provenance when another writer records identical bytes', async () => {
-  await appendWriteRecord(fs, '/project', a, entry(), logger);
-  await appendWriteRecord(fs, '/project', b, { ...entry(), by: 'app' }, logger);
+  await addWriteRecord(fs, '/project', a, entry(), logger);
+  await addWriteRecord(fs, '/project', b, { ...entry(), by: 'app' }, logger);
   expect(recordFor(await readWriteRecords(fs, '/project', logger), 'src/main.tex', hash(1))?.by).toBe('mirror');
 });

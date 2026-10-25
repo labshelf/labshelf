@@ -17,7 +17,7 @@ interface GraphEdge {
   to: string;
 }
 
-export interface CitationGraph {
+export interface CitationMapGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
@@ -35,7 +35,7 @@ const missingRadius = (citing: number): number => Math.min(MAX_RADIUS, PAPER_RAD
 export const GRAPH_MAX_RADIUS = MAX_RADIUS;
 
 /** Builds the graph; edges whose ends the map does not name are left out. */
-export function citationGraph(map: CitationMapView): CitationGraph {
+export function createCitationMapGraph(map: CitationMapView): CitationMapGraph {
   const nodes: GraphNode[] = map.papers.map((p) => ({ id: p.id, kind: "paper", ref: p.id, title: p.title, radius: PAPER_RADIUS }));
   for (const work of map.missing) {
     nodes.push({ id: missingNodeId(work.workId), kind: "missing", ref: work.workId, title: work.title, radius: missingRadius(work.citedBy.length) });

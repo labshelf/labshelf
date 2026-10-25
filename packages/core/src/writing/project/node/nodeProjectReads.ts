@@ -1,7 +1,7 @@
 // Runs the neutral project reads and writes over the local disk and the device's folder registry.
 import * as path from "node:path";
 
-import { NodeLibraryFileSystem, deviceLocalLayout } from "../../../library/node/index.js";
+import { NodeLibraryFileSystem, createDeviceLocalLayout } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { listProjects, type ProjectReadContext } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
@@ -15,7 +15,7 @@ export function nodeProjectReadContext(logger: ILogger): ProjectReadContext {
   return { fs: new NodeLibraryFileSystem(), paths: path, logger };
 }
 
-const registryPathOf = (libraryRoot: string): string => deviceLocalLayout(libraryRoot).projectRegistryPath;
+const registryPathOf = (libraryRoot: string): string => createDeviceLocalLayout(libraryRoot).projectRegistryPath;
 
 export function nodeProjectCatalogContext(logger: ILogger): ProjectCatalogContext {
   const reads = nodeProjectReadContext(logger);

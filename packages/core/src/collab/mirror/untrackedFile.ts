@@ -1,5 +1,5 @@
 // Reconciles unlisted disk files before admitting them to a project share.
-import { detectProjectConflict, eligibleProjectConflictPath } from "../../library/conflicts/index.js";
+import { detectProjectConflict, isEligibleProjectConflictPath } from "../../library/conflicts/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../writing/project/index.js";
 import { waitsForWrite } from "./waitForWrite.js";
 import { indexFiles, replaceFileText, sharedFileKind, sharedPaths, type ShareFileEntry } from "../model/index.js";
@@ -46,10 +46,10 @@ function absolutePath(folder: string, relative: string): string {
 }
 
 async function holdConflictCopy(context: MirrorContext, path: string, bytes: Uint8Array, hash: string): Promise<boolean> {
-  if (!eligibleProjectConflictPath(path) || sharedFileKind(path, bytes) !== "text") { return false; }
+  if (!isEligibleProjectConflictPath(path) || sharedFileKind(path, bytes) !== "text") { return false; }
   const records = await context.writeRecords.read();
   const listed = indexFiles(context.session.index);
-  const candidates = sharedPaths(await context.disk.list()).filter(sibling => sibling !== path && eligibleProjectConflictPath(sibling));
+  const candidates = sharedPaths(await context.disk.list()).filter(sibling => sibling !== path && isEligibleProjectConflictPath(sibling));
   // INVARIANT: A deterministic original prevents two untracked files from holding each other on the first scan.
   const preferred = candidates.filter(sibling => listed.has(sibling) || records.has(sibling) ||
     (!records.has(path) && (sibling.length < path.length || (sibling.length === path.length && sibling < path))));

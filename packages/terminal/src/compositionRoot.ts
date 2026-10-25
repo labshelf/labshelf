@@ -3,12 +3,12 @@
 import * as path from "node:path";
 
 import {
-  BibTeXService, FileProjectVersionStore, Logger, PdfImportParser, errorMessage,
-  processChangeBatch, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PdfjsLoader,
+  BibtexService, FileProjectVersionStore, Logger, PdfImportParser, formatError,
+  applyChangeBatch, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
-  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, cacheDir, createPdfjsLoader,
-  createProjectSaveTracking, deviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
+  FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, resolveCacheDir, createPdfjsLoader,
+  createProjectSaveTracking, createDeviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
 import type { TerminalConfig } from "./config.js";
@@ -58,7 +58,7 @@ export interface OpenOptions {
 function createOcrEngine(env: NodeJS.ProcessEnv, pdfjs: PdfjsLoader, logger: ILogger): TesseractOcrEngine {
   return new TesseractOcrEngine({
     pdfjs,
-    cachePath: path.join(cacheDir(env), "ocr-cache"),
+    cachePath: path.join(resolveCacheDir(env), "ocr-cache"),
     onDiagnostic: (message) => void logger.log("INFO", "ocr", message),
   });
 }
@@ -72,7 +72,7 @@ function createPaperService(
   const papers = new TerminalPaperService({
     paths,
     store,
-    bibtex: new BibTeXService(new NodeLibraryFileSystem(paths.layout.tmpDir())),
+    bibtex: new BibtexService(new NodeLibraryFileSystem(paths.layout.tmpDir())),
     logger,
     pdfParser: async () => {
       if (!parser) {
@@ -86,12 +86,12 @@ function createPaperService(
 }
 
 function createThumbnails(env: NodeJS.ProcessEnv, workerUrl: URL, logger: ILogger) {
-  const renderer = defaultRenderer(path.join(cacheDir(env), "tmp"), workerUrl);
-  return { renderer, thumbnails: new ThumbnailService(cacheDir(env), renderer.render, logger) };
+  const renderer = defaultRenderer(path.join(resolveCacheDir(env), "tmp"), workerUrl);
+  return { renderer, thumbnails: new ThumbnailService(resolveCacheDir(env), renderer.render, logger) };
 }
 
 function mergeBaseStore(root: string): FileProjectVersionStore {
-  return new FileProjectVersionStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
+  return new FileProjectVersionStore(new NodeLibraryFileSystem(), path, createDeviceLocalLayout(root).mergeBasesDir);
 }
 
 function startWatcher(
@@ -99,7 +99,7 @@ function startWatcher(
   indexAnnotations: () => Promise<void>, onRootLost: () => void,
 ): LibraryWatcher {
   const watcher: LibraryWatcher = new LibraryWatcher(paths, () => {
-    void processChangeBatch({
+    void applyChangeBatch({
       logger,
       isRootPresent: () => watcher.rootPresent(),
       scanConflicts: () => scanLibraryConflicts(paths.root, mergeBaseStore(paths.root), logger),
@@ -115,7 +115,7 @@ function startWatcher(
 function annotationIndexer(sidecars: SidecarReader, store: AppContext["store"], logger: ILogger): () => Promise<void> {
   return () => sidecars.annotationIndex(store.snapshot.papers.keys()).then(
     (index) => store.setAnnotationText(index),
-    (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: errorMessage(error) }),
+    (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: formatError(error) }),
   );
 }
 
@@ -126,7 +126,7 @@ async function openConflictFeed(
   const conflicts = new ConflictFeed();
   const rescanConflicts = async (): Promise<void> => { conflicts.set(await scanLibraryConflicts(root, mergeBaseStore(root), logger)); };
   if (scanAtStart) {
-    await rescanConflicts().catch((error: unknown) => logger.log("WARN", "terminal/app", "Startup conflict scan failed", { message: errorMessage(error) }));
+    await rescanConflicts().catch((error: unknown) => logger.log("WARN", "terminal/app", "Startup conflict scan failed", { message: formatError(error) }));
   }
   return { conflicts, rescanConflicts };
 }
@@ -140,7 +140,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   const paths = new LibraryRoot(root);
   await ensureLibraryStructure(paths);
   // The TUI owns the terminal, so the log file is the only channel and there is nowhere else to report a failure.
-  const logPath = deviceLocalLayout(paths.root, env).terminalLogPath;
+  const logPath = createDeviceLocalLayout(paths.root, env).terminalLogPath;
   const logger = new Logger([new FileLogSink(logPath)], { onSinkError: () => undefined });
   const store = createLibraryStore(paths, logger);
   await store.reload();

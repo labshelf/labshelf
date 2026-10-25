@@ -1,6 +1,6 @@
 // Gives the editor and the writing tab the library's writing projects and their files through the library folder file system.
 import {
-  findLibraryProjectFolder, listProjects, posixPathOps, relativePathProblem,
+  findLibraryProjectFolder, listProjects, posixPathOps, checkRelativePath,
   type ILogger, type LibraryFileSystem, type LocalStat, type ProjectEntry,
 } from "@labshelf/core";
 
@@ -85,7 +85,7 @@ export function createBrowserProjects({ fileSystem, logger }: BrowserProjectsDep
   // The file systems name a missing file differently, so a failed read asks whether a file is there at all (a folder is not one).
   // TRAP: the path comes from a page, so anything that could climb out of the project or name another root is refused.
   const refuseEscape = (path: string): void => {
-    const problem = relativePathProblem(path);
+    const problem = checkRelativePath(path);
     if (problem !== undefined) throw new Error(`Refused project file path ${JSON.stringify(path)}: it ${problem}`);
   };
   /** The port refuses an existing target, so a file is replaced by writing it whole, which the host does atomically. */

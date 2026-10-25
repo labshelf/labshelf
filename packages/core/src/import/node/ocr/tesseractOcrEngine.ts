@@ -1,6 +1,6 @@
 // Recovers text from scans and broken-font PDFs by rendering pages with pdfjs and reading them with Tesseract.
 // INVARIANT: both dependencies load lazily and their absence is non-fatal; callers fall back to the text layer.
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 import type { PdfOcrEngine, PdfjsLoader } from "../../pdf/index.js";
 import { loadNativeCanvas } from "../nativeCanvas.js";
 import { openPdfForOcr } from "./ocrDocument.js";
@@ -53,7 +53,7 @@ export class TesseractOcrEngine implements PdfOcrEngine {
             chunks.push(text);
           }
         } catch (error) {
-          this.options.onDiagnostic?.(`OCR failed on page ${pageNumber}: ${errorMessage(error)}`);
+          this.options.onDiagnostic?.(`OCR failed on page ${pageNumber}: ${formatError(error)}`);
         }
       }
     } finally {
@@ -122,7 +122,7 @@ export class TesseractOcrEngine implements PdfOcrEngine {
       this.worker = await tesseract.createWorker(languages, undefined, workerOptions);
       return this.worker;
     } catch (error) {
-      this.options.onDiagnostic?.(`OCR unavailable: ${errorMessage(error)}`);
+      this.options.onDiagnostic?.(`OCR unavailable: ${formatError(error)}`);
       return undefined;
     }
   }

@@ -1,6 +1,6 @@
 /** Checks the paths and sizes of a template's files against the rules every app and the catalog CI share. */
 // CONTRACT: documents/contracts/templates.md#paths
-import { relativePathProblem } from "../../library/index.js";
+import { checkRelativePath } from "../../library/index.js";
 
 const MAX_PATH_LENGTH = 255;
 const MAX_FILES = 500;
@@ -13,7 +13,7 @@ const FORBIDDEN_SEGMENTS = new Set(["latexmkrc", ".latexmkrc", ".git"]);
 export function templatePathProblem(path: string): string | undefined {
   const refuse = (why: string) => `"${path}" ${why}`;
   if (path.length > MAX_PATH_LENGTH) { return refuse(`is longer than ${MAX_PATH_LENGTH} characters`); }
-  const problem = relativePathProblem(path);
+  const problem = checkRelativePath(path);
   if (problem !== undefined) { return refuse(problem); }
   const forbidden = path.split("/").find((segment) => FORBIDDEN_SEGMENTS.has(segment.toLowerCase()));
   return forbidden === undefined ? undefined : refuse(`has a forbidden "${forbidden}" segment`);

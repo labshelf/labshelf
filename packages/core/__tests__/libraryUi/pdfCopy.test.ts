@@ -1,20 +1,20 @@
-import { findMissMessage, noPdfDialogCopy, pdfSourceLabel } from "../../src/libraryUi/pdfCopy";
+import { findMissMessage, createNoPdfDialogCopy, formatPdfSourceLabel } from "../../src/libraryUi/pdfCopy";
 import type { PdfMiss } from "../../src/libraryUi/protocol";
 
 const miss = (over: Partial<PdfMiss> = {}): PdfMiss => ({ tried: 0, sources: [], blocked: false, needsLogin: false, ...over });
 
 describe("pdfSourceLabel", () => {
   it("labels known resolvers, passes through unknown ones, falls back to the web", () => {
-    expect(pdfSourceLabel("unpaywall")).toBe("Unpaywall (open access)");
-    expect(pdfSourceLabel("publisher")).toBe("the publisher");
-    expect(pdfSourceLabel("mystery")).toBe("mystery");
-    expect(pdfSourceLabel(undefined)).toBe("the web");
+    expect(formatPdfSourceLabel("unpaywall")).toBe("Unpaywall (open access)");
+    expect(formatPdfSourceLabel("publisher")).toBe("the publisher");
+    expect(formatPdfSourceLabel("mystery")).toBe("mystery");
+    expect(formatPdfSourceLabel(undefined)).toBe("the web");
   });
 });
 
 describe("noPdfDialogCopy", () => {
   it("summarises a normal miss with the source list and the paper title", () => {
-    const { title, message } = noPdfDialogCopy("Deep Learning", miss({ tried: 7, sources: ["page", "publisher", "unpaywall"] }));
+    const { title, message } = createNoPdfDialogCopy("Deep Learning", miss({ tried: 7, sources: ["page", "publisher", "unpaywall"] }));
     expect(title).toBe("No PDF found");
     expect(message).toContain("Tried 7 links from this page, the publisher and Unpaywall (open access).");
     expect(message).toContain('"Deep Learning"');
@@ -23,23 +23,23 @@ describe("noPdfDialogCopy", () => {
   });
 
   it("uses the singular 'link' when exactly one was tried", () => {
-    expect(noPdfDialogCopy("X", miss({ tried: 1, sources: ["page"] })).message).toContain("Tried 1 link from this page.");
+    expect(createNoPdfDialogCopy("X", miss({ tried: 1, sources: ["page"] })).message).toContain("Tried 1 link from this page.");
   });
 
   it("says no identifier was found when nothing was tried", () => {
-    const { message } = noPdfDialogCopy("Ghost", miss({ tried: 0 }));
+    const { message } = createNoPdfDialogCopy("Ghost", miss({ tried: 0 }));
     expect(message).toContain("No PDF link, DOI or arXiv id was found for \"Ghost\"");
     expect(message).not.toContain("Tried");
   });
 
   it("tells the user to open the page and sign in or pass the check when the miss has an access page", () => {
     const url = "https://publisher.example/x.pdf";
-    expect(noPdfDialogCopy("X", miss({ tried: 1, needsLogin: true, access: { kind: "login", url } })).message).toContain("sign in there");
+    expect(createNoPdfDialogCopy("X", miss({ tried: 1, needsLogin: true, access: { kind: "login", url } })).message).toContain("sign in there");
     expect(findMissMessage("X", miss({ tried: 1, blocked: true, access: { kind: "bot", url } }))).toContain("pass the check there");
   });
 
   it("adds the bot-check hint when some links were blocked", () => {
-    expect(noPdfDialogCopy("X", miss({ tried: 3, sources: ["publisher"], blocked: true })).message)
+    expect(createNoPdfDialogCopy("X", miss({ tried: 3, sources: ["publisher"], blocked: true })).message)
       .toContain("behind a bot check");
   });
 });

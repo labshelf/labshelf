@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import type { ILogger } from '@labshelf/core';
-import { readSharedLibraryRoot, sharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
+import { readSharedLibraryRoot, resolveSharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
 import { migrateLibraryRootFromGlobalState } from '../../src/storage/index';
 import { resolveLibraryRoot } from '../../src/storage/paths/index';
 import { nodeSharedLibraryConfig as shared } from '../../src/storage/node/index';
@@ -24,7 +24,7 @@ function makeLogger(): ILogger & { log: jest.Mock; error: jest.Mock } {
 }
 
 afterEach(() => {
-  fs.rmSync(sharedConfigPath(), { force: true, recursive: true });
+  fs.rmSync(resolveSharedConfigPath(), { force: true, recursive: true });
 });
 
 describe('migrateLibraryRootFromGlobalState', () => {
@@ -51,7 +51,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
     await migrateLibraryRootFromGlobalState(state, shared, () => logger);
 
     expect(await readSharedLibraryRoot()).toBe('/Users/me/FromTerminal');
-    expect(JSON.parse(fs.readFileSync(sharedConfigPath(), 'utf8')).terminal).toEqual({ sort: 'year' });
+    expect(JSON.parse(fs.readFileSync(resolveSharedConfigPath(), 'utf8')).terminal).toEqual({ sort: 'year' });
     expect(state.get(KEY)).toBeUndefined();
     expect(logger.log).toHaveBeenCalledWith('WARN', 'storage', expect.any(String), expect.objectContaining({
       sharedRoot: '/Users/me/FromTerminal', globalStateRoot: '/Users/me/FromVscode',
@@ -60,7 +60,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
 
   it('keeps globalState when the shared config cannot be written, so the next start retries', async () => {
     // A directory in place of the file makes the atomic rename fail.
-    fs.mkdirSync(sharedConfigPath(), { recursive: true });
+    fs.mkdirSync(resolveSharedConfigPath(), { recursive: true });
     const state = makeState('/Users/me/Library');
     const logger = makeLogger();
 
@@ -69,7 +69,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
     expect(state.get(KEY)).toBe('/Users/me/Library');
     expect(state.update).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith('storage', expect.anything(), expect.objectContaining({
-      file: sharedConfigPath(), globalStateRoot: '/Users/me/Library',
+      file: resolveSharedConfigPath(), globalStateRoot: '/Users/me/Library',
     }));
   });
 
@@ -79,7 +79,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
 
     await migrateLibraryRootFromGlobalState(state, shared, loggerFor);
 
-    expect(fs.existsSync(sharedConfigPath())).toBe(false);
+    expect(fs.existsSync(resolveSharedConfigPath())).toBe(false);
     expect(state.update).not.toHaveBeenCalled();
     expect(loggerFor).not.toHaveBeenCalled();
   });

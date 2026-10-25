@@ -1,6 +1,6 @@
 /** The VS Code sharing host speaks library paths to the dialogs and disk paths to the core folder-link operations. */
 import * as path from 'node:path';
-import type { SharingHost } from '@labshelf/core';
+import type { ShareHost } from '@labshelf/core';
 import { withLibraryPaths } from '../../../src/share/node/createVscodeShareHost';
 import { libraryPaths } from '../../../src/libraryUi/libraryPaths';
 
@@ -17,7 +17,7 @@ function host() {
       { id: 'b', folder: '/elsewhere/X', link: 'l', createdAt: 't', relayHost: 'h' },
     ]),
   };
-  return { inner, wrapped: withLibraryPaths(inner as unknown as SharingHost, () => libraryPaths(root, path.posix)) };
+  return { inner, wrapped: withLibraryPaths(inner as unknown as ShareHost, () => libraryPaths(root, path.posix)) };
 }
 
 describe('withLibraryPaths', () => {

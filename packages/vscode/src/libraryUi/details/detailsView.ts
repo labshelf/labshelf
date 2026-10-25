@@ -1,10 +1,10 @@
 // Hosts the Details webview in the secondary sidebar and shows it the selected paper or project.
 import * as vscode from "vscode";
 import {
-  type DetailsTarget,
+  type DetailsSelection,
   type ILogger,
   type ProjectLibraryPort,
-  errorMessage,
+  formatError,
   parseDetailsMessage,
   type HostToDetails,
   type DetailsToHost,
@@ -86,7 +86,7 @@ interface DetailsSessionDeps {
   projectLibrary: () => ProjectLibraryPort;
   logger: ILogger;
   /** The target to replay once the library channel is ready. */
-  target: () => DetailsTarget | undefined;
+  target: () => DetailsSelection | undefined;
   onFolderOpen: (folder: string) => void;
 }
 
@@ -101,7 +101,7 @@ class DetailsSession {
   }
 
   /** Shows the target in the page once the library channel has answered `ready`; until then the owner's stored target is replayed. */
-  show(target: DetailsTarget): void {
+  show(target: DetailsSelection): void {
     if (this._library?.ready) { this._post({ type: "details.show", target }); }
   }
 
@@ -116,7 +116,7 @@ class DetailsSession {
     try {
       if (message.channel === "projects") { this._projects.deliver(message.msg); } else { await this._libraryChannel()?.handle(message.msg); }
     } catch (error) {
-      await this._deps.logger.log("ERROR", LOG_MODULE, "Details message failed", { channel: message.channel, type: message.msg.type, message: errorMessage(error) });
+      await this._deps.logger.log("ERROR", LOG_MODULE, "Details message failed", { channel: message.channel, type: message.msg.type, message: formatError(error) });
     }
   }
 
@@ -128,7 +128,7 @@ class DetailsSession {
     try {
       await this._libraryChannel()?.handle({ type: "ready" });
     } catch (error) {
-      await this._deps.logger.log("ERROR", LOG_MODULE, "Details library rebind failed", { message: errorMessage(error) });
+      await this._deps.logger.log("ERROR", LOG_MODULE, "Details library rebind failed", { message: formatError(error) });
     }
   }
 
@@ -174,7 +174,7 @@ export interface DetailsViewDeps {
 export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposable {
   private _session: DetailsSession | undefined;
   private _view: vscode.WebviewView | undefined;
-  private _target: DetailsTarget | undefined;
+  private _target: DetailsSelection | undefined;
   private readonly _folderRequests = new vscode.EventEmitter<string>();
   /** Fires with the UI path of a folder the page asked to open in the paper list. */
   readonly onDidRequestFolder: vscode.Event<string> = this._folderRequests.event;
@@ -201,7 +201,7 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
   }
 
   /** Stores the target and posts it when the page is ready; a page that is not ready yet receives it with its `ready` answer. */
-  show(target: DetailsTarget): void {
+  show(target: DetailsSelection): void {
     this._target = target;
     this._session?.show(target);
   }

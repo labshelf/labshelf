@@ -1,6 +1,6 @@
 /** Reads the author-supplied keyword list printed below the abstract. */
-import { collapseWhitespace } from "../metadata/index.js";
-import { KEYWORDS_STOP, stopIndex } from "./headings.js";
+import { normalizeWhitespace } from "../metadata/index.js";
+import { KEYWORDS_STOP, findStopOffset } from "./headings.js";
 
 // Groups: the character before the label, and the delimiter after it — the
 // label only counts as a label when one of the two proves it is a heading.
@@ -13,7 +13,7 @@ const KEYWORDS_MAX_COUNT = 15;
  * Reads the author-supplied keyword list printed below the abstract.
  * @returns Up to 15 deduplicated keywords, or an empty array when absent.
  */
-export function keywordsFromText(text: string): string[] {
+export function extractKeywords(text: string): string[] {
   if (!text) {
     return [];
   }
@@ -30,7 +30,7 @@ export function keywordsFromText(text: string): string[] {
 
     const start = match.index + match[0].length;
     const window = text.slice(start, start + KEYWORDS_MAX_CHARS);
-    const run = collapseWhitespace(window.slice(0, stopIndex(window, KEYWORDS_STOP))) ?? "";
+    const run = normalizeWhitespace(window.slice(0, findStopOffset(window, KEYWORDS_STOP))) ?? "";
     const keywords = splitKeywords(run);
     if (keywords.length > 0) {
       return keywords;

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import {
-  identifiersFromInput,
+  extractIdentifiersFromInput,
   resolveFirstIdentifier,
   searchOnlineCandidates,
 } from "@labshelf/core";
@@ -80,7 +80,7 @@ async function askForQuery(paper: PaperRecord): Promise<string | undefined> {
  * @returns One confirmed record, several candidates, or an empty list.
  */
 export async function lookupUserQuery(query: string, logger: ILogger): Promise<ResolvedMetadata[]> {
-  const identifiers = identifiersFromInput(query);
+  const identifiers = extractIdentifiersFromInput(query);
   if (identifiers.length > 0) {
     const confirmed = await resolveFirstIdentifier(identifiers, { logger }).catch(() => undefined);
     if (confirmed) {

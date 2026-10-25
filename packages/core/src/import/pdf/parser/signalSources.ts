@@ -1,11 +1,11 @@
 /** Turns the signals read from the file itself into metadata sources, ranked by how far each can be trusted. */
-import { asString, extractYear, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../../metadata/index.js";
+import { parseString, extractYear, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../../metadata/index.js";
 import { normalizeAuthors } from "../authors.js";
-import { authorsFromBlocks } from "../frontPageLayout.js";
-import { keywordsFromText } from "../keywords.js";
-import { publisherMetadataFromInfo, timestampsAreTrustworthy } from "../pdfDictionary.js";
-import { usableTitle } from "../titleQuality.js";
-import { journalFromRunningHead } from "../pageHeader.js";
+import { extractAuthorsFromBlocks } from "../frontPageLayout.js";
+import { extractKeywords } from "../keywords.js";
+import { extractPublisherMetadata, hasTrustworthyTimestamps } from "../pdfDictionary.js";
+import { deriveUsableTitle } from "../titleQuality.js";
+import { extractJournalFromRunningHead } from "../pageHeader.js";
 import type { PdfSignals } from "./readPdf.js";
 
 export interface LocalSourceInput {
@@ -18,11 +18,11 @@ export interface LocalSourceInput {
   textIsReadable: boolean;
 }
 
-export function localSources(input: LocalSourceInput): MetadataSource[] {
+export function deriveLocalSources(input: LocalSourceInput): MetadataSource[] {
   const { signals } = input;
   return [
     { name: "xmp", trust: SOURCE_TRUST.xmp, metadata: signals.xmp },
-    { name: "publisher-info", trust: SOURCE_TRUST.publisherInfo, metadata: publisherMetadataFromInfo(signals.info) },
+    { name: "publisher-info", trust: SOURCE_TRUST.publisherInfo, metadata: extractPublisherMetadata(signals.info) },
     { name: "pdf-text", trust: SOURCE_TRUST.pdfText, metadata: textSignals(input) },
     { name: "info", trust: SOURCE_TRUST.info, metadata: infoSignals(signals) },
     { name: "layout", trust: SOURCE_TRUST.layout, metadata: layoutSignals(input) },
@@ -39,8 +39,8 @@ function textSignals(input: LocalSourceInput): ResolvedMetadata | undefined {
   if (!input.textIsReadable) {
     return undefined;
   }
-  const keywords = keywordsFromText(input.frontMatter);
-  const journal = journalFromRunningHead(input.signals.pageTexts);
+  const keywords = extractKeywords(input.frontMatter);
+  const journal = extractJournalFromRunningHead(input.signals.pageTexts);
   const metadata: ResolvedMetadata = {
     ...(input.abstract ? { summary: input.abstract } : {}),
     ...(keywords.length ? { keywords } : {}),
@@ -50,13 +50,13 @@ function textSignals(input: LocalSourceInput): ResolvedMetadata | undefined {
 }
 
 function infoSignals(signals: PdfSignals): ResolvedMetadata | undefined {
-  const title = usableTitle(asString(signals.info["Title"]));
-  const authors = normalizeAuthors(asString(signals.info["Author"]));
+  const title = deriveUsableTitle(parseString(signals.info["Title"]));
+  const authors = normalizeAuthors(parseString(signals.info["Author"]));
   // A re-saved PDF's timestamps say when it was printed, not published.
-  const year = timestampsAreTrustworthy(signals.info)
-    ? extractYear(asString(signals.info["CreationDate"]) ?? asString(signals.info["ModDate"]))
+  const year = hasTrustworthyTimestamps(signals.info)
+    ? extractYear(parseString(signals.info["CreationDate"]) ?? parseString(signals.info["ModDate"]))
     : undefined;
-  const keywords = keywordsFromText(`Keywords: ${asString(signals.info["Keywords"]) ?? ""}`);
+  const keywords = extractKeywords(`Keywords: ${parseString(signals.info["Keywords"]) ?? ""}`);
 
   const metadata: ResolvedMetadata = {
     ...(title ? { title } : {}),
@@ -72,6 +72,6 @@ function layoutSignals(input: LocalSourceInput): ResolvedMetadata | undefined {
   if (!input.embeddedIsReadable || !layoutTitle) {
     return undefined;
   }
-  const authors = authorsFromBlocks(input.signals.titleBlocks, layoutTitle);
+  const authors = extractAuthorsFromBlocks(input.signals.titleBlocks, layoutTitle);
   return { title: layoutTitle, ...(authors.length ? { authors } : {}) };
 }

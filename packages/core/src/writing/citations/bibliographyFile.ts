@@ -1,7 +1,7 @@
 /** Builds the text of a project's generated labshelf.bib from the library papers it cites. */
 // CONTRACT: documents/contracts/library-format.md#labshelfbib
 
-import { bibtexEntry } from "../../import/bibtex/index.js";
+import { createBibtexEntry } from "../../import/bibtex/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { papersByCiteKey } from "./papersByCiteKey.js";
 
@@ -22,7 +22,7 @@ export function generateBibliography(keys: readonly string[], papers: readonly P
   const resolved = sorted.filter((key) => library.has(key));
   const missing = sorted.filter((key) => !library.has(key));
   // BibTeX keys are case-sensitive, so `Smith2020` and `smith2020` are different citations.
-  const entries = resolved.map((key) => bibtexEntry(library.get(key)!, { includeFile: false }));
+  const entries = resolved.map((key) => createBibtexEntry(library.get(key)!, { includeFile: false }));
   const text = [BIBLIOGRAPHY_HEADER, ...entries].join("\n\n") + "\n";
   return { text, resolved, missing };
 }

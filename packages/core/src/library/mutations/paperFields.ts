@@ -1,14 +1,14 @@
 /** Changes the fields the user owns on papers (reading status, tags, note, the day a copy was requested), reading each paper from disk first. */
 import type { PaperRecord } from "../../model/index.js";
-import type { PaperStatus } from "../readingStatus/index.js";
-import { editedTags, normalizeTags } from "../paper/index.js";
-import { errorMessage } from "../../logging/index.js";
-import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./mutationDeps.js";
-import { readPaperOnDisk } from "./paperOnFileSystem.js";
+import type { ReadingStatus } from "../readingStatus/index.js";
+import { deriveEditedTags, normalizeTags } from "../paper/index.js";
+import { formatError } from "../../logging/index.js";
+import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type Reference } from "./mutationDeps.js";
+import { readPaperOnFileSystem } from "./paperOnFileSystem.js";
 import { writePaperRecord } from "./paperRecordWrite.js";
 
-export interface PaperFieldsPatch {
-  status?: PaperStatus;
+export interface PaperFieldsUpdate {
+  status?: ReadingStatus;
   tags?: string[];
   note?: string;
   /** The day (YYYY-MM-DD) the user asked the author for a copy; null removes it. */
@@ -27,14 +27,14 @@ export interface FieldsBatchOutcome extends BatchOutcome {
 export async function updatePaperFields(
   ctx: MutationContext,
   folder: string,
-  patch: PaperFieldsPatch,
+  patch: PaperFieldsUpdate,
 ): Promise<PaperRecord | undefined> {
-  const current = await readPaperOnDisk(ctx, folder);
+  const current = await readPaperOnFileSystem(ctx, folder);
   return current && applyPatch(ctx, current, patch);
 }
 
 /** @returns the papers changed, with their records, and the failures */
-export function setPaperStatus(ctx: MutationContext, papers: PaperRef[], status: PaperStatus): Promise<FieldsBatchOutcome> {
+export function setPapersReadingStatus(ctx: MutationContext, papers: Reference[], status: ReadingStatus): Promise<FieldsBatchOutcome> {
   return eachPaper(ctx, papers, (current) => applyPatch(ctx, current, { status }));
 }
 
@@ -42,16 +42,16 @@ export function setPaperStatus(ctx: MutationContext, papers: PaperRef[], status:
  * Adds and removes tags on several papers, keeping each paper's other tags as its file holds them.
  * @returns the papers changed, with their records, and the failures
  */
-export function editPaperTags(
+export function updatePaperTags(
   ctx: MutationContext,
-  papers: PaperRef[],
+  papers: Reference[],
   add: string[],
   remove: string[],
 ): Promise<FieldsBatchOutcome> {
-  return eachPaper(ctx, papers, (current) => applyPatch(ctx, current, { tags: editedTags(current.tags ?? [], add, remove) }));
+  return eachPaper(ctx, papers, (current) => applyPatch(ctx, current, { tags: deriveEditedTags(current.tags ?? [], add, remove) }));
 }
 
-async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: PaperFieldsPatch): Promise<PaperRecord> {
+async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: PaperFieldsUpdate): Promise<PaperRecord> {
   const owned: Pick<PaperRecord, "tags" | "note"> = {};
   if (patch.tags !== undefined) { owned.tags = normalizeTags(patch.tags); }
   if (patch.note !== undefined) { owned.note = patch.note; }
@@ -74,19 +74,19 @@ async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: Pap
 
 async function eachPaper(
   ctx: MutationContext,
-  papers: PaperRef[],
+  papers: Reference[],
   run: (current: PaperRecord) => Promise<PaperRecord>,
 ): Promise<FieldsBatchOutcome> {
   const outcome: FieldsBatchOutcome = { done: [], failed: [], records: [] };
   for (const paper of papers) {
     try {
-      const current = await readPaperOnDisk(ctx, paper.path);
+      const current = await readPaperOnFileSystem(ctx, paper.path);
       if (!current) { throw new Error("Paper not found"); }
       outcome.records.push(await run(current));
       outcome.done.push(paper.id);
     } catch (error) {
-      outcome.failed.push({ id: paper.id, error: errorMessage(error) });
-      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper update failed", { id: paper.id, message: errorMessage(error) });
+      outcome.failed.push({ id: paper.id, error: formatError(error) });
+      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper update failed", { id: paper.id, message: formatError(error) });
     }
   }
   return outcome;

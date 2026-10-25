@@ -1,7 +1,7 @@
 // Opens the :conflicts overlay: pick a conflict copy, then how to resolve it.
 import * as path from "node:path";
 
-import { contentConflictMessage, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
+import { describeContentConflict, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
 
 import { textInput } from "../../textInput.js";
 import type { PickerItem } from "../../overlays.js";
@@ -20,7 +20,7 @@ export function openConflicts(app: App): void {
 
 function openChoices(app: App, copy: ConflictCopy): void {
   const choices = conflictChoices(copy);
-  const title = copy.match && copy.match !== "name" ? contentConflictMessage(copy) : `Resolve ${path.basename(copy.original)}`;
+  const title = copy.match && copy.match !== "name" ? describeContentConflict(copy) : `Resolve ${path.basename(copy.original)}`;
   openPicker(app, title, choices, (choice) => {
     if (choice.id === "mergeMyself") {
       openPicker(app, "Merge Myself", [copy.original, copy.copy].map((file) => ({ id: file, label: file })), () => undefined);

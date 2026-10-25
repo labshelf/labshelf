@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../src/ports/index";
 import {
-  loadSharedConfig, readSharedLibraryRoot, sharedConfigDir, sharedConfigPath, updateSharedConfig,
+  loadSharedConfig, readSharedLibraryRoot, resolveSharedConfigDir, resolveSharedConfigPath, updateSharedConfig,
 } from "../../../src/library/node/index";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../support/tempDirs";
 
@@ -34,14 +34,14 @@ function fakeLogger(): ILogger & { errors: Array<{ module: string; context: Reco
 
 describe("shared config location", () => {
   it("lives in $XDG_CONFIG_HOME/labshelf/config.json", () => {
-    expect(sharedConfigDir({ XDG_CONFIG_HOME: "/xdg/config" })).toBe(path.join("/xdg/config", "labshelf"));
-    expect(sharedConfigPath({ XDG_CONFIG_HOME: "/xdg/config" })).toBe(path.join("/xdg/config", "labshelf", "config.json"));
+    expect(resolveSharedConfigDir({ XDG_CONFIG_HOME: "/xdg/config" })).toBe(path.join("/xdg/config", "labshelf"));
+    expect(resolveSharedConfigPath({ XDG_CONFIG_HOME: "/xdg/config" })).toBe(path.join("/xdg/config", "labshelf", "config.json"));
   });
 
   it("falls back to ~/.config when XDG_CONFIG_HOME is unset or empty", () => {
     const expected = path.join(os.homedir(), ".config", "labshelf", "config.json");
-    expect(sharedConfigPath({})).toBe(expected);
-    expect(sharedConfigPath({ XDG_CONFIG_HOME: "" })).toBe(expected);
+    expect(resolveSharedConfigPath({})).toBe(expected);
+    expect(resolveSharedConfigPath({ XDG_CONFIG_HOME: "" })).toBe(expected);
   });
 });
 

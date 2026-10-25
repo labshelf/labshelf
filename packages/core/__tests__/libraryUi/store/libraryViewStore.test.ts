@@ -1,6 +1,6 @@
 import type { PaperStats } from "../../../src/libraryUi/protocol";
 import type { PaperRecord } from "@labshelf/core";
-import { LibraryViewStore, shallowEqual } from "../../../src/libraryUi/store/libraryViewStore";
+import { LibraryViewStore, isShallowEqual } from "../../../src/libraryUi/store/libraryViewStore";
 
 describe("LibraryViewStore", () => {
   it("fires select immediately and only when the slice changes", () => {
@@ -208,19 +208,19 @@ describe("LibraryViewStore open paper", () => {
 
 describe("shallowEqual", () => {
   it("compares primitives, arrays and plain objects one level deep", () => {
-    expect(shallowEqual(1, 1)).toBe(true);
-    expect(shallowEqual("a", "b")).toBe(false);
-    expect(shallowEqual([1, 2], [1, 2])).toBe(true);
-    expect(shallowEqual([1, 2], [1, 3])).toBe(false);
-    expect(shallowEqual({ a: 1 }, { a: 1 })).toBe(true);
-    expect(shallowEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false);
-    expect(shallowEqual({ a: {} }, { a: {} })).toBe(false);
+    expect(isShallowEqual(1, 1)).toBe(true);
+    expect(isShallowEqual("a", "b")).toBe(false);
+    expect(isShallowEqual([1, 2], [1, 2])).toBe(true);
+    expect(isShallowEqual([1, 2], [1, 3])).toBe(false);
+    expect(isShallowEqual({ a: 1 }, { a: 1 })).toBe(true);
+    expect(isShallowEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false);
+    expect(isShallowEqual({ a: {} }, { a: {} })).toBe(false);
   });
   it("treats Sets and arrays-vs-objects by reference only", () => {
     const s = new Set([1]);
-    expect(shallowEqual(s, s)).toBe(true);
-    expect(shallowEqual(new Set([1]), new Set([1]))).toBe(false);
-    expect(shallowEqual([], {})).toBe(false);
-    expect(shallowEqual(null, {})).toBe(false);
+    expect(isShallowEqual(s, s)).toBe(true);
+    expect(isShallowEqual(new Set([1]), new Set([1]))).toBe(false);
+    expect(isShallowEqual([], {})).toBe(false);
+    expect(isShallowEqual(null, {})).toBe(false);
   });
 });

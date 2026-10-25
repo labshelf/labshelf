@@ -16,7 +16,7 @@ export function installElectronGlobals(): void {
 }
 
 /** Caches FeatureTest.platform so pdf.js never reads an undefined navigator after it has loaded. */
-export function patchFeatureTestPlatform(pdfjs: Record<string, unknown>): void {
+export function updateFeatureTestPlatform(pdfjs: Record<string, unknown>): void {
   const featureTest = pdfjs["FeatureTest"] as Record<string, unknown> | undefined;
   const shadow = pdfjs["shadow"] as ((obj: object, prop: string, value: unknown) => void) | undefined;
   if (!featureTest || !shadow) {

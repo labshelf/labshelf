@@ -2,8 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { requireRegistry, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "../nativeHostEnv.js";
-import type { BrowserTarget } from "./hostLayout.js";
+import { ensureRegistry, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "../nativeHostEnv.js";
+import type { BrowserHostSite } from "./hostLayout.js";
 
 // Per-user data folders that Flatpak (~/.var/app/<id>) and Snap (~/snap/<name>) create on first run.
 const FLATPAK_IDS: Record<BrowserId, string> = {
@@ -16,14 +16,14 @@ const FLATPAK_IDS: Record<BrowserId, string> = {
 };
 const SNAP_NAMES: Partial<Record<BrowserId, string>> = { chromium: "chromium", brave: "brave", firefox: "firefox" };
 
-export async function isBrowserPresent(env: NativeHostEnv, target: BrowserTarget): Promise<boolean> {
+export async function isBrowserPresent(env: NativeHostEnv, target: BrowserHostSite): Promise<boolean> {
   if (target.presence.kind === "dir") return isDir(target.presence.path);
-  const { exitCode } = await requireRegistry(env)(["query", target.presence.key]);
+  const { exitCode } = await ensureRegistry(env)(["query", target.presence.key]);
   return exitCode === 0;
 }
 
 /** Warnings for sandboxed installs; only Linux has Flatpak and Snap. */
-export async function sandboxWarnings(env: NativeHostEnv, targets: readonly BrowserTarget[]): Promise<NativeHostWarning[]> {
+export async function detectSandboxWarnings(env: NativeHostEnv, targets: readonly BrowserHostSite[]): Promise<NativeHostWarning[]> {
   if (env.platform !== "linux") return [];
   const warnings: NativeHostWarning[] = [];
   for (const { browser, label } of targets) {

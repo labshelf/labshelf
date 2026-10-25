@@ -1,12 +1,12 @@
 // Stores vectors as SQLite BLOBs and ranks them by a flat-scan cosine top-k.
 // Adequate up to ~10k chunks; search() stays in-process so it uses the embedder's Float32Array layout.
 import type { DatabaseSync } from "node:sqlite";
-import { cosine } from "../embedding/index.js";
+import { deriveCosine } from "../embedding/index.js";
 import type {
   IVectorStore,
   VectorFilter,
   VectorMatch,
-  VectorRecord,
+  VectorEntry,
 } from "../embedding/index.js";
 
 /**
@@ -54,7 +54,7 @@ export class SqliteVectorStore implements IVectorStore {
    * Inserts or replaces vector records for the given chunks.
    */
   async upsert(
-    records: { record: VectorRecord; embedding: Float32Array }[],
+    records: { record: VectorEntry; embedding: Float32Array }[],
   ): Promise<void> {
     if (records.length === 0) return;
     const paperIds = Array.from(new Set(records.map((r) => r.record.paperId)));
@@ -99,7 +99,7 @@ export class SqliteVectorStore implements IVectorStore {
       ...(row.section !== null ? { section: row.section } : {}),
       ...(row.page !== null ? { page: row.page } : {}),
       ...(row.text !== null ? { text: row.text } : {}),
-      score: cosine(query, decodeEmbedding(row.embedding, row.dim)),
+      score: deriveCosine(query, decodeEmbedding(row.embedding, row.dim)),
     }));
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, k);

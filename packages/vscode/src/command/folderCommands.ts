@@ -1,7 +1,7 @@
 /** Creates, renames, moves and trashes library folders through the core mutations, then brings the index and views along. */
 import * as vscode from "vscode";
 
-import { createFolder, errorMessage, moveFolder, renameFolder, trashFolder } from "@labshelf/core";
+import { createFolder, formatError, moveFolder, renameFolder, moveFolderToTrash } from "@labshelf/core";
 import { validateFolderNameInput, type LibraryNode } from "../libraryUi/index.js";
 import type { ActiveServices, RequireServices } from "./commandContext.js";
 
@@ -84,7 +84,7 @@ async function trashFolderAt(host: FolderCommandHost, dir: string): Promise<void
   const services = await host.requireServices();
   if (!services) { return; }
   // The index follows the disk: its papers leave the list only once the folder is really in the trash.
-  await trashFolder(services.mutations, dir);
+  await moveFolderToTrash(services.mutations, dir);
   await services.reindexLibrary();
   host.refreshViews();
 }
@@ -129,7 +129,7 @@ async function guarded(
   try {
     await action();
   } catch (error) {
-    const message = errorMessage(error);
+    const message = formatError(error);
     await services.logger.log("WARN", LOG_MODULE, failure, { ...context, message });
     void vscode.window.showErrorMessage(`LabShelf: ${failure} — ${message}`);
   }

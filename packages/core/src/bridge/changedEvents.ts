@@ -4,7 +4,7 @@ import { HOST_MESSAGE_LIMIT, type BridgeChangedEvent } from "./protocol.js";
 // CONTRACT: documents/contracts/bridge.md#events
 const EMPTY_EVENT_BYTES = JSON.stringify({ event: "changed", paths: [] }).length;
 
-export function changedEvents(paths: string[]): BridgeChangedEvent[] {
+export function createChangedEvents(paths: string[]): BridgeChangedEvent[] {
   const encoder = new TextEncoder();
   const events: BridgeChangedEvent[] = [];
   let batch: string[] = [];

@@ -2,22 +2,22 @@
 import { confirmDialog, showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
 import type { SidebarSpacesState } from "./spaceActions.js";
 
-export function toggleSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () => void, open?: boolean): void {
+export function updateSpaceRowOpen(t: SidebarSpacesState, row: HTMLElement, render: () => void, open?: boolean): void {
   const key = row.dataset["key"]!;
   if (open ?? !t.expanded.has(key)) t.expanded.add(key); else t.expanded.delete(key);
   t.saveExpanded([...t.expanded]);
   render();
 }
 
-export function activateSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () => void, twisty = false): boolean {
+export function runSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () => void, twisty = false): boolean {
   if (row.dataset["allSpaces"] !== undefined) { t.spaces?.openCatalog(); return true; }
   const id = row.dataset["space"];
   if (!id) return false;
-  if (twisty && row.hasAttribute("aria-expanded")) { toggleSpaceRow(t, row, render); return true; }
+  if (twisty && row.hasAttribute("aria-expanded")) { updateSpaceRowOpen(t, row, render); return true; }
   const paper = row.dataset["spacePaper"];
   if (paper) t.spaces?.openPaper(paper);
   else {
-    if (row.hasAttribute("aria-expanded")) toggleSpaceRow(t, row, render, true);
+    if (row.hasAttribute("aria-expanded")) updateSpaceRowOpen(t, row, render, true);
     t.spaces?.openSpace(id, row.dataset["spaceFolder"]);
   }
   return true;
@@ -31,7 +31,7 @@ async function deleteFolder(t: SidebarSpacesState, id: string, folder: string): 
   if (await confirmDialog("Delete folder?", "Delete this folder? Paper references remain in the Space.", "Delete", true)) t.spaces?.deleteFolder(id, folder);
 }
 
-export function spaceContextMenu(e: MouseEvent, t: SidebarSpacesState, row: HTMLElement | null): boolean {
+export function showSpaceMenu(e: MouseEvent, t: SidebarSpacesState, row: HTMLElement | null): boolean {
   const id = row?.dataset["space"];
   if (!id || !t.spaces || !row) return false;
   e.preventDefault();

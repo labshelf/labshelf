@@ -15,18 +15,18 @@ export interface ProjectConflictInput extends ProjectConflictText {
   dismissed?: readonly ConflictDismissal[];
 }
 
-export function eligibleProjectConflictPath(file: string): boolean {
+export function isEligibleProjectConflictPath(file: string): boolean {
   return !file.split('/').some(part => part.startsWith('.') || ['node_modules', 'build', 'dist', 'out', 'target'].includes(part))
     && !/ \(copy \d+\)(?:\.[^./]+)?$/.test(file);
 }
 const nameOf = (file: string) => file.split('/').at(-1) ?? file;
 const directoryOf = (file: string) => file.slice(0, file.length - nameOf(file).length);
 const extensionOf = (file: string) => /\.[^.]+$/.exec(nameOf(file))?.[0].toLowerCase();
-const textFile = ({ path, text }: ProjectConflictText) => eligibleProjectConflictPath(path)
+const textFile = ({ path, text }: ProjectConflictText) => isEligibleProjectConflictPath(path)
   && isMergeableTextFile(nameOf(path), new TextEncoder().encode(text));
 
 export async function detectProjectConflict(input: ProjectConflictInput): Promise<ConflictCopy | undefined> {
-  if (!eligibleProjectConflictPath(input.path)) return undefined;
+  if (!isEligibleProjectConflictPath(input.path)) return undefined;
   const hash = await textHash(input.text);
   if (input.dismissed?.some(entry => entry.path === input.path && entry.hash === hash)) return undefined;
   const parsed = parseConflictName(nameOf(input.path));

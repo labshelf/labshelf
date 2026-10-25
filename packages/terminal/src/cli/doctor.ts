@@ -2,12 +2,12 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout } from "@labshelf/core";
+import { createLibraryLayout } from "@labshelf/core";
 
 import type { TerminalConfig } from "../config.js";
 import { hasCommand } from "../platform/index.js";
 import { detectImageProtocol } from "../screen/index.js";
-import { sharedConfigDir, sharedConfigPath } from "@labshelf/core/node";
+import { resolveSharedConfigDir, resolveSharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
 
 /**
@@ -21,12 +21,12 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
   const major = Number(process.versions.node.split(".")[0]);
   line(major >= 22, "node", process.version);
   if (major < 22) { essentialMissing = true; }
-  line(true, "config", `${sharedConfigPath()}${config.libraryRoot ? "" : " (no libraryRoot yet)"}`);
+  line(true, "config", `${resolveSharedConfigPath()}${config.libraryRoot ? "" : " (no libraryRoot yet)"}`);
   if (!root) {
     line(false, "library", "not configured — run `labshelf init <path>` (use the folder VS Code uses)");
     essentialMissing = true;
   } else {
-    const layout = libraryLayout(root, path.join);
+    const layout = createLibraryLayout(root, path.join);
     const exists = await fs.stat(layout.papersRoot()).then((s) => s.isDirectory(), () => false);
     line(exists, "library", `${root} (from ${rootSource})`);
     if (!exists) { essentialMissing = true; }
@@ -38,6 +38,6 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
   line(hasCommand("pdftoppm") ? true : "warn", "pdftoppm", hasCommand("pdftoppm") ? "found" : "not found — thumbnails use pdfjs (slower); brew install poppler");
   const clipboard = process.platform === "darwin" ? hasCommand("pbcopy") : hasCommand("wl-copy") || hasCommand("xclip") || hasCommand("xsel");
   line(clipboard ? true : "warn", "clipboard", clipboard ? "system clipboard" : "no clipboard tool; using OSC 52 escapes");
-  line(true, "config dir", sharedConfigDir());
+  line(true, "config dir", resolveSharedConfigDir());
   return essentialMissing ? 1 : 0;
 }

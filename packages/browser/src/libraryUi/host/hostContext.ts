@@ -2,7 +2,7 @@
  * Holds what every library page host handler shares: the channel to the UI, the snapshots, the core library mutations, the
  * logger and the folder the UI shows.
  */
-import { PAPERS_DIR, type HostEndpoint, type ILogger, type PaperRecord, type PaperRef } from "@labshelf/core";
+import { PAPERS_DIR, type HostEndpoint, type ILogger, type PaperRecord, type Reference } from "@labshelf/core";
 import { createLibraryMutations, type LibraryMutations } from "../../storage";
 import { createLibrarySnapshots, createSidecarReads, type LibrarySnapshots, type SidecarReads } from "./snapshots";
 
@@ -34,4 +34,4 @@ export function createHostContext(endpoint: HostEndpoint, log: ILogger): HostCon
   };
 }
 
-export const asRefs = (papers: readonly PaperRecord[]): PaperRef[] => papers.map((p) => ({ id: p.id, path: p.path }));
+export const asRefs = (papers: readonly PaperRecord[]): Reference[] => papers.map((p) => ({ id: p.id, path: p.path }));

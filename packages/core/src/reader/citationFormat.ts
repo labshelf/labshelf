@@ -1,7 +1,7 @@
 /**
  * Formats a quoted passage together with a citation of the paper it came from, in the style chosen by `labshelf.reader.citationStyle`.
  */
-import { inTextCitation } from "../library/index.js";
+import { formatInTextCitation } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { CitationStyle } from "./protocol/index.js";
 
@@ -35,7 +35,7 @@ export function formatQuoteWithCitation(
     case "latex":
       return `\`\`${quote}'' \\cite[p.~${pageNumber}]{${paper.citeKey}}`;
     case "author-year":
-      return `"${quote}" (${inTextCitation(paper)}, p. ${pageNumber})`;
+      return `"${quote}" (${formatInTextCitation(paper)}, p. ${pageNumber})`;
     case "citekey":
       return `${quote} @${paper.citeKey}`;
   }

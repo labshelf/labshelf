@@ -3,13 +3,13 @@
  * shows: authors, venue, year, Last read and a status mark that cycles) and the tray that holds its files; a right-click opens the paper menu.
  */
 import { formatAuthors } from "../../../library/index.js";
-import { venueOf } from "../../../model/index.js";
+import { deriveVenue } from "../../../model/index.js";
 import { el, highlight } from "../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import type { ListPaper } from "../../viewModel/index.js";
-import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
+import { COLUMN_KEYS, type ListColumn } from "../../store/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
-import { lastReadHtml, stateIconHtml, statusMarkHtml } from "./rowCells.js";
+import { renderLastReadHtml, renderTextLayerIconHtml, renderReadingStatusMarkHtml } from "./rowCells.js";
 
 export interface RowHandlers {
   onClick: (id: string, e: MouseEvent) => void;
@@ -29,7 +29,7 @@ export interface RowView {
   stats: PaperStats | undefined;
   job: TextLayerJobView | undefined;
   textLayer: boolean;
-  columns: readonly ColumnKey[];
+  columns: readonly ListColumn[];
 }
 
 function tagsHtml(tags: readonly string[] | undefined): string {
@@ -41,16 +41,16 @@ function tagsHtml(tags: readonly string[] | undefined): string {
 
 function titleCell(p: ListPaper, v: RowView): string {
   return `<div class="col-title title-cell" title="${escapeHtml(p.title)}"><span class="title-text">${highlight(p.title, v.terms)}</span>` +
-    stateIconHtml(p, v.job, v.textLayer) + tagsHtml(p.tags) + `</div>`;
+    renderTextLayerIconHtml(p, v.job, v.textLayer) + tagsHtml(p.tags) + `</div>`;
 }
 
 function optionalCells(p: ListPaper, v: RowView): string {
-  const cells: Record<ColumnKey, () => string> = {
+  const cells: Record<ListColumn, () => string> = {
     creator: () => `<div class="col-meta col-creator" title="${escapeHtml((p.authors ?? []).join(", "))}">${highlight(formatAuthors(p.authors), v.terms)}</div>`,
-    venue: () => `<div class="col-meta col-venue" title="${escapeHtml(venueOf(p))}">${highlight(venueOf(p), v.terms)}</div>`,
+    venue: () => `<div class="col-meta col-venue" title="${escapeHtml(deriveVenue(p))}">${highlight(deriveVenue(p), v.terms)}</div>`,
     year: () => `<div class="col-meta col-year">${p.year ? highlight(p.year, v.terms) : ""}</div>`,
-    lastRead: () => lastReadHtml(v.stats),
-    status: () => `<div class="col-meta col-status">${statusMarkHtml(p.status)}</div>`,
+    lastRead: () => renderLastReadHtml(v.stats),
+    status: () => `<div class="col-meta col-status">${renderReadingStatusMarkHtml(p.status)}</div>`,
   };
   return COLUMN_KEYS.filter((k) => v.columns.includes(k)).map((k) => cells[k]()).join("");
 }

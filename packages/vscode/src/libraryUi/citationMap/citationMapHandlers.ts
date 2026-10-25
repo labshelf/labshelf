@@ -1,6 +1,6 @@
 /** Builds the citation map for the list UI and imports a missing work by its DOI, answering with the map's own messages. */
 import * as vscode from 'vscode';
-import { errorMessage, type ImportOutcome } from '@labshelf/core';
+import { formatError, type ImportOutcome } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from '../host/index.js';
 
 /** Posts the map being built, then the map or why it failed. */
@@ -13,7 +13,7 @@ export async function showCitationMap(ctx: ListHostContext): Promise<void> {
     );
     await ctx.post({ type: 'citationMap.show', state: { status: 'ready', map } });
   } catch (error) {
-    const message = errorMessage(error);
+    const message = formatError(error);
     await ctx.deps.logger.log('ERROR', LOG_MODULE, 'Building the citation map failed', { message });
     await ctx.post({ type: 'citationMap.show', state: { status: 'failed', message } });
   }
@@ -42,7 +42,7 @@ export async function importCitationWork(ctx: ListHostContext, workId: string, d
     }
     await ctx.post({ type: 'citationMap.imported', workId });
   } catch (error) {
-    const message = errorMessage(error);
+    const message = formatError(error);
     await ctx.deps.logger.log('ERROR', LOG_MODULE, 'Importing a missing work failed', { workId, doi, message });
     ctx.notice('error', `Could not import ${doi} — ${message}`);
     await ctx.post({ type: 'citationMap.importFailed', workId });

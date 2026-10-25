@@ -1,6 +1,6 @@
 /** Handles clipboard yanks, sort order and what B (export BibTeX) exports. */
 import type { PaperRecord } from "@labshelf/core";
-import { formatAnnotationsMarkdown, joinCitations, paperComparator, paperFiles, paperLink, papersUnder } from "@labshelf/core";
+import { formatAnnotationsMarkdown, joinCitations, createPaperComparator, createPaperFiles, derivePaperUrl, listPapersUnderFolder } from "@labshelf/core";
 import * as path from "node:path";
 
 import { copyToClipboard } from "../../../platform/index.js";
@@ -18,14 +18,14 @@ export async function yank(app: App, kind: string): Promise<void> {
     case "cite": text = `\\cite{${joinCitations(records, "key")}}`; what = "\\cite"; break;
     case "bibtex": text = app.ctx.papers.bibtexFor(records); what = "BibTeX"; break;
     case "link": {
-      const links = records.map(paperLink).filter((l): l is string => Boolean(l));
+      const links = records.map(derivePaperUrl).filter((l): l is string => Boolean(l));
       if (!links.length) { app.taskStatus.notify("No DOI or URL stored", "warn"); return; }
       text = links.join("\n");
       what = links.length === 1 ? links[0]! : "links";
       break;
     }
     case "title": text = records.map((r) => r.title).join("\n"); what = "title"; break;
-    case "path": text = records.map((r) => paperFiles(r.path, path.join).pdf).join("\n"); what = "PDF path"; break;
+    case "path": text = records.map((r) => createPaperFiles(r.path, path.join).pdf).join("\n"); what = "PDF path"; break;
     case "markdown": {
       const parts: string[] = [];
       for (const record of records) {
@@ -62,5 +62,5 @@ export function targetsForExport(app: App): PaperRecord[] {
   if (app.filter || app.search !== undefined || app.folder === ALL || app.flatten || app.folder === "") {
     return app.listModel.papers().map((p) => p.record);
   }
-  return papersUnder(app.ctx.store.snapshot, app.folder).sort(paperComparator(app.sort)).map((p) => p.record);
+  return listPapersUnderFolder(app.ctx.store.snapshot, app.folder).sort(createPaperComparator(app.sort)).map((p) => p.record);
 }

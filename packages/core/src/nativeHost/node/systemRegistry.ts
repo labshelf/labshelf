@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 
 import type { RegistryRunner } from "./nativeHostEnv.js";
 
-export const systemRegistry: RegistryRunner = (args) =>
+export const runSystemRegistry: RegistryRunner = (args) =>
   new Promise((resolve) => {
     execFile("reg", [...args], { windowsHide: true }, (error, stdout, stderr) => {
       const code = (error as { code?: unknown } | null)?.code;

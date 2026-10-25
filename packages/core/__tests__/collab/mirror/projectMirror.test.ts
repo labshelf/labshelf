@@ -2,7 +2,7 @@
 import * as Y from "yjs";
 import { fileText, indexFiles, indexSettings, readSettingsMap, replaceFileText } from "../../../src/collab/model/index";
 import { DISK_ORIGIN } from "../../../src/collab/mirror/index";
-import { sha256Hex } from "../../../src/hash/index";
+import { deriveSha256Hex } from "../../../src/hash/index";
 import { memoryFiles, nodeFiles } from "./mirrorFiles";
 import {
   exists,
@@ -135,8 +135,8 @@ describe.each([nodeFiles, memoryFiles()])("project mirror over a $name", (files)
     const files = indexFiles(fixture.session.index);
     expect(files.get("sections/intro.typ")).toEqual({ kind: "text" });
     expect(fileText(fixture.session.openDoc("sections/intro.typ")).toString()).toBe("= Intro");
-    expect(files.get("figures/plot.png")).toEqual({ kind: "blob", hash: await sha256Hex(png) });
-    expect(await fixture.store.blobs.get(await sha256Hex(png))).toEqual(png);
+    expect(files.get("figures/plot.png")).toEqual({ kind: "blob", hash: await deriveSha256Hex(png) });
+    expect(await fixture.store.blobs.get(await deriveSha256Hex(png))).toEqual(png);
     expect(files.has(".git/HEAD")).toBe(false);
   });
 

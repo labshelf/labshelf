@@ -2,21 +2,21 @@
  * Does the paper work the UI asks for: set the status, tags and note, move, remove (to the trash) and copy text to the clipboard. Each change
  * goes through the core library mutations and posts a fresh snapshot.
  */
-import { PAPERS_DIR, baseName, cleanTags, errorMessage, keptFieldNotice, moveNotice, removeNotice, type PaperStatus } from "@labshelf/core";
+import { PAPERS_DIR, deriveBaseName, deriveCleanTags, formatError, formatKeptFieldNotice, moveNotice, removeNotice, type ReadingStatus } from "@labshelf/core";
 import { asRefs, type HostContext } from "../hostContext";
 
-export async function setStatus(ctx: HostContext, ids: readonly string[], status: PaperStatus): Promise<void> {
+export async function setStatus(ctx: HostContext, ids: readonly string[], status: ReadingStatus): Promise<void> {
   const changed = ctx.papers(ids).filter((p) => p.status !== status);
   if (changed.length === 0) return;
   const { failed } = await ctx.mutations.setStatus(asRefs(changed), status);
   await ctx.snapshots.refresh();
-  if (failed.length) ctx.notice("error", keptFieldNotice("status", failed.length, failed[0]!.error));
+  if (failed.length) ctx.notice("error", formatKeptFieldNotice("status", failed.length, failed[0]!.error));
 }
 
 export async function setTags(ctx: HostContext, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
-  const { done, failed } = await ctx.mutations.editTags(asRefs(ctx.papers(ids)), cleanTags(add), cleanTags(remove));
+  const { done, failed } = await ctx.mutations.editTags(asRefs(ctx.papers(ids)), deriveCleanTags(add), deriveCleanTags(remove));
   await ctx.snapshots.refresh();
-  if (failed.length) ctx.notice("error", keptFieldNotice("tags", failed.length, failed[0]!.error));
+  if (failed.length) ctx.notice("error", formatKeptFieldNotice("tags", failed.length, failed[0]!.error));
 }
 
 export async function setNote(ctx: HostContext, id: string, note: string): Promise<void> {
@@ -32,7 +32,7 @@ export async function movePapers(ctx: HostContext, ids: readonly string[], targe
   const { done, failed } = await ctx.mutations.movePapers(asRefs(papers), target);
   if (done.length) await ctx.snapshots.refresh();
   const titleOf = (id: string): string => papers.find((p) => p.id === id)?.title ?? id;
-  const notice = moveNotice(done.length, failed, target === PAPERS_DIR ? undefined : baseName(target, "/"), titleOf);
+  const notice = moveNotice(done.length, failed, target === PAPERS_DIR ? undefined : deriveBaseName(target, "/"), titleOf);
   if (notice) ctx.notice(notice.kind, notice.text);
 }
 
@@ -50,6 +50,6 @@ export async function writeClipboard(ctx: HostContext, text: string, label?: str
     await navigator.clipboard.writeText(text);
     ctx.notice("ok", label ? `Copied ${label}` : `Copied: ${text}`);
   } catch (err) {
-    ctx.notice("error", `Clipboard blocked — ${errorMessage(err)}`);
+    ctx.notice("error", `Clipboard blocked — ${formatError(err)}`);
   }
 }

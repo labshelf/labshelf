@@ -3,4 +3,4 @@ export { scanConflictCopies } from "./conflictScan.js";
 export { resolveConflictCopy } from "./conflictResolution.js";
 export { readDirOrEmpty } from "./readDirOrEmpty.js";
 export { scanSpaceConflicts } from "./spaces/index.js";
-export { conflictDismissalFile, findProjectConflict, scanProjectContentConflicts, resolveProjectConflictCopy, type ProjectConflictResolutionContext } from './project/index.js';
+export { resolveConflictDismissalFile, findProjectConflict, scanProjectContentConflicts, resolveProjectConflictCopy, type ProjectConflictResolutionContext } from './project/index.js';

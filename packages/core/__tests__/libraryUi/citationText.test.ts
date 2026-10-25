@@ -1,5 +1,5 @@
 /** Papers copy as comma-joined keys, blank-line-separated BibTeX or line-separated references, for every app. */
-import { citationText, joinCitations } from "../../src/libraryUi/citationText";
+import { formatCitation, joinCitations } from "../../src/libraryUi/citationText";
 import type { PaperRecord } from "../../src/model";
 
 const paper = (citeKey: string, title: string): PaperRecord =>
@@ -14,7 +14,7 @@ describe("joinCitations", () => {
 
   it("separates BibTeX entries with a blank line and formatted references with a newline", () => {
     const bibtex = joinCitations(papers, "bibtex");
-    expect(bibtex).toBe(`${citationText(papers[0]!, "bibtex")}\n\n${citationText(papers[1]!, "bibtex")}`);
+    expect(bibtex).toBe(`${formatCitation(papers[0]!, "bibtex")}\n\n${formatCitation(papers[1]!, "bibtex")}`);
     expect(bibtex).toContain("@");
     expect(joinCitations(papers, "apa").split("\n")).toHaveLength(2);
   });

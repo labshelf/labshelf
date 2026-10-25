@@ -1,8 +1,8 @@
 /** Searches DBLP for computer-science publications. */
-import { asString, extractYear } from "../metadata/index.js";
+import { parseString, extractYear } from "../metadata/index.js";
 import { fetchJson, type RegistryEnv } from "./http.js";
-import { asArray, firstNonEmpty } from "./text.js";
-import type { RegistryRecord } from "./registryMetadata.js";
+import { normalizeArray, findFirstNonEmpty } from "./text.js";
+import type { RegistryEntry } from "./registryMetadata.js";
 
 interface DblpAuthor {
   text?: string;
@@ -32,7 +32,7 @@ interface DblpHit {
  * source for a large part of the field.
  * @returns Up to `rows` candidate publications, best match first.
  */
-export async function dblpSearch(env: RegistryEnv, query: string, rows = 3): Promise<RegistryRecord[]> {
+export async function searchDblp(env: RegistryEnv, query: string, rows = 3): Promise<RegistryEntry[]> {
   const payload = await fetchJson<{ result?: { hits?: { hit?: DblpHit[] } } }>(
     env,
     `https://dblp.org/search/publ/api?format=json&h=${rows}&q=${encodeURIComponent(query)}`,
@@ -44,17 +44,17 @@ export async function dblpSearch(env: RegistryEnv, query: string, rows = 3): Pro
     .map(mapDblpInfo);
 }
 
-function mapDblpInfo(info: DblpInfo): RegistryRecord {
+function mapDblpInfo(info: DblpInfo): RegistryEntry {
   return {
-    title: asString(info.title),
-    authors: asArray(info.authors?.author)
-      .map((author) => asString(author.text))
+    title: parseString(info.title),
+    authors: normalizeArray(info.authors?.author)
+      .map((author) => parseString(author.text))
       .filter((name): name is string => Boolean(name)),
     year: extractYear(info.year),
-    journal: firstNonEmpty(asArray(info.venue)),
-    volume: asString(info.volume),
-    pages: asString(info.pages),
-    doi: asString(info.doi),
-    url: firstNonEmpty(asArray(info.ee)) ?? asString(info.url),
+    journal: findFirstNonEmpty(normalizeArray(info.venue)),
+    volume: parseString(info.volume),
+    pages: parseString(info.pages),
+    doi: parseString(info.doi),
+    url: findFirstNonEmpty(normalizeArray(info.ee)) ?? parseString(info.url),
   };
 }

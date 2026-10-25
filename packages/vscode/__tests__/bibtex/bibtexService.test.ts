@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { BibTeXService, bibtexEntry } from '@labshelf/core';
+import { BibtexService, createBibtexEntry } from '@labshelf/core';
 import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
 import type { PaperRecord } from '@labshelf/core';
 
@@ -15,49 +15,49 @@ function makePaper(overrides: Partial<PaperRecord> = {}): PaperRecord {
   };
 }
 
-let svc: BibTeXService;
+let svc: BibtexService;
 
 beforeEach(() => {
   jest.clearAllMocks();
   (vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined);
   (vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined);
-  svc = new BibTeXService(new VscodeFileSystem('/tmp/labshelf-test', path, vscode.Uri.file));
+  svc = new BibtexService(new VscodeFileSystem('/tmp/labshelf-test', path, vscode.Uri.file));
 });
 
 describe('bibtexEntry', () => {
   it('generates a valid @article entry with citeKey', () => {
-    const result = bibtexEntry(makePaper());
+    const result = createBibtexEntry(makePaper());
     expect(result).toContain('@article{test2024,');
     expect(result).toContain('title = {A Test Paper}');
   });
 
   it('includes year when present', () => {
-    const result = bibtexEntry(makePaper({ year: 2024 }));
+    const result = createBibtexEntry(makePaper({ year: 2024 }));
     expect(result).toContain('year = {2024}');
   });
 
   it('omits year when absent', () => {
-    const result = bibtexEntry(makePaper());
+    const result = createBibtexEntry(makePaper());
     expect(result).not.toContain('year =');
   });
 
   it('formats multiple authors with "and"', () => {
-    const result = bibtexEntry(makePaper({ authors: ['Alice Foo', 'Bob Bar'] }));
+    const result = createBibtexEntry(makePaper({ authors: ['Alice Foo', 'Bob Bar'] }));
     expect(result).toContain('Alice Foo and Bob Bar');
   });
 
   it('uses "Unknown" as author when authors array is empty', () => {
-    const result = bibtexEntry(makePaper({ authors: [] }));
+    const result = createBibtexEntry(makePaper({ authors: [] }));
     expect(result).toContain('author = {Unknown}');
   });
 
   it('includes doi when present', () => {
-    const result = bibtexEntry(makePaper({ doi: '10.000/test' }));
+    const result = createBibtexEntry(makePaper({ doi: '10.000/test' }));
     expect(result).toContain('doi = {10.000/test}');
   });
 
   it('strips curly braces from field values', () => {
-    const result = bibtexEntry(makePaper({ title: 'A {nested} title' }));
+    const result = createBibtexEntry(makePaper({ title: 'A {nested} title' }));
     expect(result).not.toContain('{nested}');
     expect(result).toContain('A nested title');
   });
@@ -89,8 +89,8 @@ describe('BibTeXService — the bib file line follows the PDF on disk', () => {
   };
 
   it('omits the file line when told there is no PDF', () => {
-    expect(bibtexEntry(makePaper())).toContain('file = {');
-    expect(bibtexEntry(makePaper(), { includeFile: false })).not.toContain('file =');
+    expect(createBibtexEntry(makePaper())).toContain('file = {');
+    expect(createBibtexEntry(makePaper(), { includeFile: false })).not.toContain('file =');
   });
 
   it('writes the file line only when paper.pdf exists in the folder', async () => {

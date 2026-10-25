@@ -1,6 +1,6 @@
 // Matches a PDF the user opened or downloaded to a library paper without a PDF, and offers to attach it.
 import {
-  errorMessage, fetchPdf, isPreprintServerUrl, matchPdfToPaper, type FetchedPdf, type ILogger, type PaperRecord,
+  formatError, fetchPdf, isPreprintServerUrl, matchPdfToPaper, type FetchedPdf, type ILogger, type PaperRecord,
 } from "@labshelf/core";
 import { fetchInTab } from "../../capture/tab";
 import { readFirstPageText } from "../../import";
@@ -63,7 +63,7 @@ async function refetch(log: ILogger, seen: SeenPdf): Promise<FetchedPdf | undefi
     if (!pdf) void log.log("WARN", MODULE, "PDF could not be fetched again", { source: seen.source, url: seen.url });
     return pdf;
   } catch (error) {
-    void log.log("WARN", MODULE, "PDF could not be fetched again", { source: seen.source, url: seen.url, error: errorMessage(error) });
+    void log.log("WARN", MODULE, "PDF could not be fetched again", { source: seen.source, url: seen.url, error: formatError(error) });
     return undefined;
   }
 }
@@ -79,7 +79,7 @@ async function match(log: ILogger, id: string, seen: SeenPdf, papers: PaperRecor
   try {
     firstPageText = await readFirstPageText(id, fetched.bytes);
   } catch (error) {
-    void log.log("WARN", MODULE, "page 1 of the PDF could not be read", { url: seen.url, error: errorMessage(error) });
+    void log.log("WARN", MODULE, "page 1 of the PDF could not be read", { url: seen.url, error: formatError(error) });
     return { matchedBy: "none" };
   }
   const byTitle = matchPdfToPaper({ ...pdf, firstPageText }, papers);

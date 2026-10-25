@@ -1,5 +1,5 @@
 /** Pins that blobs travel in verified chunks from any peer that holds them and are refused when corrupted or missing. */
-import { sha256Hex } from "../../../src/hash/index";
+import { deriveSha256Hex } from "../../../src/hash/index";
 import { attachBlobs, type BlobExchange } from "../../../src/collab/doc/attachBlobs";
 import { BLOB_CHUNK_BYTES } from "../../../src/collab/doc/blobMessage";
 import { BlobFetchError } from "../../../src/collab/doc/blobFetchError";
@@ -46,7 +46,7 @@ describe("blobs", () => {
 
   it("delivers a blob larger than one chunk intact", async () => {
     const blob = bytesOf(3 * BLOB_CHUNK_BYTES + 123);
-    const hash = await sha256Hex(blob);
+    const hash = await deriveSha256Hex(blob);
     const { exchange } = await attach("a");
     await attach("b", holding(blob));
     const sentBefore = net.sent.length;
@@ -55,7 +55,7 @@ describe("blobs", () => {
   });
 
   it("delivers an empty blob", async () => {
-    const hash = await sha256Hex(new Uint8Array());
+    const hash = await deriveSha256Hex(new Uint8Array());
     const { exchange } = await attach("a");
     await attach("b", holding(new Uint8Array()));
     expect(await settled(exchange.fetch(hash))).toEqual(new Uint8Array());
@@ -63,7 +63,7 @@ describe("blobs", () => {
 
   it("shares one request among concurrent fetches of the same hash", async () => {
     const blob = bytesOf(1000);
-    const hash = await sha256Hex(blob);
+    const hash = await deriveSha256Hex(blob);
     const { exchange } = await attach("a");
     const getBlob = jest.fn(holding(blob));
     await attach("b", getBlob);
@@ -75,7 +75,7 @@ describe("blobs", () => {
 
   it("rejects bytes that do not hash to the request and logs it", async () => {
     const blob = bytesOf(100_000);
-    const hash = await sha256Hex(blob);
+    const hash = await deriveSha256Hex(blob);
     const { client, exchange } = await attach("a");
     await attach("b", holding(bytesOf(100_000, 1)));
     const result = await settled(exchange.fetch(hash));
@@ -86,7 +86,7 @@ describe("blobs", () => {
 
   it("asks another peer after a corrupted answer", async () => {
     const blob = bytesOf(70_000);
-    const hash = await sha256Hex(blob);
+    const hash = await deriveSha256Hex(blob);
     const { exchange } = await attach("a");
     await attach("b", holding(bytesOf(70_000, 1)));
     await attach("c", holding(blob));
@@ -94,7 +94,7 @@ describe("blobs", () => {
   });
 
   it("fails when no peer holds the blob", async () => {
-    const hash = await sha256Hex(bytesOf(10));
+    const hash = await deriveSha256Hex(bytesOf(10));
     const { exchange } = await attach("a");
     await attach("b");
     const result = await settled(exchange.fetch(hash));
@@ -103,7 +103,7 @@ describe("blobs", () => {
 
   it("fails after a timeout when no peer is connected, and finds a peer that joins before it", async () => {
     const blob = bytesOf(500);
-    const hash = await sha256Hex(blob);
+    const hash = await deriveSha256Hex(blob);
     const { exchange } = await attach("a");
     const lonely = await settled(exchange.fetch(hash));
     expect((lonely as BlobFetchError).code).toBe("unavailable");
@@ -114,7 +114,7 @@ describe("blobs", () => {
 
   it("asks the next peer when one stays silent", async () => {
     const blob = bytesOf(500);
-    const hash = await sha256Hex(blob);
+    const hash = await deriveSha256Hex(blob);
     const { exchange } = await attach("a");
     await attach("b", () => new Promise(() => {}));
     await attach("c", holding(blob));
@@ -135,7 +135,7 @@ describe("blobs", () => {
   });
 
   it("rejects a pending fetch when the exchange closes", async () => {
-    const hash = await sha256Hex(bytesOf(10));
+    const hash = await deriveSha256Hex(bytesOf(10));
     const { exchange } = await attach("a");
     const pending = exchange.fetch(hash);
     exchange.close();

@@ -3,8 +3,8 @@
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
 import { nameCollator } from "../model/index.js";
 import type { LocalStat } from "../../ports/index.js";
-import { errorMessage } from "../../logging/index.js";
-import { warnSkipped, type ScanEnv } from "./scanEnv.js";
+import { formatError } from "../../logging/index.js";
+import { reportSkipped, type ScanEnv } from "./scanEnv.js";
 
 export interface PaperFolder {
   path: string;
@@ -51,7 +51,7 @@ export async function readFolderLevel(env: ScanEnv, dir: string): Promise<Folder
     try {
       return await classify(env, path);
     } catch (error) {
-      await warnSkipped(env, "Folder skipped: it could not be read", { path, message: errorMessage(error) });
+      await reportSkipped(env, "Folder skipped: it could not be read", { path, message: formatError(error) });
       return undefined;
     }
   }));

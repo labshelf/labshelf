@@ -1,6 +1,6 @@
 // Exports the sharing-host operations built over the core share workflows, and the share problems apps show.
-export { createFolderLinkOps, type FolderLinkDeps, type FolderLinkOps } from "./shareLinkOps.js";
-export { createProjectSharingOps, type ProjectSharingDeps, type ProjectSharingOps } from "./projectShareOps.js";
-export { createSharingHost, type SharingHostDeps } from "./createShareHost.js";
-export { connectionProblem } from "./projectShareState.js";
-export { persistenceFailureNotices, type NoticePlace } from "./storeErrorNotices.js";
+export { createFolderShareLinkOps, type FolderShareLinkDeps, type FolderShareLinkOps } from "./shareLinkOps.js";
+export { createProjectShareOps, type ProjectShareDeps, type ProjectShareOps } from "./projectShareOps.js";
+export { createShareHost, type ShareHostDeps } from "./createShareHost.js";
+export { deriveConnectionProblem } from "./projectShareState.js";
+export { createStoreFailureNotices, type NoticePlace } from "./storeErrorNotices.js";

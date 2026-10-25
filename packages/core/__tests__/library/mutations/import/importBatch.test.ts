@@ -1,4 +1,4 @@
-import { discoverPdfs, importPaths, importPdfs, type ImportOutcome, type PdfImportParser, type PdfParse } from "@labshelf/core";
+import { findPdfsToImport, importPaths, importPdfs, type ImportOutcome, type PdfImportParser, type PdfParse } from "@labshelf/core";
 
 import { makeImportDeps } from "../../../support/importFakes";
 import { makeHarness, PAPERS, pdfBytes, type MutationHarness } from "../../../support/mutationHarness";
@@ -19,7 +19,7 @@ describe("discoverPdfs", () => {
     const h = makeHarness();
     await writePdfs(h, ["dir/b.pdf", "dir/a.pdf", "dir/sub/deeper/C.PDF", "dir/.hidden/d.pdf", "dir/.e.pdf"]);
     await h.fs.writeText(`${INBOX}/dir/notes.txt`, "not a pdf");
-    expect(await discoverPdfs(h.ctx, [`${INBOX}/dir`])).toEqual({
+    expect(await findPdfsToImport(h.ctx, [`${INBOX}/dir`])).toEqual({
       pdfs: [`${INBOX}/dir/a.pdf`, `${INBOX}/dir/b.pdf`, `${INBOX}/dir/sub/deeper/C.PDF`],
       skipped: [],
     });
@@ -29,7 +29,7 @@ describe("discoverPdfs", () => {
     const h = makeHarness();
     await writePdfs(h, ["dir/locked/x.pdf", "dir/open/y.pdf"]);
     h.fs.unreadable.add(`${INBOX}/dir/locked`);
-    expect((await discoverPdfs(h.ctx, [`${INBOX}/dir`])).pdfs).toEqual([`${INBOX}/dir/open/y.pdf`]);
+    expect((await findPdfsToImport(h.ctx, [`${INBOX}/dir`])).pdfs).toEqual([`${INBOX}/dir/open/y.pdf`]);
     expect(h.logs.find((l) => l.message === "Import skipped a folder it could not read")).toMatchObject({
       level: "WARN", context: { dir: `${INBOX}/dir/locked` },
     });
@@ -40,7 +40,7 @@ describe("discoverPdfs", () => {
     await writePdfs(h, ["dir/real.pdf"]);
     h.fs.symlinks.add(`${INBOX}/dir/link.pdf`);
     h.fs.symlinks.add(`${INBOX}/top-link.pdf`);
-    expect(await discoverPdfs(h.ctx, [`${INBOX}/dir`, `${INBOX}/top-link.pdf`])).toEqual({
+    expect(await findPdfsToImport(h.ctx, [`${INBOX}/dir`, `${INBOX}/top-link.pdf`])).toEqual({
       pdfs: [`${INBOX}/dir/real.pdf`], skipped: [`${INBOX}/top-link.pdf`],
     });
   });
@@ -48,7 +48,7 @@ describe("discoverPdfs", () => {
   it("keeps picked files whatever their extension, in input order, and skips missing inputs", async () => {
     const h = makeHarness();
     const [z, a] = await writePdfs(h, ["z.bin", "a.pdf"]);
-    expect(await discoverPdfs(h.ctx, [z!, `${INBOX}/missing.pdf`, a!])).toEqual({ pdfs: [z, a], skipped: [`${INBOX}/missing.pdf`] });
+    expect(await findPdfsToImport(h.ctx, [z!, `${INBOX}/missing.pdf`, a!])).toEqual({ pdfs: [z, a], skipped: [`${INBOX}/missing.pdf`] });
   });
 });
 

@@ -1,12 +1,12 @@
 // Lists the share links this host made and lets the user copy, open or revoke one.
 import { progressDialog, quickPick, showDialog, toast } from "../../ui/dom/index.js";
-import type { SharedLinkView, SharingHost } from "../../libraryUi/share/index.js";
+import type { ShareLinkView, ShareHost } from "../../libraryUi/share/index.js";
 import { copiedLinkText, revokeResultText, revokeShareConfirm } from "../flow/index.js";
 import { reportingFailure } from "./reportFailure.js";
 
 type LinkAction = "copy" | "open" | "revoke";
 
-export function runManageLinksDialog(host: SharingHost): Promise<void> {
+export function runManageLinksDialog(host: ShareHost): Promise<void> {
   return reportingFailure("manage the shared links", async () => {
     const links = await host.sharedLinks();
     if (links.length === 0) { toast(`No folder of this library is shared as a link from ${host.place}.`, "info"); return; }
@@ -28,7 +28,7 @@ export function runManageLinksDialog(host: SharingHost): Promise<void> {
   });
 }
 
-async function revoke(host: SharingHost, link: SharedLinkView): Promise<void> {
+async function revoke(host: ShareHost, link: ShareLinkView): Promise<void> {
   const notice = revokeShareConfirm(link.folder);
   const choice = await showDialog({
     title: notice.message,

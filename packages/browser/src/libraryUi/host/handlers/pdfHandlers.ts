@@ -1,7 +1,7 @@
 // Handles the UI's PDF requests: open in the reader, search the web, attach a local file, open the page in the way,
 // ask the authors for a copy.
 // INVARIANT: PDF bytes never cross runtime messaging; the page and the background write the library files themselves.
-import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel, type LibraryFileSystem, type PdfAccess } from "@labshelf/core";
+import { PDF_FILE, formatError, isPdfBytes, formatPdfSourceLabel, type LibraryFileSystem, type PdfAccess } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import { sendRuntime, type AskAuthorData, type AttachPdfData } from "../../../platform";
 import { openReader } from "../../../reader/service";
@@ -44,13 +44,13 @@ async function ingestLocalPdf(ctx: HostContext, id: string, file: File): Promise
 async function reportFind(ctx: HostContext, id: string, result: AttachPdfData, replace: boolean): Promise<void> {
   if (replace) {
     if (result.attached) await ctx.snapshots.refresh();
-    if (result.attached) ctx.notice("ok", `PDF replaced with a better version (via ${pdfSourceLabel(result.source)})`);
+    if (result.attached) ctx.notice("ok", `PDF replaced with a better version (via ${formatPdfSourceLabel(result.source)})`);
     else ctx.notice("info", "No published version found. The PDF you have stays.");
     return;
   }
   if (result.attached || result.alreadyHadPdf) {
     await ctx.snapshots.refresh();
-    if (result.attached) ctx.notice("ok", `PDF attached (via ${pdfSourceLabel(result.source)})`);
+    if (result.attached) ctx.notice("ok", `PDF attached (via ${formatPdfSourceLabel(result.source)})`);
     else ctx.notice("info", "This paper already has a PDF.");
     return;
   }
@@ -89,7 +89,7 @@ function pickLocalPdf(ctx: HostContext, id: string): void {
   input.accept = ".pdf,application/pdf";
   input.addEventListener("change", () => {
     const file = input.files?.[0];
-    if (file) void ingestLocalPdf(ctx, id, file).catch((err: unknown) => ctx.notice("error", errorMessage(err)));
+    if (file) void ingestLocalPdf(ctx, id, file).catch((err: unknown) => ctx.notice("error", formatError(err)));
   });
   input.click();
 }

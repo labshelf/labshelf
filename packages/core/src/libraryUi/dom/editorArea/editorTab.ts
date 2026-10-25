@@ -18,12 +18,12 @@ export function createTabEntry(tab: EditorTab): TabEntry {
   tabEl.dataset.tabId = tab.id;
   const panel = el("div", { class: "ls-editor-panel", role: "tabpanel", id: `${uid}-panel`, "aria-labelledby": `${uid}-tab`, hidden: true });
   const entry = { tab, tabEl, panel, body: null };
-  paintTab(entry);
+  drawTab(entry);
   return entry;
 }
 
 /** Repaints the tab's icon, title and dirty mark from `entry.tab`. */
-export function paintTab(entry: TabEntry): void {
+export function drawTab(entry: TabEntry): void {
   const { tab, tabEl } = entry;
   const close = el("button", { class: "ls-editor-tab-close", type: "button", tabindex: -1, "aria-label": `Close ${tab.title}`, title: "Close", html: icon("x") });
   tabEl.replaceChildren(
@@ -36,7 +36,7 @@ export function paintTab(entry: TabEntry): void {
 }
 
 /** Marks the tab shown or not in its group; the shown tab is the group's one tab stop. */
-export function selectTab(entry: TabEntry, selected: boolean): void {
+export function setTabShown(entry: TabEntry, selected: boolean): void {
   entry.tabEl.setAttribute("aria-selected", String(selected));
   entry.tabEl.classList.toggle("active", selected);
   entry.tabEl.tabIndex = selected ? 0 : -1;

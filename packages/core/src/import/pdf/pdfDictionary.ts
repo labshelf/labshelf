@@ -1,6 +1,6 @@
 /** Reads the PDF Info dictionary: publisher-stamped keys and whether its timestamps can be trusted. */
 import { extractDoi } from "../identifiers/index.js";
-import { asString, extractYear, type ResolvedMetadata } from "../metadata/index.js";
+import { parseString, extractYear, type ResolvedMetadata } from "../metadata/index.js";
 
 // Tools that re-print an existing document stamp CreationDate with the moment
 // the user saved the copy, which says nothing about when the paper was published.
@@ -11,8 +11,8 @@ const REPRINT_PRODUCERS = /quartz pdfcontext|skia\/pdf|preview|print to pdf|micr
  * someone re-saved the file, in which case the year must not be trusted.
  * @returns true when CreationDate/ModDate are a usable year source.
  */
-export function timestampsAreTrustworthy(pdfInfo: Record<string, unknown>): boolean {
-  const producer = `${asString(pdfInfo["Producer"]) ?? ""} ${asString(pdfInfo["Creator"]) ?? ""}`;
+export function hasTrustworthyTimestamps(pdfInfo: Record<string, unknown>): boolean {
+  const producer = `${parseString(pdfInfo["Producer"]) ?? ""} ${parseString(pdfInfo["Creator"]) ?? ""}`;
   return !REPRINT_PRODUCERS.test(producer);
 }
 
@@ -22,7 +22,7 @@ export function timestampsAreTrustworthy(pdfInfo: Record<string, unknown>): bool
  * bibliographic data the standard keys never do.
  * @returns The fields found, or undefined when the dictionary holds none.
  */
-export function publisherMetadataFromInfo(pdfInfo: Record<string, unknown>): ResolvedMetadata | undefined {
+export function extractPublisherMetadata(pdfInfo: Record<string, unknown>): ResolvedMetadata | undefined {
   const entries = lowercaseEntries(pdfInfo);
   if (entries.size === 0) {
     return undefined;

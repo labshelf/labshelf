@@ -1,6 +1,6 @@
 // Reloads the library store from disk, diffs it against the previous state and emits paper events.
 // Local mutations and external changes share this single reindex path; it lives outside extension.ts, which tests exclude.
-import { diffPapers } from "@labshelf/core";
+import { comparePapers } from "@labshelf/core";
 import type { LibraryStore, PaperRecord } from "@labshelf/core";
 import type { LibraryEvents } from "../library/index.js";
 
@@ -30,7 +30,7 @@ export async function reindexLibrary(deps: ReindexLibraryDeps): Promise<ReindexS
   const before = papersOf(deps.store);
   await deps.store.reload();
   const after = papersOf(deps.store);
-  const diff = diffPapers(before, after);
+  const diff = comparePapers(before, after);
   for (const paper of diff.added) { deps.events.paperAdded.fire(paper); }
   for (const paper of diff.updated) { deps.events.paperUpdated.fire(paper); }
   for (const paper of diff.removed) { deps.events.paperDeleted.fire({ id: paper.id }); }

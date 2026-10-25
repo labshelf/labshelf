@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { FileProjectVersionStore } from '../index.js';
 import type { ProjectSaveTracking } from '../index.js';
 import { isMergeableTextFile } from '../index.js';
-import { createDeviceIdentity, deviceLocalLayout } from '../../../library/node/index.js';
+import { createDeviceIdentity, createDeviceLocalLayout } from '../../../library/node/index.js';
 import type { ILogger, LibraryFileSystem } from '../../../ports/index.js';
 import { listProjectsOnDisk } from '../../project/node/index.js';
 import { prepareProjectSave } from './projectWriteRecord.js';
@@ -18,7 +18,7 @@ export function createProjectSaveTracking(fs: LibraryFileSystem, root: () => str
     const project = projects.filter(entry => entry.kind === 'ready' && file.startsWith(`${entry.folder}${path.sep}`))
       .sort((a, b) => b.folder.length - a.folder.length)[0];
     if (!project || project.kind !== 'ready' || project.settings.shared) return;
-    const layout = deviceLocalLayout(libraryRoot);
+    const layout = createDeviceLocalLayout(libraryRoot);
     let store = stores.get(libraryRoot);
     if (!store) { store = new FileProjectVersionStore(fs, path, layout.mergeBasesDir); stores.set(libraryRoot, store); }
     if (committed) { await store.remember(project.settings.id, path.relative(project.folder, file).split(path.sep).join('/'), text); return; }

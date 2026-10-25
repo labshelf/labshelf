@@ -1,5 +1,5 @@
 /** Resolves a key sequence to a binding and routes it: movement and folders, paper actions, or app-level commands. */
-import type { PaperStatus } from "@labshelf/core";
+import type { ReadingStatus } from "@labshelf/core";
 
 import { resolveKeys, type Binding } from "../../keymap.js";
 import { PREVIEW_TABS } from "../../preview.js";
@@ -97,7 +97,7 @@ function dispatchPapers(app: App, binding: Binding): boolean {
     case "selectAll":
       if (app.focus === "papers") { for (const paper of app.listModel.papers()) { app.selection.add(paper.record.id); } }
       return true;
-    case "status": setStatus(app, binding.arg as PaperStatus); return true;
+    case "status": setStatus(app, binding.arg as ReadingStatus); return true;
     case "tags": promptTags(app); return true;
     case "note": editNote(app); return true;
     case "cut": cutTargets(app); return true;

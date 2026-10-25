@@ -1,12 +1,12 @@
 // Creates the sharing client of a webview page on top of its single VS Code webview API object.
-import { createSharingClient, parseSharingReply, type SharingClient } from "@labshelf/core";
+import { createShareClient, parseShareReply, type ShareClient } from "@labshelf/core";
 
-export function createWebviewSharingClient(api: { postMessage(message: unknown): void }): SharingClient {
-  return createSharingClient({
+export function createWebviewSharingClient(api: { postMessage(message: unknown): void }): ShareClient {
+  return createShareClient({
     post: (message) => api.postMessage(message),
     subscribe: (handler) => {
       const listener = (event: MessageEvent<unknown>): void => {
-        const reply = parseSharingReply(event.data);
+        const reply = parseShareReply(event.data);
         if (reply) handler(reply);
       };
       window.addEventListener("message", listener);

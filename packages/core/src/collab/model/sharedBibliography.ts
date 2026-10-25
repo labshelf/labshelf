@@ -1,7 +1,7 @@
 /** Merges one member's generated labshelf.bib into the shared one without removing what other members' libraries added. */
 // CONTRACT: documents/contracts/library-format.md#labshelfbib
 
-import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, normalizeArxivId } from "../../import/index.js";
+import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, normalizeArxivIdentifier } from "../../import/index.js";
 import { bibEntries, plainField, type BibEntry } from "../../writing/bibliography/index.js";
 
 /** A cite key both files use for different works; the shared entry is kept. Ids read `doi:<doi>` or `arXiv:<id>`. */
@@ -20,8 +20,8 @@ interface WorkIds { doi: string | undefined; arxiv: string | undefined }
 
 function workIds(entry: BibEntry): WorkIds {
   const doi = extractDoi(plainField(entry.fields.get("doi")))?.toLowerCase();
-  const arxiv = normalizeArxivId(plainField(entry.fields.get("eprint")))
-    ?? arxivIdFromDoi(doi) ?? arxivIdFromUrl(plainField(entry.fields.get("url")));
+  const arxiv = normalizeArxivIdentifier(plainField(entry.fields.get("eprint")))
+    ?? extractArxivIdentifierFromDoi(doi) ?? extractArxivIdentifierFromUrl(plainField(entry.fields.get("url")));
   return { doi, arxiv: arxiv?.toLowerCase() };
 }
 

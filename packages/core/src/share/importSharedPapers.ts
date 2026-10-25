@@ -1,6 +1,6 @@
 // Copies an opened share's papers into a fresh library folder, skipping papers the library already holds by DOI or arXiv id.
-import { idsFromRecord } from "../import/index.js";
-import { citeKeySlug, createFolder, metadataFields, validateFolderName, writeNewPaper, type MutationContext } from "../library/index.js";
+import { extractPaperIdentifiers } from "../import/index.js";
+import { deriveCiteKeySlug, createFolder, deriveMetadataFields, checkFolderName, createPaper, type MutationContext } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { OpenedShare } from "./openShare.js";
 import type { SharedPaper } from "./shareManifest.js";
@@ -28,13 +28,13 @@ const FALLBACK_FOLDER = "Shared papers";
 const MODULE = "share";
 
 function identityKeys(paper: Pick<PaperRecord, "doi" | "url">): string[] {
-  const ids = idsFromRecord(paper);
+  const ids = extractPaperIdentifiers(paper);
   return [ids.doi && `doi:${ids.doi.toLowerCase()}`, ids.arxivId && `arxiv:${ids.arxivId.toLowerCase()}`].filter((key): key is string => Boolean(key));
 }
 
 /** The share's folder name, from untrusted text: a name a folder cannot take is replaced, a taken one gets " 2", " 3", … */
 async function freeFolder(ctx: MutationContext, parentDir: string, wanted: string): Promise<string> {
-  const base = validateFolderName(wanted) ? FALLBACK_FOLDER : wanted.trim();
+  const base = checkFolderName(wanted) ? FALLBACK_FOLDER : wanted.trim();
   let name = base;
   for (let n = 2; await ctx.fs.exists(ctx.paths.join(parentDir, name)); n++) { name = `${base} ${n}`; }
   return createFolder(ctx, parentDir, name);
@@ -65,10 +65,10 @@ export async function importSharedPapers({ ctx, share, parentDir, known, onProgr
       summary.folder ??= await freeFolder(ctx, parentDir, share.manifest.folder);
       const pdf = await pdfOf(share, paper, ctx);
       if (!pdf && paper.pdf) { summary.missingPdfs.push(metadata.title); }
-      const record = await writeNewPaper(ctx, taken, summary.folder, {
+      const record = await createPaper(ctx, taken, summary.folder, {
         // The cite key names a folder, so only its key characters survive.
-        citeKey: citeKeySlug(metadata.citeKey) || citeKeySlug(metadata.title) || "paper",
-        fields: { title: metadata.title, ...metadataFields(metadata) },
+        citeKey: deriveCiteKeySlug(metadata.citeKey) || deriveCiteKeySlug(metadata.title) || "paper",
+        fields: { title: metadata.title, ...deriveMetadataFields(metadata) },
         pdf,
         sourceName: `share link "${share.manifest.folder}"`,
       });

@@ -8,7 +8,7 @@ import {
   type SidebarOpenProject,
   type SidebarProjectTree,
   type SidebarTreeNode,
-  fileIcon,
+  deriveFileIcon,
   type SidebarNodeIcon,
 } from "@labshelf/core";
 import type { ProjectTreeMessage } from "../../libraryUi/index.js";
@@ -36,7 +36,7 @@ function labelOf(item: vscode.TreeItem): string {
 function iconOf(item: vscode.TreeItem, label: string, folds: boolean): SidebarNodeIcon | undefined {
   const icon = item.iconPath;
   if (icon instanceof vscode.ThemeIcon && icon.id === "arrow-small-right") { return { kind: "glyph", name: "arrow-right" }; }
-  return item.resourceUri && !folds ? fileIcon(labelOf(item) || label) : undefined;
+  return item.resourceUri && !folds ? deriveFileIcon(labelOf(item) || label) : undefined;
 }
 
 function checkedOf(state: vscode.TreeItem["checkboxState"]): boolean | undefined {

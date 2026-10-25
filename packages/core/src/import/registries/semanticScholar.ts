@@ -1,9 +1,9 @@
 /** Looks up Semantic Scholar records by title match or DOI. */
 import { encodeDoiPathSegment } from "../identifiers/index.js";
 import { fetchJson, type RegistryEnv } from "./http.js";
-import { xmlText } from "./text.js";
-import { asString } from "../metadata/index.js";
-import type { RegistryRecord } from "./registryMetadata.js";
+import { parseXmlText } from "./text.js";
+import { parseString } from "../metadata/index.js";
+import type { RegistryEntry } from "./registryMetadata.js";
 
 // Requested explicitly, because the graph API returns only `paperId` otherwise.
 const SEMANTIC_SCHOLAR_FIELDS =
@@ -28,7 +28,7 @@ interface SemanticScholarPaper {
  * — which `fetchJson` already turns into undefined.
  * @returns The matched paper, or undefined when nothing matches.
  */
-export async function semanticScholarByTitle(env: RegistryEnv, title: string): Promise<RegistryRecord | undefined> {
+export async function fetchSemanticScholarByTitle(env: RegistryEnv, title: string): Promise<RegistryEntry | undefined> {
   const payload = await fetchJson<{ data?: SemanticScholarPaper[] }>(
     env,
     `https://api.semanticscholar.org/graph/v1/paper/search/match?query=${encodeURIComponent(title)}&fields=${SEMANTIC_SCHOLAR_FIELDS}`,
@@ -43,7 +43,7 @@ export async function semanticScholarByTitle(env: RegistryEnv, title: string): P
  * works CrossRef indexes without one.
  * @returns The paper's metadata, or undefined when the DOI is unknown.
  */
-export async function semanticScholarByDoi(env: RegistryEnv, doi: string): Promise<RegistryRecord | undefined> {
+export async function fetchSemanticScholarByDoi(env: RegistryEnv, doi: string): Promise<RegistryEntry | undefined> {
   const paper = await fetchJson<SemanticScholarPaper>(
     env,
     `https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeDoiPathSegment(doi)}?fields=${SEMANTIC_SCHOLAR_FIELDS}`,
@@ -51,20 +51,20 @@ export async function semanticScholarByDoi(env: RegistryEnv, doi: string): Promi
   return paper?.title ? mapSemanticScholarPaper(paper) : undefined;
 }
 
-function mapSemanticScholarPaper(paper: SemanticScholarPaper): RegistryRecord {
+function mapSemanticScholarPaper(paper: SemanticScholarPaper): RegistryEntry {
   return {
-    title: asString(paper.title),
+    title: parseString(paper.title),
     authors: (paper.authors ?? [])
-      .map((author) => asString(author.name))
+      .map((author) => parseString(author.name))
       .filter((name): name is string => Boolean(name)),
     year: paper.year ?? undefined,
     journal:
-      asString(paper.venue) ?? asString(paper.journal?.name) ?? asString(paper.publicationVenue?.name),
-    volume: asString(paper.journal?.volume),
-    pages: asString(paper.journal?.pages),
-    doi: asString(paper.externalIds?.DOI ?? undefined),
+      parseString(paper.venue) ?? parseString(paper.journal?.name) ?? parseString(paper.publicationVenue?.name),
+    volume: parseString(paper.journal?.volume),
+    pages: parseString(paper.journal?.pages),
+    doi: parseString(paper.externalIds?.DOI ?? undefined),
     // Present but empty whenever no open-access copy is known.
-    url: asString(paper.openAccessPdf?.url),
-    summary: paper.abstract ? xmlText(paper.abstract) : undefined,
+    url: parseString(paper.openAccessPdf?.url),
+    summary: paper.abstract ? parseXmlText(paper.abstract) : undefined,
   };
 }

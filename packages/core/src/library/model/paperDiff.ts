@@ -10,7 +10,7 @@ export interface PaperDiff {
 }
 
 /** @returns the papers added, changed and removed going from `before` to `after` */
-export function diffPapers(before: readonly PaperRecord[], after: readonly PaperRecord[]): PaperDiff {
+export function comparePapers(before: readonly PaperRecord[], after: readonly PaperRecord[]): PaperDiff {
   const previous = new Map(before.map((paper) => [paper.id, paper]));
   const diff: PaperDiff = { added: [], updated: [], removed: [], gainedPdf: [] };
   for (const paper of after) {

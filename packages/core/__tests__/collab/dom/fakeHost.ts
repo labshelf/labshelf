@@ -1,7 +1,7 @@
 // Builds a SharingHost whose operations are jest mocks, for the sharing dialog tests.
-import type { SharingHost } from "../../../src/libraryUi/share/index.js";
+import type { ShareHost } from "../../../src/libraryUi/share/index.js";
 
-export function fakeHost(over: Partial<SharingHost> = {}): jest.Mocked<SharingHost> {
+export function fakeHost(over: Partial<ShareHost> = {}): jest.Mocked<ShareHost> {
   return {
     place: "this browser",
     offers: jest.fn(() => ({ projects: true, links: true })),
@@ -22,7 +22,7 @@ export function fakeHost(over: Partial<SharingHost> = {}): jest.Mocked<SharingHo
     copyText: jest.fn(async () => true),
     openLink: jest.fn(async () => {}),
     ...over,
-  } as jest.Mocked<SharingHost>;
+  } as jest.Mocked<ShareHost>;
 }
 
 export const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));

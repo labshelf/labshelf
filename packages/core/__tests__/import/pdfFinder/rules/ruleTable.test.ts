@@ -1,12 +1,12 @@
 /** Contract of the publisher rule table: every rule gives its verified examples' PDF URLs, and rules never overlap. */
-import { PUBLISHER_RULES, pdfUrlsForDoi, pdfUrlsForLanding } from "../../../../src/import/pdfFinder/rules/index";
+import { PUBLISHER_RULES, listPdfUrlsForDoi, listPdfUrlsForLanding } from "../../../../src/import/pdfFinder/rules/index";
 
 const isDoi = (from: string): boolean => from.startsWith("10.");
 
 describe("publisher rule table", () => {
   it.each(PUBLISHER_RULES.map((r) => [r.platform, r] as const))("%s gives the PDF URL of each example", (_, rule) => {
     for (const { from, pdf } of rule.examples) {
-      expect(isDoi(from) ? pdfUrlsForDoi(from) : pdfUrlsForLanding(from)).toContain(pdf);
+      expect(isDoi(from) ? listPdfUrlsForDoi(from) : listPdfUrlsForLanding(from)).toContain(pdf);
     }
   });
 
@@ -16,7 +16,7 @@ describe("publisher rule table", () => {
   });
 
   it.each(PUBLISHER_RULES.map((r) => [r.platform, r] as const))("%s does not read its own PDF URL as a landing page", (_, rule) => {
-    for (const { pdf } of rule.examples) expect(pdfUrlsForLanding(pdf).filter((u) => u !== pdf)).toEqual([]);
+    for (const { pdf } of rule.examples) expect(listPdfUrlsForLanding(pdf).filter((u) => u !== pdf)).toEqual([]);
   });
 
   it("names each platform once and gives each DOI prefix to one platform", () => {
@@ -28,13 +28,13 @@ describe("publisher rule table", () => {
 
   it("knows nothing about a DOI or page outside the table", () => {
     // Elsevier keys PDFs by the PII, so its DOI alone gives nothing.
-    expect(pdfUrlsForDoi("10.1016/0196-6774(82)90007-4")).toEqual([]);
-    expect(pdfUrlsForLanding("https://example.org/doi/abs/10.1145/3065386")).toEqual([]);
-    expect(pdfUrlsForLanding("not a url")).toEqual([]);
+    expect(listPdfUrlsForDoi("10.1016/0196-6774(82)90007-4")).toEqual([]);
+    expect(listPdfUrlsForLanding("https://example.org/doi/abs/10.1145/3065386")).toEqual([]);
+    expect(listPdfUrlsForLanding("not a url")).toEqual([]);
   });
 
   it("builds the PDF on the host the landing page came from", () => {
-    expect(pdfUrlsForLanding("https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2019GL085378")).toEqual([
+    expect(listPdfUrlsForLanding("https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2019GL085378")).toEqual([
       "https://agupubs.onlinelibrary.wiley.com/doi/pdfdirect/10.1029/2019GL085378",
     ]);
   });

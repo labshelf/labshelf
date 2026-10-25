@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { SyncTool } from "../../conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 
 interface ClientConfigSite {
   home: string;
@@ -22,14 +22,14 @@ async function readSource(file: string, parse: Parse, site: ClientConfigSite): P
     text = await fs.readFile(file, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      await site.logger?.log("WARN", "syncFolders", "Sync client config cannot be read", { file, error: errorMessage(error) });
+      await site.logger?.log("WARN", "syncFolders", "Sync client config cannot be read", { file, error: formatError(error) });
     }
     return [];
   }
   try {
     return parse(text, site).filter((entry) => path.isAbsolute(entry));
   } catch (error) {
-    await site.logger?.log("WARN", "syncFolders", "Sync client config is malformed and skipped", { file, error: errorMessage(error) });
+    await site.logger?.log("WARN", "syncFolders", "Sync client config is malformed and skipped", { file, error: formatError(error) });
     return [];
   }
 }

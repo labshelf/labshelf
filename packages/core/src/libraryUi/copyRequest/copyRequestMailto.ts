@@ -1,5 +1,5 @@
 // Builds the mailto: link that asks an author for a copy of a paper, within the length mail clients accept.
-import { formatAuthors, paperLink } from "../../library/index.js";
+import { formatAuthors, derivePaperUrl } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { RequestLanguage } from "./requestLanguage.js";
 
@@ -117,10 +117,10 @@ function citation(paper: CopyRequest["paper"], fit: Fit): string {
  * When the link would pass MAILTO_MAX_LENGTH it shortens the citation's authors, then the title in the body, then the title in the subject.
  * @returns the mailto: URL; longer than the cap only when the recipients and signature alone exceed it
  */
-export function requestCopyMailto({ to, paper, requester, lang }: CopyRequest): string {
+export function createCopyRequestMailto({ to, paper, requester, lang }: CopyRequest): string {
   const name = truncate(requester.name.trim(), MAX_REQUESTER_FIELD);
   const affiliation = truncate(requester.affiliation.trim(), MAX_REQUESTER_FIELD);
-  const link = paper.doi?.trim() ? paperLink({ doi: paper.doi }) : undefined;
+  const link = paper.doi?.trim() ? derivePaperUrl({ doi: paper.doi }) : undefined;
   const recipients = to.map(encode).join(",");
   const render = (fit: Fit): string => {
     const body = bodyText(lang, { citation: citation(paper, fit), link, name, affiliation });

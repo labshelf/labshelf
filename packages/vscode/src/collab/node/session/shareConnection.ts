@@ -5,7 +5,7 @@ import {
   type InviteRelay,
   type ShareConnection,
   type ShareStart,
-  contentConflictMessage,
+  describeContentConflict,
   leasedMirrorFactory,
   readConflictDismissals,
   type MirrorFactory,
@@ -13,9 +13,9 @@ import {
 import {
   nodeCollabStorage,
   nodeProjectCatalogContext,
-  conflictDismissalFile,
+  resolveConflictDismissalFile,
   createDeviceIdentity,
-  deviceLocalLayout,
+  createDeviceLocalLayout,
   mergeText,
   NodeLibraryFileSystem,
   nodeMirrorDisk,
@@ -32,13 +32,13 @@ export function desktopMirrorFactory(libraryRoot: string, logger: ILogger, isEdi
     return candidates.get(folder)!;
   };
   return leasedMirrorFactory({
-    identity: createDeviceIdentity(deviceLocalLayout(libraryRoot), logger),
+    identity: createDeviceIdentity(createDeviceLocalLayout(libraryRoot), logger),
     fs: new NodeLibraryFileSystem(), app: "vscode", logger, mergeText,
-    disk: (folder) => watchConflictDismissals(nodeMirrorDisk(folder, logger), conflictDismissalFile(libraryRoot), held(folder), logger), isEditorOwned,
-    readConflictDismissals: () => readConflictDismissals(new NodeLibraryFileSystem(), conflictDismissalFile(libraryRoot)),
+    disk: (folder) => watchConflictDismissals(nodeMirrorDisk(folder, logger), resolveConflictDismissalFile(libraryRoot), held(folder), logger), isEditorOwned,
+    readConflictDismissals: () => readConflictDismissals(new NodeLibraryFileSystem(), resolveConflictDismissalFile(libraryRoot)),
     onConflictCopy: (folder, copy) => {
       held(folder).add(path.relative(folder, copy.copy).split(path.sep).join('/'));
-      void vscode.window.showInformationMessage(contentConflictMessage(copy), "Resolve").then((choice) => {
+      void vscode.window.showInformationMessage(describeContentConflict(copy), "Resolve").then((choice) => {
         if (choice === "Resolve") { void vscode.commands.executeCommand("labshelf.resolveConflicts"); }
       });
     },

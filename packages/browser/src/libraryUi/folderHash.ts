@@ -2,7 +2,7 @@
  * Binds the open folder to the URL hash (`#/papers/Project/Refs`), so back/forward walk the folder history and a reload
  * lands on the same folder. The host tells the UI about hash changes and follows the UI's own navigation.
  */
-import { PAPERS_DIR, isLibraryPath, parentDir, type HostEndpoint } from "@labshelf/core";
+import { PAPERS_DIR, isLibraryPath, deriveParentDir, type HostEndpoint } from "@labshelf/core";
 import { JOIN_PREFIX } from "./editorArea";
 
 /** Parses a location hash into a folder path, falling back to the root. */
@@ -33,7 +33,7 @@ export function attachRouter(endpoint: HostEndpoint, paperIdAtPath: (path: strin
     const id = await paperIdAtPath(path);
     if (turn !== latest) return;
     if (!id) { paperHash = null; endpoint.post({ type: "navigate", folder: path }); return; }
-    const folder = parentDir(path, "/");
+    const folder = deriveParentDir(path, "/");
     paperHash = { hash, folder };
     endpoint.post({ type: "navigate", folder });
     endpoint.post({ type: "select", id });

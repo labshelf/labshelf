@@ -2,7 +2,7 @@
  * Finds the References section and looks entries up in it so a citation hover can show the cited work.
  * Deliberately conservative: when nothing matches reliably it returns nothing, and the hover falls back to a cropped image of the destination rather than showing the wrong reference.
  */
-import { fold } from "../../library/index.js";
+import { normalizeText } from "../../library/index.js";
 import type { TextLine } from "./textLines.js";
 
 // Compared after folding case and accents: OCR run with English language data turns "REFERÊNCIAS" into "REFERENCIAS".
@@ -21,7 +21,7 @@ export function isReferencesHeading(raw: string): boolean {
   if (text.length === 0 || text.length > 48) { return false; }
   // Letter-spaced display headings: "R E F E R E N C E S".
   if (/^(?:\p{L}\s){3,}\p{L}$/u.test(text)) { text = text.replace(/\s+/g, ""); }
-  const folded = fold(text)
+  const folded = normalizeText(text)
     .replace(/^(?:\d{1,2}|[ivxl]{1,5})\s*[.)\-–]?\s+/, "")
     .replace(/[\s.:;\-–—]+$/, "")
     .replace(/\s+/g, " ");
@@ -101,14 +101,14 @@ const ACRONYM_AREA_CHARS = 90;
  * @returns the matching entries (at most three); several are returned when the list genuinely has several candidates.
  */
 export function matchAuthorYear(entries: readonly ReferenceEntry[], q: AuthorYearQuery): ReferenceEntry[] {
-  const surname = fold(q.surname);
+  const surname = normalizeText(q.surname);
   if (surname.length < 2) { return []; }
   const escaped = surname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const opens = new RegExp(`^${escaped}(?:$|[^\\p{L}])`, "u");
   const word = new RegExp(`(?:^|[^\\p{L}])${escaped}(?:$|[^\\p{L}])`, "u");
   const isAcronym = /^\p{Lu}{2,10}$/u.test(q.surname);
   const matches = entries.filter((e) => {
-    const folded = fold(e.text);
+    const folded = normalizeText(e.text);
     const authors = folded.replace(LEADING_MARKER, "").replace(PARTICLES, "");
     if (!opens.test(authors) && !(isAcronym && word.test(authors.slice(0, ACRONYM_AREA_CHARS)))) { return false; }
     return q.years.some((year) => {
@@ -118,9 +118,9 @@ export function matchAuthorYear(entries: readonly ReferenceEntry[], q: AuthorYea
     });
   });
   if (matches.length <= 1) { return matches; }
-  const co = (q.coauthors ?? []).map(fold).filter((c) => c.length >= 2);
+  const co = (q.coauthors ?? []).map(normalizeText).filter((c) => c.length >= 2);
   const narrowed = co.length > 0
-    ? matches.filter((e) => co.every((c) => fold(e.text).slice(0, CO_AUTHOR_AREA_CHARS).includes(c)))
+    ? matches.filter((e) => co.every((c) => normalizeText(e.text).slice(0, CO_AUTHOR_AREA_CHARS).includes(c)))
     : [];
   return (narrowed.length > 0 ? narrowed : matches).slice(0, MAX_AUTHOR_YEAR_MATCHES);
 }

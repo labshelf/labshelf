@@ -3,7 +3,7 @@ import type * as vscode from 'vscode';
 import {
   type HostToUi,
   createSidecarReader,
-  folderTreeFromSnapshot,
+  deriveFolderTree,
   type LibraryUiSnapshot,
   type PaperRecord,
 } from '@labshelf/core';
@@ -31,7 +31,7 @@ async function readSnapshot(deps: ListPanelDeps, paths: LibraryPaths): Promise<L
     if (ui) { papers.push({ ...record, path: ui }); }
   }
   const stats = deps.loadSidecar ? await createSidecarReader(deps.loadSidecar, deps.logger, LOG_MODULE).statsOf(records) : {};
-  const folders = folderTreeFromSnapshot(deps.getSnapshot());
+  const folders = deriveFolderTree(deps.getSnapshot());
   // A record says nothing about its PDF until the indexer has looked; that counts as present.
   const pdfDirs = papers.filter((p) => p.hasPdf !== false).map((p) => p.path);
   return { folders, papers, pdfDirs, stats };

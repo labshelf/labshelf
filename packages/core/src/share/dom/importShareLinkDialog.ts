@@ -1,12 +1,12 @@
 // Imports the papers of a share link: asks for the link, shows progress, then offers the new folder.
 import { inputBox, progressDialog, showDialog, toast } from "../../ui/dom/index.js";
-import type { ImportLinkResult, SharingHost } from "../../libraryUi/share/index.js";
+import type { ShareLinkImportResult, ShareHost } from "../../libraryUi/share/index.js";
 import { parseShareLink } from "../shareLink.js";
 import { refusedShareLinkText } from "../flow/index.js";
 import { infoDialog } from "./noticeDialog.js";
 import { reportingFailure } from "./reportFailure.js";
 
-export function runImportLinkDialog(host: SharingHost, link?: string): Promise<void> {
+export function runImportLinkDialog(host: ShareHost, link?: string): Promise<void> {
   return reportingFailure("import the shared link", async () => {
     const text = link ?? await inputBox({
       title: "Import Shared Link",
@@ -15,7 +15,7 @@ export function runImportLinkDialog(host: SharingHost, link?: string): Promise<v
     });
     if (!text) return;
     const progress = progressDialog({ title: "Importing shared papers", message: "Importing shared papers…" });
-    let result: ImportLinkResult;
+    let result: ShareLinkImportResult;
     try {
       result = await host.importLink(text, (p) => {
         if ("done" in p) progress.update(`Importing shared papers: ${p.done} of ${p.total}`);

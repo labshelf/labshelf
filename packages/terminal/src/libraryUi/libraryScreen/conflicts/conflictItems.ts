@@ -1,7 +1,7 @@
 // Builds the labels and choices the conflict overlay shows for sync conflict copies.
 import * as path from "node:path";
 
-import { conflictOwnerLabel, conflictPromptChoices, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
+import { formatConflictOwnerLabel, listConflictAskChoices, type ConflictCopy, type ConflictResolution } from "@labshelf/core";
 
 import type { PickerItem } from "../../overlays.js";
 
@@ -20,13 +20,13 @@ export function conflictCountLabel(count: number): string {
 export function conflictItems(copies: readonly ConflictCopy[], titleOf: (paperId: string) => string | undefined): PickerItem[] {
   return copies.map((copy, index) => ({
     id: String(index),
-    label: `${conflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? titleOf(copy.owner.id) : undefined)} · ${path.basename(copy.original)}`,
+    label: `${formatConflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? titleOf(copy.owner.id) : undefined)} · ${path.basename(copy.original)}`,
     detail: copy.tool,
   }));
 }
 
 export function conflictChoices(copy: ConflictCopy): PickerItem[] {
-  return conflictPromptChoices(copy).map(({ resolution, label }) => ({
+  return listConflictAskChoices(copy).map(({ resolution, label }) => ({
     id: resolution, label, ...(resolution === "mergeMyself" || !DETAILS[resolution] ? {} : { detail: DETAILS[resolution] }),
   }));
 }

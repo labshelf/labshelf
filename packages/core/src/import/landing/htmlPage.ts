@@ -1,7 +1,7 @@
 // Reads HTML fetched without a DOM into the RawPage shape the in-tab probe produces.
-import { authorEmailMetasOf, mailtoLinksOf } from "./author/index.js";
-import { absoluteHttpUrl, attributes, decodeEntities, metaPairs } from "./htmlTags.js";
-import type { RawPage, RawPdfLink } from "./rawPage.js";
+import { findAuthorEmailMetas, findMailtos } from "./author/index.js";
+import { resolveAbsoluteHttpUrl, parseAttributes, decodeEntities, walkMetaPairs } from "./htmlTags.js";
+import type { RawPage, RawPdfCandidate } from "./rawPage.js";
 
 // PLATFORM: the MV3 service worker and the terminal have no DOMParser, so a tolerant regex reader handles the few tags that matter.
 /** @returns the meta tags, PDF links and viewers, DOI links and author-address evidence of an HTML document */
@@ -11,8 +11,8 @@ export function parseHtmlPage(html: string, pageUrl: string): RawPage {
     meta: metaTags(html),
     pdfLinks: pdfLinksOf(html, pageUrl).slice(0, 40),
     doiLinks: doiLinksOf(html),
-    mailtoLinks: mailtoLinksOf(html),
-    authorEmails: authorEmailMetasOf(html),
+    mailtoLinks: findMailtos(html),
+    authorEmails: findAuthorEmailMetas(html),
   };
   const documentTitle = firstNonEmptyTitle(html);
   if (documentTitle) raw.documentTitle = documentTitle;
@@ -30,33 +30,33 @@ function firstNonEmptyTitle(html: string): string {
 
 function metaTags(html: string): Record<string, string[]> {
   const meta: Record<string, string[]> = {};
-  for (const { key, value } of metaPairs(html)) {
+  for (const { key, value } of walkMetaPairs(html)) {
     if (key) (meta[key] ??= []).push(value);
   }
   return meta;
 }
 
-function pdfLinksOf(html: string, pageUrl: string): RawPdfLink[] {
-  const pdfLinks: RawPdfLink[] = [];
+function pdfLinksOf(html: string, pageUrl: string): RawPdfCandidate[] {
+  const pdfLinks: RawPdfCandidate[] = [];
   const seen = new Set<string>();
-  const add = (raw: string | undefined, kind: RawPdfLink["kind"]): void => {
-    const url = absoluteHttpUrl(raw, pageUrl);
+  const add = (raw: string | undefined, kind: RawPdfCandidate["kind"]): void => {
+    const url = resolveAbsoluteHttpUrl(raw, pageUrl);
     if (!url || seen.has(url)) return;
     seen.add(url);
     pdfLinks.push({ url, kind });
   };
 
   for (const m of html.matchAll(/<(embed|iframe|object)\b[^>]*>/gi)) {
-    const a = attributes(m[0]);
+    const a = parseAttributes(m[0]);
     const src = a["src"] ?? a["data"];
     if (a["type"] === "application/pdf" || (src && /\.pdf|\/pdf/i.test(src))) add(src, "embed");
   }
   for (const m of html.matchAll(/<link\b[^>]*>/gi)) {
-    const a = attributes(m[0]);
+    const a = parseAttributes(m[0]);
     if ((a["rel"] ?? "").toLowerCase() === "alternate" && a["type"] === "application/pdf") add(a["href"], "alternate");
   }
   for (const m of html.matchAll(/<a\b([^>]*)>([\s\S]{0,300}?)<\/a>/gi)) {
-    const a = attributes(m[1] ?? "");
+    const a = parseAttributes(m[1] ?? "");
     const href = a["href"];
     if (!href) continue;
     const label = `${(m[2] ?? "").replace(/<[^>]+>/g, " ")} ${a["title"] ?? ""} ${a["aria-label"] ?? ""} ${a["class"] ?? ""}`;
@@ -77,16 +77,16 @@ function doiLinksOf(html: string): string[] {
  * (ScienceDirect's "pdfft" page, for one) answer the PDF link with such a page instead of the file.
  * @returns Absolute redirect targets, most explicit first.
  */
-export function redirectTargets(html: string, pageUrl: string): string[] {
+export function findRedirectUrls(html: string, pageUrl: string): string[] {
   const out: string[] = [];
   for (const m of html.matchAll(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh[^>]*>/gi)) {
-    const content = attributes(m[0])["content"] ?? "";
+    const content = parseAttributes(m[0])["content"] ?? "";
     const target = /url\s*=\s*['"]?([^'"]+)/i.exec(content)?.[1];
-    const url = absoluteHttpUrl(target, pageUrl);
+    const url = resolveAbsoluteHttpUrl(target, pageUrl);
     if (url) out.push(url);
   }
   for (const m of html.matchAll(/(?:window\.|document\.)?location(?:\.href)?\s*=\s*["']([^"']+)["']|location\.(?:replace|assign)\(\s*["']([^"']+)["']/g)) {
-    const url = absoluteHttpUrl(decodeEntities(m[1] ?? m[2] ?? ""), pageUrl);
+    const url = resolveAbsoluteHttpUrl(decodeEntities(m[1] ?? m[2] ?? ""), pageUrl);
     if (url) out.push(url);
   }
   return [...new Set(out)];

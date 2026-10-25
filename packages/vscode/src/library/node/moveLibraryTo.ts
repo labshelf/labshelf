@@ -1,7 +1,7 @@
 // Moves the open library to a new folder with progress, then reopens it there.
 import * as vscode from "vscode";
 
-import { errorMessage } from "@labshelf/core";
+import { formatError } from "@labshelf/core";
 import { moveLibrary } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
 
@@ -35,7 +35,7 @@ export async function moveLibraryTo(controller: LibraryRootController, target: s
   } catch (error) {
     // moveLibrary logs its own failures; this line also covers rebuilding the services on the new root.
     await logger.error("libraryMove", error, { action: "reopen moved library", target });
-    await vscode.window.showErrorMessage(errorMessage(error));
+    await vscode.window.showErrorMessage(formatError(error));
     return false;
   }
 }

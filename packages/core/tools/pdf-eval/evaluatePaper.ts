@@ -1,5 +1,5 @@
 // Runs one corpus paper through core's PDF finder in one scenario and judges the PDF it returns.
-import { fetchLandingPage, findPaperPdf, identifiersFromInput } from "../../src/import/index.js";
+import { fetchLanding, findPaperPdf, extractIdentifiersFromInput } from "../../src/import/index.js";
 import type { DetectedIds, PdfAttempt, PdfCandidate } from "../../src/import/index.js";
 import { BROWSER_HEADERS, chromeFetch } from "./chromeFetch.js";
 import { titleScoreOfPdf } from "./titleMatch.js";
@@ -10,7 +10,7 @@ const CORRECT_SHARE = 0.6;
 
 function idsOf(entry: CorpusEntry): DetectedIds {
   const ids: DetectedIds = {};
-  for (const found of identifiersFromInput(entry.id)) {
+  for (const found of extractIdentifiersFromInput(entry.id)) {
     if (found.type === "doi") ids.doi = found.value;
     if (found.type === "arxiv") ids.arxivId = found.value;
     if (found.type === "pmid") ids.pmid = found.value;
@@ -20,7 +20,7 @@ function idsOf(entry: CorpusEntry): DetectedIds {
 
 /** The "landing" scenario hands the finder what the app has after opening the article: the page's final URL and its PDF links. */
 async function pageContext(entry: CorpusEntry, fetchFn: typeof fetch): Promise<{ landingUrl: string; pageCandidates: PdfCandidate[] }> {
-  const facts = await fetchLandingPage(entry.landingUrl, { fetch: fetchFn, timeoutMs: PAPER_TIMEOUT_MS, headers: BROWSER_HEADERS });
+  const facts = await fetchLanding(entry.landingUrl, { fetch: fetchFn, timeoutMs: PAPER_TIMEOUT_MS, headers: BROWSER_HEADERS });
   return { landingUrl: facts?.pageUrl ?? entry.landingUrl, pageCandidates: facts?.pdfCandidates ?? [] };
 }
 

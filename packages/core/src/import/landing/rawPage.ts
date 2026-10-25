@@ -3,7 +3,7 @@ import type { DetectedIds } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 
 /** A link or viewer on the page that may lead to the article PDF. */
-export interface RawPdfLink {
+export interface RawPdfCandidate {
   url: string;
   /**
    * embed — a PDF viewer embedded in the page (<embed>/<iframe>/<object>);
@@ -15,7 +15,7 @@ export interface RawPdfLink {
 }
 
 /** A mailto: link with the page text around it, which tells whether it names the corresponding author. */
-export interface RawMailtoLink {
+export interface RawMailto {
   href: string;
   /** The link's own text. */
   text: string;
@@ -38,11 +38,11 @@ export interface RawPage {
   pageIsPdf?: boolean;
   /** Lower-cased <meta name|property> → every content value, in page order. */
   meta: Record<string, string[]>;
-  pdfLinks: RawPdfLink[];
+  pdfLinks: RawPdfCandidate[];
   /** hrefs of doi.org links — publishers print the article's own DOI this way. */
   doiLinks: string[];
   /** At most 20 mailto: links, in page order. */
-  mailtoLinks: RawMailtoLink[];
+  mailtoLinks: RawMailto[];
   /** citation_author_email meta tags in page order, kept apart from `meta` because the pairing with authors depends on order. */
   authorEmails: RawAuthorEmail[];
 }

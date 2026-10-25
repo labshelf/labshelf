@@ -1,7 +1,7 @@
 // Builds the Library proxies section: an ordered list of proxies, each with a name, an address, an enabled switch and a remove button.
 import { inlineCode } from "@labshelf/core/dom";
 import { createEditableListSection, type EditableListSection } from "./editableListSection";
-import { proxyKind, type LibraryProxy, type ProxyKind } from "@labshelf/core";
+import { deriveProxyKind, type LibraryProxy, type ProxyKind } from "@labshelf/core";
 
 const PROXY_KIND_LABELS: Record<ProxyKind, string> = { prefix: "Prefix", hostname: "Hostname", openathens: "OpenAthens" };
 
@@ -12,7 +12,7 @@ type TemplateVerdict = { kind: ProxyKind; label: string } | { error: string } | 
 
 export function judgeTemplate(template: string): TemplateVerdict {
   if (!template.trim()) return undefined;
-  const kind = proxyKind(template);
+  const kind = deriveProxyKind(template);
   return kind ? { kind, label: PROXY_KIND_LABELS[kind] } : { error: PROXY_TEMPLATE_ERROR };
 }
 
@@ -20,7 +20,7 @@ export function judgeTemplate(template: string): TemplateVerdict {
 export function savableProxies(rows: readonly LibraryProxy[]): LibraryProxy[] {
   return rows.flatMap((row) => {
     const template = row.template.trim();
-    return proxyKind(template) ? [{ name: row.name.trim() || template, template, enabled: row.enabled }] : [];
+    return deriveProxyKind(template) ? [{ name: row.name.trim() || template, template, enabled: row.enabled }] : [];
   });
 }
 

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { sharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
+import { resolveSharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
 import {
   resolveLibraryRoot,
   ensureLibraryStructure,
@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  fs.rmSync(sharedConfigPath(), { force: true, recursive: true });
+  fs.rmSync(resolveSharedConfigPath(), { force: true, recursive: true });
 });
 
 // ─── resolveLibraryRoot ────────────────────────────────────────────────────────

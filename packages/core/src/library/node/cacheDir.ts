@@ -3,7 +3,7 @@
 import * as os from "node:os";
 import * as path from "node:path";
 
-export function cacheDir(env: NodeJS.ProcessEnv = process.env): string {
+export function resolveCacheDir(env: NodeJS.ProcessEnv = process.env): string {
   if (env["XDG_CACHE_HOME"]) { return path.join(env["XDG_CACHE_HOME"], "labshelf"); }
   if (process.platform === "darwin") { return path.join(os.homedir(), "Library", "Caches", "labshelf"); }
   return path.join(os.homedir(), ".cache", "labshelf");

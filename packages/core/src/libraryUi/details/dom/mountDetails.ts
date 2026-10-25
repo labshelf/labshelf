@@ -3,7 +3,7 @@ import { icon } from "../../../ui/index.js";
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../../index.js";
 import type { MessageEnd } from "../../protocol/index.js";
 import type { PrefsPort } from "../../store/index.js";
-import type { DetailsTarget, DetailsToHost, HostToDetails } from "../protocol/index.js";
+import type { DetailsSelection, DetailsToHost, HostToDetails } from "../protocol/index.js";
 import { mountPaperSlot } from "./paperSlot.js";
 import { mountProjectSlot } from "./projectSlot.js";
 import { mountDetailsTabs } from "./mountDetailsTabs.js";
@@ -44,7 +44,7 @@ export function mountDetails(host: HTMLElement, options: DetailsOptions): () => 
   body.append(paperEl, projectEl, empty);
   root.append(body);
   host.append(root);
-  let target: DetailsTarget = null;
+  let target: DetailsSelection = null;
   const paper = mountPaperSlot(root, paperEl, { transport, prefs: options.prefs, caps: options.capabilities, labels: options.labels });
   const project = mountProjectSlot(projectEl, transport);
   const refresh = (): void => {

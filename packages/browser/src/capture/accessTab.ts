@@ -1,12 +1,12 @@
 // Opens the page that stood in the way of a paper's PDF in a visible tab, and attaches the PDF once the user gets through.
 import {
-  errorMessage,
+  formatError,
   type ILogger,
   type PdfAccess,
   fetchPdf,
-  interpretPage,
+  derivePageFacts,
   isSupplementaryUrl,
-  sameWork,
+  isSameWork,
   type FetchedPdf,
 } from "@labshelf/core";
 import { bx } from "../platform";
@@ -28,9 +28,9 @@ async function pdfInTab(log: ILogger, tabId: number, url: string, title: string)
     const pdf = await fetchPdf(url, { credentials: "include", logger: log });
     if (pdf) return pdf;
   }
-  const facts = interpretPage(await probeTab(log, tabId, url));
+  const facts = derivePageFacts(await probeTab(log, tabId, url));
   // A page about another work (a journal's home, a citing article) must not lend its PDF to this paper.
-  if (facts.metadata.title && !sameWork({ title: facts.metadata.title }, { title })) return undefined;
+  if (facts.metadata.title && !isSameWork({ title: facts.metadata.title }, { title })) return undefined;
   const tab = { url, fetchInTab: (u: string) => fetchInTab(tabId, u) };
   for (const candidate of facts.pdfCandidates.filter((c) => !isSupplementaryUrl(c.url)).slice(0, MAX_CANDIDATES)) {
     const pdf = await fetchPdf(candidate.url, { credentials: "include", logger: log, tab });
@@ -87,7 +87,7 @@ export async function onTabLoaded(deps: AccessTabDeps, tabId: number, url: strin
     const written = await deps.attach(watch.paperId, pdf.bytes);
     void deps.log.log("INFO", MODULE, "watched tab yielded the PDF", { paperId: watch.paperId, url: pdf.url, written });
   } catch (error) {
-    void deps.log.log("WARN", MODULE, "watched tab check failed", { paperId: watch.paperId, url, error: errorMessage(error) });
+    void deps.log.log("WARN", MODULE, "watched tab check failed", { paperId: watch.paperId, url, error: formatError(error) });
   } finally {
     checking.delete(tabId);
   }

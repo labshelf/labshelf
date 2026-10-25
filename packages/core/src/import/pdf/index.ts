@@ -13,17 +13,17 @@ export type {
   PdfjsModule,
   PdfLoadingTask,
 } from "./pdfDocument.js";
-export { extractTitleBlocks, extractPageTexts, extractLinkUrls } from "./textExtraction.js";
-export { titleFromBlocks, authorsFromBlocks } from "./frontPageLayout.js";
+export { extractTitleBlocks, extractPageTexts, extractUrls } from "./textExtraction.js";
+export { extractTitleFromBlocks, extractAuthorsFromBlocks } from "./frontPageLayout.js";
 export { normalizeAuthors } from "./authors.js";
-export { metadataFromXmp } from "./xmp.js";
-export { publisherMetadataFromInfo, timestampsAreTrustworthy } from "./pdfDictionary.js";
-export { journalFromRunningHead } from "./pageHeader.js";
-export { abstractFromText } from "./abstract.js";
-export { keywordsFromText } from "./keywords.js";
-export { titleFromPlainText } from "./plainTextTitle.js";
-export { yearFromText } from "./publicationYear.js";
-export { normalizeTitle, usableTitle } from "./titleQuality.js";
-export { looksLikeNaturalText, isSparseText } from "./textQuality.js";
+export { extractMetadataFromXmp } from "./xmp.js";
+export { extractPublisherMetadata, hasTrustworthyTimestamps } from "./pdfDictionary.js";
+export { extractJournalFromRunningHead } from "./pageHeader.js";
+export { extractAbstract } from "./abstract.js";
+export { extractKeywords } from "./keywords.js";
+export { extractTitleFromPlainText } from "./plainTextTitle.js";
+export { extractYearFromText } from "./publicationYear.js";
+export { normalizeTitle, deriveUsableTitle } from "./titleQuality.js";
+export { isNaturalText, isSparseText } from "./textQuality.js";
 export { PdfImportParser } from "./parser/index.js";
 export type { PdfImportParserOptions } from "./parser/index.js";

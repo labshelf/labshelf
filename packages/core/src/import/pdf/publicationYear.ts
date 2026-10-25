@@ -5,7 +5,7 @@
  * "Published/Received/Accepted" dates), which beats the PDF's file timestamp.
  * @returns A four-digit year, or undefined when none is stated.
  */
-export function yearFromText(text: string): number | undefined {
+export function extractYearFromText(text: string): number | undefined {
   const patterns = [
     /(?:©|\(c\)|copyright)\s*(?:the author[s]?[,\s]*)?((?:19|20)\d{2})/i,
     /\b(?:published|accepted|received|issued|revised)\b[^\n]{0,40}?\b((?:19|20)\d{2})\b/i,

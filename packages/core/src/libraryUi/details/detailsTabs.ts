@@ -1,46 +1,46 @@
 // Decides which tabs the Details surface holds: one preview that follows the selection, and the items the user pinned.
 import type { PinnedItem } from "../store/index.js";
-import type { DetailsTarget } from "./protocol/index.js";
+import type { DetailsSelection } from "./protocol/index.js";
 
 /** `active` indexes `pins`; null is the preview. */
 export interface DetailsTabsState {
   readonly pins: readonly PinnedItem[];
-  readonly preview: DetailsTarget;
+  readonly preview: DetailsSelection;
   readonly active: number | null;
 }
 
-export function initialTabs(pins: readonly PinnedItem[]): DetailsTabsState {
+export function createInitialTabs(pins: readonly PinnedItem[]): DetailsTabsState {
   return { pins, preview: null, active: null };
 }
 
 /** Only one paper or one project can have its own tab. */
-export function isPinnable(target: DetailsTarget): boolean {
+export function isPinnable(target: DetailsSelection): boolean {
   return target !== null && (target.kind === "project" || target.ids.length === 1);
 }
 
-function asPin(target: DetailsTarget): PinnedItem | null {
+function asPin(target: DetailsSelection): PinnedItem | null {
   if (!target || !isPinnable(target)) return null;
   return target.kind === "project" ? { kind: "project", id: target.id } : { kind: "paper", id: target.ids[0]! };
 }
 
-function asTarget(pin: PinnedItem): DetailsTarget {
+function asTarget(pin: PinnedItem): DetailsSelection {
   return pin.kind === "project" ? { kind: "project", id: pin.id } : { kind: "paper", ids: [pin.id] };
 }
 
-function pinIndex(state: DetailsTabsState, target: DetailsTarget): number {
+function pinIndex(state: DetailsTabsState, target: DetailsSelection): number {
   const pin = asPin(target);
   return pin ? state.pins.findIndex((p) => p.kind === pin.kind && p.id === pin.id) : -1;
 }
 
 /** A pinned target activates its tab; any other replaces the preview; null clears the preview. */
-export function receiveTarget(state: DetailsTabsState, target: DetailsTarget): DetailsTabsState {
+export function applyDetailsSelection(state: DetailsTabsState, target: DetailsSelection): DetailsTabsState {
   if (target === null) return { ...state, preview: null };
   const index = pinIndex(state, target);
   return index >= 0 ? { ...state, active: index } : { ...state, preview: target, active: null };
 }
 
 /** Moves the preview into a pinned tab, which becomes active, and empties the preview until the next target. */
-export function pinPreview(state: DetailsTabsState): DetailsTabsState {
+export function movePreviewToPinned(state: DetailsTabsState): DetailsTabsState {
   const pin = asPin(state.preview);
   if (!pin) return state;
   const index = pinIndex(state, state.preview);
@@ -48,7 +48,7 @@ export function pinPreview(state: DetailsTabsState): DetailsTabsState {
   return { pins: [...state.pins, pin], preview: null, active: state.pins.length };
 }
 
-export function selectTab(state: DetailsTabsState, active: number | null): DetailsTabsState {
+export function setActiveTab(state: DetailsTabsState, active: number | null): DetailsTabsState {
   return { ...state, active };
 }
 
@@ -62,7 +62,7 @@ export function closeTab(state: DetailsTabsState, index: number): DetailsTabsSta
 }
 
 /** Drops the pins of `kind` whose ids are not in `existing`; an active dropped tab falls back to the preview. */
-export function pruneTabs(state: DetailsTabsState, kind: PinnedItem["kind"], existing: ReadonlySet<string>): DetailsTabsState {
+export function removeStaleTabs(state: DetailsTabsState, kind: PinnedItem["kind"], existing: ReadonlySet<string>): DetailsTabsState {
   const keep = (p: PinnedItem): boolean => p.kind !== kind || existing.has(p.id);
   if (state.pins.every(keep)) return state;
   const activePin = state.active === null ? null : state.pins[state.active]!;
@@ -72,6 +72,6 @@ export function pruneTabs(state: DetailsTabsState, kind: PinnedItem["kind"], exi
 }
 
 /** The target the active tab shows. */
-export function shownTarget(state: DetailsTabsState): DetailsTarget {
+export function deriveShownSelection(state: DetailsTabsState): DetailsSelection {
   return state.active === null ? state.preview : asTarget(state.pins[state.active]!);
 }

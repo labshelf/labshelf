@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { snapshotFromScan, type HostToUi, type LibraryUiSnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
+import { deriveSnapshot, type HostToUi, type LibraryUiSnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
 import { ListWebviewPanel } from '../../src/libraryUi/listWebviewPanel';
 import { createLibraryEvents } from '../../src/library/index';
 import type { ListPanelDeps } from '../../src/libraryUi/listPanelDeps';
@@ -29,7 +29,7 @@ function open(folder?: LibraryNode, extra: Partial<ListPanelDeps> = {}) {
   const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const onDidNavigate = jest.fn();
   const entry = (id: string, collection: string): PaperEntry => ({ record: { id } as PaperRecord, collection, modifiedMs: 0 });
-  const library = snapshotFromScan(ROOT, { folders: ['A', 'A/B'], papers: [entry('p1', 'A'), entry('p2', 'A/B'), entry('p3', '')], orphans: [], duplicates: [] }, 0);
+  const library = deriveSnapshot(ROOT, { folders: ['A', 'A/B'], papers: [entry('p1', 'A'), entry('p2', 'A/B'), entry('p3', '')], orphans: [], duplicates: [] }, 0);
   const getSnapshot = () => library;
   const deps = {
     extensionUri: vscode.Uri.file('/ext'), paperService, events: bus, logger, pathOps: path, folders, onDidNavigate, getSnapshot,

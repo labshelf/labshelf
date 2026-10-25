@@ -7,9 +7,9 @@ import {
   loadShareRegistry, OPEN_SHARE_FAILURE, refusedShareLinkText, revokeShare, shareableFolders, shareFolderAsLink, shareImportSummaryText, shareRecordLink,
   type FolderShareSources, type ImportShareLinkOptions, type ImportShareLinkResult, type ShareBackend, type ShareReader, type ShareRegistryStore,
 } from "../../../share/index.js";
-import type { ImportLinkResult, SharingHost } from "../shareHost.js";
+import type { ShareLinkImportResult, ShareHost } from "../shareHost.js";
 
-export interface FolderLinkDeps {
+export interface FolderShareLinkDeps {
   papers(): readonly PaperRecord[];
   papersRoot: string;
   sep: string;
@@ -24,15 +24,15 @@ export interface FolderLinkDeps {
   openFolder(path: string): Promise<void>;
 }
 
-export type FolderLinkOps = Pick<SharingHost, "shareableFolder" | "shareFolder" | "sharedLinks" | "revokeLink" | "importLink" | "openFolder">;
+export type FolderShareLinkOps = Pick<ShareHost, "shareableFolder" | "shareFolder" | "sharedLinks" | "revokeLink" | "importLink" | "openFolder">;
 
 const MODULE = "share";
 
 // The RPC guard checks only argument shapes, so every path is checked here against the host's own library.
-export function createFolderLinkOps(deps: FolderLinkDeps, logger: ILogger): FolderLinkOps {
+export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILogger): FolderShareLinkOps {
   const eligible = (path: string) => shareableFolders(deps.papers(), deps.papersRoot, deps.sep).find((folder) => folder.dir === path);
 
-  const importResult = async (result: ImportShareLinkResult): Promise<ImportLinkResult> => {
+  const importResult = async (result: ImportShareLinkResult): Promise<ShareLinkImportResult> => {
     if (result.status === "refused") { return { kind: "failed", message: refusedShareLinkText(result.error) }; }
     if (result.status === "openFailed") { return { kind: "failed", message: OPEN_SHARE_FAILURE[result.error] }; }
     const { summary, withAnnotations } = result;

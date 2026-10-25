@@ -1,5 +1,5 @@
 // Handles the popup's pdfOffer.* messages: showing an offer, attaching its PDF to the paper, and dismissing it.
-import { parentDir, type ILogger } from "@labshelf/core";
+import { deriveParentDir, type ILogger } from "@labshelf/core";
 import type { AttachPdfData, PdfOfferView, RuntimeMessage } from "../../platform";
 import { attachPdfToPaper } from "../../capture/index";
 import { listAllRecords, stagedPdf, unstagePdf, type LibraryMutations } from "../../storage";
@@ -51,7 +51,7 @@ async function handlePdfOfferGet(log: ILogger, tabId: number): Promise<PdfOfferV
     return null;
   }
   return {
-    id: offer.id, paperId: offer.paperId, title: record.title, folder: parentDir(record.path, "/"),
+    id: offer.id, paperId: offer.paperId, title: record.title, folder: deriveParentDir(record.path, "/"),
     hasBytes: offer.hasBytes, source: offer.source, onThisTab: offer.tabId === tabId,
   };
 }

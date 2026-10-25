@@ -1,6 +1,6 @@
 /** Builds the PDF finder's context from what is known about a paper, so the mapping exists once. */
 import type { DetectedIds } from "../identifiers/index.js";
-import { arxivIdFromDoi } from "../identifiers/index.js";
+import { extractArxivIdentifierFromDoi } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import type { CustomResolver, ResolveContext } from "./pdfResolver.js";
@@ -19,7 +19,7 @@ export function makeResolveContext(
   options: ResolveOptions,
 ): ResolveContext {
   const doi = ids.doi ?? metadata.doi;
-  const arxivId = ids.arxivId ?? arxivIdFromDoi(doi);
+  const arxivId = ids.arxivId ?? extractArxivIdentifierFromDoi(doi);
   return {
     pageCandidates,
     contactEmail: options.contactEmail,

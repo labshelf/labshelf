@@ -1,4 +1,4 @@
-import { createFolder, moveFolder, renameFolder, trashFolder } from "@labshelf/core";
+import { createFolder, moveFolder, renameFolder, moveFolderToTrash } from "@labshelf/core";
 
 import { makeHarness, PAPERS } from "../../support/mutationHarness";
 
@@ -123,7 +123,7 @@ describe("trashFolder", () => {
   it("trashes the folder with its papers", async () => {
     const h = makeHarness();
     await h.seedPaper(`${ML}/p1`, { title: "1" });
-    await trashFolder(h.ctx, ML);
+    await moveFolderToTrash(h.ctx, ML);
     expect(h.fs.trashed).toEqual([ML]);
     expect(await h.fs.exists(`${ML}/p1/metadata.yaml`)).toBe(false);
   });
@@ -132,13 +132,13 @@ describe("trashFolder", () => {
     const h = makeHarness();
     await h.seedPaper(`${ML}/p1`, { title: "1" });
     h.fs.trashFails.add(ML);
-    await expect(trashFolder(h.ctx, ML)).rejects.toThrow(`Cannot move ${ML} to the trash`);
+    await expect(moveFolderToTrash(h.ctx, ML)).rejects.toThrow(`Cannot move ${ML} to the trash`);
     expect(await h.fs.exists(`${ML}/p1/metadata.yaml`)).toBe(true);
   });
 
   it("refuses to trash the library root", async () => {
     const h = makeHarness();
-    await expect(trashFolder(h.ctx, PAPERS)).rejects.toThrow("The library root cannot be deleted");
+    await expect(moveFolderToTrash(h.ctx, PAPERS)).rejects.toThrow("The library root cannot be deleted");
     expect(h.fs.trashed).toEqual([]);
   });
 });

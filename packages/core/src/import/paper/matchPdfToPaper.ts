@@ -1,13 +1,13 @@
 // Picks which library paper a downloaded or opened PDF belongs to, by id first and by page-1 title otherwise.
-import { titleKey } from "../../library/index.js";
-import { sameWork } from "./index.js";
+import { normalizeTitleForMatch } from "../../library/index.js";
+import { isSameWork } from "./index.js";
 import {
-  arxivIdFromDoi,
-  arxivIdFromUrl,
+  extractArxivIdentifierFromDoi,
+  extractArxivIdentifierFromUrl,
   extractDoi,
-  normalizeArxivId,
+  normalizeArxivIdentifier,
   normalizePmcid,
-  pmcidFromUrl,
+  extractPmcidFromUrl,
 } from "../identifiers/index.js";
 
 // Journal banners, dates and author lines surround the title, so only the opening of the page is read.
@@ -53,7 +53,7 @@ function idKeysFromUrls(urls: readonly (string | undefined)[]): Set<string> {
   for (const url of urls) {
     if (!url) continue;
     const doi = extractDoi(url);
-    keys.push(...doiKey(doi), ...arxivKey(arxivIdFromUrl(url) ?? arxivIdFromDoi(doi)), ...pmcKey(pmcidFromUrl(url)));
+    keys.push(...doiKey(doi), ...arxivKey(extractArxivIdentifierFromUrl(url) ?? extractArxivIdentifierFromDoi(doi)), ...pmcKey(extractPmcidFromUrl(url)));
   }
   return new Set(keys);
 }
@@ -62,11 +62,11 @@ function idKeysFromUrls(urls: readonly (string | undefined)[]): Set<string> {
 function idKeysFromPaper(paper: PaperIdFields): Set<string> {
   const doi = paper.doi ? (extractDoi(paper.doi) ?? paper.doi) : undefined;
   const fromUrl = paper.url ? idKeysFromUrls([paper.url]) : new Set<string>();
-  const arxiv = paper.arxivId ? normalizeArxivId(paper.arxivId) : undefined;
+  const arxiv = paper.arxivId ? normalizeArxivIdentifier(paper.arxivId) : undefined;
   return new Set([
     ...fromUrl,
     ...doiKey(doi),
-    ...arxivKey(arxiv ?? arxivIdFromDoi(doi)),
+    ...arxivKey(arxiv ?? extractArxivIdentifierFromDoi(doi)),
     ...pmcKey(normalizePmcid(paper.pmcid)),
   ]);
 }
@@ -104,7 +104,7 @@ function matchByTitle<T extends MatchablePaper>(firstPageText: string, papers: r
   let best: T[] = [];
   let bestLength = 0;
   for (const paper of papers) {
-    if (titleKey(paper.title).length < MIN_TITLE_KEY_CHARS) continue;
+    if (normalizeTitleForMatch(paper.title).length < MIN_TITLE_KEY_CHARS) continue;
     const length = longestMatch(paper.title, candidates);
     if (length === 0 || length < bestLength) continue;
     if (length > bestLength) best = [];
@@ -118,8 +118,8 @@ function matchByTitle<T extends MatchablePaper>(firstPageText: string, papers: r
 function longestMatch(title: string, candidates: readonly string[]): number {
   let longest = 0;
   for (const candidate of candidates) {
-    const length = titleKey(candidate).length;
-    if (length > longest && sameWork({ title }, { title: candidate })) longest = length;
+    const length = normalizeTitleForMatch(candidate).length;
+    if (length > longest && isSameWork({ title }, { title: candidate })) longest = length;
   }
   return longest;
 }

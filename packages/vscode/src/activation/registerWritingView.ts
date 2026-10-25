@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import type { SelectionSources } from "../libraryUi/details/index.js";
 
 import {
-  buildRootOf, publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionLookup,
+  buildRootOf, publishedVersionLookup, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionLookup,
 } from "@labshelf/core";
 import {
   WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
@@ -276,7 +276,7 @@ export function registerWritingView(
   const { session, previews, recompile } = registerBuildAndPreviewCommands(parts, registerPlatformWriting, outcomes);
   const arcIcon = arcIcons(context.extensionUri);
   // With no library open every id failed, so the Checklist reports the write as failed.
-  const setStatus = async (ids: string[], status: PaperStatus): Promise<string[]> =>
+  const setStatus = async (ids: string[], status: ReadingStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
   const { projectsSource, projectTrees } = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,

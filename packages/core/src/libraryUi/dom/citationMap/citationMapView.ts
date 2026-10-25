@@ -3,7 +3,7 @@
 import { icon, escapeHtml } from "../../../ui/index.js";
 import type { CitationMapState, CitationMapView } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
-import { GRAPH_MAX_RADIUS, citationGraph, forceLayout, type GraphNode, type Point } from "../../citationMap/index.js";
+import { GRAPH_MAX_RADIUS, createCitationMapGraph, deriveForceLayout, type GraphNode, type Point } from "../../citationMap/index.js";
 import type { MissingWork } from "../../../import/index.js";
 
 const SHOWN_AUTHORS = 3;
@@ -75,11 +75,11 @@ function nodeMarkup(node: GraphNode, at: Point, citing: number): string {
  * The list beside it carries every action, so the picture is a mouse shortcut, hidden from assistive technology as one image.
  */
 function citationGraphSvg(map: CitationMapView): string {
-  const graph = citationGraph(map);
+  const graph = createCitationMapGraph(map);
   if (graph.edges.length === 0) return "";
   const index = new Map(graph.nodes.map((n, i) => [n.id, i]));
   const pairs = graph.edges.map((e) => [index.get(e.from)!, index.get(e.to)!] as const);
-  const at = forceLayout(graph.nodes.length, pairs, BOX);
+  const at = deriveForceLayout(graph.nodes.length, pairs, BOX);
   const citing = new Map(map.missing.map((w) => [w.workId, w.citedBy.length]));
   const edges = pairs.map(([a, b]) => {
     const kind = graph.nodes[b]!.kind === "missing" ? " cm-edge-missing" : "";

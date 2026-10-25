@@ -1,5 +1,5 @@
 // Warns that the library lives in this browser and offers the ways to a folder, with a re-check of the connection.
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { el, inlineCode, toast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import { helperDownloadUrl } from "../../helper";
@@ -38,7 +38,7 @@ async function showFolderAccess(host: HTMLElement, logger: ILogger, onGranted: (
       toast("LabShelf still may not use the folder.", "error");
     } catch (err) {
       await logger.error("library.libraryLocation", err, { action: "allow folder access", folder: handle.name });
-      toast(errorMessage(err), "error");
+      toast(formatError(err), "error");
     }
     setButton(allow, "folder", "Allow access", false);
   })());
@@ -117,7 +117,7 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
       if (next) return toFolder(next);
     } catch (err) {
       await options.logger.error("library.libraryLocation", err, { action: label });
-      toast(errorMessage(err), "error");
+      toast(formatError(err), "error");
     }
     setButton(button, glyph, label, false);
   };

@@ -1,6 +1,6 @@
 // Registers the command that opens the sync guide.
 import * as vscode from "vscode";
-import { type ILogger, errorMessage, createNonce, syncGuide } from "@labshelf/core";
+import { type ILogger, formatError, createNonce, syncGuide } from "@labshelf/core";
 import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
 
 const GUIDE_URLS: ReadonlySet<string> = new Set([...syncGuide.tools, syncGuide.noCloud.tool].map((tool) => tool.url));
@@ -73,7 +73,7 @@ async function openLink(raw: unknown, logger: ILogger | undefined): Promise<void
     await vscode.env.openExternal(vscode.Uri.parse(url));
   } catch (error) {
     if (logger) { await logger.error(MODULE, error, { url }); }
-    else { void vscode.window.showErrorMessage(`Could not open ${url}: ${errorMessage(error)}`); }
+    else { void vscode.window.showErrorMessage(`Could not open ${url}: ${formatError(error)}`); }
   }
 }
 

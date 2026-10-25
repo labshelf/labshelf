@@ -1,5 +1,5 @@
 /** Pins that files the page writes in a shared project reach the share at once, with no rescan: created, renamed and binary files. */
-import { appendWriteRecord, indexFiles, sha256Hex } from "@labshelf/core";
+import { addWriteRecord, indexFiles, deriveSha256Hex } from "@labshelf/core";
 import { reportPageWrites } from "../../../src/collab/mirror";
 import { FOLDER, openTestbed, running, until, type Testbed } from "./mirrorTestbed";
 
@@ -40,8 +40,8 @@ describe("browser project mirror and the page's own writes", () => {
     bed.session.registerIndexRoundTrip(roundTrip);
     await bed.folderFs.writeText(`${FOLDER}/main.tex`, "Cloud");
     await until(() => roundTrip.mock.calls.length > 0, () => bed.scheduler.fire());
-    await appendWriteRecord(bed.folderFs, FOLDER, "11111111-1111-4111-8111-111111111111", {
-      path: "main.tex", hash: await sha256Hex(new TextEncoder().encode("Cloud")), parent: null, by: "mirror", at: 1,
+    await addWriteRecord(bed.folderFs, FOLDER, "11111111-1111-4111-8111-111111111111", {
+      path: "main.tex", hash: await deriveSha256Hex(new TextEncoder().encode("Cloud")), parent: null, by: "mirror", at: 1,
     }, bed.logger);
     const waiting = () => (bed.logger.log as jest.Mock).mock.calls.some(call => call[2] === "Waiting for an in-flight mirror write");
     await until(waiting, () => bed.scheduler.fire());

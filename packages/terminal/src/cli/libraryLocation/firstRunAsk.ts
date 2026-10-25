@@ -2,7 +2,7 @@
 import { syncGuide, type ILogger } from "@labshelf/core";
 import {
   detectSyncFolders,
-  inspectLibraryFolder,
+  detectLibraryFolder,
   type SyncFolder,
   type SyncFolderTool,
 } from "@labshelf/core/node";
@@ -60,7 +60,7 @@ function printChoices(choices: readonly FirstRunChoice[], io: Output): void {
 
 // An existing library is opened only after the user confirms it.
 async function confirmFolder(target: string, ask: Ask): Promise<boolean> {
-  const info = await inspectLibraryFolder(target);
+  const info = await detectLibraryFolder(target);
   if (!info.isLibrary) { return true; }
   const answer = await ask(`Found your library with ${info.paperCount} papers. Open it? [Y/n] `);
   return answer !== undefined && !/^n/i.test(answer);

@@ -1,5 +1,5 @@
 // Gives the list panel its citation map: OpenAlex data built over the library's cache, and one-click import by DOI.
-import { buildCitationMap, citationMapView, type CitationMapView, type ImportOutcome } from "@labshelf/core";
+import { buildCitationMap, createCitationMapView, type CitationMapView, type ImportOutcome } from "@labshelf/core";
 import { queueTextLayersOfAdded, type ActiveServices } from "../../command/index.js";
 
 export interface CitationMapPorts {
@@ -16,7 +16,7 @@ export function citationMapPorts(services: ActiveServices): CitationMapPorts {
         { registry: { fetch: globalThis.fetch, logger: services.logger }, fs: services.fileSystem, cacheDir: services.citationCacheDir, logger: services.logger },
         papers,
       );
-      return citationMapView(map, papers);
+      return createCitationMapView(map, papers);
     },
     async importByDoi(doi) {
       const outcome = await services.importer.importFromNetwork(doi);

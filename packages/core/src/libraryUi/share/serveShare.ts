@@ -1,15 +1,15 @@
 // Answers the sharing dialogs' calls from another context by running them on a SharingHost.
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { MessageEnd } from "../protocol/index.js";
-import type { SharingHost, SharingProgress } from "./shareHost.js";
-import { isSharingMessage, parseSharingCall, type SharingCall, type SharingReply } from "./shareMessages.js";
+import type { ShareHost, ShareProgress } from "./shareHost.js";
+import { isShareMessage, parseShareCall, type ShareCall, type ShareReply } from "./shareMessages.js";
 
 const LOG_MODULE = "sharing";
 
-type Invocation = Extract<SharingCall, { type: "call" }>;
+type Invocation = Extract<ShareCall, { type: "call" }>;
 
-function invoke(host: SharingHost, call: Invocation, signal: AbortSignal, onProgress: (p: SharingProgress) => void): Promise<unknown> {
+function invoke(host: ShareHost, call: Invocation, signal: AbortSignal, onProgress: (p: ShareProgress) => void): Promise<unknown> {
   switch (call.op) {
     case "projects": return host.projects();
     case "projectStatus": return host.projectStatus(...call.args);
@@ -30,31 +30,31 @@ function invoke(host: SharingHost, call: Invocation, signal: AbortSignal, onProg
 }
 
 /** Serves the host end of the sharing channel; messages of other channels pass by untouched. Returns the function that stops it. */
-export function serveSharing(host: SharingHost, port: MessageEnd<SharingReply, unknown>, logger: ILogger): () => void {
+export function serveShare(host: ShareHost, port: MessageEnd<ShareReply, unknown>, logger: ILogger): () => void {
   const running = new Map<number, AbortController>();
   let stopped = false;
-  const post = (reply: SharingReply) => { if (!stopped) port.post(reply); };
+  const post = (reply: ShareReply) => { if (!stopped) port.post(reply); };
   const postOffers = () => post({ channel: "sharing", type: "offers", offers: host.offers(), place: host.place });
 
   async function run(call: Invocation): Promise<void> {
     const controller = new AbortController();
     running.set(call.id, controller);
-    const onProgress = (progress: SharingProgress) => post({ channel: "sharing", type: "progress", id: call.id, progress });
+    const onProgress = (progress: ShareProgress) => post({ channel: "sharing", type: "progress", id: call.id, progress });
     try {
       const value = await invoke(host, call, controller.signal, onProgress);
       post({ channel: "sharing", type: "result", id: call.id, ok: true, value });
     } catch (error) {
       // TRAP: never log the arguments; invites and links carry the share's secret key.
       void logger.error(LOG_MODULE, error, { op: call.op, id: call.id });
-      post({ channel: "sharing", type: "result", id: call.id, ok: false, error: errorMessage(error) });
+      post({ channel: "sharing", type: "result", id: call.id, ok: false, error: formatError(error) });
     } finally {
       running.delete(call.id);
     }
   }
 
   const unsubscribe = port.subscribe((raw) => {
-    if (!isSharingMessage(raw)) return;
-    const call = parseSharingCall(raw);
+    if (!isShareMessage(raw)) return;
+    const call = parseShareCall(raw);
     if (!call) {
       const type = (raw as Record<string, unknown>)["type"];
       void logger.log("WARN", LOG_MODULE, "Dropped a malformed sharing message", { type: typeof type === "string" ? type.slice(0, 32) : typeof type });

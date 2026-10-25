@@ -4,7 +4,7 @@ import type { PaperRecord } from "../../model/index.js";
 export interface TagCount { tag: string; count: number }
 
 /** Case-insensitive: the first spelling wins; a paper counts once per tag. Sorted A to Z. */
-export function libraryTags(papers: readonly Pick<PaperRecord, "tags">[]): TagCount[] {
+export function countLibraryTags(papers: readonly Pick<PaperRecord, "tags">[]): TagCount[] {
   const found = new Map<string, TagCount>();
   for (const { tags } of papers) {
     for (const key of new Set((tags ?? []).map((t) => t.toLowerCase()))) {

@@ -10,4 +10,4 @@ export { openalexResolver } from "./openalex.js";
 export { semanticScholarResolver } from "./semanticScholar.js";
 export { europePmcResolver } from "./europePmc.js";
 export { titleTwinResolver } from "./titleTwin.js";
-export { candidateVersion, isPreprintServerUrl } from "./candidateVersion.js";
+export { deriveCandidateVersion, isPreprintServerUrl } from "./candidateVersion.js";

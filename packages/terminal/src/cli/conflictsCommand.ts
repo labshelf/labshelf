@@ -1,9 +1,9 @@
 // Runs `labshelf conflicts`: lists the sync-tool conflict copies in the library and, on a terminal, resolves each.
 import * as path from "node:path";
 
-import { FileProjectVersionStore, conflictPromptChoices, conflictResolutions, contentConflictMessage, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
+import { FileProjectVersionStore, listConflictAskChoices, deriveConflictResolutions, describeContentConflict, type ConflictCopy, type ConflictResolution, type ILogger } from "@labshelf/core";
 import {
-  NodeLibraryFileSystem, deviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
+  NodeLibraryFileSystem, createDeviceLocalLayout, resolveConflictCopy, resolveProjectConflictCopy, scanLibraryConflicts,
 } from "@labshelf/core/node";
 
 import type { Output } from "./usage.js";
@@ -20,14 +20,14 @@ const CONTENT_KEYS: Record<string, string> = { mergeAutomatically: "a", mergeMys
 
 function question(conflict: ConflictCopy): string {
   const choices = conflict.match && conflict.match !== "name"
-    ? conflictPromptChoices(conflict).map(({ resolution, label }) => `[${CONTENT_KEYS[resolution]}] ${label}`)
-    : conflictResolutions(conflict).map((resolution) => PROMPTS[resolution]);
+    ? listConflictAskChoices(conflict).map(({ resolution, label }) => `[${CONTENT_KEYS[resolution]}] ${label}`)
+    : deriveConflictResolutions(conflict).map((resolution) => PROMPTS[resolution]);
   return `  ${choices.join(" / ")} / [s]kip: `;
 }
 
 async function resolveInteractively(root: string, conflict: ConflictCopy, io: Output, ask: Ask, logger: ILogger, store: FileProjectVersionStore): Promise<boolean> {
   const content = conflict.match && conflict.match !== "name";
-  io.out(content ? contentConflictMessage(conflict) : describe(root, conflict));
+  io.out(content ? describeContentConflict(conflict) : describe(root, conflict));
   for (;;) {
     const answer = (await ask(question(conflict)))?.toLowerCase();
     if (answer === undefined) { return false; }
@@ -37,7 +37,7 @@ async function resolveInteractively(root: string, conflict: ConflictCopy, io: Ou
       return true;
     }
     const resolution = RESOLUTIONS[answer];
-    if (!resolution || !conflictResolutions(conflict).includes(resolution)) { continue; }
+    if (!resolution || !deriveConflictResolutions(conflict).includes(resolution)) { continue; }
     if (resolution === "mergeAutomatically" || resolution === "notAVersion") {
       await resolveProjectConflictCopy(conflict, resolution, { root, store, logger });
     } else { await resolveConflictCopy(conflict, resolution, logger); }
@@ -50,7 +50,7 @@ async function resolveInteractively(root: string, conflict: ConflictCopy, io: Ou
  * @returns the exit code: 0
  */
 export async function runConflicts(root: string, io: Output, ask: Ask | undefined, logger: ILogger): Promise<number> {
-  const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, deviceLocalLayout(root).mergeBasesDir);
+  const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, createDeviceLocalLayout(root).mergeBasesDir);
   const conflicts = await scanLibraryConflicts(root, store, logger);
   if (conflicts.length === 0) {
     io.out("No conflicting copies.");

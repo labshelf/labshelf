@@ -1,10 +1,10 @@
 /** Imports what a person typed to add a paper from the network: an identifier, a link that names one, or a link to a PDF or an article page. */
 import { type ImportOutcome, importPdf, isPdfBytes } from "../../library/index.js";
-import { identifiersFromInput } from "../identifiers/index.js";
-import { type NetworkImportEnv, NETWORK_IMPORT_MODULE, pdfFetchOptions, registryEnv } from "./env.js";
+import { extractIdentifiersFromInput } from "../identifiers/index.js";
+import { type NetworkImportEnv, NETWORK_IMPORT_MODULE, pdfFetchOptions, createRegistryEnv } from "./env.js";
 import { importIdentifier, type IdentifierImportOptions } from "./importIdentifier.js";
-import { errorMessage } from "../../logging/index.js";
-import { interpretPage, parseHtmlPage } from "../landing/index.js";
+import { formatError } from "../../logging/index.js";
+import { derivePageFacts, parseHtmlPage } from "../landing/index.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf } from "../pdfFinder/index.js";
 import { resolvePagePaper } from "../paper/index.js";
@@ -54,10 +54,10 @@ async function importLandingPage(
   targetDir: string,
 ): Promise<ImportOutcome> {
   const { ctx } = env;
-  const facts = interpretPage(parseHtmlPage(new TextDecoder().decode(page.bytes.slice(0, MAX_HTML_BYTES)), page.finalUrl));
+  const facts = derivePageFacts(parseHtmlPage(new TextDecoder().decode(page.bytes.slice(0, MAX_HTML_BYTES)), page.finalUrl));
   const paper = await resolvePagePaper(facts, () => env.records(), {
     deps: {
-      registry: registryEnv(env),
+      registry: createRegistryEnv(env),
       ...(env.resolveIdentifier ? { resolveIdentifier: env.resolveIdentifier } : {}),
       ...(env.searchByTitle ? { searchByTitle: env.searchByTitle } : {}),
     },
@@ -105,7 +105,7 @@ async function importUrl(env: NetworkImportEnv, url: string, targetDir: string):
       sourceName: name.toLowerCase().endsWith(".pdf") ? name : `${name}.pdf`,
     });
   } catch (error) {
-    const message = errorMessage(error);
+    const message = formatError(error);
     await ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "URL import failed", { url, message });
     return { status: "failed", error: message, input: url };
   } finally {
@@ -115,7 +115,7 @@ async function importUrl(env: NetworkImportEnv, url: string, targetDir: string):
 
 /** A link that names an identifier (arxiv.org/abs/…, a DOI link) is imported through the registries, not downloaded. */
 function isDirectUrl(input: string): boolean {
-  return /^https?:\/\//i.test(input) && identifiersFromInput(input).length === 0;
+  return /^https?:\/\//i.test(input) && extractIdentifiersFromInput(input).length === 0;
 }
 
 /** @returns what happened; `options.citeKey` applies to identifiers only (a link to a PDF or page is keyed by its metadata) */

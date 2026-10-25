@@ -1,6 +1,6 @@
 // Persists browser workspace preferences in localStorage.
 import {
-  CODE_FONT_NAMES, CODE_THEME_NAMES, sanitizePrefs, type CodeFontName, type CodeThemeName, type LibraryUiPrefs, type PrefsPort,
+  CODE_FONT_NAMES, CODE_THEME_NAMES, normalizePrefs, type CodeFontName, type CodeThemeName, type LibraryUiPrefs, type PrefsPort,
 } from "@labshelf/core";
 
 export const PREFS_KEY = "labshelf.library.prefs";
@@ -47,14 +47,14 @@ export function createLocalStoragePrefs(storage: PrefsStorage = localStorage): P
     const raw = readRaw(storage);
     const editorWidth = widthOf(raw);
     const next = {
-      ...sanitizePrefs(raw), treeExpanded: stringsOf(raw, "treeExpanded"), collapsedSections: stringsOf(raw, "collapsedSections"),
+      ...normalizePrefs(raw), treeExpanded: stringsOf(raw, "treeExpanded"), collapsedSections: stringsOf(raw, "collapsedSections"),
       ...(editorWidth === null ? {} : { editorWidth }), ...codeStyleOf(raw), ...detailPaneFields(raw), ...patch,
     };
     // Private windows can refuse writes; the page then works with the in-memory state only.
     try { storage.setItem(PREFS_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
   };
   return {
-    load: () => sanitizePrefs(readRaw(storage)),
+    load: () => normalizePrefs(readRaw(storage)),
     save: (patch: Partial<LibraryUiPrefs>) => write(patch),
     treeExpanded: () => stringsOf(readRaw(storage), "treeExpanded"),
     saveTreeExpanded: (paths) => write({ treeExpanded: paths }),

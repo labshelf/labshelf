@@ -1,5 +1,5 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
-import { libraryLayout } from "../../library/index.js";
+import { createLibraryLayout } from "../../library/index.js";
 import {
   type Glossary,
   type GlossaryReadResult,
@@ -82,7 +82,7 @@ export class SpaceStore {
   constructor(options: SpaceStoreOptions) {
     const join = (base: string, ...segments: string[]) => options.paths.join(base, ...segments);
     this.ctx = {
-      fs: options.fs, logger: options.logger, layout: libraryLayout(options.root, join),
+      fs: options.fs, logger: options.logger, layout: createLibraryLayout(options.root, join),
       now: options.now ?? (() => new Date().toISOString().replace(/\.\d{3}Z$/, "Z")), writes: new Map(),
     };
   }

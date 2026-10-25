@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { isMergeableTextFile, type ProjectSaveTracking } from "../../../writing/conflict/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { conflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
+import { deriveConflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
 import { parseConflictName } from "../conflictNames.js";
 
 /** Copies `copy` to the first free `<name> (copy N).<ext>` next to the original, then deletes it. */
@@ -43,7 +43,7 @@ export async function resolveConflictCopy(conflict: ConflictCopy, resolution: Co
   try {
     if (resolution === 'mergeAutomatically' || resolution === 'notAVersion') throw new Error(`Project conflict resolution requires project context: ${conflict.copy}`);
     assertConflictPair(conflict);
-    if (!conflictResolutions(conflict).includes(resolution)) {
+    if (!deriveConflictResolutions(conflict).includes(resolution)) {
       throw new Error(`${resolution} is not offered for ${conflict.original}: ${conflict.copy}`);
     }
     if (resolution === "keepMine") {

@@ -2,10 +2,10 @@
 // INVARIANT: hasPdf comes from the folder listing, never from the file.
 import YAML from "yaml";
 
-import { BIBLIOGRAPHIC_STRING_FIELDS, isPdfVersion, parseTextLayerInfo, type PaperRecord } from "../model/index.js";
-import { isPaperStatus } from "./readingStatus/index.js";
+import { BIBLIOGRAPHIC_STRING_FIELDS, isPdfVersion, parseTextLayerDetails, type PaperRecord } from "../model/index.js";
+import { isReadingStatus } from "./readingStatus/index.js";
 
-export interface PaperLocation {
+export interface PaperDeviceFolder {
   /** Folder name, which is the paper id. */
   id: string;
   /** Absolute path of the paper folder on this device. */
@@ -31,18 +31,18 @@ export function parsePaperMetadata(text: string): Record<string, unknown> | unde
  * Builds the record of one paper from its parsed metadata.yaml.
  * @returns the PaperRecord
  */
-export function paperRecordFromMetadata(meta: Record<string, unknown>, location: PaperLocation): PaperRecord {
+export function createPaperRecord(meta: Record<string, unknown>, location: PaperDeviceFolder): PaperRecord {
   const authors = stringList(meta["authors"]);
   const keywords = stringList(meta["keywords"]);
   const tags = stringList(meta["tags"]);
-  const textLayer = parseTextLayerInfo(meta["textLayer"]);
+  const textLayer = parseTextLayerDetails(meta["textLayer"]);
   const status = meta["status"];
   const record: PaperRecord = {
     id: location.id,
     title: typeof meta["title"] === "string" ? meta["title"] : location.id,
     path: location.path,
     citeKey: typeof meta["citekey"] === "string" ? meta["citekey"] : location.id,
-    status: isPaperStatus(status) ? status : "unread",
+    status: isReadingStatus(status) ? status : "unread",
     hasPdf: location.hasPdf,
   };
   if (authors.length) { record.authors = authors; }

@@ -1,5 +1,5 @@
 /** The pdf.js loader: one import per loader, pdf.js before its in-process worker, shims only for Electron hosts. */
-import { DiskBinaryDataFactory } from '../../../src/import/node/pdfjsFileFactory.js';
+import { FileSystemBinaryFactory } from '../../../src/import/node/pdfjsFileFactory.js';
 import { createPdfjsLoader } from '../../../src/import/node/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -108,7 +108,7 @@ describe('createPdfjsLoader', () => {
       await createPdfjsLoader({ electronShims: true }).getDocument({ data: new Uint8Array(1) });
 
       expect(seen[0]).not.toHaveProperty('BinaryDataFactory');
-      expect(seen[1]?.['BinaryDataFactory']).toBe(DiskBinaryDataFactory);
+      expect(seen[1]?.['BinaryDataFactory']).toBe(FileSystemBinaryFactory);
     });
   });
 });

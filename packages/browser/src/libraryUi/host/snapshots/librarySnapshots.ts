@@ -2,7 +2,7 @@
  * Keeps the library UI's snapshot current from IndexedDB, reading again when the page becomes visible or the
  * background reports a change made elsewhere (popup or Scholar capture, attach, reader annotation).
  */
-import { PAPERS_DIR, errorMessage, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
+import { PAPERS_DIR, formatError, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
 import { bx, type LibraryChangedBroadcast } from "../../../platform";
 import { listAllRecords, onFolderRecordsRebuilt, scanLibrary } from "../../../storage";
 import type { SidecarReads } from "./sidecarReads";
@@ -47,7 +47,7 @@ export function createLibrarySnapshots(endpoint: HostEndpoint, sidecars: Sidecar
         await post(true);
       } catch (err) {
         endpoint.post({ type: "snapshot", snapshot: current });
-        endpoint.post({ type: "notice", kind: "error", text: `Could not load the library — ${errorMessage(err)}` });
+        endpoint.post({ type: "notice", kind: "error", text: `Could not load the library — ${formatError(err)}` });
       }
     },
     async sidecarChanged(paperId) {

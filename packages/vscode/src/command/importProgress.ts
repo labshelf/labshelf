@@ -4,7 +4,7 @@
  */
 import * as vscode from "vscode";
 
-import { summarizeImport } from "@labshelf/core";
+import { countImportOutcomes } from "@labshelf/core";
 import type { ILogger, ImportOutcome, ImportProgress, MutationContext, PathOps } from "@labshelf/core";
 import type { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
 import { offerMetadataFetch } from "./fetchMetadata.js";
@@ -96,7 +96,7 @@ function runImport(importer: PaperImporter, paths: PathOps, uris: vscode.Uri[], 
 
 /** Shows the one import summary every app words the same way. */
 export function announceImport(outcomes: ImportOutcome[]): void {
-  const summary = summarizeImport(outcomes);
+  const summary = countImportOutcomes(outcomes);
   const show = summary.level === "warn" ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
   void show(`LabShelf: ${summary.text}`);
 }

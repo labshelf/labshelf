@@ -1,8 +1,8 @@
 /** Lists every plausible registry match for a query so a human can choose between them. */
 import type { ResolvedMetadata } from "../metadata/index.js";
-import { plainRecord, type RegistryEnv } from "../registries/index.js";
+import { derivePlainMetadata, type RegistryEnv } from "../registries/index.js";
 import { searchAllRegistries } from "./registrySearch.js";
-import { normalizeForMatch, titleOverlap } from "./titleMatch.js";
+import { normalizeForMatch, deriveTitleOverlap } from "./titleMatch.js";
 
 /**
  * Returns every plausible match for a query, best first, for a human to choose
@@ -26,10 +26,10 @@ export async function searchOnlineCandidates(query: string, limit = 8, env: Regi
       continue;
     }
     const key = (record.doi ?? record.title).toLowerCase();
-    const score = titleOverlap(record.title, query);
+    const score = deriveTitleOverlap(record.title, query);
     const existing = byKey.get(key);
     if (!existing || score > existing.score) {
-      byKey.set(key, { record: plainRecord(record)!, score });
+      byKey.set(key, { record: derivePlainMetadata(record)!, score });
     }
   }
 

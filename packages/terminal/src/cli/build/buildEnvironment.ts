@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { createProjectData, type TexInstallKind, type TexSetupPrompt } from "@labshelf/core";
-import { createSharedTexProvider, deviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
+import { createSharedTexProvider, createDeviceLocalLayout, NodeLibraryFileSystem, ProjectBuildQueue } from "@labshelf/core/node";
 
 import type { AppContext } from "../../compositionRoot.js";
 import type { ReadyProject } from "./findProject.js";
@@ -72,7 +72,7 @@ const rejectTypst = (): Promise<never> => Promise.reject(new Error("Typst projec
 
 export function terminalBuildEnvironment(ctx: BuildContext, tty: { ask: Ask | undefined }): BuildEnvironment {
   const data = createProjectData({
-    fs: new NodeLibraryFileSystem(), path, logger: ctx.logger, deviceDirs: deviceLocalLayout(ctx.paths.root),
+    fs: new NodeLibraryFileSystem(), path, logger: ctx.logger, deviceDirs: createDeviceLocalLayout(ctx.paths.root),
   });
   return {
     queue: new ProjectBuildQueue({

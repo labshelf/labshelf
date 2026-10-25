@@ -3,8 +3,8 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { PaperEntry, PaperStatus } from "@labshelf/core";
-import { paperFiles, paperLink } from "@labshelf/core";
+import type { PaperEntry, ReadingStatus } from "@labshelf/core";
+import { createPaperFiles, derivePaperUrl } from "@labshelf/core";
 
 import { openExternal, runEditor } from "../../../platform/index.js";
 import { truncate } from "../../../screen/index.js";
@@ -13,12 +13,12 @@ import { openPrompt } from "../input/index.js";
 
 export function openPdf(app: App, paper: PaperEntry): void {
   if (paper.record.hasPdf === false) {
-    const link = paperLink(paper.record);
+    const link = derivePaperUrl(paper.record);
     app.taskStatus.notify(`No PDF on this device for ${paper.record.id}${link ? " — y d copies its link" : ""}`, "warn");
     return;
   }
   const viewer = process.env["LABSHELF_PDF_VIEWER"] || app.ctx.config.terminal?.pdfViewer;
-  openExternal(paperFiles(paper.record.path, path.join).pdf, viewer);
+  openExternal(createPaperFiles(paper.record.path, path.join).pdf, viewer);
   app.taskStatus.notify(`Opened ${truncate(paper.record.title, 60)}`);
 }
 
@@ -28,7 +28,7 @@ export function needPapers(app: App): PaperEntry[] {
   return papers;
 }
 
-export function setStatus(app: App, status: PaperStatus): void {
+export function setStatus(app: App, status: ReadingStatus): void {
   const papers = needPapers(app);
   if (!papers.length) { return; }
   void app.taskStatus.task("status", "saving", async () => {

@@ -13,7 +13,7 @@ import {
   type ReaderPrefs,
   type ReaderSidecarStore,
 } from "@labshelf/core";
-import { PDF_FILE, errorMessage } from "@labshelf/core";
+import { PDF_FILE, formatError } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile } from "../platform";
 import { createLibraryFileSystem, createSidecarPort, getRecord } from "../storage";
@@ -204,5 +204,5 @@ main().catch((err: unknown) => {
   void logger.error("reader", err, { op: "open" });
   // startReader already shows its own load errors; anything earlier (storage) lands here.
   const error = document.getElementById("error-msg");
-  if (error?.hidden) showFatal(`Failed to open the paper: ${errorMessage(err)}`);
+  if (error?.hidden) showFatal(`Failed to open the paper: ${formatError(err)}`);
 });

@@ -4,11 +4,11 @@
  */
 import type { PaperRecord } from "../../model/index.js";
 import { PDF_FILE } from "../layout.js";
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
-import { statusOnDisk } from "./paperOnFileSystem.js";
+import { readReadingStatusOnFileSystem } from "./paperOnFileSystem.js";
 
-export interface RecordWriteOptions {
+export interface WriteRecordOptions {
   /** True only for an explicit status change; any other rewrite keeps the status metadata.yaml holds. */
   ownsStatus: boolean;
   /** Set to replace the file's tags; left out, the file's own tags stay. */
@@ -24,7 +24,7 @@ export interface RecordWriteOptions {
 export async function writePaperRecord(
   ctx: MutationContext,
   record: PaperRecord,
-  options: RecordWriteOptions,
+  options: WriteRecordOptions,
 ): Promise<PaperRecord> {
   // The status and its timestamp go together: when the file's status wins, so does the file's timestamp.
   const { statusChangedAt: _changedAt, ...unstamped } = record;
@@ -47,11 +47,11 @@ function statusFields(record: PaperRecord): StatusFields {
 async function keptStatus(ctx: MutationContext, record: PaperRecord): Promise<StatusFields> {
   let reason: string;
   try {
-    const onDisk = await statusOnDisk(ctx, record.path);
+    const onDisk = await readReadingStatusOnFileSystem(ctx, record.path);
     if (onDisk) { return onDisk; }
     reason = "metadata.yaml holds no valid status";
   } catch (error) {
-    reason = errorMessage(error);
+    reason = formatError(error);
   }
   await ctx.logger.log("WARN", MUTATIONS_MODULE, "Status on disk unreadable, keeping the indexed status", {
     id: record.id, status: record.status, reason,

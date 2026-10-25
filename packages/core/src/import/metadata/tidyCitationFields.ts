@@ -7,7 +7,7 @@ import type { ResolvedMetadata } from "./resolvedMetadata.js";
  * for 111-119).
  * @returns The same record with volume and pages normalized.
  */
-export function tidyCitationFields(metadata: ResolvedMetadata): ResolvedMetadata {
+export function normalizeCitationFields(metadata: ResolvedMetadata): ResolvedMetadata {
   const tidy: ResolvedMetadata = { ...metadata };
   const volume = metadata.volume?.trim();
   const issue = metadata.issue?.trim();

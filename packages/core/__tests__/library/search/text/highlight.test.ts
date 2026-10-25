@@ -1,10 +1,10 @@
-import { highlightRanges } from "@labshelf/core";
+import { findHighlightRanges } from "@labshelf/core";
 
-const marked = (text: string, terms: string[]): string[] => highlightRanges(text, terms).map(([a, b]) => text.slice(a, b));
+const marked = (text: string, terms: string[]): string[] => findHighlightRanges(text, terms).map(([a, b]) => text.slice(a, b));
 
 describe("highlightRanges", () => {
   it("finds every case-insensitive occurrence of each term", () => {
-    expect(highlightRanges("Attention is all", ["att", "all"])).toEqual([[0, 3], [13, 16]]);
+    expect(findHighlightRanges("Attention is all", ["att", "all"])).toEqual([[0, 3], [13, 16]]);
     expect(marked("an bn an", ["an"])).toEqual(["an", "an"]);
   });
 
@@ -27,12 +27,12 @@ describe("highlightRanges", () => {
   });
 
   it("returns nothing for no terms, empty terms or no match", () => {
-    expect(highlightRanges("a & b", [])).toEqual([]);
-    expect(highlightRanges("a & b", [""])).toEqual([]);
-    expect(highlightRanges("a & b", ["zzz"])).toEqual([]);
+    expect(findHighlightRanges("a & b", [])).toEqual([]);
+    expect(findHighlightRanges("a & b", [""])).toEqual([]);
+    expect(findHighlightRanges("a & b", ["zzz"])).toEqual([]);
   });
 
   it("reports positions in the original text across characters that fold away", () => {
-    expect(highlightRanges("ÀÉ x", ["x"])).toEqual([[3, 4]]);
+    expect(findHighlightRanges("ÀÉ x", ["x"])).toEqual([[3, 4]]);
   });
 });

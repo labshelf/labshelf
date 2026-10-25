@@ -17,7 +17,7 @@ export async function readConflictDismissals(fs: DismissalReads, file: string): 
   return entries;
 }
 
-export async function dismissProjectConflict(fs: DismissalWrites, file: string, path: string, hash: string): Promise<void> {
+export async function writeProjectConflictDismissal(fs: DismissalWrites, file: string, path: string, hash: string): Promise<void> {
   if (!path || !/^[a-f0-9]{64}$/.test(hash)) throw new Error(`Invalid project conflict dismissal: ${path}`);
   const operation = (queues.get(file) ?? Promise.resolve()).then(async () => {
     const entries = (await readConflictDismissals(fs, file)).filter(entry => entry.path !== path);

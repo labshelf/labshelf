@@ -1,6 +1,6 @@
 /** Proposes PMC PDFs from the open-data bucket on AWS, which skips the bot check that guards pmc.ncbi.nlm.nih.gov. */
 import { normalizePmcid } from "../../identifiers/index.js";
-import { lookupText } from "./timedFetch.js";
+import { fetchResolverText } from "./timedFetch.js";
 import type { PdfResolver } from "../pdfResolver.js";
 
 const S3_BUCKET = "https://pmc-oa-opendata.s3.amazonaws.com";
@@ -12,7 +12,7 @@ export const pmcResolver: PdfResolver = {
     if (!pmcid) return [];
     // The key carries a version, so it is discovered with a cheap listing.
     // The trailing dot in the prefix is required, or "PMC118" also lists "PMC1180...".
-    const xml = await lookupText(env, `${S3_BUCKET}/?list-type=2&prefix=${pmcid}.&max-keys=100`);
+    const xml = await fetchResolverText(env, `${S3_BUCKET}/?list-type=2&prefix=${pmcid}.&max-keys=100`);
     const key = xml ? latestPdfKey(xml, pmcid) : undefined;
     return key ? [`${S3_BUCKET}/${key}`] : [];
   },

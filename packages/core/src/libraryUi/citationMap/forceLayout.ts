@@ -67,7 +67,7 @@ function fit(pos: Point[], box: LayoutBox): Point[] {
  * Lays out `count` nodes joined by `edges` (pairs of node indexes).
  * @returns one point per node, in order, inside the box less its padding
  */
-export function forceLayout(
+export function deriveForceLayout(
   count: number,
   edges: ReadonlyArray<readonly [number, number]>,
   box: LayoutBox,

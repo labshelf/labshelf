@@ -2,7 +2,7 @@
 // INVARIANT: callers reach AI data only through this facade, never the database directly.
 import type { AiIndexer } from "../aiIndexer.js";
 import type { AiStores } from "../aiStorage.js";
-import { retrieveTopK } from "../embedding/index.js";
+import { findTopK } from "../embedding/index.js";
 import type { IEmbeddingProvider, VectorFilter, VectorMatch } from "../embedding/index.js";
 
 export interface AiServiceDependencies extends Pick<AiStores, "vectorStore"> {
@@ -19,7 +19,7 @@ export class AiService {
    * @returns Matches sorted by descending score.
    */
   async searchByText(query: string, k = 10, filter?: VectorFilter): Promise<VectorMatch[]> {
-    return retrieveTopK(query, this.deps.embedder, this.deps.vectorStore, {
+    return findTopK(query, this.deps.embedder, this.deps.vectorStore, {
       k,
       ...(filter ? { filter } : {}),
     });

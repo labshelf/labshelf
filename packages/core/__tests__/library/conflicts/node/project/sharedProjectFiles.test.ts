@@ -6,7 +6,7 @@ import { indexFiles } from '../../../../../src/collab/model/index';
 import { nodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
 import { INDEX_DOC_KEY } from "../../../../../src/collab/doc/docSync";
 import { readSharedProjectFiles } from '../../../../../src/library/conflicts/node/project/index';
-import { deviceLocalLayout } from '../../../../../src/library/node/index';
+import { createDeviceLocalLayout } from '../../../../../src/library/node/index';
 import { cleanupTempDirs, makeTempDir } from '../../../../support/tempDirs';
 import { fakeLogger } from '../../../../support/fakeLogger';
 import { scanLibraryConflicts } from '../../../../../src/writing/conflict/node/index';
@@ -20,7 +20,7 @@ afterEach(cleanupTempDirs);
 
 it('reads tracked files from the snapshot and appended updates without compacting them', async () => {
   const root = await makeTempDir();
-  const dir = path.join(deviceLocalLayout(root).collabDir, 'shared-copy-test');
+  const dir = path.join(createDeviceLocalLayout(root).collabDir, 'shared-copy-test');
   const storage = nodeCollabStorage({ dir, shareId: 'shared-copy-test' });
   const doc = new Y.Doc();
   try {
@@ -49,7 +49,7 @@ it('offers only untracked shared files even when their names sort before the tra
   const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...blankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project unavailable');
   const shareId = 'shared-index-test';
-  const dir = path.join(deviceLocalLayout(root).collabDir, shareId);
+  const dir = path.join(createDeviceLocalLayout(root).collabDir, shareId);
   const storage = nodeCollabStorage({ dir, shareId });
   const doc = new Y.Doc();
   try {

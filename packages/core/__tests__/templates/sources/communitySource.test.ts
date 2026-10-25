@@ -1,6 +1,6 @@
 /** Verifies the Community catalog source: listing from index.json and checked file downloads at the pinned commit. */
 import { COMMUNITY_INDEX_URL, createCommunitySource } from "../../../src/templates/sources/index.js";
-import { sha256Hex } from "../../../src/hash/index";
+import { deriveSha256Hex } from "../../../src/hash/index";
 import { contextLogger, memoryCache, scriptedFetch, type Reply } from "./fakes";
 
 const COMMIT = "3f2c".repeat(10);
@@ -15,8 +15,8 @@ async function entry(id: string, over: Record<string, unknown> = {}): Promise<Re
     id, name: `Name ${id}`, description: "A template.", category: "article", format: "latex", engine: "pdflatex",
     main: "main.tex", license: "MIT", authors: ["Jane Doe"],
     files: [
-      { path: "main.tex", size: MAIN.length, sha256: await sha256Hex(MAIN) },
-      { path: "refs/refs.bib", size: REFS.length, sha256: await sha256Hex(REFS) },
+      { path: "main.tex", size: MAIN.length, sha256: await deriveSha256Hex(MAIN) },
+      { path: "refs/refs.bib", size: REFS.length, sha256: await deriveSha256Hex(REFS) },
     ],
     thumbnail: { size: 1, sha256: SHA }, sample: { size: 1, sha256: SHA }, ...over,
   };
@@ -97,7 +97,7 @@ describe("createCommunitySource files", () => {
   it("refuses a file whose size differs even when the content matches the index hash", async () => {
     const url = `${base("a")}/main.tex`;
     const { source, logger } = await setup([await entry("a", { files: [
-      { path: "main.tex", size: MAIN.length + 1, sha256: await sha256Hex(MAIN) },
+      { path: "main.tex", size: MAIN.length + 1, sha256: await deriveSha256Hex(MAIN) },
     ] })]);
     const [listed] = (await source.list()).entries;
     await expect(source.files(listed!)).rejects.toThrow("The catalog is updating, try again later");
@@ -149,7 +149,7 @@ describe("createCommunitySource list freshness and files", () => {
 describe("createCommunitySource thumbnail", () => {
   const PNG = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
   const thumbUrl = (id: string) => `https://cdn.jsdelivr.net/gh/labshelf/labshelf-templates@${COMMIT}/templates/${id}/preview/thumbnail.png`;
-  const thumbEntry = async (id: string) => entry(id, { thumbnail: { size: PNG.length, sha256: await sha256Hex(PNG) } });
+  const thumbEntry = async (id: string) => entry(id, { thumbnail: { size: PNG.length, sha256: await deriveSha256Hex(PNG) } });
 
   it("fetches the preview thumbnail at the index commit and returns its bytes", async () => {
     const { source, fetch } = await setup([await thumbEntry("a")], { [thumbUrl("a")]: new Response(PNG) });

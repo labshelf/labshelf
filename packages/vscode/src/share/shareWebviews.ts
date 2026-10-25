@@ -1,7 +1,7 @@
 // Keeps the webviews that show the sharing dialogs, serves each of them once serving starts, and hands the Library sidebar the dialog to open.
 import * as vscode from "vscode";
 
-import { isSharingMessage, type SharingDialogRequest, type SharingReply } from "@labshelf/core";
+import { isShareMessage, type ShareDialogRequest, type ShareReply } from "@labshelf/core";
 
 type ServeOn = (webview: vscode.Webview) => vscode.Disposable;
 
@@ -15,12 +15,12 @@ interface Attached {
 
 const LIBRARY_VIEW_FOCUS = "labshelf.library.focus";
 
-const isHello = (raw: unknown): boolean => isSharingMessage(raw) && (raw as { type?: unknown }).type === "hello";
+const isHello = (raw: unknown): boolean => isShareMessage(raw) && (raw as { type?: unknown }).type === "hello";
 
 export class SharingWebviews {
   private readonly attached = new Set<Attached>();
   private serveOn: ServeOn | undefined;
-  private pending: SharingDialogRequest | undefined;
+  private pending: ShareDialogRequest | undefined;
 
   /** `opensDialogs` marks the webview that open requests go to. Serving waits for `serve`, which the web build never calls. */
   attach(webview: vscode.Webview, { opensDialogs = false }: { opensDialogs?: boolean } = {}): vscode.Disposable {
@@ -46,7 +46,7 @@ export class SharingWebviews {
   }
 
   /** Reveals the Library sidebar and opens the dialog there; a request made before the sidebar is ready replaces any earlier one. */
-  async open(request: SharingDialogRequest): Promise<void> {
+  async open(request: ShareDialogRequest): Promise<void> {
     this.pending = request;
     await vscode.commands.executeCommand(LIBRARY_VIEW_FOCUS);
     this.flush();
@@ -57,7 +57,7 @@ export class SharingWebviews {
     const request = this.pending;
     if (!target || !request) { return; }
     this.pending = undefined;
-    const reply: SharingReply = { channel: "sharing", type: "open", request };
+    const reply: ShareReply = { channel: "sharing", type: "open", request };
     // A webview that cannot take the message keeps the request for its next hello.
     void target.webview.postMessage(reply).then((delivered) => { if (!delivered) { this.pending ??= request; } });
   }

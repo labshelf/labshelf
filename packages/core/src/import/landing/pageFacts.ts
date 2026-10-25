@@ -3,11 +3,11 @@
 import { extractYear, type ResolvedMetadata } from "../metadata/index.js";
 import type { PageFacts, RawPage, PdfCandidate } from "./rawPage.js";
 import {
-  arxivIdFromDoi,
-  arxivIdFromUrl,
+  extractArxivIdentifierFromDoi,
+  extractArxivIdentifierFromUrl,
   extractDoi,
-  normalizeArxivId,
-  pmidFromUrl,
+  normalizeArxivIdentifier,
+  extractPmidFromUrl,
   type DetectedIds,
 } from "../identifiers/index.js";
 
@@ -69,9 +69,9 @@ function identifiersOf(raw: RawPage, first: (...keys: string[]) => string | unde
   const doi = metaDoi ?? extractDoi(raw.pageUrl) ?? (linkDois.length === 1 ? extractDoi(raw.doiLinks[0]) : undefined);
   if (doi) ids.doi = doi;
   const metaArxiv = first("citation_arxiv_id");
-  const arxivId = (metaArxiv && normalizeArxivId(metaArxiv)) ?? arxivIdFromUrl(raw.pageUrl) ?? arxivIdFromDoi(doi);
+  const arxivId = (metaArxiv && normalizeArxivIdentifier(metaArxiv)) ?? extractArxivIdentifierFromUrl(raw.pageUrl) ?? extractArxivIdentifierFromDoi(doi);
   if (arxivId) ids.arxivId = arxivId;
-  const pmid = first("citation_pmid") ?? pmidFromUrl(raw.pageUrl);
+  const pmid = first("citation_pmid") ?? extractPmidFromUrl(raw.pageUrl);
   if (pmid && /^\d{6,9}$/.test(pmid)) ids.pmid = pmid;
   return ids;
 }
@@ -81,7 +81,7 @@ function squash(text: string): string {
 }
 
 /** Normalises authors to "Given Family", whichever form the page used. */
-export function authorsOf(citationAuthors: string[], dcCreators: string[], joined?: string): string[] {
+export function mergeAuthors(citationAuthors: string[], dcCreators: string[], joined?: string): string[] {
   let list = citationAuthors.length ? citationAuthors : dcCreators;
   if (!list.length && joined) list = joined.split(/\s*;\s*/);
   const out: string[] = [];
@@ -96,7 +96,7 @@ export function authorsOf(citationAuthors: string[], dcCreators: string[], joine
 }
 
 /** "45" + "56" → "45-56"; a single page stays as is. */
-export function pagesOf(first: string | undefined, last: string | undefined): string | undefined {
+export function derivePageRange(first: string | undefined, last: string | undefined): string | undefined {
   if (!first) return undefined;
   return last && last !== first ? `${first}-${last}` : first;
 }
@@ -115,7 +115,7 @@ function keywordsOf(values: string[]): string[] {
 const TITLE_KEYS = ["citation_title", "dc.title", "prism.title", "bepress_citation_title"];
 
 /** @returns what the page states about its paper, and whether it is a scholarly work at all */
-export function interpretPage(raw: RawPage): PageFacts {
+export function derivePageFacts(raw: RawPage): PageFacts {
   const first = (...keys: string[]): string | undefined => {
     for (const key of keys) {
       const value = raw.meta[key]?.find((v) => v.trim());
@@ -150,7 +150,7 @@ function metadataOf(
     raw.documentTitle;
   if (title) metadata.title = squash(title);
 
-  const authors = authorsOf(all("citation_author", "bepress_citation_author"), all("dc.creator", "dcterms.creator"), first("citation_authors"));
+  const authors = mergeAuthors(all("citation_author", "bepress_citation_author"), all("dc.creator", "dcterms.creator"), first("citation_authors"));
   if (authors.length) metadata.authors = authors;
 
   const year = extractYear(first("citation_publication_date", "citation_date", "citation_cover_date", "citation_online_date", "citation_year",
@@ -162,7 +162,7 @@ function metadataOf(
   setIf(metadata, "publisher", first("citation_publisher", "dc.publisher", "dcterms.publisher", "bepress_citation_publisher"));
   setIf(metadata, "volume", first("citation_volume", "prism.volume", "bepress_citation_volume"));
   setIf(metadata, "issue", first("citation_issue", "prism.number", "prism.issueidentifier", "bepress_citation_issue"));
-  setIf(metadata, "pages", pagesOf(first("citation_firstpage", "prism.startingpage", "bepress_citation_firstpage"),
+  setIf(metadata, "pages", derivePageRange(first("citation_firstpage", "prism.startingpage", "bepress_citation_firstpage"),
     first("citation_lastpage", "prism.endingpage", "bepress_citation_lastpage")));
   setIf(metadata, "issn", first("citation_issn", "prism.issn", "citation_eissn", "prism.eissn"));
   setIf(metadata, "language", first("citation_language", "dc.language", "dcterms.language"));

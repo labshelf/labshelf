@@ -2,7 +2,7 @@
 import type { LibraryViewStore } from "../../../store/index.js";
 import type { ListCursor } from "../../uiContext.js";
 import type { WindowedList } from "../window/index.js";
-import { focusRow, focusedRow, paperIdOf, paperRowOf, visibleRows } from "./treeRows.js";
+import { showRow, findFocusedRow, readPaperId, findPaperRow, listVisibleRows } from "./treeRows.js";
 
 type Windowed = Pick<WindowedList, "reveal" | "pageSize">;
 
@@ -16,31 +16,31 @@ function edgeRow(rows: HTMLElement[], delta: number): HTMLElement | undefined {
  * places away in `order` when that row is not rendered, selects the paper and focuses it. With no cursor, a step
  * starts from the first or last rendered paper row.
  */
-export function treeCursor(store: LibraryViewStore, list: HTMLElement, order: () => readonly string[], windowed: Windowed): ListCursor {
+export function createTreeCursor(store: LibraryViewStore, list: HTMLElement, order: () => readonly string[], windowed: Windowed): ListCursor {
   /** Selects the paper `id` and focuses `target` (default its paper row), rendering the paper first when it is outside the window. */
   function land(id: string, extend: boolean, target?: HTMLElement): void {
-    let row = target ?? paperRowOf(list, id);
+    let row = target ?? findPaperRow(list, id);
     if (!row) {
       windowed.reveal(order().indexOf(id));
-      row = paperRowOf(list, id);
+      row = findPaperRow(list, id);
     }
     if (extend && store.get().anchor) store.selectRange(order(), id); else store.selectOnly(id);
-    if (row) focusRow(row);
+    if (row) showRow(row);
   }
 
   function move(delta: number, extend: boolean): void {
-    const rows = visibleRows(list);
+    const rows = listVisibleRows(list);
     const s = store.get();
-    const focused = focusedRow(list);
-    const at = focused && s.cursor !== null && paperIdOf(focused) === s.cursor ? focused : paperRowOf(list, s.cursor);
+    const focused = findFocusedRow(list);
+    const at = focused && s.cursor !== null && readPaperId(focused) === s.cursor ? focused : findPaperRow(list, s.cursor);
     const idx = at ? rows.indexOf(at) : -1;
     const dom = rows[idx + delta];
-    if (idx !== -1 && dom) return land(paperIdOf(dom), extend, dom);
+    if (idx !== -1 && dom) return land(readPaperId(dom), extend, dom);
     const ids = order();
     const from = s.cursor === null ? -1 : ids.indexOf(s.cursor);
     if (from === -1) {
       const edge = edgeRow(rows, delta);
-      if (edge) land(paperIdOf(edge), extend, edge);
+      if (edge) land(readPaperId(edge), extend, edge);
       return;
     }
     const to = ids[Math.min(ids.length - 1, Math.max(0, from + delta))];
@@ -50,7 +50,7 @@ export function treeCursor(store: LibraryViewStore, list: HTMLElement, order: ()
   return {
     order,
     step: move,
-    page: (dir, extend) => move(dir * (windowed.pageSize() || Math.max(1, visibleRows(list).length - 1)), extend),
+    page: (dir, extend) => move(dir * (windowed.pageSize() || Math.max(1, listVisibleRows(list).length - 1)), extend),
     edge: (to) => {
       const ids = order();
       const id = to === "first" ? ids[0] : ids[ids.length - 1];

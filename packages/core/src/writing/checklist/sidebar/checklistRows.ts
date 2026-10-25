@@ -1,8 +1,8 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
 import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
-import { familyName } from "../../../library/paper/index.js";
+import { deriveFamilyName } from "../../../library/paper/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
-import { STATUS_LABEL, type PaperStatus } from "../../../library/readingStatus/index.js";
+import { STATUS_LABEL, type ReadingStatus } from "../../../library/readingStatus/index.js";
 import type { ChecklistItem, PageOverflow } from "../buildChecklist.js";
 
 /** What the Checklist knows about a reading-list paper beyond its checklist item. */
@@ -45,14 +45,14 @@ export function pagesHead({ pages, limit }: PageOverflow): Omit<SidebarTreeNode,
   };
 }
 
-const STATUS_TONE: Record<PaperStatus, DotTone> = { unread: "muted", reading: "accent", done: "ok" };
+const STATUS_TONE: Record<ReadingStatus, DotTone> = { unread: "muted", reading: "accent", done: "ok" };
 
 const shortDate = (iso: string): string => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper | undefined): SidebarTreeNode {
   const { title, status, statusChangedAt } = item.paper;
   const author = paper?.authors?.find((a) => a.trim().length > 0);
-  const label = author ? [familyName(author), paper?.year].filter((part) => part !== undefined).join(" ") : title;
+  const label = author ? [deriveFamilyName(author), paper?.year].filter((part) => part !== undefined).join(" ") : title;
   const description = item.done
     ? statusChangedAt && shortDate(statusChangedAt)
     : paper?.cited ? "cited" : paper?.listed ? "added" : undefined;

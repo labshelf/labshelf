@@ -1,6 +1,6 @@
 /** Draws the preview pane: the folder summary or the library overview, and the paper's Info/Abstract/Notes/BibTeX tabs. */
 import type { PaperData, PaperEntry } from "@labshelf/core";
-import { paperComparator, paperFiles } from "@labshelf/core";
+import { createPaperComparator, createPaperFiles } from "@labshelf/core";
 import * as path from "node:path";
 
 import { fitImage, pngSize, type CellRect } from "../../../screen/index.js";
@@ -26,7 +26,7 @@ function drawFolderSide(app: App, screen: Screen, inner: Rect): undefined {
   }
   const node = snapshot.collections.get(app.folder);
   if (node) {
-    const direct = node.paperIds.map((id) => snapshot.papers.get(id)).filter((p): p is PaperEntry => Boolean(p)).sort(paperComparator(app.sort));
+    const direct = node.paperIds.map((id) => snapshot.papers.get(id)).filter((p): p is PaperEntry => Boolean(p)).sort(createPaperComparator(app.sort));
     const lines = folderPreview(node, snapshot, direct, folderTitle(app.folder), { directOnly: app.folder === "" });
     drawLines(screen, inner, lines, app.previewScroll);
   }
@@ -64,7 +64,7 @@ function sidecarFor(app: App, id: string): PaperData | undefined {
 }
 
 function thumbnailFor(app: App, paper: PaperEntry, box: CellRect): ImagePlan | undefined {
-  const request = { pdfPath: paperFiles(paper.record.path, path.join).pdf, sizeBytes: paper.pdfBytes ?? 0, mtimeMs: paper.modifiedMs };
+  const request = { pdfPath: createPaperFiles(paper.record.path, path.join).pdf, sizeBytes: paper.pdfBytes ?? 0, mtimeMs: paper.modifiedMs };
   const png = app.ctx.thumbnails.peek(request);
   if (!png) {
     void app.ctx.thumbnails.get(request).then((result) => { if (result) { app.scheduleRender(); } });

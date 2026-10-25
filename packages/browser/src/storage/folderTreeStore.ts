@@ -2,7 +2,7 @@
  * Derives the collection tree and the PDF-presence set from a walk of the active library source, with core.
  * No separate store is maintained: the tree changes only after a folder mutation.
  */
-import { PAPERS_DIR, collectionsFromFilePaths, pdfDirsFromFilePaths, type FolderTreeNode } from "@labshelf/core";
+import { PAPERS_DIR, deriveFoldersFromFilePaths, derivePdfDirs, type FolderTreeNode } from "@labshelf/core";
 import { createLibraryFileSystem } from "./libraryFileSystem";
 
 /**
@@ -29,16 +29,16 @@ async function libraryPaths(rootPath: string): Promise<string[]> {
 
 /** Builds the collection tree under `rootPath` from one walk. */
 export async function buildFolderTree(rootPath: string = PAPERS_DIR): Promise<FolderTreeNode[]> {
-  return collectionsFromFilePaths(await libraryPaths(rootPath), rootPath);
+  return deriveFoldersFromFilePaths(await libraryPaths(rootPath), rootPath);
 }
 
 /** One walk feeding both the collection tree and the PDF-presence set, for the library page's load and refresh. */
 export async function scanLibrary(rootPath: string = PAPERS_DIR): Promise<{ tree: FolderTreeNode[]; pdfDirs: Set<string> }> {
   const paths = await libraryPaths(rootPath);
-  return { tree: collectionsFromFilePaths(paths, rootPath), pdfDirs: pdfDirsFromFilePaths(paths) };
+  return { tree: deriveFoldersFromFilePaths(paths, rootPath), pdfDirs: derivePdfDirs(paths) };
 }
 
 /** The folders holding a paper.pdf, for the background's library.lookup / draftView (which do not need the tree). */
 export async function pdfDirs(rootPath: string = PAPERS_DIR): Promise<Set<string>> {
-  return pdfDirsFromFilePaths(await libraryPaths(rootPath));
+  return derivePdfDirs(await libraryPaths(rootPath));
 }

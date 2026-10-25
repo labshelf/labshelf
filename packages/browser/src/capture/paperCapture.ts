@@ -1,6 +1,6 @@
 // Turns a paper already in the library into a capture draft, so "Find PDF" runs the resolver chain without a tab.
 // Identifiers and title, authors and year come from the stored record; the landing page is read once.
-import { idsFromRecord, metadataFromRecord } from "@labshelf/core";
+import { extractPaperIdentifiers, deriveResolvedMetadata } from "@labshelf/core";
 import type { ILogger, PaperRecord } from "@labshelf/core";
 import type { CaptureDraft } from "./captureService";
 import { landingFacts } from "./landingFacts";
@@ -13,8 +13,8 @@ export async function draftFromRecord(log: ILogger, r: PaperRecord): Promise<Cap
   const landing = r.url ? await landingFacts(log, r.url) : undefined;
   return {
     pageUrl: r.url ?? "",
-    ids: { ...(landing?.ids ?? {}), ...idsFromRecord(r) },
-    metadata: metadataFromRecord(r),
+    ids: { ...(landing?.ids ?? {}), ...extractPaperIdentifiers(r) },
+    metadata: deriveResolvedMetadata(r),
     origin: "none",
     isPaper: true,
     pdfCandidates: landing?.pdfCandidates ?? [],

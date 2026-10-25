@@ -1,6 +1,6 @@
 /** The paper glue over the real core mutations: an in-memory disk, a LibraryStore scanning it, and an event spy. */
 import * as path from 'node:path';
-import { BibTeXService, LibraryStore, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
+import { BibtexService, LibraryStore, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
 
 import { PaperImporter } from '../../src/library/paperImporter';
 import { PaperService } from '../../src/library/paperService';
@@ -43,7 +43,7 @@ export function makeGlue(): Glue {
   events.paperUpdated.event((paper) => emitted.push(['paper:updated', paper]));
   events.paperDeleted.event((paper) => emitted.push(['paper:deleted', paper]));
   const logger: ILogger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
-  const bibtex = new BibTeXService(fs);
+  const bibtex = new BibtexService(fs);
   const ctx: MutationContext = { fs, paths: path, artifacts: bibtex, logger, papersRoot: PAPERS_ROOT, now: () => '2026-01-01T00:00:00.000Z' };
   const parse = jest.fn(async () => ({ title: 'Test Paper', citeKey: 'testpaper2024', authors: ['Alice'], year: 2024 }));
 

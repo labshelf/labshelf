@@ -1,5 +1,5 @@
 // Chooses what the preview footer's status says from the build state and the build roots.
-import { compactTime } from "../../../../library/paper/elapsed.js";
+import { formatCompactTime } from "../../../../library/paper/elapsed.js";
 import type { BuildState, PreviewRoot, PreviewRoots } from "../../../index.js";
 import { fileName } from "../fileName.js";
 
@@ -24,7 +24,7 @@ export interface BuildStatusText {
 const errorCount = (root: PreviewRoot): number => root.problems.filter((p) => p.severity === "error").length;
 /** Sentence text for the build's age: "just now", "2 min ago", "3 h ago". */
 function age(builtAt: number, now: number): string {
-  const elapsed = compactTime(builtAt, now);
+  const elapsed = formatCompactTime(builtAt, now);
   return elapsed === "now" ? "just now" : `${elapsed} ago`;
 }
 const count = (n: number): string => `${n} ${n === 1 ? "error" : "errors"}`;

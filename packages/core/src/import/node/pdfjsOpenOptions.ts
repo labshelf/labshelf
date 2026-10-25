@@ -1,7 +1,7 @@
 /** Builds the getDocument options every Node caller shares: quiet, eval-free, and data files read from disk. */
 import { join, sep } from "node:path";
 
-import { pdfjsPackageRoot } from "./pdfjsPackage.js";
+import { resolvePdfjsPackageDir } from "./pdfjsPackage.js";
 
 /**
  * Without the CMap and standard-font tables, text drawn with CID or non-embedded fonts extracts as blanks, which
@@ -10,7 +10,7 @@ import { pdfjsPackageRoot } from "./pdfjsPackage.js";
  */
 export function pdfjsDataOptions(): Record<string, unknown> {
   const base = { verbosity: 0, isEvalSupported: false };
-  const root = pdfjsPackageRoot();
+  const root = resolvePdfjsPackageDir();
   if (!root) {
     return base;
   }

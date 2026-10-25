@@ -4,7 +4,7 @@ import { bibEntries, plainField, type BibEntry } from "./bibEntries.js";
 import type { BibFinding } from "./bibliographyReport.js";
 import { publishedVersionFindings, type PublishedVersionLookup } from "./publishedVersionRule.js";
 import { extractDoi } from "../../import/index.js";
-import { titleKey } from "../../library/index.js";
+import { normalizeTitleForMatch } from "../../library/index.js";
 import { preprintIdsOf } from "./preprintIds.js";
 
 // Types whose works usually have a DOI; a missing one on a book, thesis or web page is normal.
@@ -18,7 +18,7 @@ function duplicateFindings(text: string, entries: readonly BibEntry[]): BibFindi
   const findings: BibFinding[] = [];
   for (const entry of entries) {
     const doi = extractDoi(plainField(entry.fields.get("doi")))?.toLowerCase();
-    const title = titleKey(plainField(entry.fields.get("title")));
+    const title = normalizeTitleForMatch(plainField(entry.fields.get("title")));
     const sameKey = byKey.get(entry.key);
     const first = sameKey ?? (doi ? byDoi.get(doi) : undefined) ?? (title ? byTitle.get(title) : undefined);
     if (sameKey) {

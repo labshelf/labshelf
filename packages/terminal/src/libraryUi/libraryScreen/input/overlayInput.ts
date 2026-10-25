@@ -1,5 +1,5 @@
 /** Routes keys while an overlay (prompt, picker, confirm or help) is open. */
-import { rankFuzzy } from "@labshelf/core";
+import { orderFuzzy } from "@labshelf/core";
 
 import type { InputEvent } from "../../../screen/index.js";
 import { editText, textInput } from "../../textInput.js";
@@ -75,7 +75,7 @@ function handlePicker(app: App, picker: PickerOverlay, event: InputEvent): void 
   const next = editText(picker.input, event);
   if (next) {
     picker.input = next;
-    picker.filtered = rankFuzzy(picker.items, next.value, (item) => `${item.label} ${item.detail ?? ""}`);
+    picker.filtered = orderFuzzy(picker.items, next.value, (item) => `${item.label} ${item.detail ?? ""}`);
     picker.index = 0;
   }
 }

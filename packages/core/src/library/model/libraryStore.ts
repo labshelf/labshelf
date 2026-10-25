@@ -1,10 +1,10 @@
 // Holds the in-memory library snapshot with collection listings, search and change notification.
 // Reloads are coalesced, so a burst of file events (a sync pulling twenty papers) costs one rescan.
-import { snapshotFromScan, emptySnapshot } from "./snapshot.js";
-import { papersUnder } from "./folderTree.js";
-import { nameCollator, paperComparator } from "./paperSort.js";
+import { deriveSnapshot, createEmptySnapshot } from "./snapshot.js";
+import { listPapersUnderFolder } from "./folderTree.js";
+import { nameCollator, createPaperComparator } from "./paperSort.js";
 import type {
-  CollectionNode,
+  FolderNode,
   LibraryScan,
   LibrarySnapshot,
   PaperEntry,
@@ -12,7 +12,7 @@ import type {
   PaperFilter,
 } from "./librarySnapshot.js";
 import type { PaperRecord } from "../../model/index.js";
-import { isEmptyQuery, matchPaper, matchesTerms, parseQuery, searchDoc, type SearchDoc } from "../search/index.js";
+import { isEmptyQuery, matchPaper, matchTerms, parseQuery, searchDoc, type SearchDoc } from "../search/index.js";
 
 interface CachedDoc { record: PaperRecord; annotations: string; doc: SearchDoc }
 
@@ -30,7 +30,7 @@ class PaperSearchIndex {
     const parsed = parseQuery(query);
     if (isEmptyQuery(parsed)) { return undefined; }
     return {
-      keepsCollection: (name) => matchesTerms(parsed, name),
+      keepsCollection: (name) => matchTerms(parsed, name),
       score: (entry) => matchPaper(entry.record, this.doc(entry), parsed),
     };
   };
@@ -52,7 +52,7 @@ class PaperSearchIndex {
 }
 
 export type LibraryEntry =
-  | { kind: "collection"; node: CollectionNode }
+  | { kind: "collection"; node: FolderNode }
   | { kind: "paper"; paper: PaperEntry };
 
 export interface ListOptions {
@@ -79,7 +79,7 @@ export class LibraryStore {
   private readonly searchIndex = new PaperSearchIndex();
 
   constructor(private readonly options: LibraryStoreOptions) {
-    this.current = emptySnapshot(options.root);
+    this.current = createEmptySnapshot(options.root);
   }
 
   /** @returns the latest snapshot */
@@ -116,7 +116,7 @@ export class LibraryStore {
   }
 
   /** @returns the collection at this path in the latest snapshot */
-  collection(rel: string): CollectionNode | undefined {
+  collection(rel: string): FolderNode | undefined {
     return this.current.collections.get(rel);
   }
 
@@ -133,10 +133,10 @@ export class LibraryStore {
       }
     }
     const papers = options.flatten
-      ? papersUnder(this.current, rel)
+      ? listPapersUnderFolder(this.current, rel)
       : node.paperIds.map((id) => this.current.papers.get(id)).filter((paper): paper is PaperEntry => Boolean(paper));
     const kept = filter ? papers.filter((paper) => filter.score(paper) > 0) : papers;
-    for (const paper of kept.sort(paperComparator(options.sort))) { entries.push({ kind: "paper", paper }); }
+    for (const paper of kept.sort(createPaperComparator(options.sort))) { entries.push({ kind: "paper", paper }); }
     return entries;
   }
 
@@ -144,7 +144,7 @@ export class LibraryStore {
   search(query: string, sort: SortSpec): PaperEntry[] {
     const filter = this.searchIndex.filterFor(query);
     const all = [...this.current.papers.values()];
-    const compare = paperComparator(sort);
+    const compare = createPaperComparator(sort);
     if (!filter) { return all.sort(compare); }
     return all
       .map((paper) => ({ paper, score: filter.score(paper) }))
@@ -184,7 +184,7 @@ export class LibraryStore {
     let snapshot: LibrarySnapshot;
     do {
       this.reloadAgain = false;
-      snapshot = snapshotFromScan(this.options.root, await this.options.scan(this.previousByPath()));
+      snapshot = deriveSnapshot(this.options.root, await this.options.scan(this.previousByPath()));
     } while (this.reloadAgain);
     this.current = snapshot;
     for (const listener of this.listeners) { listener(snapshot); }

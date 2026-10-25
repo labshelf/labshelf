@@ -5,19 +5,19 @@
 import { detectIdentifiers, type DetectedIdentifier } from "../../identifiers/index.js";
 import { isPdfBytes } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 import { resolveFirstIdentifier } from "../../search/index.js";
-import { asString } from "../../metadata/index.js";
-import { abstractFromText } from "../abstract.js";
-import { titleFromPlainText } from "../plainTextTitle.js";
-import { titleFromBlocks } from "../frontPageLayout.js";
-import { isSparseText, looksLikeNaturalText } from "../textQuality.js";
-import { usableTitle } from "../titleQuality.js";
+import { parseString } from "../../metadata/index.js";
+import { extractAbstract } from "../abstract.js";
+import { extractTitleFromPlainText } from "../plainTextTitle.js";
+import { extractTitleFromBlocks } from "../frontPageLayout.js";
+import { isSparseText, isNaturalText } from "../textQuality.js";
+import { deriveUsableTitle } from "../titleQuality.js";
 import type { ParsedPdfImport, PdfDocumentOpener, PdfOcrEngine } from "../pdfDocument.js";
 import { resolveOnline, type ConfirmedIdentifier } from "./registrySources.js";
-import { buildParsedRecord } from "./parsedImport.js";
+import { createParsedPaperRecord } from "./parsedImport.js";
 import { readPdf, type PdfSignals } from "./readPdf.js";
-import { localSources } from "./signalSources.js";
+import { deriveLocalSources } from "./signalSources.js";
 
 const PDF_PARSER_MODULE = "import/pdf";
 // OCR is expensive, so only the pages that carry the masthead are read.
@@ -72,12 +72,12 @@ export class PdfImportParser {
 
     // Fonts without a usable character map yield scrambled text. Such text can
     // still hide an identifier by luck, but must never become a title or name.
-    const embeddedIsReadable = looksLikeNaturalText(signals.frontMatter);
+    const embeddedIsReadable = isNaturalText(signals.frontMatter);
     let front = await this.readFrontMatter(pdfBytes, signals, embeddedIsReadable);
     let identification = await identify(signals, front.text, this.logger);
 
-    const layoutTitle = embeddedIsReadable ? titleFromBlocks(signals.titleBlocks) : undefined;
-    let localTitle: string | undefined = usableTitle(signals.xmp?.title) ?? usableTitle(asString(signals.info["Title"])) ?? layoutTitle;
+    const layoutTitle = embeddedIsReadable ? extractTitleFromBlocks(signals.titleBlocks) : undefined;
+    let localTitle: string | undefined = deriveUsableTitle(signals.xmp?.title) ?? deriveUsableTitle(parseString(signals.info["Title"])) ?? layoutTitle;
 
     // Nothing identified the paper and the file offers no title either. The
     // text layer may be readable yet empty of front matter — a title page
@@ -134,7 +134,7 @@ export class PdfImportParser {
       return "";
     }
     return this.ocr.recognize(pdfBytes, OCR_PAGES).catch(async (error: unknown) => {
-      await this.logger?.log("WARN", PDF_PARSER_MODULE, "OCR failed; reading the PDF without it", { message: errorMessage(error) });
+      await this.logger?.log("WARN", PDF_PARSER_MODULE, "OCR failed; reading the PDF without it", { message: formatError(error) });
       return "";
     });
   }
@@ -154,16 +154,16 @@ interface AssembleInput {
 // Asks the registries about the paper, merges their answer with everything the file says itself, and grades it.
 async function assemble(input: AssembleInput): Promise<ParsedPdfImport> {
   const { signals, front, identification, embeddedIsReadable } = input;
-  const textIsReadable = embeddedIsReadable || looksLikeNaturalText(front.text);
-  const abstract = textIsReadable ? abstractFromText(front.text) : undefined;
+  const textIsReadable = embeddedIsReadable || isNaturalText(front.text);
+  const abstract = textIsReadable ? extractAbstract(front.text) : undefined;
   // OCR text has no font sizes, so its title is a guess from line shape alone.
   const localTitle = input.localTitle ?? (textIsReadable ? front.ocrTitle : undefined);
 
   const frontMatter = front.text;
   const { confirmed } = identification;
   const online = await resolveOnline({ confirmed, signals, localTitle, frontMatter, abstract, usedOcr: front.usedOcr, textIsReadable, logger: input.logger });
-  const local = localSources({ signals, frontMatter, abstract, layoutTitle: input.layoutTitle, ocrTitle: front.ocrTitle, embeddedIsReadable, textIsReadable });
-  return buildParsedRecord({
+  const local = deriveLocalSources({ signals, frontMatter, abstract, layoutTitle: input.layoutTitle, ocrTitle: front.ocrTitle, embeddedIsReadable, textIsReadable });
+  return createParsedPaperRecord({
     sources: [...online.sources, ...local],
     fileStem: input.fileStem,
     frontMatter,
@@ -180,7 +180,7 @@ function withOcr(front: FrontMatterText, ocrText: string, keepEmbedded: boolean)
   return {
     text: keepEmbedded ? `${ocrText}\n${front.text}`.trim() : ocrText,
     usedOcr: true,
-    ocrTitle: usableTitle(titleFromPlainText(ocrText)),
+    ocrTitle: deriveUsableTitle(extractTitleFromPlainText(ocrText)),
   };
 }
 
@@ -188,7 +188,7 @@ async function identify(signals: PdfSignals, frontMatter: string, logger: ILogge
   const identifiers = detectIdentifiers(signals.info, frontMatter, signals.linkUrls);
   const confirmed = await resolveFirstIdentifier(identifiers, { logger }).catch(async (error: unknown) => {
     await logger?.log("WARN", PDF_PARSER_MODULE, "Identifier lookup failed; continuing without a confirmed identifier", {
-      identifiers: identifiers.map((found) => found.value), message: errorMessage(error),
+      identifiers: identifiers.map((found) => found.value), message: formatError(error),
     });
     return undefined;
   });

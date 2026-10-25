@@ -1,11 +1,11 @@
 /** Downloads ranked candidates a few at a time and keeps the best-ranked PDF, within the run's time limits. */
 import { downloadPdf, type DownloadOutcome } from "../client/index.js";
-import { reportError, warn } from "../env.js";
+import { reportError, reportWarning } from "../env.js";
 import { compareVersions } from "../../../model/index.js";
 import type { PdfAttempt, PdfFetchOptions, ResolveContext, ResolvedPdf, ResolverEnv } from "../pdfResolver.js";
-import { deadline } from "./deadline.js";
-import { pacedFetch } from "./hostPacer.js";
-import { helperTabRetry } from "./helperTabs.js";
+import { createDeadline } from "./deadline.js";
+import { createPacedFetch } from "./hostPacer.js";
+import { runHelperTabRetry } from "./helperTabs.js";
 import type { EngineLimits } from "./limits.js";
 import type { Candidate } from "./findStage.js";
 
@@ -34,11 +34,11 @@ export async function downloadBest(
 ): Promise<ResolvedPdf | undefined> {
   const { opts, env, limits } = run;
   const stop = new AbortController();
-  const total = deadline(limits.totalMs, "Download stage over its limit");
+  const total = createDeadline(limits.totalMs, "Download stage over its limit");
   const signal = AbortSignal.any([stop.signal, total.signal]);
-  const pacedEnv: ResolverEnv = { ...env, fetch: pacedFetch(env.fetch, limits) };
+  const pacedEnv: ResolverEnv = { ...env, fetch: createPacedFetch(env.fetch, limits) };
   const taken: Taken[] = [];
-  const retry = opts.viaHelperTab ? helperTabRetry(opts.viaHelperTab, env, limits.helperTabSites) : undefined;
+  const retry = opts.viaHelperTab ? runHelperTabRetry(opts.viaHelperTab, env, limits.helperTabSites) : undefined;
   let workersDone = false;
   let inTabs = 0;
   const { changed, wake } = wakeup(signal);
@@ -68,7 +68,7 @@ export async function downloadBest(
 
   const running = (): boolean => (!workersDone || inTabs > 0) && !signal.aborted;
   const winner = await pickWinner(taken, running, { changed, wake }, limits.holdMs);
-  if (signal.aborted && !stop.signal.aborted) warn(env, "download stage reached its time limit", { totalMs: limits.totalMs });
+  if (signal.aborted && !stop.signal.aborted) reportWarning(env, "download stage reached its time limit", { totalMs: limits.totalMs });
   stop.abort();
   total.clear();
   return settle(taken, winner, attempts);
@@ -112,7 +112,7 @@ async function pickWinner(taken: Taken[], running: () => boolean, { changed, wak
 export async function downloadCandidate(
   url: string, referer: string | undefined, opts: PdfFetchOptions, env: ResolverEnv, limits: EngineLimits, signal: AbortSignal,
 ): Promise<DownloadOutcome> {
-  const perUrl = deadline(limits.perUrlMs, "Candidate over its limit");
+  const perUrl = createDeadline(limits.perUrlMs, "Candidate over its limit");
   try {
     return await downloadPdf(url, opts, env, {
       signal: AbortSignal.any([signal, perUrl.signal]),

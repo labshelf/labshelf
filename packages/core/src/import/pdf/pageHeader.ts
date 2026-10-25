@@ -1,12 +1,12 @@
 /** Infers the journal name from the header or footer repeated across pages. */
-import { collapseWhitespace } from "../metadata/index.js";
+import { normalizeWhitespace } from "../metadata/index.js";
 
 /**
  * Infers the journal name from the running header/footer, which is the only
  * place many scanned or DOI-less PDFs name their venue.
  * @returns The line repeated on the most pages, or undefined when none repeats.
  */
-export function journalFromRunningHead(pageTexts: string[]): string | undefined {
+export function extractJournalFromRunningHead(pageTexts: string[]): string | undefined {
   // Counted per page, not per occurrence: a line printed twice on one page is
   // still a single piece of evidence.
   const pageCounts = new Map<string, number>();
@@ -36,7 +36,7 @@ export function journalFromRunningHead(pageTexts: string[]): string | undefined 
 }
 
 function runningHeadCandidate(rawLine: string): string | undefined {
-  const line = collapseWhitespace(rawLine);
+  const line = normalizeWhitespace(rawLine);
   if (!line || line.length > 120) {
     return undefined;
   }

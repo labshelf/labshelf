@@ -5,7 +5,7 @@ import { dirname } from "node:path";
  * `require` is the CommonJS one under Jest and the createRequire shim the bundles define at the top of their output.
  * @returns the absolute path of pdfjs-dist/package.json, or undefined when it cannot be resolved
  */
-export function pdfjsPackageJson(): string | undefined {
+export function resolvePdfjsPackageJson(): string | undefined {
   try {
     return typeof require === "function" ? require.resolve("pdfjs-dist/package.json") : undefined;
   } catch {
@@ -13,7 +13,7 @@ export function pdfjsPackageJson(): string | undefined {
   }
 }
 
-export function pdfjsPackageRoot(): string | undefined {
-  const packageJson = pdfjsPackageJson();
+export function resolvePdfjsPackageDir(): string | undefined {
+  const packageJson = resolvePdfjsPackageJson();
   return packageJson ? dirname(packageJson) : undefined;
 }

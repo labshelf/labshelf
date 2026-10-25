@@ -5,7 +5,7 @@ import type { FoldersData } from "../platform";
 import { $ } from "@labshelf/core/dom";
 import { mountSourceBanner } from "../library/libraryLocation";
 import { applyTheme } from "../ui";
-import { errorMessage, icon } from "@labshelf/core";
+import { formatError, icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
 import { attachPdf, inspect, save, undo } from "./captureFlow";
 import { dismissOffer, fetchOffer, showOffer } from "./offerCard";
@@ -77,7 +77,7 @@ async function init(): Promise<void> {
     }
     $("title").textContent = tab.title || "This page";
     setState("empty");
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: errorMessage(err), tryAnyway: true });
+    showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: formatError(err), tryAnyway: true });
   }
 }
 

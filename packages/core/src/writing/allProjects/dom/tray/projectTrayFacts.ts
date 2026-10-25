@@ -1,5 +1,5 @@
 // Builds the tray entries of a writing project: each file's role and fact, the build log row and the Add file row.
-import { compactTime } from "../../../../library/index.js";
+import { formatCompactTime } from "../../../../library/index.js";
 import type { TrayEntry } from "../../../../libraryUi/dom/index.js";
 import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
@@ -29,7 +29,7 @@ function mainFact(d: ProjectDetail): string {
 export function bibliographyFact(bib: NonNullable<ProjectDetail["bibliography"]>, now = Date.now()): string {
   const entries = `${bib.entries} ${bib.entries === 1 ? "entry" : "entries"}`;
   if (!bib.generated) return entries;
-  return `${entries} written from the library${bib.written !== undefined ? ` · synced ${compactTime(bib.written, now)} ago` : ""}`;
+  return `${entries} written from the library${bib.written !== undefined ? ` · synced ${formatCompactTime(bib.written, now)} ago` : ""}`;
 }
 
 function contentsFact(folder: string, sources: readonly string[]): string | null {

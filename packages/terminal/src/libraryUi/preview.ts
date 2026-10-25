@@ -1,7 +1,7 @@
 // Builds the preview pane content as styled lines: a paper's tabs or a summary of the hovered folder.
 // Pure functions of the snapshot and the sidecar, so tests render them without a terminal.
 import {
-  type Annotation, type CollectionNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, papersUnder, textLayerSummary, venueLine, type PaperData,
+  type Annotation, type FolderNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, listPapersUnderFolder, describeTextLayer, formatVenueLine, type PaperData,
 } from "@labshelf/core";
 
 import type { Style } from "../screen/index.js";
@@ -62,7 +62,7 @@ export function infoLines(entry: PaperEntry, data: PaperData | undefined, width:
   const lines: Line[] = [];
   lines.push(...para(r.title, width, theme.title, 4));
   if (r.authors?.length) { lines.push(...para(r.authors.join(", "), width, theme.text, 3)); }
-  const venue = venueLine(r);
+  const venue = formatVenueLine(r);
   if (venue) { lines.push(...para(venue, width, theme.dim, 2)); }
   lines.push([]);
 
@@ -80,7 +80,7 @@ export function infoLines(entry: PaperEntry, data: PaperData | undefined, width:
   lines.push(...field("In", entry.collection ? entry.collection.split("/").join(" › ") : "library root", width));
   lines.push(...field("PDF", r.hasPdf === false ? "not on this device" : entry.pdfBytes !== undefined ? formatBytes(entry.pdfBytes) : "yes", width,
     r.hasPdf === false ? theme.warn : undefined));
-  if (r.textLayer) { lines.push(...field("Text", textLayerSummary({ hasPdf: r.hasPdf !== false, textLayer: r.textLayer }, undefined), width)); }
+  if (r.textLayer) { lines.push(...field("Text", describeTextLayer({ hasPdf: r.hasPdf !== false, textLayer: r.textLayer }, undefined), width)); }
   if (data) {
     const highlights = data.annotations.length;
     if (highlights) { lines.push(...field("Notes", `${highlights} highlight${highlights === 1 ? "" : "s"} — Tab to read`, width)); }
@@ -172,7 +172,7 @@ function countByStatus(entries: Iterable<PaperEntry>): Record<PaperRecord["statu
  * @returns the lines
  */
 export function folderPreview(
-  node: CollectionNode,
+  node: FolderNode,
   snapshot: LibrarySnapshot,
   papers: PaperEntry[],
   label = node.name,
@@ -187,7 +187,7 @@ export function folderPreview(
     { text: `${total} paper${total === 1 ? "" : "s"}`, style: theme.dim },
     { text: subs ? ` · ${subs} subfolder${subs === 1 ? "" : "s"}` : "", style: theme.dim },
   ]);
-  const counts = countByStatus(options.directOnly ? papers : papersUnder(snapshot, node.rel));
+  const counts = countByStatus(options.directOnly ? papers : listPapersUnderFolder(snapshot, node.rel));
   if (total) {
     lines.push([
       { text: `${STATUS_GLYPH.reading} ${counts.reading} reading  `, style: theme.status.reading },

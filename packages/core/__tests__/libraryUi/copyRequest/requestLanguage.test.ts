@@ -1,9 +1,9 @@
 /** A browser language tag maps to one of the three email languages, English when unsupported. */
-import { isRequestLanguage, requestLanguageFrom } from "../../../src/libraryUi";
+import { isRequestLanguage, deriveRequestLanguage } from "../../../src/libraryUi";
 
 describe("requestLanguageFrom", () => {
   it.each([["pt-BR", "pt"], ["pt", "pt"], ["es-MX", "es"], ["ES", "es"], ["en-GB", "en"], ["fr-FR", "en"], ["", "en"], [undefined, "en"]])("maps %p to %s", (tag, lang) => {
-    expect(requestLanguageFrom(tag)).toBe(lang);
+    expect(deriveRequestLanguage(tag)).toBe(lang);
   });
 });
 

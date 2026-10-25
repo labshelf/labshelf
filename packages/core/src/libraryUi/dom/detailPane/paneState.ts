@@ -6,15 +6,15 @@ import { PAPERS_DIR } from "../../../library/index.js";
 import type { AnnotationColor, PaperRecord } from "../../../model/index.js";
 import { listPapersUnder, type ListPaper } from "../../viewModel/index.js";
 import type { PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../../protocol/index.js";
-import type { CiteFormat, DetailTab } from "../../store/index.js";
+import type { CitationFormat, DetailsTab } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 import type { NoteEditor } from "./noteEditor.js";
 
 export interface PaneState {
   ctx: UiContext;
   el: HTMLElement;
-  tab: DetailTab;
-  citeFormat: CiteFormat;
+  tab: DetailsTab;
+  citeFormat: CitationFormat;
   collapsed: Record<string, boolean>;
   abstractOpen: boolean;
   authorsOpen: boolean;
@@ -42,7 +42,7 @@ export interface PaperView {
   pdfBusy: boolean;
 }
 
-export function paperView(ctx: UiContext, id: string): PaperView | null {
+export function derivePaperView(ctx: UiContext, id: string): PaperView | null {
   const s = ctx.store.get();
   const p = listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).find((q) => q.id === id);
   if (!p) return null;

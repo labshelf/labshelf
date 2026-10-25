@@ -1,6 +1,6 @@
 /** Builds the folded, per-field text of a paper that queries match against. */
 import type { PaperRecord } from "../../model/index.js";
-import { fold } from "./text/index.js";
+import { normalizeText } from "./text/index.js";
 import type { SearchField } from "./query.js";
 
 export interface SearchDoc extends Record<SearchField, string> {
@@ -26,14 +26,14 @@ export function searchDoc(record: PaperRecord, extra: SearchExtra = {}): SearchD
     record.year?.toString(), ...(record.keywords ?? []), ...(record.tags ?? []), extra.annotations, extra.folder,
   ].filter(Boolean).join("\n");
   return {
-    title: fold(record.title),
-    authors: fold((record.authors ?? []).join("; ")),
-    keywords: fold((record.keywords ?? []).join("; ")),
-    venue: fold([record.journal, record.publisher].filter(Boolean).join("; ")),
-    note: fold(record.note ?? ""),
-    citeKey: fold(record.citeKey),
-    summary: fold(record.summary ?? ""),
-    rest: fold(rest),
-    tags: (record.tags ?? []).map(fold),
+    title: normalizeText(record.title),
+    authors: normalizeText((record.authors ?? []).join("; ")),
+    keywords: normalizeText((record.keywords ?? []).join("; ")),
+    venue: normalizeText([record.journal, record.publisher].filter(Boolean).join("; ")),
+    note: normalizeText(record.note ?? ""),
+    citeKey: normalizeText(record.citeKey),
+    summary: normalizeText(record.summary ?? ""),
+    rest: normalizeText(rest),
+    tags: (record.tags ?? []).map(normalizeText),
   };
 }

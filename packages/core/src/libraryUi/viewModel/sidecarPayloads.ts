@@ -3,12 +3,12 @@ import type { Annotation } from "../../model/index.js";
 import type { PaperDetails, PaperStats } from "../protocol/index.js";
 
 /** The part of a sidecar the library UI reads. */
-export interface SidecarSummarySource {
+export interface SidecarView {
   annotations: Annotation[];
   reading?: { page: number; updatedAt: string };
 }
 
-export function paperStatsOf(data: SidecarSummarySource): PaperStats {
+export function derivePaperStats(data: SidecarView): PaperStats {
   const { annotations, reading } = data;
   return {
     annotations: annotations.length,
@@ -16,7 +16,7 @@ export function paperStatsOf(data: SidecarSummarySource): PaperStats {
   };
 }
 
-export function paperDetailsOf(data: SidecarSummarySource, pdf: PaperDetails["pdf"]): PaperDetails {
+export function derivePaperDetails(data: SidecarView, pdf: PaperDetails["pdf"]): PaperDetails {
   const { annotations, reading } = data;
   return { annotations, reading: reading ? { page: reading.page, updatedAt: reading.updatedAt } : null, pdf };
 }

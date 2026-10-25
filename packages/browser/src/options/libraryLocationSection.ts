@@ -1,5 +1,5 @@
 // Builds the Library section: where the library lives, the choice of a folder, and a re-check of the connection.
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { actionButton, el, inlineCode, settingRow, settingsSection, statusLine } from "@labshelf/core/dom";
 import { canPickFolder, folderPathForm, pickLibraryFolder, recheckSource, sourceReason } from "../library/libraryLocation";
 import { getLibrarySource, type LibrarySource } from "../storage";
@@ -26,7 +26,7 @@ export function createLibrarySourceSection(logger: ILogger): HTMLElement {
         if (next) show(next);
       } catch (err) {
         await logger.error("options", err, { action: "pick library folder" });
-        status.set("Could not use this folder", "error", errorMessage(err));
+        status.set("Could not use this folder", "error", formatError(err));
       }
     },
   });
@@ -39,14 +39,14 @@ export function createLibrarySourceSection(logger: ILogger): HTMLElement {
         status.set("", "idle");
       } catch (err) {
         await logger.error("options", err);
-        status.set("Could not check", "error", errorMessage(err));
+        status.set("Could not check", "error", formatError(err));
       }
     },
   });
   status.set("Checking…", "idle");
   getLibrarySource().then(
     (source) => { show(source); status.set("", "idle"); },
-    (err: unknown) => { void logger.error("options", err); status.set("Could not check", "error", errorMessage(err)); },
+    (err: unknown) => { void logger.error("options", err); status.set("Could not check", "error", formatError(err)); },
   );
   return settingsSection({ title: "Library" }, row, settingRow({}, check), status.element);
 }

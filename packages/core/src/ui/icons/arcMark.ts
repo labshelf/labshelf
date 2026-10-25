@@ -1,7 +1,7 @@
 /**
  * Draws the Arc mark, a ring whose arc length shows progress and whose colour shows a tone, and the reading-status mark built on it, as SVG strings.
  */
-import type { PaperStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/readingStatus/index.js";
 import { MARK_TOKENS } from "../tokens/index.js";
 
 export const ARC_TONES = ["err", "warn", "ok", "accent"] as const;
@@ -10,7 +10,7 @@ export type ArcTone = (typeof ARC_TONES)[number];
 export type ArcProgress = (typeof ARC_PROGRESSES)[number];
 
 /** The Arc mark of each reading status, the same in every app. */
-export const STATUS_ARC: Record<PaperStatus, readonly [ArcTone, ArcProgress]> = { unread: ["accent", "none"], reading: ["accent", "half"], done: ["ok", "full"] };
+export const STATUS_ARC: Record<ReadingStatus, readonly [ArcTone, ArcProgress]> = { unread: ["accent", "none"], reading: ["accent", "half"], done: ["ok", "full"] };
 
 /** The resolved colour of each tone, for hosts that cannot read CSS variables (native tree icons). */
 export const ARC_TONE_COLORS = Object.fromEntries(
@@ -53,7 +53,7 @@ const DOT = '<circle cx="6" cy="6" r="3" fill="COLOUR" stroke="none"/>';
  * @param colour as for `arcMark`.
  * @returns trusted SVG markup.
  */
-export function statusMark(status: PaperStatus, colour?: string): string {
+export function statusMark(status: ReadingStatus, colour?: string): string {
   const [tone, progress] = STATUS_ARC[status];
   return status === "unread" ? markSvg(tone, DOT, colour, " ls-status-dot") : arcMark(tone, progress, colour);
 }

@@ -1,5 +1,5 @@
 /** Rewrites a URL to go through a library proxy, in the three shapes libraries use: a prefix, a hostname suffix or OpenAthens. */
-import { httpUrl } from "../urlParts.js";
+import { parseHttpUrl } from "../urlParts.js";
 
 /**
  * - `prefix`: the template holds `$@` where the URL goes ("https://login.ezproxy.uni.edu/login?url=$@").
@@ -12,19 +12,19 @@ const OPENATHENS = /^https:\/\/go\.openathens\.net\/redirector\/([a-z0-9.-]+)\/?
 const HOSTNAME_SUFFIX = /^\.?((?:[a-z0-9-]+\.)+[a-z]{2,})$/i;
 
 /** How `template` rewrites URLs, or undefined when it is none of the three shapes. */
-export function proxyKind(template: string): ProxyKind | undefined {
+export function deriveProxyKind(template: string): ProxyKind | undefined {
   const t = template.trim();
   if (OPENATHENS.test(t)) return "openathens";
-  if (t.includes("$@")) return httpUrl(t.replace("$@", "x")) ? "prefix" : undefined;
+  if (t.includes("$@")) return parseHttpUrl(t.replace("$@", "x")) ? "prefix" : undefined;
   return HOSTNAME_SUFFIX.test(t) ? "hostname" : undefined;
 }
 
 /** `url` as fetched through the proxy, or undefined when the template or the URL cannot be read. */
-export function proxiedUrl(template: string, url: string): string | undefined {
+export function createProxiedUrl(template: string, url: string): string | undefined {
   const t = template.trim();
-  const target = httpUrl(url);
+  const target = parseHttpUrl(url);
   if (!target) return undefined;
-  switch (proxyKind(t)) {
+  switch (deriveProxyKind(t)) {
     case "openathens":
       return `https://go.openathens.net/redirector/${OPENATHENS.exec(t)![1]}?url=${encodeURIComponent(url)}`;
     case "prefix":

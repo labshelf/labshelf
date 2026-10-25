@@ -21,7 +21,7 @@ export function isPrePublication(version: PdfVersion | null | undefined): versio
 }
 
 /** True when a copy of version `a` is preferred over one of version `b`; unknown counts as published. */
-export function outranksVersion(a: PdfVersion | undefined, b: PdfVersion | undefined): boolean {
+export function isPreferredVersion(a: PdfVersion | undefined, b: PdfVersion | undefined): boolean {
   return tier(a) < tier(b);
 }
 

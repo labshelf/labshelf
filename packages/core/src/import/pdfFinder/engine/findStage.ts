@@ -1,9 +1,9 @@
 /** Starts every lookup at once, each under its own deadline, and hands their candidates out in rank order. */
 import { isSupplementaryUrl } from "../client/index.js";
 import { reportError } from "../env.js";
-import { outranksVersion, type PdfVersion } from "../../../model/index.js";
+import { isPreferredVersion, type PdfVersion } from "../../../model/index.js";
 import {
-  candidateVersion,
+  deriveCandidateVersion,
   arxivResolver,
   crossrefResolver,
   europePmcResolver,
@@ -17,8 +17,8 @@ import {
   unpaywallResolver,
 } from "../resolvers/index.js";
 import type { PdfFetchOptions, PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
-import { deadline } from "./deadline.js";
-import { fetchLandingPage } from "../../landing/index.js";
+import { createDeadline } from "./deadline.js";
+import { fetchLanding } from "../../landing/index.js";
 
 interface LookupStep {
   resolver: PdfResolver;
@@ -55,7 +55,7 @@ function landingLookup(settings: Pick<PdfFetchOptions, "credentials" | "headers"
     name: "landing",
     async resolve(ctx, env) {
       if (ctx.landingUrl || !ctx.doi) return [];
-      const facts = await fetchLandingPage(`https://doi.org/${ctx.doi}`, {
+      const facts = await fetchLanding(`https://doi.org/${ctx.doi}`, {
         fetch: env.fetch,
         timeoutMs: PAGE_TIMEOUT_MS,
         logger: env.logger,
@@ -83,7 +83,7 @@ export interface Candidate {
  * @returns each step's candidates, in rank order, without those `ctx.betterThan` rules out; a step that fails or is cut
  * yields []
  */
-export function startLookups(
+export function startFinds(
   ctx: ResolveContext,
   opts: PdfFetchOptions,
   env: ResolverEnv,
@@ -100,7 +100,7 @@ export function startLookups(
 }
 
 /** Yields each new candidate once its step and every step ranked above it have answered. */
-export async function* rankedCandidates(steps: Array<Promise<Candidate[]>>): AsyncGenerator<Candidate, void, undefined> {
+export async function* walkRankedCandidates(steps: Array<Promise<Candidate[]>>): AsyncGenerator<Candidate, void, undefined> {
   const seen = new Set<string>();
   for (const step of steps) {
     for (const candidate of await step) {
@@ -125,7 +125,7 @@ async function candidatesOf(resolver: PdfResolver, ctx: ResolveContext, env: Res
 async function cappedLookup(
   resolver: PdfResolver, ctx: ResolveContext, env: ResolverEnv, capMs: number, runSignal: AbortSignal,
 ): Promise<string[]> {
-  const cap = deadline(capMs, `Lookup over ${capMs} ms`);
+  const cap = createDeadline(capMs, `Lookup over ${capMs} ms`);
   const signal = AbortSignal.any([cap.signal, runSignal]);
   const fetch: ResolverEnv["fetch"] = (input, init) =>
     env.fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, signal]) : signal });
@@ -137,12 +137,12 @@ async function cappedLookup(
 }
 
 function candidate(ctx: ResolveContext, resolver: PdfResolver, url: string): Candidate {
-  const version = candidateVersion(ctx, resolver.name, url);
+  const version = deriveCandidateVersion(ctx, resolver.name, url);
   return { url, source: sourceLabel(resolver, ctx, url), ...(version ? { version } : {}) };
 }
 
 function wanted(ctx: ResolveContext, c: Candidate): boolean {
-  return !ctx.betterThan || outranksVersion(c.version, ctx.betterThan);
+  return !ctx.betterThan || isPreferredVersion(c.version, ctx.betterThan);
 }
 
 // Page links keep the label of whoever offered them ("page", "scholar").

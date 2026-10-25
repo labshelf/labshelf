@@ -5,9 +5,9 @@
 import { PAPERS_DIR, type FolderTreeNode } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { CitationMapState, PaperDetails, PaperFilesState, PaperStats, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
-import { DEFAULT_COLUMNS, type ColumnKey } from "./columns.js";
+import { DEFAULT_COLUMNS, type ListColumn } from "./columns.js";
 
-export type SortKey = "title" | "creator" | "venue" | "year" | "lastRead" | "status";
+export type SortColumn = "title" | "creator" | "venue" | "year" | "lastRead" | "status";
 export type SortDir = 1 | -1;
 
 export interface LibraryViewState {
@@ -19,10 +19,10 @@ export interface LibraryViewState {
   /** "papers/foo/bar"-style path; "papers" is the library root. */
   folder: string;
   query: string;
-  sortKey: SortKey;
+  sortKey: SortColumn;
   sortDir: SortDir;
   /** The optional columns the list shows, in display order. */
-  columns: readonly ColumnKey[];
+  columns: readonly ListColumn[];
   /** Replaced on every change so slice equality stays a reference check. */
   selected: ReadonlySet<string>;
   anchor: string | null;

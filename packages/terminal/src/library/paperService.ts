@@ -4,8 +4,8 @@ import * as path from "node:path";
 
 import {
   createFolder,
-  doiLookup,
-  editPaperTags,
+  createDoiFinder,
+  updatePaperTags,
   importNetworkInput,
   importPaths,
   METADATA_FILE,
@@ -13,13 +13,13 @@ import {
   moveFolder,
   movePapers,
   renameFolder,
-  resolvePaperRefs,
-  setPaperStatus,
-  trashFolder,
-  trashPapers,
+  resolveReferences,
+  setPapersReadingStatus,
+  moveFolderToTrash,
+  movePapersToTrash,
   updatePaperFields,
   type BatchOutcome,
-  type BibTeXService,
+  type BibtexService,
   type DetectedIdentifier,
   type ILogger,
   type ImportDeps,
@@ -28,9 +28,9 @@ import {
   type LibraryStore,
   type MutationContext,
   type NetworkImportEnv,
-  type PaperFieldsPatch,
+  type PaperFieldsUpdate,
   type PaperRecord,
-  type PaperStatus,
+  type ReadingStatus,
   type PdfImportParser,
   type ResolvedMetadata,
 } from "@labshelf/core";
@@ -62,7 +62,7 @@ const USER_AGENT = "LabShelf-Terminal/0.1";
 export interface PaperServiceDeps {
   paths: LibraryRoot;
   store: LibraryStore;
-  bibtex: BibTeXService;
+  bibtex: BibtexService;
   logger: ILogger;
   /** Built lazily: loading pdfjs costs ~100 ms and most sessions never import. */
   pdfParser: () => Promise<PdfImportParser>;
@@ -110,7 +110,7 @@ export class TerminalPaperService {
     const papers = this.deps.store.snapshot.papers;
     return {
       parse: async (bytes, stem) => (await this.deps.pdfParser()).parse(bytes, stem),
-      findByDoi: doiLookup(this.records()),
+      findByDoi: createDoiFinder(this.records()),
       takenIds: () => papers.keys(),
     };
   }
@@ -123,8 +123,8 @@ export class TerminalPaperService {
     return this.deps.store.paper(id)?.record.path;
   }
 
-  private refs(ids: string[]): ReturnType<typeof resolvePaperRefs> {
-    return resolvePaperRefs(ids, async (id) => {
+  private refs(ids: string[]): ReturnType<typeof resolveReferences> {
+    return resolveReferences(ids, async (id) => {
       const folder = await this.folderOf(id);
       return folder ? { path: folder } : undefined;
     });
@@ -139,7 +139,7 @@ export class TerminalPaperService {
    * Changes reading status, tags and/or note of one paper.
    * @returns the updated record, or undefined when the paper is unknown
    */
-  async updateFields(id: string, patch: PaperFieldsPatch): Promise<PaperRecord | undefined> {
+  async updateFields(id: string, patch: PaperFieldsUpdate): Promise<PaperRecord | undefined> {
     const folder = await this.folderOf(id);
     const record = folder ? await updatePaperFields(this.ctx, folder, patch) : undefined;
     if (record) { await this.changed(); }
@@ -147,15 +147,15 @@ export class TerminalPaperService {
   }
 
   /** @returns ids changed and failures */
-  async setStatus(ids: string[], status: PaperStatus): Promise<BatchOutcome> {
+  async setStatus(ids: string[], status: ReadingStatus): Promise<BatchOutcome> {
     const { refs, failed } = await this.refs(ids);
-    return this.finish(await setPaperStatus(this.ctx, refs, status), failed);
+    return this.finish(await setPapersReadingStatus(this.ctx, refs, status), failed);
   }
 
   /** @returns ids changed and failures */
   async editTags(ids: string[], add: string[], remove: string[]): Promise<BatchOutcome> {
     const { refs, failed } = await this.refs(ids);
-    return this.finish(await editPaperTags(this.ctx, refs, add, remove), failed);
+    return this.finish(await updatePaperTags(this.ctx, refs, add, remove), failed);
   }
 
   /** @returns ids moved and failures */
@@ -167,7 +167,7 @@ export class TerminalPaperService {
   /** @returns ids trashed and failures */
   async trashPapers(ids: string[]): Promise<BatchOutcome> {
     const { refs, failed } = await this.refs(ids);
-    return this.finish(await trashPapers(this.ctx, refs), failed);
+    return this.finish(await movePapersToTrash(this.ctx, refs), failed);
   }
 
   /** @returns the new collection's path relative to papers/ */
@@ -192,7 +192,7 @@ export class TerminalPaperService {
   }
 
   async trashCollection(rel: string): Promise<void> {
-    await trashFolder(this.ctx, this.paths.collectionDir(rel));
+    await moveFolderToTrash(this.ctx, this.paths.collectionDir(rel));
     await this.changed();
   }
 

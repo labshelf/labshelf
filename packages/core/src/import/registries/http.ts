@@ -1,5 +1,5 @@
 /** Fetches registry responses on the host's fetch for every client: bounded wait, JSON parsing, and undefined after a WARN on any failure. */
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { DEFAULT_CONTACT_EMAIL } from "./registryEmail.js";
 
@@ -22,7 +22,7 @@ export async function fetchJson<T>(env: RegistryEnv, url: string): Promise<T | u
   try {
     return JSON.parse(body) as T;
   } catch (error) {
-    await env.logger?.log("WARN", REGISTRIES_MODULE, "Registry answered with invalid JSON", { url, message: errorMessage(error) });
+    await env.logger?.log("WARN", REGISTRIES_MODULE, "Registry answered with invalid JSON", { url, message: formatError(error) });
     return undefined;
   }
 }
@@ -42,7 +42,7 @@ export async function fetchText(env: RegistryEnv, url: string): Promise<string |
     }
     return await response.text();
   } catch (error) {
-    await env.logger?.log("WARN", REGISTRIES_MODULE, "Registry lookup failed", { url, message: errorMessage(error) });
+    await env.logger?.log("WARN", REGISTRIES_MODULE, "Registry lookup failed", { url, message: formatError(error) });
     return undefined;
   }
 }

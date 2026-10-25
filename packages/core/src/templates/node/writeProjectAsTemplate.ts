@@ -4,7 +4,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { claimCiteKey, joinWith, libraryLayout } from "../../library/index.js";
+import { ensureCiteKey, joinWith, createLibraryLayout } from "../../library/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../writing/project/index.js";
@@ -63,7 +63,7 @@ async function claimTemplateId(templatesRoot: string, name: string): Promise<str
     throw error;
   });
   const base = projectIdSlug(name).slice(0, MAX_ID_BASE).replace(/-+$/, "");
-  return claimCiteKey(base, taken, (id) => fs.stat(path.join(templatesRoot, id)).then(() => true, () => false));
+  return ensureCiteKey(base, taken, (id) => fs.stat(path.join(templatesRoot, id)).then(() => true, () => false));
 }
 
 async function stageTemplate(staging: string, manifest: TemplateManifest, files: readonly FoundFile[]): Promise<void> {
@@ -83,7 +83,7 @@ export async function saveProjectAsTemplate(
   details: SaveTemplateDetails,
   logger: ILogger,
 ): Promise<TemplateManifest> {
-  const layout = libraryLayout(libraryRoot, joinWith(path.sep as "/" | "\\"));
+  const layout = createLibraryLayout(libraryRoot, joinWith(path.sep as "/" | "\\"));
   const templatesRoot = path.join(libraryRoot, "templates");
   let staging: string | undefined;
   let folder: string | undefined;

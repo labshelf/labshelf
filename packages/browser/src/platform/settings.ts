@@ -2,7 +2,7 @@
 // The options page edits them; the PDF search consults them (proxies, custom resolvers).
 import { bx } from "./browserApi";
 import {
-  AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, requestLanguageFrom,
+  AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, deriveRequestLanguage,
   type AutoCompileMode, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
 import { migrateMirrorSettings } from "./mirrorToCustomResolver";
@@ -90,7 +90,7 @@ export async function getSettings(): Promise<LabShelfSettings> {
     customResolvers: validResolvers(stored.customResolvers),
     requesterName: textOr(stored.requesterName),
     requesterAffiliation: textOr(stored.requesterAffiliation),
-    requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : requestLanguageFrom(globalThis.navigator?.language),
+    requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : deriveRequestLanguage(globalThis.navigator?.language),
     sidebarSections: readSidebarSections(stored.sidebarSections),
     autoCompile: AUTO_COMPILE_MODES.find((mode) => mode === stored.autoCompile) ?? DEFAULTS.autoCompile,
     haltOnError: typeof stored.haltOnError === "boolean" ? stored.haltOnError : DEFAULTS.haltOnError,

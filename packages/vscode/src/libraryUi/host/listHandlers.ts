@@ -1,14 +1,14 @@
 // Validates list messages before dispatching host actions with visible failure notices.
 import {
-  errorMessage,
-  isSharingMessage,
+  formatError,
+  isShareMessage,
   parseUiMessage,
   type UiToHost,
-  cleanTags,
-  keptFieldNotice,
+  deriveCleanTags,
+  formatKeptFieldNotice,
   moveNotice,
   removeNotice,
-  type PaperStatus,
+  type ReadingStatus,
 } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 import { importCitationWork, showCitationMap } from '../citationMap/index.js';
@@ -17,15 +17,15 @@ import { openProjectSource } from './projectSource.js';
 import { onPaperFileMessage } from './paperFileHandlers.js';
 import * as vscode from 'vscode';
 
-async function setStatus(ctx: ListHostContext, ids: string[], status: PaperStatus): Promise<void> {
+async function setStatus(ctx: ListHostContext, ids: string[], status: ReadingStatus): Promise<void> {
   const failed = await ctx.deps.paperService.updatePapersStatus(ids, status);
-  if (failed.length) { ctx.notice('error', keptFieldNotice('status', failed.length, 'not found in the library')); }
+  if (failed.length) { ctx.notice('error', formatKeptFieldNotice('status', failed.length, 'not found in the library')); }
 }
 
 async function setTags(ctx: ListHostContext, ids: string[], add: string[], remove: string[]): Promise<void> {
-  const outcome = await ctx.deps.paperService.editTags(ids, cleanTags(add), cleanTags(remove));
+  const outcome = await ctx.deps.paperService.editTags(ids, deriveCleanTags(add), deriveCleanTags(remove));
   const first = outcome.failed[0];
-  if (first) { ctx.notice('error', keptFieldNotice('tags', outcome.failed.length, first.error)); }
+  if (first) { ctx.notice('error', formatKeptFieldNotice('tags', outcome.failed.length, first.error)); }
 }
 
 async function setNote(ctx: ListHostContext, id: string, note: string): Promise<void> {
@@ -122,7 +122,7 @@ export async function handleListMessage(ctx: ListHostContext, raw: unknown): Pro
   const m = parseUiMessage(raw);
   const paths = ctx.paths();
   if (!m) {
-    if (isSharingMessage(raw)) { return; }
+    if (isShareMessage(raw)) { return; }
     await ctx.deps.logger.log('WARN', LOG_MODULE, 'List webview sent a message that is not valid', { type: (raw as { type?: unknown } | null)?.type });
     return;
   }
@@ -133,7 +133,7 @@ export async function handleListMessage(ctx: ListHostContext, raw: unknown): Pro
     // Find PDF, Attach PDF and adding from a source are browser capabilities this panel does not declare.
     await ctx.deps.logger.log('WARN', LOG_MODULE, 'List webview sent a message this host does not offer', { type: m.type });
   } catch (error) {
-    const message = errorMessage(error);
+    const message = formatError(error);
     await ctx.deps.logger.log('ERROR', LOG_MODULE, 'List action failed', { type: m.type, message });
     ctx.notice('error', `${FAILURE[m.type] ?? 'The action failed'} — ${message}`);
   }

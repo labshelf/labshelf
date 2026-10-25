@@ -1,5 +1,5 @@
 /** Formats a paper as one BibTeX @article entry, for bib.bib files and for copying. */
-import { joinWith, paperFiles } from "../../library/index.js";
+import { joinWith, createPaperFiles } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 
 const posixJoin = joinWith("/");
@@ -17,7 +17,7 @@ function authorField(authors: string[] | undefined): string {
  * or the entry leaves this device, so it never points at a file that is not there.
  * @returns the entry text
  */
-export function bibtexEntry(paper: PaperRecord, options: { includeFile?: boolean } = {}): string {
+export function createBibtexEntry(paper: PaperRecord, options: { includeFile?: boolean } = {}): string {
   const lines: string[] = [`@article{${paper.citeKey},`, `  title = {${esc(paper.title)}},`, `  author = {${authorField(paper.authors)}},`];
   if (paper.year) { lines.push(`  year = {${paper.year}},`); }
   const fields: Array<[string, string | undefined]> = [
@@ -26,7 +26,7 @@ export function bibtexEntry(paper: PaperRecord, options: { includeFile?: boolean
     ["note", paper.summary],
   ];
   for (const [name, value] of fields) { if (value) { lines.push(`  ${name} = {${esc(value)}},`); } }
-  if (options.includeFile !== false) { lines.push(`  file = {${esc(paperFiles(paper.path, posixJoin).pdf)}},`); }
+  if (options.includeFile !== false) { lines.push(`  file = {${esc(createPaperFiles(paper.path, posixJoin).pdf)}},`); }
   lines.push("  keywords = {labshelf, imported}", "}");
   return lines.join("\n");
 }

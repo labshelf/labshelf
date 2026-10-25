@@ -2,15 +2,15 @@
  * Renders the head of a single paper's detail: what it is (title, authors that search their name, the venue line),
  * what you reach for most (open or continue, Cite, the corner More actions menu), its status and tags.
  */
-import { PAPERS_DIR, familyName, parentDir, venueLine } from "../../../../library/index.js";
+import { PAPERS_DIR, deriveFamilyName, deriveParentDir, formatVenueLine } from "../../../../library/index.js";
 import { isPrePublication } from "../../../../model/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { ASK_AUTHOR_LABEL, pdfRequestedLine } from "../../../pdfCopy.js";
-import { versionChipHtml } from "../../list/index.js";
+import { ASK_AUTHOR_LABEL, formatPdfRequestedLine } from "../../../pdfCopy.js";
+import { renderVersionChipHtml } from "../../list/index.js";
 import type { PaneState, PaperView } from "../paneState.js";
-import { citeMenuButton, moreMenuButton, statusMenuButton } from "./headMenus.js";
-import { tagRowHtml } from "./tagRow.js";
-import { textLayerBanner } from "./textLayerBanner.js";
+import { renderCitationMenuButton, renderMoreMenuButton, renderReadingStatusMenuButton } from "./headMenus.js";
+import { renderTagRowHtml } from "./tagRow.js";
+import { renderTextLayerBanner } from "./textLayerBanner.js";
 
 const FOLD_AUTHORS_ABOVE = 5;
 const FOLDED_AUTHORS = 3;
@@ -18,7 +18,7 @@ const FOLDED_AUTHORS = 3;
 function bylineHtml(pane: PaneState, authors: readonly string[]): string {
   const shown = pane.authorsOpen || authors.length <= FOLD_AUTHORS_ABOVE ? authors : authors.slice(0, FOLDED_AUTHORS);
   const names = shown.map((a) =>
-    `<button class="link-btn" type="button" data-action="searchAuthor" data-q="${escapeHtml(familyName(a))}" title="Show papers by ${escapeHtml(a)}">${escapeHtml(a)}</button>`).join(", ");
+    `<button class="link-btn" type="button" data-action="searchAuthor" data-q="${escapeHtml(deriveFamilyName(a))}" title="Show papers by ${escapeHtml(a)}">${escapeHtml(a)}</button>`).join(", ");
   const more = authors.length > shown.length
     ? ` <button class="link-btn more" type="button" data-action="toggleAuthors">+${authors.length - shown.length} more</button>`
     : pane.authorsOpen && authors.length > FOLD_AUTHORS_ABOVE ? ` <button class="link-btn more" type="button" data-action="toggleAuthors">less</button>` : "";
@@ -52,24 +52,24 @@ function findBetterButton(busy: boolean): string {
 
 // The meta line reads venue, version, then the paper's folder (a chevron and its name, which opens it) unless the paper sits at the library root.
 function metaHtml(p: PaperView["p"], version: string): string {
-  const dir = parentDir(p.path, "/");
+  const dir = deriveParentDir(p.path, "/");
   const folder = dir === PAPERS_DIR ? ""
     : `<button class="link-btn" type="button" data-action="goFolder">${icon("chevron-right")}${escapeHtml(dir.slice(dir.lastIndexOf("/") + 1))}</button>`;
-  const text = [escapeHtml(venueLine(p)), version].filter(Boolean).join(" · ");
+  const text = [escapeHtml(formatVenueLine(p)), version].filter(Boolean).join(" · ");
   const line = [text, folder].filter(Boolean).join(" · ");
   return line ? `<div class="detail-meta">${line}</div>` : "";
 }
 
-export function paperHeadHtml(pane: PaneState, v: PaperView): string {
+export function renderPaperHeadHtml(pane: PaneState, v: PaperView): string {
   const { p } = v;
-  const version = p.hasPdf ? versionChipHtml(p.pdfVersion) : "";
-  return `<div class="detail-head">` + moreMenuButton() +
+  const version = p.hasPdf ? renderVersionChipHtml(p.pdfVersion) : "";
+  return `<div class="detail-head">` + renderMoreMenuButton() +
     `<div class="detail-title" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</div>` +
     (p.authors?.length ? bylineHtml(pane, p.authors) : "") +
     metaHtml(p, version) +
-    (!p.hasPdf && p.pdfRequestedAt ? `<div class="detail-meta">${escapeHtml(pdfRequestedLine(p.pdfRequestedAt))}</div>` : "") +
-    `<div class="detail-toolbar">${primaryButtons(pane, v)}${citeMenuButton()}</div>` +
-    `<div class="detail-status-row">${statusMenuButton(p.status)}${tagRowHtml(pane.ctx, p.tags ?? [], pane.tagEditing)}</div>` +
-    (pane.ctx.caps.textLayer ? textLayerBanner(v) : "") +
+    (!p.hasPdf && p.pdfRequestedAt ? `<div class="detail-meta">${escapeHtml(formatPdfRequestedLine(p.pdfRequestedAt))}</div>` : "") +
+    `<div class="detail-toolbar">${primaryButtons(pane, v)}${renderCitationMenuButton()}</div>` +
+    `<div class="detail-status-row">${renderReadingStatusMenuButton(p.status)}${renderTagRowHtml(pane.ctx, p.tags ?? [], pane.tagEditing)}</div>` +
+    (pane.ctx.caps.textLayer ? renderTextLayerBanner(v) : "") +
   `</div>`;
 }

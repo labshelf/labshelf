@@ -14,7 +14,7 @@ import {
   splitBlob,
   type BlobMessage,
 } from "./blobMessage.js";
-import { sha256Hex } from "../../hash/index.js";
+import { deriveSha256Hex } from "../../hash/index.js";
 
 /** How long a peer may stay silent before the next one is asked, and how long a fetch waits for any peer to join. */
 const BLOB_PEER_TIMEOUT_MS = 15_000;
@@ -111,7 +111,7 @@ class BlobFetch {
     this.stopTimer();
     const bytes = joinChunks([...this.chunks.entries()].sort(([a], [b]) => a - b).map(([, chunk]) => chunk));
     let actual: string;
-    try { actual = await sha256Hex(bytes); } catch (error) { void this.deps.logger.error(LOG_MODULE, error, { hash: this.deps.hash }); actual = ""; }
+    try { actual = await deriveSha256Hex(bytes); } catch (error) { void this.deps.logger.error(LOG_MODULE, error, { hash: this.deps.hash }); actual = ""; }
     this.verifying = false;
     if (this.settled) { return; }
     if (actual === this.deps.hash) { return this.settle(() => this.resolve(bytes)); }

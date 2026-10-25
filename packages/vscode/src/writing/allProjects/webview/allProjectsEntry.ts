@@ -15,7 +15,7 @@ import type {
   AllProjectsTransport,
   HostToAllProjects,
   PrefsPort,
-  SharingClient,
+  ShareClient,
 } from "@labshelf/core";
 import {
   createWebviewSharingClient,
@@ -24,7 +24,7 @@ import {
 } from "../../../webview/index.js";
 
 /** acquireVsCodeApi() may be called once per webview document, so one call serves both. */
-function createAllProjectsChannel(): { transport: AllProjectsTransport; prefs: PrefsPort; sharing: SharingClient } {
+function createAllProjectsChannel(): { transport: AllProjectsTransport; prefs: PrefsPort; sharing: ShareClient } {
   const api = acquireVsCodeApi();
   return { transport: webviewTransport<AllProjectsToHost, HostToAllProjects>(api), prefs: webviewPrefs(api), sharing: createWebviewSharingClient(api) };
 }

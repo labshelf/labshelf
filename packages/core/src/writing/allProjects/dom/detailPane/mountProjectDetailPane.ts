@@ -1,5 +1,5 @@
 // Mounts the All projects detail pane: head, tabs and folds for the selected project, with the pane's actions.
-import { loading, muted, tabBarHtml, iconBtn } from "../../../../libraryUi/dom/index.js";
+import { renderLoading, renderMuted, renderTabBarHtml, renderIconButton } from "../../../../libraryUi/dom/index.js";
 import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
 import { citationsTabHtml, overviewTabHtml, projectDetailTabs, versionsTabHtml } from "./tabs/index.js";
@@ -28,7 +28,7 @@ function targetMark(row: ProjectRow, now: number): string {
 export function projectDetailHeadHtml(row: ProjectRow, detail: ProjectDetail | undefined, o: ProjectHeadOptions): string {
   const build = detail?.build ?? row.build;
   return `<div class="detail-head">` +
-    `<div class="head-more">${iconBtn("more", "more", "More actions")}</div>` +
+    `<div class="head-more">${renderIconButton("more", "more", "More actions")}</div>` +
     `<div class="detail-title">${escapeHtml(row.title)}</div>` +
     `<div class="detail-meta">${escapeHtml(metaLine(row, detail?.pages, o.now))}</div>` +
     `<div class="detail-toolbar">` +
@@ -90,8 +90,8 @@ interface PaneState {
 
 function bodyHtml(s: PaneState, row: ProjectRow, now: number): string {
   const { detail, error } = s.view;
-  if (error) return muted(error);
-  if (!detail) return loading();
+  if (error) return renderMuted(error);
+  if (!detail) return renderLoading();
   if (s.tab === "citations") return citationsTabHtml(detail);
   if (s.tab === "versions") return versionsTabHtml(detail.versions, now);
   return overviewTabHtml(row, detail, s.collapsed, now);
@@ -99,9 +99,9 @@ function bodyHtml(s: PaneState, row: ProjectRow, now: number): string {
 
 function paneHtml(s: PaneState): string {
   const { row, detail, openLabel } = s.view;
-  if (!row) return muted("Select a project to see its details.");
+  if (!row) return renderMuted("Select a project to see its details.");
   const now = Date.now();
-  return projectDetailHeadHtml(row, detail, { openLabel, now }) + tabBarHtml(projectDetailTabs(detail), s.tab) +
+  return projectDetailHeadHtml(row, detail, { openLabel, now }) + renderTabBarHtml(projectDetailTabs(detail), s.tab) +
     `<div class="tab-body">${bodyHtml(s, row, now)}</div>`;
 }
 

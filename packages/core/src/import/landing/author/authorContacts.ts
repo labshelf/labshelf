@@ -1,5 +1,5 @@
 // Lists the people a reader can write to about a paper, from author e-mail meta tags and correspondence mailto links.
-import { addressesOfMailto, isPublisherMailbox, validEmail } from "./authorEmail.js";
+import { parseMailtoAddresses, isPublisherMailbox, normalizeEmail } from "./authorEmail.js";
 import type { RawPage } from "../rawPage.js";
 
 export interface AuthorContact {
@@ -11,7 +11,7 @@ export interface AuthorContact {
 const CORRESPONDENCE = /correspond|[*⁎]\s*(?:e-?mail|contact)/i;
 
 /** @returns de-duplicated contacts: explicit meta tags first, then mailto links that sit beside correspondence wording */
-export function authorContacts(raw: RawPage): AuthorContact[] {
+export function deriveAuthorContacts(raw: RawPage): AuthorContact[] {
   const contacts = new Map<string, AuthorContact>();
   const add = (email: string, name?: string): void => {
     const key = email.toLowerCase();
@@ -20,12 +20,12 @@ export function authorContacts(raw: RawPage): AuthorContact[] {
     else if (name && !known.name) known.name = name;
   };
   for (const meta of raw.authorEmails) {
-    const email = validEmail(meta.email);
+    const email = normalizeEmail(meta.email);
     if (email) add(email, meta.name);
   }
   for (const link of raw.mailtoLinks) {
     if (!CORRESPONDENCE.test(link.context)) continue;
-    for (const email of addressesOfMailto(link.href)) if (!isPublisherMailbox(email)) add(email);
+    for (const email of parseMailtoAddresses(link.href)) if (!isPublisherMailbox(email)) add(email);
   }
   return [...contacts.values()];
 }

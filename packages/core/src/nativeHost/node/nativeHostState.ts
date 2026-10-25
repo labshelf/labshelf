@@ -1,33 +1,33 @@
 /** Reports, per browser, whether it is installed and what its manifest for a native host points at. */
 import type { NativeHostSpec } from "../hostSpecs.js";
-import { hostLayout, isBrowserPresent, sandboxWarnings } from "./layout/index.js";
+import { resolveHostLayout, isBrowserPresent, detectSandboxWarnings } from "./layout/index.js";
 import type { BrowserId, NativeHostEnv, NativeHostWarning, ScriptLaunch } from "./nativeHostEnv.js";
-import { readHostRecord } from "./launcherFiles.js";
-import { isRegistered, readManifest } from "./hostManifestFiles.js";
+import { readHostScriptLaunch } from "./launcherFiles.js";
+import { isRegistered, readHostManifest } from "./hostManifestFiles.js";
 
 /** `launcher` when the manifest points at this host's launcher; `other` for a standalone binary or anything else. */
-export type ManifestStatus = "missing" | { path: string; kind: "launcher" | "other"; owner?: ScriptLaunch["owner"] };
+export type HostManifestState = "missing" | { path: string; kind: "launcher" | "other"; owner?: ScriptLaunch["owner"] };
 
-export interface BrowserHostStatus {
+export interface BrowserHostState {
   browser: BrowserId;
   label: string;
   present: boolean;
-  manifest: ManifestStatus;
+  manifest: HostManifestState;
 }
 
-export interface NativeHostStatusResult {
+export interface NativeHostResult {
   launcher: string;
-  browsers: BrowserHostStatus[];
+  browsers: BrowserHostState[];
   warnings: NativeHostWarning[];
 }
 
-export async function nativeHostStatus(env: NativeHostEnv, spec: NativeHostSpec): Promise<NativeHostStatusResult> {
-  const layout = await hostLayout(env, spec);
-  const owner = (await readHostRecord(env, layout))?.owner;
-  const browsers: BrowserHostStatus[] = [];
+export async function checkNativeHost(env: NativeHostEnv, spec: NativeHostSpec): Promise<NativeHostResult> {
+  const layout = await resolveHostLayout(env, spec);
+  const owner = (await readHostScriptLaunch(env, layout))?.owner;
+  const browsers: BrowserHostState[] = [];
   for (const target of layout.targets) {
-    const read = await readManifest(target);
-    let manifest: ManifestStatus = "missing";
+    const read = await readHostManifest(target);
+    let manifest: HostManifestState = "missing";
     if (read.kind === "points-at" && (await isRegistered(env, target))) {
       manifest = read.path === layout.launcherPath
         ? { path: read.path, kind: "launcher", ...(owner ? { owner } : {}) }
@@ -35,5 +35,5 @@ export async function nativeHostStatus(env: NativeHostEnv, spec: NativeHostSpec)
     }
     browsers.push({ browser: target.browser, label: target.label, present: await isBrowserPresent(env, target), manifest });
   }
-  return { launcher: layout.launcherPath, browsers, warnings: await sandboxWarnings(env, layout.targets) };
+  return { launcher: layout.launcherPath, browsers, warnings: await detectSandboxWarnings(env, layout.targets) };
 }

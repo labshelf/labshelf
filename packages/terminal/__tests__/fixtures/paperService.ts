@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  BibTeXService,
+  BibtexService,
   type DetectedIdentifier,
   type ILogger,
   type LibraryStore,
@@ -86,7 +86,7 @@ export async function harness(papers: PaperFixture[] = [], collections: string[]
   const service = new TerminalPaperService({
     paths: lib.paths,
     store,
-    bibtex: new BibTeXService(new NodeLibraryFileSystem(lib.paths.layout.tmpDir())),
+    bibtex: new BibtexService(new NodeLibraryFileSystem(lib.paths.layout.tmpDir())),
     logger,
     pdfParser: parserFactory,
     trash,

@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout } from "../../../src/library/index";
+import { createLibraryLayout } from "../../../src/library/index";
 import { createNodeSidecarPort } from "../../../src/reader/node/index";
 import { PaperDataStore, normalizePaperData, serializePaperData } from "../../../src/reader/index";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../support/tempDirs";
@@ -11,7 +11,7 @@ afterEach(cleanupTempDirs);
 
 async function setup() {
   const root = await makeTempDir();
-  const layout = libraryLayout(root, path.join);
+  const layout = createLibraryLayout(root, path.join);
   return { root, layout };
 }
 

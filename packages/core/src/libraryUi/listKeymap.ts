@@ -1,10 +1,10 @@
 /**
  * Maps a key press to a list action as a pure function, so every host gets the same keys.
  */
-import type { PaperStatus } from "../library/readingStatus/index.js";
+import type { ReadingStatus } from "../library/readingStatus/index.js";
 
 /** The parts of a keyboard event the keymap reads. */
-export interface KeyPress {
+export interface ShortcutPress {
   key: string;
   /** Physical key, so Alt+digit works on layouts where Alt changes the character. */
   code: string;
@@ -14,7 +14,7 @@ export interface KeyPress {
   shift: boolean;
 }
 
-export type ListKeyAction =
+export type ListShortcutAction =
   | { kind: "focusSearch" }
   | { kind: "step"; delta: 1 | -1; extend: boolean }
   | { kind: "page"; dir: 1 | -1; extend: boolean }
@@ -25,15 +25,15 @@ export type ListKeyAction =
   | { kind: "open" }
   | { kind: "escape" }
   | { kind: "selectAll" }
-  | { kind: "setStatus"; status: PaperStatus }
+  | { kind: "setStatus"; status: ReadingStatus }
   | { kind: "remove" }
   | { kind: "copyKeys" }
   | { kind: "menu" }
   | { kind: "typeToSearch" };
 
-const STATUS_BY_CODE: Record<string, PaperStatus> = { Digit1: "unread", Digit2: "reading", Digit3: "done" };
+const STATUS_BY_CODE: Record<string, ReadingStatus> = { Digit1: "unread", Digit2: "reading", Digit3: "done" };
 
-function modifiedAction(k: KeyPress, mod: boolean): ListKeyAction | null {
+function modifiedAction(k: ShortcutPress, mod: boolean): ListShortcutAction | null {
   if (mod && k.key.toLowerCase() === "f") return { kind: "focusSearch" };
   if (mod && k.key.toLowerCase() === "a") return { kind: "selectAll" };
   if (mod && k.key.toLowerCase() === "c") return { kind: "copyKeys" };
@@ -46,7 +46,7 @@ function modifiedAction(k: KeyPress, mod: boolean): ListKeyAction | null {
 }
 
 /** The action a key press triggers in the list, or null when the list leaves the key alone. */
-export function listKeyAction(k: KeyPress): ListKeyAction | null {
+export function deriveListShortcutAction(k: ShortcutPress): ListShortcutAction | null {
   const mod = k.meta || k.ctrl;
   const modified = modifiedAction(k, mod);
   if (modified) return modified;

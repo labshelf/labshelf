@@ -10,7 +10,7 @@ const ACCESS_STAMP = /^(downloaded|accessed)\b|redistribution subject to/i;
  * Returns the title by picking the largest-font text run from the first eight blocks of page 1, skipping access stamps.
  * @returns The inferred title string, or undefined if no suitable block is found.
  */
-export function titleFromBlocks(blocks: TextBlock[]): string | undefined {
+export function extractTitleFromBlocks(blocks: TextBlock[]): string | undefined {
   const head = blocks.filter((block) => !ACCESS_STAMP.test(block.text)).slice(0, 8);
   if (head.length === 0) {
     return undefined;
@@ -37,7 +37,7 @@ export function titleFromBlocks(blocks: TextBlock[]): string | undefined {
  * Scans the blocks immediately below the title block and returns parsed author names.
  * @returns Array of author name strings, or empty array if no author line is detected.
  */
-export function authorsFromBlocks(blocks: TextBlock[], title: string | undefined): string[] {
+export function extractAuthorsFromBlocks(blocks: TextBlock[], title: string | undefined): string[] {
   if (!title) {
     return [];
   }

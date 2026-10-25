@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../../src/ports/index";
 import {
-  cacheDir, libraryKey, loadSharedConfig, moveLibrary, sharedConfigPath, stateDir,
+  resolveCacheDir, deriveLibraryKey, loadSharedConfig, moveLibrary, resolveSharedConfigPath, resolveDeviceStateDir,
 } from "../../../../src/library/node/index";
 import { cleanupTempDirs, listFiles, makeTempDir, pathExists } from "../../../support/tempDirs";
 
@@ -65,7 +65,7 @@ describe("moveLibrary", () => {
     await moveLibrary(f.from, f.to, { logger: f.logger, env: f.env });
     expect(await pathExists(f.from)).toBe(false);
     expect(await listFiles(f.to)).toEqual(before);
-    expect((await loadSharedConfig(sharedConfigPath(f.env))).libraryRoot).toBe(f.to);
+    expect((await loadSharedConfig(resolveSharedConfigPath(f.env))).libraryRoot).toBe(f.to);
     expect(f.logger.messages.some((m) => /move/i.test(m))).toBe(true);
   });
 
@@ -89,7 +89,7 @@ describe("moveLibrary", () => {
     expect(await fs.readFile(path.join(f.to, "papers", "p-1", "paper.pdf"))).toEqual(pdf);
     expect(await pathExists(path.join(f.to, "papers", "empty-collection"))).toBe(true);
     expect(progress.at(-1)).toEqual([before.length, before.length]);
-    expect((await loadSharedConfig(sharedConfigPath(f.env))).libraryRoot).toBe(f.to);
+    expect((await loadSharedConfig(resolveSharedConfigPath(f.env))).libraryRoot).toBe(f.to);
   });
 
   it("keeps the source and removes the partial target when a copy fails", async () => {
@@ -106,7 +106,7 @@ describe("moveLibrary", () => {
     await expect(moveLibrary(f.from, f.to, { logger: f.logger, env: f.env })).rejects.toThrow(/disk full/);
     expect(await listFiles(f.from)).toEqual(before);
     expect(await pathExists(f.to)).toBe(false);
-    expect((await loadSharedConfig(sharedConfigPath(f.env))).libraryRoot).toBeUndefined();
+    expect((await loadSharedConfig(resolveSharedConfigPath(f.env))).libraryRoot).toBeUndefined();
     expect(f.logger.errors).toHaveLength(1);
   });
 
@@ -165,15 +165,15 @@ describe("moveLibrary", () => {
       await expect(moveLibrary(f.from, f.to, { logger: f.logger, env: f.env })).rejects.toThrow(/not empty/);
       expect(await listFiles(f.to)).toEqual(["sub/mine.txt"]);
       expect(await pathExists(path.join(f.from, "papers", "p-1", "metadata.yaml"))).toBe(true);
-      expect((await loadSharedConfig(sharedConfigPath(f.env))).libraryRoot).toBeUndefined();
+      expect((await loadSharedConfig(resolveSharedConfigPath(f.env))).libraryRoot).toBeUndefined();
     });
   });
 
   describe("device-local folders", () => {
     async function seedDeviceLocal(f: Fixture): Promise<{ cache: string; state: string }> {
-      const key = libraryKey(f.from);
-      const cache = path.join(cacheDir(f.env), "libraries", key);
-      const state = path.join(stateDir(f.env), "libraries", key);
+      const key = deriveLibraryKey(f.from);
+      const cache = path.join(resolveCacheDir(f.env), "libraries", key);
+      const state = path.join(resolveDeviceStateDir(f.env), "libraries", key);
       await fs.mkdir(cache, { recursive: true });
       await fs.mkdir(state, { recursive: true });
       await fs.writeFile(path.join(cache, "index.sqlite"), "idx");
@@ -185,11 +185,11 @@ describe("moveLibrary", () => {
       const f = await fixture();
       const old = await seedDeviceLocal(f);
       await moveLibrary(f.from, f.to, { logger: f.logger, env: f.env });
-      const key = libraryKey(f.to);
+      const key = deriveLibraryKey(f.to);
       expect(await pathExists(old.cache)).toBe(false);
       expect(await pathExists(old.state)).toBe(false);
-      expect(await fs.readFile(path.join(cacheDir(f.env), "libraries", key, "index.sqlite"), "utf8")).toBe("idx");
-      expect(await fs.readFile(path.join(stateDir(f.env), "libraries", key, "projects.json"), "utf8")).toBe("[]");
+      expect(await fs.readFile(path.join(resolveCacheDir(f.env), "libraries", key, "index.sqlite"), "utf8")).toBe("idx");
+      expect(await fs.readFile(path.join(resolveDeviceStateDir(f.env), "libraries", key, "projects.json"), "utf8")).toBe("[]");
     });
 
     it("follow a cross-device move", async () => {
@@ -197,8 +197,8 @@ describe("moveLibrary", () => {
       await seedDeviceLocal(f);
       crossDevice(f.from);
       await moveLibrary(f.from, f.to, { logger: f.logger, env: f.env });
-      const key = libraryKey(f.to);
-      expect(await pathExists(path.join(cacheDir(f.env), "libraries", key, "index.sqlite"))).toBe(true);
+      const key = deriveLibraryKey(f.to);
+      expect(await pathExists(path.join(resolveCacheDir(f.env), "libraries", key, "index.sqlite"))).toBe(true);
     });
 
     it("may be missing", async () => {
@@ -210,7 +210,7 @@ describe("moveLibrary", () => {
     it("stay in place and are logged when they cannot move, without failing the library move", async () => {
       const f = await fixture();
       const old = await seedDeviceLocal(f);
-      const blocker = path.join(cacheDir(f.env), "libraries", libraryKey(f.to));
+      const blocker = path.join(resolveCacheDir(f.env), "libraries", deriveLibraryKey(f.to));
       await fs.mkdir(blocker, { recursive: true });
       await fs.writeFile(path.join(blocker, "stale"), "x");
       await moveLibrary(f.from, f.to, { logger: f.logger, env: f.env });

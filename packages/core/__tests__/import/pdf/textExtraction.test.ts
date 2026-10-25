@@ -1,7 +1,7 @@
 // Page-text and link extraction keep page numbers, collapse whitespace, cap the page count and log what cannot be read.
 import type { ILogger, PdfDocumentLike } from '@labshelf/core';
 
-import { extractLinkUrls, extractPageTexts } from '../../../src/import/pdf/textExtraction';
+import { extractUrls, extractPageTexts } from '../../../src/import/pdf/textExtraction';
 
 type PageSpec = string[] | Error;
 
@@ -78,7 +78,7 @@ describe('extractLinkUrls', () => {
       getPage: async (n: number) => ({ getAnnotations: annotations[n - 1] }),
     } as unknown as PdfDocumentLike;
 
-    const urls = await extractLinkUrls(document, 3, logger);
+    const urls = await extractUrls(document, 3, logger);
 
     expect(urls).toEqual(['https://doi.org/10.1/a', 'https://example.org/b']);
     expect(log).toHaveBeenCalledWith('WARN', 'import/pdf', expect.stringContaining('annotations unreadable'), { page: 2, message: 'bad annots' });

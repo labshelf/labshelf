@@ -1,11 +1,11 @@
 /** Declares the structured form of a search query and tests for a query without conditions. */
-import type { PaperStatus } from "../readingStatus/index.js";
+import type { ReadingStatus } from "../readingStatus/index.js";
 
 /** Document fields an operator such as `author:` or `kw:` restricts a substring match to. */
 export type SearchField = "authors" | "keywords" | "venue" | "note" | "citeKey" | "summary";
 
 /** What `has:` and `no:` can test for. */
-export type HasKey = "pdf" | "note" | "doi" | "tags" | "abstract";
+export type HasField = "pdf" | "note" | "doi" | "tags" | "abstract";
 
 export interface FieldFilter {
   field: SearchField;
@@ -22,14 +22,14 @@ export interface Query {
   tags: string[];
   fields: FieldFilter[];
   /** A paper matches any of these; empty means every status. */
-  statuses: PaperStatus[];
+  statuses: ReadingStatus[];
   yearMin?: number;
   yearMax?: number;
-  has: HasKey[];
-  missing: HasKey[];
+  has: HasField[];
+  missing: HasField[];
 }
 
-export function emptyQuery(): Query {
+export function createEmptyQuery(): Query {
   return { terms: [], excluded: [], tags: [], fields: [], statuses: [], has: [], missing: [] };
 }
 

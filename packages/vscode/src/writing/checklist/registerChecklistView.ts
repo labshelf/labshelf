@@ -1,7 +1,7 @@
 // Creates the open project's Checklist and describes it for the sidebar mirror.
 import * as vscode from "vscode";
 
-import { updateChecklist, type ILogger, type PaperStatus } from "@labshelf/core";
+import { updateChecklist, type ILogger, type ReadingStatus } from "@labshelf/core";
 import { CHECK_COMMAND } from "../check/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
@@ -20,7 +20,7 @@ export interface ChecklistViewRegistration {
   /** Fires when the project backlinks, and so the reading lists, change. */
   onDidChangeBacklinks: vscode.Event<void>;
   /** Writes paper statuses through the open library and returns the ids that failed; with no library open every id failed. */
-  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
+  setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
   logger: ILogger;
 }
 

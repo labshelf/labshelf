@@ -1,9 +1,9 @@
 /** Rules for Wiley Online Library and the society journals it hosts, which serve PDFs at /doi/pdfdirect/<doi>. */
-import { doiPathRule } from "../doiPathRule.js";
+import { createDoiPathRule } from "../doiPathRule.js";
 import type { PublisherRule } from "../publisherRule.js";
 
 export const WILEY_RULES: PublisherRule[] = [
-  doiPathRule({
+  createDoiPathRule({
     platform: "Wiley",
     host: "onlinelibrary.wiley.com",
     // Society journals live on their own subdomain of the same platform.

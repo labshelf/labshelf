@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { assertInLibrary, isInsideRoot, resolveInLibrary, resolveParentInLibrary } from "../../../src/bridge/node/index";
+import { assertInLibrary, isInsideBase, resolveInLibrary, resolveParentInLibrary } from "../../../src/bridge/node/index";
 import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
@@ -84,7 +84,7 @@ describe("isInsideRoot", () => {
     ["C:\\Lib", "D:\\Lib\\x", false],
     ["C:\\Lib", "C:\\Lib\\..x", true],
   ])("win32: %j contains %j is %j", (base, real, inside) => {
-    expect(isInsideRoot(base, real, path.win32)).toBe(inside);
+    expect(isInsideBase(base, real, path.win32)).toBe(inside);
   });
 
   it.each([
@@ -95,7 +95,7 @@ describe("isInsideRoot", () => {
     ["/lib", "/lib/..x", true],
     ["/lib", "/", false],
   ])("posix: %j contains %j is %j", (base, real, inside) => {
-    expect(isInsideRoot(base, real, path.posix)).toBe(inside);
+    expect(isInsideBase(base, real, path.posix)).toBe(inside);
   });
 });
 

@@ -1,5 +1,5 @@
 // Installs a template as a new library project through a staging folder, so a failure never leaves half a project.
-import { libraryLayout } from "../../../library/index.js";
+import { createLibraryLayout } from "../../../library/index.js";
 import { templatePathProblem, templateTreeProblem, type ProjectTemplate, type TemplateFile } from "../../../templates/index.js";
 import { readProject } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
@@ -40,7 +40,7 @@ export async function createProjectFromTemplate(
   const { template, files } = request;
   checkTemplateFiles(template, files);
   const id = await claimProjectId(context, libraryRoot, request.title);
-  const layout = libraryLayout(libraryRoot, (base, ...segments) => paths.join(base, ...segments));
+  const layout = createLibraryLayout(libraryRoot, (base, ...segments) => paths.join(base, ...segments));
   const staging = paths.join(layout.researchRoot(), "staging", `${id}-${randomSuffix()}`);
   const folder = paths.join(layout.projectsRoot(), id);
   let step = `staging ${staging}`;

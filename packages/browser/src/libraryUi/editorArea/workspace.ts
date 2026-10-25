@@ -4,8 +4,8 @@ import {
   mountEditorArea,
   type EditorArea,
   type EditorAreaPrefsPort,
-  type EditorGroupIndex,
-  type EditorTabInfo,
+  type EditorGroupSide,
+  type EditorTabView,
   type EditorTab,
 } from "@labshelf/core/dom";
 import { type PagePlan, isKindShown } from "../pagePlan";
@@ -32,7 +32,7 @@ interface HashSync {
   silently(fn: () => void): void;
 }
 
-function createHashSync(tabs: () => EditorTabInfo[], storage: HashStorage): HashSync {
+function createHashSync(tabs: () => EditorTabView[], storage: HashStorage): HashSync {
   let quiet = false;
   return {
     write() {
@@ -58,12 +58,12 @@ function createHashSync(tabs: () => EditorTabInfo[], storage: HashStorage): Hash
 }
 
 interface TabOpener {
-  open(kind: TabKindName, params?: TabParams, group?: EditorGroupIndex, background?: boolean): void;
+  open(kind: TabKindName, params?: TabParams, group?: EditorGroupSide, background?: boolean): void;
   setDirty(id: string, kind: TabKindName, params: TabParams, dirty: boolean): void;
 }
 
 function createTabOpener(area: () => EditorArea, bodies: () => TabBodies, hash: HashSync): TabOpener {
-  const describe = (kind: TabKindName, params: TabParams, group: EditorGroupIndex, dirty?: boolean): EditorTab => {
+  const describe = (kind: TabKindName, params: TabParams, group: EditorGroupSide, dirty?: boolean): EditorTab => {
     const def = TAB_KINDS[kind];
     const id = def.id(params);
     return { id, title: def.title(params), icon: def.icon, group, dirty: dirty ?? area().tabs().find((t) => t.id === id)?.dirty === true, mount: (host) => bodies().mount(id, kind, params, host) };
@@ -126,10 +126,10 @@ function restoreTabs(target: string, area: EditorArea, opener: TabOpener, hash: 
 
 export interface Workspace {
   /** Opens the tab (or focuses it when open); `group` places a new tab in that editor group. */
-  openTab(kind: TabKindName, params?: TabParams, group?: EditorGroupIndex): void;
+  openTab(kind: TabKindName, params?: TabParams, group?: EditorGroupSide): void;
   /** Closes every open tab whose id matches; resolves false when one stayed open. */
   closeTabs(predicate: (id: string) => boolean): Promise<boolean>;
-  tabs(): EditorTabInfo[];
+  tabs(): EditorTabView[];
   /** Opens the tabs a page hash (or the tabs kept for the session) names, else the plan's default tab. */
   restore(hash: string): void;
   dispose(): void;

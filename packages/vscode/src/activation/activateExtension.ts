@@ -1,7 +1,7 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
 import * as vscode from "vscode";
 
-import { createSelectionHub, libraryLayout, type AiService } from "@labshelf/core";
+import { createSelectionHub, createLibraryLayout, type AiService } from "@labshelf/core";
 import { resolveLibraryRoot } from "../storage/paths/index.js";
 import { migrateLibraryRootFromGlobalState } from "../storage/index.js";
 import { createSelectionSources, type DetailsView } from "../libraryUi/details/index.js";
@@ -81,7 +81,7 @@ function createFolderHost(
 function papersRootResolver(controller: LibraryRootController): () => vscode.Uri | null {
   return () => {
     const root = controller.currentRoot();
-    return root ? libraryLayout(root, vscode.Uri.joinPath).papersRoot() : null;
+    return root ? createLibraryLayout(root, vscode.Uri.joinPath).papersRoot() : null;
   };
 }
 

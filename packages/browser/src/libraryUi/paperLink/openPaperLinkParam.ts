@@ -1,5 +1,5 @@
 // Opens the paper that a `?link=` parameter of the library page names, or reports why it cannot.
-import { errorMessage, type ILogger, type PaperRecord } from "@labshelf/core";
+import { formatError, type ILogger, type PaperRecord } from "@labshelf/core";
 import { resolveLink } from "./resolvePaperLink";
 
 export interface OpenLinkDeps {
@@ -22,7 +22,7 @@ export async function openLinkParam(search: string, deps: OpenLinkDeps): Promise
       void deps.log.log("WARN", "library-link", "Link not opened", { link: text, reason: target.message });
     }
   } catch (err) {
-    deps.notifyError(`Could not open the link: ${errorMessage(err)}`);
+    deps.notifyError(`Could not open the link: ${formatError(err)}`);
     void deps.log.error("library-link", err);
   }
 }

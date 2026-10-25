@@ -4,19 +4,19 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  paperComparator,
-  papersUnder,
+  createPaperComparator,
+  listPapersUnderFolder,
   type PaperEntry,
   type PaperRecord,
-  type PaperStatus,
+  type ReadingStatus,
   type SortSpec,
   papersByCiteKey,
-  paperFiles,
-  paperLink,
-  parseLabshelfLink,
-  type LabshelfLink,
+  createPaperFiles,
+  derivePaperUrl,
+  parsePaperLink,
+  type ParsedPaperLink,
   formatBytes,
-  venueLine,
+  formatVenueLine,
 } from "@labshelf/core";
 
 import type { AppContext } from "../compositionRoot.js";
@@ -38,7 +38,7 @@ function showText(entry: PaperEntry, highlights: number, page: number | undefine
   const r = entry.record;
   const lines = [r.title];
   if (r.authors?.length) { lines.push(r.authors.join(", ")); }
-  const venue = venueLine(r);
+  const venue = formatVenueLine(r);
   if (venue) { lines.push(venue); }
   lines.push("");
   const rows: Array<[string, string | undefined]> = [
@@ -48,7 +48,7 @@ function showText(entry: PaperEntry, highlights: number, page: number | undefine
     ["doi", r.doi],
     ["url", r.url],
     ["in", entry.collection || "(library root)"],
-    ["pdf", r.hasPdf === false ? "not on this device" : `${paperFiles(r.path, path.join).pdf} (${formatBytes(entry.pdfBytes ?? 0)})`],
+    ["pdf", r.hasPdf === false ? "not on this device" : `${createPaperFiles(r.path, path.join).pdf} (${formatBytes(entry.pdfBytes ?? 0)})`],
     ["notes", highlights ? `${highlights} highlight(s)` : undefined],
     ["read", page ? `stopped at page ${page}` : undefined],
   ];
@@ -58,7 +58,7 @@ function showText(entry: PaperEntry, highlights: number, page: number | undefine
   return lines.join("\n");
 }
 
-function entryForLink(ctx: AppContext, link: LabshelfLink): PaperEntry {
+function entryForLink(ctx: AppContext, link: ParsedPaperLink): PaperEntry {
   const records = [...ctx.store.snapshot.papers.values()].map((e) => e.record);
   const record = papersByCiteKey(records).get(link.citeKey);
   const entry = record && ctx.store.paper(record.id);
@@ -73,11 +73,11 @@ function entryForLink(ctx: AppContext, link: LabshelfLink): PaperEntry {
  */
 async function runOpen(ctx: AppContext, positionals: string[], io: Output): Promise<number> {
   const argument = positionals[0] ?? "";
-  const link = parseLabshelfLink(argument);
+  const link = parsePaperLink(argument);
   const entry = link ? entryForLink(ctx, link) : requirePaper(ctx, argument);
   const { id, citeKey } = entry.record;
   if (entry.record.hasPdf === false) {
-    const web = paperLink(entry.record);
+    const web = derivePaperUrl(entry.record);
     io.err(`No PDF on this device for ${id}${web ? ` (${web})` : ""}`);
     void ctx.logger.log("WARN", "terminal.open", "paper has no PDF on this device", { id });
     return 1;
@@ -85,7 +85,7 @@ async function runOpen(ctx: AppContext, positionals: string[], io: Output): Prom
   const page = link?.page ?? (await ctx.sidecars.load(id)).reading?.page;
   const viewer = process.env["LABSHELF_PDF_VIEWER"] || ctx.config.terminal?.pdfViewer;
   try {
-    openExternal(paperFiles(entry.record.path, path.join).pdf, viewer, page);
+    openExternal(createPaperFiles(entry.record.path, path.join).pdf, viewer, page);
     const pageUsed = viewerTakesPage(viewer);
     void ctx.logger.log("INFO", "terminal.open", "opened PDF", { id, page: page ?? null, pageUsed });
     if (link?.page !== undefined && !pageUsed) { io.out(`Opened ${citeKey} — go to page ${link.page}`); }
@@ -97,7 +97,7 @@ async function runOpen(ctx: AppContext, positionals: string[], io: Output): Prom
   return 0;
 }
 
-const STATUS_WORDS: Record<string, PaperStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
+const STATUS_WORDS: Record<string, ReadingStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
 
 function sortSpec(flags: ParsedArgs["flags"], config: TerminalConfig): SortSpec {
   const raw = stringFlag(flags, "sort") ?? config.terminal?.sort ?? "title";
@@ -152,7 +152,7 @@ export async function runLibraryCommand(ctx: AppContext, args: ParsedArgs, io: O
 async function runLs(ctx: AppContext, positionals: string[], flags: ParsedArgs["flags"], io: Output, json: boolean, sort: SortSpec): Promise<number> {
   const rel = requireCollection(ctx, positionals[0]);
   if (flags["recursive"] === true || flags["all"] === true) {
-    const papers = papersUnder(ctx.store.snapshot, rel).sort(paperComparator(sort));
+    const papers = listPapersUnderFolder(ctx.store.snapshot, rel).sort(createPaperComparator(sort));
     io.out(json ? JSON.stringify(papers.map(asJson), null, 2) : table(papers, io.columns));
     return 0;
   }
@@ -215,7 +215,7 @@ async function runBib(ctx: AppContext, positionals: string[], flags: ParsedArgs[
   if (positionals.length) {
     records = positionals.map((id) => requirePaper(ctx, id).record);
   } else {
-    records = papersUnder(ctx.store.snapshot, requireCollection(ctx, stringFlag(flags, "collection"))).sort(paperComparator(sort)).map((e) => e.record);
+    records = listPapersUnderFolder(ctx.store.snapshot, requireCollection(ctx, stringFlag(flags, "collection"))).sort(createPaperComparator(sort)).map((e) => e.record);
   }
   const text = ctx.papers.bibtexFor(records);
   const output = stringFlag(flags, "output");

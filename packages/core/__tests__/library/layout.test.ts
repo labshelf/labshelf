@@ -2,7 +2,7 @@ import * as path from "node:path";
 
 import {
   BIB_FILE, METADATA_FILE, PAPERS_DIR, PDF_FILE, RESEARCH_DIR, SIDECAR_FILE,
-  joinWith, libraryLayout, paperFiles,
+  joinWith, createLibraryLayout, createPaperFiles,
 } from "@labshelf/core";
 
 describe("layout constants", () => {
@@ -16,7 +16,7 @@ describe.each([
   ["posix", path.posix.join, "/data/lib"],
   ["win32", path.win32.join, "C:\\data\\lib"],
 ])("libraryLayout with path.%s.join", (_name, join, root) => {
-  const l = libraryLayout(root, join);
+  const l = createLibraryLayout(root, join);
   const at = (...parts: string[]) => join(root, ...parts);
 
   it("derives papers/ and .research/ locations from the root", () => {
@@ -51,7 +51,7 @@ describe("joinWith", () => {
   });
 
   it("yields relative keys on an empty root", () => {
-    const l = libraryLayout("", joinWith("/"));
+    const l = createLibraryLayout("", joinWith("/"));
     expect(l.papersRoot()).toBe("papers");
     expect(l.paperDataPath("p1")).toBe(".research/papers/p1/data.json");
   });
@@ -61,7 +61,7 @@ describe("a generic join", () => {
   it("works over any path type", () => {
     type Uri = { parts: string[] };
     const join = (base: Uri, ...segments: string[]): Uri => ({ parts: [...base.parts, ...segments] });
-    const l = libraryLayout<Uri>({ parts: ["lib"] }, join);
+    const l = createLibraryLayout<Uri>({ parts: ["lib"] }, join);
     expect(l.paperDataPath("p1").parts).toEqual(["lib", ".research", "papers", "p1", "data.json"]);
     expect(l.requiredDirs().map((u) => u.parts.join("/"))).toContain("lib/.research/papers");
   });
@@ -69,7 +69,7 @@ describe("a generic join", () => {
 
 describe("paperFiles", () => {
   it("names the files inside a paper folder", () => {
-    expect(paperFiles("/lib/papers/p1", path.posix.join)).toEqual({
+    expect(createPaperFiles("/lib/papers/p1", path.posix.join)).toEqual({
       pdf: "/lib/papers/p1/paper.pdf",
       metadata: "/lib/papers/p1/metadata.yaml",
       bib: "/lib/papers/p1/bib.bib",

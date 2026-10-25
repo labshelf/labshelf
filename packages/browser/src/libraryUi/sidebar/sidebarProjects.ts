@@ -1,5 +1,5 @@
 // Answers the core sidebar's Projects section: lists the projects, opens one in the page's project session, opens the template and All projects tabs, and shows the menus that share and join projects.
-import type { ProjectTreeView, SharingHost } from "@labshelf/core";
+import type { ProjectTreeView, ShareHost } from "@labshelf/core";
 import { projectShareMenuEntries, showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
 import type { TabKindName } from "../editorArea";
 import type { BrowserProjectRow, ProjectsSource } from "../../writing/projectList";
@@ -21,7 +21,7 @@ export interface SidebarProjects {
   attach(sidebar: LibrarySidebar): void;
 }
 
-function menuEntries(source: ProjectsSource, sharing: SharingHost, row: BrowserProjectRow): MenuEntry[] {
+function menuEntries(source: ProjectsSource, sharing: ShareHost, row: BrowserProjectRow): MenuEntry[] {
   const { projectId, pdf } = row;
   if (projectId === undefined) return [];
   const open: MenuEntry[] = pdf ? [{ label: "Open PDF", icon: "file-text", onSelect: () => source.openPdf(projectId, pdf) }] : [];
@@ -30,7 +30,7 @@ function menuEntries(source: ProjectsSource, sharing: SharingHost, row: BrowserP
 }
 
 export function createSidebarProjects(
-  source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: SharingHost,
+  source: ProjectsSource, openTab: (kind: TabKindName) => void, session: SidebarSession, sharing: ShareHost,
   onProjectsChange: (listener: () => void) => void,
 ): SidebarProjects {
   let rows: BrowserProjectRow[] = [];

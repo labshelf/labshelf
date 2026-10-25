@@ -2,7 +2,7 @@
 import {
   type ILogger,
   type RelayAccount,
-  errorMessage,
+  formatError,
   type CloudflareAccount,
 } from "@labshelf/core";
 import { toast, quickPick, showDialog } from "@labshelf/core/dom";
@@ -68,7 +68,7 @@ function reportRelayFailure(deps: Pick<RequireRelayDeps, "showFailure" | "logger
     return;
   }
   void deps.logger.error(LOG_MODULE, error, { action });
-  deps.showFailure(`LabShelf could not ${action}: ${errorMessage(error)}`);
+  deps.showFailure(`LabShelf could not ${action}: ${formatError(error)}`);
 }
 
 /** Resolves the connected account, or undefined when the owner cancels or the connect fails (logged and shown). */

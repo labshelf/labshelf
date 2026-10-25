@@ -16,7 +16,7 @@ import {
   type BiberWasmAssets,
 } from "@labshelf/core/helper/node";
 import { HELPER_VERSION } from "@labshelf/core/helper";
-import { systemNativeHostEnv } from "@labshelf/core/nativeHost/node";
+import { createSystemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 
 import { registerStandaloneHosts, servedHost, uninstallStandaloneHelper, unregisterStandaloneHosts } from "./nativeHost/index.js";
 import { createSelfUpdater } from "./release/index.js";
@@ -95,7 +95,7 @@ async function main(): Promise<number | undefined> {
   }
   const logger = createHelperLogger(dataDir);
   if (managing) {
-    const env = systemNativeHostEnv(logger);
+    const env = createSystemNativeHostEnv(logger);
     if (flag === "--register") return registerStandaloneHosts(env, process.execPath);
     if (flag === "--unregister") return unregisterStandaloneHosts(env, process.execPath);
     return uninstallStandaloneHelper(env, process.execPath, dataDir);

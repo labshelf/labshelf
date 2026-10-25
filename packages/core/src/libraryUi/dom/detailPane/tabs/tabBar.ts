@@ -9,7 +9,7 @@ export interface TabSpec {
   dot?: boolean;
 }
 
-export function tabBarHtml(tabs: readonly TabSpec[], active: string): string {
+export function renderTabBarHtml(tabs: readonly TabSpec[], active: string): string {
   return `<div class="detail-tabs" role="tablist">${tabs.map((t) => {
     const mark = t.badge ? `<span class="tab-badge">${t.badge}</span>` : t.dot ? `<span class="tab-dot" aria-label="has a note"></span>` : "";
     return `<button class="detail-tab${active === t.id ? " active" : ""}" type="button" role="tab" aria-selected="${active === t.id}" data-action="tab" data-tab="${t.id}">${t.label}${mark}</button>`;

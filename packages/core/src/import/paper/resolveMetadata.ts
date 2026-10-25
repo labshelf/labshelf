@@ -1,11 +1,11 @@
 // Resolves a paper's bibliographic record from its registry record, page citation tags and a title search.
 // Fields merge one by one, most trusted source first, so a registry missing the issue number keeps the page's.
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
-import { arxivIdFromDoi } from "../identifiers/index.js";
+import { extractArxivIdentifierFromDoi } from "../identifiers/index.js";
 import { mergeMetadata, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../metadata/index.js";
-import { enrichByDoi, resolveOnlineMetadata, searchOnlineByTitle } from "../search/index.js";
+import { fetchMetadataSourcesByDoi, resolveOnlineMetadata, searchOnlineByTitle } from "../search/index.js";
 import type { RegistryEnv } from "../registries/index.js";
-import { agrees } from "./titleAgreement.js";
+import { checkTitleAgreement } from "./titleAgreement.js";
 
 /** How much a page's own tags are trusted: below the registry, above a title search. */
 export const PAGE_TRUST = { structured: 80, titleOnly: 25 } as const;
@@ -48,7 +48,7 @@ export async function resolveMetadata(input: MetadataInput, deps: MetadataDeps =
   } else {
     const best = bestPageRecord(input.sources);
     const found = best?.title ? await searchByTitle(best.title).catch(() => undefined) : undefined;
-    if (found && agrees(found, best!)) {
+    if (found && checkTitleAgreement(found, best!)) {
       sources.push({ name: "search", trust: SOURCE_TRUST.search, metadata: found });
       origin = "search";
     }
@@ -59,7 +59,7 @@ export async function resolveMetadata(input: MetadataInput, deps: MetadataDeps =
   if (keywords?.length) merged.keywords = keywords;
   if (!ids.doi && merged.doi) ids.doi = merged.doi;
   if (!ids.arxivId) {
-    const arxivId = arxivIdFromDoi(merged.doi);
+    const arxivId = extractArxivIdentifierFromDoi(merged.doi);
     if (arxivId) ids.arxivId = arxivId;
   }
   return { metadata: merged, ids, origin };
@@ -71,7 +71,7 @@ export async function resolveMetadata(input: MetadataInput, deps: MetadataDeps =
  */
 export async function withAbstract(metadata: ResolvedMetadata, deps: MetadataDeps = {}, timeoutMs = 6000): Promise<ResolvedMetadata> {
   if (metadata.summary || !metadata.doi) return metadata;
-  const enrich = deps.enrich ?? ((doi: string) => enrichByDoi(doi, deps.registry));
+  const enrich = deps.enrich ?? ((doi: string) => fetchMetadataSourcesByDoi(doi, deps.registry));
   let timer: ReturnType<typeof setTimeout> | undefined;
   const extra = await Promise.race([
     enrich(metadata.doi).catch((): MetadataSource[] => []),
@@ -88,7 +88,7 @@ async function registryRecord(
 ): Promise<ResolvedMetadata | undefined> {
   const tries: DetectedIdentifier[] = [];
   // A journal DOI describes the published version; an arXiv DOI only the preprint.
-  if (ids.doi && !arxivIdFromDoi(ids.doi)) tries.push({ type: "doi", value: ids.doi });
+  if (ids.doi && !extractArxivIdentifierFromDoi(ids.doi)) tries.push({ type: "doi", value: ids.doi });
   if (ids.arxivId) tries.push({ type: "arxiv", value: ids.arxivId });
   if (ids.pmid) tries.push({ type: "pmid", value: ids.pmid });
   for (const id of tries) {

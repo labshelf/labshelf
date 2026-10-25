@@ -11,7 +11,7 @@ import type {
 import { isSparseText, type PdfjsLoader } from "../../pdf/index.js";
 import { openPdfForOcr, type OcrDocument } from "./ocrDocument.js";
 import type { TesseractOcrEngine } from "./tesseractOcrEngine.js";
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 
 type RewriteTarget =
   | { status: "ready"; target: PDFDocument }
@@ -32,9 +32,9 @@ async function openRewriteTarget(pdfBytes: Uint8Array, expectedPages: number): P
   } catch (error) {
     // Encrypted or structurally unusual files: leave the paper untouched.
     // Publisher DRM is the usual cause, and pdf-lib's own wording is about its API.
-    const reason = /encrypted/i.test(errorMessage(error))
+    const reason = /encrypted/i.test(formatError(error))
       ? "the PDF is encrypted by its publisher, so text cannot be added to it"
-      : `the PDF cannot be rewritten (${errorMessage(error)})`;
+      : `the PDF cannot be rewritten (${formatError(error)})`;
     return { status: "unavailable", reason };
   }
   if (target.getPageCount() !== expectedPages) {
@@ -68,7 +68,7 @@ async function overlayTextLayers(
       }
     } catch (error) {
       pagesFailed += 1;
-      engine.report(`Text layer failed on page ${pageNumber}: ${errorMessage(error)}`);
+      engine.report(`Text layer failed on page ${pageNumber}: ${formatError(error)}`);
     }
   }
   return { cancelled: false, pagesAdded, pagesFailed };
@@ -99,7 +99,7 @@ async function overlayPage(
   return "added";
 }
 
-export interface SearchablePdfOptions {
+export interface TextLayerPdfOptions {
   // Reading a page takes seconds; a scanned book would hold the OCR worker for an hour.
   maxPages?: number | undefined;
 }
@@ -107,12 +107,12 @@ export interface SearchablePdfOptions {
 const DEFAULT_MAX_PAGES = 150;
 const MIN_TEXTLESS_SHARE = 0.5;
 
-export class SearchablePdfBuilder implements PdfTextLayerBuilder {
+export class TextLayerPdfBuilder implements PdfTextLayerBuilder {
   constructor(
     // Absent when OCR is turned off: documents are still classified, never read.
     private readonly engine: TesseractOcrEngine | undefined,
     private readonly pdfjs: PdfjsLoader,
-    private readonly options: SearchablePdfOptions = {},
+    private readonly options: TextLayerPdfOptions = {},
   ) {}
 
   /**

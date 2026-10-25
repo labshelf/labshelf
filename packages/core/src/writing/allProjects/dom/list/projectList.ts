@@ -1,8 +1,8 @@
 // Renders the project treegrid: sortable heads, then a windowed flat list of folder headers, projects and the expanded project's files.
 import {
-  paintSortableHeads,
-  sortableHeadHtml,
-  wireSortableHeads,
+  drawSortableHeads,
+  renderSortableHeadHtml,
+  attachSortableHeads,
   formatLabel,
 } from "../../../../libraryUi/dom/index.js";
 import { type MenuAnchor, el, highlight } from "../../../../ui/dom/index.js";
@@ -15,7 +15,7 @@ import { projectKey, projectListRows, type ProjectListRow } from "./projectListM
 import { createWindowedRows } from "./projectListWindow.js";
 import { ariaRowOf, paintRowState } from "./projectRowState.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { compactTime } from "../../../../library/index.js";
+import { formatCompactTime } from "../../../../library/index.js";
 import { deadlineText } from "../../deadlineText.js";
 
 interface ProjectRowView {
@@ -66,7 +66,7 @@ const BUILT: Record<ProjectBuildState, string> = {
 
 function buildTip(mark: BuildMark | undefined, now: number): string {
   const state = mark?.state ?? "never";
-  const ago = mark?.at !== undefined && (state === "ok" || state === "warnings" || state === "failed") ? ` ${compactTime(mark.at, now)} ago` : "";
+  const ago = mark?.at !== undefined && (state === "ok" || state === "warnings" || state === "failed") ? ` ${formatCompactTime(mark.at, now)} ago` : "";
   return `${BUILT[state]}${ago}`;
 }
 
@@ -77,7 +77,7 @@ function buildCell(row: ProjectRow, now: number): string {
 function timeCell(row: ProjectRow, v: ProjectRowView): string {
   const iso = shownTime(row, v.place);
   const full = iso ? new Date(iso).toLocaleString() : "";
-  return `<div class="col-meta col-modified" title="${escapeHtml(full)}">${iso ? escapeHtml(compactTime(Date.parse(iso), v.now)) : ""}</div>`;
+  return `<div class="col-meta col-modified" title="${escapeHtml(full)}">${iso ? escapeHtml(formatCompactTime(Date.parse(iso), v.now)) : ""}</div>`;
 }
 
 function rowHtml(row: ProjectRow, v: ProjectRowView): string {
@@ -144,11 +144,11 @@ export interface ProjectList {
 function headsHtml(place: ProjectPlace): string {
   const trash = place === "trash";
   return `<div aria-hidden="true"></div>` +
-    sortableHeadHtml({ key: "title", label: "Title", cls: "", sortable: true }) +
-    sortableHeadHtml({ key: "engine", label: "Engine", cls: "col-engine", sortable: false }) +
-    sortableHeadHtml({ key: "cites", label: "Cites", cls: "col-cites", sortable: true, title: "Cited keys, then those not found" }) +
-    sortableHeadHtml({ key: "build", label: "Build", cls: "col-build", sortable: false }) +
-    sortableHeadHtml({ key: "modified", label: trash ? "Trashed" : "Modified", cls: "col-modified", sortable: true,
+    renderSortableHeadHtml({ key: "title", label: "Title", cls: "", sortable: true }) +
+    renderSortableHeadHtml({ key: "engine", label: "Engine", cls: "col-engine", sortable: false }) +
+    renderSortableHeadHtml({ key: "cites", label: "Cites", cls: "col-cites", sortable: true, title: "Cited keys, then those not found" }) +
+    renderSortableHeadHtml({ key: "build", label: "Build", cls: "col-build", sortable: false }) +
+    renderSortableHeadHtml({ key: "modified", label: trash ? "Trashed" : "Modified", cls: "col-modified", sortable: true,
       ...(trash ? { title: "When the project went to the trash" } : {}) }) +
     `<div class="col-actions" aria-hidden="true"></div>`;
 }
@@ -209,7 +209,7 @@ function openFolderOf(groups: readonly ProjectGroup[], id: string, collapsed: Se
 
 function paintHeads(el: HTMLElement, heads: HTMLElement, view: ProjectViewState, headsPlace: ProjectPlace | null): void {
   if (headsPlace !== view.place) heads.innerHTML = headsHtml(view.place);
-  paintSortableHeads(heads, view.sort.key, view.sort.dir === "asc");
+  drawSortableHeads(heads, view.sort.key, view.sort.dir === "asc");
   el.style.setProperty("--heads-h", `${heads.offsetHeight}px`);
 }
 
@@ -237,7 +237,7 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
     paint(frame);
     if (header >= 0) { const node = win.reveal(header); if (node) ariaRowOf(node).focus(); }
   }
-  wireSortableHeads(heads, (key) => h.onSort(key as ProjectSortKey));
+  attachSortableHeads(heads, (key) => h.onSort(key as ProjectSortKey));
   wireRows(el, h);
   const api: ProjectList = {
     render(next) {

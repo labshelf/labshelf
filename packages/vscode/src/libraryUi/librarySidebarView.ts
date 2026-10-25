@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import {
   PAPERS_DIR,
   sidebarRows,
-  folderTreeFromSnapshot,
+  deriveFolderTree,
   type LibrarySnapshot,
   type PathOps,
   type SidebarOpenProject,
@@ -184,7 +184,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     if (!snapshot || !this._papersRoot || !this._ready) { return; }
     const papers = [...snapshot.papers.values()].map(({ record: { id, title, status, tags }, collection }) =>
       ({ record: { id, title, status, ...(tags ? { tags } : {}) }, folder: collection ? `${PAPERS_DIR}/${collection}` : PAPERS_DIR }));
-    await this._post({ type: "library", folders: folderTreeFromSnapshot(snapshot), papers });
+    await this._post({ type: "library", folders: deriveFolderTree(snapshot), papers });
   }
 
   private async _pushProjects(): Promise<void> {

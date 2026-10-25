@@ -1,7 +1,7 @@
 /** Pins what status reports per browser and that uninstall removes only manifests of the install it targets. */
 import * as path from "node:path";
 
-import { BRIDGE_HOST_SPEC, installNativeHost, nativeHostStatus, uninstallNativeHost } from "../../../src/nativeHost/node/index";
+import { BRIDGE_HOST_SPEC, installNativeHost, checkNativeHost, uninstallNativeHost } from "../../../src/nativeHost/node/index";
 import { cleanupTempDirs, pathExists } from "../../support/tempDirs";
 import { env, fakeRegistry, launch, readJson, standaloneBinary } from "./nativeHostHarness";
 
@@ -10,15 +10,15 @@ afterEach(cleanupTempDirs);
 describe("nativeHostStatus", () => {
   it("reports presence and what each manifest points at", async () => {
     const e = await env("linux", [".config/google-chrome", ".mozilla"]);
-    const before = await nativeHostStatus(e, BRIDGE_HOST_SPEC);
+    const before = await checkNativeHost(e, BRIDGE_HOST_SPEC);
     expect(before.browsers.find((b) => b.browser === "chrome")).toMatchObject({ present: true, manifest: "missing" });
     expect(before.browsers.find((b) => b.browser === "edge")).toMatchObject({ present: false, manifest: "missing" });
     const { launcher } = await installNativeHost(e, BRIDGE_HOST_SPEC, launch);
     await installNativeHost(e, BRIDGE_HOST_SPEC, { kind: "binary", path: "/opt/standalone" }).then(() => undefined);
-    const after = await nativeHostStatus(e, BRIDGE_HOST_SPEC);
+    const after = await checkNativeHost(e, BRIDGE_HOST_SPEC);
     expect(after.browsers.find((b) => b.browser === "chrome")!.manifest).toEqual({ path: "/opt/standalone", kind: "other" });
     await installNativeHost(e, BRIDGE_HOST_SPEC, launch);
-    expect((await nativeHostStatus(e, BRIDGE_HOST_SPEC)).browsers.find((b) => b.browser === "firefox")!.manifest)
+    expect((await checkNativeHost(e, BRIDGE_HOST_SPEC)).browsers.find((b) => b.browser === "firefox")!.manifest)
       .toEqual({ path: launcher, kind: "launcher", owner: "vscode" });
   });
 
@@ -26,9 +26,9 @@ describe("nativeHostStatus", () => {
     const registry = fakeRegistry(["HKCU\\Software\\Google\\Chrome"]);
     const e = await env("win32", [], registry);
     await installNativeHost(e, BRIDGE_HOST_SPEC, launch);
-    expect((await nativeHostStatus(e, BRIDGE_HOST_SPEC)).browsers[0]!.manifest).toMatchObject({ kind: "launcher" });
+    expect((await checkNativeHost(e, BRIDGE_HOST_SPEC)).browsers[0]!.manifest).toMatchObject({ kind: "launcher" });
     registry.values.clear();
-    expect((await nativeHostStatus(e, BRIDGE_HOST_SPEC)).browsers[0]!.manifest).toBe("missing");
+    expect((await checkNativeHost(e, BRIDGE_HOST_SPEC)).browsers[0]!.manifest).toBe("missing");
   });
 });
 

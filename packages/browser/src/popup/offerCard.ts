@@ -1,6 +1,6 @@
 // Shows the offer to attach a PDF the user opened or downloaded to the library paper it matched, and acts on it.
 import { $ } from "@labshelf/core/dom";
-import { errorMessage } from "@labshelf/core";
+import { formatError } from "@labshelf/core";
 import { sendRuntime, type AttachPdfData, type PdfOfferView } from "../platform";
 import { folderName } from "./format";
 import { showStatus } from "./render";
@@ -55,6 +55,6 @@ export async function dismissOffer(): Promise<void> {
     await settleOffer();
     window.close();
   } catch (err) {
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not dismiss the offer", detail: errorMessage(err) });
+    showStatus({ glyph: "warning", tone: "muted", title: "Could not dismiss the offer", detail: formatError(err) });
   }
 }

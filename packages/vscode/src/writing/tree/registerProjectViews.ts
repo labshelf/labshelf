@@ -1,7 +1,7 @@
 // Creates the open project's views with their commands: Figures as a native tree, Files, Outline and Checklist through the sidebar mirror.
 import * as vscode from "vscode";
 
-import type { ILogger, PaperStatus } from "@labshelf/core";
+import type { ILogger, ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
 import { registerChecklistView, signalsReader } from "../checklist/index.js";
@@ -32,7 +32,7 @@ interface ProjectViewsDeps {
   outcomes: BuildOutcomes;
   previews: Pick<BuildPreviews, "onDidCountBodyPages">;
   onDidChangeBacklinks: vscode.Event<void>;
-  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
+  setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
 }
 
 /** What the library sidebar view renders in its Projects section. */

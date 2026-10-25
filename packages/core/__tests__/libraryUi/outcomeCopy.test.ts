@@ -1,19 +1,19 @@
-import { cleanTags, keptFieldNotice, moveNotice, papersLabel, removeNotice } from "../../src/libraryUi/outcomeCopy";
+import { deriveCleanTags, formatKeptFieldNotice, moveNotice, formatPaperCount, removeNotice } from "../../src/libraryUi/outcomeCopy";
 
 const titleOf = (id: string): string => `Title ${id}`;
 
 describe("papersLabel and cleanTags", () => {
   it("pluralises and trims", () => {
-    expect(papersLabel(1)).toBe("1 paper");
-    expect(papersLabel(3)).toBe("3 papers");
-    expect(cleanTags([" ml ", "", "  "])).toEqual(["ml"]);
+    expect(formatPaperCount(1)).toBe("1 paper");
+    expect(formatPaperCount(3)).toBe("3 papers");
+    expect(deriveCleanTags([" ml ", "", "  "])).toEqual(["ml"]);
   });
 });
 
 describe("keptFieldNotice", () => {
   it("counts the papers and names the field and the reason", () => {
-    expect(keptFieldNotice("tags", 1, "locked")).toBe("1 paper kept their tags — locked");
-    expect(keptFieldNotice("status", 2, "not found")).toBe("2 papers kept their status — not found");
+    expect(formatKeptFieldNotice("tags", 1, "locked")).toBe("1 paper kept their tags — locked");
+    expect(formatKeptFieldNotice("status", 2, "not found")).toBe("2 papers kept their status — not found");
   });
 });
 

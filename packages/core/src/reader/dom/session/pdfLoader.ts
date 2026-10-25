@@ -3,7 +3,7 @@
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { PDF_FILE } from "../../../library/index.js";
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 import type { ReaderAssets } from "../../index.js";
 import type { PdfjsLib, ViewerLib } from "./readerContext.js";
 import type { PerfMarks } from "./perfMarks.js";
@@ -147,7 +147,7 @@ function documentParams(assets: ReaderAssets, data: ArrayBuffer): Record<string,
  * @returns a user-facing error message.
  */
 export function describeLoadError(err: unknown): string {
-  const msg = errorMessage(err);
+  const msg = formatError(err);
   return /empty|zero bytes/i.test(msg)
     ? "This paper's stored PDF is empty (0 bytes), so there is nothing to display. Re-add the paper to the library to restore the file."
     : `Failed to initialize PDF viewer: ${msg}`;

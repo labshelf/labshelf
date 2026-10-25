@@ -1,6 +1,6 @@
 /** Contract of DOI extraction and cleanup, whatever source the candidate came from. */
 
-import { cleanDoiCandidate, doiVariants, encodeDoiPathSegment, extractDoi } from '@labshelf/core';
+import { normalizeDoiCandidate, deriveDoiVariants, encodeDoiPathSegment, extractDoi } from '@labshelf/core';
 
 describe('extractDoi', () => {
   it.each([
@@ -26,33 +26,33 @@ describe('extractDoi', () => {
 
 describe('cleanDoiCandidate', () => {
   it('decodes escapes and drops query and fragment', () => {
-    expect(cleanDoiCandidate('10.1000%2Fxyz?download=true#top')).toBe('10.1000/xyz');
+    expect(normalizeDoiCandidate('10.1000%2Fxyz?download=true#top')).toBe('10.1000/xyz');
   });
 
   it('strips repeated publisher tails', () => {
-    expect(cleanDoiCandidate('10.1002/anie.1/full/pdf')).toBe('10.1002/anie.1');
+    expect(normalizeDoiCandidate('10.1002/anie.1/full/pdf')).toBe('10.1002/anie.1');
   });
 
   it('keeps balanced brackets and drops unbalanced closers', () => {
-    expect(cleanDoiCandidate('10.1016/j.x.2020(1).')).toBe('10.1016/j.x.2020(1)');
-    expect(cleanDoiCandidate('10.1145/10515.10546)')).toBe('10.1145/10515.10546');
+    expect(normalizeDoiCandidate('10.1016/j.x.2020(1).')).toBe('10.1016/j.x.2020(1)');
+    expect(normalizeDoiCandidate('10.1145/10515.10546)')).toBe('10.1145/10515.10546');
   });
 
   it('returns undefined when the tail strip leaves no DOI', () => {
-    expect(cleanDoiCandidate('10.1000/pdf')).toBeUndefined();
+    expect(normalizeDoiCandidate('10.1000/pdf')).toBeUndefined();
   });
 });
 
 describe('doiVariants', () => {
   it('expands a component DOI into itself and its parent article DOI', () => {
-    expect(doiVariants('10.7554/eLife.28383.001')).toEqual([
+    expect(deriveDoiVariants('10.7554/eLife.28383.001')).toEqual([
       '10.7554/eLife.28383.001',
       '10.7554/eLife.28383',
     ]);
   });
 
   it('returns only the DOI itself when there is no numeric component suffix', () => {
-    expect(doiVariants('10.1038/nature12373')).toEqual(['10.1038/nature12373']);
+    expect(deriveDoiVariants('10.1038/nature12373')).toEqual(['10.1038/nature12373']);
   });
 });
 

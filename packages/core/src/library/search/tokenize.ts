@@ -4,7 +4,7 @@
  * A `-` or `key:` prefix stays in front of a quoted phrase, and an unterminated quote runs to the end.
  * @returns the tokens, quotes removed
  */
-export function tokenize(query: string): string[] {
+export function splitQuery(query: string): string[] {
   const tokens: string[] = [];
   const re = /(-?[\w:#.<>=-]*?)"([^"]*)"?|(\S+)/gu;
   let match: RegExpExecArray | null;

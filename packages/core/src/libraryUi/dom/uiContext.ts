@@ -4,9 +4,9 @@
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
-import type { SharingHost } from "../share/index.js";
+import type { ShareHost } from "../share/index.js";
 import type { LibraryViewStore, PrefsPort } from "../store/index.js";
-import { createPaperData, type PaperDataRequests } from "./detailPaneRequests.js";
+import { createPaperDetailsRequests, type PaperDetailsRequests } from "./detailPaneRequests.js";
 
 /** Moves the list cursor; the paper list provides it once mounted. */
 export interface ListCursor {
@@ -29,32 +29,32 @@ export interface UiContext {
   /** The library is shown for reading only; components render no editing control. */
   readOnly: boolean;
   /** The host's sharing operations; absent when the host offers no sharing controls. */
-  sharing?: SharingHost | undefined;
+  sharing?: ShareHost | undefined;
   /** The `.ls-library` element. */
   root: HTMLElement;
   /** Set by the paper list when it mounts. */
   cursor: ListCursor | null;
   /** Requests for the per-paper data the host sends on demand. */
-  data: PaperDataRequests;
+  data: PaperDetailsRequests;
   /** Focuses the search box; `selectText` also selects the query so typing replaces it. */
   focusSearch(selectText?: boolean): void;
   /** Focuses the paper list so the list keys apply. */
   focusList(): void;
 }
 
-export interface UiContextParts {
+export interface UiCompositionParts {
   store: LibraryViewStore;
   transport: LibraryTransport;
   prefs: PrefsPort;
   caps: LibraryUiCapabilities;
   labels: LibraryUiLabels;
   readOnly: boolean;
-  sharing?: SharingHost | undefined;
+  sharing?: ShareHost | undefined;
 }
 
-export function createUiContext(root: HTMLElement, parts: UiContextParts): UiContext {
+export function createUiCompositionRoot(root: HTMLElement, parts: UiCompositionParts): UiContext {
   return {
-    ...parts, root, cursor: null, data: createPaperData(parts),
+    ...parts, root, cursor: null, data: createPaperDetailsRequests(parts),
     focusSearch(selectText = false) {
       const search = root.querySelector<HTMLInputElement>(".ls-library-search");
       search?.focus();
@@ -65,7 +65,7 @@ export function createUiContext(root: HTMLElement, parts: UiContextParts): UiCon
 }
 
 /** A dialog, menu or quick input owns the keyboard while it is open. */
-export function overlayOpen(): boolean {
+export function isOverlayOpen(): boolean {
   return document.querySelector(".ls-scrim") !== null;
 }
 

@@ -3,7 +3,7 @@
  * the row marks and the details the detail pane shows.
  */
 import {
-  PAPERS_DIR, PDF_FILE, PaperDataStore, createSidecarReader, paperDetailsOf, type ILogger, type PaperDetails, type PaperRecord, type PaperStats,
+  PAPERS_DIR, PDF_FILE, PaperDataStore, createSidecarReader, derivePaperDetails, type ILogger, type PaperDetails, type PaperRecord, type PaperStats,
 } from "@labshelf/core";
 import { createLibraryFileSystem, createSidecarPort } from "../../../storage";
 
@@ -32,7 +32,7 @@ export function createSidecarReads(log: ILogger): SidecarReads {
     statsFor: reader.statsFor,
     statsOf: reader.statsOf,
     async details(paper) {
-      return paperDetailsOf(await reader.summaryOf(paper.id), await pdfOnDevice(paper));
+      return derivePaperDetails(await reader.summaryOf(paper.id), await pdfOnDevice(paper));
     },
   };
 }

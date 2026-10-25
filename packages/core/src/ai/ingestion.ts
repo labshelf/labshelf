@@ -1,7 +1,7 @@
 // Chunks a paper and embeds the chunks into the vector store when both are supplied.
 import type { ExtractedPdfText, PaperChunk } from "./chunk/index.js";
-import type { IEmbeddingProvider, IVectorStore, VectorRecord } from "./embedding/index.js";
-import { chunkBySection } from "./chunk/index.js";
+import type { IEmbeddingProvider, IVectorStore, VectorEntry } from "./embedding/index.js";
+import { splitBySection } from "./chunk/index.js";
 
 export interface IngestionContext {
   embedder?: IEmbeddingProvider;
@@ -23,7 +23,7 @@ export async function runIngestion(
   extracted: ExtractedPdfText,
   context: IngestionContext,
 ): Promise<IngestionResult> {
-  const chunks = chunkBySection(extracted);
+  const chunks = splitBySection(extracted);
   const embeddedChunks = await embedAndStore(chunks, context);
   return {
     paperId: extracted.paperId,
@@ -43,7 +43,7 @@ async function embedAndStore(
     .map((chunk, idx) => {
       const embedding = embeddings[idx];
       if (!embedding) return null;
-      const record: VectorRecord = {
+      const record: VectorEntry = {
         id: 0,
         paperId: chunk.paperId,
         kind: chunk.kind,
@@ -53,7 +53,7 @@ async function embedAndStore(
       };
       return { record, embedding };
     })
-    .filter((p): p is { record: VectorRecord; embedding: Float32Array } => p !== null);
+    .filter((p): p is { record: VectorEntry; embedding: Float32Array } => p !== null);
   await context.vectorStore.upsert(payload);
   return payload.length;
 }

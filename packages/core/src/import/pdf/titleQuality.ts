@@ -25,7 +25,7 @@ const VIEWER_TITLE = /^(pdf\.?js viewer|pdf viewer|adobe (acrobat|reader)\b.*|pr
  * filename, a print-job name, or a numeric identifier.
  * @returns The cleaned title when usable, otherwise undefined.
  */
-export function usableTitle(rawValue: string | undefined): string | undefined {
+export function deriveUsableTitle(rawValue: string | undefined): string | undefined {
   const value = rawValue?.trim();
   if (!value || value.length < 6 || value.length > 400) {
     return undefined;

@@ -1,7 +1,7 @@
 // Saves the exact submitted template with its compiled previews into My templates atomically.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
-import { claimCiteKey } from "../../library/index.js";
+import { ensureCiteKey } from "../../library/index.js";
 import { resolveInLibrary } from "../../bridge/node/index.js";
 import type { PublishFile } from "../publishCheckReport.js";
 import { serializeTemplateManifest, templatePathProblem, type TemplateManifest } from "../templateManifest/index.js";
@@ -10,7 +10,7 @@ export async function savePublishedTemplate(libraryRoot: string, manifest: Templ
   const templates = await resolveInLibrary(libraryRoot, "templates");
   await fs.mkdir(templates, { recursive: true });
   const names = await fs.readdir(templates);
-  const id = await claimCiteKey(manifest.id, names, async (name) => {
+  const id = await ensureCiteKey(manifest.id, names, async (name) => {
     try { await fs.lstat(path.join(templates, name)); return true; }
     catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
   });

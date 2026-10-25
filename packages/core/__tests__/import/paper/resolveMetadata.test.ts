@@ -1,6 +1,6 @@
 import type { DetectedIdentifier, ResolvedMetadata } from "@labshelf/core";
 import { PAGE_TRUST, resolveMetadata, withAbstract } from "@labshelf/core";
-import { agrees } from "../../../src/import/paper/titleAgreement";
+import { checkTitleAgreement } from "../../../src/import/paper/titleAgreement";
 import { makeFindingHarness } from "../../support/pdfFindingHarness";
 
 const resolveIdentifier = jest.fn<Promise<ResolvedMetadata | undefined>, [DetectedIdentifier]>();
@@ -49,9 +49,9 @@ describe("resolveMetadata", () => {
 
 describe("agrees", () => {
   it("compares surnames, ignoring initials, and tolerates a year apart", () => {
-    expect(agrees({ authors: ["Peter W. Shor"], year: 1986 }, { authors: ["P Shor…"], year: 1987 })).toBe(true);
-    expect(agrees({ authors: ["Someone Else"] }, { authors: ["P Shor"] })).toBe(false);
-    expect(agrees({ year: 2010 }, { year: 1982 })).toBe(false);
+    expect(checkTitleAgreement({ authors: ["Peter W. Shor"], year: 1986 }, { authors: ["P Shor…"], year: 1987 })).toBe(true);
+    expect(checkTitleAgreement({ authors: ["Someone Else"] }, { authors: ["P Shor"] })).toBe(false);
+    expect(checkTitleAgreement({ year: 2010 }, { year: 1982 })).toBe(false);
   });
 });
 

@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/templates.md#index
 
 import type { ILogger } from "../../ports/index.js";
-import { sha256Hex } from "../../hash/index.js";
+import { deriveSha256Hex } from "../../hash/index.js";
 import { parseCatalogIndex, type CatalogEntry } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { fetchCachedIndex } from "./fetchCachedCatalogIndex.js";
@@ -43,7 +43,7 @@ async function download(deps: CommunitySourceDeps, url: string, expected: { size
     throw new Error(`Could not download ${url} (status ${response.status})`);
   }
   const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.length !== expected.size || (await sha256Hex(bytes)) !== expected.sha256) {
+  if (bytes.length !== expected.size || (await deriveSha256Hex(bytes)) !== expected.sha256) {
     await deps.logger.log("ERROR", MODULE, "Template file does not match the index", { url, size: bytes.length, expectedSize: expected.size });
     throw new Error(UPDATING);
   }
@@ -79,7 +79,7 @@ export function createCommunitySource(deps: CommunitySourceDeps): TemplateSource
       const request = {
         url: `${REPOSITORY}@${index.commit}/templates/${entry.id}/preview/thumbnail.png`,
         key: `community/${thumbnail.sha256}.png`,
-        accepts: async (bytes: Uint8Array) => bytes.length === thumbnail.size && (await sha256Hex(bytes)) === thumbnail.sha256,
+        accepts: async (bytes: Uint8Array) => bytes.length === thumbnail.size && (await deriveSha256Hex(bytes)) === thumbnail.sha256,
       };
       return fetchCachedThumbnail(request, deps, signal);
     },

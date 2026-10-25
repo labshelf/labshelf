@@ -2,11 +2,11 @@
 import {
   type ILogger,
   type LibraryFileSystem,
-  type ProjectSharingDeps,
+  type ProjectShareDeps,
   type RelayAccount,
-  type SharingHost,
+  type ShareHost,
   offerOwnRelayToShares,
-  persistenceFailureNotices,
+  createStoreFailureNotices,
   withdrawOwnRelayFromShares,
 } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../helper/client";
@@ -27,7 +27,7 @@ import { createPageSharing, resumeReports, type PageSharing } from "../collab";
 interface PageSharingWiringOptions {
   logger: ILogger;
   /** The page's sharing host, which the join dialog runs against. */
-  host: SharingHost;
+  host: ShareHost;
   relay: Pick<PageRelay, "requireBrowserRelay">;
   relayAccounts: { get(): Promise<RelayAccount | undefined> };
 }
@@ -51,7 +51,7 @@ function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiri
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
     reports: resumeReports(() => { void join(); }),
   });
-  sharing.shares.onChange(persistenceFailureNotices(sharing.ports, "page", (message) => toast(message, "error")));
+  sharing.shares.onChange(createStoreFailureNotices(sharing.ports, "page", (message) => toast(message, "error")));
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });
   // Another tab may have shared, left or trashed a project while this one was hidden.
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void sharing.reload(); });
@@ -76,13 +76,13 @@ export interface ProjectWiringOptions {
   relay: Pick<PageRelay, "requireBrowserRelay">;
   relayAccounts: { get(): Promise<RelayAccount | undefined> };
   /** The page's sharing host; the join dialog runs against it once it holds `projectSharing`. */
-  sharing: SharingHost;
+  sharing: ShareHost;
 }
 
 export interface ProjectWiring {
   services: ProjectServices;
   /** The project half of the page's sharing host. */
-  projectSharing: ProjectSharingDeps;
+  projectSharing: ProjectShareDeps;
   /** Builds the sidebar's Projects section. */
   sidebarProjects(): SidebarProjects;
   /** Reopens the project the restored tabs name, then joins the share link the page was opened with. */

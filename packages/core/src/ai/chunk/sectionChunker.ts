@@ -6,16 +6,16 @@ import type {
   PaperSection,
 } from "./chunk.js";
 import { detectSections } from "./sectionDetector.js";
-import { charsForTokenBudget, estimateTokens } from "./tokenEstimator.js";
+import { deriveCharsForTokenBudget, countTokens } from "./tokenEstimator.js";
 
-const CHUNK_CHAR_BUDGET = charsForTokenBudget(384);
+const CHUNK_CHAR_BUDGET = deriveCharsForTokenBudget(384);
 
 /**
  * Produces section-scoped chunks ready for embedding.
  *
  * @returns Ordered list of PaperChunk records.
  */
-export function chunkBySection(extracted: ExtractedPdfText): PaperChunk[] {
+export function splitBySection(extracted: ExtractedPdfText): PaperChunk[] {
   const sections = extracted.sections.length
     ? extracted.sections
     : detectSections(extracted.pages);
@@ -40,7 +40,7 @@ function splitSection(paperId: string, section: PaperSection): PaperChunk[] {
         startOffset: section.startOffset,
         endOffset: section.endOffset,
         text: section.text,
-        tokenCount: estimateTokens(section.text),
+        tokenCount: countTokens(section.text),
       },
     ];
   }
@@ -105,7 +105,7 @@ function buildChunk(
     startOffset: start,
     endOffset: end,
     text,
-    tokenCount: estimateTokens(text),
+    tokenCount: countTokens(text),
   };
 }
 
@@ -121,7 +121,7 @@ function chunkByPage(extracted: ExtractedPdfText): PaperChunk[] {
       startOffset: offset,
       endOffset: offset + text.length,
       text,
-      tokenCount: estimateTokens(text),
+      tokenCount: countTokens(text),
     });
     offset += p.text.length;
   }

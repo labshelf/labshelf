@@ -4,8 +4,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { Logger, PAPERS_DIR, RESEARCH_DIR, errorMessage, syncGuide } from "@labshelf/core";
-import { FileLogSink, deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
+import { Logger, PAPERS_DIR, RESEARCH_DIR, formatError, syncGuide } from "@labshelf/core";
+import { FileLogSink, createDeviceLocalLayout, resolveSharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
 import { openLibrary, type AppContext } from "./compositionRoot.js";
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./config.js";
@@ -34,7 +34,7 @@ async function adoptLibrary(raw: string): Promise<string> {
   await ensureLibraryStructure(new LibraryRoot(root));
   await updateSharedConfig({ libraryRoot: root });
   io.err(existed ? `Using the library at ${root}` : `Created a new library at ${root}`);
-  io.err(`Remembered in ${sharedConfigPath()} (the VS Code extension reads it too).`);
+  io.err(`Remembered in ${resolveSharedConfigPath()} (the VS Code extension reads it too).`);
   return root;
 }
 
@@ -47,7 +47,7 @@ const DIST_DIR = fileURLToPath(new URL(".", import.meta.url));
 
 // The move and conflict commands run outside the TUI, so their log goes to the library's terminal log file.
 function fileLogger(root: string): Logger {
-  return new Logger([new FileLogSink(deviceLocalLayout(root).terminalLogPath)], { onSinkError: () => undefined });
+  return new Logger([new FileLogSink(createDeviceLocalLayout(root).terminalLogPath)], { onSinkError: () => undefined });
 }
 
 async function resolveRoot(flag: string | undefined, config: TerminalConfig, interactive: boolean): Promise<{ root: string; source: string } | undefined> {
@@ -71,8 +71,8 @@ async function resolveRoot(flag: string | undefined, config: TerminalConfig, int
 function printWhere(root: string, source: string): void {
   const paths = new LibraryRoot(root);
   io.out(`library  ${paths.root}  (from ${source})`);
-  io.out(`config   ${sharedConfigPath()}`);
-  io.out(`log      ${deviceLocalLayout(paths.root).terminalLogPath}`);
+  io.out(`config   ${resolveSharedConfigPath()}`);
+  io.out(`log      ${createDeviceLocalLayout(paths.root).terminalLogPath}`);
 }
 
 async function runTui(ctx: AppContext): Promise<number> {
@@ -103,7 +103,7 @@ async function runOpenedLibrary(ctx: AppContext, args: ParsedArgs, tuiWanted: bo
       io.err(error.message);
       return 2;
     }
-    io.err(errorMessage(error));
+    io.err(formatError(error));
     await ctx.logger.error("terminal/cli", error);
     return 1;
   } finally {
@@ -116,7 +116,7 @@ async function runCommand(run: () => Promise<number>): Promise<number> {
   try {
     return await run();
   } catch (error) {
-    io.err(errorMessage(error));
+    io.err(formatError(error));
     return error instanceof UsageError ? 2 : 1;
   }
 }

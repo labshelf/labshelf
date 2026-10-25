@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseHtmlPage, redirectTargets } from "@labshelf/core";
+import { parseHtmlPage, findRedirectUrls } from "@labshelf/core";
 import { decodeEntities } from "../../../src/import/landing/htmlTags";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "fixtures", name), "utf8");
@@ -34,14 +34,14 @@ describe("parseHtmlPage title", () => {
 
 describe("redirectTargets", () => {
   it("reads meta refresh and scripted location changes, de-duplicated", () => {
-    const targets = redirectTargets(fixture("sciencedirectInterstitial.html"), "https://www.sciencedirect.com/science/article/pii/0196677482900074/pdfft");
+    const targets = findRedirectUrls(fixture("sciencedirectInterstitial.html"), "https://www.sciencedirect.com/science/article/pii/0196677482900074/pdfft");
     expect(targets).toEqual([
       "https://pdf.sciencedirectassets.com/272/1-s2.0-0196677482900074/main.pdf?X-Amz-Token=abc&X-Amz-Date=20261007",
     ]);
   });
 
   it("returns nothing for a page that does not redirect", () => {
-    expect(redirectTargets(fixture("loginWall.html"), "https://example.org/login")).toEqual([]);
+    expect(findRedirectUrls(fixture("loginWall.html"), "https://example.org/login")).toEqual([]);
   });
 });
 

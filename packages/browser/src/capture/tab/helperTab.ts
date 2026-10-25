@@ -1,6 +1,6 @@
 // Fetches a walled PDF from inside a background tab that loads the walled URL and passes its check, then closes the tab.
 // The tab is inactive so the user's focus and the popup stay put.
-import { errorMessage, fetchPdf, isWallPage, nextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
+import { formatError, fetchPdf, isWallPage, extractNextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
 import { scriptingApi } from "./scripting";
 import { fetchInTab } from "./tabFetch";
@@ -36,7 +36,7 @@ export async function fetchViaHelperTab(log: ILogger, urls: string[], signal: Ab
     return undefined;
   } finally {
     await bx.tabs.remove(tabId).catch((error: unknown) =>
-      log.log("WARN", "capture", "Helper tab did not close", { tabId, message: errorMessage(error) }),
+      log.log("WARN", "capture", "Helper tab did not close", { tabId, message: formatError(error) }),
     );
   }
 }
@@ -49,7 +49,7 @@ async function fetchFromTab(log: ILogger, tabId: number, origin: string, url: st
   if (!answer) return fetchPdf(url, { credentials: "include", logger: log });
   // An interstitial: its target (often a signed CDN link) usually downloads from the background; otherwise try it
   // from the tab too.
-  for (const hop of answer.html ? nextHopsFromHtml(answer.html, answer.finalUrl) : []) {
+  for (const hop of answer.html ? extractNextHopsFromHtml(answer.html, answer.finalUrl) : []) {
     const pdf = (await fetchPdf(hop, { credentials: "include", logger: log })) ?? (originOf(hop) === origin ? (await fetchInTab(tabId, hop))?.pdf : undefined);
     if (pdf) return pdf;
   }

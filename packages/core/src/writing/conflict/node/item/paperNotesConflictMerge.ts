@@ -4,14 +4,14 @@ import * as path from "node:path";
 
 import { parseConflictName, type ConflictCopy } from "../../../../library/conflicts/index.js";
 import { readDirOrEmpty } from "../../../../library/conflicts/node/index.js";
-import { libraryLayout, PAPER_NOTES_FILE } from "../../../../library/index.js";
+import { createLibraryLayout, PAPER_NOTES_FILE } from "../../../../library/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 import type { IProjectVersionStore } from "../../index.js";
 import { mergeItemFileCopies, seedItemFileBase } from "./itemFileCopyMerge.js";
 
 /** @returns the notes copies that could not be merged; they stay on disk. */
 export async function mergePaperNotesConflicts(root: string, store: IProjectVersionStore, logger: ILogger): Promise<ConflictCopy[]> {
-  const layout = libraryLayout(root, path.join);
+  const layout = createLibraryLayout(root, path.join);
   const unmerged: ConflictCopy[] = [];
   for (const paper of await readDirOrEmpty(layout.paperDataRoot())) {
     if (!paper.isDirectory()) { continue; }

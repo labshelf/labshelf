@@ -1,15 +1,15 @@
 /** Confirms identifiers printed in a PDF against the registry that issued them. */
-import { doiVariants, type DetectedIdentifier } from "../identifiers/index.js";
+import { deriveDoiVariants, type DetectedIdentifier } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import {
-  arxivById,
-  crossRefByDoi,
-  dataCiteByDoi,
-  googleBooksByIsbn,
+  fetchArxivByIdentifier,
+  fetchCrossrefByDoi,
+  fetchDataciteByDoi,
+  fetchGoogleBooksByIsbn,
   openLibraryByIsbn,
-  plainRecord,
-  pmidFromPmcid,
-  pubMedByPmid,
+  derivePlainMetadata,
+  resolvePmidFromPmcid,
+  fetchPubmedByPmid,
   type RegistryEnv,
 } from "../registries/index.js";
 
@@ -26,31 +26,31 @@ export async function resolveOnlineMetadata(
     case "doi": {
       // Publishers mint component DOIs for abstracts and figures; those records
       // exist but describe a fragment, so the parent DOI is tried as well.
-      for (const variant of doiVariants(identifier.value)) {
-        const record = await crossRefByDoi(env, variant);
+      for (const variant of deriveDoiVariants(identifier.value)) {
+        const record = await fetchCrossrefByDoi(env, variant);
         if (record?.title && !record.isComponent) {
-          return plainRecord(record);
+          return derivePlainMetadata(record);
         }
       }
-      for (const variant of doiVariants(identifier.value)) {
-        const record = await dataCiteByDoi(env, variant);
+      for (const variant of deriveDoiVariants(identifier.value)) {
+        const record = await fetchDataciteByDoi(env, variant);
         if (record?.title) {
-          return plainRecord(record);
+          return derivePlainMetadata(record);
         }
       }
       return undefined;
     }
     case "arxiv":
-      return plainRecord(await arxivById(env, identifier.value));
+      return derivePlainMetadata(await fetchArxivByIdentifier(env, identifier.value));
     case "pmid":
-      return plainRecord(await pubMedByPmid(env, identifier.value));
+      return derivePlainMetadata(await fetchPubmedByPmid(env, identifier.value));
     case "pmcid": {
-      const pmid = await pmidFromPmcid(env, identifier.value);
-      return pmid ? plainRecord(await pubMedByPmid(env, pmid)) : undefined;
+      const pmid = await resolvePmidFromPmcid(env, identifier.value);
+      return pmid ? derivePlainMetadata(await fetchPubmedByPmid(env, pmid)) : undefined;
     }
     case "isbn": {
       const book = await openLibraryByIsbn(env, identifier.value);
-      return plainRecord(book?.title ? book : await googleBooksByIsbn(env, identifier.value));
+      return derivePlainMetadata(book?.title ? book : await fetchGoogleBooksByIsbn(env, identifier.value));
     }
     default:
       return undefined;

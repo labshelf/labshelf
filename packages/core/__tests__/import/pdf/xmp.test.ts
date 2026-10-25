@@ -1,6 +1,6 @@
 /** Unit tests for reading bibliographic fields out of an XMP packet. */
 
-import { metadataFromXmp } from '@labshelf/core';
+import { extractMetadataFromXmp } from '@labshelf/core';
 
 describe('metadataFromXmp', () => {
   it('maps a publisher XMP packet onto bibliographic fields', () => {
@@ -19,7 +19,7 @@ describe('metadataFromXmp', () => {
       }),
     };
 
-    expect(metadataFromXmp(xmp)).toMatchObject({
+    expect(extractMetadataFromXmp(xmp)).toMatchObject({
       title: 'A stillbirth calculator',
       authors: ['Amanda S. Trudell', 'Methodius G. Tuuli'],
       journal: 'PLOS ONE',
@@ -36,13 +36,13 @@ describe('metadataFromXmp', () => {
   it('unwraps a DOI stored as a doi.org URL in dc:identifier', () => {
     const xmp = { getAll: () => ({ 'dc:identifier': 'https://doi.org/10.1038/nature12373' }) };
 
-    expect(metadataFromXmp(xmp)?.doi).toBe('10.1038/nature12373');
+    expect(extractMetadataFromXmp(xmp)?.doi).toBe('10.1038/nature12373');
   });
 
   it('cleans a DOI stored with a query and a publisher tail', () => {
     const xmp = { getAll: () => ({ 'dc:identifier': 'https://example.org/doi/10.1002/anie.201915678/abstract?x=1' }) };
 
-    expect(metadataFromXmp(xmp)?.doi).toBe('10.1002/anie.201915678');
+    expect(extractMetadataFromXmp(xmp)?.doi).toBe('10.1002/anie.201915678');
   });
 
   it('reads a Map and language-alternative values', () => {
@@ -50,11 +50,11 @@ describe('metadataFromXmp', () => {
       getAll: () => new Map<string, unknown>([['dc:title', { 'x-default': 'Mapped Title' }]]),
     };
 
-    expect(metadataFromXmp(xmp)?.title).toBe('Mapped Title');
+    expect(extractMetadataFromXmp(xmp)?.title).toBe('Mapped Title');
   });
 
   it('returns undefined when there is no XMP packet', () => {
-    expect(metadataFromXmp(undefined)).toBeUndefined();
-    expect(metadataFromXmp({ getAll: () => ({}) })).toBeUndefined();
+    expect(extractMetadataFromXmp(undefined)).toBeUndefined();
+    expect(extractMetadataFromXmp({ getAll: () => ({}) })).toBeUndefined();
   });
 });

@@ -3,20 +3,20 @@ import { promises as fs } from 'node:fs';
 import * as path from "node:path";
 import {
   createDeviceIdentity,
-  deviceLocalLayout,
+  createDeviceLocalLayout,
   NodeLibraryFileSystem,
   readOptionalFile,
 } from "../../../node/index.js";
-import { dismissProjectConflict, type ConflictCopy } from '../../index.js';
+import { writeProjectConflictDismissal, type ConflictCopy } from '../../index.js';
 import type { ILogger } from "../../../../ports/index.js";
 import { textHash, type IProjectVersionStore } from "../../../../writing/conflict/index.js";
 import { lineSimilarity } from '../../../../writing/text/index.js';
 import { mergeProjectContentCopy } from '../../../../writing/conflict/node/index.js';
 import { listProjectsOnDisk } from '../../../../writing/project/node/index.js';
-import { conflictDismissalFile, findProjectConflict } from './projectConflictDetection.js';
+import { resolveConflictDismissalFile, findProjectConflict } from './projectConflictDetection.js';
 import { loadVersionHistory, PersistedMap } from "../../../../collab/deviceState/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../../../writing/project/index.js";
-import { sharedProjectStorage } from "./sharedProjectStorage.js";
+import { createSharedProjectStorage } from "./sharedProjectStorage.js";
 
 async function readSharedProjectVersions(root: string, folder: string, relative: string, logger: ILogger): Promise<string[]> {
   const settings = await readOptionalFile(path.join(folder, PROJECT_FILE));
@@ -25,7 +25,7 @@ async function readSharedProjectVersions(root: string, folder: string, relative:
   if (!project.ok) throw new Error(`Cannot read project settings for merge history: ${folder}: ${project.reason}`);
   const shareId = project.settings.shared;
   if (!shareId) return [];
-  const storage = sharedProjectStorage(root, shareId);
+  const storage = createSharedProjectStorage(root, shareId);
   const versions = await loadVersionHistory(storage, logger);
   const texts: string[] = [];
   for (const version of versions.storedVersions(relative)) {
@@ -69,11 +69,11 @@ export async function resolveProjectConflictCopy(
     if (!detected || detected.original !== conflict.original) throw new Error(`Conflict copy changed before resolution: ${conflict.copy}`);
     const text = await fs.readFile(conflict.copy, 'utf8');
     if (resolution === 'notAVersion') {
-      await dismissProjectConflict(new NodeLibraryFileSystem(), conflictDismissalFile(context.root), conflict.copy, await textHash(text));
+      await writeProjectConflictDismissal(new NodeLibraryFileSystem(), resolveConflictDismissalFile(context.root), conflict.copy, await textHash(text));
     } else if (resolution === 'mergeAutomatically') {
       const base = await similarBase(folder, conflict, context.store, text, context.root, context.logger);
       await mergeProjectContentCopy(conflict, path.relative(folder, conflict.original).split(path.sep).join('/'), context.store, context.logger,
-        { folder, identity: createDeviceIdentity(deviceLocalLayout(context.root), context.logger) }, base);
+        { folder, identity: createDeviceIdentity(createDeviceLocalLayout(context.root), context.logger) }, base);
     } else throw new Error(`Invalid project conflict resolution: ${resolution}`);
     await context.logger.log('INFO', 'conflicts', 'Resolved project content copy', { ...conflict, resolution });
   } catch (error) {

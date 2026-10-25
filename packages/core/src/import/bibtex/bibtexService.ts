@@ -6,8 +6,8 @@ import YAML from "yaml";
 
 import type { IFileSystem } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import { PDF_FILE, joinWith, paperFiles } from "../../library/index.js";
-import { bibtexEntry } from "./bibtexEntry.js";
+import { PDF_FILE, joinWith, createPaperFiles } from "../../library/index.js";
+import { createBibtexEntry } from "./bibtexEntry.js";
 
 const posixJoin = joinWith("/");
 
@@ -97,14 +97,14 @@ function carryOverUserKeys(metadata: Record<string, unknown>, paper: PaperRecord
 }
 
 /** Generates and writes metadata.yaml and bib.bib sidecar files for a paper. */
-export class BibTeXService {
+export class BibtexService {
   constructor(private readonly fs: IFileSystem) {}
 
   /**
    * Writes metadata.yaml and bib.bib into the paper folder.
    */
   async writePaperArtifacts(paperFolder: string, paper: PaperRecord, sourceFileName: string): Promise<void> {
-    const { metadata: metadataPath, bib: bibPath } = paperFiles(paperFolder, posixJoin);
+    const { metadata: metadataPath, bib: bibPath } = createPaperFiles(paperFolder, posixJoin);
     const existing = await this.readExisting(metadataPath);
 
     const metadata = metadataFromRecord(paper, sourceName(existing, sourceFileName));
@@ -114,9 +114,9 @@ export class BibTeXService {
     // the browser writes a reference without paper.pdf when it finds none, so a
     // blind `file = {…/paper.pdf}` would send LaTeX and reference tools to a
     // file that is not there. Decide from the folder, not from the record.
-    const pdfExists = await this.fs.exists(paperFiles(paperFolder, posixJoin).pdf);
+    const pdfExists = await this.fs.exists(createPaperFiles(paperFolder, posixJoin).pdf);
     await this.fs.writeText(metadataPath, YAML.stringify(metadata));
-    await this.fs.writeText(bibPath, bibtexEntry(paper, { includeFile: pdfExists }));
+    await this.fs.writeText(bibPath, createBibtexEntry(paper, { includeFile: pdfExists }));
   }
 
   // The current sidecar as a plain object; empty when absent or unreadable,

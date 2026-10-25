@@ -1,5 +1,5 @@
 // Moves through the project treegrid's flat rows from the keyboard: arrows, Home/End, paging, expanding and collapsing, opening and the row menu.
-import { listKeyAction } from "../../../../libraryUi/index.js";
+import { deriveListShortcutAction } from "../../../../libraryUi/index.js";
 import type { ProjectListRow } from "./projectListModel.js";
 import { ariaRowOf } from "./projectRowState.js";
 
@@ -53,7 +53,7 @@ function currentIndex(el: HTMLElement, ctx: ProjectKeyRows): number {
 
 // Home, End, PageUp and PageDown use the paper list's key map, so both lists page the same way.
 function jumpTarget(e: KeyboardEvent, at: number, ctx: ProjectKeyRows): number | null {
-  const action = listKeyAction({ key: e.key, code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey });
+  const action = deriveListShortcutAction({ key: e.key, code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey });
   const last = ctx.rows().length - 1;
   if (action?.kind === "edge") return action.to === "first" ? 0 : last;
   if (action?.kind === "page") return Math.max(0, Math.min(last, Math.max(0, at) + action.dir * ctx.pageSize()));

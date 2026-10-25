@@ -1,10 +1,10 @@
 // Runs the sharing dialog a library UI request asks for.
 import { toast } from "../../ui/dom/index.js";
-import type { SharingDialogRequest, SharingHost } from "../share/index.js";
+import type { ShareDialogRequest, ShareHost } from "../share/index.js";
 import { runJoinProjectDialog, runLeaveProjectDialog, runShareProjectDialog } from "../../collab/dom/index.js";
 import { runImportLinkDialog, runManageLinksDialog, runShareFolderDialog } from "../../share/dom/index.js";
 
-export async function runSharingDialog(host: SharingHost, request: SharingDialogRequest): Promise<void> {
+export async function runShareDialog(host: ShareHost, request: ShareDialogRequest): Promise<void> {
   switch (request.kind) {
     case "shareProject": return runShareProjectDialog(host, request.projectId);
     case "leaveProject": return runLeaveProjectDialog(host, request.projectId);

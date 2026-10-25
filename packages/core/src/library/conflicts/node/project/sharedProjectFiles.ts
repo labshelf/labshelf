@@ -3,10 +3,10 @@ import * as Y from 'yjs';
 import { indexFiles } from '../../../../collab/model/index.js';
 import { INDEX_DOC_KEY } from "../../../../collab/doc/index.js";
 import type { ILogger } from '../../../../ports/index.js';
-import { sharedProjectStorage } from './sharedProjectStorage.js';
+import { createSharedProjectStorage } from './sharedProjectStorage.js';
 
 export async function readSharedProjectFiles(root: string, shareId: string, logger: ILogger): Promise<ReadonlySet<string>> {
-  const storage = sharedProjectStorage(root, shareId);
+  const storage = createSharedProjectStorage(root, shareId);
   const stored = (await storage.loadDocs()).get(storage.docId(INDEX_DOC_KEY));
   if (!stored) return new Set();
   const doc = new Y.Doc();

@@ -1,4 +1,4 @@
-import { matchPaper, matchesTerms, paperMatches, parseQuery, searchDoc, type PaperRecord, type SearchExtra } from "@labshelf/core";
+import { isPaperMatch, matchPaper, matchTerms, parseQuery, searchDoc, type PaperRecord, type SearchExtra } from "@labshelf/core";
 
 function rec(overrides: Partial<PaperRecord> = {}): PaperRecord {
   return { id: "p1", title: "Untitled", path: "/lib/papers/p1", citeKey: "p1", status: "unread", hasPdf: true, ...overrides };
@@ -127,10 +127,10 @@ describe("matchPaper: field aliases", () => {
 
 describe("matchesTerms", () => {
   it("requires every free-text term in the text, ignoring case and accents", () => {
-    expect(matchesTerms(parseQuery("deep learning"), "Deep Learning")).toBe(true);
-    expect(matchesTerms(parseQuery("cafe"), "Café Society")).toBe(true);
-    expect(matchesTerms(parseQuery("deep vision"), "Deep Learning")).toBe(false);
-    expect(matchesTerms(parseQuery(""), "anything")).toBe(true);
+    expect(matchTerms(parseQuery("deep learning"), "Deep Learning")).toBe(true);
+    expect(matchTerms(parseQuery("cafe"), "Café Society")).toBe(true);
+    expect(matchTerms(parseQuery("deep vision"), "Deep Learning")).toBe(false);
+    expect(matchTerms(parseQuery(""), "anything")).toBe(true);
   });
 });
 
@@ -138,8 +138,8 @@ describe("paperMatches", () => {
   it("is true exactly when the score is positive", () => {
     const paper = rec({ title: "Attention" });
     const doc = searchDoc(paper);
-    expect(paperMatches(paper, doc, parseQuery("attention"))).toBe(true);
-    expect(paperMatches(paper, doc, parseQuery("convolution"))).toBe(false);
+    expect(isPaperMatch(paper, doc, parseQuery("attention"))).toBe(true);
+    expect(isPaperMatch(paper, doc, parseQuery("convolution"))).toBe(false);
   });
 });
 

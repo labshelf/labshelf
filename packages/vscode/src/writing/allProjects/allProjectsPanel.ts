@@ -1,7 +1,7 @@
 // Opens the editor tab that shows every project and connects its webview to the All projects server.
 import * as vscode from "vscode";
 import {
-  isSharingMessage,
+  isShareMessage,
   parseAllProjectsMessage,
   serveAllProjects,
   type AllProjectsEndpoint,
@@ -63,7 +63,7 @@ export class AllProjectsPanel {
     panel.webview.onDidReceiveMessage((raw: unknown) => {
       const message = parseAllProjectsMessage(raw);
       if (!message) {
-        if (isSharingMessage(raw)) { return; }
+        if (isShareMessage(raw)) { return; }
         void logger.log("WARN", "writing.allProjects", "unparseable message from the page", { type: (raw as { type?: unknown } | null)?.type });
         return;
       }

@@ -1,7 +1,7 @@
 // Reads and writes the OpenAlex citation cache: one file per library paper and one per cited work, each with its fetch date.
 // CONTRACT: documents/contracts/library-format.md#researchopenalex
 import type { OpenAlexCitationWork } from "../registries/index.js";
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 
 const CACHE_MODULE = "citationMap";
@@ -21,7 +21,7 @@ export interface CitationCache {
 }
 
 /** Opens the cache under `dir` (POSIX path); a missing, unreadable or malformed file reads as a miss. */
-export function citationCache(fs: IFileSystem, dir: string, logger?: ILogger): CitationCache {
+export function createCitationCache(fs: IFileSystem, dir: string, logger?: ILogger): CitationCache {
   const read = async (path: string): Promise<CachedWork | undefined> => {
     if (!(await fs.exists(path))) {
       return undefined;
@@ -33,7 +33,7 @@ export function citationCache(fs: IFileSystem, dir: string, logger?: ILogger): C
       }
       return entry;
     } catch (error) {
-      await logger?.log("WARN", CACHE_MODULE, "Ignoring an unreadable citation cache file", { path, message: errorMessage(error) });
+      await logger?.log("WARN", CACHE_MODULE, "Ignoring an unreadable citation cache file", { path, message: formatError(error) });
       return undefined;
     }
   };

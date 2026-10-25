@@ -14,10 +14,10 @@ import { lookupItemFor } from "./searchHitIds";
 import {
   type IfNoPdf,
   PAPERS_DIR,
-  errorMessage,
-  folderPathLabel,
+  formatError,
+  formatFolderPathLabel,
   icon,
-  pdfSourceLabel,
+  formatPdfSourceLabel,
   type IconName,
 } from "@labshelf/core";
 import tokensCss from "@labshelf/core/styles/tokens.css";
@@ -142,10 +142,10 @@ async function save(m: ResultButton, folder?: string, ifNoPdf: IfNoPdf = "ask", 
       setState(m, "idle", "Not saved — no PDF was found. Click to try again.");
       return;
     }
-    const detail = r.alreadyInLibrary ? "it was already there" : r.pdfSource ? `PDF via ${pdfSourceLabel(r.pdfSource)}` : "saved without a PDF";
+    const detail = r.alreadyInLibrary ? "it was already there" : r.pdfSource ? `PDF via ${formatPdfSourceLabel(r.pdfSource)}` : "saved without a PDF";
     markSaved(m, { folder: r.folder, id: r.id, hasPdf: r.hasPdf }, detail);
   } catch (err) {
-    setState(m, "error", `Could not save: ${errorMessage(err)}. Click to retry.`);
+    setState(m, "error", `Could not save: ${formatError(err)}. Click to retry.`);
   }
 }
 
@@ -167,7 +167,7 @@ async function openFolderMenu(m: ResultButton): Promise<void> {
     return;
   }
   showMenu(m.caret, data.folders.map((f) => ({
-    label: folderPathLabel(PAPERS_DIR, f.path, "/"),
+    label: formatFolderPathLabel(PAPERS_DIR, f.path, "/"),
     icon: f.depth === 0 ? ("library" as const) : ("folder" as const),
     ...(f.path === data.lastFolder ? { hint: "last used" } : {}),
     onSelect: () => { void save(m, f.path); },

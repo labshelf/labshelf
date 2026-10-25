@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { interpretPage, parseHtmlPage, type RawPage } from "@labshelf/core";
-import { authorsOf, pagesOf } from "../../../src/import/landing/pageFacts";
+import { derivePageFacts, parseHtmlPage, type RawPage } from "@labshelf/core";
+import { mergeAuthors, derivePageRange } from "../../../src/import/landing/pageFacts";
 
 const springer = (): RawPage => parseHtmlPage(
   readFileSync(join(__dirname, "..", "..", "fixtures", "springerArticle.html"), "utf8"),
@@ -11,7 +11,7 @@ const page = (over: Partial<RawPage>): RawPage => ({ pageUrl: "https://example.o
 
 describe("interpretPage", () => {
   it("reads the full citation record a publisher page states", () => {
-    const facts = interpretPage(springer());
+    const facts = derivePageFacts(springer());
     expect(facts.isPaper).toBe(true);
     expect(facts.structured).toBe(true);
     expect(facts.ids).toEqual({ doi: "10.1007/s10107-023-01234-5" });
@@ -33,51 +33,51 @@ describe("interpretPage", () => {
   });
 
   it("orders PDF candidates: citation_pdf_url first, then own anchors, never supplementary files", () => {
-    const urls = interpretPage(springer()).pdfCandidates.map((c) => c.url);
+    const urls = derivePageFacts(springer()).pdfCandidates.map((c) => c.url);
     expect(urls[0]).toBe("https://link.springer.com/content/pdf/10.1007/s10107-023-01234-5.pdf");
     expect(urls.some((u) => u.includes("supplementary"))).toBe(false);
     expect(new Set(urls).size).toBe(urls.length);
   });
 
   it("does not take a DOI from a reference list with several doi.org links", () => {
-    const facts = interpretPage(page({ doiLinks: ["https://doi.org/10.1/a", "https://doi.org/10.1/b"] }));
+    const facts = derivePageFacts(page({ doiLinks: ["https://doi.org/10.1/a", "https://doi.org/10.1/b"] }));
     expect(facts.ids.doi).toBeUndefined();
   });
 
   it("takes the DOI of a lone doi.org link and of a /doi/ URL", () => {
-    expect(interpretPage(page({ doiLinks: ["https://doi.org/10.1145/10515.10546"] })).ids.doi).toBe("10.1145/10515.10546");
-    expect(interpretPage(page({ pageUrl: "https://onlinelibrary.wiley.com/doi/full/10.1002/anie.201915678" })).ids.doi).toBe("10.1002/anie.201915678");
+    expect(derivePageFacts(page({ doiLinks: ["https://doi.org/10.1145/10515.10546"] })).ids.doi).toBe("10.1145/10515.10546");
+    expect(derivePageFacts(page({ pageUrl: "https://onlinelibrary.wiley.com/doi/full/10.1002/anie.201915678" })).ids.doi).toBe("10.1002/anie.201915678");
   });
 
   it("skips a dc.identifier that is not a DOI and keeps looking", () => {
-    const facts = interpretPage(page({ meta: { "dc.identifier": ["ISBN 978-3-16-148410-0", "doi:10.1016/0196-6774(82)90007-4"] } }));
+    const facts = derivePageFacts(page({ meta: { "dc.identifier": ["ISBN 978-3-16-148410-0", "doi:10.1016/0196-6774(82)90007-4"] } }));
     expect(facts.ids.doi).toBe("10.1016/0196-6774(82)90007-4");
   });
 
   it("recognises arXiv pages and the arXiv DOI", () => {
-    expect(interpretPage(page({ pageUrl: "https://arxiv.org/abs/2301.12345v2" })).ids.arxivId).toBe("2301.12345");
-    expect(interpretPage(page({ meta: { citation_doi: ["10.48550/arXiv.1706.03762"] } })).ids).toMatchObject({ arxivId: "1706.03762" });
+    expect(derivePageFacts(page({ pageUrl: "https://arxiv.org/abs/2301.12345v2" })).ids.arxivId).toBe("2301.12345");
+    expect(derivePageFacts(page({ meta: { citation_doi: ["10.48550/arXiv.1706.03762"] } })).ids).toMatchObject({ arxivId: "1706.03762" });
   });
 
   it("reads old-style arXiv ids from the citation meta tag and the abs URL", () => {
-    expect(interpretPage(page({ meta: { citation_arxiv_id: ["arXiv:hep-th/9711200v3"] } })).ids.arxivId).toBe("hep-th/9711200");
-    expect(interpretPage(page({ meta: { citation_arxiv_id: ["math.GT/0309136"] } })).ids.arxivId).toBe("math.GT/0309136");
-    expect(interpretPage(page({ pageUrl: "https://arxiv.org/abs/hep-th/9711200v2" })).ids.arxivId).toBe("hep-th/9711200");
+    expect(derivePageFacts(page({ meta: { citation_arxiv_id: ["arXiv:hep-th/9711200v3"] } })).ids.arxivId).toBe("hep-th/9711200");
+    expect(derivePageFacts(page({ meta: { citation_arxiv_id: ["math.GT/0309136"] } })).ids.arxivId).toBe("math.GT/0309136");
+    expect(derivePageFacts(page({ pageUrl: "https://arxiv.org/abs/hep-th/9711200v2" })).ids.arxivId).toBe("hep-th/9711200");
   });
 
   it("takes no arXiv id from a citation_arxiv_id that is not one", () => {
-    expect(interpretPage(page({ meta: { citation_arxiv_id: ["see the abstract"] } })).ids.arxivId).toBeUndefined();
+    expect(derivePageFacts(page({ meta: { citation_arxiv_id: ["see the abstract"] } })).ids.arxivId).toBeUndefined();
   });
 
   it("treats a PDF tab as a paper whose first candidate is the tab itself", () => {
-    const facts = interpretPage(page({ pageUrl: "https://example.org/x.pdf", pageIsPdf: true }));
+    const facts = derivePageFacts(page({ pageUrl: "https://example.org/x.pdf", pageIsPdf: true }));
     expect(facts.isPaper).toBe(true);
     expect(facts.pdfCandidates[0]).toEqual({ url: "https://example.org/x.pdf", source: "page" });
     expect(facts.metadata.url).toBeUndefined();
   });
 
   it("does not call an ordinary web page a paper", () => {
-    const facts = interpretPage(page({ documentTitle: "My blog", meta: { "og:title": ["My blog"], description: ["posts"] } }));
+    const facts = derivePageFacts(page({ documentTitle: "My blog", meta: { "og:title": ["My blog"], description: ["posts"] } }));
     expect(facts.isPaper).toBe(false);
     expect(facts.metadata.title).toBe("My blog");
   });
@@ -85,19 +85,19 @@ describe("interpretPage", () => {
 
 describe("field helpers", () => {
   it("flips 'Family, Given' and de-duplicates authors", () => {
-    expect(authorsOf(["Ibarra, Oscar H.", "Ibarra, Oscar H.", "Shlomo Moran"], [])).toEqual(["Oscar H. Ibarra", "Shlomo Moran"]);
-    expect(authorsOf([], [], "Moran, S; Hui, R")).toEqual(["S Moran", "R Hui"]);
+    expect(mergeAuthors(["Ibarra, Oscar H.", "Ibarra, Oscar H.", "Shlomo Moran"], [])).toEqual(["Oscar H. Ibarra", "Shlomo Moran"]);
+    expect(mergeAuthors([], [], "Moran, S; Hui, R")).toEqual(["S Moran", "R Hui"]);
   });
 
   it("joins page ranges", () => {
-    expect(pagesOf("45", "56")).toBe("45-56");
-    expect(pagesOf("7", "7")).toBe("7");
-    expect(pagesOf(undefined, "9")).toBeUndefined();
+    expect(derivePageRange("45", "56")).toBe("45-56");
+    expect(derivePageRange("7", "7")).toBe("7");
+    expect(derivePageRange(undefined, "9")).toBeUndefined();
   });
 });
 
 describe("publication year", () => {
-  const yearOf = (meta: Record<string, string[]>): number | undefined => interpretPage(page({ meta })).metadata.year;
+  const yearOf = (meta: Record<string, string[]>): number | undefined => derivePageFacts(page({ meta })).metadata.year;
 
   it("reads the year from a compact date such as 20230115", () => {
     expect(yearOf({ citation_date: ["20230115"] })).toBe(2023);

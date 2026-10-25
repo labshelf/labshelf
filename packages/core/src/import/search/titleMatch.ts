@@ -17,7 +17,7 @@ const SHORT_TITLE_WORDS = 6;
  * page of front matter, of which the title is only a part.
  * @returns Fraction of the candidate's significant words found in the source.
  */
-export function titleOverlap(candidate: string, source: string): number {
+export function deriveTitleOverlap(candidate: string, source: string): number {
   const candidateWords = significantWords(candidate);
   if (candidateWords.size === 0) {
     return 0;
@@ -37,7 +37,7 @@ export function titleOverlap(candidate: string, source: string): number {
 // long as the title, holding most of its words. Returns 0 when the query is
 // itself title-sized, and undefined when the title's words are only scattered
 // across a page — or when the title is too short for that to mean anything.
-export function titlePosition(title: string, queryWords: string[]): number | undefined {
+export function findTitlePosition(title: string, queryWords: string[]): number | undefined {
   const titleWords = significantWords(title);
   if (queryWords.length <= titleWords.size * 3) {
     return 0;

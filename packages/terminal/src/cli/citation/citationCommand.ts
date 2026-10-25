@@ -1,7 +1,7 @@
 // Implements `labshelf cite`: picks a paper on the terminal, prints its citation on stdout and updates labshelf.bib.
 import {
   citationSnippet,
-  errorMessage,
+  formatError,
   type PaperRecord,
   type ProjectFormat,
   DEFAULT_BIBLIOGRAPHY,
@@ -12,7 +12,7 @@ import {
   updateProjectBibliography,
   type ILogger,
   type ProjectEntry,
-  rankFuzzy,
+  orderFuzzy,
 } from "@labshelf/core";
 
 import type { AppContext } from "../../compositionRoot.js";
@@ -39,7 +39,7 @@ const label = (paper: PaperRecord): string =>
 
 /** @returns the papers matching the query, best first */
 function pickerMatches(papers: readonly PaperRecord[], state: PickerState): PaperRecord[] {
-  return rankFuzzy(papers, state.query.value, label);
+  return orderFuzzy(papers, state.query.value, label);
 }
 
 function moved(state: PickerState, by: number, count: number): PickerStep {
@@ -221,7 +221,7 @@ export async function runCite(
     await addToBibliography(project, picked, papers, ctx.logger);
   } catch (error) {
     await ctx.logger.error("terminal.cite", error, { folder: project.folder });
-    io.err(`labshelf.bib not updated: ${errorMessage(error)}`);
+    io.err(`labshelf.bib not updated: ${formatError(error)}`);
   }
   return 0;
 }

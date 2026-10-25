@@ -1,6 +1,6 @@
 // Builds the sharing host of the library page: paper-folder links over this browser's share list, library files and relay, plus the projects the project wiring adds.
 import {
-  createSharingHost,
+  createShareHost,
   createWorkerShareReader,
   PAPERS_DIR,
   PaperDataStore,
@@ -8,8 +8,8 @@ import {
   relayBackendFor,
   type ILogger,
   type RelayAccount,
-  type ProjectSharingDeps,
-  type SharingHost,
+  type ProjectShareDeps,
+  type ShareHost,
 } from "@labshelf/core";
 import { bx } from "../../../platform";
 import { createBrowserShareRegistryStore } from "../../../share";
@@ -17,16 +17,16 @@ import { createLibraryFileSystem, createSidecarPort, currentLibraryId } from "..
 import type { HostContext } from "../hostContext";
 
 interface PageSharingHost {
-  host: SharingHost;
+  host: ShareHost;
   /** Switches `host` to one that also shares projects and tells its offers listeners. */
-  addProjects(deps: ProjectSharingDeps): void;
+  addProjects(deps: ProjectShareDeps): void;
 }
 
 /** `build` makes the host with the links half alone, or with the project half too when given its deps. */
-export function createPageSharingHost(build: (projects?: ProjectSharingDeps) => SharingHost): PageSharingHost {
+export function createPageSharingHost(build: (projects?: ProjectShareDeps) => ShareHost): PageSharingHost {
   let inner = build();
   const listeners = new Set<() => void>();
-  const host: SharingHost = {
+  const host: ShareHost = {
     place: inner.place,
     offers: () => inner.offers(),
     onOffersChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
@@ -66,7 +66,7 @@ export interface ShareLinkRelay {
 export function createBrowserSharingHost(ctx: HostContext, relay: ShareLinkRelay, logger: ILogger): PageSharingHost {
   const fs = createLibraryFileSystem();
   const sidecars = new PaperDataStore(createSidecarPort(fs), { logger });
-  return createPageSharingHost((projects) => createSharingHost({
+  return createPageSharingHost((projects) => createShareHost({
     place: "this browser",
     logger,
     ...(projects ? { projects } : {}),

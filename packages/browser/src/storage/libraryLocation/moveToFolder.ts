@@ -1,6 +1,6 @@
 // Moves papers from one library to another, clearing each from the source only after its copy is verified.
 import {
-  errorMessage,
+  formatError,
   type ILogger,
   type LibraryFileSystem,
   METADATA_FILE,
@@ -81,7 +81,7 @@ export interface MoveResult {
 /** Carries what was done before the failure, so the caller can tell the user. */
 export class MoveToFolderError extends Error {
   constructor(readonly paperId: string, readonly moved: string[], readonly skipped: string[], cause: unknown) {
-    super(`Moving paper ${paperId} to the folder failed: ${errorMessage(cause)}`, { cause });
+    super(`Moving paper ${paperId} to the folder failed: ${formatError(cause)}`, { cause });
     this.name = "MoveToFolderError";
   }
 }

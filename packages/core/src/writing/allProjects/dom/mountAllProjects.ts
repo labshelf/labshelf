@@ -3,7 +3,7 @@
  * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
 import { buildFrame } from "../../../libraryUi/dom/index.js";
-import type { SharingHost } from "../../../libraryUi/share/index.js";
+import type { ShareHost } from "../../../libraryUi/share/index.js";
 import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
 import { showMenu, toast, type MenuAnchor, el } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../viewModel/index.js";
@@ -55,7 +55,7 @@ export interface AllProjectsChannel {
   transport: AllProjectsTransport;
   prefs: PanePrefsPort;
   /** The host's sharing operations; the project menu offers sharing only when present. */
-  sharing?: SharingHost | undefined;
+  sharing?: ShareHost | undefined;
 }
 
 const NEW_ENTRIES: ReadonlyArray<{ kind: NewProjectKind; label: string; icon: "file" | "layers" | "folder-open" }> = [
@@ -94,7 +94,7 @@ interface RowHandlerDeps {
   rowById: (id: string) => ProjectRow | undefined;
   select: (id: string) => void;
   set: (view: Partial<ProjectViewState>) => void;
-  sharing: SharingHost | undefined;
+  sharing: ShareHost | undefined;
 }
 
 function rowHandlers(d: RowHandlerDeps, tray: ProjectExpansion["handlers"]): ProjectListHandlers {

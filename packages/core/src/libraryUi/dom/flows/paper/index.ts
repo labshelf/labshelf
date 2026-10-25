@@ -1,6 +1,6 @@
 /** Exports the paper commands and the tag prompt. */
 export {
-  askAuthor, attachPdf, changeTags, findPdf, fixableIds, hostFileAction, makeSearchable, openPaper, openSource,
-  saveNote, setPaperStatus, splitTags,
+  sendCopyRequest, attachPdf, updateTags, findPdf, findFixablePapers, runHostFileAction, createTextLayer, openPaper, openSource,
+  writeNote, setReadingStatus, splitTags,
 } from "./paperCommands.js";
-export { promptAddTags } from "./askTag.js";
+export { askAddTags } from "./askTag.js";

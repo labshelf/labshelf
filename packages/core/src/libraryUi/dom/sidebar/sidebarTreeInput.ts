@@ -18,7 +18,7 @@ function close(t: SidebarState, render: () => void): void {
 }
 
 /** The input row; Enter sends a non-blank text, Escape or leaving it empty closes it. */
-export function treeInputRow(t: SidebarState, depth: number, render: () => void): HTMLElement {
+export function renderTreeInputRow(t: SidebarState, depth: number, render: () => void): HTMLElement {
   const state = t.treeInput!;
   const input = el("input", {
     class: "tree-add-input", type: "text", placeholder: state.placeholder, "aria-label": state.placeholder, maxlength: "500", value: state.text,

@@ -74,7 +74,7 @@ const FILE_LABELS: Record<string, [string, FileLabelTone]> = {
 };
 
 /** A file's icon: its type label when it has one, else the plain file glyph. */
-export function fileIcon(name: string): SidebarNodeIcon {
+export function deriveFileIcon(name: string): SidebarNodeIcon {
   const ext = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
   const label = FILE_LABELS[ext];
   return label ? { kind: "label", text: label[0], tone: label[1] } : { kind: "glyph", name: "file" };

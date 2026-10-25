@@ -1,11 +1,11 @@
 /** Finds a paper in the online registries from noisy front-matter text or a title. */
-import { completeness, type ResolvedMetadata } from "../metadata/index.js";
-import { plainRecord, type RegistryEnv, type RegistryRecord } from "../registries/index.js";
+import { deriveCompleteness, type ResolvedMetadata } from "../metadata/index.js";
+import { derivePlainMetadata, type RegistryEnv, type RegistryEntry } from "../registries/index.js";
 import { searchAllRegistries } from "./registrySearch.js";
-import { normalizeForMatch, TITLE_MATCH_THRESHOLD, titleOverlap, titlePosition } from "./titleMatch.js";
+import { normalizeForMatch, TITLE_MATCH_THRESHOLD, deriveTitleOverlap, findTitlePosition } from "./titleMatch.js";
 
 interface Pick {
-  record: RegistryRecord;
+  record: RegistryEntry;
   position: number;
   verbatim: boolean;
   score: number;
@@ -62,7 +62,7 @@ export async function searchOnlineByText(query: string, env: RegistryEnv = {}): 
   // at once costs one round trip and rescues papers any single index would lose.
   const searchTerm = normalized.slice(0, 600);
   const groups = await Promise.all(searchAllRegistries(env, searchTerm));
-  return plainRecord(bestMatch(groups.flat(), query, normalized));
+  return derivePlainMetadata(bestMatch(groups.flat(), query, normalized));
 }
 
 /**
@@ -80,22 +80,22 @@ export async function searchOnlineByTitle(title: string, env: RegistryEnv = {}):
 // the earliest one wins. Ties — every record sits at 0 when the query is just
 // a title — go to the record whose title occurs verbatim ("Attention Is All
 // You Need" against "Is Attention All You Need?"), then to the most complete.
-function bestMatch(records: RegistryRecord[], query: string, normalized: string): RegistryRecord | undefined {
+function bestMatch(records: RegistryEntry[], query: string, normalized: string): RegistryEntry | undefined {
   const queryWords = normalized.split(" ").filter((word) => word.length > 2);
   let best: Pick | undefined;
   for (const record of records) {
     if (!record.title || record.isComponent) {
       continue;
     }
-    if (titleOverlap(record.title, query) < TITLE_MATCH_THRESHOLD) {
+    if (deriveTitleOverlap(record.title, query) < TITLE_MATCH_THRESHOLD) {
       continue;
     }
-    const position = titlePosition(record.title, queryWords);
+    const position = findTitlePosition(record.title, queryWords);
     if (position === undefined) {
       continue;
     }
     const verbatim = ` ${normalized} `.includes(` ${normalizeForMatch(record.title)} `);
-    const pick: Pick = { record, position, verbatim, score: completeness(record) };
+    const pick: Pick = { record, position, verbatim, score: deriveCompleteness(record) };
     if (!best || beats(pick, best)) {
       best = pick;
     }

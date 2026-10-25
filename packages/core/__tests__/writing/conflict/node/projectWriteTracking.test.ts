@@ -6,7 +6,7 @@ import { FileProjectVersionStore } from '../../../../src/writing/conflict/index'
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
 import { blankTemplate } from '../../../../src/templates/index';
-import { deviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
+import { createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { readWriteRecords } from '../../../../src/library/writeRecords/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
 import type { ILogger } from '../../../../src/ports/index';
@@ -23,7 +23,7 @@ async function fixture() {
   const disk = new NodeLibraryFileSystem();
   const file = path.join(project.folder, 'main.tex');
   await disk.writeText(file, 'base');
-  const store = new FileProjectVersionStore(disk, path, deviceLocalLayout(root).mergeBasesDir);
+  const store = new FileProjectVersionStore(disk, path, createDeviceLocalLayout(root).mergeBasesDir);
   await scanLibraryConflicts(root, store, logger);
   return { root, project, disk, file, store, tracking: createProjectSaveTracking(disk, () => root, logger) };
 }

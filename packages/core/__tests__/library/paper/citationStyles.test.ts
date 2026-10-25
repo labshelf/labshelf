@@ -1,5 +1,5 @@
 import type { PaperRecord } from "../../../src/model/index";
-import { formatCitations, formatDateTime, inTextCitation } from "../../../src/library/paper/index";
+import { formatCitations, formatDateTime, formatInTextCitation } from "../../../src/library/paper/index";
 
 function paper(extra: Partial<PaperRecord> = {}): PaperRecord {
   return {
@@ -13,18 +13,18 @@ function paper(extra: Partial<PaperRecord> = {}): PaperRecord {
 
 describe("inTextCitation", () => {
   it("names one, two or the first of many authors with the year", () => {
-    expect(inTextCitation(paper({ authors: ["Ada Lovelace"] }))).toBe("Lovelace, 2017");
-    expect(inTextCitation(paper({ authors: ["Ada Lovelace", "Charles Babbage"] }))).toBe("Lovelace & Babbage, 2017");
-    expect(inTextCitation(paper())).toBe("Vaswani et al., 2017");
+    expect(formatInTextCitation(paper({ authors: ["Ada Lovelace"] }))).toBe("Lovelace, 2017");
+    expect(formatInTextCitation(paper({ authors: ["Ada Lovelace", "Charles Babbage"] }))).toBe("Lovelace & Babbage, 2017");
+    expect(formatInTextCitation(paper())).toBe("Vaswani et al., 2017");
   });
 
   it("writes n.d. without a year and the title without authors", () => {
-    expect(inTextCitation({ title: "Untitled Draft", authors: ["Ada Lovelace"] })).toBe("Lovelace, n.d.");
-    expect(inTextCitation({ title: "Untitled Draft", authors: [" "], year: 2020 })).toBe("Untitled Draft, 2020");
+    expect(formatInTextCitation({ title: "Untitled Draft", authors: ["Ada Lovelace"] })).toBe("Lovelace, n.d.");
+    expect(formatInTextCitation({ title: "Untitled Draft", authors: [" "], year: 2020 })).toBe("Untitled Draft, 2020");
   });
 
   it("keeps name particles with the family name", () => {
-    expect(inTextCitation({ title: "Symphony", authors: ["Ludwig van Beethoven"], year: 1808 })).toBe("van Beethoven, 1808");
+    expect(formatInTextCitation({ title: "Symphony", authors: ["Ludwig van Beethoven"], year: 1808 })).toBe("van Beethoven, 1808");
   });
 });
 

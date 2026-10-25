@@ -1,6 +1,6 @@
 // Opens the share link in the page's fragment and shows its folder in the library UI, or one of its papers in the reader.
 import {
-  createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, errorMessage, openShare, type OpenedShare,
+  createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, formatError, openShare, type OpenedShare,
 } from "@labshelf/core";
 import { applyThemeToDocument, mountLibraryUi, resolveTheme, toast, type MenuEntry } from "@labshelf/core/dom";
 
@@ -20,7 +20,7 @@ const openPaper = (id: string): void => { location.assign(`?paper=${encodeURICom
 const backToFolder = (): void => { location.assign(`${location.pathname}${location.hash}`); };
 
 function failure(err: unknown): string {
-  return err instanceof PdfLoadError ? PDF_ERROR_TEXT[err.reason] : errorMessage(err);
+  return err instanceof PdfLoadError ? PDF_ERROR_TEXT[err.reason] : formatError(err);
 }
 
 async function run(what: string, task: () => Promise<void>, context: Record<string, unknown>): Promise<void> {
@@ -122,7 +122,7 @@ if (bar && main) {
   installShareStyles(paperParam() === null ? "library" : "reader");
   document.body.dataset["view"] = paperParam() === null ? "library" : "reader";
   open({ bar, main }).catch((err: unknown) => {
-    renderState(main, { icon: "warning", text: "Something went wrong opening this folder", hint: errorMessage(err) });
+    renderState(main, { icon: "warning", text: "Something went wrong opening this folder", hint: formatError(err) });
     void consoleLogger.error(MODULE, err);
   });
 }

@@ -16,7 +16,7 @@ const FUNCTION_WORDS = new Set([
  * when there is too little text to judge, so short documents are not rejected.
  * @returns false only when the text is confidently unreadable (broken encoding).
  */
-export function looksLikeNaturalText(text: string): boolean {
+export function isNaturalText(text: string): boolean {
   const words = text.toLowerCase().match(/[a-zà-ÿ]{2,}/g) ?? [];
   if (words.length < 40) {
     return true;

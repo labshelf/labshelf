@@ -1,8 +1,8 @@
 // Runs the native-host commands and the launcher refresh against this machine's browsers, logging to the bridge log.
 import { Logger } from "@labshelf/core";
-import { FileLogSink, bridgeLogPath } from "@labshelf/core/node";
+import { FileLogSink, resolveBridgeLogPath } from "@labshelf/core/node";
 import {
-  systemNativeHostEnv,
+  createSystemNativeHostEnv,
   refreshNativeHost,
   type NativeHostEnv,
 } from "@labshelf/core/nativeHost/node";
@@ -31,8 +31,8 @@ export function isNativeHostCommand(command: string | undefined): command is Nat
   return command === "bridge" || command === "helper";
 }
 
-function systemEnv(): ReturnType<typeof systemNativeHostEnv> {
-  return systemNativeHostEnv(new Logger([new FileLogSink(bridgeLogPath())], { onSinkError: () => undefined }));
+function systemEnv(): ReturnType<typeof createSystemNativeHostEnv> {
+  return createSystemNativeHostEnv(new Logger([new FileLogSink(resolveBridgeLogPath())], { onSinkError: () => undefined }));
 }
 
 export function runSystemNativeHostCommand(

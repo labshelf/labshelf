@@ -3,8 +3,8 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
-import { $, mountLibrarySidebar, runSharingDialog, type SidebarActions } from "@labshelf/core/dom";
-import { isSharingMessage, type SidebarProjectItem } from "@labshelf/core";
+import { $, mountLibrarySidebar, runShareDialog, type SidebarActions } from "@labshelf/core/dom";
+import { isShareMessage, type SidebarProjectItem } from "@labshelf/core";
 import type { HostToSidebar, ProjectTreeMessage, SidebarToHost } from "../sidebarMessages.js";
 import { createWebviewSharingClient } from "../../webview/index.js";
 import { folderDropTarget } from "./folderDropZone.js";
@@ -18,7 +18,7 @@ interface SidebarState { [EXPANDED_KEY]?: string[]; [COLLAPSED_KEY]?: string[] }
 const api = acquireVsCodeApi();
 const post = (m: SidebarToHost): void => api.postMessage(m);
 const sharing = createWebviewSharingClient(api);
-sharing.onOpen((request) => void runSharingDialog(sharing, request));
+sharing.onOpen((request) => void runShareDialog(sharing, request));
 // setState replaces the whole state, so each save merges into what the other key holds.
 const state = (): SidebarState => (api.getState() as SidebarState | undefined) ?? {};
 const saveState = (patch: SidebarState): void => api.setState({ ...state(), ...patch });
@@ -84,7 +84,7 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
 });
 
 window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
-  if (isSharingMessage(e.data)) { return; }
+  if (isShareMessage(e.data)) { return; }
   const m = e.data;
   if (m.type === "spaces") { sidebar.setSpaces(m.rows); }
   else if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }

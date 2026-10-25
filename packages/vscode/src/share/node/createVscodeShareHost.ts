@@ -2,15 +2,15 @@
 import * as vscode from "vscode";
 
 import {
-  createSharingHost,
+  createShareHost,
   type ILogger,
   type RelayAccountStore,
   type ShareWorkflowPorts,
-  type SharingHost,
+  type ShareHost,
   createWorkerShareReader,
   importShareLink,
   relayBackendFor,
-  type FolderLinkDeps,
+  type FolderShareLinkDeps,
 } from "@labshelf/core";
 import { libraryPaths, type LibraryPaths } from "../../libraryUi/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../writing/session/index.js";
@@ -30,7 +30,7 @@ function openServices(controller: SharingController): ActiveServices {
 }
 
 // INVARIANT: every member reads the open library at call time, so the host follows a library switch.
-function vscodeFolderLinks(controller: SharingController, relay: RelayAccountStore): FolderLinkDeps {
+function vscodeFolderLinks(controller: SharingController, relay: RelayAccountStore): FolderShareLinkDeps {
   const services = () => openServices(controller);
   const host: ShareLinkHost = { libraryRoot: () => controller.currentRoot()?.fsPath, relay };
   return {
@@ -73,7 +73,7 @@ function diskPath(paths: LibraryPaths, ui: string): string {
 }
 
 /** `paths` is read per call, since the open library can change under the host. */
-export function withLibraryPaths(host: SharingHost, paths: () => LibraryPaths): SharingHost {
+export function withLibraryPaths(host: ShareHost, paths: () => LibraryPaths): ShareHost {
   return {
     ...host,
     shareableFolder: async (ui) => {
@@ -101,8 +101,8 @@ export interface SharingCollab {
   relay: RelayAccountStore;
 }
 
-export function createVscodeSharingHost(controller: SharingController, collab: SharingCollab, logger: ILogger): SharingHost {
-  const host = createSharingHost({
+export function createVscodeSharingHost(controller: SharingController, collab: SharingCollab, logger: ILogger): ShareHost {
+  const host = createShareHost({
     place: "this device",
     logger,
     projects: {

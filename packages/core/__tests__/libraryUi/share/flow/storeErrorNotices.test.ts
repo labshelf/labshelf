@@ -1,6 +1,6 @@
 // Pins that a share's failure to store edits on this device is reported once per episode.
 import type { ProjectEntry, ShareConnection } from "../../../../src/index.js";
-import { persistenceFailureNotices } from "../../../../src/libraryUi/share/index.js";
+import { createStoreFailureNotices } from "../../../../src/libraryUi/share/index.js";
 
 function setup() {
   let failure: string | undefined;
@@ -8,7 +8,7 @@ function setup() {
   const shares: ShareConnection[] = [share];
   const entry = { kind: "ready", folder: "/lib/thesis", settings: { id: "thesis", title: "My Thesis" } } as unknown as ProjectEntry;
   const notify = jest.fn();
-  const check = persistenceFailureNotices({ shares: { list: () => shares } as never, projects: { list: () => [entry] } as never }, "page", notify);
+  const check = createStoreFailureNotices({ shares: { list: () => shares } as never, projects: { list: () => [entry] } as never }, "page", notify);
   return { check, notify, shares, fail: (reason: string | undefined) => { failure = reason; check(); } };
 }
 

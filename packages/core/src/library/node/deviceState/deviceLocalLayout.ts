@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
 
-import { cacheDir } from "../cacheDir.js";
-import { stateDir } from "./deviceStateDir.js";
+import { resolveCacheDir } from "../cacheDir.js";
+import { resolveDeviceStateDir } from "./deviceStateDir.js";
 
 export interface DeviceLocalLayout {
   /** Holds only the AI text index (embeddings and content hashes). */
@@ -45,15 +45,15 @@ function normalisedRoot(libraryRoot: string, platform: NodeJS.Platform): string 
 
 // CONTRACT: documents/contracts/library-format.md#device-local-files
 /** The first 16 hex chars of the SHA-256 of the normalised library root. */
-export function libraryKey(libraryRoot: string, platform: NodeJS.Platform = process.platform): string {
+export function deriveLibraryKey(libraryRoot: string, platform: NodeJS.Platform = process.platform): string {
   return createHash("sha256").update(normalisedRoot(libraryRoot, platform)).digest("hex").slice(0, 16);
 }
 
-export function deviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = process.env): DeviceLocalLayout {
-  const key = libraryKey(libraryRoot);
-  const deviceCache = cacheDir(env);
+export function createDeviceLocalLayout(libraryRoot: string, env: NodeJS.ProcessEnv = process.env): DeviceLocalLayout {
+  const key = deriveLibraryKey(libraryRoot);
+  const deviceCache = resolveCacheDir(env);
   const cache = path.join(deviceCache, "libraries", key);
-  const state = path.join(stateDir(env), "libraries", key);
+  const state = path.join(resolveDeviceStateDir(env), "libraries", key);
   const logsDir = path.join(state, "logs");
   return {
     aiDatabasePath: path.join(cache, "index.sqlite"),

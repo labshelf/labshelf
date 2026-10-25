@@ -4,7 +4,7 @@
 import { showDialog } from "../../../ui/dom/index.js";
 import type { UiContext } from "../uiContext.js";
 
-export async function confirmRemove(ctx: UiContext, ids: readonly string[]): Promise<void> {
+export async function askRemove(ctx: UiContext, ids: readonly string[]): Promise<void> {
   const wanted = new Set(ids);
   const papers = ctx.store.get().papers.filter((p) => wanted.has(p.id));
   if (papers.length === 0) return;

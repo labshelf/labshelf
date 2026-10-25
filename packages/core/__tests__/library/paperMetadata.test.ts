@@ -1,4 +1,4 @@
-import { paperRecordFromMetadata, parsePaperMetadata } from "@labshelf/core";
+import { createPaperRecord, parsePaperMetadata } from "@labshelf/core";
 
 const location = { id: "vaswani2017", path: "/lib/papers/ml/vaswani2017", hasPdf: true };
 
@@ -13,7 +13,7 @@ describe("parsePaperMetadata", () => {
 
 describe("paperRecordFromMetadata", () => {
   it("maps every field and takes the id and PDF presence from the folder", () => {
-    const record = paperRecordFromMetadata({
+    const record = createPaperRecord({
       title: "Attention Is All You Need",
       authors: ["Ashish Vaswani", 3, "Noam Shazeer"],
       year: 2017,
@@ -46,7 +46,7 @@ describe("paperRecordFromMetadata", () => {
   });
 
   it("falls back to the folder name for title and citekey and to unread for an unknown status", () => {
-    const record = paperRecordFromMetadata({ status: "archived", year: "2017" }, { ...location, hasPdf: false });
+    const record = createPaperRecord({ status: "archived", year: "2017" }, { ...location, hasPdf: false });
     expect(record.title).toBe("vaswani2017");
     expect(record.citeKey).toBe("vaswani2017");
     expect(record.status).toBe("unread");
@@ -55,14 +55,14 @@ describe("paperRecordFromMetadata", () => {
   });
 
   it("drops numbers in string fields instead of coercing them", () => {
-    const record = paperRecordFromMetadata({ volume: 15, pages: 12, issue: "3" }, location);
+    const record = createPaperRecord({ volume: 15, pages: 12, issue: "3" }, location);
     expect(record).not.toHaveProperty("volume");
     expect(record).not.toHaveProperty("pages");
     expect(record.issue).toBe("3");
   });
 
   it("keeps blank strings and blank list entries as written", () => {
-    const record = paperRecordFromMetadata({ title: "", citekey: " ", journal: "", authors: ["", "Noam Shazeer"] }, location);
+    const record = createPaperRecord({ title: "", citekey: " ", journal: "", authors: ["", "Noam Shazeer"] }, location);
     expect(record.title).toBe("");
     expect(record.citeKey).toBe(" ");
     expect(record.journal).toBe("");
@@ -72,60 +72,60 @@ describe("paperRecordFromMetadata", () => {
 
 describe("paperRecordFromMetadata pdfVersion", () => {
   it.each(["preprint", "accepted", "published"])("reads %s", (pdfVersion) => {
-    expect(paperRecordFromMetadata({ pdfVersion }, location).pdfVersion).toBe(pdfVersion);
+    expect(createPaperRecord({ pdfVersion }, location).pdfVersion).toBe(pdfVersion);
   });
 
   it.each([["final"], [3], [null], [""]])("ignores the invalid value %p", (pdfVersion) => {
-    expect(paperRecordFromMetadata({ pdfVersion }, location)).not.toHaveProperty("pdfVersion");
+    expect(createPaperRecord({ pdfVersion }, location)).not.toHaveProperty("pdfVersion");
   });
 
   it("loads a sidecar that has no pdfVersion", () => {
-    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("pdfVersion");
+    expect(createPaperRecord({ title: "A" }, location)).not.toHaveProperty("pdfVersion");
   });
 });
 
 describe("paperRecordFromMetadata pdfRequestedAt", () => {
   it("reads a YYYY-MM-DD day", () => {
-    expect(paperRecordFromMetadata({ pdfRequestedAt: "2026-10-15" }, location).pdfRequestedAt).toBe("2026-10-15");
+    expect(createPaperRecord({ pdfRequestedAt: "2026-10-15" }, location).pdfRequestedAt).toBe("2026-10-15");
   });
 
   it.each([["15/10/2026"], ["2026-10-15T10:00:00Z"], ["2026-1-5"], [20261015], [null], [""], [new Date()]])("ignores the invalid value %p", (pdfRequestedAt) => {
-    expect(paperRecordFromMetadata({ pdfRequestedAt }, location)).not.toHaveProperty("pdfRequestedAt");
+    expect(createPaperRecord({ pdfRequestedAt }, location)).not.toHaveProperty("pdfRequestedAt");
   });
 
   it("loads a sidecar that has no pdfRequestedAt", () => {
-    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("pdfRequestedAt");
+    expect(createPaperRecord({ title: "A" }, location)).not.toHaveProperty("pdfRequestedAt");
   });
 });
 
 describe("paperRecordFromMetadata statusChangedAt", () => {
   it("reads an ISO timestamp string", () => {
-    expect(paperRecordFromMetadata({ statusChangedAt: "2026-10-15T10:00:00.000Z" }, location).statusChangedAt).toBe("2026-10-15T10:00:00.000Z");
+    expect(createPaperRecord({ statusChangedAt: "2026-10-15T10:00:00.000Z" }, location).statusChangedAt).toBe("2026-10-15T10:00:00.000Z");
   });
 
   it.each([["yesterday"], ["15/10/2026"], [20261015], [null], [""], [new Date()]])("ignores the invalid value %p", (statusChangedAt) => {
-    expect(paperRecordFromMetadata({ statusChangedAt }, location)).not.toHaveProperty("statusChangedAt");
+    expect(createPaperRecord({ statusChangedAt }, location)).not.toHaveProperty("statusChangedAt");
   });
 
   it("loads a sidecar that has no statusChangedAt", () => {
-    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("statusChangedAt");
+    expect(createPaperRecord({ title: "A" }, location)).not.toHaveProperty("statusChangedAt");
   });
 });
 
 describe("paperRecordFromMetadata files", () => {
   it("reads the files map of descriptions", () => {
-    expect(paperRecordFromMetadata({ files: { "notes.md": "My notes", data: "Raw" } }, location).files).toEqual({ "notes.md": "My notes", data: "Raw" });
+    expect(createPaperRecord({ files: { "notes.md": "My notes", data: "Raw" } }, location).files).toEqual({ "notes.md": "My notes", data: "Raw" });
   });
 
   it("drops entries whose description is not a string", () => {
-    expect(paperRecordFromMetadata({ files: { "a.txt": "ok", "b.txt": 3, "c.txt": null, "d.txt": ["x"] } }, location).files).toEqual({ "a.txt": "ok" });
+    expect(createPaperRecord({ files: { "a.txt": "ok", "b.txt": 3, "c.txt": null, "d.txt": ["x"] } }, location).files).toEqual({ "a.txt": "ok" });
   });
 
   it.each([["text"], [3], [["a"]], [null], [{}]])("leaves files out for the value %p", (files) => {
-    expect(paperRecordFromMetadata({ files }, location)).not.toHaveProperty("files");
+    expect(createPaperRecord({ files }, location)).not.toHaveProperty("files");
   });
 
   it("leaves files out when the key is absent", () => {
-    expect(paperRecordFromMetadata({ title: "A" }, location)).not.toHaveProperty("files");
+    expect(createPaperRecord({ title: "A" }, location)).not.toHaveProperty("files");
   });
 });

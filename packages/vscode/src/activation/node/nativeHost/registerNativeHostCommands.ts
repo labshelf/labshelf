@@ -4,12 +4,12 @@ import * as vscode from "vscode";
 import type { HostAdapters } from "../../hostAdapters.js";
 import { connectBrowser } from "./connectBrowser.js";
 import { refreshNativeHosts } from "./refreshNativeHosts.js";
-import { errorMessage, type ILogger } from "@labshelf/core";
-import { bridgeLogPath } from "@labshelf/core/node";
+import { formatError, type ILogger } from "@labshelf/core";
+import { resolveBridgeLogPath } from "@labshelf/core/node";
 import {
   HELPER_HOST_SPEC,
   installNativeHost,
-  systemNativeHostEnv,
+  createSystemNativeHostEnv,
   type NativeHostInstallResult,
 } from "@labshelf/core/nativeHost/node";
 import { scriptLaunch } from "./hostLaunch.js";
@@ -19,13 +19,13 @@ const LOG_MODULE = "helper-install";
 const USE_VS_CODE = "Use VS Code instead";
 
 async function buildLatexForBrowser(context: vscode.ExtensionContext, createLogger: (logPath: string) => ILogger, replaceStandalone = false): Promise<void> {
-  const logger = createLogger(bridgeLogPath());
+  const logger = createLogger(resolveBridgeLogPath());
   try {
-    const result = await installNativeHost(systemNativeHostEnv(logger), HELPER_HOST_SPEC, scriptLaunch(context, "helperHost"), { replaceStandalone });
+    const result = await installNativeHost(createSystemNativeHostEnv(logger), HELPER_HOST_SPEC, scriptLaunch(context, "helperHost"), { replaceStandalone });
     await report(result, () => buildLatexForBrowser(context, createLogger, true));
   } catch (error) {
     await logger.error(LOG_MODULE, error, { action: "build LaTeX for the browser" });
-    void vscode.window.showErrorMessage(`LabShelf could not set up LaTeX for the browser: ${errorMessage(error)}`);
+    void vscode.window.showErrorMessage(`LabShelf could not set up LaTeX for the browser: ${formatError(error)}`);
   }
 }
 

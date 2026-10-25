@@ -1,5 +1,5 @@
 // Builds the Citations tab of the All projects detail pane: one row per cited key, saying where it resolves.
-import { muted } from "../../../../../libraryUi/dom/index.js";
+import { renderMuted } from "../../../../../libraryUi/dom/index.js";
 import { escapeHtml } from "../../../../../ui/index.js";
 import type { ProjectCitation, ProjectDetail } from "../../../projectDetailPane.js";
 
@@ -12,6 +12,6 @@ function citationRow(c: ProjectCitation, bibFile: string | undefined): string {
 }
 
 export function citationsTabHtml(detail: ProjectDetail): string {
-  if (detail.citations.length === 0) return muted("No citations yet.");
+  if (detail.citations.length === 0) return renderMuted("No citations yet.");
   return `<div class="ls-cite-list" role="list">${detail.citations.map((c) => citationRow(c, detail.bibliography?.file)).join("")}</div>`;
 }

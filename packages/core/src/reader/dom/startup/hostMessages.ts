@@ -2,7 +2,7 @@
  * Applies the host's messages to an open reader: commands, page jumps, annotation updates, preference changes, and a
  * preview's reloads, build state, logs, revealed source points and citation answers, and changed regions.
  */
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 import type { PreviewCitations } from "../hover/index.js";
 import type { ChangeMarks, Keyboard, SourceSync } from "../navigation/index.js";
 import type { DocumentReloader, ReaderContext } from "../session/index.js";
@@ -39,7 +39,7 @@ export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSyn
   host.on("reloadDocument", (msg) => {
     // Marks describe the document they came with; marks sent after this request belong to the reloaded one.
     changeMarks.show([]);
-    reloader.reload(msg.pdfUrl).then(() => ui.previewChrome?.documentChanged()).catch((err: unknown) => ui.buildBanner.showReloadError(errorMessage(err)));
+    reloader.reload(msg.pdfUrl).then(() => ui.previewChrome?.documentChanged()).catch((err: unknown) => ui.buildBanner.showReloadError(formatError(err)));
   });
   // The preview chrome shows the build state in the header and footer.
   host.on("buildStatus", (msg) => ui.previewChrome?.applyBuild(msg));

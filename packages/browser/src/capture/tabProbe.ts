@@ -1,5 +1,5 @@
 /** Reads a tab's page for the capture flow, with the URL alone as the fallback for a tab the probe cannot enter. */
-import { errorMessage, type ILogger, type RawPage } from "@labshelf/core";
+import { formatError, type ILogger, type RawPage } from "@labshelf/core";
 import { probeLinks, probeMeta, type PageLinkEvidence, type PageMetaEvidence } from "./pageProbe";
 import { scriptingApi } from "./tab";
 
@@ -18,7 +18,7 @@ export async function probeTab(log: ILogger, tabId: number, tabUrl: string): Pro
     if (meta && links) return { ...meta, ...links };
     throw new Error("probe returned nothing");
   } catch (err) {
-    void log.log("WARN", "capture", "probe failed, using the URL alone", { url: tabUrl, error: errorMessage(err) });
+    void log.log("WARN", "capture", "probe failed, using the URL alone", { url: tabUrl, error: formatError(err) });
     const pageIsPdf = /\.pdf(?:[?#]|$)/i.test(tabUrl);
     return { pageUrl: tabUrl, meta: {}, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [], ...(pageIsPdf ? { pageIsPdf: true } : {}) };
   }

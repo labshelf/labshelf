@@ -19,7 +19,7 @@ interface DoiPathPlatform {
   query?: string;
 }
 
-export function doiPathRule(p: DoiPathPlatform): PublisherRule {
+export function createDoiPathRule(p: DoiPathPlatform): PublisherRule {
   const pdfAt = (host: string, doi: string): string => `https://${host}/doi/${p.pdfPath ?? "pdf"}/${doi}${p.query ?? ""}`;
   return {
     platform: p.platform,

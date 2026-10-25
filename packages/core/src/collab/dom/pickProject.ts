@@ -1,9 +1,9 @@
 // Resolves the project a dialog acts on: the given id, or the user's pick from the host's list.
 import { quickPick, toast } from "../../ui/dom/index.js";
-import type { SharingHost, SharingProject } from "../../libraryUi/share/index.js";
+import type { ShareHost, ShareProject } from "../../libraryUi/share/index.js";
 
 /** `onlyShared` lists just the projects this device shares. Undefined when nothing was chosen. */
-export async function pickProject(host: SharingHost, projectId: string | undefined, onlyShared: boolean, title: string): Promise<SharingProject | undefined> {
+export async function pickProject(host: ShareHost, projectId: string | undefined, onlyShared: boolean, title: string): Promise<ShareProject | undefined> {
   const all = await host.projects();
   if (projectId !== undefined) {
     const found = all.find((p) => p.id === projectId);

@@ -1,8 +1,8 @@
 // Renders only the paper rows near the viewport, re-slicing on scroll and resize, with padding standing in for the rest.
 import type { PaperGroup } from "../groupPapers.js";
-import { measureRowHeight } from "./rowHeight.js";
+import { readRowHeight } from "./rowHeight.js";
 import { createRowWindow, type RowViewport } from "./rowWindow.js";
-import { focusedRow, paperRowOf } from "../tree/index.js";
+import { findFocusedRow, findPaperRow } from "../tree/index.js";
 
 /** The open paper's tray: its rendered height in px and its row count. */
 interface OpenExtent {
@@ -27,7 +27,7 @@ function toLogical(scrollTop: number, openRow: number, rowHeight: number, extra:
 /** The rendered tray of paper `id`, or null when its row is not rendered (the last measurement then still holds). */
 function measureOpenExtent(list: HTMLElement, id: string | null): OpenExtent | null {
   if (!id) return NO_EXTENT;
-  const tray = paperRowOf(list, id)?.closest(".paper-row")?.querySelector<HTMLElement>(".paper-children");
+  const tray = findPaperRow(list, id)?.closest(".paper-row")?.querySelector<HTMLElement>(".paper-children");
   if (!tray) return null;
   return { id, height: tray.offsetHeight, rows: tray.querySelectorAll('[role="row"]').length };
 }
@@ -96,7 +96,7 @@ const PARKED = "data-parked";
  * focused row was removed (the browser would move it to `body`) and restores it to the cursor row once that renders.
  */
 function parkFocus(list: HTMLElement, cursor: () => string | null): () => void {
-  const hadRow = focusedRow(list) !== null;
+  const hadRow = findFocusedRow(list) !== null;
   return () => {
     const active = document.activeElement;
     if (hadRow && !list.contains(active) && (active === document.body || active === null)) {
@@ -106,7 +106,7 @@ function parkFocus(list: HTMLElement, cursor: () => string | null): () => void {
       return;
     }
     if (active !== list || !list.hasAttribute(PARKED)) return;
-    const row = paperRowOf(list, cursor());
+    const row = findPaperRow(list, cursor());
     if (!row) return;
     list.removeAttribute(PARKED);
     row.focus({ preventScroll: true });
@@ -187,7 +187,7 @@ function sliceOf(parts: WindowedListParts, st: State): Slice {
   const all: Slice = { groups: st.model.groups, padTop: 0, padBottom: 0 };
   // Without layout (jsdom, a hidden pane) every row renders.
   if (height <= 0) return all;
-  if (!st.rowH) st.rowH = measureRowHeight(parts.list);
+  if (!st.rowH) st.rowH = readRowHeight(parts.list);
   if (!(st.rowH > 0)) return all;
   const { rowH, open } = st;
   const at = openRow(st);

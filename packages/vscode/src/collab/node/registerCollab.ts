@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   offerOwnRelayToShares,
-  persistenceFailureNotices,
+  createStoreFailureNotices,
   withdrawOwnRelayFromShares,
   type ILogger,
   type RelayAccountStore,
@@ -152,7 +152,7 @@ function createHost(context: vscode.ExtensionContext, controller: Controller, pr
 export function registerCollaboration(context: vscode.ExtensionContext, controller: Controller, projects: WritingProjects): CollabHost {
   const host = createHost(context, controller, projects);
   registerShareStatusBar(context, host);
-  const noticeFailures = persistenceFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
+  const noticeFailures = createStoreFailureNotices(host.ports, "window", (message) => { void vscode.window.showErrorMessage(message); });
   registerRelay(context, {
     accounts: host.relay, logger: host.logger,
     offerToShares: async () => { (await offerOwnRelayToShares(host.ports)).forEach(showRefusedOffer); },

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import {
   detectSyncFolders,
-  inspectLibraryFolder,
+  detectLibraryFolder,
   loadSharedConfig,
   updateSharedConfig,
   type SyncFolder,
@@ -57,7 +57,7 @@ export async function offerLibraryMove(controller: LibraryRootController): Promi
   const detected = await detectSyncFolders({ home, env: process.env, platform: process.platform, logger: services.logger });
   const existing = new Set<string>();
   for (const folder of detected) {
-    if ((await inspectLibraryFolder(moveOfferTarget(folder))).exists) { existing.add(moveOfferTarget(folder)); }
+    if ((await detectLibraryFolder(moveOfferTarget(folder))).exists) { existing.add(moveOfferTarget(folder)); }
   }
   const offer = pickMoveOffer(root.fsPath, detected, await readDismissed(), existing);
   if (!offer) { return; }

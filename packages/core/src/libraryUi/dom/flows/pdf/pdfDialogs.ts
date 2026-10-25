@@ -7,10 +7,10 @@
  */
 import { PDF_VERSION_LABEL, isPrePublication } from "../../../../model/index.js";
 import { showDialog, type DialogButton } from "../../../../ui/dom/index.js";
-import { ASK_AUTHOR_LABEL, findMissMessage, noPdfDialogCopy, pdfAccessLabel } from "../../../pdfCopy.js";
+import { ASK_AUTHOR_LABEL, findMissMessage, createNoPdfDialogCopy, formatPdfAccessLabel } from "../../../pdfCopy.js";
 import type { PdfMiss } from "../../../protocol/index.js";
 import type { UiContext } from "../../uiContext.js";
-import { askAuthor, attachPdf, findPdf } from "../paper/index.js";
+import { sendCopyRequest, attachPdf, findPdf } from "../paper/index.js";
 
 export async function onPdfMissing(ctx: UiContext, id: string): Promise<void> {
   const choice = await showDialog({
@@ -34,17 +34,17 @@ export async function onFindMiss(ctx: UiContext, id: string, miss: PdfMiss): Pro
       { id: "attach", label: "Attach PDF…" },
       { id: "retry", label: "Search again", primary: !access },
       ...(ctx.caps.askAuthor ? [{ id: "author", label: ASK_AUTHOR_LABEL }] : []),
-      ...(access ? [{ id: "open", label: pdfAccessLabel(access), primary: true }] : []),
+      ...(access ? [{ id: "open", label: formatPdfAccessLabel(access), primary: true }] : []),
     ],
   });
-  if (choice === "author") askAuthor(ctx, id);
+  if (choice === "author") sendCopyRequest(ctx, id);
   else if (choice === "attach") attachPdf(ctx, id);
   else if (choice === "retry") findPdf(ctx, id);
   else if (choice === "open" && access) ctx.transport.post({ type: "paper.openForPdf", id, access });
 }
 
 /** Asks before looking for the published version of a paper whose PDF is a preprint or an accepted manuscript. */
-export async function confirmFindBetterPdf(ctx: UiContext, id: string): Promise<void> {
+export async function askFindBetterPdf(ctx: UiContext, id: string): Promise<void> {
   const paper = ctx.store.get().papers.find((p) => p.id === id);
   if (!paper || !isPrePublication(paper.pdfVersion)) return;
   const marks = ctx.store.get().stats[id]?.annotations ?? 0;
@@ -73,7 +73,7 @@ export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promi
     { id: "retry", label: "Search again" },
     { id: "author", label: ASK_AUTHOR_LABEL },
     { id: "save", label: "Save without PDF", primary: !miss.access },
-    ...(miss.access ? [{ id: "open" as const, label: pdfAccessLabel(miss.access), primary: true }] : []),
+    ...(miss.access ? [{ id: "open" as const, label: formatPdfAccessLabel(miss.access), primary: true }] : []),
   ];
-  return showDialog({ ...noPdfDialogCopy(title, miss), severity: "warning", buttons, ...(root ? { root } : {}) });
+  return showDialog({ ...createNoPdfDialogCopy(title, miss), severity: "warning", buttons, ...(root ? { root } : {}) });
 }

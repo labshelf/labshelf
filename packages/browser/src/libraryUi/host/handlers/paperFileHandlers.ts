@@ -1,5 +1,5 @@
 // Answers the file tray of a paper: lists its folder, describes, opens and copies the path of one entry.
-import { PDF_FILE, errorMessage, type LibraryFileSystem, type PaperRecord } from "@labshelf/core";
+import { PDF_FILE, formatError, type LibraryFileSystem, type PaperRecord } from "@labshelf/core";
 import { bx } from "../../../platform";
 import { createLibraryFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
@@ -45,7 +45,7 @@ async function describeFile(ctx: HostContext, id: string, name: string, descript
     if (!written) throw new Error(`no paper in ${paper.path}`);
   } catch (err) {
     void ctx.log.error("libraryUi", err, { action: "describeFile", id, name });
-    ctx.notice("error", `Could not save the description — ${errorMessage(err)}`);
+    ctx.notice("error", `Could not save the description — ${formatError(err)}`);
     return;
   }
   await ctx.snapshots.refresh();

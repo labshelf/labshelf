@@ -1,7 +1,7 @@
 // Pins cloud copies that arrive ahead of relay updates across two project mirrors.
 import { reconcileBlob } from "../../../src/collab/mirror/blobMirror";
 import { mergeText } from "../../../src/writing/conflict/node/index";
-import { sha256Hex } from "../../../src/hash/index";
+import { deriveSha256Hex } from "../../../src/hash/index";
 import { fileText, indexFiles, recordWritten, replaceFileText } from "../../../src/collab/model/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { FakeRelay, runFor } from "../transport/relay/fakeRelay";
@@ -102,7 +102,7 @@ describe("in-flight mirror writes", () => {
     const file = "plot.png";
     const { b } = await pair(file, initial);
     await b.mirror.close();
-    const hash = await sha256Hex(bytes);
+    const hash = await deriveSha256Hex(bytes);
     const entry = indexFiles(b.session.index).get(file)!;
     let entered!: () => void;
     const arrived = new Promise<void>((resolve) => { entered = resolve; });
@@ -135,9 +135,9 @@ describe("in-flight mirror writes", () => {
     expect(await runUntil(clock, () => text(b) === after)).toBe(true);
     await b.mirror.idle();
     const outside = "Title\nIntro\nMiddle\nMore\nOutside end\n";
-    const parent = await sha256Hex(new TextEncoder().encode(before));
-    const hash = await sha256Hex(new TextEncoder().encode(outside));
-    b.store.rememberVersion(path, await sha256Hex(new TextEncoder().encode(outside + "noise\n")), outside + "noise\n");
+    const parent = await deriveSha256Hex(new TextEncoder().encode(before));
+    const hash = await deriveSha256Hex(new TextEncoder().encode(outside));
+    b.store.rememberVersion(path, await deriveSha256Hex(new TextEncoder().encode(outside + "noise\n")), outside + "noise\n");
     await b.writeRecords.append({ path, hash, parent, by: "app", at: Date.now() });
     await writeFile(b, path, outside);
     b.mirror.changed(path);

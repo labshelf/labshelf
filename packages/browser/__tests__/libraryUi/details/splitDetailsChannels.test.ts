@@ -1,7 +1,7 @@
-import { createLoopbackTransport, type DetailsToHost, type HostToDetails, type DetailsTarget } from "@labshelf/core";
+import { createLoopbackTransport, type DetailsToHost, type HostToDetails, type DetailsSelection } from "@labshelf/core";
 import { splitDetailsChannels } from "../../../src/libraryUi/details";
 
-function setup(target: DetailsTarget = null) {
+function setup(target: DetailsSelection = null) {
   const { ui, host } = createLoopbackTransport<DetailsToHost, HostToDetails>();
   const onFolderOpen = jest.fn();
   const channels = splitDetailsChannels(host, { current: () => target, onFolderOpen });

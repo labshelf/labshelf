@@ -9,7 +9,7 @@ import type { UiContext } from "../../uiContext.js";
 import { askNoPdf } from "./pdfDialogs.js";
 
 /** Asks the host what a paper can be added from; papers land in the open folder. */
-export function requestAddPaper(ctx: UiContext): void {
+export function sendAddPaperRequest(ctx: UiContext): void {
   ctx.transport.post({ type: "paper.add", folder: ctx.store.get().folder });
 }
 

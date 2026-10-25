@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import {
-  brokenProjectItem,
-  readyProjectItem,
+  createBrokenProjectItem,
+  createReadyProjectItem,
   updateProjectSettings,
   type ChecklistSignals,
   type ILogger,
@@ -140,9 +140,9 @@ export class SidebarProjectsSource implements vscode.Disposable {
   /** Every project as a row; counts not yet known show as counting and arrive through `onDidChange`. */
   async rows(): Promise<SidebarProjectItem[]> {
     return Promise.all(this.deps.projects.list().map(async (entry) => {
-      if (entry.kind === "broken") { return brokenProjectItem(entry); }
+      if (entry.kind === "broken") { return createBrokenProjectItem(entry); }
       const reading = await this.deps.readingLists.of(entry);
-      return readyProjectItem(entry, this.counts.counted(entry), this.deps.buildOutcomes.last(entry.folder), reading);
+      return createReadyProjectItem(entry, this.counts.counted(entry), this.deps.buildOutcomes.last(entry.folder), reading);
     }));
   }
 

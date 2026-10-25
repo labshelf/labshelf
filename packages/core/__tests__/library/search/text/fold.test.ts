@@ -1,12 +1,12 @@
-import { fold } from "@labshelf/core";
+import { normalizeText } from "@labshelf/core";
 
 describe("fold", () => {
   it("strips every kind of accent and lowercases", () => {
-    expect(fold("Çaglar ÉCOLE naïve")).toBe("caglar ecole naive");
-    expect(fold("Lässig")).toBe("lassig");
+    expect(normalizeText("Çaglar ÉCOLE naïve")).toBe("caglar ecole naive");
+    expect(normalizeText("Lässig")).toBe("lassig");
   });
 
   it("leaves unaccented text only lowercased", () => {
-    expect(fold("Attention")).toBe("attention");
+    expect(normalizeText("Attention")).toBe("attention");
   });
 });

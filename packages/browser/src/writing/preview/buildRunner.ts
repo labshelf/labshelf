@@ -1,5 +1,5 @@
 // Runs helper build requests without cancelling a preview for the same source revision.
-import { errorMessage } from "@labshelf/core";
+import { formatError } from "@labshelf/core";
 import type { CompileMode, HelperCompileRequest, HelperCompileResult } from "@labshelf/core/helper";
 import type { BuildSchedulerOptions } from "./buildScheduler";
 
@@ -48,7 +48,7 @@ export function createBuildRunner({ helper, target, onResult, onStart, logger }:
       (err: unknown) => {
         void logger.error(LOG_MODULE, err, { op: "compile", projectId: target.projectId, mode, superseded: mine !== generation });
         if (mine !== generation) return;
-        complete({ status: "failed", changed: [], problems: [{ severity: "error", file: target.main, message: errorMessage(err) }] });
+        complete({ status: "failed", changed: [], problems: [{ severity: "error", file: target.main, message: formatError(err) }] });
       },
     );
   };

@@ -2,10 +2,10 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout } from "../../layout.js";
+import { createLibraryLayout } from "../../layout.js";
 import { countPaperFolders } from "./countPaperFolders.js";
 
-export interface LibraryFolderInfo {
+export interface LibraryFolderDetails {
   exists: boolean;
   isLibrary: boolean;
   paperCount: number;
@@ -17,14 +17,14 @@ async function isDirectory(target: string): Promise<boolean> {
 
 /** @returns true when every marker folder of the library layout exists in `root` */
 export async function isLibraryFolder(root: string): Promise<boolean> {
-  const checks = await Promise.all(libraryLayout(root, path.join).markerDirs().map(isDirectory));
+  const checks = await Promise.all(createLibraryLayout(root, path.join).markerDirs().map(isDirectory));
   return checks.every(Boolean);
 }
 
 /** @returns what the folder holds; a missing folder is `exists: false`, not an error */
-export async function inspectLibraryFolder(root: string): Promise<LibraryFolderInfo> {
+export async function detectLibraryFolder(root: string): Promise<LibraryFolderDetails> {
   if (!(await isDirectory(root))) { return { exists: false, isLibrary: false, paperCount: 0 }; }
   if (!(await isLibraryFolder(root))) { return { exists: true, isLibrary: false, paperCount: 0 }; }
-  const papersRoot = libraryLayout(root, path.join).papersRoot();
+  const papersRoot = createLibraryLayout(root, path.join).papersRoot();
   return { exists: true, isLibrary: true, paperCount: await countPaperFolders(papersRoot) };
 }

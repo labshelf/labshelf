@@ -47,7 +47,7 @@ export interface NativeHostWarning {
 
 export const INSTALL_LOG_MODULE = "native-host-install";
 
-export function requireRegistry(env: NativeHostEnv): RegistryRunner {
+export function ensureRegistry(env: NativeHostEnv): RegistryRunner {
   if (!env.registry) throw new Error("Installing a LabShelf native host on Windows needs a registry runner");
   return env.registry;
 }

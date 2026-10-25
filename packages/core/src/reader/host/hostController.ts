@@ -2,7 +2,7 @@
  * Answers the reader's messages on the host side: validates each one and replies through the host's ports.
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { BuildState, PageArea, PagePoint, PreviewRoots } from "../previewProtocol.js";
 import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol/index.js";
 import { annotationHandlers } from "./annotationMessages.js";
@@ -51,7 +51,7 @@ export class ReaderHostController {
       await (HANDLERS[raw.command] as MessageHandler<WebviewToHost["command"]>)(this.ctx, raw);
     } catch (err) {
       void logger.error(READER_LOG_MODULE, err, { paperId: paper.id, command: raw.command });
-      this.ports.notify(`Reader action failed: ${errorMessage(err)}`, "error");
+      this.ports.notify(`Reader action failed: ${formatError(err)}`, "error");
     }
   }
 

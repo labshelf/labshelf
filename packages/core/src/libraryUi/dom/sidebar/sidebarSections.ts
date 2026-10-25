@@ -11,7 +11,7 @@ export type GroupId = "library.folders" | "library.tags" | "projects.list" | `pr
 const chevronHtml = `<span class="tree-section-chevron">${icon("chevron-right")}</span>`;
 
 /** `actions` holds icon buttons shown on hover; the whole row toggles the section. */
-export function sectionRow(id: SectionId, label: string, open: boolean, actions = ""): HTMLElement {
+export function renderSectionRow(id: SectionId, label: string, open: boolean, actions = ""): HTMLElement {
   return el("div", {
     class: "tree-heading tree-section",
     role: "treeitem",
@@ -24,7 +24,7 @@ export function sectionRow(id: SectionId, label: string, open: boolean, actions 
 }
 
 /** A heading that folds the rows under it; `actions` holds icon buttons shown on hover. */
-export function groupRow(id: GroupId, label: string, open: boolean, actions = ""): HTMLElement {
+export function renderGroupRow(id: GroupId, label: string, open: boolean, actions = ""): HTMLElement {
   return el("div", {
     class: "tree-heading tree-group",
     role: "treeitem",

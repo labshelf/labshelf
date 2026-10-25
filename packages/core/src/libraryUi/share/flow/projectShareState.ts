@@ -1,13 +1,13 @@
 // Tells what this device knows of a project's share, from its entry and its share connection.
 import type { ShareConnection, ShareConnectionState } from "../../../collab/session/index.js";
 import type { ProjectEntry } from "../../../writing/project/index.js";
-import type { ProjectShareStatus } from "../shareHost.js";
+import type { ProjectShareState } from "../shareHost.js";
 
 export const TRASHED = "This project is in the trash.";
 export const UNREADABLE = "LabShelf cannot read this project's settings.";
 
 /** Undefined when the project may be shared or left here. */
-export function ineligibleReason(entry: ProjectEntry): string | undefined {
+export function deriveIneligibleReason(entry: ProjectEntry): string | undefined {
   if (entry.kind !== "ready") { return UNREADABLE; }
   return entry.settings.trashed ? TRASHED : undefined;
 }
@@ -20,21 +20,21 @@ function mirrorProblem(mirror: ShareConnectionState["mirror"]): string | undefin
 }
 
 /** The name a project goes by in messages. */
-export function projectName(entry: ProjectEntry): string {
+export function deriveProjectName(entry: ProjectEntry): string {
   return entry.kind === "ready" ? entry.settings.title ?? entry.settings.id : entry.folder.split(/[\\/]/).filter(Boolean).pop() ?? entry.folder;
 }
 
 /** What keeps a connected share's edits from this device's storage or disk; undefined when nothing does. */
-export function connectionProblem(connection: ShareConnection): string | undefined {
+export function deriveConnectionProblem(connection: ShareConnection): string | undefined {
   const state = connection.state();
   return state.persistenceFailure ?? mirrorProblem(state.mirror);
 }
 
-export function projectShareStatus(entry: ProjectEntry, connection: ShareConnection | undefined): ProjectShareStatus {
-  const reason = ineligibleReason(entry);
+export function deriveProjectShare(entry: ProjectEntry, connection: ShareConnection | undefined): ProjectShareState {
+  const reason = deriveIneligibleReason(entry);
   if (reason !== undefined) { return { kind: "ineligible", reason }; }
   if (entry.kind !== "ready" || entry.settings.shared === undefined) { return { kind: "notShared" }; }
   if (!connection) { return { kind: "shared", connected: false }; }
-  const problem = connectionProblem(connection);
+  const problem = deriveConnectionProblem(connection);
   return { kind: "shared", connected: connection.state().status === "open", ...(problem === undefined ? {} : { problem }) };
 }

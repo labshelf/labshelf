@@ -13,7 +13,7 @@ import { forgetPaper } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import { hashForFolder } from "../../libraryUi";
 import { ref } from "./libraryReference";
-import { PAPERS_DIR, findInLibrary, isPrePublication, publishedDoiOf, type FolderTreeNode, type ILogger } from "@labshelf/core";
+import { PAPERS_DIR, findInLibrary, isPrePublication, findPublishedDoi, type FolderTreeNode, type ILogger } from "@labshelf/core";
 
 // "Find PDF" for a paper already saved (no tab). One run per id is kept in
 // flight so repeated clicks share the search, and paper.pdf is written at the
@@ -47,7 +47,7 @@ export function handleFindBetterPdf(log: ILogger, mutations: LibraryMutations, i
     if (!record) throw new Error("This paper is no longer in your library.");
     if (!isPrePublication(record.pdfVersion)) throw new Error("This paper's PDF is not a preprint.");
     const draft = await draftFromRecord(log, record);
-    const doi = await publishedDoiOf(
+    const doi = await findPublishedDoi(
       { logger: log, contactEmail: (await getSettings()).contactEmail },
       { arxivId: draft.ids.arxivId, doi: draft.ids.doi ?? draft.metadata.doi },
     );

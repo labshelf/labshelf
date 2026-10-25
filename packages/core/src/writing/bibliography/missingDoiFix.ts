@@ -1,6 +1,6 @@
 /** Finds the DOI of an entry that lacks one and returns the edit that adds it. */
-import { crossRefSearch, type RegistryEnv } from "../../import/index.js";
-import { titleKey } from "../../library/index.js";
+import { searchCrossref, type RegistryEnv } from "../../import/index.js";
+import { normalizeTitleForMatch } from "../../library/index.js";
 import { plainField, type BibEntry } from "./bibEntries.js";
 import type { BibFix } from "./bibliographyReport.js";
 
@@ -11,11 +11,11 @@ import type { BibFix } from "./bibliographyReport.js";
  */
 export async function missingDoiFix(env: RegistryEnv, text: string, entry: BibEntry): Promise<BibFix | undefined> {
   const title = plainField(entry.fields.get("title"));
-  if (!titleKey(title)) { return undefined; }
+  if (!normalizeTitleForMatch(title)) { return undefined; }
   const year = Number.parseInt(plainField(entry.fields.get("year")), 10);
   const query = `${title} ${plainField(entry.fields.get("author"))}`;
-  const match = (await crossRefSearch(env, query)).find((record) =>
-    !record.isComponent && record.doi && titleKey(record.title ?? "") === titleKey(title)
+  const match = (await searchCrossref(env, query)).find((record) =>
+    !record.isComponent && record.doi && normalizeTitleForMatch(record.title ?? "") === normalizeTitleForMatch(title)
     && (!record.year || Number.isNaN(year) || record.year === year));
   if (!match?.doi) { return undefined; }
   // INVARIANT: the parser accepted the entry, so a comma follows its key.

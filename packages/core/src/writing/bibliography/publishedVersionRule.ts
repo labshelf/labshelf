@@ -1,10 +1,10 @@
 /** Warns about preprint entries whose published version is recorded, with a fix that replaces the entry. */
 import {
-  crossRefByDoi,
-  publishedDoiOf,
+  fetchCrossrefByDoi,
+  findPublishedDoi,
   type PreprintIds,
   type RegistryEnv,
-  type RegistryRecord,
+  type RegistryEntry,
 } from "../../import/index.js";
 import type { BibEntry } from "./bibEntries.js";
 import type { BibFinding } from "./bibliographyReport.js";
@@ -18,7 +18,7 @@ const PREPRINT_VENUE = /arxiv|biorxiv|medrxiv/i;
 const MAX_LISTED_AUTHORS = 50;
 
 /** The replacement text: an `@article` with the record's fields first, then the entry's other fields in their order. */
-function publishedEntry(entry: BibEntry, record: RegistryRecord, doi: string): string {
+function publishedEntry(entry: BibEntry, record: RegistryEntry, doi: string): string {
   const published: Array<[string, string | undefined]> = [
     ["title", record.title], ["author", record.authors?.join(" and ")], ["journal", record.journal],
     ["year", record.year?.toString()], ["volume", record.volume], ["number", record.issue], ["pages", record.pages],
@@ -49,7 +49,7 @@ function formatBibEntry(type: string, key: string, fields: ReadonlyMap<string, s
 export interface PublishedVersion {
   doi: string;
   /** The published work's metadata; undefined when CrossRef has no record for the DOI. */
-  record: RegistryRecord | undefined;
+  record: RegistryEntry | undefined;
 }
 
 export type PublishedVersionLookup = (preprint: PreprintIds) => Promise<PublishedVersion | undefined>;
@@ -72,9 +72,9 @@ export function publishedVersionLookup(env: RegistryEnv): PublishedVersionLookup
 }
 
 async function find(env: RegistryEnv, preprint: PreprintIds): Promise<PublishedVersion | undefined> {
-  const doi = await publishedDoiOf(env, preprint);
+  const doi = await findPublishedDoi(env, preprint);
   if (!doi) { return undefined; }
-  const record = await crossRefByDoi(env, doi);
+  const record = await fetchCrossrefByDoi(env, doi);
   return { doi, record: record?.isComponent ? undefined : record };
 }
 

@@ -5,13 +5,13 @@ import { randomUUID } from "node:crypto";
 
 import {
   createDeviceIdentity,
-  deviceLocalLayout,
+  createDeviceLocalLayout,
   NodeLibraryFileSystem,
   writeFileAtomic,
 } from "../../../library/node/index.js";
 import { scanProjectContentConflicts } from "../../../library/conflicts/node/index.js";
 import { readSharedProjectFiles } from "../../../library/conflicts/node/project/index.js";
-import { eligibleProjectConflictPath, parseConflictName, type ConflictCopy } from "../../../library/conflicts/index.js";
+import { isEligibleProjectConflictPath, parseConflictName, type ConflictCopy } from "../../../library/conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
 import { listProjectsOnDisk, nodeFileReads } from "../../project/node/index.js";
@@ -46,7 +46,7 @@ async function pendingConflict(input: DivergenceFile, text: string): Promise<Con
 
 async function restoreLocal(input: DivergenceFile, local: string, other: string): Promise<void> {
   const { file, store, projectId, relativePath } = input;
-  await prepareProjectSave({ ...input, text: local, parentText: other, identity: createDeviceIdentity(deviceLocalLayout(input.root), input.logger) });
+  await prepareProjectSave({ ...input, text: local, parentText: other, identity: createDeviceIdentity(createDeviceLocalLayout(input.root), input.logger) });
   await writeFileAtomic(file, local);
   await store.remember(projectId, relativePath, local);
 }
@@ -56,7 +56,7 @@ async function preserveOverlap(input: DivergenceFile, local: string, other: stri
   // INVARIANT: publish the other text before restoring local so interruption keeps both versions.
   const copy = `${file}.labshelf-conflict-${randomUUID()}`;
   await prepareProjectSave({ ...input, relativePath: path.relative(input.folder, copy).split(path.sep).join('/'),
-    text: other, parentText: undefined, identity: createDeviceIdentity(deviceLocalLayout(input.root), input.logger) });
+    text: other, parentText: undefined, identity: createDeviceIdentity(createDeviceLocalLayout(input.root), input.logger) });
   await fs.writeFile(copy, other, { flag: 'wx' });
   await store.setPending(projectId, relativePath, path.basename(copy));
   if (await fs.readFile(file, 'utf8') !== other) throw new Error(`Project file changed during divergence recovery: ${file}`);
@@ -75,7 +75,7 @@ async function mergeProjectDivergence(input: DivergenceFile): Promise<ConflictCo
   const local = await store.latest(projectId, relativePath);
   const diskHash = await textHash(other);
   if (local === undefined || local === other) { await store.remember(projectId, relativePath, other); return undefined; }
-  const identity = createDeviceIdentity(deviceLocalLayout(input.root), logger);
+  const identity = createDeviceIdentity(createDeviceLocalLayout(input.root), logger);
   const records = createWriteRecordStore(new NodeLibraryFileSystem(), folder, identity, logger);
   const record = recordFor(await records.read(), relativePath, diskHash);
   const base = record?.parent ? await store.version(projectId, relativePath, record.parent) : undefined;
@@ -107,7 +107,7 @@ interface ProjectTree {
 async function projectTree(root: string, folder: string, projectId: string, store: IProjectVersionStore, logger: ILogger, knownPaths?: ReadonlySet<string>): Promise<ProjectTree> {
   const tree: ProjectTree = { files: new Map(), copies: new Map() };
   for (const relative of await listProjectFiles(nodeFileReads, folder)) {
-    if (!eligibleProjectConflictPath(relative)) continue;
+    if (!isEligibleProjectConflictPath(relative)) continue;
     const file = path.join(folder, relative);
     const name = path.basename(file);
     if (name.startsWith(".")) { continue; }
@@ -152,7 +152,7 @@ async function scanProject(root: string, folder: string, projectId: string, stor
   await seedBases(projectId, tree, store, logger);
   for (const [original, copies] of tree.copies) {
     const rel = path.relative(folder, original).split(path.sep).join("/");
-    if (copies.some(copy => copy.tool === "app" || copy.match === "record" || copy.match === "similar") || !await mergeProjectCopies(copies, rel, store, logger, { folder, identity: createDeviceIdentity(deviceLocalLayout(root), logger) })) { unresolved.push(...copies); }
+    if (copies.some(copy => copy.tool === "app" || copy.match === "record" || copy.match === "similar") || !await mergeProjectCopies(copies, rel, store, logger, { folder, identity: createDeviceIdentity(createDeviceLocalLayout(root), logger) })) { unresolved.push(...copies); }
   }
   return unresolved;
 }

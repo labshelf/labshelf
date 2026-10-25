@@ -2,7 +2,7 @@
  * Combines every source into one record, field by field, each field taken from the most trustworthy source that has it.
  */
 import { BIBLIOGRAPHIC_FIELDS } from "../../model/index.js";
-import { tidyCitationFields } from "./tidyCitationFields.js";
+import { normalizeCitationFields } from "./tidyCitationFields.js";
 import type { ResolvedMetadata } from "./resolvedMetadata.js";
 
 /**
@@ -72,7 +72,7 @@ export function mergeMetadata(sources: MetadataSource[]): MergedMetadata {
     }
   }
 
-  return { metadata: tidyCitationFields(metadata as ResolvedMetadata), fieldSources };
+  return { metadata: normalizeCitationFields(metadata as ResolvedMetadata), fieldSources };
 }
 
 /**
@@ -80,7 +80,7 @@ export function mergeMetadata(sources: MetadataSource[]): MergedMetadata {
  * records can be compared on completeness.
  * @returns Number of populated fields.
  */
-export function completeness(metadata: ResolvedMetadata | undefined): number {
+export function deriveCompleteness(metadata: ResolvedMetadata | undefined): number {
   if (!metadata) {
     return 0;
   }

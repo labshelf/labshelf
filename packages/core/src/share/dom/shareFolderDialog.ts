@@ -1,11 +1,11 @@
 // Walks the user through sharing a paper folder as a link: rights notice, progress, then the link.
 import { progressDialog, showDialog, toast } from "../../ui/dom/index.js";
-import type { SharingHost, SharingProgress } from "../../libraryUi/share/index.js";
+import type { ShareHost, ShareProgress } from "../../libraryUi/share/index.js";
 import { SHARE_STAGE_TEXT, SHARE_WITHOUT_ANNOTATIONS, SHARE_WITH_ANNOTATIONS, copiedLinkText, shareRightsNotice } from "../flow/index.js";
 import { infoDialog } from "./noticeDialog.js";
 import { reportingFailure } from "./reportFailure.js";
 
-export function runShareFolderDialog(host: SharingHost, path: string): Promise<void> {
+export function runShareFolderDialog(host: ShareHost, path: string): Promise<void> {
   return reportingFailure("share the folder", async () => {
     const folder = await host.shareableFolder(path);
     if (!folder) { toast("This folder holds no papers to share.", "info"); return; }
@@ -22,7 +22,7 @@ export function runShareFolderDialog(host: SharingHost, path: string): Promise<v
     const progress = progressDialog({ title: `Sharing "${folder.label}"`, message: `Sharing "${folder.label}"…` });
     let result;
     try {
-      result = await host.shareFolder(path, choice === "with", (p: SharingProgress) => {
+      result = await host.shareFolder(path, choice === "with", (p: ShareProgress) => {
         if ("stage" in p) progress.update(`Sharing "${folder.label}": ${SHARE_STAGE_TEXT[p.stage]}`);
       });
     } finally {
@@ -36,7 +36,7 @@ export function runShareFolderDialog(host: SharingHost, path: string): Promise<v
   });
 }
 
-async function showLink(host: SharingHost, label: string, link: string): Promise<void> {
+async function showLink(host: ShareHost, label: string, link: string): Promise<void> {
   const copied = await host.copyText(link);
   const choice = await showDialog({
     title: copied ? `Copied the link to "${label}"` : `The link to "${label}" is ready`,

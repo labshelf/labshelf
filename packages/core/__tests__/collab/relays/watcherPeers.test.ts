@@ -3,7 +3,7 @@ import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../..
 import { createRelayWatch } from "../../../src/collab/relays/index";
 import { attachBlobs, type BlobExchange } from "../../../src/collab/doc/attachBlobs";
 import type { RelaySocket } from "../../../src/collab/transport/index";
-import { sha256Hex } from "../../../src/hash/index";
+import { deriveSha256Hex } from "../../../src/hash/index";
 import { FakeClock } from "../peer/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
 import { openRelayClient, RELAY_URL, type RelayClient } from "../transport/relay/relayClient";
@@ -64,7 +64,7 @@ describe("a relay watcher seen by the clients of the relay it watches", () => {
     await runFor(clock, 5000);
 
     let fetched: Uint8Array | undefined;
-    void fetcher.blobs.fetch(await sha256Hex(blob)).then((bytes) => { fetched = bytes; });
+    void fetcher.blobs.fetch(await deriveSha256Hex(blob)).then((bytes) => { fetched = bytes; });
     await runFor(clock, 2000);
     expect(fetched && new TextDecoder().decode(fetched)).toBe("figure bytes");
 

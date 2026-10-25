@@ -4,20 +4,20 @@
  * chosen style, and File.
  */
 import { CITE_FORMATS } from "../../../store/index.js";
-import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatDateTime, relativeTime } from "../../../../library/index.js";
+import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatDateTime, formatRelativeTime } from "../../../../library/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { citationText } from "../../../citationText.js";
+import { formatCitation } from "../../../citationText.js";
 import { CITE_LABEL } from "../../flows/index.js";
-import { copyBtn, kv, muted, section, iconBtn } from "../detailPaneMarkup.js";
+import { copyBtn, renderField, renderMuted, renderSection, renderIconButton } from "../detailPaneMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
 import type { Backlink } from "../../../../writing/index.js";
-import { textLayerSummary } from "../../../viewModel/index.js";
+import { describeTextLayer } from "../../../viewModel/index.js";
 
 function missingPdf(pane: PaneState): string {
   const { findPdf, attachPdf } = pane.ctx.caps;
   const actions = (findPdf ? `<button class="ls-btn" type="button" data-action="findPdf">${icon("search")}<span>Find PDF</span></button>` : "") +
     (attachPdf ? `<button class="ls-btn" type="button" data-action="attachPdf">${icon("paperclip")}<span>Attach PDF…</span></button>` : "");
-  return muted("No PDF attached — this paper was saved without one.") + (actions ? `<div class="attach-actions">${actions}</div>` : "");
+  return renderMuted("No PDF attached — this paper was saved without one.") + (actions ? `<div class="attach-actions">${actions}</div>` : "");
 }
 
 function pdfLine(pane: PaneState, v: PaperView): string {
@@ -27,21 +27,21 @@ function pdfLine(pane: PaneState, v: PaperView): string {
   const link = `<button class="link-btn" type="button" data-action="open" title="${escapeHtml(pdf?.relPath ?? PDF_FILE)}">${PDF_FILE}</button>`;
   const size = pdf ? `<span class="muted-text">${formatBytes(pdf.size)}</span>` : `<span class="muted-text">…</span>`;
   return `<span class="kv-line">${link}${size}` +
-    (caps.openExternal ? iconBtn("openExternal", "external", "Open in the default PDF app") : "") +
-    (caps.reveal ? iconBtn("reveal", "folder", pane.ctx.labels.revealPaper ?? "Reveal folder") : "") + `</span>`;
+    (caps.openExternal ? renderIconButton("openExternal", "external", "Open in the default PDF app") : "") +
+    (caps.reveal ? renderIconButton("reveal", "folder", pane.ctx.labels.revealPaper ?? "Reveal folder") : "") + `</span>`;
 }
 
 function lastRead(v: PaperView): string {
   const at = v.stats?.lastRead;
   if (!at) return `<span class="muted-text">Never opened</span>`;
-  return `<span title="${escapeHtml(formatDateTime(at))}">${escapeHtml(relativeTime(at))}${v.stats?.lastPage ? ` · page ${v.stats.lastPage}` : ""}</span>`;
+  return `<span title="${escapeHtml(formatDateTime(at))}">${escapeHtml(formatRelativeTime(at))}${v.stats?.lastPage ? ` · page ${v.stats.lastPage}` : ""}</span>`;
 }
 
 function fileSectionHtml(pane: PaneState, v: PaperView): string {
   if (!v.p.hasPdf) return missingPdf(pane);
-  let html = kv("PDF", pdfLine(pane, v));
-  if (pane.ctx.caps.textLayer) html += kv("Text", `<span class="tl-field">${escapeHtml(textLayerSummary(v.p, v.job))}</span>`);
-  html += kv("Last read", lastRead(v));
+  let html = renderField("PDF", pdfLine(pane, v));
+  if (pane.ctx.caps.textLayer) html += renderField("Text", `<span class="tl-field">${escapeHtml(describeTextLayer(v.p, v.job))}</span>`);
+  html += renderField("Last read", lastRead(v));
   return `<div class="kv-grid">${html}</div>`;
 }
 
@@ -56,14 +56,14 @@ function citedInRow(link: Backlink): string {
 /** Empty when no project cites the paper or the host knows no projects. */
 function citedInSectionHtml(pane: PaneState, citedIn: readonly Backlink[] | undefined): string {
   if (!citedIn?.length) return "";
-  return section("citedIn", "Cited in", citedIn.map(citedInRow).join(""), pane.collapsed, { count: citedIn.length });
+  return renderSection("citedIn", "Cited in", citedIn.map(citedInRow).join(""), pane.collapsed, { count: citedIn.length });
 }
 
 const ABSTRACT_CLAMP_AT = 300;
 
 function abstractBody(pane: PaneState, v: PaperView): string {
   const summary = v.p.summary;
-  if (!summary) return muted(pane.ctx.caps.fetchMetadata ? "No abstract. Fetch Metadata Online in the paper menu can often find one." : "No abstract.");
+  if (!summary) return renderMuted(pane.ctx.caps.fetchMetadata ? "No abstract. Fetch Metadata Online in the paper menu can often find one." : "No abstract.");
   const long = summary.length > ABSTRACT_CLAMP_AT;
   return `<div class="detail-abstract${long && !pane.abstractOpen ? " clamped" : ""}">${escapeHtml(summary)}</div>` +
     `<div class="abstract-actions">` +
@@ -83,17 +83,17 @@ function linkLine(href: string, text: string, cls: string, label: string, copy: 
 function infoBody(v: PaperView): string {
   const p = v.p;
   let html = "";
-  if (p.journal) html += kv("Publication", escapeHtml(p.journal));
-  if (p.publisher && p.publisher !== p.journal) html += kv("Publisher", escapeHtml(p.publisher));
-  if (p.year) html += kv("Year", escapeHtml(String(p.year)));
-  if (p.volume || p.issue) html += kv("Volume", escapeHtml([p.volume, p.issue ? `(${p.issue})` : ""].filter(Boolean).join(" ")));
-  if (p.pages) html += kv("Pages", escapeHtml(p.pages));
-  if (p.doi) html += kv("DOI", linkLine(`https://doi.org/${p.doi}`, p.doi, "mono", "DOI", p.doi));
-  if (p.url && !(p.doi && p.url.includes(p.doi))) html += kv("URL", linkLine(p.url, p.url.replace(/^https?:\/\/(www\.)?/, ""), "url", "URL", p.url));
-  if (p.issn) html += kv("ISSN", escapeHtml(p.issn));
-  if (p.language) html += kv("Language", escapeHtml(p.language));
-  html += kv("Cite key", `<span class="kv-line"><span class="mono">${escapeHtml(p.citeKey)}</span>${copyBtn(p.citeKey, "cite key")}</span>`);
-  html += kv("Folder", `<button class="link-btn" type="button" data-action="goFolder" title="Open this folder">${escapeHtml((p.relFolder || LIBRARY_LABEL).replaceAll(" / ", " › "))}</button>`);
+  if (p.journal) html += renderField("Publication", escapeHtml(p.journal));
+  if (p.publisher && p.publisher !== p.journal) html += renderField("Publisher", escapeHtml(p.publisher));
+  if (p.year) html += renderField("Year", escapeHtml(String(p.year)));
+  if (p.volume || p.issue) html += renderField("Volume", escapeHtml([p.volume, p.issue ? `(${p.issue})` : ""].filter(Boolean).join(" ")));
+  if (p.pages) html += renderField("Pages", escapeHtml(p.pages));
+  if (p.doi) html += renderField("DOI", linkLine(`https://doi.org/${p.doi}`, p.doi, "mono", "DOI", p.doi));
+  if (p.url && !(p.doi && p.url.includes(p.doi))) html += renderField("URL", linkLine(p.url, p.url.replace(/^https?:\/\/(www\.)?/, ""), "url", "URL", p.url));
+  if (p.issn) html += renderField("ISSN", escapeHtml(p.issn));
+  if (p.language) html += renderField("Language", escapeHtml(p.language));
+  html += renderField("Cite key", `<span class="kv-line"><span class="mono">${escapeHtml(p.citeKey)}</span>${copyBtn(p.citeKey, "cite key")}</span>`);
+  html += renderField("Folder", `<button class="link-btn" type="button" data-action="goFolder" title="Open this folder">${escapeHtml((p.relFolder || LIBRARY_LABEL).replaceAll(" / ", " › "))}</button>`);
   return `<div class="kv-grid">${html}</div>`;
 }
 
@@ -101,16 +101,16 @@ function citeBody(pane: PaneState, v: PaperView): string {
   const fmt = pane.citeFormat;
   return `<div class="seg-tabs" role="tablist">${CITE_FORMATS.map((f) =>
     `<button class="seg-tab${fmt === f ? " on" : ""}" type="button" role="tab" aria-selected="${fmt === f}" data-action="citeFormat" data-format="${f}">${CITE_LABEL[f]}</button>`).join("")}</div>` +
-    `<pre class="cite-box${fmt === "bibtex" ? " code" : ""}">${escapeHtml(citationText(v.p, fmt))}</pre>` +
+    `<pre class="cite-box${fmt === "bibtex" ? " code" : ""}">${escapeHtml(formatCitation(v.p, fmt))}</pre>` +
     `<div class="row-end"><button class="ls-btn" type="button" data-action="copyCite" data-format="${fmt}">${icon("copy")}<span>Copy ${CITE_LABEL[fmt]}</span></button></div>`;
 }
 
-export function detailsTabHtml(pane: PaneState, v: PaperView): string {
+export function renderDetailsTabHtml(pane: PaneState, v: PaperView): string {
   const keywords = v.p.keywords ?? [];
-  return section("abstract", "Abstract", abstractBody(pane, v), pane.collapsed) +
-    (keywords.length ? section("keywords", "Keywords", keywordsBody(keywords), pane.collapsed, { count: keywords.length }) : "") +
-    section("info", "Info", infoBody(v), pane.collapsed) +
+  return renderSection("abstract", "Abstract", abstractBody(pane, v), pane.collapsed) +
+    (keywords.length ? renderSection("keywords", "Keywords", keywordsBody(keywords), pane.collapsed, { count: keywords.length }) : "") +
+    renderSection("info", "Info", infoBody(v), pane.collapsed) +
     citedInSectionHtml(pane, v.details?.citedIn) +
-    section("cite", "Cite", citeBody(pane, v), pane.collapsed) +
-    section("file", "File", fileSectionHtml(pane, v), pane.collapsed);
+    renderSection("cite", "Cite", citeBody(pane, v), pane.collapsed) +
+    renderSection("file", "File", fileSectionHtml(pane, v), pane.collapsed);
 }

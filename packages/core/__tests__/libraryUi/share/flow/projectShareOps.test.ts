@@ -1,6 +1,6 @@
 import type { ShareConnection, ShareConnectionState } from "../../../../src/collab/session";
 import { joinSharedProject, leaveSharedProject, shareProject, type ShareWorkflowPorts } from "../../../../src/collab/share/flows";
-import { createProjectSharingOps } from "../../../../src/libraryUi/share/flow";
+import { createProjectShareOps } from "../../../../src/libraryUi/share/flow";
 import type { ILogger } from "../../../../src/ports";
 import type { ProjectEntry, ProjectSettings } from "../../../../src/writing/project";
 
@@ -29,7 +29,7 @@ function setup(entries: ProjectEntry[], active: Record<string, ShareConnection> 
   const lines: unknown[][] = [];
   const logger: ILogger = { log: async (...a) => { lines.push(a); }, error: async (...a) => { lines.push(a); } };
   const open = jest.fn(async () => {});
-  const ops = createProjectSharingOps({ ports, idOf: (e) => e.folder, open }, logger);
+  const ops = createProjectShareOps({ ports, idOf: (e) => e.folder, open }, logger);
   return { ops, list, lines, open };
 }
 

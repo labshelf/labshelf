@@ -4,19 +4,19 @@
  */
 
 import {
-  arxivById,
-  crossRefByDoi,
-  crossRefSearch,
-  dataCiteByDoi,
-  dblpSearch,
-  europePmcSearch,
-  googleBooksByIsbn,
+  fetchArxivByIdentifier,
+  fetchCrossrefByDoi,
+  searchCrossref,
+  fetchDataciteByDoi,
+  searchDblp,
+  searchEuropePmc,
+  fetchGoogleBooksByIsbn,
   openAlexSearch,
   openLibraryByIsbn,
-  pmidFromPmcid,
-  pubMedByPmid,
-  semanticScholarByDoi,
-  semanticScholarByTitle,
+  resolvePmidFromPmcid,
+  fetchPubmedByPmid,
+  fetchSemanticScholarByDoi,
+  fetchSemanticScholarByTitle,
   type ILogger,
   type RegistryEnv,
 } from '@labshelf/core';
@@ -42,7 +42,7 @@ describe('registry clients', () => {
     it('sends the product User-Agent and a JSON Accept header', async () => {
       const mock = serve({ message: {} });
 
-      await crossRefByDoi(env, '10.1/x');
+      await fetchCrossrefByDoi(env, '10.1/x');
 
       const [url, init] = mock.mock.calls[0] as unknown as [string, RequestInit];
       expect(url).toBe('https://api.crossref.org/works/10.1%2Fx');
@@ -57,7 +57,7 @@ describe('registry clients', () => {
       global.fetch = global_ as unknown as typeof fetch;
       const injected = jest.fn(async () => ({ ok: true, text: async () => JSON.stringify({ message: {} }) }));
 
-      await crossRefByDoi({ fetch: injected as unknown as typeof fetch, contactEmail: 'me@uni.edu' }, '10.1/x');
+      await fetchCrossrefByDoi({ fetch: injected as unknown as typeof fetch, contactEmail: 'me@uni.edu' }, '10.1/x');
 
       expect(global_).not.toHaveBeenCalled();
       const [, init] = injected.mock.calls[0] as unknown as [string, RequestInit];
@@ -69,11 +69,11 @@ describe('registry clients', () => {
       const logged = { logger };
 
       serve({}, false);
-      await crossRefByDoi(logged, '10.1/x');
+      await fetchCrossrefByDoi(logged, '10.1/x');
       global.fetch = jest.fn(async () => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
-      await crossRefByDoi(logged, '10.1/x');
+      await fetchCrossrefByDoi(logged, '10.1/x');
       serve('<html>not json</html>');
-      await crossRefByDoi(logged, '10.1/x');
+      await fetchCrossrefByDoi(logged, '10.1/x');
 
       const calls = (logger.log as unknown as jest.Mock).mock.calls;
       expect(calls.map((call) => call[2])).toEqual(['Registry lookup failed', 'Registry lookup failed', 'Registry answered with invalid JSON']);
@@ -83,13 +83,13 @@ describe('registry clients', () => {
 
     it('returns undefined on an error status, a network failure and invalid JSON', async () => {
       serve({}, false);
-      expect(await crossRefByDoi(env, '10.1/x')).toBeUndefined();
+      expect(await fetchCrossrefByDoi(env, '10.1/x')).toBeUndefined();
 
       global.fetch = jest.fn(async () => Promise.reject(new Error('offline'))) as unknown as typeof fetch;
-      expect(await crossRefByDoi(env, '10.1/x')).toBeUndefined();
+      expect(await fetchCrossrefByDoi(env, '10.1/x')).toBeUndefined();
 
       serve('<html>not json</html>');
-      expect(await crossRefByDoi(env, '10.1/x')).toBeUndefined();
+      expect(await fetchCrossrefByDoi(env, '10.1/x')).toBeUndefined();
     });
   });
 
@@ -111,7 +111,7 @@ describe('registry clients', () => {
     it('maps a work, stripping JATS markup from the abstract', async () => {
       serve({ message: work });
 
-      expect(await crossRefByDoi(env, '10.1/x')).toEqual({
+      expect(await fetchCrossrefByDoi(env, '10.1/x')).toEqual({
         title: 'A Title',
         authors: ['Ann Lee', 'Consortium'],
         year: 2020,
@@ -132,7 +132,7 @@ describe('registry clients', () => {
     it('flags component records and maps search items', async () => {
       const mock = serve({ message: { items: [{ ...work, type: 'component' }] } });
 
-      const records = await crossRefSearch(env, 'a query', 5);
+      const records = await searchCrossref(env, 'a query', 5);
 
       expect(records[0]?.isComponent).toBe(true);
       expect((mock.mock.calls[0] as unknown as [string])[0]).toBe(
@@ -148,7 +148,7 @@ describe('registry clients', () => {
         '<author><name>Ashish Vaswani</name></author><author><name>Noam Shazeer</name></author></entry></feed>',
     );
 
-    expect(await arxivById(env, '1706.03762')).toEqual({
+    expect(await fetchArxivByIdentifier(env, '1706.03762')).toEqual({
       title: 'Attention Is All You Need',
       authors: ['Ashish Vaswani', 'Noam Shazeer'],
       year: 2017,
@@ -159,7 +159,7 @@ describe('registry clients', () => {
     });
 
     serve('<feed><entry><title>Error</title></entry></feed>');
-    expect(await arxivById(env, '0000.0000')).toBeUndefined();
+    expect(await fetchArxivByIdentifier(env, '0000.0000')).toBeUndefined();
   });
 
   it('maps a PubMed summary and resolves a PMC id to a PMID', async () => {
@@ -178,7 +178,7 @@ describe('registry clients', () => {
       },
     });
 
-    expect(await pubMedByPmid(env, '123')).toMatchObject({
+    expect(await fetchPubmedByPmid(env, '123')).toMatchObject({
       title: 'Gene study',
       authors: ['Lee A'],
       year: 2019,
@@ -189,7 +189,7 @@ describe('registry clients', () => {
     });
 
     serve({ records: [{ pmid: '123' }] });
-    expect(await pmidFromPmcid(env, 'PMC1')).toBe('123');
+    expect(await resolvePmidFromPmcid(env, 'PMC1')).toBe('123');
   });
 
   it('maps OpenAlex works, dropping the DOI resolver prefix', async () => {
@@ -233,7 +233,7 @@ describe('registry clients', () => {
       },
     });
 
-    expect(await dataCiteByDoi(env, '10.5/d')).toMatchObject({
+    expect(await fetchDataciteByDoi(env, '10.5/d')).toMatchObject({
       title: 'A Dataset',
       authors: ['Ann Lee', 'Lab'],
       year: 2022,
@@ -242,7 +242,7 @@ describe('registry clients', () => {
     });
 
     serve({ data: { attributes: {} } });
-    expect(await dataCiteByDoi(env, '10.5/none')).toBeUndefined();
+    expect(await fetchDataciteByDoi(env, '10.5/none')).toBeUndefined();
   });
 
   it('maps Semantic Scholar papers by title and by DOI', async () => {
@@ -257,7 +257,7 @@ describe('registry clients', () => {
       openAccessPdf: { url: '' },
     };
     serve({ data: [paper] });
-    expect(await semanticScholarByTitle(env, 'Paper')).toEqual({
+    expect(await fetchSemanticScholarByTitle(env, 'Paper')).toEqual({
       title: 'Paper',
       authors: ['Ann Lee'],
       year: 2018,
@@ -270,7 +270,7 @@ describe('registry clients', () => {
     });
 
     const mock = serve(paper);
-    expect((await semanticScholarByDoi(env, '10.1/p'))?.title).toBe('Paper');
+    expect((await fetchSemanticScholarByDoi(env, '10.1/p'))?.title).toBe('Paper');
     expect((mock.mock.calls[0] as unknown as [string])[0]).toContain('/paper/DOI:10.1');
   });
 
@@ -281,7 +281,7 @@ describe('registry clients', () => {
       },
     });
 
-    expect((await europePmcSearch(env, 'q', 1))[0]).toMatchObject({
+    expect((await searchEuropePmc(env, 'q', 1))[0]).toMatchObject({
       title: 'T',
       authors: ['Doe J', 'Roe R'],
       year: 2015,
@@ -303,7 +303,7 @@ describe('registry clients', () => {
       },
     });
 
-    const records = await dblpSearch(env, 'q');
+    const records = await searchDblp(env, 'q');
 
     expect(records).toHaveLength(2);
     expect(records[0]).toMatchObject({ title: 'One', authors: ['Ann Lee'], year: 2010, journal: 'ICML', url: 'https://e.org/1' });
@@ -313,7 +313,7 @@ describe('registry clients', () => {
   it('returns no DBLP records when the query matches nothing', async () => {
     serve({ result: { hits: {} } });
 
-    expect(await dblpSearch(env, 'nothing')).toEqual([]);
+    expect(await searchDblp(env, 'nothing')).toEqual([]);
   });
 
   it('maps book records from OpenLibrary and Google Books', async () => {
@@ -351,7 +351,7 @@ describe('registry clients', () => {
         },
       ],
     });
-    expect(await googleBooksByIsbn(env, '9780262033848')).toMatchObject({
+    expect(await fetchGoogleBooksByIsbn(env, '9780262033848')).toMatchObject({
       title: 'Algorithms',
       year: 2009,
       pages: '1312',

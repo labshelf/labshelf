@@ -9,7 +9,7 @@ export function normalizePmcid(raw: string | undefined): string | undefined {
 }
 
 /** The PMCID in a PubMed Central or Europe PMC article URL. */
-export function pmcidFromUrl(url: string): string | undefined {
+export function extractPmcidFromUrl(url: string): string | undefined {
   const digits = PMC_URL.exec(url)?.[1];
   return digits ? `PMC${digits}` : undefined;
 }

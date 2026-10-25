@@ -16,7 +16,7 @@ import {
   NodePdfOpener,
   convertWithPandoc,
   createNodeSidecarPort,
-  deviceLocalLayout,
+  createDeviceLocalLayout,
   openAiStorage,
   resolveConflictCopy,
   resolveProjectConflictCopy,
@@ -48,15 +48,15 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     },
     createSidecarPort: createNodeSidecarPort,
     openAiStorage,
-    deviceLayout: deviceLocalLayout,
+    deviceLayout: createDeviceLocalLayout,
     createProjectSaveTracking: (root, logger) => createProjectSaveTracking(fs, root, logger),
     createProjectData: (logger, deviceDirs, projectFs) => createProjectData({ fs: projectFs, path, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
-      scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, deviceLocalLayout(root).mergeBasesDir), logger,
+      scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir), logger,
         (file) => { void vscode.window.showInformationMessage(`Combined changes from another device in ${path.basename(file)}.`); }),
     resolveConflictCopy: (copy, resolution, logger, root) => {
       if (resolution === "mergeAutomatically" || resolution === "notAVersion") {
-        const store = new FileProjectVersionStore(fs, path, deviceLocalLayout(root).mergeBasesDir);
+        const store = new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir);
         return resolveProjectConflictCopy(copy, resolution, { root, store, logger });
       }
       return resolveConflictCopy(copy, resolution, logger, createProjectSaveTracking(fs, () => root, logger));

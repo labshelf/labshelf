@@ -1,6 +1,6 @@
 // Captures a paper in two steps, inspect then save, so the popup shows the paper before anything is written.
 // The PDF search starts once a draft exists, so Save is usually instant.
-import { findInLibrary, findPaperPdf, interpretPage, normalizeTags, resolvePagePaper, withAbstract } from "@labshelf/core";
+import { findInLibrary, findPaperPdf, derivePageFacts, normalizeTags, resolvePagePaper, withAbstract } from "@labshelf/core";
 import type {
   DetectedIds, MetadataOrigin, MetadataSource, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
   PdfVersion, RawPage, ResolvedMetadata, ResolvedPdf,
@@ -55,7 +55,7 @@ export interface SavedPaper {
  */
 export async function inspectTab(log: ILogger, tabId: number, tabUrl: string): Promise<CaptureDraft> {
   const raw = await probeTab(log, tabId, tabUrl);
-  const facts = interpretPage(raw);
+  const facts = derivePageFacts(raw);
   return { ...(await draftFromFacts(log, facts, { tab: { url: tabUrl, fetchInTab: (url) => fetchInTab(tabId, url) } })), page: raw };
 }
 

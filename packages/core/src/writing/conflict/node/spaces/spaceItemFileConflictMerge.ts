@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { parseConflictName, type ConflictCopy } from "../../../../library/conflicts/index.js";
 import { readDirOrEmpty } from "../../../../library/conflicts/node/index.js";
-import { libraryLayout } from "../../../../library/index.js";
+import { createLibraryLayout } from "../../../../library/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 import { isItemFileName, type IProjectVersionStore } from "../../index.js";
 import { mergeItemFileCopies, seedItemFileBase } from "../item/index.js";
@@ -54,7 +54,7 @@ async function mergeSpace(spaceDir: string, spaceId: string, store: IProjectVers
 
 /** @returns the item file copies in Spaces that could not be merged; they stay on disk. */
 export async function mergeSpaceItemFileConflicts(root: string, store: IProjectVersionStore, logger: ILogger): Promise<ConflictCopy[]> {
-  const layout = libraryLayout(root, path.join);
+  const layout = createLibraryLayout(root, path.join);
   const unmerged: ConflictCopy[] = [];
   for (const space of await readDirOrEmpty(layout.spacesRoot())) {
     if (!space.isDirectory() || space.name.startsWith(".")) { continue; }

@@ -55,7 +55,7 @@ export function buildFrame(host: HTMLElement, prefs: PanePrefsPort, options: Fra
 }
 
 /** Toggles the sidebar and saves the new state; returns whether it is now collapsed. */
-export function toggleSidebar(root: HTMLElement, prefs: PanePrefsPort): boolean {
+export function updateSidebarOpen(root: HTMLElement, prefs: PanePrefsPort): boolean {
   const collapsed = root.classList.toggle(SIDEBAR_COLLAPSED_CLASS);
   prefs.save({ sidebarCollapsed: collapsed });
   return collapsed;

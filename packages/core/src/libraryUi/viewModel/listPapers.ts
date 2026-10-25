@@ -2,8 +2,8 @@
  * Lists the open folder's papers as the list sees them: scoped to the folder, decorated with where each one sits,
  * and narrowed by the search.
  */
-import { isUnderDir, parentDir, relativeFolder } from "../../library/index.js";
-import { isEmptyQuery, paperMatches, searchDoc, type Query } from "../../library/search/index.js";
+import { isUnderDir, deriveParentDir, deriveRelativeFolder } from "../../library/index.js";
+import { isEmptyQuery, isPaperMatch, searchDoc, type Query } from "../../library/search/index.js";
 import type { PaperRecord } from "../../model/index.js";
 
 const SEP = "/";
@@ -24,11 +24,11 @@ const NO_PDF_DIRS: ReadonlySet<string> = new Set();
 export function listPapersUnder(all: readonly PaperRecord[], folder: string, pdfDirs: ReadonlySet<string> = NO_PDF_DIRS): ListPaper[] {
   return all
     .filter((p) => isUnderDir(p.path, folder, SEP) && p.path !== folder)
-    .map((p) => ({ ...p, folderPath: parentDir(p.path, SEP), relFolder: relativeFolder(p.path, folder, SEP), hasPdf: pdfDirs.has(p.path) }));
+    .map((p) => ({ ...p, folderPath: deriveParentDir(p.path, SEP), relFolder: deriveRelativeFolder(p.path, folder, SEP), hasPdf: pdfDirs.has(p.path) }));
 }
 
 /** Papers a search lets through. A search also matches the folder path shown in the row. */
-export function papersInScope(papers: ListPaper[], query: Query): ListPaper[] {
+export function findPapersInScope(papers: ListPaper[], query: Query): ListPaper[] {
   if (isEmptyQuery(query)) return papers;
-  return papers.filter((p) => paperMatches(p, searchDoc(p, { folder: p.relFolder }), query));
+  return papers.filter((p) => isPaperMatch(p, searchDoc(p, { folder: p.relFolder }), query));
 }

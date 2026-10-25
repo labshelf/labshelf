@@ -1,12 +1,12 @@
 // Builds the share entries of a project's context menu from what the host offers.
 import type { MenuEntry } from "../../ui/dom/index.js";
-import type { SharingHost } from "../../libraryUi/share/index.js";
+import type { ShareHost } from "../../libraryUi/share/index.js";
 import { reportingFailure } from "../../share/dom/index.js";
 import { copyInvite, showInviteDialog } from "./inviteDialog.js";
 import { runLeaveProjectDialog } from "./leaveProjectDialog.js";
 import { runShareProjectDialog } from "./shareProjectDialog.js";
 
-export function projectShareMenuEntries(host: SharingHost, project: { id: string; shared: boolean }): MenuEntry[] {
+export function projectShareMenuEntries(host: ShareHost, project: { id: string; shared: boolean }): MenuEntry[] {
   if (!host.offers().projects) return [];
   if (!project.shared) return [{ label: "Share Project…", icon: "link", onSelect: () => void runShareProjectDialog(host, project.id) }];
   const withInvite = (action: string, use: (name: string, invite: string) => Promise<unknown>) => () => void reportingFailure(action, async () => {

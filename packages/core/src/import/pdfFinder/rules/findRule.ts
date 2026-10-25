@@ -3,13 +3,13 @@ import { PUBLISHER_RULES } from "./platforms/index.js";
 import type { PublisherRule } from "./publisherRule.js";
 
 /** The rules' PDF URLs for a DOI, or [] when no rule owns its prefix. */
-export function pdfUrlsForDoi(doi: string): string[] {
+export function listPdfUrlsForDoi(doi: string): string[] {
   const prefix = doi.slice(0, doi.indexOf("/"));
   return PUBLISHER_RULES.flatMap((r) => (r.doi?.prefixes.includes(prefix) ? r.doi.pdfUrls(doi) : []));
 }
 
 /** The rules' PDF URLs for a landing page, or [] when its host and path match no rule. */
-export function pdfUrlsForLanding(url: string): string[] {
+export function listPdfUrlsForLanding(url: string): string[] {
   const page = parseUrl(url);
   if (!page) return [];
   return rulesOn(page).flatMap((r) => {
@@ -19,7 +19,7 @@ export function pdfUrlsForLanding(url: string): string[] {
 }
 
 /** Whether `hostname` is a platform in the table that gives its papers away or sells access, or undefined when no rule knows it. */
-export function hostAccess(hostname: string): "open" | "paywalled" | undefined {
+export function deriveHostAccess(hostname: string): "open" | "paywalled" | undefined {
   const rule = PUBLISHER_RULES.find((r) => r.hosts.test(hostname));
   if (!rule) return undefined;
   return rule.openAccess ? "open" : "paywalled";

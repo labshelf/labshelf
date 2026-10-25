@@ -3,7 +3,7 @@ import { isPdfBytes } from "../../../library/index.js";
 import type { FetchOutcome } from "../pdfResolver.js";
 import { isBotCheck } from "./botCheck.js";
 import type { HeaderReader } from "./signatures.js";
-import { nextHopsFromHtml } from "./hops.js";
+import { extractNextHopsFromHtml } from "./hops.js";
 
 /** What a hop came back with; `html` is the decoded body of an HTML or non-OK answer. */
 export interface FetchFacts {
@@ -25,12 +25,12 @@ function isLoginWall(html: string): boolean {
   return PASSWORD_FIELD.test(markup) || LOGIN_WORDS.test(markup.replace(/<[^>]*>/g, " "));
 }
 
-export function classifyFetch({ status, finalUrl, bytes, html, headers }: FetchFacts): FetchOutcome {
+export function deriveFetchOutcome({ status, finalUrl, bytes, html, headers }: FetchFacts): FetchOutcome {
   if (bytes && isPdfBytes(bytes)) return "pdf";
   if (isBotCheck(status, html ?? "", { finalUrl, ...(headers ? { headers } : {}) })) return "bot";
   if (status === 401 || status === 403) return "login";
   if (status < 200 || status >= 300 || html === undefined) return "error";
   // A page that still offers a PDF or a redirect is a hop to follow, whatever else it says.
-  if (nextHopsFromHtml(html, finalUrl).length) return "html";
+  if (extractNextHopsFromHtml(html, finalUrl).length) return "html";
   return isLoginWall(html) ? "login" : "html";
 }

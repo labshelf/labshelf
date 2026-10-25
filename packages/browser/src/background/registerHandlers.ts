@@ -1,6 +1,6 @@
 // Routes runtime messages from the popup, options, library page and search result buttons to the
 // capture/library handlers, gating which message types the search page content script may send.
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { bx } from "../platform";
 import type { LibraryChangedBroadcast, RuntimeMessage, RuntimeResponse } from "../platform";
 import { isSearchPageUrl } from "../content";
@@ -41,7 +41,7 @@ export function registerMessageRouter(deps: MessageRouterDeps): void {
       const data = await handle(msg, deps, sender.tab?.id);
       return { ok: true, data } satisfies RuntimeResponse;
     } catch (err: unknown) {
-      const error = errorMessage(err);
+      const error = formatError(err);
       void deps.log.error("background", err, { type: msg?.type });
       return { ok: false, error } satisfies RuntimeResponse;
     }

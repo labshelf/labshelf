@@ -1,9 +1,9 @@
-import { emptySnapshot, snapshotFromScan } from "@labshelf/core";
+import { createEmptySnapshot, deriveSnapshot } from "@labshelf/core";
 
 import { entry, scanOf } from "../../support/libraryModelFixtures";
 
 describe("snapshotFromScan", () => {
-  const snapshot = snapshotFromScan("/lib", scanOf([
+  const snapshot = deriveSnapshot("/lib", scanOf([
     entry("top"), entry("a1", "ML"), entry("a2", "ML"), entry("deep", "ML/Vision"),
   ], ["Empty"]), 5);
 
@@ -16,24 +16,24 @@ describe("snapshotFromScan", () => {
 
   it("lists sub-collections by name, numerically and ignoring case", () => {
     const folders = ["b", "A", "a10", "a2"];
-    const sorted = snapshotFromScan("/lib", scanOf([], folders)).collections.get("")!.children;
+    const sorted = deriveSnapshot("/lib", scanOf([], folders)).collections.get("")!.children;
     expect(sorted).toEqual(["A", "a2", "a10", "b"]);
   });
 
   it("indexes papers by id and carries the scan's orphans, duplicates and time", () => {
-    const withExtras = snapshotFromScan("/lib", { ...scanOf([entry("p")]), orphans: ["/o"], duplicates: ["/d"] }, 7);
+    const withExtras = deriveSnapshot("/lib", { ...scanOf([entry("p")]), orphans: ["/o"], duplicates: ["/d"] }, 7);
     expect([...withExtras.papers.keys()]).toEqual(["p"]);
     expect(withExtras).toMatchObject({ root: "/lib", orphans: ["/o"], duplicates: ["/d"], scannedAt: 7 });
   });
 
   it("creates the ancestors of a nested collection that the scan did not list", () => {
-    const nested = snapshotFromScan("/lib", scanOf([], ["x/y/z"]));
+    const nested = deriveSnapshot("/lib", scanOf([], ["x/y/z"]));
     expect(nested.collections.get("x")!.children).toEqual(["x/y"]);
     expect(nested.collections.get("x/y")!.children).toEqual(["x/y/z"]);
   });
 
   it("builds an empty snapshot with just the root", () => {
-    const empty = emptySnapshot("/lib");
+    const empty = createEmptySnapshot("/lib");
     expect([...empty.collections.keys()]).toEqual([""]);
     expect(empty.papers.size).toBe(0);
   });

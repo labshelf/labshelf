@@ -1,7 +1,7 @@
 // Words the messages and confirmations every app shows for share links.
 import type { OpenShareError } from "../openShare.js";
 import type { SharedImportSummary } from "../importSharedPapers.js";
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { ShareFolderStage } from "./shareFolder.js";
 
 export const OPEN_SHARE_FAILURE: Record<OpenShareError, string> = {
@@ -57,5 +57,5 @@ export function copiedLinkText(folder: string): string {
 }
 
 export function shareFailureText(action: string, error: unknown): string {
-  return `LabShelf could not ${action}: ${errorMessage(error)}`;
+  return `LabShelf could not ${action}: ${formatError(error)}`;
 }

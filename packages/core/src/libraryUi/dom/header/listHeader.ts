@@ -1,15 +1,15 @@
 /**
  * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add).
  */
-import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, breadcrumbFor } from "../../../library/index.js";
+import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, deriveBreadcrumb } from "../../../library/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 import { deriveScope } from "../../viewModel/index.js";
-import { requestAddPaper } from "../flows/index.js";
-import { toggleSidebar } from "../shell/index.js";
+import { sendAddPaperRequest } from "../flows/index.js";
+import { updateSidebarOpen } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";
 import { mountShareFolderButton } from "./shareFolderButton.js";
 import { el } from "../../../ui/dom/index.js";
-import { makeDropTarget } from "../drag/index.js";
+import { attachDropZone } from "../drag/index.js";
 
 function crumb(ctx: UiContext, label: string, path: string, last: boolean): HTMLElement {
   const b = el("button", {
@@ -20,13 +20,13 @@ function crumb(ctx: UiContext, label: string, path: string, last: boolean): HTML
   });
   if (!last) {
     b.addEventListener("click", () => ctx.store.openFolder(path));
-    makeDropTarget(ctx, b, path);
+    attachDropZone(ctx, b, path);
   }
   return b;
 }
 
 function renderCrumbs(ctx: UiContext, container: HTMLElement, folder: string, count: string): void {
-  const chain = breadcrumbFor(PAPERS_DIR, folder, "/");
+  const chain = deriveBreadcrumb(PAPERS_DIR, folder, "/");
   const frag = document.createDocumentFragment();
   if (chain.length === 1) {
     frag.append(crumb(ctx, LIBRARY_LABEL, PAPERS_DIR, true));
@@ -73,8 +73,8 @@ function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
 function onToolbarClick(ctx: UiContext, act: string | undefined, search: HTMLInputElement): void {
   switch (act) {
     case "clear": ctx.store.set({ query: "" }); search.value = ""; search.focus(); return;
-    case "add": requestAddPaper(ctx); return;
-    case "sidebar": toggleSidebar(ctx.root, ctx.prefs); return;
+    case "add": sendAddPaperRequest(ctx); return;
+    case "sidebar": updateSidebarOpen(ctx.root, ctx.prefs); return;
   }
 }
 

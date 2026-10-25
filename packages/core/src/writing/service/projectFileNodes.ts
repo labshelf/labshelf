@@ -1,6 +1,6 @@
 // Lists a project folder's entries as Files-tree rows: hidden entries dropped, folders first, the main file and format sources marked.
 import type { SidebarTreeNode } from "../../libraryUi/index.js";
-import { fileIcon } from "../../libraryUi/index.js";
+import { deriveFileIcon } from "../../libraryUi/index.js";
 import type { ProjectFormat } from "../project/index.js";
 
 /** An entry of a folder as read from disk. */
@@ -45,6 +45,6 @@ export function projectFileRow(path: string, folder: boolean, context: ProjectFi
   return {
     // A source of the project's format that is not already the main file can become it.
     kind: !main && source ? "source" : "file",
-    node: { key: path, label: name, icon: fileIcon(name), clickable: true, ...(main ? { description: "main" } : {}) },
+    node: { key: path, label: name, icon: deriveFileIcon(name), clickable: true, ...(main ? { description: "main" } : {}) },
   };
 }

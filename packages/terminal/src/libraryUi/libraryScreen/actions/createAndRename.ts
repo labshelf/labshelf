@@ -1,6 +1,6 @@
 /** Handles the new-folder and add-a-paper prompts (a), renaming a folder (r), and the import of what gets added. */
 import type { ImportOutcome } from "@labshelf/core";
-import { summarizeImport } from "@labshelf/core";
+import { countImportOutcomes } from "@labshelf/core";
 
 import { ALL, folderTitle } from "../screenModel.js";
 import type { App } from "../app.js";
@@ -47,7 +47,7 @@ export async function importInputs(app: App, inputs: string[], target: string): 
 
 function reportImport(app: App, outcomes: ImportOutcome[]): void {
   const shortened = outcomes.map((o): ImportOutcome => (o.status === "added" ? { ...o, record: { ...o.record, title: truncate(o.record.title, 60) } } : o));
-  const summary = summarizeImport(shortened);
+  const summary = countImportOutcomes(shortened);
   if (summary.reveal) { app.historyNav.revealPaper(summary.reveal); }
   app.taskStatus.notify(summary.text, summary.level === "warn" ? "warn" : "info");
 }

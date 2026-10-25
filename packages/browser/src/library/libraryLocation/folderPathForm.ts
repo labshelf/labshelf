@@ -1,5 +1,5 @@
 // Asks for the library folder's path when LabShelf on this computer runs without one, and has the bridge serve it.
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { el, textField } from "@labshelf/core/dom";
 import { setLibraryFolder, type LibrarySource } from "../../storage";
 import { recheckSource } from "./recheckLibraryLocation";
@@ -25,7 +25,7 @@ export function folderPathForm(logger: ILogger, onChosen: (source: LibrarySource
         onChosen(await recheckSource(logger));
       } catch (err) {
         await logger.error("library.libraryLocation", err, { action: "choose library folder" });
-        failure.textContent = `Could not use this folder: ${errorMessage(err)}`;
+        failure.textContent = `Could not use this folder: ${formatError(err)}`;
       } finally {
         apply.disabled = false;
       }

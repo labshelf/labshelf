@@ -1,7 +1,7 @@
 // Finds DOI, arXiv, PubMed, PMC and ISBN identifiers in a PDF's metadata, link annotations and text.
-import { asString } from "../metadata/index.js";
+import { parseString } from "../metadata/index.js";
 import { ARXIV_ID_SOURCE } from "./arxiv.js";
-import { cleanDoiCandidate, decodeUrlEscapes } from "./doi.js";
+import { normalizeDoiCandidate, decodeUrlEscapes } from "./doi.js";
 import type { DetectedIdentifier, IdentifierType } from "./detectedIdentifier.js";
 
 // TRAP: returns ranked candidates, not one guess; OCR or damaged-font text holds near-misses only an online lookup can tell apart.
@@ -43,10 +43,10 @@ export function detectIdentifiers(
   // Ranked by how directly the source states the identifier: an explicit
   // metadata field, then a link target, then anything spotted in the text.
   const metaText = [
-    asString(pdfInfo["DOI"]),
-    asString(pdfInfo["Subject"]),
-    asString(pdfInfo["Keywords"]),
-    asString(pdfInfo["WPS-ARTICLEDOI"]),
+    parseString(pdfInfo["DOI"]),
+    parseString(pdfInfo["Subject"]),
+    parseString(pdfInfo["Keywords"]),
+    parseString(pdfInfo["WPS-ARTICLEDOI"]),
   ]
     .filter(Boolean)
     .join(" ");
@@ -62,7 +62,7 @@ export function detectIdentifiers(
   if (!found.some((entry) => entry.type === "doi")) {
     const glued = text.replace(/(10\.\d{4,9}\s*\/)\s*/gi, (_m, prefix: string) => prefix.replace(/\s+/g, ""));
     for (const doi of matchAll(glued, DOI_PATTERN)) {
-      add("doi", cleanDoiCandidate(doi));
+      add("doi", normalizeDoiCandidate(doi));
     }
   }
 
@@ -71,7 +71,7 @@ export function detectIdentifiers(
 
 function scanSource(source: string, add: (type: IdentifierType, value: string | undefined) => void): void {
   for (const doi of matchAll(source, DOI_PATTERN)) {
-    add("doi", cleanDoiCandidate(doi));
+    add("doi", normalizeDoiCandidate(doi));
   }
   for (const arxiv of matchAll(source, ARXIV_PATTERN, 1)) {
     add("arxiv", arxiv);

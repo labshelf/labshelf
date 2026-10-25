@@ -1,6 +1,6 @@
 // Builds the Overview tab of the All projects detail pane: target and limits, build, bibliography and location.
-import { compactTime } from "../../../../../library/index.js";
-import { iconBtn, kv, muted, section } from "../../../../../libraryUi/dom/index.js";
+import { formatCompactTime } from "../../../../../library/index.js";
+import { renderIconButton, renderField, renderMuted, renderSection } from "../../../../../libraryUi/dom/index.js";
 import { escapeHtml } from "../../../../../ui/index.js";
 import type { CountedLimit, ProjectDetail } from "../../../projectDetailPane.js";
 import type { ProjectRow } from "../../../projectRow.js";
@@ -34,34 +34,34 @@ function targetSection(row: ProjectRow, d: ProjectDetail, folds: Folds, now: num
   const words = countedValue(d.limits.words);
   const sentence = limitSentence(d.limits);
   const body = grid(
-    kv("Venue", `<span class="kv-line"><span>${venue ? escapeHtml(venue) : "Not set"}</span>${iconBtn("editTarget", "edit", "Edit venue and deadline")}</span>`),
-    pages ? kv("Pages", pages) : "",
-    words ? kv("Words", words) : "",
-  ) + limitBar(d.limits.pages) + (sentence ? muted(sentence) : "");
-  return section("target", "Target & limits", body, folds);
+    renderField("Venue", `<span class="kv-line"><span>${venue ? escapeHtml(venue) : "Not set"}</span>${renderIconButton("editTarget", "edit", "Edit venue and deadline")}</span>`),
+    pages ? renderField("Pages", pages) : "",
+    words ? renderField("Words", words) : "",
+  ) + limitBar(d.limits.pages) + (sentence ? renderMuted(sentence) : "");
+  return renderSection("target", "Target & limits", body, folds);
 }
 
 function buildSection(row: ProjectRow, d: ProjectDetail, folds: Folds, now: number): string {
-  const when = d.build.at === undefined ? undefined : `${compactTime(d.build.at, now)} ago`;
+  const when = d.build.at === undefined ? undefined : `${formatCompactTime(d.build.at, now)} ago`;
   const last = [buildStatusText(d.build), when, d.build.first?.message].filter(Boolean).map(escapeHtml).join(" · ");
   const body = grid(
-    kv("Engine", d.engine ? escapeHtml(d.engine) : "Not set"),
-    row.main ? kv("Main", code(row.main)) : "",
-    kv("Last build", `<span class="ls-build-dot b-${d.build.state}"></span> ${last}`),
+    renderField("Engine", d.engine ? escapeHtml(d.engine) : "Not set"),
+    row.main ? renderField("Main", code(row.main)) : "",
+    renderField("Last build", `<span class="ls-build-dot b-${d.build.state}"></span> ${last}`),
   ) + `<div class="build-actions">${button("build", "Build now")}${d.log ? button("openLog", "Open log") : ""}</div>`;
-  return section("build", "Build", body, folds);
+  return renderSection("build", "Build", body, folds);
 }
 
 function bibliographySection(d: ProjectDetail, folds: Folds, now: number): string {
   const bib = d.bibliography;
-  const body = bib ? grid(kv("File", code(bib.file))) + muted(bibliographyFact(bib, now)) : muted("No bibliography file.");
-  return section("bibliography", "Bibliography", body, folds, bib ? { count: bib.entries } : {});
+  const body = bib ? grid(renderField("File", code(bib.file))) + renderMuted(bibliographyFact(bib, now)) : renderMuted("No bibliography file.");
+  return renderSection("bibliography", "Bibliography", body, folds, bib ? { count: bib.entries } : {});
 }
 
 function locationSection(row: ProjectRow, d: ProjectDetail, folds: Folds): string {
-  const body = grid(kv("Path", code(d.location)), kv("Folder", escapeHtml(row.folder ?? "Top level"))) +
-    (row.external ? muted("Outside the library") : "");
-  return section("location", "Location", body, { location: true, ...folds });
+  const body = grid(renderField("Path", code(d.location)), renderField("Folder", escapeHtml(row.folder ?? "Top level"))) +
+    (row.external ? renderMuted("Outside the library") : "");
+  return renderSection("location", "Location", body, { location: true, ...folds });
 }
 
 /** Location starts folded; `collapsed` holds the user's own folds and wins over that default. */

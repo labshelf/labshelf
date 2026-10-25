@@ -1,7 +1,7 @@
 // Validates device-local version journals before they influence project file writes.
-import { sha256Hex } from '../../hash/index.js';
+import { deriveSha256Hex } from '../../hash/index.js';
 export interface VersionJournal { versions: Array<{ hash: string; text: string }>; pending?: string; known?: string }
-export const textHash = (text: string): Promise<string> => sha256Hex(new TextEncoder().encode(text));
+export const textHash = (text: string): Promise<string> => deriveSha256Hex(new TextEncoder().encode(text));
 
 export async function parseVersionJournal(text: string): Promise<VersionJournal> {
   const value: unknown = JSON.parse(text);

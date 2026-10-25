@@ -1,6 +1,6 @@
 /** Moves paper folders between folders and sends them to the trash; sidecars stay, so a restored paper keeps its notes. */
-import { errorMessage } from "../../logging/index.js";
-import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./mutationDeps.js";
+import { formatError } from "../../logging/index.js";
+import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type Reference } from "./mutationDeps.js";
 
 export interface PaperMove {
   id: string;
@@ -17,7 +17,7 @@ export interface MoveOutcome extends BatchOutcome {
  * Moves paper folders into `targetDir`; papers already there are skipped, name clashes fail.
  * @returns the moves made and the failures
  */
-export async function movePapers(ctx: MutationContext, papers: PaperRef[], targetDir: string): Promise<MoveOutcome> {
+export async function movePapers(ctx: MutationContext, papers: Reference[], targetDir: string): Promise<MoveOutcome> {
   const outcome: MoveOutcome = { done: [], failed: [], moves: [] };
   if ((await ctx.fs.stat(targetDir))?.isDirectory !== true) {
     const error = `The folder "${ctx.paths.basename(targetDir)}" does not exist`;
@@ -34,8 +34,8 @@ export async function movePapers(ctx: MutationContext, papers: PaperRef[], targe
       outcome.done.push(paper.id);
       outcome.moves.push({ id: paper.id, from: paper.path, to: destination });
     } catch (error) {
-      outcome.failed.push({ id: paper.id, error: errorMessage(error) });
-      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper move failed", { id: paper.id, targetDir, message: errorMessage(error) });
+      outcome.failed.push({ id: paper.id, error: formatError(error) });
+      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper move failed", { id: paper.id, targetDir, message: formatError(error) });
     }
   }
   if (outcome.done.length) {
@@ -48,15 +48,15 @@ export async function movePapers(ctx: MutationContext, papers: PaperRef[], targe
  * Sends paper folders to the trash, one at a time; a paper that fails stays where it is.
  * @returns the papers trashed and the failures
  */
-export async function trashPapers(ctx: MutationContext, papers: PaperRef[]): Promise<BatchOutcome> {
+export async function movePapersToTrash(ctx: MutationContext, papers: Reference[]): Promise<BatchOutcome> {
   const outcome: BatchOutcome = { done: [], failed: [] };
   for (const paper of papers) {
     try {
       await ctx.fs.trash(paper.path);
       outcome.done.push(paper.id);
     } catch (error) {
-      outcome.failed.push({ id: paper.id, error: errorMessage(error) });
-      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper trash failed", { id: paper.id, message: errorMessage(error) });
+      outcome.failed.push({ id: paper.id, error: formatError(error) });
+      await ctx.logger.log("WARN", MUTATIONS_MODULE, "Paper trash failed", { id: paper.id, message: formatError(error) });
     }
   }
   if (outcome.done.length) {

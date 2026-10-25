@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { nextStatus, type ChecklistSignals, type PaperRecord, type ReadingList, type SidebarTreeNode } from "@labshelf/core";
+import { deriveNextReadingStatus, type ChecklistSignals, type PaperRecord, type ReadingList, type SidebarTreeNode } from "@labshelf/core";
 import { ChecklistView } from "../../../src/writing/checklist";
 import type { ReadyProject } from "../../../src/writing/figures";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
@@ -179,7 +179,7 @@ describe("ChecklistView: Reading", () => {
     expect(row.trailing?.action).toBe("nextStatus");
     reading.of.mockClear();
     await view.handle({ op: "menu", key: row.key, action: "nextStatus" });
-    expect(setStatus).toHaveBeenCalledWith(["id-u"], nextStatus("unread"));
+    expect(setStatus).toHaveBeenCalledWith(["id-u"], deriveNextReadingStatus("unread"));
     expect(reading.of).toHaveBeenCalled();
   });
 

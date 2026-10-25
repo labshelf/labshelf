@@ -1,15 +1,15 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
 import * as vscode from "vscode";
 import {
-  conflictOwnerLabel,
-  contentConflictMessage,
-  errorMessage,
+  formatConflictOwnerLabel,
+  describeContentConflict,
+  formatError,
   type ConflictCopy,
   type ConflictResolution,
   type ILogger,
   type PathOps,
-  conflictPromptChoices,
-  type ConflictPromptResolution,
+  listConflictAskChoices,
+  type ConflictAskResolution,
   type SyncTool,
 } from "@labshelf/core";
 import type { ActiveServices } from "../../command/index.js";
@@ -69,11 +69,11 @@ const TOOL_NAMES: Record<SyncTool, string> = {
 
 interface ConflictChoice {
   label: string;
-  resolution: ConflictPromptResolution;
+  resolution: ConflictAskResolution;
 }
 
 export function conflictChoices(copy: ConflictCopy): ConflictChoice[] {
-  return conflictPromptChoices(copy);
+  return listConflictAskChoices(copy);
 }
 
 export function toolName(tool: SyncTool): string {
@@ -120,13 +120,13 @@ export class ConflictHandling {
         apply: (copy, resolution) => this.deps.resolveCopy(copy, resolution, services.logger),
         onFailure: (copy, error) => {
           void services.logger.error(MODULE, error, { copy: copy.copy });
-          void vscode.window.showErrorMessage(`Could not resolve ${this.deps.paths.basename(copy.copy)}: ${errorMessage(error)}`);
+          void vscode.window.showErrorMessage(`Could not resolve ${this.deps.paths.basename(copy.copy)}: ${formatError(error)}`);
         },
       });
       await services.reindexLibrary();
     } catch (error) {
       await services.logger.error(MODULE, error, { action: "resolve" });
-      void vscode.window.showErrorMessage(`Could not resolve conflicts: ${errorMessage(error)}`);
+      void vscode.window.showErrorMessage(`Could not resolve conflicts: ${formatError(error)}`);
     } finally {
       this.notifier.markSeen(remaining);
       this.resolving = false;
@@ -134,12 +134,12 @@ export class ConflictHandling {
   }
 
   private async ask(copy: ConflictCopy, index: number, total: number, services: ActiveServices): Promise<ConflictResolution | "mergeMyself" | undefined> {
-    const title = conflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? services.library.paper(copy.owner.id)?.record.title : undefined);
+    const title = formatConflictOwnerLabel(copy.owner, copy.owner.kind === "paper" ? services.library.paper(copy.owner.id)?.record.title : undefined);
     const picked = await vscode.window.showQuickPick(
       conflictChoices(copy).map((choice) => ({ label: choice.label, resolution: choice.resolution })),
       {
         title: `${title} (${index + 1} of ${total})`,
-        placeHolder: copy.match && copy.match !== "name" ? contentConflictMessage(copy) : `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
+        placeHolder: copy.match && copy.match !== "name" ? describeContentConflict(copy) : `${this.deps.paths.basename(copy.original)}: a conflicting copy from ${toolName(copy.tool)}`,
       },
     );
     return picked?.resolution;

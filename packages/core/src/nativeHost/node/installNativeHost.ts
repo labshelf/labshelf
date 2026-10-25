@@ -1,12 +1,12 @@
 /** Installs a native host: writes its launcher (script launch) and registers a manifest with every browser this user has. */
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { NativeHostSpec } from "../hostSpecs.js";
-import { hostLayout, isBrowserPresent, sandboxWarnings, type BrowserTarget, type HostLayout } from "./layout/index.js";
+import { resolveHostLayout, isBrowserPresent, detectSandboxWarnings, type BrowserHostSite, type HostLayout } from "./layout/index.js";
 import {
-  INSTALL_LOG_MODULE, requireRegistry, type BrowserId, type HostLaunch, type NativeHostEnv, type NativeHostWarning,
+  INSTALL_LOG_MODULE, ensureRegistry, type BrowserId, type HostLaunch, type NativeHostEnv, type NativeHostWarning,
 } from "./nativeHostEnv.js";
 import { writeLauncher } from "./launcherFiles.js";
-import { pathExists, readManifest, writeManifest } from "./hostManifestFiles.js";
+import { hasPath, readHostManifest, writeHostManifest } from "./hostManifestFiles.js";
 
 export interface BrowserSetup {
   browser: BrowserId;
@@ -29,11 +29,11 @@ export interface InstallOptions {
 }
 
 export async function installNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch: HostLaunch, options: InstallOptions = {}): Promise<NativeHostInstallResult> {
-  const layout = await hostLayout(env, spec);
-  if (env.platform === "win32") requireRegistry(env);
-  const present: BrowserTarget[] = [];
+  const layout = await resolveHostLayout(env, spec);
+  if (env.platform === "win32") ensureRegistry(env);
+  const present: BrowserHostSite[] = [];
   for (const target of layout.targets) if (await isBrowserPresent(env, target)) present.push(target);
-  const warnings = await sandboxWarnings(env, layout.targets);
+  const warnings = await detectSandboxWarnings(env, layout.targets);
 
   if (launch.kind === "script" && !options.replaceStandalone) {
     const standalone = await findStandalone(present, layout);
@@ -55,26 +55,26 @@ export async function installNativeHost(env: NativeHostEnv, spec: NativeHostSpec
 }
 
 /** The first existing executable, other than this host's launcher, that a present browser's manifest points at. */
-async function findStandalone(present: readonly BrowserTarget[], layout: HostLayout): Promise<string | undefined> {
+async function findStandalone(present: readonly BrowserHostSite[], layout: HostLayout): Promise<string | undefined> {
   for (const target of present) {
-    const manifest = await readManifest(target);
-    if (manifest.kind === "points-at" && manifest.path !== layout.launcherPath && (await pathExists(manifest.path))) return manifest.path;
+    const manifest = await readHostManifest(target);
+    if (manifest.kind === "points-at" && manifest.path !== layout.launcherPath && (await hasPath(manifest.path))) return manifest.path;
   }
   return undefined;
 }
 
 async function registerAll(
-  env: NativeHostEnv, spec: NativeHostSpec, present: readonly BrowserTarget[], executable: string, warnings: NativeHostWarning[],
+  env: NativeHostEnv, spec: NativeHostSpec, present: readonly BrowserHostSite[], executable: string, warnings: NativeHostWarning[],
 ): Promise<BrowserSetup[]> {
   const browsers: BrowserSetup[] = [];
   for (const target of present) {
     try {
-      await writeManifest(env, spec, target, executable);
+      await writeHostManifest(env, spec, target, executable);
       browsers.push({ browser: target.browser, label: target.label, manifestPath: target.manifestPath });
       await env.logger.log("INFO", INSTALL_LOG_MODULE, "Registered the native host manifest", { host: spec.hostName, browser: target.browser, manifestPath: target.manifestPath, executable });
     } catch (error) {
       await env.logger.error(INSTALL_LOG_MODULE, error, { host: spec.hostName, browser: target.browser, manifestPath: target.manifestPath });
-      warnings.push({ browser: target.browser, kind: "failed", message: `Could not set up ${target.label}: ${errorMessage(error)}` });
+      warnings.push({ browser: target.browser, kind: "failed", message: `Could not set up ${target.label}: ${formatError(error)}` });
     }
   }
   return browsers;

@@ -1,7 +1,7 @@
 // Lists the window's tabs as add sources and captures the picked one into the open folder.
 // A capture with no PDF writes nothing until the UI confirms; an existing paper is selected, not duplicated.
 import type { IfNoPdf } from "@labshelf/core";
-import { pdfSourceLabel } from "@labshelf/core";
+import { formatPdfSourceLabel } from "@labshelf/core";
 import { sendRuntime, type SaveOutcome, type TabSummary } from "../../../platform";
 import type { HostContext } from "../hostContext";
 
@@ -32,5 +32,5 @@ export async function captureTab(ctx: HostContext, folder: string, sourceId: str
   await ctx.snapshots.refresh();
   ctx.endpoint.post({ type: "select", id: result.id });
   if (result.alreadyInLibrary) ctx.notice("info", `Already in your library — "${result.title}"`);
-  else ctx.notice("ok", result.pdfSource ? `Added "${result.title}" (PDF via ${pdfSourceLabel(result.pdfSource)})` : `Added "${result.title}" — saved without a PDF`);
+  else ctx.notice("ok", result.pdfSource ? `Added "${result.title}" (PDF via ${formatPdfSourceLabel(result.pdfSource)})` : `Added "${result.title}" — saved without a PDF`);
 }

@@ -14,7 +14,7 @@ export interface ChangeBatchDeps {
 }
 
 // A conflict-scan failure must not block the re-index: the library still has to pick up the change.
-export async function processChangeBatch(deps: ChangeBatchDeps): Promise<void> {
+export async function applyChangeBatch(deps: ChangeBatchDeps): Promise<void> {
   if (!(await deps.isRootPresent())) return;
   try {
     const copies = await deps.scanConflicts();

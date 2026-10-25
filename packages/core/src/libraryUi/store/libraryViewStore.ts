@@ -2,10 +2,10 @@
  * Holds the reactive store behind the library UI. Views subscribe to slices with {@link LibraryViewStore.select} and repaint
  * only when their slice changes; the host's snapshots go through {@link LibraryViewStore.applySnapshot}.
  */
-import { editedTags } from "../../library/index.js";
+import { deriveEditedTags } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import type { PaperStatus } from "../../library/readingStatus/index.js";
-import { tagQuery } from "../searchQueries.js";
+import type { ReadingStatus } from "../../library/readingStatus/index.js";
+import { createTagQuery } from "../searchQueries.js";
 import type {
   CitationMapState,
   LibraryUiSnapshot,
@@ -67,7 +67,7 @@ function mergeSnapshot(state: LibraryViewState, snapshot: LibraryUiSnapshot): Sn
 /**
  * Compares store slices one level deep: primitives, arrays and plain objects; Sets compare by reference.
  */
-export function shallowEqual(a: unknown, b: unknown): boolean {
+export function isShallowEqual(a: unknown, b: unknown): boolean {
   if (Object.is(a, b)) return true;
   if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
   if (Array.isArray(a) && Array.isArray(b)) {
@@ -100,7 +100,7 @@ export class LibraryViewStore {
     this.state = { ...this.state, ...patch };
     for (const entry of this.listeners) {
       const next = entry.select(this.state);
-      if (!shallowEqual(next, entry.prev)) {
+      if (!isShallowEqual(next, entry.prev)) {
         entry.prev = next;
         entry.cb(next);
       }
@@ -122,14 +122,14 @@ export class LibraryViewStore {
   }
 
   /** Shows a status change at once, before the host confirms it with the next snapshot. */
-  applyStatus(ids: readonly string[], status: PaperStatus): void {
+  applyStatus(ids: readonly string[], status: ReadingStatus): void {
     this.patchPapers(ids, (p) => (p.status === status ? p : { ...p, status }));
   }
 
   /** Shows a tag edit at once, before the host confirms it with the next snapshot. */
   applyTags(ids: readonly string[], add: readonly string[], remove: readonly string[]): void {
     this.patchPapers(ids, (p) => {
-      const tags = editedTags(p.tags ?? [], add, remove);
+      const tags = deriveEditedTags(p.tags ?? [], add, remove);
       return tags.join("\n") === (p.tags ?? []).join("\n") ? p : { ...p, tags };
     });
   }
@@ -216,7 +216,7 @@ export class LibraryViewStore {
 
   /** Narrows the list to the papers with this tag, */
   searchTag(tag: string): void {
-    this.set({ query: tagQuery(tag) });
+    this.set({ query: createTagQuery(tag) });
   }
 
   /** Shows the citation map in place of the paper list; null goes back to the paper list. */

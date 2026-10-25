@@ -5,8 +5,8 @@
  */
 import { showMenu } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { libraryTags } from "../../../viewModel/index.js";
-import { changeTags, splitTags } from "../../flows/index.js";
+import { countLibraryTags } from "../../../viewModel/index.js";
+import { updateTags, splitTags } from "../../flows/index.js";
 import type { UiContext } from "../../uiContext.js";
 
 function chip(tag: string, readOnly: boolean): string {
@@ -20,7 +20,7 @@ function chip(tag: string, readOnly: boolean): string {
 function otherTags(ctx: UiContext): string[] {
   const { papers, selected } = ctx.store.get();
   const chosen = papers.filter((p) => selected.has(p.id));
-  return libraryTags(papers).map(({ tag }) => tag)
+  return countLibraryTags(papers).map(({ tag }) => tag)
     .filter((tag) => !chosen.every((p) => (p.tags ?? []).some((t) => t.toLowerCase() === tag.toLowerCase())));
 }
 
@@ -34,24 +34,24 @@ function tagInput(ctx: UiContext): string {
 export function openTagMenu(ctx: UiContext, anchor: HTMLElement): void {
   const ids = [...ctx.store.get().selected];
   const input = anchor.closest(".tag-field")?.querySelector<HTMLInputElement>(".tag-input");
-  showMenu(anchor, otherTags(ctx).map((tag) => ({ label: `#${tag}`, onSelect: () => changeTags(ctx, ids, [tag], []) })), {
+  showMenu(anchor, otherTags(ctx).map((tag) => ({ label: `#${tag}`, onSelect: () => updateTags(ctx, ids, [tag], []) })), {
     onClose: () => { if (input?.isConnected) input.focus(); },
   });
 }
 
 /** The row of `tags`; `editing` shows the field in place of the Add tag button. */
-export function tagRowHtml(ctx: UiContext, tags: readonly string[], editing: boolean): string {
+export function renderTagRowHtml(ctx: UiContext, tags: readonly string[], editing: boolean): string {
   const add = ctx.readOnly ? "" : editing ? tagInput(ctx)
     : `<button class="ls-icon-btn tag-add" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${icon("plus")}</button>`;
   return `<div class="tag-row">${tags.map((t) => chip(t, ctx.readOnly)).join("")}${add}</div>`;
 }
 
 /** Handles a key in the tag field; `ids` are the papers the row edits, `tags` the ones it shows. */
-export function onTagKey(ctx: UiContext, e: KeyboardEvent, input: HTMLInputElement, ids: string[], tags: readonly string[]): void {
+export function onTagKeydown(ctx: UiContext, e: KeyboardEvent, input: HTMLInputElement, ids: string[], tags: readonly string[]): void {
   if (e.key === "Enter") {
     const add = splitTags(input.value);
     input.value = "";
-    changeTags(ctx, ids, add, []);
+    updateTags(ctx, ids, add, []);
     e.preventDefault();
   } else if (e.key === "ArrowDown") {
     const pick = input.parentElement?.querySelector<HTMLButtonElement>(".tag-pick");
@@ -62,7 +62,7 @@ export function onTagKey(ctx: UiContext, e: KeyboardEvent, input: HTMLInputEleme
     ctx.focusList();
     e.preventDefault();
   } else if (e.key === "Backspace" && !input.value && ids.length === 1 && tags.length) {
-    changeTags(ctx, ids, [], [tags[tags.length - 1]!]);
+    updateTags(ctx, ids, [], [tags[tags.length - 1]!]);
     e.preventDefault();
   }
 }
@@ -72,5 +72,5 @@ export function onTagInput(ctx: UiContext, input: HTMLInputElement, ids: string[
   if (!input.value.includes(",")) return;
   const parts = input.value.split(",");
   input.value = parts.pop() ?? "";
-  changeTags(ctx, ids, splitTags(parts.join(",")), []);
+  updateTags(ctx, ids, splitTags(parts.join(",")), []);
 }

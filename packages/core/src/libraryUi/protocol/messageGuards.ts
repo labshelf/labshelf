@@ -1,6 +1,6 @@
 // Validates untrusted library UI messages before a host handles them.
 import { PAPERS_DIR } from "../../library/index.js";
-import { PAPER_STATUSES, type PaperStatus } from "../../library/readingStatus/index.js";
+import { PAPER_STATUSES, type ReadingStatus } from "../../library/readingStatus/index.js";
 import type { UiToHost } from "./messages.js";
 
 type Raw = Record<string, unknown>;
@@ -10,7 +10,7 @@ const isText = (v: unknown): v is string => typeof v === "string";
 const isId = (v: unknown): v is string => typeof v === "string" && v.length > 0;
 const isIds = (v: unknown): v is string[] => Array.isArray(v) && v.every(isId);
 const isTexts = (v: unknown): v is string[] => Array.isArray(v) && v.every(isText);
-const isStatus = (v: unknown): v is PaperStatus => (PAPER_STATUSES as readonly unknown[]).includes(v);
+const isStatus = (v: unknown): v is ReadingStatus => (PAPER_STATUSES as readonly unknown[]).includes(v);
 const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number" && Number.isInteger(v) && v > 0);
 const isBool = (v: unknown): boolean => typeof v === "boolean";
 const isLine = (v: unknown): boolean => typeof v === "number" && Number.isInteger(v) && v >= 0;

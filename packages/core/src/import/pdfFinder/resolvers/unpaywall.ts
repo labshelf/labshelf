@@ -1,6 +1,6 @@
 /** Proposes the legal open-access copies (publisher, repository, preprint server) Unpaywall lists for a DOI. */
-import { noteVersion, versionFromOaLabel } from "./candidateVersion.js";
-import { lookupJson } from "./timedFetch.js";
+import { addVersion, deriveVersionFromOaLabel } from "./candidateVersion.js";
+import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver } from "../pdfResolver.js";
 
 interface UnpaywallLocation {
@@ -21,15 +21,15 @@ export const unpaywallResolver: PdfResolver = {
   name: "unpaywall",
   async resolve(ctx, env) {
     if (!ctx.doi) return [];
-    const payload = await lookupJson<UnpaywallResponse>(
+    const payload = await fetchResolverJson<UnpaywallResponse>(
       env,
       `https://api.unpaywall.org/v2/${encodeURIComponent(ctx.doi)}?email=${encodeURIComponent(ctx.contactEmail)}`,
     );
     if (!payload) return [];
     for (const loc of [payload.best_oa_location, ...(payload.oa_locations ?? [])]) {
-      const version = versionFromOaLabel(loc?.version, (loc?.host_type ?? "").toLowerCase() === "publisher");
-      if (loc?.url_for_pdf) noteVersion(ctx, loc.url_for_pdf, version);
-      if (loc?.url) noteVersion(ctx, loc.url, version);
+      const version = deriveVersionFromOaLabel(loc?.version, (loc?.host_type ?? "").toLowerCase() === "publisher");
+      if (loc?.url_for_pdf) addVersion(ctx, loc.url_for_pdf, version);
+      if (loc?.url) addVersion(ctx, loc.url, version);
     }
     const out: string[] = [];
     if (payload.best_oa_location?.url_for_pdf) out.push(payload.best_oa_location.url_for_pdf);

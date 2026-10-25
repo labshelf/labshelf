@@ -1,10 +1,10 @@
 // Carries paper references between Library folder and Space drop targets.
 import type { UiContext } from "../uiContext.js";
 
-import { PAPER_DRAG_MIME, parsePaperDragIds } from "./paperIdPayload.js";
+import { PAPER_DRAG_MIME, parsePaperDragPayload } from "./paperIdPayload.js";
 const DRAGGING_CLASS = "dragging-papers";
 
-export function makeDropTarget(ctx: Pick<UiContext, "transport">, el: HTMLElement, folder: string): void {
+export function attachDropZone(ctx: Pick<UiContext, "transport">, el: HTMLElement, folder: string): void {
   const accepts = (e: DragEvent): boolean => Array.from(e.dataTransfer?.types ?? []).includes(PAPER_DRAG_MIME);
   el.addEventListener("dragover", (e) => {
     if (!accepts(e)) return;
@@ -17,7 +17,7 @@ export function makeDropTarget(ctx: Pick<UiContext, "transport">, el: HTMLElemen
     el.classList.remove("drop-target");
     if (!accepts(e)) return;
     e.preventDefault();
-    const ids = parsePaperDragIds(e.dataTransfer?.getData(PAPER_DRAG_MIME) ?? "[]");
+    const ids = parsePaperDragPayload(e.dataTransfer?.getData(PAPER_DRAG_MIME) ?? "[]");
     if (ids.length) ctx.transport.post({ type: "paper.move", ids, target: folder });
   });
 }
@@ -30,6 +30,6 @@ export function startPaperDrag(ctx: Pick<UiContext, "root">, e: DragEvent, ids: 
   ctx.root.classList.add(DRAGGING_CLASS);
 }
 
-export function endPaperDrag(ctx: UiContext): void {
+export function stopPaperDrag(ctx: UiContext): void {
   ctx.root.classList.remove(DRAGGING_CLASS);
 }

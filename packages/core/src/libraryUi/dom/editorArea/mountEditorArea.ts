@@ -1,7 +1,7 @@
 // Mounts the editor area: tabs in up to two groups side by side, bodies mounted on first activation and disposed on close.
 import { el, showMenu, type MenuAnchor } from "../../../ui/dom/index.js";
-import { EditorGroups, otherGroup, type EditorGroup } from "./editorGroups.js";
-import type { EditorArea, EditorAreaOptions, EditorGroupIndex, EditorAreaPrefsPort } from "./editorAreaOptions.js";
+import { EditorGroups, deriveOtherGroup, type EditorGroup } from "./editorGroups.js";
+import type { EditorArea, EditorAreaOptions, EditorGroupSide, EditorAreaPrefsPort } from "./editorAreaOptions.js";
 import { attachSash } from "../shell/index.js";
 
 // Handles the editor area's keys: roving focus inside a tablist, Ctrl/Cmd+W to close, Ctrl+Tab to cycle, and the tab menu key.
@@ -95,7 +95,7 @@ function createEditorSash(root: HTMLElement, first: HTMLElement, prefs: EditorAr
 const TAB_MIME = "application/x-labshelf-editor-tab";
 
 /** Wires dragging for every tab of `groups`; `move` runs on a drop onto the other group. */
-function wireTabDrag(root: HTMLElement, groups: readonly EditorGroup[], move: (id: string, group: EditorGroupIndex) => void): void {
+function wireTabDrag(root: HTMLElement, groups: readonly EditorGroup[], move: (id: string, group: EditorGroupSide) => void): void {
   root.addEventListener("dragstart", (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('[role="tab"]');
     if (!tab || !e.dataTransfer) return;
@@ -161,7 +161,7 @@ export function mountEditorArea(slot: HTMLElement, options: EditorAreaOptions = 
   const closeLater = (id: string): void => { void close(id); };
   const menu = (id: string, at: HTMLElement | { x: number; y: number }): void => showTabMenu(at, {
     close: () => closeLater(id),
-    moveToOtherGroup: () => { if (state.has(id)) state.move(id, otherGroup(state.groupOf(id).index)); },
+    moveToOtherGroup: () => { if (state.has(id)) state.move(id, deriveOtherGroup(state.groupOf(id).index)); },
   });
 
   wirePointer(root, { focus: (id) => state.focus(id, true), close: closeLater, menu });
@@ -181,7 +181,7 @@ export function mountEditorArea(slot: HTMLElement, options: EditorAreaOptions = 
     activate: (id) => state.focus(id),
     refreshActions: (id) => state.refreshActions(id),
     tabs: () => state.tabs(),
-    split: () => { const id = state.focusedId(); if (id) state.move(id, otherGroup(state.groupOf(id).index)); },
+    split: () => { const id = state.focusedId(); if (id) state.move(id, deriveOtherGroup(state.groupOf(id).index)); },
     dispose: () => { state.disposeAll(); root.remove(); },
   };
 }

@@ -1,5 +1,5 @@
 /** Writes a paper resolved from the network or a captured page into a new folder, with its PDF when one was found. */
-import { makeCiteKey, metadataFields, PDF_FILE, writeNewPaper, type MutationContext } from "../../library/index.js";
+import { createCiteKey, deriveMetadataFields, PDF_FILE, createPaper, type MutationContext } from "../../library/index.js";
 import type { PaperRecord, PdfVersion } from "../../model/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import { NETWORK_IMPORT_MODULE } from "./env.js";
@@ -28,9 +28,9 @@ export async function writeImportedPaper(
   paper: ImportedPaper,
 ): Promise<PaperRecord> {
   const { metadata, pdf } = paper;
-  const record = await writeNewPaper(ctx, takenIds, targetDir, {
-    citeKey: paper.citeKey ?? makeCiteKey(metadata, metadata.title),
-    fields: { title: metadata.title, ...metadataFields(metadata), ...paper.extra, ...(pdf && paper.pdfVersion ? { pdfVersion: paper.pdfVersion } : {}) },
+  const record = await createPaper(ctx, takenIds, targetDir, {
+    citeKey: paper.citeKey ?? createCiteKey(metadata, metadata.title),
+    fields: { title: metadata.title, ...deriveMetadataFields(metadata), ...paper.extra, ...(pdf && paper.pdfVersion ? { pdfVersion: paper.pdfVersion } : {}) },
     pdf,
     sourceName: paper.sourceName ?? PDF_FILE,
   });

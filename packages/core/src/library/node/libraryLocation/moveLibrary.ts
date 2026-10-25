@@ -3,12 +3,12 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { errorMessage } from "../../../logging/index.js";
-import { libraryKey, stateDir } from "../deviceState/index.js";
-import { sharedConfigPath, updateSharedConfig } from "../sharedConfigFile.js";
+import { formatError } from "../../../logging/index.js";
+import { deriveLibraryKey, resolveDeviceStateDir } from "../deviceState/index.js";
+import { resolveSharedConfigPath, updateSharedConfig } from "../sharedConfigFile.js";
 import { isLibraryFolder } from "./inspectLibraryFolder.js";
-import { sha256Hex } from "../../../hash/index.js";
-import { cacheDir } from "../cacheDir.js";
+import { deriveSha256Hex } from "../../../hash/index.js";
+import { resolveCacheDir } from "../cacheDir.js";
 
 /** A folder that cannot move stays where it is and is logged; the library move has already succeeded. */
 async function moveDeviceLocalFolders(
@@ -18,7 +18,7 @@ async function moveDeviceLocalFolders(
   logger: ILogger,
 ): Promise<void> {
   if (fromKey === toKey) { return; }
-  for (const base of [cacheDir(env), stateDir(env)]) {
+  for (const base of [resolveCacheDir(env), resolveDeviceStateDir(env)]) {
     const source = path.join(base, "libraries", fromKey);
     const target = path.join(base, "libraries", toKey);
     if (!(await fs.stat(source).then((stat) => stat.isDirectory(), () => false))) { continue; }
@@ -62,7 +62,7 @@ async function listTree(root: string): Promise<TreeListing> {
 }
 
 async function hashOf(file: string): Promise<string> {
-  return sha256Hex(await fs.readFile(file));
+  return deriveSha256Hex(await fs.readFile(file));
 }
 
 async function verifyCopy(listing: TreeListing, from: string, to: string): Promise<void> {
@@ -183,13 +183,13 @@ export async function moveLibrary(from: string, to: string, options: MoveLibrary
   let fromKey: string;
   try {
     await assertMovable(source, target);
-    fromKey = libraryKey(source);
+    fromKey = deriveLibraryKey(source);
     await relocate(source, target, options);
   } catch (error) {
     await logger.error("libraryMove", error, { action: "move library", from: source, to: target });
-    throw new Error(`Could not move the library from ${source} to ${target}: ${errorMessage(error)}`, { cause: error });
+    throw new Error(`Could not move the library from ${source} to ${target}: ${formatError(error)}`, { cause: error });
   }
-  await moveDeviceLocalFolders(fromKey, libraryKey(target), env, logger);
-  await updateSharedConfig({ libraryRoot: target }, sharedConfigPath(env), logger);
+  await moveDeviceLocalFolders(fromKey, deriveLibraryKey(target), env, logger);
+  await updateSharedConfig({ libraryRoot: target }, resolveSharedConfigPath(env), logger);
   await logger.log("INFO", "libraryMove", "Library moved", { from: source, to: target });
 }
