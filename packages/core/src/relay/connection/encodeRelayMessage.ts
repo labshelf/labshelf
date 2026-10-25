@@ -1,5 +1,6 @@
 // Encodes a socket message of either direction into the binary layout of the relay protocol.
 
+import { joinBytes } from "../../encoding/index.js";
 import { RELAY_PROTOCOL_MAJOR, RELAY_PROTOCOL_MINOR } from "../protocolVersion.js";
 import { CLIENT_MESSAGE_TYPE, SERVER_MESSAGE_TYPE, type RelayMessage } from "./connectionMessages.js";
 
@@ -29,10 +30,7 @@ class ByteWriter {
   }
 
   bytes(): Uint8Array {
-    const out = new Uint8Array(this.parts.reduce((sum, part) => sum + part.length, 0));
-    let offset = 0;
-    for (const part of this.parts) { out.set(part, offset); offset += part.length; }
-    return out;
+    return joinBytes(this.parts);
   }
 
   private push(bytes: Uint8Array): this { this.parts.push(bytes); return this; }

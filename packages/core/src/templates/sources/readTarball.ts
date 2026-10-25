@@ -1,4 +1,6 @@
 // Unpacks a .tar.gz archive in memory into its entries, so any runtime can read a downloaded package without a disk.
+import { joinBytes } from "../../encoding/index.js";
+
 const BLOCK = 512;
 // TRAP: created per call, because jsdom test environments that load this module have no TextDecoder.
 const decode = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
@@ -22,10 +24,7 @@ async function gunzip(archive: Uint8Array, maxBytes: number): Promise<Uint8Array
     if (total > maxBytes) { throw new Error(`The archive unpacks to more than ${maxBytes} bytes`); }
     chunks.push(chunk);
   }
-  const out = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
-  return out;
+  return joinBytes(chunks);
 }
 
 const text = (block: Uint8Array, start: number, length: number): string => {

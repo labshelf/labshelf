@@ -6,7 +6,7 @@ import type { BridgeRequest, BridgeResults, HostMessage } from "../protocol.js";
 import { BRIDGE_PROTOCOL } from "../protocol.js";
 import { assertSameProtocol, parseBridgeRequest, requestId } from "../requestValidation.js";
 import type { LibraryFileOperations } from "./fileOperations.js";
-import { base64ToBytes } from "../../encoding/index.js";
+import { base64ToBytes, joinBytes } from "../../encoding/index.js";
 import { formatError } from "../../logging/index.js";
 
 // CONTRACT: documents/contracts/bridge.md#file-transfer
@@ -55,13 +55,7 @@ class StagedWrites {
     const write = this.get(id);
     this.drop(id);
     if (write.size !== size) refuse(`Commit for id ${id} declares ${size} bytes, ${write.size} were staged`);
-    const bytes = new Uint8Array(write.size);
-    let offset = 0;
-    for (const part of write.parts) {
-      bytes.set(part, offset);
-      offset += part.length;
-    }
-    return { path: write.path, bytes };
+    return { path: write.path, bytes: joinBytes(write.parts) };
   }
 
   drop(id: number): void {
