@@ -1,5 +1,6 @@
 /** Defines the notice wording for batch paper changes (status, tags, move, remove) on every host. */
 import { ROOT_LABEL } from "../library/model/index.js";
+import { formatCount } from "../ui/index.js";
 
 export interface BatchFailure {
   id: string;
@@ -13,7 +14,7 @@ export interface OutcomeNotice {
 
 /** "1 paper" / "3 papers". */
 export function formatPaperCount(n: number): string {
-  return `${n} paper${n === 1 ? "" : "s"}`;
+  return formatCount(n, "paper");
 }
 
 /** Trims tags and drops empty ones. */

@@ -5,6 +5,7 @@ import type { SearchResults } from "../searchResults.js";
 import { createMatchList, type MatchList } from "./matchList.js";
 import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { SearchOptions } from "../searchPattern.js";
+import { formatCount } from "../../../ui/index.js";
 
 interface SearchFormState {
   query: string;
@@ -97,11 +98,9 @@ export function deriveSteppedMatch(current: number, count: number, step: 1 | -1)
   return (current + step + count) % count;
 }
 
-const plural = (count: number, word: string): string => `${count} ${word}${count === 1 ? "" : "s"}`;
-
 function summaryText(results: SearchResults): string {
   if (results.total === 0) { return "No results"; }
-  const found = `${plural(results.total, "result")} in ${plural(results.files.length, "file")}`;
+  const found = `${formatCount(results.total, "result")} in ${formatCount(results.files.length, "file")}`;
   return results.truncated ? `${found}. Only the first ${results.total} are shown; narrow the search to see the rest.` : found;
 }
 
