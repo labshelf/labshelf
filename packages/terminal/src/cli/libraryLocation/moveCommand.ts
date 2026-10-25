@@ -1,10 +1,9 @@
 // Runs `labshelf move <path>`: moves the configured library to another folder and remembers the new location.
 import type { ILogger } from "@labshelf/core";
-import { moveLibrary } from "@labshelf/core/node";
+import { moveLibrary, resolveLibraryDir } from "@labshelf/core/node";
 
 import { resolveHomePath } from "../../platform/index.js";
 import { UsageError, type Output } from "../usage.js";
-import { resolveLibraryDir } from "./pickLibraryDir.js";
 
 export interface MoveSite {
   logger: (root: string) => ILogger;

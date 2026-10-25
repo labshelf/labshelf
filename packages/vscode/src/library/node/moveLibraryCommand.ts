@@ -1,8 +1,8 @@
 // Implements "Move Library…": asks for the destination folder and moves the open library there.
 import * as vscode from "vscode";
 
+import { resolveLibraryDir } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
-import { resolveLibraryDir } from "./syncFolders/index.js";
 import { moveLibraryTo } from "./moveLibraryTo.js";
 
 export async function runMoveLibraryCommand(controller: LibraryRootController): Promise<void> {

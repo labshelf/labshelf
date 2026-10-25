@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { detectLibraryFolder } from "@labshelf/core/node";
+import { detectLibraryFolder } from "./detectLibraryFolder.js";
 
 export const LIBRARY_FOLDER_NAME = "LabShelf";
 
@@ -11,8 +11,8 @@ export const LIBRARY_FOLDER_NAME = "LabShelf";
  * `LabShelf` subfolder, so a library never mixes with unrelated files.
  * @returns the absolute target folder
  */
-export async function resolveLibraryDir(raw: string): Promise<string> {
-  const folder = path.resolve(raw);
+export async function resolveLibraryDir(picked: string): Promise<string> {
+  const folder = path.resolve(picked);
   const info = await detectLibraryFolder(folder);
   if (!info.exists || info.isLibrary) { return folder; }
   const entries = await fs.readdir(folder).catch(() => []);

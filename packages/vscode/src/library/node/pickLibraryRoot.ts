@@ -7,16 +7,11 @@ import {
   createDeviceLocalLayout,
   detectSyncFolders,
   detectLibraryFolder,
+  listLibraryFolders,
+  resolveLibraryDir,
   type SyncFolder,
 } from "@labshelf/core/node";
 import type { SharedLibraryConfig } from "../../storage/paths/index.js";
-import {
-  resolveLibraryDir,
-  formatPath,
-  LIBRARY_FOLDER_NAME,
-  syncToolName,
-} from "./syncFolders/index.js";
-import * as path from "node:path";
 
 type FirstRunChoice =
   | { kind: "folder"; path: string; label: string; detail: string }
@@ -24,14 +19,8 @@ type FirstRunChoice =
   | { kind: "guide"; label: string };
 
 export function listFirstRunChoices(detected: readonly SyncFolder[], home: string): FirstRunChoice[] {
-  const synced = detected.map((folder): FirstRunChoice => {
-    const target = path.join(folder.path, LIBRARY_FOLDER_NAME);
-    return { kind: "folder", path: target, label: formatPath(target, home), detail: `synced by ${syncToolName(folder.tool)}` };
-  });
-  const local = path.join(home, LIBRARY_FOLDER_NAME);
   return [
-    ...synced,
-    { kind: "folder", path: local, label: formatPath(local, home), detail: "only on this computer" },
+    ...listLibraryFolders(detected, home).map((folder): FirstRunChoice => ({ kind: "folder", ...folder })),
     { kind: "browse", label: "Choose a folder…" },
     { kind: "guide", label: "How to sync between computers…" },
   ];
