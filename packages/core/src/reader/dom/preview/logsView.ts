@@ -1,10 +1,50 @@
 // Shows a build root's problems over the page area, by severity tab, with its raw log one click away.
-import { el } from "../../../../ui/dom/index.js";
-import { icon, type IconName } from "../../../../ui/index.js";
-import type { PreviewRoot, PreviewRoots, WebviewToHost, PreviewProblem } from "../../../index.js";
-import { iconButton } from "../../elements/index.js";
-import { fileName } from "../fileName.js";
-import { LogsTabs, matchesFilter, type LogsFilter } from "./logsTabs.js";
+import { el } from "../../../ui/dom/index.js";
+import { icon, type IconName } from "../../../ui/index.js";
+import type { PreviewRoot, PreviewRoots, WebviewToHost, PreviewProblem } from "../../index.js";
+import { iconButton } from "../elements/index.js";
+import { fileName } from "./fileName.js";
+import { TabList } from "../chrome/index.js";
+
+/** Which problems a logs tab lists. */
+type LogsFilter = "all" | PreviewProblem["severity"];
+
+const TABS: ReadonlyArray<{ id: LogsFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "error", label: "Errors" },
+  { id: "warning", label: "Warnings" },
+  { id: "info", label: "Info" },
+];
+
+/** @returns true when `problem` belongs on the tab of `filter`. */
+const matchesFilter = (problem: PreviewProblem, filter: LogsFilter): boolean =>
+  filter === "all" || problem.severity === filter;
+
+class LogsTabs {
+  private readonly tabs: TabList<LogsFilter>;
+
+  constructor(onSelect: (filter: LogsFilter) => void) {
+    this.tabs = new TabList(TABS, { label: "Problem severity", onSelect });
+    this.tabs.el.classList.add("rd-logs-tabs");
+  }
+
+  get el(): HTMLElement { return this.tabs.el; }
+
+  get filter(): LogsFilter { return this.tabs.selected; }
+
+  /** Writes each tab's count of `problems`; a tab with none stays, muted. */
+  setCounts(problems: PreviewProblem[]): void {
+    for (const { id, label } of TABS) {
+      const n = problems.filter((p) => matchesFilter(p, id)).length;
+      const button = this.tabs.button(id);
+      button.textContent = `${label} ${n}`;
+      button.classList.toggle("rd-logs-tab-empty", n === 0);
+    }
+  }
+
+  /** Selects the tab of `filter` and tells the view to list its problems. */
+  select(filter: LogsFilter, focus = false): void { this.tabs.select(filter, focus); }
+}
 
 const SEVERITY_ICON: Record<PreviewProblem["severity"], IconName> = { error: "warning", warning: "warning", info: "info" };
 

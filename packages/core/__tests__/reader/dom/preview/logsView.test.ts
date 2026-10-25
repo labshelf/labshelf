@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 // Tests the build logs view: tab counts, filtering, keyboard, jump messages, raw log, closing and refresh.
-import { LogsView } from "../../../../../src/reader/dom/preview/index";
-import type { PreviewProblem, PreviewRoot, PreviewRoots } from "../../../../../src/reader/previewProtocol";
+import { LogsView } from "../../../../src/reader/dom/preview/index";
+import type { PreviewProblem, PreviewRoot, PreviewRoots } from "../../../../src/reader/previewProtocol";
 
 const MAIN = "/p/chapters/main.tex";
 
