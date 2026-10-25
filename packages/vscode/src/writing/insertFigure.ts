@@ -36,9 +36,9 @@ export async function insertImage(editor: vscode.TextEditor, language: WritingLa
   if (!isInside(paths, project.folder, source)) {
     try {
       image = await copyIntoProject(projects, project, source);
-      await logger?.log("INFO", "writing", "Copied an image into the project", { source, image });
+      await logger?.log("INFO", "writing/editorActions", "Copied an image into the project", { source, image });
     } catch (error) {
-      await logger?.log("ERROR", "writing", "Could not copy the image into the project", { source, folder: project.folder, error: String(error) });
+      await logger?.log("ERROR", "writing/editorActions", "Could not copy the image into the project", { source, folder: project.folder, error: String(error) });
       void vscode.window.showErrorMessage(`Could not copy the image into the project: ${String(error)}`);
       return;
     }

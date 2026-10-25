@@ -4,7 +4,7 @@ import type { ILogger } from "../../../ports/index.js";
 import { diffPages, type PdfChanges } from "../diffPages.js";
 import { renderInkMaps } from "./renderPageInk.js";
 
-const MODULE = "writing/versions";
+const MODULE = "writing/compare";
 const PIXELS_PER_POINT = 1.5;
 
 export async function comparePdfs(pdfjs: PdfjsLoader, beforePdf: string, afterPdf: string, logger: ILogger): Promise<PdfChanges> {

@@ -26,7 +26,7 @@ async function wrapActiveSelections(deps: EditorActionDeps, style: WrapStyle): P
     ordered.forEach((selection, index) => builder.replace(selection, wraps[index]!.text));
   });
   if (!applied) {
-    await deps.host.current()?.logger.log("WARN", "writing", "Editor rejected the wrap edit", { style, language });
+    await deps.host.current()?.logger.log("WARN", "writing/editorActions", "Editor rejected the wrap edit", { style, language });
     return;
   }
   // The edits shift every later selection by the length change of the earlier ones.

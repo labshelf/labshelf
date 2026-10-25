@@ -3,7 +3,7 @@
 import { sharedProjectComments, type Comment, type CommentThread, type ILogger, type ShareSession, type TextRange } from "@labshelf/core";
 import type { CommentThreads, ReviewThread } from "./comments";
 
-const MODULE = "collab.comments";
+const MODULE = "collab.liveComments";
 
 export interface LiveCommentThreadsOptions {
   session: Pick<ShareSession, "index" | "openDoc">;

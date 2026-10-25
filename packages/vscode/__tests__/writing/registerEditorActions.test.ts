@@ -75,6 +75,6 @@ describe("bold and italic commands", () => {
   it("logs when the editor rejects the edit", async () => {
     const { run, log } = setup("latex", "text", [{ start: [0, 0], end: [0, 4] }], false);
     await run("labshelf.writing.bold");
-    expect(log).toHaveBeenCalledWith("WARN", "writing", expect.any(String), { style: "bold", language: "latex" });
+    expect(log).toHaveBeenCalledWith("WARN", "writing/editorActions", expect.any(String), { style: "bold", language: "latex" });
   });
 });
