@@ -2,7 +2,7 @@
 import { createLoopbackTransport, type HostToSearch, type SearchToHost } from "@labshelf/core";
 import { el, mountProjectSearch } from "@labshelf/core/dom";
 import { revealInOpenEditor } from "../../writing/session";
-import { mountSearchHost } from "../../writing/search";
+import { mountSearchHost } from "../../writing/mountSearchHost";
 import { findProject } from "../../writing/project";
 import type { TabModule } from "./tabKind";
 

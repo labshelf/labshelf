@@ -17,8 +17,8 @@ import {
   matchReplacement,
 } from "@labshelf/core";
 import { confirmDialog, toast } from "@labshelf/core/dom";
-import { flushProjectEditors, reloadProjectEditors } from "../session";
-import { recordProjectEdit } from "../history";
+import { flushProjectEditors, reloadProjectEditors } from "./session";
+import { recordProjectEdit } from "./history";
 
 /** Replaces the matches in their files; a match whose text changed since the search is left alone. */
 export async function replaceInFiles(fs: LibraryFileSystem, matches: readonly MatchLocation[], pattern: RegExp, replacement: string): Promise<number> {

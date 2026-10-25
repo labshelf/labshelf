@@ -1,7 +1,7 @@
 // Pins how the browser lists library projects and reads and writes their files through the folder file system.
 import type { ILogger } from "@labshelf/core";
-import { MemoryFolderFs } from "../libraryLocation/memoryFolderFs";
-import { createBrowserProjects, ProjectFileNotFoundError } from "../../../src/storage/projects";
+import { MemoryFolderFs } from "./libraryLocation/memoryFolderFs";
+import { createBrowserProjects, ProjectFileNotFoundError } from "../../src/storage/browserProjects";
 
 function makeLogger(): ILogger & { log: jest.Mock; error: jest.Mock } {
   return { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };

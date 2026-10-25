@@ -16,7 +16,7 @@ import { createPageShares, type PageShares } from "./pageShares";
 import type { LiveShare } from "./projectShareEntry";
 import { createShareKeyStore } from "./shareKeyStore";
 import { deleteBrowserCollabState } from "../storage";
-import { createBrowserProjects } from "../storage/projects";
+import { createBrowserProjects } from "../storage/browserProjects";
 
 /** The project list the workflows read; `reload` re-reads the library's projects and then calls `reloaded`. */
 interface BrowserShareCatalog {

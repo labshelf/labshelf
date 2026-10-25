@@ -12,7 +12,7 @@ import {
 import { createBrowserLatexHelper } from "../helper/client";
 import { getSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
-import { createBrowserProjects } from "../storage/projects";
+import { createBrowserProjects } from "../storage/browserProjects";
 import { createHelperProject } from "../helper/project";
 import { revealInOpenEditor } from "../writing/session";
 import { createProjectsSource, showPdfInTab } from "../writing/projectList";

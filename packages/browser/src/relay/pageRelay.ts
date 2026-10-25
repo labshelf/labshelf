@@ -6,8 +6,8 @@ import {
   type CloudflareAccount,
 } from "@labshelf/core";
 import { toast, quickPick, showDialog } from "@labshelf/core/dom";
-import { createBrowserRelayAccount, type BrowserRelayAccount } from "../browserRelayAccount";
-import { RelaySignInCancelledError } from "../watchRedirectTab";
+import { createBrowserRelayAccount, type BrowserRelayAccount } from "./browserRelayAccount";
+import { RelaySignInCancelledError } from "./watchRedirectTab";
 
 const RELAY_PURPOSE = "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It carries every edit between "
   + "collaborators, end-to-end encrypted, and keeps them so collaborators sync even when you are offline.";

@@ -4,7 +4,7 @@ import {
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
 import { createSidecarPort, listAllRecords } from "../../storage";
-import type { BrowserProjects } from "../../storage/projects";
+import type { BrowserProjects } from "../../storage/browserProjects";
 
 const MODULE = "writing.projectList";
 
