@@ -7,5 +7,5 @@ export type { MarkVersionRequest, ProjectVersion } from "./projectVersion.js";
 export { addProjectVersion } from "./addProjectVersion.js";
 export { comparePdfPages } from "./comparePdfPages.js";
 export type { PdfChanges } from "./comparePdfPages.js";
-export { deriveInkMap } from "./pageInk.js";
-export type { InkMap } from "./pageInk.js";
+export { derivePageInk } from "./pageInk.js";
+export type { PageInk } from "./pageInk.js";

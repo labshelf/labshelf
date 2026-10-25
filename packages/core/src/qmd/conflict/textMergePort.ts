@@ -10,6 +10,7 @@ export interface TextMergeInput {
 
 export interface TextMergeResult {
   readonly text: string;
+  /** True when at least one overlapping edit is marked in the text. */
   readonly conflicted: boolean;
 }
 

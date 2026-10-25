@@ -1,7 +1,7 @@
 /** Finds the regions that changed between two renderings of a paper, on the pages of each side. */
 import type { PageArea } from "../../reader/index.js";
 import { deriveBlockInk, matchBlocks, type BlockInk } from "./matchBlocks.js";
-import type { InkMap } from "./pageInk.js";
+import type { PageInk } from "./pageInk.js";
 import { derivePageBlocks, type BlockSizes, type PixelBox } from "./derivePageBlocks.js";
 
 /** Changed regions in PDF points from each page's top-left corner, as the reader draws them. */
@@ -27,7 +27,7 @@ interface PlacedBlock extends BlockInk {
  * has an equal block anywhere in the paper, so text that an edit pushed to another column or page stays unmarked.
  * @param pixelsPerPoint the scale both sides were rendered at
  */
-export function comparePdfPages(before: readonly InkMap[], after: readonly InkMap[], pixelsPerPoint: number): PdfChanges {
+export function comparePdfPages(before: readonly PageInk[], after: readonly PageInk[], pixelsPerPoint: number): PdfChanges {
   const sizes = { gutter: Math.round(GUTTER_POINTS * pixelsPerPoint), fragment: Math.round(FRAGMENT_POINTS * pixelsPerPoint) };
   const beforeBlocks = placedBlocks(before, sizes);
   const afterBlocks = placedBlocks(after, sizes);
@@ -38,7 +38,7 @@ export function comparePdfPages(before: readonly InkMap[], after: readonly InkMa
   };
 }
 
-function placedBlocks(pages: readonly InkMap[], sizes: BlockSizes): PlacedBlock[] {
+function placedBlocks(pages: readonly PageInk[], sizes: BlockSizes): PlacedBlock[] {
   return pages.flatMap((page, index) =>
     derivePageBlocks(page, sizes).map((box) => ({ ...deriveBlockInk(page, box), page: index + 1 })));
 }

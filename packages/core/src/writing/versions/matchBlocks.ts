@@ -1,5 +1,5 @@
 /** Pairs the blocks of two renderings of a paper that show the same thing; an unpaired block is a change. */
-import type { InkMap } from "./pageInk.js";
+import type { PageInk } from "./pageInk.js";
 import type { PixelBox } from "./derivePageBlocks.js";
 
 /** Darkness summed per cell, and per column of cells. */
@@ -21,7 +21,7 @@ const STRIPE_CELLS = 2;
 const MAX_STRIPE_DIFFERENCE = 0.4;
 
 /** Grid of a block whose cells start `px`, `py` pixels before the block. */
-function cellGrid(page: InkMap, box: PixelBox, px: number, py: number): CellGrid {
+function cellGrid(page: PageInk, box: PixelBox, px: number, py: number): CellGrid {
   const width = Math.ceil((box.width + px) / CELL);
   const height = Math.ceil((box.height + py) / CELL);
   const cells = new Float32Array(width * height);
@@ -97,7 +97,7 @@ const MAX_DARKNESS_RATIO = 1.15;
 // How far from where the previous pair left off the partner of an unchanged block is looked for first.
 const NEAR_BLOCKS = 8;
 
-export function deriveBlockInk(page: InkMap, box: PixelBox): BlockInk {
+export function deriveBlockInk(page: PageInk, box: PixelBox): BlockInk {
   const phases: CellGrid[] = [];
   for (let py = 0; py < CELL; py++) {
     for (let px = 0; px < CELL; px++) { phases.push(cellGrid(page, box, px, py)); }

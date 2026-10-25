@@ -1,5 +1,5 @@
 /** Cuts a page's ink into blocks (single lines of one column, pieces of figures) by recursive XY-cut, in reading order. */
-import type { InkMap } from "./pageInk.js";
+import type { PageInk } from "./pageInk.js";
 
 /** A block's bounding box in pixels of its page's ink map. */
 export interface PixelBox {
@@ -25,7 +25,7 @@ const GUTTER_ROW_SHARE = 0.1;
  * neither cut applies.
  * @returns the blocks, each trimmed to its ink, in reading order: column by column, top to bottom
  */
-export function derivePageBlocks(page: InkMap, sizes: BlockSizes): PixelBox[] {
+export function derivePageBlocks(page: PageInk, sizes: BlockSizes): PixelBox[] {
   const gutters = pageGutters(page, sizes.gutter);
   const blocks: PixelBox[] = [];
   const pending: PixelBox[] = [{ x: 0, y: 0, width: page.width, height: page.height }];
@@ -49,7 +49,7 @@ export function derivePageBlocks(page: InkMap, sizes: BlockSizes): PixelBox[] {
  * depends on the sub-pixel phase, so one build would cut the line in two and the next would not. A gutter is instead
  * a stretch of columns blank on almost every inked row of the page, which no space between words is.
  */
-function pageGutters(page: InkMap, minWidth: number): Array<[number, number]> {
+function pageGutters(page: PageInk, minWidth: number): Array<[number, number]> {
   const inkRows = new Uint32Array(page.width);
   let rows = 0;
   let first = page.width;
@@ -70,18 +70,18 @@ function pageGutters(page: InkMap, minWidth: number): Array<[number, number]> {
   return runs.slice(1).map(([from], i) => [first + runs[i]![1], first + from]);
 }
 
-function rowHasInk(page: InkMap, box: PixelBox, y: number): boolean {
+function rowHasInk(page: PageInk, box: PixelBox, y: number): boolean {
   const start = y * page.width + box.x;
   for (let i = start; i < start + box.width; i++) { if (page.ink[i]) { return true; } }
   return false;
 }
 
-function columnHasInk(page: InkMap, box: PixelBox, x: number): boolean {
+function columnHasInk(page: PageInk, box: PixelBox, x: number): boolean {
   for (let y = box.y; y < box.y + box.height; y++) { if (page.ink[y * page.width + x]) { return true; } }
   return false;
 }
 
-function trimToInk(page: InkMap, box: PixelBox): PixelBox | undefined {
+function trimToInk(page: PageInk, box: PixelBox): PixelBox | undefined {
   let top = box.y;
   let bottom = box.y + box.height - 1;
   while (top <= bottom && !rowHasInk(page, box, top)) { top++; }
@@ -114,13 +114,13 @@ function inkRuns(length: number, hasInk: (offset: number) => boolean, minGap: nu
   return runs;
 }
 
-function splitRows(page: InkMap, box: PixelBox): PixelBox[] {
+function splitRows(page: PageInk, box: PixelBox): PixelBox[] {
   return inkRuns(box.height, (dy) => rowHasInk(page, box, box.y + dy), 1)
     .map(([from, to]) => ({ x: box.x, y: box.y + from, width: box.width, height: to - from }));
 }
 
 /** Cuts at blank column runs that overlap a gutter; other blank runs are spaces inside a line. */
-function splitAtGutters(page: InkMap, box: PixelBox, gutters: ReadonlyArray<[number, number]>): PixelBox[] {
+function splitAtGutters(page: PageInk, box: PixelBox, gutters: ReadonlyArray<[number, number]>): PixelBox[] {
   const pieces = inkRuns(box.width, (dx) => columnHasInk(page, box, box.x + dx), 1)
     .map(([from, to]) => ({ x: box.x + from, y: box.y, width: to - from, height: box.height }));
   const joined: PixelBox[] = [];

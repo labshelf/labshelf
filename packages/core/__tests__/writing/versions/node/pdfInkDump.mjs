@@ -1,4 +1,4 @@
-// Prints, as JSON, each page's ink map as renderInkMaps builds it, with real pdf.js, which Jest cannot load (see jest.config.cjs),
+// Prints, as JSON, each page's ink as renderPageInks builds it, with real pdf.js, which Jest cannot load (see jest.config.cjs),
 // plus where given words sit, in PDF points from the page's top-left corner.
 import { readFileSync } from "node:fs";
 import { createCanvas } from "@napi-rs/canvas";
