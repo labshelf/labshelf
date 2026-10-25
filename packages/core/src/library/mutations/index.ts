@@ -1,5 +1,5 @@
 /** Exports library mutations' public API: every change an app makes to papers and folders on disk, over injected ports. */
-export type { BatchOutcome, MutationContext, PaperArtifactWriter, Reference, PathOps } from "./mutationDeps.js";
+export type { BatchOutcome, MutationContext, MetadataWriter, Reference, PathOps } from "./mutationDeps.js";
 export { posixPathOps } from "./pathOps.js";
 export { resolveReferences } from "./resolveReferences.js";
 export { readPaperOnFileSystem } from "./paperOnFileSystem.js";

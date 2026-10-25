@@ -1,8 +1,8 @@
 /** The getDocument options that make pdf.js draw on the native canvas and never on a DOM one. */
-import { nativeRenderOptions } from '../../../src/import/node/nativeRenderOptions.js';
+import { createNativeCanvasOptions } from '../../../src/import/node/createNativeCanvasOptions.js';
 import type { NativeCanvasModule } from '../../../src/import/node/nativeCanvas.js';
 
-describe('nativeRenderOptions', () => {
+describe('createNativeCanvasOptions', () => {
   const context = { fillStyle: '', fillRect: jest.fn(), getImageData: () => ({ data: new Uint8ClampedArray(0) }) };
   const canvasModule: NativeCanvasModule = {
     createCanvas: jest.fn((width: number, height: number) => ({
@@ -14,7 +14,7 @@ describe('nativeRenderOptions', () => {
   };
 
   it('draws on the native canvas', () => {
-    const Factory = nativeRenderOptions(canvasModule)['CanvasFactory'] as new () => {
+    const Factory = createNativeCanvasOptions(canvasModule)['CanvasFactory'] as new () => {
       create(w: number, h: number): { canvas: { width: number } | null; context: unknown };
       destroy(target: { canvas: unknown; context: unknown }): void;
     };
@@ -30,7 +30,7 @@ describe('nativeRenderOptions', () => {
   });
 
   it('turns off every browser-only rendering path', () => {
-    const options = nativeRenderOptions(canvasModule);
+    const options = createNativeCanvasOptions(canvasModule);
 
     expect(options['disableFontFace']).toBe(true);
     expect(options['isOffscreenCanvasSupported']).toBe(false);

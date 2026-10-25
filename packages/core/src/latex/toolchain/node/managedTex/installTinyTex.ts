@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { downloadVerified } from "../index.js";
-import { findTinyTexAsset, type TinyTexAsset } from "../../index.js";
+import { findTinyTexFile, type TinyTexFile } from "../../index.js";
 
 import { removeQuarantine } from "./removeQuarantine.js";
 import { resolveManagedTexDir } from "./texLayout.js";
@@ -16,7 +16,7 @@ import { withStagingDir } from "./stagingDir.js";
 
 const execFileAsync = promisify(execFile);
 
-async function download(deps: TexInstallDeps, asset: TinyTexAsset): Promise<Buffer> {
+async function download(deps: TexInstallDeps, asset: TinyTexFile): Promise<Buffer> {
   await deps.logger.log("INFO", TEX_MODULE, "Downloading TinyTeX", { url: asset.url, sha256: asset.sha256 });
   try {
     const bytes = await downloadVerified(asset.url, asset.sha256, deps.fetchImpl);
@@ -46,7 +46,7 @@ async function unpack(deps: TexInstallDeps, archive: string, tree: string): Prom
 
 export async function installTinyTex(deps: TexInstallDeps, run: TexInstallRun): Promise<void> {
   run.onProgress(null);
-  const asset = findTinyTexAsset(deps.platform, process.arch);
+  const asset = findTinyTexFile(deps.platform, process.arch);
   if (!asset) { throw new Error(`TinyTeX has no build for ${deps.platform}-${process.arch}`); }
   const bytes = await download(deps, asset);
   const target = resolveManagedTexDir(run.texRoot, "tinytex");

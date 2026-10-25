@@ -1,5 +1,5 @@
 // Builds the AI service from the host's storage, paper lifecycle subscription and logger.
-import type { PdfDocumentOpener } from "../../import/pdf/index.js";
+import type { PdfOpener } from "../../import/pdf/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { ILogger, LocalFileSystem } from "../../ports/index.js";
 import { HashEmbeddingProvider } from "../embedding/index.js";
@@ -14,7 +14,7 @@ export interface AiServiceDeps extends Pick<AiIndexerDeps, "subscribe" | "resolv
   listPapers: () => Promise<PaperRecord[]>;
   fileSystem: Pick<LocalFileSystem, "readFile">;
   logger: ILogger;
-  pdfOpener: PdfDocumentOpener;
+  pdfOpener: PdfOpener;
 }
 
 /**

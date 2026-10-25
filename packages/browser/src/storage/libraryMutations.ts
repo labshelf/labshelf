@@ -1,10 +1,10 @@
 /** Applies the core library mutations to the IndexedDB library and keeps the paper-record cache in step with the files. */
 import {
-  BibtexService, createFolder, describePaperFileOnFileSystem, updatePaperTags, importShareLink, listPaperFiles, movePapers, posixPathOps, readPaperOnFileSystem, relocatePapersUnder, removePapersUnder, renameFolder, setPapersReadingStatus,
+  BibtexService, createFolder, describePaperFileOnFileSystem, updatePaperTags, importShareLink, listPaperFiles, movePapers, posixPathOps, readPaperOnFileSystem, movePapersUnder, removePapersUnder, renameFolder, setPapersReadingStatus,
   moveFolderToTrash, movePapersToTrash, updatePaperFields, writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
-  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordIndex, MoveOutcome, MutationContext,
+  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordCache, MoveOutcome, MutationContext,
   PaperFilesState, PaperRecord, Reference, ReadingStatus, PdfVersion,
 } from "@labshelf/core";
 import { createLibraryFileSystem } from "./libraryFileSystem";
@@ -38,7 +38,7 @@ export interface LibraryMutations {
   describeFile(paper: Reference, name: string, description: string): Promise<PaperRecord | undefined>;
 }
 
-const recordIndex: IPaperRecordIndex = {
+const recordIndex: IPaperRecordCache = {
   listPapers: () => listCachedPaperRecords(),
   upsertPaper: (paper) => writeCachedPaperRecord(paper, paper.path),
   deletePaper: (id) => removeCachedPaperRecord(id),
@@ -71,7 +71,7 @@ function folderMutations(ctx: MutationContext): FolderMutations {
     createFolder: (parentDir, name) => createFolder(ctx, parentDir, name),
     async renameFolder(dir, name) {
       const to = await renameFolder(ctx, dir, name);
-      if (to !== dir) { await relocatePapersUnder(recordIndex, dir, to); }
+      if (to !== dir) { await movePapersUnder(recordIndex, dir, to); }
       return to;
     },
     async trashFolder(dir) {
@@ -127,7 +127,7 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
     },
     async movePapers(papers, targetDir) {
       const outcome = await movePapers(ctx, papers, targetDir);
-      for (const move of outcome.moves) { await relocatePapersUnder(recordIndex, move.from, move.to); }
+      for (const move of outcome.moves) { await movePapersUnder(recordIndex, move.from, move.to); }
       return outcome;
     },
     async trashPapers(papers) {

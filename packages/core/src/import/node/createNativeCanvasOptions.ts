@@ -5,7 +5,7 @@ import type { NativeCanvas, NativeCanvasContext, NativeCanvasModule } from "./na
  * Hosts pdf.js does not recognise as Node would otherwise reach for document.createElement and FontFace.
  * @returns options to spread into getDocument
  */
-export function nativeRenderOptions(canvas: NativeCanvasModule): Record<string, unknown> {
+export function createNativeCanvasOptions(canvas: NativeCanvasModule): Record<string, unknown> {
   return {
     CanvasFactory: canvasFactoryFor(canvas),
     FilterFactory: NoopFilterFactory,

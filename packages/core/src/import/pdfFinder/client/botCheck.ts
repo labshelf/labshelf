@@ -8,13 +8,13 @@ const CHALLENGE_STATUSES = new Set([202, 403, 429, 503]);
 const CHALLENGE_PAGE = /<title>\s*(just a moment|attention required|checking your browser|um momento|access denied)|challenges\.cloudflare\.com|cf_chl_opt|cf-browser-verification|id="challenge-(form|stage|running|error-text)"/i;
 
 /** What a response shows beyond its status and body. */
-export interface WallEvidence {
+export interface BotCheckOptions {
   finalUrl?: string;
   headers?: HeaderReader;
 }
 
 /** True when a response is a bot check rather than the publisher's answer. */
-export function isBotCheck(status: number, html: string, { finalUrl, headers }: WallEvidence = {}): boolean {
+export function isBotCheck(status: number, html: string, { finalUrl, headers }: BotCheckOptions = {}): boolean {
   if (hasWallSignature(html, finalUrl, headers)) return true;
   if (!CHALLENGE_STATUSES.has(status)) return false;
   if (hasImpervaHeader(headers)) return true;

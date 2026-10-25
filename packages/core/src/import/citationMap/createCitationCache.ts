@@ -7,22 +7,22 @@ import type { IFileSystem, ILogger } from "../../ports/index.js";
 const CACHE_MODULE = "citationMap";
 
 /** A cached lookup; `doi` is the DOI a library paper was looked up by, absent for a cited work. */
-export interface CachedWork {
+export interface CitationCacheEntry {
   fetchedAt: string;
   doi?: string | undefined;
   work: OpenAlexCitationWork;
 }
 
 export interface CitationCache {
-  readPaper(paperId: string): Promise<CachedWork | undefined>;
-  writePaper(paperId: string, entry: CachedWork): Promise<void>;
-  readWork(workId: string): Promise<CachedWork | undefined>;
-  writeWork(entry: CachedWork): Promise<void>;
+  readPaper(paperId: string): Promise<CitationCacheEntry | undefined>;
+  writePaper(paperId: string, entry: CitationCacheEntry): Promise<void>;
+  readWork(workId: string): Promise<CitationCacheEntry | undefined>;
+  writeWork(entry: CitationCacheEntry): Promise<void>;
 }
 
 /** Opens the cache under `dir` (POSIX path); a missing, unreadable or malformed file reads as a miss. */
 export function createCitationCache(fs: IFileSystem, dir: string, logger?: ILogger): CitationCache {
-  const read = async (path: string): Promise<CachedWork | undefined> => {
+  const read = async (path: string): Promise<CitationCacheEntry | undefined> => {
     if (!(await fs.exists(path))) {
       return undefined;
     }
@@ -37,7 +37,7 @@ export function createCitationCache(fs: IFileSystem, dir: string, logger?: ILogg
       return undefined;
     }
   };
-  const write = async (sub: string, name: string, entry: CachedWork): Promise<void> => {
+  const write = async (sub: string, name: string, entry: CitationCacheEntry): Promise<void> => {
     await fs.ensureDir(`${dir}/${sub}`);
     await fs.writeText(`${dir}/${sub}/${name}.json`, `${JSON.stringify(entry, null, 2)}\n`);
   };
@@ -50,12 +50,12 @@ export function createCitationCache(fs: IFileSystem, dir: string, logger?: ILogg
 }
 
 /** @returns whether `entry` was fetched more than `maxAgeDays` before `now` */
-export function isStale(entry: CachedWork, now: Date, maxAgeDays: number): boolean {
+export function isStale(entry: CitationCacheEntry, now: Date, maxAgeDays: number): boolean {
   const fetched = Date.parse(entry.fetchedAt);
   return Number.isNaN(fetched) || now.getTime() - fetched > maxAgeDays * 86_400_000;
 }
 
-function parseCachedWork(value: unknown): CachedWork | undefined {
+function parseCachedWork(value: unknown): CitationCacheEntry | undefined {
   if (!isObject(value) || typeof value.fetchedAt !== "string" || !isObject(value.work)) {
     return undefined;
   }

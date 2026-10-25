@@ -2,7 +2,7 @@
 import { readFile } from "node:fs/promises";
 
 // Mirrors pdf.js' BaseBinaryDataFactory, which it does not export.
-export class FileSystemBinaryFactory {
+export class PdfjsFileFactory {
   private readonly roots: Record<string, string | null>;
 
   constructor(options: { cMapUrl?: string | null; standardFontDataUrl?: string | null; wasmUrl?: string | null }) {

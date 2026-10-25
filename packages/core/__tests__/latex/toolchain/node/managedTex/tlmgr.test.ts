@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { createTlmgr, isRollover, TlmgrFailed } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { createTlmgr, isRollover, TlmgrError } from "../../../../../src/latex/toolchain/node/managedTex/index";
 import { asLogger, createTexFixture, ROLLOVER_MESSAGE, STALE_TLMGR_MESSAGE, writeTexTree, type FakeTlmgr, type TexFixture } from "./fakeTex";
 
 describe("tlmgr", () => {
@@ -46,8 +46,8 @@ describe("tlmgr", () => {
   it("fails with the output when the release rolled over", async () => {
     const tlmgr = await tlmgrWith({ rollover: true, installed: [] });
     const failure = await tlmgr.searchFile("foo.sty").catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(TlmgrFailed);
-    expect(isRollover((failure as TlmgrFailed).output)).toBe(true);
+    expect(failure).toBeInstanceOf(TlmgrError);
+    expect(isRollover((failure as TlmgrError).output)).toBe(true);
   });
 });
 

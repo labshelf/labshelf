@@ -2,14 +2,14 @@
 import * as fs from 'node:fs';
 
 import { createPdfjsLoader } from '../../../src/import/node/index.js';
-import { pdfjsDataOptions } from '../../../src/import/node/pdfjsOpenOptions.js';
+import { createPdfjsOptions } from '../../../src/import/node/createPdfjsOptions.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfjsMock = require('../../../__mocks__/pdfjs-dist-legacy.js');
 
-describe('pdfjsDataOptions', () => {
+describe('createPdfjsOptions', () => {
   it('points at the CMap, standard-font and wasm tables shipped with pdfjs-dist', () => {
-    const options = pdfjsDataOptions();
+    const options = createPdfjsOptions();
 
     for (const key of ['cMapUrl', 'standardFontDataUrl', 'wasmUrl']) {
       expect(fs.existsSync(options[key] as string)).toBe(true);
@@ -20,7 +20,7 @@ describe('pdfjsDataOptions', () => {
   });
 
   it('is quiet and never evaluates generated code', () => {
-    expect(pdfjsDataOptions()).toMatchObject({ verbosity: 0, isEvalSupported: false });
+    expect(createPdfjsOptions()).toMatchObject({ verbosity: 0, isEvalSupported: false });
   });
 });
 

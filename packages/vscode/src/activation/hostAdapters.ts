@@ -1,6 +1,6 @@
 // Declares everything the extension needs from its host runtime, so activation code never touches Node directly.
 import type {
-  ConflictCopy, ConflictResolution, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfDocumentOpener, PdfjsLoader,
+  ConflictCopy, ConflictResolution, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfOpener, PdfjsLoader,
   PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectSaveTracking, SidecarPort,
 } from "@labshelf/core";
 import type { PdfjsLocator } from "../reader/index.js";
@@ -29,7 +29,7 @@ export interface HostAdapters {
   uriOf: UriOfPath;
   /** A logger that writes the library's rotating app.log. */
   createLogger(appLogPath: string): ILogger;
-  pdfOpener: PdfDocumentOpener;
+  pdfOpener: PdfOpener;
   /** The extension host's one pdf.js. */
   pdfjs: PdfjsLoader;
   createPdfTextServices(logger: ILogger): PdfTextServices;

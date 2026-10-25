@@ -3,4 +3,4 @@ export type { AuthorContact } from "./deriveAuthorContacts.js";
 export { deriveAuthorContacts } from "./deriveAuthorContacts.js";
 export { extractEmailFromAffiliation } from "./affiliation.js";
 export { findAuthorEmailMetas, findMailtos } from "./authorEvidence.js";
-export { findAuthorContacts, type ContactFinder } from "./findAuthorContacts.js";
+export { findAuthorContacts, type AuthorContactsInput } from "./findAuthorContacts.js";

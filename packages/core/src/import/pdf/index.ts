@@ -7,7 +7,7 @@ export type {
   PdfMetadataLike,
   XmpMetadataLike,
   PdfPageLike,
-  PdfDocumentOpener,
+  PdfOpener,
   PdfOcrEngine,
   PdfjsLoader,
   PdfjsModule,

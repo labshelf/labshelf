@@ -2,7 +2,7 @@
 // TRAP: unconfirmed provider suffixes resemble ordinary user file names.
 import type { SyncTool } from "./conflictCopy.js";
 
-export interface ParsedConflictName {
+export interface ParsedConflictCopy {
   original: string;
   tool: SyncTool;
 }
@@ -23,7 +23,7 @@ const PATTERNS: ReadonlyArray<{ tool: SyncTool; pattern: RegExp }> = [
 ];
 
 /** @returns the original name and the tool, or null when the name is not a conflict copy. */
-export function parseConflictName(name: string): ParsedConflictName | null {
+export function parseConflictName(name: string): ParsedConflictCopy | null {
   for (const { tool, pattern } of PATTERNS) {
     const match = pattern.exec(name);
     if (match) { return { original: `${match[1]}${match[2] ?? ""}`, tool }; }

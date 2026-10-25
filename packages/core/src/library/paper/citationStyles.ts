@@ -3,7 +3,7 @@
  * from whatever bibliographic fields the record has. Missing fields are left out rather than guessed.
  */
 import type { PaperRecord } from "../../model/index.js";
-import { formatAuthors, splitName, type PersonName } from "./authors.js";
+import { formatAuthors, splitName, type AuthorName } from "./authors.js";
 import { derivePaperUrl } from "./paperUrl.js";
 
 export type CitedPaper = Pick<PaperRecord, "title" | "authors" | "year" | "journal" | "publisher" | "volume" | "issue" | "pages" | "doi" | "url">;
@@ -34,7 +34,7 @@ function initials(given: string): string {
     .join(" ");
 }
 
-function names(paper: CitedPaper): PersonName[] {
+function names(paper: CitedPaper): AuthorName[] {
   return (paper.authors ?? []).filter((a) => a.trim()).map(splitName);
 }
 
@@ -45,7 +45,7 @@ function sentence(text: string): string {
 
 const dashes = (pages: string): string => pages.replace(/-+/g, "–");
 
-function apaAuthors(list: PersonName[]): string {
+function apaAuthors(list: AuthorName[]): string {
   const formatted = list.map((n) => (n.given ? `${n.family}, ${initials(n.given)}` : n.family));
   // Up to 20 authors with "&" before the last; beyond that, the first 19, an ellipsis and the last.
   if (formatted.length > 20) { return `${formatted.slice(0, 19).join(", ")}, … ${formatted[formatted.length - 1]}`; }
@@ -70,7 +70,7 @@ function apa(paper: CitedPaper): string {
   return parts.join(" ");
 }
 
-function mlaAuthors(list: PersonName[]): string {
+function mlaAuthors(list: AuthorName[]): string {
   const [first, second] = list;
   if (!first) { return ""; }
   if (list.length === 1) { return first.given ? `${first.family}, ${first.given}` : first.family; }

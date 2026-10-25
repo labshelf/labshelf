@@ -13,7 +13,7 @@ import type { TexInstallRun } from "./texInstall.js";
 import { TEX_MODULE } from "./runTexTool.js";
 import { withToolLock } from "./toolsDirLock.js";
 import { findManagedTex, type ManagedTex } from "./texLayout.js";
-import { createTlmgr, isRollover, TlmgrFailed, type Tlmgr } from "./tlmgr.js";
+import { createTlmgr, isRollover, TlmgrError, type Tlmgr } from "./tlmgr.js";
 
 export type TexInstaller = (run: TexInstallRun) => Promise<void>;
 export type TexProgress = (fraction: number | null) => void;
@@ -87,7 +87,7 @@ async function withRollover<T>(ctx: ManagedTexProviderOptions, tex: ManagedTex, 
   try {
     return await run(createTlmgr(tex.binDir, ctx.logger));
   } catch (error) {
-    if (!(error instanceof TlmgrFailed) || !isRollover(error.output)) { throw error; }
+    if (!(error instanceof TlmgrError) || !isRollover(error.output)) { throw error; }
     if (tex.kind === "texlive") {
       await info(ctx, "TeX Live is behind the repository; left unchanged until the user confirms", { year: tex.year, root: tex.root });
       throw new TexInstallError("texlive-rollover", `TeX Live ${tex.year ?? "(unknown year)"} is older than the package repository; reinstall it to install packages.`);

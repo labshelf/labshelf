@@ -8,7 +8,7 @@ import { resolvePdfjsPackageDir } from "./pdfjsPackage.js";
  * starves the metadata heuristics. `useWorkerFetch: false` keeps the in-process worker from fetch()ing the paths.
  * @returns options to spread into getDocument
  */
-export function pdfjsDataOptions(): Record<string, unknown> {
+export function createPdfjsOptions(): Record<string, unknown> {
   const base = { verbosity: 0, isEvalSupported: false };
   const root = resolvePdfjsPackageDir();
   if (!root) {

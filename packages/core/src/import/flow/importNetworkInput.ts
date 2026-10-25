@@ -1,7 +1,7 @@
 /** Imports what a person typed to add a paper from the network: an identifier, a link that names one, or a link to a PDF or an article page. */
 import { type ImportOutcome, importPdf, isPdfBytes } from "../../library/index.js";
 import { extractIdentifiersFromInput } from "../identifiers/index.js";
-import { type NetworkImportEnv, NETWORK_IMPORT_MODULE, pdfFetchOptions, createRegistryEnv } from "./env.js";
+import { type NetworkImportEnv, NETWORK_IMPORT_MODULE, createPdfFinderOptions, createRegistryEnv } from "./env.js";
 import { importIdentifier, type IdentifierImportOptions } from "./importIdentifier.js";
 import { formatError } from "../../logging/index.js";
 import { derivePageFacts, parseHtmlPage } from "../landing/index.js";
@@ -70,7 +70,7 @@ async function importLandingPage(
   }
   if (paper.existing) { return { status: "duplicate", existingId: paper.existing.id, input }; }
 
-  const pdf = await findPaperPdf(pdfFetchOptions(env), {
+  const pdf = await findPaperPdf(createPdfFinderOptions(env), {
     ids: paper.ids,
     metadata: paper.metadata,
     landingUrl: page.finalUrl,

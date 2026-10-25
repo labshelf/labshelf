@@ -13,7 +13,7 @@ import { extractTitleFromPlainText } from "../plainTextTitle.js";
 import { extractTitleFromBlocks } from "../frontPageLayout.js";
 import { isSparseText, isNaturalText } from "../textQuality.js";
 import { deriveUsableTitle } from "../titleQuality.js";
-import type { ParsedPdfImport, PdfDocumentOpener, PdfOcrEngine } from "../pdfDocument.js";
+import type { ParsedPdfImport, PdfOpener, PdfOcrEngine } from "../pdfDocument.js";
 import { resolveOnline, type ConfirmedIdentifier } from "./registrySources.js";
 import { createParsedPaperRecord } from "./parsedImport.js";
 import { readPdf, type PdfSignals } from "./readPdf.js";
@@ -55,7 +55,7 @@ export class PdfImportParser {
   private readonly logger: ILogger | undefined;
 
   constructor(
-    private readonly opener: PdfDocumentOpener,
+    private readonly opener: PdfOpener,
     options: PdfImportParserOptions = {},
   ) {
     this.ocr = options.ocr;

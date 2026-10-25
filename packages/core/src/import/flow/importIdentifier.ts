@@ -7,7 +7,7 @@ import type { ResolvedMetadata } from "../metadata/index.js";
 import { resolveOnlineMetadata } from "../search/index.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf, type ResolvedPdf } from "../pdfFinder/index.js";
-import { NETWORK_IMPORT_MODULE, pdfFetchOptions, createRegistryEnv, type NetworkImportEnv } from "./env.js";
+import { NETWORK_IMPORT_MODULE, createPdfFinderOptions, createRegistryEnv, type NetworkImportEnv } from "./env.js";
 import { writeImportedPaper } from "./writeImportedPaper.js";
 
 interface Found {
@@ -74,7 +74,7 @@ async function findPdfFor(env: NetworkImportEnv, { metadata, identifier }: Found
     ...(identifier.type === "arxiv" ? { arxivId: identifier.value } : {}),
     ...(identifier.type === "pmid" ? { pmid: identifier.value } : {}),
   };
-  return findPaperPdf(pdfFetchOptions(env), { ids, metadata, input, ...(identifier.type === "pmcid" ? { pmcid: identifier.value } : {}) });
+  return findPaperPdf(createPdfFinderOptions(env), { ids, metadata, input, ...(identifier.type === "pmcid" ? { pmcid: identifier.value } : {}) });
 }
 
 async function firstResolved(env: NetworkImportEnv, identifiers: DetectedIdentifier[]): Promise<Found | undefined> {

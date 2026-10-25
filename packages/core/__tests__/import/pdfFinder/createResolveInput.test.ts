@@ -1,9 +1,9 @@
 /** Contract of the one mapping from what an app knows about a paper to the PDF finder's context. */
-import { makeResolveContext } from "@labshelf/core";
+import { createResolveInput } from "@labshelf/core";
 
-describe("makeResolveContext", () => {
+describe("createResolveInput", () => {
   it("carries identifiers, the record's title, authors and year, the landing page and the page's links", () => {
-    const ctx = makeResolveContext(
+    const ctx = createResolveInput(
       { doi: "10.1/x", arxivId: "2301.00001", pmid: "42" },
       { title: "A title", authors: ["Ada Lovelace"], year: 2023 },
       "https://pub.example/a",
@@ -18,18 +18,18 @@ describe("makeResolveContext", () => {
   });
 
   it("falls back to the record's DOI, and reads the arXiv id off an arXiv DOI", () => {
-    expect(makeResolveContext({}, { doi: "10.1/y" }, undefined, [], { contactEmail: "a@b.c" })).toMatchObject({ doi: "10.1/y" });
-    expect(makeResolveContext({ doi: "10.48550/arXiv.hep-th/9711200" }, {}, undefined, [], { contactEmail: "a@b.c" })).toMatchObject({ arxivId: "hep-th/9711200" });
+    expect(createResolveInput({}, { doi: "10.1/y" }, undefined, [], { contactEmail: "a@b.c" })).toMatchObject({ doi: "10.1/y" });
+    expect(createResolveInput({ doi: "10.48550/arXiv.hep-th/9711200" }, {}, undefined, [], { contactEmail: "a@b.c" })).toMatchObject({ arxivId: "hep-th/9711200" });
   });
 
   it("includes custom resolvers only when some are passed", () => {
     const customResolvers = [{ name: "A", template: "https://a.example/{doi}", enabled: true }];
-    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c" })).not.toHaveProperty("customResolvers");
-    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c", customResolvers: [] })).not.toHaveProperty("customResolvers");
-    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c", customResolvers })).toMatchObject({ customResolvers });
+    expect(createResolveInput({}, {}, undefined, [], { contactEmail: "a@b.c" })).not.toHaveProperty("customResolvers");
+    expect(createResolveInput({}, {}, undefined, [], { contactEmail: "a@b.c", customResolvers: [] })).not.toHaveProperty("customResolvers");
+    expect(createResolveInput({}, {}, undefined, [], { contactEmail: "a@b.c", customResolvers })).toMatchObject({ customResolvers });
   });
 
   it("leaves out what is unknown", () => {
-    expect(makeResolveContext({}, {}, undefined, [], { contactEmail: "a@b.c" })).toEqual({ pageCandidates: [], contactEmail: "a@b.c" });
+    expect(createResolveInput({}, {}, undefined, [], { contactEmail: "a@b.c" })).toEqual({ pageCandidates: [], contactEmail: "a@b.c" });
   });
 });

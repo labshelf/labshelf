@@ -4,4 +4,4 @@ export { parseHtmlPage, findRedirectUrls } from "./htmlPage.js";
 export { derivePageFacts } from "./pageFacts.js";
 export { fetchLanding } from "./fetchLanding.js";
 export type { AuthorContact } from "./author/index.js";
-export { deriveAuthorContacts, extractEmailFromAffiliation, findAuthorContacts, type ContactFinder } from "./author/index.js";
+export { deriveAuthorContacts, extractEmailFromAffiliation, findAuthorContacts, type AuthorContactsInput } from "./author/index.js";

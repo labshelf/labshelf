@@ -3,7 +3,7 @@ export { PAGE_TRUST, resolveMetadata, withAbstract } from "./resolveMetadata.js"
 export type { MetadataOrigin } from "./resolveMetadata.js";
 export { deriveSurname } from "./titleAgreement.js";
 export { isSameWork, deriveWordBigramDice } from "./samePaper.js";
-export type { SameWorkOptions, WorkReference } from "./samePaper.js";
+export type { SamePaperOptions, WorkReference } from "./samePaper.js";
 export { findInLibrary } from "./libraryMatch.js";
 export { resolvePagePaper } from "./pagePaper.js";
 export type { PagePaper } from "./pagePaper.js";

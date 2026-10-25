@@ -1,5 +1,5 @@
 /** Reads a LaTeX project's main file and every file it includes, scanning each once in tree order. */
-import type { IncludeFact, LatexRange, LatexSourceFacts } from "../facts.js";
+import type { LatexInclude, LatexRange, LatexSourceFacts } from "../facts.js";
 import { scanLatexSource } from "../scanLatexSource.js";
 import { resolveIncludePath } from "./resolveIncludePath.js";
 
@@ -43,7 +43,7 @@ export async function readLatexProjectSources(mainPath: string, reader: ProjectS
     result.files.push({ path, facts });
     for (const include of facts.includes) { await visitInclude(path, include); }
   };
-  const visitInclude = async (from: string, include: IncludeFact): Promise<void> => {
+  const visitInclude = async (from: string, include: LatexInclude): Promise<void> => {
     const target = resolveIncludePath(include.path);
     const origin = { file: from, range: include.range };
     if (target === undefined) { result.missing.push({ path: include.path, includedFrom: origin }); }

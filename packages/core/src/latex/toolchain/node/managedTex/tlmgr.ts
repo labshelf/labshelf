@@ -6,10 +6,10 @@ import type { ILogger } from "../../../../ports/index.js";
 import type { RunOutcome } from "../../../build/node/index.js";
 import { runTexTool, TEX_MODULE } from "./runTexTool.js";
 
-export class TlmgrFailed extends Error {
+export class TlmgrError extends Error {
   constructor(readonly args: string[], readonly code: number | null, readonly output: string) {
     super(`tlmgr ${args.join(" ")} exited with ${code}`);
-    this.name = "TlmgrFailed";
+    this.name = "TlmgrError";
   }
 }
 
@@ -34,14 +34,14 @@ export function createTlmgr(binDir: string, logger: ILogger): Tlmgr {
   const executable = join(binDir, process.platform === "win32" ? "tlmgr.bat" : "tlmgr");
   const runOnce = async (args: string[], onProgress?: (fraction: number) => void): Promise<RunOutcome> => {
     const outcome = await runTexTool({ executable, args, cwd: binDir, logger, onProgress });
-    if (outcome.code !== 0) { throw new TlmgrFailed(args, outcome.code, outcome.output); }
+    if (outcome.code !== 0) { throw new TlmgrError(args, outcome.code, outcome.output); }
     return outcome;
   };
   const run = async (args: string[], onProgress?: (fraction: number) => void): Promise<RunOutcome> => {
     try {
       return await runOnce(args, onProgress);
     } catch (error) {
-      if (!(error instanceof TlmgrFailed) || !STALE_SELF.test(error.output)) { throw error; }
+      if (!(error instanceof TlmgrError) || !STALE_SELF.test(error.output)) { throw error; }
       await logger.log("WARN", TEX_MODULE, "tlmgr is older than its repository; updating it and retrying", { args });
       await runOnce(["update", "--self"]);
       return runOnce(args, onProgress);

@@ -4,7 +4,7 @@ import { extractMetadataFromXmp } from "../xmp.js";
 import { formatError } from "../../../logging/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ResolvedMetadata } from "../../metadata/index.js";
-import type { PdfDocumentLike, PdfDocumentOpener, TextBlock } from "../pdfDocument.js";
+import type { PdfDocumentLike, PdfOpener, TextBlock } from "../pdfDocument.js";
 
 function describePdfError(error: unknown): Error {
   const name = (error as { name?: unknown })?.name;
@@ -34,7 +34,7 @@ export interface PdfSignals {
 }
 
 export async function readPdf(
-  opener: PdfDocumentOpener,
+  opener: PdfOpener,
   pdfBytes: Uint8Array,
   logger: ILogger | undefined,
 ): Promise<PdfSignals> {
@@ -68,7 +68,7 @@ async function optional<T>(read: Promise<T>, empty: T, signal: string, logger: I
 }
 
 // Wraps the injected opener with friendly error mapping for password-protected and corrupt PDFs.
-async function openDocument(opener: PdfDocumentOpener, pdfBytes: Uint8Array): Promise<PdfDocumentLike> {
+async function openDocument(opener: PdfOpener, pdfBytes: Uint8Array): Promise<PdfDocumentLike> {
   try {
     return await opener.open(pdfBytes);
   } catch (error) {

@@ -11,7 +11,7 @@ export interface ResolveOptions {
   customResolvers?: readonly CustomResolver[] | undefined;
 }
 
-export function makeResolveContext(
+export function createResolveInput(
   ids: DetectedIds,
   metadata: ResolvedMetadata,
   landingUrl: string | undefined,
