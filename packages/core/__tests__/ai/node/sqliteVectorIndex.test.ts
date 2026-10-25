@@ -1,12 +1,12 @@
 import { describeIfSqlite, placeholderEnvTest, sqliteAvailable } from "./sqliteAvailable";
 import { decodeEmbedding, encodeEmbedding } from "../../../src/ai/node/sqliteVectorIndex";
 
-placeholderEnvTest("SqliteVectorStore");
+placeholderEnvTest("SqliteVectorIndex");
 
-describeIfSqlite("SqliteVectorStore", () => {
+describeIfSqlite("SqliteVectorIndex", () => {
   if (!sqliteAvailable()) return;
   const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
-  const { SqliteVectorStore } = require("../../../src/ai/node/sqliteVectorIndex");
+  const { SqliteVectorIndex } = require("../../../src/ai/node/sqliteVectorIndex");
   const { ensureAiSchema } = require("../../../src/ai/node/aiSchema");
 
   function makeDb() {
@@ -19,7 +19,7 @@ describeIfSqlite("SqliteVectorStore", () => {
   }
 
   it("upserts and retrieves by cosine top-k", async () => {
-    const store = new SqliteVectorStore(makeDb(), "test-model");
+    const store = new SqliteVectorIndex(makeDb(), "test-model");
     await store.upsert([
       { record: { id: 0, paperId: "p1", kind: "section", text: "alpha" }, embedding: new Float32Array([1, 0, 0]) },
       { record: { id: 0, paperId: "p2", kind: "section", text: "beta" }, embedding: new Float32Array([0, 1, 0]) },
@@ -30,7 +30,7 @@ describeIfSqlite("SqliteVectorStore", () => {
   });
 
   it("respects paperId filter", async () => {
-    const store = new SqliteVectorStore(makeDb(), "test-model");
+    const store = new SqliteVectorIndex(makeDb(), "test-model");
     await store.upsert([
       { record: { id: 0, paperId: "p1", kind: "section" }, embedding: new Float32Array([1, 0, 0]) },
       { record: { id: 0, paperId: "p2", kind: "section" }, embedding: new Float32Array([1, 0, 0]) },
@@ -40,7 +40,7 @@ describeIfSqlite("SqliteVectorStore", () => {
   });
 
   it("deleteByPaper removes vectors", async () => {
-    const store = new SqliteVectorStore(makeDb(), "test-model");
+    const store = new SqliteVectorIndex(makeDb(), "test-model");
     await store.upsert([
       { record: { id: 0, paperId: "p1", kind: "section" }, embedding: new Float32Array([1, 0, 0]) },
     ]);

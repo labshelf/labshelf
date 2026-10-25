@@ -9,5 +9,5 @@ export { runIngestion } from "./ingestion.js";
 export type { IngestionContext, IngestionResult } from "./ingestion.js";
 export { PdfTextExtractor } from "./pdfTextExtractor.js";
 export { AiIndexer } from "./aiIndexer.js";
-export type { AiIndexerDependencies } from "./aiIndexer.js";
+export type { AiIndexerDeps } from "./aiIndexer.js";
 export * from "./service/index.js";

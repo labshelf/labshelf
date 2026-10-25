@@ -2,7 +2,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { IIndexedHashes } from "../aiStorage.js";
 
-export class SqliteIndexedHashes implements IIndexedHashes {
+export class SqliteHashCache implements IIndexedHashes {
   constructor(private readonly db: DatabaseSync) {}
 
   get(paperId: string): string | null {

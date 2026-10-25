@@ -1,6 +1,6 @@
 // The factory embeds with the hash provider, keys vector rows by its model id and hands the stores and subscription to the indexer.
 import { createAiService } from "../../../src/ai/service/createAiService";
-import type { AiServiceFactoryDependencies } from "../../../src/ai/service/createAiService";
+import type { AiServiceDeps } from "../../../src/ai/service/createAiService";
 import { HashEmbeddingProvider } from "../../../src/ai/embedding/index";
 import { AiIndexer } from "../../../src/ai/aiIndexer";
 
@@ -19,7 +19,7 @@ function makeDeps() {
     logger: { error: jest.fn(async () => {}), log: jest.fn(async () => {}) },
     pdfOpener: {},
     resolvePdfPath: async () => null,
-  } as unknown as AiServiceFactoryDependencies;
+  } as unknown as AiServiceDeps;
 }
 
 describe("createAiService", () => {

@@ -44,7 +44,7 @@ type ChunkRow = {
   dim: number;
 };
 
-export class SqliteVectorStore implements IVectorStore {
+export class SqliteVectorIndex implements IVectorStore {
   constructor(
     private readonly db: DatabaseSync,
     private readonly modelId: string,
