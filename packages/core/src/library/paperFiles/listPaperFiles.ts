@@ -3,6 +3,7 @@ import type { LibraryFileSystem, ILogger } from "../../ports/index.js";
 import { PDF_FILE } from "../layout.js";
 import { isHiddenPaperEntry } from "./hiddenEntries.js";
 import type { PaperFile, PaperFilesState } from "./paperFile.js";
+import { formatError } from "../../logging/index.js";
 
 const byName = (a: PaperFile, b: PaperFile): number => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
@@ -26,7 +27,7 @@ export async function listPaperFiles(
     return { status: "ready", files: [...pdf, ...files, ...folders] };
   } catch (error) {
     await logger.error("paperFiles", error, { paperDir, action: "list" });
-    return { status: "failed", message: error instanceof Error ? error.message : String(error) };
+    return { status: "failed", message: formatError(error) };
   }
 }
 

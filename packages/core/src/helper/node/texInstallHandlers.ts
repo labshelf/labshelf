@@ -5,6 +5,7 @@ import { PROTOCOL_VERSION, type HelperHost, type ProgressPhase, type TexToolchai
 
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
 import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../latex/toolchain/node/managedTex/index.js";
+import { formatError } from "../../logging/index.js";
 
 export interface TexInstallHandlerOptions {
   tex: ManagedTexProvider;
@@ -32,7 +33,7 @@ async function runInstall(
     send({ v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex });
   } catch (error) {
     await options.logger.error(TEX_MODULE, error, { step: phase, id });
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatError(error);
     const code = error instanceof TexInstallError ? error.code : "tex-install-failed";
     send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
   }

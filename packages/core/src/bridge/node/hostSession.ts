@@ -7,6 +7,7 @@ import { BRIDGE_PROTOCOL } from "../protocol.js";
 import { assertSameProtocol, parseBridgeRequest, requestId } from "../requestValidation.js";
 import type { LibraryFileOperations } from "./fileOperations.js";
 import { base64ToBytes } from "../../encoding/index.js";
+import { formatError } from "../../logging/index.js";
 
 // CONTRACT: documents/contracts/bridge.md#file-transfer
 const MAX_OPEN_WRITES = 8;
@@ -78,7 +79,7 @@ class StagedWrites {
 function toBridgeError(error: unknown): BridgeError {
   if (error instanceof BridgeError) return error;
   const code = (error as NodeJS.ErrnoException).code;
-  const message = error instanceof Error ? error.message : String(error);
+  const message = formatError(error);
   return new BridgeError(code === "ENOENT" ? "notFound" : "io", message);
 }
 

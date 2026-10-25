@@ -1,6 +1,7 @@
 // Handles one batch of external library changes: scans conflict copies, then re-indexes.
 import type { ILogger } from "../../ports/logger.js";
 import type { ConflictCopy } from "../conflicts/index.js";
+import { formatError } from "../../logging/index.js";
 
 const MODULE = "externalChange";
 
@@ -21,7 +22,7 @@ export async function applyChangeBatch(deps: ChangeBatchDeps): Promise<void> {
     await deps.logger.log("INFO", MODULE, "Conflict copies scanned", { unresolved: copies.length });
     deps.onConflicts(copies);
   } catch (error) {
-    await deps.logger.log("WARN", MODULE, "Conflict scan failed", { message: error instanceof Error ? error.message : String(error) });
+    await deps.logger.log("WARN", MODULE, "Conflict scan failed", { message: formatError(error) });
   }
   await deps.reindex();
 }

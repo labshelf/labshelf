@@ -1,11 +1,12 @@
 // Validates each socket message and routes it, in arrival order, to the handler registered for its type.
 // CONTRACT: documents/contracts/helper.md#envelope
 import type { ILogger } from "../../../ports/index.js";
-import { parseHelperMessage, PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
+import { parseHelperMessage, type ToHelperMessage } from "../../index.js";
 
 import { HelperProjectError } from "../projects/index.js";
 import type { HelperServerOptions } from "../connection/index.js";
-import type { HelperHandlers, HelperSend } from "./helperHandlers.js";
+import { createErrorReply, type ErrorReply, type HelperHandlers, type HelperSend } from "./helperHandlers.js";
+import { formatError } from "../../../logging/index.js";
 
 const LOG_MODULE = "helper-dispatch";
 // A message that never parsed has no id to answer; the envelope still needs one.
@@ -13,12 +14,8 @@ const NO_ID = "0";
 // INVARIANT: cancellation and thumbnail replies must reach work that is waiting inside the ordered queue.
 const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "templateThumbnail"]);
 
-type ErrorReply = (id: string, code: string, message: string) => void;
-
-const errorReply = (send: HelperSend): ErrorReply => (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
-
 async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, send: HelperSend, logger: ILogger, payload: Uint8Array): Promise<void> {
-  const reply = errorReply(send);
+  const reply = createErrorReply(send);
   const handler = handlers[message.type];
   if (!handler) {
     reply(message.id, "unknown-type", `${message.type} is not handled on the socket`);
@@ -33,7 +30,7 @@ async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, se
       return;
     }
     await logger.error(LOG_MODULE, error, { type: message.type, id: message.id });
-    reply(message.id, "internal", `${message.type} failed: ${error instanceof Error ? error.message : String(error)}`);
+    reply(message.id, "internal", `${message.type} failed: ${formatError(error)}`);
   }
 }
 
@@ -79,7 +76,7 @@ export function createHelperAnswerer(handlers: HelperHandlers, logger: ILogger):
   const handle: HelperAnswerer["handle"] = (envelope, payload, socketSend) => {
     // TRAP: interfaces such as HelperProgress lack an index signature, so the message needs a cast to the socket envelope.
     const send: HelperSend = (message, payload) => socketSend(message as unknown as Record<string, unknown>, payload);
-    const message = parseEnvelope(envelope, errorReply(send), logger);
+    const message = parseEnvelope(envelope, createErrorReply(send), logger);
     if (!message) { return; }
     if (UNQUEUED.has(message.type)) {
       track(runHandler(handlers, message, send, logger, payload));

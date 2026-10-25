@@ -7,6 +7,7 @@ import { MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION } from "../../helperMessages
 import { parseHelperMessage } from "../../parseHelperMessage.js";
 import { decodeConnectionMessage, encodeConnectionMessage } from "../../connectionFrame.js";
 import { encodeServerFrame, FrameReader, OPCODE, type FrameEvent } from "./frameCodec.js";
+import { formatError } from "../../../logging/index.js";
 
 const MODULE = "helperSocket";
 
@@ -89,7 +90,7 @@ export class HelperConnection {
     try {
       message = decodeConnectionMessage(data);
     } catch (error) {
-      this.close(1007, `undecodable socket message (${error instanceof Error ? error.message : String(error)})`);
+      this.close(1007, `undecodable socket message (${formatError(error)})`);
       return;
     }
     if (!this.authed) { this.authenticate(message.envelope); return; }

@@ -1,5 +1,6 @@
 // Watches whether the library root folder exists and reports when it disappears or returns.
 import type { ILogger } from "../../ports/logger.js";
+import { formatError } from "../../logging/index.js";
 
 const MODULE = "externalChange";
 
@@ -42,7 +43,7 @@ export class LibraryRootPresenceMonitor {
     try {
       present = await this.deps.exists();
     } catch (error) {
-      await this.deps.logger.log("WARN", MODULE, "Library folder check failed", { message: error instanceof Error ? error.message : String(error) });
+      await this.deps.logger.log("WARN", MODULE, "Library folder check failed", { message: formatError(error) });
       return this.present;
     }
     if (present === this.present) return present;
