@@ -1,8 +1,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { ATTENTION, harness, metaFile } from "../../fixtures/paperService";
-import { cleanupTempDirs } from "../../fixtures/library";
+import { ATTENTION, harness, metaFile } from "../fixtures/paperService";
+import { cleanupTempDirs } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 

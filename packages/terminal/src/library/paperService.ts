@@ -36,8 +36,8 @@ import {
 } from "@labshelf/core";
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
-import type { LibraryRoot } from "../libraryRoot.js";
-import { expandHome } from "../../platform/index.js";
+import type { LibraryRoot } from "./libraryRoot.js";
+import { expandHome } from "../platform/index.js";
 
 interface SortedInputs {
   /** Absolute paths that exist: files, folders, or entries the import reports as skipped. */

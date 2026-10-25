@@ -1,15 +1,15 @@
 import { promises as fs, readFileSync } from "node:fs";
 import * as path from "node:path";
 
-import { harness, pdfResponse, type Harness } from "../../fixtures/paperService";
-import { cleanupTempDirs, fakePdfBytes, listFiles, readYaml } from "../../fixtures/library";
+import { harness, pdfResponse, type Harness } from "../fixtures/paperService";
+import { cleanupTempDirs, fakePdfBytes, listFiles, readYaml } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 
 // No identifier in the URL: a URL with one is imported through the registries instead.
 const LANDING = "https://link.springer.com/article/grassmann-optimization";
 const PDF_URL = "https://link.springer.com/content/pdf/10.1007/s10107-023-01234-5.pdf";
-const SPRINGER = readFileSync(path.join(__dirname, "..", "..", "..", "..", "core", "__tests__", "fixtures", "springerArticle.html"), "utf8");
+const SPRINGER = readFileSync(path.join(__dirname, "..", "..", "..", "core", "__tests__", "fixtures", "springerArticle.html"), "utf8");
 
 const htmlResponse = (body: string) => () => new Response(body, { status: 200, headers: { "content-type": "text/html; charset=utf-8" } });
 

@@ -14,7 +14,7 @@ import {
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import { createLibraryStore } from "../../src/library/libraryModel";
-import { TerminalPaperService } from "../../src/library/papers/paperService";
+import { TerminalPaperService } from "../../src/library/paperService";
 import {
   createTempLibrary,
   fakePdfBytes,

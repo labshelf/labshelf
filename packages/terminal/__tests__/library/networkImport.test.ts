@@ -3,8 +3,8 @@ import * as path from "node:path";
 
 import { DEFAULT_CONTACT_EMAIL, type ImportOutcome, type ResolvedMetadata } from "@labshelf/core";
 
-import { harness, metaFile, pdfResponse, type Harness } from "../../fixtures/paperService";
-import { cleanupTempDirs, fakePdfBytes, listFiles, pathExists, readYaml } from "../../fixtures/library";
+import { harness, metaFile, pdfResponse, type Harness } from "../fixtures/paperService";
+import { cleanupTempDirs, fakePdfBytes, listFiles, pathExists, readYaml } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 

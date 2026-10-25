@@ -3,10 +3,10 @@ import * as path from "node:path";
 
 import type { PaperRecord, MutationContext } from "@labshelf/core";
 
-import { harness, metaFile } from "../../fixtures/paperService";
-import { cleanupTempDirs, listFiles, pathExists, readYaml, type PaperFixture } from "../../fixtures/library";
+import { harness, metaFile } from "../fixtures/paperService";
+import { cleanupTempDirs, listFiles, pathExists, readYaml, type PaperFixture } from "../fixtures/library";
 import * as os from "node:os";
-import { sortImportInputs } from "../../../src/library/papers/paperService";
+import { sortImportInputs } from "../../src/library/paperService";
 
 afterEach(cleanupTempDirs);
 
