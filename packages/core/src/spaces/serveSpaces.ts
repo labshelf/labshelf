@@ -1,11 +1,76 @@
 // Serves the Spaces pages from the Space store and a host port: posts the open view after each change and runs the page's actions.
 import type { ILogger } from "../ports/index.js";
-import { applySpaceMutation } from "./applySpaceMutation.js";
-import { parseSpacesMessage, type HostToSpaces, type PaperPickItem, type SpacesEndpoint, type SpacesToHost } from "./protocol/index.js";
-import { ACTION_LABELS, LOAD_CATALOG, LOAD_SPACE } from "./spacesActionLabels.js";
+import {
+  parseSpacesMessage,
+  type HostToSpaces,
+  type PaperPickItem,
+  type SpacesEndpoint,
+  type SpacesToHost,
+  type SpaceMutation,
+} from "./protocol/index.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./store/index.js";
 import { buildIcs, buildOverview, buildPapersTree, catalogRows, resolvePaper } from "./viewModel/index.js";
+
+const LOAD_CATALOG = "Load Spaces";
+const LOAD_SPACE = "Load Space";
+
+const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
+  createSpace: "Create Space",
+  renameSpace: "Rename Space",
+  setPurpose: "Set purpose",
+  deleteSpace: "Delete Space",
+  addPapers: "Add papers",
+  removePaper: "Remove paper",
+  setFocus: "Set focus",
+  moveReference: "Move paper",
+  createFolder: "Create folder",
+  renameFolder: "Rename folder",
+  deleteFolder: "Delete folder",
+  linkProject: "Link project",
+  unlinkProject: "Unlink project",
+  addDate: "Add date",
+  updateDate: "Update date",
+  removeDate: "Remove date",
+  setDone: "Mark task done",
+  addTerm: "Add term",
+  updateTerm: "Update term",
+  removeTerm: "Remove term",
+  openPaper: "Open paper",
+  selectPaper: "Show paper details",
+  openProject: "Open project",
+  openSpace: "Open Space",
+  openCatalog: "Open Spaces",
+  exportIcs: "Export calendar",
+  listPapers: "List papers",
+  listProjects: "List projects",
+};
+
+/** Resolves to the new id for the mutations that create something. */
+function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknown> {
+  switch (m.type) {
+    case "createSpace": return store.createSpace(m.name);
+    case "renameSpace": return store.renameSpace(m.id, m.name);
+    case "setPurpose": return store.setPurpose(m.id, m.purpose);
+    case "deleteSpace": return store.deleteSpace(m.id);
+    case "addPapers": return store.addPapers(m.id, m.paperIds, m.folder);
+    case "removePaper": return store.removePaper(m.id, m.paperId);
+    case "setFocus": return store.setFocus(m.id, m.paperId, m.focus);
+    case "moveReference": return store.moveReference(m.id, m.paperId, m.folder);
+    case "createFolder": return store.createFolder(m.id, m.name, m.parent);
+    case "renameFolder": return store.renameFolder(m.id, m.folderId, m.name);
+    case "deleteFolder": return store.deleteFolder(m.id, m.folderId);
+    case "linkProject": return store.linkProject(m.id, m.projectId);
+    case "unlinkProject": return store.unlinkProject(m.id, m.projectId);
+    case "addDate": return store.addDate(m.id, m.date);
+    case "updateDate": return store.updateDate(m.id, m.dateId, m.date);
+    case "removeDate": return store.removeDate(m.id, m.dateId);
+    case "setDone": return store.setDone(m.id, m.dateId, m.done);
+    case "addTerm": return store.addTerm(m.id, m.term);
+    case "updateTerm": return store.updateTerm(m.id, m.termId, m.term);
+    case "removeTerm": return store.removeTerm(m.id, m.termId);
+  }
+}
 
 const MODULE = "spaces/server";
 

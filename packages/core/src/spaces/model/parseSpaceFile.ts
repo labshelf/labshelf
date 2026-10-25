@@ -1,9 +1,116 @@
 // Reads space.json text into a Space without ever throwing: broken files become unreadable, newer versions and wrong-typed keys read-only.
 // CONTRACT: documents/contracts/spaces.md#reading
-import type { SpaceReadResult } from "./space.js";
-import { isNonEmptyString, isRecord, isString, readEntries, topLevelReadOnlyReason, unknownKeys } from "./json/index.js";
-import { parseDate, parseFolder, parsePaperRef, readProjectIds } from "./parseSpaceEntries.js";
-import { resolveSpaceReferences } from "./resolveSpaceReferences.js";
+import {
+  type SpaceReadResult,
+  SPACE_DATE_KINDS,
+  type SpaceDate,
+  type SpaceDateKind,
+  type SpaceFolder,
+  type SpacePaperRef,
+} from "./space.js";
+import {
+  isNonEmptyString,
+  isRecord,
+  isString,
+  readEntries,
+  topLevelReadOnlyReason,
+  unknownKeys,
+  isBoolean,
+  isDay,
+  isIdList,
+  isOptional,
+  type EntryParse,
+  type ReadEntries,
+} from "./json/index.js";
+
+function withoutKey<T extends object, K extends keyof T>(entry: T, key: K): T {
+  const { [key]: _dropped, ...rest } = entry;
+  return rest as T;
+}
+
+/** Ids of folders whose parent chain loops back on itself. */
+function foldersOnCycles(parentOf: ReadonlyMap<string, string | undefined>): Set<string> {
+  const onCycle = new Set<string>();
+  for (const start of parentOf.keys()) {
+    const path: string[] = [];
+    let current: string | undefined = start;
+    while (current !== undefined && !path.includes(current) && !onCycle.has(current)) {
+      path.push(current);
+      current = parentOf.get(current);
+    }
+    if (current !== undefined && path.includes(current)) {
+      path.slice(path.indexOf(current)).forEach((id) => onCycle.add(id));
+    }
+  }
+  return onCycle;
+}
+
+function resolveSpaceReferences(
+  folders: readonly SpaceFolder[], papers: readonly SpacePaperRef[], warnings: string[],
+): { folders: SpaceFolder[]; papers: SpacePaperRef[] } {
+  const ids = new Set(folders.map((folder) => folder.id));
+  const parentOf = new Map(folders.map((folder) => [folder.id, folder.parent !== undefined && ids.has(folder.parent) ? folder.parent : undefined]));
+  const onCycle = foldersOnCycles(parentOf);
+  const resolvedFolders = folders.map((folder) => {
+    if (folder.parent === undefined) { return folder; }
+    if (!ids.has(folder.parent)) { warnings.push(`folder ${folder.id}: parent ${folder.parent} is missing, read as root`); }
+    else if (onCycle.has(folder.id)) { warnings.push(`folder ${folder.id}: on a parent cycle, read as root`); }
+    else { return folder; }
+    return withoutKey(folder, "parent");
+  });
+  const resolvedPapers = papers.map((paper) => {
+    if (paper.folder === undefined || ids.has(paper.folder)) { return paper; }
+    warnings.push(`paper ${paper.id}: folder ${paper.folder} is missing, read as root`);
+    return withoutKey(paper, "folder");
+  });
+  return { folders: resolvedFolders, papers: resolvedPapers };
+}
+
+/** Project ids in file order, each once. */
+function readProjectIds(list: unknown, warnings: string[]): ReadEntries<string> {
+  const ids = readEntries(list, "projects", (raw) => (isNonEmptyString(raw) ? { id: raw } : "not a project id"), warnings);
+  return { valid: ids.valid.map(({ id }) => id), raw: ids.raw };
+}
+
+const FOLDER_KEYS = ["id", "name", "parent"];
+const parseFolder: EntryParse<SpaceFolder> = (raw) => {
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  const { id, name, parent } = raw;
+  if (!isString(name) || !isOptional(parent, isNonEmptyString)) { return "name or parent has the wrong type"; }
+  return { id, name, ...(parent === undefined ? {} : { parent: parent as string }), extra: unknownKeys(raw, FOLDER_KEYS) };
+};
+
+const PAPER_KEYS = ["id", "folder", "addedAt", "focus"];
+const parsePaperRef: EntryParse<SpacePaperRef> = (raw) => {
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  const { id, folder, addedAt, focus } = raw;
+  if (!isOptional(folder, isNonEmptyString) || !isOptional(addedAt, isString) || !isOptional(focus, isBoolean)) {
+    return "folder, addedAt or focus has the wrong type";
+  }
+  return {
+    id, ...(folder === undefined ? {} : { folder: folder as string }), ...(addedAt === undefined ? {} : { addedAt: addedAt as string }),
+    focus: focus === true, extra: unknownKeys(raw, PAPER_KEYS),
+  };
+};
+
+// INVARIANT: every kind's keys are known, so a key of another kind is dropped rather than kept as unknown and
+// written back next to a known key of the same name after a kind change.
+const DATE_KEYS = ["id", "kind", "title", "date", "done", "paperIds", "projectId"];
+const isKind = (value: unknown): value is SpaceDateKind => (SPACE_DATE_KINDS as readonly unknown[]).includes(value);
+
+const parseDate: EntryParse<SpaceDate> = (raw) => {
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  const { id, kind, title, date, done, paperIds, projectId } = raw;
+  if (!isKind(kind)) { return `unknown kind ${JSON.stringify(kind)}`; }
+  if (!isString(title) || !isDay(date)) { return "title is not text or date is not YYYY-MM-DD"; }
+  const base = { id, title, date, extra: unknownKeys(raw, DATE_KEYS) };
+  switch (kind) {
+    case "task": return isOptional(done, isBoolean) ? { ...base, kind, done: done === true } : "done is not true or false";
+    case "read": return isOptional(paperIds, isIdList) ? { ...base, kind, ...(paperIds === undefined ? {} : { paperIds: paperIds as string[] }) } : "paperIds is not a list of paper ids";
+    case "project": return isOptional(projectId, isNonEmptyString) ? { ...base, kind, ...(projectId === undefined ? {} : { projectId: projectId as string }) } : "projectId is not a project id";
+    case "deadline": return { ...base, kind };
+  }
+};
 
 const SPACE_KEYS = ["version", "name", "purpose", "createdAt", "folders", "papers", "projects", "dates"];
 

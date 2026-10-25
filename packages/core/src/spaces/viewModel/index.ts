@@ -11,4 +11,4 @@ export type { CatalogFilter } from "./catalogRows.js";
 export { buildOverview } from "./spaceOverview/index.js";
 export { buildPapersTree } from "./papersTree.js";
 export { sidebarRows } from "./sidebarRows.js";
-export { buildIcs } from "./ics/index.js";
+export { buildIcs } from "./icsExport.js";

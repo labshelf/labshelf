@@ -1,13 +1,75 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
 import { libraryLayout } from "../../library/index.js";
-import type { Glossary, GlossaryReadResult, Space, SpaceReadResult } from "../model/index.js";
+import {
+  type Glossary,
+  type GlossaryReadResult,
+  type Space,
+  type SpaceReadResult,
+  serializeSpaceFile,
+  spaceIdFromName,
+} from "../model/index.js";
 import * as edit from "./mutation/index.js";
 import type { SpaceDateDraft, TermDraft } from "./mutation/index.js";
 import { editGlossary, editSpace, type ReadySpace } from "./updateSpace.js";
 import { readAllSpaces, readGlossaryFile, readSpaceFile } from "./readSpace.js";
-import { requireSpaceId } from "./assertSpaceId.js";
-import { createSpaceFile, trashSpaceFolder } from "./spaceLifecycle.js";
-import type { SpaceStoreOptions, StoreContext } from "./spaceStoreOptions.js";
+import { type SpaceStoreOptions, type StoreContext, SPACE_STORE_MODULE } from "./spaceStoreOptions.js";
+import { serially } from "./serialWrites.js";
+
+const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+/** TRAP: another device may create the same folder between the listing and the write, so the id is re-checked last. */
+async function freeSpaceId(ctx: StoreContext, name: string, taken: Set<string>): Promise<string> {
+  let id = spaceIdFromName(name, taken);
+  while (await ctx.fs.exists(ctx.layout.spaceDir(id))) {
+    taken.add(id);
+    id = spaceIdFromName(name, taken);
+  }
+  return id;
+}
+
+/** @returns the new Space, written under an id no folder of spaces/ uses */
+function createSpaceFile(ctx: StoreContext, name: string): Promise<Space> {
+  const trimmed = name.trim();
+  if (trimmed === "") { return Promise.reject(new Error("A Space needs a name.")); }
+  return serially(ctx, ctx.layout.spacesRoot(), async () => {
+    const taken = new Set(await ctx.fs.listDir(ctx.layout.spacesRoot()));
+    const id = await freeSpaceId(ctx, trimmed, taken);
+    try {
+      await ctx.fs.ensureDir(ctx.layout.spaceDir(id));
+      const space: Space = { id, name: trimmed, createdAt: ctx.now(), folders: [], papers: [], projects: [], dates: [],
+        invalid: { folders: [], papers: [], projects: [], dates: [] }, extra: {},
+      };
+      await ctx.fs.writeText(ctx.layout.spaceFilePath(id), serializeSpaceFile(space));
+      await ctx.logger.log("INFO", SPACE_STORE_MODULE, "Space created", { spaceId: id });
+      return space;
+    } catch (error) {
+      const path = ctx.layout.spaceFilePath(id);
+      await ctx.logger.log("ERROR", SPACE_STORE_MODULE, "Space creation failed", { spaceId: id, path, error: message(error) });
+      throw new Error(`Creating the Space failed for ${path}: ${message(error)}`, { cause: error });
+    }
+  });
+}
+
+function trashSpaceFolder(ctx: StoreContext, id: string): Promise<void> {
+  return serially(ctx, id, async () => {
+    const dir = ctx.layout.spaceDir(id);
+    try {
+      if (!(await ctx.fs.exists(ctx.layout.spaceFilePath(id)))) { throw new Error("the Space does not exist"); }
+      await ctx.fs.trash(dir);
+    } catch (error) {
+      await ctx.logger.log("ERROR", SPACE_STORE_MODULE, "Space deletion failed", { spaceId: id, path: dir, error: message(error) });
+      throw new Error(`Deleting the Space failed for ${dir}: ${message(error)}`, { cause: error });
+    }
+    await ctx.logger.log("INFO", SPACE_STORE_MODULE, "Space moved to trash", { spaceId: id });
+  });
+}
+
+/** INVARIANT: a valid id is one plain, visible folder name, so it never reaches a path outside spaces/<id>/. */
+async function requireSpaceId(ctx: StoreContext, id: string, action: string): Promise<void> {
+  if (id !== "" && !/[/\\]/.test(id) && !id.startsWith(".")) { return; }
+  await ctx.logger.log("ERROR", SPACE_STORE_MODULE, `${action} refused: invalid space id`, { spaceId: id });
+  throw new Error(`${action} refused: ${JSON.stringify(id)} is not a valid space id.`);
+}
 
 const keep = (space: Space): { space: Space; value: undefined } => ({ space, value: undefined });
 const idOf = (result: SpaceReadResult): string => (result.state === "ready" ? result.space.id : result.id);

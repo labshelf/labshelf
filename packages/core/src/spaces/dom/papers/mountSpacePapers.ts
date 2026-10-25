@@ -1,12 +1,41 @@
 // Mounts Space paper references with folder navigation and cancellable editing.
-import { el, emptyState, closeMenu } from '../../../ui/dom/index.js';
+import { el, emptyState, closeMenu, icon } from "../../../ui/dom/index.js";
 import type { SpaceBody } from '../spaceOverview/index.js';
-import type { ResolvedPaper } from '../../viewModel/index.js';
-import type { PapersContext } from './papersContext.js';
-import { folderNav } from './folders.js';
-import { paperRow, action } from './rows.js';
-import { confirmRemoval, folderName } from './dialogs.js';
+import type { ResolvedPaper, PapersTreeFolder } from "../../viewModel/index.js";
+import type { PapersContext } from "./papersContext.js";
+import { paperRow, action, PAPER_DRAG_TYPE } from "./rows.js";
+import { confirmRemoval, folderName } from "./dialogs.js";
 import { paperPicker } from './picker.js';
+
+function folderNav(ctx: PapersContext, select: (id?: string) => void): HTMLElement {
+  const nav = el('nav', { class: 'pp-folders', 'aria-label': 'Space folders' });
+  const item = (label: string, count: number, id?: string): HTMLElement => {
+    const button = el('button', { type: 'button', class: 'pp-folder', 'aria-label': label, 'aria-current': ctx.folder === id ? 'true' : undefined },
+      el('span', { 'aria-hidden': 'true', html: icon(id ? 'folder' : 'layers') }),
+      el('span', { class: 'pp-folder-name', text: label }), el('span', { class: 'tree-count', text: String(count) }));
+    button.addEventListener('click', () => select(id)); wireDrop(button, ctx, id); return button;
+  };
+  nav.append(item('All papers', ctx.data.space.papers.length));
+  const add = (folders: readonly PapersTreeFolder[], parent: HTMLElement): void => {
+    for (const f of folders) {
+      parent.append(item(f.name, f.papers.length, f.id));
+      if (f.folders.length) { const children = el('div', { class: 'pp-folder-children' }); add(f.folders, children); parent.append(children); }
+    }
+  };
+  add(ctx.data.papers.folders, nav); nav.append(action(ctx, 'New folder', () => { void folderName(ctx); })); return nav;
+}
+function wireDrop(button: HTMLElement, ctx: PapersContext, folder?: string): void {
+  button.addEventListener('dragover', event => { if (!ctx.readOnly && event.dataTransfer?.types.includes(PAPER_DRAG_TYPE)) event.preventDefault(); });
+  button.addEventListener('drop', event => {
+    event.preventDefault(); if (ctx.readOnly || ctx.signal?.aborted) return;
+    let payload: unknown;
+    try { payload = JSON.parse(event.dataTransfer?.getData(PAPER_DRAG_TYPE) ?? 'null'); } catch { return; }
+    if (!payload || typeof payload !== 'object' || !('spaceId' in payload) || payload.spaceId !== ctx.data.space.id || !('paperId' in payload) || typeof payload.paperId !== 'string') return;
+    if (!ctx.data.space.papers.some(p => p.id === payload.paperId)) return;
+    ctx.end.post({ type: 'moveReference', id: ctx.data.space.id, paperId: payload.paperId, ...(folder ? { folder } : {}) });
+  });
+}
+
 export function mountSpacePapers(root: HTMLElement, initial: PapersContext): SpaceBody {
   let controller = new AbortController();
   const ctx: PapersContext = { ...initial, signal: controller.signal };
