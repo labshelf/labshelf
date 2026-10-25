@@ -384,7 +384,6 @@ tools: [pdfjs, prosemirror, tesseract, cloudflare, github, crossref, openalex, p
 external:
   - { name: activate, files: ["packages/vscode/src/extension.ts"] }
   - { name: deactivate, files: ["packages/vscode/src/extension.ts"] }
-  - { name: fetch, files: ["packages/core/src/relay/worker/index.ts"] }
 
 # A bare word with a banned or ambiguous sense: allowed only inside one of `use`; `instead` names what the other senses became.
 # `suffix: true`: the word is also valid right after a term, as <term><Word> (projectId, rowKey, TaskStatus); the bare word stays rejected.
