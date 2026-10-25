@@ -58,7 +58,7 @@ mechanism:
     decode: { group: PURE }
     format: { group: PURE, def: "Value to display text." }
     normalize: { group: PURE }
-    derive: { group: PURE, syn: [compute, calc] }
+    derive: { group: PURE, syn: [compute] }
     merge: { group: PURE }
     compare: { group: PURE }
     split: { group: PURE }
