@@ -2,14 +2,14 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { tmpdir } from "node:os";
-import { buildProject } from "../../../../src/writing/build/node/index";
-import { submitTemplatePullRequest } from "../../../../src/templates/client/index";
-import { createTemplatePublishHandlers } from "../../../../src/helper/node/template/index";
-import { PROTOCOL_VERSION, type ToPageMessage, type TemplatePublishRequest } from "../../../../src/helper/index";
-import type { ProjectBuildDeps } from "../../../../src/writing/build/node/index";
+import { buildProject } from "../../../src/writing/build/node/index";
+import { submitTemplatePullRequest } from "../../../src/templates/client/index";
+import { createTemplatePublishHandlers } from "../../../src/helper/node/publishHandlers";
+import { PROTOCOL_VERSION, type ToPageMessage, type TemplatePublishRequest } from "../../../src/helper/index";
+import type { ProjectBuildDeps } from "../../../src/writing/build/node/index";
 
-jest.mock("../../../../src/writing/build/node/index", () => ({ ...jest.requireActual("../../../../src/writing/build/node/index"), buildProject: jest.fn() }));
-jest.mock("../../../../src/templates/client/index", () => ({ ...jest.requireActual("../../../../src/templates/client/index"), submitTemplatePullRequest: jest.fn() }));
+jest.mock("../../../src/writing/build/node/index", () => ({ ...jest.requireActual("../../../src/writing/build/node/index"), buildProject: jest.fn() }));
+jest.mock("../../../src/templates/client/index", () => ({ ...jest.requireActual("../../../src/templates/client/index"), submitTemplatePullRequest: jest.fn() }));
 const draft = { name: "Research", category: "article", license: "MIT", description: "A paper template" };
 const pdf = new Uint8Array([37, 80, 68, 70]);
 const png = new Uint8Array(33);

@@ -7,7 +7,7 @@ import type { HelperHost } from "../index.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/toolchain/node/managedTex/index.js";
 import type { HelperLogger } from "./log/index.js";
-import { createTemplatePublishHandlers } from "./template/index.js";
+import { createTemplatePublishHandlers } from "./publishHandlers.js";
 import { createBuildHandlers } from "./build/index.js";
 import { answerHello, createDispatcher, createProjectHandlers, runHelperLoop, type HelloAnswer } from "./handlers/index.js";
 import { createLibraryProjects } from "./projects/index.js";

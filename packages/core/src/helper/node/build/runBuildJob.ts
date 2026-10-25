@@ -9,8 +9,12 @@ import type { ProjectBuildQueue } from "../../../writing/build/node/index.js";
 import { PROTOCOL_VERSION, type HelperBuildStatus, type ToHelperMessage } from "../../index.js";
 
 import type { HelperSend } from "../handlers/index.js";
-import { pageProblems } from "./pageProblems.js";
 import { sendPages, type SentPages } from "./sendPages.js";
+
+// CONTRACT: documents/contracts/helper.md#messages
+function pageProblems(problems: readonly LocatedProblem[], sourceDir: string): LocatedProblem[] {
+  return problems.map((problem) => ({ ...problem, file: path.relative(sourceDir, problem.file).split(path.sep).join("/") }));
+}
 
 export const BUILD_MODULE = "helper/build";
 
