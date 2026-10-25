@@ -1,5 +1,5 @@
 // Tests the citation lookup client: answers match their request, silence resolves empty, and links are cached per document.
-import { CitationLookup, LOOKUP_TIMEOUT_MS } from "../../../../../src/reader/dom/hover/citations/findCitation";
+import { CitationLookup, LOOKUP_TIMEOUT_MS } from "../../../../../src/reader/dom/hover/citations/previewCitations";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../../../../../src/reader/dom/session";
 import type { CitationEntry, CitationQuery } from "../../../../../src/reader";
 

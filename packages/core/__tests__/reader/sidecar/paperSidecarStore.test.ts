@@ -1,5 +1,5 @@
 // Tests the paper data store for annotations and reading state.
-import { PaperDataStore } from '../../../src/reader/sidecar/paperSidecarStore';
+import { PaperDataStore, validateAnnotationPosition } from "../../../src/reader/sidecar/paperSidecarStore";
 import { emptyPaperData } from '../../../src/reader/sidecar/paperSidecar';
 import type { SidecarPort } from '../../../src/ports/index';
 
@@ -210,5 +210,14 @@ describe('PaperDataStore logging', () => {
     const log = jest.fn(async () => undefined);
     await new PaperDataStore(memoryPort(), { logger: { log, error: jest.fn(async () => undefined) } }).load('p');
     expect(log).not.toHaveBeenCalled();
+  });
+});
+
+describe('validateAnnotationPosition', () => {
+  it('accepts a normalized box and rejects anything outside the page', () => {
+    expect(validateAnnotationPosition({ x: 0.1, y: 0.2, width: 0.3, height: 0.1 })).toEqual({ x: 0.1, y: 0.2, width: 0.3, height: 0.1 });
+    expect(() => validateAnnotationPosition({ x: 0.9, y: 0, width: 0.2, height: 0.1 })).toThrow('normalized');
+    expect(() => validateAnnotationPosition({ x: '0' })).toThrow('numbers');
+    expect(() => validateAnnotationPosition(null)).toThrow('object');
   });
 });

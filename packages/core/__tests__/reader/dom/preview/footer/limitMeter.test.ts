@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 // Tests the footer limit meter: thresholds, the single bodyPages report per PDF and the limits popover's posts.
-import { mountLimitMeter } from "../../../../../../src/reader/dom/preview/footer/limit/index";
-import type { PreviewRoots } from "../../../../../../src/reader/previewProtocol";
+import { mountLimitMeter } from "../../../../../src/reader/dom/preview/footer/limitMeter";
+import type { PreviewRoots } from "../../../../../src/reader/previewProtocol";
 
 function roots(extra: Partial<PreviewRoots> = {}, words?: number): PreviewRoots {
   const root = { path: "/p/main.tex", failed: false, rawLog: true, sourceLinks: true, problems: [], ...(words === undefined ? {} : { words }) };
