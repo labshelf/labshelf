@@ -1,11 +1,41 @@
 // Reads the inline Markdown of one paragraph or heading into ProseMirror nodes.
 // CONTRACT: documents/contracts/qmd-items.md#format
-import { Fragment, type Node } from "prosemirror-model";
+import { Fragment, type Node, type Mark } from "prosemirror-model";
 import { serializeInline } from "./serializeInline.js";
-import { plainInline, hardBreak, splitBreakMarker } from "./lineBreak.js";
 import { qmdSchema, matchCitation } from "./schema/index.js";
 import { type InlineToken, pushText, tokensToNodes } from "./inlineToken.js";
-import { withMark, writesBackAs } from "./writesBack.js";
+
+/** Splits `line` into the text kept and the break marker: an odd trailing `\`, two or more trailing spaces, or "". */
+function splitBreakMarker(line: string): { text: string; marker: string } {
+  const backslashes = /\\*$/.exec(line)?.[0].length ?? 0;
+  if (backslashes % 2 === 1) return { text: line.slice(0, -1), marker: "\\" };
+  const spaces = / *$/.exec(line)?.[0].length ?? 0;
+  if (spaces >= 2) return { text: line.slice(0, -spaces), marker: line.slice(-spaces) };
+  return { text: line, marker: "" };
+}
+
+function hardBreak(marker: string): Node {
+  return qmdSchema.node("hard_break", { marker });
+}
+
+/** Reads `text` with line breaks only, every other byte literal. */
+function plainInline(text: string): Node[] {
+  const lines = text.split("\n");
+  return lines.flatMap((line, index) => {
+    if (index === lines.length - 1) return line ? [qmdSchema.text(line)] : [];
+    const { text: kept, marker } = splitBreakMarker(line);
+    return kept ? [qmdSchema.text(kept), hardBreak(marker)] : [hardBreak(marker)];
+  });
+}
+
+function withMark(nodes: readonly Node[], mark: Mark): Node[] {
+  return nodes.map((node) => node.mark(mark.addToSet(node.marks)));
+}
+
+/** True when the nodes write back as exactly `source`; constructs that would not stay literal text. */
+function writesBackAs(nodes: readonly Node[], source: string): boolean {
+  return serializeInline(Fragment.from(nodes)) === source;
+}
 
 // CONTRACT: documents/contracts/qmd-items.md#format
 function runLength(source: string, at: number, char: string, end: number): number {

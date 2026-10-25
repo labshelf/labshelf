@@ -12,9 +12,15 @@ import {
   lineContent,
   parseDivOpener,
 } from "../items/index.js";
-import { changedSide } from "./sideChange.js";
 import type { TextMerge, TextMergeResult } from "./textMergePort.js";
 import { findOutputs, type OutputBlock } from "../cellOutput/index.js";
+
+/** The side that holds every edit, or undefined when both sides changed the value differently. */
+function changedSide<T>(base: T | undefined, local: T, other: T): T | undefined {
+  if (local === other || other === base) { return local; }
+  if (local === base) { return other; }
+  return undefined;
+}
 
 // CONTRACT: documents/contracts/qmd-items.md#merge
 const START = "";
