@@ -1,7 +1,7 @@
 /** Checks research chat context and its unavailable controls.
  * @jest-environment jsdom
  */
-import { mountResearchChat } from '../../../../src/spaces/dom/chat/index.js';
+import { mountResearchChat } from '../../../src/spaces/dom/mountResearchChat.js';
 
 test('renders the context, suggestions, composer and disconnected model footer', () => {
   const root = document.createElement('div');

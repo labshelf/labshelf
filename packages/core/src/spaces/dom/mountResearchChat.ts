@@ -1,5 +1,5 @@
 // Mounts a positioned research conversation scoped to a Space or project.
-import { el, positioned } from "../../../ui/dom/index.js";
+import { el, positioned } from "../../ui/dom/index.js";
 
 export interface ResearchChat {
   setContext(name: string | null): void;

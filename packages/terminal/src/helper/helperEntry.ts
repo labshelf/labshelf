@@ -8,7 +8,7 @@ import { assertHelperPrivatePaths, BIBER_FLAG, createHelperLogger, helperDataDir
 import { HELPER_VERSION } from "@labshelf/core/helper";
 import { systemNativeHostEnv } from "@labshelf/core/nativeHost/node";
 
-import { seaBiberAssets } from "./biber/index.js";
+import { seaBiberAssets } from "./seaBiberAssets.js";
 import { registerStandaloneHosts, servedHost, uninstallStandaloneHelper, unregisterStandaloneHosts } from "./nativeHost/index.js";
 import { createSelfUpdater } from "./release/index.js";
 

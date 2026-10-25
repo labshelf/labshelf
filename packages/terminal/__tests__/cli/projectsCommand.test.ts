@@ -2,10 +2,10 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { Output } from "../../../src/cli";
+import type { Output } from "../../src/cli";
 import { runProjects } from "../../../src/cli/projects";
-import { LibraryRoot } from "../../../src/library";
-import { cleanupTempDirs, makeTempDir } from "../../fixtures/library";
+import { LibraryRoot } from "../../src/library";
+import { cleanupTempDirs, makeTempDir } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 

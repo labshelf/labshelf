@@ -4,10 +4,10 @@ import * as path from "node:path";
 
 import type { CheckFinding } from "@labshelf/core";
 
-import type { Output } from "../../../src/cli";
+import type { Output } from "../../src/cli";
 import { runCheck, type ProjectChecker } from "../../../src/cli/check";
-import { LibraryRoot } from "../../../src/library";
-import { cleanupTempDirs, makeTempDir } from "../../fixtures/library";
+import { LibraryRoot } from "../../src/library";
+import { cleanupTempDirs, makeTempDir } from "../fixtures/library";
 
 afterEach(cleanupTempDirs);
 

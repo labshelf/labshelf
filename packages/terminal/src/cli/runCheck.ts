@@ -5,9 +5,9 @@ import * as path from "node:path";
 import { builtPdfPath, type CheckFinding, type ILogger } from "@labshelf/core";
 import { checkProject, createPdfjsLoader, type ProjectCheck } from "@labshelf/core/node";
 
-import type { AppContext } from "../../compositionRoot.js";
-import { findProject } from "../build/index.js";
-import type { Output } from "../usage.js";
+import type { AppContext } from "../compositionRoot.js";
+import { findProject } from "./build/index.js";
+import type { Output } from "./usage.js";
 
 export type CheckContext = Pick<AppContext, "logger" | "paths">;
 
