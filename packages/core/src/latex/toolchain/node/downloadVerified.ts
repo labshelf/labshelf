@@ -1,7 +1,6 @@
 // Downloads a file into memory and checks its SHA-256 before anything is written or run.
 import { createHash } from "node:crypto";
-
-export type FetchLike = (url: string, init?: { signal?: AbortSignal }) => Promise<Response>;
+import type { FetchLike } from "../../../ports/index.js";
 
 /** The downloaded bytes; throws when the request fails, is aborted or the hash differs from `sha256`. */
 export async function downloadVerified(

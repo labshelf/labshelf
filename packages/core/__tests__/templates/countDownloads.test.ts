@@ -1,6 +1,6 @@
 /** Verifies the jsDelivr download count: summing across versions, main-file matching, pagination and failures. */
 import { countDownloads } from "../../src/templates/countDownloads.js";
-import type { FetchLike } from "../../src/templates/index";
+import type { FetchLike } from "../../src/ports/index.js";
 
 const BASE = "https://data.jsdelivr.com/v1/stats/packages/gh/labshelf/labshelf-templates";
 const query = (page: number) => `period=year&limit=100&page=${page}`;

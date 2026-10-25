@@ -1,8 +1,7 @@
 // Builds the managed TeX provider every LabShelf app uses: the shared folder, the system TeX and both installers.
 import { join } from "node:path";
 
-import type { ILogger } from "../../../../ports/index.js";
-import type { FetchLike } from "../index.js";
+import type { ILogger, FetchLike } from "../../../../ports/index.js";
 import { createSystemTexProvider } from "../systemTex/index.js";
 
 import { installTexLive } from "./installTexLive.js";

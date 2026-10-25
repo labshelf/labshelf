@@ -1,6 +1,5 @@
 // Describes what the managed TeX installers need from the host and from the caller.
-import type { ILogger } from "../../../../ports/index.js";
-import type { FetchLike } from "../index.js";
+import type { ILogger, FetchLike } from "../../../../ports/index.js";
 import type { RunFile } from "./removeQuarantine.js";
 
 export interface TexInstallDeps {

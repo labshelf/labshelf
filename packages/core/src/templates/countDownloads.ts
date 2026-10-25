@@ -1,5 +1,5 @@
 /** Counts the past year's downloads of each catalog template's main file from the jsDelivr stats API, summed across versions. */
-import type { FetchLike } from "./sources/index.js";
+import type { FetchLike } from "../ports/index.js";
 
 const STATS_URL = "https://data.jsdelivr.com/v1/stats/packages/gh/labshelf/labshelf-templates";
 const MAX_PAGE = 100;
