@@ -61,7 +61,7 @@ async function resolveChoice(choice: FirstRunChoice, io: Output, ask: Ask): Prom
     const typed = await ask("Folder: ");
     if (typed === undefined) { return undefined; }
     if (!typed) { return "again"; }
-    target = await resolveLibraryDir(resolveHomePath(typed));
+    target = await resolveLibraryDir(resolveHomePath(typed), { unreadableAsEmpty: true });
   } else {
     target = choice.path;
   }

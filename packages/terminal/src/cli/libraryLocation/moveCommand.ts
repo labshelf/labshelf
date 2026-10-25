@@ -20,7 +20,7 @@ export async function runMove(positionals: string[], root: string | undefined, i
   const raw = positionals[0];
   if (!raw) { throw new UsageError("Usage: labshelf move <path>"); }
   if (!root) { throw new UsageError("No library to move. Run `labshelf init <path>` first."); }
-  const target = await resolveLibraryDir(resolveHomePath(raw));
+  const target = await resolveLibraryDir(resolveHomePath(raw), { unreadableAsEmpty: true });
   let reported = false;
   try {
     await moveLibrary(root, target, {

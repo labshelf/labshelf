@@ -29,4 +29,19 @@ describe("resolveLibraryDir", () => {
     fs.writeFileSync(path.join(dir, "other.txt"), "x");
     expect(await resolveLibraryDir(dir)).toBe(dir);
   });
+
+  describe("a folder that cannot be listed", () => {
+    let locked: string;
+    beforeEach(() => { locked = path.join(dir, "locked"); fs.mkdirSync(locked); fs.chmodSync(locked, 0o000); });
+    afterEach(() => { fs.chmodSync(locked, 0o700); });
+    const skip = process.platform === "win32" || process.getuid?.() === 0;
+
+    (skip ? it.skip : it)("rejects by default", async () => {
+      await expect(resolveLibraryDir(locked)).rejects.toThrow();
+    });
+
+    (skip ? it.skip : it)("is treated as empty when asked to", async () => {
+      expect(await resolveLibraryDir(locked, { unreadableAsEmpty: true })).toBe(locked);
+    });
+  });
 });
