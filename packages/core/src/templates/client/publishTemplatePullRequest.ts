@@ -1,9 +1,44 @@
 // Forks the templates repository, commits a template to a branch and opens a pull request.
-import { githubRequest, type GitHubClient } from "./githubRequest.js";
-import type { SubmitTemplateInput, SubmitTemplateResult, RepoRef } from "./templatePullRequest.js";
+import type { SubmitTemplateInput, SubmitTemplateResult, RepoRef, GitHubStep } from "./templatePullRequest.js";
 import { bytesToBase64 } from "../../encoding/index.js";
 import type { TemplateFile } from "../index.js";
 import { GitHubError } from "./githubError.js";
+
+const API = "https://api.github.com";
+
+interface GitHubClient {
+  fetch: typeof globalThis.fetch;
+  token: string;
+}
+
+async function githubRequest<T>(
+  client: GitHubClient,
+  step: GitHubStep,
+  method: "GET" | "POST",
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await client.fetch(`${API}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${client.token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  } catch (err) {
+    throw new GitHubError(step, 0, err instanceof Error ? err.message : String(err));
+  }
+  const data = (await response.json().catch(() => ({}))) as { message?: unknown };
+  if (!response.ok) {
+    const message = typeof data?.message === "string" ? data.message : response.statusText;
+    throw new GitHubError(step, response.status, message);
+  }
+  return data as T;
+}
 
 const MAX_POLLS = 30;
 const POLL_MS = 2000;

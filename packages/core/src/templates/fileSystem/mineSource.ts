@@ -6,7 +6,33 @@ import type { TemplateEntry } from "../templateEntry.js";
 import { parseTemplateManifest, templatePathProblem, templateTreeProblem } from "../templateManifest/index.js";
 import type { TemplateFile, TemplateListing, TemplateSource } from "../sources/index.js";
 import { readOptionalBytes } from "./readOptionalBytes.js";
-import { walkLibraryFolder } from "./walkLibraryFolder.js";
+
+export interface LibraryFile {
+  /** Relative to the walked folder, segments joined by `/`. */
+  path: string;
+  absolute: string;
+  size: number;
+}
+
+// TRAP: a library stat reports a symbolic link as neither file nor folder, so this walk is the only guard between a tree and the files it points at.
+async function walk(fs: LibraryFileSystem, paths: PathOps, directory: string, relative: string, found: LibraryFile[]): Promise<void> {
+  for (const name of await fs.listDir(directory)) {
+    const rel = relative === "" ? name : `${relative}/${name}`;
+    const absolute = paths.join(directory, name);
+    const stat = await fs.stat(absolute);
+    if (stat?.isDirectory === true) { await walk(fs, paths, absolute, rel, found); continue; }
+    if (stat?.isFile !== true) { throw new Error(`"${rel}" is not a regular file`); }
+    found.push({ path: rel, absolute, size: stat.size });
+  }
+}
+
+/** The folder's files sorted by relative path; throws naming the path of the first symbolic link or special file. */
+async function walkLibraryFolder(fs: LibraryFileSystem, paths: PathOps, folder: string): Promise<LibraryFile[]> {
+  if ((await fs.stat(folder))?.isDirectory !== true) { throw new Error(`${folder} is not a folder`); }
+  const found: LibraryFile[] = [];
+  await walk(fs, paths, folder, "", found);
+  return found.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
 
 /** The folder's files sorted by their `/`-joined relative path; throws naming the path of the first one that breaks a rule. */
 async function readLibraryTemplateTree(fs: LibraryFileSystem, paths: PathOps, folder: string): Promise<TemplateFile[]> {

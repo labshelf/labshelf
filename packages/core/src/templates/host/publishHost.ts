@@ -1,12 +1,37 @@
 // Runs the Publish screen's work: opens a project, runs its checks, signs in to GitHub and submits the pull request.
 import type { PublishDraft, PublishProject } from "../protocol/index.js";
 import type { PublishHost } from "./galleryHost.js";
-import { noteFailure, requireProject, type PublishContext } from "./publishContext.js";
-import { runPublishChecks, passingReport } from "./runPublishChecks.js";
+import { noteFailure, requireProject, type PublishContext, draftKey } from "./publishContext.js";
 import type { PublishableProject, PublishMessage, PublishPorts } from "./publishPorts.js";
 import { TEMPLATES_LOG_MODULE } from "./useTemplate.js";
 import type { TemplateManifest } from "../templateManifest/index.js";
 import { buildPublishManifest, withAuthors } from "./createTemplateManifest.js";
+import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
+import { thumbnailDataUri } from "./thumbnailUri.js";
+import type { PublishCheckReport } from "../publishCheckReport.js";
+
+async function runPublishChecks(ctx: PublishContext, project: PublishableProject, draft: PublishDraft): Promise<PublishCheckReport> {
+  const { ports } = ctx;
+  const built = buildPublishManifest(draft, project);
+  if (!built.ok) { throw new Error(built.error); }
+  ports.post({ type: "publish.checks", checks: PUBLISH_CHECK_IDS.map((id) => ({ id })), running: true });
+  const report = await ports.check({
+    projectFolder: project.folder, manifest: built.manifest, logger: ports.logger,
+    buildPdf: () => ports.buildPdf(project), renderThumbnail: ports.renderThumbnail,
+  });
+  const thumbnail = report.thumbnail && thumbnailDataUri(report.thumbnail);
+  ports.post({ type: "publish.checks", checks: report.checks, running: false, ...(thumbnail ? { thumbnail } : {}) });
+  ctx.passed = report.ok ? { key: draftKey(project.id, draft), report } : undefined;
+  return report;
+}
+
+/** Never trusts the page: a report is reused only when it passed for this exact project and draft. */
+async function passingReport(ctx: PublishContext, project: PublishableProject, draft: PublishDraft): Promise<PublishCheckReport> {
+  if (ctx.passed?.key === draftKey(project.id, draft)) { return ctx.passed.report; }
+  const report = await runPublishChecks(ctx, project, draft);
+  if (!report.ok || !report.files) { throw new Error("The checks do not pass; fix them and run them again."); }
+  return report;
+}
 
 const UPSTREAM = { owner: "labshelf", repo: "labshelf-templates" };
 
