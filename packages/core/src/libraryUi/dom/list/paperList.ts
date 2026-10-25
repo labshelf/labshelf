@@ -5,23 +5,91 @@
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
 import { type PaperRecord } from "../../../model/index.js";
 import { nextStatus } from "../../../library/readingStatus/index.js";
-import { deriveListView, type ListPaper } from "../../viewModel/index.js";
-import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
+import { deriveListView, type ListPaper, firstSortDir } from "../../viewModel/index.js";
+import { COLUMN_KEYS, type ColumnKey, type SortDir, type SortKey } from "../../store/index.js";
 import { endPaperDrag, startPaperDrag } from "../drag/index.js";
 import { openPaper, requestAddPaper, setPaperStatus } from "../flows/index.js";
-import { showPaperMenu } from "../menu/index.js";
+import { showPaperMenu, showColumnsMenu } from "../menu/index.js";
 import { overlayOpen, type UiContext } from "../uiContext.js";
-import { columnHeadsHtml, wireColumnHeads } from "./columnHeads.js";
-import { buildEmptyState, buildLoading } from "./emptyState.js";
 import { GroupedRows } from "./groupedRows.js";
 import { groupAriaLabel, groupPapers, type PaperGroup } from "./groupPapers.js";
 import { attachListKeys } from "./listShortcuts.js";
 import { paintTray, wireFilesRequest } from "./tray/index.js";
 import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
 import { RowReconciler } from "./rowReconciler.js";
-import { paintSortableHeads } from "./sortHeads.js";
+import { paintSortableHeads, sortableHeadHtml, wireSortableHeads } from "./sortHeads.js";
 import { paintTabStop, treeCursor, wireTabStop } from "./tree/index.js";
 import { createWindowedList, type WindowedList } from "./window/index.js";
+import { icon } from "../../../ui/index.js";
+import { el, emptyState } from "../../../ui/dom/index.js";
+
+export interface EmptyStateOptions {
+  narrowed: boolean;
+  /** The library holds no paper in any folder. */
+  libraryEmpty: boolean;
+  query: string;
+  folderLabel: string;
+  /** How papers get into the library on this host. */
+  hint: string;
+  onClearFilters: () => void;
+  /** Absent when papers cannot be added (a read-only library). */
+  onAdd: (() => void) | null;
+}
+
+function buildLoading(): HTMLElement {
+  return el("div", { class: "list-loading", role: "status", html: `<span class="spin">${icon("loader")}</span> Loading papers…` });
+}
+
+function matchText(o: EmptyStateOptions): string {
+  const query = o.query.trim();
+  return `No papers match ${query ? `“${query}” ` : ""}in ${o.folderLabel}`;
+}
+
+function emptyText(o: EmptyStateOptions): string {
+  return o.libraryEmpty ? "Your library has no papers yet" : `No papers in ${o.folderLabel} yet`;
+}
+
+function buildEmptyState(o: EmptyStateOptions): HTMLElement {
+  if (o.narrowed) return emptyState({ icon: "search", text: matchText(o), action: { label: "Clear filters", onClick: o.onClearFilters } });
+  return emptyState({
+    icon: "book", text: emptyText(o), hint: o.hint,
+    ...(o.onAdd && { action: { label: "Add a paper", icon: "plus", primary: true, onClick: o.onAdd } }),
+  });
+}
+
+const OPTIONAL: Record<ColumnKey, { label: string; cls: string; title?: string }> = {
+  creator: { label: "Authors", cls: "col-creator" },
+  venue: { label: "Venue", cls: "col-venue" },
+  year: { label: "Year", cls: "col-year" },
+  lastRead: { label: "Last read", cls: "col-read", title: "When you last had the paper open in the reader" },
+  status: { label: "Status", cls: "col-status" },
+};
+
+const headHtml = (key: SortKey, label: string, cls: string, title?: string): string =>
+  sortableHeadHtml({ key, label, cls, ...(title ? { title } : {}), sortable: true });
+
+/** The cells of the head row: a blank cell over the twistie, Title, the shown columns in fixed order, and the Columns button. */
+function columnHeadsHtml(columns: readonly ColumnKey[]): string {
+  const shown = COLUMN_KEYS.filter((k) => columns.includes(k)).map((k) => headHtml(k, OPTIONAL[k].label, OPTIONAL[k].cls, OPTIONAL[k].title));
+  return `<div aria-hidden="true"></div>${headHtml("title", "Title", "")}${shown.join("")}` +
+    `<div class="col-menu"><button class="ls-icon-btn" type="button" title="Columns" aria-label="Columns">${icon("more")}</button></div>`;
+}
+
+/** Wires the head clicks once: they change the sort and save it, and the Columns button and a right-click open the columns menu. */
+function wireColumnHeads(ctx: UiContext, heads: HTMLElement): void {
+  heads.addEventListener("click", (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLElement>(".col-menu button");
+    if (button) showColumnsMenu(ctx, button);
+  });
+  wireSortableHeads(heads, (sortKey) => {
+    const key = sortKey as SortKey;
+    const s = ctx.store.get();
+    const patch = s.sortKey === key ? { sortDir: (-s.sortDir) as SortDir } : { sortKey: key, sortDir: firstSortDir(key) };
+    ctx.prefs.save(patch);
+    ctx.store.set(patch);
+  });
+  heads.addEventListener("contextmenu", (e) => { e.preventDefault(); showColumnsMenu(ctx, { x: e.clientX, y: e.clientY }); });
+}
 
 interface List {
   ctx: UiContext;

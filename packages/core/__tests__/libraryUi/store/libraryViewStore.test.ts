@@ -1,7 +1,6 @@
 import type { PaperStats } from "../../../src/libraryUi/protocol";
 import type { PaperRecord } from "@labshelf/core";
-import { LibraryViewStore } from "../../../src/libraryUi/store/libraryViewStore";
-import { shallowEqual } from "../../../src/libraryUi/store/compareSlices";
+import { LibraryViewStore, shallowEqual } from "../../../src/libraryUi/store/libraryViewStore";
 
 describe("LibraryViewStore", () => {
   it("fires select immediately and only when the slice changes", () => {

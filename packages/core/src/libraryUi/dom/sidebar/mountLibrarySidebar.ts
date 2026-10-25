@@ -2,20 +2,127 @@
 import { PAPERS_DIR, parentDir, type FolderTreeNode } from "../../../library/index.js";
 import { runJoinProjectDialog } from "../../../collab/dom/index.js";
 import type { SharingHost } from "../../share/index.js";
-import { libraryHeadingMenu, projectContextMenu, showFolderMenu } from "./sidebarMenus.js";
-import { libraryTags, libraryTree, type TreePaper } from "../../viewModel/index.js";
+import { libraryTags, libraryTree, type TreePaper, type SidebarProject } from "../../viewModel/index.js";
 import { tagQuery } from "../../searchQueries.js";
-import { onSidebarKey } from "./sidebarShortcuts.js";
 import { isTreeInput } from "./sidebarTreeInput.js";
 import { activateTreeRow, onOpenProjectClick, onOpenProjectMenu } from "./sidebarOpenProject.js";
 import type { SidebarOpenProject } from "../../sidebarTrees.js";
-import { ALL_PROJECT_OFFERS, projectFolderKey, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
-import type { SidebarProject } from "../../viewModel/index.js";
+import {
+  ALL_PROJECT_OFFERS,
+  projectFolderKey,
+  type ProjectOffers,
+  type SidebarProjectActions,
+} from "./sidebarProjects.js";
 import { rowKey } from "./sidebarRows.js";
 import type { GroupId, SectionId } from "./sidebarSections.js";
-import { NAV_ROWS, expandTo, paintFocus, render, setExpanded, toggleSection, type SidebarActions, type SidebarState } from "./sidebarView.js";
-import { activateSpaceRow, spaceContextMenu, type SidebarSpaceActions } from "./spaces/index.js";
+import {
+  NAV_ROWS,
+  expandTo,
+  paintFocus,
+  render,
+  setExpanded,
+  toggleSection,
+  type SidebarActions,
+  type SidebarState,
+} from "./sidebarView.js";
+import { activateSpaceRow, spaceContextMenu, type SidebarSpaceActions, toggleSpaceRow } from "./spaces/index.js";
 import type { SidebarRow } from "../../../spaces/viewModel/index.js";
+import { runImportLinkDialog, runManageLinksDialog, runShareFolderDialog } from "../../../share/dom/index.js";
+import { showMenu, type MenuEntry } from "../../../ui/dom/index.js";
+
+const depthOf = (r: HTMLElement): number => Number(r.style.getPropertyValue("--depth") || 0);
+
+/** The nearest row above `idx` that is one level up: the folder holding the row. */
+function parentIndex(rows: HTMLElement[], idx: number): number {
+  const depth = depthOf(rows[idx]!);
+  for (let i = idx - 1; i >= 0; i--) if ((rows[i]!.dataset["path"] || rows[i]!.dataset["space"]) && depthOf(rows[i]!) < depth) return i;
+  return -1;
+}
+
+/** Raises the row's right-click event at the row's bottom-left, so the keyboard opens exactly the menu the pointer does. */
+function openRowMenu(row: HTMLElement): void {
+  const { left, bottom } = row.getBoundingClientRect();
+  row.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: left, clientY: bottom }));
+}
+
+function onSidebarKey(e: KeyboardEvent, t: SidebarState, activate: (row: HTMLElement) => void): void {
+  if (e.target instanceof Element && e.target.closest("button, input, select, textarea, a, [contenteditable=true]")) return;
+  const rows = Array.from(t.el.querySelectorAll<HTMLElement>(NAV_ROWS));
+  if (rows.length === 0) return;
+  let idx = t.focused ? rows.findIndex((r) => rowKey(r) === t.focused) : -1;
+  if (idx === -1) idx = Math.max(0, rows.findIndex((r) => r.classList.contains("current") || r.getAttribute("aria-selected") === "true"));
+  const current = rows[idx]!;
+  const path = current.dataset["path"];
+  const open = current.getAttribute("aria-expanded") === "true";
+  const section = (current.dataset["section"] ?? current.dataset["group"]) as SectionId | GroupId | undefined;
+  const focus = (i: number): void => { t.focused = rowKey(rows[Math.min(rows.length - 1, Math.max(0, i))]!); };
+  if (e.key === "ArrowDown") focus(idx + 1);
+  else if (e.key === "ArrowUp") focus(idx - 1);
+  else if (e.key === "Home") focus(0);
+  else if (e.key === "End") focus(rows.length - 1);
+  else if (section && (e.key === "ArrowRight" ? !open : e.key === "ArrowLeft" && open)) toggleSection(t, section);
+  else if (current.dataset["space"] && current.hasAttribute("aria-expanded") && ((e.key === "ArrowRight" && !open) || (e.key === "ArrowLeft" && open))) toggleSpaceRow(t, current, () => render(t));
+  else if (e.key === "ArrowRight") { if (path && current.getAttribute("aria-expanded") === "false") setExpanded(t, path, true); else if (open) focus(idx + 1); }
+  else if (e.key === "ArrowLeft") { if (path && open) setExpanded(t, path, false); else { const p = parentIndex(rows, idx); if (p >= 0) focus(p); } }
+  else if (e.key === "Enter" || e.key === " ") activate(current);
+  else if (e.key === "F2" && path) t.actions.renameFolder(path);
+  else if ((e.key === "Delete" || e.key === "Backspace") && path) t.actions.removeFolder(path);
+  else if (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey)) openRowMenu(current);
+  else return;
+  e.preventDefault();
+  paintFocus(t);
+}
+
+type At = { x: number; y: number };
+
+function showFolderMenu(at: At, actions: SidebarActions, sharing: SharingHost | undefined, path: string, open: () => void): void {
+  showMenu(at, [
+    { label: "Open", icon: "list", onSelect: open },
+    { label: "New Subfolder…", icon: "folder-plus", onSelect: () => actions.createFolder(path) },
+    "separator",
+    ...(sharing?.offers().links ? [{ label: "Share as Link…", icon: "link" as const, onSelect: () => void runShareFolderDialog(sharing, path) }, "separator" as const] : []),
+    { label: "Rename…", icon: "edit", hint: "F2", onSelect: () => actions.renameFolder(path) },
+    { label: "Delete Folder…", icon: "trash", danger: true, onSelect: () => actions.removeFolder(path) },
+  ]);
+}
+
+/** The Library heading's menu; false when the host offers no shared links. */
+function libraryHeadingMenu(e: MouseEvent, r: HTMLElement | null, sharing: SharingHost | undefined): boolean {
+  if (r?.dataset["section"] !== "library" || !sharing?.offers().links) return false;
+  showMenu({ x: e.clientX, y: e.clientY }, [
+    { label: "Manage Shared Links…", icon: "link", onSelect: () => void runManageLinksDialog(sharing) },
+    { label: "Import Shared Link…", icon: "download", onSelect: () => void runImportLinkDialog(sharing) },
+  ]);
+  e.preventDefault();
+  return true;
+}
+
+/** The menus of a project folder and of the My projects heading; false when the row is neither. */
+function projectContextMenu(e: MouseEvent, r: HTMLElement | null, p: SidebarProjectActions, offers: ProjectOffers, sharing: SharingHost | undefined): boolean {
+  const folder = r?.dataset["projectFolder"];
+  const at = { x: e.clientX, y: e.clientY };
+  if (folder !== undefined) {
+    if (!offers.projectFolders) return false;
+    showMenu(at, [
+      { label: "New Subfolder…", icon: "folder-plus", onSelect: () => p.newFolder(folder) },
+      "separator",
+      { label: "Rename…", icon: "edit", onSelect: () => p.renameFolder(folder) },
+      { label: "Delete Folder", icon: "trash", danger: true, onSelect: () => p.deleteFolder(folder) },
+    ]);
+  } else if (r?.dataset["group"] === "projects.list") {
+    const entries: MenuEntry[] = [
+      ...(offers.newBlank ? [{ label: "New Blank Project…", icon: "new-file" as const, onSelect: () => p.newBlank() }] : []),
+      ...(offers.projectFolders ? [{ label: "New Folder…", icon: "new-folder" as const, onSelect: () => p.newFolder("") }] : []),
+      ...(offers.addExisting ? [{ label: "Add Existing Folder…", icon: "folder-open" as const, onSelect: () => p.addExisting() }] : []),
+      ...(sharing?.offers().projects ? [{ label: "Join Shared Project…", icon: "link" as const, onSelect: () => void runJoinProjectDialog(sharing) }] : []),
+      ...(offers.templates ? ["separator" as const, { label: "Explore Templates", icon: "layers" as const, onSelect: () => p.browseTemplates() }] : []),
+    ];
+    if (entries.length === 0) return false;
+    showMenu(at, entries);
+  } else return false;
+  e.preventDefault();
+  return true;
+}
 
 export interface LibrarySidebarOptions {
   actions: SidebarActions;

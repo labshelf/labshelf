@@ -3,8 +3,26 @@ import { el } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon, statusMark } from "../../../../ui/index.js";
 import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/viewModel/index.js";
-import { acceptSpaceDrop } from "./spaceDrop.js";
-import type { SidebarSpacesState } from "./spaceActions.js";
+import type { SidebarSpacesState, SidebarSpaceActions } from "./spaceActions.js";
+import { PAPER_DRAG_MIME, parsePaperDragIds } from "../../drag/index.js";
+
+function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: string, folder?: string): void {
+  const accepts = (event: DragEvent): boolean => Array.from(event.dataTransfer?.types ?? []).includes(PAPER_DRAG_MIME);
+  row.addEventListener("dragover", (event) => {
+    if (!accepts(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    row.classList.add("drop-target");
+  });
+  row.addEventListener("dragleave", () => row.classList.remove("drop-target"));
+  row.addEventListener("drop", (event) => {
+    row.classList.remove("drop-target");
+    if (!accepts(event)) return;
+    event.preventDefault();
+    const ids = parsePaperDragIds(event.dataTransfer?.getData(PAPER_DRAG_MIME) ?? "[]");
+    if (ids.length) actions.dropPapers(id, folder, ids);
+  });
+}
 
 function treeRow(key: string, label: string, depth: number, glyph: string, attrs: Record<string, string> = {}): HTMLElement {
   return el("div", {

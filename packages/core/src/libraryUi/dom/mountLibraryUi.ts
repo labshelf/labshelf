@@ -12,9 +12,17 @@ import { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./flow
 import { mountListHeader } from "./header/index.js";
 import { attachHostMessages } from "./hostMessages.js";
 import { mountPaperList } from "./list/index.js";
-import { reportSelection } from "./reportSelection.js";
 import { buildFrame } from "./shell/index.js";
 import { createUiContext, type UiContext } from "./uiContext.js";
+
+/** Posts `paper.selected` with every selected id, empty for none; returns the stop function. */
+function reportSelection(ctx: UiContext): () => void {
+  let first = true;
+  return ctx.store.select((s) => [...s.selected], (ids) => {
+    if (first) { first = false; return; }
+    ctx.transport.post({ type: "paper.selected", ids });
+  });
+}
 
 export interface LibraryUiOptions {
   transport: LibraryTransport;

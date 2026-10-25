@@ -4,14 +4,60 @@
  * chosen style, and File.
  */
 import { CITE_FORMATS } from "../../../store/index.js";
-import { LIBRARY_LABEL } from "../../../../library/index.js";
+import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatDateTime, relativeTime } from "../../../../library/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { citationText } from "../../../citationText.js";
 import { CITE_LABEL } from "../../flows/index.js";
-import { copyBtn, kv, muted, section } from "../detailPaneMarkup.js";
+import { copyBtn, kv, muted, section, iconBtn } from "../detailPaneMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
-import { citedInSectionHtml } from "./citedInSection.js";
-import { fileSectionHtml } from "./fileSection.js";
+import type { Backlink } from "../../../../writing/index.js";
+import { textLayerSummary } from "../../../viewModel/index.js";
+
+function missingPdf(pane: PaneState): string {
+  const { findPdf, attachPdf } = pane.ctx.caps;
+  const actions = (findPdf ? `<button class="ls-btn" type="button" data-action="findPdf">${icon("search")}<span>Find PDF</span></button>` : "") +
+    (attachPdf ? `<button class="ls-btn" type="button" data-action="attachPdf">${icon("paperclip")}<span>Attach PDF…</span></button>` : "");
+  return muted("No PDF attached — this paper was saved without one.") + (actions ? `<div class="attach-actions">${actions}</div>` : "");
+}
+
+function pdfLine(pane: PaneState, v: PaperView): string {
+  const caps = pane.ctx.caps;
+  const pdf = v.details?.pdf;
+  if (v.details && !pdf) return `<span class="muted-text">Not on this device yet</span>`;
+  const link = `<button class="link-btn" type="button" data-action="open" title="${escapeHtml(pdf?.relPath ?? PDF_FILE)}">${PDF_FILE}</button>`;
+  const size = pdf ? `<span class="muted-text">${formatBytes(pdf.size)}</span>` : `<span class="muted-text">…</span>`;
+  return `<span class="kv-line">${link}${size}` +
+    (caps.openExternal ? iconBtn("openExternal", "external", "Open in the default PDF app") : "") +
+    (caps.reveal ? iconBtn("reveal", "folder", pane.ctx.labels.revealPaper ?? "Reveal folder") : "") + `</span>`;
+}
+
+function lastRead(v: PaperView): string {
+  const at = v.stats?.lastRead;
+  if (!at) return `<span class="muted-text">Never opened</span>`;
+  return `<span title="${escapeHtml(formatDateTime(at))}">${escapeHtml(relativeTime(at))}${v.stats?.lastPage ? ` · page ${v.stats.lastPage}` : ""}</span>`;
+}
+
+function fileSectionHtml(pane: PaneState, v: PaperView): string {
+  if (!v.p.hasPdf) return missingPdf(pane);
+  let html = kv("PDF", pdfLine(pane, v));
+  if (pane.ctx.caps.textLayer) html += kv("Text", `<span class="tl-field">${escapeHtml(textLayerSummary(v.p, v.job))}</span>`);
+  html += kv("Last read", lastRead(v));
+  return `<div class="kv-grid">${html}</div>`;
+}
+
+function citedInRow(link: Backlink): string {
+  const where = `${link.file}:${link.line + 1}`;
+  return `<button class="rel-row" type="button" data-action="openSource" data-project="${escapeHtml(link.project)}"` +
+    ` data-file="${escapeHtml(link.file)}" data-line="${link.line}" title="Open ${escapeHtml(where)}">` +
+    `<span class="rel-main"><span class="rel-title">${escapeHtml(link.project)}${link.section ? ` <span class="rel-why">${escapeHtml(link.section)}</span>` : ""}</span>` +
+    `<span class="rel-sub mono">${escapeHtml(where)}</span></span></button>`;
+}
+
+/** Empty when no project cites the paper or the host knows no projects. */
+function citedInSectionHtml(pane: PaneState, citedIn: readonly Backlink[] | undefined): string {
+  if (!citedIn?.length) return "";
+  return section("citedIn", "Cited in", citedIn.map(citedInRow).join(""), pane.collapsed, { count: citedIn.length });
+}
 
 const ABSTRACT_CLAMP_AT = 300;
 
