@@ -1,6 +1,6 @@
 /** Builds the Native Messaging host manifest that lets the LabShelf extensions start a host. */
 import { ALLOWED_EXTENSIONS, type NativeHostSpec } from "../../hostSpecs.js";
-import type { BrowserFamily } from "./hostLayout.js";
+import type { BrowserFamily } from "./resolveHostLayout.js";
 
 export interface HostManifest {
   name: string;

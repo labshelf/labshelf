@@ -2,7 +2,7 @@
  * Copies papers as cite keys, BibTeX or a formatted reference. The text is built here from the records, so every host
  * copies the same thing; the host only writes the clipboard.
  */
-import { joinCitations, type CopyFormat } from "../../citationText.js";
+import { joinCitations, type CopyFormat } from "../../formatCitation.js";
 import type { CitationFormat } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 

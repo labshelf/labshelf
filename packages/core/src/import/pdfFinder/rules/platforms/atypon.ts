@@ -1,5 +1,5 @@
 /** Rules for journals hosted on Atypon's Literatum, which serves PDFs at /doi/pdf/<doi>. */
-import { createDoiPathRule } from "../doiPathRule.js";
+import { createDoiPathRule } from "../createDoiPathRule.js";
 import type { PublisherRule } from "../publisherRule.js";
 
 export const ATYPON_RULES: PublisherRule[] = [

@@ -3,7 +3,7 @@ import * as os from "node:os";
 
 import type { ILogger } from "../../ports/index.js";
 import type { NativeHostEnv } from "./nativeHostEnv.js";
-import { runSystemRegistry } from "./systemRegistry.js";
+import { runSystemRegistry } from "./runSystemRegistry.js";
 
 export function createSystemNativeHostEnv(logger: ILogger): NativeHostEnv {
   const platform = process.platform;

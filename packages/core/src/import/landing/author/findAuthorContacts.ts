@@ -3,7 +3,7 @@ import { formatError } from "../../../logging/index.js";
 import { fetchPubmedAuthorsByDoi, type RegistryEnv } from "../../registries/index.js";
 import { parseHtmlPage } from "../htmlPage.js";
 import type { RawPage } from "../rawPage.js";
-import { deriveAuthorContacts, type AuthorContact } from "./authorContacts.js";
+import { deriveAuthorContacts, type AuthorContact } from "./deriveAuthorContacts.js";
 import { extractEmailFromAffiliation } from "./affiliation.js";
 
 const MODULE = "authorContacts";

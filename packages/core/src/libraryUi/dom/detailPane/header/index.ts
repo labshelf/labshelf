@@ -2,4 +2,4 @@
 export { renderCitationMenuButton, renderMoreMenuButton, runHeadMenu, renderReadingStatusMenuButton } from "./headMenus.js";
 export { renderPaperHeadHtml } from "./paperHead.js";
 export { onTagInput, onTagKeydown, openTagMenu, renderTagRowHtml } from "./tagRow.js";
-export { renderSelectionBanner } from "./textLayerBanner.js";
+export { renderSelectionBanner } from "./renderTextLayerBanner.js";

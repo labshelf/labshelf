@@ -14,4 +14,4 @@ export { findPaperLinkMatches, formatPaperLink, parsePaperLink } from "./paperLi
 export type { ParsedPaperLink, PaperLinkMatch } from "./paperLink.js";
 export { derivePaperUrl } from "./paperUrl.js";
 export { deriveEditedTags, normalizeTags } from "./tags.js";
-export { formatVenueLine } from "./venueLine.js";
+export { formatVenueLine } from "./formatVenueLine.js";

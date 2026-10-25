@@ -4,7 +4,7 @@ import { link, mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { ILogger } from '../../../ports/index.js';
 import { DEVICE_ID, type DeviceIdentity } from '../../writeRecords/index.js';
-import type { DeviceLocalLayout } from './deviceLocalLayout.js';
+import type { DeviceLocalLayout } from './createDeviceLocalLayout.js';
 
 async function storedId(file: string): Promise<string> {
   const id = (await readFile(file, 'utf8')).trim();

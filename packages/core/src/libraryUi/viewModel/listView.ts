@@ -5,7 +5,7 @@
 import { parseQuery } from "../../library/search/index.js";
 import type { LibraryViewState } from "../store/index.js";
 import { listPapersUnder, findPapersInScope, type ListPaper } from "./listPapers.js";
-import { orderPapers } from "./sortPapers.js";
+import { orderPapers } from "./orderPapers.js";
 
 export interface ListScope {
   /** Every paper under the open folder, nested ones included. */

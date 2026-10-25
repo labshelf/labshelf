@@ -5,4 +5,4 @@ export { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, normalize
 export { extractPmidFromUrl } from "./pubmed.js";
 export { normalizePmcid, extractPmcidFromUrl } from "./pmc.js";
 export { detectIdentifiers } from "./detectIdentifiers.js";
-export { extractIdentifiersFromInput } from "./identifiersFromInput.js";
+export { extractIdentifiersFromInput } from "./extractIdentifiersFromInput.js";

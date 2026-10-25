@@ -5,7 +5,7 @@ import { Logger } from "../../logging/index.js";
 import { FileLogSink } from "../../logging/node/index.js";
 import { createDeviceLocalLayout, readSharedLibraryRoot, resolveSharedConfigPath, resolveDeviceStateDir, updateSharedConfig } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { createChangedEvents } from "../changedEvents.js";
+import { createChangedEvents } from "../createChangedEvents.js";
 import { encodeFrame, FrameDecoder } from "../framing.js";
 import type { HostMessage } from "../protocol.js";
 import { LibraryFileOperations } from "./fileOperations.js";

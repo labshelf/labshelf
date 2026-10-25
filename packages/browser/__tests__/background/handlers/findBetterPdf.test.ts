@@ -27,7 +27,7 @@ jest.mock("../../../src/background/broadcast", () => ({ broadcastChanged: (...a:
 jest.mock("../../../src/libraryUi", () => ({ hashForFolder: () => "" }));
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
-  publishedDoiOf: (...a: unknown[]) => mockPublishedDoiOf(...a),
+  findPublishedDoi: (...a: unknown[]) => mockPublishedDoiOf(...a),
 }));
 
 import { handleFindBetterPdf } from "../../../src/background/handlers/library";

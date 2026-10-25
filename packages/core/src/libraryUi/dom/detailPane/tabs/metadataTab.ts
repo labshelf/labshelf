@@ -6,7 +6,7 @@
 import { CITE_FORMATS } from "../../../store/index.js";
 import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatDateTime, formatRelativeTime } from "../../../../library/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
-import { formatCitation } from "../../../citationText.js";
+import { formatCitation } from "../../../formatCitation.js";
 import { CITE_LABEL } from "../../flows/index.js";
 import { copyBtn, renderField, renderMuted, renderSection, renderIconButton } from "../detailPaneMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";

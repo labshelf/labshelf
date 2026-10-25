@@ -2,7 +2,7 @@
  * Matches fzf-style subsequences for the jump pickers (collections, papers). Consecutive characters, word starts
  * and early matches score higher, so "atn" finds "Attention Is All You Need" before "Data anonymisation".
  */
-import { normalizeText } from "./fold.js";
+import { normalizeText } from "./normalizeText.js";
 
 /**
  * @returns the score (higher is better), or undefined when the pattern is not a subsequence

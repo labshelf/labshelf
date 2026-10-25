@@ -6,9 +6,9 @@ import type { ILogger } from "../../../ports/index.js";
 import { formatError } from "../../../logging/index.js";
 import { deriveLibraryKey, resolveDeviceStateDir } from "../deviceState/index.js";
 import { resolveSharedConfigPath, updateSharedConfig } from "../sharedConfigFile.js";
-import { isLibraryFolder } from "./inspectLibraryFolder.js";
+import { isLibraryFolder } from "./detectLibraryFolder.js";
 import { deriveSha256Hex } from "../../../hash/index.js";
-import { resolveCacheDir } from "../cacheDir.js";
+import { resolveCacheDir } from "../resolveCacheDir.js";
 
 /** A folder that cannot move stays where it is and is logged; the library move has already succeeded. */
 async function moveDeviceLocalFolders(

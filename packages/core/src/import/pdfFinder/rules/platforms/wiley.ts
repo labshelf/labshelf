@@ -1,5 +1,5 @@
 /** Rules for Wiley Online Library and the society journals it hosts, which serve PDFs at /doi/pdfdirect/<doi>. */
-import { createDoiPathRule } from "../doiPathRule.js";
+import { createDoiPathRule } from "../createDoiPathRule.js";
 import type { PublisherRule } from "../publisherRule.js";
 
 export const WILEY_RULES: PublisherRule[] = [

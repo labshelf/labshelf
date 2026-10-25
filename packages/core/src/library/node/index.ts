@@ -2,7 +2,7 @@
 export { writeFileAtomic, writeSyncedFile } from "./atomicWrite.js";
 export { ensurePrivateDir, isGroupOrOtherWritable, PRIVATE_DIR_MODE, PRIVATE_FILE_MODE } from "./privateDir.js";
 export { readOptionalFile } from "./readOptionalFile.js";
-export { resolveCacheDir } from "./cacheDir.js";
+export { resolveCacheDir } from "./resolveCacheDir.js";
 export { createDeviceIdentity, createDeviceLocalLayout, deriveLibraryKey, resolveDeviceStateDir, type DeviceLocalLayout } from "./deviceState/index.js";
 export { NodeLibraryFileSystem } from "./nodeLibraryFileSystem.js";
 export {

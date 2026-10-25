@@ -6,7 +6,7 @@ import { isSameWork, deriveSurname } from "../../paper/index.js";
 import { fetchResolverText } from "./timedFetch.js";
 import type { PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
 import { matchWork } from "./matchPaper.js";
-import { addIdentifiers } from "./learnIds.js";
+import { addIdentifiers } from "./addIdentifiers.js";
 import { openAlexCopies } from "./openalex.js";
 
 // TRAP: `acceptRecord` accepts anything when the context has no title, so a title is required before searching by it.

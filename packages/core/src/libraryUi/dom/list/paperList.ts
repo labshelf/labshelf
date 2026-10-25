@@ -12,7 +12,7 @@ import { openPaper, sendAddPaperRequest, setReadingStatus } from "../flows/index
 import { showPaperMenu, showColumnsMenu } from "../menu/index.js";
 import { isOverlayOpen, type UiContext } from "../uiContext.js";
 import { GroupedRows } from "./groupedRows.js";
-import { deriveGroupAriaLabel, derivePaperGroups, type PaperGroup } from "./groupPapers.js";
+import { deriveGroupAriaLabel, derivePaperGroups, type PaperGroup } from "./derivePaperGroups.js";
 import { attachListShortcuts } from "./listShortcuts.js";
 import { drawTray, attachFilesRequest } from "./tray/index.js";
 import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";

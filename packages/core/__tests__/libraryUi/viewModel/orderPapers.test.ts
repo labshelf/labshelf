@@ -1,7 +1,7 @@
 import type { PaperRecord } from "@labshelf/core";
 import { PAPERS_DIR } from "@labshelf/core";
 import { listPapersUnder } from "../../../src/libraryUi/viewModel/listPapers";
-import { deriveFirstSortDir, orderPapers } from "../../../src/libraryUi/viewModel/sortPapers";
+import { deriveFirstSortDir, orderPapers } from "../../../src/libraryUi/viewModel/orderPapers";
 
 function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: id, status: "unread", ...extra };

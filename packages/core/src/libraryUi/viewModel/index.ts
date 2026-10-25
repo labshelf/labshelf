@@ -1,7 +1,7 @@
 /** Exports the library UI derivations' public API: list rows, scope, sorting, folders, the folder tree, text layers, related papers, sidecar summaries. */
 export { listPapersUnder, findPapersInScope } from "./listPapers.js";
 export type { ListPaper } from "./listPapers.js";
-export { deriveFirstSortDir, orderPapers } from "./sortPapers.js";
+export { deriveFirstSortDir, orderPapers } from "./orderPapers.js";
 export { listFolderPaths, checkSiblingFolderName } from "./folders.js";
 export { deriveFolderTree } from "./folderTree.js";
 export type { CountedFolder } from "./folderTree.js";
@@ -12,9 +12,9 @@ export { deriveRelatedGroups } from "./related.js";
 export type { RelatedGroups } from "./related.js";
 export { derivePaperDetails, derivePaperStats } from "./sidecarPayloads.js";
 export type { SidecarView } from "./sidecarPayloads.js";
-export { deriveLibraryTree } from "./libraryTree.js";
-export type { LibraryTree, TreeChild, TreePaper } from "./libraryTree.js";
-export { countLibraryTags } from "./libraryTags.js";
-export type { TagCount } from "./libraryTags.js";
+export { deriveLibraryTree } from "./deriveLibraryTree.js";
+export type { LibraryTree, TreeChild, TreePaper } from "./deriveLibraryTree.js";
+export { countLibraryTags } from "./countLibraryTags.js";
+export type { TagCount } from "./countLibraryTags.js";
 export { createBrokenProjectItem, describeProjectDetails, createReadyProjectItem } from "./projectRowItem.js";
 export type { BrokenEntry, Counted, LastBuild, ReadyEntry, SidebarProject, SidebarProjectItem } from "./projectRowItem.js";

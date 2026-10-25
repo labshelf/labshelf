@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { ensureRegistry, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "../nativeHostEnv.js";
-import type { BrowserHostSite } from "./hostLayout.js";
+import type { BrowserHostSite } from "./resolveHostLayout.js";
 
 // Per-user data folders that Flatpak (~/.var/app/<id>) and Snap (~/snap/<name>) create on first run.
 const FLATPAK_IDS: Record<BrowserId, string> = {

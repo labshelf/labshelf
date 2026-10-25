@@ -1,5 +1,5 @@
 /** Papers copy as comma-joined keys, blank-line-separated BibTeX or line-separated references, for every app. */
-import { formatCitation, joinCitations } from "../../src/libraryUi/citationText";
+import { formatCitation, joinCitations } from "../../src/libraryUi/formatCitation";
 import type { PaperRecord } from "../../src/model";
 
 const paper = (citeKey: string, title: string): PaperRecord =>

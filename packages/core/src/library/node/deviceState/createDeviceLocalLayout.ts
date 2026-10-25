@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import * as path from "node:path";
 
-import { resolveCacheDir } from "../cacheDir.js";
+import { resolveCacheDir } from "../resolveCacheDir.js";
 import { resolveDeviceStateDir } from "./deviceStateDir.js";
 
 export interface DeviceLocalLayout {

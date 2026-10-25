@@ -3,7 +3,7 @@ import { encodeDoiPathSegment, normalizeArxivIdentifier, normalizePmcid, extract
 import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver, ResolveContext } from "../pdfResolver.js";
 import { matchWork } from "./matchPaper.js";
-import { addIdentifiers } from "./learnIds.js";
+import { addIdentifiers } from "./addIdentifiers.js";
 
 // TRAP: the unauthenticated endpoint throttles hard, so one call per search, no retry, and a 429 is a soft miss.
 // The DOI keeps its slash in the path because an encoded one is rate-limited too.

@@ -16,7 +16,7 @@ import { listProjectsOnDisk } from '../../../../writing/project/node/index.js';
 import { resolveConflictDismissalFile, findProjectConflict } from './projectConflictDetection.js';
 import { loadVersionHistory, PersistedMap } from "../../../../collab/deviceState/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../../../writing/project/index.js";
-import { createSharedProjectStorage } from "./sharedProjectStorage.js";
+import { createSharedProjectStorage } from "./createSharedProjectStorage.js";
 
 async function readSharedProjectVersions(root: string, folder: string, relative: string, logger: ILogger): Promise<string[]> {
   const settings = await readOptionalFile(path.join(folder, PROJECT_FILE));

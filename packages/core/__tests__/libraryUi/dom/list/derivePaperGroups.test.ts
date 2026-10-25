@@ -1,6 +1,6 @@
 // Tests grouping of the sorted list into the own group and one group per holder subfolder, and the group label text.
 import type { ListPaper } from "../../../../src/libraryUi/viewModel/listPapers";
-import { deriveGroupLabel, derivePaperGroups } from "../../../../src/libraryUi/dom/list/groupPapers";
+import { deriveGroupLabel, derivePaperGroups } from "../../../../src/libraryUi/dom/list/derivePaperGroups";
 
 function row(id: string, rel: string): ListPaper {
   const folderPath = rel === "" ? "papers/ml" : `papers/ml/${rel.split(" / ").join("/")}`;

@@ -7,7 +7,7 @@ import YAML from "yaml";
 import type { IFileSystem } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { PDF_FILE, joinWith, createPaperFiles } from "../../library/index.js";
-import { createBibtexEntry } from "./bibtexEntry.js";
+import { createBibtexEntry } from "./createBibtexEntry.js";
 
 const posixJoin = joinWith("/");
 

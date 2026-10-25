@@ -1,5 +1,5 @@
 /** Finds where search terms occur in a text, comparing accent- and case-folded text but reporting positions in the original. */
-import { normalizeText } from "./fold.js";
+import { normalizeText } from "./normalizeText.js";
 
 interface FoldedText {
   folded: string;

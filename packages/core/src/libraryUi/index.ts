@@ -9,7 +9,7 @@ export { createAuthorQuery, createKeywordQuery, createTagQuery } from "./searchQ
 export type { ShortcutPress, ListShortcutAction } from "./listKeymap.js";
 export { MAILTO_MAX_LENGTH, REQUEST_LANGUAGES, REQUEST_LANGUAGE_NAME, isRequestLanguage, createCopyRequestMailto, deriveRequestLanguage } from "./copyRequest/index.js";
 export type { CopyRequest, RequestLanguage } from "./copyRequest/index.js";
-export { formatCitation, joinCitations, type CopyFormat } from "./citationText.js";
+export { formatCitation, joinCitations, type CopyFormat } from "./formatCitation.js";
 export { findMissMessage, createNoPdfDialogCopy, formatPdfSourceLabel } from "./pdfCopy.js";
 export { deriveCleanTags, formatKeptFieldNotice, moveNotice, formatPaperCount, removeNotice } from "./outcomeCopy.js";
 export type { BatchFailure, OutcomeNotice } from "./outcomeCopy.js";

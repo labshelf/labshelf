@@ -1,5 +1,5 @@
 /** Pins that change batches split into events whose frames stay under the host message limit. */
-import { createChangedEvents } from "../../src/bridge/changedEvents";
+import { createChangedEvents } from "../../src/bridge/createChangedEvents";
 import { encodeFrame, HOST_MESSAGE_LIMIT } from "../../src/bridge/index";
 
 describe("changedEvents", () => {

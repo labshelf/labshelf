@@ -1,10 +1,10 @@
 // Looks up OpenAlex's record for a DOI or work id, proposing its publisher and repository copies and learning `pmcid` and `arxivId`.
 import { extractArxivIdentifierFromUrl, normalizePmcid, extractPmcidFromUrl } from "../../identifiers/index.js";
-import { addVersion, deriveVersionFromOaLabel } from "./candidateVersion.js";
+import { addVersion, deriveVersionFromOaLabel } from "./deriveCandidateVersion.js";
 import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
 import { matchWork } from "./matchPaper.js";
-import { addIdentifiers } from "./learnIds.js";
+import { addIdentifiers } from "./addIdentifiers.js";
 
 // TRAP: only the free single-work lookup is used; OpenAlex searches cost credits.
 

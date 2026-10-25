@@ -5,4 +5,4 @@ export { downloadBest, downloadCandidate } from "./downloadStage.js";
 export { runHelperTabRetry } from "./helperTabs.js";
 export { runBestAccess } from "./signInStage.js";
 export { createPacedFetch } from "./hostPacer.js";
-export { createDeadline } from "./deadline.js";
+export { createDeadline } from "./createDeadline.js";

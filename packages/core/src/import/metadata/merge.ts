@@ -2,7 +2,7 @@
  * Combines every source into one record, field by field, each field taken from the most trustworthy source that has it.
  */
 import { BIBLIOGRAPHIC_FIELDS } from "../../model/index.js";
-import { normalizeCitationFields } from "./tidyCitationFields.js";
+import { normalizeCitationFields } from "./normalizeCitationFields.js";
 import type { ResolvedMetadata } from "./resolvedMetadata.js";
 
 /**

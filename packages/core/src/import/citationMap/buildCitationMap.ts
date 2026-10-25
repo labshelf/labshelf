@@ -4,7 +4,7 @@ import { openAlexWork, type OpenAlexCitationWork, type RegistryEnv } from "../re
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { createDoiFinder } from "../../library/index.js";
-import { createCitationCache, isStale, type CachedWork, type CitationCache } from "./citationCache.js";
+import { createCitationCache, isStale, type CachedWork, type CitationCache } from "./createCitationCache.js";
 import { countMissingCitations, type CitationEdge, type ResolvedPaper } from "./missingCitations.js";
 
 /** Stays under OpenAlex's polite limit of ten requests a second. */

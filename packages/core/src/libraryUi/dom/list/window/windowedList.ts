@@ -1,5 +1,5 @@
 // Renders only the paper rows near the viewport, re-slicing on scroll and resize, with padding standing in for the rest.
-import type { PaperGroup } from "../groupPapers.js";
+import type { PaperGroup } from "../derivePaperGroups.js";
 import { readRowHeight } from "./rowHeight.js";
 import { createRowWindow, type RowViewport } from "./rowWindow.js";
 import { findFocusedRow, findPaperRow } from "../tree/index.js";

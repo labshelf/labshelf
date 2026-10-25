@@ -3,7 +3,7 @@ import { downloadPdf, type DownloadOutcome } from "../client/index.js";
 import { reportError, reportWarning } from "../env.js";
 import { compareVersions } from "../../../model/index.js";
 import type { PdfAttempt, PdfFetchOptions, ResolveContext, ResolvedPdf, ResolverEnv } from "../pdfResolver.js";
-import { createDeadline } from "./deadline.js";
+import { createDeadline } from "./createDeadline.js";
 import { createPacedFetch } from "./hostPacer.js";
 import { runHelperTabRetry } from "./helperTabs.js";
 import type { EngineLimits } from "./limits.js";

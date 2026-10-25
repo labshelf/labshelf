@@ -2,7 +2,7 @@
 import { el } from "../../../ui/dom/index.js";
 import { RowReconciler } from "./rowReconciler.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
-import { deriveGroupLabel } from "./groupPapers.js";
+import { deriveGroupLabel } from "./derivePaperGroups.js";
 
 const SEP_HTML = `<span class="group-sep">${icon("chevron-right")}</span>`;
 

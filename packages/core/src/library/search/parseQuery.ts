@@ -1,7 +1,7 @@
 // Parses the search query language shared by the apps into a structured query.
 import { normalizeText } from "./text/index.js";
 import { createEmptyQuery, type Query, type HasField, type SearchField } from "./query.js";
-import { splitQuery } from "./tokenize.js";
+import { splitQuery } from "./splitQuery.js";
 import type { ReadingStatus } from "../readingStatus/index.js";
 
 interface YearBounds {

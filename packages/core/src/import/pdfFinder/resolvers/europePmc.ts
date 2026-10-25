@@ -3,7 +3,7 @@ import { reportWarning } from "../env.js";
 import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver, ResolveContext } from "../pdfResolver.js";
 import { matchWork } from "./matchPaper.js";
-import { addIdentifiers } from "./learnIds.js";
+import { addIdentifiers } from "./addIdentifiers.js";
 
 // TRAP: Europe PMC's own PDF endpoints sit behind a bot check, so PMC copies are left to the PMC resolver.
 // A record is accepted only when its DOI equals the one asked for, because Europe PMC maps some DOIs to unrelated papers.

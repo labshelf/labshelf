@@ -4,8 +4,8 @@ export { installNativeHost, type BrowserSetup, type InstallOptions, type NativeH
 export { refreshNativeHost, type RefreshResult } from "./refreshNativeHost.js";
 export { checkNativeHost, type BrowserHostState, type HostManifestState, type NativeHostResult } from "./nativeHostState.js";
 export { uninstallNativeHost, type NativeHostUninstallResult } from "./uninstallNativeHost.js";
-export { runSystemRegistry } from "./systemRegistry.js";
-export { createSystemNativeHostEnv } from "./systemNativeHostEnv.js";
+export { runSystemRegistry } from "./runSystemRegistry.js";
+export { createSystemNativeHostEnv } from "./createSystemNativeHostEnv.js";
 export type {
   BinaryLaunch, BrowserId, HostLaunch, NativeHostEnv, NativeHostWarning, RegistryRunner, ScriptLaunch,
 } from "./nativeHostEnv.js";

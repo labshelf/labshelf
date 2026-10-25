@@ -10,7 +10,7 @@ import { renderVersionChipHtml } from "../../list/index.js";
 import type { PaneState, PaperView } from "../paneState.js";
 import { renderCitationMenuButton, renderMoreMenuButton, renderReadingStatusMenuButton } from "./headMenus.js";
 import { renderTagRowHtml } from "./tagRow.js";
-import { renderTextLayerBanner } from "./textLayerBanner.js";
+import { renderTextLayerBanner } from "./renderTextLayerBanner.js";
 
 const FOLD_AUTHORS_ABOVE = 5;
 const FOLDED_AUTHORS = 3;

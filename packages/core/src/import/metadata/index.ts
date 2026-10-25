@@ -2,6 +2,6 @@
 export type { ResolvedMetadata, MetadataConfidence } from "./resolvedMetadata.js";
 export { mergeMetadata, deriveCompleteness, SOURCE_TRUST } from "./merge.js";
 export type { MetadataSource, MergedMetadata } from "./merge.js";
-export { normalizeCitationFields } from "./tidyCitationFields.js";
+export { normalizeCitationFields } from "./normalizeCitationFields.js";
 export { extractYear } from "./year.js";
 export { parseString, normalizeWhitespace } from "./fieldText.js";

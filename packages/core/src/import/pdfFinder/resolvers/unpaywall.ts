@@ -1,5 +1,5 @@
 /** Proposes the legal open-access copies (publisher, repository, preprint server) Unpaywall lists for a DOI. */
-import { addVersion, deriveVersionFromOaLabel } from "./candidateVersion.js";
+import { addVersion, deriveVersionFromOaLabel } from "./deriveCandidateVersion.js";
 import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver } from "../pdfResolver.js";
 

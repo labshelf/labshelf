@@ -2,5 +2,5 @@
 export { isBotCheck, isWallPage } from "./botCheck.js";
 export { isSupplementaryUrl } from "./supplementary.js";
 export { extractNextHopsFromHtml } from "./hops.js";
-export { createProxiedUrl, deriveProxyKind, type ProxyKind } from "./proxiedUrl.js";
+export { createProxiedUrl, deriveProxyKind, type ProxyKind } from "./createProxiedUrl.js";
 export { DOWNLOAD_LIMITS, downloadPdf, fetchPdf, type DownloadOutcome } from "./fetchPdf.js";
