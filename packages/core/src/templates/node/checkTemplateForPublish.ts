@@ -4,7 +4,7 @@
 import { promises as fs } from "node:fs";
 import { readTemplateFields, serializeTemplateManifest, type TemplateManifest } from "../templateManifest/index.js";
 import type { PublishCheck, PublishCheckInput, PublishCheckReport, PublishFile } from "../publishCheckReport.js";
-import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, thumbnailProblem } from "./catalog/index.js";
+import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, deriveThumbnailProblem } from "./catalog/index.js";
 import { runSourceChecks } from "./sourceChecks.js";
 import type { FoundFile } from "./walkFolder.js";
 
@@ -49,7 +49,7 @@ async function buildCheck(input: PublishCheckInput): Promise<{ check: PublishChe
 async function thumbnailCheck(input: PublishCheckInput, pdf: Uint8Array): Promise<{ check: PublishCheck; png?: Uint8Array }> {
   try {
     const png = await input.renderThumbnail(pdf);
-    const problem = png.byteLength > THUMBNAIL_MAX_BYTES ? `thumbnail.png is over ${THUMBNAIL_MAX_BYTES} bytes` : thumbnailProblem(png);
+    const problem = png.byteLength > THUMBNAIL_MAX_BYTES ? `thumbnail.png is over ${THUMBNAIL_MAX_BYTES} bytes` : deriveThumbnailProblem(png);
     return problem === undefined ? { check: { id: "thumbnail", ok: true }, png } : { check: failed("thumbnail", problem) };
   } catch (error) {
     await input.logger.error(MODULE, error, { action: "publish check thumbnail", projectFolder: input.projectFolder, templateId: input.manifest.id });

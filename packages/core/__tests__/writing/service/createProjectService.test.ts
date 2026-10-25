@@ -2,11 +2,11 @@
 import * as path from "node:path";
 
 import { createProjectData, type ProjectDeviceDirs } from "../../../src/writing/service/index";
-import { blankTemplate } from "../../../src/templates/index";
+import { createBlankTemplate } from "../../../src/templates/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
-const blank = (title: string) => ({ title, ...blankTemplate("latex", title) });
+const blank = (title: string) => ({ title, ...createBlankTemplate("latex", title) });
 const dirs = {
   projectRegistryPath: "/device/state/projects.json", buildCacheDir: "/device/cache/builds", mergeBasesDir: "/device/state/merge-bases",
 };

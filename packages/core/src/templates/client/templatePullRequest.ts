@@ -12,15 +12,15 @@ export type GitHubStep =
   | "branch"
   | "pull";
 
-export interface RepoRef {
+export interface RepoReference {
   owner: string;
   repo: string;
 }
 
-export interface SubmitTemplateInput {
+export interface PublishTemplateInput {
   fetch: typeof globalThis.fetch;
   token: string;
-  upstream: RepoRef;
+  upstream: RepoReference;
   templateId: string;
   files: TemplateFile[];
   title: string;
@@ -29,7 +29,7 @@ export interface SubmitTemplateInput {
   sleep?: (ms: number) => Promise<void>;
 }
 
-export interface SubmitTemplateResult {
+export interface PublishTemplateResult {
   url: string;
   branch: string;
 }

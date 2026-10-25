@@ -1,5 +1,5 @@
 // Reads the source files of a build root: a LaTeX root with its includes, a Typst root alone.
-import { collectProjectSources, type ProjectSourceReader } from "@labshelf/core";
+import { readLatexProjectSources, type ProjectSourceReader } from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
 
 /** `root` is the project-relative path of the root file; a file that cannot be read is left out. */
@@ -11,7 +11,7 @@ export function projectSources(
     // Typst includes are not followed, so its root counts as its own file.
     const files = project.settings.format === "typst"
       ? [root]
-      : (await collectProjectSources(root, reader)).files.map((file) => file.path);
+      : (await readLatexProjectSources(root, reader)).files.map((file) => file.path);
     const sources: { file: string; text: string }[] = [];
     for (const file of files) {
       const text = await reader.read(file);

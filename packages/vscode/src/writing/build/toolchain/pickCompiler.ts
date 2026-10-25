@@ -1,7 +1,7 @@
 // Registers the command that lets the user choose the LaTeX engine of the active project and stores it in labshelf.yaml.
 import * as vscode from "vscode";
 
-import { LATEX_ENGINES, engineLabel, type LatexEngine } from "@labshelf/core";
+import { LATEX_ENGINES, formatEngineLabel, type LatexEngine } from "@labshelf/core";
 import { owningProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { saveEngine } from "./toolchainDeps.js";
@@ -18,7 +18,7 @@ type EnginePick = vscode.QuickPickItem & { engine: LatexEngine };
 
 function enginePick(engine: LatexEngine, current: LatexEngine | undefined): EnginePick {
   return {
-    label: engineLabel(engine),
+    label: formatEngineLabel(engine),
     description: engine === current ? "current" : "",
     engine,
   };

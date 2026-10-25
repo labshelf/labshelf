@@ -4,7 +4,7 @@ import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { TexProvider } from "../../../../../src/latex/toolchain/index.js";
-import { createManagedTexProvider, managedTexRoot, type TexInstaller } from "../../../../../src/latex/toolchain/node/managedTex/index.js";
+import { createManagedTexProvider, resolveManagedTexDir, type TexInstaller } from "../../../../../src/latex/toolchain/node/managedTex/index.js";
 import { asLogger, createTexFixture, writeTexTree, type FakeTlmgr, type TexFixture } from "./fakeTex.js";
 
 let fx: TexFixture;
@@ -20,14 +20,14 @@ afterEach(() => fx.cleanup());
 
 function fakeInstaller(kind: "tinytex" | "texlive"): TexInstaller {
   return async (run) => {
-    await rm(managedTexRoot(run.texRoot, kind), { recursive: true, force: true });
-    await writeTexTree(managedTexRoot(run.texRoot, kind), 2026, fx.callsFile, { rollover: false, installed: ["latex-bin"] });
+    await rm(resolveManagedTexDir(run.texRoot, kind), { recursive: true, force: true });
+    await writeTexTree(resolveManagedTexDir(run.texRoot, kind), 2026, fx.callsFile, { rollover: false, installed: ["latex-bin"] });
     run.onProgress(1);
   };
 }
 
 const managed = (kind: "tinytex" | "texlive", year: number, tlmgr: FakeTlmgr) =>
-  writeTexTree(managedTexRoot(fx.texRoot, kind), year, fx.callsFile, tlmgr);
+  writeTexTree(resolveManagedTexDir(fx.texRoot, kind), year, fx.callsFile, tlmgr);
 
 const provider = () => createManagedTexProvider({ texRoot: fx.texRoot, logger: asLogger(fx.logger), system: system as unknown as TexProvider, installers });
 
@@ -137,7 +137,7 @@ describe("quarantine healing on macOS", () => {
     await tex.resolve("xelatex");
     await tex.resolve("pdflatex");
     expect(exec).toHaveBeenCalledTimes(1);
-    expect(exec).toHaveBeenCalledWith("/usr/bin/xattr", ["-dr", "com.apple.quarantine", managedTexRoot(fx.texRoot, "tinytex")]);
+    expect(exec).toHaveBeenCalledWith("/usr/bin/xattr", ["-dr", "com.apple.quarantine", resolveManagedTexDir(fx.texRoot, "tinytex")]);
   });
 
   it("does nothing off macOS or without a managed install", async () => {

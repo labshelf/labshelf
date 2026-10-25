@@ -6,7 +6,7 @@ import {
   type PublishHost,
   type PublishToHost,
   startGitHubDeviceSignIn,
-  finishGitHubDeviceSignIn,
+  fetchGithubDeviceToken,
 } from "@labshelf/core";
 import type { ILatexHelper } from "@labshelf/core/helper";
 import { renderElement, mountOverlay } from "@labshelf/core/dom";
@@ -58,7 +58,7 @@ async function signInToGitHub(lifetime: AbortSignal): Promise<GitHubSignIn> {
   });
   open.focus();
   try {
-    return await finishGitHubDeviceSignIn({ fetch, clientId: CLIENT_ID, authorization, signal });
+    return await fetchGithubDeviceToken({ fetch, clientId: CLIENT_ID, authorization, signal });
   } finally {
     overlay.close();
   }

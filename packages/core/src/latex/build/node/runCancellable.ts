@@ -1,7 +1,7 @@
 /** Runs a process to its end and kills it with all its children when it is cancelled. */
 import { spawn } from "node:child_process";
 
-export interface ProcessOutcome {
+export interface RunOutcome {
   code: number | null;
   /** The tail of stdout and stderr, interleaved. */
   output: string;
@@ -41,7 +41,7 @@ function killTree(pid: number): void {
 
 export function runCancellable(
   executable: string, args: string[], cwd: string, signal: AbortSignal, options: CancellableOptions = {},
-): Promise<ProcessOutcome> {
+): Promise<RunOutcome> {
   if (signal.aborted) { return Promise.reject(new BuildCancelled()); }
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {

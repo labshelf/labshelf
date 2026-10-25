@@ -1,5 +1,5 @@
 /** Verifies mapping Typst Universe's package index to gallery entries. */
-import { parseUniverseIndex } from "../../../src/templates/sources/index.js";
+import { parseUniverseCatalogIndex } from "../../../src/templates/sources/index.js";
 
 function pkg(name: string, over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -10,12 +10,12 @@ function pkg(name: string, over: Record<string, unknown> = {}): Record<string, u
 }
 
 function parsed(list: unknown) {
-  const result = parseUniverseIndex(JSON.stringify(list));
+  const result = parseUniverseCatalogIndex(JSON.stringify(list));
   if (!result.ok) throw new Error(result.reason);
   return result;
 }
 
-describe("parseUniverseIndex", () => {
+describe("parseUniverseCatalogIndex", () => {
   it("maps a template package to a universe entry", () => {
     const { templates, skipped } = parsed([pkg("charged-ieee")]);
     expect(skipped).toEqual([]);
@@ -76,7 +76,7 @@ describe("parseUniverseIndex", () => {
   });
 
   it.each(["{}", "null", "3", "\"x\"", "{nope"])("refuses non-array JSON %s", (text) => {
-    const result = parseUniverseIndex(text);
+    const result = parseUniverseCatalogIndex(text);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason.length).toBeGreaterThan(0);
   });

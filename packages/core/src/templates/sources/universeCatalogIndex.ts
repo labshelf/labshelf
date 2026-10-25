@@ -1,7 +1,7 @@
 /** Maps Typst Universe's package index to gallery entries, one per template package at its highest version. */
 // CONTRACT: documents/contracts/templates.md#typst-universe
 
-import { isRecord, parseIndexJson, templatePathProblem, type SkippedEntry, type TemplateCategory } from "../templateManifest/index.js";
+import { isCatalogJsonObject, parseCatalogIndexJson, deriveTemplatePathProblem, type SkippedEntry, type TemplateCategory } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 
 export const UNIVERSE_INDEX_URL = "https://packages.typst.org/preview/index.json";
@@ -12,7 +12,7 @@ export interface UniverseTemplate {
   templatePath: string;
 }
 
-export type UniverseIndexResult =
+export type UniverseCatalogIndexResult =
   | { ok: true; templates: UniverseTemplate[]; skipped: SkippedEntry[] }
   | { ok: false; reason: string };
 
@@ -58,7 +58,7 @@ function mapPackage(pkg: Record<string, unknown>, template: Record<string, unkno
   const main = text(template["entrypoint"]);
   if (name === undefined || version === undefined) { return { problem: "name and version are required" }; }
   if (templatePath === undefined || main === undefined) { return { problem: "template.path and template.entrypoint are required" }; }
-  const problem = templatePathProblem(templatePath) ?? templatePathProblem(main);
+  const problem = deriveTemplatePathProblem(templatePath) ?? deriveTemplatePathProblem(main);
   if (problem !== undefined) { return { problem: `template: ${problem}` }; }
   const compiler = text(pkg["compiler"]);
   const entry: TemplateEntry = {
@@ -70,14 +70,14 @@ function mapPackage(pkg: Record<string, unknown>, template: Record<string, unkno
 }
 
 /** Reads Universe's index.json; never throws. Packages without a template key are ignored, unsafe template paths are skipped. */
-export function parseUniverseIndex(jsonText: string): UniverseIndexResult {
-  const json = parseIndexJson(jsonText);
+export function parseUniverseCatalogIndex(jsonText: string): UniverseCatalogIndexResult {
+  const json = parseCatalogIndexJson(jsonText);
   if (!json.ok) { return json; }
   const value = json.value;
   if (!Array.isArray(value)) { return { ok: false, reason: "index.json is not an array" }; }
   const latest = new Map<string, Record<string, unknown>>();
   for (const pkg of value) {
-    if (!isRecord(pkg) || !isRecord(pkg["template"])) { continue; }
+    if (!isCatalogJsonObject(pkg) || !isCatalogJsonObject(pkg["template"])) { continue; }
     const name = text(pkg["name"]);
     const version = text(pkg["version"]);
     if (name === undefined || version === undefined) { continue; }

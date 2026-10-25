@@ -27,7 +27,7 @@ async function projectFile(logPath: string, places: ProblemPlaces): Promise<stri
 }
 
 /** A problem in a file outside the project (a package, a class) goes on the main file, named after that file. */
-export async function locateProblems(problems: readonly BuildProblem[], places: ProblemPlaces): Promise<LocatedProblem[]> {
+export async function findProblems(problems: readonly BuildProblem[], places: ProblemPlaces): Promise<LocatedProblem[]> {
   return Promise.all(problems.map(async ({ file, line, ...rest }): Promise<LocatedProblem> => {
     const located = file ? await projectFile(file, places) : undefined;
     if (located) { return line === undefined ? { ...rest, file: located } : { ...rest, file: located, line }; }

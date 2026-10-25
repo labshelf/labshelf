@@ -4,17 +4,17 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { PassThrough } from "node:stream";
 
-import { biberAssetsInFolder, runBiber } from "../../../../src/latex/biber/node/index";
+import { findBiberAssetsInFolder, runBiber } from "../../../../src/latex/biber/node/index";
 import { runNativeBiber } from "../../../../src/latex/biber/node/runNativeBiber";
 import type { BiberWasmAssets } from "../../../../src/latex/biber/index";
-import { locateDataSources } from "../../../../src/latex/biber/node/runBiber";
+import { findBibliographySources } from "../../../../src/latex/biber/node/runBiber";
 
 jest.mock("../../../../src/latex/biber/node/runNativeBiber", () => ({ runNativeBiber: jest.fn(async () => 0) }));
 
 const FIXTURES = path.join(__dirname, "../fixtures");
 // Our build of biber's WASM; BIBER_WASM_DIR points at another copy.
 const ASSETS_DIR = process.env.BIBER_WASM_DIR ?? path.resolve(__dirname, "../../../../../../tools/biber-wasm/dist");
-const realAssets = biberAssetsInFolder(ASSETS_DIR);
+const realAssets = findBiberAssetsInFolder(ASSETS_DIR);
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
 const fakeAssets = (bcfVersion: string): BiberWasmAssets => ({
@@ -64,7 +64,7 @@ describe("runBiber", () => {
   });
 });
 
-describe("locateDataSources", () => {
+describe("findBibliographySources", () => {
   let base: string;
   let places: { cwd: string; project: string; build: string; env: NodeJS.ProcessEnv };
 
@@ -82,7 +82,7 @@ describe("locateDataSources", () => {
     fs.writeFileSync(path.join(places.project, "shared.bib"), "");
     fs.writeFileSync(path.join(places.build, "generated.bib"), "");
     const sources = ["refs.bib", "../shared.bib", "generated.bib"].map((p) => ({ path: p, type: "file" }));
-    expect(await locateDataSources(sources, places)).toEqual([
+    expect(await findBibliographySources(sources, places)).toEqual([
       { file: path.join(places.cwd, "refs.bib"), placed: path.join(places.cwd, "refs.bib") },
       { file: path.join(places.project, "shared.bib"), placed: path.join(places.project, "shared.bib") },
       { file: path.join(places.build, "generated.bib"), placed: path.join(places.build, "generated.bib") },
@@ -92,12 +92,12 @@ describe("locateDataSources", () => {
   it("refuses a source outside the project, by path or through a symbolic link", async () => {
     fs.writeFileSync(path.join(base, "secret.bib"), "");
     fs.symlinkSync(path.join(base, "secret.bib"), path.join(places.cwd, "link.bib"));
-    await expect(locateDataSources([{ path: "../../secret.bib", type: "file" }], places)).rejects.toThrow(/outside the project/);
-    await expect(locateDataSources([{ path: "link.bib", type: "file" }], places)).rejects.toThrow(/outside the project/);
-    await expect(locateDataSources([{ path: path.join(base, "secret.bib"), type: "file" }], places)).rejects.toThrow(/outside the project/);
+    await expect(findBibliographySources([{ path: "../../secret.bib", type: "file" }], places)).rejects.toThrow(/outside the project/);
+    await expect(findBibliographySources([{ path: "link.bib", type: "file" }], places)).rejects.toThrow(/outside the project/);
+    await expect(findBibliographySources([{ path: path.join(base, "secret.bib"), type: "file" }], places)).rejects.toThrow(/outside the project/);
   });
 
   it("reports a source that neither the folders nor kpsewhich have", async () => {
-    await expect(locateDataSources([{ path: "missing.bib", type: "file" }], places)).rejects.toThrow("Cannot find data source missing.bib");
+    await expect(findBibliographySources([{ path: "missing.bib", type: "file" }], places)).rejects.toThrow("Cannot find data source missing.bib");
   });
 });

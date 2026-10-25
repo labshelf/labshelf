@@ -1,7 +1,7 @@
 // Shows the build options of the preview as a header menu: when to compile and, for LaTeX roots, the engine and whether to stop at the first error.
 import { renderIcon } from "../../../../ui/index.js";
 import { showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
-import { engineLabel } from "../../../../latex/index.js";
+import { formatEngineLabel } from "../../../../latex/index.js";
 import { AUTO_COMPILE_MODES, LATEX_ENGINES, autoCompileLabel } from "../../../../writing/index.js";
 import type { BuildOptions, PreviewRoots, WebviewToHost } from "../../../index.js";
 import { iconButton } from "../../elements/index.js";
@@ -18,7 +18,7 @@ function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntr
   if (options.engine === undefined) { return list; }
   list.push("separator");
   for (const engine of LATEX_ENGINES) {
-    list.push({ label: engineLabel(engine), checked: engine === options.engine, radio: true, onSelect: () => post({ command: "setEngine", engine }) });
+    list.push({ label: formatEngineLabel(engine), checked: engine === options.engine, radio: true, onSelect: () => post({ command: "setEngine", engine }) });
   }
   const halt = options.haltOnError === true;
   list.push(

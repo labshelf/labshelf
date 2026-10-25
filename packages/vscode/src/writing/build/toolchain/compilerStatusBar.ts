@@ -1,7 +1,7 @@
 // Shows the LaTeX compiler of the project that owns the active editor's file in the status bar and opens the compiler pick on click.
 import * as vscode from "vscode";
 
-import { engineLabel } from "@labshelf/core";
+import { formatEngineLabel } from "@labshelf/core";
 import { owningProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import { PICK_COMPILER_COMMAND } from "./pickCompiler.js";
@@ -19,7 +19,7 @@ export function registerCompilerStatusBar(context: vscode.ExtensionContext, proj
       return;
     }
     const engine = project.settings.engine;
-    item.text = engine ? `$(gear) ${engineLabel(engine)} $(chevron-down)` : "$(gear) Choose compiler";
+    item.text = engine ? `$(gear) ${formatEngineLabel(engine)} $(chevron-down)` : "$(gear) Choose compiler";
     item.tooltip = `LaTeX compiler of ${project.settings.id}. Click to change it.`;
     item.show();
   };

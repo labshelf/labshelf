@@ -3,9 +3,9 @@ import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 import { constants, promises as fs } from "node:fs";
 import type { HelperLogger } from "./log/index.js";
-import { submitTemplatePullRequest, readGitHubIdentity } from "../../templates/client/index.js";
+import { publishTemplatePullRequest, readGitHubIdentity } from "../../templates/client/index.js";
 import { createPublishHost, type PublishPorts, type PublishableProject } from "../../templates/host/index.js";
-import { savePublishedTemplate, checkTemplateForPublish, runSourceChecks } from "../../templates/node/index.js";
+import { writePublishedTemplate, checkTemplateForPublish, runSourceChecks } from "../../templates/node/index.js";
 import type {
   PublishFile,
   PublishBuildResult,
@@ -22,8 +22,8 @@ import type { ILogger } from "../../ports/index.js";
 import { resolveInLibrary } from "../../bridge/node/index.js";
 import { readProject } from "../../writing/project/folder/index.js";
 import { nodeProjectReadContext } from "../../writing/project/node/index.js";
-import { engineLabel } from "../../latex/index.js";
-import { templateTreeProblem } from "../../templates/templateManifest/index.js";
+import { formatEngineLabel } from "../../latex/index.js";
+import { deriveTemplateTreeProblem } from "../../templates/templateManifest/index.js";
 
 async function checkPublishSnapshot(dataDir: string, input: PublishCheckInput, build: (folder: string) => ReturnType<PublishCheckInput["buildPdf"]>): Promise<PublishCheckReport> {
   const source = await runSourceChecks(input.projectFolder, input.manifest);
@@ -42,7 +42,7 @@ async function checkPublishSnapshot(dataDir: string, input: PublishCheckInput, b
         if (!stat.isFile() || stat.nlink > 1 || stat.size > 5 * 1024 * 1024) throw new Error(`Unsafe template file "${file.path}"`);
         bytes = await handle.readFile();
       } finally { await handle.close(); }
-      const problem = templateTreeProblem([{ ...file, size: bytes.length }]);
+      const problem = deriveTemplateTreeProblem([{ ...file, size: bytes.length }]);
       if (problem) throw new Error(problem);
       const target = path.join(folder, ...file.path.split("/"));
       await fs.mkdir(path.dirname(target), { recursive: true });
@@ -64,7 +64,7 @@ async function publicationProject(projectId: string, logger: ILogger, sharedConf
   const { format } = entry.settings;
   const engine = format === "typst" ? "typst" : entry.settings.engine ?? "pdflatex";
   return { libraryRoot, project: { id: projectId, title: entry.settings.title ?? projectId, folder: path.resolve(folder), format, engine, main: entry.main,
-    engineLabel: engine === "typst" ? "Typst" : engineLabel(engine) } };
+    engineLabel: engine === "typst" ? "Typst" : formatEngineLabel(engine) } };
 }
 
 async function buildPublication(project: PublishableProject, folder: string, deps: Omit<ProjectBuildDeps, "projects">, signal: AbortSignal): Promise<PublishBuildResult> {
@@ -135,8 +135,8 @@ async function runPublication(options: TemplatePublishOptions, request: Request,
       if (!report.ok) await options.logger.log("WARN", "helper/publish", "Template publication checks failed", { projectId: project.id, checks: report.checks.filter((check) => !check.ok) });
       return report;
     },
-    submit: async (input) => { const result = await submitTemplatePullRequest({ ...input, fetch: options.fetch }); submitted = input.files; return result; },
-    saveToMyTemplates: async (_project, manifest) => { await savePublishedTemplate(libraryRoot, manifest, submitted); },
+    submit: async (input) => { const result = await publishTemplatePullRequest({ ...input, fetch: options.fetch }); submitted = input.files; return result; },
+    saveToMyTemplates: async (_project, manifest) => { await writePublishedTemplate(libraryRoot, manifest, submitted); },
   };
   const host = createPublishHost(ports);
   if (request.action === "open") return host.open(project.id);

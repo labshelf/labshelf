@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { runLatexBuild } from "../../../../../src/latex/build/node/index";
-import { readSectionStates } from "../../../../../src/latex/build/section/node/index";
+import { readSectionBuildStates } from "../../../../../src/latex/build/section/node/index";
 import { fakeLogger } from "../../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
 
@@ -34,7 +34,7 @@ const PUSHED = "\\documentclass{article}\n\\begin{document}\n\\section{One}\nx\\
       toolchain: { engine: "pdflatex", executable: latexmk }, projectFolder, main: "main.tex", outDir, signal: new AbortController().signal, logger,
     });
     expect(result.status).toBe("succeeded");
-    const states = await readSectionStates(outDir, "main", logger);
+    const states = await readSectionBuildStates(outDir, "main", logger);
     expect(states.map(({ command, absolutePage, line, file }) => ({ command, absolutePage, line, file }))).toEqual([
       { command: "section", absolutePage: 1, line: 3, file: "main.tex" },
       { command: "section", absolutePage: 2, line: 1, file: "chapters/two.tex" },
@@ -57,13 +57,13 @@ const PUSHED = "\\documentclass{article}\n\\begin{document}\n\\section{One}\nx\\
     expect(result.status).toBe("succeeded");
     const aux = await fs.readFile(path.join(outDir, "main.aux"), "utf8");
     expect(aux).toContain("\\newlabel{two}{{2}{2}");
-    const states = await readSectionStates(outDir, "main", logger);
+    const states = await readSectionBuildStates(outDir, "main", logger);
     expect(states.map(({ absolutePage, counters }) => [absolutePage, counters.page, counters.section])).toEqual([[1, 1, 0], [2, 2, 1]]);
   }, 60_000);
 
   it("returns no states and logs it when no full build wrote the file", async () => {
     const logger = fakeLogger();
-    expect(await readSectionStates(await makeTempDir(), "main", logger)).toEqual([]);
+    expect(await readSectionBuildStates(await makeTempDir(), "main", logger)).toEqual([]);
     expect(logger.logs).toEqual([expect.objectContaining({ level: "INFO", message: expect.stringContaining("no section state") })]);
   });
 });

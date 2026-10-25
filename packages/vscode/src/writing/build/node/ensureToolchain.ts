@@ -1,7 +1,7 @@
 // Prepares the LaTeX toolchain for callers outside the build queue and tells the user why none is ready.
 import * as vscode from "vscode";
 
-import { texLiveGuideUrl, type LatexToolchain, type ToolchainMissing } from "@labshelf/core";
+import { deriveTexLiveGuideUrl, type LatexToolchain, type ToolchainMissing } from "@labshelf/core";
 import { ensureToolchain as ensureCoreToolchain } from "@labshelf/core/node";
 import { executeSafely } from "../../../command/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
@@ -13,7 +13,7 @@ const OPEN_GUIDE = "Open install guide";
 export async function reportToolchainMissing(missing: ToolchainMissing): Promise<void> {
   if (missing.reason !== "install-failed") { return; }
   const choice = await vscode.window.showErrorMessage(`LaTeX could not be installed: ${missing.message}`, OPEN_GUIDE);
-  if (choice === OPEN_GUIDE) { await vscode.env.openExternal(vscode.Uri.parse(texLiveGuideUrl(process.platform))); }
+  if (choice === OPEN_GUIDE) { await vscode.env.openExternal(vscode.Uri.parse(deriveTexLiveGuideUrl(process.platform))); }
 }
 
 /** The program that builds the project, asking the user on the first build; undefined when nothing is ready to run. */

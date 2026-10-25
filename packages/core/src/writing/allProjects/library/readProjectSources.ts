@@ -1,5 +1,5 @@
 // Reads the source texts of a project from its main file, in the order they read.
-import { collectProjectSources } from "../../../latex/source/index.js";
+import { readLatexProjectSources } from "../../../latex/source/index.js";
 import { readingOrderTexts } from "../../checks/index.js";
 import type { ProjectSettings } from "../../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../../project/folder/index.js";
@@ -23,7 +23,7 @@ export async function readProjectSources(
     return text === undefined ? { paths: [], texts: [] } : { paths: [main], texts: [{ text }] };
   }
   const texts = new Map<string, string>();
-  const { files } = await collectProjectSources(main, {
+  const { files } = await readLatexProjectSources(main, {
     read: async (relativePath) => {
       const text = await read(relativePath);
       if (text !== undefined) { texts.set(relativePath, text); }

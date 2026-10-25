@@ -4,9 +4,9 @@ import * as path from "node:path";
 import { ensureCiteKey } from "../../library/index.js";
 import { resolveInLibrary } from "../../bridge/node/index.js";
 import type { PublishFile } from "../publishCheckReport.js";
-import { serializeTemplateManifest, templatePathProblem, type TemplateManifest } from "../templateManifest/index.js";
+import { serializeTemplateManifest, deriveTemplatePathProblem, type TemplateManifest } from "../templateManifest/index.js";
 
-export async function savePublishedTemplate(libraryRoot: string, manifest: TemplateManifest, files: readonly PublishFile[]): Promise<void> {
+export async function writePublishedTemplate(libraryRoot: string, manifest: TemplateManifest, files: readonly PublishFile[]): Promise<void> {
   const templates = await resolveInLibrary(libraryRoot, "templates");
   await fs.mkdir(templates, { recursive: true });
   const names = await fs.readdir(templates);
@@ -19,7 +19,7 @@ export async function savePublishedTemplate(libraryRoot: string, manifest: Templ
   const staging = await fs.mkdtemp(path.join(stagingRoot, "template-"));
   try {
     for (const file of files) {
-      const problem = templatePathProblem(file.path);
+      const problem = deriveTemplatePathProblem(file.path);
       if (problem) throw new Error(problem);
       const target = path.join(staging, ...file.path.split("/"));
       await fs.mkdir(path.dirname(target), { recursive: true });

@@ -1,5 +1,5 @@
 /** Verifies registering a folder outside the library: only labshelf.yaml is written, bad folders are refused before registering. */
-import { addExistingFolder, blankTemplate, createProjectFromTemplate, listProjects } from "@labshelf/core";
+import { addExistingFolder, createBlankTemplate, createProjectFromTemplate, listProjects } from "@labshelf/core";
 
 import { LIB, filesUnder, memoryCatalog, readText, writeTree } from "../../../support/memoryProjectCatalog";
 
@@ -46,7 +46,7 @@ describe("addExistingFolder", () => {
 
   it("rejects an existing id that clashes with another project", async () => {
     const context = memoryCatalog();
-    await createProjectFromTemplate(context, LIB, { title: "Thesis", ...blankTemplate("latex", "Thesis") });
+    await createProjectFromTemplate(context, LIB, { title: "Thesis", ...createBlankTemplate("latex", "Thesis") });
     await writeTree(context.fs, "/outside/p", { "labshelf.yaml": "id: Thesis\nformat: latex\n" });
     await expect(addExistingFolder(context, LIB, { folder: "/outside/p", format: "latex" })).rejects.toThrow(/already used/);
     expect(await context.registry.folders(LIB)).toEqual([]);
@@ -54,7 +54,7 @@ describe("addExistingFolder", () => {
 
   it("gives a folder without labshelf.yaml a fresh id when its name clashes", async () => {
     const context = memoryCatalog();
-    await createProjectFromTemplate(context, LIB, { title: "paper", ...blankTemplate("latex", "paper") });
+    await createProjectFromTemplate(context, LIB, { title: "paper", ...createBlankTemplate("latex", "paper") });
     await writeTree(context.fs, "/outside/paper", { "main.tex": "x" });
     const entry = await addExistingFolder(context, LIB, { folder: "/outside/paper", format: "latex" });
     expect(entry.kind === "ready" && entry.settings.id).toBe("papera");

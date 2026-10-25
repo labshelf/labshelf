@@ -1,9 +1,9 @@
 // Renders the visible templates as a keyboard-navigable card grid, its skeleton and empty states, and requests thumbnails for cards in view.
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
-import type { TemplateKey } from "../protocol/index.js";
+import type { TemplateAddress } from "../protocol/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { keyOf, type GalleryState } from "./galleryState.js";
+import { deriveTemplateAddress, type GalleryState } from "./galleryState.js";
 import { renderTemplateCard, type TemplateCard } from "./templateCard.js";
 
 const MAX_BATCH = 200;
@@ -13,7 +13,7 @@ export interface CardGridHandlers {
   /** A card was activated by click or Enter. */
   onOpen(entry: TemplateEntry): void;
   /** Keys newly in view and not yet requested, in batches of at most 200. */
-  onThumbnails(templates: TemplateKey[]): void;
+  onThumbnails(templates: TemplateAddress[]): void;
 }
 
 export interface CardGrid {
@@ -21,9 +21,9 @@ export interface CardGrid {
   /** Re-renders the cards or the state that replaces them from the gallery state. */
   update(): void;
   /** Stores the thumbnail in the state and patches that card in place (`undefined` keeps the placeholder). */
-  setThumbnail(template: TemplateKey, dataUri: string | undefined): void;
+  setThumbnail(template: TemplateAddress, dataUri: string | undefined): void;
   /** Moves focus to that template's card, if it is shown. */
-  focusCard(template: TemplateKey): void;
+  focusCard(template: TemplateAddress): void;
   dispose(): void;
 }
 
@@ -67,13 +67,13 @@ function showWithoutCards(state: GalleryState, list: HTMLElement, element: HTMLE
 
 interface ThumbnailRequester {
   /** The template each rendered card button stands for. */
-  keys: Map<Element, TemplateKey>;
+  keys: Map<Element, TemplateAddress>;
   observe(buttons: Element[]): void;
   dispose(): void;
 }
 
 function createThumbnailRequester(state: GalleryState, scrollRoot: HTMLElement, onThumbnails: CardGridHandlers["onThumbnails"]): ThumbnailRequester {
-  const keys = new Map<Element, TemplateKey>();
+  const keys = new Map<Element, TemplateAddress>();
   let observer: IntersectionObserver | undefined;
   const onIntersect = (hits: IntersectionObserverEntry[]): void => {
     const inView = hits.filter((hit) => hit.isIntersecting).flatMap((hit) => keys.get(hit.target) ?? []);
@@ -91,10 +91,10 @@ function createThumbnailRequester(state: GalleryState, scrollRoot: HTMLElement, 
   };
 }
 
-function buildCards(state: GalleryState, entries: TemplateEntry[], handlers: CardGridHandlers, keys: Map<Element, TemplateKey>): Map<string, TemplateCard> {
+function buildCards(state: GalleryState, entries: TemplateEntry[], handlers: CardGridHandlers, keys: Map<Element, TemplateAddress>): Map<string, TemplateCard> {
   const cards = new Map<string, TemplateCard>();
   for (const entry of entries) {
-    const key = keyOf(entry);
+    const key = deriveTemplateAddress(entry);
     const card = renderTemplateCard(entry, state.thumbnails.get(key));
     card.button.addEventListener("click", () => handlers.onOpen(entry));
     cards.set(key, card);
@@ -146,9 +146,9 @@ export function createCardGrid(state: GalleryState, scrollRoot: HTMLElement, han
     update,
     setThumbnail(template, dataUri) {
       state.setThumbnail(template, dataUri);
-      cards.get(keyOf(template))?.setThumbnail(dataUri);
+      cards.get(deriveTemplateAddress(template))?.setThumbnail(dataUri);
     },
-    focusCard: (template) => cards.get(keyOf(template))?.button.focus(),
+    focusCard: (template) => cards.get(deriveTemplateAddress(template))?.button.focus(),
     dispose: () => thumbnails.dispose(),
   };
 }

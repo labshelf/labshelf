@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { type LatexProjectSources, toVscodeRange, type LatexProject } from "../project/index.js";
 import { RefCompletionProvider } from "./referenceCompletion.js";
 import { RefDefinitionProvider } from "./referenceDefinition.js";
-import { undefinedRefs } from "@labshelf/core";
+import { findUndefinedReferences } from "@labshelf/core";
 import { trailingDebounce } from "../debounce.js";
 
 const REFRESH_DELAY_MS = 300;
@@ -15,7 +15,7 @@ function diagnosticsByFile(project: LatexProject): Map<string, vscode.Diagnostic
     diagnostic.source = "LabShelf";
     byFile.set(path, [...byFile.get(path) ?? [], diagnostic]);
   };
-  for (const { path, ref } of undefinedRefs(project.files)) {
+  for (const { path, ref } of findUndefinedReferences(project.files)) {
     add(path, new vscode.Diagnostic(toVscodeRange(ref.range), `No \\label{${ref.name}} in this project.`, vscode.DiagnosticSeverity.Warning));
   }
   for (const { path, includedFrom } of project.missing) {

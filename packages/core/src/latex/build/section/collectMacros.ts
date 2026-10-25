@@ -2,9 +2,9 @@
 import {
   type LatexPosition,
   type LatexSourceFacts,
-  stripComments,
+  removeComments,
   readDelimited,
-  skipSpace,
+  findSpaceEnd,
 } from "../../source/index.js";
 
 interface SourceSpan {
@@ -31,7 +31,7 @@ function readShape(text: string, after: number, shape: string): number | undefin
   let at: number | undefined = after;
   for (const part of shape) {
     if (part === "*") { if (text[at] === "*") { at++; } continue; }
-    const from = skipSpace(text, at);
+    const from = findSpaceEnd(text, at);
     if (part === "[") { at = readDelimited(text, from, "[")?.next ?? at; continue; }
     at = text[from] === "{" ? readDelimited(text, from, "{")?.next : readToken(text, from);
     if (at === undefined) { return undefined; }
@@ -41,7 +41,7 @@ function readShape(text: string, after: number, shape: string): number | undefin
 
 /** `\def\name<parameter text>{body}`: the parameter text runs to the first unescaped brace. */
 function readDef(text: string, after: number): number | undefined {
-  const name = skipSpace(text, after);
+  const name = findSpaceEnd(text, after);
   let at = text[name] === "\\" ? readToken(text, name) : undefined;
   if (at === undefined) { return undefined; }
   while (at < text.length && text[at] !== "{") { at += text[at] === "\\" ? 2 : 1; }
@@ -50,11 +50,11 @@ function readDef(text: string, after: number): number | undefined {
 
 /** `\let\name=\other`, with the equals sign and the space around it optional. */
 function readLet(text: string, after: number): number | undefined {
-  const name = skipSpace(text, after);
+  const name = findSpaceEnd(text, after);
   const named = text[name] === "\\" ? readToken(text, name) : undefined;
   if (named === undefined) { return undefined; }
-  let at = skipSpace(text, named);
-  if (text[at] === "=") { at = skipSpace(text, at + 1); }
+  let at = findSpaceEnd(text, named);
+  if (text[at] === "=") { at = findSpaceEnd(text, at + 1); }
   return readToken(text, at);
 }
 
@@ -87,9 +87,9 @@ function offsetsOf(text: string): (position: LatexPosition) => number {
  * `scan` is `scanLatexSource(text)`. Definitions before `\begin{document}` are skipped: the format holds the preamble,
  * and a second `\newcommand` of the same name stops TeX. A definition nested in another is kept once, inside its parent.
  */
-export function collectDefinitions(text: string, scan: LatexSourceFacts): string[] {
-  // INVARIANT: stripComments keeps offsets, so spans found in the stripped text slice the original.
-  const stripped = stripComments(text);
+export function extractDefinitions(text: string, scan: LatexSourceFacts): string[] {
+  // INVARIANT: removeComments keeps offsets, so spans found in the stripped text slice the original.
+  const stripped = removeComments(text);
   const body = BEGIN_DOCUMENT.exec(stripped);
   const from = body ? body.index + body[0].length : 0;
   const offset = offsetsOf(text);

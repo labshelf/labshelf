@@ -12,7 +12,7 @@ import {
   runHelperBiber,
   runHelperHost,
   BIBER_ASSET_FILES,
-  parseBiberManifest,
+  parseBiberReleaseManifest,
   type BiberWasmAssets,
 } from "@labshelf/core/helper/node";
 import { HELPER_VERSION } from "@labshelf/core/helper";
@@ -55,7 +55,7 @@ async function cachedDataFile(dataDir: string, expected: string): Promise<string
 function seaBiberAssets(dataDir: string): BiberWasmAssets | undefined {
   const text = manifestAsset();
   if (text === undefined) { return undefined; }
-  const manifest = parseBiberManifest(text);
+  const manifest = parseBiberReleaseManifest(text);
   const dataHash = manifest.files[BIBER_ASSET_FILES.data];
   return {
     manifest,

@@ -13,7 +13,7 @@ const FIXED_LABELS: Record<Exclude<PublishCheckId, "build">, string> = {
   thumbnail: "Thumbnail compiled",
 };
 
-/** @param engineLabel the engine's display name ("pdfLaTeX"), shown in the build row. */
+/** @param formatEngineLabel the engine's display name ("pdfLaTeX"), shown in the build row. */
 export function publishCheckLabel(id: PublishCheckId, engineLabel: string): string {
   return id === "build" ? `Builds with ${engineLabel}` : FIXED_LABELS[id];
 }

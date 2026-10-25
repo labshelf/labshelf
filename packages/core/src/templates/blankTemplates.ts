@@ -53,7 +53,7 @@ function typstArticle(title: string): string {
 }
 
 /** The built-in template and its single main file for a new project. */
-export function blankTemplate(format: ProjectFormat, title: string): { template: ProjectTemplate; files: TemplateFile[] } {
+export function createBlankTemplate(format: ProjectFormat, title: string): { template: ProjectTemplate; files: TemplateFile[] } {
   const [main, text] = format === "latex" ? ["main.tex", latexArticle(title)] : ["main.typ", typstArticle(title)];
   return { template: { id: `blank-${format}`, format, main }, files: [{ path: main, bytes: new TextEncoder().encode(text) }] };
 }

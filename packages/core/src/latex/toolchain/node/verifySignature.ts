@@ -82,7 +82,7 @@ function pinnedKeys(armoredKeys: string): PinnedKey[] {
   });
 }
 
-export function pinnedKeyFingerprints(armoredKeys: string): string[] {
+export function derivePinnedFingerprints(armoredKeys: string): string[] {
   return pinnedKeys(armoredKeys).map((key) => key.fingerprint);
 }
 

@@ -1,15 +1,15 @@
 import { join } from "node:path";
 
-import { progressFraction, runTexTool } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { deriveProgressFraction, runTexTool } from "../../../../../src/latex/toolchain/node/managedTex/index";
 import { asLogger, createTexFixture, writeTexTree, type TexFixture } from "./fakeTex";
 
-describe("progressFraction", () => {
+describe("deriveProgressFraction", () => {
   it("reads the last [n/total, counter of a chunk", () => {
-    expect(progressFraction("[1/4, 00:00/00:00] install: a [1k]\n[3/4, 00:01/00:02] install: c [1k]\n")).toBe(0.75);
+    expect(deriveProgressFraction("[1/4, 00:00/00:00] install: a [1k]\n[3/4, 00:01/00:02] install: c [1k]\n")).toBe(0.75);
   });
 
   it("is null for output without a counter", () => {
-    expect(progressFraction("tlmgr: package repository https://x (verified)\n")).toBeNull();
+    expect(deriveProgressFraction("tlmgr: package repository https://x (verified)\n")).toBeNull();
   });
 });
 

@@ -3,7 +3,7 @@
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import type { PathOps } from "../../library/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { parseTemplateManifest, templatePathProblem, templateTreeProblem } from "../templateManifest/index.js";
+import { parseTemplateManifest, deriveTemplatePathProblem, deriveTemplateTreeProblem } from "../templateManifest/index.js";
 import type { TemplateFile, TemplateListing, TemplateSource } from "../sources/index.js";
 import { readOptionalBytes } from "./readOptionalBytes.js";
 
@@ -37,7 +37,7 @@ async function walkLibraryFolder(fs: LibraryFileSystem, paths: PathOps, folder: 
 /** The folder's files sorted by their `/`-joined relative path; throws naming the path of the first one that breaks a rule. */
 async function readLibraryTemplateTree(fs: LibraryFileSystem, paths: PathOps, folder: string): Promise<TemplateFile[]> {
   const found = await walkLibraryFolder(fs, paths, folder);
-  const problem = templateTreeProblem(found);
+  const problem = deriveTemplateTreeProblem(found);
   if (problem !== undefined) { throw new Error(problem); }
   return Promise.all(found.map(async (file) => ({ path: file.path, bytes: await fs.readFile(file.absolute) })));
 }
@@ -78,7 +78,7 @@ export function createMineSource({ fs, paths, libraryRoot, logger }: MineSourceD
   }
 
   // The id becomes a folder name, so anything but a plain segment could leave <library>/templates.
-  const plainId = (id: string): boolean => !id.includes("/") && templatePathProblem(id) === undefined;
+  const plainId = (id: string): boolean => !id.includes("/") && deriveTemplatePathProblem(id) === undefined;
 
   return {
     id: "mine",

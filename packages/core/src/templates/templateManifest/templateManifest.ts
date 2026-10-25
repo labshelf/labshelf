@@ -4,7 +4,7 @@
 import YAML from "yaml";
 import { LATEX_ENGINES, PROJECT_FORMATS, type ProjectFormat } from "../../writing/project/index.js";
 import { isLicenseExpression } from "./templateLicense.js";
-import { templatePathProblem } from "./templatePaths.js";
+import { deriveTemplatePathProblem } from "./templatePaths.js";
 
 export const TEMPLATE_CATEGORIES = ["article", "thesis", "poster", "slides", "cv", "other"] as const;
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
@@ -54,7 +54,7 @@ function idProblem(value: unknown): string | undefined {
 function mainProblem(value: unknown, format: unknown): string | undefined {
   if (typeof value !== "string") { return "is missing"; }
   const extension = format === "typst" ? ".typ" : ".tex";
-  return templatePathProblem(value) ?? (value.endsWith(extension) ? undefined : `must end in ${extension}`);
+  return deriveTemplatePathProblem(value) ?? (value.endsWith(extension) ? undefined : `must end in ${extension}`);
 }
 
 function compilerProblem(value: unknown, format: unknown): string | undefined {

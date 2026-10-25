@@ -3,13 +3,13 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { tmpdir } from "node:os";
 import { buildProject } from "../../../src/writing/build/node/index";
-import { submitTemplatePullRequest } from "../../../src/templates/client/index";
+import { publishTemplatePullRequest } from "../../../src/templates/client/index";
 import { createTemplatePublishHandlers } from "../../../src/helper/node/publishHandlers";
 import { PROTOCOL_VERSION, type ToPageMessage, type TemplatePublishRequest } from "../../../src/helper/index";
 import type { ProjectBuildDeps } from "../../../src/writing/build/node/index";
 
 jest.mock("../../../src/writing/build/node/index", () => ({ ...jest.requireActual("../../../src/writing/build/node/index"), buildProject: jest.fn() }));
-jest.mock("../../../src/templates/client/index", () => ({ ...jest.requireActual("../../../src/templates/client/index"), submitTemplatePullRequest: jest.fn() }));
+jest.mock("../../../src/templates/client/index", () => ({ ...jest.requireActual("../../../src/templates/client/index"), publishTemplatePullRequest: jest.fn() }));
 const draft = { name: "Research", category: "article", license: "MIT", description: "A paper template" };
 const pdf = new Uint8Array([37, 80, 68, 70]);
 const png = new Uint8Array(33);
@@ -37,7 +37,7 @@ beforeEach(async () => {
     await fs.writeFile(path.join(entry.folder, "main.pdf"), pdf);
     return { status: "succeeded", problems: [] } as never;
   });
-  jest.mocked(submitTemplatePullRequest).mockResolvedValue({ url: "https://github.com/labshelf/labshelf-templates/pull/7", branch: "template/research-date" });
+  jest.mocked(publishTemplatePullRequest).mockResolvedValue({ url: "https://github.com/labshelf/labshelf-templates/pull/7", branch: "template/research-date" });
 });
 afterEach(async () => { await fs.rm(root, { recursive: true, force: true }); });
 
@@ -62,7 +62,7 @@ it("opens a project using its declared engine without building or contacting Git
 
 it("submits the checked snapshot and saves its exact files and previews in My templates", async () => {
   const h = harness(); await h.run({ action: "submit", draft, token: "secret-token" });
-  const submission = jest.mocked(submitTemplatePullRequest).mock.calls[0]?.[0];
+  const submission = jest.mocked(publishTemplatePullRequest).mock.calls[0]?.[0];
   expect(submission?.files.find((f) => f.path === "files/main.tex")?.bytes).toEqual(new TextEncoder().encode("original source"));
   expect(submission?.files.some((f) => f.path.includes("build/") || f.path === "files/labshelf.yaml")).toBe(false);
   expect(await fs.readFile(path.join(library, "templates/research/files/main.tex"), "utf8")).toBe("original source");
@@ -79,7 +79,7 @@ it.each(["symlink", "hardlink", "latexmkrc"])("refuses %s before compiling or se
   else if (kind === "hardlink") await fs.link(other, path.join(project, "unsafe.tex"));
   else await fs.writeFile(path.join(project, ".latexmkrc"), "exec('bad')");
   const h = harness(); await h.run({ action: "submit", draft, token: "token" });
-  expect(buildProject).not.toHaveBeenCalled(); expect(submitTemplatePullRequest).not.toHaveBeenCalled();
+  expect(buildProject).not.toHaveBeenCalled(); expect(publishTemplatePullRequest).not.toHaveBeenCalled();
   expect(h.events).toContainEqual(expect.objectContaining({ event: expect.objectContaining({ type: "publish.failed" }) }));
 });
 
@@ -92,7 +92,7 @@ it("refuses a project folder that resolves outside the library", async () => {
 
 it("refuses an invalid thumbnail before submission", async () => {
   const h = harness(new Uint8Array([1, 2])); await h.run({ action: "submit", draft, token: "token" });
-  expect(submitTemplatePullRequest).not.toHaveBeenCalled();
+  expect(publishTemplatePullRequest).not.toHaveBeenCalled();
   expect(h.events).toContainEqual(expect.objectContaining({ event: expect.objectContaining({ type: "publish.checks", checks: expect.arrayContaining([expect.objectContaining({ id: "thumbnail", ok: false })]) }) }));
 });
 
@@ -100,5 +100,5 @@ it("reruns checks on submission after sources change since the check request", a
   const h = harness(); await h.run({ action: "check", draft }, "check");
   await fs.writeFile(path.join(project, "latexmkrc"), "unsafe");
   await h.run({ action: "submit", draft, token: "token" }, "submit");
-  expect(buildProject).toHaveBeenCalledTimes(1); expect(submitTemplatePullRequest).not.toHaveBeenCalled();
+  expect(buildProject).toHaveBeenCalledTimes(1); expect(publishTemplatePullRequest).not.toHaveBeenCalled();
 });

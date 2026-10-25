@@ -3,7 +3,7 @@ import { renderIcon } from "../../ui/index.js";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
 import { TEMPLATE_CATEGORIES, type TemplateCategory } from "../templateManifest/index.js";
 import { CATEGORY_LABELS } from "../templateLabels.js";
-import type { TemplateSort } from "../sortTemplates.js";
+import type { TemplateSort } from "../orderTemplates.js";
 import type { GalleryState } from "./galleryState.js";
 
 export interface FacetBar {

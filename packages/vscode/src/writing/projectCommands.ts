@@ -1,7 +1,7 @@
 // Registers the commands that add a writing project from a blank template or an existing folder.
 import * as vscode from "vscode";
 
-import { PROJECT_FILE, blankTemplate, detectFormat, type ProjectFormat } from "@labshelf/core";
+import { PROJECT_FILE, createBlankTemplate, detectFormat, type ProjectFormat } from "@labshelf/core";
 import { executeSafely } from "../command/index.js";
 import type { WritingHost, WritingProjects } from "./session/index.js";
 import { OPEN_PROJECT_COMMAND } from "./session/index.js";
@@ -28,7 +28,7 @@ async function newBlankProject({ host, projects }: ProjectCommandsDeps): Promise
     if (!title) { return; }
     const format = await pickFormat("Format of the new project");
     if (!format) { return; }
-    const entry = await projects.data.createProjectFromTemplate(session.root, { title, ...blankTemplate(format, title) });
+    const entry = await projects.data.createProjectFromTemplate(session.root, { title, ...createBlankTemplate(format, title) });
     await projects.reload();
     await vscode.commands.executeCommand(OPEN_PROJECT_COMMAND, entry);
   });

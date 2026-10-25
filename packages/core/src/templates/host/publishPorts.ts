@@ -2,7 +2,7 @@
 import type { ILogger } from "../../ports/index.js";
 import type { GalleryToHost, HostToGallery } from "../protocol/index.js";
 import type { PublishBuildResult, PublishCheckInput, PublishCheckReport } from "../publishCheckReport.js";
-import type { SubmitTemplateInput, SubmitTemplateResult } from "../client/index.js";
+import type { PublishTemplateInput, PublishTemplateResult } from "../client/index.js";
 import type { TemplateManifest } from "../templateManifest/index.js";
 
 /** A writing project ready to publish: its build engine is already resolved. */
@@ -42,7 +42,7 @@ export interface PublishPorts {
   renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>;
   check: (input: PublishCheckInput) => Promise<PublishCheckReport>;
   /** Opens the pull request; the adapter supplies `fetch`. */
-  submit: (input: Omit<SubmitTemplateInput, "fetch" | "now" | "sleep">) => Promise<SubmitTemplateResult>;
+  submit: (input: Omit<PublishTemplateInput, "fetch" | "now" | "sleep">) => Promise<PublishTemplateResult>;
   /** Saves the submitted template into the library's My templates. */
   saveToMyTemplates: (project: PublishableProject, manifest: TemplateManifest) => Promise<void>;
 }

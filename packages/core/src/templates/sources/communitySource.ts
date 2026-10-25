@@ -5,7 +5,7 @@ import type { ILogger } from "../../ports/index.js";
 import { deriveSha256Hex } from "../../hash/index.js";
 import { parseCatalogIndex, type CatalogEntry } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { fetchCachedIndex } from "./fetchCachedCatalogIndex.js";
+import { fetchCachedCatalogIndex } from "./fetchCachedCatalogIndex.js";
 import { fetchCachedThumbnail } from "./fetchCachedThumbnail.js";
 import type { FetchLike, TemplateCache, TemplateFile, TemplateSource } from "./templateSource.js";
 
@@ -55,9 +55,9 @@ export function createCommunitySource(deps: CommunitySourceDeps): TemplateSource
 
   async function load(signal?: AbortSignal): Promise<RememberedIndex> {
     const accepts = (body: string): boolean => parseCatalogIndex(body).ok;
-    const { body, fromCache } = await fetchCachedIndex({ url: COMMUNITY_INDEX_URL, source: "community", accepts }, deps, signal);
+    const { body, fromCache } = await fetchCachedCatalogIndex({ url: COMMUNITY_INDEX_URL, source: "community", accepts }, deps, signal);
     const parsed = parseCatalogIndex(body);
-    // INVARIANT: fetchCachedIndex only returns bodies that accepts() let through.
+    // INVARIANT: fetchCachedCatalogIndex only returns bodies that accepts() let through.
     if (!parsed.ok) { throw new Error(`The catalog index is unreadable: ${parsed.reason}`); }
     for (const skipped of parsed.skipped) {
       await deps.logger.log("WARN", MODULE, "Community template left out of the gallery", { id: skipped.id, reason: skipped.reason });

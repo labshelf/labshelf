@@ -1,11 +1,11 @@
 // Answers the template gallery page: lists each source on its own, serves thumbnails and engine checks, and runs "Use template".
-import { engineProblem, type AvailableEngines } from "../engineProblem.js";
-import { parseGalleryMessage, type GalleryToHost, type TemplateKey } from "../protocol/index.js";
+import { deriveEngineProblem, type AvailableEngines } from "../deriveEngineProblem.js";
+import { parseGalleryMessage, type GalleryToHost, type TemplateAddress } from "../protocol/index.js";
 import type { TemplateSource } from "../sources/index.js";
 import type { TemplateEntry, TemplateSourceId } from "../templateEntry.js";
 import { SOURCE_LABELS } from "../templateLabels.js";
-import { thumbnailDataUri } from "./thumbnailUri.js";
-import { TEMPLATES_LOG_MODULE, useTemplate, type UseTemplatePorts } from "./useTemplate.js";
+import { createThumbnailUri } from "./thumbnailUri.js";
+import { TEMPLATES_LOG_MODULE, createTemplateProject, type UseTemplatePorts } from "./createTemplateProject.js";
 
 /** What the gallery needs from the Publish screen; the host forwards validated `publish.*` messages to it. */
 export interface PublishHost {
@@ -21,7 +21,7 @@ export interface GalleryHostDeps extends UseTemplatePorts {
   publish: PublishHost;
 }
 
-const cacheKey = (key: TemplateKey): string => `${key.source}:${key.id}`;
+const cacheKey = (key: TemplateAddress): string => `${key.source}:${key.id}`;
 
 export class GalleryHost {
   /** Entries of the last listing of each source, to resolve the keys the page sends. */
@@ -98,25 +98,25 @@ export class GalleryHost {
     }
   }
 
-  private async sendThumbnail(key: TemplateKey): Promise<void> {
+  private async sendThumbnail(key: TemplateAddress): Promise<void> {
     const found = this.resolve(key, "thumbnail");
     if (!found) { return; }
     let dataUri: string | undefined;
     try {
       const bytes = await found.source.thumbnail(found.entry, this.lifetime.signal);
-      dataUri = bytes && thumbnailDataUri(bytes);
+      dataUri = bytes && createThumbnailUri(bytes);
     } catch (error) {
       await this.deps.logger.error(TEMPLATES_LOG_MODULE, error, { ...key, action: "thumbnail" });
     }
     if (!this.lifetime.signal.aborted) { this.deps.post({ type: "thumbnail", template: key, ...(dataUri ? { dataUri } : {}) }); }
   }
 
-  private async sendEngine(key: TemplateKey): Promise<void> {
+  private async sendEngine(key: TemplateAddress): Promise<void> {
     const found = this.resolve(key, "detail");
     if (!found) { return; }
     let problem: string | undefined;
     try {
-      problem = engineProblem(found.entry, await this.probeEngines());
+      problem = deriveEngineProblem(found.entry, await this.probeEngines());
     } catch (error) {
       await this.deps.logger.error(TEMPLATES_LOG_MODULE, error, { ...key, action: "engines" });
     }
@@ -129,13 +129,13 @@ export class GalleryHost {
     return this.engines;
   }
 
-  private async use(key: TemplateKey): Promise<void> {
+  private async use(key: TemplateAddress): Promise<void> {
     const found = this.resolve(key, "use");
     if (!found) { this.deps.post({ type: "use.settled", template: key }); return; }
-    await useTemplate(this.deps, found.source, found.entry, this.lifetime.signal);
+    await createTemplateProject(this.deps, found.source, found.entry, this.lifetime.signal);
   }
 
-  private resolve(key: TemplateKey, action: string): { entry: TemplateEntry; source: TemplateSource } | undefined {
+  private resolve(key: TemplateAddress, action: string): { entry: TemplateEntry; source: TemplateSource } | undefined {
     const entry = this.entries.get(cacheKey(key));
     const source = this.deps.sources.find((s) => s.id === key.source);
     if (entry && source) { return { entry, source }; }

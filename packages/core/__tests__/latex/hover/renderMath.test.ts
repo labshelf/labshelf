@@ -1,5 +1,5 @@
 /** Verifies math rendering to SVG with project macros, and the image it becomes for a hover. */
-import { mathImageUri, renderMathSvg } from "../../../src/latex/hover/index";
+import { createMathImageUri, renderMathSvg } from "../../../src/latex/hover/index";
 
 function decode(uri: string): string {
   return Buffer.from(uri.replace("data:image/svg+xml;base64,", ""), "base64").toString("utf8");
@@ -26,9 +26,9 @@ describe("renderMathSvg", () => {
   });
 });
 
-describe("mathImageUri", () => {
+describe("createMathImageUri", () => {
   it("fixes the colour and converts ex sizes to pixels", () => {
-    const svg = decode(mathImageUri(renderMathSvg("\\fromSty x", false), { text: "#cccccc", error: "#f85149" }));
+    const svg = decode(createMathImageUri(renderMathSvg("\\fromSty x", false), { text: "#cccccc", error: "#f85149" }));
     expect(svg).not.toMatch(/currentColor|"red"/);
     expect(svg).toContain('fill="#cccccc"');
     expect(svg).toContain('fill="#f85149"');

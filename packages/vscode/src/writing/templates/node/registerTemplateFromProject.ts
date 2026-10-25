@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import {
   CATEGORY_LABELS, TEMPLATE_CATEGORIES, isLicenseExpression, type ProjectEntry, type TemplateCategory,
 } from "@labshelf/core";
-import { saveProjectAsTemplate, type SaveTemplateDetails } from "@labshelf/core/node";
+import { writeProjectAsTemplate, type WriteTemplateInput } from "@labshelf/core/node";
 import { executeSafely } from "../../../command/index.js";
 import { activeProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
@@ -23,7 +23,7 @@ interface SaveProjectDeps {
   onSaved: () => void;
 }
 
-type Details = Omit<SaveTemplateDetails, "engine">;
+type Details = Omit<WriteTemplateInput, "engine">;
 
 async function pickCategory(): Promise<TemplateCategory | undefined> {
   const items = TEMPLATE_CATEGORIES.map((category) => ({ label: CATEGORY_LABELS[category], category }));
@@ -68,7 +68,7 @@ async function saveProject(deps: SaveProjectDeps, entry: ProjectEntry | undefine
       ? await ensureToolchain({ tex: deps.tex, host: deps.host }, project)
       : undefined;
     if (needsEngine && !toolchain) { return; }
-    const manifest = await saveProjectAsTemplate(
+    const manifest = await writeProjectAsTemplate(
       session.root, project.settings.id, toolchain ? { ...details, engine: toolchain.engine } : details, session.logger,
     );
     deps.onSaved();

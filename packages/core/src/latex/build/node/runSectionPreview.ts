@@ -4,16 +4,16 @@ import * as path from "node:path";
 import { PDFDocument } from "pdf-lib";
 
 import { readOptionalFile, writeFileAtomic } from "../../../library/node/index.js";
-import { collectProjectSources } from "../../source/index.js";
-import { type LatexBuildResult, latexPreviewCommand } from "../index.js";
+import { readLatexProjectSources } from "../../source/index.js";
+import { type LatexBuildResult, createLatexPreviewCommand } from "../index.js";
 import {
-  assembleSectionDocument, definitionsBeforeSection, filterAuxForSection, mapSectionProblems, planSectionPreview, sectionPageRange,
+  createSectionDocument, extractDefinitionsBeforeSection, deriveSectionAux, deriveSectionProblems, createSectionPreviewPlan, deriveSectionPageRange,
   type SectionState,
 } from "../section/index.js";
-import { readSectionStates, swapSectionPages } from "../section/node/index.js";
-import { compileLatex } from "./compileLatex.js";
+import { readSectionBuildStates, updateSectionPages } from "../section/node/index.js";
+import { buildLatexProject } from "./buildLatexProject.js";
 import type { ProblemPlaces } from "./findProblems.js";
-import { preambleFormat } from "./buildPreambleFormat.js";
+import { buildPreambleFormat } from "./buildPreambleFormat.js";
 import { withIncludeOnlyFile } from "./includeOnlyFile.js";
 import type { LatexBuildRequest } from "./runLatexBuild.js";
 
@@ -25,7 +25,7 @@ function mainFolderPath(projectFolder: string, main: string, file: string): stri
 const MODULE = "writing/build";
 
 /** The PDF the build folder last produced for display: a full build's, or a section preview's swapped into it. */
-export function shownPdfName(base: string): string {
+export function deriveShownPdfName(base: string): string {
   return `${base}-full.pdf`;
 }
 
@@ -41,7 +41,7 @@ interface SectionJob {
 /** Main and every file it inputs, keyed by their path from main's folder. */
 async function readSources(request: LatexBuildRequest, mainDir: string): Promise<Record<string, string>> {
   const sources: Record<string, string> = {};
-  await collectProjectSources(path.basename(request.main), {
+  await readLatexProjectSources(path.basename(request.main), {
     read: async (relativePath) => {
       const text = await readOptionalFile(path.join(mainDir, relativePath));
       if (text !== undefined) { sources[relativePath] = text; }
@@ -60,9 +60,9 @@ async function planJob(request: LatexBuildRequest, places: ProblemPlaces, base: 
   if (request.editedFile === undefined || request.editedLine === undefined) { return "no-edit"; }
   const edited = mainFolderPath(request.projectFolder, request.main, request.editedFile);
   const sources = await readSources(request, places.workDir);
-  const states = await readSectionStates(request.outDir, base, request.logger);
+  const states = await readSectionBuildStates(request.outDir, base, request.logger);
   const hasAux = await fs.stat(path.join(request.outDir, `${base}.aux`)).then(() => true, () => false);
-  const plan = planSectionPreview({
+  const plan = createSectionPreviewPlan({
     editedFile: edited, editedLine: request.editedLine - 1, sources, states, hasAux, engine: request.toolchain.engine, hasFormat: true,
   });
   if (plan.kind === "fallback") { return plan.reason; }
@@ -74,10 +74,10 @@ async function planJob(request: LatexBuildRequest, places: ProblemPlaces, base: 
 async function writeSectionDocument(request: LatexBuildRequest, base: string, job: SectionJob, formatName: string): Promise<number> {
   const aux = (await readOptionalFile(path.join(request.outDir, `${base}.aux`))) ?? "";
   // TRAP: `\newlabel` and `\bibcite` fail after `\begin{document}`, so the labels cannot be `\input` in the body.
-  await writeFileAtomic(path.join(request.outDir, `${base}-section.aux`), filterAuxForSection(aux));
-  const document = assembleSectionDocument({
+  await writeFileAtomic(path.join(request.outDir, `${base}-section.aux`), deriveSectionAux(aux));
+  const document = createSectionDocument({
     formatName, state: job.states[job.sectionIndex]!,
-    definitions: definitionsBeforeSection({ sources: job.sources, main: path.basename(request.main), editedFile: job.edited, startLine: job.startLine }),
+    definitions: extractDefinitionsBeforeSection({ sources: job.sources, main: path.basename(request.main), editedFile: job.edited, startLine: job.startLine }),
     sectionText: job.sources[job.edited]!.split("\n").slice(job.startLine, job.endLine).join("\n"),
   });
   await writeFileAtomic(path.join(request.outDir, `${base}-section.tex`), document.text);
@@ -86,14 +86,14 @@ async function writeSectionDocument(request: LatexBuildRequest, base: string, jo
 
 /** The swapped PDF goes to the build folder, the shown copy and next to main. */
 async function publishSwap(request: LatexBuildRequest, places: ProblemPlaces, base: string, job: SectionJob, sectionPdf: string): Promise<string | undefined> {
-  const shown = await fs.readFile(path.join(request.outDir, shownPdfName(base))).catch(() => undefined);
+  const shown = await fs.readFile(path.join(request.outDir, deriveShownPdfName(base))).catch(() => undefined);
   if (!shown) return fallBack(request, "no-shown-pdf");
   const section = await fs.readFile(sectionPdf);
   const pageCount = (await PDFDocument.load(shown, { updateMetadata: false })).getPageCount();
-  const swapped = await swapSectionPages(shown, section, sectionPageRange(job.states, job.sectionIndex, pageCount));
+  const swapped = await updateSectionPages(shown, section, deriveSectionPageRange(job.states, job.sectionIndex, pageCount));
   if (!swapped) return fallBack(request, "section-page-count-changed");
   const pdf = path.join(places.workDir, `${base}.pdf`);
-  for (const file of [path.join(request.outDir, `${base}.pdf`), path.join(request.outDir, shownPdfName(base)), pdf]) {
+  for (const file of [path.join(request.outDir, `${base}.pdf`), path.join(request.outDir, deriveShownPdfName(base)), pdf]) {
     await writeFileAtomic(file, swapped);
   }
   return pdf;
@@ -103,17 +103,17 @@ async function publishSwap(request: LatexBuildRequest, places: ProblemPlaces, ba
 export async function runSectionPreview(request: LatexBuildRequest, places: ProblemPlaces, base: string): Promise<LatexBuildResult | undefined> {
   const job = await planJob(request, places, base);
   if (typeof job === "string") { return fallBack(request, job); }
-  const found = await preambleFormat({ ...request, mainPath: places.mainFile });
+  const found = await buildPreambleFormat({ ...request, mainPath: places.mainFile });
   if (!found) { return fallBack(request, "no-format"); }
   const headerLines = await writeSectionDocument(request, base, job, found.name);
   const documentName = `${base}-section.tex`;
-  const command = latexPreviewCommand(request.toolchain.engine, documentName, request.outDir, {
+  const command = createLatexPreviewCommand(request.toolchain.engine, documentName, request.outDir, {
     format: { name: found.name, searchPath: `${found.dir}${path.delimiter}` },
     ...(request.haltOnError !== undefined && { haltOnError: request.haltOnError }),
   });
-  const result = await withIncludeOnlyFile(request.outDir, undefined, () => compileLatex(request, places, {
+  const result = await withIncludeOnlyFile(request.outDir, undefined, () => buildLatexProject(request, places, {
     job: `${base}-section`, command,
-    mapProblems: (problems) => mapSectionProblems(problems, { documentName, editedFile: job.edited, headerLines, startLine: job.startLine }),
+    mapProblems: (problems) => deriveSectionProblems(problems, { documentName, editedFile: job.edited, headerLines, startLine: job.startLine }),
   }));
   if (result.status === "cancelled") { return result; }
   if (result.status === "failed") {

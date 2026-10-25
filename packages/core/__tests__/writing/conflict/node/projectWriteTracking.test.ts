@@ -5,7 +5,7 @@ import { createProjectSaveTracking, recordProjectSave, scanLibraryConflicts } fr
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
-import { blankTemplate } from '../../../../src/templates/index';
+import { createBlankTemplate } from '../../../../src/templates/index';
 import { createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { readWriteRecords } from '../../../../src/library/writeRecords/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
@@ -18,7 +18,7 @@ afterEach(async () => { if (stateHome === undefined) delete process.env.XDG_STAT
 async function fixture() {
   process.env.XDG_STATE_HOME = await makeTempDir();
   const root = await makeTempDir();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...blankTemplate('latex', 'Study') });
+  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project missing');
   const disk = new NodeLibraryFileSystem();
   const file = path.join(project.folder, 'main.tex');

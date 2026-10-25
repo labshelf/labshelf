@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 import type { ILogger } from "../../../ports/index.js";
 import { type BiberWasmAssets, BIBER_ASSET_FILES } from "../biberAssets.js";
 import { parseBiberArgs, type BiberArgs } from "../biberArgs.js";
-import { parseControlFile, type DataSource } from "../controlFile.js";
+import { parseControlFile, type BibliographySource } from "../controlFile.js";
 import { runNativeBiber } from "./runNativeBiber.js";
 
 export interface SourcePlaces {
@@ -51,7 +51,7 @@ async function texTree(places: SourcePlaces): Promise<string | undefined> {
 }
 
 // PLATFORM: biber tries the name as given (from cwd), then beside the `.bcf`, then kpsewhich.
-async function locate(source: DataSource, places: SourcePlaces, allowed: string[]): Promise<LocatedSource> {
+async function locate(source: BibliographySource, places: SourcePlaces, allowed: string[]): Promise<LocatedSource> {
   for (const candidate of [path.resolve(places.cwd, source.path), path.resolve(places.build, source.path)]) {
     const file = await real(candidate);
     if (file === undefined) { continue; }
@@ -68,7 +68,7 @@ async function locate(source: DataSource, places: SourcePlaces, allowed: string[
   return { file, placed: path.resolve(places.cwd, source.path) };
 }
 
-export async function locateDataSources(sources: readonly DataSource[], places: SourcePlaces): Promise<LocatedSource[]> {
+export async function findBibliographySources(sources: readonly BibliographySource[], places: SourcePlaces): Promise<LocatedSource[]> {
   const allowed = (await Promise.all([places.project, places.build].map(real))).filter((folder): folder is string => folder !== undefined);
   return Promise.all(sources.map((source) => locate(source, places, allowed)));
 }
@@ -164,7 +164,7 @@ async function runBiberWasm(run: BiberWasmRun): Promise<number> {
 
 const MODULE = "writing/biber";
 
-export interface BiberProcess {
+export interface BiberRun {
   args: readonly string[];
   cwd: string;
   env: NodeJS.ProcessEnv;
@@ -173,15 +173,15 @@ export interface BiberProcess {
 }
 
 /** Reports a failure the way biber does, on stderr and in the `.blg`, where the build reads its problems. */
-async function fail(io: BiberProcess, args: BiberArgs | undefined, message: string): Promise<number> {
+async function fail(io: BiberRun, args: BiberArgs | undefined, message: string): Promise<number> {
   io.stderr.write(`ERROR - ${message}\n`);
   if (args) { await fs.writeFile(path.resolve(io.cwd, args.controlFile).replace(/\.bcf$/, ".blg"), `ERROR - ${message}\n`).catch(() => undefined); }
   return 2;
 }
 
-async function runWasm(io: BiberProcess, args: BiberArgs, dataSources: readonly DataSource[], assets: BiberWasmAssets, logger: ILogger): Promise<number> {
+async function runWasm(io: BiberRun, args: BiberArgs, dataSources: readonly BibliographySource[], assets: BiberWasmAssets, logger: ILogger): Promise<number> {
   const controlFile = path.resolve(io.cwd, args.controlFile);
-  const sources = await locateDataSources(dataSources, { cwd: io.cwd, project: args.root, build: path.dirname(controlFile), env: io.env });
+  const sources = await findBibliographySources(dataSources, { cwd: io.cwd, project: args.root, build: path.dirname(controlFile), env: io.env });
   const started = Date.now();
   const code = await runBiberWasm({
     assets, args, controlFile, cwd: io.cwd, sources,
@@ -192,7 +192,7 @@ async function runWasm(io: BiberProcess, args: BiberArgs, dataSources: readonly 
 }
 
 /** Returns the exit code for latexmk. `args` follow `--biber`. */
-export async function runBiber(io: BiberProcess, assets: BiberWasmAssets, logger: ILogger): Promise<number> {
+export async function runBiber(io: BiberRun, assets: BiberWasmAssets, logger: ILogger): Promise<number> {
   let args: BiberArgs | undefined;
   try {
     args = parseBiberArgs(io.args);

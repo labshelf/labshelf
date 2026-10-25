@@ -4,6 +4,6 @@
 import { loadCatalog, type CatalogProblem } from "./loadCatalog.js";
 
 /** One problem per broken template folder, sorted by id; empty for a good catalog. */
-export async function validateCatalog(root: string): Promise<CatalogProblem[]> {
+export async function checkCatalog(root: string): Promise<CatalogProblem[]> {
   return (await loadCatalog(root)).problems;
 }

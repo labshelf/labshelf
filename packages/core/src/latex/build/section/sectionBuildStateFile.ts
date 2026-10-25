@@ -50,7 +50,7 @@ interface Landing { absolutePage: number; page: number }
 // TRAP: the command line is written before TeX breaks the page at `\@secpenalty`, so its page is one early whenever the
 // heading moves to the next page; the landing record has the real one. A heading without one (cut off at the end of a
 // crashed run, or a class bypassing the hooked commands) keeps the command line's page.
-export function parseSectionStates(text: string): ParsedSectionStates {
+export function parseSectionBuildStates(text: string): ParsedSectionStates {
   const slots: (SectionState | undefined)[] = [];
   const landings = new Map<number, Landing>();
   const boundaries = new Set<number>();

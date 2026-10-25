@@ -1,6 +1,6 @@
 // Installs a template as a new library project through a staging folder, so a failure never leaves half a project.
 import { createLibraryLayout } from "../../../library/index.js";
-import { templatePathProblem, templateTreeProblem, type ProjectTemplate, type TemplateFile } from "../../../templates/index.js";
+import { deriveTemplatePathProblem, deriveTemplateTreeProblem, type ProjectTemplate, type TemplateFile } from "../../../templates/index.js";
 import { readProject } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
 import { PROJECT_FILE, serializeProjectFile, type ProjectSettings } from "../projectFile.js";
@@ -10,10 +10,10 @@ import type { ProjectCatalogContext } from "./projectCatalogContext.js";
 /** Throws, naming the path and the reason, when the files are not an installable tree with template.main among them. */
 function checkTemplateFiles(template: ProjectTemplate, files: readonly TemplateFile[]): void {
   for (const file of files) {
-    const problem = templatePathProblem(file.path);
+    const problem = deriveTemplatePathProblem(file.path);
     if (problem !== undefined) { throw new Error(`template ${template.id}: ${problem}`); }
   }
-  const treeProblem = templateTreeProblem(files.map((file) => ({ path: file.path, size: file.bytes.byteLength })));
+  const treeProblem = deriveTemplateTreeProblem(files.map((file) => ({ path: file.path, size: file.bytes.byteLength })));
   if (treeProblem !== undefined) { throw new Error(`template ${template.id}: ${treeProblem}`); }
   if (!files.some((file) => file.path === template.main)) {
     throw new Error(`template ${template.id}: main file "${template.main}" is not among its files`);

@@ -17,7 +17,7 @@ export interface LabelFact {
   range: LatexRange;
 }
 
-export interface RefFact {
+export interface ReferenceFact {
   /** The command without backslash or star, such as "ref" or "Cref". */
   command: string;
   name: string;
@@ -57,7 +57,7 @@ export interface IncludeFact {
 
 export interface LatexSourceFacts {
   labels: LabelFact[];
-  refs: RefFact[];
+  refs: ReferenceFact[];
   sections: SectionFact[];
   macros: MacroFact[];
   includes: IncludeFact[];

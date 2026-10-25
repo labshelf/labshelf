@@ -1,6 +1,6 @@
 // Declares the port through which a host hands over the biber WASM module: its manifest, its factory source, its WASM and its preloaded Perl tree.
 
-export interface BiberManifest {
+export interface BiberReleaseManifest {
   /** The biber release the module was built from. */
   biber: string;
   /** The `.bcf` format version this biber reads; a control file of another version goes to the TeX's own biber. */
@@ -10,7 +10,7 @@ export interface BiberManifest {
 }
 
 export interface BiberWasmAssets {
-  manifest: BiberManifest;
+  manifest: BiberReleaseManifest;
   /** The emscripten factory script (`biber.js`), a CommonJS module. */
   factorySource(): Promise<string>;
   wasm(): Promise<Uint8Array>;
@@ -20,8 +20,8 @@ export interface BiberWasmAssets {
 
 export const BIBER_ASSET_FILES = { factory: "biber.js", wasm: "biber.wasm", data: "biber.data", manifest: "manifest.json" } as const;
 
-export function parseBiberManifest(text: string): BiberManifest {
-  const value = JSON.parse(text) as Partial<BiberManifest>;
+export function parseBiberReleaseManifest(text: string): BiberReleaseManifest {
+  const value = JSON.parse(text) as Partial<BiberReleaseManifest>;
   if (typeof value.biber !== "string" || typeof value.bcfVersion !== "string" || typeof value.files !== "object" || value.files === null) {
     throw new Error(`biber manifest lacks biber, bcfVersion or files: ${text.slice(0, 200)}`);
   }

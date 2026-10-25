@@ -1,6 +1,6 @@
 // Composes the core All projects library over the library folder: lists its projects and opens one in the page's project session.
 import {
-  blankTemplate, createProjectData, createProjectLibrary, posixPathOps,
+  createBlankTemplate, createProjectData, createProjectLibrary, posixPathOps,
   type ILogger, type LibraryFileSystem, type PaperRecord, type PdfjsLoader, type ProjectDataPort, type ProjectEntry, type ProjectLibraryPort,
 } from "@labshelf/core";
 import type { ProjectSession } from "../session";
@@ -61,7 +61,7 @@ export function createBrowserProjectLibrary(deps: BrowserProjectLibraryDeps): Pr
         if (kind !== "blank") return;
         const asked = await deps.askBlank();
         if (!asked) return;
-        const entry = await data.createProjectFromTemplate(ROOT, { title: asked.title, ...blankTemplate(asked.format, asked.title) });
+        const entry = await data.createProjectFromTemplate(ROOT, { title: asked.title, ...createBlankTemplate(asked.format, asked.title) });
         await reload();
         await open(entry);
       },

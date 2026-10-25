@@ -2,7 +2,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-export async function singleTopDir(parent: string): Promise<string> {
+export async function findSingleTopDir(parent: string): Promise<string> {
   const dirs = (await readdir(parent, { withFileTypes: true })).filter((entry) => entry.isDirectory());
   const [only] = dirs;
   if (dirs.length !== 1 || only === undefined) {

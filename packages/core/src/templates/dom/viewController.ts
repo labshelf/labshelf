@@ -1,36 +1,36 @@
 // Opens and closes the template detail page in place of the grid and keeps the gallery state in step with it.
-import type { GalleryTransport, TemplateKey } from "../protocol/index.js";
+import type { GalleryTransport, TemplateAddress } from "../protocol/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import type { CardGrid } from "./cardGrid.js";
-import { keyOf, type GalleryState } from "./galleryState.js";
-import { renderTemplateDetail, type TemplateDetail } from "./templateView.js";
+import { deriveTemplateAddress, type GalleryState } from "./galleryState.js";
+import { renderTemplatePage, type TemplatePage } from "./templateView.js";
 
-export interface DetailController {
+export interface TemplatePageController {
   /** The page being shown, or `null` while the grid is. */
-  current(): TemplateDetail | null;
+  current(): TemplatePage | null;
   open(entry: TemplateEntry): void;
   /** Returns to the grid and focuses the card that was open; does nothing when no page is open. */
   closeAndFocus(): void;
   /** Returns to the grid and reports which template was open. */
-  close(): TemplateKey | undefined;
+  close(): TemplateAddress | undefined;
 }
 
-export interface DetailControllerParts {
+export interface TemplatePageControllerParts {
   state: GalleryState;
   main: HTMLElement;
   grid: CardGrid;
   transport: GalleryTransport;
   showGrid(): void;
-  requestThumbnails(templates: TemplateKey[]): void;
+  requestThumbnails(templates: TemplateAddress[]): void;
 }
 
-const keyFor = (entry: TemplateEntry): TemplateKey => ({ source: entry.source, id: entry.id });
+const keyFor = (entry: TemplateEntry): TemplateAddress => ({ source: entry.source, id: entry.id });
 
-export function createDetailController(parts: DetailControllerParts): DetailController {
+export function createTemplatePageController(parts: TemplatePageControllerParts): TemplatePageController {
   const { state, main, grid, transport } = parts;
-  let detail: TemplateDetail | null = null;
+  let detail: TemplatePage | null = null;
 
-  const close = (): TemplateKey | undefined => {
+  const close = (): TemplateAddress | undefined => {
     if (detail === null || state.open === null) return undefined;
     const opened = keyFor(state.open);
     detail.dispose();
@@ -51,13 +51,13 @@ export function createDetailController(parts: DetailControllerParts): DetailCont
     const template = keyFor(entry);
     state.open = entry;
     state.openProblem = undefined;
-    detail = renderTemplateDetail({
+    detail = renderTemplatePage({
       entry,
-      thumbnail: state.thumbnails.get(keyOf(entry)),
+      thumbnail: state.thumbnails.get(deriveTemplateAddress(entry)),
       problem: undefined,
-      busy: state.busy.has(keyOf(entry)),
+      busy: state.busy.has(deriveTemplateAddress(entry)),
       onBack: closeAndFocus,
-      onUse: () => { state.busy.add(keyOf(entry)); detail?.setBusy(true); transport.post({ type: "use", template }); },
+      onUse: () => { state.busy.add(deriveTemplateAddress(entry)); detail?.setBusy(true); transport.post({ type: "use", template }); },
     });
     main.replaceChildren(detail.element);
     detail.focus();

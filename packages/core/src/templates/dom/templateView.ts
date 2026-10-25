@@ -2,10 +2,10 @@
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { CATEGORY_LABELS, distinctEngineLabel, FORMAT_LABELS, templateByLine, templateUsesCount } from "../templateLabels.js";
-import { fillThumb } from "./templateCard.js";
+import { CATEGORY_LABELS, formatDistinctEngineLabel, FORMAT_LABELS, formatTemplateByLine, formatTemplateUsesCount } from "../templateLabels.js";
+import { updateThumbnailBox } from "./templateCard.js";
 
-export interface TemplateDetailOptions {
+export interface TemplatePageOptions {
   entry: TemplateEntry;
   thumbnail: string | undefined;
   problem: string | undefined;
@@ -14,7 +14,7 @@ export interface TemplateDetailOptions {
   onUse(): void;
 }
 
-export interface TemplateDetail {
+export interface TemplatePage {
   element: HTMLElement;
   setProblem(problem: string | undefined): void;
   setBusy(busy: boolean): void;
@@ -26,13 +26,13 @@ export interface TemplateDetail {
 let nextHeadingId = 0;
 
 function metaRows(entry: TemplateEntry): Array<[string, string]> {
-  const engine = distinctEngineLabel(entry);
+  const engine = formatDistinctEngineLabel(entry);
   const rows: Array<[string, string]> = [["Format", FORMAT_LABELS[entry.format]]];
   if (engine) rows.push(["Engine", engine]);
   rows.push(["Category", CATEGORY_LABELS[entry.category]], ["License", entry.license]);
   if (entry.version) rows.push(["Version", entry.version]);
   if (entry.compiler) rows.push(["Needs Typst", `${entry.compiler} or later`]);
-  const uses = templateUsesCount(entry);
+  const uses = formatTemplateUsesCount(entry);
   if (uses !== undefined) rows.push(["Uses", uses]);
   return rows;
 }
@@ -75,9 +75,9 @@ function fillUseButton(button: HTMLButtonElement, busy: boolean): void {
     renderElement("span", { text: busy ? "Creating project…" : "Use template" }));
 }
 
-export function renderTemplateDetail(options: TemplateDetailOptions): TemplateDetail {
+export function renderTemplatePage(options: TemplatePageOptions): TemplatePage {
   const { entry } = options;
-  const by = templateByLine(entry);
+  const by = formatTemplateByLine(entry);
   const headingId = `ls-tpl-detail-title-${nextHeadingId++}`;
   const heading = renderElement("h1", { id: headingId, class: "ls-tpl-detail-title", tabindex: -1, text: entry.name, title: entry.name });
   const back = renderElement("button", { class: "ls-btn", type: "button" }, renderElement("span", { html: renderIcon("arrow-left") }), "Templates");
@@ -88,7 +88,7 @@ export function renderTemplateDetail(options: TemplateDetailOptions): TemplateDe
   use.addEventListener("click", options.onUse);
 
   const setThumbnail = (dataUri: string | undefined): void =>
-    fillThumb(preview, dataUri, `First page of the ${entry.name} template`);
+    updateThumbnailBox(preview, dataUri, `First page of the ${entry.name} template`);
   const setProblem = (problem: string | undefined): void =>
     warningSlot.replaceChildren(...(problem ? [renderWarning(problem)] : []));
   const setBusy = (busy: boolean): void => fillUseButton(use, busy);

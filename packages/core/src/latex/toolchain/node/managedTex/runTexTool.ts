@@ -22,7 +22,7 @@ export interface TexToolOutcome {
 const PROGRESS = /\[(\d+)\/(\d+),/g;
 
 /** The fraction of the last `[n/total,` counter in `chunk`, or null when it has none. */
-export function progressFraction(chunk: string): number | null {
+export function deriveProgressFraction(chunk: string): number | null {
   const last = [...chunk.matchAll(PROGRESS)].pop();
   if (!last) { return null; }
   const total = Number(last[2]);
@@ -38,7 +38,7 @@ export async function runTexTool(run: TexToolRun): Promise<TexToolOutcome> {
   const shell = process.platform === "win32";
   const executable = shell ? [run.executable, ...run.args].map(quote).join(" ") : run.executable;
   const onOutput = (chunk: string): void => {
-    const fraction = run.onProgress ? progressFraction(chunk) : null;
+    const fraction = run.onProgress ? deriveProgressFraction(chunk) : null;
     if (fraction !== null) { run.onProgress?.(fraction); }
   };
   await run.logger.log("INFO", TEX_MODULE, "Running a TeX tool", { executable: run.executable, args: run.args });

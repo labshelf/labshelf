@@ -1,12 +1,12 @@
 /** Verifies that deleting a project forever removes folders under the projects root only and keeps every other folder's files. */
-import { blankTemplate, createProjectFromTemplate, deleteProjectForever } from "@labshelf/core";
+import { createBlankTemplate, createProjectFromTemplate, deleteProjectForever } from "@labshelf/core";
 
 import { LIB, filesUnder, memoryCatalog, writeTree } from "../../../support/memoryProjectCatalog";
 
 describe("deleteProjectForever", () => {
   it("removes a library project folder and keeps the projects folder", async () => {
     const context = memoryCatalog();
-    const entry = await createProjectFromTemplate(context, LIB, { title: "Notes", ...blankTemplate("latex", "Notes") });
+    const entry = await createProjectFromTemplate(context, LIB, { title: "Notes", ...createBlankTemplate("latex", "Notes") });
     await deleteProjectForever(context, LIB, entry.folder);
     expect(filesUnder(context.fs, entry.folder)).toEqual([]);
     expect(await context.fs.stat(entry.folder)).toBeUndefined();

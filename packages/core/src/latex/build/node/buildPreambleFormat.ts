@@ -102,7 +102,7 @@ async function compileFormat(request: FormatRequest, name: string, dir: string):
 }
 
 /** The format of main's current preamble, or none when the engine cannot use one or the build fails. */
-export async function preambleFormat(request: FormatRequest): Promise<PreambleFormat | undefined> {
+export async function buildPreambleFormat(request: FormatRequest): Promise<PreambleFormat | undefined> {
   if (request.toolchain.engine !== "pdflatex") {
     await request.logger.log("INFO", MODULE, "LaTeX preview runs without a preamble format: only pdflatex supports one", { engine: request.toolchain.engine });
     return undefined;

@@ -2,13 +2,13 @@
 // CONTRACT: documents/contracts/templates.md#typst-universe
 
 import type { ILogger } from "../../ports/index.js";
-import { templateTreeProblem } from "../templateManifest/index.js";
+import { deriveTemplateTreeProblem } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { fetchCachedIndex } from "./fetchCachedCatalogIndex.js";
+import { fetchCachedCatalogIndex } from "./fetchCachedCatalogIndex.js";
 import { fetchCachedThumbnail } from "./fetchCachedThumbnail.js";
 import { readTarGz } from "./readTarball.js";
 import type { FetchLike, TemplateCache, TemplateFile, TemplateListing, TemplateSource } from "./templateSource.js";
-import { UNIVERSE_INDEX_URL, parseUniverseIndex } from "./universeCatalogIndex.js";
+import { UNIVERSE_INDEX_URL, parseUniverseCatalogIndex } from "./universeCatalogIndex.js";
 
 const MODULE = "templates";
 const PACKAGES_URL = "https://packages.typst.org/preview";
@@ -31,7 +31,7 @@ async function templateFiles(archive: Uint8Array, templatePath: string): Promise
     if (entry.kind === "link") { throw new Error(`"${path}" is a link`); }
     if (entry.kind === "file") { files.push({ path, bytes: entry.bytes }); }
   }
-  const problem = templateTreeProblem(files.map((file) => ({ path: file.path, size: file.bytes.length })));
+  const problem = deriveTemplateTreeProblem(files.map((file) => ({ path: file.path, size: file.bytes.length })));
   if (problem !== undefined) { throw new Error(problem); }
   return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
@@ -49,9 +49,9 @@ export function createUniverseSource(deps: UniverseSourceDeps): TemplateSource {
   return {
     id: "universe",
     async list(signal?: AbortSignal): Promise<TemplateListing> {
-      const accepts = (body: string) => parseUniverseIndex(body).ok;
-      const { body, fromCache } = await fetchCachedIndex({ url: UNIVERSE_INDEX_URL, source: "universe", accepts }, deps, signal);
-      const parsed = parseUniverseIndex(body);
+      const accepts = (body: string) => parseUniverseCatalogIndex(body).ok;
+      const { body, fromCache } = await fetchCachedCatalogIndex({ url: UNIVERSE_INDEX_URL, source: "universe", accepts }, deps, signal);
+      const parsed = parseUniverseCatalogIndex(body);
       if (!parsed.ok) { throw new Error(`The Typst Universe index is unusable: ${parsed.reason}`); }
       for (const skipped of parsed.skipped) {
         await deps.logger.log("WARN", MODULE, "Typst Universe template left out", { name: skipped.id, reason: skipped.reason });

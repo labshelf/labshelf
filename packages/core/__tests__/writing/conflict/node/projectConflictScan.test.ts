@@ -5,7 +5,7 @@ import { FileProjectVersionStore } from '../../../../src/writing/conflict/index'
 import { recordProjectSave, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
-import { blankTemplate } from '../../../../src/templates/index';
+import { createBlankTemplate } from '../../../../src/templates/index';
 import { NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
 import type { ILogger } from '../../../../src/ports/index';
@@ -16,7 +16,7 @@ afterEach(cleanupTempDirs);
 
 async function fixture() {
   const root = await makeTempDir();
-  const entry = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...blankTemplate('latex', 'Study') });
+  const entry = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (entry.kind !== 'ready') throw new Error('Project missing');
   const state = await Promise.all(ids.map(() => makeTempDir()));
   const stores = state.map(dir => new FileProjectVersionStore(new NodeLibraryFileSystem(), path, dir));

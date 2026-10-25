@@ -1,6 +1,6 @@
 // Reads the open-item signals of one writing project: sources, TODOs, broken refs, stale figures and manual items.
 import { readFigureStates } from "../figures/index.js";
-import { collectProjectSources, undefinedRefs } from "../../latex/source/project/index.js";
+import { readLatexProjectSources, findUndefinedReferences } from "../../latex/source/project/index.js";
 import type { ProjectEntry } from "../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
 import type { BrokenRef, StaleFigure } from "./buildChecklist.js";
@@ -27,7 +27,7 @@ const readProjectFile = ({ fs, paths }: ProjectReadContext, folder: string, rela
 
 async function readLatexSources(context: ProjectReadContext, folder: string, main: string): Promise<{ sources: ChecklistSource[]; brokenRefs: BrokenRef[] }> {
   const texts = new Map<string, string>();
-  const tree = await collectProjectSources(main, {
+  const tree = await readLatexProjectSources(main, {
     read: async (relative) => {
       const text = await readProjectFile(context, folder, relative);
       if (text !== undefined) { texts.set(relative, text); }
@@ -35,7 +35,7 @@ async function readLatexSources(context: ProjectReadContext, folder: string, mai
     },
   });
   const sources = tree.files.map((file): ChecklistSource => ({ path: file.path, format: "latex", text: texts.get(file.path) ?? "" }));
-  const brokenRefs = undefinedRefs(tree.files).map(({ path: file, ref }) => ({ file, line: ref.range.start.line, ref: ref.name }));
+  const brokenRefs = findUndefinedReferences(tree.files).map(({ path: file, ref }) => ({ file, line: ref.range.start.line, ref: ref.name }));
   return { sources, brokenRefs };
 }
 

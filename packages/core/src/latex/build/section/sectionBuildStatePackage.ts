@@ -3,7 +3,7 @@
 export const SECTION_STATE_PACKAGE = "labshelf-state";
 
 /** The state file of a job; TeX writes it into the output folder, the only place `openout_any=p` allows. */
-export function sectionStateFileName(jobName: string): string {
+export function deriveSectionBuildStateFileName(jobName: string): string {
   return `${jobName}.lsstate`;
 }
 
@@ -26,7 +26,7 @@ function boundaryRecord(): string {
 // no breakpoint and leaves `\lastskip` alone. A class that bypasses `\@xsect`, `\@part` and `\@chapter` writes no landing record.
 // PLATFORM: `\AddToHook`, `\ReadonlyShipoutCounter` and `\CurrentFile` need LaTeX 2020-10; an older kernel loads nothing.
 // PLATFORM: `cmd/section/after` cannot be used: it lands before `\@startsection`'s `\@ifstar` and breaks every heading.
-export function sectionStatePackage(): string {
+export function createSectionBuildStatePackage(): string {
   return [
     "\\NeedsTeXFormat{LaTeX2e}",
     `\\ProvidesPackage{${SECTION_STATE_PACKAGE}}[LabShelf section state]`,

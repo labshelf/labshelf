@@ -27,7 +27,7 @@ export function readDelimited(text: string, at: number, open: "{" | "["): Delimi
   return undefined;
 }
 
-export function skipSpace(text: string, from: number): number {
+export function findSpaceEnd(text: string, from: number): number {
   let i = from;
   while (i < text.length && /\s/.test(text[i]!)) { i++; }
   return i;

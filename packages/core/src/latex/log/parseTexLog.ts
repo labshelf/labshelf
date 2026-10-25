@@ -1,7 +1,7 @@
 /** Lists the problems of a LaTeX build from its transcript, in plain language and in the order TeX met them. */
 
 import type { LatexEngine } from "../../writing/project/index.js";
-import { explainTexMessage, type BuildProblem } from "./explainTexMessage.js";
+import { describeTexMessage, type BuildProblem } from "./describeTexMessage.js";
 import { readTexLog, type TexLogMessage } from "./readTexLog.js";
 
 // TeX follows a fatal error with these; they say only that the run stopped.
@@ -18,7 +18,7 @@ export function parseTexLog(log: string, engine: LatexEngine): BuildProblem[] {
   const seen = new Set<string>();
   const problems: BuildProblem[] = [];
   for (const message of messages.filter(kept)) {
-    const problem = explainTexMessage(message, engine);
+    const problem = describeTexMessage(message, engine);
     if (!problem || seen.has(key(problem))) { continue; }
     seen.add(key(problem));
     problems.push(problem);

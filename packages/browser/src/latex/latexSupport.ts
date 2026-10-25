@@ -14,7 +14,7 @@ import { keymap } from "@codemirror/view";
 import {
   type PaperRecord,
   partialKeyStart,
-  environmentToClose,
+  findEnvironmentToClose,
   LATEX_COMMANDS,
   LATEX_ENVIRONMENTS,
   type LatexCatalogEntry,
@@ -84,7 +84,7 @@ export const closeEnvironmentOnEnter: StateCommand = ({ state, dispatch }) => {
   const line = state.doc.lineAt(range.head);
   // Enter only counts at the end of the \begin line.
   if (line.text.slice(range.head - line.from).trim() !== "") return false;
-  const name = environmentToClose(line.text.slice(0, range.head - line.from), () => state.sliceDoc(line.to));
+  const name = findEnvironmentToClose(line.text.slice(0, range.head - line.from), () => state.sliceDoc(line.to));
   if (name === undefined) return false;
   const indent = /^\s*/.exec(line.text)![0];
   const body = `\n${indent}${state.facet(indentUnit)}`;

@@ -16,7 +16,7 @@ export interface ManagedTex {
 // INVARIANT: a full TeX Live is preferred over TinyTeX when both are present.
 const KINDS: ManagedTexKind[] = ["texlive", "tinytex"];
 
-export function managedTexRoot(texRoot: string, kind: ManagedTexKind): string {
+export function resolveManagedTexDir(texRoot: string, kind: ManagedTexKind): string {
   return join(texRoot, kind);
 }
 
@@ -42,7 +42,7 @@ export async function readTexLiveYear(root: string): Promise<number | null> {
 /** The managed TeX under `texRoot`, or null when none has a bin dir. */
 export async function findManagedTex(texRoot: string): Promise<ManagedTex | null> {
   for (const kind of KINDS) {
-    const root = managedTexRoot(texRoot, kind);
+    const root = resolveManagedTexDir(texRoot, kind);
     const binDir = await firstBinDir(root);
     if (binDir !== null) { return { kind, root, binDir, year: await readTexLiveYear(root) }; }
   }

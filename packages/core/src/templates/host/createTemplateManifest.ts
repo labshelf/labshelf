@@ -11,10 +11,10 @@ const MAX_DESCRIPTION_LENGTH = 500;
 /** The manifest needs one author before sign-in; the submission replaces it with the GitHub login. */
 const PLACEHOLDER_AUTHOR = "unsigned";
 
-export type ManifestResult = { ok: true; manifest: TemplateManifest } | { ok: false; error: string };
+export type PublishTemplateManifestResult = { ok: true; manifest: TemplateManifest } | { ok: false; error: string };
 
 /** The page is untrusted, so the draft is validated again here. */
-export function buildPublishManifest(draft: PublishDraft, project: PublishableProject): ManifestResult {
+export function createPublishTemplateManifest(draft: PublishDraft, project: PublishableProject): PublishTemplateManifestResult {
   const name = draft.name.trim();
   if (name === "") { return { ok: false, error: "Give the template a name." }; }
   if (name.length > MAX_NAME_LENGTH) { return { ok: false, error: `The name is over ${MAX_NAME_LENGTH} characters.` }; }

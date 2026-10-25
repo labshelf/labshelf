@@ -5,11 +5,11 @@ import { createHash } from "node:crypto";
 
 import { extractArchive, type FetchLike } from "../index.js";
 
-import { managedTexRoot } from "./texLayout.js";
-import { texLiveProfile } from "./texLiveProfile.js";
+import { resolveManagedTexDir } from "./texLayout.js";
+import { createTexLiveProfile } from "./createTexLiveProfile.js";
 import { runTexTool, TEX_MODULE } from "./runTexTool.js";
 import type { TexInstallDeps, TexInstallRun } from "./texInstall.js";
-import { singleTopDir } from "./unpackedDir.js";
+import { findSingleTopDir } from "./unpackedDir.js";
 import { withStagingDir } from "./stagingDir.js";
 import type { ILogger } from "../../../../ports/index.js";
 import { verifyDetachedSignature } from "../verifySignature.js";
@@ -78,7 +78,7 @@ function installTlCommand(dir: string, profile: string): { executable: string; a
 
 export async function installTexLive(deps: TexInstallDeps, run: TexInstallRun): Promise<void> {
   run.onProgress(null);
-  const root = managedTexRoot(run.texRoot, "texlive");
+  const root = resolveManagedTexDir(run.texRoot, "texlive");
   const installer = await downloadTexLiveInstaller(deps.fetchImpl, deps.logger, process.platform);
   await withStagingDir(run.texRoot, "texlive", async (staging) => {
     const tree = join(staging, "tree");
@@ -87,8 +87,8 @@ export async function installTexLive(deps: TexInstallDeps, run: TexInstallRun): 
     await writeFile(archive, installer.bytes);
     await extractArchive(archive, installer.kind, tree);
     const profile = join(staging, "texlive.profile");
-    await writeFile(profile, texLiveProfile(run.texRoot));
-    const command = installTlCommand(await singleTopDir(tree), profile);
+    await writeFile(profile, createTexLiveProfile(run.texRoot));
+    const command = installTlCommand(await findSingleTopDir(tree), profile);
     // INVARIANT: a texlive tree exists only after install-tl succeeded, because its presence means "installed".
     await rm(root, { recursive: true, force: true });
     const outcome = await runTexTool({ ...command, cwd: staging, logger: deps.logger, onProgress: run.onProgress });

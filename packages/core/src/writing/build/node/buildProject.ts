@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import { classifyTexProblems, type LatexBuildResult } from "../../../latex/build/index.js";
+import { deriveTexProblemClass, type LatexBuildResult } from "../../../latex/build/index.js";
 import { runLatexBuild } from "../../../latex/build/node/index.js";
 import type { ProjectEntry } from "../../project/index.js";
 import { rootBuildFolder } from "../../project/buildRoot/index.js";
@@ -77,7 +77,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
       ...(options.editedLine !== undefined && { editedLine: options.editedLine }),
       ...(options.haltOnError !== undefined && { haltOnError: options.haltOnError }),
     }),
-    missingFile: (result) => ("problems" in result ? classifyTexProblems(result.problems).missingFile : undefined),
+    missingFile: (result) => ("problems" in result ? deriveTexProblemClass(result.problems).missingFile : undefined),
     tex: { installMissing: (fileName) => deps.prompt.progress(`Installing the LaTeX package for ${fileName}`, () => deps.tex.installMissing(fileName)) },
     logger: deps.logger,
   });

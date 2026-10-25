@@ -1,5 +1,5 @@
 // Forks the templates repository, commits a template to a branch and opens a pull request.
-import type { SubmitTemplateInput, SubmitTemplateResult, RepoRef, GitHubStep } from "./templatePullRequest.js";
+import type { PublishTemplateInput, PublishTemplateResult, RepoReference, GitHubStep } from "./templatePullRequest.js";
 import { bytesToBase64 } from "../../encoding/index.js";
 import type { TemplateFile } from "../index.js";
 import { GitHubError } from "./githubError.js";
@@ -51,12 +51,12 @@ interface RepoInfo {
 // so the fork is whatever POST /forks names: the existing fork, or a new one GitHub may rename.
 async function ensureFork(
   client: GitHubClient,
-  upstream: RepoRef,
+  upstream: RepoReference,
   sleep: (ms: number) => Promise<void>,
-): Promise<RepoRef> {
+): Promise<RepoReference> {
   const created = await githubRequest<RepoInfo>(client, "fork", "POST", `/repos/${upstream.owner}/${upstream.repo}/forks`, {});
   const [owner, repo] = created.full_name.split("/") as [string, string];
-  const fork: RepoRef = { owner, repo };
+  const fork: RepoReference = { owner, repo };
   for (let poll = 0; poll < MAX_POLLS; poll++) {
     if (await answers(client, fork)) return fork;
     await sleep(POLL_MS);
@@ -64,7 +64,7 @@ async function ensureFork(
   throw new GitHubError("wait", 0, `The fork ${created.full_name} was not ready after ${(MAX_POLLS * POLL_MS) / 1000}s.`);
 }
 
-async function answers(client: GitHubClient, fork: RepoRef): Promise<boolean> {
+async function answers(client: GitHubClient, fork: RepoReference): Promise<boolean> {
   try {
     const info = await githubRequest<RepoInfo>(client, "wait", "GET", `/repos/${fork.owner}/${fork.repo}`);
     return info.full_name.toLowerCase() === `${fork.owner}/${fork.repo}`.toLowerCase();
@@ -80,13 +80,13 @@ interface Sha {
   sha: string;
 }
 
-async function syncFork(client: GitHubClient, fork: RepoRef): Promise<void> {
+async function syncFork(client: GitHubClient, fork: RepoReference): Promise<void> {
   await githubRequest(client, "sync", "POST", `${repoPath(fork)}/merge-upstream`, { branch: BASE_BRANCH });
 }
 
 async function commitTemplateFiles(
   client: GitHubClient,
-  fork: RepoRef,
+  fork: RepoReference,
   input: { templateId: string; files: TemplateFile[]; message: string; branch: string },
 ): Promise<void> {
   const repo = repoPath(fork);
@@ -118,11 +118,11 @@ async function commitTemplateFiles(
   });
 }
 
-function repoPath(repo: RepoRef): string {
+function repoPath(repo: RepoReference): string {
   return `/repos/${repo.owner}/${repo.repo}`;
 }
 
-export async function submitTemplatePullRequest(input: SubmitTemplateInput): Promise<SubmitTemplateResult> {
+export async function publishTemplatePullRequest(input: PublishTemplateInput): Promise<PublishTemplateResult> {
   const client = { fetch: input.fetch, token: input.token };
   const sleep = input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const date = (input.now ?? (() => new Date()))().toISOString().slice(0, 10);

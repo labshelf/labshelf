@@ -1,6 +1,6 @@
 // Reads what running biber needs from a biblatex control file (.bcf): its format version and the data sources it lists.
 
-export interface DataSource {
+export interface BibliographySource {
   /** The path as `\addbibresource` gave it. */
   path: string;
   /** `file` or `remote`; only files can be read without the network. */
@@ -10,7 +10,7 @@ export interface DataSource {
 export interface ControlFile {
   /** The `version` of `<bcf:controlfile>`, which pairs one biblatex release with one biber release. */
   version: string | undefined;
-  dataSources: DataSource[];
+  dataSources: BibliographySource[];
 }
 
 const XML_ENTITIES: Readonly<Record<string, string>> = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'" };

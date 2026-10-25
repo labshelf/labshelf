@@ -2,10 +2,10 @@
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
-import { templateByLine, templateMetaLine, templateUsesLabel } from "../templateLabels.js";
+import { formatTemplateByLine, formatTemplateMetaLine, formatTemplateUsesLabel } from "../templateLabels.js";
 
 /** Fills a thumbnail box with the image, or with the placeholder icon when there is none. */
-export function fillThumb(box: HTMLElement, dataUri: string | undefined, alt: string): void {
+export function updateThumbnailBox(box: HTMLElement, dataUri: string | undefined, alt: string): void {
   if (dataUri === undefined) {
     box.replaceChildren(renderElement("span", { class: "ls-tpl-thumb-icon", html: renderIcon("file-text") }));
     return;
@@ -20,15 +20,15 @@ export interface TemplateCard {
 }
 
 export function renderTemplateCard(entry: TemplateEntry, thumbnail: string | undefined): TemplateCard {
-  const by = templateByLine(entry);
+  const by = formatTemplateByLine(entry);
   const thumb = renderElement("div", { class: "ls-tpl-thumb" });
   const button = renderElement("button", { class: "ls-tpl-card", type: "button", "aria-label": entry.name, tabindex: -1 },
     thumb,
     renderElement("div", { class: "ls-tpl-card-body" },
       renderElement("div", { class: "ls-tpl-card-name", text: entry.name, title: entry.name }),
       renderElement("div", { class: "ls-tpl-card-by", text: by, title: by }),
-      renderElement("div", { class: "ls-tpl-card-meta", text: [templateMetaLine(entry), templateUsesLabel(entry)].filter((part) => part !== undefined).join(" · ") })));
-  const setThumbnail = (dataUri: string | undefined): void => fillThumb(thumb, dataUri, "");
+      renderElement("div", { class: "ls-tpl-card-meta", text: [formatTemplateMetaLine(entry), formatTemplateUsesLabel(entry)].filter((part) => part !== undefined).join(" · ") })));
+  const setThumbnail = (dataUri: string | undefined): void => updateThumbnailBox(thumb, dataUri, "");
   setThumbnail(thumbnail);
   return { item: renderElement("li", {}, button), button, setThumbnail };
 }

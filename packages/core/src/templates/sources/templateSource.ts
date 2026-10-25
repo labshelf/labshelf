@@ -31,15 +31,15 @@ export type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: R
 export type CachedSourceId = Exclude<TemplateSourceId, "mine">;
 
 /** The last index a remote source received, as stored on this device. */
-export interface CachedIndex {
+export interface CachedCatalogIndex {
   body: string;
   etag?: string;
 }
 
 /** Reads and writes the per-device copy of a remote source's index; never synced. */
 export interface TemplateCache {
-  readIndex(source: CachedSourceId): Promise<CachedIndex | undefined>;
-  writeIndex(source: CachedSourceId, index: CachedIndex): Promise<void>;
+  readIndex(source: CachedSourceId): Promise<CachedCatalogIndex | undefined>;
+  writeIndex(source: CachedSourceId, index: CachedCatalogIndex): Promise<void>;
   /** `key` is "<source>/<file>"; a key that would leave the source's thumbnails folder is refused. */
   readThumbnail(key: string): Promise<Uint8Array | undefined>;
   writeThumbnail(key: string, bytes: Uint8Array): Promise<void>;

@@ -14,7 +14,7 @@ const toBase64 = (bytes: Uint8Array): string => {
 };
 
 /** @returns the data: URI of a PNG or WebP image, or undefined for any other bytes (a page must never render unknown content) */
-export function thumbnailDataUri(bytes: Uint8Array): string | undefined {
+export function createThumbnailUri(bytes: Uint8Array): string | undefined {
   const mime = startsWith(bytes, PNG_MAGIC) ? "image/png"
     : startsWith(bytes, RIFF_MAGIC) && startsWith(bytes, WEBP_TAG, 8) ? "image/webp"
     : undefined;

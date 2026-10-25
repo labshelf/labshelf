@@ -1,33 +1,33 @@
 // Runs the Publish screen's work: opens a project, runs its checks, signs in to GitHub and submits the pull request.
 import type { PublishDraft, PublishProject } from "../protocol/index.js";
 import type { PublishHost } from "./galleryHost.js";
-import { noteFailure, requireProject, type PublishContext, draftKey } from "./publishContext.js";
+import { reportPublishFailure, ensurePublishableProject, type PublishContext, deriveDraftFingerprint } from "./publishContext.js";
 import type { PublishableProject, PublishMessage, PublishPorts } from "./publishPorts.js";
-import { TEMPLATES_LOG_MODULE } from "./useTemplate.js";
+import { TEMPLATES_LOG_MODULE } from "./createTemplateProject.js";
 import type { TemplateManifest } from "../templateManifest/index.js";
-import { buildPublishManifest, withAuthors } from "./createTemplateManifest.js";
+import { createPublishTemplateManifest, withAuthors } from "./createTemplateManifest.js";
 import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
-import { thumbnailDataUri } from "./thumbnailUri.js";
+import { createThumbnailUri } from "./thumbnailUri.js";
 import type { PublishCheckReport } from "../publishCheckReport.js";
 
 async function runPublishChecks(ctx: PublishContext, project: PublishableProject, draft: PublishDraft): Promise<PublishCheckReport> {
   const { ports } = ctx;
-  const built = buildPublishManifest(draft, project);
+  const built = createPublishTemplateManifest(draft, project);
   if (!built.ok) { throw new Error(built.error); }
   ports.post({ type: "publish.checks", checks: PUBLISH_CHECK_IDS.map((id) => ({ id })), running: true });
   const report = await ports.check({
     projectFolder: project.folder, manifest: built.manifest, logger: ports.logger,
     buildPdf: () => ports.buildPdf(project), renderThumbnail: ports.renderThumbnail,
   });
-  const thumbnail = report.thumbnail && thumbnailDataUri(report.thumbnail);
+  const thumbnail = report.thumbnail && createThumbnailUri(report.thumbnail);
   ports.post({ type: "publish.checks", checks: report.checks, running: false, ...(thumbnail ? { thumbnail } : {}) });
-  ctx.passed = report.ok ? { key: draftKey(project.id, draft), report } : undefined;
+  ctx.passed = report.ok ? { key: deriveDraftFingerprint(project.id, draft), report } : undefined;
   return report;
 }
 
 /** Never trusts the page: a report is reused only when it passed for this exact project and draft. */
 async function passingReport(ctx: PublishContext, project: PublishableProject, draft: PublishDraft): Promise<PublishCheckReport> {
-  if (ctx.passed?.key === draftKey(project.id, draft)) { return ctx.passed.report; }
+  if (ctx.passed?.key === deriveDraftFingerprint(project.id, draft)) { return ctx.passed.report; }
   const report = await runPublishChecks(ctx, project, draft);
   if (!report.ok || !report.files) { throw new Error("The checks do not pass; fix them and run them again."); }
   return report;
@@ -39,7 +39,7 @@ async function saveLocally(ctx: PublishContext, project: PublishableProject, man
   try {
     await ctx.ports.saveToMyTemplates(project, manifest);
   } catch (error) {
-    await noteFailure(ctx, "saveToMyTemplates", project.id, error, `The pull request is open, but "${manifest.name}" could not be saved to My templates`);
+    await reportPublishFailure(ctx, "saveToMyTemplates", project.id, error, `The pull request is open, but "${manifest.name}" could not be saved to My templates`);
   }
 }
 
@@ -47,8 +47,8 @@ async function submitPublish(ctx: PublishContext, page: PublishProject, draft: P
   const { ports, signedIn } = ctx;
   try {
     if (signedIn === undefined) { throw new Error("Sign in with GitHub first."); }
-    const project = await requireProject(ctx, page.id);
-    const built = buildPublishManifest(draft, project);
+    const project = await ensurePublishableProject(ctx, page.id);
+    const built = createPublishTemplateManifest(draft, project);
     if (!built.ok) { throw new Error(built.error); }
     const report = await passingReport(ctx, project, draft);
     const manifest = { ...built.manifest, authors: [signedIn.login] };
@@ -62,7 +62,7 @@ async function submitPublish(ctx: PublishContext, page: PublishProject, draft: P
     await saveLocally(ctx, project, manifest);
     ports.post({ type: "publish.submitted", url: result.url });
   } catch (error) {
-    const cause = await noteFailure(ctx, "submit", page.id, error, `Could not submit "${draft.name}"`);
+    const cause = await reportPublishFailure(ctx, "submit", page.id, error, `Could not submit "${draft.name}"`);
     ports.post({ type: "publish.failed", error: cause });
   }
 }
@@ -72,19 +72,19 @@ const pageProject = (p: PublishableProject): PublishProject => ({ id: p.id, titl
 async function open(ctx: PublishContext, projectId?: string): Promise<void> {
   const { projects, post } = ctx.ports;
   try {
-    const project = projectId === undefined ? await projects.pick() : await requireProject(ctx, projectId);
+    const project = projectId === undefined ? await projects.pick() : await ensurePublishableProject(ctx, projectId);
     if (project === undefined) { return; }
     post({ type: "publish.open", project: pageProject(project), draft: { name: project.title, category: "article", license: "MIT", description: "" } });
   } catch (error) {
-    await noteFailure(ctx, "open", projectId, error, "Could not open the Publish screen");
+    await reportPublishFailure(ctx, "open", projectId, error, "Could not open the Publish screen");
   }
 }
 
 async function check(ctx: PublishContext, page: PublishProject, draft: PublishDraft): Promise<void> {
   try {
-    await runPublishChecks(ctx, await requireProject(ctx, page.id), draft);
+    await runPublishChecks(ctx, await ensurePublishableProject(ctx, page.id), draft);
   } catch (error) {
-    const cause = await noteFailure(ctx, "check", page.id, error, "Could not run the checks");
+    const cause = await reportPublishFailure(ctx, "check", page.id, error, "Could not run the checks");
     ctx.ports.post({ type: "publish.failed", error: cause });
   }
 }
@@ -94,7 +94,7 @@ async function signIn(ctx: PublishContext): Promise<void> {
     ctx.signedIn = await ctx.ports.auth.signIn();
     ctx.ports.post({ type: "publish.auth", login: ctx.signedIn.login });
   } catch (error) {
-    const cause = await noteFailure(ctx, "signIn", undefined, error, "Could not sign in to GitHub");
+    const cause = await reportPublishFailure(ctx, "signIn", undefined, error, "Could not sign in to GitHub");
     ctx.ports.post({ type: "publish.auth", error: cause });
   }
 }

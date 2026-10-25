@@ -1,5 +1,5 @@
 /** Verifies installing a project from template files: layout, validation before any write, staging cleanup, blank templates. */
-import { createProjectFromTemplate, blankTemplate, type ProjectTemplate } from "@labshelf/core";
+import { createProjectFromTemplate, createBlankTemplate, type ProjectTemplate } from "@labshelf/core";
 
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
 import { LIB, filesUnder, memoryCatalog, readText, writeTree, type MemoryCatalog } from "../../../support/memoryProjectCatalog";
@@ -125,7 +125,7 @@ describe("createProjectFromTemplate", () => {
 
   it("gives a second project with the same title the suffix a", async () => {
     const context = memoryCatalog();
-    const request = { title: "Thesis", ...blankTemplate("latex", "Thesis") };
+    const request = { title: "Thesis", ...createBlankTemplate("latex", "Thesis") };
     await createProjectFromTemplate(context, LIB, request);
     const second = await createProjectFromTemplate(context, LIB, request);
     expect(second.kind === "ready" && second.settings.id).toBe("thesisa");
@@ -136,7 +136,7 @@ describe("createProjectFromTemplate", () => {
     const context = memoryCatalog();
     await writeTree(context.fs, "/elsewhere/p", { "labshelf.yaml": "id: thesis\nformat: latex\n" });
     await context.registry.register(LIB, "/elsewhere/p");
-    const entry = await createProjectFromTemplate(context, LIB, { title: "Thesis", ...blankTemplate("latex", "Thesis") });
+    const entry = await createProjectFromTemplate(context, LIB, { title: "Thesis", ...createBlankTemplate("latex", "Thesis") });
     expect(entry.kind === "ready" && entry.settings.id).toBe("thesisa");
   });
 });
@@ -148,7 +148,7 @@ function nothingLeftInStaging(context: MemoryCatalog): void {
 describe("createProjectFromTemplate with blank templates", () => {
   it("creates the blank LaTeX article exactly", async () => {
     const context = memoryCatalog();
-    await createProjectFromTemplate(context, LIB, { title: "Deep Nets: a Survey", ...blankTemplate("latex", "Deep Nets: a Survey") });
+    await createProjectFromTemplate(context, LIB, { title: "Deep Nets: a Survey", ...createBlankTemplate("latex", "Deep Nets: a Survey") });
     const folder = `${LIB}/projects/deep-nets-a-survey`;
     expect(filesUnder(context.fs, folder)).toEqual(["labshelf.yaml", "main.tex"]);
     expect(readText(context.fs, `${folder}/labshelf.yaml`)).toBe("id: deep-nets-a-survey\nformat: latex\nmain: main.tex\n");
@@ -160,7 +160,7 @@ describe("createProjectFromTemplate with blank templates", () => {
 
   it("creates the blank Typst article exactly", async () => {
     const context = memoryCatalog();
-    await createProjectFromTemplate(context, LIB, { title: "Notes", ...blankTemplate("typst", "Notes") });
+    await createProjectFromTemplate(context, LIB, { title: "Notes", ...createBlankTemplate("typst", "Notes") });
     const folder = `${LIB}/projects/notes`;
     expect(filesUnder(context.fs, folder)).toEqual(["labshelf.yaml", "main.typ"]);
     expect(readText(context.fs, `${folder}/labshelf.yaml`)).toBe("id: notes\nformat: typst\nmain: main.typ\n");

@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES } from "./catalogLimits.js";
-import { thumbnailProblem } from "./thumbnailProblem.js";
+import { deriveThumbnailProblem } from "./deriveThumbnailProblem.js";
 
 export type Previews = { thumbnail: Uint8Array; sample: Uint8Array };
 type Read<T> = { value: T } | { problem: string };
@@ -24,7 +24,7 @@ async function readRegularFile(folder: string, name: string, maxBytes: number): 
 export async function readPreviews(previewFolder: string): Promise<Read<Previews>> {
   const thumbnail = await readRegularFile(previewFolder, "thumbnail.png", THUMBNAIL_MAX_BYTES);
   if ("problem" in thumbnail) { return { problem: `thumbnail: ${thumbnail.problem}` }; }
-  const problem = thumbnailProblem(thumbnail.value);
+  const problem = deriveThumbnailProblem(thumbnail.value);
   if (problem !== undefined) { return { problem: `thumbnail: ${problem}` }; }
   const sample = await readRegularFile(previewFolder, "sample.pdf", SAMPLE_MAX_BYTES);
   if ("problem" in sample) { return { problem: `sample: ${sample.problem}` }; }

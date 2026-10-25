@@ -2,14 +2,14 @@
 import { readFile } from "node:fs/promises";
 
 import {
-  submitTemplatePullRequest,
+  publishTemplatePullRequest,
   type ProjectFormat,
   type PublishBuildResult,
   type TemplateManifest,
   type GitHubSignIn,
-  engineLabel,
+  formatEngineLabel,
 } from "@labshelf/core";
-import { checkTemplateForPublish, renderFirstPagePng, saveProjectAsTemplate } from "@labshelf/core/node";
+import { checkTemplateForPublish, renderFirstPagePng, writeProjectAsTemplate } from "@labshelf/core/node";
 import type { FinishedBuild } from "../../build/index.js";
 import type { PublishableProject, PublishPorts } from "@labshelf/core";
 import * as vscode from "vscode";
@@ -33,7 +33,7 @@ async function toPublishable(deps: PublishProjectDeps, project: ReadyProject): P
   if (project.main === undefined) { throw new Error(`project "${id}" has no main file`); }
   const engine = format === "typst" ? "typst" : project.settings.engine ?? (await ensureToolchain({ tex: deps.tex, host: deps.host }, project))?.engine;
   if (engine === undefined) { return undefined; }
-  const label = engine === "typst" ? "Typst" : engineLabel(engine);
+  const label = engine === "typst" ? "Typst" : formatEngineLabel(engine);
   return { id, title: id, folder: project.folder, engineLabel: label, format, engine, main: project.main };
 }
 
@@ -83,7 +83,7 @@ async function saveToMyTemplates(deps: PublishPortsDeps, project: PublishablePro
   if (!session) { throw new Error("No library is open to save the template in."); }
   const { name, category, license, description, authors, engine } = manifest;
   const latexEngine = engine === "typst" ? undefined : engine;
-  await saveProjectAsTemplate(session.root, project.id, { name, category, license, description, authors, ...(latexEngine ? { engine: latexEngine } : {}) }, session.logger);
+  await writeProjectAsTemplate(session.root, project.id, { name, category, license, description, authors, ...(latexEngine ? { engine: latexEngine } : {}) }, session.logger);
 }
 
 export function createPublishPorts(deps: PublishPortsDeps): Omit<PublishPorts, "logger" | "post"> {
@@ -93,7 +93,7 @@ export function createPublishPorts(deps: PublishPortsDeps): Omit<PublishPorts, "
     buildPdf: (project) => buildPdf(deps.builders, project),
     renderThumbnail: (pdf) => renderFirstPagePng(pdf, THUMBNAIL_WIDTH_PX),
     check: checkTemplateForPublish,
-    submit: (input) => submitTemplatePullRequest({
+    submit: (input) => publishTemplatePullRequest({
       ...input, fetch: deps.fetch, now: () => new Date(), sleep: (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
     }),
     saveToMyTemplates: (project, manifest) => saveToMyTemplates(deps, project, manifest),

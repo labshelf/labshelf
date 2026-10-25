@@ -1,10 +1,10 @@
 /** Verifies that an include tree flattens into the order the text reads, with each include where it is written. */
-import { collectProjectSources } from "../../../../src/latex/source/project";
+import { readLatexProjectSources } from "../../../../src/latex/source/project";
 import { readingOrderTexts, wordsUpTo } from "../../../../src/writing/checks/limits";
 
 async function flatten(files: Record<string, string>) {
   const texts = new Map<string, string>();
-  const tree = await collectProjectSources("main.tex", {
+  const tree = await readLatexProjectSources("main.tex", {
     read: async (path) => {
       const text = files[path];
       if (text !== undefined) { texts.set(path, text); }

@@ -7,7 +7,7 @@ import type {
   PublishProject,
   PublishCheckResult,
 } from "../protocol/index.js";
-import { fillThumb } from "./templateCard.js";
+import { updateThumbnailBox } from "./templateCard.js";
 import { createCheckList } from "./checkList.js";
 import { createGithubStep } from "./githubStep.js";
 import { createPublishForm } from "./publishForm.js";
@@ -184,7 +184,7 @@ export function createPublishScreen(options: PublishScreenOptions): PublishScree
   function render(): void {
     checkList.update(state.results, state.running, form.isValid());
     github.update({ visible: allChecksPassed(state), login: state.login, signingIn: state.signingIn, submitting: state.submitting, error: state.error });
-    fillThumb(layout.preview, state.thumbnail, `First page of the ${project.title} template`);
+    updateThumbnailBox(layout.preview, state.thumbnail, `First page of the ${project.title} template`);
   }
 
   function route(message: HostToGallery): void {

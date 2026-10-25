@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  collectProjectSources, type ILogger, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
+  readLatexProjectSources, type ILogger, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
 } from "@labshelf/core";
 import { owningProject, type ReadyProject } from "../../writing/index.js";
 import type { WritingProjects } from "../../writing/session/index.js";
@@ -89,7 +89,7 @@ export class LatexProjectSources implements vscode.Disposable {
         return text;
       },
     };
-    const sources = await collectProjectSources(main, reader);
+    const sources = await readLatexProjectSources(main, reader);
     return { root, main, ...sources, texts };
   }
 

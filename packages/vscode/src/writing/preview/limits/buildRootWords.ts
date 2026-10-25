@@ -1,5 +1,5 @@
 // Counts the words of a preview root across its includes, up to where the project's limits stop counting.
-import { collectProjectSources, readingOrderTexts, wordsUpTo, type ProjectSourceReader } from "@labshelf/core";
+import { readLatexProjectSources, readingOrderTexts, wordsUpTo, type ProjectSourceReader } from "@labshelf/core";
 
 import type { ReadyProject } from "../../buildRootDocument.js";
 
@@ -17,7 +17,7 @@ export async function rootWords(deps: RootWordsDeps, project: ReadyProject, root
     return text === undefined ? 0 : wordsUpTo([{ text }], countUpTo);
   }
   const texts = new Map<string, string>();
-  const tree = await collectProjectSources(root, {
+  const tree = await readLatexProjectSources(root, {
     read: async (path) => {
       const text = await reader.read(path);
       if (text !== undefined) { texts.set(path, text); }

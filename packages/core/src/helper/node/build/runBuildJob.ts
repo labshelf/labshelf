@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { builtPdfPath } from "../../../writing/build/index.js";
 import { type ILogger } from "../../../ports/index.js";
-import { classifyTexProblems, type LocatedProblem } from "../../../latex/build/index.js";
+import { deriveTexProblemClass, type LocatedProblem } from "../../../latex/build/index.js";
 import { type ProjectEntry } from "../../../writing/project/index.js";
 import type { ProjectBuildQueue } from "../../../writing/build/node/index.js";
 import { PROTOCOL_VERSION, type HelperBuildState, type ToHelperMessage } from "../../index.js";
@@ -59,7 +59,7 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
     });
     return;
   }
-  const { shellEscape } = classifyTexProblems(problems);
+  const { shellEscape } = deriveTexProblemClass(problems);
   if (shellEscape) { return reply("needs-shell-escape", [{ severity: "error", message: shellEscape, file: message.main }, ...problems]); }
   await job.logger.log("WARN", BUILD_MODULE, "Build failed", { projectId: message.projectId, main: message.main, status: result.status });
   reply("failed", problems);

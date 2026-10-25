@@ -27,4 +27,4 @@
  */
 export type { LatexCatalogEntry } from "./latexCatalogEntry.js";
 export { LATEX_COMMANDS, LATEX_ENVIRONMENTS } from "./catalogEntries.js";
-export { environmentToClose } from "./closeEnvironment.js";
+export { findEnvironmentToClose } from "./closeEnvironment.js";

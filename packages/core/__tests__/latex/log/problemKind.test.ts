@@ -1,10 +1,10 @@
 // Tests that explained TeX messages carry the kind and subject the preview marks on the PDF.
-import { explainTexMessage } from '../../../src/latex/log/explainTexMessage';
+import { describeTexMessage } from '../../../src/latex/log/describeTexMessage';
 
 type Kinded = { kind?: string; subject?: string };
-const explain = (m: Parameters<typeof explainTexMessage>[0]) => explainTexMessage(m, 'pdflatex') as (Kinded & object) | null;
+const explain = (m: Parameters<typeof describeTexMessage>[0]) => describeTexMessage(m, 'pdflatex') as (Kinded & object) | null;
 
-describe('explainTexMessage kind and subject', () => {
+describe('describeTexMessage kind and subject', () => {
   it('marks an undefined citation with its key', () => {
     const p = explain({ kind: 'warning', source: 'LaTeX', text: "Citation 'foo' on page 1 undefined on input line 12.", file: 'main.tex', line: 12 });
     expect(p).toMatchObject({ kind: 'undefinedCitation', subject: 'foo' });

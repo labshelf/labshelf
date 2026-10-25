@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { listProjectsOnDisk, nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
 import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/index";
-import { blankTemplate } from "../../../../src/templates/index";
+import { createBlankTemplate } from "../../../../src/templates/index";
 import type { ProjectFormat } from "../../../../src/writing/project/index";
 import type { ILogger } from "../../../../src/ports/index";
 import { fakeLogger } from "../../../support/fakeLogger";
@@ -13,7 +13,7 @@ import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 afterEach(cleanupTempDirs);
 
 function createBlankProject(lib: string, request: { title: string; format: ProjectFormat }, logger: ILogger) {
-  return createProjectFromTemplate(nodeProjectCatalogContext(logger), lib, { title: request.title, ...blankTemplate(request.format, request.title) });
+  return createProjectFromTemplate(nodeProjectCatalogContext(logger), lib, { title: request.title, ...createBlankTemplate(request.format, request.title) });
 }
 
 function addFolder(lib: string, folder: string, format: ProjectFormat, logger: ILogger) {

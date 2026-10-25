@@ -5,7 +5,7 @@ import {
   LATEX_COMMANDS,
   LATEX_ENVIRONMENTS,
   type LatexCatalogEntry,
-  environmentToClose,
+  findEnvironmentToClose,
 } from "@labshelf/core";
 
 const NEWLINE_WITH_INDENT = /^\r?\n([ \t]*)$/;
@@ -39,7 +39,7 @@ function enteredNewline(document: vscode.TextDocument, change: vscode.TextDocume
 }
 
 function closeEnvironment(document: vscode.TextDocument, trigger: Trigger): void {
-  const name = environmentToClose(trigger.lineBeforeEnd, () => document.getText().slice(document.offsetAt(trigger.cursor)));
+  const name = findEnvironmentToClose(trigger.lineBeforeEnd, () => document.getText().slice(document.offsetAt(trigger.cursor)));
   if (name === undefined) { return; }
   const editor = vscode.window.visibleTextEditors.find((candidate) => candidate.document === document);
   if (!editor) { return; }
