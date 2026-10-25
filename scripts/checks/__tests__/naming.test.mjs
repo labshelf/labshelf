@@ -24,7 +24,8 @@ const vocab = {
   formats: ['pdf', 'hex', 'base64', 'url'],
   subjects: { paper: { def: 'p' }, libraryRoot: { def: 'l' } },
   features: { space: { def: 's', home: ['**/spaces/**'], syn: ['room'], words: ['spaceDir'] } },
-  tools: ['pdfjs'],
+  tools: ['pdfjs', 'openalex', 'semanticScholar'],
+  external: [{ name: 'activate', files: ['packages/ext/src/extension.ts'] }, { name: 'fetch', files: ['packages/core/src/**/index.ts'] }],
   compoundOnly: { root: { use: ['libraryRoot', 'buildRoot'] }, id: { use: ['paperId'], suffix: true } },
   banned: { data: 'name what the data is', result: 'only as a type suffix' },
 };
@@ -96,6 +97,24 @@ test('export-verb: functions start with a verb; a verb synonym reports synonym',
   assert.deepEqual(checkExportName(index, 'createPaper', 'function'), []);
   assert.deepEqual(rules(checkExportName(index, 'paperCreate', 'function')), ['export-verb']);
   assert.deepEqual(rules(checkExportName(index, 'makePaper', 'function')), ['synonym']);
+});
+
+test('a multi-word tool is one word in any casing', () => {
+  for (const name of ['OpenAlexPaper', 'openAlexPaper', 'paperOpenAlex', 'openalexPaper', 'SemanticScholarPaper', 'semanticscholarPaper']) assert.deepEqual(checkExportName(index, name, 'class'), [], name);
+  assert.deepEqual(path('hash/openAlexPaper.ts'), []);
+  assert.deepEqual(path('hash/OpenAlexPaper.ts', { classFile: true }), []);
+  assert.deepEqual(rules(checkExportName(index, 'OpenZorpQuux', 'class')), ['free-words']);
+  assert.deepEqual(rules(path('hash/openAlexZorpQuux.ts')), ['free-words']);
+  assert.ok(rules(path('hash/openAlex/paper.ts')).includes('folder-term'));
+});
+
+test('external: a name an external API requires is exempt only in the declared files', () => {
+  assert.deepEqual(checkExportName(index, 'activate', 'function', 'packages/ext/src/extension.ts'), []);
+  assert.deepEqual(rules(checkExportName(index, 'activate', 'function', 'packages/ext/src/other.ts')), ['export-verb']);
+  assert.deepEqual(rules(checkExportName(index, 'activate', 'function')), ['export-verb']);
+  assert.deepEqual(rules(checkExportName(index, 'deactivate', 'function', 'packages/ext/src/extension.ts')), ['export-verb']);
+  assert.deepEqual(checkExportName(index, 'fetch', 'function', 'packages/core/src/relay/worker/index.ts'), []);
+  assert.deepEqual(rules(checkExportName(index, 'fetch', 'function', 'packages/core/src/relay/worker/room.ts')), ['export-verb']);
 });
 
 test('conversion: <from>To<to> and to<to> need vocabulary terms on every side', () => {
@@ -178,4 +197,19 @@ test('readingStatus lives under library/readingStatus; its feature words are spe
   assert.ok(realPath('hash/readingStatus.ts').includes('feature-home'));
   assert.ok(realPath('hash/unreadPaper.ts').includes('feature-home'));
   assert.ok(!realPath('templates/dom/publishDone.ts').includes('feature-home'));
+});
+
+test('external: the real vocabulary exempts activate and deactivate in the VS Code entry and lists fetch for the Worker', () => {
+  const at = (name, file) => checkExportName(real, name, 'function', file);
+  for (const name of ['activate', 'deactivate']) {
+    assert.deepEqual(at(name, 'packages/vscode/src/extension.ts'), [], name);
+    assert.deepEqual(rules(at(name, 'packages/vscode/src/other.ts')), ['export-verb'], name);
+  }
+  assert.deepEqual(at('fetch', 'packages/core/src/relay/worker/index.ts'), []);
+  assert.ok(real.external.some((item) => item.name === 'fetch'));
+});
+
+test('the real vocabulary reads OpenAlex names as one tool word', () => {
+  assert.deepEqual(checkExportName(real, 'OpenAlexCitationWork', 'type'), []);
+  assert.deepEqual(checkExportName(real, 'OpenAlexSuggestion', 'type'), []);
 });

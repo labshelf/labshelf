@@ -380,6 +380,12 @@ features:
 # Layer E: libraries and products. Allowed in file and export names, never as a folder.
 tools: [pdfjs, prosemirror, tesseract, cloudflare, github, crossref, openalex, pubmed, pmc, semanticScholar, googleScholar, unpaywall, datacite, latexmk, openPgp, vscode, idb, kv, canvas, undoManager]
 
+# Names an external API requires, so they cannot be renamed: exempt from the export rules, only in the listed files (globs).
+external:
+  - { name: activate, files: ["packages/vscode/src/extension.ts"] }
+  - { name: deactivate, files: ["packages/vscode/src/extension.ts"] }
+  - { name: fetch, files: ["packages/core/src/relay/worker/index.ts"] }
+
 # A bare word with a banned or ambiguous sense: allowed only inside one of `use`; `instead` names what the other senses became.
 # `suffix: true`: the word is also valid right after a term, as <term><Word> (projectId, rowKey, TaskStatus); the bare word stays rejected.
 compoundOnly:

@@ -31,7 +31,7 @@ export function checkFile(index, rel, text) {
   const exported = parseExports(text, rel);
   const file = basename(rel).replace(/\.[^.]+$/, "");
   const classFile = exported.some((item) => item.kind === "class" && item.name === file);
-  return [...checkPath(index, rel, { classFile }), ...exported.flatMap((item) => checkExportName(index, item.name, item.kind))];
+  return [...checkPath(index, rel, { classFile }), ...exported.flatMap((item) => checkExportName(index, item.name, item.kind, rel))];
 }
 
 function printSummary(results) {

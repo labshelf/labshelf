@@ -89,6 +89,9 @@ export function buildIndex(vocab) {
   const verbs = vocab.mechanism?.verbs ?? {};
   return {
     words,
+    // A tool is one word in any casing: openAlex, OpenAlex and openalex all read as openalex.
+    toolsJoined: new Map((vocab.tools ?? []).map((tool) => [splitWords(tool).join(""), words.get(splitWords(tool).join(" "))])),
+    external: (vocab.external ?? []).map(({ name, files }) => ({ name, files: files.map(globToRegExp) })),
     maxWords: Math.max(1, ...[...words.keys()].map((key) => key.split(" ").length)),
     verbs: new Set(Object.keys(verbs)),
     verbSynonyms: new Map(Object.entries(verbs).flatMap(([verb, value]) => (value.syn ?? []).map((syn) => [syn, verb]))),
@@ -110,7 +113,7 @@ function lookup(index, parts) {
     const entry = index.words.get([...init, variant].join(" "));
     if (entry) return entry;
   }
-  return undefined;
+  return parts.length > 1 ? index.toolsJoined.get(parts.join("")) : undefined;
 }
 
 // Greedy longest match; an unmatched word becomes a token without entry (a free word).
@@ -252,8 +255,9 @@ function verbViolations(index, name, context) {
   return patternViolations(index, name, context) ?? [{ rule: "export-verb", message: `${context}function name does not start with a verb`, hint, words: [first] }];
 }
 
-// kind: function | class | interface | type | enum.
-export function checkExportName(index, rawName, kind) {
+// kind: function | class | interface | type | enum. file: repo-relative path of the exporting file, for the `external` exemptions.
+export function checkExportName(index, rawName, kind, file = "") {
+  if (index.external.some((item) => item.name === rawName && item.files.some((regex) => regex.test(file)))) return [];
   const name = rawName.replace(/^_+/, "");
   const isFunction = kind === "function";
   const subject = kind === "interface" ? name.replace(/^I(?=[A-Z])/, "") : name;
