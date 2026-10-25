@@ -4,12 +4,41 @@ import { identifiersFromInput } from "../identifiers/index.js";
 import { type NetworkImportEnv, NETWORK_IMPORT_MODULE, pdfFetchOptions, registryEnv } from "./env.js";
 import { importIdentifier, type IdentifierImportOptions } from "./importIdentifier.js";
 import { errorMessage } from "../../logging/index.js";
-import { fetchBytes, isHtml, type Downloaded } from "./downloads.js";
 import { interpretPage, parseHtmlPage } from "../landing/index.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf } from "../pdfFinder/index.js";
 import { resolvePagePaper } from "../paper/index.js";
 import { writeImportedPaper } from "./writeImportedPaper.js";
+
+interface Downloaded {
+  bytes: Uint8Array;
+  contentType: string;
+  /** The URL after redirects; relative links on the page resolve against it. */
+  finalUrl: string;
+}
+
+const MAX_DOWNLOAD_BYTES = 200 * 1024 * 1024;
+const HTML_SNIFF_BYTES = 1024;
+
+/** @throws when the request fails or the file is larger than the cap */
+async function fetchBytes(env: NetworkImportEnv, url: string): Promise<Downloaded> {
+  const { fetch: doFetch, headers } = env.download;
+  const response = await doFetch(url, { redirect: "follow", ...(headers ? { headers } : {}) });
+  if (!response.ok) { throw new Error(`Download failed: HTTP ${response.status}`); }
+  const length = Number(response.headers.get("content-length") ?? 0);
+  if (length > MAX_DOWNLOAD_BYTES) { throw new Error("The file is too large"); }
+  return {
+    bytes: new Uint8Array(await response.arrayBuffer()),
+    contentType: response.headers.get("content-type") ?? "",
+    finalUrl: response.url || url,
+  };
+}
+
+/** Servers mislabel pages, so the body counts as well as the content type. */
+function isHtml({ bytes, contentType }: Downloaded): boolean {
+  if (/html/i.test(contentType)) { return true; }
+  return /^\s*(<!doctype html|<html)/i.test(new TextDecoder().decode(bytes.slice(0, HTML_SNIFF_BYTES)));
+}
 
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 
