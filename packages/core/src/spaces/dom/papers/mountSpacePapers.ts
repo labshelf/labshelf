@@ -1,8 +1,8 @@
 // Mounts Space paper references with folder navigation and cancellable editing.
 import { el, emptyState, closeMenu } from '../../../ui/dom/index.js';
-import type { SpaceBody } from '../overview/index.js';
-import type { ResolvedPaper } from '../../view/index.js';
-import type { PapersContext } from './context.js';
+import type { SpaceBody } from '../spaceOverview/index.js';
+import type { ResolvedPaper } from '../../viewModel/index.js';
+import type { PapersContext } from './papersContext.js';
 import { folderNav } from './folders.js';
 import { paperRow, action } from './rows.js';
 import { confirmRemoval, folderName } from './dialogs.js';

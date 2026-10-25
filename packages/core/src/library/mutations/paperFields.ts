@@ -1,9 +1,10 @@
 /** Changes the fields the user owns on papers (reading status, tags, note, the day a copy was requested), reading each paper from disk first. */
-import type { PaperRecord, PaperStatus } from "../../model/index.js";
-import { editedTags, normalizeTags } from "../identity/index.js";
+import type { PaperRecord } from "../../model/index.js";
+import type { PaperStatus } from "../readingStatus/index.js";
+import { editedTags, normalizeTags } from "../paper/index.js";
 import { errorMessage } from "../../logging/index.js";
-import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./context.js";
-import { readPaperOnDisk } from "./paperOnDisk.js";
+import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type PaperRef } from "./mutationDeps.js";
+import { readPaperOnDisk } from "./paperOnFileSystem.js";
 import { writePaperRecord } from "./paperRecordWrite.js";
 
 export interface PaperFieldsPatch {

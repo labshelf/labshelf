@@ -1,7 +1,7 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
 import * as vscode from "vscode";
 import { conflictOwnerLabel, contentConflictMessage, errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
-import type { ActiveServices } from "../../commands/index.js";
+import type { ActiveServices } from "../../command/index.js";
 import { conflictChoices, toolName } from "./conflictChoices.js";
 import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
 import { walkConflicts } from "./conflictWalk.js";

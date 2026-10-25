@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/{managed-tools,helper,native-host}.md, packages/core/src/writing/latex/toolchain/node/managed/**, packages/core/src/writing/latex/toolchain/{tinyTexPin,downloadVerified}.ts, packages/core/src/writing/helper/**, packages/core/src/writing/latex/build/node/runCancellable.ts, packages/terminal/installers/**, packages/browser/src/helper/**
+files: documents/contracts/{managed-tools,helper,native-host}.md, packages/core/src/latex/toolchain/node/managedTex/**, packages/core/src/latex/toolchain/{tinyTex.ts,node/downloadVerified.ts}, packages/core/src/helper/**, packages/core/src/latex/build/node/runCancellable.ts, packages/terminal/installers/**, packages/browser/src/helper/**
 source: Explore scout
 
 ## Contracts
@@ -12,7 +12,7 @@ source: Explore scout
 - native-host.md:5-9: desktop apps register the same host with own launcher; ready.host = helper|vscode|terminal.
 - documents/ideas/computational-notes.md says terminal out of scope (task text includes it).
 
-## Managed TeX (core/src/writing/latex/toolchain/node/managed/)
+## Managed TeX (core/src/latex/toolchain/node/managedTex/)
 - Reusable as-is: sharedToolsRoot.ts, toolLock.ts:94 `withToolLock(folder, op, logger, run)`, install/{stagingDir,singleTopDir,clearQuarantine}.ts, toolchain/downloadVerified.ts (SHA-256 before write).
 - Template: install/installTinyTex.ts:44-68 (pin, download, stage, tar, swap, quarantine). Deps in install/installTypes.ts.
 - Provider: managedTexProvider.ts (status/install under lock, managed>system), texLayout.ts, sharedTexProvider.ts:1-29 (factory, root=sharedToolsRoot/"tex").
@@ -20,7 +20,7 @@ source: Explore scout
 - Callers: terminal/src/cli/build/buildEnvironment.ts, vscode/src/writing/build/node/sharedTex.ts, helper/node/runHelperHost.ts.
 
 ## Handlers
-- dispatch/handlerTypes.ts: HelperHandler(message, send, payload); map keyed by message type. dispatcher.ts runs in arrival order; UNQUEUED = cancel, templateThumbnail.
+- handlers/helperHandlers.ts: HelperHandler(message, send, payload); map keyed by message type. handlers.ts runs in arrival order; UNQUEUED = cancel, templateThumbnail.
 - New `runCell`: add to helperMessages.ts + readToHelper.ts, bump version, factory spread into runHelperHost.ts:51-60 (model: tex/texInstallHandlers.ts), decide queue/UNQUEUED, client in browser/src/helper/client/createNativeLatexHelper.ts + core latexHelper.ts.
 - Streaming: `send` may fire many times per id; ProgressPhase fixed list (helperMessages.ts:28), no cell phase.
 - Cancel: only per-project build (build/buildHandlers.ts:97-122), keyed by projectId, not request id.
@@ -32,4 +32,4 @@ source: Explore scout
 
 ## Running processes
 - VS Code: registerNodeWriting.ts:17 OutputChannel "LabShelf Figures"; builds via vscode/src/writing/build/node/. Terminal spawn: terminal/src/platform/system.ts.
-- Runner: writing/latex/build/node/runCancellable.ts `runCancellable(exe,args,cwd,AbortSignal,{shell,onOutput,env})` -> {code, 64 KiB output tail}; detached group, SIGTERM -pid (win taskkill /T /F); rejects BuildCancelled. No timeout, no SIGKILL escalation, stdin ignored, stdout/stderr merged.
+- Runner: latex/build/node/runCancellable.ts `runCancellable(exe,args,cwd,AbortSignal,{shell,onOutput,env})` -> {code, 64 KiB output tail}; detached group, SIGTERM -pid (win taskkill /T /F); rejects BuildCancelled. No timeout, no SIGKILL escalation, stdin ignored, stdout/stderr merged.

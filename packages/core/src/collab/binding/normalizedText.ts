@@ -8,8 +8,8 @@
 
 import type * as Y from "yjs";
 import type { ILogger } from "../../ports/index.js";
-import { isEcho, type ChangeSet } from "./echoGuard.js";
-import { countNormalizedOffsets, LineOffsetMap, normalizeLineEnds } from "./lineOffsetMap.js";
+import { isEcho, type ChangeSet } from "./editorEcho.js";
+import { countNormalizedOffsets, LineOffsetMap, normalizeLineEnds } from "./lineOffsets.js";
 import { PendingRemoteChanges, replacementBetween } from "./pendingRemoteChanges.js";
 import { applyChanges, changesFromDelta, sortChanges, type TextChange } from "./textChange.js";
 import type { TextUndoManager, UndoChange } from "./textUndoManager.js";

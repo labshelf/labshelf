@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { scanTypstHeadings } from "@labshelf/core/typst";
-import { nestedSymbols } from "./nestedSymbols.js";
+import { nestedSymbols } from "./nestOutline.js";
 
 export function typstSymbols(text: string, endOfFile: vscode.Position): vscode.DocumentSymbol[] {
   const lines = text.split("\n");

@@ -4,7 +4,8 @@ import { isSha256Hex, isShareId } from "../http/index.js";
 import { SHARE_PATH } from "../../share/http/index.js";
 import type { KvNamespace, RelayEnv } from "./cloudflareRuntime.js";
 import { bytesAnswer, noContent, notFound, refuse } from "./httpAnswers.js";
-import { carriesOwnerSecret, sha256Hex } from "./auth/index.js";
+import { carriesOwnerSecret } from "./checkOwner.js";
+import { sha256Hex } from "./hashSecret.js";
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
 const KV_VALUE_LIMIT = 25 * 1024 * 1024;

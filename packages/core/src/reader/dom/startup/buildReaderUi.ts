@@ -8,7 +8,7 @@ import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
 import { areaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource, ReviewNote } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
-import { ReadingStateReporter } from "./readingStateReporter.js";
+import { ReadingStateReporter } from "./reportReadingPosition.js";
 
 export interface ReaderUi {
   history: NavHistory;

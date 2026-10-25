@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfbib
 
 import { arxivIdFromDoi, arxivIdFromUrl, extractDoi, normalizeArxivId } from "../../import/index.js";
-import { bibEntries, plainField, type BibEntry } from "../../writing/bibLint/index.js";
+import { bibEntries, plainField, type BibEntry } from "../../writing/bibliography/index.js";
 
 /** A cite key both files use for different works; the shared entry is kept. Ids read `doi:<doi>` or `arXiv:<id>`. */
 export interface BibliographyClash {

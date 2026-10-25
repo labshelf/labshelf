@@ -1,10 +1,10 @@
 /** Imports one PDF file as a paper: <targetDir>/<citeKey>/paper.pdf with metadata.yaml and bib.bib beside it. */
 import type { PaperRecord } from "../../../model/index.js";
-import { citeKeySlug } from "../../identity/index.js";
+import { citeKeySlug } from "../../paper/index.js";
 import { errorMessage } from "../../../logging/index.js";
-import { MUTATIONS_MODULE, type MutationContext } from "../context.js";
-import { metadataFields, needsReview, type ParsedImport } from "./importedRecord.js";
-import { writeNewPaper } from "./newPaper.js";
+import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
+import { metadataFields, needsReview, type ParsedImport } from "./importedPaperRecord.js";
+import { writeNewPaper } from "./createPaper.js";
 import { isPdfBytes } from "./pdfBytes.js";
 
 export type PdfParse = (bytes: Uint8Array, fileStem: string) => Promise<ParsedImport>;

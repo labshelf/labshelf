@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { DEFAULT_BIBLIOGRAPHY } from "@labshelf/core";
 import { citingProject, type CitationWorkspace } from "./citationWorkspace.js";
 import { openEditorSources } from "./openEditorSources.js";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 
 export class BibliographySync {
   private queue: Promise<void> = Promise.resolve();

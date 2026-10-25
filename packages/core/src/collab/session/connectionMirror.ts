@@ -1,7 +1,7 @@
 // Declares the port a share connection starts its app's disk mirror through, and what the connection reports of it.
-import type { LeaseHolder } from "../ownership/index.js";
-import type { CollabStore } from "../state/index.js";
-import type { BlobExchange, ShareSession } from "../sync/index.js";
+import type { LeaseHolder } from "../mirror/index.js";
+import type { CollabStore } from "../deviceState/index.js";
+import type { BlobExchange, ShareSession } from "../doc/index.js";
 
 export interface ConnectionMirror {
   /** Reports a changed path relative to the project folder; also call it when an editor lets a path go. */

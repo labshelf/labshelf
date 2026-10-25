@@ -1,5 +1,7 @@
 // Opens a share link in the page: fetches and decrypts the manifest, then fetches, verifies and reassembles a PDF on demand.
-import { openBlob, openManifest, parseShareLink, type ShareLinkParts, type ShareManifest, type SharedPaper } from "./format/index.js";
+import { openBlob, openManifest } from "./shareCipher.js";
+import { parseShareLink, type ShareLinkParts } from "./shareLink.js";
+import type { ShareManifest, SharedPaper } from "./shareManifest.js";
 import type { ShareReader } from "./shareBackend.js";
 
 export type OpenShareError = "malformedLink" | "removed" | "unreadable" | "network";

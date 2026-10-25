@@ -1,5 +1,5 @@
 // Holds the theme preference shared by every browser surface; follows the OS unless pinned light or dark.
-// Stored in localStorage so themeBoot.ts applies it before paint; a storage event syncs open surfaces.
+// Stored in localStorage so themeStartup.ts applies it before paint; a storage event syncs open surfaces.
 import { applyThemeToDocument, resolveTheme, type ResolvedTheme, type ThemePref } from "@labshelf/core/dom";
 
 const THEME_STORAGE_KEY = "labshelf.theme";

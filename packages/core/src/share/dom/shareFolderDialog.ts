@@ -1,8 +1,8 @@
 // Walks the user through sharing a paper folder as a link: rights notice, progress, then the link.
 import { progressDialog, showDialog, toast } from "../../ui/dom/index.js";
-import type { SharingHost, SharingProgress } from "../../library-ui/sharing/index.js";
-import { SHARE_STAGE_TEXT, SHARE_WITHOUT_ANNOTATIONS, SHARE_WITH_ANNOTATIONS, copiedLinkText, shareRightsNotice } from "../workflow/index.js";
-import { infoDialog } from "./infoDialog.js";
+import type { SharingHost, SharingProgress } from "../../libraryUi/share/index.js";
+import { SHARE_STAGE_TEXT, SHARE_WITHOUT_ANNOTATIONS, SHARE_WITH_ANNOTATIONS, copiedLinkText, shareRightsNotice } from "../flow/index.js";
+import { infoDialog } from "./noticeDialog.js";
 import { reportingFailure } from "./reportFailure.js";
 
 export function runShareFolderDialog(host: SharingHost, path: string): Promise<void> {

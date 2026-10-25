@@ -11,7 +11,7 @@
   - A7 Opening an arXiv PDF of a library paper shows the "You have this paper" offer.
   - A8 A Google Scholar result page marks the library papers.
   - A9 On an OpenReview submission, "Review this submission" saves the PDF under `Reviews/` and opens the reader with a review draft.
-- **Owns:** `packages/browser/src/background/router.ts`, `packages/browser/src/background/index.ts`, `packages/browser/src/side-panel/index.html`, `packages/browser/src/side-panel/main.ts`, `packages/browser/build/`, `packages/browser/manifest.chrome.json`, `packages/browser/manifest.firefox.json`
+- **Owns:** `packages/browser/src/background/registerHandlers.ts`, `packages/browser/src/background/index.ts`, `packages/browser/src/side-panel/index.html`, `packages/browser/src/side-panel/main.ts`, `packages/browser/build/`, `packages/browser/manifest.chrome.json`, `packages/browser/manifest.firefox.json`
 
 Runs alone: it changes manifests and a build script, and a host verify needs a green whole-repo build.
 
@@ -29,20 +29,20 @@ Each lives in a folder `index.ts` and exports `handle<Name>(msg, deps): Promise<
 - `background/editors/` handles `editor.insert` (answers `"inserted" | "copied" | "no-editor"`); `side-panel/search/` mounts the search section.
 - `background/bibliography/` handles `bib.health`; `side-panel/health/` mounts the health section.
 - `background/citeInProject/` handles `cite.inProject` and exports `registerCiteMenu(deps)`.
-- `background/pdfOffer/` and `content/sites/`: lookups (`sites.lookup`); `background/reviews/` handles `review.start`.
-- Core `mountWritingTab(root, host)` is already mounted by `library-page/`.
+- `background/import/` and `content/sites/`: lookups (`sites.lookup`); `background/reviews/` handles `review.start`.
+- Core `mountWritingTab(root, host)` is already mounted by `libraryPage/`.
 
 ## 3.1 — Router
 
 - **Goal:** the router dispatches the new messages and lets a web page send only what its content script needs.
-- **Read only:** `packages/browser/src/background/router.ts:1-121`; `packages/browser/src/background/index.ts:1-70`; the `index.ts` of `background/editors/`, `bibliography/`, `citeInProject/`, `reviews/`, `pdfOffer/`.
+- **Read only:** `packages/browser/src/background/registerHandlers.ts:1-121`; `packages/browser/src/background/index.ts:1-70`; the `index.ts` of `background/editors/`, `bibliography/`, `citeInProject/`, `reviews/`, `pdfOffer/`.
 - **Decided:** overleaf.com and typst.app may send only `editor.*`; arXiv, Semantic Scholar and Scholar only the lookup messages; openreview.net only `review.start`. TRAP: the gate is the trust boundary for page input; every message is validated before dispatch.
 - **Done when:** tests in `packages/browser/__tests__/background/router.test.ts`, written first, pin each host's allowed and refused types.
 
 ## 3.2 — Manifests and page shell
 
 - **Goal:** the extension declares and builds everything the earlier sessions added.
-- **Read only:** `packages/browser/manifest.chrome.json`; `packages/browser/manifest.firefox.json`; `packages/browser/build/build.mjs:10-60`; `packages/browser/src/library-page/main.ts:1-47` (a page entry).
+- **Read only:** `packages/browser/manifest.chrome.json`; `packages/browser/manifest.firefox.json`; `packages/browser/build/build.mjs:10-60`; `packages/browser/src/libraryPage/pageEntry.ts:1-47` (a page entry).
 - **Decided:** Chrome `side_panel` and `sidePanel` permission, Firefox `sidebar_action`; overleaf.com and typst.app as optional host permissions requested from the panel; content scripts for editors, sites and OpenReview; `contextMenus`. The shell mounts the search and health sections.
 - **Done when:** `pnpm --filter @labshelf/browser build` for both targets; a manifest test, written first, pins the entries.
 

@@ -2,7 +2,7 @@
 
 Read when you change a message between the browser extension and LabShelf Helper, a limit, the socket handshake or where the helper keeps its data.
 
-LabShelf Helper is a native program that builds LaTeX and Typst projects for the browser extension. An extension page opens a project the helper reads from the library folder on disk, sends it the edits the user types, and asks for builds; the helper runs latexmk with a managed or system TeX and sends back the problems and the pages of the PDF that changed. The extension and the helper ship separately, so a user can run any extension version against any helper version, and every rule below holds across both. The protocol module in core (`writing/helper`) implements this document for both sides.
+LabShelf Helper is a native program that builds LaTeX and Typst projects for the browser extension. An extension page opens a project the helper reads from the library folder on disk, sends it the edits the user types, and asks for builds; the helper runs latexmk with a managed or system TeX and sends back the problems and the pages of the PDF that changed. The extension and the helper ship separately, so a user can run any extension version against any helper version, and every rule below holds across both. The protocol module in core (`helper`) implements this document for both sides.
 
 ## Transport
 

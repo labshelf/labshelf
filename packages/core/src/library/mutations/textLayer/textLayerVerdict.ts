@@ -1,7 +1,7 @@
 /** Turns text-layer checks and OCR jobs into the verdict stored on a paper, and decides when a new verdict is worth writing. */
 import type { TextLayerInfo } from "../../../model/index.js";
 import { errorMessage } from "../../../logging/index.js";
-import type { TextLayerDetection, TextLayerOutcome } from "./textLayerTypes.js";
+import type { TextLayerDetection, TextLayerOutcome } from "./textLayerOutcome.js";
 
 /** @returns the current time as an ISO timestamp */
 export function wallClock(): string {

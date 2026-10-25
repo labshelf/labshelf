@@ -1,7 +1,7 @@
 /**
  * Draws the Arc mark, a ring whose arc length shows progress and whose colour shows a tone, and the reading-status mark built on it, as SVG strings.
  */
-import type { PaperStatus } from "../../model/index.js";
+import type { PaperStatus } from "../../library/readingStatus/index.js";
 import { MARK_TOKENS } from "../tokens/index.js";
 
 export const ARC_TONES = ["err", "warn", "ok", "accent"] as const;

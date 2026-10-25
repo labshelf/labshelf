@@ -1,7 +1,7 @@
 // Mounts the searchable Spaces catalog over its host message channel.
 import { el, emptyState } from "../../../ui/dom/index.js";
 import type { SpacesTransport } from "../../protocol/index.js";
-import { filterCatalog, type CatalogFilter, type CatalogRow } from "../../view/index.js";
+import { filterCatalog, type CatalogFilter, type CatalogRow } from "../../viewModel/index.js";
 import { catalogHeader, catalogToolbar, createSpace } from "./catalogHeader.js";
 import { catalogRow } from "./catalogRow.js";
 

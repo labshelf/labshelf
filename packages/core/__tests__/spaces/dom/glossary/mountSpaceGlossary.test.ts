@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { mountSpaceGlossary } from '../../../../src/spaces/dom/glossary/index.js';
-import type { OverviewContext, SpaceSnapshot } from '../../../../src/spaces/dom/overview/index.js';
+import type { OverviewContext, SpaceSnapshot } from '../../../../src/spaces/dom/spaceOverview/index.js';
 import type { HostToSpaces, SpacesToHost } from '../../../../src/spaces/protocol/index.js';
 
 function snapshot(): SpaceSnapshot {

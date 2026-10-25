@@ -1,9 +1,9 @@
 /** The share, join and leave project commands open their sharing dialog once a library is open. */
 import * as vscode from 'vscode';
-import { sharingWebviews } from '../../../../src/sharing/index';
+import { sharingWebviews } from '../../../../src/share/index';
 import { registerProjectDialogCommands } from '../../../../src/collab/node/commands/projectDialogCommands';
 
-jest.mock('../../../../src/sharing/index', () => ({ sharingWebviews: { open: jest.fn(async () => undefined) } }));
+jest.mock('../../../../src/share/shareWebviews', () => ({ sharingWebviews: { open: jest.fn(async () => undefined) } }));
 
 function commandHandler(id: string): (...args: unknown[]) => Promise<void> {
   const call = (vscode.commands.registerCommand as jest.Mock).mock.calls.find(([name]) => name === id);

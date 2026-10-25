@@ -1,3 +1,5 @@
 // Exports the icons the host draws natively: the webview tab icon and the baked mark files for trees.
 export { labshelfTabIcon } from "./tabIcon.js";
 export { arcIcons, type ArcIcon, type ThemedIcon } from "./arcMarkIcons.js";
+export { bundleMissingHtml } from "./bundleMissingHtml.js";
+export { bundleExists } from "./bundleExists.js";

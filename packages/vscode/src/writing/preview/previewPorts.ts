@@ -1,10 +1,10 @@
 // Answers the reader's requests from a build preview: opens the source behind a double-click, runs its writing actions and names the papers it cites.
 import type { PreviewPorts } from "@labshelf/core";
-import { withCitationFixes, type CitationFixDeps } from "./citationFixes/index.js";
+import { withCitationFixes, type CitationFixDeps } from "./citations/index.js";
 import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "./citations/index.js";
-import type { ProjectActions } from "./projectActions/index.js";
-import type { WritingActions } from "./roots/index.js";
-import { addReviewComment, showSource } from "./sourceLinks/index.js";
+import type { ProjectActions } from "./projectActions.js";
+import type { WritingActions } from "./buildRoot/index.js";
+import { addReviewComment, showSource } from "./synctex/index.js";
 
 /** The body pages the reader counted in a project's preview. */
 export interface BodyPagesCount {

@@ -4,7 +4,7 @@
 import type { ReaderContext } from "../session/index.js";
 import { iconButton } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
-import type { NavHistory } from "./navHistory.js";
+import type { NavHistory } from "./navigationHistory.js";
 import { $, el } from "../../../ui/dom/index.js";
 
 const FAR_JUMP_SETTLE_MS = 300;

@@ -1,6 +1,6 @@
 // Finds the LaTeX source line behind a point of the preview through SyncTeX, reading the open editor's text before the file on disk.
 import { sourceAt, type PagePoint, type SourceLine } from "@labshelf/core";
-import type { SynctexLookup } from "../sourceLinks/index.js";
+import type { SynctexLookup } from "../synctex/index.js";
 import { currentText } from "./currentText.js";
 
 /** A source line with the file it belongs to. */

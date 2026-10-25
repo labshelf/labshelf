@@ -4,7 +4,7 @@
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import type { BuildState, CitationEntry, PageArea, PagePoint, PreviewRoots } from "../previewProtocol.js";
 import type { ReadingState } from "../sidecar/index.js";
-import type { EffectiveTheme, ReaderCommandId, ReaderPrefs } from "./bootParams.js";
+import type { EffectiveTheme, ReaderCommandId, ReaderPrefs } from "./startupParams.js";
 
 export type HostToWebview =
   | {

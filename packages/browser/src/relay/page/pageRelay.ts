@@ -3,7 +3,7 @@ import type { ILogger, RelayAccount } from "@labshelf/core";
 import { toast } from "@labshelf/core/dom";
 import { createBrowserRelayAccount } from "../browserRelayAccount";
 import { chooseAccount, confirmConnect, confirmDisconnect, confirmSignInAgain } from "./relayDialogs";
-import { reportRelayFailure, requireRelay, type RequireRelayDeps } from "./requireRelay";
+import { reportRelayFailure, requireRelay, type RequireRelayDeps } from "./ensureRelay";
 
 export interface PageRelayOptions {
   logger: ILogger;

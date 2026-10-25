@@ -1,7 +1,7 @@
 // Reads the shared index to keep tracked files out of content-copy prompts.
 import * as Y from 'yjs';
 import { indexFiles } from '../../../../collab/model/index.js';
-import { INDEX_DOC_KEY } from '../../../../collab/sync/index.js';
+import { INDEX_DOC_KEY } from "../../../../collab/doc/index.js";
 import type { ILogger } from '../../../../ports/index.js';
 import { sharedProjectStorage } from './sharedProjectStorage.js';
 

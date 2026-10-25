@@ -1,6 +1,6 @@
 // Opens the storage port for a project's device-local share state.
 import * as path from 'node:path';
-import { nodeCollabStorage } from '../../../../collab/node/state/index.js';
+import { nodeCollabStorage } from '../../../../collab/node/deviceState/index.js';
 import { deviceLocalLayout } from '../../../node/index.js';
 
 export function sharedProjectStorage(root: string, shareId: string) {

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { projectFileRow, visibleEntries, type ILogger } from "@labshelf/core";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 
 /** A file or folder below the open project's folder. */

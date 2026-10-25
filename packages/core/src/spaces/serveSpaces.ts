@@ -5,7 +5,7 @@ import { parseSpacesMessage, type HostToSpaces, type PaperPickItem, type SpacesE
 import { ACTION_LABELS, LOAD_CATALOG, LOAD_SPACE } from "./spacesActionLabels.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./store/index.js";
-import { buildIcs, buildOverview, buildPapersTree, catalogRows, resolvePaper } from "./view/index.js";
+import { buildIcs, buildOverview, buildPapersTree, catalogRows, resolvePaper } from "./viewModel/index.js";
 
 const MODULE = "spaces/server";
 

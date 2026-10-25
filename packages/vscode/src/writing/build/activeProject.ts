@@ -1,7 +1,7 @@
 // Finds the writing project that owns the file open in the active editor.
 import * as vscode from "vscode";
 
-import { owningProject, type ReadyProject } from "../mainDocument.js";
+import { owningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
 
 export function activeProject(projects: Pick<WritingProjects, "list" | "paths">): ReadyProject | undefined {

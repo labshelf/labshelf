@@ -1,6 +1,6 @@
 // Declares the messages between the All projects page and its host, and the channel that carries them.
-import type { MessageEnd } from "../../../library-ui/protocol/index.js";
-import type { ProjectDetail } from "../projectDetail.js";
+import type { MessageEnd } from "../../../libraryUi/protocol/index.js";
+import type { ProjectDetail } from "../projectDetailPane.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectRow } from "../projectRow.js";
 
 export type AllProjectsToHost =

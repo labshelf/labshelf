@@ -1,10 +1,10 @@
 // Routes the writing-project commands (install, build, cite, projects, check) to their runners.
-import type { AppContext } from "../../app/index.js";
+import type { AppContext } from "../../compositionRoot.js";
 import type { ParsedArgs } from "../args.js";
 import { runBuild } from "../build/index.js";
-import { runCheck } from "../check/index.js";
-import { runCite } from "../cite/index.js";
-import { runProjects } from "../projects/index.js";
+import { runCheck } from "../runCheck.js";
+import { runCite } from "../citation/index.js";
+import { runProjects } from "../projectsCommand.js";
 import { UsageError, type Output } from "../usage.js";
 import { runInstall } from "./installCommand.js";
 

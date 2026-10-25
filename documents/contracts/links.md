@@ -2,7 +2,7 @@
 
 Read when you change how a link to a paper is written, found or opened.
 
-A `labshelf:` link points at a paper, and optionally at one of its pages, from any text file: a code comment, a draft, a README. Users write these links into files LabShelf does not own, so the grammar cannot change without breaking links already on disk. Core's `library/links` module is the one parser; every app uses it.
+A `labshelf:` link points at a paper, and optionally at one of its pages, from any text file: a code comment, a draft, a README. Users write these links into files LabShelf does not own, so the grammar cannot change without breaking links already on disk. Core's `library/paper/paperLink.ts` module is the one parser; every app uses it.
 
 ## Grammar
 

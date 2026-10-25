@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import {
   isSharingMessage, parseAllProjectsMessage, serveAllProjects, type AllProjectsEndpoint, type AllProjectsToHost, type ILogger, type ProjectLibraryPort,
 } from "@labshelf/core";
-import { sharingWebviews } from "../../sharing/index.js";
+import { sharingWebviews } from "../../share/index.js";
 import { labshelfTabIcon } from "../../ui/index.js";
 import { allProjectsBundleDirectory, allProjectsHtml } from "./allProjectsHtml.js";
 

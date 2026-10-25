@@ -2,7 +2,7 @@
 import { el, mountOverlay } from "../../../ui/dom/index.js";
 import type { GlossaryTerm } from "../../model/index.js";
 import { parseTermDraft } from "../../protocol/index.js";
-import type { OverviewContext } from "../overview/index.js";
+import type { OverviewContext } from "../spaceOverview/index.js";
 import { termFields } from "./termFields.js";
 
 export function termDialog(ctx: OverviewContext, term?: GlossaryTerm): () => void {

@@ -1,7 +1,7 @@
 // Writes index.json for the template catalog in the current folder; the entry bundled into build-index.mjs.
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { buildCatalogIndex } from '../../packages/core/src/writing/templates/node/index.ts';
+import { buildCatalogIndex } from '../../packages/core/src/templates/node/index.ts';
 
 const flag = process.argv.indexOf('--commit');
 const commit = flag === -1 ? undefined : process.argv[flag + 1];

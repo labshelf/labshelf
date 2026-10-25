@@ -1,7 +1,8 @@
 /**
  * Renders the design tokens as the `--ls-*` stylesheet that `ui/dom/tokens.css` holds.
  */
-import { CODE_FONT_TOKENS, CODE_THEME_TOKENS, renderCodeFontsCss, renderCodeThemesCss } from "./code/index.js";
+import { CODE_FONT_TOKENS, renderCodeFontsCss } from "./fontTokens.js";
+import { CODE_THEME_TOKENS, renderCodeThemesCss } from "./codeThemeTokens.js";
 import { COLOR_TOKENS, FILE_TYPE_TOKENS, MARK_TOKENS, SHEET_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
 import { token, type DesignToken } from "./designToken.js";
 import { HIGHLIGHT_COLORS } from "./highlightTokens.js";

@@ -1,8 +1,8 @@
 // Pins stale text, binary restores and offline edits across two relayed project mirrors.
 import { fileText, indexFiles } from "../../../src/collab/model/index";
-import { reconcileText } from "../../../src/collab/mirror/reconcile/index";
-import { mergeText } from "../../../src/writing/merge/node/index";
-import { FakeClock, runUntil } from "../sync/fakeNetwork";
+import { reconcileText } from "../../../src/collab/mirror/textMirror";
+import { mergeText } from "../../../src/writing/conflict/node/index";
+import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { FakeRelay } from "../transport/relay/fakeRelay";
 import { memoryFiles } from "./mirrorFiles";
 import { openMirror, readFile, writeFile, type MirrorFixture } from "./mirrorFixture";

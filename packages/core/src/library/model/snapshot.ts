@@ -1,7 +1,7 @@
 /** Builds the immutable snapshot of the library (collection tree with counts, papers by id) from a scan. */
 import { PAPERS_DIR } from "../layout.js";
 import { nameCollator } from "./paperSort.js";
-import type { CollectionNode, LibraryScan, LibrarySnapshot, PaperEntry } from "./types.js";
+import type { CollectionNode, LibraryScan, LibrarySnapshot, PaperEntry } from "./librarySnapshot.js";
 
 function rootCollection(): CollectionNode {
   return { rel: "", name: PAPERS_DIR, parent: undefined, children: [], paperIds: [], total: 0 };

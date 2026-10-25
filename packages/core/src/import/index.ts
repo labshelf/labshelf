@@ -21,12 +21,11 @@ export {
   publishedDoiOf,
 } from "./registries/index.js";
 export type { OpenAlexCitationWork, PreprintIds, RegistryEnv, RegistryRecord } from "./registries/index.js";
-export * from "./lookup/index.js";
+export * from "./search/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";
 export * from "./landing/index.js";
-export * from "./resolution/index.js";
-export * from "./pdfFinding/index.js";
-export * from "./networkImport/index.js";
-export * from "./pdfMatch/index.js";
+export * from "./paper/index.js";
+export * from "./pdfFinder/index.js";
+export * from "./flow/index.js";
 export * from "./citationMap/index.js";

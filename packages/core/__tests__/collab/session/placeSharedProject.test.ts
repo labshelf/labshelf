@@ -2,9 +2,9 @@
 import * as Y from "yjs";
 import { liveThreads } from "../../../src/collab/comments/index";
 import { placeSharedProject } from "../../../src/collab/session/placeSharedProject";
-import type { ShareSession } from "../../../src/collab/sync/index";
+import type { ShareSession } from "../../../src/collab/doc/shareSession";
 import type { ProjectCatalogContext } from "../../../src/writing/project/index";
-import { fakeLogger } from "../sync/testSession";
+import { fakeLogger } from "../doc/testSession";
 
 const FOLDER = "/lib/p";
 const SHARE_ID = "f".repeat(32);

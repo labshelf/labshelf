@@ -1,5 +1,5 @@
 /** Exports the binding of open VS Code editors to shared files: edits both ways, own-only undo and peer cursors. */
-export { bindDocument, type BindOptions, type DocumentBinding } from "./bindDocument.js";
+export { bindDocument, type BindOptions, type DocumentBinding } from "./attachDocument.js";
 export { PeerCursors, type PeerCursor } from "./peerCursors.js";
-export { RemoteEditQueue } from "./remoteEditQueue.js";
-export { overrideUndoRedo, type UndoRedoOverride } from "./undoRedoCommands.js";
+export { RemoteEditQueue } from "./remoteUpdateQueue.js";
+export { overrideUndoRedo, type UndoRedoOverride } from "./undoCommands.js";

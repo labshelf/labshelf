@@ -1,6 +1,6 @@
 /** Ranks the PDF links a page offers: the page itself, embedded viewers, citation_pdf_url, alternates, then own anchors. */
 import type { DetectedIds } from "../identifiers/index.js";
-import type { PdfCandidate, RawPage } from "./types.js";
+import type { PdfCandidate, RawPage } from "./rawPage.js";
 
 // Links whose URL says they are not the article itself.
 const NOT_THE_ARTICLE = /supp|suppl|supplement|appendix|figure|poster|slides|review_history|license|terms|guide|instruction|author-?info|policy|catalog|brochure/i;

@@ -1,7 +1,7 @@
 // Validates the folder, paper, project and date entries of space.json, giving the reason for each invalid one.
 // CONTRACT: documents/contracts/spaces.md#reading
-import { SPACE_DATE_KINDS } from "./types.js";
-import type { SpaceDate, SpaceDateKind, SpaceFolder, SpacePaperRef } from "./types.js";
+import { SPACE_DATE_KINDS } from "./space.js";
+import type { SpaceDate, SpaceDateKind, SpaceFolder, SpacePaperRef } from "./space.js";
 import { isBoolean, isDay, isIdList, isNonEmptyString, isOptional, isRecord, isString, readEntries, unknownKeys } from "./json/index.js";
 import type { EntryParse, ReadEntries } from "./json/index.js";
 

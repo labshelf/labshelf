@@ -1,5 +1,5 @@
 sha: 0a58f09
-files: packages/core/src/relay/deploy/oauth/*, packages/browser/manifest.*.json, packages/core/src/collab/node/*, packages/browser/src/storage/*, packages/browser/src/library-page/editor/collab/*
+files: packages/core/src/relay/oauth/*, packages/browser/manifest.*.json, packages/core/src/collab/node/*, packages/browser/src/storage/*, packages/browser/src/collab/*
 source: Session 1 proofs (2026-10-20): live Cloudflare endpoints, Chromium 1194 with an unpacked scratch extension
 
 # Technical gates

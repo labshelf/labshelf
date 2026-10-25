@@ -1,11 +1,11 @@
-// Writes src/ui/icons/codiconGlyphs.ts from the SVGs of @vscode/codicons named in codicons.json; `--check` fails when the file is stale.
+// Writes src/ui/icons/iconGlyphs.ts from the SVGs of @vscode/codicons named in codicons.json; `--check` fails when the file is stale.
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const toolDir = dirname(fileURLToPath(import.meta.url));
-const output = join(toolDir, "../../src/ui/icons/codiconGlyphs.ts");
+const output = join(toolDir, "../../src/ui/icons/iconGlyphs.ts");
 const svgDir = join(dirname(createRequire(import.meta.url).resolve("@vscode/codicons/package.json")), "src/icons");
 const map = JSON.parse(readFileSync(join(toolDir, "codicons.json"), "utf8"));
 
@@ -36,7 +36,7 @@ if (process.argv.includes("--check")) {
     // A missing file is stale like any other difference.
   }
   if (current !== source) {
-    console.error("codiconGlyphs.ts is out of date; run `pnpm --filter @labshelf/core codicons`.");
+    console.error("iconGlyphs.ts is out of date; run `pnpm --filter @labshelf/core codicons`.");
     process.exit(1);
   }
 } else {

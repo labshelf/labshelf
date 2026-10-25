@@ -3,19 +3,19 @@
 import { $, settingsPage } from "@labshelf/core/dom";
 import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
 import { StorageRingLogSink, bx, createBrowserLogger, getSettings, updateSettings } from "../platform";
-import { loadReaderPrefs, saveReaderPrefs } from "../reader/access";
+import { loadReaderPrefs, saveReaderPrefs } from "../reader/service";
 import { applyTheme } from "../ui";
-import { createLibrarySourceSection } from "./librarySourceSection";
+import { createLibrarySourceSection } from "./libraryLocationSection";
 import { createAppearanceSection } from "./appearanceSection";
-import { createResolverSection } from "./customResolvers";
-import type { EditableListSection } from "./editableList";
+import { createResolverSection } from "./resolverSection";
+import type { EditableListSection } from "./editableListSection";
 import { createGeneralForm, type GeneralForm } from "./generalForm";
 import { createLogSection } from "./logSection";
-import { createProxySection } from "./proxy";
+import { createProxySection } from "./proxySection";
 import { createReaderForm, type ReaderForm } from "./readerForm";
-import { createSavedFlag } from "./savedFlag";
+import { createSavedFlag } from "./savedNotice";
 import { createSidebarSectionsForm } from "./sidebarSectionsForm";
-import { createSharingSection } from "./sharingSection";
+import { createSharingSection } from "./shareSection";
 
 const ring = new StorageRingLogSink();
 const logger = createBrowserLogger(ring);

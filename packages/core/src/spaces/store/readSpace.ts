@@ -1,7 +1,7 @@
 // Reads Space files with diagnostics for unreadable content.
 import { parseGlossaryFile, parseSpaceFile } from "../model/index.js";
 import type { GlossaryReadResult, SpaceReadResult } from "../model/index.js";
-import { SPACE_STORE_MODULE, type StoreContext } from "./types.js";
+import { SPACE_STORE_MODULE, type StoreContext } from "./spaceStoreOptions.js";
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 

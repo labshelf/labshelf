@@ -1,7 +1,7 @@
 /** Exports a project's Checklist model and its reads: TODO markers, section placement, the grouped checklist and the hand-added items in .labshelf/checklist.json and editing them. */
 export * from "./checklistFile.js";
-export { scanTodos } from "./todoScanner.js";
-export type { TodoItem } from "./todoScanner.js";
+export { scanTodos } from "./scanTodos.js";
+export type { TodoItem } from "./scanTodos.js";
 export { citeSections, sectionPlacer } from "./sectionPlacement.js";
 export type { ChecklistSection, ChecklistSource, SectionPlacer } from "./sectionPlacement.js";
 export { buildChecklist } from "./buildChecklist.js";

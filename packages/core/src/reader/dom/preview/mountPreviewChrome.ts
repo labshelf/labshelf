@@ -1,11 +1,11 @@
 // Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and problem marks over them.
 import { $ } from "../../../ui/dom/index.js";
 import type { PageArea, PreviewRoots, WebviewToHost } from "../../index.js";
-import type { OutlineRow } from "../../logic/index.js";
+import type { OutlineRow } from "../../index.js";
 import type { ReaderContext } from "../session/index.js";
 import { mountLogsButton, mountOnlyToggle, mountOptionsMenu, mountPreviewHeader, type RecompileState } from "./header/index.js";
 import type { LogsView } from "./logs/index.js";
-import { mountProblemMarks } from "./marks/index.js";
+import { mountProblemMarks } from "./problemMarks.js";
 import {
   mountChecksButton, mountLimitMeter, mountPreviewFooter, mountProblems, type PreviewBuildStatus, type PreviewProblems,
 } from "./footer/index.js";

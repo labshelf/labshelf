@@ -1,4 +1,4 @@
-/** Exports the library domain's public API: collection folders, paper metadata and the on-disk layout. */
+/** Exports the library domain's public API: folders, paper metadata, reading status and the on-disk layout. */
 export { relocatePapersUnder, removePapersUnder } from "./paperRecordReindex.js";
 export type { IPaperRecordIndex } from "./paperRecordReindex.js";
 export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js";
@@ -10,21 +10,16 @@ export {
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
 export { relativePathProblem } from "./relativePath.js";
-export {
-  FOLDER_NAME_MAX_LENGTH,
-  citeKeySlug, claimCiteKey, editedTags, makeCiteKey, normalizeTags, titleKey, uniqueCiteKey, validateFolderName,
-} from "./identity/index.js";
-export type { CiteKeyMetadata } from "./identity/index.js";
+export * from "./paper/index.js";
 export { SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig } from "./sharedConfig.js";
 export type { SharedConfig, SharedConfigPatch } from "./sharedConfig.js";
-export * from "./format/index.js";
 export * from "./externalChange/index.js";
 export * from "./mutations/index.js";
 export * from "./model/index.js";
-export * from "./scan/index.js";
+export * from "./folder/index.js";
 export * from "./search/index.js";
-export * from "./links/index.js";
 export * from "./paperFiles/index.js";
 export * from "./conflicts/index.js";
 export * from "./syncGuide/index.js";
+export * from "./readingStatus/index.js";
 export * from "./writeRecords/index.js";

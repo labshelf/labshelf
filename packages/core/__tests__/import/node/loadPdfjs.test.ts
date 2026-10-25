@@ -1,5 +1,5 @@
 /** The pdf.js loader: one import per loader, pdf.js before its in-process worker, shims only for Electron hosts. */
-import { DiskBinaryDataFactory } from '../../../src/import/node/diskBinaryDataFactory.js';
+import { DiskBinaryDataFactory } from '../../../src/import/node/pdfjsFileFactory.js';
 import { createPdfjsLoader } from '../../../src/import/node/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports

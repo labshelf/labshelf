@@ -1,10 +1,10 @@
 /** Prepares popup content for a reference found in plain text: a cited work, or a figure, table or equation. */
-import type { FloatKind, InTextRef } from "../../logic/index.js";
+import type { FloatKind, InTextRef } from "../../text/index.js";
 import type { FloatResolver, CitationResolver } from "../text/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { PreviewCitations } from "./citations/index.js";
 import type { DestPreview } from "./destPreview.js";
-import type { ExplicitDest, HoverTarget, PopupContent } from "./hoverTarget.js";
+import type { ExplicitDest, HoverTarget, PopupContent } from "./hoverAnchor.js";
 import { textContent } from "./popup.js";
 
 const MAX_MARKER_ENTRIES = 3;

@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { flattenValues, type ProjectSettings } from "@labshelf/core";
-import { ProjectValues } from "../../src/writing/values/projectValues";
+import { ProjectValues } from "../../src/writing/projectValue/projectValues";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 
 const FOLDER = path.join(path.sep, "projects", "paper");

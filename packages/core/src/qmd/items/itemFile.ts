@@ -1,6 +1,6 @@
 // Declares the parsed shape of a qmd item file: loose text and items, each holding its exact source bytes.
 // CONTRACT: documents/contracts/qmd-items.md#items
-import type { ParsedAnchor } from "../anchors/index.js";
+import type { ParsedAnchor } from "./itemAnchor.js";
 
 export const ITEM_CLASS = "labshelf-item";
 

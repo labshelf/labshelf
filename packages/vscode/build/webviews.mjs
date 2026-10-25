@@ -8,17 +8,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = resolve(here, "..");
 const distDir = resolve(pkgRoot, "dist");
 const BUNDLES = {
-  "reader/reader": "src/reader/main.ts",
-  "library/library": "src/libraryWebview/main.ts",
-  "library/sidebar": "src/sidebarWebview/main.ts",
-  "library/details": "src/detailsWebview/main.ts",
-  "templates/templates": "src/writing/templates/webview/main.ts",
-  "search/search": "src/writing/search/webview/main.ts",
-  "history/history": "src/writing/history/webview/main.ts",
-  "spaces/chat": "src/spaces/chat/webview/main.ts",
-  "spaces/spaces": "src/spaces/webview/main.ts",
-  "projects/projects": "src/writing/allProjects/webview/main.ts",
-  "syncGuide/syncGuide": "src/library/syncGuidePanel/webview/main.ts",
+  "reader/reader": "src/reader/webview/readerEntry.ts",
+  "library/library": "src/libraryUi/webview/libraryEntry.ts",
+  "library/sidebar": "src/libraryUi/webview/sidebarEntry.ts",
+  "library/details": "src/libraryUi/details/webview/detailsEntry.ts",
+  "templates/templates": "src/writing/templates/webview/galleryEntry.ts",
+  "search/search": "src/writing/search/webview/searchEntry.ts",
+  "history/history": "src/writing/history/webview/historyEntry.ts",
+  "spaces/chat": "src/spaces/webview/researchChatEntry.ts",
+  "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
+  "projects/projects": "src/writing/allProjects/webview/allProjectsEntry.ts",
+  "syncGuide/syncGuide": "src/library/syncGuide/webview/syncGuideEntry.ts",
 };
 
 const watch = process.argv.includes("--watch");

@@ -1,12 +1,12 @@
 // Composes Spaces surfaces with the active Library and writing projects.
 import * as vscode from "vscode";
-import type { LibraryRootController } from "../activation/libraryLifecycle/index.js";
-import type { HostAdapters } from "../activation/serviceComposition/index.js";
-import type { WritingViewHandles } from "../activation/registration/index.js";
-import { projectChecklist } from "./projectChecklist.js";
+import type { LibraryRootController } from "../activation/index.js";
+import type { HostAdapters } from "../activation/index.js";
+import type { WritingViewHandles } from "../activation/index.js";
+import { projectChecklist } from "./projectTaskProgress.js";
 import { SpacesService } from "./host/index.js";
 import { registerSpacesPanels } from "./panels/index.js";
-import { ResearchChatView } from "./chat/index.js";
+import { ResearchChatView } from "./researchChatView.js";
 
 export function registerSpaces(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewHandles,

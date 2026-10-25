@@ -3,7 +3,8 @@ export {
   isCompatibleRelay, parseRelayVersion, RELAY_PROTOCOL_MAJOR, RELAY_PROTOCOL_MINOR, RELAY_PROTOCOL_VERSION, RELAY_WORKER_BUILD,
   type RelayVersion,
 } from "./protocolVersion.js";
-export * from "./socket/index.js";
+export * from "./connection/index.js";
 export * from "./http/index.js";
-export * from "./deploy/index.js";
+export * from "./client/index.js";
+export * from "./oauth/index.js";
 export * from "./account/index.js";

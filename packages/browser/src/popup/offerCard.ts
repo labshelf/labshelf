@@ -4,7 +4,7 @@ import { errorMessage } from "@labshelf/core";
 import { sendRuntime, type AttachPdfData, type PdfOfferView } from "../platform";
 import { folderName } from "./format";
 import { showStatus } from "./render";
-import { popupState, setState } from "./state";
+import { popupState, setState } from "./popupState";
 
 export function fetchOffer(tabId: number): Promise<PdfOfferView | null> {
   return sendRuntime<PdfOfferView | null>({ type: "pdfOffer.get", tabId }).catch(() => null);

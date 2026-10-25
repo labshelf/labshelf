@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { LatexProjectSources } from "../../src/writing/latexEditing/index";
+import { LatexProjectSources } from "../../src/latex/index";
 import { fakeDocument } from "./textDocument";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 

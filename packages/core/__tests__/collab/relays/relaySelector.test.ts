@@ -1,11 +1,11 @@
 /** Pins relay selection: one relay for the whole group, failover on limits or repeated failures, and return after the hold. */
 import * as Y from "yjs";
-import type { RelayReport } from "../../../src/collab/sync/index";
+import type { RelayReport } from "../../../src/collab/presence/index";
 import {
   addRelay, createRelaySelector, RELAY_DOWN_HOLD_MS, type RelayPresence, type RelaySelector,
 } from "../../../src/collab/relays/index";
-import { FakeClock } from "../sync/fakeNetwork";
-import { fakeLogger } from "../sync/testSession";
+import { FakeClock } from "../peer/fakeNetwork";
+import { fakeLogger } from "../doc/testSession";
 import { runFor } from "../transport/relay/fakeRelay";
 
 const ONE = "https://one.example.workers.dev";

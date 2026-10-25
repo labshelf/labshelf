@@ -1,5 +1,5 @@
 /** Declares the structured form of a search query and tests for a query without conditions. */
-import type { PaperStatus } from "../../model/index.js";
+import type { PaperStatus } from "../readingStatus/index.js";
 
 /** Document fields an operator such as `author:` or `kw:` restricts a substring match to. */
 export type SearchField = "authors" | "keywords" | "venue" | "note" | "citeKey" | "summary";

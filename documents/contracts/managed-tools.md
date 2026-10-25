@@ -1,6 +1,6 @@
 # Managed tools
 
-Every LabShelf app on a machine (the helper, the VS Code extension and the terminal app) uses one managed TeX per user, kept in one shared folder. The managed TeX module in core (`writing/latex/toolchain/node/managed`) implements this document for every app.
+Every LabShelf app on a machine (the helper, the VS Code extension and the terminal app) uses one managed TeX per user, kept in one shared folder. The managed TeX module in core (`latex/toolchain/node/managedTex`) implements this document for every app.
 
 ## Folder
 

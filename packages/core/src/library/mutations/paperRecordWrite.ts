@@ -5,8 +5,8 @@
 import type { PaperRecord } from "../../model/index.js";
 import { PDF_FILE } from "../layout.js";
 import { errorMessage } from "../../logging/index.js";
-import { MUTATIONS_MODULE, type MutationContext } from "./context.js";
-import { statusOnDisk } from "./paperOnDisk.js";
+import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
+import { statusOnDisk } from "./paperOnFileSystem.js";
 
 export interface RecordWriteOptions {
   /** True only for an explicit status change; any other rewrite keeps the status metadata.yaml holds. */

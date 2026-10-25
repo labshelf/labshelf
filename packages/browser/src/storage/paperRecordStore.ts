@@ -1,6 +1,6 @@
 // Caches PaperRecord objects persistently, derived from the metadata.yaml files, so reads never re-parse YAML.
 import type { PaperRecord } from "@labshelf/core";
-import { getDb } from "./idb";
+import { getDb } from "./idbDatabase";
 
 /** Upserts a PaperRecord into the metadata cache. */
 export async function upsertRecord(record: PaperRecord, folderPath: string): Promise<void> {

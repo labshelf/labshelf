@@ -17,15 +17,15 @@ const ENTRIES = [
   { entry: "background/index.ts", out: "background/index.js", format: "esm" },
   { entry: "popup/index.ts", out: "popup/index.js", format: "esm" },
   { entry: "options/index.ts", out: "options/index.js", format: "esm" },
-  // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under library-page/chunks.
+  // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under libraryPage/chunks.
   // Only the library page deploys the relay, so only it carries the Worker script.
-  { entry: "library-page/main.ts", out: "library-page/main.js", format: "esm", splitting: true, relayWorker: true },
+  { entry: "libraryPage/pageEntry.ts", out: "libraryPage/pageEntry.js", format: "esm", splitting: true, relayWorker: true },
   // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
   { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
   // Chrome's offscreen document, where pdf.js reads page 1 of a PDF the background matches to a paper.
-  { entry: "pdfText/offscreen.ts", out: "pdfText/offscreen.js", format: "esm", chromeOnly: true },
+  { entry: "import/offscreen.ts", out: "import/offscreen.js", format: "esm", chromeOnly: true },
   // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
-  { entry: "ui/themeBoot.ts", out: "ui/themeBoot.js", format: "iife" },
+  { entry: "ui/themeStartup.ts", out: "ui/themeStartup.js", format: "iife" },
   // Content scripts are classic scripts too: no module loading in page worlds.
   { entry: "content/searchResults.ts", out: "content/searchResults.js", format: "iife" },
 ];

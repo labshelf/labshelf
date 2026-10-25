@@ -7,11 +7,11 @@ import * as vscode from "vscode";
 
 import { createProjectData, rootBuildFolder } from "@labshelf/core";
 import { NodeLibraryFileSystem, deviceLocalLayout } from "@labshelf/core/node";
-import { ReaderPanel } from "../../../src/pdf-viewer";
+import { ReaderPanel } from "../../../src/reader";
 import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
+jest.mock("../../../src/reader", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 
 const create = ReaderPanel.createOrShow as jest.Mock;
 type Project = Parameters<BuildPreviews["finished"]>[0];

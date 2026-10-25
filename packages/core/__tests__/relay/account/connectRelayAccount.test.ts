@@ -1,6 +1,6 @@
 /** Pins connecting an account: saved before the serving wait, sign-in tokens forgotten when no connection results, and the choices it asks. */
 import { connectRelayAccount, type RelayCredential } from "../../../src/relay/index";
-import { ACCOUNT } from "../deploy/fakeCloudflare";
+import { ACCOUNT } from "../client/fakeCloudflare";
 import { accountWorld, routes, signIn, type World, type WorldOptions } from "./fakeRelayAccount";
 
 const PASTED: RelayCredential = { kind: "token", token: "access-1" };

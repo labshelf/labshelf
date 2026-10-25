@@ -1,7 +1,7 @@
 // Builds the hover card that shows the library papers behind a citation.
 import type { CitationEntry } from "../../../../index.js";
 import { el } from "../../../../../ui/dom/index.js";
-import type { PopupContent } from "../../hoverTarget.js";
+import type { PopupContent } from "../../hoverAnchor.js";
 import { citationActions, openAt, openLabel, OPEN_PAPER_LABEL, type PostRequest } from "./citationActions.js";
 import { byline, citationHead } from "./citationHead.js";
 import { flatHighlights } from "./citationHighlights.js";

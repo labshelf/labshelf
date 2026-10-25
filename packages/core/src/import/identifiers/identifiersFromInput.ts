@@ -3,7 +3,7 @@ import { arxivIdFromUrl, normalizeArxivId } from "./arxiv.js";
 import { detectIdentifiers } from "./detectIdentifiers.js";
 import { extractDoi } from "./doi.js";
 import { pmidFromUrl } from "./pubmed.js";
-import type { DetectedIdentifier } from "./types.js";
+import type { DetectedIdentifier } from "./detectedIdentifier.js";
 
 // A DOI the user typed on its own, with an optional `doi:` label or doi.org link.
 const TYPED_DOI = /^(?:doi:\s*|https?:\/\/(?:dx\.)?doi\.org\/)?10\./i;

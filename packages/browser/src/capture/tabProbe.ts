@@ -1,6 +1,6 @@
 /** Reads a tab's page for the capture flow, with the URL alone as the fallback for a tab the probe cannot enter. */
 import { errorMessage, type ILogger, type RawPage } from "@labshelf/core";
-import { probeLinks, probeMeta, type PageLinkEvidence, type PageMetaEvidence } from "./pageProbeContentScript";
+import { probeLinks, probeMeta, type PageLinkEvidence, type PageMetaEvidence } from "./pageProbe";
 import { scriptingApi } from "./tab";
 
 // A tab the probe cannot enter (the browser's own PDF viewer on some versions) is still usable when its URL is a PDF.

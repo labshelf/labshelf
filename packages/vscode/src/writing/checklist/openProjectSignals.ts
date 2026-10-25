@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ChecklistSignals, ILogger, PageOverflow, PathOps } from "@labshelf/core";
 import type { ReadyProject } from "../figures/index.js";
-import { isInside } from "../mainDocument.js";
+import { isInside } from "../buildRootDocument.js";
 import type { BodyPagesCount } from "../preview/index.js";
 
 const SAVE_DEBOUNCE_MS = 400;

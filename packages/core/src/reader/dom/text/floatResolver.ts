@@ -2,7 +2,7 @@
  * Finds the figure, table or equation a textual reference ("Fig. 3", "Tabela 2", "Eq. (5)") points at, from captions in
  * the page text. This is what makes float previews work in PDFs without link annotations, scans with an OCR layer included.
  */
-import { findCaptionLines, floatRegion, pickCaption, type PdfRegion, type FloatKind } from "../../logic/index.js";
+import { findCaptionLines, floatRegion, pickCaption, type PdfRegion, type FloatKind } from "../../text/index.js";
 import type { PageTextCache } from "./pageText.js";
 
 export interface FloatTarget {

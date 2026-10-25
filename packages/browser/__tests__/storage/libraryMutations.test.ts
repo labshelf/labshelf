@@ -2,7 +2,7 @@ import type { ILogger, PaperRecord } from "@labshelf/core";
 import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
-jest.mock("../../src/storage/idb/db", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
 const mockCache = new Map<string, PaperRecord>();
 jest.mock("../../src/storage/paperRecordStore", () => ({

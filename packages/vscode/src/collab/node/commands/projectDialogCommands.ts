@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { SharingDialogRequest } from "@labshelf/core";
-import { sharingWebviews } from "../../../sharing/index.js";
+import { sharingWebviews } from "../../../share/index.js";
 
 export const SHARE_COMMAND = "labshelf.collab.share";
 export const JOIN_COMMAND = "labshelf.collab.join";

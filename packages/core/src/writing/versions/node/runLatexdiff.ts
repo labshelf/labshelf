@@ -2,8 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { findExecutable } from "../../latex/toolchain/node/index.js";
-import { runCancellable } from "../../latex/build/node/index.js";
+import { findExecutable } from "../../../latex/toolchain/node/index.js";
+import { runCancellable } from "../../../latex/build/node/index.js";
 
 export interface LatexdiffRequest {
   beforeMain: string;

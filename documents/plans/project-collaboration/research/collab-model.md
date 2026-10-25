@@ -1,5 +1,5 @@
 sha: 3159f508
-files: documents/contracts/library-format.md (labshelf.yaml, .labshelf/*), packages/core/src/writing/project/export/projectFiles.ts, packages/core/src/writing/history/node/snapshotFiles.ts, documents/plans/folder-sync/research/folder-rules-decisions.md
+files: documents/contracts/library-format.md (labshelf.yaml, .labshelf/*), packages/core/src/writing/project/exportFiles.ts, packages/core/src/writing/history/node/snapshotFiles.ts, documents/plans/folder-sync/research/folder-rules-decisions.md
 source: planner's design from the repo and the user's decisions, 2026-10-17
 
 # Collaboration model (sessions 2–5)

@@ -1,7 +1,7 @@
 // Builds the template gallery webview's HTML shell: a strict CSP (the bundle's script by nonce, styles and images only from the extension or inline data) and the mount point.
 import * as vscode from "vscode";
 import { createNonce } from "@labshelf/core";
-import { bundleExists, bundleMissingHtml } from "../../ui/bundleMissing/index.js";
+import { bundleExists, bundleMissingHtml } from "../../ui/index.js";
 
 /** <extension>/dist/templates, for localResourceRoots. */
 export function galleryBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {

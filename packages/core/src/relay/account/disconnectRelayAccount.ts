@@ -1,5 +1,5 @@
 // Disconnects Cloudflare: takes the owner's relay out of the shares, deletes it from the account and forgets its credential.
-import { deleteRelay } from "../deploy/index.js";
+import { deleteRelay } from "../client/index.js";
 import { accountAccessToken, type RelayAccountDeps } from "./accountAccessToken.js";
 import { RELAY_ACCOUNT_LOG_MODULE, RELAY_WORKER_NAME } from "./relayAccount.js";
 

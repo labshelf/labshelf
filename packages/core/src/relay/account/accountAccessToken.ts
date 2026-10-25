@@ -1,6 +1,7 @@
 // Gives the access token of the connected Cloudflare account, asking the owner to sign in again when Cloudflare refuses it.
 import type { ILogger } from "../../ports/index.js";
-import { CloudflareOAuthError, createCloudflareSession, type RelayClock } from "../deploy/index.js";
+import type { RelayClock } from "../client/index.js";
+import { CloudflareOAuthError, createCloudflareSession } from "../oauth/index.js";
 import { RELAY_ACCOUNT_LOG_MODULE, type RelayCredential } from "./relayAccount.js";
 import type { RelayAccountStore } from "./relayAccountStore.js";
 

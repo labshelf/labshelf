@@ -7,7 +7,7 @@ import { BRIDGE_PROTOCOL } from "../protocol.js";
 import { assertSameProtocol, parseBridgeRequest, requestId } from "../requestValidation.js";
 import { toBridgeError } from "./bridgeFailure.js";
 import type { LibraryFileOperations } from "./fileOperations.js";
-import { StagedWrites } from "./staging/index.js";
+import { StagedWrites } from "./stagedWrites.js";
 
 export interface BridgeHostSessionDeps {
   /** Undefined when the shared config names no library. */

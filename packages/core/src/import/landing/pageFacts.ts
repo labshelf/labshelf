@@ -4,7 +4,7 @@ import { extractYear, type ResolvedMetadata } from "../metadata/index.js";
 import { authorsOf, keywordsOf, pagesOf, squash } from "./citationFields.js";
 import { identifiersOf } from "./pageIdentifiers.js";
 import { pdfCandidatesOf } from "./pdfCandidates.js";
-import type { PageFacts, RawPage } from "./types.js";
+import type { PageFacts, RawPage } from "./rawPage.js";
 
 const TITLE_KEYS = ["citation_title", "dc.title", "prism.title", "bepress_citation_title"];
 

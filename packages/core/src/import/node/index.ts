@@ -2,6 +2,7 @@
 export { createPdfjsLoader } from "./loadPdfjs.js";
 export type { PdfjsLoaderOptions } from "./loadPdfjs.js";
 export { NodePdfOpener } from "./nodePdfOpener.js";
-export { renderFirstPagePng, withPdfDocument } from "./canvas/index.js";
+export { renderFirstPagePng } from "./renderFirstPagePng.js";
+export { withPdfDocument } from "./withPdfDocument.js";
 export { SearchablePdfBuilder, TesseractOcrEngine } from "./ocr/index.js";
 export type { OcrDocument, SearchablePdfOptions, TesseractOcrOptions } from "./ocr/index.js";

@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { createPreviewStore, type ILogger, type PageArea, type PaperRecord, type PathOps } from "@labshelf/core";
-import { ReaderPanel, type ReaderPanelDeps } from "../../pdf-viewer/index.js";
-import type { ReadyProject } from "../mainDocument.js";
+import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import type { CompareSide } from "./compareSides.js";
 
 type ShowIn = NonNullable<Parameters<typeof ReaderPanel.createOrShow>[1]["show"]>;

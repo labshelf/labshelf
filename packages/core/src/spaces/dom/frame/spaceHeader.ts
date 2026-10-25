@@ -1,6 +1,6 @@
 // Builds the editable Space name and purpose alongside positioned sharing.
 import { el, icon, memberChip, positioned } from "../../../ui/dom/index.js";
-import type { OverviewContext } from "../overview/index.js";
+import type { OverviewContext } from "../spaceOverview/index.js";
 function editable(value: string, label: string, className: string, disabled: boolean, save: (text: string) => void): HTMLInputElement {
   const input = el("input", { class: className, value, title: value || label, "aria-label": label, placeholder: label, disabled });
   const commit = (): void => { if (input.value !== value) save(input.value); };

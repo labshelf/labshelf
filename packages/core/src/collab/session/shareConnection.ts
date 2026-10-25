@@ -2,13 +2,13 @@
 // CONTRACT: documents/contracts/collaboration.md#connection-lifecycle
 import type { ILogger } from "../../ports/index.js";
 import { peerColour } from "../binding/index.js";
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../crypto/index.js";
+import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../shareKey/index.js";
 import type { InviteRelay } from "../invite/index.js";
 import { createSwitchableTransport } from "../relays/index.js";
-import { openCollabStore, type CollabStateStorage, type CollabStore } from "../state/index.js";
-import {
-  attachAwareness, attachBlobs, createShareSession, type BlobExchange, type PresenceHandle, type SessionStatus, type ShareSession,
-} from "../sync/index.js";
+import { openCollabStore, type CollabStateStorage, type CollabStore } from "../deviceState/index.js";
+import { attachAwareness, type PresenceHandle } from "../presence/index.js";
+import { attachBlobs, createShareSession, type BlobExchange, type ShareSession } from "../doc/index.js";
+import { type SessionStatus } from "../peer/index.js";
 import type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
 import { placeSharedProject, type ShareProjects, type ShareStart } from "./placeSharedProject.js";
 import { followShareRelays, type RelayNetwork, type ShareRelays } from "./shareRelays.js";

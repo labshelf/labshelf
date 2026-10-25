@@ -1,6 +1,6 @@
 /** Finds the DOI of the journal version of a preprint, from arXiv's author-reported DOI or CrossRef's preprint relation. */
 import { fetchJson, type RegistryEnv } from "./http.js";
-import { arxivById } from "./works/index.js";
+import { arxivById } from "./arxiv.js";
 
 // arXiv's own DOIs (10.48550) and bioRxiv/medRxiv's (10.1101) name the preprint itself, never the journal version.
 const PREPRINT_DOI = /^10\.(48550|1101)\//i;

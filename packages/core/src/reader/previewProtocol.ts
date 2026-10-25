@@ -1,9 +1,9 @@
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
 // CONTRACT: documents/contracts/reader-host.md#preview
-import type { PaperStatus } from "../model/index.js";
+import type { PaperStatus } from "../library/readingStatus/index.js";
 import type { CountUpTo, LatexEngine } from "../writing/project/index.js";
 import type { AutoCompileMode } from "../writing/build/index.js";
-import type { QuotedHighlight } from "../writing/review/index.js";
+import type { QuotedHighlight } from "../writing/quotes/index.js";
 
 /** The state of the build whose output a preview reader shows. */
 export type BuildState = "building" | "succeeded" | "failed";

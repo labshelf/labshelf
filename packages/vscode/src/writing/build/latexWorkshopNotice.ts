@@ -1,7 +1,7 @@
 // Tells the user once per workspace that LaTeX Workshop builds on save too, and offers to turn that off.
 import * as vscode from "vscode";
 
-import { owningProject } from "../mainDocument.js";
+import { owningProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 
 const LATEX_WORKSHOP_ID = "James-Yu.latex-workshop";

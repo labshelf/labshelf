@@ -1,6 +1,6 @@
 /** Pins failover on real sessions over two in-process relays: the group moves together on a 429 and no edit is lost. */
 import { RELAY_DOWN_HOLD_MS } from "../../../src/collab/relays/index";
-import { FakeClock } from "../sync/fakeNetwork";
+import { FakeClock } from "../peer/fakeNetwork";
 import { runFor } from "../transport/relay/fakeRelay";
 import { ONE, openGroupClient, RelayHosts, TWO, typeFor } from "./relayGroup";
 

@@ -2,10 +2,10 @@
 import * as vscode from "vscode";
 
 import type { SharingDialogRequest } from "@labshelf/core";
-import type { LibraryRootController } from "../../activation/libraryLifecycle/index.js";
-import type { ActiveServices } from "../../commands/index.js";
-import { sharingWebviews } from "../../sharing/index.js";
-import { libraryPaths } from "../../ui/list/index.js";
+import type { LibraryRootController } from "../../activation/index.js";
+import type { ActiveServices } from "../../command/index.js";
+import { sharingWebviews } from "../shareWebviews.js";
+import { libraryPaths } from "../../libraryUi/index.js";
 import { IMPORT_SHARE_COMMAND, SHARE_FOLDER_COMMAND } from "../shareCommandIds.js";
 
 const MANAGE_SHARES_COMMAND = "labshelf.share.manage";

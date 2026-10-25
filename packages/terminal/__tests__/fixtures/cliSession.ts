@@ -1,7 +1,7 @@
 // Shared harness for the CLI command tests: opens a temp library with isolated XDG dirs and runs
 // commands through fresh in-memory stdout/stderr buffers.
-import { openLibrary, type AppContext } from "../../src/app/context";
-import type { TerminalConfig } from "../../src/app/config";
+import { openLibrary, type AppContext } from "../../src/compositionRoot";
+import type { TerminalConfig } from "../../src/config";
 import { parseArgs } from "../../src/cli/args";
 import { runLibraryCommand, type Output } from "../../src/cli";
 import { createTempLibrary, makeTempDir, cleanupTempDirs, type PaperFixture, type TempLibrary } from "./library";

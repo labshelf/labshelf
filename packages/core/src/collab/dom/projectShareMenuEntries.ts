@@ -1,6 +1,6 @@
 // Builds the share entries of a project's context menu from what the host offers.
 import type { MenuEntry } from "../../ui/dom/index.js";
-import type { SharingHost } from "../../library-ui/sharing/index.js";
+import type { SharingHost } from "../../libraryUi/share/index.js";
 import { reportingFailure } from "../../share/dom/index.js";
 import { copyInvite, showInviteDialog } from "./inviteDialog.js";
 import { runLeaveProjectDialog } from "./leaveProjectDialog.js";

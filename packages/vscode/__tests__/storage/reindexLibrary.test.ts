@@ -4,8 +4,8 @@
  */
 import { LibraryStore } from '@labshelf/core';
 import type { LibraryScan, PaperRecord } from '@labshelf/core';
-import { createLibraryEvents } from '../../src/events/index';
-import { reindexLibrary } from '../../src/storage/data/reindexLibrary';
+import { createLibraryEvents } from '../../src/library/index';
+import { reindexLibrary } from '../../src/storage/reindexLibrary';
 
 const rec = (over: Partial<PaperRecord>): PaperRecord => ({
   id: 'p', title: 'P', path: '/lib/papers/p', citeKey: 'p', status: 'unread', ...over,

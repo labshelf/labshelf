@@ -1,0 +1,24 @@
+/** Finds the DOI of an entry that lacks one and returns the edit that adds it. */
+import { crossRefSearch, type RegistryEnv } from "../../import/index.js";
+import { titleKey } from "../../library/index.js";
+import { plainField, type BibEntry } from "./bibEntries.js";
+import type { BibFix } from "./bibliographyReport.js";
+
+/**
+ * Asks CrossRef by title and authors; a candidate counts only with the same title key and, when both have one, the same year,
+ * because a near title is often a different paper of the same group.
+ * @returns the insertion after the entry's key, or undefined when no candidate matches
+ */
+export async function missingDoiFix(env: RegistryEnv, text: string, entry: BibEntry): Promise<BibFix | undefined> {
+  const title = plainField(entry.fields.get("title"));
+  if (!titleKey(title)) { return undefined; }
+  const year = Number.parseInt(plainField(entry.fields.get("year")), 10);
+  const query = `${title} ${plainField(entry.fields.get("author"))}`;
+  const match = (await crossRefSearch(env, query)).find((record) =>
+    !record.isComponent && record.doi && titleKey(record.title ?? "") === titleKey(title)
+    && (!record.year || Number.isNaN(year) || record.year === year));
+  if (!match?.doi) { return undefined; }
+  // INVARIANT: the parser accepted the entry, so a comma follows its key.
+  const afterKey = text.indexOf(",", entry.start) + 1;
+  return { title: `Add doi:${match.doi}`, start: afterKey, end: afterKey, text: `\n  doi = {${match.doi}},` };
+}

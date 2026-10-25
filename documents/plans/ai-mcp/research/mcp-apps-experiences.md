@@ -1,5 +1,5 @@
 sha: 0b367695
-files: packages/core/src/reader/**, packages/core/src/library-ui/**, packages/core/src/writing/**
+files: packages/core/src/reader/**, packages/core/src/libraryUi/**, packages/core/src/writing/**
 source: conversation synthesis, 2026-10-19; linked user needs and product idea catalogues
 
 # Explore optional interfaces inside external chats

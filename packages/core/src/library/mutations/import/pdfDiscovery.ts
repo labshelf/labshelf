@@ -1,6 +1,6 @@
 /** Expands what the user picked for import (files and folders) into the PDF files to import. */
 import { errorMessage } from "../../../logging/index.js";
-import { MUTATIONS_MODULE, type MutationContext } from "../context.js";
+import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
 
 export interface PdfDiscovery {
   /** Files picked directly, whatever their extension, and the .pdf files inside picked folders. */

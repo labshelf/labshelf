@@ -2,11 +2,11 @@
  * Mounts the All projects page: place tabs, search, and the project list, talking to its host only through the transport.
  * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
-import { buildFrame } from "../../../library-ui/dom/index.js";
-import type { SharingHost } from "../../../library-ui/sharing/index.js";
-import type { PanePrefsPort } from "../../../library-ui/state/index.js";
+import { buildFrame } from "../../../libraryUi/dom/index.js";
+import type { SharingHost } from "../../../libraryUi/share/index.js";
+import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
 import { showMenu, toast, type MenuAnchor } from "../../../ui/dom/index.js";
-import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../derive/index.js";
+import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../viewModel/index.js";
 import type { AllProjectsToHost, AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
 import { mountAllProjectsHeader } from "./allProjectsHeader.js";
@@ -14,7 +14,7 @@ import { emptyTrash } from "./projectActions.js";
 import { buildProjectEmptyState } from "./projectEmptyState.js";
 import { mountProjectList, type ProjectListHandlers } from "./list/index.js";
 import { projectMenuEntries } from "./projectMenu.js";
-import { createDetailRequests } from "./detail/index.js";
+import { createDetailRequests } from "./detailPane/index.js";
 import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";
 
 interface PageState {

@@ -5,7 +5,7 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import { PDF_FILE } from "../../../library/index.js";
 import { errorMessage } from "../../../logging/index.js";
 import type { ReaderAssets } from "../../index.js";
-import type { PdfjsLib, ViewerLib } from "./context.js";
+import type { PdfjsLib, ViewerLib } from "./readerContext.js";
 import type { PerfMarks } from "./perfMarks.js";
 
 export interface LoadedPdf {

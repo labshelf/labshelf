@@ -1,7 +1,7 @@
 /** Drives the #hover-popup element: fills it with a title, actions and body, places it next to its anchor and hides it. */
 import { clamp, iconButton } from "../elements/index.js";
 import { icon } from "../../../ui/index.js";
-import type { PopupContent } from "./hoverTarget.js";
+import type { PopupContent } from "./hoverAnchor.js";
 import { $, el } from "../../../ui/dom/index.js";
 
 export function textContent(texts: string[], jump: () => void): PopupContent {

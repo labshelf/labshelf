@@ -1,5 +1,5 @@
 /** Puts volume and page range in the form a citation prints them. */
-import type { ResolvedMetadata } from "./types.js";
+import type { ResolvedMetadata } from "./resolvedMetadata.js";
 
 /**
  * Registries differ: Semantic Scholar reports volume "25 3" (volume and issue

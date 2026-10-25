@@ -1,5 +1,5 @@
 /** Traces text seen in the PDF back to the source line that wrote it, ignoring comments, which never reach the PDF. */
-import type { CheckSource } from "./checkTypes.js";
+import type { CheckSource } from "./checkReport.js";
 
 /** TRAP: a Typst `//` comment must not swallow the `//` of a URL, which Typst reads as a link. */
 const TYPST_COMMENT = /(^|[^:])\/\/.*$/;

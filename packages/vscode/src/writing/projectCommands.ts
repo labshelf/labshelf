@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { PROJECT_FILE, blankTemplate, detectFormat, type ProjectFormat } from "@labshelf/core";
-import { executeSafely } from "../commands/index.js";
+import { executeSafely } from "../command/index.js";
 import type { WritingHost, WritingProjects } from "./session/index.js";
 import { OPEN_PROJECT_COMMAND } from "./session/index.js";
 

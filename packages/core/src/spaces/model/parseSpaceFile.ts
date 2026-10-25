@@ -1,6 +1,6 @@
 // Reads space.json text into a Space without ever throwing: broken files become unreadable, newer versions and wrong-typed keys read-only.
 // CONTRACT: documents/contracts/spaces.md#reading
-import type { SpaceReadResult } from "./types.js";
+import type { SpaceReadResult } from "./space.js";
 import { isNonEmptyString, isRecord, isString, readEntries, topLevelReadOnlyReason, unknownKeys } from "./json/index.js";
 import { parseDate, parseFolder, parsePaperRef, readProjectIds } from "./parseSpaceEntries.js";
 import { resolveSpaceReferences } from "./resolveSpaceReferences.js";

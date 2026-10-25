@@ -1,6 +1,6 @@
 /** Reads one project folder into a ready or broken project entry through a folder-scoped port. */
 import type { ILogger } from "../../ports/index.js";
-import { detectMainFile } from "./roots/index.js";
+import { detectMainFile } from "./buildRoot/index.js";
 import type { ProjectEntry, ProjectLocation } from "./projectEntry.js";
 import { PROJECT_FILE, parseProjectFile } from "./projectFile.js";
 

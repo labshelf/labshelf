@@ -1,7 +1,7 @@
 // Persists each device's bounded write history without modifying its peers' files.
 import type { ILogger } from '../../ports/index.js';
 import { relativePathProblem } from '../index.js';
-import { parseRecords, validRecord } from './recordFormat.js';
+import { parseRecords, validRecord } from './writeRecordFormat.js';
 import { DEVICE_ID, type WriteRecordEntry, type WriteRecordFileSystem, type WriteRecords } from './writeRecord.js';
 
 const MODULE = 'library.writeRecords';

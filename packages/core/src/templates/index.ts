@@ -1,0 +1,22 @@
+/** Exports the runtime-neutral template model: manifests and their serializer, path rules, the catalog index, the gallery entry and its filter, the blank templates, the library-backed My templates source and index cache, the download count, the gallery protocol, the gallery host, and the GitHub client that publishes a template. */
+export { blankTemplate } from "./blankTemplates.js";
+export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, isLicenseExpression, parseCatalogIndex, parseTemplateManifest, readTemplateFields, serializeTemplateManifest, templatePathProblem, templateTreeProblem } from "./templateManifest/index.js";
+export type { CatalogBlob, CatalogEntry, CatalogFile, CatalogIndexResult, ProjectTemplate, SkippedEntry, TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./templateManifest/index.js";
+export { engineProblem } from "./engineProblem.js";
+export type { AvailableEngines } from "./engineProblem.js";
+export { sortTemplates } from "./sortTemplates.js";
+export type { TemplateSort } from "./sortTemplates.js";
+export { filterTemplates } from "./filterTemplates.js";
+export type { TemplateFilter } from "./filterTemplates.js";
+export { CATEGORY_LABELS, ENGINE_LABELS, FORMAT_LABELS, SOURCE_LABELS, templateByLine, templateMetaLine, templateUsesCount, templateUsesLabel } from "./templateLabels.js";
+export { PUBLISH_CHECK_IDS, publishCheckLabel } from "./publishCheckLabels.js";
+export type { PublishCheckId } from "./publishCheckLabels.js";
+export type { PublishBuildResult, PublishCheck, PublishCheckInput, PublishCheckReport, PublishFile } from "./publishCheckReport.js";
+export { TEMPLATE_SOURCES } from "./templateEntry.js";
+export type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
+export * from "./sources/index.js";
+export * from "./fileSystem/index.js";
+export { countDownloads } from "./countDownloads.js";
+export * from "./protocol/index.js";
+export * from "./host/index.js";
+export * from "./client/index.js";

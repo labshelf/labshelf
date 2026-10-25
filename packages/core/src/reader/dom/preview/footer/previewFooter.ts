@@ -3,8 +3,8 @@ import { el } from "../../../../ui/dom/index.js";
 import type { PreviewRoots } from "../../../index.js";
 import type { PreviewOutlineSource } from "../mountPreviewChrome.js";
 import { createCrumbs, type LoadedOutline } from "./crumbs.js";
-import { createStatusView } from "./statusView.js";
-import type { PreviewBuildStatus } from "./buildStatusText.js";
+import { createStatusView } from "./buildStateView.js";
+import type { PreviewBuildStatus } from "./buildStateText.js";
 
 type FooterSlotName = "cites" | "limit" | "checks";
 

@@ -1,5 +1,6 @@
 // Recognises project text copies from provider names, write history or shared lines.
-import { isMergeableTextFile, lineSimilarity, textHash } from '../../writing/merge/index.js';
+import { isMergeableTextFile, textHash } from '../../writing/conflict/index.js';
+import { lineSimilarity } from '../../writing/text/index.js';
 import type { WriteRecords } from '../writeRecords/index.js';
 import type { ConflictCopy } from './conflictCopy.js';
 import { parseConflictName } from './conflictNames.js';

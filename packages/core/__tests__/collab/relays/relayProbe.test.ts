@@ -1,7 +1,7 @@
 /** Pins the relay probe: a compatible /version is ok, a 429 or 1027 page is a limit, another major or 3 s of silence is an error. */
 import { PROBE_TIMEOUT_MS, relayProbe } from "../../../src/collab/relays/index";
-import { FakeClock } from "../sync/fakeNetwork";
-import { fakeLogger } from "../sync/testSession";
+import { FakeClock } from "../peer/fakeNetwork";
+import { fakeLogger } from "../doc/testSession";
 
 const URL_ONE = "https://one.example.workers.dev";
 const answer = (body: unknown) => async () => new Response(JSON.stringify(body), { status: 200 });

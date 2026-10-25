@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { engineLabel } from "@labshelf/core";
-import { owningProject } from "../../mainDocument.js";
+import { owningProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import { PICK_COMPILER_COMMAND } from "./pickCompiler.js";
 

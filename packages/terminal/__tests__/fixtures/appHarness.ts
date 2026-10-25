@@ -5,11 +5,11 @@ import * as path from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
-import { openLibrary, type AppContext } from "../../src/app/context";
-import type { InputEvent } from "../../src/tui/input";
-import type { Screen } from "../../src/tui/screen";
-import type { TerminalSize } from "../../src/tui/terminal";
-import { App, type TerminalLike } from "../../src/ui/app";
+import { openLibrary, type AppContext } from "../../src/compositionRoot";
+import type { InputEvent } from "../../src/screen/input";
+import type { Screen } from "../../src/screen/screen";
+import type { TerminalSize } from "../../src/screen/terminal";
+import { App, type TerminalLike } from "../../src/libraryUi/libraryScreen";
 
 export class FakeTerminal implements TerminalLike {
   frames: Screen[] = [];

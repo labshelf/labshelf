@@ -1,7 +1,7 @@
 // Builds catalog controls while preserving the search input between row updates.
 import { el, icon, inputBox, segmentedFilter } from "../../../ui/dom/index.js";
 import type { SpacesTransport } from "../../protocol/index.js";
-import type { CatalogFilter } from "../../view/index.js";
+import type { CatalogFilter } from "../../viewModel/index.js";
 
 export async function createSpace(end: SpacesTransport, signal: AbortSignal): Promise<void> {
   const name = await inputBox({ signal, title: "New Space", prompt: "Choose a topic, a course or a research question. Press Enter to create.", placeholder: "e.g. Thesis literature review", validate: (value) => value.trim() ? null : "Enter a Space name" });

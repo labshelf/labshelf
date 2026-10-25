@@ -1,6 +1,6 @@
 // Opens the cited library paper when a preview's citation link is clicked; every other link keeps its own jump.
 import type { ReaderContext } from "../../session/index.js";
-import { findLink } from "../linkTarget.js";
+import { findLink } from "../destAnchor.js";
 import type { PreviewCitations } from "./previewCitations.js";
 
 /**

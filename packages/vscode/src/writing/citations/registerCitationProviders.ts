@@ -4,9 +4,9 @@ import * as vscode from "vscode";
 import { BibliographySync } from "./bibliographySync.js";
 import { CitationCompletionProvider, UPDATE_BIBLIOGRAPHY_COMMAND } from "./citationCompletion.js";
 import { CitationHoverProvider } from "./hover/index.js";
-import { CitationLinkProvider } from "./citationLinks.js";
+import { CitationLinkProvider } from "./citationPaperLinks.js";
 import type { CitationWorkspace } from "./citationWorkspace.js";
-import { registerCiteFromLibrary } from "./cite/index.js";
+import { registerCiteFromLibrary } from "./citationFromLibrary.js";
 
 // Typst has no built-in language id, so sources are matched by file name.
 const SOURCES = [

@@ -3,8 +3,10 @@
 import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { createWriteRecordStore, type DeviceIdentity } from "../../library/writeRecords/index.js";
-import { startProjectMirror, type MergeText, type MirrorDisk } from "../mirror/index.js";
-import { acquireFolderLease, systemLeaseScheduler, type FolderLease, type LeaseScheduler, type MirrorApp } from "../ownership/index.js";
+import {
+  acquireFolderLease, startProjectMirror, systemLeaseScheduler,
+  type FolderLease, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorDisk,
+} from "../mirror/index.js";
 import type { ConnectionMirror, MirrorFactory, MirrorInput } from "./connectionMirror.js";
 
 const LOG_MODULE = "collab.mirror.lease";

@@ -8,18 +8,16 @@
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
-    "src/reader",
+    "src/reader/webview",
     "src/spaces/webview",
-    "src/spaces/chat/webview",
-    "src/libraryWebview",
-    "src/detailsWebview",
-    "src/webviewMessaging",
-    "src/sidebarWebview",
+    "src/libraryUi/webview",
+    "src/libraryUi/details/webview",
+    "src/webview",
     "src/writing/templates/webview",
     "src/writing/search/webview",
     "src/writing/history/webview",
     "src/writing/allProjects/webview",
-    "src/library/syncGuidePanel/webview",
+    "src/library/syncGuide/webview",
     "src/webviewGlobals.d.ts",
     ".vscode-test"
   ]

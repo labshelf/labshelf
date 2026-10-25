@@ -1,5 +1,5 @@
 // Summarises a project's build in this session for All projects.
-import type { ProjectBuildSummary } from "../projectDetail.js";
+import type { ProjectBuildSummary } from "../projectDetailPane.js";
 import type { BuildProblem, BuildSources, ReadyProject } from "./projectLibraryDeps.js";
 
 function problemsOf({ builds }: BuildSources, folder: string): BuildProblem[] {

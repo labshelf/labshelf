@@ -1,5 +1,5 @@
 // Builds the global RegExp for a project search query and its Match Case, Regex and Whole Word options.
-import { escapeRegExp } from "./escapeRegExp.js";
+import { escapeRegExp } from "./escapePattern.js";
 
 export interface SearchOptions {
   matchCase: boolean;

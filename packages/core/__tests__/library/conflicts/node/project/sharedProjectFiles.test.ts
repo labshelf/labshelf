@@ -3,18 +3,18 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as Y from 'yjs';
 import { indexFiles } from '../../../../../src/collab/model/index';
-import { nodeCollabStorage } from '../../../../../src/collab/node/state/index';
-import { INDEX_DOC_KEY } from '../../../../../src/collab/sync/index';
+import { nodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
+import { INDEX_DOC_KEY } from "../../../../../src/collab/doc/docSync";
 import { readSharedProjectFiles } from '../../../../../src/library/conflicts/node/project/index';
 import { deviceLocalLayout } from '../../../../../src/library/node/index';
 import { cleanupTempDirs, makeTempDir } from '../../../../support/tempDirs';
 import { fakeLogger } from '../../../../support/fakeLogger';
-import { scanLibraryConflicts } from '../../../../../src/writing/merge/node/index';
-import { FileProjectVersionStore } from '../../../../../src/writing/merge/index';
+import { scanLibraryConflicts } from '../../../../../src/writing/conflict/node/index';
+import { FileProjectVersionStore } from '../../../../../src/writing/conflict/index';
 import { NodeLibraryFileSystem } from '../../../../../src/library/node/index';
 import { nodeProjectCatalogContext } from '../../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../../src/writing/project/index';
-import { blankTemplate } from '../../../../../src/writing/templates/index';
+import { blankTemplate } from '../../../../../src/templates/index';
 
 afterEach(cleanupTempDirs);
 

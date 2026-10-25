@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { emptySearchRun, matchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
-import { mainPathIn, owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
+import { mainPathIn, owningProject, type ProjectLookup, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, type SearchScope } from "./projectSearchFiles.js";

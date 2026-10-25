@@ -2,8 +2,8 @@
 
 import type { Annotation, ILogger, PaperRecord } from "@labshelf/core";
 import type { WritingProjects } from "../session/index.js";
-import type { CiteSections } from "./citeSectionsCache.js";
-import { owningProject, type ProjectLookup, type ReadyProject } from "../mainDocument.js";
+import type { CiteSections } from "./citationSectionsCache.js";
+import { owningProject, type ProjectLookup, type ReadyProject } from "../buildRootDocument.js";
 
 export interface CitationSession {
   listPapers(): Promise<PaperRecord[]>;

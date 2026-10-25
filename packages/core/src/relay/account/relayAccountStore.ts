@@ -1,6 +1,6 @@
 // Keeps the owner's Cloudflare account and its OAuth tokens in the secret slots an app provides.
 import type { ILogger } from "../../ports/index.js";
-import type { SecretSlot, StoredLock } from "../deploy/index.js";
+import type { SecretSlot, StoredLock } from "../oauth/index.js";
 import { parseRelayAccount, RELAY_ACCOUNT_LOG_MODULE, type RelayAccount } from "./relayAccount.js";
 
 export interface RelayAccountSlots {

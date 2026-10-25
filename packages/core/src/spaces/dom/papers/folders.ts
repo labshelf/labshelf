@@ -1,7 +1,7 @@
 // Renders nested Space folders as reference drop targets.
 import { el, icon } from '../../../ui/dom/index.js';
-import type { PapersTreeFolder } from '../../view/index.js';
-import type { PapersContext } from './context.js';
+import type { PapersTreeFolder } from '../../viewModel/index.js';
+import type { PapersContext } from './papersContext.js';
 import { action, PAPER_DRAG_TYPE } from './rows.js';
 import { folderName } from './dialogs.js';
 export function folderNav(ctx: PapersContext, select: (id?: string) => void): HTMLElement {

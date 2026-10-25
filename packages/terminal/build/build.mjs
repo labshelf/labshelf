@@ -33,9 +33,9 @@ const common = {
 };
 
 const entries = [
-  { ...common, entryPoints: [resolve(root, "src/main.ts")], outfile: resolve(root, "dist/labshelf.mjs") },
-  { ...common, entryPoints: [resolve(root, "src/preview/thumbnailWorker.ts")], outfile: resolve(root, "dist/thumbnailWorker.mjs"), banner: { js: banner.split("\n").slice(1).join("\n") } },
-  { ...common, entryPoints: [resolve(root, "src/helper/main.ts")], outfile: resolve(root, "dist/labshelf-helper.mjs"), metafile: true, banner: { js: banner.split("\n").slice(1).join("\n") } },
+  { ...common, entryPoints: [resolve(root, "src/terminalEntry.ts")], outfile: resolve(root, "dist/labshelf.mjs") },
+  { ...common, entryPoints: [resolve(root, "src/libraryUi/thumbnailWorker.ts")], outfile: resolve(root, "dist/thumbnailWorker.mjs"), banner: { js: banner.split("\n").slice(1).join("\n") } },
+  { ...common, entryPoints: [resolve(root, "src/helper/helperEntry.ts")], outfile: resolve(root, "dist/labshelf-helper.mjs"), metafile: true, banner: { js: banner.split("\n").slice(1).join("\n") } },
   { ...common, entryPoints: [resolve(root, "src/helperHost.ts")], outfile: resolve(root, "dist/helperHost.mjs"), metafile: true, banner: { js: banner.split("\n").slice(1).join("\n") } },
   { ...common, entryPoints: [resolve(root, "../core/src/bridge/node/hostEntry.ts")], outfile: resolve(root, "dist/bridgeHost.js"), banner: { js: banner.split("\n").slice(1).join("\n") } },
 ];

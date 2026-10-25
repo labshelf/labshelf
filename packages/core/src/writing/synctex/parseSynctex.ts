@@ -1,7 +1,7 @@
 // Parses the decompressed text of a SyncTeX file into boxes per page and the first position of each source line.
 import { normalizeInputPath } from "./normalizeInputPath.js";
 import { readSyncScale, type SyncScale } from "./syncScale.js";
-import type { SyncBox, SyncFileLines, SyncIndex, SyncMark, SyncNode } from "./syncIndex.js";
+import type { SyncBox, SyncFileLines, SyncIndex, SyncMark, SyncNode } from "./synctexMap.js";
 
 // PDF points: marks this close to the right edge of their line box are line-end glue.
 const LINE_END_TOLERANCE = 0.5;

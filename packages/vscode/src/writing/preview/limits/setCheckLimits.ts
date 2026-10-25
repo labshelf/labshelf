@@ -1,7 +1,7 @@
 // Writes a limits change from the preview into the project's labshelf.yaml.
 import type { CheckLimitsChange } from "@labshelf/core";
 
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 
 /** A number sets a limit, null removes it, and an absent field keeps what the file holds. */

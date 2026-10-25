@@ -3,7 +3,7 @@
  */
 // Tests the preview footer: breadcrumb with its sections menu, build status precedence, slots and the status clock.
 import { mountPreviewFooter } from "../../../../../src/reader/dom/preview/footer/index";
-import type { OutlineRow } from "../../../../../src/reader/logic/presentation/outlineModel";
+import type { OutlineRow } from "../../../../../src/reader/outlineModel";
 import type { PreviewRoot, PreviewRoots } from "../../../../../src/reader/previewProtocol";
 
 function root(path: string, over: Partial<PreviewRoot> = {}): PreviewRoot {

@@ -1,5 +1,5 @@
 // Runs one project search over already-read file texts and names its outcome for the page: results, an unsearchable query, or an empty answer.
-import type { PathOps } from "../../library/mutations/context.js";
+import type { PathOps } from "../../library/mutations/mutationDeps.js";
 import type { HostToSearch } from "./protocol/index.js";
 import { searchPattern, type SearchOptions } from "./searchPattern.js";
 import { collectSearchResults } from "./searchResults.js";

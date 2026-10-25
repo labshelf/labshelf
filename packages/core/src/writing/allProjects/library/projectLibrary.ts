@@ -1,7 +1,7 @@
 // Implements the All projects page's storage port over the writing projects of a library, for any host.
 import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
 import type { ProjectDetail, ProjectLibraryPort, ProjectRow } from "../index.js";
-import { createProjectDetailSource } from "./projectDetailSource.js";
+import { createProjectDetailSource } from "./projectDetailPaneSource.js";
 import { createProjectHostActions } from "./projectHostActions.js";
 import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
 import { toProjectRow } from "./projectRows.js";

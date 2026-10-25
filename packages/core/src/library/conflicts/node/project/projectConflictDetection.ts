@@ -6,7 +6,7 @@ import { readWriteRecords } from '../../../writeRecords/index.js';
 import { detectProjectConflict, eligibleProjectConflictPath, readConflictDismissals, parseConflictName } from '../../index.js';
 import type { ConflictCopy, ProjectConflictText } from '../../index.js';
 import type { ILogger } from '../../../../ports/index.js';
-import { isMergeableTextFile, type IProjectVersionStore } from '../../../../writing/merge/index.js';
+import { isMergeableTextFile, type IProjectVersionStore } from '../../../../writing/conflict/index.js';
 import { listProjectFiles } from '../../../../writing/project/folder/index.js';
 import { nodeFileReads } from '../../../../writing/project/node/index.js';
 

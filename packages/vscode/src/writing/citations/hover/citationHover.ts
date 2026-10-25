@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { citedKeys, quotedHighlights, type ChecklistSection, type QuotedHighlight } from "@labshelf/core";
 import type { CitationSession, CitationWorkspace } from "../citationWorkspace.js";
 import { citingProject } from "../citationWorkspace.js";
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import { citationHoverContent } from "./citationHoverContent.js";
 
 const MODULE = "writing/citations";

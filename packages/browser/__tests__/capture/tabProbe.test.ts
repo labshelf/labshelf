@@ -2,7 +2,7 @@
 // The tab barrel pulls in the platform polyfill, which needs a real extension runtime.
 jest.mock("../../src/platform", () => ({ bx: {} }));
 
-import { probeLinks, probeMeta } from "../../src/capture/pageProbeContentScript";
+import { probeLinks, probeMeta } from "../../src/capture/pageProbe";
 import { probeTab } from "../../src/capture/tabProbe";
 
 const META = { pageUrl: "https://a.org/p", meta: { citation_title: ["T"] }, authorEmails: [{ email: "a@b.org", name: "A" }], documentTitle: "Title", pageIsPdf: true as const };

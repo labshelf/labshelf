@@ -1,5 +1,5 @@
 // Gives the preview chrome the open document's outline, its page positions and the jump to an entry.
-import { flattenOutline, type OutlineRow, type RawOutlineNode } from "../../logic/index.js";
+import { flattenOutline, type OutlineRow, type RawOutlineNode } from "../../index.js";
 import type { ReaderContext } from "../session/index.js";
 import { resolveOutlinePages } from "../sidebar/outlinePages.js";
 import type { PreviewOutlineSource } from "./mountPreviewChrome.js";

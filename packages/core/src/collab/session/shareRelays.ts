@@ -1,10 +1,13 @@
 // Keeps a share session on one relay of its list at a time, as the relay selector chooses, and tells which one and which are down.
 import type { ILogger } from "../../ports/index.js";
-import type { WebCryptoKey } from "../crypto/index.js";
+import type { WebCryptoKey } from "../shareKey/index.js";
 import {
   createRelaySelector, createRelayWatch, followRelaySelection, relayList, relayPresence, relayProbe, type SwitchableTransport,
 } from "../relays/index.js";
-import { systemScheduler, type PresenceHandle, type RelayCursorStore, type RelayReport, type SessionScheduler, type ShareSession } from "../sync/index.js";
+import { systemScheduler, type SessionScheduler } from "../peer/index.js";
+import { type PresenceHandle, type RelayReport } from "../presence/index.js";
+import { type RelayCursorStore } from "../relays/index.js";
+import { type ShareSession } from "../doc/index.js";
 import type { RelaySocketFactory } from "../transport/index.js";
 
 export interface ShareRelayState {

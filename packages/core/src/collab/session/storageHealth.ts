@@ -1,5 +1,5 @@
 // Tells whether a share's device-local state is being stored, by watching every write its storage port makes.
-import type { CollabStateStorage } from "../state/index.js";
+import type { CollabStateStorage } from "../deviceState/index.js";
 
 export interface StorageHealth {
   /** The error of a write that failed and has not succeeded since; undefined while every write is stored. */

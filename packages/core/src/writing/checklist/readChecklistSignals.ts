@@ -1,13 +1,13 @@
 // Reads the open-item signals of one writing project: sources, TODOs, broken refs, stale figures and manual items.
 import { readFigureStates } from "../figures/index.js";
-import { collectProjectSources, undefinedRefs } from "../latex/source/project/index.js";
+import { collectProjectSources, undefinedRefs } from "../../latex/source/project/index.js";
 import type { ProjectEntry } from "../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
 import type { BrokenRef, StaleFigure } from "./buildChecklist.js";
 import type { ManualItem } from "./checklistFile.js";
 import { readManualItems } from "./readManualItems.js";
 import type { ChecklistSource } from "./sectionPlacement.js";
-import { scanTodos, type TodoItem } from "./todoScanner.js";
+import { scanTodos, type TodoItem } from "./scanTodos.js";
 
 const MODULE = "checklist";
 

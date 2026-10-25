@@ -1,6 +1,6 @@
 /** Pins relay outages: a mark holds a relay down only while another one is up, so a client whose relays are all down keeps retrying them. */
 import { RELAY_DOWN_HOLD_MS } from "../../../src/collab/relays/index";
-import { FakeClock, runUntil } from "../sync/fakeNetwork";
+import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { runFor } from "../transport/relay/fakeRelay";
 import { ONE, openGroupClient, RelayHosts, TWO } from "./relayGroup";
 

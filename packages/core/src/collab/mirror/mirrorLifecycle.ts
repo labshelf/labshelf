@@ -1,8 +1,8 @@
 // Stops a project mirror when its folder or ownership is lost.
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
-import { MirrorOwnershipLost } from "../ownership/index.js";
-import { MirrorRootUnavailable, type MirrorDisk } from "./disk/index.js";
-import { LOG_MODULE } from "./reconcile/index.js";
+import { MirrorOwnershipLost } from "./mirrorLostError.js";
+import { MirrorRootUnavailable, type MirrorDisk } from "./fileSystem/index.js";
+import { LOG_MODULE } from "./mirrorContext.js";
 import type { ProjectMirrorOptions, MirrorStopReason } from "./projectMirror.js";
 
 export function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (() => void)[], stopQueue: () => void) {

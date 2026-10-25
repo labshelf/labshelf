@@ -6,7 +6,7 @@ import type { ILogger } from "../../../ports/index.js";
 import { listProjects, type ProjectReadContext } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
 import { loadProjectRegistry, projectFolderRegistry } from "../deviceLocal/index.js";
-import type { ProjectCatalogContext } from "../writes/index.js";
+import type { ProjectCatalogContext } from "../mutation/index.js";
 
 /** The file access the neutral file listings need, for Node callers that have no logger. */
 export const nodeFileReads: Pick<ProjectReadContext, "fs" | "paths"> = { fs: new NodeLibraryFileSystem(), paths: path };

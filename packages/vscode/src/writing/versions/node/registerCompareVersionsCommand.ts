@@ -4,12 +4,12 @@ import * as vscode from "vscode";
 
 import { listVersions, type ILogger, type PdfjsLoader, type ProjectEntry } from "@labshelf/core";
 import { buildMarkedUpDiff, comparePdfs, findExecutable, nodeProjectReadContext } from "@labshelf/core/node";
-import { executeSafely } from "../../../commands/index.js";
-import type { ReaderPanelDeps } from "../../../pdf-viewer/index.js";
+import { executeSafely } from "../../../command/index.js";
+import type { ReaderPanelDeps } from "../../../reader/index.js";
 import { activeProject } from "../../build/index.js";
 import { ensureToolchain } from "../../build/node/index.js";
 import type { ToolchainDeps } from "../../build/toolchain/index.js";
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { ProjectBuilders } from "../../build/index.js";
 import { buildCurrentPdf } from "../buildCurrentPdf.js";

@@ -17,7 +17,7 @@ jest.mock("../../src/capture/tab", () => ({ fetchInTab: (tabId: number, url: str
 const probeTab = jest.fn();
 jest.mock("../../src/capture/tabProbe", () => ({ probeTab: (...args: unknown[]) => probeTab(...args) }));
 
-import { onTabLoaded, openAccessTab, type AccessTabDeps } from "../../src/capture/watch";
+import { onTabLoaded, openAccessTab, type AccessTabDeps } from "../../src/capture";
 
 const PDF = new TextEncoder().encode("%PDF-1.5 body");
 const PAPER = { id: "p1", title: "Deep residual learning for image recognition" };
@@ -90,8 +90,8 @@ describe("the watched access tab", () => {
 
   it("stops watching after five minutes", async () => {
     const d = deps();
-    const now = Date.now();
     await openAccessTab(d, PAPER, ACCESS);
+    const now = Date.now();
     jest.spyOn(Date, "now").mockReturnValue(now + 5 * 60_000 + 1);
     fetchInTab.mockResolvedValue({ finalUrl: ACCESS.url, pdf: { bytes: PDF, url: ACCESS.url } });
     await onTabLoaded(d, 5, ACCESS.url);

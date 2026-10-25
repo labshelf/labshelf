@@ -1,7 +1,7 @@
 /** Creates, renames, moves and trashes the folders papers are grouped in; every path in and out is absolute. */
-import { validateFolderName } from "../identity/index.js";
+import { validateFolderName } from "../paper/index.js";
 import { isUnderDir } from "../model/index.js";
-import { MUTATIONS_MODULE, type MutationContext } from "./context.js";
+import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
 
 /** @returns the new folder's path */
 export async function createFolder(ctx: MutationContext, parentDir: string, name: string): Promise<string> {

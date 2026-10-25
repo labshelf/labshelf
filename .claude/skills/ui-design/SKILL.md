@@ -15,7 +15,7 @@ LabShelf is one product in three hosts. Good UI here is consistent with what alr
 ## Where things are
 
 - **Tokens:** data in `packages/core/src/ui/tokens/`, rendered into `packages/core/src/ui/dom/tokens.css` as `--ls-*` properties by `pnpm --filter @labshelf/core tokens`. Never edit `tokens.css` by hand. A missing value is a new token in the data, not a literal in app CSS.
-- **Components:** `packages/core/src/ui/dom/` (button, menu, dialog, toast, quick input, settings rows) and `packages/core/src/library-ui/dom/` (library list and detail pane). Reuse one before you write markup.
+- **Components:** `packages/core/src/ui/dom/` (button, menu, dialog, toast, quick input, settings rows) and `packages/core/src/libraryUi/dom/` (library list and detail pane). Reuse one before you write markup.
 - **Icons:** `packages/core/src/ui/icons/`, a Feather-based inline-SVG set. A missing icon is added there, in the same style.
 - **Reader:** `packages/core/src/reader/`, whose page themes come from the same tokens.
 - **Terminal:** maps the colour roles onto the 16 ANSI colours. It has no SVG icons, so it uses plain text there.

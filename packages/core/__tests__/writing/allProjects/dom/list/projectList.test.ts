@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests the virtualized project treegrid: the rendered window, re-slicing on scroll, collapsing a group, aria and focus keeping.
-import { DEFAULT_PROJECT_VIEW, type ProjectGroup } from "../../../../../src/writing/allProjects/derive/index";
+import { DEFAULT_PROJECT_VIEW, type ProjectGroup } from "../../../../../src/writing/allProjects/viewModel/index";
 import { mountProjectList, type ProjectList, type ProjectListHandlers } from "../../../../../src/writing/allProjects/dom/list/index";
 import type { ProjectRow } from "../../../../../src/writing/allProjects/projectRow";
 

@@ -1,7 +1,7 @@
 // Reads HTML fetched without a DOM into the RawPage shape the in-tab probe produces.
-import { authorEmailMetasOf, mailtoLinksOf } from "./contacts/index.js";
+import { authorEmailMetasOf, mailtoLinksOf } from "./author/index.js";
 import { absoluteHttpUrl, attributes, decodeEntities, metaPairs } from "./htmlTags.js";
-import type { RawPage, RawPdfLink } from "./types.js";
+import type { RawPage, RawPdfLink } from "./rawPage.js";
 
 // PLATFORM: the MV3 service worker and the terminal have no DOMParser, so a tolerant regex reader handles the few tags that matter.
 /** @returns the meta tags, PDF links and viewers, DOI links and author-address evidence of an HTML document */

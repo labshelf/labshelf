@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { PaperRecord, ProjectEntry } from "@labshelf/core";
-import { executeSafely, paperPickItem } from "../../commands/index.js";
+import { executeSafely, paperPickItem } from "../../command/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectReadingLists } from "./projectReadingLists.js";

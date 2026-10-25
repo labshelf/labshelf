@@ -1,6 +1,6 @@
 // Builds one project as a treegrid row: files twistie, title with venue chip, engine, cites, build dot, last modified (or trashed) time and the actions button.
 import { compactTime } from "../../../../library/index.js";
-import { formatLabel } from "../../../../library-ui/dom/index.js";
+import { formatLabel } from "../../../../libraryUi/dom/index.js";
 import { el, highlight } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { deadlineText } from "../../deadlineText.js";

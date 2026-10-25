@@ -4,11 +4,11 @@ import * as vscode from "vscode";
 
 import type { ProjectBuildResult, ProjectEntry } from "@labshelf/core";
 import type { ProjectBuildQueue } from "@labshelf/core/node";
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost } from "../../session/index.js";
-import type { BuildDiagnostics } from "../buildDiagnostics.js";
+import type { BuildDiagnostics } from "../buildProblems.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../buildListener.js";
-import { haltOnErrorOn } from "../options/index.js";
+import { haltOnErrorOn } from "../haltOnError.js";
 import { reportToolchainMissing } from "./ensureToolchain.js";
 
 export interface LatexBuildsDeps {

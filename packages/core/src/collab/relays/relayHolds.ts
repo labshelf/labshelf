@@ -1,5 +1,5 @@
 // Holds relays down for an hour after a refusal for limits or three failures in a row, including the holds peers report.
-import type { SessionScheduler } from "../sync/index.js";
+import type { SessionScheduler } from "../peer/index.js";
 
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export const RELAY_DOWN_HOLD_MS = 60 * 60 * 1000;

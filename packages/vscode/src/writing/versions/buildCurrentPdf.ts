@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ProjectBuilders } from "../build/index.js";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import { builtPdf } from "../preview/index.js";
 import type { WritingProjects } from "../session/index.js";
 

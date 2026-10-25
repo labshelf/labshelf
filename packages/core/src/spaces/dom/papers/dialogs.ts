@@ -1,6 +1,6 @@
 // Edits folder names and confirms reference removals in cancellable overlays.
 import { el, inputBox, mountOverlay } from '../../../ui/dom/index.js';
-import type { PapersContext } from './context.js';
+import type { PapersContext } from './papersContext.js';
 export async function folderName(ctx: PapersContext, folderId?: string): Promise<void> {
   const folder = ctx.data.space.folders.find(f => f.id === folderId);
   const name = await inputBox({ title: folder ? 'Rename folder' : 'New folder', value: folder?.name ?? '',

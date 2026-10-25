@@ -1,6 +1,6 @@
 // Persists the content hash of each indexed PDF in SQLite.
 import type { DatabaseSync } from "node:sqlite";
-import type { IIndexedHashes } from "../types/index.js";
+import type { IIndexedHashes } from "../aiStorage.js";
 
 export class SqliteIndexedHashes implements IIndexedHashes {
   constructor(private readonly db: DatabaseSync) {}

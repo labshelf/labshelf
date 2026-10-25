@@ -1,7 +1,7 @@
 // Runs the core tests' in-process relays on a virtual clock that real timers drive, so browser pages share projects through them.
 import { encodeRelayBody, type RelayAccount, type RelayNetwork } from "@labshelf/core";
 import { ONE, RelayHosts } from "../../../core/__tests__/collab/relays/relayGroup";
-import { FakeClock } from "../../../core/__tests__/collab/sync/fakeNetwork";
+import { FakeClock } from "../../../core/__tests__/collab/peer/fakeNetwork";
 
 export interface RelayNet {
   network: RelayNetwork;

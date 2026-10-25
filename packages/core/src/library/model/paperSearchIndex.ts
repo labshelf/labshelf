@@ -1,7 +1,7 @@
 /** Turns query-language text into a paper filter over cached search documents that include each paper's annotation text. */
 import type { PaperRecord } from "../../model/index.js";
 import { isEmptyQuery, matchPaper, matchesTerms, parseQuery, searchDoc, type SearchDoc } from "../search/index.js";
-import type { PaperEntry, PaperFilter } from "./types.js";
+import type { PaperEntry, PaperFilter } from "./librarySnapshot.js";
 
 interface CachedDoc { record: PaperRecord; annotations: string; doc: SearchDoc }
 

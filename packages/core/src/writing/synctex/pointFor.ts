@@ -1,7 +1,7 @@
 // Finds where a source line appears in the output.
 import type { PagePoint } from "../../reader/index.js";
 import { normalizeInputPath } from "./normalizeInputPath.js";
-import type { SyncIndex } from "./syncIndex.js";
+import type { SyncIndex } from "./synctexMap.js";
 
 /** First index of `lines` (ascending) that is >= `line`. */
 function firstAtLeast(lines: readonly number[], line: number): number {

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
 import { outlineNodes, type OutlineNode } from "./outlineNodes.js";
-import { REVEAL_OUTLINE_COMMAND } from "./revealOutline.js";
+import { REVEAL_OUTLINE_COMMAND } from "./showOutline.js";
 
 const MODULE = "writing/outline";
 const REFRESH_DELAY_MS = 300;

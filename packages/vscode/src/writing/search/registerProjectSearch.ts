@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { WritingHost, WritingProjects } from "../session/index.js";
-import type { ProjectLookup } from "../mainDocument.js";
+import type { ProjectLookup } from "../buildRootDocument.js";
 import { PROJECT_SEARCH_VIEW, ProjectSearchView } from "./projectSearchView.js";
 
 const SEARCH_IN_PROJECT_COMMAND = "labshelf.writing.searchInProject";

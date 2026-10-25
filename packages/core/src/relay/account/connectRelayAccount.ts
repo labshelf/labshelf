@@ -1,7 +1,7 @@
 // Connects the owner's Cloudflare account: the credential, the account, then the relay deployed, saved and serving.
 import {
   createCloudflareClient, deployRelay, listCloudflareAccounts, verifyCloudflareToken, waitUntilServing, type CloudflareAccount, type CloudflareClient,
-} from "../deploy/index.js";
+} from "../client/index.js";
 import { accountAccessToken, type RelayAccountDeps } from "./accountAccessToken.js";
 import { RELAY_ACCOUNT_LOG_MODULE, RELAY_WORKER_NAME, type RelayCredential } from "./relayAccount.js";
 

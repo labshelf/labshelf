@@ -1,5 +1,5 @@
 /** Measures pdf.js text runs: the visual line a run belongs to and the screen boxes of character ranges. */
-import { findInTextRefs, joinLineParts, type InTextRef, type JoinedLine, type LinePart } from "../../logic/index.js";
+import { findInTextRefs, joinLineParts, type InTextRef, type JoinedLine, type LinePart } from "../../text/index.js";
 
 export const TEXT_RUN_SELECTOR = 'span[role="presentation"]';
 

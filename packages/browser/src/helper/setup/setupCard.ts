@@ -2,7 +2,7 @@
 import type { ILogger, TexInstallKind } from "@labshelf/core";
 import { confirmDialog, el, statusLine } from "@labshelf/core/dom";
 import type { HelperProgressListener, ILatexHelper } from "@labshelf/core/helper";
-import { MACOS_GUIDE_URL, helperDownloadUrl } from "./helperLinks";
+import { MACOS_GUIDE_URL, helperDownloadUrl } from "./helperInstaller";
 import { createSetupProgress } from "./setupProgress";
 import { startPolling, type Polling } from "./setupPolling";
 import { INSTALL_ALL_LABEL, describeState, type SetupActions, type SetupState } from "./setupView";

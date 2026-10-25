@@ -1,6 +1,6 @@
 // Declares what a host supplies to the Spaces pages: the Library, its projects and the actions that leave the page.
 import type { SpaceTab } from "./protocol/index.js";
-import type { LibraryPapers, SpaceProjectInfo } from "./view/index.js";
+import type { LibraryPapers, SpaceProjectInfo } from "./viewModel/index.js";
 
 /** The implementation binds the host's library, project storage and logger. */
 export interface SpacesHostPort {

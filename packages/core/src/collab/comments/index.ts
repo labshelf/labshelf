@@ -6,6 +6,7 @@ export {
 } from "./commentsFile.js";
 export { editCommentsDocument, loadCommentsDocument, type CommentsFileAccess } from "./commentsFileStore.js";
 export { anchorFor, liveAnchorFor, type TextRange } from "./commentAnchor.js";
-export { locateThread } from "./locateThread.js";
-export { addLiveThread, liveThreads, replyToLiveThread, setLiveThreadResolved, sharedProjectComments, type SharedProjectComments } from "./live/index.js";
+export { locateThread } from "./findThread.js";
+export { addLiveThread, liveThreads, replyToLiveThread, setLiveThreadResolved } from "./liveComments.js";
+export { sharedProjectComments, type SharedProjectComments } from "./sharedProjectComments.js";
 export { importCommentsFile, renderCommentsFile } from "./commentsFileSync.js";

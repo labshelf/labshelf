@@ -2,7 +2,7 @@
 import { actionButton, el, settingRow, type StatusTone } from "@labshelf/core/dom";
 import type { TexInstallKind } from "@labshelf/core";
 import type { HelperHost, HelperStatus, TexStatus } from "@labshelf/core/helper";
-import { desktopAlternatives, installSteps, LOOK_BACK_NOTE } from "./setupNotInstalled";
+import { desktopAlternatives, installSteps, LOOK_BACK_NOTE } from "./installCard";
 
 export type SetupState =
   | { kind: "checking" }

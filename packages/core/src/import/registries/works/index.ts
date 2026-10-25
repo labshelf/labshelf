@@ -1,9 +1,0 @@
-/** Exports the clients of the registries that describe articles and preprints. */
-export { crossRefByDoi, crossRefSearch } from "./crossref.js";
-export { arxivById, parseArxivFeed } from "./arxiv.js";
-export { pubMedByPmid, pmidFromPmcid, pubMedAuthorsByDoi } from "./pubmed.js";
-export { openAlexSearch, openAlexAutocomplete, openAlexWork, type OpenAlexCitationWork } from "./openalex.js";
-export { dataCiteByDoi } from "./datacite.js";
-export { semanticScholarByTitle, semanticScholarByDoi } from "./semanticScholar.js";
-export { europePmcSearch } from "./europePmc.js";
-export { dblpSearch } from "./dblp.js";

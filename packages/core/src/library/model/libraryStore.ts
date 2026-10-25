@@ -1,10 +1,10 @@
 // Holds the in-memory library snapshot with collection listings, search and change notification.
 // Reloads are coalesced, so a burst of file events (a sync pulling twenty papers) costs one rescan.
 import { snapshotFromScan, emptySnapshot } from "./snapshot.js";
-import { papersUnder } from "./collectionTree.js";
+import { papersUnder } from "./folderTree.js";
 import { nameCollator, paperComparator } from "./paperSort.js";
 import { PaperSearchIndex } from "./paperSearchIndex.js";
-import type { CollectionNode, LibraryScan, LibrarySnapshot, PaperEntry, SortSpec } from "./types.js";
+import type { CollectionNode, LibraryScan, LibrarySnapshot, PaperEntry, SortSpec } from "./librarySnapshot.js";
 
 export type LibraryEntry =
   | { kind: "collection"; node: CollectionNode }

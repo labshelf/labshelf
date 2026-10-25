@@ -1,5 +1,5 @@
 /** Finds the fonts and placed raster images of one page in its pdf.js operator list. */
-import type { PlacedImage } from "./checkTypes.js";
+import type { PlacedImage } from "./checkReport.js";
 
 type Matrix = [number, number, number, number, number, number];
 

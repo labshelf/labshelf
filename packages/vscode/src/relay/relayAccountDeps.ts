@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { systemRelayClock, type RelayAccountDeps } from "@labshelf/core";
 import type { RelayDeps } from "./connectRelay.js";
-import { signInToCloudflare } from "./signIn/index.js";
+import { signInToCloudflare } from "./cloudflareSignIn.js";
 
 export function relayAccountDeps(deps: RelayDeps): RelayAccountDeps {
   return {

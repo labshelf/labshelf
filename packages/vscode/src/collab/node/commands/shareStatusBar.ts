@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { connectionProblem, type ShareConnection } from "@labshelf/core";
-import { sharingWebviews } from "../../../sharing/index.js";
+import { sharingWebviews } from "../../../share/index.js";
 import type { CollabHost } from "../collabHost.js";
 
 const MANAGE_COMMAND = "labshelf.collab.manage";

@@ -2,7 +2,7 @@
 import { asString } from "../metadata/index.js";
 import { ARXIV_ID_SOURCE } from "./arxiv.js";
 import { cleanDoiCandidate, decodeUrlEscapes } from "./doi.js";
-import type { DetectedIdentifier, IdentifierType } from "./types.js";
+import type { DetectedIdentifier, IdentifierType } from "./detectedIdentifier.js";
 
 // TRAP: returns ranked candidates, not one guess; OCR or damaged-font text holds near-misses only an online lookup can tell apart.
 

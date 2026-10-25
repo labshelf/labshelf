@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { registerShareStatusBar } from '../../../../src/collab/node/commands/shareStatusBar';
 import type { CollabHost } from '../../../../src/collab/node/collabHost';
 
-jest.mock('../../../../src/sharing/index', () => ({ sharingWebviews: { open: jest.fn(async () => undefined) } }));
+jest.mock('../../../../src/share/shareWebviews', () => ({ sharingWebviews: { open: jest.fn(async () => undefined) } }));
 
 function setup() {
   let failure: string | undefined = 'QuotaExceededError';

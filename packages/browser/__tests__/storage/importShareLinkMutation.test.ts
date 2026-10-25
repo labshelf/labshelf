@@ -3,7 +3,7 @@ import { buildShare, formatShareLink, type ILogger, type PaperRecord, type Share
 import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles } from "../support/fakeIdb";
 
-jest.mock("../../src/storage/idb/db", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
 const mockCache = new Map<string, PaperRecord>();
 jest.mock("../../src/storage/paperRecordStore", () => ({

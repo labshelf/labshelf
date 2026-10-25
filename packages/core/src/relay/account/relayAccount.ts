@@ -1,5 +1,5 @@
 // Describes the owner's stored Cloudflare connection and reads it back from its JSON.
-import type { DeployedRelay } from "../deploy/index.js";
+import type { DeployedRelay } from "../client/index.js";
 
 /** The Worker name in the owner's account, which also names its address. */
 export const RELAY_WORKER_NAME = "labshelf-relay";

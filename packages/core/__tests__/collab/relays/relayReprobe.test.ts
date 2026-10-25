@@ -1,5 +1,5 @@
 /** Pins the relay re-probe: a relay that answers with Cloudflare's 1027 page loses the whole group at its next probe. */
-import { FakeClock, runUntil } from "../sync/fakeNetwork";
+import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { runFor } from "../transport/relay/fakeRelay";
 import { ONE, openGroupClient, RelayHosts, TWO, type GroupClient } from "./relayGroup";
 

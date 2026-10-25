@@ -3,12 +3,12 @@ import type { ILogger } from "../../../ports/index.js";
 import {
   decodeServerMessage, encodeRelayMessage, MAX_RELAY_MESSAGE_BYTES, type RelayClientMessage, type RelayServerMessage,
 } from "../../../relay/index.js";
-import { CHANNEL_KIND, systemScheduler, type SessionScheduler } from "../../sync/index.js";
+import { CHANNEL_KIND, systemScheduler, type SessionScheduler } from "../../peer/index.js";
 import type { PeerId, PeerTransport } from "../peerTransport.js";
-import { LatestWinsThrottle } from "./latestWinsThrottle.js";
+import { LatestWinsThrottle } from "./throttle.js";
 import { RelayRequestError } from "./relayRequestError.js";
 import { fetchTicket } from "./relayRequests.js";
-import { globalSocketFactory, messageBytes, relaySocketUrl, type RelaySocket, type RelaySocketFactory } from "./relaySocket.js";
+import { globalSocketFactory, messageBytes, relaySocketUrl, type RelaySocket, type RelaySocketFactory } from "./relayConnection.js";
 
 const LOG_MODULE = "collab.relay";
 const PEER_PREFIX = "relay:";

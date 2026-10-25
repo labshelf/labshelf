@@ -2,7 +2,8 @@
 // INVARIANT: hasPdf comes from the folder listing, never from the file.
 import YAML from "yaml";
 
-import { BIBLIOGRAPHIC_STRING_FIELDS, isPaperStatus, isPdfVersion, parseTextLayerInfo, type PaperRecord } from "../model/index.js";
+import { BIBLIOGRAPHIC_STRING_FIELDS, isPdfVersion, parseTextLayerInfo, type PaperRecord } from "../model/index.js";
+import { isPaperStatus } from "./readingStatus/index.js";
 
 export interface PaperLocation {
   /** Folder name, which is the paper id. */

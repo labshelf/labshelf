@@ -27,7 +27,7 @@
 ## 2b.2 — Editor adapters
 
 - **Goal:** per site, insert text at the editor cursor through the standard path, or report that it did not land.
-- **Read only:** `packages/browser/src/content/scholar.ts:1-30` (content-script shape); `packages/browser/src/content/shadowStyles.ts:1-37`; `packages/browser/src/background/router.ts:15-25` (page-message gate); `packages/browser/src/capture/tab/scripting.ts:1-8`.
+- **Read only:** `packages/browser/src/content/scholar.ts:1-30` (content-script shape); `packages/browser/src/content/shadowTheme.ts:1-37`; `packages/browser/src/background/registerHandlers.ts:15-25` (page-message gate); `packages/browser/src/capture/tab/scripting.ts:1-8`.
 - **Decided:** one adapter per site (`content/editors/overleaf.ts`, `typstApp.ts`): find the focused editable, call `document.execCommand("insertText")`, fall back to an `InputEvent`, then check the text landed; no other editor DOM is read. `background/editors/` exports `handleEditorInsert(msg, deps): Promise<RuntimeResponse>`, relays `editor.insert` to the active tab and returns `InsertOutcome`. Risk: Overleaf or typst.app may reject synthetic input; the clipboard fallback is part of the design.
 - **Done when:** jsdom tests in `packages/browser/__tests__/content/editors/` and `__tests__/background/editors/`, written first, pin inserted, blocked (leads to the `"copied"` path) and no-editor; `pnpm --filter @labshelf/browser typecheck && pnpm --filter @labshelf/browser test`.
-- **Do not touch:** `packages/browser/src/background/router.ts`, manifests, `build/`, sibling sessions' paths (`library-page/`, `side-panel/health/`, `content/sites/`).
+- **Do not touch:** `packages/browser/src/background/registerHandlers.ts`, manifests, `build/`, sibling sessions' paths (`libraryUi/`, `side-panel/health/`, `content/sites/`).

@@ -1,5 +1,5 @@
 sha: 0b367695
-files: packages/terminal/src/tui/**, packages/terminal/src/ui/**
+files: packages/terminal/src/screen/**, packages/terminal/src/libraryUi/**
 source: user product direction, 2026-10-19; terminal interaction catalogue
 
 # Explore the terminal AI pane

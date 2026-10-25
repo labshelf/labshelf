@@ -1,7 +1,7 @@
 // Builds the tray entries of a writing project: each file's role and fact, the build log row and the Add file row.
 import { compactTime } from "../../../../library/index.js";
-import type { TrayEntry } from "../../../../library-ui/dom/index.js";
-import type { ProjectDetail } from "../../projectDetail.js";
+import type { TrayEntry } from "../../../../libraryUi/dom/index.js";
+import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
 import type { FileTreeEntry } from "./projectFileTree.js";
 

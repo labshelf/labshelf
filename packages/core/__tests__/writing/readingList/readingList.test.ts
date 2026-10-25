@@ -1,6 +1,6 @@
 /** Verifies that the reading list joins cited and added papers with the library and tells which cited ones were never opened. */
 import type { PaperRecord } from "../../../src/model";
-import type { Backlink } from "../../../src/writing/backlinks/index";
+import type { Backlink } from "../../../src/writing/citations";
 import { buildReadingList } from "../../../src/writing/readingList/index";
 
 const paper = (id: string, citeKey: string): PaperRecord => ({ id, title: `T ${id}`, path: id, citeKey, status: "unread" }) as PaperRecord;

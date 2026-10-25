@@ -2,4 +2,4 @@
 export { registerCompilerStatusBar } from "./compilerStatusBar.js";
 export { registerPickCompiler } from "./pickCompiler.js";
 export { saveEngine, type SaveEngineDeps, type ToolchainDeps } from "./toolchainDeps.js";
-export { vscodeToolchainPrompt } from "./vscodeToolchainPrompt.js";
+export { vscodeToolchainPrompt } from "./askToolchain.js";

@@ -1,6 +1,6 @@
 /** Infers the title and authors from the font-grouped text blocks of page 1. */
 import { normalizeAuthors } from "./authors.js";
-import type { TextBlock } from "./types.js";
+import type { TextBlock } from "./pdfDocument.js";
 
 // A publisher's access stamp ("Downloaded 12/25/12 to 134.76.1.1. Redistribution subject to SIAM license…") can be set
 // in a larger font than the title, so it must not compete for it.

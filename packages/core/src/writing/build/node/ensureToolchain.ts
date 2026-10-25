@@ -1,10 +1,10 @@
 // Finds the project's LaTeX toolchain in the managed TeX, offering to install TeX when none is found.
 import type { ILogger } from "../../../ports/index.js";
-import type { LatexToolchain, TexInstallKind } from "../../latex/toolchain/index.js";
-import type { ManagedTexProvider } from "../../latex/toolchain/node/managed/index.js";
+import type { LatexToolchain, TexInstallKind } from "../../../latex/toolchain/index.js";
+import type { ManagedTexProvider } from "../../../latex/toolchain/node/managedTex/index.js";
 import type { ProjectEntry } from "../../project/index.js";
 import type { ToolchainMissing } from "../projectBuildResult.js";
-import type { TexSetupPrompt } from "../texSetupPrompt.js";
+import type { TexSetupPrompt } from "../askTexToolchain.js";
 
 const MODULE = "writing/build";
 
