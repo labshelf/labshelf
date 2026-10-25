@@ -1,5 +1,6 @@
 /** Reads a paper as its folder holds it right now, since another app or a sync may have changed it since the last scan. */
-import { isPaperStatus, type PaperRecord } from "../../model/index.js";
+import { type PaperRecord } from "../../model/index.js";
+import { isPaperStatus } from "../readingStatus/index.js";
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
 import { paperRecordFromMetadata, parsePaperMetadata } from "../paperMetadata.js";
 import type { MutationContext } from "./mutationDeps.js";

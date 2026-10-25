@@ -1,7 +1,7 @@
 /**
  * Maps a key press to a list action as a pure function, so every host gets the same keys.
  */
-import type { PaperStatus } from "../model/index.js";
+import type { PaperStatus } from "../library/readingStatus/index.js";
 
 /** The parts of a keyboard event the keymap reads. */
 export interface KeyPress {

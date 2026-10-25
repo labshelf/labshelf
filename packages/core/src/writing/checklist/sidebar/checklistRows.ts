@@ -2,7 +2,7 @@
 import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
 import { familyName } from "../../../library/paper/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
-import { STATUS_LABEL, type PaperStatus } from "../../../model/index.js";
+import { STATUS_LABEL, type PaperStatus } from "../../../library/readingStatus/index.js";
 import type { ChecklistItem, PageOverflow } from "../buildChecklist.js";
 
 /** What the Checklist knows about a reading-list paper beyond its checklist item. */

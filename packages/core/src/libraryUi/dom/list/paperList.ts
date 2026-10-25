@@ -3,7 +3,8 @@
  * in step by id so a refresh rebuilds only the rows that changed. Selection changes repaint attributes only, so scroll and focus survive.
  */
 import { PAPERS_DIR, folderLabel } from "../../../library/index.js";
-import { nextStatus, type PaperRecord } from "../../../model/index.js";
+import { type PaperRecord } from "../../../model/index.js";
+import { nextStatus } from "../../../library/readingStatus/index.js";
 import { deriveListView, type ListPaper } from "../../viewModel/index.js";
 import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
 import { endPaperDrag, startPaperDrag } from "../drag/index.js";

@@ -1,6 +1,6 @@
 // Validates untrusted library UI messages before a host handles them.
 import { PAPERS_DIR } from "../../library/index.js";
-import { PAPER_STATUSES, type PaperStatus } from "../../model/index.js";
+import { PAPER_STATUSES, type PaperStatus } from "../../library/readingStatus/index.js";
 import type { UiToHost } from "./messages.js";
 
 type Raw = Record<string, unknown>;

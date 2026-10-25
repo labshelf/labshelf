@@ -3,7 +3,8 @@
  * keywords, and the same venue. A click selects the paper where it lives; a double-click opens it.
  */
 import { formatAuthors } from "../../../../library/index.js";
-import { STATUS_LABEL, type PaperRecord } from "../../../../model/index.js";
+import { type PaperRecord } from "../../../../model/index.js";
+import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
 import { escapeHtml, icon } from "../../../../ui/index.js";
 import { relatedGroups } from "../../../viewModel/index.js";
 import { iconBtn, loading, section } from "../detailPaneMarkup.js";

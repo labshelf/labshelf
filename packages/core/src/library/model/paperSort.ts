@@ -1,5 +1,6 @@
 /** Orders papers by a sort key with title as the tie-break; one rule set for every app. */
-import { PAPER_STATUSES, venueOf, type PaperRecord } from "../../model/index.js";
+import { venueOf, type PaperRecord } from "../../model/index.js";
+import { PAPER_STATUSES } from "../readingStatus/index.js";
 import { familyName } from "../paper/index.js";
 import type { PaperEntry, SortSpec } from "./librarySnapshot.js";
 

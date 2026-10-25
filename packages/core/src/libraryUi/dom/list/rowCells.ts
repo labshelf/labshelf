@@ -3,7 +3,8 @@
  * the PDF version chip, the Last read cell and the status mark.
  */
 import { compactTime } from "../../../library/index.js";
-import { PDF_VERSION_LABEL, STATUS_LABEL, isPrePublication, nextStatus, type PaperStatus, type PdfVersion } from "../../../model/index.js";
+import { PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
+import { STATUS_LABEL, nextStatus, type PaperStatus } from "../../../library/readingStatus/index.js";
 import { escapeHtml, icon, statusMark } from "../../../ui/index.js";
 import { hasNoText, jobText, type ListPaper } from "../../viewModel/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";

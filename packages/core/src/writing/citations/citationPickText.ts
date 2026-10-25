@@ -1,5 +1,6 @@
 // Words the Cite from Library pickers show for a paper and for its highlights, and the citation options a highlight choice yields.
-import { STATUS_LABEL, type Annotation, type PaperRecord } from "../../model/index.js";
+import { type Annotation, type PaperRecord } from "../../model/index.js";
+import { STATUS_LABEL } from "../../library/readingStatus/index.js";
 
 const LABEL_LENGTH = 120;
 

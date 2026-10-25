@@ -3,7 +3,8 @@
  * only when their slice changes; the host's snapshots go through {@link LibraryViewStore.applySnapshot}.
  */
 import { editedTags } from "../../library/index.js";
-import type { PaperRecord, PaperStatus } from "../../model/index.js";
+import type { PaperRecord } from "../../model/index.js";
+import type { PaperStatus } from "../../library/readingStatus/index.js";
 import { tagQuery } from "../searchQueries.js";
 import type { CitationMapState, LibraryUiSnapshot, PaperDetails, PaperFilesState, SimilarPaper, TextLayerJobView } from "../protocol/index.js";
 import { shallowEqual } from "./compareSlices.js";

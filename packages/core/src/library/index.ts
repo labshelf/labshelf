@@ -1,4 +1,4 @@
-/** Exports the library domain's public API: folders, paper metadata and the on-disk layout. */
+/** Exports the library domain's public API: folders, paper metadata, reading status and the on-disk layout. */
 export { relocatePapersUnder, removePapersUnder } from "./paperRecordReindex.js";
 export type { IPaperRecordIndex } from "./paperRecordReindex.js";
 export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js";
@@ -21,4 +21,5 @@ export * from "./search/index.js";
 export * from "./paperFiles/index.js";
 export * from "./conflicts/index.js";
 export * from "./syncGuide/index.js";
+export * from "./readingStatus/index.js";
 export * from "./writeRecords/index.js";

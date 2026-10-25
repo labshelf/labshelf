@@ -1,7 +1,7 @@
 // Builds nested Space, folder and reference rows using the sidebar tree vocabulary.
 import { el } from "../../../../ui/dom/index.js";
 import { escapeHtml, icon, statusMark } from "../../../../ui/index.js";
-import { STATUS_LABEL } from "../../../../model/index.js";
+import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/viewModel/index.js";
 import { acceptSpaceDrop } from "./spaceDrop.js";
 import type { SidebarSpacesState } from "./spaceActions.js";
