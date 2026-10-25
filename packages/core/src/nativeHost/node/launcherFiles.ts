@@ -4,7 +4,31 @@ import { promises as fs } from "node:fs";
 import { ensurePrivateDir, PRIVATE_FILE_MODE, writeFileAtomic } from "../../library/node/index.js";
 import type { HostLayout } from "./layout/index.js";
 import { INSTALL_LOG_MODULE, type NativeHostEnv, type ScriptLaunch } from "./nativeHostEnv.js";
-import { launcherScript } from "./launcherText.js";
+
+function launcherScript(platform: NodeJS.Platform, launch: ScriptLaunch): string {
+  return platform === "win32" ? windowsLauncher(launch) : shellLauncher(launch);
+}
+
+function shellLauncher({ nodePath, hostScript, electronRunAsNode }: ScriptLaunch): string {
+  const prefix = electronRunAsNode ? "ELECTRON_RUN_AS_NODE=1 " : "";
+  // Chrome passes the caller origin as an argument, so "$@" forwards it.
+  return `#!/bin/sh\n${prefix}exec ${shellQuote(nodePath)} ${shellQuote(hostScript)} "$@"\n`;
+}
+
+function windowsLauncher({ nodePath, hostScript, electronRunAsNode }: ScriptLaunch): string {
+  const env = electronRunAsNode ? "set ELECTRON_RUN_AS_NODE=1\r\n" : "";
+  // PLATFORM: cmd.exe reads the script in the OEM code page; switching to UTF-8 first keeps non-ASCII paths intact.
+  return `@chcp 65001>nul\r\n@echo off\r\n${env}${cmdQuote(nodePath)} ${cmdQuote(hostScript)} %*\r\n`;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+// TRAP: cmd expands %name% even inside double quotes; Windows paths cannot contain a double quote.
+function cmdQuote(value: string): string {
+  return `"${value.replace(/%/g, "%%")}"`;
+}
 
 export type HostRecord = Omit<ScriptLaunch, "kind">;
 
