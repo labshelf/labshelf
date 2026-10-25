@@ -1,6 +1,6 @@
 // Builds pages of one browser profile over a shared memory library, IndexedDB, fake Web Locks and a network that reaches no relay.
 import "fake-indexeddb/auto";
-import { deriveShareId, fileText, ShareOpenInAnotherTabError, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
+import { deriveShareId, readFileText, ShareOpenInAnotherTabError, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
 import { createPageShares, createShareKeyStore, type PageShares } from "../../src/collab";
 import type { LibrarySource, LibrarySources } from "../../src/storage";
 import { installFakeLocks, type FakeLocks } from "../support/fakeLocks";
@@ -104,7 +104,7 @@ export async function openProfile(): Promise<Profile> {
             if (!(error instanceof ShareOpenInAnotherTabError)) { throw error; }
           }
         },
-        docText: (path) => { const live = shares.live("thesis"); return live ? fileText(live.session.openDoc(path)).toString() : ""; },
+        docText: (path) => { const live = shares.live("thesis"); return live ? readFileText(live.session.openDoc(path)).toString() : ""; },
       };
       pages.push(page);
       return page;

@@ -8,7 +8,7 @@ import {
   assertHelperPrivatePaths,
   BIBER_FLAG,
   createHelperLogger,
-  helperDataDir,
+  resolveHelperDir,
   runHelperBiber,
   runHelperHost,
   BIBER_ASSET_FILES,
@@ -74,7 +74,7 @@ const TYPST_WASM_ASSET = "typst_ts_web_compiler_bg.wasm";
 const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall"];
 
 async function main(): Promise<number | undefined> {
-  const dataDir = helperDataDir(process.env, process.platform, os.homedir());
+  const dataDir = resolveHelperDir(process.env, process.platform, os.homedir());
   const flag = process.argv[2];
   const biberAssets = seaBiberAssets(dataDir);
   // latexmk starts this mode as its `$biber` during a build; it speaks no Native Messaging.

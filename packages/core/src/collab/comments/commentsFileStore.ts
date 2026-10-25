@@ -16,7 +16,7 @@ export async function loadCommentsDocument(access: CommentsFileAccess): Promise<
 }
 
 /** Applies `change` to a fresh read, so an edit made elsewhere since the last load is kept. */
-export async function editCommentsDocument(access: CommentsFileAccess, change: (doc: CommentsDocument) => CommentsDocument): Promise<void> {
+export async function updateCommentsDocument(access: CommentsFileAccess, change: (doc: CommentsDocument) => CommentsDocument): Promise<void> {
   const doc = await loadCommentsDocument(access);
   if (!doc) { throw new Error(`${COMMENTS_PATH} is not valid JSON with a threads list, so it is left as it is`); }
   await access.write(serializeCommentsFile(change(doc)));

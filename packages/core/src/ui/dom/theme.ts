@@ -18,7 +18,7 @@ export function applyThemeToDocument(theme: ResolvedTheme): void {
 }
 
 /** The preference after `pref` in the auto → light → dark → auto cycle. */
-export function nextThemePref(pref: ThemePref): ThemePref {
+export function deriveNextThemePref(pref: ThemePref): ThemePref {
   const next: Record<ThemePref, ThemePref> = { auto: "light", light: "dark", dark: "auto" };
   return next[pref];
 }

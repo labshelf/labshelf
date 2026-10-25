@@ -5,7 +5,7 @@ import { PDFDocument } from "pdf-lib";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 import { MAX_SOCKET_MESSAGE_BYTES } from "../../../../src/helper/index";
 import { sendPages, type SentPages } from "../../../../src/helper/node/build/index";
-import * as pages from "../../../../src/helper/node/diffPages";
+import * as pages from "../../../../src/helper/node/comparePages";
 
 afterEach(async () => { jest.restoreAllMocks(); await cleanupTempDirs(); });
 
@@ -34,7 +34,7 @@ it("records the hashes after both replies are sent", async () => {
 });
 
 it("refuses changed pages over the socket message limit with a limit error and sends nothing", async () => {
-  jest.spyOn(pages, "diffPages").mockResolvedValue({ pageCount: 1, hashes: ["h"], changed: [{ index: 0, bytes: new Uint8Array(MAX_SOCKET_MESSAGE_BYTES) }] });
+  jest.spyOn(pages, "comparePages").mockResolvedValue({ pageCount: 1, hashes: ["h"], changed: [{ index: 0, bytes: new Uint8Array(MAX_SOCKET_MESSAGE_BYTES) }] });
   const sent: SentPages = { hashes: [] };
   const send = jest.fn();
   await expect(sendPages("1", await pdfFile(), [], sent, send)).rejects.toMatchObject({ code: "limit" });
@@ -44,7 +44,7 @@ it("refuses changed pages over the socket message limit with a limit error and s
 });
 
 it("reuses page hashes for identical PDF bytes without splitting the PDF again", async () => {
-  const diff = jest.spyOn(pages, "diffPages");
+  const diff = jest.spyOn(pages, "comparePages");
   const sent: SentPages = { hashes: [] };
   const send = jest.fn();
   const file = await pdfFile();
@@ -55,7 +55,7 @@ it("reuses page hashes for identical PDF bytes without splitting the PDF again",
 });
 
 it("retries page delivery after the pages reply fails", async () => {
-  const diff = jest.spyOn(pages, "diffPages");
+  const diff = jest.spyOn(pages, "comparePages");
   const sent: SentPages = { hashes: [] };
   const file = await pdfFile();
   const send = jest.fn().mockImplementationOnce(() => undefined).mockImplementationOnce(() => { throw new Error("socket closed"); });

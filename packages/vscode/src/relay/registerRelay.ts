@@ -7,14 +7,14 @@ import {
   type ConnectDeps,
   type RelayDeps,
 } from "./connectRelay.js";
-import { disconnectRelayAccount, relayWorkerScript, updateOwnRelay } from "@labshelf/core";
+import { removeRelayAccount, readRelayWorkerScript, updateOwnRelay } from "@labshelf/core";
 import { relayAccountDeps } from "./relayAccountDeps.js";
 import { lazyProgress } from "./relayProgress.js";
 import { reportRelayFailure } from "./relayFailure.js";
 
 async function updateRelayOnStart(deps: RelayDeps): Promise<void> {
   try {
-    await updateOwnRelay({ ...relayAccountDeps(deps), script: relayWorkerScript() });
+    await updateOwnRelay({ ...relayAccountDeps(deps), script: readRelayWorkerScript() });
   } catch (error) {
     reportRelayFailure(deps.logger, "update your relay", error);
   }
@@ -47,7 +47,7 @@ async function disconnectRelay(deps: DisconnectDeps): Promise<void> {
   try {
     const progress = lazyProgress("Deleting your relay from Cloudflare");
     try {
-      await disconnectRelayAccount({ ...relayAccountDeps(deps), withdrawFromShares: deps.withdrawFromShares, progress: () => progress.report("") });
+      await removeRelayAccount({ ...relayAccountDeps(deps), withdrawFromShares: deps.withdrawFromShares, progress: () => progress.report("") });
     } finally {
       progress.close();
     }

@@ -6,19 +6,19 @@ import {
   type ShareConnection,
   type ShareStart,
   describeContentConflict,
-  leasedMirrorFactory,
+  createLeasedMirrorFactory,
   readConflictDismissals,
   type MirrorFactory,
 } from "@labshelf/core";
 import {
-  nodeCollabStorage,
+  createNodeCollabStorage,
   nodeProjectCatalogContext,
   resolveConflictDismissalFile,
   createDeviceIdentity,
   createDeviceLocalLayout,
   mergeText,
   NodeLibraryFileSystem,
-  nodeMirrorDisk,
+  createNodeMirrorFileSystem,
 } from "@labshelf/core/node";
 import { shareStateDir } from "./shareState.js";
 import * as vscode from "vscode";
@@ -31,10 +31,10 @@ export function desktopMirrorFactory(libraryRoot: string, logger: ILogger, isEdi
     if (!candidates.has(folder)) candidates.set(folder, new Set());
     return candidates.get(folder)!;
   };
-  return leasedMirrorFactory({
+  return createLeasedMirrorFactory({
     identity: createDeviceIdentity(createDeviceLocalLayout(libraryRoot), logger),
     fs: new NodeLibraryFileSystem(), app: "vscode", logger, mergeText,
-    disk: (folder) => watchConflictDismissals(nodeMirrorDisk(folder, logger), resolveConflictDismissalFile(libraryRoot), held(folder), logger), isEditorOwned,
+    disk: (folder) => watchConflictDismissals(createNodeMirrorFileSystem(folder, logger), resolveConflictDismissalFile(libraryRoot), held(folder), logger), isEditorOwned,
     readConflictDismissals: () => readConflictDismissals(new NodeLibraryFileSystem(), resolveConflictDismissalFile(libraryRoot)),
     onConflictCopy: (folder, copy) => {
       held(folder).add(path.relative(folder, copy.copy).split(path.sep).join('/'));
@@ -62,7 +62,7 @@ export function connectDesktopShare(options: ConnectOptions, start: ShareStart):
   const { libraryRoot, shareId, shareKey, relays, name, logger } = options;
   return connectShare({
     shareId, shareKey, relays, name, logger,
-    storage: nodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
+    storage: createNodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
     projects: { context: nodeProjectCatalogContext(logger), libraryRoot },
     startMirror: desktopMirrorFactory(libraryRoot, logger, (folder, path) => options.isEditorOwned(folder, path)),
   }, start);

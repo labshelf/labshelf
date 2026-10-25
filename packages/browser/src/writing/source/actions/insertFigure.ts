@@ -1,6 +1,6 @@
 // Copies a picked image into the project's images folder and inserts the figure that shows it; a shared project's mirror shares the copy.
 import { IMAGE_EXTENSIONS, IMAGE_FOLDER, freeImageName, imageBaseFolder, imageSnippet, posixPathOps, type ILogger, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
-import { toast } from "@labshelf/core/dom";
+import { showToast } from "@labshelf/core/dom";
 import type { SourceEdits, SourceLanguage } from "../sourceUpdates";
 
 const MODULE = "tabs.source";
@@ -44,6 +44,6 @@ export async function insertImage(insertion: ImageInsertion): Promise<void> {
     await copyIntoProject(insertion, file);
   } catch (error) {
     void insertion.logger.error(MODULE, error, { source: insertion.path, folder: insertion.entry.folder, action: "insertImage" });
-    toast(`Could not copy the image into the project: ${error instanceof Error ? error.message : String(error)}`, "error");
+    showToast(`Could not copy the image into the project: ${error instanceof Error ? error.message : String(error)}`, "error");
   }
 }

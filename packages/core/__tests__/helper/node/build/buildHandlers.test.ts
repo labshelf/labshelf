@@ -90,7 +90,7 @@ test("a compile after editing one page sends only that page, and an unchanged on
   expect(pagesOf(await h.finished("b4"))).toMatchObject({ pageCount: 2, changed: [] });
 });
 
-test("forget makes the next compile send every page again", async () => {
+test("removeMirroredPath makes the next compile send every page again", async () => {
   await h.project("ok", "one", "two");
   await h.compile("b1");
   await h.finished("b1");

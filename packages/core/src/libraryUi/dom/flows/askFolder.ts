@@ -3,12 +3,12 @@
  * papers are deleted. The host does the work once the user agrees.
  */
 import { PAPERS_DIR, deriveBaseName, countPapersUnder, deriveParentDir } from "../../../library/index.js";
-import { confirmDialog, inputBox } from "../../../ui/dom/index.js";
+import { askDialog, askInputBox } from "../../../ui/dom/index.js";
 import { checkSiblingFolderName } from "../../viewModel/index.js";
 import type { UiContext } from "../uiContext.js";
 
 export async function askCreateFolder(ctx: UiContext, parent: string): Promise<void> {
-  const name = await inputBox({
+  const name = await askInputBox({
     title: parent === PAPERS_DIR ? "New folder" : `New folder in ${deriveBaseName(parent, "/")}`,
     prompt: "Folder name",
     placeholder: "e.g. Reading group",
@@ -21,7 +21,7 @@ export async function askRenameFolder(ctx: UiContext, path: string): Promise<voi
   if (path === PAPERS_DIR) return;
   const current = deriveBaseName(path, "/");
   const parent = deriveParentDir(path, "/");
-  const name = await inputBox({
+  const name = await askInputBox({
     title: "Rename folder",
     prompt: "New name",
     value: current,
@@ -33,7 +33,7 @@ export async function askRenameFolder(ctx: UiContext, path: string): Promise<voi
 export async function askRemoveFolder(ctx: UiContext, path: string): Promise<void> {
   if (path === PAPERS_DIR) return;
   const count = countPapersUnder(ctx.store.get().papers.map((p) => p.path), path, "/");
-  const ok = await confirmDialog(
+  const ok = await askDialog(
     `Delete "${deriveBaseName(path, "/")}"?`,
     count > 0
       ? `The folder and the ${count} paper${count === 1 ? "" : "s"} inside it are deleted from the library on this device and on every synced device.`

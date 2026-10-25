@@ -1,6 +1,6 @@
 // Pins read-only access until a shared file has a text index entry.
 import * as Y from "yjs";
-import { indexFiles, type ILogger, type ProjectEntry } from "@labshelf/core";
+import { readShareIndexDocFiles, type ILogger, type ProjectEntry } from "@labshelf/core";
 import type { PageSharing } from "../../../src/collab";
 import { sourceFileMode } from "../../../src/libraryUi/editorArea/sourceTab";
 
@@ -32,7 +32,7 @@ describe("sourceFileMode", () => {
     } as unknown as Pick<PageSharing, "liveShare" | "shares">;
     expect(await sourceFileMode(connected, entry, "main.tex", logger, false)).toEqual({ kind: "unresolved" });
     expect(openDoc).not.toHaveBeenCalled();
-    indexFiles(index).set("main.tex", { kind: "text" });
+    readShareIndexDocFiles(index).set("main.tex", { kind: "text" });
     expect((await sourceFileMode(connected, entry, "main.tex", logger, true)).kind).toBe("shared");
     expect(openDoc).toHaveBeenCalledWith("main.tex");
     doc.destroy(); index.destroy();

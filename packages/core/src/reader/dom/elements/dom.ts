@@ -1,14 +1,14 @@
 /**
  * Provides the reader's small DOM helpers: icon buttons, text-input detection and clamping.
  */
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 
 /**
  * Icon-only button with an accessible name; the tooltip doubles as shortcut documentation.
  * @returns the button element.
  */
 export function iconButton(iconHtml: string, title: string, extraClass = ""): HTMLButtonElement {
-  return el("button", {
+  return renderElement("button", {
     class: `rd-btn ${extraClass}`.trim(),
     type: "button",
     title,

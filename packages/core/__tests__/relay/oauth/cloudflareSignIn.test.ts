@@ -2,14 +2,14 @@
 import { createHash } from "node:crypto";
 
 import {
-  CloudflareOAuthError, exchangeAuthorizationCode, readAuthorizationCode, startCloudflareAuthorization,
+  CloudflareOAuthError, fetchCloudflareTokens, readAuthorizationCode, startCloudflareAuthorization,
 } from "../../../src/relay/index";
 import { recordingLogger, TOKEN } from "../client/fakeCloudflare";
 import { CLIENT_ID, fakeOAuthServer, REDIRECT } from "./fakeOAuthServer";
 
 const NOW = 5_000_000;
 const exchange = (server: ReturnType<typeof fakeOAuthServer>, code: string, verifier: string, logger = recordingLogger()) =>
-  exchangeAuthorizationCode({ code, verifier, fetch: server.fetch, logger, now: () => NOW });
+  fetchCloudflareTokens({ code, verifier, fetch: server.fetch, logger, now: () => NOW });
 
 describe("startCloudflareAuthorization", () => {
   it("asks for the relay scopes with an S256 challenge of the verifier and a fresh state", async () => {
@@ -54,7 +54,7 @@ describe("readAuthorizationCode", () => {
   });
 });
 
-describe("exchangeAuthorizationCode", () => {
+describe("fetchCloudflareTokens", () => {
   it("trades the code and the verifier for tokens that expire after expires_in", async () => {
     const server = fakeOAuthServer();
     const { url, state, verifier } = await startCloudflareAuthorization();

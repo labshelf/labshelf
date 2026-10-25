@@ -7,7 +7,7 @@ import {
   type ShareHost,
   offerOwnRelayToShares,
   createStoreFailureNotices,
-  withdrawOwnRelayFromShares,
+  removeOwnRelayOfferFromShares,
 } from "@labshelf/core";
 import { createBrowserLatexHelper } from "../helper/client";
 import { getSettings } from "../platform";
@@ -20,7 +20,7 @@ import { createOpenProjectSnapshot, createProjectSession, resumeRestoredProject 
 import { createSidebarProjects, type SidebarProjects } from "../libraryUi/sidebar";
 import type { ProjectServices, TabKindName } from "../libraryUi/editorArea";
 import type { Workspace } from "../libraryUi/editorArea";
-import { runJoinProjectDialog, toast } from "@labshelf/core/dom";
+import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
 import { createBrowserProjects, currentLibraryId, librarySources } from "../storage";
 import { createPageSharing, resumeReports, type PageSharing } from "../collab";
 
@@ -51,7 +51,7 @@ function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiri
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
     reports: resumeReports(() => { void join(); }),
   });
-  sharing.shares.onChange(createStoreFailureNotices(sharing.ports, "page", (message) => toast(message, "error")));
+  sharing.shares.onChange(createStoreFailureNotices(sharing.ports, "page", (message) => showToast(message, "error")));
   window.addEventListener("pagehide", () => { void sharing.closeAll(); });
   // Another tab may have shared, left or trashed a project while this one was hidden.
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") void sharing.reload(); });
@@ -61,9 +61,9 @@ function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiri
       const refused = await offerOwnRelayToShares(sharing.ports);
       if (refused.length === 0) return;
       const projects = refused.length === 1 ? "1 shared project" : `${refused.length} shared projects`;
-      toast(`Your relay did not take ${projects} open on this page. Their collaborators reach them through the relays they list.`, "error");
+      showToast(`Your relay did not take ${projects} open on this page. Their collaborators reach them through the relays they list.`, "error");
     },
-    withdrawRelayFromShares: (relayUrl) => withdrawOwnRelayFromShares(sharing.ports, relayUrl),
+    withdrawRelayFromShares: (relayUrl) => removeOwnRelayOfferFromShares(sharing.ports, relayUrl),
   };
 }
 

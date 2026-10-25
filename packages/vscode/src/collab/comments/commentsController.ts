@@ -6,13 +6,13 @@ import {
   type ILogger,
   type ProjectEntry,
   addThread,
-  anchorFor,
+  deriveAnchor,
   COMMENTS_PATH,
-  commentThreads,
-  editCommentsDocument,
+  deriveCommentThreads,
+  updateCommentsDocument,
   loadCommentsDocument,
-  locateThread,
-  replyToThread,
+  findThread,
+  addThreadReply,
   setThreadResolved,
   type CommentsDocument,
   type CommentsFileAccess,
@@ -69,11 +69,11 @@ class FileComments implements ProjectComments {
   }
 
   locate(thread: CommentThread, text: string) {
-    return locateThread(thread, text);
+    return findThread(thread, text);
   }
 
   anchor(_file: string, text: string, range: { start: number; end: number }) {
-    return anchorFor(text, range.start, range.end);
+    return deriveAnchor(text, range.start, range.end);
   }
 
   add(thread: CommentThread): Promise<void> {
@@ -81,7 +81,7 @@ class FileComments implements ProjectComments {
   }
 
   reply(threadId: string, comment: CommentThread["comments"][number]): Promise<void> {
-    return this.edit((doc) => replyToThread(doc, threadId, comment));
+    return this.edit((doc) => addThreadReply(doc, threadId, comment));
   }
 
   setResolved(threadId: string, resolved: boolean): Promise<void> {
@@ -98,7 +98,7 @@ class FileComments implements ProjectComments {
       const text = await readTextFile(this.uri);
       const doc = await loadCommentsDocument({ ...this.access, read: async () => text });
       if (doc) { this.reported = undefined; } else { this.reportInvalid(text!); }
-      this.cached = doc ? commentThreads(doc) : [];
+      this.cached = doc ? deriveCommentThreads(doc) : [];
       this.changeEmitter.fire();
     } catch (error) {
       void this.logger.error(COMMENTS_LOG_MODULE, error, { action: "read the comments", folder: this.folder });
@@ -113,7 +113,7 @@ class FileComments implements ProjectComments {
   }
 
   private async edit(change: (doc: CommentsDocument) => CommentsDocument): Promise<void> {
-    await editCommentsDocument(this.access, change);
+    await updateCommentsDocument(this.access, change);
     await this.load();
   }
 }

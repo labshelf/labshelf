@@ -1,5 +1,5 @@
 import { parseItemFile, type ItemSegment } from "../../../src/qmd/items/index";
-import { cellSourceHash, findOutputs, formatOutput } from "../../../src/qmd/cellOutput/index";
+import { deriveCodeHash, findOutputs, formatOutput } from "../../../src/qmd/cellOutput/index";
 import { readQmdFixture } from "../fixtures/qmdFixtures";
 
 describe("outputBlock", () => {
@@ -36,14 +36,14 @@ describe("outputBlock", () => {
   });
 });
 
-describe("cellSourceHash", () => {
+describe("deriveCodeHash", () => {
   it("is the first 12 hex characters of the SHA-256 of the code without option lines", async () => {
-    expect(await cellSourceHash("x = 1")).toBe("8ff436def145");
-    expect(await cellSourceHash("#| label: a\nx = 1\n\n")).toBe("8ff436def145");
+    expect(await deriveCodeHash("x = 1")).toBe("8ff436def145");
+    expect(await deriveCodeHash("#| label: a\nx = 1\n\n")).toBe("8ff436def145");
   });
 
   it("does not depend on line endings but does on the code", async () => {
-    expect(await cellSourceHash("a = 1\r\nb = 2\r\n")).toBe(await cellSourceHash("a = 1\nb = 2"));
-    expect(await cellSourceHash("a = 1\nb = 3")).not.toBe(await cellSourceHash("a = 1\nb = 2"));
+    expect(await deriveCodeHash("a = 1\r\nb = 2\r\n")).toBe(await deriveCodeHash("a = 1\nb = 2"));
+    expect(await deriveCodeHash("a = 1\nb = 3")).not.toBe(await deriveCodeHash("a = 1\nb = 2"));
   });
 });

@@ -2,14 +2,14 @@
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import type { ILogger, MirrorDisk } from '@labshelf/core';
+import type { ILogger, MirrorFileSystem } from '@labshelf/core';
 import { watchConflictDismissals } from '../../../../src/collab/node/session/index';
 
 it('retries held paths after an atomic dismissal write and closes both watchers', async () => {
   const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'labshelf-dismissal-'));
   const file = path.join(folder, 'conflict-dismissals.json');
   const stopProject = jest.fn();
-  const disk: MirrorDisk = {
+  const disk: MirrorFileSystem = {
     read: async () => ({ state: 'missing' }), write: async () => {}, remove: async () => {}, list: async () => [],
     watch: () => stopProject,
   };

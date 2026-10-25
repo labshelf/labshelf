@@ -5,7 +5,7 @@ import {
   attachSortableHeads,
   formatLabel,
 } from "../../../../libraryUi/dom/index.js";
-import { type MenuAnchor, el, highlight } from "../../../../ui/dom/index.js";
+import { type MenuAnchor, renderElement, renderHighlightedHtml } from "../../../../ui/dom/index.js";
 import type { ProjectGroup, ProjectSortKey, ProjectViewState } from "../../viewModel/index.js";
 import type { ProjectPlace, BuildMark, ProjectBuildState, ProjectRow } from "../../projectRow.js";
 import { createProjectTrayRows, type ProjectTrayFrame, type ProjectTrayHandlers } from "../tray/index.js";
@@ -14,7 +14,7 @@ import { wireProjectKeys } from "./projectListShortcuts.js";
 import { projectKey, projectListRows, type ProjectListRow } from "./projectListModel.js";
 import { createWindowedRows } from "./projectListWindow.js";
 import { ariaRowOf, paintRowState } from "./projectRowState.js";
-import { escapeHtml, icon } from "../../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { formatCompactTime } from "../../../../library/index.js";
 import { deadlineText } from "../../deadlineText.js";
 
@@ -32,10 +32,10 @@ function shownTime(row: ProjectRow, place: ProjectPlace): string | undefined {
 
 // A broken project has no files to list, so its first cell stays empty.
 const twistieCell = (row: ProjectRow): string =>
-  row.broken ? `<div></div>` : `<div class="expand-btn collapsed" title="Files">${icon("chevron-down")}</div>`;
+  row.broken ? `<div></div>` : `<div class="expand-btn collapsed" title="Files">${renderIcon("chevron-down")}</div>`;
 
 function engineCell(row: ProjectRow): string {
-  const content = row.broken ? `<span class="title-state tl-missing" title="${escapeHtml(row.broken)}">${icon("warning")}</span>` : formatLabel(row.format);
+  const content = row.broken ? `<span class="title-state tl-missing" title="${escapeHtml(row.broken)}">${renderIcon("warning")}</span>` : formatLabel(row.format);
   return `<div class="col-engine">${content}</div>`;
 }
 
@@ -48,9 +48,9 @@ function venueChip(row: ProjectRow, now: number): string {
 }
 
 function titleCell(row: ProjectRow, v: ProjectRowView): string {
-  const outside = row.external ? `<span class="title-state ls-project-external" title="Outside the library">${icon("link")}</span>` : "";
+  const outside = row.external ? `<span class="title-state ls-project-external" title="Outside the library">${renderIcon("link")}</span>` : "";
   const tip = row.broken ?? row.title;
-  return `<div class="col-title title-cell"><span class="title-text" title="${escapeHtml(tip)}">${highlight(row.title, v.terms)}</span>${outside}${venueChip(row, v.now)}</div>`;
+  return `<div class="col-title title-cell"><span class="title-text" title="${escapeHtml(tip)}">${renderHighlightedHtml(row.title, v.terms)}</span>${outside}${venueChip(row, v.now)}</div>`;
 }
 
 function citesCell(row: ProjectRow): string {
@@ -84,13 +84,13 @@ function rowHtml(row: ProjectRow, v: ProjectRowView): string {
   const expandable = row.broken ? "" : ` aria-expanded="false"`;
   return `<div class="paper-row-main${row.broken ? " is-broken" : ""}" role="row" aria-level="1" aria-selected="false" tabindex="-1"${expandable}>` +
     twistieCell(row) + titleCell(row, v) + engineCell(row) + citesCell(row) + buildCell(row, v.now) + timeCell(row, v) +
-    `<div class="col-actions"><button class="ls-icon-btn" type="button" tabindex="-1" title="Project actions" aria-label="Project actions" data-act="menu">${icon("more")}</button></div>` +
+    `<div class="col-actions"><button class="ls-icon-btn" type="button" tabindex="-1" title="Project actions" aria-label="Project actions" data-act="menu">${renderIcon("more")}</button></div>` +
     `</div>`;
 }
 
 function buildProjectRow(row: ProjectRow, v: ProjectRowView): HTMLElement {
   const inGroup = v.place === "projects" && !!row.folder;
-  const node = el("div", { class: `paper-row${inGroup ? " in-group" : ""}`, role: "none", "data-id": row.id, html: rowHtml(row, v) });
+  const node = renderElement("div", { class: `paper-row${inGroup ? " in-group" : ""}`, role: "none", "data-id": row.id, html: rowHtml(row, v) });
   node.querySelectorAll('[role="row"] > div').forEach((cell) => cell.setAttribute("role", "gridcell"));
   return node;
 }
@@ -103,8 +103,8 @@ const groupAriaLabel = (g: ProjectGroup): string =>
 
 function buildGroupRow(group: ProjectGroup, collapsed: boolean, onToggle: (key: string) => void): HTMLElement {
   const path = group.segments.map((s) => `<span class="group-segment">${escapeHtml(s)}</span>`).join(`<span class="group-sep" aria-hidden="true">/</span>`);
-  const chevron = `<span class="group-chevron" aria-hidden="true">${icon(collapsed ? "chevron-right" : "chevron-down")}</span>`;
-  const node = el("div", {
+  const chevron = `<span class="group-chevron" aria-hidden="true">${renderIcon(collapsed ? "chevron-right" : "chevron-down")}</span>`;
+  const node = renderElement("div", {
     class: "group-label", role: "row", tabindex: "-1", "aria-label": groupAriaLabel(group), title: group.segments.join(" / "),
     html: `<div class="group-cell" role="gridcell" aria-colspan="${COLUMNS}">${chevron}${path}</div>`,
   });

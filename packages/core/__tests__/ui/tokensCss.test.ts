@@ -39,7 +39,7 @@ describe("tokens.css", () => {
   });
 });
 
-describe("highlight palette (B6)", () => {
+describe("renderHighlightedHtml palette (B6)", () => {
   it("covers every annotation colour plus the uncoloured note", () => {
     expect(Object.keys(HIGHLIGHT_COLORS).sort()).toEqual([...ANNOTATION_COLORS, "note"].sort());
   });

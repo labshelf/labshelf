@@ -5,7 +5,7 @@
 import { formatCompactTime } from "../../../library/index.js";
 import { PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
 import { STATUS_LABEL, deriveNextReadingStatus, type ReadingStatus } from "../../../library/readingStatus/index.js";
-import { escapeHtml, icon, statusMark } from "../../../ui/index.js";
+import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../ui/index.js";
 import { hasMissingTextLayer, describeTextLayerJob, type ListPaper } from "../../viewModel/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 
@@ -13,10 +13,10 @@ import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 export function renderTextLayerIconHtml(p: ListPaper, job: TextLayerJobView | undefined, textLayer: boolean): string {
   const cell = (cls: string, title: string, html: string): string =>
     `<span class="title-state ${cls}" role="img" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">${html}</span>`;
-  if (job) return cell("tl-busy", describeTextLayerJob(job), `<span class="spin">${icon("loader")}</span>`);
+  if (job) return cell("tl-busy", describeTextLayerJob(job), `<span class="spin">${renderIcon("loader")}</span>`);
   // A missing PDF gets no icon: the detail pane says so and offers Find PDF.
   if (textLayer && hasMissingTextLayer(p)) {
-    return cell("tl-missing", "No text layer: search and text selection do not work in this PDF. Select the paper to make it searchable.", icon("file-no-text"));
+    return cell("tl-missing", "No text layer: search and text selection do not work in this PDF. Select the paper to make it searchable.", renderIcon("file-no-text"));
   }
   return "";
 }
@@ -43,5 +43,5 @@ export function renderLastReadHtml(stats: PaperStats | undefined): string {
 /** A button that cycles the status, drawn as a dot for Unread and an Arc mark for Reading and Done, named by the status word. */
 export function renderReadingStatusMarkHtml(status: ReadingStatus): string {
   return `<button class="status-mark s-${status}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[deriveNextReadingStatus(status)]}">` +
-    `<span class="status-mark-glyph" role="img" aria-label="${STATUS_LABEL[status]}">${statusMark(status)}</span></button>`;
+    `<span class="status-mark-glyph" role="img" aria-label="${STATUS_LABEL[status]}">${renderReadingStatusMark(status)}</span></button>`;
 }

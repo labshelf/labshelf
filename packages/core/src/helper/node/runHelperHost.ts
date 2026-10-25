@@ -9,9 +9,9 @@ import { createSharedTexProvider } from "../../latex/toolchain/node/managedTex/i
 import type { HelperLogger } from "./log/index.js";
 import { createTemplatePublishHandlers } from "./publishHandlers.js";
 import { createBuildHandlers } from "./build/index.js";
-import { answerHello, createDispatcher, createProjectHandlers, runHelperLoop, type HelloAnswer } from "./handlers/index.js";
+import { answerHello, createHelperAnswerer, createProjectHandlers, runHelperLoop, type HelloAnswer } from "./handlers/index.js";
 import { createLibraryProjects } from "./projects/index.js";
-import type { HelperSocket } from "./connection/index.js";
+import type { HelperServer } from "./connection/index.js";
 import { createFrameWriter } from "./transport/index.js";
 import { createTexInstallHandlers } from "./texInstallHandlers.js";
 
@@ -52,7 +52,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const publishing = createTemplatePublishHandlers({ dataDir, logger, fetch, build: {
     logger, tex, typst: openTypst((run) => run()), ...(biber && { biber }),
   } });
-  const dispatcher = createDispatcher(
+  const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
       compile: builds.compile, cancel: builds.cancel,
@@ -61,7 +61,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     },
     logger,
   );
-  let socket: HelperSocket | undefined;
+  let socket: HelperServer | undefined;
   const hello: HelloAnswer = async (message, reply) => {
     socket = await answerHello(message, reply, {
       helperVersion, host, texStatus: () => tex.status(), callerOrigin: callerOriginIn(options.args), logger, handle: dispatcher.handle,

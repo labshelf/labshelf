@@ -9,7 +9,7 @@ export type InlineToken =
   | { kind: "nodes"; nodes: Node[]; start: number; end: number }
   | { kind: "delim"; char: string; count: number; length: number; canOpen: boolean; canClose: boolean; start: number; end: number };
 
-export function pushText(tokens: InlineToken[], text: string, start: number): void {
+export function addText(tokens: InlineToken[], text: string, start: number): void {
   const last = tokens[tokens.length - 1];
   if (last?.kind === "text") {
     last.text += text;
@@ -19,7 +19,7 @@ export function pushText(tokens: InlineToken[], text: string, start: number): vo
   }
 }
 
-export function tokensToNodes(tokens: readonly InlineToken[]): Node[] {
+export function deriveTokenNodes(tokens: readonly InlineToken[]): Node[] {
   return tokens.flatMap((token) => {
     if (token.kind === "nodes") return token.nodes;
     const text = token.kind === "text" ? token.text : token.char.repeat(token.count);

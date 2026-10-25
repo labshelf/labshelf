@@ -1,12 +1,12 @@
 // Keeps cloud writes outside the share until their relay history arrives.
 import { recordFor } from "../../library/writeRecords/index.js";
-import { writtenHashes } from "../model/index.js";
+import { readWrittenHashes } from "../model/index.js";
 import { LOG_MODULE, type MirrorContext } from "./mirrorContext.js";
 
 export interface WaitingWrite { hash: string; mirror: boolean; answered: boolean; canceled?: boolean }
 
-export async function waitsForWrite(context: MirrorContext, path: string, hash: string): Promise<{ waiting: boolean; parent?: string | undefined }> {
-  if (writtenHashes(context.session.index, path).has(hash)) { context.waitingWrites.delete(path); return { waiting: false }; }
+export async function checkWaitingWrite(context: MirrorContext, path: string, hash: string): Promise<{ waiting: boolean; parent?: string | undefined }> {
+  if (readWrittenHashes(context.session.index, path).has(hash)) { context.waitingWrites.delete(path); return { waiting: false }; }
   const records = await context.writeRecords.read();
   const record = recordFor(records, path, hash);
   const mirror = record?.by === "mirror";

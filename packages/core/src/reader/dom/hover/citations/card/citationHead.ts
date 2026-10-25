@@ -1,6 +1,6 @@
 // Builds the head of a single-entry citation card: tag, byline, title, venue and the citing command.
 import type { CitationBibEntry, CitationCardPaper, CitationEntry } from "../../../../index.js";
-import { el } from "../../../../../ui/dom/index.js";
+import { renderElement } from "../../../../../ui/dom/index.js";
 
 /** Authors and year on one line; either may be missing. */
 export function byline(record: Pick<CitationBibEntry, "authors" | "year">): string {
@@ -21,8 +21,8 @@ function venueLine(entry: CitationEntry): string {
 
 /** The tag says where the key was found: REF for a library paper, BIB for a record only in the `.bib` file. */
 function tag(entry: CitationEntry): HTMLElement | null {
-  if (entry.paper) { return el("span", { class: "rd-cite-tag", text: "REF" }); }
-  return entry.bib ? el("span", { class: "rd-cite-tag", text: "BIB" }) : null;
+  if (entry.paper) { return renderElement("span", { class: "rd-cite-tag", text: "REF" }); }
+  return entry.bib ? renderElement("span", { class: "rd-cite-tag", text: "BIB" }) : null;
 }
 
 export function citationHead(entry: CitationEntry): HTMLElement {
@@ -31,15 +31,15 @@ export function citationHead(entry: CitationEntry): HTMLElement {
   const { site } = entry;
   const venue = venueLine(entry);
   const names = record && shortByline(record);
-  return el("div", { class: "rd-cite-head" },
-    el("div", { class: "rd-cite-head-text" },
-      el("div", { class: "rd-cite-top" },
-        names && el("p", { class: "rd-cite-byline" }, names),
+  return renderElement("div", { class: "rd-cite-head" },
+    renderElement("div", { class: "rd-cite-head-text" },
+      renderElement("div", { class: "rd-cite-top" },
+        names && renderElement("p", { class: "rd-cite-byline" }, names),
         tag(entry),
       ),
-      el("p", { class: "rd-cite-title" }, title),
-      venue && el("p", { class: "rd-cite-venue" }, venue),
-      site && el("p", { class: "rd-cite-site" }, `${site.file}:${site.line} · ${site.text}`),
+      renderElement("p", { class: "rd-cite-title" }, title),
+      venue && renderElement("p", { class: "rd-cite-venue" }, venue),
+      site && renderElement("p", { class: "rd-cite-site" }, `${site.file}:${site.line} · ${site.text}`),
     ),
   );
 }

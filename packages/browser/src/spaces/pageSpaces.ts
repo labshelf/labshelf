@@ -10,9 +10,9 @@ import {
   type ProjectLibraryPort,
   type SelectionHub,
   type SpacesHostPort,
-  buildSpaceProjectInfos,
+  createSpaceProjectList,
   type ProjectRow,
-  spaceChecklistProgress,
+  deriveSpaceChecklistProgress,
   papersByCiteKey,
   readChecklistSignals,
   type Progress,
@@ -30,7 +30,7 @@ async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: E
     const paper = papers.get(key);
     return paper ? [{ key, title: paper.title, status: paper.status }] : [];
   });
-  return spaceChecklistProgress(signals, reading);
+  return deriveSpaceChecklistProgress(signals, reading);
 }
 
 type ReadyProject = Extract<ProjectEntry, { kind: 'ready' }>;
@@ -60,7 +60,7 @@ function createSpaceProjects(options: SpaceProjectsOptions) {
       if (!options.projects()) return [];
       const ready = await entries();
       const byFolder = new Map(ready.map(entry => [entry.folder, entry]));
-      const infos = await buildSpaceProjectInfos(ready.map(rowOf), row => projectChecklist(fs, logger, byFolder.get(row.id)!, options.library()), logger);
+      const infos = await createSpaceProjectList(ready.map(rowOf), row => projectChecklist(fs, logger, byFolder.get(row.id)!, options.library()), logger);
       return infos.map(info => ({ ...info, projectId: byFolder.get(info.projectId)!.settings.id }));
     },
     async openProject(id: string): Promise<void> {

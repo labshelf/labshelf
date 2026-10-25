@@ -1,20 +1,20 @@
 // Mounts the LaTeX setup card: shows the helper's state, the one next action, and keeps looking while the helper is missing.
 import type { ILogger, TexInstallKind } from "@labshelf/core";
 import {
-  confirmDialog,
-  el,
-  statusLine,
-  actionButton,
-  settingRow,
-  type StatusTone,
+  askDialog,
+  renderElement,
+  createToneLine,
+  renderActionButton,
+  renderSettingRow,
+  type ToneLineTone,
 } from "@labshelf/core/dom";
 import type {
   HelperProgressListener,
   ILatexHelper,
   HelperProgress,
   HelperHost,
-  HelperStatus,
-  TexStatus,
+  HelperState,
+  TexToolchain,
 } from "@labshelf/core/helper";
 import { MACOS_GUIDE_URL, helperDownloadUrl } from "./helperInstaller";
 
@@ -25,27 +25,27 @@ function installSteps(isMac: boolean): HTMLElement {
     "Download LabShelf Helper and run the installer.",
     isMac ? "Open it once. macOS asks you to confirm an app from the internet; the guide below shows how." : undefined,
   ];
-  return el("ol", { class: "setting-desc" }, ...steps.map((step) => step && el("li", { text: step })));
+  return renderElement("ol", { class: "setting-desc" }, ...steps.map((step) => step && renderElement("li", { text: step })));
 }
 
 // The Windows helper is signed; the macOS and Linux builds are not, which is why the desktop apps come first there.
 function desktopAlternatives(os: string): HTMLElement[] {
   const without = os === "win" ? "installing another program" : "installing an unsigned program";
   return [
-    el("p", {
+    renderElement("p", {
       class: "setting-desc",
       text: `Already use LabShelf in VS Code or the terminal? Either one builds LaTeX for the browser without ${without}.`,
     }),
-    el("ul", { class: "setting-desc" },
-      el("li", { text: "In VS Code, run LabShelf: Build LaTeX for the Browser from the Command Palette." }),
-      el("li", {}, "In a terminal, run ", el("code", { text: "labshelf helper install" }), ". To get the terminal app, run ", el("code", { text: "npm install -g @labshelf/terminal" }), "."),
+    renderElement("ul", { class: "setting-desc" },
+      renderElement("li", { text: "In VS Code, run LabShelf: Build LaTeX for the Browser from the Command Palette." }),
+      renderElement("li", {}, "In a terminal, run ", renderElement("code", { text: "labshelf helper install" }), ". To get the terminal app, run ", renderElement("code", { text: "npm install -g @labshelf/terminal" }), "."),
     ),
   ];
 }
 
 type SetupState =
   | { kind: "checking" }
-  | { kind: "status"; status: HelperStatus }
+  | { kind: "status"; status: HelperState }
   | { kind: "installing"; label: string }
   | { kind: "error"; message: string };
 
@@ -59,11 +59,11 @@ interface SetupActions {
 
 interface SetupView {
   text: string;
-  tone: StatusTone;
+  tone: ToneLineTone;
   controls: Node[];
 }
 
-const TEX_NAME: Record<TexStatus["source"], string> = { none: "", tinytex: "TinyTeX", texlive: "TeX Live", system: "System TeX" };
+const TEX_NAME: Record<TexToolchain["source"], string> = { none: "", tinytex: "TinyTeX", texlive: "TeX Live", system: "System TeX" };
 const INSTALL_CHOICES: Array<{ kind: TexInstallKind; label: string; description: string }> = [
   { kind: "tinytex", label: "Light: TinyTeX, ~100 MB", description: "Installs packages when a project needs them." },
   { kind: "texlive", label: "Full: TeX Live, ~5 GB", description: "Every package, works offline." },
@@ -72,10 +72,10 @@ const INSTALL_CHOICES: Array<{ kind: TexInstallKind; label: string; description:
 const INSTALL_ALL_LABEL = "Download all packages (~5 GB) to compile offline";
 
 const download = (label: string, actions: SetupActions): HTMLButtonElement =>
-  actionButton({ label, icon: "download", primary: true, onClick: actions.download });
+  renderActionButton({ label, icon: "download", primary: true, onClick: actions.download });
 
 const retry = (label: string, actions: SetupActions): HTMLButtonElement =>
-  actionButton({ label, icon: "refresh", primary: true, onClick: actions.retry });
+  renderActionButton({ label, icon: "refresh", primary: true, onClick: actions.retry });
 
 const WHAT_IT_IS = "LabShelf Helper is a small program that runs on your computer. A browser cannot run TeX, so LabShelf sends your "
   + "LaTeX project to the helper, which compiles it with a TeX distribution on this computer and sends back the PDF. Your files "
@@ -83,26 +83,26 @@ const WHAT_IT_IS = "LabShelf Helper is a small program that runs on your compute
 
 function notInstalled(os: string, actions: SetupActions): SetupView {
   const isMac = os === "mac";
-  const controls: Node[] = [el("p", { class: "setting-desc", text: WHAT_IT_IS }), installSteps(isMac), download("Download LabShelf Helper", actions)];
-  if (isMac) { controls.push(actionButton({ label: "How to open it on macOS", icon: "external", onClick: actions.openMacosGuide })); }
-  controls.push(...desktopAlternatives(os), el("p", { class: "setting-desc", text: LOOK_BACK_NOTE }));
+  const controls: Node[] = [renderElement("p", { class: "setting-desc", text: WHAT_IT_IS }), installSteps(isMac), download("Download LabShelf Helper", actions)];
+  if (isMac) { controls.push(renderActionButton({ label: "How to open it on macOS", icon: "external", onClick: actions.openMacosGuide })); }
+  controls.push(...desktopAlternatives(os), renderElement("p", { class: "setting-desc", text: LOOK_BACK_NOTE }));
   return { text: "LabShelf Helper is not installed on this computer.", tone: "idle", controls };
 }
 
 function chooseTex(actions: SetupActions): SetupView {
-  const rows = INSTALL_CHOICES.map((choice, index) => settingRow(
+  const rows = INSTALL_CHOICES.map((choice, index) => renderSettingRow(
     { label: choice.label, description: choice.description },
-    actionButton({ label: "Install", icon: "download", primary: index === 0, onClick: () => actions.install(choice.kind) }),
+    renderActionButton({ label: "Install", icon: "download", primary: index === 0, onClick: () => actions.install(choice.kind) }),
   ));
   return { text: "Choose a TeX distribution to compile LaTeX.", tone: "idle", controls: rows };
 }
 
 const HOST_SUFFIX: Record<HelperHost, string> = { helper: "", vscode: " · through VS Code", terminal: " · through the terminal app" };
 
-function readyView(tex: TexStatus, host: HelperHost, actions: SetupActions): SetupView {
+function readyView(tex: TexToolchain, host: HelperHost, actions: SetupActions): SetupView {
   const name = [TEX_NAME[tex.source], tex.year].filter((part) => part !== undefined && part !== "").join(" ");
   const controls = tex.source === "tinytex" && !tex.complete
-    ? [actionButton({ label: INSTALL_ALL_LABEL, icon: "download", onClick: actions.installAllPackages })]
+    ? [renderActionButton({ label: INSTALL_ALL_LABEL, icon: "download", onClick: actions.installAllPackages })]
     : [];
   return { text: `Ready: ${name}${HOST_SUFFIX[host]}`, tone: "ok", controls };
 }
@@ -121,7 +121,7 @@ function updateHelper(host: HelperHost | undefined, actions: SetupActions): Setu
   return { text: OLDER_BY_HOST[host], tone: "idle", controls: [] };
 }
 
-function statusView(status: HelperStatus, os: string, actions: SetupActions): SetupView {
+function statusView(status: HelperState, os: string, actions: SetupActions): SetupView {
   switch (status.state) {
     case "not-installed": return notInstalled(os, actions);
     case "update-helper": return updateHelper(status.host, actions);
@@ -146,11 +146,11 @@ interface SetupProgress {
 }
 
 function createSetupProgress(label: string): SetupProgress {
-  const bar = el("div", { class: "helper-progress-bar indeterminate" });
-  const track = el("div", { class: "helper-progress-track", role: "progressbar", "aria-label": label, "aria-valuemin": 0, "aria-valuemax": 100 }, bar);
-  const message = el("div", { class: "helper-progress-message" });
+  const bar = renderElement("div", { class: "helper-progress-bar indeterminate" });
+  const track = renderElement("div", { class: "helper-progress-track", role: "progressbar", "aria-label": label, "aria-valuemin": 0, "aria-valuemax": 100 }, bar);
+  const message = renderElement("div", { class: "helper-progress-message" });
   return {
-    element: el("div", { class: "helper-progress" }, track, message),
+    element: renderElement("div", { class: "helper-progress" }, track, message),
     update({ fraction, message: text }) {
       message.textContent = text;
       // An absent fraction is an indeterminate wait, so the bar carries no aria-valuenow.
@@ -195,7 +195,7 @@ const INSTALL_ALL_WARNING = "This downloads about 5 GB and installs the full TeX
 const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 interface Card {
-  line: ReturnType<typeof statusLine>;
+  line: ReturnType<typeof createToneLine>;
   controls: HTMLElement;
   os: string;
   disposed: boolean;
@@ -256,16 +256,16 @@ function createActions(card: () => Card, helper: ILatexHelper, deps: HelperSetup
     retry: () => connect(card(), helper, true),
     install: (kind) => install(`install-${kind}`, `Installing ${TEX_LABEL[kind]}…`, (onProgress) => helper.installTex(kind, onProgress)),
     async installAllPackages() {
-      if (!(await confirmDialog(INSTALL_ALL_LABEL.replace(" to compile offline", "?"), INSTALL_ALL_WARNING, "Download"))) { return; }
+      if (!(await askDialog(INSTALL_ALL_LABEL.replace(" to compile offline", "?"), INSTALL_ALL_WARNING, "Download"))) { return; }
       await install("install-all-packages", "Installing TeX Live…", (onProgress) => helper.installAllPackages(onProgress));
     },
   };
 }
 
 export function mountHelperSetupCard(root: HTMLElement, helper: ILatexHelper, deps: HelperSetupDeps): { dispose(): void } {
-  const line = statusLine();
+  const line = createToneLine();
   line.element.setAttribute("aria-live", "polite");
-  const controls = el("div");
+  const controls = renderElement("div");
   root.replaceChildren(line.element, controls);
   const card: Card = { line, controls, os: "", disposed: false, polled: false, polling: undefined, actions: undefined as unknown as SetupActions };
   card.actions = createActions(() => card, helper, deps);

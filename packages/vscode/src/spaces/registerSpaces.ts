@@ -7,7 +7,7 @@ import { SpacesService } from "./spacesService.js";
 import { registerSpacesPanels } from "./panelRegistry.js";
 import { ResearchChatView } from "./researchChatView.js";
 import {
-  spaceChecklistProgress,
+  deriveSpaceChecklistProgress,
   readChecklistSignals,
   type ProjectRow,
   type Progress,
@@ -20,7 +20,7 @@ export async function projectChecklist(writing: WritingViewHandles, row: Project
     readChecklistSignals(writing.projects.reads(writing.logger), project), writing.readingLists.of(project),
   ]);
   const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);
-  return spaceChecklistProgress(signals, reading);
+  return deriveSpaceChecklistProgress(signals, reading);
 }
 
 export function registerSpaces(

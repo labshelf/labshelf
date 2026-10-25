@@ -1,14 +1,14 @@
 // Builds a citation card's actions (open the paper, go to the citing source line) and its one fix row.
 import type { CitationCardFix, CitationEntry } from "../../../../index.js";
 import type { PreviewRequest } from "../../../../previewRequests.js";
-import { el } from "../../../../../ui/dom/index.js";
+import { renderElement } from "../../../../../ui/dom/index.js";
 
 export const OPEN_PAPER_LABEL = "Open paper";
 
 export type PostRequest = (request: PreviewRequest) => void;
 
 function button(label: string, onClick: () => void, primary = false): HTMLButtonElement {
-  const node = el("button", { class: primary ? "rd-cite-btn rd-cite-btn-primary" : "rd-cite-btn", type: "button", text: label });
+  const node = renderElement("button", { class: primary ? "rd-cite-btn rd-cite-btn-primary" : "rd-cite-btn", type: "button", text: label });
   node.addEventListener("click", onClick);
   return node;
 }
@@ -45,7 +45,7 @@ export function citationActions(entry: CitationEntry, open: (paperId: string, pa
   ].filter((node) => node !== undefined && node !== null);
   const fixNode = fix && fixButton(entry, fix, post);
   return [
-    actions.length > 0 ? el("div", { class: "rd-cite-acts" }, ...actions) : null,
-    fixNode ? el("div", { class: "rd-cite-fix" }, fixNode) : null,
+    actions.length > 0 ? renderElement("div", { class: "rd-cite-acts" }, ...actions) : null,
+    fixNode ? renderElement("div", { class: "rd-cite-fix" }, fixNode) : null,
   ].filter((node) => node !== null);
 }

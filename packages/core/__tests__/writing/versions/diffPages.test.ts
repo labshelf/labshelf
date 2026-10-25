@@ -1,4 +1,4 @@
-// Tests the regions diffPages reports as changed, in points with padding, merged per page.
+// Tests the regions comparePages reports as changed, in points with padding, merged per page.
 import { diffPages } from "../../../src/writing/versions/diffPages";
 import { blankPage, fillBars } from "./inkFixture";
 
@@ -13,7 +13,7 @@ function page(draw: (p: ReturnType<typeof blankPage>) => void) {
 // A line the comparison keeps apart from the changed ones: a different height.
 const unchanged = (p: ReturnType<typeof blankPage>) => fillBars(p, 20, 90, 38, 4);
 
-describe("diffPages", () => {
+describe("comparePages", () => {
   it("reports no area for identical pages", () => {
     const draw = (p: ReturnType<typeof blankPage>) => { fillBars(p, 20, 10, 38, 8); unchanged(p); };
     expect(diffPages([page(draw)], [page(draw)], SCALE)).toEqual({ before: [], after: [] });

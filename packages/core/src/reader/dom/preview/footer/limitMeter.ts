@@ -1,5 +1,5 @@
 // Shows body pages and words against the project's limits as a meter, with a popover that edits the limits.
-import { el } from "../../../../ui/dom/index.js";
+import { renderElement } from "../../../../ui/dom/index.js";
 import type { PreviewRoots, WebviewToHost, CheckLimitsChange } from "../../../index.js";
 import { closePopover, togglePopover } from "../../elements/index.js";
 import type { CountUpTo } from "../../../../writing/project/index.js";
@@ -24,10 +24,10 @@ function parseLimit(text: string): number | null | undefined {
 }
 
 function limitRow(id: string, label: string, value: number | undefined, commit: (input: HTMLInputElement) => void): HTMLElement {
-  const input = el("input", { id, class: "rd-limit-input", type: "text", inputmode: "numeric", placeholder: "none", "aria-label": label, value: value ?? "" });
+  const input = renderElement("input", { id, class: "rd-limit-input", type: "text", inputmode: "numeric", placeholder: "none", "aria-label": label, value: value ?? "" });
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { commit(input); } });
   input.addEventListener("blur", () => commit(input));
-  return el("div", { class: "rd-limit-row" }, el("label", { for: id }, label), input);
+  return renderElement("div", { class: "rd-limit-row" }, renderElement("label", { for: id }, label), input);
 }
 
 /**
@@ -45,9 +45,9 @@ function buildLimitPopover(values: LimitValues, post: (limits: CheckLimitsChange
     post({ [field]: parsed });
   };
 
-  const segment = el("span", { class: "rd-limit-seg", role: "radiogroup", "aria-label": "Count up to" });
+  const segment = renderElement("span", { class: "rd-limit-seg", role: "radiogroup", "aria-label": "Count up to" });
   const buttons = UP_TO.map(([value, label]) => {
-    const button = el("button", { type: "button", role: "radio", "aria-checked": String(base.countUpTo === value) }, label);
+    const button = renderElement("button", { type: "button", role: "radio", "aria-checked": String(base.countUpTo === value) }, label);
     button.addEventListener("click", () => {
       if (base.countUpTo === value) { return; }
       base.countUpTo = value;
@@ -58,12 +58,12 @@ function buildLimitPopover(values: LimitValues, post: (limits: CheckLimitsChange
   });
   segment.append(...buttons);
 
-  const content = el(
+  const content = renderElement(
     "div", { class: "rd-limit-pop" },
     limitRow("rd-limit-pages", "Page limit", base.pages, commit("pages")),
     limitRow("rd-limit-words", "Word limit", base.words, commit("words")),
-    el("div", { class: "rd-limit-row" }, el("span", {}, "Count up to"), segment),
-    el("p", {}, "Counts the main text of ", el("code", {}, base.file), " and every file it pulls in with ", el("code", {}, "\\include"), " or ", el("code", {}, "\\input"), `. Saved for ${base.file}.`),
+    renderElement("div", { class: "rd-limit-row" }, renderElement("span", {}, "Count up to"), segment),
+    renderElement("p", {}, "Counts the main text of ", renderElement("code", {}, base.file), " and every file it pulls in with ", renderElement("code", {}, "\\include"), " or ", renderElement("code", {}, "\\input"), `. Saved for ${base.file}.`),
   );
   content.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } });
   return content;
@@ -88,10 +88,10 @@ const figure = (value: number, limit: number | undefined, unit: string): string 
  * @returns `setRoots`, driven by the host's roots messages, and `documentChanged`, for a replaced PDF.
  */
 export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: LimitMeterDeps): { setRoots(roots: PreviewRoots): void; documentChanged(): void } {
-  const fill = el("i");
-  const text = el("span", { class: "rd-limit-text" });
-  const button = el("button", { class: "rd-limit", type: "button", "aria-haspopup": "dialog", "aria-expanded": "false", title: "Page and word limits" },
-    el("span", { class: "rd-limit-meter", "aria-hidden": "true" }, fill), text);
+  const fill = renderElement("i");
+  const text = renderElement("span", { class: "rd-limit-text" });
+  const button = renderElement("button", { class: "rd-limit", type: "button", "aria-haspopup": "dialog", "aria-expanded": "false", title: "Page and word limits" },
+    renderElement("span", { class: "rd-limit-meter", "aria-hidden": "true" }, fill), text);
   slot.hidden = false;
   slot.append(button);
 

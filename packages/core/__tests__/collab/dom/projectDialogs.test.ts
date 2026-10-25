@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { runJoinProjectDialog, runLeaveProjectDialog, runShareProjectDialog, projectShareMenuEntries } from "../../../src/collab/dom/index.js";
+import { runJoinProjectDialog, runLeaveProjectDialog, runShareProjectDialog, createProjectShareMenuEntries } from "../../../src/collab/dom/index.js";
 import { clickButton, fakeHost, tick } from "./fakeHost";
 
 afterEach(() => { document.body.innerHTML = ""; });
@@ -47,9 +47,9 @@ describe("leave dialog", () => {
   });
 });
 
-describe("projectShareMenuEntries", () => {
+describe("createProjectShareMenuEntries", () => {
   it("is empty when the host offers no project sharing", () => {
     const host = fakeHost({ offers: jest.fn(() => ({ projects: false, links: true })) });
-    expect(projectShareMenuEntries(host, { id: "p1", shared: false })).toEqual([]);
+    expect(createProjectShareMenuEntries(host, { id: "p1", shared: false })).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 // Tells whether a share's device-local state is being stored, by watching every write its storage port makes.
-import type { CollabStateStorage } from "../deviceState/index.js";
+import type { CollabDeviceStateStorage } from "../deviceState/index.js";
 
 export interface StorageHealth {
   /** The error of a write that failed and has not succeeded since; undefined while every write is stored. */
@@ -8,7 +8,7 @@ export interface StorageHealth {
 }
 
 /** Wraps `storage` so each write reports to the returned health; reads pass through. */
-export function watchStorageHealth(storage: CollabStateStorage): { storage: CollabStateStorage; health: StorageHealth } {
+export function watchStorageHealth(storage: CollabDeviceStateStorage): { storage: CollabDeviceStateStorage; health: StorageHealth } {
   // Keyed by what was written, so a later write of the same doc, map or blob clears its failure.
   const failing = new Map<string, string>();
   const listeners = new Set<() => void>();

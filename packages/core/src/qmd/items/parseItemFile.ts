@@ -1,10 +1,10 @@
 // Parses a qmd item file into loose text and items without losing or changing a byte.
 // CONTRACT: documents/contracts/qmd-items.md#items
 import { parseAnchor } from "./itemAnchor.js";
-import { attributeValue, parseDivOpener } from "./attributes.js";
-import { topLevelDivs } from "./divs.js";
+import { readAttribute, parseDivOpener } from "./attributes.js";
+import { findTopLevelDivs } from "./divs.js";
 import { ITEM_CLASS, type ItemFile, type ItemSegment, type Segment } from "./itemFile.js";
-import { lineContent, splitLines } from "./lines.js";
+import { extractLineContent, splitLines } from "./lines.js";
 
 const BOM = "\uFEFF";
 
@@ -15,7 +15,7 @@ export function parseItemFile(text: string): ItemFile {
   const segments: Segment[] = [];
   let loose = bom;
   let next = 0;
-  for (const div of topLevelDivs(lines)) {
+  for (const div of findTopLevelDivs(lines)) {
     const item = readItem(lines, div.open, div.close);
     if (!item) { continue; }
     loose += lines.slice(next, div.open).join("");
@@ -32,14 +32,14 @@ export function parseItemFile(text: string): ItemFile {
 /** Reads the item whose fence spans `open`..`close`, or undefined when the div is not an item. */
 function readItem(lines: readonly string[], open: number, close: number): ItemSegment | undefined {
   const fence = lines[open]!;
-  const attributes = parseDivOpener(lineContent(fence));
+  const attributes = parseDivOpener(extractLineContent(fence));
   if (!attributes?.id || !attributes.classes.includes(ITEM_CLASS)) { return undefined; }
-  const author = attributeValue(attributes, "author");
-  const created = attributeValue(attributes, "created");
+  const author = readAttribute(attributes, "author");
+  const created = readAttribute(attributes, "created");
   return {
     kind: "item",
     id: attributes.id,
-    anchor: parseAnchor(attributeValue(attributes, "anchor")),
+    anchor: parseAnchor(readAttribute(attributes, "anchor")),
     ...(author === undefined ? {} : { author }),
     ...(created === undefined ? {} : { created }),
     classes: attributes.classes,

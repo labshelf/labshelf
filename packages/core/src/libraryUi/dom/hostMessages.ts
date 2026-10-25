@@ -2,7 +2,7 @@
  * Applies what the host sends: snapshots, navigation, selection, per-paper data, OCR jobs and the citation map go to the store, notices
  * and progress become toasts, and PDF and add-paper replies open their dialogs.
  */
-import { toast } from "../../ui/dom/index.js";
+import { showToast } from "../../ui/dom/index.js";
 import type { HostToUi } from "../protocol/index.js";
 import { onAddNoPdf, onAddSources, onFindMiss, onPdfMissing, showPaper } from "./flows/index.js";
 import type { UiContext } from "./uiContext.js";
@@ -11,7 +11,7 @@ import type { UiContext } from "./uiContext.js";
 function reportFilesFailure(ctx: UiContext, id: string, message: string): void {
   const title = ctx.store.get().papers.find((p) => p.id === id)?.title ?? id;
   console.warn("LabShelf library: could not list the files of a paper", { id, title, message });
-  toast(`Could not list the files of “${title}”: ${message}`, "error");
+  showToast(`Could not list the files of “${title}”: ${message}`, "error");
 }
 
 function applyData(ctx: UiContext, m: HostToUi): boolean {
@@ -43,7 +43,7 @@ export function attachHostMessages(ctx: UiContext): () => void {
   const showProgress = (key: string, text: string | null): void => {
     progress.get(key)?.();
     progress.delete(key);
-    if (text) progress.set(key, toast(text, "info"));
+    if (text) progress.set(key, showToast(text, "info"));
   };
   return ctx.transport.subscribe((m: HostToUi) => {
     if (applyData(ctx, m)) return;
@@ -52,7 +52,7 @@ export function attachHostMessages(ctx: UiContext): () => void {
       case "searchTag": ctx.store.searchTag(m.tag); return;
       case "reveal": showPaper(ctx, m.id); return;
       case "select": ctx.store.selectOnly(m.id); return;
-      case "notice": toast(m.text, m.kind); return;
+      case "notice": showToast(m.text, m.kind); return;
       case "progress": showProgress(m.key, m.text); return;
       case "pdf.busy": ctx.store.setPdfBusy(m.id, m.busy); return;
       case "pdf.missing": void onPdfMissing(ctx, m.id); return;

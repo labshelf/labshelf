@@ -1,8 +1,8 @@
 /** Pins leaving and resuming a shared project, and the invite and relay list the owner's relay offer and withdrawal keep. */
 import { parseInvite } from "../../../src/collab/invite/index";
-import { addRelay, relayList } from "../../../src/collab/relays/index";
+import { addRelay, readRelayList } from "../../../src/collab/relays/index";
 import {
-  createShareResumer, currentInvite, leaveSharedProject, offerOwnRelay, ShareOpenInAnotherTabError, shareProject, withdrawOwnRelay, withdrawOwnRelayFromShares,
+  createShareResumer, readCurrentInvite, leaveSharedProject, offerOwnRelay, ShareOpenInAnotherTabError, startProjectShare, removeOwnRelayOffer, removeOwnRelayOfferFromShares,
 } from "../../../src/collab/share/index";
 import { encodeRelayBody } from "../../../src/relay/index";
 import { runFor } from "../transport/relay/fakeRelay";
@@ -13,7 +13,7 @@ import { closeAll, workflowDevice, type WorkflowDevice } from "./workflowTestbed
 async function sharedOn(net: Network, ada: WorkflowDevice) {
   await writeProject(ada);
   await ada.ports.projects.reload();
-  const outcome = await net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: new AbortController().signal }));
+  const outcome = await net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: new AbortController().signal }));
   if (outcome.kind !== "shared") { throw new Error(`not shared: ${outcome.kind}`); }
   await net.drive(outcome.connection.mirror!.idle());
   await runFor(net.clock, 2000);
@@ -116,11 +116,11 @@ describe("the invite and the owner's relay", () => {
     const share = await sharedOn(net, ada);
     addRelay(share.session.index, { url: TWO, addedBy: "grace" });
 
-    const parsed = await parseInvite(await currentInvite(ada.ports, share));
+    const parsed = await parseInvite(await readCurrentInvite(ada.ports, share));
     expect(parsed.ok && parsed.invite.relays).toEqual([{ url: ONE }, { url: TWO }]);
     expect(ada.keys.get(share.shareId)?.relays).toEqual([{ url: ONE }, { url: TWO }]);
     share.session.index.getArray("relays").delete(0, 2);
-    const fallback = await parseInvite(await currentInvite(ada.ports, share));
+    const fallback = await parseInvite(await readCurrentInvite(ada.ports, share));
     expect(fallback.ok && fallback.invite.relays).toEqual([{ url: ONE }, { url: TWO }]);
     await closeAll(net, ada);
   }, 60_000);
@@ -131,12 +131,12 @@ describe("the invite and the owner's relay", () => {
     const share = await sharedOn(net, ada);
     addRelay(share.session.index, { url: TWO, addedBy: "grace" });
 
-    expect(await withdrawOwnRelay(ada.ports, share, TWO)).toBe(false);
-    expect(await withdrawOwnRelay(ada.ports, share, ONE)).toBe(true);
-    expect(relayList(share.session.index)).toEqual([{ url: TWO, addedBy: "grace" }]);
+    expect(await removeOwnRelayOffer(ada.ports, share, TWO)).toBe(false);
+    expect(await removeOwnRelayOffer(ada.ports, share, ONE)).toBe(true);
+    expect(readRelayList(share.session.index)).toEqual([{ url: TWO, addedBy: "grace" }]);
     expect(await offerOwnRelay(ada.ports, share)).toEqual({ kind: "offered" });
     expect(await offerOwnRelay(ada.ports, share)).toEqual({ kind: "listed" });
-    expect(relayList(share.session.index).map((entry) => entry.url)).toEqual([TWO, ONE]);
+    expect(readRelayList(share.session.index).map((entry) => entry.url)).toEqual([TWO, ONE]);
     await closeAll(net, ada);
   }, 60_000);
 
@@ -144,11 +144,11 @@ describe("the invite and the owner's relay", () => {
     const net = new Network();
     const ada = workflowDevice(net, "ada");
     const share = await sharedOn(net, ada);
-    expect(await withdrawOwnRelay(ada.ports, share, ONE)).toBe(true);
+    expect(await removeOwnRelayOffer(ada.ports, share, ONE)).toBe(true);
     ada.ports.fetch = async () => new Response(encodeRelayBody({ error: "not yours" }), { status: 403 });
 
     expect((await offerOwnRelay(ada.ports, share)).kind).toBe("refused");
-    expect(relayList(share.session.index)).toEqual([]);
+    expect(readRelayList(share.session.index)).toEqual([]);
     await closeAll(net, ada);
   }, 60_000);
 
@@ -158,7 +158,7 @@ describe("the invite and the owner's relay", () => {
     const { shareId } = await sharedOn(net, ada);
     await ada.ports.shares.remove(shareId);
 
-    await withdrawOwnRelayFromShares(ada.ports, ONE);
+    await removeOwnRelayOfferFromShares(ada.ports, ONE);
     expect(ada.keys.get(shareId)?.relays).toEqual([]);
   }, 60_000);
 });

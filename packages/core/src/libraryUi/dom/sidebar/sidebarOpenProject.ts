@@ -1,7 +1,7 @@
 // Renders the open project at the top of Projects (its title row, then its Files, Outline and Checklist trees) and acts on their rows.
 import { runShareProjectDialog } from "../../../collab/dom/index.js";
-import { el, showMenu } from "../../../ui/dom/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { renderElement, showMenu } from "../../../ui/dom/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import type { SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "../../sidebarTrees.js";
 import { GROUP_ROW_DEPTH, formatLabel, renderTreeItem } from "./sidebarRows.js";
 import { renderGroupRow } from "./sidebarSections.js";
@@ -10,7 +10,7 @@ import type { SidebarState } from "./sidebarView.js";
 
 const iconHtml = (i: SidebarNodeIcon | undefined): string => {
   if (!i) return "";
-  if (i.kind === "glyph") return `<span class="tree-icon">${icon(i.name)}</span>`;
+  if (i.kind === "glyph") return `<span class="tree-icon">${renderIcon(i.name)}</span>`;
   if (i.kind === "dot") return `<span class="tree-icon"><span class="tree-dot ${i.tone}"></span></span>`;
   return `<span class="tree-ref ${i.tone}">${escapeHtml(i.text)}</span>`;
 };
@@ -31,9 +31,9 @@ function nodeRow(t: SidebarState, view: string, n: SidebarTreeNode, depth: numbe
   const row = renderTreeItem(`tree:${view}:${n.key}`, depth, false, {
     "data-tree-view": view, "data-tree-key": n.key, "aria-selected": "false",
     "aria-expanded": folds ? String(open) : undefined, title: n.tooltip,
-  }, `<span class="tree-twisty${folds ? "" : " leaf"}">${icon("chevron-down")}</span>${check}${iconHtml(n.icon)}` +
+  }, `<span class="tree-twisty${folds ? "" : " leaf"}">${renderIcon("chevron-down")}</span>${check}${iconHtml(n.icon)}` +
     `<span class="tree-label">${escapeHtml(n.label)}</span>` + (n.description ? `<span class="tree-desc">${escapeHtml(n.description)}</span>` : "") +
-    (n.addable ? `<button class="ls-icon-btn tree-add" data-tree="node-add" title="Add item" aria-label="Add item">${icon("plus")}</button>` : "") +
+    (n.addable ? `<button class="ls-icon-btn tree-add" data-tree="node-add" title="Add item" aria-label="Add item">${renderIcon("plus")}</button>` : "") +
     inline + trailing);
   row.classList.toggle("dim", n.dim === true);
   row.classList.toggle("struck", n.struck === true);
@@ -51,17 +51,17 @@ function appendNodes(t: SidebarState, body: HTMLElement, view: string, nodes: re
 function toggleRow(toggle: NonNullable<SidebarProjectTree["toggle"]>): HTMLElement {
   const options = toggle.options.map((o) =>
     `<button data-tree="project-tree-action" data-action="${escapeHtml(o.action)}" aria-pressed="${o.action === toggle.selected}">${escapeHtml(o.label)}</button>`).join("");
-  return el("div", { class: "tree-toggle-row", style: `--depth:${GROUP_ROW_DEPTH}`, html: `<span class="tree-toggle">${options}</span>` });
+  return renderElement("div", { class: "tree-toggle-row", style: `--depth:${GROUP_ROW_DEPTH}`, html: `<span class="tree-toggle">${options}</span>` });
 }
 
 function openProjectRow(p: SidebarOpenProject, canShare: boolean): HTMLElement {
   const label = escapeHtml(`Share "${p.name}"`);
-  const shareButton = canShare ? `<button class="ls-icon-btn" data-tree="share-project" title="${label}" aria-label="${label}">${icon("link")}</button>` : "";
-  return el("div", {
+  const shareButton = canShare ? `<button class="ls-icon-btn" data-tree="share-project" title="${label}" aria-label="${label}">${renderIcon("link")}</button>` : "";
+  return renderElement("div", {
     class: "tree-row tree-open-project", role: "treeitem", "data-key": "open-project", "data-open-project": p.id, style: "--depth:0", title: p.name,
     "aria-haspopup": "menu",
-    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span><span class="tree-open-project-chevron" aria-hidden="true">${icon("chevron-down")}</span>` +
-      `<span class="tree-row-actions">${shareButton}<button class="ls-icon-btn" data-tree="close-project" title="Close project">${icon("x")}</button></span>`,
+    html: `${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span><span class="tree-open-project-chevron" aria-hidden="true">${renderIcon("chevron-down")}</span>` +
+      `<span class="tree-row-actions">${shareButton}<button class="ls-icon-btn" data-tree="close-project" title="Close project">${renderIcon("x")}</button></span>`,
   });
 }
 
@@ -75,12 +75,12 @@ export function addOpenProject(
   for (const tree of p.trees) {
     const id = `project.${tree.view}` as const;
     const open = !t.collapsed.has(id);
-    const actions = tree.actions.map((a) => `<button class="ls-icon-btn" data-tree="project-tree-action" data-action="${escapeHtml(a.action)}" title="${escapeHtml(a.label)}">${icon(a.icon)}</button>`).join("");
+    const actions = tree.actions.map((a) => `<button class="ls-icon-btn" data-tree="project-tree-action" data-action="${escapeHtml(a.action)}" title="${escapeHtml(a.label)}">${renderIcon(a.icon)}</button>`).join("");
     const header = renderGroupRow(id, tree.title, open, actions);
     const pane = appendPane(body, id, header, open);
     if (!open) continue;
     if (tree.toggle) pane.append(toggleRow(tree.toggle));
-    if (tree.nodes.length === 0) pane.append(el("div", { class: "tree-empty", text: tree.empty }));
+    if (tree.nodes.length === 0) pane.append(renderElement("div", { class: "tree-empty", text: tree.empty }));
     else appendNodes(t, pane, tree.view, tree.nodes, GROUP_ROW_DEPTH, render);
   }
 }

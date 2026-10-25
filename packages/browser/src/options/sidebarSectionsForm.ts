@@ -1,5 +1,5 @@
 // Builds the Sidebar section: which of Library and Projects the library page sidebar shows; the last one shown cannot be turned off.
-import { checkboxField, settingRow, settingsSection } from "@labshelf/core/dom";
+import { renderCheckboxField, renderSettingRow, renderSettingsSection } from "@labshelf/core/dom";
 import { withSidebarSection, type SidebarSections } from "../platform";
 
 export interface SidebarSectionsForm {
@@ -10,8 +10,8 @@ export interface SidebarSectionsForm {
 /** `onChange` stores the sections whenever the user changes them. */
 export function createSidebarSectionsForm(onChange: (sections: SidebarSections) => void): SidebarSectionsForm {
   const fields = {
-    library: checkboxField({ id: "sidebar-library", label: "Library" }),
-    projects: checkboxField({ id: "sidebar-projects", label: "Projects" }),
+    library: renderCheckboxField({ id: "sidebar-library", label: "Library" }),
+    projects: renderCheckboxField({ id: "sidebar-projects", label: "Projects" }),
   };
   let current: SidebarSections = { library: true, projects: true };
   const fill = (sections: SidebarSections): void => {
@@ -29,10 +29,10 @@ export function createSidebarSectionsForm(onChange: (sections: SidebarSections) 
     });
   }
   return {
-    section: settingsSection(
+    section: renderSettingsSection(
       { title: "Sidebar", description: "The sections the library page sidebar shows. A hidden section loads nothing. One section always stays on; reload the library page to apply a change." },
-      settingRow({}, fields.library.element),
-      settingRow({}, fields.projects.element),
+      renderSettingRow({}, fields.library.element),
+      renderSettingRow({}, fields.projects.element),
     ),
     fill,
   };

@@ -1,6 +1,6 @@
 // Builds the options page from core components and autosaves every change, debounced, with a "Saved" flag.
 // Reader preferences mirror VS Code's labshelf.reader.* settings.
-import { $, settingsPage } from "@labshelf/core/dom";
+import { findElement, renderSettingsPage } from "@labshelf/core/dom";
 import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
 import { StorageRingLogSink, bx, createBrowserLogger, getSettings, updateSettings } from "../platform";
 import { loadReaderPrefs, saveReaderPrefs } from "../reader/service";
@@ -80,7 +80,7 @@ async function init(): Promise<void> {
   });
   const log = createLogSection(ring);
 
-  $("root").replaceChildren(settingsPage(
+  findElement("root").replaceChildren(renderSettingsPage(
     { title: "LabShelf Settings", aside: saved.element },
     ...general.sections,
     proxies.element,

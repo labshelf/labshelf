@@ -1,6 +1,6 @@
 /** Pins the editor ↔ Y.Text binding: CRLF offsets, echo guard, edits racing remote changes, undo reaching the editor. */
 import * as Y from "yjs";
-import { NormalizedText, TextUndoManager, type PendingEdit, type TextChange } from "../../../src/collab/binding/index";
+import { NormalizedText, TextUndoManager, type PendingChange, type TextChange } from "../../../src/collab/binding/index";
 import { fakeLogger } from "../../support/fakeLogger";
 
 const PEER = { peer: "remote" };
@@ -34,9 +34,9 @@ function setup(initial: string, editorText = initial) {
       text.applyLocalChanges([change]);
     },
     /** One queued edit sent to the editor, not yet answered. */
-    send(): PendingEdit | undefined { return text.nextEdit(state.editor); },
-    /** The editor applies the edit and reports it back, as VS Code does before `applyEdit` resolves. */
-    land(edit: PendingEdit) {
+    send(): PendingChange | undefined { return text.nextEdit(state.editor); },
+    /** The editor applies the edit and reports it back, as VS Code does before `applyChange` resolves. */
+    land(edit: PendingChange) {
       state.editor = applyAll(state.editor, edit.changes);
       text.applyLocalChanges(edit.changes);
       edit.settle();
@@ -138,7 +138,7 @@ describe("NormalizedText under races", () => {
     const random = (n: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
     for (let run = 0; run < 60; run++) {
       const s = setup("one\r\ntwo\r\nthree");
-      let inFlight: PendingEdit | undefined;
+      let inFlight: PendingChange | undefined;
       for (let step = 0; step < 40; step++) {
         const action = random(4);
         if (action === 0) {

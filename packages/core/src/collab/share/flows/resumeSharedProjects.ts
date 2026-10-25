@@ -1,5 +1,5 @@
 // Keeps the connected shares in step with the project list: reconnects shared projects whose key is stored, drops the rest.
-import { isSharedProject, LOG_MODULE, ShareOpenInAnotherTabError, type SharedProject, type ShareWorkflowPorts } from "./sharePorts.js";
+import { isSharedProject, LOG_MODULE, ShareOpenInAnotherTabError, type SharedProject, type ShareFlowPorts } from "./sharePorts.js";
 
 export interface ResumeReports {
   /** Once per share: the project is shared, but this device holds no key of it. */
@@ -13,7 +13,7 @@ export interface ShareResumer {
   sync(): Promise<void>;
 }
 
-export function createShareResumer(ports: ShareWorkflowPorts, reports: ResumeReports): ShareResumer {
+export function createShareResumer(ports: ShareFlowPorts, reports: ResumeReports): ShareResumer {
   const reported = new Set<string>();
   let running = Promise.resolve();
   return {
@@ -21,7 +21,7 @@ export function createShareResumer(ports: ShareWorkflowPorts, reports: ResumeRep
   };
 }
 
-async function syncPass(ports: ShareWorkflowPorts, reports: ResumeReports, reported: Set<string>): Promise<void> {
+async function syncPass(ports: ShareFlowPorts, reports: ResumeReports, reported: Set<string>): Promise<void> {
   const shared = ports.projects.list().filter(isSharedProject);
   for (const share of ports.shares.list()) {
     if (ports.shares.isBusy(share.shareId)) { continue; }
@@ -46,7 +46,7 @@ async function syncPass(ports: ShareWorkflowPorts, reports: ResumeReports, repor
   }
 }
 
-async function resume(ports: ShareWorkflowPorts, project: SharedProject, reports: ResumeReports, reported: Set<string>): Promise<void> {
+async function resume(ports: ShareFlowPorts, project: SharedProject, reports: ResumeReports, reported: Set<string>): Promise<void> {
   const shareId = project.settings.shared;
   await ports.shares.hold(shareId, async () => {
     const stored = await ports.keys.invite(shareId);

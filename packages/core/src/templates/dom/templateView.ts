@@ -1,6 +1,6 @@
 // Presents a template preview with project creation and source details.
-import { icon } from "../../ui/index.js";
-import { el } from "../../ui/dom/index.js";
+import { renderIcon } from "../../ui/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { CATEGORY_LABELS, distinctEngineLabel, FORMAT_LABELS, templateByLine, templateUsesCount } from "../templateLabels.js";
 import { fillThumb } from "./templateCard.js";
@@ -38,9 +38,9 @@ function metaRows(entry: TemplateEntry): Array<[string, string]> {
 }
 
 function renderMeta(entry: TemplateEntry): HTMLElement {
-  const dl = el("dl", { class: "ls-tpl-meta" });
+  const dl = renderElement("dl", { class: "ls-tpl-meta" });
   for (const [label, value] of metaRows(entry)) {
-    dl.append(el("dt", { text: label }), el("dd", { text: value, title: value }));
+    dl.append(renderElement("dt", { text: label }), renderElement("dd", { text: value, title: value }));
   }
   return dl;
 }
@@ -51,19 +51,19 @@ function orderedFiles(entry: TemplateEntry, files: string[]): string[] {
 }
 
 function renderFiles(entry: TemplateEntry, files: string[]): HTMLElement {
-  const list = el("ul", { class: "ls-tpl-files", "aria-label": "Files" });
+  const list = renderElement("ul", { class: "ls-tpl-files", "aria-label": "Files" });
   for (const path of orderedFiles(entry, files)) {
-    list.append(el("li", {},
-      el("span", { class: "ls-tpl-file-icon", html: icon(path.endsWith("/") ? "folder" : "file") }),
-      el("span", { class: "ls-tpl-file-path", text: path, title: path })));
+    list.append(renderElement("li", {},
+      renderElement("span", { class: "ls-tpl-file-icon", html: renderIcon(path.endsWith("/") ? "folder" : "file") }),
+      renderElement("span", { class: "ls-tpl-file-path", text: path, title: path })));
   }
-  return el("div", { class: "ls-tpl-files-block" }, el("div", { class: "ls-tpl-section", text: "Files" }), list);
+  return renderElement("div", { class: "ls-tpl-files-block" }, renderElement("div", { class: "ls-tpl-section", text: "Files" }), list);
 }
 
 function renderWarning(problem: string): HTMLElement {
-  return el("div", { class: "ls-tpl-engine", role: "note" },
-    el("span", { class: "ls-tpl-engine-icon", html: icon("warning") }),
-    el("span", { text: problem }));
+  return renderElement("div", { class: "ls-tpl-engine", role: "note" },
+    renderElement("span", { class: "ls-tpl-engine-icon", html: renderIcon("warning") }),
+    renderElement("span", { text: problem }));
 }
 
 function fillUseButton(button: HTMLButtonElement, busy: boolean): void {
@@ -71,19 +71,19 @@ function fillUseButton(button: HTMLButtonElement, busy: boolean): void {
   if (busy) button.setAttribute("aria-busy", "true");
   else button.removeAttribute("aria-busy");
   button.replaceChildren(
-    ...(busy ? [el("span", { class: "spin", html: icon("loader") })] : []),
-    el("span", { text: busy ? "Creating project…" : "Use template" }));
+    ...(busy ? [renderElement("span", { class: "spin", html: renderIcon("loader") })] : []),
+    renderElement("span", { text: busy ? "Creating project…" : "Use template" }));
 }
 
 export function renderTemplateDetail(options: TemplateDetailOptions): TemplateDetail {
   const { entry } = options;
   const by = templateByLine(entry);
   const headingId = `ls-tpl-detail-title-${nextHeadingId++}`;
-  const heading = el("h1", { id: headingId, class: "ls-tpl-detail-title", tabindex: -1, text: entry.name, title: entry.name });
-  const back = el("button", { class: "ls-btn", type: "button" }, el("span", { html: icon("arrow-left") }), "Templates");
-  const preview = el("figure", { class: "ls-tpl-preview" });
-  const use = el("button", { class: "ls-btn ls-btn-primary ls-btn-lg", type: "button" });
-  const warningSlot = el("div", { class: "ls-tpl-engine-slot" });
+  const heading = renderElement("h1", { id: headingId, class: "ls-tpl-detail-title", tabindex: -1, text: entry.name, title: entry.name });
+  const back = renderElement("button", { class: "ls-btn", type: "button" }, renderElement("span", { html: renderIcon("arrow-left") }), "Templates");
+  const preview = renderElement("figure", { class: "ls-tpl-preview" });
+  const use = renderElement("button", { class: "ls-btn ls-btn-primary ls-btn-lg", type: "button" });
+  const warningSlot = renderElement("div", { class: "ls-tpl-engine-slot" });
   back.addEventListener("click", options.onBack);
   use.addEventListener("click", options.onUse);
 
@@ -96,15 +96,15 @@ export function renderTemplateDetail(options: TemplateDetailOptions): TemplateDe
   setProblem(options.problem);
   setBusy(options.busy);
 
-  const info = el("div", { class: "ls-tpl-info" },
-    el("div", { class: "ls-tpl-detail-heading" }, heading,
-      el("div", { class: "ls-tpl-card-by", text: by, title: by }),
-      el("p", { class: "ls-tpl-description", text: entry.description })),
+  const info = renderElement("div", { class: "ls-tpl-info" },
+    renderElement("div", { class: "ls-tpl-detail-heading" }, heading,
+      renderElement("div", { class: "ls-tpl-card-by", text: by, title: by }),
+      renderElement("p", { class: "ls-tpl-description", text: entry.description })),
     use, warningSlot, renderMeta(entry),
     entry.files ? renderFiles(entry, entry.files) : null);
-  const element = el("section", { class: "ls-tpl-detail", "aria-labelledby": headingId },
-    el("div", { class: "ls-tpl-detail-nav" }, back),
-    el("div", { class: "ls-tpl-detail-body" }, preview, info));
+  const element = renderElement("section", { class: "ls-tpl-detail", "aria-labelledby": headingId },
+    renderElement("div", { class: "ls-tpl-detail-nav" }, back),
+    renderElement("div", { class: "ls-tpl-detail-body" }, preview, info));
 
   return { element, setProblem, setBusy, setThumbnail, focus: () => heading.focus(), dispose: () => element.remove() };
 }

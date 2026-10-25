@@ -2,7 +2,7 @@
 import type { Doc } from "yjs";
 import { createLibraryLayout } from "../../library/index.js";
 import { claimProjectId, PROJECT_FILE, type ProjectCatalogContext } from "../../writing/project/index.js";
-import { applySharedSettings, indexSettings, readIndexKind, readSettingsMap } from "../model/index.js";
+import { applySharedSettings, readShareIndexDocSettings, readShareIndexDocKind, readSettingsMap } from "../model/index.js";
 
 export interface JoinShareRequest {
   libraryRoot: string;
@@ -22,11 +22,11 @@ export interface JoinedProject {
  */
 export async function joinShare(context: ProjectCatalogContext, request: JoinShareRequest): Promise<JoinedProject> {
   const { fs, paths, logger } = context;
-  const kind = readIndexKind(request.index);
+  const kind = readShareIndexDocKind(request.index);
   if (!kind.ok) {
     throw new Error(kind.error === "missingShareKind" ? "The share names no kind" : `The share is a ${String(kind.kind)}, not a project`);
   }
-  const settings = readSettingsMap(indexSettings(request.index));
+  const settings = readSettingsMap(readShareIndexDocSettings(request.index));
   const title = typeof settings["title"] === "string" ? settings["title"] : "project";
   const id = await claimProjectId(context, request.libraryRoot, title);
   const folder = paths.join(createLibraryLayout(request.libraryRoot, (base, ...segments) => paths.join(base, ...segments)).projectsRoot(), id);

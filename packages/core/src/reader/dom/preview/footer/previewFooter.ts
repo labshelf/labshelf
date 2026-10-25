@@ -1,9 +1,9 @@
 // Mounts the preview footer: where the page sits in the document, the build status and the slots the checks fill.
-import { el } from "../../../../ui/dom/index.js";
+import { renderElement } from "../../../../ui/dom/index.js";
 import { type PreviewRoots, outlineTrail, type OutlineRow } from "../../../index.js";
 import type { PreviewOutlineSource } from "../mountPreviewChrome.js";
 import { type PreviewBuildStatus, buildStatusText } from "./buildStateText.js";
-import { icon } from "../../../../ui/index.js";
+import { renderIcon } from "../../../../ui/index.js";
 import { buildMenu, togglePopover } from "../../elements/index.js";
 import { pdfName } from "../fileName.js";
 
@@ -19,7 +19,7 @@ interface Crumbs {
 }
 
 function createCrumbs(outline: PreviewOutlineSource): Crumbs {
-  const element = el("nav", { class: "rd-preview-crumbs", "aria-label": "Document position" });
+  const element = renderElement("nav", { class: "rd-preview-crumbs", "aria-label": "Document position" });
   let key = "";
 
   function openMenu(anchor: HTMLElement, rows: readonly OutlineRow[], trail: readonly OutlineRow[]): void {
@@ -38,13 +38,13 @@ function createCrumbs(outline: PreviewOutlineSource): Crumbs {
       const next = `${name}|${loaded.rows.length > 0}|${trail.map((r) => r.id).join(",")}`;
       if (next === key) { return; }
       key = next;
-      const file = el("span", { class: "rd-preview-file", title: path ?? "" }, name);
+      const file = renderElement("span", { class: "rd-preview-file", title: path ?? "" }, name);
       if (loaded.rows.length === 0) { return element.replaceChildren(file); }
-      const button = el("button", { class: "rd-preview-crumb", type: "button", "aria-haspopup": "menu", "aria-expanded": "false" }, file);
+      const button = renderElement("button", { class: "rd-preview-crumb", type: "button", "aria-haspopup": "menu", "aria-expanded": "false" }, file);
       button.addEventListener("click", () => openMenu(button, loaded.rows, trail));
       const parts = trail.flatMap((r) => [
-        el("span", { class: "rd-preview-sep", "aria-hidden": "true", html: icon("chevron-right") }),
-        el("span", { class: "rd-preview-crumb-title", title: r.title }, r.title),
+        renderElement("span", { class: "rd-preview-sep", "aria-hidden": "true", html: renderIcon("chevron-right") }),
+        renderElement("span", { class: "rd-preview-crumb-title", title: r.title }, r.title),
       ]);
       element.replaceChildren(button, ...parts);
     },
@@ -65,7 +65,7 @@ interface StatusView {
 }
 
 function createStatusView({ openLogs, now }: StatusViewDeps): StatusView {
-  const element = el("div", { class: "rd-preview-status", role: "status", "aria-live": "polite" });
+  const element = renderElement("div", { class: "rd-preview-status", role: "status", "aria-live": "polite" });
   let clock: ReturnType<typeof setInterval> | null = null;
   let latest: { roots: PreviewRoots | null; build: PreviewBuildStatus } | null = null;
 
@@ -74,15 +74,15 @@ function createStatusView({ openLogs, now }: StatusViewDeps): StatusView {
     const { text, tone, logsRoot, timed } = buildStatusText(roots, build, now());
     element.dataset["tone"] = tone;
     const glyph = tone === "error" ? "warning" : null;
-    const label = el("span", { class: "rd-preview-status-text" }, text);
+    const label = renderElement("span", { class: "rd-preview-status-text" }, text);
     const lead = glyph
-      ? el("span", { class: "rd-preview-status-icon", "aria-hidden": "true", html: icon(glyph) })
-      : el("span", { class: "rd-preview-status-dot", "aria-hidden": "true" });
+      ? renderElement("span", { class: "rd-preview-status-icon", "aria-hidden": "true", html: renderIcon(glyph) })
+      : renderElement("span", { class: "rd-preview-status-dot", "aria-hidden": "true" });
     const content = text === "" ? [label] : [lead, label];
     if (logsRoot === undefined) {
       element.replaceChildren(...content);
     } else {
-      const button = el("button", { class: "rd-preview-status-button", type: "button", title: "Open the build logs" }, ...content);
+      const button = renderElement("button", { class: "rd-preview-status-button", type: "button", title: "Open the build logs" }, ...content);
       button.addEventListener("click", () => openLogs(logsRoot));
       element.replaceChildren(button);
     }
@@ -115,7 +115,7 @@ const SLOT_NAMES: FooterSlotName[] = ["cites", "limit", "checks"];
 
 function createSlots(): Record<FooterSlotName, HTMLElement> {
   return Object.fromEntries(
-    SLOT_NAMES.map((name) => [name, el("span", { class: "rd-preview-slot", "data-slot": name, hidden: true })]),
+    SLOT_NAMES.map((name) => [name, renderElement("span", { class: "rd-preview-slot", "data-slot": name, hidden: true })]),
   ) as Record<FooterSlotName, HTMLElement>;
 }
 
@@ -134,8 +134,8 @@ export function mountPreviewFooter({ openLogs, outline, now = Date.now }: Previe
   const slots = createSlots();
   const crumbs = createCrumbs(outline);
   const status = createStatusView({ openLogs, now });
-  const element = el("footer", { class: "rd-preview-footer" }, crumbs.element,
-    el("div", { class: "rd-preview-footer-end" }, status.element, slots.cites, slots.limit, slots.checks));
+  const element = renderElement("footer", { class: "rd-preview-footer" }, crumbs.element,
+    renderElement("div", { class: "rd-preview-footer-end" }, status.element, slots.cites, slots.limit, slots.checks));
 
   const renderCrumbs = (): void => crumbs.render(roots?.shown, loaded);
   const renderStatus = (): void => status.render(roots, build);

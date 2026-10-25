@@ -3,7 +3,7 @@ import * as http from "node:http";
 
 import * as vscode from "vscode";
 
-import { CLOUDFLARE_REDIRECT_PORT, CloudflareOAuthError, connectedPageUrl } from "@labshelf/core";
+import { CLOUDFLARE_REDIRECT_PORT, CloudflareOAuthError, deriveConnectedPageUrl } from "@labshelf/core";
 
 const LOOPBACK_HOST = "127.0.0.1";
 /** Long enough to sign in, create an account and approve; short enough that a forgotten tab frees the port. */
@@ -35,7 +35,7 @@ const errorCodeOf = (error: unknown) => (error instanceof CloudflareOAuthError ?
 
 function answerCallback(response: http.ServerResponse, error: unknown): void {
   // INVARIANT: the answer is only a redirect; tokens and codes never reach the page or the browser history.
-  response.writeHead(302, { Location: connectedPageUrl(error === undefined ? undefined : errorCodeOf(error)), "Cache-Control": "no-store", Connection: "close" });
+  response.writeHead(302, { Location: deriveConnectedPageUrl(error === undefined ? undefined : errorCodeOf(error)), "Cache-Control": "no-store", Connection: "close" });
   response.end();
 }
 

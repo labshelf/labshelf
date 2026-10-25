@@ -1,5 +1,5 @@
 // Renders the Publish form (name, category, license, description) and reads its values back as a draft.
-import { el } from "../../ui/dom/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import type { PublishDraft } from "../protocol/index.js";
 import { CATEGORY_LABELS } from "../templateLabels.js";
 
@@ -21,20 +21,20 @@ let nextFieldId = 0;
 
 function labelled(label: string, control: HTMLElement): HTMLElement {
   control.id = `ls-tpl-publish-field-${nextFieldId++}`;
-  return el("div", { class: "ls-tpl-field" }, el("label", { for: control.id, text: label }), control);
+  return renderElement("div", { class: "ls-tpl-field" }, renderElement("label", { for: control.id, text: label }), control);
 }
 
 function select(options: ReadonlyArray<readonly [string, string]>): HTMLSelectElement {
-  return el("select", { class: "ls-input" }, ...options.map(([value, text]) => el("option", { value, text })));
+  return renderElement("select", { class: "ls-input" }, ...options.map(([value, text]) => renderElement("option", { value, text })));
 }
 
 /** @param onEdit called after any control changed, so the caller can drop results that no longer match. */
 export function createPublishForm(onEdit: () => void): PublishForm {
-  const name = el("input", { class: "ls-input", type: "text", required: true, "aria-required": "true" });
+  const name = renderElement("input", { class: "ls-input", type: "text", required: true, "aria-required": "true" });
   const category = select(CATEGORIES);
   const license = select(LICENSES.map((id) => [id, id] as const));
-  const description = el("textarea", { class: "ls-input", rows: 4, required: true, "aria-required": "true" });
-  const element = el("div", { class: "ls-tpl-form" },
+  const description = renderElement("textarea", { class: "ls-input", rows: 4, required: true, "aria-required": "true" });
+  const element = renderElement("div", { class: "ls-tpl-form" },
     labelled("Name", name), labelled("Category", category), labelled("License", license), labelled("Description", description));
   element.addEventListener("input", onEdit);
 
@@ -44,7 +44,7 @@ export function createPublishForm(onEdit: () => void): PublishForm {
     fill(draft) {
       // A license the host prefilled that the list lacks stays selectable instead of silently turning into MIT.
       if (!LICENSES.includes(draft.license) && ![...license.options].some((o) => o.value === draft.license)) {
-        license.append(el("option", { value: draft.license, text: draft.license }));
+        license.append(renderElement("option", { value: draft.license, text: draft.license }));
       }
       name.value = draft.name;
       category.value = draft.category;

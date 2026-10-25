@@ -3,8 +3,8 @@
  */
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, type SidebarState, type SidebarTab } from "../../index.js";
 import { clamp } from "../elements/index.js";
-import { icon, type IconName } from "../../../ui/index.js";
-import { $, el } from "../../../ui/dom/index.js";
+import { renderIcon, type IconName } from "../../../ui/index.js";
+import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 export interface SidebarPanel {
   readonly el: HTMLElement;
@@ -20,8 +20,8 @@ const TAB_META: Record<SidebarTab, { label: string; icon: IconName }> = {
 };
 
 export class Sidebar {
-  private readonly el = $("sidebar");
-  private readonly resizer = $("sidebar-resizer");
+  private readonly el = findElement("sidebar");
+  private readonly resizer = findElement("sidebar-resizer");
   private readonly body: HTMLElement;
   private readonly tabButtons = new Map<SidebarTab, HTMLButtonElement>();
   private open = false;
@@ -30,17 +30,17 @@ export class Sidebar {
   private readonly listeners: Array<(state: SidebarState) => void> = [];
 
   constructor(private readonly panels: Record<SidebarTab, SidebarPanel>) {
-    const strip = el("div", { class: "rd-tabs", role: "tablist", "aria-label": "Sidebar" });
+    const strip = renderElement("div", { class: "rd-tabs", role: "tablist", "aria-label": "Sidebar" });
     for (const name of Object.keys(TAB_META) as SidebarTab[]) {
       const meta = TAB_META[name];
-      const btn = el("button", {
-        class: "rd-tab", type: "button", role: "tab", title: meta.label, "aria-label": meta.label, html: icon(meta.icon),
+      const btn = renderElement("button", {
+        class: "rd-tab", type: "button", role: "tab", title: meta.label, "aria-label": meta.label, html: renderIcon(meta.icon),
       });
       btn.addEventListener("click", () => this.select(name));
       this.tabButtons.set(name, btn);
       strip.append(btn);
     }
-    this.body = el("div", { class: "rd-sidebar-body" });
+    this.body = renderElement("div", { class: "rd-sidebar-body" });
     for (const name of Object.keys(panels) as SidebarTab[]) {
       panels[name].el.hidden = true;
       this.body.append(panels[name].el);

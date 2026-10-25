@@ -6,8 +6,8 @@
 // and hands the helper every change, a peer's included.
 import { undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
-import type { ILogger, PresenceHandle } from "@labshelf/core";
-import type { HelperEdit } from "@labshelf/core/helper";
+import type { ILogger, PresenceStore } from "@labshelf/core";
+import type { HelperChange } from "@labshelf/core/helper";
 import * as Y from "yjs";
 import { mountSourceEditor, type SourceFileAccess } from "../../../src/writing/editor/mountSourceEditor";
 
@@ -16,7 +16,7 @@ const presence = {
   awareness: { clientID: 7, on: () => undefined, off: () => undefined },
   setLocal: () => undefined,
   remote: () => new Map(),
-} as unknown as PresenceHandle;
+} as unknown as PresenceStore;
 
 async function mountShared(initial: string) {
   const doc = new Y.Doc();
@@ -57,10 +57,10 @@ describe("source editor bound to a shared file", () => {
     const doc = new Y.Doc();
     const text = doc.getText("content");
     text.insert(0, "abc");
-    const edits: HelperEdit[] = [];
+    const edits: HelperChange[] = [];
     const helper = {
       status: () => ({ state: "ready" as const, helperVersion: "1", tex: { source: "none" as const, complete: false }, host: "helper" as const }),
-      edit: jest.fn(async (_id: string, _path: string, _version: number, edit: HelperEdit) => { edits.push(edit); }),
+      edit: jest.fn(async (_id: string, _path: string, _version: number, edit: HelperChange) => { edits.push(edit); }),
       save: jest.fn(async () => undefined),
     };
     const files: SourceFileAccess = { list: async () => ["main.tex"], read: async () => "abc", write: async () => undefined };

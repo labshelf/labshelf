@@ -1,6 +1,6 @@
 // Prompts for a symbol or a table size and inserts it into the source editor.
 import { MATH_SYMBOLS, MAX_TABLE_SIDE, parseTableSize, symbolSource, tableSnippet } from "@labshelf/core";
-import { inputBox, quickPick, type QuickPickEntry } from "@labshelf/core/dom";
+import { askInputBox, pickQuickEntry, type QuickPickEntry } from "@labshelf/core/dom";
 import type { SourceEdits, SourceLanguage } from "../sourceUpdates";
 
 /** Every symbol as a pick item, a category heading before its first one. */
@@ -19,12 +19,12 @@ export function symbolEntries(language: SourceLanguage): QuickPickEntry<string>[
 }
 
 export async function insertSymbol(edits: SourceEdits, language: SourceLanguage): Promise<void> {
-  const source = await quickPick(symbolEntries(language), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
+  const source = await pickQuickEntry(symbolEntries(language), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
   if (source !== undefined) edits.insertText(source);
 }
 
 export async function insertTable(edits: SourceEdits, language: SourceLanguage): Promise<void> {
-  const answer = await inputBox({
+  const answer = await askInputBox({
     title: "Insert Table",
     prompt: "Columns x rows",
     value: "3x3",

@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { findProjectConflict, resolveProjectConflictCopy } from '../../../../../src/library/conflicts/node/index';
 import { readConflictDismissals } from '../../../../../src/library/conflicts/index';
 import { resolveConflictDismissalFile } from '../../../../../src/library/conflicts/node/index';
-import { nodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
+import { createNodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
 import { FileProjectVersionStore, textHash } from '../../../../../src/writing/conflict/index';
 import { NodeLibraryFileSystem, createDeviceLocalLayout } from '../../../../../src/library/node/index';
 import { fakeLogger } from '../../../../support/fakeLogger';
@@ -80,7 +80,7 @@ it.each(['versions', 'bases'] as const)('merges with persisted shared %s when pr
   const input = await fixture();
   const shareId = 'shared-merge-test';
   const dir = path.join(createDeviceLocalLayout(input.root).collabDir, shareId);
-  const storage = nodeCollabStorage({ dir, shareId });
+  const storage = createNodeCollabStorage({ dir, shareId });
   await fs.writeFile(path.join(input.folder, 'labshelf.yaml'), `id: p\nformat: latex\nshared: ${shareId}\n`);
   await storage.saveMap(name, { 'main.tex': name === 'bases' ? input.base : [{ hash: await textHash(input.base), text: input.base }] });
   const before = await storage.loadMap(name);
@@ -100,7 +100,7 @@ it.each(['hash', 'shape'])('rejects invalid shared version %s without deleting t
   const input = await fixture();
   const shareId = 'shared-invalid-version-test';
   const dir = path.join(createDeviceLocalLayout(input.root).collabDir, shareId);
-  const storage = nodeCollabStorage({ dir, shareId });
+  const storage = createNodeCollabStorage({ dir, shareId });
   await fs.writeFile(path.join(input.folder, 'labshelf.yaml'), `id: p\nformat: latex\nshared: ${shareId}\n`);
   await storage.saveMap('versions', { 'main.tex': invalid === 'hash' ? [{ hash: 'a'.repeat(64), text: input.base }] : [{ hash: 'a'.repeat(64), text: 12 }] });
   const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(input.root, 'empty-project-history'));

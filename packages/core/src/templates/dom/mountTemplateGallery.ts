@@ -1,5 +1,5 @@
 // Mounts the template gallery over its host transport.
-import { el, toast } from "../../ui/dom/index.js";
+import { renderElement, showToast } from "../../ui/dom/index.js";
 import type { GalleryTransport, HostToGallery, TemplateKey } from "../protocol/index.js";
 import { createCardGrid, type CardGrid } from "./cardGrid.js";
 import { createDetailController, type DetailController } from "./viewController.js";
@@ -42,14 +42,14 @@ function routeHostMessage(message: HostToGallery, { state, grid, header, details
       if (state.isOpen(message.template)) detail?.setBusy(false);
       return;
     case "notice":
-      toast(message.text, message.kind);
+      showToast(message.text, message.kind);
       return;
     case "publish.open":
       publishing.open(message.project, message.draft);
       return;
     case "publish.failed":
       if (publishing.current()) publishing.route(message);
-      else toast(message.error, "error");
+      else showToast(message.error, "error");
       return;
     case "publish.checks":
     case "publish.auth":
@@ -61,8 +61,8 @@ function routeHostMessage(message: HostToGallery, { state, grid, header, details
 
 export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransport): TemplateGalleryHandle {
   const state = new GalleryState();
-  const main = el("main", {});
-  const scrollRoot = el("div", { class: "ls-tpl-frame" });
+  const main = renderElement("main", {});
+  const scrollRoot = renderElement("div", { class: "ls-tpl-frame" });
   const requestThumbnails = (templates: TemplateKey[]): void => {
     if (templates.length > 0) transport.post({ type: "thumbnails", templates });
   };
@@ -90,7 +90,7 @@ export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransp
 
   showGrid();
   scrollRoot.append(header.element, main);
-  const frame = el("div", { class: "ls-tpl" }, scrollRoot);
+  const frame = renderElement("div", { class: "ls-tpl" }, scrollRoot);
   frame.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     details.closeAndFocus();

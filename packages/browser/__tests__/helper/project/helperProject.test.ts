@@ -1,11 +1,11 @@
 // Pins the page's helper project: lazy connect, opening the session's project, edits feeding builds, problems per file.
 import { PDFDocument } from "pdf-lib";
 import type { ILogger, ProjectEntry } from "@labshelf/core";
-import type { HelperCompileRequest, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
+import type { HelperCompileRequest, HelperCompileResult, HelperState, ILatexHelper } from "@labshelf/core/helper";
 import { createHelperProject, type BuildEvent } from "../../../src/helper/project";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
-const READY: HelperStatus = { state: "ready", helperVersion: "1", tex: { source: "none", complete: false }, host: "helper" };
+const READY: HelperState = { state: "ready", helperVersion: "1", tex: { source: "none", complete: false }, host: "helper" };
 const project = (id: string): ProjectEntry => ({
   kind: "ready", folder: `projects/${id}`, location: "library", main: "main.tex", settings: { id, format: "latex" },
 });
@@ -20,8 +20,8 @@ async function widthOf(bytes: Uint8Array | undefined): Promise<number | undefine
   return bytes ? (await PDFDocument.load(bytes)).getPage(0).getWidth() : undefined;
 }
 
-function fakeHelper(answer: HelperStatus, initial?: HelperCompileResult) {
-  let current: HelperStatus | undefined;
+function fakeHelper(answer: HelperState, initial?: HelperCompileResult) {
+  let current: HelperState | undefined;
   const calls: string[] = [];
   const compiles: HelperCompileRequest[] = [];
   let result: HelperCompileResult = initial ?? { status: "succeeded", problems: [], pageCount: 0, changed: [] };
@@ -35,7 +35,7 @@ function fakeHelper(answer: HelperStatus, initial?: HelperCompileResult) {
     compile: jest.fn(async (req: HelperCompileRequest) => { compiles.push(req); calls.push(`compile ${req.mode}`); return result; }),
     cancel: jest.fn(async () => undefined),
   } as unknown as ILatexHelper;
-  return { helper, calls, compiles, setAnswer: (s: HelperStatus) => { answer = s; }, setResult: (r: HelperCompileResult) => { result = r; } };
+  return { helper, calls, compiles, setAnswer: (s: HelperState) => { answer = s; }, setResult: (r: HelperCompileResult) => { result = r; } };
 }
 
 const buildSettings = async () => ({ autoCompile: "typing" as const, haltOnError: false });

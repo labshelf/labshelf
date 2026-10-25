@@ -2,7 +2,7 @@
 import {
   createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, formatError, openShare, type OpenedShare,
 } from "@labshelf/core";
-import { applyThemeToDocument, mountLibraryUi, resolveTheme, toast, type MenuEntry } from "@labshelf/core/dom";
+import { applyThemeToDocument, mountLibraryUi, resolveTheme, showToast, type MenuEntry } from "@labshelf/core/dom";
 
 import { consoleLogger } from "./demos/log/index.js";
 import {
@@ -27,7 +27,7 @@ async function run(what: string, task: () => Promise<void>, context: Record<stri
   try {
     await task();
   } catch (err) {
-    toast(failure(err), "error");
+    showToast(failure(err), "error");
     void consoleLogger.error(MODULE, err, { what, ...context });
   }
 }
@@ -40,11 +40,11 @@ function downloadMenu(share: OpenedShare, library: ShareLibrary, current: () => 
       void run("download pdf", () => downloadPdf(share, paper!), { paperId: paper!.metadata.id });
     } },
     { icon: "download", label: "All papers as .zip", onSelect: () => {
-      const dismiss = toast("Preparing the .zip…");
+      const dismiss = showToast("Preparing the .zip…");
       void run("download zip", async () => {
         const failed = await downloadZip(share, share.manifest.folder, papers);
         if (failed.length > 0) {
-          toast(`${failed.length} PDF${failed.length === 1 ? " was" : "s were"} left out: they could not be read.`, "error");
+          showToast(`${failed.length} PDF${failed.length === 1 ? " was" : "s were"} left out: they could not be read.`, "error");
           void consoleLogger.log("WARN", MODULE, "Left PDFs out of the .zip", { failed: failed.map((f) => f.message) });
         }
       }, { papers: papers.length }).finally(dismiss);

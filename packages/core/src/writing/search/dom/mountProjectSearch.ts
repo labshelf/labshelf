@@ -1,9 +1,9 @@
 // Mounts the project search panel into a root element and connects its form and results to the host.
-import { el } from "../../../ui/dom/dom.js";
+import { renderElement } from "../../../ui/dom/dom.js";
 import type { HostToSearch, SearchScopeLabel, SearchTransport, SearchScopeMode } from "../protocol/index.js";
 import type { SearchResults } from "../searchResults.js";
 import { createResultsList, type ResultsList } from "./matchList.js";
-import { icon, type IconName } from "../../../ui/icons/index.js";
+import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { SearchOptions } from "../searchPattern.js";
 
 interface SearchFormState {
@@ -25,7 +25,7 @@ interface SearchForm {
 }
 
 function toggle(name: IconName, label: string, onChange: () => void): HTMLButtonElement {
-  const button = el("button", { type: "button", class: "ls-icon-btn", title: label, "aria-label": label, "aria-pressed": "false", html: icon(name) });
+  const button = renderElement("button", { type: "button", class: "ls-icon-btn", title: label, "aria-label": label, "aria-pressed": "false", html: renderIcon(name) });
   button.addEventListener("click", () => {
     button.setAttribute("aria-pressed", String(button.getAttribute("aria-pressed") !== "true"));
     onChange();
@@ -35,7 +35,7 @@ function toggle(name: IconName, label: string, onChange: () => void): HTMLButton
 
 function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => SearchScopeMode; offer(offered: boolean): void } {
   const option = (label: string, checked: boolean): HTMLButtonElement =>
-    el("button", { type: "button", class: "ls-psearch-scope-option", role: "radio", "aria-checked": String(checked), text: label });
+    renderElement("button", { type: "button", class: "ls-psearch-scope-option", role: "radio", "aria-checked": String(checked), text: label });
   const file = option("This file", false);
   const project = option("Project", true);
   for (const [button, other] of [[file, project], [project, file]] as const) {
@@ -46,7 +46,7 @@ function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => Se
       onChange();
     });
   }
-  const root = el("div", { class: "ls-psearch-scope", role: "radiogroup", "aria-label": "Search in" }, file, project);
+  const root = renderElement("div", { class: "ls-psearch-scope", role: "radiogroup", "aria-label": "Search in" }, file, project);
   return {
     root,
     value: () => (!root.hidden && file.getAttribute("aria-checked") === "true" ? "file" : "project"),
@@ -56,23 +56,23 @@ function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => Se
 
 /** `onChange` fires on every edit of the query or an option; replace edits do not search again. */
 function createSearchForm(onChange: () => void): SearchForm {
-  const query = el("input", { type: "text", class: "ls-psearch-input", placeholder: "Search", "aria-label": "Search", spellcheck: "false" });
-  const replacement = el("input", { type: "text", class: "ls-psearch-input", placeholder: "Replace", "aria-label": "Replace", spellcheck: "false" });
+  const query = renderElement("input", { type: "text", class: "ls-psearch-input", placeholder: "Search", "aria-label": "Search", spellcheck: "false" });
+  const replacement = renderElement("input", { type: "text", class: "ls-psearch-input", placeholder: "Replace", "aria-label": "Replace", spellcheck: "false" });
   const matchCase = toggle("case-sensitive", "Match Case", onChange);
   const wholeWord = toggle("whole-word", "Match Whole Word", onChange);
   const regex = toggle("regex", "Use Regular Expression", onChange);
-  const replaceAll = el("button", { type: "button", class: "ls-icon-btn", title: "Replace All", "aria-label": "Replace All", html: icon("replace-all") });
-  const replaceRow = el("div", { class: "ls-search ls-psearch-field", hidden: true }, replacement, replaceAll);
-  const expander = el("button", { type: "button", class: "ls-icon-btn ls-psearch-expander", title: "Toggle Replace", "aria-label": "Toggle Replace", "aria-expanded": "false", html: icon("chevron-right") });
+  const replaceAll = renderElement("button", { type: "button", class: "ls-icon-btn", title: "Replace All", "aria-label": "Replace All", html: renderIcon("replace-all") });
+  const replaceRow = renderElement("div", { class: "ls-search ls-psearch-field", hidden: true }, replacement, replaceAll);
+  const expander = renderElement("button", { type: "button", class: "ls-icon-btn ls-psearch-expander", title: "Toggle Replace", "aria-label": "Toggle Replace", "aria-expanded": "false", html: renderIcon("chevron-right") });
   const scope = scopeSwitch(onChange);
-  const root = el("div", { class: "ls-psearch-form" },
+  const root = renderElement("div", { class: "ls-psearch-form" },
     expander,
-    el("div", { class: "ls-psearch-fields" }, el("div", { class: "ls-search ls-psearch-field" }, query, matchCase, wholeWord, regex), replaceRow, scope.root));
+    renderElement("div", { class: "ls-psearch-fields" }, renderElement("div", { class: "ls-search ls-psearch-field" }, query, matchCase, wholeWord, regex), replaceRow, scope.root));
   expander.addEventListener("click", () => {
     const open = replaceRow.hidden;
     replaceRow.hidden = !open;
     expander.setAttribute("aria-expanded", String(open));
-    expander.innerHTML = icon(open ? "chevron-down" : "chevron-right");
+    expander.innerHTML = renderIcon(open ? "chevron-down" : "chevron-right");
     root.dispatchEvent(new Event("replace-toggle", { bubbles: true }));
   });
   query.addEventListener("input", onChange);
@@ -122,11 +122,11 @@ function buildPanel(root: HTMLElement, transport: SearchTransport, search: () =>
     replace: (at) => transport.post({ type: "replace", ...at, replacement: replacement() }),
     replaceFile: (path) => transport.post({ type: "replaceFile", path, replacement: replacement() }),
   });
-  const scopeLine = el("div", { class: "ls-psearch-scope-line" });
-  const summary = el("div", { class: "ls-psearch-summary", role: "status" });
-  const outside = el("p", { class: "ls-psearch-outside", text: "This file is not in a writing project.", hidden: true });
-  const panel = el("div", { class: "ls-psearch-panel" }, form.root, scopeLine, summary, list.root);
-  root.replaceChildren(el("div", { class: "ls-psearch" }, panel, outside));
+  const scopeLine = renderElement("div", { class: "ls-psearch-scope-line" });
+  const summary = renderElement("div", { class: "ls-psearch-summary", role: "status" });
+  const outside = renderElement("p", { class: "ls-psearch-outside", text: "This file is not in a writing project.", hidden: true });
+  const panel = renderElement("div", { class: "ls-psearch-panel" }, form.root, scopeLine, summary, list.root);
+  root.replaceChildren(renderElement("div", { class: "ls-psearch" }, panel, outside));
   form.root.addEventListener("replace-toggle", () => list.setReplacing(form.replacing()));
   form.replaceAll.addEventListener("click", () => transport.post({ type: "replaceAll", replacement: replacement() }));
   form.replaceAll.disabled = true;

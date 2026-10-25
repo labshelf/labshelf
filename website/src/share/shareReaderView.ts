@@ -3,7 +3,7 @@ import {
   DEFAULT_READER_PREFS, PaperDataStore, PROTOCOL_VERSION, READER_SHELL_BODY, ReaderHostController,
   type HostToWebview, type ILogger, type PaperRecord, type ReaderBootParams, type SharedPaper, type SidecarPort,
 } from "@labshelf/core";
-import { createInPageChannel, PerfMarks, resolveTheme, startReader, toast } from "@labshelf/core/dom";
+import { createInPageChannel, PerfMarks, resolveTheme, startReader, showToast } from "@labshelf/core/dom";
 
 import { saveFile } from "./shareDownloads.js";
 import { pdfFileName } from "./downloadNames.js";
@@ -55,7 +55,7 @@ export async function mountShareReader(container: HTMLElement, record: PaperReco
     getPrefs: () => DEFAULT_READER_PREFS,
     autoTheme: () => theme,
     writeClipboard: (text) => navigator.clipboard.writeText(text),
-    notify: (message, kind) => { toast(message, kind); },
+    notify: (message, kind) => { showToast(message, kind); },
     openExternal: async (url) => { window.open(url, "_blank", "noopener"); },
     saveAnnotations: async (markdown) => { saveFile(pdfFileName(record).replace(/\.pdf$/, "-annotations.md"), markdown, "text/markdown"); },
     logger,

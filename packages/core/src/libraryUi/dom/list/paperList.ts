@@ -20,8 +20,8 @@ import { RowReconciler } from "./rowReconciler.js";
 import { drawSortableHeads, renderSortableHeadHtml, attachSortableHeads } from "./sortHeads.js";
 import { drawTabStop, createTreeCursor, attachTabStop } from "./tree/index.js";
 import { createWindowedList, type WindowedList } from "./window/index.js";
-import { icon } from "../../../ui/index.js";
-import { el, emptyState } from "../../../ui/dom/index.js";
+import { renderIcon } from "../../../ui/index.js";
+import { renderElement, renderEmptyNotice } from "../../../ui/dom/index.js";
 
 interface EmptyStateOptions {
   narrowed: boolean;
@@ -37,7 +37,7 @@ interface EmptyStateOptions {
 }
 
 function buildLoading(): HTMLElement {
-  return el("div", { class: "list-loading", role: "status", html: `<span class="spin">${icon("loader")}</span> Loading papers…` });
+  return renderElement("div", { class: "list-loading", role: "status", html: `<span class="spin">${renderIcon("loader")}</span> Loading papers…` });
 }
 
 function matchText(o: EmptyStateOptions): string {
@@ -50,8 +50,8 @@ function emptyText(o: EmptyStateOptions): string {
 }
 
 function buildEmptyState(o: EmptyStateOptions): HTMLElement {
-  if (o.narrowed) return emptyState({ icon: "search", text: matchText(o), action: { label: "Clear filters", onClick: o.onClearFilters } });
-  return emptyState({
+  if (o.narrowed) return renderEmptyNotice({ icon: "search", text: matchText(o), action: { label: "Clear filters", onClick: o.onClearFilters } });
+  return renderEmptyNotice({
     icon: "book", text: emptyText(o), hint: o.hint,
     ...(o.onAdd && { action: { label: "Add a paper", icon: "plus", primary: true, onClick: o.onAdd } }),
   });
@@ -72,7 +72,7 @@ const headHtml = (key: SortColumn, label: string, cls: string, title?: string): 
 function columnHeadsHtml(columns: readonly ListColumn[]): string {
   const shown = COLUMN_KEYS.filter((k) => columns.includes(k)).map((k) => headHtml(k, OPTIONAL[k].label, OPTIONAL[k].cls, OPTIONAL[k].title));
   return `<div aria-hidden="true"></div>${headHtml("title", "Title", "")}${shown.join("")}` +
-    `<div class="col-menu"><button class="ls-icon-btn" type="button" title="Columns" aria-label="Columns">${icon("more")}</button></div>`;
+    `<div class="col-menu"><button class="ls-icon-btn" type="button" title="Columns" aria-label="Columns">${renderIcon("more")}</button></div>`;
 }
 
 /** Wires the head clicks once: they change the sort and save it, and the Columns button and a right-click open the columns menu. */

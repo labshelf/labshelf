@@ -9,11 +9,11 @@ import "@labshelf/core/styles/spaces-catalog.css";
 import "@labshelf/core/styles/spaces.css";
 import "@labshelf/core/styles/spaces-overview.css";
 import { SPACE_TABS, type HostToSpaces, type SpacesToHost, type SpaceTab } from "@labshelf/core";
-import { $, mountSpace, mountSpacesCatalog } from "@labshelf/core/dom";
+import { findElement, mountSpace, mountSpacesCatalog } from "@labshelf/core/dom";
 import { webviewTransport } from "../../webview/index.js";
 
 const api = acquireVsCodeApi();
-const config = JSON.parse($("spaces-config").textContent ?? "{}") as { view: string; id?: string; tab?: SpaceTab };
+const config = JSON.parse(findElement("spaces-config").textContent ?? "{}") as { view: string; id?: string; tab?: SpaceTab };
 const end = webviewTransport<SpacesToHost, HostToSpaces>(api);
 if (config.view === "space" && config.id) {
   const id = config.id;
@@ -22,11 +22,11 @@ if (config.view === "space" && config.id) {
   let dispose = mount(initial);
   function mount(tab: SpaceTab): () => void {
     api.setState({ tab });
-    return mountSpace($("root"), end, { id, tab, onTab: tab => api.setState({ tab }) });
+    return mountSpace(findElement("root"), end, { id, tab, onTab: tab => api.setState({ tab }) });
   }
   window.addEventListener("message", event => {
     const message = event.data as { type?: unknown; tab?: unknown } | null;
     if (message?.type !== "spaces.navigate" || !SPACE_TABS.includes(message.tab as SpaceTab)) return;
     dispose(); dispose = mount(message.tab as SpaceTab);
   });
-} else mountSpacesCatalog($("root"), end);
+} else mountSpacesCatalog(findElement("root"), end);

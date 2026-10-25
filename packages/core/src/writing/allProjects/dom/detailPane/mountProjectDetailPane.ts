@@ -3,10 +3,10 @@ import { renderLoading, renderMuted, renderTabBarHtml, renderIconButton } from "
 import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
 import { citationsTabHtml, overviewTabHtml, projectDetailTabs, versionsTabHtml } from "./tabs/index.js";
-import { inputBox, showMenu } from "../../../../ui/dom/index.js";
+import { askInputBox, showMenu } from "../../../../ui/dom/index.js";
 import type { Post } from "../projectActions.js";
 import { projectMenuEntries, type ProjectMenuContext } from "../projectMenu.js";
-import { escapeHtml, icon } from "../../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { deadlineText } from "../../deadlineText.js";
 import { buildStatusText, metaLine } from "./projectDetailPaneText.js";
 
@@ -21,7 +21,7 @@ function targetMark(row: ProjectRow, now: number): string {
   const text = [row.target?.venue, left?.text].filter(Boolean).join(" · ");
   if (!text) return "";
   const tone = left && left.tone !== "normal" ? ` tone-${left.tone}` : "";
-  return `<span class="status-target${tone}">${icon("target")}<span>${escapeHtml(text)}</span></span>`;
+  return `<span class="status-target${tone}">${renderIcon("target")}<span>${escapeHtml(text)}</span></span>`;
 }
 
 /** The status comes from the row until the detail, which knows the warning count, arrives. */
@@ -56,9 +56,9 @@ function validateDeadline(value: string): string | null {
 }
 
 async function editTarget(row: ProjectRow, post: Post): Promise<void> {
-  const venue = await inputBox({ title: "Target venue", prompt: "Where is this project headed? Leave empty to clear it.", value: row.target?.venue ?? "" });
+  const venue = await askInputBox({ title: "Target venue", prompt: "Where is this project headed? Leave empty to clear it.", value: row.target?.venue ?? "" });
   if (venue === undefined) return;
-  const deadline = await inputBox({ title: "Deadline", prompt: "YYYY-MM-DD. Leave empty for no deadline.", value: row.target?.deadline ?? "", validate: validateDeadline });
+  const deadline = await askInputBox({ title: "Deadline", prompt: "YYYY-MM-DD. Leave empty for no deadline.", value: row.target?.deadline ?? "", validate: validateDeadline });
   if (deadline === undefined) return;
   post({ type: "setTarget", id: row.id, ...(venue ? { venue } : {}), ...(deadline ? { deadline } : {}) });
 }

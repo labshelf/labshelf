@@ -4,7 +4,7 @@ export {
   type RelayStore, type RelayStoreAnswer, type RelayStoreRequest, type RelayTransport, type RelayTransportOptions,
 } from "./relayTransport.js";
 export {
-  claimShare, fetchTicket, type ClaimRequestOptions, type TicketRequestOptions,
+  addRelayShare, fetchTicket, type ClaimRequestOptions, type TicketRequestOptions,
 } from "./relayRequests.js";
 export { RelayRequestError } from "./relayRequestError.js";
-export { globalSocketFactory, type RelaySocket, type RelaySocketFactory } from "./relayConnection.js";
+export { createGlobalRelayConnection, type RelayConnectionPort, type RelayConnectionPortFactory } from "./relayConnection.js";

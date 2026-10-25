@@ -2,7 +2,7 @@
 import type { ILogger } from "../../../src/ports/index";
 import worker from "../../../src/relay/worker/index";
 import {
-  buildShare, createWorkerShareBackend, createWorkerShareReader, openShare, revokeShare, uploadShare, type ShareRegistryStore,
+  buildShare, createWorkerShareBackend, createWorkerShareReader, openShare, removeShare, uploadShare, type ShareRegistryStore,
 } from "../../../src/share/index";
 import { fakeEnv, OWNER_SECRET } from "./fakeRoomRuntime";
 
@@ -31,7 +31,7 @@ describe("share over the relay Worker", () => {
     const loaded = await opened.share.loadPdf(opened.share.manifest.papers[0]!);
     expect(loaded).toEqual({ ok: true, bytes: pdf });
 
-    expect(await revokeShare(share.shareId, { registry: store, backendFor: () => backend, logger })).toBe(true);
+    expect(await removeShare(share.shareId, { registry: store, backendFor: () => backend, logger })).toBe(true);
     expect(await openShare(link, readerFor)).toEqual({ ok: false, error: "removed" });
   });
 

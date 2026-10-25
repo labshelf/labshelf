@@ -1,6 +1,6 @@
 // Renders the visible templates as a keyboard-navigable card grid, its skeleton and empty states, and requests thumbnails for cards in view.
-import { icon } from "../../ui/index.js";
-import { el } from "../../ui/dom/index.js";
+import { renderIcon } from "../../ui/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import type { TemplateKey } from "../protocol/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { keyOf, type GalleryState } from "./galleryState.js";
@@ -28,16 +28,16 @@ export interface CardGrid {
 }
 
 function skeletonCard(): HTMLElement {
-  return el("li", { class: "ls-tpl-card is-loading", "aria-hidden": "true" },
-    el("div", { class: "ls-tpl-thumb" }),
-    el("div", { class: "ls-tpl-card-body" }, el("div", { class: "ls-tpl-card-name" }), el("div", { class: "ls-tpl-card-by" })));
+  return renderElement("li", { class: "ls-tpl-card is-loading", "aria-hidden": "true" },
+    renderElement("div", { class: "ls-tpl-thumb" }),
+    renderElement("div", { class: "ls-tpl-card-body" }, renderElement("div", { class: "ls-tpl-card-name" }), renderElement("div", { class: "ls-tpl-card-by" })));
 }
 
 function emptyState(text: string, hint: string): HTMLElement {
-  return el("div", { class: "ls-empty" },
-    el("div", { class: "ls-empty-icon", html: icon("grid") }),
-    el("div", { class: "ls-empty-text", text }),
-    el("div", { class: "ls-empty-hint", text: hint }));
+  return renderElement("div", { class: "ls-empty" },
+    renderElement("div", { class: "ls-empty-icon", html: renderIcon("grid") }),
+    renderElement("div", { class: "ls-empty-text", text }),
+    renderElement("div", { class: "ls-empty-hint", text: hint }));
 }
 
 function stateWithoutCards(state: GalleryState): HTMLElement[] {
@@ -104,8 +104,8 @@ function buildCards(state: GalleryState, entries: TemplateEntry[], handlers: Car
 }
 
 export function createCardGrid(state: GalleryState, scrollRoot: HTMLElement, handlers: CardGridHandlers): CardGrid {
-  const list = el("ul", { class: "ls-tpl-grid", "aria-label": "Templates" });
-  const element = el("div", { class: "ls-tpl-results" }, list);
+  const list = renderElement("ul", { class: "ls-tpl-grid", "aria-label": "Templates" });
+  const element = renderElement("div", { class: "ls-tpl-results" }, list);
   let cards = new Map<string, TemplateCard>();
   let tabbable: string | undefined;
   const thumbnails = createThumbnailRequester(state, scrollRoot, handlers.onThumbnails);

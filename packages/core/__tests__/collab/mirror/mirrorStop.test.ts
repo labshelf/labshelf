@@ -1,13 +1,13 @@
 /** Pins that a mirror which loses its folder lease or its folder stops touching disk and keeps every share edit. */
-import { fileText, indexFiles, replaceFileText } from "../../../src/collab/model/index";
-import { MirrorRootUnavailable, type MirrorStopReason } from "../../../src/collab/mirror/index";
+import { readFileText, readShareIndexDocFiles, setFileText } from "../../../src/collab/model/index";
+import { MirrorProjectDirUnavailable, type MirrorStopReason } from "../../../src/collab/mirror/index";
 import { MirrorOwnershipLost } from "../../../src/collab/mirror/mirrorLostError";
 import { memoryFiles, nodeFiles } from "./mirrorFiles";
 import { openMirror, type MirrorFixture } from "./mirrorFixture";
 
 function peerFile(fixture: MirrorFixture, file: string, text: string): void {
-  replaceFileText(fixture.session.openDoc(file), text, "remote");
-  indexFiles(fixture.session.index).set(file, { kind: "text" });
+  setFileText(fixture.session.openDoc(file), text, "remote");
+  readShareIndexDocFiles(fixture.session.index).set(file, { kind: "text" });
 }
 
 describe.each([nodeFiles, memoryFiles()])("a stopping mirror over a $name", (files) => {
@@ -26,15 +26,15 @@ describe.each([nodeFiles, memoryFiles()])("a stopping mirror over a $name", (fil
     ["a.typ", "b.typ", "c.typ"].forEach((file) => peerFile(fixture, file, `text of ${file}`));
     await fixture.mirror.idle();
     peerFile(fixture, "d.typ", "late");
-    replaceFileText(fixture.session.openDoc("a.typ"), "edited", "remote");
+    setFileText(fixture.session.openDoc("a.typ"), "edited", "remote");
     fixture.mirror.changed("b.typ");
     await fixture.mirror.idle();
 
     expect(fixture.diskChanges).toHaveLength(1);
     expect(onStopped).toHaveBeenCalledTimes(1);
     expect(onStopped.mock.calls[0]![0]).toBeInstanceOf(MirrorOwnershipLost);
-    expect([...indexFiles(fixture.session.index).keys()].sort()).toEqual(["a.typ", "b.typ", "c.typ", "d.typ"]);
-    expect(fileText(fixture.session.openDoc("a.typ")).toString()).toBe("edited");
+    expect([...readShareIndexDocFiles(fixture.session.index).keys()].sort()).toEqual(["a.typ", "b.typ", "c.typ", "d.typ"]);
+    expect(readFileText(fixture.session.openDoc("a.typ")).toString()).toBe("edited");
     expect(fixture.logger.log.mock.calls.some(([level, , message]) => level === "WARN" && /stopped mirroring/i.test(message))).toBe(true);
   });
 
@@ -49,10 +49,10 @@ describe.each([nodeFiles, memoryFiles()])("a stopping mirror over a $name", (fil
     peerFile(fixture, "other.typ", "after");
     await fixture.mirror.idle();
 
-    expect(indexFiles(fixture.session.index).get("main.typ")).toEqual({ kind: "text" });
-    expect(fileText(fixture.session.openDoc("main.typ")).toString()).toBe("kept");
+    expect(readShareIndexDocFiles(fixture.session.index).get("main.typ")).toEqual({ kind: "text" });
+    expect(readFileText(fixture.session.openDoc("main.typ")).toString()).toBe("kept");
     expect(onStopped).toHaveBeenCalledTimes(1);
-    expect(onStopped.mock.calls[0]![0]).toBeInstanceOf(MirrorRootUnavailable);
+    expect(onStopped.mock.calls[0]![0]).toBeInstanceOf(MirrorProjectDirUnavailable);
     expect(await files.read(fixture.folder, "other.typ")).toBeUndefined();
   });
 });

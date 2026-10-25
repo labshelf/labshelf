@@ -1,8 +1,8 @@
 // Shows the Share button in the list header while the current folder can be shared as a link.
 import { PAPERS_DIR, isUnderDir } from "../../../library/index.js";
 import { runShareFolderDialog } from "../../../share/dom/index.js";
-import { el } from "../../../ui/dom/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { UiContext } from "../uiContext.js";
 
 /** Appends the button to `container` and keeps it in step with the folder and the host's offers; returns the unsubscribe. */
@@ -16,7 +16,7 @@ export function mountShareFolderButton(ctx: UiContext, container: HTMLElement): 
     if (!shown) { button?.remove(); button = null; return; }
     const name = folder.split("/").pop() ?? folder;
     if (!button) {
-      button = el("button", { class: "ls-btn ls-btn-ghost", type: "button", html: `${icon("link")}<span>Share</span>` });
+      button = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", html: `${renderIcon("link")}<span>Share</span>` });
       button.dataset["act"] = "share";
       button.addEventListener("click", () => void runShareFolderDialog(sharing, folder));
       container.append(button);

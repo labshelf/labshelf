@@ -1,7 +1,7 @@
 /** Renders the sync guide as a page: intro, one section per tool, the no-cloud option and the steps after setup. */
 import type { SyncGuide, SyncGuideTool } from "../../../library/syncGuide/index.js";
-import { el } from "../dom.js";
-import { icon, type IconName } from "../../icons/index.js";
+import { renderElement } from "../dom.js";
+import { renderIcon, type IconName } from "../../icons/index.js";
 
 interface ToolSectionOptions {
   tool: SyncGuideTool;
@@ -16,10 +16,10 @@ interface ToolSectionOptions {
 
 // PLATFORM: a webview cannot navigate, so the host opens the link; the href keeps it focusable and copyable.
 function link(tool: SyncGuideTool, onOpenLink: (url: string) => void): HTMLAnchorElement {
-  const anchor = el(
+  const anchor = renderElement(
     "a",
     { class: "sync-guide-link", href: tool.url, rel: "noopener noreferrer" },
-    el("span", { class: "sync-guide-icon", html: icon("external") }),
+    renderElement("span", { class: "sync-guide-icon", html: renderIcon("external") }),
     `Open ${tool.name} site`,
   );
   anchor.addEventListener("click", (event) => {
@@ -31,21 +31,21 @@ function link(tool: SyncGuideTool, onOpenLink: (url: string) => void): HTMLAncho
 
 function toolSection(options: ToolSectionOptions): HTMLElement {
   const { tool } = options;
-  const heading = el(
+  const heading = renderElement(
     "h2",
     {},
-    el("span", { class: "sync-guide-icon", html: icon(options.icon) }),
+    renderElement("span", { class: "sync-guide-icon", html: renderIcon(options.icon) }),
     options.headingPrefix ? `${options.headingPrefix} ${tool.name}` : tool.name,
   );
-  const platforms = el("ul", { class: "sync-guide-platforms", "aria-label": "Platforms" });
-  for (const platform of tool.platforms) platforms.append(el("li", { text: platform }));
-  const steps = el("ol", { class: "sync-guide-steps" });
-  for (const step of tool.steps) steps.append(el("li", { text: step }));
-  return el(
+  const platforms = renderElement("ul", { class: "sync-guide-platforms", "aria-label": "Platforms" });
+  for (const platform of tool.platforms) platforms.append(renderElement("li", { text: platform }));
+  const steps = renderElement("ol", { class: "sync-guide-steps" });
+  for (const step of tool.steps) steps.append(renderElement("li", { text: step }));
+  return renderElement(
     "section",
     { class: ["sync-guide-section", options.className].filter(Boolean).join(" ") },
     heading,
-    el("p", { class: "sync-guide-pitch", text: tool.pitch }),
+    renderElement("p", { class: "sync-guide-pitch", text: tool.pitch }),
     platforms,
     steps,
     link(tool, options.onOpenLink),
@@ -67,20 +67,20 @@ export function renderSyncGuide(guide: SyncGuide, host: SyncGuideHost): HTMLElem
     headingPrefix: guide.noCloud.title,
     onOpenLink,
   });
-  const afterSteps = el("ol", { class: "sync-guide-steps" });
-  for (const step of guide.afterSetup.steps) afterSteps.append(el("li", { text: step }));
-  const after = el(
+  const afterSteps = renderElement("ol", { class: "sync-guide-steps" });
+  for (const step of guide.afterSetup.steps) afterSteps.append(renderElement("li", { text: step }));
+  const after = renderElement(
     "section",
     { class: "sync-guide-section" },
-    el("h2", { text: guide.afterSetup.title }),
+    renderElement("h2", { text: guide.afterSetup.title }),
     afterSteps,
-    el("p", { class: "sync-guide-pitch", text: guide.afterSetup.conflictNote }),
+    renderElement("p", { class: "sync-guide-pitch", text: guide.afterSetup.conflictNote }),
   );
-  return el(
+  return renderElement(
     "main",
     { class: "sync-guide" },
-    el("h1", { text: guide.title }),
-    el("p", { class: "sync-guide-intro", text: guide.intro }),
+    renderElement("h1", { text: guide.title }),
+    renderElement("p", { class: "sync-guide-intro", text: guide.intro }),
     ...sections,
     noCloud,
     after,

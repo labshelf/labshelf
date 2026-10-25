@@ -1,6 +1,6 @@
 // Shows a build root's problems over the page area, by severity tab, with its raw log one click away.
-import { el } from "../../../ui/dom/index.js";
-import { icon, type IconName } from "../../../ui/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import { renderIcon, type IconName } from "../../../ui/index.js";
 import type { PreviewRoot, PreviewRoots, WebviewToHost, PreviewProblem } from "../../index.js";
 import { iconButton } from "../elements/index.js";
 import { fileName } from "./fileName.js";
@@ -54,12 +54,12 @@ function location(problem: PreviewProblem): string {
 
 function entryBody(problem: PreviewProblem): Array<HTMLElement | null> {
   return [
-    el("span", { class: `rd-log-icon rd-log-${problem.severity}`, "aria-hidden": "true", html: icon(SEVERITY_ICON[problem.severity]) }),
-    el("span", { class: "rd-log-text" },
-      el("span", { class: "rd-log-message", text: problem.message }),
-      problem.hint ? el("span", { class: "rd-log-hint", text: problem.hint }) : null,
+    renderElement("span", { class: `rd-log-icon rd-log-${problem.severity}`, "aria-hidden": "true", html: renderIcon(SEVERITY_ICON[problem.severity]) }),
+    renderElement("span", { class: "rd-log-text" },
+      renderElement("span", { class: "rd-log-message", text: problem.message }),
+      problem.hint ? renderElement("span", { class: "rd-log-hint", text: problem.hint }) : null,
     ),
-    problem.file ? el("span", { class: "rd-log-location", text: location(problem) }) : null,
+    problem.file ? renderElement("span", { class: "rd-log-location", text: location(problem) }) : null,
   ];
 }
 
@@ -72,14 +72,14 @@ function renderEntries(
 ): void {
   const items = problems.flatMap((problem, index) => {
     if (!matchesFilter(problem, filter)) { return []; }
-    if (!problem.file) { return [el("li", {}, el("div", { class: "rd-log-entry" }, ...entryBody(problem)))]; }
-    const button = el("button", { class: "rd-log-entry", type: "button", title: `Open ${problem.file}` }, ...entryBody(problem));
+    if (!problem.file) { return [renderElement("li", {}, renderElement("div", { class: "rd-log-entry" }, ...entryBody(problem)))]; }
+    const button = renderElement("button", { class: "rd-log-entry", type: "button", title: `Open ${problem.file}` }, ...entryBody(problem));
     button.addEventListener("click", () => open(index));
-    return [el("li", {}, button)];
+    return [renderElement("li", {}, button)];
   });
   body.replaceChildren(items.length > 0
-    ? el("ul", { class: "rd-log-list", "aria-label": "Problems" }, ...items)
-    : el("div", { class: "rd-empty", text: "No problems" }));
+    ? renderElement("ul", { class: "rd-log-list", "aria-label": "Problems" }, ...items)
+    : renderElement("div", { class: "rd-empty", text: "No problems" }));
 }
 
 interface LogsViewDeps {
@@ -89,17 +89,17 @@ interface LogsViewDeps {
 }
 
 export class LogsView {
-  private readonly pane = el("section", { class: "rd-logs", role: "region", "aria-label": "Build logs", hidden: true });
-  private readonly title = el("span", { class: "rd-logs-title" });
-  private readonly rawLog = iconButton(icon("file-text"), "Open raw log");
+  private readonly pane = renderElement("section", { class: "rd-logs", role: "region", "aria-label": "Build logs", hidden: true });
+  private readonly title = renderElement("span", { class: "rd-logs-title" });
+  private readonly rawLog = iconButton(renderIcon("file-text"), "Open raw log");
   private readonly header: HTMLElement;
-  private readonly body = el("div", { class: "rd-logs-body" });
+  private readonly body = renderElement("div", { class: "rd-logs-body" });
   private readonly tabs = new LogsTabs(() => this.renderEntries());
   private roots: PreviewRoots | null = null;
   private rootPath: string | null = null;
 
   constructor(private readonly deps: LogsViewDeps) {
-    const back = iconButton(icon("arrow-left"), "Back to PDF");
+    const back = iconButton(renderIcon("arrow-left"), "Back to PDF");
     back.addEventListener("click", () => this.close());
     this.rawLog.addEventListener("click", () => {
       if (this.rootPath !== null) { deps.post({ command: "openRawLog", root: this.rootPath }); }
@@ -107,7 +107,7 @@ export class LogsView {
     this.pane.addEventListener("keydown", (e) => {
       if (e.key === "Escape") { e.preventDefault(); this.close(); }
     });
-    this.header = el("div", { class: "rd-panel-header rd-logs-header" }, back, this.title);
+    this.header = renderElement("div", { class: "rd-panel-header rd-logs-header" }, back, this.title);
     this.pane.append(this.header, this.tabs.el, this.body);
     deps.parent.append(this.pane);
   }

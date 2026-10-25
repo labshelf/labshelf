@@ -1,7 +1,7 @@
 // Mounts a CodeMirror editor on one project source file, saving it and feeding the helper and the label index.
 import { Annotation, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import type { ILogger, PaperRecord, PresenceHandle } from "@labshelf/core";
+import type { ILogger, PaperRecord, PresenceStore } from "@labshelf/core";
 import type * as Y from "yjs";
 import { collabExtensions } from "../../collab";
 import { commentSupport, type EditorComments } from "../../collab/comments";
@@ -36,7 +36,7 @@ export interface SourceEditorDeps {
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
   /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
-  collab?: { text: Y.Text; presence: PresenceHandle; name: string };
+  collab?: { text: Y.Text; presence: PresenceStore; name: string };
   /** Shows the file without letting the user edit it, as a shared file whose session could not start is shown. */
   readOnly?: boolean;
   logger: ILogger;

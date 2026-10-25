@@ -1,13 +1,13 @@
 /** Pins that ordered link epochs keep a reopened link apart from the one it replaced, for frames and for acks. */
 import {
-  ACK_DELAY_MS, createEpochSource, decodeAck, encodeAck, RESEND_AFTER_MS, ReliableLink, type LinkIo,
+  ACK_DELAY_MS, createEpochSource, decodeAck, encodeAck, RESEND_AFTER_MS, ReliableConnection, type ConnectionIo,
 } from "../../../src/collab/peer/reliableChannel";
 import { FakeClock } from "./fakeNetwork";
 
 function recordingIo() {
   const sent: Uint8Array[] = [];
   const acks: { epoch: bigint; seqs: number[] }[] = [];
-  const io: LinkIo = { transmit: (bytes) => sent.push(bytes), sendAck: (epoch, seqs) => acks.push({ epoch, seqs }), onGiveUp: () => {} };
+  const io: ConnectionIo = { transmit: (bytes) => sent.push(bytes), sendAck: (epoch, seqs) => acks.push({ epoch, seqs }), onGiveUp: () => {} };
   return { io, sent, acks };
 }
 
@@ -18,7 +18,7 @@ describe("reliable link epochs", () => {
 
   it("keeps a pending frame when an ack of the old link's epoch arrives", () => {
     const { io, sent } = recordingIo();
-    const link = new ReliableLink(io, clock, 2n);
+    const link = new ReliableConnection(io, clock, 2n);
     link.send((seq) => new Uint8Array([seq]));
     link.acknowledge(1n, [1]);
     clock.advance(RESEND_AFTER_MS);
@@ -31,7 +31,7 @@ describe("reliable link epochs", () => {
 
   it("restarts the sequence on a higher epoch and drops a frame of a lower epoch without acking it", () => {
     const { io, acks } = recordingIo();
-    const link = new ReliableLink(io, clock, 9n);
+    const link = new ReliableConnection(io, clock, 9n);
     expect(link.accept(10n, 1)).toBe(true);
     expect(link.accept(10n, 2)).toBe(true);
     expect(link.accept(20n, 1)).toBe(true);
@@ -44,7 +44,7 @@ describe("reliable link epochs", () => {
 
   it("drops a late frame of an earlier epoch that arrives first, and keeps the later epoch", () => {
     const { io, acks } = recordingIo();
-    const link = new ReliableLink(io, clock, 9n);
+    const link = new ReliableConnection(io, clock, 9n);
     expect(link.accept(20n, 1)).toBe(true);
     expect(link.accept(10n, 7)).toBe(false);
     expect(link.accept(20n, 2)).toBe(true);
@@ -55,7 +55,7 @@ describe("reliable link epochs", () => {
 
   it("drops a reliable frame of epoch 0 without acking it", () => {
     const { io, acks } = recordingIo();
-    const link = new ReliableLink(io, clock, 9n);
+    const link = new ReliableConnection(io, clock, 9n);
     expect(link.accept(0n, 1)).toBe(false);
     clock.advance(ACK_DELAY_MS);
     expect(acks).toEqual([]);
@@ -64,7 +64,7 @@ describe("reliable link epochs", () => {
 
   it("treats a gap older than the out-of-order window as delivered after a mid-sequence adoption", () => {
     const { io } = recordingIo();
-    const link = new ReliableLink(io, clock, 9n);
+    const link = new ReliableConnection(io, clock, 9n);
     expect(link.accept(5n, 5000)).toBe(true);
     for (let seq = 5001; seq < 6000; seq += 1) { link.accept(5n, seq); }
     expect(link.accept(5n, 2)).toBe(true);

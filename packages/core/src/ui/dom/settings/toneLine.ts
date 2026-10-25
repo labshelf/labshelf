@@ -1,20 +1,20 @@
 /** Builds a status line: a coloured dot, a text and, after it, an error message in the error colour. */
-import { el } from "../dom.js";
+import { renderElement } from "../dom.js";
 
-export type StatusTone = "ok" | "error" | "idle";
+export type ToneLineTone = "ok" | "error" | "idle";
 
-export interface StatusLine {
+export interface ToneLine {
   element: HTMLElement;
-  set(text: string, tone: StatusTone, error?: string | null): void;
+  set(text: string, tone: ToneLineTone, error?: string | null): void;
 }
 
-const DOT_CLASS: Record<StatusTone, string> = { ok: "ls-dot s-ok", error: "ls-dot s-error", idle: "ls-dot" };
+const DOT_CLASS: Record<ToneLineTone, string> = { ok: "ls-dot s-ok", error: "ls-dot s-error", idle: "ls-dot" };
 
-export function statusLine(): StatusLine {
-  const dot = el("span", { class: DOT_CLASS.idle });
-  const text = el("span");
-  const error = el("span", { class: "settings-status-error" });
-  const element = el("div", { class: "settings-status", role: "status" }, dot, text, error);
+export function createToneLine(): ToneLine {
+  const dot = renderElement("span", { class: DOT_CLASS.idle });
+  const text = renderElement("span");
+  const error = renderElement("span", { class: "settings-status-error" });
+  const element = renderElement("div", { class: "settings-status", role: "status" }, dot, text, error);
   return {
     element,
     set(next, tone, message) {

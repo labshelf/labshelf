@@ -4,7 +4,7 @@
  */
 // Copying a picked image into the project's images folder, and inserting the figure that shows it.
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
-import { toast } from "@labshelf/core/dom";
+import { showToast } from "@labshelf/core/dom";
 import { onLocalFileChanges, reportPageWrites } from "../../../../src/collab/mirror/localFileChanges";
 import { insertImage, type ImageInsertion } from "../../../../src/writing/source/actions/insertFigure";
 
@@ -101,7 +101,7 @@ describe("insertImage", () => {
     await run();
     expect(edits.insertSnippet).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith("tabs.source", expect.any(Error), expect.objectContaining({ source: "main.tex", folder: "lib/p" }));
-    expect(toast).toHaveBeenCalledWith("Could not copy the image into the project: disk full", "error");
+    expect(showToast).toHaveBeenCalledWith("Could not copy the image into the project: disk full", "error");
   });
 
   it("copies the image into a shared project through the page's file system, which tells the share's mirror at once", async () => {
@@ -115,6 +115,6 @@ describe("insertImage", () => {
     expect([...written.keys()]).toEqual(["lib/p/images/plot.png"]);
     expect(reported).toEqual([["lib/p/images/plot.png"]]);
     expect(edits.insertSnippet).toHaveBeenCalled();
-    expect(toast).not.toHaveBeenCalled();
+    expect(showToast).not.toHaveBeenCalled();
   });
 });

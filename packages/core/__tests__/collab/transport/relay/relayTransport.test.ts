@@ -1,5 +1,5 @@
 /** Pins the relay path: an hour of typing within the free plan, catch-up with nobody online, and reconnects after a drop. */
-import { createRelaySelector, relayPresence, relayProbe } from "../../../../src/collab/relays/index";
+import { createRelaySelector, createRelayPresence, createRelayProbe } from "../../../../src/collab/relays/index";
 import { MESSAGE_KIND } from "../../../../src/collab/peer/envelope";
 import { PUT_INTERVAL_MS } from "../../../../src/collab/relays/relayDocPuts";
 import { SNAPSHOT_AFTER_PUTS } from "../../../../src/collab/relays/relaySync";
@@ -36,8 +36,8 @@ describe("relay transport and relay sync", () => {
     const clients = await Promise.all([1, 2, 3].map(() => openRelayClient(relay, clock)));
     // Each client also re-probes its relay's /version every minute, as a relay selector does.
     const selectors = clients.map((client) => createRelaySelector({
-      index: client.session.index, inviteRelays: [RELAY_URL], presence: relayPresence(client.presence, idleWatch), clock, logger: client.logger,
-      probe: relayProbe({ logger: client.logger, fetch: relay.fetch, scheduler: clock }),
+      index: client.session.index, inviteRelays: [RELAY_URL], presence: createRelayPresence(client.presence, idleWatch), clock, logger: client.logger,
+      probe: createRelayProbe({ logger: client.logger, fetch: relay.fetch, scheduler: clock }),
     }));
     await runFor(clock, 2000);
     const start = clock.now();

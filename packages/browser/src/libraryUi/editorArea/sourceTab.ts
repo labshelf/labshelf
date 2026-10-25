@@ -1,6 +1,6 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
 import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
-import { el, toast } from "@labshelf/core/dom";
+import { renderElement, showToast } from "@labshelf/core/dom";
 import { listAllRecords } from "../../storage";
 import { findProject } from "../../writing/project";
 import { recordProjectEdit } from "../../writing/history";
@@ -49,7 +49,7 @@ async function loadEditor(
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
   const { session, sharing } = project();
-  const loading = body.appendChild(el("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
+  const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   try {
     const loadingModule = import("../../writing/editor/index.js");
     const entry = await findProject(fs, logger, session.current(), projectId);
@@ -78,7 +78,7 @@ function guardUnsavedEdits({ logger, tab }: TabContext, { projectId, path }: { p
     const open = editor();
     if (!open || (await open.flush())) return true;
     void logger.log("WARN", MODULE, "kept the tab open: the file could not be saved", { projectId, path });
-    toast(`Could not save ${path}. The tab stays open so no edit is lost.`, "error");
+    showToast(`Could not save ${path}. The tab stays open so no edit is lost.`, "error");
     return false;
   });
   return () => {
@@ -96,7 +96,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const { fs, logger, workspace } = context;
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
-  const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
   let disposed = false;
   let editor: SourceEditor | undefined;
   let loaded: ProjectEntry | undefined;

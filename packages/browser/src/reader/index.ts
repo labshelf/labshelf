@@ -14,7 +14,7 @@ import {
   type ReaderSidecarStore,
 } from "@labshelf/core";
 import { PDF_FILE, formatError } from "@labshelf/core";
-import { createInPageChannel, startReader, PerfMarks, resolveTheme, toast } from "@labshelf/core/dom";
+import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile } from "../platform";
 import { createLibraryFileSystem, createSidecarPort, getRecord } from "../storage";
 import { getThemePref, onThemeChange } from "../ui";
@@ -100,7 +100,7 @@ function createHostWithChannel(
     getPrefs,
     autoTheme,
     writeClipboard,
-    notify: (message, kind) => { toast(message, kind); },
+    notify: (message, kind) => { showToast(message, kind); },
     openExternal,
     saveAnnotations: (markdown) => downloadTextFile(`${paper.citeKey}-annotations.md`, markdown, "text/markdown"),
     logger,

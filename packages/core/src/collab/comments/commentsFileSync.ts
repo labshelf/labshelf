@@ -3,7 +3,7 @@
 import type { Doc } from "yjs";
 import { compareThreads, readThread, type CommentThread } from "./commentThread.js";
 import { parseCommentsFile, serializeCommentsFile, type CommentsDocument } from "./commentsFile.js";
-import { addLiveThread, rawLiveThreads } from "./liveComments.js";
+import { addLiveThread, readRawLiveThreads } from "./liveComments.js";
 
 /**
  * The map's threads in member order, then the entries of `existing` that are not valid threads, under its other keys.
@@ -13,7 +13,7 @@ import { addLiveThread, rawLiveThreads } from "./liveComments.js";
 export function renderCommentsFile(doc: Doc, existing: string | undefined): string | undefined {
   const current: CommentsDocument | undefined = existing === undefined ? { threads: [] } : parseCommentsFile(existing);
   if (!current) { return undefined; }
-  const threads = rawLiveThreads(doc)
+  const threads = readRawLiveThreads(doc)
     .map((raw) => ({ raw, thread: readThread(raw) }))
     .filter((each): each is { raw: Record<string, unknown>; thread: CommentThread } => each.thread !== undefined)
     .sort((a, b) => compareThreads(a.thread, b.thread))

@@ -1,7 +1,7 @@
 // Exports a Space's dates and linked project deadlines as an iCalendar file of all-day events.
 import type { Space } from "../model/index.js";
-import { projectDeadlines } from "./spaceOverview/index.js";
-import type { SpaceProjectInfo } from "./spaceViewModel.js";
+import { deriveProjectDeadlines } from "./spaceOverview/index.js";
+import type { SpaceProjectEntry } from "./spaceViewModel.js";
 
 function escapeIcsText(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
@@ -40,9 +40,9 @@ function stampText(ms: number): string {
 }
 
 /** `stampMs` is the creation time written to every event's DTSTAMP. */
-export function buildIcs(space: Space, projects: readonly SpaceProjectInfo[], stampMs: number): string {
+export function buildIcs(space: Space, projects: readonly SpaceProjectEntry[], stampMs: number): string {
   const stamp = stampText(stampMs);
-  const entries = [...space.dates, ...projectDeadlines(space, projects)].filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
+  const entries = [...space.dates, ...deriveProjectDeadlines(space, projects)].filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//LabShelf//Spaces//EN", "CALSCALE:GREGORIAN"];
   for (const e of entries) {
     lines.push(

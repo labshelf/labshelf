@@ -1,6 +1,6 @@
 // Builds the Sharing section: whether a Cloudflare relay account is connected, with a way to the library page to change it.
 import type { ILogger } from "@labshelf/core";
-import { actionButton, el, settingRow, settingsSection, textField } from "@labshelf/core/dom";
+import { renderActionButton, renderElement, renderSettingRow, renderSettingsSection, renderTextField } from "@labshelf/core/dom";
 import { DEFAULT_DISPLAY_NAME, loadDisplayName, saveDisplayName } from "../collab";
 import { bx } from "../platform";
 import { openBrowserRelayAccountStore } from "../relay";
@@ -9,9 +9,9 @@ const READ_FAILED = "LabShelf could not read the relay account.";
 const NAME_FAILED = "LabShelf could not save your name.";
 
 function displayNameRow(logger: ILogger): HTMLElement {
-  const field = textField({ id: "share-display-name", type: "text", placeholder: DEFAULT_DISPLAY_NAME });
+  const field = renderTextField({ id: "share-display-name", type: "text", placeholder: DEFAULT_DISPLAY_NAME });
   const input = field.control;
-  const error = el("span", { role: "alert" });
+  const error = renderElement("span", { role: "alert" });
   let saved = "";
   const fail = async (err: unknown, action: string): Promise<void> => {
     error.textContent = NAME_FAILED;
@@ -28,21 +28,21 @@ function displayNameRow(logger: ILogger): HTMLElement {
     error.textContent = "";
     void saveDisplayName(name).then(() => { saved = name; input.value = name; }, (err: unknown) => fail(err, "save display name"));
   });
-  return settingRow(
+  return renderSettingRow(
     { label: "Your name in shared projects", description: "Collaborators see it next to your cursor and comments." },
-    el("div", {}, field.element, error),
+    renderElement("div", {}, field.element, error),
   );
 }
 
 export function createSharingSection(logger: ILogger): HTMLElement {
   const store = openBrowserRelayAccountStore(logger);
-  const status = el("span", { text: "Checking…" });
-  const row = el("div");
+  const status = renderElement("span", { text: "Checking…" });
+  const row = renderElement("div");
   const refresh = async (): Promise<void> => {
     try {
       const account = await store.status();
       status.textContent = account ? `Cloudflare relay: connected (${new URL(account.relayUrl).host})` : "Cloudflare relay: not connected";
-      row.replaceChildren(actionButton({
+      row.replaceChildren(renderActionButton({
         label: account ? "Open the library to disconnect" : "Open the library to connect",
         icon: "library",
         onClick: () => void bx.tabs.create({ url: bx.runtime.getURL("libraryPage/index.html") }),
@@ -55,10 +55,10 @@ export function createSharingSection(logger: ILogger): HTMLElement {
   // The account lives in IndexedDB, which raises no change events; coming back from the library tab re-reads it.
   window.addEventListener("focus", () => void refresh());
   void refresh();
-  return settingsSection(
+  return renderSettingsSection(
     { title: "Sharing" },
-    settingRow({ label: "Relay", description: "Shared projects and share links travel through your own Cloudflare relay, end-to-end encrypted." }, status),
-    settingRow({}, row),
+    renderSettingRow({ label: "Relay", description: "Shared projects and share links travel through your own Cloudflare relay, end-to-end encrypted." }, status),
+    renderSettingRow({}, row),
     displayNameRow(logger),
   );
 }

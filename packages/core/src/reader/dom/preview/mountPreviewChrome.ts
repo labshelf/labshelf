@@ -1,5 +1,5 @@
 // Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and problem marks over them.
-import { $ } from "../../../ui/dom/index.js";
+import { findElement } from "../../../ui/dom/index.js";
 import type { PageArea, PreviewRoots, WebviewToHost } from "../../index.js";
 import type { OutlineRow } from "../../index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -51,13 +51,13 @@ function recompileState({ state, stale }: PreviewBuildStatus): RecompileState {
  * @returns handles the reader's host messages call to refresh the chrome.
  */
 export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfViewer, scrollTo, setPagesDark }: PreviewChromeDeps): PreviewChrome {
-  const header = mountPreviewHeader({ post, pill: $("status-pill"), setPagesDark });
-  $("viewerContainer").before(header.element);
+  const header = mountPreviewHeader({ post, pill: findElement("status-pill"), setPagesDark });
+  findElement("viewerContainer").before(header.element);
   document.documentElement.classList.add("rd-preview");
   const footer = mountPreviewFooter({ openLogs: (path) => logs.open(path), outline });
-  $("viewerContainer").after(footer.element);
+  findElement("viewerContainer").after(footer.element);
 
-  const marks = mountProblemMarks({ container: $("viewerContainer"), pdfViewer });
+  const marks = mountProblemMarks({ container: findElement("viewerContainer"), pdfViewer });
   const options = mountOptionsMenu(header.slots.options, { post });
   const only = mountOnlyToggle(header.slots.only, { post });
   const logsButton = mountLogsButton(header.slots.logs, { post, openLogs: (path) => logs.open(path) });

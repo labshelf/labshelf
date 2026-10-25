@@ -1,7 +1,7 @@
 /** Opens share sessions that reach each other only through a fake relay, with the relay sync and presence attached. */
 import * as Y from "yjs";
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../../src/collab/shareKey/index";
-import { attachAwareness, type PresenceHandle } from "../../../../src/collab/presence/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../../src/collab/shareKey/index";
+import { attachPresence, type PresenceStore } from "../../../../src/collab/presence/index";
 import { attachRelaySync } from "../../../../src/collab/relays/relaySync";
 import { createShareSession, type ShareSession } from "../../../../src/collab/doc/shareSession";
 import { type RelayCursorStore } from "../../../../src/collab/relays/relayCursors";
@@ -18,7 +18,7 @@ export interface RelayClient {
   session: ShareSession;
   relay: RelayTransport;
   relaySync: RelaySync;
-  presence: PresenceHandle;
+  presence: PresenceStore;
   logger: FakeLogger;
   text(): Y.Text;
   close(): Promise<void>;
@@ -26,7 +26,7 @@ export interface RelayClient {
 
 export async function openRelayClient(fake: FakeRelay, clock: FakeClock, docs: Y.Doc[] = [], cursors?: RelayCursorStore): Promise<RelayClient> {
   const logger = fakeLogger();
-  const contentKey = await deriveContentKey(SHARE_KEY);
+  const contentKey = await deriveContentShareKey(SHARE_KEY);
   const relay = createRelayTransport({
     relayUrl: RELAY_URL, shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), logger,
     socketFactory: fake.socketFactory, fetch: fake.fetch, scheduler: clock,
@@ -37,7 +37,7 @@ export async function openRelayClient(fake: FakeRelay, clock: FakeClock, docs: Y
     shareId: SHARE_ID, contentKey, transport: relay, logger, scheduler: clock,
     createDoc: (path) => byPath.get(path) ?? new Y.Doc(),
   });
-  const presence = attachAwareness(session, { awarenessKey: await deriveAwarenessKey(SHARE_KEY), logger });
+  const presence = attachPresence(session, { awarenessKey: await derivePresenceShareKey(SHARE_KEY), logger });
   const relaySync = attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey, logger, scheduler: clock, isSnapshotWriter: () => presence.isLowestId(), ...(cursors ? { cursors } : {}) });
   session.openDoc(DOC_PATH);
   return {

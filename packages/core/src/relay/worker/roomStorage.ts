@@ -1,7 +1,7 @@
 // Keeps one share's claim, stored frames and snapshots as rows of its Durable Object's SQLite database.
 
 import { MAX_RELAY_MESSAGE_BYTES, type RelayRow, type RelayServerMessage } from "../connection/index.js";
-import type { SqlStorage, SqlValue } from "./cloudflareRuntime.js";
+import type { SqlStorage, SqlField } from "./cloudflareRuntime.js";
 
 // TRAP: a stored frame is replayed inside `rows`, whose overhead (32 bytes) exceeds that of `put` (23), so a frame that fits
 // a put could never be replayed. Frames are capped here; under 1 MiB they also fit the 2 MB row limit without chunking.
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS snapshots (doc TEXT PRIMARY KEY, covers INTEGER NOT N
 type RowsMessage = Extract<RelayServerMessage, { type: "rows" }>;
 
 const toBlob = (bytes: Uint8Array): ArrayBuffer => bytes.slice().buffer;
-const fromBlob = (value: SqlValue): Uint8Array => new Uint8Array(value as ArrayBuffer);
+const fromBlob = (value: SqlField): Uint8Array => new Uint8Array(value as ArrayBuffer);
 
 export class RoomStorage {
   constructor(private readonly sql: SqlStorage) {
@@ -62,7 +62,7 @@ export class RoomStorage {
   }
 
   private snapshotOf(doc: string): { covers: number; frame: Uint8Array } | undefined {
-    const row = this.sql.exec<{ covers: number; frame: SqlValue }>("SELECT covers, frame FROM snapshots WHERE doc = ?", doc).toArray()[0];
+    const row = this.sql.exec<{ covers: number; frame: SqlField }>("SELECT covers, frame FROM snapshots WHERE doc = ?", doc).toArray()[0];
     return row ? { covers: row.covers, frame: fromBlob(row.frame) } : undefined;
   }
 
@@ -73,7 +73,7 @@ export class RoomStorage {
     let size = ROWS_OVERHEAD + (snapshot ? 8 + snapshot.frame.length : 0);
     const items: RelayRow[] = [];
     let more = false;
-    const rows = this.sql.exec<{ cursor: number; frame: SqlValue }>(
+    const rows = this.sql.exec<{ cursor: number; frame: SqlField }>(
       "SELECT cursor, frame FROM updates WHERE doc = ? AND cursor > ? ORDER BY cursor LIMIT ?", doc, Math.max(cursor, snapshot?.covers ?? 0), PAGE_ROWS,
     );
     for (const row of rows) {

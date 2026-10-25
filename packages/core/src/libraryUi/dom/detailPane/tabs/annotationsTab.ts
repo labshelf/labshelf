@@ -5,7 +5,7 @@
 import { formatRelativeTime } from "../../../../library/index.js";
 import { ANNOTATION_COLORS, type Annotation } from "../../../../model/index.js";
 import { byPageThenCreated } from "../../../../reader/index.js";
-import { escapeHtml, icon } from "../../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { renderIconButton, renderLoading, renderMuted } from "../detailPaneMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
 
@@ -23,7 +23,7 @@ export function deriveFilteredAnnotations(pane: PaneState, all: readonly Annotat
 export function renderAnnotationCard(a: Annotation): string {
   const isNote = a.type !== "highlight";
   return `<div class="ann-card${a.color ? ` c-${a.color}` : ""}${isNote ? " is-note" : ""}" data-action="open" data-page="${a.pageNumber}" title="Open at page ${a.pageNumber}">` +
-    (isNote ? `<span class="ann-kind">${icon("note")}</span>` : "") +
+    (isNote ? `<span class="ann-kind">${renderIcon("note")}</span>` : "") +
     `<div class="ann-text">${escapeHtml(annText(a))}</div>` +
     `<div class="ann-meta"><span>p. ${a.pageNumber}</span><span class="muted-text">${escapeHtml(formatRelativeTime(a.createdAt))}</span><span class="tb-spacer"></span>` +
       renderIconButton("copyAnnotation", "copy", "Copy as a quote with its citation", ` data-id="${escapeHtml(a.id)}"`) + `</div></div>`;
@@ -42,8 +42,8 @@ export function renderAnnotationListHtml(pane: PaneState, all: readonly Annotati
 }
 
 function emptyTab(v: PaperView): string {
-  return `<div class="tab-empty">${icon("highlighter")}<div>No annotations yet.</div><div class="muted-text">Highlights and notes you make in the reader appear here, by page.</div>` +
-    (v.p.hasPdf ? `<button class="ls-btn ls-btn-primary" type="button" data-action="open">${icon("book-open")}<span>Open PDF</span></button>` : "") + `</div>`;
+  return `<div class="tab-empty">${renderIcon("highlighter")}<div>No annotations yet.</div><div class="muted-text">Highlights and notes you make in the reader appear here, by page.</div>` +
+    (v.p.hasPdf ? `<button class="ls-btn ls-btn-primary" type="button" data-action="open">${renderIcon("book-open")}<span>Open PDF</span></button>` : "") + `</div>`;
 }
 
 function toolbar(pane: PaneState, all: readonly Annotation[]): string {

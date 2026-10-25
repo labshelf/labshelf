@@ -3,7 +3,7 @@ import {
   PaperDataStore, ReaderHostController, DEFAULT_READER_PREFS,
   type HostToWebview, type SidecarPort,
 } from "@labshelf/core";
-import { createInPageChannel, toast, type InPageChannel } from "@labshelf/core/dom";
+import { createInPageChannel, showToast, type InPageChannel } from "@labshelf/core/dom";
 import { consoleLogger } from "../log/index.js";
 import { DEMO_PAPER, OPENING_STATE, SEEDED_HIGHLIGHT } from "./demoPaper.js";
 
@@ -30,9 +30,9 @@ export async function createMemoryHost(): Promise<InPageChannel> {
     getPrefs: () => DEFAULT_READER_PREFS,
     autoTheme: () => "dark",
     writeClipboard: (text) => navigator.clipboard.writeText(text),
-    notify: (message, kind) => { toast(message, kind); },
+    notify: (message, kind) => { showToast(message, kind); },
     openExternal: async (url) => { window.open(url, "_blank", "noopener"); },
-    saveAnnotations: async (markdown) => { await navigator.clipboard.writeText(markdown); toast("Annotations copied as Markdown.", "ok"); },
+    saveAnnotations: async (markdown) => { await navigator.clipboard.writeText(markdown); showToast("Annotations copied as Markdown.", "ok"); },
     logger: consoleLogger,
   });
   const channel = createInPageChannel((msg) => { void host.handle(msg); });

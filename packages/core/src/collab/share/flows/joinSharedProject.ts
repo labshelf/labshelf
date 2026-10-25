@@ -1,6 +1,6 @@
 // Joins a shared project from pasted invite text, or reconnects a project of that share this device already has.
 import { checkInvite } from "./inviteProblems.js";
-import { LOG_MODULE, type ShareWorkflowPorts } from "./sharePorts.js";
+import { LOG_MODULE, type ShareFlowPorts } from "./sharePorts.js";
 
 export type JoinOutcome =
   /** The invite cannot be joined; `problem` says why in words for the user. Nothing was created. */
@@ -9,7 +9,7 @@ export type JoinOutcome =
   | { kind: "active" | "resumed" | "joined"; folder: string };
 
 /** `signal` cancels a join that waits for a member to answer. */
-export async function joinSharedProject(ports: ShareWorkflowPorts, inviteText: string, signal: AbortSignal): Promise<JoinOutcome> {
+export async function joinSharedProject(ports: ShareFlowPorts, inviteText: string, signal: AbortSignal): Promise<JoinOutcome> {
   // INVARIANT: the invite is checked in full before anything is written, so a bad one leaves no project behind.
   const checked = await checkInvite(inviteText);
   if (!checked.ok) {

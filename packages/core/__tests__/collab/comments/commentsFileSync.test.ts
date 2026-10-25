@@ -1,7 +1,7 @@
 /** Verifies that a shared project's comments.json is written from the comments map and seeds it, losing nothing. */
 import * as Y from "yjs";
 import {
-  importCommentsFile, liveThreads, parseCommentsFile, renderCommentsFile, type CommentThread,
+  importCommentsFile, readLiveThreads, parseCommentsFile, renderCommentsFile, type CommentThread,
 } from "../../../src/collab/comments/index";
 
 const thread = (id: string, createdAt: string): CommentThread => ({
@@ -14,7 +14,7 @@ describe("comments.json from the comments map", () => {
     const file = JSON.stringify({ version: 2, threads: [{ ...thread("t2", "2026-10-16T10:00:00.000Z"), colour: "red" }, { id: "bad" }, thread("t1", "2026-10-16T09:00:00.000Z")] });
     const doc = new Y.Doc();
     expect(importCommentsFile(doc, file)).toBe(2);
-    expect(liveThreads(doc).map((each) => each.id)).toEqual(["t1", "t2"]);
+    expect(readLiveThreads(doc).map((each) => each.id)).toEqual(["t1", "t2"]);
     const written = parseCommentsFile(renderCommentsFile(doc, file)!)!;
     expect(written["version"]).toBe(2);
     expect(written.threads).toEqual([thread("t1", "2026-10-16T09:00:00.000Z"), { ...thread("t2", "2026-10-16T10:00:00.000Z"), colour: "red" }, { id: "bad" }]);
@@ -40,6 +40,6 @@ describe("comments.json from the comments map", () => {
     const doc = new Y.Doc();
     importCommentsFile(doc, JSON.stringify({ threads: [thread("t1", "2026-10-16T09:00:00.000Z")] }));
     expect(importCommentsFile(doc, JSON.stringify({ threads: [{ ...thread("t1", "2026-10-16T09:00:00.000Z"), resolved: true }] }))).toBe(0);
-    expect(liveThreads(doc)[0]!.resolved).toBe(false);
+    expect(readLiveThreads(doc)[0]!.resolved).toBe(false);
   });
 });

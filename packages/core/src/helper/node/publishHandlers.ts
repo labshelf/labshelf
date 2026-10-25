@@ -15,7 +15,7 @@ import type {
 import { type ProjectBuildDeps, buildProject } from "../../writing/build/node/index.js";
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../index.js";
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
-import { helperToolchainPrompt } from "./build/index.js";
+import { createHelperToolchainAsk } from "./build/index.js";
 import { builtPdfPath } from "../../writing/build/index.js";
 import { readSharedLibraryRoot } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
@@ -119,7 +119,7 @@ type Request = Extract<ToHelperMessage, { type: "publishTemplate" }>;
 async function runPublication(options: TemplatePublishOptions, request: Request, send: HelperSend, render: (pdf: Uint8Array) => Promise<Uint8Array>, signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
   const { project, libraryRoot } = await publicationProject(request.projectId, options.logger, options.sharedConfigFile);
-  const deps = { ...options.build, prompt: helperToolchainPrompt(request.id, send) };
+  const deps = { ...options.build, prompt: createHelperToolchainAsk(request.id, send) };
   let submitted: PublishFile[] = [];
   const ports: PublishPorts = {
     logger: options.logger,

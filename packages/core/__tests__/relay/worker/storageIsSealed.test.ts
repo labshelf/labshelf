@@ -1,5 +1,5 @@
 /** Pins A7: what a share's Durable Object stores holds no plaintext of the sealed frames it received. */
-import { deriveContentKey, generateShareKey, sealFrame } from "../../../src/collab/shareKey/index";
+import { deriveContentShareKey, createShareKey, sealFrame } from "../../../src/collab/shareKey/index";
 import { FakeRoom } from "./fakeRoomRuntime";
 
 const doc = "cd".repeat(16);
@@ -30,7 +30,7 @@ async function storeFrames(room: FakeRoom, frame: Uint8Array): Promise<void> {
 
 describe("relay storage", () => {
   it("keeps sealed frames and no byte or text of their plaintext", async () => {
-    const key = await deriveContentKey(generateShareKey());
+    const key = await deriveContentShareKey(createShareKey());
     const sealed = await sealFrame(key, { shareId: "ab".repeat(16), docKey: doc, kind: "update" }, plaintext);
     const room = new FakeRoom();
     await storeFrames(room, sealed);

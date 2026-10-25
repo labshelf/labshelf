@@ -1,6 +1,6 @@
 /** Verifies parsing, editing and writing a project's .labshelf/comments.json without losing what it cannot read. */
 import {
-  addThread, commentThreads, parseCommentsFile, replyToThread, serializeCommentsFile, setThreadResolved, type CommentThread,
+  addThread, deriveCommentThreads, parseCommentsFile, addThreadReply, serializeCommentsFile, setThreadResolved, type CommentThread,
 } from "../../../src/collab/comments/index";
 
 const thread: CommentThread = {
@@ -26,8 +26,8 @@ describe("comments.json", () => {
     const invalid = { id: "t2", file: "main.tex" };
     const raw = { version: 7, threads: [{ ...thread, colour: "red", comments: [...thread.comments, { id: "c2" }] }, invalid] };
     const doc = parseCommentsFile(JSON.stringify(raw))!;
-    expect(commentThreads(doc)).toEqual([thread]);
-    const next = parseCommentsFile(serializeCommentsFile(replyToThread(doc, "t1", { id: "c3", author: "Bo", body: "Ours", createdAt: "2026-10-17T10:00:00.000Z" })))!;
+    expect(deriveCommentThreads(doc)).toEqual([thread]);
+    const next = parseCommentsFile(serializeCommentsFile(addThreadReply(doc, "t1", { id: "c3", author: "Bo", body: "Ours", createdAt: "2026-10-17T10:00:00.000Z" })))!;
     expect(next["version"]).toBe(7);
     expect(next.threads[1]).toEqual(invalid);
     expect(next.threads[0]).toMatchObject({ colour: "red", comments: [thread.comments[0], { id: "c2" }, { id: "c3" }] });
@@ -35,7 +35,7 @@ describe("comments.json", () => {
 
   it("adds, resolves and reopens threads", () => {
     const added = addThread({ threads: [] }, thread);
-    expect(commentThreads(setThreadResolved(added, "t1", true))[0]!.resolved).toBe(true);
-    expect(commentThreads(setThreadResolved(setThreadResolved(added, "t1", true), "t1", false))[0]!.resolved).toBe(false);
+    expect(deriveCommentThreads(setThreadResolved(added, "t1", true))[0]!.resolved).toBe(true);
+    expect(deriveCommentThreads(setThreadResolved(setThreadResolved(added, "t1", true), "t1", false))[0]!.resolved).toBe(false);
   });
 });

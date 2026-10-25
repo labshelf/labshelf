@@ -1,5 +1,5 @@
 // Shows the offer to attach a PDF the user opened or downloaded to the library paper it matched, and acts on it.
-import { $ } from "@labshelf/core/dom";
+import { findElement } from "@labshelf/core/dom";
 import { formatError } from "@labshelf/core";
 import { sendRuntime, type AttachPdfData, type PdfOfferView } from "../platform";
 import { folderName } from "./format";
@@ -17,10 +17,10 @@ export function offerFits(offer: PdfOfferView | undefined, pageIsPaper: boolean)
 
 export function showOffer(offer: PdfOfferView): void {
   popupState.offer = offer;
-  $("title").textContent = offer.title;
-  $("title").classList.remove("muted");
-  $("meta").textContent = folderName(offer.folder);
-  $("pdf").hidden = true;
+  findElement("title").textContent = offer.title;
+  findElement("title").classList.remove("muted");
+  findElement("meta").textContent = folderName(offer.folder);
+  findElement("pdf").hidden = true;
   setState("library");
   const what = offer.source === "download" ? "The PDF you downloaded" : "This PDF";
   if (offer.hasBytes) {
@@ -35,8 +35,8 @@ export function showOffer(offer: PdfOfferView): void {
       open: "Open in library", dismiss: "Not this paper",
     });
   }
-  $("open").dataset["folder"] = offer.folder;
-  $("open").dataset["paper"] = offer.paperId;
+  findElement("open").dataset["folder"] = offer.folder;
+  findElement("open").dataset["paper"] = offer.paperId;
 }
 
 export function attachOffered(offer: PdfOfferView): Promise<AttachPdfData> {

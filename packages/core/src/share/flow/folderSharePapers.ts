@@ -13,7 +13,7 @@ export interface FolderShareSources {
 export interface ShareableFolder { dir: string; label: string; count: number }
 
 /** Every folder below the library root that holds a paper at any depth, by its label. */
-export function shareableFolders(papers: readonly PaperRecord[], papersRoot: string, sep: string): ShareableFolder[] {
+export function listShareableFolders(papers: readonly PaperRecord[], papersRoot: string, sep: string): ShareableFolder[] {
   const paths = papers.map((paper) => paper.path);
   const dirs = new Set<string>();
   for (const path of paths) {
@@ -26,12 +26,12 @@ export function shareableFolders(papers: readonly PaperRecord[], papersRoot: str
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export function papersInFolder(papers: readonly PaperRecord[], dir: string, sep: string): PaperRecord[] {
+export function listPapersInFolder(papers: readonly PaperRecord[], dir: string, sep: string): PaperRecord[] {
   return papers.filter((paper) => paper.path !== dir && isUnderDir(paper.path, dir, sep));
 }
 
 /** buildShare keeps only the shareable fields of each record, so the user's status, tags and note never leave. */
-export async function sharePaperInputs(papers: readonly PaperRecord[], withAnnotations: boolean, sources: FolderShareSources): Promise<SharePaperInput[]> {
+export async function createSharePaperInputs(papers: readonly PaperRecord[], withAnnotations: boolean, sources: FolderShareSources): Promise<SharePaperInput[]> {
   const inputs: SharePaperInput[] = [];
   for (const paper of papers) {
     const files = createPaperFiles(paper.path, sources.paths.join);

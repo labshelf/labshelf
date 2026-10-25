@@ -2,7 +2,7 @@
  * Builds the markup pieces every part of the detail pane uses: collapsible sections with a muted label led by a
  * chevron, label and value rows, icon buttons, copy buttons, muted notes and a loading line.
  */
-import { escapeHtml, icon, type IconName } from "../../../ui/index.js";
+import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 
 export interface SectionOptions {
   count?: number;
@@ -13,7 +13,7 @@ export function renderSection(id: string, title: string, body: string, collapsed
   const closed = !!collapsed[id];
   return `<div class="detail-section">` +
     `<div class="sec-head${closed ? " collapsed" : ""}" data-sec="${id}" role="button" tabindex="0" aria-expanded="${!closed}">` +
-      `<span class="sec-chevron">${icon("chevron-down")}</span>` +
+      `<span class="sec-chevron">${renderIcon("chevron-down")}</span>` +
       `<span class="sec-title">${escapeHtml(title)}</span>` +
       (o.count ? `<span class="sec-count">${o.count}</span>` : "") +
     `</div>` +
@@ -25,7 +25,7 @@ export function renderField(label: string, valueHtml: string): string {
 }
 
 export function renderIconButton(action: string, name: IconName, title: string, attrs = ""): string {
-  return `<button class="ls-icon-btn" type="button" data-action="${action}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${attrs}>${icon(name)}</button>`;
+  return `<button class="ls-icon-btn" type="button" data-action="${action}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${attrs}>${renderIcon(name)}</button>`;
 }
 
 export function copyBtn(text: string, label: string): string {
@@ -37,5 +37,5 @@ export function renderMuted(text: string): string {
 }
 
 export function renderLoading(text = "Loading…"): string {
-  return `<div class="muted-note pane-loading"><span class="spin">${icon("loader")}</span>${escapeHtml(text)}</div>`;
+  return `<div class="muted-note pane-loading"><span class="spin">${renderIcon("loader")}</span>${escapeHtml(text)}</div>`;
 }

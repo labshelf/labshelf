@@ -5,11 +5,11 @@ import {
   createShareHost,
   type ILogger,
   type RelayAccountStore,
-  type ShareWorkflowPorts,
+  type ShareFlowPorts,
   type ShareHost,
   createWorkerShareReader,
   importShareLink,
-  relayBackendFor,
+  resolveRelayBackend,
   type FolderShareLinkDeps,
 } from "@labshelf/core";
 import { libraryPaths, type LibraryPaths } from "../../libraryUi/index.js";
@@ -50,7 +50,7 @@ function vscodeFolderLinks(controller: SharingController, relay: RelayAccountSto
       require: () => connectedRelay(host, "share links are served by your own relay."),
       connected: () => relay.get(),
     },
-    backendFor: relayBackendFor,
+    backendFor: resolveRelayBackend,
     readerFor: (relayUrl) => createWorkerShareReader({ relayUrl }),
     importLink: async (options) => {
       const { mutations, paperService } = services();
@@ -97,7 +97,7 @@ export function withLibraryPaths(host: ShareHost, paths: () => LibraryPaths): Sh
 }
 
 export interface SharingCollab {
-  ports: ShareWorkflowPorts;
+  ports: ShareFlowPorts;
   relay: RelayAccountStore;
 }
 

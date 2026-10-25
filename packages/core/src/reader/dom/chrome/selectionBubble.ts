@@ -5,8 +5,8 @@ import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js
 import type { ReaderContext } from "../session/index.js";
 import { clamp, iconButton } from "../elements/index.js";
 import { boxInPage, pageFrame } from "../highlights/index.js";
-import { icon } from "../../../ui/index.js";
-import { $, el } from "../../../ui/dom/index.js";
+import { renderIcon } from "../../../ui/index.js";
+import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
 
@@ -20,22 +20,22 @@ export interface SelectionInfo {
 export type CommentOnSelection = (selection: SelectionInfo & { start: DOMRect; bounds: DOMRect }) => void;
 
 export class SelectionBubble {
-  private readonly el = $("selection-toolbar");
+  private readonly el = findElement("selection-toolbar");
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private commentButton: HTMLButtonElement | null = null;
 
   constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
-      const btn = el("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
+      const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
       btn.addEventListener("click", () => this.highlight(color));
       this.el.append(btn);
     }
-    const cite = iconButton(icon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
+    const cite = iconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
-    this.el.append(el("div", { class: "rd-pill-sep" }), cite);
+    this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
     if (commentOn) {
-      const comment = iconButton(icon("message"), "Comment on the source", "rd-btn-sm");
+      const comment = iconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
       // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs.
       comment.hidden = true;
       comment.addEventListener("click", () => this.comment());

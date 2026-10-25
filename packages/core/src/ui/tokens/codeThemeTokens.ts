@@ -1,7 +1,7 @@
 /**
  * Declares the syntax colour themes of the source editor: one colour per highlight role, for the dark and the light app theme.
  */
-import { token, type DesignToken } from "./designToken.js";
+import { createDesignToken, type DesignToken } from "./designToken.js";
 
 const CODE_ROLES = ["keyword", "command", "argument", "string", "number", "math", "comment", "heading", "reference", "bracket"] as const;
 export type CodeRole = (typeof CODE_ROLES)[number];
@@ -16,7 +16,7 @@ export interface CodeTheme {
 
 const theme = (label: string, dark: string[], light: string[]): CodeTheme => ({
   label,
-  colors: Object.fromEntries(CODE_ROLES.map((role, i) => [role, token(dark[i]!, light[i]!)])) as Record<CodeRole, DesignToken>,
+  colors: Object.fromEntries(CODE_ROLES.map((role, i) => [role, createDesignToken(dark[i]!, light[i]!)])) as Record<CodeRole, DesignToken>,
 });
 
 // Colours follow each theme's published palette, in CODE_ROLES order; a few are darkened or lightened just enough

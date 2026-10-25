@@ -1,12 +1,12 @@
 // Writes a Space as space.json bytes that every app produces identically.
 // CONTRACT: documents/contracts/spaces.md#writing
 import { SPACE_FORMAT_VERSION } from "./space.js";
-import type { Space, SpaceDate, SpaceFolder, SpacePaperRef } from "./space.js";
-import { withUnknownKeys } from "./json/index.js";
+import type { Space, SpaceDate, SpaceFolder, SpaceReference } from "./space.js";
+import { withUnknownFields } from "./json/index.js";
 
-const folderJson = (folder: SpaceFolder) => withUnknownKeys({ id: folder.id, name: folder.name, parent: folder.parent }, folder.extra);
+const folderJson = (folder: SpaceFolder) => withUnknownFields({ id: folder.id, name: folder.name, parent: folder.parent }, folder.extra);
 
-const paperJson = (paper: SpacePaperRef) => withUnknownKeys(
+const paperJson = (paper: SpaceReference) => withUnknownFields(
   { id: paper.id, folder: paper.folder, addedAt: paper.addedAt, focus: paper.focus ? true : undefined }, paper.extra,
 );
 
@@ -15,11 +15,11 @@ function dateJson(date: SpaceDate): Record<string, unknown> {
   if (date.kind === "task") { known["done"] = date.done; }
   if (date.kind === "read") { known["paperIds"] = date.paperIds; }
   if (date.kind === "project") { known["projectId"] = date.projectId; }
-  return withUnknownKeys(known, date.extra);
+  return withUnknownFields(known, date.extra);
 }
 
 export function serializeSpaceFile(space: Space): string {
-  const doc = withUnknownKeys({
+  const doc = withUnknownFields({
     version: SPACE_FORMAT_VERSION, name: space.name, purpose: space.purpose, createdAt: space.createdAt,
     folders: [...space.folders.map(folderJson), ...space.invalid.folders],
     papers: [...space.papers.map(paperJson), ...space.invalid.papers],

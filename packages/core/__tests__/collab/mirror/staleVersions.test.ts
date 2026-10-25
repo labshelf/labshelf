@@ -1,5 +1,5 @@
 // Pins stale text, binary restores and offline edits across two relayed project mirrors.
-import { fileText, indexFiles } from "../../../src/collab/model/index";
+import { readFileText, readShareIndexDocFiles } from "../../../src/collab/model/index";
 import { reconcileText } from "../../../src/collab/mirror/textMirror";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
@@ -12,7 +12,7 @@ const shared = "Title\nPeer intro\nMiddle\nMore\nEnd\n";
 const edited = "Title\nIntro\nMiddle\nMore\nOutside end\n";
 const merged = "Title\nPeer intro\nMiddle\nMore\nOutside end\n";
 
-const text = (fixture: MirrorFixture) => fileText(fixture.session.openDoc("main.tex")).toString();
+const text = (fixture: MirrorFixture) => readFileText(fixture.session.openDoc("main.tex")).toString();
 
 describe("stale versions through the relay", () => {
   let fixtures: MirrorFixture[] = [];
@@ -56,14 +56,14 @@ describe("stale versions through the relay", () => {
     b.mirror.changed("plot.png");
     await b.mirror.idle();
     const nextHash = await b.store.blobs.put(after);
-    expect(await runUntil(clock, () => indexFiles(b.session.index).get("plot.png")?.hash === nextHash)).toBe(true);
-    const hash = indexFiles(b.session.index).get("plot.png")?.hash;
+    expect(await runUntil(clock, () => readShareIndexDocFiles(b.session.index).get("plot.png")?.hash === nextHash)).toBe(true);
+    const hash = readShareIndexDocFiles(b.session.index).get("plot.png")?.hash;
     expect(await runUntil(clock, () => a.store.known.get("plot.png") === hash)).toBe(true);
     await writeFile(a, "plot.png", before);
     a.mirror.changed("plot.png");
     await a.mirror.idle();
-    expect(indexFiles(a.session.index).get("plot.png")?.hash).toBe(hash);
-    expect(indexFiles(b.session.index).get("plot.png")?.hash).toBe(hash);
+    expect(readShareIndexDocFiles(a.session.index).get("plot.png")?.hash).toBe(hash);
+    expect(readShareIndexDocFiles(b.session.index).get("plot.png")?.hash).toBe(hash);
     expect(await a.files.read(a.folder, "plot.png")).toEqual(after);
   });
 

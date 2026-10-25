@@ -2,8 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { libraryMirrorDisk, type MirrorDisk } from "../../../src/collab/mirror/index";
-import { nodeMirrorDisk } from "../../../src/collab/node/index";
+import { createLibraryMirrorFileSystem, type MirrorFileSystem } from "../../../src/collab/mirror/index";
+import { createNodeMirrorFileSystem } from "../../../src/collab/node/index";
 import type { ILogger } from "../../../src/ports/index";
 import { NodeLibraryFileSystem } from "../../../src/library/node/index";
 import { createWriteRecordStore, type WriteRecordStore } from "../../../src/library/writeRecords/index";
@@ -12,7 +12,7 @@ import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 export interface MirrorFiles {
   name: string;
   newFolder(label: string): Promise<string>;
-  disk(folder: string, logger: ILogger): MirrorDisk;
+  disk(folder: string, logger: ILogger): MirrorFileSystem;
   recordPaths(folder: string): Promise<string[]>;
   records(folder: string, logger: ILogger): WriteRecordStore;
   read(folder: string, file: string): Promise<Uint8Array | undefined>;
@@ -36,7 +36,7 @@ export const nodeFiles: MirrorFiles = {
   recordPaths: async (folder) => (await fs.readdir(path.join(folder, ".labshelf/writes"))).map((file) => `.labshelf/writes/${file}`),
   records: (folder, logger) => createWriteRecordStore(new NodeLibraryFileSystem(), folder, identity(folder), logger),
   newFolder: (label) => tempDir(label),
-  disk: (folder, logger) => nodeMirrorDisk(folder, logger),
+  disk: (folder, logger) => createNodeMirrorFileSystem(folder, logger),
   read: (folder, file) => fs.readFile(path.join(folder, file)).then((data) => new Uint8Array(data), () => undefined),
   async write(folder, file, content) {
     await fs.mkdir(path.dirname(path.join(folder, file)), { recursive: true });
@@ -59,7 +59,7 @@ export function memoryFiles(): MirrorFiles {
       await library.mkdir(`/project-${folders}`);
       return `/project-${folders}`;
     },
-    disk: (folder) => libraryMirrorDisk(library, folder),
+    disk: (folder) => createLibraryMirrorFileSystem(library, folder),
     read: async (folder, file) => library.files.get(`${folder}/${file}`),
     async write(folder, file, content) {
       await library.ensureDir(path.posix.dirname(`${folder}/${file}`));

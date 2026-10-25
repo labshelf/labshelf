@@ -1,6 +1,6 @@
 // Shows the project's search page, answered in the same page over a loopback channel.
 import { createLoopbackTransport, type HostToSearch, type SearchToHost } from "@labshelf/core";
-import { el, mountProjectSearch } from "@labshelf/core/dom";
+import { renderElement, mountProjectSearch } from "@labshelf/core/dom";
 import { revealInOpenEditor } from "../../writing/session";
 import { mountSearchHost } from "../../writing";
 import { findProject } from "../../writing/project";
@@ -11,8 +11,8 @@ const MODULE = "tabs.search";
 export const mountTab: TabModule["mountTab"] = (host, params, { fs, logger, project, workspace }) => {
   const { session } = project();
   const projectId = params["projectId"] ?? "";
-  const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
-  const loading = body.appendChild(el("p", { class: "ls-workspace-placeholder" }, "Loading search…"));
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
+  const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, "Loading search…"));
   let disposed = false;
   let hostEnd: { dispose(): void } | undefined;
   findProject(fs, logger, session.current(), projectId)

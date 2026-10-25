@@ -1,5 +1,5 @@
 // Builds the Library proxies section: an ordered list of proxies, each with a name, an address, an enabled switch and a remove button.
-import { inlineCode } from "@labshelf/core/dom";
+import { renderInlineCode } from "@labshelf/core/dom";
 import { createEditableListSection, type EditableListSection } from "./editableListSection";
 import { deriveProxyKind, type LibraryProxy, type ProxyKind } from "@labshelf/core";
 
@@ -26,9 +26,9 @@ export function savableProxies(rows: readonly LibraryProxy[]): LibraryProxy[] {
 
 const DESCRIPTION = [
   "When a publisher asks for a sign-in, LabShelf retries through each enabled proxy, top to bottom. Three address shapes work: ",
-  "a prefix such as ", inlineCode("https://login.ezproxy.uni.edu/login?url=$@"),
-  ", a hostname such as ", inlineCode(".ezproxy.uni.edu"),
-  " and an OpenAthens redirector such as ", inlineCode("https://go.openathens.net/redirector/uni.edu"), ".",
+  "a prefix such as ", renderInlineCode("https://login.ezproxy.uni.edu/login?url=$@"),
+  ", a hostname such as ", renderInlineCode(".ezproxy.uni.edu"),
+  " and an OpenAthens redirector such as ", renderInlineCode("https://go.openathens.net/redirector/uni.edu"), ".",
 ];
 
 export function createProxySection(onChange: () => void): EditableListSection {

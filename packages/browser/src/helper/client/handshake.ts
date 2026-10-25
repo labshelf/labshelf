@@ -1,5 +1,5 @@
 // Opens the native host, says hello and, when the helper is ready, opens and authenticates the session socket.
-import { HELPER_HOST_NAME, PROTOCOL_VERSION, type HelperStatus, type ToPageMessage } from "@labshelf/core/helper";
+import { HELPER_HOST_NAME, PROTOCOL_VERSION, type HelperState, type ToPageMessage } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
 import { isHostNotFound } from "../../platform";
 import {
@@ -15,7 +15,7 @@ export interface HandshakeDeps {
   webSocket: HelperWebSocketConstructor;
 }
 
-export interface Handshake { status: HelperStatus; native?: HelperConnection; socket?: HelperConnection }
+export interface Handshake { status: HelperState; native?: HelperConnection; socket?: HelperConnection }
 
 type Ready = Extract<ToPageMessage, { type: "ready" }>;
 type Session = Extract<ToPageMessage, { type: "session" }>;

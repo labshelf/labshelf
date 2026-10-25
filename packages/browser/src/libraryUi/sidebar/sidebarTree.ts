@@ -1,6 +1,6 @@
 // Connects the browser sidebar to library and project actions.
-import { icon, deriveParentDir, type HostEndpoint, type ShareHost } from "@labshelf/core";
-import { el, mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
+import { renderIcon, deriveParentDir, type HostEndpoint, type ShareHost } from "@labshelf/core";
+import { renderElement, mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import type { PagePrefs } from "../prefs";
 import type { TabKindName } from "../editorArea";
@@ -14,7 +14,7 @@ export interface SidebarProjectParts {
 }
 
 function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void): HTMLElement {
-  const button = el("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: icon(glyph) });
+  const button = renderElement("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: renderIcon(glyph) });
   button.addEventListener("click", onClick);
   return button;
 }

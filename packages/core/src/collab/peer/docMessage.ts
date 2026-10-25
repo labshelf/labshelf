@@ -1,6 +1,6 @@
 // Seals a doc payload into the frame of a share message and opens one, checking it names the doc its envelope files it under.
 import { bytesToHex } from "../../encoding/index.js";
-import { openFrame, sealFrame, type FrameError, type WebCryptoKey } from "../shareKey/index.js";
+import { openFrame, sealFrame, type FrameError, type DerivedShareKey } from "../shareKey/index.js";
 import { deriveDocId } from "./docId.js";
 import type { Envelope } from "./envelope.js";
 
@@ -24,7 +24,7 @@ function decodeDocPayload(bytes: Uint8Array): { docKey: string; payload: Uint8Ar
 }
 
 /** The share, key and payload kind name a frame is bound to. */
-export interface DocFrameContext { shareId: string; key: WebCryptoKey; name: string }
+export interface DocFrameContext { shareId: string; key: DerivedShareKey; name: string }
 
 export type OpenedDocFrame =
   | { ok: true; docKey: string; payload: Uint8Array }

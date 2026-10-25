@@ -1,18 +1,18 @@
 // Mounts Space paper references with folder navigation and cancellable editing.
-import { el, emptyState, closeMenu, icon, showMenu } from "../../../ui/dom/index.js";
+import { renderElement, renderEmptyNotice, closeMenu, renderIcon, showMenu } from "../../../ui/dom/index.js";
 import type { SpaceBody } from '../spaceOverview/index.js';
 import type { ResolvedPaper, PapersTreeFolder } from "../../viewModel/index.js";
 import type { PapersContext } from "./papersContext.js";
-import { confirmRemoval, folderName } from "./dialogs.js";
-import { paperPicker } from './picker.js';
-import { statusMark } from "../../../ui/icons/index.js";
+import { askRemoval, askFolderName } from "./dialogs.js";
+import { openPaperPicker } from './picker.js';
+import { renderReadingStatusMark } from "../../../ui/icons/index.js";
 
 const PAPER_DRAG_TYPE = 'application/x-labshelf-space-paper';
 function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement {
-  const row = el('li', { class: 'pp-row', 'data-paper-id': paper.id });
-  const remove = action(ctx, 'Remove', () => confirmRemoval(ctx, { paperId: paper.id }));
-  if (paper.missing) { row.classList.add('pp-missing'); row.append(el('span', { text: `${paper.id} — Not in your Library` }), remove); return row; }
-  const title = el('button', { type: 'button', class: 'pp-title', title: paper.title, text: paper.title });
+  const row = renderElement('li', { class: 'pp-row', 'data-paper-id': paper.id });
+  const remove = action(ctx, 'Remove', () => askRemoval(ctx, { paperId: paper.id }));
+  if (paper.missing) { row.classList.add('pp-missing'); row.append(renderElement('span', { text: `${paper.id} — Not in your Library` }), remove); return row; }
+  const title = renderElement('button', { type: 'button', class: 'pp-title', title: paper.title, text: paper.title });
   title.addEventListener('click', () => ctx.end.post({ type: 'selectPaper', paperId: paper.id }));
   title.addEventListener('dblclick', () => ctx.end.post({ type: 'openPaper', paperId: paper.id }));
   title.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ctx.end.post({ type: 'openPaper', paperId: paper.id }); } });
@@ -21,15 +21,15 @@ function paperRow(ctx: PapersContext, paper: ResolvedPaper): HTMLElement {
   toggle.setAttribute('aria-pressed', String(focus)); toggle.classList.toggle('on', focus);
   const move = action(ctx, 'Move to folder', () => showMoveMenu(ctx, paper.id, move));
   const status = { unread: 'Unread', reading: 'Reading', done: 'Done' }[paper.status];
-  row.append(el('span', { class: 'pp-status', role: 'img', 'aria-label': status, title: status, html: statusMark(paper.status) }),
-    el('div', { class: 'pp-main' }, title, el('div', { class: 'pp-meta', text: [...paper.authors, paper.year].filter(Boolean).join(' · ') })),
-    el('div', { class: 'pp-acts' }, toggle, move, remove));
+  row.append(renderElement('span', { class: 'pp-status', role: 'img', 'aria-label': status, title: status, html: renderReadingStatusMark(paper.status) }),
+    renderElement('div', { class: 'pp-main' }, title, renderElement('div', { class: 'pp-meta', text: [...paper.authors, paper.year].filter(Boolean).join(' · ') })),
+    renderElement('div', { class: 'pp-acts' }, toggle, move, remove));
   row.draggable = !ctx.readOnly;
   row.addEventListener('dragstart', e => { if (!ctx.readOnly) e.dataTransfer?.setData(PAPER_DRAG_TYPE, JSON.stringify({ spaceId: ctx.data.space.id, paperId: paper.id })); });
   return row;
 }
 function action(ctx: PapersContext, label: string, handler: () => void): HTMLButtonElement {
-  const button = el('button', { type: 'button', class: 'ls-btn ls-btn-ghost', text: label, disabled: ctx.readOnly });
+  const button = renderElement('button', { type: 'button', class: 'ls-btn ls-btn-ghost', text: label, disabled: ctx.readOnly });
   button.addEventListener('click', () => { if (!ctx.readOnly && !ctx.signal?.aborted) handler(); }); return button;
 }
 function showMoveMenu(ctx: PapersContext, paperId: string, anchor: HTMLElement): void {
@@ -38,21 +38,21 @@ function showMoveMenu(ctx: PapersContext, paperId: string, anchor: HTMLElement):
 }
 
 function folderNav(ctx: PapersContext, select: (id?: string) => void): HTMLElement {
-  const nav = el('nav', { class: 'pp-folders', 'aria-label': 'Space folders' });
+  const nav = renderElement('nav', { class: 'pp-folders', 'aria-label': 'Space folders' });
   const item = (label: string, count: number, id?: string): HTMLElement => {
-    const button = el('button', { type: 'button', class: 'pp-folder', 'aria-label': label, 'aria-current': ctx.folder === id ? 'true' : undefined },
-      el('span', { 'aria-hidden': 'true', html: icon(id ? 'folder' : 'layers') }),
-      el('span', { class: 'pp-folder-name', text: label }), el('span', { class: 'tree-count', text: String(count) }));
+    const button = renderElement('button', { type: 'button', class: 'pp-folder', 'aria-label': label, 'aria-current': ctx.folder === id ? 'true' : undefined },
+      renderElement('span', { 'aria-hidden': 'true', html: renderIcon(id ? 'folder' : 'layers') }),
+      renderElement('span', { class: 'pp-folder-name', text: label }), renderElement('span', { class: 'tree-count', text: String(count) }));
     button.addEventListener('click', () => select(id)); wireDrop(button, ctx, id); return button;
   };
   nav.append(item('All papers', ctx.data.space.papers.length));
   const add = (folders: readonly PapersTreeFolder[], parent: HTMLElement): void => {
     for (const f of folders) {
       parent.append(item(f.name, f.papers.length, f.id));
-      if (f.folders.length) { const children = el('div', { class: 'pp-folder-children' }); add(f.folders, children); parent.append(children); }
+      if (f.folders.length) { const children = renderElement('div', { class: 'pp-folder-children' }); add(f.folders, children); parent.append(children); }
     }
   };
-  add(ctx.data.papers.folders, nav); nav.append(action(ctx, 'New folder', () => { void folderName(ctx); })); return nav;
+  add(ctx.data.papers.folders, nav); nav.append(action(ctx, 'New folder', () => { void askFolderName(ctx); })); return nav;
 }
 function wireDrop(button: HTMLElement, ctx: PapersContext, folder?: string): void {
   button.addEventListener('dragover', event => { if (!ctx.readOnly && event.dataTransfer?.types.includes(PAPER_DRAG_TYPE)) event.preventDefault(); });
@@ -84,16 +84,16 @@ export function mountSpacePapers(root: HTMLElement, initial: PapersContext): Spa
   };
 }
 function papersSurface(ctx: PapersContext, select: (id?: string) => void): HTMLElement {
-  const add = action(ctx, 'Add papers', () => paperPicker(ctx));
-  const bar = el('div', { class: 'pp-bar' }, el('div', {}, el('h2', { text: 'Papers' }),
-    el('p', { class: 'pp-hint', text: 'Papers stay in your Library.' })), add);
-  const groups = el('div', { class: 'pp-groups' });
+  const add = action(ctx, 'Add papers', () => openPaperPicker(ctx));
+  const bar = renderElement('div', { class: 'pp-bar' }, renderElement('div', {}, renderElement('h2', { text: 'Papers' }),
+    renderElement('p', { class: 'pp-hint', text: 'Papers stay in your Library.' })), add);
+  const groups = renderElement('div', { class: 'pp-groups' });
   const folder = ctx.data.space.folders.find(f => f.id === ctx.folder);
-  if (folder) groups.append(el('div', { class: 'pp-bar' }, el('h2', { text: folder.name }),
-    action(ctx, 'Rename folder', () => { void folderName(ctx, folder.id); }), action(ctx, 'Delete folder', () => confirmRemoval(ctx, { folderId: folder.id }))));
+  if (folder) groups.append(renderElement('div', { class: 'pp-bar' }, renderElement('h2', { text: folder.name }),
+    action(ctx, 'Rename folder', () => { void askFolderName(ctx, folder.id); }), action(ctx, 'Delete folder', () => askRemoval(ctx, { folderId: folder.id }))));
   const papers = visiblePapers(ctx);
-  groups.append(papers.length ? el('ul', { class: 'pp-list' }, ...papers.map(p => paperRow(ctx, p))) : emptyState({ text: 'No papers yet.', hint: 'Add papers from your Library to this folder.' }));
-  return el('div', {}, bar, el('div', { class: 'pp-grid' }, folderNav(ctx, select), groups));
+  groups.append(papers.length ? renderElement('ul', { class: 'pp-list' }, ...papers.map(p => paperRow(ctx, p))) : renderEmptyNotice({ text: 'No papers yet.', hint: 'Add papers from your Library to this folder.' }));
+  return renderElement('div', {}, bar, renderElement('div', { class: 'pp-grid' }, folderNav(ctx, select), groups));
 }
 function visiblePapers(ctx: PapersContext): ResolvedPaper[] {
   const all: { paper: ResolvedPaper; folder?: string }[] = ctx.data.papers.papers.map(paper => ({ paper }));

@@ -1,6 +1,6 @@
 // Shows the project the Details surface targets in the All projects detail pane, fed by the projects channel alone.
 import type { MessageEnd } from "../../protocol/index.js";
-import { toast } from "../../../ui/dom/index.js";
+import { showToast } from "../../../ui/dom/index.js";
 import { createDetailRequests, mountProjectDetail } from "../../../writing/allProjects/dom/detailPane/index.js";
 import type { AllProjectsToHost } from "../../../writing/allProjects/protocol/index.js";
 import type { ProjectMenuCommand, ProjectRow } from "../../../writing/allProjects/index.js";
@@ -37,7 +37,7 @@ export function mountProjectSlot(el: HTMLElement, transport: MessageEnd<DetailsT
   const offMessages = transport.subscribe((m) => {
     if (!("channel" in m) || m.channel !== "projects") return;
     const msg = m.msg;
-    if (msg.type === "error") toast(msg.message, "error");
+    if (msg.type === "error") showToast(msg.message, "error");
     else if (msg.type === "detail") details.receive(msg);
     else if (msg.type === "projects") {
       Object.assign(s, { rows: msg.rows, commands: msg.commands, openLabel: msg.openLabel });

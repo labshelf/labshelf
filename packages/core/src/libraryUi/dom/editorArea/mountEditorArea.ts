@@ -1,5 +1,5 @@
 // Mounts the editor area: tabs in up to two groups side by side, bodies mounted on first activation and disposed on close.
-import { el, showMenu, type MenuAnchor } from "../../../ui/dom/index.js";
+import { renderElement, showMenu, type MenuAnchor } from "../../../ui/dom/index.js";
 import { EditorGroups, deriveOtherGroup, type EditorGroup } from "./editorGroups.js";
 import type { EditorArea, EditorAreaOptions, EditorGroupSide, EditorAreaPrefsPort } from "./editorAreaOptions.js";
 import { attachSash } from "../shell/index.js";
@@ -64,7 +64,7 @@ interface EditorSash {
 
 /** Wires the sash between `root`'s groups; `first` is the group it sizes. */
 function createEditorSash(root: HTMLElement, first: HTMLElement, prefs: EditorAreaPrefsPort | undefined): EditorSash {
-  const sash = el("div", { class: "ls-editor-sash", role: "separator", "aria-orientation": "vertical", title: "Drag to resize", hidden: true });
+  const sash = renderElement("div", { class: "ls-editor-sash", role: "separator", "aria-orientation": "vertical", title: "Drag to resize", hidden: true });
   let width = prefs?.load() ?? null;
   const apply = (split: boolean): void => {
     const sized = split && width !== null;
@@ -142,7 +142,7 @@ function showTabMenu(anchor: MenuAnchor | HTMLElement, actions: TabMenuActions):
 
 /** Builds the area inside `slot`; the area is empty until the host opens a tab. */
 export function mountEditorArea(slot: HTMLElement, options: EditorAreaOptions = {}): EditorArea {
-  const root = el("div", { class: "ls-editor-area" });
+  const root = renderElement("div", { class: "ls-editor-area" });
   // The sash needs the first group's element and the groups need the sash's layout, so the groups call it late.
   let layoutSash = (_split: boolean): void => {};
   const state = new EditorGroups(options, (split) => { root.classList.toggle("split", split); layoutSash(split); });

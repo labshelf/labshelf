@@ -5,7 +5,7 @@
 // Undo in an editor bound to a shared text reverts only this user's edits, whatever peers write in between.
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { type PresenceHandle, toRelativeSelection, type PresenceState } from "@labshelf/core";
+import { type PresenceStore, deriveRelativeSelection, type PresenceState } from "@labshelf/core";
 import { yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
 import { collabExtensions } from "../../src/collab/collabExtensions";
@@ -15,7 +15,7 @@ const presence = {
   awareness: { clientID: 7, on: () => undefined, off: () => undefined, getStates: () => new Map() },
   setLocal: () => undefined,
   remote: () => new Map(),
-} as unknown as PresenceHandle;
+} as unknown as PresenceStore;
 
 const command = (key: string) => yUndoManagerKeymap.find((binding) => binding.key === key)!.run!;
 
@@ -52,12 +52,12 @@ function editorWithPeer(name: string): EditorView {
   const doc = new Y.Doc();
   const text = doc.getText("content");
   text.insert(0, "hello world");
-  const selection = toRelativeSelection(text, { anchor: 5, head: 5 });
+  const selection = deriveRelativeSelection(text, { anchor: 5, head: 5 });
   const peer: PresenceState = { name, colour: "", file: "main.tex", ...selection };
   const presence = {
     awareness: { on: jest.fn(), off: jest.fn() },
     remote: () => new Map([[7, peer]]),
-  } as unknown as PresenceHandle;
+  } as unknown as PresenceStore;
   const parent = document.createElement("div");
   document.body.replaceChildren(parent);
   return new EditorView({ doc: text.toString(), parent, extensions: [remoteCursors({ text, presence, file: "main.tex" })] });

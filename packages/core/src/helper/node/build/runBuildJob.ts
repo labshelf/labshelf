@@ -6,7 +6,7 @@ import { type ILogger } from "../../../ports/index.js";
 import { classifyTexProblems, type LocatedProblem } from "../../../latex/build/index.js";
 import { type ProjectEntry } from "../../../writing/project/index.js";
 import type { ProjectBuildQueue } from "../../../writing/build/node/index.js";
-import { PROTOCOL_VERSION, type HelperBuildStatus, type ToHelperMessage } from "../../index.js";
+import { PROTOCOL_VERSION, type HelperBuildState, type ToHelperMessage } from "../../index.js";
 
 import type { HelperSend } from "../handlers/index.js";
 import { sendPages, type SentPages } from "./sendPages.js";
@@ -33,7 +33,7 @@ export interface BuildJob {
   sent: SentPages;
 }
 
-function replier(job: BuildJob): (status: Exclude<HelperBuildStatus, "succeeded">, problems?: LocatedProblem[]) => void {
+function replier(job: BuildJob): (status: Exclude<HelperBuildState, "succeeded">, problems?: LocatedProblem[]) => void {
   return (status, problems = []) => job.send({ v: PROTOCOL_VERSION, id: job.message.id, type: "built", status, problems });
 }
 

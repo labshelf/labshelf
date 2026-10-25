@@ -4,7 +4,7 @@
  */
 // The symbol picker and the table size prompt that feed text into the source editor.
 import { MATH_SYMBOLS } from "@labshelf/core";
-import { inputBox, quickPick, type InputBoxOptions } from "@labshelf/core/dom";
+import { askInputBox, pickQuickEntry, type InputBoxOptions } from "@labshelf/core/dom";
 import { insertSymbol, insertTable, symbolEntries } from "../../../../src/writing/source/actions/insertActions";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), quickPick: jest.fn(), inputBox: jest.fn() }));
@@ -32,18 +32,18 @@ describe("symbolEntries", () => {
 describe("insertSymbol", () => {
   it("inserts the picked source and nothing when the picker is dismissed", async () => {
     const target = edits();
-    (quickPick as jest.Mock).mockResolvedValueOnce("\\alpha").mockResolvedValueOnce(undefined);
+    (pickQuickEntry as jest.Mock).mockResolvedValueOnce("\\alpha").mockResolvedValueOnce(undefined);
     await insertSymbol(target, "latex");
     await insertSymbol(target, "latex");
     expect(target.insertText.mock.calls).toEqual([["\\alpha"]]);
-    expect(quickPick).toHaveBeenCalledWith(expect.any(Array), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
+    expect(pickQuickEntry).toHaveBeenCalledWith(expect.any(Array), { title: "Insert Symbol", placeholder: "Search by name, e.g. alpha or arrow" });
   });
 });
 
 describe("insertTable", () => {
   it("inserts a table of the typed size as a snippet", async () => {
     const target = edits();
-    (inputBox as jest.Mock).mockResolvedValueOnce("2x1");
+    (askInputBox as jest.Mock).mockResolvedValueOnce("2x1");
     await insertTable(target, "typst");
     expect(target.insertSnippet).toHaveBeenCalledTimes(1);
     expect(target.insertSnippet.mock.calls[0][0]).toContain("columns: 2,");
@@ -51,9 +51,9 @@ describe("insertTable", () => {
 
   it("starts at 3x3 and rejects a size outside 1 to 20", async () => {
     const target = edits();
-    (inputBox as jest.Mock).mockResolvedValueOnce(undefined);
+    (askInputBox as jest.Mock).mockResolvedValueOnce(undefined);
     await insertTable(target, "latex");
-    const options = (inputBox as jest.Mock).mock.calls[0][0] as InputBoxOptions;
+    const options = (askInputBox as jest.Mock).mock.calls[0][0] as InputBoxOptions;
     expect(options.value).toBe("3x3");
     expect(options.validate!("3x2")).toBeNull();
     expect(options.validate!("0x2")).toBe("Enter columns x rows, each from 1 to 20, e.g. 3x2");

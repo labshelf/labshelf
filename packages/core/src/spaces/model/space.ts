@@ -8,24 +8,24 @@ export const SPACE_DATE_KINDS = ["task", "read", "project", "deadline"] as const
 export type SpaceDateKind = (typeof SPACE_DATE_KINDS)[number];
 
 /** Keys this version does not know, kept so a write puts them back after the known keys. */
-export type UnknownKeys = Readonly<Record<string, unknown>>;
+export type UnknownFields = Readonly<Record<string, unknown>>;
 
 export interface SpaceFolder {
   readonly id: string;
   readonly name: string;
   /** Absent for a folder at the Space root. */
   readonly parent?: string;
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
-export interface SpacePaperRef {
+export interface SpaceReference {
   readonly id: string;
   /** Absent for a paper at the Space root. */
   readonly folder?: string;
   readonly addedAt?: string;
   /** Pinned to the Space overview; only true is written. */
   readonly focus: boolean;
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
 interface SpaceDateBase {
@@ -33,7 +33,7 @@ interface SpaceDateBase {
   readonly title: string;
   /** YYYY-MM-DD */
   readonly date: string;
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
 export interface SpaceTaskDate extends SpaceDateBase { readonly kind: "task"; readonly done: boolean }
@@ -49,12 +49,12 @@ export interface Space {
   readonly purpose?: string;
   readonly createdAt?: string;
   readonly folders: readonly SpaceFolder[];
-  readonly papers: readonly SpacePaperRef[];
+  readonly papers: readonly SpaceReference[];
   readonly projects: readonly string[];
   readonly dates: readonly SpaceDate[];
   /** Entries this version cannot read, kept unchanged so a write puts them back after the valid entries. */
   readonly invalid: SpaceInvalidEntries;
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
 export interface SpaceInvalidEntries {
@@ -80,7 +80,7 @@ export type SpaceReadResult<P = string> =
 export interface GlossarySource {
   readonly paperId: string;
   readonly page?: number;
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
 export interface GlossaryTerm {
@@ -89,14 +89,14 @@ export interface GlossaryTerm {
   readonly symbol?: string;
   readonly definition: string;
   readonly source?: GlossarySource;
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
 export interface Glossary {
   readonly terms: readonly GlossaryTerm[];
   /** Terms this version cannot read, kept unchanged so a write puts them back after the valid terms. */
   readonly invalidTerms: readonly unknown[];
-  readonly extra: UnknownKeys;
+  readonly extra: UnknownFields;
 }
 
 export interface GlossaryReadResult {

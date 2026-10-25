@@ -1,6 +1,6 @@
 /** Pins the invite link: format/parse round trip and one typed error per malformed part. */
 import { bytesToBase64Url } from "../../../src/encoding/index";
-import { deriveShareId, generateShareKey } from "../../../src/collab/shareKey/index";
+import { deriveShareId, createShareKey } from "../../../src/collab/shareKey/index";
 import { assertInviteHasRelay, formatInvite, InviteWithoutRelayError, parseInvite } from "../../../src/collab/invite/index";
 
 const encodeRelays = (value: unknown): string => bytesToBase64Url(new TextEncoder().encode(JSON.stringify(value)));
@@ -13,7 +13,7 @@ const link = (segments: string[]): string => `labshelf://join#${segments.join(".
 
 describe("invite", () => {
   it("round-trips the key and relays", async () => {
-    const shareKey = generateShareKey();
+    const shareKey = createShareKey();
     const relays = [{ url: "https://relay.example.com/" }, { url: "https://r2.example.com", relayToken: "abc_-" }];
     const text = await formatInvite({ shareKey, relays });
     expect(text).toMatch(/^labshelf:\/\/join#v1\.[0-9a-f]{32}\./);
@@ -24,14 +24,14 @@ describe("invite", () => {
   });
 
   it("round-trips an empty relay list and accepts the link inside pasted text", async () => {
-    const shareKey = generateShareKey();
+    const shareKey = createShareKey();
     const text = await formatInvite({ shareKey, relays: [] });
     const parsed = await parseInvite(`  Join my share: ${text}\n`);
     expect(parsed).toEqual({ ok: true, invite: { shareId: await deriveShareId(shareKey), shareKey, relays: [] } });
   });
 
   it("accepts a link followed by sentence punctuation", async () => {
-    const text = await formatInvite({ shareKey: generateShareKey(), relays: [] });
+    const text = await formatInvite({ shareKey: createShareKey(), relays: [] });
     expect((await parseInvite(`Join (${text}).`)).ok).toBe(true);
   });
 
@@ -86,7 +86,7 @@ describe("invite", () => {
   });
 
   it("refuses an invite without a relay with a typed error", async () => {
-    const shareKey = generateShareKey();
+    const shareKey = createShareKey();
     const shareId = await deriveShareId(shareKey);
     expect(() => assertInviteHasRelay({ shareId, shareKey, relays: [] })).toThrow(InviteWithoutRelayError);
     expect(() => assertInviteHasRelay({ shareId, shareKey, relays: [{ url: "https://relay.example.com/" }] })).not.toThrow();

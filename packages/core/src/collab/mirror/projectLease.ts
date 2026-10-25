@@ -1,7 +1,7 @@
 // Keeps an owned folder lease alive: renews it, detects a foreign owner and releases it on close.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import type { LibraryFileSystem, ILogger } from "../../ports/index.js";
-import { leasePath, readLease, writeLease, type LeaseRecord } from "./leaseFile.js";
+import { deriveLeasePath, readLease, writeLease, type LeaseFileContent } from "./leaseFile.js";
 import type { LeaseScheduler } from "./mirrorScheduler.js";
 import { MirrorOwnershipLost } from "./mirrorLostError.js";
 
@@ -31,7 +31,7 @@ export class HeldFolderLease implements FolderLease {
   private queue: Promise<void> = Promise.resolve();
   private readonly stopRenewing: () => void;
 
-  constructor(private readonly options: HeldLeaseOptions, private readonly record: LeaseRecord) {
+  constructor(private readonly options: HeldLeaseOptions, private readonly record: LeaseFileContent) {
     this.stopRenewing = options.scheduler.every(LEASE_RENEW_MS, () => { this.queue = this.queue.then(() => this.renew()); });
   }
 
@@ -55,7 +55,7 @@ export class HeldFolderLease implements FolderLease {
     const { fs, folder, logger } = this.options;
     const current = await readLease(fs, folder, logger);
     if (current?.owner !== this.record.owner) { return; }
-    await fs.removeTree(leasePath(folder));
+    await fs.removeTree(deriveLeasePath(folder));
     await logger.log("INFO", LOG_MODULE, "Released the mirror lease", { folder });
   }
 
@@ -72,7 +72,7 @@ export class HeldFolderLease implements FolderLease {
     }
   }
 
-  private async markLost(holder: LeaseRecord): Promise<MirrorOwnershipLost> {
+  private async markLost(holder: LeaseFileContent): Promise<MirrorOwnershipLost> {
     if (this.lost) { return this.lost; }
     const error = new MirrorOwnershipLost(this.options.folder, { app: holder.app, renewedAt: holder.renewedAt });
     this.lost = error;

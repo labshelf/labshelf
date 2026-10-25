@@ -1,5 +1,5 @@
 // Builds the menus of a project: a row's right-click menu and the open project's title menu, from the commands that apply to it.
-import { projectShareMenuEntries, showMenu, type MenuEntry } from "@labshelf/core/dom";
+import { createProjectShareMenuEntries, showMenu, type MenuEntry } from "@labshelf/core/dom";
 import { OPEN_PROJECT_COMMANDS, PROJECT_COMMANDS, projectCommandApplies, type ProjectCommand } from "../projectCommands.js";
 import type { ShareHost, SidebarProjectItem } from "@labshelf/core";
 import type { SidebarToHost } from "../sidebarMessages.js";
@@ -30,7 +30,7 @@ function projectMenuEntries(project: SidebarProjectItem, post: (m: SidebarToHost
 
 /** @returns the sharing entries as their own group, with the separator that sets it apart */
 function shareGroup(sharing: ShareHost, project: SidebarProjectItem): MenuEntry[] {
-  const share = projectShareMenuEntries(sharing, { id: project.id, shared: !!project.shared });
+  const share = createProjectShareMenuEntries(sharing, { id: project.id, shared: !!project.shared });
   return share.length > 0 ? ["separator", ...share] : [];
 }
 

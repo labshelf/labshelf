@@ -3,7 +3,7 @@
 import { SPACE_FORMAT_VERSION } from "./space.js";
 import type { Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm } from "./space.js";
 import {
-  isNonEmptyString, isOptional, isPage, isRecord, isString, readEntries, topLevelReadOnlyReason, unknownKeys, withUnknownKeys,
+  isNonEmptyString, isOptional, isPage, isRecord, isString, readEntries, deriveTopLevelReadOnlyReason, deriveUnknownFields, withUnknownFields,
 } from "./json/index.js";
 
 const EMPTY: Glossary = { terms: [], invalidTerms: [], extra: {} };
@@ -14,7 +14,7 @@ const SOURCE_KEYS = ["paperId", "page"];
 function parseSource(raw: unknown): GlossarySource | undefined {
   if (!isRecord(raw) || !isNonEmptyString(raw["paperId"]) || !isOptional(raw["page"], isPage)) { return undefined; }
   const page = raw["page"] as number | undefined;
-  return { paperId: raw["paperId"], ...(page === undefined ? {} : { page }), extra: unknownKeys(raw, SOURCE_KEYS) };
+  return { paperId: raw["paperId"], ...(page === undefined ? {} : { page }), extra: deriveUnknownFields(raw, SOURCE_KEYS) };
 }
 
 function parseTerm(raw: unknown): GlossaryTerm | string {
@@ -25,7 +25,7 @@ function parseTerm(raw: unknown): GlossaryTerm | string {
   if (raw["source"] !== undefined && source === undefined) { return "source needs a paperId and an optional page number"; }
   return {
     id, term, ...(symbol === undefined ? {} : { symbol: symbol as string }), definition,
-    ...(source === undefined ? {} : { source }), extra: unknownKeys(raw, TERM_KEYS),
+    ...(source === undefined ? {} : { source }), extra: deriveUnknownFields(raw, TERM_KEYS),
   };
 }
 
@@ -41,19 +41,19 @@ export function parseGlossaryFile(text: string | undefined): GlossaryReadResult 
   if (!isRecord(raw)) { return { glossary: EMPTY, warnings: [], readOnlyReason: "glossary.json is not a JSON object; fix it to edit the glossary." }; }
   const warnings: string[] = [];
   const terms = readEntries(raw["terms"], "terms", parseTerm, warnings);
-  const glossary = { terms: terms.valid, invalidTerms: terms.raw, extra: unknownKeys(raw, GLOSSARY_KEYS) };
-  const readOnlyReason = topLevelReadOnlyReason(raw, "glossary.json");
+  const glossary = { terms: terms.valid, invalidTerms: terms.raw, extra: deriveUnknownFields(raw, GLOSSARY_KEYS) };
+  const readOnlyReason = deriveTopLevelReadOnlyReason(raw, "glossary.json");
   return { glossary, warnings, ...(readOnlyReason === undefined ? {} : { readOnlyReason }) };
 }
 
-const sourceJson = (source: GlossarySource) => withUnknownKeys({ paperId: source.paperId, page: source.page }, source.extra);
+const sourceJson = (source: GlossarySource) => withUnknownFields({ paperId: source.paperId, page: source.page }, source.extra);
 
-const termJson = (term: GlossaryTerm) => withUnknownKeys({
+const termJson = (term: GlossaryTerm) => withUnknownFields({
   id: term.id, term: term.term, symbol: term.symbol, definition: term.definition,
   source: term.source === undefined ? undefined : sourceJson(term.source),
 }, term.extra);
 
 export function serializeGlossaryFile(glossary: Glossary): string {
-  const doc = withUnknownKeys({ version: SPACE_FORMAT_VERSION, terms: [...glossary.terms.map(termJson), ...glossary.invalidTerms] }, glossary.extra);
+  const doc = withUnknownFields({ version: SPACE_FORMAT_VERSION, terms: [...glossary.terms.map(termJson), ...glossary.invalidTerms] }, glossary.extra);
   return `${JSON.stringify(doc, null, 2)}\n`;
 }

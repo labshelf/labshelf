@@ -5,7 +5,7 @@ import { PROTOCOL_VERSION } from "../../index.js";
 import type { HelperSend } from "../handlers/index.js";
 
 /** The page shows its own TeX setup on `toolchain-missing`, so the helper declines the install. */
-export function helperToolchainPrompt(id: string, send: HelperSend): TexSetupPrompt {
+export function createHelperToolchainAsk(id: string, send: HelperSend): TexSetupPrompt {
   const report = (message: string): void => send({ v: PROTOCOL_VERSION, id, type: "progress", phase: "installing-package", message });
   return {
     chooseInstall: () => Promise.resolve(undefined),

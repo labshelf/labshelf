@@ -1,5 +1,5 @@
 /** Verifies the papers tree and sidebar rows: nesting, resolved references, missing papers and unreadable Spaces. */
-import { buildPapersTree, sidebarRows } from "../../../src/spaces/viewModel/index";
+import { buildPapersTree, deriveSidebarRows } from "../../../src/spaces/viewModel/index";
 import { folder, library, paperRef, ready, space } from "./viewFixture";
 
 const lib = library({ id: "a", title: "Alpha", authors: ["X", "Y"], year: 2020, status: "reading" });
@@ -25,9 +25,9 @@ describe("buildPapersTree", () => {
   });
 });
 
-describe("sidebarRows", () => {
+describe("deriveSidebarRows", () => {
   it("gives a tree for readable Spaces and the id for unreadable ones", () => {
-    const rows = sidebarRows([ready(s), { state: "unreadable", id: "broken", path: "p", reason: "bad" }], lib);
+    const rows = deriveSidebarRows([ready(s), { state: "unreadable", id: "broken", path: "p", reason: "bad" }], lib);
     expect(rows[0]).toMatchObject({ id: "s", name: "Thesis", tree: buildPapersTree(s, lib) });
     expect(rows[1]).toEqual({ id: "broken", name: "broken", unreadable: "bad" });
   });

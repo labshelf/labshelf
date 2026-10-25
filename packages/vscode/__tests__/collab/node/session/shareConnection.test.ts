@@ -2,7 +2,7 @@
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { acquireFolderLease, type ILogger, type MirrorInput } from '@labshelf/core';
+import { openFolderLease, type ILogger, type MirrorInput } from '@labshelf/core';
 import { NodeLibraryFileSystem } from '@labshelf/core/node';
 import { desktopMirrorFactory } from '../../../../src/collab/node/session/shareConnection';
 
@@ -17,7 +17,7 @@ describe('desktopMirrorFactory', () => {
   afterEach(() => rm(folder, { recursive: true, force: true }));
 
   it('reports a folder another VS Code window holds as busy and leaves its files and lease alone', async () => {
-    const first = await acquireFolderLease({ fs: new NodeLibraryFileSystem(), folder, app: 'vscode', logger });
+    const first = await openFolderLease({ fs: new NodeLibraryFileSystem(), folder, app: 'vscode', logger });
     if (first.kind !== 'owned') { throw new Error('the first window did not take the lease'); }
     const leaseFile = join(folder, '.labshelf', 'mirror-lease.json');
     const lease = await readFile(leaseFile, 'utf8');

@@ -1,6 +1,6 @@
 /** Builds Spaces, library entries and project infos for the view tests. */
 import type { Space, SpaceDate, SpaceReadResult } from "../../../src/spaces/model/index";
-import type { SpaceProjectInfo } from "../../../src/spaces/viewModel/index";
+import type { SpaceProjectEntry } from "../../../src/spaces/viewModel/index";
 import type { PaperRecord } from "../../../src/model/index";
 
 export const emptyInvalid = { folders: [], papers: [], projects: [], dates: [] };
@@ -29,6 +29,6 @@ export function ready(s: Space): SpaceReadResult<string> {
   return { state: "ready", path: `/spaces/${s.id}/space.json`, space: s, warnings: [] };
 }
 
-export function project(projectId: string, over: Partial<SpaceProjectInfo> = {}): SpaceProjectInfo {
+export function project(projectId: string, over: Partial<SpaceProjectEntry> = {}): SpaceProjectEntry {
   return { projectId, title: `Project ${projectId}`, available: true, ...over };
 }

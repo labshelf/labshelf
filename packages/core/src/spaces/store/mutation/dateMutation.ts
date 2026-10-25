@@ -35,7 +35,7 @@ export function withUpdatedDate(space: Space, dateId: string, draft: SpaceDateDr
   return { ...space, dates: space.dates.map((date) => (date.id === dateId ? next : date)) };
 }
 
-export function withoutDate(space: Space, dateId: string): Space {
+export function withDateRemoved(space: Space, dateId: string): Space {
   return { ...space, dates: space.dates.filter((date) => date.id !== dateId) };
 }
 

@@ -1,5 +1,5 @@
 // Pins the browser share list store: per-library text in extension storage, sections serialised by a Web Lock, malformed text kept.
-import { buildShare, revokeShare, updateShareRegistry, uploadShare, type ILogger, type ShareBackend } from "@labshelf/core";
+import { buildShare, removeShare, updateShareRegistry, uploadShare, type ILogger, type ShareBackend } from "@labshelf/core";
 import { createBrowserShareRegistryStore, type ShareListArea } from "../../src/share";
 import { installFakeLocks } from "../support/fakeLocks";
 
@@ -81,7 +81,7 @@ describe("createBrowserShareRegistryStore", () => {
     await store.write("{not json");
     const share = await buildShare({ folderName: "A", papers: [], withAnnotations: false });
     await expect(uploadShare({ share, relayUrl: "https://r.example.workers.dev", backend: refusingBackend, registry: store, logger })).rejects.toThrow(/not JSON/);
-    await expect(revokeShare(SHARE_ID, { registry: store, backendFor: () => refusingBackend, logger })).rejects.toThrow(/not JSON/);
+    await expect(removeShare(SHARE_ID, { registry: store, backendFor: () => refusingBackend, logger })).rejects.toThrow(/not JSON/);
     await expect(store.read()).resolves.toBe("{not json");
   });
 });

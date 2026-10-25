@@ -1,7 +1,7 @@
 // Stores a project's comment threads in its .labshelf/comments.json over the page's library folder and places them in the project's files.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import {
-  addThread, anchorFor, COMMENTS_PATH, commentThreads, editCommentsDocument, loadCommentsDocument, locateThread, posixPathOps, replyToThread, setThreadResolved,
+  addThread, deriveAnchor, COMMENTS_PATH, deriveCommentThreads, updateCommentsDocument, loadCommentsDocument, findThread, posixPathOps, addThreadReply, setThreadResolved,
   type Comment, type CommentsFileAccess, type CommentThread, type ILogger, type LibraryFileSystem, type TextRange,
 } from "@labshelf/core";
 import type { ProjectSession } from "../../writing/session";
@@ -60,9 +60,9 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
     const file = posixPathOps.join(folder, path);
     return await fs.exists(file) ? fs.readText(file) : undefined;
   };
-  const edit = async (folder: string, change: Parameters<typeof editCommentsDocument>[1], action: string): Promise<void> => {
+  const edit = async (folder: string, change: Parameters<typeof updateCommentsDocument>[1], action: string): Promise<void> => {
     try {
-      await editCommentsDocument(accessOf(folder), change);
+      await updateCommentsDocument(accessOf(folder), change);
     } catch (error) {
       await logger.error(MODULE, error, { action, folder });
       throw error;
@@ -73,7 +73,7 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
   const stored = async (folder: string): Promise<CommentThread[]> => {
     const doc = await loadCommentsDocument(accessOf(folder));
     if (!doc) { throw new Error(`${COMMENTS_PATH} is not valid JSON with a threads list. Fix the file to see and add comments.`); }
-    return commentThreads(doc);
+    return deriveCommentThreads(doc);
   };
 
   const threads: CommentThreads["threads"] = async (projectId, path) => {
@@ -83,7 +83,7 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
     for (const file of new Set(inFile.map((each) => each.file))) { texts.set(file, await readFileText(folder, file)); }
     return inFile.map((each) => {
       const text = texts.get(each.file);
-      const range = text === undefined ? "detached" : locateThread(each, text);
+      const range = text === undefined ? "detached" : findThread(each, text);
       return { ...each, line: range === "detached" ? undefined : lineAt(text!, range.start) };
     });
   };
@@ -92,7 +92,7 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
     const folder = openFolder(projectId);
     const text = await readFileText(folder, path);
     if (text === undefined) { return []; }
-    const located = (await stored(folder)).filter((each) => each.file === path && !each.resolved).map((each) => locateThread(each, text));
+    const located = (await stored(folder)).filter((each) => each.file === path && !each.resolved).map((each) => findThread(each, text));
     return located.filter((each): each is TextRange => each !== "detached");
   };
 
@@ -117,10 +117,10 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
       const folder = openFolder(projectId);
       const source = await readFileText(folder, path);
       if (source === undefined) { throw new Error(`${path} does not exist in the project, so it cannot be commented`); }
-      const thread: CommentThread = { id: globalThis.crypto.randomUUID(), file: path, anchor: anchorFor(source, range.start, range.end), comments: [newComment(text)], resolved: false };
+      const thread: CommentThread = { id: globalThis.crypto.randomUUID(), file: path, anchor: deriveAnchor(source, range.start, range.end), comments: [newComment(text)], resolved: false };
       await edit(folder, (doc) => addThread(doc, thread), "add a comment");
     },
-    reply: (threadId, text) => edit(openFolder(), (doc) => replyToThread(doc, threadId, newComment(text)), "reply to a comment"),
+    reply: (threadId, text) => edit(openFolder(), (doc) => addThreadReply(doc, threadId, newComment(text)), "reply to a comment"),
     resolve: (threadId) => edit(openFolder(), (doc) => setThreadResolved(doc, threadId, true), "resolve a comment"),
   };
 }

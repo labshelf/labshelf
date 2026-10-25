@@ -1,5 +1,5 @@
 // Encrypts a share's manifest under its link key and its PDF parts convergently, and opens and verifies both.
-import { openFrame, sealFrame, type FrameContext, type WebCryptoKey } from "../collab/shareKey/index.js";
+import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/shareKey/index.js";
 import { deriveSha256Hex } from "../hash/index.js";
 import { decodeShareManifest, type ShareManifest, type SharedPdfPart } from "./shareManifest.js";
 
@@ -19,20 +19,20 @@ async function hkdfBits(ikm: Uint8Array, info: string, bytes: number): Promise<U
   return new Uint8Array(await crypto.subtle.deriveBits(params, base, bytes * 8));
 }
 
-function aesKey(raw: Uint8Array): Promise<WebCryptoKey> {
+function aesKey(raw: Uint8Array): Promise<DerivedShareKey> {
   return crypto.subtle.importKey("raw", raw as Uint8Array<ArrayBuffer>, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
-async function manifestKey(linkKey: Uint8Array): Promise<WebCryptoKey> {
+async function manifestKey(linkKey: Uint8Array): Promise<DerivedShareKey> {
   return aesKey(await hkdfBits(linkKey, MANIFEST_INFO, 32));
 }
 
-export async function sealManifest(linkKey: Uint8Array, shareId: string, manifest: ShareManifest): Promise<Uint8Array> {
+export async function sealShareManifest(linkKey: Uint8Array, shareId: string, manifest: ShareManifest): Promise<Uint8Array> {
   return sealFrame(await manifestKey(linkKey), manifestContext(shareId), new TextEncoder().encode(JSON.stringify(manifest)));
 }
 
 /** Undefined when the bytes do not open under this key and share id, or do not hold a manifest of this version. */
-export async function openManifest(linkKey: Uint8Array, shareId: string, sealed: Uint8Array): Promise<ShareManifest | undefined> {
+export async function openShareManifest(linkKey: Uint8Array, shareId: string, sealed: Uint8Array): Promise<ShareManifest | undefined> {
   const opened = await openFrame(await manifestKey(linkKey), manifestContext(shareId), sealed);
   if (!opened.ok) { return undefined; }
   try {
@@ -48,14 +48,14 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 // INVARIANT: the key and nonce derive from the plaintext's hash, so a key only ever seals that one plaintext and the fixed nonce is safe.
-async function blobCipher(contentHash: string): Promise<{ key: WebCryptoKey; iv: Uint8Array<ArrayBuffer> }> {
+async function blobCipher(contentHash: string): Promise<{ key: DerivedShareKey; iv: Uint8Array<ArrayBuffer> }> {
   const bits = await hkdfBits(hexToBytes(contentHash), BLOB_INFO, 32 + NONCE_BYTES);
   return { key: await aesKey(bits.subarray(0, 32)), iv: bits.slice(32) };
 }
 
-export interface SealedBlob { part: SharedPdfPart; bytes: Uint8Array }
+export interface SealedShareBlob { part: SharedPdfPart; bytes: Uint8Array }
 
-export async function sealBlob(plaintext: Uint8Array): Promise<SealedBlob> {
+export async function sealShareBlob(plaintext: Uint8Array): Promise<SealedShareBlob> {
   const content = await deriveSha256Hex(plaintext);
   const { key, iv } = await blobCipher(content);
   const sealed = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext as Uint8Array<ArrayBuffer>);
@@ -66,7 +66,7 @@ export async function sealBlob(plaintext: Uint8Array): Promise<SealedBlob> {
 }
 
 /** Undefined unless the bytes hash to the part's blob, open under its key, and decrypt to its content hash and size. */
-export async function openBlob(part: SharedPdfPart, bytes: Uint8Array): Promise<Uint8Array | undefined> {
+export async function openShareBlob(part: SharedPdfPart, bytes: Uint8Array): Promise<Uint8Array | undefined> {
   if (bytes[0] !== BLOB_VERSION || (await deriveSha256Hex(bytes)) !== part.blob) { return undefined; }
   const { key, iv } = await blobCipher(part.content);
   let plaintext: Uint8Array;

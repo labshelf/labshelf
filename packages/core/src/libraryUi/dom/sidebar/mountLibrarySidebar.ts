@@ -27,7 +27,7 @@ import {
 } from "./sidebarView.js";
 import { runSpaceRow, showSpaceMenu, type SidebarSpaceActions, updateSpaceRowOpen } from "./spaces/index.js";
 import type { SidebarRow } from "../../../spaces/viewModel/index.js";
-import { runImportLinkDialog, runManageLinksDialog, runShareFolderDialog } from "../../../share/dom/index.js";
+import { runImportShareLinkDialog, runManageShareLinksDialog, runShareFolderDialog } from "../../../share/dom/index.js";
 import { showMenu, type MenuEntry } from "../../../ui/dom/index.js";
 
 const depthOf = (r: HTMLElement): number => Number(r.style.getPropertyValue("--depth") || 0);
@@ -90,8 +90,8 @@ function showFolderMenu(at: At, actions: SidebarActions, sharing: ShareHost | un
 function libraryHeadingMenu(e: MouseEvent, r: HTMLElement | null, sharing: ShareHost | undefined): boolean {
   if (r?.dataset["section"] !== "library" || !sharing?.offers().links) return false;
   showMenu({ x: e.clientX, y: e.clientY }, [
-    { label: "Manage Shared Links…", icon: "link", onSelect: () => void runManageLinksDialog(sharing) },
-    { label: "Import Shared Link…", icon: "download", onSelect: () => void runImportLinkDialog(sharing) },
+    { label: "Manage Shared Links…", icon: "link", onSelect: () => void runManageShareLinksDialog(sharing) },
+    { label: "Import Shared Link…", icon: "download", onSelect: () => void runImportShareLinkDialog(sharing) },
   ]);
   e.preventDefault();
   return true;

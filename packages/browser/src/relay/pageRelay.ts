@@ -5,7 +5,7 @@ import {
   formatError,
   type CloudflareAccount,
 } from "@labshelf/core";
-import { toast, quickPick, showDialog } from "@labshelf/core/dom";
+import { showToast, pickQuickEntry, showDialog } from "@labshelf/core/dom";
 import { createBrowserRelayAccount, type BrowserRelayAccount } from "./browserRelayAccount";
 import { RelaySignInCancelledError } from "./watchRedirectTab";
 
@@ -24,7 +24,7 @@ async function confirmConnect(): Promise<boolean> {
 }
 
 async function chooseAccount(accounts: CloudflareAccount[]): Promise<string | undefined> {
-  return quickPick(accounts.map((account) => ({ label: account.name, description: account.id, icon: "cloud" as const, value: account.id })), {
+  return pickQuickEntry(accounts.map((account) => ({ label: account.name, description: account.id, icon: "cloud" as const, value: account.id })), {
     title: "Connect Cloudflare", placeholder: "Account to set up the relay in",
   });
 }
@@ -110,17 +110,17 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
     relay, logger,
     confirmConnect: async () => {
       if (!(await confirmConnect())) { return false; }
-      toast("LabShelf sets up your relay once you allow it in the Cloudflare tab. The first time takes up to 4 minutes.");
+      showToast("LabShelf sets up your relay once you allow it in the Cloudflare tab. The first time takes up to 4 minutes.");
       return true;
     },
-    showFailure: (message) => { toast(message, "error"); },
+    showFailure: (message) => { showToast(message, "error"); },
   };
   const requireBrowserRelay = (): Promise<RelayAccount | undefined> => requireRelay(deps);
   const disconnect = async (relayUrl: string): Promise<void> => {
     if (!(await confirmDisconnect(relayUrl))) { return; }
     try {
       await relay.disconnect();
-      toast("Cloudflare disconnected, and your relay is deleted.", "ok");
+      showToast("Cloudflare disconnected, and your relay is deleted.", "ok");
     } catch (error) {
       reportRelayFailure(deps, "disconnect Cloudflare", error);
     }
@@ -131,7 +131,7 @@ export function createPageRelay(options: PageRelayOptions): PageRelay {
       const status = await relay.status();
       if (status) { return disconnect(status.relayUrl); }
       const account = await requireBrowserRelay();
-      if (account) { toast(`Cloudflare connected, with your relay at ${new URL(account.relayUrl).host}.`, "ok"); }
+      if (account) { showToast(`Cloudflare connected, with your relay at ${new URL(account.relayUrl).host}.`, "ok"); }
     },
   };
 }

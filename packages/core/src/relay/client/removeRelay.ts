@@ -3,7 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import { createCloudflareClient } from "./cloudflareClient.js";
 import { CloudflareApiError } from "./cloudflareError.js";
 
-export interface DeleteRelayOptions {
+export interface RemoveRelayOptions {
   token: string;
   accountId: string;
   workerName: string;
@@ -13,7 +13,7 @@ export interface DeleteRelayOptions {
 }
 
 /** Tries both deletions, treats a missing resource as deleted and throws the first other failure afterwards. */
-export async function deleteRelay(options: DeleteRelayOptions): Promise<void> {
+export async function removeRelay(options: RemoveRelayOptions): Promise<void> {
   const { accountId, workerName, kvNamespaceId, logger } = options;
   const client = createCloudflareClient({ token: options.token, fetch: options.fetch, logger });
   const account = `/accounts/${accountId}`;

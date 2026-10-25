@@ -9,7 +9,7 @@ export interface RelayCursorStore {
   setHeld(docKey: string, snapshot: Uint8Array): void;
 }
 
-export function memoryCursorStore(): RelayCursorStore {
+export function createMemoryCursorStore(): RelayCursorStore {
   const cursors = new Map<string, number>();
   const held = new Map<string, Uint8Array>();
   return {

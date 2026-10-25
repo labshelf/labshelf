@@ -1,7 +1,7 @@
 // Finds the balanced fenced divs of Markdown lines, reading div and code fences as Pandoc does.
 // CONTRACT: documents/contracts/qmd-items.md#items
-import { codeFences } from "./fences.js";
-import { isBlankLine, lineContent } from "./lines.js";
+import { findCodeFences } from "./fences.js";
+import { isBlankLine, extractLineContent } from "./lines.js";
 
 /** A top-level div: indices of its opening and closing lines. */
 export interface DivRange { readonly open: number; readonly close: number }
@@ -16,7 +16,7 @@ const HEADING = /^#{1,6}(?:[ \t]|$)/;
  * The top-level divs of `lines`. An opening line without a matching closing line is ordinary text and the scan
  * goes on after it, so one broken fence never hides the divs that follow.
  */
-export function topLevelDivs(lines: readonly string[]): DivRange[] {
+export function findTopLevelDivs(lines: readonly string[]): DivRange[] {
   const kinds = lineKinds(lines);
   const divs: DivRange[] = [];
   for (let i = 0; i < kinds.length; i++) {
@@ -54,7 +54,7 @@ function divClose(kinds: readonly LineKind[], open: number): number | undefined 
  * opening line does not, so an opening line right after paragraph text is text.
  */
 function lineKinds(lines: readonly string[]): LineKind[] {
-  const fences = codeFences(lines);
+  const fences = findCodeFences(lines);
   const fenceCloses = new Set(fences.values());
   const kinds: LineKind[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -64,7 +64,7 @@ function lineKinds(lines: readonly string[]): LineKind[] {
       i -= 1;
       continue;
     }
-    const content = lineContent(lines[i]!);
+    const content = extractLineContent(lines[i]!);
     if (DIV_CLOSE.test(content)) {
       kinds.push("close");
     } else if (DIV_OPEN.test(content) && startsBlock(lines, i, fenceCloses)) {
@@ -78,6 +78,6 @@ function lineKinds(lines: readonly string[]): LineKind[] {
 
 function startsBlock(lines: readonly string[], index: number, fenceCloses: ReadonlySet<number>): boolean {
   if (index === 0 || fenceCloses.has(index - 1)) { return true; }
-  const previous = lineContent(lines[index - 1]!);
+  const previous = extractLineContent(lines[index - 1]!);
   return isBlankLine(previous) || DIV_CLOSE.test(previous) || DIV_OPEN.test(previous) || HEADING.test(previous);
 }

@@ -4,8 +4,8 @@
  */
 import { formatAuthors } from "../../../library/index.js";
 import { deriveVenue } from "../../../model/index.js";
-import { el, highlight } from "../../../ui/dom/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { renderElement, renderHighlightedHtml } from "../../../ui/dom/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import type { ListPaper } from "../../viewModel/index.js";
 import { COLUMN_KEYS, type ListColumn } from "../../store/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
@@ -40,15 +40,15 @@ function tagsHtml(tags: readonly string[] | undefined): string {
 }
 
 function titleCell(p: ListPaper, v: RowView): string {
-  return `<div class="col-title title-cell" title="${escapeHtml(p.title)}"><span class="title-text">${highlight(p.title, v.terms)}</span>` +
+  return `<div class="col-title title-cell" title="${escapeHtml(p.title)}"><span class="title-text">${renderHighlightedHtml(p.title, v.terms)}</span>` +
     renderTextLayerIconHtml(p, v.job, v.textLayer) + tagsHtml(p.tags) + `</div>`;
 }
 
 function optionalCells(p: ListPaper, v: RowView): string {
   const cells: Record<ListColumn, () => string> = {
-    creator: () => `<div class="col-meta col-creator" title="${escapeHtml((p.authors ?? []).join(", "))}">${highlight(formatAuthors(p.authors), v.terms)}</div>`,
-    venue: () => `<div class="col-meta col-venue" title="${escapeHtml(deriveVenue(p))}">${highlight(deriveVenue(p), v.terms)}</div>`,
-    year: () => `<div class="col-meta col-year">${p.year ? highlight(p.year, v.terms) : ""}</div>`,
+    creator: () => `<div class="col-meta col-creator" title="${escapeHtml((p.authors ?? []).join(", "))}">${renderHighlightedHtml(formatAuthors(p.authors), v.terms)}</div>`,
+    venue: () => `<div class="col-meta col-venue" title="${escapeHtml(deriveVenue(p))}">${renderHighlightedHtml(deriveVenue(p), v.terms)}</div>`,
+    year: () => `<div class="col-meta col-year">${p.year ? renderHighlightedHtml(p.year, v.terms) : ""}</div>`,
     lastRead: () => renderLastReadHtml(v.stats),
     status: () => `<div class="col-meta col-status">${renderReadingStatusMarkHtml(p.status)}</div>`,
   };
@@ -56,7 +56,7 @@ function optionalCells(p: ListPaper, v: RowView): string {
 }
 
 function rowHtml(p: ListPaper, v: RowView, expanded: boolean): string {
-  const twistie = `<div class="expand-btn${expanded ? "" : " collapsed"}" title="Attachments">${icon("chevron-down")}</div>`;
+  const twistie = `<div class="expand-btn${expanded ? "" : " collapsed"}" title="Attachments">${renderIcon("chevron-down")}</div>`;
   return `<div class="paper-row-main" role="row" aria-level="1" aria-selected="false" tabindex="-1" aria-expanded="${expanded}">` + twistie + titleCell(p, v) +
       optionalCells(p, v) +
     `</div>` +
@@ -81,7 +81,7 @@ function wireMain(row: HTMLElement, p: ListPaper, h: RowHandlers): void {
 /** Builds one paper row; every paper expands, since its tray holds at least the Note row. */
 export function buildPaperRow(p: ListPaper, v: RowView, h: RowHandlers): HTMLElement {
   const expanded = h.isOpen(p.id);
-  const row = el("div", { class: `paper-row${expanded ? " expanded" : ""}${p.relFolder === "" ? "" : " in-group"}`, role: "none", "data-id": p.id, html: rowHtml(p, v, expanded) });
+  const row = renderElement("div", { class: `paper-row${expanded ? " expanded" : ""}${p.relFolder === "" ? "" : " in-group"}`, role: "none", "data-id": p.id, html: rowHtml(p, v, expanded) });
   row.draggable = true;
   row.querySelectorAll('[role="row"] > div').forEach((cell) => cell.setAttribute("role", "gridcell"));
   const expandBtn = row.querySelector<HTMLElement>(".expand-btn");

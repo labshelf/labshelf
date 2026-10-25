@@ -1,13 +1,13 @@
 /**
  * Tests the storage-free theme functions: resolving auto and cycling the preference.
  */
-import { nextThemePref, resolveTheme } from "../../../src/ui/dom/theme";
+import { deriveNextThemePref, resolveTheme } from "../../../src/ui/dom/theme";
 
-describe("nextThemePref", () => {
+describe("deriveNextThemePref", () => {
   it("cycles auto, light, dark, then back to auto", () => {
-    expect(nextThemePref("auto")).toBe("light");
-    expect(nextThemePref("light")).toBe("dark");
-    expect(nextThemePref("dark")).toBe("auto");
+    expect(deriveNextThemePref("auto")).toBe("light");
+    expect(deriveNextThemePref("light")).toBe("dark");
+    expect(deriveNextThemePref("dark")).toBe("auto");
   });
 });
 

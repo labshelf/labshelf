@@ -1,6 +1,6 @@
 // Defines the browser project connection exposed to source editors and preview tabs.
 import type { AutoCompileMode, ILogger, LatexEngine, ProjectEntry } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult, HelperStatus, ILatexHelper } from "@labshelf/core/helper";
+import type { CompileMode, HelperCompileResult, HelperState, ILatexHelper } from "@labshelf/core/helper";
 import type { BuildTimers } from "../../writing/preview";
 import type { ProblemStore } from "./problemStore";
 
@@ -19,9 +19,9 @@ export type EditorHelperPort = Pick<ILatexHelper, "status"> & {
 };
 
 export interface HelperProject {
-  status(): HelperStatus | undefined;
+  status(): HelperState | undefined;
   /** Connects to the helper and opens the session's project there once it is ready. */
-  connect(): Promise<HelperStatus>;
+  connect(): Promise<HelperState>;
   /** The helper for the setup card: its `connect` also opens the session's project. */
   setupHelper: ILatexHelper;
   /** The helper while it is ready, else undefined. */

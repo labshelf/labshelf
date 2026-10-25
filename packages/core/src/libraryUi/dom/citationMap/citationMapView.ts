@@ -1,6 +1,6 @@
 // Shows the citation map in place of the paper list while the host has one open: its graph, then the missing works.
 
-import { icon, escapeHtml } from "../../../ui/index.js";
+import { renderIcon, escapeHtml } from "../../../ui/index.js";
 import type { CitationMapState, CitationMapView } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
 import { GRAPH_MAX_RADIUS, createCitationMapGraph, deriveForceLayout, type GraphNode, type Point } from "../../citationMap/index.js";
@@ -51,7 +51,7 @@ function markImporting(list: ParentNode, importing: ReadonlySet<string>): void {
     if (busy === (btn.getAttribute("aria-busy") === "true")) continue;
     btn.disabled = busy;
     btn.setAttribute("aria-busy", String(busy));
-    btn.innerHTML = busy ? `<span class="spin">${icon("loader")}</span><span>Importing…</span>` : "Import";
+    btn.innerHTML = busy ? `<span class="spin">${renderIcon("loader")}</span><span>Importing…</span>` : "Import";
   }
 }
 
@@ -92,18 +92,18 @@ function citationGraphSvg(map: CitationMapView): string {
 }
 
 function loadingMarkup(): string {
-  return `<div class="list-loading"><span class="spin">${icon("loader")}</span> Looking up what your papers cite…</div>`;
+  return `<div class="list-loading"><span class="spin">${renderIcon("loader")}</span> Looking up what your papers cite…</div>`;
 }
 
 function failedMarkup(message: string): string {
-  return `<div class="ls-empty"><div class="ls-empty-icon">${icon("warning")}</div>` +
+  return `<div class="ls-empty"><div class="ls-empty-icon">${renderIcon("warning")}</div>` +
     `<div class="ls-empty-text">The citation map could not be built</div>` +
     `<div class="ls-empty-hint">${escapeHtml(message)}</div>` +
-    `<button class="ls-btn" type="button" data-act="refresh">${icon("refresh")}<span>Try again</span></button></div>`;
+    `<button class="ls-btn" type="button" data-act="refresh">${renderIcon("refresh")}<span>Try again</span></button></div>`;
 }
 
 function emptyMarkup(): string {
-  return `<div class="ls-empty"><div class="ls-empty-icon">${icon("link")}</div>` +
+  return `<div class="ls-empty"><div class="ls-empty-icon">${renderIcon("link")}</div>` +
     `<div class="ls-empty-text">No often-cited works are missing from your library</div>` +
     `<div class="ls-empty-hint">Works cited by at least 3 of your papers appear here. Only papers with a DOI are looked up, ` +
     `so add DOIs to papers that lack one.</div></div>`;
@@ -112,10 +112,10 @@ function emptyMarkup(): string {
 const HIGHLIGHT_MS = 1600;
 
 const headerHtml = `
-  <button class="crumb" type="button" data-act="back" title="Back to the paper list">${icon("arrow-left")}<span>Papers</span></button>
+  <button class="crumb" type="button" data-act="back" title="Back to the paper list">${renderIcon("arrow-left")}<span>Papers</span></button>
   <h2 class="cm-title-bar">Citation map</h2>
   <span class="tb-spacer"></span>
-  <button class="ls-icon-btn" type="button" data-act="refresh" title="Look the citations up again">${icon("refresh")}</button>`;
+  <button class="ls-icon-btn" type="button" data-act="refresh" title="Look the citations up again">${renderIcon("refresh")}</button>`;
 
 function readyMarkup(map: CitationMapView, graph: string, open: ReadonlySet<string>): string {
   const list = map.missing.length ? missingWorkList(map, open) : emptyMarkup();

@@ -1,6 +1,6 @@
 // Maintains the browser project's connection to the compilation helper.
 import type { ProjectEntry } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult, HelperStatus } from "@labshelf/core/helper";
+import type { CompileMode, HelperCompileResult, HelperState } from "@labshelf/core/helper";
 import { assemblePdf, createBuildScheduler, type BuildScheduler } from "../../writing/preview";
 import { createProblemStore } from "./problemStore";
 import type { BuildEvent, BuildPatch, BuildSettings, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProject";
@@ -108,7 +108,7 @@ class HelperProjectSession {
     }
   }
 
-  async connect(): Promise<HelperStatus> {
+  async connect(): Promise<HelperState> {
     const status = await this.options.helper.connect();
     await this.openWanted();
     return status;

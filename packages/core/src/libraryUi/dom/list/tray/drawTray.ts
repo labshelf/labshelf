@@ -5,18 +5,18 @@ import type { UiContext } from "../../uiContext.js";
 import { deriveTrayEntries, type TrayEntry, SHORT_NOTE_PLACEHOLDER } from "./fileFacts.js";
 import { addRowActions } from "./trayActions.js";
 import { buildFailedRow, buildLoadingRow, buildTrayRow } from "./trayRows.js";
-import { el } from "../../../../ui/dom/index.js";
+import { renderElement } from "../../../../ui/dom/index.js";
 
 const MAX_LENGTH = 140;
 const PDF_NAME = "paper.pdf";
 
 function noteButton(text: string, empty: boolean): HTMLButtonElement {
   const label = empty ? "Edit short note" : `Edit short note: ${text}`;
-  return el("button", { class: `file-fact-btn${empty ? " empty" : ""}`, type: "button", "aria-label": label, text });
+  return renderElement("button", { class: `file-fact-btn${empty ? " empty" : ""}`, type: "button", "aria-label": label, text });
 }
 
 function noteInput(value: string): HTMLInputElement {
-  return el("input", { class: "file-fact-input", type: "text", value, maxlength: String(MAX_LENGTH), spellcheck: "false", autocomplete: "off", "aria-label": "Short note" });
+  return renderElement("input", { class: "file-fact-input", type: "text", value, maxlength: String(MAX_LENGTH), spellcheck: "false", autocomplete: "off", "aria-label": "Short note" });
 }
 
 /** Fills the fact cell of the paper.pdf row with the short note and lets a click turn it into a text field; other rows are left alone. */

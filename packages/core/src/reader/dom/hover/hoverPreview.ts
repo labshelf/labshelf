@@ -8,7 +8,7 @@ import { sameTarget, type HoverTarget, type PopupContent, type ExplicitDest } fr
 import { findLink, LinkContent, linkHoverTarget } from "./destAnchor.js";
 import { HoverPopup, textContent } from "./popup.js";
 import { runUnderPointer, TextTargets } from "./textAnchor.js";
-import { $ } from "../../../ui/dom/index.js";
+import { findElement } from "../../../ui/dom/index.js";
 import type { FloatKind, InTextRef } from "../../text/index.js";
 
 const MAX_MARKER_ENTRIES = 3;
@@ -111,7 +111,7 @@ export class HoverPreview {
   ) {
     this.links = new LinkContent(ctx, resolver, preview, citations);
     this.references = new ReferenceContent(ctx, resolver, floats, preview, citations);
-    const viewer = $("viewer");
+    const viewer = findElement("viewer");
     viewer.addEventListener("mouseover", (e) => this.onOver(e));
     viewer.addEventListener("mouseout", (e) => this.onOut(e));
     viewer.addEventListener("mousemove", (e) => this.onTextMove(e), { passive: true });

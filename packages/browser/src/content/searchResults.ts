@@ -16,7 +16,7 @@ import {
   PAPERS_DIR,
   formatError,
   formatFolderPathLabel,
-  icon,
+  renderIcon,
   formatPdfSourceLabel,
   type IconName,
 } from "@labshelf/core";
@@ -106,7 +106,7 @@ const LABELS: Record<ButtonState, { glyph: IconName; text: string }> = {
 function setState(m: ResultButton, state: ButtonState, title: string): void {
   m.box.dataset["state"] = state;
   const { glyph, text } = LABELS[state];
-  m.main.innerHTML = `<span class="lsx-mark">${icon(glyph)}</span><span></span>`;
+  m.main.innerHTML = `<span class="lsx-mark">${renderIcon(glyph)}</span><span></span>`;
   m.main.querySelector("span:last-child")!.textContent = text;
   m.main.title = title;
   m.main.setAttribute("aria-label", title);
@@ -186,7 +186,7 @@ function mountResultButton(host: HTMLElement, hit: SearchHit, hostStyle: string)
   box.innerHTML =
     `<button class="lsx-main" type="button"></button>` +
     `<span class="lsx-sep" aria-hidden="true"></span>` +
-    `<button class="lsx-caret" type="button" title="Save to a folder…" aria-label="Save to a folder" aria-haspopup="menu">${icon("chevron-down")}</button>`;
+    `<button class="lsx-caret" type="button" title="Save to a folder…" aria-label="Save to a folder" aria-haspopup="menu">${renderIcon("chevron-down")}</button>`;
   root.append(box);
 
   const m: ResultButton = { hit, box, main: box.querySelector(".lsx-main")!, caret: box.querySelector(".lsx-caret")! };

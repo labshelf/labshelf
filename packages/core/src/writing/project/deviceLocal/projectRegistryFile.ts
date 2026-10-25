@@ -15,7 +15,7 @@ export interface ProjectRegistryFileContext {
   registryPath: string;
 }
 
-// PLATFORM: adapters report a missing file differently (ENOENT, a bridge `notFound`, a plain Error), so absence is asked of `exists`.
+// PLATFORM: adapters report a missing file differently (ENOENT, a bridge `createNotFoundAnswer`, a plain Error), so absence is asked of `exists`.
 async function readRegistryText(fs: LibraryFileSystem, file: string): Promise<string | undefined> {
   if (!(await fs.exists(file))) { return undefined; }
   return fs.readText(file);

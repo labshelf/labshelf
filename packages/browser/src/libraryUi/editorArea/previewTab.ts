@@ -1,6 +1,6 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
 import type { BuildOptions, LatexEngine } from "@labshelf/core";
-import { el } from "@labshelf/core/dom";
+import { renderElement } from "@labshelf/core/dom";
 import { mountHelperSetupCard } from "../../helper/setup";
 import { bx, getSettings, updateSettings } from "../../platform";
 import { createBrowserProjectData } from "../../writing/project";
@@ -16,7 +16,7 @@ function buildOptionsOf(project: { format?: string; engine?: LatexEngine | undef
 export const mountTab: TabModule["mountTab"] = (host, params, { project, logger, fs, workspace }) => {
   const { helperProject, session } = project();
   const projectId = params["projectId"] ?? "";
-  const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
   let current: { dispose(): void } | undefined;
   let showingFrame = false;
   let disposed = false;
@@ -44,7 +44,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     showFrame().catch((error: unknown) => logger.error("preview", error, { action: "showFrame", projectId }));
   };
   const showSetup = (): void => {
-    const card = el("div", { class: "ls-preview-setup" });
+    const card = renderElement("div", { class: "ls-preview-setup" });
     body.replaceChildren(card);
     current = mountHelperSetupCard(card, helperProject.setupHelper, {
       logger,

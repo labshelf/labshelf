@@ -1,15 +1,15 @@
 /** Drives the #hover-popup element: fills it with a title, actions and body, places it next to its anchor and hides it. */
 import { clamp, iconButton } from "../elements/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { PopupContent } from "./hoverAnchor.js";
-import { $, el } from "../../../ui/dom/index.js";
+import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 export function textContent(texts: string[], jump: () => void): PopupContent {
-  return { title: "Reference", body: el("div", { class: "rd-hover-text" }, ...texts.map((t) => el("p", {}, t))), copyText: texts.join("\n\n"), jump };
+  return { title: "Reference", body: renderElement("div", { class: "rd-hover-text" }, ...texts.map((t) => renderElement("p", {}, t))), copyText: texts.join("\n\n"), jump };
 }
 
 export class HoverPopup {
-  private readonly el = $("hover-popup");
+  private readonly el = findElement("hover-popup");
 
   onEnter(handler: () => void): void { this.el.addEventListener("mouseenter", handler); }
 
@@ -23,18 +23,18 @@ export class HoverPopup {
   }
 
   show(content: PopupContent, anchor: DOMRect, onCopy: (text: string) => void, onJump: () => void): void {
-    const actions = el("div", { class: "rd-hover-actions" });
+    const actions = renderElement("div", { class: "rd-hover-actions" });
     const { copyText } = content;
     if (copyText) {
-      const copy = iconButton(icon("copy"), "Copy reference", "rd-btn-sm");
+      const copy = iconButton(renderIcon("copy"), "Copy reference", "rd-btn-sm");
       copy.addEventListener("click", () => onCopy(copyText));
       actions.append(copy);
     }
-    const go = iconButton(icon("arrow-right"), content.jumpLabel ?? "Jump to destination", "rd-btn-sm");
+    const go = iconButton(renderIcon("arrow-right"), content.jumpLabel ?? "Jump to destination", "rd-btn-sm");
     go.addEventListener("click", onJump);
     actions.append(go);
 
-    this.el.replaceChildren(...(content.bare ? [content.body] : [el("div", { class: "rd-hover-header" }, el("span", {}, content.title), actions), content.body]));
+    this.el.replaceChildren(...(content.bare ? [content.body] : [renderElement("div", { class: "rd-hover-header" }, renderElement("span", {}, content.title), actions), content.body]));
     this.el.classList.add("rd-visible");
     const p = this.el.getBoundingClientRect();
     const below = anchor.bottom + 8;

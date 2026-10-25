@@ -1,5 +1,5 @@
 // Watches the ticket requests and sockets of one relay transport, telling the selector about limits, failures and opens.
-import type { RelaySocket, RelaySocketFactory } from "../transport/index.js";
+import type { RelayConnectionPort, RelayConnectionPortFactory } from "../transport/index.js";
 import type { RelayFailure } from "./relaySelector.js";
 
 export interface ConnectionReports {
@@ -12,9 +12,9 @@ export const isLimitRefusal = async (response: Response) =>
   response.status === 429 || (!response.ok && /\b1027\b/.test(await response.clone().text().catch(() => "")));
 
 /** The fetch and socket factory to hand a relay transport; each reports to `reports` and otherwise behaves like `base`. */
-export function observeConnection(
-  base: { fetch: () => typeof fetch; socketFactory: RelaySocketFactory }, reports: ConnectionReports,
-): { fetch: typeof fetch; socketFactory: RelaySocketFactory } {
+export function createObservedConnection(
+  base: { fetch: () => typeof fetch; socketFactory: RelayConnectionPortFactory }, reports: ConnectionReports,
+): { fetch: typeof fetch; socketFactory: RelayConnectionPortFactory } {
   const observedFetch: typeof fetch = async (input, init) => {
     let response: Response;
     try {
@@ -30,10 +30,10 @@ export function observeConnection(
 }
 
 /** A socket that closes before it opens is a failed attempt; one that opens ends the run of failures. */
-function observedSocket(socket: RelaySocket, reports: ConnectionReports): RelaySocket {
+function observedSocket(socket: RelayConnectionPort, reports: ConnectionReports): RelayConnectionPort {
   let opened = false;
-  let onopen: RelaySocket["onopen"] = null;
-  let onclose: RelaySocket["onclose"] = null;
+  let onopen: RelayConnectionPort["onopen"] = null;
+  let onclose: RelayConnectionPort["onclose"] = null;
   socket.onopen = () => { opened = true; reports.connected(); onopen?.(); };
   socket.onclose = (event) => { if (!opened) { reports.failure("error"); } onclose?.(event); };
   return {

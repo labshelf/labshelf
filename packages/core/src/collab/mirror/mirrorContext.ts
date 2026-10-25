@@ -4,10 +4,10 @@ import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type { WaitingWrite } from "./waitForWrite.js";
 import { deriveSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { indexFiles, recordWritten, type SharedSettings } from "../model/index.js";
-import type { BlobExchange, ShareSession } from "../doc/index.js";
+import { readShareIndexDocFiles, addWrittenVersion, type SharedSettings } from "../model/index.js";
+import type { ShareBlobExchange, ShareSession } from "../doc/index.js";
 import type { CollabStore } from "../deviceState/index.js";
-import type { MirrorDisk } from "./fileSystem/index.js";
+import type { MirrorFileSystem } from "./fileSystem/index.js";
 
 export const LOG_MODULE = "collab.mirror";
 /** The transaction origin of every edit the mirror makes to the share from disk. */
@@ -19,12 +19,12 @@ export type MergeText = (input: { base: string; local: string; other: string; ot
 export interface MirrorContext {
   /** Names the project in logs. */
   folder: string;
-  disk: MirrorDisk;
+  disk: MirrorFileSystem;
   writeRecords: WriteRecordStore;
   waitingWrites: Map<string, WaitingWrite>;
   mergeText: MergeText;
   session: ShareSession;
-  blobs: BlobExchange;
+  blobs: ShareBlobExchange;
   store: CollabStore;
   logger: ILogger;
   conflictReports?: Map<string, string>;
@@ -42,34 +42,34 @@ export interface MirrorContext {
 
 const encode = (content: string | Uint8Array): Uint8Array => typeof content === "string" ? new TextEncoder().encode(content) : content;
 
-export const hashOf = (content: string | Uint8Array): Promise<string> => deriveSha256Hex(encode(content));
+export const deriveMirrorHash = (content: string | Uint8Array): Promise<string> => deriveSha256Hex(encode(content));
 
 /** Writes the file atomically and records its content as the one disk and doc agree on. */
 export async function writeMirrored(context: MirrorContext, relative: string, content: string | Uint8Array): Promise<void> {
-  const hash = await hashOf(content);
+  const hash = await deriveMirrorHash(content);
   await context.writeRecords.append({ path: relative, hash, parent: context.store.known.get(relative) ?? null, by: "mirror", at: Date.now() });
   await context.disk.write(relative, encode(content));
-  rememberMirrored(context, relative, content, hash);
+  addMirroredPath(context, relative, content, hash);
   await context.logger.log("INFO", LOG_MODULE, "Wrote a shared file from the share", { folder: context.folder, path: relative, length: content.length });
 }
 
-export async function deleteMirrored(context: MirrorContext, relative: string): Promise<void> {
+export async function removeMirroredFile(context: MirrorContext, relative: string): Promise<void> {
   await context.disk.remove(relative);
-  forget(context, relative);
+  removeMirroredPath(context, relative);
   await context.logger.log("INFO", LOG_MODULE, "Deleted a file the share removed", { folder: context.folder, path: relative });
 }
 
-export function forget(context: MirrorContext, relative: string): void {
+export function removeMirroredPath(context: MirrorContext, relative: string): void {
   context.waitingWrites.delete(relative);
   context.store.known.delete(relative);
   context.store.bases.delete(relative);
 }
 
-export function rememberMirrored(context: MirrorContext, path: string, content: string | Uint8Array, hash: string): void {
+export function addMirroredPath(context: MirrorContext, path: string, content: string | Uint8Array, hash: string): void {
   context.waitingWrites.delete(path);
   context.store.known.set(path, hash);
-  if (!indexFiles(context.session.index).has(path)) { return; }
-  recordWritten(context.session.index, path, hash, Date.now());
+  if (!readShareIndexDocFiles(context.session.index).has(path)) { return; }
+  addWrittenVersion(context.session.index, path, hash, Date.now());
   if (typeof content === "string") {
     context.store.rememberVersion(path, hash, content);
     context.store.bases.set(path, content);

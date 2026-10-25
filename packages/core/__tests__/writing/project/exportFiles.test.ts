@@ -1,7 +1,7 @@
 /** Verifies which files a project zip and an arXiv bundle contain. */
 import { arxivBundle, bibliographyFiles, projectFiles } from "../../../src/writing/project/index";
 
-describe("projectFiles", () => {
+describe("createProjectFiles", () => {
   it("drops build output, labshelf.bib, .labshelf and VCS folders", () => {
     const list = [
       "main.tex", "main.aux", "main.log", "main.out", "main.toc", "main.fls", "main.fdb_latexmk",

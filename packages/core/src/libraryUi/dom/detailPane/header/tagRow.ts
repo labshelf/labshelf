@@ -4,7 +4,7 @@
  * other tags.
  */
 import { showMenu } from "../../../../ui/dom/index.js";
-import { escapeHtml, icon } from "../../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { countLibraryTags } from "../../../viewModel/index.js";
 import { updateTags, splitTags } from "../../flows/index.js";
 import type { UiContext } from "../../uiContext.js";
@@ -12,7 +12,7 @@ import type { UiContext } from "../../uiContext.js";
 function chip(tag: string, readOnly: boolean): string {
   const hash = `<span class="tag-hash" aria-hidden="true">#</span>`;
   const name = `<button class="tag-name" type="button" data-action="searchTag" data-tag="${escapeHtml(tag)}" title="Show papers tagged ${escapeHtml(tag)}">${escapeHtml(tag)}</button>`;
-  const remove = `<button class="tag-x" type="button" data-action="removeTag" data-tag="${escapeHtml(tag)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(tag)}">${icon("x")}</button>`;
+  const remove = `<button class="tag-x" type="button" data-action="removeTag" data-tag="${escapeHtml(tag)}" title="Remove tag" aria-label="Remove tag ${escapeHtml(tag)}">${renderIcon("x")}</button>`;
   return `<span class="tag-chip">${hash}${name}${readOnly ? "" : remove}</span>`;
 }
 
@@ -26,7 +26,7 @@ function otherTags(ctx: UiContext): string[] {
 
 function tagInput(ctx: UiContext): string {
   return `<span class="tag-field"><input class="tag-input" placeholder="tag" title="Type a tag and press Enter; commas add several" spellcheck="false" autocomplete="off" aria-label="Add tag"/>` +
-    `<button class="ls-icon-btn tag-pick" type="button" tabindex="-1" data-action="pickTag" aria-haspopup="menu" aria-label="Choose an existing tag" title="Choose an existing tag"${otherTags(ctx).length ? "" : " disabled"}>${icon("chevron-down")}</button></span>`;
+    `<button class="ls-icon-btn tag-pick" type="button" tabindex="-1" data-action="pickTag" aria-haspopup="menu" aria-label="Choose an existing tag" title="Choose an existing tag"${otherTags(ctx).length ? "" : " disabled"}>${renderIcon("chevron-down")}</button></span>`;
 }
 
 // PLATFORM: the pane closes the field when focus leaves it, so the menu hands focus back on close.
@@ -42,7 +42,7 @@ export function openTagMenu(ctx: UiContext, anchor: HTMLElement): void {
 /** The row of `tags`; `editing` shows the field in place of the Add tag button. */
 export function renderTagRowHtml(ctx: UiContext, tags: readonly string[], editing: boolean): string {
   const add = ctx.readOnly ? "" : editing ? tagInput(ctx)
-    : `<button class="ls-icon-btn tag-add" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${icon("plus")}</button>`;
+    : `<button class="ls-icon-btn tag-add" type="button" data-action="addTag" title="Add tag" aria-label="Add tag">${renderIcon("plus")}</button>`;
   return `<div class="tag-row">${tags.map((t) => chip(t, ctx.readOnly)).join("")}${add}</div>`;
 }
 

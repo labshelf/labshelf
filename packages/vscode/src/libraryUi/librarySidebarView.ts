@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import {
   PAPERS_DIR,
-  sidebarRows,
+  deriveSidebarRows,
   deriveFolderTree,
   type LibrarySnapshot,
   type PathOps,
@@ -126,7 +126,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
 
   private async _pushSpaces(): Promise<void> {
     const current = this._deps.spaces?.current();
-    await this._post({ type: "spaces", rows: current ? sidebarRows(current.store.list(), current.port.library()) : [] });
+    await this._post({ type: "spaces", rows: current ? deriveSidebarRows(current.store.list(), current.port.library()) : [] });
   }
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {

@@ -5,7 +5,7 @@
 import { buildFrame } from "../../../libraryUi/dom/index.js";
 import type { ShareHost } from "../../../libraryUi/share/index.js";
 import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
-import { showMenu, toast, type MenuAnchor, el } from "../../../ui/dom/index.js";
+import { showMenu, showToast, type MenuAnchor, renderElement } from "../../../ui/dom/index.js";
 import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, placeCounts, type ProjectSortKey, type ProjectViewState } from "../viewModel/index.js";
 import type { AllProjectsToHost, AllProjectsTransport, HostToAllProjects } from "../protocol/index.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectPlace, ProjectRow } from "../projectRow.js";
@@ -15,7 +15,7 @@ import { mountProjectList, type ProjectListHandlers } from "./list/index.js";
 import { projectMenuEntries } from "./projectMenu.js";
 import { createDetailRequests } from "./detailPane/index.js";
 import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 
 interface EmptyStateOptions {
   place: ProjectPlace;
@@ -27,16 +27,16 @@ interface EmptyStateOptions {
 const EMPTY_TEXT: Record<ProjectPlace, string> = { projects: "No projects yet", archived: "No archived projects", trash: "Trash is empty" };
 
 function buildProjectEmptyState(o: EmptyStateOptions): HTMLElement {
-  const box = el("div", { class: "ls-empty" });
+  const box = renderElement("div", { class: "ls-empty" });
   if (o.query.trim()) {
-    box.innerHTML = `<div class="ls-empty-icon">${icon("search")}</div><div class="ls-empty-text">No projects match “${escapeHtml(o.query.trim())}”</div>` +
+    box.innerHTML = `<div class="ls-empty-icon">${renderIcon("search")}</div><div class="ls-empty-text">No projects match “${escapeHtml(o.query.trim())}”</div>` +
       `<button class="ls-btn" type="button">Clear search</button>`;
     box.querySelector("button")!.addEventListener("click", o.onClearQuery);
     return box;
   }
-  box.innerHTML = `<div class="ls-empty-icon">${icon(o.place === "trash" ? "trash" : "file-text")}</div><div class="ls-empty-text">${EMPTY_TEXT[o.place]}</div>`;
+  box.innerHTML = `<div class="ls-empty-icon">${renderIcon(o.place === "trash" ? "trash" : "file-text")}</div><div class="ls-empty-text">${EMPTY_TEXT[o.place]}</div>`;
   if (o.place === "projects") {
-    const button = el("button", { class: "ls-btn ls-btn-primary", type: "button", html: `${icon("plus")}<span>New project</span>` });
+    const button = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button", html: `${renderIcon("plus")}<span>New project</span>` });
     button.addEventListener("click", () => o.onNew(button));
     box.append(button);
   }
@@ -78,7 +78,7 @@ function routeMessages(transport: AllProjectsTransport, on: {
   projects: (m: HostMessage<"projects">) => void;
 }): void {
   transport.subscribe((message) => {
-    if (message.type === "error") toast(message.message, "error");
+    if (message.type === "error") showToast(message.message, "error");
     else if (message.type === "files") on.files(message);
     else if (message.type === "detail") on.detail(message);
     else on.projects(message);

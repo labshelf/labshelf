@@ -8,11 +8,11 @@ import {
   type Text,
 } from "@codemirror/state";
 import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker } from "@codemirror/view";
-import { type ILogger, type TextRange, icon } from "@labshelf/core";
-import { inputBox, toast } from "@labshelf/core/dom";
+import { type ILogger, type TextRange, renderIcon } from "@labshelf/core";
+import { askInputBox, showToast } from "@labshelf/core/dom";
 import { createSourceFooter } from "../../libraryUi/prefs";
 
-/** The document offset of `offset` in the file text `fileText`. */
+/** The document offset of `offset` in the file text `readFileText`. */
 function fileOffsetToDoc(fileText: string, offset: number): number {
   if (!fileText.includes("\r\n")) return offset;
   const before = fileText.slice(0, offset);
@@ -51,7 +51,7 @@ class CommentMarker extends GutterMarker {
     button.type = "button";
     button.title = "Open comments";
     button.setAttribute("aria-label", "Open comments");
-    button.innerHTML = icon("message");
+    button.innerHTML = renderIcon("message");
     button.addEventListener("click", this.open);
     return button;
   }
@@ -87,7 +87,7 @@ export function addCommentSupport(add: (range: TextRange) => void): Extension {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "ls-btn ls-add-comment";
-    button.innerHTML = `${icon("message")}Add comment`;
+    button.innerHTML = `${renderIcon("message")}Add comment`;
     button.title = "Add comment on the selection (Ctrl/Cmd+Alt+M)";
     button.disabled = view.state.selection.main.empty;
     button.addEventListener("click", () => run(view));
@@ -129,9 +129,9 @@ export function commentSupport(deps: CommentSupportDeps): CommentSupport {
   let view: EditorView | undefined;
   // The saved file is what the store anchors the thread in, so the edits are written before the offsets are read.
   const addOnSelection = async (range: TextRange): Promise<void> => {
-    const text = await inputBox({ title: "Add comment", prompt: "Comment on the selected text", validate: (value) => (value.trim() ? null : "Write a comment") });
+    const text = await askInputBox({ title: "Add comment", prompt: "Comment on the selected text", validate: (value) => (value.trim() ? null : "Write a comment") });
     if (!text || !view) return;
-    if (!(await deps.flush())) { toast("Could not save the file, so the comment was not added.", "error"); return; }
+    if (!(await deps.flush())) { showToast("Could not save the file, so the comment was not added.", "error"); return; }
     const { doc } = view.state;
     await comments.add(
       { start: docOffsetToFile(doc, deps.lineBreak, range.start), end: docOffsetToFile(doc, deps.lineBreak, range.end) }, text,
@@ -140,7 +140,7 @@ export function commentSupport(deps: CommentSupportDeps): CommentSupport {
   const add = (range: TextRange): void => {
     addOnSelection(range).catch((error: unknown) => {
       void logger.error(MODULE, error, { action: "addComment" });
-      toast("Could not add the comment.", "error");
+      showToast("Could not add the comment.", "error");
     });
   };
   return {

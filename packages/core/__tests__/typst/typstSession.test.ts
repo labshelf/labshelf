@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { TypstSession } from "../../src/typst/index";
-import { toCompilerPath } from "../../src/typst/node/index";
+import { deriveTypstCompilerPath } from "../../src/typst/node/index";
 import { cleanupTempDirs, makeTempDir } from "../support/tempDirs";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../support/typstFixtures";
 
@@ -15,7 +15,7 @@ beforeAll(async () => { session = await openTestSession({ resolve: () => undefin
 async function projectWith(text: string): Promise<{ root: string; main: string }> {
   const folder = await makeTempDir();
   await fs.writeFile(path.join(folder, "main.typ"), text);
-  return { root: toCompilerPath(folder), main: toCompilerPath(path.join(folder, "main.typ")) };
+  return { root: deriveTypstCompilerPath(folder), main: deriveTypstCompilerPath(path.join(folder, "main.typ")) };
 }
 
 describe("TypstSession", () => {

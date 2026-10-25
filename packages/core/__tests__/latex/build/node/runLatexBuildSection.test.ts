@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { PDFDocument } from "pdf-lib";
 
 import { runLatexBuild, type LatexBuildRequest } from "../../../../src/latex/build/node/index";
-import { diffPages } from "../../../../src/helper/node/index";
+import { comparePages } from "../../../../src/helper/node/index";
 import { fakeLogger, type RecordingLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
@@ -77,8 +77,8 @@ posixOnly("runLatexBuild section preview", () => {
     expect(aux).not.toContain("@writefile");
     expect(document).not.toContain("\\input");
     const pdf = await fs.readFile(path.join(s.request.projectFolder, "main.pdf"));
-    const before = await diffPages([], s.full);
-    const after = await diffPages(before.hashes, pdf);
+    const before = await comparePages([], s.full);
+    const after = await comparePages(before.hashes, pdf);
     expect(after.pageCount).toBe(2);
     expect(after.changed.map((page) => page.index)).toEqual([1]);
   });

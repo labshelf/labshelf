@@ -12,18 +12,18 @@ import {
   openDocFrame,
   sealDocFrame,
 } from "../peer/index.js";
-import { memoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
+import { createMemoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
 import { RELAY_ERROR_CODE } from "../../relay/index.js";
 import { RelayDocLane } from "./relayDocLane.js";
 import { RelayDocPuts } from "./relayDocPuts.js";
-import { decodeHeld, emptyHeld } from "./relayHeldState.js";
+import { decodeHeld, createEmptyHeld } from "./relayHeldState.js";
 import type { RelaySync, RelaySyncOptions } from "./relaySyncOptions.js";
-import type { WebCryptoKey } from "../shareKey/index.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
 
 // CONTRACT: documents/contracts/relay.md#client-obligations
 const STORED_KIND_NAME: Record<number, string> = { [MESSAGE_KIND.update]: "update", [MESSAGE_KIND.syncStep2]: "syncStep2" };
 
-interface StoredFrameContext { shareId: string; key: WebCryptoKey; docIdOf: (docKey: string) => Promise<Uint8Array> }
+interface StoredFrameContext { shareId: string; key: DerivedShareKey; docIdOf: (docKey: string) => Promise<Uint8Array> }
 
 export async function sealStored(
   context: StoredFrameContext, kind: typeof MESSAGE_KIND.update | typeof MESSAGE_KIND.syncStep2, docKey: string, payload: Uint8Array,
@@ -66,7 +66,7 @@ class RelayDocSync implements RelaySync {
     this.frames = { shareId: options.shareId, key: options.contentKey, docIdOf: docIdCache(options.shareId) };
     const { relay, logger, shareId } = options;
     this.puts = new RelayDocPuts({ relay, logger, shareId, scheduler: options.scheduler ?? systemScheduler, seal: (lane, kind, payload) => this.seal(lane, kind, payload) });
-    this.cursors = options.cursors ?? memoryCursorStore();
+    this.cursors = options.cursors ?? createMemoryCursorStore();
     this.stops.push(
       () => this.unregisterRoundTrip(),
       relay.onStore((answer) => this.enqueue(() => this.answer(answer))),
@@ -144,7 +144,7 @@ class RelayDocSync implements RelaySync {
     if (cursor > 0 && !held) {
       void this.options.logger.log("INFO", LOG_MODULE, "Catching up from the first row, since the state the relay holds is unknown", { docKey, cursor, unreadable: Boolean(saved) });
     }
-    return held ? new RelayDocLane(docKey, doc, docId, cursor, held) : new RelayDocLane(docKey, doc, docId, 0, emptyHeld());
+    return held ? new RelayDocLane(docKey, doc, docId, cursor, held) : new RelayDocLane(docKey, doc, docId, 0, createEmptyHeld());
   }
 
   private async opened(): Promise<void> {

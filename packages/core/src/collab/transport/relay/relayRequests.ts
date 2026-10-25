@@ -12,7 +12,7 @@ export interface TicketRequestOptions { relayUrl: string; shareId: string; relay
 
 // CONTRACT: documents/contracts/relay.md#auth
 /** Registers the share on the owner's relay; claiming it again with the same token is a no-op. */
-export async function claimShare({ relayUrl, ownerSecret, shareId, relayToken, fetch: doFetch = fetch }: ClaimRequestOptions): Promise<void> {
+export async function addRelayShare({ relayUrl, ownerSecret, shareId, relayToken, fetch: doFetch = fetch }: ClaimRequestOptions): Promise<void> {
   const relayTokenHash = await deriveSha256Hex(base64UrlToBytes(relayToken));
   await post(doFetch, relayUrl, RELAY_PATH.claim, encodeRelayBody({ shareId, relayTokenHash }), decodeClaimResponse, { authorization: `Bearer ${ownerSecret}` });
 }

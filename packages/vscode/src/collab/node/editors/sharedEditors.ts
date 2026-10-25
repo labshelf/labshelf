@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { fileText, indexFiles, type ILogger, type ShareConnection } from "@labshelf/core";
+import { readFileText, readShareIndexDocFiles, type ILogger, type ShareConnection } from "@labshelf/core";
 import { bindDocument, overrideUndoRedo, RemoteEditQueue, type DocumentBinding } from "../../binding/index.js";
 
 export interface SharedDocument {
@@ -49,7 +49,7 @@ export class SharedEditors implements vscode.Disposable {
   /** Binds the share's open documents now and whenever the index lists another text file. */
   attach(share: ShareConnection): vscode.Disposable {
     const bindOpen = () => vscode.workspace.textDocuments.forEach((document) => this.bind(share, document));
-    const files = indexFiles(share.session.index);
+    const files = readShareIndexDocFiles(share.session.index);
     files.observe(bindOpen);
     bindOpen();
     return {
@@ -71,9 +71,9 @@ export class SharedEditors implements vscode.Disposable {
   private bind(share: ShareConnection, document: vscode.TextDocument): void {
     const key = document.uri.toString();
     const file = relativePath(share.folder, document);
-    if (this.bound.has(key) || document.isClosed || !file || indexFiles(share.session.index).get(file)?.kind !== "text") { return; }
+    if (this.bound.has(key) || document.isClosed || !file || readShareIndexDocFiles(share.session.index).get(file)?.kind !== "text") { return; }
     try {
-      const binding = bindDocument(document, fileText(share.session.openDoc(file)), { queue: this.queue, logger: this.logger });
+      const binding = bindDocument(document, readFileText(share.session.openDoc(file)), { queue: this.queue, logger: this.logger });
       this.bound.set(key, { share, path: file, binding });
       void this.logger.log("INFO", "collab", "Bound an editor to a shared file", { shareId: share.shareId, path: file });
     } catch (error) {

@@ -1,13 +1,13 @@
 // Creates the Typst language service: completion, hover and definition over the edited text and the project's files.
 import type { ILogger } from "../../ports/index.js";
 import {
-  projectFiles,
-  importedSymbols,
-  linkedLabels,
-  projectBibEntries,
+  createProjectFiles,
+  readImportedSymbols,
+  readLinkedLabels,
+  readProjectBibEntries,
   type ProjectFiles,
-  relativeTypstPath,
-  lineAt,
+  deriveRelativeTypstPath,
+  deriveLineNumber,
   resolveTypstPath,
   type Located,
 } from "./project/index.js";
@@ -19,10 +19,10 @@ import type {
   TypstDefinition,
   TypstHover,
 } from "./typstLanguageSpec.js";
-import { builtinCompletion, findBuiltin, builtinMarkdown } from "./builtinDocs.js";
+import { createBuiltinCompletion, findBuiltin, formatBuiltinMarkdown } from "./builtinDocs.js";
 import { TYPST_LIBRARY, type TypstBuiltin } from "./typstStdlib/index.js";
 import {
-  typstContextAt,
+  deriveTypstCursor,
   type TypstBinding,
   type TypstCursorContext,
   type TypstLabelDefinition,
@@ -47,7 +47,7 @@ async function typstSymbolAt(files: ProjectFiles, offset: number): Promise<Typst
   while (from > 0 && WORD_CHAR.test(text[from - 1]!)) { from--; }
   while (to < text.length && WORD_CHAR.test(text[to]!)) { to++; }
   if (from === to) { return null; }
-  const context = typstContextAt(text, to);
+  const context = deriveTypstCursor(text, to);
   if (context.inComment || context.inRaw || context.string) { return null; }
   const name = text.slice(from, to);
   const symbol = context.mode === "markup" && (context.trigger === "@" || context.trigger === "<")
@@ -64,14 +64,14 @@ async function nameSymbol(files: ProjectFiles, name: string, offset: number, inM
   // The last binding before the cursor is the one in scope; a later one is still the best guess for a forward use.
   const local = named.filter((binding) => binding.from <= offset).pop() ?? named[0];
   if (local) { return { kind: "binding", found: { item: local, file: current } }; }
-  const imported = (await importedSymbols(files, current)).bindings.find(({ item }) => item.name === name);
+  const imported = (await readImportedSymbols(files, current)).bindings.find(({ item }) => item.name === name);
   if (imported) { return { kind: "binding", found: imported }; }
   const builtin = findBuiltin(name, inMath);
   return builtin ? { kind: "builtin", found: builtin, name } : null;
 }
 
 async function memberSymbol(files: ProjectFiles, receiver: string, name: string, inMath: boolean): Promise<TypstSymbol | null> {
-  const module = (await importedSymbols(files, files.current)).modules.find((candidate) => candidate.name === receiver);
+  const module = (await readImportedSymbols(files, files.current)).modules.find((candidate) => candidate.name === receiver);
   if (module) {
     const item = module.file.symbols.bindings.find((binding) => binding.topLevel && binding.name === name);
     return item ? { kind: "binding", found: { item, file: module.file } } : null;
@@ -82,10 +82,10 @@ async function memberSymbol(files: ProjectFiles, receiver: string, name: string,
 }
 
 async function referenceSymbol(files: ProjectFiles, name: string, withCitations: boolean): Promise<TypstSymbol | null> {
-  const label = (await linkedLabels(files)).find(({ item }) => item.name === name);
+  const label = (await readLinkedLabels(files)).find(({ item }) => item.name === name);
   if (label) { return { kind: "label", found: label }; }
   if (!withCitations) { return null; }
-  const entry = (await projectBibEntries(files)).find(({ item }) => item.key === name);
+  const entry = (await readProjectBibEntries(files)).find(({ item }) => item.key === name);
   return entry ? { kind: "citation", found: entry } : null;
 }
 
@@ -96,7 +96,7 @@ async function typstHover(files: ProjectFiles, offset: number): Promise<TypstHov
 
 function hoverText(symbol: TypstSymbol): string {
   switch (symbol.kind) {
-    case "builtin": return builtinMarkdown(symbol.found, symbol.name);
+    case "builtin": return formatBuiltinMarkdown(symbol.found, symbol.name);
     case "binding": {
       const { signature, doc } = symbol.found.item;
       return [fence(signature), ...(doc === undefined ? [] : [doc])].join("\n\n");
@@ -139,7 +139,7 @@ async function typstDefinition(files: ProjectFiles, offset: number): Promise<Typ
     case "citation": {
       const { item, file } = symbol.found;
       const from = file.text.indexOf(item.key, item.start);
-      return { path: file.path, from, to: from + item.key.length, line: lineAt(file.text, from) };
+      return { path: file.path, from, to: from + item.key.length, line: deriveLineNumber(file.text, from) };
     }
   }
 }
@@ -168,7 +168,7 @@ async function pathCompletions(files: ProjectFiles, string: NonNullable<TypstCur
   const options = (await files.list())
     .filter((path) => path !== current && fits(path))
     .map((path) => {
-      const relative = relativeTypstPath(current, path);
+      const relative = deriveRelativeTypstPath(current, path);
       return { label: relative, kind: "file" as const, insert: relative, snippet: false };
     });
   return { from: string.from, to: offset, options };
@@ -180,7 +180,7 @@ const KEYWORDS = [
 ];
 
 async function typstCompletions(files: ProjectFiles, offset: number, explicit: boolean): Promise<TypstCompletions | null> {
-  const context = typstContextAt(files.current.text, offset);
+  const context = deriveTypstCursor(files.current.text, offset);
   if (context.inComment || context.inRaw) { return null; }
   if (context.string) { return pathCompletions(files, context.string, offset); }
   const span = { from: context.word.from, to: offset };
@@ -190,7 +190,7 @@ async function typstCompletions(files: ProjectFiles, offset: number, explicit: b
   if (mode === "markup" && trigger !== "#") { return explicit ? { ...span, options: await codeOptions(files, offset, "#") } : null; }
   if (mode === "math" && trigger !== "#") {
     if (!explicit && context.word.text === "") { return null; }
-    return { ...span, options: (findBuiltin("math")?.members ?? []).map((item) => builtinCompletion(item)) };
+    return { ...span, options: (findBuiltin("math")?.members ?? []).map((item) => createBuiltinCompletion(item)) };
   }
   const params = parameterOptions(context);
   if (!explicit && trigger === "" && context.word.text === "" && params.length === 0) { return null; }
@@ -199,22 +199,22 @@ async function typstCompletions(files: ProjectFiles, offset: number, explicit: b
 
 /** Keywords, the library's top level, the file's bindings before the cursor and what its imports bring in. */
 async function codeOptions(files: ProjectFiles, offset: number, prefix = ""): Promise<TypstCompletion[]> {
-  const imported = await importedSymbols(files, files.current);
+  const imported = await readImportedSymbols(files, files.current);
   const local = files.current.symbols.bindings.filter((binding) => binding.from < offset);
   return dedupe([
     ...KEYWORDS.map((keyword): TypstCompletion => ({ label: keyword, kind: "keyword", insert: prefix + keyword, snippet: false })),
     ...[...local].reverse().map((binding) => bindingCompletion(binding, prefix)),
     ...imported.bindings.map(({ item }) => bindingCompletion(item, prefix)),
     ...imported.modules.map(({ name, file }): TypstCompletion => ({ label: name, kind: "module", detail: file.path, insert: prefix + name, snippet: false })),
-    ...TYPST_LIBRARY.map((item) => builtinCompletion(item, prefix)),
+    ...TYPST_LIBRARY.map((item) => createBuiltinCompletion(item, prefix)),
   ]);
 }
 
 async function memberOptions(files: ProjectFiles, context: TypstCursorContext): Promise<TypstCompletion[]> {
   const receiver = context.receiver ?? "";
-  const module = (await importedSymbols(files, files.current)).modules.find((candidate) => candidate.name === receiver);
+  const module = (await readImportedSymbols(files, files.current)).modules.find((candidate) => candidate.name === receiver);
   if (module) { return module.file.symbols.bindings.filter((binding) => binding.topLevel).map((binding) => bindingCompletion(binding)); }
-  return (findBuiltin(receiver, context.mode === "math")?.members ?? []).map((item) => builtinCompletion(item));
+  return (findBuiltin(receiver, context.mode === "math")?.members ?? []).map((item) => createBuiltinCompletion(item));
 }
 
 function parameterOptions(context: TypstCursorContext): TypstCompletion[] {
@@ -226,11 +226,11 @@ function parameterOptions(context: TypstCursorContext): TypstCompletion[] {
 }
 
 async function referenceOptions(files: ProjectFiles, withCitations: boolean): Promise<TypstCompletion[]> {
-  const labels = (await linkedLabels(files)).map(({ item, file }): TypstCompletion => (
+  const labels = (await readLinkedLabels(files)).map(({ item, file }): TypstCompletion => (
     { label: item.name, kind: "label", detail: `${file.path}:${item.line + 1}`, doc: item.context, insert: item.name, snippet: false }
   ));
   if (!withCitations) { return dedupe(labels); }
-  const keys = (await projectBibEntries(files)).map(({ item }): TypstCompletion => (
+  const keys = (await readProjectBibEntries(files)).map(({ item }): TypstCompletion => (
     { label: item.key, kind: "citation", detail: item.type, insert: item.key, snippet: false }
   ));
   return dedupe([...labels, ...keys]);
@@ -258,8 +258,8 @@ function dedupe(options: TypstCompletion[]): TypstCompletion[] {
 export function createTypstLanguageService(options: { sources: TypstSources; logger: ILogger }): TypstLanguageService {
   const { sources, logger } = options;
   return {
-    complete: (path, text, offset, explicit) => typstCompletions(projectFiles(sources, logger, path, text, "complete"), offset, explicit),
-    hover: (path, text, offset) => typstHover(projectFiles(sources, logger, path, text, "hover"), offset),
-    definition: (path, text, offset) => typstDefinition(projectFiles(sources, logger, path, text, "definition"), offset),
+    complete: (path, text, offset, explicit) => typstCompletions(createProjectFiles(sources, logger, path, text, "complete"), offset, explicit),
+    hover: (path, text, offset) => typstHover(createProjectFiles(sources, logger, path, text, "hover"), offset),
+    definition: (path, text, offset) => typstDefinition(createProjectFiles(sources, logger, path, text, "definition"), offset),
   };
 }

@@ -1,6 +1,6 @@
 // Shows what the resume of the shared projects reports at page start: a project whose key is missing, and a reconnect that failed.
 import { formatError, type ResumeReports, type SharedProject } from "@labshelf/core";
-import { showDialog, toast } from "@labshelf/core/dom";
+import { showDialog, showToast } from "@labshelf/core/dom";
 
 const projectName = (project: SharedProject): string => project.settings.title ?? project.settings.id;
 
@@ -16,7 +16,7 @@ export function resumeReports(join: () => void): ResumeReports {
       }).then((choice) => { if (choice === "join") { join(); } });
     },
     failed: (project, error) => {
-      toast(`Could not reconnect the shared project "${projectName(project)}": ${formatError(error)}`, "error");
+      showToast(`Could not reconnect the shared project "${projectName(project)}": ${formatError(error)}`, "error");
     },
   };
 }

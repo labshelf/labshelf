@@ -2,7 +2,7 @@
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { swapSectionPages } from "../../../../../src/latex/build/section/node/index";
-import { diffPages } from "../../../../../src/helper/node/index";
+import { comparePages } from "../../../../../src/helper/node/index";
 
 async function pdfOf(labels: string[]): Promise<Uint8Array> {
   const doc = await PDFDocument.create({ updateMetadata: false });
@@ -14,9 +14,9 @@ async function pdfOf(labels: string[]): Promise<Uint8Array> {
 describe("swapSectionPages", () => {
   it("replaces the range and keeps the untouched pages identical one-page PDFs", async () => {
     const full = await pdfOf(["p1", "p2", "p3", "p4", "p5"]);
-    const before = await diffPages([], full);
+    const before = await comparePages([], full);
     const swapped = await swapSectionPages(full, await pdfOf(["s2", "s3"]), { start: 1, end: 2 });
-    const after = await diffPages(before.hashes, swapped!);
+    const after = await comparePages(before.hashes, swapped!);
     expect(after.pageCount).toBe(5);
     expect(after.changed.map((page) => page.index)).toEqual([1, 2]);
   });

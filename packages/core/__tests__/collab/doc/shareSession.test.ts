@@ -1,7 +1,7 @@
 /** Pins that a share session refuses foreign frames and delivers extension channel messages over the mesh. */
 import * as Y from "yjs";
-import { deriveContentKey, sealFrame } from "../../../src/collab/shareKey/index";
-import { indexFiles } from "../../../src/collab/model/index";
+import { deriveContentShareKey, sealFrame } from "../../../src/collab/shareKey/index";
+import { readShareIndexDocFiles } from "../../../src/collab/model/index";
 import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
 import { deriveDocId } from "../../../src/collab/peer/docId";
 import { INDEX_DOC_KEY } from "../../../src/collab/doc/docSync";
@@ -11,7 +11,7 @@ import type { ILogger } from "../../../src/ports/index";
 import { FakeClock, FakeNetwork, runUntil } from "../peer/fakeNetwork";
 
 const SHARE_ID = "f".repeat(32);
-const keyOf = (fill: number) => deriveContentKey(new Uint8Array(16).fill(fill));
+const keyOf = (fill: number) => deriveContentShareKey(new Uint8Array(16).fill(fill));
 const fakeLogger = () => ({
   log: jest.fn(async (..._args: Parameters<ILogger["log"]>) => {}),
   error: jest.fn(async (..._args: Parameters<ILogger["error"]>) => {}),
@@ -44,7 +44,7 @@ describe("share session", () => {
   it("applies nothing from a peer with the wrong key and logs it once", async () => {
     clients = [await client(net, clock, "a"), await client(net, clock, "b"), await client(net, clock, "x", 9)];
     const [a, b, x] = clients as [Client, Client, Client];
-    indexFiles(x.session.index).set("evil.typ", { kind: "text" });
+    readShareIndexDocFiles(x.session.index).set("evil.typ", { kind: "text" });
     text(x.session.openDoc("main.typ")).insert(0, "evil");
     text(a.session.openDoc("main.typ")).insert(0, "good");
     expect(await runUntil(clock, () => text(b.session.openDoc("main.typ")).toString() === "good")).toBe(true);
@@ -52,7 +52,7 @@ describe("share session", () => {
     clock.advance(10_000);
     expect(await runUntil(clock, () => false, 5_000)).toBe(false);
     for (const c of [a, b]) {
-      expect(indexFiles(c.session.index).size).toBe(0);
+      expect(readShareIndexDocFiles(c.session.index).size).toBe(0);
       expect(text(c.session.openDoc("main.typ")).toString()).toBe("good");
       expect(warningsAbout(c.logger, "x")).toHaveLength(1);
     }
@@ -62,7 +62,7 @@ describe("share session", () => {
     clients = [await client(net, clock, "a")];
     const raw = net.join("raw");
     const source = new Y.Doc();
-    indexFiles(source).set("planted.typ", { kind: "text" });
+    readShareIndexDocFiles(source).set("planted.typ", { kind: "text" });
     const update = Y.encodeStateAsUpdate(source);
     const send = async (docKey: string, headerKey: string) => {
       const docId = await deriveDocId(SHARE_ID, headerKey);
@@ -74,10 +74,10 @@ describe("share session", () => {
     };
     await send("main.typ", INDEX_DOC_KEY);
     await runUntil(clock, () => false, 1_000);
-    expect(indexFiles(clients[0]!.session.index).size).toBe(0);
+    expect(readShareIndexDocFiles(clients[0]!.session.index).size).toBe(0);
     expect(warningsAbout(clients[0]!.logger, "raw")).toHaveLength(1);
     await send(INDEX_DOC_KEY, INDEX_DOC_KEY);
-    expect(await runUntil(clock, () => indexFiles(clients[0]!.session.index).has("planted.typ"), 1_000)).toBe(true);
+    expect(await runUntil(clock, () => readShareIndexDocFiles(clients[0]!.session.index).has("planted.typ"), 1_000)).toBe(true);
   });
 
   it("delivers a message of an extension channel with its doc key", async () => {

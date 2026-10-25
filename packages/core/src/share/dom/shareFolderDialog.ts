@@ -1,15 +1,15 @@
 // Walks the user through sharing a paper folder as a link: rights notice, progress, then the link.
-import { progressDialog, showDialog, toast } from "../../ui/dom/index.js";
+import { openProgressDialog, showDialog, showToast } from "../../ui/dom/index.js";
 import type { ShareHost, ShareProgress } from "../../libraryUi/share/index.js";
-import { SHARE_STAGE_TEXT, SHARE_WITHOUT_ANNOTATIONS, SHARE_WITH_ANNOTATIONS, copiedLinkText, shareRightsNotice } from "../flow/index.js";
-import { infoDialog } from "./noticeDialog.js";
-import { reportingFailure } from "./reportFailure.js";
+import { SHARE_STAGE_TEXT, SHARE_WITHOUT_ANNOTATIONS, SHARE_WITH_ANNOTATIONS, describeCopiedShareLink, describeShareRightsNotice } from "../flow/index.js";
+import { showNoticeDialog } from "./noticeDialog.js";
+import { reportFailure } from "./reportFailure.js";
 
 export function runShareFolderDialog(host: ShareHost, path: string): Promise<void> {
-  return reportingFailure("share the folder", async () => {
+  return reportFailure("share the folder", async () => {
     const folder = await host.shareableFolder(path);
-    if (!folder) { toast("This folder holds no papers to share.", "info"); return; }
-    const notice = shareRightsNotice(folder);
+    if (!folder) { showToast("This folder holds no papers to share.", "info"); return; }
+    const notice = describeShareRightsNotice(folder);
     const choice = await showDialog({
       title: notice.message,
       message: notice.detail,
@@ -19,7 +19,7 @@ export function runShareFolderDialog(host: ShareHost, path: string): Promise<voi
       ],
     });
     if (!choice) return;
-    const progress = progressDialog({ title: `Sharing "${folder.label}"`, message: `Sharing "${folder.label}"…` });
+    const progress = openProgressDialog({ title: `Sharing "${folder.label}"`, message: `Sharing "${folder.label}"…` });
     let result;
     try {
       result = await host.shareFolder(path, choice === "with", (p: ShareProgress) => {
@@ -29,7 +29,7 @@ export function runShareFolderDialog(host: ShareHost, path: string): Promise<voi
       progress.close();
     }
     if (result.kind === "noRelay") {
-      await infoDialog("Connect Cloudflare to share", "Share links live on your Cloudflare relay. Connect Cloudflare to share a folder.");
+      await showNoticeDialog("Connect Cloudflare to share", "Share links live on your Cloudflare relay. Connect Cloudflare to share a folder.");
       return;
     }
     await showLink(host, folder.label, result.link);
@@ -50,6 +50,6 @@ async function showLink(host: ShareHost, label: string, link: string): Promise<v
   if (choice === "open") await host.openLink(link);
   else if (choice === "copy") {
     const again = await host.copyText(link);
-    toast(again ? copiedLinkText(label) : "The clipboard refused the copy; select the link and copy it.", again ? "ok" : "error");
+    showToast(again ? describeCopiedShareLink(label) : "The clipboard refused the copy; select the link and copy it.", again ? "ok" : "error");
   }
 }

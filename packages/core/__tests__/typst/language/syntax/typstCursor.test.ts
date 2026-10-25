@@ -1,15 +1,15 @@
 /** Verifies the Typst cursor context: mode switches, skipped comments, strings and raw text, triggers and calls. */
-import { typstContextAt } from "../../../../src/typst/language/syntax/index";
+import { deriveTypstCursor } from "../../../../src/typst/language/syntax/index";
 
 const FENCE = "```";
 
 /** Reads the context at the `|` marker, which is removed from the text. */
 function at(marked: string) {
   const offset = marked.indexOf("|");
-  return typstContextAt(marked.slice(0, offset) + marked.slice(offset + 1), offset);
+  return deriveTypstCursor(marked.slice(0, offset) + marked.slice(offset + 1), offset);
 }
 
-describe("typstContextAt modes", () => {
+describe("deriveTypstCursor modes", () => {
   it.each([
     ["markup by default", "Hello wor|", "markup"],
     ["code after #", "#te|", "code"],
@@ -37,7 +37,7 @@ describe("typstContextAt modes", () => {
   });
 });
 
-describe("typstContextAt skipped spans", () => {
+describe("deriveTypstCursor skipped spans", () => {
   it("reports a line comment and keeps the surrounding mode", () => {
     expect(at("// note #te|")).toMatchObject({ inComment: true, mode: "markup" });
   });
@@ -73,7 +73,7 @@ describe("typstContextAt skipped spans", () => {
   });
 });
 
-describe("typstContextAt word and trigger", () => {
+describe("deriveTypstCursor word and trigger", () => {
   it("returns the identifier fragment ending at the offset", () => {
     expect(at("Hello wor|")).toMatchObject({ word: { from: 6, text: "wor" }, trigger: "" });
     expect(at("#my-fun_2|").word).toEqual({ from: 1, text: "my-fun_2" });
@@ -102,7 +102,7 @@ describe("typstContextAt word and trigger", () => {
   });
 });
 
-describe("typstContextAt strings", () => {
+describe("deriveTypstCursor strings", () => {
   it.each([
     ['#image("fig|', 8, "fig", "image"],
     ['#figure(image("a|', 15, "a", "image"],
@@ -126,7 +126,7 @@ describe("typstContextAt strings", () => {
   });
 });
 
-describe("typstContextAt calls", () => {
+describe("deriveTypstCursor calls", () => {
   it("gives the callee and the named arguments already written", () => {
     expect(at("#text(size: 1pt, |").call).toEqual({ callee: "text", given: ["size"] });
   });

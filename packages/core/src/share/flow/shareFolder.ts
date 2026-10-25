@@ -5,11 +5,11 @@ import { buildShare } from "../buildShare.js";
 import type { ShareBackend } from "../shareBackend.js";
 import type { ShareRegistryStore } from "../shareRegistry.js";
 import { uploadShare } from "../uploadShare.js";
-import { papersInFolder, sharePaperInputs, type FolderShareSources } from "./folderSharePapers.js";
+import { listPapersInFolder, createSharePaperInputs, type FolderShareSources } from "./folderSharePapers.js";
 
 export type ShareFolderStage = "reading" | "encrypting" | "uploading";
 
-export interface ShareFolderAsLinkOptions {
+export interface CreateShareLinkOptions {
   /** Every paper of the library; the share holds those under `folder` at any depth. */
   papers: readonly PaperRecord[];
   folder: string;
@@ -23,11 +23,11 @@ export interface ShareFolderAsLinkOptions {
 }
 
 // CONTRACT: documents/contracts/share-link.md#upload-and-revoke
-export async function shareFolderAsLink(options: ShareFolderAsLinkOptions): Promise<string> {
+export async function createShareLink(options: CreateShareLinkOptions): Promise<string> {
   const { folder, withAnnotations, sources, relayUrl, onStage } = options;
   onStage?.("reading");
-  const papers = papersInFolder(options.papers, folder, sources.paths.sep);
-  const inputs = await sharePaperInputs(papers, withAnnotations, sources);
+  const papers = listPapersInFolder(options.papers, folder, sources.paths.sep);
+  const inputs = await createSharePaperInputs(papers, withAnnotations, sources);
   onStage?.("encrypting");
   const share = await buildShare({ folderName: sources.paths.basename(folder), papers: inputs, withAnnotations });
   onStage?.("uploading");

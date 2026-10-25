@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { RelayAccount, RelayAccountStore, ShareRegistryStore } from "@labshelf/core";
-import { createDeviceLocalLayout, fileShareRegistryStore } from "@labshelf/core/node";
+import { createDeviceLocalLayout, createFileShareRegistryStore } from "@labshelf/core/node";
 import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
 
 export interface ShareLinkHost {
@@ -13,7 +13,7 @@ export interface ShareLinkHost {
 /** The share list of the open library; undefined when no library is open. */
 export function shareRegistry(host: ShareLinkHost): ShareRegistryStore | undefined {
   const root = host.libraryRoot();
-  return root === undefined ? undefined : fileShareRegistryStore(createDeviceLocalLayout(root).shareRegistryPath);
+  return root === undefined ? undefined : createFileShareRegistryStore(createDeviceLocalLayout(root).shareRegistryPath);
 }
 
 /** The connected Cloudflare account; undefined, with an offer to connect, when there is none. */

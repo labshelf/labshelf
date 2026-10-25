@@ -1,5 +1,5 @@
 /** Pins disconnecting (withdraw, then delete, then forget) and the start-up update of the owner's relay. */
-import { disconnectRelayAccount, updateOwnRelay } from "../../../src/relay/index";
+import { removeRelayAccount, updateOwnRelay } from "../../../src/relay/index";
 import { accountWorld, connectedAccount, routes, signIn, type WorldOptions } from "./fakeRelayAccount";
 
 async function connected(options: WorldOptions = {}) {
@@ -8,11 +8,11 @@ async function connected(options: WorldOptions = {}) {
   await world.store.save(connectedAccount);
   const deletesWhenWithdrawn: string[][] = [];
   const withdrawFromShares = jest.fn(async () => { deletesWhenWithdrawn.push(routes(world).filter((route) => route.startsWith("DELETE"))); });
-  const disconnect = () => disconnectRelayAccount({ ...world.deps, withdrawFromShares });
+  const disconnect = () => removeRelayAccount({ ...world.deps, withdrawFromShares });
   return { world, withdrawFromShares, deletesWhenWithdrawn, disconnect };
 }
 
-describe("disconnectRelayAccount", () => {
+describe("removeRelayAccount", () => {
   it("withdraws the relay from the shares before deleting it, then forgets the account", async () => {
     const run = await connected();
     expect(await run.disconnect()).toEqual({ accountId: connectedAccount.accountId, relayUrl: connectedAccount.relayUrl });
@@ -40,7 +40,7 @@ describe("disconnectRelayAccount", () => {
   it("does nothing when no account is connected", async () => {
     const world = accountWorld();
     const withdrawFromShares = jest.fn(async () => undefined);
-    expect(await disconnectRelayAccount({ ...world.deps, withdrawFromShares })).toBeUndefined();
+    expect(await removeRelayAccount({ ...world.deps, withdrawFromShares })).toBeUndefined();
     expect(withdrawFromShares).not.toHaveBeenCalled();
     expect(world.cloudflare.requests).toEqual([]);
   });

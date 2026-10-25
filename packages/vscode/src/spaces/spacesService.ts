@@ -7,7 +7,7 @@ import {
   type PathOps,
   type ProjectLibraryPort,
   type SpacesHostPort,
-  buildSpaceProjectInfos,
+  createSpaceProjectList,
 } from '@labshelf/core';
 import type { LibraryRootController } from '../activation/index.js';
 import type { ActiveServices } from '../command/index.js';
@@ -28,7 +28,7 @@ function createSpacesHostPort(options: SpacesPortOptions): SpacesHostPort {
     onLibraryChange: (listener) => services.library.onChange(listener),
     projects: async () => {
       const rows = await projectLibrary().list();
-      const infos = await buildSpaceProjectInfos(rows, readChecklist, logger);
+      const infos = await createSpaceProjectList(rows, readChecklist, logger);
       return infos.flatMap((info) => {
         const id = options.projectId(info.projectId);
         return id ? [{ ...info, projectId: id }] : [];

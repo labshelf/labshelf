@@ -2,15 +2,15 @@
 // CONTRACT: documents/contracts/qmd-items.md#items
 import { formatAnchor, parseAnchor, type ItemAnchor } from "./itemAnchor.js";
 import { isItemId } from "./itemId.js";
-import { unclosedCodeFences } from "./fences.js";
+import { findUnclosedCodeFences } from "./fences.js";
 import { formatDivOpener } from "./attributes.js";
 import { isBalanced } from "./divs.js";
 import { ITEM_CLASS, type ItemFile, type ItemSegment, type Segment } from "./itemFile.js";
-import { isBlankLine, lineEnding, splitLines } from "./lines.js";
+import { isBlankLine, extractLineEnding, splitLines } from "./lines.js";
 import { parseItemFile } from "./parseItemFile.js";
 import { serializeItemFile } from "./serializeItemFile.js";
 
-export interface NewItem {
+export interface CreateItemInput {
   readonly id: string;
   readonly anchor?: ItemAnchor;
   readonly author?: string;
@@ -19,13 +19,13 @@ export interface NewItem {
 }
 
 /** Appends an item at the end of the file, after one empty line. Throws on an invalid or taken id or an unsafe body. */
-export function addItem(file: ItemFile, item: NewItem): ItemFile {
+export function addItem(file: ItemFile, item: CreateItemInput): ItemFile {
   if (!isItemId(item.id)) { throw new Error(`Item id "${item.id}" is not n- plus a ULID`); }
   if (file.segments.some((segment) => segment.kind === "item" && segment.id === item.id)) {
     throw new Error(`Item ${item.id} already exists in the file`);
   }
   const text = serializeItemFile(file);
-  const eol = lineEnding(text);
+  const eol = extractLineEnding(text);
   const segments = [...file.segments];
   const last = segments.at(-1);
   if (last && !/(?:\r\n|\n|\r)$/.test(text)) {
@@ -40,9 +40,9 @@ export function addItem(file: ItemFile, item: NewItem): ItemFile {
 }
 
 /** Throws when no item or more than one has the id, or the body is unsafe. */
-export function replaceItemBody(file: ItemFile, id: string, body: string): ItemFile {
+export function setItemBody(file: ItemFile, id: string, body: string): ItemFile {
   const index = indexOfItem(file, id);
-  const eol = lineEnding(serializeItemFile(file));
+  const eol = extractLineEnding(serializeItemFile(file));
   const segments = [...file.segments];
   segments[index] = { ...(segments[index] as ItemSegment), body: prepareBody(id, body, eol) };
   return checked({ segments }, id);
@@ -63,7 +63,7 @@ export function removeItem(file: ItemFile, id: string): ItemFile {
   return { segments: joinLoose(segments) };
 }
 
-function newSegment(item: NewItem, eol: string): ItemSegment {
+function newSegment(item: CreateItemInput, eol: string): ItemSegment {
   const attrs: [string, string][] = [];
   const anchor = item.anchor ? formatAnchor(item.anchor) : "";
   if (anchor !== "") { attrs.push(["anchor", anchor]); }
@@ -88,7 +88,7 @@ function prepareBody(id: string, body: string, eol: string): string {
   let prepared = body.replace(/\r\n|\n|\r/g, eol);
   if (prepared !== "" && !prepared.endsWith(eol)) { prepared += eol; }
   const lines = splitLines(prepared);
-  const unclosed = unclosedCodeFences(lines);
+  const unclosed = findUnclosedCodeFences(lines);
   if (unclosed.length > 0) { throw new Error(`Item ${id}: body has an unclosed code fence at line ${unclosed[0]! + 1}`); }
   if (!isBalanced(lines)) { throw new Error(`Item ${id}: body opens or closes a div it does not close or open`); }
   return prepared;

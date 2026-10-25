@@ -28,7 +28,7 @@ import {
   interceptExternalLinks,
   reportFirstRender,
 } from "./startup/index.js";
-import { $ } from "../../ui/dom/index.js";
+import { findElement } from "../../ui/dom/index.js";
 
 export interface ReaderStartOptions {
   boot: ReaderBootParams;
@@ -48,9 +48,9 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
   installTextLayerFocusGuard();
 
   const host = new HostBridge(transport);
-  const container = $<HTMLDivElement>("viewerContainer");
-  const loadingMsg = $("loading-msg");
-  const errorMsg = $("error-msg");
+  const container = findElement<HTMLDivElement>("viewerContainer");
+  const loadingMsg = findElement("loading-msg");
+  const errorMsg = findElement("error-msg");
   const restore = new PositionRestore(host);
   const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme);
   if (boot.preview) { theme.lockPages("light"); }
@@ -58,7 +58,7 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
 
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);
-    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, $<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
+    const parts = createViewer(loaded.viewerLib, loaded.pdfDocument, container, findElement<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
     wireReader(ctx, theme, perf, restore, loadingMsg, new DocumentReloader(ctx, pdf ?? {}));
@@ -86,8 +86,8 @@ function wireReader(
   const hover = new DeferredHover(ctx, theme, citations);
   const keyboard = new Keyboard(ctx, createActionRunner({ ctx, ui, hover }));
   bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync: new SourceSync(ctx), changeMarks: new ChangeMarks(ctx), citations });
-  interceptExternalLinks($("viewer"), ctx.host);
-  interceptCitationClicks($("viewer"), ctx, citations);
+  interceptExternalLinks(findElement("viewer"), ctx.host);
+  interceptCitationClicks(findElement("viewer"), ctx, citations);
   restore.attach({ ctx, ui, theme, perf, loadingMsg });
   reportFirstRender(ctx, theme, perf, hover);
 }

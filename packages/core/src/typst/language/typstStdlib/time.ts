@@ -1,16 +1,16 @@
 // Catalogues Typst's datetime and duration types with their methods.
-import { fn, named, pos, ty, type TypstBuiltin } from "./typstBuiltin";
+import { createFunctionBuiltin, createNamedParam, createPositionalParam, createTypeBuiltin, type TypstBuiltin } from "./typstBuiltin";
 
-const method = (name: string, doc: string, returns: string): TypstBuiltin => fn(name, doc, [], returns);
-const part = (name: string) => named(name, "int", undefined, `The ${name}.`);
-const span = (name: string) => named(name, "int", "0", `The number of ${name}.`);
+const method = (name: string, doc: string, returns: string): TypstBuiltin => createFunctionBuiltin(name, doc, [], returns);
+const part = (name: string) => createNamedParam(name, "int", undefined, `The ${name}.`);
+const span = (name: string) => createNamedParam(name, "int", "0", `The number of ${name}.`);
 
 export const TIME: readonly TypstBuiltin[] = [
-  ty("datetime", "A date, a time, or both; give either the full date, the full time, or all six parts.", [
+  createTypeBuiltin("datetime", "A date, a time, or both; give either the full date, the full time, or all six parts.", [
     part("year"), part("month"), part("day"), part("hour"), part("minute"), part("second"),
   ], [
-    fn("display", "Formats the datetime as a string.", [
-      pos("pattern", "auto | str", "The format, such as `\"[year]-[month]-[day]\"`; `auto` picks one by the parts present.", "auto"),
+    createFunctionBuiltin("display", "Formats the datetime as a string.", [
+      createPositionalParam("pattern", "auto | str", "The format, such as `\"[year]-[month]-[day]\"`; `auto` picks one by the parts present.", "auto"),
     ], "str"),
     method("year", "The year, or `none` for a time.", "none | int"),
     method("month", "The month, or `none` for a time.", "none | int"),
@@ -20,11 +20,11 @@ export const TIME: readonly TypstBuiltin[] = [
     method("minute", "The minute, or `none` for a date.", "none | int"),
     method("second", "The second, or `none` for a date.", "none | int"),
     method("ordinal", "The day of the year, or `none` for a time.", "none | int"),
-    fn("today", "The current date, called as `datetime.today()`.", [
-      named("offset", "auto | int", "auto", "The UTC offset in hours; `auto` uses the local time zone."),
+    createFunctionBuiltin("today", "The current date, called as `datetime.today()`.", [
+      createNamedParam("offset", "auto | int", "auto", "The UTC offset in hours; `auto` uses the local time zone."),
     ], "datetime"),
   ]),
-  ty("duration", "A span of time, which results from subtracting two datetimes.", [
+  createTypeBuiltin("duration", "A span of time, which results from subtracting two datetimes.", [
     span("seconds"), span("minutes"), span("hours"), span("days"), span("weeks"),
   ], [
     method("seconds", "The duration in seconds.", "float"),

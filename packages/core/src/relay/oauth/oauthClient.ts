@@ -10,6 +10,6 @@ export const CLOUDFLARE_SCOPES = "workers-scripts.admin workers-kv-storage.write
 const CONNECTED_PAGE = "https://labshelf.org/connected/?service=cloudflare";
 
 /** The page the loopback sends the browser to; it carries an error code, never a token or a code. */
-export function connectedPageUrl(errorCode?: string): string {
+export function deriveConnectedPageUrl(errorCode?: string): string {
   return errorCode ? `${CONNECTED_PAGE}&error=${encodeURIComponent(errorCode)}` : CONNECTED_PAGE;
 }

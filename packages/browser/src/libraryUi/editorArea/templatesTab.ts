@@ -2,7 +2,7 @@
 import {
   createGalleryHost, createLibraryTemplateSources, createLoopbackTransport, posixPathOps, type GalleryToHost, type HostToGallery,
 } from "@labshelf/core";
-import { el, mountTemplateGallery, quickPick } from "@labshelf/core/dom";
+import { renderElement, mountTemplateGallery, pickQuickEntry } from "@labshelf/core/dom";
 import { askProjectTitle, createBrowserProjectData } from "../../writing/project";
 import type { TabModule } from "./tabKind";
 import { createBrowserPublish } from "../../templates";
@@ -19,7 +19,7 @@ export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
     pickProject: async () => {
       const entries = (await data.listProjects(LIBRARY_ROOT)).filter((project) => project.kind === "ready");
       if (!entries.length) throw new Error("Create a writing project to publish as a template.");
-      return quickPick(entries.map((project) => ({ label: project.settings.title ?? project.settings.id, value: project.settings.id })), { title: "Project to publish as a template" });
+      return pickQuickEntry(entries.map((project) => ({ label: project.settings.title ?? project.settings.id, value: project.settings.id })), { title: "Project to publish as a template" });
     },
   });
   const gallery = createGalleryHost({
@@ -33,7 +33,7 @@ export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
     publish,
   });
   const stop = endpoint.subscribe((message) => { void gallery.handle(message); });
-  const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
   const page = mountTemplateGallery(body, ui);
   return { dispose: () => { stop(); publish.dispose(); gallery.dispose(); page.dispose(); body.remove(); } };
 };

@@ -5,7 +5,7 @@ import { parseRelayAccount, RELAY_ACCOUNT_LOG_MODULE, type RelayAccount } from "
 
 export interface RelayAccountSlots {
   account: SecretSlot;
-  /** The Cloudflare OAuth tokens, as `storeCloudflareTokens` writes them. */
+  /** The Cloudflare OAuth tokens, as `writeCloudflareTokens` writes them. */
   tokens: SecretSlot;
   /** Lets one window at a time refresh the OAuth tokens. */
   refreshLock: StoredLock;

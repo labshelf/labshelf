@@ -1,5 +1,5 @@
 // Routes sidebar Space row activation, tree folding and context menus to the host.
-import { confirmDialog, showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
+import { askDialog, showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
 import type { SidebarSpacesState } from "./spaceActions.js";
 
 export function updateSpaceRowOpen(t: SidebarSpacesState, row: HTMLElement, render: () => void, open?: boolean): void {
@@ -24,11 +24,11 @@ export function runSpaceRow(t: SidebarSpacesState, row: HTMLElement, render: () 
 }
 
 async function deleteSpace(t: SidebarSpacesState, id: string): Promise<void> {
-  if (await confirmDialog("Delete Space?", "Delete this Space and its references? Papers remain in your Library.", "Delete", true)) t.spaces?.deleteSpace(id);
+  if (await askDialog("Delete Space?", "Delete this Space and its references? Papers remain in your Library.", "Delete", true)) t.spaces?.deleteSpace(id);
 }
 
 async function deleteFolder(t: SidebarSpacesState, id: string, folder: string): Promise<void> {
-  if (await confirmDialog("Delete folder?", "Delete this folder? Paper references remain in the Space.", "Delete", true)) t.spaces?.deleteFolder(id, folder);
+  if (await askDialog("Delete folder?", "Delete this folder? Paper references remain in the Space.", "Delete", true)) t.spaces?.deleteFolder(id, folder);
 }
 
 export function showSpaceMenu(e: MouseEvent, t: SidebarSpacesState, row: HTMLElement | null): boolean {

@@ -2,7 +2,7 @@
 import {
   applyRestoredFiles, historyDiff, historyRows, restoreSnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
 } from "@labshelf/core";
-import { confirmDialog, toast } from "@labshelf/core/dom";
+import { askDialog, showToast } from "@labshelf/core/dom";
 import type { PageShares } from "../../collab";
 import { flushProjectEditors, reloadProjectEditors } from "../session";
 import { onEditRecorded } from "./historyRecorded";
@@ -53,7 +53,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
   async function restore(id: string): Promise<void> {
     const row = (await historyRows(target.storage, logger)).find((entry) => entry.id === id);
     if (!row) return;
-    const accepted = await confirmDialog(
+    const accepted = await askDialog(
       `Restore ${project.id} to ${when(row)}?`,
       "The project's files go back to that point. The current state stays in the history, so you can return to it.",
       "Restore",
@@ -64,7 +64,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
       // Unsaved edits are written first, so the history keeps them, and the editors reload after, so none saves its stale text over the restore.
       if (!(await flushProjectEditors(project.id))) {
         void logger.log("WARN", MODULE, "kept the project as it is: an open file could not be saved", { projectId: project.id, id });
-        toast(`Could not save an open file of ${project.id}, so nothing was restored.`, "error");
+        showToast(`Could not save an open file of ${project.id}, so nothing was restored.`, "error");
         return;
       }
       await restoreSnapshot(target, id, logger);
@@ -74,7 +74,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
       endpoint.post({ type: "busy", busy: false });
     }
     await refresh();
-    toast(`Restored ${project.id} to ${when(row)}.`, "ok");
+    showToast(`Restored ${project.id} to ${when(row)}.`, "ok");
   }
 
   async function handle(message: HistoryToHost): Promise<void> {
@@ -89,14 +89,14 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
     } else if (message.type === "markVersion") {
       if (await markProjectVersion({ fs, logger, lastFullPdf }, project)) await refresh();
     } else {
-      toast("Compare Versions needs the VS Code extension or the terminal app.");
+      showToast("Compare Versions needs the VS Code extension or the terminal app.");
     }
   }
 
   const stop = endpoint.subscribe((message) => {
     handle(message).catch((error: unknown) => {
       void logger.error(MODULE, error, { action: message.type, projectId: project.id, folder: project.folder });
-      toast(`History: ${error instanceof Error ? error.message : String(error)}`, "error");
+      showToast(`History: ${error instanceof Error ? error.message : String(error)}`, "error");
     });
   });
   return { dispose: () => { disposed = true; stop(); stopEdits?.(); } };

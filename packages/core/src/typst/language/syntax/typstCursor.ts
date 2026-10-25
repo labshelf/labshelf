@@ -1,6 +1,6 @@
 // Tells what surrounds a cursor in Typst text: the mode, the word being typed and the string or call it is in.
 import type { TypstCursorContext } from "./typstFileSymbols.js";
-import { innermostCall } from "./typstFrames.js";
+import { findInnermostCall } from "./typstFrames.js";
 import { walkTypst } from "./typstWalk.js";
 
 const WORD_CHAR = /[\p{L}\p{N}_-]/u;
@@ -9,7 +9,7 @@ const RECEIVER = /[\p{L}_][\p{L}\p{N}_-]*(?:\.[\p{L}_][\p{L}\p{N}_-]*)*$/u;
 /** How far before the dot a receiver path is looked for. */
 const RECEIVER_SPAN = 200;
 
-export function typstContextAt(text: string, offset: number): TypstCursorContext {
+export function deriveTypstCursor(text: string, offset: number): TypstCursorContext {
   const before = text.slice(0, offset);
   const end = walkTypst(before);
   let from = offset;
@@ -29,7 +29,7 @@ export function typstContextAt(text: string, offset: number): TypstCursorContext
     context.string = { from: end.string.from, prefix: before.slice(end.string.from) };
     if (end.string.call !== undefined) { context.string.call = end.string.call; }
   }
-  const call = innermostCall(end.stack);
+  const call = findInnermostCall(end.stack);
   if (call) { context.call = call; }
   return context;
 }

@@ -1,21 +1,21 @@
 /** Verifies the helper's loopback WebSocket server: origin check, token handshake, single authenticated socket, binary-only frames and the 16 MiB cap. */
 import { RawWebSocketClient } from "../../../support/rawWebSocketClient";
 import { fakeLogger, type RecordingLogger } from "../../../support/fakeLogger";
-import { decodeSocketMessage, encodeSocketMessage } from "../../../../src/helper/connectionFrame";
-import { startHelperSocket } from "../../../../src/helper/node/connection/index";
+import { decodeConnectionMessage, encodeConnectionMessage } from "../../../../src/helper/connectionFrame";
+import { startHelperServer } from "../../../../src/helper/node/connection/index";
 import { PROTOCOL_VERSION } from "../../../../src/helper/index";
 
 const ORIGIN = "chrome-extension://abcdefghijklmnop";
 const TOKEN = "t0ken";
-const auth = (token = TOKEN) => encodeSocketMessage({ v: PROTOCOL_VERSION, id: "1", type: "auth", token });
+const auth = (token = TOKEN) => encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "1", type: "auth", token });
 
 type Handle = (envelope: Record<string, unknown>, payload: Uint8Array, send: (envelope: Record<string, unknown>, payload?: Uint8Array) => void) => void | Promise<void>;
 let logger: RecordingLogger;
 let received: Array<{ envelope: Record<string, unknown>; payload: Uint8Array }>;
-let server: Awaited<ReturnType<typeof startHelperSocket>>;
+let server: Awaited<ReturnType<typeof startHelperServer>>;
 
 async function start(options: { callerOrigin?: string; handle?: Handle; authTimeoutMs?: number } = {}) {
-  server = await startHelperSocket({
+  server = await startHelperServer({
     token: TOKEN, origin: ORIGIN, callerOrigin: options.callerOrigin, logger, ...(options.authTimeoutMs !== undefined && { authTimeoutMs: options.authTimeoutMs }),
     handle: options.handle ?? ((envelope, payload) => { received.push({ envelope, payload }); }),
   });
@@ -25,7 +25,7 @@ const logged = (pattern: RegExp) => logger.logs.some((entry) => pattern.test(ent
 beforeEach(() => { logger = fakeLogger(); received = []; });
 afterEach(async () => { await server?.close(); });
 
-describe("startHelperSocket", () => {
+describe("startHelperServer", () => {
   it("listens on an OS-picked loopback port", async () => {
     await start();
     expect(server.port).toBeGreaterThan(0);
@@ -38,8 +38,8 @@ describe("startHelperSocket", () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
     client.sendBinary(auth());
-    expect(decodeSocketMessage(await client.nextMessage()).envelope).toMatchObject({ v: PROTOCOL_VERSION, id: "1", type: "authed" });
-    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "a.tex" }, new Uint8Array([5, 6])));
+    expect(decodeConnectionMessage(await client.nextMessage()).envelope).toMatchObject({ v: PROTOCOL_VERSION, id: "1", type: "authed" });
+    client.sendBinary(encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "a.tex" }, new Uint8Array([5, 6])));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(received).toHaveLength(1);
     expect(received[0]!.envelope).toMatchObject({ id: "2", type: "save" });
@@ -52,8 +52,8 @@ describe("startHelperSocket", () => {
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
     client.sendBinary(auth());
     await client.nextMessage();
-    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "3", type: "compile" }));
-    const reply = decodeSocketMessage(await client.nextMessage());
+    client.sendBinary(encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "3", type: "compile" }));
+    const reply = decodeConnectionMessage(await client.nextMessage());
     expect(reply.envelope).toMatchObject({ id: "3", type: "pages" });
     expect(Array.from(reply.payload)).toEqual([7]);
     client.destroy();
@@ -74,7 +74,7 @@ describe("startHelperSocket", () => {
   });
 
   it("refuses an origin that is not an extension origin even when it matches hello", async () => {
-    server = await startHelperSocket({ token: TOKEN, origin: "https://evil.example", logger, handle: () => undefined });
+    server = await startHelperServer({ token: TOKEN, origin: "https://evil.example", logger, handle: () => undefined });
     const { status } = await RawWebSocketClient.connect(server.port, "https://evil.example");
     expect(status).not.toBe(101);
     expect(logged(/origin/i)).toBe(true);
@@ -119,7 +119,7 @@ describe("startHelperSocket", () => {
   it("closes the socket when the first frame is not auth", async () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
-    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "1", type: "save", projectId: "p", path: "a.tex" }));
+    client.sendBinary(encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "1", type: "save", projectId: "p", path: "a.tex" }));
     await client.closed;
     expect(logged(/auth/i)).toBe(true);
     expect(received).toHaveLength(0);
@@ -134,7 +134,7 @@ describe("startHelperSocket", () => {
     second.sendBinary(auth());
     await second.closed;
     expect(logged(/second|already/i)).toBe(true);
-    first.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "9", type: "save", projectId: "p", path: "a.tex" }));
+    first.sendBinary(encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "9", type: "save", projectId: "p", path: "a.tex" }));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(received).toHaveLength(1);
     first.destroy();
@@ -143,7 +143,7 @@ describe("startHelperSocket", () => {
   it("closes the socket when the first frame is an auth without a token", async () => {
     await start();
     const { client } = await RawWebSocketClient.connect(server.port, ORIGIN);
-    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "1", type: "auth" }));
+    client.sendBinary(encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "1", type: "auth" }));
     await client.closed;
     expect(logged(/not a valid auth/i)).toBe(true);
   });
@@ -174,7 +174,7 @@ describe("startHelperSocket", () => {
     client.sendBinary(auth());
     await client.nextMessage();
     await new Promise((resolve) => setTimeout(resolve, 250));
-    client.sendBinary(encodeSocketMessage({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "a.tex" }));
+    client.sendBinary(encodeConnectionMessage({ v: PROTOCOL_VERSION, id: "2", type: "save", projectId: "p", path: "a.tex" }));
     await new Promise((resolve) => setTimeout(resolve, 100));
     expect(received).toHaveLength(1);
     client.destroy();

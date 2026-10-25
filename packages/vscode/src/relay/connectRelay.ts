@@ -1,7 +1,7 @@
 // Connects the owner's Cloudflare account: a sign-in (or a pasted token on a remote host), the account, then the relay deployed and serving.
 import * as vscode from "vscode";
 
-import { connectRelayAccount, relayWorkerScript, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
+import { connectRelayAccount, readRelayWorkerScript, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
 import { LOG_MODULE } from "./relayAccounts.js";
 import { relayAccountDeps } from "./relayAccountDeps.js";
 import { lazyProgress } from "./relayProgress.js";
@@ -97,7 +97,7 @@ async function deployRelayAccount(deps: ConnectDeps): Promise<string | undefined
       ...relayAccountDeps(deps),
       chooseCredential: () => chooseCredential(deps),
       chooseAccount,
-      script: relayWorkerScript(),
+      script: readRelayWorkerScript(),
       offerToShares: () => { progress.close(); return deps.offerToShares(); },
       progress: (step) => progress.report(step === "deploying" ? "uploading the relay" : "waiting for its address to answer, which takes up to 4 minutes the first time"),
     });

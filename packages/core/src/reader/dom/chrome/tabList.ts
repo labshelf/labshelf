@@ -1,5 +1,5 @@
 // Shows a strip of tabs where arrow keys, Home and End move the selection with a roving tabindex.
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 
 /** One tab: its id, its visible label and the id of the panel it shows, when it has one. */
 export interface TabSpec<T extends string> {
@@ -22,9 +22,9 @@ export class TabList<T extends string> {
   private current: number;
 
   constructor(private readonly tabs: ReadonlyArray<TabSpec<T>>, private readonly options: TabListOptions<T>) {
-    this.el = el("div", { class: "rd-tabs", role: "tablist", "aria-label": options.label });
+    this.el = renderElement("div", { class: "rd-tabs", role: "tablist", "aria-label": options.label });
     this.buttons = tabs.map(({ id, label, controls }) => {
-      const button = el("button", { class: "rd-tab", type: "button", role: "tab", text: label });
+      const button = renderElement("button", { class: "rd-tab", type: "button", role: "tab", text: label });
       if (controls !== undefined) { button.setAttribute("aria-controls", controls); }
       button.addEventListener("click", () => this.select(id));
       return button;

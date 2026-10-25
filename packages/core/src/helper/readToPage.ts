@@ -4,11 +4,11 @@
 import type { BuildProblemKind, LocatedProblem } from "../latex/index.js";
 import {
   HELPER_BUILD_STATUSES, HELPER_HOSTS, PROGRESS_PHASES, TEX_SOURCES,
-  type ChangedPage, type TexStatus, type ToPageMessage,
+  type ChangedPage, type TexToolchain, type ToPageMessage,
 } from "./helperMessages.js";
 import {
   FieldError, isBody, isNonNegativeInteger, isPositiveInteger, readArray, readBody, readBoolean, readChoice, readNumber, readPaths,
-  readProjectId, readSha256, readString, readText, optional, type Body,
+  readProjectId, readSha256, readString, readText, readOptionalField, type Body,
 } from "./messageFields.js";
 
 import { readTemplatePublishEvent } from "./template/index.js";
@@ -19,11 +19,11 @@ type Readers = { [T in ToPageMessage["type"]]: (body: Body, envelope: Envelope) 
 const SEVERITIES = ["error", "warning", "info"] as const;
 const PROBLEM_KINDS: readonly BuildProblemKind[] = ["undefinedCitation", "undefinedReference", "overfull"];
 
-function readTex(body: Body): TexStatus {
+function readTex(body: Body): TexToolchain {
   const tex = readBody(body, "tex");
   return {
     source: readChoice(tex, "source", TEX_SOURCES),
-    ...optional(tex, "year", (b, k) => readNumber(b, k, isPositiveInteger)),
+    ...readOptionalField(tex, "year", (b, k) => readNumber(b, k, isPositiveInteger)),
     complete: readBoolean(tex, "complete"),
   };
 }
@@ -35,10 +35,10 @@ function readProblems(body: Body): LocatedProblem[] {
       severity: readChoice(entry, "severity", SEVERITIES),
       message: readString(entry, "message"),
       file: readString(entry, "file"),
-      ...optional(entry, "hint", readString),
-      ...optional(entry, "line", (b, k) => readNumber(b, k, isPositiveInteger)),
-      ...optional(entry, "kind", (b, k) => readChoice(b, k, PROBLEM_KINDS)),
-      ...optional(entry, "subject", readString),
+      ...readOptionalField(entry, "hint", readString),
+      ...readOptionalField(entry, "line", (b, k) => readNumber(b, k, isPositiveInteger)),
+      ...readOptionalField(entry, "kind", (b, k) => readChoice(b, k, PROBLEM_KINDS)),
+      ...readOptionalField(entry, "subject", readString),
     };
   });
 }
@@ -71,11 +71,11 @@ const READERS: Readers = {
   closed: (body, envelope) => ({ ...envelope, type: "closed", projectId: readProjectId(body) }),
   progress: (body, envelope) => ({
     ...envelope, type: "progress", phase: readChoice(body, "phase", PROGRESS_PHASES), message: readString(body, "message"),
-    ...optional(body, "fraction", (b, k) => readNumber(b, k, (n) => n >= 0 && n <= 1)),
+    ...readOptionalField(body, "fraction", (b, k) => readNumber(b, k, (n) => n >= 0 && n <= 1)),
   }),
   built: (body, envelope) => ({
     ...envelope, type: "built", status: readChoice(body, "status", HELPER_BUILD_STATUSES), problems: readProblems(body),
-    ...optional(body, "pdfSha256", readSha256),
+    ...readOptionalField(body, "pdfSha256", readSha256),
   }),
   pages: (body, envelope) => ({
     ...envelope, type: "pages", pdfSha256: readSha256(body, "pdfSha256"),

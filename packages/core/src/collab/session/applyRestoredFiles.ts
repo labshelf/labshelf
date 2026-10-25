@@ -1,6 +1,6 @@
 // Writes the files a history restore put on disk into the share's docs and index, so peers receive the restored version.
 import type { ILogger } from "../../ports/index.js";
-import { fileText, indexFiles, isSafeSharePath, replaceFileText } from "../model/index.js";
+import { readFileText, readShareIndexDocFiles, isSafeSharePath, setFileText } from "../model/index.js";
 import type { ShareSession } from "../doc/index.js";
 
 const LOG_MODULE = "collab.restore";
@@ -15,7 +15,7 @@ export interface ApplyRestoredFilesOptions {
 }
 
 export async function applyRestoredFiles({ session, restored, origin, logger }: ApplyRestoredFilesOptions): Promise<void> {
-  const files = indexFiles(session.index);
+  const files = readShareIndexDocFiles(session.index);
   const textPaths = [...files.entries()].filter(([path, entry]) => entry.kind === "text" && isSafeSharePath(path)).map(([path]) => path);
   const removed: string[] = [];
   let updated = 0;
@@ -23,8 +23,8 @@ export async function applyRestoredFiles({ session, restored, origin, logger }: 
     const next = await restored(path);
     if (next === null) { removed.push(path); continue; }
     const doc = session.openDoc(path);
-    if (fileText(doc).toString() === next) { continue; }
-    replaceFileText(doc, next, origin);
+    if (readFileText(doc).toString() === next) { continue; }
+    setFileText(doc, next, origin);
     updated += 1;
   }
   if (removed.length > 0) {

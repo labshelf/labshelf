@@ -4,7 +4,7 @@
 import { CODE_FONT_TOKENS, renderCodeFontsCss } from "./fontTokens.js";
 import { CODE_THEME_TOKENS, renderCodeThemesCss } from "./codeThemeTokens.js";
 import { COLOR_TOKENS, FILE_TYPE_TOKENS, MARK_TOKENS, SHEET_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
-import { token, type DesignToken } from "./designToken.js";
+import { createDesignToken, type DesignToken } from "./designToken.js";
 import { HIGHLIGHT_COLORS } from "./highlightTokens.js";
 import { renderReaderThemesCss } from "./readerThemeTokens.js";
 import { ELEVATION_TOKENS, MOTION_TOKENS, SHAPE_TOKENS, SPACE_TOKENS, TYPE_TOKENS } from "./scaleTokens.js";
@@ -16,7 +16,7 @@ const ALL_TOKENS: Record<string, DesignToken> = {
   ...FILE_TYPE_TOKENS,
   ...SHEET_TOKENS,
   ...CODE_THEME_TOKENS,
-  ...Object.fromEntries(Object.entries(HIGHLIGHT_COLORS).map(([name, value]) => [`hl-${name}`, token(value)])),
+  ...Object.fromEntries(Object.entries(HIGHLIGHT_COLORS).map(([name, value]) => [`hl-${name}`, createDesignToken(value)])),
   ...TYPE_TOKENS,
   ...CODE_FONT_TOKENS,
   ...SPACE_TOKENS,

@@ -1,8 +1,8 @@
 /** Pins that the clients of a watched relay keep a watcher out of their blob fetches and do not flood its socket. */
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
 import { createRelayWatch } from "../../../src/collab/relays/index";
-import { attachBlobs, type BlobExchange } from "../../../src/collab/doc/attachBlobs";
-import type { RelaySocket } from "../../../src/collab/transport/index";
+import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/attachShareBlobs";
+import type { RelayConnectionPort } from "../../../src/collab/transport/index";
 import { deriveSha256Hex } from "../../../src/hash/index";
 import { FakeClock } from "../peer/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
@@ -18,25 +18,25 @@ const WATCHER_MESSAGE_BOUND = 2 * LETTERS + 40;
 const state = (name: string) => ({ name, colour: "#000000", file: null, anchor: null, head: null });
 
 /** Counts the messages the relay delivers to the sockets this factory opens. */
-function countingSockets(inner: (url: string) => RelaySocket, counter: { received: number }): (url: string) => RelaySocket {
+function countingSockets(inner: (url: string) => RelayConnectionPort, counter: { received: number }): (url: string) => RelayConnectionPort {
   return (url) => {
     const socket = inner(url);
-    let handler: RelaySocket["onmessage"] = null;
+    let handler: RelayConnectionPort["onmessage"] = null;
     Object.defineProperty(socket, "onmessage", {
       get: () => handler,
-      set: (fn: RelaySocket["onmessage"]) => { handler = fn && ((event) => { counter.received += 1; fn(event); }); },
+      set: (fn: RelayConnectionPort["onmessage"]) => { handler = fn && ((event) => { counter.received += 1; fn(event); }); },
     });
     return socket;
   };
 }
 
 /** A relay client of the group on the watched relay, with blobs that skip the peers reporting another relay. */
-async function openMember(relay: FakeRelay, clock: FakeClock, name: string, held?: Uint8Array): Promise<RelayClient & { blobs: BlobExchange }> {
+async function openMember(relay: FakeRelay, clock: FakeClock, name: string, held?: Uint8Array): Promise<RelayClient & { blobs: ShareBlobExchange }> {
   const client = await openRelayClient(relay, clock);
   client.presence.setRelay({ relay: RELAY_URL, relaysDown: {} });
   client.presence.setLocal(state(name));
-  const blobs = attachBlobs(client.session, {
-    contentKey: await deriveContentKey(SHARE_KEY), getBlob: async () => held, logger: client.logger, scheduler: clock,
+  const blobs = attachShareBlobs(client.session, {
+    contentKey: await deriveContentShareKey(SHARE_KEY), getBlob: async () => held, logger: client.logger, scheduler: clock,
     skipPeer: (peer) => client.presence.reportsOtherRelay(peer),
   });
   return { ...client, blobs, close: async () => { blobs.close(); await client.close(); } };
@@ -49,8 +49,8 @@ describe("a relay watcher seen by the clients of the relay it watches", () => {
     const counter = { received: 0 };
     const logger = fakeLogger();
     const watch = createRelayWatch({
-      shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), contentKey: await deriveContentKey(SHARE_KEY),
-      awarenessKey: await deriveAwarenessKey(SHARE_KEY), logger, scheduler: clock,
+      shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), contentKey: await deriveContentShareKey(SHARE_KEY),
+      awarenessKey: await derivePresenceShareKey(SHARE_KEY), logger, scheduler: clock,
       fetch: relay.fetch, socketFactory: countingSockets(relay.socketFactory, counter),
     });
     const blob = new TextEncoder().encode("figure bytes");

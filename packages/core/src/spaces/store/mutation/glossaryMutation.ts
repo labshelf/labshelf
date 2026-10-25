@@ -35,6 +35,6 @@ export function withUpdatedTerm(glossary: Glossary, termId: string, draft: TermD
   return { ...glossary, terms: glossary.terms.map((term) => (term.id === termId ? termFrom(draft, termId, old) : term)) };
 }
 
-export function withoutTerm(glossary: Glossary, termId: string): Glossary {
+export function withTermRemoved(glossary: Glossary, termId: string): Glossary {
   return { ...glossary, terms: glossary.terms.filter((term) => term.id !== termId) };
 }

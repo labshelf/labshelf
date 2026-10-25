@@ -3,10 +3,10 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/research-chat.css";
-import { $, mountResearchChat } from "@labshelf/core/dom";
+import { findElement, mountResearchChat } from "@labshelf/core/dom";
 
 const api = acquireVsCodeApi();
-const chat = mountResearchChat($("root"), { context: null });
+const chat = mountResearchChat(findElement("root"), { context: null });
 window.addEventListener("message", (event: MessageEvent<unknown>) => {
   const raw = event.data;
   if (!raw || typeof raw !== "object" || !("type" in raw) || raw.type !== "context" || !("name" in raw)) { return; }

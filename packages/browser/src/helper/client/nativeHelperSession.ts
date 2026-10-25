@@ -1,5 +1,5 @@
 // Maintains authenticated helper sessions for an extension page.
-import { type HelperStatus, type ToPageMessage } from "@labshelf/core/helper";
+import { type HelperState, type ToPageMessage } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
 import { handshake } from "./handshake";
 import type { HelperConnection, HelperPortFactory, HelperWebSocketConstructor } from "./connection";
@@ -16,10 +16,10 @@ export interface NativeHelperSessionDeps {
 interface Session { native: HelperConnection; socket: HelperConnection }
 
 export class NativeHelperSession {
-  status: HelperStatus | undefined;
+  status: HelperState | undefined;
   private session: Session | undefined;
   private generation = 0;
-  private connecting: Promise<HelperStatus> | undefined;
+  private connecting: Promise<HelperState> | undefined;
 
   constructor(private readonly deps: NativeHelperSessionDeps, private readonly edits: EditTracker) {}
 
@@ -47,12 +47,12 @@ export class NativeHelperSession {
   }
 
   // INVARIANT: overlapping requests share one handshake because open projects belong to one socket.
-  connect(): Promise<HelperStatus> {
+  connect(): Promise<HelperState> {
     this.connecting ??= this.open().finally(() => { this.connecting = undefined; });
     return this.connecting;
   }
 
-  private async open(): Promise<HelperStatus> {
+  private async open(): Promise<HelperState> {
     const mine = ++this.generation;
     const previous = this.session;
     this.session = undefined;

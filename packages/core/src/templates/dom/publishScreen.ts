@@ -11,8 +11,8 @@ import { fillThumb } from "./templateCard.js";
 import { createCheckList } from "./checkList.js";
 import { createGithubStep } from "./githubStep.js";
 import { createPublishForm } from "./publishForm.js";
-import { icon } from "../../ui/index.js";
-import { el } from "../../ui/dom/index.js";
+import { renderIcon } from "../../ui/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
 
 interface PublishLayoutParts {
@@ -35,23 +35,23 @@ interface PublishLayout {
 function buildPublishLayout(parts: PublishLayoutParts): PublishLayout {
   const { project, headingId, done } = parts;
   const title = `Publish “${project.title}” as a template`;
-  const heading = el("h1", { id: headingId, class: "ls-tpl-detail-title ls-tpl-publish-title", tabindex: -1, text: title, title });
-  const back = el("button", { class: "ls-btn", type: "button" }, el("span", { html: icon("arrow-left") }), "Templates");
+  const heading = renderElement("h1", { id: headingId, class: "ls-tpl-detail-title ls-tpl-publish-title", tabindex: -1, text: title, title });
+  const back = renderElement("button", { class: "ls-btn", type: "button" }, renderElement("span", { html: renderIcon("arrow-left") }), "Templates");
   back.addEventListener("click", parts.onBack);
-  const preview = el("figure", { class: "ls-tpl-preview" });
-  const workflow = el("div", { class: "ls-tpl-publish-workflow" }, ...parts.workflow);
+  const preview = renderElement("figure", { class: "ls-tpl-preview" });
+  const workflow = renderElement("div", { class: "ls-tpl-publish-workflow" }, ...parts.workflow);
   done.hidden = true;
 
-  const element = el("section", { class: "ls-tpl-detail ls-tpl-publish", "aria-labelledby": headingId },
-    el("div", { class: "ls-tpl-detail-nav" }, back),
-    el("div", { class: "ls-tpl-detail-body" },
-      el("div", { class: "ls-tpl-info" },
+  const element = renderElement("section", { class: "ls-tpl-detail ls-tpl-publish", "aria-labelledby": headingId },
+    renderElement("div", { class: "ls-tpl-detail-nav" }, back),
+    renderElement("div", { class: "ls-tpl-detail-body" },
+      renderElement("div", { class: "ls-tpl-info" },
         heading,
-        el("p", { class: "ls-tpl-description", text: "LabShelf copies the project’s source files. Your text stays out unless you keep it in the sample." }),
+        renderElement("p", { class: "ls-tpl-description", text: "LabShelf copies the project’s source files. Your text stays out unless you keep it in the sample." }),
         workflow, done),
-      el("div", { class: "ls-tpl-publish-aside" }, preview,
-        el("p", { class: "ls-tpl-publish-caption", text: `Compiled on this machine with ${project.engineLabel}` }),
-        el("p", { class: "ls-tpl-publish-caption", text: "The thumbnail and a sample PDF go with the submission, so the catalog never has to compile it." }))));
+      renderElement("div", { class: "ls-tpl-publish-aside" }, preview,
+        renderElement("p", { class: "ls-tpl-publish-caption", text: `Compiled on this machine with ${project.engineLabel}` }),
+        renderElement("p", { class: "ls-tpl-publish-caption", text: "The thumbnail and a sample PDF go with the submission, so the catalog never has to compile it." }))));
 
   return {
     element, heading, preview,
@@ -117,14 +117,14 @@ interface PublishDone {
 }
 
 function createPublishDone(onStartOver: () => void): PublishDone {
-  const heading = el("h2", { class: "ls-tpl-detail-title", tabindex: -1, text: "Submitted for review" });
-  const link = el("a", { class: "ls-btn ls-btn-primary", html: icon("external") }, el("span", { text: "View pull request" }));
-  const startOver = el("button", { class: "ls-btn", type: "button", text: "Start over" });
+  const heading = renderElement("h2", { class: "ls-tpl-detail-title", tabindex: -1, text: "Submitted for review" });
+  const link = renderElement("a", { class: "ls-btn ls-btn-primary", html: renderIcon("external") }, renderElement("span", { text: "View pull request" }));
+  const startOver = renderElement("button", { class: "ls-btn", type: "button", text: "Start over" });
   startOver.addEventListener("click", onStartOver);
-  const element = el("div", { class: "ls-tpl-publish-done" },
+  const element = renderElement("div", { class: "ls-tpl-publish-done" },
     heading,
-    el("p", { text: "A reviewer checks it on GitHub. It shows up in everyone’s gallery once merged; until then it is in My templates." }),
-    el("div", { class: "ls-tpl-publish-actions" }, link, startOver));
+    renderElement("p", { text: "A reviewer checks it on GitHub. It shows up in everyone’s gallery once merged; until then it is in My templates." }),
+    renderElement("div", { class: "ls-tpl-publish-actions" }, link, startOver));
 
   return {
     element,

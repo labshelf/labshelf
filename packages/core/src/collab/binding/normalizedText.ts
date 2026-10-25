@@ -8,8 +8,8 @@
 
 import type * as Y from "yjs";
 import type { ILogger } from "../../ports/index.js";
-import { PendingRemoteChanges, replacementBetween } from "./pendingRemoteChanges.js";
-import { applyChanges, changesFromDelta, sortChanges, type TextChange } from "./textChange.js";
+import { PendingRemoteChanges, deriveReplacementBetween } from "./pendingRemoteChanges.js";
+import { applyChanges, deriveChangesFromDelta, orderChanges, type TextChange } from "./textChange.js";
 import type { TextUndoManager, UndoChange } from "./textUndoManager.js";
 
 const LINE_FEED = 10;
@@ -105,7 +105,7 @@ const LOG_MODULE = "collab.binding";
 export interface EditorSelection { anchor: number; active: number }
 
 /** Changes to send to the editor, against the document text they were computed from; `settle` once the editor answered. */
-export interface PendingEdit {
+export interface PendingChange {
   readonly changes: readonly TextChange[];
   settle(): void;
 }
@@ -173,17 +173,17 @@ export class NormalizedText {
       // Selections between remote changes the editor has not shown yet have no exact place; undo then keeps the caret.
       this.write(this.pending.rebase(changes, this.editorText, this.text), undefined);
     } else {
-      this.write(sortChanges(changes), selections);
+      this.write(orderChanges(changes), selections);
     }
   }
 
   /** The next edit that brings `documentText`, the editor's current text, closer to the shared text. */
-  nextEdit(documentText: string): PendingEdit | undefined {
+  nextEdit(documentText: string): PendingChange | undefined {
     if (documentText !== this.editorText) {
       void this.logger.log("WARN", LOG_MODULE, "The editor changed without reporting it; sharing the difference as a local edit", {
         expectedLength: this.editorText.length, actualLength: documentText.length,
       });
-      this.applyLocalChanges([replacementBetween(this.editorText, documentText)]);
+      this.applyLocalChanges([deriveReplacementBetween(this.editorText, documentText)]);
     }
     const changes = this.pending.head;
     if (!changes) { return undefined; }
@@ -220,7 +220,7 @@ export class NormalizedText {
     }
     const hasCR = this.text.includes("\r");
     const map = this.lineMap();
-    const changes = changesFromDelta(event.delta).map((change) => ({
+    const changes = deriveChangesFromDelta(event.delta).map((change) => ({
       start: map.toDocumentOffset(change.start),
       end: map.toDocumentOffset(change.end),
       text: normalizeLineEnds(change.text, hasCR),

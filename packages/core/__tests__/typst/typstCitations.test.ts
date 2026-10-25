@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { citedKeysAt } from "../../src/writing/quotes";
 import { readProbeAnswer } from "../../src/typst/typstCitationProbe";
 import type { TypstSession } from "../../src/typst/index";
-import { toCompilerPath } from "../../src/typst/node/index";
+import { deriveTypstCompilerPath } from "../../src/typst/node/index";
 import { pdfLinks } from "../support/pdfLinks";
 import { cleanupTempDirs, makeTempDir } from "../support/tempDirs";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../support/typstFixtures";
@@ -24,7 +24,7 @@ async function compileProject(main: string, text: string) {
   await fs.mkdir(path.dirname(mainFile), { recursive: true });
   await fs.writeFile(path.join(path.dirname(mainFile), "refs.bib"), BIB);
   await fs.writeFile(mainFile, text);
-  const result = await session.compile({ root: toCompilerPath(folder), main: toCompilerPath(mainFile), sources: new Map() });
+  const result = await session.compile({ root: deriveTypstCompilerPath(folder), main: deriveTypstCompilerPath(mainFile), sources: new Map() });
   const pdfFile = path.join(folder, "out.pdf");
   await fs.writeFile(pdfFile, result.pdf!);
   return { result, links: pdfLinks(pdfFile) };

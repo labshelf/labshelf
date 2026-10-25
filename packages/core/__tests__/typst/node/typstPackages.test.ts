@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { packageLabel, toCompilerPath, typstPackageDirs, TypstPackageStore } from "../../../src/typst/node/index";
+import { formatPackageLabel, deriveTypstCompilerPath, resolveTypstPackageDirs, TypstPackageStore } from "../../../src/typst/node/index";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../support/tempDirs";
 import { demoPackageArchive, respond } from "../../support/typstFixtures";
 
@@ -17,33 +17,33 @@ async function makeStore() {
   return { data, cache, store: new TypstPackageStore({ data, cache }) };
 }
 
-describe("typstPackageDirs", () => {
+describe("resolveTypstPackageDirs", () => {
   const home = os.homedir();
 
   it("uses Library folders on macOS", () => {
-    expect(typstPackageDirs({}, "darwin")).toEqual({
+    expect(resolveTypstPackageDirs({}, "darwin")).toEqual({
       data: path.join(home, "Library", "Application Support", "typst", "packages"),
       cache: path.join(home, "Library", "Caches", "typst", "packages"),
     });
   });
 
   it("uses the XDG folders on Linux, and falls back to ~/.local/share and ~/.cache", () => {
-    expect(typstPackageDirs({ XDG_DATA_HOME: "/xd", XDG_CACHE_HOME: "/xc" }, "linux")).toEqual({
+    expect(resolveTypstPackageDirs({ XDG_DATA_HOME: "/xd", XDG_CACHE_HOME: "/xc" }, "linux")).toEqual({
       data: path.join("/xd", "typst", "packages"), cache: path.join("/xc", "typst", "packages"),
     });
-    expect(typstPackageDirs({}, "linux")).toEqual({
+    expect(resolveTypstPackageDirs({}, "linux")).toEqual({
       data: path.join(home, ".local", "share", "typst", "packages"), cache: path.join(home, ".cache", "typst", "packages"),
     });
   });
 
   it("uses APPDATA and LOCALAPPDATA on Windows", () => {
-    expect(typstPackageDirs({ APPDATA: "C:\\Roaming", LOCALAPPDATA: "C:\\Local" }, "win32")).toEqual({
+    expect(resolveTypstPackageDirs({ APPDATA: "C:\\Roaming", LOCALAPPDATA: "C:\\Local" }, "win32")).toEqual({
       data: path.join("C:\\Roaming", "typst", "packages"), cache: path.join("C:\\Local", "typst", "packages"),
     });
   });
 
   it("lets TYPST_PACKAGE_PATH and TYPST_PACKAGE_CACHE_PATH override both folders", () => {
-    expect(typstPackageDirs({ TYPST_PACKAGE_PATH: "/d", TYPST_PACKAGE_CACHE_PATH: "/c" }, "darwin")).toEqual({ data: "/d", cache: "/c" });
+    expect(resolveTypstPackageDirs({ TYPST_PACKAGE_PATH: "/d", TYPST_PACKAGE_CACHE_PATH: "/c" }, "darwin")).toEqual({ data: "/d", cache: "/c" });
   });
 });
 
@@ -52,13 +52,13 @@ describe("TypstPackageStore resolve", () => {
     const { data, cache, store } = await makeStore();
     await fs.mkdir(path.join(data, "preview", "demo-pkg", "0.1.0"), { recursive: true });
     await fs.mkdir(path.join(cache, "preview", "demo-pkg", "0.1.0"), { recursive: true });
-    expect(store.resolve(demo)).toBe(toCompilerPath(path.join(data, "preview", "demo-pkg", "0.1.0")));
+    expect(store.resolve(demo)).toBe(deriveTypstCompilerPath(path.join(data, "preview", "demo-pkg", "0.1.0")));
   });
 
   it("falls back to the cache", async () => {
     const { cache, store } = await makeStore();
     await fs.mkdir(path.join(cache, "preview", "demo-pkg", "0.1.0"), { recursive: true });
-    expect(store.resolve(demo)).toBe(toCompilerPath(path.join(cache, "preview", "demo-pkg", "0.1.0")));
+    expect(store.resolve(demo)).toBe(deriveTypstCompilerPath(path.join(cache, "preview", "demo-pkg", "0.1.0")));
   });
 
   it("rejects unsafe names and versions without recording them", async () => {
@@ -93,7 +93,7 @@ describe("TypstPackageStore download", () => {
     expect(urls).toEqual(["https://packages.typst.org/preview/demo-pkg-0.1.0.tar.gz"]);
     expect(await listFiles(path.join(cache, "preview", "demo-pkg"))).toEqual(["0.1.0/lib.typ", "0.1.0/typst.toml"]);
     expect(await fs.readdir(path.join(cache, "preview", "demo-pkg"))).toEqual(["0.1.0"]);
-    expect(store.resolve(demo)).toBe(toCompilerPath(path.join(cache, "preview", "demo-pkg", "0.1.0")));
+    expect(store.resolve(demo)).toBe(deriveTypstCompilerPath(path.join(cache, "preview", "demo-pkg", "0.1.0")));
   });
 
   it("keeps the installed package when another install won the race", async () => {
@@ -106,7 +106,7 @@ describe("TypstPackageStore download", () => {
 
   it("throws that the package does not exist on a 404", async () => {
     const { store } = await makeStore();
-    await expect(store.download(demo, async () => respond(404))).rejects.toThrow(`${packageLabel(demo)} does not exist on Typst Universe`);
+    await expect(store.download(demo, async () => respond(404))).rejects.toThrow(`${formatPackageLabel(demo)} does not exist on Typst Universe`);
   });
 
   it("throws the HTTP status for another failure", async () => {

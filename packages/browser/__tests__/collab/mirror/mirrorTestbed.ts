@@ -1,8 +1,8 @@
 // Builds a browser project mirror over in-memory library sources, IndexedDB share state, a held tab lease and a hand-driven lease clock.
 import "fake-indexeddb/auto";
 import {
-  attachBlobs, createProjectIndex, createShareSession, deriveContentKey, fileText, indexFiles, openCollabStore, replaceFileText,
-  type BlobExchange, type CollabStore, type ILogger, type LeaseScheduler, type LibraryFileSystem, type ShareSession,
+  attachShareBlobs, createShareIndexDoc, createShareSession, deriveContentShareKey, readFileText, readShareIndexDocFiles, openCollabStore, setFileText,
+  type ShareBlobExchange, type CollabStore, type ILogger, type LeaseScheduler, type LibraryFileSystem, type ShareSession,
 } from "@labshelf/core";
 import {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror,
@@ -96,13 +96,13 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
   await browserFs.mkdir(FOLDER);
   await folderFs.mkdir(FOLDER);
   const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
-  const contentKey = await deriveContentKey(SHARE_KEY);
+  const contentKey = await deriveContentShareKey(SHARE_KEY);
   const store: CollabStore = await openCollabStore({ storage: openBrowserCollabStorage(`mirror-test-${namespaces++}`), logger });
   const session = createShareSession({
     shareId: SHARE_ID, contentKey, transport: loopback()("a"), logger, index: store.index, createDoc: store.createDoc,
   });
-  createProjectIndex(session.index);
-  const blobs: BlobExchange = attachBlobs(session, { contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: () => false });
+  createShareIndexDoc(session.index);
+  const blobs: ShareBlobExchange = attachShareBlobs(session, { contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: () => false });
   const listeners = new Set<(paths: string[]) => void>();
   const sources = {
     browserFileSystem: browserFs,
@@ -126,10 +126,10 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
       onStopped: (reason) => { into.push(reason); },
     })),
     peerEdit: (path, text) => {
-      replaceFileText(session.openDoc(path), text, "remote");
-      indexFiles(session.index).set(path, { kind: "text" });
+      setFileText(session.openDoc(path), text, "remote");
+      readShareIndexDocFiles(session.index).set(path, { kind: "text" });
     },
-    docText: (path) => fileText(session.openDoc(path)).toString(),
+    docText: (path) => readFileText(session.openDoc(path)).toString(),
     close: async () => {
       await Promise.all(mirrors.map((mirror) => mirror.close()));
       await tab.release();

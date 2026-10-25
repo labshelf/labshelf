@@ -14,16 +14,16 @@ export interface LeaseHolder {
   renewedAt: number;
 }
 
-export interface LeaseRecord extends LeaseHolder {
+export interface LeaseFileContent extends LeaseHolder {
   owner: string;
   ttlMs: number;
 }
 
-export function leasePath(folder: string): string {
+export function deriveLeasePath(folder: string): string {
   return `${folder.replace(/\/+$/, "")}/${LEASE_DIR}/${LEASE_NAME}`;
 }
 
-function parseLease(text: string): LeaseRecord | undefined {
+function parseLease(text: string): LeaseFileContent | undefined {
   let value: unknown;
   try { value = JSON.parse(text); } catch { return undefined; }
   if (typeof value !== "object" || value === null) { return undefined; }
@@ -35,19 +35,19 @@ function parseLease(text: string): LeaseRecord | undefined {
 }
 
 /** The lease in the folder; a missing file is undefined, and a malformed one is undefined with a WARN because it counts as expired. */
-export async function readLease(fs: IFileSystem, folder: string, logger: ILogger): Promise<LeaseRecord | undefined> {
-  const file = leasePath(folder);
+export async function readLease(fs: IFileSystem, folder: string, logger: ILogger): Promise<LeaseFileContent | undefined> {
+  const file = deriveLeasePath(folder);
   if (!(await fs.exists(file))) { return undefined; }
   const lease = parseLease(await fs.readText(file));
   if (!lease) { await logger.log("WARN", LOG_MODULE, "Treated a malformed mirror lease as expired", { file }); }
   return lease;
 }
 
-export async function writeLease(fs: IFileSystem, folder: string, lease: LeaseRecord): Promise<void> {
+export async function writeLease(fs: IFileSystem, folder: string, lease: LeaseFileContent): Promise<void> {
   await fs.ensureDir(`${folder.replace(/\/+$/, "")}/${LEASE_DIR}`);
-  await fs.writeText(leasePath(folder), JSON.stringify(lease));
+  await fs.writeText(deriveLeasePath(folder), JSON.stringify(lease));
 }
 
-export function isLive(lease: LeaseRecord, now: number): boolean {
+export function isLive(lease: LeaseFileContent, now: number): boolean {
   return lease.renewedAt + lease.ttlMs > now;
 }

@@ -4,7 +4,7 @@
  */
 // Cite from Library: the paper and highlight pickers, the inserted citation and the bibliography update after it.
 import type { ILogger, LibraryFileSystem, PaperRecord, ProjectEntry } from "@labshelf/core";
-import { quickPick, toast } from "@labshelf/core/dom";
+import { pickQuickEntry, showToast } from "@labshelf/core/dom";
 import { citeFromLibrary, type CitationInsertion } from "../../../../src/writing/source/actions/citationFromLibrary";
 
 const getAnnotations = jest.fn();
@@ -31,7 +31,7 @@ function setup(over: Partial<CitationInsertion> = {}, format: "latex" | "typst" 
 
 /** Answers the paper picker with the paper, then the highlight picker with the entry `choose` returns. */
 function user(choose: (values: Array<{ value: unknown }>) => unknown) {
-  (quickPick as jest.Mock).mockImplementation(async (entries: Array<{ value?: unknown; kind?: string }>, opts: { title: string; placeholder: string }) => {
+  (pickQuickEntry as jest.Mock).mockImplementation(async (entries: Array<{ value?: unknown; kind?: string }>, opts: { title: string; placeholder: string }) => {
     if (opts.placeholder === "Pick the paper to cite") return paper;
     return choose(entries.filter((one): one is { value: unknown } => one.kind === undefined));
   });
@@ -47,7 +47,7 @@ describe("citeFromLibrary", () => {
   it("lists each paper with its key, status and year", async () => {
     user(() => undefined);
     await citeFromLibrary(setup().insertion);
-    const [entries] = (quickPick as jest.Mock).mock.calls[0]!;
+    const [entries] = (pickQuickEntry as jest.Mock).mock.calls[0]!;
     expect(entries).toEqual([{ label: "Attention", description: "@vaswani17 · Unread · 2017", value: paper }]);
   });
 
@@ -56,7 +56,7 @@ describe("citeFromLibrary", () => {
     const { insertion, edits, flush } = setup();
     await citeFromLibrary(insertion);
     expect(edits.insertText).toHaveBeenCalledWith("\\cite{vaswani17}");
-    expect(quickPick).toHaveBeenCalledTimes(1);
+    expect(pickQuickEntry).toHaveBeenCalledTimes(1);
     expect(flush.mock.invocationCallOrder[0]).toBeLessThan(updateProjectBibliography.mock.invocationCallOrder[0]!);
     expect(updateProjectBibliography).toHaveBeenCalledWith(insertion.entry, [paper]);
   });
@@ -87,8 +87,8 @@ describe("citeFromLibrary", () => {
   it("shows a toast and inserts nothing when the library is empty", async () => {
     const { insertion, edits } = setup({ papers: async () => [] });
     await citeFromLibrary(insertion);
-    expect(toast).toHaveBeenCalledWith("LabShelf library is empty.", "info");
-    expect(quickPick).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith("LabShelf library is empty.", "info");
+    expect(pickQuickEntry).not.toHaveBeenCalled();
     expect(edits.insertText).not.toHaveBeenCalled();
   });
 
@@ -106,6 +106,6 @@ describe("citeFromLibrary", () => {
     updateProjectBibliography.mockRejectedValue(new Error("disk full"));
     await citeFromLibrary(setup().insertion);
     expect(logger.error).toHaveBeenCalled();
-    expect(toast).toHaveBeenCalledWith("Could not update labshelf.bib.", "error");
+    expect(showToast).toHaveBeenCalledWith("Could not update labshelf.bib.", "error");
   });
 });

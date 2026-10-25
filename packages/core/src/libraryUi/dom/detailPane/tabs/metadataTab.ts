@@ -5,7 +5,7 @@
  */
 import { CITE_FORMATS } from "../../../store/index.js";
 import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatDateTime, formatRelativeTime } from "../../../../library/index.js";
-import { escapeHtml, icon } from "../../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { formatCitation } from "../../../formatCitation.js";
 import { CITE_LABEL } from "../../flows/index.js";
 import { copyBtn, renderField, renderMuted, renderSection, renderIconButton } from "../detailPaneMarkup.js";
@@ -15,8 +15,8 @@ import { describeTextLayer } from "../../../viewModel/index.js";
 
 function missingPdf(pane: PaneState): string {
   const { findPdf, attachPdf } = pane.ctx.caps;
-  const actions = (findPdf ? `<button class="ls-btn" type="button" data-action="findPdf">${icon("search")}<span>Find PDF</span></button>` : "") +
-    (attachPdf ? `<button class="ls-btn" type="button" data-action="attachPdf">${icon("paperclip")}<span>Attach PDF…</span></button>` : "");
+  const actions = (findPdf ? `<button class="ls-btn" type="button" data-action="findPdf">${renderIcon("search")}<span>Find PDF</span></button>` : "") +
+    (attachPdf ? `<button class="ls-btn" type="button" data-action="attachPdf">${renderIcon("paperclip")}<span>Attach PDF…</span></button>` : "");
   return renderMuted("No PDF attached — this paper was saved without one.") + (actions ? `<div class="attach-actions">${actions}</div>` : "");
 }
 
@@ -102,7 +102,7 @@ function citeBody(pane: PaneState, v: PaperView): string {
   return `<div class="seg-tabs" role="tablist">${CITE_FORMATS.map((f) =>
     `<button class="seg-tab${fmt === f ? " on" : ""}" type="button" role="tab" aria-selected="${fmt === f}" data-action="citeFormat" data-format="${f}">${CITE_LABEL[f]}</button>`).join("")}</div>` +
     `<pre class="cite-box${fmt === "bibtex" ? " code" : ""}">${escapeHtml(formatCitation(v.p, fmt))}</pre>` +
-    `<div class="row-end"><button class="ls-btn" type="button" data-action="copyCite" data-format="${fmt}">${icon("copy")}<span>Copy ${CITE_LABEL[fmt]}</span></button></div>`;
+    `<div class="row-end"><button class="ls-btn" type="button" data-action="copyCite" data-format="${fmt}">${renderIcon("copy")}<span>Copy ${CITE_LABEL[fmt]}</span></button></div>`;
 }
 
 export function renderDetailsTabHtml(pane: PaneState, v: PaperView): string {

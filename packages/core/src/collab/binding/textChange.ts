@@ -18,11 +18,11 @@ export interface TextChange {
 type TextDelta = Y.YTextEvent["delta"][number];
 
 /** Most algorithms that use a change set expect ascending start offsets. */
-export function sortChanges(changes: readonly TextChange[]): TextChange[] {
+export function orderChanges(changes: readonly TextChange[]): TextChange[] {
   return [...changes].sort((a, b) => a.start - b.start);
 }
 
-export function changesFromDelta(delta: readonly TextDelta[]): TextChange[] {
+export function deriveChangesFromDelta(delta: readonly TextDelta[]): TextChange[] {
   const changes: TextChange[] = [];
   let index = 0;
   for (const op of delta) {
@@ -42,7 +42,7 @@ export function changesFromDelta(delta: readonly TextDelta[]): TextChange[] {
 export function applyChanges(text: string, changes: readonly TextChange[]): string {
   let result = text;
   let delta = 0;
-  for (const { start, end, text: inserted } of sortChanges(changes)) {
+  for (const { start, end, text: inserted } of orderChanges(changes)) {
     result = result.substring(0, start + delta) + inserted + result.substring(end + delta);
     delta += inserted.length - (end - start);
   }

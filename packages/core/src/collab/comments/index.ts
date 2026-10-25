@@ -1,12 +1,12 @@
 /** Exports a project's comment threads: comments.json on disk, the comments map of a share, and anchoring to text. */
 export { type Comment, type CommentAnchor, type CommentThread } from "./commentThread.js";
 export {
-  addThread, COMMENTS_PATH, commentThreads, parseCommentsFile, replyToThread, serializeCommentsFile, setThreadResolved,
+  addThread, COMMENTS_PATH, deriveCommentThreads, parseCommentsFile, addThreadReply, serializeCommentsFile, setThreadResolved,
   type CommentsDocument,
 } from "./commentsFile.js";
-export { editCommentsDocument, loadCommentsDocument, type CommentsFileAccess } from "./commentsFileStore.js";
-export { anchorFor, liveAnchorFor, type TextRange } from "./commentAnchor.js";
-export { locateThread } from "./findThread.js";
-export { addLiveThread, liveThreads, replyToLiveThread, setLiveThreadResolved } from "./liveComments.js";
-export { sharedProjectComments, type SharedProjectComments } from "./sharedProjectComments.js";
+export { updateCommentsDocument, loadCommentsDocument, type CommentsFileAccess } from "./commentsFileStore.js";
+export { deriveAnchor, deriveLiveAnchor, type TextRange } from "./commentAnchor.js";
+export { findThread } from "./findThread.js";
+export { addLiveThread, readLiveThreads, addLiveThreadReply, setLiveThreadResolved } from "./liveComments.js";
+export { createSharedProjectComments, type SharedProjectComments } from "./createSharedProjectComments.js";
 export { importCommentsFile, renderCommentsFile } from "./commentsFileSync.js";

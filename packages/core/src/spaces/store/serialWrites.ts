@@ -2,7 +2,7 @@
 import type { StoreContext } from "./spaceStoreOptions.js";
 
 /** A failed write settles its slot, so the writes queued after it still run. */
-export function serially<T>(ctx: StoreContext, key: string, write: () => Promise<T>): Promise<T> {
+export function runSerially<T>(ctx: StoreContext, key: string, write: () => Promise<T>): Promise<T> {
   const previous = ctx.writes.get(key) ?? Promise.resolve();
   const result = previous.then(write);
   const settled = result.then(() => undefined, () => undefined);

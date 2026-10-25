@@ -1,6 +1,6 @@
 // Shows the shown root's warning and error count in the header, with a menu that opens each problem or the logs.
-import { el } from "../../../../ui/dom/index.js";
-import { icon } from "../../../../ui/index.js";
+import { renderElement } from "../../../../ui/dom/index.js";
+import { renderIcon } from "../../../../ui/index.js";
 import type { PreviewRoot, PreviewRoots, WebviewToHost } from "../../../index.js";
 import { buildMenu, iconButton, togglePopover, type MenuItem } from "../../elements/index.js";
 
@@ -30,10 +30,10 @@ function menuItems(root: PreviewRoot, { post, openLogs }: LogsButtonDeps): MenuI
  * @returns `setRoots`, which the host's roots messages drive.
  */
 export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setRoots(roots: PreviewRoots): void } {
-  const button = iconButton(icon("log"), "Logs");
+  const button = iconButton(renderIcon("log"), "Logs");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
-  const count = el("span", { class: "rd-logs-count", "aria-hidden": "true", hidden: true });
+  const count = renderElement("span", { class: "rd-logs-count", "aria-hidden": "true", hidden: true });
   button.append(count);
   let shown: PreviewRoot | undefined;
 

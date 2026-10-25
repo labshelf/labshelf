@@ -2,7 +2,7 @@
 import {
   createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
-import { el, mountLibraryUi } from "@labshelf/core/dom";
+import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger, getSettings } from "../platform";
 import { mountMoveOffer, mountSourceBanner } from "../library/libraryLocation";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
@@ -24,9 +24,9 @@ const log = createBrowserLogger();
 
 /** Puts the storage banner and the move offer above the library frame, which keeps filling the remaining height. */
 function mountSourceSurfaces(root: HTMLElement, reloadSnapshots: () => Promise<void>): void {
-  const bannerHost = el("div");
-  const offerHost = el("div");
-  root.prepend(el("div", { class: "lsrc-surfaces" }, bannerHost, offerHost));
+  const bannerHost = renderElement("div");
+  const offerHost = renderElement("div");
+  root.prepend(renderElement("div", { class: "lsrc-surfaces" }, bannerHost, offerHost));
   const offer = mountMoveOffer(offerHost, { logger: log, onMoved: reloadSnapshots });
   mountSourceBanner(bannerHost, { logger: log, onFolder: () => { void reloadSnapshots().then(() => offer.refresh()); } });
   void offer.refresh();
@@ -128,7 +128,7 @@ async function boot(): Promise<void> {
   });
   attachRouter(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
-  const libraryView = el("div", { class: "ls-workspace-fill" });
+  const libraryView = renderElement("div", { class: "ls-workspace-fill" });
   const ui = mountLibraryUi(libraryView, {
     transport, prefs, withSidebar: false,
     capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing,

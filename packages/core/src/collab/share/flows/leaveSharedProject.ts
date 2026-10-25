@@ -1,7 +1,7 @@
 // Stops sharing a project on this device: closes its connection, forgets its key and share id, and keeps every file.
 // CONTRACT: documents/contracts/collaboration.md#sharing-joining-and-leaving
 import { parseProjectFile, PROJECT_FILE, updateProjectFile, type ProjectReadContext } from "../../../writing/project/index.js";
-import { LOG_MODULE, type ShareWorkflowPorts } from "./sharePorts.js";
+import { LOG_MODULE, type ShareFlowPorts } from "./sharePorts.js";
 
 /** Removes `shared` from labshelf.yaml when it names this share, keeping every other key and comment. */
 async function clearSharedField({ fs, paths }: ProjectReadContext, folder: string, shareId: string): Promise<void> {
@@ -16,7 +16,7 @@ async function clearSharedField({ fs, paths }: ProjectReadContext, folder: strin
  * The other members keep the share; nothing on the relay is deleted. When the connection cannot store its pending updates the
  * leave stops before anything is forgotten, so the key, the `shared` field and the stored state stay and a retry loses nothing.
  */
-export async function leaveSharedProject(ports: ShareWorkflowPorts, project: { folder: string; shareId: string }): Promise<void> {
+export async function leaveSharedProject(ports: ShareFlowPorts, project: { folder: string; shareId: string }): Promise<void> {
   const { folder, shareId } = project;
   await ports.shares.hold(shareId, async () => {
     try {

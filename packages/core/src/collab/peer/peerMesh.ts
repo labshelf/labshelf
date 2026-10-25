@@ -1,13 +1,13 @@
 // Carries encrypted, authenticated channel messages between the connected peers of a share over a transport.
 import { bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { openFrame, sealFrame, type WebCryptoKey } from "../shareKey/index.js";
+import { openFrame, sealFrame, type DerivedShareKey } from "../shareKey/index.js";
 import type { PeerId, PeerTransport } from "../transport/index.js";
 import { decodeEnvelope, DOC_ID_BYTES, encodeEnvelope, MESSAGE_KIND, type Envelope } from "./envelope.js";
 import { docIdCache, openDocFrame, sealDocFrame } from "./docMessage.js";
-import { createEpochSource, decodeAck, encodeAck, ReliableLink } from "./reliableChannel.js";
+import { createEpochSource, decodeAck, encodeAck, ReliableConnection } from "./reliableChannel.js";
 import type { SessionScheduler } from "./scheduler.js";
-import type { Channel, ChannelSpec, SecureMesh, SessionStatus } from "./channel.js";
+import type { Channel, ChannelSpec, SecureMesh, SessionPhase } from "./channel.js";
 
 const LOG_MODULE = "collab.sync";
 const ACK_DOC_ID = new Uint8Array(DOC_ID_BYTES);
@@ -15,7 +15,7 @@ const ACK_DOC_ID = new Uint8Array(DOC_ID_BYTES);
 export interface SecureMeshOptions {
   shareId: string;
   /** Seals acks. */
-  key: WebCryptoKey;
+  key: DerivedShareKey;
   transport: PeerTransport;
   logger: ILogger;
   scheduler: SessionScheduler;
@@ -28,11 +28,11 @@ export function createSecureMesh(options: SecureMeshOptions): SecureMesh {
 }
 
 class MeshSession implements SecureMesh {
-  private state: SessionStatus = "open";
-  private links = new Map<PeerId, ReliableLink>();
+  private state: SessionPhase = "open";
+  private links = new Map<PeerId, ReliableConnection>();
   private channels = new Map<number, ChannelSpec>();
   private peerListeners = new Set<(peer: PeerId, joined: boolean) => void>();
-  private statusListeners = new Set<(status: SessionStatus) => void>();
+  private statusListeners = new Set<(status: SessionPhase) => void>();
   private warned = new Set<PeerId>();
   private nextEpoch = createEpochSource();
   private docIdOf: (docKey: string) => Promise<Uint8Array>;
@@ -53,14 +53,14 @@ class MeshSession implements SecureMesh {
 
   get peers(): readonly PeerId[] { return [...this.links.keys()]; }
 
-  get status(): SessionStatus { return this.state; }
+  get status(): SessionPhase { return this.state; }
 
   onPeer(listener: (peer: PeerId, joined: boolean) => void): () => void {
     this.peerListeners.add(listener);
     return () => { this.peerListeners.delete(listener); };
   }
 
-  onStatus(listener: (status: SessionStatus) => void): () => void {
+  onStatus(listener: (status: SessionPhase) => void): () => void {
     this.statusListeners.add(listener);
     return () => { this.statusListeners.delete(listener); };
   }
@@ -116,7 +116,7 @@ class MeshSession implements SecureMesh {
     spec.onMessage(from, message.docKey, message.payload);
   }
 
-  private async receiveAck(from: PeerId, link: ReliableLink, envelope: Envelope): Promise<void> {
+  private async receiveAck(from: PeerId, link: ReliableConnection, envelope: Envelope): Promise<void> {
     const opened = await openFrame(this.options.key, this.contextOf(envelope.docId, "ack"), envelope.frame);
     if (!opened.ok) { return this.warnOnce(from, "Dropped a frame that failed to open", { kind: "ack", error: opened.error }); }
     const { epoch, seqs } = decodeAck(opened.bytes);
@@ -134,7 +134,7 @@ class MeshSession implements SecureMesh {
   }
 
   private openLink(peer: PeerId): void {
-    const link = new ReliableLink({
+    const link = new ReliableConnection({
       transmit: (bytes) => this.options.transport.send(peer, bytes),
       sendAck: (epoch, seqs) => { this.sendAck(peer, epoch, seqs).catch((error) => void this.options.logger.error(LOG_MODULE, error, { peer })); },
       onGiveUp: (seq) => this.warnOnce(peer, "Peer never acked a message; it resyncs on rejoin", { seq }),
@@ -155,7 +155,7 @@ class MeshSession implements SecureMesh {
     }
   }
 
-  private setStatus(next: SessionStatus): void {
+  private setStatus(next: SessionPhase): void {
     if (next === this.state) { return; }
     this.state = next;
     this.statusListeners.forEach((listener) => listener(next));

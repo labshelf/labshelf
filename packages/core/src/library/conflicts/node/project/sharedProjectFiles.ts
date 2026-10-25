@@ -1,6 +1,6 @@
 // Reads the shared index to keep tracked files out of content-copy prompts.
 import * as Y from 'yjs';
-import { indexFiles } from '../../../../collab/model/index.js';
+import { readShareIndexDocFiles } from '../../../../collab/model/index.js';
 import { INDEX_DOC_KEY } from "../../../../collab/doc/index.js";
 import type { ILogger } from '../../../../ports/index.js';
 import { createSharedProjectStorage } from './createSharedProjectStorage.js';
@@ -14,7 +14,7 @@ export async function readSharedProjectFiles(root: string, shareId: string, logg
     if (stored.torn) await logger.log('WARN', 'conflicts', 'Skipped a partial shared index record during conflict scan', { shareId });
     if (stored.snapshot) Y.applyUpdate(doc, stored.snapshot);
     for (const update of stored.updates) Y.applyUpdate(doc, update);
-    return new Set(indexFiles(doc).keys());
+    return new Set(readShareIndexDocFiles(doc).keys());
   } finally {
     doc.destroy();
   }

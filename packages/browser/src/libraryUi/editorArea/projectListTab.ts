@@ -1,6 +1,6 @@
 // Shows the All projects page as a workspace tab, served by the browser's project library over the library folder.
 import { createLoopbackTransport, serveAllProjects, type AllProjectsToHost, type HostToAllProjects } from "@labshelf/core";
-import { el, mountAllProjects } from "@labshelf/core/dom";
+import { renderElement, mountAllProjects } from "@labshelf/core/dom";
 import { createPageProjectLibrary } from "../../writing/project";
 import type { TabModule } from "./tabKind";
 
@@ -12,7 +12,7 @@ export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
   const stopSelection = endpoint.subscribe((m) => {
     if (m.type === "project.selected") ctx.selection.publish("projects", m.id ? { kind: "project", id: m.id } : null);
   });
-  const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
   mountAllProjects(body, { transport: ui, prefs: ctx.prefs, sharing: ctx.sharing });
   return { dispose: () => { stopSelection(); stop(); body.remove(); } };
 };

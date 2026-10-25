@@ -1,5 +1,5 @@
 // Builds a tablist that switches a tabpanel, with manual activation and roving tabindex.
-import { el } from "../../dom.js";
+import { renderElement } from "../../dom.js";
 import { moveTabFocus } from "./tablistFocus.js";
 
 export interface PageTabsOptions {
@@ -16,10 +16,10 @@ export interface PageTabs {
 
 /** `panel` is the tabpanel the tabs control; it needs an id. */
 export function mountPageTabs(panel: HTMLElement, opts: PageTabsOptions): PageTabs {
-  const list = el("div", { class: "ls-page-tabs", role: "tablist", "aria-label": opts.label });
+  const list = renderElement("div", { class: "ls-page-tabs", role: "tablist", "aria-label": opts.label });
   panel.setAttribute("role", "tabpanel");
   const buttons = opts.tabs.map((tab) => {
-    const b = el("button", { class: "ls-page-tab", type: "button", role: "tab", id: `${panel.id}-tab-${tab.id}`, "aria-controls": panel.id, text: tab.label });
+    const b = renderElement("button", { class: "ls-page-tab", type: "button", role: "tab", id: `${panel.id}-tab-${tab.id}`, "aria-controls": panel.id, text: tab.label });
     b.dataset.tab = tab.id;
     return b;
   });

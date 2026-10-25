@@ -1,6 +1,6 @@
 // Warns that the library lives in this browser and offers the ways to a folder, with a re-check of the connection.
 import { formatError, type ILogger } from "@labshelf/core";
-import { el, inlineCode, toast } from "@labshelf/core/dom";
+import { renderElement, renderInlineCode, showToast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import { helperDownloadUrl } from "../../helper";
 import { bannerShell, setButton } from "./bannerShell";
@@ -24,7 +24,7 @@ async function showFolderAccess(host: HTMLElement, logger: ILogger, onGranted: (
   const { root, text } = bannerShell("warn", "warning");
   root.setAttribute("role", "region");
   root.setAttribute("aria-label", "Library folder access");
-  const allow = el("button", { class: "ls-btn ls-btn-primary", type: "button" });
+  const allow = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
   setButton(allow, "folder", "Allow access", false);
   allow.addEventListener("click", () => void (async () => {
     setButton(allow, "folder", "Allow access", true);
@@ -35,17 +35,17 @@ async function showFolderAccess(host: HTMLElement, logger: ILogger, onGranted: (
         onGranted();
         return;
       }
-      toast("LabShelf still may not use the folder.", "error");
+      showToast("LabShelf still may not use the folder.", "error");
     } catch (err) {
       await logger.error("library.libraryLocation", err, { action: "allow folder access", folder: handle.name });
-      toast(formatError(err), "error");
+      showToast(formatError(err), "error");
     }
     setButton(allow, "folder", "Allow access", false);
   })());
   text.append(
-    "LabShelf needs your permission to use the library folder ", inlineCode(handle.name), " again.",
-    el("div", { class: "lsrc-reason", text: "The browser asks again after it restarts, unless you let it allow LabShelf on every visit." }),
-    el("div", { class: "lsrc-actions" }, allow),
+    "LabShelf needs your permission to use the library folder ", renderInlineCode(handle.name), " again.",
+    renderElement("div", { class: "lsrc-reason", text: "The browser asks again after it restarts, unless you let it allow LabShelf on every visit." }),
+    renderElement("div", { class: "lsrc-actions" }, allow),
   );
   host.replaceChildren(root);
 }
@@ -59,18 +59,18 @@ export interface SourceBannerOptions {
 const PANEL_ID = "lsrc-panel";
 
 function bridgePanel(): HTMLElement {
-  const download = el("a", { href: helperDownloadUrl(""), target: "_blank", rel: "noopener", text: "Download LabShelf Helper" });
+  const download = renderElement("a", { href: helperDownloadUrl(""), target: "_blank", rel: "noopener", text: "Download LabShelf Helper" });
   bx.runtime.getPlatformInfo().then((info) => { download.setAttribute("href", helperDownloadUrl(info.os)); }, () => undefined);
-  return el("div", { id: PANEL_ID, class: "lsrc-reason", hidden: true },
-    el("div", {}, download, ", install it, then choose Check again and give it the folder."),
-    el("div", {}, "Already use LabShelf for VS Code or the terminal? Run Connect the Browser in VS Code, or ",
-      inlineCode("labshelf bridge install"), " in the terminal, and choose Check again."));
+  return renderElement("div", { id: PANEL_ID, class: "lsrc-reason", hidden: true },
+    renderElement("div", {}, download, ", install it, then choose Check again and give it the folder."),
+    renderElement("div", {}, "Already use LabShelf for VS Code or the terminal? Run Connect the Browser in VS Code, or ",
+      renderInlineCode("labshelf bridge install"), " in the terminal, and choose Check again."));
 }
 
 /** Shows and hides `help`; `state` keeps it open across re-renders. */
 function panelToggle(help: HTMLElement, state: { open: boolean }): HTMLButtonElement {
   help.hidden = !state.open;
-  const toggle = el("button", { class: "ls-btn ls-btn-ghost", type: "button", "aria-expanded": String(state.open), "aria-controls": PANEL_ID, text: "Save to a folder on this computer" });
+  const toggle = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", "aria-expanded": String(state.open), "aria-controls": PANEL_ID, text: "Save to a folder on this computer" });
   toggle.addEventListener("click", () => {
     state.open = !state.open;
     help.hidden = !state.open;
@@ -88,7 +88,7 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
     options.onFolder();
   };
   const pickButton = (): HTMLButtonElement => {
-    const pick = el("button", { class: "ls-btn ls-btn-primary", type: "button" });
+    const pick = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
     setButton(pick, "folder", "Choose a folder on this computer", false);
     pick.addEventListener("click", () => void run(pick, "folder", "Choose a folder on this computer", () => pickLibraryFolder(options.logger)));
     return pick;
@@ -98,13 +98,13 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
     root.setAttribute("role", "region");
     root.setAttribute("aria-label", "Library storage");
     const help = bridgePanel();
-    const check = el("button", { class: "ls-btn", type: "button" });
+    const check = renderElement("button", { class: "ls-btn", type: "button" });
     setButton(check, "refresh", "Check again", false);
     check.addEventListener("click", () => void run(check, "refresh", "Check again", () => recheckSource(options.logger)));
     text.append(
       "Your library lives in this browser. Uninstalling the extension deletes it.",
-      el("div", { class: "lsrc-reason", text: sourceReason(source) }),
-      el("div", { class: "lsrc-actions" }, canPickFolder() ? pickButton() : panelToggle(help, panel), check),
+      renderElement("div", { class: "lsrc-reason", text: sourceReason(source) }),
+      renderElement("div", { class: "lsrc-actions" }, canPickFolder() ? pickButton() : panelToggle(help, panel), check),
     );
     if (source.reason === "no-library") text.append(folderPathForm(options.logger, toFolder));
     else if (!canPickFolder()) text.append(help);
@@ -117,7 +117,7 @@ export function mountSourceBanner(host: HTMLElement, options: SourceBannerOption
       if (next) return toFolder(next);
     } catch (err) {
       await options.logger.error("library.libraryLocation", err, { action: label });
-      toast(formatError(err), "error");
+      showToast(formatError(err), "error");
     }
     setButton(button, glyph, label, false);
   };

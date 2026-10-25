@@ -9,7 +9,7 @@ export interface ShareSecret {
   shareId: string;
 }
 
-export function generateShareKey(): Uint8Array {
+export function createShareKey(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(SHARE_KEY_BYTES));
 }
 
@@ -19,7 +19,7 @@ export async function deriveShareId(shareKey: Uint8Array): Promise<string> {
 }
 
 /** Frames sealed under `previous` stay readable only to whoever keeps it. */
-export async function rotateShareKey(current: ShareSecret): Promise<{ previous: ShareSecret; next: ShareSecret }> {
-  const shareKey = generateShareKey();
+export async function createNextShareKey(current: ShareSecret): Promise<{ previous: ShareSecret; next: ShareSecret }> {
+  const shareKey = createShareKey();
   return { previous: current, next: { shareKey, shareId: await deriveShareId(shareKey) } };
 }

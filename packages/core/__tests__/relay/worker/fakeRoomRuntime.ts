@@ -4,14 +4,14 @@ import {
   decodeServerMessage, encodeRelayMessage, type RelayClientMessage, type RelayServerMessage,
 } from "../../../src/relay/index";
 import { fakeKv } from "./fakeKv";
-import { Room, type HibernatingSocket, type RelayEnv, type RoomState, type SqlCursor, type SqlValue } from "../../../src/relay/worker/index";
+import { Room, type HibernatingConnection, type RelayEnv, type RoomState, type SqlCursor, type SqlField } from "../../../src/relay/worker/index";
 
 export const OWNER_SECRET = "owner-secret-for-tests";
 
 /** Cloudflare's `sql.exec` semantics over node:sqlite: blobs travel as ArrayBuffer, a script without bindings runs whole. */
 export function fakeSql(db: DatabaseSync) {
   return {
-    exec<Row>(query: string, ...bindings: SqlValue[]): SqlCursor<Row> {
+    exec<Row>(query: string, ...bindings: SqlField[]): SqlCursor<Row> {
       if (bindings.length === 0 && /;\s*\S/.test(query)) { db.exec(query); return cursorOf<Row>([]); }
       const args = bindings.map((value) => (value instanceof ArrayBuffer ? new Uint8Array(value) : value));
       const rows = db.prepare(query).all(...(args as (string | number | null | Uint8Array)[])) as Record<string, unknown>[];
@@ -25,7 +25,7 @@ function cursorOf<Row>(rows: Row[]): SqlCursor<Row> {
   return { toArray: () => rows, [Symbol.iterator]: () => rows[Symbol.iterator]() };
 }
 
-export class FakeSocket implements HibernatingSocket {
+export class FakeSocket implements HibernatingConnection {
   readonly received: RelayServerMessage[] = [];
   private attachment: unknown;
 

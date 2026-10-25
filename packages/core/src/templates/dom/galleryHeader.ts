@@ -1,6 +1,6 @@
 // Renders the template gallery header.
-import { icon } from "../../ui/index.js";
-import { el } from "../../ui/dom/index.js";
+import { renderIcon } from "../../ui/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import { PROJECT_FORMATS, type ProjectFormat } from "../../writing/project/index.js";
 import type { SourceListing } from "../protocol/index.js";
 import { TEMPLATE_SOURCES, type TemplateSourceId } from "../templateEntry.js";
@@ -26,7 +26,7 @@ const CACHED_TITLE = "Listed from this device; refreshes when online.";
 interface Row { choice: Choice; item: HTMLLIElement; note: HTMLElement | null }
 
 function noteNodes(listing: SourceListing): { nodes: Array<Node | string>; title?: string } {
-  if (listing.status === "loading") return { nodes: [el("span", { class: "ls-tpl-spin", role: "img", "aria-label": "Loading", html: icon("loader") })] };
+  if (listing.status === "loading") return { nodes: [renderElement("span", { class: "ls-tpl-spin", role: "img", "aria-label": "Loading", html: renderIcon("loader") })] };
   if (listing.status === "error") return { nodes: [] };
   const count = String(listing.entries.length);
   return listing.fromCache ? { nodes: [`${count} · cached`], title: CACHED_TITLE } : { nodes: [count] };
@@ -34,19 +34,19 @@ function noteNodes(listing: SourceListing): { nodes: Array<Node | string>; title
 
 function buildRow(choice: Choice): Row {
   const label = choice === undefined ? "All sources" : SOURCE_LABELS[choice];
-  const note = choice === undefined ? null : el("span", { class: "ls-tpl-source-note" });
-  const item = el("li", { class: "ls-tpl-source", role: "option", "aria-selected": "false", tabindex: -1 }, el("span", { class: "ls-tpl-source-label", text: label, title: label }), note);
+  const note = choice === undefined ? null : renderElement("span", { class: "ls-tpl-source-note" });
+  const item = renderElement("li", { class: "ls-tpl-source", role: "option", "aria-selected": "false", tabindex: -1 }, renderElement("span", { class: "ls-tpl-source-label", text: label, title: label }), note);
   return { choice, item, note };
 }
 
 function buildFormats(state: GalleryState, onFilterChange: () => void): HTMLElement {
-  const boxes = PROJECT_FORMATS.map((format) => ({ format, input: el("input", { type: "checkbox", checked: true }) }));
+  const boxes = PROJECT_FORMATS.map((format) => ({ format, input: renderElement("input", { type: "checkbox", checked: true }) }));
   const onChange = (): void => {
     state.setFormats(boxes.filter((box) => box.input.checked).map((box) => box.format as ProjectFormat));
     onFilterChange();
   };
   for (const box of boxes) box.input.addEventListener("change", onChange);
-  return el("div", { class: "ls-tpl-formats" }, ...boxes.map((box) => el("label", { class: "ls-checkbox" }, box.input, el("span", { text: FORMAT_LABELS[box.format] }))));
+  return renderElement("div", { class: "ls-tpl-formats" }, ...boxes.map((box) => renderElement("label", { class: "ls-checkbox" }, box.input, renderElement("span", { text: FORMAT_LABELS[box.format] }))));
 }
 
 function patchRows(rows: Row[], state: GalleryState): void {
@@ -65,30 +65,30 @@ function patchErrors(errors: HTMLElement, state: GalleryState): void {
   errors.replaceChildren(...TEMPLATE_SOURCES.flatMap((source) => {
     const listing = state.listings[source];
     return listing.status === "error"
-      ? [el("div", { class: "ls-tpl-source-error", role: "status" }, el("span", { html: icon("warning") }), el("span", { text: `${SOURCE_LABELS[source]}: ${listing.message}` }))]
+      ? [renderElement("div", { class: "ls-tpl-source-error", role: "status" }, renderElement("span", { html: renderIcon("warning") }), renderElement("span", { text: `${SOURCE_LABELS[source]}: ${listing.message}` }))]
       : [];
   }));
 }
 
 function buildHeader(list: HTMLElement, errors: HTMLElement, refresh: HTMLElement, publish: HTMLElement, formats: HTMLElement): HTMLElement {
-  return el("header", { class: "ls-tpl-header" },
-    el("div", { class: "ls-tpl-heading-row" },
-      el("div", { class: "ls-tpl-heading" },
-        el("h1", { class: "ls-tpl-title", text: "Templates" }),
-        el("p", { class: "ls-tpl-intro", text: "A starting point for your next paper." })),
-      el("div", { class: "ls-tpl-actions" }, refresh, publish)),
-    el("nav", { class: "ls-tpl-navigation", "aria-label": "Template filters" }, list,
-      el("div", { class: "ls-tpl-format-filter", role: "group", "aria-label": "Format" },
-        el("span", { class: "ls-tpl-filter-label", text: "Format" }), formats)),
+  return renderElement("header", { class: "ls-tpl-header" },
+    renderElement("div", { class: "ls-tpl-heading-row" },
+      renderElement("div", { class: "ls-tpl-heading" },
+        renderElement("h1", { class: "ls-tpl-title", text: "Templates" }),
+        renderElement("p", { class: "ls-tpl-intro", text: "A starting point for your next paper." })),
+      renderElement("div", { class: "ls-tpl-actions" }, refresh, publish)),
+    renderElement("nav", { class: "ls-tpl-navigation", "aria-label": "Template filters" }, list,
+      renderElement("div", { class: "ls-tpl-format-filter", role: "group", "aria-label": "Format" },
+        renderElement("span", { class: "ls-tpl-filter-label", text: "Format" }), formats)),
     errors);
 }
 
 export function createGalleryHeader(state: GalleryState, handlers: GalleryHeaderHandlers): GalleryHeader {
   const rows = CHOICES.map(buildRow);
-  const list = el("ul", { class: "ls-tpl-sources", role: "listbox", "aria-label": "Sources", "aria-orientation": "horizontal" }, ...rows.map((row) => row.item));
-  const errors = el("div", { class: "ls-tpl-source-errors" });
-  const refresh = el("button", { class: "ls-btn ls-btn-ghost", type: "button", "aria-label": "Refresh templates", title: "Refresh templates" }, el("span", { html: icon("refresh") }), "Refresh");
-  const publish = el("button", { class: "ls-btn", type: "button" }, el("span", { html: icon("arrow-up") }), "Publish a template");
+  const list = renderElement("ul", { class: "ls-tpl-sources", role: "listbox", "aria-label": "Sources", "aria-orientation": "horizontal" }, ...rows.map((row) => row.item));
+  const errors = renderElement("div", { class: "ls-tpl-source-errors" });
+  const refresh = renderElement("button", { class: "ls-btn ls-btn-ghost", type: "button", "aria-label": "Refresh templates", title: "Refresh templates" }, renderElement("span", { html: renderIcon("refresh") }), "Refresh");
+  const publish = renderElement("button", { class: "ls-btn", type: "button" }, renderElement("span", { html: renderIcon("arrow-up") }), "Publish a template");
   publish.addEventListener("click", handlers.onPublish);
   const element = buildHeader(list, errors, refresh, publish, buildFormats(state, handlers.onFilterChange));
 

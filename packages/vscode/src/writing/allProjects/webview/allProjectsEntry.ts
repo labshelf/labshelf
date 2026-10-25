@@ -9,7 +9,7 @@ import "@labshelf/core/styles/library-detail.css";
 import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import "@labshelf/core/styles/all-projects.css";
-import { $, mountAllProjects } from "@labshelf/core/dom";
+import { findElement, mountAllProjects } from "@labshelf/core/dom";
 import type {
   AllProjectsToHost,
   AllProjectsTransport,
@@ -29,4 +29,4 @@ function createAllProjectsChannel(): { transport: AllProjectsTransport; prefs: P
   return { transport: webviewTransport<AllProjectsToHost, HostToAllProjects>(api), prefs: webviewPrefs(api), sharing: createWebviewSharingClient(api) };
 }
 
-mountAllProjects($("root"), createAllProjectsChannel());
+mountAllProjects(findElement("root"), createAllProjectsChannel());

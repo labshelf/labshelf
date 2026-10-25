@@ -1,5 +1,5 @@
 /** Pins how share connections pick relays: past a failing first relay, around a relay refusing new sockets, one snapshot writer. */
-import { fileText } from "../../../src/collab/model/index";
+import { readFileText } from "../../../src/collab/model/index";
 import { ONE, TWO } from "../relays/relayGroup";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, Network, newDevice, writeProject } from "./connectionTestbed";
@@ -41,12 +41,12 @@ describe("share connection relays", () => {
     await runFor(net.clock, 5000);
     expect(a.state().relay).toBe(ONE);
     net.hosts.set(ONE, "refuseNew");
-    fileText(a.session.openDoc("main.typ")).insert(0, "Late ");
+    readFileText(a.session.openDoc("main.typ")).insert(0, "Late ");
     const { grace, connection: b } = await join(net);
     await runFor(net.clock, 30_000);
 
     expect(b.state().relay).toBe(TWO);
-    expect(fileText(b.session.openDoc("main.typ")).toString()).toBe("Late = Hello\n");
+    expect(readFileText(b.session.openDoc("main.typ")).toString()).toBe("Late = Hello\n");
     await net.drive(b.mirror!.idle());
     expect(grace.read(`${b.folder}/main.typ`)).toBe("Late = Hello\n");
     await net.drive(b.close());

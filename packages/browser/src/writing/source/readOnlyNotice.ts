@@ -1,12 +1,12 @@
 // Builds the notices above a shared file that opens read-only, each with the action that lets it edit.
-import { el, icon, type IconName } from "@labshelf/core/dom";
+import { renderElement, renderIcon, type IconName } from "@labshelf/core/dom";
 
 function readOnlyNotice(iconName: IconName, text: string, action: { label: string; icon: IconName; run: () => void }): HTMLElement {
-  const button = el("button", { type: "button", class: "ls-btn ls-button-soft", html: icon(action.icon) }, action.label);
+  const button = renderElement("button", { type: "button", class: "ls-btn ls-button-soft", html: renderIcon(action.icon) }, action.label);
   button.addEventListener("click", () => { button.disabled = true; action.run(); });
-  return el("div", { class: "ls-source-notice", role: "status" },
-    el("span", { class: "ls-source-notice-icon", "aria-hidden": "true", html: icon(iconName) }),
-    el("span", { class: "ls-source-notice-text" }, text),
+  return renderElement("div", { class: "ls-source-notice", role: "status" },
+    renderElement("span", { class: "ls-source-notice-icon", "aria-hidden": "true", html: renderIcon(iconName) }),
+    renderElement("span", { class: "ls-source-notice-text" }, text),
     button);
 }
 

@@ -2,14 +2,14 @@
 // CONTRACT: documents/contracts/qmd-items.md#merge
 import {
   isBlankLine,
-  lineEnding,
+  extractLineEnding,
   parseItemFile,
   splitLines,
   type ItemSegment,
   isBalanced,
-  unclosedCodeFences,
+  findUnclosedCodeFences,
   formatDivOpener,
-  lineContent,
+  extractLineContent,
   parseDivOpener,
 } from "../items/index.js";
 import type { TextMerge, TextMergeResult } from "./textMergePort.js";
@@ -98,7 +98,7 @@ function singleBlocks(body: string): Map<string, OutputBlock> {
  * local value stays, unless local removed it: an edit beats a removal.
  */
 function mergeOpeners(base: string | undefined, local: string, other: string): string {
-  const parse = (line: string | undefined) => (line === undefined ? undefined : parseDivOpener(lineContent(line)));
+  const parse = (line: string | undefined) => (line === undefined ? undefined : parseDivOpener(extractLineContent(line)));
   const [baseAttrs, localAttrs, otherAttrs] = [parse(base), parse(local), parse(other)];
   if (!localAttrs || !otherAttrs) { return local; }
   const baseClasses = new Set(baseAttrs?.classes ?? []);
@@ -115,7 +115,7 @@ function mergeOpeners(base: string | undefined, local: string, other: string): s
     if (value !== undefined) { pairs.push([key, value]); }
   }
   const id = localAttrs.id;
-  return formatDivOpener(id === undefined ? { classes, pairs } : { id, classes, pairs }) + lineEnding(local);
+  return formatDivOpener(id === undefined ? { classes, pairs } : { id, classes, pairs }) + extractLineEnding(local);
 }
 
 function mergeValue(base: string | undefined, local: string | undefined, other: string | undefined): string | undefined {
@@ -144,9 +144,9 @@ function mergeItem(
   const body = changedSide(base?.body, settled.local, settled.other);
   if (body !== undefined) { return { items: [{ fence, body, close: local.close }], conflicted: false }; }
   const merged = textMerge({ base: base?.body ?? "", local: settled.local, other: settled.other, otherLabel });
-  const text = merged.text === "" || /[\r\n]$/.test(merged.text) ? merged.text : merged.text + lineEnding(local.fence);
+  const text = merged.text === "" || /[\r\n]$/.test(merged.text) ? merged.text : merged.text + extractLineEnding(local.fence);
   const lines = splitLines(text);
-  if (!isBalanced(lines) || unclosedCodeFences(lines).length > 0) {
+  if (!isBalanced(lines) || findUnclosedCodeFences(lines).length > 0) {
     return { items: [local, other], conflicted: true };
   }
   return { items: [{ fence, body: text, close: local.close }], conflicted: merged.conflicted };
@@ -195,7 +195,7 @@ export function mergeItemFiles(input: ItemFileMergeInput, textMerge: TextMerge):
     }
     pieces.push({ text: merge(base.gaps.get(key) ?? "", local.gaps.get(key) ?? "", other.gaps.get(key) ?? "") });
   }
-  return { text: joinPieces(pieces, lineEnding(input.local)), conflicted };
+  return { text: joinPieces(pieces, extractLineEnding(input.local)), conflicted };
 }
 
 const NO_BASE: Side = { keys: [], items: new Map(), gaps: new Map() };

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   offerOwnRelay,
-  withdrawOwnRelay,
+  removeOwnRelayOffer,
   type ShareConnection,
   type ProjectEntry,
 } from "@labshelf/core";
@@ -77,7 +77,7 @@ export async function withdrawRelay(host: CollabHost): Promise<void> {
   const picked = relayUrl && (await pickShare(host, "Shared project to withdraw your relay from"));
   if (!picked) { return; }
   try {
-    const removed = await withdrawOwnRelay(host.ports, picked.share, relayUrl);
+    const removed = await removeOwnRelayOffer(host.ports, picked.share, relayUrl);
     void vscode.window.showInformationMessage(removed ? `Withdrew your relay from "${picked.name}".` : `"${picked.name}" does not list a relay you offered.`);
   } catch (error) {
     reportFailure(host.logger, `withdraw your relay from "${picked.name}"`, error, { shareId: picked.share.shareId, relayUrl });

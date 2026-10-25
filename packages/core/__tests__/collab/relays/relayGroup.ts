@@ -1,13 +1,13 @@
 /** Runs real share sessions over two in-process relays whose hosts can refuse, page for limits or be blocked per client. */
 import * as Y from "yjs";
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
 import {
-  addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, followRelaySelection, relayPresence, relayProbe, type RelaySelector,
+  addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, startRelaySelectionFollow, createRelayPresence, createRelayProbe, type RelaySelector,
 } from "../../../src/collab/relays/index";
-import { attachAwareness, type PresenceHandle } from "../../../src/collab/presence/index";
+import { attachPresence, type PresenceStore } from "../../../src/collab/presence/index";
 import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
-import { memoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
-import type { RelaySocket } from "../../../src/collab/transport/index";
+import { createMemoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
+import type { RelayConnectionPort } from "../../../src/collab/transport/index";
 import type { FakeClock } from "../peer/fakeNetwork";
 import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
 import { FakeRelay } from "../transport/relay/fakeRelay";
@@ -24,8 +24,8 @@ const REFUSE_MS = 5;
 export type HostMode = "up" | "limit" | "refuseNew" | "limitPage";
 
 /** A socket the relay closes before it opens. */
-function refusedSocket(clock: FakeClock): RelaySocket {
-  const socket: RelaySocket = {
+function refusedSocket(clock: FakeClock): RelayConnectionPort {
+  const socket: RelayConnectionPort = {
     binaryType: "blob", onopen: null, onmessage: null, onclose: null, onerror: null,
     send: () => { throw new Error("send on a refused socket"); },
     close: () => {},
@@ -62,7 +62,7 @@ export class RelayHosts {
     };
   }
 
-  socketFactoryFor(blocked: ReadonlySet<string>): (url: string) => RelaySocket {
+  socketFactoryFor(blocked: ReadonlySet<string>): (url: string) => RelayConnectionPort {
     return (url) => {
       const host = new URL(url).host;
       const mode = this.modes.get(host) ?? "up";
@@ -72,7 +72,7 @@ export class RelayHosts {
   }
 }
 
-export interface GroupClient { session: ShareSession; selector: RelaySelector; presence: PresenceHandle; text(): Y.Text; close(): Promise<void> }
+export interface GroupClient { session: ShareSession; selector: RelaySelector; presence: PresenceStore; text(): Y.Text; close(): Promise<void> }
 
 export interface GroupClientOptions {
   owner?: boolean;
@@ -86,25 +86,25 @@ export interface GroupClientOptions {
 export async function openGroupClient(hosts: RelayHosts, clock: FakeClock, name: string, options: GroupClientOptions = {}): Promise<GroupClient> {
   const { owner = false, cursors, blocked = new Set<string>(), relays = [ONE, TWO] } = options;
   const logger = fakeLogger();
-  const contentKey = await deriveContentKey(SHARE_KEY);
+  const contentKey = await deriveContentShareKey(SHARE_KEY);
   const slot = createSwitchableTransport();
   const session = createShareSession({ shareId: SHARE_ID, contentKey, transport: slot, logger, scheduler: clock });
   if (owner) { relays.forEach((url) => addRelay(session.index, { url, addedBy: name })); }
-  const awarenessKey = await deriveAwarenessKey(SHARE_KEY);
+  const awarenessKey = await derivePresenceShareKey(SHARE_KEY);
   const relayToken = await deriveRelayToken(SHARE_KEY);
-  const presence = attachAwareness(session, { awarenessKey, logger });
+  const presence = attachPresence(session, { awarenessKey, logger });
   presence.setLocal({ name, colour: "#000000", file: null, anchor: null, head: null });
   const fetch = hosts.fetchFor(blocked);
   const socketFactory = hosts.socketFactoryFor(blocked);
   const watch = createRelayWatch({ shareId: SHARE_ID, relayToken, contentKey, awarenessKey, logger, scheduler: clock, fetch, socketFactory });
   const selector = createRelaySelector({
-    index: session.index, inviteRelays: relays, probe: relayProbe({ logger, fetch, scheduler: clock }),
-    presence: relayPresence(presence, watch), clock, logger,
+    index: session.index, inviteRelays: relays, probe: createRelayProbe({ logger, fetch, scheduler: clock }),
+    presence: createRelayPresence(presence, watch), clock, logger,
   });
-  const follower = followRelaySelection({
+  const follower = startRelaySelectionFollow({
     session, slot, selector, shareId: SHARE_ID, relayToken, contentKey, logger,
     scheduler: clock, fetch, socketFactory, isSnapshotWriter: () => presence.isLowestId(),
-    ...(cursors ? { cursorsFor: (url: string) => cursors.get(url) ?? cursors.set(url, memoryCursorStore()).get(url)! } : {}),
+    ...(cursors ? { cursorsFor: (url: string) => cursors.get(url) ?? cursors.set(url, createMemoryCursorStore()).get(url)! } : {}),
   });
   session.openDoc(DOC_PATH);
   return {

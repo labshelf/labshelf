@@ -4,7 +4,7 @@
  */
 // The source tab's title-bar actions: their order, labels and overflow, and what they do before the editor has loaded.
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
-import { quickPick } from "@labshelf/core/dom";
+import { pickQuickEntry } from "@labshelf/core/dom";
 import { sourceActions, type SourceActionDeps } from "../../../../src/writing/source/actions";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn(), quickPick: jest.fn(async () => undefined), inputBox: jest.fn(async () => undefined) }));
@@ -57,7 +57,7 @@ describe("sourceActions", () => {
     const { run, openHistory, edits } = setup({ target: () => undefined });
     for (const id of ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "bold", "italic"]) run(id);
     run("history");
-    expect(quickPick).not.toHaveBeenCalled();
+    expect(pickQuickEntry).not.toHaveBeenCalled();
     expect(edits.wrap).not.toHaveBeenCalled();
     expect(openHistory).toHaveBeenCalledTimes(1);
   });

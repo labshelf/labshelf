@@ -6,15 +6,15 @@ import {
   type SpaceDate,
   type SpaceDateKind,
   type SpaceFolder,
-  type SpacePaperRef,
+  type SpaceReference,
 } from "./space.js";
 import {
   isNonEmptyString,
   isRecord,
   isString,
   readEntries,
-  topLevelReadOnlyReason,
-  unknownKeys,
+  deriveTopLevelReadOnlyReason,
+  deriveUnknownFields,
   isBoolean,
   isDay,
   isIdList,
@@ -46,8 +46,8 @@ function foldersOnCycles(parentOf: ReadonlyMap<string, string | undefined>): Set
 }
 
 function resolveSpaceReferences(
-  folders: readonly SpaceFolder[], papers: readonly SpacePaperRef[], warnings: string[],
-): { folders: SpaceFolder[]; papers: SpacePaperRef[] } {
+  folders: readonly SpaceFolder[], papers: readonly SpaceReference[], warnings: string[],
+): { folders: SpaceFolder[]; papers: SpaceReference[] } {
   const ids = new Set(folders.map((folder) => folder.id));
   const parentOf = new Map(folders.map((folder) => [folder.id, folder.parent !== undefined && ids.has(folder.parent) ? folder.parent : undefined]));
   const onCycle = foldersOnCycles(parentOf);
@@ -77,11 +77,11 @@ const parseFolder: EntryParse<SpaceFolder> = (raw) => {
   if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, name, parent } = raw;
   if (!isString(name) || !isOptional(parent, isNonEmptyString)) { return "name or parent has the wrong type"; }
-  return { id, name, ...(parent === undefined ? {} : { parent: parent as string }), extra: unknownKeys(raw, FOLDER_KEYS) };
+  return { id, name, ...(parent === undefined ? {} : { parent: parent as string }), extra: deriveUnknownFields(raw, FOLDER_KEYS) };
 };
 
 const PAPER_KEYS = ["id", "folder", "addedAt", "focus"];
-const parsePaperRef: EntryParse<SpacePaperRef> = (raw) => {
+const parsePaperRef: EntryParse<SpaceReference> = (raw) => {
   if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, folder, addedAt, focus } = raw;
   if (!isOptional(folder, isNonEmptyString) || !isOptional(addedAt, isString) || !isOptional(focus, isBoolean)) {
@@ -89,7 +89,7 @@ const parsePaperRef: EntryParse<SpacePaperRef> = (raw) => {
   }
   return {
     id, ...(folder === undefined ? {} : { folder: folder as string }), ...(addedAt === undefined ? {} : { addedAt: addedAt as string }),
-    focus: focus === true, extra: unknownKeys(raw, PAPER_KEYS),
+    focus: focus === true, extra: deriveUnknownFields(raw, PAPER_KEYS),
   };
 };
 
@@ -103,7 +103,7 @@ const parseDate: EntryParse<SpaceDate> = (raw) => {
   const { id, kind, title, date, done, paperIds, projectId } = raw;
   if (!isKind(kind)) { return `unknown kind ${JSON.stringify(kind)}`; }
   if (!isString(title) || !isDay(date)) { return "title is not text or date is not YYYY-MM-DD"; }
-  const base = { id, title, date, extra: unknownKeys(raw, DATE_KEYS) };
+  const base = { id, title, date, extra: deriveUnknownFields(raw, DATE_KEYS) };
   switch (kind) {
     case "task": return isOptional(done, isBoolean) ? { ...base, kind, done: done === true } : "done is not true or false";
     case "read": return isOptional(paperIds, isIdList) ? { ...base, kind, ...(paperIds === undefined ? {} : { paperIds: paperIds as string[] }) } : "paperIds is not a list of paper ids";
@@ -138,8 +138,8 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
     projects: projects.valid,
     dates: dates.valid,
     invalid: { folders: folders.raw, papers: papers.raw, projects: projects.raw, dates: dates.raw },
-    extra: unknownKeys(raw, SPACE_KEYS),
+    extra: deriveUnknownFields(raw, SPACE_KEYS),
   };
-  const readOnlyReason = topLevelReadOnlyReason(raw, "space.json");
+  const readOnlyReason = deriveTopLevelReadOnlyReason(raw, "space.json");
   return { state: "ready", path, space, warnings, ...(readOnlyReason === undefined ? {} : { readOnlyReason }) };
 }

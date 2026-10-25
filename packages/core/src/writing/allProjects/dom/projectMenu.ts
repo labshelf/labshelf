@@ -1,5 +1,5 @@
 // Lists the actions of a project row's menu for the place it sits in, including the host's own commands.
-import { projectShareMenuEntries } from "../../../collab/dom/index.js";
+import { createProjectShareMenuEntries } from "../../../collab/dom/index.js";
 import type { ShareHost } from "../../../libraryUi/share/index.js";
 import type { MenuEntry } from "../../../ui/dom/index.js";
 import type { ProjectMenuCommand, ProjectRow } from "../projectRow.js";
@@ -48,7 +48,7 @@ export function projectMenuEntries(row: ProjectRow, ctx: ProjectMenuContext): Me
       { label: "Duplicate…", icon: "copy", onSelect: () => void duplicateProject(row, post) },
       { label: "Move to folder…", icon: "folder-move", onSelect: () => void moveProject(row, ctx.rows, post) }],
     hostEntries(row, ctx),
-    ctx.sharing ? projectShareMenuEntries(ctx.sharing, { id: row.id, shared: !!row.shared }) : [],
+    ctx.sharing ? createProjectShareMenuEntries(ctx.sharing, { id: row.id, shared: !!row.shared }) : [],
     [{ label: "Archive", onSelect: () => post({ type: "archive", id: row.id, archived: true }) }, toTrash],
   );
 }

@@ -10,7 +10,7 @@ import { PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 import type { HelperHandler, HelperSend } from "../handlers/index.js";
 import { HelperProjectError, type HelperProjects } from "../projects/index.js";
 import { BUILD_MODULE, runBuildJob, type BuildToken } from "./runBuildJob.js";
-import { helperToolchainPrompt } from "./askHelperToolchain.js";
+import { createHelperToolchainAsk } from "./askHelperToolchain.js";
 import type { SentPages } from "./sendPages.js";
 
 export interface BuildHandlerOptions {
@@ -102,7 +102,7 @@ export function createBuildHandlers(options: BuildHandlerOptions): BuildHandlers
   const compile: HelperHandler = (message, send) => {
     if (message.type !== "compile") { throw new Error(`compile handler received ${message.type}`); }
     latest = { id: message.id, send };
-    const builds = buildsOf(message.projectId, helperToolchainPrompt(message.id, send));
+    const builds = buildsOf(message.projectId, createHelperToolchainAsk(message.id, send));
     stop(builds);
     const token: BuildToken = { cancelled: false };
     builds.token = token;

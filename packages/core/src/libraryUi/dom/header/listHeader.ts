@@ -2,17 +2,17 @@
  * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add).
  */
 import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, deriveBreadcrumb } from "../../../library/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import { deriveScope } from "../../viewModel/index.js";
 import { sendAddPaperRequest } from "../flows/index.js";
 import { updateSidebarOpen } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";
 import { mountShareFolderButton } from "./shareFolderButton.js";
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import { attachDropZone } from "../drag/index.js";
 
 function crumb(ctx: UiContext, label: string, path: string, last: boolean): HTMLElement {
-  const b = el("button", {
+  const b = renderElement("button", {
     class: `crumb${last ? " current" : ""}`,
     type: "button",
     title: last ? label : `Go to ${label}`,
@@ -32,11 +32,11 @@ function renderCrumbs(ctx: UiContext, container: HTMLElement, folder: string, co
     frag.append(crumb(ctx, LIBRARY_LABEL, PAPERS_DIR, true));
   } else {
     chain.forEach((node, i) => {
-      if (i > 0) frag.append(el("span", { class: "crumb-sep", html: icon("chevron-right") }));
+      if (i > 0) frag.append(renderElement("span", { class: "crumb-sep", html: renderIcon("chevron-right") }));
       frag.append(crumb(ctx, node.isRoot ? LIBRARY_LABEL : node.label, node.path, i === chain.length - 1));
     });
   }
-  frag.append(el("span", { class: "ls-count", text: count }));
+  frag.append(renderElement("span", { class: "ls-count", text: count }));
   container.replaceChildren(frag);
 }
 
@@ -44,15 +44,15 @@ const SEARCH_SYNTAX_TIP = SYNTAX_HELP.map((row) => `${row.syntax}   ${row.descri
 const SEARCH_DEBOUNCE_MS = 80;
 
 const headerHtml = (addTooltip: string, readOnly: boolean): string => `
-  <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${icon("panel-left")}</button>
+  <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${renderIcon("panel-left")}</button>
   <nav class="breadcrumb" aria-label="List scope"></nav>
   <div class="ls-search" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
-    ${icon("search")}
+    ${renderIcon("search")}
     <input class="ls-library-search" type="text" placeholder="Search papers" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
     <kbd class="ls-search-key" aria-hidden="true">/</kbd>
-    <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
+    <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${renderIcon("x")}</button>
   </div>
-  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>`}`;
+  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${renderIcon("plus")}<span>Add</span></button>`}`;
 
 function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
   let timer: ReturnType<typeof setTimeout> | null = null;

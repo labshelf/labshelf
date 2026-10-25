@@ -1,5 +1,5 @@
 // Builds a settings section holding an ordered list of rows, each with a name, an address, an enabled switch and a remove button.
-import { actionButton, checkboxField, el, settingsSection, textField } from "@labshelf/core/dom";
+import { renderActionButton, renderCheckboxField, renderElement, renderSettingsSection, renderTextField } from "@labshelf/core/dom";
 
 interface EditableRow {
   name: string;
@@ -47,17 +47,17 @@ function showVerdict(template: HTMLInputElement, status: HTMLElement, verdict: R
 
 function createRow(spec: EditableListSpec, value: EditableRow, onRemove: (row: HTMLElement) => void): HTMLElement {
   const id = `${spec.idPrefix}-${++rowSeq}`;
-  const name = textField({ id: `${id}-name`, type: "text", placeholder: spec.namePlaceholder });
-  const template = textField({ id: `${id}-template`, type: "text", placeholder: spec.addressPlaceholder });
-  const enabled = checkboxField({ id: `${id}-enabled`, label: "Enabled", checked: value.enabled });
-  const status = el("span", { id: `${id}-status`, class: "editable-status", "aria-live": "polite" });
-  const remove = actionButton({ label: "Remove", icon: "trash", onClick: () => onRemove(row) });
+  const name = renderTextField({ id: `${id}-name`, type: "text", placeholder: spec.namePlaceholder });
+  const template = renderTextField({ id: `${id}-template`, type: "text", placeholder: spec.addressPlaceholder });
+  const enabled = renderCheckboxField({ id: `${id}-enabled`, label: "Enabled", checked: value.enabled });
+  const status = renderElement("span", { id: `${id}-status`, class: "editable-status", "aria-live": "polite" });
+  const remove = renderActionButton({ label: "Remove", icon: "trash", onClick: () => onRemove(row) });
   name.control.setAttribute("aria-label", spec.nameAriaLabel);
   template.control.setAttribute("aria-label", spec.addressAriaLabel);
   name.control.value = value.name;
   template.control.value = value.template;
   template.control.setAttribute("aria-describedby", status.id);
-  const row = el("div", { class: "editable-row", role: "group" }, name.element, template.element, enabled.element, remove, status);
+  const row = renderElement("div", { class: "editable-row", role: "group" }, name.element, template.element, enabled.element, remove, status);
   const refresh = (): void => showVerdict(template.control, status, spec.judge(template.control.value));
   row.addEventListener("input", refresh);
   refresh();
@@ -65,7 +65,7 @@ function createRow(spec: EditableListSpec, value: EditableRow, onRemove: (row: H
 }
 
 export function createEditableListSection(spec: EditableListSpec, onChange: () => void): EditableListSection {
-  const list = el("div", { class: "editable-list" });
+  const list = renderElement("div", { class: "editable-list" });
   const labelRows = (): void => {
     [...list.children].forEach((row, i) => row.setAttribute("aria-label", `${spec.rowLabel} ${i + 1}`));
   };
@@ -74,8 +74,8 @@ export function createEditableListSection(spec: EditableListSpec, onChange: () =
   list.addEventListener("input", onChange);
   list.addEventListener("change", onChange);
 
-  const addButton = actionButton({ label: spec.addLabel, icon: "plus", onClick: () => add({ name: "", template: "", enabled: true }) });
-  const element = settingsSection({ title: spec.title, description: spec.description }, list, el("div", { class: "settings-actions" }, addButton));
+  const addButton = renderActionButton({ label: spec.addLabel, icon: "plus", onClick: () => add({ name: "", template: "", enabled: true }) });
+  const element = renderSettingsSection({ title: spec.title, description: spec.description }, list, renderElement("div", { class: "settings-actions" }, addButton));
   return {
     element,
     read: () => spec.savable([...list.children].map((row) => ({

@@ -3,7 +3,7 @@ import { TEMPLATE_CATEGORIES } from "../../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../../templates/publishCheckLabels.js";
 import {
   FieldError, readBody, readBoolean, readChoice, readProjectId, readString, readText, readArray,
-  optional, isBody, type Body,
+  readOptionalField, isBody, type Body,
 } from "../messageFields.js";
 import type { TemplatePublishEvent, TemplatePublishRequest } from "./messages.js";
 
@@ -38,13 +38,13 @@ export function readTemplatePublishEvent(body: Body): TemplatePublishEvent {
         draft: { name: readString(d, "name"), category: readChoice(d, "category", TEMPLATE_CATEGORIES), license: readString(d, "license"), description: readString(d, "description") } };
     }
     case "publish.checks": return {
-      type: "publish.checks", running: readBoolean(event, "running"), ...optional(event, "thumbnail", readString),
+      type: "publish.checks", running: readBoolean(event, "running"), ...readOptionalField(event, "thumbnail", readString),
       checks: readArray(event, "checks", PUBLISH_CHECK_IDS.length).map((c) => {
         if (!isBody(c)) throw new FieldError("invalid-field", "check is not an object");
-        return { id: readChoice(c, "id", PUBLISH_CHECK_IDS), ...optional(c, "ok", readBoolean), ...optional(c, "message", readString) };
+        return { id: readChoice(c, "id", PUBLISH_CHECK_IDS), ...readOptionalField(c, "ok", readBoolean), ...readOptionalField(c, "message", readString) };
       }),
     };
-    case "publish.auth": return { type: "publish.auth", ...optional(event, "login", readText), ...optional(event, "error", readString) };
+    case "publish.auth": return { type: "publish.auth", ...readOptionalField(event, "login", readText), ...readOptionalField(event, "error", readString) };
     case "publish.failed": return { type: "publish.failed", error: readString(event, "error") };
     case "publish.submitted": return { type: "publish.submitted", url: readText(event, "url") };
     default: throw new FieldError("invalid-field", "unknown template publication event");

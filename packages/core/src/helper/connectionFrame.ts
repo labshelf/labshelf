@@ -3,14 +3,14 @@
 
 import { MAX_SOCKET_MESSAGE_BYTES } from "./helperMessages.js";
 
-export interface SocketMessage {
+export interface ConnectionMessage {
   envelope: Record<string, unknown>;
   payload: Uint8Array;
 }
 
 const LENGTH_BYTES = 4;
 
-export function encodeSocketMessage(envelope: object, payload: Uint8Array = new Uint8Array(0)): Uint8Array {
+export function encodeConnectionMessage(envelope: object, payload: Uint8Array = new Uint8Array(0)): Uint8Array {
   const json = new TextEncoder().encode(JSON.stringify(envelope));
   const total = LENGTH_BYTES + json.length + payload.length;
   if (total > MAX_SOCKET_MESSAGE_BYTES) {
@@ -23,7 +23,7 @@ export function encodeSocketMessage(envelope: object, payload: Uint8Array = new 
   return bytes;
 }
 
-export function decodeSocketMessage(bytes: Uint8Array): SocketMessage {
+export function decodeConnectionMessage(bytes: Uint8Array): ConnectionMessage {
   if (bytes.length > MAX_SOCKET_MESSAGE_BYTES) {
     throw new Error(`Socket message of ${bytes.length} bytes is over the 16 MiB limit`);
   }

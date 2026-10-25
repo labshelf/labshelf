@@ -1,6 +1,6 @@
 // Shows the page's waiting and failure states, and names why a shared PDF could not be read, in the visitor's words.
 import type { LoadPdfError, OpenShareError } from "@labshelf/core";
-import { el, icon, type IconName } from "@labshelf/core/dom";
+import { renderElement, renderIcon, type IconName } from "@labshelf/core/dom";
 
 export interface PageState {
   icon: IconName;
@@ -33,14 +33,14 @@ export const PDF_ERROR_TEXT: Record<LoadPdfError, string> = {
 };
 
 export function renderState(root: HTMLElement, state: PageState): void {
-  const actions = el("div", { class: "share-state-actions" },
-    state.retry ? el("button", { class: "ls-btn ls-btn-primary", type: "button", text: "Retry" }) : null,
-    state.back ? el("button", { class: "ls-btn", type: "button", html: `${icon("arrow-left")}<span>Back to folder</span>` }) : null);
+  const actions = renderElement("div", { class: "share-state-actions" },
+    state.retry ? renderElement("button", { class: "ls-btn ls-btn-primary", type: "button", text: "Retry" }) : null,
+    state.back ? renderElement("button", { class: "ls-btn", type: "button", html: `${renderIcon("arrow-left")}<span>Back to folder</span>` }) : null);
   actions.querySelector(".ls-btn-primary")?.addEventListener("click", () => state.retry?.());
   actions.querySelector(".ls-btn:not(.ls-btn-primary)")?.addEventListener("click", () => state.back?.());
-  root.replaceChildren(el("div", { class: "ls-empty share-state", role: state.icon === "loader" ? "status" : "alert" },
-    el("div", { class: `ls-empty-icon${state.icon === "loader" ? " share-spin" : ""}`, html: icon(state.icon) }),
-    el("div", { class: "ls-empty-text", text: state.text }),
-    state.hint ? el("div", { class: "ls-empty-hint", text: state.hint }) : null,
+  root.replaceChildren(renderElement("div", { class: "ls-empty share-state", role: state.icon === "loader" ? "status" : "alert" },
+    renderElement("div", { class: `ls-empty-icon${state.icon === "loader" ? " share-spin" : ""}`, html: renderIcon(state.icon) }),
+    renderElement("div", { class: "ls-empty-text", text: state.text }),
+    state.hint ? renderElement("div", { class: "ls-empty-hint", text: state.hint }) : null,
     actions.childElementCount > 0 ? actions : null));
 }

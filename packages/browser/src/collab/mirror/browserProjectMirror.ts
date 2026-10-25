@@ -2,12 +2,12 @@
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import {
   createWriteRecordStore,
-  libraryMirrorDisk,
+  createLibraryMirrorFileSystem,
   MirrorOwnershipLost,
-  MirrorRootUnavailable,
+  MirrorProjectDirUnavailable,
   startProjectMirror,
   systemLeaseScheduler,
-  type BlobExchange,
+  type ShareBlobExchange,
   type CollabStore,
   type ILogger,
   type LeaseHolder,
@@ -16,7 +16,7 @@ import {
   type ShareSession,
   createTextMerge,
   type MergeText,
-  acquireFolderLease,
+  openFolderLease,
   type FolderLease,
   type LibraryFileSystem,
 } from "@labshelf/core";
@@ -54,7 +54,7 @@ async function acquireMirrorLeases(options: MirrorLeaseOptions): Promise<MirrorL
   const source = await sources.getLibrarySource();
   if (source.kind === "browser") { return { kind: "owned", leases: { source, fs: sources.browserFileSystem, tab } }; }
   const fs = sources.folderFileSystem;
-  const result = await acquireFolderLease({ fs, folder, app: "browser", logger, takeOver, ...(scheduler ? { scheduler } : {}) });
+  const result = await openFolderLease({ fs, folder, app: "browser", logger, takeOver, ...(scheduler ? { scheduler } : {}) });
   if (result.kind === "busy") { return result; }
   return { kind: "owned", leases: { source, fs, tab, folder: result.lease } };
 }
@@ -76,7 +76,7 @@ export interface BrowserProjectMirrorOptions {
   /** The project folder, a "/"-separated path inside the library. */
   folder: string;
   session: ShareSession;
-  blobs: BlobExchange;
+  blobs: ShareBlobExchange;
   store: CollabStore;
   logger: ILogger;
   /** Called once when the mirror stops by itself; the share docs keep every edit, only the disk stops following them. */
@@ -97,7 +97,7 @@ export type BrowserMirrorStart =
   | { kind: "running"; mirror: BrowserProjectMirror };
 
 /** Thrown by the ownership check once the library uses another source than the one the mirror writes to. */
-class LibrarySourceChanged extends MirrorRootUnavailable {}
+class LibrarySourceChanged extends MirrorProjectDirUnavailable {}
 
 const sameSource = (a: LibrarySource, b: LibrarySource): boolean =>
   a.kind === "browser" ? b.kind === "browser" : b.kind === "folder" && a.root === b.root && a.via === b.via;
@@ -140,9 +140,9 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
   };
   const reasonOf = (reason: MirrorStopReason): BrowserMirrorStopReason =>
     reason instanceof LibrarySourceChanged ? "source-changed"
-      : reason instanceof MirrorRootUnavailable ? "root-unavailable"
+      : reason instanceof MirrorProjectDirUnavailable ? "root-unavailable"
         : tabLost ? "tab-taken" : "folder-taken";
-  const disk = libraryMirrorDisk(leases.fs, folder);
+  const disk = createLibraryMirrorFileSystem(leases.fs, folder);
   const mirror = startProjectMirror({
     writeRecords: createWriteRecordStore(leases.fs, folder, browserDeviceIdentity(options.libraryId, logger), logger),
     folder, disk, mergeText: browserMergeText, session: options.session, blobs: options.blobs, store: options.store, logger,
@@ -175,13 +175,13 @@ function watchFolder(
 ): () => void {
   const { sources, folder, logger } = options;
   const prefix = `${folder}/`;
-  const rescan = leases.folder ? createFolderRescan({ fs: leases.fs, folder, disk: libraryMirrorDisk(leases.fs, folder), changed, logger }) : undefined;
+  const rescan = leases.folder ? createFolderRescan({ fs: leases.fs, folder, disk: createLibraryMirrorFileSystem(leases.fs, folder), changed, logger }) : undefined;
   const check = async (withSource: boolean): Promise<void> => {
     try {
       if (withSource && !sameSource(await sources.getLibrarySource(), leases.source)) { stop("source-changed"); return; }
       await rescan?.scan();
     } catch (error) {
-      if (error instanceof MirrorRootUnavailable) { stop("root-unavailable"); return; }
+      if (error instanceof MirrorProjectDirUnavailable) { stop("root-unavailable"); return; }
       void logger.error(LOG_MODULE, error, { op: "rescanMirrorFolder", libraryId: options.libraryId, shareId: options.shareId, folder });
     }
   };

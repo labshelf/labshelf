@@ -11,17 +11,17 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import {
-  peerColour,
-  toRelativeSelection,
-  type PresenceHandle,
-  toAbsoluteSelection,
+  derivePeerColour,
+  deriveRelativeSelection,
+  type PresenceStore,
+  deriveAbsoluteSelection,
 } from "@labshelf/core";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
 
 interface RemoteCursorsOptions {
   text: Y.Text;
-  presence: PresenceHandle;
+  presence: PresenceStore;
   file: string;
 }
 
@@ -52,10 +52,10 @@ function peerMarks({ text, presence, file }: RemoteCursorsOptions, length: numbe
   const marks: PeerMark[] = [];
   for (const [clientId, state] of presence.remote()) {
     if (state.file !== file || state.anchor === null || state.head === null) { continue; }
-    const selection = toAbsoluteSelection(text, { anchor: state.anchor, head: state.head });
+    const selection = deriveAbsoluteSelection(text, { anchor: state.anchor, head: state.head });
     if (!selection) { continue; }
     const [anchor, head] = [Math.min(selection.anchor, length), Math.min(selection.head, length)];
-    marks.push({ from: Math.min(anchor, head), to: Math.max(anchor, head), head, name: state.name, colour: peerColour(state.colour, clientId) });
+    marks.push({ from: Math.min(anchor, head), to: Math.max(anchor, head), head, name: state.name, colour: derivePeerColour(state.colour, clientId) });
   }
   return marks;
 }
@@ -104,7 +104,7 @@ export function remoteCursors(options: RemoteCursorsOptions): Extension {
 
 export interface CollabExtensionsOptions {
   text: Y.Text;
-  presence: PresenceHandle;
+  presence: PresenceStore;
   /** POSIX path of the file in the project, as peers name it in their presence. */
   file: string;
   /** This user's name shown on their cursor to peers. */
@@ -113,10 +113,10 @@ export interface CollabExtensionsOptions {
 
 /** Publishes this user's selection whenever it or the document changes. */
 function publishSelection({ text, presence, file, name }: CollabExtensionsOptions): Extension {
-  const colour = peerColour("", presence.awareness.clientID);
+  const colour = derivePeerColour("", presence.awareness.clientID);
   const publish = (view: EditorView): void => {
     const { anchor, head } = view.state.selection.main;
-    presence.setLocal({ name, colour, file, ...toRelativeSelection(text, { anchor, head }) });
+    presence.setLocal({ name, colour, file, ...deriveRelativeSelection(text, { anchor, head }) });
   };
   return [
     EditorView.updateListener.of((update) => {

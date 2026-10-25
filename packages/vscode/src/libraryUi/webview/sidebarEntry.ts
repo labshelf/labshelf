@@ -3,7 +3,7 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
-import { $, mountLibrarySidebar, runShareDialog, type SidebarActions } from "@labshelf/core/dom";
+import { findElement, mountLibrarySidebar, runShareDialog, type SidebarActions } from "@labshelf/core/dom";
 import { isShareMessage, type SidebarProjectItem } from "@labshelf/core";
 import type { HostToSidebar, ProjectTreeMessage, SidebarToHost } from "../sidebarMessages.js";
 import { createWebviewSharingClient } from "../../webview/index.js";
@@ -28,7 +28,7 @@ let openProjectId: string | null = null;
 const tree = (m: Omit<ProjectTreeMessage, "type" | "view"> & { view?: string }): void =>
   post({ ...m, type: "projectTree" } as ProjectTreeMessage);
 
-const root = $("root");
+const root = findElement("root");
 root.classList.add("sidebar-shell");
 const actions: SidebarActions = {
   openFolder: (path) => { sidebar.setQuery(""); post({ type: "openFolder", path }); },

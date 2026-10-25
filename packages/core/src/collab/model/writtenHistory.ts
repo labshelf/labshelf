@@ -25,7 +25,7 @@ function repairPath(doc: Doc, path: string, remembered: Map<string, ObservedVers
   if (array.length > WRITTEN_PER_PATH) { array.delete(0, array.length - WRITTEN_PER_PATH); }
 }
 
-export function observeWritten(doc: Doc): void {
+export function watchWrittenVersions(doc: Doc): void {
   if (observed.has(doc)) { return; }
   observed.add(doc);
   const written = doc.getMap<YArray<WrittenVersion>>("written");
@@ -49,13 +49,13 @@ export function observeWritten(doc: Doc): void {
   });
 }
 
-export function indexWritten(doc: Doc): YMap<YArray<WrittenVersion>> {
-  observeWritten(doc);
+export function readWrittenVersions(doc: Doc): YMap<YArray<WrittenVersion>> {
+  watchWrittenVersions(doc);
   return doc.getMap("written");
 }
 
-export function recordWritten(doc: Doc, path: string, hash: string, at: number): void {
-  const written = indexWritten(doc);
+export function addWrittenVersion(doc: Doc, path: string, hash: string, at: number): void {
+  const written = readWrittenVersions(doc);
   if (!doc.getMap("files").has(path)) { return; }
   doc.transact(() => {
     let versions = written.get(path);
@@ -66,6 +66,6 @@ export function recordWritten(doc: Doc, path: string, hash: string, at: number):
   });
 }
 
-export function writtenHashes(doc: Doc, path: string): ReadonlySet<string> {
-  return new Set(indexWritten(doc).get(path)?.toArray().map((entry) => entry.hash) ?? []);
+export function readWrittenHashes(doc: Doc, path: string): ReadonlySet<string> {
+  return new Set(readWrittenVersions(doc).get(path)?.toArray().map((entry) => entry.hash) ?? []);
 }

@@ -1,5 +1,5 @@
 /** Pins that cursors reach the other peers of a share, leave with their peer and are never trusted blindly. */
-import { attachAwareness, type PresenceHandle, type PresenceState } from "../../../src/collab/presence/index";
+import { attachPresence, type PresenceStore, type PresenceState } from "../../../src/collab/presence/index";
 import { CHANNEL_KIND } from "../../../src/collab/peer/envelope";
 import { FakeClock, FakeNetwork, runUntil } from "../peer/fakeNetwork";
 import { awarenessKey, openSession, type TestClient } from "../doc/testSession";
@@ -10,7 +10,7 @@ describe("awareness", () => {
   let clock: FakeClock;
   let net: FakeNetwork;
   let clients: TestClient[] = [];
-  let handles: PresenceHandle[] = [];
+  let handles: PresenceStore[] = [];
   beforeEach(() => { clock = new FakeClock(); net = new FakeNetwork(clock); });
   afterEach(async () => {
     await Promise.all(handles.map((h) => h.close()));
@@ -19,14 +19,14 @@ describe("awareness", () => {
     handles = [];
   });
 
-  async function attach(id: string): Promise<PresenceHandle> {
+  async function attach(id: string): Promise<PresenceStore> {
     const client = await openSession(net, clock, id);
-    const handle = attachAwareness(client.session, { awarenessKey: await awarenessKey(), logger: client.logger });
+    const handle = attachPresence(client.session, { awarenessKey: await awarenessKey(), logger: client.logger });
     clients.push(client);
     handles.push(handle);
     return handle;
   }
-  const names = (handle: PresenceHandle) => [...handle.remote().values()].map((s) => s.name).sort();
+  const names = (handle: PresenceStore) => [...handle.remote().values()].map((s) => s.name).sort();
 
   it("uses kind 16 for awareness", () => { expect(CHANNEL_KIND.awareness).toBe(16); });
 

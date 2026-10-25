@@ -4,11 +4,11 @@
 const HKDF_SALT = new Uint8Array(0);
 
 // PLATFORM: Node's types declare CryptoKey only under node:crypto, so the type comes from the global crypto every runtime has.
-export type WebCryptoKey = Awaited<ReturnType<typeof crypto.subtle.deriveKey>>;
+export type DerivedShareKey = Awaited<ReturnType<typeof crypto.subtle.deriveKey>>;
 
 export type DerivationLabel = "share-id" | "content" | "awareness" | "relay";
 
-async function importShareKey(shareKey: Uint8Array): Promise<WebCryptoKey> {
+async function importShareKey(shareKey: Uint8Array): Promise<DerivedShareKey> {
   return crypto.subtle.importKey("raw", shareKey as Uint8Array<ArrayBuffer>, "HKDF", false, ["deriveBits", "deriveKey"]);
 }
 
@@ -21,7 +21,7 @@ export async function deriveBytes(shareKey: Uint8Array, label: DerivationLabel, 
   return new Uint8Array(bits);
 }
 
-export async function deriveAesKey(shareKey: Uint8Array, label: "content" | "awareness"): Promise<WebCryptoKey> {
+export async function deriveAesShareKey(shareKey: Uint8Array, label: "content" | "awareness"): Promise<DerivedShareKey> {
   return crypto.subtle.deriveKey(
     hkdfParams(label),
     await importShareKey(shareKey),

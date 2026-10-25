@@ -1,6 +1,6 @@
 // Verifies template publication events and the binary PDF-to-PNG round trip over the helper client.
 import { createNativeLatexHelper } from "../../../src/helper/client";
-import { decodeSocketMessage } from "@labshelf/core/helper";
+import { decodeConnectionMessage } from "@labshelf/core/helper";
 import { FakeHelper, fakeLogger } from "./fakeHelper";
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -20,7 +20,7 @@ it("renders the helper's sample and sends PNG bytes tied to the waiting publicat
   socket.deliver({ id: request.id, type: "templatePreview" }, pdf);
   await flush();
   expect(render).toHaveBeenCalledWith(pdf);
-  const thumbnail = bytesSent.map(decodeSocketMessage).find((m) => m.envelope.type === "templateThumbnail")!;
+  const thumbnail = bytesSent.map(decodeConnectionMessage).find((m) => m.envelope.type === "templateThumbnail")!;
   expect(thumbnail.envelope.requestId).toBe(request.id); expect(thumbnail.payload).toEqual(png);
   socket.deliver({ id: request.id, type: "templatePublish", done: false, event: { type: "publish.checks", checks: [{ id: "thumbnail", ok: true }], running: false } });
   socket.deliver({ id: request.id, type: "templatePublish", done: true });

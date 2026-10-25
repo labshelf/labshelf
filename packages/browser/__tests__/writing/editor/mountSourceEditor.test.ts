@@ -5,7 +5,7 @@
 // The source editor saves a file with the line endings it was read with, flushes on demand and reveals a line.
 import { EditorView } from "@codemirror/view";
 import type { ILogger } from "@labshelf/core";
-import type { HelperEdit } from "@labshelf/core/helper";
+import type { HelperChange } from "@labshelf/core/helper";
 import { mountSourceEditor, type SourceFileAccess } from "../../../src/writing/editor/mountSourceEditor";
 import { revealInOpenEditor } from "../../../src/writing/session";
 
@@ -58,10 +58,10 @@ describe("source editor", () => {
   });
 
   it("sends the helper the LF text of a CRLF file first, then edits at LF offsets", async () => {
-    const edits: HelperEdit[] = [];
+    const edits: HelperChange[] = [];
     const helper = {
       status: () => ({ state: "ready" as const, helperVersion: "1", tex: { source: "none" as const, complete: false }, host: "helper" as const }),
-      edit: jest.fn(async (_id: string, _path: string, _version: number, edit: HelperEdit) => { edits.push(edit); }),
+      edit: jest.fn(async (_id: string, _path: string, _version: number, edit: HelperChange) => { edits.push(edit); }),
       save: jest.fn(async () => undefined),
     };
     const files: SourceFileAccess = { list: async () => ["main.tex"], read: async () => "one\r\ntwo\r\n", write: async () => undefined };

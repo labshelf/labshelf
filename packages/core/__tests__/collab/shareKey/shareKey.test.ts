@@ -2,15 +2,15 @@
 import {
   deriveRelayToken,
   deriveShareId,
-  generateShareKey,
-  rotateShareKey,
+  createShareKey,
+  createNextShareKey,
 } from "../../../src/collab/shareKey/index";
 
 describe("share key", () => {
   it("generates 16 random bytes", () => {
-    const a = generateShareKey();
+    const a = createShareKey();
     expect(a).toHaveLength(16);
-    expect(generateShareKey()).not.toEqual(a);
+    expect(createShareKey()).not.toEqual(a);
   });
 
   it("derives the same 32-char lowercase hex share id from the same key", async () => {
@@ -29,9 +29,9 @@ describe("share key", () => {
   });
 
   it("rotates to a fresh key and share id and returns the replaced one", async () => {
-    const shareKey = generateShareKey();
+    const shareKey = createShareKey();
     const current = { shareKey, shareId: await deriveShareId(shareKey) };
-    const { previous, next } = await rotateShareKey(current);
+    const { previous, next } = await createNextShareKey(current);
     expect(previous).toBe(current);
     expect(next.shareKey).not.toEqual(shareKey);
     expect(next.shareId).not.toBe(current.shareId);

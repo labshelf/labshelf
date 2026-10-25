@@ -10,7 +10,7 @@ import {
 } from "./protocol/index.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./store/index.js";
-import { buildIcs, buildOverview, buildPapersTree, catalogRows, resolvePaper } from "./viewModel/index.js";
+import { buildIcs, buildOverview, buildPapersTree, deriveCatalogRows, resolvePaper } from "./viewModel/index.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -108,7 +108,7 @@ async function spaceMessage({ store, port, today }: ServeSpacesOptions, id: stri
 
 function viewMessage(options: ServeSpacesOptions, view: OpenView): Promise<HostToSpaces> {
   if (view.view === "space") { return spaceMessage(options, view.id); }
-  return Promise.resolve({ type: "catalog", rows: catalogRows(options.store.list(), options.port.library(), options.today()) });
+  return Promise.resolve({ type: "catalog", rows: deriveCatalogRows(options.store.list(), options.port.library(), options.today()) });
 }
 
 function pickablePapers(port: SpacesHostPort): PaperPickItem[] {

@@ -1,5 +1,5 @@
 // Shows the build options of the preview as a header menu: when to compile and, for LaTeX roots, the engine and whether to stop at the first error.
-import { icon } from "../../../../ui/index.js";
+import { renderIcon } from "../../../../ui/index.js";
 import { showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
 import { engineLabel } from "../../../../latex/index.js";
 import { AUTO_COMPILE_MODES, LATEX_ENGINES, autoCompileLabel } from "../../../../writing/index.js";
@@ -34,7 +34,7 @@ function entries(options: BuildOptions, post: OptionsMenuDeps["post"]): MenuEntr
  * @returns `setRoots`, which the host's roots messages drive.
  */
 export function mountOptionsMenu(slot: HTMLElement, { post }: OptionsMenuDeps): { setRoots(roots: PreviewRoots): void } {
-  const button = iconButton(icon("chevron-down"), "Build options");
+  const button = iconButton(renderIcon("chevron-down"), "Build options");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   let options: BuildOptions | undefined;

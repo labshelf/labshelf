@@ -1,6 +1,6 @@
 // Sends requests through an authenticated helper session.
 import {
-  PROTOCOL_VERSION, type HelperCompileRequest, type HelperEdit, type HelperProgressListener,
+  PROTOCOL_VERSION, type HelperCompileRequest, type HelperChange, type HelperProgressListener,
   type ILatexHelper, type TemplatePublishEvent, type TemplatePublishRequest,
 } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
@@ -48,7 +48,7 @@ class NativeLatexHelper implements ILatexHelper {
     });
   }
 
-  edit(projectId: string, path: string, version: number, change: HelperEdit): Promise<void> {
+  edit(projectId: string, path: string, version: number, change: HelperChange): Promise<void> {
     return this.logged("edit", { projectId, path }, async () => {
       const socket = await this.session.readySocket();
       const body = this.edits.apply(projectId, path, version, change);

@@ -37,7 +37,7 @@ const isStringList = (value: unknown): value is string[] => Array.isArray(value)
 const isSize = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
 
 /** The shareable fields of a paper; the user's own fields (status, tags, note, files) never pass. */
-export function sharedMetadataOf(value: unknown): SharedPaperMetadata | undefined {
+export function extractSharedMetadata(value: unknown): SharedPaperMetadata | undefined {
   if (!isObject(value) || !isString(value["id"]) || !isString(value["title"]) || !isString(value["citeKey"])) { return undefined; }
   const metadata: SharedPaperMetadata = { id: value["id"], title: value["title"], citeKey: value["citeKey"] };
   if (isStringList(value["authors"])) { metadata.authors = value["authors"]; }
@@ -62,7 +62,7 @@ function pdfOf(value: unknown): SharedPdf | undefined {
 }
 
 function paperOf(value: unknown): SharedPaper | undefined {
-  const metadata = isObject(value) ? sharedMetadataOf(value["metadata"]) : undefined;
+  const metadata = isObject(value) ? extractSharedMetadata(value["metadata"]) : undefined;
   if (!isObject(value) || !metadata) { return undefined; }
   const paper: SharedPaper = { metadata };
   if (isString(value["bib"])) { paper.bib = value["bib"]; }

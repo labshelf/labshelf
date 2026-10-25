@@ -4,9 +4,9 @@
 // Tests the footer's cites status: its text, the problem stepping with wrap-around and what each step does.
 import { mountProblems } from "../../../../../src/reader/dom/preview/footer/index";
 import type { PdfProblem, PreviewRoots } from "../../../../../src/reader/previewProtocol";
-import { toast } from "../../../../../src/ui/dom/widgets/toast";
+import { showToast } from "../../../../../src/ui/dom/widgets/showToast";
 
-jest.mock("../../../../../src/ui/dom/widgets/toast", () => ({ toast: jest.fn() }));
+jest.mock("../../../../../src/ui/dom/widgets/showToast", () => ({ showToast: jest.fn() }));
 
 const area = (page: number) => ({ page, left: 0, top: 0, right: 10, bottom: 10 });
 const problem = (message: string, extra: Partial<PdfProblem> = {}): PdfProblem => ({ kind: "undefinedCitation", message, ...extra });
@@ -27,7 +27,7 @@ function setup(cites: number | undefined, problems: PdfProblem[]) {
   return { slot, view, deps, text, button };
 }
 
-beforeEach(() => jest.mocked(toast).mockClear());
+beforeEach(() => jest.mocked(showToast).mockClear());
 
 describe("cites status text", () => {
   it.each([
@@ -102,7 +102,7 @@ describe("problem stepping", () => {
   it("toasts an unplaced problem and opens its source line", () => {
     const { view, deps } = setup(1, [problem("Undefined citation foo", { file: "intro.tex", line: 57 })]);
     view.step(1);
-    expect(toast).toHaveBeenCalledWith("Undefined citation foo");
+    expect(showToast).toHaveBeenCalledWith("Undefined citation foo");
     expect(deps.post).toHaveBeenCalledWith({ command: "openSourceLine", file: "intro.tex", line: 57 });
     expect(deps.scrollTo).not.toHaveBeenCalled();
     expect(deps.marks.flash).not.toHaveBeenCalled();
@@ -111,14 +111,14 @@ describe("problem stepping", () => {
   it("toasts an unplaced problem without a source place and posts nothing", () => {
     const { view, deps } = setup(1, [problem("Overfull box")]);
     view.step(1);
-    expect(toast).toHaveBeenCalledWith("Overfull box");
+    expect(showToast).toHaveBeenCalledWith("Overfull box");
     expect(deps.post).not.toHaveBeenCalled();
   });
 
   it("toasts when there are no problems", () => {
     const { view, deps } = setup(2, []);
     view.step(1);
-    expect(toast).toHaveBeenCalledWith("No problems in the PDF");
+    expect(showToast).toHaveBeenCalledWith("No problems in the PDF");
     expect(deps.scrollTo).not.toHaveBeenCalled();
   });
 });

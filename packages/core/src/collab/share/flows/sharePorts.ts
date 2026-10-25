@@ -37,7 +37,7 @@ export interface SharedProjectCatalog {
   reload(): Promise<void>;
 }
 
-export interface ShareWorkflowPorts {
+export interface ShareFlowPorts {
   keys: ShareKeyStore;
   shares: ShareConnections;
   projects: SharedProjectCatalog;

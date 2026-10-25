@@ -10,10 +10,10 @@ import {
 } from "../model/index.js";
 import * as edit from "./mutation/index.js";
 import type { SpaceDateDraft, TermDraft } from "./mutation/index.js";
-import { editGlossary, editSpace, type ReadySpace } from "./updateSpace.js";
+import { updateGlossary, updateSpace, type ReadySpace } from "./updateSpace.js";
 import { readAllSpaces, readGlossaryFile, readSpaceFile } from "./readSpace.js";
 import { type SpaceStoreOptions, type StoreContext, SPACE_STORE_MODULE } from "./spaceStoreOptions.js";
-import { serially } from "./serialWrites.js";
+import { runSerially } from "./serialWrites.js";
 
 const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -31,7 +31,7 @@ async function freeSpaceId(ctx: StoreContext, name: string, taken: Set<string>):
 function createSpaceFile(ctx: StoreContext, name: string): Promise<Space> {
   const trimmed = name.trim();
   if (trimmed === "") { return Promise.reject(new Error("A Space needs a name.")); }
-  return serially(ctx, ctx.layout.spacesRoot(), async () => {
+  return runSerially(ctx, ctx.layout.spacesRoot(), async () => {
     const taken = new Set(await ctx.fs.listDir(ctx.layout.spacesRoot()));
     const id = await freeSpaceId(ctx, trimmed, taken);
     try {
@@ -51,7 +51,7 @@ function createSpaceFile(ctx: StoreContext, name: string): Promise<Space> {
 }
 
 function trashSpaceFolder(ctx: StoreContext, id: string): Promise<void> {
-  return serially(ctx, id, async () => {
+  return runSerially(ctx, id, async () => {
     const dir = ctx.layout.spaceDir(id);
     try {
       if (!(await ctx.fs.exists(ctx.layout.spaceFilePath(id)))) { throw new Error("the Space does not exist"); }
@@ -124,16 +124,16 @@ export class SpaceStore {
     this.notify();
   }
 
-  renameSpace(id: string, name: string) { return this.change(id, "Space renamed", (s) => keep(edit.renamedSpace(s, name))); }
+  renameSpace(id: string, name: string) { return this.change(id, "Space renamed", (s) => keep(edit.withSpaceRenamed(s, name))); }
   setPurpose(id: string, purpose: string | undefined) { return this.change(id, "Purpose set", (s) => keep(edit.withPurpose(s, purpose))); }
   linkProject(id: string, projectId: string) { return this.change(id, "Project linked", (s) => keep(edit.withProject(s, projectId))); }
-  unlinkProject(id: string, projectId: string) { return this.change(id, "Project unlinked", (s) => keep(edit.withoutProject(s, projectId))); }
+  unlinkProject(id: string, projectId: string) { return this.change(id, "Project unlinked", (s) => keep(edit.withProjectRemoved(s, projectId))); }
 
   /** Papers already in the Space are left where they are. */
   addPapers(id: string, paperIds: readonly string[], folder?: string) {
     return this.change(id, "Papers added", (s) => keep(edit.withPapers(s, paperIds, folder, this.ctx.now())));
   }
-  removePaper(id: string, paperId: string) { return this.change(id, "Paper removed", (s) => keep(edit.withoutPaper(s, paperId))); }
+  removePaper(id: string, paperId: string) { return this.change(id, "Paper removed", (s) => keep(edit.withPaperRemoved(s, paperId))); }
   setFocus(id: string, paperId: string, focus: boolean) { return this.change(id, "Focus set", (s) => keep(edit.withFocus(s, paperId, focus))); }
   /** A missing `folder` moves the reference to the Space root. */
   moveReference(id: string, paperId: string, folder?: string) {
@@ -143,11 +143,11 @@ export class SpaceStore {
   createFolder(id: string, name: string, parent?: string) { return this.change(id, "Folder created", (s) => edit.withFolder(s, name, parent)); }
   renameFolder(id: string, folderId: string, name: string) { return this.change(id, "Folder renamed", (s) => keep(edit.withRenamedFolder(s, folderId, name))); }
   /** References and child folders move to the folder's parent. */
-  deleteFolder(id: string, folderId: string) { return this.change(id, "Folder deleted", (s) => keep(edit.withoutFolder(s, folderId))); }
+  deleteFolder(id: string, folderId: string) { return this.change(id, "Folder deleted", (s) => keep(edit.withFolderRemoved(s, folderId))); }
 
   addDate(id: string, draft: SpaceDateDraft) { return this.change(id, "Date added", (s) => edit.withDate(s, draft)); }
   updateDate(id: string, dateId: string, draft: SpaceDateDraft) { return this.change(id, "Date updated", (s) => keep(edit.withUpdatedDate(s, dateId, draft))); }
-  removeDate(id: string, dateId: string) { return this.change(id, "Date removed", (s) => keep(edit.withoutDate(s, dateId))); }
+  removeDate(id: string, dateId: string) { return this.change(id, "Date removed", (s) => keep(edit.withDateRemoved(s, dateId))); }
   setDone(id: string, dateId: string, done: boolean) { return this.change(id, "Task done set", (s) => keep(edit.withDone(s, dateId, done))); }
 
   addTerm(id: string, draft: TermDraft) { return this.changeGlossary(id, "Term added", (g) => edit.withTerm(g, draft)); }
@@ -155,19 +155,19 @@ export class SpaceStore {
     return this.changeGlossary(id, "Term updated", (g) => ({ glossary: edit.withUpdatedTerm(g, termId, draft), value: undefined }));
   }
   removeTerm(id: string, termId: string) {
-    return this.changeGlossary(id, "Term removed", (g) => ({ glossary: edit.withoutTerm(g, termId), value: undefined }));
+    return this.changeGlossary(id, "Term removed", (g) => ({ glossary: edit.withTermRemoved(g, termId), value: undefined }));
   }
 
   private async change<T>(id: string, action: string, apply: (space: Space) => edit.Edited<T>): Promise<T> {
     await requireSpaceId(this.ctx, id, action);
-    const { value, written } = await editSpace(this.ctx, id, action, apply);
+    const { value, written } = await updateSpace(this.ctx, id, action, apply);
     this.remember(written);
     return value;
   }
 
   private async changeGlossary<T>(id: string, action: string, apply: (glossary: Glossary) => { glossary: Glossary; value: T }): Promise<T> {
     await requireSpaceId(this.ctx, id, action);
-    const value = await editGlossary(this.ctx, id, action, apply);
+    const value = await updateGlossary(this.ctx, id, action, apply);
     this.notify();
     return value;
   }

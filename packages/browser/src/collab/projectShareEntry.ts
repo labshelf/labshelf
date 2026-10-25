@@ -4,7 +4,7 @@ import {
   type ILogger,
   type ShareConnection,
   type ShareConnectionState,
-  sharedProjectComments,
+  createSharedProjectComments,
   type Comment,
   type CommentThread,
   type ShareSession,
@@ -27,7 +27,7 @@ interface LiveCommentThreadsOptions {
 const lineAt = (text: string, offset: number): number => text.slice(0, offset).split("\n").length;
 
 function createLiveCommentThreads({ session, projectId, author, logger }: LiveCommentThreadsOptions): CommentThreads {
-  const comments = sharedProjectComments(session);
+  const comments = createSharedProjectComments(session);
   const checkProject = (id: string): void => {
     if (id !== projectId) { throw new Error(`Project ${id} is not the shared project ${projectId}, so its comments cannot be used`); }
   };

@@ -3,7 +3,7 @@
  * capture finds no PDF, decides between searching again, saving the reference alone, saving it while opening the
  * page that stood in the way, and saving it while emailing the authors.
  */
-import { quickPick } from "../../../../ui/dom/index.js";
+import { pickQuickEntry } from "../../../../ui/dom/index.js";
 import type { AddSource, PdfMiss } from "../../../protocol/index.js";
 import type { UiContext } from "../../uiContext.js";
 import { askNoPdf } from "./pdfDialogs.js";
@@ -15,7 +15,7 @@ export function sendAddPaperRequest(ctx: UiContext): void {
 
 export async function onAddSources(ctx: UiContext, folder: string, sources: AddSource[]): Promise<void> {
   const items = sources.map((s) => ({ label: s.label, description: s.description, icon: "globe" as const, value: s.id }));
-  const sourceId = await quickPick(items, { title: "Add a paper from an open tab", placeholder: "Pick the tab showing the paper (DOI, arXiv or PDF page)" });
+  const sourceId = await pickQuickEntry(items, { title: "Add a paper from an open tab", placeholder: "Pick the tab showing the paper (DOI, arXiv or PDF page)" });
   if (sourceId !== undefined) ctx.transport.post({ type: "paper.addFrom", folder, sourceId, ifNoPdf: "ask", retryPdf: false });
 }
 

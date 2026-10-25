@@ -1,8 +1,8 @@
 /** Compiles Typst documents to PDF with the WASM compiler, one compile at a time, reading files through an injected access port. */
 import { createTypstCompiler, initOptions, loadFonts, type TypstCompiler } from "@myriaddreamin/typst.ts";
 
-import { citationProbeSource, PROBE_FILE, PROBE_LABEL, readProbeAnswer, type TypstCitations } from "./typstCitationProbe.js";
-import type { TypstDiagnostic } from "./typstProblems.js";
+import { createCitationProbeSource, PROBE_FILE, PROBE_LABEL, readProbeAnswer, type TypstCitations } from "./typstCitationProbe.js";
+import type { TypstCompilerProblem } from "./deriveTypstProblems.js";
 
 /** Synchronous file access: the compiler asks for files in the middle of a compile and cannot await. Paths are compiler paths. */
 export interface TypstFileAccess {
@@ -41,7 +41,7 @@ export interface TypstCompileRequest {
 
 export interface TypstCompileResult {
   pdf?: Uint8Array;
-  diagnostics: TypstDiagnostic[];
+  diagnostics: TypstCompilerProblem[];
   /** Where each citation of the PDF landed; present with `pdf`. */
   citations?: TypstCitations;
 }
@@ -62,7 +62,7 @@ export class TypstSession {
     this.compiler.resetShadow();
     for (const [path, text] of request.sources) { this.compiler.addSource(path, text); }
     const result = await this.compiler.compile({ root: request.root, mainFilePath: request.main, format: 1, diagnostics: "full" });
-    const diagnostics = (result.diagnostics ?? []) as TypstDiagnostic[];
+    const diagnostics = (result.diagnostics ?? []) as TypstCompilerProblem[];
     if (!result.result) { return { diagnostics }; }
     return { pdf: result.result, diagnostics, citations: await this.citations(request) };
   }
@@ -72,7 +72,7 @@ export class TypstSession {
     const root = request.root.endsWith("/") ? request.root.slice(0, -1) : request.root;
     if (!request.main.startsWith(`${root}/`)) { return { failure: `The main file ${request.main} is outside the root ${request.root}.` }; }
     const probe = `${root}/${PROBE_FILE}`;
-    this.compiler.addSource(probe, citationProbeSource(request.main.slice(root.length)));
+    this.compiler.addSource(probe, createCitationProbeSource(request.main.slice(root.length)));
     try {
       return await this.compiler.runWithWorld({ mainFilePath: probe, root: request.root }, async (world) => {
         const compiled = await world.compile({ diagnostics: "full" });

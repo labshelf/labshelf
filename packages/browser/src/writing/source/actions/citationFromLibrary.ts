@@ -1,6 +1,6 @@
 // Inserts a citation of a picked library paper at every cursor, then adds the paper to the project's labshelf.bib.
 import { choiceCitationOptions, citationSnippet, type ILogger, type LibraryFileSystem, type PaperRecord, type ProjectEntry } from "@labshelf/core";
-import { toast } from "@labshelf/core/dom";
+import { showToast } from "@labshelf/core/dom";
 import type { SourceEdits } from "../sourceUpdates";
 import { createBrowserProjectData } from "../../project";
 import { pickHighlight, pickPaper } from "./pickCitation";
@@ -25,7 +25,7 @@ async function updateBibliography({ flush, entry, fs, logger, papers }: Citation
     void logger.log("INFO", MODULE, "bibliography updated after a citation", { projectId: entry.settings.id, ...update });
   } catch (error) {
     void logger.error(MODULE, error, { action: "updateBibliography", projectId: entry.settings.id });
-    toast("Could not update labshelf.bib.", "error");
+    showToast("Could not update labshelf.bib.", "error");
   }
 }
 

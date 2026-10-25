@@ -1,6 +1,6 @@
 /** Pins the claim and ticket requests: the bodies sent and typed refusals. */
 import { createHash } from "node:crypto";
-import { claimShare, fetchTicket, RelayRequestError } from "../../../../src/collab/transport/index";
+import { addRelayShare, fetchTicket, RelayRequestError } from "../../../../src/collab/transport/index";
 
 const SHARE_ID = "a".repeat(32);
 
@@ -18,12 +18,12 @@ describe("relay requests", () => {
   it("claims a share with the owner secret and the SHA-256 hex of the relay token's decoded bytes", async () => {
     const seen: Seen[] = [];
     const token = Buffer.alloc(32, 7);
-    await claimShare({
+    await addRelayShare({
       relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: token.toString("base64url"), fetch: answering(200, { v: "2.0" }, seen),
     });
     const relayTokenHash = createHash("sha256").update(token).digest("hex");
     expect(seen).toEqual([{ url: "https://relay.example/claim", body: { v: "2.0", shareId: SHARE_ID, relayTokenHash }, authorization: "Bearer owner" }]);
-    const claimed = claimShare({ relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: "AA", fetch: answering(409, { v: "2.0", error: "claimed" }) });
+    const claimed = addRelayShare({ relayUrl: "https://relay.example", ownerSecret: "owner", shareId: SHARE_ID, relayToken: "AA", fetch: answering(409, { v: "2.0", error: "claimed" }) });
     await expect(claimed).rejects.toMatchObject({ code: "claimed", status: 409 });
   });
 

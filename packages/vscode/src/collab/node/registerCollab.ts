@@ -4,10 +4,10 @@ import * as vscode from "vscode";
 import {
   offerOwnRelayToShares,
   createStoreFailureNotices,
-  withdrawOwnRelayFromShares,
+  removeOwnRelayOfferFromShares,
   type ILogger,
   type RelayAccountStore,
-  type ShareWorkflowPorts,
+  type ShareFlowPorts,
   createShareResumer,
 } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/index.js";
@@ -110,7 +110,7 @@ function openRoot(libraryRoot: () => string | undefined): string {
   return root;
 }
 
-export function createCollabPorts(deps: CollabPortsDeps): ShareWorkflowPorts {
+export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
   const { logger, editors } = deps;
   return {
     keys: new ShareKeys(deps.secrets, logger),
@@ -156,7 +156,7 @@ export function registerCollaboration(context: vscode.ExtensionContext, controll
   registerRelay(context, {
     accounts: host.relay, logger: host.logger,
     offerToShares: async () => { (await offerOwnRelayToShares(host.ports)).forEach(showRefusedOffer); },
-    withdrawFromShares: (relayUrl) => withdrawOwnRelayFromShares(host.ports, relayUrl),
+    withdrawFromShares: (relayUrl) => removeOwnRelayOfferFromShares(host.ports, relayUrl),
   });
   registerComments(context, { projects, shares: host.shares, userName: userName(), logger: host.logger });
   context.subscriptions.push(

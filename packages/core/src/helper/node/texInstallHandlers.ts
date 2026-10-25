@@ -1,7 +1,7 @@
 // Creates the `installTex` and `installAllPackages` handlers that stream install progress and end with `ready` or `error`.
 // CONTRACT: documents/contracts/helper.md#messages
 import type { ILogger } from "../../ports/index.js";
-import { PROTOCOL_VERSION, type HelperHost, type ProgressPhase, type TexStatus } from "../index.js";
+import { PROTOCOL_VERSION, type HelperHost, type ProgressPhase, type TexToolchain } from "../index.js";
 
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
 import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../latex/toolchain/node/managedTex/index.js";
@@ -23,7 +23,7 @@ const MESSAGES: Record<InstallPhase, string> = {
 
 async function runInstall(
   options: TexInstallHandlerOptions, id: string, phase: InstallPhase, send: HelperSend,
-  install: (onProgress: TexProgress) => Promise<TexStatus>,
+  install: (onProgress: TexProgress) => Promise<TexToolchain>,
 ): Promise<void> {
   const onProgress: TexProgress = (fraction) =>
     send({ v: PROTOCOL_VERSION, id, type: "progress", phase, message: MESSAGES[phase], ...(fraction === null ? {} : { fraction }) });

@@ -3,9 +3,9 @@ import type { Doc } from "yjs";
 import type { ILogger } from "../../ports/index.js";
 import type { SessionScheduler } from "../peer/index.js";
 import { RelayHolds } from "./relayHolds.js";
-import { indexRelays, relayList } from "./relayList.js";
-import type { RelayPresence } from "./relayPresence.js";
-import type { RelayVerdict } from "./relayProbe.js";
+import { readShareIndexDocRelays, readRelayList } from "./readRelayList.js";
+import type { RelayPresence } from "./createRelayPresence.js";
+import type { RelayVerdict } from "./createRelayProbe.js";
 import { GroupFollow } from "./groupRelays.js";
 
 const LOG_MODULE = "collab.relays";
@@ -21,7 +21,7 @@ export interface RelaySelectorOptions {
   index: Doc;
   /** The relays of the invite, tried while the index lists none. */
   inviteRelays?: readonly string[];
-  /** Asks the relay's `/version`; see `relayProbe`. */
+  /** Asks the relay's `/version`; see `createRelayProbe`. */
   probe: (relayUrl: string) => Promise<RelayVerdict>;
   presence: RelayPresence;
   clock: SessionScheduler;
@@ -65,7 +65,7 @@ class Selector implements RelaySelector {
     this.group = new GroupFollow(options.presence, this.holds, options.logger, (url) => ({
       failure: (kind) => this.reportFailure(url, kind), connected: () => this.holds.succeeded(url),
     }));
-    const relays = indexRelays(options.index);
+    const relays = readShareIndexDocRelays(options.index);
     const onList = () => this.evaluate();
     relays.observe(onList);
     this.stops.push(() => relays.unobserve(onList), options.presence.onPeersChange(() => this.evaluate()));
@@ -108,7 +108,7 @@ class Selector implements RelaySelector {
   }
 
   private urls(): string[] {
-    const listed = relayList(this.options.index).map((entry) => entry.url);
+    const listed = readRelayList(this.options.index).map((entry) => entry.url);
     return listed.length > 0 ? listed : [...(this.options.inviteRelays ?? [])];
   }
 

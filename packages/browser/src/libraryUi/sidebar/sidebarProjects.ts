@@ -1,6 +1,6 @@
 // Answers the core sidebar's Projects section: lists the projects, opens one in the page's project session, opens the template and All projects tabs, and shows the menus that share and join projects.
 import type { ProjectTreeView, ShareHost } from "@labshelf/core";
-import { projectShareMenuEntries, showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
+import { createProjectShareMenuEntries, showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
 import type { TabKindName } from "../editorArea";
 import type { BrowserProjectRow, ProjectsSource } from "../../writing/projectList";
 import type { ProjectSession } from "../../writing/session";
@@ -25,7 +25,7 @@ function menuEntries(source: ProjectsSource, sharing: ShareHost, row: BrowserPro
   const { projectId, pdf } = row;
   if (projectId === undefined) return [];
   const open: MenuEntry[] = pdf ? [{ label: "Open PDF", icon: "file-text", onSelect: () => source.openPdf(projectId, pdf) }] : [];
-  const shared = projectShareMenuEntries(sharing, { id: row.id, shared: row.shared === true });
+  const shared = createProjectShareMenuEntries(sharing, { id: row.id, shared: row.shared === true });
   return open.length > 0 && shared.length > 0 ? [...open, "separator", ...shared] : [...open, ...shared];
 }
 
@@ -53,7 +53,7 @@ export function createSidebarProjects(
     openProjectMenu: (anchor) => {
       const open = session.current();
       // The session keeps the settings it opened with; the project list is what a share, join or leave refreshes.
-      const entries = open?.kind === "ready" ? projectShareMenuEntries(sharing, { id: open.folder, shared: row(open.folder)?.shared === true }) : [];
+      const entries = open?.kind === "ready" ? createProjectShareMenuEntries(sharing, { id: open.folder, shared: row(open.folder)?.shared === true }) : [];
       if (entries.length > 0) showMenu(anchor, entries);
     },
     // The offers hide the first five; check boxes and inline add are not offered here.

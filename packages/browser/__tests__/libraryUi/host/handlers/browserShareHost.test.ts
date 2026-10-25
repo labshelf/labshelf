@@ -1,5 +1,5 @@
 // The page's sharing host offers projects only once the project wiring hands over their deps, and tells its listeners.
-import { createShareHost, type ProjectShareDeps, type ShareWorkflowPorts } from "@labshelf/core";
+import { createShareHost, type ProjectShareDeps, type ShareFlowPorts } from "@labshelf/core";
 import { createPageSharingHost } from "../../../../src/libraryUi/host/handlers/browserShareHost";
 
 const logger = { log: async () => undefined, error: async () => undefined };
@@ -7,7 +7,7 @@ const build = (projects?: ProjectShareDeps) => createShareHost({
   place: "this browser", logger, clipboard: { write: async () => undefined }, openLink: async () => undefined, ...(projects ? { projects } : {}),
 });
 const deps: ProjectShareDeps = {
-  ports: { projects: { list: () => [] } } as unknown as ShareWorkflowPorts,
+  ports: { projects: { list: () => [] } } as unknown as ShareFlowPorts,
   idOf: (entry) => entry.folder,
   open: async () => undefined,
 };

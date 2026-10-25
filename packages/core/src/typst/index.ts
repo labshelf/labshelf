@@ -4,8 +4,8 @@ export { TYPST_FONT_BASE_URL, TYPST_FONTS, TYPST_VERSION } from "./typstRelease.
 export type { TypstFontFile } from "./typstRelease.js";
 export type { TypstBuildResult } from "./typstBuildResult.js";
 export type { TypstCitations } from "./typstCitationProbe.js";
-export { typstProblems } from "./typstProblems.js";
-export type { TypstDiagnostic } from "./typstProblems.js";
+export { deriveTypstProblems } from "./deriveTypstProblems.js";
+export type { TypstCompilerProblem } from "./deriveTypstProblems.js";
 export { openTypstSession, TypstSession } from "./typstSession.js";
 export type {
   TypstCompileRequest, TypstCompileResult, TypstFileAccess, TypstPackageResolver, TypstPackageSpec, TypstSessionOptions,

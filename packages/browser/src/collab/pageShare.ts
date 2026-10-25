@@ -1,13 +1,13 @@
 // Composes the page's sharing: its connections and the workflow ports over them, the resume that follows the project list.
 import {
   createShareResumer,
-  shareProject,
+  startProjectShare,
   type ILogger,
   type ProjectEntry,
   type RelayAccount,
   type RelayNetwork,
   type ResumeReports,
-  type ShareWorkflowPorts,
+  type ShareFlowPorts,
   posixPathOps,
   type ShareKeyStore,
 } from "@labshelf/core";
@@ -47,7 +47,7 @@ interface BrowserSharePortsOptions {
   fetch?: typeof fetch | undefined;
 }
 
-function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareWorkflowPorts {
+function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPorts {
   const { sources, libraryId, keys, shares, projects, relay, requireRelay, logger } = options;
   return {
     keys, shares, projects, relay, requireRelay, logger,
@@ -78,7 +78,7 @@ export interface PageSharingOptions {
 }
 
 export interface PageSharing {
-  ports: ShareWorkflowPorts;
+  ports: ShareFlowPorts;
   shares: PageShares;
   /** Resolves once the first read of the project list and the resume it starts are done. */
   ready(): Promise<void>;
@@ -126,7 +126,7 @@ export function createPageSharing(options: PageSharingOptions): PageSharing {
     liveShare: async (entry, retry) => {
       if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }
       await first;
-      if (retry) { await shareProject(ports, { folder: entry.folder, shared: entry.settings.shared, signal: closing.signal }); } else { await resumer.sync(); }
+      if (retry) { await startProjectShare(ports, { folder: entry.folder, shared: entry.settings.shared, signal: closing.signal }); } else { await resumer.sync(); }
       return shares.live(entry.settings.id);
     },
     closeAll: async () => {

@@ -11,7 +11,7 @@ describe("paperPickText", () => {
   });
 });
 
-describe("highlight words", () => {
+describe("renderHighlightedHtml words", () => {
   it("flattens whitespace and cuts long text", () => {
     expect(highlightLabel(highlight("a \n  b"))).toBe("a b");
     expect(highlightLabel(highlight("x".repeat(200)))).toBe(`${"x".repeat(120)}…`);

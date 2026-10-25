@@ -25,18 +25,18 @@ export function answer(fields: AnswerFields): Response {
   return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
 }
 
-export function refuse(error: RefusalCode): Response {
+export function createRefusal(error: RefusalCode): Response {
   return new Response(encodeRelayBody({ error }), {
     status: REFUSAL_STATUS[error], headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
 }
 
-export const preflight = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
+export const createPreflightAnswer = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
 
-export const notFound = (): Response => new Response(null, { status: 404, headers: CORS_HEADERS });
+export const createNotFoundAnswer = (): Response => new Response(null, { status: 404, headers: CORS_HEADERS });
 
-export const noContent = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
+export const createNoContentAnswer = (): Response => new Response(null, { status: 204, headers: CORS_HEADERS });
 
 /** Raw stored bytes; the share page reads them cross-origin. */
-export const bytesAnswer = (body: ConstructorParameters<typeof Response>[0]): Response =>
+export const createBytesAnswer = (body: ConstructorParameters<typeof Response>[0]): Response =>
   new Response(body, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/octet-stream" } });

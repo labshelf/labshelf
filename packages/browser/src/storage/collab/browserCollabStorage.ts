@@ -1,10 +1,10 @@
 // Stores a share's collaboration state in IndexedDB, where every write is durable once its transaction completes.
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
-import type { CollabStateStorage, StoredDoc } from "@labshelf/core";
+import type { CollabDeviceStateStorage, StoredDoc } from "@labshelf/core";
 import { collabDb, namespaceRange } from "./collabDb";
 
 /** `ns` is `<library id>/<share id>`; the storage sees only the keys under it. */
-export function openBrowserCollabStorage(ns: string): CollabStateStorage {
+export function openBrowserCollabStorage(ns: string): CollabDeviceStateStorage {
   const docUpdates = (docId: string) => IDBKeyRange.bound([ns, docId, 0], [ns, docId, Infinity]);
   return {
     // IDB keys may hold paths, and this store lives outside the library files, so the doc key needs no hashing.

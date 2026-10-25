@@ -8,7 +8,7 @@ import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, thumbnailProblem } from "./catal
 import { runSourceChecks } from "./sourceChecks.js";
 import type { FoundFile } from "./walkFolder.js";
 
-/** @param projectFiles the files that passed the checks, laid out under `files/` */
+/** @param createProjectFiles the files that passed the checks, laid out under `files/` */
 async function layOutPublishFiles(
   manifest: TemplateManifest,
   projectFiles: readonly FoundFile[],

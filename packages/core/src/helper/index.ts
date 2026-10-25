@@ -5,16 +5,16 @@ export {
   PROGRESS_PHASES, PROTOCOL_VERSION, TEX_SOURCES,
 } from "./helperMessages.js";
 export type {
-  ChangedPage, CompileMode, HelperBuildStatus, HelperDirection, HelperHost, HelperParseResult, HelperProgress,
-  HelperRejection, HelperRejectionCode, ProgressPhase, TexSource, TexStatus, TextChange, ToHelperMessage, ToPageMessage,
+  ChangedPage, CompileMode, HelperBuildState, HelperDirection, HelperHost, HelperParseResult, HelperProgress,
+  HelperRejection, HelperRejectionCode, ProgressPhase, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
 } from "./helperMessages.js";
 export { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
 export type { MessageFor } from "./parseHelperMessage.js";
 export type {
-  HelperCompileRequest, HelperCompileResult, HelperEdit, HelperPageBytes, HelperProgressListener,
-  HelperStatus, ILatexHelper,
+  HelperCompileRequest, HelperCompileResult, HelperChange, HelperPageBytes, HelperProgressListener,
+  HelperState, ILatexHelper,
 } from "./latexHelper.js";
-export { decodeSocketMessage, encodeSocketMessage } from "./connectionFrame.js";
-export type { SocketMessage } from "./connectionFrame.js";
+export { decodeConnectionMessage, encodeConnectionMessage } from "./connectionFrame.js";
+export type { ConnectionMessage } from "./connectionFrame.js";
 export type { TemplatePublishRequest, TemplatePublishEvent } from "./template/index.js";

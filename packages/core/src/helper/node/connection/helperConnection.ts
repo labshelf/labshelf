@@ -5,24 +5,24 @@ import type { Duplex } from "node:stream";
 import type { ILogger } from "../../../ports/index.js";
 import { MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION } from "../../helperMessages.js";
 import { parseHelperMessage } from "../../parseHelperMessage.js";
-import { decodeSocketMessage, encodeSocketMessage } from "../../connectionFrame.js";
+import { decodeConnectionMessage, encodeConnectionMessage } from "../../connectionFrame.js";
 import { encodeServerFrame, FrameReader, OPCODE, type FrameEvent } from "./frameCodec.js";
 
 const MODULE = "helperSocket";
 
-export type SocketEnvelope = Record<string, unknown>;
-export type SocketSend = (envelope: SocketEnvelope, payload?: Uint8Array) => void;
-export type SocketHandler = (envelope: SocketEnvelope, payload: Uint8Array, send: SocketSend) => void | Promise<void>;
+export type ConnectionEnvelope = Record<string, unknown>;
+export type ConnectionSend = (envelope: ConnectionEnvelope, payload?: Uint8Array) => void;
+export type ConnectionHandler = (envelope: ConnectionEnvelope, payload: Uint8Array, send: ConnectionSend) => void | Promise<void>;
 
 export interface ConnectionHooks {
   token: string;
   logger: ILogger;
-  handle: SocketHandler;
+  handle: ConnectionHandler;
   /** How long an upgraded socket may stay silent before it must have authenticated. */
   authTimeoutMs: number;
   /** Claims the single authenticated slot; false when another socket holds it. */
-  claim(connection: HelperSocketConnection): boolean;
-  release(connection: HelperSocketConnection): void;
+  claim(connection: HelperConnection): boolean;
+  release(connection: HelperConnection): void;
 }
 
 function sameToken(given: unknown, expected: string): boolean {
@@ -31,7 +31,7 @@ function sameToken(given: unknown, expected: string): boolean {
   return timingSafeEqual(digest(given), digest(expected));
 }
 
-export class HelperSocketConnection {
+export class HelperConnection {
   private readonly reader = new FrameReader(MAX_SOCKET_MESSAGE_BYTES);
   private authed = false;
   private closing = false;
@@ -62,9 +62,9 @@ export class HelperSocketConnection {
     this.socket.destroy();
   }
 
-  private readonly send: SocketSend = (envelope, payload) => {
+  private readonly send: ConnectionSend = (envelope, payload) => {
     if (this.closing) { return; }
-    this.socket.write(encodeServerFrame(OPCODE.binary, encodeSocketMessage(envelope, payload)));
+    this.socket.write(encodeServerFrame(OPCODE.binary, encodeConnectionMessage(envelope, payload)));
   };
 
   private onEvent(event: FrameEvent): void {
@@ -87,7 +87,7 @@ export class HelperSocketConnection {
   private onMessage(data: Buffer): void {
     let message;
     try {
-      message = decodeSocketMessage(data);
+      message = decodeConnectionMessage(data);
     } catch (error) {
       this.close(1007, `undecodable socket message (${error instanceof Error ? error.message : String(error)})`);
       return;
@@ -98,7 +98,7 @@ export class HelperSocketConnection {
       .catch((error: unknown) => { void this.hooks.logger.error(MODULE, error, { type: message.envelope.type, id: message.envelope.id }); });
   }
 
-  private authenticate(envelope: SocketEnvelope): void {
+  private authenticate(envelope: ConnectionEnvelope): void {
     const parsed = parseHelperMessage(envelope, "toHelper");
     if (!parsed.ok) { this.close(1008, `first message is not a valid auth (${parsed.reason})`); return; }
     const { message } = parsed;

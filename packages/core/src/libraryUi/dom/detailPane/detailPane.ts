@@ -26,7 +26,7 @@ import {
   renderPaperLine,
 } from "./tabs/index.js";
 import type { PaperRecord } from "../../../model/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 
 /** The tags every paper in the selection has, in the first paper's order. */
 function commonTags(papers: readonly PaperRecord[]): string[] {
@@ -45,7 +45,7 @@ function multiDetailHtml(pane: PaneState, ids: string[]): string {
   return `<div class="detail-head">` +
     `<div class="detail-title">${escapeHtml(String(ids.length))} papers selected</div>` +
     `<div class="detail-byline muted-text">Drag them onto a subfolder chip or a path segment, or use the actions below.</div>` +
-    `<div class="detail-toolbar"><button class="ls-btn ls-button-soft" type="button" data-action="move">${icon("folder-move")}<span>Move to…</span></button>` +
+    `<div class="detail-toolbar"><button class="ls-btn ls-button-soft" type="button" data-action="move">${renderIcon("folder-move")}<span>Move to…</span></button>` +
       renderCitationMenuButton() + `<span class="tb-spacer"></span>${renderMoreMenuButton()}</div>` +
     `<div class="detail-status-row">${renderReadingStatusMenuButton(status)}${renderTagRowHtml(pane.ctx, commonTags(papers), pane.tagEditing)}</div>` + (pane.ctx.caps.textLayer ? renderSelectionBanner(pane.ctx, ids) : "") +
   `</div>` +

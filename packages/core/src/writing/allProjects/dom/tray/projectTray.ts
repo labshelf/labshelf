@@ -1,6 +1,6 @@
 // Builds the expanded project's tray rows (file tree, log and Add file), reusing the last rows while their inputs stay the same.
 import { buildFailedRow, buildLoadingRow, buildTrayRow } from "../../../../libraryUi/dom/index.js";
-import { icon } from "../../../../ui/index.js";
+import { renderIcon } from "../../../../ui/index.js";
 import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
 import { projectFileTree } from "./projectFileTree.js";
@@ -58,7 +58,7 @@ function actionRows(row: ProjectRow, detail: ProjectDetail | undefined, h: Proje
   }
   const add = buildTrayRow(ADD_FILE_ENTRY, () => h.onAddFile(row.id));
   add.dataset["name"] = ":add";
-  add.querySelector(".file-type")!.innerHTML = icon("plus");
+  add.querySelector(".file-type")!.innerHTML = renderIcon("plus");
   return [...out, trayRow(add)];
 }
 

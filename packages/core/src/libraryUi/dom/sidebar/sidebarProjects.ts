@@ -1,6 +1,6 @@
 // Builds the Projects section rows: the project folder tree with its projects, or an empty state with the actions the host offers.
-import { el } from "../../../ui/dom/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { SidebarProject } from "../../viewModel/index.js";
 import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow } from "./sidebarRows.js";
 
@@ -49,21 +49,21 @@ export const projectFolderKey = (path: string): string => `project-folder:${path
 
 // The Explorer's own title actions, in its order: new file, new folder, refresh, collapse all.
 export const createProjectListActions = (offers: ProjectOffers, canJoin: boolean): string =>
-  (offers.newBlank ? `<button class="ls-icon-btn" data-tree="blank" title="New blank project">${icon("new-file")}</button>` : "") +
-  (offers.projectFolders ? `<button class="ls-icon-btn" data-tree="project-folder" title="New folder">${icon("new-folder")}</button>` : "") +
-  (canJoin ? `<button class="ls-icon-btn" data-tree="join" title="Join Shared Project" aria-label="Join Shared Project">${icon("link")}</button>` : "") +
-  `<button class="ls-icon-btn" data-tree="project-refresh" title="Refresh">${icon("reload")}</button>` +
-  `<button class="ls-icon-btn" data-tree="project-collapse" title="Collapse all">${icon("collapse-all")}</button>`;
+  (offers.newBlank ? `<button class="ls-icon-btn" data-tree="blank" title="New blank project">${renderIcon("new-file")}</button>` : "") +
+  (offers.projectFolders ? `<button class="ls-icon-btn" data-tree="project-folder" title="New folder">${renderIcon("new-folder")}</button>` : "") +
+  (canJoin ? `<button class="ls-icon-btn" data-tree="join" title="Join Shared Project" aria-label="Join Shared Project">${renderIcon("link")}</button>` : "") +
+  `<button class="ls-icon-btn" data-tree="project-refresh" title="Refresh">${renderIcon("reload")}</button>` +
+  `<button class="ls-icon-btn" data-tree="project-collapse" title="Collapse all">${renderIcon("collapse-all")}</button>`;
 
 const emptyButton = (action: string, label: string, glyph: "plus" | "folder-plus" | "folder-open" | "link"): string =>
-  `<button class="ls-btn" data-tree="${action}" tabindex="-1">${icon(glyph)}${label}</button>`;
+  `<button class="ls-btn" data-tree="${action}" tabindex="-1">${renderIcon(glyph)}${label}</button>`;
 
 function emptyState(offers: ProjectOffers, canJoin: boolean): HTMLElement {
   const buttons = (offers.templates ? emptyButton("browse", "Browse templates", "plus") : "") +
     (offers.newBlank ? emptyButton("blank", "New blank project", "folder-plus") : "") +
     (offers.addExisting ? emptyButton("add", "Add existing folder", "folder-open") : "") +
     (canJoin ? emptyButton("join", "Join shared project", "link") : "");
-  return el("div", { class: "tree-empty", html: buttons ? `No projects yet.<div class="tree-empty-actions">${buttons}</div>` : "No projects yet." });
+  return renderElement("div", { class: "tree-empty", html: buttons ? `No projects yet.<div class="tree-empty-actions">${buttons}</div>` : "No projects yet." });
 }
 
 const byName = (a: SidebarProject, b: SidebarProject): number => a.name.localeCompare(b.name);

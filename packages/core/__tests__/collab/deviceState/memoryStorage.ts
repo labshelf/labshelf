@@ -1,9 +1,9 @@
 /** Holds a share's collaboration state in memory, with switchable write failures, for tests of the store rules. */
-import type { CollabStateStorage, StateMapName, StoredDoc } from "../../../src/collab/deviceState/index";
+import type { CollabDeviceStateStorage, DeviceStateMapName, StoredDoc } from "../../../src/collab/deviceState/index";
 
-export interface MemoryStorage extends CollabStateStorage {
+export interface MemoryStorage extends CollabDeviceStateStorage {
   readonly docs: Map<string, StoredDoc>;
-  readonly maps: Map<StateMapName, unknown>;
+  readonly maps: Map<DeviceStateMapName, unknown>;
   readonly blobs: Map<string, Uint8Array>;
   readonly compactions: string[];
   failAppends: boolean;
@@ -12,7 +12,7 @@ export interface MemoryStorage extends CollabStateStorage {
 
 export function memoryStorage(): MemoryStorage {
   const docs = new Map<string, StoredDoc>();
-  const maps = new Map<StateMapName, unknown>();
+  const maps = new Map<DeviceStateMapName, unknown>();
   const blobs = new Map<string, Uint8Array>();
   const compactions: string[] = [];
   const storage: MemoryStorage = {

@@ -1,14 +1,14 @@
 /** Verifies the overview: timeline order and phases, goal progress, project deadlines, focus papers and missing links. */
-import { buildOverview, localDay } from "../../../src/spaces/viewModel/index";
+import { buildOverview, formatLocalDay } from "../../../src/spaces/viewModel/index";
 import { date, library, paperRef, project, space } from "./viewFixture";
 
 const lib = library({ id: "a", status: "done", title: "Alpha", authors: ["X"], year: 2020 }, { id: "b", status: "reading" });
 const TODAY = "2026-10-22";
 
-describe("localDay", () => {
+describe("formatLocalDay", () => {
   it("splits days at local midnight", () => {
-    expect(localDay(new Date(2026, 9, 21, 23, 59, 59).getTime())).toBe("2026-10-21");
-    expect(localDay(new Date(2026, 9, 22, 0, 0, 0).getTime())).toBe("2026-10-22");
+    expect(formatLocalDay(new Date(2026, 9, 21, 23, 59, 59).getTime())).toBe("2026-10-21");
+    expect(formatLocalDay(new Date(2026, 9, 22, 0, 0, 0).getTime())).toBe("2026-10-22");
   });
 });
 

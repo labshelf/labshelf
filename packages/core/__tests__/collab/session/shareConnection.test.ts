@@ -1,5 +1,5 @@
 /** Pins the connection lifecycle both apps share: start, join, rollback of a partial start, close ordering and persistence. */
-import { fileText } from "../../../src/collab/model/index";
+import { readFileText } from "../../../src/collab/model/index";
 import { ONE } from "../relays/relayGroup";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, mirrorFactory, Network, newDevice, writeProject } from "./connectionTestbed";
@@ -70,7 +70,7 @@ describe("a share connection", () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     ada.storage.appendUpdate = async (docId, update) => { await gate; await append(docId, update); };
-    fileText(connection.session.openDoc("main.typ")).insert(0, "Draft ");
+    readFileText(connection.session.openDoc("main.typ")).insert(0, "Draft ");
     let closed = false;
     const closing = connection.close().then(() => { closed = true; });
     await runFor(net.clock, 1000);
@@ -80,7 +80,7 @@ describe("a share connection", () => {
 
     const again = await net.connect(ada, { mode: "resume", folder: FOLDER });
     await net.drive(again.mirror!.idle());
-    expect(fileText(again.session.openDoc("main.typ")).toString()).toBe("Draft = Hello\n");
+    expect(readFileText(again.session.openDoc("main.typ")).toString()).toBe("Draft = Hello\n");
     await net.drive(again.close());
   }, 60_000);
 
@@ -95,7 +95,7 @@ describe("a share connection", () => {
     connection.onStateChange(changes);
     ada.storage.failAppends = true;
     ada.storage.failCompactions = true;
-    fileText(connection.session.openDoc("main.typ")).insert(0, "x");
+    readFileText(connection.session.openDoc("main.typ")).insert(0, "x");
     await runFor(net.clock, 500);
 
     expect(connection.state().persistenceFailure).toBe("disk full");
@@ -110,7 +110,7 @@ describe("a share connection", () => {
     const first = await net.connect(ada, { mode: "share", folder: FOLDER });
     await net.drive(first.mirror!.idle());
     await runFor(net.clock, 3000);
-    fileText(first.session.openDoc("main.typ")).insert(0, "1");
+    readFileText(first.session.openDoc("main.typ")).insert(0, "1");
     await runFor(net.clock, 3000);
     await net.drive(first.close());
     expect(Object.keys(ada.storage.maps.get("relay-cursors") as object).some((key) => key.startsWith(ONE))).toBe(true);
@@ -119,7 +119,7 @@ describe("a share connection", () => {
       const again = await net.connect(ada, { mode: "resume", folder: FOLDER });
       await net.drive(again.mirror!.idle());
       await runFor(net.clock, 3000);
-      fileText(again.session.openDoc("main.typ")).insert(0, letter);
+      readFileText(again.session.openDoc("main.typ")).insert(0, letter);
       await runFor(net.clock, 3000);
       await net.drive(again.close());
     }
@@ -127,7 +127,7 @@ describe("a share connection", () => {
     const offline = await net.connect(ada, { mode: "resume", folder: FOLDER });
     await net.drive(offline.mirror!.idle());
     await runFor(net.clock, 3000);
-    expect(fileText(offline.session.openDoc("main.typ")).toString()).toBe("321= Hello\n");
+    expect(readFileText(offline.session.openDoc("main.typ")).toString()).toBe("321= Hello\n");
     expect(ada.read(`${FOLDER}/main.typ`)).toBe("321= Hello\n");
     await net.drive(offline.close());
   }, 60_000);

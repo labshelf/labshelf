@@ -1,6 +1,6 @@
 // Runs the project half of the sharing dialogs over the core share workflows, checking each project id against the open library.
 import {
-  currentInvite, isSharedProject, joinSharedProject, leaveSharedProject, shareProject, type SharedProject, type ShareWorkflowPorts,
+  readCurrentInvite, isSharedProject, joinSharedProject, leaveSharedProject, startProjectShare, type SharedProject, type ShareFlowPorts,
 } from "../../../collab/share/flows/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ProjectEntry } from "../../../writing/project/index.js";
@@ -14,7 +14,7 @@ const NOT_SHARED = "This project is not shared.";
 const NOT_CONNECTED = "Connect this shared project before handing out its invite.";
 
 export interface ProjectShareDeps {
-  ports: ShareWorkflowPorts;
+  ports: ShareFlowPorts;
   /** The project's key on every surface: its folder. */
   idOf(entry: ProjectEntry): string;
   open(entry: ProjectEntry): Promise<void>;
@@ -24,12 +24,12 @@ export type ProjectShareOps = Pick<
   ShareHost, "projects" | "projectStatus" | "shareProject" | "inviteLink" | "joinProject" | "leaveProject" | "openProject"
 >;
 
-async function shareEntry(ports: ShareWorkflowPorts, entry: ProjectEntry, signal: AbortSignal): Promise<ShareProjectResult> {
+async function shareEntry(ports: ShareFlowPorts, entry: ProjectEntry, signal: AbortSignal): Promise<ShareProjectResult> {
   const reason = deriveIneligibleReason(entry);
   if (reason !== undefined || entry.kind !== "ready") { throw new Error(reason ?? UNKNOWN); }
   const { shared } = entry.settings;
   if (shared !== undefined && ports.shares.isBusy(shared)) { throw new Error(BUSY); }
-  const outcome = await shareProject(ports, { folder: entry.folder, shared, signal });
+  const outcome = await startProjectShare(ports, { folder: entry.folder, shared, signal });
   return outcome.kind === "shared" ? { kind: "shared", invite: outcome.invite } : { kind: outcome.kind };
 }
 
@@ -86,7 +86,7 @@ export function createProjectShareOps({ ports, idOf, open }: ProjectShareDeps, l
       const connection = isSharedProject(entry) ? ports.shares.active(entry.settings.shared) : undefined;
       if (!connection) { throw new Error(NOT_CONNECTED); }
       requireShared(entry);
-      return currentInvite(ports, connection);
+      return readCurrentInvite(ports, connection);
     }),
     joinProject: (invite, signal) => joinProject({ ports, idOf, open }, logger, invite, signal),
     leaveProject: (id) => act("leaveProject", id, async (entry) => {

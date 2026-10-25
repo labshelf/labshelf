@@ -1,6 +1,6 @@
 // Copies the papers of a pasted or opened share link into the library, as a typed outcome the host shows.
 import { parseShareLink } from "../shareLink.js";
-import { importSharedPapers, type ImportSharedPapersOptions, type SharedImportSummary } from "../importSharedPapers.js";
+import { importSharedPapers, type ImportSharedPapersOptions, type SharedImportOutcome } from "../importSharedPapers.js";
 import { openShare, type OpenShareError } from "../openShare.js";
 import type { ShareReader } from "../shareBackend.js";
 
@@ -13,7 +13,7 @@ export interface ImportShareLinkOptions extends Omit<ImportSharedPapersOptions, 
 export type ImportShareLinkResult =
   | { status: "refused"; error: string }
   | { status: "openFailed"; error: OpenShareError }
-  | { status: "imported"; summary: SharedImportSummary; withAnnotations: boolean };
+  | { status: "imported"; summary: SharedImportOutcome; withAnnotations: boolean };
 
 const MODULE = "share";
 
@@ -32,7 +32,7 @@ export async function importShareLink(options: ImportShareLinkOptions): Promise<
     await ctx.logger.log("WARN", MODULE, "Could not open a share link", context);
     return { status: "openFailed", error: opened.error };
   }
-  let summary: SharedImportSummary;
+  let summary: SharedImportOutcome;
   try {
     summary = await importSharedPapers({ ...options, share: opened.share });
   } catch (error) {

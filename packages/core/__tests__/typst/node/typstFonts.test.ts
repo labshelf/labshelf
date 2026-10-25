@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { TYPST_FONTS, TYPST_VERSION } from "../../../src/typst/index";
-import { loadTypstFonts, missingTypstFonts } from "../../../src/typst/node/index";
+import { loadTypstFonts, listMissingTypstFonts } from "../../../src/typst/node/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../support/tempDirs";
 import { respond } from "../../support/typstFixtures";
@@ -21,13 +21,13 @@ async function writeFonts(storage: string, files: readonly string[]): Promise<vo
 
 describe("Typst fonts", () => {
   it("lists every font as missing in an empty storage folder", async () => {
-    expect(await missingTypstFonts(await makeTempDir())).toEqual(TYPST_FONTS);
+    expect(await listMissingTypstFonts(await makeTempDir())).toEqual(TYPST_FONTS);
   });
 
   it("lists only the fonts not yet stored", async () => {
     const storage = await makeTempDir();
     await writeFonts(storage, [TYPST_FONTS[0]!.file]);
-    const missing = await missingTypstFonts(storage);
+    const missing = await listMissingTypstFonts(storage);
     expect(missing).toHaveLength(TYPST_FONTS.length - 1);
     expect(missing.map((font) => font.file)).not.toContain(TYPST_FONTS[0]!.file);
   });

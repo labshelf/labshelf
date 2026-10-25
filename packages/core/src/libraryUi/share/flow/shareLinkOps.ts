@@ -4,7 +4,7 @@ import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { RelayAccount } from "../../../relay/index.js";
 import {
-  loadShareRegistry, OPEN_SHARE_FAILURE, refusedShareLinkText, revokeShare, shareableFolders, shareFolderAsLink, shareImportSummaryText, shareRecordLink,
+  loadShareRegistry, OPEN_SHARE_FAILURE, describeRefusedShareLink, removeShare, listShareableFolders, createShareLink, describeSharedImport, deriveShareLinkOfEntry,
   type FolderShareSources, type ImportShareLinkOptions, type ImportShareLinkResult, type ShareBackend, type ShareReader, type ShareRegistryStore,
 } from "../../../share/index.js";
 import type { ShareLinkImportResult, ShareHost } from "../shareHost.js";
@@ -16,7 +16,7 @@ export interface FolderShareLinkDeps {
   sources: FolderShareSources;
   registry: ShareRegistryStore;
   relay: { require(): Promise<RelayAccount | undefined>; connected(): Promise<RelayAccount | undefined> };
-  /** Apps pass core relayBackendFor; tests pass a memory relay. */
+  /** Apps pass core resolveRelayBackend; tests pass a memory relay. */
   backendFor(account: RelayAccount | undefined): (relayUrl: string) => ShareBackend;
   readerFor(relayUrl: string): ShareReader;
   importLink(options: Pick<ImportShareLinkOptions, "text" | "readerFor" | "onProgress">): Promise<ImportShareLinkResult>;
@@ -30,14 +30,14 @@ const MODULE = "share";
 
 // The RPC guard checks only argument shapes, so every path is checked here against the host's own library.
 export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILogger): FolderShareLinkOps {
-  const eligible = (path: string) => shareableFolders(deps.papers(), deps.papersRoot, deps.sep).find((folder) => folder.dir === path);
+  const eligible = (path: string) => listShareableFolders(deps.papers(), deps.papersRoot, deps.sep).find((folder) => folder.dir === path);
 
   const importResult = async (result: ImportShareLinkResult): Promise<ShareLinkImportResult> => {
-    if (result.status === "refused") { return { kind: "failed", message: refusedShareLinkText(result.error) }; }
+    if (result.status === "refused") { return { kind: "failed", message: describeRefusedShareLink(result.error) }; }
     if (result.status === "openFailed") { return { kind: "failed", message: OPEN_SHARE_FAILURE[result.error] }; }
     const { summary, withAnnotations } = result;
     if (summary.added.length > 0) { await deps.refresh(); }
-    const text = shareImportSummaryText(summary, summary.folder ? deps.sources.paths.basename(summary.folder) : "", withAnnotations);
+    const text = describeSharedImport(summary, summary.folder ? deps.sources.paths.basename(summary.folder) : "", withAnnotations);
     return summary.folder === undefined ? { kind: "imported", summary: text } : { kind: "imported", summary: text, folder: summary.folder };
   };
 
@@ -52,7 +52,7 @@ export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILog
       if (!account) { return { kind: "noRelay" }; }
       const papers = deps.papers();
       try {
-        const link = await shareFolderAsLink({
+        const link = await createShareLink({
           papers, folder: path, withAnnotations, sources: deps.sources, relayUrl: account.relayUrl, backendFor: deps.backendFor(account),
           registry: deps.registry, logger, onStage: (stage) => onProgress({ stage }),
         });
@@ -66,9 +66,9 @@ export function createFolderShareLinkOps(deps: FolderShareLinkDeps, logger: ILog
       const { shares } = await loadShareRegistry(deps.registry);
       return [...shares]
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((record) => ({ id: record.id, folder: record.folder, link: shareRecordLink(record), createdAt: record.createdAt, relayHost: new URL(record.relayUrl).host }));
+        .map((record) => ({ id: record.id, folder: record.folder, link: deriveShareLinkOfEntry(record), createdAt: record.createdAt, relayHost: new URL(record.relayUrl).host }));
     },
-    revokeLink: async (id) => revokeShare(id, { registry: deps.registry, backendFor: deps.backendFor(await deps.relay.connected()), logger }),
+    revokeLink: async (id) => removeShare(id, { registry: deps.registry, backendFor: deps.backendFor(await deps.relay.connected()), logger }),
     importLink: async (text, onProgress) =>
       importResult(await deps.importLink({ text, readerFor: deps.readerFor, onProgress: (done, total) => onProgress({ done, total }) })),
     openFolder: async (path) => {

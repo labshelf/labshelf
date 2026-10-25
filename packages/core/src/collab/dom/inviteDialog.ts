@@ -1,7 +1,7 @@
 // Shows a shared project's invite link with its copy and stop-sharing actions.
-import { showDialog, toast } from "../../ui/dom/index.js";
+import { showDialog, showToast } from "../../ui/dom/index.js";
 import type { ShareHost } from "../../libraryUi/share/index.js";
-import { reportingFailure } from "../../share/dom/index.js";
+import { reportFailure } from "../../share/dom/index.js";
 import { runLeaveProjectDialog } from "./leaveProjectDialog.js";
 
 const COPY_REFUSED_TEXT = "The clipboard refused the copy; select the link and copy it.";
@@ -9,13 +9,13 @@ const COPY_REFUSED_TEXT = "The clipboard refused the copy; select the link and c
 /** Copies the invite for a project and tells the user how it went; true when the clipboard took it. */
 export async function copyInvite(host: ShareHost, name: string, invite: string): Promise<boolean> {
   const copied = await host.copyText(invite);
-  toast(copied ? `Copied the invite link for "${name}".` : COPY_REFUSED_TEXT, copied ? "ok" : "error");
+  showToast(copied ? `Copied the invite link for "${name}".` : COPY_REFUSED_TEXT, copied ? "ok" : "error");
   return copied;
 }
 
 /** Keeps the dialog (and so the text) on screen until the copy works or the user moves on; it leads with what keeps the edits from this device. */
 export function showInviteDialog(host: ShareHost, projectId: string, name: string, invite: string): Promise<void> {
-  return reportingFailure("show the invite link", async () => {
+  return reportFailure("show the invite link", async () => {
     const status = await host.projectStatus(projectId);
     const problem = status.kind === "shared" ? status.problem : undefined;
     for (;;) {

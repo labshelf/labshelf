@@ -1,5 +1,5 @@
 // Tells the user once per episode that a connected share cannot store its edits on this device.
-import type { ShareWorkflowPorts } from "../../../collab/share/flows/index.js";
+import type { ShareFlowPorts } from "../../../collab/share/flows/index.js";
 import { deriveProjectName } from "./projectShareState.js";
 
 /** Where the user keeps LabShelf open: a VS Code window or a browser page. */
@@ -10,7 +10,7 @@ export type NoticePlace = "window" | "page";
  * failure appears and ends when it clears, so a run of failed writes gives one notice.
  */
 export function createStoreFailureNotices(
-  ports: Pick<ShareWorkflowPorts, "shares" | "projects">, place: NoticePlace, notify: (message: string) => void,
+  ports: Pick<ShareFlowPorts, "shares" | "projects">, place: NoticePlace, notify: (message: string) => void,
 ): () => void {
   const failing = new Set<string>();
   return () => {

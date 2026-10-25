@@ -1,5 +1,5 @@
 // Numbers, acknowledges, resends and deduplicates the reliable messages exchanged with one peer.
-import { every, type SessionScheduler } from "./scheduler.js";
+import { startInterval, type SessionScheduler } from "./scheduler.js";
 
 export const ACK_DELAY_MS = 200;
 export const RESEND_AFTER_MS = 2000;
@@ -10,7 +10,7 @@ const MAX_SEQS_PAST_GAP = 1024;
 
 interface Pending { bytes: Uint8Array; sentAt: number; attempts: number }
 
-export interface LinkIo {
+export interface ConnectionIo {
   /** Sends envelope bytes; `seq` goes into the header so a resend reuses the same bytes. */
   transmit(bytes: Uint8Array): void;
   /** Acks seqs of the peer's link `epoch`. */
@@ -18,7 +18,7 @@ export interface LinkIo {
   onGiveUp(seq: number): void;
 }
 
-export class ReliableLink {
+export class ReliableConnection {
   private nextSeq = 1;
   private pending = new Map<number, Pending>();
   /** The epoch of the peer's link whose seqs `floor`, `above` and `ackQueue` track; 0 until its first reliable message. */
@@ -31,8 +31,8 @@ export class ReliableLink {
   private stopResend: () => void;
 
   /** `epoch` names this side's link to the peer, higher than any link this side opened before it. */
-  constructor(private io: LinkIo, private scheduler: SessionScheduler, readonly epoch: bigint) {
-    this.stopResend = every(scheduler, RESEND_AFTER_MS, () => this.resendDue());
+  constructor(private io: ConnectionIo, private scheduler: SessionScheduler, readonly epoch: bigint) {
+    this.stopResend = startInterval(scheduler, RESEND_AFTER_MS, () => this.resendDue());
   }
 
   send(build: (seq: number) => Uint8Array): void {

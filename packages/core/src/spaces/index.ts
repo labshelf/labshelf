@@ -6,5 +6,5 @@ export * from "./protocol/index.js";
 export type { SpacesHostPort } from "./spacesHostPort.js";
 export { serveSpaces } from "./serveSpaces.js";
 export type { ServeSpacesOptions } from "./serveSpaces.js";
-export { buildSpaceProjectInfos } from "./spaceProjectList.js";
+export { createSpaceProjectList } from "./spaceProjectList.js";
 export type { ChecklistReader } from "./spaceProjectList.js";

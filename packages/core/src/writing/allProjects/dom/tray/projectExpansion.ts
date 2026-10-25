@@ -1,5 +1,5 @@
 // Keeps the All projects page's expanded project, its file listings and open folders, and posts the log and Add file requests, asking the host for a fresh listing on every expand.
-import { inputBox } from "../../../../ui/dom/index.js";
+import { askInputBox } from "../../../../ui/dom/index.js";
 import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { AllProjectsToHost, HostToAllProjects } from "../../protocol/index.js";
 import type { ProjectRow } from "../../projectRow.js";
@@ -47,7 +47,7 @@ export function createProjectExpansion(deps: ProjectExpansionDeps): ProjectExpan
         deps.post({ type: "openLog", id });
       },
       onAddFile(id) {
-        void inputBox({ title: "Add file", prompt: "File path in the project, e.g. sections/related.tex" }).then((path) => {
+        void askInputBox({ title: "Add file", prompt: "File path in the project, e.g. sections/related.tex" }).then((path) => {
           if (path) deps.post({ type: "createFile", id, path });
         });
       },

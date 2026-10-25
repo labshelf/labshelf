@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/collaboration.md#comments
 import * as vscode from "vscode";
 
-import { sharedProjectComments, type Comment, type CommentThread, type SharedProjectComments, type TextRange } from "@labshelf/core";
+import { createSharedProjectComments, type Comment, type CommentThread, type SharedProjectComments, type TextRange } from "@labshelf/core";
 import type { CommentShare, ProjectComments } from "./projectComments.js";
 
 /** A shared project's threads, live with every member. */
@@ -15,7 +15,7 @@ export class SharedComments implements ProjectComments {
 
   constructor(share: CommentShare) {
     this.folder = share.folder;
-    this.comments = sharedProjectComments(share.session);
+    this.comments = createSharedProjectComments(share.session);
     this.stopWatching = this.comments.onChange(() => this.changeEmitter.fire());
   }
 

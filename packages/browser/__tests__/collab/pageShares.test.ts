@@ -10,7 +10,7 @@ jest.mock("../../src/platform", () => ({
   } } },
 }));
 
-import { replaceFileText, ShareOpenInAnotherTabError } from "@labshelf/core";
+import { setFileText, ShareOpenInAnotherTabError } from "@labshelf/core";
 import { saveDisplayName } from "../../src/collab";
 import { acquireTabLease } from "../../src/storage";
 import { FOLDER, MAIN, openProfile, until, type Page, type Profile } from "./pageSharesTestbed";
@@ -25,7 +25,7 @@ const kind = (page: Page): string | undefined => page.shares.state(profile.share
 const edit = (page: Page, text: string): void => {
   const live = page.shares.live("thesis");
   if (!live) { throw new Error("the page holds no connection"); }
-  replaceFileText(live.session.openDoc("main.typ"), text, "local");
+  setFileText(live.session.openDoc("main.typ"), text, "local");
 };
 const onDisk = (text: string) => async (): Promise<boolean> => (await profile.fs.readText(MAIN)) === text;
 const invite = () => ({ shareId: profile.shareId, shareKey: new Uint8Array(16).fill(7), relays: [{ url: "https://relay.example" }] });

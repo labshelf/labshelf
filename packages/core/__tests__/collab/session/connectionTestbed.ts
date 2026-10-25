@@ -1,5 +1,5 @@
 /** Runs share connections of separate devices over in-process relays, each with in-memory state and an in-memory library. */
-import { libraryMirrorDisk, startProjectMirror } from "../../../src/collab/mirror/index";
+import { createLibraryMirrorFileSystem, startProjectMirror } from "../../../src/collab/mirror/index";
 import { createWriteRecordStore } from "../../../src/library/writeRecords/index";
 import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
@@ -42,7 +42,7 @@ export async function writeProject(device: Device, comments?: unknown): Promise<
 }
 
 export const mirrorFactory = (device: Device): MirrorFactory => async ({ folder, session, blobs, store, onStopped }) => {
-  const disk = libraryMirrorDisk(device.catalog.fs, folder);
+  const disk = createLibraryMirrorFileSystem(device.catalog.fs, folder);
   const mirror = startProjectMirror({
     writeRecords: createWriteRecordStore(device.catalog.fs, folder, { id: async () => device.deviceId }, device.catalog.logger),
     folder, mergeText, session, blobs, store, logger: device.catalog.logger, stableMs: 10,

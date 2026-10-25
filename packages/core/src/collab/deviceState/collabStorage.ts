@@ -9,9 +9,9 @@ export interface StoredDoc {
   torn: boolean;
 }
 
-export type StateMapName = "known" | "versions" | "bases" | "relay-cursors" | "relay-held";
+export type DeviceStateMapName = "known" | "versions" | "bases" | "relay-cursors" | "relay-held";
 
-export interface CollabStateStorage {
+export interface CollabDeviceStateStorage {
   /** The id a doc is stored under; synchronous because a share session creates docs synchronously. */
   docId(docKey: string): string;
   /** Every stored doc by doc id. */
@@ -20,9 +20,9 @@ export interface CollabStateStorage {
   compactDoc(docId: string, state: Uint8Array): Promise<void>;
   appendUpdate(docId: string, update: Uint8Array): Promise<void>;
   /** The map as last saved, undefined when none is; rejects on unreadable data. */
-  loadMap(name: StateMapName): Promise<unknown>;
+  loadMap(name: DeviceStateMapName): Promise<unknown>;
   /** Replaces the map whole; a crash leaves either the old or the new map. */
-  saveMap(name: StateMapName, entries: Record<string, unknown>): Promise<void>;
+  saveMap(name: DeviceStateMapName, entries: Record<string, unknown>): Promise<void>;
   /** `hash` is always a lowercase SHA-256 hex, so it is safe as a key or a file name. */
   readBlob(hash: string): Promise<Uint8Array | undefined>;
   writeBlob(hash: string, bytes: Uint8Array): Promise<void>;

@@ -1,6 +1,6 @@
 // Connects and disconnects the owner's Cloudflare account from an extension page, one page at a time.
 import {
-  connectRelayAccount, disconnectRelayAccount, relayWorkerScript, systemRelayClock,
+  connectRelayAccount, removeRelayAccount, readRelayWorkerScript, systemRelayClock,
   type CloudflareAccount, type ILogger, type RelayAccount, type RelayAccountDeps,
 } from "@labshelf/core";
 import { openBrowserRelayAccountStore } from "./browserRelayAccountStore";
@@ -78,7 +78,7 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
       chooseCredential: async () => { await signInInTab({ store, fetch, logger }); return { kind: "oauth" }; },
       chooseAccount: options.chooseAccount,
       offerToShares: options.offerToShares,
-      script: relayWorkerScript(),
+      script: readRelayWorkerScript(),
     });
   };
   return {
@@ -90,7 +90,7 @@ export function createBrowserRelayAccount(options: BrowserRelayAccountOptions): 
       return exclusively(connectOnce);
     },
     disconnect: () => exclusively(async () => {
-      const disconnected = await disconnectRelayAccount({ ...deps, withdrawFromShares: options.withdrawFromShares });
+      const disconnected = await removeRelayAccount({ ...deps, withdrawFromShares: options.withdrawFromShares });
       return disconnected && { relayUrl: disconnected.relayUrl };
     }),
   };

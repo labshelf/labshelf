@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ILogger } from "../../../../ports/index.js";
-import type { TexStatus } from "../../../../helper/index.js";
+import type { TexToolchain } from "../../../../helper/index.js";
 import type { LatexEngine } from "../../../../writing/project/index.js";
 
 import type { TexInstallKind, TexProvider } from "../../index.js";
@@ -40,9 +40,9 @@ export interface ManagedTexProviderOptions {
 }
 
 export interface ManagedTexProvider extends TexProvider {
-  status(): Promise<TexStatus>;
-  install(kind: TexInstallKind, onProgress: TexProgress): Promise<TexStatus>;
-  installAllPackages(onProgress: TexProgress): Promise<TexStatus>;
+  status(): Promise<TexToolchain>;
+  install(kind: TexInstallKind, onProgress: TexProgress): Promise<TexToolchain>;
+  installAllPackages(onProgress: TexProgress): Promise<TexToolchain>;
 }
 
 const latexmkIn = (binDir: string): string => join(binDir, process.platform === "win32" ? "latexmk.exe" : "latexmk");
@@ -60,7 +60,7 @@ async function isComplete(ctx: ManagedTexProviderOptions, tex: ManagedTex): Prom
   }
 }
 
-async function texStatus(ctx: ManagedTexProviderOptions): Promise<TexStatus> {
+async function texStatus(ctx: ManagedTexProviderOptions): Promise<TexToolchain> {
   const tex = await findManagedTex(ctx.texRoot);
   if (tex) { return { source: tex.kind, ...(tex.year === null ? {} : { year: tex.year }), complete: await isComplete(ctx, tex) }; }
   return (await ctx.system.resolve("pdflatex")) === "missing" ? { source: "none", complete: false } : { source: "system", complete: true };

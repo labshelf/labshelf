@@ -2,26 +2,26 @@
 import * as Y from "yjs";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate, removeAwarenessStates } from "y-protocols/awareness";
 import type { ILogger } from "../../ports/index.js";
-import type { WebCryptoKey } from "../shareKey/index.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
 import type { PeerId } from "../transport/index.js";
 import { CHANNEL_KIND, type Channel } from "../peer/index.js";
 import type { ShareSession } from "../doc/index.js";
-import { isPresenceState, type PresenceState, type RelayReport } from "./presence.js";
+import { isPeerPresence, type PresenceState, type RelayReport } from "./presence.js";
 
 const LOG_MODULE = "collab.awareness";
 // The leading slash cannot start a relative path, so it never names a file doc.
 const AWARENESS_DOC_KEY = "/awareness";
 const LOCAL_ORIGIN = "local";
 
-export interface AwarenessOptions {
-  awarenessKey: WebCryptoKey;
+export interface PresenceOptions {
+  awarenessKey: DerivedShareKey;
   logger: ILogger;
 }
 
 /** The part of a share session presence travels over; a bare secure mesh has it too. */
-export type AwarenessLinks = Pick<ShareSession, "channel" | "onPeer">;
+export type PresenceConnection = Pick<ShareSession, "channel" | "onPeer">;
 
-export interface PresenceHandle {
+export interface PresenceStore {
   /** The y-protocols awareness an editor cursor extension binds to; its remote states are unchecked, unlike `remote()`. */
   readonly awareness: Awareness;
   setLocal(state: PresenceState): void;
@@ -59,7 +59,7 @@ function forgetPeer(awareness: Awareness, reported: Map<PeerId, Set<number>>, pe
 
 function wellFormedRemote(awareness: Awareness): Map<number, PresenceState> {
   const states = new Map<number, PresenceState>();
-  awareness.getStates().forEach((state, id) => { if (id !== awareness.clientID && isPresenceState(state)) { states.set(id, state); } });
+  awareness.getStates().forEach((state, id) => { if (id !== awareness.clientID && isPeerPresence(state)) { states.set(id, state); } });
   return states;
 }
 
@@ -69,7 +69,7 @@ function onOtherRelay(state: unknown, relay: RelayReport | undefined): boolean {
   return typeof theirs === "string" && typeof relay?.relay === "string" && theirs !== relay.relay;
 }
 
-function openChannel(session: AwarenessLinks, options: AwarenessOptions, awareness: Awareness, isClosed: () => boolean): Channel {
+function openChannel(session: PresenceConnection, options: PresenceOptions, awareness: Awareness, isClosed: () => boolean): Channel {
   return session.channel({
     kind: CHANNEL_KIND.awareness,
     name: "awareness",
@@ -98,7 +98,7 @@ function sendTracker() {
   };
 }
 
-export function attachAwareness(session: AwarenessLinks, options: AwarenessOptions): PresenceHandle {
+export function attachPresence(session: PresenceConnection, options: PresenceOptions): PresenceStore {
   const awareness = new Awareness(new Y.Doc());
   // No presence is announced until the editor sets one.
   awareness.setLocalState(null);

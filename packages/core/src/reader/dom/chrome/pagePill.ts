@@ -5,10 +5,10 @@ import { formatZoomLabel } from "../../navigation/index.js";
 import type { ZoomPreset } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { iconButton } from "../elements/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import { buildMenu, togglePopover, type MenuItem } from "../elements/index.js";
 import type { ZoomController } from "../navigation/index.js";
-import { $, el } from "../../../ui/dom/index.js";
+import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 const PERCENT_CHOICES = [50, 75, 100, 125, 150, 200, 300, 400];
 const PREVIEW_PERCENT_CHOICES = [50, 75, 100, 125, 150, 200];
@@ -25,19 +25,19 @@ export class StatusPill {
     private readonly zoom: ZoomController,
     private readonly goToPage: (page: number) => void,
   ) {
-    this.pageInput = el("input", {
+    this.pageInput = renderElement("input", {
       class: "rd-page-input",
       type: "text",
       inputmode: "numeric",
       "aria-label": "Go to page",
       title: "Go to page",
     });
-    this.totalLabel = el("span", { class: "rd-page-total" });
-    this.zoomBtn = el("button", { class: "rd-zoom-label", type: "button", title: "Zoom options", "aria-haspopup": "menu" });
-    this.zoomText = el("span", {});
+    this.totalLabel = renderElement("span", { class: "rd-page-total" });
+    this.zoomBtn = renderElement("button", { class: "rd-zoom-label", type: "button", title: "Zoom options", "aria-haspopup": "menu" });
+    this.zoomText = renderElement("span", {});
     this.zoomBtn.append(this.zoomText);
-    const out = iconButton(icon("minus"), "Zoom out", "rd-btn-sm");
-    const inn = iconButton(icon("plus"), "Zoom in", "rd-btn-sm");
+    const out = iconButton(renderIcon("minus"), "Zoom out", "rd-btn-sm");
+    const inn = iconButton(renderIcon("plus"), "Zoom in", "rd-btn-sm");
     out.addEventListener("click", () => zoom.zoomOut());
     inn.addEventListener("click", () => zoom.zoomIn());
     this.zoomBtn.addEventListener("click", () => this.openZoomMenu());
@@ -49,19 +49,19 @@ export class StatusPill {
     });
     this.pageInput.addEventListener("blur", () => this.sync());
 
-    const pageGroup = el("div", { class: "rd-pill-group" }, this.pageInput, this.totalLabel);
-    const zoomGroup = el("div", { class: "rd-pill-group" }, out, this.zoomBtn, inn);
+    const pageGroup = renderElement("div", { class: "rd-pill-group" }, this.pageInput, this.totalLabel);
+    const zoomGroup = renderElement("div", { class: "rd-pill-group" }, out, this.zoomBtn, inn);
     if (ctx.boot.preview) {
       // The preview header reads left to right as navigation, then zoom: arrows, page box, "/ N", rule, − + and the label.
-      const prev = iconButton(icon("chevron-up"), "Previous page", "rd-btn-sm");
-      const next = iconButton(icon("chevron-down"), "Next page", "rd-btn-sm");
+      const prev = iconButton(renderIcon("chevron-up"), "Previous page", "rd-btn-sm");
+      const next = iconButton(renderIcon("chevron-down"), "Next page", "rd-btn-sm");
       prev.addEventListener("click", () => ctx.pdfViewer.previousPage());
       next.addEventListener("click", () => ctx.pdfViewer.nextPage());
-      this.zoomBtn.append(el("span", { class: "rd-zoom-caret", html: icon("chevron-down"), "aria-hidden": "true" }));
+      this.zoomBtn.append(renderElement("span", { class: "rd-zoom-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
       zoomGroup.replaceChildren(out, inn, this.zoomBtn);
       pageGroup.prepend(prev, next);
     }
-    $("status-pill").append(pageGroup, el("div", { class: "rd-pill-sep" }), zoomGroup);
+    findElement("status-pill").append(pageGroup, renderElement("div", { class: "rd-pill-sep" }), zoomGroup);
 
     ctx.eventBus.on("pagechanging", () => this.sync());
     ctx.eventBus.on("scalechanging", () => this.sync());

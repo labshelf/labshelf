@@ -15,7 +15,7 @@ export interface ImportSharedPapersOptions {
   onProgress?: (done: number, total: number) => void;
 }
 
-export interface SharedImportSummary {
+export interface SharedImportOutcome {
   /** Undefined when every paper was already in the library, so no folder was made. */
   folder?: string;
   added: PaperRecord[];
@@ -50,10 +50,10 @@ async function pdfOf(share: OpenedShare, paper: SharedPaper, ctx: MutationContex
 }
 
 // CONTRACT: documents/contracts/share-link.md#open-in-labshelf
-export async function importSharedPapers({ ctx, share, parentDir, known, onProgress }: ImportSharedPapersOptions): Promise<SharedImportSummary> {
+export async function importSharedPapers({ ctx, share, parentDir, known, onProgress }: ImportSharedPapersOptions): Promise<SharedImportOutcome> {
   const byIdentity = new Map(known.flatMap((paper) => identityKeys(paper).map((key) => [key, paper.id] as const)));
   const taken = known.map((paper) => paper.id);
-  const summary: SharedImportSummary = { added: [], duplicates: [], missingPdfs: [] };
+  const summary: SharedImportOutcome = { added: [], duplicates: [], missingPdfs: [] };
   const { papers } = share.manifest;
   for (const [index, paper] of papers.entries()) {
     const { metadata } = paper;

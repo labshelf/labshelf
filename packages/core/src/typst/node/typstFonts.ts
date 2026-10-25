@@ -25,7 +25,7 @@ async function exists(file: string): Promise<boolean> {
 }
 
 /** The default fonts not stored yet; a font is only ever written after its checksum matched. */
-export async function missingTypstFonts(fontsDir: string): Promise<TypstFontFile[]> {
+export async function listMissingTypstFonts(fontsDir: string): Promise<TypstFontFile[]> {
   const present = await Promise.all(TYPST_FONTS.map((font) => exists(path.join(versionDir(fontsDir), font.file))));
   return TYPST_FONTS.filter((_, index) => !present[index]);
 }
@@ -33,7 +33,7 @@ export async function missingTypstFonts(fontsDir: string): Promise<TypstFontFile
 /** Every default font's bytes, downloading the missing ones first; throws when a download fails or a checksum differs. */
 export async function loadTypstFonts(fontsDir: string, options: TypstFontOptions): Promise<Uint8Array[]> {
   const dir = versionDir(fontsDir);
-  const missing = await missingTypstFonts(fontsDir);
+  const missing = await listMissingTypstFonts(fontsDir);
   if (missing.length > 0) {
     await options.logger.log("INFO", MODULE, "Downloading Typst fonts", { count: missing.length, dir });
     await fs.mkdir(dir, { recursive: true });

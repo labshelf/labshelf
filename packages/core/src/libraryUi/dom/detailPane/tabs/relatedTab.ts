@@ -5,7 +5,7 @@
 import { formatAuthors } from "../../../../library/index.js";
 import { type PaperRecord } from "../../../../model/index.js";
 import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
-import { escapeHtml, icon } from "../../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { deriveRelatedGroups } from "../../../viewModel/index.js";
 import { renderIconButton, renderLoading, renderSection } from "../detailPaneMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
@@ -30,5 +30,5 @@ export function renderRelatedTabHtml(pane: PaneState, v: PaperView): string {
   if (g.authors.length) html += renderSection("relAuthors", "Same authors", g.authors.map((q) => relRow(q)).join(""), c, { count: g.authors.length });
   if (g.shared.length) html += renderSection("relShared", "Shared tags & keywords", g.shared.map((x) => relRow(x.paper, x.common.join(", "))).join(""), c, { count: g.shared.length });
   if (g.venue.length) html += renderSection("relVenue", "Same venue", g.venue.map((q) => relRow(q)).join(""), c, { count: g.venue.length });
-  return html || `<div class="tab-empty">${icon("link")}<div>No related papers yet.</div><div class="muted-text">Papers that share authors, tags or keywords, or the venue with this one appear here. Tagging papers helps.</div></div>`;
+  return html || `<div class="tab-empty">${renderIcon("link")}<div>No related papers yet.</div><div class="muted-text">Papers that share authors, tags or keywords, or the venue with this one appear here. Tagging papers helps.</div></div>`;
 }

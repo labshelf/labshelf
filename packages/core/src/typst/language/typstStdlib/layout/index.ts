@@ -1,15 +1,15 @@
 // Catalogues Typst's layout category.
 import type { TypstBuiltin } from "../typstBuiltin";
 import { BOXES } from "./boxes";
-import { cellGrid } from "./cellGrid";
+import { createCellGrid } from "./createCellGrid";
 import { PAGES } from "./pages";
 import { VALUES } from "./lengths";
 
-export { cellGrid, type TypstGridKind } from "./cellGrid";
+export { createCellGrid, type TypstGridKind } from "./createCellGrid";
 
 export const LAYOUT: readonly TypstBuiltin[] = [
   ...PAGES,
   ...BOXES,
-  ...cellGrid({ name: "grid", inset: "(:)", stroke: "(:)" }, "Arranges content in a grid of rows and columns, with optional gutters, fills and strokes."),
+  ...createCellGrid({ name: "grid", inset: "(:)", stroke: "(:)" }, "Arranges content in a grid of rows and columns, with optional gutters, fills and strokes."),
   ...VALUES,
 ];

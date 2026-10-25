@@ -5,7 +5,7 @@ import { COMPILE_MODES, MAX_EDIT_CHANGES, type TextChange, type ToHelperMessage 
 import { TEX_INSTALL_KINDS } from "../latex/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, optional, readArray, readBoolean, readChoice, readNumber, readPath,
+  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, readOptionalField, readArray, readBoolean, readChoice, readNumber, readPath,
   readProjectId, readString, readText, type Body,
 } from "./messageFields.js";
 
@@ -36,7 +36,7 @@ function readEdit(body: Body, envelope: Envelope): Extract<ToHelperMessage, { ty
 }
 
 const READERS: Readers = {
-  templateThumbnail: (body, envelope) => ({ ...envelope, type: "templateThumbnail", requestId: readText(body, "requestId"), ...optional(body, "error", readString) }),
+  templateThumbnail: (body, envelope) => ({ ...envelope, type: "templateThumbnail", requestId: readText(body, "requestId"), ...readOptionalField(body, "error", readString) }),
   publishTemplate: (body, envelope) => ({ ...envelope, type: "publishTemplate", projectId: readProjectId(body), ...readTemplatePublishRequest(body) }),
   hello: (body, envelope) => ({
     ...envelope, type: "hello", extensionVersion: readText(body, "extensionVersion"), origin: readText(body, "origin"),
@@ -51,10 +51,10 @@ const READERS: Readers = {
   compile: (body, envelope) => ({
     ...envelope, type: "compile", projectId: readProjectId(body), main: readPath(body, "main"),
     mode: readChoice(body, "mode", COMPILE_MODES),
-    ...optional(body, "engine", (b, k) => readChoice(b, k, LATEX_ENGINES)),
-    ...optional(body, "editedFile", readPath),
-    ...optional(body, "editedLine", (b, k) => readNumber(b, k, isPositiveInteger)),
-    ...optional(body, "haltOnError", readBoolean),
+    ...readOptionalField(body, "engine", (b, k) => readChoice(b, k, LATEX_ENGINES)),
+    ...readOptionalField(body, "editedFile", readPath),
+    ...readOptionalField(body, "editedLine", (b, k) => readNumber(b, k, isPositiveInteger)),
+    ...readOptionalField(body, "haltOnError", readBoolean),
   }),
   cancel: (body, envelope) => ({ ...envelope, type: "cancel", projectId: readProjectId(body) }),
   installTex: (body, envelope) => ({ ...envelope, type: "installTex", kind: readChoice(body, "kind", TEX_INSTALL_KINDS) }),

@@ -1,5 +1,5 @@
 // Keeps the open tabs of the two editor groups: which group holds each, which one each group shows and which group has focus.
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import { createEditorActionsBar, type EditorActionsBar } from "./editorActionsBar.js";
 import { createTabEntry, drawTab, setTabShown, type TabEntry } from "./editorTab.js";
 import type { EditorAreaOptions, EditorGroupSide, EditorTab, EditorTabAction, EditorTabView } from "./editorAreaOptions.js";
@@ -17,10 +17,10 @@ export interface EditorGroup {
 export const deriveOtherGroup = (g: EditorGroupSide): EditorGroupSide => (g === 0 ? 1 : 0);
 
 function createGroup(index: EditorGroupSide): EditorGroup {
-  const tablist = el("div", { class: "ls-editor-tabs", role: "tablist", "aria-label": index === 0 ? "Editors" : "Editors, second group" });
-  const panels = el("div", { class: "ls-editor-panels" });
+  const tablist = renderElement("div", { class: "ls-editor-tabs", role: "tablist", "aria-label": index === 0 ? "Editors" : "Editors, second group" });
+  const panels = renderElement("div", { class: "ls-editor-panels" });
   const actions = createEditorActionsBar();
-  const group = el("section", { class: "ls-editor-group", hidden: true }, el("div", { class: "ls-editor-titlebar" }, tablist, actions.el), panels);
+  const group = renderElement("section", { class: "ls-editor-group", hidden: true }, renderElement("div", { class: "ls-editor-titlebar" }, tablist, actions.el), panels);
   group.dataset.group = String(index);
   return { index, el: group, tablist, panels, actions, order: [], active: null };
 }

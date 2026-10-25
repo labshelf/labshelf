@@ -1,7 +1,7 @@
 // Renders the sidebar from a library tree, with its expansion, focus, current folder, and selected paper.
 import { PAPERS_DIR, isUnderDir, deriveParentDir } from "../../../library/index.js";
-import { el } from "../../../ui/dom/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { LibraryTree, TagCount } from "../../viewModel/index.js";
 import { createTagQuery } from "../../searchQueries.js";
 import { createProjectListActions, renderProjectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
@@ -66,10 +66,10 @@ export interface SidebarState extends SidebarSpacesState {
 
 // The Explorer's own title actions, in its order: new file, new folder, refresh, collapse all.
 const folderActions = (a: SidebarActions): string =>
-  (a.addFiles ? `<button class="ls-icon-btn" data-tree="add-files" title="Add files to the selected folder">${icon("new-file")}</button>` : "") +
-  `<button class="ls-icon-btn" data-tree="new" title="New folder in the selected folder">${icon("new-folder")}</button>` +
-  (a.refresh ? `<button class="ls-icon-btn" data-tree="refresh" title="Refresh">${icon("reload")}</button>` : "") +
-  `<button class="ls-icon-btn" data-tree="collapse" title="Collapse all">${icon("collapse-all")}</button>`;
+  (a.addFiles ? `<button class="ls-icon-btn" data-tree="add-files" title="Add files to the selected folder">${renderIcon("new-file")}</button>` : "") +
+  `<button class="ls-icon-btn" data-tree="new" title="New folder in the selected folder">${renderIcon("new-folder")}</button>` +
+  (a.refresh ? `<button class="ls-icon-btn" data-tree="refresh" title="Refresh">${renderIcon("reload")}</button>` : "") +
+  `<button class="ls-icon-btn" data-tree="collapse" title="Collapse all">${renderIcon("collapse-all")}</button>`;
 
 let nextTreeId = 0;
 const treeIds = new WeakMap<HTMLElement, number>();
@@ -107,8 +107,8 @@ function appendFolders(t: SidebarState, tree: LibraryTree, frag: HTMLElement): v
  * A group's pane nests in the Library body, which stacks its panes instead of scrolling.
  */
 function appendPane(parent: Element | DocumentFragment, id: SectionId | GroupId, header: HTMLElement, open: boolean): HTMLElement {
-  const body = el("div", { class: "tree-pane-body" });
-  const pane = el("div", { class: `tree-pane${open ? " open" : ""}`, "data-pane": id });
+  const body = renderElement("div", { class: "tree-pane-body" });
+  const pane = renderElement("div", { class: `tree-pane${open ? " open" : ""}`, "data-pane": id });
   pane.append(header, body);
   parent.append(pane);
   return body;
@@ -131,7 +131,7 @@ function appendLibrary(t: SidebarState, tree: LibraryTree, frag: DocumentFragmen
   const folders = appendPane(body, "library.folders", renderGroupRow("library.folders", "Folders", foldersOpen, folderActions(t.actions)), foldersOpen);
   if (foldersOpen) {
     appendFolders(t, tree, folders);
-    if (tree.children(PAPERS_DIR).length === 0) folders.append(el("div", { class: "tree-empty", text: "No folders yet." }));
+    if (tree.children(PAPERS_DIR).length === 0) folders.append(renderElement("div", { class: "tree-empty", text: "No folders yet." }));
   }
   if (t.tags.length > 0) appendTags(t, body);
 }
@@ -184,7 +184,7 @@ export function openFolderPath(t: SidebarState, path: string): void {
 
 function appendSpaces(t: SidebarState, frag: DocumentFragment): void {
   const open = !t.collapsed.has("spaces");
-  const action = `<button class="ls-icon-btn" data-tree="space-new" title="New Space" aria-label="New Space">${icon("plus")}</button>`;
+  const action = `<button class="ls-icon-btn" data-tree="space-new" title="New Space" aria-label="New Space">${renderIcon("plus")}</button>`;
   const body = appendPane(frag, "spaces", renderSectionRow("spaces", "Spaces", open, action), open);
   body.setAttribute("role", "group");
   if (open) body.append(...renderSpaceRows(t));

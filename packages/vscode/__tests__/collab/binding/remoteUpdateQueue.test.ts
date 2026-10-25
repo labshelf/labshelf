@@ -1,4 +1,4 @@
-/** Pins the per-document queue of shared edits: one applyEdit at a time, recomputed and retried when the user typed meanwhile. */
+/** Pins the per-document queue of shared edits: one applyChange at a time, recomputed and retried when the user typed meanwhile. */
 import * as vscode from "vscode";
 // This package does not depend on yjs; the test uses core's copy, the one core's binding imports.
 import * as Y from "yjs";
@@ -46,7 +46,7 @@ function fakeDocument(initial: string) {
 
 type FakeDocument = ReturnType<typeof fakeDocument>;
 
-/** applyEdit as VS Code runs it: refused when the version moved while the edit was in flight. */
+/** applyChange as VS Code runs it: refused when the version moved while the edit was in flight. */
 function editorApplies(document: FakeDocument, whileInFlight: () => void = () => {}) {
   let running = 0;
   const stats = { calls: 0, maxConcurrent: 0 };

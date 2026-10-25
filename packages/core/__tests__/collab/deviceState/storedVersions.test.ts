@@ -3,15 +3,15 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as Y from "yjs";
-import { indexFiles, recordWritten, writtenHashes } from "../../../src/collab/model/index";
-import { nodeCollabStorage } from "../../../src/collab/node/index";
+import { readShareIndexDocFiles, addWrittenVersion, readWrittenHashes } from "../../../src/collab/model/index";
+import { createNodeCollabStorage } from "../../../src/collab/node/index";
 import { openCollabStore } from "../../../src/collab/deviceState/index";
 import { fakeLogger } from "../doc/testSession";
 import { memoryStorage } from "./memoryStorage";
 
 it("restores versions and merge bases after closing and reopening node storage", async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "labshelf-versions-"));
-  const open = () => openCollabStore({ storage: nodeCollabStorage({ dir, shareId: "1".repeat(64) }), logger: fakeLogger() });
+  const open = () => openCollabStore({ storage: createNodeCollabStorage({ dir, shareId: "1".repeat(64) }), logger: fakeLogger() });
   try {
     const first = await open();
     first.rememberVersion("main.typ", "first", "base text");
@@ -42,18 +42,18 @@ it("retains the latest 50 versions and coalesces repeated agreement", async () =
 it("repairs competing written arrays immediately after restoring the index", async () => {
   const storage = memoryStorage();
   const first = await openCollabStore({ storage, logger: fakeLogger() });
-  indexFiles(first.index).set("main.typ", { kind: "text" });
+  readShareIndexDocFiles(first.index).set("main.typ", { kind: "text" });
   const peer = new Y.Doc();
   Y.applyUpdate(peer, Y.encodeStateAsUpdate(first.index));
-  recordWritten(first.index, "main.typ", "mine", 1);
-  recordWritten(peer, "main.typ", "theirs", 2);
+  addWrittenVersion(first.index, "main.typ", "mine", 1);
+  addWrittenVersion(peer, "main.typ", "theirs", 2);
   await first.close();
   const reopened = await openCollabStore({ storage, logger: fakeLogger() });
   for (let round = 0; round < 3; round++) {
     Y.applyUpdate(reopened.index, Y.encodeStateAsUpdate(peer));
     Y.applyUpdate(peer, Y.encodeStateAsUpdate(reopened.index));
   }
-  expect(writtenHashes(reopened.index, "main.typ")).toEqual(new Set(["mine", "theirs"]));
-  expect(writtenHashes(peer, "main.typ")).toEqual(new Set(["mine", "theirs"]));
+  expect(readWrittenHashes(reopened.index, "main.typ")).toEqual(new Set(["mine", "theirs"]));
+  expect(readWrittenHashes(peer, "main.typ")).toEqual(new Set(["mine", "theirs"]));
   await reopened.close();
 });

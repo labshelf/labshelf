@@ -1,5 +1,5 @@
 // Mounts the Details surface: paper or project details in one element, talking to its host over one Details channel.
-import { icon } from "../../../ui/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../../index.js";
 import type { MessageEnd } from "../../protocol/index.js";
 import type { PrefsPort } from "../../store/index.js";
@@ -16,7 +16,7 @@ export interface DetailsOptions {
   labels: LibraryUiLabels;
 }
 
-const EMPTY = `<div class="ls-empty-icon">${icon("book")}</div><div>Select a paper or project to see its details.</div>`;
+const EMPTY = `<div class="ls-empty-icon">${renderIcon("book")}</div><div>Select a paper or project to see its details.</div>`;
 
 function slot(kind: string, label: string): HTMLElement {
   const el = document.createElement("aside");

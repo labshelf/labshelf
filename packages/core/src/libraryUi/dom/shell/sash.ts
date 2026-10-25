@@ -1,5 +1,5 @@
 // Resizes collapsible panes with pointer handles.
-import { icon } from "../../../ui/index.js";
+import { renderIcon } from "../../../ui/index.js";
 
 export interface SashOptions {
   root: HTMLElement;
@@ -14,7 +14,7 @@ export interface SashOptions {
 
 /** Wires one sash. The sash captures the pointer so a drag over an iframe still ends with the button. */
 export function attachSash(sash: HTMLElement, o: SashOptions): void {
-  sash.insertAdjacentHTML("afterbegin", `<span class="ls-sash-grip" aria-hidden="true">${icon("more")}</span>`);
+  sash.insertAdjacentHTML("afterbegin", `<span class="ls-sash-grip" aria-hidden="true">${renderIcon("more")}</span>`);
   let dragging = false;
   const width = (): number => parseInt(o.pane.style.width, 10) || o.limits.min;
   sash.addEventListener("pointerdown", (e) => {

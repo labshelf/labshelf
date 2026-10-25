@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { WritingProjects } from "../../writing/index.js";
 import type { SharedEditors } from "./editors/index.js";
-import type { ILogger, OwnRelayOffer, RelayAccountStore, ShareWorkflowPorts } from "@labshelf/core";
+import type { ILogger, OwnRelayOffer, RelayAccountStore, ShareFlowPorts } from "@labshelf/core";
 import type { ActiveShares } from "./session/index.js";
 
 const LOG_MODULE = "collab";
@@ -21,7 +21,7 @@ export interface CollabHost {
   /** The owner's Cloudflare relay, when this device connected one. */
   relay: RelayAccountStore;
   /** What the core share, join, resume and leave workflows run on in this window. */
-  ports: ShareWorkflowPorts;
+  ports: ShareFlowPorts;
 }
 
 /** The name a project goes by in messages. */

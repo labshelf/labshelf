@@ -3,7 +3,7 @@
 import { Fragment, type Node, type Mark } from "prosemirror-model";
 import { serializeInline } from "./serializeInline.js";
 import { qmdSchema, matchCitation } from "./schema/index.js";
-import { type InlineToken, pushText, tokensToNodes } from "./inlineToken.js";
+import { type InlineToken, addText, deriveTokenNodes } from "./inlineToken.js";
 
 /** Splits `line` into the text kept and the break marker: an odd trailing `\`, two or more trailing spaces, or "". */
 function splitBreakMarker(line: string): { text: string; marker: string } {
@@ -113,7 +113,7 @@ function pair(tokens: InlineToken[], source: string, openerIndex: number, closer
   const start = opener.end - use;
   const end = closer.start + use;
   const mark = qmdSchema.mark(use === 2 ? "strong" : "em", { marker: closer.char });
-  const nodes = withMark(tokensToNodes(tokens.slice(openerIndex + 1, closerIndex)), mark);
+  const nodes = withMark(deriveTokenNodes(tokens.slice(openerIndex + 1, closerIndex)), mark);
   if (!writesBackAs(nodes, source.slice(start, end))) return -1;
   opener.count -= use;
   opener.end -= use;
@@ -139,7 +139,7 @@ function resolveEmphasis(tokens: InlineToken[], source: string): Node[] {
     if (closer.count === 0) tokens.splice(closerIndex, 1);
     index = closerIndex - 1;
   }
-  return tokensToNodes(tokens);
+  return deriveTokenNodes(tokens);
 }
 
 type ReadRange = (from: number, end: number) => Node[];
@@ -212,7 +212,7 @@ function scanAt(source: string, at: number, from: number, end: number, tokens: I
   if (char === "\\") {
     // A backslash before a line ending is the hard break marker, read when the line ending is.
     const length = at + 1 < end && source[at + 1] !== "\n" ? 2 : 1;
-    pushText(tokens, source.slice(at, at + length), at);
+    addText(tokens, source.slice(at, at + length), at);
     return at + length;
   }
   if (char === "*" || char === "_") {
@@ -223,7 +223,7 @@ function scanAt(source: string, at: number, from: number, end: number, tokens: I
   if (char === "`") {
     const span = matchCodeSpan(source, at, end);
     if (!("code" in span)) {
-      pushText(tokens, "`".repeat(span.ticks), at);
+      addText(tokens, "`".repeat(span.ticks), at);
       return at + span.ticks;
     }
     tokens.push({ kind: "nodes", nodes: [qmdSchema.text(span.code, [qmdSchema.mark("code", { ticks: span.ticks })])], start: at, end: span.end });
@@ -234,7 +234,7 @@ function scanAt(source: string, at: number, from: number, end: number, tokens: I
     if (!math) {
       let length = 1;
       while (at + length < end && source[at + length] === "$") length++;
-      pushText(tokens, source.slice(at, at + length), at);
+      addText(tokens, source.slice(at, at + length), at);
       return at + length;
     }
     tokens.push({ kind: "nodes", nodes: [qmdSchema.node("math_inline", { tex: math.tex })], start: at, end: math.end });
@@ -245,7 +245,7 @@ function scanAt(source: string, at: number, from: number, end: number, tokens: I
     tokens.push({ kind: "nodes", nodes: bracketed.nodes, start: at, end: bracketed.end });
     return bracketed.end;
   }
-  pushText(tokens, char, at);
+  addText(tokens, char, at);
   return at + 1;
 }
 
@@ -257,7 +257,7 @@ function readInlineRange(source: string, from: number, end: number): Node[] {
     const plain = PLAIN.exec(source);
     if (plain) {
       const text = plain[0].slice(0, end - at);
-      pushText(tokens, text, at);
+      addText(tokens, text, at);
       at += text.length;
     } else {
       at = scanAt(source, at, from, end, tokens);

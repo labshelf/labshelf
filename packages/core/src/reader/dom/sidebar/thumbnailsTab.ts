@@ -6,7 +6,7 @@ import type { RenderTask } from "pdfjs-dist";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import type { SidebarPanel } from "./sidebar.js";
 import type { ThemeController } from "../chrome/index.js";
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 
 const THUMB_CSS_WIDTH = 132;
 const MAX_CONCURRENT = 2;
@@ -22,8 +22,8 @@ interface Thumb {
 }
 
 export class ThumbnailsTab implements SidebarPanel {
-  readonly el = el("div", { class: "rd-panel rd-thumbs", role: "tabpanel" });
-  private readonly list = el("div", { class: "rd-thumb-list" });
+  readonly el = renderElement("div", { class: "rd-panel rd-thumbs", role: "tabpanel" });
+  private readonly list = renderElement("div", { class: "rd-thumb-list" });
   private readonly thumbs: Thumb[] = [];
   private readonly queue: Thumb[] = [];
   private running = 0;
@@ -75,8 +75,8 @@ export class ThumbnailsTab implements SidebarPanel {
     });
     const frag = document.createDocumentFragment();
     for (let n = 1; n <= doc.numPages; n++) {
-      const frame = el("div", { class: "rd-thumb-frame", style: `width:${THUMB_CSS_WIDTH}px;height:${Math.round(THUMB_CSS_WIDTH * ratio)}px` });
-      const thumb = el("div", { class: "rd-thumb", role: "button", tabindex: 0, "data-page": n, title: `Page ${n}` }, frame, el("span", { class: "rd-thumb-label" }, String(n)));
+      const frame = renderElement("div", { class: "rd-thumb-frame", style: `width:${THUMB_CSS_WIDTH}px;height:${Math.round(THUMB_CSS_WIDTH * ratio)}px` });
+      const thumb = renderElement("div", { class: "rd-thumb", role: "button", tabindex: 0, "data-page": n, title: `Page ${n}` }, frame, renderElement("span", { class: "rd-thumb-label" }, String(n)));
       thumb.addEventListener("click", () => this.goToPage(n));
       thumb.addEventListener("keydown", (e) => { if (e.key === "Enter") { this.goToPage(n); } });
       this.thumbs.push({ pageNumber: n, el: thumb, frame, state: "idle", task: null });
@@ -119,7 +119,7 @@ export class ThumbnailsTab implements SidebarPanel {
       const base = page.getViewport({ scale: 1 });
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({ scale: (THUMB_CSS_WIDTH / base.width) * dpr });
-      const canvas = el("canvas", { class: "rd-thumb-canvas" });
+      const canvas = renderElement("canvas", { class: "rd-thumb-canvas" });
       canvas.width = Math.floor(viewport.width);
       canvas.height = Math.floor(viewport.height);
       thumb.frame.style.height = `${Math.round(THUMB_CSS_WIDTH * (base.height / base.width))}px`;

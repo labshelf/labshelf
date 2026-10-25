@@ -1,6 +1,6 @@
 // Shows a filterable quick pick and a validated input box; both resolve to `undefined` when dismissed.
-import { icon, type IconName } from "../../icons/index.js";
-import { el, highlight } from "../dom.js";
+import { renderIcon, type IconName } from "../../icons/index.js";
+import { renderElement, renderHighlightedHtml } from "../dom.js";
 import { mountOverlay } from "./overlay.js";
 
 export interface QuickPickItem<T> {
@@ -39,8 +39,8 @@ let quickCount = 0;
 /** Builds the dialog box, named by its title or, untitled, by the input's placeholder. */
 function quickBox(title: string | undefined, input: HTMLInputElement, below: HTMLElement): HTMLDivElement {
   const id = `ls-quick-${++quickCount}`;
-  const box = el("div", { class: "ls-quick", role: "dialog", "aria-modal": "true" },
-    title ? el("div", { class: "ls-quick-title", id: `${id}-title`, text: title }) : null, input, below);
+  const box = renderElement("div", { class: "ls-quick", role: "dialog", "aria-modal": "true" },
+    title ? renderElement("div", { class: "ls-quick-title", id: `${id}-title`, text: title }) : null, input, below);
   if (title) box.setAttribute("aria-labelledby", `${id}-title`);
   else if (input.placeholder) box.setAttribute("aria-label", input.placeholder);
   return box;
@@ -64,25 +64,25 @@ function renderPickRows<T>(list: HTMLElement, rows: QuickPickEntry<T>[], active:
   list.replaceChildren();
   let index = 0;
   for (const entry of rows) {
-    if ("kind" in entry) { list.append(el("div", { class: "ls-quick-sep", role: "presentation", text: entry.label })); continue; }
+    if ("kind" in entry) { list.append(renderElement("div", { class: "ls-quick-sep", role: "presentation", text: entry.label })); continue; }
     const i = index++;
-    const row = el("div", {
+    const row = renderElement("div", {
       class: `ls-quick-item${i === active ? " active" : ""}`, role: "option",
-      html: `${entry.icon ? icon(entry.icon) : ""}<span class="label">${highlight(entry.label, tokens)}</span>${entry.description ? `<span class="desc">${highlight(entry.description, tokens)}</span>` : ""}`,
+      html: `${entry.icon ? renderIcon(entry.icon) : ""}<span class="label">${renderHighlightedHtml(entry.label, tokens)}</span>${entry.description ? `<span class="desc">${renderHighlightedHtml(entry.description, tokens)}</span>` : ""}`,
     });
     row.addEventListener("mousemove", () => hover(i));
     row.addEventListener("click", () => pick(i));
     list.append(row);
   }
-  if (!index) list.append(el("div", { class: "ls-quick-empty", text: "No matching results" }));
+  if (!index) list.append(renderElement("div", { class: "ls-quick-empty", text: "No matching results" }));
 }
 
 /** Shows a filterable list; resolves with the chosen item's value. */
-export function quickPick<T>(entries: QuickPickEntry<T>[], opts: QuickPickOptions = {}): Promise<T | undefined> {
+export function pickQuickEntry<T>(entries: QuickPickEntry<T>[], opts: QuickPickOptions = {}): Promise<T | undefined> {
   if (opts.signal?.aborted) return Promise.resolve(undefined);
   return new Promise((resolve) => {
-    const input = el("input", { class: "ls-input", type: "text", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
-    const list = el("div", { class: "ls-quick-list", role: "listbox" });
+    const input = renderElement("input", { class: "ls-input", type: "text", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
+    const list = renderElement("div", { class: "ls-quick-list", role: "listbox" });
     const box = quickBox(opts.title, input, list);
     const { close } = mountOverlay(box, () => resolve(undefined), opts.signal ? { signal: opts.signal } : {});
     let visible: QuickPickItem<T>[] = [];
@@ -115,11 +115,11 @@ export function quickPick<T>(entries: QuickPickEntry<T>[], opts: QuickPickOption
 }
 
 /** Shows a single-line input; resolves with the trimmed value or undefined when cancelled. */
-export function inputBox(opts: InputBoxOptions = {}): Promise<string | undefined> {
+export function askInputBox(opts: InputBoxOptions = {}): Promise<string | undefined> {
   if (opts.signal?.aborted) return Promise.resolve(undefined);
   return new Promise((resolve) => {
-    const input = el("input", { class: "ls-input", type: "text", value: opts.value ?? "", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
-    const msg = el("div", { class: "ls-quick-msg", id: `ls-quick-msg-${++quickCount}`, text: opts.prompt ?? "" });
+    const input = renderElement("input", { class: "ls-input", type: "text", value: opts.value ?? "", placeholder: opts.placeholder ?? "", spellcheck: "false", autocomplete: "off" });
+    const msg = renderElement("div", { class: "ls-quick-msg", id: `ls-quick-msg-${++quickCount}`, text: opts.prompt ?? "" });
     const box = quickBox(opts.title, input, msg);
     box.setAttribute("aria-describedby", msg.id);
     const { close } = mountOverlay(box, () => resolve(undefined), opts.signal ? { signal: opts.signal } : {});

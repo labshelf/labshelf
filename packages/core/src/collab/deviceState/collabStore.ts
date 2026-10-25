@@ -2,17 +2,17 @@
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import * as Y from "yjs";
 import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../encoding/index.js";
-import { indexFiles } from "../model/index.js";
+import { readShareIndexDocFiles } from "../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RelayCursorStore } from "../relays/index.js";
 import { INDEX_DOC_KEY } from "../doc/index.js";
-import { BlobCache } from "./blobCache.js";
-import type { CollabStateStorage } from "./collabStorage.js";
+import { ShareBlobCache } from "./ShareBlobCache.js";
+import type { CollabDeviceStateStorage } from "./collabStorage.js";
 import { PersistedMap } from "./storedMap.js";
 import { loadVersionHistory, type StoredVersion } from "./versionHistory.js";
 
 /** By doc id; the log of each doc is merged into its snapshot, so the log only ever holds what came after this load. */
-async function loadStoredDocStates(storage: CollabStateStorage, logger: ILogger): Promise<Map<string, Uint8Array>> {
+async function loadStoredDocStates(storage: CollabDeviceStateStorage, logger: ILogger): Promise<Map<string, Uint8Array>> {
   const states = new Map<string, Uint8Array>();
   for (const [docId, { snapshot, updates, torn }] of await storage.loadDocs()) {
     if (torn) { await logger.log("WARN", LOG_MODULE, "Dropped a torn final record of a doc log", { docId }); }
@@ -29,7 +29,7 @@ async function loadStoredDocStates(storage: CollabStateStorage, logger: ILogger)
 }
 
 interface DocPersistenceOptions {
-  storage: CollabStateStorage;
+  storage: CollabDeviceStateStorage;
   docId: string;
   docKey: string;
   logger: ILogger;
@@ -100,7 +100,7 @@ const LOG_MODULE = "collab.state";
 const RESTORED = Symbol("restored");
 
 export interface CollabStoreOptions {
-  storage: CollabStateStorage;
+  storage: CollabDeviceStateStorage;
   logger: ILogger;
 }
 
@@ -109,7 +109,7 @@ export interface CollabStore {
   readonly index: Y.Doc;
   /** Creates a file doc holding its stored state; pass it to createShareSession. */
   createDoc(path: string): Y.Doc;
-  readonly blobs: BlobCache;
+  readonly blobs: ShareBlobCache;
   /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
   readonly known: PersistedMap<string>;
   readonly bases: PersistedMap<string>;
@@ -178,11 +178,11 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
   const flush = () => flushAll(docs, [known, bases, versions, cursors, held]);
   await logger.log("INFO", LOG_MODULE, "Opened the share state", { docs: stored.size });
   const index = restore(INDEX_DOC_KEY);
-  indexFiles(index);
+  readShareIndexDocFiles(index);
   return {
     index,
     createDoc: (docPath) => restore(docPath),
-    blobs: new BlobCache(storage, logger),
+    blobs: new ShareBlobCache(storage, logger),
     known, bases,
     rememberVersion: versions.rememberVersion,
     storedVersions: versions.storedVersions,

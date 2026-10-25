@@ -1,7 +1,7 @@
 /** Builds the PDF reader section, the browser twin of VS Code's labshelf.reader.* settings. */
 import type { CitationStyle, ReaderPrefs, ZoomPreset } from "@labshelf/core";
 import {
-  checkboxField, inlineCode, numberField, selectField, setRowDisabled, settingRow, settingsSection,
+  renderCheckboxField, renderInlineCode, renderNumberField, renderPickField, setRowDisabled, renderSettingRow, renderSettingsSection,
 } from "@labshelf/core/dom";
 
 const ZOOM_OPTIONS = [
@@ -29,44 +29,44 @@ export interface ReaderForm {
 
 function createFields() {
   return {
-    zoom: selectField({ id: "reader-default-zoom", options: ZOOM_OPTIONS, width: "md" }),
-    restore: checkboxField({ id: "reader-restore-position", label: "Reopen each paper at the page, zoom and sidebar state where it was last read" }),
-    autoHide: checkboxField({ id: "reader-toolbar-autohide", label: "Hide the reader toolbar while scrolling down" }),
-    hover: checkboxField({ id: "reader-hover-previews", label: "Show a preview when hovering a citation, figure, equation, table or section link" }),
-    delay: numberField({ id: "reader-hover-delay", min: 0, max: 2000, step: 50, width: "sm" }),
-    style: selectField({ id: "reader-citation-style", options: CITATION_OPTIONS, width: "md" }),
-    vim: checkboxField({ id: "reader-vim-keys", label: "Enable single-key vim navigation (j/k, d/u, gg/G, /, n/N, H/L, w, t)" }),
+    zoom: renderPickField({ id: "reader-default-zoom", options: ZOOM_OPTIONS, width: "md" }),
+    restore: renderCheckboxField({ id: "reader-restore-position", label: "Reopen each paper at the page, zoom and sidebar state where it was last read" }),
+    autoHide: renderCheckboxField({ id: "reader-toolbar-autohide", label: "Hide the reader toolbar while scrolling down" }),
+    hover: renderCheckboxField({ id: "reader-hover-previews", label: "Show a preview when hovering a citation, figure, equation, table or section link" }),
+    delay: renderNumberField({ id: "reader-hover-delay", min: 0, max: 2000, step: 50, width: "sm" }),
+    style: renderPickField({ id: "reader-citation-style", options: CITATION_OPTIONS, width: "md" }),
+    vim: renderCheckboxField({ id: "reader-vim-keys", label: "Enable single-key vim navigation (j/k, d/u, gg/G, /, n/N, H/L, w, t)" }),
   };
 }
 
 type Fields = ReturnType<typeof createFields>;
 
 function buildSection(f: Fields, delayRow: HTMLElement): HTMLElement {
-  return settingsSection(
+  return renderSettingsSection(
     {
       title: "PDF reader",
       description: [
-        "The same reader as the VS Code extension, with the same settings (", inlineCode("labshelf.reader.*"),
+        "The same reader as the VS Code extension, with the same settings (", renderInlineCode("labshelf.reader.*"),
         " there).",
       ],
     },
-    settingRow({
+    renderSettingRow({
       label: "Default zoom",
       labelFor: "reader-default-zoom",
       description: "Zoom applied when a paper is opened without a stored reading position, and by Reset Zoom.",
     }, f.zoom.element),
-    settingRow({}, f.restore.element),
-    settingRow({ description: "It returns on scroll up, when the pointer nears the top, or on keyboard focus." }, f.autoHide.element),
-    settingRow({}, f.hover.element),
+    renderSettingRow({}, f.restore.element),
+    renderSettingRow({ description: "It returns on scroll up, when the pointer nears the top, or on keyboard focus." }, f.autoHide.element),
+    renderSettingRow({}, f.hover.element),
     delayRow,
-    settingRow({ label: "Citation style", labelFor: "reader-citation-style", description: "Format used by Copy with Citation." }, f.style.element),
-    settingRow({ description: "Conventional shortcuts stay active." }, f.vim.element),
+    renderSettingRow({ label: "Citation style", labelFor: "reader-citation-style", description: "Format used by Copy with Citation." }, f.style.element),
+    renderSettingRow({ description: "Conventional shortcuts stay active." }, f.vim.element),
   );
 }
 
 export function createReaderForm(): ReaderForm {
   const f = createFields();
-  const delayRow = settingRow({
+  const delayRow = renderSettingRow({
     label: "Hover preview delay",
     labelFor: "reader-hover-delay",
     description: "Delay before a hover preview opens, in milliseconds (0 to 2000).",

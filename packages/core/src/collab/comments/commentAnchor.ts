@@ -9,7 +9,7 @@ const CONTEXT_LENGTH = 32;
 /** A range of text, in UTF-16 offsets, `end` exclusive. */
 export interface TextRange { start: number; end: number }
 
-export function anchorFor(text: string, start: number, end: number): CommentAnchor {
+export function deriveAnchor(text: string, start: number, end: number): CommentAnchor {
   return {
     quote: text.slice(start, end),
     prefix: text.slice(Math.max(0, start - CONTEXT_LENGTH), start),
@@ -22,8 +22,8 @@ const encode = (yText: Y.Text, index: number, assoc: number): string =>
   bytesToBase64(Y.encodeRelativePosition(Y.createRelativePositionFromTypeIndex(yText, index, assoc)));
 
 /** The anchor of a range in a shared file's text, with relative positions that follow concurrent edits. */
-export function liveAnchorFor(yText: Y.Text, start: number, end: number): CommentAnchor {
-  return { ...anchorFor(yText.toString(), start, end), start: encode(yText, start, 0), end: encode(yText, end, -1) };
+export function deriveLiveAnchor(yText: Y.Text, start: number, end: number): CommentAnchor {
+  return { ...deriveAnchor(yText.toString(), start, end), start: encode(yText, start, 0), end: encode(yText, end, -1) };
 }
 
 function decode(yText: Y.Text, encoded: string): number | undefined {
@@ -34,7 +34,7 @@ function decode(yText: Y.Text, encoded: string): number | undefined {
 }
 
 /** @returns undefined when the anchor has no relative positions, they are unreadable, or the range they span is empty */
-export function liveRange(yText: Y.Text, anchor: CommentAnchor): TextRange | undefined {
+export function deriveLiveRange(yText: Y.Text, anchor: CommentAnchor): TextRange | undefined {
   if (anchor.start === undefined || anchor.end === undefined) { return undefined; }
   try {
     const start = decode(yText, anchor.start);

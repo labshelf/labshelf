@@ -16,7 +16,7 @@ import {
   type ProjectText,
   matchReplacement,
 } from "@labshelf/core";
-import { confirmDialog, toast } from "@labshelf/core/dom";
+import { askDialog, showToast } from "@labshelf/core/dom";
 import { flushProjectEditors, reloadProjectEditors } from "./session";
 import { recordProjectEdit } from "./history";
 
@@ -117,7 +117,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     if (!regex) return;
     if (!(await flushProjectEditors(project.id))) {
       void logger.log("WARN", MODULE, "replace aborted: an open file could not be saved", { projectId: project.id });
-      toast(`Could not save an open file of ${project.id}, so nothing was replaced.`, "error");
+      showToast(`Could not save an open file of ${project.id}, so nothing was replaced.`, "error");
       return;
     }
     const matches = await matchesToReplace(message, regex);
@@ -126,7 +126,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     if (message.type === "replaceAll") {
       const files = new Set(matches.map(({ path }) => path)).size;
       const question = `Replace ${matches.length} ${matches.length === 1 ? "match" : "matches"} in ${files} ${files === 1 ? "file" : "files"}?`;
-      if (!(await confirmDialog(question, "The change is saved to the files at once. The project history keeps the previous text.", "Replace All"))) return;
+      if (!(await askDialog(question, "The change is saved to the files at once. The project history keeps the previous text.", "Replace All"))) return;
     }
     const count = await replaceInFiles(fs, matches, regex, message.replacement);
     await reloadProjectEditors(project.id);
@@ -152,7 +152,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
   const stop = endpoint.subscribe((message) => {
     handle(message).catch((error: unknown) => {
       void logger.error(MODULE, error, { action: message.type, projectId: project.id, folder: project.folder });
-      toast(`Search: ${error instanceof Error ? error.message : String(error)}`, "error");
+      showToast(`Search: ${error instanceof Error ? error.message : String(error)}`, "error");
     });
   });
   return { dispose: () => { ticket += 1; clearTimeout(timer); stop(); } };

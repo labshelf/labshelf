@@ -1,5 +1,5 @@
 // Moves a source tab between running a share and observing it: the "Use here" takeover and the remount when another tab takes it over.
-import { toast } from "@labshelf/core/dom";
+import { showToast } from "@labshelf/core/dom";
 import type { ProjectEntry } from "@labshelf/core";
 import type { TabContext } from "../../libraryUi/editorArea";
 import type { SourceFileMode } from "./sharedFile";
@@ -16,7 +16,7 @@ export async function takeSharedProjectHere(
   // The share's state change remounts this tab once the takeover connects.
   await project().sharing.shares.takeOver(observing.shareId).catch((error: unknown) => {
     void logger.error(MODULE, error, { action: "take a shared project over from another tab", projectId, path, shareId: observing.shareId });
-    toast("Could not use the shared project here. Try again, or close the other tab.", "error");
+    showToast("Could not use the shared project here. Try again, or close the other tab.", "error");
     void reopen();
   });
 }

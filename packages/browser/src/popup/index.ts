@@ -2,50 +2,50 @@
 // States (data-state on #popup): loading, form | library | empty, saving, saved. A matched PDF offer shows as library.
 import { bx, createBrowserLogger, sendRuntime } from "../platform";
 import type { FoldersData } from "../platform";
-import { $ } from "@labshelf/core/dom";
+import { findElement } from "@labshelf/core/dom";
 import { mountSourceBanner } from "../library/libraryLocation";
 import { applyTheme } from "../ui";
-import { formatError, icon } from "@labshelf/core";
+import { formatError, renderIcon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
 import { attachPdf, inspect, save, undo } from "./captureFlow";
 import { dismissOffer, fetchOffer, showOffer } from "./offerCard";
 import { popupState, setState } from "./popupState";
 
 function wire(): void {
-  $("form").addEventListener("submit", (e) => { e.preventDefault(); void save(); });
-  const note = $<HTMLTextAreaElement>("note");
+  findElement("form").addEventListener("submit", (e) => { e.preventDefault(); void save(); });
+  const note = findElement<HTMLTextAreaElement>("note");
   note.addEventListener("input", () => autoGrow(note));
   note.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save(); }
   });
-  $("tryAnyway").addEventListener("click", () => { void save(); });
-  $("attachPdf").addEventListener("click", () => { void attachPdf(); });
-  $("dismissOffer").addEventListener("click", () => { void dismissOffer(); });
-  $("undo").addEventListener("click", () => { void undo(); });
-  $("open").addEventListener("click", () => {
-    const { folder, paper } = $("open").dataset;
+  findElement("tryAnyway").addEventListener("click", () => { void save(); });
+  findElement("attachPdf").addEventListener("click", () => { void attachPdf(); });
+  findElement("dismissOffer").addEventListener("click", () => { void dismissOffer(); });
+  findElement("undo").addEventListener("click", () => { void undo(); });
+  findElement("open").addEventListener("click", () => {
+    const { folder, paper } = findElement("open").dataset;
     void sendRuntime({ type: "library.open", ...(folder ? { folder } : {}), ...(paper ? { paperId: paper } : {}) }).then(() => window.close());
   });
-  $("library").addEventListener("click", () => {
+  findElement("library").addEventListener("click", () => {
     void sendRuntime({ type: "library.open" }).then(() => window.close());
   });
-  $("settings").addEventListener("click", () => { void bx.runtime.openOptionsPage(); window.close(); });
+  findElement("settings").addEventListener("click", () => { void bx.runtime.openOptionsPage(); window.close(); });
 }
 
 async function init(): Promise<void> {
   applyTheme();
-  $("brand").innerHTML = `${icon("logo")}<span>LabShelf</span>`;
-  $("library").innerHTML = icon("library");
-  $("settings").innerHTML = icon("gear");
-  $("folderIcon").innerHTML = icon("folder");
-  $("folderChevron").innerHTML = icon("chevron-down");
-  $("tagsIcon").innerHTML = icon("tag");
-  $("noteIcon").innerHTML = icon("message");
-  $("undo").innerHTML = icon("trash");
-  $("title").classList.add("muted");
+  findElement("brand").innerHTML = `${renderIcon("logo")}<span>LabShelf</span>`;
+  findElement("library").innerHTML = renderIcon("library");
+  findElement("settings").innerHTML = renderIcon("gear");
+  findElement("folderIcon").innerHTML = renderIcon("folder");
+  findElement("folderChevron").innerHTML = renderIcon("chevron-down");
+  findElement("tagsIcon").innerHTML = renderIcon("tag");
+  findElement("noteIcon").innerHTML = renderIcon("message");
+  findElement("undo").innerHTML = renderIcon("trash");
+  findElement("title").classList.add("muted");
   setState("loading");
   wire();
-  mountSourceBanner($("sourceBanner"), { logger: createBrowserLogger(), onFolder: () => undefined });
+  mountSourceBanner(findElement("sourceBanner"), { logger: createBrowserLogger(), onFolder: () => undefined });
 
   const [tab] = await bx.tabs.query({ active: true, currentWindow: true });
   // A PDF downloaded from any page, or opened from disk, can still match a paper; the offer then fills the popup.
@@ -56,7 +56,7 @@ async function init(): Promise<void> {
       showOffer(offer);
       return;
     }
-    $("title").textContent = "Nothing to save here";
+    findElement("title").textContent = "Nothing to save here";
     setState("empty");
     showStatus({ glyph: "globe", tone: "muted", title: "This page can't be saved", detail: "Open an article's page or its PDF in a normal tab." });
     return;
@@ -75,7 +75,7 @@ async function init(): Promise<void> {
       showOffer(offer);
       return;
     }
-    $("title").textContent = tab.title || "This page";
+    findElement("title").textContent = tab.title || "This page";
     setState("empty");
     showStatus({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: formatError(err), tryAnyway: true });
   }

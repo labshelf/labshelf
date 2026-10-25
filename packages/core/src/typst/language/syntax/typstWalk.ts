@@ -2,12 +2,12 @@
 import {
   openEmbed,
   openFrame,
-  popFrame,
+  removeTopFrame,
   type TypstFrame,
   type TypstWalk,
   type TypstWalkEnd,
   type TypstWalkEvents,
-  stringCall,
+  findStringCall,
 } from "./typstFrames.js";
 
 /** Where the comment at `start` ends (a line comment ends at its newline), or -1 when it runs to the end of the text. */
@@ -137,7 +137,7 @@ function bracketStep(w: TypstWalk, top: TypstFrame, ch: string): boolean {
   else if (ch === "[") { w.stack.push(openFrame("markup", "]")); }
   else if (ch === "$") { w.stack.push(openFrame("math", "$")); }
   else if (CLOSERS[ch] !== undefined) {
-    if (top.closer === ch) { w.i++; popFrame(w, ch); return true; }
+    if (top.closer === ch) { w.i++; removeTopFrame(w, ch); return true; }
     if (top.embed !== undefined) { w.stack.pop(); return true; }
   }
   else { return false; }
@@ -171,7 +171,7 @@ function codeStep(w: TypstWalk, top: TypstFrame): void {
   const kw = top.keyword;
   delete top.keyword;
   if (skipCommentOrRaw(w, false)) { return; }
-  if (ch === "\"") { skipString(w, kw ?? stringCall(w.stack)); return; }
+  if (ch === "\"") { skipString(w, kw ?? findStringCall(w.stack)); return; }
   if (bracketStep(w, top, ch)) { return; }
   if (ch === "," && top.closer === ")") { top.args++; top.named = false; w.i++; return; }
   const end = readIdent(text, w.i);
@@ -197,7 +197,7 @@ function markupStep(w: TypstWalk, top: TypstFrame): void {
     w.i++;
     return;
   }
-  if (ch === "]" && top.closer === "]") { w.i++; popFrame(w, ch); return; }
+  if (ch === "]" && top.closer === "]") { w.i++; removeTopFrame(w, ch); return; }
   LABEL.lastIndex = w.i;
   const label = LABEL.exec(w.text);
   if (label) {
@@ -212,7 +212,7 @@ function mathStep(w: TypstWalk, top: TypstFrame): void {
   if (skipCommentOrRaw(w, false)) { return; }
   const ch = w.text[w.i];
   if (ch === "\\") { w.i += 2; return; }
-  if (ch === "$" && top.closer === "$") { w.i++; popFrame(w, ch); return; }
+  if (ch === "$" && top.closer === "$") { w.i++; removeTopFrame(w, ch); return; }
   if (ch === "#") { pushEmbed(w); return; }
   if (ch === "\"") { skipString(w, undefined); return; }
   w.i++;

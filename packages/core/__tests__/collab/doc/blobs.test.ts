@@ -1,8 +1,8 @@
 /** Pins that blobs travel in verified chunks from any peer that holds them and are refused when corrupted or missing. */
 import { deriveSha256Hex } from "../../../src/hash/index";
-import { attachBlobs, type BlobExchange } from "../../../src/collab/doc/attachBlobs";
-import { BLOB_CHUNK_BYTES } from "../../../src/collab/doc/blobMessage";
-import { BlobFetchError } from "../../../src/collab/doc/blobFetchError";
+import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/attachShareBlobs";
+import { BLOB_CHUNK_BYTES } from "../../../src/collab/doc/shareBlobMessage";
+import { ShareBlobFetchError } from "../../../src/collab/doc/ShareBlobFetchError";
 import { CHANNEL_KIND } from "../../../src/collab/peer/envelope";
 import { FakeClock, FakeNetwork, runUntil } from "../peer/fakeNetwork";
 import { contentKey, openSession, type TestClient } from "./testSession";
@@ -13,7 +13,7 @@ describe("blobs", () => {
   let clock: FakeClock;
   let net: FakeNetwork;
   let clients: TestClient[] = [];
-  let exchanges: BlobExchange[] = [];
+  let exchanges: ShareBlobExchange[] = [];
   beforeEach(() => { clock = new FakeClock(); net = new FakeNetwork(clock); });
   afterEach(async () => {
     exchanges.forEach((e) => e.close());
@@ -24,7 +24,7 @@ describe("blobs", () => {
 
   async function attach(id: string, getBlob: (hash: string) => Promise<Uint8Array | undefined> = async () => undefined) {
     const client = await openSession(net, clock, id);
-    const exchange = attachBlobs(client.session, { contentKey: await contentKey(), getBlob, logger: client.logger, scheduler: clock, skipPeer: () => false });
+    const exchange = attachShareBlobs(client.session, { contentKey: await contentKey(), getBlob, logger: client.logger, scheduler: clock, skipPeer: () => false });
     clients.push(client);
     exchanges.push(exchange);
     return { client, exchange };
@@ -32,9 +32,9 @@ describe("blobs", () => {
   const holding = (bytes: Uint8Array) => async () => bytes;
 
   /** Settles a fetch while virtual time runs, as the real network would. */
-  async function settled(promise: Promise<Uint8Array>): Promise<Uint8Array | BlobFetchError> {
-    let result: Uint8Array | BlobFetchError | undefined;
-    promise.then((bytes) => { result = bytes; }, (error: unknown) => { result = error as BlobFetchError; });
+  async function settled(promise: Promise<Uint8Array>): Promise<Uint8Array | ShareBlobFetchError> {
+    let result: Uint8Array | ShareBlobFetchError | undefined;
+    promise.then((bytes) => { result = bytes; }, (error: unknown) => { result = error as ShareBlobFetchError; });
     expect(await runUntil(clock, () => result !== undefined, 120_000)).toBe(true);
     return result!;
   }
@@ -79,8 +79,8 @@ describe("blobs", () => {
     const { client, exchange } = await attach("a");
     await attach("b", holding(bytesOf(100_000, 1)));
     const result = await settled(exchange.fetch(hash));
-    expect(result).toBeInstanceOf(BlobFetchError);
-    expect((result as BlobFetchError).code).toBe("corrupt");
+    expect(result).toBeInstanceOf(ShareBlobFetchError);
+    expect((result as ShareBlobFetchError).code).toBe("corrupt");
     expect(client.logger.log.mock.calls.some(([level, , , context]) => level === "WARN" && context?.hash === hash)).toBe(true);
   });
 
@@ -98,7 +98,7 @@ describe("blobs", () => {
     const { exchange } = await attach("a");
     await attach("b");
     const result = await settled(exchange.fetch(hash));
-    expect((result as BlobFetchError).code).toBe("unavailable");
+    expect((result as ShareBlobFetchError).code).toBe("unavailable");
   });
 
   it("fails after a timeout when no peer is connected, and finds a peer that joins before it", async () => {
@@ -106,7 +106,7 @@ describe("blobs", () => {
     const hash = await deriveSha256Hex(blob);
     const { exchange } = await attach("a");
     const lonely = await settled(exchange.fetch(hash));
-    expect((lonely as BlobFetchError).code).toBe("unavailable");
+    expect((lonely as ShareBlobFetchError).code).toBe("unavailable");
     const pending = exchange.fetch(hash);
     await attach("b", holding(blob));
     expect(await settled(pending)).toEqual(blob);

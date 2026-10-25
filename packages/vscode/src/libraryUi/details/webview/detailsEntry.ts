@@ -14,9 +14,9 @@ import "@labshelf/core/styles/library-citation-map.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import "@labshelf/core/styles/all-projects.css";
 import "@labshelf/core/styles/editor-area.css";
-import { $, mountDetails } from "@labshelf/core/dom";
+import { findElement, mountDetails } from "@labshelf/core/dom";
 import { libraryUiCapabilities, libraryUiLabels } from "../../webview/index.js";
 import { createDetailsChannel } from "./index.js";
 
 const { transport, prefs } = createDetailsChannel();
-mountDetails($("root"), { transport, prefs, capabilities: libraryUiCapabilities, labels: libraryUiLabels });
+mountDetails(findElement("root"), { transport, prefs, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

@@ -12,7 +12,7 @@ const THEMES = ["light", "dark"];
 async function loadMarkApi() {
   const bundle = await build({
     stdin: {
-      contents: 'export { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, arcMark } from "../../core/src/ui/icons/arcMark.ts";',
+      contents: 'export { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, renderArcMarkSvg } from "../../core/src/ui/icons/renderArcMarkSvg.ts";',
       resolveDir: here,
     },
     bundle: true,
@@ -26,10 +26,10 @@ async function loadMarkApi() {
 }
 
 export async function arcMarkFiles() {
-  const { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, arcMark } = await loadMarkApi();
+  const { ARC_TONES, ARC_PROGRESSES, ARC_TONE_COLORS, renderArcMarkSvg } = await loadMarkApi();
   return ARC_TONES.flatMap((tone) => ARC_PROGRESSES.flatMap((progress) => THEMES.map((theme) => ({
     name: `${tone}-${progress}-${theme}.svg`,
-    svg: arcMark(tone, progress, ARC_TONE_COLORS[tone][theme]),
+    svg: renderArcMarkSvg(tone, progress, ARC_TONE_COLORS[tone][theme]),
   }))));
 }
 

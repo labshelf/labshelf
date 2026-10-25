@@ -1,5 +1,5 @@
 /** Builds the Recent log section: the last background events, for troubleshooting. */
-import { el, settingsSection } from "@labshelf/core/dom";
+import { renderElement, renderSettingsSection } from "@labshelf/core/dom";
 import type { StorageRingLogSink } from "../platform";
 
 export interface LogSection {
@@ -8,9 +8,9 @@ export interface LogSection {
 }
 
 export function createLogSection(ring: StorageRingLogSink): LogSection {
-  const log = el("pre", { class: "settings-log", text: "Loading…" });
+  const log = renderElement("pre", { class: "settings-log", text: "Loading…" });
   return {
-    element: settingsSection({ title: "Recent log", description: "The last background events, for troubleshooting." }, log),
+    element: renderSettingsSection({ title: "Recent log", description: "The last background events, for troubleshooting." }, log),
     async refresh() {
       const entries = await ring.recent();
       log.textContent = entries.length === 0

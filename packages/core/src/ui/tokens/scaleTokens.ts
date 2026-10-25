@@ -1,54 +1,54 @@
 // Defines typography, spacing, shape, elevation and motion tokens for LabShelf UI.
-import { token, type DesignToken } from "./designToken.js";
+import { createDesignToken, type DesignToken } from "./designToken.js";
 
 export const TYPE_TOKENS = {
-  font: token('-apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif'),
+  font: createDesignToken('-apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif'),
   // A brand face for paper titles, so it stays the same in every host; no font file ships, so the stack falls back to Georgia.
-  serif: token('"Source Serif 4", Georgia, serif'),
-  mono: token('Menlo, Monaco, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace'),
-  "font-size": token("13px"),
-  "text-xs": token("10px"),
-  "text-sm": token("11px"),
-  "text-md": token("12px"),
-  "text-lg": token("14px"),
-  "text-xl": token("15px"),
-  "text-2xl": token("17px"),
-  "text-3xl": token("24px"),
+  serif: createDesignToken('"Source Serif 4", Georgia, serif'),
+  mono: createDesignToken('Menlo, Monaco, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace'),
+  "font-size": createDesignToken("13px"),
+  "text-xs": createDesignToken("10px"),
+  "text-sm": createDesignToken("11px"),
+  "text-md": createDesignToken("12px"),
+  "text-lg": createDesignToken("14px"),
+  "text-xl": createDesignToken("15px"),
+  "text-2xl": createDesignToken("17px"),
+  "text-3xl": createDesignToken("24px"),
 } satisfies Record<string, DesignToken>;
 
 export const SPACE_TOKENS = {
-  "space-1": token("2px"),
-  "space-2": token("4px"),
-  "space-3": token("6px"),
-  "space-4": token("8px"),
-  "space-5": token("10px"),
-  "space-6": token("12px"),
-  "space-7": token("16px"),
-  "space-8": token("24px"),
-  "space-9": token("32px"),
+  "space-1": createDesignToken("2px"),
+  "space-2": createDesignToken("4px"),
+  "space-3": createDesignToken("6px"),
+  "space-4": createDesignToken("8px"),
+  "space-5": createDesignToken("10px"),
+  "space-6": createDesignToken("12px"),
+  "space-7": createDesignToken("16px"),
+  "space-8": createDesignToken("24px"),
+  "space-9": createDesignToken("32px"),
 } satisfies Record<string, DesignToken>;
 
 export const SHAPE_TOKENS = {
-  "editor-cursor-width": token("3px"),
-  "radius-sm": token("3px"),
-  radius: token("4px"),
-  "radius-lg": token("6px"),
-  "radius-pill": token("999px"),
-  "row-h": token("22px"),
-  "pane-footer-h": token("24px"),
-  "gallery-sidebar-w": token("220px"),
-  "gallery-card-w": token("200px"),
-  "gallery-content-w": token("1200px"),
+  "editor-cursor-width": createDesignToken("3px"),
+  "radius-sm": createDesignToken("3px"),
+  radius: createDesignToken("4px"),
+  "radius-lg": createDesignToken("6px"),
+  "radius-pill": createDesignToken("999px"),
+  "row-h": createDesignToken("22px"),
+  "pane-footer-h": createDesignToken("24px"),
+  "gallery-sidebar-w": createDesignToken("220px"),
+  "gallery-card-w": createDesignToken("200px"),
+  "gallery-content-w": createDesignToken("1200px"),
 } satisfies Record<string, DesignToken>;
 
 export const ELEVATION_TOKENS = {
-  "pane-shadow": token("0 1px 3px rgba(0, 0, 0, .18)", "0 1px 3px rgba(0, 0, 0, .08)"),
-  "widget-shadow": token("0 0 8px 2px rgba(0, 0, 0, .36)", "0 0 8px 2px rgba(0, 0, 0, .16)"),
-  "popup-shadow": token("0 4px 18px rgba(0, 0, 0, .45)", "0 4px 18px rgba(0, 0, 0, .18)"),
-  "page-shadow": token("0 1px 6px rgba(0, 0, 0, .3)"),
+  "pane-shadow": createDesignToken("0 1px 3px rgba(0, 0, 0, .18)", "0 1px 3px rgba(0, 0, 0, .08)"),
+  "widget-shadow": createDesignToken("0 0 8px 2px rgba(0, 0, 0, .36)", "0 0 8px 2px rgba(0, 0, 0, .16)"),
+  "popup-shadow": createDesignToken("0 4px 18px rgba(0, 0, 0, .45)", "0 4px 18px rgba(0, 0, 0, .18)"),
+  "page-shadow": createDesignToken("0 1px 6px rgba(0, 0, 0, .3)"),
 } satisfies Record<string, DesignToken>;
 
 export const MOTION_TOKENS = {
-  fast: token("100ms"),
-  normal: token("140ms"),
+  fast: createDesignToken("100ms"),
+  normal: createDesignToken("140ms"),
 } satisfies Record<string, DesignToken>;

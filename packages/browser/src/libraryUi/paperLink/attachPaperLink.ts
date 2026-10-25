@@ -1,6 +1,6 @@
 // Wires the library page to web+labshelf: links: opens a `?link=` target and registers the page as the scheme's handler.
 import type { ILogger } from "@labshelf/core";
-import { toast } from "@labshelf/core/dom";
+import { showToast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import { readerUrl } from "../../reader/service";
 import { listAllRecords } from "../../storage";
@@ -40,7 +40,7 @@ export function attachLinkHandling(log: ILogger): void {
   void openLinkParam(location.search, {
     listRecords: listAllRecords,
     goToReader: (paperId, page) => location.replace(readerUrl(paperId, page)),
-    notifyError: (message) => { toast(message, "error"); },
+    notifyError: (message) => { showToast(message, "error"); },
     log,
   });
 }

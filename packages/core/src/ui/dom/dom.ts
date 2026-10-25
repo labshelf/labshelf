@@ -6,14 +6,14 @@ import { escapeHtml } from "../escapeHtml.js";
 import { findHighlightRanges } from "../../library/search/index.js";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */
-export function $<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {
+export function findElement<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {
   const el = root.querySelector<T>(`#${id}`);
   if (!el) throw new Error(`Missing element #${id}`);
   return el;
 }
 
 /** Escapes `text` and wraps every occurrence of each search term in <mark>, ignoring case and accents. */
-export function highlight(text: unknown, terms: string[]): string {
+export function renderHighlightedHtml(text: unknown, terms: string[]): string {
   const str = String(text ?? "");
   let out = "";
   let pos = 0;
@@ -27,7 +27,7 @@ export function highlight(text: unknown, terms: string[]): string {
 type Attrs = Record<string, string | number | boolean | null | undefined>;
 
 /** Creates an element with attributes and children; `html` sets innerHTML, `text` sets textContent. */
-export function el<K extends keyof HTMLElementTagNameMap>(
+export function renderElement<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   attrs: Attrs & { html?: string; text?: string } = {},
   ...children: Array<Node | string | null | undefined | false>
@@ -51,7 +51,7 @@ export function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /** Formats an ISO timestamp as a short local time ("14:05") or date when not today. */
-export function shortTime(iso: string): string {
+export function formatShortTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();

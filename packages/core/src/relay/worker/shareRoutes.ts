@@ -3,9 +3,9 @@
 import { isSha256Hex, isShareId } from "../http/index.js";
 import { SHARE_PATH } from "../../share/http/index.js";
 import type { KvNamespace, RelayEnv } from "./cloudflareRuntime.js";
-import { bytesAnswer, noContent, notFound, refuse } from "./httpAnswers.js";
-import { carriesOwnerSecret } from "./checkOwner.js";
-import { sha256Hex } from "./hashSecret.js";
+import { createBytesAnswer, createNoContentAnswer, createNotFoundAnswer, createRefusal } from "./httpAnswers.js";
+import { checkOwnerSecret } from "./checkOwner.js";
+import { deriveSecretSha256 } from "./hashSecret.js";
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
 const KV_VALUE_LIMIT = 25 * 1024 * 1024;
@@ -32,31 +32,31 @@ async function exists(kv: KvNamespace, key: string): Promise<boolean> {
 
 async function read(env: RelayEnv, target: Target): Promise<Response> {
   // A blob is readable only while its share's manifest exists, so a revoked link reads nothing.
-  if (target.blobHash !== undefined && !(await exists(env.KV, manifestKey(target.shareId)))) { return notFound(); }
+  if (target.blobHash !== undefined && !(await exists(env.KV, manifestKey(target.shareId)))) { return createNotFoundAnswer(); }
   const stream = await env.KV.get(target.key, "stream");
-  return stream ? bytesAnswer(stream) : notFound();
+  return stream ? createBytesAnswer(stream) : createNotFoundAnswer();
 }
 
 async function write(request: Request, env: RelayEnv, target: Target): Promise<Response> {
-  if (Number(request.headers.get("Content-Length")) > KV_VALUE_LIMIT) { return refuse("tooLarge"); }
+  if (Number(request.headers.get("Content-Length")) > KV_VALUE_LIMIT) { return createRefusal("tooLarge"); }
   const body = await request.arrayBuffer();
-  if (body.byteLength > KV_VALUE_LIMIT) { return refuse("tooLarge"); }
-  if (target.blobHash !== undefined && (await sha256Hex(new Uint8Array(body))) !== target.blobHash) { return refuse("malformed"); }
+  if (body.byteLength > KV_VALUE_LIMIT) { return createRefusal("tooLarge"); }
+  if (target.blobHash !== undefined && (await deriveSecretSha256(new Uint8Array(body))) !== target.blobHash) { return createRefusal("malformed"); }
   await env.KV.put(target.key, body);
-  return noContent();
+  return createNoContentAnswer();
 }
 
-export async function handleShareRequest(request: Request, env: RelayEnv, pathname: string): Promise<Response> {
+export async function answerShareRequest(request: Request, env: RelayEnv, pathname: string): Promise<Response> {
   const target = parseTarget(pathname);
-  if (!target) { return notFound(); }
-  if (target === "malformed") { return refuse("malformed"); }
+  if (!target) { return createNotFoundAnswer(); }
+  if (target === "malformed") { return createRefusal("malformed"); }
   const { method } = request;
   if (method === "GET") { return read(env, target); }
   const isBlob = target.blobHash !== undefined;
-  if (method !== "PUT" && method !== "DELETE" && !(method === "HEAD" && isBlob)) { return notFound(); }
-  if (!(await carriesOwnerSecret(request, env, "share"))) { return refuse("unauthorized"); }
+  if (method !== "PUT" && method !== "DELETE" && !(method === "HEAD" && isBlob)) { return createNotFoundAnswer(); }
+  if (!(await checkOwnerSecret(request, env, "share"))) { return createRefusal("unauthorized"); }
   if (method === "PUT") { return write(request, env, target); }
-  if (method === "HEAD") { return (await exists(env.KV, target.key)) ? bytesAnswer(null) : notFound(); }
+  if (method === "HEAD") { return (await exists(env.KV, target.key)) ? createBytesAnswer(null) : createNotFoundAnswer(); }
   await env.KV.delete(target.key);
-  return noContent();
+  return createNoContentAnswer();
 }

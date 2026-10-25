@@ -18,12 +18,12 @@ function decode(text: Y.Text, encoded: string): number | null {
   return position && position.type === text ? position.index : null;
 }
 
-export function toRelativeSelection(text: Y.Text, selection: TextSelection): RelativeSelection {
+export function deriveRelativeSelection(text: Y.Text, selection: TextSelection): RelativeSelection {
   return { anchor: encode(text, selection.anchor), head: encode(text, selection.head) };
 }
 
 /** Null when a peer's positions cannot be read or do not point into `text`: they are untrusted input. */
-export function toAbsoluteSelection(text: Y.Text, selection: RelativeSelection): TextSelection | null {
+export function deriveAbsoluteSelection(text: Y.Text, selection: RelativeSelection): TextSelection | null {
   try {
     const anchor = decode(text, selection.anchor);
     const head = decode(text, selection.head);

@@ -1,5 +1,5 @@
 // Pins that project conflict copies stay local until the user dismisses their content match.
-import { indexFiles } from "../../../src/collab/model/index";
+import { readShareIndexDocFiles } from "../../../src/collab/model/index";
 import type { ConflictCopy } from "../../../src/library/conflicts/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { FakeRelay } from "../transport/relay/fakeRelay";
@@ -33,8 +33,8 @@ describe("conflict copies in shared projects", () => {
     expect(await runUntil(clock, () => offered.length === 1)).toBe(true);
     expect(offered).toHaveLength(1);
     expect(offered[0]).toMatchObject({ copy: `${a.folder}/main (1).tex`, original: `${a.folder}/main.tex`, match: "similar" });
-    expect(indexFiles(a.session.index).has("main (1).tex")).toBe(false);
-    expect(indexFiles(b.session.index).has("main (1).tex")).toBe(false);
+    expect(readShareIndexDocFiles(a.session.index).has("main (1).tex")).toBe(false);
+    expect(readShareIndexDocFiles(b.session.index).has("main (1).tex")).toBe(false);
     expect(await files.read(b.folder, "main (1).tex")).toBeUndefined();
     a.mirror.changed("main (1).tex");
     await a.mirror.idle();
@@ -65,7 +65,7 @@ describe("conflict copies in shared projects", () => {
     a.mirror.changed("main (1).tex");
     await a.mirror.idle();
     expect(offered).toHaveLength(2);
-    expect(indexFiles(a.session.index).has("main (1).tex")).toBe(false);
+    expect(readShareIndexDocFiles(a.session.index).has("main (1).tex")).toBe(false);
   });
 
   it("holds recorded versions even when the canonical file has dissimilar content", async () => {
@@ -80,8 +80,8 @@ describe("conflict copies in shared projects", () => {
     a.mirror.changed("long-canonical.tex");
     a.mirror.changed("x.tex");
     await a.mirror.idle();
-    expect(indexFiles(a.session.index).has("long-canonical.tex")).toBe(true);
-    expect(indexFiles(a.session.index).has("x.tex")).toBe(false);
+    expect(readShareIndexDocFiles(a.session.index).has("long-canonical.tex")).toBe(true);
+    expect(readShareIndexDocFiles(a.session.index).has("x.tex")).toBe(false);
   });
 
   it("keeps listed files shared when their content becomes similar", async () => {
@@ -93,11 +93,11 @@ describe("conflict copies in shared projects", () => {
     a.mirror.changed("main.tex");
     a.mirror.changed("chapter.tex");
     await a.mirror.idle();
-    expect(indexFiles(a.session.index).has("chapter.tex")).toBe(true);
+    expect(readShareIndexDocFiles(a.session.index).has("chapter.tex")).toBe(true);
     await writeFile(a, "chapter.tex", copy);
     a.mirror.changed("chapter.tex");
     await a.mirror.idle();
-    expect(indexFiles(a.session.index).has("chapter.tex")).toBe(true);
+    expect(readShareIndexDocFiles(a.session.index).has("chapter.tex")).toBe(true);
     expect(await readFile(a, "chapter.tex")).toBe(copy);
   });
 
@@ -109,7 +109,7 @@ describe("conflict copies in shared projects", () => {
     const a = await openMirror({ files, folder });
     fixtures.push(a);
     await a.mirror.idle();
-    expect(indexFiles(a.session.index).has("main.tex")).toBe(true);
-    expect(indexFiles(a.session.index).has("main (1).tex")).toBe(false);
+    expect(readShareIndexDocFiles(a.session.index).has("main.tex")).toBe(true);
+    expect(readShareIndexDocFiles(a.session.index).has("main (1).tex")).toBe(false);
   });
 });

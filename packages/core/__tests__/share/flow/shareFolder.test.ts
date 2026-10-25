@@ -1,7 +1,7 @@
 /** Pins sharing a folder as a link: its nested papers, annotations only when chosen, the stages and the listed share. */
 import { posixPathOps } from "../../../src/library/index";
 import type { Annotation, PaperRecord } from "../../../src/model/index";
-import { loadShareRegistry, openShare, shareFolderAsLink, type ShareFolderStage } from "../../../src/share/index";
+import { loadShareRegistry, openShare, createShareLink, type ShareFolderStage } from "../../../src/share/index";
 import { makeHarness, PAPERS } from "../../support/mutationHarness";
 import { memoryShareRegistry, memoryShareRelay } from "../../support/memoryShareRelay";
 
@@ -19,7 +19,7 @@ async function share(withAnnotations: boolean) {
   const relay = memoryShareRelay();
   const registry = memoryShareRegistry();
   const stages: ShareFolderStage[] = [];
-  const link = await shareFolderAsLink({
+  const link = await createShareLink({
     papers, folder: `${PAPERS}/Group`, withAnnotations, relayUrl, registry, logger: h.ctx.logger,
     sources: { fs: h.fs, paths: posixPathOps, annotations: async (id) => (id === "a" ? [annotation] : []) },
     backendFor: () => relay.backend, onStage: (stage) => stages.push(stage),
@@ -29,7 +29,7 @@ async function share(withAnnotations: boolean) {
   return { stages, manifest: opened.share.manifest, registry };
 }
 
-describe("shareFolderAsLink", () => {
+describe("createShareLink", () => {
   it("uploads the folder's papers at any depth with their annotations, and lists the share", async () => {
     const { stages, manifest, registry } = await share(true);
     expect(manifest.folder).toBe("Group");

@@ -2,7 +2,7 @@
  * Shows one anchored popover at a time, used for the theme picker and the zoom menu.
  */
 import { clamp } from "./dom.js";
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 
 let current: { popover: HTMLElement; anchor: HTMLElement; cleanup: () => void } | null = null;
 const openListeners: Array<(open: boolean) => void> = [];
@@ -34,7 +34,7 @@ export function togglePopover(anchor: HTMLElement, content: HTMLElement, placeme
   closePopover();
   if (wasSameAnchor) { return; }
 
-  const popover = el("div", { class: "rd-popover", role: "dialog" }, content);
+  const popover = renderElement("div", { class: "rd-popover", role: "dialog" }, content);
   document.body.append(popover);
   const a = anchor.getBoundingClientRect();
   const p = popover.getBoundingClientRect();
@@ -66,14 +66,14 @@ export interface MenuItem {
  * @returns a menu element whose items close the popover before running.
  */
 export function buildMenu(items: readonly MenuItem[]): HTMLElement {
-  const menu = el("div", { class: "rd-menu", role: "menu" });
+  const menu = renderElement("div", { class: "rd-menu", role: "menu" });
   for (const item of items) {
-    if (item.separatorBefore) { menu.append(el("div", { class: "rd-menu-sep" })); }
-    const btn = el(
+    if (item.separatorBefore) { menu.append(renderElement("div", { class: "rd-menu-sep" })); }
+    const btn = renderElement(
       "button",
       { class: "rd-menu-item", type: "button", role: "menuitemradio", "aria-checked": item.checked ? "true" : "false" },
-      el("span", { class: "rd-menu-label" }, item.label),
-      item.hint ? el("span", { class: "rd-menu-hint" }, item.hint) : null,
+      renderElement("span", { class: "rd-menu-label" }, item.label),
+      item.hint ? renderElement("span", { class: "rd-menu-hint" }, item.hint) : null,
     );
     btn.addEventListener("click", () => { closePopover(); item.run(); });
     menu.append(btn);

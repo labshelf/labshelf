@@ -1,5 +1,5 @@
 // Holds the remote changes an editor does not show yet and moves the user's concurrent edits over them.
-import { applyChanges, sortChanges, type TextChange } from "./textChange.js";
+import { applyChanges, orderChanges, type TextChange } from "./textChange.js";
 
 const CARRIAGE_RETURN = 13;
 
@@ -21,7 +21,7 @@ function mapOffset(offset: number, changes: readonly TextChange[], bias: Bias): 
 
 /** A range keeps the other side's inserts at its edges, so neither side deletes text it never saw. */
 function rebaseChanges(changes: readonly TextChange[], over: readonly TextChange[], insertBias: Bias): TextChange[] {
-  return sortChanges(changes).map(({ start, end, text }) => {
+  return orderChanges(changes).map(({ start, end, text }) => {
     if (start === end) {
       const at = mapOffset(start, over, insertBias);
       return { start: at, end: at, text };
@@ -32,7 +32,7 @@ function rebaseChanges(changes: readonly TextChange[], over: readonly TextChange
 }
 
 /** One replacement that turns `from` into `to`; it never splits a CRLF pair. */
-export function replacementBetween(from: string, to: string): TextChange {
+export function deriveReplacementBetween(from: string, to: string): TextChange {
   const shorter = Math.min(from.length, to.length);
   let prefix = 0;
   while (prefix < shorter && from.charCodeAt(prefix) === to.charCodeAt(prefix)) { prefix++; }
@@ -53,7 +53,7 @@ export class PendingRemoteChanges {
   }
 
   push(changes: readonly TextChange[]): void {
-    if (changes.length > 0) { this.sets.push(sortChanges(changes)); }
+    if (changes.length > 0) { this.sets.push(orderChanges(changes)); }
   }
 
   /** The head set reached the editor. */
@@ -63,12 +63,12 @@ export class PendingRemoteChanges {
 
   /** Replaces the sets by one replacement, for when the exact remote changes are unknown. */
   reset(editorText: string, targetText: string): void {
-    this.sets = editorText === targetText ? [] : [[replacementBetween(editorText, targetText)]];
+    this.sets = editorText === targetText ? [] : [[deriveReplacementBetween(editorText, targetText)]];
   }
 
   /** Moves `local`, made on the editor text before them, over the pending sets; returns it as changes to the target text. */
   rebase(local: readonly TextChange[], editorAfter: string, targetBefore: string): TextChange[] {
-    let moving = sortChanges(local);
+    let moving = orderChanges(local);
     const rebased: TextChange[][] = [];
     for (const set of this.sets) {
       // Remote text sits before local text typed at the same point, on both sides.

@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { TypstSession } from "../../../src/typst/index";
-import { toCompilerPath } from "../../../src/typst/node/index";
+import { deriveTypstCompilerPath } from "../../../src/typst/node/index";
 import { imageSnippet, MATH_SYMBOLS, symbolSource, tableSnippet } from "../../../src/writing/snippet/index";
 import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../../support/typstFixtures";
@@ -21,7 +21,7 @@ async function compile(text: string) {
   await fs.mkdir(path.join(folder, "images"));
   await fs.writeFile(path.join(folder, "images", "dot.svg"), ONE_PIXEL_SVG);
   await fs.writeFile(path.join(folder, "main.typ"), TYPST_TEST_FONT_SETTING + text);
-  return session.compile({ root: toCompilerPath(folder), main: toCompilerPath(path.join(folder, "main.typ")), sources: new Map() });
+  return session.compile({ root: deriveTypstCompilerPath(folder), main: deriveTypstCompilerPath(path.join(folder, "main.typ")), sources: new Map() });
 }
 
 describe("Typst insertions", () => {

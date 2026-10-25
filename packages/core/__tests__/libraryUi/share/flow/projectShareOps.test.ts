@@ -1,12 +1,12 @@
 import type { ShareConnection, ShareConnectionState } from "../../../../src/collab/session";
-import { joinSharedProject, leaveSharedProject, shareProject, type ShareWorkflowPorts } from "../../../../src/collab/share/flows";
+import { joinSharedProject, leaveSharedProject, startProjectShare, type ShareFlowPorts } from "../../../../src/collab/share/flows";
 import { createProjectShareOps } from "../../../../src/libraryUi/share/flow";
 import type { ILogger } from "../../../../src/ports";
 import type { ProjectEntry, ProjectSettings } from "../../../../src/writing/project";
 
 jest.mock("../../../../src/collab/share/flows", () => ({
   ...jest.requireActual("../../../../src/collab/share/flows"),
-  shareProject: jest.fn(), joinSharedProject: jest.fn(), leaveSharedProject: jest.fn(), currentInvite: jest.fn(),
+  startProjectShare: jest.fn(), joinSharedProject: jest.fn(), leaveSharedProject: jest.fn(), readCurrentInvite: jest.fn(),
 }));
 
 const UNKNOWN = "This project is not in the open library.";
@@ -25,7 +25,7 @@ function setup(entries: ProjectEntry[], active: Record<string, ShareConnection> 
   const ports = {
     projects: { list: () => list, reload: async () => {} },
     shares: { active: (id: string) => active[id], isBusy: () => busy },
-  } as unknown as ShareWorkflowPorts;
+  } as unknown as ShareFlowPorts;
   const lines: unknown[][] = [];
   const logger: ILogger = { log: async (...a) => { lines.push(a); }, error: async (...a) => { lines.push(a); } };
   const open = jest.fn(async () => {});
@@ -49,14 +49,14 @@ describe("createProjectSharingOps", () => {
   it("refuses to share a trashed project", async () => {
     const { ops } = setup([ready("/p/t", { trashed: "2026-01-01" })]);
     await expect(ops.shareProject("/p/t", signal)).rejects.toThrow("This project is in the trash.");
-    expect(shareProject).not.toHaveBeenCalled();
+    expect(startProjectShare).not.toHaveBeenCalled();
   });
 
   it("maps a share outcome without its connection", async () => {
     const { ops } = setup([ready("/p/a")]);
-    (shareProject as jest.Mock).mockResolvedValue({ kind: "shared", invite: "inv", connection: {}, offer: {} });
+    (startProjectShare as jest.Mock).mockResolvedValue({ kind: "shared", invite: "inv", connection: {}, offer: {} });
     await expect(ops.shareProject("/p/a", signal)).resolves.toEqual({ kind: "shared", invite: "inv" });
-    expect(shareProject).toHaveBeenCalledWith(expect.anything(), { folder: "/p/a", shared: undefined, signal });
+    expect(startProjectShare).toHaveBeenCalledWith(expect.anything(), { folder: "/p/a", shared: undefined, signal });
   });
 
   it("rejects leaving an unshared project without calling the workflow", async () => {
@@ -68,7 +68,7 @@ describe("createProjectSharingOps", () => {
   it("rejects a share while the share is busy", async () => {
     const { ops } = setup([ready("/p/s", { shared: "s1" })], {}, true);
     await expect(ops.shareProject("/p/s", signal)).rejects.toThrow("This shared project is busy; try again in a moment.");
-    expect(shareProject).not.toHaveBeenCalled();
+    expect(startProjectShare).not.toHaveBeenCalled();
   });
 
   it("maps the share status", async () => {

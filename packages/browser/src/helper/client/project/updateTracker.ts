@@ -1,5 +1,5 @@
 // Keeps the text the helper holds per path so an edit can ship as changes, and so a `stale` reply can be answered with the whole text.
-import type { HelperEdit, TextChange } from "@labshelf/core/helper";
+import type { HelperChange, TextChange } from "@labshelf/core/helper";
 
 const MAX_REMEMBERED_EDITS = 256;
 
@@ -20,7 +20,7 @@ export class EditTracker {
   private readonly sent = new Map<string, string>();
 
   /** Records the edit and returns the frame body to send. */
-  apply(projectId: string, path: string, version: number, edit: HelperEdit): EditFrame {
+  apply(projectId: string, path: string, version: number, edit: HelperChange): EditFrame {
     const key = `${projectId}:${path}`;
     if ("text" in edit) {
       this.states.set(key, { version, text: edit.text });

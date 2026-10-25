@@ -27,7 +27,7 @@ function covers(areas: readonly PageArea[], at: Found): boolean {
     && area.top <= at.y - 3 && area.bottom >= at.y - 3);
 }
 
-describe("diffPages on real builds", () => {
+describe("comparePages on real builds", () => {
   const before = render("before.pdf", "0.913");
   const after = render("after.pdf", "FIRSTEDIT", "0.927");
   let changes: PdfChanges;

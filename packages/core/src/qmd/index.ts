@@ -5,12 +5,12 @@ export {
   ITEM_CLASS,
   parseItemFile,
   removeItem,
-  replaceItemBody,
+  setItemBody,
   serializeItemFile,
   type ItemFile,
   type ItemSegment,
   type LooseSegment,
-  type NewItem,
+  type CreateItemInput,
   type Segment,
 } from "./items/index.js";
 export * from "./conflict/index.js";

@@ -1,6 +1,6 @@
 /** Verifies loading and editing comments.json through a file access: an invalid file is never written and every edit starts from a fresh read. */
 import {
-  addThread, editCommentsDocument, loadCommentsDocument, replyToThread, setThreadResolved,
+  addThread, updateCommentsDocument, loadCommentsDocument, addThreadReply, setThreadResolved,
   type CommentsFileAccess, type CommentThread,
 } from "../../../src/collab/comments/index";
 
@@ -26,23 +26,23 @@ describe("comments file store", () => {
 
   it("creates the file on the first edit", async () => {
     const file = access(undefined);
-    await editCommentsDocument(file, (doc) => addThread(doc, thread("t1")));
+    await updateCommentsDocument(file, (doc) => addThread(doc, thread("t1")));
     expect((await loadCommentsDocument(file))?.threads).toHaveLength(1);
   });
 
   it("leaves an invalid file untouched and throws", async () => {
     const file = access("{ not json");
-    await expect(editCommentsDocument(file, (doc) => addThread(doc, thread("t1")))).rejects.toThrow(/left as it is/);
+    await expect(updateCommentsDocument(file, (doc) => addThread(doc, thread("t1")))).rejects.toThrow(/left as it is/);
     expect(file.writes).toBe(0);
     expect(file.text).toBe("{ not json");
   });
 
   it("reads again before writing, so a change made elsewhere is kept", async () => {
     const file = access(undefined);
-    await editCommentsDocument(file, (doc) => addThread(doc, thread("t1")));
+    await updateCommentsDocument(file, (doc) => addThread(doc, thread("t1")));
     const stale = await loadCommentsDocument(file);
-    await editCommentsDocument(file, (doc) => addThread(doc, thread("t2")));
-    await editCommentsDocument(file, (doc) => setThreadResolved(replyToThread(doc, "t1", thread("x").comments[0]!), "t1", true));
+    await updateCommentsDocument(file, (doc) => addThread(doc, thread("t2")));
+    await updateCommentsDocument(file, (doc) => setThreadResolved(addThreadReply(doc, "t1", thread("x").comments[0]!), "t1", true));
     expect(stale?.threads).toHaveLength(1);
     const ids = (await loadCommentsDocument(file))?.threads.map((each) => (each as CommentThread).id);
     expect(ids).toEqual(["t1", "t2"]);

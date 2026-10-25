@@ -1,6 +1,6 @@
 // Builds nested Space, folder and reference rows using the sidebar tree vocabulary.
-import { el } from "../../../../ui/dom/index.js";
-import { escapeHtml, icon, statusMark } from "../../../../ui/index.js";
+import { renderElement } from "../../../../ui/dom/index.js";
+import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../../ui/index.js";
 import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
 import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/viewModel/index.js";
 import type { SidebarSpacesState, SidebarSpaceActions } from "./spaceActions.js";
@@ -25,24 +25,24 @@ function acceptSpaceDrop(row: HTMLElement, actions: SidebarSpaceActions, id: str
 }
 
 function treeRow(key: string, label: string, depth: number, glyph: string, attrs: Record<string, string> = {}): HTMLElement {
-  return el("div", {
+  return renderElement("div", {
     class: `tree-row${attrs["aria-expanded"] === "false" ? " collapsed" : ""}`, role: "treeitem", "aria-level": String(depth + 1),
     "aria-selected": "false", "data-key": key, style: `--depth:${depth}`, title: label, ...attrs,
-    html: `<span class="tree-twisty${attrs["aria-expanded"] === undefined ? " leaf" : ""}">${icon("chevron-down")}</span>` +
+    html: `<span class="tree-twisty${attrs["aria-expanded"] === undefined ? " leaf" : ""}">${renderIcon("chevron-down")}</span>` +
       `<span class="tree-icon">${glyph}</span><span class="tree-label">${escapeHtml(label)}</span>`,
   });
 }
 
 function referenceRow(spaceId: string, paper: ResolvedPaper, depth: number): HTMLElement {
   const title = paper.missing ? "Not in your Library" : paper.title;
-  const mark = paper.missing ? icon("warning") : `<span role="img" aria-label="${STATUS_LABEL[paper.status]}">${statusMark(paper.status)}</span>`;
+  const mark = paper.missing ? renderIcon("warning") : `<span role="img" aria-label="${STATUS_LABEL[paper.status]}">${renderReadingStatusMark(paper.status)}</span>`;
   return treeRow(`space-paper:${spaceId}/${paper.id}`, title, depth, mark, { "data-space": spaceId, "data-space-paper": paper.id });
 }
 
 function appendTree(t: SidebarSpacesState, result: HTMLElement[], spaceId: string, tree: PapersTree, depth: number): void {
   for (const folder of tree.folders) {
     const key = `space-folder:${spaceId}/${folder.id}`;
-    const row = treeRow(key, folder.name, depth, icon("folder"), {
+    const row = treeRow(key, folder.name, depth, renderIcon("folder"), {
       "data-space": spaceId, "data-space-folder": folder.id, "aria-expanded": String(t.expanded.has(key)),
     });
     if (t.spaces) acceptSpaceDrop(row, t.spaces, spaceId, folder.id);
@@ -54,7 +54,7 @@ function appendTree(t: SidebarSpacesState, result: HTMLElement[], spaceId: strin
 
 function appendSpace(t: SidebarSpacesState, result: HTMLElement[], space: SidebarRow): void {
   const key = `space:${space.id}`;
-  const row = treeRow(key, space.name, 0, icon("layers"), {
+  const row = treeRow(key, space.name, 0, renderIcon("layers"), {
     "data-space": space.id, ...("tree" in space ? { "aria-expanded": String(t.expanded.has(key)) } : {}),
   });
   result.push(row);
@@ -66,7 +66,7 @@ function appendSpace(t: SidebarSpacesState, result: HTMLElement[], space: Sideba
 }
 
 export function renderSpaceRows(t: SidebarSpacesState): HTMLElement[] {
-  const rows = [treeRow("all-spaces", "All Spaces", 0, icon("layers"), { "data-all-spaces": "" })];
+  const rows = [treeRow("all-spaces", "All Spaces", 0, renderIcon("layers"), { "data-all-spaces": "" })];
   for (const space of t.spaceList) {
     const branch: HTMLElement[] = [];
     appendSpace(t, branch, space);
