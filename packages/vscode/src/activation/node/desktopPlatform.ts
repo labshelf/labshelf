@@ -49,7 +49,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     createSidecarPort: createNodeSidecarPort,
     openAiStorage,
     deviceLayout: createDeviceLocalLayout,
-    createProjectSaveTracking: (root, logger) => createProjectWriteTracking(fs, root, logger),
+    createProjectWriteTracking: (root, logger) => createProjectWriteTracking(fs, root, logger),
     createProjectData: (logger, deviceDirs, projectFs) => createProjectContent({ fs: projectFs, path, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
       scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir), logger,

@@ -37,7 +37,7 @@ export interface HostAdapters {
   openAiStorage: OpenAiStorage;
   deviceLayout(root: string): HostDeviceLayout;
   /** Project data over the library's writing projects; logger and dirs are the open library's, which change with it. */
-  createProjectSaveTracking(root: () => string | undefined, logger: ILogger): ProjectWriteTracking;
+  createProjectWriteTracking(root: () => string | undefined, logger: ILogger): ProjectWriteTracking;
   createProjectData(logger: ILogger, deviceDirs: ProjectDeviceDirs, fs: LibraryFileSystem): ProjectContentPort;
   /** Lists the unresolved conflict copies a sync tool left in the library, merging against this device's bases. */
   scanLibraryConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]>;

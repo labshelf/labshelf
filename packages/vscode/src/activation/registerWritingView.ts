@@ -114,7 +114,7 @@ interface WritingParts {
 }
 
 /** The host values the Writing view reads; `convertDocument` is absent where documents cannot be converted. */
-type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectSaveTracking" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
+type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectWriteTracking" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
   const { context, controller, host, projects, figures, readingLists, listPapers, adapters: { convertDocument } } = parts;
@@ -234,7 +234,7 @@ function createTrackedProjects(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
   host: WritingHost, logger: ILogger,
 ) {
-  const saves = adapters.createProjectSaveTracking(() => host.current()?.root, logger);
+  const saves = adapters.createProjectWriteTracking(() => host.current()?.root, logger);
   const data = adapters.createProjectData(logger, openLibraryDeviceDirs(controller, adapters.deviceLayout), saves.fs);
   const projects = new WritingProjects(host, adapters.paths, saves.fs, data);
   registerProjectWriteEvents(context, saves, logger);
