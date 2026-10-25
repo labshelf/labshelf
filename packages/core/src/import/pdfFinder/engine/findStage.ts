@@ -2,11 +2,73 @@
 import { isSupplementaryUrl } from "../client/index.js";
 import { reportError } from "../env.js";
 import { outranksVersion, type PdfVersion } from "../../../model/index.js";
-import { candidateVersion } from "../resolvers/index.js";
+import {
+  candidateVersion,
+  arxivResolver,
+  crossrefResolver,
+  europePmcResolver,
+  openalexResolver,
+  pageHintResolver,
+  pmcResolver,
+  publisherResolver,
+  customResolver,
+  semanticScholarResolver,
+  titleTwinResolver,
+  unpaywallResolver,
+} from "../resolvers/index.js";
 import type { PdfFetchOptions, PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
 import { deadline } from "./deadline.js";
-import { landingLookup } from "./findLanding.js";
-import { lookupPlan } from "./findPlan.js";
+import { fetchLandingPage } from "../../landing/index.js";
+
+export interface LookupStep {
+  resolver: PdfResolver;
+  /** Lookups whose answers this one reads off the context, so it starts once they settle. */
+  after?: readonly PdfResolver[];
+}
+
+const LEARNERS = [openalexResolver, semanticScholarResolver, europePmcResolver, titleTwinResolver];
+
+// INVARIANT: learners (OpenAlex, Semantic Scholar, Europe PMC, the title-only twin search) settle before PMC and the
+// second arXiv step, so the ids they reveal feed those; the publisher rules wait for the landing page, whose URL keys some platforms.
+// arXiv appears twice: an id known from the start downloads early, a learned one later; a URL is tried once.
+function lookupPlan(landing: PdfResolver): LookupStep[] {
+  return [
+    { resolver: pageHintResolver },
+    { resolver: landing },
+    { resolver: publisherResolver, after: [landing] },
+    { resolver: arxivResolver },
+    ...LEARNERS.map((resolver) => ({ resolver })),
+    { resolver: arxivResolver, after: LEARNERS },
+    { resolver: pmcResolver, after: LEARNERS },
+    { resolver: crossrefResolver },
+    { resolver: unpaywallResolver },
+    { resolver: customResolver },
+  ];
+}
+
+// The lookup cap cuts it first; this only bounds a host that ignores the abort.
+const PAGE_TIMEOUT_MS = 10_000;
+
+/** A resolver that reads the DOI's landing page with the download's cookies and headers, since publishers gate it like the PDF. */
+function landingLookup(settings: Pick<PdfFetchOptions, "credentials" | "headers">): PdfResolver {
+  return {
+    name: "landing",
+    async resolve(ctx, env) {
+      if (ctx.landingUrl || !ctx.doi) return [];
+      const facts = await fetchLandingPage(`https://doi.org/${ctx.doi}`, {
+        fetch: env.fetch,
+        timeoutMs: PAGE_TIMEOUT_MS,
+        logger: env.logger,
+        ...(settings.credentials ? { credentials: settings.credentials } : {}),
+        ...(settings.headers ? { headers: settings.headers } : {}),
+      });
+      if (!facts) return [];
+      // Publisher rules key some platforms by the landing URL, and downloads send it as Referer.
+      ctx.landingUrl = facts.pageUrl;
+      return facts.pdfCandidates.map((c) => c.url);
+    },
+  };
+}
 
 /** A URL to download, labelled with whoever proposed it and, when known, the version of the paper it holds. */
 export interface Candidate {

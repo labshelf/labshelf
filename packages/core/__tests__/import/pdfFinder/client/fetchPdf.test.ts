@@ -2,11 +2,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { fetchPdf, isBotCheck, isPdfBytes, nextHopsFromHtml } from "@labshelf/core";
-import type { InTabAnswer } from "@labshelf/core";
+import { fetchPdf, isBotCheck, isPdfBytes, nextHopsFromHtml, type InTabAnswer } from "@labshelf/core";
 
 import { downloadPdf } from "../../../../src/import/pdfFinder/client/index";
-import type { HopSettings } from "../../../../src/import/pdfFinder/client/fetchOnce";
+import type { HopSettings } from "../../../../src/import/pdfFinder/client/fetchPdf";
 import { makeEnv } from "../../../../src/import/pdfFinder/env";
 import { PDF, html, makeFindingHarness, pdf } from "../../../support/pdfFindingHarness";
 

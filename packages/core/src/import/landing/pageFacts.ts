@@ -1,10 +1,116 @@
 // Interprets a page's citation_* / Dublin Core / PRISM meta tags into paper facts and PDF links to try.
 // Publishers emit these tags for Google Scholar, so they are present even when a registry lookup fails.
 import { extractYear, type ResolvedMetadata } from "../metadata/index.js";
-import { authorsOf, keywordsOf, pagesOf, squash } from "./citationFields.js";
-import { identifiersOf } from "./pageIdentifiers.js";
-import { pdfCandidatesOf } from "./pdfCandidates.js";
-import type { PageFacts, RawPage } from "./rawPage.js";
+import type { PageFacts, RawPage, PdfCandidate } from "./rawPage.js";
+import {
+  arxivIdFromDoi,
+  arxivIdFromUrl,
+  extractDoi,
+  normalizeArxivId,
+  pmidFromUrl,
+  type DetectedIds,
+} from "../identifiers/index.js";
+
+// Links whose URL says they are not the article itself.
+const NOT_THE_ARTICLE = /supp|suppl|supplement|appendix|figure|poster|slides|review_history|license|terms|guide|instruction|author-?info|policy|catalog|brochure/i;
+const MAX_ANCHOR_CANDIDATES = 4;
+
+function pdfCandidatesOf(raw: RawPage, metaPdfUrls: string[], ids: DetectedIds): PdfCandidate[] {
+  const out: PdfCandidate[] = [];
+  const seen = new Set<string>();
+  const add = (url: string | undefined): void => {
+    if (!url) return;
+    let abs: string;
+    try { abs = new URL(url, raw.pageUrl).href; } catch { return; }
+    if (!/^https?:/.test(abs) || seen.has(abs)) return;
+    seen.add(abs);
+    out.push({ url: abs, source: "page" });
+  };
+
+  if (raw.pageIsPdf) add(raw.pageUrl);
+  raw.pdfLinks.filter((l) => l.kind === "embed").forEach((l) => add(l.url));
+  metaPdfUrls.forEach(add);
+  raw.pdfLinks.filter((l) => l.kind === "alternate").forEach((l) => add(l.url));
+
+  // Plain anchors are a weaker signal: keep the ones that name this paper or sit
+  // on the publisher's own host, never ones that are plainly something else.
+  const host = hostOf(raw.pageUrl);
+  const own = [ids.doi, ids.arxivId].filter((x): x is string => !!x).map((x) => x.toLowerCase());
+  raw.pdfLinks
+    .filter((l) => l.kind === "labelled" || l.kind === "href")
+    .filter((l) => !NOT_THE_ARTICLE.test(l.url))
+    .filter((l) => own.some((id) => safeDecode(l.url).toLowerCase().includes(id)) || hostOf(l.url) === host)
+    .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "labelled" ? -1 : 1))
+    .slice(0, MAX_ANCHOR_CANDIDATES)
+    .forEach((l) => add(l.url));
+  return out;
+}
+
+function hostOf(url: string): string {
+  try { return new URL(url).hostname; } catch { return ""; }
+}
+
+function safeDecode(url: string): string {
+  try { return decodeURIComponent(url); } catch { return url; }
+}
+
+const DOI_META_KEYS = ["citation_doi", "dc.identifier.doi", "prism.doi", "bepress_citation_doi", "doi", "dc.identifier", "dcterms.identifier", "og:doi"];
+
+/** @param first returns the first non-blank value among the given meta keys */
+function identifiersOf(raw: RawPage, first: (...keys: string[]) => string | undefined): DetectedIds {
+  const ids: DetectedIds = {};
+  // dc.identifier may hold an ISBN or a URL, so take the first value that is a DOI.
+  const metaDoi = DOI_META_KEYS
+    .flatMap((key) => raw.meta[key] ?? [])
+    .map((value) => extractDoi(value))
+    .find((d): d is string => !!d);
+  // A page cites many DOIs in its references; a lone doi.org link is its own.
+  const linkDois = [...new Set(raw.doiLinks.map((l) => extractDoi(l)).filter((d): d is string => !!d).map((d) => d.toLowerCase()))];
+  const doi = metaDoi ?? extractDoi(raw.pageUrl) ?? (linkDois.length === 1 ? extractDoi(raw.doiLinks[0]) : undefined);
+  if (doi) ids.doi = doi;
+  const metaArxiv = first("citation_arxiv_id");
+  const arxivId = (metaArxiv && normalizeArxivId(metaArxiv)) ?? arxivIdFromUrl(raw.pageUrl) ?? arxivIdFromDoi(doi);
+  if (arxivId) ids.arxivId = arxivId;
+  const pmid = first("citation_pmid") ?? pmidFromUrl(raw.pageUrl);
+  if (pmid && /^\d{6,9}$/.test(pmid)) ids.pmid = pmid;
+  return ids;
+}
+
+function squash(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/** Normalises authors to "Given Family", whichever form the page used. */
+export function authorsOf(citationAuthors: string[], dcCreators: string[], joined?: string): string[] {
+  let list = citationAuthors.length ? citationAuthors : dcCreators;
+  if (!list.length && joined) list = joined.split(/\s*;\s*/);
+  const out: string[] = [];
+  for (const raw of list) {
+    const name = squash(raw);
+    if (!name) continue;
+    const comma = /^([^,]+),\s*(.+)$/.exec(name);
+    const flipped = comma ? `${comma[2]} ${comma[1]}` : name;
+    if (!out.includes(flipped)) out.push(flipped);
+  }
+  return out;
+}
+
+/** "45" + "56" → "45-56"; a single page stays as is. */
+export function pagesOf(first: string | undefined, last: string | undefined): string | undefined {
+  if (!first) return undefined;
+  return last && last !== first ? `${first}-${last}` : first;
+}
+
+function keywordsOf(values: string[]): string[] {
+  const out: string[] = [];
+  for (const v of values) {
+    for (const k of v.split(/\s*[;,]\s*/)) {
+      const kw = squash(k);
+      if (kw && kw.length <= 80 && !out.some((x) => x.toLowerCase() === kw.toLowerCase())) out.push(kw);
+    }
+  }
+  return out.slice(0, 20);
+}
 
 const TITLE_KEYS = ["citation_title", "dc.title", "prism.title", "bepress_citation_title"];
 

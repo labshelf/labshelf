@@ -5,7 +5,19 @@ import { errorMessage } from "../../../logging/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ResolvedMetadata } from "../../metadata/index.js";
 import type { PdfDocumentLike, PdfDocumentOpener, TextBlock } from "../pdfDocument.js";
-import { describePdfError } from "./pdfErrors.js";
+
+function describePdfError(error: unknown): Error {
+  const name = (error as { name?: unknown })?.name;
+  const message = errorMessage(error);
+
+  if (name === "PasswordException") {
+    return new Error("The PDF is password-protected and could not be read.");
+  }
+  if (name === "InvalidPDFException" || /\b(root reference|xref|invalid pdf)\b/i.test(message)) {
+    return new Error("The PDF is corrupted or incomplete and could not be read.");
+  }
+  return error instanceof Error ? error : new Error(message);
+}
 
 // Front matter carrying the title, authors and DOI rarely runs past page 3.
 const FRONT_MATTER_PAGES = 3;

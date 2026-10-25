@@ -1,12 +1,31 @@
 /** Builds the ParsedPdfImport record from the merged metadata of every source. */
 import { makeCiteKey } from "../../../library/index.js";
-import { mergeMetadata, SOURCE_TRUST, type MetadataSource } from "../../metadata/index.js";
+import {
+  mergeMetadata,
+  SOURCE_TRUST,
+  type MetadataSource,
+  type MetadataConfidence,
+  type ResolvedMetadata,
+} from "../../metadata/index.js";
 import type { DetectedIdentifier } from "../../identifiers/index.js";
 import { normalizeAuthors } from "../authors.js";
 import { yearFromText } from "../publicationYear.js";
 import { normalizeTitle } from "../titleQuality.js";
 import type { ParsedPdfImport } from "../pdfDocument.js";
-import { gradeConfidence } from "./confidence.js";
+
+function gradeConfidence(
+  identifierConfirmed: boolean,
+  resolvedOnline: boolean,
+  metadata: ResolvedMetadata,
+): MetadataConfidence {
+  if (identifierConfirmed) {
+    return "high";
+  }
+  if (resolvedOnline) {
+    return "medium";
+  }
+  return metadata.title ? "medium" : "low";
+}
 
 export interface RecordInput {
   sources: MetadataSource[];
