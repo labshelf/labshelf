@@ -46,6 +46,14 @@ test('folder-term: top-level is a domain, deeper is one known term, tools never'
   assert.deepEqual(path('hash/paper/pdfjsPaper.ts'), []);
 });
 
+test('a top-level folder that is a declared domain wins over a compoundOnly entry of the same word', () => {
+  const clash = buildIndex({ ...vocab, domains: { ...vocab.domains, options: { def: 'o' } }, compoundOnly: { options: { use: ['optionsPage'] } } });
+  const clashPath = (rel) => rules(checkPath(clash, `packages/browser/src/${rel}`));
+  assert.deepEqual(clashPath('options/paper.ts'), []);
+  assert.ok(clashPath('hash/options/paper.ts').includes('compound-only'));
+  assert.deepEqual(rules(checkExportName(clash, 'readOptions', 'function')), ['compound-only']);
+});
+
 test('file-case: camelCase, or PascalCase for a class', () => {
   assert.deepEqual(rules(path('hash/PaperParser.ts')), ['file-case']);
   assert.deepEqual(path('hash/PaperParser.ts', { classFile: true }), []);

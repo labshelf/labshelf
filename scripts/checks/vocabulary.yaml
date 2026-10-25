@@ -251,6 +251,7 @@ subjects:
   fullBuild: { def: "A complete Helper build." }
   problem: { def: "A diagnostic shown to the user from a build or a check.", syn: [finding, diagnostic, issue] }
   check: { def: "A rule run over a project that yields problems.", syn: [lint, bibLint] }
+  privacyCheck: { def: "The privacy checks the helper runs at start-up." }
   bibliography: { def: "A .bib file (bib is only the BibTeX term).", syn: [bib] }
   bibEntry: { def: "An entry of a BibTeX file." }
   label: { def: "A LaTeX label and its refs." }
@@ -264,6 +265,7 @@ subjects:
   release: { def: "A published app release." }
   toolchain: { def: "An installed TeX or Typst distribution." }
   typstCompiler: { def: "The Typst compiler." }
+  typstStdlib: { def: "The catalogs of Typst's standard library." }
   managedTex: { def: "The TeX LabShelf installs itself." }
   systemTex: { def: "The TeX already on the machine." }
   toolsDir: { def: "Tools shared by the apps." }
@@ -284,6 +286,7 @@ subjects:
   readerHtml: { def: "The HTML a reader shows." }
   presence: { def: "Who is online in a share.", syn: [awareness] }
   mirror: { def: "The disk copy of a shared project." }
+  lease: { def: "Exclusive claim of a mirror on a project folder." }
   comment: { def: "A .qmd comment item (a thread groups them). Review notes are comments." }
   thread: { def: "A group of comments." }
   account: { def: "A relay account." }
@@ -299,6 +302,7 @@ subjects:
   cellOutput: { def: "The result of running a .qmd cell." }
   body: { def: "The body of a .qmd item." }
   completion: { def: "Editor completion for LaTeX and Typst." }
+  snippet: { def: "Text an editor inserts at the cursor, with tab stops." }
   syntax: { def: "Syntax of a language, for highlighting." }
   figure: { def: "A figure of a paper or a project." }
   rule: { def: "A rule of a check." }
@@ -327,6 +331,7 @@ subjects:
   listView: { def: "A list panel." }
   viewModel: { def: "The data a view shows." }
   shareLink: { def: "A link to a folder of papers." }
+  shareBlob: { def: "A content-addressed binary file of a share." }
   shareDialog: { def: "The dialog that shares a project or a folder." }
   bridgeEntry: { def: "The bridge process entry." }
   helperEntry: { def: "The app acting as the Helper." }
@@ -380,6 +385,7 @@ compoundOnly:
   record: { use: [paperRecord, writeRecord], instead: [docLogEntry] }
   status: { use: [], instead: [buildState] }
   manifest: { use: [shareManifest, templateManifest, hostManifest, extensionManifest, releaseManifest] }
+  blob: { use: [shareBlob] }
   key: { use: [citeKey, shareKey, linkKey, docKey, libraryKey], instead: [shortcut, keymap] }
   id: { use: [paperId] }
   state: { use: [buildState, deviceState], instead: [readingPosition] }
