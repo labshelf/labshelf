@@ -4,24 +4,24 @@
 import { createDesignToken, type DesignToken } from "./designToken.js";
 
 const CODE_ROLES = ["keyword", "command", "argument", "string", "number", "math", "comment", "heading", "reference", "bracket"] as const;
-export type CodeRole = (typeof CODE_ROLES)[number];
+export type SyntaxRole = (typeof CODE_ROLES)[number];
 
 export const CODE_THEME_NAMES = ["labshelf", "one", "github", "catppuccin", "solarized"] as const;
-export type CodeThemeName = (typeof CODE_THEME_NAMES)[number];
+export type SyntaxThemeId = (typeof CODE_THEME_NAMES)[number];
 
 export interface CodeTheme {
   label: string;
-  colors: Record<CodeRole, DesignToken>;
+  colors: Record<SyntaxRole, DesignToken>;
 }
 
 const theme = (label: string, dark: string[], light: string[]): CodeTheme => ({
   label,
-  colors: Object.fromEntries(CODE_ROLES.map((role, i) => [role, createDesignToken(dark[i]!, light[i]!)])) as Record<CodeRole, DesignToken>,
+  colors: Object.fromEntries(CODE_ROLES.map((role, i) => [role, createDesignToken(dark[i]!, light[i]!)])) as Record<SyntaxRole, DesignToken>,
 });
 
 // Colours follow each theme's published palette, in CODE_ROLES order; a few are darkened or lightened just enough
 // to reach 4.5:1 on the app background, which every theme keeps.
-export const CODE_THEMES: Record<CodeThemeName, CodeTheme> = {
+export const CODE_THEMES: Record<SyntaxThemeId, CodeTheme> = {
   labshelf: theme("LabShelf",
     ["#c586c0", "#569cd6", "#4ec9b0", "#ce9178", "#b5cea8", "#dcdcaa", "#6a9955", "#569cd6", "#9cdcfe", "#ffd700"],
     ["#af00db", "#0000ff", "#267e97", "#a31515", "#098658", "#795e26", "#008000", "#800000", "#001080", "#0431fa"]),

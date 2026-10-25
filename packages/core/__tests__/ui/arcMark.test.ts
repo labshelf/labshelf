@@ -3,7 +3,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ARC_PROGRESSES, ARC_TONES, ARC_TONE_COLORS, renderArcMarkSvg } from "@labshelf/core";
+import { ARC_STATES, ARC_KINDS, ARC_TONE_COLORS, renderArcMarkSvg } from "@labshelf/core";
 
 const TOKENS_CSS = readFileSync(join(__dirname, "../../src/ui/dom/tokens.css"), "utf8");
 const INLINE = 'viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"';
@@ -36,15 +36,15 @@ describe("renderArcMarkSvg", () => {
   });
 
   it("renders a distinct mark for each tone and progress", () => {
-    const all = ARC_TONES.flatMap((tone) => ARC_PROGRESSES.map((progress) => renderArcMarkSvg(tone, progress)));
-    expect(new Set(all).size).toBe(ARC_TONES.length * ARC_PROGRESSES.length);
+    const all = ARC_KINDS.flatMap((tone) => ARC_STATES.map((progress) => renderArcMarkSvg(tone, progress)));
+    expect(new Set(all).size).toBe(ARC_KINDS.length * ARC_STATES.length);
   });
 });
 
 describe("ARC_TONE_COLORS", () => {
   const [dark, light] = TOKENS_CSS.split(':root[data-theme="light"]');
 
-  it.each(ARC_TONES)("resolves %s to the --ls-mark token in both themes", (tone) => {
+  it.each(ARC_KINDS)("resolves %s to the --ls-mark token in both themes", (tone) => {
     expect(dark).toContain(`--ls-mark-${tone}: ${ARC_TONE_COLORS[tone].dark};`);
     expect(light).toContain(`--ls-mark-${tone}: ${ARC_TONE_COLORS[tone].light};`);
   });

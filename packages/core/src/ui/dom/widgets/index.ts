@@ -3,7 +3,7 @@
  */
 export { showMenu, closeMenu, type MenuItem, type MenuEntry, type MenuAnchor, type MenuOptions } from "./menu.js";
 export { showDialog, askDialog, type DialogButton, type DialogOptions } from "./dialog.js";
-export { pickQuickEntry, askInputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickPickSeparator, type InputBoxOptions } from "./quickInput.js";
+export { pickQuickEntry, askInputBox, type QuickPickEntry, type QuickPickItem, type QuickPickOptions, type QuickInputSeparator, type InputBoxOptions } from "./quickInput.js";
 export { showToast, type ToastKind } from "./showToast.js";
 export { openProgressDialog, type ProgressDialog, type ProgressDialogOptions } from "./openProgressDialog.js";
 export { renderArcMarkElement } from "./arcMark.js";

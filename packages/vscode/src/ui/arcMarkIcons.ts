@@ -1,10 +1,10 @@
 // Resolves the light/dark baked mark icon files (Arc marks) for native tree items.
 // PLATFORM: TreeItem icons cannot read CSS variables, and the workbench CSP blocks icons served from globalStorage (vscode-userdata:); build/arcMarks.mjs bakes each colour into SVG files under out/marks/ inside the extension folder.
 import * as vscode from "vscode";
-import type { ArcProgress, ArcTone } from "@labshelf/core";
+import type { ArcState, ArcKind } from "@labshelf/core";
 
 export type ThemedIcon = { light: vscode.Uri; dark: vscode.Uri };
-export type ArcIcon = (tone: ArcTone, progress: ArcProgress) => ThemedIcon;
+export type ArcIcon = (tone: ArcKind, progress: ArcState) => ThemedIcon;
 
 function themedMark(extensionUri: vscode.Uri, name: string): ThemedIcon {
   return {

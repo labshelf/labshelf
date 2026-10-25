@@ -1,7 +1,7 @@
 // Builds a group of toggle buttons where exactly one option is pressed and a click reports its id.
 import { renderElement } from "../../dom.js";
 
-export interface SegmentedOption {
+export interface FilterOption {
   id: string;
   label: string;
   count?: number;
@@ -9,7 +9,7 @@ export interface SegmentedOption {
 
 export interface SegmentedFilterOptions {
   label: string;
-  options: readonly SegmentedOption[];
+  options: readonly FilterOption[];
   selected: string;
   onSelect(id: string): void;
 }

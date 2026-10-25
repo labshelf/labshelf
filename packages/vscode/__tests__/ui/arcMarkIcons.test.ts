@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import * as vscode from "vscode";
-import { ARC_PROGRESSES, ARC_TONES, ARC_TONE_COLORS, renderArcMarkSvg } from "@labshelf/core";
+import { ARC_STATES, ARC_KINDS, ARC_TONE_COLORS, renderArcMarkSvg } from "@labshelf/core";
 
 import { createArcIcons } from "../../src/ui";
 
@@ -23,7 +23,7 @@ describe("build/arcMarks.mjs", () => {
       const script = `import("./build/arcMarks.mjs").then((m) => m.writeArcMarks(${JSON.stringify(outDir)}))`;
       execFileSync(process.execPath, ["-e", script], { cwd: resolve(__dirname, "../.."), stdio: "pipe" });
       const marks = join(outDir, "marks");
-      expect(readdirSync(marks)).toHaveLength(ARC_TONES.length * ARC_PROGRESSES.length * 2);
+      expect(readdirSync(marks)).toHaveLength(ARC_KINDS.length * ARC_STATES.length * 2);
       expect(readFileSync(join(marks, "err-full-light.svg"), "utf8")).toBe(renderArcMarkSvg("err", "full", ARC_TONE_COLORS.err.light));
       expect(readFileSync(join(marks, "accent-none-dark.svg"), "utf8")).toBe(renderArcMarkSvg("accent", "none", ARC_TONE_COLORS.accent.dark));
     } finally {

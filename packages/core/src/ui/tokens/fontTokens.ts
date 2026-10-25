@@ -4,15 +4,15 @@
 import { createDesignToken, type DesignToken } from "./designToken.js";
 
 export const CODE_FONT_NAMES = ["system", "jetbrains-mono", "fira-code", "atkinson-hyperlegible-mono", "opendyslexic"] as const;
-export type CodeFontName = (typeof CODE_FONT_NAMES)[number];
+export type SyntaxFontId = (typeof CODE_FONT_NAMES)[number];
 
-export interface CodeFont {
+export interface SyntaxFont {
   label: string;
   family: string;
 }
 
 // Every family but the system stack is a font file the browser extension bundles (see its build/vendorFonts.mjs).
-export const CODE_FONTS: Record<CodeFontName, CodeFont> = {
+export const CODE_FONTS: Record<SyntaxFontId, SyntaxFont> = {
   system: { label: "System monospace", family: "var(--ls-mono)" },
   "jetbrains-mono": { label: "JetBrains Mono", family: '"JetBrains Mono", var(--ls-mono)' },
   "fira-code": { label: "Fira Code", family: '"Fira Code", var(--ls-mono)' },

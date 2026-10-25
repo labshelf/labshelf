@@ -1,14 +1,14 @@
 // Shows a figure as a Writing view row: stale or missing marked, the newer inputs and the command in the tooltip, opened on click.
 import * as vscode from "vscode";
 
-import type { ArcTone, PathOps } from "@labshelf/core";
+import type { ArcKind, PathOps } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { FigureNode } from "./figureNode.js";
 
 const STALE_FIGURE_CONTEXT = "labshelfFigureStale";
 const FRESH_FIGURE_CONTEXT = "labshelfFigure";
 
-const TONE: Record<FigureNode["state"]["status"], ArcTone> = { stale: "warn", missing: "err", fresh: "ok" };
+const TONE: Record<FigureNode["state"]["status"], ArcKind> = { stale: "warn", missing: "err", fresh: "ok" };
 
 function tooltip(node: FigureNode): string {
   const { state } = node;

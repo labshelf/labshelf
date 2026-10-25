@@ -1,6 +1,6 @@
 // Persists browser workspace preferences in localStorage.
 import {
-  CODE_FONT_NAMES, CODE_THEME_NAMES, normalizePrefs, type CodeFontName, type CodeThemeName, type LibraryUiPrefs, type PrefsPort,
+  CODE_FONT_NAMES, CODE_THEME_NAMES, normalizePrefs, type SyntaxFontId, type SyntaxThemeId, type LibraryUiPrefs, type PrefsPort,
 } from "@labshelf/core";
 
 export const PREFS_KEY = "labshelf.library.prefs";
@@ -29,8 +29,8 @@ interface DetailPanePrefs {
 }
 
 interface CodeStyle {
-  codeTheme: CodeThemeName;
-  codeFont: CodeFontName;
+  codeTheme: SyntaxThemeId;
+  codeFont: SyntaxFontId;
 }
 
 function readRaw(storage: PrefsStorage): Record<string, unknown> {

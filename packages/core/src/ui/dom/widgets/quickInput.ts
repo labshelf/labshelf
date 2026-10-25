@@ -11,12 +11,12 @@ export interface QuickPickItem<T> {
 }
 
 /** A non-selectable category heading; it shows only while an item follows it in the filtered list. */
-export interface QuickPickSeparator {
+export interface QuickInputSeparator {
   kind: "separator";
   label: string;
 }
 
-export type QuickPickEntry<T> = QuickPickItem<T> | QuickPickSeparator;
+export type QuickPickEntry<T> = QuickPickItem<T> | QuickInputSeparator;
 
 export interface QuickPickOptions {
   title?: string;
@@ -50,7 +50,7 @@ function quickBox(title: string | undefined, input: HTMLInputElement, below: HTM
 function filterEntries<T>(entries: QuickPickEntry<T>[], toks: string[]): QuickPickEntry<T>[] {
   const matches = (it: QuickPickItem<T>): boolean => toks.every((t) => `${it.label} ${it.description ?? ""}`.toLowerCase().includes(t));
   const kept: QuickPickEntry<T>[] = [];
-  let heading: QuickPickSeparator | undefined;
+  let heading: QuickInputSeparator | undefined;
   for (const entry of entries) {
     if ("kind" in entry) { heading = entry; continue; }
     if (!matches(entry)) continue;

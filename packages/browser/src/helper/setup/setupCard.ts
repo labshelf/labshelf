@@ -6,7 +6,7 @@ import {
   createToneLine,
   renderActionButton,
   renderSettingRow,
-  type ToneLineTone,
+  type ToneLineKind,
 } from "@labshelf/core/dom";
 import type {
   OnHelperProgress,
@@ -59,7 +59,7 @@ interface SetupActions {
 
 interface SetupView {
   text: string;
-  tone: ToneLineTone;
+  tone: ToneLineKind;
   controls: Node[];
 }
 
