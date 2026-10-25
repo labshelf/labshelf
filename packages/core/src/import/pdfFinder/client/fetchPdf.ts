@@ -11,7 +11,7 @@ import { errorMessage } from "../../../logging/index.js";
 const MAX_PDF_BYTES = 200 * 1024 * 1024;
 const MAX_HTML_BYTES = 4 * 1024 * 1024;
 
-export interface FetchAnswer {
+interface FetchAnswer {
   finalUrl: string;
   outcome: FetchOutcome;
   /** Absent when the request failed before any response. */

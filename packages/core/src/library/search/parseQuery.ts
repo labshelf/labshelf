@@ -4,7 +4,7 @@ import { emptyQuery, type Query, type HasKey, type SearchField } from "./query.j
 import { tokenize } from "./tokenize.js";
 import type { PaperStatus } from "../readingStatus/index.js";
 
-export interface YearBounds {
+interface YearBounds {
   min?: number;
   max?: number;
 }

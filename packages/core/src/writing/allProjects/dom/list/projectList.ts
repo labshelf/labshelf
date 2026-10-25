@@ -18,7 +18,7 @@ import { escapeHtml, icon } from "../../../../ui/index.js";
 import { compactTime } from "../../../../library/index.js";
 import { deadlineText } from "../../deadlineText.js";
 
-export interface ProjectRowView {
+interface ProjectRowView {
   place: ProjectPlace;
   terms: string[];
   now: number;

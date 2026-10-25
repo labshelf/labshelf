@@ -15,7 +15,7 @@ import { icon } from "../../ui/index.js";
 import { el } from "../../ui/dom/index.js";
 import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
 
-export interface PublishLayoutParts {
+interface PublishLayoutParts {
   project: PublishProject;
   headingId: string;
   onBack(): void;
@@ -24,7 +24,7 @@ export interface PublishLayoutParts {
   done: HTMLElement;
 }
 
-export interface PublishLayout {
+interface PublishLayout {
   element: HTMLElement;
   heading: HTMLElement;
   preview: HTMLElement;
@@ -72,7 +72,7 @@ interface PublishState {
   thumbnail: string | undefined;
 }
 
-export type PublishOutcome = "updated" | "signedIn" | "submitted" | "ignored";
+type PublishOutcome = "updated" | "signedIn" | "submitted" | "ignored";
 
 const initialPublishState = (): PublishState => ({
   results: [], running: false, login: undefined, signingIn: false, submitting: false, error: undefined, thumbnail: undefined,
@@ -108,7 +108,7 @@ function applyHostMessage(state: PublishState, message: HostToGallery): PublishO
   }
 }
 
-export interface PublishDone {
+interface PublishDone {
   element: HTMLElement;
   /** Sets the pull request link; anything but an https URL leaves the link out. */
   setUrl(url: string): void;

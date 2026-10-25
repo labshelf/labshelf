@@ -4,7 +4,7 @@ import type { PreviewRoots, WebviewToHost, CheckLimitsChange } from "../../../in
 import { closePopover, togglePopover } from "../../elements/index.js";
 import type { CountUpTo } from "../../../../writing/project/index.js";
 
-export interface LimitValues {
+interface LimitValues {
   /** The shown root's path; limits are saved per root. */
   file: string;
   pages: number | undefined;

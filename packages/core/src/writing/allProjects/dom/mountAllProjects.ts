@@ -17,7 +17,7 @@ import { createDetailRequests } from "./detailPane/index.js";
 import { createProjectExpansion, type ProjectExpansion } from "./tray/index.js";
 import { escapeHtml, icon } from "../../../ui/index.js";
 
-export interface EmptyStateOptions {
+interface EmptyStateOptions {
   place: ProjectPlace;
   query: string;
   onClearQuery: () => void;

@@ -39,7 +39,7 @@ function subjectText(lang: RequestLanguage, title: string): string {
   return `${WORDING[lang].subject} "${title}"`;
 }
 
-export interface BodyParts {
+interface BodyParts {
   citation: string;
   /** The DOI resolver address, when the paper has a DOI. */
   link: string | undefined;

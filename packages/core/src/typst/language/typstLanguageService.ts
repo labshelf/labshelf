@@ -37,7 +37,7 @@ type TypstSymbol =
   | { kind: "label"; found: Located<TypstLabelDefinition> }
   | { kind: "citation"; found: Located<BibEntry> };
 
-export interface TypstSymbolAt { from: number; to: number; symbol: TypstSymbol }
+interface TypstSymbolAt { from: number; to: number; symbol: TypstSymbol }
 
 /** What the word around `offset` refers to; null for plain text, comments, raw text, strings and unknown names. */
 async function typstSymbolAt(files: ProjectFiles, offset: number): Promise<TypstSymbolAt | null> {

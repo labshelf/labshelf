@@ -44,7 +44,7 @@ function stringEnd(text: string, quote: number): number {
   return text.length - 1;
 }
 
-export interface TypstLetHead {
+interface TypstLetHead {
   name: string;
   from: number;
   to: number;

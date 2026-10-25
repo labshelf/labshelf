@@ -20,7 +20,7 @@ import { withIncludeOnlyFile } from "./includeOnlyFile.js";
 import { runSectionPreview, shownPdfName } from "./runSectionPreview.js";
 import { preambleFormat } from "./buildPreambleFormat.js";
 
-export interface PreviewPlanInput {
+interface PreviewPlanInput {
   toolchain: LatexToolchain;
   projectFolder: string;
   main: string;
@@ -32,7 +32,7 @@ export interface PreviewPlanInput {
   logger: ILogger;
 }
 
-export interface PreviewPlan {
+interface PreviewPlan {
   command: BuildCommand;
   /** The chapter to hand the format through the include-only file; the command carries it when no format is used. */
   includeOnlyFile: string | undefined;

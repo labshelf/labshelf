@@ -8,7 +8,7 @@ import { runCancellable } from "../../../latex/build/node/index.js";
 import type { LatexToolchain } from "../../../latex/toolchain/index.js";
 import { findExecutable } from "../../../latex/toolchain/node/index.js";
 
-export interface LatexdiffRequest {
+interface LatexdiffRequest {
   beforeMain: string;
   afterMain: string;
   /** Where latexdiff's stdout and stderr are kept. */

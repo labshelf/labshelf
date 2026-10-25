@@ -13,11 +13,11 @@ import { openPdfForOcr, type OcrDocument } from "./ocrDocument.js";
 import type { TesseractOcrEngine } from "./tesseractOcrEngine.js";
 import { errorMessage } from "../../../logging/index.js";
 
-export type RewriteTarget =
+type RewriteTarget =
   | { status: "ready"; target: PDFDocument }
   | Extract<TextLayerOutcome, { status: "unavailable" }>;
 
-export interface OverlayResult {
+interface OverlayResult {
   cancelled: boolean;
   pagesAdded: number;
   pagesFailed: number;

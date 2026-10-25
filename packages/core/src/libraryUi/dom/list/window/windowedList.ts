@@ -51,7 +51,7 @@ interface ListModel {
 }
 
 /** The groups that the flat rows `start` to `end` show; `stickyLabel` is set when the first group's label sits above `start`. */
-export interface GroupWindow {
+interface GroupWindow {
   groups: PaperGroup[];
   stickyLabel: boolean;
 }

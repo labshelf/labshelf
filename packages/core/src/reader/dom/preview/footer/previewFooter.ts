@@ -12,7 +12,7 @@ interface LoadedOutline {
   pages: Array<number | null>;
 }
 
-export interface Crumbs {
+interface Crumbs {
   element: HTMLElement;
   /** Draws the trail for the shown path; does nothing when neither it nor the trail changed. */
   render(path: string | undefined, loaded: LoadedOutline): void;
@@ -53,13 +53,13 @@ function createCrumbs(outline: PreviewOutlineSource): Crumbs {
 
 const CLOCK_MS = 30_000;
 
-export interface StatusViewDeps {
+interface StatusViewDeps {
   openLogs: (root: string) => void;
   /** The clock the status ages against. */
   now: () => number;
 }
 
-export interface StatusView {
+interface StatusView {
   element: HTMLElement;
   render(roots: PreviewRoots | null, build: PreviewBuildStatus): void;
 }

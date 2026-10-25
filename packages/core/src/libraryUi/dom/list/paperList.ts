@@ -23,7 +23,7 @@ import { createWindowedList, type WindowedList } from "./window/index.js";
 import { icon } from "../../../ui/index.js";
 import { el, emptyState } from "../../../ui/dom/index.js";
 
-export interface EmptyStateOptions {
+interface EmptyStateOptions {
   narrowed: boolean;
   /** The library holds no paper in any folder. */
   libraryEmpty: boolean;

@@ -28,7 +28,7 @@ async function loadStoredDocStates(storage: CollabStateStorage, logger: ILogger)
   return states;
 }
 
-export interface DocPersistenceOptions {
+interface DocPersistenceOptions {
   storage: CollabStateStorage;
   docId: string;
   docKey: string;

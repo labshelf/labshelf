@@ -7,7 +7,7 @@ import { parseTemplateManifest, templatePathProblem, templateTreeProblem } from 
 import type { TemplateFile, TemplateListing, TemplateSource } from "../sources/index.js";
 import { readOptionalBytes } from "./readOptionalBytes.js";
 
-export interface LibraryFile {
+interface LibraryFile {
   /** Relative to the walked folder, segments joined by `/`. */
   path: string;
   absolute: string;

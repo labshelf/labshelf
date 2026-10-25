@@ -6,7 +6,7 @@ import type { HoverTarget, PopupContent } from "../hoverAnchor.js";
 import { citationContent } from "./card/index.js";
 import { rectArea, screenArea } from "./pageAreas.js";
 
-export interface LinkAnnotationData {
+interface LinkAnnotationData {
   id: string;
   dest?: string | unknown[] | null;
   /** `[x0, y0, x1, y1]` in PDF user space, y growing upwards. */

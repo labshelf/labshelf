@@ -20,7 +20,7 @@ import type { PdfFetchOptions, PdfResolver, ResolveContext, ResolverEnv } from "
 import { deadline } from "./deadline.js";
 import { fetchLandingPage } from "../../landing/index.js";
 
-export interface LookupStep {
+interface LookupStep {
   resolver: PdfResolver;
   /** Lookups whose answers this one reads off the context, so it starts once they settle. */
   after?: readonly PdfResolver[];

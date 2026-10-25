@@ -21,7 +21,7 @@ import { createWriteRecordStore, recordFor } from "../../../library/writeRecords
 import { prepareProjectSave } from "./projectWriteRecord.js";
 import { mergeFileText } from "./mergeText.js";
 
-export interface DivergenceFile {
+interface DivergenceFile {
   root: string; folder: string; projectId: string; file: string; relativePath: string;
   store: IProjectVersionStore; logger: ILogger; onMerged: (file: string) => void;
 }

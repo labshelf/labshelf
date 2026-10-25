@@ -142,7 +142,7 @@ function resolveEmphasis(tokens: InlineToken[], source: string): Node[] {
   return tokensToNodes(tokens);
 }
 
-export type ReadRange = (from: number, end: number) => Node[];
+type ReadRange = (from: number, end: number) => Node[];
 
 function closingBracket(source: string, at: number, end: number): number {
   let depth = 0;

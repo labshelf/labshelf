@@ -9,7 +9,7 @@ import type { PaperRecord } from "../../model/index.js";
 import { METADATA_FILE } from "../layout.js";
 import { paperRecordFromMetadata, parsePaperMetadata } from "../paperMetadata.js";
 
-export interface PaperRead {
+interface PaperRead {
   record: PaperRecord;
   modifiedMs: number;
   pdfBytes?: number;

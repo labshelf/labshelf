@@ -18,7 +18,7 @@ import { TEX_LIVE_SIGNING_KEY } from "./texLiveKeyring.js";
 const TLNET = "https://mirror.ctan.org/systems/texlive/tlnet/";
 const SHA512_LINE = /^([0-9a-f]{128})\s+\*?(\S+)$/im;
 
-export interface TexLiveInstaller {
+interface TexLiveInstaller {
   /** The archive file name, e.g. `install-tl-unx.tar.gz`. */
   name: string;
   kind: "tar.gz" | "zip";

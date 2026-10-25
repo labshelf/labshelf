@@ -2,7 +2,7 @@
 // The pinned key is the trust anchor: key expiry and revocation are not checked.
 import { createHash, createPublicKey, constants, verify, type KeyObject } from "node:crypto";
 
-export interface OpenPgpPacket {
+interface OpenPgpPacket {
   tag: number;
   body: Buffer;
 }

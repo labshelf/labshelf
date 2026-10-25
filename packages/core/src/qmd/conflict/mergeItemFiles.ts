@@ -127,7 +127,7 @@ function mergeValue(base: string | undefined, local: string | undefined, other: 
 /** The bytes of a merged item, written as they are. */
 type ItemText = Pick<ItemSegment, "fence" | "body" | "close">;
 
-export interface ItemMergeResult {
+interface ItemMergeResult {
   readonly items: readonly ItemText[];
   readonly conflicted: boolean;
 }

@@ -19,7 +19,7 @@ import { sha256Hex } from "../../hash/index.js";
 /** How long a peer may stay silent before the next one is asked, and how long a fetch waits for any peer to join. */
 const BLOB_PEER_TIMEOUT_MS = 15_000;
 
-export interface BlobFetchDeps {
+interface BlobFetchDeps {
   hash: string;
   peers(): readonly PeerId[];
   request(peer: PeerId): void;
@@ -139,7 +139,7 @@ function joinChunks(chunks: Uint8Array[]): Uint8Array {
   return bytes;
 }
 
-export interface BlobServing {
+interface BlobServing {
   channel: Channel;
   getBlob(hash: string): Promise<Uint8Array | undefined>;
   logger: ILogger;

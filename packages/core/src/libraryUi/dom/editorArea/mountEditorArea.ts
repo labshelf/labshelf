@@ -5,7 +5,7 @@ import type { EditorArea, EditorAreaOptions, EditorGroupIndex, EditorAreaPrefsPo
 import { attachSash } from "../shell/index.js";
 
 // Handles the editor area's keys: roving focus inside a tablist, Ctrl/Cmd+W to close, Ctrl+Tab to cycle, and the tab menu key.
-export interface TabKeyActions {
+interface TabKeyActions {
   /** The focused tab of the focused group, if any. */
   focusedId(): string | null;
   /** The ids of the focused group, in tab order. */
@@ -56,7 +56,7 @@ function wireTabKeys(root: HTMLElement, a: TabKeyActions): void {
 
 const MIN_GROUP_WIDTH = 160;
 
-export interface EditorSash {
+interface EditorSash {
   el: HTMLElement;
   /** Applies the saved width while both groups show; one group fills the area. */
   layout(split: boolean): void;
@@ -127,7 +127,7 @@ function wireTabDrag(root: HTMLElement, groups: readonly EditorGroup[], move: (i
   }
 }
 
-export interface TabMenuActions {
+interface TabMenuActions {
   close(): void;
   moveToOtherGroup(): void;
 }

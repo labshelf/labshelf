@@ -93,7 +93,7 @@ export interface BiberModuleOptions {
   printErr(text: string): void;
 }
 
-export type BiberFactory = (options: BiberModuleOptions) => Promise<BiberModule>;
+type BiberFactory = (options: BiberModuleOptions) => Promise<BiberModule>;
 
 /** `filename` names the script in stack traces; the factory may require only Node built-ins. */
 function loadBiberFactory(source: string, filename: string): BiberFactory {
@@ -105,7 +105,7 @@ function loadBiberFactory(source: string, filename: string): BiberFactory {
   return module.exports as BiberFactory;
 }
 
-export interface BiberWasmRun {
+interface BiberWasmRun {
   assets: BiberWasmAssets;
   args: BiberArgs;
   /** The control file's absolute path. */

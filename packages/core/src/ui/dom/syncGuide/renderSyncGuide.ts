@@ -3,7 +3,7 @@ import type { SyncGuide, SyncGuideTool } from "../../../library/syncGuide/index.
 import { el } from "../dom.js";
 import { icon, type IconName } from "../../icons/index.js";
 
-export interface ToolSectionOptions {
+interface ToolSectionOptions {
   tool: SyncGuideTool;
   /** The icon beside the heading. */
   icon: IconName;
