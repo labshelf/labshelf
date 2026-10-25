@@ -6,9 +6,8 @@ import type { ILogger } from "../../../ports/index.js";
 import { createLibraryLayout, SIDECAR_FILE } from "../../layout.js";
 import { writeFileAtomic } from "../../node/atomicWrite.js";
 import type { ConflictCopy } from "../conflictCopy.js";
-import { parseConflictName } from "../conflictNames.js";
 import { mergeSidecars, parseSidecar, type SidecarVersion } from "../sidecarMerge.js";
-import { readDirOrEmpty } from "./readDirOrEmpty.js";
+import { listPaperFolders, readConflictCopies } from "./readConflictCopies.js";
 
 const MODULE = "conflicts";
 /** How often a paper's merge restarts because data.json changed under it before its copies are left to the user. */
@@ -114,22 +113,14 @@ async function mergePaper(conflicts: ConflictCopy[], dataJson: string, tmpDir: s
 export async function mergeSidecarConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]> {
   const layout = createLibraryLayout(root, path.join);
   const unmerged: ConflictCopy[] = [];
-  for (const paper of await readDirOrEmpty(layout.paperDataRoot())) {
-    if (!paper.isDirectory()) { continue; }
-    const dir = layout.paperDataDir(paper.name);
+  for (const { id, dir } of await listPaperFolders(layout)) {
     const dataJson = path.join(dir, SIDECAR_FILE);
-    const conflicts: ConflictCopy[] = [];
-    for (const entry of await readDirOrEmpty(dir)) {
-      const parsed = entry.isFile() ? parseConflictName(entry.name) : null;
-      if (parsed?.original === SIDECAR_FILE) {
-        conflicts.push({ owner: { kind: "paper", id: paper.name }, original: dataJson, copy: path.join(dir, entry.name), tool: parsed.tool });
-      }
-    }
+    const conflicts = await readConflictCopies(dir, SIDECAR_FILE, { kind: "paper", id });
     if (conflicts.length === 0) { continue; }
     try {
       unmerged.push(...await mergePaper(conflicts, dataJson, layout.tmpDir(), logger));
     } catch (error) {
-      void logger.error(MODULE, error, { paperId: paper.name, copies: conflicts.map((c) => c.copy), action: "merge sidecar conflict copies" });
+      void logger.error(MODULE, error, { paperId: id, copies: conflicts.map((c) => c.copy), action: "merge sidecar conflict copies" });
       unmerged.push(...conflicts);
     }
   }
