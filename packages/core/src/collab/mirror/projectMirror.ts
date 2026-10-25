@@ -2,22 +2,88 @@
 import type { ConflictCopy } from "../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type * as Y from "yjs";
-import { COMMENTS_PATH } from "../comments/index.js";
+import { COMMENTS_PATH, renderCommentsFile } from "../comments/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
-import { indexComments, indexFiles, indexSettings, indexWritten, isSafeSharePath, sharedPaths, type ShareFileEntry } from "../model/index.js";
+import {
+  indexComments,
+  indexFiles,
+  indexSettings,
+  indexWritten,
+  isSafeSharePath,
+  sharedPaths,
+  type ShareFileEntry,
+  applySharedSettings,
+  readSettingsMap,
+  sharedSettings,
+  writeSettingsChanges,
+  writeSettingsMap,
+} from "../model/index.js";
 import type { MirrorOwnershipLost } from "./mirrorLostError.js";
 import type { BlobExchange, ShareSession } from "../doc/index.js";
 import type { CollabStore } from "../deviceState/index.js";
-import type { MirrorRootUnavailable, MirrorDisk } from "./fileSystem/index.js";
+import type { MirrorRootUnavailable, MirrorDisk, DiskRead } from "./fileSystem/index.js";
 import { createMirrorLifecycle, gateDisk, gateWriteRecords } from "./mirrorLifecycle.js";
-import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext } from "./mirrorContext.js";
+import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext, hashOf, writeMirrored } from "./mirrorContext.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
 import { reconcileBlob } from "./blobMirror.js";
-import { reconcileComments } from "./commentsMirror.js";
-import { reconcileSettings } from "./settingsMirror.js";
 import { reconcileText } from "./textMirror.js";
 import { reconcileUntracked } from "./untrackedFile.js";
+
+async function reconcileComments(context: MirrorContext, disk: DiskRead): Promise<ReconcileOutcome> {
+  if (disk.state === "changing") { return "changing"; }
+  const existing = disk.state === "present" ? new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes) : undefined;
+  const rendered = renderCommentsFile(context.session.index, existing);
+  if (rendered === undefined) {
+    await context.logger.log("WARN", LOG_MODULE, "Kept a comments.json that is not valid; fix or delete it to save the shared threads there", {
+      folder: context.folder, path: COMMENTS_PATH,
+    });
+    return "done";
+  }
+  // An empty map writes no file into a project that has none.
+  if (rendered === existing || (existing === undefined && indexComments(context.session.index).size === 0)) { return "done"; }
+  await context.disk.write(COMMENTS_PATH, new TextEncoder().encode(rendered));
+  await context.logger.log("INFO", LOG_MODULE, "Wrote the shared comment threads to comments.json", { folder: context.folder });
+  return "done";
+}
+
+async function reconcileSettings(context: MirrorContext, disk: DiskRead, settled: boolean): Promise<ReconcileOutcome> {
+  const { session, store, logger } = context;
+  if (disk.state === "changing") { return "changing"; }
+  if (disk.state === "missing") {
+    await logger.log("WARN", LOG_MODULE, "The shared project has no labshelf.yaml; settings not mirrored", { folder: context.folder });
+    return "done";
+  }
+  const yaml = new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes);
+  const diskHash = await hashOf(yaml);
+  const known = store.known.get(PROJECT_FILE);
+  const map = indexSettings(session.index);
+  try {
+    // A first look takes the share's settings when it has any, so a fresh copy never clears them.
+    if (diskHash === known || (known === undefined && map.size > 0)) {
+      await writeFromShare(context, yaml, diskHash);
+      return "done";
+    }
+    if (!settled) { context.request(PROJECT_FILE, true); return "done"; }
+    const shared = sharedSettings(yaml);
+    const base = context.settingsBase;
+    // With no base (first look, or an edit made while LabShelf was closed) the file's shared keys are taken whole.
+    session.index.transact(() => (base ? writeSettingsChanges(map, shared, base) : writeSettingsMap(map, shared)), DISK_ORIGIN);
+    await logger.log("INFO", LOG_MODULE, "Took labshelf.yaml edits into the shared settings", { folder: context.folder, keys: Object.keys(shared) });
+    await writeFromShare(context, yaml, diskHash);
+  } catch (error) {
+    await logger.log("WARN", LOG_MODULE, "Left labshelf.yaml out of the share until it is valid", { folder: context.folder, error: String(error) });
+  }
+  return "done";
+}
+
+/** Writes the index's settings into the file, keeping its own keys, and records them as the agreed base. */
+async function writeFromShare(context: MirrorContext, yaml: string, diskHash: string): Promise<void> {
+  const settings = readSettingsMap(indexSettings(context.session.index));
+  const next = applySharedSettings(yaml, settings);
+  if (next === yaml) { context.store.known.set(PROJECT_FILE, diskHash); } else { await writeMirrored(context, PROJECT_FILE, next); }
+  context.settingsBase = settings;
+}
 
 const DEFAULT_STABLE_MS = 300;
 

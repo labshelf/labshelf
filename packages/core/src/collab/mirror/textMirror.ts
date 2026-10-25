@@ -1,10 +1,32 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
 import { waitsForWrite } from "./waitForWrite.js";
 import { fileText, indexFiles, replaceFileText, writtenHashes } from "../model/index.js";
-import { DISK_ORIGIN, forget, hashOf, LOG_MODULE, rememberMirrored, writeMirrored, type MirrorContext } from "./mirrorContext.js";
-import { mergeDiskText } from "./findMergeBase.js";
+import {
+  DISK_ORIGIN,
+  forget,
+  hashOf,
+  LOG_MODULE,
+  rememberMirrored,
+  writeMirrored,
+  type MirrorContext,
+} from "./mirrorContext.js";
 import type { DiskRead } from "./fileSystem/index.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
+import { lineSimilarity } from "../../writing/text/index.js";
+
+function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, parent?: string) {
+  const versions = context.store.storedVersions(path);
+  const recorded = versions.find((version) => version.hash === parent);
+  if (recorded) { return context.mergeText({ base: recorded.text, local: docText, other: diskText, otherLabel: "disk" }); }
+  const agreed = context.store.bases.get(path);
+  let base = versions.find((version) => version.text === agreed)?.text;
+  let similarity = base === undefined ? -1 : lineSimilarity(base, diskText);
+  for (const version of [...versions].reverse()) {
+    const score = lineSimilarity(version.text, diskText);
+    if (score > similarity) { base = version.text; similarity = score; }
+  }
+  return base === undefined ? undefined : context.mergeText({ base, local: docText, other: diskText, otherLabel: "disk" });
+}
 
 const decodeText = (bytes: Uint8Array): string | undefined => {
   try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return undefined; }
