@@ -37,7 +37,25 @@ import {
 import { NodeLibraryFileSystem } from "@labshelf/core/node";
 
 import type { LibraryRoot } from "../libraryRoot.js";
-import { sortImportInputs } from "./importInputs.js";
+import { expandHome } from "../../platform/index.js";
+
+interface SortedInputs {
+  /** Absolute paths that exist: files, folders, or entries the import reports as skipped. */
+  local: string[];
+  network: string[];
+}
+
+/** @returns the non-blank inputs, local paths resolved against the working directory */
+export async function sortImportInputs(ctx: MutationContext, inputs: string[]): Promise<SortedInputs> {
+  const sorted: SortedInputs = { local: [], network: [] };
+  for (const raw of inputs) {
+    const input = raw.trim();
+    if (!input) { continue; }
+    const local = path.resolve(expandHome(input));
+    if (await ctx.fs.exists(local)) { sorted.local.push(local); } else { sorted.network.push(input); }
+  }
+  return sorted;
+}
 
 const USER_AGENT = "LabShelf-Terminal/0.1";
 
@@ -111,7 +129,6 @@ export class TerminalPaperService {
       return folder ? { path: folder } : undefined;
     });
   }
-
 
   private async finish(outcome: BatchOutcome, missing: BatchOutcome["failed"]): Promise<BatchOutcome> {
     await this.changed();

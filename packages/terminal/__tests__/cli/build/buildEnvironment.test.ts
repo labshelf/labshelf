@@ -1,5 +1,5 @@
 // Tests the terminal's LaTeX install question: the answer mapping and the decline without a terminal.
-import { terminalTexSetupPrompt } from "../../../src/cli/build/askToolchain";
+import { terminalTexSetupPrompt } from "../../../src/cli/build/buildEnvironment";
 
 const answering = (answer: string | undefined) => terminalTexSetupPrompt(async () => answer);
 

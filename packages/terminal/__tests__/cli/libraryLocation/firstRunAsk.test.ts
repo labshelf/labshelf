@@ -1,4 +1,4 @@
-import { firstRunChoices } from "../../../src/cli/libraryLocation/firstRunChoices";
+import { firstRunChoices } from "../../../src/cli/libraryLocation/firstRunAsk";
 
 describe("firstRunChoices", () => {
   const home = "/home/ada";

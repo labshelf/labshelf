@@ -1,9 +1,8 @@
 // Tests that refreshTerminalLaunchers refreshes both hosts with this app's launch and never rejects.
 import path from "node:path";
 
-import type { NativeHostEnv } from "@labshelf/core/nativeHost/node";
-import { refreshNativeHost } from "@labshelf/core/nativeHost/node";
-import { refreshTerminalLaunchers } from "../../../src/cli/nativeHost/refreshNativeHosts";
+import { type NativeHostEnv, refreshNativeHost } from "@labshelf/core/nativeHost/node";
+import { refreshTerminalLaunchers } from "../../../src/cli/nativeHost/systemNativeHosts";
 
 jest.mock("@labshelf/core/nativeHost/node", () => ({
   ...jest.requireActual("@labshelf/core/nativeHost/node"),

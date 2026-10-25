@@ -4,20 +4,98 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import {
-  paperComparator, papersUnder, type PaperEntry, type PaperRecord, type PaperStatus, type SortSpec,
+  paperComparator,
+  papersUnder,
+  type PaperEntry,
+  type PaperRecord,
+  type PaperStatus,
+  type SortSpec,
+  papersByCiteKey,
+  paperFiles,
+  paperLink,
+  parseLabshelfLink,
+  type LabshelfLink,
+  formatBytes,
+  venueLine,
 } from "@labshelf/core";
 
 import type { AppContext } from "../compositionRoot.js";
 import { isSortKey, type TerminalConfig } from "../config.js";
-import { copyToClipboard } from "../platform/index.js";
+import { copyToClipboard, openExternal, viewerTakesPage } from "../platform/index.js";
 import { fit, stringWidth } from "../screen/index.js";
 import { STATUS_GLYPH } from "../libraryUi/index.js";
 import { stringFlag, type ParsedArgs } from "./args.js";
-import { runOpen } from "./openCommand.js";
-import { requirePaper } from "./findPaper.js";
 import { runProjectCommand } from "./project/index.js";
-import { showText } from "./showText.js";
 import { Output, UsageError } from "./usage.js";
+
+function requirePaper(ctx: AppContext, id: string): PaperEntry {
+  const entry = ctx.store.paper(id) ?? [...ctx.store.snapshot.papers.values()].find((e) => e.record.citeKey === id);
+  if (!entry) { throw new UsageError(`No paper with id "${id}"`); }
+  return entry;
+}
+
+function showText(entry: PaperEntry, highlights: number, page: number | undefined): string {
+  const r = entry.record;
+  const lines = [r.title];
+  if (r.authors?.length) { lines.push(r.authors.join(", ")); }
+  const venue = venueLine(r);
+  if (venue) { lines.push(venue); }
+  lines.push("");
+  const rows: Array<[string, string | undefined]> = [
+    ["id", r.id],
+    ["status", `${STATUS_GLYPH[r.status]} ${r.status}`],
+    ["tags", r.tags?.join(", ")],
+    ["doi", r.doi],
+    ["url", r.url],
+    ["in", entry.collection || "(library root)"],
+    ["pdf", r.hasPdf === false ? "not on this device" : `${paperFiles(r.path, path.join).pdf} (${formatBytes(entry.pdfBytes ?? 0)})`],
+    ["notes", highlights ? `${highlights} highlight(s)` : undefined],
+    ["read", page ? `stopped at page ${page}` : undefined],
+  ];
+  for (const [label, value] of rows) { if (value) { lines.push(`${label.padEnd(7)}${value}`); } }
+  if (r.note?.trim()) { lines.push("", "note:", r.note.trim()); }
+  if (r.summary?.trim()) { lines.push("", r.summary.trim()); }
+  return lines.join("\n");
+}
+
+function entryForLink(ctx: AppContext, link: LabshelfLink): PaperEntry {
+  const records = [...ctx.store.snapshot.papers.values()].map((e) => e.record);
+  const record = papersByCiteKey(records).get(link.citeKey);
+  const entry = record && ctx.store.paper(record.id);
+  if (!entry) { throw new UsageError(`No paper with cite key "${link.citeKey}"`); }
+  return entry;
+}
+
+/**
+ * Opens the PDF of `<id | citeKey | labshelf: link>`. A viewer with a `{page}` token gets the link's page, else the
+ * saved reading position, else 1; any other viewer opens the file and the page is printed.
+ * @returns the exit code
+ */
+async function runOpen(ctx: AppContext, positionals: string[], io: Output): Promise<number> {
+  const argument = positionals[0] ?? "";
+  const link = parseLabshelfLink(argument);
+  const entry = link ? entryForLink(ctx, link) : requirePaper(ctx, argument);
+  const { id, citeKey } = entry.record;
+  if (entry.record.hasPdf === false) {
+    const web = paperLink(entry.record);
+    io.err(`No PDF on this device for ${id}${web ? ` (${web})` : ""}`);
+    void ctx.logger.log("WARN", "terminal.open", "paper has no PDF on this device", { id });
+    return 1;
+  }
+  const page = link?.page ?? (await ctx.sidecars.load(id)).reading?.page;
+  const viewer = process.env["LABSHELF_PDF_VIEWER"] || ctx.config.terminal?.pdfViewer;
+  try {
+    openExternal(paperFiles(entry.record.path, path.join).pdf, viewer, page);
+    const pageUsed = viewerTakesPage(viewer);
+    void ctx.logger.log("INFO", "terminal.open", "opened PDF", { id, page: page ?? null, pageUsed });
+    if (link?.page !== undefined && !pageUsed) { io.out(`Opened ${citeKey} — go to page ${link.page}`); }
+  } catch (error) {
+    void ctx.logger.error("terminal.open", error, { id });
+    io.err(`Could not open the PDF for ${id}: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+  return 0;
+}
 
 const STATUS_WORDS: Record<string, PaperStatus> = { unread: "unread", u: "unread", reading: "reading", r: "reading", done: "done", d: "done" };
 
