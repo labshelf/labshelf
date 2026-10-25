@@ -1,10 +1,84 @@
 // Shows the conflict notification after a scan and walks the user through resolving the copies.
 import * as vscode from "vscode";
-import { conflictOwnerLabel, contentConflictMessage, errorMessage, type ConflictCopy, type ConflictResolution, type ILogger, type PathOps } from "@labshelf/core";
+import {
+  conflictOwnerLabel,
+  contentConflictMessage,
+  errorMessage,
+  type ConflictCopy,
+  type ConflictResolution,
+  type ILogger,
+  type PathOps,
+  conflictPromptChoices,
+  type ConflictPromptResolution,
+  type SyncTool,
+} from "@labshelf/core";
 import type { ActiveServices } from "../../command/index.js";
-import { conflictChoices, toolName } from "./conflictChoices.js";
-import { ConflictNotifier, conflictMessage } from "./conflictNotifier.js";
-import { walkConflicts } from "./conflictWalk.js";
+
+interface ConflictWalkDeps {
+  /** Resolves to undefined when the user dismisses the question. */
+  ask: (copy: ConflictCopy, index: number, total: number) => Promise<ConflictResolution | "mergeMyself" | undefined>;
+  mergeMyself: (copy: ConflictCopy) => Promise<void>;
+  apply: (copy: ConflictCopy, resolution: ConflictResolution) => Promise<void>;
+  onFailure: (copy: ConflictCopy, error: unknown) => void;
+}
+
+/** @returns how many copies are still unresolved: dismissed, skipped after a stop, or failed. */
+export async function walkConflicts(copies: ConflictCopy[], deps: ConflictWalkDeps): Promise<number> {
+  let remaining = copies.length;
+  for (const [index, copy] of copies.entries()) {
+    const resolution = await deps.ask(copy, index, copies.length);
+    if (!resolution) { break; }
+    try {
+      if (resolution === "mergeMyself") { await deps.mergeMyself(copy); }
+      else { await deps.apply(copy, resolution); remaining -= 1; }
+    } catch (error) {
+      deps.onFailure(copy, error);
+    }
+  }
+  return remaining;
+}
+
+export function conflictMessage(count: number): string {
+  return count === 1 ? "1 file has a conflicting copy" : `${count} files have conflicting copies`;
+}
+
+export class ConflictNotifier {
+  private lastSeen = 0;
+
+  /** @returns true when `count` is non-zero and differs from the count last shown or seen. */
+  shouldNotify(count: number): boolean {
+    const changed = count > 0 && count !== this.lastSeen;
+    this.lastSeen = count;
+    return changed;
+  }
+
+  /** Records a count the user already knows about, such as what remains after an interrupted resolve. */
+  markSeen(count: number): void {
+    this.lastSeen = count;
+  }
+}
+
+const TOOL_NAMES: Record<SyncTool, string> = {
+  syncthing: "Syncthing",
+  nextcloud: "Nextcloud",
+  dropbox: "Dropbox",
+  rclone: "rclone",
+  app: "LabShelf",
+  unknown: "unknown",
+};
+
+interface ConflictChoice {
+  label: string;
+  resolution: ConflictPromptResolution;
+}
+
+export function conflictChoices(copy: ConflictCopy): ConflictChoice[] {
+  return conflictPromptChoices(copy);
+}
+
+export function toolName(tool: SyncTool): string {
+  return TOOL_NAMES[tool];
+}
 
 const MODULE = "library/conflicts";
 

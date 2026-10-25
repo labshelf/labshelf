@@ -4,13 +4,46 @@
 import * as vscode from "vscode";
 import {
   ReaderHostController,
-  type HostToWebview, type ILogger, type PaperRecord, type PreviewPorts, type ReaderCommandId, type ReaderSidecarStore, type SidecarChange,
+  type HostToWebview,
+  type ILogger,
+  type PaperRecord,
+  type PreviewPorts,
+  type ReaderCommandId,
+  type ReaderSidecarStore,
+  type SidecarChange,
+  normalizeReaderPrefs,
+  type ReaderPrefs,
 } from "@labshelf/core";
 import { autoReaderTheme, onAutoReaderThemeChange } from "./vscodeTheme.js";
 import { renderReaderShell, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./readerShell.js";
-import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
 import { createVsCodeOutputPorts } from "./readerHostPorts.js";
 import { labshelfTabIcon } from "../ui/index.js";
+
+const READER_CONFIG_SECTION = "labshelf.reader";
+
+const PREF_KEYS: readonly (keyof ReaderPrefs)[] = [
+  "vimKeys", "defaultZoom", "toolbarAutoHide", "restorePosition", "hoverPreviews", "hoverDelayMs", "citationStyle",
+];
+
+/**
+ * Settings are user-editable JSON, so every value is validated (shared normalizeReaderPrefs) and falls back to its default.
+ * @returns the current reader preferences.
+ */
+function getReaderPrefs(): ReaderPrefs {
+  const cfg = vscode.workspace.getConfiguration(READER_CONFIG_SECTION);
+  const raw: Record<string, unknown> = {};
+  for (const key of PREF_KEYS) { raw[key] = cfg.get<unknown>(key); }
+  return normalizeReaderPrefs(raw);
+}
+
+/**
+ * Whether the reader opens beside the current editor (ViewColumn.Two) or full-width in the active group (default).
+ * @returns the view column to open the reader panel in.
+ */
+function getReaderViewColumn(): vscode.ViewColumn {
+  const beside = vscode.workspace.getConfiguration(READER_CONFIG_SECTION).get<unknown>("openBeside");
+  return beside === true ? vscode.ViewColumn.Two : vscode.ViewColumn.Active;
+}
 
 // The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.
 const READER_VIEW_TYPE = "labshelfPdf";

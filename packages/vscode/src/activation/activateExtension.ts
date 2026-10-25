@@ -101,14 +101,14 @@ function createLibraryController(
     paths: adapters.paths,
   });
   registerConflictCommand(context, conflicts);
-  const externalChangeHandling = new ExternalChangeHandling({
+  const externalChangeHandling: ExternalChangeHandling = new ExternalChangeHandling({
     context,
     getActiveServices: () => controller.currentServices(),
     onRefresh: refreshViews,
     onConflicts: (copies) => conflicts.onConflicts(copies),
     scanConflicts: adapters.scanLibraryConflicts,
   });
-  const controller = new LibraryRootController(context, events, externalChangeHandling, adapters, () => platform.chooseLibraryRoot());
+  const controller: LibraryRootController = new LibraryRootController(context, events, externalChangeHandling, adapters, () => platform.chooseLibraryRoot());
   return controller;
 }
 

@@ -3,10 +3,25 @@ import * as vscode from "vscode";
 import type { LibraryRootController } from "../activation/index.js";
 import type { HostAdapters } from "../activation/index.js";
 import type { WritingViewHandles } from "../activation/index.js";
-import { projectChecklist } from "./projectTaskProgress.js";
 import { SpacesService } from "./host/index.js";
 import { registerSpacesPanels } from "./panels/index.js";
 import { ResearchChatView } from "./researchChatView.js";
+import {
+  spaceChecklistProgress,
+  readChecklistSignals,
+  type ProjectRow,
+  type Progress,
+} from "@labshelf/core";
+
+export async function projectChecklist(writing: WritingViewHandles, row: ProjectRow): Promise<Progress | undefined> {
+  const project = writing.projects.list().find(entry => entry.folder === row.id);
+  if (project?.kind !== "ready") { return undefined; }
+  const [signals, list] = await Promise.all([
+    readChecklistSignals(writing.projects.reads(writing.logger), project), writing.readingLists.of(project),
+  ]);
+  const reading = list.entries.flatMap(({ key, paper }) => paper ? [{ key, title: paper.title, status: paper.status }] : []);
+  return spaceChecklistProgress(signals, reading);
+}
 
 export function registerSpaces(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewHandles,

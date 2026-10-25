@@ -6,6 +6,11 @@ import "@labshelf/core/styles/toast.css";
 import "@labshelf/core/styles/template-gallery.css";
 import "@labshelf/core/styles/template-publish.css";
 import { $, mountTemplateGallery } from "@labshelf/core/dom";
-import { createGalleryChannel } from "./galleryChannel.js";
+import type { GalleryToHost, GalleryTransport, HostToGallery } from "@labshelf/core";
+import { webviewTransport } from "../../../webview/index.js";
+
+function createGalleryChannel(): GalleryTransport {
+  return webviewTransport<GalleryToHost, HostToGallery>(acquireVsCodeApi());
+}
 
 mountTemplateGallery($("root"), createGalleryChannel());

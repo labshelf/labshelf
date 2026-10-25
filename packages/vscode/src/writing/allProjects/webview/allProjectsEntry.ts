@@ -10,6 +10,23 @@ import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import "@labshelf/core/styles/all-projects.css";
 import { $, mountAllProjects } from "@labshelf/core/dom";
-import { createAllProjectsChannel } from "./allProjectsChannel.js";
+import type {
+  AllProjectsToHost,
+  AllProjectsTransport,
+  HostToAllProjects,
+  PrefsPort,
+  SharingClient,
+} from "@labshelf/core";
+import {
+  createWebviewSharingClient,
+  webviewPrefs,
+  webviewTransport,
+} from "../../../webview/index.js";
+
+/** acquireVsCodeApi() may be called once per webview document, so one call serves both. */
+function createAllProjectsChannel(): { transport: AllProjectsTransport; prefs: PrefsPort; sharing: SharingClient } {
+  const api = acquireVsCodeApi();
+  return { transport: webviewTransport<AllProjectsToHost, HostToAllProjects>(api), prefs: webviewPrefs(api), sharing: createWebviewSharingClient(api) };
+}
 
 mountAllProjects($("root"), createAllProjectsChannel());

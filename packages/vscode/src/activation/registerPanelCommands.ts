@@ -5,14 +5,47 @@ import * as vscode from "vscode";
 import { exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId } from "@labshelf/core";
 import { PdfViewerPanel, ReaderPanel, createVsCodeExportPorts } from "../reader/index.js";
 import { DetailsView, registerDetailsView, type SelectionSources } from "../libraryUi/details/index.js";
-import { ListWebviewPanel, type ListPanelDeps } from "../libraryUi/index.js";
+import {
+  ListWebviewPanel,
+  type ListPanelDeps,
+  libraryPaths,
+  rootNode,
+} from "../libraryUi/index.js";
 import { citationMapPorts } from "../libraryUi/citationMap/index.js";
 import { PaperFileService } from "../library/index.js";
 import type { LibraryNode } from "../libraryUi/index.js";
 import { resolvePaper, ensurePaperPdf, folderActions, type FolderCommandHost, type ActiveServices, currentTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
-import { wireDetailsSources } from "./attachSelectionSources.js";
+
+interface DetailsWiring {
+  context: vscode.ExtensionContext;
+  details: DetailsView;
+  currentServices: () => ActiveServices | null;
+  onDidChangeRoot: vscode.Event<unknown>;
+  adapters: Pick<HostAdapters, "paths">;
+  papersRootUri: () => vscode.Uri | null;
+  logger: ILogger;
+  /** Builds the list panel dependencies for the open library. */
+  listPanelDeps: (services: ActiveServices) => ListPanelDeps;
+}
+
+function wireDetailsSources({ context, details, currentServices, onDidChangeRoot, adapters, papersRootUri, listPanelDeps, logger }: DetailsWiring): void {
+  context.subscriptions.push(
+    details.onDidRequestFolder((ui) => {
+      const services = currentServices();
+      const root = papersRootUri()?.fsPath;
+      if (!services || !root) {
+        void logger.log("WARN", "details.folder", "Folder request dropped: no library is open", { folder: ui });
+        return;
+      }
+      const dir = libraryPaths(root, adapters.paths).fromUi(ui);
+      const node = dir === root ? rootNode(dir) : { label: adapters.paths.basename(dir), dirPath: dir };
+      ListWebviewPanel.createOrShow(listPanelDeps(services), node);
+    }),
+    onDidChangeRoot(() => { void details.rebindLibrary(); }),
+  );
+}
 
 const READER_COMMANDS: readonly ReaderCommandId[] = [
   "zoomIn", "zoomOut", "zoomReset", "find", "historyBack", "historyForward", "toggleSidebar",

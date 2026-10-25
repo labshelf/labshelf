@@ -1,12 +1,36 @@
 // Composes the core All projects library with the VS Code editor, build state and project commands.
 import * as vscode from "vscode";
-import { createProjectLibrary as createCoreLibrary, type ILogger, type NewProjectKind, type PaperRecord, type PdfjsLoader, type ProjectEntry, type ProjectHostFunctions, type ProjectLibraryPort } from "@labshelf/core";
+import {
+  createProjectLibrary as createCoreLibrary,
+  type ILogger,
+  type NewProjectKind,
+  type PaperRecord,
+  type PdfjsLoader,
+  type ProjectEntry,
+  type ProjectHostFunctions,
+  type ProjectLibraryPort,
+  type ProjectMenuCommand,
+} from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
 import { duplicateProject } from "../index.js";
 import { builtPdf, rawLogFile, type RootBuilds } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "../session/index.js";
 import type { SidebarProjectsSource } from "../sidebar/index.js";
-import { projectMenuCommands, runProjectCommand } from "./projectCommands.js";
+import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../libraryUi/index.js";
+
+const OPEN = "labshelf.writing.openProject";
+const EXTERNAL_ONLY = "labshelf.writing.removeProject";
+
+function projectMenuCommands(): ProjectMenuCommand[] {
+  return PROJECT_COMMANDS.filter((c) => c.command !== OPEN).map((c) => ({
+    command: c.command, label: c.label, group: c.group, ...(c.command === EXTERNAL_ONLY ? { externalOnly: true } : {}),
+  }));
+}
+
+async function runProjectCommand(command: string, entry: ProjectEntry): Promise<void> {
+  if (!isSidebarProjectCommand(command)) { throw new Error(`${command} is not a project command`); }
+  await vscode.commands.executeCommand(command, entry);
+}
 
 export interface VscodeProjectLibraryDeps {
   host: WritingHost;

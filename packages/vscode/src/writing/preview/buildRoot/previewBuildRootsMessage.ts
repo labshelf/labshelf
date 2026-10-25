@@ -1,8 +1,44 @@
 // Assembles the build roots a preview reader is told about: one entry per built root with its problems and what the host can open.
-import { previewProblems, type BuildOptions, type LocatedProblem, type PathOps, type PreviewRoot, type PreviewRoots } from "@labshelf/core";
+import {
+  previewProblems,
+  type BuildOptions,
+  type LocatedProblem,
+  type PathOps,
+  type PreviewRoot,
+  type PreviewRoots,
+  type ILogger,
+  type PdfProblem,
+} from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import { rawLogFile, type RawLogDeps } from "./rawLogFile.js";
-import { rootFindings, type RootFindingsInput } from "./measureBuildRoot.js";
+import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
+
+interface RootFindingsInput {
+  logger?: ILogger | undefined;
+  pdfProblemsOf: (root: string) => Promise<{ pdfProblems: PdfProblem[]; cites: number }>;
+  wordsOf: (root: string) => Promise<number>;
+}
+
+/** A measure that fails is logged and left absent, so the root still shows the rest. */
+async function attempt<T>(input: RootFindingsInput, root: string, what: string, measure: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await measure();
+  } catch (error) {
+    await input.logger?.error(PREVIEW_LOG_MODULE, error, { root, action: what });
+    return undefined;
+  }
+}
+
+async function rootFindings(input: RootFindingsInput, root: string): Promise<{ pdfProblems?: PdfProblem[]; cites?: number; words?: number }> {
+  const [placed, words] = await Promise.all([
+    attempt(input, root, "pdfProblems", () => input.pdfProblemsOf(root)),
+    attempt(input, root, "words", () => input.wordsOf(root)),
+  ]);
+  return {
+    ...(placed ? { pdfProblems: placed.pdfProblems, cites: placed.cites } : {}),
+    ...(words !== undefined ? { words } : {}),
+  };
+}
 
 export interface PreviewRootsInput extends RawLogDeps, RootFindingsInput {
   project: ReadyProject;

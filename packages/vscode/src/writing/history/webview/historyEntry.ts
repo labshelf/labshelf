@@ -4,6 +4,11 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/project-history.css";
 import { $, mountProjectHistory } from "@labshelf/core/dom";
-import { createHistoryChannel } from "./historyChannel.js";
+import type { HistoryToHost, HistoryTransport, HostToHistory } from "@labshelf/core";
+import { webviewTransport } from "../../../webview/index.js";
+
+function createHistoryChannel(): HistoryTransport {
+  return webviewTransport<HistoryToHost, HostToHistory>(acquireVsCodeApi());
+}
 
 mountProjectHistory($("root"), createHistoryChannel());

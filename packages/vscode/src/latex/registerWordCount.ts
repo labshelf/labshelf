@@ -4,7 +4,14 @@ import * as vscode from "vscode";
 import { countWords } from "@labshelf/core";
 import type { LatexProjectSources } from "./project/index.js";
 import { trailingDebounce } from "./debounce.js";
-import { wordCountTooltip, wordsLabel } from "./wordCountText.js";
+
+function wordsLabel(count: number): string {
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "word" : "words"}`;
+}
+
+function wordCountTooltip(fileCount: number, mainFile: string): string {
+  return `Words in the whole project, counted from ${mainFile}. This file: ${wordsLabel(fileCount)}.`;
+}
 
 const REFRESH_DELAY_MS = 300;
 

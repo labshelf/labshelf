@@ -1,12 +1,20 @@
 // Opens and closes the window's writing project as a unit: its main document, its preview, its tabs and its context keys.
 import * as vscode from "vscode";
 
-import type { ProjectEntry } from "@labshelf/core";
+import type { ProjectEntry, PathOps } from "@labshelf/core";
 import { BUILD_COMMAND } from "../build/index.js";
 import { owningProject, type ReadyProject } from "../buildRootDocument.js";
-import { openProjectMain } from "./openBuildRoot.js";
 import { builtPdf } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "./projectStore.js";
+
+async function openProjectMain(paths: PathOps, entry: ProjectEntry | undefined): Promise<void> {
+  if (entry?.kind !== "ready") { return; }
+  if (!entry.main) {
+    await vscode.window.showInformationMessage(`Project "${entry.settings.id}" has no main file yet.`);
+    return;
+  }
+  await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(paths.join(entry.folder, entry.main)));
+}
 
 const SAVED_FOLDER_KEY = "labshelf.writing.openProject";
 const PROJECT_OPEN_KEY = "labshelf.writing.projectOpen";

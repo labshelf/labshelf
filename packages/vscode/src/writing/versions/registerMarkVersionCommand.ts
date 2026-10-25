@@ -8,7 +8,21 @@ import type { ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectBuilders } from "../build/index.js";
 import { buildCurrentPdf } from "./buildCurrentPdf.js";
-import { pickVersionName } from "./pickVersionName.js";
+
+const OTHER = "Other name…";
+const MILESTONES = ["submitted", "rebuttal", "camera-ready"];
+
+/** @returns the chosen name, or undefined when the user cancels */
+async function pickVersionName(): Promise<string | undefined> {
+  const picked = await vscode.window.showQuickPick([...MILESTONES, OTHER], { title: "Mark Version", placeHolder: "Name this version" });
+  if (picked !== OTHER) { return picked; }
+  const typed = await vscode.window.showInputBox({
+    title: "Mark Version",
+    prompt: "Name of the version",
+    validateInput: (value) => versionSlug(value) ? undefined : "Use at least one letter or digit.",
+  });
+  return typed?.trim() || undefined;
+}
 
 export const MARK_VERSION_COMMAND = "labshelf.writing.markVersion";
 

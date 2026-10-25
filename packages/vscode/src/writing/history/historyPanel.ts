@@ -1,10 +1,46 @@
 // Opens the editor tab that shows a project's history and answers its page: diffs, restores and the version commands.
 import * as vscode from "vscode";
 
-import { parseHistoryMessage, type DiffLine, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger } from "@labshelf/core";
-import { labshelfTabIcon } from "../../ui/index.js";
+import {
+  parseHistoryMessage,
+  type DiffLine,
+  type HistoryRow,
+  type HistoryToHost,
+  type HostToHistory,
+  type ILogger,
+  createNonce,
+} from "@labshelf/core";
+import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
-import { historyBundleDirectory, historyHtml } from "./historyHtml.js";
+
+/** <extension>/dist/history, for localResourceRoots. */
+function historyBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, "dist", "history");
+}
+
+async function historyHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
+  const dir = historyBundleDirectory(extensionUri);
+  const script = vscode.Uri.joinPath(dir, "history.js");
+  if (!(await bundleExists(script))) {
+    return bundleMissingHtml({ title: "History", heading: "History bundle not built", file: "dist/history/history.js", reopen: "the history" });
+  }
+  const nonce = createNonce();
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="${csp}"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>History</title>
+<link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(dir, "history.css")).toString()}"/>
+</head>
+<body>
+<div id="root"></div>
+<script nonce="${nonce}" type="module" src="${webview.asWebviewUri(script).toString()}"></script>
+</body>
+</html>`;
+}
 
 /** What the panel reads and changes in a project's history. */
 export interface ProjectHistoryStore {

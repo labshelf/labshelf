@@ -3,7 +3,7 @@
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers.
  */
 import * as vscode from 'vscode';
-import { isUnderDir } from '@labshelf/core';
+import { isUnderDir, type PathOps } from '@labshelf/core';
 import { sharingWebviews } from '../share/index.js';
 import { rootNode, type LibraryNode } from "./libraryNode.js";
 import { labshelfTabIcon } from '../ui/index.js';
@@ -13,7 +13,17 @@ import { feedHostContext } from "./feedHostContext.js";
 import { LibraryFeed } from "./libraryFeed.js";
 import { libraryBundleDirectory, listPanelHtml } from './listPanelHtml.js';
 import type { ListPanelDeps } from './listPanelDeps.js';
-import { resolveShownFolder } from './shownFolder.js';
+
+async function resolveShownFolder(wanted: LibraryNode | undefined, root: string, pathOps: PathOps): Promise<LibraryNode> {
+  if (!wanted || wanted.isRoot || wanted.dirPath === root || !isUnderDir(wanted.dirPath, root, pathOps.sep)) { return rootNode(root); }
+  try {
+    const stat = await vscode.workspace.fs.stat(vscode.Uri.file(wanted.dirPath));
+    if (stat.type & vscode.FileType.Directory) { return { label: pathOps.basename(wanted.dirPath), dirPath: wanted.dirPath }; }
+  } catch {
+    // The folder is gone: fall through to the root.
+  }
+  return rootNode(root);
+}
 
 export class ListWebviewPanel {
   public static currentPanel: ListWebviewPanel | undefined;

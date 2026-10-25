@@ -1,12 +1,29 @@
 // Gathers what the citation card shows beyond the library record: highlights, the cited page and the .bib record.
 import {
-  papersByCiteKey, quotedHighlights,
-  type CitationBibEntry, type CitationDetails, type CitingCommand, type PaperRecord,
+  papersByCiteKey,
+  quotedHighlights,
+  type CitationBibEntry,
+  type CitationDetails,
+  type CitingCommand,
+  type PaperRecord,
+  bibCardEntry,
+  bibEntries,
 } from "@labshelf/core";
 import type { PreviewCitationDeps } from "./previewCitations.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import { projectBibRecords } from "./projectBibliographyEntries.js";
 import type { CitingSite } from "./citingCommands.js";
+import { userBibFiles } from "./projectBibliographyFiles.js";
+
+/** The first record of each requested key across the project's user-written .bib files. */
+async function projectBibRecords(projectFolder: string, keys: readonly string[]): Promise<Map<string, CitationBibEntry>> {
+  const records = new Map<string, CitationBibEntry>();
+  for (const document of await userBibFiles(projectFolder)) {
+    for (const entry of bibEntries(document.getText())) {
+      if (keys.includes(entry.key) && !records.has(entry.key)) { records.set(entry.key, bibCardEntry(entry)); }
+    }
+  }
+  return records;
+}
 
 const HIGHLIGHTS_SHOWN = 5;
 

@@ -1,15 +1,58 @@
 // Hosts the Library sidebar webview: sends it the folders and papers, and runs what its rows ask for.
 import * as vscode from "vscode";
-import { PAPERS_DIR, sidebarRows, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
+import {
+  PAPERS_DIR,
+  sidebarRows,
+  folderTreeFromSnapshot,
+  type LibrarySnapshot,
+  type PathOps,
+  type SidebarOpenProject,
+  type SidebarProjectItem,
+  type ProjectEntry,
+} from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../library/index.js";
 import { sharingWebviews } from "../share/index.js";
 import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "./index.js";
 import { rootNode, type LibraryNode } from "./libraryNode.js";
 import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
-import { handleProjectMessage, isProjectMessage, type SidebarProjectsPort } from "./sidebarProjectMessages.js";
-import { parseSidebarMessage, type HostToSidebar, type ProjectTreeMessage, type SidebarToHost } from "./sidebarMessages.js";
+import {
+  parseSidebarMessage,
+  type HostToSidebar,
+  type ProjectTreeMessage,
+  type SidebarToHost,
+  type ProjectAction,
+} from "./sidebarMessages.js";
 
 import { handleSidebarSpaceMessage, type SidebarSpacesDep } from "./spaces/index.js";
+import { projectCommandApplies } from "./projectCommands.js";
+
+/** What the host needs to know about the projects the sidebar lists. */
+interface SidebarProjectsPort {
+  find(id: string): ProjectEntry | undefined;
+}
+
+const ACTION_COMMANDS: Record<ProjectAction, string> = {
+  browseTemplates: "labshelf.templates.open",
+  allProjects: "labshelf.projects.all",
+  newBlank: "labshelf.writing.newBlankProject",
+  addExisting: "labshelf.writing.addExistingFolder",
+  refresh: "labshelf.writing.refresh",
+};
+
+type ProjectMessage = Extract<SidebarToHost, { type: "openProject" | "projectCommand" | "projectAction" }>;
+
+const isProjectMessage = (m: SidebarToHost): m is ProjectMessage =>
+  m.type === "openProject" || m.type === "projectCommand" || m.type === "projectAction";
+
+/** Runs one project message; a row the host does not list, or a command that does not apply to it, is ignored. */
+async function handleProjectMessage(m: ProjectMessage, projects: SidebarProjectsPort): Promise<void> {
+  if (m.type === "projectAction") { await vscode.commands.executeCommand(ACTION_COMMANDS[m.action]); return; }
+  const entry = projects.find(m.id);
+  if (!entry) { return; }
+  const command = m.type === "openProject" ? "labshelf.writing.openProject" : m.command;
+  if (!projectCommandApplies(command, { kind: entry.kind, external: entry.location === "external" })) { return; }
+  await vscode.commands.executeCommand(command, entry);
+}
 
 const REFRESH_DEBOUNCE_MS = 60;
 

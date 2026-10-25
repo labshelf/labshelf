@@ -1,10 +1,55 @@
 // Opens the editor tab that shows the template gallery and connects its webview to the gallery host.
 import * as vscode from "vscode";
-import { createGalleryHost, createPublishHost, type GalleryHost, type GalleryHostDeps } from "@labshelf/core";
-import { labshelfTabIcon } from "../../ui/index.js";
-import { galleryBundleDirectory, galleryHtml } from "./galleryHtml.js";
-import { askProjectTitle } from "./askProjectTitle.js";
+import {
+  createGalleryHost,
+  createPublishHost,
+  type GalleryHost,
+  type GalleryHostDeps,
+  createNonce,
+} from "@labshelf/core";
+import { labshelfTabIcon, bundleExists, bundleMissingHtml } from "../../ui/index.js";
 import type { TemplateGalleryDeps } from "./index.js";
+
+/** <extension>/dist/templates, for localResourceRoots. */
+function galleryBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, "dist", "templates");
+}
+
+async function galleryHtml(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
+  const dir = galleryBundleDirectory(extensionUri);
+  const script = vscode.Uri.joinPath(dir, "templates.js");
+  if (!(await bundleExists(script))) {
+    return bundleMissingHtml({ title: "Templates", heading: "Template gallery bundle not built", file: "dist/templates/templates.js", reopen: "the gallery" });
+  }
+  const nonce = createNonce();
+  // Thumbnails arrive as data: URIs, so images allow data: next to the extension's own resources.
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="${csp}"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Templates</title>
+<link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(dir, "templates.css")).toString()}"/>
+</head>
+<body>
+<div id="root"></div>
+<script nonce="${nonce}" type="module" src="${webview.asWebviewUri(script).toString()}"></script>
+</body>
+</html>`;
+}
+
+/** @returns the trimmed title, or undefined when the user cancels */
+async function askProjectTitle(defaultTitle: string): Promise<string | undefined> {
+  const title = await vscode.window.showInputBox({
+    title: "New project from template",
+    prompt: "Project title",
+    value: defaultTitle,
+    validateInput: (value) => (value.trim() ? undefined : "Enter a title"),
+  });
+  return title?.trim();
+}
 
 export class GalleryPanel {
   private readonly host: GalleryHost;

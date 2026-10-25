@@ -2,10 +2,12 @@
 import * as vscode from "vscode";
 
 import type { TypstLanguageService } from "@labshelf/core/typst/language";
-import { createTypstCompletionProvider } from "../../../../src/writing/typst/language/typstCompletionProvider";
-import { createTypstDefinitionProvider } from "../../../../src/writing/typst/language/typstDefinitionProvider";
-import type { TypstContextOf } from "../../../../src/writing/typst/language/typstDocumentContext";
-import { createTypstHoverProvider } from "../../../../src/writing/typst/language/typstHoverProvider";
+import {
+  createTypstCompletionProvider,
+  createTypstDefinitionProvider,
+  createTypstHoverProvider,
+  type TypstContextOf,
+} from "../../../../src/writing/typst/language/registerTypstLanguage";
 import { fakeDocument } from "../../../support/textDocument";
 
 const TEXT = "= Intro\n#le";
