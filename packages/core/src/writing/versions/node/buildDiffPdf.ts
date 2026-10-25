@@ -49,7 +49,7 @@ async function runLatexdiff(request: LatexdiffRequest): Promise<string> {
 
 const MODULE = "writing/versions";
 
-export interface MarkedUpDiffRequest {
+export interface DiffRequest {
   /** The sources of the older side. */
   beforeDir: string;
   /** The sources of the newer side; the diff compiles with its folder as the working directory. */
@@ -62,7 +62,7 @@ export interface MarkedUpDiffRequest {
   signal: AbortSignal;
 }
 
-async function compileDiff(request: MarkedUpDiffRequest, diffTex: string): Promise<string> {
+async function compileDiff(request: DiffRequest, diffTex: string): Promise<string> {
   // The working directory is the newer sources' folder so the relative \includegraphics and \input paths that
   // latexdiff leaves in place resolve as in the project's own build.
   const cwd = path.dirname(path.join(request.afterDir, request.main));
@@ -77,7 +77,7 @@ async function compileDiff(request: MarkedUpDiffRequest, diffTex: string): Promi
  * @returns the path of diff.pdf in `outDir`
  * @throws when latexdiff or the LaTeX build fails or is cancelled; the message carries the tail of the failing tool's output
  */
-export async function buildMarkedUpDiff(request: MarkedUpDiffRequest, logger: ILogger): Promise<string> {
+export async function buildMarkedUpDiff(request: DiffRequest, logger: ILogger): Promise<string> {
   const started = Date.now();
   const context = { beforeDir: request.beforeDir, afterDir: request.afterDir, main: request.main, outDir: request.outDir };
   await logger.log("INFO", MODULE, "Building a marked-up PDF with latexdiff", context);

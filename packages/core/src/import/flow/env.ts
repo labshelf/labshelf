@@ -23,7 +23,7 @@ export interface NetworkImportEnv {
 
 export const NETWORK_IMPORT_MODULE = "import/networkImport";
 
-export function pdfFetchOptions(env: NetworkImportEnv): PdfFetchOptions {
+export function createPdfFinderOptions(env: NetworkImportEnv): PdfFetchOptions {
   return { ...env.download, logger: env.ctx.logger };
 }
 

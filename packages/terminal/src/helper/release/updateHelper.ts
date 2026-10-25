@@ -1,6 +1,7 @@
 // Replaces the helper binary with a newer signed release, at most once a day unless the caller bypasses that, never failing the caller.
 import { rm, chmod, rename, writeFile, mkdir, readFile } from "node:fs/promises";
 
+import { formatError } from "@labshelf/core";
 import { downloadVerified } from "@labshelf/core/helper/node";
 
 import { fetchSignedRelease } from "./releaseManifest.js";
@@ -104,7 +105,7 @@ async function checkOnce(deps: SelfUpdateDeps, bypassThrottle = false): Promise<
     await recordCheck(deps.dataDir, deps.now());
     return await update(deps);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatError(error);
     await deps.logger.log("WARN", MODULE, "Update check failed; the running version stays", { message }).catch(() => undefined);
     return "failed";
   }

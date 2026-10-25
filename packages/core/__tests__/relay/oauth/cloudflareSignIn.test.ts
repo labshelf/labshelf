@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 
 import {
-  CloudflareOAuthError, fetchCloudflareTokens, readAuthorizationCode, startCloudflareAuthorization,
+  CloudflareOauthError, fetchCloudflareTokens, readAuthorizationCode, startCloudflareAuthorization,
 } from "../../../src/relay/index";
 import { recordingLogger, TOKEN } from "../client/fakeCloudflare";
 import { CLIENT_ID, fakeOAuthServer, REDIRECT } from "./fakeOAuthServer";
@@ -49,7 +49,7 @@ describe("readAuthorizationCode", () => {
     const server = fakeOAuthServer();
     const { url, state } = await startCloudflareAuthorization();
     const callback = server.approve(url, { error: "access_denied" });
-    expect(() => readAuthorizationCode(callback, state)).toThrow(CloudflareOAuthError);
+    expect(() => readAuthorizationCode(callback, state)).toThrow(CloudflareOauthError);
     expect(() => readAuthorizationCode(callback, state)).toThrow(expect.objectContaining({ code: "access_denied" }) as Error);
   });
 });
@@ -68,6 +68,6 @@ describe("fetchCloudflareTokens", () => {
     const server = fakeOAuthServer();
     const { url, state } = await startCloudflareAuthorization();
     const code = readAuthorizationCode(server.approve(url), state);
-    await expect(exchange(server, code, TOKEN)).rejects.toMatchObject({ name: "CloudflareOAuthError", code: "invalid_grant" });
+    await expect(exchange(server, code, TOKEN)).rejects.toMatchObject({ name: "CloudflareOauthError", code: "invalid_grant" });
   });
 });

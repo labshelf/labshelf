@@ -1,5 +1,5 @@
 // Lists the library's writing projects as text lines or, with --json, as a JSON array.
-import type { ProjectEntry } from "@labshelf/core";
+import { formatError, type ProjectEntry } from "@labshelf/core";
 import { listLibraryProjects } from "@labshelf/core/node";
 
 import type { AppContext } from "../compositionRoot.js";
@@ -31,7 +31,7 @@ export async function runProjects(
   try {
     projects = (await listLibraryProjects(ctx.paths.root, ctx.logger)).map(describeProject);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     io.err(`Could not list projects in ${ctx.paths.root}: ${reason}`);
     await ctx.logger.error("terminal.projects", error, { libraryRoot: ctx.paths.root });
     return 1;

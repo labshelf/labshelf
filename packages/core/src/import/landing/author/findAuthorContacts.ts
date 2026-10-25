@@ -9,7 +9,7 @@ import { extractEmailFromAffiliation } from "./affiliation.js";
 const MODULE = "authorContacts";
 const PAGE_TIMEOUT_MS = 12_000;
 
-export interface ContactFinder {
+export interface AuthorContactsInput {
   /** The article page; its addresses are read from `page` when the host already probed it. */
   articleUrl?: string;
   page?: RawPage;
@@ -17,7 +17,7 @@ export interface ContactFinder {
 }
 
 /** `env.fetch` carries the host's session (cookies), because many article pages show the correspondence block only to readers who are signed in. */
-export async function findAuthorContacts(lookup: ContactFinder, env: RegistryEnv): Promise<AuthorContact[]> {
+export async function findAuthorContacts(lookup: AuthorContactsInput, env: RegistryEnv): Promise<AuthorContact[]> {
   const page = lookup.page ?? (lookup.articleUrl ? await fetchPage(lookup.articleUrl, env) : undefined);
   const fromPage = page ? deriveAuthorContacts(page) : [];
   if (fromPage.length || !lookup.doi) return fromPage;

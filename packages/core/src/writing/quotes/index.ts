@@ -5,5 +5,5 @@ export { findCiteKeysAt, findCiteKeysOnLine } from "./citeKeysAt.js";
 export type { CitationSources, SourceLine } from "./citeKeysAt.js";
 export { listQuotedHighlights } from "./listQuotedHighlights.js";
 export type { QuotedHighlight } from "./listQuotedHighlights.js";
-export { citationDestKey, typstCiteAt } from "./pdfCiteLocations.js";
-export type { TypstCite } from "./pdfCiteLocations.js";
+export { deriveCiteKey, findTypstCitationAt } from "./pdfCiteLocations.js";
+export type { TypstCitation } from "./pdfCiteLocations.js";

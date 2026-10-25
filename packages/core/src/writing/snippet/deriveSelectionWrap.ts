@@ -2,7 +2,7 @@
 
 type WritingLanguage = "latex" | "typst";
 
-export type WrapStyle = "bold" | "italic";
+export type WrapKind = "bold" | "italic";
 
 export interface WrapResult {
   text: string;
@@ -10,7 +10,7 @@ export interface WrapResult {
   cursor?: number;
 }
 
-const MARKERS: Record<WritingLanguage, Record<WrapStyle, readonly [string, string]>> = {
+const MARKERS: Record<WritingLanguage, Record<WrapKind, readonly [string, string]>> = {
   latex: { bold: ["\\textbf{", "}"], italic: ["\\emph{", "}"] },
   typst: { bold: ["*", "*"], italic: ["_", "_"] },
 };
@@ -26,7 +26,7 @@ function isSingleSpan(language: WritingLanguage, inner: string, open: string): b
   return depth === 0;
 }
 
-export function deriveSelectionWrap(language: WritingLanguage, style: WrapStyle, selected: string): WrapResult {
+export function deriveSelectionWrap(language: WritingLanguage, style: WrapKind, selected: string): WrapResult {
   const [open, close] = MARKERS[language][style];
   if (selected === "") { return { text: open + close, cursor: open.length }; }
   const wrapped = selected.length >= open.length + close.length && selected.startsWith(open) && selected.endsWith(close);

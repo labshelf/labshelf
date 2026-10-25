@@ -8,14 +8,14 @@ import { parse as parseYaml } from "yaml";
 import { openLibrary, type AppContext } from "../../src/compositionRoot";
 import type { InputEvent } from "../../src/screen/input";
 import type { Screen } from "../../src/screen/screen";
-import type { TerminalSize } from "../../src/screen/terminal";
+import type { ScreenSize } from "../../src/screen/terminal";
 import { App, type TerminalLike } from "../../src/libraryUi/libraryScreen";
 
 export class FakeTerminal implements TerminalLike {
   frames: Screen[] = [];
   raw: string[] = [];
   left = 0;
-  size(): TerminalSize { return { cols: 120, rows: 30 }; }
+  size(): ScreenSize { return { cols: 120, rows: 30 }; }
   listen(): void { /* never called: the tests drive handle() directly */ }
   enter(): void { /* nothing to take over */ }
   leave(): void { this.left++; }

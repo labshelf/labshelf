@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { buildMarkedUpDiff, type MarkedUpDiffRequest } from "../../../../src/writing/versions/node/index";
+import { buildMarkedUpDiff, type DiffRequest } from "../../../../src/writing/versions/node/index";
 import { runCancellable } from "../../../../src/latex/build/node/index";
 import { findExecutable } from "../../../../src/latex/toolchain/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
@@ -20,7 +20,7 @@ beforeEach(() => {
   find.mockResolvedValue("/tex/latexdiff");
 });
 
-async function request(): Promise<MarkedUpDiffRequest> {
+async function request(): Promise<DiffRequest> {
   const root = await makeTempDir();
   return {
     beforeDir: path.join(root, "before"), afterDir: path.join(root, "after"), main: "paper/main.tex",

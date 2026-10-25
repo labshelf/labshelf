@@ -5,12 +5,12 @@ import { CitationCompletionProvider, UPDATE_BIBLIOGRAPHY_COMMAND } from "./citat
 import { CitationHoverProvider } from "./hover/index.js";
 import { type CitationWorkspace, findCitingProject } from "./citationWorkspace.js";
 import { registerCitationFromLibrary } from "./citationFromLibrary.js";
-import { DEFAULT_BIBLIOGRAPHY, findCiteKeyOccurrences } from "@labshelf/core";
+import { formatError, DEFAULT_BIBLIOGRAPHY, findCiteKeyOccurrences } from "@labshelf/core";
 import { openEditorSources } from "./openEditorSources.js";
 import type { ReadyProject } from "../buildRootDocument.js";
 
 // A definition provider must answer with a source Location, so the paper opens through a document link.
-export class CitationLinkProvider implements vscode.DocumentLinkProvider {
+export class CitationProvider implements vscode.DocumentLinkProvider {
   constructor(private readonly workspace: CitationWorkspace) {}
 
   async provideDocumentLinks(document: vscode.TextDocument): Promise<vscode.DocumentLink[]> {
@@ -57,7 +57,7 @@ class BibliographySync {
     } catch (error) {
       await session.logger.error("writing/citations", error, { folder: project.folder, action: "update-bibliography" });
       void vscode.window.showWarningMessage(
-        `Could not update the bibliography of ${project.settings.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `Could not update the bibliography of ${project.settings.id}: ${formatError(error)}`,
       );
     }
   }
@@ -85,7 +85,7 @@ export function registerCitationProviders(
   const sync = new BibliographySync(workspace);
   const completion = new CitationCompletionProvider(workspace);
   const hover = new CitationHoverProvider(workspace);
-  const links = new CitationLinkProvider(workspace);
+  const links = new CitationProvider(workspace);
   for (const { selector, triggers } of SOURCES) {
     context.subscriptions.push(
       vscode.languages.registerCompletionItemProvider(selector, completion, ...triggers),

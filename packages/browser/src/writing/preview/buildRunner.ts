@@ -1,6 +1,6 @@
 // Runs helper build requests without cancelling a preview for the same source revision.
 import { formatError } from "@labshelf/core";
-import type { CompileMode, HelperCompileRequest, HelperCompileResult } from "@labshelf/core/helper";
+import type { BuildKind, HelperCompileRequest, HelperCompileResult } from "@labshelf/core/helper";
 import type { BuildSchedulerOptions } from "./buildScheduler";
 
 const LOG_MODULE = "preview";
@@ -10,7 +10,7 @@ type BuildRunnerOptions = Omit<BuildSchedulerOptions, "timers">;
 // A save follows the active preview so autosave cannot repeatedly interrupt format creation.
 export function createBuildRunner({ helper, target, onResult, onStart, logger }: BuildRunnerOptions) {
   let generation = 0;
-  let running: CompileMode | undefined;
+  let running: BuildKind | undefined;
   let pendingFull = false;
 
   // Bumping the generation makes the build in flight report nothing; cancel only frees the helper sooner.
@@ -24,7 +24,7 @@ export function createBuildRunner({ helper, target, onResult, onStart, logger }:
     });
   };
 
-  const build = (mode: CompileMode, editedFile?: string, editedLine?: number): void => {
+  const build = (mode: BuildKind, editedFile?: string, editedLine?: number): void => {
     if (mode === "full" && running === "full") return;
     if (mode === "full" && running === "preview") { pendingFull = true; return; }
     supersede();

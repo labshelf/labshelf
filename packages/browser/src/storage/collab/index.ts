@@ -1,4 +1,4 @@
 // Exports the IndexedDB storage of each share's collaboration state.
 export { openBrowserCollabStorage } from "./browserCollabStorage";
-export { deleteBrowserCollabState } from "./removeBrowserCollabState";
+export { removeBrowserCollabDocs } from "./removeBrowserCollabDocs";
 export { createBrowserDeviceIdentity } from "./createBrowserDeviceIdentity";

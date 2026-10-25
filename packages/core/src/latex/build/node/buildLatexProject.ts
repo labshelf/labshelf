@@ -20,7 +20,7 @@ export interface CompileRequest {
   logger: ILogger;
 }
 
-export interface CompileJob {
+export interface LatexBuildJob {
   /** The job name: the run writes `<job>.log` and `<job>.pdf` into the build folder. */
   job: string;
   command: BuildCommand;
@@ -37,7 +37,7 @@ function failureReason(output: string, engine: LatexToolchain["engine"], code: n
 }
 
 /** A succeeded result's `pdf` is the build folder's copy; publishing it next to main is the caller's step. */
-export async function buildLatexProject(request: CompileRequest, places: ProblemPlaces, { job, command, mapProblems }: CompileJob): Promise<LatexBuildResult> {
+export async function buildLatexProject(request: CompileRequest, places: ProblemPlaces, { job, command, mapProblems }: LatexBuildJob): Promise<LatexBuildResult> {
   let outcome;
   try {
     outcome = await runCancellable(command.executable, command.args, places.workDir, request.signal, { env: { ...withToolchainOnPath(request.toolchain, process.env), ...command.env } });

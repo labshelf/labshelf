@@ -48,7 +48,7 @@ export interface MacroFact {
   range: LatexRange;
 }
 
-export interface IncludeFact {
+export interface LatexInclude {
   command: string;
   /** The path as written, trimmed. */
   path: string;
@@ -60,5 +60,5 @@ export interface LatexSourceFacts {
   refs: ReferenceFact[];
   sections: SectionFact[];
   macros: MacroFact[];
-  includes: IncludeFact[];
+  includes: LatexInclude[];
 }

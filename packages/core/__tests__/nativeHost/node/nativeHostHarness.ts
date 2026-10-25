@@ -2,13 +2,13 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { NativeHostEnv, RegistryRunner, ScriptLaunch } from "../../../src/nativeHost/node/index";
+import type { NativeHostEnv, RegistryRunner, ScriptEntry } from "../../../src/nativeHost/node/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { makeTempDir } from "../../support/tempDirs";
 
 export const CHROME_ID = "ghcjlkjggiffdekaneoaoklhedjeeklh";
 
-export const launch: ScriptLaunch = {
+export const launch: ScriptEntry = {
   kind: "script", owner: "vscode", nodePath: "/opt/node bin/node", hostScript: "/opt/labshelf/bridge-host.js", electronRunAsNode: false,
 };
 

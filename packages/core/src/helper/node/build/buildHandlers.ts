@@ -12,6 +12,7 @@ import { HelperProjectError, type HelperProjects } from "../projects/index.js";
 import { BUILD_MODULE, runBuildJob, type BuildToken } from "./runBuildJob.js";
 import { createHelperToolchainAsk } from "./askHelperToolchain.js";
 import type { SentPages } from "./sendPages.js";
+import { formatError } from "../../../logging/index.js";
 
 export interface BuildHandlerOptions {
   /** The helper's data folder; each project builds in `projects/<id>/src` and `projects/<id>/build`. */
@@ -55,7 +56,7 @@ function createProjectBuilds(options: BuildHandlerOptions, typst: ProjectBuildDe
 async function reportFailure(options: BuildHandlerOptions, message: CompileMessage, send: HelperSend, error: unknown): Promise<void> {
   await options.logger.error(BUILD_MODULE, error, { projectId: message.projectId, main: message.main });
   const code = error instanceof HelperProjectError ? error.code : "internal";
-  send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code, message: error instanceof Error ? error.message : String(error) });
+  send({ v: PROTOCOL_VERSION, id: message.id, type: "error", code, message: formatError(error) });
 }
 
 async function runInBackground(options: BuildHandlerOptions, message: CompileMessage, send: HelperSend, builds: ProjectBuilds, token: BuildToken): Promise<void> {

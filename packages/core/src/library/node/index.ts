@@ -9,7 +9,7 @@ export {
   loadSharedConfig, readSharedLibraryRoot, resolveSharedConfigDir, resolveSharedConfigPath, updateSharedConfig,
 } from "./sharedConfigFile.js";
 export {
-  countPaperFolders, detectSyncFolders, detectLibraryFolder, moveLibrary,
-  type DetectSyncFoldersOptions, type LibraryFolderDetails, type MoveLibraryOptions, type SyncFolder, type SyncFolderTool,
+  countPaperFolders, detectSyncFolders, detectLibraryFolder, formatPath, LIBRARY_FOLDER_NAME, listLibraryFolders, moveLibrary, resolveLibraryDir, formatSyncTool,
+  type DetectSyncFoldersOptions, type LibraryFolderChoice, type LibraryFolderDetails, type MoveLibraryOptions, type SyncFolder, type SyncFolderTool,
 } from "./libraryLocation/index.js";
 export { resolveConflictCopy, resolveConflictDismissalFile, findProjectConflict, resolveProjectConflictCopy, type ProjectConflictResolutionContext } from '../conflicts/node/index.js';

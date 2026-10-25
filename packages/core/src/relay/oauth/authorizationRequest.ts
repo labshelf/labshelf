@@ -1,7 +1,7 @@
 // Builds the Cloudflare consent URL with PKCE (S256) and a state, and reads the code from the redirect it comes back with.
 import { bytesToBase64Url } from "../../encoding/index.js";
 import { CLOUDFLARE_AUTHORIZE_URL, CLOUDFLARE_CLIENT_ID, CLOUDFLARE_REDIRECT_URI, CLOUDFLARE_SCOPES } from "./oauthClient.js";
-import { CloudflareOAuthError } from "./oauthError.js";
+import { CloudflareOauthError } from "./oauthError.js";
 
 export interface CloudflareAuthorization {
   url: string;
@@ -30,14 +30,14 @@ export async function startCloudflareAuthorization(): Promise<CloudflareAuthoriz
   return { url: url.href, state, verifier };
 }
 
-/** Throws a `CloudflareOAuthError` for a redirect with another state, an error, or no code. */
+/** Throws a `CloudflareOauthError` for a redirect with another state, an error, or no code. */
 export function readAuthorizationCode(callbackUrl: string, expectedState: string): string {
   const params = new URL(callbackUrl).searchParams;
   // INVARIANT: the state is checked before the error, so a forged redirect cannot even choose the error shown.
-  if (params.get("state") !== expectedState) { throw new CloudflareOAuthError("state_mismatch", "the redirect does not belong to this sign-in"); }
+  if (params.get("state") !== expectedState) { throw new CloudflareOauthError("state_mismatch", "the redirect does not belong to this sign-in"); }
   const error = params.get("error");
-  if (error) { throw new CloudflareOAuthError(error, params.get("error_description") ?? "Cloudflare refused the sign-in"); }
+  if (error) { throw new CloudflareOauthError(error, params.get("error_description") ?? "Cloudflare refused the sign-in"); }
   const code = params.get("code");
-  if (!code) { throw new CloudflareOAuthError("no_code", "the redirect carries no authorization code"); }
+  if (!code) { throw new CloudflareOauthError("no_code", "the redirect carries no authorization code"); }
   return code;
 }

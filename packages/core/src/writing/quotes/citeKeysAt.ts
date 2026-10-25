@@ -2,7 +2,7 @@
 import type { CitationQuery, PagePoint } from "../../reader/index.js";
 import { findCiteKeyOccurrences } from "../citations/index.js";
 import type { ProjectFormat } from "../project/index.js";
-import { citationDestKey, typstCiteAt, type TypstCite } from "./pdfCiteLocations.js";
+import { deriveCiteKey, findTypstCitationAt, type TypstCitation } from "./pdfCiteLocations.js";
 
 /** A source file's whole text and a 1-based line of it. */
 export interface SourceLine {
@@ -14,7 +14,7 @@ export interface SourceLine {
 export interface CitationSources {
   format: ProjectFormat;
   /** Where the last Typst build placed each citation; absent when it is not known. */
-  typstCites?: readonly TypstCite[];
+  typstCites?: readonly TypstCitation[];
   /** The source line behind a point, through SyncTeX; `undefined` when there is no SyncTeX data or no source there. */
   sourceLineAt?(point: PagePoint): Promise<SourceLine | undefined>;
 }
@@ -36,12 +36,12 @@ export function findCiteKeysOnLine(format: ProjectFormat, source: SourceLine): s
  */
 export async function findCiteKeysAt(query: CitationQuery, sources: CitationSources): Promise<string[]> {
   if (query.dest !== undefined) {
-    const key = citationDestKey(query.dest);
+    const key = deriveCiteKey(query.dest);
     return key === undefined ? [] : [key];
   }
   const { area } = query;
   if (sources.format === "typst") {
-    const key = typstCiteAt(sources.typstCites ?? [], area);
+    const key = findTypstCitationAt(sources.typstCites ?? [], area);
     return key === undefined ? [] : [key];
   }
   // A LaTeX link without a destination name is not hyperref's citation link.

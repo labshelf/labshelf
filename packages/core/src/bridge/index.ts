@@ -7,4 +7,4 @@ export {
 export { BridgeError } from "./bridgeError.js";
 export { encodeFrame, FrameDecoder } from "./framing.js";
 export { splitFileChunks } from "./fileChunks.js";
-export { assertSameProtocol, parseBridgeRequest, requestId } from "./requestValidation.js";
+export { assertSameProtocol, parseBridgeRequest, parseRequestId } from "./requestValidation.js";

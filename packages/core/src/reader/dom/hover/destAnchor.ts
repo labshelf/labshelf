@@ -4,7 +4,7 @@ import type { CitationResolver } from "../text/index.js";
 import type { PreviewCitations } from "./citations/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { DestPreview } from "./destPreview.js";
-import type { ExplicitDest, HoverAnchor, PopupContent } from "./hoverAnchor.js";
+import type { PdfDestination, HoverAnchor, PopupContent } from "./hoverAnchor.js";
 import { renderTextContent } from "./popup.js";
 
 const LINK_SELECTOR = "section.linkAnnotation[data-internal-link]";
@@ -45,7 +45,7 @@ export class DestContent {
       : typeof ref === "number" ? ref + 1 : 0;
     if (!targetPage || !isCurrent()) { return null; }
     const point = deriveDestPoint(explicit) ?? { x: null, y: null, kind: "Fit" };
-    const jump = (): void => { void this.ctx.linkService.goToDestination(dest as ExplicitDest); };
+    const jump = (): void => { void this.ctx.linkService.goToDestination(dest as PdfDestination); };
 
     if (point.y !== null && await this.resolver.isInReferences(targetPage, point.y, point.x)) {
       const text = await this.resolver.entryAt(targetPage, point.y, point.x);

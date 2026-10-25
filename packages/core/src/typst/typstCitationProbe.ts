@@ -1,8 +1,8 @@
 /** Writes the Typst source that reports where a document's citations land, and reads its answer. */
-import type { TypstCite } from "../writing/quotes/index.js";
+import type { TypstCitation } from "../writing/quotes/index.js";
 
 /** Where a build's citations landed, or why that is not known. */
-export type TypstCitations = { cites: TypstCite[] } | { failure: string };
+export type TypstCitations = { cites: TypstCitation[] } | { failure: string };
 
 // TRAP: the compiler only shadows this path in memory; a project file with the same name would be hidden for the probe compile.
 export const PROBE_FILE = "__labshelf_citations__.typ";
@@ -27,7 +27,7 @@ export function createCitationProbeSource(mainFromRoot: string): string {
 
 const isFiniteNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 
-function toCite(item: unknown): TypstCite | undefined {
+function toCite(item: unknown): TypstCitation | undefined {
   if (typeof item !== "object" || item === null) { return undefined; }
   const { key, page, x, y } = item as Record<string, unknown>;
   if (typeof key !== "string" || !isFiniteNumber(page) || !Number.isInteger(page) || !isFiniteNumber(x) || !isFiniteNumber(y)) { return undefined; }
@@ -41,6 +41,6 @@ export function readProbeAnswer(answer: unknown): TypstCitations {
   }
   const cites = (answer[0] as unknown[]).map(toCite);
   return cites.every((cite) => cite !== undefined)
-    ? { cites: cites as TypstCite[] }
+    ? { cites: cites as TypstCitation[] }
     : { failure: "A citation in the query result has no key or position." };
 }

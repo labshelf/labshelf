@@ -1,6 +1,6 @@
 // Pairs bridge requests with the host's answers over one native port and fails every pending request when it closes.
 import {
-  base64ToBytes, BridgeError, splitFileChunks,
+  base64ToBytes, BridgeError, joinBytes, splitFileChunks,
   type BridgeErrorCode, type BridgeRequest, type BridgeResults, type ILogger,
 } from "@labshelf/core";
 import type { NativePort } from "../../platform";
@@ -67,9 +67,7 @@ export class BridgeConnection {
   async readFile(path: string): Promise<Uint8Array> {
     const pending = this.send([{ op: "readFile", path }]);
     const { size, chunks } = (await pending) as { size: number; chunks: Uint8Array[] };
-    const bytes = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
-    let offset = 0;
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+    const bytes = joinBytes(chunks);
     if (bytes.length !== size) throw new BridgeError("protocol", `${path}: the host announced ${size} bytes and sent ${bytes.length}`);
     return bytes;
   }

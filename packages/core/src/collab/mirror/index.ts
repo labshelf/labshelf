@@ -6,4 +6,4 @@ export { openFolderLease, type AcquireFolderLeaseOptions, type FolderLeaseResult
 export type { FolderLease } from "./projectLease.js";
 export type { LeaseHolder, MirrorApp } from "./leaseFile.js";
 export { systemLeaseScheduler, type LeaseScheduler } from "./mirrorScheduler.js";
-export { MirrorOwnershipLost } from "./mirrorLostError.js";
+export { MirrorLostError } from "./MirrorLostError.js";

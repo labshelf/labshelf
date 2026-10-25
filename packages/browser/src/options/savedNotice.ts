@@ -4,12 +4,12 @@ import { renderIcon } from "@labshelf/core";
 
 const VISIBLE_MS = 2000;
 
-export interface SavedFlag {
+export interface SavedNotice {
   element: HTMLElement;
   flash(): void;
 }
 
-export function createSavedFlag(): SavedFlag {
+export function createSavedNotice(): SavedNotice {
   const element = renderElement("span", { class: "settings-saved", "aria-live": "polite", html: `${renderIcon("check")}<span>Saved</span>` });
   let timer: ReturnType<typeof setTimeout> | null = null;
   return {

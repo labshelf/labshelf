@@ -9,7 +9,7 @@ import { formatError, renderIcon } from "@labshelf/core";
 import { renderFolders, showNotice, updateTextAreaHeight } from "./render";
 import { attachPdf, detectCapture, writeCapture, removeCapture } from "./captureFlow";
 import { closeOffer, fetchOffer, showOffer } from "./offerCard";
-import { popupState, setState } from "./popupState";
+import { popupState, showPopupView } from "./popupState";
 
 function wire(): void {
   findElement("form").addEventListener("submit", (e) => { e.preventDefault(); void writeCapture(); });
@@ -43,7 +43,7 @@ async function init(): Promise<void> {
   findElement("noteIcon").innerHTML = renderIcon("message");
   findElement("undo").innerHTML = renderIcon("trash");
   findElement("title").classList.add("muted");
-  setState("loading");
+  showPopupView("loading");
   wire();
   mountSourceBanner(findElement("sourceBanner"), { logger: createBrowserLogger(), onFolder: () => undefined });
 
@@ -57,7 +57,7 @@ async function init(): Promise<void> {
       return;
     }
     findElement("title").textContent = "Nothing to save here";
-    setState("empty");
+    showPopupView("empty");
     showNotice({ glyph: "globe", tone: "muted", title: "This page can't be saved", detail: "Open an article's page or its PDF in a normal tab." });
     return;
   }
@@ -76,7 +76,7 @@ async function init(): Promise<void> {
       return;
     }
     findElement("title").textContent = tab.title || "This page";
-    setState("empty");
+    showPopupView("empty");
     showNotice({ glyph: "warning", tone: "muted", title: "Could not read this page", detail: formatError(err), tryAnyway: true });
   }
 }

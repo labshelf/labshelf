@@ -3,7 +3,7 @@
 import type { CitationMapView } from "../protocol/index.js";
 
 export interface GraphNode {
-  /** A paper id, or a missing work's id from {@link missingNodeId}. */
+  /** A paper id, or a missing work's id from {@link createMissingGraphNodeId}. */
   id: string;
   kind: "paper" | "missing";
   /** The paper id or the work id the node stands for. */
@@ -26,7 +26,7 @@ const PAPER_RADIUS = 5;
 const MAX_RADIUS = 14;
 
 /** Keeps a work id from ever colliding with a paper id that happens to look like one. */
-export const missingNodeId = (workId: string): string => `work:${workId}`;
+export const createMissingGraphNodeId = (workId: string): string => `work:${workId}`;
 
 /** A missing work's node grows with the number of library papers citing it. */
 const missingRadius = (citing: number): number => Math.min(MAX_RADIUS, PAPER_RADIUS + 2 * Math.sqrt(citing));
@@ -38,12 +38,12 @@ export const GRAPH_MAX_RADIUS = MAX_RADIUS;
 export function createCitationMapGraph(map: CitationMapView): CitationMapGraph {
   const nodes: GraphNode[] = map.papers.map((p) => ({ id: p.id, kind: "paper", ref: p.id, title: p.title, radius: PAPER_RADIUS }));
   for (const work of map.missing) {
-    nodes.push({ id: missingNodeId(work.workId), kind: "missing", ref: work.workId, title: work.title, radius: missingRadius(work.citedBy.length) });
+    nodes.push({ id: createMissingGraphNodeId(work.workId), kind: "missing", ref: work.workId, title: work.title, radius: missingRadius(work.citedBy.length) });
   }
   const known = new Set(nodes.map((n) => n.id));
   const candidates: GraphEdge[] = [
     ...map.links,
-    ...map.missing.flatMap((w) => w.citedBy.map((from) => ({ from, to: missingNodeId(w.workId) }))),
+    ...map.missing.flatMap((w) => w.citedBy.map((from) => ({ from, to: createMissingGraphNodeId(w.workId) }))),
   ];
   const edges = candidates.filter((e) => known.has(e.from) && known.has(e.to)).map(({ from, to }) => ({ from, to }));
   return { nodes, edges };

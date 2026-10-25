@@ -22,7 +22,7 @@ export interface AskOverlay {
   targets: string[];
 }
 
-export interface ConfirmOverlay {
+export interface QuestionOverlay {
   kind: "confirm";
   title: string;
   lines: string[];
@@ -50,7 +50,7 @@ export interface HelpOverlay {
   scroll: number;
 }
 
-export type Overlay = AskOverlay | ConfirmOverlay | PickerOverlay | HelpOverlay;
+export type Overlay = AskOverlay | QuestionOverlay | PickerOverlay | HelpOverlay;
 
 type InlinePurpose = "filter" | "find" | "search";
 
@@ -136,7 +136,7 @@ function drawPrompt(screen: Screen, prompt: AskOverlay): void {
   }
 }
 
-function drawConfirm(screen: Screen, confirm: ConfirmOverlay): void {
+function drawConfirm(screen: Screen, confirm: QuestionOverlay): void {
   const width = Math.max(40, ...confirm.lines.map((l) => deriveStringWidth(l) + 6));
   const inner = drawBox(screen, centered(screen, Math.min(width, 80), confirm.lines.length + 4), confirm.title);
   confirm.lines.forEach((line, i) => screen.text(inner.x, inner.y + i, formatTruncated(line, inner.w)));

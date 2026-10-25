@@ -20,7 +20,7 @@ export interface Channel {
   send(to: PeerId | "all", docKey: string, payload: Uint8Array): Promise<void>;
 }
 
-export interface SecureMesh {
+export interface PeerMesh {
   readonly peers: readonly PeerId[];
   onPeer(listener: (peer: PeerId, joined: boolean) => void): () => void;
   readonly status: SessionPhase;

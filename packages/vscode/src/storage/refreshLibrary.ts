@@ -12,7 +12,7 @@ export interface ReindexLibraryDeps {
 }
 
 /** Ids whose records appeared, changed or disappeared during a reindex. */
-export interface ReindexSummary {
+export interface RefreshLibraryResult {
   added: string[];
   updated: string[];
   removed: string[];
@@ -26,7 +26,7 @@ function papersOf(store: LibraryStore): PaperRecord[] {
  * Reloads the store, then announces each change and queues the text-layer checks.
  * @returns the ids that were added, changed and removed
  */
-export async function refreshLibrary(deps: ReindexLibraryDeps): Promise<ReindexSummary> {
+export async function refreshLibrary(deps: ReindexLibraryDeps): Promise<RefreshLibraryResult> {
   const before = papersOf(deps.store);
   await deps.store.reload();
   const after = papersOf(deps.store);

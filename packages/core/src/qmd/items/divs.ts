@@ -4,7 +4,7 @@ import { findCodeFences } from "./fences.js";
 import { isBlankLine, extractLineContent } from "./lines.js";
 
 /** A top-level div: indices of its opening and closing lines. */
-export interface DivRange { readonly open: number; readonly close: number }
+export interface ItemRange { readonly open: number; readonly close: number }
 
 type LineKind = "open" | "close" | "text";
 
@@ -16,9 +16,9 @@ const HEADING = /^#{1,6}(?:[ \t]|$)/;
  * The top-level divs of `lines`. An opening line without a matching closing line is ordinary text and the scan
  * goes on after it, so one broken fence never hides the divs that follow.
  */
-export function findTopLevelDivs(lines: readonly string[]): DivRange[] {
+export function findTopLevelDivs(lines: readonly string[]): ItemRange[] {
   const kinds = lineKinds(lines);
-  const divs: DivRange[] = [];
+  const divs: ItemRange[] = [];
   for (let i = 0; i < kinds.length; i++) {
     if (kinds[i] !== "open") { continue; }
     const close = divClose(kinds, i);

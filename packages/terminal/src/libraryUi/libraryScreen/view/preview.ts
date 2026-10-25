@@ -7,10 +7,10 @@ import { deriveImageFit, readPngSize, type CellRect } from "../../../screen/inde
 import type { Screen } from "../../../screen/index.js";
 import { drawLines, type Rect } from "../../render.js";
 import { createFolderPreview, createLibraryOverview, createPaperPreview, PREVIEW_TABS, createTabBar } from "../../preview.js";
-import { ALL, formatFolderTitle, type ImagePlan } from "../screenModel.js";
+import { ALL, formatFolderTitle, type ThumbnailPlan } from "../screenModel.js";
 import type { App } from "../app.js";
 
-export function drawPreview(app: App, screen: Screen, rect: Rect): ImagePlan | undefined {
+export function drawPreview(app: App, screen: Screen, rect: Rect): ThumbnailPlan | undefined {
   const inner = { x: rect.x + 1, y: rect.y, w: rect.w - 1, h: rect.h };
   if (app.focus === "folders" && app.search === undefined) { return drawFolderSide(app, screen, inner); }
   const paper = app.listModel.hoveredPaper();
@@ -33,7 +33,7 @@ function drawFolderSide(app: App, screen: Screen, inner: Rect): undefined {
   return undefined;
 }
 
-function drawPaperSide(app: App, screen: Screen, inner: Rect, paper: PaperEntry): ImagePlan | undefined {
+function drawPaperSide(app: App, screen: Screen, inner: Rect, paper: PaperEntry): ThumbnailPlan | undefined {
   const data = sidecarFor(app, paper.record.id);
   const tab = PREVIEW_TABS[app.previewTab]!;
   drawLines(screen, { ...inner, h: 1 }, [createTabBar(tab, data?.annotations.length ?? 0)]);
@@ -63,7 +63,7 @@ function sidecarFor(app: App, id: string): PaperSidecar | undefined {
   return undefined;
 }
 
-function thumbnailFor(app: App, paper: PaperEntry, box: CellRect): ImagePlan | undefined {
+function thumbnailFor(app: App, paper: PaperEntry, box: CellRect): ThumbnailPlan | undefined {
   const request = { pdfPath: createPaperFiles(paper.record.path, path.join).pdf, sizeBytes: paper.pdfBytes ?? 0, mtimeMs: paper.modifiedMs };
   const png = app.ctx.thumbnails.peek(request);
   if (!png) {

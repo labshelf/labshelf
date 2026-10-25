@@ -55,7 +55,7 @@ export interface LibraryFindItem {
 
 export type LibraryFindReply = Record<string, LibraryReference>;
 
-export interface TabSummary {
+export interface BrowserTab {
   id: number;
   title: string;
   url: string;

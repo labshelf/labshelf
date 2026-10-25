@@ -1,5 +1,5 @@
 // Turns the Publish form and its project into the template manifest the checks and the submission carry.
-import { projectIdSlug } from "../../writing/project/index.js";
+import { deriveProjectIdSlug } from "../../writing/project/index.js";
 import { serializeTemplateManifest, TEMPLATE_CATEGORIES, type TemplateManifest } from "../templateManifest/index.js";
 import type { PublishDraft } from "../protocol/index.js";
 import type { PublishFile } from "../publishCheckReport.js";
@@ -22,7 +22,7 @@ export function createPublishTemplateManifest(draft: PublishDraft, project: Publ
   if (category === undefined) { return { ok: false, error: `Category must be one of ${TEMPLATE_CATEGORIES.join(", ")}.` }; }
   const description = draft.description.trim();
   if (description.length > MAX_DESCRIPTION_LENGTH) { return { ok: false, error: `The description is over ${MAX_DESCRIPTION_LENGTH} characters.` }; }
-  const id = projectIdSlug(name).slice(0, MAX_ID_LENGTH).replace(/-+$/, "");
+  const id = deriveProjectIdSlug(name).slice(0, MAX_ID_LENGTH).replace(/-+$/, "");
   const { format, engine, main } = project;
   return { ok: true, manifest: { id, name, description, category, format, engine, main, license: draft.license.trim(), authors: [PLACEHOLDER_AUTHOR] } };
 }

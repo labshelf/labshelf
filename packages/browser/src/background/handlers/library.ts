@@ -2,7 +2,7 @@
 // tabs.list runtime messages.
 import { bx } from "../../platform";
 import type {
-  AttachPdfReply, FolderOption, FoldersReply, LibraryFindReply, LibraryFindItem, RuntimeMessage, TabSummary,
+  AttachPdfReply, FolderOption, FoldersReply, LibraryFindReply, LibraryFindItem, RuntimeMessage, BrowserTab,
 } from "../../platform";
 import { readSettings } from "../../platform";
 import { attachPdfToPaper, createDraftFromPaper, findPdf, normalizeFolder, derivePdfMiss } from "../../capture/index";
@@ -106,9 +106,9 @@ export async function answerLibraryOpen(msg: Extract<RuntimeMessage, { type: "li
   return { opened: true };
 }
 
-export async function answerListTabs(): Promise<TabSummary[]> {
+export async function answerListTabs(): Promise<BrowserTab[]> {
   const tabs = await bx.tabs.query({ currentWindow: true });
   return tabs
     .filter((t) => t.id !== undefined && /^https?:/.test(t.url ?? ""))
-    .map((t) => ({ id: t.id!, title: t.title ?? "", url: t.url ?? "" }) satisfies TabSummary);
+    .map((t) => ({ id: t.id!, title: t.title ?? "", url: t.url ?? "" }) satisfies BrowserTab);
 }

@@ -1,7 +1,7 @@
 // Reports a failed relay action: logged without secrets, shown without waiting; a cancelled one is only logged.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { LOG_MODULE } from "./relayAccounts.js";
 
 export function reportRelayFailure(logger: ILogger, action: string, error: unknown): void {
@@ -10,5 +10,5 @@ export function reportRelayFailure(logger: ILogger, action: string, error: unkno
     return;
   }
   void logger.error(LOG_MODULE, error, { action });
-  void vscode.window.showErrorMessage(`LabShelf could not ${action}: ${error instanceof Error ? error.message : String(error)}`);
+  void vscode.window.showErrorMessage(`LabShelf could not ${action}: ${formatError(error)}`);
 }

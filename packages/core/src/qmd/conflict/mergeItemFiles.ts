@@ -13,7 +13,7 @@ import {
   parseDivOpener,
 } from "../items/index.js";
 import type { TextMerge, TextMergeResult } from "./textMergePort.js";
-import { findOutputs, type OutputBlock } from "../cellOutput/index.js";
+import { findOutputs, type CellOutputBlock } from "../cellOutput/index.js";
 
 /** The side that holds every edit, or undefined when both sides changed the value differently. */
 function changedSide<T>(base: T | undefined, local: T, other: T): T | undefined {
@@ -82,8 +82,8 @@ function settleOutputs(local: string, other: string): { local: string; other: st
   return { local: settledLocal, other: settledOther };
 }
 
-function singleBlocks(body: string): Map<string, OutputBlock> {
-  const blocks = new Map<string, OutputBlock>();
+function singleBlocks(body: string): Map<string, CellOutputBlock> {
+  const blocks = new Map<string, CellOutputBlock>();
   const repeated = new Set<string>();
   for (const block of findOutputs(body)) {
     if (blocks.has(block.cell)) { repeated.add(block.cell); }

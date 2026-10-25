@@ -16,7 +16,7 @@ const ASSETS: Readonly<Record<string, { name: string; sha256: string }>> = {
   "win32-arm64": WINDOWS,
 };
 
-export interface TinyTexAsset {
+export interface TinyTexFile {
   version: string;
   name: string;
   url: string;
@@ -24,7 +24,7 @@ export interface TinyTexAsset {
 }
 
 /** The pinned asset for this OS and architecture, or undefined when TinyTeX has no build for it. */
-export function findTinyTexAsset(platform: string, arch: string): TinyTexAsset | undefined {
+export function findTinyTexFile(platform: string, arch: string): TinyTexFile | undefined {
   const asset = ASSETS[`${platform}-${arch}`];
   if (!asset) { return undefined; }
   return { version: TINYTEX_VERSION, name: asset.name, url: RELEASE_URL + asset.name, sha256: asset.sha256 };

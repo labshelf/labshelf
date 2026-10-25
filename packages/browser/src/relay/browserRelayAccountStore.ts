@@ -4,7 +4,7 @@ import {
   type ILogger,
   type RelayAccountStore,
   type StoredLock,
-  type SecretSlot,
+  type StoredSecret,
 } from "@labshelf/core";
 import { openDB, type IDBPDatabase } from "idb";
 
@@ -21,7 +21,7 @@ function secretsDb(): Promise<IDBPDatabase> {
   return opening;
 }
 
-export function createRelayAccountSlot(name: "account" | "tokens"): SecretSlot {
+export function createRelayAccountSlot(name: "account" | "tokens"): StoredSecret {
   return {
     get: async () => (await (await secretsDb()).get(STORE, name)) as string | undefined,
     store: async (value) => { await (await secretsDb()).put(STORE, value, name); },

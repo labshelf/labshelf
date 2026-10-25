@@ -1,7 +1,7 @@
 // Describes the build options a preview shows and writes the changes the user makes to them.
 import * as vscode from "vscode";
 
-import type { AutoCompileMode, BuildOptions, LatexEngine } from "@labshelf/core";
+import type { BuildSchedule, BuildOptions, LatexEngine } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import { writeEngine, type WriteEngineDeps } from "./toolchain/index.js";
 import { readAutoCompileMode } from "./buildMode.js";
@@ -15,7 +15,7 @@ export function buildOptions(project: ReadyProject): Omit<BuildOptions, "include
   return { autoCompile: readAutoCompileMode(), ...(settings.format === "latex" ? { engine: settings.engine ?? null, haltOnError: shouldHaltOnError() } : {}) };
 }
 
-export function setAutoCompile(mode: AutoCompileMode): Thenable<void> {
+export function setAutoCompile(mode: BuildSchedule): Thenable<void> {
   return vscode.workspace.getConfiguration("labshelf.writing").update("autoCompile", mode, vscode.ConfigurationTarget.Global);
 }
 

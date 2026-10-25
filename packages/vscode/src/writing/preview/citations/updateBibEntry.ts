@@ -1,7 +1,7 @@
 // Replaces a preprint entry in the user's .bib with its published version, and tells which venue that is.
 import * as vscode from "vscode";
 
-import { checkBibliography, type BibliographyFix, type ILogger, type PublishedVersion, type PublishedVersionFinder } from "@labshelf/core";
+import { formatError, checkBibliography, type BibliographyFix, type ILogger, type PublishedVersion, type PublishedVersionFinder } from "@labshelf/core";
 import { findBibEntry } from "./projectBibliographyFiles.js";
 
 const MODULE = "writing/preview";
@@ -64,5 +64,5 @@ export async function updateBibEntry(deps: UpdateBibliographyDeps, key: string):
 
 async function fail(deps: UpdateBibliographyDeps, key: string, file: string | undefined, error: unknown): Promise<void> {
   await deps.logger.error(MODULE, error, { key, file, action: "update-bib-entry" });
-  void vscode.window.showErrorMessage(`Could not update ${key}: ${error instanceof Error ? error.message : String(error)}`);
+  void vscode.window.showErrorMessage(`Could not update ${key}: ${formatError(error)}`);
 }

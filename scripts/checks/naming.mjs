@@ -1,5 +1,5 @@
 // Checks folder, file and export names against scripts/checks/vocabulary.yaml; run on changed files, given files or --all for a summary.
-// Usage: node scripts/checks/naming.mjs [--all [--verbose]] [file...] — exits 1 on any violation.
+// Usage: node scripts/checks/naming.mjs [--all [--verbose]] [file...] — exits 1 on any violation and, with --all, on any stale `allow` entry.
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
@@ -27,12 +27,15 @@ function allFiles(dir = join(root, "packages"), out = []) {
   return out;
 }
 
-export function checkFile(index, rel, text) {
+export function checkFile(index, rel, text, used = null) {
   const exported = parseExports(text, rel);
   const file = basename(rel).replace(/\.[^.]+$/, "");
   const classFile = exported.some((item) => item.kind === "class" && item.name === file);
-  return [...checkPath(index, rel, { classFile }), ...exported.flatMap((item) => checkExportName(index, item.name, item.kind))];
+  return [...checkPath(index, rel, { classFile }), ...exported.flatMap((item) => checkExportName(index, item.name, item.kind, rel, used))];
 }
+
+// An `allow` entry is stale when no export it exempts would be reported without it: it only means something while the whole tree is checked.
+export const staleAllowEntries = (index, used) => index.allow.filter((item) => !used.has(item));
 
 function printSummary(results) {
   const byRule = new Map();
@@ -54,7 +57,9 @@ function main(args) {
   const given = args.filter((arg) => !arg.startsWith("--")).map((file) => relative(root, resolve(file)));
   const candidates = flags.has("--all") ? allFiles() : given.length > 0 ? given : changedFiles();
   const index = loadVocabulary(join(root, "scripts/checks/vocabulary.yaml"));
-  const results = candidates.filter(isChecked).map((rel) => ({ rel, violations: checkFile(index, rel, readFileSync(join(root, rel), "utf8")) }));
+  const used = new Set();
+  const results = candidates.filter(isChecked).map((rel) => ({ rel, violations: checkFile(index, rel, readFileSync(join(root, rel), "utf8"), used) }));
+  const stale = flags.has("--all") ? staleAllowEntries(index, used) : [];
   const summaryOnly = flags.has("--all") && !flags.has("--verbose");
   if (summaryOnly) printSummary(results);
   else {
@@ -62,9 +67,10 @@ function main(args) {
       for (const { rule, message, hint } of violations) console.log(`${rel}: ${rule}: ${message}${hint ? ` (${hint})` : ""}`);
     }
   }
+  for (const { name, globs } of stale) console.log(`vocabulary.yaml: stale allow entry ${name} (${globs.join(", ")}): no export in those files needs it, remove it`);
   const total = results.reduce((sum, result) => sum + result.violations.length, 0);
-  if (!summaryOnly) console.log(`naming: ${total} violations in ${results.length} files`);
-  process.exit(total > 0 ? 1 : 0);
+  if (!summaryOnly) console.log(`naming: ${total} violations in ${results.length} files${stale.length > 0 ? `, ${stale.length} stale allow entries` : ""}`);
+  process.exit(total + stale.length > 0 ? 1 : 0);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main(process.argv.slice(2));

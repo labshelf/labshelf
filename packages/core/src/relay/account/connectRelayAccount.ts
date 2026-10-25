@@ -5,6 +5,10 @@ import {
 import { createAccessTokenReader, type RelayAccountDeps } from "./createAccessTokenReader.js";
 import { RELAY_ACCOUNT_LOG_MODULE, RELAY_WORKER_NAME, type RelayCredential } from "./relayAccount.js";
 
+/** What the relay is for, in the words every app shows before the owner connects Cloudflare. */
+export const RELAY_PURPOSE = "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It carries every edit between "
+  + "collaborators, end-to-end encrypted, and keeps them so collaborators sync even when you are offline.";
+
 export interface ConnectRelayAccountDeps extends RelayAccountDeps {
   /** Signs in or asks for a pasted token; undefined when the owner cancels. */
   chooseCredential(): Promise<RelayCredential | undefined>;

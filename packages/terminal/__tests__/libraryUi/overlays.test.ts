@@ -6,7 +6,7 @@ import {
   drawField,
   drawOverlay,
   listHelpRows,
-  type ConfirmOverlay,
+  type QuestionOverlay,
   type Overlay,
   type PickerItem,
   type PickerOverlay,
@@ -25,7 +25,7 @@ function prompt(extra: Partial<AskOverlay> = {}): AskOverlay {
   return { kind: "prompt", purpose: "add", title: "Add a paper", input: createTextInput(""), completions: [], targets: [], ...extra };
 }
 
-function confirm(extra: Partial<ConfirmOverlay> = {}): ConfirmOverlay {
+function confirm(extra: Partial<QuestionOverlay> = {}): QuestionOverlay {
   return { kind: "confirm", title: "Move to trash", lines: ["Move it to the trash?"], onYes: jest.fn(), ...extra };
 }
 

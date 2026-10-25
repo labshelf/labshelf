@@ -9,7 +9,7 @@ export { registerSettingsMenu } from "./registerSettingsMenu.js";
 export { registerPanelCommands } from "./registerPanelCommands.js";
 export { registerWritingView } from "./registerWritingView.js";
 export { openLibraryLogger } from "./openLibraryLogger.js";
-export type { WritingViewHandles } from "./registerWritingView.js";
+export type { WritingViewResult } from "./registerWritingView.js";
 export { buildServices } from "./buildServices.js";
 export { startAiService } from "./startAiService.js";
 export type { HostDeviceLayout } from "./hostAdapters.js";

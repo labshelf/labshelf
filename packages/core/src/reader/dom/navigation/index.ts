@@ -2,7 +2,7 @@
 export { FindBar } from "./findBar.js";
 export { Keyboard } from "./keyboard.js";
 export { NavigationHistory } from "./navigationHistory.js";
-export { ZoomController } from "./zoom.js";
+export { Zoom } from "./Zoom.js";
 export { SourceSync } from "./sourceSync.js";
 export { ChangeMarks } from "./changeMarks.js";
-export { derivePagePoint, derivePixelOffset, type PageViewportLike } from "./pagePoints.js";
+export { derivePagePoint, derivePixelOffset, type PageViewLike, type PageViewportLike } from "./pagePoints.js";

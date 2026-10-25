@@ -1,10 +1,9 @@
 // Runs `labshelf move <path>`: moves the configured library to another folder and remembers the new location.
 import type { ILogger } from "@labshelf/core";
-import { moveLibrary } from "@labshelf/core/node";
+import { moveLibrary, resolveLibraryDir } from "@labshelf/core/node";
 
 import { resolveHomePath } from "../../platform/index.js";
 import { UsageError, type Output } from "../usage.js";
-import { resolveLibraryDir } from "./pickLibraryDir.js";
 
 export interface MoveSite {
   logger: (root: string) => ILogger;
@@ -21,7 +20,7 @@ export async function runMove(positionals: string[], root: string | undefined, i
   const raw = positionals[0];
   if (!raw) { throw new UsageError("Usage: labshelf move <path>"); }
   if (!root) { throw new UsageError("No library to move. Run `labshelf init <path>` first."); }
-  const target = await resolveLibraryDir(resolveHomePath(raw));
+  const target = await resolveLibraryDir(resolveHomePath(raw), { unreadableAsEmpty: true });
   let reported = false;
   try {
     await moveLibrary(root, target, {

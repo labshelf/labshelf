@@ -3,15 +3,15 @@ import * as http from "node:http";
 
 import * as vscode from "vscode";
 
-import { CLOUDFLARE_REDIRECT_PORT, CloudflareOAuthError, deriveConnectedPageUrl } from "@labshelf/core";
+import { CLOUDFLARE_REDIRECT_PORT, CloudflareOauthError, deriveConnectedPageUrl } from "@labshelf/core";
 
 const LOOPBACK_HOST = "127.0.0.1";
 /** Long enough to sign in, create an account and approve; short enough that a forgotten tab frees the port. */
 const CALLBACK_TIMEOUT_MS = 10 * 60_000;
 
 /** The browser cannot be sent back to this host, so the user signs in another way. */
-export class LoopbackUnavailableError extends Error {
-  override readonly name = "LoopbackUnavailableError";
+export class OauthCallbackError extends Error {
+  override readonly name = "OauthCallbackError";
 
   constructor(readonly reason: string) {
     super(`LabShelf cannot listen on ${LOOPBACK_HOST}:${CLOUDFLARE_REDIRECT_PORT} for the Cloudflare sign-in (${reason})`);
@@ -24,14 +24,14 @@ export interface CallbackOptions {
   cancel: vscode.CancellationToken;
 }
 
-export interface LoopbackCallback {
+export interface OauthCallback {
   /** Settles after one callback is handled, on cancellation, or on the timeout. */
   done: Promise<void>;
   /** Stops listening; `done` rejects with a `CancellationError`. */
   close(): void;
 }
 
-const errorCodeOf = (error: unknown) => (error instanceof CloudflareOAuthError ? error.code : "sign_in_failed");
+const errorCodeOf = (error: unknown) => (error instanceof CloudflareOauthError ? error.code : "sign_in_failed");
 
 function answerCallback(response: http.ServerResponse, error: unknown): void {
   // INVARIANT: the answer is only a redirect; tokens and codes never reach the page or the browser history.
@@ -41,13 +41,13 @@ function answerCallback(response: http.ServerResponse, error: unknown): void {
 
 function listen(server: http.Server): Promise<void> {
   return new Promise((resolve, reject) => {
-    server.once("error", (error: NodeJS.ErrnoException) => reject(new LoopbackUnavailableError(error.code ?? error.message)));
+    server.once("error", (error: NodeJS.ErrnoException) => reject(new OauthCallbackError(error.code ?? error.message)));
     server.listen(CLOUDFLARE_REDIRECT_PORT, LOOPBACK_HOST, () => resolve());
   });
 }
 
-/** Resolves once the port listens; throws `LoopbackUnavailableError` when it cannot (port in use, no permission). */
-export async function startOauthCallback({ handle, cancel }: CallbackOptions): Promise<LoopbackCallback> {
+/** Resolves once the port listens; throws `OauthCallbackError` when it cannot (port in use, no permission). */
+export async function startOauthCallback({ handle, cancel }: CallbackOptions): Promise<OauthCallback> {
   let settle: (outcome: { error?: unknown }) => void = () => undefined;
   const done = new Promise<void>((resolve, reject) => {
     settle = ({ error }) => (error === undefined ? resolve() : reject(error));

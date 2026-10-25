@@ -11,7 +11,7 @@ const SYNC_BEGIN = "\x1b[?2026h";
 const SYNC_END = "\x1b[?2026l";
 const ESC_TIMEOUT_MS = 30;
 
-export interface TerminalSize {
+export interface ScreenSize {
   cols: number;
   rows: number;
 }
@@ -32,7 +32,7 @@ export class Terminal {
     this.resizeListener?.(this.size());
   };
   private inputListener: ((event: InputEvent) => void) | undefined;
-  private resizeListener: ((size: TerminalSize) => void) | undefined;
+  private resizeListener: ((size: ScreenSize) => void) | undefined;
   private readonly restoreOnExit = (): void => this.leave();
   // PLATFORM: Node's default SIGTERM/SIGHUP handling exits without "exit" listeners, which would leave the shell in the
   // alternate screen with mouse reporting on.
@@ -47,14 +47,14 @@ export class Terminal {
   ) {}
 
   /** @returns the current size in cells */
-  size(): TerminalSize {
+  size(): ScreenSize {
     return { cols: this.output.columns || 80, rows: this.output.rows || 24 };
   }
 
   /**
    * Starts listening for input and resizes.
    */
-  listen(onInput: (event: InputEvent) => void, onResize: (size: TerminalSize) => void): void {
+  listen(onInput: (event: InputEvent) => void, onResize: (size: ScreenSize) => void): void {
     this.inputListener = onInput;
     this.resizeListener = onResize;
   }

@@ -5,5 +5,5 @@ export { deriveTexLiveGuideUrl } from "./texLiveGuide.js";
 export { TEX_INSTALL_KINDS } from "./texInstallKind.js";
 export type { TexInstallKind } from "./texInstallKind.js";
 export type { TexProvider } from "./texProvider.js";
-export { findTinyTexAsset } from "./tinyTex.js";
-export type { TinyTexAsset } from "./tinyTex.js";
+export { findTinyTexFile } from "./tinyTex.js";
+export type { TinyTexFile } from "./tinyTex.js";

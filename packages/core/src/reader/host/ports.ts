@@ -5,7 +5,7 @@ import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PaperSidecarStore } from "../sidecar/index.js";
 import type { LatexEngine } from "../../writing/project/index.js";
-import type { AutoCompileMode } from "../../writing/build/index.js";
+import type { BuildSchedule } from "../../writing/build/index.js";
 import type { CitationEntry, CitationQuery, PagePoint } from "../previewProtocol.js";
 import type { CheckLimitsChange, CitationFix, ProjectCommandId } from "../previewRequests.js";
 import type { CitationInProjectRequest, EffectiveTheme, HostToWebview, ReaderPrefs } from "../protocol/index.js";
@@ -44,7 +44,7 @@ export interface PreviewPorts {
   bodyPages?(root: string, contentPages: number): Promise<void> | void;
   /** Runs a project command on the shown root's project. */
   runCommand?(id: ProjectCommandId): Promise<void>;
-  setAutoCompile?(mode: AutoCompileMode): Promise<void>;
+  setAutoCompile?(mode: BuildSchedule): Promise<void>;
   setEngine?(engine: LatexEngine): Promise<void>;
   /** Builds only the focused included file, or every file again. */
   setIncludeOnly?(on: boolean): Promise<void>;

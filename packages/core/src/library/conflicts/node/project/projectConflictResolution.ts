@@ -14,7 +14,7 @@ import { deriveLineSimilarity } from '../../../../writing/text/index.js';
 import { mergeProjectContentCopy } from '../../../../writing/conflict/node/index.js';
 import { listLibraryProjects } from '../../../../writing/project/node/index.js';
 import { resolveConflictDismissalFile, findProjectConflict } from './projectConflictDetection.js';
-import { loadVersionHistory, PersistedMap } from "../../../../collab/deviceState/index.js";
+import { loadVersionHistory, StoredMap } from "../../../../collab/deviceState/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../../../writing/project/index.js";
 import { createSharedProjectStorage } from "./createSharedProjectStorage.js";
 
@@ -32,7 +32,7 @@ async function readSharedProjectVersions(root: string, folder: string, relative:
     if (await deriveTextHash(version.text) === version.hash) texts.push(version.text);
     else await logger.log('WARN', 'conflicts', 'Ignored a shared text version with a mismatched hash', { shareId, path: relative, hash: version.hash });
   }
-  const bases = await PersistedMap.load({ storage, name: 'bases', label: 'file merge bases', logger,
+  const bases = await StoredMap.load({ storage, name: 'bases', label: 'file merge bases', logger,
     isValue: (value: unknown): value is string => typeof value === 'string' });
   const base = bases.get(relative);
   if (base !== undefined) texts.push(base);

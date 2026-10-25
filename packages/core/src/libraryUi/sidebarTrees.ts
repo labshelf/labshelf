@@ -3,17 +3,21 @@ import type { IconName } from "../ui/index.js";
 
 export type ProjectTreeView = "files" | "outline" | "checklist";
 
+const PROJECT_TREE_VIEWS: readonly unknown[] = ["files", "outline", "checklist"] satisfies ProjectTreeView[];
+
+export const isProjectTreeView = (view: unknown): view is ProjectTreeView => PROJECT_TREE_VIEWS.includes(view);
+
 export type SidebarNodeIcon =
   | { kind: "glyph"; name: IconName }
   /** A short file-type label in the icon column, like a paper's REF. */
-  | { kind: "label"; text: string; tone: FileLabelTone }
+  | { kind: "label"; text: string; tone: FileLabelKind }
   /** A small filled dot whose colour says how the row stands. */
-  | { kind: "dot"; tone: DotTone };
+  | { kind: "dot"; tone: DotKind };
 
 /** err: an error; warn: a warning; accent: in progress; ok: done; muted: open or neutral. */
-export type DotTone = "err" | "warn" | "accent" | "ok" | "muted";
+export type DotKind = "err" | "warn" | "accent" | "ok" | "muted";
 
-export type FileLabelTone = "tex" | "typ" | "pdf" | "ref" | "plain";
+export type FileLabelKind = "tex" | "typ" | "pdf" | "ref" | "plain";
 
 export interface SidebarTreeNode {
   /** Unique within its view and stable across refreshes, so expansion survives them. */
@@ -68,7 +72,7 @@ export interface SidebarOpenProject {
   trees: SidebarProjectTree[];
 }
 
-const FILE_LABELS: Record<string, [string, FileLabelTone]> = {
+const FILE_LABELS: Record<string, [string, FileLabelKind]> = {
   tex: ["TEX", "tex"], sty: ["STY", "tex"], cls: ["CLS", "tex"], typ: ["TYP", "typ"],
   pdf: ["PDF", "pdf"], bib: ["BIB", "ref"], md: ["MD", "plain"], json: ["{}", "plain"], yaml: ["YML", "plain"], yml: ["YML", "plain"],
 };

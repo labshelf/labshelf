@@ -6,7 +6,7 @@ import {
   createTypstCompletionProvider,
   createTypstDefinitionProvider,
   createTypstHoverProvider,
-  type TypstContextOf,
+  type TypstLanguageOf,
 } from "../../../src/writing/typst/registerTypstLanguage";
 import { fakeDocument } from "../../support/textDocument";
 
@@ -14,7 +14,7 @@ const TEXT = "= Intro\n#le";
 const document = fakeDocument("/p/main.typ", TEXT);
 const token = undefined as never;
 
-function setup(service: Partial<TypstLanguageService>): TypstContextOf {
+function setup(service: Partial<TypstLanguageService>): TypstLanguageOf {
   return () => ({ service: service as TypstLanguageService, path: "main.typ", root: vscode.Uri.file("/p") });
 }
 

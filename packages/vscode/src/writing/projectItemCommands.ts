@@ -1,7 +1,7 @@
 // Registers the commands of a project entry: Reveal in File Explorer, Remove from LabShelf and Make a Copy.
 import * as vscode from "vscode";
 
-import { PROJECT_FILE, projectFileWithId, updateProjectFile, type ProjectEntry, type TemplateFile } from "@labshelf/core";
+import { PROJECT_FILE, withProjectId, updateProjectFile, type ProjectEntry, type TemplateFile } from "@labshelf/core";
 import { runSafely } from "../command/index.js";
 import { listProjectZipEntries } from "./exportBundle.js";
 import type { ReadyProject } from "./buildRootDocument.js";
@@ -48,7 +48,7 @@ export async function copyProjectEntry({ host, projects }: Pick<ItemCommandsDeps
   // The original labshelf.yaml carries keys a template install does not write: figures, values, check limits, papers.
   const settingsFile = vscode.Uri.joinPath(vscode.Uri.file(entry.folder), PROJECT_FILE);
   const text = new TextDecoder().decode(await vscode.workspace.fs.readFile(settingsFile));
-  const copied = updateProjectFile(projectFileWithId(text, copy.settings.id), {
+  const copied = updateProjectFile(withProjectId(text, copy.settings.id), {
     title: title === copy.settings.id ? undefined : title, archived: undefined, trashed: undefined,
   });
   await projects.fs.writeText(projects.paths.join(copy.folder, PROJECT_FILE), copied);

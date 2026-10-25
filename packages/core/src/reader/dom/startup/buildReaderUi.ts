@@ -4,7 +4,7 @@
 import { deriveClampedPage, type WebviewToHost } from "../../index.js";
 import { BuildBanner, Cheatsheet, SelectionBubble, PagePill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
 import { PageHighlights } from "../highlights/index.js";
-import { FindBar, NavigationHistory, ZoomController } from "../navigation/index.js";
+import { FindBar, NavigationHistory, Zoom } from "../navigation/index.js";
 import { createAreaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, createPreviewOutlineSource, CommentAsk } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
@@ -12,7 +12,7 @@ import { ReadingPositionReporter } from "./reportReadingPosition.js";
 
 export interface ReaderUi {
   history: NavigationHistory;
-  zoom: ZoomController;
+  zoom: Zoom;
   goToPage(page: number): void;
   annotationsTab: AnnotationsTab;
   highlights: PageHighlights;
@@ -35,7 +35,7 @@ export interface ReaderUi {
  */
 export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): ReaderUi {
   const history = new NavigationHistory(ctx);
-  const zoom = new ZoomController(ctx);
+  const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
   const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
   const highlights = new PageHighlights(ctx);

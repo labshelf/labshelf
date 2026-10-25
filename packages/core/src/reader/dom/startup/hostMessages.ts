@@ -5,7 +5,7 @@
 import { formatError } from "../../../logging/index.js";
 import type { PreviewCitations } from "../hover/index.js";
 import type { ChangeMarks, Keyboard, SourceSync } from "../navigation/index.js";
-import type { DocumentReloader, ReaderContext } from "../session/index.js";
+import type { PdfReloader, ReaderContext } from "../session/index.js";
 import type { ReaderUi } from "./buildReaderUi.js";
 import type { DeferredHover } from "./deferredHover.js";
 
@@ -14,7 +14,7 @@ export interface HostMessageParts {
   ui: ReaderUi;
   keyboard: Keyboard;
   hover: DeferredHover;
-  reloader: DocumentReloader;
+  reloader: PdfReloader;
   sourceSync: SourceSync;
   changeMarks: ChangeMarks;
   citations: PreviewCitations;

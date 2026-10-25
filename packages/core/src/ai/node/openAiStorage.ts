@@ -2,8 +2,8 @@
 import * as path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import type { OpenAiStorage } from "../aiStorage.js";
-import { SqliteIndexedHashes } from "./indexedHashes.js";
-import { SqliteVectorStore } from "./sqliteVectorIndex.js";
+import { SqliteHashCache } from "./SqliteHashCache.js";
+import { SqliteVectorIndex } from "./sqliteVectorIndex.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 import { ensureAiSchema } from "./aiSchema.js";
 
@@ -33,8 +33,8 @@ export const openAiStorage: OpenAiStorage = async (databasePath, fileSystem, log
   const connection = await openAiDatabase(databasePath, fileSystem, logger);
   return {
     createStores: (embeddingModelId) => ({
-      vectorStore: new SqliteVectorStore(connection, embeddingModelId),
-      hashes: new SqliteIndexedHashes(connection),
+      vectorStore: new SqliteVectorIndex(connection, embeddingModelId),
+      hashes: new SqliteHashCache(connection),
     }),
   };
 };

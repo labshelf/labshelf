@@ -2,7 +2,7 @@
 import "fake-indexeddb/auto";
 import * as Y from "yjs";
 import { readFileText, openCollabStore, type ILogger } from "@labshelf/core";
-import { deleteBrowserCollabState, openBrowserCollabStorage } from "../../../src/storage/collab";
+import { removeBrowserCollabDocs, openBrowserCollabStorage } from "../../../src/storage/collab";
 
 const RELAY = "wss://relay.example";
 const HASH = "a".repeat(64);
@@ -93,7 +93,7 @@ describe("browser collab storage", () => {
     expect(await mine.loadMap("known")).toEqual({ "a.typ": ns });
     expect(new TextDecoder().decode(await mine.readBlob(HASH))).toBe(ns);
 
-    await deleteBrowserCollabState(ns);
+    await removeBrowserCollabDocs(ns);
     expect((await mine.loadDocs()).size).toBe(0);
     expect(await mine.loadMap("known")).toBeUndefined();
     expect(await mine.readBlob(HASH)).toBeUndefined();

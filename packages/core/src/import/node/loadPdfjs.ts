@@ -1,8 +1,8 @@
 /** Loads pdf.js once for a Node host and runs its worker in-process; one loader per composition root. */
 import type { PdfjsLoader, PdfjsModule, PdfLoadingTask } from "../pdf/index.js";
-import { FileSystemBinaryFactory } from "./pdfjsFileFactory.js";
+import { PdfjsFileFactory } from "./PdfjsFileFactory.js";
 import { installElectronGlobals, updateFeatureTestPlatform } from "./pdfjsShims.js";
-import { pdfjsDataOptions } from "./pdfjsOpenOptions.js";
+import { createPdfjsOptions } from "./createPdfjsOptions.js";
 
 export interface PdfjsLoaderOptions {
   /** The host is an Electron utility process (the VS Code extension host), which pdf.js does not recognise as Node. */
@@ -31,8 +31,8 @@ export function createPdfjsLoader(options: PdfjsLoaderOptions = {}): PdfjsLoader
       const pdfjs = await load();
       const getDocument = pdfjs["getDocument"] as (options: Record<string, unknown>) => PdfLoadingTask;
       return getDocument({
-        ...pdfjsDataOptions(),
-        ...(electron ? { BinaryDataFactory: FileSystemBinaryFactory } : {}),
+        ...createPdfjsOptions(),
+        ...(electron ? { BinaryDataFactory: PdfjsFileFactory } : {}),
         ...documentOptions,
       });
     },

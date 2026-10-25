@@ -15,7 +15,7 @@ export interface TemplatePageController {
   close(): TemplateAddress | undefined;
 }
 
-export interface TemplatePageControllerParts {
+export interface TemplatePageControllerDeps {
   state: GalleryState;
   main: HTMLElement;
   grid: CardGrid;
@@ -26,7 +26,7 @@ export interface TemplatePageControllerParts {
 
 const keyFor = (entry: TemplateEntry): TemplateAddress => ({ source: entry.source, id: entry.id });
 
-export function createTemplatePageController(parts: TemplatePageControllerParts): TemplatePageController {
+export function createTemplatePageController(parts: TemplatePageControllerDeps): TemplatePageController {
   const { state, main, grid, transport } = parts;
   let detail: TemplatePage | null = null;
 

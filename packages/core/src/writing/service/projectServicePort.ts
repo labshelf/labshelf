@@ -4,7 +4,7 @@ import type { BacklinkMap } from "../citations/index.js";
 import type { BibliographyUpdate, CitingProject } from "../citations/index.js";
 import type { FigureState } from "../figures/index.js";
 import type {
-  FigureRecipe, OpenSources, ProjectEntry, ProjectFormat, ProjectSettingsPatch,
+  FigureRecipe, OpenSources, ProjectEntry, ProjectFormat, ProjectSettingsUpdate,
 } from "../project/index.js";
 import type { ProjectTemplate, TemplateFile } from "../../templates/index.js";
 import type { SynctexRead } from "../synctex/index.js";
@@ -27,7 +27,7 @@ export interface ProjectContentPort {
   rootFileNames(folder: string): Promise<string[]>;
   /** Every file of the project folder, relative to it, "/"-separated and sorted; hidden folders and node_modules are skipped. */
   listProjectFiles(folder: string): Promise<string[]>;
-  updateProjectSettings(folder: string, patch: ProjectSettingsPatch): Promise<void>;
+  updateProjectSettings(folder: string, patch: ProjectSettingsUpdate): Promise<void>;
   listVersions(folder: string): Promise<ProjectVersion[]>;
   /** Returns the folder of the marked version. */
   markVersion(request: MarkVersionRequest): Promise<string>;

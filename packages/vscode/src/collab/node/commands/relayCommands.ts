@@ -14,10 +14,10 @@ import { findOwningProject, type WritingProjects } from "../../../writing/index.
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 /** A project folder path (from a script or another command) or a project entry (from a view). */
-type ProjectTarget = string | ProjectEntry | undefined;
+type ProjectSubmission = string | ProjectEntry | undefined;
 
 async function pickProject(
-  projects: Pick<WritingProjects, "list" | "paths">, target: ProjectTarget, filter: (project: ReadyProject) => boolean, placeHolder: string,
+  projects: Pick<WritingProjects, "list" | "paths">, target: ProjectSubmission, filter: (project: ReadyProject) => boolean, placeHolder: string,
 ): Promise<ReadyProject | undefined> {
   const ready = projects.list().filter((entry): entry is ReadyProject => entry.kind === "ready" && filter(entry));
   if (typeof target === "string") { return ready.find((entry) => entry.folder === path.resolve(target)); }

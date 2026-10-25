@@ -1,9 +1,9 @@
 /**
  * Validates reader preferences coming from user-editable storage (VS Code settings, browser storage) into the ReaderPrefs shape.
  */
-import { DEFAULT_READER_PREFS, type CitationStyle, type ReaderPrefs, type ZoomPreset } from "./protocol/index.js";
+import { DEFAULT_READER_PREFS, type CitationStyle, type ReaderPrefs, type ZoomKind } from "./protocol/index.js";
 
-const ZOOM_PRESETS: readonly ZoomPreset[] = ["page-width", "page-fit", "page-actual", "auto"];
+const ZOOM_PRESETS: readonly ZoomKind[] = ["page-width", "page-fit", "page-actual", "auto"];
 const CITATION_STYLES: readonly CitationStyle[] = ["pandoc", "latex", "author-year", "citekey"];
 const MAX_HOVER_DELAY_MS = 2000;
 

@@ -1,5 +1,5 @@
 // A registry search that throws is logged with context and the import goes on without an online record.
-import type { ILogger, PdfDocumentOpener } from '@labshelf/core';
+import type { ILogger, PdfOpener } from '@labshelf/core';
 
 import { PdfImportParser } from '../../../../src/import/pdf/parser/PdfImportParser';
 
@@ -13,7 +13,7 @@ const PROSE =
   'stable with respect to the choice of the data that has been used for the experiments in the first part ' +
   'of this work, which are also the ones that we have reported by the authors in the other sections here.';
 
-const opener: PdfDocumentOpener = {
+const opener: PdfOpener = {
   open: async () => ({
     numPages: 1,
     getMetadata: async () => ({ info: {} }),

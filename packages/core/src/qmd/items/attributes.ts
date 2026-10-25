@@ -1,7 +1,7 @@
 // Reads and writes the attribute block of a fenced div's opening line: `::: {#id .class key="value"}`.
 // CONTRACT: documents/contracts/qmd-items.md#items
 
-export interface DivAttributes {
+export interface ItemAttributes {
   readonly id?: string;
   readonly classes: readonly string[];
   /** Key-value attributes in source order, duplicates included. */
@@ -12,7 +12,7 @@ const OPENER = /^:{3,}[ \t]*\{(.*)\}[ \t]*:*[ \t]*$/;
 const TOKEN = /\s*(?:#([^\s{}"'=]+)|\.([^\s{}"'=]+)|([A-Za-z_][\w.:-]*)=(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|([^\s{}"']+)))/y;
 
 /** @returns undefined when the line is not a div opening line with one well-formed attribute block */
-export function parseDivOpener(line: string): DivAttributes | undefined {
+export function parseDivOpener(line: string): ItemAttributes | undefined {
   const opener = OPENER.exec(line);
   if (!opener) { return undefined; }
   const inner = opener[1]!;
@@ -39,7 +39,7 @@ export function parseDivOpener(line: string): DivAttributes | undefined {
 }
 
 /** Writes `::: {…}` without a line ending. Throws on a name or value that cannot be written on one line. */
-export function formatDivOpener(attributes: DivAttributes): string {
+export function formatDivOpener(attributes: ItemAttributes): string {
   const tokens: string[] = [];
   if (attributes.id !== undefined) { tokens.push(`#${checkName(attributes.id)}`); }
   for (const name of attributes.classes) { tokens.push(`.${checkName(name)}`); }
@@ -52,7 +52,7 @@ export function formatDivOpener(attributes: DivAttributes): string {
 }
 
 /** The value of the first attribute named `key`. */
-export function readAttribute(attributes: DivAttributes, key: string): string | undefined {
+export function readAttribute(attributes: ItemAttributes, key: string): string | undefined {
   return attributes.pairs.find(([name]) => name === key)?.[1];
 }
 

@@ -1,16 +1,17 @@
 // Mounts the project search panel into a root element and connects its form and results to the host.
 import { renderElement } from "../../../ui/dom/dom.js";
-import type { HostToSearch, SearchScopeLabel, SearchTransport, SearchScopeMode } from "../protocol/index.js";
+import type { HostToSearch, SearchScopeLabel, SearchTransport, SearchScopeKind } from "../protocol/index.js";
 import type { SearchResults } from "../searchResults.js";
 import { createMatchList, type MatchList } from "./matchList.js";
 import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { SearchOptions } from "../searchPattern.js";
+import { formatCount } from "../../../ui/index.js";
 
 interface SearchFormState {
   query: string;
   replacement: string;
   options: SearchOptions;
-  scope: SearchScopeMode;
+  scope: SearchScopeKind;
 }
 
 interface SearchForm {
@@ -33,7 +34,7 @@ function toggle(name: IconName, label: string, onChange: () => void): HTMLButton
   return button;
 }
 
-function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => SearchScopeMode; offer(offered: boolean): void } {
+function scopeSwitch(onChange: () => void): { root: HTMLElement; value: () => SearchScopeKind; offer(offered: boolean): void } {
   const option = (label: string, checked: boolean): HTMLButtonElement =>
     renderElement("button", { type: "button", class: "ls-psearch-scope-option", role: "radio", "aria-checked": String(checked), text: label });
   const file = option("This file", false);
@@ -97,11 +98,9 @@ export function deriveSteppedMatch(current: number, count: number, step: 1 | -1)
   return (current + step + count) % count;
 }
 
-const plural = (count: number, word: string): string => `${count} ${word}${count === 1 ? "" : "s"}`;
-
 function summaryText(results: SearchResults): string {
   if (results.total === 0) { return "No results"; }
-  const found = `${plural(results.total, "result")} in ${plural(results.files.length, "file")}`;
+  const found = `${formatCount(results.total, "result")} in ${formatCount(results.files.length, "file")}`;
   return results.truncated ? `${found}. Only the first ${results.total} are shown; narrow the search to see the rest.` : found;
 }
 

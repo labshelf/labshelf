@@ -1,18 +1,10 @@
 // Builds what a history page shows: one row per entry with its changes, and the line diff of one file in one entry.
 import type { ILogger } from "../../ports/index.js";
-import { deriveEntryChanges, type FileChange } from "./historyChanges.js";
-import type { HistoryKind } from "./historyEntry.js";
+import { deriveEntryChanges } from "./historyChanges.js";
 import type { HistoryStorage } from "./historyStorage.js";
 import { compareLines, type DiffLine } from "./compareLines.js";
+import type { HistoryRow } from "./protocol/index.js";
 import { readHistory } from "./projectHistory.js";
-
-export interface HistoryRow {
-  id: string;
-  at: string;
-  kind: HistoryKind;
-  label?: string;
-  changes: FileChange[];
-}
 
 /** A NUL byte in the first 8 KiB marks a file as binary, as git does. */
 const isBinary = (content: Uint8Array): boolean => content.subarray(0, 8192).includes(0);

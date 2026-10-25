@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { ConflictCopy } from "../../../library/conflicts/index.js";
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { DeviceIdentity } from "../../../library/writeRecords/index.js";
-import { prepareProjectSave } from "./projectWriteRecord.js";
+import { addProjectWriteRecord } from "./projectWriteRecord.js";
 import type { ILogger } from "../../../ports/index.js";
 import { isItemFileName, isMergeableTextFile } from "../index.js";
 import type { IProjectVersionStore } from "../index.js";
@@ -59,7 +59,7 @@ export async function mergeProjectCopies(
       void logger.log("INFO", MODULE, "File changed during the merge; the next scan merges it", context);
       return false;
     }
-    await prepareProjectSave({ ...recording, projectId: first.owner.id, relativePath, store, logger, text: merged.text, parentText: local });
+    await addProjectWriteRecord({ ...recording, projectId: first.owner.id, relativePath, store, logger, text: merged.text, parentText: local });
     await writeFileAtomic(first.original, merged.text);
     if (await fs.readFile(first.original, "utf8") !== merged.text) {
       throw new Error(`Merged file ${first.original} reads back different content`);

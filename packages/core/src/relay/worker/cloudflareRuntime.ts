@@ -2,13 +2,13 @@
 
 export type SqlField = ArrayBuffer | string | number | null;
 
-export interface SqlCursor<Row> extends Iterable<Row> {
+export interface CloudflareCursorLike<Row> extends Iterable<Row> {
   toArray(): Row[];
 }
 
 /** `ctx.storage.sql`: synchronous; writes in one event commit together. */
 export interface SqlStorage {
-  exec<Row = Record<string, SqlField>>(query: string, ...bindings: SqlField[]): SqlCursor<Row>;
+  exec<Row = Record<string, SqlField>>(query: string, ...bindings: SqlField[]): CloudflareCursorLike<Row>;
 }
 
 /** A server socket accepted with the Hibernation API; the attachment survives hibernation. */
@@ -24,13 +24,13 @@ export interface RoomState {
   getWebSockets(): HibernatingConnection[];
 }
 
-export interface RoomStub {
+export interface CloudflareStubLike {
   fetch(request: Request): Promise<Response>;
 }
 
-export interface RoomNamespace {
+export interface CloudflareNamespaceLike {
   idFromName(name: string): unknown;
-  get(id: unknown): RoomStub;
+  get(id: unknown): CloudflareStubLike;
 }
 
 /** The part of a Workers KV namespace the share endpoints use; values are read as streams so a check never buffers a blob. */
@@ -42,7 +42,7 @@ export interface KvNamespace {
 
 /** The bindings and secrets the deploy sets. */
 export interface RelayEnv {
-  ROOM: RoomNamespace;
+  ROOM: CloudflareNamespaceLike;
   KV: KvNamespace;
   OWNER_SECRET?: string;
 }

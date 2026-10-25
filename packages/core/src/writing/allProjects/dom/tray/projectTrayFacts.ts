@@ -4,10 +4,10 @@ import type { TrayEntry } from "../../../../libraryUi/dom/index.js";
 import type { ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
 import type { FileTreeEntry } from "./deriveProjectFileTree.js";
+import { formatCount } from "../../../../ui/index.js";
 
 const MAX_CONTENTS = 4;
 
-const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
 const toneOf = (ext: string): TrayEntry["tone"] => ext === "pdf" ? "pdf" : ext === "md" ? "md" : "other";
 const baseName = (path: string): string => /([^/]*?)(\.[^./]*)?$/.exec(path)?.[1] ?? path;
 
@@ -15,14 +15,14 @@ const baseName = (path: string): string => /([^/]*?)(\.[^./]*)?$/.exec(path)?.[1
 const hasOutcome = (d: ProjectPaneContent): boolean => d.build.state === "ok" || d.build.state === "warnings" || d.build.state === "failed";
 
 function outcome(d: ProjectPaneContent): string[] {
-  return hasOutcome(d) ? [plural(d.build.warnings, "warning"), plural(d.build.errors, "error")] : [];
+  return hasOutcome(d) ? [formatCount(d.build.warnings, "warning"), formatCount(d.build.errors, "error")] : [];
 }
 
 function mainFact(d: ProjectPaneContent): string {
   const first = d.build.first;
   const where = first?.file ? ` in ${first.file}${first.line !== undefined ? `:${first.line}` : ""}` : "";
-  const problems = hasOutcome(d) ? [d.build.warnings > 0 && plural(d.build.warnings, "warning"), d.build.errors > 0 && plural(d.build.errors, "error")] : [];
-  return [d.pages !== undefined && plural(d.pages, "page"), ...problems, first && first.message + where].filter(Boolean).join(" · ");
+  const problems = hasOutcome(d) ? [d.build.warnings > 0 && formatCount(d.build.warnings, "warning"), d.build.errors > 0 && formatCount(d.build.errors, "error")] : [];
+  return [d.pages !== undefined && formatCount(d.pages, "page"), ...problems, first && first.message + where].filter(Boolean).join(" · ");
 }
 
 /** The bibliography sentence the tray and the Overview tab share. */
@@ -59,7 +59,7 @@ export function createProjectFileEntry(f: FileTreeEntry, row: ProjectRow, detail
 /** The last build's log; absent until the detail says one exists. */
 export function createProjectLogEntry(detail: ProjectPaneContent | undefined): TrayEntry | null {
   if (!detail?.log) return null;
-  const text = [...outcome(detail), detail.pages !== undefined && plural(detail.pages, "page")].filter(Boolean).join(", ");
+  const text = [...outcome(detail), detail.pages !== undefined && formatCount(detail.pages, "page")].filter(Boolean).join(", ");
   return { kind: "file", name: detail.log, type: "LOG", tone: "other", fact: { label: "Last build", text }, title: detail.log };
 }
 

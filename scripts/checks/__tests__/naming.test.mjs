@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseExports } from '../namingExports.mjs';
+import { checkFile, staleAllowEntries } from '../naming.mjs';
 import { buildIndex, checkExportName, checkPath, loadVocabulary } from '../namingRules.mjs';
 
 const vocab = {
@@ -24,8 +25,10 @@ const vocab = {
   formats: ['pdf', 'hex', 'base64', 'url'],
   subjects: { paper: { def: 'p' }, libraryRoot: { def: 'l' } },
   features: { space: { def: 's', home: ['**/spaces/**'], syn: ['room'], words: ['spaceDir'] } },
-  tools: ['pdfjs'],
-  compoundOnly: { root: { use: ['libraryRoot', 'buildRoot'] } },
+  tools: ['pdfjs', 'openalex', 'semanticScholar'],
+  external: [{ name: 'activate', files: ['packages/ext/src/extension.ts'] }, { name: 'fetch', files: ['packages/core/src/**/index.ts'] }],
+  allow: [{ name: 'doStuff', files: ['packages/core/src/hash/**'], reason: 'awaiting a vocabulary decision' }, { name: 'readPaper', files: ['packages/core/src/hash/**'], reason: 'needless' }],
+  compoundOnly: { root: { use: ['libraryRoot', 'buildRoot'] }, id: { use: ['paperId'], suffix: true } },
   banned: { data: 'name what the data is', result: 'only as a type suffix' },
 };
 const index = buildIndex(vocab);
@@ -98,6 +101,44 @@ test('export-verb: functions start with a verb; a verb synonym reports synonym',
   assert.deepEqual(rules(checkExportName(index, 'makePaper', 'function')), ['synonym']);
 });
 
+test('a multi-word tool is one word in any casing', () => {
+  for (const name of ['OpenAlexPaper', 'openAlexPaper', 'paperOpenAlex', 'openalexPaper', 'SemanticScholarPaper', 'semanticscholarPaper']) assert.deepEqual(checkExportName(index, name, 'class'), [], name);
+  assert.deepEqual(path('hash/openAlexPaper.ts'), []);
+  assert.deepEqual(path('hash/OpenAlexPaper.ts', { classFile: true }), []);
+  assert.deepEqual(rules(checkExportName(index, 'OpenZorpQuux', 'class')), ['free-words']);
+  assert.deepEqual(rules(path('hash/openAlexZorpQuux.ts')), ['free-words']);
+  assert.ok(rules(path('hash/openAlex/paper.ts')).includes('folder-term'));
+});
+
+test('external: a name an external API requires is exempt only in the declared files', () => {
+  assert.deepEqual(checkExportName(index, 'activate', 'function', 'packages/ext/src/extension.ts'), []);
+  assert.deepEqual(rules(checkExportName(index, 'activate', 'function', 'packages/ext/src/other.ts')), ['export-verb']);
+  assert.deepEqual(rules(checkExportName(index, 'activate', 'function')), ['export-verb']);
+  assert.deepEqual(rules(checkExportName(index, 'deactivate', 'function', 'packages/ext/src/extension.ts')), ['export-verb']);
+  assert.deepEqual(checkExportName(index, 'fetch', 'function', 'packages/core/src/relay/worker/index.ts'), []);
+  assert.deepEqual(rules(checkExportName(index, 'fetch', 'function', 'packages/core/src/relay/worker/room.ts')), ['export-verb']);
+});
+
+test('allow: an allowed name passes in its files, fails elsewhere, and an entry nothing needs is stale', () => {
+  const used = new Set();
+  const hash = (name) => checkExportName(index, name, 'function', 'packages/core/src/hash/paper.ts', used);
+  assert.deepEqual(rules(checkExportName(index, 'doStuff', 'function', 'packages/core/src/hash/paper.ts')), []);
+  assert.deepEqual(rules(checkExportName(index, 'doStuff', 'function', 'packages/core/src/reader/paper.ts')), ['export-verb']);
+  assert.deepEqual(rules(checkExportName(index, 'doStuff', 'function')), ['export-verb']);
+  assert.deepEqual(hash('doStuff'), []);
+  assert.deepEqual(hash('readPaper'), [], 'a name that passes anyway');
+  assert.deepEqual(staleAllowEntries(index, used).map((item) => item.name), ['readPaper']);
+  assert.deepEqual(staleAllowEntries(index, new Set()).map((item) => item.name), ['doStuff', 'readPaper']);
+});
+
+test('allow: checkFile collects the entries it used from the exports of a file', () => {
+  const used = new Set();
+  const text = 'export function doStuff() {}\nexport function readPaper() {}\nexport function zorp() {}\n';
+  const found = checkFile(index, 'packages/core/src/hash/paper.ts', text, used);
+  assert.deepEqual(found.map((violation) => violation.message), ['export zorp: function name does not start with a verb']);
+  assert.deepEqual([...used].map((item) => item.name), ['doStuff']);
+});
+
 test('conversion: <from>To<to> and to<to> need vocabulary terms on every side', () => {
   for (const name of ['bytesToHex', 'hexToBytes', 'bytesToBase64Url', 'toHex', 'pdfjsToBuildRoot', 'bytesToPaper']) assert.deepEqual(exportRules(name), [], name);
   const unknown = checkExportName(index, 'fooToHex', 'function');
@@ -118,6 +159,25 @@ test('type names: suffix allowed only last in a multi-word name; I prefix stripp
   assert.deepEqual(rules(checkExportName(index, 'Result', 'type')), ['banned']);
   assert.deepEqual(checkExportName(index, 'IPaperParser', 'interface'), []);
   assert.deepEqual(rules(checkExportName(index, 'PaperZorpQuux', 'class')), ['free-words']);
+});
+
+test('suffix: a compoundOnly word marked suffix is valid right after a term; bare or after a free word it is not', () => {
+  assert.deepEqual(path('hash/bytesId.ts'), []);
+  assert.deepEqual(checkExportName(index, 'BytesIds', 'type'), []);
+  assert.deepEqual(exportRules('readBytesId'), []);
+  assert.deepEqual(rules(path('hash/id.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/liveId.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/zorpId.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/bytesZorpId.ts')), ['compound-only']);
+  assert.deepEqual(rules(path('hash/rootId.ts')), ['compound-only', 'compound-only']);
+  assert.deepEqual(path('hash/bytesIdZorp.ts'), []);
+  assert.deepEqual(rules(path('hash/liveIdBytes.ts')), ['compound-only']);
+  assert.deepEqual(rules(checkExportName(index, 'BytesZorpQuuxId', 'type')), ['compound-only', 'free-words']);
+});
+
+test('suffix: a function named <term><suffix> still needs a verb', () => {
+  assert.deepEqual(exportRules('bytesId'), ['export-verb']);
+  assert.deepEqual(checkExportName(index, 'BytesId', 'type'), []);
 });
 
 test('parseExports lists exported declarations only', () => {
@@ -159,4 +219,26 @@ test('readingStatus lives under library/readingStatus; its feature words are spe
   assert.ok(realPath('hash/readingStatus.ts').includes('feature-home'));
   assert.ok(realPath('hash/unreadPaper.ts').includes('feature-home'));
   assert.ok(!realPath('templates/dom/publishDone.ts').includes('feature-home'));
+});
+
+test('external: the real vocabulary exempts activate and deactivate in the VS Code entry and needs no entry for the Worker fetch', () => {
+  const at = (name, file) => checkExportName(real, name, 'function', file);
+  for (const name of ['activate', 'deactivate']) {
+    assert.deepEqual(at(name, 'packages/vscode/src/extension.ts'), [], name);
+    assert.deepEqual(rules(at(name, 'packages/vscode/src/other.ts')), ['export-verb'], name);
+  }
+  assert.deepEqual(at('fetch', 'packages/core/src/relay/worker/index.ts'), []);
+  assert.ok(!real.external.some((item) => item.name === 'fetch'), 'fetch is a vocabulary verb; an entry would be a no-op');
+});
+
+test('the real vocabulary keeps every allow entry complete: name, files and a reason', () => {
+  for (const item of real.allow) {
+    assert.ok(item.name && item.files.length > 0, item.name);
+    assert.ok(item.reason.length > 0, `${item.name} needs a reason`);
+  }
+});
+
+test('the real vocabulary reads OpenAlex names as one tool word', () => {
+  assert.deepEqual(checkExportName(real, 'OpenAlexCitationWork', 'type'), []);
+  assert.deepEqual(checkExportName(real, 'OpenAlexSuggestion', 'type'), []);
 });

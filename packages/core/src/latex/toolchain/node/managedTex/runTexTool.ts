@@ -1,6 +1,6 @@
 // Runs a TeX tool (tlmgr, install-tl) to its end, logging it and reporting its progress counter.
 import type { ILogger } from "../../../../ports/index.js";
-import { runCancellable } from "../../../build/node/index.js";
+import { runCancellable, type RunOutcome } from "../../../build/node/index.js";
 
 export const TEX_MODULE = "tex";
 
@@ -11,12 +11,6 @@ export interface TexToolRun {
   logger: ILogger;
   /** Receives the fraction (0..1) of the latest `[n/total, …]` line. */
   onProgress?: ((fraction: number) => void) | undefined;
-}
-
-export interface TexToolOutcome {
-  code: number | null;
-  /** The tail of stdout and stderr, interleaved. */
-  output: string;
 }
 
 const PROGRESS = /\[(\d+)\/(\d+),/g;
@@ -33,7 +27,7 @@ function quote(part: string): string {
   return `"${part.replace(/"/g, '""')}"`;
 }
 
-export async function runTexTool(run: TexToolRun): Promise<TexToolOutcome> {
+export async function runTexTool(run: TexToolRun): Promise<RunOutcome> {
   // PLATFORM: on Windows tlmgr and install-tl are .bat files, which only a shell can start.
   const shell = process.platform === "win32";
   const executable = shell ? [run.executable, ...run.args].map(quote).join(" ") : run.executable;

@@ -1,7 +1,7 @@
 /** Verifies where a key is typed and where keys are cited in LaTeX and Typst text. */
-import { findCiteKeyOccurrences, partialKeyStart } from "../../../src/writing/citations/index";
+import { findCiteKeyOccurrences, findPartialCiteKeyStart } from "../../../src/writing/citations/index";
 
-describe("partialKeyStart in LaTeX", () => {
+describe("findPartialCiteKeyStart in LaTeX", () => {
   it.each([
     ["\\cite{", 6],
     ["See \\citep{vasw", 11],
@@ -9,17 +9,17 @@ describe("partialKeyStart in LaTeX", () => {
     ["\\textcite*[see][p. 3]{a,  b", 26],
     ["\\autocite{a,", 12],
   ])("starts the partial key of %j at column %i", (prefix, column) => {
-    expect(partialKeyStart("latex", prefix)).toBe(column);
+    expect(findPartialCiteKeyStart("latex", prefix)).toBe(column);
   });
 
   it.each(["\\cite{a}", "\\cite{a} and ", "\\section{", "{", "\\cite", "plain text, more"])(
     "is outside a cite for %j", (prefix) => {
-      expect(partialKeyStart("latex", prefix)).toBeUndefined();
+      expect(findPartialCiteKeyStart("latex", prefix)).toBeUndefined();
     },
   );
 });
 
-describe("partialKeyStart in Typst", () => {
+describe("findPartialCiteKeyStart in Typst", () => {
   it.each([
     ["see @", 5],
     ["see @vasw", 5],
@@ -27,11 +27,11 @@ describe("partialKeyStart in Typst", () => {
     ["#cite(<", 7],
     ["#cite( <he20", 8],
   ])("starts the partial key of %j at column %i", (prefix, column) => {
-    expect(partialKeyStart("typst", prefix)).toBe(column);
+    expect(findPartialCiteKeyStart("typst", prefix)).toBe(column);
   });
 
   it.each(["mail me@home", "a <b", "plain text", "#cite(<a>", "x_@"])("is outside a reference for %j", (prefix) => {
-    expect(partialKeyStart("typst", prefix)).toBeUndefined();
+    expect(findPartialCiteKeyStart("typst", prefix)).toBeUndefined();
   });
 });
 

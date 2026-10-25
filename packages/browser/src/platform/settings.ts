@@ -3,7 +3,7 @@
 import { bx } from "./browserApi";
 import {
   AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, deriveRequestLanguage,
-  type AutoCompileMode, type CustomResolver, type LibraryProxy, type RequestLanguage,
+  type BuildSchedule, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
 import { deriveMirrorSettings } from "./mirrorToCustomResolver";
 import { DEFAULT_SIDEBAR_SECTIONS, readSidebarSections, type SidebarSections } from "./sidebarSections";
@@ -27,7 +27,7 @@ export interface ExtensionSettings {
   /** The sections the library page sidebar shows. */
   sidebarSections: SidebarSections;
   /** When a writing project's preview compiles. */
-  autoCompile: AutoCompileMode;
+  autoCompile: BuildSchedule;
   /** Whether a LaTeX build stops at its first error. */
   haltOnError: boolean;
 }

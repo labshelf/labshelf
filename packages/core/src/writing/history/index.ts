@@ -4,5 +4,5 @@ export { deriveEntryChanges, type FileChange, type FileChangeKind } from "./hist
 export { compareLines, type DiffLine, type DiffLineKind } from "./compareLines.js";
 export * from "./protocol/index.js";
 export { readHistory, writeSnapshot, applySnapshot } from "./projectHistory.js";
-export { readHistoryDiff, readHistoryRows, type HistoryRow } from "./historyViews.js";
+export { readHistoryDiff, readHistoryRows } from "./historyViews.js";
 export type { HistoryStorage, HistoryProject } from "./historyStorage.js";

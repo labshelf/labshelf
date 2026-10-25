@@ -7,11 +7,11 @@ import {
 } from "@labshelf/core";
 import {
   WritingProjects, registerBuildRootCommands, registerBuildRootStatusBar, registerProjectCommands,
-  registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
+  registerProjectItemCommands, registerReadingListCommands, ProjectBacklinks, ProjectReadingLists, type WritingHost,
 } from "../writing/index.js";
 import {
   BuildProblems, BuildOutcomes, IncludeOnlyState, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
-  setEngine, type IncludeOnlyTarget, type ProjectBuilders,
+  setEngine, type FindIncludeOnly, type ProjectBuilders,
 } from "../writing/build/index.js";
 import { registerInstallCommand } from "../writing/index.js";
 import { registerExportCommands } from "../writing/index.js";
@@ -41,11 +41,11 @@ import type { HostAdapters } from "./hostAdapters.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
 
 /** What other views read from the Writing view: its project list and the backlink index. */
-export interface WritingViewHandles {
+export interface WritingViewResult {
   projects: WritingProjects;
   readingLists: ProjectReadingLists;
   /** The list panel reads it to show where papers are cited. */
-  backlinks: ProjectBacklinkIndex;
+  backlinks: ProjectBacklinks;
   /** The library sidebar renders it as the Projects section. */
   projectsSource: SidebarProjectsSource;
   /** The library sidebar renders the open project's Files, Outline and Checklist from it. */
@@ -84,7 +84,7 @@ function openLibraryDeviceDirs(controller: Controller, deviceLayout: HostAdapter
   };
 }
 
-function createReadingLists(controller: Controller, backlinks: ProjectBacklinkIndex): ProjectReadingLists {
+function createReadingLists(controller: Controller, backlinks: ProjectBacklinks): ProjectReadingLists {
   return new ProjectReadingLists({
     backlinks,
     session: () => {
@@ -108,13 +108,13 @@ interface WritingParts {
   listPapers: () => Promise<PaperRecord[]>;
   citeSections: CitationSectionsCache;
   includeOnly: IncludeOnlyState;
-  includeOnlyTarget: IncludeOnlyTarget;
+  includeOnlyTarget: FindIncludeOnly;
   publishedLookup: PublishedVersionFinder;
   adapters: WritingAdapters;
 }
 
 /** The host values the Writing view reads; `convertDocument` is absent where documents cannot be converted. */
-type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectSaveTracking" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
+type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectWriteTracking" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
   const { context, controller, host, projects, figures, readingLists, listPapers, adapters: { convertDocument } } = parts;
@@ -129,7 +129,7 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
 
 /** Saves the editors and builds a root of the project with the builder of its format, as Build Project does. */
 async function recompileRoot(
-  projects: WritingProjects, builders: () => ProjectBuilders | undefined, includeOnlyTarget: IncludeOnlyTarget, folder: string, root: string,
+  projects: WritingProjects, builders: () => ProjectBuilders | undefined, includeOnlyTarget: FindIncludeOnly, folder: string, root: string,
 ): Promise<unknown> {
   const entry = projects.list().find((project) => project.kind === "ready" && project.folder === folder);
   if (entry?.kind !== "ready") { return undefined; }
@@ -217,11 +217,11 @@ function registerEditingSupport(parts: WritingParts): void {
 
 function createIncludeOnly(
   controller: LibraryRootController, projects: WritingProjects,
-): { includeOnly: IncludeOnlyState; includeOnlyTarget: IncludeOnlyTarget } {
+): { includeOnly: IncludeOnlyState; includeOnlyTarget: FindIncludeOnly } {
   const includeOnly = new IncludeOnlyState({
     readerFor: (folder) => createProjectSourceReader(vscode.Uri.file(folder), () => controller.currentServices()?.logger),
   });
-  const includeOnlyTarget: IncludeOnlyTarget = async (project, root) => {
+  const includeOnlyTarget: FindIncludeOnly = async (project, root) => {
     const editor = readActiveProjectEditor(projects.paths, project.folder);
     if (!editor) { return undefined; }
     const focused = projects.paths.relative(project.folder, editor.document.uri.fsPath).split(projects.paths.sep).join("/");
@@ -234,7 +234,7 @@ function createTrackedProjects(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
   host: WritingHost, logger: ILogger,
 ) {
-  const saves = adapters.createProjectSaveTracking(() => host.current()?.root, logger);
+  const saves = adapters.createProjectWriteTracking(() => host.current()?.root, logger);
   const data = adapters.createProjectData(logger, openLibraryDeviceDirs(controller, adapters.deviceLayout), saves.fs);
   const projects = new WritingProjects(host, adapters.paths, saves.fs, data);
   registerProjectWriteEvents(context, saves, logger);
@@ -244,12 +244,12 @@ function createTrackedProjects(
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
   registerPlatformWriting: RegisterPlatformWriting, sources: Pick<SelectionSources, "projectSelected" | "projectsActivated">,
-): WritingViewHandles {
+): WritingViewResult {
   const host = createWritingHost(controller);
   const logger = openLibraryLogger(controller);
   const { projects, data } = createTrackedProjects(context, controller, adapters, host, logger);
   const figures = new ProjectFigures(host, data);
-  const backlinks = new ProjectBacklinkIndex(projects, host);
+  const backlinks = new ProjectBacklinks(projects, host);
   const readingLists = createReadingLists(controller, backlinks);
   context.subscriptions.push(
     projects,

@@ -1,5 +1,5 @@
 // Validates a message from the Spaces page before the host acts on it, keeping only the known fields.
-import { isNonEmptyString, isRecord, isBoolean, isIdList, isOptional, isString } from "../model/json/index.js";
+import { isNonEmptyString, isJsonObject, isBoolean, isNonEmptyStringList, isOptional, isString } from "../model/json/index.js";
 import { SPACE_TABS, type SpaceTab, type SpacesToHost, type SpaceMutation } from "./messages.js";
 import { parseDateDraft, parseTermDraft } from "./parseSpaceDrafts.js";
 
@@ -7,7 +7,7 @@ type Fields = Record<string, unknown>;
 type ParseOne = (id: string, fields: Fields) => SpaceMutation | undefined;
 
 const isText = (value: unknown): value is string => isString(value) && value.trim() !== "";
-const isPaperIds = (value: unknown): value is string[] => isIdList(value) && value.length > 0;
+const isPaperIds = (value: unknown): value is string[] => isNonEmptyStringList(value) && value.length > 0;
 
 /** `{ [key]: value }`, or nothing when the value is absent. */
 const optional = <K extends string>(key: K, value: unknown): Partial<Record<K, string>> =>
@@ -60,7 +60,7 @@ const isParsedType = (type: unknown): type is keyof typeof PARSERS =>
 
 /** The mutation, or undefined when the type is not a mutation or a field is missing or of the wrong type. */
 function parseSpaceMutation(raw: unknown): SpaceMutation | undefined {
-  if (!isRecord(raw)) { return undefined; }
+  if (!isJsonObject(raw)) { return undefined; }
   const { type, id, name } = raw;
   if (type === "createSpace") { return isText(name) ? { type, name } : undefined; }
   if (!isParsedType(type) || !isNonEmptyString(id)) { return undefined; }
@@ -76,7 +76,7 @@ function parseReady(view: unknown, id: unknown): SpacesToHost | undefined {
 
 /** The typed message, or undefined when the type is unknown or a field is missing or of the wrong type. */
 export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
-  if (!isRecord(value)) { return undefined; }
+  if (!isJsonObject(value)) { return undefined; }
   const { type, view, id, paperId, projectId, tab } = value;
   switch (type) {
     case "ready": return parseReady(view, id);

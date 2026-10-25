@@ -6,7 +6,7 @@ import type { LibraryTree, TagCount } from "../../viewModel/index.js";
 import { createTagQuery } from "../../searchQueries.js";
 import { createProjectListActions, renderProjectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
 import type { SidebarProject } from "../../viewModel/index.js";
-import { GROUP_ROW_DEPTH, renderAllProjectsRow, renderExploreTemplatesRow, renderFolderRow, renderPaperRow, rowKey, renderAllPapersRow, renderTagRow } from "./sidebarRows.js";
+import { GROUP_ROW_DEPTH, renderAllProjectsRow, renderExploreTemplatesRow, renderFolderRow, renderPaperRow, readRowKey, renderAllPapersRow, renderTagRow } from "./sidebarRows.js";
 import { renderGroupRow, renderSectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
 import { renderSpaceRows, type SidebarSpacesState } from "./spaces/index.js";
 import { addOpenProject } from "./sidebarOpenProject.js";
@@ -51,7 +51,7 @@ export interface SidebarState extends SidebarSpacesState {
   sharing?: ShareHost | undefined;
   /** Lets the host accept drops on a folder row; called on every render. */
   dropTarget?: ((row: HTMLElement, path: string) => void) | undefined;
-  /** The focused row's key (see `rowKey`). */
+  /** The focused row's key (see `readRowKey`). */
   focused: string | null;
   selectedId: string | null;
   current: string;
@@ -78,8 +78,8 @@ export function drawFocus(t: SidebarState): void {
   const active = document.activeElement === t.el;
   if (!treeIds.has(t.el)) treeIds.set(t.el, ++nextTreeId);
   t.el.querySelectorAll<HTMLElement>(NAV_ROWS).forEach(r => {
-    r.id = `ls-tree-${treeIds.get(t.el)}-${encodeURIComponent(rowKey(r))}`;
-    r.classList.toggle("focused", active && rowKey(r) === t.focused);
+    r.id = `ls-tree-${treeIds.get(t.el)}-${encodeURIComponent(readRowKey(r))}`;
+    r.classList.toggle("focused", active && readRowKey(r) === t.focused);
   });
   const focused = t.el.querySelector<HTMLElement>(".focused");
   if (focused) { t.el.setAttribute("aria-activedescendant", focused.id); focused.scrollIntoView({ block: "nearest" }); }

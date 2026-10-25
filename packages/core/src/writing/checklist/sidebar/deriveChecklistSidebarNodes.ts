@@ -1,8 +1,8 @@
 // Lays a built checklist out as the sidebar's Checklist tree: ordered groups with dots, the folded "N read" rows and the manual items.
-import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
+import type { DotKind, SidebarTreeNode } from "../../../libraryUi/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { Checklist, ChecklistGroup, ChecklistGrouping, ChecklistItem, PageOverflow } from "../buildChecklist.js";
-import { itemKey, itemRow, createPagesHead, type ReadingPaper } from "./checklistRows.js";
+import { createItemKey, createItemRow, createPagesHead, type ReadingPaper } from "./checklistRows.js";
 
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 
@@ -26,7 +26,7 @@ export interface ChecklistTree {
 
 const OPEN_BY_DEFAULT = new Set(["reading", "manual", "#reading"]);
 
-interface KindHead { title: string; tone: (g: ChecklistGroup) => DotTone }
+interface KindHead { title: string; tone: (g: ChecklistGroup) => DotKind }
 
 /** By kind groups in display order; "pages" is the Pages row, built from the page count. */
 const KIND_ORDER: Array<[string, KindHead | undefined]> = [
@@ -50,9 +50,9 @@ function groupNode(input: ChecklistTreeInput, tree: ChecklistTree, group: Checkl
   const key = `${input.grouping}:${group.id}`;
   tree.groups.set(key, group.id);
   const row = (item: ChecklistItem): SidebarTreeNode => {
-    const rowKey = `${key}/${itemKey(item)}`;
+    const rowKey = `${key}/${createItemKey(item)}`;
     tree.items.set(rowKey, item);
-    return itemRow(input.paths, rowKey, item, input.reading);
+    return createItemRow(input.paths, rowKey, item, input.reading);
   };
   // Manual items follow the group's own rows, the folded "N read" row included.
   const own = group.items.filter((item) => item.kind !== "manual" || group.id === "manual" || group.id.startsWith("#"));
@@ -93,7 +93,7 @@ function byKind(input: ChecklistTreeInput, tree: ChecklistTree): SidebarTreeNode
 }
 
 /** A section's worst open item: errors (broken reference, page overflow), then warnings (TODO, stale figure), then anything open. */
-function sectionTone(group: ChecklistGroup): DotTone {
+function sectionTone(group: ChecklistGroup): DotKind {
   if (group.id === "#reading") { return "muted"; }
   const open = group.items.filter((item) => !item.done);
   if (open.some((item) => item.kind === "ref" || item.kind === "pages")) { return "err"; }

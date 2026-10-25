@@ -4,7 +4,7 @@ import type { CitationResolver, FloatResolver } from "../text/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { PreviewCitations } from "./citations/index.js";
 import type { DestPreview } from "./destPreview.js";
-import { isSameHoverAnchor, type HoverAnchor, type PopupContent, type ExplicitDest } from "./hoverAnchor.js";
+import { isSameHoverAnchor, type HoverAnchor, type PopupContent, type PdfDestination } from "./hoverAnchor.js";
 import { findDestAnchor, DestContent, createDestHoverAnchor } from "./destAnchor.js";
 import { HoverPopup, renderTextContent } from "./popup.js";
 import { runUnderPointer, TextAnchors } from "./textAnchor.js";
@@ -80,7 +80,7 @@ class ReferenceContent {
 
   /** Goes through the link service so the jump lands in the back/forward history like a followed link. */
   private jumpTo(pageNumber: number, x: number | null, y: number | null): void {
-    const dest = [pageNumber - 1, { name: "XYZ" }, x, y, null] as unknown as ExplicitDest;
+    const dest = [pageNumber - 1, { name: "XYZ" }, x, y, null] as unknown as PdfDestination;
     void this.ctx.linkService.goToDestination(dest);
   }
 }

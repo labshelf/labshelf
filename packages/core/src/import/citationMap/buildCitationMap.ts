@@ -4,7 +4,7 @@ import { openAlexWork, type OpenAlexCitationWork, type RegistryEnv } from "../re
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { createDoiFinder } from "../../library/index.js";
-import { createCitationCache, isStale, type CachedWork, type CitationCache } from "./createCitationCache.js";
+import { createCitationCache, isStale, type CitationCacheEntry, type CitationCache } from "./createCitationCache.js";
 import { countMissingCitations, type CitationEdge, type ResolvedPaper } from "./missingCitations.js";
 
 /** Stays under OpenAlex's polite limit of ten requests a second. */
@@ -51,7 +51,7 @@ export async function buildCitationMap(
   const { minCitingPapers = 3, maxMissing = 50, maxAgeDays = 30 } = options;
   const now = env.now?.() ?? new Date();
   const cache = createCitationCache(env.fs, env.cacheDir, env.logger);
-  const fresh = (entry: CachedWork | undefined): entry is CachedWork => entry !== undefined && !isStale(entry, now, maxAgeDays);
+  const fresh = (entry: CitationCacheEntry | undefined): entry is CitationCacheEntry => entry !== undefined && !isStale(entry, now, maxAgeDays);
 
   const resolved: ResolvedPaper[] = [];
   const unresolved: string[] = [];
@@ -85,7 +85,7 @@ export async function buildCitationMap(
 
 async function paperWork(
   env: CitationMapEnv, cache: CitationCache, paperId: string, doi: string, now: Date,
-  fresh: (entry: CachedWork | undefined) => entry is CachedWork,
+  fresh: (entry: CitationCacheEntry | undefined) => entry is CitationCacheEntry,
 ): Promise<OpenAlexCitationWork | undefined> {
   const cached = await cache.readPaper(paperId);
   if (fresh(cached) && cached.doi?.toLowerCase() === doi.toLowerCase()) {

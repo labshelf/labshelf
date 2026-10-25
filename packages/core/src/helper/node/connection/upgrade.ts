@@ -11,14 +11,14 @@ export interface UpgradeRules {
   callerOrigin?: string | undefined;
 }
 
-export type UpgradeVerdict = { accepted: true; response: string } | { accepted: false; reason: string; response: string };
+export type UpgradeResult = { accepted: true; response: string } | { accepted: false; reason: string; response: string };
 
 // PLATFORM: Chrome passes the caller origin as `chrome-extension://<id>/`, with a trailing slash the Origin header lacks.
 function normaliseOrigin(origin: string): string {
   return origin.replace(/\/+$/, "");
 }
 
-function refuse(reason: string, status = "403 Forbidden"): UpgradeVerdict {
+function refuse(reason: string, status = "403 Forbidden"): UpgradeResult {
   return { accepted: false, reason, response: `HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n` };
 }
 
@@ -34,7 +34,7 @@ function originRefusal(header: string | undefined, rules: UpgradeRules): string 
 }
 
 // PLATFORM: Chrome always offers permessage-deflate; the answer omits Sec-WebSocket-Extensions, which declines every extension (RFC 6455 section 9.1).
-export function checkUpgrade(request: IncomingMessage, rules: UpgradeRules): UpgradeVerdict {
+export function checkUpgrade(request: IncomingMessage, rules: UpgradeRules): UpgradeResult {
   const { headers } = request;
   if (headers.upgrade?.toLowerCase() !== "websocket") { return refuse("request is not a WebSocket upgrade", "426 Upgrade Required"); }
   const originProblem = originRefusal(headers.origin, rules);

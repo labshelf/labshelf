@@ -2,5 +2,5 @@
 export { BridgeClosedError, BridgeConnection } from "./bridgeConnection";
 export { BridgeClient, type OpenBridge } from "./connectBridge";
 export { BridgeFileSystem } from "./bridgeFileSystem";
-export { deriveBridgeFailure, type BridgeFailureReason } from "./bridgeFailure";
+export { deriveBridgeFailure, type BridgeFailureKind } from "./bridgeFailure";
 export { setBridgeLibrary } from "./setBridgeLibrary";

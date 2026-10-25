@@ -2,5 +2,5 @@
 export { ShareBlobCache } from "./ShareBlobCache.js";
 export { openCollabStore, type CollabStore, type CollabStoreOptions } from "./collabStore.js";
 export type { CollabDeviceStateStorage, DeviceStateMapName, StoredDoc } from "./collabStorage.js";
-export { PersistedMap } from "./storedMap.js";
+export { StoredMap } from "./storedMap.js";
 export { loadVersionHistory, VERSIONS_PER_PATH, type StoredVersion } from "./versionHistory.js";

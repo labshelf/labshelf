@@ -2,7 +2,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
-import { recordProjectSave, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
+import { addProjectWrite, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
 import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
 import { createBlankTemplate } from '../../../../src/templates/index';
@@ -26,7 +26,7 @@ async function fixture() {
   for (const store of stores) await scanLibraryConflicts(root, store, logger);
   const save = async (device: number, text: string) => {
     await fs.writeFile(file, text);
-    await recordProjectSave({ folder: entry.folder, projectId: entry.settings.id, relativePath: 'main.tex', text, parentText: base,
+    await addProjectWrite({ folder: entry.folder, projectId: entry.settings.id, relativePath: 'main.tex', text, parentText: base,
       store: stores[device]!, identity: { id: async () => ids[device]! }, logger });
   };
   return { root, entry, stores, state, file, base, save };

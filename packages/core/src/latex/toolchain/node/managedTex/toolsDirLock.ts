@@ -7,7 +7,7 @@ import type { ILogger } from "../../../../ports/index.js";
 
 const LOCK_MODULE = "ToolLock";
 
-export interface ToolLockOptions {
+export interface ToolsDirLockOptions {
   pollMs?: number;
   timeoutMs?: number;
   isAlive?: (pid: number) => boolean;
@@ -91,7 +91,7 @@ async function releaseOwn(file: string, own: string, logger: ILogger): Promise<v
 }
 
 /** Runs `run` while holding `<folder>/.lock`; waits for another holder and takes over a stale lock. */
-export async function withToolLock<T>(folder: string, operation: string, logger: ILogger, run: () => Promise<T>, options: ToolLockOptions = {}): Promise<T> {
+export async function withToolLock<T>(folder: string, operation: string, logger: ILogger, run: () => Promise<T>, options: ToolsDirLockOptions = {}): Promise<T> {
   const { pollMs = 500, timeoutMs = 15 * 60_000, isAlive = processAlive } = options;
   const file = join(folder, ".lock");
   const own = JSON.stringify({ pid: process.pid, operation, startedAt: new Date().toISOString() } satisfies Holder);

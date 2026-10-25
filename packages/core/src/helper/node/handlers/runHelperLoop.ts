@@ -1,17 +1,16 @@
 // Reads native-messaging frames until EOF, passing the one `hello` on and refusing every other message.
 // CONTRACT: documents/contracts/helper.md#transport
 import type { ILogger } from "../../../ports/index.js";
-import { parseHelperMessage, PROTOCOL_VERSION, type HelperParseResult, type ToHelperMessage } from "../../index.js";
+import { parseHelperMessage, type HelperParseResult, type ToHelperMessage } from "../../index.js";
 
 import { readFrames } from "../transport/index.js";
 import type { HelloMessage } from "./answerHello.js";
-import type { HelperSend } from "./helperHandlers.js";
+import { createErrorReply, type ErrorReply, type HelperSend } from "./helperHandlers.js";
+import { formatError } from "../../../logging/index.js";
 
 const LOG_MODULE = "helper-loop";
 // A frame that never parsed has no id to answer; the envelope still needs one.
 const NO_ID = "0";
-
-type ErrorReply = (id: string, code: string, message: string) => void;
 
 /** @returns whether the hello opened the session */
 export type HelloAnswer = (message: HelloMessage, send: HelperSend) => Promise<boolean>;
@@ -21,7 +20,7 @@ function parseFrame(frame: Buffer, reply: ErrorReply, logger: ILogger): HelperPa
   try {
     raw = JSON.parse(frame.toString("utf8"));
   } catch (error) {
-    void logger.log("WARN", LOG_MODULE, "Frame is not JSON", { bytes: frame.length, reason: error instanceof Error ? error.message : String(error) });
+    void logger.log("WARN", LOG_MODULE, "Frame is not JSON", { bytes: frame.length, reason: formatError(error) });
     reply(NO_ID, "malformed", "frame is not valid JSON");
     return undefined;
   }
@@ -29,7 +28,7 @@ function parseFrame(frame: Buffer, reply: ErrorReply, logger: ILogger): HelperPa
 }
 
 async function answerFrame(frame: Buffer, greeted: boolean, hello: HelloAnswer, send: HelperSend, logger: ILogger, onVersionRejected: () => void): Promise<boolean> {
-  const reply: ErrorReply = (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
+  const reply = createErrorReply(send);
   const parsed = parseFrame(frame, reply, logger);
   if (!parsed) { return false; }
   if (!parsed.ok) {
@@ -48,7 +47,7 @@ async function answerFrame(frame: Buffer, greeted: boolean, hello: HelloAnswer, 
     return await hello(message, send);
   } catch (error) {
     await logger.error(LOG_MODULE, error, { type: "hello", id: message.id });
-    reply(message.id, "internal", `hello failed: ${error instanceof Error ? error.message : String(error)}`);
+    reply(message.id, "internal", `hello failed: ${formatError(error)}`);
     return false;
   }
 }

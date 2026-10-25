@@ -1,5 +1,5 @@
 // Deploys the relay Worker into an owner's Cloudflare account: KV, address, script, secrets and route.
-import { bytesToBase64Url } from "../../encoding/index.js";
+import { bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { createCloudflareClient, type CloudflareClient } from "./cloudflareClient.js";
 import { uploadWorker } from "./workerUpload.js";
@@ -28,7 +28,7 @@ async function putSubdomain(client: CloudflareClient, path: string, accountId: s
     return await client.call("PUT", path, { subdomain: name });
   } catch (error) {
     if (!(error instanceof CloudflareApiError) || (error.status !== 400 && error.status !== 409)) { throw error; }
-    const suffix = Array.from(crypto.getRandomValues(new Uint8Array(3)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const suffix = bytesToHex(crypto.getRandomValues(new Uint8Array(3)));
     return client.call("PUT", path, { subdomain: `${name}-${suffix}` });
   }
 }

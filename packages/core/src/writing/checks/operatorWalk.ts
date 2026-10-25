@@ -1,5 +1,5 @@
 /** Finds the fonts and placed raster images of one page in its pdf.js operator list. */
-import type { PlacedImage } from "./checkReport.js";
+import type { PlacedFigure } from "./checkReport.js";
 
 type Matrix = [number, number, number, number, number, number];
 
@@ -11,7 +11,7 @@ export interface OperatorList {
 export interface PageOperators {
   /** pdf.js ids of the fonts the page sets, in first-use order. */
   fontIds: string[];
-  images: PlacedImage[];
+  images: PlacedFigure[];
 }
 
 const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0];
@@ -37,7 +37,7 @@ const isMatrix = (value: unknown): value is ArrayLike<number> =>
  */
 export function walkOperators(list: OperatorList, OPS: Record<string, number>): PageOperators {
   const fontIds: string[] = [];
-  const images: PlacedImage[] = [];
+  const images: PlacedFigure[] = [];
   const stack: Matrix[] = [];
   let ctm = IDENTITY;
   for (let i = 0; i < list.fnArray.length; i++) {

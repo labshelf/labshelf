@@ -4,7 +4,7 @@ import {
   mountEditorArea,
   type EditorArea,
   type EditorAreaPrefsPort,
-  type EditorGroupSide,
+  type EditorAreaSide,
   type EditorTabView,
   type EditorTab,
 } from "@labshelf/core/dom";
@@ -58,12 +58,12 @@ function createHashSync(tabs: () => EditorTabView[], storage: HashStorage): Hash
 }
 
 interface TabOpener {
-  open(kind: TabKindName, params?: TabParams, group?: EditorGroupSide, background?: boolean): void;
+  open(kind: TabKindName, params?: TabParams, group?: EditorAreaSide, background?: boolean): void;
   setDirty(id: string, kind: TabKindName, params: TabParams, dirty: boolean): void;
 }
 
 function createTabOpener(area: () => EditorArea, bodies: () => TabBodies, hash: HashSync): TabOpener {
-  const describe = (kind: TabKindName, params: TabParams, group: EditorGroupSide, dirty?: boolean): EditorTab => {
+  const describe = (kind: TabKindName, params: TabParams, group: EditorAreaSide, dirty?: boolean): EditorTab => {
     const def = TAB_KINDS[kind];
     const id = def.id(params);
     return { id, title: def.title(params), icon: def.icon, group, dirty: dirty ?? area().tabs().find((t) => t.id === id)?.dirty === true, mount: (host) => bodies().mount(id, kind, params, host) };
@@ -126,7 +126,7 @@ function restoreTabs(target: string, area: EditorArea, opener: TabOpener, hash: 
 
 export interface Workspace {
   /** Opens the tab (or focuses it when open); `group` places a new tab in that editor group. */
-  openTab(kind: TabKindName, params?: TabParams, group?: EditorGroupSide): void;
+  openTab(kind: TabKindName, params?: TabParams, group?: EditorAreaSide): void;
   /** Closes every open tab whose id matches; resolves false when one stayed open. */
   closeTabs(predicate: (id: string) => boolean): Promise<boolean>;
   tabs(): EditorTabView[];

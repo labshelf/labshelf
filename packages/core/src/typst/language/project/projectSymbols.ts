@@ -6,7 +6,7 @@ import { resolveTypstPath } from "./projectPaths.js";
 
 export interface Located<T> { item: T; file: ProjectFile }
 
-export interface ImportedSymbols {
+export interface ProjectImports {
   /** Names brought in by `import "f.typ": a, b` or `: *`. */
   bindings: Located<TypstBinding>[];
   /** `import "f.typ"` (as `alias`) brings the file in as a module named by its alias or file stem. */
@@ -14,8 +14,8 @@ export interface ImportedSymbols {
 }
 
 /** The `.typ` files `file` imports, with what each import brings in. */
-export async function readImportedSymbols(files: ProjectFiles, file: ProjectFile): Promise<ImportedSymbols> {
-  const result: ImportedSymbols = { bindings: [], modules: [] };
+export async function readImportedSymbols(files: ProjectFiles, file: ProjectFile): Promise<ProjectImports> {
+  const result: ProjectImports = { bindings: [], modules: [] };
   for (const reference of file.symbols.imports) {
     const imported = await typstFile(files, file, reference.path);
     if (!imported) { continue; }

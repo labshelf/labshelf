@@ -5,7 +5,7 @@ import type { HostToUi, LibraryTransport, MessageEnd, UiToHost } from "../../pro
 import { LibraryViewStore, type PrefsPort } from "../../store/index.js";
 import type { DetailsToHost, HostToDetails } from "../protocol/index.js";
 
-export interface PaperSlotParts {
+export interface PaperSlotDeps {
   transport: MessageEnd<DetailsToHost, HostToDetails>;
   prefs: PrefsPort;
   caps: LibraryUiCapabilities;
@@ -37,7 +37,7 @@ class DetailsViewStore extends LibraryViewStore {
   override openFolder(folder: string): void { this.post({ type: "folder.open", folder }); }
 }
 
-function libraryChannel(transport: PaperSlotParts["transport"]): LibraryTransport {
+function libraryChannel(transport: PaperSlotDeps["transport"]): LibraryTransport {
   return {
     post: (msg) => transport.post({ channel: "library", msg }),
     subscribe: (handler) => transport.subscribe((m) => {
@@ -47,7 +47,7 @@ function libraryChannel(transport: PaperSlotParts["transport"]): LibraryTranspor
 }
 
 /** `root` is the surface's root element; `el` is the slot the pane renders into. */
-export function mountPaperSlot(root: HTMLElement, el: HTMLElement, parts: PaperSlotParts): PaperSlot {
+export function mountPaperSlot(root: HTMLElement, el: HTMLElement, parts: PaperSlotDeps): PaperSlot {
   const transport = libraryChannel(parts.transport);
   const store = new DetailsViewStore(transport.post);
   const base = createUiCompositionRoot(root, { store, transport, prefs: parts.prefs, caps: parts.caps, labels: parts.labels, readOnly: false });

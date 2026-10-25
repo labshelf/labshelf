@@ -8,7 +8,7 @@ import {
   type ChecklistSignals,
   type ILogger,
   type ProjectEntry,
-  type ProjectSettingsPatch,
+  type ProjectSettingsUpdate,
   type ReadingList,
   type ReadyEntry,
   type SidebarProjectItem,
@@ -155,7 +155,7 @@ export class SidebarProjectsSource implements vscode.Disposable {
   }
 
   /** Rewrites a project's labshelf.yaml; the project list picks the change up on its next reload. */
-  update(folder: string, patch: ProjectSettingsPatch): Promise<void> {
+  update(folder: string, patch: ProjectSettingsUpdate): Promise<void> {
     return updateProjectSettings(this.deps.projects.reads(this.deps.logger), folder, patch);
   }
 

@@ -1,7 +1,7 @@
 // Lists every library paper as a citation completion inside a cite command or Typst reference.
 import * as vscode from "vscode";
 
-import { partialKeyStart, type PaperRecord } from "@labshelf/core";
+import { findPartialCiteKeyStart, type PaperRecord } from "@labshelf/core";
 import { findPageArgumentCompletion } from "./findPageArgumentCompletion.js";
 import { findCitingProject, type CitationWorkspace } from "./citationWorkspace.js";
 
@@ -43,7 +43,7 @@ export class CitationCompletionProvider implements vscode.CompletionItemProvider
       return pageItems;
     }
     const prefix = document.lineAt(position.line).text.slice(0, position.character);
-    const start = partialKeyStart(project.settings.format, prefix);
+    const start = findPartialCiteKeyStart(project.settings.format, prefix);
     if (start === undefined) { return undefined; }
     const range = new vscode.Range(position.line, start, position.line, position.character);
     return (await session.listPapers()).map((paper) => citationItem(paper, range, document));

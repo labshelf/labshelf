@@ -3,7 +3,7 @@ import { orderFuzzy } from "@labshelf/core";
 
 import type { InputEvent } from "../../../screen/index.js";
 import { updateText, createTextInput } from "../../createTextInput.js";
-import { listHelpRows, type ConfirmOverlay, type HelpOverlay, type PickerOverlay, type AskOverlay, type AskPurpose } from "../../overlays.js";
+import { listHelpRows, type QuestionOverlay, type HelpOverlay, type PickerOverlay, type AskOverlay, type AskPurpose } from "../../overlays.js";
 import type { App } from "../app.js";
 import { applyAskCompletion } from "./askCompletion.js";
 import { applyAsk } from "./applyAsk.js";
@@ -47,7 +47,7 @@ function handleHelp(app: App, overlay: HelpOverlay, key: string | undefined): vo
   else if (key === "esc" || key === "q" || key === "?" || key === "C-c" || key === "enter") { app.overlay = undefined; }
 }
 
-function handleConfirm(app: App, overlay: ConfirmOverlay, key: string | undefined): void {
+function handleConfirm(app: App, overlay: QuestionOverlay, key: string | undefined): void {
   if (key === "y" || key === "Y" || key === "enter") {
     app.overlay = undefined;
     overlay.onYes();

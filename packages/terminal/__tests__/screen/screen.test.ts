@@ -1,4 +1,4 @@
-import { mergeStyle, Screen, createSgr, styleId } from "../../src/screen/screen";
+import { mergeStyle, Screen, createSgr, addStyle } from "../../src/screen/screen";
 import { deriveStringWidth } from "../../src/screen/text";
 
 // Every escape sequence the diff is allowed to emit: cursor moves and SGR.
@@ -210,27 +210,27 @@ describe("Screen wide characters", () => {
   });
 });
 
-describe("styleId", () => {
+describe("addStyle", () => {
   it("returns 0 for no style", () => {
-    expect(styleId(undefined)).toBe(0);
+    expect(addStyle(undefined)).toBe(0);
   });
 
   it("returns the same id for equal styles and different ids for different ones", () => {
-    const a = styleId({ fg: 1, bold: true });
-    expect(styleId({ fg: 1, bold: true })).toBe(a);
-    expect(styleId({ bold: true, fg: 1 })).toBe(a);
-    expect(styleId({ fg: 2, bold: true })).not.toBe(a);
-    expect(styleId({ fg: 1 })).not.toBe(a);
+    const a = addStyle({ fg: 1, bold: true });
+    expect(addStyle({ fg: 1, bold: true })).toBe(a);
+    expect(addStyle({ bold: true, fg: 1 })).toBe(a);
+    expect(addStyle({ fg: 2, bold: true })).not.toBe(a);
+    expect(addStyle({ fg: 1 })).not.toBe(a);
   });
 
   it("treats an explicit false attribute like an absent one", () => {
-    expect(styleId({ bold: false, fg: 4 })).toBe(styleId({ fg: 4 }));
+    expect(addStyle({ bold: false, fg: 4 })).toBe(addStyle({ fg: 4 }));
   });
 
   it("distinguishes a palette color from a hex color and foreground from background", () => {
-    expect(styleId({ fg: 1 })).not.toBe(styleId({ bg: 1 }));
-    expect(styleId({ fg: "#ff0000" })).not.toBe(styleId({ fg: 1 }));
-    expect(styleId({ fg: "#ff0000" })).toBe(styleId({ fg: "#ff0000" }));
+    expect(addStyle({ fg: 1 })).not.toBe(addStyle({ bg: 1 }));
+    expect(addStyle({ fg: "#ff0000" })).not.toBe(addStyle({ fg: 1 }));
+    expect(addStyle({ fg: "#ff0000" })).toBe(addStyle({ fg: "#ff0000" }));
   });
 
   it("does not let later changes to the style object affect stored cells", () => {
@@ -266,28 +266,28 @@ describe("createSgr", () => {
   });
 
   it("emits attributes in a fixed order", () => {
-    const id = styleId({ reverse: true, underline: true, italic: true, dim: true, bold: true });
+    const id = addStyle({ reverse: true, underline: true, italic: true, dim: true, bold: true });
     expect(createSgr(id)).toBe("\x1b[0;1;2;3;4;7m");
   });
 
   it("maps the 16 theme colors to the classic SGR codes", () => {
-    expect(createSgr(styleId({ fg: 1 }))).toBe("\x1b[0;31m");
-    expect(createSgr(styleId({ bg: 2 }))).toBe("\x1b[0;42m");
-    expect(createSgr(styleId({ fg: 9 }))).toBe("\x1b[0;91m");
-    expect(createSgr(styleId({ bg: 12 }))).toBe("\x1b[0;104m");
+    expect(createSgr(addStyle({ fg: 1 }))).toBe("\x1b[0;31m");
+    expect(createSgr(addStyle({ bg: 2 }))).toBe("\x1b[0;42m");
+    expect(createSgr(addStyle({ fg: 9 }))).toBe("\x1b[0;91m");
+    expect(createSgr(addStyle({ bg: 12 }))).toBe("\x1b[0;104m");
   });
 
   it("uses the 256-color palette for indexes from 16", () => {
-    expect(createSgr(styleId({ fg: 200 }))).toBe("\x1b[0;38;5;200m");
-    expect(createSgr(styleId({ bg: 16 }))).toBe("\x1b[0;48;5;16m");
+    expect(createSgr(addStyle({ fg: 200 }))).toBe("\x1b[0;38;5;200m");
+    expect(createSgr(addStyle({ bg: 16 }))).toBe("\x1b[0;48;5;16m");
   });
 
   it("uses truecolor for hex colors", () => {
-    expect(createSgr(styleId({ fg: "#ff8000", bg: "#000102" }))).toBe("\x1b[0;38;2;255;128;0;48;2;0;1;2m");
+    expect(createSgr(addStyle({ fg: "#ff8000", bg: "#000102" }))).toBe("\x1b[0;38;2;255;128;0;48;2;0;1;2m");
   });
 
   it("combines attributes with foreground and background", () => {
-    expect(createSgr(styleId({ bold: true, fg: 4, bg: 7 }))).toBe("\x1b[0;1;34;47m");
+    expect(createSgr(addStyle({ bold: true, fg: 4, bg: 7 }))).toBe("\x1b[0;1;34;47m");
   });
 });
 
@@ -479,8 +479,8 @@ describe("Screen regressions", () => {
   });
 
   it("gives every empty style the default id", () => {
-    expect(styleId({})).toBe(0);
-    expect(styleId({ bold: false })).toBe(0);
-    expect(styleId(undefined)).toBe(0);
+    expect(addStyle({})).toBe(0);
+    expect(addStyle({ bold: false })).toBe(0);
+    expect(addStyle(undefined)).toBe(0);
   });
 });

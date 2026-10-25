@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { createAutoCompileGate } from "./buildMode.js";
-import { type IncludeOnlyTarget } from "./includeOnly.js";
+import { type FindIncludeOnly } from "./includeOnly.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);
 // Editors with auto save write several times a second while typing; one build covers a burst.
@@ -18,7 +18,7 @@ export interface LatexWriteBuildsDeps {
   /** Builds `root` of the project; `includeOnly` is the `\include` path to typeset alone. */
   request(projectFolder: string, root: string, includeOnly: string | undefined): Promise<unknown>;
   /** The `\include` path a save builds alone while the preview's include-only toggle is on. */
-  includeOnlyTarget?: IncludeOnlyTarget;
+  includeOnlyTarget?: FindIncludeOnly;
 }
 
 function latexProjectOf(projects: LatexWriteBuildsDeps["projects"], file: vscode.Uri): ReadyProject | undefined {

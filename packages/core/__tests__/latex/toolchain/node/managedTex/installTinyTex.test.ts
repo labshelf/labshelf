@@ -5,7 +5,7 @@ import { join } from "node:path";
 const mockPin = { sha256: "" };
 
 jest.mock("../../../../../src/latex/toolchain/tinyTex", () => ({
-  findTinyTexAsset: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
+  findTinyTexFile: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
     ? {
       version: "2026.10",
       name: "TinyTeX-1-linux-x86_64-v2026.10.tar.xz",

@@ -3,7 +3,7 @@
 import {
   createWriteRecordStore,
   createLibraryMirrorFileSystem,
-  MirrorOwnershipLost,
+  MirrorLostError,
   MirrorProjectDirUnavailable,
   startProjectMirror,
   systemLeaseScheduler,
@@ -132,7 +132,7 @@ function runMirror(options: BrowserProjectMirrorOptions, leases: MirrorLeases): 
   let tabLost = false;
   let closing: Promise<void> | undefined;
   const assertOwned = async (): Promise<void> => {
-    if (tabLost || closing) { throw new MirrorOwnershipLost(folder, { app: "browser", renewedAt: scheduler.now() }); }
+    if (tabLost || closing) { throw new MirrorLostError(folder, { app: "browser", renewedAt: scheduler.now() }); }
     if (!sameSource(await sources.getLibrarySource(), leases.source)) {
       throw new LibrarySourceChanged(folder, { cause: new Error("source changed") });
     }

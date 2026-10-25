@@ -1,7 +1,7 @@
 /** Declares and validates the requests a preview reader sends its host. */
 // CONTRACT: documents/contracts/reader-host.md#preview
 import { LATEX_ENGINES, type CountUpTo, type LatexEngine } from "../writing/project/index.js";
-import { AUTO_COMPILE_MODES, type AutoCompileMode } from "../writing/build/index.js";
+import { AUTO_COMPILE_MODES, type BuildSchedule } from "../writing/build/index.js";
 import { isCitationQuery, isPagePoint, type CitationQuery, type PagePoint } from "./previewProtocol.js";
 
 /** The project commands a preview reader can run on the shown root's project. */
@@ -38,7 +38,7 @@ export type PreviewRequest =
   /** Reports how many pages of the PDF a build root produced hold the paper's body. */
   | { command: "bodyPages"; root: string; contentPages: number }
   | { command: "runCommand"; id: ProjectCommandId }
-  | { command: "setAutoCompile"; mode: AutoCompileMode }
+  | { command: "setAutoCompile"; mode: BuildSchedule }
   | { command: "setEngine"; engine: LatexEngine }
   | { command: "setIncludeOnly"; on: boolean }
   | { command: "setHaltOnError"; on: boolean }

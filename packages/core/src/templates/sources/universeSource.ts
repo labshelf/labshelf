@@ -1,13 +1,13 @@
 /** Lists Typst Universe templates and reads their files from the package archive, unpacked in memory. */
 // CONTRACT: documents/contracts/templates.md#typst-universe
 
-import type { ILogger } from "../../ports/index.js";
+import type { ILogger, FetchLike } from "../../ports/index.js";
 import { deriveTemplateTreeProblem } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { fetchCachedCatalogIndex } from "./fetchCachedCatalogIndex.js";
 import { fetchCachedThumbnail } from "./fetchCachedThumbnail.js";
 import { readTarGz } from "./readTarball.js";
-import type { FetchLike, TemplateCache, TemplateFile, TemplateListing, TemplateSource } from "./templateSource.js";
+import type { TemplateCache, TemplateFile, TemplateListing, TemplateSource } from "./templateSource.js";
 import { UNIVERSE_INDEX_URL, parseUniverseCatalogIndex } from "./universeCatalogIndex.js";
 
 const MODULE = "templates";

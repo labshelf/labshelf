@@ -1,4 +1,5 @@
 // Lists the open project's comment threads with a reply box and a Resolve button on each.
+import { formatError } from "@labshelf/core";
 import { renderElement, renderIcon } from "@labshelf/core/dom";
 import type { TabModule } from "./tabKind";
 import type { CommentThreads, LocatedThread } from "../../collab/comments";
@@ -34,7 +35,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   const status = renderElement("p", { class: "ls-comment-status", role: "status" });
 
   const act = (run: () => Promise<void>): void => {
-    run().catch((error: unknown) => { status.textContent = error instanceof Error ? error.message : String(error); });
+    run().catch((error: unknown) => { status.textContent = formatError(error); });
   };
   const render = async (): Promise<void> => {
     try {
@@ -44,7 +45,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
       body.replaceChildren(status, threads.length === 0 ? renderElement("p", { class: "ls-empty-text", text: "No comments yet." }) : list);
     } catch (error) {
       void ctx.logger.error(MODULE, error, { action: "list comment threads", projectId });
-      status.textContent = error instanceof Error ? error.message : String(error);
+      status.textContent = formatError(error);
       body.replaceChildren(status);
     }
   };

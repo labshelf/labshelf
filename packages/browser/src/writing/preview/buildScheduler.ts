@@ -1,6 +1,6 @@
 // Schedules the project preview through the browser helper connection.
-import type { AutoCompileMode, ILogger } from "@labshelf/core";
-import type { CompileMode, HelperCompileRequest, HelperCompileResult, ILatexHelper } from "@labshelf/core/helper";
+import type { BuildSchedule, ILogger } from "@labshelf/core";
+import type { BuildKind, HelperCompileRequest, HelperCompileResult, ILatexHelper } from "@labshelf/core/helper";
 
 import { createBuildRunner } from "./buildRunner";
 
@@ -18,9 +18,9 @@ export interface BuildSchedulerOptions {
   helper: Pick<ILatexHelper, "compile" | "cancel">;
   target: BuildSpec;
   /** When edits and saves start builds; `build` always does. */
-  mode: AutoCompileMode;
+  mode: BuildSchedule;
   /** An edit supersedes an in-flight result; a save waits for the active preview. */
-  onResult(result: HelperCompileResult, mode: CompileMode): void;
+  onResult(result: HelperCompileResult, mode: BuildKind): void;
   onStart(): void;
   logger: ILogger;
   timers?: BuildTimers;
@@ -33,7 +33,7 @@ export interface BuildScheduler {
   save(explicit: boolean): void;
   /** Builds in full whatever the mode. */
   build(): void;
-  setMode(mode: AutoCompileMode): void;
+  setMode(mode: BuildSchedule): void;
   /** The next build compiles with the changed target. */
   setTarget(patch: Partial<Pick<BuildSpec, "engine" | "haltOnError">>): void;
   dispose(): void;

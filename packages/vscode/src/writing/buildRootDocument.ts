@@ -28,3 +28,9 @@ export function findOwningProject(projects: ProjectFinder, filePath: string): Re
 export function deriveBuildRootPath(paths: PathOps, project: ReadyProject, filePath: string): string {
   return paths.relative(project.folder, filePath).split(paths.sep).join("/");
 }
+
+/** A project-relative `/`-separated path; a file outside the project keeps its own path. */
+export function deriveProjectPath(paths: PathOps, folder: string, file: string): string {
+  const relative = paths.relative(folder, file);
+  return (relative.startsWith("..") || paths.isAbsolute(relative) ? file : relative).split(paths.sep).join("/");
+}

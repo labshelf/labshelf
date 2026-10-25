@@ -4,5 +4,5 @@ export { DeferredHover } from "./deferredHover.js";
 export { attachExternalUrls } from "./externalUrls.js";
 export { reportFirstRender } from "./firstRenderReport.js";
 export { attachReaderHostMessages } from "./hostMessages.js";
-export { PositionRestore } from "./restoreReadingPosition.js";
+export { ReadingPositionRestore } from "./ReadingPositionRestore.js";
 export { createActionRunner } from "./readerActions.js";

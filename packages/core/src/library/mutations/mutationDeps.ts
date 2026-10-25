@@ -15,14 +15,14 @@ export interface PathOps {
 }
 
 /** Writes metadata.yaml and bib.bib for a paper; the core BibTeXService satisfies it. */
-export interface PaperArtifactWriter {
+export interface MetadataWriter {
   writePaperArtifacts(folder: string, paper: PaperRecord, sourceFileName: string): Promise<void>;
 }
 
 export interface MutationContext {
   fs: LibraryFileSystem;
   paths: PathOps;
-  artifacts: PaperArtifactWriter;
+  artifacts: MetadataWriter;
   logger: ILogger;
   /** The papers/ folder: folder operations refuse to rename, move or trash it. */
   papersRoot: string;

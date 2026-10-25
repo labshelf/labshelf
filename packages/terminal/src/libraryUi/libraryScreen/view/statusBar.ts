@@ -9,7 +9,7 @@ import { theme } from "../../theme.js";
 import type { App } from "../app.js";
 import { formatConflictCount } from "../conflicts/index.js";
 
-export function drawStatus(app: App, screen: Screen, rect: Rect): void {
+export function drawStatusBar(app: App, screen: Screen, rect: Rect): void {
   const y = rect.y;
   screen.fill(rect.x, y, rect.w, 1);
   if (app.inline) { return drawInline(app, screen, rect, app.inline); }

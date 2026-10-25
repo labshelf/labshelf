@@ -13,6 +13,7 @@ Read when you write, review or plan code, UI or docs. Fetch one section with `no
 - Logic, formats, sync, contracts and data-loss paths ship with a test that fails without the change. UI layout, CSS and copy need no test.
 - Log important actions and every failure through the injected `ILogger`, with enough context to diagnose. Never swallow an error.
 - Comments explain why, not what. A comment may carry one tag: `TRAP:`, `INVARIANT:`, `PLATFORM:` or `CONTRACT: documents/contracts/<file>.md#<anchor>`.
+- Names must pass `pnpm lint:naming --all`; the only exceptions are the `external` (names an outside API requires) and `allow` (names awaiting a vocabulary decision or a rewrite) lists in `scripts/checks/vocabulary.yaml`, each entry with its reason.
 - Delete what a change makes unused, in the same change: code, tests, settings, docs. Git keeps the history.
 - Commands: `pnpm --filter @labshelf/<pkg> typecheck|test|build`, and `pnpm lint` for every structural check.
 

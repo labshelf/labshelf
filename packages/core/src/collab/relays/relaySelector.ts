@@ -6,7 +6,7 @@ import { RelayHolds } from "./relayHolds.js";
 import { readShareIndexDocRelays, readRelayList } from "./readRelayList.js";
 import type { RelayPresence } from "./createRelayPresence.js";
 import type { RelayVerdict } from "./createRelayProbe.js";
-import { GroupFollow } from "./groupRelays.js";
+import { RelayFollow } from "./RelayFollow.js";
 
 const LOG_MODULE = "collab.relays";
 /** The relay in use, the relays listed before it and the ones this client's probes held down are probed this often. */
@@ -51,7 +51,7 @@ class Selector implements RelaySelector {
   private readonly failing = new Set<string>();
   /** Relays this client's own probes held down; a probe they answer ends the hold. */
   private readonly probeHeld = new Set<string>();
-  private readonly group: GroupFollow;
+  private readonly group: RelayFollow;
   private readonly checks = new Map<string, () => void>();
   private readonly stops: (() => void)[] = [];
   private running = false;
@@ -62,7 +62,7 @@ class Selector implements RelaySelector {
   constructor(private options: RelaySelectorOptions) {
     this.holds = new RelayHolds(options.clock, () => this.evaluate());
     // A watch socket's failures count like the connection's, so a relay the watcher cannot reach is held down and no longer watched.
-    this.group = new GroupFollow(options.presence, this.holds, options.logger, (url) => ({
+    this.group = new RelayFollow(options.presence, this.holds, options.logger, (url) => ({
       failure: (kind) => this.reportFailure(url, kind), connected: () => this.holds.succeeded(url),
     }));
     const relays = readShareIndexDocRelays(options.index);

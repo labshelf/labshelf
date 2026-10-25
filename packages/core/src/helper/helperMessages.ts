@@ -25,14 +25,14 @@ export type TexSource = (typeof TEX_SOURCES)[number];
 export const HELPER_HOSTS = ["helper", "vscode", "terminal"] as const;
 export type HelperHost = (typeof HELPER_HOSTS)[number];
 export const PROGRESS_PHASES = ["installing-tex", "installing-package", "building", "updating"] as const;
-export type ProgressPhase = (typeof PROGRESS_PHASES)[number];
+export type HelperPhase = (typeof PROGRESS_PHASES)[number];
 export const HELPER_BUILD_STATUSES = ["succeeded", "failed", "cancelled", "toolchain-missing", "needs-shell-escape"] as const;
 export type HelperBuildState = (typeof HELPER_BUILD_STATUSES)[number];
 
 export const COMPILE_MODES = ["preview", "full"] as const;
-export type CompileMode = (typeof COMPILE_MODES)[number];
+export type BuildKind = (typeof COMPILE_MODES)[number];
 export interface TexToolchain { source: TexSource; year?: number; complete: boolean }
-export interface HelperProgress { phase: ProgressPhase; message: string; fraction?: number }
+export interface HelperProgress { phase: HelperPhase; message: string; fraction?: number }
 /** Replaces the characters `from` to `to` of the previous version's text with `insert`. */
 export interface TextChange { from: number; to: number; insert: string }
 export interface ChangedPage { index: number; offset: number; length: number }
@@ -50,7 +50,7 @@ export type ToHelperMessage =
     | { text: string; changes?: undefined }
     | { changes: TextChange[]; text?: undefined })
   | Envelope<"save"> & { projectId: string; path: string }
-  | Envelope<"compile"> & { projectId: string; main: string; mode: CompileMode; engine?: LatexEngine; editedFile?: string; editedLine?: number; haltOnError?: boolean }
+  | Envelope<"compile"> & { projectId: string; main: string; mode: BuildKind; engine?: LatexEngine; editedFile?: string; editedLine?: number; haltOnError?: boolean }
   | Envelope<"cancel"> & { projectId: string }
   | Envelope<"installTex"> & { kind: TexInstallKind }
   | Envelope<"installAllPackages">;
@@ -71,11 +71,11 @@ export type ToPageMessage =
 export type HelperDirection = "toHelper" | "toPage";
 
 /** Why a frame was refused; the helper sends it back as the `code` of an `error` reply. */
-export type HelperRejectionCode = "malformed" | "version" | "unknown-type" | "invalid-field" | "path" | "project-id" | "stale" | "no-library" | "limit";
+export type HelperRejectionKind = "malformed" | "version" | "unknown-type" | "invalid-field" | "path" | "project-id" | "stale" | "no-library" | "limit";
 
 export interface HelperRejection {
   ok: false;
-  code: HelperRejectionCode;
+  code: HelperRejectionKind;
   reason: string;
   /** The frame's id when it had one, so the reply can pair with it. */
   id?: string;

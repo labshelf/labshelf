@@ -1,7 +1,7 @@
 // Gives the access token of the connected Cloudflare account, asking the owner to sign in again when Cloudflare refuses it.
 import type { ILogger } from "../../ports/index.js";
 import type { RelayClock } from "../client/index.js";
-import { CloudflareOAuthError, createCloudflareSession } from "../oauth/index.js";
+import { CloudflareOauthError, createCloudflareSession } from "../oauth/index.js";
 import { RELAY_ACCOUNT_LOG_MODULE, type RelayCredential } from "./relayAccount.js";
 import type { RelayAccountStore } from "./relayAccountStore.js";
 
@@ -11,7 +11,7 @@ export interface RelayAccountDeps {
   logger: ILogger;
   clock: RelayClock;
   /** Asks the owner and, on yes, runs a new sign-in that stores fresh tokens; resolves whether it did. */
-  signInAgain(refused: CloudflareOAuthError): Promise<boolean>;
+  signInAgain(refused: CloudflareOauthError): Promise<boolean>;
 }
 
 /** The codes after which only a new sign-in helps. */
@@ -26,7 +26,7 @@ export function createAccessTokenReader(deps: RelayAccountDeps, credential: Rela
     try {
       return await session.accessToken();
     } catch (error) {
-      if (!(error instanceof CloudflareOAuthError) || !SIGN_IN_AGAIN_CODES.has(error.code)) { throw error; }
+      if (!(error instanceof CloudflareOauthError) || !SIGN_IN_AGAIN_CODES.has(error.code)) { throw error; }
       await logger.log("WARN", RELAY_ACCOUNT_LOG_MODULE, "Cloudflare refused the stored sign-in; asking the owner to sign in again", {
         code: error.code, error: error.message,
       });

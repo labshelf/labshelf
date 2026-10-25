@@ -4,4 +4,4 @@ export { createResumeReports } from "./createResumeReports";
 export { reportPageWrites, onLocalFileChanges } from "./mirror";
 export { createPageShares, DEFAULT_DISPLAY_NAME, type PageShares } from "./pageShares";
 export { createPageShare, type PageShare } from "./pageShare";
-export { createShareKeyStore, loadDisplayName, saveDisplayName } from "./shareKeyStore";
+export { createShareKeyStore, readMemberName, writeMemberName } from "./shareKeyStore";

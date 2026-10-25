@@ -2,15 +2,15 @@
 // Interpretation stays in core's interpretPage, so DOM and DOM-less paths apply identical rules.
 import type { RawPage } from "@labshelf/core";
 
-export type PageMetaEvidence = Pick<RawPage, "pageUrl" | "meta" | "authorEmails" | "documentTitle" | "pageIsPdf">;
-export type PageLinkEvidence = Pick<RawPage, "pdfLinks" | "doiLinks" | "mailtoLinks">;
+export type PageMetaFields = Pick<RawPage, "pageUrl" | "meta" | "authorEmails" | "documentTitle" | "pageIsPdf">;
+export type PageAnchors = Pick<RawPage, "pdfLinks" | "doiLinks" | "mailtoLinks">;
 
 /**
  * Each probe is serialized via Function.prototype.toString() and run in the page, so it MUST NOT close over
  * imported symbols and may only use browser globals. They are two functions because every helper has to be nested
  * inside the one that is injected, and one function would pass the length limit.
  */
-export function readPageMeta(): PageMetaEvidence {
+export function readPageMeta(): PageMetaFields {
   const meta: Record<string, string[]> = {};
   const authorEmails: Array<{ email: string; name?: string }> = [];
   let lastAuthor: string | undefined;
@@ -25,13 +25,13 @@ export function readPageMeta(): PageMetaEvidence {
       lastAuthor = undefined;
     }
   }
-  const evidence: PageMetaEvidence = { pageUrl: location.href, meta, authorEmails };
+  const evidence: PageMetaFields = { pageUrl: location.href, meta, authorEmails };
   if (document.title.trim()) evidence.documentTitle = document.title.trim();
   if (document.contentType === "application/pdf") evidence.pageIsPdf = true;
   return evidence;
 }
 
-export function readPageAnchors(): PageLinkEvidence {
+export function readPageAnchors(): PageAnchors {
   const pdfLinks: Array<{ url: string; kind: "embed" | "alternate" | "labelled" | "href" }> = [];
   const seen = new Set<string>();
   const add = (raw: string | null | undefined, kind: "embed" | "alternate" | "labelled" | "href"): void => {

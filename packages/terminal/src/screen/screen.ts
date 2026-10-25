@@ -22,7 +22,7 @@ const styleIds = new Map<string, number>([["{}", 0]]);
  * Interns a style so cells store a small integer instead of an object.
  * @returns the style id
  */
-export function styleId(style: Style | undefined): number {
+export function addStyle(style: Style | undefined): number {
   if (!style || Object.values(style).every((v) => v === undefined || v === false)) { return 0; }
   const key = JSON.stringify([style.fg, style.bg, !!style.bold, !!style.dim, !!style.italic, !!style.underline, !!style.reverse]);
   let id = styleIds.get(key);
@@ -117,7 +117,7 @@ export class Screen {
    */
   text(x: number, y: number, text: string, style?: Style, maxWidth = Infinity): number {
     if (y < 0 || y >= this.height || x >= this.width) { return 0; }
-    const id = styleId(style);
+    const id = addStyle(style);
     const limit = Math.min(this.width, x + maxWidth);
     let col = x;
     for (const { g, w } of splitGraphemes(text)) {
@@ -137,7 +137,7 @@ export class Screen {
    * Fills a rectangle with one character and style.
    */
   fill(x: number, y: number, w: number, h: number, style?: Style, ch = " "): void {
-    const id = styleId(style);
+    const id = addStyle(style);
     const x0 = Math.max(0, x);
     const y0 = Math.max(0, y);
     const x1 = Math.min(this.width, x + w);

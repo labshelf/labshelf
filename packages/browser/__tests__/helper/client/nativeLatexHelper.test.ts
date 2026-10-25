@@ -5,7 +5,7 @@ jest.mock("webextension-polyfill", () => ({ runtime: {} }));
 import { PROTOCOL_VERSION } from "@labshelf/core/helper";
 import { createNativeLatexHelper } from "../../../src/helper/client";
 import type { HelperPortFactory } from "../../../src/helper/client/connection";
-import { HelperConnection, HelperVersionError, statusFromReady } from "../../../src/helper/client/connection";
+import { HelperConnection, HelperVersionError, deriveHelperStatus } from "../../../src/helper/client/connection";
 import { fakeLogger, FakeHelper } from "./fakeHelper";
 
 function setup(fake = new FakeHelper(), connectNative?: HelperPortFactory) {
@@ -101,11 +101,11 @@ describe("HelperConnection version errors", () => {
   });
 });
 
-describe("statusFromReady", () => {
+describe("deriveHelperStatus", () => {
   const ready = { v: PROTOCOL_VERSION, id: "1", type: "ready" as const, host: "vscode" as const, helperVersion: "1.0.0", tex: { source: "none" as const, complete: false } };
 
   it("reports update-helper when the helper's protocol is lower than the page's", () => {
-    expect(statusFromReady({ ...ready, protocol: 1 }, 2)).toEqual({ state: "update-helper", protocol: 1, host: "vscode" });
+    expect(deriveHelperStatus({ ...ready, protocol: 1 }, 2)).toEqual({ state: "update-helper", protocol: 1, host: "vscode" });
   });
 });
 

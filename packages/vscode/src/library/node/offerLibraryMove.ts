@@ -5,12 +5,14 @@ import * as vscode from "vscode";
 import {
   detectSyncFolders,
   detectLibraryFolder,
+  formatPath,
+  LIBRARY_FOLDER_NAME,
   loadSharedConfig,
+  formatSyncTool,
   updateSharedConfig,
   type SyncFolder,
 } from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
-import { formatPath, syncToolName, LIBRARY_FOLDER_NAME } from "./syncFolders/index.js";
 import { moveLibraryTo } from "./moveLibraryTo.js";
 import * as path from "node:path";
 
@@ -64,7 +66,7 @@ export async function offerLibraryMove(controller: LibraryRootController): Promi
 
   const target = moveOfferTarget(offer);
   const answer = await vscode.window.showInformationMessage(
-    `LabShelf: Found ${syncToolName(offer.tool)}. Move the library to ${formatPath(target, home)}?`, "Move", "Not now",
+    `LabShelf: Found ${formatSyncTool(offer.tool)}. Move the library to ${formatPath(target, home)}?`, "Move", "Not now",
   );
   if (answer === "Move") { await moveLibraryTo(controller, target); }
   if (answer === "Not now") {

@@ -3,7 +3,7 @@
 import { FIGURE_WORD, FLOAT_LABEL, deriveFloatKind, type FloatKind } from "./inTextReferences.js";
 import type { TextLine } from "./textLines.js";
 
-export interface CaptionHit {
+export interface CaptionMatch {
   kind: FloatKind;
   /** Lower-cased label as printed: "3", "3a", "1.1". */
   label: string;
@@ -22,8 +22,8 @@ const EQUATION_TAIL = new RegExp(`\\((${FLOAT_LABEL})\\)\\s*$`);
 /**
  * @returns every caption and numbered equation on a page, in reading order.
  */
-export function findCaptionLines(lines: readonly TextLine[], pageWidth: number, columnSplit: number | null): CaptionHit[] {
-  const hits: CaptionHit[] = [];
+export function findCaptionLines(lines: readonly TextLine[], pageWidth: number, columnSplit: number | null): CaptionMatch[] {
+  const hits: CaptionMatch[] = [];
   lines.forEach((line, lineIndex) => {
     const text = line.text.trim();
     const label = CAPTION_LABEL.exec(text);
@@ -66,7 +66,7 @@ export function deriveColumnBounds(line: TextLine, pageWidth: number, columnSpli
  * Chooses the caption a reference points at: the exact label, else the label without its sub-figure letter ("3a" → "3").
  * @returns the index into `hits`, or -1.
  */
-export function pickCaption(hits: ReadonlyArray<Pick<CaptionHit, "kind" | "label">>, kind: FloatKind, label: string): number {
+export function pickCaption(hits: ReadonlyArray<Pick<CaptionMatch, "kind" | "label">>, kind: FloatKind, label: string): number {
   const wanted = label.toLowerCase();
   const exact = hits.findIndex((h) => h.kind === kind && h.label === wanted);
   if (exact >= 0) { return exact; }

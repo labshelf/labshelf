@@ -2,5 +2,5 @@
 export { AiService } from "./aiService.js";
 export type { AiServiceDependencies } from "./aiService.js";
 export { createAiService } from "./createAiService.js";
-export type { AiServiceFactoryDependencies } from "./createAiService.js";
+export type { AiServiceDeps } from "./createAiService.js";
 export { findSimilarPapers } from "./similarPapers.js";

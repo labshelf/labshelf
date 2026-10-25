@@ -1,8 +1,8 @@
-import { relocatePapersUnder, removePapersUnder, type IPaperRecordIndex, type PaperRecord } from "@labshelf/core";
+import { movePapersUnder, removePapersUnder, type IPaperRecordCache, type PaperRecord } from "@labshelf/core";
 
-function indexOf(paths: Record<string, string>): { index: IPaperRecordIndex; records: Map<string, PaperRecord> } {
+function indexOf(paths: Record<string, string>): { index: IPaperRecordCache; records: Map<string, PaperRecord> } {
   const records = new Map(Object.entries(paths).map(([id, path]) => [id, { id, path } as PaperRecord]));
-  const index: IPaperRecordIndex = {
+  const index: IPaperRecordCache = {
     listPapers: async () => [...records.values()],
     upsertPaper: async (paper) => { records.set(paper.id, paper); },
     deletePaper: async (id) => { records.delete(id); },
@@ -10,10 +10,10 @@ function indexOf(paths: Record<string, string>): { index: IPaperRecordIndex; rec
   return { index, records };
 }
 
-describe("relocatePapersUnder", () => {
+describe("movePapersUnder", () => {
   it("re-roots papers under the old folder and leaves a sibling with the same prefix alone", async () => {
     const { index, records } = indexOf({ a: "papers/ml/a", b: "papers/ml/deep/b", c: "papers/ml2/c" });
-    await relocatePapersUnder(index, "papers/ml", "papers/ai");
+    await movePapersUnder(index, "papers/ml", "papers/ai");
     expect(records.get("a")?.path).toBe("papers/ai/a");
     expect(records.get("b")?.path).toBe("papers/ai/deep/b");
     expect(records.get("c")?.path).toBe("papers/ml2/c");

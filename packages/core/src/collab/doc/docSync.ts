@@ -2,14 +2,14 @@
 import * as Y from "yjs";
 import type { DerivedShareKey } from "../shareKey/index.js";
 import type { PeerId } from "../transport/index.js";
-import { MESSAGE_KIND, type Channel, type SecureMesh } from "../peer/index.js";
+import { MESSAGE_KIND, type Channel, type PeerMesh } from "../peer/index.js";
 
 // CONTRACT: documents/contracts/collaboration.md#messages
 /** A relative POSIX path never starts with "/", so no file doc can take the index's key. */
 export const INDEX_DOC_KEY = "/index";
 
 export interface DocSyncOptions {
-  mesh: SecureMesh;
+  mesh: PeerMesh;
   key: DerivedShareKey;
   index: Y.Doc;
   createDoc: (path: string) => Y.Doc;

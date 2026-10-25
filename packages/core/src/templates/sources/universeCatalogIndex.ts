@@ -1,7 +1,7 @@
 /** Maps Typst Universe's package index to gallery entries, one per template package at its highest version. */
 // CONTRACT: documents/contracts/templates.md#typst-universe
 
-import { isCatalogJsonObject, parseCatalogIndexJson, deriveTemplatePathProblem, type SkippedEntry, type TemplateCategory } from "../templateManifest/index.js";
+import { isCatalogJsonObject, parseCatalogIndexJson, deriveTemplatePathProblem, type SkippedEntry, type TemplateKind } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 
 export const UNIVERSE_INDEX_URL = "https://packages.typst.org/preview/index.json";
@@ -16,7 +16,7 @@ export type UniverseCatalogIndexResult =
   | { ok: true; templates: UniverseTemplate[]; skipped: SkippedEntry[] }
   | { ok: false; reason: string };
 
-const CATEGORY_MAP: Record<string, TemplateCategory> = {
+const CATEGORY_MAP: Record<string, TemplateKind> = {
   paper: "article", thesis: "thesis", poster: "poster", presentation: "slides", cv: "cv",
 };
 
@@ -31,7 +31,7 @@ export function isNewerVersion(candidate: string, current: string): boolean {
   return false;
 }
 
-function categoryOf(categories: unknown): TemplateCategory {
+function categoryOf(categories: unknown): TemplateKind {
   const list = Array.isArray(categories) ? categories : [];
   for (const category of list) {
     const mapped = typeof category === "string" ? CATEGORY_MAP[category] : undefined;

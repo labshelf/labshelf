@@ -6,7 +6,7 @@ import { PaperImporter, PaperService, PaperTextLayers } from "../library/index.j
 import { ensureLibraryStructure } from "../storage/paths/index.js";
 import { VscodeFileSystem } from "../storage/index.js";
 import { addTextLayerJobs } from "../command/index.js";
-import { refreshLibrary, type ReindexSummary } from "../storage/index.js";
+import { refreshLibrary, type RefreshLibraryResult } from "../storage/index.js";
 import type { ActiveServices } from "../command/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import type { ILogger } from "@labshelf/core";
@@ -23,7 +23,7 @@ function createReindexer(
   events: LibraryEvents,
   logger: ILogger,
   getTextLayers: () => PaperTextLayers,
-): () => Promise<ReindexSummary> {
+): () => Promise<RefreshLibraryResult> {
   return () => refreshLibrary({
     store,
     events,

@@ -2,7 +2,7 @@
 import type { InTextReference } from "../../text/index.js";
 import type { ReaderContext } from "../session/index.js";
 
-export type ExplicitDest = Parameters<ReaderContext["linkService"]["goToDestination"]>[0];
+export type PdfDestination = Parameters<ReaderContext["linkService"]["goToDestination"]>[0];
 
 export interface HoverAnchor {
   /** Every element of the target: a link, or the text runs of a reference — OCR text is one run per word, and crossing words must neither restart nor close the popup. */

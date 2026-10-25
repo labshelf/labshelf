@@ -15,7 +15,7 @@ import type { ShareSources } from "./browserShareConnection";
 import { createPageShares, type PageShares } from "./pageShares";
 import type { LiveShare } from "./projectShareEntry";
 import { createShareKeyStore } from "./shareKeyStore";
-import { createBrowserProjects, deleteBrowserCollabState } from "../storage";
+import { createBrowserProjects, removeBrowserCollabDocs } from "../storage";
 
 /** The project list the workflows read; `reload` re-reads the library's projects and then calls `reloaded`. */
 interface BrowserShareCatalog {
@@ -53,7 +53,7 @@ function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPo
     keys, shares, projects, relay, requireRelay, logger,
     files: { fs: sources.fileSystem, paths: posixPathOps, logger },
     connect: (invite, start) => shares.connect(invite, start),
-    deleteState: async (shareId) => deleteBrowserCollabState(`${await libraryId()}/${shareId}`),
+    deleteState: async (shareId) => removeBrowserCollabDocs(`${await libraryId()}/${shareId}`),
     userName: () => shares.name(),
     // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
     fetch: options.fetch ?? ((input, init) => globalThis.fetch(input, init)),

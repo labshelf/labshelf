@@ -7,7 +7,7 @@ jest.mock("../../src/platform", () => ({
   } } },
 }));
 
-import { createShareKeyStore, loadDisplayName, saveDisplayName } from "../../src/collab/shareKeyStore";
+import { createShareKeyStore, readMemberName, writeMemberName } from "../../src/collab/shareKeyStore";
 
 beforeEach(() => { for (const key of Object.keys(local)) delete local[key]; });
 
@@ -45,8 +45,8 @@ describe("shareKeyStore", () => {
 
   it("keeps the display name next to the shares", async () => {
     await keysOf("browser").remember(stored(A, 1, RELAYS));
-    await saveDisplayName("Ada");
-    expect(await loadDisplayName()).toBe("Ada");
+    await writeMemberName("Ada");
+    expect(await readMemberName()).toBe("Ada");
     expect(await keysOf("browser").invite(A)).toEqual(stored(A, 1, RELAYS));
   });
 
@@ -55,7 +55,7 @@ describe("shareKeyStore", () => {
     local["collabShares"] = { libraries: { browser: bad }, displayName: 3 };
     expect(await keysOf("browser").invite(A)).toBeUndefined();
     expect(await keysOf("browser").invite("b".repeat(32))).toBeUndefined();
-    expect(await loadDisplayName()).toBeUndefined();
+    expect(await readMemberName()).toBeUndefined();
     await keysOf("browser").remember(stored("c".repeat(32), 3));
     expect((local["collabShares"] as { libraries: { browser: Record<string, unknown> } }).libraries.browser[A]).toBe(5);
   });

@@ -1,5 +1,5 @@
 // Says how many days are left until a project's deadline.
-import type { ProjectTarget } from "../project/index.js";
+import type { ProjectSubmission } from "../project/index.js";
 
 export interface DeadlineText {
   text: string;
@@ -10,7 +10,7 @@ const DAY_MS = 86_400_000;
 const NEAR_DAYS = 14;
 
 /** Calendar days from today to the deadline in the reader's time zone, negative once it has passed; undefined without a valid date. */
-export function countDaysUntil(target: ProjectTarget | undefined, now: number): number | undefined {
+export function countDaysUntil(target: ProjectSubmission | undefined, now: number): number | undefined {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(target?.deadline ?? "");
   if (!match) return undefined;
   const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
@@ -22,7 +22,7 @@ export function countDaysUntil(target: ProjectTarget | undefined, now: number): 
 }
 
 /** A deadline stays "0 d" until midnight. */
-export function formatDeadlineText(target: ProjectTarget | undefined, now: number): DeadlineText | undefined {
+export function formatDeadlineText(target: ProjectSubmission | undefined, now: number): DeadlineText | undefined {
   const days = countDaysUntil(target, now);
   if (days === undefined) return undefined;
   if (days < 0) return { text: "passed", tone: "passed" };

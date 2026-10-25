@@ -1,6 +1,6 @@
 /** Supplies an in-memory template cache, a scripted fetch and a logger that records every call with its context. */
-import type { ILogger } from "../../../src/ports/index";
-import type { CachedCatalogIndex, CachedSourceId, FetchLike, TemplateCache } from "../../../src/templates/sources/index.js";
+import type { FetchLike, ILogger } from "../../../src/ports/index";
+import type { CachedCatalogIndex, CachedSourceId, TemplateCache } from "../../../src/templates/sources/index.js";
 
 export interface MemoryCache extends TemplateCache {
   store: Map<CachedSourceId, CachedCatalogIndex>;

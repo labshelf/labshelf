@@ -3,4 +3,4 @@ export { createNativeChannel, openConnectionChannel } from "./helperChannel";
 export type { HelperPortFactory, HelperConnectionConstructor } from "./helperChannel";
 export { HelperClosedError, HelperConnection, HelperVersionError } from "./helperConnection";
 export type { ConnectionHooks, FrameStep, RequestBody } from "./helperConnection";
-export { statusFromReady, statusFromVersionError } from "./helperProtocolVersion";
+export { deriveHelperStatus, deriveVersionErrorStatus } from "./helperProtocolVersion";

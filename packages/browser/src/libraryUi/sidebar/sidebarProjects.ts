@@ -1,5 +1,5 @@
 // Answers the core sidebar's Projects section: lists the projects, opens one in the page's project session, opens the template and All projects tabs, and shows the menus that share and join projects.
-import type { ProjectTreeView, ShareHost } from "@labshelf/core";
+import { isProjectTreeView, type ShareHost } from "@labshelf/core";
 import { createProjectShareMenuEntries, showMenu, type LibrarySidebar, type MenuEntry, type ProjectOffers, type SidebarProjectActions } from "@labshelf/core/dom";
 import type { TabKindName } from "../editorArea";
 import type { BrowserProjectRow, ProjectsSource } from "../../writing/projectList";
@@ -9,9 +9,6 @@ import type { ProjectSession } from "../../writing/session";
 const BROWSER_OFFERS: Partial<ProjectOffers> = { addExisting: false, newBlank: false, projectFolders: false };
 
 const ignore = (): void => undefined;
-
-const TREE_VIEWS: readonly string[] = ["files", "outline", "checklist"];
-const isTreeView = (view: string): view is ProjectTreeView => TREE_VIEWS.includes(view);
 
 export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "closeProject" | "attachSidebar" | "treeClick" | "treeAction">;
 
@@ -48,7 +45,7 @@ export function createSidebarProjects(
     browseTemplates: () => openTab("templates"),
     allProjects: () => openTab("all-projects"),
     closeProject: () => { void session.closeProject(); },
-    treeClick: (view, key) => { if (isTreeView(view)) session.treeClick(view, key); },
+    treeClick: (view, key) => { if (isProjectTreeView(view)) session.treeClick(view, key); },
     treeAction: (action) => { void session.treeAction(action); },
     openProjectMenu: (anchor) => {
       const open = session.current();

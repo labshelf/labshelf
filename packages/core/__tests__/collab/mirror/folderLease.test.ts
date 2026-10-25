@@ -1,5 +1,5 @@
 import { openFolderLease } from "../../../src/collab/mirror/openProjectLease";
-import { MirrorOwnershipLost } from "../../../src/collab/mirror/mirrorLostError";
+import { MirrorLostError } from "../../../src/collab/mirror/MirrorLostError";
 import { type LeaseScheduler } from "../../../src/collab/mirror/mirrorScheduler";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 import { fakeLogger } from "../../support/fakeLogger";
@@ -91,7 +91,7 @@ describe("openFolderLease", () => {
     const lost = jest.fn();
     result.lease.onLost(lost);
     await writeForeign(clock.state.now);
-    await expect(result.lease.assertOwned()).rejects.toBeInstanceOf(MirrorOwnershipLost);
+    await expect(result.lease.assertOwned()).rejects.toBeInstanceOf(MirrorLostError);
     await clock.tick();
     expect(lost).toHaveBeenCalledTimes(1);
     expect((await readLease()).owner).toBe("other");

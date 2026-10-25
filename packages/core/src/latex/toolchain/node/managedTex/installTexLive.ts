@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 
-import { extractArchive, type FetchLike } from "../index.js";
+import { extractArchive } from "../index.js";
 
 import { resolveManagedTexDir } from "./texLayout.js";
 import { createTexLiveProfile } from "./createTexLiveProfile.js";
@@ -11,7 +11,7 @@ import { runTexTool, TEX_MODULE } from "./runTexTool.js";
 import type { TexInstallDeps, TexInstallRun } from "./texInstall.js";
 import { findSingleTopDir } from "./unpackedDir.js";
 import { withStagingDir } from "./stagingDir.js";
-import type { ILogger } from "../../../../ports/index.js";
+import type { ILogger, FetchLike } from "../../../../ports/index.js";
 import { verifyDetachedSignature } from "../verifySignature.js";
 import { TEX_LIVE_SIGNING_KEY } from "./texLiveKeyring.js";
 

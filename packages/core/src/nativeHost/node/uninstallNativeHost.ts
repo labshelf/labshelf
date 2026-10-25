@@ -2,7 +2,7 @@
 import { formatError } from "../../logging/index.js";
 import type { NativeHostSpec } from "../hostSpecs.js";
 import { resolveHostLayout, type BrowserHostSite } from "./layout/index.js";
-import { INSTALL_LOG_MODULE, type BinaryLaunch, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "./nativeHostEnv.js";
+import { INSTALL_LOG_MODULE, type BinaryEntry, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "./nativeHostEnv.js";
 import { removeLauncher } from "./launcherFiles.js";
 import { readHostManifest, removeHostManifest } from "./hostManifestFiles.js";
 
@@ -13,7 +13,7 @@ export interface NativeHostUninstallResult {
 }
 
 /** Without a launch, removes the script install; with a binary launch, removes only the manifests pointing at that binary. */
-export async function uninstallNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch?: BinaryLaunch): Promise<NativeHostUninstallResult> {
+export async function uninstallNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch?: BinaryEntry): Promise<NativeHostUninstallResult> {
   const layout = await resolveHostLayout(env, spec);
   const executable = launch ? launch.path : layout.launcherPath;
   const removed: BrowserId[] = [];

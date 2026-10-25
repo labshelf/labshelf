@@ -1,5 +1,5 @@
 // Pins when the preview asks the helper for builds: debounced previews, full builds on save and idle, cancels and the auto-compile modes.
-import type { AutoCompileMode, ILogger } from "@labshelf/core";
+import type { BuildSchedule, ILogger } from "@labshelf/core";
 import type { HelperCompileRequest, HelperCompileResult } from "@labshelf/core/helper";
 import { createBuildScheduler, type BuildTimers } from "../../../src/writing/preview";
 
@@ -29,7 +29,7 @@ function fakeTimers(): BuildTimers & { advance(ms: number): void } {
 const RESULT: HelperCompileResult = { status: "succeeded", problems: [], pageCount: 1, changed: [] };
 const logger: ILogger = { log: async () => undefined, error: async () => undefined } as unknown as ILogger;
 
-function setup(mode: AutoCompileMode = "typing") {
+function setup(mode: BuildSchedule = "typing") {
   const timers = fakeTimers();
   const requests: HelperCompileRequest[] = [];
   const resolvers: ((r: HelperCompileResult) => void)[] = [];

@@ -4,7 +4,7 @@ import type { Node } from "prosemirror-model";
 import { findOutputs, OUTPUT_CLASS } from "../cellOutput/index.js";
 import { findTopLevelDivs, findCodeFences, findUnclosedCodeFences } from "../items/index.js";
 import { qmdSchema } from "./schema/index.js";
-import { isBlank, extractRawText, type BlockSpan, type Line } from "./blockLines.js";
+import { isBlank, extractRawText, type BodyBlock, type Line } from "./blockLines.js";
 import { parseInline } from "./parseInline.js";
 import { readList, isListMarker } from "./readList.js";
 
@@ -14,7 +14,7 @@ const SETEXT = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const MATH = /^\$\$([\s\S]*?)\$\$(?: \{#(eq-[^}\s]+)\})?$/;
 
 /** Inside a list item a nested list marker ends the paragraph, as Pandoc reads it. */
-function readParagraph(lines: readonly Line[], start: number, nested: boolean): BlockSpan {
+function readParagraph(lines: readonly Line[], start: number, nested: boolean): BodyBlock {
   let end = start + 1;
   while (end < lines.length && !isBlank(lines[end]!) && !(nested && isListMarker(lines[end]!.content))) { end++; }
   const contents = lines.slice(start, end).map((line) => line.content);
@@ -37,7 +37,7 @@ const OPENER = /^(`{3,}|~{3,})(.*)$/;
 const LANG = /^[ \t]*(?:\{([^\s{}.#=]+)[^}]*\}|([^\s{`]+))/;
 
 /** A closed fence becomes a code cell; an indented one stays raw; an unclosed one turns the rest of its container raw. */
-function readCodeCell(lines: readonly Line[], start: number): BlockSpan | undefined {
+function readCodeCell(lines: readonly Line[], start: number): BodyBlock | undefined {
   const first = lines[start]!.content;
   if (!FENCE_START.test(first)) { return undefined; }
   const contents = lines.slice(start).map((line) => line.content);
@@ -66,13 +66,13 @@ function readCodeCell(lines: readonly Line[], start: number): BlockSpan | undefi
   return { end, build: (gap) => qmdSchema.nodes.code_cell!.createChecked({ ...attrs, gap }) };
 }
 
-export interface BlockSlice extends BlockSpan { readonly gap: string; readonly start: number }
+export interface BodySlice extends BodyBlock { readonly gap: string; readonly start: number }
 
 const HEADING = /^(#{1,6})(?:([ \t]+)(.*))?$/;
 
 /** The blocks of `lines` and the blank lines after the last one; `nested` marks the lines of a list item. */
-export function splitBlocks(lines: readonly Line[], nested = false): { blocks: BlockSlice[]; trailing: string } {
-  const blocks: BlockSlice[] = [];
+export function splitBlocks(lines: readonly Line[], nested = false): { blocks: BodySlice[]; trailing: string } {
+  const blocks: BodySlice[] = [];
   let i = 0;
   for (;;) {
     let start = i;
@@ -90,12 +90,12 @@ export function parseBlocks(lines: readonly Line[]): Node[] {
   return splitBlocks(lines, true).blocks.map((block) => block.build(block.gap));
 }
 
-function readBlock(lines: readonly Line[], start: number, nested: boolean): BlockSpan {
+function readBlock(lines: readonly Line[], start: number, nested: boolean): BodyBlock {
   return readCodeCell(lines, start) ?? readDiv(lines, start) ?? readHeading(lines, start) ?? readList(lines, start)
     ?? readParagraph(lines, start, nested);
 }
 
-function readHeading(lines: readonly Line[], start: number): BlockSpan | undefined {
+function readHeading(lines: readonly Line[], start: number): BodyBlock | undefined {
   const match = HEADING.exec(lines[start]!.content);
   if (!match) { return undefined; }
   const attrs = { level: match[1]!.length, space: match[2] ?? "" };
@@ -103,7 +103,7 @@ function readHeading(lines: readonly Line[], start: number): BlockSpan | undefin
 }
 
 /** A valid output div becomes an output node; any other div is kept as a raw block. */
-function readDiv(lines: readonly Line[], start: number): BlockSpan | undefined {
+function readDiv(lines: readonly Line[], start: number): BodyBlock | undefined {
   const div = findTopLevelDivs(lines.slice(start).map((line) => line.content))[0];
   if (div?.open !== 0) { return undefined; }
   const end = start + div.close + 1;

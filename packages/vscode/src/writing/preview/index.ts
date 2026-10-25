@@ -10,7 +10,7 @@ export type { PdfProblemsDeps } from "./readPdfProblems.js";
 export { createProjectActions } from "./createProjectActions.js";
 export type { ProjectActions, ProjectActionsDeps } from "./createProjectActions.js";
 export { StaleSources } from "./staleSources.js";
-export type { SourceEvents, StaleStatus } from "./staleSources.js";
+export type { SourceEvents, StaleSourcesState } from "./staleSources.js";
 export { vscodeSourceEvents } from "./vscodeSourceEvents.js";
 export { BuildPreviews } from "./buildPreviews.js";
 export type { BuildRootBuilds } from "./buildRootBuilds.js";

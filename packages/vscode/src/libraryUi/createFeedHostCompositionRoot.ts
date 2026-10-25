@@ -4,9 +4,9 @@ import type { ListHostContext } from './host/index.js';
 import type { ListPanelDeps } from './listPanelDeps.js';
 import type { LibraryFeed } from './libraryFeed.js';
 
-export type FeedReactions = Pick<ListHostContext, 'onReady' | 'onNavigate' | 'onSelect'>;
+export type ListHostEvents = Pick<ListHostContext, 'onReady' | 'onNavigate' | 'onSelect'>;
 
-export function createFeedHostCompositionRoot(deps: ListPanelDeps, feed: LibraryFeed, reactions: FeedReactions): ListHostContext {
+export function createFeedHostCompositionRoot(deps: ListPanelDeps, feed: LibraryFeed, reactions: ListHostEvents): ListHostContext {
   return {
     deps,
     paths: () => feed.paths(),

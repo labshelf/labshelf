@@ -3,7 +3,7 @@
  * in which order, and how it grades and reports the record it builds.
  */
 
-import { PdfImportParser, type ILogger, type PdfDocumentOpener, type PdfOcrEngine } from '@labshelf/core';
+import { PdfImportParser, type ILogger, type PdfOpener, type PdfOcrEngine } from '@labshelf/core';
 
 interface FakePage {
   items: Array<{ str: string; size?: number }>;
@@ -16,7 +16,7 @@ interface FakeFile {
 
 const PDF_BYTES = new TextEncoder().encode('%PDF-1.7 fake body');
 
-function opener(file: FakeFile): PdfDocumentOpener {
+function opener(file: FakeFile): PdfOpener {
   return {
     open: async () => ({
       numPages: file.pages.length,
@@ -221,7 +221,7 @@ describe('PdfImportParser.parse', () => {
   });
 
   it('maps pdf.js open failures to messages a user can act on', async () => {
-    const failing = (error: unknown): PdfDocumentOpener => ({ open: async () => Promise.reject(error) });
+    const failing = (error: unknown): PdfOpener => ({ open: async () => Promise.reject(error) });
     const named = (name: string): Error => Object.assign(new Error('boom'), { name });
 
     await expect(new PdfImportParser(failing(named('PasswordException'))).parse(PDF_BYTES, 'x')).rejects.toThrow(

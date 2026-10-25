@@ -15,14 +15,14 @@ function stringField(value: Record<string, unknown>, key: string): string {
 }
 
 /** @returns the request id when the message has a usable one, so a refusal can still name it */
-export function requestId(value: unknown): number | null {
+export function parseRequestId(value: unknown): number | null {
   const id = typeof value === "object" && value !== null ? (value as Record<string, unknown>)["id"] : undefined;
   return typeof id === "number" && Number.isSafeInteger(id) ? id : null;
 }
 
 // CONTRACT: documents/contracts/bridge.md#messages
 export function parseBridgeRequest(value: unknown): BridgeRequest {
-  const id = requestId(value);
+  const id = parseRequestId(value);
   if (id === null) return refuse("Request needs an integer id");
   const message = value as Record<string, unknown>;
   const op = message["op"];

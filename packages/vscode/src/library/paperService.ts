@@ -4,13 +4,13 @@ import * as vscode from "vscode";
 import { updatePaperTags, movePapers, createPaperFiles, resolveReferences, movePapersToTrash, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
 import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsUpdate, PaperRecord, PdfParse, PaperRecordMetadata } from "@labshelf/core";
 import type { LibraryEvents } from "./libraryEvents.js";
-import type { ReindexSummary } from "../storage/index.js";
+import type { RefreshLibraryResult } from "../storage/index.js";
 
 export class PaperService {
   constructor(
     private readonly ctx: MutationContext,
     private readonly store: LibraryStore,
-    private readonly reindex: () => Promise<ReindexSummary>,
+    private readonly reindex: () => Promise<RefreshLibraryResult>,
     private readonly events: LibraryEvents,
     private readonly parse: PdfParse,
   ) {}

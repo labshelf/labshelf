@@ -1,7 +1,7 @@
 // Adds a review note from the build preview as a comment thread at the source line SyncTeX finds behind its point.
 import * as vscode from "vscode";
 
-import { findSourcePosition, type PagePoint } from "@labshelf/core";
+import { formatError, findSourcePosition, type PagePoint } from "@labshelf/core";
 import { addSourceComment } from "../../../collab/comments/index.js";
 import { NOT_BUILT_MESSAGE, PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import { openSourceLine } from "./openSourceLine.js";
@@ -24,6 +24,6 @@ export async function addPreviewComment(deps: ShowSourceDeps, point: PagePoint, 
     await openSourceLine(source.file, source.line);
   } catch (error) {
     await logger.error(PREVIEW_LOG_MODULE, error, { ...context, action: "add a review note", file: source.file, line: source.line });
-    void vscode.window.showErrorMessage(`LabShelf could not add the note to ${deps.paths.basename(source.file)}: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`LabShelf could not add the note to ${deps.paths.basename(source.file)}: ${formatError(error)}`);
   }
 }

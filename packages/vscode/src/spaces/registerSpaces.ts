@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import type { LibraryRootController } from "../activation/index.js";
 import type { HostAdapters } from "../activation/index.js";
-import type { WritingViewHandles } from "../activation/index.js";
+import type { WritingViewResult } from "../activation/index.js";
 import { SpacesService } from "./spacesService.js";
 import { registerSpacesPanels } from "./panelRegistry.js";
 import { ResearchChatView } from "./researchChatView.js";
@@ -13,7 +13,7 @@ import {
   type Progress,
 } from "@labshelf/core";
 
-export async function readProjectChecklist(writing: WritingViewHandles, row: ProjectRow): Promise<Progress | undefined> {
+export async function readProjectChecklist(writing: WritingViewResult, row: ProjectRow): Promise<Progress | undefined> {
   const project = writing.projects.list().find(entry => entry.folder === row.id);
   if (project?.kind !== "ready") { return undefined; }
   const [signals, list] = await Promise.all([
@@ -24,7 +24,7 @@ export async function readProjectChecklist(writing: WritingViewHandles, row: Pro
 }
 
 export function registerSpaces(
-  context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewHandles,
+  context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewResult,
   selectPaper: (id: string) => Promise<void>,
 ): SpacesService {
   const spaces = new SpacesService({

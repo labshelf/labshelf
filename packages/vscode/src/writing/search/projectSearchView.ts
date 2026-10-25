@@ -1,7 +1,7 @@
 // Serves the Project Search panel: runs its searches on the active file's writing project and carries out its opens and replacements.
 import * as vscode from "vscode";
 
-import { createEmptySearchRun, findMatchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
+import { formatError, createEmptySearchRun, findMatchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeKind, type SearchToHost } from "@labshelf/core";
 import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
@@ -22,7 +22,7 @@ interface ProjectSearchDeps {
 interface SearchRequest {
   query: string;
   options: SearchOptions;
-  mode: SearchScopeMode;
+  mode: SearchScopeKind;
 }
 
 /** The project that owns the active file, with what the searches and their log need. */
@@ -97,7 +97,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
     return project && logger && this.activeFile ? { project, file: this.activeFile, logger } : undefined;
   }
 
-  private scopeOf(target: Target, mode: SearchScopeMode): SearchScope {
+  private scopeOf(target: Target, mode: SearchScopeKind): SearchScope {
     return { mode, folder: target.project.folder, file: target.file, paths: this.deps.projects.paths, fs: this.deps.projects.fs };
   }
 
@@ -130,7 +130,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
       this.post(result.message);
     } catch (error) {
       await target?.logger.error(SEARCH_LOG_MODULE, error, { action: "search" });
-      if (ticket === this.run) { this.post({ type: "invalid", message: `Search failed: ${error instanceof Error ? error.message : String(error)}` }); }
+      if (ticket === this.run) { this.post({ type: "invalid", message: `Search failed: ${formatError(error)}` }); }
     }
   }
 

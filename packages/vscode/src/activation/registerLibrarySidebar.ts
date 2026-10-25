@@ -24,7 +24,7 @@ export interface LibrarySidebarDeps {
   projectTrees: SidebarProjectTreesDep;
 }
 
-export interface LibrarySidebarHandles {
+export interface LibrarySidebarResult {
   librarySidebar: LibrarySidebarView;
   /** Selects the folder the list panel shows. */
   showFolderInSidebar: (folder?: LibraryNode) => void;
@@ -33,7 +33,7 @@ export interface LibrarySidebarHandles {
   refreshLibraryViews: () => void;
 }
 
-export function registerLibrarySidebar(deps: LibrarySidebarDeps): LibrarySidebarHandles {
+export function registerLibrarySidebar(deps: LibrarySidebarDeps): LibrarySidebarResult {
   const { context, events, controller, papersRootUri, folderHost, adapters, projects, projectTrees } = deps;
   const view = new LibrarySidebarView({
     extensionUri: context.extensionUri,

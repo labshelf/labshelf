@@ -1,6 +1,6 @@
 // Marks each placed PDF problem over its area on its page and flashes one on request.
 import type { PageArea, PdfProblem } from "../../index.js";
-import { derivePixelOffset, type PageViewportLike } from "../navigation/index.js";
+import { derivePixelOffset, type PageViewLike } from "../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 
 export interface ProblemMarks {
@@ -8,11 +8,6 @@ export interface ProblemMarks {
   setProblems(problems: readonly PdfProblem[]): void;
   /** Flashes the mark of the problem at `index` of the last `setProblems` list; an unplaced or unknown index does nothing. */
   flash(index: number): void;
-}
-
-interface PageViewLike {
-  div: HTMLElement;
-  viewport: PageViewportLike & { width: number; height: number };
 }
 
 const LAYER_CLASS = "rd-problem-marks";

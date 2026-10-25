@@ -3,16 +3,17 @@
 
 import {
   PROTOCOL_VERSION,
-  type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionCode,
+  type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
 import { FieldError, isBody } from "./messageFields.js";
 import { readToHelper } from "./readToHelper.js";
 import { readToPage } from "./readToPage.js";
+import { formatError } from "../logging/index.js";
 
 const MAX_ID_LENGTH = 64;
 
-function reject(code: HelperRejectionCode, reason: string, id?: string): HelperRejection {
+function reject(code: HelperRejectionKind, reason: string, id?: string): HelperRejection {
   return id === undefined ? { ok: false, code, reason } : { ok: false, code, reason, id };
 }
 
@@ -39,6 +40,6 @@ export function parseHelperMessage<D extends HelperDirection>(raw: unknown, dire
   } catch (error) {
     if (error instanceof FieldError) { return reject(error.code, `${type}: ${error.message}`, replyId); }
     // TRAP: only a parser bug lands here; it still becomes a rejection because callers rely on this never throwing.
-    return reject("malformed", `${type}: ${error instanceof Error ? error.message : String(error)}`, replyId);
+    return reject("malformed", `${type}: ${formatError(error)}`, replyId);
   }
 }

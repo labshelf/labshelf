@@ -3,8 +3,9 @@ import * as vscode from "vscode";
 
 import {
   MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNextReadingStatus, removeManualItem, createSectionPlacer, setManualItemDone,
-  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type ReadingStatus, type PathOps,
+  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemKind, type ReadingStatus, type PathOps,
   type ReadingItem, type ReadingPaper, type SidebarTreeNode,
+  formatError,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "../figures/index.js";
 import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
@@ -157,7 +158,7 @@ export class ChecklistView implements vscode.Disposable {
     const text = raw.trim();
     const groupId = this.groups.get(key);
     const bySection = this.rendered?.grouping === "section";
-    const group = !bySection && (MANUAL_ITEM_GROUPS as readonly string[]).includes(groupId ?? "") ? groupId as ManualItemGroup : undefined;
+    const group = !bySection && (MANUAL_ITEM_GROUPS as readonly string[]).includes(groupId ?? "") ? groupId as ManualItemKind : undefined;
     const known = groupId !== undefined && (bySection ? groupId !== "#reading" : group !== undefined || groupId === "manual");
     if (!project || !text || !known) {
       void this.deps.logger.log("WARN", MODULE, "Checklist add for an unknown row", { key, project: project?.folder });
@@ -166,7 +167,7 @@ export class ChecklistView implements vscode.Disposable {
     await this.add(project, text, bySection ? { section: groupId } : group ? { group } : {});
   }
 
-  private async add(project: ReadyProject, text: string, place: { group?: ManualItemGroup; section?: string }): Promise<void> {
+  private async add(project: ReadyProject, text: string, place: { group?: ManualItemKind; section?: string }): Promise<void> {
     const id = this.deps.newId();
     await this.editChecklist(project, "add", (doc) => addManualItem(doc, { id, text, now: this.deps.now().toISOString(), ...place }));
   }
@@ -233,7 +234,7 @@ export class ChecklistView implements vscode.Disposable {
   }
 
   private async report(message: string, error: unknown, context: Record<string, unknown>): Promise<void> {
-    void vscode.window.showErrorMessage(`${message}: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`${message}: ${formatError(error)}`);
     await this.deps.logger.error(MODULE, error, context);
   }
 

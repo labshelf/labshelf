@@ -39,8 +39,7 @@ interface SpaceDateBase {
 export interface SpaceTaskDate extends SpaceDateBase { readonly kind: "task"; readonly done: boolean }
 export interface SpaceReadDate extends SpaceDateBase { readonly kind: "read"; readonly paperIds?: readonly string[] }
 export interface SpaceProjectDate extends SpaceDateBase { readonly kind: "project"; readonly projectId?: string }
-export interface SpaceDeadlineDate extends SpaceDateBase { readonly kind: "deadline" }
-export type SpaceDate = SpaceTaskDate | SpaceReadDate | SpaceProjectDate | SpaceDeadlineDate;
+export type SpaceDate = SpaceTaskDate | SpaceReadDate | SpaceProjectDate | (SpaceDateBase & { readonly kind: "deadline" });
 
 export interface Space {
   /** The folder name under spaces/; it never changes. */

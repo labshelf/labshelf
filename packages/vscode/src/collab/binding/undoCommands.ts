@@ -12,7 +12,7 @@ const REDO_COMMAND = "labshelf.collab.redo";
 type BindingOf = (document: vscode.TextDocument) => DocumentBinding | undefined;
 type Step = "undo" | "redo";
 
-export interface UndoRedoOverride extends vscode.Disposable {
+export interface UndoCommands extends vscode.Disposable {
   /** Re-reads whether the active editor is shared, after a document was bound or unbound. */
   refreshContext(): void;
 }
@@ -39,7 +39,7 @@ async function runStep(editor: vscode.TextEditor, binding: DocumentBinding, step
   }
 }
 
-export function registerUndoRedo(bindingOf: BindingOf, logger: ILogger): UndoRedoOverride {
+export function registerUndoRedo(bindingOf: BindingOf, logger: ILogger): UndoCommands {
   const refreshContext = () => {
     const editor = vscode.window.activeTextEditor;
     void vscode.commands.executeCommand("setContext", SHARED_EDITOR_CONTEXT, editor !== undefined && bindingOf(editor.document) !== undefined);

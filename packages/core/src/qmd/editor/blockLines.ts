@@ -10,7 +10,7 @@ import { isBlankLine, extractLineContent, extractLineEnding, splitLines } from "
 export interface Line { readonly content: string; readonly raw: string }
 
 /** A block found at `start`: the index after its last line, and how to build its node once its gap is known. */
-export interface BlockSpan { readonly end: number; readonly build: (gap: string) => Node }
+export interface BodyBlock { readonly end: number; readonly build: (gap: string) => Node }
 
 export interface BodyLines { readonly lines: Line[]; readonly eol: string; readonly unterminated: boolean }
 

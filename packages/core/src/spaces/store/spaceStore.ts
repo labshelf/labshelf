@@ -6,10 +6,10 @@ import {
   type Space,
   type SpaceReadResult,
   serializeSpaceFile,
-  spaceIdFromName,
+  deriveSpaceId,
 } from "../model/index.js";
 import * as edit from "./mutation/index.js";
-import type { SpaceDateDraft, TermDraft } from "./mutation/index.js";
+import type { SpaceDateInput, TermInput } from "./mutation/index.js";
 import { updateGlossary, updateSpace, type ReadySpace } from "./updateSpace.js";
 import { readAllSpaces, readGlossaryFile, readSpaceFile } from "./readSpace.js";
 import { type SpaceStoreOptions, type StoreContext, SPACE_STORE_MODULE } from "./spaceStoreOptions.js";
@@ -19,10 +19,10 @@ const message = (error: unknown): string => (error instanceof Error ? error.mess
 
 /** TRAP: another device may create the same folder between the listing and the write, so the id is re-checked last. */
 async function freeSpaceId(ctx: StoreContext, name: string, taken: Set<string>): Promise<string> {
-  let id = spaceIdFromName(name, taken);
+  let id = deriveSpaceId(name, taken);
   while (await ctx.fs.exists(ctx.layout.spaceDir(id))) {
     taken.add(id);
-    id = spaceIdFromName(name, taken);
+    id = deriveSpaceId(name, taken);
   }
   return id;
 }
@@ -145,13 +145,13 @@ export class SpaceStore {
   /** References and child folders move to the folder's parent. */
   deleteFolder(id: string, folderId: string) { return this.change(id, "Folder deleted", (s) => keep(edit.withFolderRemoved(s, folderId))); }
 
-  addDate(id: string, draft: SpaceDateDraft) { return this.change(id, "Date added", (s) => edit.withDate(s, draft)); }
-  updateDate(id: string, dateId: string, draft: SpaceDateDraft) { return this.change(id, "Date updated", (s) => keep(edit.withUpdatedDate(s, dateId, draft))); }
+  addDate(id: string, draft: SpaceDateInput) { return this.change(id, "Date added", (s) => edit.withDate(s, draft)); }
+  updateDate(id: string, dateId: string, draft: SpaceDateInput) { return this.change(id, "Date updated", (s) => keep(edit.withUpdatedDate(s, dateId, draft))); }
   removeDate(id: string, dateId: string) { return this.change(id, "Date removed", (s) => keep(edit.withDateRemoved(s, dateId))); }
   setDone(id: string, dateId: string, done: boolean) { return this.change(id, "Task done set", (s) => keep(edit.withDone(s, dateId, done))); }
 
-  addTerm(id: string, draft: TermDraft) { return this.changeGlossary(id, "Term added", (g) => edit.withTerm(g, draft)); }
-  updateTerm(id: string, termId: string, draft: TermDraft) {
+  addTerm(id: string, draft: TermInput) { return this.changeGlossary(id, "Term added", (g) => edit.withTerm(g, draft)); }
+  updateTerm(id: string, termId: string, draft: TermInput) {
     return this.changeGlossary(id, "Term updated", (g) => ({ glossary: edit.withUpdatedTerm(g, termId, draft), value: undefined }));
   }
   removeTerm(id: string, termId: string) {

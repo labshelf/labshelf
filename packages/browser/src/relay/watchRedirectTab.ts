@@ -1,7 +1,7 @@
 // Waits for a sign-in tab to reach the Cloudflare loopback redirect, then closes it.
 // PLATFORM: Cloudflare accepts only the registered loopback redirect, so the page reads the failed navigation's URL
 // from tabs.onUpdated; nothing needs to listen on the port, and a VS Code loopback that gets it first rejects it on state.
-import { CLOUDFLARE_REDIRECT_URI, type ILogger } from "@labshelf/core";
+import { formatError, CLOUDFLARE_REDIRECT_URI, type ILogger } from "@labshelf/core";
 import type { Tabs } from "webextension-polyfill";
 import { bx } from "../platform";
 
@@ -30,7 +30,7 @@ export function watchRedirectTab(tabId: number, logger: ILogger, signal?: AbortS
       clearTimeout(timer);
       if (userClosed) { return; }
       bx.tabs.remove(tabId).catch((error: unknown) => logger.log("WARN", LOG_MODULE, "Could not close the Cloudflare sign-in tab", {
-        tabId, error: error instanceof Error ? error.message : String(error),
+        tabId, error: formatError(error),
       }));
     };
     const onUpdated = (id: number, change: Tabs.OnUpdatedChangeInfoType, tab: Tabs.Tab): void => {

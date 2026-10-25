@@ -1,15 +1,15 @@
 /** Rewrites an installed script host's launcher when the owning app's Node binary or host script moved. */
 import type { NativeHostSpec } from "../hostSpecs.js";
 import { resolveHostLayout } from "./layout/index.js";
-import { INSTALL_LOG_MODULE, type NativeHostEnv, type ScriptLaunch } from "./nativeHostEnv.js";
-import { readHostScriptLaunch, writeLauncher } from "./launcherFiles.js";
+import { INSTALL_LOG_MODULE, type NativeHostEnv, type ScriptEntry } from "./nativeHostEnv.js";
+import { readHostScriptEntry, writeLauncher } from "./launcherFiles.js";
 
 export type RefreshResult = "refreshed" | "unchanged" | "not-owned" | "not-installed";
 
 /** Never installs: browsers keep the manifests they have, which already point at the launcher. */
-export async function refreshNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch: ScriptLaunch): Promise<RefreshResult> {
+export async function refreshNativeHost(env: NativeHostEnv, spec: NativeHostSpec, launch: ScriptEntry): Promise<RefreshResult> {
   const layout = await resolveHostLayout(env, spec);
-  const record = await readHostScriptLaunch(env, layout);
+  const record = await readHostScriptEntry(env, layout);
   const context = { host: spec.hostName, owner: launch.owner, launcher: layout.launcherPath };
   const result: RefreshResult = !record
     ? "not-installed"

@@ -1,6 +1,6 @@
 /** Exports the paper's public API: cite keys, tags, folder names, title key, authors, citations, venue, links, dates and file size. */
 export { normalizeAuthor, deriveFamilyName, formatAuthors, splitName } from "./authors.js";
-export type { PersonName } from "./authors.js";
+export type { AuthorName } from "./authors.js";
 export { deriveCiteKeySlug, ensureCiteKey, createCiteKey, deriveUniqueCiteKey } from "./citeKey.js";
 export type { CiteKeyMetadata } from "./citeKey.js";
 export { formatCitations, formatInTextCitation } from "./citationStyles.js";

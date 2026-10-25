@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { createSelectionHub, createLibraryLayout, type AiService } from "@labshelf/core";
 import { resolveLibraryRoot } from "../storage/paths/index.js";
-import { migrateLibraryRootFromGlobalState } from "../storage/index.js";
+import { moveLibraryRootToConfig } from "../storage/index.js";
 import { createSelectionSources, type DetailsView } from "../libraryUi/details/index.js";
 import { ListWebviewPanel } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
@@ -120,7 +120,7 @@ async function loadConfiguredLibrary(
   platform: ExtensionPlatform,
 ): Promise<AiService | null> {
   const { adapters } = platform;
-  const unmigratedRoot = await migrateLibraryRootFromGlobalState(context.globalState, adapters.sharedLibraryConfig, (root) =>
+  const unmigratedRoot = await moveLibraryRootToConfig(context.globalState, adapters.sharedLibraryConfig, (root) =>
     adapters.createLogger(adapters.deviceLayout(root).appLogPath));
   const savedRoot = await resolveLibraryRoot(adapters.sharedLibraryConfig)
     ?? (unmigratedRoot ? vscode.Uri.file(unmigratedRoot) : undefined);

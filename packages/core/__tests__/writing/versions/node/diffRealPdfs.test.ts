@@ -1,8 +1,8 @@
-// Compares real pdfTeX builds, rendered by real pdf.js in a child process the way renderInkMaps renders them.
+// Compares real pdfTeX builds, rendered by real pdf.js in a child process the way renderPageInks renders them.
 import { execFileSync } from "node:child_process";
 import * as path from "node:path";
 
-import { comparePdfPages, deriveInkMap, type InkMap, type PdfChanges } from "../../../../src/writing/versions";
+import { comparePdfPages, derivePageInk, type PageInk, type PdfChanges } from "../../../../src/writing/versions";
 import type { PageArea } from "../../../../src/reader/index.js";
 
 const SCALE = 1.5;
@@ -10,13 +10,13 @@ const FIXTURES = path.join(__dirname, "..", "fixtures");
 
 interface Found { word: string; page: number; x: number; y: number }
 
-function render(name: string, ...words: string[]): { pages: InkMap[]; found: Found[] } {
+function render(name: string, ...words: string[]): { pages: PageInk[]; found: Found[] } {
   const json = execFileSync(process.execPath, [path.join(__dirname, "pdfInkDump.mjs"), path.join(FIXTURES, name), String(SCALE), ...words], {
     encoding: "utf8", maxBuffer: 256 * 1024 * 1024,
   });
   const dump = JSON.parse(json) as { pages: Array<{ width: number; height: number; rgba: string }>; found: Found[] };
   return {
-    pages: dump.pages.map((page) => deriveInkMap(Buffer.from(page.rgba, "base64"), page.width, page.height)),
+    pages: dump.pages.map((page) => derivePageInk(Buffer.from(page.rgba, "base64"), page.width, page.height)),
     found: dump.found,
   };
 }

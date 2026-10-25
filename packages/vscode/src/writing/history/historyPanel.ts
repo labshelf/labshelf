@@ -9,6 +9,7 @@ import {
   type HostToHistory,
   type ILogger,
   createNonce,
+  formatError,
 } from "@labshelf/core";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
@@ -101,7 +102,7 @@ export class HistoryPanel {
       if (message.type === "compareVersions") { await vscode.commands.executeCommand("labshelf.writing.compareVersions", this.project); }
     } catch (error) {
       await this.logger.error("writing/history", error, { action: message.type, folder: this.project.folder });
-      void vscode.window.showErrorMessage(`History: ${error instanceof Error ? error.message : String(error)}`);
+      void vscode.window.showErrorMessage(`History: ${formatError(error)}`);
     }
   }
 

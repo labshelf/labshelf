@@ -7,3 +7,4 @@ export type { LogSink } from "./logSink.js";
 export type { LocalStat, LocalFileSystem } from "./localFileSystem.js";
 export type { LibraryFileSystem } from "./libraryFileSystem.js";
 export type { SidecarPort } from "./sidecarPort.js";
+export type { FetchLike } from "./fetchLike.js";

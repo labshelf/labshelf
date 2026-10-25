@@ -11,7 +11,7 @@ import {
 } from "@labshelf/core";
 import type { PreviewCitationDeps } from "./previewCitations.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import type { CitingSite } from "./citingCommands.js";
+import type { CitedCommand } from "./citingCommands.js";
 import { listUserBibliographyFiles } from "./projectBibliographyFiles.js";
 
 /** The first record of each requested key across the project's user-written .bib files. */
@@ -34,7 +34,7 @@ export async function reportWarning(deps: Pick<PreviewCitationDeps, "logger" | "
 }
 
 /** Highlights per paper, cited page first. A part that cannot be read is logged and left out, so the card still answers. */
-async function highlightsByPaper(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitingSite>) {
+async function highlightsByPaper(deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitedCommand>) {
   const cited = derivePapersByCiteKey(papers);
   const highlights = new Map<string, ReturnType<typeof listQuotedHighlights>>();
   for (const key of keys) {
@@ -63,7 +63,7 @@ async function bibRecords(deps: CardDeps, keys: readonly string[], papers: reado
 }
 
 export async function readCardDetails(
-  deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitingSite>,
+  deps: CardDeps, keys: readonly string[], papers: readonly PaperRecord[], sites: ReadonlyMap<string, CitedCommand>,
 ): Promise<CitationDetails> {
   const site = new Map<string, CitingCommand>();
   const citedPage = new Map<string, number>();

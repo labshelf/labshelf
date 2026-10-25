@@ -3,13 +3,12 @@ import {
   derivePreviewProblems,
   type BuildOptions,
   type LocatedProblem,
-  type PathOps,
   type PreviewBuildRoot,
   type PreviewBuildRoots,
   type ILogger,
   type PdfProblem,
 } from "@labshelf/core";
-import type { ReadyProject } from "../../buildRootDocument.js";
+import { deriveProjectPath, type ReadyProject } from "../../buildRootDocument.js";
 import { readRawLogFile, type RawLogDeps } from "./readRawLogFile.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
@@ -53,11 +52,6 @@ export interface PreviewBuildRootsInput extends RawLogDeps, RootFindingsInput {
   checks?: number;
 }
 
-function projectRelative(paths: PathOps, folder: string, file: string): string {
-  const relative = paths.relative(folder, file);
-  return (relative.startsWith("..") || paths.isAbsolute(relative) ? file : relative).split(paths.sep).join("/");
-}
-
 async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot> {
   const { paths, project } = input;
   return {
@@ -66,7 +60,7 @@ async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise
     failed: input.failed(root),
     rawLog: (await readRawLogFile(input, project, root)) !== undefined,
     sourceLinks: project.settings.format === "latex",
-    problems: derivePreviewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
+    problems: derivePreviewProblems(input.problemsOf(root), (file) => deriveProjectPath(paths, project.folder, file)),
   };
 }
 

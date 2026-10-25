@@ -3,15 +3,15 @@
 import type { LibraryFileSystem, ILogger } from "../../ports/index.js";
 import { deriveLeasePath, readLease, writeLease, type LeaseFileContent } from "./leaseFile.js";
 import type { LeaseScheduler } from "./mirrorScheduler.js";
-import { MirrorOwnershipLost } from "./mirrorLostError.js";
+import { MirrorLostError } from "./MirrorLostError.js";
 
 export const LEASE_RENEW_MS = 10_000;
 const LOG_MODULE = "collab.ownership";
 
 export interface FolderLease {
-  /** Throws MirrorOwnershipLost when another mirror owns the folder; a mirror calls it before each disk write batch. */
+  /** Throws MirrorLostError when another mirror owns the folder; a mirror calls it before each disk write batch. */
   assertOwned(): Promise<void>;
-  onLost(listener: (error: MirrorOwnershipLost) => void): void;
+  onLost(listener: (error: MirrorLostError) => void): void;
   /** Stops renewing and deletes the lease file if it is still ours. */
   release(): Promise<void>;
 }
@@ -24,8 +24,8 @@ export interface HeldLeaseOptions {
 }
 
 export class HeldFolderLease implements FolderLease {
-  private readonly listeners: Array<(error: MirrorOwnershipLost) => void> = [];
-  private lost: MirrorOwnershipLost | undefined;
+  private readonly listeners: Array<(error: MirrorLostError) => void> = [];
+  private lost: MirrorLostError | undefined;
   private released = false;
   // INVARIANT: renewals and release run one at a time, so a renewal never rewrites a lease that release just deleted.
   private queue: Promise<void> = Promise.resolve();
@@ -43,7 +43,7 @@ export class HeldFolderLease implements FolderLease {
     }
   }
 
-  onLost(listener: (error: MirrorOwnershipLost) => void): void {
+  onLost(listener: (error: MirrorLostError) => void): void {
     this.listeners.push(listener);
   }
 
@@ -66,15 +66,15 @@ export class HeldFolderLease implements FolderLease {
       await this.assertOwned();
       await writeLease(fs, folder, { ...this.record, renewedAt: scheduler.now() });
     } catch (error) {
-      if (error instanceof MirrorOwnershipLost) { return; }
+      if (error instanceof MirrorLostError) { return; }
       // A failed renewal is retried at the next period; the lease stays valid for its ttl meanwhile.
       await logger.error(LOG_MODULE, error, { folder, action: "renew mirror lease" });
     }
   }
 
-  private async markLost(holder: LeaseFileContent): Promise<MirrorOwnershipLost> {
+  private async markLost(holder: LeaseFileContent): Promise<MirrorLostError> {
     if (this.lost) { return this.lost; }
-    const error = new MirrorOwnershipLost(this.options.folder, { app: holder.app, renewedAt: holder.renewedAt });
+    const error = new MirrorLostError(this.options.folder, { app: holder.app, renewedAt: holder.renewedAt });
     this.lost = error;
     this.stopRenewing();
     await this.options.logger.log("WARN", LOG_MODULE, "Lost the mirror lease to another mirror", {

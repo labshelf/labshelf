@@ -1,7 +1,7 @@
 // Declares device-local project text history for divergence detection and conflict-copy merging.
 import type { LibraryFileSystem } from "../../ports/index.js";
 
-export interface ProjectSaveTracking {
+export interface ProjectWriteTracking {
   fs: LibraryFileSystem;
   beforeSave(file: string, text: string): Promise<void>;
   afterSave(file: string, text: string): Promise<void>;

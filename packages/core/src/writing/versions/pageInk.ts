@@ -1,7 +1,7 @@
 /** Reduces a rendered page to the pixels that carry ink, the only thing the page comparison looks at. */
 
 /** One rendered page: `ink[y * width + x]` is 1 where the page is drawn on, `dark` how dark it is there (0 white). */
-export interface InkMap {
+export interface PageInk {
   width: number;
   height: number;
   ink: Uint8Array;
@@ -12,7 +12,7 @@ export interface InkMap {
 const INK_LUMINANCE = 200;
 
 /** Reads RGBA pixels (as a canvas's getImageData returns them) over a white sheet. */
-export function deriveInkMap(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): InkMap {
+export function derivePageInk(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): PageInk {
   const ink = new Uint8Array(width * height);
   const dark = new Uint8Array(width * height);
   for (let i = 0, p = 0; i < ink.length; i++, p += 4) {

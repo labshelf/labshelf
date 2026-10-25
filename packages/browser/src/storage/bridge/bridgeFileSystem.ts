@@ -1,5 +1,5 @@
 // Implements the library file system over the bridge host, which serves the library folder on disk.
-import { BridgeError, posixPathOps, type LocalStat } from "@labshelf/core";
+import { BridgeError, type LocalStat } from "@labshelf/core";
 import type { BridgeConnection } from "./bridgeConnection";
 import { BytesFileSystem } from "../bytesFileSystem";
 
@@ -32,16 +32,9 @@ export class BridgeFileSystem extends BytesFileSystem {
     await (await this.connection()).request({ op: "ensureDir", path: dirPath });
   }
 
-  /**
-   * The host overwrites an existing target, so the port's refusal happens here. On a case-insensitive disk `stat`
-   * of a case-only target finds the source itself, so only the listed names tell a second file apart.
-   */
+  /** The host overwrites an existing target, so the port's refusal happens here. */
   async rename(from: string, to: string): Promise<void> {
-    const caseOnly = from !== to && from.toLowerCase() === to.toLowerCase();
-    const taken = caseOnly
-      ? (await this.listDir(posixPathOps.dirname(to))).includes(posixPathOps.basename(to))
-      : await this.exists(to);
-    if (taken) throw new BridgeError("io", `Cannot rename ${from} to ${to}: the target already exists`);
+    if (await this.isRenameTargetTaken(from, to)) throw new BridgeError("io", `Cannot rename ${from} to ${to}: the target already exists`);
     await (await this.connection()).request({ op: "rename", from, to });
   }
 

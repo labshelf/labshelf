@@ -32,7 +32,7 @@ export async function readPickedDir(): Promise<FileSystemDirectoryHandle | undef
 }
 
 /** The id that keeps this folder's share keys apart from other libraries'; undefined when no folder was picked. */
-export async function loadPickedFolderId(): Promise<string | undefined> {
+export async function readPickedDirId(): Promise<string | undefined> {
   const id = await (await open()).get(STORE, ID_KEY);
   if (typeof id === "string") return id;
   return backfillPickedFolderId(await readPickedDir(), (newId) => saveId(newId));

@@ -1,6 +1,6 @@
 // The indexer reads each PDF once, skips unchanged content, survives failing jobs and clears deleted papers.
 import { AiIndexer } from "../../src/ai/aiIndexer";
-import type { AiIndexerDependencies } from "../../src/ai/aiIndexer";
+import type { AiIndexerDeps } from "../../src/ai/aiIndexer";
 import { deriveSha256Hex } from "../../src/hash/index";
 
 jest.mock("../../src/ai/ingestion", () => ({
@@ -11,7 +11,7 @@ jest.mock("../../src/ai/ingestion", () => ({
 const BYTES = new Uint8Array([1, 2, 3]);
 
 function makeIndexer(options: {
-  resolvePdfPath?: AiIndexerDependencies["resolvePdfPath"];
+  resolvePdfPath?: AiIndexerDeps["resolvePdfPath"];
   papers?: Array<{ id: string }>;
   stored?: Record<string, string>;
 } = {}) {
@@ -36,7 +36,7 @@ function makeIndexer(options: {
     resolvePdfPath: options.resolvePdfPath ?? (async (id: string) => `/lib/papers/${id}/paper.pdf`),
     fileSystem: { readFile: jest.fn(async () => BYTES) },
   };
-  const indexer = new AiIndexer(deps as unknown as AiIndexerDependencies);
+  const indexer = new AiIndexer(deps as unknown as AiIndexerDeps);
   // rebuildAll resolves once every job it queued has finished, so an empty rebuild also flushes earlier jobs.
   const flush = async () => { deps.listPapers.mockResolvedValueOnce([]); await indexer.rebuildAll(); };
   const fire = { upsert: (id: string) => handlers.upsert.forEach((h) => h(id)), remove: (id: string) => handlers.remove.forEach((h) => h(id)) };

@@ -1,10 +1,10 @@
 // Sends requests through an authenticated helper session.
 import {
-  PROTOCOL_VERSION, type HelperCompileRequest, type HelperChange, type HelperProgressListener,
+  PROTOCOL_VERSION, type HelperCompileRequest, type HelperChange, type OnHelperProgress,
   type ILatexHelper, type TemplatePublishEvent, type TemplatePublishRequest,
 } from "@labshelf/core/helper";
-import type { ILogger } from "@labshelf/core";
-import { statusFromReady, type RequestBody } from "./connection";
+import { formatError, type ILogger } from "@labshelf/core";
+import { deriveHelperStatus, type RequestBody } from "./connection";
 import { createCompileStep, UpdateTracker, deriveProgress } from "./project";
 import { NativeHelperSession, type NativeHelperSessionDeps } from "./nativeHelperSession";
 
@@ -63,26 +63,26 @@ class NativeLatexHelper implements ILatexHelper {
     });
   }
 
-  compile(request: HelperCompileRequest, onProgress: HelperProgressListener) {
+  compile(request: HelperCompileRequest, onProgress: OnHelperProgress) {
     return this.logged("compile", { projectId: request.projectId }, async () =>
       (await this.session.readySocket()).request(compileBody(request), createCompileStep(onProgress)));
   }
 
   async cancel(projectId: string): Promise<void> { (await this.session.readySocket()).post({ type: "cancel", projectId }); }
 
-  private async install(request: RequestBody, onProgress: HelperProgressListener): Promise<void> {
+  private async install(request: RequestBody, onProgress: OnHelperProgress): Promise<void> {
     const ready = await (await this.session.readySocket()).request(request, (m) => {
       if (m.type === "progress") onProgress(deriveProgress(m));
       return m.type === "ready" ? { done: m } : undefined;
     });
-    this.session.status = statusFromReady(ready, PROTOCOL_VERSION);
+    this.session.status = deriveHelperStatus(ready, PROTOCOL_VERSION);
   }
 
-  installTex(kind: "tinytex" | "texlive", onProgress: HelperProgressListener): Promise<void> {
+  installTex(kind: "tinytex" | "texlive", onProgress: OnHelperProgress): Promise<void> {
     return this.logged("installTex", { kind }, () => this.install({ type: "installTex", kind }, onProgress));
   }
 
-  installAllPackages(onProgress: HelperProgressListener): Promise<void> {
+  installAllPackages(onProgress: OnHelperProgress): Promise<void> {
     return this.logged("installAllPackages", {}, () => this.install({ type: "installAllPackages" }, onProgress));
   }
 
@@ -93,7 +93,7 @@ class NativeLatexHelper implements ILatexHelper {
         if (message.type === "templatePreview") {
           void renderThumbnail(payload).then(
             (png) => socket.post({ type: "templateThumbnail", requestId: message.id }, png),
-            (error: unknown) => socket.post({ type: "templateThumbnail", requestId: message.id, error: error instanceof Error ? error.message : String(error) }),
+            (error: unknown) => socket.post({ type: "templateThumbnail", requestId: message.id, error: formatError(error) }),
           ).catch((error: unknown) => this.logger.error("browser.helper", error, { operation: "templateThumbnail" }));
           return undefined;
         }

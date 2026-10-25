@@ -53,7 +53,7 @@ interface TypstDocumentContext {
   root: vscode.Uri | undefined;
 }
 
-export type TypstContextOf = (document: vscode.TextDocument) => TypstDocumentContext;
+export type TypstLanguageOf = (document: vscode.TextDocument) => TypstDocumentContext;
 
 /** The folder whose files a document can reference: its LabShelf project, else its workspace folder, else its own folder. */
 function rootOf(projects: Pick<WritingProjects, "list" | "paths">, document: vscode.TextDocument): vscode.Uri | undefined {
@@ -63,7 +63,7 @@ function rootOf(projects: Pick<WritingProjects, "list" | "paths">, document: vsc
   return vscode.workspace.getWorkspaceFolder(document.uri)?.uri ?? vscode.Uri.file(projects.paths.dirname(document.uri.fsPath));
 }
 
-export function createTypstContexts(projects: Pick<WritingProjects, "list" | "paths">, logger: ILogger): TypstContextOf {
+export function createTypstLanguageOf(projects: Pick<WritingProjects, "list" | "paths">, logger: ILogger): TypstLanguageOf {
   const services = new Map<string, TypstLanguageService>();
   return (document) => {
     const root = rootOf(projects, document);
@@ -80,7 +80,7 @@ export function createTypstContexts(projects: Pick<WritingProjects, "list" | "pa
   };
 }
 
-export function createTypstHoverProvider(contextOf: TypstContextOf): vscode.HoverProvider {
+export function createTypstHoverProvider(contextOf: TypstLanguageOf): vscode.HoverProvider {
   return {
     async provideHover(document, position) {
       const { service, path } = contextOf(document);
@@ -92,7 +92,7 @@ export function createTypstHoverProvider(contextOf: TypstContextOf): vscode.Hove
   };
 }
 
-export function createTypstDefinitionProvider(contextOf: TypstContextOf): vscode.DefinitionProvider {
+export function createTypstDefinitionProvider(contextOf: TypstLanguageOf): vscode.DefinitionProvider {
   return {
     async provideDefinition(document, position) {
       const { service, path, root } = contextOf(document);
@@ -120,7 +120,7 @@ const ITEM_KINDS: Record<TypstCompletionKind, vscode.CompletionItemKind> = {
   value: vscode.CompletionItemKind.Value,
 };
 
-export function createTypstCompletionProvider(contextOf: TypstContextOf): vscode.CompletionItemProvider {
+export function createTypstCompletionProvider(contextOf: TypstLanguageOf): vscode.CompletionItemProvider {
   return {
     async provideCompletionItems(document, position, _token, context) {
       const { service, path } = contextOf(document);
@@ -159,7 +159,7 @@ function hostLogger(host: Pick<WritingHost, "current">): ILogger {
 }
 
 export function registerTypstLanguage(deps: TypstLanguageRegistration): void {
-  const contextOf = createTypstContexts(deps.projects, hostLogger(deps.host));
+  const contextOf = createTypstLanguageOf(deps.projects, hostLogger(deps.host));
   const selector: vscode.DocumentSelector = [
     { language: "typst", scheme: "file" },
     { language: "typst", scheme: "untitled" },

@@ -1,6 +1,7 @@
 // Answers the shared history page in the same page: records the project, serves diffs, restores a point and marks versions.
 import {
   applyRestoredFiles, readHistoryDiff, readHistoryRows, applySnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
+  formatError,
 } from "@labshelf/core";
 import { askDialog, showToast } from "@labshelf/core/dom";
 import type { PageShares } from "../../collab";
@@ -96,7 +97,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
   const stop = endpoint.subscribe((message) => {
     handle(message).catch((error: unknown) => {
       void logger.error(MODULE, error, { action: message.type, projectId: project.id, folder: project.folder });
-      showToast(`History: ${error instanceof Error ? error.message : String(error)}`, "error");
+      showToast(`History: ${formatError(error)}`, "error");
     });
   });
   return { dispose: () => { disposed = true; stop(); stopEdits?.(); } };

@@ -3,7 +3,7 @@
 
 import { isCatalogJsonObject, parseCatalogIndexJson } from "./catalogJson.js";
 import { deriveTemplateTreeProblem } from "./templatePaths.js";
-import { readTemplateFields, schemaProblem, type TemplateManifest } from "./templateManifest.js";
+import { readTemplateFields, findSchemaProblem, type TemplateManifest } from "./templateManifest.js";
 
 export interface CatalogFile { path: string; size: number; sha256: string }
 export interface CatalogAsset { size: number; sha256: string }
@@ -88,7 +88,7 @@ export function parseCatalogIndex(jsonText: string): CatalogIndexResult {
   if (!json.ok) { return json; }
   const value = json.value;
   if (!isCatalogJsonObject(value)) { return { ok: false, reason: "index.json is not an object" }; }
-  const problem = schemaProblem(value["schema"]);
+  const problem = findSchemaProblem(value["schema"]);
   if (problem !== undefined) { return { ok: false, reason: problem }; }
   const commit = value["commit"];
   if (typeof commit !== "string" || !COMMIT_PATTERN.test(commit)) {

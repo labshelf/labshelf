@@ -42,7 +42,7 @@ export interface UiContext {
   focusList(): void;
 }
 
-export interface UiCompositionParts {
+export interface UiCompositionDeps {
   store: LibraryViewStore;
   transport: LibraryTransport;
   prefs: PrefsPort;
@@ -52,7 +52,7 @@ export interface UiCompositionParts {
   sharing?: ShareHost | undefined;
 }
 
-export function createUiCompositionRoot(root: HTMLElement, parts: UiCompositionParts): UiContext {
+export function createUiCompositionRoot(root: HTMLElement, parts: UiCompositionDeps): UiContext {
   return {
     ...parts, root, cursor: null, data: createPaperDetailsRequests(parts),
     focusSearch(selectText = false) {

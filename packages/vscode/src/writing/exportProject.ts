@@ -2,7 +2,7 @@
 import { zipSync } from "fflate";
 import * as vscode from "vscode";
 
-import { DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
+import { formatError, DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
 
 import type { ReadyProject } from "./buildRootDocument.js";
 import { readBuiltPdf } from "./preview/readBuiltPdf.js";
@@ -11,16 +11,16 @@ import { listArxivZipEntries, listProjectZipEntries } from "./exportBundle.js";
 
 const MODULE = "writing.export";
 
-export type ExportTarget = "pdf" | "systemViewer" | "projectZip" | "arxivZip" | DocumentExport;
+export type ExportKind = "pdf" | "systemViewer" | "projectZip" | "arxivZip" | DocumentExport;
 
 /** Converts a project root to a document; pandoc on the desktop. */
-export type ConvertDocument = (request: { format: ProjectFormat; folder: string; main: string; target: DocumentExport; output: string }) => Promise<void>;
+export type ConvertProject = (request: { format: ProjectFormat; folder: string; main: string; target: DocumentExport; output: string }) => Promise<void>;
 
 export interface ExportProjectDeps {
   logger: ILogger;
   projects: Pick<WritingProjects, "data" | "paths" | "fs">;
   /** Absent where documents cannot be converted, which leaves the document targets unregistered. */
-  convertDocument?: ConvertDocument;
+  convertDocument?: ConvertProject;
 }
 
 const DOCUMENT_FILTERS: Record<DocumentExport, string> = { docx: "Word", markdown: "Markdown", html: "HTML" };
@@ -58,7 +58,7 @@ async function saveDocument(deps: ExportProjectDeps, project: ReadyProject, root
   await deps.convertDocument({ format: project.settings.format, folder: project.folder, main: root, target, output: destination.fsPath });
 }
 
-async function run(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportTarget): Promise<void> {
+async function run(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportKind): Promise<void> {
   switch (target) {
     case "pdf": return await withBuiltPdf(deps, project, root, async (pdf) => {
       const destination = await askDestination(project, "", "pdf", "PDF");
@@ -71,11 +71,11 @@ async function run(deps: ExportProjectDeps, project: ReadyProject, root: string,
 }
 
 /** Exports the project for the target; a cancelled save dialog does nothing and a failure is logged and shown. */
-export async function exportProject(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportTarget): Promise<void> {
+export async function exportProject(deps: ExportProjectDeps, project: ReadyProject, root: string, target: ExportKind): Promise<void> {
   try {
     await run(deps, project, root, target);
   } catch (error) {
     await deps.logger.error(MODULE, error, { project: project.settings.id, root, target });
-    void vscode.window.showErrorMessage(`Could not export ${project.settings.id}: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`Could not export ${project.settings.id}: ${formatError(error)}`);
   }
 }

@@ -1,5 +1,5 @@
 // Runs the All projects page's build, preview, log, new file and target actions on any project.
-import type { ProjectTarget } from "../../project/index.js";
+import type { ProjectSubmission } from "../../project/index.js";
 import type { ProjectLibraryPort } from "../projectLibraryPort.js";
 import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
 
@@ -8,7 +8,7 @@ export interface ProjectHostActionDeps extends Pick<ProjectLibraryDeps, "fs" | "
   findReady(id: string): ReadyProject;
   openFile(id: string, file: string): Promise<void>;
   /** Writes the patch to the project's labshelf.yaml and reloads the project list. */
-  edit(id: string, patch: { target: ProjectTarget | null }): Promise<void>;
+  edit(id: string, patch: { target: ProjectSubmission | null }): Promise<void>;
 }
 
 type HostActions = Pick<ProjectLibraryPort, "build" | "preview" | "openLog" | "createFile" | "setTarget">;

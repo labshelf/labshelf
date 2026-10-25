@@ -5,7 +5,7 @@ import type { ParsedAnchor } from "./itemAnchor.js";
 export const ITEM_CLASS = "labshelf-item";
 
 /** Text outside any item, byte for byte. */
-export interface LooseSegment {
+export interface LooseText {
   readonly kind: "loose";
   readonly text: string;
 }
@@ -29,7 +29,7 @@ export interface ItemSegment {
   readonly close: string;
 }
 
-export type Segment = LooseSegment | ItemSegment;
+export type Segment = LooseText | ItemSegment;
 
 /** INVARIANT: no two loose segments are adjacent and no loose segment is empty. */
 export interface ItemFile {

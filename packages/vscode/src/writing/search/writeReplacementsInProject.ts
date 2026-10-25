@@ -1,7 +1,7 @@
 // Replaces search matches in one undoable workspace edit and saves the files that were clean before.
 import * as vscode from "vscode";
 
-import { matchReplacement, type ILogger, type MatchPosition } from "@labshelf/core";
+import { formatError, matchReplacement, type ILogger, type MatchPosition } from "@labshelf/core";
 import { SEARCH_LOG_MODULE } from "./projectSearchFiles.js";
 
 export interface ReplaceRequest {
@@ -57,7 +57,7 @@ export async function writeReplacementsInProject(request: ReplaceRequest): Promi
     return true;
   } catch (error) {
     await request.logger.error(SEARCH_LOG_MODULE, error, { action: "replace", matches: request.matches.length });
-    await vscode.window.showErrorMessage(`Replace in Project failed: ${error instanceof Error ? error.message : String(error)}`);
+    await vscode.window.showErrorMessage(`Replace in Project failed: ${formatError(error)}`);
     return false;
   }
 }

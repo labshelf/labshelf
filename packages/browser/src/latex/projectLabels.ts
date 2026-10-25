@@ -3,7 +3,7 @@ import { scanLatexSource, type ILogger } from "@labshelf/core";
 
 export interface ProjectLabel { name: string; file: string }
 
-export interface LabelIndex {
+export interface ProjectLabels {
   labels(): readonly ProjectLabel[];
   /** Scans every `.tex` file the project lists; a file that cannot be read is logged and skipped. */
   load(files: readonly string[], read: (file: string) => Promise<string>): Promise<void>;
@@ -15,7 +15,7 @@ export interface LabelIndex {
 const SCAN_DELAY_MS = 300;
 const MODULE = "editor.labelIndex";
 
-export function createLabelIndex(logger: ILogger): LabelIndex {
+export function createProjectLabels(logger: ILogger): ProjectLabels {
   const byFile = new Map<string, ProjectLabel[]>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   let all: ProjectLabel[] = [];

@@ -73,7 +73,7 @@ export interface PdfPageLike {
  * loader lives in @labshelf/vscode; the browser loader lives in
  * @labshelf/browser. Core never imports pdfjs directly.
  */
-export interface PdfDocumentOpener {
+export interface PdfOpener {
   open(bytes: Uint8Array): Promise<PdfDocumentLike>;
 }
 

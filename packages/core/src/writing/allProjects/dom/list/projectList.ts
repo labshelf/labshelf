@@ -11,7 +11,7 @@ import type { ProjectPlace, BuildMark, ProjectBuildState, ProjectRow } from "../
 import { createProjectTrayRows, type ProjectTrayFrame, type ProjectTrayHandlers } from "../tray/index.js";
 import { createRowFocusKeeper } from "./projectListFocus.js";
 import { attachProjectShortcuts } from "./projectListShortcuts.js";
-import { projectKey, projectListRows, type ProjectListRow } from "./projectListModel.js";
+import { createProjectKey, deriveProjectListRows, type ProjectListRow } from "./projectListModel.js";
 import { createWindowedRows } from "./projectListWindow.js";
 import { findAriaRow, updateRowMarks } from "./projectRowState.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
@@ -225,7 +225,7 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
   const win = createRowWindow(el, heads, () => frame!, toggleGroup);
   const indexOf = (key: string): number => model.findIndex((r) => r.key === key);
   const paint = (next: ProjectListFrame): void => {
-    model = projectListRows({ groups: next.groups, collapsed, expanded: next.tray.expanded, trayRows: (row) => trayRows(row, next.tray) });
+    model = deriveProjectListRows({ groups: next.groups, collapsed, expanded: next.tray.expanded, trayRows: (row) => trayRows(row, next.tray) });
     el.setAttribute("aria-rowcount", String(model.length + 1));
     win.update(model.map((r) => ({ ...r, id: r.key })), next.empty);
     el.tabIndex = el.querySelector(".paper-row.selected") ? -1 : 0;
@@ -249,10 +249,10 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
       headsPlace = next.view.place;
       if (placeChanged) el.scrollTop = 0;
       paint(next);
-      if (selectionChanged && next.selected) api.reveal(indexOf(projectKey(next.selected)));
+      if (selectionChanged && next.selected) api.reveal(indexOf(createProjectKey(next.selected)));
     },
     focus() {
-      const at = frame?.selected ? indexOf(projectKey(frame.selected)) : -1;
+      const at = frame?.selected ? indexOf(createProjectKey(frame.selected)) : -1;
       (api.reveal(at)?.querySelector<HTMLElement>(".paper-row-main") ?? el).focus();
     },
     rows: () => model,

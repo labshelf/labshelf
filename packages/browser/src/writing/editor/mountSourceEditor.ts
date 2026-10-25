@@ -8,12 +8,12 @@ import { createCommentSupport, type EditorComments } from "../../collab/comments
 import { createEditorExtensions } from "./createEditorExtensions";
 import { createHelperUpdates, type EditorHelper, type HelperUpdates } from "./helperUpdates";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "../source";
-import { createLabelIndex, createLatexSupport, type LabelIndex } from "../../latex";
+import { createProjectLabels, createLatexSupport, type ProjectLabels } from "../../latex";
 import { applyProblems, type ProblemSource } from "./editorProblems";
 import { registerOpenEditor } from "../session";
 import { showLine } from "./showLine";
 import { createWriteScheduler, type WriteScheduler } from "./writeScheduler";
-import { typstLanguage, createTypstSupport, type DefinitionTarget } from "../../typst";
+import { typstLanguage, createTypstSupport, type DefinitionDeps } from "../../typst";
 
 export interface SourceFileAccess {
   /** Project-relative paths of the project's files. */
@@ -32,7 +32,7 @@ export interface SourceEditorDeps {
   /** Listens to the build problems of this file; the listener runs at once with the current ones. */
   problems?: ProblemSource;
   /** Opens a definition's file in a tab; without it a Typst file gets highlighting only. */
-  openTab?: DefinitionTarget["openTab"];
+  openTab?: DefinitionDeps["openTab"];
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
   /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
@@ -57,7 +57,7 @@ const MODULE = "editor.mount";
 const fromDisk = Annotation.define<boolean>();
 
 /** LaTeX, or Typst with the language service. */
-function sourceLanguage(deps: SourceEditorDeps, labels: LabelIndex): Extension {
+function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
   if (!deps.path.endsWith(".typ")) return createLatexSupport({ labels: labels.labels, papers: deps.papers });
   if (!deps.openTab) return typstLanguage;
   const { projectId, path, files, logger, papers, openTab } = deps;
@@ -109,7 +109,7 @@ function readOnlyExtensions(readOnly: boolean | undefined): Extension[] {
 
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab } = deps;
-  const labels = createLabelIndex(logger);
+  const labels = createProjectLabels(logger);
   const text = collab ? collab.text.toString() : await deps.files.read(path);
   void deps.files.list().then((files) => labels.load(files, deps.files.read))
     .catch((error: unknown) => logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));

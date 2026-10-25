@@ -1,8 +1,8 @@
 /** Fetches a remote catalog index conditionally and falls back to the device's cached copy when the fetch fails. */
 // CONTRACT: documents/contracts/templates.md#cache
 
-import type { ILogger } from "../../ports/index.js";
-import type { CachedCatalogIndex, CachedSourceId, FetchLike, TemplateCache } from "./templateSource.js";
+import type { ILogger, FetchLike } from "../../ports/index.js";
+import type { CachedCatalogIndex, CachedSourceId, TemplateCache } from "./templateSource.js";
 
 export interface CachedCatalogIndexRequest {
   url: string;

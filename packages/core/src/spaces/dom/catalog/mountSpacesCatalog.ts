@@ -3,9 +3,10 @@ import { renderElement, renderEmptyNotice, renderIcon, askInputBox, renderSegmen
 import type { SpacesTransport, SpaceTab } from "../../protocol/index.js";
 import { deriveFilteredCatalogRows, type CatalogFilter, type CatalogRow } from "../../viewModel/index.js";
 import { formatDay } from "../../../library/index.js";
+import { formatCount } from "../../../ui/index.js";
 
 function countLink(count: number, noun: string, open: () => void): HTMLButtonElement {
-  const link = renderElement("button", { type: "button", text: `${count} ${noun}${count === 1 ? "" : "s"}` });
+  const link = renderElement("button", { type: "button", text: formatCount(count, noun) });
   link.addEventListener("click", (event) => { event.stopPropagation(); open(); });
   return link;
 }

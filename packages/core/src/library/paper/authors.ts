@@ -1,6 +1,6 @@
 /** Formats author names: the one family-name rule, a short label ("Silva", "Silva & Costa", "Silva et al.") and a person key. */
 
-export interface PersonName {
+export interface AuthorName {
   given: string;
   family: string;
 }
@@ -9,7 +9,7 @@ export interface PersonName {
 const PARTICLES = new Set(["van", "von", "der", "den", "de", "del", "della", "da", "di", "du", "la", "le", "dos", "das"]);
 
 /** @returns the given and family names of "Given Family" or "Family, Given"; a single word is a family name. */
-export function splitName(raw: string): PersonName {
+export function splitName(raw: string): AuthorName {
   const name = raw.trim().replace(/\s+/g, " ");
   const comma = name.indexOf(",");
   if (comma !== -1) { return { family: name.slice(0, comma).trim(), given: name.slice(comma + 1).trim() }; }

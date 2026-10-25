@@ -2,10 +2,10 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import { createEditorActionsBar, type EditorActionsBar } from "./editorActionsBar.js";
 import { createTabEntry, drawTab, setTabShown, type TabEntry } from "./editorTab.js";
-import type { EditorAreaOptions, EditorGroupSide, EditorTab, EditorTabAction, EditorTabView } from "./editorAreaOptions.js";
+import type { EditorAreaOptions, EditorAreaSide, EditorTab, EditorTabAction, EditorTabView } from "./editorAreaOptions.js";
 
 export interface EditorGroup {
-  index: EditorGroupSide;
+  index: EditorAreaSide;
   el: HTMLElement;
   tablist: HTMLElement;
   panels: HTMLElement;
@@ -14,9 +14,9 @@ export interface EditorGroup {
   active: string | null;
 }
 
-export const deriveOtherGroup = (g: EditorGroupSide): EditorGroupSide => (g === 0 ? 1 : 0);
+export const deriveOtherGroup = (g: EditorAreaSide): EditorAreaSide => (g === 0 ? 1 : 0);
 
-function createGroup(index: EditorGroupSide): EditorGroup {
+function createGroup(index: EditorAreaSide): EditorGroup {
   const tablist = renderElement("div", { class: "ls-editor-tabs", role: "tablist", "aria-label": index === 0 ? "Editors" : "Editors, second group" });
   const panels = renderElement("div", { class: "ls-editor-panels" });
   const actions = createEditorActionsBar();
@@ -32,7 +32,7 @@ type Events = Pick<EditorAreaOptions, "onActivate" | "onMove" | "trailing">;
 export class EditorGroups {
   readonly groups = [createGroup(0), createGroup(1)] as const;
   private readonly entries = new Map<string, TabEntry>();
-  private focusedGroup: EditorGroupSide = 0;
+  private focusedGroup: EditorAreaSide = 0;
 
   /** `layout` runs whenever a group gains its first tab or loses its last. */
   constructor(private readonly events: Events, private readonly layout: (split: boolean) => void) {}
@@ -43,7 +43,7 @@ export class EditorGroups {
   groupOf(id: string): EditorGroup { return this.groups[this.entry(id).tab.group]; }
   tabEl(id: string): HTMLElement { return this.entry(id).tabEl; }
 
-  open(tab: EditorTab, group?: EditorGroupSide, background = false): void {
+  open(tab: EditorTab, group?: EditorAreaSide, background = false): void {
     const existing = this.entries.get(tab.id);
     if (!existing) {
       const created = createTabEntry(tab);
@@ -76,7 +76,7 @@ export class EditorGroups {
     this.events.onActivate?.(id);
   }
 
-  move(id: string, target: EditorGroupSide): void {
+  move(id: string, target: EditorAreaSide): void {
     const e = this.entry(id);
     if (e.tab.group === target) return;
     this.detach(e);
@@ -150,7 +150,7 @@ export class EditorGroups {
     return wasFocused;
   }
 
-  private attach(e: TabEntry, target: EditorGroupSide): void {
+  private attach(e: TabEntry, target: EditorAreaSide): void {
     const g = this.groups[target];
     e.tab = { ...e.tab, group: target };
     g.order.push(e.tab.id);

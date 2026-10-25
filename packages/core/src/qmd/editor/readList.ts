@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/qmd-items.md#format
 import type { Node } from "prosemirror-model";
 import { qmdSchema } from "./schema/index.js";
-import { isBlank, type BlockSpan, type Line } from "./blockLines.js";
+import { isBlank, type BodyBlock, type Line } from "./blockLines.js";
 import { parseBlocks } from "./parseBlocks.js";
 
 const BULLET = /^([-*+])([ \t]+)(?=\S)/;
@@ -63,7 +63,7 @@ function buildItem(body: Line[], prefix: string, isBullet: boolean, gap: string 
 }
 
 /** Only the same bullet character or ordered delimiter continues a list. */
-export function readList(lines: readonly Line[], start: number): BlockSpan | undefined {
+export function readList(lines: readonly Line[], start: number): BodyBlock | undefined {
   const first = marker(lines[start]!.content);
   if (!first) { return undefined; }
   const items: { body: Line[]; prefix: string; gap: string | null }[] = [];

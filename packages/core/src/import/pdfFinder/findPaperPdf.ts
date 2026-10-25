@@ -5,7 +5,7 @@ import type { PdfCandidate } from "../landing/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import { DEFAULT_CONTACT_EMAIL } from "../registries/index.js";
 import { createResolverEnv } from "./env.js";
-import { makeResolveContext, type ResolveOptions } from "./resolveContext.js";
+import { createResolveInput, type ResolveOptions } from "./createResolveInput.js";
 import { resolvePdf } from "./resolvePdf.js";
 import type { PdfAttempt, PdfFetchOptions, ResolvedPdf } from "./pdfResolver.js";
 
@@ -32,7 +32,7 @@ export async function findPaperPdf(
   attempts: PdfAttempt[] = [],
 ): Promise<ResolvedPdf | undefined> {
   const context = {
-    ...makeResolveContext(search.ids, search.metadata, search.landingUrl, search.pageCandidates ?? [], {
+    ...createResolveInput(search.ids, search.metadata, search.landingUrl, search.pageCandidates ?? [], {
       contactEmail: search.contactEmail ?? DEFAULT_CONTACT_EMAIL,
       customResolvers: search.customResolvers,
     }),

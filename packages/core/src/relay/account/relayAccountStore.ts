@@ -1,18 +1,18 @@
 // Keeps the owner's Cloudflare account and its OAuth tokens in the secret slots an app provides.
 import type { ILogger } from "../../ports/index.js";
-import type { SecretSlot, StoredLock } from "../oauth/index.js";
+import type { StoredSecret, StoredLock } from "../oauth/index.js";
 import { parseRelayAccount, RELAY_ACCOUNT_LOG_MODULE, type RelayAccount } from "./relayAccount.js";
 
 export interface RelayAccountSlots {
-  account: SecretSlot;
+  account: StoredSecret;
   /** The Cloudflare OAuth tokens, as `writeCloudflareTokens` writes them. */
-  tokens: SecretSlot;
+  tokens: StoredSecret;
   /** Lets one window at a time refresh the OAuth tokens. */
   refreshLock: StoredLock;
 }
 
 export interface RelayAccountStore {
-  readonly tokens: SecretSlot;
+  readonly tokens: StoredSecret;
   readonly refreshLock: StoredLock;
   get(): Promise<RelayAccount | undefined>;
   save(account: RelayAccount): Promise<void>;

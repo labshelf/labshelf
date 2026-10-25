@@ -1,7 +1,7 @@
 // Names the template sources, formats, engines and categories the way the gallery shows them, and composes a template's by-line and meta line.
 import type { ProjectFormat } from "../writing/project/index.js";
 import type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
-import type { TemplateCategory, TemplateEngine } from "./templateManifest/index.js";
+import type { TemplateKind, TemplateEngine } from "./templateManifest/index.js";
 
 export const SOURCE_LABELS: Record<TemplateSourceId, string> = {
   community: "LabShelf Community",
@@ -18,7 +18,7 @@ export const ENGINE_LABELS: Record<TemplateEngine, string> = {
   typst: "Typst",
 };
 
-export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
+export const CATEGORY_LABELS: Record<TemplateKind, string> = {
   article: "Article",
   thesis: "Thesis",
   poster: "Poster",

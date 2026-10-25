@@ -12,7 +12,7 @@ import {
 } from "../platform";
 import { createLibraryFindItem } from "./searchHitIds";
 import {
-  type IfNoPdf,
+  type MissingPdfAction,
   PAPERS_DIR,
   formatError,
   formatFolderPathLabel,
@@ -124,7 +124,7 @@ function markSaved(m: ResultButton, ref: Pick<LibraryReference, "folder" | "id" 
   if (!ref.hasPdf) m.main.querySelector("span:last-child")!.textContent = "In LabShelf · no PDF";
 }
 
-async function save(m: ResultButton, folder?: string, ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {
+async function save(m: ResultButton, folder?: string, ifNoPdf: MissingPdfAction = "ask", retryPdf = false): Promise<void> {
   const state = m.box.dataset["state"];
   if (state === "saving" || state === "confirm") return;
   setState(m, "saving", "Saving to LabShelf — looking for the PDF…");

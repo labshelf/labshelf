@@ -1,8 +1,8 @@
 /** Returns a remote template thumbnail from the device cache, or fetches and caches it; logs and returns undefined when neither works. */
 // CONTRACT: documents/contracts/templates.md#cache
 
-import type { ILogger } from "../../ports/index.js";
-import type { FetchLike, TemplateCache } from "./templateSource.js";
+import type { ILogger, FetchLike } from "../../ports/index.js";
+import type { TemplateCache } from "./templateSource.js";
 
 export interface CachedThumbnailRequest {
   url: string;

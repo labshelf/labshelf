@@ -3,10 +3,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { FetchLike } from "../../latex/toolchain/node/index.js";
 import { extractArchive } from "../../latex/toolchain/node/index.js";
 import type { TypstPackageResolver, TypstPackageSpec } from "../typstSession.js";
 import { deriveTypstCompilerPath } from "./typstFileAccess.js";
+import type { FetchLike } from "../../ports/index.js";
 
 const UNIVERSE_NAMESPACE = "preview";
 // Names and versions become folder names: anything else could leave the package folder.

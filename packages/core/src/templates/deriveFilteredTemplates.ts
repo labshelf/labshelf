@@ -1,14 +1,14 @@
 /** Narrows the gallery's template list by source, format, category and a free-text query. */
 
 import type { ProjectFormat } from "../writing/project/index.js";
-import type { TemplateCategory } from "./templateManifest/index.js";
+import type { TemplateKind } from "./templateManifest/index.js";
 import type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
 
 export interface TemplateFilter {
   source?: TemplateSourceId;
   /** Empty means every format. */
   formats?: readonly ProjectFormat[];
-  category?: TemplateCategory;
+  category?: TemplateKind;
   query?: string;
 }
 

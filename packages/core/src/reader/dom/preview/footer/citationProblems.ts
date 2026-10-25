@@ -1,5 +1,5 @@
 // Shows the cite count and the problems left in the shown PDF, and steps through them with prev/next chevrons.
-import { renderIcon } from "../../../../ui/index.js";
+import { renderIcon, formatCount } from "../../../../ui/index.js";
 import { renderElement, showToast } from "../../../../ui/dom/index.js";
 import type { PageArea, PdfProblem, PreviewBuildRoots, WebviewToHost } from "../../../index.js";
 
@@ -15,8 +15,6 @@ export interface PreviewProblems {
   /** Moves to the next (1) or previous (-1) problem, wrapping at the ends. */
   step(dir: 1 | -1): void;
 }
-
-const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 function arrow(label: string, glyph: "chevron-left" | "chevron-right", onClick: () => void): HTMLButtonElement {
   const button = renderElement("button", { class: "rd-preview-problem-step", type: "button", title: label, "aria-label": label, html: renderIcon(glyph) });
@@ -59,7 +57,7 @@ export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: Prob
       at = -1;
       const cites = shown?.cites;
       slot.hidden = cites === undefined && problems.length === 0;
-      const status = renderElement("span", { class: "rd-preview-cites", role: "status", "aria-live": "polite" }, plural(cites ?? 0, "cite"));
+      const status = renderElement("span", { class: "rd-preview-cites", role: "status", "aria-live": "polite" }, formatCount(cites ?? 0, "cite"));
       if (problems.length > 0) {
         const tone = problems.some((p) => p.kind === "undefinedCitation") ? "error" : "warning";
         status.append(" · ", renderElement("span", { class: "rd-preview-to-fix", "data-tone": tone }, `${problems.length} to fix`));

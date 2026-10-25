@@ -1,14 +1,14 @@
 // Tracks app file writes and editor saves before their project bytes reach disk.
 import * as path from 'node:path';
 import { FileProjectVersionStore } from '../index.js';
-import type { ProjectSaveTracking } from '../index.js';
+import type { ProjectWriteTracking } from '../index.js';
 import { isMergeableTextFile } from '../index.js';
 import { createDeviceIdentity, createDeviceLocalLayout } from '../../../library/node/index.js';
 import type { ILogger, LibraryFileSystem } from '../../../ports/index.js';
 import { listLibraryProjects } from '../../project/node/index.js';
-import { prepareProjectSave } from './projectWriteRecord.js';
+import { addProjectWriteRecord } from './projectWriteRecord.js';
 
-export function createProjectSaveTracking(fs: LibraryFileSystem, root: () => string | undefined, logger: ILogger): ProjectSaveTracking {
+export function createProjectWriteTracking(fs: LibraryFileSystem, root: () => string | undefined, logger: ILogger): ProjectWriteTracking {
   const parents = new Map<string, string | undefined>();
   const stores = new Map<string, FileProjectVersionStore>();
   const record = async (file: string, text: string, parentText: string | undefined, committed: boolean): Promise<void> => {
@@ -22,7 +22,7 @@ export function createProjectSaveTracking(fs: LibraryFileSystem, root: () => str
     let store = stores.get(libraryRoot);
     if (!store) { store = new FileProjectVersionStore(fs, path, layout.mergeBasesDir); stores.set(libraryRoot, store); }
     if (committed) { await store.remember(project.settings.id, path.relative(project.folder, file).split(path.sep).join('/'), text); return; }
-    await prepareProjectSave({ folder: project.folder, projectId: project.settings.id, relativePath: path.relative(project.folder, file).split(path.sep).join('/'),
+    await addProjectWriteRecord({ folder: project.folder, projectId: project.settings.id, relativePath: path.relative(project.folder, file).split(path.sep).join('/'),
       text, parentText, store, identity: createDeviceIdentity(layout, logger), logger });
   };
   const parent = async (file: string): Promise<string | undefined> => {

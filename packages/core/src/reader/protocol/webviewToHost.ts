@@ -5,7 +5,7 @@ import type { AnnotationColor } from "../../model/index.js";
 import type { PreviewRequest } from "../previewRequests.js";
 import type { ReadingState } from "../sidecar/index.js";
 
-export interface PerfTimeline {
+export interface ReaderTimeline {
   [mark: string]: number;
 }
 
@@ -21,7 +21,7 @@ export type WebviewToHost =
   | { command: "ready"; totalPages: number }
   | {
       command: "perf";
-      timeline: PerfTimeline;
+      timeline: ReaderTimeline;
       pageNumber: number;
       theme: string;
       dpr: number;

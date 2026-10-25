@@ -12,7 +12,7 @@ export interface WorkReference {
   authors?: string[] | undefined;
 }
 
-export interface SameWorkOptions {
+export interface SamePaperOptions {
   /** Allowed absolute difference in publication year. Default 1; pass 2 for a preprint against its version of record. */
   yearSlack?: number;
 }
@@ -26,7 +26,7 @@ const TITLE_DICE_MIN = 0.9;
  * when both sides list authors they must share a surname.
  * @returns true when `a` and `b` plausibly describe the same paper; false when either has no title.
  */
-export function isSameWork(a: WorkReference, b: WorkReference, opts: SameWorkOptions = {}): boolean {
+export function isSameWork(a: WorkReference, b: WorkReference, opts: SamePaperOptions = {}): boolean {
   const ta = a.title ? normalizeTitleForMatch(a.title) : "";
   const tb = b.title ? normalizeTitleForMatch(b.title) : "";
   if (!ta || !tb) return false;

@@ -1,5 +1,6 @@
 // Tells the user once per workspace that LaTeX Workshop builds on save too, and offers to turn that off.
 import * as vscode from "vscode";
+import { formatError } from "@labshelf/core";
 
 import { findOwningProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
@@ -26,7 +27,7 @@ async function turnOffAutoBuild(host: WritingHost): Promise<void> {
   } catch (error) {
     await logger?.error(MODULE, error, { action: "turn-off-latex-workshop-auto-build", target });
     await vscode.window.showErrorMessage(
-      `LaTeX Workshop's auto build could not be turned off: ${error instanceof Error ? error.message : String(error)}`,
+      `LaTeX Workshop's auto build could not be turned off: ${formatError(error)}`,
     );
   }
 }

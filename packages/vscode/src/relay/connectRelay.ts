@@ -1,18 +1,16 @@
 // Connects the owner's Cloudflare account: a sign-in (or a pasted token on a remote host), the account, then the relay deployed and serving.
 import * as vscode from "vscode";
 
-import { connectRelayAccount, readRelayWorkerScript, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
+import { connectRelayAccount, readRelayWorkerScript, RELAY_PURPOSE, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
 import { LOG_MODULE } from "./relayAccounts.js";
 import { createRelayAccountDeps } from "./createRelayAccountDeps.js";
 import { createLazyProgress } from "./relayProgress.js";
 import { reportRelayFailure } from "./relayFailure.js";
-import { LoopbackUnavailableError } from "./oauthCallback.js";
+import { OauthCallbackError } from "./oauthCallback.js";
 import { signInToCloudflare } from "./cloudflareSignIn.js";
 
 export const CONNECT_RELAY_COMMAND = "labshelf.relay.connect";
 const TOKEN_PAGE = "https://dash.cloudflare.com/profile/api-tokens";
-const RELAY_PURPOSE = "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It carries every edit between "
-  + "collaborators, end-to-end encrypted, and keeps them so collaborators sync even when you are offline.";
 // INVARIANT: the same access as the OAuth scopes in core's oauthClient, so both credentials deploy alike.
 const TOKEN_PERMISSIONS = "Create a custom token with Account · Workers Scripts: Edit, Account · Workers KV Storage: Edit "
   + "and Account · Account Settings: Read. The token stays on this device.";
@@ -68,7 +66,7 @@ async function signIn(deps: RelayDeps): Promise<RelayCredential | undefined> {
     await signInToCloudflare(deps);
     return { kind: "oauth" };
   } catch (error) {
-    if (!(error instanceof LoopbackUnavailableError)) { throw error; }
+    if (!(error instanceof OauthCallbackError)) { throw error; }
     await deps.logger.log("WARN", LOG_MODULE, "Offering a pasted token: the sign-in loopback is unavailable", { reason: error.reason });
     const fallback = await pickFallback(`Port 8976 on this device is busy (${error.reason}), so the browser sign-in cannot reach LabShelf`, false);
     return fallback === "signIn" ? undefined : fallback;

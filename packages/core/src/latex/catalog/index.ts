@@ -28,3 +28,4 @@
 export type { LatexCatalogEntry } from "./latexCatalogEntry.js";
 export { LATEX_COMMANDS, LATEX_ENVIRONMENTS } from "./catalogEntries.js";
 export { findEnvironmentToClose } from "./closeEnvironment.js";
+export { findLatexCompletionSpan, type LatexCompletionSpan } from "./completionSpan.js";

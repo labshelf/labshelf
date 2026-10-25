@@ -1,6 +1,6 @@
 // Maintains the browser project's connection to the compilation helper.
-import type { ProjectEntry } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult, HelperState } from "@labshelf/core/helper";
+import { formatError, type ProjectEntry } from "@labshelf/core";
+import type { BuildKind, HelperCompileResult, HelperState } from "@labshelf/core/helper";
 import { mergePdfPages, createBuildScheduler, type BuildScheduler } from "../../writing/preview";
 import { createProblemStore } from "./problemStore";
 import type { BuildEvent, BuildUpdate, BuildSettings, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProject";
@@ -24,7 +24,7 @@ class HelperProjectSession {
   lastFullPdf(id: string): Uint8Array | undefined { return this.isOpen(id) ? this.open?.pdf.full : undefined; }
   private emit(event: BuildEvent): void { for (const listener of [...this.buildListeners]) listener(event); }
   // INVARIANT: each result builds on the previous PDF, so results are assembled one at a time through `pdf.queue`.
-  private async assemble(pdf: PdfState, projectId: string, main: string, result: HelperCompileResult, mode: CompileMode): Promise<void> {
+  private async assemble(pdf: PdfState, projectId: string, main: string, result: HelperCompileResult, mode: BuildKind): Promise<void> {
     let outcome = result;
     if (result.status === "succeeded") {
       try {
@@ -36,7 +36,7 @@ class HelperProjectSession {
         void this.options.logger.log("INFO", MODULE, "Preview PDF assembled", { projectId, mode, changedPages: result.changed.length, reused: pdf.latest === previous, ms: Date.now() - started });
       } catch (error) {
         await this.options.logger.error(MODULE, error, { action: "assemble pdf", projectId, mode });
-        const message = error instanceof Error ? error.message : String(error);
+        const message = formatError(error);
         outcome = { status: "failed", changed: [], problems: [{ severity: "error", message, file: main }] };
       }
     }

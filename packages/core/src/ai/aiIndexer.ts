@@ -8,7 +8,7 @@ import type { PdfTextExtractor } from "./pdfTextExtractor.js";
 import type { IIndexedHashes } from "./aiStorage.js";
 import type { IEmbeddingProvider, IVectorStore } from "./embedding/index.js";
 
-export interface AiIndexerDependencies {
+export interface AiIndexerDeps {
   listPapers: () => Promise<PaperRecord[]>;
   // Wires the host's paper lifecycle events to the indexer; the returned function detaches them.
   subscribe: (onUpsert: (paperId: string) => void, onRemove: (paperId: string) => void) => () => void;
@@ -27,7 +27,7 @@ export class AiIndexer {
   // INVARIANT: a job never rejects, so one failure cannot stall the jobs behind it.
   private tail: Promise<void> = Promise.resolve();
 
-  constructor(private readonly deps: AiIndexerDependencies) {}
+  constructor(private readonly deps: AiIndexerDeps) {}
 
   /**
    * Subscribes to paper lifecycle events.

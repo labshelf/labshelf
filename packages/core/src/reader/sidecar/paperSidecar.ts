@@ -9,10 +9,10 @@ export interface PaperSidecar {
   /** Last reading position; absent until the paper has been opened in the reader. */
   reading?: ReadingState;
   /** Annotations the user removed, so a stale copy of the file cannot bring them back. Absent when there are none. */
-  deleted?: DeletionMarker[];
+  deleted?: DeletedAnnotation[];
 }
 
-export interface DeletionMarker {
+export interface DeletedAnnotation {
   id: string;
   /** ISO time of the deletion, comparable with an annotation's `updatedAt`. */
   deletedAt: string;
@@ -21,7 +21,7 @@ export interface DeletionMarker {
 /** How long a deletion marker is kept; a stale copy older than this is assumed not to exist. */
 const DELETION_MARKER_DAYS = 90;
 
-function isDeletionMarker(value: unknown): value is DeletionMarker {
+function isDeletionMarker(value: unknown): value is DeletedAnnotation {
   if (!value || typeof value !== "object") { return false; }
   const marker = value as Record<string, unknown>;
   return typeof marker["id"] === "string" && typeof marker["deletedAt"] === "string"
@@ -31,7 +31,7 @@ function isDeletionMarker(value: unknown): value is DeletionMarker {
 /**
  * @returns the markers deleted within `DELETION_MARKER_DAYS` before `now`.
  */
-export function removeStaleDeletionMarkers(markers: DeletionMarker[], now: string): DeletionMarker[] {
+export function removeStaleDeletionMarkers(markers: DeletedAnnotation[], now: string): DeletedAnnotation[] {
   const cutoff = new Date(Date.parse(now) - DELETION_MARKER_DAYS * 86_400_000).toISOString();
   return markers.filter((m) => m.deletedAt >= cutoff);
 }

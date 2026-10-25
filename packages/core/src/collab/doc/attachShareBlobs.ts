@@ -1,5 +1,6 @@
 // Serves blobs the app holds to the peers of a session and fetches the ones it lacks, chunk by encrypted chunk.
 import type { ILogger } from "../../ports/index.js";
+import { joinBytes } from "../../encoding/index.js";
 import type { DerivedShareKey } from "../shareKey/index.js";
 import type { PeerId } from "../transport/index.js";
 import { CHANNEL_KIND, systemScheduler, type SessionScheduler, type Channel } from "../peer/index.js";
@@ -109,7 +110,7 @@ class BlobFetch {
   private async verify(from: PeerId): Promise<void> {
     this.verifying = true;
     this.stopTimer();
-    const bytes = joinChunks([...this.chunks.entries()].sort(([a], [b]) => a - b).map(([, chunk]) => chunk));
+    const bytes = joinBytes([...this.chunks.entries()].sort(([a], [b]) => a - b).map(([, chunk]) => chunk));
     let actual: string;
     try { actual = await deriveSha256Hex(bytes); } catch (error) { void this.deps.logger.error(LOG_MODULE, error, { hash: this.deps.hash }); actual = ""; }
     this.verifying = false;
@@ -130,13 +131,6 @@ class BlobFetch {
     finish();
     this.deps.onSettled();
   }
-}
-
-function joinChunks(chunks: Uint8Array[]): Uint8Array {
-  const bytes = new Uint8Array(chunks.reduce((sum, chunk) => sum + chunk.length, 0));
-  let offset = 0;
-  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-  return bytes;
 }
 
 interface BlobServing {

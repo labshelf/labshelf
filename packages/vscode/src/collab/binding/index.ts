@@ -2,4 +2,4 @@
 export { attachDocument, type AttachOptions, type DocumentBinding } from "./attachDocument.js";
 export { PeerCursors, type PeerCursor } from "./peerCursors.js";
 export { RemoteUpdateQueue } from "./remoteUpdateQueue.js";
-export { registerUndoRedo, type UndoRedoOverride } from "./undoCommands.js";
+export { registerUndoRedo, type UndoCommands } from "./undoCommands.js";

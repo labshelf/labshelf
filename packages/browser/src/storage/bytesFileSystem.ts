@@ -1,5 +1,7 @@
-// Derives text access and existence checks for library file systems that store raw bytes.
-import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
+// Derives text access, existence and rename-target checks for library file systems that store raw bytes.
+import { posixPathOps, type LibraryFileSystem, type LocalStat } from "@labshelf/core";
+
+export const isCaseOnlyRename = (from: string, to: string): boolean => from !== to && from.toLowerCase() === to.toLowerCase();
 
 export abstract class BytesFileSystem implements LibraryFileSystem {
   abstract listDir(dirPath: string): Promise<string[]>;
@@ -19,6 +21,16 @@ export abstract class BytesFileSystem implements LibraryFileSystem {
 
   async exists(targetPath: string): Promise<boolean> {
     return (await this.stat(targetPath)) !== undefined;
+  }
+
+  /**
+   * Whether `to` names an entry other than `from`. On a case-insensitive disk `stat` of a case-only target finds the
+   * source itself, so only the listed names tell a second entry apart.
+   */
+  protected async isRenameTargetTaken(from: string, to: string): Promise<boolean> {
+    return isCaseOnlyRename(from, to)
+      ? (await this.listDir(posixPathOps.dirname(to))).includes(posixPathOps.basename(to))
+      : this.exists(to);
   }
 
   async writeText(filePath: string, text: string): Promise<void> {

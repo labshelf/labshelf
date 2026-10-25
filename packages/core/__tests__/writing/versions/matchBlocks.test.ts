@@ -1,9 +1,9 @@
 // Tests deciding whether two blocks show the same thing and pairing the blocks of two renderings.
 import { deriveBlockInk, matchBlocks, isSameBlock } from "../../../src/writing/versions/matchBlocks";
-import type { PixelBox } from "../../../src/writing/versions/derivePageBlocks";
+import type { PageBox } from "../../../src/writing/versions/derivePageBlocks";
 import { blankPage, fillBars, fillRect } from "./inkFixture";
 
-const BOX: PixelBox = { x: 9, y: 4, width: 242, height: 10 };
+const BOX: PageBox = { x: 9, y: 4, width: 242, height: 10 };
 
 function barsBlock(options: { x?: number; skipBars?: number[]; dark?: number } = {}) {
   const page = blankPage(260, 20);

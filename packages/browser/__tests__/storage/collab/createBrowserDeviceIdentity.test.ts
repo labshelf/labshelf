@@ -1,7 +1,7 @@
 // Pins stable per-library device identities across browser tabs and share deletion.
 import "fake-indexeddb/auto";
 import type { ILogger } from "@labshelf/core";
-import { createBrowserDeviceIdentity, deleteBrowserCollabState } from "../../../src/storage/collab";
+import { createBrowserDeviceIdentity, removeBrowserCollabDocs } from "../../../src/storage/collab";
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 afterEach(() => jest.restoreAllMocks());
@@ -12,7 +12,7 @@ it("keeps one identity across concurrent tabs, reopened stores and deleted share
   const [one, two] = await Promise.all([first.id(), second.id()]);
   expect(one).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   expect(two).toBe(one);
-  await deleteBrowserCollabState("identity-library/share");
+  await removeBrowserCollabDocs("identity-library/share");
   expect(await createBrowserDeviceIdentity("identity-library", logger).id()).toBe(one);
   expect(await createBrowserDeviceIdentity("other-library", logger).id()).not.toBe(one);
 });

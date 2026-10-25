@@ -1,7 +1,7 @@
 // Declares JSON messages exchanged between the library UI and its host.
 import type { ReadingStatus } from "../../library/readingStatus/index.js";
 import type {
-  AddSource, CitationMapState, IfNoPdf, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
+  AddSource, CitationMapState, MissingPdfAction, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";
 
 export type UiToHost =
@@ -41,7 +41,7 @@ export type UiToHost =
   | { type: "paper.move"; ids: string[]; target: string }
   | { type: "paper.remove"; ids: string[] }
   | { type: "paper.add"; folder: string }
-  | { type: "paper.addFrom"; folder: string; sourceId: string; ifNoPdf: IfNoPdf; retryPdf: boolean }
+  | { type: "paper.addFrom"; folder: string; sourceId: string; ifNoPdf: MissingPdfAction; retryPdf: boolean }
   | { type: "annotations.export"; id: string }
   | { type: "project.openSource"; project: string; file: string; line: number }
   | { type: "clipboard.write"; text: string; label?: string }

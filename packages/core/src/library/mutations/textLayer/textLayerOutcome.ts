@@ -4,7 +4,7 @@
 export type ExistingLayer = "native" | "ocr";
 
 /** Why a document that needs OCR was deliberately not read; apps map the code to their own wording (settings, flags). */
-export type TextLayerSkipCode = "ocr-disabled" | "page-limit";
+export type TextLayerSkipKind = "ocr-disabled" | "page-limit";
 
 export type TextLayerOutcome =
   // The document carries a text layer on `pagesAdded` pages.
@@ -14,7 +14,7 @@ export type TextLayerOutcome =
   | { status: "cancelled" }
   // The document needs OCR but was deliberately not read (OCR off, too many pages).
   // `reason` is neutral text, safe to store on the paper and show in any app.
-  | { status: "skipped"; code: TextLayerSkipCode; reason: string }
+  | { status: "skipped"; code: TextLayerSkipKind; reason: string }
   // OCR could not run or produced nothing usable; `reason` says why.
   | { status: "unavailable"; reason: string };
 

@@ -1,13 +1,16 @@
 // Converts between the host's page points (points from the page's top-left corner, y down) and pixels inside a pdf.js page view.
+import type { PageViewport } from "pdfjs-dist";
+
 import type { PagePoint } from "../../index.js";
 import { deriveClampedNumber } from "../elements/index.js";
 
 /** The part of a pdf.js PageViewport the conversion needs; pdf.js handles scale and rotation in its two convert methods. */
-export interface PageViewportLike {
-  /** `[x0, y0, x1, y1]` in PDF user space, where y grows upwards from the bottom of the page. */
-  viewBox: number[];
-  convertToPdfPoint(x: number, y: number): number[];
-  convertToViewportPoint(x: number, y: number): number[];
+export type PageViewportLike = Pick<PageViewport, "viewBox" | "convertToPdfPoint" | "convertToViewportPoint">;
+
+/** The part of a pdf.js page view that marks drawn over a page need. */
+export interface PageViewLike {
+  div: HTMLElement;
+  viewport: PageViewportLike & Pick<PageViewport, "width" | "height">;
 }
 
 /** The page point under a pixel position measured from the page element's top-left corner. */

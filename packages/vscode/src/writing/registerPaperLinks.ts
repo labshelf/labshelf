@@ -69,7 +69,7 @@ export class PaperLinkHoverProvider implements vscode.HoverProvider {
 
 const LOG_MODULE = "LabshelfLinks";
 
-export class LabshelfUriHandler implements vscode.UriHandler {
+export class PaperLinkHandler implements vscode.UriHandler {
   constructor(private readonly library: PaperLinkLibrary) {}
 
   async handleUri(uri: vscode.Uri): Promise<void> {
@@ -113,6 +113,6 @@ export function registerPaperLinks(context: vscode.ExtensionContext, library: Pa
   context.subscriptions.push(
     vscode.languages.registerDocumentLinkProvider(ANY_DOCUMENT, new PaperLinkProvider(library)),
     vscode.languages.registerHoverProvider(ANY_DOCUMENT, new PaperLinkHoverProvider(library)),
-    vscode.window.registerUriHandler(new LabshelfUriHandler(library)),
+    vscode.window.registerUriHandler(new PaperLinkHandler(library)),
   );
 }

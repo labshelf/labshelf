@@ -13,8 +13,9 @@ import { Prec, type Extension, EditorSelection, type StateCommand } from "@codem
 import { keymap } from "@codemirror/view";
 import {
   type PaperRecord,
-  partialKeyStart,
+  findPartialCiteKeyStart,
   findEnvironmentToClose,
+  findLatexCompletionSpan,
   LATEX_COMMANDS,
   LATEX_ENVIRONMENTS,
   type LatexCatalogEntry,
@@ -41,10 +42,6 @@ export function createReferenceCompletion(labels: () => readonly ProjectLabel[])
   };
 }
 
-const ENVIRONMENT_CONTEXT = /\\(begin|end)\{([A-Za-z]*\*?)$/;
-const COMMAND_CONTEXT = /(?:^|[^\\])(\\[A-Za-z]*)$/;
-const NAME_AND_BRACE_AFTER_CURSOR = /^[A-Za-z]*\*?\}?/;
-
 // A negative boost ranks catalog items after library papers and labels.
 const commandOption = (entry: LatexCatalogEntry): Completion => ({
   label: `\\${entry.name}`, detail: entry.detail, type: "function", boost: -1,
@@ -62,19 +59,15 @@ const COMMAND_OPTIONS = LATEX_COMMANDS.map(commandOption);
 
 export function findLatexCommandCompletion(context: CompletionContext): CompletionResult | null {
   const line = context.state.doc.lineAt(context.pos);
-  const before = line.text.slice(0, context.pos - line.from);
-  const environment = ENVIRONMENT_CONTEXT.exec(before);
-  if (environment) {
-    // A `}` typed by bracket closing already follows the cursor; the item replaces it.
-    const rest = NAME_AND_BRACE_AFTER_CURSOR.exec(line.text.slice(context.pos - line.from))?.[0] ?? "";
+  const span = findLatexCompletionSpan(line.text.slice(0, context.pos - line.from), line.text.slice(context.pos - line.from));
+  if (span === undefined) return null;
+  if (span.kind === "environment") {
     return {
-      from: context.pos - environment[2]!.length, to: context.pos + rest.length,
-      options: ENVIRONMENT_OPTIONS[environment[1] as "begin" | "end"], validFor: /^[A-Za-z]*\*?$/,
+      from: context.pos - span.before, to: context.pos + span.after,
+      options: ENVIRONMENT_OPTIONS[span.closing ? "end" : "begin"], validFor: /^[A-Za-z]*\*?$/,
     };
   }
-  const command = COMMAND_CONTEXT.exec(before)?.[1];
-  if (command === undefined) return null;
-  return { from: context.pos - command.length, options: COMMAND_OPTIONS, validFor: /^\\[A-Za-z]*$/ };
+  return { from: context.pos - span.before, options: COMMAND_OPTIONS, validFor: /^\\[A-Za-z]*$/ };
 }
 
 /** Falls through (returns false) so the default Enter runs anywhere else. */
@@ -100,7 +93,7 @@ export const closeEnvironmentOnEnter: StateCommand = ({ state, dispatch }) => {
 export function createCitationCompletion(papers: () => Promise<readonly PaperRecord[]>): CompletionSource {
   return async (context: CompletionContext): Promise<CompletionResult | null> => {
     const line = context.state.doc.lineAt(context.pos);
-    const start = partialKeyStart("latex", line.text.slice(0, context.pos - line.from));
+    const start = findPartialCiteKeyStart("latex", line.text.slice(0, context.pos - line.from));
     if (start === undefined) return null;
     return { from: line.from + start, options: await listLibraryCitations(papers), validFor: /^[^,{}\s]*$/ };
   };

@@ -1,7 +1,7 @@
 // Opens a PDF for optical reading: renders pages to PNG on the native canvas and reads their existing text.
 import { deriveInvisibleShare, type OperatorList } from "./invisibleTextShare.js";
 import { loadNativeCanvas } from "../nativeCanvas.js";
-import { nativeRenderOptions } from "../nativeRenderOptions.js";
+import { createNativeCanvasOptions } from "../createNativeCanvasOptions.js";
 import { renderPagePng } from "../renderPagePng.js";
 import type { PdfjsLoader } from "../../pdf/index.js";
 import type { PdfViewport } from "../renderPagePng.js";
@@ -37,7 +37,7 @@ export async function openPdfForOcr(pdfjs: PdfjsLoader, pdfBytes: Uint8Array): P
 
   // The extension host is not recognised as Node by pdfjs, which would then
   // reach for a DOM canvas; the render options pin the native one instead.
-  const loadingTask = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes), ...nativeRenderOptions(canvasPkg) });
+  const loadingTask = await pdfjs.getDocument({ data: new Uint8Array(pdfBytes), ...createNativeCanvasOptions(canvasPkg) });
   const document = (await loadingTask.promise) as unknown as PdfRenderDocument;
   const { OPS } = (await pdfjs.load()) as { OPS: Record<string, number> };
 

@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
 import { formatError, type PaperSidecarStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext } from "@labshelf/core";
-import type { ReindexSummary } from "../storage/index.js";
+import type { RefreshLibraryResult } from "../storage/index.js";
 
 const LOG_MODULE = "command";
 
@@ -21,7 +21,7 @@ export type ActiveServices = {
   fileSystem: LibraryFileSystem;
   // Rebuilds the index from disk and emits the resulting paper events. Bound in
   // extension.ts over the live store, file system and library events.
-  reindexLibrary: () => Promise<ReindexSummary>;
+  reindexLibrary: () => Promise<RefreshLibraryResult>;
   // Where the AI subsystem's own SQLite file lives for this library root; startAiService opens it lazily,
   // inside its own try/catch, so a failure there degrades the AI subsystem instead of breaking activation.
   aiDatabasePath: string;

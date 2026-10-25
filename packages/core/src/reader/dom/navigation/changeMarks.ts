@@ -1,12 +1,7 @@
 // Marks the regions a host reports as changed over each page, e.g. what differs from an earlier version of a paper.
 import type { PageArea } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
-import { derivePixelOffset, type PageViewportLike } from "./pagePoints.js";
-
-interface PageViewLike {
-  div: HTMLElement;
-  viewport: PageViewportLike & { width: number; height: number };
-}
+import { derivePixelOffset, type PageViewLike } from "./pagePoints.js";
 
 const MARK_CLASS = "rd-change-mark";
 

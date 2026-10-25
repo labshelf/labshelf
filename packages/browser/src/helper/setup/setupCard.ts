@@ -1,15 +1,15 @@
 // Mounts the LaTeX setup card: shows the helper's state, the one next action, and keeps looking while the helper is missing.
-import type { ILogger, TexInstallKind } from "@labshelf/core";
+import { formatError, type ILogger, type TexInstallKind } from "@labshelf/core";
 import {
   askDialog,
   renderElement,
   createToneLine,
   renderActionButton,
   renderSettingRow,
-  type ToneLineTone,
+  type ToneLineKind,
 } from "@labshelf/core/dom";
 import type {
-  HelperProgressListener,
+  OnHelperProgress,
   ILatexHelper,
   HelperProgress,
   HelperHost,
@@ -59,7 +59,7 @@ interface SetupActions {
 
 interface SetupView {
   text: string;
-  tone: ToneLineTone;
+  tone: ToneLineKind;
   controls: Node[];
 }
 
@@ -192,7 +192,6 @@ export interface HelperSetupDeps {
 const TEX_LABEL: Record<TexInstallKind, string> = { tinytex: "TinyTeX", texlive: "TeX Live" };
 const INSTALL_ALL_WARNING = "This downloads about 5 GB and installs the full TeX Live, so every project compiles without fetching packages. It can take a while.";
 
-const messageOf = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 interface Card {
   line: ReturnType<typeof createToneLine>;
@@ -219,7 +218,7 @@ async function connect(card: Card, helper: ILatexHelper, showChecking: boolean):
   try {
     show(card, helper, { kind: "status", status: await helper.connect() });
   } catch (error) {
-    show(card, helper, { kind: "error", message: messageOf(error) });
+    show(card, helper, { kind: "error", message: formatError(error) });
   }
 }
 
@@ -231,11 +230,11 @@ async function poll(card: Card, helper: ILatexHelper): Promise<void> {
     const status = await helper.connect();
     if (status.state !== "not-installed") { show(card, helper, { kind: "status", status }); }
   } catch (error) {
-    show(card, helper, { kind: "error", message: messageOf(error) });
+    show(card, helper, { kind: "error", message: formatError(error) });
   } finally { card.polled = false; }
 }
 
-async function runInstall(card: Card, helper: ILatexHelper, logger: ILogger, action: string, label: string, run: (onProgress: HelperProgressListener) => Promise<void>): Promise<void> {
+async function runInstall(card: Card, helper: ILatexHelper, logger: ILogger, action: string, label: string, run: (onProgress: OnHelperProgress) => Promise<void>): Promise<void> {
   const progress = createSetupProgress(label);
   show(card, helper, { kind: "installing", label }, progress.element);
   try {
@@ -243,12 +242,12 @@ async function runInstall(card: Card, helper: ILatexHelper, logger: ILogger, act
     show(card, helper, { kind: "status", status: helper.status() ?? await helper.connect() });
   } catch (error) {
     await logger.error("helper-setup", error, { action });
-    show(card, helper, { kind: "error", message: messageOf(error) });
+    show(card, helper, { kind: "error", message: formatError(error) });
   }
 }
 
 function createActions(card: () => Card, helper: ILatexHelper, deps: HelperSetupDeps): SetupActions {
-  const install = (action: string, label: string, run: (onProgress: HelperProgressListener) => Promise<void>): Promise<void> =>
+  const install = (action: string, label: string, run: (onProgress: OnHelperProgress) => Promise<void>): Promise<void> =>
     runInstall(card(), helper, deps.logger, action, label, run);
   return {
     download: () => deps.openUrl(createHelperDownloadUrl(card().os)),

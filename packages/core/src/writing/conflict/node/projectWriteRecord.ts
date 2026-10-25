@@ -7,7 +7,7 @@ import type { IProjectVersionStore } from '../index.js';
 
 const recordFileSystem = new NodeLibraryFileSystem();
 
-export interface ProjectSave {
+export interface ProjectWrite {
   folder: string;
   projectId: string;
   relativePath: string;
@@ -18,7 +18,7 @@ export interface ProjectSave {
   logger: ILogger;
 }
 
-export async function prepareProjectSave(save: ProjectSave): Promise<void> {
+export async function addProjectWriteRecord(save: ProjectWrite): Promise<void> {
   const { store, projectId, relativePath, text, parentText, logger } = save;
   try {
     if (parentText !== undefined) await store.retain(projectId, relativePath, parentText);
@@ -32,7 +32,7 @@ export async function prepareProjectSave(save: ProjectSave): Promise<void> {
   }
 }
 
-export async function recordProjectSave(save: ProjectSave): Promise<void> {
-  await prepareProjectSave(save);
+export async function addProjectWrite(save: ProjectWrite): Promise<void> {
+  await addProjectWriteRecord(save);
   await save.store.remember(save.projectId, save.relativePath, save.text);
 }

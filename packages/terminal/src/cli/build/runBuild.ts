@@ -1,7 +1,7 @@
 // Runs `labshelf build`: builds a writing project through the core queue, prints its problems and optionally rebuilds on changes.
 import * as path from "node:path";
 
-import type { ProjectBuildResult, LocatedProblem, ToolchainMissing } from "@labshelf/core";
+import { formatError, type ProjectBuildResult, type LocatedProblem, type ToolchainMissing } from "@labshelf/core";
 
 import type { Output } from "../usage.js";
 import { createTtyAsk, createTerminalBuildEnvironment, type BuildContext, type BuildEnvironment } from "./buildEnvironment.js";
@@ -52,7 +52,7 @@ async function buildOnce(env: BuildEnvironment, project: ReadyProject, ctx: Buil
     return report(await env.queue.request(project), project, io);
   } catch (error) {
     await ctx.logger.error("terminal.build", error, { folder: project.folder });
-    io.err(`Build failed: ${error instanceof Error ? error.message : String(error)}`);
+    io.err(`Build failed: ${formatError(error)}`);
     return 1;
   }
 }
@@ -62,7 +62,7 @@ async function watchAndRebuild(env: BuildEnvironment, project: ReadyProject, ctx
   const stop = env.watchSources(project.folder, () => {
     void env.queue.request(project).then(
       (result) => { if (result.status !== "cancelled") { report(result, project, io); } },
-      (error: unknown) => { io.err(`Build failed: ${error instanceof Error ? error.message : String(error)}`); },
+      (error: unknown) => { io.err(`Build failed: ${formatError(error)}`); },
     );
   });
   await env.interrupted();

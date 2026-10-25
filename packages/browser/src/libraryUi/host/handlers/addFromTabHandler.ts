@@ -1,8 +1,8 @@
 // Lists the window's tabs as add sources and captures the picked one into the open folder.
 // A capture with no PDF writes nothing until the UI confirms; an existing paper is selected, not duplicated.
-import type { IfNoPdf } from "@labshelf/core";
+import type { MissingPdfAction } from "@labshelf/core";
 import { formatPdfSourceLabel } from "@labshelf/core";
-import { sendRuntime, type WriteOutcome, type TabSummary } from "../../../platform";
+import { sendRuntime, type WriteOutcome, type BrowserTab } from "../../../platform";
 import type { HostContext } from "../hostContext";
 
 function hostOf(url: string): string {
@@ -10,13 +10,13 @@ function hostOf(url: string): string {
 }
 
 export async function offerOpenTabs(ctx: HostContext, folder: string): Promise<void> {
-  const tabs = await sendRuntime<TabSummary[]>({ type: "tabs.list" });
+  const tabs = await sendRuntime<BrowserTab[]>({ type: "tabs.list" });
   if (tabs.length === 0) { ctx.notice("info", "Open the paper's page in another tab first, then click Add again."); return; }
   const sources = tabs.map((t) => ({ id: String(t.id), label: t.title || t.url, description: hostOf(t.url) }));
   ctx.endpoint.post({ type: "add.sources", folder, sources });
 }
 
-export async function addTabPaper(ctx: HostContext, folder: string, sourceId: string, ifNoPdf: IfNoPdf, retryPdf: boolean): Promise<void> {
+export async function addTabPaper(ctx: HostContext, folder: string, sourceId: string, ifNoPdf: MissingPdfAction, retryPdf: boolean): Promise<void> {
   const key = `add:${sourceId}`;
   ctx.endpoint.post({ type: "progress", key, text: retryPdf ? "Searching for the PDF…" : "Capturing paper…" });
   let result: WriteOutcome;

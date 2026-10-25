@@ -4,7 +4,7 @@ import { formatError } from "@labshelf/core";
 import { sendRuntime, type AttachPdfReply, type PdfOfferView } from "../platform";
 import { formatFolderName } from "./format";
 import { showNotice } from "./render";
-import { popupState, setState } from "./popupState";
+import { popupState, showPopupView } from "./popupState";
 
 export function fetchOffer(tabId: number): Promise<PdfOfferView | null> {
   return sendRuntime<PdfOfferView | null>({ type: "pdfOffer.get", tabId }).catch(() => null);
@@ -21,7 +21,7 @@ export function showOffer(offer: PdfOfferView): void {
   findElement("title").classList.remove("muted");
   findElement("meta").textContent = formatFolderName(offer.folder);
   findElement("pdf").hidden = true;
-  setState("library");
+  showPopupView("library");
   const what = offer.source === "download" ? "The PDF you downloaded" : "This PDF";
   if (offer.hasBytes) {
     showNotice({

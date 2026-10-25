@@ -6,7 +6,7 @@
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import { onLocalFileChanges, reportPageWrites } from "../../../../src/collab/mirror/localFileChanges";
-import { addImage, type ImageInsertion } from "../../../../src/writing/source/actions/insertFigure";
+import { addImage, type AddImageDeps } from "../../../../src/writing/source/actions/insertFigure";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn() }));
 
@@ -38,7 +38,7 @@ function userPicks(file: { name: string; arrayBuffer(): Promise<ArrayBuffer> } |
 
 const png = { name: "plot.png", arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer };
 
-function insertion(fs: LibraryFileSystem, over: Partial<ImageInsertion> = {}) {
+function insertion(fs: LibraryFileSystem, over: Partial<AddImageDeps> = {}) {
   const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };
   return { edits, run: () => addImage({ edits, language: "latex", entry: entry(), path: "main.tex", fs, logger, ...over }) };
 }

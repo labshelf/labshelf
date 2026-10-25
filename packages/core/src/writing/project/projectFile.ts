@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import YAML from "yaml";
-import { readUserKeys, type CountUpTo, type UserKeys } from "./userSettings.js";
+import { readUserSettings, type CountUpTo, type UserSettings } from "./userSettings.js";
 import { readListedPapers, type ListedPaper } from "./listedPapers.js";
 
 export const PROJECT_FILE = "labshelf.yaml";
@@ -14,7 +14,7 @@ export type ProjectFormat = (typeof PROJECT_FORMATS)[number];
 export const LATEX_ENGINES = ["pdflatex", "xelatex", "lualatex"] as const;
 export type LatexEngine = (typeof LATEX_ENGINES)[number];
 
-export interface ProjectSettings extends UserKeys {
+export interface ProjectSettings extends UserSettings {
   id: string;
   format: ProjectFormat;
   /** Path of the main file, relative to the project folder. */
@@ -35,11 +35,11 @@ export interface ProjectSettings extends UserKeys {
   shared?: string | undefined;
   /** Papers the project cites plus those the user added, each with its DOI when known. */
   papers?: ListedPaper[] | undefined;
-  target?: ProjectTarget | undefined;
+  target?: ProjectSubmission | undefined;
 }
 
 /** Where the project is headed: the venue and its submission deadline. */
-export interface ProjectTarget {
+export interface ProjectSubmission {
   venue?: string | undefined;
   /** A calendar date, `YYYY-MM-DD`, without a time. */
   deadline?: string | undefined;
@@ -53,9 +53,9 @@ export interface CheckLimits {
 }
 
 /** Settings LabShelf may rewrite after creation; undefined removes the key, an absent key stays as it is. Of the user keys only the check limits are LabShelf's to write. `target` writes the keys it holds, clears a key that is empty or undefined, and `null` removes the whole mapping. */
-export type ProjectSettingsPatch = Partial<Omit<ProjectSettings, "id" | "format" | "target" | keyof UserKeys>> & {
+export type ProjectSettingsUpdate = Partial<Omit<ProjectSettings, "id" | "format" | "target" | keyof UserSettings>> & {
   check?: { [K in keyof CheckLimits]?: CheckLimits[K] | undefined };
-  target?: ProjectTarget | null;
+  target?: ProjectSubmission | null;
 };
 
 export type ProjectFileResult =
@@ -75,10 +75,10 @@ function isCalendarDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
-function readTarget(value: unknown): ProjectTarget | undefined | string {
+function readTarget(value: unknown): ProjectSubmission | undefined | string {
   if (value === null || typeof value !== "object" || Array.isArray(value)) { return "target must be a mapping"; }
   const { venue, deadline } = value as Record<string, unknown>;
-  const target: ProjectTarget = {};
+  const target: ProjectSubmission = {};
   if (venue !== undefined && venue !== null) {
     if (typeof venue !== "string") { return "target.venue must be text"; }
     if (venue.trim() !== "") { target.venue = venue.trim(); }
@@ -137,7 +137,7 @@ export function parseProjectFile(text: string): ProjectFileResult {
     if (typeof target === "string") { return { ok: false, reason: target }; }
     settings.target = target;
   }
-  const userKeys = readUserKeys(raw);
+  const userKeys = readUserSettings(raw);
   if (typeof userKeys === "string") { return { ok: false, reason: userKeys }; }
   if (raw["papers"] !== undefined && raw["papers"] !== null) {
     const papers = readListedPapers(raw["papers"]);
@@ -154,7 +154,7 @@ export function serializeProjectFile(settings: ProjectSettings): string {
 }
 
 /** Applies a patch to existing labshelf.yaml text, leaving comments, key order and unknown keys as they are. */
-export function updateProjectFile(text: string, patch: ProjectSettingsPatch): string {
+export function updateProjectFile(text: string, patch: ProjectSettingsUpdate): string {
   const doc = YAML.parseDocument(text);
   const { check, target, ...rest } = patch;
   for (const [key, value] of Object.entries(rest)) {
@@ -166,13 +166,13 @@ export function updateProjectFile(text: string, patch: ProjectSettingsPatch): st
 }
 
 /** The labshelf.yaml of a copy: every key and comment of `text`, under the copy's id. */
-export function projectFileWithId(text: string, id: string): string {
+export function withProjectId(text: string, id: string): string {
   const doc = YAML.parseDocument(text);
   doc.set("id", id);
   return doc.toString();
 }
 
-function patchCheckLimits(doc: YAML.Document, check: NonNullable<ProjectSettingsPatch["check"]>): void {
+function patchCheckLimits(doc: YAML.Document, check: NonNullable<ProjectSettingsUpdate["check"]>): void {
   for (const [key, value] of Object.entries(check)) {
     if (value === undefined) { doc.deleteIn(["check", key]); } else { doc.setIn(["check", key], value); }
   }
@@ -180,7 +180,7 @@ function patchCheckLimits(doc: YAML.Document, check: NonNullable<ProjectSettings
   if (YAML.isMap(mapping) && mapping.items.length === 0) { doc.delete("check"); }
 }
 
-function patchTarget(doc: YAML.Document, target: ProjectTarget): void {
+function patchTarget(doc: YAML.Document, target: ProjectSubmission): void {
   // INVARIANT: a written deadline must parse again, or the whole project file becomes unreadable.
   const deadline = target.deadline?.trim();
   if (deadline && !isCalendarDate(deadline)) { throw new Error(`target.deadline must be a date as YYYY-MM-DD, got "${deadline}"`); }

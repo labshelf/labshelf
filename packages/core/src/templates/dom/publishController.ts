@@ -14,7 +14,7 @@ export interface PublishController {
   closeAndFocus(): void;
 }
 
-export interface PublishControllerParts {
+export interface PublishControllerDeps {
   main: HTMLElement;
   transport: GalleryTransport;
   /** Closes the detail page when one is open. */
@@ -25,7 +25,7 @@ export interface PublishControllerParts {
   focusEntry(): void;
 }
 
-export function createPublishController(parts: PublishControllerParts): PublishController {
+export function createPublishController(parts: PublishControllerDeps): PublishController {
   const { main, transport } = parts;
   let screen: PublishScreen | null = null;
 

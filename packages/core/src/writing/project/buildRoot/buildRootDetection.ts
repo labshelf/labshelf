@@ -1,5 +1,6 @@
 /** Finds the files of a project that build to a PDF of their own: LaTeX by \documentclass, Typst by the include graph. */
 
+import { resolveTypstPath } from "../../../typst/language/project/index.js";
 import { DOCUMENT_CLASS } from "./entryDetection.js";
 
 export interface BuildRootCandidate { readonly path: string; readonly text: string }
@@ -17,18 +18,6 @@ function extensionOf(path: string): string {
 function isLatexRoot(text: string): boolean {
   const end = text.indexOf("\\begin{document}");
   return DOCUMENT_CLASS.test(end < 0 ? text : text.slice(0, end));
-}
-
-/** Resolves a Typst path from the includer's folder, or from the project root for a leading `/`; undefined when it leaves the project. */
-function resolveTypstPath(fromFile: string, target: string): string | undefined {
-  const parts = target.startsWith("/") ? [] : fromFile.split("/").slice(0, -1);
-  for (const segment of target.split("/")) {
-    if (segment === "" || segment === ".") { continue; }
-    if (segment !== "..") { parts.push(segment); continue; }
-    if (parts.length === 0) { return undefined; }
-    parts.pop();
-  }
-  return parts.join("/");
 }
 
 interface TypstReferences { readonly targets: Set<string>; readonly computed: boolean }

@@ -1,5 +1,5 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
-import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
+import type { DotKind, SidebarTreeNode } from "../../../libraryUi/index.js";
 import { deriveFamilyName } from "../../../library/paper/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import { STATUS_LABEL, type ReadingStatus } from "../../../library/readingStatus/index.js";
@@ -17,7 +17,7 @@ export interface ReadingPaper {
 type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 
 /** @returns a key unique to the item within its group and stable across refreshes */
-export function itemKey(item: ChecklistItem): string {
+export function createItemKey(item: ChecklistItem): string {
   switch (item.kind) {
     case "todo": return `todo:${item.todo.file}:${item.todo.line}`;
     case "ref": return `ref:${item.ref.file}:${item.ref.line}:${item.ref.ref}`;
@@ -45,7 +45,7 @@ export function createPagesHead({ pages, limit }: PageOverflow): Omit<SidebarTre
   };
 }
 
-const STATUS_TONE: Record<ReadingStatus, DotTone> = { unread: "muted", reading: "accent", done: "ok" };
+const STATUS_TONE: Record<ReadingStatus, DotKind> = { unread: "muted", reading: "accent", done: "ok" };
 
 const shortDate = (iso: string): string => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -62,7 +62,7 @@ function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper
   };
 }
 
-export function itemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
+export function createItemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
   switch (item.kind) {
     case "todo": return located(paths, key, item.todo.text, item.todo.file, item.todo.line);
     case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);

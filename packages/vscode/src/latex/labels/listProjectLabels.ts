@@ -1,8 +1,6 @@
 // Lists the labels defined across a LaTeX project, each with where it is and the source line it sits on.
-import * as vscode from "vscode";
-
 import type { LatexRange } from "@labshelf/core";
-import { deriveVscodeRange, type LatexProject } from "../project/index.js";
+import type { LatexProject } from "../project/index.js";
 
 export interface ProjectLabel {
   name: string;
@@ -22,6 +20,3 @@ export function listProjectLabels(project: LatexProject): ProjectLabel[] {
   });
 }
 
-export function labelLocation(project: LatexProject, label: ProjectLabel): vscode.Location {
-  return new vscode.Location(vscode.Uri.joinPath(project.root, label.path), deriveVscodeRange(label.range));
-}

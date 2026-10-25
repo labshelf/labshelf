@@ -9,7 +9,7 @@ export { deriveListView, deriveScope } from "./listView.js";
 export type { ListScope, ListView } from "./listView.js";
 export { hasMissingTextLayer, deriveJobProgress, describeTextLayerJob, describeTextLayer } from "./textLayer.js";
 export { deriveRelatedGroups } from "./related.js";
-export type { RelatedGroups } from "./related.js";
+export type { RelatedPapers } from "./related.js";
 export { derivePaperDetails, derivePaperStats } from "./sidecarPayloads.js";
 export type { SidecarView } from "./sidecarPayloads.js";
 export { deriveLibraryTree } from "./deriveLibraryTree.js";

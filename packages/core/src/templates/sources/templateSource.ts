@@ -26,8 +26,6 @@ export interface TemplateSource {
   files(entry: TemplateEntry, signal?: AbortSignal): Promise<TemplateFile[]>;
 }
 
-export type FetchLike = (url: string, init?: { signal?: AbortSignal; headers?: Record<string, string> }) => Promise<Response>;
-
 export type CachedSourceId = Exclude<TemplateSourceId, "mine">;
 
 /** The last index a remote source received, as stored on this device. */

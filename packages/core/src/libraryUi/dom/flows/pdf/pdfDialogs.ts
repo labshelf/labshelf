@@ -61,15 +61,15 @@ export async function askFindBetterPdf(ctx: UiContext, id: string): Promise<void
 }
 
 /** A capture's answer to "No PDF found"; every choice but "retry" saves the reference. */
-export type NoPdfChoice = "save" | "open" | "author" | "retry";
+export type MissingPdfChoice = "save" | "open" | "author" | "retry";
 
 /**
  * Asks whether a capture without a PDF saves the reference alone, saves it and opens the page that stood in the way
  * ("open"), saves it and emails the authors ("author"), or searches again; undefined when cancelled. `root` mounts the
  * dialog inside a content script's shadow root.
  */
-export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<NoPdfChoice | undefined> {
-  const buttons: Array<DialogButton<NoPdfChoice>> = [
+export function askNoPdf(title: string, miss: PdfMiss, root?: ShadowRoot): Promise<MissingPdfChoice | undefined> {
+  const buttons: Array<DialogButton<MissingPdfChoice>> = [
     { id: "retry", label: "Search again" },
     { id: "author", label: ASK_AUTHOR_LABEL },
     { id: "save", label: "Save without PDF", primary: !miss.access },

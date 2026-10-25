@@ -3,7 +3,7 @@
 
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
-import type { CompileMode, HelperBuildState, HelperHost, HelperProgress, TexToolchain, TextChange } from "./helperMessages.js";
+import type { BuildKind, HelperBuildState, HelperHost, HelperProgress, TexToolchain, TextChange } from "./helperMessages.js";
 
 /**
  * "update-helper" when the helper's protocol is lower than the page's, "update-extension" when it is higher.
@@ -15,12 +15,12 @@ export type HelperState =
   | { state: "update-extension"; protocol: number }
   | { state: "ready"; helperVersion: string; tex: TexToolchain; host: HelperHost };
 
-export type HelperProgressListener = (progress: HelperProgress) => void;
+export type OnHelperProgress = (progress: HelperProgress) => void;
 
 export interface HelperCompileRequest {
   projectId: string;
   main: string;
-  mode: CompileMode;
+  mode: BuildKind;
   /** For a `.tex` main. */
   engine?: LatexEngine;
   editedFile?: string;
@@ -62,8 +62,8 @@ export interface ILatexHelper {
   edit(projectId: string, path: string, version: number, edit: HelperChange): Promise<void>;
   /** Tells the helper the page wrote `path` to the library, so it reads the file from disk again. */
   save(projectId: string, path: string): Promise<void>;
-  compile(request: HelperCompileRequest, onProgress: HelperProgressListener): Promise<HelperCompileResult>;
+  compile(request: HelperCompileRequest, onProgress: OnHelperProgress): Promise<HelperCompileResult>;
   cancel(projectId: string): Promise<void>;
-  installTex(kind: TexInstallKind, onProgress: HelperProgressListener): Promise<void>;
-  installAllPackages(onProgress: HelperProgressListener): Promise<void>;
+  installTex(kind: TexInstallKind, onProgress: OnHelperProgress): Promise<void>;
+  installAllPackages(onProgress: OnHelperProgress): Promise<void>;
 }

@@ -1,7 +1,8 @@
 /** Defines the notice wording for batch paper changes (status, tags, move, remove) on every host. */
 import { ROOT_LABEL } from "../library/model/index.js";
+import { formatCount } from "../ui/index.js";
 
-export interface BatchFailure {
+export interface BatchError {
   id: string;
   error: string;
 }
@@ -13,7 +14,7 @@ export interface OutcomeNotice {
 
 /** "1 paper" / "3 papers". */
 export function formatPaperCount(n: number): string {
-  return `${n} paper${n === 1 ? "" : "s"}`;
+  return formatCount(n, "paper");
 }
 
 /** Trims tags and drops empty ones. */
@@ -27,14 +28,14 @@ export function formatKeptFieldNotice(field: "status" | "tags", failed: number, 
 }
 
 // `0 moved, 2 failed — "Title" — reason`: names the first failing paper so the user can find it.
-function partialFailure(done: number, doneVerb: string, failed: readonly BatchFailure[], titleOf: (id: string) => string): string {
+function partialFailure(done: number, doneVerb: string, failed: readonly BatchError[], titleOf: (id: string) => string): string {
   const first = failed[0]!;
   return `${done} ${doneVerb}, ${failed.length} failed — "${titleOf(first.id)}" — ${first.error}`;
 }
 
 /** The notice after a move, or undefined when nothing moved and nothing failed. `where` is a folder name, or undefined for the root. */
 export function moveNotice(
-  done: number, failed: readonly BatchFailure[], where: string | undefined, titleOf: (id: string) => string,
+  done: number, failed: readonly BatchError[], where: string | undefined, titleOf: (id: string) => string,
 ): OutcomeNotice | undefined {
   if (failed.length) return { kind: "error", text: partialFailure(done, "moved", failed, titleOf) };
   if (done > 0) return { kind: "ok", text: `${formatPaperCount(done)} moved to ${where ?? ROOT_LABEL}` };
@@ -42,7 +43,7 @@ export function moveNotice(
 }
 
 /** The notice after papers go to the trash, or undefined when nothing was removed and nothing failed. */
-export function removeNotice(done: readonly string[], failed: readonly BatchFailure[], titleOf: (id: string) => string): OutcomeNotice | undefined {
+export function removeNotice(done: readonly string[], failed: readonly BatchError[], titleOf: (id: string) => string): OutcomeNotice | undefined {
   if (failed.length) return { kind: "error", text: partialFailure(done.length, "removed", failed, titleOf) };
   if (done.length === 1) return { kind: "ok", text: `Removed "${titleOf(done[0]!)}"` };
   if (done.length > 1) return { kind: "ok", text: `Removed ${formatPaperCount(done.length)}` };

@@ -2,7 +2,7 @@
 import { resolveIncludePath, scanLatexSource } from "../../source/index.js";
 import { extractDefinitions } from "./collectMacros.js";
 
-export interface DefinitionsBeforeSectionInput {
+export interface MacrosBeforeSectionInput {
   /** Project-root-relative path to text. */
   sources: Readonly<Record<string, string>>;
   main: string;
@@ -23,7 +23,7 @@ function piece(lines: readonly string[], from: number, to: number): string {
 }
 
 /** Walks one file; returns true once the edited file's stop line is reached. */
-function walk(file: string, input: DefinitionsBeforeSectionInput, out: string[], active: Set<string>): boolean {
+function walk(file: string, input: MacrosBeforeSectionInput, out: string[], active: Set<string>): boolean {
   const text = input.sources[file]!;
   const lines = text.split("\n");
   const isEdited = file === input.editedFile;
@@ -51,7 +51,7 @@ function walk(file: string, input: DefinitionsBeforeSectionInput, out: string[],
   return isEdited;
 }
 
-export function extractDefinitionsBeforeSection(input: DefinitionsBeforeSectionInput): string[] {
+export function extractDefinitionsBeforeSection(input: MacrosBeforeSectionInput): string[] {
   if (!(input.main in input.sources)) { return []; }
   const out: string[] = [];
   walk(input.main, input, out, new Set([input.main]));

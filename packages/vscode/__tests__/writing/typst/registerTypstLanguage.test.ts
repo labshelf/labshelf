@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import {
   createTypstSources,
-  createTypstContexts,
+  createTypstLanguageOf,
 } from "../../../src/writing/typst/registerTypstLanguage";
 import { fakeDocument } from "../../support/textDocument";
 import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
@@ -41,11 +41,11 @@ describe("createTypstSources", () => {
   });
 });
 
-describe("createTypstContexts", () => {
+describe("createTypstLanguageOf", () => {
   const projects = fakeProjects([readyEntry("/lib/projects/paper", { main: "main.typ" })]);
 
   it("uses the owning project folder as root and a project-relative path", () => {
-    const contextOf = createTypstContexts(projects, fakeLogger());
+    const contextOf = createTypstLanguageOf(projects, fakeLogger());
     const first = contextOf(fakeDocument("/lib/projects/paper/sections/a.typ", ""));
     expect(first.root?.fsPath).toBe("/lib/projects/paper");
     expect(first.path).toBe("sections/a.typ");
@@ -53,7 +53,7 @@ describe("createTypstContexts", () => {
   });
 
   it("falls back to the workspace folder, then to the document's own folder", () => {
-    const contextOf = createTypstContexts(projects, fakeLogger());
+    const contextOf = createTypstLanguageOf(projects, fakeLogger());
     workspace.getWorkspaceFolder = jest.fn(() => ({ uri: vscode.Uri.file("/ws") }));
     expect(contextOf(fakeDocument("/ws/sub/b.typ", "")).path).toBe("sub/b.typ");
     workspace.getWorkspaceFolder = jest.fn(() => undefined);

@@ -1,13 +1,13 @@
 /** Lists the Community catalog's templates and downloads their files at the commit the index was built from. */
 // CONTRACT: documents/contracts/templates.md#index
 
-import type { ILogger } from "../../ports/index.js";
+import type { ILogger, FetchLike } from "../../ports/index.js";
 import { deriveSha256Hex } from "../../hash/index.js";
 import { parseCatalogIndex, type CatalogEntry } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { fetchCachedCatalogIndex } from "./fetchCachedCatalogIndex.js";
 import { fetchCachedThumbnail } from "./fetchCachedThumbnail.js";
-import type { FetchLike, TemplateCache, TemplateFile, TemplateSource } from "./templateSource.js";
+import type { TemplateCache, TemplateFile, TemplateSource } from "./templateSource.js";
 
 const REPOSITORY = "https://cdn.jsdelivr.net/gh/labshelf/labshelf-templates";
 export const COMMUNITY_INDEX_URL = `${REPOSITORY}@main/index.json`;

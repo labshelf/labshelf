@@ -7,12 +7,12 @@ const RANDOM_CHARS = 16;
 const MAX_TIME = 2 ** 48 - 1;
 const ITEM_ID = /^n-[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
-export type RandomFill = (bytes: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
+export type RandomBytes = (bytes: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
 
-const cryptoFill: RandomFill = (bytes) => globalThis.crypto.getRandomValues(bytes);
+const cryptoFill: RandomBytes = (bytes) => globalThis.crypto.getRandomValues(bytes);
 
 /** Returns an id generator whose ids increase also within one millisecond of `now`. */
-export function itemIdGenerator(now: () => number = Date.now, random: RandomFill = cryptoFill): () => string {
+export function createItemIdGenerator(now: () => number = Date.now, random: RandomBytes = cryptoFill): () => string {
   let lastTime = -1;
   let lastRandom: number[] = [];
   return () => {
@@ -24,7 +24,7 @@ export function itemIdGenerator(now: () => number = Date.now, random: RandomFill
   };
 }
 
-export const newItemId: () => string = itemIdGenerator();
+export const newItemId: () => string = createItemIdGenerator();
 
 export function isItemId(text: string): boolean {
   return ITEM_ID.test(text);
@@ -40,7 +40,7 @@ function encodeTime(time: number): string {
   return out;
 }
 
-function randomDigits(random: RandomFill): number[] {
+function randomDigits(random: RandomBytes): number[] {
   const bytes = random(new Uint8Array(10));
   const digits: number[] = [];
   let buffer = 0;

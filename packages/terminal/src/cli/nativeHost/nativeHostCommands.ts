@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import {
   BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, installNativeHost, checkNativeHost, uninstallNativeHost,
-  type NativeHostEnv, type NativeHostSpec, type NativeHostWarning, type ScriptLaunch,
+  type NativeHostEnv, type NativeHostSpec, type NativeHostWarning, type ScriptEntry,
 } from "@labshelf/core/nativeHost/node";
 
 import type { Output } from "../usage.js";
@@ -30,7 +30,7 @@ export function createNativeHostSpec(command: NativeHostCommand): NativeHostSpec
 }
 
 /** @returns the launch that runs this app's bundled host script, found in `distDir` next to labshelf.mjs */
-export function createTerminalLaunch(command: NativeHostCommand, distDir: string): ScriptLaunch {
+export function createTerminalLaunch(command: NativeHostCommand, distDir: string): ScriptEntry {
   return { kind: "script", owner: "terminal", nodePath: process.execPath, hostScript: path.join(distDir, HOSTS[command].hostFile), electronRunAsNode: false };
 }
 
@@ -44,7 +44,7 @@ function successLine(command: NativeHostCommand, labels: string): string {
     : "Restart the browser, then open the LabShelf extension and choose Connect.";
 }
 
-async function install(command: NativeHostCommand, replace: boolean, env: NativeHostEnv, launch: ScriptLaunch, io: Output): Promise<number> {
+async function install(command: NativeHostCommand, replace: boolean, env: NativeHostEnv, launch: ScriptEntry, io: Output): Promise<number> {
   const result = await installNativeHost(env, HOSTS[command].spec, launch, { replaceStandalone: replace });
   if (result.standalone) {
     io.out(`LabShelf Helper is installed at ${result.standalone} and builds LaTeX for the browser. Run \`labshelf helper install --replace\` to use this terminal app instead.`);
@@ -86,7 +86,7 @@ async function uninstall(command: NativeHostCommand, env: NativeHostEnv, io: Out
 
 /** @returns the process exit code: 0 on success, 1 when a browser could not be set up, 2 for an unknown subcommand. */
 export async function runNativeHostCommand(
-  command: NativeHostCommand, subcommand: string | undefined, flags: { replace: boolean }, io: Output, env: NativeHostEnv, launch: ScriptLaunch,
+  command: NativeHostCommand, subcommand: string | undefined, flags: { replace: boolean }, io: Output, env: NativeHostEnv, launch: ScriptEntry,
 ): Promise<number> {
   if (subcommand === "install") return install(command, flags.replace, env, launch, io);
   if (subcommand === "status") return status(command, env, io);

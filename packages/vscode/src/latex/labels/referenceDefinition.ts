@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { scanLatexSource } from "@labshelf/core";
-import type { LatexProjectSources } from "../project/index.js";
-import { labelLocation, listProjectLabels } from "./listProjectLabels.js";
+import { deriveVscodeRange, type LatexProjectSources } from "../project/index.js";
+import { listProjectLabels } from "./listProjectLabels.js";
 
 export class ReferenceDefinitionProvider implements vscode.DefinitionProvider {
   constructor(private readonly sources: LatexProjectSources) {}
@@ -14,7 +14,8 @@ export class ReferenceDefinitionProvider implements vscode.DefinitionProvider {
     if (!ref) { return undefined; }
     const project = await this.sources.projectSourcesFor(document);
     if (!project) { return undefined; }
-    const found = listProjectLabels(project).filter((label) => label.name === ref.name).map((label) => labelLocation(project, label));
+    const found = listProjectLabels(project).filter((label) => label.name === ref.name).map((label) =>
+      new vscode.Location(vscode.Uri.joinPath(project.root, label.path), deriveVscodeRange(label.range)));
     return found.length > 0 ? found : undefined;
   }
 }

@@ -21,7 +21,7 @@ import { createSidebarProjects, type SidebarProjects } from "../libraryUi/sideba
 import type { ProjectServices, TabKindName } from "../libraryUi/editorArea";
 import type { Workspace } from "../libraryUi/editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
-import { createBrowserProjects, currentLibraryId, readLibraryLocations } from "../storage";
+import { createBrowserProjects, readCurrentLibraryId, readLibraryLocations } from "../storage";
 import { createPageShare, createResumeReports, type PageShare } from "../collab";
 
 interface PageSharingWiringOptions {
@@ -47,7 +47,7 @@ function wirePageSharing({ logger, host, relay, relayAccounts }: PageSharingWiri
     await runJoinProjectDialog(host, invite);
   };
   const sharing = createPageShare({
-    sources: readLibraryLocations(), libraryId: currentLibraryId, logger, relay: relayAccounts,
+    sources: readLibraryLocations(), libraryId: readCurrentLibraryId, logger, relay: relayAccounts,
     requireRelay: async () => (await relay.requireBrowserRelay()) !== undefined,
     reports: createResumeReports(() => { void join(); }),
   });

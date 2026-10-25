@@ -1,6 +1,6 @@
 /** Answers the file-tray messages of the list UI: listing and describing a paper's files, and opening, revealing or copying one. */
 import * as vscode from 'vscode';
-import type { PaperFilesState, UiToHost } from '@labshelf/core';
+import { formatError, type PaperFilesState, type UiToHost } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
 const NO_PORT: PaperFilesState = { status: 'failed', message: 'This window cannot list paper files' };
@@ -20,7 +20,7 @@ async function sendFiles(ctx: ListHostContext, id: string): Promise<void> {
   try {
     state = await port.list(id);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = formatError(err);
     await ctx.deps.logger.log('ERROR', LOG_MODULE, 'Listing paper files failed', { id, message });
     state = { status: 'failed', message };
   }

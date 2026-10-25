@@ -1,4 +1,5 @@
 // Adapts the helper's two transports, native messaging and the loopback WebSocket, to one message channel.
+import { formatError } from "@labshelf/core";
 import { decodeConnectionMessage, encodeConnectionMessage } from "@labshelf/core/helper";
 import type { NativePort } from "../../../platform";
 
@@ -41,7 +42,7 @@ export function openConnectionChannel(url: string, Socket: HelperConnectionConst
         const decoded = decodeConnectionMessage(new Uint8Array(event.data));
         messageListener(decoded.envelope, decoded.payload);
       } catch (error) {
-        messageListener(error instanceof Error ? error.message : String(error), NO_PAYLOAD);
+        messageListener(formatError(error), NO_PAYLOAD);
       }
     };
     socket.onclose = (event: CloseEvent) => {

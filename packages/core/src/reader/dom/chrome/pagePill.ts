@@ -2,12 +2,12 @@
  * Shows the floating page/zoom pill at the bottom-right: the only always-visible chrome. The page number is an editable go-to-page field; the zoom label opens the fit menu.
  */
 import { formatZoomLabel } from "../../navigation/index.js";
-import type { ZoomPreset } from "../../index.js";
+import type { ZoomKind } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { renderReaderIconButton } from "../elements/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import { buildMenu, updatePopoverOpen, type MenuItem } from "../elements/index.js";
-import type { ZoomController } from "../navigation/index.js";
+import type { Zoom } from "../navigation/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 const PERCENT_CHOICES = [50, 75, 100, 125, 150, 200, 300, 400];
@@ -22,7 +22,7 @@ export class PagePill {
 
   constructor(
     private readonly ctx: ReaderContext,
-    private readonly zoom: ZoomController,
+    private readonly zoom: Zoom,
     private readonly goToPage: (page: number) => void,
   ) {
     this.pageInput = renderElement("input", {
@@ -116,7 +116,7 @@ export class PagePill {
     updatePopoverOpen(this.zoomBtn, buildMenu([...presets, ...percents]), preview ? "below" : "above");
   }
 
-  private presetItem(label: string, preset: ZoomPreset): MenuItem {
+  private presetItem(label: string, preset: ZoomKind): MenuItem {
     return { label, checked: this.zoom.scaleValue === preset, run: () => this.zoom.setPreset(preset) };
   }
 }

@@ -31,7 +31,7 @@ export type OpenedDocFrame =
   | { ok: false; error: FrameError | "docMismatch" };
 
 /** Derives doc ids once per doc key, since every message of a doc needs its id. */
-export function docIdCache(shareId: string): (docKey: string) => Promise<Uint8Array> {
+export function createDocIdCache(shareId: string): (docKey: string) => Promise<Uint8Array> {
   const ids = new Map<string, Promise<Uint8Array>>();
   return (docKey) => {
     let id = ids.get(docKey);

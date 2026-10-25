@@ -24,6 +24,7 @@ import { readProject } from "../../writing/project/folder/index.js";
 import { createNodeProjectReadCompositionRoot } from "../../writing/project/node/index.js";
 import { formatEngineLabel } from "../../latex/index.js";
 import { deriveTemplateTreeProblem } from "../../templates/templateManifest/index.js";
+import { formatError } from "../../logging/index.js";
 
 async function checkPublishSnapshot(dataDir: string, input: PublishCheckInput, build: (folder: string) => ReturnType<PublishCheckInput["buildPdf"]>): Promise<PublishCheckReport> {
   const source = await runSourceChecks(input.projectFolder, input.manifest);
@@ -157,7 +158,7 @@ export function createTemplatePublishHandlers(options: TemplatePublishOptions) {
       await runPublication({ ...options, fetch }, message, send, (pdf) => previews.render(message.id, send, pdf), lifetime.signal);
     } catch (error) {
       await options.logger.error("helper/publish", error, { projectId: message.projectId, action: message.action });
-      const text = error instanceof Error ? error.message : String(error);
+      const text = formatError(error);
       send({ v: PROTOCOL_VERSION, id: message.id, type: "templatePublish", done: false, event: { type: "notice", kind: "error", text } });
       if (message.action !== "open") send({ v: PROTOCOL_VERSION, id: message.id, type: "templatePublish", done: false, event: { type: "publish.failed", error: text } });
     } finally {

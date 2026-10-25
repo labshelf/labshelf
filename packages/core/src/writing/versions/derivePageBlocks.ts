@@ -1,8 +1,8 @@
 /** Cuts a page's ink into blocks (single lines of one column, pieces of figures) by recursive XY-cut, in reading order. */
-import type { InkMap } from "./pageInk.js";
+import type { PageInk } from "./pageInk.js";
 
 /** A block's bounding box in pixels of its page's ink map. */
-export interface PixelBox {
+export interface PageBox {
   x: number;
   y: number;
   width: number;
@@ -10,7 +10,7 @@ export interface PixelBox {
 }
 
 /** Sizes in pixels of the page's rendering. */
-export interface BlockSizes {
+export interface BlockLimits {
   /** The narrowest column gutter. */
   gutter: number;
   /** Blocks no larger than this either way join their nearest block. */
@@ -25,10 +25,10 @@ const GUTTER_ROW_SHARE = 0.1;
  * neither cut applies.
  * @returns the blocks, each trimmed to its ink, in reading order: column by column, top to bottom
  */
-export function derivePageBlocks(page: InkMap, sizes: BlockSizes): PixelBox[] {
+export function derivePageBlocks(page: PageInk, sizes: BlockLimits): PageBox[] {
   const gutters = pageGutters(page, sizes.gutter);
-  const blocks: PixelBox[] = [];
-  const pending: PixelBox[] = [{ x: 0, y: 0, width: page.width, height: page.height }];
+  const blocks: PageBox[] = [];
+  const pending: PageBox[] = [{ x: 0, y: 0, width: page.width, height: page.height }];
   while (pending.length > 0) {
     const box = trimToInk(page, pending.pop()!);
     if (!box) { continue; }
@@ -40,7 +40,7 @@ export function derivePageBlocks(page: InkMap, sizes: BlockSizes): PixelBox[] {
       blocks.push(box);
     }
   }
-  const column = (box: PixelBox): number => gutters.filter(([, to]) => to <= box.x).length;
+  const column = (box: PageBox): number => gutters.filter(([, to]) => to <= box.x).length;
   return absorbFragments(blocks, sizes.fragment).sort((a, b) => column(a) - column(b) || a.y - b.y || a.x - b.x);
 }
 
@@ -49,7 +49,7 @@ export function derivePageBlocks(page: InkMap, sizes: BlockSizes): PixelBox[] {
  * depends on the sub-pixel phase, so one build would cut the line in two and the next would not. A gutter is instead
  * a stretch of columns blank on almost every inked row of the page, which no space between words is.
  */
-function pageGutters(page: InkMap, minWidth: number): Array<[number, number]> {
+function pageGutters(page: PageInk, minWidth: number): Array<[number, number]> {
   const inkRows = new Uint32Array(page.width);
   let rows = 0;
   let first = page.width;
@@ -70,18 +70,18 @@ function pageGutters(page: InkMap, minWidth: number): Array<[number, number]> {
   return runs.slice(1).map(([from], i) => [first + runs[i]![1], first + from]);
 }
 
-function rowHasInk(page: InkMap, box: PixelBox, y: number): boolean {
+function rowHasInk(page: PageInk, box: PageBox, y: number): boolean {
   const start = y * page.width + box.x;
   for (let i = start; i < start + box.width; i++) { if (page.ink[i]) { return true; } }
   return false;
 }
 
-function columnHasInk(page: InkMap, box: PixelBox, x: number): boolean {
+function columnHasInk(page: PageInk, box: PageBox, x: number): boolean {
   for (let y = box.y; y < box.y + box.height; y++) { if (page.ink[y * page.width + x]) { return true; } }
   return false;
 }
 
-function trimToInk(page: InkMap, box: PixelBox): PixelBox | undefined {
+function trimToInk(page: PageInk, box: PageBox): PageBox | undefined {
   let top = box.y;
   let bottom = box.y + box.height - 1;
   while (top <= bottom && !rowHasInk(page, box, top)) { top++; }
@@ -114,16 +114,16 @@ function inkRuns(length: number, hasInk: (offset: number) => boolean, minGap: nu
   return runs;
 }
 
-function splitRows(page: InkMap, box: PixelBox): PixelBox[] {
+function splitRows(page: PageInk, box: PageBox): PageBox[] {
   return inkRuns(box.height, (dy) => rowHasInk(page, box, box.y + dy), 1)
     .map(([from, to]) => ({ x: box.x, y: box.y + from, width: box.width, height: to - from }));
 }
 
 /** Cuts at blank column runs that overlap a gutter; other blank runs are spaces inside a line. */
-function splitAtGutters(page: InkMap, box: PixelBox, gutters: ReadonlyArray<[number, number]>): PixelBox[] {
+function splitAtGutters(page: PageInk, box: PageBox, gutters: ReadonlyArray<[number, number]>): PageBox[] {
   const pieces = inkRuns(box.width, (dx) => columnHasInk(page, box, box.x + dx), 1)
     .map(([from, to]) => ({ x: box.x + from, y: box.y, width: to - from, height: box.height }));
-  const joined: PixelBox[] = [];
+  const joined: PageBox[] = [];
   for (const piece of pieces) {
     const previous = joined[joined.length - 1];
     const gapFrom = previous ? previous.x + previous.width : 0;
@@ -140,11 +140,11 @@ function splitAtGutters(page: InkMap, box: PixelBox, gutters: ReadonlyArray<[num
  * TRAP: a comma's tail or an accent can come apart from its line by one anti-aliased row in one build and not the
  * next, so fragments join their nearest block instead of standing alone.
  */
-function absorbFragments(blocks: PixelBox[], fragment: number): PixelBox[] {
-  const isFragment = (box: PixelBox): boolean => box.width <= fragment && box.height <= fragment;
+function absorbFragments(blocks: PageBox[], fragment: number): PageBox[] {
+  const isFragment = (box: PageBox): boolean => box.width <= fragment && box.height <= fragment;
   const kept = blocks.filter((box) => !isFragment(box));
   for (const piece of blocks.filter(isFragment)) {
-    const nearest = kept.reduce<PixelBox | undefined>((best, box) => (!best || gap(piece, box) < gap(piece, best) ? box : best), undefined);
+    const nearest = kept.reduce<PageBox | undefined>((best, box) => (!best || gap(piece, box) < gap(piece, best) ? box : best), undefined);
     if (!nearest || gap(piece, nearest) > fragment) { kept.push(piece); continue; }
     const x = Math.min(nearest.x, piece.x);
     const y = Math.min(nearest.y, piece.y);
@@ -156,7 +156,7 @@ function absorbFragments(blocks: PixelBox[], fragment: number): PixelBox[] {
   return kept;
 }
 
-function gap(a: PixelBox, b: PixelBox): number {
+function gap(a: PageBox, b: PageBox): number {
   const dx = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.width, b.x + b.width));
   const dy = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.height, b.y + b.height));
   return Math.max(dx, dy);

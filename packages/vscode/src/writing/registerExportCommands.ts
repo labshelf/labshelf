@@ -3,29 +3,29 @@ import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
 import type { WritingHost, WritingProjects } from "./session/index.js";
-import { exportProject, type ConvertDocument, type ExportTarget } from "./exportProject.js";
+import { exportProject, type ConvertProject, type ExportKind } from "./exportProject.js";
 
 interface ExportCommandsDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: WritingProjects;
-  convertDocument?: ConvertDocument;
+  convertDocument?: ConvertProject;
 }
 
-const EXPORT_COMMANDS: Record<string, ExportTarget> = {
+const EXPORT_COMMANDS: Record<string, ExportKind> = {
   "labshelf.writing.downloadPdf": "pdf",
   "labshelf.writing.openPdfExternally": "systemViewer",
   "labshelf.writing.downloadSource": "projectZip",
   "labshelf.writing.downloadArxiv": "arxivZip",
 };
 
-const DOCUMENT_COMMANDS: Record<string, ExportTarget> = {
+const DOCUMENT_COMMANDS: Record<string, ExportKind> = {
   "labshelf.writing.exportWord": "docx",
   "labshelf.writing.exportMarkdown": "markdown",
   "labshelf.writing.exportHtml": "html",
 };
 
-async function exportEntry({ host, projects, convertDocument }: ExportCommandsDeps, entry: ProjectEntry | undefined, target: ExportTarget): Promise<void> {
+async function exportEntry({ host, projects, convertDocument }: ExportCommandsDeps, entry: ProjectEntry | undefined, target: ExportKind): Promise<void> {
   const session = host.current();
   if (!session || entry?.kind !== "ready") { return; }
   if (!entry.main) {

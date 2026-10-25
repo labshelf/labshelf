@@ -6,6 +6,7 @@ import {
   LATEX_ENVIRONMENTS,
   type LatexCatalogEntry,
   findEnvironmentToClose,
+  findLatexCompletionSpan,
 } from "@labshelf/core";
 
 const NEWLINE_WITH_INDENT = /^\r?\n([ \t]*)$/;
@@ -60,10 +61,6 @@ export function registerLatexEnvironmentAutoClose(context: vscode.ExtensionConte
   }));
 }
 
-const ENVIRONMENT_CONTEXT = /\\(begin|end)\{([A-Za-z]*\*?)$/;
-const COMMAND_CONTEXT = /(?:^|[^\\])(\\[A-Za-z]*)$/;
-const NAME_AND_BRACE_AFTER_CURSOR = /^[A-Za-z]*\*?\}?/;
-
 // "1" ranks catalog items after the library papers the citation provider ranks with "0".
 function sortText(entry: LatexCatalogEntry): string {
   return `1${entry.name}`;
@@ -93,19 +90,13 @@ function environmentItem(entry: LatexCatalogEntry, closing: boolean, range: vsco
 export class LatexCommandCompletionProvider implements vscode.CompletionItemProvider {
   provideCompletionItems(document: vscode.TextDocument, position: vscode.Position): vscode.CompletionItem[] | undefined {
     const line = document.lineAt(position.line).text;
-    const before = line.slice(0, position.character);
-    const environment = ENVIRONMENT_CONTEXT.exec(before);
-    if (environment) {
-      // A `}` typed by auto-pairing already follows the cursor; the item replaces it.
-      const rest = NAME_AND_BRACE_AFTER_CURSOR.exec(line.slice(position.character))?.[0] ?? "";
-      const range = new vscode.Range(
-        position.line, position.character - environment[2]!.length, position.line, position.character + rest.length,
-      );
-      return LATEX_ENVIRONMENTS.map((entry) => environmentItem(entry, environment[1] === "end", range));
+    const span = findLatexCompletionSpan(line.slice(0, position.character), line.slice(position.character));
+    if (span === undefined) { return undefined; }
+    if (span.kind === "environment") {
+      const range = new vscode.Range(position.line, position.character - span.before, position.line, position.character + span.after);
+      return LATEX_ENVIRONMENTS.map((entry) => environmentItem(entry, span.closing, range));
     }
-    const command = COMMAND_CONTEXT.exec(before)?.[1];
-    if (command === undefined) { return undefined; }
-    const range = new vscode.Range(position.line, position.character - command.length, position.line, position.character);
+    const range = new vscode.Range(position.line, position.character - span.before, position.line, position.character);
     return LATEX_COMMANDS.map((entry) => commandItem(entry, range));
   }
 }

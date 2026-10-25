@@ -1,10 +1,11 @@
 // Creates the `installTex` and `installAllPackages` handlers that stream install progress and end with `ready` or `error`.
 // CONTRACT: documents/contracts/helper.md#messages
 import type { ILogger } from "../../ports/index.js";
-import { PROTOCOL_VERSION, type HelperHost, type ProgressPhase, type TexToolchain } from "../index.js";
+import { PROTOCOL_VERSION, type HelperHost, type HelperPhase, type TexToolchain } from "../index.js";
 
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
 import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../latex/toolchain/node/managedTex/index.js";
+import { formatError } from "../../logging/index.js";
 
 export interface TexInstallHandlerOptions {
   tex: ManagedTexProvider;
@@ -14,7 +15,7 @@ export interface TexInstallHandlerOptions {
   logger: ILogger;
 }
 
-type InstallPhase = Extract<ProgressPhase, "installing-tex" | "installing-package">;
+type InstallPhase = Extract<HelperPhase, "installing-tex" | "installing-package">;
 
 const MESSAGES: Record<InstallPhase, string> = {
   "installing-tex": "Installing TeX",
@@ -32,7 +33,7 @@ async function runInstall(
     send({ v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex });
   } catch (error) {
     await options.logger.error(TEX_MODULE, error, { step: phase, id });
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatError(error);
     const code = error instanceof TexInstallError ? error.code : "tex-install-failed";
     send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
   }

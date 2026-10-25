@@ -7,12 +7,12 @@ import type { AppContext } from "../../compositionRoot.js";
 import { createImageClear, drawImage, type CellRect } from "../../screen/index.js";
 import type { InputEvent } from "../../screen/index.js";
 import type { Screen } from "../../screen/index.js";
-import type { TerminalSize } from "../../screen/index.js";
+import type { ScreenSize } from "../../screen/index.js";
 import type { InlineInput, Overlay } from "../overlays.js";
 import { createFrame } from "./view/index.js";
 import { onInlineInput, runShortcut, onMouseInput, onOverlayInput } from "./input/index.js";
 import { HistoryNavigation, ListModel, SelectionState, TaskStatus, WritingModel, deriveAppLayout, type AppLayout } from "./viewModel/index.js";
-import { ALL, type FolderRow, type Focus, type ImagePlan, type Message, type TerminalLike } from "./screenModel.js";
+import { ALL, type FolderRow, type Focus, type ThumbnailPlan, type Message, type TerminalLike } from "./screenModel.js";
 
 export type { TerminalLike };
 
@@ -42,7 +42,7 @@ export class App {
   readonly sidecarLoading = new Set<string>();
 
   image: { key: string; rect: CellRect } | undefined;
-  size: TerminalSize;
+  size: ScreenSize;
   private renderQueued = false;
   private resolveQuit: (() => void) | undefined;
 
@@ -97,7 +97,7 @@ export class App {
     this.resolveQuit?.();
   }
 
-  private resize(size: TerminalSize): void {
+  private resize(size: ScreenSize): void {
     this.size = size;
     this.image = undefined;
     this.term.writeRaw(createImageClear(this.ctx.imageProtocol));
@@ -177,7 +177,7 @@ export class App {
    * Builds the next frame.
    * @returns the screen and the thumbnail to draw over it, if any
    */
-  frame(): { screen: Screen; image: ImagePlan | undefined } {
+  frame(): { screen: Screen; image: ThumbnailPlan | undefined } {
     return createFrame(this);
   }
 }

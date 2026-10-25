@@ -1,19 +1,19 @@
 // Registers the commands that wrap the active LaTeX or Typst selection in bold or italic.
 import * as vscode from "vscode";
 
-import { deriveSelectionWrap, type WrapStyle } from "@labshelf/core";
+import { deriveSelectionWrap, type WrapKind } from "@labshelf/core";
 
 import type { WritingHost } from "./session/index.js";
 import { readWritingLanguage } from "./editorLanguage.js";
 
-const COMMANDS: Record<WrapStyle, string> = { bold: "labshelf.writing.bold", italic: "labshelf.writing.italic" };
+const COMMANDS: Record<WrapKind, string> = { bold: "labshelf.writing.bold", italic: "labshelf.writing.italic" };
 
 interface EditorActionDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
 }
 
-async function wrapActiveSelections(deps: EditorActionDeps, style: WrapStyle): Promise<void> {
+async function wrapActiveSelections(deps: EditorActionDeps, style: WrapKind): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const language = readWritingLanguage(editor);
   if (!editor || !language) { return; }
@@ -42,7 +42,7 @@ async function wrapActiveSelections(deps: EditorActionDeps, style: WrapStyle): P
 }
 
 export function registerEditorActions(deps: EditorActionDeps): void {
-  for (const style of Object.keys(COMMANDS) as WrapStyle[]) {
+  for (const style of Object.keys(COMMANDS) as WrapKind[]) {
     deps.context.subscriptions.push(vscode.commands.registerCommand(COMMANDS[style], () => wrapActiveSelections(deps, style)));
   }
 }

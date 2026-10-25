@@ -17,6 +17,7 @@ import {
   type ParsedPaperLink,
   formatBytes,
   formatVenueLine,
+  formatError,
 } from "@labshelf/core";
 
 import type { AppContext } from "../compositionRoot.js";
@@ -91,7 +92,7 @@ async function runOpen(ctx: AppContext, positionals: string[], io: Output): Prom
     if (link?.page !== undefined && !pageUsed) { io.out(`Opened ${citeKey} — go to page ${link.page}`); }
   } catch (error) {
     void ctx.logger.error("terminal.open", error, { id });
-    io.err(`Could not open the PDF for ${id}: ${error instanceof Error ? error.message : String(error)}`);
+    io.err(`Could not open the PDF for ${id}: ${formatError(error)}`);
     return 1;
   }
   return 0;

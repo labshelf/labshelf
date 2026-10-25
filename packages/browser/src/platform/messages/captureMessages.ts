@@ -1,5 +1,5 @@
 // Declares the runtime messages that capture papers and their PDFs, with their replies.
-import type { IfNoPdf, PdfAccess, PdfMiss } from "@labshelf/core";
+import type { MissingPdfAction, PdfAccess, PdfMiss } from "@labshelf/core";
 import type { LibraryReference } from "./libraryMessages";
 
 export type CaptureMessage =
@@ -8,11 +8,11 @@ export type CaptureMessage =
   /** Waits for the PDF search the inspect started; the popup shows the result. */
   | { type: "capture.findPdf"; tabId: number }
   /** Saves the inspected paper into `folder` with the user's tags and note. */
-  | { type: "capture.save"; tabId: number; folder?: string; tags?: string[]; note?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
+  | { type: "capture.save"; tabId: number; folder?: string; tags?: string[]; note?: string; ifNoPdf?: MissingPdfAction; retryPdf?: boolean }
   /** Inspects and saves a tab in one go (the library page's "Add from open tab"). */
-  | { type: "capture.tab"; tabId: number; targetFolder?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
+  | { type: "capture.tab"; tabId: number; targetFolder?: string; ifNoPdf?: MissingPdfAction; retryPdf?: boolean }
   /** Saves one Google Scholar or Google search result. */
-  | { type: "searchHit.save"; hit: SearchHit; folder?: string; ifNoPdf?: IfNoPdf; retryPdf?: boolean }
+  | { type: "searchHit.save"; hit: SearchHit; folder?: string; ifNoPdf?: MissingPdfAction; retryPdf?: boolean }
   /** Popup, paper already in the library without a PDF: attach the PDF found for this tab to that copy. */
   | { type: "capture.attachPdf"; tabId: number }
   /** Library page "Find PDF": run the resolver chain for a saved paper and attach what it finds. */

@@ -1,14 +1,14 @@
 // Runs the capture, save and undo flow: inspecting the current tab, the shared "No PDF found" dialog, saving the
 // draft, attaching a PDF to an already-saved copy, and undoing a save.
-import { findElement, askNoPdf, type NoPdfChoice } from "@labshelf/core/dom";
-import { formatError, formatPdfSourceLabel, type IfNoPdf, type PdfMiss } from "@labshelf/core";
+import { findElement, askNoPdf, type MissingPdfChoice } from "@labshelf/core/dom";
+import { formatError, formatPdfSourceLabel, type MissingPdfAction, type PdfMiss } from "@labshelf/core";
 
 import {
   sendRuntime, type AttachPdfReply, type DraftView, type LibraryReference, type PdfOfferView, type FindPdfReply, type WriteOutcome,
 } from "../platform";
 import { formatFolderName, parseTags } from "./format";
 import { renderPaper, renderPdf, showError, showLibraryCopy, showNotice } from "./render";
-import { popupState, setState } from "./popupState";
+import { popupState, showPopupView } from "./popupState";
 import { attachOffered, offerFits, attachOffer, showOffer } from "./offerCard";
 
 // A paper already saved without its PDF: a PDF this tab showed or the user downloaded for it is attached in one click;
@@ -59,14 +59,14 @@ export async function detectCapture(offerReady: Promise<PdfOfferView | null>): P
   renderPaper(draft);
   if (!draft.isPaper) {
     findElement("meta").textContent = "";
-    setState("empty");
+    showPopupView("empty");
     showNotice({
       glyph: "globe", tone: "muted", title: "No paper detected on this page",
       detail: "Open the article's page or its PDF, or use the LabShelf buttons on Google Scholar.", tryAnyway: true,
     });
     return;
   }
-  setState("form");
+  showPopupView("form");
   findElement("save").focus();
   renderPdf("searching");
   try {
@@ -79,7 +79,7 @@ export async function detectCapture(offerReady: Promise<PdfOfferView | null>): P
 
 // The shared "No PDF found" dialog. Returns the chosen action, or undefined on
 // Cancel (nothing is written). The modal-open class guards the popup height.
-async function confirmNoPdf(title: string, miss: PdfMiss): Promise<NoPdfChoice | undefined> {
+async function confirmNoPdf(title: string, miss: PdfMiss): Promise<MissingPdfChoice | undefined> {
   document.body.classList.add("modal-open");
   try {
     return await askNoPdf(title, miss);
@@ -93,7 +93,7 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
   if (choice === undefined) return;                // Cancel: nothing was written
   if (choice === "retry") {
     popupState.pdfStatus = undefined;
-    if (from !== "empty") setState("form");
+    if (from !== "empty") showPopupView("form");
     renderPdf("searching");
     return writeCapture("ask", true);
   }
@@ -101,7 +101,7 @@ async function confirmThen(title: string, miss: PdfMiss, from: string | undefine
   return writeCapture(choice);
 }
 
-export async function writeCapture(ifNoPdf: IfNoPdf = "ask", retryPdf = false): Promise<void> {
+export async function writeCapture(ifNoPdf: MissingPdfAction = "ask", retryPdf = false): Promise<void> {
   const from = findElement("popup").dataset["state"];
 
   // Case A: the search already ended with no PDF before Save was pressed — ask
@@ -113,7 +113,7 @@ export async function writeCapture(ifNoPdf: IfNoPdf = "ask", retryPdf = false): 
   }
 
   findElement("error").hidden = true;
-  setState("saving");
+  showPopupView("saving");
   try {
     const tags = parseTags(findElement<HTMLInputElement>("tags").value);
     const note = findElement<HTMLTextAreaElement>("note").value.trim();
@@ -125,12 +125,12 @@ export async function writeCapture(ifNoPdf: IfNoPdf = "ask", retryPdf = false): 
       // Case B: Save was pressed while the search was still running; it has now
       // ended empty. Nothing was written — ask before anything is.
       popupState.pdfStatus = { found: false, miss: r.miss };
-      setState(from === "empty" ? "empty" : "form");
+      showPopupView(from === "empty" ? "empty" : "form");
       renderPdf(popupState.pdfStatus);
       return confirmThen(r.title, r.miss, from);
     }
     popupState.saved = r;
-    setState("saved");
+    showPopupView("saved");
     findElement("pdf").hidden = true;
     showNotice({
       glyph: "check", tone: "ok", title: `Saved to ${formatFolderName(popupState.saved.folder)}`,
@@ -141,10 +141,10 @@ export async function writeCapture(ifNoPdf: IfNoPdf = "ask", retryPdf = false): 
     findElement("open").dataset["paper"] = popupState.saved.id;
   } catch (err) {
     if (from === "empty") {
-      setState("empty");
+      showPopupView("empty");
       showNotice({ glyph: "warning", tone: "muted", title: "Nothing could be saved", detail: formatError(err) });
     } else {
-      setState("form");
+      showPopupView("form");
       showError(formatError(err));
     }
   }
@@ -183,7 +183,7 @@ export async function removeCapture(): Promise<void> {
   try {
     await sendRuntime({ type: "paper.remove", id: popupState.saved.id });
     popupState.saved = undefined;
-    setState("form");
+    showPopupView("form");
     if (popupState.pdfStatus) renderPdf(popupState.pdfStatus);
   } catch (err) {
     showNotice({ glyph: "warning", tone: "muted", title: "Could not remove the paper", detail: formatError(err), open: "Open in library" });

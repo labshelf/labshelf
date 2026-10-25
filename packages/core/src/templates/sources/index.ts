@@ -5,7 +5,7 @@ export { fetchCachedCatalogIndex } from "./fetchCachedCatalogIndex.js";
 export type { CachedCatalogIndexDeps, CachedCatalogIndexRequest, CachedCatalogIndexResult } from "./fetchCachedCatalogIndex.js";
 export { fetchCachedThumbnail } from "./fetchCachedThumbnail.js";
 export type { CachedThumbnailRequest } from "./fetchCachedThumbnail.js";
-export type { CachedCatalogIndex, CachedSourceId, FetchLike, TemplateCache, TemplateFile, TemplateListing, TemplateSource } from "./templateSource.js";
+export type { CachedCatalogIndex, CachedSourceId, TemplateCache, TemplateFile, TemplateListing, TemplateSource } from "./templateSource.js";
 export { UNIVERSE_INDEX_URL, isNewerVersion, parseUniverseCatalogIndex } from "./universeCatalogIndex.js";
 export type { UniverseCatalogIndexResult, UniverseTemplate } from "./universeCatalogIndex.js";
 export { createUniverseSource } from "./universeSource.js";

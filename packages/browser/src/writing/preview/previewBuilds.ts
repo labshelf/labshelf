@@ -1,9 +1,9 @@
 // Shows each PDF, build status and build root of a project on a preview frame.
 import { derivePreviewProblems, type BuildOptions, type ILogger, type PreviewBuildRoots } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult } from "@labshelf/core/helper";
+import type { BuildKind, HelperCompileResult } from "@labshelf/core/helper";
 import type { PreviewBuildState, PreviewFrame } from "./previewFrame";
 
-export type PreviewBuildEvent = { type: "building" } | { type: "pdf"; bytes: Uint8Array; mode: CompileMode } | { type: "result"; result: HelperCompileResult };
+export type PreviewBuildEvent = { type: "building" } | { type: "pdf"; bytes: Uint8Array; mode: BuildKind } | { type: "result"; result: HelperCompileResult };
 
 export interface PreviewBuildSource {
   build(projectId: string): Promise<unknown>;
