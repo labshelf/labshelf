@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { PDFDocument } from "pdf-lib";
 
 import { runLatexBuild, type LatexBuildRequest } from "../../../../src/latex/build/node/index";
-import { diffPages } from "../../../../src/writing/helper/node/pages/index";
+import { diffPages } from "../../../../src/helper/node/index";
 import { fakeLogger, type RecordingLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 

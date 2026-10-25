@@ -1,6 +1,6 @@
 // Names the native-messaging hosts LabShelf registers and the extension ids allowed to start them.
 import { BRIDGE_HOST_NAME } from "../bridge/index.js";
-import { HELPER_HOST_NAME } from "../writing/helper/index.js";
+import { HELPER_HOST_NAME } from "../helper/index.js";
 
 export interface NativeHostSpec {
   /** The `name` browsers look the host up by. */

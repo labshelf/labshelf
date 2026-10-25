@@ -2,7 +2,7 @@
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
 import { swapSectionPages } from "../../../../../src/latex/build/section/node/index";
-import { diffPages } from "../../../../../src/writing/helper/node/pages/index";
+import { diffPages } from "../../../../../src/helper/node/index";
 
 async function pdfOf(labels: string[]): Promise<Uint8Array> {
   const doc = await PDFDocument.create({ updateMetadata: false });

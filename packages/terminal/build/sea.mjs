@@ -13,7 +13,7 @@ const seaDir = resolve(root, "dist/sea");
 const OS_NAMES = { darwin: "macos", win32: "windows", linux: "linux" };
 const SENTINEL_FUSE = "NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2";
 const SMOKE_TIMEOUT_MS = 20_000;
-const protocolSource = await readFile(resolve(root, "../core/src/writing/helper/helperMessages.ts"), "utf8");
+const protocolSource = await readFile(resolve(root, "../core/src/helper/helperMessages.ts"), "utf8");
 const protocolMatch = protocolSource.match(/^export const PROTOCOL_VERSION = (\d+);$/m);
 if (!protocolMatch) throw new Error("Cannot read the helper protocol version from core");
 const PROTOCOL_VERSION = Number(protocolMatch[1]);

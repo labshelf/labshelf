@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/{managed-tools,helper,native-host}.md, packages/core/src/latex/toolchain/node/managedTex/**, packages/core/src/latex/toolchain/{tinyTex.ts,node/downloadVerified.ts}, packages/core/src/writing/helper/**, packages/core/src/latex/build/node/runCancellable.ts, packages/terminal/installers/**, packages/browser/src/helper/**
+files: documents/contracts/{managed-tools,helper,native-host}.md, packages/core/src/latex/toolchain/node/managedTex/**, packages/core/src/latex/toolchain/{tinyTex.ts,node/downloadVerified.ts}, packages/core/src/helper/**, packages/core/src/latex/build/node/runCancellable.ts, packages/terminal/installers/**, packages/browser/src/helper/**
 source: Explore scout
 
 ## Contracts
@@ -20,7 +20,7 @@ source: Explore scout
 - Callers: terminal/src/cli/build/buildEnvironment.ts, vscode/src/writing/build/node/sharedTex.ts, helper/node/runHelperHost.ts.
 
 ## Handlers
-- dispatch/handlerTypes.ts: HelperHandler(message, send, payload); map keyed by message type. dispatcher.ts runs in arrival order; UNQUEUED = cancel, templateThumbnail.
+- handlers/helperHandlers.ts: HelperHandler(message, send, payload); map keyed by message type. handlers.ts runs in arrival order; UNQUEUED = cancel, templateThumbnail.
 - New `runCell`: add to helperMessages.ts + readToHelper.ts, bump version, factory spread into runHelperHost.ts:51-60 (model: tex/texInstallHandlers.ts), decide queue/UNQUEUED, client in browser/src/helper/client/createNativeLatexHelper.ts + core latexHelper.ts.
 - Streaming: `send` may fire many times per id; ProgressPhase fixed list (helperMessages.ts:28), no cell phase.
 - Cancel: only per-project build (build/buildHandlers.ts:97-122), keyed by projectId, not request id.

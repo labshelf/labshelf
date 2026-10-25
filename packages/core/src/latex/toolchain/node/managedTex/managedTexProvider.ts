@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ILogger } from "../../../../ports/index.js";
-import type { TexStatus } from "../../../../writing/helper/index.js";
+import type { TexStatus } from "../../../../helper/index.js";
 import type { LatexEngine } from "../../../../writing/project/index.js";
 
 import type { TexInstallKind, TexProvider } from "../../index.js";
