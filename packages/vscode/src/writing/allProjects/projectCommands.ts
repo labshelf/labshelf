@@ -1,7 +1,7 @@
 // Lists the project commands the All projects row menu offers and runs the ones the sidebar also allows.
 import * as vscode from "vscode";
 import type { ProjectEntry, ProjectMenuCommand } from "@labshelf/core";
-import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../ui/library/index.js";
+import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../libraryUi/index.js";
 
 const OPEN = "labshelf.writing.openProject";
 const EXTERNAL_ONLY = "labshelf.writing.removeProject";

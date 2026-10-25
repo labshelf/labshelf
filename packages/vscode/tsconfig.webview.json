@@ -15,18 +15,16 @@
     "sourceMap": false
   },
   "include": [
-    "src/reader/**/*",
-    "src/libraryWebview/**/*",
-    "src/detailsWebview/**/*",
-    "src/sidebarWebview/**/*",
+    "src/reader/webview/**/*",
+    "src/spaces/webview/**/*",
+    "src/libraryUi/webview/**/*",
+    "src/libraryUi/details/webview/**/*",
+    "src/webview/**/*",
     "src/writing/templates/webview/**/*",
     "src/writing/search/webview/**/*",
     "src/writing/history/webview/**/*",
     "src/writing/allProjects/webview/**/*",
-    "src/library/syncGuidePanel/webview/**/*",
-    "src/webviewMessaging/**/*",
-    "src/webviewGlobals.d.ts",
-    "src/spaces/webview/**/*",
-    "src/spaces/chat/webview/**/*"
+    "src/library/syncGuide/webview/**/*",
+    "src/webviewGlobals.d.ts"
   ]
 }

@@ -1,5 +1,5 @@
 sha: 0b367695
-files: packages/core/src/ai/**, packages/vscode/src/commands/registerAiCommands.ts
+files: packages/core/src/ai/**, packages/vscode/src/command/registerAiCommands.ts
 source: user product direction, 2026-10-19; repository inspection
 
 # Configure in-app AI providers

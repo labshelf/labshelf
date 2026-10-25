@@ -1,7 +1,7 @@
 // Builds the Spaces webview shell with its initial view and a nonce-based script policy.
 import * as vscode from "vscode";
 import { createNonce, type SpaceTab } from "@labshelf/core";
-import { bundleExists, bundleMissingHtml } from "../../ui/bundleMissing/index.js";
+import { bundleExists, bundleMissingHtml } from "../../ui/index.js";
 
 export interface SpacesView { view: "catalog" | "space"; id?: string; tab?: SpaceTab }
 export const spacesBundleDirectory = (extension: vscode.Uri): vscode.Uri => vscode.Uri.joinPath(extension, "dist", "spaces");

@@ -4,13 +4,14 @@ import * as vscode from "vscode";
 import type { FetchLike, TemplateFile, TemplateManifest } from "@labshelf/core";
 import { sessionLogger } from "../../build/node/index.js";
 import type { ToolchainDeps } from "../../build/toolchain/index.js";
-import { executeSafely } from "../../../commands/index.js";
+import { executeSafely } from "../../../command/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../session/index.js";
 import { createTemplateGallery, type TemplateGalleryDeps } from "../index.js";
 import { detectEngines } from "./engineAvailability.js";
-import { createPublishPorts, registerPublishCommand, type PublishBuilders } from "./publish/index.js";
-import { registerSaveProjectCommand } from "./saveProjectCommand.js";
+import { createPublishPorts, type PublishBuilders } from "./publishPorts.js";
+import { registerPublishCommand } from "./registerPublishCommand.js";
+import { registerSaveProjectCommand } from "./registerTemplateFromProject.js";
 import { createTemplateSources } from "./templateSources.js";
 
 const OPEN_GALLERY_COMMAND = "labshelf.templates.open";

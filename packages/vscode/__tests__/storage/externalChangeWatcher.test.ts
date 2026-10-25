@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 import { libraryLayout } from '@labshelf/core';
-import { ExternalChangeWatcher } from '../../src/storage/data/externalChangeWatcher';
+import { ExternalChangeWatcher } from '../../src/storage/externalChangeWatcher';
 
 const watchers = (vscode as unknown as { _fileWatchers: Array<{ pattern: { base: vscode.Uri; pattern: string }; _fire(kind: string, uri: vscode.Uri): void; dispose: jest.Mock }> })._fileWatchers;
 

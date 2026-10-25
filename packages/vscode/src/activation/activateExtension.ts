@@ -3,19 +3,23 @@ import * as vscode from "vscode";
 
 import { createSelectionHub, libraryLayout, type AiService } from "@labshelf/core";
 import { resolveLibraryRoot } from "../storage/paths/index.js";
-import { migrateLibraryRootFromGlobalState } from "../storage/migrations/index.js";
-import { createSelectionSources, type DetailsView } from "../details/index.js";
-import { ListWebviewPanel } from "../ui/list/index.js";
-import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../commands/index.js";
-import { createLibraryEvents, type LibraryEvents } from "../events/index.js";
+import { migrateLibraryRootFromGlobalState } from "../storage/index.js";
+import { createSelectionSources, type DetailsView } from "../libraryUi/details/index.js";
+import { ListWebviewPanel } from "../libraryUi/index.js";
+import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
+import { createLibraryEvents, type LibraryEvents } from "../library/index.js";
 import { ConflictHandling, registerConflictCommand, registerSyncGuideCommand } from "../library/index.js";
 import type { ExtensionPlatform } from "./extensionPlatform.js";
-import { ExternalChangeHandling, LibraryRootController } from "./libraryLifecycle/index.js";
-import {
-  openLibraryLogger, registerLibraryCommands, registerLibrarySidebar, registerPanelCommands, registerSettingsMenu, registerWritingView,
-} from "./registration/index.js";
+import { ExternalChangeHandling } from "./externalChangeHandling.js";
+import { LibraryRootController } from "./libraryRootController.js";
+import { openLibraryLogger } from "./openLibraryLogger.js";
+import { registerLibraryCommands } from "./registerLibraryCommands.js";
+import { registerLibrarySidebar } from "./registerLibrarySidebar.js";
+import { registerPanelCommands } from "./registerPanelCommands.js";
+import { registerSettingsMenu } from "./registerSettingsMenu.js";
+import { registerWritingView } from "./registerWritingView.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
-import { startAiService } from "./serviceComposition/index.js";
+import { startAiService } from "./startAiService.js";
 
 export async function activateExtension(context: vscode.ExtensionContext, platform: ExtensionPlatform): Promise<void> {
   const { adapters } = platform;

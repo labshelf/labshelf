@@ -1,7 +1,7 @@
 // Types the notifications a build sends to whoever shows its result: when a compile starts and how it finished.
 import type { LatexBuildResult } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 
 export type BuildTrigger = "command" | "save" | "focus";
 

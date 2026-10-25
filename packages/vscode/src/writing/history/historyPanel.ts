@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { parseHistoryMessage, type DiffLine, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger } from "@labshelf/core";
 import { labshelfTabIcon } from "../../ui/index.js";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import { historyBundleDirectory, historyHtml } from "./historyHtml.js";
 
 /** What the panel reads and changes in a project's history. */

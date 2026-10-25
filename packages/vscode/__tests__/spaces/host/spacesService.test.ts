@@ -1,8 +1,8 @@
 // Verifies the VS Code Spaces host lifecycle and export destination.
 import * as vscode from 'vscode';
 import { SpaceStore, type ILogger, type ProjectLibraryPort } from '@labshelf/core';
-import type { ActiveServices } from '../../../src/commands/index.js';
-import type { LibraryRootController } from '../../../src/activation/libraryLifecycle/index.js';
+import type { ActiveServices } from '../../../src/command/index.js';
+import type { LibraryRootController } from '../../../src/activation/index.js';
 import { SpacesService } from '../../../src/spaces/host/index.js';
 
 const logger = { log: jest.fn(), error: jest.fn() } as unknown as ILogger;

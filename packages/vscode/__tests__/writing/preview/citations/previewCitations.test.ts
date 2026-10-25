@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 
 import { sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
 import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
-import type { SynctexLookup } from "../../../../src/writing/preview/sourceLinks";
+import type { SynctexLookup } from "../../../../src/writing/preview/synctex";
 import { fakeLogger } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), sourceAt: jest.fn() }));

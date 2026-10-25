@@ -1,7 +1,7 @@
 // Registers the commands that install native hosts and refreshes the installed launchers.
 import * as vscode from "vscode";
 
-import type { HostAdapters } from "../../serviceComposition/index.js";
+import type { HostAdapters } from "../../hostAdapters.js";
 import { buildLatexForBrowser } from "./buildLatexForBrowser.js";
 import { connectBrowser } from "./connectBrowser.js";
 import { refreshNativeHosts } from "./refreshNativeHosts.js";

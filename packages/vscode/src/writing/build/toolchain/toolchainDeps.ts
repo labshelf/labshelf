@@ -1,8 +1,8 @@
 // Declares what the toolchain setup and the engine save need from the extension, and writes the chosen engine to labshelf.yaml.
 import type { LatexEngine } from "@labshelf/core";
 import type { ToolchainDeps as CoreToolchainDeps } from "@labshelf/core/node";
-import { executeSafely } from "../../../commands/index.js";
-import type { ReadyProject } from "../../mainDocument.js";
+import { executeSafely } from "../../../command/index.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 
 export interface ToolchainDeps {

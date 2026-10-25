@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import { texLiveGuideUrl, type LatexToolchain, type ToolchainMissing } from "@labshelf/core";
 import { ensureToolchain as ensureCoreToolchain } from "@labshelf/core/node";
-import { executeSafely } from "../../../commands/index.js";
-import type { ReadyProject } from "../../mainDocument.js";
+import { executeSafely } from "../../../command/index.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import { vscodeToolchainPrompt, type ToolchainDeps } from "../toolchain/index.js";
 
 const OPEN_GUIDE = "Open install guide";

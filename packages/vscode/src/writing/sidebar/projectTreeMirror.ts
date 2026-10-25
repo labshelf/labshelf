@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, IconName, ProjectTreeView, SidebarOpenProject, SidebarProjectTree, SidebarTreeNode } from "@labshelf/core";
-import type { ProjectTreeMessage } from "../../ui/library/index.js";
+import type { ProjectTreeMessage } from "../../libraryUi/index.js";
 import type { ProjectSession } from "../session/index.js";
 import { walkTree, type ProjectTreeMenuEntry } from "./projectTreeWalk.js";
 

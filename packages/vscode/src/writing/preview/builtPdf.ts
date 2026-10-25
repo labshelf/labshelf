@@ -1,6 +1,6 @@
 // Finds the PDF the preview shows for a root: for LaTeX the one its last successful build left next to the root file, for Typst the last live compile.
 import { builtPdfPath, typstPreviewPdf } from "@labshelf/core";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
 
 /** The PDF's path, or `undefined` when there is no root or it has not been built. */

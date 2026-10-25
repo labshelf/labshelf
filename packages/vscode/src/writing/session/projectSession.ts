@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
 import { BUILD_COMMAND } from "../build/index.js";
-import { owningProject, type ReadyProject } from "../mainDocument.js";
-import { openProjectMain } from "./openProjectMain.js";
+import { owningProject, type ReadyProject } from "../buildRootDocument.js";
+import { openProjectMain } from "./openBuildRoot.js";
 import { builtPdf } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "./projectStore.js";
 

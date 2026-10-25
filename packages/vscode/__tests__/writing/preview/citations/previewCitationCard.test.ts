@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 
 import { BIBLIOGRAPHY_HEADER, sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
 import { lookupCitation, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
-import type { SynctexLookup } from "../../../../src/writing/preview/sourceLinks";
+import type { SynctexLookup } from "../../../../src/writing/preview/synctex";
 import { fakeDocument } from "../../../support/textDocument";
 import { fakeLogger } from "../../../support/writingFixtures";
 

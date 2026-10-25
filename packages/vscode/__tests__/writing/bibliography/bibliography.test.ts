@@ -2,9 +2,9 @@
 import * as vscode from "vscode";
 
 import { BIBLIOGRAPHY_HEADER, publishedVersionLookup, type RegistryEnv } from "@labshelf/core";
-import { BibCodeActions } from "../../../src/writing/bibliography/bibCodeActions";
-import { BibDiagnostics } from "../../../src/writing/bibliography/bibDiagnostics";
-import { registerBibliographyLint } from "../../../src/writing/bibliography/registerBibliographyLint";
+import { BibCodeActions } from "../../../src/writing/bibliography/bibliographyCodeActions";
+import { BibDiagnostics } from "../../../src/writing/bibliography/bibliographyProblems";
+import { registerBibliographyLint } from "../../../src/writing/bibliography/registerBibliographyCheck";
 
 const ARXIV = "https://export.arxiv.org/api/query?id_list=1706.03762";
 const PUBLISHED_DOI = "10.5555/3295222.3295349";

@@ -1,8 +1,8 @@
 // Maintains Spaces services for the active VS Code library root.
 import * as vscode from 'vscode';
 import { SpaceStore, type ChecklistReader, type ILogger, type PathOps, type ProjectLibraryPort, type SpacesHostPort } from '@labshelf/core';
-import type { LibraryRootController } from '../../activation/libraryLifecycle/index.js';
-import type { ActiveServices } from '../../commands/index.js';
+import type { LibraryRootController } from '../../activation/index.js';
+import type { ActiveServices } from '../../command/index.js';
 import { createSpacesHostPort } from './spacesHostPort.js';
 
 export interface ActiveSpaces {

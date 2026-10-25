@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { listVersions } from "@labshelf/core";
 import { buildMarkedUpDiff, comparePdfs, findExecutable } from "@labshelf/core/node";
-import { ReaderPanel } from "../../../../src/pdf-viewer";
+import { ReaderPanel } from "../../../../src/reader";
 import { ensureToolchain } from "../../../../src/writing/build/node";
 import { COMPARE_VERSIONS_COMMAND, registerCompareVersionsCommand } from "../../../../src/writing/versions/node";
 import { builtPdf } from "../../../../src/writing/preview";
@@ -15,7 +15,7 @@ jest.mock("@labshelf/core/node", () => ({
   buildMarkedUpDiff: jest.fn(), comparePdfs: jest.fn(), findExecutable: jest.fn(),
 }));
 jest.mock("../../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
-jest.mock("../../../../src/pdf-viewer", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
+jest.mock("../../../../src/reader", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 jest.mock("../../../../src/writing/build/node", () => ({ ...jest.requireActual("../../../../src/writing/build/node"), ensureToolchain: jest.fn() }));
 
 const compare = comparePdfs as jest.Mock;

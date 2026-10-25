@@ -2,9 +2,9 @@
 import * as vscode from "vscode";
 
 import { PROJECT_FILE, projectFileWithId, updateProjectFile, type ProjectEntry, type TemplateFile } from "@labshelf/core";
-import { executeSafely } from "../commands/index.js";
-import { projectZipEntries } from "./export/index.js";
-import type { ReadyProject } from "./mainDocument.js";
+import { executeSafely } from "../command/index.js";
+import { projectZipEntries } from "./exportBundle.js";
+import type { ReadyProject } from "./buildRootDocument.js";
 import { OPEN_PROJECT_COMMAND, type WritingHost, type WritingProjects } from "./session/index.js";
 
 interface ItemCommandsDeps {

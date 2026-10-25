@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { LATEX_ENGINES, engineLabel, type LatexEngine } from "@labshelf/core";
-import { owningProject } from "../../mainDocument.js";
+import { owningProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { saveEngine } from "./toolchainDeps.js";
 

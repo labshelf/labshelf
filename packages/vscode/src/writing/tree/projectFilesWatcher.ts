@@ -1,7 +1,7 @@
 // Refreshes a view when files matching a glob appear in or leave the open project's folder outside the view.
 import * as vscode from "vscode";
 
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectSession } from "../session/index.js";
 import { projectFolderUri } from "./projectFilesProvider.js";
 

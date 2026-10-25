@@ -6,7 +6,8 @@ import { LOG_MODULE } from "./relayAccounts.js";
 import { relayAccountDeps } from "./relayAccountDeps.js";
 import { lazyProgress } from "./relayProgress.js";
 import { reportRelayFailure } from "./relayFailure.js";
-import { LoopbackUnavailableError, signInToCloudflare } from "./signIn/index.js";
+import { LoopbackUnavailableError } from "./oauthCallback.js";
+import { signInToCloudflare } from "./cloudflareSignIn.js";
 
 export const CONNECT_RELAY_COMMAND = "labshelf.relay.connect";
 const TOKEN_PAGE = "https://dash.cloudflare.com/profile/api-tokens";

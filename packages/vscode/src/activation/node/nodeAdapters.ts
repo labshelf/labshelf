@@ -7,11 +7,11 @@ import {
   NodeLibraryFileSystem, NodePdfOpener, convertWithPandoc, createNodeSidecarPort, deviceLocalLayout, openAiStorage, resolveConflictCopy, resolveProjectConflictCopy,
   scanLibraryConflicts, createProjectSaveTracking,
 } from "@labshelf/core/node";
-import { createExtensionLogger } from "../../core/node/index.js";
-import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "../../pdf/node/index.js";
-import { locatePdfjs } from "../../pdf-viewer/node/index.js";
+import { createExtensionLogger } from "../../logging/node/index.js";
+import { createOcrEngine, createTextLayerBuilder, hostPdfjs } from "../../reader/node/index.js";
+import { locatePdfjs } from "../../reader/node/index.js";
 import { nodeSharedLibraryConfig } from "../../storage/node/index.js";
-import type { HostAdapters } from "../serviceComposition/index.js";
+import type { HostAdapters } from "../hostAdapters.js";
 
 export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapters {
   const fs = new NodeLibraryFileSystem();

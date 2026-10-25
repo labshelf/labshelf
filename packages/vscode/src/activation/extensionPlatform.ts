@@ -2,9 +2,9 @@
 import type * as vscode from "vscode";
 
 import type { WritingProjects } from "../writing/index.js";
-import type { RegisterPlatformWriting } from "../writing/platformPort/index.js";
-import type { LibraryRootController } from "./libraryLifecycle/index.js";
-import type { HostAdapters } from "./serviceComposition/index.js";
+import type { RegisterPlatformWriting } from "../writing/index.js";
+import type { LibraryRootController } from "./libraryRootController.js";
+import type { HostAdapters } from "./hostAdapters.js";
 
 export interface ExtensionPlatform {
   adapters: HostAdapters;

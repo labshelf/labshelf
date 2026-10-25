@@ -7,7 +7,7 @@ import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import type { SharedEditors } from "./editors/index.js";
 import { type ActiveShares, connectDesktopShare, deleteShareState, ShareKeys } from "./session/index.js";
-import { userName } from "./userName.js";
+import { userName } from "./deviceUser.js";
 
 export interface CollabPortsDeps {
   secrets: vscode.SecretStorage;

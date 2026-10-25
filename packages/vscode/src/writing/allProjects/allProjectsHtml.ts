@@ -1,7 +1,7 @@
 // Builds the All projects page's HTML shell: a strict CSP (the bundle's script by nonce, styles and fonts only from the extension) and the mount point.
 import * as vscode from "vscode";
 import { createNonce } from "@labshelf/core";
-import { bundleExists, bundleMissingHtml } from "../../ui/bundleMissing/index.js";
+import { bundleExists, bundleMissingHtml } from "../../ui/index.js";
 
 /** <extension>/dist/projects, for localResourceRoots. */
 export function allProjectsBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {

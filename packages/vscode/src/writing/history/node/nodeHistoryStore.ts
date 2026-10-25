@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { historyDiff, historyRows, recordSnapshot, restoreSnapshot, type DiffLine, type HistoryKind, type ILogger } from "@labshelf/core";
 import { nodeHistoryTarget } from "@labshelf/core/node";
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { ProjectHistoryStore } from "../historyPanel.js";
 
 export class NodeHistoryStore implements ProjectHistoryStore {

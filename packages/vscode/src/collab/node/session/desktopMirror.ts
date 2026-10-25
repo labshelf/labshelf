@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import * as path from "node:path";
 import { contentConflictMessage, leasedMirrorFactory, readConflictDismissals, type ILogger, type MirrorFactory } from "@labshelf/core";
 import { conflictDismissalFile, createDeviceIdentity, deviceLocalLayout, mergeText, NodeLibraryFileSystem, nodeMirrorDisk } from "@labshelf/core/node";
-import { watchConflictDismissals } from './conflicts/index.js';
+import { watchConflictDismissals } from "./dismissalWatch.js";
 
 export function desktopMirrorFactory(libraryRoot: string, logger: ILogger, isEditorOwned: (folder: string, path: string) => boolean): MirrorFactory {
   const candidates = new Map<string, Set<string>>();

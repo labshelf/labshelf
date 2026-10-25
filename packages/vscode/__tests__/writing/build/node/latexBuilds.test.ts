@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { BuildDiagnostics } from "../../../../src/writing/build/buildDiagnostics";
+import { BuildDiagnostics } from "../../../../src/writing/build/buildProblems";
 import { LatexBuilds } from "../../../../src/writing/build/node/latexBuilds";
 import { reportToolchainMissing } from "../../../../src/writing/build/node/ensureToolchain";
 import { fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";

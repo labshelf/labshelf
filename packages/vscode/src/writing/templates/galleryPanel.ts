@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { createGalleryHost, createPublishHost, type GalleryHost, type GalleryHostDeps } from "@labshelf/core";
 import { labshelfTabIcon } from "../../ui/index.js";
 import { galleryBundleDirectory, galleryHtml } from "./galleryHtml.js";
-import { askProjectTitle } from "./projectTitlePrompt.js";
+import { askProjectTitle } from "./askProjectTitle.js";
 import type { TemplateGalleryDeps } from "./index.js";
 
 export class GalleryPanel {

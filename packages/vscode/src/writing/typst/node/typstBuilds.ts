@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import type { ProjectEntry } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
 import { buildProject, type ProjectBuildDeps, type ProjectBuildQueue } from "@labshelf/core/node";
-import type { ReadyProject } from "../../mainDocument.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { recordTypstVersion, type TypstTrigger } from "../index.js";

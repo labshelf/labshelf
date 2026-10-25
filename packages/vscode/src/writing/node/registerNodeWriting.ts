@@ -1,11 +1,11 @@
 // Registers the Writing commands and builds that need Node: figures, external project folders, LaTeX and Typst builds, checks, version compare, the project history and the template gallery.
 import * as vscode from "vscode";
 
-import { hostPdfjs } from "../../pdf/node/index.js";
+import { hostPdfjs } from "../../reader/node/index.js";
 import { createVscodeTex, registerLatexBuild } from "../build/node/index.js";
 import { registerCheckCommand } from "../check/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
-import type { RegisterPlatformWriting } from "../platformPort/index.js";
+import type { RegisterPlatformWriting } from "../platformWritingPort.js";
 import { registerTemplates } from "../templates/node/index.js";
 import { registerTypstLanguage } from "../typst/language/index.js";
 import { registerTypstBuild } from "../typst/node/index.js";

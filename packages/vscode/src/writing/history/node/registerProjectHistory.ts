@@ -2,13 +2,13 @@
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
-import { executeSafely } from "../../../commands/index.js";
+import { executeSafely } from "../../../command/index.js";
 import { activeProject } from "../../build/index.js";
-import { owningProject, type ReadyProject } from "../../mainDocument.js";
+import { owningProject, type ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { HistoryPanel } from "../historyPanel.js";
 import { NodeHistoryStore } from "./nodeHistoryStore.js";
-import type { ProjectHistoryRecorder } from "../../platformPort/index.js";
+import type { ProjectHistoryRecorder } from "../../platformWritingPort.js";
 
 const SHOW_HISTORY_COMMAND = "labshelf.writing.showHistory";
 /** Save All writes several files at once; one snapshot covers them. */

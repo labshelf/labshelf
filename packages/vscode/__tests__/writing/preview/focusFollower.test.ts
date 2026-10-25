@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { FocusFollower } from "../../../src/writing/preview/focusFollower";
 import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
-import type { ReadyProject } from "../../../src/writing/mainDocument";
+import type { ReadyProject } from "../../../src/writing/buildRootDocument";
 
 const paper = readyEntry("/p/paper") as ReadyProject;
 const other = readyEntry("/p/other") as ReadyProject;

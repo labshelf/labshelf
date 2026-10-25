@@ -1,11 +1,11 @@
 // Describes what a build preview needs from its host and names the paper a preview reader opens.
 import type { Annotation, LatexEngine, PaperRecord, PathOps, ProjectDataPort } from "@labshelf/core";
-import type { ReaderPanelDeps } from "../../pdf-viewer/index.js";
+import type { ReaderPanelDeps } from "../../reader/index.js";
 import type { UriOfPath } from "../../storage/index.js";
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import type { IncludeOnlyState } from "../build/index.js";
-import type { CitationFixDeps } from "./citationFixes/index.js";
-import type { BuildRootOf } from "../platformPort/index.js";
+import type { CitationFixDeps } from "./citations/index.js";
+import type { BuildRootOf } from "../platformWritingPort.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { CheckCounts } from "./limits/index.js";
 

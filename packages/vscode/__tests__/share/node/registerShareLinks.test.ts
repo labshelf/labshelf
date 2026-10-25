@@ -1,10 +1,10 @@
 /** The share-link palette commands open their sharing dialog, with a Library view folder mapped to its library path. */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { sharingWebviews } from '../../../src/sharing/index';
+import { sharingWebviews } from '../../../src/share/index';
 import { registerShareLinks } from '../../../src/share/node/registerShareLinks';
 
-jest.mock('../../../src/sharing/index', () => ({ sharingWebviews: { open: jest.fn(async () => undefined) } }));
+jest.mock('../../../src/share/shareWebviews', () => ({ sharingWebviews: { open: jest.fn(async () => undefined) } }));
 
 const papersRoot = path.join(path.sep, 'lib', 'papers');
 const services = { mutations: { papersRoot, paths: { sep: path.sep, join: path.join } } };

@@ -6,8 +6,8 @@ import {
   type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type TypstCite,
 } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import type { SynctexLookup } from "../sourceLinks/index.js";
-import { cardDetails, warn } from "./citationCardDetails.js";
+import type { SynctexLookup } from "../synctex/index.js";
+import { cardDetails, warn } from "./citationCardFacts.js";
 import { citingSites, type CitingSite } from "./citingCommands.js";
 import { sourceLineAt, type LocatedSourceLine } from "./sourceLineAt.js";
 

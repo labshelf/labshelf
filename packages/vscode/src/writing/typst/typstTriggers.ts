@@ -2,9 +2,9 @@
 import { buildRootOf } from "@labshelf/core";
 import * as vscode from "vscode";
 
-import { autoCompileGate } from "../build/options/index.js";
+import { autoCompileGate } from "../build/index.js";
 import type { BuildTrigger } from "../build/index.js";
-import { owningProject, type ReadyProject } from "../mainDocument.js";
+import { owningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 
 /** "live" compiles unsaved text for the preview only; the others write `<root>.pdf` from the saved files. */

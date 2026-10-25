@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { runFigureCommand } from "@labshelf/core/node";
 import type { ILogger, FigureRunResult } from "@labshelf/core";
-import { executeSafely } from "../../../commands/index.js";
+import { executeSafely } from "../../../command/index.js";
 import type { WritingHost } from "../../session/index.js";
 import { confirmFigureCommand } from "../figureConsent.js";
 import type { FigureNode } from "../figureNode.js";

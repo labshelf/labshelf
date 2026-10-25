@@ -3,3 +3,4 @@ export { ActiveShares } from "./activeShares.js";
 export { connectDesktopShare } from "./shareConnection.js";
 export { ShareKeys } from "./shareKeys.js";
 export { deleteShareState } from "./shareState.js";
+export { watchConflictDismissals } from './dismissalWatch.js';

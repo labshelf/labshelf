@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
-import { executeSafely } from "../../commands/index.js";
+import { executeSafely } from "../../command/index.js";
 import { ProjectSession, type ProjectSessionDeps } from "./projectSession.js";
 
 export const OPEN_PROJECT_COMMAND = "labshelf.writing.openProject";

@@ -18,7 +18,7 @@ source: Explore scout
 
 ## Review comments / suggestions
 - previewRequests.ts:50 `{command:"addReviewComment",point,quote,note}`; validator :92. askComment.ts:56 posts it; host/previewMessages.ts:92 -> port host/ports.ts:58.
-- Only vscode implements: vscode/src/writing/preview/sourceLinks/addReviewComment.ts:12-30 maps page point -> source file/line via SyncTeX (`sourceAt`), then `addSourceComment` (vscode/src/collab/comments/sourceCommentCommand.ts:10) = an ordinary thread in comments.json/share (no separate storage). No LaTeX "suggestion"/tracked-change feature found.
+- Only vscode implements: vscode/src/writing/preview/synctex/addPreviewComment.ts:12-30 maps page point -> source file/line via SyncTeX (`sourceAt`), then `addSourceComment` (vscode/src/collab/comments/sourceCommentCommand.ts:10) = an ordinary thread in comments.json/share (no separate storage). No LaTeX "suggestion"/tracked-change feature found.
 - Browser: no addReviewComment port.
 
 ## Comment UI

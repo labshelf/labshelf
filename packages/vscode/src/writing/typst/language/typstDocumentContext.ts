@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { ILogger } from "@labshelf/core";
 import { createTypstLanguageService, type TypstLanguageService } from "@labshelf/core/typst/language";
 
-import { owningProject } from "../../mainDocument.js";
+import { owningProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import { createTypstSources } from "./typstSources.js";
 

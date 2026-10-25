@@ -18,7 +18,7 @@ source: Explore scout
 ## Bundling and CSP
 - VS Code webviews: `packages/vscode/build/webviews.mjs` `BUNDLES` map (lines 10-21), one esbuild call, esm, no splitting. Host keeps core deps external (`build/host.mjs:18,30`).
 - Browser: `packages/browser/build/build.mjs` `ENTRIES` (lines 14-30), library page splits chunks; CSS imported as text.
-- CSP: list/library/details webviews `style-src ${cspSource}` with no unsafe-inline, no wasm (`vscode/src/ui/list/listPanelHtml.ts:28`). Reader webview allows `'unsafe-inline'` styles and wasm (`pdf-viewer/renderer/readerDocument.ts:24`). Browser `script-src 'self' 'wasm-unsafe-eval'` (`manifest.chrome.json:72-73`).
+- CSP: list/library/details webviews `style-src ${cspSource}` with no unsafe-inline, no wasm (`vscode/src/libraryUi/listPanelHtml.ts:28`). Reader webview allows `'unsafe-inline'` styles and wasm (`pdf-viewer/renderer/readerDocument.ts:24`). Browser `script-src 'self' 'wasm-unsafe-eval'` (`manifest.chrome.json:72-73`).
 
 ## Risks
 - MathJax SVG and ProseMirror carry `style=` attributes: check against webviews whose CSP forbids inline styles.

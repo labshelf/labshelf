@@ -12,7 +12,7 @@ source: Explore scout
 - positioned/notes.ts: disabled "New note", empty "Space notes"/"Paper notes" groups.
 - positioned/discussions.ts: disabled Topics/Decisions/Tasks, "New topic", search; empty list and thread.
 - Tabs: dom/frame/mountSpace.ts:20-40 (tab persisted via onTab).
-- dom/chat/index.ts: mountResearchChat static UI, readonly textarea, nothing stored or persisted. Styles research-chat.css. Mounted at browser/src/library-page/details/rightPane.ts:9 and vscode/src/spaces/chat/webview/main.ts:9.
+- dom/chat/index.ts: mountResearchChat static UI, readonly textarea, nothing stored or persisted. Styles research-chat.css. Mounted at browser/src/library-page/details/rightPane.ts:9 and vscode/src/spaces/webview/researchChatEntry.ts:9.
 - ideas/spaces.md:7-9 chat is private, persistence waits on plans/ai-embedded. :13-21 notes hide storage format; "Share in Space" puts a paper note or highlight into the Space (personal by default). :23-29 Discussions = topics with messages, summary, Open/Resolved; mockup only. :77-78 "Notes need a format, a library location and explicit sharing rules." :58 cites `notes/dropout.qmd#fig-curves`.
 
 ## Collaboration

@@ -1,7 +1,7 @@
 // Remembers whether the last build of each project folder succeeded, and when, for the session.
 import * as vscode from "vscode";
 
-import type { ReadyProject } from "../mainDocument.js";
+import type { ReadyProject } from "../buildRootDocument.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "./buildListener.js";
 
 export interface BuildOutcome { ok: boolean; at: Date }

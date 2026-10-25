@@ -1,7 +1,7 @@
 // Binds Spaces page actions to VS Code dialogs and commands.
 import * as vscode from 'vscode';
 import { buildSpaceProjectInfos, type ChecklistReader, type ILogger, type ProjectLibraryPort, type SpacesHostPort } from '@labshelf/core';
-import type { ActiveServices } from '../../commands/index.js';
+import type { ActiveServices } from '../../command/index.js';
 
 export interface SpacesPortOptions {
   services: ActiveServices;

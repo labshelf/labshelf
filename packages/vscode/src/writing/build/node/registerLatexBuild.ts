@@ -4,9 +4,10 @@ import type * as vscode from "vscode";
 
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../../preview/index.js";
-import type { BuildDiagnostics } from "../buildDiagnostics.js";
-import type { IncludeOnlyTarget } from "../options/index.js";
-import { registerLatexSaveBuilds, registerLatexTypingSaves } from "../triggers/index.js";
+import type { BuildDiagnostics } from "../buildProblems.js";
+import type { IncludeOnlyTarget } from "../includeOnly.js";
+import { registerLatexSaveBuilds } from "../latexWriteBuilds.js";
+import { registerLatexTypingSaves } from "../latexTypingWrites.js";
 import { LatexBuilds } from "./latexBuilds.js";
 import { projectBuildDeps } from "./projectBuildDeps.js";
 
