@@ -1,7 +1,7 @@
 // Renders search, sorting and category filters for the template gallery.
 import { renderIcon } from "../../ui/index.js";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
-import { TEMPLATE_CATEGORIES, type TemplateCategory } from "../templateManifest/index.js";
+import { TEMPLATE_CATEGORIES, type TemplateKind } from "../templateManifest/index.js";
 import { CATEGORY_LABELS } from "../templateLabels.js";
 import type { TemplateSort } from "../orderTemplates.js";
 import type { GalleryState } from "./galleryState.js";
@@ -10,7 +10,7 @@ export interface FacetBar {
   element: HTMLElement;
 }
 
-type Choice = TemplateCategory | undefined;
+type Choice = TemplateKind | undefined;
 const CHOICES: readonly Choice[] = [undefined, ...TEMPLATE_CATEGORIES];
 
 function buildSearch(onQuery: (query: string) => void): HTMLElement {

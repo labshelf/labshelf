@@ -11,7 +11,7 @@ function slug(name: string, maxLength: number): string {
 }
 
 /** The id for a Space named `name`; `existing` holds the folder names already in spaces/. */
-export function spaceIdFromName(name: string, existing: ReadonlySet<string>): string {
+export function deriveSpaceId(name: string, existing: ReadonlySet<string>): string {
   const base = slug(name, MAX_SPACE_ID_LENGTH) || EMPTY_SPACE_ID;
   if (!existing.has(base)) { return base; }
   for (let n = 2; ; n += 1) {
@@ -25,7 +25,7 @@ type FillRandom = (bytes: Uint8Array<ArrayBuffer>) => void;
 const cryptoFill: FillRandom = (bytes) => { crypto.getRandomValues(bytes); };
 
 /** A random 8-hex-character id not in `existing`; `fill` is injectable so tests can force a collision. */
-export function newShortId(existing: ReadonlySet<string>, fill: FillRandom = cryptoFill): string {
+export function createEntryId(existing: ReadonlySet<string>, fill: FillRandom = cryptoFill): string {
   for (;;) {
     const bytes = new Uint8Array(4);
     fill(bytes);

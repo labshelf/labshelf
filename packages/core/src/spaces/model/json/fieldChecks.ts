@@ -1,5 +1,5 @@
 // Checks the type of one field read from a synced JSON file.
-export function isRecord(value: unknown): value is Record<string, unknown> {
+export function isJsonObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
@@ -14,4 +14,4 @@ export function isDay(value: unknown): value is string {
   return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value;
 }
 export const isPage = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 1;
-export const isIdList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isNonEmptyString);
+export const isNonEmptyStringList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isNonEmptyString);

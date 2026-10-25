@@ -1,7 +1,7 @@
 // Trades an authorization code or a refresh token for Cloudflare tokens at the OAuth token endpoint, logging without secrets.
 import type { ILogger } from "../../ports/index.js";
 import { CLOUDFLARE_CLIENT_ID, CLOUDFLARE_REDIRECT_URI, CLOUDFLARE_TOKEN_URL } from "./oauthClient.js";
-import { CloudflareOAuthError } from "./oauthError.js";
+import { CloudflareOauthError } from "./oauthError.js";
 
 const LOG_MODULE = "relay.deploy";
 
@@ -34,7 +34,7 @@ async function requestTokens(options: TokenRequestOptions, grant: string, fields
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     await logger.log("ERROR", LOG_MODULE, "Cloudflare token endpoint unreachable", { grant, error: reason });
-    throw new CloudflareOAuthError("unreachable", reason);
+    throw new CloudflareOauthError("unreachable", reason);
   }
   const parsed = await readJson(response);
   const tokens = response.ok ? tokensOf(parsed, options.now()) : undefined;
@@ -42,7 +42,7 @@ async function requestTokens(options: TokenRequestOptions, grant: string, fields
     const code = typeof parsed.error === "string" ? parsed.error : "bad_response";
     const detail = typeof parsed.error_description === "string" ? parsed.error_description : `HTTP ${response.status}`;
     await logger.log("ERROR", LOG_MODULE, "Cloudflare refused the token request", { grant, status: response.status, code, detail });
-    throw new CloudflareOAuthError(code, detail);
+    throw new CloudflareOauthError(code, detail);
   }
   await logger.log("INFO", LOG_MODULE, "Cloudflare issued tokens", { grant, expiresAt: new Date(tokens.expiresAt).toISOString() });
   return tokens;

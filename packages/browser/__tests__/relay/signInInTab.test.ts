@@ -1,5 +1,5 @@
 // Cloudflare sign-in in a watched tab: the redirect match, cancellation, timeout and the stored tokens.
-import { CloudflareOAuthError, CLOUDFLARE_REDIRECT_URI, type ILogger, type RelayAccountStore, type SecretSlot } from "@labshelf/core";
+import { CloudflareOauthError, CLOUDFLARE_REDIRECT_URI, type ILogger, type RelayAccountStore, type StoredSecret } from "@labshelf/core";
 
 type UpdatedListener = (tabId: number, change: { url?: string }, tab: { id?: number; url?: string }) => void;
 type RemovedListener = (tabId: number) => void;
@@ -35,8 +35,8 @@ import { RelaySignInCancelledError, signInInTab } from "../../src/relay";
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
 
-function memorySlot(): SecretSlot & { value?: string } {
-  const slot: SecretSlot & { value?: string } = {
+function memorySlot(): StoredSecret & { value?: string } {
+  const slot: StoredSecret & { value?: string } = {
     get: async () => slot.value,
     store: async (value) => { slot.value = value; },
     delete: async () => { delete slot.value; },
@@ -141,7 +141,7 @@ it("surfaces Cloudflare's refusal with the right state", async () => {
   await watching();
   navigate(TAB_ID, `${CLOUDFLARE_REDIRECT_URI}?error=access_denied&state=${stateOf()}`);
   const error = await done.catch((e: unknown) => e);
-  expect(error).toBeInstanceOf(CloudflareOAuthError);
+  expect(error).toBeInstanceOf(CloudflareOauthError);
   expect(error).toMatchObject({ code: "access_denied" });
   expect(tokenFetch).not.toHaveBeenCalled();
 });

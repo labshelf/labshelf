@@ -1,14 +1,14 @@
 // Opens the owner's Cloudflare connection, kept in VS Code's SecretStorage.
 import type * as vscode from "vscode";
 
-import { createRelayAccountStore, createStoredLock, type ILogger, type RelayAccountStore, type SecretSlot, systemRelayClock } from "@labshelf/core";
+import { createRelayAccountStore, createStoredLock, type ILogger, type RelayAccountStore, type StoredSecret, systemRelayClock } from "@labshelf/core";
 
 export const LOG_MODULE = "relay";
 const ACCOUNT_SECRET = "labshelf.relay.account";
 const OAUTH_TOKENS_SECRET = "labshelf.relay.cloudflareTokens";
 const REFRESH_LOCK_SECRET = "labshelf.relay.cloudflareRefreshLock";
 
-function slot(secrets: vscode.SecretStorage, name: string): SecretSlot {
+function slot(secrets: vscode.SecretStorage, name: string): StoredSecret {
   return {
     get: async () => secrets.get(name),
     store: async (value) => secrets.store(name, value),

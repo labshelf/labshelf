@@ -1,5 +1,5 @@
 /** Pins the token refresh: rotation stored before the access token is used, a refused refresh surfaced, one refresh at a time. */
-import { CloudflareOAuthError, createCloudflareSession, createStoredLock, type SecretSlot } from "../../../src/relay/index";
+import { CloudflareOauthError, createCloudflareSession, createStoredLock, type StoredSecret } from "../../../src/relay/index";
 import { recordingLogger } from "../client/fakeCloudflare";
 import { fakeClock, fakeOAuthServer, memorySlot } from "./fakeOAuthServer";
 
@@ -12,7 +12,7 @@ function signedIn(server: Server, clock: Clock) {
   return memorySlot(JSON.stringify({ accessToken: "access-0", refreshToken: "refresh-0", expiresAt: clock.now() - 1 }));
 }
 
-function session(server: Server, clock: Clock, tokens: SecretSlot, lockSlot = memorySlot()) {
+function session(server: Server, clock: Clock, tokens: StoredSecret, lockSlot = memorySlot()) {
   const logger = recordingLogger();
   return { logger, session: createCloudflareSession({ tokens, lock: createStoredLock(lockSlot, clock), fetch: server.fetch, logger, clock }) };
 }
@@ -50,7 +50,7 @@ describe("createCloudflareSession", () => {
     const tokens = memorySlot(JSON.stringify({ accessToken: "access-0", refreshToken: "stale", expiresAt: clock.now() - 1 }));
     const { session: s, logger } = session(server, clock, tokens);
     const failure = await s.accessToken().catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(CloudflareOAuthError);
+    expect(failure).toBeInstanceOf(CloudflareOauthError);
     expect(failure).toMatchObject({ code: "invalid_grant" });
     expect(logger.calls.length).toBeGreaterThan(0);
   });

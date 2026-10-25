@@ -1,7 +1,7 @@
 // Declares the messages between the Spaces page and its host, and the channel that carries them.
 import type { MessageEnd } from "../../libraryUi/protocol/index.js";
 import type { GlossaryTerm, Space } from "../model/index.js";
-import type { SpaceDateDraft, TermDraft } from "../store/index.js";
+import type { SpaceDateInput, TermInput } from "../store/index.js";
 import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectEntry } from "../viewModel/index.js";
 
 export const SPACE_TABS = ["overview", "papers", "notes", "discussions", "discover", "glossary"] as const;
@@ -24,12 +24,12 @@ export type SpaceMutation =
   | { type: "deleteFolder"; id: string; folderId: string }
   | { type: "linkProject"; id: string; projectId: string }
   | { type: "unlinkProject"; id: string; projectId: string }
-  | { type: "addDate"; id: string; date: SpaceDateDraft }
-  | { type: "updateDate"; id: string; dateId: string; date: SpaceDateDraft }
+  | { type: "addDate"; id: string; date: SpaceDateInput }
+  | { type: "updateDate"; id: string; dateId: string; date: SpaceDateInput }
   | { type: "removeDate"; id: string; dateId: string }
   | { type: "setDone"; id: string; dateId: string; done: boolean }
-  | { type: "addTerm"; id: string; term: TermDraft }
-  | { type: "updateTerm"; id: string; termId: string; term: TermDraft }
+  | { type: "addTerm"; id: string; term: TermInput }
+  | { type: "updateTerm"; id: string; termId: string; term: TermInput }
   | { type: "removeTerm"; id: string; termId: string };
 
 export type SpacesToHost =

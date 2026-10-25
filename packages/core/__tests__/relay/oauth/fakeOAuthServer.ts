@@ -1,7 +1,7 @@
 // Fakes Cloudflare's OAuth server: the consent redirect, the code exchange with PKCE and the refresh grant that rotates tokens.
 import { createHash } from "node:crypto";
 
-import type { SecretSlot } from "../../../src/relay/index";
+import type { StoredSecret } from "../../../src/relay/index";
 
 export const CLIENT_ID = "6bf60d8231e753c5249c7044aa0c4aff";
 export const REDIRECT = "http://127.0.0.1:8976/callback";
@@ -54,7 +54,7 @@ export function fakeOAuthServer() {
   return { fetch: fetchFake, approve, grants, liveRefresh };
 }
 
-export function memorySlot(initial?: string): SecretSlot & { value: string | undefined; writes: string[] } {
+export function memorySlot(initial?: string): StoredSecret & { value: string | undefined; writes: string[] } {
   const slot = {
     value: initial,
     writes: [] as string[],

@@ -2,4 +2,4 @@
 export { SpaceStore } from "./spaceStore.js";
 export { SpaceReadOnlyError } from "./spaceStoreOptions.js";
 export type { SpaceStoreOptions } from "./spaceStoreOptions.js";
-export type { SpaceDateDraft, TermDraft } from "./mutation/index.js";
+export type { SpaceDateInput, TermInput } from "./mutation/index.js";

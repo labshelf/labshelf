@@ -7,12 +7,12 @@ import type { PdfTheme } from "../../model/index.js";
 export const PROTOCOL_VERSION = 7;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
-export type ZoomPreset = "page-width" | "page-fit" | "page-actual" | "auto";
+export type ZoomKind = "page-width" | "page-fit" | "page-actual" | "auto";
 export type CitationStyle = "pandoc" | "latex" | "author-year" | "citekey";
 
 export interface ReaderPrefs {
   vimKeys: boolean;
-  defaultZoom: ZoomPreset;
+  defaultZoom: ZoomKind;
   toolbarAutoHide: boolean;
   restorePosition: boolean;
   hoverPreviews: boolean;

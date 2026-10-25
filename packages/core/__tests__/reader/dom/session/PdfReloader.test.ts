@@ -1,5 +1,5 @@
 // Tests reloading the open PDF in place: the reader's spot survives, bursts coalesce, and a failed read keeps the document.
-import { DOCUMENT_REPLACED, DocumentReloader } from "../../../../src/reader/dom/session/pdfReload";
+import { DOCUMENT_REPLACED, PdfReloader } from "../../../../src/reader/dom/session/PdfReloader";
 import type { ReaderContext } from "../../../../src/reader/dom/session/readerContext";
 
 type Listener = (evt: unknown) => void;
@@ -46,13 +46,13 @@ function setup(options: { failRead?: boolean } = {}) {
     return options.failRead ? { ok: false, status: 404 } : { ok: true, arrayBuffer: async () => new ArrayBuffer(8) };
   });
   global.fetch = fetchMock as unknown as typeof fetch;
-  const reloader = new DocumentReloader(ctx, {});
+  const reloader = new PdfReloader(ctx, {});
   const layOut = () => eventBus.dispatch("pagesinit");
   const setPages = (n: number) => { pages = n; };
   return { ctx, reloader, eventBus, dispatched, opened, first, pdfViewer, layOut, setPages, readUrls, reads: () => reads };
 }
 
-describe("DocumentReloader", () => {
+describe("PdfReloader", () => {
   it("swaps the document, announces it, frees the old one and restores page, offset and zoom", async () => {
     const t = setup();
     t.eventBus.dispatch("updateviewarea", { location: { pageNumber: 3, left: 10, top: 500, scale: 1.5 } });

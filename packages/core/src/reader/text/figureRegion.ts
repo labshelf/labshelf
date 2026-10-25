@@ -1,5 +1,5 @@
 /** Computes the region to preview for a caption or equation label: the caption block plus the float it describes. */
-import { deriveColumnBounds, type CaptionHit } from "./captions.js";
+import { deriveColumnBounds, type CaptionMatch } from "./captions.js";
 import type { TextLine } from "./textLines.js";
 
 /** Rectangle in PDF user space (origin bottom-left): yTop > yBottom. */
@@ -29,7 +29,7 @@ function equationRegion(cap: TextLine, f: FloatFrame): PdfRegion {
 }
 
 // The caption block: its first line plus the lines that follow at normal line pitch.
-function captionBlockEnd(lines: readonly TextLine[], hit: CaptionHit): number {
+function captionBlockEnd(lines: readonly TextLine[], hit: CaptionMatch): number {
   const cap = lines[hit.lineIndex]!;
   let last = hit.lineIndex;
   for (let i = hit.lineIndex + 1; i < lines.length && i - hit.lineIndex < MAX_CAPTION_LINES; i++) {
@@ -41,7 +41,7 @@ function captionBlockEnd(lines: readonly TextLine[], hit: CaptionHit): number {
   return last;
 }
 
-function tableRegion(lines: readonly TextLine[], hit: CaptionHit, f: FloatFrame): PdfRegion {
+function tableRegion(lines: readonly TextLine[], hit: CaptionMatch, f: FloatFrame): PdfRegion {
   const cap = lines[hit.lineIndex]!;
   const inColumn = (l: TextLine): boolean => l.xEnd > f.x0 + 2 && l.x < f.x1 - 2;
   const captionTop = cap.y + cap.height;
@@ -68,7 +68,7 @@ function tableRegion(lines: readonly TextLine[], hit: CaptionHit, f: FloatFrame)
   return { x0: f.x0, x1: f.x1, yTop: f.clampY(captionTop + cap.height * 0.5), yBottom: f.clampY(Math.max(bottom, floor)) };
 }
 
-function figureRegion(lines: readonly TextLine[], hit: CaptionHit, f: FloatFrame): PdfRegion {
+function figureRegion(lines: readonly TextLine[], hit: CaptionMatch, f: FloatFrame): PdfRegion {
   const { x0, x1, pageHeight, clampY } = f;
   const cap = lines[hit.lineIndex]!;
   const last = captionBlockEnd(lines, hit);
@@ -108,7 +108,7 @@ function figureRegion(lines: readonly TextLine[], hit: CaptionHit, f: FloatFrame
  */
 export function deriveFloatRegion(
   lines: readonly TextLine[],
-  hit: CaptionHit,
+  hit: CaptionMatch,
   pageWidth: number,
   pageHeight: number,
   columnSplit: number | null,

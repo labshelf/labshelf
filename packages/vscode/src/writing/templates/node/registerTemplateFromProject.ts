@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  CATEGORY_LABELS, TEMPLATE_CATEGORIES, isLicenseExpression, type ProjectEntry, type TemplateCategory,
+  CATEGORY_LABELS, TEMPLATE_CATEGORIES, isLicenseExpression, type ProjectEntry, type TemplateKind,
 } from "@labshelf/core";
 import { writeProjectAsTemplate, type WriteTemplateInput } from "@labshelf/core/node";
 import { runSafely } from "../../../command/index.js";
@@ -25,7 +25,7 @@ interface SaveProjectDeps {
 
 type Details = Omit<WriteTemplateInput, "engine">;
 
-async function pickCategory(): Promise<TemplateCategory | undefined> {
+async function pickCategory(): Promise<TemplateKind | undefined> {
   const items = TEMPLATE_CATEGORIES.map((category) => ({ label: CATEGORY_LABELS[category], category }));
   return (await vscode.window.showQuickPick(items, { placeHolder: "Category of the template" }))?.category;
 }

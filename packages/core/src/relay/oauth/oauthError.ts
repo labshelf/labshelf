@@ -1,6 +1,6 @@
 // Types a refused Cloudflare sign-in or token request by its OAuth error code.
-export class CloudflareOAuthError extends Error {
-  override readonly name = "CloudflareOAuthError";
+export class CloudflareOauthError extends Error {
+  override readonly name = "CloudflareOauthError";
 
   /**
    * An OAuth error code (`invalid_grant`, `access_denied`, ...) or one of LabShelf's: `state_mismatch`, `no_code`,

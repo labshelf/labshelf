@@ -4,5 +4,5 @@ export type { CatalogAsset, CatalogEntry, CatalogFile, CatalogIndexResult, Skipp
 export { isCatalogJsonObject, parseCatalogIndexJson } from "./catalogJson.js";
 export { isLicenseExpression } from "./templateLicense.js";
 export { TEMPLATE_CATEGORIES, TEMPLATE_ENGINES, parseTemplateManifest, readTemplateFields, serializeTemplateManifest } from "./templateManifest.js";
-export type { ProjectTemplate, TemplateCategory, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./templateManifest.js";
+export type { ProjectTemplate, TemplateKind, TemplateEngine, TemplateManifest, TemplateManifestResult } from "./templateManifest.js";
 export { deriveTemplatePathProblem, deriveTemplateSizeProblem, deriveTemplateStructureProblem, deriveTemplateTreeProblem } from "./templatePaths.js";

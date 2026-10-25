@@ -2,7 +2,7 @@
  * Parses pdf.js explicit destinations and computes the crop rectangle for hover previews.
  */
 
-export interface DestPoint {
+export interface PdfDestinationSpec {
   /** PDF user-space coordinates (origin bottom-left); null when the destination does not pin that axis. */
   x: number | null;
   y: number | null;
@@ -15,7 +15,7 @@ const num = (v: unknown): number | null => (typeof v === "number" && Number.isFi
  * Reads the target point out of an explicit destination array `[pageRef, {name}, ...args]`.
  * @returns the point, or null when `dest` is not a well-formed explicit destination.
  */
-export function deriveDestPoint(dest: unknown): DestPoint | null {
+export function deriveDestPoint(dest: unknown): PdfDestinationSpec | null {
   if (!Array.isArray(dest) || dest.length < 2) { return null; }
   const mode = dest[1] as { name?: unknown } | null;
   const kind = mode && typeof mode === "object" && typeof mode.name === "string" ? mode.name : null;

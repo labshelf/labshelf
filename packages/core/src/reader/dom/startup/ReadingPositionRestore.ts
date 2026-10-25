@@ -16,7 +16,7 @@ export interface RestoreAnchor {
   loadingMsg: HTMLElement;
 }
 
-export class PositionRestore {
+export class ReadingPositionRestore {
   private init: InitMessage | null = null;
   private onInit: ((msg: InitMessage) => void) | null = null;
   private pagesReady = false;
@@ -44,7 +44,7 @@ export class PositionRestore {
   }
 
   private onPagesInit(target: RestoreAnchor): void {
-    // A reload lays the pages out again; DocumentReloader keeps the reader's spot for that one.
+    // A reload lays the pages out again; PdfReloader keeps the reader's spot for that one.
     if (this.pagesReady) { return; }
     const { ctx, perf, loadingMsg } = target;
     const { container, pdfViewer, pdfDocument } = ctx;

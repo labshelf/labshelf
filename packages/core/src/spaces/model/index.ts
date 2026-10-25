@@ -7,4 +7,4 @@ export type {
 export { parseSpaceFile } from "./parseSpaceFile.js";
 export { serializeSpaceFile } from "./serializeSpaceFile.js";
 export { parseGlossaryFile, serializeGlossaryFile } from "./glossaryFile.js";
-export { newShortId, spaceIdFromName } from "./spaceId.js";
+export { createEntryId, deriveSpaceId } from "./spaceId.js";

@@ -1,6 +1,6 @@
 // Changes the folders of a Space and the paper references inside them.
-import { newShortId } from "../../model/index.js";
-import { rawEntryIds } from "../../model/json/index.js";
+import { createEntryId } from "../../model/index.js";
+import { parseEntryIds } from "../../model/json/index.js";
 import type { Space, SpaceFolder } from "../../model/index.js";
 import { withOptionalField } from "./optionalField.js";
 
@@ -49,7 +49,7 @@ export function withFolder(space: Space, name: string, parent: string | undefine
   const trimmed = name.trim();
   if (trimmed === "") { throw new Error("A folder needs a name."); }
   if (parent !== undefined) { requireFolder(space, parent); }
-  const id = newShortId(new Set([...space.folders.map((folder) => folder.id), ...rawEntryIds(space.invalid.folders)]));
+  const id = createEntryId(new Set([...space.folders.map((folder) => folder.id), ...parseEntryIds(space.invalid.folders)]));
   const folder: SpaceFolder = { id, name: trimmed, ...(parent === undefined ? {} : { parent }), extra: {} };
   return { space: { ...space, folders: [...space.folders, folder] }, value: id };
 }

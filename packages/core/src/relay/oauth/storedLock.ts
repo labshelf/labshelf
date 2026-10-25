@@ -3,7 +3,7 @@ import { bytesToBase64Url } from "../../encoding/index.js";
 import type { RelayClock } from "../client/index.js";
 
 /** One named value in a secret store that several processes share, such as VS Code's SecretStorage. */
-export interface SecretSlot {
+export interface StoredSecret {
   get(): Promise<string | undefined>;
   store(value: string): Promise<void>;
   delete(): Promise<void>;
@@ -31,7 +31,7 @@ function parseHolder(text: string | undefined): Holder | undefined {
 
 // TRAP: the slot has no compare-and-set, so the lock writes, waits and reads back; two writers that both read it free
 // leave the last write in place, and only that writer proceeds.
-export function createStoredLock(slot: SecretSlot, clock: RelayClock): StoredLock {
+export function createStoredLock(slot: StoredSecret, clock: RelayClock): StoredLock {
   async function acquire(owner: string): Promise<void> {
     for (;;) {
       const holder = parseHolder(await slot.get());

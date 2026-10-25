@@ -1,17 +1,17 @@
 // Changes the dated entries of a Space: tasks, reading plans, project milestones and deadlines.
-import { newShortId } from "../../model/index.js";
-import { isDay, isIdList, isNonEmptyString, isOptional, rawEntryIds } from "../../model/json/index.js";
+import { createEntryId } from "../../model/index.js";
+import { isDay, isNonEmptyStringList, isNonEmptyString, isOptional, parseEntryIds } from "../../model/json/index.js";
 import type { Space, SpaceDate } from "../../model/index.js";
 import type { Edited } from "./folderMutation.js";
 
 type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
 /** A date as the caller describes it; the store adds the id and keeps unknown keys. */
-export type SpaceDateDraft = DistributiveOmit<SpaceDate, "id" | "extra">;
+export type SpaceDateInput = DistributiveOmit<SpaceDate, "id" | "extra">;
 
-function checked(draft: SpaceDateDraft): void {
+function checked(draft: SpaceDateInput): void {
   if (draft.title.trim() === "") { throw new Error("A date needs a title."); }
   if (!isDay(draft.date)) { throw new Error(`"${draft.date}" is not a YYYY-MM-DD date.`); }
-  if (draft.kind === "read" && !isOptional(draft.paperIds, isIdList)) { throw new Error("paperIds is not a list of paper ids."); }
+  if (draft.kind === "read" && !isOptional(draft.paperIds, isNonEmptyStringList)) { throw new Error("paperIds is not a list of paper ids."); }
   if (draft.kind === "project" && !isOptional(draft.projectId, isNonEmptyString)) { throw new Error("projectId is not a project id."); }
 }
 
@@ -21,14 +21,14 @@ function requireDate(space: Space, dateId: string): SpaceDate {
   return found;
 }
 
-export function withDate(space: Space, draft: SpaceDateDraft): Edited<string> {
+export function withDate(space: Space, draft: SpaceDateInput): Edited<string> {
   checked(draft);
-  const id = newShortId(new Set([...space.dates.map((date) => date.id), ...rawEntryIds(space.invalid.dates)]));
+  const id = createEntryId(new Set([...space.dates.map((date) => date.id), ...parseEntryIds(space.invalid.dates)]));
   return { space: { ...space, dates: [...space.dates, { ...draft, id, extra: {} } as SpaceDate] }, value: id };
 }
 
 /** Replaces the entry's content, kind included; its id and unknown keys stay. */
-export function withUpdatedDate(space: Space, dateId: string, draft: SpaceDateDraft): Space {
+export function withUpdatedDate(space: Space, dateId: string, draft: SpaceDateInput): Space {
   checked(draft);
   const old = requireDate(space, dateId);
   const next = { ...draft, id: dateId, extra: old.extra } as SpaceDate;

@@ -1,5 +1,5 @@
 /** Pins the account's access token: a pasted token as is, a refresh stored before use, one refresh across windows, and sign-in again. */
-import { createAccessTokenReader, CloudflareOAuthError, createRelayAccountStore, createStoredLock } from "../../../src/relay/index";
+import { createAccessTokenReader, CloudflareOauthError, createRelayAccountStore, createStoredLock } from "../../../src/relay/index";
 import { memorySlot } from "../oauth/fakeOAuthServer";
 import { accountWorld, signIn } from "./fakeRelayAccount";
 
@@ -38,7 +38,7 @@ describe("createAccessTokenReader", () => {
     const world = accountWorld();
     world.slots.tokens.value = JSON.stringify({ accessToken: "a", refreshToken: "stale", expiresAt: world.clock.now() - 1 });
     const failure = await createAccessTokenReader(world.deps, { kind: "oauth" })().catch((error: unknown) => error);
-    expect(failure).toBeInstanceOf(CloudflareOAuthError);
+    expect(failure).toBeInstanceOf(CloudflareOauthError);
     expect(failure).toMatchObject({ code: "invalid_grant" });
     expect(world.signInAgain).toHaveBeenCalledWith(failure);
   });

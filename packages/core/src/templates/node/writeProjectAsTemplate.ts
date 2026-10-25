@@ -9,7 +9,7 @@ import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../writing/project/index.js";
 import { listLibraryProjects } from "../../writing/project/node/index.js";
-import { parseTemplateManifest, serializeTemplateManifest, deriveTemplateTreeProblem, type TemplateCategory, type TemplateManifest } from "../templateManifest/index.js";
+import { parseTemplateManifest, serializeTemplateManifest, deriveTemplateTreeProblem, type TemplateKind, type TemplateManifest } from "../templateManifest/index.js";
 import { listProjectFiles } from "./projectFiles.js";
 import type { FoundFile } from "./walkFolder.js";
 
@@ -21,7 +21,7 @@ const MAX_ID_BASE = 60;
 /** What the user fills in when saving; `engine` is the one the app resolved for the build, used when labshelf.yaml names none. */
 export interface WriteTemplateInput {
   name: string;
-  category: TemplateCategory;
+  category: TemplateKind;
   license: string;
   description: string;
   authors: string[];

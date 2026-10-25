@@ -1,6 +1,6 @@
 // Splits a synced JSON array into its valid entries and the raw entries it cannot read.
 // CONTRACT: documents/contracts/spaces.md#reading
-import { isNonEmptyString, isRecord } from "./fieldChecks.js";
+import { isNonEmptyString, isJsonObject } from "./fieldChecks.js";
 
 /** An entry, or the reason it is invalid. */
 export type EntryParse<T> = (raw: unknown) => T | string;
@@ -30,6 +30,6 @@ export function readEntries<T extends { id: string }>(
 }
 
 /** The ids that raw entries still claim, so a new entry never reuses one. */
-export function rawEntryIds(raw: readonly unknown[]): string[] {
-  return raw.flatMap((entry) => (isRecord(entry) && isNonEmptyString(entry["id"]) ? [entry["id"]] : []));
+export function parseEntryIds(raw: readonly unknown[]): string[] {
+  return raw.flatMap((entry) => (isJsonObject(entry) && isNonEmptyString(entry["id"]) ? [entry["id"]] : []));
 }

@@ -3,7 +3,7 @@
 import { base64UrlToBytes, bytesToBase64Url } from "../../encoding/index.js";
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
 import { decodeClaimRequest, decodeTicketRequest, isShareId, RELAY_PATH } from "../http/index.js";
-import type { RelayEnv, RoomStub } from "./cloudflareRuntime.js";
+import type { RelayEnv, CloudflareStubLike } from "./cloudflareRuntime.js";
 import { answer, createNotFoundAnswer, createPreflightAnswer, createRefusal } from "./httpAnswers.js";
 import { ROOM_PATH } from "./room.js";
 import { answerShareRequest } from "./shareRoutes.js";
@@ -46,7 +46,7 @@ async function verifyTicket(ownerSecret: string, shareId: string, ticket: string
 const MAX_BODY_CHARS = 4096;
 
 const nowSeconds = (): number => Math.floor(Date.now() / 1000);
-const roomOf = (env: RelayEnv, shareId: string): RoomStub => env.ROOM.get(env.ROOM.idFromName(shareId));
+const roomOf = (env: RelayEnv, shareId: string): CloudflareStubLike => env.ROOM.get(env.ROOM.idFromName(shareId));
 const askRoom = (env: RelayEnv, shareId: string, path: string, tokenHash: string): Promise<Response> =>
   roomOf(env, shareId).fetch(new Request(`https://room${path}`, { method: "POST", body: tokenHash }));
 

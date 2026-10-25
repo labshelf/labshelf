@@ -7,7 +7,7 @@ import { isLicenseExpression } from "./templateLicense.js";
 import { deriveTemplatePathProblem } from "./templatePaths.js";
 
 export const TEMPLATE_CATEGORIES = ["article", "thesis", "poster", "slides", "cv", "other"] as const;
-export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
+export type TemplateKind = (typeof TEMPLATE_CATEGORIES)[number];
 
 export const TEMPLATE_ENGINES = [...LATEX_ENGINES, "typst"] as const;
 export type TemplateEngine = (typeof TEMPLATE_ENGINES)[number];
@@ -16,7 +16,7 @@ export interface TemplateManifest {
   id: string;
   name: string;
   description: string;
-  category: TemplateCategory;
+  category: TemplateKind;
   format: ProjectFormat;
   engine: TemplateEngine;
   /** Path of the main file, relative to the template's files/ folder. */
@@ -109,7 +109,7 @@ export function readTemplateFields(record: Record<string, unknown>): TemplateMan
 }
 
 /** The reason a schema value is refused, or undefined for the supported schema 1. */
-export function schemaProblem(value: unknown): string | undefined {
+export function findSchemaProblem(value: unknown): string | undefined {
   if (typeof value === "number" && value > 1) { return "schema: needs a newer LabShelf"; }
   return value === 1 ? undefined : "schema: must be 1";
 }
@@ -123,7 +123,7 @@ export function parseTemplateManifest(yamlText: string): TemplateManifestResult 
     return { ok: false, reason: "template.yaml is not a mapping" };
   }
   const record = value as Record<string, unknown>;
-  const problem = schemaProblem(record["schema"]);
+  const problem = findSchemaProblem(record["schema"]);
   return problem === undefined ? readTemplateFields(record) : { ok: false, reason: problem };
 }
 

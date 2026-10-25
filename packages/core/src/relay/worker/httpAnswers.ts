@@ -11,9 +11,9 @@ const CORS_HEADERS = {
   "Access-Control-Max-Age": "86400",
 };
 
-export type RefusalCode = keyof typeof RELAY_REFUSAL | keyof typeof SHARE_REFUSAL;
+export type RefusalKind = keyof typeof RELAY_REFUSAL | keyof typeof SHARE_REFUSAL;
 
-const REFUSAL_STATUS: Record<RefusalCode, number> = {
+const REFUSAL_STATUS: Record<RefusalKind, number> = {
   malformed: 400, incompatibleVersion: 400, unauthorized: 401, forbidden: 403, claimed: 409,
   notFound: 404, tooLarge: 413,
 };
@@ -25,7 +25,7 @@ export function answer(fields: AnswerFields): Response {
   return new Response(encodeRelayBody(fields), { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
 }
 
-export function createRefusal(error: RefusalCode): Response {
+export function createRefusal(error: RefusalKind): Response {
   return new Response(encodeRelayBody({ error }), {
     status: REFUSAL_STATUS[error], headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });

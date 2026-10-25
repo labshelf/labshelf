@@ -1,5 +1,5 @@
 // Controls the PDF zoom within the visible reader viewport.
-import type { ZoomPreset } from "../../index.js";
+import type { ZoomKind } from "../../index.js";
 import { createDebouncer, deriveAnchorOrigin, deriveBoundedFactor, deriveClampedScale, isPresetScale, deriveNextZoomStep, deriveScaleFactor } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 
@@ -8,7 +8,7 @@ const WHEEL_DRAWING_DELAY_MS = 400;
 const STEP_DRAWING_DELAY_MS = 150;
 const REFIT_DEBOUNCE_MS = 120;
 
-export class ZoomController {
+export class Zoom {
   private pendingFactor = 1;
   private pendingOrigin: [number, number] | null = null;
   private frame: number | null = null;
@@ -41,7 +41,7 @@ export class ZoomController {
   zoomIn(): void { this.setScale(deriveNextZoomStep(this.scale, 1)); }
   zoomOut(): void { this.setScale(deriveNextZoomStep(this.scale, -1)); }
 
-  setPreset(preset: ZoomPreset): void {
+  setPreset(preset: ZoomKind): void {
     this.ctx.pdfViewer.currentScaleValue = preset;
   }
 

@@ -1,5 +1,5 @@
 /** Builds the PDF reader section, the browser twin of VS Code's labshelf.reader.* settings. */
-import type { CitationStyle, ReaderPrefs, ZoomPreset } from "@labshelf/core";
+import type { CitationStyle, ReaderPrefs, ZoomKind } from "@labshelf/core";
 import {
   renderCheckboxField, renderInlineCode, renderNumberField, renderPickField, setRowDisabled, renderSettingRow, renderSettingsSection,
 } from "@labshelf/core/dom";
@@ -78,7 +78,7 @@ export function createReaderForm(): ReaderForm {
     section: buildSection(f, delayRow),
     controls: [f.zoom.control, f.restore.control, f.autoHide.control, f.hover.control, f.delay.control, f.style.control, f.vim.control],
     read: () => ({
-      defaultZoom: f.zoom.control.value as ZoomPreset,
+      defaultZoom: f.zoom.control.value as ZoomKind,
       restorePosition: f.restore.control.checked,
       toolbarAutoHide: f.autoHide.control.checked,
       hoverPreviews: f.hover.control.checked,

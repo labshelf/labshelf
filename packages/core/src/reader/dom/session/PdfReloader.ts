@@ -19,7 +19,7 @@ interface Spot {
   scaleValue: string;
 }
 
-export class DocumentReloader {
+export class PdfReloader {
   private location: PdfPosition | null = null;
   // INVARIANT: true from the swap until the position is restored, so the new document's page-1 layout is never taken as the reader's spot.
   private swapping = false;

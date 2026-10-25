@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 // Tests fitting the PDF after the reader viewport settles.
-import { ZoomController } from "../../../../src/reader/dom/navigation/index";
+import { Zoom } from "../../../../src/reader/dom/navigation/index";
 import type { ReaderContext } from "../../../../src/reader/dom/session/index";
 
 function setup() {
@@ -18,7 +18,7 @@ function setup() {
   let value = "page-fit";
   const fit = jest.fn((next: string) => { value = next; });
   const pdfViewer = { get currentScaleValue() { return value; }, set currentScaleValue(next: string) { fit(next); }, update: jest.fn() };
-  new ZoomController({ container, pdfViewer } as unknown as ReaderContext);
+  new Zoom({ container, pdfViewer } as unknown as ReaderContext);
   return { pdfViewer, fit, size(w: number, h: number) { width = w; height = h; resize(); } };
 }
 

@@ -4,7 +4,7 @@ import type { RelayEnv } from "./cloudflareRuntime.js";
 import { answerRelayRequest } from "./answerRelayRequest.js";
 
 export { Room } from "./room.js";
-export type { HibernatingConnection, KvNamespace, RelayEnv, RoomState, SqlCursor, SqlStorage, SqlField } from "./cloudflareRuntime.js";
+export type { HibernatingConnection, KvNamespace, RelayEnv, RoomState, CloudflareCursorLike, SqlStorage, SqlField } from "./cloudflareRuntime.js";
 
 export default {
   fetch: (request: Request, env: RelayEnv): Promise<Response> => answerRelayRequest(request, env),

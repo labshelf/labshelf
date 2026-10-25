@@ -1,16 +1,16 @@
 // Changes the terms of a Space's glossary.
-import { newShortId } from "../../model/index.js";
-import { isNonEmptyString, isOptional, isPage, rawEntryIds } from "../../model/json/index.js";
+import { createEntryId } from "../../model/index.js";
+import { isNonEmptyString, isOptional, isPage, parseEntryIds } from "../../model/json/index.js";
 import type { Glossary, GlossaryTerm } from "../../model/index.js";
 
-export interface TermDraft {
+export interface TermInput {
   readonly term: string;
   readonly symbol?: string;
   readonly definition: string;
   readonly source?: { readonly paperId: string; readonly page?: number };
 }
 
-function termFrom(draft: TermDraft, id: string, old: GlossaryTerm | undefined): GlossaryTerm {
+function termFrom(draft: TermInput, id: string, old: GlossaryTerm | undefined): GlossaryTerm {
   if (draft.term.trim() === "") { throw new Error("A term needs a name."); }
   const { symbol, source } = draft;
   if (source !== undefined && !(isNonEmptyString(source.paperId) && isOptional(source.page, isPage))) {
@@ -23,13 +23,13 @@ function termFrom(draft: TermDraft, id: string, old: GlossaryTerm | undefined): 
   };
 }
 
-export function withTerm(glossary: Glossary, draft: TermDraft): { glossary: Glossary; value: string } {
-  const id = newShortId(new Set([...glossary.terms.map((term) => term.id), ...rawEntryIds(glossary.invalidTerms)]));
+export function withTerm(glossary: Glossary, draft: TermInput): { glossary: Glossary; value: string } {
+  const id = createEntryId(new Set([...glossary.terms.map((term) => term.id), ...parseEntryIds(glossary.invalidTerms)]));
   return { glossary: { ...glossary, terms: [...glossary.terms, termFrom(draft, id, undefined)] }, value: id };
 }
 
 /** Replaces the term's content; its id and unknown keys stay. */
-export function withUpdatedTerm(glossary: Glossary, termId: string, draft: TermDraft): Glossary {
+export function withUpdatedTerm(glossary: Glossary, termId: string, draft: TermInput): Glossary {
   const old = glossary.terms.find((term) => term.id === termId);
   if (!old) { throw new Error(`Term ${termId} is not in this glossary.`); }
   return { ...glossary, terms: glossary.terms.map((term) => (term.id === termId ? termFrom(draft, termId, old) : term)) };

@@ -11,7 +11,7 @@ import {
   HostBridge,
   type ReaderTransport,
   describeLoadError,
-  DocumentReloader,
+  PdfReloader,
   loadPdf,
   type PdfSourceHooks,
   type PerfMarks,
@@ -21,7 +21,7 @@ import { attachCitationClicks, PreviewCitations } from "./hover/index.js";
 import { ChangeMarks, Keyboard, SourceSync } from "./navigation/index.js";
 import {
   DeferredHover,
-  PositionRestore,
+  ReadingPositionRestore,
   attachReaderHostMessages,
   buildReaderUi,
   createActionRunner,
@@ -51,7 +51,7 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
   const container = findElement<HTMLDivElement>("viewerContainer");
   const loadingMsg = findElement("loading-msg");
   const errorMsg = findElement("error-msg");
-  const restore = new PositionRestore(host);
+  const restore = new ReadingPositionRestore(host);
   const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme);
   if (boot.preview) { theme.lockPages("light"); }
   host.on("applyTheme", (msg) => theme.apply(msg.theme, msg.effectiveTheme));
@@ -61,7 +61,7 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
     const parts = createPdfjsReader(loaded.viewerLib, loaded.pdfDocument, container, findElement<HTMLDivElement>("viewer"), theme.pageTheme, boot.preview);
     const ctx: ReaderContext = { boot, host, container, prefs: boot.prefs, ...loaded, ...parts };
     theme.attach(ctx.pdfViewer);
-    wireReader(ctx, theme, perf, restore, loadingMsg, new DocumentReloader(ctx, pdf ?? {}));
+    wireReader(ctx, theme, perf, restore, loadingMsg, new PdfReloader(ctx, pdf ?? {}));
   }
 
   return start().catch((err: unknown) => {
@@ -77,9 +77,9 @@ function wireReader(
   ctx: ReaderContext,
   theme: ThemeController,
   perf: PerfMarks,
-  restore: PositionRestore,
+  restore: ReadingPositionRestore,
   loadingMsg: HTMLElement,
-  reloader: DocumentReloader,
+  reloader: PdfReloader,
 ): void {
   const ui = buildReaderUi(ctx, theme);
   const citations = new PreviewCitations(ctx);
