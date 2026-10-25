@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { deriveBuiltPdfPath, type CheckProblem, type ILogger } from "@labshelf/core";
+import { formatError, deriveBuiltPdfPath, type CheckProblem, type ILogger } from "@labshelf/core";
 import { checkProject, createPdfjsLoader, type ProjectCheck } from "@labshelf/core/node";
 
 import type { AppContext } from "../compositionRoot.js";
@@ -50,7 +50,7 @@ export async function runCheck(
     findings = await check({ folder: project.folder, pdfPath, settings: project.settings.check }, ctx.logger);
   } catch (error) {
     await ctx.logger.error("terminal.check", error, { folder: project.folder, pdf: pdfPath });
-    io.err(`Check failed: ${error instanceof Error ? error.message : String(error)}`);
+    io.err(`Check failed: ${formatError(error)}`);
     return 1;
   }
   if (flags["json"] === true) {

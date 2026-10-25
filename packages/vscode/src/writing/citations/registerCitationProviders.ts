@@ -5,7 +5,7 @@ import { CitationCompletionProvider, UPDATE_BIBLIOGRAPHY_COMMAND } from "./citat
 import { CitationHoverProvider } from "./hover/index.js";
 import { type CitationWorkspace, findCitingProject } from "./citationWorkspace.js";
 import { registerCitationFromLibrary } from "./citationFromLibrary.js";
-import { DEFAULT_BIBLIOGRAPHY, findCiteKeyOccurrences } from "@labshelf/core";
+import { formatError, DEFAULT_BIBLIOGRAPHY, findCiteKeyOccurrences } from "@labshelf/core";
 import { openEditorSources } from "./openEditorSources.js";
 import type { ReadyProject } from "../buildRootDocument.js";
 
@@ -57,7 +57,7 @@ class BibliographySync {
     } catch (error) {
       await session.logger.error("writing/citations", error, { folder: project.folder, action: "update-bibliography" });
       void vscode.window.showWarningMessage(
-        `Could not update the bibliography of ${project.settings.id}: ${error instanceof Error ? error.message : String(error)}`,
+        `Could not update the bibliography of ${project.settings.id}: ${formatError(error)}`,
       );
     }
   }

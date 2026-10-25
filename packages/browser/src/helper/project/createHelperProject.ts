@@ -1,5 +1,5 @@
 // Maintains the browser project's connection to the compilation helper.
-import type { ProjectEntry } from "@labshelf/core";
+import { formatError, type ProjectEntry } from "@labshelf/core";
 import type { CompileMode, HelperCompileResult, HelperState } from "@labshelf/core/helper";
 import { mergePdfPages, createBuildScheduler, type BuildScheduler } from "../../writing/preview";
 import { createProblemStore } from "./problemStore";
@@ -36,7 +36,7 @@ class HelperProjectSession {
         void this.options.logger.log("INFO", MODULE, "Preview PDF assembled", { projectId, mode, changedPages: result.changed.length, reused: pdf.latest === previous, ms: Date.now() - started });
       } catch (error) {
         await this.options.logger.error(MODULE, error, { action: "assemble pdf", projectId, mode });
-        const message = error instanceof Error ? error.message : String(error);
+        const message = formatError(error);
         outcome = { status: "failed", changed: [], problems: [{ severity: "error", message, file: main }] };
       }
     }

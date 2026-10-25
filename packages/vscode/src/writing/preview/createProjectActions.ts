@@ -1,7 +1,7 @@
 // Answers the preview toolbar's project actions: commands, build settings, check limits, and citation fixes.
 import * as vscode from "vscode";
 
-import type { ILogger, LatexEngine, PreviewPorts } from "@labshelf/core";
+import { formatError, type ILogger, type LatexEngine, type PreviewPorts } from "@labshelf/core";
 import type { IncludeOnlyState } from "../build/index.js";
 import { setAutoCompile, setHaltOnError } from "../build/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
@@ -45,7 +45,7 @@ async function guarded(deps: ProjectActionsDeps, action: string, run: () => Prom
     await run();
   } catch (error) {
     await deps.logger.error(PREVIEW_LOG_MODULE, error, { action, ...context });
-    void vscode.window.showErrorMessage(`Could not ${action}: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`Could not ${action}: ${formatError(error)}`);
   }
 }
 

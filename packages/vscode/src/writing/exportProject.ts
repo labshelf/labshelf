@@ -2,7 +2,7 @@
 import { zipSync } from "fflate";
 import * as vscode from "vscode";
 
-import { DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
+import { formatError, DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
 
 import type { ReadyProject } from "./buildRootDocument.js";
 import { readBuiltPdf } from "./preview/readBuiltPdf.js";
@@ -76,6 +76,6 @@ export async function exportProject(deps: ExportProjectDeps, project: ReadyProje
     await run(deps, project, root, target);
   } catch (error) {
     await deps.logger.error(MODULE, error, { project: project.settings.id, root, target });
-    void vscode.window.showErrorMessage(`Could not export ${project.settings.id}: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`Could not export ${project.settings.id}: ${formatError(error)}`);
   }
 }

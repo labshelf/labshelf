@@ -1,5 +1,5 @@
 // Previews the math under the pointer in a LaTeX file, rendered with the project's own macros.
-import { COLOR_TOKENS, deriveMathJaxMacros, scanLatexSource } from "@labshelf/core";
+import { formatError, COLOR_TOKENS, deriveMathJaxMacros, scanLatexSource } from "@labshelf/core";
 import type { DesignToken, MacroFact } from "@labshelf/core";
 import { findMathSpan, createMathImageUri, renderMathSvg } from "@labshelf/core/math";
 import * as vscode from "vscode";
@@ -31,7 +31,7 @@ function previewMarkdown(tex: string, display: boolean, macros: ReturnType<typeo
     return new vscode.MarkdownString(`![math](${createMathImageUri(renderMathSvg(tex, display, macros), colors)})`);
   } catch (error) {
     // The message is TeX's own parse error, which is what the writer needs to fix the math.
-    const message = error instanceof Error ? error.message : String(error);
+    const message = formatError(error);
     const markdown = new vscode.MarkdownString();
     markdown.appendText(`Math preview: ${message}`);
     return markdown;

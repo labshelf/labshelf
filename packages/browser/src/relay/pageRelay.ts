@@ -4,13 +4,11 @@ import {
   type RelayAccount,
   formatError,
   type CloudflareAccount,
+  RELAY_PURPOSE,
 } from "@labshelf/core";
 import { showToast, pickQuickEntry, showDialog } from "@labshelf/core/dom";
 import { createBrowserRelayAccount, type BrowserRelayAccount } from "./browserRelayAccount";
 import { RelaySignInCancelledError } from "./watchRedirectTab";
-
-const RELAY_PURPOSE = "LabShelf sets up a small relay in your own Cloudflare account, on the free plan. It carries every edit between "
-  + "collaborators, end-to-end encrypted, and keeps them so collaborators sync even when you are offline.";
 
 async function confirmConnect(): Promise<boolean> {
   const answer = await showDialog({

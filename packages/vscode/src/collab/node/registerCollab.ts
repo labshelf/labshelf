@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import {
+  formatError,
   offerOwnRelayToShares,
   createStoreFailureNotices,
   removeOwnRelayOfferFromShares,
@@ -18,7 +19,6 @@ import {
   showRefusedOffer,
   type CollabHost,
   reportFailure,
-  formatErrorText,
   formatProjectName,
 } from "./collabHost.js";
 import {
@@ -60,7 +60,7 @@ function resumeShares(host: CollabHost): vscode.Disposable {
       });
     },
     failed: (project, error) => {
-      void vscode.window.showErrorMessage(`LabShelf could not reconnect the shared project "${formatProjectName(project)}": ${formatErrorText(error)}`);
+      void vscode.window.showErrorMessage(`LabShelf could not reconnect the shared project "${formatProjectName(project)}": ${formatError(error)}`);
     },
   });
   const subscription = host.projects.onDidChange(() => void resumer.sync());

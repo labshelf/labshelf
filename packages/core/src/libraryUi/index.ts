@@ -15,7 +15,7 @@ export { deriveCleanTags, formatKeptFieldNotice, moveNotice, formatPaperCount, r
 export type { BatchFailure, OutcomeNotice } from "./outcomeCopy.js";
 export { createSidecarReader } from "./sidecarReads.js";
 export type { SidecarReader } from "./sidecarReads.js";
-export { deriveFileIcon } from "./sidebarTrees.js";
+export { deriveFileIcon, isProjectTreeView } from "./sidebarTrees.js";
 export * from "./share/index.js";
 export * from "./details/index.js";
 export type { DotTone, FileLabelTone, ProjectTreeView, SidebarNodeIcon, SidebarOpenProject, SidebarProjectTree, SidebarTreeAction, SidebarTreeNode } from "./sidebarTrees.js";

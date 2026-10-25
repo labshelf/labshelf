@@ -3,6 +3,10 @@ import type { IconName } from "../ui/index.js";
 
 export type ProjectTreeView = "files" | "outline" | "checklist";
 
+const PROJECT_TREE_VIEWS: readonly unknown[] = ["files", "outline", "checklist"] satisfies ProjectTreeView[];
+
+export const isProjectTreeView = (view: unknown): view is ProjectTreeView => PROJECT_TREE_VIEWS.includes(view);
+
 export type SidebarNodeIcon =
   | { kind: "glyph"; name: IconName }
   /** A short file-type label in the icon column, like a paper's REF. */

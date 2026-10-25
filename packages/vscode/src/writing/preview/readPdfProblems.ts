@@ -3,7 +3,7 @@ import {
   findCiteKeyOccurrences, orderPdfProblems, findPagePoint,
   type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SynctexMap, type TypstCite,
 } from "@labshelf/core";
-import type { ReadyProject } from "../buildRootDocument.js";
+import { deriveProjectPath, type ReadyProject } from "../buildRootDocument.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
 import type { SynctexFinder } from "./synctex/projectSynctex.js";
 
@@ -18,12 +18,6 @@ export interface PdfProblemsDeps {
 }
 
 const atPoint = ({ page, x, y }: PagePoint): PageArea => ({ page, left: x, right: x, top: y, bottom: y });
-
-/** A project-relative `/`-separated path; a file outside the project keeps its own path. */
-function projectRelative({ paths }: PdfProblemsDeps, folder: string, file: string): string {
-  const relative = paths.relative(folder, file);
-  return (relative.startsWith("..") || paths.isAbsolute(relative) ? file : relative).split(paths.sep).join("/");
-}
 
 /** The SyncTeX index of the root's build; a build without usable data places nothing and the reason is logged once. */
 async function syncIndexOf(deps: PdfProblemsDeps, folder: string, root: string): Promise<SynctexMap | undefined> {
@@ -65,9 +59,9 @@ async function citeCount(deps: PdfProblemsDeps, project: ReadyProject, root: str
 }
 
 export async function readPdfProblems(deps: PdfProblemsDeps, project: ReadyProject, root: string): Promise<{ pdfProblems: PdfProblem[]; cites: number }> {
-  const build = deps.problemsOf(root).map((problem) => ({ ...problem, file: projectRelative(deps, project.folder, problem.file) }));
+  const build = deps.problemsOf(root).map((problem) => ({ ...problem, file: deriveProjectPath(deps.paths, project.folder, problem.file) }));
   const preprints = (await deps.preprints(project)).map((entry) => (
-    entry.file === undefined ? entry : { ...entry, file: projectRelative(deps, project.folder, entry.file) }
+    entry.file === undefined ? entry : { ...entry, file: deriveProjectPath(deps.paths, project.folder, entry.file) }
   ));
   const typst = project.settings.format === "typst";
   const index = typst || build.length + preprints.length === 0 ? undefined : await syncIndexOf(deps, project.folder, root);

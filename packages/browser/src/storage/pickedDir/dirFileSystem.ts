@@ -1,6 +1,6 @@
 // Implements the library file system over a folder on disk that the user picked in the browser.
-import { posixPathOps, type LocalStat } from "@labshelf/core";
-import { BytesFileSystem } from "../bytesFileSystem";
+import type { LocalStat } from "@labshelf/core";
+import { BytesFileSystem, isCaseOnlyRename } from "../bytesFileSystem";
 
 type Entry = FileSystemDirectoryHandle | FileSystemFileHandle;
 
@@ -59,17 +59,10 @@ export class DirFileSystem extends BytesFileSystem {
     await this.dir(dirPath, true);
   }
 
-  /**
-   * On a case-insensitive disk a case-only target is the source itself, so only the listed names tell a second entry
-   * apart, and the move goes through a temporary name so the copy never lands on its own source.
-   */
+  /** A case-only rename goes through a temporary name so the copy never lands on its own source. */
   async rename(from: string, to: string): Promise<void> {
-    const caseOnly = from !== to && from.toLowerCase() === to.toLowerCase();
-    const taken = caseOnly
-      ? (await this.listDir(posixPathOps.dirname(to))).includes(posixPathOps.basename(to))
-      : await this.exists(to);
-    if (taken) throw new Error(`Cannot rename "${from}": "${to}" already exists`);
-    if (!caseOnly) return this.move(from, to);
+    if (await this.isRenameTargetTaken(from, to)) throw new Error(`Cannot rename "${from}": "${to}" already exists`);
+    if (!isCaseOnlyRename(from, to)) return this.move(from, to);
     const step = `${to}.renaming-${Date.now()}`;
     await this.move(from, step);
     await this.move(step, to);

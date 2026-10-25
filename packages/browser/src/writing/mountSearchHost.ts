@@ -15,6 +15,7 @@ import {
   listProjectFiles,
   type ProjectText,
   matchReplacement,
+  formatError,
 } from "@labshelf/core";
 import { askDialog, showToast } from "@labshelf/core/dom";
 import { writeProjectEditors, refreshProjectEditors } from "./session";
@@ -101,7 +102,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     timer = setTimeout(() => {
       search().catch((error: unknown) => {
         void logger.error(MODULE, error, { action: "search", projectId: project.id, folder: project.folder });
-        endpoint.post({ type: "invalid", message: `Search failed: ${error instanceof Error ? error.message : String(error)}` });
+        endpoint.post({ type: "invalid", message: `Search failed: ${formatError(error)}` });
       });
     }, DEBOUNCE_MS);
   };
@@ -152,7 +153,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
   const stop = endpoint.subscribe((message) => {
     handle(message).catch((error: unknown) => {
       void logger.error(MODULE, error, { action: message.type, projectId: project.id, folder: project.folder });
-      showToast(`Search: ${error instanceof Error ? error.message : String(error)}`, "error");
+      showToast(`Search: ${formatError(error)}`, "error");
     });
   });
   return { dispose: () => { ticket += 1; clearTimeout(timer); stop(); } };

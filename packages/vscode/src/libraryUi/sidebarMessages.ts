@@ -1,7 +1,7 @@
 // Declares the messages between the Library sidebar webview and the extension host, and checks the ones the webview sends.
 import { isSidebarSpaceMessage, type SidebarSpaceMessage } from "./spaces/index.js";
 import { isSidebarProjectCommand } from "./projectCommands.js";
-import { PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type SidebarProjectItem, type TreePaper, type SidebarRow } from "@labshelf/core";
+import { isProjectTreeView, PAPERS_DIR, type FolderTreeNode, type ProjectTreeView, type SidebarOpenProject, type SidebarProjectItem, type TreePaper, type SidebarRow } from "@labshelf/core";
 
 export type HostToSidebar =
   | { type: "spaces"; rows: SidebarRow[] }
@@ -60,7 +60,6 @@ export type SidebarToHost =
 const PROJECT_ACTIONS: readonly string[] = ["browseTemplates", "allProjects", "newBlank", "addExisting", "refresh"];
 const PROJECT_FOLDER_ACTIONS: readonly string[] = ["new", "rename", "delete"];
 const PROJECT_EDITS: readonly string[] = ["move", "archive"];
-const TREE_VIEWS: readonly string[] = ["files", "outline", "checklist"];
 const TREE_OPS: readonly string[] = ["close", "action", "click", "toggle", "check", "menu", "add"];
 const MAX_ADD_TEXT = 500;
 
@@ -70,7 +69,7 @@ function isProjectTreeMessage(m: Record<string, unknown>): boolean {
   if (!TREE_OPS.includes(op as string)) { return false; }
   if (op === "close") { return true; }
   if (op === "action") { return typeof m["action"] === "string"; }
-  if (!TREE_VIEWS.includes(m["view"] as string) || typeof m["key"] !== "string") { return false; }
+  if (!isProjectTreeView(m["view"]) || typeof m["key"] !== "string") { return false; }
   if (op === "toggle") { return typeof m["open"] === "boolean"; }
   if (op === "check") { return typeof m["checked"] === "boolean"; }
   if (op === "menu") { return typeof m["action"] === "string"; }

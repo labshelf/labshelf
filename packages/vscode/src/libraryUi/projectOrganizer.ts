@@ -1,6 +1,6 @@
 // Moves projects between My projects folders and archives them by rewriting each project's labshelf.yaml.
 import * as vscode from "vscode";
-import type { ProjectEntry, ProjectSettingsPatch } from "@labshelf/core";
+import { formatError, type ProjectEntry, type ProjectSettingsPatch } from "@labshelf/core";
 import { checkFolderNameInput } from "./folderNameInput.js";
 import type { ProjectUpdate, ProjectFolderAction } from "./sidebarMessages.js";
 
@@ -20,7 +20,7 @@ const isUnder = (folder: string | undefined, path: string): boolean => folder ==
 async function applyAll(port: ProjectOrganizerPort, edits: Array<[ReadyEntry, ProjectSettingsPatch]>): Promise<void> {
   const failures: string[] = [];
   for (const [entry, patch] of edits) {
-    try { await port.update(entry.folder, patch); } catch (error) { failures.push(`${entry.settings.id}: ${error instanceof Error ? error.message : String(error)}`); }
+    try { await port.update(entry.folder, patch); } catch (error) { failures.push(`${entry.settings.id}: ${formatError(error)}`); }
   }
   await vscode.commands.executeCommand("labshelf.writing.refresh");
   if (failures.length > 0) { void vscode.window.showErrorMessage(`Could not update ${failures.length} project(s): ${failures.join("; ")}`); }

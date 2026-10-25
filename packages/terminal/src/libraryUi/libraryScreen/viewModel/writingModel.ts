@@ -1,5 +1,4 @@
 /** Holds the writing projects listed in the Writing pane and the cursor over them. */
-import * as path from "node:path";
 import type { ProjectEntry } from "@labshelf/core";
 import { listLibraryProjects } from "@labshelf/core/node";
 
@@ -32,9 +31,4 @@ export class WritingModel {
   moveTo(position: "top" | "bottom"): void {
     this.index = position === "top" ? 0 : Math.max(0, this.projects.length - 1);
   }
-}
-
-/** @returns the name shown for a project: its title, else its id, else the folder name of a broken one */
-export function formatProjectName(entry: ProjectEntry): string {
-  return entry.kind === "ready" ? entry.settings.title ?? entry.settings.id : path.basename(entry.folder);
 }

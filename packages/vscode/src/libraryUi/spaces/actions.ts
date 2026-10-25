@@ -1,6 +1,6 @@
 // Executes validated Space sidebar actions through the active library's store.
 import * as vscode from "vscode";
-import type { ILogger, SpaceStore, SpacesHostPort } from "@labshelf/core";
+import { formatError, type ILogger, type SpaceStore, type SpacesHostPort } from "@labshelf/core";
 import type { SidebarSpaceMessage } from "./messages.js";
 
 export interface SidebarSpacesDep {
@@ -54,6 +54,6 @@ export async function answerSidebarSpaceMessage(m: SidebarSpaceMessage, spaces: 
   try { await run(m, spaces); }
   catch (error) {
     await logger?.error("sidebar.spaces", error, { action: m.action });
-    await vscode.window.showErrorMessage(`Space action failed: ${error instanceof Error ? error.message : String(error)}`);
+    await vscode.window.showErrorMessage(`Space action failed: ${formatError(error)}`);
   }
 }

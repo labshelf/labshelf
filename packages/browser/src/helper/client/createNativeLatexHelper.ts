@@ -3,7 +3,7 @@ import {
   PROTOCOL_VERSION, type HelperCompileRequest, type HelperChange, type HelperProgressListener,
   type ILatexHelper, type TemplatePublishEvent, type TemplatePublishRequest,
 } from "@labshelf/core/helper";
-import type { ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 import { statusFromReady, type RequestBody } from "./connection";
 import { createCompileStep, UpdateTracker, deriveProgress } from "./project";
 import { NativeHelperSession, type NativeHelperSessionDeps } from "./nativeHelperSession";
@@ -93,7 +93,7 @@ class NativeLatexHelper implements ILatexHelper {
         if (message.type === "templatePreview") {
           void renderThumbnail(payload).then(
             (png) => socket.post({ type: "templateThumbnail", requestId: message.id }, png),
-            (error: unknown) => socket.post({ type: "templateThumbnail", requestId: message.id, error: error instanceof Error ? error.message : String(error) }),
+            (error: unknown) => socket.post({ type: "templateThumbnail", requestId: message.id, error: formatError(error) }),
           ).catch((error: unknown) => this.logger.error("browser.helper", error, { operation: "templateThumbnail" }));
           return undefined;
         }

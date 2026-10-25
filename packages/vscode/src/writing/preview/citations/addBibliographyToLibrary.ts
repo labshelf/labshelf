@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import {
   extractArxivIdentifierFromUrl, createBibliographyCardEntry, extractDoi, normalizeArxivIdentifier, extractPlainField, createPaper,
   type BibEntry, type ILogger, type MutationContext,
+  formatError,
 } from "@labshelf/core";
 import type { PaperImporter } from "../../../library/index.js";
 import { findBibEntry } from "./projectBibliographyFiles.js";
@@ -74,6 +75,6 @@ export async function addBibliographyToLibrary(deps: AddBibliographyDeps, key: s
     );
   } catch (error) {
     await deps.logger.error(MODULE, error, { key, file, action: "add-bib-to-library" });
-    void vscode.window.showErrorMessage(`Could not add ${key} to the library: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`Could not add ${key} to the library: ${formatError(error)}`);
   }
 }

@@ -5,6 +5,7 @@ import {
   MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNextReadingStatus, removeManualItem, createSectionPlacer, setManualItemDone,
   type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type ReadingStatus, type PathOps,
   type ReadingItem, type ReadingPaper, type SidebarTreeNode,
+  formatError,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "../figures/index.js";
 import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
@@ -233,7 +234,7 @@ export class ChecklistView implements vscode.Disposable {
   }
 
   private async report(message: string, error: unknown, context: Record<string, unknown>): Promise<void> {
-    void vscode.window.showErrorMessage(`${message}: ${error instanceof Error ? error.message : String(error)}`);
+    void vscode.window.showErrorMessage(`${message}: ${formatError(error)}`);
     await this.deps.logger.error(MODULE, error, context);
   }
 

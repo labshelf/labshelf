@@ -7,6 +7,7 @@ import {
   type PublishToHost,
   startGitHubDeviceSignIn,
   fetchGithubDeviceToken,
+  formatError,
 } from "@labshelf/core";
 import type { ILatexHelper } from "@labshelf/core/helper";
 import { renderElement, mountOverlay } from "@labshelf/core/dom";
@@ -52,7 +53,7 @@ async function signInToGitHub(lifetime: AbortSignal): Promise<GitHubSignIn> {
   cancel.addEventListener("click", dismiss);
   open.addEventListener("click", () => {
     void bx.tabs.create({ url: authorization.verificationUri }).catch((error: unknown) => {
-      status.textContent = error instanceof Error ? error.message : String(error);
+      status.textContent = formatError(error);
       controller.abort(new Error("Could not open GitHub authorization."));
     });
   });
@@ -98,7 +99,7 @@ export function createBrowserPublish(options: BrowserPublishOptions): PublishHos
     } catch (error) {
       await options.logger.error("browser.templates.publish", error, { action: message.type });
       if (lifetime.signal.aborted) return;
-      const text = error instanceof Error ? error.message : String(error);
+      const text = formatError(error);
       if (message.type === "publish.signIn") options.post({ type: "publish.auth", error: text });
       else if (message.type !== "publish.start") options.post({ type: "publish.failed", error: text });
       options.post({ type: "notice", kind: "error", text });
