@@ -1,9 +1,63 @@
 // Collects the bindings, labels, imports, includes and bibliographies a Typst file defines.
 import { lineOf, lineStarts } from "../../../writing/text/index.js";
-import { readImportNames } from "./typstImportNames.js";
-import { readLetHead } from "./typstLetBinding.js";
-import type { TypstBinding, TypstFileSymbols } from "./typstFileSymbols.js";
+import type { TypstBinding, TypstFileSymbols, TypstImport } from "./typstFileSymbols.js";
 import { walkTypst } from "./typstWalk.js";
+import { closingBracket, topLevelItems } from "./typstArgumentList.js";
+
+export interface TypstLetHead {
+  name: string;
+  from: number;
+  to: number;
+  signature: string;
+  params?: string[];
+}
+
+const NAME = /[ \t]+([\p{L}_][\p{L}\p{N}_-]*)/uy;
+
+/** The head of the `let` keyword at `letFrom`..`letTo`; undefined for destructuring or a missing name. */
+function readLetHead(text: string, letFrom: number, letTo: number): TypstLetHead | undefined {
+  NAME.lastIndex = letTo;
+  const match = NAME.exec(text);
+  if (!match) { return undefined; }
+  const name = match[1]!;
+  const to = NAME.lastIndex;
+  const head = { name, from: to - name.length, to };
+  const close = text[to] === "(" ? closingBracket(text, to) : -1;
+  if (close < 0) { return { ...head, signature: text.slice(letFrom, to) }; }
+  const params = topLevelItems(text.slice(to + 1, close)).map((item) => item.split(":")[0]!.trim());
+  return { ...head, signature: text.slice(letFrom, close + 1).replace(/\s+/g, " "), params };
+}
+
+const IDENT = "[\\p{L}_][\\p{L}\\p{N}_-]*";
+const HEAD = new RegExp(`[ \\t]*(?:as[ \\t]+(${IDENT}))?[ \\t]*(:)?[ \\t]*`, "uy");
+const RENAME = new RegExp(`\\s+as\\s+(${IDENT})$`, "u");
+
+/** The names and alias of the import whose path string closes just before `afterQuote`. */
+function readImportNames(text: string, afterQuote: number): Pick<TypstImport, "names" | "alias"> {
+  HEAD.lastIndex = afterQuote;
+  const head = HEAD.exec(text);
+  const alias = head?.[1];
+  const names = head?.[2] === undefined ? undefined : nameList(text, HEAD.lastIndex);
+  return alias === undefined ? { names } : { names, alias };
+}
+
+function nameList(text: string, start: number): string[] | "*" {
+  if (text[start] === "*") { return "*"; }
+  let list: string;
+  if (text[start] === "(") {
+    const close = closingBracket(text, start);
+    list = text.slice(start + 1, close < 0 ? text.length : close);
+  } else {
+    const end = text.slice(start).search(/[\n;\]}]/);
+    list = text.slice(start, end < 0 ? text.length : start + end);
+  }
+  return topLevelItems(list).map(importedName);
+}
+
+/** The name an import item binds: its rename, else the last segment of its dotted path. */
+function importedName(item: string): string {
+  return RENAME.exec(item)?.[1] ?? item.split(".").pop()!.trim();
+}
 
 /** The symbols of `text`, each in the order it appears. */
 export function scanTypstFile(text: string): TypstFileSymbols {

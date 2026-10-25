@@ -83,3 +83,83 @@ describe("Typst completion stays silent", () => {
     expect(await complete("Hel|", { explicit: true })).not.toBeNull();
   });
 });
+
+async function definition(marked: string) {
+  const [text, offset] = at(marked);
+  return fixture().service.definition("main.typ", text, offset);
+}
+
+describe("Typst definition", () => {
+  it("finds a let in the same file", async () => {
+    expect(await definition("#ans|wer")).toEqual({ path: "main.typ", from: 75, to: 81, line: 3 });
+  });
+
+  it("finds a let in an imported file", async () => {
+    expect(await definition("#no|te[x]")).toMatchObject({ path: "lib.typ", line: 1 });
+  });
+
+  it("finds a label reference", async () => {
+    expect(await definition("See @int|ro.")).toMatchObject({ path: "chapters/intro.typ", line: 0 });
+  });
+
+  it("opens the file of an import path", async () => {
+    const [text] = at("");
+    expect(await fixture().service.definition("main.typ", text, 10)).toEqual({ path: "lib.typ", from: 0, to: 0, line: 0 });
+  });
+
+  it("finds a citation key in its .bib file", async () => {
+    expect(await definition("See @knu|th84.")).toMatchObject({ path: "refs.bib", line: 0 });
+  });
+
+  it("is null on plain text", async () => {
+    expect(await definition("Plain wo|rd")).toBeNull();
+  });
+});
+
+describe("Typst language service reads", () => {
+  it("logs a failed read with its path and goes on without the file", async () => {
+    const { logger, service } = fixture(["lib.typ"]);
+    const [text, offset] = at("#|");
+    const result = await service.complete("main.typ", text, offset, false);
+    expect(result!.options.map((option) => option.label)).toContain("answer");
+    expect(logger.log).toHaveBeenCalledWith("WARN", expect.any(String), expect.any(String), expect.objectContaining({ path: "lib.typ" }));
+  });
+});
+
+async function hover(marked: string) {
+  const [text, offset] = at(marked);
+  return fixture().service.hover("main.typ", text, offset);
+}
+
+describe("Typst hover", () => {
+  it("shows a built-in's signature, doc and parameters", async () => {
+    const result = await hover("#te|xt(red)[x]");
+    expect(result!.text.startsWith("```typst\ntext(")).toBe(true);
+    expect(result!.text).toContain("`fill`");
+    const [text, offset] = at("#te|xt(red)[x]");
+    expect(text.slice(result!.from, result!.to)).toBe("text");
+    expect(offset).toBeGreaterThan(result!.from);
+  });
+
+  it("shows a let binding's signature and /// doc", async () => {
+    const result = await hover("#ans|wer");
+    expect(result!.text).toBe("```typst\nlet answer\n```\n\nThe answer.");
+  });
+
+  it("shows a label's line and file", async () => {
+    const result = await hover("See @int|ro.");
+    expect(result!.text).toContain("= Intro");
+    expect(result!.text).toContain("chapters/intro.typ");
+  });
+
+  it("shows a citation key's title, authors and year", async () => {
+    const result = await hover("See @knu|th84.");
+    expect(result!.text).toContain("Literate Programming");
+    expect(result!.text).toContain("Knuth, Donald E.");
+    expect(result!.text).toContain("1984");
+  });
+
+  it("is null on plain text", async () => {
+    expect(await hover("Plain wo|rd")).toBeNull();
+  });
+});
