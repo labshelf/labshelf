@@ -8,7 +8,7 @@
     "test:tooling": "node --test \"scripts/*/__tests__/*.test.mjs\" \".claude/tools/agentTranscripts/__tests__/*.test.mjs\"",
     "dev:vscode": "pnpm --filter @labshelf/vscode dev",
     "build:vscode": "pnpm --filter @labshelf/vscode build",
-    "lint": "pnpm -r lint && pnpm run lint:deps && pnpm run knip && pnpm run jscpd && pnpm run lint:dirs && pnpm run lint:words",
+    "lint": "pnpm -r lint && pnpm run lint:deps && pnpm run knip && pnpm run jscpd && pnpm run lint:dirs && pnpm run lint:naming --all --verbose && pnpm run lint:words",
     "lint:deps": "depcruise packages/*/src --config .dependency-cruiser.cjs",
     "lint:dirs": "node scripts/checks/directorySize.mjs",
     "lint:words": "node scripts/checks/bannedWords.mjs",

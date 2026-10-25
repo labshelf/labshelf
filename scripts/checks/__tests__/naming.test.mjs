@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseExports } from '../namingExports.mjs';
+import { checkFile, staleAllowEntries } from '../naming.mjs';
 import { buildIndex, checkExportName, checkPath, loadVocabulary } from '../namingRules.mjs';
 
 const vocab = {
@@ -26,6 +27,7 @@ const vocab = {
   features: { space: { def: 's', home: ['**/spaces/**'], syn: ['room'], words: ['spaceDir'] } },
   tools: ['pdfjs', 'openalex', 'semanticScholar'],
   external: [{ name: 'activate', files: ['packages/ext/src/extension.ts'] }, { name: 'fetch', files: ['packages/core/src/**/index.ts'] }],
+  allow: [{ name: 'doStuff', files: ['packages/core/src/hash/**'], reason: 'awaiting a vocabulary decision' }, { name: 'readPaper', files: ['packages/core/src/hash/**'], reason: 'needless' }],
   compoundOnly: { root: { use: ['libraryRoot', 'buildRoot'] }, id: { use: ['paperId'], suffix: true } },
   banned: { data: 'name what the data is', result: 'only as a type suffix' },
 };
@@ -115,6 +117,26 @@ test('external: a name an external API requires is exempt only in the declared f
   assert.deepEqual(rules(checkExportName(index, 'deactivate', 'function', 'packages/ext/src/extension.ts')), ['export-verb']);
   assert.deepEqual(checkExportName(index, 'fetch', 'function', 'packages/core/src/relay/worker/index.ts'), []);
   assert.deepEqual(rules(checkExportName(index, 'fetch', 'function', 'packages/core/src/relay/worker/room.ts')), ['export-verb']);
+});
+
+test('allow: an allowed name passes in its files, fails elsewhere, and an entry nothing needs is stale', () => {
+  const used = new Set();
+  const hash = (name) => checkExportName(index, name, 'function', 'packages/core/src/hash/paper.ts', used);
+  assert.deepEqual(rules(checkExportName(index, 'doStuff', 'function', 'packages/core/src/hash/paper.ts')), []);
+  assert.deepEqual(rules(checkExportName(index, 'doStuff', 'function', 'packages/core/src/reader/paper.ts')), ['export-verb']);
+  assert.deepEqual(rules(checkExportName(index, 'doStuff', 'function')), ['export-verb']);
+  assert.deepEqual(hash('doStuff'), []);
+  assert.deepEqual(hash('readPaper'), [], 'a name that passes anyway');
+  assert.deepEqual(staleAllowEntries(index, used).map((item) => item.name), ['readPaper']);
+  assert.deepEqual(staleAllowEntries(index, new Set()).map((item) => item.name), ['doStuff', 'readPaper']);
+});
+
+test('allow: checkFile collects the entries it used from the exports of a file', () => {
+  const used = new Set();
+  const text = 'export function doStuff() {}\nexport function readPaper() {}\nexport function zorp() {}\n';
+  const found = checkFile(index, 'packages/core/src/hash/paper.ts', text, used);
+  assert.deepEqual(found.map((violation) => violation.message), ['export zorp: function name does not start with a verb']);
+  assert.deepEqual([...used].map((item) => item.name), ['doStuff']);
 });
 
 test('conversion: <from>To<to> and to<to> need vocabulary terms on every side', () => {
@@ -207,6 +229,13 @@ test('external: the real vocabulary exempts activate and deactivate in the VS Co
   }
   assert.deepEqual(at('fetch', 'packages/core/src/relay/worker/index.ts'), []);
   assert.ok(!real.external.some((item) => item.name === 'fetch'), 'fetch is a vocabulary verb; an entry would be a no-op');
+});
+
+test('the real vocabulary keeps every allow entry complete: name, files and a reason', () => {
+  for (const item of real.allow) {
+    assert.ok(item.name && item.files.length > 0, item.name);
+    assert.ok(item.reason.length > 0, `${item.name} needs a reason`);
+  }
 });
 
 test('the real vocabulary reads OpenAlex names as one tool word', () => {

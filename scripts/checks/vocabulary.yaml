@@ -1,6 +1,8 @@
 # The naming vocabulary scripts/checks/naming.mjs enforces. Every name is camelCase; a multi-word term is one compound (buildRoot).
 # This file is the record of naming decisions: each entry and its `def` state what a word means and where it may be used. A `syn` is a spelling that is rejected in favour of its term.
 # Layers: A mechanism (anywhere), B formats (anywhere), C subjects (folders and files), D features (only in `home`), E tools (files and exports, never folders).
+# Contract rule: an exported name is a contract only when something outside the repository depends on it (an API that calls it by name, a field mirroring an external format).
+# Such a name goes in `external` with its file and reason. Every other name follows this vocabulary. `allow` is for names awaiting a vocabulary decision or a rewrite, each with its reason; `pnpm lint:naming --all` fails on a stale entry.
 version: 1
 
 runtime:
@@ -384,6 +386,11 @@ tools: [pdfjs, prosemirror, tesseract, cloudflare, github, crossref, openalex, p
 external:
   - { name: activate, files: ["packages/vscode/src/extension.ts"] }
   - { name: deactivate, files: ["packages/vscode/src/extension.ts"] }
+
+# Names awaiting a vocabulary decision or a rewrite (reason: the VOCAB-GAP or REWRITE line of the naming decisions): exempt from the export rules, only in the listed files (globs).
+# An entry no export needs is reported as stale, so the list cannot rot. Empty today: the lint reports 0 violations without it.
+allow: []
+# Entry: - { name: SomeName, files: ["packages/core/src/x/**"], reason: "VOCAB-GAP: the missing concept" }
 
 # A bare word with a banned or ambiguous sense: allowed only inside one of `use`; `instead` names what the other senses became.
 # `suffix: true`: the word is also valid right after a term, as <term><Word> (projectId, rowKey, TaskStatus); the bare word stays rejected.

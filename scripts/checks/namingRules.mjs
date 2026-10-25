@@ -92,6 +92,7 @@ export function buildIndex(vocab) {
     // A tool is one word in any casing: openAlex, OpenAlex and openalex all read as openalex.
     toolsJoined: new Map((vocab.tools ?? []).map((tool) => [splitWords(tool).join(""), words.get(splitWords(tool).join(" "))])),
     external: (vocab.external ?? []).map(({ name, files }) => ({ name, files: files.map(globToRegExp) })),
+    allow: (vocab.allow ?? []).map(({ name, files, reason }) => ({ name, files: files.map(globToRegExp), globs: files, reason })),
     maxWords: Math.max(1, ...[...words.keys()].map((key) => key.split(" ").length)),
     verbs: new Set(Object.keys(verbs)),
     verbSynonyms: new Map(Object.entries(verbs).flatMap(([verb, value]) => (value.syn ?? []).map((syn) => [syn, verb]))),
@@ -255,9 +256,20 @@ function verbViolations(index, name, context) {
   return patternViolations(index, name, context) ?? [{ rule: "export-verb", message: `${context}function name does not start with a verb`, hint, words: [first] }];
 }
 
-// kind: function | class | interface | type | enum. file: repo-relative path of the exporting file, for the `external` exemptions.
-export function checkExportName(index, rawName, kind, file = "") {
-  if (index.external.some((item) => item.name === rawName && item.files.some((regex) => regex.test(file)))) return [];
+const exempts = (item, name, file) => item.name === name && item.files.some((regex) => regex.test(file));
+
+// kind: function | class | interface | type | enum. file: repo-relative path of the exporting file, for the `external` and `allow` exemptions.
+// used: optional Set that collects the `allow` entries which exempted a name that would otherwise be reported, so the caller can list the stale ones.
+export function checkExportName(index, rawName, kind, file = "", used = null) {
+  if (index.external.some((item) => exempts(item, rawName, file))) return [];
+  const found = reportExportName(index, rawName, kind);
+  const allowed = found.length > 0 && index.allow.find((item) => exempts(item, rawName, file));
+  if (!allowed) return found;
+  used?.add(allowed);
+  return [];
+}
+
+function reportExportName(index, rawName, kind) {
   const name = rawName.replace(/^_+/, "");
   const isFunction = kind === "function";
   const subject = kind === "interface" ? name.replace(/^I(?=[A-Z])/, "") : name;
