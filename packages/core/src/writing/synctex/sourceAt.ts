@@ -1,6 +1,6 @@
 // Finds the source file and line that produced the output at a point of a page.
 import type { PagePoint } from "../../reader/index.js";
-import { isBox, type SourceLocation, type SyncBox, type SyncIndex, type SyncNode } from "./syncIndex.js";
+import { isBox, type SourceLocation, type SyncBox, type SyncIndex, type SyncNode } from "./synctexMap.js";
 
 function contains(box: SyncBox, point: PagePoint): boolean {
   return point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom;

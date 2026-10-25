@@ -7,7 +7,7 @@ import type { BrokenRef, StaleFigure } from "./buildChecklist.js";
 import type { ManualItem } from "./checklistFile.js";
 import { readManualItems } from "./readManualItems.js";
 import type { ChecklistSource } from "./sectionPlacement.js";
-import { scanTodos, type TodoItem } from "./todoScanner.js";
+import { scanTodos, type TodoItem } from "./scanTodos.js";
 
 const MODULE = "checklist";
 

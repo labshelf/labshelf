@@ -2,7 +2,7 @@
 import { el } from "../../../ui/dom/dom.js";
 import type { HostToSearch, SearchScopeLabel, SearchTransport } from "../protocol/index.js";
 import type { SearchResults } from "../searchResults.js";
-import { createResultsList, type ResultsList } from "./resultsList.js";
+import { createResultsList, type ResultsList } from "./matchList.js";
 import { createSearchForm, type SearchForm } from "./searchForm.js";
 import { stepResult } from "./stepResult.js";
 

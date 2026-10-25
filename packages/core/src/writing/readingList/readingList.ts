@@ -1,6 +1,6 @@
 /** Builds a project's reading list: the papers it cites plus those the user added, with whether each was ever opened. */
 import type { PaperRecord } from "../../model/index.js";
-import type { BacklinkIndex } from "../backlinks/index.js";
+import type { BacklinkIndex } from "../citations/index.js";
 import type { ListedPaper } from "../project/index.js";
 
 export interface ReadingListEntry {

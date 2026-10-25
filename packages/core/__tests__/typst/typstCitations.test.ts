@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { citedKeysAt } from "../../src/writing/review";
+import { citedKeysAt } from "../../src/writing/quotes";
 import { readProbeAnswer } from "../../src/typst/typstCitationProbe";
 import type { TypstSession } from "../../src/typst/index";
 import { toCompilerPath } from "../../src/typst/node/index";

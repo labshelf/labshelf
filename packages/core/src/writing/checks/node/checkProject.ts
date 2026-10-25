@@ -7,10 +7,10 @@ import type { ILogger } from "../../../ports/index.js";
 import type { CheckSettings } from "../../project/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
 import { nodeFileReads } from "../../project/node/index.js";
-import type { CheckFinding, CheckSource } from "../checkTypes.js";
-import { readPdfFacts } from "../pdf/index.js";
+import type { CheckFinding, CheckSource } from "../checkReport.js";
+import { readPdfFacts } from "../readPdfFacts.js";
 import { runChecks } from "../runChecks.js";
-import { gitUserName } from "./gitUserName.js";
+import { gitUserName } from "./readCommitAuthor.js";
 
 const MODULE = "writing/checks";
 const SOURCE_FILE = /\.(?:tex|typ)$/;

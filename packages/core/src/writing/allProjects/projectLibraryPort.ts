@@ -1,6 +1,6 @@
 // Declares the project storage operations a host implements for the All projects page.
 import type { ProjectTarget } from "../project/index.js";
-import type { ProjectDetail } from "./projectDetail.js";
+import type { ProjectDetail } from "./projectDetailPane.js";
 import type { NewProjectKind, ProjectMenuCommand, ProjectRow } from "./projectRow.js";
 
 /** Every `id` is a ProjectRow id; the implementation binds the logger and the library. */

@@ -1,5 +1,5 @@
 /** Writes the Typst source that reports where a document's citations land, and reads its answer. */
-import type { TypstCite } from "../writing/review/index.js";
+import type { TypstCite } from "../writing/quotes/index.js";
 
 /** Where a build's citations landed, or why that is not known. */
 export type TypstCitations = { cites: TypstCite[] } | { failure: string };

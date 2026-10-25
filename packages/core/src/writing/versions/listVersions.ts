@@ -2,7 +2,7 @@
 import type { ProjectReadContext } from "../project/folder/index.js";
 import { readOptionalText } from "../project/folder/index.js";
 import type { ProjectVersion } from "./projectVersion.js";
-import { parseVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionInfo.js";
+import { parseVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionFile.js";
 
 const MODULE = "writing/versions";
 

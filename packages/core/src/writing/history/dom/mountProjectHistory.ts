@@ -2,7 +2,7 @@
 import { el } from "../../../ui/dom/dom.js";
 import { icon } from "../../../ui/icons/index.js";
 import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol/index.js";
-import { renderDiff, renderFiles } from "./historyDetail.js";
+import { renderDiff, renderFiles } from "./historyDetailPane.js";
 import { renderTimeline, rowTitle } from "./historyTimeline.js";
 
 const button = (label: string, name: Parameters<typeof icon>[0], className = "ls-btn"): HTMLButtonElement =>

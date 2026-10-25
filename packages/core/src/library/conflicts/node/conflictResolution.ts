@@ -2,7 +2,7 @@
 import { constants as fsConstants, promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { isMergeableTextFile, type ProjectSaveTracking } from "../../../writing/merge/index.js";
+import { isMergeableTextFile, type ProjectSaveTracking } from "../../../writing/conflict/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { conflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
 import { parseConflictName } from "../conflictNames.js";

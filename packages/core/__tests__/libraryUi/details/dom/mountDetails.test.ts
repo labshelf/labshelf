@@ -5,7 +5,7 @@ import {
   DEFAULT_PREFS, createLoopbackTransport, type DetailsTarget, type DetailsToHost, type HostToDetails, type HostToUi, type LibraryUiPrefs, type PaperRecord,
 } from "@labshelf/core";
 import { mountDetails } from "../../../../src/libraryUi/details/dom";
-import { row } from "../../../writing/allProjects/dom/detail/fixtures";
+import { row } from "../../../writing/allProjects/dom/detailPane/fixtures";
 
 const LABELS = { addTooltip: "Add a paper", emptyHint: "Papers come in through the Add button.", revealPaper: "Reveal in Explorer" };
 const EMPTY = "Select a paper or project to see its details.";

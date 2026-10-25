@@ -9,8 +9,8 @@ import { readSharedProjectFiles } from '../../../../../src/library/conflicts/nod
 import { deviceLocalLayout } from '../../../../../src/library/node/index';
 import { cleanupTempDirs, makeTempDir } from '../../../../support/tempDirs';
 import { fakeLogger } from '../../../../support/fakeLogger';
-import { scanLibraryConflicts } from '../../../../../src/writing/merge/node/index';
-import { FileProjectVersionStore } from '../../../../../src/writing/merge/index';
+import { scanLibraryConflicts } from '../../../../../src/writing/conflict/node/index';
+import { FileProjectVersionStore } from '../../../../../src/writing/conflict/index';
 import { NodeLibraryFileSystem } from '../../../../../src/library/node/index';
 import { nodeProjectCatalogContext } from '../../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../../src/writing/project/index';

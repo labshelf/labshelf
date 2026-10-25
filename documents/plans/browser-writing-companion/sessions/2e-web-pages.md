@@ -29,14 +29,14 @@
 ## 2e.2 — Library marks
 
 - **Goal:** results on arXiv and Semantic Scholar get "In your library"; on those and Google Scholar, "Cited in <project>" when a browser project cites the paper.
-- **Read only:** `packages/browser/src/content/scholar.ts:60-80` and `:170-199` (the existing Scholar mark and lookup); `packages/browser/src/content/scholarParse.ts:1-107`; `packages/browser/src/background/handlers/library.ts:90-119` (`handleLibraryLookup`); `packages/core/src/writing/citations/citationKeys.ts:1-62`; `packages/browser/src/storage/projects/index.ts` (`listBrowserProjects`, `readProjectFile(id, path)`).
+- **Read only:** `packages/browser/src/content/scholar.ts:60-80` and `:170-199` (the existing Scholar mark and lookup); `packages/browser/src/content/scholarParse.ts:1-107`; `packages/browser/src/background/handlers/library.ts:90-119` (`handleLibraryLookup`); `packages/core/src/writing/citations/scanCitations.ts:1-62`; `packages/browser/src/storage/projects/index.ts` (`listBrowserProjects`, `readProjectFile(id, path)`).
 - **Decided:** one adapter per site in `content/sites/`, a shared mark in the Scholar shadow style; `sites.lookup` extends the existing lookup with citing projects.
 - **Done when:** fixture-page tests in `packages/browser/__tests__/content/sites/` pin the parse per site and the fail-closed path (a broken parse hides marks and logs); mark styling gets no test.
 
 ## 2e.3 — OpenReview
 
 - **Goal:** on an OpenReview submission, "Review this submission" saves the PDF into the library folder `Reviews/<venue>/` and opens the reader with `review.md` beside it.
-- **Read only:** `packages/browser/src/background/handlers/capture.ts:1-80`; `packages/browser/src/capture/captureService.ts:1-60`; `packages/browser/src/storage/libraryMutations.ts:1-132`; `packages/core/src/writing/review/index.ts`.
+- **Read only:** `packages/browser/src/background/handlers/capture.ts:1-80`; `packages/browser/src/capture/captureService.ts:1-60`; `packages/browser/src/storage/libraryMutations.ts:1-132`; `packages/core/src/writing/quotes/index.ts`.
 - **Decided:** `content/sites/openreview.ts` adds the button; `background/reviews/` handles `review.start`; `review.md` starts with the title and a page-reference template.
 - **Done when:** tests in `packages/browser/__tests__/background/reviews/`, written first, pin the folder, the PDF and the draft. `pnpm --filter @labshelf/browser typecheck && pnpm --filter @labshelf/browser test`.
 

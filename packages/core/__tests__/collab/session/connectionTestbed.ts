@@ -2,7 +2,7 @@
 import { libraryMirrorDisk, startProjectMirror } from "../../../src/collab/mirror/index";
 import { createWriteRecordStore } from "../../../src/library/writeRecords/index";
 import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart } from "../../../src/collab/session/index";
-import { mergeText } from "../../../src/writing/merge/node/index";
+import { mergeText } from "../../../src/writing/conflict/node/index";
 import { LIB, memoryCatalog, readText, writeTree, type MemoryCatalog } from "../../support/memoryProjectCatalog";
 import { memoryStorage, type MemoryStorage } from "../deviceState/memoryStorage";
 import { FakeClock } from "../peer/fakeNetwork";

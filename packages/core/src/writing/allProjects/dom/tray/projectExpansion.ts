@@ -1,6 +1,6 @@
 // Keeps the All projects page's expanded project, its file listings and open folders, and posts the log and Add file requests, asking the host for a fresh listing on every expand.
 import { inputBox } from "../../../../ui/dom/index.js";
-import type { ProjectDetail } from "../../projectDetail.js";
+import type { ProjectDetail } from "../../projectDetailPane.js";
 import type { AllProjectsToHost, HostToAllProjects } from "../../protocol/index.js";
 import type { ProjectRow } from "../../projectRow.js";
 import { openFolderKey, type ProjectFiles, type ProjectTrayFrame, type ProjectTrayHandlers } from "./projectTray.js";

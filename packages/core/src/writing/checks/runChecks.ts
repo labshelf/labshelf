@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 import type { CheckSettings } from "../project/index.js";
 import { anonymityFindings } from "./anonymityRules.js";
-import type { CheckFinding, CheckSource, PdfFacts } from "./checkTypes.js";
+import type { CheckFinding, CheckSource, PdfFacts } from "./checkReport.js";
 import { paperBody } from "./paperBody.js";
 import { imageResolutionFindings, pageLimitFindings, type3FontFindings, unresolvedReferenceFindings } from "./pdfRules.js";
 

@@ -1,6 +1,6 @@
 // Pins project copy detection independently of provider naming conventions.
 import { detectProjectConflict } from '../../../src/library/conflicts/index';
-import { textHash } from '../../../src/writing/merge/index';
+import { textHash } from '../../../src/writing/conflict/index';
 
 const original = Array.from({ length: 10 }, (_, i) => `Line ${i}`).join('\n');
 const input = (text: string) => ({ projectId: 'p', path: 'main (1).tex', text, siblings: [{ path: 'main.tex', text: original }], records: new Map() });

@@ -1,5 +1,5 @@
 // Renders hover text for the Typst symbol under a cursor: a signature fence with docs, a label's line or a citation.
-import { plainField } from "../../writing/bibLint/index.js";
+import { plainField } from "../../writing/bibliography/index.js";
 import { builtinMarkdown } from "./builtinDocs.js";
 import type { ProjectFiles } from "./project/index.js";
 import type { TypstHover } from "./typstLanguageSpec.js";

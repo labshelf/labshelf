@@ -3,7 +3,7 @@ import type { PdfjsLoader } from "../../../import/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import type { ProjectDataPort } from "../../projectData/index.js";
+import type { ProjectDataPort } from "../../service/index.js";
 import type { ProjectEntry, ProjectSettingsPatch } from "../../project/index.js";
 import type { NewProjectKind, ProjectMenuCommand } from "../projectRow.js";
 

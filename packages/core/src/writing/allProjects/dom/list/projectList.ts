@@ -1,12 +1,12 @@
 // Renders the project treegrid: sortable heads, then a windowed flat list of folder headers, projects and the expanded project's files.
 import { paintSortableHeads, sortableHeadHtml, wireSortableHeads } from "../../../../libraryUi/dom/index.js";
 import type { MenuAnchor } from "../../../../ui/dom/index.js";
-import type { ProjectGroup, ProjectSortKey, ProjectViewState } from "../../derive/index.js";
+import type { ProjectGroup, ProjectSortKey, ProjectViewState } from "../../viewModel/index.js";
 import type { ProjectPlace } from "../../projectRow.js";
 import { createProjectTrayRows, type ProjectTrayFrame, type ProjectTrayHandlers } from "../tray/index.js";
 import { buildGroupRow } from "./groupRowView.js";
 import { keepRowFocus } from "./projectListFocus.js";
-import { wireProjectKeys } from "./projectListKeys.js";
+import { wireProjectKeys } from "./projectListShortcuts.js";
 import { projectKey, projectListRows, type ProjectListRow } from "./projectListModel.js";
 import { createWindowedRows } from "./projectListWindow.js";
 import { ariaRowOf, paintRowState } from "./projectRowState.js";

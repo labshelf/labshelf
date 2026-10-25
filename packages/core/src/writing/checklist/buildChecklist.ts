@@ -2,7 +2,7 @@
 import type { PaperStatus } from "../../model/index.js";
 import type { ManualItem } from "./checklistFile.js";
 import type { ChecklistSection, SectionPlacer } from "./sectionPlacement.js";
-import type { TodoItem } from "./todoScanner.js";
+import type { TodoItem } from "./scanTodos.js";
 
 export interface BrokenRef { file: string; line: number; ref: string }
 export interface StaleFigure { name: string }

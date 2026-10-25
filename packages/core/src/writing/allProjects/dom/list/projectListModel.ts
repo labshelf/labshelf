@@ -1,5 +1,5 @@
 // Flattens the project groups and the expanded project's tray into the treegrid's fixed-height rows, in display order.
-import type { ProjectGroup } from "../../derive/index.js";
+import type { ProjectGroup } from "../../viewModel/index.js";
 import type { ProjectRow } from "../../projectRow.js";
 import type { ProjectTrayRow } from "../tray/index.js";
 

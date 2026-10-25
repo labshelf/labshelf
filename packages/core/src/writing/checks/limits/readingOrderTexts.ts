@@ -1,5 +1,5 @@
 /** Flattens a LaTeX include tree into the pieces of text in the order they read, each include at the place it is written. */
-import { lineStarts } from "../../lineIndex/index.js";
+import { lineStarts } from "../../text/index.js";
 import type { ProjectSourceFile } from "../../../latex/source/index.js";
 import { resolveIncludePath } from "../../../latex/source/index.js";
 

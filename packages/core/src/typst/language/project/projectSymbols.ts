@@ -1,5 +1,5 @@
 // Gathers what a Typst file sees across the project: imported bindings and modules, linked labels and bib entries.
-import { bibEntries, type BibEntry } from "../../../writing/bibLint/index.js";
+import { bibEntries, type BibEntry } from "../../../writing/bibliography/index.js";
 import type { TypstBinding, TypstLabelDefinition } from "../syntax/index.js";
 import type { ProjectFile, ProjectFiles } from "./projectFiles.js";
 import { resolveTypstPath } from "./projectPaths.js";

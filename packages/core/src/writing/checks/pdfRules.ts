@@ -1,6 +1,6 @@
 /** Checks the PDF's layout facts against common desk-reject causes: page limit, Type 3 fonts, low-resolution images and unresolved references. */
 import type { CheckSettings } from "../project/index.js";
-import type { CheckFinding, PdfFacts } from "./checkTypes.js";
+import type { CheckFinding, PdfFacts } from "./checkReport.js";
 import { countedPages } from "./limits/index.js";
 import type { PaperBody } from "./paperBody.js";
 

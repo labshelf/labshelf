@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/library-format.md, documents/contracts/collaboration.md, packages/core/src/collab/comments/**, packages/core/src/writing/checklist/**, packages/core/src/writing/backlinks/**, packages/core/src/writing/citations/sources/projectSources.ts, packages/core/src/reader/previewRequests.ts, packages/vscode/src/collab/comments/**, packages/browser/src/library-page/{review,editor/comments,tabs/comments}/**
+files: documents/contracts/library-format.md, documents/contracts/collaboration.md, packages/core/src/collab/comments/**, packages/core/src/writing/checklist/**, packages/core/src/writing/citations/**, packages/core/src/writing/citations/projectSources.ts, packages/core/src/reader/previewRequests.ts, packages/vscode/src/collab/comments/**, packages/browser/src/library-page/{review,editor/comments,tabs/comments}/**
 source: Explore scout
 
 # Comments, review comments, checklist, backlinks

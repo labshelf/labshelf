@@ -1,6 +1,6 @@
 /** Places a project source line under its checklist section, and indexes the sections that cite each key. */
-import { citationSites, sourceHeadings } from "../backlinks/index.js";
-import type { SourceHeading } from "../backlinks/index.js";
+import { citationSites, sourceHeadings } from "../citations/index.js";
+import type { SourceHeading } from "../citations/index.js";
 import type { ProjectFormat } from "../project/index.js";
 
 export interface ChecklistSource {

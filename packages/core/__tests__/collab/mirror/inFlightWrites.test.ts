@@ -1,6 +1,6 @@
 // Pins cloud copies that arrive ahead of relay updates across two project mirrors.
 import { reconcileBlob } from "../../../src/collab/mirror/blobMirror";
-import { mergeText } from "../../../src/writing/merge/node/index";
+import { mergeText } from "../../../src/writing/conflict/node/index";
 import { sha256Hex } from "../../../src/hash/index";
 import { fileText, indexFiles, recordWritten, replaceFileText } from "../../../src/collab/model/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";

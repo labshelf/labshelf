@@ -1,7 +1,7 @@
 // Reads and writes the library's device-local registry of project folders, projects.json in the state directory.
 import type { PathOps } from "../../../library/mutations/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import type { ProjectFolderRegistry } from "../writes/index.js";
+import type { ProjectFolderRegistry } from "../mutation/index.js";
 import {
   parseProjectRegistry, serializeProjectRegistry, withFolder, withoutFolder, type ProjectRegistry,
 } from "./projectRegistry.js";

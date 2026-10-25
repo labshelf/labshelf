@@ -4,7 +4,7 @@ import type { LatexToolchain, TexInstallKind } from "../../../latex/toolchain/in
 import type { ManagedTexProvider } from "../../../latex/toolchain/node/managedTex/index.js";
 import type { ProjectEntry } from "../../project/index.js";
 import type { ToolchainMissing } from "../projectBuildResult.js";
-import type { TexSetupPrompt } from "../texSetupPrompt.js";
+import type { TexSetupPrompt } from "../askTexToolchain.js";
 
 const MODULE = "writing/build";
 

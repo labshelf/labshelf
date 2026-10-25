@@ -3,7 +3,7 @@ import { fileText, indexFiles } from "../../../src/collab/model/index";
 import type { LeaseScheduler } from "../../../src/collab/mirror/mirrorScheduler";
 import { libraryMirrorDisk } from "../../../src/collab/mirror/index";
 import { leasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
-import { mergeText } from "../../../src/writing/merge/node/index";
+import { mergeText } from "../../../src/writing/conflict/node/index";
 import { runUntil, type FakeClock } from "../peer/fakeNetwork";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, Network, newDevice, writeProject, type Device } from "./connectionTestbed";

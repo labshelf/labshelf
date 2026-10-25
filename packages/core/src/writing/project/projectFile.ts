@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import YAML from "yaml";
-import { readUserKeys, type CountUpTo, type UserKeys } from "./userKeys.js";
+import { readUserKeys, type CountUpTo, type UserKeys } from "./userSettings.js";
 import { readListedPapers, type ListedPaper } from "./listedPapers.js";
 
 export const PROJECT_FILE = "labshelf.yaml";

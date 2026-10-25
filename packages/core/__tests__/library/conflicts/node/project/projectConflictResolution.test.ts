@@ -5,7 +5,7 @@ import { findProjectConflict, resolveProjectConflictCopy } from '../../../../../
 import { readConflictDismissals } from '../../../../../src/library/conflicts/index';
 import { conflictDismissalFile } from '../../../../../src/library/conflicts/node/index';
 import { nodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
-import { FileProjectVersionStore, textHash } from '../../../../../src/writing/merge/index';
+import { FileProjectVersionStore, textHash } from '../../../../../src/writing/conflict/index';
 import { NodeLibraryFileSystem, deviceLocalLayout } from '../../../../../src/library/node/index';
 import { fakeLogger } from '../../../../support/fakeLogger';
 import { cleanupTempDirs, makeTempDir } from '../../../../support/tempDirs';

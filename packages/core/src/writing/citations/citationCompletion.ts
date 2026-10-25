@@ -1,7 +1,7 @@
 /** Finds where a citation key is being typed, so an editor can offer library papers there. */
 
 import type { ProjectFormat } from "../project/index.js";
-import { LATEX_CITE_COMMAND } from "./citationKeys.js";
+import { LATEX_CITE_COMMAND } from "./scanCitations.js";
 
 const LATEX_OPEN_CITE = new RegExp(`${LATEX_CITE_COMMAND}[^}]*$`);
 const TYPST_OPEN_REFERENCE = /(?<![\p{L}\p{N}_])@[\p{L}\p{N}_:.-]*$/u;

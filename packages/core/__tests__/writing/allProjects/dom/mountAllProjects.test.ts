@@ -5,7 +5,7 @@
 import type { PanePrefs } from "../../../../src/libraryUi/store/index";
 import { mountAllProjects } from "../../../../src/writing/allProjects/dom/index";
 import type { AllProjectsToHost, HostToAllProjects } from "../../../../src/writing/allProjects/protocol/index";
-import { row } from "./detail/fixtures";
+import { row } from "./detailPane/fixtures";
 
 function mountPage() {
   document.body.innerHTML = "";

@@ -2,7 +2,7 @@
 import { createProjectIndex } from "../../../src/collab/model/index";
 import { startProjectMirror, type MirrorDisk, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
 import { nodeCollabStorage } from "../../../src/collab/node/index";
-import { mergeText } from "../../../src/writing/merge/node/index";
+import { mergeText } from "../../../src/writing/conflict/node/index";
 import { openCollabStore, type CollabStore } from "../../../src/collab/deviceState/index";
 import { deriveRelayToken } from "../../../src/collab/shareKey/index";
 import { attachBlobs, type BlobExchange } from "../../../src/collab/doc/attachBlobs";

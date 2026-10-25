@@ -1,5 +1,5 @@
 /** Finds what can reveal the authors of an anonymous submission: their names, self-references and personal links. */
-import type { CheckFinding, CheckLocation, CheckSource, PdfFacts } from "./checkTypes.js";
+import type { CheckFinding, CheckLocation, CheckSource, PdfFacts } from "./checkReport.js";
 import type { PaperBody } from "./paperBody.js";
 import { locateInSources } from "./sourceLines.js";
 

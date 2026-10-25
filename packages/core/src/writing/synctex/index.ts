@@ -3,4 +3,4 @@ export { parseSynctex } from "./parseSynctex.js";
 export { pointFor } from "./pointFor.js";
 export { readSynctexFile } from "./readSynctexFile.js";
 export { sourceAt } from "./sourceAt.js";
-export type { SourceLocation, SyncIndex, SynctexRead } from "./syncIndex.js";
+export type { SourceLocation, SyncIndex, SynctexRead } from "./synctexMap.js";

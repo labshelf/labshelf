@@ -1,9 +1,12 @@
 // Tests the All projects library: where each project is listed, its build, cites and detail, and what its mutations write.
-import { readProjectCites, readProjectDetail } from "../../../../src/writing/allProjects/read/index";
+import { readProjectCites } from "../../../../src/writing/allProjects/library/readProjectCitationCounts";
+import { readProjectDetail } from "../../../../src/writing/allProjects/library/readProjectDetailPane";
 import { libraryHarness, readyEntry } from "../../../support/projectLibraryHarness";
 
-jest.mock("../../../../src/writing/allProjects/read/index", () => ({
+jest.mock("../../../../src/writing/allProjects/library/readProjectCitationCounts", () => ({
   readProjectCites: jest.fn(async () => ({ cites: 5, unresolved: 2 })),
+}));
+jest.mock("../../../../src/writing/allProjects/library/readProjectDetailPane", () => ({
   readProjectDetail: jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] })),
 }));
 

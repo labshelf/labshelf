@@ -1,6 +1,6 @@
 // Asks for what a project action needs (a title, a folder, a confirmation) and posts the action to the host.
 import { confirmDialog, inputBox, quickPick, type QuickPickItem } from "../../../ui/dom/index.js";
-import { moveTargets } from "../derive/index.js";
+import { moveTargets } from "../viewModel/index.js";
 import type { AllProjectsToHost } from "../protocol/index.js";
 import type { ProjectRow } from "../projectRow.js";
 

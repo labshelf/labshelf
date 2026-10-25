@@ -1,5 +1,5 @@
 sha: 3159f508
-files: packages/vscode/src/writing/**, packages/core/src/writing/project/export/projectFiles.ts
+files: packages/vscode/src/writing/**, packages/core/src/writing/project/exportFiles.ts
 source: GitHub API and raw sources read 2026-10-17; decisions with the user, 2026-10-17
 
 # Reuse candidates and transport facts

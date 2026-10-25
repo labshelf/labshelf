@@ -1,5 +1,5 @@
 // Chooses the closest stored text as the base for an outside disk edit.
-import { lineSimilarity } from "../../writing/merge/index.js";
+import { lineSimilarity } from "../../writing/text/index.js";
 import type { MirrorContext } from "./mirrorContext.js";
 
 export function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, parent?: string) {

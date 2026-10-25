@@ -1,5 +1,5 @@
 // Collects the bindings, labels, imports, includes and bibliographies a Typst file defines.
-import { lineOf, lineStarts } from "../../../writing/lineIndex/index.js";
+import { lineOf, lineStarts } from "../../../writing/text/index.js";
 import { readImportNames } from "./typstImportNames.js";
 import { readLetHead } from "./typstLetBinding.js";
 import type { TypstBinding, TypstFileSymbols } from "./typstFileSymbols.js";
