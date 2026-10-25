@@ -8,7 +8,7 @@ import type { RelayCursorStore } from "../relays/index.js";
 import { INDEX_DOC_KEY } from "../doc/index.js";
 import { ShareBlobCache } from "./ShareBlobCache.js";
 import type { CollabDeviceStateStorage } from "./collabStorage.js";
-import { PersistedMap } from "./storedMap.js";
+import { StoredMap } from "./storedMap.js";
 import { loadVersionHistory, type StoredVersion } from "./versionHistory.js";
 
 /** By doc id; the log of each doc is merged into its snapshot, so the log only ever holds what came after this load. */
@@ -111,8 +111,8 @@ export interface CollabStore {
   createDoc(path: string): Y.Doc;
   readonly blobs: ShareBlobCache;
   /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
-  readonly known: PersistedMap<string>;
-  readonly bases: PersistedMap<string>;
+  readonly known: StoredMap<string>;
+  readonly bases: StoredMap<string>;
   rememberVersion(path: string, hash: string, text: string): void;
   storedVersions(path: string): readonly StoredVersion[];
   /** The relay cursor of each doc on one relay, saved only while every doc update is stored, and the state the relay holds. */
@@ -129,7 +129,7 @@ const isCursor = (value: unknown): value is number => Number.isInteger(value) &&
 // Bytes that fail to decode make the caller log the held state as unreadable instead of dropping it silently.
 const heldBytes = (value: string): Uint8Array => isCanonicalBase64(value) ? base64ToBytes(value) : new Uint8Array();
 
-function cursorsOf(cursors: PersistedMap<number>, held: PersistedMap<string>, relayUrl: string): RelayCursorStore {
+function cursorsOf(cursors: StoredMap<number>, held: StoredMap<string>, relayUrl: string): RelayCursorStore {
   // INVARIANT: a URL holds no space, so the `<relay url> <doc key>` keys of two relays never collide.
   const key = (docKey: string) => `${relayUrl} ${docKey}`;
   return {
@@ -157,14 +157,14 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
     await Promise.all(docs.map((doc) => doc.settled()));
     return docs.every((doc) => !doc.unstored);
   };
-  const known = await PersistedMap.load({ storage, name: "known", label: "known file hashes", isValue: isString, logger });
-  const bases = await PersistedMap.load({ storage, name: "bases", label: "file merge bases", isValue: isString, logger });
+  const known = await StoredMap.load({ storage, name: "known", label: "known file hashes", isValue: isString, logger });
+  const bases = await StoredMap.load({ storage, name: "bases", label: "file merge bases", isValue: isString, logger });
   const versions = await loadVersionHistory(storage, logger);
-  const cursors = await PersistedMap.load({
+  const cursors = await StoredMap.load({
     storage, name: "relay-cursors", label: "relay cursors", isValue: isCursor, logger, maySave: allDocsStored,
   });
   // The held state describes the relay, not this device's docs, so it saves without waiting for doc updates.
-  const held = await PersistedMap.load({ storage, name: "relay-held", label: "relay held states", isValue: isString, logger });
+  const held = await StoredMap.load({ storage, name: "relay-held", label: "relay held states", isValue: isString, logger });
 
   function restore(docKey: string): Y.Doc {
     const doc = new Y.Doc();

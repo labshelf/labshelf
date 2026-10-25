@@ -4,7 +4,7 @@ import type { CollabDeviceStateStorage, DeviceStateMapName } from "./collabStora
 
 const LOG_MODULE = "collab.state";
 
-export interface PersistedMapOptions<V> {
+export interface StoredMapOptions<V> {
   storage: CollabDeviceStateStorage;
   name: DeviceStateMapName;
   /** What the map holds, for log lines and errors. */
@@ -15,16 +15,16 @@ export interface PersistedMapOptions<V> {
   maySave?: () => Promise<boolean>;
 }
 
-export class PersistedMap<V> {
+export class StoredMap<V> {
   private saving: Promise<void> = Promise.resolve();
   private queued = false;
   private changes = 0;
   private savedChanges = 0;
 
-  private constructor(private readonly options: PersistedMapOptions<V>, private readonly entries: Map<string, V>) {}
+  private constructor(private readonly options: StoredMapOptions<V>, private readonly entries: Map<string, V>) {}
 
   /** Loads the map; a missing or unreadable one starts empty. */
-  static async load<V>(options: PersistedMapOptions<V>): Promise<PersistedMap<V>> {
+  static async load<V>(options: StoredMapOptions<V>): Promise<StoredMap<V>> {
     const { storage, name, label, isValue, logger } = options;
     let entries = new Map<string, V>();
     try {
@@ -37,7 +37,7 @@ export class PersistedMap<V> {
     } catch (error) {
       await logger.log("WARN", LOG_MODULE, `Ignored unreadable ${label}`, { name, error: String(error) });
     }
-    return new PersistedMap(options, entries);
+    return new StoredMap(options, entries);
   }
 
   get(key: string): V | undefined { return this.entries.get(key); }

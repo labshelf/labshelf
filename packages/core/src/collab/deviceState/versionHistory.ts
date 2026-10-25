@@ -1,7 +1,7 @@
 // Retains bounded device-local text versions for merge-base selection.
 import type { ILogger } from "../../ports/index.js";
 import type { CollabDeviceStateStorage } from "./collabStorage.js";
-import { PersistedMap } from "./storedMap.js";
+import { StoredMap } from "./storedMap.js";
 
 export const VERSIONS_PER_PATH = 50;
 export interface StoredVersion { readonly hash: string; readonly text: string }
@@ -13,7 +13,7 @@ function isVersions(value: unknown): value is readonly StoredVersion[] {
 }
 
 export async function loadVersionHistory(storage: CollabDeviceStateStorage, logger: ILogger) {
-  const versions = await PersistedMap.load({ storage, name: "versions", label: "stored file versions", isValue: isVersions, logger });
+  const versions = await StoredMap.load({ storage, name: "versions", label: "stored file versions", isValue: isVersions, logger });
   return {
     storedVersions: (path: string): readonly StoredVersion[] => versions.get(path) ?? [],
     rememberVersion: (path: string, hash: string, text: string): void => {
