@@ -1,10 +1,40 @@
 /** Resolves a paper against the online registries and collects the sources that record contributes. */
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { SOURCE_TRUST, type MetadataSource } from "../../metadata/index.js";
-import { enrichByDoi, resolveFirstIdentifier, searchOnlineByQueries } from "../../search/index.js";
+import { SOURCE_TRUST, type MetadataSource, parseString } from "../../metadata/index.js";
+import { fetchMetadataSourcesByDoi, resolveFirstIdentifier, searchOnlineByQueries } from "../../search/index.js";
 import type { PdfSignals } from "./readPdf.js";
-import { searchQueries } from "./searchHints.js";
+import { normalizeAuthors } from "../authors.js";
+
+const ABSTRACT_QUERY_CHARS = 300;
+
+function searchQueries(
+  signals: PdfSignals,
+  localTitle: string | undefined,
+  frontMatter: string,
+  abstract: string | undefined,
+): Array<string | undefined> {
+  const author = firstAuthorHint(signals);
+  return [
+    localTitle,
+    localTitle && author ? `${localTitle} ${author}` : undefined,
+    frontMatterQuery(frontMatter),
+    abstract?.slice(0, ABSTRACT_QUERY_CHARS),
+  ];
+}
+
+// The masthead holds the title and authors; feeding the whole page to a search
+// index buries them under boilerplate and affiliations.
+function frontMatterQuery(text: string): string | undefined {
+  const head = text.replace(/\s+/g, " ").trim().slice(0, 400);
+  return head.length >= 20 ? head : undefined;
+}
+
+// A surname next to a generic title is often what makes a search unambiguous.
+function firstAuthorHint(signals: PdfSignals): string | undefined {
+  const author = signals.xmp?.authors?.[0] ?? normalizeAuthors(parseString(signals.info["Author"]))[0];
+  return author?.split(/\s+/).pop();
+}
 
 const ONLINE_MODULE = "import/pdf";
 
@@ -21,7 +51,7 @@ export interface OnlineInput {
   logger: ILogger | undefined;
 }
 
-export interface OnlineRecord {
+export interface OnlinePaperRecord {
   // Registry sources, enrichment included; empty when no registry knew the paper.
   sources: MetadataSource[];
   resolved: boolean;
@@ -29,7 +59,7 @@ export interface OnlineRecord {
   origin: string | undefined;
 }
 
-export async function resolveOnline(input: OnlineInput): Promise<OnlineRecord> {
+export async function resolveOnline(input: OnlineInput): Promise<OnlinePaperRecord> {
   const { confirmed } = input;
   const env = { logger: input.logger };
   let resolved = confirmed?.metadata;
@@ -60,7 +90,7 @@ export async function resolveOnline(input: OnlineInput): Promise<OnlineRecord> {
   // first one left — CrossRef omits the abstract for most of its records.
   const doi = resolved.doi ?? (confirmed?.identifier.type === "doi" ? confirmed.identifier.value : undefined);
   if (doi) {
-    sources.push(...(await enrichByDoi(doi, env).catch(degrade(input.logger, "DOI enrichment failed; continuing without it", [] as MetadataSource[]))));
+    sources.push(...(await fetchMetadataSourcesByDoi(doi, env).catch(degrade(input.logger, "DOI enrichment failed; continuing without it", [] as MetadataSource[]))));
   }
   return { sources, resolved: true, origin };
 }
@@ -68,7 +98,7 @@ export async function resolveOnline(input: OnlineInput): Promise<OnlineRecord> {
 // A lookup that throws degrades to `fallback`, with a WARN so the missing record is explained.
 function degrade<T>(logger: ILogger | undefined, message: string, fallback: T): (error: unknown) => Promise<T> {
   return async (error) => {
-    await logger?.log("WARN", ONLINE_MODULE, message, { message: errorMessage(error) });
+    await logger?.log("WARN", ONLINE_MODULE, message, { message: formatError(error) });
     return fallback;
   };
 }

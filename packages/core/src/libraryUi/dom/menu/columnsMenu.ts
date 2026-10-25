@@ -1,11 +1,11 @@
 // Opens the menu that shows or hides the optional list columns.
 import { showMenu, type MenuAnchor } from "../../../ui/dom/index.js";
-import { COLUMN_KEYS, type ColumnKey } from "../../store/index.js";
+import { COLUMN_KEYS, type ListColumn } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 
-const LABEL: Record<ColumnKey, string> = { creator: "Authors", venue: "Venue", year: "Year", lastRead: "Last read", status: "Status" };
+const LABEL: Record<ListColumn, string> = { creator: "Authors", venue: "Venue", year: "Year", lastRead: "Last read", status: "Status" };
 
-function toggleColumn(ctx: UiContext, key: ColumnKey): void {
+function toggleColumn(ctx: UiContext, key: ListColumn): void {
   const s = ctx.store.get();
   const columns = COLUMN_KEYS.filter((k) => (k === key) !== s.columns.includes(k));
   // A hidden column cannot stay the sort, since nothing on screen shows the order.

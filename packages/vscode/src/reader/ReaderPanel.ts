@@ -4,13 +4,46 @@
 import * as vscode from "vscode";
 import {
   ReaderHostController,
-  type HostToWebview, type ILogger, type PaperRecord, type PreviewPorts, type ReaderCommandId, type ReaderSidecarStore, type SidecarChange,
+  type HostToWebview,
+  type ILogger,
+  type PaperRecord,
+  type PreviewPorts,
+  type ReaderCommandId,
+  type ReaderSidecarStore,
+  type SidecarChange,
+  normalizeReaderPrefs,
+  type ReaderPrefs,
 } from "@labshelf/core";
-import { autoReaderTheme, onAutoReaderThemeChange } from "./vscodeTheme.js";
-import { renderReaderShell, getReaderBundleDirectory, type PdfjsFiles, type PdfjsLocator } from "./readerShell.js";
-import { READER_CONFIG_SECTION, getReaderPrefs, getReaderViewColumn } from "./readerPrefs.js";
+import { readAutoReaderTheme, onAutoReaderThemeChange } from "./vscodeTheme.js";
+import { renderReaderShell, readReaderBundleDir, type PdfjsFiles, type PdfjsLocator } from "./readerShell.js";
 import { createVsCodeOutputPorts } from "./readerHostPorts.js";
-import { labshelfTabIcon } from "../ui/index.js";
+import { createTabIcon } from "../ui/index.js";
+
+const READER_CONFIG_SECTION = "labshelf.reader";
+
+const PREF_KEYS: readonly (keyof ReaderPrefs)[] = [
+  "vimKeys", "defaultZoom", "toolbarAutoHide", "restorePosition", "hoverPreviews", "hoverDelayMs", "citationStyle",
+];
+
+/**
+ * Settings are user-editable JSON, so every value is validated (shared normalizeReaderPrefs) and falls back to its default.
+ * @returns the current reader preferences.
+ */
+function getReaderPrefs(): ReaderPrefs {
+  const cfg = vscode.workspace.getConfiguration(READER_CONFIG_SECTION);
+  const raw: Record<string, unknown> = {};
+  for (const key of PREF_KEYS) { raw[key] = cfg.get<unknown>(key); }
+  return normalizeReaderPrefs(raw);
+}
+
+/**
+ * Whether the reader opens beside the current editor (ViewColumn.Two) or full-width in the active group (default).
+ * @returns the view column to open the reader panel in.
+ */
+function getReaderViewColumn(): vscode.ViewColumn {
+  const beside = vscode.workspace.getConfiguration(READER_CONFIG_SECTION).get<unknown>("openBeside");
+  return beside === true ? vscode.ViewColumn.Two : vscode.ViewColumn.Active;
+}
 
 // The contributed reader keybindings match this id in their `activeWebviewPanelId` when-clauses.
 const READER_VIEW_TYPE = "labshelfPdf";
@@ -93,7 +126,7 @@ export class ReaderPanel {
     }
 
     const pdfjs = deps.locatePdfjs();
-    const resourceRoots: vscode.Uri[] = [getReaderBundleDirectory(deps.extensionUri), source.rootDir];
+    const resourceRoots: vscode.Uri[] = [readReaderBundleDir(deps.extensionUri), source.rootDir];
     if (pdfjs) { resourceRoots.push(pdfjs.root); }
 
     const show = source.show ?? getReaderViewColumn();
@@ -109,7 +142,7 @@ export class ReaderPanel {
         // not the PDF text the reader's own find bar covers.
       },
     );
-    panel.iconPath = labshelfTabIcon(deps.extensionUri);
+    panel.iconPath = createTabIcon(deps.extensionUri);
 
     return new ReaderPanel(panel, deps, source, pdfjs);
   }
@@ -122,7 +155,7 @@ export class ReaderPanel {
       store: source.store,
       post: (msg) => this._post(msg),
       getPrefs: getReaderPrefs,
-      autoTheme: autoReaderTheme,
+      autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
       logger: deps.logger,
       ...(source.sidecarChanged ? { sidecarChanged: source.sidecarChanged } : {}),

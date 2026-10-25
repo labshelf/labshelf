@@ -3,13 +3,13 @@ import { buildShare, formatShareLink, type ILogger, type PaperRecord, type Share
 import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles } from "../support/fakeIdb";
 
-jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ openDb: async () => require("../support/fakeIdb").fakeDb }));
 
 const mockCache = new Map<string, PaperRecord>();
 jest.mock("../../src/storage/paperRecordStore", () => ({
-  listAllRecords: async () => [...mockCache.values()],
-  upsertRecord: async (record: PaperRecord) => { mockCache.set(record.id, record); },
-  deleteRecord: async (id: string) => { mockCache.delete(id); },
+  listCachedPaperRecords: async () => [...mockCache.values()],
+  writeCachedPaperRecord: async (record: PaperRecord) => { mockCache.set(record.id, record); },
+  removeCachedPaperRecord: async (id: string) => { mockCache.delete(id); },
 }));
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };

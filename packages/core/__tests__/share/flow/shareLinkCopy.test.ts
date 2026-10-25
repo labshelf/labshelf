@@ -1,11 +1,11 @@
 // Pins the counted wording of the share rights notice.
-import { shareRightsNotice } from "../../../src/share/index";
+import { describeShareRightsNotice } from "../../../src/share/index";
 
-describe("shareRightsNotice", () => {
+describe("describeShareRightsNotice", () => {
   it("names one paper in the singular", () => {
-    expect(shareRightsNotice({ label: "Solo", count: 1 }).detail).toContain('read the 1 paper of "Solo"');
+    expect(describeShareRightsNotice({ label: "Solo", count: 1 }).detail).toContain('read the 1 paper of "Solo"');
   });
   it("names several papers in the plural", () => {
-    expect(shareRightsNotice({ label: "Group", count: 2 }).detail).toContain('read the 2 papers of "Group"');
+    expect(describeShareRightsNotice({ label: "Group", count: 2 }).detail).toContain('read the 2 papers of "Group"');
   });
 });

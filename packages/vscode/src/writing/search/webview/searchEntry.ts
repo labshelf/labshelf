@@ -3,7 +3,12 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/project-search.css";
-import { $, mountProjectSearch } from "@labshelf/core/dom";
-import { createSearchChannel } from "./searchChannel.js";
+import { findElement, mountProjectSearch } from "@labshelf/core/dom";
+import type { HostToSearch, SearchToHost, SearchTransport } from "@labshelf/core";
+import { createWebviewTransport } from "../../../webview/index.js";
 
-mountProjectSearch($("root"), createSearchChannel());
+function createSearchChannel(): SearchTransport {
+  return createWebviewTransport<SearchToHost, HostToSearch>(acquireVsCodeApi());
+}
+
+mountProjectSearch(findElement("root"), createSearchChannel());

@@ -1,25 +1,88 @@
 // Mounts the All projects detail pane: head, tabs and folds for the selected project, with the pane's actions.
-import { loading, muted, tabBarHtml } from "../../../../libraryUi/dom/index.js";
-import type { ProjectDetail } from "../../projectDetailPane.js";
+import { renderLoading, renderMuted, renderTabBarHtml, renderIconButton } from "../../../../libraryUi/dom/index.js";
+import type { ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectRow } from "../../projectRow.js";
-import { runProjectDetailAction, type ProjectDetailActionDeps } from "./projectDetailPaneActions.js";
-import { citationsTabHtml, overviewTabHtml, projectDetailTabs, versionsTabHtml } from "./tabs/index.js";
-import { projectDetailHeadHtml } from "./projectDetailPaneHead.js";
+import { renderCitationsTabHtml, renderOverviewTabHtml, deriveProjectPaneTabs, renderVersionsTabHtml } from "./tabs/index.js";
+import { askInputBox, showMenu } from "../../../../ui/dom/index.js";
+import type { Post } from "../projectActions.js";
+import { createProjectMenuEntries, type ProjectMenuContext } from "../projectMenu.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
+import { formatDeadlineText } from "../../formatDeadlineText.js";
+import { formatProjectBuildStateText, formatMetaLine } from "./projectDetailPaneText.js";
 
-export interface ProjectDetailView {
+export interface ProjectHeadOptions {
+  /** The host's label for the primary button, such as "Open in VS Code". */
+  openLabel: string;
+  now: number;
+}
+
+function targetMark(row: ProjectRow, now: number): string {
+  const left = formatDeadlineText(row.target, now);
+  const text = [row.target?.venue, left?.text].filter(Boolean).join(" · ");
+  if (!text) return "";
+  const tone = left && left.tone !== "normal" ? ` tone-${left.tone}` : "";
+  return `<span class="status-target${tone}">${renderIcon("target")}<span>${escapeHtml(text)}</span></span>`;
+}
+
+/** The status comes from the row until the detail, which knows the warning count, arrives. */
+export function renderProjectPaneHeadHtml(row: ProjectRow, detail: ProjectPaneContent | undefined, o: ProjectHeadOptions): string {
+  const build = detail?.build ?? row.build;
+  return `<div class="detail-head">` +
+    `<div class="head-more">${renderIconButton("more", "more", "More actions")}</div>` +
+    `<div class="detail-title">${escapeHtml(row.title)}</div>` +
+    `<div class="detail-meta">${escapeHtml(formatMetaLine(row, detail?.pages, o.now))}</div>` +
+    `<div class="detail-toolbar">` +
+      `<button class="ls-btn ls-button-soft open-btn" type="button" data-action="open">${escapeHtml(o.openLabel)}</button>` +
+      `<button class="ls-btn ls-btn-ghost" type="button" data-action="preview">Preview</button>` +
+    `</div>` +
+    `<div class="detail-status-row">` +
+      `<span class="status-build"><span class="ls-build-dot b-${build?.state ?? "never"}"></span>${escapeHtml(formatProjectBuildStateText(build))}</span>` +
+      targetMark(row, o.now) +
+    `</div></div>`;
+}
+
+interface ProjectDetailActionDeps {
+  post: Post;
+  /** Read at click time so the menu sees the latest rows and host commands. */
+  menu: () => ProjectMenuContext;
+}
+
+function validateDeadline(value: string): string | null {
+  if (value === "") return null;
+  // The round trip rejects impossible dates such as 2027-02-31, which Date.parse would roll over.
+  const at = Date.parse(`${value}T00:00:00Z`);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(at) && new Date(at).toISOString().slice(0, 10) === value;
+  return valid ? null : "Write the deadline as YYYY-MM-DD";
+}
+
+async function editTarget(row: ProjectRow, post: Post): Promise<void> {
+  const venue = await askInputBox({ title: "Target venue", prompt: "Where is this project headed? Leave empty to clear it.", value: row.target?.venue ?? "" });
+  if (venue === undefined) return;
+  const deadline = await askInputBox({ title: "Deadline", prompt: "YYYY-MM-DD. Leave empty for no deadline.", value: row.target?.deadline ?? "", validate: validateDeadline });
+  if (deadline === undefined) return;
+  post({ type: "setTarget", id: row.id, ...(venue ? { venue } : {}), ...(deadline ? { deadline } : {}) });
+}
+
+function runProjectDetailAction(action: string, anchor: HTMLElement, row: ProjectRow, deps: ProjectDetailActionDeps): void {
+  if (action === "open" || action === "preview" || action === "build" || action === "openLog") deps.post({ type: action, id: row.id });
+  else if (action === "more") showMenu(anchor, createProjectMenuEntries(row, deps.menu()));
+  else if (action === "editTarget") void editTarget(row, deps.post);
+}
+
+export interface ProjectPaneView {
   row: ProjectRow | undefined;
-  detail: ProjectDetail | undefined;
+  detail: ProjectPaneContent | undefined;
   error: string | undefined;
   /** The host's label for the primary button, such as "Open in VS Code". */
   openLabel: string;
 }
 
 interface ProjectDetailPane {
-  update(view: ProjectDetailView): void;
+  update(view: ProjectPaneView): void;
 }
 
 interface PaneState {
-  view: ProjectDetailView;
+  view: ProjectPaneView;
   tab: string;
   /** Only the folds the user toggled; sections not listed keep their default. */
   collapsed: Record<string, boolean>;
@@ -27,18 +90,18 @@ interface PaneState {
 
 function bodyHtml(s: PaneState, row: ProjectRow, now: number): string {
   const { detail, error } = s.view;
-  if (error) return muted(error);
-  if (!detail) return loading();
-  if (s.tab === "citations") return citationsTabHtml(detail);
-  if (s.tab === "versions") return versionsTabHtml(detail.versions, now);
-  return overviewTabHtml(row, detail, s.collapsed, now);
+  if (error) return renderMuted(error);
+  if (!detail) return renderLoading();
+  if (s.tab === "citations") return renderCitationsTabHtml(detail);
+  if (s.tab === "versions") return renderVersionsTabHtml(detail.versions, now);
+  return renderOverviewTabHtml(row, detail, s.collapsed, now);
 }
 
 function paneHtml(s: PaneState): string {
   const { row, detail, openLabel } = s.view;
-  if (!row) return muted("Select a project to see its details.");
+  if (!row) return renderMuted("Select a project to see its details.");
   const now = Date.now();
-  return projectDetailHeadHtml(row, detail, { openLabel, now }) + tabBarHtml(projectDetailTabs(detail), s.tab) +
+  return renderProjectPaneHeadHtml(row, detail, { openLabel, now }) + renderTabBarHtml(deriveProjectPaneTabs(detail), s.tab) +
     `<div class="tab-body">${bodyHtml(s, row, now)}</div>`;
 }
 
@@ -51,7 +114,7 @@ function toggleSection(slot: HTMLElement, s: PaneState, head: HTMLElement): void
   slot.querySelector(`[data-sec-body="${sec}"]`)?.classList.toggle("hidden", closed);
 }
 
-export function mountProjectDetail(slot: HTMLElement, deps: ProjectDetailActionDeps): ProjectDetailPane {
+export function mountProjectPane(slot: HTMLElement, deps: ProjectDetailActionDeps): ProjectDetailPane {
   const s: PaneState = { view: { row: undefined, detail: undefined, error: undefined, openLabel: "Open" }, tab: "overview", collapsed: {} };
   const render = (): void => { slot.innerHTML = paneHtml(s); };
 

@@ -2,7 +2,7 @@
 import {
   decodeClientMessage, encodeRelayBody, encodeRelayMessage, RELAY_PATH, RELAY_WORKER_BUILD, type RelayRow, type RelayServerMessage,
 } from "../../../../src/relay/index";
-import type { RelaySocket } from "../../../../src/collab/transport/index";
+import type { RelayConnectionPort } from "../../../../src/collab/transport/index";
 import type { FakeClock } from "../../peer/fakeNetwork";
 
 const LATENCY_MS = 5;
@@ -10,7 +10,7 @@ const LATENCY_MS = 5;
 const SOCKET_MESSAGES_PER_REQUEST = 20;
 const PAGE_ROWS = 50;
 
-class FakeSocket implements RelaySocket {
+class FakeSocket implements RelayConnectionPort {
   binaryType = "blob";
   onopen: (() => void) | null = null;
   onmessage: ((event: { data: unknown }) => void) | null = null;
@@ -73,7 +73,7 @@ export class FakeRelay {
     return new Response(encodeRelayBody({ ticket: "1.ticket", expires: 2_000_000_000 }), { status: 200 });
   };
 
-  socketFactory = (url: string): RelaySocket => {
+  socketFactory = (url: string): RelayConnectionPort => {
     const socket = new FakeSocket(this, url);
     this.clock.after(LATENCY_MS, () => this.open(socket));
     return socket;

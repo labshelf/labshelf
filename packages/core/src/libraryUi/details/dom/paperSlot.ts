@@ -1,6 +1,6 @@
 // Shows the papers the Details surface targets in the library detail pane, fed by the library channel alone.
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../../index.js";
-import { attachHostMessages, createUiContext, mountDetailPane } from "../../dom/index.js";
+import { attachHostMessages, createUiCompositionRoot, mountDetailPane } from "../../dom/index.js";
 import type { HostToUi, LibraryTransport, MessageEnd, UiToHost } from "../../protocol/index.js";
 import { LibraryViewStore, type PrefsPort } from "../../store/index.js";
 import type { DetailsToHost, HostToDetails } from "../protocol/index.js";
@@ -50,7 +50,7 @@ function libraryChannel(transport: PaperSlotParts["transport"]): LibraryTranspor
 export function mountPaperSlot(root: HTMLElement, el: HTMLElement, parts: PaperSlotParts): PaperSlot {
   const transport = libraryChannel(parts.transport);
   const store = new DetailsViewStore(transport.post);
-  const base = createUiContext(root, { store, transport, prefs: parts.prefs, caps: parts.caps, labels: parts.labels, readOnly: false });
+  const base = createUiCompositionRoot(root, { store, transport, prefs: parts.prefs, caps: parts.caps, labels: parts.labels, readOnly: false });
   // Keys belong to the list, which lives elsewhere.
   const ctx = { ...base, focusList: () => undefined };
   let wanted: readonly string[] = [];

@@ -53,7 +53,7 @@ export function readChoice<T extends string>(body: Body, key: string, choices: r
 }
 
 /** Copies `key` through `read` only when the body has it, so absent optionals stay absent. */
-export function optional<T>(body: Body, key: string, read: (body: Body, key: string) => T): { [k: string]: T } {
+export function readOptionalField<T>(body: Body, key: string, read: (body: Body, key: string) => T): { [k: string]: T } {
   return body[key] === undefined ? {} : { [key]: read(body, key) };
 }
 

@@ -2,7 +2,7 @@
 import { buildChecklist, type ChecklistSignals, type ReadingItem } from "../../writing/index.js";
 import type { Progress } from "./spaceViewModel.js";
 
-export function spaceChecklistProgress(signals: ChecklistSignals, reading: readonly ReadingItem[]): Progress {
+export function deriveSpaceChecklistProgress(signals: ChecklistSignals, reading: readonly ReadingItem[]): Progress {
   const checklist = buildChecklist({
     ...signals, reading, pageOverflow: undefined,
     placeSection: file => ({ id: file, title: file, file }), citeSections: new Map(),

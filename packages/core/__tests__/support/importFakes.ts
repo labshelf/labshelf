@@ -1,5 +1,5 @@
 /** A fake PDF parser and app index for tests of the import mutations. */
-import { doiLookup, type ImportDeps, type ParsedImport, type PaperRecord } from "@labshelf/core";
+import { createDoiFinder, type ImportDeps, type ParsedImport, type PaperRecord } from "@labshelf/core";
 
 export const ATTENTION: ParsedImport = {
   title: "Attention Is All You Need",
@@ -18,7 +18,7 @@ export interface FakeImportDeps extends ImportDeps {
 
 /** @returns deps whose index holds `known` and whose parser returns ATTENTION unless mocked otherwise */
 export function makeImportDeps(known: Array<Pick<PaperRecord, "id" | "doi">> = []): FakeImportDeps {
-  const findByDoi = doiLookup(known);
+  const findByDoi = createDoiFinder(known);
   return {
     parse: jest.fn(async (_bytes: Uint8Array, _stem: string): Promise<ParsedImport> => ({ ...ATTENTION })),
     findByDoi,

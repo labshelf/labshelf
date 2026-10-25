@@ -2,8 +2,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-  entryAtY,
-  entryByNumber,
+  findEntryAtY,
+  findEntryByNumber,
   findReferencesStart,
   isReferencesHeading,
   matchAuthorYear,
@@ -53,40 +53,40 @@ describe('findReferencesStart', () => {
   });
 });
 
-describe('entryAtY', () => {
+describe('findEntryAtY', () => {
   const entries = splitReferenceEntries(loadFixture('two-column.json'));
 
   it('picks the entry whose first baseline is nearest at/below the destination y', () => {
-    const entry = entryAtY(entries, { y: 706 });
+    const entry = findEntryAtY(entries, { y: 706 });
     expect(entry?.number).toBe(5);
   });
 
   it('tolerates a destination a couple of points inside the first line', () => {
-    const entry = entryAtY(entries, { y: 704 });
+    const entry = findEntryAtY(entries, { y: 704 });
     expect(entry?.number).toBe(5);
   });
 
   it('returns null when the nearest entry is more than 4 line-heights away', () => {
-    expect(entryAtY(entries, { y: 2000 })).toBeNull();
+    expect(findEntryAtY(entries, { y: 2000 })).toBeNull();
   });
 
   it('prefers the entry in the destination column when columnSplit and x are given', () => {
     // Without column info, entry #3 (col 0, y 740) is nearest to y=738.
-    expect(entryAtY(entries, { y: 738 })?.number).toBe(3);
+    expect(findEntryAtY(entries, { y: 738 })?.number).toBe(3);
     // With x on the right side of the gutter, entry #4 (col 1, y 736) is preferred instead.
-    expect(entryAtY(entries, { y: 738, x: 450, columnSplit: 345 })?.number).toBe(4);
+    expect(findEntryAtY(entries, { y: 738, x: 450, columnSplit: 345 })?.number).toBe(4);
   });
 });
 
-describe('entryByNumber', () => {
+describe('findEntryByNumber', () => {
   const entries = splitReferenceEntries(loadFixture('two-column.json'));
 
   it('returns the entry with the matching number', () => {
-    expect(entryByNumber(entries, 4)?.text).toContain('Davis');
+    expect(findEntryByNumber(entries, 4)?.text).toContain('Davis');
   });
 
   it('returns null when no entry has that number', () => {
-    expect(entryByNumber(entries, 99)).toBeNull();
+    expect(findEntryByNumber(entries, 99)).toBeNull();
   });
 });
 

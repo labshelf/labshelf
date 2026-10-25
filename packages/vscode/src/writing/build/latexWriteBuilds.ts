@@ -2,16 +2,16 @@
 import { buildRootOf } from "@labshelf/core";
 import * as vscode from "vscode";
 
-import { owningProject, type ReadyProject } from "../buildRootDocument.js";
+import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
-import { autoCompileGate } from "./buildMode.js";
+import { createAutoCompileGate } from "./buildMode.js";
 import { type IncludeOnlyTarget } from "./includeOnly.js";
 
 const SOURCE_EXTENSIONS = new Set([".tex", ".bib", ".sty", ".cls"]);
 // Editors with auto save write several times a second while typing; one build covers a burst.
 const SAVE_DEBOUNCE_MS = 300;
 
-export interface LatexSaveBuildsDeps {
+export interface LatexWriteBuildsDeps {
   context: Pick<vscode.ExtensionContext, "subscriptions">;
   host: Pick<WritingHost, "current">;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
@@ -21,16 +21,16 @@ export interface LatexSaveBuildsDeps {
   includeOnlyTarget?: IncludeOnlyTarget;
 }
 
-function latexProjectOf(projects: LatexSaveBuildsDeps["projects"], file: vscode.Uri): ReadyProject | undefined {
+function latexProjectOf(projects: LatexWriteBuildsDeps["projects"], file: vscode.Uri): ReadyProject | undefined {
   if (file.scheme !== "file") { return undefined; }
-  const project = owningProject(projects, file.fsPath);
+  const project = findOwningProject(projects, file.fsPath);
   return project?.settings.format === "latex" ? project : undefined;
 }
 
-export function registerLatexSaveBuilds(deps: LatexSaveBuildsDeps): void {
+export function registerLatexWriteBuilds(deps: LatexWriteBuildsDeps): void {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   let disposed = false;
-  const autoCompile = autoCompileGate(() => deps.host.current()?.logger);
+  const autoCompile = createAutoCompileGate(() => deps.host.current()?.logger);
 
   const requestSave = async (project: ReadyProject, root: string): Promise<void> => {
     try {

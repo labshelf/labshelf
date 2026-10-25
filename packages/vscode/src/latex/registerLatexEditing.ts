@@ -2,8 +2,8 @@
 import * as vscode from "vscode";
 
 import { registerLabelProviders } from "./labels/index.js";
-import { mathHoverProvider } from "./mathHover.js";
-import { registerSectionOutline } from "./outline/index.js";
+import { createMathHoverProvider } from "./mathHover.js";
+import { registerSectionOutline } from "./registerSectionOutline.js";
 import { LatexProjectSources, type LatexProjectWorkspace } from "./project/index.js";
 import { registerWordCount } from "./registerWordCount.js";
 
@@ -14,6 +14,6 @@ export function registerLatexEditing(context: vscode.ExtensionContext, workspace
   registerLabelProviders(context, sources);
   registerSectionOutline(context, sources);
   registerWordCount(context, sources);
-  context.subscriptions.push(vscode.languages.registerHoverProvider({ language: "latex" }, mathHoverProvider(sources)));
+  context.subscriptions.push(vscode.languages.registerHoverProvider({ language: "latex" }, createMathHoverProvider(sources)));
   return sources;
 }

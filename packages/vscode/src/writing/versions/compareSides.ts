@@ -26,7 +26,7 @@ function versionItem(version: ProjectVersion): SideItem {
   return { label: version.name, description: new Date(version.created).toLocaleDateString(), version };
 }
 
-export function versionSide(version: ProjectVersion): CompareSide {
+export function deriveVersionSide(version: ProjectVersion): CompareSide {
   return { slug: version.slug, name: version.name, pdfPath: version.pdfPath, sourcesDir: version.sourcesDir };
 }
 

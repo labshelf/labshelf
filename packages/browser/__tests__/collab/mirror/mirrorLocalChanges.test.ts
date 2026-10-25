@@ -1,5 +1,5 @@
 /** Pins that files the page writes in a shared project reach the share at once, with no rescan: created, renamed and binary files. */
-import { appendWriteRecord, indexFiles, sha256Hex } from "@labshelf/core";
+import { addWriteRecord, readShareIndexDocFiles, deriveSha256Hex } from "@labshelf/core";
 import { reportPageWrites } from "../../../src/collab/mirror";
 import { FOLDER, openTestbed, running, until, type Testbed } from "./mirrorTestbed";
 
@@ -16,7 +16,7 @@ describe("browser project mirror and the page's own writes", () => {
     await until(() => bed.docText("intro.tex") === "Intro");
     await mirror.idle();
     await pageFs.rename(`${FOLDER}/intro.tex`, `${FOLDER}/chapter1.tex`);
-    await until(() => { const files = indexFiles(bed.session.index); return files.has("chapter1.tex") && !files.has("intro.tex"); });
+    await until(() => { const files = readShareIndexDocFiles(bed.session.index); return files.has("chapter1.tex") && !files.has("intro.tex"); });
     expect(bed.docText("chapter1.tex")).toBe("Intro");
   });
 
@@ -27,8 +27,8 @@ describe("browser project mirror and the page's own writes", () => {
     const pageFs = reportPageWrites(bed.folderFs);
     await pageFs.writeFile(`${FOLDER}/images/plot.png`, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 255]));
     await pageFs.writeText("projects/other/ignored.tex", "outside the share");
-    await until(() => indexFiles(bed.session.index).get("images/plot.png")?.kind === "blob");
-    expect(indexFiles(bed.session.index).get("images/plot.png")?.hash).toMatch(/^[0-9a-f]{64}$/);
+    await until(() => readShareIndexDocFiles(bed.session.index).get("images/plot.png")?.kind === "blob");
+    expect(readShareIndexDocFiles(bed.session.index).get("images/plot.png")?.hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("rescans cloud record files that arrive after their source file", async () => {
@@ -40,8 +40,8 @@ describe("browser project mirror and the page's own writes", () => {
     bed.session.registerIndexRoundTrip(roundTrip);
     await bed.folderFs.writeText(`${FOLDER}/main.tex`, "Cloud");
     await until(() => roundTrip.mock.calls.length > 0, () => bed.scheduler.fire());
-    await appendWriteRecord(bed.folderFs, FOLDER, "11111111-1111-4111-8111-111111111111", {
-      path: "main.tex", hash: await sha256Hex(new TextEncoder().encode("Cloud")), parent: null, by: "mirror", at: 1,
+    await addWriteRecord(bed.folderFs, FOLDER, "11111111-1111-4111-8111-111111111111", {
+      path: "main.tex", hash: await deriveSha256Hex(new TextEncoder().encode("Cloud")), parent: null, by: "mirror", at: 1,
     }, bed.logger);
     const waiting = () => (bed.logger.log as jest.Mock).mock.calls.some(call => call[2] === "Waiting for an in-flight mirror write");
     await until(waiting, () => bed.scheduler.fire());

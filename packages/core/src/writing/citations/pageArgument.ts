@@ -53,6 +53,6 @@ function typstContext(before: string, after: string): PageArgumentContext | unde
 }
 
 /** The page-argument context at the cursor, given the line text before and after it, or undefined outside one. */
-export function pageArgumentContext(format: ProjectFormat, before: string, after: string): PageArgumentContext | undefined {
+export function derivePageArgument(format: ProjectFormat, before: string, after: string): PageArgumentContext | undefined {
   return format === "latex" ? latexContext(before, after) : typstContext(before, after);
 }

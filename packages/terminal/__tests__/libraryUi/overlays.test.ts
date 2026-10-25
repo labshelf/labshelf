@@ -1,18 +1,18 @@
 import { Screen } from "../../src/screen/screen";
-import { stringWidth } from "../../src/screen/text";
-import { BINDINGS, keyLabel } from "../../src/libraryUi/keymap";
+import { deriveStringWidth } from "../../src/screen/text";
+import { BINDINGS, formatShortcut } from "../../src/libraryUi/keymap";
 import {
   drawBox,
   drawField,
   drawOverlay,
-  helpRows,
+  listHelpRows,
   type ConfirmOverlay,
   type Overlay,
   type PickerItem,
   type PickerOverlay,
-  type PromptOverlay,
+  type AskOverlay,
 } from "../../src/libraryUi/overlays";
-import { textInput } from "../../src/libraryUi/textInput";
+import { createTextInput } from "../../src/libraryUi/createTextInput";
 import { theme } from "../../src/libraryUi/theme";
 
 function draw(overlay: Overlay, cols = 100, rows = 30): Screen {
@@ -21,8 +21,8 @@ function draw(overlay: Overlay, cols = 100, rows = 30): Screen {
   return screen;
 }
 
-function prompt(extra: Partial<PromptOverlay> = {}): PromptOverlay {
-  return { kind: "prompt", purpose: "add", title: "Add a paper", input: textInput(""), completions: [], targets: [], ...extra };
+function prompt(extra: Partial<AskOverlay> = {}): AskOverlay {
+  return { kind: "prompt", purpose: "add", title: "Add a paper", input: createTextInput(""), completions: [], targets: [], ...extra };
 }
 
 function confirm(extra: Partial<ConfirmOverlay> = {}): ConfirmOverlay {
@@ -30,7 +30,7 @@ function confirm(extra: Partial<ConfirmOverlay> = {}): ConfirmOverlay {
 }
 
 function picker(items: PickerItem[], extra: Partial<PickerOverlay> = {}): PickerOverlay {
-  return { kind: "picker", title: "Jump to folder", input: textInput(""), items, filtered: items, index: 0, onPick: jest.fn(), ...extra };
+  return { kind: "picker", title: "Jump to folder", input: createTextInput(""), items, filtered: items, index: 0, onPick: jest.fn(), ...extra };
 }
 
 function items(count: number, label = (i: number) => `Item ${String(i).padStart(2, "0")}`): PickerItem[] {
@@ -45,8 +45,8 @@ function rowOf(screen: Screen, needle: string): number {
   return -1;
 }
 
-describe("helpRows", () => {
-  const rows = helpRows();
+describe("listHelpRows", () => {
+  const rows = listHelpRows();
 
   it("has a header for every group, in order, and a final Query section", () => {
     expect(rows.filter((row) => row.header).map((row) => row.keys)).toEqual([
@@ -70,7 +70,7 @@ describe("helpRows", () => {
   it("does not list alias bindings", () => {
     const labels = new Set(rows.map((row) => row.keys));
     for (const alias of BINDINGS.filter((binding) => binding.alias)) {
-      expect(labels.has(keyLabel(alias.keys))).toBe(false);
+      expect(labels.has(formatShortcut(alias.keys))).toBe(false);
     }
     for (const label of ["down", "up", "left", "right", "backspace", "pagedown", "pageup", "home", "end", "f1", "C-c", "C-f", "C-b"]) {
       expect(labels.has(label)).toBe(false);
@@ -79,14 +79,14 @@ describe("helpRows", () => {
 
   it("lists every other binding exactly once", () => {
     const listed = rows.filter((row) => !row.header && row.keys !== "");
-    const expected = BINDINGS.filter((binding) => !binding.alias).map((binding) => keyLabel(binding.keys));
+    const expected = BINDINGS.filter((binding) => !binding.alias).map((binding) => formatShortcut(binding.keys));
     const bindingRows = listed.slice(0, expected.length);
     expect(bindingRows.map((row) => row.keys).sort()).toEqual([...expected].sort());
     expect(new Set(expected).size).toBe(expected.length);
   });
 
   it("puts each binding under the header of its group", () => {
-    const groupOf = new Map(BINDINGS.map((binding) => [keyLabel(binding.keys), binding.group]));
+    const groupOf = new Map(BINDINGS.map((binding) => [formatShortcut(binding.keys), binding.group]));
     let current = "";
     for (const row of rows) {
       if (row.header) { current = row.keys; continue; }
@@ -158,7 +158,7 @@ describe("drawField", () => {
 
   it("shows the cursor as a reversed blank after the last character", () => {
     const screen = new Screen(12, 1);
-    drawField(screen, 2, 0, 10, textInput("abc"));
+    drawField(screen, 2, 0, 10, createTextInput("abc"));
     expect(screen.rowText(0).slice(2, 5)).toBe("abc");
     expect(screen.styleAt(5, 0).reverse).toBe(true);
     expect(screen.styleAt(4, 0).reverse).toBeFalsy();
@@ -166,13 +166,13 @@ describe("drawField", () => {
 
   it("shows the cursor in an empty field", () => {
     const screen = new Screen(6, 1);
-    drawField(screen, 0, 0, 6, textInput(""));
+    drawField(screen, 0, 0, 6, createTextInput(""));
     expect(screen.styleAt(0, 0).reverse).toBe(true);
   });
 
   it("keeps the cursor visible by dropping the start of long text", () => {
     const screen = new Screen(12, 1);
-    drawField(screen, 0, 0, 10, textInput("START-0123456789-END"));
+    drawField(screen, 0, 0, 10, createTextInput("START-0123456789-END"));
     const row = screen.rowText(0);
     expect(row).toContain("END");
     expect(row).not.toContain("START");
@@ -180,7 +180,7 @@ describe("drawField", () => {
 
   it("never draws beyond its width", () => {
     const screen = new Screen(20, 1);
-    drawField(screen, 2, 0, 8, textInput("a very long value that overflows"));
+    drawField(screen, 2, 0, 8, createTextInput("a very long value that overflows"));
     expect(screen.rowText(0).slice(10).trim()).toBe("");
   });
 
@@ -193,7 +193,7 @@ describe("drawField", () => {
 
 describe("drawOverlay prompt", () => {
   it("shows the title, the typed value and the hint inside a box", () => {
-    const screen = draw(prompt({ title: "Add a paper to the library root", input: textInput("10.1/abc"), hint: "PDF path, DOI or arXiv id" }));
+    const screen = draw(prompt({ title: "Add a paper to the library root", input: createTextInput("10.1/abc"), hint: "PDF path, DOI or arXiv id" }));
     const text = screen.toText();
     expect(text).toContain("Add a paper to the library root");
     expect(text).toContain("10.1/abc");
@@ -230,7 +230,7 @@ describe("drawOverlay prompt", () => {
 
   it("keeps the end of a very long value visible inside the box", () => {
     const value = "START" + "x".repeat(150) + "END";
-    const screen = draw(prompt({ input: textInput(value) }));
+    const screen = draw(prompt({ input: createTextInput(value) }));
     const text = screen.toText();
     expect(text).toContain("END");
     expect(text).not.toContain("START");
@@ -264,7 +264,7 @@ describe("drawOverlay prompt", () => {
   });
 
   it("grows with a hint and with completions", () => {
-    const heightOf = (overlay: PromptOverlay): number => {
+    const heightOf = (overlay: AskOverlay): number => {
       const screen = draw(overlay);
       return rowOf(screen, "╰") - rowOf(screen, "╭") + 1;
     };
@@ -311,7 +311,7 @@ describe("drawOverlay confirm", () => {
 describe("drawOverlay picker", () => {
   it("shows the title with the number of matches, the query and the items", () => {
     const list = [{ id: "a", label: "ML › Transformers", detail: "12" }, { id: "b", label: "Physics", detail: "3" }];
-    const screen = draw(picker(list, { input: textInput("ph") }));
+    const screen = draw(picker(list, { input: createTextInput("ph") }));
     const text = screen.toText();
     expect(text).toContain("Jump to folder (2)");
     expect(text).toContain("ph");
@@ -337,7 +337,7 @@ describe("drawOverlay picker", () => {
 
   it("shows only the matches it was given", () => {
     const list = items(5);
-    const screen = draw(picker(list, { filtered: [list[3]!], input: textInput("3") }));
+    const screen = draw(picker(list, { filtered: [list[3]!], input: createTextInput("3") }));
     const text = screen.toText();
     expect(text).toContain("Item 03");
     expect(text).not.toContain("Item 01");
@@ -345,7 +345,7 @@ describe("drawOverlay picker", () => {
   });
 
   it("says No match when nothing matches", () => {
-    const screen = draw(picker(items(3), { filtered: [], input: textInput("zzz") }));
+    const screen = draw(picker(items(3), { filtered: [], input: createTextInput("zzz") }));
     expect(screen.toText()).toContain("No match");
     expect(screen.toText()).toContain("(0)");
   });
@@ -397,7 +397,7 @@ describe("drawOverlay help", () => {
   });
 
   it("shows later content after scrolling", () => {
-    const scroll = helpRows().findIndex((row) => row.keys === "m d");
+    const scroll = listHelpRows().findIndex((row) => row.keys === "m d");
     const text = draw({ kind: "help", scroll }).toText();
     expect(text).toContain("Mark done");
     expect(text).not.toContain("Half page down");
@@ -409,8 +409,8 @@ describe("drawOverlay help", () => {
     expect(end.toText()).toContain("has:pdf  no:pdf");
     expect(end.toText()).toContain("also has:note, has:doi, has:tags");
     // Every example fits the key column, so no example runs into its description.
-    for (const row of helpRows().filter((r) => !r.header)) { expect(row.keys.length).toBeLessThan(22); }
-    expect(draw({ kind: "help", scroll: helpRows().length }).toText()).toBe(end.toText());
+    for (const row of listHelpRows().filter((r) => !r.header)) { expect(row.keys.length).toBeLessThan(22); }
+    expect(draw({ kind: "help", scroll: listHelpRows().length }).toText()).toBe(end.toText());
   });
 
   it("draws group headers in a different style than key rows", () => {
@@ -446,7 +446,7 @@ describe("drawOverlay help", () => {
 
 describe("drawOverlay on tiny screens", () => {
   const overlays: Overlay[] = [
-    prompt({ title: "A title that is long", hint: "hint", completions: ["a", "b", "c"], input: textInput("value") }),
+    prompt({ title: "A title that is long", hint: "hint", completions: ["a", "b", "c"], input: createTextInput("value") }),
     confirm({ lines: ["one", "two", "three"] }),
     picker(items(30), { index: 12 }),
     { kind: "help", scroll: 5 },
@@ -464,7 +464,7 @@ describe("drawOverlay on tiny screens", () => {
     for (const overlay of overlays) {
       const screen = draw(overlay, 30, 10);
       for (let y = 0; y < screen.height; y++) {
-        expect(stringWidth(screen.rowText(y))).toBe(30);
+        expect(deriveStringWidth(screen.rowText(y))).toBe(30);
       }
     }
   });

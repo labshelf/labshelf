@@ -1,40 +1,64 @@
 // Sends an open preview the build roots with their problems, word counts, check findings and build options, and sends them again when any of those changes.
 import * as vscode from "vscode";
 
-import { publishedVersionLookup, type RegistryEnv } from "@labshelf/core";
+import { createPublishedVersionFinder, type RegistryEnv } from "@labshelf/core";
 import type { ReaderPanel } from "../../reader/index.js";
 import { buildOptions, onAutoCompileChange } from "../build/index.js";
 import { createProjectSourceReader } from "../../latex/project/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
-import { rootWords } from "./limits/index.js";
-import { pdfProblemsOf } from "./pdfProblemsOf.js";
+import { countBuildRootWords } from "./limits/index.js";
+import { readPdfProblems } from "./readPdfProblems.js";
 import type { BuildPreviewsDeps } from "./previewPanelInput.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
-import { activeProjectEditor, focusedRoot, previewRootsMessage, projectPreprints, projectSources } from "./buildRoot/index.js";
+import { readActiveProjectEditor, readFocusedBuildRoot, createPreviewBuildRootsMessage, createProjectPreprints, createProjectSources } from "./buildRoot/index.js";
 import type { ProjectSynctex } from "./synctex/index.js";
-import { MeasureCache } from "./measureCache.js";
-import type { RootBuilds } from "./buildRootBuilds.js";
+import type { BuildRootBuilds } from "./buildRootBuilds.js";
+
+export class MeasureCache {
+  private readonly measures = new Map<string, Promise<unknown>>();
+
+  /** The measure of a root, taken once; a failed measure is forgotten so the next call tries again. */
+  get<T>(projectFolder: string, root: string, kind: string, measure: () => Promise<T>): Promise<T> {
+    const key = `${projectFolder}\0${root}\0${kind}`;
+    const known = this.measures.get(key);
+    if (known) { return known as Promise<T>; }
+    const taken = measure();
+    this.measures.set(key, taken);
+    taken.catch(() => { if (this.measures.get(key) === taken) { this.measures.delete(key); } });
+    return taken;
+  }
+
+  /** Forgets the measures of one root, whose build finished. */
+  invalidate(projectFolder: string, root: string): void {
+    const prefix = `${projectFolder}\0${root}\0`;
+    for (const key of this.measures.keys()) { if (key.startsWith(prefix)) { this.measures.delete(key); } }
+  }
+
+  clear(): void {
+    this.measures.clear();
+  }
+}
 
 /** The preview state of BuildPreviews that a publish reads. */
-export interface RootsPublisherState {
+export interface BuildRootsPublisherState {
   panels: ReadonlyMap<string, ReaderPanel>;
   /** The root each project's open preview shows. */
   shown: ReadonlyMap<string, string>;
-  builds: RootBuilds;
+  builds: BuildRootBuilds;
   synctex: ProjectSynctex;
 }
 
-export class RootsPublisher implements vscode.Disposable {
+export class BuildRootsPublisher implements vscode.Disposable {
   private readonly subscriptions: vscode.Disposable[];
   // INVARIANT: a root's measures change only with its build or a project reload, which invalidate them.
   private readonly measures = new MeasureCache();
-  private readonly preprints: ReturnType<typeof projectPreprints>;
+  private readonly preprints: ReturnType<typeof createProjectPreprints>;
   private readonly readerFor = (folder: string) => createProjectSourceReader(vscode.Uri.file(folder), () => this.deps.host.current()?.logger);
 
-  constructor(private readonly deps: BuildPreviewsDeps, private readonly state: RootsPublisherState) {
+  constructor(private readonly deps: BuildPreviewsDeps, private readonly state: BuildRootsPublisherState) {
     // The library root, and with it the logger, can change after activation.
     const env: RegistryEnv = { fetch: globalThis.fetch, get logger() { return deps.host.current()?.logger; } };
-    this.preprints = projectPreprints({ logger: () => deps.host.current()?.logger, lookup: publishedVersionLookup(env) });
+    this.preprints = createProjectPreprints({ logger: () => deps.host.current()?.logger, lookup: createPublishedVersionFinder(env) });
     this.subscriptions = [
       onAutoCompileChange(() => this.resendAll()),
       vscode.workspace.onDidChangeConfiguration((event) => { if (event.affectsConfiguration("labshelf.writing.haltOnError")) { this.resendAll(); } }),
@@ -74,14 +98,14 @@ export class RootsPublisher implements vscode.Disposable {
     const checks = checkCounts.get(project.folder);
     const logger = this.deps.host.current()?.logger;
     try {
-      const focused = await focusedRoot(paths, buildRootOf, project);
-      panel.controller.setPreviewRoots(await previewRootsMessage({
+      const focused = await readFocusedBuildRoot(paths, buildRootOf, project);
+      panel.controller.setPreviewRoots(await createPreviewBuildRootsMessage({
         paths, data, project, focused, shown, built: builds.builtRoots(project.folder),
         problemsOf: (root) => builds.problemsOf(project.folder, root) ?? [],
         failed: (root) => builds.stateOf(project.folder, root)?.state === "failed",
         options: await this.optionsOf(project, shown),
         pdfProblemsOf: (root) => this.pdfProblems(project, root),
-        wordsOf: (root) => this.measures.get(project.folder, root, "words", () => rootWords({ readerFor: this.readerFor }, project, root)),
+        wordsOf: (root) => this.measures.get(project.folder, root, "words", () => countBuildRootWords({ readerFor: this.readerFor }, project, root)),
         ...(checks !== undefined && { checks }),
         ...(logger && { logger }),
       }));
@@ -90,21 +114,21 @@ export class RootsPublisher implements vscode.Disposable {
     }
   }
 
-  private pdfProblems(project: ReadyProject, root: string): ReturnType<typeof pdfProblemsOf> {
+  private pdfProblems(project: ReadyProject, root: string): ReturnType<typeof readPdfProblems> {
     const logger = this.deps.host.current()?.logger;
     if (!logger) { return Promise.resolve({ pdfProblems: [], cites: 0 }); }
-    return this.measures.get(project.folder, root, "pdfProblems", () => pdfProblemsOf({
+    return this.measures.get(project.folder, root, "pdfProblems", () => readPdfProblems({
       logger, paths: this.deps.paths, problemsOf: (of) => this.state.builds.problemsOf(project.folder, of) ?? [],
       preprints: this.preprints, synctex: () => this.state.synctex.load(project, root),
       typstCites: () => this.state.builds.citesOf(project.folder, root) ?? [],
-      readSources: projectSources(this.readerFor),
+      readSources: createProjectSources(this.readerFor),
     }, project, root));
   }
 
   // The include-only toggle exists for the shown root when the editor focuses a file that root `\include`s.
   private async optionsOf(project: ReadyProject, shown: string) {
     const { paths, includeOnly } = this.deps;
-    const editor = activeProjectEditor(paths, project.folder);
+    const editor = readActiveProjectEditor(paths, project.folder);
     const focusedFile = editor && paths.relative(project.folder, editor.document.uri.fsPath).split(paths.sep).join("/");
     const chapter = focusedFile === undefined ? undefined : await includeOnly?.option(project, shown, focusedFile);
     return { ...buildOptions(project), ...(chapter && { includeOnly: chapter }) };

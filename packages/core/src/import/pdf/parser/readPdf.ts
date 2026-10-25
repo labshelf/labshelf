@@ -1,11 +1,23 @@
 /** Reads every signal the PDF file itself carries, in one pass over the document. */
-import { extractLinkUrls, extractPageTexts, extractTitleBlocks } from "../textExtraction.js";
-import { metadataFromXmp } from "../xmp.js";
-import { errorMessage } from "../../../logging/index.js";
+import { extractUrls, extractPageTexts, extractTitleBlocks } from "../textExtraction.js";
+import { extractMetadataFromXmp } from "../xmp.js";
+import { formatError } from "../../../logging/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ResolvedMetadata } from "../../metadata/index.js";
 import type { PdfDocumentLike, PdfDocumentOpener, TextBlock } from "../pdfDocument.js";
-import { describePdfError } from "./pdfErrors.js";
+
+function describePdfError(error: unknown): Error {
+  const name = (error as { name?: unknown })?.name;
+  const message = formatError(error);
+
+  if (name === "PasswordException") {
+    return new Error("The PDF is password-protected and could not be read.");
+  }
+  if (name === "InvalidPDFException" || /\b(root reference|xref|invalid pdf)\b/i.test(message)) {
+    return new Error("The PDF is corrupted or incomplete and could not be read.");
+  }
+  return error instanceof Error ? error : new Error(message);
+}
 
 // Front matter carrying the title, authors and DOI rarely runs past page 3.
 const FRONT_MATTER_PAGES = 3;
@@ -32,11 +44,11 @@ export async function readPdf(
     const pageTexts = (await extractPageTexts(document, FRONT_MATTER_PAGES, logger)).map((page) => page.text);
     return {
       info: (metadata?.info as Record<string, unknown>) ?? {},
-      xmp: metadataFromXmp(metadata?.metadata),
+      xmp: extractMetadataFromXmp(metadata?.metadata),
       pageTexts,
       frontMatter: pageTexts.join("\n"),
       titleBlocks: await optional(extractTitleBlocks(document), [], "title blocks", logger),
-      linkUrls: await optional(extractLinkUrls(document, FRONT_MATTER_PAGES, logger), [], "link annotations", logger),
+      linkUrls: await optional(extractUrls(document, FRONT_MATTER_PAGES, logger), [], "link annotations", logger),
     };
   } finally {
     await optional((async () => document.destroy())(), undefined, "cleanup", logger);
@@ -49,7 +61,7 @@ async function optional<T>(read: Promise<T>, empty: T, signal: string, logger: I
     return await read;
   } catch (error) {
     await logger?.log("WARN", PDF_SIGNALS_MODULE, `PDF ${signal} unreadable; continuing without it`, {
-      message: errorMessage(error),
+      message: formatError(error),
     });
     return empty;
   }

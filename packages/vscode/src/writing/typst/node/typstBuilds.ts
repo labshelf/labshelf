@@ -8,7 +8,7 @@ import { buildProject, type ProjectBuildDeps, type ProjectBuildQueue } from "@la
 import type { ReadyProject } from "../../buildRootDocument.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
-import { recordTypstVersion, type TypstTrigger } from "../index.js";
+import { writeTypstVersion, type TypstTrigger } from "../index.js";
 
 
 export interface TypstBuildsDeps {
@@ -99,7 +99,7 @@ export class TypstBuilds {
       this.deps.diagnostics.publish(path.join(project.folder, root), result.problems);
       this.deps.previews.finished(project, root, result, trigger);
       vscode.window.setStatusBarMessage(result.status === "succeeded" ? `$(check) Built ${path.parse(root).name}.pdf` : `$(error) Build of ${root} failed: ${errors} ${errors === 1 ? "error" : "errors"}`, 5000);
-      if (result.status === "succeeded") { await recordTypstVersion(project, this.deps); }
+      if (result.status === "succeeded") { await writeTypstVersion(project, this.deps); }
       return result;
     } catch (error) {
       await this.deps.host.current()?.logger.error(MODULE, error, { projectFolder: project.folder, trigger });

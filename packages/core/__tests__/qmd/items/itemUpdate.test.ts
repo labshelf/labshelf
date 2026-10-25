@@ -1,4 +1,4 @@
-import { addItem, parseItemFile, removeItem, replaceItemBody, serializeItemFile } from "../../../src/qmd/items/index";
+import { addItem, parseItemFile, removeItem, setItemBody, serializeItemFile } from "../../../src/qmd/items/index";
 import { readQmdFixture } from "../fixtures/qmdFixtures";
 
 const ID_A = "n-01JB2QN0000000000000000000";
@@ -55,7 +55,7 @@ describe("itemEdit", () => {
     const text = "Intro\n```\nnot closed\n\n::: {#B .labshelf-item}\nold\n:::\n";
     const file = parseItemFile(text);
     expect(() => addItem(file, { id: ID_A, body: "```\ncode\n```\n" })).toThrow(/other parts of the file/);
-    expect(() => replaceItemBody(file, "B", "```py\nx\n```")).toThrow(/other parts of the file/);
+    expect(() => setItemBody(file, "B", "```py\nx\n```")).toThrow(/other parts of the file/);
   });
 
   it("rejects a body whose div opens right after paragraph text, which Quarto reads as text", () => {
@@ -69,13 +69,13 @@ describe("itemEdit", () => {
 
   it("replaces one item's body and leaves every other byte alone", () => {
     const text = readQmdFixture("loose-text.qmd");
-    const out = serializeItemFile(replaceItemBody(parseItemFile(text), "n-01JB2QD0000000000000000000", "Edited."));
+    const out = serializeItemFile(setItemBody(parseItemFile(text), "n-01JB2QD0000000000000000000", "Edited."));
     expect(out).toBe(text.replace("First.\n", "Edited.\n"));
   });
 
   it("refuses to edit an id that is missing or repeated", () => {
     const twice = `::: {#x .labshelf-item}\na\n:::\n::: {#x .labshelf-item}\nb\n:::\n`;
-    expect(() => replaceItemBody(parseItemFile(twice), "x", "c")).toThrow(/found 2/);
+    expect(() => setItemBody(parseItemFile(twice), "x", "c")).toThrow(/found 2/);
     expect(() => removeItem(parseItemFile(twice), "y")).toThrow(/found 0/);
   });
 

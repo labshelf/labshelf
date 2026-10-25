@@ -1,8 +1,166 @@
 // Hosts the Details webview in the secondary sidebar and shows it the selected paper or project.
 import * as vscode from "vscode";
-import type { DetailsTarget, ILogger, ProjectLibraryPort } from "@labshelf/core";
-import { libraryBundleDirectory, listPanelHtml, type ListPanelDeps } from "../index.js";
-import { DetailsSession } from "./detailsSession.js";
+import {
+  type DetailsSelection,
+  type ILogger,
+  type ProjectLibraryPort,
+  formatError,
+  parseDetailsMessage,
+  type HostToDetails,
+  type DetailsToHost,
+  type HostToUi,
+  serveAllProjects,
+  type AllProjectsEndpoint,
+  type AllProjectsToHost,
+  type HostToAllProjects,
+} from "@labshelf/core";
+import {
+  readLibraryBundleDir,
+  listPanelHtml,
+  type ListPanelDeps,
+  createFeedHostCompositionRoot,
+  answerListMessage,
+  LibraryFeed,
+} from "../index.js";
+import type { ListHostContext } from "../host/index.js";
+
+interface ProjectsChannel {
+  /** Hands a message the page sent on the projects channel to the server. */
+  deliver(message: AllProjectsToHost): void;
+  stop(): void;
+}
+
+function startProjectsChannel(post: (message: { channel: "projects"; msg: HostToAllProjects }) => void, port: ProjectLibraryPort, logger: ILogger): ProjectsChannel {
+  const handlers = new Set<(message: AllProjectsToHost) => void>();
+  const endpoint: AllProjectsEndpoint = {
+    post: (msg) => post({ channel: "projects", msg }),
+    subscribe: (handler) => { handlers.add(handler); return () => { handlers.delete(handler); }; },
+  };
+  const stop = serveAllProjects(endpoint, port, logger);
+  return { deliver: (message) => handlers.forEach((handler) => handler(message)), stop };
+}
+
+interface LibraryChannel {
+  /** True once the page's `ready` has been answered. */
+  readonly ready: boolean;
+  handle(message: Extract<DetailsToHost, { channel: "library" }>["msg"]): Promise<void>;
+  dispose(): void;
+}
+
+interface LibraryChannelOptions {
+  post: (message: { channel: "library"; msg: HostToUi }) => Thenable<unknown>;
+  /** Runs after the library has been pushed in answer to `ready`. */
+  onReady: () => Promise<void>;
+  /** The page asked to open a folder (UI path); the owner routes it to the paper list. */
+  onFolderOpen: (folder: string) => void;
+}
+
+function startLibraryChannel(deps: ListPanelDeps, { post, onReady, onFolderOpen }: LibraryChannelOptions): LibraryChannel {
+  const feed = new LibraryFeed(deps, (msg) => post({ channel: "library", msg }));
+  // The page follows the selection it is shown; it neither navigates nor selects on its own.
+  const ctx: ListHostContext = createFeedHostCompositionRoot(deps, feed, {
+    onReady: async () => {
+      feed.queue.markReady();
+      await feed.push();
+      await feed.queue.flush();
+      await onReady();
+    },
+    onNavigate: () => {},
+    onSelect: () => {},
+  });
+  return {
+    get ready() { return feed.queue.ready; },
+    handle: async (message) => {
+      if (message.type === "folder.open") { onFolderOpen(message.folder); return; }
+      await answerListMessage(ctx, message);
+    },
+    dispose: () => feed.dispose(),
+  };
+}
+
+const LOG_MODULE = "details.view";
+
+interface DetailsSessionDeps {
+  /** The library services' list dependencies, or null while no library is open. */
+  listDeps: () => ListPanelDeps | null;
+  projectLibrary: () => ProjectLibraryPort;
+  logger: ILogger;
+  /** The target to replay once the library channel is ready. */
+  target: () => DetailsSelection | undefined;
+  onFolderOpen: (folder: string) => void;
+}
+
+class DetailsSession {
+  private _library: LibraryChannel | undefined;
+  private readonly _projects: ProjectsChannel;
+  private _disposed = false;
+  private _pageReady = false;
+
+  constructor(private readonly _webview: vscode.Webview, private readonly _deps: DetailsSessionDeps) {
+    this._projects = startProjectsChannel((message) => this._post(message), _deps.projectLibrary(), _deps.logger);
+  }
+
+  /** Shows the target in the page once the library channel has answered `ready`; until then the owner's stored target is replayed. */
+  show(target: DetailsSelection): void {
+    if (this._library?.ready) { this._post({ type: "details.show", target }); }
+  }
+
+  async handle(raw: unknown): Promise<void> {
+    const message = parseDetailsMessage(raw);
+    if (!message) {
+      const { channel, msg } = (raw && typeof raw === "object" ? raw : {}) as { channel?: unknown; msg?: { type?: unknown } | null };
+      await this._deps.logger.log("WARN", LOG_MODULE, "Details page sent a message that is not valid", { channel, type: msg?.type });
+      return;
+    }
+    if (message.channel === "library" && message.msg.type === "ready") { this._pageReady = true; }
+    try {
+      if (message.channel === "projects") { this._projects.deliver(message.msg); } else { await this._libraryChannel()?.handle(message.msg); }
+    } catch (error) {
+      await this._deps.logger.log("ERROR", LOG_MODULE, "Details message failed", { channel: message.channel, type: message.msg.type, message: formatError(error) });
+    }
+  }
+
+  /** Replaces the library channel after the library root changed, and answers a page that already said `ready` as for a fresh `ready`. */
+  async rebind(): Promise<void> {
+    this._library?.dispose();
+    this._library = undefined;
+    if (!this._pageReady) { return; }
+    try {
+      await this._libraryChannel()?.handle({ type: "ready" });
+    } catch (error) {
+      await this._deps.logger.log("ERROR", LOG_MODULE, "Details library rebind failed", { message: formatError(error) });
+    }
+  }
+
+  dispose(): void {
+    this._disposed = true;
+    this._library?.dispose();
+    this._projects.stop();
+  }
+
+  // Created on the first library message so a view that opens before the library does recovers once it exists.
+  private _libraryChannel(): LibraryChannel | undefined {
+    if (this._library) { return this._library; }
+    const listDeps = this._deps.listDeps();
+    if (!listDeps) {
+      void this._deps.logger.log("WARN", LOG_MODULE, "Details library message dropped: no library is open");
+      return undefined;
+    }
+    this._library = startLibraryChannel(listDeps, {
+      post: (message) => this._post(message),
+      onReady: async () => {
+        const target = this._deps.target();
+        if (target !== undefined) { this._post({ type: "details.show", target }); }
+      },
+      onFolderOpen: this._deps.onFolderOpen,
+    });
+    return this._library;
+  }
+
+  private _post(message: HostToDetails): Thenable<boolean> {
+    return this._disposed ? Promise.resolve(false) : this._webview.postMessage(message);
+  }
+}
 
 export const DETAILS_VIEW = "labshelf.details";
 
@@ -16,7 +174,7 @@ export interface DetailsViewDeps {
 export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposable {
   private _session: DetailsSession | undefined;
   private _view: vscode.WebviewView | undefined;
-  private _target: DetailsTarget | undefined;
+  private _target: DetailsSelection | undefined;
   private readonly _folderRequests = new vscode.EventEmitter<string>();
   /** Fires with the UI path of a folder the page asked to open in the paper list. */
   readonly onDidRequestFolder: vscode.Event<string> = this._folderRequests.event;
@@ -26,7 +184,7 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this._session?.dispose();
     const { webview } = view;
-    webview.options = { enableScripts: true, localResourceRoots: [libraryBundleDirectory(this._deps.extensionUri)] };
+    webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri)] };
     const session = new DetailsSession(webview, {
       ...this._deps, target: () => this._target, onFolderOpen: (folder) => this._folderRequests.fire(folder),
     });
@@ -43,7 +201,7 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
   }
 
   /** Stores the target and posts it when the page is ready; a page that is not ready yet receives it with its `ready` answer. */
-  show(target: DetailsTarget): void {
+  show(target: DetailsSelection): void {
     this._target = target;
     this._session?.show(target);
   }

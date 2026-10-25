@@ -1,21 +1,21 @@
 // Imports the papers of a share link: asks for the link, shows progress, then offers the new folder.
-import { inputBox, progressDialog, showDialog, toast } from "../../ui/dom/index.js";
-import type { ImportLinkResult, SharingHost } from "../../libraryUi/share/index.js";
+import { askInputBox, openProgressDialog, showDialog, showToast } from "../../ui/dom/index.js";
+import type { ShareLinkImportResult, ShareHost } from "../../libraryUi/share/index.js";
 import { parseShareLink } from "../shareLink.js";
-import { refusedShareLinkText } from "../flow/index.js";
-import { infoDialog } from "./noticeDialog.js";
-import { reportingFailure } from "./reportFailure.js";
+import { describeRefusedShareLink } from "../flow/index.js";
+import { showNoticeDialog } from "./noticeDialog.js";
+import { reportFailure } from "./reportFailure.js";
 
-export function runImportLinkDialog(host: SharingHost, link?: string): Promise<void> {
-  return reportingFailure("import the shared link", async () => {
-    const text = link ?? await inputBox({
+export function runImportShareLinkDialog(host: ShareHost, link?: string): Promise<void> {
+  return reportFailure("import the shared link", async () => {
+    const text = link ?? await askInputBox({
       title: "Import Shared Link",
       prompt: "Paste a share link",
       validate: linkProblem,
     });
     if (!text) return;
-    const progress = progressDialog({ title: "Importing shared papers", message: "Importing shared papers…" });
-    let result: ImportLinkResult;
+    const progress = openProgressDialog({ title: "Importing shared papers", message: "Importing shared papers…" });
+    let result: ShareLinkImportResult;
     try {
       result = await host.importLink(text, (p) => {
         if ("done" in p) progress.update(`Importing shared papers: ${p.done} of ${p.total}`);
@@ -23,8 +23,8 @@ export function runImportLinkDialog(host: SharingHost, link?: string): Promise<v
     } finally {
       progress.close();
     }
-    if (result.kind === "failed") { await infoDialog("Could not import the link", result.message, "warning"); return; }
-    if (!result.folder) { toast(result.summary, "info"); return; }
+    if (result.kind === "failed") { await showNoticeDialog("Could not import the link", result.message, "warning"); return; }
+    if (!result.folder) { showToast(result.summary, "info"); return; }
     const folder = result.folder;
     const choice = await showDialog({
       title: "Imported the shared papers",
@@ -39,5 +39,5 @@ export function runImportLinkDialog(host: SharingHost, link?: string): Promise<v
 function linkProblem(text: string): string | null {
   if (text.trim() === "") return "Paste a share link";
   const parsed = parseShareLink(text);
-  return parsed.ok ? null : refusedShareLinkText(parsed.error);
+  return parsed.ok ? null : describeRefusedShareLink(parsed.error);
 }

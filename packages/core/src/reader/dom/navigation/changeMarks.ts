@@ -1,7 +1,7 @@
 // Marks the regions a host reports as changed over each page, e.g. what differs from an earlier version of a paper.
 import type { PageArea } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
-import { pixelOffsetOf, type PageViewportLike } from "./pagePoints.js";
+import { derivePixelOffset, type PageViewportLike } from "./pagePoints.js";
 
 interface PageViewLike {
   div: HTMLElement;
@@ -45,8 +45,8 @@ export class ChangeMarks {
 
 /** Positioned in percent of the page, so the mark keeps its place while pdf.js scales the page before re-rendering it. */
 function markFor(viewport: PageViewLike["viewport"], area: PageArea): HTMLElement {
-  const [x1, y1] = pixelOffsetOf(viewport, { page: area.page, x: area.left, y: area.top });
-  const [x2, y2] = pixelOffsetOf(viewport, { page: area.page, x: area.right, y: area.bottom });
+  const [x1, y1] = derivePixelOffset(viewport, { page: area.page, x: area.left, y: area.top });
+  const [x2, y2] = derivePixelOffset(viewport, { page: area.page, x: area.right, y: area.bottom });
   const mark = document.createElement("div");
   mark.className = MARK_CLASS;
   mark.style.left = `${(Math.min(x1, x2) / viewport.width) * 100}%`;

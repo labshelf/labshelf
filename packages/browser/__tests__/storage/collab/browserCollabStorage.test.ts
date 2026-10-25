@@ -1,7 +1,7 @@
 /** Pins the IndexedDB share state: restored after a restart, atomic compaction, namespaces apart, and failed writes rejecting. */
 import "fake-indexeddb/auto";
 import * as Y from "yjs";
-import { fileText, openCollabStore, type ILogger } from "@labshelf/core";
+import { readFileText, openCollabStore, type ILogger } from "@labshelf/core";
 import { deleteBrowserCollabState, openBrowserCollabStorage } from "../../../src/storage/collab";
 
 const RELAY = "wss://relay.example";
@@ -11,7 +11,7 @@ let ns: string;
 const logger = (): ILogger => ({ log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) });
 const update = (text: string) => {
   const doc = new Y.Doc();
-  fileText(doc).insert(0, text);
+  readFileText(doc).insert(0, text);
   return Y.encodeStateAsUpdate(doc);
 };
 
@@ -31,13 +31,13 @@ afterEach(() => jest.restoreAllMocks());
 describe("browser collab storage", () => {
   it("restores docs, known hashes and relay cursors in a store opened after a restart", async () => {
     const first = await openCollabStore({ storage: openBrowserCollabStorage(ns), logger: logger() });
-    fileText(first.createDoc("chapters/a.typ")).insert(0, "Hello");
+    readFileText(first.createDoc("chapters/a.typ")).insert(0, "Hello");
     first.known.set("chapters/a.typ", HASH);
     first.relayCursors(RELAY).set("chapters/a.typ", 7);
     await first.close();
 
     const second = await openCollabStore({ storage: openBrowserCollabStorage(ns), logger: logger() });
-    expect(fileText(second.createDoc("chapters/a.typ")).toString()).toBe("Hello");
+    expect(readFileText(second.createDoc("chapters/a.typ")).toString()).toBe("Hello");
     expect(second.known.get("chapters/a.typ")).toBe(HASH);
     expect(second.relayCursors(RELAY).get("chapters/a.typ")).toBe(7);
     await second.close();
@@ -74,7 +74,7 @@ describe("browser collab storage", () => {
 
     const store = await openCollabStore({ storage, logger: logger() });
     abortPutsInto("docs");
-    fileText(store.createDoc("a.typ")).insert(0, "unstored");
+    readFileText(store.createDoc("a.typ")).insert(0, "unstored");
     store.relayCursors(RELAY).set("a.typ", 3);
     await expect(store.close()).rejects.toThrow("not stored");
     jest.restoreAllMocks();

@@ -1,6 +1,6 @@
 // Marks each placed PDF problem over its area on its page and flashes one on request.
 import type { PageArea, PdfProblem } from "../../index.js";
-import { pixelOffsetOf, type PageViewportLike } from "../navigation/index.js";
+import { derivePixelOffset, type PageViewportLike } from "../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 
 export interface ProblemMarks {
@@ -64,8 +64,8 @@ export function mountProblemMarks(deps: { container: HTMLElement; pdfViewer: Rea
 /** Positioned in percent of the page, so the mark keeps its place while pdf.js scales the page before re-rendering it. */
 function markFor(viewport: PageViewLike["viewport"], problem: PdfProblem, index: number): HTMLElement {
   const area = problem.area as PageArea;
-  const [x1, y1] = pixelOffsetOf(viewport, { page: area.page, x: area.left, y: area.top });
-  const [x2, y2] = pixelOffsetOf(viewport, { page: area.page, x: area.right, y: area.bottom });
+  const [x1, y1] = derivePixelOffset(viewport, { page: area.page, x: area.left, y: area.top });
+  const [x2, y2] = derivePixelOffset(viewport, { page: area.page, x: area.right, y: area.bottom });
   const mark = document.createElement("div");
   mark.className = `${MARK_CLASS} ${MARK_CLASS}--${problem.kind}`;
   mark.dataset.problemIndex = String(index);

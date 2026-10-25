@@ -5,8 +5,8 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 import * as vscode from "vscode";
 
-import { createProjectData, rootBuildFolder } from "@labshelf/core";
-import { NodeLibraryFileSystem, deviceLocalLayout } from "@labshelf/core/node";
+import { createProjectContent, deriveBuildRootFolder } from "@labshelf/core";
+import { NodeLibraryFileSystem, createDeviceLocalLayout } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/reader";
 import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { registerShowInPreview } from "../../../src/writing/preview/commands/registerShowInPreview";
@@ -36,7 +36,7 @@ let cache: string;
 let previousCache: string | undefined;
 
 function writeSynctex(text: string | null): void {
-  const file = path.join(cache, "labshelf", "builds", path.basename(dir), rootBuildFolder("main.tex"), "main.synctex.gz");
+  const file = path.join(cache, "labshelf", "builds", path.basename(dir), deriveBuildRootFolder("main.tex"), "main.synctex.gz");
   fs.mkdirSync(path.dirname(file), { recursive: true });
   if (text === null) { fs.rmSync(file, { force: true }); } else { fs.writeFileSync(file, gzipSync(text)); }
 }
@@ -45,7 +45,7 @@ function setup() {
   const host = fakeHost();
   const controller = { setBuildStatus: jest.fn(), reloadDocument: jest.fn(), revealPoint: jest.fn() };
   create.mockImplementation(() => ({ controller }));
-  const previews = new BuildPreviews({ host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, projects: fakeProjects(), checkCounts: new CheckCounts(), setEngine: async () => {}, fixes: () => undefined });
+  const previews = new BuildPreviews({ host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: createProjectContent({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: createDeviceLocalLayout(dir) }), listPapers: async () => [], highlightsOf: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false, buildRootOf: async (_folder: string, main: string) => main, recompile: async () => {}, projects: fakeProjects(), checkCounts: new CheckCounts(), setEngine: async () => {}, fixes: () => undefined });
   const project = readyEntry(dir) as Project;
   const ports = () => create.mock.calls[0][1].preview;
   return { host, controller, previews, project, ports };

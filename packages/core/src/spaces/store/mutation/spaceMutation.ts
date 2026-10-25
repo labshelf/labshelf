@@ -1,8 +1,8 @@
 // Changes a Space's own fields: name, purpose and linked writing projects.
 import type { Space } from "../../model/index.js";
-import { withOptionalKey } from "./optionalField.js";
+import { withOptionalField } from "./optionalField.js";
 
-export function renamedSpace(space: Space, name: string): Space {
+export function withSpaceRenamed(space: Space, name: string): Space {
   const trimmed = name.trim();
   if (trimmed === "") { throw new Error("A Space needs a name."); }
   return { ...space, name: trimmed };
@@ -11,13 +11,13 @@ export function renamedSpace(space: Space, name: string): Space {
 /** A blank purpose clears it. */
 export function withPurpose(space: Space, purpose: string | undefined): Space {
   const trimmed = purpose?.trim();
-  return withOptionalKey(space, "purpose", trimmed === "" ? undefined : trimmed);
+  return withOptionalField(space, "purpose", trimmed === "" ? undefined : trimmed);
 }
 
 export function withProject(space: Space, projectId: string): Space {
   return space.projects.includes(projectId) ? space : { ...space, projects: [...space.projects, projectId] };
 }
 
-export function withoutProject(space: Space, projectId: string): Space {
+export function withProjectRemoved(space: Space, projectId: string): Space {
   return { ...space, projects: space.projects.filter((id) => id !== projectId) };
 }

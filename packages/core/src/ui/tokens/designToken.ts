@@ -6,6 +6,6 @@ export interface DesignToken {
   light?: string;
 }
 
-export function token(value: string, light?: string): DesignToken {
+export function createDesignToken(value: string, light?: string): DesignToken {
   return light === undefined ? { value } : { value, light };
 }

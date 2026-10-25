@@ -2,16 +2,16 @@
  * Tests that every icon renders with the shared wrapper and that no two names share a glyph.
  */
 import { FILLED_GLYPHS, STROKE_GLYPHS } from "../../src/ui/icons/glyphs";
-import { icon, type IconName } from "../../src/ui/icons";
+import { renderIcon, type IconName } from "../../src/ui/icons";
 
 const NAMES = [...Object.keys(STROKE_GLYPHS), ...Object.keys(FILLED_GLYPHS), "logo"] as IconName[];
 const STROKE_NAMES = Object.keys(STROKE_GLYPHS) as IconName[];
 
 const inner = (svg: string): string => svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "");
 
-describe("icon", () => {
+describe("renderIcon", () => {
   it.each(NAMES)("renders %s as an accessible svg without a fixed size", (name) => {
-    const svg = icon(name);
+    const svg = renderIcon(name);
     expect(svg.startsWith("<svg ")).toBe(true);
     expect(svg.endsWith("</svg>")).toBe(true);
     expect(svg).toContain('aria-hidden="true"');
@@ -21,27 +21,27 @@ describe("icon", () => {
   });
 
   it.each(NAMES.filter((n) => n !== "logo"))("draws %s with currentColor", (name) => {
-    expect(icon(name)).toContain("currentColor");
+    expect(renderIcon(name)).toContain("currentColor");
   });
 
   it("keeps the brand colour on the logo", () => {
-    expect(icon("logo")).not.toContain("currentColor");
+    expect(renderIcon("logo")).not.toContain("currentColor");
   });
 
   it.each(STROKE_NAMES)("strokes %s at 1.5 on a 24 grid", (name) => {
-    const root = icon(name).slice(0, icon(name).indexOf(">"));
+    const root = renderIcon(name).slice(0, renderIcon(name).indexOf(">"));
     expect(root).toContain('stroke-width="1.5"');
     expect(root).toContain('viewBox="0 0 24 24"');
   });
 
   it("draws the codicon chevrons filled on a 16 grid", () => {
     for (const name of Object.keys(FILLED_GLYPHS) as IconName[]) {
-      expect(icon(name)).toContain('viewBox="0 0 16 16" fill="currentColor"');
+      expect(renderIcon(name)).toContain('viewBox="0 0 16 16" fill="currentColor"');
     }
   });
 
   it("gives every name its own drawing", () => {
-    const drawings = NAMES.map((name) => inner(icon(name)));
+    const drawings = NAMES.map((name) => inner(renderIcon(name)));
     expect(new Set(drawings).size).toBe(NAMES.length);
   });
 });

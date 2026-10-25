@@ -1,7 +1,7 @@
 /** Exports share keys, their derived keys and authenticated payload frames. */
-export { SHARE_KEY_BYTES, deriveShareId, generateShareKey, rotateShareKey } from "./shareKey.js";
+export { SHARE_KEY_BYTES, deriveShareId, createShareKey, createNextShareKey } from "./shareKey.js";
 export type { ShareSecret } from "./shareKey.js";
-export { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "./deriveShareKeys.js";
+export { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "./deriveShareKeys.js";
 export { openFrame, sealFrame } from "./frame.js";
 export type { FrameContext, FrameError, OpenResult } from "./frame.js";
-export type { WebCryptoKey } from "./hkdf.js";
+export type { DerivedShareKey } from "./hkdf.js";

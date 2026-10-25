@@ -1,7 +1,7 @@
 // Gathers what a Typst file sees across the project: imported bindings and modules, linked labels and bib entries.
-import { bibEntries, type BibEntry } from "../../../writing/bibliography/index.js";
+import { parseBibEntries, type BibEntry } from "../../../writing/bibliography/index.js";
 import type { TypstBinding, TypstLabelDefinition } from "../syntax/index.js";
-import type { ProjectFile, ProjectFiles } from "./projectFiles.js";
+import type { ProjectFile, ProjectFiles } from "./createProjectFiles.js";
 import { resolveTypstPath } from "./projectPaths.js";
 
 export interface Located<T> { item: T; file: ProjectFile }
@@ -14,7 +14,7 @@ export interface ImportedSymbols {
 }
 
 /** The `.typ` files `file` imports, with what each import brings in. */
-export async function importedSymbols(files: ProjectFiles, file: ProjectFile): Promise<ImportedSymbols> {
+export async function readImportedSymbols(files: ProjectFiles, file: ProjectFile): Promise<ImportedSymbols> {
   const result: ImportedSymbols = { bindings: [], modules: [] };
   for (const reference of file.symbols.imports) {
     const imported = await typstFile(files, file, reference.path);
@@ -32,7 +32,7 @@ export async function importedSymbols(files: ProjectFiles, file: ProjectFile): P
 }
 
 /** Labels of the current file and of every file it includes or imports, transitively. */
-export async function linkedLabels(files: ProjectFiles): Promise<Located<TypstLabelDefinition>[]> {
+export async function readLinkedLabels(files: ProjectFiles): Promise<Located<TypstLabelDefinition>[]> {
   const seen = new Set<string>();
   const labels: Located<TypstLabelDefinition>[] = [];
   const visit = async (file: ProjectFile): Promise<void> => {
@@ -49,7 +49,7 @@ export async function linkedLabels(files: ProjectFiles): Promise<Located<TypstLa
 }
 
 /** Entries of every `.bib` file a `bibliography(…)` in any project `.typ` file names. */
-export async function projectBibEntries(files: ProjectFiles): Promise<Located<BibEntry>[]> {
+export async function readProjectBibEntries(files: ProjectFiles): Promise<Located<BibEntry>[]> {
   const bibPaths = new Set<string>();
   const typFiles = (await files.list()).filter((path) => path.endsWith(".typ") && path !== files.current.path);
   for (const file of [files.current, ...await readAll(files, typFiles)]) {
@@ -59,7 +59,7 @@ export async function projectBibEntries(files: ProjectFiles): Promise<Located<Bi
     }
   }
   const entries: Located<BibEntry>[] = [];
-  for (const bib of await readAll(files, [...bibPaths])) { entries.push(...bibEntries(bib.text).map((item) => ({ item, file: bib }))); }
+  for (const bib of await readAll(files, [...bibPaths])) { entries.push(...parseBibEntries(bib.text).map((item) => ({ item, file: bib }))); }
   return entries;
 }
 

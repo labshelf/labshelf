@@ -1,7 +1,7 @@
 // Keeps a client with its group: retries the earlier relays peers report using, and watches the other relays once its own socket opens.
 import type { ILogger } from "../../ports/index.js";
 import type { RelayHolds } from "./relayHolds.js";
-import type { RelayPresence } from "./relayPresence.js";
+import type { RelayPresence } from "./createRelayPresence.js";
 import type { WatchReports } from "./relayWatch.js";
 
 const LOG_MODULE = "collab.relays";

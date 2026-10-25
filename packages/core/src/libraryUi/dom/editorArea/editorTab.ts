@@ -1,5 +1,5 @@
 // Builds one editor tab and its panel and paints the tab's title, icon, dirty mark and selection.
-import { el, icon } from "../../../ui/dom/index.js";
+import { renderElement, renderIcon } from "../../../ui/dom/index.js";
 import type { EditorTab, EditorTabBody } from "./editorAreaOptions.js";
 
 export interface TabEntry {
@@ -14,21 +14,21 @@ let nextId = 0;
 /** Creates the tab and its hidden panel, linked for assistive technology. */
 export function createTabEntry(tab: EditorTab): TabEntry {
   const uid = `ls-editor-${++nextId}`;
-  const tabEl = el("div", { class: "ls-editor-tab", role: "tab", id: `${uid}-tab`, "aria-controls": `${uid}-panel`, "aria-selected": "false", tabindex: -1, draggable: "true" });
+  const tabEl = renderElement("div", { class: "ls-editor-tab", role: "tab", id: `${uid}-tab`, "aria-controls": `${uid}-panel`, "aria-selected": "false", tabindex: -1, draggable: "true" });
   tabEl.dataset.tabId = tab.id;
-  const panel = el("div", { class: "ls-editor-panel", role: "tabpanel", id: `${uid}-panel`, "aria-labelledby": `${uid}-tab`, hidden: true });
+  const panel = renderElement("div", { class: "ls-editor-panel", role: "tabpanel", id: `${uid}-panel`, "aria-labelledby": `${uid}-tab`, hidden: true });
   const entry = { tab, tabEl, panel, body: null };
-  paintTab(entry);
+  drawTab(entry);
   return entry;
 }
 
 /** Repaints the tab's icon, title and dirty mark from `entry.tab`. */
-export function paintTab(entry: TabEntry): void {
+export function drawTab(entry: TabEntry): void {
   const { tab, tabEl } = entry;
-  const close = el("button", { class: "ls-editor-tab-close", type: "button", tabindex: -1, "aria-label": `Close ${tab.title}`, title: "Close", html: icon("x") });
+  const close = renderElement("button", { class: "ls-editor-tab-close", type: "button", tabindex: -1, "aria-label": `Close ${tab.title}`, title: "Close", html: renderIcon("x") });
   tabEl.replaceChildren(
-    el("span", { class: "ls-editor-tab-icon", html: icon(tab.icon) }),
-    el("span", { class: "ls-editor-tab-label", text: tab.title }),
+    renderElement("span", { class: "ls-editor-tab-icon", html: renderIcon(tab.icon) }),
+    renderElement("span", { class: "ls-editor-tab-label", text: tab.title }),
     close,
   );
   tabEl.classList.toggle("dirty", tab.dirty === true);
@@ -36,7 +36,7 @@ export function paintTab(entry: TabEntry): void {
 }
 
 /** Marks the tab shown or not in its group; the shown tab is the group's one tab stop. */
-export function selectTab(entry: TabEntry, selected: boolean): void {
+export function setTabShown(entry: TabEntry, selected: boolean): void {
   entry.tabEl.setAttribute("aria-selected", String(selected));
   entry.tabEl.classList.toggle("active", selected);
   entry.tabEl.tabIndex = selected ? 0 : -1;

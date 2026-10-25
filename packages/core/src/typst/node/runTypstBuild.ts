@@ -6,10 +6,10 @@ import type { ILogger } from "../../ports/index.js";
 import type { LocatedProblem } from "../../latex/build/index.js";
 import type { FetchLike } from "../../latex/toolchain/node/index.js";
 import type { TypstBuildResult } from "../typstBuildResult.js";
-import { typstProblems } from "../typstProblems.js";
+import { deriveTypstProblems } from "../deriveTypstProblems.js";
 import type { TypstCompileResult, TypstSession } from "../typstSession.js";
-import { fromCompilerPath, toCompilerPath } from "./typstFileAccess.js";
-import { packageLabel, type TypstPackageStore } from "./typstPackages.js";
+import { deriveFilePathFromCompilerPath, deriveTypstCompilerPath } from "./typstFileAccess.js";
+import { formatPackageLabel, type TypstPackageStore } from "./typstPackages.js";
 
 const MODULE = "writing/typst";
 
@@ -30,8 +30,8 @@ export interface TypstBuildRequest {
 }
 
 function compileOnce(request: TypstBuildRequest, mainFile: string): Promise<TypstCompileResult> {
-  const sources = new Map([...request.sources].map(([file, text]) => [toCompilerPath(file), text]));
-  return request.session.compile({ root: toCompilerPath(request.projectFolder), main: toCompilerPath(mainFile), sources });
+  const sources = new Map([...request.sources].map(([file, text]) => [deriveTypstCompilerPath(file), text]));
+  return request.session.compile({ root: deriveTypstCompilerPath(request.projectFolder), main: deriveTypstCompilerPath(mainFile), sources });
 }
 
 /** Downloads the packages the last compile missed; returns a problem per package that could not be fetched. */
@@ -42,10 +42,10 @@ async function fetchMissing(request: TypstBuildRequest, mainFile: string): Promi
   for (const spec of missing) {
     try {
       await request.packages.download(spec, request.fetch ?? fetch, request.signal);
-      await request.logger.log("INFO", MODULE, "Downloaded Typst package", { package: packageLabel(spec) });
+      await request.logger.log("INFO", MODULE, "Downloaded Typst package", { package: formatPackageLabel(spec) });
     } catch (error) {
-      await request.logger.error(MODULE, error, { package: packageLabel(spec) });
-      failures.push({ severity: "error", message: `Could not download ${packageLabel(spec)}: ${error instanceof Error ? error.message : String(error)}`, file: mainFile });
+      await request.logger.error(MODULE, error, { package: formatPackageLabel(spec) });
+      failures.push({ severity: "error", message: `Could not download ${formatPackageLabel(spec)}: ${error instanceof Error ? error.message : String(error)}`, file: mainFile });
     }
   }
   return failures;
@@ -56,7 +56,7 @@ export async function runTypstBuild(request: TypstBuildRequest): Promise<TypstBu
   let result = await compileOnce(request, mainFile);
   const downloadFailures = await fetchMissing(request, mainFile);
   if (downloadFailures && downloadFailures.length === 0) { result = await compileOnce(request, mainFile); }
-  const problems = [...downloadFailures ?? [], ...typstProblems(result.diagnostics, mainFile, fromCompilerPath)];
+  const problems = [...downloadFailures ?? [], ...deriveTypstProblems(result.diagnostics, mainFile, deriveFilePathFromCompilerPath)];
   if (!result.pdf) {
     if (!problems.some((problem) => problem.severity === "error")) {
       problems.unshift({ severity: "error", message: "Typst produced no PDF and reported no error.", file: mainFile });

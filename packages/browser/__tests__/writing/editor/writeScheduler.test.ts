@@ -1,14 +1,14 @@
 import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
-import { createSaveScheduler, type SaveSchedulerDeps } from "../../../src/writing/editor/writeScheduler";
+import { createWriteScheduler, type WriteSchedulerDeps } from "../../../src/writing/editor/writeScheduler";
 
 const logger = (): ILogger => ({ log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) });
 
-function setup(write: SaveSchedulerDeps["write"]) {
+function setup(write: WriteSchedulerDeps["write"]) {
   const dirty: boolean[] = [];
-  const deps: SaveSchedulerDeps = {
+  const deps: WriteSchedulerDeps = {
     file: "main.tex", text: () => "body", write: jest.fn(write), logger: logger(), onDirty: (value) => dirty.push(value), onSaved: jest.fn(),
   };
-  return { deps, dirty, save: createSaveScheduler(deps) };
+  return { deps, dirty, save: createWriteScheduler(deps) };
 }
 
 beforeEach(() => jest.useFakeTimers());

@@ -1,10 +1,46 @@
 // Assembles the build roots a preview reader is told about: one entry per built root with its problems and what the host can open.
-import { previewProblems, type BuildOptions, type LocatedProblem, type PathOps, type PreviewRoot, type PreviewRoots } from "@labshelf/core";
+import {
+  derivePreviewProblems,
+  type BuildOptions,
+  type LocatedProblem,
+  type PathOps,
+  type PreviewBuildRoot,
+  type PreviewBuildRoots,
+  type ILogger,
+  type PdfProblem,
+} from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
-import { rawLogFile, type RawLogDeps } from "./rawLogFile.js";
-import { rootFindings, type RootFindingsInput } from "./measureBuildRoot.js";
+import { readRawLogFile, type RawLogDeps } from "./readRawLogFile.js";
+import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 
-export interface PreviewRootsInput extends RawLogDeps, RootFindingsInput {
+interface RootFindingsInput {
+  logger?: ILogger | undefined;
+  pdfProblemsOf: (root: string) => Promise<{ pdfProblems: PdfProblem[]; cites: number }>;
+  wordsOf: (root: string) => Promise<number>;
+}
+
+/** A measure that fails is logged and left absent, so the root still shows the rest. */
+async function attempt<T>(input: RootFindingsInput, root: string, what: string, measure: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await measure();
+  } catch (error) {
+    await input.logger?.error(PREVIEW_LOG_MODULE, error, { root, action: what });
+    return undefined;
+  }
+}
+
+async function rootFindings(input: RootFindingsInput, root: string): Promise<{ pdfProblems?: PdfProblem[]; cites?: number; words?: number }> {
+  const [placed, words] = await Promise.all([
+    attempt(input, root, "pdfProblems", () => input.pdfProblemsOf(root)),
+    attempt(input, root, "words", () => input.wordsOf(root)),
+  ]);
+  return {
+    ...(placed ? { pdfProblems: placed.pdfProblems, cites: placed.cites } : {}),
+    ...(words !== undefined ? { words } : {}),
+  };
+}
+
+export interface PreviewBuildRootsInput extends RawLogDeps, RootFindingsInput {
   project: ReadyProject;
   /** The roots built so far, in build order. */
   built: Iterable<string>;
@@ -22,19 +58,19 @@ function projectRelative(paths: PathOps, folder: string, file: string): string {
   return (relative.startsWith("..") || paths.isAbsolute(relative) ? file : relative).split(paths.sep).join("/");
 }
 
-async function previewRoot(input: PreviewRootsInput, root: string): Promise<PreviewRoot> {
+async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise<PreviewBuildRoot> {
   const { paths, project } = input;
   return {
     ...(await rootFindings(input, root)),
     path: root,
     failed: input.failed(root),
-    rawLog: (await rawLogFile(input, project, root)) !== undefined,
+    rawLog: (await readRawLogFile(input, project, root)) !== undefined,
     sourceLinks: project.settings.format === "latex",
-    problems: previewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
+    problems: derivePreviewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
   };
 }
 
-export async function previewRootsMessage(input: PreviewRootsInput): Promise<PreviewRoots> {
+export async function createPreviewBuildRootsMessage(input: PreviewBuildRootsInput): Promise<PreviewBuildRoots> {
   const roots = await Promise.all([...input.built].map((root) => previewRoot(input, root)));
   const { pages: pageLimit, words: wordLimit, countUpTo } = input.project.settings.check ?? {};
   return {

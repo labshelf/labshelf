@@ -1,4 +1,4 @@
-import { RootPresenceMonitor, type ILogger } from "@labshelf/core";
+import { LibraryRootPresenceMonitor, type ILogger } from "@labshelf/core";
 
 const logger = { log: jest.fn(async () => undefined) } as unknown as ILogger;
 
@@ -7,7 +7,7 @@ afterEach(() => { jest.useRealTimers(); });
 
 function monitor(state: { present: boolean }) {
   const events: string[] = [];
-  const m = new RootPresenceMonitor({
+  const m = new LibraryRootPresenceMonitor({
     exists: async () => state.present,
     onLost: () => events.push("lost"),
     onReturned: () => events.push("returned"),

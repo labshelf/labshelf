@@ -4,17 +4,25 @@
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
-import type { SharingHost } from "../share/index.js";
+import type { ShareHost } from "../share/index.js";
 import { LibraryViewStore, type PrefsPort } from "../store/index.js";
 import { mountCitationMap } from "./citationMap/index.js";
-import { makeDropTarget } from "./drag/index.js";
-import { confirmDeleteFolder, promptNewFolder, promptRenameFolder } from "./flows/index.js";
+import { attachDropZone } from "./drag/index.js";
+import { askRemoveFolder, askCreateFolder, askRenameFolder } from "./flows/index.js";
 import { mountListHeader } from "./header/index.js";
 import { attachHostMessages } from "./hostMessages.js";
 import { mountPaperList } from "./list/index.js";
-import { reportSelection } from "./reportSelection.js";
 import { buildFrame } from "./shell/index.js";
-import { createUiContext, type UiContext } from "./uiContext.js";
+import { createUiCompositionRoot, type UiContext } from "./uiContext.js";
+
+/** Posts `paper.selected` with every selected id, empty for none; returns the stop function. */
+function reportSelection(ctx: UiContext): () => void {
+  let first = true;
+  return ctx.store.select((s) => [...s.selected], (ids) => {
+    if (first) { first = false; return; }
+    ctx.transport.post({ type: "paper.selected", ids });
+  });
+}
 
 export interface LibraryUiOptions {
   transport: LibraryTransport;
@@ -27,7 +35,7 @@ export interface LibraryUiOptions {
   /** Shows the library for reading only: no Add button, tag editing or note editor; search stays. */
   readOnly?: boolean;
   /** Shows the sharing controls the host offers; absent or read-only shows none. */
-  sharing?: SharingHost;
+  sharing?: ShareHost;
 }
 
 /** What a host's own glue (such as a sidebar folder tree) can use. */
@@ -56,7 +64,7 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
   const store = new LibraryViewStore({ sortKey: saved.sortKey, sortDir: saved.sortDir, columns: saved.columns });
   const { transport, prefs, capabilities: caps, labels } = options;
   const frame = buildFrame(host, prefs, { withSidebar: options.withSidebar ?? false, withCitationMap: true });
-  const ctx = createUiContext(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false, sharing: options.sharing });
+  const ctx = createUiCompositionRoot(frame.root, { store, transport, prefs, caps, labels, readOnly: options.readOnly ?? false, sharing: options.sharing });
   const offs = [
     attachHostMessages(ctx),
     mountListHeader(ctx, frame.header),
@@ -70,11 +78,11 @@ export function mountLibraryUi(host: HTMLElement, options: LibraryUiOptions): Li
     sidebar: frame.sidebar,
     store,
     folders: {
-      create: (parent) => { void promptNewFolder(ctx, parent); },
-      rename: (path) => { void promptRenameFolder(ctx, path); },
-      remove: (path) => { void confirmDeleteFolder(ctx, path); },
+      create: (parent) => { void askCreateFolder(ctx, parent); },
+      rename: (path) => { void askRenameFolder(ctx, path); },
+      remove: (path) => { void askRemoveFolder(ctx, path); },
     },
-    dropTarget: (el, folder) => makeDropTarget(ctx, el, folder),
+    dropTarget: (el, folder) => attachDropZone(ctx, el, folder),
     dispose: () => { offs.forEach((off) => off()); frame.root.remove(); },
   };
 }

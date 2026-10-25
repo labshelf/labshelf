@@ -1,2 +1,2 @@
 // Exports the source tab's title-bar actions.
-export { sourceActions, type SourceActionDeps } from "./sourceActions";
+export { createSourceActions, type SourceActionDeps } from "./createSourceActions";

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import type { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
-import { errorMessage, type PaperDataStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext } from "@labshelf/core";
+import { formatError, type PaperSidecarStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext } from "@labshelf/core";
 import type { ReindexSummary } from "../storage/index.js";
 
 const LOG_MODULE = "command";
@@ -16,7 +16,7 @@ export type ActiveServices = {
   mutations: MutationContext;
   logger: ILogger;
   library: LibraryStore;
-  paperDataStore: PaperDataStore;
+  paperDataStore: PaperSidecarStore;
   // The adapter of this library root; its temp folder for atomic writes is inside the root.
   fileSystem: LibraryFileSystem;
   // Rebuilds the index from disk and emits the resulting paper events. Bound in
@@ -29,15 +29,15 @@ export type ActiveServices = {
   citationCacheDir: string;
 };
 
-export type RequireServices = () => Promise<ActiveServices | null>;
+export type EnsureServices = () => Promise<ActiveServices | null>;
 
 // Wraps an async command action with error logging and a user-facing error message on failure.
-export async function executeSafely(logger: ILogger, commandName: string, action: () => Promise<void>): Promise<void> {
+export async function runSafely(logger: ILogger, commandName: string, action: () => Promise<void>): Promise<void> {
   try {
     await action();
   } catch (error) {
     await logger.error(LOG_MODULE, error, { commandName });
-    const message = errorMessage(error);
+    const message = formatError(error);
     await vscode.window.showErrorMessage(`LabShelf command failed: ${message}`);
   }
 }

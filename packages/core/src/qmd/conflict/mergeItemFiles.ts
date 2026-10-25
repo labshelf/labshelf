@@ -1,10 +1,156 @@
 // Merges two edited versions of a qmd item file item by item, three-way against their common base when there is one.
 // CONTRACT: documents/contracts/qmd-items.md#merge
-import { isBlankLine, lineEnding, parseItemFile, splitLines, type ItemSegment } from "../items/index.js";
-import { mergeItem, type ItemText } from "./itemMerge.js";
-import { mergedOrder } from "./itemOrder.js";
-import { changedSide } from "./sideChange.js";
+import {
+  isBlankLine,
+  extractLineEnding,
+  parseItemFile,
+  splitLines,
+  type ItemSegment,
+  isBalanced,
+  findUnclosedCodeFences,
+  formatDivOpener,
+  extractLineContent,
+  parseDivOpener,
+} from "../items/index.js";
 import type { TextMerge, TextMergeResult } from "./textMergePort.js";
+import { findOutputs, type OutputBlock } from "../cellOutput/index.js";
+
+/** The side that holds every edit, or undefined when both sides changed the value differently. */
+function changedSide<T>(base: T | undefined, local: T, other: T): T | undefined {
+  if (local === other || other === base) { return local; }
+  if (local === base) { return other; }
+  return undefined;
+}
+
+// CONTRACT: documents/contracts/qmd-items.md#merge
+const START = "";
+
+/**
+ * Every key of the three sides once. Items of the base keep base order. Items added on one side follow the base item
+ * that precedes them on that side, as one run; when both sides add a run at the same place, the run whose first id is
+ * smaller (created earlier) goes first. An item both sides added keeps local's place.
+ */
+function mergedOrder(base: readonly string[], local: readonly string[], other: readonly string[]): string[] {
+  const inBase = new Set(base);
+  const localRuns = addedRuns(local, inBase, new Set());
+  const otherRuns = addedRuns(other, inBase, new Set(local));
+  const order: string[] = [];
+  for (const slot of [START, ...base]) {
+    if (slot !== START) { order.push(slot); }
+    const runs = [localRuns.get(slot) ?? [], otherRuns.get(slot) ?? []].filter((run) => run.length > 0);
+    runs.sort((a, b) => (a[0]! < b[0]! ? -1 : 1));
+    for (const run of runs) { order.push(...run); }
+  }
+  return order;
+}
+
+/** Added keys of one side grouped by the base key before them (START for the file start), skipping `taken` keys. */
+function addedRuns(keys: readonly string[], inBase: ReadonlySet<string>, taken: ReadonlySet<string>): Map<string, string[]> {
+  const runs = new Map<string, string[]>();
+  let slot = START;
+  for (const key of keys) {
+    if (inBase.has(key)) {
+      slot = key;
+    } else if (!taken.has(key)) {
+      runs.set(slot, [...runs.get(slot) ?? [], key]);
+    }
+  }
+  return runs;
+}
+
+/**
+ * For each cell with exactly one result on each side and different results, writes the result of the later run into
+ * both bodies; a tie keeps the local one.
+ */
+function settleOutputs(local: string, other: string): { local: string; other: string } {
+  const localBlocks = singleBlocks(local);
+  const otherBlocks = singleBlocks(other);
+  let settledLocal = local;
+  let settledOther = other;
+  for (const [cell, localBlock] of localBlocks) {
+    const otherBlock = otherBlocks.get(cell);
+    if (!otherBlock) { continue; }
+    const localText = local.slice(localBlock.start, localBlock.end);
+    const otherText = other.slice(otherBlock.start, otherBlock.end);
+    if (localText === otherText) { continue; }
+    if ((otherBlock.ran ?? "") > (localBlock.ran ?? "")) {
+      settledLocal = settledLocal.replace(localText, () => otherText);
+    } else {
+      settledOther = settledOther.replace(otherText, () => localText);
+    }
+  }
+  return { local: settledLocal, other: settledOther };
+}
+
+function singleBlocks(body: string): Map<string, OutputBlock> {
+  const blocks = new Map<string, OutputBlock>();
+  const repeated = new Set<string>();
+  for (const block of findOutputs(body)) {
+    if (blocks.has(block.cell)) { repeated.add(block.cell); }
+    blocks.set(block.cell, block);
+  }
+  for (const cell of repeated) { blocks.delete(cell); }
+  return blocks;
+}
+
+/**
+ * Takes each attribute and class from the side that changed it. When both changed an attribute differently, the
+ * local value stays, unless local removed it: an edit beats a removal.
+ */
+function mergeOpeners(base: string | undefined, local: string, other: string): string {
+  const parse = (line: string | undefined) => (line === undefined ? undefined : parseDivOpener(extractLineContent(line)));
+  const [baseAttrs, localAttrs, otherAttrs] = [parse(base), parse(local), parse(other)];
+  if (!localAttrs || !otherAttrs) { return local; }
+  const baseClasses = new Set(baseAttrs?.classes ?? []);
+  const classes = [...new Set([...localAttrs.classes, ...otherAttrs.classes])].filter((name) => {
+    const inLocal = localAttrs.classes.includes(name);
+    return inLocal === otherAttrs.classes.includes(name) || inLocal !== baseClasses.has(name) ? inLocal : !inLocal;
+  });
+  const baseValues = new Map(baseAttrs?.pairs.map(([key, value]) => [key, value]));
+  const localValues = new Map(localAttrs.pairs.map(([key, value]) => [key, value]));
+  const otherValues = new Map(otherAttrs.pairs.map(([key, value]) => [key, value]));
+  const pairs: [string, string][] = [];
+  for (const key of new Set([...localValues.keys(), ...otherValues.keys()])) {
+    const value = mergeValue(baseValues.get(key), localValues.get(key), otherValues.get(key));
+    if (value !== undefined) { pairs.push([key, value]); }
+  }
+  const id = localAttrs.id;
+  return formatDivOpener(id === undefined ? { classes, pairs } : { id, classes, pairs }) + extractLineEnding(local);
+}
+
+function mergeValue(base: string | undefined, local: string | undefined, other: string | undefined): string | undefined {
+  if (local === other || other === base) { return local; }
+  if (local === base) { return other; }
+  return local ?? other;
+}
+
+/** The bytes of a merged item, written as they are. */
+type ItemText = Pick<ItemSegment, "fence" | "body" | "close">;
+
+interface ItemMergeResult {
+  readonly items: readonly ItemText[];
+  readonly conflicted: boolean;
+}
+
+/**
+ * Both-sided body edits merge line by line, with conflict markers inside the body only. When the merged body would
+ * open or close a fence it does not close or open, both versions are kept as two items with the same id.
+ */
+function mergeItem(
+  base: ItemSegment | undefined, local: ItemSegment, other: ItemSegment, textMerge: TextMerge, otherLabel: string,
+): ItemMergeResult {
+  const fence = changedSide(base?.fence, local.fence, other.fence) ?? mergeOpeners(base?.fence, local.fence, other.fence);
+  const settled = settleOutputs(local.body, other.body);
+  const body = changedSide(base?.body, settled.local, settled.other);
+  if (body !== undefined) { return { items: [{ fence, body, close: local.close }], conflicted: false }; }
+  const merged = textMerge({ base: base?.body ?? "", local: settled.local, other: settled.other, otherLabel });
+  const text = merged.text === "" || /[\r\n]$/.test(merged.text) ? merged.text : merged.text + extractLineEnding(local.fence);
+  const lines = splitLines(text);
+  if (!isBalanced(lines) || findUnclosedCodeFences(lines).length > 0) {
+    return { items: [local, other], conflicted: true };
+  }
+  return { items: [{ fence, body: text, close: local.close }], conflicted: merged.conflicted };
+}
 
 export interface ItemFileMergeInput {
   /** The common ancestor; without it the merge is a union by id that never honours a delete. */
@@ -49,7 +195,7 @@ export function mergeItemFiles(input: ItemFileMergeInput, textMerge: TextMerge):
     }
     pieces.push({ text: merge(base.gaps.get(key) ?? "", local.gaps.get(key) ?? "", other.gaps.get(key) ?? "") });
   }
-  return { text: joinPieces(pieces, lineEnding(input.local)), conflicted };
+  return { text: joinPieces(pieces, extractLineEnding(input.local)), conflicted };
 }
 
 const NO_BASE: Side = { keys: [], items: new Map(), gaps: new Map() };

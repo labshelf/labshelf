@@ -1,5 +1,5 @@
 import { mergeItemFiles } from "../../../src/qmd/conflict/index";
-import { addItem, parseItemFile, removeItem, replaceItemBody, serializeItemFile } from "../../../src/qmd/items/index";
+import { addItem, parseItemFile, removeItem, setItemBody, serializeItemFile } from "../../../src/qmd/items/index";
 import { formatOutput } from "../../../src/qmd/cellOutput/index";
 import { mergeText } from "../../../src/writing/conflict/node/mergeText";
 
@@ -16,7 +16,7 @@ function merge(local: string, other: string, base: string | null = BASE) {
 }
 const add = (text: string, id: string, body: string) => serializeItemFile(addItem(parseItemFile(text), { id, body }));
 const remove = (text: string, id: string) => serializeItemFile(removeItem(parseItemFile(text), id));
-const edit = (text: string, id: string, body: string) => serializeItemFile(replaceItemBody(parseItemFile(text), id, body));
+const edit = (text: string, id: string, body: string) => serializeItemFile(setItemBody(parseItemFile(text), id, body));
 const ids = (text: string) => parseItemFile(text).segments.flatMap((s) => (s.kind === "item" ? [s.id] : []));
 
 describe("mergeItemFiles", () => {

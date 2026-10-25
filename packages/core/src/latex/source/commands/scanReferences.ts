@@ -1,6 +1,6 @@
 /** Reads `\label` and the `\ref` family: each label or referenced name with the range of its text. */
-import type { LabelFact, RefFact } from "../facts.js";
-import { readDelimited, skipSpace } from "./delimited.js";
+import type { LabelFact, ReferenceFact } from "../facts.js";
+import { readDelimited, findSpaceEnd } from "./delimited.js";
 import type { ScanContext } from "./scanContext.js";
 
 export const REF_COMMANDS: ReadonlySet<string> = new Set([
@@ -25,13 +25,13 @@ function namesIn(ctx: ScanContext, start: number, end: number, split: boolean): 
 }
 
 export function readLabel(ctx: ScanContext, after: number): LabelFact | undefined {
-  const group = readDelimited(ctx.text, skipSpace(ctx.text, after), "{");
+  const group = readDelimited(ctx.text, findSpaceEnd(ctx.text, after), "{");
   const [found] = group ? namesIn(ctx, group.start, group.end, false) : [];
   return found && { name: found.name, range: ctx.range(found.start, found.end) };
 }
 
-export function readRefs(ctx: ScanContext, command: string, after: number): RefFact[] {
-  const group = readDelimited(ctx.text, skipSpace(ctx.text, after), "{");
+export function readReferences(ctx: ScanContext, command: string, after: number): ReferenceFact[] {
+  const group = readDelimited(ctx.text, findSpaceEnd(ctx.text, after), "{");
   if (!group) { return []; }
   return namesIn(ctx, group.start, group.end, true)
     .map((found) => ({ command, name: found.name, range: ctx.range(found.start, found.end) }));

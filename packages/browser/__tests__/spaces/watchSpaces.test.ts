@@ -10,7 +10,7 @@ const removeListener = jest.fn();
 jest.mock('../../src/platform', () => ({ bx: { runtime: { onMessage: {
   addListener: (listener: typeof runtime) => { runtime = listener; }, removeListener: (...args: unknown[]) => removeListener(...args),
 } } } }));
-jest.mock('../../src/storage', () => ({ onFolderRecordsRebuilt: () => jest.fn() }));
+jest.mock('../../src/storage', () => ({ onPaperRecordsRebuilt: () => jest.fn() }));
 
 it('reloads for library.changed and visibility, then removes its listeners', async () => {
   const reload = jest.fn(async () => {});

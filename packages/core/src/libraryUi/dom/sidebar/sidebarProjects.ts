@@ -1,8 +1,8 @@
 // Builds the Projects section rows: the project folder tree with its projects, or an empty state with the actions the host offers.
-import { el } from "../../../ui/dom/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { SidebarProject } from "../../viewModel/index.js";
-import { GROUP_ROW_DEPTH, projectFolderRow, projectRow } from "./sidebarRows.js";
+import { GROUP_ROW_DEPTH, renderProjectFolderRow, renderProjectRow } from "./sidebarRows.js";
 
 /** What the Projects section asks the host to do. Folder paths are project folder paths ("" for the top level). */
 export interface SidebarProjectActions {
@@ -48,28 +48,28 @@ export const ALL_PROJECT_OFFERS: ProjectOffers = { templates: true, addExisting:
 export const projectFolderKey = (path: string): string => `project-folder:${path}`;
 
 // The Explorer's own title actions, in its order: new file, new folder, refresh, collapse all.
-export const projectListActions = (offers: ProjectOffers, canJoin: boolean): string =>
-  (offers.newBlank ? `<button class="ls-icon-btn" data-tree="blank" title="New blank project">${icon("new-file")}</button>` : "") +
-  (offers.projectFolders ? `<button class="ls-icon-btn" data-tree="project-folder" title="New folder">${icon("new-folder")}</button>` : "") +
-  (canJoin ? `<button class="ls-icon-btn" data-tree="join" title="Join Shared Project" aria-label="Join Shared Project">${icon("link")}</button>` : "") +
-  `<button class="ls-icon-btn" data-tree="project-refresh" title="Refresh">${icon("reload")}</button>` +
-  `<button class="ls-icon-btn" data-tree="project-collapse" title="Collapse all">${icon("collapse-all")}</button>`;
+export const createProjectListActions = (offers: ProjectOffers, canJoin: boolean): string =>
+  (offers.newBlank ? `<button class="ls-icon-btn" data-tree="blank" title="New blank project">${renderIcon("new-file")}</button>` : "") +
+  (offers.projectFolders ? `<button class="ls-icon-btn" data-tree="project-folder" title="New folder">${renderIcon("new-folder")}</button>` : "") +
+  (canJoin ? `<button class="ls-icon-btn" data-tree="join" title="Join Shared Project" aria-label="Join Shared Project">${renderIcon("link")}</button>` : "") +
+  `<button class="ls-icon-btn" data-tree="project-refresh" title="Refresh">${renderIcon("reload")}</button>` +
+  `<button class="ls-icon-btn" data-tree="project-collapse" title="Collapse all">${renderIcon("collapse-all")}</button>`;
 
 const emptyButton = (action: string, label: string, glyph: "plus" | "folder-plus" | "folder-open" | "link"): string =>
-  `<button class="ls-btn" data-tree="${action}" tabindex="-1">${icon(glyph)}${label}</button>`;
+  `<button class="ls-btn" data-tree="${action}" tabindex="-1">${renderIcon(glyph)}${label}</button>`;
 
 function emptyState(offers: ProjectOffers, canJoin: boolean): HTMLElement {
   const buttons = (offers.templates ? emptyButton("browse", "Browse templates", "plus") : "") +
     (offers.newBlank ? emptyButton("blank", "New blank project", "folder-plus") : "") +
     (offers.addExisting ? emptyButton("add", "Add existing folder", "folder-open") : "") +
     (canJoin ? emptyButton("join", "Join shared project", "link") : "");
-  return el("div", { class: "tree-empty", html: buttons ? `No projects yet.<div class="tree-empty-actions">${buttons}</div>` : "No projects yet." });
+  return renderElement("div", { class: "tree-empty", html: buttons ? `No projects yet.<div class="tree-empty-actions">${buttons}</div>` : "No projects yet." });
 }
 
 const byName = (a: SidebarProject, b: SidebarProject): number => a.name.localeCompare(b.name);
 
 /** My projects: folders first, then projects, each level sorted by name; a folder's count is every project under it. */
-export function projectTreeNodes(projects: readonly SidebarProject[], expanded: ReadonlySet<string>, offers: ProjectOffers, canJoin: boolean): HTMLElement[] {
+export function renderProjectTreeNodes(projects: readonly SidebarProject[], expanded: ReadonlySet<string>, offers: ProjectOffers, canJoin: boolean): HTMLElement[] {
   const active = projects.filter((p) => !p.hidden);
   if (active.length === 0) return [emptyState(offers, canJoin)];
   const rows: HTMLElement[] = [];
@@ -80,10 +80,10 @@ export function projectTreeNodes(projects: readonly SidebarProject[], expanded: 
       const path = prefix ? `${prefix}/${name}` : name;
       const open = expanded.has(projectFolderKey(path));
       const count = active.filter((p) => p.folder === path || p.folder?.startsWith(`${path}/`)).length;
-      rows.push(projectFolderRow(name, path, { depth, count, open, current: false }));
+      rows.push(renderProjectFolderRow(name, path, { depth, count, open, current: false }));
       if (open) walk(path, depth + 1);
     }
-    for (const p of active.filter((q) => (q.folder ?? "") === prefix).sort(byName)) rows.push(projectRow(p, depth));
+    for (const p of active.filter((q) => (q.folder ?? "") === prefix).sort(byName)) rows.push(renderProjectRow(p, depth));
   };
   walk("", GROUP_ROW_DEPTH);
   return rows;

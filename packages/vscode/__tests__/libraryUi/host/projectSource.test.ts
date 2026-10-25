@@ -1,7 +1,7 @@
 /** The list host answers the detail pane's "Cited in": the citing projects with each paper, and opening a source at its line. */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { handleListMessage } from '../../../src/libraryUi/host/listHandlers';
+import { answerListMessage } from '../../../src/libraryUi/host/listHandlers';
 import { sendDetails } from '../../../src/libraryUi/host/answerDetailPane';
 import type { ListHostContext } from '../../../src/libraryUi/host/hostContext';
 
@@ -47,7 +47,7 @@ describe('details citedIn', () => {
 
 describe('project.openSource', () => {
   const open = (ctx: ListHostContext, file: string, project = 'survey') =>
-    handleListMessage(ctx, { type: 'project.openSource', project, file, line: 11 });
+    answerListMessage(ctx, { type: 'project.openSource', project, file, line: 11 });
 
   it('opens the file below the project folder with the cursor on the line', async () => {
     const { ctx } = context();
@@ -60,7 +60,7 @@ describe('project.openSource', () => {
 
   it('refuses a path that leaves the project folder, even past the message guard', async () => {
     const { ctx, logger } = context();
-    await handleListMessage(ctx, { type: 'project.openSource', project: 'survey', file: '../secret.tex', line: 0 });
+    await answerListMessage(ctx, { type: 'project.openSource', project: 'survey', file: '../secret.tex', line: 0 });
     expect(showTextDocument).not.toHaveBeenCalled();
     const { ctx: direct, logger: directLogger } = context();
     await (await import('../../../src/libraryUi/host/projectSource')).openProjectSource(direct, 'survey', '../../etc/passwd', 0);

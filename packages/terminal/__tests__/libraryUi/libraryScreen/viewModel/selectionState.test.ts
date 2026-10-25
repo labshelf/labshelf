@@ -8,10 +8,10 @@ import { ATTENTION, BERT, LECUN, ZEBRA, idle, makeTmpRoot, openApp, pane, paperD
 jest.mock("../../../../src/platform/system", () => ({
   ...jest.requireActual<typeof import("../../../../src/platform/system")>("../../../../src/platform/system"),
   openExternal: jest.fn(),
-  revealInFileManager: jest.fn(),
+  showInFileSystem: jest.fn(),
   copyToClipboard: jest.fn(),
   runEditor: jest.fn(),
-  trashSupported: jest.fn(),
+  canTrash: jest.fn(),
   moveToTrash: jest.fn(),
 }));
 

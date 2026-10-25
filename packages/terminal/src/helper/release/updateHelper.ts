@@ -1,18 +1,81 @@
 // Replaces the helper binary with a newer signed release, at most once a day unless the caller bypasses that, never failing the caller.
-import { rm } from "node:fs/promises";
+import { rm, chmod, rename, writeFile, mkdir, readFile } from "node:fs/promises";
 
 import { downloadVerified } from "@labshelf/core/helper/node";
 
 import { fetchSignedRelease } from "./releaseManifest.js";
-import { oldBinaryPath, replaceBinary } from "./updateBinary.js";
-import { isCheckDue, recordCheck } from "./updateThrottle.js";
 import type { SelfUpdateDeps, UpdateOutcome } from "./updateDeps.js";
-import { HELPER_UPDATE_PUBLIC_KEY } from "./releaseEd25519.js";
-import { isNewerVersion } from "./versionOrder.js";
+import { join } from "node:path";
+
+const VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
+
+function parts(version: string): number[] {
+  const match = VERSION.exec(version);
+  if (!match) { throw new Error(`Not a MAJOR.MINOR.PATCH version: ${version}`); }
+  return match.slice(1).map(Number);
+}
+
+function isNewerVersion(candidate: string, current: string): boolean {
+  const next = parts(candidate);
+  const now = parts(current);
+  for (let index = 0; index < 3; index++) {
+    if (next[index] !== now[index]) { return (next[index] ?? 0) > (now[index] ?? 0); }
+  }
+  return false;
+}
+
+const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const STATE_FILE = "update-check.json";
+
+async function isCheckDue(dataDir: string, now: number): Promise<boolean> {
+  try {
+    const state = JSON.parse(await readFile(join(dataDir, STATE_FILE), "utf8")) as { lastCheckAt?: unknown };
+    return typeof state.lastCheckAt !== "number" || now - state.lastCheckAt >= CHECK_INTERVAL_MS;
+  } catch {
+    // A missing or corrupt state file means no check is on record.
+    return true;
+  }
+}
+
+async function recordCheck(dataDir: string, now: number): Promise<void> {
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(join(dataDir, STATE_FILE), JSON.stringify({ lastCheckAt: now }));
+}
+
+function oldBinaryPath(binaryPath: string): string {
+  return `${binaryPath}.old`;
+}
+
+// PLATFORM: Windows cannot overwrite a running exe but can rename it; the .old copy is deleted on the next start.
+async function replaceBinary(binaryPath: string, bytes: Buffer, platform: string): Promise<void> {
+  const staged = `${binaryPath}.new`;
+  try {
+    await writeFile(staged, bytes, { mode: 0o755 });
+    await chmod(staged, 0o755);
+    if (platform === "win32") { await swapOnWindows(binaryPath, staged); } else { await rename(staged, binaryPath); }
+  } catch (error) {
+    await rm(staged, { force: true });
+    throw error;
+  }
+}
+
+async function swapOnWindows(binaryPath: string, staged: string): Promise<void> {
+  const old = oldBinaryPath(binaryPath);
+  await rm(old, { force: true });
+  await rename(binaryPath, old);
+  try {
+    await rename(staged, binaryPath);
+  } catch (error) {
+    await rename(old, binaryPath);
+    throw error;
+  }
+}
+
+const HELPER_UPDATE_PUBLIC_KEY = "MCowBQYDK2VwAyEAHU0VuPFsCFIVHHw36Qfdo6boVWQgo9cEEit8BSLZxzM=";
 
 const MODULE = "helper/update";
 
-export interface SelfUpdater {
+export interface HelperUpdater {
   /**
    * Runs one check and resolves with what happened; never rejects. It is throttled to once a day unless `bypassThrottle` is set,
    * which a helper that the page refused for its protocol version uses to look for the update that fixes it.
@@ -47,7 +110,7 @@ async function checkOnce(deps: SelfUpdateDeps, bypassThrottle = false): Promise<
   }
 }
 
-export function createSelfUpdater(deps: SelfUpdateDeps): SelfUpdater {
+export function createSelfUpdater(deps: SelfUpdateDeps): HelperUpdater {
   return {
     check: (options) => checkOnce(deps, options?.bypassThrottle),
     checkInBackground: () => { void checkOnce(deps); },

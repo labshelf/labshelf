@@ -4,9 +4,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { BIBER_FLAG } from "../../latex/biber/index.js";
-import { biberAssetsInFolder } from "../../latex/biber/node/index.js";
+import { findBiberAssetsInFolder } from "../../latex/biber/node/index.js";
 import { HELPER_VERSION, type HelperHost } from "../index.js";
-import { helperDataDir } from "./helperDir.js";
+import { resolveHelperDir } from "./helperDir.js";
 import { createHelperLogger } from "./log/index.js";
 import { runHelperBiber } from "./runHelperBiber.js";
 import { runHelperHost } from "./runHelperHost.js";
@@ -19,12 +19,12 @@ const BIBER_WASM_FOLDER = "biber-wasm";
 // PLATFORM: the browser starts the script as `node <bundle>`, so argv[1] locates the bundle whatever the app's module format.
 async function run(host: Exclude<HelperHost, "helper">): Promise<number> {
   const script = await realpath(process.argv[1] ?? "");
-  const biberAssets = biberAssetsInFolder(path.join(path.dirname(script), BIBER_WASM_FOLDER));
+  const biberAssets = findBiberAssetsInFolder(path.join(path.dirname(script), BIBER_WASM_FOLDER));
   if (process.argv[2] === BIBER_FLAG) {
     if (!biberAssets) { throw new Error(`${BIBER_FLAG} needs biber's WASM beside ${script}`); }
     return runHelperBiber(process.argv.slice(3), biberAssets);
   }
-  const dataDir = helperDataDir(process.env, process.platform, os.homedir());
+  const dataDir = resolveHelperDir(process.env, process.platform, os.homedir());
   await runHelperHost({
     dataDir, logger: createHelperLogger(dataDir), helperVersion: HELPER_VERSION, host, args: process.argv.slice(2),
     typstWasm: async () => new Uint8Array(await readFile(path.join(path.dirname(script), TYPST_WASM_FILE))),

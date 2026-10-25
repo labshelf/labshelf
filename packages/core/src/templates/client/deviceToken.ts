@@ -1,8 +1,8 @@
 // Polls GitHub device authorization while respecting expiration, cancellation and slow-down responses.
 import { readGitHubIdentity } from "./githubIdentity.js";
-import { githubOAuthRequest, type GitHubDeviceAuthorization } from "./deviceAuthorization.js";
+import { fetchGithubOAuthResponse, type GitHubDeviceAuthorization } from "./deviceAuthorization.js";
 
-export function waitForGitHubPoll(ms: number, signal: AbortSignal): Promise<void> {
+export function runGithubPollDelay(ms: number, signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const cancel = () => { clearTimeout(timer); reject(signal.reason); };
@@ -20,16 +20,16 @@ export interface GitHubDevicePolling {
   wait?: (ms: number, signal: AbortSignal) => Promise<void>;
 }
 
-export async function finishGitHubDeviceSignIn(input: GitHubDevicePolling): Promise<{ token: string; login: string }> {
+export async function fetchGithubDeviceToken(input: GitHubDevicePolling): Promise<{ token: string; login: string }> {
   const { fetch, clientId, authorization, signal } = input;
   const now = input.now ?? Date.now;
   const deadline = now() + authorization.expiresIn * 1000;
   let interval = authorization.interval * 1000;
   while (now() < deadline) {
-    await (input.wait ?? waitForGitHubPoll)(Math.min(interval, deadline - now()), signal);
+    await (input.wait ?? runGithubPollDelay)(Math.min(interval, deadline - now()), signal);
     signal.throwIfAborted();
     if (now() >= deadline) break;
-    const body = await githubOAuthRequest(fetch, "oauth/access_token", {
+    const body = await fetchGithubOAuthResponse(fetch, "oauth/access_token", {
       client_id: clientId, device_code: authorization.deviceCode, grant_type: "urn:ietf:params:oauth:grant-type:device_code",
     }, signal);
     if (body.error === "authorization_pending") continue;

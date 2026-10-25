@@ -1,4 +1,4 @@
-import { clearImages, detectImageProtocol, drawImage, fitImage, pngSize, type CellRect } from "../../src/screen/graphics";
+import { createImageClear, detectImageProtocol, drawImage, deriveImageFit, readPngSize, type CellRect } from "../../src/screen/graphics";
 
 // The first 24 bytes of a PNG: signature, IHDR chunk length, "IHDR", width and height (big-endian).
 function pngHeader(width: number, height: number): Uint8Array {
@@ -73,19 +73,19 @@ describe("detectImageProtocol", () => {
   });
 });
 
-describe("pngSize", () => {
+describe("readPngSize", () => {
   it("reads the size from the IHDR chunk", () => {
-    expect(pngSize(pngHeader(640, 480))).toEqual({ width: 640, height: 480 });
+    expect(readPngSize(pngHeader(640, 480))).toEqual({ width: 640, height: 480 });
   });
 
   it("reads sizes larger than 16 bits", () => {
-    expect(pngSize(pngHeader(100_000, 70_000))).toEqual({ width: 100_000, height: 70_000 });
+    expect(readPngSize(pngHeader(100_000, 70_000))).toEqual({ width: 100_000, height: 70_000 });
   });
 
   it("reads the size of a PNG held in a view into a larger buffer", () => {
     const big = new Uint8Array(100);
     big.set(pngHeader(1275, 1650), 7);
-    expect(pngSize(big.subarray(7))).toEqual({ width: 1275, height: 1650 });
+    expect(readPngSize(big.subarray(7))).toEqual({ width: 1275, height: 1650 });
   });
 
   it("reads a real minimal PNG file", () => {
@@ -93,41 +93,41 @@ describe("pngSize", () => {
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
       "base64",
     );
-    expect(pngSize(onePixel)).toEqual({ width: 1, height: 1 });
+    expect(readPngSize(onePixel)).toEqual({ width: 1, height: 1 });
   });
 
   it("returns undefined for garbage", () => {
-    expect(pngSize(new Uint8Array([1, 2, 3]))).toBeUndefined();
-    expect(pngSize(Buffer.from("this is definitely not a PNG file, just some text"))).toBeUndefined();
-    expect(pngSize(new Uint8Array(0))).toBeUndefined();
+    expect(readPngSize(new Uint8Array([1, 2, 3]))).toBeUndefined();
+    expect(readPngSize(Buffer.from("this is definitely not a PNG file, just some text"))).toBeUndefined();
+    expect(readPngSize(new Uint8Array(0))).toBeUndefined();
   });
 
   it("returns undefined for a PDF or JPEG header", () => {
-    expect(pngSize(Buffer.from("%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n"))).toBeUndefined();
-    expect(pngSize(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new Array<number>(30).fill(0)]))).toBeUndefined();
+    expect(readPngSize(Buffer.from("%PDF-1.7\n%âãÏÓ\n1 0 obj\n<<>>\nendobj\n"))).toBeUndefined();
+    expect(readPngSize(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, ...new Array<number>(30).fill(0)]))).toBeUndefined();
   });
 
   it("returns undefined for a truncated PNG header", () => {
-    expect(pngSize(pngHeader(10, 10).subarray(0, 23))).toBeUndefined();
-    expect(pngSize(pngHeader(10, 10).subarray(0, 8))).toBeUndefined();
+    expect(readPngSize(pngHeader(10, 10).subarray(0, 23))).toBeUndefined();
+    expect(readPngSize(pngHeader(10, 10).subarray(0, 8))).toBeUndefined();
   });
 });
 
-describe("fitImage", () => {
+describe("deriveImageFit", () => {
   const box: CellRect = { x: 10, y: 2, cols: 40, rows: 20 };
 
   it("fills the width of the box for a landscape image", () => {
-    expect(fitImage({ width: 1000, height: 500 }, box)).toEqual({ x: 10, y: 2, cols: 40, rows: 9 });
+    expect(deriveImageFit({ width: 1000, height: 500 }, box)).toEqual({ x: 10, y: 2, cols: 40, rows: 9 });
   });
 
   it("fills the height of the box for a portrait image and centers it horizontally", () => {
-    const fitted = fitImage({ width: 500, height: 1000 }, box);
+    const fitted = deriveImageFit({ width: 500, height: 1000 }, box);
     expect(fitted).toEqual({ x: 19, y: 2, cols: 21, rows: 20 });
   });
 
   it("keeps the image's aspect ratio, within one cell of rounding", () => {
     for (const [width, height] of [[1275, 1650], [1650, 1275], [800, 800], [300, 1200], [1200, 300]] as const) {
-      const fitted = fitImage({ width, height }, box, 2);
+      const fitted = deriveImageFit({ width, height }, box, 2);
       const cellRatio = fitted.cols / (fitted.rows * 2);
       const imageRatio = width / height;
       // One cell of rounding in either dimension changes the ratio by at most this much.
@@ -141,7 +141,7 @@ describe("fitImage", () => {
     const boxes: CellRect[] = [box, { x: 0, y: 0, cols: 12, rows: 8 }, { x: 5, y: 5, cols: 200, rows: 3 }, { x: 3, y: 1, cols: 1, rows: 1 }];
     for (const [width, height] of images) {
       for (const target of boxes) {
-        const fitted = fitImage({ width, height }, target);
+        const fitted = deriveImageFit({ width, height }, target);
         expect(fitted.cols).toBeGreaterThanOrEqual(1);
         expect(fitted.rows).toBeGreaterThanOrEqual(1);
         expect(fitted.cols).toBeLessThanOrEqual(target.cols);
@@ -154,25 +154,25 @@ describe("fitImage", () => {
   });
 
   it("scales a small image up to the box", () => {
-    const fitted = fitImage({ width: 10, height: 10 }, box, 2);
+    const fitted = deriveImageFit({ width: 10, height: 10 }, box, 2);
     expect(fitted.cols).toBeGreaterThan(10);
   });
 
   it("gives an extreme panorama at least one row", () => {
-    const fitted = fitImage({ width: 10_000, height: 1 }, box);
+    const fitted = deriveImageFit({ width: 10_000, height: 1 }, box);
     expect(fitted.rows).toBe(1);
     expect(fitted.cols).toBe(40);
   });
 
   it("uses the given cell aspect: square cells make a square image square", () => {
-    expect(fitImage({ width: 100, height: 100 }, box, 1)).toEqual({ x: 20, y: 2, cols: 20, rows: 20 });
+    expect(deriveImageFit({ width: 100, height: 100 }, box, 1)).toEqual({ x: 20, y: 2, cols: 20, rows: 20 });
   });
 
   it("returns an empty rectangle for an empty box or image", () => {
-    expect(fitImage({ width: 100, height: 100 }, { x: 4, y: 5, cols: 0, rows: 10 })).toEqual({ x: 4, y: 5, cols: 0, rows: 0 });
-    expect(fitImage({ width: 100, height: 100 }, { x: 4, y: 5, cols: 10, rows: 0 })).toEqual({ x: 4, y: 5, cols: 0, rows: 0 });
-    expect(fitImage({ width: 0, height: 100 }, box)).toEqual({ ...box, cols: 0, rows: 0 });
-    expect(fitImage({ width: 100, height: 0 }, box)).toEqual({ ...box, cols: 0, rows: 0 });
+    expect(deriveImageFit({ width: 100, height: 100 }, { x: 4, y: 5, cols: 0, rows: 10 })).toEqual({ x: 4, y: 5, cols: 0, rows: 0 });
+    expect(deriveImageFit({ width: 100, height: 100 }, { x: 4, y: 5, cols: 10, rows: 0 })).toEqual({ x: 4, y: 5, cols: 0, rows: 0 });
+    expect(deriveImageFit({ width: 0, height: 100 }, box)).toEqual({ ...box, cols: 0, rows: 0 });
+    expect(deriveImageFit({ width: 100, height: 0 }, box)).toEqual({ ...box, cols: 0, rows: 0 });
   });
 });
 
@@ -286,13 +286,13 @@ describe("drawImage", () => {
   });
 });
 
-describe("clearImages", () => {
+describe("createImageClear", () => {
   it("deletes every kitty image", () => {
-    expect(clearImages("kitty")).toBe("\x1b_Ga=d,d=A,q=2\x1b\\");
+    expect(createImageClear("kitty")).toBe("\x1b_Ga=d,d=A,q=2\x1b\\");
   });
 
   it("returns nothing for iTerm2, whose images are cell content, and for none", () => {
-    expect(clearImages("iterm")).toBe("");
-    expect(clearImages("none")).toBe("");
+    expect(createImageClear("iterm")).toBe("");
+    expect(createImageClear("none")).toBe("");
   });
 });

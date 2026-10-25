@@ -4,7 +4,7 @@ import type { CitationMap } from "../../import/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { CitationMapView } from "../protocol/index.js";
 
-export function citationMapView(map: CitationMap, papers: ReadonlyArray<Pick<PaperRecord, "id" | "title">>): CitationMapView {
+export function createCitationMapView(map: CitationMap, papers: ReadonlyArray<Pick<PaperRecord, "id" | "title">>): CitationMapView {
   const mentioned = new Set<string>([
     ...map.links.flatMap((link) => [link.from, link.to]),
     ...map.missing.flatMap((work) => work.citedBy),

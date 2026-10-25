@@ -2,23 +2,105 @@
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import * as Y from "yjs";
 import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../encoding/index.js";
-import { indexFiles } from "../model/index.js";
+import { readShareIndexDocFiles } from "../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RelayCursorStore } from "../relays/index.js";
 import { INDEX_DOC_KEY } from "../doc/index.js";
-import { BlobCache } from "./blobCache.js";
-import type { CollabStateStorage } from "./collabStorage.js";
-import { persistDoc, type DocPersistence } from "./docStore.js";
+import { ShareBlobCache } from "./ShareBlobCache.js";
+import type { CollabDeviceStateStorage } from "./collabStorage.js";
 import { PersistedMap } from "./storedMap.js";
-import { loadStoredDocStates } from "./storedDocStates.js";
 import { loadVersionHistory, type StoredVersion } from "./versionHistory.js";
+
+/** By doc id; the log of each doc is merged into its snapshot, so the log only ever holds what came after this load. */
+async function loadStoredDocStates(storage: CollabDeviceStateStorage, logger: ILogger): Promise<Map<string, Uint8Array>> {
+  const states = new Map<string, Uint8Array>();
+  for (const [docId, { snapshot, updates, torn }] of await storage.loadDocs()) {
+    if (torn) { await logger.log("WARN", LOG_MODULE, "Dropped a torn final record of a doc log", { docId }); }
+    if (updates.length === 0 && !torn) {
+      if (snapshot) { states.set(docId, snapshot); }
+      continue;
+    }
+    const merged = Y.mergeUpdates(snapshot ? [snapshot, ...updates] : updates);
+    await storage.compactDoc(docId, merged);
+    await logger.log("INFO", LOG_MODULE, "Compacted a doc log into its snapshot", { docId, records: updates.length });
+    states.set(docId, merged);
+  }
+  return states;
+}
+
+interface DocPersistenceOptions {
+  storage: CollabDeviceStateStorage;
+  docId: string;
+  docKey: string;
+  logger: ILogger;
+  /** Updates with this origin are already stored. */
+  storedOrigin: unknown;
+}
+
+interface DocPersistence {
+  readonly docKey: string;
+  /** True while an update of the doc is not known to be stored. */
+  readonly unstored: boolean;
+  /** Queues a full-state write when an update is not stored. */
+  retry(): void;
+  /** Resolves when every write queued so far has settled. */
+  settled(): Promise<void>;
+  stop(): void;
+}
+
+function persistDoc(doc: Y.Doc, { storage, docId, docKey, logger, storedOrigin }: DocPersistenceOptions): DocPersistence {
+  let chain = Promise.resolve();
+  let seen = 0;
+  let stored = 0;
+  // INVARIANT: after a failed write the log may end in a partial record, so nothing is appended until a full-state
+  // write replaces the log; this keeps a torn record the last one and keeps every later update out of the gap.
+  let failed = false;
+
+  const write = async (update: Uint8Array | undefined, seq: number) => {
+    if (seq <= stored) { return; }
+    const whole = failed || !update;
+    try {
+      if (whole) {
+        const covered = seen;
+        await storage.compactDoc(docId, Y.encodeStateAsUpdate(doc));
+        stored = covered;
+        failed = false;
+        await logger.log("INFO", LOG_MODULE, "Stored the full state of a doc after a failed write", { docKey, docId });
+      } else {
+        await storage.appendUpdate(docId, update);
+        stored = seq;
+      }
+    } catch (error) {
+      failed = true;
+      await logger.error(LOG_MODULE, error, { docKey, docId, action: whole ? "store doc state" : "append doc update" });
+    }
+  };
+  const enqueue = (update: Uint8Array | undefined, seq: number) => { chain = chain.then(() => write(update, seq)); };
+  const onUpdate = (update: Uint8Array, origin: unknown) => {
+    if (origin === storedOrigin) { return; }
+    seen += 1;
+    enqueue(update, seen);
+  };
+  doc.on("update", onUpdate);
+
+  return {
+    docKey,
+    get unstored() { return stored < seen; },
+    retry: () => { if (stored < seen) { enqueue(undefined, seen); } },
+    settled: async () => {
+      let current: Promise<void>;
+      do { current = chain; await current; } while (current !== chain);
+    },
+    stop: () => doc.off("update", onUpdate),
+  };
+}
 
 const LOG_MODULE = "collab.state";
 /** Marks the stored state applied on load, so it is not stored again. */
 const RESTORED = Symbol("restored");
 
 export interface CollabStoreOptions {
-  storage: CollabStateStorage;
+  storage: CollabDeviceStateStorage;
   logger: ILogger;
 }
 
@@ -27,7 +109,7 @@ export interface CollabStore {
   readonly index: Y.Doc;
   /** Creates a file doc holding its stored state; pass it to createShareSession. */
   createDoc(path: string): Y.Doc;
-  readonly blobs: BlobCache;
+  readonly blobs: ShareBlobCache;
   /** Per shared path, the SHA-256 of the content disk and doc last agreed on. */
   readonly known: PersistedMap<string>;
   readonly bases: PersistedMap<string>;
@@ -96,11 +178,11 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
   const flush = () => flushAll(docs, [known, bases, versions, cursors, held]);
   await logger.log("INFO", LOG_MODULE, "Opened the share state", { docs: stored.size });
   const index = restore(INDEX_DOC_KEY);
-  indexFiles(index);
+  readShareIndexDocFiles(index);
   return {
     index,
     createDoc: (docPath) => restore(docPath),
-    blobs: new BlobCache(storage, logger),
+    blobs: new ShareBlobCache(storage, logger),
     known, bases,
     rememberVersion: versions.rememberVersion,
     storedVersions: versions.storedVersions,

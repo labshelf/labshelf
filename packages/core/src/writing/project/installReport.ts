@@ -1,7 +1,7 @@
 /** Words what `install` did for each listed paper, and the one message that closes it, the same in every app. */
 import type { ImportOutcome } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import type { InstallEntry } from "./planInstall.js";
+import type { InstallEntry } from "./createInstallPlan.js";
 
 /** A planned entry and, for an `import` entry, what its import returned. */
 export interface InstallResult {
@@ -38,16 +38,16 @@ const addedRecords = (results: readonly InstallResult[]): PaperRecord[] =>
   results.flatMap(({ outcome }) => (outcome?.status === "added" ? [outcome.record] : []));
 
 /** The listed key resolves to a library paper once the install is done. */
-export function keyResolves({ entry, outcome }: InstallResult): boolean {
+export function isInstallResolved({ entry, outcome }: InstallResult): boolean {
   return entry.kind === "present" || (entry.kind === "import" && outcome?.status === "added" && outcome.record.citeKey === entry.key);
 }
 
 /** @returns the closing message; warn when a listed key does not resolve or a paper has no PDF */
-export function summarizeInstall(results: readonly InstallResult[]): InstallLine {
+export function describeInstallReport(results: readonly InstallResult[]): InstallLine {
   if (!results.length) { return { level: "info", text: "The project lists no papers" }; }
   const added = addedRecords(results);
   const withoutPdf = added.filter((record) => !record.hasPdf).length;
-  const unresolved = results.filter((result) => !keyResolves(result)).length;
+  const unresolved = results.filter((result) => !isInstallResolved(result)).length;
   const parts = [`${added.length} added`, `${results.filter(({ entry }) => entry.kind === "present").length} already in the library`];
   if (withoutPdf) { parts.push(`${withoutPdf} without a PDF`); }
   if (unresolved) { parts.push(`${unresolved} not resolved`); }

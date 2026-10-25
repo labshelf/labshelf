@@ -3,9 +3,9 @@
  */
 // Tests the footer checks button: its count, its absence before the first check and the command it runs.
 import { mountChecksButton } from "../../../../../src/reader/dom/preview/footer/index";
-import type { PreviewRoots } from "../../../../../src/reader/previewProtocol";
+import type { PreviewBuildRoots } from "../../../../../src/reader/previewProtocol";
 
-function roots(checks?: number): PreviewRoots {
+function roots(checks?: number): PreviewBuildRoots {
   const root = { path: "/p/main.tex", failed: false, rawLog: true, sourceLinks: true, problems: [] };
   return { main: "/p/main.tex", focused: "/p/main.tex", shown: "/p/main.tex", roots: [root], ...(checks === undefined ? {} : { checks }) };
 }

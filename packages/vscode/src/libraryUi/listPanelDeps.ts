@@ -1,6 +1,6 @@
 // Declares the host services consumed by the paper list.
 import type * as vscode from 'vscode';
-import type { Annotation, BacklinkIndex, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { PaperService } from '../library/index.js';
 import type { CitationMapPorts } from './citationMap/index.js';
 import type { LibraryEvents } from '../library/index.js';
@@ -21,7 +21,7 @@ interface ListFolderActions {
 
 /** The writing projects that cite papers; the panel shows them as "Cited in" and opens their sources. */
 interface ListProjectBacklinks {
-  index(): BacklinkIndex;
+  index(): BacklinkMap;
   /** The folder of the ready project with this id. */
   projectFolder(id: string): string | undefined;
   onDidChange: vscode.Event<void>;

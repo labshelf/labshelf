@@ -1,14 +1,14 @@
 // Lists the writing projects of a library (its own projects/ folders, then registered folders) and finds one by id.
 import { PROJECT_FILE, parseProjectFile } from "../projectFile.js";
 import type { ProjectEntry } from "../projectEntry.js";
-import { libraryLayout } from "../../../library/index.js";
+import { createLibraryLayout } from "../../../library/index.js";
 import { readProject } from "./projectFolder.js";
 import type { ProjectReadContext } from "./projectReadContext.js";
 import { readOptionalText } from "./readOptionalText.js";
 
 /** Visible folders inside projects/; a missing projects folder lists as empty. */
 async function libraryProjectFolders({ fs, paths }: ProjectReadContext, libraryRoot: string): Promise<string[]> {
-  const root = libraryLayout(libraryRoot, (base, ...segments) => paths.join(base, ...segments)).projectsRoot();
+  const root = createLibraryLayout(libraryRoot, (base, ...segments) => paths.join(base, ...segments)).projectsRoot();
   const folders = (await fs.listDir(root)).filter((name) => !name.startsWith(".")).map((name) => paths.join(root, name));
   const stats = await Promise.all(folders.map((folder) => fs.stat(folder)));
   return folders.filter((_, index) => stats[index]?.isDirectory === true);

@@ -1,7 +1,7 @@
 // Shares this user's cursor in shared files with the peers, and draws theirs in the visible editors of the same file.
 import * as vscode from "vscode";
 
-import { fileText, peerColour, toAbsoluteSelection, toRelativeSelection, type PresenceState, type ShareConnection } from "@labshelf/core";
+import { readFileText, derivePeerColour, deriveAbsoluteSelection, deriveRelativeSelection, type PresenceState, type ShareConnection } from "@labshelf/core";
 import { PeerCursors, type PeerCursor } from "../../binding/index.js";
 import type { SharedEditors } from "./sharedEditors.js";
 
@@ -56,7 +56,7 @@ export class SharedPresence implements vscode.Disposable {
 
   private publish(share: ShareConnection): void {
     const { presence } = share;
-    const base = { name: this.userName, colour: peerColour("", presence.awareness.clientID) };
+    const base = { name: this.userName, colour: derivePeerColour("", presence.awareness.clientID) };
     const editor = vscode.window.activeTextEditor;
     const shared = editor && this.editors.of(editor.document);
     if (!editor || shared?.share !== share) {
@@ -65,7 +65,7 @@ export class SharedPresence implements vscode.Disposable {
     }
     const { document, selection } = editor;
     const { text } = shared.binding;
-    const relative = toRelativeSelection(fileText(share.session.openDoc(shared.path)), {
+    const relative = deriveRelativeSelection(readFileText(share.session.openDoc(shared.path)), {
       anchor: text.toNormalizedOffset(document.offsetAt(selection.anchor)),
       head: text.toNormalizedOffset(document.offsetAt(selection.active)),
     });
@@ -89,14 +89,14 @@ export class SharedPresence implements vscode.Disposable {
 function peerCursorsIn(
   share: ShareConnection, file: string, text: { toDocumentOffset(offset: number): number }, remote: Map<number, PresenceState>,
 ): PeerCursor[] {
-  const yText = fileText(share.session.openDoc(file));
+  const yText = readFileText(share.session.openDoc(file));
   const cursors: PeerCursor[] = [];
   remote.forEach((state, clientId) => {
     if (state.file !== file || state.anchor === null || state.head === null) { return; }
-    const selection = toAbsoluteSelection(yText, { anchor: state.anchor, head: state.head });
+    const selection = deriveAbsoluteSelection(yText, { anchor: state.anchor, head: state.head });
     if (!selection) { return; }
     cursors.push({
-      clientId, name: state.name, colour: peerColour(state.colour, clientId),
+      clientId, name: state.name, colour: derivePeerColour(state.colour, clientId),
       anchor: text.toDocumentOffset(selection.anchor), head: text.toDocumentOffset(selection.head),
     });
   });

@@ -14,7 +14,7 @@ export interface MathColors {
 }
 
 /** An `<img>` cannot inherit `currentColor`, so the caller passes the theme's colours. */
-export function mathImageUri(svg: string, colors: MathColors): string {
+export function createMathImageUri(svg: string, colors: MathColors): string {
   const sized = svg.replace(/(width|height)="([\d.]+)ex"/g, (_m, side: string, ex: string) =>
     `${side}="${(Number(ex) * PX_PER_EX).toFixed(1)}px"`);
   const coloured = sized.replace(/"currentColor"/g, `"${colors.text}"`).replace(/"red"/g, `"${colors.error}"`);

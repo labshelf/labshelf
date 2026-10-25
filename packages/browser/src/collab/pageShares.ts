@@ -1,6 +1,6 @@
 // Holds the page's shared project connections, one per share and each under its tab lease, as the core share workflows use them.
 import { ShareOpenInAnotherTabError, type ILogger, type RelayNetwork, type ShareConnection, type ShareConnections, type ShareKeyStore, type ShareStart, type StoredInvite } from "@labshelf/core";
-import { acquireTabLease, tabLeaseName, type TabLease } from "../storage";
+import { openTabLease, createTabLeaseName, type TabLease } from "../storage";
 import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
 import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
 import { loadDisplayName } from "./shareKeyStore";
@@ -59,7 +59,7 @@ class PageShareRegistry implements PageShares {
   async connect(invite: StoredInvite, start: ShareStart): Promise<ShareConnection> {
     if (this.closed) { throw new Error(`The page is closing, so it opens no connection of share ${invite.shareId}`); }
     const libraryId = await this.options.libraryId();
-    const held = await acquireTabLease(tabLeaseName(libraryId, invite.shareId));
+    const held = await openTabLease(createTabLeaseName(libraryId, invite.shareId));
     if (held.kind === "busy") {
       if (start.mode === "resume") { this.entry(invite.shareId, libraryId, start.folder).observe(); }
       throw new ShareOpenInAnotherTabError(invite.shareId);

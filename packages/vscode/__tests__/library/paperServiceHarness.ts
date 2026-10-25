@@ -1,11 +1,11 @@
 /** The paper glue over the real core mutations: an in-memory disk, a LibraryStore scanning it, and an event spy. */
 import * as path from 'node:path';
-import { BibTeXService, LibraryStore, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
+import { BibtexService, LibraryStore, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
 
 import { PaperImporter } from '../../src/library/paperImporter';
 import { PaperService } from '../../src/library/paperService';
 import { PaperTextLayers } from '../../src/library/paperTextLayers';
-import { reindexLibrary, type ReindexSummary } from '../../src/storage/reindexLibrary';
+import { refreshLibrary, type ReindexSummary } from '../../src/storage/refreshLibrary';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
 import { createLibraryEvents } from '../../src/library/index.js';
 
@@ -43,7 +43,7 @@ export function makeGlue(): Glue {
   events.paperUpdated.event((paper) => emitted.push(['paper:updated', paper]));
   events.paperDeleted.event((paper) => emitted.push(['paper:deleted', paper]));
   const logger: ILogger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
-  const bibtex = new BibTeXService(fs);
+  const bibtex = new BibtexService(fs);
   const ctx: MutationContext = { fs, paths: path, artifacts: bibtex, logger, papersRoot: PAPERS_ROOT, now: () => '2026-01-01T00:00:00.000Z' };
   const parse = jest.fn(async () => ({ title: 'Test Paper', citeKey: 'testpaper2024', authors: ['Alice'], year: 2024 }));
 
@@ -52,7 +52,7 @@ export function makeGlue(): Glue {
   let reindexCalls = 0;
   const reindex = (): Promise<ReindexSummary> => {
     reindexCalls += 1;
-    return reindexLibrary({ store, events });
+    return refreshLibrary({ store, events });
   };
 
   const service = new PaperService(ctx, store, reindex, events, parse);

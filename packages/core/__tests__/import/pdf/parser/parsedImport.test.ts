@@ -1,9 +1,9 @@
 import { SOURCE_TRUST, type ResolvedMetadata } from '@labshelf/core';
 
-import { buildParsedRecord } from '../../../../src/import/pdf/parser/parsedImport';
+import { createParsedPaperRecord } from '../../../../src/import/pdf/parser/parsedImport';
 
 function recordFrom(...sources: Array<{ name: string; trust: number; metadata: ResolvedMetadata }>) {
-  return buildParsedRecord({
+  return createParsedPaperRecord({
     sources,
     fileStem: 'download',
     frontMatter: '',

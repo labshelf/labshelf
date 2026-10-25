@@ -3,4 +3,4 @@ export { BuildCancelled, runCancellable } from "./runCancellable.js";
 export type { CancellableOptions } from "./runCancellable.js";
 export { runLatexBuild } from "./runLatexBuild.js";
 export type { LatexBuildRequest } from "./runLatexBuild.js";
-export { readSectionStates, writeSectionStatePackage } from "../section/node/index.js";
+export { readSectionBuildStates, writeSectionBuildStatePackage } from "../section/node/index.js";

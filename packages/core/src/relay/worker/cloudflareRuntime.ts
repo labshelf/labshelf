@@ -1,6 +1,6 @@
 // Declares the few Cloudflare Workers and Durable Object APIs the relay Worker uses, so core needs no Workers type package.
 
-export type SqlValue = ArrayBuffer | string | number | null;
+export type SqlField = ArrayBuffer | string | number | null;
 
 export interface SqlCursor<Row> extends Iterable<Row> {
   toArray(): Row[];
@@ -8,11 +8,11 @@ export interface SqlCursor<Row> extends Iterable<Row> {
 
 /** `ctx.storage.sql`: synchronous; writes in one event commit together. */
 export interface SqlStorage {
-  exec<Row = Record<string, SqlValue>>(query: string, ...bindings: SqlValue[]): SqlCursor<Row>;
+  exec<Row = Record<string, SqlField>>(query: string, ...bindings: SqlField[]): SqlCursor<Row>;
 }
 
 /** A server socket accepted with the Hibernation API; the attachment survives hibernation. */
-export interface HibernatingSocket {
+export interface HibernatingConnection {
   send(data: Uint8Array): void;
   serializeAttachment(value: unknown): void;
   deserializeAttachment(): unknown;
@@ -20,8 +20,8 @@ export interface HibernatingSocket {
 
 export interface RoomState {
   storage: { sql: SqlStorage };
-  acceptWebSocket(socket: HibernatingSocket): void;
-  getWebSockets(): HibernatingSocket[];
+  acceptWebSocket(socket: HibernatingConnection): void;
+  getWebSockets(): HibernatingConnection[];
 }
 
 export interface RoomStub {
@@ -48,12 +48,12 @@ export interface RelayEnv {
 }
 
 // PLATFORM: WebSocketPair and a 101 Response carrying `webSocket` exist only on Workers, so they are reached untyped.
-export function openSocketPair(): { client: unknown; server: HibernatingSocket } {
-  const Pair = (globalThis as unknown as { WebSocketPair: new () => Record<0 | 1, HibernatingSocket> }).WebSocketPair;
+export function openConnectionPair(): { client: unknown; server: HibernatingConnection } {
+  const Pair = (globalThis as unknown as { WebSocketPair: new () => Record<0 | 1, HibernatingConnection> }).WebSocketPair;
   const pair = new Pair();
   return { client: pair[0], server: pair[1] };
 }
 
-export function upgradeResponse(client: unknown): Response {
+export function createUpgradeResponse(client: unknown): Response {
   return new Response(null, { status: 101, webSocket: client } as ResponseInit);
 }

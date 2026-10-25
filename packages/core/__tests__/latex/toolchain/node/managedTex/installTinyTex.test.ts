@@ -5,7 +5,7 @@ import { join } from "node:path";
 const mockPin = { sha256: "" };
 
 jest.mock("../../../../../src/latex/toolchain/tinyTex", () => ({
-  tinyTexAsset: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
+  findTinyTexAsset: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
     ? {
       version: "2026.10",
       name: "TinyTeX-1-linux-x86_64-v2026.10.tar.xz",
@@ -16,7 +16,7 @@ jest.mock("../../../../../src/latex/toolchain/tinyTex", () => ({
 }));
 
 import { installTinyTex } from "../../../../../src/latex/toolchain/node/managedTex/installTinyTex";
-import type { ExecFile } from "../../../../../src/latex/toolchain/node/managedTex/removeQuarantine";
+import type { RunFile } from "../../../../../src/latex/toolchain/node/managedTex/removeQuarantine";
 import { asLogger, createTexFixture, TINYTEX_URL, type TexFixture } from "./fakeTex";
 
 const TLMGR = { rollover: false, installed: [] };
@@ -40,7 +40,7 @@ describe("installTinyTex", () => {
     await fixture.cleanup();
   });
 
-  const install = (progress: Array<number | null> = [], platform: NodeJS.Platform = "linux", execFileImpl?: ExecFile) => installTinyTex(
+  const install = (progress: Array<number | null> = [], platform: NodeJS.Platform = "linux", execFileImpl?: RunFile) => installTinyTex(
     { fetchImpl: fixture.fetchImpl, logger: asLogger(fixture.logger), platform, ...(execFileImpl ? { execFileImpl } : {}) },
     { texRoot: fixture.texRoot, onProgress: (fraction) => { progress.push(fraction); } },
   );

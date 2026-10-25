@@ -1,7 +1,7 @@
 // Holds the writing projects of the open library and tells views when the list is reloaded.
 import * as vscode from "vscode";
 
-import type { ILogger, LibraryFileSystem, PathOps, ProjectDataPort, ProjectEntry, ProjectReadContext } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, PathOps, ProjectContentPort, ProjectEntry, ProjectReadContext } from "@labshelf/core";
 
 /** The open library as writing code needs it: a folder path and the logger of that library. */
 export interface WritingSession {
@@ -26,7 +26,7 @@ export class WritingProjects implements vscode.Disposable {
    * @param fs The disk the project folders are on.
    * @param data Reads and writes the project folders and the project registry.
    */
-  constructor(private readonly host: Pick<WritingHost, "current">, readonly paths: PathOps, readonly fs: LibraryFileSystem, readonly data: ProjectDataPort) {}
+  constructor(private readonly host: Pick<WritingHost, "current">, readonly paths: PathOps, readonly fs: LibraryFileSystem, readonly data: ProjectContentPort) {}
 
   /** What the core project readers run over; the logger is the open library's. */
   reads(logger: ILogger): ProjectReadContext {

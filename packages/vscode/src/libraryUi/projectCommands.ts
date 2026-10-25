@@ -46,7 +46,7 @@ export const isSidebarProjectCommand = (command: string): boolean =>
 const BROKEN_COMMANDS: readonly string[] = ["labshelf.writing.reveal", "labshelf.writing.removeProject"];
 
 /** Whether a command is offered on a row: only folders outside the library can be removed, and a broken project can only be revealed or removed. */
-export function projectCommandApplies(command: string, row: Pick<SidebarProjectItem, "kind" | "external">): boolean {
+export function canApplyProjectCommand(command: string, row: Pick<SidebarProjectItem, "kind" | "external">): boolean {
   if (!isSidebarProjectCommand(command)) { return false; }
   if (command === "labshelf.writing.removeProject" && !row.external) { return false; }
   return row.kind === "ready" || BROKEN_COMMANDS.includes(command);

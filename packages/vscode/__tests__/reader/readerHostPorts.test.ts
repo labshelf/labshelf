@@ -1,7 +1,7 @@
 // Tests VS Code reader host port implementations.
 import * as path from 'node:path';
 import { exportAnnotations } from '@labshelf/core';
-import { createVsCodeExportPorts, createVsCodeOutputPorts, emitSidecarChanges, notifyInVsCode } from '../../src/reader/readerHostPorts';
+import { createVsCodeExportPorts, createVsCodeOutputPorts, createSidecarChangeSender, showNoticeInVsCode } from '../../src/reader/readerHostPorts';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 import { createLibraryEvents } from '../../src/library/index.js';
 
@@ -12,19 +12,19 @@ const paper = { id: 'p1', title: 'Test Paper', path: '/papers/p1', citeKey: 'tes
 describe('VS Code reader host ports', () => {
   beforeEach(() => { jest.clearAllMocks(); });
 
-  describe('notifyInVsCode', () => {
+  describe('showNoticeInVsCode', () => {
     it('shows confirmations in the status bar', () => {
-      notifyInVsCode('Copied to clipboard', 'ok');
+      showNoticeInVsCode('Copied to clipboard', 'ok');
       expect(vscode.window.setStatusBarMessage).toHaveBeenCalledWith('Copied to clipboard', 2500);
     });
 
     it('prefixes errors with LabShelf', () => {
-      notifyInVsCode('Reader action failed: boom', 'error');
+      showNoticeInVsCode('Reader action failed: boom', 'error');
       expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('LabShelf: Reader action failed: boom');
     });
 
     it('shows other notices as information messages', () => {
-      notifyInVsCode('Heads up', 'info');
+      showNoticeInVsCode('Heads up', 'info');
       expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Heads up');
     });
   });
@@ -64,14 +64,14 @@ describe('VS Code reader host ports', () => {
     expect(vscode.window.setStatusBarMessage).toHaveBeenCalledWith('Annotations copied as Markdown', 2500);
   });
 
-  describe('emitSidecarChanges', () => {
+  describe('createSidecarChangeSender', () => {
     const annotation = { id: 'a1', paperId: 'p1' } as any;
 
     it('republishes annotation changes as annotationChanged and ignores theme changes', () => {
       const bus = createLibraryEvents();
       const seen: unknown[] = [];
       bus.annotationChanged.event((payload) => { seen.push(payload); });
-      const emit = emitSidecarChanges(bus, 'p1');
+      const emit = createSidecarChangeSender(bus, 'p1');
       emit({ kind: 'annotationCreated', annotation });
       emit({ kind: 'annotationUpdated', annotation });
       emit({ kind: 'annotationDeleted', annotationId: 'a1' });

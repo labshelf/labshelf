@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { typstPreviewPdf } from "../../../../src/writing/build/index";
+import { buildTypstPreviewPdf } from "../../../../src/writing/build/index";
 import { buildProject } from "../../../../src/writing/build/node/index";
 import { cleanupTempDirs, pathExists } from "../../../support/tempDirs";
 import { buildFixture, runCount } from "./projectBuildFixtures";
@@ -53,7 +53,7 @@ posixOnly("buildProject", () => {
     const fixture = await buildFixture();
     const project = fixture.project({ format: "typst" }, "main.typ");
     const result = await buildProject(project, fixture.deps);
-    const preview = typstPreviewPdf(project, "main.typ", fixture.deps.projects, path);
+    const preview = buildTypstPreviewPdf(project, "main.typ", fixture.deps.projects, path);
     expect(result).toMatchObject({ status: "succeeded", pdf: preview });
     expect(await fs.readFile(path.join(fixture.folder, "main.pdf"), "utf8")).toBe("%PDF-typst");
   });

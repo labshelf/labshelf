@@ -24,7 +24,7 @@ function packageRoot(entry: string): string {
 }
 
 /** @returns the pdfjs-dist files and package root, or null when the package cannot be resolved. */
-export function locatePdfjs(): PdfjsFiles | null {
+export function findPdfjs(): PdfjsFiles | null {
   for (const prefix of BUILDS) {
     try {
       const { files: [pdfjs, worker, viewer, viewerCss], entry } = resolveBuild(prefix);

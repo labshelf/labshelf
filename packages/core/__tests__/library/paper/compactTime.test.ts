@@ -1,17 +1,17 @@
-import { compactTime } from "../../../src/library/paper/index.js";
+import { formatCompactTime } from "../../../src/library/paper/index.js";
 
 const S = 1000;
 const MIN = 60 * S;
 const H = 60 * MIN;
 const D = 24 * H;
 const now = Date.UTC(2026, 5, 15, 12, 0, 0);
-const ago = (ms: number): string => compactTime(now - ms, now);
+const ago = (ms: number): string => formatCompactTime(now - ms, now);
 
 describe("compactTime", () => {
   it("says now for under a minute and for a future time", () => {
     expect(ago(0)).toBe("now");
     expect(ago(59 * S)).toBe("now");
-    expect(compactTime(now + 5 * MIN, now)).toBe("now");
+    expect(formatCompactTime(now + 5 * MIN, now)).toBe("now");
   });
 
   it("counts minutes from 1 to 59", () => {

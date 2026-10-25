@@ -62,7 +62,7 @@ function noteEntry(record: PaperRecord): TrayEntry {
 }
 
 /** The tray rows in display order: paper.pdf, the Note, other files, then subfolders. */
-export function trayEntries(record: PaperRecord, listed: readonly PaperFile[]): TrayEntry[] {
+export function deriveTrayEntries(record: PaperRecord, listed: readonly PaperFile[]): TrayEntry[] {
   const shown = listed.filter((f) => f.name !== "metadata.yaml");
   const toEntry = (f: PaperFile): TrayEntry => {
     const isPdf = f.kind === "file" && f.name === PDF_NAME;

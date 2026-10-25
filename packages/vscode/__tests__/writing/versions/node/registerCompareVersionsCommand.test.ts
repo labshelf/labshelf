@@ -6,7 +6,7 @@ import { buildMarkedUpDiff, comparePdfs, findExecutable } from "@labshelf/core/n
 import { ReaderPanel } from "../../../../src/reader";
 import { ensureToolchain } from "../../../../src/writing/build/node";
 import { COMPARE_VERSIONS_COMMAND, registerCompareVersionsCommand } from "../../../../src/writing/versions/node";
-import { builtPdf } from "../../../../src/writing/preview";
+import { readBuiltPdf } from "../../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), listVersions: jest.fn(), createPreviewStore: jest.fn(() => ({})) }));
@@ -14,7 +14,7 @@ jest.mock("@labshelf/core/node", () => ({
   ...jest.requireActual("@labshelf/core/node"),
   buildMarkedUpDiff: jest.fn(), comparePdfs: jest.fn(), findExecutable: jest.fn(),
 }));
-jest.mock("../../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
+jest.mock("../../../../src/writing/preview", () => ({ readBuiltPdf: jest.fn() }));
 jest.mock("../../../../src/reader", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 jest.mock("../../../../src/writing/build/node", () => ({ ...jest.requireActual("../../../../src/writing/build/node"), ensureToolchain: jest.fn() }));
 
@@ -22,7 +22,7 @@ const compare = comparePdfs as jest.Mock;
 const markedUp = buildMarkedUpDiff as jest.Mock;
 const latexdiff = findExecutable as jest.Mock;
 const list = listVersions as jest.Mock;
-const pdfFor = builtPdf as jest.Mock;
+const pdfFor = readBuiltPdf as jest.Mock;
 const toolchain = ensureToolchain as jest.Mock;
 const createOrShow = ReaderPanel.createOrShow as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;

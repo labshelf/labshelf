@@ -2,10 +2,43 @@
 import type { ILogger } from "../../ports/index.js";
 import type { LibraryScan, PaperEntry } from "../model/index.js";
 import type { PathOps } from "../mutations/index.js";
-import { readFolderLevel } from "./folderLevel.js";
-import { readPaperFolder } from "./paperFolderReader.js";
-import { errorMessage } from "../../logging/index.js";
-import { createScanEnv, warnSkipped, type ScanEnv, type ScanFileSystem } from "./scanEnv.js";
+import { readFolderLevel, type PaperFolder } from "./folderLevel.js";
+import { formatError } from "../../logging/index.js";
+import { createScanEnv, reportSkipped, type ScanEnv, type ScanFileSystem } from "./scanEnv.js";
+import type { PaperRecord } from "../../model/index.js";
+import { METADATA_FILE } from "../layout.js";
+import { createPaperRecord, parsePaperMetadata } from "../paperMetadata.js";
+
+interface PaperRead {
+  record: PaperRecord;
+  modifiedMs: number;
+  pdfBytes?: number;
+}
+
+/** Keeps the last known paper for a metadata.yaml that fails, so a half-written file never removes it; the next scan reads it again. */
+async function keepPreviousOrSkip(env: ScanEnv, folder: PaperFolder, reason: string, context: Record<string, unknown>): Promise<PaperRead | undefined> {
+  const kept = env.previous.get(folder.path);
+  if (!kept) {
+    await reportSkipped(env, `Paper skipped: ${reason}`, { folder: folder.path, ...context });
+    return undefined;
+  }
+  await reportSkipped(env, `Paper kept from the last scan: ${reason}`, { folder: folder.path, ...context });
+  return { record: kept.record, modifiedMs: kept.modifiedMs, ...(kept.pdfBytes !== undefined ? { pdfBytes: kept.pdfBytes } : {}) };
+}
+
+/** @returns the paper; on a metadata.yaml that cannot be read or is not a YAML mapping, the previous entry, or undefined (after a warning) without one */
+async function readPaperFolder(env: ScanEnv, folder: PaperFolder): Promise<PaperRead | undefined> {
+  let text: string;
+  try {
+    text = await env.limit(() => env.fs.readText(env.ops.join(folder.path, METADATA_FILE)));
+  } catch (error) {
+    return keepPreviousOrSkip(env, folder, "metadata.yaml could not be read", { message: formatError(error) });
+  }
+  const meta = parsePaperMetadata(text);
+  if (!meta) { return keepPreviousOrSkip(env, folder, "metadata.yaml is not a valid mapping", {}); }
+  const record = createPaperRecord(meta, { id: env.ops.basename(folder.path), path: folder.path, hasPdf: folder.pdf !== undefined });
+  return { record, modifiedMs: folder.metadata.mtimeMs, ...(folder.pdf ? { pdfBytes: folder.pdf.size } : {}) };
+}
 
 interface Found {
   folders: string[];
@@ -20,7 +53,7 @@ async function walk(env: ScanEnv, dir: string, rel: string, found: Found): Promi
   } catch (error) {
     // papers/ itself failing to list is a failed scan; a deeper folder is skipped.
     if (rel === "") { throw error; }
-    await warnSkipped(env, "Folder skipped: it could not be listed", { path: dir, message: errorMessage(error) });
+    await reportSkipped(env, "Folder skipped: it could not be listed", { path: dir, message: formatError(error) });
     return;
   }
   found.orphans.push(...level.orphans);
@@ -50,7 +83,7 @@ async function keepFirstPerId(env: ScanEnv, papers: PaperEntry[]): Promise<{ pap
       continue;
     }
     duplicates.push(entry.record.path);
-    await warnSkipped(env, "Paper folder ignored: its id is already used", { id: entry.record.id, folder: entry.record.path, kept: kept.record.path });
+    await reportSkipped(env, "Paper folder ignored: its id is already used", { id: entry.record.id, folder: entry.record.path, kept: kept.record.path });
   }
   return { papers: [...winners.values()], duplicates };
 }

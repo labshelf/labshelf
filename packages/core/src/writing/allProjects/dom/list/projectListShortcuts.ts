@@ -1,16 +1,16 @@
 // Moves through the project treegrid's flat rows from the keyboard: arrows, Home/End, paging, expanding and collapsing, opening and the row menu.
-import { listKeyAction } from "../../../../libraryUi/index.js";
+import { deriveListShortcutAction } from "../../../../libraryUi/index.js";
 import type { ProjectListRow } from "./projectListModel.js";
-import { ariaRowOf } from "./projectRowState.js";
+import { findAriaRow } from "./projectRowState.js";
 
-export interface ProjectKeyHandlers {
+export interface ProjectShortcutHandlers {
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onMenu: (id: string, anchor: HTMLElement) => void;
 }
 
-export interface ProjectKeyRows {
+export interface ProjectShortcutRows {
   rows: () => readonly ProjectListRow[];
   reveal: (index: number) => HTMLElement | null;
   toggleGroup: (key: string) => void;
@@ -22,18 +22,18 @@ export interface ProjectKeyRows {
 
 const projectOf = (r: ProjectListRow): string | null => (r.kind === "project" ? r.row.id : r.kind === "file" ? r.projectId : null);
 
-function focusAt(ctx: ProjectKeyRows, h: ProjectKeyHandlers, index: number): void {
+function focusAt(ctx: ProjectShortcutRows, h: ProjectShortcutHandlers, index: number): void {
   const row = ctx.rows()[index];
   const node = row ? ctx.reveal(index) : null;
   if (!row || !node) return;
-  ariaRowOf(node).focus();
+  findAriaRow(node).focus();
   // A file row keeps its project selected, so the selection never points at a hidden row.
   const id = projectOf(row);
   if (id && id !== ctx.selected()) h.onSelect(id);
 }
 
 // A folder's row toggles through its click handler; a project through the list's handler.
-function toggle(ctx: ProjectKeyRows, h: ProjectKeyHandlers, row: ProjectListRow, node: HTMLElement): void {
+function toggle(ctx: ProjectShortcutRows, h: ProjectShortcutHandlers, row: ProjectListRow, node: HTMLElement): void {
   if (row.kind === "group") ctx.toggleGroup(row.group.key);
   else if (row.kind === "project") h.onToggle(row.row.id);
   else node.click();
@@ -44,7 +44,7 @@ function parentOf(rows: readonly ProjectListRow[], at: number): number {
   return -1;
 }
 
-function currentIndex(el: HTMLElement, ctx: ProjectKeyRows): number {
+function currentIndex(el: HTMLElement, ctx: ProjectShortcutRows): number {
   const active = document.activeElement;
   const key = active && el.contains(active) ? active.closest<HTMLElement>("[data-key]")?.dataset["key"] : undefined;
   const selected = ctx.selected();
@@ -52,15 +52,15 @@ function currentIndex(el: HTMLElement, ctx: ProjectKeyRows): number {
 }
 
 // Home, End, PageUp and PageDown use the paper list's key map, so both lists page the same way.
-function jumpTarget(e: KeyboardEvent, at: number, ctx: ProjectKeyRows): number | null {
-  const action = listKeyAction({ key: e.key, code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey });
+function jumpTarget(e: KeyboardEvent, at: number, ctx: ProjectShortcutRows): number | null {
+  const action = deriveListShortcutAction({ key: e.key, code: e.code, meta: e.metaKey, ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey });
   const last = ctx.rows().length - 1;
   if (action?.kind === "edge") return action.to === "first" ? 0 : last;
   if (action?.kind === "page") return Math.max(0, Math.min(last, Math.max(0, at) + action.dir * ctx.pageSize()));
   return null;
 }
 
-function onKey(e: KeyboardEvent, el: HTMLElement, h: ProjectKeyHandlers, ctx: ProjectKeyRows): boolean {
+function onKey(e: KeyboardEvent, el: HTMLElement, h: ProjectShortcutHandlers, ctx: ProjectShortcutRows): boolean {
   const rows = ctx.rows();
   const at = currentIndex(el, ctx);
   if (e.key === "ArrowDown" || e.key === "ArrowUp") { focusAt(ctx, h, Math.max(0, Math.min(rows.length - 1, at + (e.key === "ArrowDown" ? 1 : -1)))); return true; }
@@ -69,7 +69,7 @@ function onKey(e: KeyboardEvent, el: HTMLElement, h: ProjectKeyHandlers, ctx: Pr
   const row = rows[at];
   const node = row ? ctx.reveal(at) : null;
   if (!row || !node) return false;
-  const open = ariaRowOf(node).getAttribute("aria-expanded");
+  const open = findAriaRow(node).getAttribute("aria-expanded");
   if (e.key === "ArrowRight") { if (open === "false") toggle(ctx, h, row, node); else if (open === "true") focusAt(ctx, h, at + 1); }
   else if (e.key === "ArrowLeft") { if (open === "true") toggle(ctx, h, row, node); else focusAt(ctx, h, parentOf(rows, at)); }
   else if (e.key === "Enter") { if (row.kind === "project") h.onOpen(row.row.id); else toggle(ctx, h, row, node); }
@@ -80,6 +80,6 @@ function onKey(e: KeyboardEvent, el: HTMLElement, h: ProjectKeyHandlers, ctx: Pr
   return true;
 }
 
-export function wireProjectKeys(el: HTMLElement, h: ProjectKeyHandlers, ctx: ProjectKeyRows): void {
+export function attachProjectShortcuts(el: HTMLElement, h: ProjectShortcutHandlers, ctx: ProjectShortcutRows): void {
   el.addEventListener("keydown", (e) => { if (onKey(e, el, h, ctx)) e.preventDefault(); });
 }

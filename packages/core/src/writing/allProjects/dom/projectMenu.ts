@@ -1,15 +1,15 @@
 // Lists the actions of a project row's menu for the place it sits in, including the host's own commands.
-import { projectShareMenuEntries } from "../../../collab/dom/index.js";
-import type { SharingHost } from "../../../libraryUi/share/index.js";
+import { createProjectShareMenuEntries } from "../../../collab/dom/index.js";
+import type { ShareHost } from "../../../libraryUi/share/index.js";
 import type { MenuEntry } from "../../../ui/dom/index.js";
 import type { ProjectMenuCommand, ProjectRow } from "../projectRow.js";
-import { deleteProjectForever, duplicateProject, moveProject, renameProject, type Post } from "./projectActions.js";
+import { removeProjectForever, copyProject, moveProject, renameProject, type Post } from "./projectActions.js";
 
 export interface ProjectMenuContext {
   rows: readonly ProjectRow[];
   commands: readonly ProjectMenuCommand[];
   post: Post;
-  sharing?: SharingHost | undefined;
+  sharing?: ShareHost | undefined;
 }
 
 /** The host commands that apply to `row`, a separator between command groups. */
@@ -26,14 +26,14 @@ function hostEntries(row: ProjectRow, ctx: ProjectMenuContext): MenuEntry[] {
 function trashEntries(row: ProjectRow, ctx: ProjectMenuContext): MenuEntry[] {
   return [
     { label: "Restore", icon: "refresh", onSelect: () => ctx.post({ type: "trash", id: row.id, trashed: false }) },
-    { label: "Delete forever…", icon: "trash", danger: true, onSelect: () => void deleteProjectForever(row, ctx.post) },
+    { label: "Delete forever…", icon: "trash", danger: true, onSelect: () => void removeProjectForever(row, ctx.post) },
   ];
 }
 
 const join = (...parts: MenuEntry[][]): MenuEntry[] =>
   parts.filter((p) => p.length > 0).flatMap((p, i) => (i === 0 ? p : ["separator" as const, ...p]));
 
-export function projectMenuEntries(row: ProjectRow, ctx: ProjectMenuContext): MenuEntry[] {
+export function createProjectMenuEntries(row: ProjectRow, ctx: ProjectMenuContext): MenuEntry[] {
   const { post } = ctx;
   if (row.place === "trash") return row.broken ? join(hostEntries(row, ctx), trashEntries(row, ctx)) : trashEntries(row, ctx);
   const toTrash: MenuEntry = { label: "Move to trash", icon: "trash", onSelect: () => post({ type: "trash", id: row.id, trashed: true }) };
@@ -45,10 +45,10 @@ export function projectMenuEntries(row: ProjectRow, ctx: ProjectMenuContext): Me
   }
   return join(
     [open, rename,
-      { label: "Duplicate…", icon: "copy", onSelect: () => void duplicateProject(row, post) },
+      { label: "Duplicate…", icon: "copy", onSelect: () => void copyProject(row, post) },
       { label: "Move to folder…", icon: "folder-move", onSelect: () => void moveProject(row, ctx.rows, post) }],
     hostEntries(row, ctx),
-    ctx.sharing ? projectShareMenuEntries(ctx.sharing, { id: row.id, shared: !!row.shared }) : [],
+    ctx.sharing ? createProjectShareMenuEntries(ctx.sharing, { id: row.id, shared: !!row.shared }) : [],
     [{ label: "Archive", onSelect: () => post({ type: "archive", id: row.id, archived: true }) }, toTrash],
   );
 }

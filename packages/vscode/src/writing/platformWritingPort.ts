@@ -2,7 +2,7 @@
 import type * as vscode from "vscode";
 
 import type { ReaderPanelDeps } from "../reader/index.js";
-import type { BuildDiagnostics, BuildListener, IncludeOnlyTarget, ProjectBuilders } from "./build/index.js";
+import type { BuildProblems, BuildListener, IncludeOnlyTarget, ProjectBuilders } from "./build/index.js";
 import type { ProjectFigures } from "./figures/index.js";
 import type { ReadyProject } from "./buildRootDocument.js";
 import type { BuildPreviews } from "./preview/index.js";
@@ -15,7 +15,7 @@ interface PlatformWritingDeps {
   figures: ProjectFigures;
   /** Hears every build and answers whether a project has a preview open. */
   previews: BuildListener & Pick<BuildPreviews, "hasPreview">;
-  diagnostics: BuildDiagnostics;
+  diagnostics: BuildProblems;
   reader: Omit<ReaderPanelDeps, "logger" | "extensionUri">;
   /** What a save builds alone while the include-only toggle is on. */
   includeOnlyTarget?: IncludeOnlyTarget;

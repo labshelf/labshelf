@@ -1,5 +1,5 @@
 // Tests the GitHub fork-to-pull-request flow against a recording fake fetch.
-import { GitHubError, submitTemplatePullRequest } from '../../../src/templates/client';
+import { GitHubError, publishTemplatePullRequest } from '../../../src/templates/client';
 
 type Reply = [status: number, body: unknown];
 type Handler = Reply | ((body: any) => Reply);
@@ -52,7 +52,7 @@ const binary = new Uint8Array([0, 255, 128, 1]);
 function run(fake: { fetch: typeof globalThis.fetch }, sleep = jest.fn(async () => {})) {
   return {
     sleep,
-    promise: submitTemplatePullRequest({
+    promise: publishTemplatePullRequest({
       fetch: fake.fetch,
       token: 'tok',
       upstream: { owner: 'labshelf', repo: 'templates' },
@@ -73,7 +73,7 @@ const forkMissing: Record<string, Handler | Handler[]> = {
   'GET /repos/ana/templates': [[404, { message: 'Not Found' }], [200, { full_name: 'ana/templates' }]],
 };
 
-describe('submitTemplatePullRequest', () => {
+describe('publishTemplatePullRequest', () => {
   it('forks, commits under templates/<id>/ and returns the pull request url', async () => {
     const fake = fakeGitHub(forkMissing);
     const { promise } = run(fake);

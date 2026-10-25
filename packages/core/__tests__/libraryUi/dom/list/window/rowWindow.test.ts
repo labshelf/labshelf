@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { createRowWindow, measureRowHeight } from "../../../../../src/libraryUi/dom/list/window";
+import { createRowWindow, readRowHeight } from "../../../../../src/libraryUi/dom/list/window";
 
 const win = createRowWindow({ rowHeight: 20 });
 const view = (scrollTop: number, height = 200) => ({ scrollTop, height });
@@ -78,7 +78,7 @@ describe("measureRowHeight", () => {
     const el = document.createElement("div");
     el.style.setProperty("--ls-row-h", "22px");
     document.body.append(el);
-    expect(measureRowHeight(el)).toBe(22);
+    expect(readRowHeight(el)).toBe(22);
   });
 
   it("takes the probe's resolved height when layout exists, so a calc() token works", () => {
@@ -86,7 +86,7 @@ describe("measureRowHeight", () => {
     el.style.setProperty("--ls-row-h", "calc(22px + 12px)");
     document.body.append(el);
     const spy = jest.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(34);
-    expect(measureRowHeight(el)).toBe(34);
+    expect(readRowHeight(el)).toBe(34);
     spy.mockRestore();
     expect(el.childElementCount).toBe(0);
   });
@@ -94,6 +94,6 @@ describe("measureRowHeight", () => {
   it("throws with context when the token is missing", () => {
     const el = document.createElement("div");
     document.body.append(el);
-    expect(() => measureRowHeight(el)).toThrow(/--ls-row-h/);
+    expect(() => readRowHeight(el)).toThrow(/--ls-row-h/);
   });
 });

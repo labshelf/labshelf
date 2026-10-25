@@ -9,7 +9,7 @@ export interface ResolvedPaper {
 }
 
 /** One library paper citing another. */
-export interface CitationLink {
+export interface CitationEdge {
   from: string;
   to: string;
 }
@@ -27,14 +27,14 @@ export interface MissingCandidate {
 export function countMissingCitations(
   resolved: ResolvedPaper[],
   minCitingPapers: number,
-): { links: CitationLink[]; candidates: MissingCandidate[] } {
+): { links: CitationEdge[]; candidates: MissingCandidate[] } {
   const paperOfWork = new Map<string, string>();
   for (const { paperId, work } of resolved) {
     if (!paperOfWork.has(work.workId)) {
       paperOfWork.set(work.workId, paperId);
     }
   }
-  const links: CitationLink[] = [];
+  const links: CitationEdge[] = [];
   const citers = new Map<string, Set<string>>();
   for (const { paperId, work } of resolved) {
     const linked = new Set<string>();

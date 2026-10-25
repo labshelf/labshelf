@@ -1,7 +1,7 @@
 /** Imports several PDFs in a row, each one seeing the ids and DOIs the earlier ones took. */
 import type { MutationContext } from "../mutationDeps.js";
 import { importPdf, type ImportDeps, type ImportOutcome } from "./paperImport.js";
-import { discoverPdfs } from "./pdfDiscovery.js";
+import { findPdfsToImport } from "./pdfDiscovery.js";
 
 export interface ImportProgress {
   /** 1-based position of the file about to be imported. */
@@ -58,7 +58,7 @@ export async function importPaths(
   targetDir: string,
   hooks: ImportHooks = {},
 ): Promise<ImportOutcome[]> {
-  const { pdfs, skipped } = await discoverPdfs(ctx, inputs);
+  const { pdfs, skipped } = await findPdfsToImport(ctx, inputs);
   const outcomes = await importPdfs(ctx, deps, pdfs, targetDir, hooks);
   return [...outcomes, ...skipped.map((input): ImportOutcome => ({ status: "skipped", input }))];
 }

@@ -6,7 +6,7 @@ import { checkHelperPath } from "../../helperPaths.js";
 import { HelperProjectError } from "./helperProjectError.js";
 
 /** A confinement refusal becomes `path`; any other failure keeps its own error. */
-export async function confined(root: string, relative: string): Promise<string> {
+export async function resolveConfinedPath(root: string, relative: string): Promise<string> {
   try {
     return await resolveInLibrary(root, relative);
   } catch (error) {
@@ -17,14 +17,14 @@ export async function confined(root: string, relative: string): Promise<string> 
   }
 }
 
-export function checkedPath(relative: string): string {
+export function assertProjectPath(relative: string): string {
   const problem = checkHelperPath(relative);
   if (problem !== undefined) { throw new HelperProjectError("path", `Path "${relative}" is refused: ${problem}`); }
   return relative;
 }
 
 export async function readProjectText(projectRoot: string, relative: string): Promise<string> {
-  const file = await confined(projectRoot, checkedPath(relative));
+  const file = await resolveConfinedPath(projectRoot, assertProjectPath(relative));
   try {
     return await fs.readFile(file, "utf8");
   } catch (error) {

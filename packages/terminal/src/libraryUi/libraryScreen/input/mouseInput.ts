@@ -2,9 +2,9 @@
 import type { MouseEvent } from "../../../screen/index.js";
 import type { Rect } from "../../render.js";
 import type { App } from "../app.js";
-import { down } from "./runShortcut.js";
+import { moveDown } from "./runShortcut.js";
 
-export function handleMouse(app: App, event: MouseEvent): void {
+export function onMouseInput(app: App, event: MouseEvent): void {
   if (app.overlay) { return; }
   const { folders, papers, preview, writing } = app.layout;
   const inside = (rect: Rect | undefined): rect is Rect => Boolean(rect)
@@ -31,7 +31,7 @@ export function handleMouse(app: App, event: MouseEvent): void {
   } else if (inside(papers)) {
     const index = app.listModel.cursorState().offset + (event.y - papers.y);
     if (index < app.listModel.papers().length) {
-      if (app.focus === "papers" && index === app.listModel.cursor()) { down(app); } else { app.listModel.setPaperCursor(index); }
+      if (app.focus === "papers" && index === app.listModel.cursor()) { moveDown(app); } else { app.listModel.setPaperCursor(index); }
     }
     app.focus = "papers";
   }

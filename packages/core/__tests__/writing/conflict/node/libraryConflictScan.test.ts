@@ -2,9 +2,9 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { nodeProjectCatalogContext } from "../../../../src/writing/project/node/index";
+import { createNodeProjectCatalogCompositionRoot } from "../../../../src/writing/project/node/index";
 import { addExistingFolder, createProjectFromTemplate } from "../../../../src/writing/project/index";
-import { blankTemplate } from "../../../../src/templates/index";
+import { createBlankTemplate } from "../../../../src/templates/index";
 import { NodeLibraryFileSystem } from "../../../../src/library/node/index";
 import { scanLibraryConflicts } from "../../../../src/writing/conflict/node/index";
 import { FileProjectVersionStore, type IProjectVersionStore } from "../../../../src/writing/conflict/index";
@@ -53,7 +53,7 @@ function memoryStore(): IProjectVersionStore {
 async function libraryProject(seed = true) {
   const lib = await makeTempDir();
   const logger = recordingLogger();
-  const entry = await createProjectFromTemplate(nodeProjectCatalogContext(logger), lib, { title: "Robust Nets", ...blankTemplate("latex", "Robust Nets") });
+  const entry = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), lib, { title: "Robust Nets", ...createBlankTemplate("latex", "Robust Nets") });
   const folder = entry.folder;
   const id = entry.kind === "ready" ? entry.settings.id : "";
   await fs.writeFile(path.join(folder, "main.tex"), doc(PARAGRAPHS));
@@ -206,7 +206,7 @@ describe("scanLibraryConflicts on project files", () => {
     await fs.mkdir(folder);
     await fs.writeFile(path.join(folder, "main.tex"), doc(PARAGRAPHS));
     const logger = recordingLogger();
-    await addExistingFolder(nodeProjectCatalogContext(logger), lib, { folder, format: "latex" });
+    await addExistingFolder(createNodeProjectCatalogCompositionRoot(logger), lib, { folder, format: "latex" });
     const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(state, "merge-bases"));
     await scanLibraryConflicts(lib, store, logger);
 

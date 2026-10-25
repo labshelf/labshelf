@@ -1,4 +1,4 @@
-import { acquireFolderLease } from "../../../src/collab/mirror/openProjectLease";
+import { openFolderLease } from "../../../src/collab/mirror/openProjectLease";
 import { MirrorOwnershipLost } from "../../../src/collab/mirror/mirrorLostError";
 import { type LeaseScheduler } from "../../../src/collab/mirror/mirrorScheduler";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
@@ -31,14 +31,14 @@ function setup() {
   const fs = new MemoryLibraryFs();
   const logger = fakeLogger();
   const clock = fakeScheduler();
-  const acquire = (takeOver = false) => acquireFolderLease({ fs, folder: FOLDER, app: "vscode", logger, scheduler: clock.scheduler, takeOver });
+  const acquire = (takeOver = false) => openFolderLease({ fs, folder: FOLDER, app: "vscode", logger, scheduler: clock.scheduler, takeOver });
   const readLease = async () => JSON.parse(await fs.readText(LEASE)) as { owner: string; app: string; renewedAt: number; ttlMs: number };
   const writeForeign = (renewedAt: number) =>
     fs.writeText(LEASE, JSON.stringify({ owner: "other", app: "browser", renewedAt, ttlMs: 30_000 }));
   return { fs, logger, clock, acquire, readLease, writeForeign };
 }
 
-describe("acquireFolderLease", () => {
+describe("openFolderLease", () => {
   it("owns a free folder after the confirmation read", async () => {
     const { acquire, readLease, clock } = setup();
     const result = await acquire();

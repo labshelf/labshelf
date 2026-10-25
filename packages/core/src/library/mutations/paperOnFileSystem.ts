@@ -1,23 +1,23 @@
 /** Reads a paper as its folder holds it right now, since another app or a sync may have changed it since the last scan. */
 import { type PaperRecord } from "../../model/index.js";
-import { isPaperStatus } from "../readingStatus/index.js";
+import { isReadingStatus } from "../readingStatus/index.js";
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
-import { paperRecordFromMetadata, parsePaperMetadata } from "../paperMetadata.js";
+import { createPaperRecord, parsePaperMetadata } from "../paperMetadata.js";
 import type { MutationContext } from "./mutationDeps.js";
 
 /** @returns the paper in `folder`, or undefined when its metadata.yaml is missing or not a mapping */
-export async function readPaperOnDisk(ctx: MutationContext, folder: string): Promise<PaperRecord | undefined> {
+export async function readPaperOnFileSystem(ctx: MutationContext, folder: string): Promise<PaperRecord | undefined> {
   const meta = await readMetadata(ctx, folder);
   if (!meta) { return undefined; }
   const pdf = await ctx.fs.stat(ctx.paths.join(folder, PDF_FILE));
-  return paperRecordFromMetadata(meta, { id: ctx.paths.basename(folder), path: folder, hasPdf: pdf?.isFile === true });
+  return createPaperRecord(meta, { id: ctx.paths.basename(folder), path: folder, hasPdf: pdf?.isFile === true });
 }
 
 /** @returns the reading status metadata.yaml holds and when it changed, or undefined when it cannot be read or holds no status */
-export async function statusOnDisk(ctx: MutationContext, folder: string): Promise<Pick<PaperRecord, "status" | "statusChangedAt"> | undefined> {
+export async function readReadingStatusOnFileSystem(ctx: MutationContext, folder: string): Promise<Pick<PaperRecord, "status" | "statusChangedAt"> | undefined> {
   const meta = await readMetadata(ctx, folder);
-  if (!meta || !isPaperStatus(meta["status"])) { return undefined; }
-  const { status, statusChangedAt } = paperRecordFromMetadata(meta, { id: "", path: folder, hasPdf: false });
+  if (!meta || !isReadingStatus(meta["status"])) { return undefined; }
+  const { status, statusChangedAt } = createPaperRecord(meta, { id: "", path: folder, hasPdf: false });
   return statusChangedAt === undefined ? { status } : { status, statusChangedAt };
 }
 

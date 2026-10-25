@@ -1,7 +1,7 @@
 /** Orders papers by a sort key with title as the tie-break; one rule set for every app. */
-import { venueOf, type PaperRecord } from "../../model/index.js";
+import { deriveVenue, type PaperRecord } from "../../model/index.js";
 import { PAPER_STATUSES } from "../readingStatus/index.js";
-import { familyName } from "../paper/index.js";
+import { deriveFamilyName } from "../paper/index.js";
 import type { PaperEntry, SortSpec } from "./librarySnapshot.js";
 
 /** Numeric, accent- and case-insensitive: "Paper 2" sorts before "Paper 10". */
@@ -10,9 +10,9 @@ export const nameCollator = new Intl.Collator(undefined, { numeric: true, sensit
 function compareRecords(key: SortSpec["key"], a: PaperRecord, b: PaperRecord): number {
   switch (key) {
     case "author":
-      return nameCollator.compare(familyName(a.authors?.[0] ?? ""), familyName(b.authors?.[0] ?? ""));
+      return nameCollator.compare(deriveFamilyName(a.authors?.[0] ?? ""), deriveFamilyName(b.authors?.[0] ?? ""));
     case "venue":
-      return nameCollator.compare(venueOf(a), venueOf(b));
+      return nameCollator.compare(deriveVenue(a), deriveVenue(b));
     case "year":
       // Newest first; `reverse` flips it.
       return (b.year ?? 0) - (a.year ?? 0);
@@ -44,7 +44,7 @@ function comparatorFor<T>(sort: SortSpec, access: ItemAccess<T>) {
       if (missing) { return missing; }
     }
     if (sort.key === "venue") {
-      const missing = missingLast(venueOf(ra) || undefined, venueOf(rb) || undefined);
+      const missing = missingLast(deriveVenue(ra) || undefined, deriveVenue(rb) || undefined);
       if (missing) { return missing; }
     }
     if (sort.key === "lastRead") {
@@ -60,7 +60,7 @@ function comparatorFor<T>(sort: SortSpec, access: ItemAccess<T>) {
 }
 
 /** @returns a comparator over scanned papers; "modified" puts the most recently changed first */
-export function paperComparator(sort: SortSpec): (a: PaperEntry, b: PaperEntry) => number {
+export function createPaperComparator(sort: SortSpec): (a: PaperEntry, b: PaperEntry) => number {
   return comparatorFor<PaperEntry>(sort, { record: (entry) => entry.record, modifiedMs: (entry) => entry.modifiedMs, lastRead: () => undefined });
 }
 
@@ -69,7 +69,7 @@ export function paperComparator(sort: SortSpec): (a: PaperEntry, b: PaperEntry) 
  * reading time (ISO) for the "lastRead" key.
  * @returns a comparator over bare records
  */
-export function recordComparator(
+export function createPaperRecordComparator(
   sort: SortSpec,
   lastRead: (record: PaperRecord) => string | undefined = () => undefined,
 ): (a: PaperRecord, b: PaperRecord) => number {

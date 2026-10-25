@@ -2,20 +2,20 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { expandHome } from "../../../platform/index.js";
-import { textInput } from "../../textInput.js";
-import type { PromptOverlay } from "../../overlays.js";
+import { resolveHomePath } from "../../../platform/index.js";
+import { createTextInput } from "../../createTextInput.js";
+import type { AskOverlay } from "../../overlays.js";
 import type { App } from "../app.js";
 
-export function looksLikePath(value: string): boolean {
+export function isPath(value: string): boolean {
   return value.startsWith("/") || value.startsWith("~") || value.startsWith(".");
 }
 
 // Tab completion: paths in the add prompt, tags in the tag prompts.
-export async function complete(app: App, prompt: PromptOverlay): Promise<void> {
+export async function applyAskCompletion(app: App, prompt: AskOverlay): Promise<void> {
   if (prompt.purpose === "add") {
-    const { completed, candidates } = await completePath(prompt.input.value);
-    prompt.input = textInput(completed);
+    const { completed, candidates } = await findPathCompletion(prompt.input.value);
+    prompt.input = createTextInput(completed);
     prompt.completions = candidates;
   } else if (prompt.purpose === "tags" || prompt.purpose === "tagsBatch") {
     completeTag(app, prompt);
@@ -23,7 +23,7 @@ export async function complete(app: App, prompt: PromptOverlay): Promise<void> {
   app.render();
 }
 
-function completeTag(app: App, prompt: PromptOverlay): void {
+function completeTag(app: App, prompt: AskOverlay): void {
   const value = prompt.input.value;
   const sep = prompt.purpose === "tags" ? value.lastIndexOf(",") : value.lastIndexOf(" ");
   const head = value.slice(0, sep + 1);
@@ -33,7 +33,7 @@ function completeTag(app: App, prompt: PromptOverlay): void {
   const tags = app.ctx.store.tagCounts().map((t) => t.tag).filter((t) => t.toLowerCase().startsWith(word));
   if (tags.length === 1) {
     const glue = prompt.purpose === "tags" && head ? " " : "";
-    prompt.input = textInput(`${head}${glue}${sign}${tags[0]}${prompt.purpose === "tags" ? ", " : " "}`);
+    prompt.input = createTextInput(`${head}${glue}${sign}${tags[0]}${prompt.purpose === "tags" ? ", " : " "}`);
     prompt.completions = [];
   } else {
     prompt.completions = tags.slice(0, 8);
@@ -44,8 +44,8 @@ function completeTag(app: App, prompt: PromptOverlay): void {
  * Completes a filesystem path for the add prompt (folders and PDFs only).
  * @returns the completed text and the other candidates
  */
-export async function completePath(value: string): Promise<{ completed: string; candidates: string[] }> {
-  const expanded = expandHome(value);
+export async function findPathCompletion(value: string): Promise<{ completed: string; candidates: string[] }> {
+  const expanded = resolveHomePath(value);
   const dir = expanded.endsWith("/") ? expanded : path.dirname(expanded || ".");
   const prefix = expanded.endsWith("/") ? "" : path.basename(expanded);
   let names: Array<{ name: string; dir: boolean }>;

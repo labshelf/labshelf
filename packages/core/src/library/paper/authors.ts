@@ -20,19 +20,19 @@ export function splitName(raw: string): PersonName {
 }
 
 /** @returns the family name of "Last, First" or "First Last", particles included; the trimmed full name when none can be told. */
-export function familyName(author: string): string {
+export function deriveFamilyName(author: string): string {
   return splitName(author).family || author.trim();
 }
 
 /** @returns "" for no authors, "A", "A & B" or "A et al." (three or more); blank entries are ignored. */
 export function formatAuthors(authors: readonly string[] | undefined): string {
-  const families = (authors ?? []).filter((a) => a.trim().length > 0).map(familyName);
+  const families = (authors ?? []).filter((a) => a.trim().length > 0).map(deriveFamilyName);
   if (families.length <= 2) { return families.join(" & "); }
   return `${families[0]} et al.`;
 }
 
 /** @returns "family|g", so "Ashish Vaswani" and "Vaswani, A." count as the same person. */
-export function authorKey(author: string): string {
+export function normalizeAuthor(author: string): string {
   const { given, family } = splitName(author);
   return `${family.toLowerCase()}|${given.charAt(0).toLowerCase()}`;
 }

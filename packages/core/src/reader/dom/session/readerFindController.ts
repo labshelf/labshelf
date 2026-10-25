@@ -2,8 +2,8 @@
  * Extends pdf.js' find controller with a scroll step that keeps an already-readable hit in place and parks others below the overlay chrome.
  */
 import type { EventBus, PDFFindController, PDFLinkService } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
-import { decideMatchScroll, freshOrigin, type FindOrigin } from "../../navigation/index.js";
-import type { ViewerLib } from "./readerContext.js";
+import { deriveMatchScroll, deriveFreshOrigin, type FindOrigin } from "../../navigation/index.js";
+import type { PdfjsReaderLib } from "./readerContext.js";
 
 export interface ReaderFind {
   findController: PDFFindController;
@@ -21,7 +21,7 @@ type ScrollMatchArgs = Parameters<PDFFindController["scrollMatchIntoView"]>[0];
  * @returns the find controller and the hook that records the reader's position before a find command.
  */
 export function createReaderFind(
-  viewerLib: ViewerLib,
+  viewerLib: PdfjsReaderLib,
   container: HTMLDivElement,
   linkService: PDFLinkService,
   eventBus: EventBus,
@@ -34,7 +34,7 @@ export function createReaderFind(
       super.scrollMatchIntoView(args);
       // Unchanged scroll position means pdf.js declined to scroll (not the selected hit).
       if (!element || container.scrollTop === startTop) { return; }
-      const origin = freshOrigin(findOrigin, performance.now());
+      const origin = deriveFreshOrigin(findOrigin, performance.now());
       findOrigin = null;
       const containerTop = container.getBoundingClientRect().top;
       const rect = element.getBoundingClientRect();
@@ -42,7 +42,7 @@ export function createReaderFind(
       // Where the hit sat on screen when the command was issued.
       const shift = origin ? container.scrollTop - origin.top : 0;
       const before = origin ? { top: yNow + shift, bottom: yNow + rect.height + shift } : null;
-      const decision = decideMatchScroll(before, container.clientHeight);
+      const decision = deriveMatchScroll(before, container.clientHeight);
       if (decision.kind === "stay" && origin) {
         container.scrollTop = origin.top;
         container.scrollLeft = origin.left;

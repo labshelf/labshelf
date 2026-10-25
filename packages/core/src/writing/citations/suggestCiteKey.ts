@@ -1,7 +1,7 @@
 // Suggests the shelf cite key an undefined key most likely meant, ranking by edit distance and author/year overlap.
-import { citeKeySlug } from "../../library/paper/index.js";
+import { deriveCiteKeySlug } from "../../library/paper/index.js";
 
-export interface SuggestableKey {
+export interface SuggestableCiteKey {
   key: string;
   authors: string[];
   year?: string;
@@ -13,7 +13,7 @@ const YEAR_BONUS = 0.1;
 const MIN_SCORE = 0.8;
 
 /** The shelf key the undefined `missing` most likely meant, or undefined when no key is close; ties go to the key that sorts first. */
-export function suggestKey(missing: string, keys: readonly SuggestableKey[]): string | undefined {
+export function deriveSuggestedCiteKey(missing: string, keys: readonly SuggestableCiteKey[]): string | undefined {
   const wanted = missing.toLowerCase();
   if (wanted === "") { return undefined; }
   const surname = leadingLetters(wanted);
@@ -28,9 +28,9 @@ export function suggestKey(missing: string, keys: readonly SuggestableKey[]): st
 }
 
 /** Undefined when the missing key names another author than both the candidate's key and its first author. */
-function scoreOf(wanted: string, surname: string, year: string | undefined, candidate: SuggestableKey): number | undefined {
+function scoreOf(wanted: string, surname: string, year: string | undefined, candidate: SuggestableCiteKey): number | undefined {
   const key = candidate.key.toLowerCase();
-  const authorSurname = citeKeySlug(candidate.authors[0]?.trim().split(/\s+/).pop() ?? "");
+  const authorSurname = deriveCiteKeySlug(candidate.authors[0]?.trim().split(/\s+/).pop() ?? "");
   const authorMatches = surname !== "" && authorSurname !== "" && closeSurname(surname, authorSurname);
   if (surname !== "" && !authorMatches && !closeSurname(surname, leadingLetters(key))) { return undefined; }
   const similarity = 1 - editDistance(wanted, key) / Math.max(wanted.length, key.length);

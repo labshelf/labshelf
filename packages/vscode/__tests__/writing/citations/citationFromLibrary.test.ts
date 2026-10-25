@@ -1,7 +1,7 @@
 // Tests that Cite from Library inserts the picked citation at every cursor and then updates the bibliography.
 import * as vscode from "vscode";
 
-import { registerCiteFromLibrary } from "../../../src/writing/citations/index";
+import { registerCitationFromLibrary } from "../../../src/writing/citations/index";
 import { UPDATE_BIBLIOGRAPHY_COMMAND } from "../../../src/writing/citations/citationCompletion";
 import { citationWorkspace, highlight, PAPERS } from "../../support/citationFixtures";
 import { commandHandler } from "../../support/writingFixtures";
@@ -41,7 +41,7 @@ function setup(format: "latex" | "typst", annotations = {}) {
   });
   const file = format === "latex" ? "/code/repo/a.tex" : "/code/repo/a.typ";
   window.activeTextEditor = { document: { uri: { fsPath: file } }, selections, edit };
-  registerCiteFromLibrary({ subscriptions: [] } as never, workspace);
+  registerCitationFromLibrary({ subscriptions: [] } as never, workspace);
   return { edits, edit, workspace };
 }
 

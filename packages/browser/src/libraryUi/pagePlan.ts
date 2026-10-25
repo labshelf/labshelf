@@ -7,7 +7,7 @@ export interface PagePlan extends SidebarSections {
   defaultTab: TabKindName;
 }
 
-export function planPage(sections: SidebarSections): PagePlan {
+export function derivePagePlan(sections: SidebarSections): PagePlan {
   return { ...sections, defaultTab: sections.library ? "library" : "all-projects" };
 }
 

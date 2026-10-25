@@ -1,7 +1,7 @@
 // Derives text access and existence checks for library file systems that store raw bytes.
 import type { LibraryFileSystem, LocalStat } from "@labshelf/core";
 
-export abstract class ByteBackedFileSystem implements LibraryFileSystem {
+export abstract class BytesFileSystem implements LibraryFileSystem {
   abstract listDir(dirPath: string): Promise<string[]>;
   abstract readFile(filePath: string): Promise<Uint8Array>;
   abstract writeFile(filePath: string, content: Uint8Array): Promise<void>;

@@ -22,7 +22,7 @@ const isDownMap = (value: unknown): value is Record<string, number> =>
   && Object.values(value).every((until) => typeof until === "number" && Number.isFinite(until));
 
 /** A peer's state is untrusted input: anything that is not exactly this shape is not shown. */
-export function isPresenceState(value: unknown): value is PresenceState {
+export function isPeerPresence(value: unknown): value is PresenceState {
   if (typeof value !== "object" || value === null) { return false; }
   const state = value as Record<string, unknown>;
   return typeof state.name === "string" && typeof state.colour === "string"

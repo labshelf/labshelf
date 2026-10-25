@@ -52,7 +52,7 @@ export function formatDivOpener(attributes: DivAttributes): string {
 }
 
 /** The value of the first attribute named `key`. */
-export function attributeValue(attributes: DivAttributes, key: string): string | undefined {
+export function readAttribute(attributes: DivAttributes, key: string): string | undefined {
   return attributes.pairs.find(([name]) => name === key)?.[1];
 }
 

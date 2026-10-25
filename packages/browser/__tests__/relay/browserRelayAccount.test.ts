@@ -38,7 +38,7 @@ jest.mock("../../src/platform", () => ({
 }));
 
 import { createBrowserRelayAccount, RelayAccountBusyError, RelaySignInCancelledError } from "../../src/relay";
-import { relayAccountSlot } from "../../src/relay/relayAccountSecrets";
+import { createRelayAccountSlot } from "../../src/relay/browserRelayAccountStore";
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
 let cloud: FakeRelayCloud;
@@ -54,7 +54,7 @@ function account() {
   });
 }
 
-const slots = async () => [await relayAccountSlot("account").get(), await relayAccountSlot("tokens").get()];
+const slots = async () => [await createRelayAccountSlot("account").get(), await createRelayAccountSlot("tokens").get()];
 const kvCreations = () => cloud.requests.filter((r) => r.startsWith("POST ") && r.endsWith("/storage/kv/namespaces")).length;
 
 beforeAll(() => {
@@ -70,8 +70,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
-  await relayAccountSlot("account").delete();
-  await relayAccountSlot("tokens").delete();
+  await createRelayAccountSlot("account").delete();
+  await createRelayAccountSlot("tokens").delete();
 });
 
 it("signs in through a tab, deploys, stores the account and offers it to the shares once", async () => {
@@ -127,8 +127,8 @@ it("leaves no tokens or account when the owner closes the sign-in tab", async ()
 
 it("refreshes an expired access token once after a restart, then disconnects", async () => {
   await account().connect();
-  const tokens = JSON.parse((await relayAccountSlot("tokens").get()) ?? "{}") as Record<string, unknown>;
-  await relayAccountSlot("tokens").store(JSON.stringify({ ...tokens, expiresAt: 0 }));
+  const tokens = JSON.parse((await createRelayAccountSlot("tokens").get()) ?? "{}") as Record<string, unknown>;
+  await createRelayAccountSlot("tokens").store(JSON.stringify({ ...tokens, expiresAt: 0 }));
   cloud.requests.length = 0;
   expect(await account().disconnect()).toEqual({ relayUrl: RELAY_URL });
   expect(cloud.requests.filter((r) => r.endsWith("/oauth2/token"))).toHaveLength(1);

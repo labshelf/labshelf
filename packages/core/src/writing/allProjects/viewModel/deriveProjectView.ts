@@ -1,6 +1,6 @@
 // Turns the project rows into the groups the All projects page shows for one view state.
 import type { ProjectPlace, ProjectRow } from "../projectRow.js";
-import type { ProjectSortKey, ProjectViewState } from "./projectViewState.js";
+import type { ProjectSortField, ProjectViewState } from "./projectViewState.js";
 
 export interface ProjectGroup {
   /** The folder path; "" for top-level rows. */
@@ -18,7 +18,7 @@ function matchesQuery(row: ProjectRow, query: string): boolean {
 }
 
 /** In the trash, "modified" orders by the time the project went to the trash, which is the date the page shows there. */
-function sortValue(row: ProjectRow, key: Exclude<ProjectSortKey, "title">): number | undefined {
+function sortValue(row: ProjectRow, key: Exclude<ProjectSortField, "title">): number | undefined {
   if (key === "modified" && row.place === "trash") { return row.trashedAt ? Date.parse(row.trashedAt) : undefined; }
   return row[key];
 }
@@ -58,14 +58,14 @@ export function deriveProjectView(rows: readonly ProjectRow[], state: ProjectVie
   return groupByFolder(shown);
 }
 
-export function placeCounts(rows: readonly ProjectRow[]): Record<ProjectPlace, number> {
+export function countPlaces(rows: readonly ProjectRow[]): Record<ProjectPlace, number> {
   const counts: Record<ProjectPlace, number> = { projects: 0, archived: 0, trash: 0 };
   for (const row of rows) { counts[row.place] += 1; }
   return counts;
 }
 
 /** Existing folder paths in every place, for the "Move to folder" picker. */
-export function moveTargets(rows: readonly ProjectRow[]): string[] {
+export function listMoveFolders(rows: readonly ProjectRow[]): string[] {
   const folders = new Set<string>();
   for (const row of rows) { if (row.folder) { folders.add(row.folder); } }
   return [...folders].sort(compareText);

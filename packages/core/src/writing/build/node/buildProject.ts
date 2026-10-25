@@ -2,18 +2,18 @@
 import * as path from "node:path";
 
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import { classifyTexProblems, type LatexBuildResult } from "../../../latex/build/index.js";
+import { deriveTexProblemClass, type LatexBuildResult } from "../../../latex/build/index.js";
 import { runLatexBuild } from "../../../latex/build/node/index.js";
 import type { ProjectEntry } from "../../project/index.js";
-import { rootBuildFolder } from "../../project/buildRoot/index.js";
-import { clearFlatBuildFiles } from "../../project/buildRoot/node/index.js";
-import type { ProjectDataPort } from "../../service/index.js";
+import { deriveBuildRootFolder } from "../../project/buildRoot/index.js";
+import { removeFlatBuildFiles } from "../../project/buildRoot/node/index.js";
+import type { ProjectContentPort } from "../../service/index.js";
 import type { TypstBuildResult, TypstSession } from "../../../typst/index.js";
 import { runTypstBuild, type TypstPackageStore } from "../../../typst/node/index.js";
 import { updateProjectValues } from "../../projectValue/node/index.js";
 import type { ProjectBuildResult } from "../projectBuildResult.js";
-import { typstPreviewPdf } from "../typstPreviewPdf.js";
-import { compileInstallingPackages } from "./buildWithInstalls.js";
+import { buildTypstPreviewPdf } from "../buildTypstPreviewPdf.js";
+import { buildInstallingPackages } from "./buildWithInstalls.js";
 import { ensureToolchain, type ToolchainDeps } from "./ensureToolchain.js";
 
 const MODULE = "writing/build";
@@ -22,7 +22,7 @@ type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 export interface ProjectBuildDeps extends ToolchainDeps {
   projectWriter?: Pick<LibraryFileSystem, "writeText">;
-  projects: Pick<ProjectDataPort, "projectBuildDir">;
+  projects: Pick<ProjectContentPort, "projectBuildDir">;
   typst: { get(logger: ILogger): Promise<{ session: TypstSession; packages: TypstPackageStore }> };
   /** The command latexmk runs biber's WASM build through; the TeX's own biber when absent. */
   biber?: readonly string[];
@@ -66,9 +66,9 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
   options.onCompile?.(root);
   await generateValues(project, deps.logger, deps.projectWriter);
   const buildDir = deps.projects.projectBuildDir(project.settings.id);
-  await clearFlatBuildFiles(buildDir, root, deps.logger);
-  const outDir = path.join(buildDir, rootBuildFolder(root));
-  return compileInstallingPackages<LatexBuildResult>({
+  await removeFlatBuildFiles(buildDir, root, deps.logger);
+  const outDir = path.join(buildDir, deriveBuildRootFolder(root));
+  return buildInstallingPackages<LatexBuildResult>({
     compile: ({ force }) => runLatexBuild({
       toolchain, projectFolder: project.folder, main: root, outDir,
       signal: options.signal ?? new AbortController().signal, logger: deps.logger, ...(deps.biber && { biber: deps.biber }),
@@ -77,7 +77,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
       ...(options.editedLine !== undefined && { editedLine: options.editedLine }),
       ...(options.haltOnError !== undefined && { haltOnError: options.haltOnError }),
     }),
-    missingFile: (result) => ("problems" in result ? classifyTexProblems(result.problems).missingFile : undefined),
+    missingFile: (result) => ("problems" in result ? deriveTexProblemClass(result.problems).missingFile : undefined),
     tex: { installMissing: (fileName) => deps.prompt.progress(`Installing the LaTeX package for ${fileName}`, () => deps.tex.installMissing(fileName)) },
     logger: deps.logger,
   });
@@ -86,7 +86,7 @@ async function buildLatex(project: ReadyProject, root: string, deps: ProjectBuil
 async function buildTypst(project: ReadyProject, root: string, deps: ProjectBuildDeps, options: ProjectBuildOptions): Promise<TypstBuildResult> {
   const { session, packages } = await deps.typst.get(deps.logger);
   options.onCompile?.(root);
-  const previewPdf = typstPreviewPdf(project, root, deps.projects, path);
+  const previewPdf = buildTypstPreviewPdf(project, root, deps.projects, path);
   const { dir, name } = path.parse(root);
   return runTypstBuild({
     session, packages, projectFolder: project.folder, main: root, logger: deps.logger,

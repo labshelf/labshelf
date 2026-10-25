@@ -1,10 +1,10 @@
 // Tests which project menu commands apply to a ready, a broken, an in-library and an external project, and the open project's menu order.
-import { OPEN_PROJECT_COMMANDS, PROJECT_COMMANDS, projectCommandApplies } from '../../src/libraryUi/projectCommands';
+import { OPEN_PROJECT_COMMANDS, PROJECT_COMMANDS, canApplyProjectCommand } from '../../src/libraryUi/projectCommands';
 
 const commands = (row: { kind: 'ready' | 'broken'; external: boolean }): string[] =>
-  PROJECT_COMMANDS.filter((c) => projectCommandApplies(c.command, row)).map((c) => c.command);
+  PROJECT_COMMANDS.filter((c) => canApplyProjectCommand(c.command, row)).map((c) => c.command);
 
-describe('projectCommandApplies', () => {
+describe('canApplyProjectCommand', () => {
   it('offers removal only for external folders', () => {
     expect(commands({ kind: 'ready', external: false })).not.toContain('labshelf.writing.removeProject');
     expect(commands({ kind: 'ready', external: true })).toContain('labshelf.writing.removeProject');
@@ -16,7 +16,7 @@ describe('projectCommandApplies', () => {
   });
 
   it('rejects a command that is not on the menu', () => {
-    expect(projectCommandApplies('workbench.action.quit', { kind: 'ready', external: true })).toBe(false);
+    expect(canApplyProjectCommand('workbench.action.quit', { kind: 'ready', external: true })).toBe(false);
   });
 });
 
@@ -32,7 +32,7 @@ describe('OPEN_PROJECT_COMMANDS', () => {
   });
 
   it('applies to a ready project and not to a broken one', () => {
-    expect(projectCommandApplies('labshelf.writing.exportWord', { kind: 'ready', external: false })).toBe(true);
-    expect(projectCommandApplies('labshelf.writing.exportWord', { kind: 'broken', external: false })).toBe(false);
+    expect(canApplyProjectCommand('labshelf.writing.exportWord', { kind: 'ready', external: false })).toBe(true);
+    expect(canApplyProjectCommand('labshelf.writing.exportWord', { kind: 'broken', external: false })).toBe(false);
   });
 });

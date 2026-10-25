@@ -3,7 +3,7 @@
  */
 // Tests the Projects section of the library sidebar: rows, host menus and sharing entries.
 import { fakeHost } from "../../../collab/dom/fakeHost";
-import type { SharingHost } from "../../../../src/libraryUi/share";
+import type { ShareHost } from "../../../../src/libraryUi/share";
 import { compact, folder, key, mount, rows } from "./sidebarFixture";
 
 const project = (id: string, group = "", count?: string) =>
@@ -55,7 +55,7 @@ describe("mountLibrarySidebar projects", () => {
     expect(projects.menu).toHaveBeenCalledWith("/a", { x: 7, y: 21 });
   });
 
-  const projectsMenu = (sharing?: SharingHost): string => {
+  const projectsMenu = (sharing?: ShareHost): string => {
     const { slot, sidebar } = mount([], [], true, false, sharing);
     sidebar.setProjects([project("/a")]);
     slot.querySelector('[data-group="projects.list"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));

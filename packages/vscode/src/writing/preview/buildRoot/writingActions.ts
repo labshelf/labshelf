@@ -5,8 +5,8 @@ import type { ILogger, LocatedProblem, PreviewPorts } from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import { openSourceLine } from "../synctex/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import { activeProjectEditor } from "./activeProjectEditor.js";
-import { rawLogFile, type RawLogDeps } from "./rawLogFile.js";
+import { readActiveProjectEditor } from "./readActiveProjectEditor.js";
+import { readRawLogFile, type RawLogDeps } from "./readRawLogFile.js";
 
 export type WritingActions = Pick<PreviewPorts, "recompile" | "revealCursor" | "openProblem" | "openRawLog">;
 
@@ -37,7 +37,7 @@ async function openOrReport(deps: WritingActionsDeps, file: string, line: number
 }
 
 async function revealCursor(deps: WritingActionsDeps): Promise<void> {
-  const editor = activeProjectEditor(deps.paths, deps.project.folder);
+  const editor = readActiveProjectEditor(deps.paths, deps.project.folder);
   if (!editor) {
     await vscode.window.showInformationMessage(NO_EDITOR_MESSAGE);
     return;
@@ -63,7 +63,7 @@ async function openRawLog(deps: WritingActionsDeps, root: string): Promise<void>
     await logger.log("WARN", PREVIEW_LOG_MODULE, "Raw log asked for a root that was not reported", { projectFolder: project.folder, root });
     return;
   }
-  const file = await rawLogFile(deps, project, root);
+  const file = await readRawLogFile(deps, project, root);
   if (!file) {
     await vscode.window.showInformationMessage(NO_RAW_LOG_MESSAGE);
     return;

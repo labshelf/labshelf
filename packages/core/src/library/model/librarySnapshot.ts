@@ -22,7 +22,7 @@ export interface LibraryScan {
   duplicates: string[];
 }
 
-export interface CollectionNode {
+export interface FolderNode {
   /** Path relative to papers/, "/"-separated; "" is the library root. */
   rel: string;
   name: string;
@@ -37,17 +37,17 @@ export interface CollectionNode {
 export interface LibrarySnapshot {
   root: string;
   papers: ReadonlyMap<string, PaperEntry>;
-  collections: ReadonlyMap<string, CollectionNode>;
+  collections: ReadonlyMap<string, FolderNode>;
   duplicates: string[];
   orphans: string[];
   scannedAt: number;
 }
 
 /** "lastRead" orders by when the paper was last open in the reader, which the caller supplies. */
-export type PaperSortKey = "title" | "author" | "venue" | "year" | "status" | "modified" | "lastRead";
+export type PaperSortColumn = "title" | "author" | "venue" | "year" | "status" | "modified" | "lastRead";
 
 export interface SortSpec {
-  key: PaperSortKey;
+  key: PaperSortColumn;
   reverse: boolean;
 }
 

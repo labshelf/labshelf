@@ -1,7 +1,7 @@
 /** Searches OpenAlex for works by free text, suggests works for a title, and fetches one work with the works it cites. */
-import { asString } from "../metadata/index.js";
+import { parseString } from "../metadata/index.js";
 import { fetchJson, type RegistryEnv } from "./http.js";
-import type { RegistryRecord } from "./registryMetadata.js";
+import type { RegistryEntry } from "./registryMetadata.js";
 
 interface OpenAlexWork {
   title?: string;
@@ -22,7 +22,7 @@ interface OpenAlexWork {
  * noisy titles well.
  * @returns Candidate works, best match first.
  */
-export async function openAlexSearch(env: RegistryEnv, query: string, rows = 3): Promise<RegistryRecord[]> {
+export async function openAlexSearch(env: RegistryEnv, query: string, rows = 3): Promise<RegistryEntry[]> {
   const payload = await fetchJson<{ results?: OpenAlexWork[] }>(
     env,
     `https://api.openalex.org/works?per-page=${rows}&search=${encodeURIComponent(query)}`,
@@ -30,7 +30,7 @@ export async function openAlexSearch(env: RegistryEnv, query: string, rows = 3):
   return (payload?.results ?? []).map(mapOpenAlexWork);
 }
 
-function mapOpenAlexWork(work: OpenAlexWork): RegistryRecord {
+function mapOpenAlexWork(work: OpenAlexWork): RegistryEntry {
   const biblio = work.biblio;
   const pages =
     biblio?.first_page && biblio.last_page && biblio.first_page !== biblio.last_page
@@ -45,14 +45,14 @@ function mapOpenAlexWork(work: OpenAlexWork): RegistryRecord {
     year: work.publication_year,
     journal: work.primary_location?.source?.display_name,
     publisher: work.primary_location?.source?.host_organization_name,
-    volume: asString(biblio?.volume),
-    issue: asString(biblio?.issue),
-    pages: asString(pages),
+    volume: parseString(biblio?.volume),
+    issue: parseString(biblio?.issue),
+    pages: parseString(pages),
     // OpenAlex returns the DOI as a resolver URL.
     doi: work.doi?.replace(/^https?:\/\/(dx\.)?doi\.org\//i, ""),
     url: work.primary_location?.landing_page_url,
     issn: work.primary_location?.source?.issn_l,
-    language: asString(work.language),
+    language: parseString(work.language),
   };
 }
 

@@ -1,6 +1,6 @@
 /** Unit tests for inferring the journal from a repeated running head. */
 
-import { journalFromRunningHead } from '@labshelf/core';
+import { extractJournalFromRunningHead } from '@labshelf/core';
 
 describe('journalFromRunningHead', () => {
   it('finds the journal name repeated in the running head', () => {
@@ -10,7 +10,7 @@ describe('journalFromRunningHead', () => {
       '5\nJournal of Molecular Biology\nWe then compared the two folding pathways.',
     ];
 
-    expect(journalFromRunningHead(pages)).toBe('Journal of Molecular Biology');
+    expect(extractJournalFromRunningHead(pages)).toBe('Journal of Molecular Biology');
   });
 
   it('ignores bare page numbers and lines that are mostly digits', () => {
@@ -19,11 +19,11 @@ describe('journalFromRunningHead', () => {
       'Page 2\n2018;57(12):3120-3135\nEpsilon zeta eta theta',
     ];
 
-    expect(journalFromRunningHead(pages)).toBeUndefined();
+    expect(extractJournalFromRunningHead(pages)).toBeUndefined();
   });
 
   it('returns undefined when no line repeats across pages', () => {
-    expect(journalFromRunningHead(['A single page with nothing repeated on it.'])).toBeUndefined();
-    expect(journalFromRunningHead([])).toBeUndefined();
+    expect(extractJournalFromRunningHead(['A single page with nothing repeated on it.'])).toBeUndefined();
+    expect(extractJournalFromRunningHead([])).toBeUndefined();
   });
 });

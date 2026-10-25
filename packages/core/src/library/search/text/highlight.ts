@@ -1,5 +1,5 @@
 /** Finds where search terms occur in a text, comparing accent- and case-folded text but reporting positions in the original. */
-import { fold } from "./fold.js";
+import { normalizeText } from "./normalizeText.js";
 
 interface FoldedText {
   folded: string;
@@ -13,7 +13,7 @@ function foldWithMap(text: string): FoldedText {
   const out: FoldedText = { folded: "", from: [], to: [] };
   let index = 0;
   for (const ch of text) {
-    const piece = fold(ch);
+    const piece = normalizeText(ch);
     for (let i = 0; i < piece.length; i++) {
       out.from.push(index);
       out.to.push(index + ch.length);
@@ -39,11 +39,11 @@ function mergeRanges(ranges: Array<[number, number]>): Array<[number, number]> {
  * "Café". Overlapping and touching ranges are merged.
  * @returns sorted, non-overlapping ranges
  */
-export function highlightRanges(text: string, terms: readonly string[]): Array<[number, number]> {
+export function findHighlightRanges(text: string, terms: readonly string[]): Array<[number, number]> {
   const { folded, from, to } = foldWithMap(text);
   const ranges: Array<[number, number]> = [];
   for (const term of terms) {
-    const needle = fold(term);
+    const needle = normalizeText(term);
     if (!needle) { continue; }
     let at = folded.indexOf(needle);
     while (at !== -1) {

@@ -16,18 +16,18 @@ export interface Crumb {
 }
 
 /** @returns the parent folder of `path`; `path` itself when it has none */
-export function parentDir(path: string, sep: string): string {
+export function deriveParentDir(path: string, sep: string): string {
   const index = path.lastIndexOf(sep);
   return index <= 0 ? path : path.slice(0, index);
 }
 
 /** @returns the last segment of `path` */
-export function baseName(path: string, sep: string): string {
+export function deriveBaseName(path: string, sep: string): string {
   return path.slice(path.lastIndexOf(sep) + sep.length);
 }
 
 /** @returns the root-first chain of folders from `root` down to `path`; just the root when `path` is outside it */
-export function breadcrumbFor(root: string, path: string, sep: string): Crumb[] {
+export function deriveBreadcrumb(root: string, path: string, sep: string): Crumb[] {
   const chain: Crumb[] = [{ label: ROOT_LABEL, path: root, isRoot: true }];
   if (path === root || !isUnderDir(path, root, sep)) { return chain; }
   let current = root;
@@ -39,12 +39,12 @@ export function breadcrumbFor(root: string, path: string, sep: string): Crumb[] 
 }
 
 /** @returns the name the UI shows for a folder: "All papers" for the root */
-export function folderLabel(root: string, path: string, sep: string): string {
-  return path === root || path === "" ? ROOT_LABEL : baseName(path, sep);
+export function formatFolderLabel(root: string, path: string, sep: string): string {
+  return path === root || path === "" ? ROOT_LABEL : deriveBaseName(path, sep);
 }
 
 /** @returns the folder's location inside the library as the UI shows it: "Thesis / Chapter 2", or "All papers" for the root */
-export function folderPathLabel(root: string, path: string, sep: string): string {
+export function formatFolderPathLabel(root: string, path: string, sep: string): string {
   if (path === root || !isUnderDir(path, root, sep)) { return ROOT_LABEL; }
   return path.slice(root.length + sep.length).split(sep).join(" / ");
 }
@@ -59,8 +59,8 @@ export function countPapersUnder(paperPaths: readonly string[], dir: string, sep
 }
 
 /** @returns the folder holding the paper, relative to `dir` and joined with " / "; empty when the paper sits directly in `dir` */
-export function relativeFolder(paperPath: string, dir: string, sep: string): string {
-  const holder = parentDir(paperPath, sep);
+export function deriveRelativeFolder(paperPath: string, dir: string, sep: string): string {
+  const holder = deriveParentDir(paperPath, sep);
   if (holder === dir || !isUnderDir(holder, dir, sep)) { return ""; }
   return holder.slice(dir.length + sep.length).split(sep).join(" / ");
 }

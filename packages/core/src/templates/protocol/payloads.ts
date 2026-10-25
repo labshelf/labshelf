@@ -4,7 +4,7 @@ import type { PublishCheckId } from "../publishCheckLabels.js";
 import type { TemplateEntry, TemplateSourceId } from "../templateEntry.js";
 
 /** Names one template across sources: ids are unique only within a source. */
-export interface TemplateKey {
+export interface TemplateAddress {
   source: TemplateSourceId;
   id: string;
 }
@@ -15,7 +15,7 @@ export type SourceListing =
   | { status: "ready"; entries: TemplateEntry[]; fromCache: boolean }
   | { status: "error"; message: string };
 
-/** The project being published; `engineLabel` names the engine that builds it ("pdfLaTeX"). */
+/** The project being published; `formatEngineLabel` names the engine that builds it ("pdfLaTeX"). */
 export interface PublishProject {
   id: string;
   title: string;

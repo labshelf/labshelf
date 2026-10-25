@@ -5,8 +5,8 @@
 import {
   DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperFilesState, type PaperStats, type UiToHost,
 } from "@labshelf/core";
-import type { SharingHost } from "../../../src/libraryUi/share";
-import { createUiContext, mountDetailPane, mountLibraryUi } from "../../../src/libraryUi/dom";
+import type { ShareHost } from "../../../src/libraryUi/share";
+import { createUiCompositionRoot, mountDetailPane, mountLibraryUi } from "../../../src/libraryUi/dom";
 
 export function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: `key-${id}`, status: "unread", ...extra };
@@ -24,7 +24,7 @@ let disposePrevious: (() => void) | null = null;
 
 type Folders = Array<{ name: string; path: string; children: [] }>;
 
-export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: LibraryUiCapabilities = {}, extra: { sharing?: SharingHost; readOnly?: boolean } = {}) {
+export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: LibraryUiCapabilities = {}, extra: { sharing?: ShareHost; readOnly?: boolean } = {}) {
   disposePrevious?.();
   document.body.innerHTML = "";
   Element.prototype.scrollIntoView = () => undefined;
@@ -42,7 +42,7 @@ export function mountForTest(prefs: Partial<LibraryUiPrefs> = {}, capabilities: 
   detailEl.className = "detail-pane";
   container.append(detailEl);
   const prefsPort = { load: () => ({ ...DEFAULT_PREFS, ...prefs }), save: (p: Partial<LibraryUiPrefs>) => { saved.push(p); } };
-  const detailCtx = createUiContext(container, { store: lib.store, transport: ui, prefs: prefsPort, caps: capabilities, labels: LABELS, readOnly: false });
+  const detailCtx = createUiCompositionRoot(container, { store: lib.store, transport: ui, prefs: prefsPort, caps: capabilities, labels: LABELS, readOnly: false });
   const offDetail = mountDetailPane(detailCtx, detailEl);
   disposePrevious = () => { offDetail(); lib.dispose(); };
   const snapshot = (papers: PaperRecord[], pdfDirs: string[] = [], folders: Folders = [], stats: Record<string, PaperStats> = {}): void =>

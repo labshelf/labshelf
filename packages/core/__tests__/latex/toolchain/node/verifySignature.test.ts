@@ -1,5 +1,5 @@
 // Tests verifying detached OpenPGP signatures against a pinned key block, including a real TeX Live signature.
-import { pinnedKeyFingerprints, verifyDetachedSignature } from "../../../../src/latex/toolchain/node/verifySignature";
+import { derivePinnedFingerprints, verifyDetachedSignature } from "../../../../src/latex/toolchain/node/verifySignature";
 import { TEX_LIVE_SIGNING_KEY } from "../../../../src/latex/toolchain/node/managedTex/texLiveKeyring";
 import { armoredSignature, createTestSigningKey } from "./fakeOpenPgp";
 
@@ -20,7 +20,7 @@ i2XdeF8NR78VDfdzYeeB9OCfGlDFbQ==
 
 describe("the pinned TeX Live key", () => {
   it("is the TeX Live Distribution key with its signing subkey", () => {
-    expect(pinnedKeyFingerprints(TEX_LIVE_SIGNING_KEY)).toEqual(expect.arrayContaining([
+    expect(derivePinnedFingerprints(TEX_LIVE_SIGNING_KEY)).toEqual(expect.arrayContaining([
       "C78B82D8C79512F79CC0D7C80D5E5D9106BAB6BC",
       "D8F2F86057A857E42A88106A4CE1877E19438C70",
     ]));

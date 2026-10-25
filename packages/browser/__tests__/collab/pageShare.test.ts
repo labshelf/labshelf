@@ -10,9 +10,9 @@ jest.mock("../../src/platform", () => ({
   } } },
 }));
 
-import { deriveShareId, fileText, joinSharedProject, leaveSharedProject, parseProjectFile, shareProject, type ShareConnection } from "@labshelf/core";
+import { deriveShareId, readFileText, joinSharedProject, leaveSharedProject, parseProjectFile, startProjectShare, type ShareConnection } from "@labshelf/core";
 import { reportPageWrites } from "../../src/collab";
-import { replaceInFiles } from "../../src/writing/search/replaceInFiles";
+import { writeReplacements } from "../../src/writing/mountSearchHost";
 import { relayNet, type RelayNet } from "../support/relayNetwork";
 import { until } from "./pageSharesTestbed";
 import { FOLDER, installSharingGlobals, MAIN, openLibrary, PROJECT_FILE, type SharingLibrary, type SharingPage } from "./shareTestbed";
@@ -41,12 +41,12 @@ const sharedField = async (library: SharingLibrary, folder = FOLDER): Promise<st
 async function shareSeeded(owner: SharingLibrary): Promise<{ page: SharingPage; invite: string; shareId: string; connection: ShareConnection }> {
   const page = owner.open();
   await page.sharing.ready();
-  const outcome = await shareProject(page.sharing.ports, { folder: FOLDER, shared: undefined, signal });
+  const outcome = await startProjectShare(page.sharing.ports, { folder: FOLDER, shared: undefined, signal });
   if (outcome.kind !== "shared") { throw new Error(`the share ended as ${outcome.kind}`); }
   return { page, invite: outcome.invite, shareId: outcome.connection.shareId, connection: outcome.connection };
 }
 
-describe("createPageSharing", () => {
+describe("createPageShare", () => {
   it("shares a project from the browser that another device joins with its files", async () => {
     const owner = await library(true);
     const { invite, shareId } = await shareSeeded(owner);
@@ -67,7 +67,7 @@ describe("createPageSharing", () => {
     await page.sharing.ready();
     const changed = jest.fn();
     page.sharing.onProjectsChange(changed);
-    const outcome = await shareProject(page.sharing.ports, { folder: FOLDER, shared: undefined, signal });
+    const outcome = await startProjectShare(page.sharing.ports, { folder: FOLDER, shared: undefined, signal });
     expect(outcome.kind).toBe("shared");
     const afterShare = changed.mock.calls.length;
     expect(afterShare).toBeGreaterThan(0);
@@ -110,7 +110,7 @@ describe("createPageSharing", () => {
     const owner = await library(true);
     const page = owner.open({ relay: false });
     await page.sharing.ready();
-    expect(await shareProject(page.sharing.ports, { folder: FOLDER, shared: undefined, signal })).toEqual({ kind: "noRelay" });
+    expect(await startProjectShare(page.sharing.ports, { folder: FOLDER, shared: undefined, signal })).toEqual({ kind: "noRelay" });
     expect(page.requireRelay).toHaveBeenCalledTimes(1);
     expect(await sharedField(owner)).toBeUndefined();
     expect(page.sharing.shares.list()).toEqual([]);
@@ -146,18 +146,18 @@ describe("createPageSharing", () => {
     const [entry] = await owner.projects();
     const live = entry && (await page.sharing.liveShare(entry, false));
     expect(live).toBeDefined();
-    await until(() => (live ? fileText(live.session.openDoc("main.typ")).toString() : "") === "= Hello\n");
+    await until(() => (live ? readFileText(live.session.openDoc("main.typ")).toString() : "") === "= Hello\n");
   });
 
   it("brings a replace-in-files edit of a shared file into the share", async () => {
     const owner = await library(true);
     const { connection } = await shareSeeded(owner);
-    const text = (): string => fileText(connection.session.openDoc("main.typ")).toString();
+    const text = (): string => readFileText(connection.session.openDoc("main.typ")).toString();
     await until(() => text() === "= Hello\n");
     // The mirror's first scan is over, so only the page's report brings the edit in: browser storage has no watcher.
     await new Promise((resolve) => setTimeout(resolve, 300));
     const pageFs = reportPageWrites(owner.fs);
-    expect(await replaceInFiles(pageFs, [{ path: MAIN, line: 0, column: 2, length: 5 }], /Hello/g, "World")).toBe(1);
+    expect(await writeReplacements(pageFs, [{ path: MAIN, line: 0, column: 2, length: 5 }], /Hello/g, "World")).toBe(1);
     await until(() => text() === "= World\n");
   });
 });

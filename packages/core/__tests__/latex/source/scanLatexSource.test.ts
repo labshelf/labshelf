@@ -1,17 +1,17 @@
 /** Verifies the source scan on labels, references, headings, macros and includes, including comments and nesting. */
-import { macrosToMathJax, scanLatexSource, stripComments } from "../../../src/latex/index";
+import { deriveMathJaxMacros, scanLatexSource, removeComments } from "../../../src/latex/index";
 
 const at = (line: number, character: number) => ({ line, character });
 
-describe("stripComments", () => {
+describe("removeComments", () => {
   it("blanks a comment to the line end and keeps the length", () => {
     const text = "a % note\nb";
-    expect(stripComments(text)).toBe("a       \nb");
+    expect(removeComments(text)).toBe("a       \nb");
   });
 
   it("keeps an escaped percent sign and still ends a comment after an escaped backslash", () => {
-    expect(stripComments("50\\% off")).toBe("50\\% off");
-    expect(stripComments("x\\\\% gone")).toBe("x\\\\      ");
+    expect(removeComments("50\\% off")).toBe("50\\% off");
+    expect(removeComments("x\\\\% gone")).toBe("x\\\\      ");
   });
 });
 
@@ -98,6 +98,6 @@ describe("macros", () => {
       "\\newcommand{\\a}{1}", "\\newcommand{\\a}{2}", "\\providecommand{\\a}{3}",
       "\\newcommand{\\b}[2]{#1#2}", "\\newcommand{\\c}[1][x]{#1}",
     ].join("\n"));
-    expect(macrosToMathJax(macros)).toEqual({ a: "2", b: ["#1#2", 2], c: ["#1", 1, "x"] });
+    expect(deriveMathJaxMacros(macros)).toEqual({ a: "2", b: ["#1#2", 2], c: ["#1", 1, "x"] });
   });
 });

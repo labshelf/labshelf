@@ -5,7 +5,12 @@ import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/toast.css";
 import "@labshelf/core/styles/template-gallery.css";
 import "@labshelf/core/styles/template-publish.css";
-import { $, mountTemplateGallery } from "@labshelf/core/dom";
-import { createGalleryChannel } from "./galleryChannel.js";
+import { findElement, mountTemplateGallery } from "@labshelf/core/dom";
+import type { GalleryToHost, GalleryTransport, HostToGallery } from "@labshelf/core";
+import { createWebviewTransport } from "../../../webview/index.js";
 
-mountTemplateGallery($("root"), createGalleryChannel());
+function createGalleryChannel(): GalleryTransport {
+  return createWebviewTransport<GalleryToHost, HostToGallery>(acquireVsCodeApi());
+}
+
+mountTemplateGallery(findElement("root"), createGalleryChannel());

@@ -10,7 +10,7 @@ export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify
 /**
  * Confirmations go to the status bar so they never steal focus from the reader.
  */
-export function notifyInVsCode(message: string, kind: NoticeKind): void {
+export function showNoticeInVsCode(message: string, kind: NoticeKind): void {
   if (kind === "ok") {
     vscode.window.setStatusBarMessage(message, 2500);
   } else if (kind === "error") {
@@ -40,7 +40,7 @@ async function saveAnnotationsFile(paper: PaperRecord, markdown: string): Promis
 export function createVsCodeOutputPorts(paper: PaperRecord): VsCodeOutputPorts {
   return {
     writeClipboard: async (text) => { await vscode.env.clipboard.writeText(text); },
-    notify: notifyInVsCode,
+    notify: showNoticeInVsCode,
     openExternal: async (url) => { await vscode.env.openExternal(vscode.Uri.parse(url)); },
     saveAnnotations: (markdown) => saveAnnotationsFile(paper, markdown),
   };
@@ -58,7 +58,7 @@ export function createVsCodeExportPorts(paper: PaperRecord, store: ExportAnnotat
  * The list webview listens for annotation events; theme changes concern only the reader.
  * @returns a sidecarChanged port that republishes annotation changes as an annotationChanged event.
  */
-export function emitSidecarChanges(events: LibraryEvents, paperId: string): (change: SidecarChange) => void {
+export function createSidecarChangeSender(events: LibraryEvents, paperId: string): (change: SidecarChange) => void {
   return (change) => {
     switch (change.kind) {
       case "annotationCreated":

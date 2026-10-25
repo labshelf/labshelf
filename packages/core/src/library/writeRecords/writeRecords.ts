@@ -1,8 +1,36 @@
 // Persists each device's bounded write history without modifying its peers' files.
 import type { ILogger } from '../../ports/index.js';
-import { relativePathProblem } from '../index.js';
-import { parseRecords, validRecord } from './writeRecordFormat.js';
-import { DEVICE_ID, type WriteRecordEntry, type WriteRecordFileSystem, type WriteRecords } from './writeRecord.js';
+import { checkRelativePath } from "../index.js";
+import {
+  DEVICE_ID,
+  type WriteRecordEntry,
+  type WriteRecordFileSystem,
+  type WriteRecords,
+  type WriteRecord,
+} from "./writeRecord.js";
+
+const HASH = /^[0-9a-f]{64}$/;
+function validRecord(value: unknown): value is WriteRecord {
+  if (!value || typeof value !== 'object') { return false; }
+  const { hash, parent, by, at } = value as Record<string, unknown>;
+  return typeof hash === 'string' && HASH.test(hash)
+    && (parent === null || typeof parent === 'string' && HASH.test(parent))
+    && (by === 'mirror' || by === 'app') && typeof at === 'number' && Number.isFinite(at) && at >= 0;
+}
+
+function parseRecords(text: string): WriteRecords | undefined {
+  let value: unknown;
+  try { value = JSON.parse(text); } catch { return undefined; }
+  if (!value || typeof value !== 'object') { return undefined; }
+  const { version, files } = value as Record<string, unknown>;
+  if (version !== 1 || !files || typeof files !== 'object' || Array.isArray(files)) { return undefined; }
+  const records: WriteRecords = new Map();
+  for (const [path, entries] of Object.entries(files)) {
+    if (checkRelativePath(path) || !Array.isArray(entries) || !entries.every(validRecord)) { return undefined; }
+    records.set(path, entries.slice(-50));
+  }
+  return records;
+}
 
 const MODULE = 'library.writeRecords';
 const pending = new WeakMap<WriteRecordFileSystem, Map<string, Promise<void>>>();
@@ -26,9 +54,9 @@ async function append(fs: WriteRecordFileSystem, folder: string, deviceId: strin
   await fs.writeText(file, JSON.stringify({ version: 1, files: Object.fromEntries(records) }) + '\n');
 }
 
-export async function appendWriteRecord(fs: WriteRecordFileSystem, folder: string, deviceId: string, entry: WriteRecordEntry, logger: ILogger): Promise<void> {
+export async function addWriteRecord(fs: WriteRecordFileSystem, folder: string, deviceId: string, entry: WriteRecordEntry, logger: ILogger): Promise<void> {
   if (!DEVICE_ID.test(deviceId)) { throw new Error(`Invalid write record device id: ${deviceId}`); }
-  if (relativePathProblem(entry.path) || !validRecord(entry)) { throw new Error(`Invalid write record for ${entry.path}`); }
+  if (checkRelativePath(entry.path) || !validRecord(entry)) { throw new Error(`Invalid write record for ${entry.path}`); }
   let queue = pending.get(fs);
   if (!queue) { queue = new Map(); pending.set(fs, queue); }
   const key = `${directory(folder)}/${deviceId}`;

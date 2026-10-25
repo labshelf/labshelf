@@ -2,27 +2,27 @@
  * Renders the Annotations tab: the paper's highlights and notes grouped by page, with jump, delete and Markdown export.
  */
 import type { Annotation } from "../../../model/index.js";
-import { byPageThenCreated } from "../../sidecar/index.js";
-import { iconButton } from "../elements/index.js";
+import { compareAnnotations } from "../../sidecar/index.js";
+import { renderReaderIconButton } from "../elements/index.js";
 import type { HostBridge } from "../session/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import type { SidebarPanel } from "./sidebar.js";
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 
 const PREVIEW_CHARS = 140;
 
 export class AnnotationsTab implements SidebarPanel {
-  readonly el = el("div", { class: "rd-panel rd-annotations", role: "tabpanel" });
-  private readonly list = el("div", { class: "rd-ann-list" });
+  readonly el = renderElement("div", { class: "rd-panel rd-annotations", role: "tabpanel" });
+  private readonly list = renderElement("div", { class: "rd-ann-list" });
   private annotations: Annotation[] = [];
 
   constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void) {
-    const copyBtn = iconButton(icon("clipboard"), "Copy annotations as Markdown", "rd-btn-sm");
-    const fileBtn = iconButton(icon("download"), "Export annotations to a Markdown file", "rd-btn-sm");
+    const copyBtn = renderReaderIconButton(renderIcon("clipboard"), "Copy annotations as Markdown", "rd-btn-sm");
+    const fileBtn = renderReaderIconButton(renderIcon("download"), "Export annotations to a Markdown file", "rd-btn-sm");
     copyBtn.addEventListener("click", () => host.post({ command: "exportAnnotations", target: "clipboard" }));
     fileBtn.addEventListener("click", () => host.post({ command: "exportAnnotations", target: "file" }));
     this.el.append(
-      el("div", { class: "rd-panel-header" }, el("span", {}, "Annotations"), el("div", { class: "rd-panel-actions" }, copyBtn, fileBtn)),
+      renderElement("div", { class: "rd-panel-header" }, renderElement("span", {}, "Annotations"), renderElement("div", { class: "rd-panel-actions" }, copyBtn, fileBtn)),
       this.list,
     );
     this.render();
@@ -41,29 +41,29 @@ export class AnnotationsTab implements SidebarPanel {
 
   private render(): void {
     if (this.annotations.length === 0) {
-      this.list.replaceChildren(el("div", { class: "rd-empty" }, "No annotations yet. Select text to highlight it."));
+      this.list.replaceChildren(renderElement("div", { class: "rd-empty" }, "No annotations yet. Select text to highlight it."));
       return;
     }
-    const sorted = [...this.annotations].sort(byPageThenCreated);
+    const sorted = [...this.annotations].sort(compareAnnotations);
     const frag = document.createDocumentFragment();
     let page = -1;
     for (const ann of sorted) {
       if (ann.pageNumber !== page) {
         page = ann.pageNumber;
-        frag.append(el("div", { class: "rd-ann-group" }, `Page ${page}`));
+        frag.append(renderElement("div", { class: "rd-ann-group" }, `Page ${page}`));
       }
       const content = ann.content ?? "";
       const preview = content.length > PREVIEW_CHARS ? `${content.slice(0, PREVIEW_CHARS)}…` : content;
-      const del = iconButton(icon("trash"), "Delete annotation", "rd-btn-sm rd-ann-delete");
+      const del = renderReaderIconButton(renderIcon("trash"), "Delete annotation", "rd-btn-sm rd-ann-delete");
       del.addEventListener("click", (e) => {
         e.stopPropagation();
         this.host.post({ command: "deleteAnnotation", id: ann.id });
       });
-      const item = el(
+      const item = renderElement(
         "div",
         { class: "rd-ann-item", role: "button", tabindex: 0, title: `Go to page ${ann.pageNumber}` },
-        el("span", { class: `rd-ann-dot rd-color-${ann.color ?? "note"}` }),
-        el("span", { class: "rd-ann-text" }, preview),
+        renderElement("span", { class: `rd-ann-dot rd-color-${ann.color ?? "note"}` }),
+        renderElement("span", { class: "rd-ann-text" }, preview),
         del,
       );
       const jump = (): void => this.goToPage(ann.pageNumber);

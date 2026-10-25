@@ -1,11 +1,11 @@
 /** Unit tests for the PDF Info dictionary: timestamp trust and publisher-stamped keys. */
 
-import { publisherMetadataFromInfo, timestampsAreTrustworthy } from '@labshelf/core';
+import { extractPublisherMetadata, hasTrustworthyTimestamps } from '@labshelf/core';
 
 describe('timestampsAreTrustworthy', () => {
   it('distrusts timestamps written by a print-to-PDF re-save', () => {
     expect(
-      timestampsAreTrustworthy({
+      hasTrustworthyTimestamps({
         Producer: 'macOS Versão 27.0 (Compilação 26A428) Quartz PDFContext',
         Creator: 'Firefox Developer Edition',
       }),
@@ -13,7 +13,7 @@ describe('timestampsAreTrustworthy', () => {
   });
 
   it('trusts timestamps from a typesetting pipeline', () => {
-    expect(timestampsAreTrustworthy({ Producer: 'pdfTeX-1.40.21', Creator: 'LaTeX' })).toBe(true);
+    expect(hasTrustworthyTimestamps({ Producer: 'pdfTeX-1.40.21', Creator: 'LaTeX' })).toBe(true);
   });
 });
 
@@ -31,7 +31,7 @@ describe('publisherMetadataFromInfo', () => {
       Copyright: '© 2018 Wiley-VCH Verlag GmbH & Co. KGaA, Weinheim',
     };
 
-    expect(publisherMetadataFromInfo(info)).toEqual({
+    expect(extractPublisherMetadata(info)).toEqual({
       doi: '10.1002/anie.201712345',
       journal: 'Angewandte Chemie International Edition',
       volume: '57',
@@ -44,19 +44,19 @@ describe('publisherMetadataFromInfo', () => {
   });
 
   it('unwraps a prefixed DOI and keeps a lone first page', () => {
-    expect(publisherMetadataFromInfo({ doi: 'doi:10.1038/nature12373.', FirstPage: 'e0173461' })).toEqual({
+    expect(extractPublisherMetadata({ doi: 'doi:10.1038/nature12373.', FirstPage: 'e0173461' })).toEqual({
       doi: '10.1038/nature12373',
       pages: 'e0173461',
     });
   });
 
   it('keeps the balanced brackets of a DOI', () => {
-    expect(publisherMetadataFromInfo({ doi: 'doi:10.1016/j.x.2020(1).' })).toEqual({ doi: '10.1016/j.x.2020(1)' });
+    expect(extractPublisherMetadata({ doi: 'doi:10.1016/j.x.2020(1).' })).toEqual({ doi: '10.1016/j.x.2020(1)' });
   });
 
   it('returns undefined when the dictionary holds nothing bibliographic', () => {
-    expect(publisherMetadataFromInfo({ Producer: 'pdfTeX-1.40.21', Creator: 'LaTeX' })).toBeUndefined();
-    expect(publisherMetadataFromInfo({ Journal: '   ', Volume: 12 })).toBeUndefined();
-    expect(publisherMetadataFromInfo({})).toBeUndefined();
+    expect(extractPublisherMetadata({ Producer: 'pdfTeX-1.40.21', Creator: 'LaTeX' })).toBeUndefined();
+    expect(extractPublisherMetadata({ Journal: '   ', Volume: 12 })).toBeUndefined();
+    expect(extractPublisherMetadata({})).toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
 // Composes the core All projects library over the library folder: lists its projects and opens one in the page's project session.
 import {
-  blankTemplate, createProjectData, createProjectLibrary, posixPathOps,
-  type ILogger, type LibraryFileSystem, type PaperRecord, type PdfjsLoader, type ProjectDataPort, type ProjectEntry, type ProjectLibraryPort,
+  createBlankTemplate, createProjectContent, createProjectLibrary, posixPathOps,
+  type ILogger, type LibraryFileSystem, type PaperRecord, type PdfjsLoader, type ProjectContentPort, type ProjectEntry, type ProjectLibraryPort,
 } from "@labshelf/core";
 import type { ProjectSession } from "../session";
 import type { Workspace } from "../../libraryUi/editorArea";
@@ -27,15 +27,15 @@ export interface BrowserProjectLibraryDeps {
   askBlank(): Promise<{ title: string; format: "latex" | "typst" } | undefined>;
 }
 
-export function createBrowserProjectData({ fs, logger }: Pick<BrowserProjectLibraryDeps, "fs" | "logger">): ProjectDataPort {
-  return createProjectData({ fs, path: posixPathOps, logger, deviceDirs: DEVICE_DIRS });
+export function createBrowserProjectContent({ fs, logger }: Pick<BrowserProjectLibraryDeps, "fs" | "logger">): ProjectContentPort {
+  return createProjectContent({ fs, path: posixPathOps, logger, deviceDirs: DEVICE_DIRS });
 }
 
 const none = async (): Promise<undefined> => undefined;
 
 export function createBrowserProjectLibrary(deps: BrowserProjectLibraryDeps): ProjectLibraryPort {
   const { fs, logger, workspace, session } = deps;
-  const data = createBrowserProjectData(deps);
+  const data = createBrowserProjectContent(deps);
   const listeners = new Set<() => void>();
   let entries: ProjectEntry[] = [];
   const reload = async (): Promise<void> => { entries = await data.listProjects(ROOT); listeners.forEach((listener) => listener()); };
@@ -61,7 +61,7 @@ export function createBrowserProjectLibrary(deps: BrowserProjectLibraryDeps): Pr
         if (kind !== "blank") return;
         const asked = await deps.askBlank();
         if (!asked) return;
-        const entry = await data.createProjectFromTemplate(ROOT, { title: asked.title, ...blankTemplate(asked.format, asked.title) });
+        const entry = await data.createProjectFromTemplate(ROOT, { title: asked.title, ...createBlankTemplate(asked.format, asked.title) });
         await reload();
         await open(entry);
       },

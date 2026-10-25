@@ -3,7 +3,7 @@ import type { ILogger } from "../../ports/logger.js";
 
 const MODULE = "externalChange";
 
-export interface RootPresenceDeps {
+export interface LibraryRootPresenceDeps {
   exists: () => Promise<boolean>;
   onLost: () => void;
   onReturned: () => void;
@@ -12,12 +12,12 @@ export interface RootPresenceDeps {
 }
 
 // TRAP: scanLibrary returns an empty scan for a missing papers/ folder, so an unmounted root would empty the library on reindex.
-export class RootPresenceMonitor {
+export class LibraryRootPresenceMonitor {
   private present = true;
   private timer: ReturnType<typeof setInterval> | undefined;
   private running: Promise<boolean> | undefined;
 
-  constructor(private readonly deps: RootPresenceDeps) {}
+  constructor(private readonly deps: LibraryRootPresenceDeps) {}
 
   start(): void {
     if (this.timer) return;

@@ -2,7 +2,7 @@
  * Groups the papers related to one paper for the Related tab: similar content (from the host), same authors,
  * shared tags or keywords, and the same venue, each drawn from the whole library.
  */
-import { authorKey } from "../../library/index.js";
+import { normalizeAuthor } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { SimilarPaper } from "../protocol/index.js";
 
@@ -36,11 +36,11 @@ function sharedTerms(p: PaperRecord, others: PaperRecord[]): RelatedGroups["shar
     .sort((a, b) => b.common.length - a.common.length);
 }
 
-export function relatedGroups(p: PaperRecord, library: readonly PaperRecord[], similar: readonly SimilarPaper[] = []): RelatedGroups {
+export function deriveRelatedGroups(p: PaperRecord, library: readonly PaperRecord[], similar: readonly SimilarPaper[] = []): RelatedGroups {
   const others = library.filter((q) => q.id !== p.id);
   const byId = new Map(others.map((q) => [q.id, q]));
-  const myAuthors = new Set((p.authors ?? []).filter((a) => a.trim()).map(authorKey));
-  const authors = others.filter((q) => (q.authors ?? []).some((a) => myAuthors.has(authorKey(a)))).sort(newestFirst);
+  const myAuthors = new Set((p.authors ?? []).filter((a) => a.trim()).map(normalizeAuthor));
+  const authors = others.filter((q) => (q.authors ?? []).some((a) => myAuthors.has(normalizeAuthor(a)))).sort(newestFirst);
   const venue = venueOf(p) ? others.filter((q) => venueOf(q) === venueOf(p)).sort(newestFirst) : [];
   const shared = sharedTerms(p, others);
   const sim = similar.flatMap((s) => {

@@ -1,7 +1,7 @@
 // Stops a project mirror when its folder or ownership is lost.
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import { MirrorOwnershipLost } from "./mirrorLostError.js";
-import { MirrorRootUnavailable, type MirrorDisk } from "./fileSystem/index.js";
+import { MirrorProjectDirUnavailable, type MirrorFileSystem } from "./fileSystem/index.js";
 import { LOG_MODULE } from "./mirrorContext.js";
 import type { ProjectMirrorOptions, MirrorStopReason } from "./projectMirror.js";
 
@@ -13,7 +13,7 @@ export function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (()
   };
   async function guarded<T>(work: () => Promise<T>, fallback: T): Promise<T> {
     try { return await work(); } catch (error) {
-      if (!(error instanceof MirrorOwnershipLost) && !(error instanceof MirrorRootUnavailable)) { throw error; }
+      if (!(error instanceof MirrorOwnershipLost) && !(error instanceof MirrorProjectDirUnavailable)) { throw error; }
       if (!stopped) {
         stopped = error;
         detach.splice(0).forEach((stop) => stop());
@@ -28,7 +28,7 @@ export function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (()
   return { gate, guarded, isStopped: () => stopped !== undefined };
 }
 
-export function gateDisk(disk: MirrorDisk, gate: () => Promise<void>): MirrorDisk {
+export function withGatedFileSystem(disk: MirrorFileSystem, gate: () => Promise<void>): MirrorFileSystem {
   return {
     read: (path, stableMs) => disk.read(path, stableMs),
     write: async (path, bytes) => { await gate(); await disk.write(path, bytes); },
@@ -37,7 +37,7 @@ export function gateDisk(disk: MirrorDisk, gate: () => Promise<void>): MirrorDis
   };
 }
 
-export function gateWriteRecords(records: WriteRecordStore, gate: () => Promise<void>, disk: MirrorDisk): WriteRecordStore {
+export function withGatedWriteRecords(records: WriteRecordStore, gate: () => Promise<void>, disk: MirrorFileSystem): WriteRecordStore {
   return {
     read: () => records.read(),
     append: async (entry) => { await gate(); await disk.list(); await records.append(entry); },

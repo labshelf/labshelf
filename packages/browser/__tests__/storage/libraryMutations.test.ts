@@ -2,13 +2,13 @@ import type { ILogger, PaperRecord } from "@labshelf/core";
 import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
-jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ openDb: async () => require("../support/fakeIdb").fakeDb }));
 
 const mockCache = new Map<string, PaperRecord>();
 jest.mock("../../src/storage/paperRecordStore", () => ({
-  listAllRecords: async () => [...mockCache.values()],
-  upsertRecord: async (record: PaperRecord) => { mockCache.set(record.id, record); },
-  deleteRecord: async (id: string) => { mockCache.delete(id); },
+  listCachedPaperRecords: async () => [...mockCache.values()],
+  writeCachedPaperRecord: async (record: PaperRecord) => { mockCache.set(record.id, record); },
+  removeCachedPaperRecord: async (id: string) => { mockCache.delete(id); },
 }));
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
@@ -52,7 +52,7 @@ describe("importPaper", () => {
   });
 });
 
-describe("setStatus", () => {
+describe("setReadingStatus", () => {
   it("keeps keys of metadata.yaml that the browser does not own", async () => {
     const record = paper("a2020");
     seed(record, "title: A\nstatus: unread\ncitekey: a2020\nreviewer: ana\n");

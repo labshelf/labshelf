@@ -1,15 +1,15 @@
 /** Supplies an in-memory template cache, a scripted fetch and a logger that records every call with its context. */
 import type { ILogger } from "../../../src/ports/index";
-import type { CachedIndex, CachedSourceId, FetchLike, TemplateCache } from "../../../src/templates/sources/index.js";
+import type { CachedCatalogIndex, CachedSourceId, FetchLike, TemplateCache } from "../../../src/templates/sources/index.js";
 
 export interface MemoryCache extends TemplateCache {
-  store: Map<CachedSourceId, CachedIndex>;
-  writes: Array<{ source: CachedSourceId; index: CachedIndex }>;
+  store: Map<CachedSourceId, CachedCatalogIndex>;
+  writes: Array<{ source: CachedSourceId; index: CachedCatalogIndex }>;
   thumbnails: Map<string, Uint8Array>;
 }
 
-export function memoryCache(initial: Partial<Record<CachedSourceId, CachedIndex>> = {}): MemoryCache {
-  const store = new Map<CachedSourceId, CachedIndex>(Object.entries(initial) as Array<[CachedSourceId, CachedIndex]>);
+export function memoryCache(initial: Partial<Record<CachedSourceId, CachedCatalogIndex>> = {}): MemoryCache {
+  const store = new Map<CachedSourceId, CachedCatalogIndex>(Object.entries(initial) as Array<[CachedSourceId, CachedCatalogIndex]>);
   const writes: MemoryCache["writes"] = [];
   const thumbnails = new Map<string, Uint8Array>();
   return {

@@ -6,7 +6,7 @@ export interface ScanContext {
   range(start: number, end: number): LatexRange;
 }
 
-export function createScanContext(text: string): ScanContext {
+export function createTextScan(text: string): ScanContext {
   const lineStarts = [0];
   for (let i = 0; i < text.length; i++) {
     if (text[i] === "\n") { lineStarts.push(i + 1); }

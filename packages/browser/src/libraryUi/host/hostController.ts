@@ -1,15 +1,26 @@
 // Dispatches browser library UI messages to storage and background handlers.
-import { errorMessage, type HostEndpoint, type ILogger, type ProjectSharingDeps, type SharingHost, type UiToHost } from "@labshelf/core";
+import { formatError, type HostEndpoint, type ILogger, type ProjectShareDeps, type ShareHost, type UiToHost } from "@labshelf/core";
 import {
-  captureTab, createFolder, createPaperFileHandlers, createPdfHandlers, createBrowserSharingHost, deleteFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
-  renameFolder, sendDetails, setNote, setStatus, setTags, writeClipboard, type PaperFileHandlers,
+  addTabPaper, createFolder, createPaperFileHandlers, createPdfHandlers, createBrowserShareHost, removeFolder, exportAnnotations, movePapers, offerOpenTabs, removePapers,
+  renameFolder, sendDetails, setNote, setReadingStatus, setTags, writeClipboard, type PaperFileHandlers,
   type PdfHandlers, type ShareLinkRelay,
 } from "./handlers";
 import type { PageSpaces } from "../../spaces";
 import { addToSpace } from "../../spaces";
-import { watchChangeNotices } from "./changeNotices";
-import { createHostContext, type HostContext } from "./hostContext";
+import { createHostCompositionRoot, type HostContext } from "./hostContext";
 import { watchLibraryChanges } from "./snapshots";
+import { bx, type LibraryChangedEvent } from "../../platform";
+
+/** @returns a function that stops listening */
+function watchChangeNotices(ctx: HostContext): () => void {
+  // Must stay synchronous and return nothing: a listener returning a Promise would answer popup requests with undefined.
+  const onRuntime = (msg: unknown): void => {
+    const change = msg as LibraryChangedEvent | undefined;
+    if (change?.type === "library.changed" && change.notice) ctx.notice("ok", change.notice);
+  };
+  bx.runtime.onMessage.addListener(onRuntime);
+  return () => bx.runtime.onMessage.removeListener(onRuntime);
+}
 
 export interface LibraryHostOptions {
   log: ILogger;
@@ -24,7 +35,7 @@ export interface LibraryHostOptions {
 
 function run(ctx: HostContext, work: () => Promise<void>): void {
   void work().catch((err: unknown) => {
-    ctx.notice("error", errorMessage(err));
+    ctx.notice("error", formatError(err));
     void ctx.log.error("libraryUi", err);
   });
 }
@@ -47,13 +58,13 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
     case "navigate": ctx.folder = m.folder; return;
     case "folder.create": run(ctx, () => createFolder(ctx, m.parent, m.name)); return;
     case "folder.rename": run(ctx, () => renameFolder(ctx, m.path, m.name)); return;
-    case "folder.delete": run(ctx, () => deleteFolder(ctx, m.path)); return;
+    case "folder.delete": run(ctx, () => removeFolder(ctx, m.path)); return;
     case "paper.open": run(ctx, () => pdf.open(m.id)); return;
     case "paper.findPdf": run(ctx, () => pdf.find(m.id, m.replace ?? false)); return;
     case "paper.attachPdf": pdf.attach(m.id); return;
     case "paper.openForPdf": run(ctx, () => pdf.openForPdf(m.id, m.access)); return;
     case "paper.askAuthor": run(ctx, () => pdf.askAuthor(m.id)); return;
-    case "paper.setStatus": run(ctx, () => setStatus(ctx, m.ids, m.status)); return;
+    case "paper.setStatus": run(ctx, () => setReadingStatus(ctx, m.ids, m.status)); return;
     // The page has no tree of its own to mark, so the selection needs no answer.
     case "paper.selected": options.onSelection?.(m.ids); return;
     case "paper.files": run(ctx, () => files.list(m.id)); return;
@@ -73,7 +84,7 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
     case "paper.move": run(ctx, () => movePapers(ctx, m.ids, m.target)); return;
     case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
-    case "paper.addFrom": run(ctx, () => captureTab(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
+    case "paper.addFrom": run(ctx, () => addTabPaper(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
     case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;
     default:
       // The page declares none of the capabilities behind the other messages (text layer, similar content, reveal,
@@ -85,10 +96,10 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: SharingHost; addProjectSharing(deps: ProjectSharingDeps): void } {
-  const ctx = createHostContext(endpoint, options.log);
+): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
+  const ctx = createHostCompositionRoot(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
-  const { host: sharing, addProjects } = createBrowserSharingHost(ctx, options.shareRelay, options.log);
+  const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
   const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   // The router asks for a paper path while the first load is still running; both wait on the same load.
   let firstLoad: Promise<void> | null = null;

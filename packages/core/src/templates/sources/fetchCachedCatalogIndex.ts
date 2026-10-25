@@ -2,22 +2,22 @@
 // CONTRACT: documents/contracts/templates.md#cache
 
 import type { ILogger } from "../../ports/index.js";
-import type { CachedIndex, CachedSourceId, FetchLike, TemplateCache } from "./templateSource.js";
+import type { CachedCatalogIndex, CachedSourceId, FetchLike, TemplateCache } from "./templateSource.js";
 
-export interface CachedIndexRequest {
+export interface CachedCatalogIndexRequest {
   url: string;
   source: CachedSourceId;
   /** Whether a body is a usable index; a body it refuses is never cached and never sent as a validator. */
   accepts(body: string): boolean;
 }
 
-export interface CachedIndexDeps {
+export interface CachedCatalogIndexDeps {
   fetch: FetchLike;
   cache: TemplateCache;
   logger: ILogger;
 }
 
-export interface CachedIndexResult {
+export interface CachedCatalogIndexResult {
   body: string;
   /** True only when the fetch failed and the cached copy stands in; a 304 confirms the cached copy is current. */
   /** True only when the fetch failed; a 304 confirms the cached copy is current. */
@@ -26,7 +26,7 @@ export interface CachedIndexResult {
 
 type Attempt = { body: string } | { notModified: true } | { failure: Record<string, unknown> };
 
-async function attempt(request: CachedIndexRequest, deps: CachedIndexDeps, cached: CachedIndex | undefined, signal?: AbortSignal): Promise<Attempt> {
+async function attempt(request: CachedCatalogIndexRequest, deps: CachedCatalogIndexDeps, cached: CachedCatalogIndex | undefined, signal?: AbortSignal): Promise<Attempt> {
   const headers: Record<string, string> = {};
   if (cached?.etag !== undefined) { headers["If-None-Match"] = cached.etag; }
   try {
@@ -46,7 +46,7 @@ async function attempt(request: CachedIndexRequest, deps: CachedIndexDeps, cache
 }
 
 /** Returns the freshest accepted index; throws when the fetch fails and no accepted cached copy exists. */
-export async function fetchCachedIndex(request: CachedIndexRequest, deps: CachedIndexDeps, signal?: AbortSignal): Promise<CachedIndexResult> {
+export async function fetchCachedCatalogIndex(request: CachedCatalogIndexRequest, deps: CachedCatalogIndexDeps, signal?: AbortSignal): Promise<CachedCatalogIndexResult> {
   const stored = await deps.cache.readIndex(request.source);
   const cached = stored !== undefined && request.accepts(stored.body) ? stored : undefined;
   const result = await attempt(request, deps, cached, signal);

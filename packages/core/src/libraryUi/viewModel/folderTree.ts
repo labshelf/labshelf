@@ -8,7 +8,7 @@ export interface CountedFolder extends FolderTreeNode {
 }
 
 /** @returns the top-level folders with their sub-folders, in the snapshot's name order; paths start at papers */
-export function folderTreeFromSnapshot(snapshot: LibrarySnapshot): CountedFolder[] {
+export function deriveFolderTree(snapshot: LibrarySnapshot): CountedFolder[] {
   const build = (rels: readonly string[]): CountedFolder[] =>
     rels.flatMap((rel) => {
       const node = snapshot.collections.get(rel);

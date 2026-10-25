@@ -11,7 +11,7 @@ const TOP_LEVEL_CHECKS = {
 } as const;
 
 /** A missing version reads as 1. */
-export function topLevelReadOnlyReason(raw: Record<string, unknown>, file: keyof typeof TOP_LEVEL_CHECKS): string | undefined {
+export function deriveTopLevelReadOnlyReason(raw: Record<string, unknown>, file: keyof typeof TOP_LEVEL_CHECKS): string | undefined {
   const version = raw["version"];
   if (version !== undefined && typeof version !== "number") {
     return `${file} has a version that is not a number, so it is read-only. Fix version to edit it.`;

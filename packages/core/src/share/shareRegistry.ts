@@ -4,7 +4,7 @@ import { base64UrlToBytes } from "../encoding/index.js";
 import { formatShareLink } from "./shareLink.js";
 
 // CONTRACT: documents/contracts/share-link.md#share-list
-export interface ShareRecord {
+export interface ShareEntry {
   id: string;
   folder: string;
   relayUrl: string;
@@ -15,7 +15,7 @@ export interface ShareRecord {
   blobs: string[];
 }
 
-export interface ShareRegistry { shares: ShareRecord[] }
+export interface ShareRegistry { shares: ShareEntry[] }
 
 /**
  * The text of `shares.json`; `read` answers undefined when the file does not exist, and `write` replaces it atomically.
@@ -29,7 +29,7 @@ export interface ShareRegistryStore {
 
 type Json = Record<string, unknown>;
 
-function recordOf(value: unknown): ShareRecord | undefined {
+function recordOf(value: unknown): ShareEntry | undefined {
   if (typeof value !== "object" || value === null) { return undefined; }
   const { id, folder, relayUrl, key, createdAt, blobs } = value as Json;
   const fields = [folder, relayUrl, key, createdAt];
@@ -50,7 +50,7 @@ export async function loadShareRegistry(store: ShareRegistryStore): Promise<Shar
   }
   const shares = (parsed as Json | null)?.["shares"];
   if (!Array.isArray(shares)) { throw new Error("The share list has no shares array; fix or remove shares.json"); }
-  return { shares: shares.map(recordOf).filter((record): record is ShareRecord => record !== undefined) };
+  return { shares: shares.map(recordOf).filter((record): record is ShareEntry => record !== undefined) };
 }
 
 // CONTRACT: documents/contracts/share-link.md#share-list
@@ -62,6 +62,6 @@ export function updateShareRegistry(store: ShareRegistryStore, change: (registry
   });
 }
 
-export function shareRecordLink(record: ShareRecord): string {
+export function deriveShareLinkOfEntry(record: ShareEntry): string {
   return formatShareLink({ relayUrl: record.relayUrl, shareId: record.id, key: base64UrlToBytes(record.key) });
 }

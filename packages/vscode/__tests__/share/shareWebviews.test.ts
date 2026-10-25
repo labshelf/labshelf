@@ -1,6 +1,6 @@
 /** The sharing webviews are served once serving starts, and a dialog request reaches the Library sidebar only after it said hello. */
 import * as vscode from 'vscode';
-import { SharingWebviews } from '../../src/share/shareWebviews';
+import { ShareWebviews } from '../../src/share/shareWebviews';
 
 function fakeWebview() {
   const listeners = new Set<(raw: unknown) => void>();
@@ -14,9 +14,9 @@ function fakeWebview() {
 
 const hello = { channel: 'sharing', type: 'hello' };
 
-describe('SharingWebviews', () => {
+describe('ShareWebviews', () => {
   it('queues an open request until the dialog webview says hello, and the latest request wins', async () => {
-    const webviews = new SharingWebviews();
+    const webviews = new ShareWebviews();
     const sidebar = fakeWebview();
     webviews.attach(sidebar.webview, { opensDialogs: true });
     await webviews.open({ kind: 'manageLinks' });
@@ -29,7 +29,7 @@ describe('SharingWebviews', () => {
   });
 
   it('posts at once to a ready webview, and waits again after it is disposed', async () => {
-    const webviews = new SharingWebviews();
+    const webviews = new ShareWebviews();
     const first = fakeWebview();
     const attached = webviews.attach(first.webview, { opensDialogs: true });
     first.send(hello);
@@ -45,7 +45,7 @@ describe('SharingWebviews', () => {
   });
 
   it('serves nothing until serving starts, then every attached webview now and later', () => {
-    const webviews = new SharingWebviews();
+    const webviews = new ShareWebviews();
     const early = fakeWebview();
     const stopEarly = webviews.attach(early.webview);
     const stops = new Map<vscode.Webview, jest.Mock>();

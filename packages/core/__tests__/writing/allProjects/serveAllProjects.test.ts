@@ -1,6 +1,6 @@
 // Tests that the host side of the All projects page posts rows after ready and runs its actions.
 import {
-  serveAllProjects, type AllProjectsToHost, type HostToAllProjects, type ProjectLibraryPort, type ProjectDetail, type ProjectRow,
+  serveAllProjects, type AllProjectsToHost, type HostToAllProjects, type ProjectLibraryPort, type ProjectPaneContent, type ProjectRow,
 } from "../../../src/writing/allProjects/index";
 import type { ILogger } from "../../../src/ports/index";
 
@@ -10,7 +10,7 @@ const rows: ProjectRow[] = [
   { id: "t2", title: "T2", place: "trash" },
 ];
 
-const detail: ProjectDetail = {
+const detail: ProjectPaneContent = {
   id: "a", location: "/p/a", limits: { countUpTo: "end" }, build: { state: "never", warnings: 0, errors: 0 },
   citations: [], versions: [], sources: ["main.tex"],
 };

@@ -1,5 +1,5 @@
 // Opens a PDF for optical reading: renders pages to PNG on the native canvas and reads their existing text.
-import { invisibleShare, type OperatorList } from "./invisibleTextShare.js";
+import { deriveInvisibleShare, type OperatorList } from "./invisibleTextShare.js";
 import { loadNativeCanvas } from "../nativeCanvas.js";
 import { nativeRenderOptions } from "../nativeRenderOptions.js";
 import { renderPagePng } from "../renderPagePng.js";
@@ -52,7 +52,7 @@ export async function openPdfForOcr(pdfjs: PdfjsLoader, pdfBytes: Uint8Array): P
     },
     async invisibleTextShare(pageNumber) {
       const ops = await (await document.getPage(pageNumber)).getOperatorList();
-      return invisibleShare(ops, OPS);
+      return deriveInvisibleShare(ops, OPS);
     },
     async renderPng(pageNumber) {
       const page = await document.getPage(pageNumber);

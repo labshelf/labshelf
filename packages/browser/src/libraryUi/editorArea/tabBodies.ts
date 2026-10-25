@@ -1,6 +1,6 @@
 // Mounts the body of each tab lazily and runs the close guards the bodies register.
 import type { ILogger } from "@labshelf/core";
-import { el, type EditorTabBody } from "@labshelf/core/dom";
+import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import { TAB_KINDS } from "./tabKinds";
 import type { TabContext, TabHooks, TabKindName, TabParams } from "./tabKind";
 import type { Workspace } from "./workspace";
@@ -42,7 +42,7 @@ export function createTabBodies({ logger, services, workspace, setDirty, refresh
         })
         .catch((error: unknown) => {
           void logger.error(MODULE, error, { action: "mountTab", kind });
-          host.append(el("p", { class: "ls-workspace-placeholder", role: "alert" }, `Could not load the ${TAB_KINDS[kind].title(params)} tab.`));
+          host.append(renderElement("p", { class: "ls-workspace-placeholder", role: "alert" }, `Could not load the ${TAB_KINDS[kind].title(params)} tab.`));
         });
       return {
         get actions() { return body?.actions ?? []; },

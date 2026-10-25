@@ -9,7 +9,7 @@ export function isRequestLanguage(value: unknown): value is RequestLanguage {
 }
 
 /** @returns the email language for a tag such as "pt-BR" or "es"; English when the tag is missing or unsupported */
-export function requestLanguageFrom(tag: string | undefined): RequestLanguage {
+export function deriveRequestLanguage(tag: string | undefined): RequestLanguage {
   const base = tag?.toLowerCase().split(/[-_]/)[0];
   return isRequestLanguage(base) ? base : "en";
 }

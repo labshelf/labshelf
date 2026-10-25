@@ -10,7 +10,7 @@ export interface OpenBridge {
 
 const MODULE = "browser.storage.bridge";
 
-export class BridgeLink {
+export class BridgeClient {
   private opening: Promise<OpenBridge> | undefined;
   private current: BridgeConnection | undefined;
   private readonly changeListeners = new Set<(paths: string[]) => void>();

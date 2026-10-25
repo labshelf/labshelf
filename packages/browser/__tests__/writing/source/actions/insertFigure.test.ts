@@ -4,11 +4,11 @@
  */
 // Copying a picked image into the project's images folder, and inserting the figure that shows it.
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
-import { toast } from "@labshelf/core/dom";
+import { showToast } from "@labshelf/core/dom";
 import { onLocalFileChanges, reportPageWrites } from "../../../../src/collab/mirror/localFileChanges";
-import { insertImage, type ImageInsertion } from "../../../../src/writing/source/actions/insertFigure";
+import { addImage, type ImageInsertion } from "../../../../src/writing/source/actions/insertFigure";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn() }));
+jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn() }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 
@@ -40,12 +40,12 @@ const png = { name: "plot.png", arrayBuffer: async () => new Uint8Array([1, 2, 3
 
 function insertion(fs: LibraryFileSystem, over: Partial<ImageInsertion> = {}) {
   const edits = { insertText: jest.fn(), insertSnippet: jest.fn(), wrap: jest.fn() };
-  return { edits, run: () => insertImage({ edits, language: "latex", entry: entry(), path: "main.tex", fs, logger, ...over }) };
+  return { edits, run: () => addImage({ edits, language: "latex", entry: entry(), path: "main.tex", fs, logger, ...over }) };
 }
 
 afterEach(() => { jest.restoreAllMocks(); jest.clearAllMocks(); });
 
-describe("insertImage", () => {
+describe("addImage", () => {
   it("offers only the language's image types", async () => {
     const accepted: string[] = [];
     jest.spyOn(HTMLInputElement.prototype, "click").mockImplementation(function (this: HTMLInputElement) { accepted.push(this.accept); this.dispatchEvent(new Event("cancel")); });
@@ -101,7 +101,7 @@ describe("insertImage", () => {
     await run();
     expect(edits.insertSnippet).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith("tabs.source", expect.any(Error), expect.objectContaining({ source: "main.tex", folder: "lib/p" }));
-    expect(toast).toHaveBeenCalledWith("Could not copy the image into the project: disk full", "error");
+    expect(showToast).toHaveBeenCalledWith("Could not copy the image into the project: disk full", "error");
   });
 
   it("copies the image into a shared project through the page's file system, which tells the share's mirror at once", async () => {
@@ -115,6 +115,6 @@ describe("insertImage", () => {
     expect([...written.keys()]).toEqual(["lib/p/images/plot.png"]);
     expect(reported).toEqual([["lib/p/images/plot.png"]]);
     expect(edits.insertSnippet).toHaveBeenCalled();
-    expect(toast).not.toHaveBeenCalled();
+    expect(showToast).not.toHaveBeenCalled();
   });
 });

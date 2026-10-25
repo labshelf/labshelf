@@ -24,20 +24,20 @@ function open(): Promise<IDBPDatabase<StagingSchema>> {
   return db;
 }
 
-export async function stagePdf(id: string, bytes: Uint8Array): Promise<void> {
+export async function writeStagedPdf(id: string, bytes: Uint8Array): Promise<void> {
   await (await open()).put(STORE, { id, bytes, at: Date.now() });
 }
 
-export async function stagedPdf(id: string): Promise<Uint8Array | undefined> {
+export async function readStagedPdf(id: string): Promise<Uint8Array | undefined> {
   return (await (await open()).get(STORE, id))?.bytes;
 }
 
-export async function unstagePdf(id: string): Promise<void> {
+export async function removeStagedPdf(id: string): Promise<void> {
   await (await open()).delete(STORE, id);
 }
 
 /** Drops the staged PDFs not in `ids` that are older than a match takes, such as those left by a browser restart. */
-export async function keepStagedPdfs(ids: readonly string[]): Promise<void> {
+export async function removeStagedPdfsExcept(ids: readonly string[]): Promise<void> {
   const store = await open();
   const keep = new Set(ids);
   for (const row of await store.getAll(STORE)) {

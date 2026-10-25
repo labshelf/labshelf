@@ -1,11 +1,11 @@
 /** Verifies the order of a section document and the line offset that maps its problems back to the source. */
-import { assembleSectionDocument } from "../../../../src/latex/build/section/index";
+import { createSectionDocument } from "../../../../src/latex/build/section/index";
 
-describe("assembleSectionDocument", () => {
+describe("createSectionDocument", () => {
   const state = { command: "section", absolutePage: 3, fillingPage: 3, line: 12, file: "main.tex", counters: { section: 2 } };
 
   it("leaves the aux to the kernel, loads definitions before restoring the counters, then the section", () => {
-    const { text, headerLines } = assembleSectionDocument({
+    const { text, headerLines } = createSectionDocument({
       formatName: "main-fmt",
       definitions: ["\\newcommand{\\R}{r}", "\\newtheorem{thm}{T}\n[section]"], state,
       sectionText: "\\section{B}\nbody",
@@ -22,7 +22,7 @@ describe("assembleSectionDocument", () => {
   });
 
   it("counts the header without definitions", () => {
-    const { text, headerLines } = assembleSectionDocument({
+    const { text, headerLines } = createSectionDocument({
       formatName: "f", definitions: [], state: { ...state, counters: {} }, sectionText: "x",
     });
     expect(text.split("\n")[headerLines]).toBe("x");

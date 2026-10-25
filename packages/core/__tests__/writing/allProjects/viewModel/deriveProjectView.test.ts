@@ -1,5 +1,5 @@
 // Tests how the All projects page filters, sorts and groups project rows.
-import { DEFAULT_PROJECT_VIEW, deriveProjectView, firstProjectSortDir, moveTargets, placeCounts, type ProjectRow } from "../../../../src/writing/allProjects/index";
+import { DEFAULT_PROJECT_VIEW, deriveProjectView, deriveFirstProjectSortDir, listMoveFolders, countPlaces, type ProjectRow } from "../../../../src/writing/allProjects/index";
 
 const row = (id: string, extra: Partial<ProjectRow> = {}): ProjectRow => ({ id, title: id, place: "projects", ...extra });
 const ids = (groups: ReturnType<typeof deriveProjectView>): string[][] => groups.map((group) => group.rows.map((r) => r.id));
@@ -34,7 +34,7 @@ describe("deriveProjectView", () => {
     const sorted = (dir: "asc" | "desc") => ids(deriveProjectView(rows, { ...DEFAULT_PROJECT_VIEW, sort: { key: "cites", dir } })).flat();
     expect(sorted("desc")).toEqual(["c", "a", "d", "e", "b"]);
     expect(sorted("asc")).toEqual(["e", "a", "d", "c", "b"]);
-    expect(firstProjectSortDir("cites")).toBe("desc");
+    expect(deriveFirstProjectSortDir("cites")).toBe("desc");
   });
 
   it("puts top-level rows first, then one group per folder by path", () => {
@@ -46,14 +46,14 @@ describe("deriveProjectView", () => {
   });
 });
 
-describe("placeCounts and moveTargets", () => {
+describe("countPlaces and moveTargets", () => {
   const rows = [row("a", { folder: "b" }), row("c", { place: "trash", folder: "a" }), row("d", { folder: "b" })];
 
   it("counts rows per place", () => {
-    expect(placeCounts(rows)).toEqual({ projects: 2, archived: 0, trash: 1 });
+    expect(countPlaces(rows)).toEqual({ projects: 2, archived: 0, trash: 1 });
   });
 
   it("lists distinct folders of every place, sorted", () => {
-    expect(moveTargets(rows)).toEqual(["a", "b"]);
+    expect(listMoveFolders(rows)).toEqual(["a", "b"]);
   });
 });

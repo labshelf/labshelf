@@ -3,7 +3,7 @@
  */
 // Tests the library sidebar through its mount handle: rows, counts, expansion, current folder, selection and keyboard.
 import { fakeHost, tick } from "../../../collab/dom/fakeHost";
-import type { SharingHost } from "../../../../src/libraryUi/share";
+import type { ShareHost } from "../../../../src/libraryUi/share";
 import { mountLibrarySidebar } from "../../../../src/libraryUi/dom";
 import { compact, folder, folders, key, mount, paper, papers, rows, tagged } from "./sidebarFixture";
 
@@ -15,7 +15,7 @@ const twisty = (slot: HTMLElement, path: string): void => folder(slot, path).que
 
 describe("mountLibrarySidebar", () => {
   describe("folder menu", () => {
-    const menuText = (sharing?: SharingHost): string => {
+    const menuText = (sharing?: ShareHost): string => {
       const { slot } = mount([], [], false, false, sharing);
       folder(slot, "papers/A").dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
       return document.body.textContent ?? "";
@@ -39,7 +39,7 @@ describe("mountLibrarySidebar", () => {
   });
 
   it("offers the shared-link entries on the Library heading only when the host offers links", () => {
-    const heading = (sharing?: SharingHost): string => {
+    const heading = (sharing?: ShareHost): string => {
       const { slot } = mount([], [], false, false, sharing);
       slot.querySelector('[data-section="library"]')!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
       return document.body.textContent ?? "";

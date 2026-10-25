@@ -10,7 +10,7 @@ const silentLogger: ILogger = {
 };
 
 /** The caller's fetch (or the global one, looked up at call time) wrapped so it is never called as a method. */
-export function makeEnv(opts: PdfFetchOptions): ResolverEnv {
+export function createResolverEnv(opts: PdfFetchOptions): ResolverEnv {
   const hostFetch = opts.fetch;
   return {
     fetch: hostFetch ? (...args: Parameters<FetchFn>) => hostFetch(...args) : (...args: Parameters<FetchFn>) => fetch(...args),
@@ -18,11 +18,11 @@ export function makeEnv(opts: PdfFetchOptions): ResolverEnv {
   };
 }
 
-export function info(env: ResolverEnv, message: string, context: Record<string, unknown>): void {
+export function reportMessage(env: ResolverEnv, message: string, context: Record<string, unknown>): void {
   void env.logger.log("INFO", MODULE, message, context);
 }
 
-export function warn(env: ResolverEnv, message: string, context: Record<string, unknown>): void {
+export function reportWarning(env: ResolverEnv, message: string, context: Record<string, unknown>): void {
   void env.logger.log("WARN", MODULE, message, context);
 }
 

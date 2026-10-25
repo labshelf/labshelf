@@ -1,6 +1,6 @@
 /** Verifies reading a project folder, its root file names and its optional files over the library file-system port. */
 import { posixPathOps } from "../../../../src/library/index";
-import { readOptionalText, readProject, rootFileNames } from "../../../../src/writing/project/folder/index";
+import { readOptionalText, readProject, listBuildRootFileNames } from "../../../../src/writing/project/folder/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
 
@@ -53,11 +53,11 @@ describe("readProject", () => {
   });
 });
 
-describe("rootFileNames", () => {
+describe("listBuildRootFileNames", () => {
   it("lists files at the root and leaves out folders and links", async () => {
     const { ctx, fs } = setup({ "/p/a.tex": "x", "/p/sub/b.tex": "x" });
     fs.symlinks.add("/p/link");
-    expect((await rootFileNames(ctx, "/p")).sort()).toEqual(["a.tex"]);
+    expect((await listBuildRootFileNames(ctx, "/p")).sort()).toEqual(["a.tex"]);
   });
 });
 

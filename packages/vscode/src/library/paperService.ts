@@ -1,8 +1,8 @@
 /** Changes and reads papers already in the library: disk first through the core mutations, then the index and its events. */
 import * as vscode from "vscode";
 
-import { editPaperTags, movePapers, paperFiles, resolvePaperRefs, trashPapers, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
-import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsPatch, PaperRecord, PdfParse, RecordMetadata } from "@labshelf/core";
+import { updatePaperTags, movePapers, createPaperFiles, resolveReferences, movePapersToTrash, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
+import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsUpdate, PaperRecord, PdfParse, PaperRecordMetadata } from "@labshelf/core";
 import type { LibraryEvents } from "./libraryEvents.js";
 import type { ReindexSummary } from "../storage/index.js";
 
@@ -34,14 +34,14 @@ export class PaperService {
     if (!paper || paper.hasPdf === false || !(await this.pdfExists(paper))) {
       return null;
     }
-    return paperFiles(paper.path, this.ctx.paths.join).pdf;
+    return createPaperFiles(paper.path, this.ctx.paths.join).pdf;
   }
 
   // Asked at action time rather than trusting the indexed flag. FileType is a bit flag and the indexer counts a
   // symlinked PDF (File|SymbolicLink) as present, so this does too; otherwise reconcilePdf would undo the indexer.
   async pdfExists(paper: PaperRecord): Promise<boolean> {
     try {
-      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(paperFiles(paper.path, this.ctx.paths.join).pdf));
+      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(createPaperFiles(paper.path, this.ctx.paths.join).pdf));
       return (stat.type & vscode.FileType.File) !== 0;
     } catch {
       return false;
@@ -66,7 +66,7 @@ export class PaperService {
   }
 
   /** @returns the paper after the patch, or undefined when it is unknown or its folder holds no paper */
-  async updatePaperFields(paperId: string, patch: PaperFieldsPatch): Promise<PaperRecord | undefined> {
+  async updatePaperFields(paperId: string, patch: PaperFieldsUpdate): Promise<PaperRecord | undefined> {
     const result = await this.writeFields(paperId, patch);
     if (result?.changed) { await this.reindex(); }
     return result?.next;
@@ -87,7 +87,7 @@ export class PaperService {
   /** Adds and removes tags on several papers. @returns the papers changed and the failures */
   async editTags(paperIds: string[], add: string[], remove: string[]): Promise<BatchOutcome> {
     const { refs, failed: unknown } = await this.refsFor(paperIds);
-    const outcome = await editPaperTags(this.ctx, refs, add, remove);
+    const outcome = await updatePaperTags(this.ctx, refs, add, remove);
     let anyChanged = false;
     for (const written of outcome.records) {
       const current = refs.find((ref) => ref.id === written.id)?.record;
@@ -99,7 +99,7 @@ export class PaperService {
   }
 
   /** Overwrites a paper's bibliographic fields with resolved ones. @returns the updated paper, or undefined when unknown */
-  async applyResolvedMetadata(paperId: string, metadata: RecordMetadata): Promise<PaperRecord | undefined> {
+  async applyResolvedMetadata(paperId: string, metadata: PaperRecordMetadata): Promise<PaperRecord | undefined> {
     const current = await this.findPaper(paperId);
     return current && this.rewriteRecord(withResolvedMetadata(current, metadata));
   }
@@ -113,7 +113,7 @@ export class PaperService {
     if (!paper) { return undefined; }
     let bytes: Uint8Array;
     try {
-      bytes = await this.ctx.fs.readFile(paperFiles(paper.path, this.ctx.paths.join).pdf);
+      bytes = await this.ctx.fs.readFile(createPaperFiles(paper.path, this.ctx.paths.join).pdf);
     } catch {
       return undefined;
     }
@@ -143,7 +143,7 @@ export class PaperService {
   /** Sends paper folders to the trash; a paper whose trash fails stays in the index. @returns what was trashed and the failures */
   async trashPapers(paperIds: string[]): Promise<BatchOutcome> {
     const { refs, failed: unknown } = await this.refsFor(paperIds);
-    const outcome = await trashPapers(this.ctx, refs);
+    const outcome = await movePapersToTrash(this.ctx, refs);
     if (outcome.done.length > 0) { await this.reindex(); }
     return { done: outcome.done, failed: [...unknown, ...outcome.failed] };
   }
@@ -172,14 +172,14 @@ export class PaperService {
     return { next, changed: !same };
   }
 
-  private async writeFields(paperId: string, patch: PaperFieldsPatch): Promise<{ next: PaperRecord; changed: boolean } | undefined> {
+  private async writeFields(paperId: string, patch: PaperFieldsUpdate): Promise<{ next: PaperRecord; changed: boolean } | undefined> {
     const current = await this.findPaper(paperId);
     const written = current && (await updatePaperFields(this.ctx, current.path, patch));
     return current && written ? this.resolveOwnedFields(current, written) : undefined;
   }
 
-  private refsFor(paperIds: string[]): ReturnType<typeof resolvePaperRefs> {
-    return resolvePaperRefs(paperIds, async (id) => {
+  private refsFor(paperIds: string[]): ReturnType<typeof resolveReferences> {
+    return resolveReferences(paperIds, async (id) => {
       const record = this.store.snapshot.papers.get(id)?.record;
       return record && { path: record.path, record };
     });

@@ -5,7 +5,7 @@ import type { EngineLimits } from "./limits.js";
 type PacerLimits = Pick<EngineLimits, "hostGapMs" | "hostMaxFailures">;
 
 /** Wraps `fetchFn` so requests to one host start at least `hostGapMs` apart, and throws for a host that failed too often. */
-export function pacedFetch(fetchFn: FetchFn, limits: PacerLimits): FetchFn {
+export function createPacedFetch(fetchFn: FetchFn, limits: PacerLimits): FetchFn {
   const nextSlot = new Map<string, number>();
   const failures = new Map<string, number>();
   const fail = (host: string): void => { failures.set(host, (failures.get(host) ?? 0) + 1); };

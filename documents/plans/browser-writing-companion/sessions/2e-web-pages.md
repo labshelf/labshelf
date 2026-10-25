@@ -22,7 +22,7 @@
 ## 2e.1 — "You have this paper"
 
 - **Goal:** a publisher or arXiv PDF that matches a library paper with a PDF offers the "open your copy" offer.
-- **Read only:** `packages/browser/src/background/import/considerPdf.ts:1-87` (the match offers to attach a PDF); `packages/browser/src/background/import/offerHandlers.ts:1-84`; `packages/browser/src/background/import/offerStore.ts:1-72`; `packages/browser/src/background/import/offerBadge.ts:1-29`.
+- **Read only:** `packages/browser/src/background/import/offerPdf.ts:1-87` (the match offers to attach a PDF); `packages/browser/src/background/import/offerHandlers.ts:1-84`; `packages/browser/src/background/import/offerStore.ts:1-72`; `packages/browser/src/background/import/offerBadge.ts:1-29`.
 - **Decided:** reuse `matchPdfToPaper` (DOI or arXiv id in the URL, then `titleKey`); a matched paper with a PDF gets the "open your copy" offer, one without keeps the attach offer.
 - **Done when:** tests in `packages/browser/__tests__/background/import/`, written first, pin both offers and the highlight count.
 

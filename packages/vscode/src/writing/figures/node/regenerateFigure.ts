@@ -3,9 +3,9 @@ import * as vscode from "vscode";
 
 import { runFigureCommand } from "@labshelf/core/node";
 import type { ILogger, FigureRunResult } from "@labshelf/core";
-import { executeSafely } from "../../../command/index.js";
+import { runSafely } from "../../../command/index.js";
 import type { WritingHost } from "../../session/index.js";
-import { confirmFigureCommand } from "../figureConsent.js";
+import { askFigureCommand } from "../figureConsent.js";
 import type { FigureNode } from "../figureNode.js";
 import type { ProjectFigures } from "../projectFigures.js";
 
@@ -52,13 +52,13 @@ async function reportOutcome(deps: RegenerateDeps, logger: ILogger, node: Figure
 async function regenerate(deps: RegenerateDeps, running: Set<string>, node: FigureNode | undefined): Promise<void> {
   const session = deps.host.current();
   if (!session || node?.kind !== "figure") { return; }
-  await executeSafely(session.logger, COMMAND, async () => {
+  await runSafely(session.logger, COMMAND, async () => {
     const key = `${node.project.folder}#${node.path}`;
     if (running.has(key)) {
       await vscode.window.showInformationMessage(`${node.path} is already being regenerated.`);
       return;
     }
-    if (!await confirmFigureCommand(deps.context.workspaceState, node.project.folder, node.recipe.run)) { return; }
+    if (!await askFigureCommand(deps.context.workspaceState, node.project.folder, node.recipe.run)) { return; }
     running.add(key);
     try {
       deps.output.appendLine(`$ ${node.recipe.run}\n  in ${node.project.folder}`);

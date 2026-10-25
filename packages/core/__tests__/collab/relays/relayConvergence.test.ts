@@ -1,5 +1,5 @@
 /** Pins that share sessions meeting only through a fake relay converge, catch a late client up and exchange presence. */
-import { indexFiles } from "../../../src/collab/model/index";
+import { readShareIndexDocFiles } from "../../../src/collab/model/index";
 import { CHANNEL_KIND } from "../../../src/collab/peer/envelope";
 import { INDEX_DOC_KEY } from "../../../src/collab/doc/docSync";
 import { FakeClock, runUntil, seededRandom } from "../peer/fakeNetwork";
@@ -19,7 +19,7 @@ function randomEdits(clients: RelayClient[], random: () => number, count: number
   for (let i = 0; i < count; i += 1) {
     const c = clients[Math.floor(random() * clients.length)]!;
     const path = PATHS[Math.floor(random() * PATHS.length)]!;
-    indexFiles(c.session.index).set(path, { kind: "text" });
+    readShareIndexDocFiles(c.session.index).set(path, { kind: "text" });
     if (random() < 0.3) { continue; }
     const body = c.session.openDoc(path).getText("body");
     body.insert(Math.floor(random() * (body.length + 1)), `${i} `);

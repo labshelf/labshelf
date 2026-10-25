@@ -8,7 +8,7 @@ const mockCreate = jest.fn();
 jest.mock("../../src/platform", () => ({ bx: { tabs: { create: (options: unknown) => mockCreate(options) } } }));
 
 import { openBrowserRelayAccountStore, updateOwnRelayOnStart } from "../../src/relay";
-import { relayAccountSlot } from "../../src/relay/relayAccountSecrets";
+import { createRelayAccountSlot } from "../../src/relay/browserRelayAccountStore";
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } satisfies ILogger;
 const account: RelayAccount = {
@@ -19,7 +19,7 @@ const realFetch = globalThis.fetch;
 
 async function connectedWith(refreshToken: string): Promise<void> {
   await openBrowserRelayAccountStore(logger).save(account);
-  await relayAccountSlot("tokens").store(JSON.stringify({ accessToken: "at-old", refreshToken, expiresAt: 0 }));
+  await createRelayAccountSlot("tokens").store(JSON.stringify({ accessToken: "at-old", refreshToken, expiresAt: 0 }));
 }
 
 beforeAll(() => {

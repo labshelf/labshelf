@@ -1,6 +1,6 @@
 // Signs the owner in to Cloudflare in a browser tab and stores the tokens it yields.
 import {
-  exchangeAuthorizationCode, readAuthorizationCode, startCloudflareAuthorization, storeCloudflareTokens,
+  fetchCloudflareTokens, readAuthorizationCode, startCloudflareAuthorization, writeCloudflareTokens,
   type ILogger, type RelayAccountStore,
 } from "@labshelf/core";
 import { bx } from "../platform";
@@ -24,8 +24,8 @@ export async function signInInTab({ store, fetch, logger, signal }: SignInInTabO
     if (tab.id === undefined) { throw new Error("the browser opened the Cloudflare sign-in tab without an id"); }
     const redirectUrl = await watchRedirectTab(tab.id, logger, signal);
     const code = readAuthorizationCode(redirectUrl, state);
-    const tokens = await exchangeAuthorizationCode({ code, verifier, fetch, logger, now: Date.now });
-    await storeCloudflareTokens(store.tokens, tokens);
+    const tokens = await fetchCloudflareTokens({ code, verifier, fetch, logger, now: Date.now });
+    await writeCloudflareTokens(store.tokens, tokens);
     await logger.log("INFO", LOG_MODULE, "Signed in to Cloudflare");
   } catch (error) {
     if (error instanceof RelaySignInCancelledError) {

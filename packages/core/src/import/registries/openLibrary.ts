@@ -1,7 +1,7 @@
 /** Looks up OpenLibrary books by ISBN. */
 import { extractYear } from "../metadata/index.js";
 import { fetchJson, type RegistryEnv } from "./http.js";
-import type { RegistryRecord } from "./registryMetadata.js";
+import type { RegistryEntry } from "./registryMetadata.js";
 
 interface OpenLibraryBook {
   title?: string;
@@ -17,7 +17,7 @@ interface OpenLibraryBook {
  * Looks up a book by ISBN through OpenLibrary.
  * @returns Book metadata, or undefined.
  */
-export async function openLibraryByIsbn(env: RegistryEnv, isbn: string): Promise<RegistryRecord | undefined> {
+export async function openLibraryByIsbn(env: RegistryEnv, isbn: string): Promise<RegistryEntry | undefined> {
   const key = `ISBN:${isbn}`;
   const payload = await fetchJson<Record<string, OpenLibraryBook>>(
     env,

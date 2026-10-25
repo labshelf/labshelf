@@ -1,6 +1,6 @@
 /** Reads `\newcommand`-style definitions and `\DeclareMathOperator` into macros MathJax can load. */
 import type { MacroFact } from "../facts.js";
-import { readDelimited, skipSpace } from "./delimited.js";
+import { readDelimited, findSpaceEnd } from "./delimited.js";
 import type { ScanContext } from "./scanContext.js";
 
 export const MACRO_COMMANDS: ReadonlySet<string> = new Set([
@@ -24,20 +24,20 @@ function readName(text: string, at: number): { name: string; next: number } | un
 
 export function readMacro(ctx: ScanContext, command: string, from: number, after: number, starred: boolean): MacroFact | undefined {
   const { text } = ctx;
-  const named = readName(text, skipSpace(text, after));
+  const named = readName(text, findSpaceEnd(text, after));
   if (!named) { return undefined; }
-  let at = skipSpace(text, named.next);
+  let at = findSpaceEnd(text, named.next);
   let argCount = 0;
   let defaultArg: string | undefined;
   if (command !== "DeclareMathOperator") {
     const count = readDelimited(text, at, "[");
     if (count && /^\s*[0-9]\s*$/.test(text.slice(count.start, count.end))) {
       argCount = Number(text.slice(count.start, count.end));
-      at = skipSpace(text, count.next);
+      at = findSpaceEnd(text, count.next);
       const fallback = readDelimited(text, at, "[");
       if (fallback) {
         defaultArg = text.slice(fallback.start, fallback.end);
-        at = skipSpace(text, fallback.next);
+        at = findSpaceEnd(text, fallback.next);
       }
     }
   }

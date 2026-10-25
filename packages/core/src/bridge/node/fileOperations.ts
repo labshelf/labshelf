@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { LocalStat } from "../../ports/index.js";
-import { libraryLayout } from "../../library/index.js";
+import { createLibraryLayout } from "../../library/index.js";
 import { countPaperFolders, writeSyncedFile } from "../../library/node/index.js";
 import { BridgeError } from "../bridgeError.js";
 import type { BridgeResults } from "../protocol.js";
@@ -70,7 +70,7 @@ export class LibraryFileOperations {
   async writeFile(relative: string, content: Uint8Array): Promise<void> {
     await this.resolve(relative);
     const parent = await this.parentOf(relative);
-    const tmpDir = await resolveInLibrary(this.root, libraryLayout("", path.posix.join).tmpDir());
+    const tmpDir = await resolveInLibrary(this.root, createLibraryLayout("", path.posix.join).tmpDir());
     await fs.mkdir(tmpDir, { recursive: true });
     await assertInLibrary(parent.realRoot, tmpDir);
     await fs.mkdir(parent.realParent, { recursive: true });

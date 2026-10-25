@@ -3,9 +3,9 @@ import * as path from "node:path";
 
 import { Logger } from "../../logging/index.js";
 import { FileLogSink } from "../../logging/node/index.js";
-import { deviceLocalLayout, readSharedLibraryRoot, sharedConfigPath, stateDir, updateSharedConfig } from "../../library/node/index.js";
+import { createDeviceLocalLayout, readSharedLibraryRoot, resolveSharedConfigPath, resolveDeviceStateDir, updateSharedConfig } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { changedEvents } from "../changedEvents.js";
+import { createChangedEvents } from "../createChangedEvents.js";
 import { encodeFrame, FrameDecoder } from "../framing.js";
 import type { HostMessage } from "../protocol.js";
 import { LibraryFileOperations } from "./fileOperations.js";
@@ -21,7 +21,7 @@ export interface BridgeHostOptions {
 }
 
 function hostLogger(root: string | undefined, env: NodeJS.ProcessEnv): ILogger {
-  const logsDir = root ? deviceLocalLayout(root, env).logsDir : path.join(stateDir(env), "logs");
+  const logsDir = root ? createDeviceLocalLayout(root, env).logsDir : path.join(resolveDeviceStateDir(env), "logs");
   return new Logger([new FileLogSink(path.join(logsDir, "bridge.log"))]);
 }
 
@@ -29,7 +29,7 @@ function hostLogger(root: string | undefined, env: NodeJS.ProcessEnv): ILogger {
 export async function runBridgeHost(options: BridgeHostOptions = {}): Promise<void> {
   // PLATFORM: stdout carries the Native Messaging frames; anything else written to it breaks the connection.
   const { input = process.stdin, output = process.stdout, env = process.env, watchDebounceMs = 300 } = options;
-  const configFile = options.configFile ?? sharedConfigPath(env);
+  const configFile = options.configFile ?? resolveSharedConfigPath(env);
   const root = await readSharedLibraryRoot(configFile);
   const logger = hostLogger(root, env);
   await logger.log("INFO", "bridge", "Host started", { libraryRoot: root ?? null });
@@ -49,7 +49,7 @@ export async function runBridgeHost(options: BridgeHostOptions = {}): Promise<vo
   };
   input.once("end", stop);
   const onChanged = (paths: string[]): void => {
-    for (const event of changedEvents(paths)) send(event).catch(logFailure("changed"));
+    for (const event of createChangedEvents(paths)) send(event).catch(logFailure("changed"));
   };
   let stopWatching = root ? watchLibrary(root, onChanged, logger, watchDebounceMs) : undefined;
   const openLibrary = async (chosen: string): Promise<LibraryFileOperations> => {

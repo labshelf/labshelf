@@ -6,7 +6,7 @@ import type { LocatedProblem } from "../../../latex/build/index.js";
 import { MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION, type ChangedPage } from "../../index.js";
 
 import type { HelperSend } from "../handlers/index.js";
-import { diffPages } from "../diffPages.js";
+import { comparePages } from "../comparePages.js";
 import { HelperProjectError } from "../projects/index.js";
 
 /** The hashes of the pages last sent for one project; the next `pages` carries only the pages that differ. */
@@ -21,7 +21,7 @@ export async function sendPages(id: string, pdfPath: string, problems: LocatedPr
   const pdfSha256 = createHash("sha256").update(bytes).digest("hex");
   const diff = sent.pdfSha256 === pdfSha256
     ? { pageCount: sent.hashes.length, hashes: sent.hashes, changed: [] }
-    : await diffPages(sent.hashes, bytes);
+    : await comparePages(sent.hashes, bytes);
   let offset = 0;
   const changed = diff.changed.map(({ index, bytes: page }): ChangedPage => {
     const entry = { index, offset, length: page.length };

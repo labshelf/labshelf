@@ -8,7 +8,7 @@ const CHARS_PER_TOKEN = 4;
  *
  * @returns Estimated token count, rounded up.
  */
-export function estimateTokens(text: string): number {
+export function countTokens(text: string): number {
   if (!text) return 0;
   return Math.ceil(text.length / CHARS_PER_TOKEN);
 }
@@ -18,6 +18,6 @@ export function estimateTokens(text: string): number {
  *
  * @returns Character count corresponding to maxTokens.
  */
-export function charsForTokenBudget(maxTokens: number): number {
+export function deriveCharsForTokenBudget(maxTokens: number): number {
   return Math.max(1, Math.floor(maxTokens * CHARS_PER_TOKEN));
 }

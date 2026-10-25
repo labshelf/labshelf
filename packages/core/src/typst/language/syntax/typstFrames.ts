@@ -24,7 +24,7 @@ export interface TypstFrame {
 export interface TypstWalkEvents {
   /** An identifier in code; `topLevel` is false inside any bracket. */
   ident?(name: string, from: number, to: number, topLevel: boolean): void;
-  /** A closed string literal in code: `from`/`to` bound its content; `call` as in `stringCall`. */
+  /** A closed string literal in code: `from`/`to` bound its content; `call` as in `findStringCall`. */
   string?(content: string, from: number, to: number, call: string | undefined): void;
   /** A `<name>` label in markup: `from`/`to` bound the name. */
   label?(name: string, from: number, to: number): void;
@@ -59,7 +59,7 @@ export function openEmbed(): TypstFrame {
 }
 
 /** Pops the top frame, whose closer the walk has just consumed, and lets a `#` expression around it go on or end. */
-export function popFrame(w: TypstWalk, closer: string): void {
+export function removeTopFrame(w: TypstWalk, closer: string): void {
   w.stack.pop();
   const parent = w.stack[w.stack.length - 1];
   if (!parent?.embed || parent.embed === "statement") { return; }
@@ -72,7 +72,7 @@ export function popFrame(w: TypstWalk, closer: string): void {
 const isFirstArgument = (frame: TypstFrame): boolean => frame.args === 0 && !frame.named;
 
 /** The call a string at the top of the stack is the first argument of, looking through an array literal. */
-export function stringCall(stack: readonly TypstFrame[]): string | undefined {
+export function findStringCall(stack: readonly TypstFrame[]): string | undefined {
   const top = stack[stack.length - 1];
   if (top?.callee !== undefined) { return isFirstArgument(top) ? top.callee : undefined; }
   const parent = stack[stack.length - 2];
@@ -81,7 +81,7 @@ export function stringCall(stack: readonly TypstFrame[]): string | undefined {
 }
 
 /** The innermost call whose parentheses are open, without crossing out of code. */
-export function innermostCall(stack: readonly TypstFrame[]): { callee: string; given: string[] } | undefined {
+export function findInnermostCall(stack: readonly TypstFrame[]): { callee: string; given: string[] } | undefined {
   for (let k = stack.length - 1; k >= 0; k--) {
     const frame = stack[k]!;
     if (frame.mode !== "code") { return undefined; }

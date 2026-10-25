@@ -1,5 +1,5 @@
 // Adapts the helper's two transports, native messaging and the loopback WebSocket, to one message channel.
-import { decodeSocketMessage, encodeSocketMessage } from "@labshelf/core/helper";
+import { decodeConnectionMessage, encodeConnectionMessage } from "@labshelf/core/helper";
 import type { NativePort } from "../../../platform";
 
 /** A message in, a message out: `payload` carries the raw bytes that follow a socket envelope and is empty on the native port. */
@@ -11,13 +11,13 @@ export interface HelperChannel {
 }
 
 export type HelperPortFactory = () => NativePort;
-export type HelperWebSocketConstructor = new (url: string) => Pick<
+export type HelperConnectionConstructor = new (url: string) => Pick<
   WebSocket, "binaryType" | "send" | "close" | "onopen" | "onmessage" | "onclose" | "onerror"
 >;
 
 const NO_PAYLOAD = new Uint8Array(0);
 
-export function nativeChannel(port: NativePort): HelperChannel {
+export function createNativeChannel(port: NativePort): HelperChannel {
   return {
     post: (message) => port.post(message),
     onMessage: (listener) => port.onMessage((frame) => listener(frame, NO_PAYLOAD)),
@@ -27,7 +27,7 @@ export function nativeChannel(port: NativePort): HelperChannel {
 }
 
 /** Resolves once the socket is open; rejects with the close reason when it closes first. */
-export function openSocketChannel(url: string, Socket: HelperWebSocketConstructor): Promise<HelperChannel> {
+export function openConnectionChannel(url: string, Socket: HelperConnectionConstructor): Promise<HelperChannel> {
   return new Promise((resolve, reject) => {
     const socket = new Socket(url);
     socket.binaryType = "arraybuffer";
@@ -38,7 +38,7 @@ export function openSocketChannel(url: string, Socket: HelperWebSocketConstructo
     socket.onmessage = (event: MessageEvent) => {
       if (!(event.data instanceof ArrayBuffer)) { messageListener("a text frame", NO_PAYLOAD); return; }
       try {
-        const decoded = decodeSocketMessage(new Uint8Array(event.data));
+        const decoded = decodeConnectionMessage(new Uint8Array(event.data));
         messageListener(decoded.envelope, decoded.payload);
       } catch (error) {
         messageListener(error instanceof Error ? error.message : String(error), NO_PAYLOAD);
@@ -50,7 +50,7 @@ export function openSocketChannel(url: string, Socket: HelperWebSocketConstructo
     socket.onopen = () => {
       opened = true;
       resolve({
-        post: (message, payload) => socket.send(encodeSocketMessage(message, payload) as BufferSource),
+        post: (message, payload) => socket.send(encodeConnectionMessage(message, payload) as BufferSource),
         onMessage: (listener) => { messageListener = listener; },
         onClose: (listener) => { closeListener = listener; },
         close: () => socket.close(),

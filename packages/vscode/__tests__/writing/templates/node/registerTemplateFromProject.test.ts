@@ -1,22 +1,22 @@
 // Tests Save project as template: the engine of a LaTeX project without one, and the license question.
 import * as vscode from "vscode";
 
-import { saveProjectAsTemplate } from "@labshelf/core/node";
+import { writeProjectAsTemplate } from "@labshelf/core/node";
 import { ensureToolchain } from "../../../../src/writing/build/node";
-import { registerSaveProjectCommand } from "../../../../src/writing/templates/node/registerTemplateFromProject";
+import { registerProjectTemplateCommand } from "../../../../src/writing/templates/node/registerTemplateFromProject";
 import { commandHandler, fakeHost, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
-jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), saveProjectAsTemplate: jest.fn() }));
+jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), writeProjectAsTemplate: jest.fn() }));
 jest.mock("../../../../src/writing/build/node", () => ({ ensureToolchain: jest.fn() }));
 
-const save = saveProjectAsTemplate as jest.Mock;
+const save = writeProjectAsTemplate as jest.Mock;
 const toolchain = ensureToolchain as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 
 function setup() {
   const host = fakeHost();
   const onSaved = jest.fn();
-  registerSaveProjectCommand({
+  registerProjectTemplateCommand({
     context: { subscriptions: [], globalStorageUri: vscode.Uri.file("/storage") } as never,
     host, tex: {} as never, projects: fakeProjects() as never, onSaved,
   });

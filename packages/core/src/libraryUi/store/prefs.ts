@@ -2,14 +2,14 @@
  * Declares the library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style, Details pins),
  * the port it persists them through, and `sanitizePrefs`, which turns whatever storage returns into valid prefs.
  */
-import { COLUMN_KEYS, DEFAULT_COLUMNS, type ColumnKey } from "./columns.js";
-import type { SortDir, SortKey } from "./viewState.js";
+import { COLUMN_KEYS, DEFAULT_COLUMNS, type ListColumn } from "./columns.js";
+import type { SortDir, SortColumn } from "./viewState.js";
 
 export const DETAIL_TABS = ["details", "annotations", "notes", "related"] as const;
-export type DetailTab = (typeof DETAIL_TABS)[number];
+export type DetailsTab = (typeof DETAIL_TABS)[number];
 
 export const CITE_FORMATS = ["bibtex", "apa", "mla", "chicago", "inText"] as const;
-export type CiteFormat = (typeof CITE_FORMATS)[number];
+export type CitationFormat = (typeof CITE_FORMATS)[number];
 
 /** An item the user pinned as a tab in the Details surface. */
 export interface PinnedItem {
@@ -18,14 +18,14 @@ export interface PinnedItem {
 }
 
 export interface LibraryUiPrefs {
-  sortKey: SortKey;
+  sortKey: SortColumn;
   sortDir: SortDir;
-  columns: ColumnKey[];
+  columns: ListColumn[];
   sidebarWidth: number;
   sidebarCollapsed: boolean;
   secCollapsed: Record<string, boolean>;
-  detailTab: DetailTab;
-  citeFormat: CiteFormat;
+  detailTab: DetailsTab;
+  citeFormat: CitationFormat;
   detailsPins: PinnedItem[];
 }
 
@@ -60,14 +60,14 @@ export const DEFAULT_PREFS: LibraryUiPrefs = {
   detailsPins: [],
 };
 
-const SORT_KEYS: readonly SortKey[] = ["title", "creator", "venue", "year", "lastRead", "status"];
+const SORT_KEYS: readonly SortColumn[] = ["title", "creator", "venue", "year", "lastRead", "status"];
 
 function isBoolMap(v: unknown): v is Record<string, boolean> {
   return !!v && typeof v === "object" && !Array.isArray(v) && Object.values(v as object).every((x) => typeof x === "boolean");
 }
 
 // Unknown names and repeats drop out and the rest take the fixed column order; an empty list is a valid choice.
-function sanitizeColumns(v: unknown): ColumnKey[] {
+function sanitizeColumns(v: unknown): ListColumn[] {
   return Array.isArray(v) ? COLUMN_KEYS.filter((key) => v.includes(key)) : [...DEFAULT_COLUMNS];
 }
 
@@ -86,7 +86,7 @@ function sanitizePins(v: unknown): PinnedItem[] {
 }
 
 /** Validates each field; a missing or corrupt one falls back to its default and widths are clamped. */
-export function sanitizePrefs(raw: unknown): LibraryUiPrefs {
+export function normalizePrefs(raw: unknown): LibraryUiPrefs {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const d = DEFAULT_PREFS;
   // A width of 0 or less stands for "never resized".

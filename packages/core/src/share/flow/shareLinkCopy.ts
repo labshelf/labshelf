@@ -1,7 +1,7 @@
 // Words the messages and confirmations every app shows for share links.
 import type { OpenShareError } from "../openShare.js";
-import type { SharedImportSummary } from "../importSharedPapers.js";
-import { errorMessage } from "../../logging/index.js";
+import type { SharedImportOutcome } from "../importSharedPapers.js";
+import { formatError } from "../../logging/index.js";
 import type { ShareFolderStage } from "./shareFolder.js";
 
 export const OPEN_SHARE_FAILURE: Record<OpenShareError, string> = {
@@ -11,11 +11,11 @@ export const OPEN_SHARE_FAILURE: Record<OpenShareError, string> = {
   network: "LabShelf could not reach the relay that serves this share.",
 };
 
-export function refusedShareLinkText(parseError: string): string {
+export function describeRefusedShareLink(parseError: string): string {
   return `${OPEN_SHARE_FAILURE.malformedLink} (${parseError})`;
 }
 
-export function shareImportSummaryText(summary: SharedImportSummary, folderName: string, withAnnotations: boolean): string {
+export function describeSharedImport(summary: SharedImportOutcome, folderName: string, withAnnotations: boolean): string {
   const added = summary.added.length;
   const parts = [added > 0 ? `Imported ${added} of the shared papers into "${folderName}".` : "Every shared paper is already in your library."];
   if (added > 0 && summary.duplicates.length > 0) { parts.push(`${summary.duplicates.length} already in your library.`); }
@@ -25,10 +25,10 @@ export function shareImportSummaryText(summary: SharedImportSummary, folderName:
   return parts.join(" ");
 }
 
-export interface ShareConfirmText { message: string; detail: string }
+export interface ShareNoticeText { message: string; detail: string }
 
 /** The notice before a share; its two choices are `SHARE_WITH_ANNOTATIONS` and `SHARE_WITHOUT_ANNOTATIONS`. */
-export function shareRightsNotice(folder: { label: string; count: number }): ShareConfirmText {
+export function describeShareRightsNotice(folder: { label: string; count: number }): ShareNoticeText {
   return {
     message: "You are responsible for having the right to share these papers.",
     detail: `Anyone with the link can read the ${folder.count} ${folder.count === 1 ? "paper" : "papers"} of "${folder.label}" and download their PDFs, until you revoke it.`,
@@ -38,7 +38,7 @@ export function shareRightsNotice(folder: { label: string; count: number }): Sha
 export const SHARE_WITH_ANNOTATIONS = "Share with my annotations";
 export const SHARE_WITHOUT_ANNOTATIONS = "Share without annotations";
 
-export function revokeShareConfirm(folder: string): ShareConfirmText {
+export function describeRevokeShareNotice(folder: string): ShareNoticeText {
   return {
     message: `Revoke the link to "${folder}"?`,
     detail: "The shared papers are deleted from your relay. Anyone who has the link can no longer open it, within about a minute.",
@@ -48,14 +48,14 @@ export function revokeShareConfirm(folder: string): ShareConfirmText {
 export const SHARE_STAGE_TEXT: Record<ShareFolderStage, string> = { reading: "reading papers…", encrypting: "encrypting…", uploading: "uploading…" };
 
 /** `place` is where the list of shares lives: "this device" or "this browser". */
-export function revokeResultText(folder: string, revoked: boolean, place: string): string {
+export function describeRevokeShareOutcome(folder: string, revoked: boolean, place: string): string {
   return revoked ? `Revoked the link to "${folder}".` : `The link to "${folder}" is no longer listed on ${place}.`;
 }
 
-export function copiedLinkText(folder: string): string {
+export function describeCopiedShareLink(folder: string): string {
   return `Copied the link to "${folder}".`;
 }
 
-export function shareFailureText(action: string, error: unknown): string {
-  return `LabShelf could not ${action}: ${errorMessage(error)}`;
+export function describeShareFailure(action: string, error: unknown): string {
+  return `LabShelf could not ${action}: ${formatError(error)}`;
 }

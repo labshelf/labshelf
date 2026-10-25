@@ -1,6 +1,6 @@
 /** Lists the document-body definitions that come before a section in source order, following the includes that lead to it. */
 import { resolveIncludePath, scanLatexSource } from "../../source/index.js";
-import { collectDefinitions } from "./collectMacros.js";
+import { extractDefinitions } from "./collectMacros.js";
 
 export interface DefinitionsBeforeSectionInput {
   /** Project-root-relative path to text. */
@@ -35,7 +35,7 @@ function walk(file: string, input: DefinitionsBeforeSectionInput, out: string[],
   let cursor = begin;
   const flush = (to: number): void => {
     const body = piece(lines, cursor, to);
-    out.push(...collectDefinitions(body, scanLatexSource(body)));
+    out.push(...extractDefinitions(body, scanLatexSource(body)));
   };
   for (const include of includes) {
     const target = includeTarget(include.path, input.sources);
@@ -51,7 +51,7 @@ function walk(file: string, input: DefinitionsBeforeSectionInput, out: string[],
   return isEdited;
 }
 
-export function definitionsBeforeSection(input: DefinitionsBeforeSectionInput): string[] {
+export function extractDefinitionsBeforeSection(input: DefinitionsBeforeSectionInput): string[] {
   if (!(input.main in input.sources)) { return []; }
   const out: string[] = [];
   walk(input.main, input, out, new Set([input.main]));

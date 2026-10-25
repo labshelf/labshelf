@@ -1,10 +1,10 @@
 // Looks up OpenAlex's record for a DOI or work id, proposing its publisher and repository copies and learning `pmcid` and `arxivId`.
-import { arxivIdFromUrl, normalizePmcid, pmcidFromUrl } from "../../identifiers/index.js";
-import { noteVersion, versionFromOaLabel } from "./candidateVersion.js";
-import { lookupJson } from "./timedFetch.js";
+import { extractArxivIdentifierFromUrl, normalizePmcid, extractPmcidFromUrl } from "../../identifiers/index.js";
+import { addVersion, deriveVersionFromOaLabel } from "./deriveCandidateVersion.js";
+import { fetchResolverJson } from "./timedFetch.js";
 import type { PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
-import { acceptRecord } from "./matchPaper.js";
-import { learnIds } from "./learnIds.js";
+import { matchWork } from "./matchPaper.js";
+import { addIdentifiers } from "./addIdentifiers.js";
 
 // TRAP: only the free single-work lookup is used; OpenAlex searches cost credits.
 
@@ -43,28 +43,28 @@ export const openalexResolver: PdfResolver = {
  * @returns Publisher and repository copies, none when the record is missing or is another paper's
  */
 export async function openAlexCopies(ctx: ResolveContext, env: ResolverEnv, workRef: string): Promise<string[]> {
-  const work = await lookupJson<OpenAlexWork>(
+  const work = await fetchResolverJson<OpenAlexWork>(
     env,
     `https://api.openalex.org/works/${workRef}?select=${SELECT}&mailto=${encodeURIComponent(ctx.contactEmail)}`,
   );
   if (!work) return [];
   const authors = (work.authorships ?? []).map((a) => a.author?.display_name ?? "").filter(Boolean);
   const record = { title: work.title ?? undefined, year: work.publication_year ?? undefined, ...(authors.length ? { authors } : {}) };
-  if (!acceptRecord("openalex", ctx, env, record)) return [];
+  if (!matchWork("openalex", ctx, env, record)) return [];
   const locations = [work.best_oa_location, ...(work.locations ?? [])].filter((l): l is OpenAlexLocation => Boolean(l));
   learnIdentifiers(ctx, work, locations);
   for (const loc of locations) {
-    const version = versionFromOaLabel(loc.version, isPublisherSource(loc));
-    for (const url of [loc.pdf_url, loc.landing_page_url]) if (url) noteVersion(ctx, url, version);
+    const version = deriveVersionFromOaLabel(loc.version, isPublisherSource(loc));
+    for (const url of [loc.pdf_url, loc.landing_page_url]) if (url) addVersion(ctx, url, version);
   }
   return copiesOf(work, locations);
 }
 
 function learnIdentifiers(ctx: ResolveContext, work: OpenAlexWork, locations: OpenAlexLocation[]): void {
   const urls = locations.flatMap((l) => [l.landing_page_url, l.pdf_url]).filter((u): u is string => Boolean(u));
-  learnIds(ctx, {
-    pmcid: normalizePmcid(work.ids?.pmcid ?? undefined) ?? urls.map(pmcidFromUrl).find(Boolean),
-    arxivId: urls.map(arxivIdFromUrl).find(Boolean),
+  addIdentifiers(ctx, {
+    pmcid: normalizePmcid(work.ids?.pmcid ?? undefined) ?? urls.map(extractPmcidFromUrl).find(Boolean),
+    arxivId: urls.map(extractArxivIdentifierFromUrl).find(Boolean),
   });
 }
 
@@ -76,7 +76,7 @@ function isPublisherSource(loc: OpenAlexLocation): boolean {
 
 // PMC and arXiv copies are left to the resolvers that know how to fetch them.
 function isHandledElsewhere(url: string): boolean {
-  return pmcidFromUrl(url) !== undefined || arxivIdFromUrl(url) !== undefined;
+  return extractPmcidFromUrl(url) !== undefined || extractArxivIdentifierFromUrl(url) !== undefined;
 }
 
 function copiesOf(work: OpenAlexWork, locations: OpenAlexLocation[]): string[] {

@@ -1,6 +1,6 @@
 // Implements the library file system over a folder on disk that the user picked in the browser.
 import { posixPathOps, type LocalStat } from "@labshelf/core";
-import { ByteBackedFileSystem } from "../bytesFileSystem";
+import { BytesFileSystem } from "../bytesFileSystem";
 
 type Entry = FileSystemDirectoryHandle | FileSystemFileHandle;
 
@@ -8,7 +8,7 @@ const segments = (path: string): string[] => path.split("/").filter((name) => na
 const isMissing = (error: unknown): boolean =>
   ["NotFoundError", "TypeMismatchError"].includes((error as { name?: unknown } | null)?.name as string);
 
-export class DirectoryFileSystem extends ByteBackedFileSystem {
+export class DirFileSystem extends BytesFileSystem {
   /** @param root resolves the picked folder each call, and throws when the browser does not let LabShelf use it */
   constructor(private readonly root: () => Promise<FileSystemDirectoryHandle>) {
     super();

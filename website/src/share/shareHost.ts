@@ -1,6 +1,6 @@
 // Answers the library UI from an opened share: reads are served from the manifest, and every edit is refused.
 import {
-  errorMessage, formatAnnotationsMarkdown, paperDetailsOf, PDF_FILE,
+  formatError, formatAnnotationsMarkdown, derivePaperDetails, PDF_FILE,
   type HostEndpoint, type HostToUi, type ILogger, type UiToHost,
 } from "@labshelf/core";
 
@@ -38,7 +38,7 @@ function answer(ports: ShareHostPorts, m: UiToHost, post: (m: HostToUi) => void,
     case "paper.details": {
       const { pdf, annotations = [] } = known(m.id);
       const file = pdf ? { size: pdf.size, relPath: `${folderOf(m.id)}/${PDF_FILE}` } : null;
-      post({ type: "details", id: m.id, details: paperDetailsOf({ annotations }, file) });
+      post({ type: "details", id: m.id, details: derivePaperDetails({ annotations }, file) });
       return;
     }
     case "paper.files": {
@@ -71,7 +71,7 @@ async function copy(post: (m: HostToUi) => void, text: string, label: string | u
     await navigator.clipboard.writeText(text);
     post({ type: "notice", kind: "ok", text: label ? `Copied ${label}` : "Copied" });
   } catch (err) {
-    post({ type: "notice", kind: "error", text: `Could not copy: ${errorMessage(err)}` });
+    post({ type: "notice", kind: "error", text: `Could not copy: ${formatError(err)}` });
   }
 }
 
@@ -82,7 +82,7 @@ export function attachShareHost(endpoint: HostEndpoint, ports: ShareHostPorts): 
     try {
       answer(ports, m, (reply) => endpoint.post(reply), openedAt);
     } catch (err) {
-      endpoint.post({ type: "notice", kind: "error", text: errorMessage(err) });
+      endpoint.post({ type: "notice", kind: "error", text: formatError(err) });
       void ports.log.error(MODULE, err, { type: m.type });
     }
   });

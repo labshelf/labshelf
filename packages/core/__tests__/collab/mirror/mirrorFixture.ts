@@ -1,11 +1,11 @@
 /** Opens a project mirror on a project folder over a share session, alone or on a fake relay, for the tests of the disk mirror. */
-import { createProjectIndex } from "../../../src/collab/model/index";
-import { startProjectMirror, type MirrorDisk, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
-import { nodeCollabStorage } from "../../../src/collab/node/index";
+import { createShareIndexDoc } from "../../../src/collab/model/index";
+import { startProjectMirror, type MirrorFileSystem, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
+import { createNodeCollabStorage } from "../../../src/collab/node/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { openCollabStore, type CollabStore } from "../../../src/collab/deviceState/index";
 import { deriveRelayToken } from "../../../src/collab/shareKey/index";
-import { attachBlobs, type BlobExchange } from "../../../src/collab/doc/attachBlobs";
+import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/attachShareBlobs";
 import { attachRelaySync } from "../../../src/collab/relays/relaySync";
 import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
 import { createRelayTransport, type PeerTransport } from "../../../src/collab/transport/index";
@@ -25,7 +25,7 @@ export interface MirrorFixture {
   diskChanges: string[];
   store: CollabStore;
   session: ShareSession;
-  blobs: BlobExchange;
+  blobs: ShareBlobExchange;
   mirror: ProjectMirror;
   logger: FakeLogger;
   writeRecords: ReturnType<MirrorFiles["records"]>;
@@ -49,7 +49,7 @@ export interface FixtureOptions {
 }
 
 /** The disk without its watcher, since tests call `changed`, recording every write and delete that reaches it. */
-function recordingDisk(disk: MirrorDisk, changes: string[]): MirrorDisk {
+function recordingDisk(disk: MirrorFileSystem, changes: string[]): MirrorFileSystem {
   return {
     read: (file, stableMs) => disk.read(file, stableMs),
     list: () => disk.list(),
@@ -64,7 +64,7 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
   const folder = options.folder ?? await files.newFolder("mirror-folder");
   const stateDir = options.stateDir ?? await tempDir("mirror-state");
   const logger = fakeLogger();
-  const store = await openCollabStore({ storage: nodeCollabStorage({ dir: stateDir, shareId: SHARE_ID }), logger });
+  const store = await openCollabStore({ storage: createNodeCollabStorage({ dir: stateDir, shareId: SHARE_ID }), logger });
   const relay = options.relay ? createRelayTransport({
     relayUrl: RELAY_URL, shareId: SHARE_ID, relayToken: await deriveRelayToken(SHARE_KEY), logger,
     socketFactory: options.relay.socketFactory, fetch: options.relay.fetch, scheduler: clock,
@@ -75,8 +75,8 @@ export async function openMirror(options: FixtureOptions = {}): Promise<MirrorFi
     index: store.index, createDoc: store.createDoc,
   });
   const relaySync = relay ? attachRelaySync(session, { relay, shareId: SHARE_ID, contentKey: await contentKey(), logger, scheduler: clock, isSnapshotWriter: () => true }) : undefined;
-  if (options.project !== false) { createProjectIndex(session.index); }
-  const blobs = attachBlobs(session, { contentKey: await contentKey(), getBlob: (hash) => store.blobs.get(hash), logger, scheduler: clock, skipPeer: () => false });
+  if (options.project !== false) { createShareIndexDoc(session.index); }
+  const blobs = attachShareBlobs(session, { contentKey: await contentKey(), getBlob: (hash) => store.blobs.get(hash), logger, scheduler: clock, skipPeer: () => false });
   const diskChanges: string[] = [];
   const writeRecords = files.records(folder, logger);
   const mirror = startProjectMirror({

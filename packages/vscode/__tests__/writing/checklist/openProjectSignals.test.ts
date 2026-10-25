@@ -5,7 +5,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ChecklistSignals } from "@labshelf/core";
-import { OpenProjectSignals, signalsReader } from "../../../src/writing/checklist";
+import { OpenProjectSignals, createSignalsReader } from "../../../src/writing/checklist";
 import type { ReadyProject } from "../../../src/writing/figures";
 import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
@@ -206,7 +206,7 @@ describe("OpenProjectSignals with the real signal reader", () => {
     const main = path.join(folder, "main.tex");
     try {
       fs.writeFileSync(main, "\\documentclass{article}\n% TODO x\n\\begin{document}\\end{document}\n");
-      const { signals, save, changed } = setup(withPages(folder, undefined), signalsReader(fakeProjects()) as never);
+      const { signals, save, changed } = setup(withPages(folder, undefined), createSignalsReader(fakeProjects()) as never);
       await new Promise((resolve) => setTimeout(resolve, 200));
       expect(signals.current?.signals.todos).toHaveLength(1);
       changed.mockClear();

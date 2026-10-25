@@ -4,11 +4,11 @@
  */
 import * as vscode from "vscode";
 
-import { summarizeImport } from "@labshelf/core";
+import { countImportOutcomes } from "@labshelf/core";
 import type { ILogger, ImportOutcome, ImportProgress, MutationContext, PathOps } from "@labshelf/core";
 import type { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
 import { offerMetadataFetch } from "./fetchMetadata.js";
-import { queueTextLayers } from "./textLayerQueue.js";
+import { addTextLayerJobs } from "./textLayerQueue.js";
 
 const LIBRARY_VIEW_ID = "labshelf.library";
 
@@ -31,7 +31,7 @@ export async function importPapers(
   targetDir?: string,
 ): Promise<ImportOutcome[]> {
   const outcomes = await importWithProgress(services, uris, targetDir);
-  announceImport(outcomes);
+  reportImport(outcomes);
   const unconfirmed = outcomes.flatMap((outcome) => (outcome.status === "added" && outcome.needsReview ? [outcome.record] : []));
   await offerMetadataFetch(services.paperService, unconfirmed, services.logger);
   return outcomes;
@@ -61,7 +61,7 @@ export async function importWithProgress(
   targetDir?: string,
 ): Promise<ImportOutcome[]> {
   const outcomes = await runImport(services.importer, services.mutations.paths, uris, targetDir);
-  queueTextLayersOfAdded(services, outcomes);
+  addTextLayersOfAdded(services, outcomes);
   return outcomes;
 }
 
@@ -69,10 +69,10 @@ export async function importWithProgress(
  * Scanned papers gain their text layer after they appear: reading every page can take a minute, too long to hold an
  * import. With automatic OCR off they are still checked, so the list can flag them.
  */
-export function queueTextLayersOfAdded(services: Pick<ImportServices, "textLayers" | "logger">, outcomes: ImportOutcome[]): void {
+export function addTextLayersOfAdded(services: Pick<ImportServices, "textLayers" | "logger">, outcomes: ImportOutcome[]): void {
   const autoOcr = vscode.workspace.getConfiguration("labshelf").get<boolean>("ocr.makeSearchable", true);
   const added = outcomes.flatMap((outcome) => (outcome.status === "added" ? [outcome.record] : []));
-  void queueTextLayers(services.textLayers, added, { logger: services.logger, mode: autoOcr ? "ocr" : "check" });
+  void addTextLayerJobs(services.textLayers, added, { logger: services.logger, mode: autoOcr ? "ocr" : "check" });
 }
 
 function runImport(importer: PaperImporter, paths: PathOps, uris: vscode.Uri[], targetDir?: string): Thenable<ImportOutcome[]> {
@@ -95,8 +95,8 @@ function runImport(importer: PaperImporter, paths: PathOps, uris: vscode.Uri[], 
 }
 
 /** Shows the one import summary every app words the same way. */
-export function announceImport(outcomes: ImportOutcome[]): void {
-  const summary = summarizeImport(outcomes);
+export function reportImport(outcomes: ImportOutcome[]): void {
+  const summary = countImportOutcomes(outcomes);
   const show = summary.level === "warn" ? vscode.window.showWarningMessage : vscode.window.showInformationMessage;
   void show(`LabShelf: ${summary.text}`);
 }

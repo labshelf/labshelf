@@ -3,9 +3,9 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 
 import type { ImportOutcome, ImportProgress, PaperRecord } from '@labshelf/core';
-import { announceImport, describeStep, importPapers, importWithProgress } from '../../src/command/importProgress';
+import { reportImport, describeStep, importPapers, importWithProgress } from '../../src/command/importProgress';
 import type { ImportServices } from '../../src/command/importProgress';
-import { queueTextLayers } from '../../src/command/textLayerQueue';
+import { addTextLayerJobs } from '../../src/command/textLayerQueue';
 
 const paper = (title: string): PaperRecord => ({ id: title, title, path: `/lib/${title}`, citeKey: title, status: 'unread' });
 const added = (title: string, needsReview = false): ImportOutcome => ({ status: 'added', record: paper(title), needsReview, input: `/docs/${title}.pdf` });
@@ -63,14 +63,14 @@ describe('describeStep', () => {
   });
 });
 
-describe('announceImport', () => {
+describe('reportImport', () => {
   it('confirms a single import with the extracted title', () => {
-    announceImport([added('Attention Is All You Need')]);
+    reportImport([added('Attention Is All You Need')]);
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('LabShelf: Added "Attention Is All You Need"');
   });
 
   it('warns with the shared counts and the first error when something failed', () => {
-    announceImport([added('A'), { status: 'duplicate', existingId: 'x', input: '/d/x.pdf' }, { status: 'failed', error: 'Not a PDF file', input: '/d/r.pdf' }]);
+    reportImport([added('A'), { status: 'duplicate', existingId: 'x', input: '/d/x.pdf' }, { status: 'failed', error: 'Not a PDF file', input: '/d/r.pdf' }]);
     expect(vscode.window.showWarningMessage).toHaveBeenCalledWith('LabShelf: 1 added, 1 already in the library, 1 failed: Not a PDF file');
   });
 });
@@ -93,7 +93,7 @@ describe('importWithProgress — text layers after import', () => {
     const s = services([added('Scan'), { status: 'failed', error: 'x', input: '/d/y.pdf' }]);
     await importWithProgress(s, [vscode.Uri.file('/docs/scan.pdf')]);
     // Queueing nothing returns the queue's tail: everything queued so far is done.
-    await queueTextLayers(s.textLayers as never, []);
+    await addTextLayerJobs(s.textLayers as never, []);
     return s.textLayers;
   }
 

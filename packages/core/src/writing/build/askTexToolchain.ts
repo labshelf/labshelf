@@ -2,7 +2,7 @@
 import type { TexInstallKind } from "../../latex/toolchain/index.js";
 
 // The managed TeX install cannot be cancelled once it starts, so progress carries no abort signal.
-export interface TexSetupPrompt {
+export interface TexSetupAsk {
   /** Asks which LaTeX to install when none is found; undefined declines. */
   chooseInstall(): Promise<TexInstallKind | undefined>;
   /** Runs long TeX work (an install, a package) with visible progress. */

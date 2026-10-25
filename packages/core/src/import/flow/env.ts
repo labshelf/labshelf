@@ -28,6 +28,6 @@ export function pdfFetchOptions(env: NetworkImportEnv): PdfFetchOptions {
 }
 
 /** Registry lookups go out on the app's fetch and log their failures through the app's logger. */
-export function registryEnv(env: NetworkImportEnv): RegistryEnv {
+export function createRegistryEnv(env: NetworkImportEnv): RegistryEnv {
   return { fetch: env.download.fetch, logger: env.ctx.logger };
 }

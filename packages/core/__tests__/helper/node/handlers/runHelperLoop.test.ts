@@ -1,8 +1,8 @@
 import { PassThrough } from "node:stream";
 
 import type { HelperLogger } from "../../../../src/helper/node/log/index.js";
-import { answerHello, createDispatcher, runHelperLoop, type HelloAnswer } from "../../../../src/helper/node/handlers/index.js";
-import type { HelperSocket } from "../../../../src/helper/node/connection/index.js";
+import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer } from "../../../../src/helper/node/handlers/index.js";
+import type { HelperServer } from "../../../../src/helper/node/connection/index.js";
 import { createFrameWriter } from "../../../../src/helper/node/transport/index.js";
 import { decodeFrames, encodeFrame } from "../transport/frameCodec.js";
 import { PROTOCOL_VERSION } from "../../../../src/helper/index.js";
@@ -14,8 +14,8 @@ async function run(inputChunks: Buffer[], onVersionRejected?: () => void): Promi
   const input = new PassThrough();
   const written: Buffer[] = [];
   const send = createFrameWriter({ write: (chunk: Buffer) => written.push(chunk) }, logger);
-  const sockets: HelperSocket[] = [];
-  const dispatcher = createDispatcher({}, logger);
+  const sockets: HelperServer[] = [];
+  const dispatcher = createHelperAnswerer({}, logger);
   const answer: HelloAnswer = async (message, reply) => {
     const socket = await answerHello(message, reply, {
       helperVersion: "0.1.0", host: "vscode", texStatus: async () => ({ source: "none", complete: false }), logger, handle: dispatcher.handle,

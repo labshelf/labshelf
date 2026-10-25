@@ -3,8 +3,15 @@ import * as vscode from "vscode";
 
 import { countWords } from "@labshelf/core";
 import type { LatexProjectSources } from "./project/index.js";
-import { trailingDebounce } from "./debounce.js";
-import { wordCountTooltip, wordsLabel } from "./wordCountText.js";
+import { createTrailingDebounce } from "./debounce.js";
+
+function wordsLabel(count: number): string {
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "word" : "words"}`;
+}
+
+function wordCountTooltip(fileCount: number, mainFile: string): string {
+  return `Words in the whole project, counted from ${mainFile}. This file: ${wordsLabel(fileCount)}.`;
+}
 
 const REFRESH_DELAY_MS = 300;
 
@@ -29,7 +36,7 @@ export function registerWordCount(context: vscode.ExtensionContext, sources: Lat
     item.show();
   };
 
-  const refresh = trailingDebounce<string>(REFRESH_DELAY_MS, () => void update());
+  const refresh = createTrailingDebounce<string>(REFRESH_DELAY_MS, () => void update());
   const onSourcesChanged = (folder: string): void => {
     const active = vscode.window.activeTextEditor?.document;
     if (active && sources.projectOf(active.uri)?.folder === folder) { refresh.call(folder); }

@@ -2,8 +2,8 @@
  * Runs the paper actions that need no dialog. Each asks the host; status, tag and note changes and queued OCR also
  * show at once, before the host confirms them.
  */
-import type { PaperStatus } from "../../../../library/readingStatus/index.js";
-import { hasNoText, listPapersUnder } from "../../../viewModel/index.js";
+import type { ReadingStatus } from "../../../../library/readingStatus/index.js";
+import { hasMissingTextLayer, listPapersUnder } from "../../../viewModel/index.js";
 import { PAPERS_DIR } from "../../../../library/index.js";
 import type { UiContext } from "../../uiContext.js";
 
@@ -16,7 +16,7 @@ export function openSource(ctx: UiContext, project: string, file: string, line: 
   ctx.transport.post({ type: "project.openSource", project, file, line });
 }
 
-export function setPaperStatus(ctx: UiContext, ids: readonly string[], status: PaperStatus): void {
+export function setReadingStatus(ctx: UiContext, ids: readonly string[], status: ReadingStatus): void {
   const byId = new Map(ctx.store.get().papers.map((p) => [p.id, p]));
   const changed = ids.filter((id) => byId.has(id) && byId.get(id)!.status !== status);
   if (changed.length === 0) return;
@@ -29,25 +29,25 @@ export function splitTags(text: string): string[] {
   return text.split(",").map((s) => s.trim()).filter(Boolean);
 }
 
-export function changeTags(ctx: UiContext, ids: readonly string[], add: string[], remove: string[]): void {
+export function updateTags(ctx: UiContext, ids: readonly string[], add: string[], remove: string[]): void {
   if (ids.length === 0 || (add.length === 0 && remove.length === 0)) return;
   ctx.store.applyTags(ids, add, remove);
   ctx.transport.post({ type: "paper.setTags", ids: [...ids], add, remove });
 }
 
-export function saveNote(ctx: UiContext, id: string, note: string): void {
+export function writeNote(ctx: UiContext, id: string, note: string): void {
   ctx.store.applyNote(id, note);
   ctx.transport.post({ type: "paper.setNote", id, note });
 }
 
 /** The papers among `ids` that OCR could fix and that are not queued yet. */
-export function fixableIds(ctx: UiContext, ids: readonly string[]): string[] {
+export function findFixablePapers(ctx: UiContext, ids: readonly string[]): string[] {
   const s = ctx.store.get();
   const wanted = new Set(ids);
-  return listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).filter((p) => wanted.has(p.id) && hasNoText(p) && !s.jobs[p.id]).map((p) => p.id);
+  return listPapersUnder(s.papers, PAPERS_DIR, s.pdfDirs).filter((p) => wanted.has(p.id) && hasMissingTextLayer(p) && !s.jobs[p.id]).map((p) => p.id);
 }
 
-export function makeSearchable(ctx: UiContext, ids: readonly string[]): void {
+export function createTextLayer(ctx: UiContext, ids: readonly string[]): void {
   if (ids.length === 0) return;
   ctx.store.queueJobs(ids);
   ctx.transport.post({ type: "paper.makeSearchable", ids: [...ids] });
@@ -60,7 +60,7 @@ export function findPdf(ctx: UiContext, id: string, replace = false): void {
 }
 
 /** The host finds an author address, opens the request email and records the day it was sent. */
-export function askAuthor(ctx: UiContext, id: string): void {
+export function sendCopyRequest(ctx: UiContext, id: string): void {
   ctx.transport.post({ type: "paper.askAuthor", id });
 }
 
@@ -72,6 +72,6 @@ export function attachPdf(ctx: UiContext, id: string): void {
 type FileAction = "paper.openExternal" | "paper.reveal" | "paper.fetchMetadata" | "annotations.export";
 
 /** Asks the host for one of its file actions on a paper. */
-export function hostFileAction(ctx: UiContext, type: FileAction, id: string): void {
+export function runHostFileAction(ctx: UiContext, type: FileAction, id: string): void {
   ctx.transport.post({ type, id });
 }

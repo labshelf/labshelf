@@ -39,7 +39,7 @@ function engineOf(entry: ReadyEntry): string {
 }
 
 /** One line per fact worth a glance; the reading and stale-figure lines appear only when they have something to say. */
-export function detailLines(entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList): string[] {
+export function describeProjectDetails(entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList): string[] {
   const lines = [`${entry.main ?? "no main file"} · ${engineOf(entry)}`];
   if (build) lines.push(`Last build ${build.ok ? "succeeded" : "failed"} ${pad(build.at.getHours())}:${pad(build.at.getMinutes())}`);
   const inLibrary = reading.entries.filter((candidate) => candidate.paper);
@@ -51,11 +51,11 @@ export function detailLines(entry: ReadyEntry, counted: Counted | undefined, bui
 }
 
 /** `counted` and `build` are undefined when the host does not know them yet or cannot know them. */
-export function readyProjectItem(
+export function createReadyProjectItem(
   entry: ReadyEntry, counted: Counted | undefined, build: LastBuild | undefined, reading: ReadingList,
 ): SidebarProjectItem {
   const external = entry.location === "external";
-  const tooltip = [entry.settings.id, ...detailLines(entry, counted, build, reading), ...(external ? [entry.folder] : [])];
+  const tooltip = [entry.settings.id, ...describeProjectDetails(entry, counted, build, reading), ...(external ? [entry.folder] : [])];
   return {
     id: entry.folder,
     name: entry.settings.title ?? entry.settings.id,
@@ -70,7 +70,7 @@ export function readyProjectItem(
   };
 }
 
-export function brokenProjectItem(entry: BrokenEntry): SidebarProjectItem {
+export function createBrokenProjectItem(entry: BrokenEntry): SidebarProjectItem {
   return {
     id: entry.folder,
     name: entry.folder.split(/[\\/]/).pop() ?? entry.folder,

@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import type { ILogger, RelayAccount } from "@labshelf/core";
 import { installFakeLocks } from "../support/fakeLocks";
 import { openBrowserRelayAccountStore } from "../../src/relay";
-import { relayAccountSlot } from "../../src/relay/relayAccountSecrets";
+import { createRelayAccountSlot } from "../../src/relay/browserRelayAccountStore";
 
 const logger: ILogger = { log: async () => undefined, error: async () => undefined };
 const account: RelayAccount = {
@@ -23,7 +23,7 @@ it("reads back the saved account", async () => {
 it("ignores account text that does not parse", async () => {
   const store = openBrowserRelayAccountStore(logger);
   await store.save(account);
-  await relayAccountSlot("account").store("{");
+  await createRelayAccountSlot("account").store("{");
   expect(await store.get()).toBeUndefined();
 });
 

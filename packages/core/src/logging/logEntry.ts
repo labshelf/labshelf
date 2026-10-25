@@ -20,7 +20,7 @@ export function createLogEntry(
 }
 
 /** The text of anything that can be thrown. */
-export function errorMessage(error: unknown): string {
+export function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
@@ -29,7 +29,7 @@ export function describeError(error: unknown): { message: string; stack?: string
   if (error instanceof Error) {
     return error.stack ? { message: error.message, stack: error.stack } : { message: error.message };
   }
-  return { message: errorMessage(error) };
+  return { message: formatError(error) };
 }
 
 /** One JSON line, the on-disk log format. */

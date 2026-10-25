@@ -3,33 +3,33 @@ import * as vscode from "vscode";
 
 import { type PaperRecord } from "@labshelf/core";
 import type { PaperService } from "../library/index.js";
-import { queueTextLayers } from "./textLayerQueue.js";
+import { addTextLayerJobs } from "./textLayerQueue.js";
 import { resolvePaper } from "./paperResolution.js";
-import { executeSafely, type RequireServices } from "./commandContext.js";
+import { runSafely, type EnsureServices } from "./commandContext.js";
 
-export function registerTextLayerCommands(context: vscode.ExtensionContext, requireServices: RequireServices): void {
+export function registerTextLayerCommands(context: vscode.ExtensionContext, requireServices: EnsureServices): void {
   context.subscriptions.push(
     // Called with paper ids from the list panel, or with nothing from the palette.
     vscode.commands.registerCommand("labshelf.makeSearchable", async (target?: string | string[]) => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.makeSearchable", async () => {
+      await runSafely(services.logger, "labshelf.makeSearchable", async () => {
         const papers = target !== undefined
           ? await papersByIds(services.paperService, Array.isArray(target) ? target : [target])
           : [await resolvePaper(services.paperService, undefined, "Make a scanned paper searchable (OCR)")].filter(isPaper);
         if (papers.length > 0) {
-          await queueTextLayers(services.textLayers, papers, { logger: services.logger, announceAll: true });
+          await addTextLayerJobs(services.textLayers, papers, { logger: services.logger, announceAll: true });
         }
       });
     }),
     vscode.commands.registerCommand("labshelf.makeLibrarySearchable", async () => {
       const services = await requireServices();
       if (!services) { return; }
-      await executeSafely(services.logger, "labshelf.makeLibrarySearchable", async () => {
+      await runSafely(services.logger, "labshelf.makeLibrarySearchable", async () => {
         // Papers that already have text are skipped in a fraction of a second
         // each; papers saved without a PDF have nothing to read and are left out.
         const papers = (await services.paperService.listPapers()).filter((p) => p.hasPdf !== false);
-        await queueTextLayers(services.textLayers, papers, { logger: services.logger });
+        await addTextLayerJobs(services.textLayers, papers, { logger: services.logger });
         const checked = await services.paperService.listPapers();
         void vscode.window.showInformationMessage(`LabShelf: ${describeLibraryTextLayers(checked)}`);
       });

@@ -1,6 +1,6 @@
 /** Implements the LibraryFileSystem port over vscode.workspace.fs, the extension's only file-system adapter. */
 import * as vscode from "vscode";
-import { errorMessage, libraryLayout, type LibraryFileSystem, type LocalStat, type PathOps } from "@labshelf/core";
+import { formatError, createLibraryLayout, type LibraryFileSystem, type LocalStat, type PathOps } from "@labshelf/core";
 
 const isNotFound = (error: unknown): boolean => (error as { code?: string }).code === "FileNotFound";
 
@@ -12,14 +12,14 @@ export class VscodeFileSystem implements LibraryFileSystem {
 
   /** @param root the library whose temp folder stages writes inside it; undefined stages every write next to its target */
   constructor(private readonly root: string | undefined, private readonly paths: PathOps, private readonly uriOf: UriOfPath) {
-    this.tmpDir = root === undefined ? undefined : libraryLayout(root, paths.join).tmpDir();
+    this.tmpDir = root === undefined ? undefined : createLibraryLayout(root, paths.join).tmpDir();
   }
 
   async ensureDir(dirPath: string): Promise<void> {
     try {
       await vscode.workspace.fs.createDirectory(this.uriOf(dirPath));
     } catch (error) {
-      const message = errorMessage(error);
+      const message = formatError(error);
       throw new Error(`Failed to ensure directory ${dirPath}: ${message}`, { cause: error });
     }
   }
@@ -40,7 +40,7 @@ export class VscodeFileSystem implements LibraryFileSystem {
     } catch (error) {
       // Best effort: the write error below is the one the caller needs, and a stray temp file is harmless.
       await Promise.resolve(vscode.workspace.fs.delete(tmp, { useTrash: false })).catch(() => undefined);
-      const message = errorMessage(error);
+      const message = formatError(error);
       throw new Error(`Failed to write ${filePath}: ${message}`, { cause: error });
     }
   }

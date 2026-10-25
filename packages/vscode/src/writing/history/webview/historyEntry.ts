@@ -3,7 +3,12 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/project-history.css";
-import { $, mountProjectHistory } from "@labshelf/core/dom";
-import { createHistoryChannel } from "./historyChannel.js";
+import { findElement, mountProjectHistory } from "@labshelf/core/dom";
+import type { HistoryToHost, HistoryTransport, HostToHistory } from "@labshelf/core";
+import { createWebviewTransport } from "../../../webview/index.js";
 
-mountProjectHistory($("root"), createHistoryChannel());
+function createHistoryChannel(): HistoryTransport {
+  return createWebviewTransport<HistoryToHost, HostToHistory>(acquireVsCodeApi());
+}
+
+mountProjectHistory(findElement("root"), createHistoryChannel());

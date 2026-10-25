@@ -1,7 +1,7 @@
 /** A MutationContext over the in-memory file system and the real BibTeXService, with a recording logger. */
 import { stringify, parse } from "yaml";
 
-import { BibTeXService, posixPathOps, type ILogger, type MutationContext } from "@labshelf/core";
+import { BibtexService, posixPathOps, type ILogger, type MutationContext } from "@labshelf/core";
 
 import { MemoryLibraryFs } from "./memoryLibraryFs";
 
@@ -32,7 +32,7 @@ export function makeHarness(): MutationHarness {
     error: async (_module, error, context) => { logs.push({ level: "ERROR", message: String(error), context }); },
   };
   const ctx: MutationContext = {
-    fs, paths: posixPathOps, artifacts: new BibTeXService(fs), logger, papersRoot: PAPERS,
+    fs, paths: posixPathOps, artifacts: new BibtexService(fs), logger, papersRoot: PAPERS,
     now: () => "2026-01-01T00:00:00.000Z",
   };
   void fs.mkdir(PAPERS);

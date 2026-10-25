@@ -3,7 +3,7 @@ import type { HostToUi, UiToHost } from "../../protocol/index.js";
 import type { AllProjectsToHost, HostToAllProjects } from "../../../writing/allProjects/protocol/index.js";
 
 /** What the Details surface shows: one or more papers, one project, or nothing. */
-export type DetailsTarget = { kind: "paper"; ids: string[] } | { kind: "project"; id: string } | null;
+export type DetailsSelection = { kind: "paper"; ids: string[] } | { kind: "project"; id: string } | null;
 
 export type DetailsToHost =
   | { channel: "library"; msg: UiToHost }
@@ -12,4 +12,4 @@ export type DetailsToHost =
 export type HostToDetails =
   | { channel: "library"; msg: HostToUi }
   | { channel: "projects"; msg: HostToAllProjects }
-  | { type: "details.show"; target: DetailsTarget };
+  | { type: "details.show"; target: DetailsSelection };

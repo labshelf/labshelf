@@ -1,17 +1,68 @@
 // Composes the page's sharing: its connections and the workflow ports over them, the resume that follows the project list.
 import {
-  createShareResumer, shareProject,
-  type ILogger, type ProjectEntry, type RelayAccount, type RelayNetwork, type ResumeReports, type ShareWorkflowPorts,
+  createShareResumer,
+  startProjectShare,
+  type ILogger,
+  type ProjectEntry,
+  type RelayAccount,
+  type RelayNetwork,
+  type ResumeReports,
+  type ShareFlowPorts,
+  posixPathOps,
+  type ShareKeyStore,
 } from "@labshelf/core";
 import type { ShareSources } from "./browserShareConnection";
-import { createBrowserShareCatalog, createBrowserSharePorts } from "./browserSharePorts";
 import { createPageShares, type PageShares } from "./pageShares";
 import type { LiveShare } from "./projectShareEntry";
 import { createShareKeyStore } from "./shareKeyStore";
+import { createBrowserProjects, deleteBrowserCollabState } from "../storage";
+
+/** The project list the workflows read; `reload` re-reads the library's projects and then calls `reloaded`. */
+interface BrowserShareCatalog {
+  list(): readonly ProjectEntry[];
+  reload(): Promise<void>;
+}
+
+function createBrowserShareCatalog(sources: ShareSources, logger: ILogger, reloaded: () => void): BrowserShareCatalog {
+  const projects = createBrowserProjects({ fileSystem: sources.fileSystem, logger });
+  let entries: readonly ProjectEntry[] = [];
+  return {
+    list: () => entries,
+    reload: async () => {
+      entries = await projects.listBrowserProjects();
+      reloaded();
+    },
+  };
+}
+
+interface BrowserSharePortsOptions {
+  sources: ShareSources;
+  libraryId: () => Promise<string>;
+  keys: ShareKeyStore;
+  shares: PageShares;
+  projects: BrowserShareCatalog;
+  relay: { get(): Promise<RelayAccount | undefined> };
+  requireRelay(): Promise<boolean>;
+  logger: ILogger;
+  fetch?: typeof fetch | undefined;
+}
+
+function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPorts {
+  const { sources, libraryId, keys, shares, projects, relay, requireRelay, logger } = options;
+  return {
+    keys, shares, projects, relay, requireRelay, logger,
+    files: { fs: sources.fileSystem, paths: posixPathOps, logger },
+    connect: (invite, start) => shares.connect(invite, start),
+    deleteState: async (shareId) => deleteBrowserCollabState(`${await libraryId()}/${shareId}`),
+    userName: () => shares.name(),
+    // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
+    fetch: options.fetch ?? ((input, init) => globalThis.fetch(input, init)),
+  };
+}
 
 const LOG_MODULE = "collab.sharing";
 
-export interface PageSharingOptions {
+export interface PageShareOptions {
   sources: ShareSources;
   libraryId: () => Promise<string>;
   logger: ILogger;
@@ -26,8 +77,8 @@ export interface PageSharingOptions {
   fetch?: typeof fetch;
 }
 
-export interface PageSharing {
-  ports: ShareWorkflowPorts;
+export interface PageShare {
+  ports: ShareFlowPorts;
   shares: PageShares;
   /** Resolves once the first read of the project list and the resume it starts are done. */
   ready(): Promise<void>;
@@ -40,7 +91,7 @@ export interface PageSharing {
   closeAll(): Promise<void>;
 }
 
-export function createPageSharing(options: PageSharingOptions): PageSharing {
+export function createPageShare(options: PageShareOptions): PageShare {
   const { sources, libraryId, logger } = options;
   const keys = createShareKeyStore(libraryId);
   const closing = new AbortController();
@@ -75,7 +126,7 @@ export function createPageSharing(options: PageSharingOptions): PageSharing {
     liveShare: async (entry, retry) => {
       if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }
       await first;
-      if (retry) { await shareProject(ports, { folder: entry.folder, shared: entry.settings.shared, signal: closing.signal }); } else { await resumer.sync(); }
+      if (retry) { await startProjectShare(ports, { folder: entry.folder, shared: entry.settings.shared, signal: closing.signal }); } else { await resumer.sync(); }
       return shares.live(entry.settings.id);
     },
     closeAll: async () => {

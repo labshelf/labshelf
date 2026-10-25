@@ -1,18 +1,18 @@
 /** Exports the library domain's public API: folders, paper metadata, reading status and the on-disk layout. */
 export { relocatePapersUnder, removePapersUnder } from "./paperRecordReindex.js";
 export type { IPaperRecordIndex } from "./paperRecordReindex.js";
-export { paperRecordFromMetadata, parsePaperMetadata } from "./paperMetadata.js";
-export type { PaperLocation } from "./paperMetadata.js";
+export { createPaperRecord, parsePaperMetadata } from "./paperMetadata.js";
+export type { PaperDeviceFolder } from "./paperMetadata.js";
 export {
   PAPERS_DIR, RESEARCH_DIR, PROJECTS_DIR, SPACES_DIR,
   PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE, PAPER_NOTES_FILE, SPACE_FILE, GLOSSARY_FILE,
-  joinWith, libraryLayout, paperFiles,
+  joinWith, createLibraryLayout, createPaperFiles,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
-export { relativePathProblem } from "./relativePath.js";
+export { checkRelativePath } from "./relativePath.js";
 export * from "./paper/index.js";
 export { SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig } from "./sharedConfig.js";
-export type { SharedConfig, SharedConfigPatch } from "./sharedConfig.js";
+export type { SharedConfig, SharedConfigUpdate } from "./sharedConfig.js";
 export * from "./externalChange/index.js";
 export * from "./mutations/index.js";
 export * from "./model/index.js";

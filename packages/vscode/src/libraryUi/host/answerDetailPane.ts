@@ -3,12 +3,12 @@
  * device, the writing projects that cite the paper, and papers with similar content from the AI index.
  */
 import * as vscode from 'vscode';
-import { PDF_FILE, createSidecarReader, paperDetailsOf, paperFiles, type PaperDetails, type SimilarPaper } from '@labshelf/core';
+import { PDF_FILE, createSidecarReader, derivePaperDetails, createPaperFiles, type PaperDetails, type SimilarPaper } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
 
 async function pdfOnDevice(ctx: ListHostContext, paperPath: string, hasPdf: boolean | undefined): Promise<PaperDetails['pdf']> {
   if (hasPdf === false) { return null; }
-  const file = paperFiles(paperPath, ctx.deps.pathOps.join).pdf;
+  const file = createPaperFiles(paperPath, ctx.deps.pathOps.join).pdf;
   try {
     const { size } = await vscode.workspace.fs.stat(vscode.Uri.file(file));
     const root = ctx.paths()?.root;
@@ -24,7 +24,7 @@ export async function sendDetails(ctx: ListHostContext, id: string): Promise<voi
   if (!paper) { return; }
   const load = ctx.deps.loadSidecar;
   const sidecar = load ? await createSidecarReader(load, ctx.deps.logger, LOG_MODULE).summaryOf(id) : { annotations: [] };
-  const details = paperDetailsOf(sidecar, await pdfOnDevice(ctx, paper.path, paper.hasPdf));
+  const details = derivePaperDetails(sidecar, await pdfOnDevice(ctx, paper.path, paper.hasPdf));
   const backlinks = ctx.deps.projectBacklinks;
   if (backlinks) { details.citedIn = [...backlinks.index().get(paper.citeKey) ?? []]; }
   await ctx.post({ type: 'details', id, details });

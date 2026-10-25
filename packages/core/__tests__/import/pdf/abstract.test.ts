@@ -1,6 +1,6 @@
 /** Unit tests for reading the abstract printed in front matter. */
 
-import { abstractFromText } from '@labshelf/core';
+import { extractAbstract } from '@labshelf/core';
 
 const ABSTRACT_BODY =
   'Deeper neural networks are more difficult to train. We present a residual ' +
@@ -21,29 +21,29 @@ const FRONT_MATTER = [
 
 describe('abstractFromText', () => {
   it('reads the abstract from a paper front matter and stops at the next section', () => {
-    const abstract = abstractFromText(FRONT_MATTER);
+    const abstract = extractAbstract(FRONT_MATTER);
 
     expect(abstract).toBe(ABSTRACT_BODY);
     expect(abstract).not.toContain('Introduction');
   });
 
   it('tolerates the delimiters publishers print after the heading', () => {
-    expect(abstractFromText(`ABSTRACT—${ABSTRACT_BODY}\nKeywords: residual learning`)).toBe(ABSTRACT_BODY);
-    expect(abstractFromText(`Resumo: ${ABSTRACT_BODY}\n1 Introdução\nTexto.`)).toBe(ABSTRACT_BODY);
+    expect(extractAbstract(`ABSTRACT—${ABSTRACT_BODY}\nKeywords: residual learning`)).toBe(ABSTRACT_BODY);
+    expect(extractAbstract(`Resumo: ${ABSTRACT_BODY}\n1 Introdução\nTexto.`)).toBe(ABSTRACT_BODY);
   });
 
   it('collapses the line breaks the text layer leaves inside the abstract', () => {
     const wrapped = 'Abstract\n' + ABSTRACT_BODY.replace(/ /g, '\n') + '\nIntroduction';
 
-    expect(abstractFromText(wrapped)).toBe(ABSTRACT_BODY);
+    expect(extractAbstract(wrapped)).toBe(ABSTRACT_BODY);
   });
 
   it('rejects a run too short to be an abstract', () => {
-    expect(abstractFromText('Abstract. See the abstract online.')).toBeUndefined();
+    expect(extractAbstract('Abstract. See the abstract online.')).toBeUndefined();
   });
 
   it('returns undefined when the front matter has no abstract heading', () => {
-    expect(abstractFromText('A short note with no abstract heading at all.')).toBeUndefined();
-    expect(abstractFromText('')).toBeUndefined();
+    expect(extractAbstract('A short note with no abstract heading at all.')).toBeUndefined();
+    expect(extractAbstract('')).toBeUndefined();
   });
 });

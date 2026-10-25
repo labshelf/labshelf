@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { TYPST_VERSION } from "@labshelf/core/typst";
 import type { ReadyProject } from "../../../src/writing/buildRootDocument";
-import { recordTypstVersion } from "../../../src/writing/typst/typstVersionPin";
+import { writeTypstVersion } from "../../../src/writing/typst/typstVersionPin";
 import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const warn = vscode.window.showWarningMessage as jest.Mock;
@@ -20,10 +20,10 @@ function setup() {
 
 beforeEach(() => { jest.clearAllMocks(); });
 
-describe("recordTypstVersion", () => {
+describe("writeTypstVersion", () => {
   it("writes the version and reloads the list when none is recorded, without a warning", async () => {
     const { projects, update, deps } = setup();
-    await recordTypstVersion(project("/code/a"), deps);
+    await writeTypstVersion(project("/code/a"), deps);
     expect(update).toHaveBeenCalledWith("/code/a", { typst: TYPST_VERSION });
     expect(projects.reload).toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
@@ -31,7 +31,7 @@ describe("recordTypstVersion", () => {
 
   it("warns and rewrites when an older version was recorded", async () => {
     const { update, deps } = setup();
-    await recordTypstVersion(project("/code/b", "0.13.1"), deps);
+    await writeTypstVersion(project("/code/b", "0.13.1"), deps);
     expect(warn).toHaveBeenCalledWith(
       `Project "paper" was last built with Typst 0.13.1; LabShelf compiles it with Typst ${TYPST_VERSION}. Check the PDF for differences.`,
     );
@@ -40,14 +40,14 @@ describe("recordTypstVersion", () => {
 
   it("warns once per project in a session", async () => {
     const { deps } = setup();
-    await recordTypstVersion(project("/code/c", "0.12.0"), deps);
-    await recordTypstVersion(project("/code/c", "0.12.0"), deps);
+    await writeTypstVersion(project("/code/c", "0.12.0"), deps);
+    await writeTypstVersion(project("/code/c", "0.12.0"), deps);
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing when the recorded version is current", async () => {
     const { projects, update, deps } = setup();
-    await recordTypstVersion(project("/code/d", TYPST_VERSION), deps);
+    await writeTypstVersion(project("/code/d", TYPST_VERSION), deps);
     expect(update).not.toHaveBeenCalled();
     expect(projects.reload).not.toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
@@ -56,7 +56,7 @@ describe("recordTypstVersion", () => {
   it("logs a refused write and does not reload", async () => {
     const { host, projects, update, deps } = setup();
     update.mockRejectedValueOnce(new Error("invalid YAML"));
-    await recordTypstVersion(project("/code/e"), deps);
+    await writeTypstVersion(project("/code/e"), deps);
     expect(host.session.logger.error).toHaveBeenCalledWith("writing/typst", expect.any(Error), expect.objectContaining({ folder: "/code/e" }));
     expect(projects.reload).not.toHaveBeenCalled();
   });

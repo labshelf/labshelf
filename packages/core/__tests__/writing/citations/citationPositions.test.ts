@@ -1,5 +1,5 @@
 /** Verifies where a key is typed and where keys are cited in LaTeX and Typst text. */
-import { citedKeys, partialKeyStart } from "../../../src/writing/citations/index";
+import { findCiteKeyOccurrences, partialKeyStart } from "../../../src/writing/citations/index";
 
 describe("partialKeyStart in LaTeX", () => {
   it.each([
@@ -35,25 +35,25 @@ describe("partialKeyStart in Typst", () => {
   });
 });
 
-describe("citedKeys", () => {
+describe("findCiteKeyOccurrences", () => {
   const slice = (text: string, cited: { start: number; end: number }) => text.slice(cited.start, cited.end);
 
   it("locates every key of a LaTeX cite list, trimmed", () => {
     const text = "x \\cite[p. 2]{ a1 , b2 }\ny \\nocite{*} \\citep{c3}";
-    const found = citedKeys("latex", text);
+    const found = findCiteKeyOccurrences("latex", text);
     expect(found.map((cited) => cited.key)).toEqual(["a1", "b2", "c3"]);
     expect(found.map((cited) => slice(text, cited))).toEqual(["a1", "b2", "c3"]);
   });
 
   it("ignores LaTeX comments but keeps offsets", () => {
     const text = "% \\cite{no}\n\\cite{yes} 50\\% \\cite{also}";
-    const found = citedKeys("latex", text);
+    const found = findCiteKeyOccurrences("latex", text);
     expect(found.map((cited) => slice(text, cited))).toEqual(["yes", "also"]);
   });
 
   it("locates Typst references and cite labels, without trailing punctuation", () => {
     const text = "As @a1. and #cite(<b2>) but mail me@x.org, see https://x.org/@no // @c3\n@d4:";
-    const found = citedKeys("typst", text);
+    const found = findCiteKeyOccurrences("typst", text);
     expect(found.map((cited) => slice(text, cited)).sort()).toEqual(["a1", "b2", "d4"]);
   });
 });

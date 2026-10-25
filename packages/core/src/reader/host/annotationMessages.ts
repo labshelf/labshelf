@@ -2,9 +2,9 @@
  * Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
  */
 import type { WebviewToHost } from "../protocol/index.js";
-import { errorMessage } from "../../logging/index.js";
-import { normalizeReadingState } from "../sidecar/index.js";
-import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
+import { formatError } from "../../logging/index.js";
+import { normalizeReadingPosition } from "../sidecar/index.js";
+import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostContext.js";
 
 type StoreResult<T> = { ok: true; value: T } | { ok: false };
 
@@ -19,7 +19,7 @@ async function writeAnnotation<T>(
     return { ok: true, value: await write() };
   } catch (err) {
     void ctx.ports.logger.error(READER_LOG_MODULE, err, { paperId: ctx.ports.paper.id, command });
-    ctx.ports.notify(`Failed to ${verb} annotation: ${errorMessage(err)}`, "error");
+    ctx.ports.notify(`Failed to ${verb} annotation: ${formatError(err)}`, "error");
     return { ok: false };
   }
 }
@@ -29,7 +29,7 @@ async function pushStoredAnnotations(ctx: HostContext): Promise<void> {
 }
 
 export const annotationHandlers: Pick<
-  MessageHandlers,
+  MessageAnswers,
   "createAnnotation" | "updateAnnotation" | "deleteAnnotation" | "saveReadingState"
 > = {
   createAnnotation: async (ctx, msg) => {
@@ -61,7 +61,7 @@ export const annotationHandlers: Pick<
 
   // Not a sidecar change for the host: the position rides along with the next sync.
   saveReadingState: async (ctx, msg) => {
-    const state = normalizeReadingState(msg.state);
+    const state = normalizeReadingPosition(msg.state);
     if (state) { await ctx.ports.store.setReadingState(ctx.ports.paper.id, state); }
   },
 };

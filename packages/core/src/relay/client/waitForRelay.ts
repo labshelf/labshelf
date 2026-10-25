@@ -18,7 +18,7 @@ const MAX_DELAY_MS = 15_000;
 const DEFAULT_TIMEOUT_MS = 240_000;
 
 /** Resolves when `/version` answers; throws when the timeout passes. Each failed poll is logged by `fetchWorkerBuild`. */
-export async function waitUntilServing({ relayUrl, fetch: doFetch, logger, clock, timeoutMs = DEFAULT_TIMEOUT_MS }: WaitUntilServingOptions): Promise<void> {
+export async function assertRelayServing({ relayUrl, fetch: doFetch, logger, clock, timeoutMs = DEFAULT_TIMEOUT_MS }: WaitUntilServingOptions): Promise<void> {
   const deadline = clock.now() + timeoutMs;
   let delay = FIRST_DELAY_MS;
   for (;;) {

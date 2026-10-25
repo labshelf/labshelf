@@ -51,7 +51,7 @@ export async function copyToClipboard(text: string, osc52?: (sequence: string) =
 const PAGE_PLACEHOLDER = "{page}";
 
 /** Whether the configured PDF viewer command takes a page through a `{page}` token. */
-export function viewerTakesPage(viewer: string | undefined): boolean {
+export function canReaderOpenPage(viewer: string | undefined): boolean {
   return viewer?.includes(PAGE_PLACEHOLDER) ?? false;
 }
 
@@ -85,7 +85,7 @@ export function openExternal(target: string, viewer?: string, page = 1): void {
 /**
  * Reveals a folder in Finder / the file manager.
  */
-export function revealInFileManager(target: string): void {
+export function showInFileSystem(target: string): void {
   if (process.platform === "darwin") {
     const child = spawn("open", ["-R", target], { detached: true, stdio: "ignore" });
     child.on("error", () => undefined);
@@ -99,7 +99,7 @@ export function revealInFileManager(target: string): void {
  * Whether moveToTrash works on this platform.
  * @returns true on macOS and freedesktop systems
  */
-export function trashSupported(): boolean {
+export function canTrash(): boolean {
   return process.platform === "darwin" || process.platform === "linux";
 }
 

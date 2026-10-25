@@ -1,8 +1,8 @@
 // Connects the owner's Cloudflare account: the credential, the account, then the relay deployed, saved and serving.
 import {
-  createCloudflareClient, deployRelay, listCloudflareAccounts, verifyCloudflareToken, waitUntilServing, type CloudflareAccount, type CloudflareClient,
+  createCloudflareClient, deployRelay, listCloudflareAccounts, verifyCloudflareToken, assertRelayServing, type CloudflareAccount, type CloudflareClient,
 } from "../client/index.js";
-import { accountAccessToken, type RelayAccountDeps } from "./accountAccessToken.js";
+import { createAccessTokenReader, type RelayAccountDeps } from "./createAccessTokenReader.js";
 import { RELAY_ACCOUNT_LOG_MODULE, RELAY_WORKER_NAME, type RelayCredential } from "./relayAccount.js";
 
 export interface ConnectRelayAccountDeps extends RelayAccountDeps {
@@ -26,7 +26,7 @@ async function pickAccount(deps: ConnectRelayAccountDeps, client: CloudflareClie
 
 async function connectWith(deps: ConnectRelayAccountDeps, credential: RelayCredential): Promise<string | undefined> {
   const { logger, fetch } = deps;
-  const token = await accountAccessToken(deps, credential)();
+  const token = await createAccessTokenReader(deps, credential)();
   const client = createCloudflareClient({ token, fetch, logger });
   // An OAuth token has no /user/tokens/verify; listing its accounts proves it works.
   if (credential.kind === "token") { await verifyCloudflareToken(client); }
@@ -37,7 +37,7 @@ async function connectWith(deps: ConnectRelayAccountDeps, credential: RelayCrede
   // CONTRACT: documents/contracts/relay.md#owner-account
   await deps.store.save({ credential, accountId, ...deployed });
   deps.progress?.("waiting");
-  await waitUntilServing({ relayUrl: deployed.relayUrl, fetch, logger, clock: deps.clock });
+  await assertRelayServing({ relayUrl: deployed.relayUrl, fetch, logger, clock: deps.clock });
   await logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Connected Cloudflare", { accountId, relayUrl: deployed.relayUrl, credential: credential.kind });
   await deps.offerToShares();
   return deployed.relayUrl;

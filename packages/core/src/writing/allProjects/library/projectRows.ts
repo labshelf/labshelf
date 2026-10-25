@@ -11,7 +11,7 @@ export interface ProjectRowExtras {
   build?: BuildMark;
 }
 
-export function toProjectRow(paths: PathOps, entry: ProjectEntry, modified: number | undefined, extras: ProjectRowExtras = {}): ProjectRow {
+export function deriveProjectRow(paths: PathOps, entry: ProjectEntry, modified: number | undefined, extras: ProjectRowExtras = {}): ProjectRow {
   const external = entry.location === "external";
   if (entry.kind === "broken") {
     return { id: entry.folder, title: paths.basename(entry.folder), place: "projects", external, broken: entry.reason };

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { scanLatexSource } from "@labshelf/core";
 import type { LatexProjectSources } from "../project/index.js";
-import { projectLabels } from "./projectLabels.js";
+import { listProjectLabels } from "./listProjectLabels.js";
 
 /**
  * The column where the label name being typed starts, when the cursor sits inside the braces of a ref command.
@@ -15,7 +15,7 @@ function partialRefStart(linePrefix: string): number | undefined {
   return typing?.range.start.character;
 }
 
-export class RefCompletionProvider implements vscode.CompletionItemProvider {
+export class ReferenceCompletionProvider implements vscode.CompletionItemProvider {
   constructor(private readonly sources: LatexProjectSources) {}
 
   async provideCompletionItems(
@@ -29,7 +29,7 @@ export class RefCompletionProvider implements vscode.CompletionItemProvider {
     const range = new vscode.Range(position.line, start, position.line, position.character);
     const seen = new Set<string>();
     const items: vscode.CompletionItem[] = [];
-    for (const label of projectLabels(project)) {
+    for (const label of listProjectLabels(project)) {
       if (seen.has(label.name)) { continue; }
       seen.add(label.name);
       const item = new vscode.CompletionItem(label.name, vscode.CompletionItemKind.Reference);

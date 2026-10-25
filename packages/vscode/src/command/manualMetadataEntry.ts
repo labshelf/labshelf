@@ -20,7 +20,7 @@ interface ManualFields {
  * indexes: unpublished manuscripts, internal reports, theses, lecture notes.
  * @returns The updated paper, or undefined when the user cancelled.
  */
-export async function enterMetadataManually(
+export async function askMetadataManually(
   paperService: PaperService,
   paper: PaperRecord,
   titleHint?: string,
@@ -32,12 +32,12 @@ export async function enterMetadataManually(
 
   const updated = await paperService.applyResolvedMetadata(paper.id, manualMetadata(fields));
   if (updated) {
-    await vscode.window.showInformationMessage(`LabShelf: saved "${truncate(updated.title, 70)}".`);
+    await vscode.window.showInformationMessage(`LabShelf: saved "${formatTruncated(updated.title, 70)}".`);
   }
   return updated;
 }
 
-export function truncate(value: string, max: number): string {
+export function formatTruncated(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 1)}…` : value;
 }
 

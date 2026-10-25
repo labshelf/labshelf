@@ -1,10 +1,78 @@
 // Downloads a candidate URL and follows HTML answers to the PDF, up to a few hops.
 // Last resort: a same-site URL is fetched from inside the tab, which reuses the page's session.
-import { makeEnv, warn } from "../env.js";
+import { createResolverEnv, reportWarning } from "../env.js";
 import type { FetchedPdf, FetchOutcome, InTabAnswer, PdfFetchOptions, ResolverEnv } from "../pdfResolver.js";
-import { siteOf } from "../urlParts.js";
-import { fetchOnce, type HopSettings } from "./fetchOnce.js";
-import { nextHopsFromHtml } from "./hops.js";
+import { deriveSite } from "../urlParts.js";
+import { extractNextHopsFromHtml } from "./hops.js";
+import { isPdfBytes } from "../../../library/index.js";
+import { deriveFetchOutcome } from "./fetchOutcome.js";
+import { formatError } from "../../../logging/index.js";
+
+const MAX_PDF_BYTES = 200 * 1024 * 1024;
+const MAX_HTML_BYTES = 4 * 1024 * 1024;
+
+interface FetchAnswer {
+  finalUrl: string;
+  outcome: FetchOutcome;
+  /** Absent when the request failed before any response. */
+  status?: number;
+  pdf?: FetchedPdf;
+  html?: string;
+}
+
+/** How one candidate's hops are sent: its deadline, the wait for response headers, and the article page as Referer. */
+export interface HopSettings {
+  signal: AbortSignal;
+  firstByteMs: number;
+  referer?: string;
+}
+
+type RequestSettings = Pick<PdfFetchOptions, "credentials" | "headers"> & HopSettings;
+
+/** @returns what the URL answered and how that answer classifies; an `error` outcome for a network failure or an unusable response */
+async function fetchOnce(url: string, env: ResolverEnv, settings: RequestSettings): Promise<FetchAnswer> {
+  const firstByte = new AbortController();
+  const timer = setTimeout(() => firstByte.abort(new DOMException("No response headers in time", "TimeoutError")), settings.firstByteMs);
+  try {
+    const res = await env.fetch(url, {
+      redirect: "follow",
+      signal: AbortSignal.any([settings.signal, firstByte.signal]),
+      ...(settings.credentials ? { credentials: settings.credentials } : {}),
+      ...requestHeaders(settings),
+    });
+    clearTimeout(timer);
+    const finalUrl = res.url || url;
+    const { status } = res;
+    if (!res.ok || status === 202) {
+      const html = await res.text().catch(() => "");
+      return { finalUrl, status, outcome: deriveFetchOutcome({ status, finalUrl, html, headers: res.headers }) };
+    }
+    if (Number(res.headers.get("content-length") ?? "0") > MAX_PDF_BYTES) return { finalUrl, status, outcome: "error" };
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length > MAX_PDF_BYTES) return { finalUrl, status, outcome: "error" };
+    const type = (res.headers.get("content-type") ?? "").toLowerCase();
+    const isHtml = !isPdfBytes(bytes) && bytes.length <= MAX_HTML_BYTES && (type.includes("html") || type === "");
+    const html = isHtml ? new TextDecoder().decode(bytes) : undefined;
+    const outcome = deriveFetchOutcome({ status, finalUrl, bytes, headers: res.headers, ...(html !== undefined ? { html } : {}) });
+    return {
+      finalUrl, status, outcome,
+      ...(outcome === "pdf" ? { pdf: { bytes, url: finalUrl } } : {}),
+      ...(html !== undefined ? { html } : {}),
+    };
+  } catch (error) {
+    // A download the run cancelled because another one won is not a failure worth a line.
+    if ((error as { name?: unknown } | null)?.name !== "AbortError") reportWarning(env, "download failed", { url, error: formatError(error) });
+    return { finalUrl: url, outcome: "error" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// PLATFORM: browsers drop a Referer header set through fetch (a forbidden header name); Node sends it.
+function requestHeaders({ headers, referer }: RequestSettings): { headers?: Record<string, string> } {
+  if (!referer) return headers ? { headers } : {};
+  return { headers: { ...headers, Referer: referer } };
+}
 
 // TRAP: a response is a PDF only by its bytes, never its headers; publishers answer with login pages, cookie walls or "loading" interstitials as often as with the file.
 const MAX_HOPS = 3;
@@ -26,7 +94,7 @@ export interface DownloadOutcome {
 /** @returns The PDF bytes and final URL, or undefined when the URL leads to no PDF. */
 export async function fetchPdf(url: string, opts: PdfFetchOptions = {}): Promise<FetchedPdf | undefined> {
   const hop = { signal: AbortSignal.timeout(DOWNLOAD_LIMITS.perUrlMs), firstByteMs: DOWNLOAD_LIMITS.firstByteMs };
-  return (await downloadPdf(url, opts, makeEnv(opts), hop)).pdf;
+  return (await downloadPdf(url, opts, createResolverEnv(opts), hop)).pdf;
 }
 
 /** Follows `url` and at most MAX_HOPS interstitials behind it until a PDF, collecting the URLs a bot check refused. */
@@ -47,13 +115,13 @@ export async function downloadPdf(url: string, opts: PdfFetchOptions, env: Resol
       if (answer.pdf) return { pdf: answer.pdf, blocked, outcome: "pdf", ...(answer.status !== undefined ? { status: answer.status } : {}) };
       if (answer.outcome === "bot") {
         blocked.push(target);
-        warn(env, "bot check", { url: target, finalUrl: answer.finalUrl });
+        reportWarning(env, "bot check", { url: target, finalUrl: answer.finalUrl });
       } else if (answer.html) {
-        next.push(...nextHopsFromHtml(answer.html, answer.finalUrl));
+        next.push(...extractNextHopsFromHtml(answer.html, answer.finalUrl));
       }
       const inTab = await fetchThroughTab(target, opts);
       if (inTab?.pdf) return { pdf: inTab.pdf, blocked, outcome: "pdf" };
-      if (inTab?.html) next.push(...nextHopsFromHtml(inTab.html, inTab.finalUrl));
+      if (inTab?.html) next.push(...extractNextHopsFromHtml(inTab.html, inTab.finalUrl));
     }
     frontier = next.filter((u) => !visited.has(u));
   }
@@ -65,6 +133,6 @@ async function fetchThroughTab(url: string, opts: PdfFetchOptions): Promise<InTa
 }
 
 function sameSite(url: string, tabUrl: string): boolean {
-  const site = siteOf(url);
-  return site !== undefined && site === siteOf(tabUrl);
+  const site = deriveSite(url);
+  return site !== undefined && site === deriveSite(tabUrl);
 }

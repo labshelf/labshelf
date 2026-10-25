@@ -4,7 +4,7 @@ import type { DetectedIds } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import { DEFAULT_CONTACT_EMAIL } from "../registries/index.js";
-import { makeEnv } from "./env.js";
+import { createResolverEnv } from "./env.js";
 import { makeResolveContext, type ResolveOptions } from "./resolveContext.js";
 import { resolvePdf } from "./resolvePdf.js";
 import type { PdfAttempt, PdfFetchOptions, ResolvedPdf } from "./pdfResolver.js";
@@ -40,7 +40,7 @@ export async function findPaperPdf(
     ...(search.betterThan ? { betterThan: search.betterThan } : {}),
   };
   const found = await resolvePdf(context, fetchOptions, attempts);
-  const { logger } = makeEnv(fetchOptions);
+  const { logger } = createResolverEnv(fetchOptions);
   if (found) {
     await logger.log("INFO", "pdfFinding", "PDF found", { input: search.input, source: found.source, version: found.version, url: found.url, bytes: found.bytes.length });
   } else {

@@ -1,6 +1,6 @@
 // Connects browser sidebar Space actions to the page store.
-import { errorMessage, sidebarRows, type ILogger, type SpaceStore } from "@labshelf/core";
-import { inputBox, toast, type LibrarySidebar, type SidebarSpaceActions } from "@labshelf/core/dom";
+import { formatError, deriveSidebarRows, type ILogger, type SpaceStore } from "@labshelf/core";
+import { askInputBox, showToast, type LibrarySidebar, type SidebarSpaceActions } from "@labshelf/core/dom";
 import type { PageSpaces } from "../../spaces";
 
 export interface SidebarSpaces {
@@ -20,10 +20,10 @@ export function createSidebarSpaces({ store, port }: PageSpaces, log: ILogger): 
   const run = (work: () => Promise<unknown>): void => {
     void work().catch((error: unknown) => {
       void log.error("spaces-sidebar", error);
-      toast(errorMessage(error), "error");
+      showToast(formatError(error), "error");
     });
   };
-  const name = (title: string, value = "") => inputBox({ title, value, validate: (text) => text.trim() ? null : "Enter a name" });
+  const name = (title: string, value = "") => askInputBox({ title, value, validate: (text) => text.trim() ? null : "Enter a name" });
   const rename = async (id: string): Promise<void> => {
     const result = await store.read(id);
     if (result.state !== "ready") throw new Error(`Cannot rename unreadable Space: ${id}`);
@@ -51,7 +51,7 @@ export function createSidebarSpaces({ store, port }: PageSpaces, log: ILogger): 
       removeReference: (id, paper) => run(() => store.removePaper(id, paper)),
     },
     attach(sidebar) {
-      const update = (): void => sidebar.setSpaces(sidebarRows(store.list(), port.library()));
+      const update = (): void => sidebar.setSpaces(deriveSidebarRows(store.list(), port.library()));
       const offStore = store.onChange(update);
       const offLibrary = port.onLibraryChange(update);
       update();

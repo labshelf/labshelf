@@ -4,7 +4,7 @@ import type { SidebarToHost } from "../sidebarMessages.js";
 const FOLDER_MIME = "application/x-labshelf-folder";
 
 /** @returns a `dropTarget` callback that posts a move for folder drops and an import for file drops */
-export function folderDropTarget(post: (m: SidebarToHost) => void): (row: HTMLElement, path: string) => void {
+export function createFolderDropZone(post: (m: SidebarToHost) => void): (row: HTMLElement, path: string) => void {
   return (row, path) => {
     row.draggable = true;
     row.addEventListener("dragstart", (e) => {

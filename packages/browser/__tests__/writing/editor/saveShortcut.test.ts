@@ -4,7 +4,7 @@
  */
 // Cmd/Ctrl+S writes the pending edit now and asks the helper for a full build, without opening the browser's save dialog.
 import { EditorView } from "@codemirror/view";
-import type { ILogger, PresenceHandle } from "@labshelf/core";
+import type { ILogger, PresenceStore } from "@labshelf/core";
 import * as Y from "yjs";
 import { mountSourceEditor, type SourceEditorDeps, type SourceFileAccess } from "../../../src/writing/editor/mountSourceEditor";
 
@@ -66,7 +66,7 @@ describe("save shortcut", () => {
     const doc = new Y.Doc();
     const text = doc.getText("content");
     text.insert(0, "shared");
-    const presence = { awareness: { clientID: 7, on: () => undefined, off: () => undefined }, setLocal: () => undefined, remote: () => new Map() } as unknown as PresenceHandle;
+    const presence = { awareness: { clientID: 7, on: () => undefined, off: () => undefined }, setLocal: () => undefined, remote: () => new Map() } as unknown as PresenceStore;
     const { editor, write, helper, press } = await mount({ collab: { text, presence, name: "Ada" } });
     press();
     await editor.flush();

@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { ProjectBuildResult } from "@labshelf/core";
 
 import { UsageError, type Output } from "../../../src/cli";
-import { runBuild, terminalBuildEnvironment, type BuildEnvironment } from "../../../src/cli/build";
+import { runBuild, createTerminalBuildEnvironment, type BuildEnvironment } from "../../../src/cli/build";
 import { LibraryRoot } from "../../../src/library";
 import { cleanupTempDirs, makeTempDir } from "../../fixtures/library";
 
@@ -98,7 +98,7 @@ describe("runBuild output and exit codes", () => {
 
   it("declines the first-run toolchain question without a TTY: exit 2 and the install hint, no build", async () => {
     const { ctx, projectDir, io, err } = await setup();
-    const env = terminalBuildEnvironment(ctx, { ask: undefined });
+    const env = createTerminalBuildEnvironment(ctx, { ask: undefined });
     expect(await runBuild(ctx, [projectDir], {}, io, env)).toBe(2);
     expect(err.join("\n")).toContain("No LaTeX found");
   });

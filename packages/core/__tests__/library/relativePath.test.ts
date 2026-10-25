@@ -1,9 +1,9 @@
 /** Verifies the rules every relative path inside a library folder must follow. */
-import { relativePathProblem } from "../../src/library/index";
+import { checkRelativePath } from "../../src/library/index";
 
 describe("relativePathProblem", () => {
   it.each(["main.tex", "sections/intro.tex", ".gitignore", "a/b/c/d.tex"])("accepts %s", (path) => {
-    expect(relativePathProblem(path)).toBeUndefined();
+    expect(checkRelativePath(path)).toBeUndefined();
   });
 
   it.each([
@@ -11,6 +11,6 @@ describe("relativePathProblem", () => {
     ["a\u0000b", "control character"], ["a\u001fb", "control character"], ["a//b", "empty segment"], ["", "empty segment"],
     ["a/", "empty segment"], ["../x", "\"..\""], ["a/./b", "\".\""], ["chapters/../../x", "\"..\""],
   ])("refuses %j because it %s", (path, why) => {
-    expect(relativePathProblem(path)).toContain(why);
+    expect(checkRelativePath(path)).toContain(why);
   });
 });

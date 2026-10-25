@@ -7,7 +7,7 @@ export interface LazyProgress {
 }
 
 /** A relay step that never reports shows nothing, so a cancelled choice leaves no notification behind. */
-export function lazyProgress(title: string): LazyProgress {
+export function createLazyProgress(title: string): LazyProgress {
   let sink: vscode.Progress<{ message?: string }> | undefined;
   let latest = "";
   let release = (): void => undefined;

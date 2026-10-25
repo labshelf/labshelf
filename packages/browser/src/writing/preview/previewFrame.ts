@@ -1,16 +1,16 @@
 // Connects the project preview frame to its library page.
-import { checkPreviewRequest, type HostToWebview, type PreviewRequest, type PreviewRoots } from "@labshelf/core";
+import { checkPreviewRequest, type HostToWebview, type PreviewRequest, type PreviewBuildRoots } from "@labshelf/core";
 
 const READER_PAGE = "../reader/index.html";
 
-export type PreviewBuildStatus = Omit<Extract<HostToWebview, { type: "buildStatus" }>, "type">;
+export type PreviewBuildState = Omit<Extract<HostToWebview, { type: "buildStatus" }>, "type">;
 type PreviewFrameMessage = Extract<HostToWebview, { type: "reloadDocument" | "buildStatus" | "previewRoots" }>;
 
 export interface PreviewFrame {
   readonly element: HTMLIFrameElement;
   showPdf(bytes: Uint8Array): void;
-  setBuildStatus(status: PreviewBuildStatus): void;
-  setPreviewRoots(roots: PreviewRoots): void;
+  setBuildStatus(status: PreviewBuildState): void;
+  setPreviewRoots(roots: PreviewBuildRoots): void;
   /** Calls `listener` with each well-formed request the embedded reader sends; returns the unsubscribe. */
   onRequest(listener: (request: PreviewRequest) => void): () => void;
   /** Removes the iframe and frees the PDFs it handed over. */

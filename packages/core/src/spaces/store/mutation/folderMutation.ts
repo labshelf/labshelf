@@ -2,7 +2,7 @@
 import { newShortId } from "../../model/index.js";
 import { rawEntryIds } from "../../model/json/index.js";
 import type { Space, SpaceFolder } from "../../model/index.js";
-import { withOptionalKey } from "./optionalField.js";
+import { withOptionalField } from "./optionalField.js";
 
 export interface Edited<T> { readonly space: Space; readonly value: T }
 
@@ -29,7 +29,7 @@ export function withPapers(space: Space, paperIds: readonly string[], folder: st
   return { ...space, papers: [...space.papers, ...added] };
 }
 
-export function withoutPaper(space: Space, paperId: string): Space {
+export function withPaperRemoved(space: Space, paperId: string): Space {
   return { ...space, papers: space.papers.filter((ref) => ref.id !== paperId) };
 }
 
@@ -42,7 +42,7 @@ export function withFocus(space: Space, paperId: string, focus: boolean): Space 
 export function withMovedReference(space: Space, paperId: string, folder: string | undefined): Space {
   requirePaper(space, paperId);
   if (folder !== undefined) { requireFolder(space, folder); }
-  return { ...space, papers: space.papers.map((ref) => (ref.id === paperId ? withOptionalKey(ref, "folder", folder) : ref)) };
+  return { ...space, papers: space.papers.map((ref) => (ref.id === paperId ? withOptionalField(ref, "folder", folder) : ref)) };
 }
 
 export function withFolder(space: Space, name: string, parent: string | undefined): Edited<string> {
@@ -62,10 +62,10 @@ export function withRenamedFolder(space: Space, folderId: string, name: string):
 }
 
 /** References and child folders of the deleted folder move to its parent, or to the root. */
-export function withoutFolder(space: Space, folderId: string): Space {
+export function withFolderRemoved(space: Space, folderId: string): Space {
   const parent = requireFolder(space, folderId).parent;
   const up = <T extends object>(entry: T, key: "parent" | "folder", from: string | undefined): T =>
-    from === folderId ? withOptionalKey(entry, key, parent) : entry;
+    from === folderId ? withOptionalField(entry, key, parent) : entry;
   return {
     ...space,
     folders: space.folders.filter((folder) => folder.id !== folderId).map((folder) => up(folder, "parent", folder.parent)),

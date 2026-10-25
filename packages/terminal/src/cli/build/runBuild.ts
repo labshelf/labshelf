@@ -1,12 +1,29 @@
 // Runs `labshelf build`: builds a writing project through the core queue, prints its problems and optionally rebuilds on changes.
 import * as path from "node:path";
 
-import type { ProjectBuildResult } from "@labshelf/core";
+import type { ProjectBuildResult, LocatedProblem, ToolchainMissing } from "@labshelf/core";
 
 import type { Output } from "../usage.js";
-import { problemLines, toolchainMissingText } from "./buildReport.js";
-import { processAsk, terminalBuildEnvironment, type BuildContext, type BuildEnvironment } from "./buildEnvironment.js";
+import { createTtyAsk, createTerminalBuildEnvironment, type BuildContext, type BuildEnvironment } from "./buildEnvironment.js";
 import { findProject, type ReadyProject } from "./findProject.js";
+
+/** `path:line: severity: message`, then the hint indented on the next line; paths are relative to `cwd` so editors can jump to them. */
+function problemLines(problems: readonly LocatedProblem[], projectFolder: string, cwd: string): string[] {
+  return problems.flatMap((problem) => {
+    const file = path.relative(cwd, path.resolve(projectFolder, problem.file));
+    const where = problem.line === undefined ? file : `${file}:${problem.line}`;
+    const line = `${where}: ${problem.severity}: ${problem.message}`;
+    return problem.hint ? [line, `  ${problem.hint}`] : [line];
+  });
+}
+
+function toolchainMissingText(missing: ToolchainMissing): string {
+  switch (missing.reason) {
+    case "declined":
+      return "No LaTeX found. Install TeX Live or run labshelf build in a terminal to install TinyTeX.\nIn CI, install TeX Live and set `engine:` in labshelf.yaml.";
+    case "install-failed": return `Installing LaTeX failed: ${missing.message}`;
+  }
+}
 
 /** Prints one build's outcome and returns its exit code: 0 built, 1 problems, 2 toolchain missing. */
 function report(result: ProjectBuildResult, project: ReadyProject, io: Output): number {
@@ -61,7 +78,7 @@ async function watchAndRebuild(env: BuildEnvironment, project: ReadyProject, ctx
  */
 export async function runBuild(
   ctx: BuildContext, positionals: string[], flags: Record<string, string | boolean>, io: Output,
-  env: BuildEnvironment = terminalBuildEnvironment(ctx, { ask: processAsk() }),
+  env: BuildEnvironment = createTerminalBuildEnvironment(ctx, { ask: createTtyAsk() }),
 ): Promise<number> {
   const project = await findProject(ctx.paths.root, ctx.logger, positionals[0], process.cwd());
   const code = await buildOnce(env, project, ctx, io);

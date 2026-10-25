@@ -4,20 +4,20 @@
  */
 // The LaTeX setup card shows the helper's state with its one next action, polls while the helper is missing, and recovers from errors.
 import type { TexInstallKind } from "@labshelf/core";
-import type { HelperHost, HelperProgress, HelperProgressListener, HelperStatus, ILatexHelper, TexStatus } from "@labshelf/core/helper";
+import type { HelperHost, HelperProgress, HelperProgressListener, HelperState, ILatexHelper, TexToolchain } from "@labshelf/core/helper";
 import { mountHelperSetupCard, type HelperSetupDeps } from "../../../src/helper/setup";
 
-const ready = (tex: TexStatus, host: HelperHost = "helper"): HelperStatus => ({ state: "ready", helperVersion: "1.2.0", tex, host });
+const ready = (tex: TexToolchain, host: HelperHost = "helper"): HelperState => ({ state: "ready", helperVersion: "1.2.0", tex, host });
 const ASSETS = "https://github.com/labshelf/labshelf/releases/latest/download/";
 
 interface FakeHelper extends ILatexHelper {
-  connect: jest.Mock<Promise<HelperStatus>, []>;
+  connect: jest.Mock<Promise<HelperState>, []>;
   installTex: jest.Mock<Promise<void>, [TexInstallKind, HelperProgressListener]>;
   installAllPackages: jest.Mock<Promise<void>, [HelperProgressListener]>;
 }
 
-function fakeHelper(first: HelperStatus | Error): FakeHelper {
-  let current: HelperStatus | undefined;
+function fakeHelper(first: HelperState | Error): FakeHelper {
+  let current: HelperState | undefined;
   const connect = jest.fn(async () => {
     if (first instanceof Error) { throw first; }
     current = first;

@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 
-import { PaperDataStore } from "@labshelf/core";
+import { PaperSidecarStore } from "@labshelf/core";
 import { createNodeSidecarPort } from "@labshelf/core/node";
 
 import { SidecarReader } from "../../src/library/sidecars";
@@ -138,7 +138,7 @@ describe("SidecarReader.annotationIndex", () => {
 describe("SidecarReader with sidecars written by the shared store", () => {
   it("reads back what the store wrote", async () => {
     const lib = await createTempLibrary([{ id: "p1" }]);
-    await new PaperDataStore(createNodeSidecarPort(lib.paths.layout)).addHighlight("p1", 3, "an important sentence", "green");
+    await new PaperSidecarStore(createNodeSidecarPort(lib.paths.layout)).addHighlight("p1", 3, "an important sentence", "green");
     const viaReader = await new SidecarReader(lib.paths).load("p1");
     expect(viaReader.annotations.map((a) => a.content)).toEqual(["an important sentence"]);
   });

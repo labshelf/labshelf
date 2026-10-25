@@ -5,15 +5,55 @@ import * as path from "node:path";
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { LatexToolchain } from "../../toolchain/index.js";
-import type { LatexBuildResult } from "../index.js";
-import { latexBuildCommand, type PartialBuild } from "../index.js";
-import { writeSectionStatePackage } from "../section/node/index.js";
-import { sectionStateFileName } from "../section/index.js";
-import { compileLatex } from "./compileLatex.js";
+import {
+  type LatexBuildResult,
+  createLatexBuildCommand,
+  type PartialBuild,
+  type BuildCommand,
+  createLatexPreviewCommand,
+} from "../index.js";
+import { writeSectionBuildStatePackage } from "../section/node/index.js";
+import { deriveSectionBuildStateFileName } from "../section/index.js";
+import { buildLatexProject } from "./buildLatexProject.js";
 import type { ProblemPlaces } from "./findProblems.js";
-import { planLatexPreview } from "./planLatexPreview.js";
 import { withIncludeOnlyFile } from "./includeOnlyFile.js";
-import { runSectionPreview, shownPdfName } from "./runSectionPreview.js";
+import { runSectionPreview, deriveShownPdfName } from "./runSectionPreview.js";
+import { buildPreambleFormat } from "./buildPreambleFormat.js";
+
+interface PreviewPlanInput {
+  toolchain: LatexToolchain;
+  projectFolder: string;
+  main: string;
+  /** The user's explicit include-only selection. */
+  includeOnly?: string;
+  outDir: string;
+  haltOnError?: boolean;
+  signal: AbortSignal;
+  logger: ILogger;
+}
+
+interface PreviewPlan {
+  command: BuildCommand;
+  /** The chapter to hand the format through the include-only file; the command carries it when no format is used. */
+  includeOnlyFile: string | undefined;
+}
+
+
+
+async function planLatexPreview(input: PreviewPlanInput): Promise<PreviewPlan | undefined> {
+  const base = path.basename(input.main, path.extname(input.main));
+  const aux = path.join(input.outDir, `${base}.aux`);
+  if (!await fs.stat(aux).then(() => true, () => false)) {
+    await input.logger.log("INFO", MODULE, "LaTeX preview falls back to a full build: no .aux yet", { main: input.main, aux });
+    return undefined;
+  }
+  const includeOnly = input.includeOnly;
+  const mainPath = path.join(input.projectFolder, input.main);
+  const found = await buildPreambleFormat({ ...input, mainPath });
+  const format = found && { name: found.name, searchPath: `${found.dir}${path.delimiter}` };
+  const command = createLatexPreviewCommand(input.toolchain.engine, path.basename(input.main), input.outDir, { includeOnly, format, haltOnError: input.haltOnError });
+  return { command, includeOnlyFile: format ? includeOnly : undefined };
+}
 
 export interface LatexBuildRequest extends PartialBuild {
   toolchain: LatexToolchain;
@@ -44,14 +84,14 @@ async function publishPdf(request: LatexBuildRequest, places: ProblemPlaces, bas
   const bytes = await fs.readFile(result.pdf);
   const pdf = path.join(places.workDir, `${base}.pdf`);
   await writeFileAtomic(pdf, bytes);
-  if (full) { await writeFileAtomic(path.join(request.outDir, shownPdfName(base)), bytes); }
+  if (full) { await writeFileAtomic(path.join(request.outDir, deriveShownPdfName(base)), bytes); }
   return { ...result, pdf };
 }
 
 /** Why a preview must build the whole document: it has no edit to scope to, or no full PDF exists to swap pages into. */
 async function wholeDocumentReason(request: LatexBuildRequest, base: string): Promise<string | undefined> {
   if (request.editedFile === undefined || request.editedLine === undefined) { return "no-edit"; }
-  const hasFullPdf = await fs.stat(path.join(request.outDir, shownPdfName(base))).then(() => true, () => false);
+  const hasFullPdf = await fs.stat(path.join(request.outDir, deriveShownPdfName(base))).then(() => true, () => false);
   return hasFullPdf ? undefined : "no full PDF yet";
 }
 
@@ -66,13 +106,13 @@ async function build(request: LatexBuildRequest, places: ProblemPlaces, base: st
   }
   const preview = isPreview ? await planLatexPreview(request) : undefined;
   // INVARIANT: a document preview can change pagination without refreshing the full build's section state.
-  if (preview) { await fs.rm(path.join(request.outDir, sectionStateFileName(base)), { force: true }); }
-  if (!preview) { await writeSectionStatePackage(request.outDir); }
+  if (preview) { await fs.rm(path.join(request.outDir, deriveSectionBuildStateFileName(base)), { force: true }); }
+  if (!preview) { await writeSectionBuildStatePackage(request.outDir); }
   const { biber, ...partial } = request;
-  const command = preview?.command ?? latexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, {
+  const command = preview?.command ?? createLatexBuildCommand(request.toolchain, path.basename(request.main), request.outDir, {
     ...partial, capturesSectionState: true, ...(biber && { biber: { command: biber, root: request.projectFolder } }),
   });
-  const run = (): Promise<LatexBuildResult> => compileLatex(request, places, { job: base, command });
+  const run = (): Promise<LatexBuildResult> => buildLatexProject(request, places, { job: base, command });
   const result = await (preview ? withIncludeOnlyFile(request.outDir, preview.includeOnlyFile, run) : run());
   return { result: await publishPdf(request, places, base, result, !preview), mode: preview ? "preview" : "full" };
 }

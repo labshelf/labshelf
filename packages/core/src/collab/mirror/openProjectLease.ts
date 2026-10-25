@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import type { LibraryFileSystem, ILogger } from "../../ports/index.js";
 import { HeldFolderLease, type FolderLease } from "./projectLease.js";
-import { isLive, LEASE_TTL_MS, readLease, writeLease, type LeaseHolder, type LeaseRecord, type MirrorApp } from "./leaseFile.js";
+import { isLive, LEASE_TTL_MS, readLease, writeLease, type LeaseHolder, type LeaseFileContent, type MirrorApp } from "./leaseFile.js";
 import { systemLeaseScheduler, type LeaseScheduler } from "./mirrorScheduler.js";
 
 export const LEASE_CONFIRM_MS = 1_500;
@@ -22,18 +22,18 @@ export type FolderLeaseResult =
   | { kind: "busy"; holder: LeaseHolder }
   | { kind: "owned"; lease: FolderLease };
 
-function holderOf(lease: LeaseRecord): LeaseHolder {
+function holderOf(lease: LeaseFileContent): LeaseHolder {
   return { app: lease.app, renewedAt: lease.renewedAt };
 }
 
-export async function acquireFolderLease(options: AcquireFolderLeaseOptions): Promise<FolderLeaseResult> {
+export async function openFolderLease(options: AcquireFolderLeaseOptions): Promise<FolderLeaseResult> {
   const { fs, folder, app, logger, takeOver = false } = options;
   const scheduler = options.scheduler ?? systemLeaseScheduler;
   const current = await readLease(fs, folder, logger);
   if (current && !takeOver && isLive(current, scheduler.now())) {
     return { kind: "busy", holder: holderOf(current) };
   }
-  const record: LeaseRecord = { owner: crypto.randomUUID(), app, renewedAt: scheduler.now(), ttlMs: LEASE_TTL_MS };
+  const record: LeaseFileContent = { owner: crypto.randomUUID(), app, renewedAt: scheduler.now(), ttlMs: LEASE_TTL_MS };
   await writeLease(fs, folder, record);
   // TRAP: read-then-write is not atomic on any file port; the confirmation read catches a writer that raced us.
   await scheduler.delay(LEASE_CONFIRM_MS);

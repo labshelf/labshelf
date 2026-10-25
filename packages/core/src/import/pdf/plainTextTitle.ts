@@ -1,5 +1,5 @@
 /** Guesses the title from plain front-matter lines, for OCR text that carries no font sizes. */
-import { collapseWhitespace } from "../metadata/index.js";
+import { normalizeWhitespace } from "../metadata/index.js";
 
 // Lines a masthead prints above the title: article-type labels, the journal's
 // own branding, access badges, identifiers and submission dates.
@@ -15,7 +15,7 @@ const TITLE_MAX_CHARS = 300;
  * as the title when the byline comes directly after it.
  * @returns The joined title lines, or undefined when no run qualifies.
  */
-export function titleFromPlainText(text: string): string | undefined {
+export function extractTitleFromPlainText(text: string): string | undefined {
   const lines = text
     .split("\n")
     // A stamp running up the margin leaves a stray symbol or digit at the start
@@ -41,7 +41,7 @@ export function titleFromPlainText(text: string): string | undefined {
     const title = picked.join(" ");
     const followedByByline = next < lines.length && looksLikeByline(lines[next]!);
     if (followedByByline && title.split(/\s+/).length >= 3 && title.length <= TITLE_MAX_CHARS) {
-      return collapseWhitespace(title);
+      return normalizeWhitespace(title);
     }
   }
   return undefined;

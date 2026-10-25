@@ -1,7 +1,7 @@
 /**
  * Turns keydown events into reader actions via the pure keymap, and drives held-key scrolling with a rAF loop (key-repeat + smooth scrolling stutters).
  */
-import { isDuplicateDelivery, type ActionSource, type ActionStamp, ACTIONS_BLOCKED_WHILE_TYPING, CHORD_TIMEOUT_MS, resolveKey, type ReaderAction } from "../../navigation/index.js";
+import { isDuplicateDelivery, type ActionSource, type ActionStamp, ACTIONS_BLOCKED_WHILE_TYPING, CHORD_TIMEOUT_MS, resolveShortcut, type ReaderAction } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { isTextInput } from "../elements/index.js";
 
@@ -34,7 +34,7 @@ export class Keyboard {
    * Runs an action unless it is the same chord arriving a second time through the other route (keydown vs. host keybinding).
    */
   dispatch(action: ReaderAction, source: ActionSource): void {
-    // A contributed keybinding fires no matter where the focus is inside the webview; keydown already applies this rule in resolveKey.
+    // A contributed keybinding fires no matter where the focus is inside the webview; keydown already applies this rule in resolveShortcut.
     if (source === "host" && ACTIONS_BLOCKED_WHILE_TYPING.has(action) && isTextInput(document.activeElement)) { return; }
     const stamp: ActionStamp = { action, source, at: performance.now() };
     if (isDuplicateDelivery(this.lastRun, stamp)) { return; }
@@ -44,7 +44,7 @@ export class Keyboard {
 
   private onKeyDown(e: KeyboardEvent): void {
     if (e.isComposing) { return; }
-    const { action, pendingPrefix } = resolveKey(
+    const { action, pendingPrefix } = resolveShortcut(
       { key: e.key, code: e.code, ctrl: e.ctrlKey, meta: e.metaKey, alt: e.altKey, shift: e.shiftKey },
       {
         vimKeys: this.ctx.prefs.vimKeys,

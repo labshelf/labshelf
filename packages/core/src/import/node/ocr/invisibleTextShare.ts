@@ -12,7 +12,7 @@ const INVISIBLE_MODES = new Set([3, 7]);
  * render mode. The mode is graphics state, so it follows save/restore.
  * @returns A fraction from 0 to 1, or undefined when the page shows no text.
  */
-export function invisibleShare(ops: OperatorList, OPS: Record<string, number>): number | undefined {
+export function deriveInvisibleShare(ops: OperatorList, OPS: Record<string, number>): number | undefined {
   const showText = new Set([OPS["showText"], OPS["showSpacedText"], OPS["nextLineShowText"], OPS["nextLineSetSpacingShowText"]]);
   const saved: number[] = [];
   let mode = 0;

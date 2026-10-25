@@ -2,10 +2,10 @@
  * Finds the figure, table or equation a textual reference ("Fig. 3", "Tabela 2", "Eq. (5)") points at, from captions in
  * the page text. This is what makes float previews work in PDFs without link annotations, scans with an OCR layer included.
  */
-import { findCaptionLines, floatRegion, pickCaption, type PdfRegion, type FloatKind } from "../../text/index.js";
+import { findCaptionLines, deriveFloatRegion, pickCaption, type PdfRegion, type FloatKind } from "../../text/index.js";
 import type { PageTextCache } from "./pageText.js";
 
-export interface FloatTarget {
+export interface FloatMatch {
   pageNumber: number;
   region: PdfRegion;
   /** Baseline of the caption line, for jumping. */
@@ -37,7 +37,7 @@ export class FloatResolver {
   /**
    * @returns where the float is, or null when no caption with that label exists.
    */
-  async find(kind: FloatKind, label: string): Promise<FloatTarget | null> {
+  async find(kind: FloatKind, label: string): Promise<FloatMatch | null> {
     const index = await this.getIndex();
     const at = pickCaption(index, kind, label);
     const hit = index[at];
@@ -47,7 +47,7 @@ export class FloatResolver {
     if (!line) { return null; }
     return {
       pageNumber: hit.pageNumber,
-      region: floatRegion(page.lines, hit, page.width, page.height, page.columnSplit),
+      region: deriveFloatRegion(page.lines, hit, page.width, page.height, page.columnSplit),
       captionY: line.y + line.height,
     };
   }

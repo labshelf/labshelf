@@ -18,7 +18,7 @@ export async function loadReaderPrefs(): Promise<ReaderPrefs> {
  * Merges a patch into the stored preferences; the result is normalized before it is written.
  * @returns the preferences now stored.
  */
-export async function saveReaderPrefs(patch: Partial<ReaderPrefs>): Promise<ReaderPrefs> {
+export async function writeReaderPrefs(patch: Partial<ReaderPrefs>): Promise<ReaderPrefs> {
   const next = normalizeReaderPrefs({ ...(await loadReaderPrefs()), ...patch });
   await bx.storage.local.set({ [READER_PREFS_KEY]: next });
   return next;

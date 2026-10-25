@@ -6,7 +6,7 @@ const LEGACY_KEYS = ["enableSciHub", "sciHubMirror"] as const;
  * @returns the stored settings without the old keys, plus one enabled entry when the toggle was on, or undefined when
  * the stored settings hold none of the old keys
  */
-export function migrateMirrorSettings(stored: Record<string, unknown>): Record<string, unknown> | undefined {
+export function deriveMirrorSettings(stored: Record<string, unknown>): Record<string, unknown> | undefined {
   if (!LEGACY_KEYS.some((key) => key in stored)) return undefined;
   const { enableSciHub, sciHubMirror, ...rest } = stored;
   const mirror = typeof sciHubMirror === "string" ? sciHubMirror.trim().replace(/\/+$/, "") : "";

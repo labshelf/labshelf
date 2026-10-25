@@ -5,7 +5,7 @@
  */
 import YAML from 'yaml';
 
-import { BibTeXService, paperRecordFromMetadata, parsePaperMetadata } from '@labshelf/core';
+import { BibtexService, createPaperRecord, parsePaperMetadata } from '@labshelf/core';
 import type { IFileSystem, PaperRecord } from '@labshelf/core';
 
 function memoryFs(initial: Record<string, string> = {}): IFileSystem & { files: Map<string, string> } {
@@ -33,7 +33,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
     const fs = memoryFs();
     const textLayer = { state: 'ocr' as const, ocrPages: 17, checkedAt: '2026-10-07T12:00:00.000Z' };
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({
       summary: 'In this paper, we show…', keywords: ['graph search'], textLayer,
     }), '/Users/me/Downloads/artigo-comp.pdf');
 
@@ -43,7 +43,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
   it('keeps the original source name when rewriting from the library copy', async () => {
     const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\nsource: artigo-comp.pdf\n' });
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), '/lib/papers/imai1986/paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), '/lib/papers/imai1986/paper.pdf');
 
     expect(metadata(fs).source).toBe('artigo-comp.pdf');
   });
@@ -51,7 +51,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
   it('falls back to paper.pdf when there is no earlier name to keep', async () => {
     const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': ':: not yaml' });
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
 
     expect(metadata(fs).source).toBe('paper.pdf');
   });
@@ -59,7 +59,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
   it('writes the tags and note a browser save attaches', async () => {
     const fs = memoryFs();
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: ['geometry', 'to-read'], note: 'Cited in ch. 3' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: ['geometry', 'to-read'], note: 'Cited in ch. 3' }), 'paper.pdf');
 
     expect(metadata(fs)).toMatchObject({ tags: ['geometry', 'to-read'], note: 'Cited in ch. 3' });
   });
@@ -69,7 +69,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
       '/lib/papers/imai1986/metadata.yaml': 'title: Old\nstatus: unread\ntags: [geometry]\nnote: Cited in ch. 3\nrating: 5\n',
     });
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ status: 'done' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ status: 'done' }), 'paper.pdf');
 
     expect(metadata(fs)).toMatchObject({ title: 'Efficient Algorithms', status: 'done', tags: ['geometry'], note: 'Cited in ch. 3', rating: 5 });
   });
@@ -77,7 +77,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
   it('clears tags and note when the record explicitly empties them', async () => {
     const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\ntags: [geometry]\nnote: old\n' });
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: [], note: '' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: [], note: '' }), 'paper.pdf');
 
     expect(metadata(fs)).not.toHaveProperty('tags');
     expect(metadata(fs)).not.toHaveProperty('note');
@@ -86,7 +86,7 @@ describe('BibTeXService.writePaperArtifacts', () => {
   it('never carries over a stale value for a field it owns', async () => {
     const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\ndoi: 10.1/old\nsummary: stale\n' });
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
 
     expect(metadata(fs)).not.toHaveProperty('doi');
     expect(metadata(fs)).not.toHaveProperty('summary');
@@ -94,37 +94,37 @@ describe('BibTeXService.writePaperArtifacts', () => {
 
   it('writes the bib file line only when paper.pdf is in the folder', async () => {
     const withPdf = memoryFs({ '/lib/papers/imai1986/paper.pdf': 'PDF' });
-    await new BibTeXService(withPdf).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
+    await new BibtexService(withPdf).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
     expect(withPdf.files.get('/lib/papers/imai1986/bib.bib')).toContain('file = {');
 
     // The browser saves a reference with no paper.pdf when it finds none: the
     // entry must not point LaTeX at a file that is not there.
     const noPdf = memoryFs();
-    await new BibTeXService(noPdf).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
+    await new BibtexService(noPdf).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
     expect(noPdf.files.get('/lib/papers/imai1986/bib.bib')).not.toContain('file =');
   });
 
   it('writes numeric-looking strings quoted so they read back as the same string', async () => {
     const fs = memoryFs();
 
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ volume: '15', pages: '12' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ volume: '15', pages: '12' }), 'paper.pdf');
 
     const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
-    const record = paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false });
+    const record = createPaperRecord(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false });
     expect(record.volume).toBe('15');
     expect(record.pages).toBe('12');
   });
 
   describe('pdfVersion', () => {
     const write = (fs: ReturnType<typeof memoryFs>, pdfVersion?: PaperRecord['pdfVersion']) =>
-      new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(pdfVersion === undefined ? {} : { pdfVersion }), 'paper.pdf');
+      new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(pdfVersion === undefined ? {} : { pdfVersion }), 'paper.pdf');
 
     it('writes the version a record carries and reads it back', async () => {
       const fs = memoryFs();
       await write(fs, 'accepted');
       expect(metadata(fs).pdfVersion).toBe('accepted');
       const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
-      expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: true }).pdfVersion).toBe('accepted');
+      expect(createPaperRecord(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: true }).pdfVersion).toBe('accepted');
     });
 
     it('replaces the file value with the record value', async () => {
@@ -154,14 +154,14 @@ describe('BibTeXService.writePaperArtifacts', () => {
 
   describe('pdfRequestedAt', () => {
     const write = (fs: ReturnType<typeof memoryFs>, pdfRequestedAt?: PaperRecord['pdfRequestedAt']) =>
-      new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(pdfRequestedAt === undefined ? {} : { pdfRequestedAt }), 'paper.pdf');
+      new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(pdfRequestedAt === undefined ? {} : { pdfRequestedAt }), 'paper.pdf');
 
     it('writes the day a record carries and reads it back', async () => {
       const fs = memoryFs();
       await write(fs, '2026-10-15');
       expect(metadata(fs).pdfRequestedAt).toBe('2026-10-15');
       const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
-      expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).pdfRequestedAt).toBe('2026-10-15');
+      expect(createPaperRecord(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).pdfRequestedAt).toBe('2026-10-15');
     });
 
     it('keeps the file value when the record does not know the day', async () => {
@@ -187,16 +187,16 @@ describe('BibTeXService.writePaperArtifacts', () => {
 describe('BibTeXService.writePaperArtifacts statusChangedAt', () => {
   it('writes statusChangedAt and reads it back', async () => {
     const fs = memoryFs();
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ statusChangedAt: '2026-10-15T10:00:00.000Z' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ statusChangedAt: '2026-10-15T10:00:00.000Z' }), 'paper.pdf');
 
     expect(metadata(fs).statusChangedAt).toBe('2026-10-15T10:00:00.000Z');
     const meta = parsePaperMetadata(fs.files.get('/lib/papers/imai1986/metadata.yaml')!)!;
-    expect(paperRecordFromMetadata(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).statusChangedAt).toBe('2026-10-15T10:00:00.000Z');
+    expect(createPaperRecord(meta, { id: 'imai1986', path: '/lib/papers/imai1986', hasPdf: false }).statusChangedAt).toBe('2026-10-15T10:00:00.000Z');
   });
 
   it('writes no statusChangedAt key when the paper has none', async () => {
     const fs = memoryFs();
-    await new BibTeXService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper(), 'paper.pdf');
 
     expect(metadata(fs)).not.toHaveProperty('statusChangedAt');
   });

@@ -1,18 +1,18 @@
 // Joins a shared project from a pasted invite link, waiting for a member to answer.
-import { inputBox, progressDialog, showDialog, toast } from "../../ui/dom/index.js";
-import type { JoinProjectResult, SharingHost } from "../../libraryUi/share/index.js";
-import { infoDialog, reportingFailure } from "../../share/dom/index.js";
+import { askInputBox, openProgressDialog, showDialog, showToast } from "../../ui/dom/index.js";
+import type { JoinProjectResult, ShareHost } from "../../libraryUi/share/index.js";
+import { showNoticeDialog, reportFailure } from "../../share/dom/index.js";
 
-export function runJoinProjectDialog(host: SharingHost, invite?: string): Promise<void> {
-  return reportingFailure("join the shared project", async () => {
-    const text = invite ?? await inputBox({
+export function runJoinProjectDialog(host: ShareHost, invite?: string): Promise<void> {
+  return reportFailure("join the shared project", async () => {
+    const text = invite ?? await askInputBox({
       title: "Join Shared Project",
       prompt: "Paste the invite link a collaborator sent you",
       placeholder: "labshelf://join#…",
       validate: (v) => (v.trim() === "" ? "Paste an invite link" : null),
     });
     if (!text) return;
-    const progress = progressDialog({
+    const progress = openProgressDialog({
       title: "Join Shared Project",
       message: "Joining the shared project: waiting for a member to answer",
       cancellable: true,
@@ -27,8 +27,8 @@ export function runJoinProjectDialog(host: SharingHost, invite?: string): Promis
       progress.close();
     }
     if (progress.signal.aborted) return;
-    if (result.kind === "refused") { await infoDialog("Could not join the project", result.problem, "warning"); return; }
-    if (result.kind === "active") { toast("This shared project is already connected on this device.", "info"); return; }
+    if (result.kind === "refused") { await showNoticeDialog("Could not join the project", result.problem, "warning"); return; }
+    if (result.kind === "active") { showToast("This shared project is already connected on this device.", "info"); return; }
     const joined = result;
     const choice = await showDialog({
       title: `Joined "${joined.name}".`,

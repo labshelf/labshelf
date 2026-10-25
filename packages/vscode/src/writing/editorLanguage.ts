@@ -3,7 +3,7 @@ import type * as vscode from "vscode";
 
 export type WritingLanguage = "latex" | "typst";
 
-export function writingLanguageOf(editor: vscode.TextEditor | undefined): WritingLanguage | undefined {
+export function readWritingLanguage(editor: vscode.TextEditor | undefined): WritingLanguage | undefined {
   const language = editor?.document.languageId;
   return language === "latex" || language === "typst" ? language : undefined;
 }

@@ -1,9 +1,9 @@
 // Maintains the browser project's connection to the compilation helper.
 import type { ProjectEntry } from "@labshelf/core";
-import type { CompileMode, HelperCompileResult, HelperStatus } from "@labshelf/core/helper";
-import { assemblePdf, createBuildScheduler, type BuildScheduler } from "../../writing/preview";
+import type { CompileMode, HelperCompileResult, HelperState } from "@labshelf/core/helper";
+import { mergePdfPages, createBuildScheduler, type BuildScheduler } from "../../writing/preview";
 import { createProblemStore } from "./problemStore";
-import type { BuildEvent, BuildPatch, BuildSettings, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProject";
+import type { BuildEvent, BuildUpdate, BuildSettings, EditorHelperPort, HelperProject, HelperProjectOptions } from "./helperProject";
 
 const MODULE = "helper.project";
 type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
@@ -30,7 +30,7 @@ class HelperProjectSession {
       try {
         const started = Date.now();
         const previous = pdf.latest;
-        pdf.latest = await assemblePdf(pdf.latest, { pageCount: result.pageCount ?? 0, changed: result.changed });
+        pdf.latest = await mergePdfPages(pdf.latest, { pageCount: result.pageCount ?? 0, changed: result.changed });
         if (mode === "full") pdf.full = pdf.latest;
         if (!pdf.closed && pdf.latest !== previous) this.emit({ type: "pdf", bytes: pdf.latest, mode });
         void this.options.logger.log("INFO", MODULE, "Preview PDF assembled", { projectId, mode, changedPages: result.changed.length, reused: pdf.latest === previous, ms: Date.now() - started });
@@ -108,7 +108,7 @@ class HelperProjectSession {
     }
   }
 
-  async connect(): Promise<HelperStatus> {
+  async connect(): Promise<HelperState> {
     const status = await this.options.helper.connect();
     await this.openWanted();
     return status;
@@ -135,7 +135,7 @@ class HelperProjectSession {
     if (this.isOpen(id)) this.open?.scheduler?.build();
   }
 
-  setBuild(id: string, { autoCompile, ...target }: BuildPatch): void {
+  setBuild(id: string, { autoCompile, ...target }: BuildUpdate): void {
     const scheduler = this.isOpen(id) ? this.open?.scheduler : undefined;
     void this.options.logger.log("INFO", MODULE, scheduler ? "Build settings changed" : "Build settings changed; the next open reads them", { projectId: id, autoCompile, ...target });
     if (!scheduler) return;

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger } from "@labshelf/core";
-import { createPdfjsLoader, SearchablePdfBuilder, TesseractOcrEngine } from "@labshelf/core/node";
+import { createPdfjsLoader, TextLayerPdfBuilder, TesseractOcrEngine } from "@labshelf/core/node";
 
 /** The one pdf.js of the extension host: the PDF parser, the AI service and OCR all open PDFs through it. */
 export const hostPdfjs = createPdfjsLoader({ electronShims: true });
@@ -33,7 +33,7 @@ export function createOcrEngine(context: vscode.ExtensionContext, logger: ILogge
  * with OCR off it still classifies, so the library can flag scans. labshelf.ocr.makeSearchable only governs whether
  * that runs on its own after an import (commands/importProgress.ts).
  */
-export function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): SearchablePdfBuilder {
+export function createTextLayerBuilder(engine: TesseractOcrEngine | undefined): TextLayerPdfBuilder {
   const config = vscode.workspace.getConfiguration("labshelf");
-  return new SearchablePdfBuilder(engine, hostPdfjs, { maxPages: config.get<number>("ocr.maxPages", 150) });
+  return new TextLayerPdfBuilder(engine, hostPdfjs, { maxPages: config.get<number>("ocr.maxPages", 150) });
 }

@@ -26,7 +26,7 @@ export interface FindOrigin {
 /**
  * @returns the origin if it is still fresh, else null.
  */
-export function freshOrigin(origin: FindOrigin | null, now: number): FindOrigin | null {
+export function deriveFreshOrigin(origin: FindOrigin | null, now: number): FindOrigin | null {
   return origin && now - origin.at <= FIND_ORIGIN_TTL_MS ? origin : null;
 }
 
@@ -37,7 +37,7 @@ export type MatchScrollDecision =
 /**
  * @returns "stay" when the hit was already comfortably readable (stepping through hits on one screen should not move the page), otherwise the offset from the container top at which to place the hit.
  */
-export function decideMatchScroll(before: MatchBox | null, containerHeight: number): MatchScrollDecision {
+export function deriveMatchScroll(before: MatchBox | null, containerHeight: number): MatchScrollDecision {
   // Without a known starting position there is nothing to stay at.
   const comfortable = before !== null
     && before.top >= FIND_OVERLAY_PX

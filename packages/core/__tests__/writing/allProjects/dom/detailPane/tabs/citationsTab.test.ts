@@ -1,13 +1,13 @@
 /**
  * @jest-environment jsdom
  */
-import { citationsTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/citationsTab";
+import { renderCitationsTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/citationsTab";
 import { detail } from "../fixtures";
 
 const render = (html: string): HTMLElement => { const el = document.createElement("div"); el.innerHTML = html; return el; };
 
-describe("citationsTabHtml", () => {
-  const rows = [...render(citationsTabHtml(detail)).querySelectorAll(".ls-cite-row")];
+describe("renderCitationsTabHtml", () => {
+  const rows = [...render(renderCitationsTabHtml(detail)).querySelectorAll(".ls-cite-row")];
 
   it("lists key, title, authors and year in key order", () => {
     expect(rows).toHaveLength(3);
@@ -22,7 +22,7 @@ describe("citationsTabHtml", () => {
   });
 
   it("escapes titles and shows an empty state without citations", () => {
-    expect(citationsTabHtml({ ...detail, citations: [{ key: "k", source: "library", title: "<b>" }] })).not.toContain("<b>");
-    expect(render(citationsTabHtml({ ...detail, citations: [] })).querySelector(".muted-note")?.textContent).toBe("No citations yet.");
+    expect(renderCitationsTabHtml({ ...detail, citations: [{ key: "k", source: "library", title: "<b>" }] })).not.toContain("<b>");
+    expect(render(renderCitationsTabHtml({ ...detail, citations: [] })).querySelector(".muted-note")?.textContent).toBe("No citations yet.");
   });
 });

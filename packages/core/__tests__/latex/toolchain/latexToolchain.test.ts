@@ -1,10 +1,10 @@
 /** Verifies the label shown for each LaTeX engine. */
-import { engineLabel } from "../../../src/latex/toolchain/index";
+import { formatEngineLabel } from "../../../src/latex/toolchain/index";
 
-describe("engineLabel", () => {
+describe("formatEngineLabel", () => {
   it("names every engine as users see it", () => {
-    expect(engineLabel("xelatex")).toBe("XeLaTeX");
-    expect(engineLabel("pdflatex")).toBe("pdfLaTeX");
-    expect(engineLabel("lualatex")).toBe("LuaLaTeX");
+    expect(formatEngineLabel("xelatex")).toBe("XeLaTeX");
+    expect(formatEngineLabel("pdflatex")).toBe("pdfLaTeX");
+    expect(formatEngineLabel("lualatex")).toBe("LuaLaTeX");
   });
 });

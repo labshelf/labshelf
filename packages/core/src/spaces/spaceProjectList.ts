@@ -1,18 +1,18 @@
 // Builds the project infos a Spaces host reports from its project rows and a checklist reader.
 import type { ILogger } from "../ports/index.js";
 import type { ProjectRow } from "../writing/allProjects/index.js";
-import type { Progress, SpaceProjectInfo } from "./viewModel/index.js";
+import type { Progress, SpaceProjectEntry } from "./viewModel/index.js";
 
 const MODULE = "spaces/projects";
 
 /** Reads a project's checklist; `undefined` when it has none. */
 export type ChecklistReader = (row: ProjectRow) => Promise<Progress | undefined>;
 
-export function buildSpaceProjectInfos(rows: readonly ProjectRow[], readChecklist: ChecklistReader, logger: ILogger): Promise<SpaceProjectInfo[]> {
+export function createSpaceProjectList(rows: readonly ProjectRow[], readChecklist: ChecklistReader, logger: ILogger): Promise<SpaceProjectEntry[]> {
   return Promise.all(rows.map((row) => toInfo(row, readChecklist, logger)));
 }
 
-async function toInfo(row: ProjectRow, readChecklist: ChecklistReader, logger: ILogger): Promise<SpaceProjectInfo> {
+async function toInfo(row: ProjectRow, readChecklist: ChecklistReader, logger: ILogger): Promise<SpaceProjectEntry> {
   const available = row.place !== "trash" && row.broken === undefined;
   const checklist = available ? await readSafely(row, readChecklist, logger) : undefined;
   return {

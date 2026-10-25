@@ -1,7 +1,7 @@
 /**
  * Declares the fonts the source editor offers, each a family stack that falls back to the monospace token.
  */
-import { token, type DesignToken } from "./designToken.js";
+import { createDesignToken, type DesignToken } from "./designToken.js";
 
 export const CODE_FONT_NAMES = ["system", "jetbrains-mono", "fira-code", "atkinson-hyperlegible-mono", "opendyslexic"] as const;
 export type CodeFontName = (typeof CODE_FONT_NAMES)[number];
@@ -20,7 +20,7 @@ export const CODE_FONTS: Record<CodeFontName, CodeFont> = {
   opendyslexic: { label: "OpenDyslexic", family: '"OpenDyslexic", var(--ls-mono)' },
 };
 
-export const CODE_FONT_TOKENS: Record<string, DesignToken> = { "code-font": token(CODE_FONTS.system.family) };
+export const CODE_FONT_TOKENS: Record<string, DesignToken> = { "code-font": createDesignToken(CODE_FONTS.system.family) };
 
 // The library page marks the pick on <html data-code-font>.
 export function renderCodeFontsCss(): string {

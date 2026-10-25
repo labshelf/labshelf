@@ -1,18 +1,18 @@
 /**
  * @jest-environment jsdom
  */
-import { overviewTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/overviewTab";
-import type { ProjectDetail } from "../../../../../../src/writing/allProjects/index";
+import { renderOverviewTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/overviewTab";
+import type { ProjectPaneContent } from "../../../../../../src/writing/allProjects/index";
 import { NOW, detail, row } from "../fixtures";
 
-const render = (d: ProjectDetail, collapsed: Record<string, boolean> = {}): HTMLElement => {
+const render = (d: ProjectPaneContent, collapsed: Record<string, boolean> = {}): HTMLElement => {
   const el = document.createElement("div");
-  el.innerHTML = overviewTabHtml(row, d, collapsed, NOW);
+  el.innerHTML = renderOverviewTabHtml(row, d, collapsed, NOW);
   return el;
 };
-const withPages = (counted: number, limit: number): ProjectDetail => ({ ...detail, limits: { countUpTo: "end", pages: { counted, limit } } });
+const withPages = (counted: number, limit: number): ProjectPaneContent => ({ ...detail, limits: { countUpTo: "end", pages: { counted, limit } } });
 
-describe("overviewTabHtml", () => {
+describe("renderOverviewTabHtml", () => {
   const view = render(detail);
 
   it("shows the venue with an edit button, the counts and the limit sentence", () => {
@@ -37,7 +37,7 @@ describe("overviewTabHtml", () => {
     expect(build.textContent).toContain("Overfull hbox");
     expect(build.querySelector("[data-action=build]")?.textContent).toBe("Build now");
     expect(build.querySelector("[data-action=openLog]")?.textContent).toBe("Open log");
-    const unlogged: ProjectDetail = { ...detail };
+    const unlogged: ProjectPaneContent = { ...detail };
     delete unlogged.log;
     expect(render(unlogged).querySelector("[data-action=openLog]")).toBeNull();
   });
@@ -58,7 +58,7 @@ describe("overviewTabHtml", () => {
 
   it("says when the project lives outside the library", () => {
     const el = document.createElement("div");
-    el.innerHTML = overviewTabHtml({ ...row, external: true }, detail, {}, NOW);
+    el.innerHTML = renderOverviewTabHtml({ ...row, external: true }, detail, {}, NOW);
     expect(el.querySelector("[data-sec-body=location]")?.textContent).toContain("Outside the library");
   });
 });

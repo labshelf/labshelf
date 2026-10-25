@@ -1,5 +1,5 @@
 // Renders the All projects header: the place tabs as its title, the search box and the New project or Empty trash button.
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import type { ProjectPlace } from "../projectRow.js";
 
 const SEARCH_DEBOUNCE_MS = 80;
@@ -27,13 +27,13 @@ const tabHtml = ({ place, label }: { place: ProjectPlace; label: string }): stri
 const headerHtml = (): string => `
   <div class="ls-place-tabs" role="tablist" aria-label="Project places">${PLACES.map(tabHtml).join("")}</div>
   <div class="ls-search">
-    ${icon("search")}
+    ${renderIcon("search")}
     <input class="ls-all-projects-search" type="text" placeholder="Search projects" spellcheck="false" autocomplete="off" aria-label="Search projects"/>
     <kbd class="ls-search-key" aria-hidden="true">/</kbd>
-    <button class="ls-search-clear" type="button" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
+    <button class="ls-search-clear" type="button" data-act="clear" title="Clear search (Esc)">${renderIcon("x")}</button>
   </div>
-  <button class="ls-btn ls-btn-ghost" type="button" data-act="new" title="New project">${icon("plus")}<span>New project</span></button>
-  <button class="ls-btn ls-btn-ghost" type="button" data-act="empty-trash" title="Delete every project in the trash">${icon("trash")}<span>Empty trash</span></button>`;
+  <button class="ls-btn ls-btn-ghost" type="button" data-act="new" title="New project">${renderIcon("plus")}<span>New project</span></button>
+  <button class="ls-btn ls-btn-ghost" type="button" data-act="empty-trash" title="Delete every project in the trash">${renderIcon("trash")}<span>Empty trash</span></button>`;
 
 function wireSearch(search: HTMLInputElement, h: HeaderHandlers): void {
   let timer: ReturnType<typeof setTimeout> | null = null;

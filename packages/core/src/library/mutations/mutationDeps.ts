@@ -31,7 +31,7 @@ export interface MutationContext {
 }
 
 /** A paper as the app's index knows it: enough to find its folder. */
-export interface PaperRef {
+export interface Reference {
   id: string;
   path: string;
 }

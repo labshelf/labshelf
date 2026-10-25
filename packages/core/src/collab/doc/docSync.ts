@@ -1,6 +1,6 @@
 // Catches the index doc and the held file docs of a share up with each connected peer through Yjs state vectors.
 import * as Y from "yjs";
-import type { WebCryptoKey } from "../shareKey/index.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
 import type { PeerId } from "../transport/index.js";
 import { MESSAGE_KIND, type Channel, type SecureMesh } from "../peer/index.js";
 
@@ -10,7 +10,7 @@ export const INDEX_DOC_KEY = "/index";
 
 export interface DocSyncOptions {
   mesh: SecureMesh;
-  key: WebCryptoKey;
+  key: DerivedShareKey;
   index: Y.Doc;
   createDoc: (path: string) => Y.Doc;
 }

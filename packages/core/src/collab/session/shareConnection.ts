@@ -1,23 +1,23 @@
 // Connects this device to one shared project: stored state, the peer session over its relays, presence, blobs and the disk mirror.
 // CONTRACT: documents/contracts/collaboration.md#connection-lifecycle
 import type { ILogger } from "../../ports/index.js";
-import { peerColour } from "../binding/index.js";
-import { deriveAwarenessKey, deriveContentKey, deriveRelayToken } from "../shareKey/index.js";
+import { derivePeerColour } from "../binding/index.js";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../shareKey/index.js";
 import type { InviteRelay } from "../invite/index.js";
 import { createSwitchableTransport } from "../relays/index.js";
-import { openCollabStore, type CollabStateStorage, type CollabStore } from "../deviceState/index.js";
-import { attachAwareness, type PresenceHandle } from "../presence/index.js";
-import { attachBlobs, createShareSession, type BlobExchange, type ShareSession } from "../doc/index.js";
-import { type SessionStatus } from "../peer/index.js";
+import { openCollabStore, type CollabDeviceStateStorage, type CollabStore } from "../deviceState/index.js";
+import { attachPresence, type PresenceStore } from "../presence/index.js";
+import { attachShareBlobs, createShareSession, type ShareBlobExchange, type ShareSession } from "../doc/index.js";
+import { type SessionPhase } from "../peer/index.js";
 import type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
-import { placeSharedProject, type ShareProjects, type ShareStart } from "./placeSharedProject.js";
-import { followShareRelays, type RelayNetwork, type ShareRelays } from "./shareRelays.js";
+import { ensureSharedProject, type ShareProjects, type ShareStart } from "./ensureSharedProject.js";
+import { startShareRelays, type RelayNetwork, type ShareRelays } from "./shareRelays.js";
 import { watchStorageHealth, type StorageHealth } from "./storageHealth.js";
 
 const LOG_MODULE = "collab.connection";
 
 export interface ShareConnectionState {
-  readonly status: SessionStatus;
+  readonly status: SessionPhase;
   /** The relay in use; undefined while none of the share's relays is usable. */
   readonly relay: string | undefined;
   /** Why this device cannot store the share's state; edits then live in memory and with peers only. */
@@ -32,7 +32,7 @@ export interface ShareConnection {
   /** The id of the project a join created; undefined for share and resume. */
   readonly joinedId: string | undefined;
   readonly session: ShareSession;
-  readonly presence: PresenceHandle;
+  readonly presence: PresenceStore;
   readonly relays: ShareRelays;
   /** The running mirror; undefined while another mirror owns the folder. */
   readonly mirror: ConnectionMirror | undefined;
@@ -48,7 +48,7 @@ export interface ShareConnectionOptions {
   /** The invite's relays, tried while the index lists none. */
   relays: readonly InviteRelay[];
   /** This device's state of the share; the connection opens the store on it and closes it. */
-  storage: CollabStateStorage;
+  storage: CollabDeviceStateStorage;
   projects: ShareProjects;
   startMirror: MirrorFactory;
   /** This user's name in the presence peers see. */
@@ -61,9 +61,9 @@ export interface ShareConnectionOptions {
 interface Parts {
   store?: CollabStore;
   session?: ShareSession;
-  presence?: PresenceHandle;
+  presence?: PresenceStore;
   relays?: ShareRelays;
-  blobs?: BlobExchange;
+  blobs?: ShareBlobExchange;
   mirror?: ConnectionMirror;
 }
 
@@ -112,7 +112,7 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
   const store = parts.store as CollabStore;
   const [contentKey, relayToken, awarenessKey] = await Promise.all([
     // CONTRACT: documents/contracts/collaboration.md#share-key — every relay of the share takes the token the share key derives.
-    deriveContentKey(shareKey), deriveRelayToken(shareKey), deriveAwarenessKey(shareKey),
+    deriveContentShareKey(shareKey), deriveRelayToken(shareKey), derivePresenceShareKey(shareKey),
   ]);
   const slot = createSwitchableTransport();
   const scheduler = options.network?.scheduler;
@@ -121,18 +121,18 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
   });
   // TRAP: a peer sends its presence once, when this device appears, which during a join is before the project exists.
   // A channel attached after that would drop it as an unknown kind.
-  const presence = parts.presence = attachAwareness(session, { awarenessKey, logger });
+  const presence = parts.presence = attachPresence(session, { awarenessKey, logger });
   // INVARIANT: a member counts in the snapshot-writer election and the relay group only once its presence is published.
-  presence.setLocal({ name: options.name, colour: peerColour("", presence.awareness.clientID), file: null, anchor: null, head: null });
-  const relays = parts.relays = followShareRelays({
+  presence.setLocal({ name: options.name, colour: derivePeerColour("", presence.awareness.clientID), file: null, anchor: null, head: null });
+  const relays = parts.relays = startShareRelays({
     session, slot, presence, inviteRelays: options.relays.map((relay) => relay.url), shareId, relayToken, contentKey, awarenessKey,
     cursorsFor: store.relayCursors, logger, ...(options.network ? { network: options.network } : {}),
   });
-  const blobs = parts.blobs = attachBlobs(session, {
+  const blobs = parts.blobs = attachShareBlobs(session, {
     contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: (peer) => presence.reportsOtherRelay(peer),
     ...(scheduler ? { scheduler } : {}),
   });
-  const placed = await placeSharedProject(options.projects, shareId, session, start);
+  const placed = await ensureSharedProject(options.projects, shareId, session, start);
   const mirrors = trackMirror(options.startMirror, { folder: placed.folder, session, blobs, store }, parts, logger);
   await mirrors.start();
   // A joiner opens the project right after this returns, so the files already on hand must be on disk first.

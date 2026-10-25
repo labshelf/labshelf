@@ -1,8 +1,8 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
 import type { DotTone, SidebarTreeNode } from "../../../libraryUi/index.js";
-import { familyName } from "../../../library/paper/index.js";
+import { deriveFamilyName } from "../../../library/paper/index.js";
 import type { PathOps } from "../../../library/mutations/index.js";
-import { STATUS_LABEL, type PaperStatus } from "../../../library/readingStatus/index.js";
+import { STATUS_LABEL, type ReadingStatus } from "../../../library/readingStatus/index.js";
 import type { ChecklistItem, PageOverflow } from "../buildChecklist.js";
 
 /** What the Checklist knows about a reading-list paper beyond its checklist item. */
@@ -37,7 +37,7 @@ function located(paths: PathOps, key: string, label: string, file: string, line:
 const pagesText = (pages: number): string => Number.isInteger(pages) ? String(pages) : pages.toFixed(1);
 
 /** The Pages row's head: the body's page count against its limit, red once over it. */
-export function pagesHead({ pages, limit }: PageOverflow): Omit<SidebarTreeNode, "key"> {
+export function createPagesHead({ pages, limit }: PageOverflow): Omit<SidebarTreeNode, "key"> {
   const over = pages > limit;
   return {
     label: `Pages ${pagesText(pages)} / ${limit}`, tooltip: over ? "Over the page limit" : "Within the page limit",
@@ -45,14 +45,14 @@ export function pagesHead({ pages, limit }: PageOverflow): Omit<SidebarTreeNode,
   };
 }
 
-const STATUS_TONE: Record<PaperStatus, DotTone> = { unread: "muted", reading: "accent", done: "ok" };
+const STATUS_TONE: Record<ReadingStatus, DotTone> = { unread: "muted", reading: "accent", done: "ok" };
 
 const shortDate = (iso: string): string => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper | undefined): SidebarTreeNode {
   const { title, status, statusChangedAt } = item.paper;
   const author = paper?.authors?.find((a) => a.trim().length > 0);
-  const label = author ? [familyName(author), paper?.year].filter((part) => part !== undefined).join(" ") : title;
+  const label = author ? [deriveFamilyName(author), paper?.year].filter((part) => part !== undefined).join(" ") : title;
   const description = item.done
     ? statusChangedAt && shortDate(statusChangedAt)
     : paper?.cited ? "cited" : paper?.listed ? "added" : undefined;
@@ -67,7 +67,7 @@ export function itemRow(paths: PathOps, key: string, item: ChecklistItem, readin
     case "todo": return located(paths, key, item.todo.text, item.todo.file, item.todo.line);
     case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);
     case "figure": return { key, label: item.figure.name, tooltip: "Stale figure", inlineAction: { action: "regenerate", label: "Regenerate" } };
-    case "pages": return { key, ...pagesHead(item.overflow) };
+    case "pages": return { key, ...createPagesHead(item.overflow) };
     case "manual": return {
       key, label: item.manual.text, checked: item.done, ...(item.done ? { struck: true } : {}),
       menu: [{ label: "Remove Item", action: "removeItem", danger: true }],

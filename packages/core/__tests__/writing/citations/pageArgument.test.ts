@@ -1,12 +1,12 @@
 /** Verifies where a citation's page argument is detected in LaTeX and Typst lines. */
-import { pageArgumentContext } from "../../../src/writing/citations/index";
+import { derivePageArgument } from "../../../src/writing/citations/index";
 
 function at(format: "latex" | "typst", marked: string) {
   const cursor = marked.indexOf("|");
-  return pageArgumentContext(format, marked.slice(0, cursor), marked.slice(cursor + 1));
+  return derivePageArgument(format, marked.slice(0, cursor), marked.slice(cursor + 1));
 }
 
-describe("pageArgumentContext in LaTeX", () => {
+describe("derivePageArgument in LaTeX", () => {
   it("has no key while the command has no key list yet", () => {
     expect(at("latex", "See \\cite[|")).toEqual({ start: 10, hasKeys: false, commandStart: 4 });
   });
@@ -42,7 +42,7 @@ describe("pageArgumentContext in LaTeX", () => {
   });
 });
 
-describe("pageArgumentContext in Typst", () => {
+describe("derivePageArgument in Typst", () => {
   it("reads the key and where the supplement starts", () => {
     expect(at("typst", "As in @he2016[p|] it")).toEqual({ key: "he2016", start: 14, close: 15, hasKeys: true, commandStart: 6 });
   });

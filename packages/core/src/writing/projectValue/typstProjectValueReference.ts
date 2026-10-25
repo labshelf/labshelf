@@ -1,6 +1,6 @@
 /** Finds member paths into `json("…")` values in Typst text, directly or through a name bound by `let`. */
 
-export interface TypstValuePrefix {
+export interface TypstProjectValuePrefix {
   /** The `json()` path literal as written. */
   source: string;
   /** Complete member names before the one being typed, dot-joined; "" when there are none. */
@@ -9,7 +9,7 @@ export interface TypstValuePrefix {
   start: number;
 }
 
-export interface TypstValueReference {
+export interface TypstProjectValueReference {
   source: string;
   /** Dot-joined members from the file root up to and including the one under the cursor. */
   path: string;
@@ -50,7 +50,7 @@ function chains(text: string): Chain[] {
 }
 
 /** What is being typed after `json("…").` or `name.`, from the text up to the cursor. */
-export function typstValuePrefix(text: string, offset: number): TypstValuePrefix | undefined {
+export function findTypstProjectValuePrefix(text: string, offset: number): TypstProjectValuePrefix | undefined {
   const chain = chains(text.slice(0, offset)).find((candidate) => candidate.end === offset && candidate.members.length > 0);
   const typing = chain?.members.at(-1);
   if (!chain || !typing) { return undefined; }
@@ -58,7 +58,7 @@ export function typstValuePrefix(text: string, offset: number): TypstValuePrefix
 }
 
 /** The member path whose last name contains the offset. */
-export function typstValueAt(text: string, offset: number): TypstValueReference | undefined {
+export function findTypstProjectValue(text: string, offset: number): TypstProjectValueReference | undefined {
   for (const chain of chains(text)) {
     const index = chain.members.findIndex((member) => member.start <= offset && offset <= member.end);
     const member = chain.members[index];

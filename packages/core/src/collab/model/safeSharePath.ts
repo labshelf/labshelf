@@ -1,6 +1,6 @@
 // Decides whether a file path listed by a peer is safe to write below a project folder.
 import { PROJECT_FILE } from "../../writing/project/index.js";
-import { SHARED_TOOL_FILES } from "./sharedPaths.js";
+import { SHARED_TOOL_FILES } from "./deriveSharedPaths.js";
 
 const WINDOWS_DEVICE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 const TOOL_FOLDER = ".labshelf";

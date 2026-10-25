@@ -2,7 +2,7 @@
 import type { RelayAccount } from "../../../src/relay/account/index";
 import { encodeRelayBody } from "../../../src/relay/index";
 import { connectShare, type MirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
-import type { ShareWorkflowPorts, StoredInvite } from "../../../src/collab/share/index";
+import type { ShareFlowPorts, StoredInvite } from "../../../src/collab/share/index";
 import { parseProjectFile, type ProjectEntry } from "../../../src/writing/project/index";
 import { LIB, readText } from "../../support/memoryProjectCatalog";
 import { mirrorFactory, Network, newDevice, type Device } from "../session/connectionTestbed";
@@ -13,7 +13,7 @@ export interface WorkflowDevice extends Device {
   keys: Map<string, StoredInvite>;
   open: Map<string, ShareConnection>;
   states: Map<string, MemoryStorage>;
-  ports: ShareWorkflowPorts;
+  ports: ShareFlowPorts;
   /** Folders that hold a labshelf.yaml, sorted. */
   projectFolders(): string[];
 }
@@ -37,7 +37,7 @@ export function workflowDevice(net: Network, name: string, startMirror?: MirrorF
   const busy = new Set<string>();
   const states = new Map<string, MemoryStorage>();
   let entries: ProjectEntry[] = [];
-  const ports: ShareWorkflowPorts = {
+  const ports: ShareFlowPorts = {
     keys: {
       remember: async (invite) => { keys.set(invite.shareId, { ...invite, relays: [...invite.relays] }); },
       invite: async (shareId) => keys.get(shareId),

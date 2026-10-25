@@ -9,7 +9,7 @@ const CONVENTIONAL_MAIN: Record<ProjectFormat, string> = { latex: "main.tex", ty
 export const DOCUMENT_CLASS = /^[ \t]*\\documentclass\b/m;
 
 /** Source files of the format, the conventional main name first, then alphabetical. */
-export function mainCandidates(format: ProjectFormat, fileNames: readonly string[]): string[] {
+export function findEntryCandidates(format: ProjectFormat, fileNames: readonly string[]): string[] {
   const main = CONVENTIONAL_MAIN[format];
   return fileNames
     .filter((name) => name.toLowerCase().endsWith(EXTENSION[format]))
@@ -20,13 +20,13 @@ export function mainCandidates(format: ProjectFormat, fileNames: readonly string
  * LaTeX: the first candidate that declares `\documentclass`. Typst has no such marker, so only `main.typ` is taken.
  * @returns undefined when nothing qualifies; the user then picks the main by hand
  */
-export async function detectMainFile(
+export async function detectEntryFile(
   format: ProjectFormat,
   fileNames: readonly string[],
   readText: (name: string) => Promise<string | undefined>,
 ): Promise<string | undefined> {
   if (format === "typst") { return fileNames.includes(CONVENTIONAL_MAIN.typst) ? CONVENTIONAL_MAIN.typst : undefined; }
-  for (const name of mainCandidates(format, fileNames)) {
+  for (const name of findEntryCandidates(format, fileNames)) {
     const text = await readText(name);
     if (text !== undefined && DOCUMENT_CLASS.test(text)) { return name; }
   }
@@ -35,7 +35,7 @@ export async function detectMainFile(
 
 /** The format a folder's sources suggest: LaTeX wins when both kinds are present; undefined when neither is. */
 export function detectFormat(fileNames: readonly string[]): ProjectFormat | undefined {
-  if (mainCandidates("latex", fileNames).length > 0) { return "latex"; }
-  if (mainCandidates("typst", fileNames).length > 0) { return "typst"; }
+  if (findEntryCandidates("latex", fileNames).length > 0) { return "latex"; }
+  if (findEntryCandidates("typst", fileNames).length > 0) { return "typst"; }
   return undefined;
 }

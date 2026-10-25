@@ -1,10 +1,10 @@
 /** Decides whether a paper matches a query and how well: title hits rank first, then authors, then the rest. */
 import type { PaperRecord } from "../../model/index.js";
-import { fold } from "./text/index.js";
-import type { HasKey, Query } from "./query.js";
+import { normalizeText } from "./text/index.js";
+import type { HasField, Query } from "./query.js";
 import type { SearchDoc } from "./searchDoc.js";
 
-function has(record: PaperRecord, what: HasKey): boolean {
+function has(record: PaperRecord, what: HasField): boolean {
   switch (what) {
     case "pdf": return record.hasPdf !== false;
     case "note": return Boolean(record.note?.trim());
@@ -50,14 +50,14 @@ export function matchPaper(record: PaperRecord, doc: SearchDoc, q: Query): numbe
 /**
  * @returns whether the paper matches, for callers that keep the host's own ordering
  */
-export function paperMatches(record: PaperRecord, doc: SearchDoc, q: Query): boolean {
+export function isPaperMatch(record: PaperRecord, doc: SearchDoc, q: Query): boolean {
   return matchPaper(record, doc, q) > 0;
 }
 
 /**
  * @returns whether a short name (a collection) contains every free-text term of the query
  */
-export function matchesTerms(q: Query, text: string): boolean {
-  const folded = fold(text);
+export function matchTerms(q: Query, text: string): boolean {
+  const folded = normalizeText(text);
   return q.terms.every((term) => folded.includes(term));
 }

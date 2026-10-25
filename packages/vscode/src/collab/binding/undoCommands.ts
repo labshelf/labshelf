@@ -39,7 +39,7 @@ async function runStep(editor: vscode.TextEditor, binding: DocumentBinding, step
   }
 }
 
-export function overrideUndoRedo(bindingOf: BindingOf, logger: ILogger): UndoRedoOverride {
+export function registerUndoRedo(bindingOf: BindingOf, logger: ILogger): UndoRedoOverride {
   const refreshContext = () => {
     const editor = vscode.window.activeTextEditor;
     void vscode.commands.executeCommand("setContext", SHARED_EDITOR_CONTEXT, editor !== undefined && bindingOf(editor.document) !== undefined);

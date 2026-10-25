@@ -1,4 +1,4 @@
-import { editPaperTags, setPaperStatus, updatePaperFields } from "@labshelf/core";
+import { updatePaperTags, setPapersReadingStatus, updatePaperFields } from "@labshelf/core";
 
 import { makeHarness, PAPERS, type MutationHarness } from "../../support/mutationHarness";
 
@@ -165,7 +165,7 @@ describe("setPaperStatus / editPaperTags", () => {
     await h.seedPaper(`${PAPERS}/p1`, { title: "1" });
     await h.seedPaper(`${ML}/p2`, { title: "2" });
     await h.seedPaper(`${PAPERS}/p3`, { title: "3", status: "done" });
-    const outcome = await setPaperStatus(h.ctx, [ref("p1"), ref("p2", ML), ref("p3")], "done");
+    const outcome = await setPapersReadingStatus(h.ctx, [ref("p1"), ref("p2", ML), ref("p3")], "done");
     expect(outcome.done).toEqual(["p1", "p2", "p3"]);
     expect(outcome.failed).toEqual([]);
     expect(outcome.records.map((r) => [r.id, r.status])).toEqual([["p1", "done"], ["p2", "done"], ["p3", "done"]]);
@@ -183,7 +183,7 @@ describe("setPaperStatus / editPaperTags", () => {
         await artifacts.writePaperArtifacts(folder, paper, source);
       },
     };
-    const outcome = await setPaperStatus(h.ctx, [ref("p1"), ref("ghost"), ref("p2")], "reading");
+    const outcome = await setPapersReadingStatus(h.ctx, [ref("p1"), ref("ghost"), ref("p2")], "reading");
     expect(outcome.done).toEqual(["p2"]);
     expect(outcome.failed).toEqual([{ id: "p1", error: "disk full" }, { id: "ghost", error: "Paper not found" }]);
     expect(h.logs.filter((l) => l.message === "Paper update failed")).toHaveLength(2);
@@ -194,7 +194,7 @@ describe("setPaperStatus / editPaperTags", () => {
     const h = makeHarness();
     await h.seedPaper(`${PAPERS}/p1`, { title: "1", tags: ["NLP", "keep"] });
     await h.seedPaper(`${PAPERS}/p2`, { title: "2" });
-    const outcome = await editPaperTags(h.ctx, [ref("p1"), ref("p2"), ref("ghost")], ["new", "nlp"], ["  NLP "]);
+    const outcome = await updatePaperTags(h.ctx, [ref("p1"), ref("p2"), ref("ghost")], ["new", "nlp"], ["  NLP "]);
     expect(outcome.done).toEqual(["p1", "p2"]);
     expect(outcome.failed).toEqual([{ id: "ghost", error: "Paper not found" }]);
     expect((await h.readMeta(`${PAPERS}/p1`))["tags"]).toEqual(["keep", "new", "nlp"]);
@@ -205,11 +205,11 @@ describe("setPaperStatus / editPaperTags", () => {
     const h = makeHarness();
     await h.seedPaper(`${PAPERS}/p1`, { title: "1", tags: ["A", "b"] });
     const writes = h.fs.writes;
-    expect((await editPaperTags(h.ctx, [ref("p1")], [], ["zzz"])).done).toEqual(["p1"]);
+    expect((await updatePaperTags(h.ctx, [ref("p1")], [], ["zzz"])).done).toEqual(["p1"]);
     expect(h.fs.writes).toBe(writes);
-    await editPaperTags(h.ctx, [ref("p1")], [], ["a"]);
+    await updatePaperTags(h.ctx, [ref("p1")], [], ["a"]);
     expect((await h.readMeta(`${PAPERS}/p1`))["tags"]).toEqual(["b"]);
-    await editPaperTags(h.ctx, [ref("p1")], [], ["B"]);
+    await updatePaperTags(h.ctx, [ref("p1")], [], ["B"]);
     expect(await h.readMeta(`${PAPERS}/p1`)).not.toHaveProperty("tags");
   });
 });
@@ -226,7 +226,7 @@ describe("statusChangedAt", () => {
 
   it("is set by setPaperStatus on every paper whose status differs", async () => {
     const h = await withBase();
-    const outcome = await setPaperStatus(h.ctx, [{ id: "p1", path: P1 }], "done");
+    const outcome = await setPapersReadingStatus(h.ctx, [{ id: "p1", path: P1 }], "done");
     expect(outcome.records[0]?.statusChangedAt).toBe("2026-01-01T00:00:00.000Z");
     expect(await h.readMeta(P1)).toMatchObject({ status: "done", statusChangedAt: "2026-01-01T00:00:00.000Z" });
   });
@@ -241,7 +241,7 @@ describe("statusChangedAt", () => {
   it("keeps the old value when the same status is set again", async () => {
     const h = makeHarness();
     await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
-    await setPaperStatus(h.ctx, [{ id: "p1", path: P1 }], "reading");
+    await setPapersReadingStatus(h.ctx, [{ id: "p1", path: P1 }], "reading");
     await updatePaperFields(h.ctx, P1, { status: "reading", note: "n" });
     expect((await h.readMeta(P1))["statusChangedAt"]).toBe(CHANGED);
   });
@@ -256,7 +256,7 @@ describe("statusChangedAt", () => {
     const h = makeHarness();
     await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
     await updatePaperFields(h.ctx, P1, { note: "n" });
-    await editPaperTags(h.ctx, [{ id: "p1", path: P1 }], ["x"], []);
+    await updatePaperTags(h.ctx, [{ id: "p1", path: P1 }], ["x"], []);
     expect((await h.readMeta(P1))["statusChangedAt"]).toBe(CHANGED);
   });
 });

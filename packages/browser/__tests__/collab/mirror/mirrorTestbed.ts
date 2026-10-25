@@ -1,13 +1,13 @@
 // Builds a browser project mirror over in-memory library sources, IndexedDB share state, a held tab lease and a hand-driven lease clock.
 import "fake-indexeddb/auto";
 import {
-  attachBlobs, createProjectIndex, createShareSession, deriveContentKey, fileText, indexFiles, openCollabStore, replaceFileText,
-  type BlobExchange, type CollabStore, type ILogger, type LeaseScheduler, type LibraryFileSystem, type ShareSession,
+  attachShareBlobs, createShareIndexDoc, createShareSession, deriveContentShareKey, readFileText, readShareIndexDocFiles, openCollabStore, setFileText,
+  type ShareBlobExchange, type CollabStore, type ILogger, type LeaseScheduler, type LibraryFileSystem, type ShareSession,
 } from "@labshelf/core";
 import {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror,
 } from "../../../src/collab/mirror";
-import { acquireTabLease, tabLeaseName, type LibrarySource, type TabLease } from "../../../src/storage";
+import { openTabLease, createTabLeaseName, type LibraryLocation, type TabLease } from "../../../src/storage";
 import { openBrowserCollabStorage } from "../../../src/storage/collab";
 import { installFakeLocks } from "../../support/fakeLocks";
 import { loopback } from "../../support/loopbackRelay";
@@ -17,8 +17,8 @@ export const LIBRARY_ID = "lib-1";
 export const SHARE_ID = "f".repeat(32);
 export const FOLDER = "projects/thesis";
 const SHARE_KEY = new Uint8Array(16).fill(1);
-const BROWSER: LibrarySource = { kind: "browser", reason: "not-installed" };
-const FOLDER_SOURCE: LibrarySource = { kind: "folder", root: "/home/me/library", via: "picked" };
+const BROWSER: LibraryLocation = { kind: "browser", reason: "not-installed" };
+const FOLDER_SOURCE: LibraryLocation = { kind: "folder", root: "/home/me/library", via: "picked" };
 
 /** A memory file system whose stat reports a fresh mtime per write and the real size, and which can lose its permission. */
 export interface TestFs extends LibraryFileSystem {
@@ -96,13 +96,13 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
   await browserFs.mkdir(FOLDER);
   await folderFs.mkdir(FOLDER);
   const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
-  const contentKey = await deriveContentKey(SHARE_KEY);
+  const contentKey = await deriveContentShareKey(SHARE_KEY);
   const store: CollabStore = await openCollabStore({ storage: openBrowserCollabStorage(`mirror-test-${namespaces++}`), logger });
   const session = createShareSession({
     shareId: SHARE_ID, contentKey, transport: loopback()("a"), logger, index: store.index, createDoc: store.createDoc,
   });
-  createProjectIndex(session.index);
-  const blobs: BlobExchange = attachBlobs(session, { contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: () => false });
+  createShareIndexDoc(session.index);
+  const blobs: ShareBlobExchange = attachShareBlobs(session, { contentKey, getBlob: (hash) => store.blobs.get(hash), logger, skipPeer: () => false });
   const listeners = new Set<(paths: string[]) => void>();
   const sources = {
     browserFileSystem: browserFs,
@@ -110,7 +110,7 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
     getLibrarySource: async () => (source === "browser" ? BROWSER : FOLDER_SOURCE),
     onLibraryFilesChanged: (listener: (paths: string[]) => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
-  const held = await acquireTabLease(tabLeaseName(LIBRARY_ID, SHARE_ID));
+  const held = await openTabLease(createTabLeaseName(LIBRARY_ID, SHARE_ID));
   if (held.kind !== "owned") { throw new Error("expected the testbed to own the tab lease"); }
   const tab = held.lease;
   const mirrors: BrowserProjectMirror[] = [];
@@ -126,10 +126,10 @@ export async function openTestbed(source: "browser" | "folder"): Promise<Testbed
       onStopped: (reason) => { into.push(reason); },
     })),
     peerEdit: (path, text) => {
-      replaceFileText(session.openDoc(path), text, "remote");
-      indexFiles(session.index).set(path, { kind: "text" });
+      setFileText(session.openDoc(path), text, "remote");
+      readShareIndexDocFiles(session.index).set(path, { kind: "text" });
     },
-    docText: (path) => fileText(session.openDoc(path)).toString(),
+    docText: (path) => readFileText(session.openDoc(path)).toString(),
     close: async () => {
       await Promise.all(mirrors.map((mirror) => mirror.close()));
       await tab.release();

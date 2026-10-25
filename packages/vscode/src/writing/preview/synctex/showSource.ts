@@ -1,17 +1,17 @@
 // Opens the source line behind a point of the build preview, found through the project's SyncTeX data.
 import * as vscode from "vscode";
 
-import { sourceAt, type ILogger, type PagePoint, type PathOps } from "@labshelf/core";
+import { findSourcePosition, type ILogger, type PagePoint, type PathOps } from "@labshelf/core";
 import { openSourceLine } from "./openSourceLine.js";
 import { NOT_BUILT_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE } from "../previewStrings.js";
-import type { SynctexLookup } from "./projectSynctex.js";
+import type { SynctexFinder } from "./projectSynctex.js";
 
 
 export interface ShowSourceDeps {
   logger: ILogger;
   paths: PathOps;
   projectFolder: string;
-  synctex: () => Promise<SynctexLookup>;
+  synctex: () => Promise<SynctexFinder>;
 }
 
 export async function showSource(deps: ShowSourceDeps, point: PagePoint): Promise<void> {
@@ -26,7 +26,7 @@ export async function showSource(deps: ShowSourceDeps, point: PagePoint): Promis
     await vscode.window.showInformationMessage(NOT_BUILT_MESSAGE);
     return;
   }
-  const source = sourceAt(lookup.index, point);
+  const source = findSourcePosition(lookup.index, point);
   if (!source) {
     await logger.log("WARN", PREVIEW_LOG_MODULE, "No source found at the clicked point", { projectFolder, page: point.page, x: point.x, y: point.y });
     await vscode.window.showInformationMessage(NO_SOURCE_MESSAGE);

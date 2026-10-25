@@ -1,6 +1,6 @@
 /** Unit tests for judging whether extracted PDF text is readable natural language. */
 
-import { isSparseText, looksLikeNaturalText } from '@labshelf/core';
+import { isSparseText, isNaturalText } from '@labshelf/core';
 
 describe('looksLikeNaturalText', () => {
   it('rejects text recovered from fonts with a broken ToUnicode map', () => {
@@ -12,7 +12,7 @@ describe('looksLikeNaturalText', () => {
       'kARGNz iGwGNFW jt YQwA iyQBBU BO fHxURytNwUGQ twEIwEz kARINEFRGL'
     ).repeat(3);
 
-    expect(looksLikeNaturalText(scrambled)).toBe(false);
+    expect(isNaturalText(scrambled)).toBe(false);
   });
 
   it('accepts ordinary English and Portuguese prose', () => {
@@ -26,12 +26,12 @@ describe('looksLikeNaturalText', () => {
       'obtidos para as amostras do estudo com o objetivo de avaliar os efeitos da ' +
       'intervencao e para que os resultados possam ser comparados com os controles.';
 
-    expect(looksLikeNaturalText(english)).toBe(true);
-    expect(looksLikeNaturalText(portuguese)).toBe(true);
+    expect(isNaturalText(english)).toBe(true);
+    expect(isNaturalText(portuguese)).toBe(true);
   });
 
   it('does not reject documents with too little text to judge', () => {
-    expect(looksLikeNaturalText('Xyz Qrs')).toBe(true);
+    expect(isNaturalText('Xyz Qrs')).toBe(true);
   });
 });
 

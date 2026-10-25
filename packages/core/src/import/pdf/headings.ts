@@ -17,7 +17,7 @@ function headingPattern(words: string[]): RegExp {
 }
 
 // Where the extracted run ends: at the next heading, or at the window's end.
-export function stopIndex(window: string, stop: RegExp): number {
+export function findStopOffset(window: string, stop: RegExp): number {
   const match = window.match(stop);
   return match?.index !== undefined ? match.index : window.length;
 }

@@ -4,19 +4,19 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
-import { lookupCitation, openCitedPaper, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
-import type { SynctexLookup } from "../../../../src/writing/preview/synctex";
+import { findSourcePosition, type Annotation, type PaperRecord } from "@labshelf/core";
+import { findCitation, openCitedPaper, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
+import type { SynctexFinder } from "../../../../src/writing/preview/synctex";
 import { fakeLogger } from "../../../support/writingFixtures";
 
-jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), sourceAt: jest.fn() }));
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), findSourcePosition: jest.fn() }));
 
-const source = sourceAt as jest.Mock;
+const source = findSourcePosition as jest.Mock;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
 const execute = vscode.commands.executeCommand as jest.Mock;
 const area = { page: 1, left: 10, top: 10, right: 30, bottom: 20 };
 const smith = { id: "smith-1", title: "Smith on cats", path: "smith-1", citeKey: "smith2020", status: "unread", authors: ["A. Smith"], year: 2020 } as PaperRecord;
-const found: SynctexLookup = { status: "found", index: { files: [], pages: [], byFile: new Map() } as never };
+const found: SynctexFinder = { status: "found", index: { files: [], pages: [], byFile: new Map() } as never };
 
 function deps(over: Partial<PreviewCitationDeps> = {}) {
   const logger = fakeLogger();
@@ -38,10 +38,10 @@ beforeEach(() => {
   workspace.textDocuments = [];
 });
 
-describe("lookupCitation", () => {
+describe("findCitation", () => {
   it("names the library paper of a hyperref destination", async () => {
     const { all, logger } = deps();
-    expect(await lookupCitation(all, { area, link: true, dest: "cite.smith2020" })).toEqual([
+    expect(await findCitation(all, { area, link: true, dest: "cite.smith2020" })).toEqual([
       { key: "smith2020", paper: { id: "smith-1", title: "Smith on cats", authors: ["A. Smith"], status: "unread", year: 2020 } },
     ]);
     expect(logger.log).not.toHaveBeenCalled();
@@ -49,12 +49,12 @@ describe("lookupCitation", () => {
 
   it("keeps a cited key the library lacks, without a paper", async () => {
     const { all } = deps();
-    expect(await lookupCitation(all, { area, link: true, dest: "cite.unknown" })).toEqual([{ key: "unknown" }]);
+    expect(await findCitation(all, { area, link: true, dest: "cite.unknown" })).toEqual([{ key: "unknown" }]);
   });
 
   it("matches a Typst link against the stored cites", async () => {
     const { all } = deps({ format: "typst", typstCites: () => [{ key: "smith2020", at: { page: 1, x: 12, y: 15 } }] });
-    const entries = await lookupCitation(all, { area, link: true });
+    const entries = await findCitation(all, { area, link: true });
     expect(entries.map((entry) => entry.key)).toEqual(["smith2020"]);
     expect(entries[0]?.paper?.id).toBe("smith-1");
   });
@@ -63,7 +63,7 @@ describe("lookupCitation", () => {
     source.mockReturnValue({ file: "/p/paper/main.tex", line: 2 });
     workspace.textDocuments = [{ uri: vscode.Uri.file("/p/paper/main.tex"), getText: () => "intro\nas shown by \\cite{smith2020}\n" }];
     const { all } = deps({ synctex: async () => found });
-    const entries = await lookupCitation(all, { area, link: false });
+    const entries = await findCitation(all, { area, link: false });
     expect(entries.map((entry) => entry.key)).toEqual(["smith2020"]);
     expect(source).toHaveBeenCalledWith(found.index, { page: 1, x: 20, y: 15 });
   });
@@ -75,7 +75,7 @@ describe("lookupCitation", () => {
     source.mockReturnValue({ file, line: 1 });
     try {
       const { all } = deps({ synctex: async () => found });
-      expect((await lookupCitation(all, { area, link: false })).map((entry) => entry.key)).toEqual(["smith2020"]);
+      expect((await findCitation(all, { area, link: false })).map((entry) => entry.key)).toEqual(["smith2020"]);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -83,13 +83,13 @@ describe("lookupCitation", () => {
 
   it("answers nothing for LaTeX text when there is no SyncTeX data", async () => {
     const { all } = deps({ synctex: async () => ({ status: "missing", path: "/p/paper" }) });
-    expect(await lookupCitation(all, { area, link: false })).toEqual([]);
+    expect(await findCitation(all, { area, link: false })).toEqual([]);
   });
 
   it("logs a warning with context and answers nothing when the lookup fails", async () => {
     source.mockReturnValue({ file: "/p/paper/gone.tex", line: 1 });
     const { all, logger } = deps({ synctex: async () => found });
-    expect(await lookupCitation(all, { area, link: false })).toEqual([]);
+    expect(await findCitation(all, { area, link: false })).toEqual([]);
     expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", "Citation lookup failed", expect.objectContaining({ projectFolder: "/p/paper", page: 1 }));
   });
 });
@@ -100,7 +100,7 @@ describe("lookupCitation card details", () => {
   it("attaches at most five quoted highlights to the cited paper", async () => {
     const asked: string[] = [];
     const { all } = deps({ highlightsOf: async (id) => { asked.push(id); return [1, 2, 3, 4, 5, 6, 7].map((page) => highlight(page, `quote ${page}`)); } });
-    const [entry] = await lookupCitation(all, link);
+    const [entry] = await findCitation(all, link);
     expect(asked).toEqual(["smith-1"]);
     expect(entry?.paper?.highlights?.map((quote) => quote.text)).toEqual(["quote 1", "quote 2", "quote 3", "quote 4", "quote 5"]);
   });
@@ -108,13 +108,13 @@ describe("lookupCitation card details", () => {
   it("does not read highlights when no key names a library paper", async () => {
     const highlightsOf = jest.fn(async () => []);
     const { all } = deps({ highlightsOf });
-    expect(await lookupCitation(all, { area, link: true, dest: "cite.unknown" })).toEqual([{ key: "unknown" }]);
+    expect(await findCitation(all, { area, link: true, dest: "cite.unknown" })).toEqual([{ key: "unknown" }]);
     expect(highlightsOf).not.toHaveBeenCalled();
   });
 
   it("still answers and logs when the highlights cannot be read", async () => {
     const { all, logger } = deps({ highlightsOf: async () => { throw new Error("store offline"); } });
-    const [entry] = await lookupCitation(all, link);
+    const [entry] = await findCitation(all, link);
     expect(entry?.paper).toMatchObject({ id: "smith-1" });
     expect(entry?.paper).not.toHaveProperty("highlights");
     expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.objectContaining({ projectFolder: "/p/paper", paperId: "smith-1", error: expect.stringContaining("store offline") }));

@@ -3,7 +3,7 @@
 // Also notices when the library folder disappears (unmounted drive, sync client) and re-arms when it returns.
 import { promises as fsp, watch, type FSWatcher } from "node:fs";
 
-import { RootPresenceMonitor, errorMessage, isExternalChangeNoise, type ILogger } from "@labshelf/core";
+import { LibraryRootPresenceMonitor, formatError, isExternalChangeNoise, type ILogger } from "@labshelf/core";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
@@ -25,7 +25,7 @@ export class LibraryWatcher {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private poll: ReturnType<typeof setInterval> | undefined;
 
-  private readonly monitor: RootPresenceMonitor;
+  private readonly monitor: LibraryRootPresenceMonitor;
 
   constructor(
     private readonly paths: LibraryRoot,
@@ -33,7 +33,7 @@ export class LibraryWatcher {
     private readonly logger: ILogger,
     onRootLost: () => void,
   ) {
-    this.monitor = new RootPresenceMonitor({
+    this.monitor = new LibraryRootPresenceMonitor({
       exists: () => folderExists(paths.root),
       logger,
       onLost: () => { this.disarm(); onRootLost(); },
@@ -75,7 +75,7 @@ export class LibraryWatcher {
         // projects/ does not exist until the first writing project is created; there is nothing to poll for.
         if ((error as { code?: string }).code === "ENOENT") { continue; }
         void this.logger.log("WARN", "terminal/libraryWatcher", "Recursive watch unavailable, polling instead", {
-          dir, message: errorMessage(error),
+          dir, message: formatError(error),
         });
         this.startPolling();
       }

@@ -1,6 +1,6 @@
 // Gets page-1 text of a staged PDF from the background: through an offscreen document in Chrome, in place in Firefox.
 import { bx } from "../platform";
-import { firstPageText } from "./firstPageText";
+import { extractFirstPageText } from "./extractFirstPageText";
 import type { FirstPageTextReply, FirstPageTextRequest } from "./offscreenRequest";
 
 const OFFSCREEN_URL = "import/offscreen.html";
@@ -37,7 +37,7 @@ async function viaOffscreen(api: OffscreenApi, id: string): Promise<string> {
 /** @param id the key the bytes are staged under, for the offscreen document to read them by */
 export function readFirstPageText(id: string, bytes: Uint8Array): Promise<string> {
   const api = offscreenApi();
-  if (!api) return firstPageText(bytes);
+  if (!api) return extractFirstPageText(bytes);
   const run = queue.then(() => viaOffscreen(api, id));
   queue = run.catch(() => undefined);
   return run;

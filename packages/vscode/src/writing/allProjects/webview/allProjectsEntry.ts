@@ -9,7 +9,24 @@ import "@labshelf/core/styles/library-detail.css";
 import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-sidebar.css";
 import "@labshelf/core/styles/all-projects.css";
-import { $, mountAllProjects } from "@labshelf/core/dom";
-import { createAllProjectsChannel } from "./allProjectsChannel.js";
+import { findElement, mountAllProjects } from "@labshelf/core/dom";
+import type {
+  AllProjectsToHost,
+  AllProjectsTransport,
+  HostToAllProjects,
+  PrefsPort,
+  ShareClient,
+} from "@labshelf/core";
+import {
+  createWebviewShareClient,
+  createWebviewPrefs,
+  createWebviewTransport,
+} from "../../../webview/index.js";
 
-mountAllProjects($("root"), createAllProjectsChannel());
+/** acquireVsCodeApi() may be called once per webview document, so one call serves both. */
+function createAllProjectsChannel(): { transport: AllProjectsTransport; prefs: PrefsPort; sharing: ShareClient } {
+  const api = acquireVsCodeApi();
+  return { transport: createWebviewTransport<AllProjectsToHost, HostToAllProjects>(api), prefs: createWebviewPrefs(api), sharing: createWebviewShareClient(api) };
+}
+
+mountAllProjects(findElement("root"), createAllProjectsChannel());

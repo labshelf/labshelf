@@ -1,16 +1,16 @@
 /**
  * Renders the Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
  */
-import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
+import { deriveActiveOutlineRow, deriveOutlineRows, deriveVisibleRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
-import { icon } from "../../../ui/index.js";
+import { renderIcon } from "../../../ui/index.js";
 import { resolveOutlinePages } from "./outlinePages.js";
 import type { SidebarPanel } from "./sidebar.js";
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 
 export class OutlineTab implements SidebarPanel {
-  readonly el = el("div", { class: "rd-panel rd-outline", role: "tabpanel" });
-  private readonly list = el("div", { class: "rd-outline-list", role: "tree" });
+  readonly el = renderElement("div", { class: "rd-panel rd-outline", role: "tabpanel" });
+  private readonly list = renderElement("div", { class: "rd-outline-list", role: "tree" });
   private rows: OutlineRow[] = [];
   private rowPages: Array<number | null> = [];
   private readonly collapsed = new Set<number>();
@@ -18,7 +18,7 @@ export class OutlineTab implements SidebarPanel {
   private visible = false;
 
   constructor(private readonly ctx: ReaderContext) {
-    this.el.append(el("div", { class: "rd-panel-header" }, el("span", {}, "Outline")), this.list);
+    this.el.append(renderElement("div", { class: "rd-panel-header" }, renderElement("span", {}, "Outline")), this.list);
     ctx.eventBus.on("pagechanging", () => { if (this.visible) { this.highlightActive(); } });
     ctx.eventBus.on(DOCUMENT_REPLACED, () => this.forget());
   }
@@ -52,7 +52,7 @@ export class OutlineTab implements SidebarPanel {
     }
     // A reload during the read loads the new outline itself.
     if (doc !== this.ctx.pdfDocument) { return; }
-    this.rows = flattenOutline(raw);
+    this.rows = deriveOutlineRows(raw);
     // Deep outlines open collapsed past the second level so the structure is scannable.
     for (const row of this.rows) {
       if (row.hasChildren && row.depth >= 1 && this.rows.length > 40) { this.collapsed.add(row.id); }
@@ -73,15 +73,15 @@ export class OutlineTab implements SidebarPanel {
 
   private render(): void {
     if (this.rows.length === 0) {
-      this.list.replaceChildren(el("div", { class: "rd-empty" }, "This PDF has no outline."));
+      this.list.replaceChildren(renderElement("div", { class: "rd-empty" }, "This PDF has no outline."));
       return;
     }
     const frag = document.createDocumentFragment();
-    for (const row of visibleRows(this.rows, this.collapsed)) {
+    for (const row of deriveVisibleRows(this.rows, this.collapsed)) {
       const isCollapsed = this.collapsed.has(row.id);
-      const twisty = el("span", {
+      const twisty = renderElement("span", {
         class: `rd-twisty${row.hasChildren ? "" : " rd-twisty-leaf"}`,
-        html: row.hasChildren ? icon(isCollapsed ? "chevron-right" : "chevron-down") : "",
+        html: row.hasChildren ? renderIcon(isCollapsed ? "chevron-right" : "chevron-down") : "",
       });
       if (row.hasChildren) {
         twisty.addEventListener("click", (e) => {
@@ -91,7 +91,7 @@ export class OutlineTab implements SidebarPanel {
         });
       }
       const page = this.rowPages[row.id];
-      const item = el(
+      const item = renderElement(
         "div",
         {
           class: `rd-outline-item${row.bold ? " rd-outline-bold" : ""}`,
@@ -103,8 +103,8 @@ export class OutlineTab implements SidebarPanel {
           ...(row.hasChildren ? { "aria-expanded": isCollapsed ? "false" : "true" } : {}),
         },
         twisty,
-        el("span", { class: "rd-outline-title" }, row.title),
-        page ? el("span", { class: "rd-outline-page" }, String(page)) : null,
+        renderElement("span", { class: "rd-outline-title" }, row.title),
+        page ? renderElement("span", { class: "rd-outline-page" }, String(page)) : null,
       );
       const go = (): void => this.activate(row);
       item.addEventListener("click", go);
@@ -125,7 +125,7 @@ export class OutlineTab implements SidebarPanel {
   }
 
   private highlightActive(): void {
-    let active = activeOutlineIndex(this.rowPages, this.ctx.pdfViewer.currentPageNumber);
+    let active = deriveActiveOutlineRow(this.rowPages, this.ctx.pdfViewer.currentPageNumber);
     // Under a collapsed parent the nearest visible ancestor stands in for the active entry.
     while (active >= 0 && !this.list.querySelector(`[data-row="${active}"]`)) {
       active = this.rows[active]?.parentId ?? -1;

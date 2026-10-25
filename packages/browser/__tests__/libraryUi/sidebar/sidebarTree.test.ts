@@ -3,7 +3,7 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // The browser sidebar glue maps core sidebar actions to the page store and the host.
-import { createSharingHost, LibraryViewStore, PAPERS_DIR, type PaperRecord } from "@labshelf/core";
+import { createShareHost, LibraryViewStore, PAPERS_DIR, type PaperRecord } from "@labshelf/core";
 import type { LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../../../src/libraryUi/prefs";
 import { createSidebarProjects } from "../../../src/libraryUi/sidebar/sidebarProjects";
@@ -33,7 +33,7 @@ function mount(expanded: string[] = [], sections = { library: true, projects: tr
   const posted: unknown[] = [];
   const host = { post: (message: unknown) => { posted.push(message); } };
   const ui = { sidebar: null, store, folders: { create: jest.fn(), rename: jest.fn(), remove: jest.fn(), share: jest.fn() }, dropTarget: jest.fn(), dispose: jest.fn() } as unknown as LibraryUi;
-  const sharing = createSharingHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
+  const sharing = createShareHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();

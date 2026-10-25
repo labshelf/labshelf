@@ -7,13 +7,13 @@ import type { ILogger } from "../../../../ports/index.js";
 const MODULE = "ClearQuarantine";
 const execFileAsync = promisify(execFile);
 
-export type ExecFile = (file: string, args: string[]) => Promise<unknown>;
+export type RunFile = (file: string, args: string[]) => Promise<unknown>;
 
 /**
  * PLATFORM: a helper launched by a browser writes files that inherit com.apple.quarantine; macOS then
  * SIGKILLs the quarantined binaries at exec (exit 137). A failure is logged, not thrown: the tools may still run.
  */
-export async function clearQuarantine(dir: string, logger: ILogger, exec: ExecFile = execFileAsync): Promise<void> {
+export async function removeQuarantine(dir: string, logger: ILogger, exec: RunFile = execFileAsync): Promise<void> {
   try {
     await exec("/usr/bin/xattr", ["-dr", "com.apple.quarantine", dir]);
     await logger.log("INFO", MODULE, "Removed the quarantine attribute", { dir });

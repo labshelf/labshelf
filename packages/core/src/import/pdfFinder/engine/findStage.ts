@@ -1,12 +1,74 @@
 /** Starts every lookup at once, each under its own deadline, and hands their candidates out in rank order. */
 import { isSupplementaryUrl } from "../client/index.js";
 import { reportError } from "../env.js";
-import { outranksVersion, type PdfVersion } from "../../../model/index.js";
-import { candidateVersion } from "../resolvers/index.js";
+import { isPreferredVersion, type PdfVersion } from "../../../model/index.js";
+import {
+  deriveCandidateVersion,
+  arxivResolver,
+  crossrefResolver,
+  europePmcResolver,
+  openalexResolver,
+  pageHintResolver,
+  pmcResolver,
+  publisherResolver,
+  customResolver,
+  semanticScholarResolver,
+  titleTwinResolver,
+  unpaywallResolver,
+} from "../resolvers/index.js";
 import type { PdfFetchOptions, PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
-import { deadline } from "./deadline.js";
-import { landingLookup } from "./findLanding.js";
-import { lookupPlan } from "./findPlan.js";
+import { createDeadline } from "./createDeadline.js";
+import { fetchLanding } from "../../landing/index.js";
+
+interface LookupStep {
+  resolver: PdfResolver;
+  /** Lookups whose answers this one reads off the context, so it starts once they settle. */
+  after?: readonly PdfResolver[];
+}
+
+const LEARNERS = [openalexResolver, semanticScholarResolver, europePmcResolver, titleTwinResolver];
+
+// INVARIANT: learners (OpenAlex, Semantic Scholar, Europe PMC, the title-only twin search) settle before PMC and the
+// second arXiv step, so the ids they reveal feed those; the publisher rules wait for the landing page, whose URL keys some platforms.
+// arXiv appears twice: an id known from the start downloads early, a learned one later; a URL is tried once.
+function lookupPlan(landing: PdfResolver): LookupStep[] {
+  return [
+    { resolver: pageHintResolver },
+    { resolver: landing },
+    { resolver: publisherResolver, after: [landing] },
+    { resolver: arxivResolver },
+    ...LEARNERS.map((resolver) => ({ resolver })),
+    { resolver: arxivResolver, after: LEARNERS },
+    { resolver: pmcResolver, after: LEARNERS },
+    { resolver: crossrefResolver },
+    { resolver: unpaywallResolver },
+    { resolver: customResolver },
+  ];
+}
+
+// The lookup cap cuts it first; this only bounds a host that ignores the abort.
+const PAGE_TIMEOUT_MS = 10_000;
+
+/** A resolver that reads the DOI's landing page with the download's cookies and headers, since publishers gate it like the PDF. */
+function landingLookup(settings: Pick<PdfFetchOptions, "credentials" | "headers">): PdfResolver {
+  return {
+    name: "landing",
+    async resolve(ctx, env) {
+      if (ctx.landingUrl || !ctx.doi) return [];
+      const facts = await fetchLanding(`https://doi.org/${ctx.doi}`, {
+        fetch: env.fetch,
+        timeoutMs: PAGE_TIMEOUT_MS,
+        logger: env.logger,
+        ...(settings.credentials ? { credentials: settings.credentials } : {}),
+        ...(settings.headers ? { headers: settings.headers } : {}),
+      });
+      if (!facts) return [];
+      // Publisher rules key some platforms by the landing URL, and downloads send it as Referer.
+      ctx.landingUrl = facts.pageUrl;
+      return facts.pdfCandidates.map((c) => c.url);
+    },
+  };
+}
 
 /** A URL to download, labelled with whoever proposed it and, when known, the version of the paper it holds. */
 export interface Candidate {
@@ -21,7 +83,7 @@ export interface Candidate {
  * @returns each step's candidates, in rank order, without those `ctx.betterThan` rules out; a step that fails or is cut
  * yields []
  */
-export function startLookups(
+export function startFinds(
   ctx: ResolveContext,
   opts: PdfFetchOptions,
   env: ResolverEnv,
@@ -38,7 +100,7 @@ export function startLookups(
 }
 
 /** Yields each new candidate once its step and every step ranked above it have answered. */
-export async function* rankedCandidates(steps: Array<Promise<Candidate[]>>): AsyncGenerator<Candidate, void, undefined> {
+export async function* walkRankedCandidates(steps: Array<Promise<Candidate[]>>): AsyncGenerator<Candidate, void, undefined> {
   const seen = new Set<string>();
   for (const step of steps) {
     for (const candidate of await step) {
@@ -63,7 +125,7 @@ async function candidatesOf(resolver: PdfResolver, ctx: ResolveContext, env: Res
 async function cappedLookup(
   resolver: PdfResolver, ctx: ResolveContext, env: ResolverEnv, capMs: number, runSignal: AbortSignal,
 ): Promise<string[]> {
-  const cap = deadline(capMs, `Lookup over ${capMs} ms`);
+  const cap = createDeadline(capMs, `Lookup over ${capMs} ms`);
   const signal = AbortSignal.any([cap.signal, runSignal]);
   const fetch: ResolverEnv["fetch"] = (input, init) =>
     env.fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, signal]) : signal });
@@ -75,12 +137,12 @@ async function cappedLookup(
 }
 
 function candidate(ctx: ResolveContext, resolver: PdfResolver, url: string): Candidate {
-  const version = candidateVersion(ctx, resolver.name, url);
+  const version = deriveCandidateVersion(ctx, resolver.name, url);
   return { url, source: sourceLabel(resolver, ctx, url), ...(version ? { version } : {}) };
 }
 
 function wanted(ctx: ResolveContext, c: Candidate): boolean {
-  return !ctx.betterThan || outranksVersion(c.version, ctx.betterThan);
+  return !ctx.betterThan || isPreferredVersion(c.version, ctx.betterThan);
 }
 
 // Page links keep the label of whoever offered them ("page", "scholar").

@@ -1,7 +1,7 @@
 // Parses the labshelf argv into a command word, positionals and long/short flags.
 import { parseArgs as nodeParseArgs } from "node:util";
 
-export interface ParsedArgs {
+export interface CliArgs {
   command: string | undefined;
   positionals: string[];
   flags: Record<string, string | boolean>;
@@ -29,10 +29,10 @@ const OPTIONS = {
  * ("-a", "-5", "-rv", "-Lx") stays a positional, so `tag p1 -a` removes the tag "a".
  * @returns the parsed arguments
  */
-export function parseArgs(argv: string[]): ParsedArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const { tokens } = nodeParseArgs({ args: argv, options: OPTIONS, strict: false, allowPositionals: true, tokens: true });
   const positionals: string[] = [];
-  const flags: ParsedArgs["flags"] = {};
+  const flags: CliArgs["flags"] = {};
   let rawIndex = -1;
   for (const token of tokens) {
     if (token.kind === "positional") {
@@ -57,7 +57,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
 /**
  * @returns a string flag value, or undefined
  */
-export function stringFlag(flags: ParsedArgs["flags"], name: string): string | undefined {
+export function readStringFlag(flags: CliArgs["flags"], name: string): string | undefined {
   const value = flags[name];
   return typeof value === "string" ? value : undefined;
 }

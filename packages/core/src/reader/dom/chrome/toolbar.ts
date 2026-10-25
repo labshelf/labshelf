@@ -1,10 +1,10 @@
 /**
  * Renders the overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
  */
-import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../../index.js";
-import { iconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
-import { icon } from "../../../ui/index.js";
-import { $, el } from "../../../ui/dom/index.js";
+import { initialAutohide, deriveToolbarVisibility, type AutohideEvent, type AutohideState } from "../../index.js";
+import { renderReaderIconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
+import { renderIcon } from "../../../ui/index.js";
+import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 export interface ToolbarActions {
   toggleSidebar(): void;
@@ -16,7 +16,7 @@ export interface ToolbarActions {
 }
 
 export class Toolbar {
-  private readonly el = $("toolbar");
+  private readonly el = findElement("toolbar");
   private readonly backBtn: HTMLButtonElement;
   private readonly forwardBtn: HTMLButtonElement;
   private readonly sidebarBtn: HTMLButtonElement;
@@ -37,12 +37,12 @@ export class Toolbar {
     this.autoHide = autoHide;
     const mod = isMac ? "Cmd" : "Ctrl";
     const alt = isMac ? "Option" : "Alt";
-    this.sidebarBtn = iconButton(icon("panel-left"), "Toggle sidebar (F4)");
-    this.backBtn = iconButton(icon("arrow-left"), `Back (${alt}+Left)`);
-    this.forwardBtn = iconButton(icon("arrow-right"), `Forward (${alt}+Right)`);
-    const findBtn = iconButton(icon("search"), `Find (${mod}+F)`);
-    const themeBtn = iconButton(icon("droplet"), "Page theme");
-    const helpBtn = iconButton(icon("help"), "Keyboard shortcuts (?)");
+    this.sidebarBtn = renderReaderIconButton(renderIcon("panel-left"), "Toggle sidebar (F4)");
+    this.backBtn = renderReaderIconButton(renderIcon("arrow-left"), `Back (${alt}+Left)`);
+    this.forwardBtn = renderReaderIconButton(renderIcon("arrow-right"), `Forward (${alt}+Right)`);
+    const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
+    const themeBtn = renderReaderIconButton(renderIcon("droplet"), "Page theme");
+    const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
     this.backBtn.disabled = true;
     this.forwardBtn.disabled = true;
 
@@ -54,9 +54,9 @@ export class Toolbar {
     helpBtn.addEventListener("click", actions.openCheatsheet);
 
     this.el.append(
-      el("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.backBtn, this.forwardBtn),
-      el("div", { class: "rd-toolbar-title", title }, title),
-      el("div", { class: "rd-toolbar-group" }, findBtn, themeBtn, helpBtn),
+      renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.backBtn, this.forwardBtn),
+      renderElement("div", { class: "rd-toolbar-title", title }, title),
+      renderElement("div", { class: "rd-toolbar-group" }, findBtn, themeBtn, helpBtn),
     );
 
     this.bindAutohide();
@@ -107,7 +107,7 @@ export class Toolbar {
       this.lastScrollTop = top;
       if (delta !== 0) { this.step({ kind: "scroll", delta }); }
     }, { passive: true });
-    const shell = $("pdf-shell");
+    const shell = findElement("pdf-shell");
     shell.addEventListener("mousemove", (e) => {
       this.pointerY = e.clientY - shell.getBoundingClientRect().top;
       this.step({ kind: "inputs" });
@@ -119,7 +119,7 @@ export class Toolbar {
   }
 
   private step(event: AutohideEvent): void {
-    const next = toolbarVisibility(this.state, event, {
+    const next = deriveToolbarVisibility(this.state, event, {
       enabled: this.autoHide,
       engaged: this.engaged,
       scrollTop: this.container.scrollTop,

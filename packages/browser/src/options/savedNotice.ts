@@ -1,6 +1,6 @@
 /** Shows the "Saved" flag beside the page title; it appears for two seconds after a setting is stored. */
-import { el } from "@labshelf/core/dom";
-import { icon } from "@labshelf/core";
+import { renderElement } from "@labshelf/core/dom";
+import { renderIcon } from "@labshelf/core";
 
 const VISIBLE_MS = 2000;
 
@@ -10,7 +10,7 @@ export interface SavedFlag {
 }
 
 export function createSavedFlag(): SavedFlag {
-  const element = el("span", { class: "settings-saved", "aria-live": "polite", html: `${icon("check")}<span>Saved</span>` });
+  const element = renderElement("span", { class: "settings-saved", "aria-live": "polite", html: `${renderIcon("check")}<span>Saved</span>` });
   let timer: ReturnType<typeof setTimeout> | null = null;
   return {
     element,

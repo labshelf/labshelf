@@ -1,7 +1,7 @@
 // Applies the selected colour preset to the PDF reader.
 import type { PdfTheme } from "../../../model/index.js";
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
-import { type EffectiveTheme, presetFor, toPageColors } from "../../index.js";
+import { type EffectiveTheme, findPagePreset, derivePageColors } from "../../index.js";
 
 export type PageColors = { background: string; foreground: string } | null;
 
@@ -22,7 +22,7 @@ export class ThemeController {
   constructor(private readonly container: HTMLElement, preference: PdfTheme, effective: EffectiveTheme) {
     this.preference = preference;
     this.effective = effective;
-    const preset = presetFor(effective);
+    const preset = findPagePreset(effective);
     this.bg = preset.bg;
     this.text = preset.text;
     this.apply(preference, effective);
@@ -35,7 +35,7 @@ export class ThemeController {
     this.pdfViewer = pdfViewer;
   }
 
-  get pageColors(): PageColors { return toPageColors(this.bg, this.text); }
+  get pageColors(): PageColors { return derivePageColors(this.bg, this.text); }
   /** The preset the page pixels are drawn with: the lock while one is set, otherwise the effective theme. */
   get pageTheme(): EffectiveTheme { return this.pagesLock ?? this.effective; }
   get colors(): { bg: string; text: string } { return { bg: this.bg, text: this.text }; }
@@ -57,7 +57,7 @@ export class ThemeController {
     this.pagesLock = preset;
     document.documentElement.dataset["pdfPages"] = preset;
     this.container.style.background = "";
-    const colors = presetFor(preset);
+    const colors = findPagePreset(preset);
     this.applyPageColors(colors.bg, colors.text);
   }
 
@@ -70,7 +70,7 @@ export class ThemeController {
     this.effective = effective;
     document.documentElement.dataset["pdfTheme"] = effective;
     if (this.pagesLock === null) {
-      const preset = presetFor(effective);
+      const preset = findPagePreset(effective);
       this.applyPageColors(preset.bg, preset.text);
     }
     for (const fn of this.effectiveListeners) { fn(effective); }
@@ -86,7 +86,7 @@ export class ThemeController {
     if (this.pagesLock === null) { this.container.style.background = bg; }
     const viewer = this.pdfViewer;
     if (!viewer) { return; }
-    const colors = toPageColors(bg, text);
+    const colors = derivePageColors(bg, text);
     const cur = viewer.pageColors as PageColors;
     const same = (colors === null && cur === null)
       || (colors !== null && cur !== null && cur.background === colors.background && cur.foreground === colors.foreground);

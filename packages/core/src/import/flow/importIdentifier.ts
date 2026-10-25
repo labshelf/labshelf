@@ -1,13 +1,13 @@
 /** Imports a paper from an identifier: resolves its record through the registries and looks for its PDF. */
 import type { ImportOutcome } from "../../library/index.js";
-import { errorMessage } from "../../logging/index.js";
+import { formatError } from "../../logging/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
-import { identifiersFromInput } from "../identifiers/index.js";
+import { extractIdentifiersFromInput } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";
 import { resolveOnlineMetadata } from "../search/index.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf, type ResolvedPdf } from "../pdfFinder/index.js";
-import { NETWORK_IMPORT_MODULE, pdfFetchOptions, registryEnv, type NetworkImportEnv } from "./env.js";
+import { NETWORK_IMPORT_MODULE, pdfFetchOptions, createRegistryEnv, type NetworkImportEnv } from "./env.js";
 import { writeImportedPaper } from "./writeImportedPaper.js";
 
 interface Found {
@@ -31,7 +31,7 @@ export async function importIdentifier(
   targetDir: string,
   options: IdentifierImportOptions = {},
 ): Promise<ImportOutcome> {
-  const identifiers = identifiersFromInput(input);
+  const identifiers = extractIdentifiersFromInput(input);
   if (!identifiers.length) { return { status: "failed", error: "No DOI, arXiv id, PMID or ISBN found", input }; }
   try {
     const found = await firstResolved(env, identifiers);
@@ -60,7 +60,7 @@ export async function importIdentifier(
     });
     return { status: "added", record, needsReview: false, input };
   } catch (error) {
-    const message = errorMessage(error);
+    const message = formatError(error);
     await env.ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Identifier import failed", { input, message });
     return { status: "failed", error: message, input };
   }
@@ -78,13 +78,13 @@ async function findPdfFor(env: NetworkImportEnv, { metadata, identifier }: Found
 }
 
 async function firstResolved(env: NetworkImportEnv, identifiers: DetectedIdentifier[]): Promise<Found | undefined> {
-  const resolve = env.resolveIdentifier ?? ((identifier: DetectedIdentifier) => resolveOnlineMetadata(identifier, registryEnv(env)));
+  const resolve = env.resolveIdentifier ?? ((identifier: DetectedIdentifier) => resolveOnlineMetadata(identifier, createRegistryEnv(env)));
   for (const identifier of identifiers) {
     try {
       const metadata = await resolve(identifier);
       if (metadata?.title) { return { metadata, identifier }; }
     } catch (error) {
-      await env.ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Registry lookup failed", { identifier, message: errorMessage(error) });
+      await env.ctx.logger.log("WARN", NETWORK_IMPORT_MODULE, "Registry lookup failed", { identifier, message: formatError(error) });
     }
   }
   return undefined;

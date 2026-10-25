@@ -11,8 +11,8 @@ import "@labshelf/core/styles/library-list.css";
 import "@labshelf/core/styles/library-detail.css";
 import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-citation-map.css";
-import { $, mountLibraryUi } from "@labshelf/core/dom";
+import { findElement, mountLibraryUi } from "@labshelf/core/dom";
 import { createWebviewChannel, libraryUiCapabilities, libraryUiLabels } from "./index.js";
 
 const { transport, prefs, sharing } = createWebviewChannel();
-mountLibraryUi($("root"), { transport, prefs, sharing, capabilities: libraryUiCapabilities, labels: libraryUiLabels });
+mountLibraryUi(findElement("root"), { transport, prefs, sharing, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

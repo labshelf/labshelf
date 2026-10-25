@@ -4,11 +4,11 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import type { ILogger } from "../../../../ports/index.js";
-import type { TexStatus } from "../../../../helper/index.js";
+import type { TexToolchain } from "../../../../helper/index.js";
 import type { LatexEngine } from "../../../../writing/project/index.js";
 
 import type { TexInstallKind, TexProvider } from "../../index.js";
-import { clearQuarantine, type ExecFile } from "./removeQuarantine.js";
+import { removeQuarantine, type RunFile } from "./removeQuarantine.js";
 import type { TexInstallRun } from "./texInstall.js";
 import { TEX_MODULE } from "./runTexTool.js";
 import { withToolLock } from "./toolsDirLock.js";
@@ -27,22 +27,22 @@ export class TexInstallError extends Error {
 }
 
 export interface ManagedTexProviderOptions {
-  /** The shared TeX folder; `tex/` under sharedToolsRoot. */
+  /** The shared TeX folder; `tex/` under resolveSharedToolsDir. */
   texRoot: string;
   logger: ILogger;
   /** macOS clears the quarantine attribute from an existing TinyTeX on first use; unset skips it. */
   platform?: NodeJS.Platform;
   /** Runs xattr; tests inject a fake. */
-  execFileImpl?: ExecFile;
+  execFileImpl?: RunFile;
   /** Used when no managed install exists; never changed. */
   system: TexProvider;
   installers: Record<TexInstallKind, TexInstaller>;
 }
 
 export interface ManagedTexProvider extends TexProvider {
-  status(): Promise<TexStatus>;
-  install(kind: TexInstallKind, onProgress: TexProgress): Promise<TexStatus>;
-  installAllPackages(onProgress: TexProgress): Promise<TexStatus>;
+  status(): Promise<TexToolchain>;
+  install(kind: TexInstallKind, onProgress: TexProgress): Promise<TexToolchain>;
+  installAllPackages(onProgress: TexProgress): Promise<TexToolchain>;
 }
 
 const latexmkIn = (binDir: string): string => join(binDir, process.platform === "win32" ? "latexmk.exe" : "latexmk");
@@ -60,7 +60,7 @@ async function isComplete(ctx: ManagedTexProviderOptions, tex: ManagedTex): Prom
   }
 }
 
-async function texStatus(ctx: ManagedTexProviderOptions): Promise<TexStatus> {
+async function texStatus(ctx: ManagedTexProviderOptions): Promise<TexToolchain> {
   const tex = await findManagedTex(ctx.texRoot);
   if (tex) { return { source: tex.kind, ...(tex.year === null ? {} : { year: tex.year }), complete: await isComplete(ctx, tex) }; }
   return (await ctx.system.resolve("pdflatex")) === "missing" ? { source: "none", complete: false } : { source: "system", complete: true };
@@ -159,7 +159,7 @@ export function createManagedTexProvider(ctx: ManagedTexProviderOptions): Manage
   const heal = async (tex: ManagedTex) => {
     if (ctx.platform !== "darwin" || tex.kind !== "tinytex" || healed) { return; }
     healed = true;
-    await clearQuarantine(tex.root, ctx.logger, ctx.execFileImpl);
+    await removeQuarantine(tex.root, ctx.logger, ctx.execFileImpl);
   };
   return {
     async resolve(engine: LatexEngine) {

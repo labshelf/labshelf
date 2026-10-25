@@ -2,8 +2,8 @@
 // Pending jobs are published so the library list can show them per row.
 import * as vscode from "vscode";
 
-import { errorMessage, type ILogger, type PaperRecord, type TextLayerProgress } from "@labshelf/core";
-import type { MakeSearchableResult, PaperTextLayers } from "../library/index.js";
+import { formatError, type ILogger, type PaperRecord, type TextLayerProgress } from "@labshelf/core";
+import type { CreateTextLayerResult, PaperTextLayers } from "../library/index.js";
 
 const LOG_MODULE = "command/textLayerQueue";
 
@@ -39,7 +39,7 @@ const listeners = new Set<(jobs: TextLayerJob[]) => void>();
  * Queues the given papers. Papers already waiting are not queued twice.
  * @returns a promise settled when these papers have been processed
  */
-export function queueTextLayers(
+export function addTextLayerJobs(
   textLayers: PaperTextLayers,
   papers: PaperRecord[],
   options: TextLayerQueueOptions = {},
@@ -66,7 +66,7 @@ export function queueTextLayers(
  * they take a fraction of a second and would only make rows flicker.
  * @returns a snapshot of the jobs
  */
-export function currentTextLayerJobs(): TextLayerJob[] {
+export function listTextLayerJobs(): TextLayerJob[] {
   const jobs: TextLayerJob[] = [];
   for (const [paperId, mode] of pending) {
     if (mode === "ocr") {
@@ -87,7 +87,7 @@ export function onTextLayerJobsChanged(listener: (jobs: TextLayerJob[]) => void)
 }
 
 function notify(): void {
-  const jobs = currentTextLayerJobs();
+  const jobs = listTextLayerJobs();
   for (const listener of listeners) {
     try {
       listener(jobs);
@@ -125,7 +125,7 @@ async function runCheck(textLayers: PaperTextLayers, paper: PaperRecord, options
 
 async function runOcr(textLayers: PaperTextLayers, paper: PaperRecord, options: TextLayerQueueOptions): Promise<void> {
   const progress = new LazyProgress(paper.title);
-  let result: MakeSearchableResult;
+  let result: CreateTextLayerResult;
   try {
     result = await textLayers.makeSearchable(paper.id, {
       onProgress: (step) => {
@@ -136,7 +136,7 @@ async function runOcr(textLayers: PaperTextLayers, paper: PaperRecord, options: 
       isCancelled: () => progress.cancelled,
     });
   } catch (error) {
-    result = { status: "unavailable", reason: errorMessage(error) };
+    result = { status: "unavailable", reason: formatError(error) };
   } finally {
     progress.finish();
   }
@@ -158,7 +158,7 @@ async function runOcr(textLayers: PaperTextLayers, paper: PaperRecord, options: 
  * Builds the message shown when a job ends.
  * @returns the text, or undefined when the outcome is not worth interrupting for
  */
-export function describeOutcome(title: string, result: MakeSearchableResult, announceAll: boolean): string | undefined {
+export function describeOutcome(title: string, result: CreateTextLayerResult, announceAll: boolean): string | undefined {
   switch (result.status) {
     case "added": {
       const pages = `${result.pagesAdded} page${result.pagesAdded === 1 ? "" : "s"} read`;
@@ -177,7 +177,7 @@ export function describeOutcome(title: string, result: MakeSearchableResult, ann
 }
 
 // Core names no settings; the setting that lifts each skip is VS Code's to point at.
-function skipReasonWithSetting(result: Extract<MakeSearchableResult, { status: "skipped" }>): string {
+function skipReasonWithSetting(result: Extract<CreateTextLayerResult, { status: "skipped" }>): string {
   switch (result.code) {
     case "ocr-disabled":
       return `${result.reason} in settings (labshelf.ocr.enabled)`;

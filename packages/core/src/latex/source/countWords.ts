@@ -1,5 +1,5 @@
 /** Counts the words of a LaTeX body the way texcount does: prose and headings count, markup and math do not. */
-import { stripComments } from "./stripComments.js";
+import { removeComments } from "./removeComments.js";
 
 const MATH_ENVIRONMENTS = "equation|align|alignat|flalign|gather|multline|eqnarray|math|displaymath";
 const CODE_ENVIRONMENTS = "verbatim|lstlisting|comment";
@@ -26,7 +26,7 @@ const WORD = /[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu;
 
 /** Counts words between `\begin{document}` and `\end{document}` when present, else in the whole text. */
 export function countWords(text: string): number {
-  let body = stripComments(text);
+  let body = removeComments(text);
   const begin = body.indexOf("\\begin{document}");
   if (begin >= 0) {
     body = body.slice(begin + "\\begin{document}".length);

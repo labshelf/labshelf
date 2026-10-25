@@ -13,7 +13,7 @@ export interface RetrieveOptions {
  *
  * @returns Vector matches sorted by descending score.
  */
-export async function retrieveTopK(
+export async function findTopK(
   query: string,
   embedder: IEmbeddingProvider,
   store: IVectorStore,

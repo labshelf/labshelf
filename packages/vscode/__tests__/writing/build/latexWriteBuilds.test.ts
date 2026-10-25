@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { buildRootOf } from "@labshelf/core";
-import { registerLatexSaveBuilds } from "../../../src/writing/build/latexWriteBuilds";
+import { registerLatexWriteBuilds } from "../../../src/writing/build/latexWriteBuilds";
 import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const request = jest.fn<Promise<unknown>, [string, string, string | undefined]>(async () => undefined);
@@ -22,7 +22,7 @@ let context: { subscriptions: { dispose(): void }[] };
 function setup(host = fakeHost(), includeOnlyTarget?: jest.Mock) {
   const projects = fakeProjects([readyEntry("/p/tex", { main: "main.tex" }), readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } })]);
   context = { subscriptions: [] };
-  registerLatexSaveBuilds({
+  registerLatexWriteBuilds({
     context, host, projects: projects as never, request,
     ...(includeOnlyTarget ? { includeOnlyTarget } : {}),
   });

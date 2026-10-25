@@ -31,7 +31,7 @@ export interface ProjectComments extends vscode.Disposable {
 }
 
 /** The URI of a file named by its POSIX path inside the project folder. */
-export function projectFileUri(folder: string, file: string): vscode.Uri {
+export function createProjectFileUri(folder: string, file: string): vscode.Uri {
   return vscode.Uri.joinPath(vscode.Uri.file(folder), ...file.split("/"));
 }
 

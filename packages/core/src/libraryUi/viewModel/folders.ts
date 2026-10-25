@@ -1,11 +1,11 @@
 /**
  * Flattens every folder for a picker and checks the name of a new or renamed folder.
  */
-import { PAPERS_DIR, findNode, validateFolderName, type FolderTreeNode } from "../../library/index.js";
+import { PAPERS_DIR, findNode, checkFolderName, type FolderTreeNode } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 
 /** Every folder path in the tree, parents before children, labelled by the path below the root. */
-export function flattenFolders(tree: readonly FolderTreeNode[]): Array<{ label: string; path: string }> {
+export function listFolderPaths(tree: readonly FolderTreeNode[]): Array<{ label: string; path: string }> {
   const out: Array<{ label: string; path: string }> = [];
   const walk = (nodes: readonly FolderTreeNode[]): void => {
     for (const n of nodes) { out.push({ label: n.path.slice(PAPERS_DIR.length + 1).split("/").join(" / "), path: n.path }); walk(n.children); }
@@ -20,8 +20,8 @@ interface FolderContext {
 }
 
 /** The core name rule plus a sibling collision check; `current` is the name being renamed, which stays allowed. */
-export function folderNameProblem(lib: FolderContext, parent: string, name: string, current?: string): string | null {
-  const invalid = validateFolderName(name);
+export function checkSiblingFolderName(lib: FolderContext, parent: string, name: string, current?: string): string | null {
+  const invalid = checkFolderName(name);
   if (invalid) return invalid;
   const trimmed = name.trim();
   if (trimmed === current) return null;

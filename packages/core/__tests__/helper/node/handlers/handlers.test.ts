@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../../src/ports/index.js";
 import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../src/helper/index.js";
-import { createDispatcher, createProjectHandlers, type HelperHandlers } from "../../../../src/helper/node/handlers/index.js";
+import { createHelperAnswerer, createProjectHandlers, type HelperHandlers } from "../../../../src/helper/node/handlers/index.js";
 import { createLibraryProjects, type LibraryProjects } from "../../../../src/helper/node/projects/index.js";
 
 const logs: string[] = [];
@@ -12,7 +12,7 @@ const logger = { log: async (_l: string, _m: string, message: string) => { logs.
 
 function setup(handlers: HelperHandlers) {
   const sent: Array<Record<string, unknown>> = [];
-  const dispatcher = createDispatcher(handlers, logger);
+  const dispatcher = createHelperAnswerer(handlers, logger);
   const send = (envelope: Record<string, unknown>) => { sent.push(envelope); };
   const handle = (envelope: unknown) => dispatcher.handle(envelope as Record<string, unknown>, new Uint8Array(), send);
   return { sent, handle, drain: () => dispatcher.drain() };
@@ -32,7 +32,7 @@ async function projectSetup(libraryRoot?: string) {
   return { dataDir, projects, forgotten, ...setup(createProjectHandlers({ dataDir, projects, forgetBuilds: (id) => { forgotten.push(id); } })) };
 }
 
-describe("createDispatcher", () => {
+describe("createHelperAnswerer", () => {
   beforeEach(() => { logs.length = 0; });
 
   it("replies with the parser's code and the request id on a rejected message", async () => {

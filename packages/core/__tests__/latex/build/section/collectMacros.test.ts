@@ -1,10 +1,10 @@
 /** Verifies that the definitions a section needs are collected in source order, body only, without nested copies. */
-import { collectDefinitions } from "../../../../src/latex/build/section/index";
+import { extractDefinitions } from "../../../../src/latex/build/section/index";
 import { scanLatexSource } from "../../../../src/latex/source/index";
 
-const collect = (text: string): string[] => collectDefinitions(text, scanLatexSource(text));
+const collect = (text: string): string[] => extractDefinitions(text, scanLatexSource(text));
 
-describe("collectDefinitions", () => {
+describe("extractDefinitions", () => {
   it("returns every kind of definition in source order", () => {
     const text = [
       "\\newcommand{\\R}{\\mathbb{R}}",

@@ -1,13 +1,13 @@
 // Composes a preview's chrome around the reader: the header above the pages, the footer below them, and the logs and problem marks over them.
-import { $ } from "../../../ui/dom/index.js";
-import type { PageArea, PreviewRoots, WebviewToHost } from "../../index.js";
+import { findElement } from "../../../ui/dom/index.js";
+import type { PageArea, PreviewBuildRoots, WebviewToHost } from "../../index.js";
 import type { OutlineRow } from "../../index.js";
 import type { ReaderContext } from "../session/index.js";
-import { mountLogsButton, mountOnlyToggle, mountOptionsMenu, mountPreviewHeader, type RecompileState } from "./header/index.js";
-import type { LogsView } from "./logs/index.js";
+import { mountLogsButton, mountOnlyToggle, mountBuildMenu, mountPreviewHeader, type RecompileState } from "./header/index.js";
+import type { LogsView } from "./logsView.js";
 import { mountProblemMarks } from "./problemMarks.js";
 import {
-  mountChecksButton, mountLimitMeter, mountPreviewFooter, mountProblems, type PreviewBuildStatus, type PreviewProblems,
+  mountChecksButton, mountLimitMeter, mountPreviewFooter, mountProblems, type PreviewBuildState, type PreviewProblems,
 } from "./footer/index.js";
 
 export interface PreviewOutlineSource {
@@ -33,15 +33,15 @@ interface PreviewChromeDeps {
 }
 
 export interface PreviewChrome {
-  applyRoots(roots: PreviewRoots): void;
-  applyBuild(build: PreviewBuildStatus): void;
+  applyRoots(roots: PreviewBuildRoots): void;
+  applyBuild(build: PreviewBuildState): void;
   /** The open document was replaced, so its body pages are counted again. */
   documentChanged(): void;
   /** Steps through the shown PDF's problems; the Next/Previous problem keys call it. */
   problems: PreviewProblems;
 }
 
-function recompileState({ state, stale }: PreviewBuildStatus): RecompileState {
+function recompileState({ state, stale }: PreviewBuildState): RecompileState {
   if (state === "building") { return "building"; }
   return stale ? "stale" : "current";
 }
@@ -51,14 +51,14 @@ function recompileState({ state, stale }: PreviewBuildStatus): RecompileState {
  * @returns handles the reader's host messages call to refresh the chrome.
  */
 export function mountPreviewChrome({ post, logs, outline, countBodyPages, pdfViewer, scrollTo, setPagesDark }: PreviewChromeDeps): PreviewChrome {
-  const header = mountPreviewHeader({ post, pill: $("status-pill"), setPagesDark });
-  $("viewerContainer").before(header.element);
+  const header = mountPreviewHeader({ post, pill: findElement("status-pill"), setPagesDark });
+  findElement("viewerContainer").before(header.element);
   document.documentElement.classList.add("rd-preview");
   const footer = mountPreviewFooter({ openLogs: (path) => logs.open(path), outline });
-  $("viewerContainer").after(footer.element);
+  findElement("viewerContainer").after(footer.element);
 
-  const marks = mountProblemMarks({ container: $("viewerContainer"), pdfViewer });
-  const options = mountOptionsMenu(header.slots.options, { post });
+  const marks = mountProblemMarks({ container: findElement("viewerContainer"), pdfViewer });
+  const options = mountBuildMenu(header.slots.options, { post });
   const only = mountOnlyToggle(header.slots.only, { post });
   const logsButton = mountLogsButton(header.slots.logs, { post, openLogs: (path) => logs.open(path) });
   const problems = mountProblems(footer.slots.cites, { marks, scrollTo, post });

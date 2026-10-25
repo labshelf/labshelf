@@ -2,28 +2,28 @@
 // and routes every call there.
 import { BRIDGE_HOST_NAME, type ILogger, type LibraryFileSystem } from "@labshelf/core";
 import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
-import { BridgeFileSystem, BridgeLink, classifyBridgeFailure, setBridgeLibrary, type BridgeFailureReason, type OpenBridge } from "./bridge";
-import { IndexedDbFileSystem } from "./idbFileSystem";
-import { DirectoryFileSystem, grantedFolder, loadPickedFolder, onPickedFolderAnnounced } from "./pickedDir";
-import { rebuildRecords } from "./rebuildPaperRecords";
+import { BridgeFileSystem, BridgeClient, deriveBridgeFailure, setBridgeLibrary, type BridgeFailureReason, type OpenBridge } from "./bridge";
+import { IdbFileSystem } from "./idbFileSystem";
+import { DirFileSystem, ensureFolderGranted, readPickedDir, onPickedDirChange } from "./pickedDir";
+import { refreshPaperRecords } from "./rebuildPaperRecords";
 
-export type LibrarySource =
+export type LibraryLocation =
   | { kind: "folder"; root: string; via: "bridge" | "picked" }
   | { kind: "browser"; reason: BridgeFailureReason; detail?: string };
-type FolderSource = Extract<LibrarySource, { kind: "folder" }>;
+type FolderSource = Extract<LibraryLocation, { kind: "folder" }>;
 
-export interface LibrarySources {
+export interface LibraryLocations {
   /** INVARIANT: one shared object; each call goes to exactly one source, never both. */
   fileSystem: LibraryFileSystem;
   /** The folder only; its calls fail when the folder is unreachable instead of reaching browser storage. */
   folderFileSystem: LibraryFileSystem;
   /** This browser's storage only, whatever the current choice; a later choice never redirects its calls. */
   browserFileSystem: LibraryFileSystem;
-  getLibrarySource(): Promise<LibrarySource>;
+  getLibrarySource(): Promise<LibraryLocation>;
   /** Probes the bridge again; only a context that chose browser storage can change its choice. */
-  recheckLibrarySource(): Promise<LibrarySource>;
+  recheckLibrarySource(): Promise<LibraryLocation>;
   /** Drops the current choice for the folder the user just picked; other contexts do the same when it is announced. */
-  switchToPickedFolder(): Promise<LibrarySource>;
+  switchToPickedFolder(): Promise<LibraryLocation>;
   /** Asks a host without a library to serve `root`; the caller then rechecks the source. */
   setLibraryFolder(root: string): Promise<void>;
   onLibraryFilesChanged(listener: (paths: string[]) => void): () => void;
@@ -31,7 +31,7 @@ export interface LibrarySources {
   onFolderRecordsRebuilt(listener: () => void): () => void;
 }
 
-export interface PickedFolder {
+export interface PickedDir {
   name: string;
   fs: LibraryFileSystem;
 }
@@ -39,7 +39,7 @@ export interface PickedFolder {
 interface SourceDeps {
   connect: () => NativePort;
   /** The folder the user picked in the browser, which wins over the bridge. */
-  pickedFolder: () => Promise<PickedFolder | undefined>;
+  pickedFolder: () => Promise<PickedDir | undefined>;
   onPickedFolderAnnounced: (listener: () => void) => void;
   logger: ILogger;
   browserFs: LibraryFileSystem;
@@ -51,9 +51,9 @@ const MODULE = "browser.storage.source";
 // Contexts that chose browser storage find a bridge connected later without a restart; a missing host fails fast.
 const BROWSER_CHOICE_MS = 60_000;
 
-export function createLibrarySources(deps: SourceDeps): LibrarySources {
+export function createLibraryLocations(deps: SourceDeps): LibraryLocations {
   const { connect, logger, browserFs, rebuild } = deps;
-  const link = new BridgeLink(connect, logger);
+  const link = new BridgeClient(connect, logger);
   // INVARIANT: once set, this context uses only the folder until the user picks one; a dead link or a revoked
   // permission fails calls and never falls back to browser storage.
   let folder: FolderSource | undefined;
@@ -65,11 +65,11 @@ export function createLibrarySources(deps: SourceDeps): LibrarySources {
   // Every folder call opens the link, so after the port dies the next call probes the bridge again.
   const bridgeFs = new BridgeFileSystem(async () => (await openFolder()).connection);
   let folderFs: LibraryFileSystem = bridgeFs;
-  let browserChoice: Promise<LibrarySource> | undefined;
+  let browserChoice: Promise<LibraryLocation> | undefined;
   let browserSince: number | undefined;
   const rebuiltListeners = new Set<() => void>();
 
-  const getLibrarySource = (): Promise<LibrarySource> => {
+  const getLibrarySource = (): Promise<LibraryLocation> => {
     if (folder) return Promise.resolve(folder);
     if (browserSince !== undefined && Date.now() - browserSince > BROWSER_CHOICE_MS) {
       browserChoice = undefined;
@@ -91,21 +91,21 @@ export function createLibrarySources(deps: SourceDeps): LibrarySources {
     return source;
   };
 
-  const loadPicked = (): Promise<PickedFolder | undefined> => deps.pickedFolder().catch((error: unknown) => {
+  const loadPicked = (): Promise<PickedDir | undefined> => deps.pickedFolder().catch((error: unknown) => {
     void logger.error(MODULE, error, { op: "loadPickedFolder", note: "probing the bridge instead" });
     return undefined;
   });
 
-  const probe = async (): Promise<LibrarySource> => {
+  const probe = async (): Promise<LibraryLocation> => {
     const picked = await loadPicked();
     if (picked) return chooseFolder({ kind: "folder", root: picked.name, via: "picked" }, picked.fs);
     return probeBridge();
   };
 
-  const probeBridge = (): Promise<LibrarySource> => link.open().then(
-    ({ hello }): LibrarySource => chooseFolder({ kind: "folder", root: hello.libraryRoot, via: "bridge" }, bridgeFs),
-    (error: unknown): LibrarySource => {
-      const failure = classifyBridgeFailure(error);
+  const probeBridge = (): Promise<LibraryLocation> => link.open().then(
+    ({ hello }): LibraryLocation => chooseFolder({ kind: "folder", root: hello.libraryRoot, via: "bridge" }, bridgeFs),
+    (error: unknown): LibraryLocation => {
+      const failure = deriveBridgeFailure(error);
       browserSince = Date.now();
       void logger.log("WARN", MODULE, "Library files come from browser storage", { ...failure });
       return { kind: "browser", ...failure };
@@ -113,7 +113,7 @@ export function createLibrarySources(deps: SourceDeps): LibrarySources {
   );
 
   const fileSystem = routedFileSystem(async () => ((await getLibrarySource()).kind === "browser" ? browserFs : folderFs));
-  const recheckLibrarySource = async (): Promise<LibrarySource> => {
+  const recheckLibrarySource = async (): Promise<LibraryLocation> => {
     if (!folder) {
       browserChoice = undefined;
       browserSince = undefined;
@@ -123,7 +123,7 @@ export function createLibrarySources(deps: SourceDeps): LibrarySources {
     await openFolder().catch((error: unknown) => logger.error(MODULE, error, { note: "the folder stays the library source; its calls fail until the bridge is back" }));
     return folder;
   };
-  const switchToPickedFolder = (): Promise<LibrarySource> => {
+  const switchToPickedFolder = (): Promise<LibraryLocation> => {
     folder = undefined;
     browserChoice = undefined;
     browserSince = undefined;
@@ -163,51 +163,51 @@ function routedFileSystem(pick: () => Promise<LibraryFileSystem>): LibraryFileSy
   };
 }
 
-let shared: LibrarySources | undefined;
+let shared: LibraryLocations | undefined;
 
-function sharedSources(): LibrarySources {
+function sharedSources(): LibraryLocations {
   if (shared) return shared;
   const logger = createBrowserLogger();
-  shared = createLibrarySources({
+  shared = createLibraryLocations({
     connect: () => connectBrowserNative(BRIDGE_HOST_NAME),
     pickedFolder: async () => {
-      const handle = await loadPickedFolder();
-      return handle && { name: handle.name, fs: new DirectoryFileSystem(() => grantedFolder(handle)) };
+      const handle = await readPickedDir();
+      return handle && { name: handle.name, fs: new DirFileSystem(() => ensureFolderGranted(handle)) };
     },
-    onPickedFolderAnnounced,
+    onPickedFolderAnnounced: onPickedDirChange,
     logger,
-    browserFs: new IndexedDbFileSystem(),
-    rebuild: (folderFs) => rebuildRecords(folderFs, logger),
+    browserFs: new IdbFileSystem(),
+    rebuild: (folderFs) => refreshPaperRecords(folderFs, logger),
   });
   return shared;
 }
 
 /** The page's one set of library sources, for composition roots that hand them to adapters. */
-export function librarySources(): LibrarySources {
+export function readLibraryLocations(): LibraryLocations {
   return sharedSources();
 }
 
-export function rebuildFromFiles(logger: ILogger): Promise<void> {
-  return rebuildRecords(sharedSources().fileSystem, logger);
+export function refreshFromFiles(logger: ILogger): Promise<void> {
+  return refreshPaperRecords(sharedSources().fileSystem, logger);
 }
 
 export function createLibraryFileSystem(): LibraryFileSystem {
   return sharedSources().fileSystem;
 }
 
-export function getFolderFileSystem(): LibraryFileSystem {
+export function readFolderFileSystem(): LibraryFileSystem {
   return sharedSources().folderFileSystem;
 }
 
-export function getLibrarySource(): Promise<LibrarySource> {
+export function readLibraryLocation(): Promise<LibraryLocation> {
   return sharedSources().getLibrarySource();
 }
 
-export function recheckLibrarySource(): Promise<LibrarySource> {
+export function refreshStoredLibraryLocation(): Promise<LibraryLocation> {
   return sharedSources().recheckLibrarySource();
 }
 
-export function switchToPickedFolder(): Promise<LibrarySource> {
+export function attachPickedDir(): Promise<LibraryLocation> {
   return sharedSources().switchToPickedFolder();
 }
 
@@ -219,6 +219,6 @@ export function onLibraryFilesChanged(listener: (paths: string[]) => void): () =
   return sharedSources().onLibraryFilesChanged(listener);
 }
 
-export function onFolderRecordsRebuilt(listener: () => void): () => void {
+export function onPaperRecordsRebuilt(listener: () => void): () => void {
   return sharedSources().onFolderRecordsRebuilt(listener);
 }

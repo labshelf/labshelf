@@ -4,5 +4,5 @@ export type { PdfjsLoaderOptions } from "./loadPdfjs.js";
 export { NodePdfOpener } from "./nodePdfOpener.js";
 export { renderFirstPagePng } from "./renderFirstPagePng.js";
 export { withPdfDocument } from "./withPdfDocument.js";
-export { SearchablePdfBuilder, TesseractOcrEngine } from "./ocr/index.js";
-export type { OcrDocument, SearchablePdfOptions, TesseractOcrOptions } from "./ocr/index.js";
+export { TextLayerPdfBuilder, TesseractOcrEngine } from "./ocr/index.js";
+export type { OcrDocument, TextLayerPdfOptions, TesseractOcrOptions } from "./ocr/index.js";

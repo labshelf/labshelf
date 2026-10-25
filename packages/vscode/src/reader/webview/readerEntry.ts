@@ -7,10 +7,10 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/reader.css";
 import "@labshelf/core/styles/arc-mark.css";
 import "@labshelf/core/styles/preview.css";
-import type { ReaderBootParams } from "@labshelf/core";
-import { PerfMarks, $, startReader } from "@labshelf/core/dom";
+import type { ReaderStartupParams } from "@labshelf/core";
+import { PerfMarks, findElement, startReader } from "@labshelf/core/dom";
 import { createVsCodeTransport } from "./index.js";
 
 const perf = new PerfMarks();
-const boot = JSON.parse($("labshelf-boot").textContent ?? "{}") as ReaderBootParams;
+const boot = JSON.parse(findElement("labshelf-boot").textContent ?? "{}") as ReaderStartupParams;
 startReader({ boot, transport: createVsCodeTransport(), perf }).catch(() => { /* already shown in #error-msg */ });

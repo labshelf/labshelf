@@ -1,28 +1,28 @@
 /** Resolves a key sequence to a binding and routes it: movement and folders, paper actions, or app-level commands. */
-import type { PaperStatus } from "@labshelf/core";
+import type { ReadingStatus } from "@labshelf/core";
 
-import { resolveKeys, type Binding } from "../../keymap.js";
+import { resolveKeymap, type Binding } from "../../keymap.js";
 import { PREVIEW_TABS } from "../../preview.js";
-import { textInput } from "../../textInput.js";
-import { revealInFileManager } from "../../../platform/index.js";
-import { editNote, openPdf, promptTags, setStatus } from "../actions/index.js";
-import { exportName, setSort, targetsForExport, yank } from "../actions/index.js";
-import { confirmTrash, cutTargets, moveToPicker, paste } from "../actions/index.js";
-import { promptAdd, promptRename } from "../actions/index.js";
-import { ALL, parentFolder } from "../screenModel.js";
+import { createTextInput } from "../../createTextInput.js";
+import { showInFileSystem } from "../../../platform/index.js";
+import { updateNote, openPdf, askTags, setReadingStatus } from "../actions/index.js";
+import { exportName, setSort, listExportPapers, copyPaperText } from "../actions/index.js";
+import { askTrash, setCutPapers, moveToPicker, moveCutPapers } from "../actions/index.js";
+import { askAdd, askRename } from "../actions/index.js";
+import { ALL, deriveParentFolder } from "../screenModel.js";
 import type { App } from "../app.js";
 import { findStep } from "./liveQuery.js";
-import { openPrompt } from "./overlayInput.js";
+import { openAsk } from "./overlayInput.js";
 import { openFolderPicker, openPaperPicker } from "./overlayPickers.js";
 
-export function handleKey(app: App, id: string): void {
+export function runShortcut(app: App, id: string): void {
   app.pending.push(id);
-  const resolution = resolveKeys(app.pending);
+  const resolution = resolveKeymap(app.pending);
   if (resolution.kind === "prefix") { return; }
   const keys = app.pending;
   app.pending = [];
   if (resolution.kind === "none") {
-    if (keys.length > 1 && id !== "esc") { handleKey(app, id); }
+    if (keys.length > 1 && id !== "esc") { runShortcut(app, id); }
     return;
   }
   dispatch(app, resolution.binding);
@@ -50,7 +50,7 @@ function dispatchNavigate(app: App, binding: Binding, page: number): boolean {
     case "pageDown": app.listModel.move(page); return true;
     case "pageUp": app.listModel.move(-page); return true;
     case "parent": up(app); return true;
-    case "enter": down(app); return true;
+    case "enter": moveDown(app); return true;
     case "back": app.historyNav.historyStep("back"); return true;
     case "forward": app.historyNav.historyStep("forward"); return true;
     case "home": app.historyNav.jumpToFolder(ALL); return true;
@@ -71,7 +71,7 @@ function dispatchNavigate(app: App, binding: Binding, page: number): boolean {
 function reveal(app: App): void {
   const rel = app.listModel.hoveredFolderRel();
   const paper = app.focus === "papers" ? app.listModel.hoveredPaper() : undefined;
-  if (paper) { revealInFileManager(paper.record.path); } else if (rel !== undefined) { revealInFileManager(app.ctx.paths.collectionDir(rel)); }
+  if (paper) { showInFileSystem(paper.record.path); } else if (rel !== undefined) { showInFileSystem(app.ctx.paths.collectionDir(rel)); }
 }
 
 function dispatchPapers(app: App, binding: Binding): boolean {
@@ -80,15 +80,15 @@ function dispatchPapers(app: App, binding: Binding): boolean {
     case "filter":
       app.focus = "papers";
       app.filterBeforeEdit = app.filter;
-      app.inline = { purpose: "filter", input: textInput(app.filter) };
+      app.inline = { purpose: "filter", input: createTextInput(app.filter) };
       return true;
-    case "find": app.focus = "papers"; app.inline = { purpose: "find", input: textInput("") }; return true;
+    case "find": app.focus = "papers"; app.inline = { purpose: "find", input: createTextInput("") }; return true;
     case "findNext": findStep(app, 1); return true;
     case "findPrev": findStep(app, -1); return true;
     case "search":
       if (app.search === undefined) { app.historyNav.searchOrigin = { folder: app.folder, search: undefined }; }
       app.focus = "papers";
-      app.inline = { purpose: "search", input: textInput(app.search ?? "") };
+      app.inline = { purpose: "search", input: createTextInput(app.search ?? "") };
       return true;
     case "jumpCollection": openFolderPicker(app, "Jump to folder", (rel) => app.historyNav.jumpToFolder(rel)); return true;
     case "jumpPaper": openPaperPicker(app); return true;
@@ -97,20 +97,20 @@ function dispatchPapers(app: App, binding: Binding): boolean {
     case "selectAll":
       if (app.focus === "papers") { for (const paper of app.listModel.papers()) { app.selection.add(paper.record.id); } }
       return true;
-    case "status": setStatus(app, binding.arg as PaperStatus); return true;
-    case "tags": promptTags(app); return true;
-    case "note": editNote(app); return true;
-    case "cut": cutTargets(app); return true;
-    case "paste": paste(app); return true;
+    case "status": setReadingStatus(app, binding.arg as ReadingStatus); return true;
+    case "tags": askTags(app); return true;
+    case "note": updateNote(app); return true;
+    case "cut": setCutPapers(app); return true;
+    case "paste": moveCutPapers(app); return true;
     case "moveTo": moveToPicker(app); return true;
-    case "trash": confirmTrash(app); return true;
-    case "add": promptAdd(app); return true;
-    case "rename": promptRename(app); return true;
+    case "trash": askTrash(app); return true;
+    case "add": askAdd(app); return true;
+    case "rename": askRename(app); return true;
     case "exportBib":
-      openPrompt(app, "export", "Export BibTeX", `./${exportName(app)}.bib`,
-        `${targetsForExport(app).length} entries; the path is relative to ${process.cwd()}`);
+      openAsk(app, "export", "Export BibTeX", `./${exportName(app)}.bib`,
+        `${listExportPapers(app).length} entries; the path is relative to ${process.cwd()}`);
       return true;
-    case "yank": void yank(app, binding.arg ?? "keys"); return true;
+    case "yank": void copyPaperText(app, binding.arg ?? "keys"); return true;
     case "sort": setSort(app, binding.arg ?? "title"); return true;
     default: return false;
   }
@@ -121,7 +121,7 @@ function dispatchApp(app: App, binding: Binding): void {
     case "escape": return escape(app);
     case "reload": void app.ctx.store.reload().then(() => app.taskStatus.notify("Library reloaded")); return;
     case "command":
-      openPrompt(app, "command", "Command", "",
+      openAsk(app, "command", "Command", "",
         "reload · export <file> · mkdir <name> · add <input> · sort <key> [desc] · cd <folder> · where · q");
       return;
     case "help": app.overlay = { kind: "help", scroll: 0 }; return;
@@ -154,10 +154,10 @@ function up(app: App): void {
     app.focus = "folders";
     return;
   }
-  app.listModel.setFolder(parentFolder(app.folder));
+  app.listModel.setFolder(deriveParentFolder(app.folder));
 }
 
-export function down(app: App): void {
+export function moveDown(app: App): void {
   if (app.focus === "writing") { return; }
   if (app.focus === "folders") {
     app.focus = "papers";

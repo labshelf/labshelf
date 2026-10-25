@@ -33,7 +33,7 @@ export function detectImageProtocol(env: NodeJS.ProcessEnv, preference = "auto")
  * Width and height of a PNG from its IHDR chunk.
  * @returns pixel size, or undefined for something that is not a PNG
  */
-export function pngSize(png: Uint8Array): { width: number; height: number } | undefined {
+export function readPngSize(png: Uint8Array): { width: number; height: number } | undefined {
   if (png.length < 24 || png[0] !== 0x89 || png[1] !== 0x50 || png[2] !== 0x4e || png[3] !== 0x47) { return undefined; }
   const view = new DataView(png.buffer, png.byteOffset, png.byteLength);
   return { width: view.getUint32(16), height: view.getUint32(20) };
@@ -44,7 +44,7 @@ export function pngSize(png: Uint8Array): { width: number; height: number } | un
  * cellAspect is a cell's height divided by its width (about 2 in most fonts).
  * @returns the target rectangle
  */
-export function fitImage(image: { width: number; height: number }, box: CellRect, cellAspect = 2.1): CellRect {
+export function deriveImageFit(image: { width: number; height: number }, box: CellRect, cellAspect = 2.1): CellRect {
   if (box.cols <= 0 || box.rows <= 0 || image.width <= 0 || image.height <= 0) {
     return { ...box, cols: 0, rows: 0 };
   }
@@ -86,6 +86,6 @@ export function drawImage(protocol: ImageProtocol, png: Uint8Array, rect: CellRe
  * cell content, which the caller clears by repainting the cells (see Terminal.invalidate).
  * @returns the bytes to write
  */
-export function clearImages(protocol: ImageProtocol): string {
+export function createImageClear(protocol: ImageProtocol): string {
   return protocol === "kitty" ? "\x1b_Ga=d,d=A,q=2\x1b\\" : "";
 }

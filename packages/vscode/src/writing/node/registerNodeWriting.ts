@@ -7,7 +7,7 @@ import { registerCheckCommand } from "../check/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
 import type { RegisterPlatformWriting } from "../platformWritingPort.js";
 import { registerTemplates } from "../templates/node/index.js";
-import { registerTypstLanguage } from "../typst/language/index.js";
+import { registerTypstLanguage } from "../typst/index.js";
 import { registerTypstBuild } from "../typst/node/index.js";
 import { registerCompareVersionsCommand } from "../versions/node/index.js";
 import { registerProjectHistory } from "../history/node/index.js";

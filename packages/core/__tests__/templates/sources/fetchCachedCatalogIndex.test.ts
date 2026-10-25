@@ -1,5 +1,5 @@
 /** Verifies the conditional, cache-backed fetch of a remote catalog index. */
-import { fetchCachedIndex } from "../../../src/templates/sources/index.js";
+import { fetchCachedCatalogIndex } from "../../../src/templates/sources/index.js";
 import { contextLogger, memoryCache, scriptedFetch } from "./fakes";
 
 const URL = "https://example.test/index.json";
@@ -10,13 +10,13 @@ function setup(replies: Parameters<typeof scriptedFetch>[0], cached?: { body: st
   const cache = memoryCache(cached ? { community: cached } : {});
   const logger = contextLogger();
   const run = (over: { accepts?: (b: string) => boolean } = {}, signal?: AbortSignal) =>
-    fetchCachedIndex({ url: URL, source: "community", accepts: over.accepts ?? accepts }, { fetch, cache, logger }, signal);
+    fetchCachedCatalogIndex({ url: URL, source: "community", accepts: over.accepts ?? accepts }, { fetch, cache, logger }, signal);
   return { fetch, cache, logger, run };
 }
 
 const ok = (body: string, etag?: string) => new Response(body, { status: 200, headers: etag ? { ETag: etag } : {} });
 
-describe("fetchCachedIndex", () => {
+describe("fetchCachedCatalogIndex", () => {
   it("returns a fresh body and writes it with its etag", async () => {
     const { run, cache } = setup({ [URL]: ok("{\"a\":1}", "\"v1\"") });
     expect(await run()).toEqual({ body: "{\"a\":1}", fromCache: false });

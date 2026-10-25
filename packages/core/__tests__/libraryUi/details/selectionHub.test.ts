@@ -1,8 +1,8 @@
 // Tests the selection hub: each source keeps its own last target, and activating a source shows it again.
-import { createSelectionHub, type DetailsTarget } from "../../../src/libraryUi/details/index";
+import { createSelectionHub, type DetailsSelection } from "../../../src/libraryUi/details/index";
 
 function hubWithLog() {
-  const shown: DetailsTarget[] = [];
+  const shown: DetailsSelection[] = [];
   return { shown, hub: createSelectionHub((t) => { shown.push(t); }) };
 }
 

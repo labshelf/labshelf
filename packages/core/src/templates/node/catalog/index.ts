@@ -2,5 +2,5 @@
 export { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES } from "./catalogLimits.js";
 export { buildCatalogIndex } from "./buildCatalogIndex.js";
 export type { CatalogProblem } from "./loadCatalog.js";
-export { validateCatalog } from "./checkCatalog.js";
-export { thumbnailProblem } from "./thumbnailProblem.js";
+export { checkCatalog } from "./checkCatalog.js";
+export { deriveThumbnailProblem } from "./deriveThumbnailProblem.js";

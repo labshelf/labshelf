@@ -1,12 +1,20 @@
 // Opens and closes the window's writing project as a unit: its main document, its preview, its tabs and its context keys.
 import * as vscode from "vscode";
 
-import type { ProjectEntry } from "@labshelf/core";
+import type { ProjectEntry, PathOps } from "@labshelf/core";
 import { BUILD_COMMAND } from "../build/index.js";
-import { owningProject, type ReadyProject } from "../buildRootDocument.js";
-import { openProjectMain } from "./openBuildRoot.js";
-import { builtPdf } from "../preview/index.js";
+import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
+import { readBuiltPdf } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "./projectStore.js";
+
+async function openProjectMain(paths: PathOps, entry: ProjectEntry | undefined): Promise<void> {
+  if (entry?.kind !== "ready") { return; }
+  if (!entry.main) {
+    await vscode.window.showInformationMessage(`Project "${entry.settings.id}" has no main file yet.`);
+    return;
+  }
+  await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(paths.join(entry.folder, entry.main)));
+}
 
 const SAVED_FOLDER_KEY = "labshelf.writing.openProject";
 const PROJECT_OPEN_KEY = "labshelf.writing.projectOpen";
@@ -53,7 +61,7 @@ export class ProjectSession implements vscode.Disposable {
     await this.log("open", entry.folder);
     await openProjectMain(this.deps.projects.paths, entry);
     if (!entry.main) { return; }
-    const pdf = await builtPdf(this.deps.projects, entry, entry.main);
+    const pdf = await readBuiltPdf(this.deps.projects, entry, entry.main);
     if (pdf) {
       this.deps.previews.show(entry, entry.main, pdf, { beside: true });
     } else {
@@ -85,7 +93,7 @@ export class ProjectSession implements vscode.Disposable {
 
   private projectTabs(folder: string): vscode.Tab[] {
     return vscode.window.tabGroups.all.flatMap((group) => group.tabs).filter((tab) =>
-      tab.input instanceof vscode.TabInputText && owningProject(this.deps.projects, tab.input.uri.fsPath)?.folder === folder);
+      tab.input instanceof vscode.TabInputText && findOwningProject(this.deps.projects, tab.input.uri.fsPath)?.folder === folder);
   }
 
   /** Restores the saved project after a reload (VS Code restores its tabs) and drops one that left the list. */
@@ -117,7 +125,7 @@ export class ProjectSession implements vscode.Disposable {
   private updateInProject(): void {
     const document = vscode.window.activeTextEditor?.document;
     const inProject = !!this.openFolder && document?.uri.scheme === "file"
-      && owningProject(this.deps.projects, document.uri.fsPath)?.folder === this.openFolder;
+      && findOwningProject(this.deps.projects, document.uri.fsPath)?.folder === this.openFolder;
     void vscode.commands.executeCommand("setContext", IN_PROJECT_KEY, inProject);
   }
 

@@ -45,7 +45,7 @@ export async function copyIfMissing(from: LibraryFileSystem, to: LibraryFileSyst
 }
 
 /** Tells whether the target holds `file` with the source's bytes; an empty folder's marker needs only the folder. */
-export async function holdsCopy(from: LibraryFileSystem, to: LibraryFileSystem, file: string): Promise<boolean> {
+export async function hasCopy(from: LibraryFileSystem, to: LibraryFileSystem, file: string): Promise<boolean> {
   if (posixPathOps.basename(file) === ".keep") return to.exists(posixPathOps.dirname(file));
   if (!(await to.stat(file))?.isFile) return false;
   return sameBytes(await from.readFile(file), await to.readFile(file));

@@ -1,4 +1,4 @@
-import { compareVersions, isPdfVersion, outranksVersion, type PdfVersion } from "@labshelf/core";
+import { compareVersions, isPdfVersion, isPreferredVersion, type PdfVersion } from "@labshelf/core";
 
 describe("isPdfVersion", () => {
   it("accepts the three versions and nothing else", () => {
@@ -9,24 +9,24 @@ describe("isPdfVersion", () => {
 
 describe("outranksVersion and compareVersions", () => {
   it("ranks published above accepted above preprint", () => {
-    expect(outranksVersion("published", "accepted")).toBe(true);
-    expect(outranksVersion("accepted", "preprint")).toBe(true);
-    expect(outranksVersion("published", "preprint")).toBe(true);
-    expect(outranksVersion("preprint", "accepted")).toBe(false);
-    expect(outranksVersion("accepted", "published")).toBe(false);
+    expect(isPreferredVersion("published", "accepted")).toBe(true);
+    expect(isPreferredVersion("accepted", "preprint")).toBe(true);
+    expect(isPreferredVersion("published", "preprint")).toBe(true);
+    expect(isPreferredVersion("preprint", "accepted")).toBe(false);
+    expect(isPreferredVersion("accepted", "published")).toBe(false);
   });
 
   it("counts an unknown version as published", () => {
-    expect(outranksVersion(undefined, "accepted")).toBe(true);
-    expect(outranksVersion(undefined, "preprint")).toBe(true);
-    expect(outranksVersion("accepted", undefined)).toBe(false);
-    expect(outranksVersion("preprint", undefined)).toBe(false);
+    expect(isPreferredVersion(undefined, "accepted")).toBe(true);
+    expect(isPreferredVersion(undefined, "preprint")).toBe(true);
+    expect(isPreferredVersion("accepted", undefined)).toBe(false);
+    expect(isPreferredVersion("preprint", undefined)).toBe(false);
   });
 
   it("does not outrank an equal version", () => {
-    for (const v of ["preprint", "accepted", "published", undefined] as Array<PdfVersion | undefined>) expect(outranksVersion(v, v)).toBe(false);
-    expect(outranksVersion("published", undefined)).toBe(false);
-    expect(outranksVersion(undefined, "published")).toBe(false);
+    for (const v of ["preprint", "accepted", "published", undefined] as Array<PdfVersion | undefined>) expect(isPreferredVersion(v, v)).toBe(false);
+    expect(isPreferredVersion("published", undefined)).toBe(false);
+    expect(isPreferredVersion(undefined, "published")).toBe(false);
   });
 
   it("sorts the preferred version first", () => {

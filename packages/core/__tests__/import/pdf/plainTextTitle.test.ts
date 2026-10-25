@@ -1,6 +1,6 @@
 /** Unit tests for guessing a title from plain OCR lines. */
 
-import { titleFromPlainText } from '@labshelf/core';
+import { extractTitleFromPlainText } from '@labshelf/core';
 
 describe('titleFromPlainText', () => {
   it('joins the title lines that sit directly above the byline', () => {
@@ -12,7 +12,7 @@ describe('titleFromPlainText', () => {
       "Caspar A. Hallmann'*, Martin Sorg?, Eelke Jongejans', Henk Siepel",
     ].join('\n');
 
-    expect(titleFromPlainText(ocr)).toBe(
+    expect(extractTitleFromPlainText(ocr)).toBe(
       'More than 75 percent decline over 27 years in total flying insect biomass in protected areas',
     );
   });
@@ -28,7 +28,7 @@ describe('titleFromPlainText', () => {
       'Ashish Vaswani* Noam Shazeer* Niki Parmar* Jakob Uszkoreit*',
     ].join('\n');
 
-    expect(titleFromPlainText(ocr)).toBe('Attention Is All You Need');
+    expect(extractTitleFromPlainText(ocr)).toBe('Attention Is All You Need');
   });
 
   it('reads a title split by OCR symbol soup above names joined by "and"', () => {
@@ -43,12 +43,12 @@ describe('titleFromPlainText', () => {
       'Institut flr Theoretische Physik, Universitat zu Kéln, ZllpicherstraRe 77, 50937 Koln, Germany',
     ].join('\n');
 
-    expect(titleFromPlainText(ocr)).toBe('From fitness landscapes to seascapes: non-equilibrium dynamics of selection and adaptation');
+    expect(extractTitleFromPlainText(ocr)).toBe('From fitness landscapes to seascapes: non-equilibrium dynamics of selection and adaptation');
   });
 
   it('does not take a Title Case title with lowercase function words for a byline', () => {
     const ocr = ['Selection Dynamics in Evolving Populations', 'Ann Lee and Bo Chen'].join('\n');
-    expect(titleFromPlainText(ocr)).toBe('Selection Dynamics in Evolving Populations');
+    expect(extractTitleFromPlainText(ocr)).toBe('Selection Dynamics in Evolving Populations');
   });
 
   it('returns undefined when no byline confirms a candidate', () => {
@@ -57,6 +57,6 @@ describe('titleFromPlainText', () => {
       'and must not be distributed outside of the department without consent',
     ].join('\n');
 
-    expect(titleFromPlainText(ocr)).toBeUndefined();
+    expect(extractTitleFromPlainText(ocr)).toBeUndefined();
   });
 });

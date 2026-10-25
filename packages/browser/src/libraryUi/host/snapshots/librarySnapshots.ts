@@ -2,9 +2,9 @@
  * Keeps the library UI's snapshot current from IndexedDB, reading again when the page becomes visible or the
  * background reports a change made elsewhere (popup or Scholar capture, attach, reader annotation).
  */
-import { PAPERS_DIR, errorMessage, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
-import { bx, type LibraryChangedBroadcast } from "../../../platform";
-import { listAllRecords, onFolderRecordsRebuilt, scanLibrary } from "../../../storage";
+import { PAPERS_DIR, formatError, type HostEndpoint, type ILogger, type LibraryUiSnapshot, type PaperRecord, type PaperStats } from "@labshelf/core";
+import { bx, type LibraryChangedEvent } from "../../../platform";
+import { listCachedPaperRecords, onPaperRecordsRebuilt, scanLibrary } from "../../../storage";
 import type { SidecarReads } from "./sidecarReads";
 
 export interface LibrarySnapshots {
@@ -33,7 +33,7 @@ export function createLibrarySnapshots(endpoint: HostEndpoint, sidecars: Sidecar
   let current: LibraryUiSnapshot = { folders: [], papers: [], pdfDirs: [], stats: {} };
   const post = async (rereadStats: boolean): Promise<void> => {
     // One key scan gives both the tree and the PDF presence.
-    const [scan, papers] = await Promise.all([scanLibrary(PAPERS_DIR), listAllRecords()]);
+    const [scan, papers] = await Promise.all([scanLibrary(PAPERS_DIR), listCachedPaperRecords()]);
     const stats = rereadStats ? await sidecars.statsOf(papers) : keepStatsOf(papers, current.stats);
     current = { folders: scan.tree, papers, pdfDirs: [...scan.pdfDirs], stats };
     endpoint.post({ type: "snapshot", snapshot: current });
@@ -47,7 +47,7 @@ export function createLibrarySnapshots(endpoint: HostEndpoint, sidecars: Sidecar
         await post(true);
       } catch (err) {
         endpoint.post({ type: "snapshot", snapshot: current });
-        endpoint.post({ type: "notice", kind: "error", text: `Could not load the library — ${errorMessage(err)}` });
+        endpoint.post({ type: "notice", kind: "error", text: `Could not load the library — ${formatError(err)}` });
       }
     },
     async sidecarChanged(paperId) {
@@ -76,13 +76,13 @@ export function watchLibraryChanges(snapshots: LibrarySnapshots, log: ILogger): 
   // Must stay synchronous and return nothing: runtime.sendMessage broadcasts popup requests to extension pages too,
   // and a listener returning a Promise would answer them with undefined.
   const onRuntime = (msg: unknown): void => {
-    const change = msg as LibraryChangedBroadcast | undefined;
+    const change = msg as LibraryChangedEvent | undefined;
     if (change?.type !== "library.changed") return;
     if (change.reason === "annotations" && change.paperId) run("an annotation change in the reader", snapshots.sidecarChanged(change.paperId));
     else run("a library change elsewhere", snapshots.reload());
   };
   // The background's broadcast does not reach the context that ran the rebuild, so this page listens to its own.
-  const stopRebuilt = onFolderRecordsRebuilt(() => run("the folder's records were rebuilt", snapshots.reload()));
+  const stopRebuilt = onPaperRecordsRebuilt(() => run("the folder's records were rebuilt", snapshots.reload()));
   document.addEventListener("visibilitychange", onVisible);
   bx.runtime.onMessage.addListener(onRuntime);
   return () => {

@@ -2,7 +2,7 @@
 // Skips papers whose PDF content hash matches the last indexed run.
 import type { PaperRecord } from "../model/index.js";
 import type { ILogger, LocalFileSystem } from "../ports/index.js";
-import { sha256Hex } from "../hash/index.js";
+import { deriveSha256Hex } from "../hash/index.js";
 import { runIngestion } from "./ingestion.js";
 import type { PdfTextExtractor } from "./pdfTextExtractor.js";
 import type { IIndexedHashes } from "./aiStorage.js";
@@ -60,7 +60,7 @@ export class AiIndexer {
       const pdfPath = await this.deps.resolvePdfPath(paperId);
       if (!pdfPath) return;
       const bytes = await this.deps.fileSystem.readFile(pdfPath);
-      const hash = await sha256Hex(bytes);
+      const hash = await deriveSha256Hex(bytes);
       if (this.deps.hashes.get(paperId) === hash) return;
       const extracted = await this.deps.extractor.extract(paperId, bytes);
       await runIngestion(extracted, { embedder: this.deps.embedder, vectorStore: this.deps.vectorStore });

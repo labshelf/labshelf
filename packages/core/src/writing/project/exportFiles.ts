@@ -16,7 +16,7 @@ export function isBuildOrToolPath(path: string): boolean {
 }
 
 /** The PDFs in `list` built from a root source next to them (`<root>.pdf` beside `<root>.tex|typ`). */
-export function builtPdfPaths(list: readonly string[]): Set<string> {
+export function deriveBuiltPdfPaths(list: readonly string[]): Set<string> {
   return new Set(list.flatMap((path) => {
     const base = ROOT_SOURCE.exec(path)?.[1];
     return base === undefined ? [] : [`${base}.pdf`];
@@ -24,7 +24,7 @@ export function builtPdfPaths(list: readonly string[]): Set<string> {
 }
 
 /** The paths (relative, POSIX) to export, in input order. */
-export function projectFiles(list: string[]): string[] {
-  const builtPdfs = builtPdfPaths(list);
+export function deriveProjectFiles(list: string[]): string[] {
+  const builtPdfs = deriveBuiltPdfPaths(list);
   return list.filter((path) => path !== DEFAULT_BIBLIOGRAPHY && !builtPdfs.has(path) && !isBuildOrToolPath(path));
 }

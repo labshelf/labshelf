@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { BuildRootOf } from "../platformWritingPort.js";
 import type { WritingProjects } from "../session/index.js";
-import { activeProject } from "./activeProject.js";
+import { readActiveProject } from "./readActiveProject.js";
 import type { ProjectBuilders } from "./projectBuilders.js";
 
 export const BUILD_COMMAND = "labshelf.writing.build";
@@ -16,7 +16,7 @@ interface BuildCommandDeps {
 }
 
 async function buildActive(deps: BuildCommandDeps): Promise<void> {
-  const project = activeProject(deps.projects);
+  const project = readActiveProject(deps.projects);
   if (!project) {
     await vscode.window.showInformationMessage("Open a file of a writing project to build it.");
     return;

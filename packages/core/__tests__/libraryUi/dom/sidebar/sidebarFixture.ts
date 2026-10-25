@@ -1,5 +1,5 @@
 // Mounts the library sidebar over sample folders and papers and offers the DOM queries its tests share.
-import type { SharingHost } from "../../../../src/libraryUi/share";
+import type { ShareHost } from "../../../../src/libraryUi/share";
 import { mountLibrarySidebar, type SidebarPaper, type SidebarProjectActions } from "../../../../src/libraryUi/dom";
 
 export const paper = (id: string, folder: string, title: string, status: "unread" | "reading" | "done"): SidebarPaper =>
@@ -21,7 +21,7 @@ export const tagged = [
   { record: { id: "t2", title: "two", status: "unread" as const, tags: ["nlp"] }, folder: "papers" },
 ];
 
-export function mount(expanded: string[] = [], collapsed: string[] = [], withProjects = false, withAddFiles = false, sharing?: SharingHost) {
+export function mount(expanded: string[] = [], collapsed: string[] = [], withProjects = false, withAddFiles = false, sharing?: ShareHost) {
   const actions = { ...(withAddFiles ? { addFiles: jest.fn() } : {}), openFolder: jest.fn(), revealPaper: jest.fn(), createFolder: jest.fn(), renameFolder: jest.fn(), removeFolder: jest.fn(), searchTag: jest.fn() };
   const saveExpanded = jest.fn();
   const saveCollapsed = jest.fn();

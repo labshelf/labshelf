@@ -8,7 +8,7 @@ import type { PeerId, PeerTransport } from "../peerTransport.js";
 import { LatestWinsThrottle } from "./throttle.js";
 import { RelayRequestError } from "./relayRequestError.js";
 import { fetchTicket } from "./relayRequests.js";
-import { globalSocketFactory, messageBytes, relaySocketUrl, type RelaySocket, type RelaySocketFactory } from "./relayConnection.js";
+import { createGlobalRelayConnection, extractMessageBytes, deriveRelayConnectionUrl, type RelayConnectionPort, type RelayConnectionPortFactory } from "./relayConnection.js";
 
 const LOG_MODULE = "collab.relay";
 const PEER_PREFIX = "relay:";
@@ -39,7 +39,7 @@ export interface RelayTransportOptions {
   shareId: string;
   relayToken: string;
   logger: ILogger;
-  socketFactory?: RelaySocketFactory;
+  socketFactory?: RelayConnectionPortFactory;
   fetch?: typeof fetch;
   scheduler?: SessionScheduler;
 }
@@ -64,7 +64,7 @@ class RelayConnection implements RelayTransport {
   private readonly ids = new Set<number>();
   private readonly scheduler: SessionScheduler;
   private readonly awareness: LatestWinsThrottle<number>;
-  private socket: RelaySocket | undefined;
+  private socket: RelayConnectionPort | undefined;
   private open = false;
   private closed = false;
   private attempt = 0;
@@ -123,7 +123,7 @@ class RelayConnection implements RelayTransport {
       return this.dropped(`ticket: ${String(error)}`);
     }
     if (this.closed) { return; }
-    const socket = (this.options.socketFactory ?? globalSocketFactory)(relaySocketUrl(relayUrl, shareId, ticket));
+    const socket = (this.options.socketFactory ?? createGlobalRelayConnection)(deriveRelayConnectionUrl(relayUrl, shareId, ticket));
     this.socket = socket;
     socket.binaryType = "arraybuffer";
     socket.onopen = () => {
@@ -133,7 +133,7 @@ class RelayConnection implements RelayTransport {
       this.connection.emit(true);
     };
     socket.onmessage = (event) => {
-      const bytes = messageBytes(event.data);
+      const bytes = extractMessageBytes(event.data);
       if (bytes && this.socket === socket) { this.receive(bytes); }
     };
     socket.onclose = (event) => { if (this.socket === socket) { this.dropped(`closed ${event.code} ${event.reason}`); } };

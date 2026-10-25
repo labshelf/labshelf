@@ -1,7 +1,7 @@
 // Runs the checks that need no build: licence, paths, latexmkrc and sizes, on the files a template would keep.
 // CONTRACT: documents/contracts/templates.md#paths
 
-import { isLicenseExpression, templateSizeProblem, templateStructureProblem, type TemplateManifest } from "../templateManifest/index.js";
+import { isLicenseExpression, deriveTemplateSizeProblem, deriveTemplateStructureProblem, type TemplateManifest } from "../templateManifest/index.js";
 import type { PublishCheckId } from "../publishCheckLabels.js";
 import { listProjectFiles } from "./projectFiles.js";
 import type { FoundFile } from "./walkFolder.js";
@@ -47,9 +47,9 @@ export async function runSourceChecks(
     files,
     checks: [
       license,
-      result("paths", templateStructureProblem(kept)),
+      result("paths", deriveTemplateStructureProblem(kept)),
       result("latexmkrc", rc === undefined ? undefined : `"${rc.path}" is a latexmkrc, which could run commands during the build.`),
-      result("sizes", templateSizeProblem(files)),
+      result("sizes", deriveTemplateSizeProblem(files)),
     ],
   };
 }

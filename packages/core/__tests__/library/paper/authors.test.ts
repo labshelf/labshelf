@@ -1,25 +1,25 @@
-import { authorKey, familyName, formatAuthors, splitName } from "../../../src/library/paper/index";
+import { normalizeAuthor, deriveFamilyName, formatAuthors, splitName } from "../../../src/library/paper/index";
 
 describe("familyName", () => {
   it("takes the surname of 'First Last' and of 'Last, First'", () => {
-    expect(familyName("Ada Lovelace")).toBe("Lovelace");
-    expect(familyName("Lovelace, Ada")).toBe("Lovelace");
-    expect(familyName("  Lovelace , Ada")).toBe("Lovelace");
+    expect(deriveFamilyName("Ada Lovelace")).toBe("Lovelace");
+    expect(deriveFamilyName("Lovelace, Ada")).toBe("Lovelace");
+    expect(deriveFamilyName("  Lovelace , Ada")).toBe("Lovelace");
   });
 
   it("splits on any whitespace, including tabs and non-breaking spaces", () => {
-    expect(familyName("Ada Lovelace")).toBe("Lovelace");
-    expect(familyName("Ada\tLovelace")).toBe("Lovelace");
-    expect(familyName("  Ada   Lovelace  ")).toBe("Lovelace");
+    expect(deriveFamilyName("Ada Lovelace")).toBe("Lovelace");
+    expect(deriveFamilyName("Ada\tLovelace")).toBe("Lovelace");
+    expect(deriveFamilyName("  Ada   Lovelace  ")).toBe("Lovelace");
   });
 
   it("returns a single-word name whole", () => {
-    expect(familyName("Plato")).toBe("Plato");
+    expect(deriveFamilyName("Plato")).toBe("Plato");
   });
 
   it("falls back to the trimmed full name when the surname is empty", () => {
-    expect(familyName(", Ada")).toBe(", Ada");
-    expect(familyName("  ")).toBe("");
+    expect(deriveFamilyName(", Ada")).toBe(", Ada");
+    expect(deriveFamilyName("  ")).toBe("");
   });
 });
 
@@ -52,7 +52,7 @@ describe("formatAuthors", () => {
 describe("splitName and the particle rule", () => {
   it("keeps name particles with the family name", () => {
     expect(splitName("Ludwig van Beethoven")).toEqual({ given: "Ludwig", family: "van Beethoven" });
-    expect(familyName("Charles de la Vallée")).toBe("de la Vallée");
+    expect(deriveFamilyName("Charles de la Vallée")).toBe("de la Vallée");
     expect(formatAuthors(["Ludwig van Beethoven", "Ada Lovelace"])).toBe("van Beethoven & Lovelace");
   });
 
@@ -63,7 +63,7 @@ describe("splitName and the particle rule", () => {
 
 describe("authorKey", () => {
   it("treats the full and the initialled form of one person alike", () => {
-    expect(authorKey("Ashish Vaswani")).toBe(authorKey("Vaswani, A."));
-    expect(authorKey("Ashish Vaswani")).not.toBe(authorKey("Noam Vaswani"));
+    expect(normalizeAuthor("Ashish Vaswani")).toBe(normalizeAuthor("Vaswani, A."));
+    expect(normalizeAuthor("Ashish Vaswani")).not.toBe(normalizeAuthor("Noam Vaswani"));
   });
 });

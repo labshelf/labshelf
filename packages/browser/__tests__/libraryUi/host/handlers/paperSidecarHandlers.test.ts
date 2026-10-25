@@ -2,7 +2,7 @@
 import type { HostToUi, PaperRecord, UiToHost } from "@labshelf/core";
 import { clearFakeDb, putFile, textAt } from "../../../support/fakeIdb";
 
-jest.mock("../../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../../support/fakeIdb").fakeDb }));
+jest.mock("../../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../../support/fakeIdb").fakeDb }));
 
 const mockApi = {
   runtime: { sendMessage: jest.fn(async () => undefined), onMessage: { addListener: jest.fn(), removeListener: jest.fn() } },
@@ -20,7 +20,7 @@ jest.mock("../../../../src/reader/service", () => ({ openReader: jest.fn() }));
 import { createLoopbackTransport } from "@labshelf/core";
 import { downloadTextFile } from "../../../../src/platform";
 import { attachLibraryHost } from "../../../../src/libraryUi/host";
-import { upsertRecord } from "../../../../src/storage";
+import { writeCachedPaperRecord } from "../../../../src/storage";
 
 const PAPER: PaperRecord = { id: "smith2020", title: "A Paper", citeKey: "smith2020", path: "papers/smith2020", status: "unread", authors: ["Smith, Jane"], year: 2020 };
 const METADATA = "title: A Paper\nstatus: unread\ncitekey: smith2020\nyear: 2020\nauthors:\n  - Smith, Jane\ntags: [old]\n";
@@ -37,7 +37,7 @@ async function seedLibrary(data: string): Promise<void> {
   putFile("papers/smith2020/metadata.yaml", METADATA);
   putFile("papers/smith2020/paper.pdf", new Uint8Array(2048));
   putFile(".research/papers/smith2020/data.json", data);
-  await upsertRecord({ ...PAPER, tags: ["old"], hasPdf: true }, PAPER.path);
+  await writeCachedPaperRecord({ ...PAPER, tags: ["old"], hasPdf: true }, PAPER.path);
 }
 
 const flush = async (): Promise<void> => { for (let i = 0; i < 30; i++) await new Promise((r) => setTimeout(r, 0)); };

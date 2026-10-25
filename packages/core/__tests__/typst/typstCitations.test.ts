@@ -2,10 +2,10 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { citedKeysAt } from "../../src/writing/quotes";
+import { findCiteKeysAt } from "../../src/writing/quotes";
 import { readProbeAnswer } from "../../src/typst/typstCitationProbe";
 import type { TypstSession } from "../../src/typst/index";
-import { toCompilerPath } from "../../src/typst/node/index";
+import { deriveTypstCompilerPath } from "../../src/typst/node/index";
 import { pdfLinks } from "../support/pdfLinks";
 import { cleanupTempDirs, makeTempDir } from "../support/tempDirs";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../support/typstFixtures";
@@ -24,7 +24,7 @@ async function compileProject(main: string, text: string) {
   await fs.mkdir(path.dirname(mainFile), { recursive: true });
   await fs.writeFile(path.join(path.dirname(mainFile), "refs.bib"), BIB);
   await fs.writeFile(mainFile, text);
-  const result = await session.compile({ root: toCompilerPath(folder), main: toCompilerPath(mainFile), sources: new Map() });
+  const result = await session.compile({ root: deriveTypstCompilerPath(folder), main: deriveTypstCompilerPath(mainFile), sources: new Map() });
   const pdfFile = path.join(folder, "out.pdf");
   await fs.writeFile(pdfFile, result.pdf!);
   return { result, links: pdfLinks(pdfFile) };
@@ -45,7 +45,7 @@ describe("Typst citation positions", () => {
     const { result, links } = await compileProject("main.typ", DOCUMENT);
     const cites = result.citations && "cites" in result.citations ? result.citations.cites : [];
     expect(cites.map((cite) => [cite.key, cite.at.page])).toEqual([["smith2020", 1], ["doe19", 1], ["smith2020", 2]]);
-    const keys = await Promise.all(links.map((link) => citedKeysAt({ area: link.area, link: true }, { format: "typst", typstCites: cites })));
+    const keys = await Promise.all(links.map((link) => findCiteKeysAt({ area: link.area, link: true }, { format: "typst", typstCites: cites })));
     expect(keys.filter((found) => found.length > 0)).toEqual([["smith2020"], ["doe19"], ["smith2020"]]);
     // The heading reference and the bibliography's back links are links too, and cite nothing.
     expect(keys.filter((found) => found.length === 0).length).toBe(links.length - 3);

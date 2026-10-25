@@ -3,7 +3,7 @@
  * selection or folder changes and when the page hides. A draft wins over the copy the host echoes back.
  */
 import type { PaperRecord } from "../../../model/index.js";
-import { saveNote } from "../flows/index.js";
+import { writeNote } from "../flows/index.js";
 import type { UiContext } from "../uiContext.js";
 
 const SAVE_AFTER_MS = 700;
@@ -28,7 +28,7 @@ export function createNoteEditor(ctx: UiContext, pane: HTMLElement): NoteEditor 
   const flush = (): void => {
     if (timer) { clearTimeout(timer); timer = null; }
     if (drafts.size === 0) return;
-    for (const [id, text] of drafts) saveNote(ctx, id, text);
+    for (const [id, text] of drafts) writeNote(ctx, id, text);
     drafts.clear();
     setState("Saved");
   };

@@ -1,5 +1,5 @@
 // Seals and opens payload frames with AES-GCM bound to their share, doc and payload kind.
-import type { WebCryptoKey } from "./hkdf.js";
+import type { DerivedShareKey } from "./hkdf.js";
 
 const FRAME_VERSION = 1;
 const NONCE_BYTES = 12;
@@ -31,7 +31,7 @@ function additionalData(context: FrameContext): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-export async function sealFrame(key: WebCryptoKey, context: FrameContext, plaintext: Uint8Array): Promise<Uint8Array> {
+export async function sealFrame(key: DerivedShareKey, context: FrameContext, plaintext: Uint8Array): Promise<Uint8Array> {
   const nonce = crypto.getRandomValues(new Uint8Array(NONCE_BYTES));
   const sealed = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv: nonce, additionalData: additionalData(context) },
@@ -46,7 +46,7 @@ export async function sealFrame(key: WebCryptoKey, context: FrameContext, plaint
 }
 
 /** Never throws on hostile input: every failure is a typed result. */
-export async function openFrame(key: WebCryptoKey, context: FrameContext, frame: Uint8Array): Promise<OpenResult> {
+export async function openFrame(key: DerivedShareKey, context: FrameContext, frame: Uint8Array): Promise<OpenResult> {
   if (frame.length < 1) { return { ok: false, error: "tooShort" }; }
   if (frame[0] !== FRAME_VERSION) { return { ok: false, error: "badVersion" }; }
   if (frame.length < HEADER_BYTES + TAG_BYTES) { return { ok: false, error: "tooShort" }; }

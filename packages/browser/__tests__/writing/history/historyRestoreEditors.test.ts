@@ -6,14 +6,14 @@
 import { EditorView } from "@codemirror/view";
 import type { HistoryToHost, HostToHistory, ILogger } from "@labshelf/core";
 import { createLoopbackTransport } from "@labshelf/core";
-import { confirmDialog } from "@labshelf/core/dom";
+import { askDialog } from "@labshelf/core/dom";
 import { mountSourceEditor, type SourceFileAccess } from "../../../src/writing/editor/mountSourceEditor";
 import { mountHistoryHost } from "../../../src/writing/history";
 import { clearFakeDb } from "../../support/fakeIdb";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
 
-jest.mock("@labshelf/core/dom", () => ({ toast: jest.fn(), confirmDialog: jest.fn(), inputBox: jest.fn() }));
-jest.mock("../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("@labshelf/core/dom", () => ({ showToast: jest.fn(), askDialog: jest.fn(), askInputBox: jest.fn() }));
+jest.mock("../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const project = { id: "thesis", folder: "proj" };
@@ -40,7 +40,7 @@ async function setup() {
   return { fs, ui, rows, editor, view, firstId: rows[0]![0]!.id };
 }
 
-beforeEach(() => { clearFakeDb(); jest.clearAllMocks(); (confirmDialog as jest.Mock).mockResolvedValue(true); });
+beforeEach(() => { clearFakeDb(); jest.clearAllMocks(); (askDialog as jest.Mock).mockResolvedValue(true); });
 
 describe("history restore with an open editor", () => {
   it("reloads the editor with the restored text, and a later save writes from it", async () => {

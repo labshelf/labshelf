@@ -1,5 +1,5 @@
 /** Measures pdf.js text runs: the visual line a run belongs to and the screen boxes of character ranges. */
-import { findInTextRefs, joinLineParts, type InTextRef, type JoinedLine, type LinePart } from "../../text/index.js";
+import { findInTextReferences, joinLineParts, type InTextReference, type JoinedLine, type LinePart } from "../../text/index.js";
 
 export const TEXT_RUN_SELECTOR = 'span[role="presentation"]';
 
@@ -7,17 +7,17 @@ export interface VisualLine {
   spans: HTMLElement[];
   parts: LinePart[];
   joined: JoinedLine;
-  refs: InTextRef[];
+  refs: InTextReference[];
 }
 
-export function unionRect(rects: DOMRect[]): DOMRect {
+export function deriveUnionRect(rects: DOMRect[]): DOMRect {
   const left = Math.min(...rects.map((r) => r.left));
   const top = Math.min(...rects.map((r) => r.top));
   return new DOMRect(left, top, Math.max(...rects.map((r) => r.right)) - left, Math.max(...rects.map((r) => r.bottom)) - top);
 }
 
 /** Screen box of characters [from, to) of a run, which may hold nested find-highlight spans. */
-export function charRangeRect(run: HTMLElement, from: number, to: number): DOMRect {
+export function deriveCharRangeRect(run: HTMLElement, from: number, to: number): DOMRect {
   const range = document.createRange();
   const walker = document.createTreeWalker(run, NodeFilter.SHOW_TEXT);
   let seen = 0;
@@ -41,7 +41,7 @@ function isSideways(text: string, rect: DOMRect): boolean {
  * The text runs that share the hovered run's visual line, left to right. pdf.js positions every run absolutely, so the
  * line is recovered from geometry rather than from DOM order.
  */
-export function visualLine(layer: HTMLElement, run: HTMLElement): VisualLine {
+export function deriveVisualLine(layer: HTMLElement, run: HTMLElement): VisualLine {
   const ref = run.getBoundingClientRect();
   if (isSideways(run.textContent ?? "", ref)) {
     // Its box spans the page's height: every run of the page would count as sharing its "line".
@@ -66,5 +66,5 @@ export function visualLine(layer: HTMLElement, run: HTMLElement): VisualLine {
     return { text: el.textContent ?? "", left: r.left, right: r.right, height: r.height };
   });
   const joined = joinLineParts(parts);
-  return { spans, parts, joined, refs: findInTextRefs(joined.text) };
+  return { spans, parts, joined, refs: findInTextReferences(joined.text) };
 }

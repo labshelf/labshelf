@@ -2,15 +2,15 @@
  * Matches fzf-style subsequences for the jump pickers (collections, papers). Consecutive characters, word starts
  * and early matches score higher, so "atn" finds "Attention Is All You Need" before "Data anonymisation".
  */
-import { fold } from "./fold.js";
+import { normalizeText } from "./normalizeText.js";
 
 /**
  * @returns the score (higher is better), or undefined when the pattern is not a subsequence
  */
-export function fuzzyScore(pattern: string, text: string): { score: number } | undefined {
-  const p = fold(pattern).replace(/\s+/g, "");
+export function deriveFuzzyScore(pattern: string, text: string): { score: number } | undefined {
+  const p = normalizeText(pattern).replace(/\s+/g, "");
   if (!p) { return { score: 0 }; }
-  const t = fold(text);
+  const t = normalizeText(text);
   let firstMatch = 0;
   let matched = 0;
   let score = 0;
@@ -35,11 +35,11 @@ export function fuzzyScore(pattern: string, text: string): { score: number } | u
  * Filters and ranks items by fuzzy match against their label.
  * @returns matching items, best first (input order kept for an empty pattern)
  */
-export function rankFuzzy<T>(items: readonly T[], pattern: string, label: (item: T) => string): T[] {
+export function orderFuzzy<T>(items: readonly T[], pattern: string, label: (item: T) => string): T[] {
   if (!pattern.trim()) { return [...items]; }
   const scored: Array<{ item: T; score: number; index: number }> = [];
   items.forEach((item, index) => {
-    const match = fuzzyScore(pattern, label(item));
+    const match = deriveFuzzyScore(pattern, label(item));
     if (match) { scored.push({ item, score: match.score, index }); }
   });
   scored.sort((a, b) => b.score - a.score || a.index - b.index);

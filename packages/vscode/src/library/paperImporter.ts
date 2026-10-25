@@ -1,5 +1,5 @@
 /** Imports picked PDFs and folders, and papers named by an identifier or link, through the core imports, putting each added paper in the index as it lands. */
-import { doiLookup, importNetworkInput, importPaths } from "@labshelf/core";
+import { createDoiFinder, importNetworkInput, importPaths } from "@labshelf/core";
 import type { IdentifierImportOptions, ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PdfParse } from "@labshelf/core";
 import type { ReindexSummary } from "../storage/index.js";
 
@@ -62,7 +62,7 @@ export class PaperImporter {
   }
 
   private importDeps(papers: PaperRecord[]): ImportDeps {
-    return { parse: this.parse, findByDoi: doiLookup(papers), takenIds: () => papers.map((paper) => paper.id) };
+    return { parse: this.parse, findByDoi: createDoiFinder(papers), takenIds: () => papers.map((paper) => paper.id) };
   }
 
   private async indexAdded(outcome: ImportOutcome): Promise<void> {

@@ -1,28 +1,28 @@
 /** Cuts and pastes papers (x, p), moves them to a picked folder (M), and the trash confirmation (d). */
-import { errorMessage, removeNotice } from "@labshelf/core";
-import { trashSupported } from "../../../platform/index.js";
-import { truncate } from "../../../screen/index.js";
-import { ALL, folderTitle, parentFolder } from "../screenModel.js";
+import { formatError, removeNotice } from "@labshelf/core";
+import { canTrash } from "../../../platform/index.js";
+import { formatTruncated } from "../../../screen/index.js";
+import { ALL, formatFolderTitle, deriveParentFolder } from "../screenModel.js";
 import type { App } from "../app.js";
-import { needPapers } from "./paperFieldActions.js";
+import { readSelectedPapers } from "./paperFieldActions.js";
 import { openFolderPicker } from "../input/index.js";
 
-export function cutTargets(app: App): void {
+export function setCutPapers(app: App): void {
   const folder = app.listModel.hoveredFolderRel();
   if (folder !== undefined && !app.selection.size) {
     if (folder === "") { app.taskStatus.notify("The library root cannot be moved", "warn"); return; }
     app.cut = [`c:${folder}`];
-    app.taskStatus.notify(`Folder "${folderTitle(folder)}" cut — hover the destination folder and press p`);
+    app.taskStatus.notify(`Folder "${formatFolderTitle(folder)}" cut — hover the destination folder and press p`);
     return;
   }
-  const papers = needPapers(app);
+  const papers = readSelectedPapers(app);
   if (!papers.length) { return; }
   app.cut = papers.map((p) => `p:${p.record.id}`);
   app.selection.clear();
   app.taskStatus.notify(`${papers.length} paper${papers.length === 1 ? "" : "s"} cut — go to a folder and press p`);
 }
 
-export function paste(app: App): void {
+export function moveCutPapers(app: App): void {
   if (!app.cut?.length) { app.taskStatus.notify("Nothing to paste — cut papers or a folder with x first", "warn"); return; }
   if (app.search !== undefined || app.folder === ALL) {
     app.taskStatus.notify("Choose a folder to paste into (in All papers, use M to pick one)", "warn");
@@ -49,22 +49,22 @@ async function moveKeys(app: App, keys: string[], target: string): Promise<void>
       app.folder = await app.ctx.papers.moveCollection(rel, target);
       moved++;
     } catch (error) {
-      failed.push({ id: rel, error: errorMessage(error) });
+      failed.push({ id: rel, error: formatError(error) });
     }
   }
-  app.taskStatus.notifyBatch(moved, failed, `moved to ${folderTitle(target)}`);
+  app.taskStatus.notifyBatch(moved, failed, `moved to ${formatFolderTitle(target)}`);
 }
 
 export function moveToPicker(app: App): void {
   const folder = app.listModel.hoveredFolderRel();
   if (folder !== undefined && !app.selection.size) {
     if (folder === "") { return; }
-    openFolderPicker(app, `Move folder "${folderTitle(folder)}" to`, (rel) => {
+    openFolderPicker(app, `Move folder "${formatFolderTitle(folder)}" to`, (rel) => {
       void app.taskStatus.task("move", "moving", () => moveKeys(app, [`c:${folder}`], rel === ALL ? "" : rel));
     }, { exclude: (rel) => rel === folder || rel.startsWith(folder + "/"), withAll: false });
     return;
   }
-  const papers = needPapers(app);
+  const papers = readSelectedPapers(app);
   if (!papers.length) { return; }
   const keys = papers.map((p) => `p:${p.record.id}`);
   openFolderPicker(app, `Move ${papers.length} paper${papers.length === 1 ? "" : "s"} to`, (rel) => {
@@ -73,17 +73,17 @@ export function moveToPicker(app: App): void {
   }, { withAll: false });
 }
 
-export function confirmTrash(app: App): void {
-  if (!trashSupported()) { app.taskStatus.notify("Moving to the trash is not supported on this system", "error"); return; }
+export function askTrash(app: App): void {
+  if (!canTrash()) { app.taskStatus.notify("Moving to the trash is not supported on this system", "error"); return; }
   const folder = app.listModel.hoveredFolderRel();
   if (folder !== undefined && !app.selection.size) { return confirmTrashFolder(app, folder); }
-  const papers = needPapers(app);
+  const papers = readSelectedPapers(app);
   if (!papers.length) { return; }
   app.overlay = {
     kind: "confirm",
     title: "Move to trash",
     lines: [
-      papers.length === 1 ? `Move "${truncate(papers[0]!.record.title, 60)}" to the trash?` : `Move ${papers.length} papers to the trash?`,
+      papers.length === 1 ? `Move "${formatTruncated(papers[0]!.record.title, 60)}" to the trash?` : `Move ${papers.length} papers to the trash?`,
       "VS Code stops listing them too.",
     ],
     onYes: () => {
@@ -104,13 +104,13 @@ function confirmTrashFolder(app: App, folder: string): void {
     kind: "confirm",
     title: "Move to trash",
     lines: [
-      `Move folder "${folderTitle(folder)}" and its ${node?.total ?? 0} paper${node?.total === 1 ? "" : "s"} to the trash?`,
+      `Move folder "${formatFolderTitle(folder)}" and its ${node?.total ?? 0} paper${node?.total === 1 ? "" : "s"} to the trash?`,
       "VS Code stops listing them too.",
     ],
     onYes: () => void app.taskStatus.task("trash", "moving to trash", async () => {
       await app.ctx.papers.trashCollection(folder);
-      app.folder = parentFolder(folder);
-      app.taskStatus.notify(`Folder "${folderTitle(folder)}" moved to the trash`);
+      app.folder = deriveParentFolder(folder);
+      app.taskStatus.notify(`Folder "${formatFolderTitle(folder)}" moved to the trash`);
     }),
   };
 }

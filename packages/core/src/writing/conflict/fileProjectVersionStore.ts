@@ -2,7 +2,7 @@
 import type { PathOps } from "../../library/mutations/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
 import { isProjectPath } from "../history/index.js";
-import { parseVersionJournal, textHash, type VersionJournal } from "./versionJournal.js";
+import { parseVersionJournal, deriveTextHash, type VersionJournal } from "./versionJournal.js";
 import type { IProjectVersionStore } from "./projectVersionStore.js";
 
 /**
@@ -83,7 +83,7 @@ export class FileProjectVersionStore implements IProjectVersionStore {
 
   private saveVersion(projectId: string, relativePath: string, text: string, known: boolean): Promise<void> {
     return this.mutate(projectId, relativePath, async journal => {
-      const hash = await textHash(text);
+      const hash = await deriveTextHash(text);
       journal.versions = [...journal.versions.filter(entry => entry.hash !== hash), { hash, text }];
       if (known) journal.known = hash;
       while (journal.versions.length > 20) journal.versions.splice(journal.versions.findIndex(entry => entry.hash !== journal.known), 1);

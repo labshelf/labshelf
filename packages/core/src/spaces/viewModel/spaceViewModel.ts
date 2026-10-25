@@ -1,9 +1,9 @@
 // Declares the view models Spaces screens show, derived from a Space, the Library and the projects.
-import type { PaperStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/readingStatus/index.js";
 import type { SpaceDateKind } from "../model/index.js";
 
 /** A writing project as the host reports it; supplied by the host port. */
-export interface SpaceProjectInfo {
+export interface SpaceProjectEntry {
   readonly projectId: string;
   readonly title: string;
   readonly format?: string;
@@ -23,7 +23,7 @@ export type ResolvedPaper =
     readonly title: string;
     readonly authors: readonly string[];
     readonly year?: number;
-    readonly status: PaperStatus;
+    readonly status: ReadingStatus;
   }
   | { readonly id: string; readonly missing: true };
 
@@ -46,7 +46,7 @@ export interface TimelineEntry {
 export interface SpaceOverview {
   readonly timeline: readonly TimelineEntry[];
   readonly focus: readonly ResolvedPaper[];
-  readonly projects: readonly SpaceProjectInfo[];
+  readonly projects: readonly SpaceProjectEntry[];
 }
 
 export interface PapersTreeFolder {

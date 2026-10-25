@@ -1,15 +1,15 @@
 /** Turns text-layer checks and OCR jobs into the verdict stored on a paper, and decides when a new verdict is worth writing. */
-import type { TextLayerInfo } from "../../../model/index.js";
-import { errorMessage } from "../../../logging/index.js";
+import type { TextLayerDetails } from "../../../model/index.js";
+import { formatError } from "../../../logging/index.js";
 import type { TextLayerDetection, TextLayerOutcome } from "./textLayerOutcome.js";
 
 /** @returns the current time as an ISO timestamp */
-export function wallClock(): string {
+export function readWallClock(): string {
   return new Date().toISOString();
 }
 
 /** @returns the verdict an OCR job's outcome leaves on the paper */
-export function verdictForOutcome(outcome: TextLayerOutcome, now: () => string = wallClock): TextLayerInfo {
+export function deriveVerdictForOutcome(outcome: TextLayerOutcome, now: () => string = readWallClock): TextLayerDetails {
   const checkedAt = now();
   switch (outcome.status) {
     case "added":
@@ -31,7 +31,7 @@ export function verdictForOutcome(outcome: TextLayerOutcome, now: () => string =
 }
 
 /** @returns the verdict a text-layer check (no OCR) leaves on the paper */
-export function verdictForDetection(detection: TextLayerDetection, now: () => string = wallClock): TextLayerInfo {
+export function deriveVerdictForDetection(detection: TextLayerDetection, now: () => string = readWallClock): TextLayerDetails {
   const checkedAt = now();
   switch (detection.status) {
     case "missing":
@@ -44,8 +44,8 @@ export function verdictForDetection(detection: TextLayerDetection, now: () => st
 }
 
 /** @returns the verdict for a check that threw */
-export function verdictForError(error: unknown, now: () => string = wallClock): TextLayerInfo {
-  return { state: "failed", reason: errorMessage(error), checkedAt: now() };
+export function deriveVerdictForError(error: unknown, now: () => string = readWallClock): TextLayerDetails {
+  return { state: "failed", reason: formatError(error), checkedAt: now() };
 }
 
 /**
@@ -53,17 +53,17 @@ export function verdictForError(error: unknown, now: () => string = wallClock): 
  * library-wide check from touching every file.
  * @returns true when the verdict is worth writing
  */
-export function shouldRecordVerdict(current: TextLayerInfo | undefined, next: TextLayerInfo): boolean {
+export function shouldWriteVerdict(current: TextLayerDetails | undefined, next: TextLayerDetails): boolean {
   return !sameVerdict(current, next) && !keepsOcrDetail(current, next);
 }
 
 // Re-checking a paper LabShelf read itself finds text (an OCR layer at best, native-looking text at worst) and knows
 // less than the record does (how many pages were read). The record wins.
-function keepsOcrDetail(current: TextLayerInfo | undefined, next: TextLayerInfo): boolean {
+function keepsOcrDetail(current: TextLayerDetails | undefined, next: TextLayerDetails): boolean {
   return current?.state === "ocr" && (next.state === "ocr" || next.state === "native") && next.ocrPages === undefined;
 }
 
-function sameVerdict(current: TextLayerInfo | undefined, next: TextLayerInfo): boolean {
+function sameVerdict(current: TextLayerDetails | undefined, next: TextLayerDetails): boolean {
   return current !== undefined && current.state === next.state && current.reason === next.reason
     && current.ocrPages === next.ocrPages && current.failedPages === next.failedPages;
 }

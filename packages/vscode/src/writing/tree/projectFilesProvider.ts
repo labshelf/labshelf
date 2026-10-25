@@ -1,7 +1,7 @@
 // Shows the open project's folder as read from disk, folders first, as the rows of the Files view.
 import * as vscode from "vscode";
 
-import { projectFileRow, visibleEntries, type ILogger } from "@labshelf/core";
+import { createProjectFileRow, listVisibleEntries, type ILogger } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
 
@@ -20,7 +20,7 @@ interface ProjectFilesDeps {
 
 const isFolder = (type: vscode.FileType): boolean => (type & vscode.FileType.Directory) !== 0;
 
-export function projectFolderUri(project: ReadyProject): vscode.Uri {
+export function createProjectFolderUri(project: ReadyProject): vscode.Uri {
   return vscode.Uri.file(project.folder);
 }
 
@@ -42,10 +42,10 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   async getChildren(parent?: ProjectFileNode): Promise<ProjectFileNode[]> {
     const project = this.deps.session.project;
     if (!project) { return []; }
-    const folder = parent?.uri ?? projectFolderUri(project);
+    const folder = parent?.uri ?? createProjectFolderUri(project);
     try {
       const entries = await vscode.workspace.fs.readDirectory(folder);
-      return visibleEntries(entries.map(([name, type]) => ({ name, type, folder: isFolder(type) })))
+      return listVisibleEntries(entries.map(([name, type]) => ({ name, type, folder: isFolder(type) })))
         .map(({ name, type }) => ({ uri: vscode.Uri.joinPath(folder, name), type }));
     } catch (error) {
       await this.deps.logger.error("writing/tree", error, { action: "read-folder", uri: folder.fsPath });
@@ -56,8 +56,8 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   getTreeItem(node: ProjectFileNode): vscode.TreeItem {
     const project = this.deps.session.project;
     const folder = isFolder(node.type);
-    const path = project ? relativePath(projectFolderUri(project), node.uri) : node.uri.path;
-    const { kind, node: row } = projectFileRow(path, folder, { format: project?.settings.format, main: project?.main });
+    const path = project ? relativePath(createProjectFolderUri(project), node.uri) : node.uri.path;
+    const { kind, node: row } = createProjectFileRow(path, folder, { format: project?.settings.format, main: project?.main });
     const item = new vscode.TreeItem(row.label, folder ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
     item.resourceUri = node.uri;
     item.id = node.uri.toString();

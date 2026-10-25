@@ -1,10 +1,10 @@
 // Connects the owner's Cloudflare account: a sign-in (or a pasted token on a remote host), the account, then the relay deployed and serving.
 import * as vscode from "vscode";
 
-import { connectRelayAccount, relayWorkerScript, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
+import { connectRelayAccount, readRelayWorkerScript, type CloudflareAccount, type ILogger, type RelayAccountStore, type RelayCredential } from "@labshelf/core";
 import { LOG_MODULE } from "./relayAccounts.js";
-import { relayAccountDeps } from "./relayAccountDeps.js";
-import { lazyProgress } from "./relayProgress.js";
+import { createRelayAccountDeps } from "./createRelayAccountDeps.js";
+import { createLazyProgress } from "./relayProgress.js";
 import { reportRelayFailure } from "./relayFailure.js";
 import { LoopbackUnavailableError } from "./oauthCallback.js";
 import { signInToCloudflare } from "./cloudflareSignIn.js";
@@ -91,13 +91,13 @@ async function chooseAccount(accounts: CloudflareAccount[]): Promise<string | un
 }
 
 async function deployRelayAccount(deps: ConnectDeps): Promise<string | undefined> {
-  const progress = lazyProgress("Setting up your relay on Cloudflare");
+  const progress = createLazyProgress("Setting up your relay on Cloudflare");
   try {
     return await connectRelayAccount({
-      ...relayAccountDeps(deps),
+      ...createRelayAccountDeps(deps),
       chooseCredential: () => chooseCredential(deps),
       chooseAccount,
-      script: relayWorkerScript(),
+      script: readRelayWorkerScript(),
       offerToShares: () => { progress.close(); return deps.offerToShares(); },
       progress: (step) => progress.report(step === "deploying" ? "uploading the relay" : "waiting for its address to answer, which takes up to 4 minutes the first time"),
     });

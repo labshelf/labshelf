@@ -3,17 +3,27 @@
  * snapshots, the open folder and OCR jobs, and answers through the typed message handlers.
  */
 import * as vscode from 'vscode';
-import { isUnderDir } from '@labshelf/core';
+import { isUnderDir, type PathOps } from '@labshelf/core';
 import { sharingWebviews } from '../share/index.js';
-import { rootNode, type LibraryNode } from "./libraryNode.js";
-import { labshelfTabIcon } from '../ui/index.js';
-import { handleListMessage, type ListHostContext } from './host/index.js';
+import { createLibraryRootNode, type LibraryNode } from "./libraryNode.js";
+import { createTabIcon } from '../ui/index.js';
+import { answerListMessage, type ListHostContext } from './host/index.js';
 import { showCitationMap } from './citationMap/index.js';
-import { feedHostContext } from "./feedHostContext.js";
+import { createFeedHostCompositionRoot } from "./createFeedHostCompositionRoot.js";
 import { LibraryFeed } from "./libraryFeed.js";
-import { libraryBundleDirectory, listPanelHtml } from './listPanelHtml.js';
+import { readLibraryBundleDir, listPanelHtml } from './listPanelHtml.js';
 import type { ListPanelDeps } from './listPanelDeps.js';
-import { resolveShownFolder } from './shownFolder.js';
+
+async function resolveShownFolder(wanted: LibraryNode | undefined, root: string, pathOps: PathOps): Promise<LibraryNode> {
+  if (!wanted || wanted.isRoot || wanted.dirPath === root || !isUnderDir(wanted.dirPath, root, pathOps.sep)) { return createLibraryRootNode(root); }
+  try {
+    const stat = await vscode.workspace.fs.stat(vscode.Uri.file(wanted.dirPath));
+    if (stat.type & vscode.FileType.Directory) { return { label: pathOps.basename(wanted.dirPath), dirPath: wanted.dirPath }; }
+  } catch {
+    // The folder is gone: fall through to the root.
+  }
+  return createLibraryRootNode(root);
+}
 
 export class ListWebviewPanel {
   public static currentPanel: ListWebviewPanel | undefined;
@@ -38,9 +48,9 @@ export class ListWebviewPanel {
     const panel = vscode.window.createWebviewPanel('labshelfList', folder?.label ?? 'LabShelf', vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [libraryBundleDirectory(deps.extensionUri)],
+      localResourceRoots: [readLibraryBundleDir(deps.extensionUri)],
     });
-    panel.iconPath = labshelfTabIcon(deps.extensionUri);
+    panel.iconPath = createTabIcon(deps.extensionUri);
     ListWebviewPanel.currentPanel = new ListWebviewPanel(panel, deps, folder);
   }
 
@@ -74,7 +84,7 @@ export class ListWebviewPanel {
     void listPanelHtml(this._panel.webview, _deps.extensionUri).then((html) => {
       if (!this._disposed) { this._panel.webview.html = html; }
     });
-    this._panel.webview.onDidReceiveMessage((raw: unknown) => handleListMessage(this._host, raw), null, this._disposables);
+    this._panel.webview.onDidReceiveMessage((raw: unknown) => answerListMessage(this._host, raw), null, this._disposables);
     this._disposables.push(sharingWebviews.attach(this._panel.webview));
     this._panel.onDidChangeViewState((e) => { if (e.webviewPanel.active) { this._deps.onDidActivate?.(); } }, null, this._disposables);
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
@@ -107,7 +117,7 @@ export class ListWebviewPanel {
   }
 
   private _hostContext(): ListHostContext {
-    return feedHostContext(this._deps, this._feed, {
+    return createFeedHostCompositionRoot(this._deps, this._feed, {
       onReady: async () => {
         this._feed.queue.markReady(); this._uiFolder = undefined;
         await this._pushState();
@@ -123,7 +133,7 @@ export class ListWebviewPanel {
   }
 
   private _nodeFor(dirPath: string): LibraryNode {
-    return dirPath === this._deps.getPapersRoot() ? rootNode(dirPath) : { label: this._deps.pathOps.basename(dirPath), dirPath };
+    return dirPath === this._deps.getPapersRoot() ? createLibraryRootNode(dirPath) : { label: this._deps.pathOps.basename(dirPath), dirPath };
   }
 
   // Shows `folder` in the tab title and the sidebar tree; `tellUi` also opens it in the UI when the UI is elsewhere.

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
-import { executeSafely } from "../../command/index.js";
+import { runSafely } from "../../command/index.js";
 import { ProjectSession, type ProjectSessionDeps } from "./projectSession.js";
 
 export const OPEN_PROJECT_COMMAND = "labshelf.writing.openProject";
@@ -18,7 +18,7 @@ export function registerProjectSession(deps: ProjectSessionCommandsDeps): Projec
   // Without an open library there is no logger; VS Code then reports a failure itself.
   const run = (command: string, action: () => Promise<void>): Promise<void> => {
     const logger = deps.host.current()?.logger;
-    return logger ? executeSafely(logger, command, action) : action();
+    return logger ? runSafely(logger, command, action) : action();
   };
   context.subscriptions.push(
     session,

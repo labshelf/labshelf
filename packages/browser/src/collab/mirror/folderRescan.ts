@@ -1,5 +1,5 @@
 // Finds files changed outside the browser in a mirrored folder by comparing each file's modification time and size between scans.
-import { DEVICE_ID, posixPathOps, type ILogger, type LibraryFileSystem, type MirrorDisk } from "@labshelf/core";
+import { DEVICE_ID, posixPathOps, type ILogger, type LibraryFileSystem, type MirrorFileSystem } from "@labshelf/core";
 
 /** Bounds the stat calls of one scan; a project folder past this is not mirrored in full. */
 const RESCAN_MAX_PATHS = 2_000;
@@ -8,13 +8,13 @@ const LOG_MODULE = "browser.collab.mirror";
 export interface FolderRescanOptions {
   fs: LibraryFileSystem;
   folder: string;
-  disk: MirrorDisk;
+  disk: MirrorFileSystem;
   changed(path: string): void;
   logger: ILogger;
 }
 
 export interface FolderRescan {
-  /** Reports every path changed, created or deleted since the last scan; the first scan only records. Throws MirrorRootUnavailable. */
+  /** Reports every path changed, created or deleted since the last scan; the first scan only records. Throws MirrorProjectDirUnavailable. */
   scan(): Promise<void>;
 }
 

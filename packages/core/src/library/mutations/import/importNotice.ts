@@ -1,7 +1,7 @@
 /** Words the one message every app shows after an import, from its outcomes. */
 import type { ImportOutcome } from "./paperImport.js";
 
-export interface ImportSummary {
+export interface ImportCounts {
   level: "info" | "warn";
   text: string;
   /** The paper the app should select: the one added, or the one a lone duplicate matched. */
@@ -15,7 +15,7 @@ function withStatus<S extends ImportOutcome["status"]>(outcomes: ImportOutcome[]
 }
 
 /** @returns the summary; apps add their own prefix or shorten the title */
-export function summarizeImport(outcomes: ImportOutcome[]): ImportSummary {
+export function countImportOutcomes(outcomes: ImportOutcome[]): ImportCounts {
   const added = withStatus(outcomes, "added");
   const duplicates = withStatus(outcomes, "duplicate");
   const skipped = withStatus(outcomes, "skipped");

@@ -1,6 +1,6 @@
 // Connects the browser sidebar to library and project actions.
-import { icon, parentDir, type HostEndpoint, type SharingHost } from "@labshelf/core";
-import { el, mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
+import { renderIcon, deriveParentDir, type HostEndpoint, type ShareHost } from "@labshelf/core";
+import { renderElement, mountLibrarySidebar, type LibraryUi } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import type { PagePrefs } from "../prefs";
 import type { TabKindName } from "../editorArea";
@@ -14,7 +14,7 @@ export interface SidebarProjectParts {
 }
 
 function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void): HTMLElement {
-  const button = el("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: icon(glyph) });
+  const button = renderElement("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: renderIcon(glyph) });
   button.addEventListener("click", onClick);
   return button;
 }
@@ -25,7 +25,7 @@ function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void)
  */
 export function mountSidebarTree(
   ui: Pick<LibraryUi, "store" | "folders" | "dropTarget">, slot: HTMLElement, prefs: PagePrefs, host: Pick<HostEndpoint, "post">,
-  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean, sharing: SharingHost, spaces?: SidebarSpaces,
+  project: SidebarProjectParts | null, openTab: (kind: TabKindName) => void, showLibrary: boolean, sharing: ShareHost, spaces?: SidebarSpaces,
 ): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
   const head = slot.querySelector(".tree-head")!;
@@ -57,7 +57,7 @@ export function mountSidebarTree(
   if (!showLibrary) return () => undefined;
   // Browser record paths are IndexedDB keys relative to the library root, so the parent is the tree folder.
   const offLibrary = store.select((s) => ({ folders: s.folders, papers: s.papers }), ({ folders: tree, papers }) =>
-    sidebar.setLibrary(tree, papers.map((record) => ({ record, folder: parentDir(record.path, "/") }))));
+    sidebar.setLibrary(tree, papers.map((record) => ({ record, folder: deriveParentDir(record.path, "/") }))));
   const offView = store.select((s) => s.folder, (folder) => sidebar.setCurrent(folder));
   const offSelection = store.select((s) => (s.selected.size === 1 ? [...s.selected][0]! : null), (id) => sidebar.setSelected(id));
   const offQuery = store.select((s) => s.query, (query) => sidebar.setQuery(query));

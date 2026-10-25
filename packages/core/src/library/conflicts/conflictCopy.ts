@@ -20,13 +20,13 @@ export interface ConflictCopy {
 export type ConflictResolution = "keepMine" | "keepOther" | "keepBoth" | "mergeAutomatically" | "notAVersion";
 
 /** The name a conflict is shown under: "Space <id>", the paper's title when known, else the owner id. */
-export function conflictOwnerLabel(owner: ConflictOwner, paperTitle?: string): string {
+export function formatConflictOwnerLabel(owner: ConflictOwner, paperTitle?: string): string {
   if (owner.kind === "space") return `Space ${owner.id}`;
   return (owner.kind === "paper" && paperTitle) || owner.id;
 }
 
 /** The resolutions a copy allows: keepBoth is left out for a paper's metadata.yaml and notes.qmd and for Space files, because a renamed copy of them is read by nothing. */
-export function conflictResolutions(conflict: ConflictCopy): ConflictResolution[] {
+export function deriveConflictResolutions(conflict: ConflictCopy): ConflictResolution[] {
   if (conflict.match === "record" || conflict.match === "similar") return ["mergeAutomatically", "notAVersion"];
   const fileName = conflict.original.split(/[\\/]/).pop();
   const single = fileName === METADATA_FILE || (conflict.owner.kind === "paper" && fileName === PAPER_NOTES_FILE) || conflict.owner.kind === "space";

@@ -1,5 +1,5 @@
 /** Contract of the lookup stage: all lookups start together, each under its own cap, candidates come out in rank order. */
-import { rankedCandidates, startLookups, type Candidate } from "../../../../src/import/pdfFinder/engine/index";
+import { walkRankedCandidates, startFinds, type Candidate } from "../../../../src/import/pdfFinder/engine/index";
 import type { ResolveContext } from "../../../../src/import/pdfFinder/pdfResolver";
 import { json, makeContext } from "../../../support/pdfFindingHarness";
 import { makeSlowNetwork, redirectedTo, type SlowNetwork } from "../../../support/slowNetwork";
@@ -10,9 +10,9 @@ const S2 = `https://api.semanticscholar.org/graph/v1/paper/DOI:${DOI}?fields=tit
 const SCIENCEDIRECT = "https://www.sciencedirect.com/science/article/pii/S0196677482900074";
 
 async function collect(ctx: ResolveContext, net: SlowNetwork, capMs = 2_000): Promise<Candidate[]> {
-  const steps = startLookups(ctx, {}, net.env, capMs, new AbortController().signal);
+  const steps = startFinds(ctx, {}, net.env, capMs, new AbortController().signal);
   const out: Candidate[] = [];
-  for await (const c of rankedCandidates(steps)) out.push(c);
+  for await (const c of walkRankedCandidates(steps)) out.push(c);
   return out;
 }
 
@@ -77,9 +77,9 @@ describe("startLookups and rankedCandidates", () => {
   it("still yields the lookups that need no network when the network throws", async () => {
     const net = makeSlowNetwork();
     const throwing = { ...net.env, fetch: (() => { throw new Error("boom"); }) as typeof fetch };
-    const steps = startLookups(makeContext({ doi: DOI, arxivId: "2301.00001" }), {}, throwing, 500, new AbortController().signal);
+    const steps = startFinds(makeContext({ doi: DOI, arxivId: "2301.00001" }), {}, throwing, 500, new AbortController().signal);
     const out: Candidate[] = [];
-    for await (const c of rankedCandidates(steps)) out.push(c);
+    for await (const c of walkRankedCandidates(steps)) out.push(c);
     expect(out.map((c) => c.source)).toEqual(["publisher", "arxiv"]);
   });
 });

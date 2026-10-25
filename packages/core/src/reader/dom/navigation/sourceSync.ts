@@ -1,7 +1,7 @@
 // Links a build preview to its source: a double-click reports the page point behind it, a revealed point is scrolled into view and marked.
-import { clampPage, type PagePoint } from "../../index.js";
+import { deriveClampedPage, type PagePoint } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
-import { pagePointAt, pixelOffsetOf, type PageViewportLike } from "./pagePoints.js";
+import { derivePagePoint, derivePixelOffset, type PageViewportLike } from "./pagePoints.js";
 
 // Where the revealed point lands, as a fraction of the container's height from its top.
 const REVEAL_POSITION = 1 / 3;
@@ -24,10 +24,10 @@ export class SourceSync {
   /** Scrolls so the point sits about a third from the container's top and marks it for a moment. */
   reveal(point: PagePoint): void {
     const { container, pdfDocument, pdfViewer } = this.ctx;
-    const page = clampPage(point.page, pdfDocument.numPages);
+    const page = deriveClampedPage(point.page, pdfDocument.numPages);
     const view = pdfViewer.getPageView(page - 1) as PageViewLike | undefined;
     if (!view?.viewport) { return; }
-    const [pixelX, pixelY] = pixelOffsetOf(view.viewport, point);
+    const [pixelX, pixelY] = derivePixelOffset(view.viewport, point);
     const box = container.getBoundingClientRect();
     const pageBox = view.div.getBoundingClientRect();
     // Position inside the scrolled content, which the marker shares because it is a child of the container.
@@ -48,7 +48,7 @@ export class SourceSync {
     const view = this.ctx.pdfViewer.getPageView(page - 1) as PageViewLike | undefined;
     if (!view?.viewport) { return; }
     const box = pageEl.getBoundingClientRect();
-    const point = pagePointAt(page, view.viewport, event.clientX - box.left - pageEl.clientLeft, event.clientY - box.top - pageEl.clientTop);
+    const point = derivePagePoint(page, view.viewport, event.clientX - box.left - pageEl.clientLeft, event.clientY - box.top - pageEl.clientTop);
     this.ctx.host.post({ command: "showSource", point });
   }
 

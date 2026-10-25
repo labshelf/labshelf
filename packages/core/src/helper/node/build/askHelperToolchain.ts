@@ -1,11 +1,11 @@
 // Answers core's TeX setup questions for one page build: it never installs TeX and reports package installs as progress.
-import type { TexSetupPrompt } from "../../../writing/build/index.js";
+import type { TexSetupAsk } from "../../../writing/build/index.js";
 import { PROTOCOL_VERSION } from "../../index.js";
 
 import type { HelperSend } from "../handlers/index.js";
 
 /** The page shows its own TeX setup on `toolchain-missing`, so the helper declines the install. */
-export function helperToolchainPrompt(id: string, send: HelperSend): TexSetupPrompt {
+export function createHelperToolchainAsk(id: string, send: HelperSend): TexSetupAsk {
   const report = (message: string): void => send({ v: PROTOCOL_VERSION, id, type: "progress", phase: "installing-package", message });
   return {
     chooseInstall: () => Promise.resolve(undefined),

@@ -4,9 +4,9 @@ import * as path from 'node:path';
 import { createProjectSaveTracking, recordProjectSave, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';
-import { nodeProjectCatalogContext } from '../../../../src/writing/project/node/index';
-import { blankTemplate } from '../../../../src/templates/index';
-import { deviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
+import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
+import { createBlankTemplate } from '../../../../src/templates/index';
+import { createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { readWriteRecords } from '../../../../src/library/writeRecords/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
 import type { ILogger } from '../../../../src/ports/index';
@@ -18,12 +18,12 @@ afterEach(async () => { if (stateHome === undefined) delete process.env.XDG_STAT
 async function fixture() {
   process.env.XDG_STATE_HOME = await makeTempDir();
   const root = await makeTempDir();
-  const project = await createProjectFromTemplate(nodeProjectCatalogContext(logger), root, { title: 'Study', ...blankTemplate('latex', 'Study') });
+  const project = await createProjectFromTemplate(createNodeProjectCatalogCompositionRoot(logger), root, { title: 'Study', ...createBlankTemplate('latex', 'Study') });
   if (project.kind !== 'ready') throw new Error('Project missing');
   const disk = new NodeLibraryFileSystem();
   const file = path.join(project.folder, 'main.tex');
   await disk.writeText(file, 'base');
-  const store = new FileProjectVersionStore(disk, path, deviceLocalLayout(root).mergeBasesDir);
+  const store = new FileProjectVersionStore(disk, path, createDeviceLocalLayout(root).mergeBasesDir);
   await scanLibraryConflicts(root, store, logger);
   return { root, project, disk, file, store, tracking: createProjectSaveTracking(disk, () => root, logger) };
 }

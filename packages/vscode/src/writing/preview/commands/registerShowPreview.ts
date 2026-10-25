@@ -2,10 +2,10 @@
 import * as vscode from "vscode";
 
 import { BUILD_COMMAND } from "../../build/index.js";
-import { owningProject } from "../../buildRootDocument.js";
+import { findOwningProject } from "../../buildRootDocument.js";
 import type { WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../buildPreviews.js";
-import { builtPdf } from "../builtPdf.js";
+import { readBuiltPdf } from "../readBuiltPdf.js";
 
 const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 
@@ -17,8 +17,8 @@ interface ShowPreviewDeps {
 
 async function showPreview(deps: ShowPreviewDeps): Promise<void> {
   const file = vscode.window.activeTextEditor?.document.uri;
-  const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
-  const pdf = await builtPdf(deps.projects, project, project?.main);
+  const project = file?.scheme === "file" ? findOwningProject(deps.projects, file.fsPath) : undefined;
+  const pdf = await readBuiltPdf(deps.projects, project, project?.main);
   if (project?.main && pdf) {
     deps.previews.show(project, project.main, pdf, { beside: false });
     return;

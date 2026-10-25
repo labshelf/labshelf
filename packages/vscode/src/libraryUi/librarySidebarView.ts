@@ -1,15 +1,58 @@
 // Hosts the Library sidebar webview: sends it the folders and papers, and runs what its rows ask for.
 import * as vscode from "vscode";
-import { PAPERS_DIR, sidebarRows, folderTreeFromSnapshot, type LibrarySnapshot, type PathOps, type SidebarOpenProject, type SidebarProjectItem } from "@labshelf/core";
+import {
+  PAPERS_DIR,
+  deriveSidebarRows,
+  deriveFolderTree,
+  type LibrarySnapshot,
+  type PathOps,
+  type SidebarOpenProject,
+  type SidebarProjectItem,
+  type ProjectEntry,
+} from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../library/index.js";
 import { sharingWebviews } from "../share/index.js";
-import { libraryBundleDirectory, libraryPaths, listPanelHtml, type LibraryPaths } from "./index.js";
-import { rootNode, type LibraryNode } from "./libraryNode.js";
-import { runProjectEdit, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
-import { handleProjectMessage, isProjectMessage, type SidebarProjectsPort } from "./sidebarProjectMessages.js";
-import { parseSidebarMessage, type HostToSidebar, type ProjectTreeMessage, type SidebarToHost } from "./sidebarMessages.js";
+import { readLibraryBundleDir, createLibraryPaths, listPanelHtml, type LibraryPaths } from "./index.js";
+import { createLibraryRootNode, type LibraryNode } from "./libraryNode.js";
+import { runProjectUpdate, runProjectFolderAction, type ProjectOrganizerPort } from "./projectOrganizer.js";
+import {
+  parseSidebarMessage,
+  type HostToSidebar,
+  type ProjectTreeMessage,
+  type SidebarToHost,
+  type ProjectAction,
+} from "./sidebarMessages.js";
 
-import { handleSidebarSpaceMessage, type SidebarSpacesDep } from "./spaces/index.js";
+import { answerSidebarSpaceMessage, type SidebarSpacesDep } from "./spaces/index.js";
+import { canApplyProjectCommand } from "./projectCommands.js";
+
+/** What the host needs to know about the projects the sidebar lists. */
+interface SidebarProjectsPort {
+  find(id: string): ProjectEntry | undefined;
+}
+
+const ACTION_COMMANDS: Record<ProjectAction, string> = {
+  browseTemplates: "labshelf.templates.open",
+  allProjects: "labshelf.projects.all",
+  newBlank: "labshelf.writing.newBlankProject",
+  addExisting: "labshelf.writing.addExistingFolder",
+  refresh: "labshelf.writing.refresh",
+};
+
+type ProjectMessage = Extract<SidebarToHost, { type: "openProject" | "projectCommand" | "projectAction" }>;
+
+const isProjectMessage = (m: SidebarToHost): m is ProjectMessage =>
+  m.type === "openProject" || m.type === "projectCommand" || m.type === "projectAction";
+
+/** Runs one project message; a row the host does not list, or a command that does not apply to it, is ignored. */
+async function handleProjectMessage(m: ProjectMessage, projects: SidebarProjectsPort): Promise<void> {
+  if (m.type === "projectAction") { await vscode.commands.executeCommand(ACTION_COMMANDS[m.action]); return; }
+  const entry = projects.find(m.id);
+  if (!entry) { return; }
+  const command = m.type === "openProject" ? "labshelf.writing.openProject" : m.command;
+  if (!canApplyProjectCommand(command, { kind: entry.kind, external: entry.location === "external" })) { return; }
+  await vscode.commands.executeCommand(command, entry);
+}
 
 const REFRESH_DEBOUNCE_MS = 60;
 
@@ -83,13 +126,13 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
 
   private async _pushSpaces(): Promise<void> {
     const current = this._deps.spaces?.current();
-    await this._post({ type: "spaces", rows: current ? sidebarRows(current.store.list(), current.port.library()) : [] });
+    await this._post({ type: "spaces", rows: current ? deriveSidebarRows(current.store.list(), current.port.library()) : [] });
   }
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this._view = view;
     this._ready = false;
-    view.webview.options = { enableScripts: true, localResourceRoots: [libraryBundleDirectory(this._deps.extensionUri)] };
+    view.webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri)] };
     view.webview.onDidReceiveMessage((raw: unknown) => { const m = parseSidebarMessage(raw); if (m) { void this._handle(m); } });
     const sharing = sharingWebviews.attach(view.webview, { opensDialogs: true });
     view.onDidDispose(() => { this._view = undefined; this._ready = false; sharing.dispose(); });
@@ -128,7 +171,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   }
 
   private _paths(): LibraryPaths | null {
-    return this._papersRoot ? libraryPaths(this._papersRoot.fsPath, this._deps.paths) : null;
+    return this._papersRoot ? createLibraryPaths(this._papersRoot.fsPath, this._deps.paths) : null;
   }
 
   private _post(m: HostToSidebar): Thenable<boolean> | undefined {
@@ -141,7 +184,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     if (!snapshot || !this._papersRoot || !this._ready) { return; }
     const papers = [...snapshot.papers.values()].map(({ record: { id, title, status, tags }, collection }) =>
       ({ record: { id, title, status, ...(tags ? { tags } : {}) }, folder: collection ? `${PAPERS_DIR}/${collection}` : PAPERS_DIR }));
-    await this._post({ type: "library", folders: folderTreeFromSnapshot(snapshot), papers });
+    await this._post({ type: "library", folders: deriveFolderTree(snapshot), papers });
   }
 
   private async _pushProjects(): Promise<void> {
@@ -156,12 +199,12 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
 
   private _node(ui: string): LibraryNode {
     const dirPath = this._paths()!.fromUi(ui);
-    return ui === PAPERS_DIR ? rootNode(dirPath) : { label: ui.slice(ui.lastIndexOf("/") + 1), dirPath };
+    return ui === PAPERS_DIR ? createLibraryRootNode(dirPath) : { label: ui.slice(ui.lastIndexOf("/") + 1), dirPath };
   }
 
   private async _handle(m: SidebarToHost): Promise<void> {
     if (m.type === "spaceAction") {
-      if (this._deps.spaces) await handleSidebarSpaceMessage(m, this._deps.spaces);
+      if (this._deps.spaces) await answerSidebarSpaceMessage(m, this._deps.spaces);
       return;
     }
     if (m.type === "refresh") { await vscode.commands.executeCommand("labshelf.library.refresh"); return; }
@@ -176,7 +219,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     }
     if (m.type === "projectFolder") { await runProjectFolderAction(this._deps.projects, m.action, m.path); return; }
     if (m.type === "projectTree") { const { type: _, ...request } = m; await this._deps.projectTrees.handle(request); return; }
-    if (m.type === "projectEdit") { await runProjectEdit(this._deps.projects, m.id, m.edit); return; }
+    if (m.type === "projectEdit") { await runProjectUpdate(this._deps.projects, m.id, m.edit); return; }
     if (isProjectMessage(m)) { await handleProjectMessage(m, this._deps.projects); return; }
     if (m.type === "searchTag") { await vscode.commands.executeCommand("labshelf.searchListTag", m.tag); return; }
     if (m.type === "revealPaper") { await vscode.commands.executeCommand("labshelf.revealPaper", m.id); return; }

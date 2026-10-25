@@ -6,7 +6,7 @@ import type { WritingProjects } from "./session/index.js";
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 /** The project list together with the path style its folders are written in. */
-export type ProjectLookup = Pick<WritingProjects, "list" | "paths">;
+export type ProjectFinder = Pick<WritingProjects, "list" | "paths">;
 
 /** Whether the file lies strictly inside the folder. */
 export function isInside(paths: PathOps, folder: string, file: string): boolean {
@@ -15,7 +15,7 @@ export function isInside(paths: PathOps, folder: string, file: string): boolean 
 }
 
 /** The ready project whose folder contains the file; the deepest folder wins when projects are nested. */
-export function owningProject(projects: ProjectLookup, filePath: string): ReadyProject | undefined {
+export function findOwningProject(projects: ProjectFinder, filePath: string): ReadyProject | undefined {
   let owner: ReadyProject | undefined;
   for (const entry of projects.list()) {
     if (entry.kind !== "ready" || !isInside(projects.paths, entry.folder, filePath)) { continue; }
@@ -25,6 +25,6 @@ export function owningProject(projects: ProjectLookup, filePath: string): ReadyP
 }
 
 /** The file's path relative to the project folder, with "/" separators on every platform, as labshelf.yaml stores it. */
-export function mainPathIn(paths: PathOps, project: ReadyProject, filePath: string): string {
+export function deriveBuildRootPath(paths: PathOps, project: ReadyProject, filePath: string): string {
   return paths.relative(project.folder, filePath).split(paths.sep).join("/");
 }

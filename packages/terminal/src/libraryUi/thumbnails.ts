@@ -6,7 +6,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { Worker } from "node:worker_threads";
 
-import { errorMessage, type ILogger } from "@labshelf/core";
+import { formatError, type ILogger } from "@labshelf/core";
 
 import { hasCommand } from "../platform/index.js";
 
@@ -67,7 +67,7 @@ function renderWithWorker(workerUrl: URL): Renderer {
  * pdftoppm when installed, otherwise the pdfjs worker.
  * @returns the renderer and its name (for doctor)
  */
-export function defaultRenderer(tmpDir: string, workerUrl: URL): { name: string; render: Renderer } {
+export function createDefaultRenderer(tmpDir: string, workerUrl: URL): { name: string; render: Renderer } {
   return hasCommand("pdftoppm")
     ? { name: "pdftoppm", render: renderWithPdftoppm(tmpDir) }
     : { name: "pdfjs", render: renderWithWorker(workerUrl) };
@@ -123,7 +123,7 @@ export class ThumbnailService {
         } catch (error) {
           this.failed.add(key);
           await this.logger?.log("WARN", "terminal/thumbnails", "Thumbnail render failed", {
-            pdfPath: request.pdfPath, message: errorMessage(error),
+            pdfPath: request.pdfPath, message: formatError(error),
           });
           return undefined;
         }

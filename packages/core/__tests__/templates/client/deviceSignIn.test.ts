@@ -1,5 +1,5 @@
 // Verifies device authorization scopes, polling, refusal and cancellation without a client secret.
-import { startGitHubDeviceSignIn, finishGitHubDeviceSignIn } from "../../../src/templates/client/index";
+import { startGitHubDeviceSignIn, fetchGithubDeviceToken } from "../../../src/templates/client/index";
 import type { GitHubDeviceAuthorization } from "../../../src/templates/client/index";
 
 const authorization: GitHubDeviceAuthorization = { deviceCode: "private-device", userCode: "ABCD-EFGH", verificationUri: "https://github.com/login/device", expiresIn: 900, interval: 5 };
@@ -28,7 +28,7 @@ it("waits for consent, backs off on slow_down, and identifies the authorized acc
   const s = server([{ error: "authorization_pending" }, { error: "slow_down" }, { access_token: "secret", token_type: "bearer" }]);
   let clock = 0;
   const waits: number[] = [];
-  const result = await finishGitHubDeviceSignIn({ fetch: s.fetch, clientId: "public-client", authorization, signal: new AbortController().signal,
+  const result = await fetchGithubDeviceToken({ fetch: s.fetch, clientId: "public-client", authorization, signal: new AbortController().signal,
     now: () => clock, wait: async (ms) => { waits.push(ms); clock += ms; } });
   expect(result).toEqual({ token: "secret", login: "researcher" });
   expect(waits).toEqual([5000, 5000, 10000]);
@@ -37,13 +37,13 @@ it("waits for consent, backs off on slow_down, and identifies the authorized acc
 
 it.each(["access_denied", "expired_token", "device_flow_disabled"])("surfaces %s", async (error) => {
   const s = server([{ error }]);
-  await expect(finishGitHubDeviceSignIn({ fetch: s.fetch, clientId: "client", authorization, signal: new AbortController().signal, wait: async () => {} })).rejects.toThrow(error);
+  await expect(fetchGithubDeviceToken({ fetch: s.fetch, clientId: "client", authorization, signal: new AbortController().signal, wait: async () => {} })).rejects.toThrow(error);
 });
 
 it("stops at the device code deadline without another token request", async () => {
   const s = server([]);
   let clock = 0;
-  await expect(finishGitHubDeviceSignIn({ fetch: s.fetch, clientId: "client", authorization: { ...authorization, expiresIn: 5 }, signal: new AbortController().signal,
+  await expect(fetchGithubDeviceToken({ fetch: s.fetch, clientId: "client", authorization: { ...authorization, expiresIn: 5 }, signal: new AbortController().signal,
     now: () => clock, wait: async (ms) => { clock += ms; } })).rejects.toThrow("expired");
   expect(s.calls).toEqual([]);
 });
@@ -51,7 +51,7 @@ it("stops at the device code deadline without another token request", async () =
 it("cancels while waiting without contacting the token endpoint", async () => {
   const s = server([]);
   const controller = new AbortController();
-  const pending = finishGitHubDeviceSignIn({ fetch: s.fetch, clientId: "client", authorization, signal: controller.signal });
+  const pending = fetchGithubDeviceToken({ fetch: s.fetch, clientId: "client", authorization, signal: controller.signal });
   controller.abort(new Error("cancelled"));
   await expect(pending).rejects.toThrow("cancelled");
   expect(s.calls).toEqual([]);

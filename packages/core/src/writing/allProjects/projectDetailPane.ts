@@ -1,7 +1,7 @@
 // Declares what the All projects detail pane shows for one project, independent of where the host stores it.
 import type { BuildMark } from "./projectRow.js";
 
-export interface ProjectBuildSummary extends BuildMark {
+export interface ProjectBuildReport extends BuildMark {
   warnings: number;
   errors: number;
   /** The first problem the last build reported. */
@@ -24,7 +24,7 @@ export interface ProjectCitation {
   year?: string;
 }
 
-export interface ProjectDetail {
+export interface ProjectPaneContent {
   id: string;
   /** Absolute project folder. */
   location: string;
@@ -33,7 +33,7 @@ export interface ProjectDetail {
   /** Pages of the last PDF. */
   pages?: number;
   limits: { countUpTo: "references" | "end"; pages?: CountedLimit; words?: CountedLimit };
-  build: ProjectBuildSummary;
+  build: ProjectBuildReport;
   /** Name of the last LaTeX log file when it exists, such as "main.log". */
   log?: string;
   bibliography?: { file: string; entries: number; generated: boolean; written?: number };

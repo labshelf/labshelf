@@ -9,7 +9,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 import { createPdfjsLoader } from '../../../../src/import/node/index';
 
-import { SearchablePdfBuilder } from '../../../../src/import/node/ocr/addTextLayer';
+import { TextLayerPdfBuilder } from '../../../../src/import/node/ocr/addTextLayer';
 import { openPdfForOcr } from '../../../../src/import/node/ocr/ocrDocument';
 import type { OcrDocument } from '../../../../src/import/node/ocr/ocrDocument';
 import type { TesseractOcrEngine } from '../../../../src/import/node/ocr/tesseractOcrEngine';
@@ -18,8 +18,8 @@ jest.mock('../../../../src/import/node/ocr/ocrDocument', () => ({ openPdfForOcr:
 
 const pdfjs = createPdfjsLoader();
 
-function builderFor(engine: TesseractOcrEngine | undefined, options?: { maxPages?: number }): SearchablePdfBuilder {
-  return new SearchablePdfBuilder(engine, pdfjs, options);
+function builderFor(engine: TesseractOcrEngine | undefined, options?: { maxPages?: number }): TextLayerPdfBuilder {
+  return new TextLayerPdfBuilder(engine, pdfjs, options);
 }
 
 const PAGE_OF_TEXT = 'The quick brown fox jumps over the lazy dog. '.repeat(12);

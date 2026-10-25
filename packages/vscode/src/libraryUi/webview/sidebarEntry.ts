@@ -3,11 +3,11 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/library-sidebar.css";
-import { $, mountLibrarySidebar, runSharingDialog, type SidebarActions } from "@labshelf/core/dom";
-import { isSharingMessage, type SidebarProjectItem } from "@labshelf/core";
+import { findElement, mountLibrarySidebar, runShareDialog, type SidebarActions } from "@labshelf/core/dom";
+import { isShareMessage, type SidebarProjectItem } from "@labshelf/core";
 import type { HostToSidebar, ProjectTreeMessage, SidebarToHost } from "../sidebarMessages.js";
-import { createWebviewSharingClient } from "../../webview/index.js";
-import { folderDropTarget } from "./folderDropZone.js";
+import { createWebviewShareClient } from "../../webview/index.js";
+import { createFolderDropZone } from "./folderDropZone.js";
 import { showOpenProjectMenu, showProjectMenu } from "./projectMenu.js";
 
 const EXPANDED_KEY = "treeExpanded";
@@ -17,8 +17,8 @@ interface SidebarState { [EXPANDED_KEY]?: string[]; [COLLAPSED_KEY]?: string[] }
 
 const api = acquireVsCodeApi();
 const post = (m: SidebarToHost): void => api.postMessage(m);
-const sharing = createWebviewSharingClient(api);
-sharing.onOpen((request) => void runSharingDialog(sharing, request));
+const sharing = createWebviewShareClient(api);
+sharing.onOpen((request) => void runShareDialog(sharing, request));
 // setState replaces the whole state, so each save merges into what the other key holds.
 const state = (): SidebarState => (api.getState() as SidebarState | undefined) ?? {};
 const saveState = (patch: SidebarState): void => api.setState({ ...state(), ...patch });
@@ -28,7 +28,7 @@ let openProjectId: string | null = null;
 const tree = (m: Omit<ProjectTreeMessage, "type" | "view"> & { view?: string }): void =>
   post({ ...m, type: "projectTree" } as ProjectTreeMessage);
 
-const root = $("root");
+const root = findElement("root");
 root.classList.add("sidebar-shell");
 const actions: SidebarActions = {
   openFolder: (path) => { sidebar.setQuery(""); post({ type: "openFolder", path }); },
@@ -80,11 +80,11 @@ const sidebar = mountLibrarySidebar(root.appendChild(document.createElement("div
     dropPapers: (spaceId, folder, paperIds) => post({ type: "spaceAction", action: "dropPapers", spaceId, paperIds, ...(folder ? { folder } : {}) }),
     removeReference: (spaceId, paperId) => post({ type: "spaceAction", action: "removeReference", spaceId, paperId }),
   },
-  dropTarget: folderDropTarget(post),
+  dropTarget: createFolderDropZone(post),
 });
 
 window.addEventListener("message", (e: MessageEvent<HostToSidebar>) => {
-  if (isSharingMessage(e.data)) { return; }
+  if (isShareMessage(e.data)) { return; }
   const m = e.data;
   if (m.type === "spaces") { sidebar.setSpaces(m.rows); }
   else if (m.type === "library") { sidebar.setLibrary(m.folders, m.papers); }

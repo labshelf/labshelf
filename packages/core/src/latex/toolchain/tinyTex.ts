@@ -24,7 +24,7 @@ export interface TinyTexAsset {
 }
 
 /** The pinned asset for this OS and architecture, or undefined when TinyTeX has no build for it. */
-export function tinyTexAsset(platform: string, arch: string): TinyTexAsset | undefined {
+export function findTinyTexAsset(platform: string, arch: string): TinyTexAsset | undefined {
   const asset = ASSETS[`${platform}-${arch}`];
   if (!asset) { return undefined; }
   return { version: TINYTEX_VERSION, name: asset.name, url: RELEASE_URL + asset.name, sha256: asset.sha256 };

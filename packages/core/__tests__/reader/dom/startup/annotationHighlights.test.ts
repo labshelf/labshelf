@@ -4,7 +4,7 @@
 // Checks that a highlight the host sends is drawn on its page, not only listed in the Annotations tab.
 import type { HostToWebview } from "../../../../src/reader/protocol/index";
 import { PageHighlights } from "../../../../src/reader/dom/highlights";
-import { bindHostMessages, type HostMessageTargets } from "../../../../src/reader/dom/startup/hostMessages";
+import { attachReaderHostMessages, type HostMessageParts } from "../../../../src/reader/dom/startup/hostMessages";
 
 type Handler = (msg: HostToWebview) => void;
 
@@ -14,12 +14,12 @@ function setup() {
   const targets = {
     ctx: { host: { on: (type: string, handler: Handler) => handlers.set(type, handler) } },
     ui: { annotationsTab: { setAnnotations: jest.fn() }, highlights: new PageHighlights({ eventBus: { on: jest.fn() } } as never) },
-  } as unknown as HostMessageTargets;
-  bindHostMessages(targets);
+  } as unknown as HostMessageParts;
+  attachReaderHostMessages(targets);
   return { send: (msg: HostToWebview) => handlers.get(msg.type)!(msg), page: document.querySelector<HTMLElement>("#viewer .page")! };
 }
 
-describe("bindHostMessages updateAnnotations", () => {
+describe("attachReaderHostMessages updateAnnotations", () => {
   it("draws a stored highlight on its page", () => {
     const { send, page } = setup();
     const before = page.outerHTML;

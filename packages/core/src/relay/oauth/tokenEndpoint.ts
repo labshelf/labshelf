@@ -14,7 +14,7 @@ export interface CloudflareTokens {
 
 export interface TokenRequestOptions { fetch: typeof fetch; logger: ILogger; now(): number }
 
-export function exchangeAuthorizationCode(options: TokenRequestOptions & { code: string; verifier: string }): Promise<CloudflareTokens> {
+export function fetchCloudflareTokens(options: TokenRequestOptions & { code: string; verifier: string }): Promise<CloudflareTokens> {
   return requestTokens(options, "authorization_code", {
     code: options.code, code_verifier: options.verifier, redirect_uri: CLOUDFLARE_REDIRECT_URI,
   });

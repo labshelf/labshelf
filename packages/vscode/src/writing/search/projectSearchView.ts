@@ -1,13 +1,13 @@
 // Serves the Project Search panel: runs its searches on the active file's writing project and carries out its opens and replacements.
 import * as vscode from "vscode";
 
-import { emptySearchRun, matchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
-import { mainPathIn, owningProject, type ProjectLookup, type ReadyProject } from "../buildRootDocument.js";
+import { createEmptySearchRun, findMatchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeMode, type SearchToHost } from "@labshelf/core";
+import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, type SearchScope } from "./projectSearchFiles.js";
-import { replaceInProject } from "./replaceInProject.js";
-import { searchBundleDirectory, searchHtml } from "./searchHtml.js";
+import { writeReplacementsInProject } from "./writeReplacementsInProject.js";
+import { readSearchBundleDir, searchHtml } from "./searchHtml.js";
 import { runSearch } from "./searchRun.js";
 
 export const PROJECT_SEARCH_VIEW = "labshelf.writing.projectSearch";
@@ -15,7 +15,7 @@ const DEBOUNCE_MS = 200;
 
 interface ProjectSearchDeps {
   extensionUri: vscode.Uri;
-  projects: ProjectLookup & Pick<WritingProjects, "fs">;
+  projects: ProjectFinder & Pick<WritingProjects, "fs">;
   host: WritingHost;
 }
 
@@ -64,7 +64,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     this.ready = false;
-    view.webview.options = { enableScripts: true, localResourceRoots: [searchBundleDirectory(this.deps.extensionUri)] };
+    view.webview.options = { enableScripts: true, localResourceRoots: [readSearchBundleDir(this.deps.extensionUri)] };
     view.webview.onDidReceiveMessage((raw: unknown) => { void this.handle(raw); });
     view.onDidDispose(() => { this.view = undefined; this.ready = false; });
     void searchHtml(view.webview, this.deps.extensionUri).then((html) => { if (this.view === view) { view.webview.html = html; } });
@@ -92,7 +92,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
   }
 
   private target(): Target | undefined {
-    const project = this.activeFile ? owningProject(this.deps.projects, this.activeFile) : undefined;
+    const project = this.activeFile ? findOwningProject(this.deps.projects, this.activeFile) : undefined;
     const logger = this.deps.host.current()?.logger;
     return project && logger && this.activeFile ? { project, file: this.activeFile, logger } : undefined;
   }
@@ -105,7 +105,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
     const target = this.target();
     this.post({
       type: "scope",
-      scope: target ? { project: target.project.settings.id, folder: target.project.folder, file: mainPathIn(this.deps.projects.paths, target.project, target.file) } : null,
+      scope: target ? { project: target.project.settings.id, folder: target.project.folder, file: deriveBuildRootPath(this.deps.projects.paths, target.project, target.file) } : null,
     });
   }
 
@@ -123,7 +123,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
     try {
       const result = target
         ? await runSearch(request.query, request.options, this.scopeOf(target, request.mode), target.logger)
-        : emptySearchRun();
+        : createEmptySearchRun();
       if (ticket !== this.run) { return; }
       this.searched = result.paths;
       this.pattern = result.pattern;
@@ -160,9 +160,9 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
       return;
     }
     const texts = message.type === "replace" ? [] : await readScopeTexts(this.scopeOf(target, request.mode), target.logger);
-    const matches = message.type === "replace" ? [message] : matchesIn(texts, pattern, message.type === "replaceFile" ? message.path : undefined);
+    const matches = message.type === "replace" ? [message] : findMatchesIn(texts, pattern, message.type === "replaceFile" ? message.path : undefined);
     if (matches.some(({ path }) => !this.searched.has(path))) { return; }
-    const done = await replaceInProject({ matches, pattern, replacement: message.replacement, logger: target.logger, confirm: message.type === "replaceAll" });
+    const done = await writeReplacementsInProject({ matches, pattern, replacement: message.replacement, logger: target.logger, confirm: message.type === "replaceAll" });
     if (done) { await this.search(); }
   }
 }

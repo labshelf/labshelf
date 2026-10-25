@@ -2,7 +2,7 @@
 // PLATFORM: webextension-polyfill omits the scripting API.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function scriptingApi(): any {
+export function readScriptingApi(): any {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (globalThis as any).chrome?.scripting ?? (globalThis as any).browser?.scripting;
 }

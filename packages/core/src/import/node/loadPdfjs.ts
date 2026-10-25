@@ -1,7 +1,7 @@
 /** Loads pdf.js once for a Node host and runs its worker in-process; one loader per composition root. */
 import type { PdfjsLoader, PdfjsModule, PdfLoadingTask } from "../pdf/index.js";
-import { DiskBinaryDataFactory } from "./pdfjsFileFactory.js";
-import { installElectronGlobals, patchFeatureTestPlatform } from "./pdfjsShims.js";
+import { FileSystemBinaryFactory } from "./pdfjsFileFactory.js";
+import { installElectronGlobals, updateFeatureTestPlatform } from "./pdfjsShims.js";
 import { pdfjsDataOptions } from "./pdfjsOpenOptions.js";
 
 export interface PdfjsLoaderOptions {
@@ -32,7 +32,7 @@ export function createPdfjsLoader(options: PdfjsLoaderOptions = {}): PdfjsLoader
       const getDocument = pdfjs["getDocument"] as (options: Record<string, unknown>) => PdfLoadingTask;
       return getDocument({
         ...pdfjsDataOptions(),
-        ...(electron ? { BinaryDataFactory: DiskBinaryDataFactory } : {}),
+        ...(electron ? { BinaryDataFactory: FileSystemBinaryFactory } : {}),
         ...documentOptions,
       });
     },
@@ -45,7 +45,7 @@ async function importPdfjs(electron: boolean): Promise<PdfjsModule> {
   }
   const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as unknown as PdfjsModule;
   if (electron) {
-    patchFeatureTestPlatform(pdfjs);
+    updateFeatureTestPlatform(pdfjs);
   }
   await registerInProcessWorker(pdfjs);
   return pdfjs;

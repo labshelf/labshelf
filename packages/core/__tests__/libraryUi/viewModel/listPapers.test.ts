@@ -1,6 +1,6 @@
 import { parseQuery, type PaperRecord } from "@labshelf/core";
 import { PAPERS_DIR } from "@labshelf/core";
-import { listPapersUnder, papersInScope } from "../../../src/libraryUi/viewModel/listPapers";
+import { listPapersUnder, findPapersInScope } from "../../../src/libraryUi/viewModel/listPapers";
 
 function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {
   return { id, title: id, path: `${dir}/${id}`, citeKey: id, status: "unread", ...extra };
@@ -37,7 +37,7 @@ describe("listPapersUnder", () => {
 
 describe("papersInScope", () => {
   const all = listPapersUnder(papers, PAPERS_DIR);
-  const scope = (query: string): string[] => papersInScope(all, parseQuery(query)).map((p) => p.id);
+  const scope = (query: string): string[] => findPapersInScope(all, parseQuery(query)).map((p) => p.id);
 
   it("keeps every paper of the subtree when there is no query", () => {
     expect(scope("")).toHaveLength(4);

@@ -2,24 +2,24 @@
 // Format and store come from @labshelf/core, so the terminal never writes a sidecar the other apps cannot read.
 import { promises as fs } from "node:fs";
 
-import { PaperDataStore, byPageThenCreated, type ILogger, type PaperData } from "@labshelf/core";
+import { PaperSidecarStore, compareAnnotations, type ILogger, type PaperSidecar } from "@labshelf/core";
 import { createNodeSidecarPort } from "@labshelf/core/node";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
 /** Cached sidecar reads, invalidated by mtime so edits from VS Code show up. */
 export class SidecarReader {
-  private readonly store: PaperDataStore;
-  private readonly cache = new Map<string, { mtimeMs: number; data: PaperData }>();
+  private readonly store: PaperSidecarStore;
+  private readonly cache = new Map<string, { mtimeMs: number; data: PaperSidecar }>();
 
   constructor(private readonly paths: LibraryRoot, logger?: ILogger) {
-    this.store = new PaperDataStore(createNodeSidecarPort(paths.layout, logger), logger ? { logger } : {});
+    this.store = new PaperSidecarStore(createNodeSidecarPort(paths.layout, logger), logger ? { logger } : {});
   }
 
   /**
    * @returns the paper's sidecar (empty when it has none)
    */
-  async load(paperId: string): Promise<PaperData> {
+  async load(paperId: string): Promise<PaperSidecar> {
     let mtimeMs = -1;
     try {
       mtimeMs = (await fs.stat(this.paths.layout.paperDataPath(paperId))).mtimeMs;
@@ -29,7 +29,7 @@ export class SidecarReader {
     const cached = this.cache.get(paperId);
     if (cached && cached.mtimeMs === mtimeMs) { return cached.data; }
     const data = await this.store.load(paperId);
-    data.annotations.sort(byPageThenCreated);
+    data.annotations.sort(compareAnnotations);
     this.cache.set(paperId, { mtimeMs, data });
     return data;
   }

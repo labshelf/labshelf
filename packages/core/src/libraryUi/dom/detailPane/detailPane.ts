@@ -3,24 +3,66 @@
  * change. Scroll, focus and caret survive a rebuild, and nothing is rebuilt under a note being typed or a button being pressed.
  */
 import type { UiContext } from "../uiContext.js";
-import { runDetailAction } from "./detailPaneActions.js";
-import { onTagInput, onTagKey, paperHeadHtml } from "./header/index.js";
-import { commonTags, multiDetailHtml, selectedPapers } from "./multiPaperPane.js";
+import { runDetailsAction } from "./detailPaneActions.js";
+import {
+  onTagInput,
+  onTagKeydown,
+  renderPaperHeadHtml,
+  renderCitationMenuButton,
+  renderMoreMenuButton,
+  renderSelectionBanner,
+  renderReadingStatusMenuButton,
+  renderTagRowHtml,
+} from "./header/index.js";
 import { createNoteEditor } from "./noteEditor.js";
-import { paperView, type PaneState } from "./paneState.js";
-import { annotationListHtml, annotationsTabHtml, detailsTabHtml, notesTabHtml, paperTabBarHtml, relatedTabHtml } from "./tabs/index.js";
+import { derivePaperView, type PaneState } from "./paneState.js";
+import {
+  renderAnnotationListHtml,
+  renderAnnotationsTabHtml,
+  renderDetailsTabHtml,
+  renderNotesTabHtml,
+  renderPaperTabBarHtml,
+  renderRelatedTabHtml,
+  renderPaperLine,
+} from "./tabs/index.js";
+import type { PaperRecord } from "../../../model/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
+
+/** The tags every paper in the selection has, in the first paper's order. */
+function commonTags(papers: readonly PaperRecord[]): string[] {
+  const [first, ...rest] = papers;
+  return (first?.tags ?? []).filter((t) => rest.every((p) => (p.tags ?? []).some((x) => x.toLowerCase() === t.toLowerCase())));
+}
+
+function selectedPapers(pane: PaneState, ids: readonly string[]): PaperRecord[] {
+  const byId = new Map(pane.ctx.store.get().papers.map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is PaperRecord => !!p);
+}
+
+function multiDetailHtml(pane: PaneState, ids: string[]): string {
+  const papers = selectedPapers(pane, ids);
+  const status = papers.every((p) => p.status === papers[0]?.status) ? papers[0]?.status ?? null : null;
+  return `<div class="detail-head">` +
+    `<div class="detail-title">${escapeHtml(String(ids.length))} papers selected</div>` +
+    `<div class="detail-byline muted-text">Drag them onto a subfolder chip or a path segment, or use the actions below.</div>` +
+    `<div class="detail-toolbar"><button class="ls-btn ls-button-soft" type="button" data-action="move">${renderIcon("folder-move")}<span>Move to…</span></button>` +
+      renderCitationMenuButton() + `<span class="tb-spacer"></span>${renderMoreMenuButton()}</div>` +
+    `<div class="detail-status-row">${renderReadingStatusMenuButton(status)}${renderTagRowHtml(pane.ctx, commonTags(papers), pane.tagEditing)}</div>` + (pane.ctx.caps.textLayer ? renderSelectionBanner(pane.ctx, ids) : "") +
+  `</div>` +
+  `<div class="sel-list">${papers.map((p) => renderPaperLine(p, "selectOnly", "Show only this paper")).join("")}</div>`;
+}
 
 function singleHtml(pane: PaneState, id: string): string {
   pane.ctx.data.ensureDetails(id);
   const tab = pane.tab;
   if (tab === "related") pane.ctx.data.ensureSimilar(id);
-  const v = paperView(pane.ctx, id);
+  const v = derivePaperView(pane.ctx, id);
   if (!v) return "";
-  const body = tab === "annotations" ? annotationsTabHtml(pane, v)
-    : tab === "notes" ? notesTabHtml(pane, v)
-    : tab === "related" ? relatedTabHtml(pane, v)
-    : detailsTabHtml(pane, v);
-  return paperHeadHtml(pane, v) + paperTabBarHtml(pane, v) + `<div class="tab-body">${body}</div>`;
+  const body = tab === "annotations" ? renderAnnotationsTabHtml(pane, v)
+    : tab === "notes" ? renderNotesTabHtml(pane, v)
+    : tab === "related" ? renderRelatedTabHtml(pane, v)
+    : renderDetailsTabHtml(pane, v);
+  return renderPaperHeadHtml(pane, v) + renderPaperTabBarHtml(pane, v) + `<div class="tab-body">${body}</div>`;
 }
 
 interface Pane extends PaneState {
@@ -70,7 +112,7 @@ function onClick(pane: Pane, e: MouseEvent): void {
     // Links keep their own navigation; everything else is ours.
     if (el.tagName !== "A") e.preventDefault();
     e.stopPropagation();
-    runDetailAction(pane, el, () => render(pane));
+    runDetailsAction(pane, el, () => render(pane));
     if (el.dataset["action"] === "tab") {
       // Deep in a long tab, switching lands at the top of the new one, under the sticky tab bar.
       const bar = pane.el.querySelector<HTMLElement>(".detail-tabs");
@@ -89,7 +131,7 @@ function onKey(pane: Pane, e: KeyboardEvent): void {
   if (t.classList.contains("tag-input")) {
     const tags = ids.length === 1 ? selectedPapers(pane, ids)[0]?.tags ?? [] : commonTags(selectedPapers(pane, ids));
     if (e.key === "Escape") pane.tagEditing = false;
-    onTagKey(pane.ctx, e, t as HTMLInputElement, ids, tags);
+    onTagKeydown(pane.ctx, e, t as HTMLInputElement, ids, tags);
     if (!pane.tagEditing) render(pane);
   } else if (t.classList.contains("note-input") && e.key === "Escape") {
     pane.notes.flush();
@@ -108,7 +150,7 @@ function onAnnFilter(pane: Pane, value: string): void {
   pane.annFilter = value;
   const details = pane.ctx.store.get().details[[...pane.ctx.store.get().selected][0] ?? ""];
   const list = pane.el.querySelector(".ann-list");
-  if (list && details) list.innerHTML = annotationListHtml(pane, details.annotations);
+  if (list && details) list.innerHTML = renderAnnotationListHtml(pane, details.annotations);
 }
 
 function onInput(pane: Pane, e: Event): void {

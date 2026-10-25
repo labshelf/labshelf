@@ -1,8 +1,8 @@
 // Writes the sentences of the All projects detail pane: meta line, venue line, limit sentence and build status.
-import { compactTime } from "../../../../library/index.js";
+import { formatCompactTime } from "../../../../library/index.js";
 import type { ProjectTarget } from "../../../project/index.js";
-import { daysUntil } from "../../deadlineText.js";
-import type { CountedLimit, ProjectDetail } from "../../projectDetailPane.js";
+import { countDaysUntil } from "../../formatDeadlineText.js";
+import type { CountedLimit, ProjectPaneContent } from "../../projectDetailPane.js";
 import type { ProjectBuildState, ProjectRow } from "../../projectRow.js";
 
 const FORMAT_NAME = { latex: "LaTeX", typst: "Typst" } as const;
@@ -13,8 +13,8 @@ const BUILD_STATUS: Record<ProjectBuildState, string> = {
 const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 /** "LaTeX · main.tex · 8 pages · modified 2 h ago", with only the parts the row and the detail know. */
-export function metaLine(row: ProjectRow, pages: number | undefined, now: number): string {
-  const modified = row.modified === undefined ? undefined : compactTime(row.modified, now);
+export function formatMetaLine(row: ProjectRow, pages: number | undefined, now: number): string {
+  const modified = row.modified === undefined ? undefined : formatCompactTime(row.modified, now);
   return [
     row.format && FORMAT_NAME[row.format],
     row.main,
@@ -24,8 +24,8 @@ export function metaLine(row: ProjectRow, pages: number | undefined, now: number
 }
 
 /** "ICLR 2027 · due in 41 days"; the venue or the deadline alone when the other is unset. */
-export function venueLine(target: ProjectTarget | undefined, now: number): string | undefined {
-  const days = daysUntil(target, now);
+export function formatProjectVenueLine(target: ProjectTarget | undefined, now: number): string | undefined {
+  const days = countDaysUntil(target, now);
   const due = days === undefined ? undefined : days < 0 ? "deadline passed" : days === 0 ? "due today" : `due in ${plural(days, "day")}`;
   const line = [target?.venue, due].filter(Boolean).join(" · ");
   return line || undefined;
@@ -36,7 +36,7 @@ function withLimit(c: CountedLimit | undefined, noun: string): { counted: number
 }
 
 /** "1 page left · counted up to the references"; a page limit wins over a word limit, and no limit gives no sentence. */
-export function limitSentence(limits: ProjectDetail["limits"]): string | undefined {
+export function describeLimits(limits: ProjectPaneContent["limits"]): string | undefined {
   const counted = withLimit(limits.pages, "page") ?? withLimit(limits.words, "word");
   if (!counted) return undefined;
   const left = counted.limit - counted.counted;
@@ -45,7 +45,7 @@ export function limitSentence(limits: ProjectDetail["limits"]): string | undefin
 }
 
 /** "2 warnings" when the count is known, else the state's name; no mark reads as never built. */
-export function buildStatusText(build: { state: ProjectBuildState; warnings?: number } | undefined): string {
+export function formatProjectBuildStateText(build: { state: ProjectBuildState; warnings?: number } | undefined): string {
   if (!build) return BUILD_STATUS.never;
   if (build.state === "warnings" && build.warnings !== undefined) return plural(build.warnings, "warning");
   return BUILD_STATUS[build.state];

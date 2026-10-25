@@ -1,6 +1,6 @@
 // Controls the PDF zoom within the visible reader viewport.
 import type { ZoomPreset } from "../../index.js";
-import { createDebouncer, anchorOrigin, boundedFactor, clampScale, isPresetScale, nextZoomStep, wheelToScaleFactor } from "../../navigation/index.js";
+import { createDebouncer, deriveAnchorOrigin, deriveBoundedFactor, deriveClampedScale, isPresetScale, deriveNextZoomStep, deriveScaleFactor } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 
 // pdf.js CSS-scales the rendered canvases immediately and re-rasters once the gesture has been quiet this long.
@@ -38,8 +38,8 @@ export class ZoomController {
   get scale(): number { return this.ctx.pdfViewer.currentScale; }
   get scaleValue(): string { return this.ctx.pdfViewer.currentScaleValue; }
 
-  zoomIn(): void { this.setScale(nextZoomStep(this.scale, 1)); }
-  zoomOut(): void { this.setScale(nextZoomStep(this.scale, -1)); }
+  zoomIn(): void { this.setScale(deriveNextZoomStep(this.scale, 1)); }
+  zoomOut(): void { this.setScale(deriveNextZoomStep(this.scale, -1)); }
 
   setPreset(preset: ZoomPreset): void {
     this.ctx.pdfViewer.currentScaleValue = preset;
@@ -49,7 +49,7 @@ export class ZoomController {
    * Steps keep the viewport centre fixed, which is what a reader expects from a button or a key.
    */
   setScale(scale: number): void {
-    const target = clampScale(scale);
+    const target = deriveClampedScale(scale);
     const current = this.scale;
     if (!(current > 0) || Math.abs(target - current) < 1e-6) { return; }
     const rect = this.ctx.container.getBoundingClientRect();
@@ -62,7 +62,7 @@ export class ZoomController {
 
   private origin(clientX: number, clientY: number): [number, number] {
     const { container } = this.ctx;
-    return anchorOrigin(
+    return deriveAnchorOrigin(
       clientX,
       clientY,
       container.getBoundingClientRect(),
@@ -73,13 +73,13 @@ export class ZoomController {
   private onWheel(e: WheelEvent): void {
     if (!e.ctrlKey && !e.metaKey) { return; }
     e.preventDefault();
-    this.pendingFactor *= wheelToScaleFactor(e.deltaY, e.deltaMode);
+    this.pendingFactor *= deriveScaleFactor(e.deltaY, e.deltaMode);
     this.pendingOrigin = this.origin(e.clientX, e.clientY);
     if (this.frame !== null) { return; }
     // A pinch fires many events per frame; one updateScale per frame keeps the gesture smooth.
     this.frame = requestAnimationFrame(() => {
       this.frame = null;
-      const factor = boundedFactor(this.scale, this.pendingFactor);
+      const factor = deriveBoundedFactor(this.scale, this.pendingFactor);
       const origin = this.pendingOrigin;
       this.pendingFactor = 1;
       this.pendingOrigin = null;

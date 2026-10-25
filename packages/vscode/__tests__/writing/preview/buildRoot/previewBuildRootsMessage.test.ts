@@ -1,7 +1,7 @@
 // Tests the build roots message: the limits from the check settings and what the chrome needs per root.
 import * as path from "node:path";
 
-import { previewRootsMessage } from "../../../../src/writing/preview/buildRoot";
+import { createPreviewBuildRootsMessage } from "../../../../src/writing/preview/buildRoot";
 import type { ReadyProject } from "../../../../src/writing/buildRootDocument";
 import { fakeLogger, fakeProjectData, readyEntry } from "../../../support/writingFixtures";
 
@@ -21,19 +21,19 @@ function input(check?: Record<string, unknown>) {
 
 describe("previewRootsMessage limits", () => {
   it("carries check.pages as pageLimit", async () => {
-    expect((await previewRootsMessage(input({ pages: 9, anonymous: true }))).pageLimit).toBe(9);
+    expect((await createPreviewBuildRootsMessage(input({ pages: 9, anonymous: true }))).pageLimit).toBe(9);
   });
 
   it("carries check.words as wordLimit", async () => {
-    expect((await previewRootsMessage(input({ words: 6000, anonymous: true }))).wordLimit).toBe(6000);
+    expect((await createPreviewBuildRootsMessage(input({ words: 6000, anonymous: true }))).wordLimit).toBe(6000);
   });
 
   it("carries check.countUpTo as countUpTo", async () => {
-    expect((await previewRootsMessage(input({ countUpTo: "conclusion", anonymous: true }))).countUpTo).toBe("conclusion");
+    expect((await createPreviewBuildRootsMessage(input({ countUpTo: "conclusion", anonymous: true }))).countUpTo).toBe("conclusion");
   });
 
   it("omits the limits when the project sets none", async () => {
-    for (const message of [await previewRootsMessage(input({ anonymous: true })), await previewRootsMessage(input())]) {
+    for (const message of [await createPreviewBuildRootsMessage(input({ anonymous: true })), await createPreviewBuildRootsMessage(input())]) {
       for (const field of ["pageLimit", "wordLimit", "countUpTo", "checks", "options"]) { expect(field in message).toBe(false); }
     }
   });
@@ -42,22 +42,22 @@ describe("previewRootsMessage limits", () => {
 describe("previewRootsMessage chrome fields", () => {
   it("carries the build options", async () => {
     const options = { autoCompile: "typing" as const, engine: null };
-    expect((await previewRootsMessage({ ...input(), options })).options).toEqual(options);
+    expect((await createPreviewBuildRootsMessage({ ...input(), options })).options).toEqual(options);
   });
 
   it("carries the findings of the last check", async () => {
-    expect((await previewRootsMessage({ ...input(), checks: 0 })).checks).toBe(0);
+    expect((await createPreviewBuildRootsMessage({ ...input(), checks: 0 })).checks).toBe(0);
   });
 
   it("fills pdfProblems, cites and words per built root", async () => {
-    const [root] = (await previewRootsMessage(input())).roots;
+    const [root] = (await createPreviewBuildRootsMessage(input())).roots;
     expect(root).toMatchObject({ pdfProblems: [PDF_PROBLEM], cites: 4, words: 1200 });
   });
 
   it("leaves pdfProblems and cites absent and logs when placing the problems fails", async () => {
     const logger = fakeLogger();
     const failing = async () => { throw new Error("no synctex"); };
-    const [root] = (await previewRootsMessage({ ...input(), logger, pdfProblemsOf: failing })).roots;
+    const [root] = (await createPreviewBuildRootsMessage({ ...input(), logger, pdfProblemsOf: failing })).roots;
     expect(root).toMatchObject({ words: 1200 });
     expect(root).not.toHaveProperty("pdfProblems");
     expect(root).not.toHaveProperty("cites");
@@ -66,7 +66,7 @@ describe("previewRootsMessage chrome fields", () => {
 
   it("leaves words absent when counting fails", async () => {
     const failing = async () => { throw new Error("unreadable"); };
-    const [root] = (await previewRootsMessage({ ...input(), wordsOf: failing })).roots;
+    const [root] = (await createPreviewBuildRootsMessage({ ...input(), wordsOf: failing })).roots;
     expect(root).not.toHaveProperty("words");
     expect(root).toMatchObject({ cites: 4 });
   });

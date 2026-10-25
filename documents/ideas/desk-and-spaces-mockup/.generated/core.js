@@ -207,7 +207,7 @@ var CoreUI = (() => {
   };
   var LOGO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#0571df" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 5.5 16 12 8 18.5"/></svg>';
 
-  // ../../../packages/core/src/ui/icons/icon.ts
+  // ../../../packages/core/src/ui/icons/renderIcon.ts
   var STROKE_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"';
   var FILLED_ATTRS = 'viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"';
   function icon(name) {
@@ -321,7 +321,7 @@ var CoreUI = (() => {
     "sheet-light": token("#f4f3f0")
   };
 
-  // ../../../packages/core/src/ui/icons/arcMark.ts
+  // ../../../packages/core/src/ui/icons/renderArcMarkSvg.ts
   var ARC_TONES = ["err", "warn", "ok", "accent"];
   var STATUS_ARC = { unread: ["accent", "none"], reading: ["accent", "half"], done: ["ok", "full"] };
   var ARC_TONE_COLORS = Object.fromEntries(
@@ -653,7 +653,7 @@ var CoreUI = (() => {
     });
   }
 
-  // ../../../packages/core/src/ui/dom/widgets/toast.ts
+  // ../../../packages/core/src/ui/dom/widgets/showToast.ts
   var AUTO_DISMISS_MS = 4500;
   var host = null;
   function toast(message, kind = "info") {

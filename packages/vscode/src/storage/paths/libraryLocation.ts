@@ -4,7 +4,7 @@
  */
 import * as vscode from "vscode";
 
-import { libraryLayout, type IFileSystem } from "@labshelf/core";
+import { createLibraryLayout, type IFileSystem } from "@labshelf/core";
 import type { SharedLibraryConfig } from "./sharedLibraryConfig.js";
 
 /**
@@ -35,7 +35,7 @@ export async function resolveLibraryRoot(sharedConfig: SharedLibraryConfig): Pro
  * Creates all required LabShelf subdirectories under root if they do not already exist.
  */
 export async function ensureLibraryStructure(root: vscode.Uri, fileSystem: IFileSystem): Promise<void> {
-  for (const dir of libraryLayout(root, vscode.Uri.joinPath).requiredDirs()) {
+  for (const dir of createLibraryLayout(root, vscode.Uri.joinPath).requiredDirs()) {
     await fileSystem.ensureDir(dir.fsPath);
   }
 }

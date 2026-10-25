@@ -7,7 +7,7 @@ import type { PdfAccess, PdfMiss } from "./protocol/index.js";
 export const ASK_AUTHOR_LABEL = "Ask the author";
 
 /** The detail line of a paper whose authors were asked for a copy on `day` (YYYY-MM-DD). */
-export function pdfRequestedLine(day: string): string {
+export function formatPdfRequestedLine(day: string): string {
   return `PDF requested from the author on ${formatDay(day)}`;
 }
 
@@ -29,7 +29,7 @@ const ACCESS_HINTS: Record<PdfAccess["kind"], string> = {
 };
 
 /** The label of the button that opens a miss's access page. */
-export function pdfAccessLabel(access: PdfAccess): string {
+export function formatPdfAccessLabel(access: PdfAccess): string {
   return access.kind === "login" ? "Open to sign in" : "Open to pass the check";
 }
 
@@ -39,20 +39,20 @@ function missHint(miss: PdfMiss): string {
 }
 
 /** Human label for a resolver name. */
-export function pdfSourceLabel(source: string | undefined): string {
+export function formatPdfSourceLabel(source: string | undefined): string {
   return (source && SOURCE_LABELS[source]) || source || "the web";
 }
 
 // "this page, the publisher and Unpaywall (open access)": de-duplicated labels joined without an Oxford comma.
 function joinLabels(sources: string[]): string {
-  const labels = [...new Set(sources.map(pdfSourceLabel))];
+  const labels = [...new Set(sources.map(formatPdfSourceLabel))];
   if (labels.length === 0) return "the web";
   if (labels.length === 1) return labels[0]!;
   return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]!}`;
 }
 
 /** The "No PDF found" dialog shown before a capture saves a reference without its PDF. */
-export function noPdfDialogCopy(title: string, miss: PdfMiss): { title: string; message: string } {
+export function createNoPdfDialogCopy(title: string, miss: PdfMiss): { title: string; message: string } {
   const quoted = `"${title}"`;
   const message = miss.tried === 0
     ? `No PDF link, DOI or arXiv id was found for ${quoted}. Save the reference without a PDF? You can attach one later from the library.`

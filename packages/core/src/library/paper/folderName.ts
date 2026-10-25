@@ -3,7 +3,7 @@
 export const FOLDER_NAME_MAX_LENGTH = 255;
 
 /** @returns an error message for the trimmed name, or undefined when it is valid */
-export function validateFolderName(name: string): string | undefined {
+export function checkFolderName(name: string): string | undefined {
   const trimmed = name.trim();
   if (!trimmed) { return "The name cannot be empty."; }
   if (trimmed.length > FOLDER_NAME_MAX_LENGTH) {

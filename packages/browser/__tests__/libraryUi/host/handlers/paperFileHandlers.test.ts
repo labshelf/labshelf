@@ -9,14 +9,14 @@ const mockMutations = { listFiles: jest.fn(), describeFile: jest.fn() };
 const mockBytes = new Map<string, Uint8Array>();
 jest.mock("../../../../src/storage", () => ({
   createLibraryMutations: () => mockMutations,
-  listAllRecords: async () => [{ id: "p1", title: "P1", citeKey: "p1", path: "papers/ml/p1", status: "unread" }],
+  listCachedPaperRecords: async () => [{ id: "p1", title: "P1", citeKey: "p1", path: "papers/ml/p1", status: "unread" }],
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
   createLibraryFileSystem: () => ({
     async stat(path: string) { return mockBytes.has(path) ? { size: mockBytes.get(path)!.length } : undefined; },
     async readFile(path: string) { return mockBytes.get(path); },
   }),
   createSidecarPort: () => ({}),
-  onFolderRecordsRebuilt: () => () => undefined,
+  onPaperRecordsRebuilt: () => () => undefined,
 }));
 jest.mock("../../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 const mockOpenReader = jest.fn();

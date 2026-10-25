@@ -1,6 +1,6 @@
 // Locates figures, tables and numbered equations from page text alone, for PDFs without link annotations.
 // A caption is a line that STARTS with the label; the float itself is the text-free band next to it.
-import { FIGURE_WORD, FLOAT_LABEL, floatKindOf, type FloatKind } from "./inTextReferences.js";
+import { FIGURE_WORD, FLOAT_LABEL, deriveFloatKind, type FloatKind } from "./inTextReferences.js";
 import type { TextLine } from "./textLines.js";
 
 export interface CaptionHit {
@@ -29,14 +29,14 @@ export function findCaptionLines(lines: readonly TextLine[], pageWidth: number, 
     const label = CAPTION_LABEL.exec(text);
     const cap = label && CAPTION_REST.test(text.slice(label[0].length)) ? label : null;
     if (cap) {
-      hits.push({ kind: floatKindOf(cap[1]!), label: cap[2]!.toLowerCase(), lineIndex });
+      hits.push({ kind: deriveFloatKind(cap[1]!), label: cap[2]!.toLowerCase(), lineIndex });
       return;
     }
     const eq = EQUATION_TAIL.exec(text);
     if (eq) {
       // The number sits at the right edge of the TEXT block (not of the page, which has a margin), and the line is
       // mostly formula rather than a full line of prose that happens to end in "(5)".
-      const [left, right] = columnBounds(line, pageWidth, columnSplit);
+      const [left, right] = deriveColumnBounds(line, pageWidth, columnSplit);
       const edge = textRightEdge(lines, left, right);
       const atRightEdge = line.xEnd >= edge - (edge - left) * 0.05;
       const startsIndented = line.x >= left + (edge - left) * 0.25;
@@ -54,7 +54,7 @@ function textRightEdge(lines: readonly TextLine[], left: number, right: number):
   return ends[Math.floor((ends.length - 1) * 0.9)] ?? right;
 }
 
-export function columnBounds(line: TextLine, pageWidth: number, columnSplit: number | null): [number, number] {
+export function deriveColumnBounds(line: TextLine, pageWidth: number, columnSplit: number | null): [number, number] {
   if (columnSplit === null) { return [0, pageWidth]; }
   if (line.xEnd <= columnSplit + 6) { return [0, columnSplit]; }
   if (line.x >= columnSplit - 6) { return [columnSplit, pageWidth]; }

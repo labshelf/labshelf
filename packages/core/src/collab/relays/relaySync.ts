@@ -3,14 +3,44 @@ import * as Y from "yjs";
 import { bytesToHex } from "../../encoding/index.js";
 import type { RelayStoreAnswer } from "../transport/index.js";
 import { INDEX_DOC_KEY, type ShareSession } from "../doc/index.js";
-import { docIdCache, MESSAGE_KIND, systemScheduler } from "../peer/index.js";
-import { memoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
+import {
+  docIdCache,
+  MESSAGE_KIND,
+  systemScheduler,
+  decodeEnvelope,
+  encodeEnvelope,
+  openDocFrame,
+  sealDocFrame,
+} from "../peer/index.js";
+import { createMemoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
 import { RELAY_ERROR_CODE } from "../../relay/index.js";
 import { RelayDocLane } from "./relayDocLane.js";
 import { RelayDocPuts } from "./relayDocPuts.js";
-import { decodeHeld, emptyHeld } from "./relayHeldState.js";
+import { decodeHeld, createEmptyHeld } from "./relayHeldState.js";
 import type { RelaySync, RelaySyncOptions } from "./relaySyncOptions.js";
-import { openStored, sealStored, type StoredFrameContext } from "./storedFrames.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
+
+// CONTRACT: documents/contracts/relay.md#client-obligations
+const STORED_KIND_NAME: Record<number, string> = { [MESSAGE_KIND.update]: "update", [MESSAGE_KIND.syncStep2]: "syncStep2" };
+
+interface StoredFrameContext { shareId: string; key: DerivedShareKey; docIdOf: (docKey: string) => Promise<Uint8Array> }
+
+export async function sealStored(
+  context: StoredFrameContext, kind: typeof MESSAGE_KIND.update | typeof MESSAGE_KIND.syncStep2, docKey: string, payload: Uint8Array,
+): Promise<{ docId: Uint8Array; message: Uint8Array }> {
+  const docId = await context.docIdOf(docKey);
+  const frame = await sealDocFrame({ shareId: context.shareId, key: context.key, name: STORED_KIND_NAME[kind]! }, docId, docKey, payload);
+  return { docId, message: encodeEnvelope({ kind, epoch: 0n, seq: 0, docId, frame }) };
+}
+
+/** The Yjs update a stored message carries; undefined for anything that is not a stored kind of this doc or fails to open. */
+export async function openStored(context: StoredFrameContext, docKey: string, bytes: Uint8Array): Promise<Uint8Array | undefined> {
+  const decoded = decodeEnvelope(bytes);
+  const name = decoded.ok ? STORED_KIND_NAME[decoded.envelope.kind] : undefined;
+  if (!decoded.ok || !name) { return undefined; }
+  const opened = await openDocFrame({ shareId: context.shareId, key: context.key, name }, decoded.envelope, context.docIdOf);
+  return opened.ok && opened.docKey === docKey ? opened.payload : undefined;
+}
 
 const LOG_MODULE = "collab.relay";
 export const SNAPSHOT_AFTER_PUTS = 500;
@@ -36,7 +66,7 @@ class RelayDocSync implements RelaySync {
     this.frames = { shareId: options.shareId, key: options.contentKey, docIdOf: docIdCache(options.shareId) };
     const { relay, logger, shareId } = options;
     this.puts = new RelayDocPuts({ relay, logger, shareId, scheduler: options.scheduler ?? systemScheduler, seal: (lane, kind, payload) => this.seal(lane, kind, payload) });
-    this.cursors = options.cursors ?? memoryCursorStore();
+    this.cursors = options.cursors ?? createMemoryCursorStore();
     this.stops.push(
       () => this.unregisterRoundTrip(),
       relay.onStore((answer) => this.enqueue(() => this.answer(answer))),
@@ -114,7 +144,7 @@ class RelayDocSync implements RelaySync {
     if (cursor > 0 && !held) {
       void this.options.logger.log("INFO", LOG_MODULE, "Catching up from the first row, since the state the relay holds is unknown", { docKey, cursor, unreadable: Boolean(saved) });
     }
-    return held ? new RelayDocLane(docKey, doc, docId, cursor, held) : new RelayDocLane(docKey, doc, docId, 0, emptyHeld());
+    return held ? new RelayDocLane(docKey, doc, docId, cursor, held) : new RelayDocLane(docKey, doc, docId, 0, createEmptyHeld());
   }
 
   private async opened(): Promise<void> {

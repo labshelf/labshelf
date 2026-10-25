@@ -1,5 +1,5 @@
 // Mounts the shared reader on the demo paper in the page's [data-demo="reader"] container.
-import { PROTOCOL_VERSION, DEFAULT_READER_PREFS, READER_SHELL_BODY, type ReaderBootParams } from "@labshelf/core";
+import { PROTOCOL_VERSION, DEFAULT_READER_PREFS, READER_SHELL_BODY, type ReaderStartupParams } from "@labshelf/core";
 import { PerfMarks, startReader } from "@labshelf/core/dom";
 import { DEMO_PAPER, createMemoryHost, fenceReaderKeys, installReaderStyles } from "./reader/index.js";
 import { consoleLogger } from "./log/index.js";
@@ -7,7 +7,7 @@ import { consoleLogger } from "./log/index.js";
 const perf = new PerfMarks();
 const asset = (path: string): string => new URL(`../pdfjs/${path}`, import.meta.url).href;
 
-function bootParams(): ReaderBootParams {
+function bootParams(): ReaderStartupParams {
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {

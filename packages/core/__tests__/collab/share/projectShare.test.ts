@@ -1,6 +1,6 @@
 /** Pins that sharing marks a project folder and its index, and that joining creates a library project under a free id. */
 import * as Y from "yjs";
-import { createProjectIndex, indexSettings, readIndexKind } from "../../../src/collab/model/index";
+import { createShareIndexDoc, readShareIndexDocSettings, readShareIndexDocKind } from "../../../src/collab/model/index";
 import { joinShare, startShare } from "../../../src/collab/share/index";
 import { LIB, memoryCatalog, readText, writeTree } from "../../support/memoryProjectCatalog";
 
@@ -8,8 +8,8 @@ const SHARE_ID = "a".repeat(32);
 
 function sharedIndex(settings: Record<string, unknown>): Y.Doc {
   const index = new Y.Doc();
-  createProjectIndex(index);
-  Object.entries(settings).forEach(([key, value]) => indexSettings(index).set(key, value));
+  createShareIndexDoc(index);
+  Object.entries(settings).forEach(([key, value]) => readShareIndexDocSettings(index).set(key, value));
   return index;
 }
 
@@ -20,7 +20,7 @@ describe("startShare", () => {
     const index = new Y.Doc();
     await startShare(context, { folder: "/p", shareId: SHARE_ID, index });
     expect(readText(context.fs, "/p/labshelf.yaml")).toBe(`# note\nid: p\nformat: typst\ntitle: Paper\nshared: ${SHARE_ID}\n`);
-    expect(readIndexKind(index)).toEqual({ ok: true, kind: "project" });
+    expect(readShareIndexDocKind(index)).toEqual({ ok: true, kind: "project" });
   });
 
   it("writes the id as the title of a project without one, so a joiner's copy takes the owner's name", async () => {

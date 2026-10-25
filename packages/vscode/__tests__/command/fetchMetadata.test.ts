@@ -1,6 +1,6 @@
 import { resolveFirstIdentifier, searchOnlineCandidates, type ILogger } from '@labshelf/core';
 
-import { lookupUserQuery } from '../../src/command/fetchMetadata';
+import { findMetadataForQuery } from '../../src/command/fetchMetadata';
 
 jest.mock('@labshelf/core', () => ({
   ...jest.requireActual('@labshelf/core'),
@@ -18,11 +18,11 @@ beforeEach(() => {
   search.mockResolvedValue([]);
 });
 
-describe('lookupUserQuery', () => {
+describe('findMetadataForQuery', () => {
   it('resolves a pasted PubMed link as a PMID', async () => {
     resolveFirst.mockResolvedValue({ metadata: { title: 'A paper' }, identifier: { type: 'pmid', value: '12345678' } });
 
-    const found = await lookupUserQuery('https://pubmed.ncbi.nlm.nih.gov/12345678/', logger);
+    const found = await findMetadataForQuery('https://pubmed.ncbi.nlm.nih.gov/12345678/', logger);
 
     expect(resolveFirst).toHaveBeenCalledWith([{ type: 'pmid', value: '12345678' }], { logger });
     expect(found).toEqual([{ title: 'A paper' }]);
@@ -32,7 +32,7 @@ describe('lookupUserQuery', () => {
   it('resolves a bare DOI typed with trailing punctuation', async () => {
     resolveFirst.mockResolvedValue(undefined);
 
-    await lookupUserQuery('10.1038/nature12373,', logger);
+    await findMetadataForQuery('10.1038/nature12373,', logger);
 
     expect(resolveFirst).toHaveBeenCalledWith([{ type: 'doi', value: '10.1038/nature12373' }], { logger });
   });
@@ -40,7 +40,7 @@ describe('lookupUserQuery', () => {
   it('searches by title when the input holds no identifier', async () => {
     search.mockResolvedValue([{ title: 'Attention Is All You Need' }]);
 
-    const found = await lookupUserQuery('Attention Is All You Need', logger);
+    const found = await findMetadataForQuery('Attention Is All You Need', logger);
 
     expect(resolveFirst).not.toHaveBeenCalled();
     expect(found).toEqual([{ title: 'Attention Is All You Need' }]);

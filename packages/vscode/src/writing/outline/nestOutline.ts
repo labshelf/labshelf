@@ -1,7 +1,7 @@
 // Wraps level-tagged headings as document symbols that run to the next heading of the same or a higher level.
 import * as vscode from "vscode";
 
-import { nestHeadings, type HeadingNode } from "@labshelf/core";
+import { deriveNestedHeadings, type HeadingNode } from "@labshelf/core";
 
 const KIND_BY_DEPTH = [
   vscode.SymbolKind.Module, vscode.SymbolKind.Namespace, vscode.SymbolKind.Class, vscode.SymbolKind.Struct,
@@ -18,7 +18,7 @@ export interface HeadingEntry {
   selection: vscode.Range;
 }
 
-export function nestedSymbols(entries: readonly HeadingEntry[], endOfFile: vscode.Position): vscode.DocumentSymbol[] {
+export function deriveNestedSymbols(entries: readonly HeadingEntry[], endOfFile: vscode.Position): vscode.DocumentSymbol[] {
   const toSymbol = ({ entry, next, children }: HeadingNode<HeadingEntry>): vscode.DocumentSymbol => {
     const kind = KIND_BY_DEPTH[Math.min(entry.depth, KIND_BY_DEPTH.length - 1)]!;
     const range = new vscode.Range(entry.selection.start, next ? next.selection.start : endOfFile);
@@ -26,5 +26,5 @@ export function nestedSymbols(entries: readonly HeadingEntry[], endOfFile: vscod
     symbol.children = children.map(toSymbol);
     return symbol;
   };
-  return nestHeadings(entries).map(toSymbol);
+  return deriveNestedHeadings(entries).map(toSymbol);
 }

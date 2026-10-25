@@ -1,5 +1,5 @@
 /** Indexes which writing projects cite each key, one entry per project file and section. */
-import type { CitationSite } from "./citationSites.js";
+import type { CitationSite } from "./findCitationSites.js";
 
 /** One place a project cites a paper. */
 export interface Backlink {
@@ -12,7 +12,7 @@ export interface Backlink {
 }
 
 /** Cite key → the places that cite it, in the order they were added. */
-export type BacklinkIndex = ReadonlyMap<string, readonly Backlink[]>;
+export type BacklinkMap = ReadonlyMap<string, readonly Backlink[]>;
 
 /** Collects the sites of one file into the index; later citations in the same file and section add nothing. */
 export function addBacklinks(

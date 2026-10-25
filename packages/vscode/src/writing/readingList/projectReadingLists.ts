@@ -1,5 +1,5 @@
 // Builds a project's reading list from the backlink index, the project's papers: entries and the library.
-import { buildReadingList, papersByCiteKey, type BacklinkIndex, type ILogger, type PaperRecord, type ReadingList } from "@labshelf/core";
+import { buildReadingList, derivePapersByCiteKey, type BacklinkMap, type ILogger, type PaperRecord, type ReadingList } from "@labshelf/core";
 import type { ReadyProject } from "../figures/index.js";
 
 /** The open library as the reading list needs it. */
@@ -11,7 +11,7 @@ interface ReadingListSession {
 }
 
 interface ReadingListSources {
-  backlinks: { index(): BacklinkIndex };
+  backlinks: { index(): BacklinkMap };
   session: () => ReadingListSession | undefined;
 }
 
@@ -27,7 +27,7 @@ export class ProjectReadingLists {
         project: project.settings.id,
         backlinks: this.sources.backlinks.index(),
         listed: project.settings.papers ?? [],
-        papersByKey: papersByCiteKey(await session.listPapers()),
+        papersByKey: derivePapersByCiteKey(await session.listPapers()),
         isOpened: (paperId) => session.isOpened(paperId),
       });
     } catch (error) {

@@ -4,7 +4,7 @@
 const HEX = "0123456789abcdef";
 
 /** Returns the lowercase hex SHA-256 digest of the given bytes. */
-export async function sha256Hex(content: Uint8Array): Promise<string> {
+export async function deriveSha256Hex(content: Uint8Array): Promise<string> {
   const buffer = await crypto.subtle.digest("SHA-256", content as Uint8Array<ArrayBuffer>);
   const view = new Uint8Array(buffer);
   let out = "";

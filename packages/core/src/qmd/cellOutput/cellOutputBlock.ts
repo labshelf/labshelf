@@ -1,6 +1,6 @@
 // Finds and writes the output blocks that hold a code cell's stored result inside an item body.
 // CONTRACT: documents/contracts/qmd-items.md#outputs
-import { attributeValue, formatDivOpener, isBalanced, lineContent, parseDivOpener, splitLines, topLevelDivs } from "../items/index.js";
+import { readAttribute, formatDivOpener, isBalanced, extractLineContent, parseDivOpener, splitLines, findTopLevelDivs } from "../items/index.js";
 
 export const OUTPUT_CLASS = "labshelf-output";
 
@@ -17,7 +17,7 @@ export interface OutputBlock {
   readonly end: number;
 }
 
-export interface NewOutput {
+export interface CreateOutputInput {
   readonly cell: string;
   readonly source: string;
   readonly engine: string;
@@ -31,14 +31,14 @@ export function findOutputs(body: string): OutputBlock[] {
   const offsets = [0];
   for (const line of lines) { offsets.push(offsets.at(-1)! + line.length); }
   const outputs: OutputBlock[] = [];
-  for (const { open, close } of topLevelDivs(lines)) {
-    const attributes = parseDivOpener(lineContent(lines[open]!));
+  for (const { open, close } of findTopLevelDivs(lines)) {
+    const attributes = parseDivOpener(extractLineContent(lines[open]!));
     if (!attributes?.classes.includes(OUTPUT_CLASS)) { continue; }
-    const cell = attributeValue(attributes, "cell");
-    const source = attributeValue(attributes, "source");
+    const cell = readAttribute(attributes, "cell");
+    const source = readAttribute(attributes, "source");
     if (!cell || !source) { continue; }
-    const engine = attributeValue(attributes, "engine");
-    const ran = attributeValue(attributes, "ran");
+    const engine = readAttribute(attributes, "engine");
+    const ran = readAttribute(attributes, "ran");
     outputs.push({
       cell,
       source,
@@ -53,7 +53,7 @@ export function findOutputs(body: string): OutputBlock[] {
 }
 
 /** Writes a whole output block, ending with `eol`. Throws when the content would end the block early. */
-export function formatOutput(output: NewOutput, eol = "\n"): string {
+export function formatOutput(output: CreateOutputInput, eol = "\n"): string {
   const opener = formatDivOpener({
     classes: [OUTPUT_CLASS],
     pairs: [["cell", output.cell], ["source", output.source], ["engine", output.engine], ["ran", output.ran]],

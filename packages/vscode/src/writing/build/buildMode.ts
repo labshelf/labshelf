@@ -9,14 +9,14 @@ const MODULE = "AutoCompile";
 const DEFAULT_MODE: AutoCompileMode = "typing";
 
 /** Configuration is untrusted input: an unknown value reads as the default mode. */
-export function autoCompileMode(): AutoCompileMode {
+export function readAutoCompileMode(): AutoCompileMode {
   const value = vscode.workspace.getConfiguration(SECTION).get<unknown>(KEY, DEFAULT_MODE);
   return AUTO_COMPILE_MODES.find((mode) => mode === value) ?? DEFAULT_MODE;
 }
 
 export function onAutoCompileChange(fn: (mode: AutoCompileMode) => void): vscode.Disposable {
   return vscode.workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration(`${SECTION}.${KEY}`)) { fn(autoCompileMode()); }
+    if (event.affectsConfiguration(`${SECTION}.${KEY}`)) { fn(readAutoCompileMode()); }
   });
 }
 
@@ -24,12 +24,12 @@ export function onAutoCompileChange(fn: (mode: AutoCompileMode) => void): vscode
 export type AutoCompileTrigger = "typing" | "save";
 
 /** Decides per save or edit whether a build may start; when it may not it logs the skip once until the setting changes. */
-export function autoCompileGate(logger: () => ILogger | undefined): vscode.Disposable & { allows(trigger: AutoCompileTrigger): boolean } {
+export function createAutoCompileGate(logger: () => ILogger | undefined): vscode.Disposable & { allows(trigger: AutoCompileTrigger): boolean } {
   let logged = false;
   const subscription = onAutoCompileChange(() => { logged = false; });
   return {
     allows(trigger): boolean {
-      const mode = autoCompileMode();
+      const mode = readAutoCompileMode();
       if (mode === "typing" || (mode === "save" && trigger === "save")) { return true; }
       if (!logged) {
         logged = true;

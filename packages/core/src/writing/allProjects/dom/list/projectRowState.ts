@@ -2,16 +2,16 @@
 import type { ProjectRow } from "../../projectRow.js";
 import type { ProjectListRow } from "./projectListModel.js";
 
-export interface RowStateFrame {
+export interface RowMarksFrame {
   selected: string | null;
   expanded: string | null;
 }
 
 /** The element carrying `role=row`: the node itself, or a project's main row inside its wrapper. */
-export const ariaRowOf = (node: HTMLElement): HTMLElement =>
+export const findAriaRow = (node: HTMLElement): HTMLElement =>
   node.matches('[role="row"]') ? node : node.querySelector<HTMLElement>('[role="row"]')!;
 
-function paintProject(p: ProjectRow, node: HTMLElement, row: HTMLElement, f: RowStateFrame): void {
+function paintProject(p: ProjectRow, node: HTMLElement, row: HTMLElement, f: RowMarksFrame): void {
   const selected = p.id === f.selected;
   node.classList.toggle("selected", selected);
   row.setAttribute("aria-selected", String(selected));
@@ -24,8 +24,8 @@ function paintProject(p: ProjectRow, node: HTMLElement, row: HTMLElement, f: Row
 }
 
 /** `index` is the row's place in the whole model; the column heads take aria-rowindex 1. */
-export function paintRowState(item: ProjectListRow, node: HTMLElement, index: number, f: RowStateFrame): void {
-  const row = ariaRowOf(node);
+export function updateRowMarks(item: ProjectListRow, node: HTMLElement, index: number, f: RowMarksFrame): void {
+  const row = findAriaRow(node);
   row.setAttribute("aria-rowindex", String(index + 2));
   row.setAttribute("aria-level", String(item.level));
   if (item.kind === "group") row.setAttribute("aria-expanded", String(!item.collapsed));

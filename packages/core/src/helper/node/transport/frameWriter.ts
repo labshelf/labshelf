@@ -9,7 +9,7 @@ import type { ToPageMessage } from "../../index.js";
 export const MAX_OUTGOING_FRAME_BYTES = 1024 * 1024;
 const LOG_MODULE = "helper-stdio";
 
-export interface FrameSink { write(chunk: Buffer): unknown }
+export interface FrameOutput { write(chunk: Buffer): unknown }
 
 function encode(payload: Buffer): Buffer {
   const header = Buffer.alloc(4);
@@ -21,7 +21,7 @@ function encode(payload: Buffer): Buffer {
  * Returns the function handlers use to answer the page. An oversize message is logged and replaced by a `limit` error
  * with the same id, so the page does not wait for a reply that cannot arrive.
  */
-export function createFrameWriter(output: FrameSink, logger: ILogger): (message: ToPageMessage) => void {
+export function createFrameWriter(output: FrameOutput, logger: ILogger): (message: ToPageMessage) => void {
   return (message) => {
     const payload = Buffer.from(JSON.stringify(message), "utf8");
     if (payload.length <= MAX_OUTGOING_FRAME_BYTES) {

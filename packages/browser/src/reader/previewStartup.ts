@@ -1,10 +1,10 @@
 // Turns the reader page into a build preview embedded by the library page: PDFs, build states and roots come from the parent page, requests go back to it.
 // Opened as reader/index.html?preview=1&project=<id>&title=<name>.
-import type { BuildState, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewRoots, ReaderHostController } from "@labshelf/core";
+import type { BuildState, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewBuildRoots, ReaderHostController } from "@labshelf/core";
 
 const BUILD_STATES: readonly BuildState[] = ["building", "succeeded", "failed"];
 
-export function previewPaper(search: string): PaperRecord | undefined {
+export function findPreviewPaper(search: string): PaperRecord | undefined {
   const query = new URLSearchParams(search);
   if (query.get("preview") !== "1") return undefined;
   const project = query.get("project") ?? "";
@@ -15,7 +15,7 @@ function isFromParentPage(event: MessageEvent): boolean {
   return event.origin === location.origin && event.source === window.parent && window.parent !== window;
 }
 
-function isPreviewRoots(v: unknown): v is PreviewRoots {
+function isPreviewRoots(v: unknown): v is PreviewBuildRoots {
   if (typeof v !== "object" || v === null) return false;
   const roots = v as Record<string, unknown>;
   return typeof roots["main"] === "string" && typeof roots["shown"] === "string" && Array.isArray(roots["roots"]);
@@ -25,7 +25,7 @@ function isPreviewRoots(v: unknown): v is PreviewRoots {
  * Listens to the parent page's `reloadDocument`, `buildStatus` and `previewRoots` messages.
  * @returns the readBytes hook that reads the latest PDF the page handed over, waiting for the first one.
  */
-export function bindPreviewPage(host: Pick<ReaderHostController, "reloadDocument" | "setBuildStatus" | "setPreviewRoots">): () => Promise<ArrayBuffer> {
+export function attachPreviewPage(host: Pick<ReaderHostController, "reloadDocument" | "setBuildStatus" | "setPreviewRoots">): () => Promise<ArrayBuffer> {
   let latestUrl: string | undefined;
   let gotFirst: (url: string) => void = () => undefined;
   const first = new Promise<string>((resolve) => { gotFirst = resolve; });
@@ -57,7 +57,7 @@ export function bindPreviewPage(host: Pick<ReaderHostController, "reloadDocument
 }
 
 /** The reader's preview ports: each request goes to the parent page, which carries it out. */
-export function previewPorts(logger: ILogger): PreviewPorts {
+export function createPreviewPorts(logger: ILogger): PreviewPorts {
   const ask = async (request: PreviewRequest): Promise<void> => { window.parent.postMessage(request, location.origin); };
   let warnedLookup = false;
   return {

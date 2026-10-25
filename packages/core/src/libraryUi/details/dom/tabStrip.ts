@@ -1,5 +1,5 @@
 // Paints the Details tab strip in the editor tab look and turns clicks and keys on it into tab actions.
-import { el, icon, moveTabFocus, type IconName } from "../../../ui/dom/index.js";
+import { renderElement, renderIcon, moveTabFocus, type IconName } from "../../../ui/dom/index.js";
 
 /** One painted tab; `index` is the pinned tab's position, null for the preview. */
 export interface StripTab {
@@ -23,18 +23,18 @@ export interface TabStrip {
 }
 
 function tabButton(cls: string, glyph: IconName, label: string, title: string): HTMLButtonElement {
-  return el("button", { class: cls, type: "button", tabindex: -1, "aria-label": label, title, html: icon(glyph) });
+  return renderElement("button", { class: cls, type: "button", tabindex: -1, "aria-label": label, title, html: renderIcon(glyph) });
 }
 
 function paintTab(tab: StripTab, panel: HTMLElement): HTMLElement {
   const preview = tab.index === null;
-  const tabEl = el("div", {
+  const tabEl = renderElement("div", {
     class: `ls-editor-tab${tab.active ? " active" : ""}${preview ? " preview" : ""}`,
     id: `${panel.id}-${preview ? "preview" : tab.index}`, "aria-controls": panel.id,
     role: "tab", "aria-selected": String(tab.active), tabindex: tab.active ? 0 : -1, title: tab.label,
   },
-  el("span", { class: "ls-editor-tab-icon", html: icon(tab.icon) }),
-  el("span", { class: "ls-editor-tab-label", text: tab.label }));
+  renderElement("span", { class: "ls-editor-tab-icon", html: renderIcon(tab.icon) }),
+  renderElement("span", { class: "ls-editor-tab-label", text: tab.label }));
   tabEl.dataset.tab = preview ? "preview" : String(tab.index);
   if (preview && tab.pinnable) tabEl.append(tabButton("ls-editor-tab-close ls-details-tab-pin", "pin", `Pin ${tab.label}`, "Pin"));
   if (!preview) tabEl.append(tabButton("ls-editor-tab-close", "x", `Close ${tab.label}`, "Close"));
@@ -67,8 +67,8 @@ function onClick(e: MouseEvent, actions: StripActions): void {
 
 /** `panel` is the tabpanel the tabs control; it needs an id. */
 export function mountTabStrip(panel: HTMLElement, actions: StripActions): TabStrip {
-  const list = el("div", { class: "ls-editor-tabs", role: "tablist", "aria-label": "Details tabs" });
-  const bar = el("div", { class: "ls-editor-titlebar ls-details-tabbar" }, list);
+  const list = renderElement("div", { class: "ls-editor-tabs", role: "tablist", "aria-label": "Details tabs" });
+  const bar = renderElement("div", { class: "ls-editor-titlebar ls-details-tabbar" }, list);
   list.addEventListener("click", (e) => onClick(e, actions));
   list.addEventListener("dblclick", (e) => {
     if ((e.target as HTMLElement).closest('[data-tab="preview"]')) actions.pin();

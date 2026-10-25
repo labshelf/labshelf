@@ -118,7 +118,7 @@ export const BINDINGS: Binding[] = [
   b("C-z", "suspend", "Suspend to the shell", "App"),
 ];
 
-export type KeyResolution =
+export type KeymapResolution =
   | { kind: "action"; binding: Binding }
   | { kind: "prefix"; options: Binding[] }
   | { kind: "none" };
@@ -127,7 +127,7 @@ export type KeyResolution =
  * Matches the keys typed so far against the bindings.
  * @returns an action, a prefix waiting for more keys (with what can follow), or nothing
  */
-export function resolveKeys(pending: string[], bindings: Binding[] = BINDINGS): KeyResolution {
+export function resolveKeymap(pending: string[], bindings: Binding[] = BINDINGS): KeymapResolution {
   const candidates = bindings.filter((binding) => pending.every((key, i) => binding.keys[i] === key));
   const exact = candidates.find((binding) => binding.keys.length === pending.length);
   if (exact) { return { kind: "action", binding: exact }; }
@@ -139,6 +139,6 @@ export function resolveKeys(pending: string[], bindings: Binding[] = BINDINGS): 
  * "g g", "m r", "C-d" as shown on the help screen.
  * @returns the label
  */
-export function keyLabel(keys: string[]): string {
+export function formatShortcut(keys: string[]): string {
   return keys.map((k) => (k === "space" ? "Space" : k === "esc" ? "Esc" : k === "tab" ? "Tab" : k === "S-tab" ? "S-Tab" : k)).join(" ");
 }

@@ -13,7 +13,7 @@ const outside = (relative: string): BridgeError =>
 const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])\s*(?:\..*)?$/i;
 
 /** Whether `real` is `base` or below it; win32 compares case-insensitively and across drives. */
-export function isInsideRoot(base: string, real: string, api: PathApi = path): boolean {
+export function isInsideBase(base: string, real: string, api: PathApi = path): boolean {
   const relative = api.relative(base, real);
   return relative === "" || (!api.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${api.sep}`));
 }
@@ -51,7 +51,7 @@ function segmentsOf(relative: string): string[] {
 
 /** Throws outsideLibrary unless the real path of `dir` (or of its nearest existing ancestor) is under `realRoot`. */
 export async function assertInLibrary(realRoot: string, dir: string): Promise<void> {
-  if (!isInsideRoot(realRoot, await realPathOrAncestor(dir, dir))) throw outside(dir);
+  if (!isInsideBase(realRoot, await realPathOrAncestor(dir, dir))) throw outside(dir);
 }
 
 // CONTRACT: documents/contracts/bridge.md#paths
@@ -60,7 +60,7 @@ export async function resolveInLibrary(root: string, relative: string): Promise<
   const segments = segmentsOf(relative);
   const base = await realRootOf(root);
   const target = path.join(base, ...segments);
-  if (!isInsideRoot(base, await realPathOrAncestor(target, relative))) throw outside(relative);
+  if (!isInsideBase(base, await realPathOrAncestor(target, relative))) throw outside(relative);
   return target;
 }
 
@@ -80,6 +80,6 @@ export async function resolveParentInLibrary(root: string, relative: string): Pr
   const name = segments.pop();
   if (name === undefined) return { realRoot, realParent: realRoot, name: "" };
   const realParent = await realPathOrAncestor(path.join(realRoot, ...segments), relative);
-  if (!isInsideRoot(realRoot, realParent)) throw outside(relative);
+  if (!isInsideBase(realRoot, realParent)) throw outside(relative);
   return { realRoot, realParent, name };
 }

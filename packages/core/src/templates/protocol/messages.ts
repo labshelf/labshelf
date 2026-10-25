@@ -3,26 +3,26 @@
  * only lists sources, answers per-template requests and runs "Use template".
  */
 import type { TemplateSourceId } from "../templateEntry.js";
-import type { PublishCheckResult, PublishDraft, PublishProject, SourceListing, TemplateKey } from "./payloads.js";
+import type { PublishCheckResult, PublishDraft, PublishProject, SourceListing, TemplateAddress } from "./payloads.js";
 
 export type GalleryToHost =
   | { type: "ready" }
   | { type: "refresh" }
   /** The cards that came into view; the host answers each with a `thumbnail`. */
-  | { type: "thumbnails"; templates: TemplateKey[] }
+  | { type: "thumbnails"; templates: TemplateAddress[] }
   /** The detail page opened; the host answers with an `engine`. */
-  | { type: "detail"; template: TemplateKey }
-  | { type: "use"; template: TemplateKey }
+  | { type: "detail"; template: TemplateAddress }
+  | { type: "use"; template: TemplateAddress }
   | PublishToHost;
 
 export type HostToGallery =
   | { type: "source"; source: TemplateSourceId; listing: SourceListing }
   /** `dataUri` is absent when the template has no thumbnail or it cannot be fetched; the card keeps its placeholder. */
-  | { type: "thumbnail"; template: TemplateKey; dataUri?: string }
+  | { type: "thumbnail"; template: TemplateAddress; dataUri?: string }
   /** `problem` names what this machine lacks to build the template; absent when it can build it. */
-  | { type: "engine"; template: TemplateKey; problem?: string }
+  | { type: "engine"; template: TemplateAddress; problem?: string }
   /** "Use template" finished, was cancelled or failed; a failure also arrives as an error `notice`. */
-  | { type: "use.settled"; template: TemplateKey }
+  | { type: "use.settled"; template: TemplateAddress }
   | { type: "notice"; kind: "info" | "error"; text: string }
   | PublishFromHost;
 

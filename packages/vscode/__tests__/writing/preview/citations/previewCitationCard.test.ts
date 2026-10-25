@@ -2,21 +2,21 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { BIBLIOGRAPHY_HEADER, sourceAt, type Annotation, type PaperRecord } from "@labshelf/core";
-import { lookupCitation, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
-import type { SynctexLookup } from "../../../../src/writing/preview/synctex";
+import { BIBLIOGRAPHY_HEADER, findSourcePosition, type Annotation, type PaperRecord } from "@labshelf/core";
+import { findCitation, type PreviewCitationDeps } from "../../../../src/writing/preview/citations";
+import type { SynctexFinder } from "../../../../src/writing/preview/synctex";
 import { fakeDocument } from "../../../support/textDocument";
 import { fakeLogger } from "../../../support/writingFixtures";
 
-jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), sourceAt: jest.fn() }));
+jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), findSourcePosition: jest.fn() }));
 
-const source = sourceAt as jest.Mock;
+const source = findSourcePosition as jest.Mock;
 const workspace = vscode.workspace as unknown as { textDocuments: unknown[] };
 const findFiles = jest.fn();
 const openTextDocument = jest.fn();
 const area = { page: 1, left: 10, top: 10, right: 30, bottom: 20 };
 const smith = { id: "smith-1", title: "Smith on cats", path: "smith-1", citeKey: "smith2020", status: "unread" } as PaperRecord;
-const found: SynctexLookup = { status: "found", index: { files: [], pages: [], byFile: new Map() } as never };
+const found: SynctexFinder = { status: "found", index: { files: [], pages: [], byFile: new Map() } as never };
 const text = "intro\nas shown by \\cite[see][p.~4]{smith2020, doe2019}\n";
 
 function deps(over: Partial<PreviewCitationDeps> = {}): PreviewCitationDeps {
@@ -40,18 +40,18 @@ beforeEach(() => {
 
 describe("lookupCitation site and cited page", () => {
   it("names the citing command with its project-relative file and 1-based line, and the cited page", async () => {
-    const entries = await lookupCitation(deps(), { area, link: false });
+    const entries = await findCitation(deps(), { area, link: false });
     const site = { file: "chapters/main.tex", line: 2, text: "\\cite[see][p.~4]{smith2020, doe2019}" };
     expect(entries.map((entry) => [entry.key, entry.site, entry.citedPage])).toEqual([["smith2020", site, 4], ["doe2019", site, 4]]);
   });
 
   it("finds the citing command of a hyperref link through SyncTeX too", async () => {
-    const [entry] = await lookupCitation(deps(), { area, link: true, dest: "cite.smith2020" });
+    const [entry] = await findCitation(deps(), { area, link: true, dest: "cite.smith2020" });
     expect(entry).toMatchObject({ key: "smith2020", site: { file: "chapters/main.tex", line: 2 }, citedPage: 4 });
   });
 
   it("leaves site out when SyncTeX has no data", async () => {
-    const [entry] = await lookupCitation(deps({ synctex: async () => ({ status: "missing", path: "/p/paper" }) }), { area, link: true, dest: "cite.smith2020" });
+    const [entry] = await findCitation(deps({ synctex: async () => ({ status: "missing", path: "/p/paper" }) }), { area, link: true, dest: "cite.smith2020" });
     expect(entry).not.toHaveProperty("site");
     expect(entry).not.toHaveProperty("citedPage");
   });
@@ -60,7 +60,7 @@ describe("lookupCitation site and cited page", () => {
     workspace.textDocuments = [];
     source.mockReturnValue({ file: "/p/paper/gone.tex", line: 1 });
     const logger = fakeLogger();
-    const [entry] = await lookupCitation(deps({ logger }), { area, link: true, dest: "cite.smith2020" });
+    const [entry] = await findCitation(deps({ logger }), { area, link: true, dest: "cite.smith2020" });
     expect(entry?.key).toBe("smith2020");
     expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.objectContaining({ projectFolder: "/p/paper" }));
   });
@@ -69,7 +69,7 @@ describe("lookupCitation site and cited page", () => {
 describe("lookupCitation highlights", () => {
   it("puts the highlights of the cited page first and keeps their colour", async () => {
     const all = [1, 2, 3, 4, 5, 6, 7].map((page) => highlight(page, `quote ${page}`, "yellow"));
-    const [entry] = await lookupCitation(deps({ highlightsOf: async () => all }), { area, link: false });
+    const [entry] = await findCitation(deps({ highlightsOf: async () => all }), { area, link: false });
     expect(entry?.paper?.highlights?.map((quote) => quote.page)).toEqual([4, 1, 2, 3, 5]);
     expect(entry?.paper?.highlights?.[0]).toEqual({ text: "quote 4", page: 4, color: "yellow" });
   });
@@ -82,7 +82,7 @@ describe("lookupCitation .bib record", () => {
     const documents = new Map([generated, refs].map((document) => [document.uri.fsPath, document]));
     findFiles.mockResolvedValue([...documents.keys()].map((file) => vscode.Uri.file(file)));
     openTextDocument.mockImplementation(async (uri: vscode.Uri) => documents.get(uri.fsPath));
-    const entries = await lookupCitation(deps(), { area, link: false });
+    const entries = await findCitation(deps(), { area, link: false });
     expect(entries[1]).toMatchObject({ key: "doe2019", bib: { title: "A study", authors: ["Doe, Jane", "Roe, Rick"], year: 2019, venue: "Nature" } });
     expect(entries[0]).not.toHaveProperty("bib");
   });
@@ -90,7 +90,7 @@ describe("lookupCitation .bib record", () => {
   it("answers without a record when the project's .bib files cannot be listed, and logs it", async () => {
     findFiles.mockRejectedValue(new Error("denied"));
     const logger = fakeLogger();
-    const entries = await lookupCitation(deps({ logger }), { area, link: false });
+    const entries = await findCitation(deps({ logger }), { area, link: false });
     expect(entries[1]).toEqual(expect.objectContaining({ key: "doe2019" }));
     expect(entries[1]).not.toHaveProperty("bib");
     expect(logger.log).toHaveBeenCalledWith("WARN", "writing/preview", expect.any(String), expect.objectContaining({ error: expect.stringContaining("denied") }));

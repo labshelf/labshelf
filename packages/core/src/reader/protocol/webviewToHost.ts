@@ -10,7 +10,7 @@ export interface PerfTimeline {
 }
 
 /** A reader's request to cite a paper in a writing project, with the page and quote it came from. */
-export interface CiteInProjectRequest {
+export interface CitationInProjectRequest {
   paperId: string;
   page?: number;
   quote?: string;
@@ -43,5 +43,5 @@ export type WebviewToHost =
   | { command: "copyText"; text: string }
   | { command: "exportAnnotations"; target: "clipboard" | "file" }
   | { command: "openExternalLink"; url: string }
-  | ({ command: "citeInProject" } & CiteInProjectRequest)
+  | ({ command: "citeInProject" } & CitationInProjectRequest)
   | PreviewRequest;

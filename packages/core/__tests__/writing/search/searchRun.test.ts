@@ -1,6 +1,6 @@
 // Pins the project search outcome over file texts: labelled results, an invalid query and matches by file.
 import { posixPathOps } from "../../../src/library/index.js";
-import { matchesIn, searchProjectTexts } from "../../../src/writing/search/index.js";
+import { findMatchesIn, searchProjectTexts } from "../../../src/writing/search/index.js";
 
 const project = { folder: "/lib/thesis", paths: posixPathOps };
 const texts = [
@@ -24,13 +24,13 @@ describe("searchProjectTexts", () => {
   });
 });
 
-describe("matchesIn", () => {
+describe("findMatchesIn", () => {
   const pattern = /hello/gi;
   it("lists the matches of every file, or of one", () => {
-    expect(matchesIn(texts, pattern)).toEqual([
+    expect(findMatchesIn(texts, pattern)).toEqual([
       { path: "/lib/thesis/main.tex", line: 0, column: 0, length: 5 },
       { path: "/lib/thesis/main.tex", line: 1, column: 4, length: 5 },
     ]);
-    expect(matchesIn(texts, pattern, "/lib/thesis/chapters/one.tex")).toEqual([]);
+    expect(findMatchesIn(texts, pattern, "/lib/thesis/chapters/one.tex")).toEqual([]);
   });
 });

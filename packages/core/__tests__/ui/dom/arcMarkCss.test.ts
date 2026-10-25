@@ -1,5 +1,5 @@
 /**
- * Tests that arcMark.css paints from the mark tokens and shows the label without moving the mark.
+ * Tests that renderArcMarkSvg.css paints from the mark tokens and shows the label without moving the mark.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

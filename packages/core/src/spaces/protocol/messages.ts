@@ -2,7 +2,7 @@
 import type { MessageEnd } from "../../libraryUi/protocol/index.js";
 import type { GlossaryTerm, Space } from "../model/index.js";
 import type { SpaceDateDraft, TermDraft } from "../store/index.js";
-import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectInfo } from "../viewModel/index.js";
+import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectEntry } from "../viewModel/index.js";
 
 export const SPACE_TABS = ["overview", "papers", "notes", "discussions", "discover", "glossary"] as const;
 export type SpaceTab = (typeof SPACE_TABS)[number];
@@ -60,10 +60,10 @@ export type HostToSpaces =
     papers: PapersTree;
     glossary: { terms: readonly GlossaryTerm[]; readOnlyReason?: string };
     /** Every project the host reports, linked or not. */
-    projects: SpaceProjectInfo[];
+    projects: SpaceProjectEntry[];
   }
   | { type: "papers"; items: PaperPickItem[] }
-  | { type: "projects"; items: SpaceProjectInfo[] }
+  | { type: "projects"; items: SpaceProjectEntry[] }
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 

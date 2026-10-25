@@ -1,7 +1,7 @@
 /**
  * Formats a quoted passage together with a citation of the paper it came from, in the style chosen by `labshelf.reader.citationStyle`.
  */
-import { inTextCitation } from "../library/index.js";
+import { formatInTextCitation } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
 import type { CitationStyle } from "./protocol/index.js";
 
@@ -11,7 +11,7 @@ export type CitablePaper = Pick<PaperRecord, "citeKey" | "title" | "authors" | "
  * Text-layer selections carry hard line breaks and hyphenation from the PDF layout; a quote should read as running prose.
  * @returns the quote with hyphenation joined and whitespace collapsed.
  */
-export function cleanQuote(text: string): string {
+export function normalizeQuote(text: string): string {
   return text
     .replace(/(\p{L})-\s*\n\s*(\p{Ll})/gu, "$1$2")
     .replace(/\s+/g, " ")
@@ -28,14 +28,14 @@ export function formatQuoteWithCitation(
   pageNumber: number,
   style: CitationStyle,
 ): string {
-  const quote = cleanQuote(text);
+  const quote = normalizeQuote(text);
   switch (style) {
     case "pandoc":
       return `> ${quote}\n\n[@${paper.citeKey}, p. ${pageNumber}]`;
     case "latex":
       return `\`\`${quote}'' \\cite[p.~${pageNumber}]{${paper.citeKey}}`;
     case "author-year":
-      return `"${quote}" (${inTextCitation(paper)}, p. ${pageNumber})`;
+      return `"${quote}" (${formatInTextCitation(paper)}, p. ${pageNumber})`;
     case "citekey":
       return `${quote} @${paper.citeKey}`;
   }

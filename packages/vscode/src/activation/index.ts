@@ -1,5 +1,5 @@
 // Exports the shared activation the desktop and web composition roots run, and the platform type they build.
-export { activateExtension } from "./activateExtension.js";
+export { startExtension } from "./startExtension.js";
 export type { ExtensionPlatform } from "./extensionPlatform.js";
 export { LibraryRootController } from "./libraryRootController.js";
 export { ExternalChangeHandling } from "./externalChangeHandling.js";

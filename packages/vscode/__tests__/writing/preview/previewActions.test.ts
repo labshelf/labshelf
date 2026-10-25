@@ -5,8 +5,8 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 import * as vscode from "vscode";
 
-import { createProjectData, rootBuildFolder } from "@labshelf/core";
-import { NodeLibraryFileSystem, deviceLocalLayout } from "@labshelf/core/node";
+import { createProjectContent, deriveBuildRootFolder } from "@labshelf/core";
+import { NodeLibraryFileSystem, createDeviceLocalLayout } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/reader";
 import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
@@ -34,7 +34,7 @@ function setup(type: "latex" | "typst" = "latex") {
   const recompile = jest.fn(async () => {});
   const project = (type === "latex" ? readyEntry(dir) : readyEntry(dir, { main: "main.typ", settings: { id: path.basename(dir), format: "typst" } })) as Project;
   const previews = new BuildPreviews({
-    host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: createProjectData({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: deviceLocalLayout(dir) }), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
+    host, paths: path, uriOf: (target: string) => vscode.Uri.file(target), data: createProjectContent({ fs: new NodeLibraryFileSystem(), path, logger: host.session.logger, deviceDirs: createDeviceLocalLayout(dir) }), listPapers: async () => [], extensionUri: vscode.Uri.file("/ext"), locatePdfjs: () => null, isMac: false,
     buildRootOf: async (_folder: string, main: string) => main, recompile,
     projects: fakeProjects(), checkCounts: new CheckCounts(),
   } as never);
@@ -44,7 +44,7 @@ function setup(type: "latex" | "typst" = "latex") {
 }
 
 function writeLog(root: string): string {
-  const file = path.join(cache, "labshelf", "builds", path.basename(dir), rootBuildFolder(root), `${path.basename(root).replace(/\.\w+$/, "")}.log`);
+  const file = path.join(cache, "labshelf", "builds", path.basename(dir), deriveBuildRootFolder(root), `${path.basename(root).replace(/\.\w+$/, "")}.log`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, "log");
   return file;
@@ -87,7 +87,7 @@ describe("revealCursor", () => {
       "[1,5:4736286,46220574:26673152,41484288,0", "(1,5:8799518,8865054:22609920,655359,183500", "g1,3:8799518,8865054", "g1,3:10397871,8865054", ")",
       "]", "}1", "Postamble:", "Count:5", "",
     ].join("\n");
-    const file = path.join(cache, "labshelf", "builds", path.basename(dir), rootBuildFolder("main.tex"), "main.synctex.gz");
+    const file = path.join(cache, "labshelf", "builds", path.basename(dir), deriveBuildRootFolder("main.tex"), "main.synctex.gz");
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, gzipSync(text));
   }

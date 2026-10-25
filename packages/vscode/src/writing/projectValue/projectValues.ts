@@ -1,12 +1,12 @@
 // Gives the value providers each project's JSON leaves, read once and dropped when a value file or the project list changes.
 import * as vscode from "vscode";
 
-import type { ILogger, PathOps, ValueLeaf } from "@labshelf/core";
-import { owningProject, type ReadyProject } from "../buildRootDocument.js";
+import type { ILogger, PathOps, ProjectValueLeaf } from "@labshelf/core";
+import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
 
 /** What the providers read per request: the project list and the open library's logger. */
-export interface ValuesWorkspace {
+export interface ProjectValueWorkspace {
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "onDidChange">;
   logger(): ILogger | undefined;
 }
@@ -14,11 +14,11 @@ export interface ValuesWorkspace {
 const SOURCE_EXTENSION = { latex: ".tex", typst: ".typ" } as const;
 
 export class ProjectValues implements vscode.Disposable {
-  private readonly cache = new Map<string, Promise<ValueLeaf[]>>();
+  private readonly cache = new Map<string, Promise<ProjectValueLeaf[]>>();
   private watchers: vscode.Disposable[] = [];
   private readonly subscription: vscode.Disposable;
 
-  constructor(private readonly workspace: ValuesWorkspace) {
+  constructor(private readonly workspace: ProjectValueWorkspace) {
     this.watch();
     this.subscription = workspace.projects.onDidChange(() => {
       this.cache.clear();
@@ -33,12 +33,12 @@ export class ProjectValues implements vscode.Disposable {
 
   /** The ready project that lists value files and owns the file as a source of its format. */
   sourceProject(file: string): ReadyProject | undefined {
-    const project = owningProject(this.workspace.projects, file);
+    const project = findOwningProject(this.workspace.projects, file);
     const listsValues = (project?.settings.values?.length ?? 0) > 0;
     return project && listsValues && this.paths.extname(file) === SOURCE_EXTENSION[project.settings.format] ? project : undefined;
   }
 
-  leaves(project: ReadyProject): Promise<ValueLeaf[]> {
+  leaves(project: ReadyProject): Promise<ProjectValueLeaf[]> {
     if (!this.workspace.logger()) { return Promise.resolve([]); }
     const cached = this.cache.get(project.folder);
     if (cached) { return cached; }

@@ -1,10 +1,10 @@
 /** Verifies that a section typeset alone gets the document-body definitions that come before it, in source order. */
-import { definitionsBeforeSection } from "../../../../src/latex/build/section/index";
+import { extractDefinitionsBeforeSection } from "../../../../src/latex/build/section/index";
 
-describe("definitionsBeforeSection", () => {
+describe("extractDefinitionsBeforeSection", () => {
   it("takes main's body definitions before the section and skips the preamble and what follows", () => {
     const main = "\\documentclass{article}\n\\newcommand{\\a}{a}\n\\begin{document}\n\\newcommand{\\b}{b}\n\\section{One}\n\\newcommand{\\c}{c}\n\\end{document}\n";
-    expect(definitionsBeforeSection({ sources: { "main.tex": main }, main: "main.tex", editedFile: "main.tex", startLine: 4 }))
+    expect(extractDefinitionsBeforeSection({ sources: { "main.tex": main }, main: "main.tex", editedFile: "main.tex", startLine: 4 }))
       .toEqual(["\\newcommand{\\b}{b}"]);
   });
 
@@ -17,7 +17,7 @@ describe("definitionsBeforeSection", () => {
       "chapters/chap.tex": "\\newcommand{\\e}{e}\n\\section{A}\n\\newcommand{\\f}{f}\n",
       "late.tex": "\\newcommand{\\l}{l}\n",
     };
-    expect(definitionsBeforeSection({ sources, main: "main.tex", editedFile: "chapters/chap.tex", startLine: 1 }))
+    expect(extractDefinitionsBeforeSection({ sources, main: "main.tex", editedFile: "chapters/chap.tex", startLine: 1 }))
       .toEqual(["\\newcommand{\\d}{d}", "\\newcommand{\\m}{m}", "\\newcommand{\\q}{q}", "\\newcommand{\\e}{e}"]);
   });
 });

@@ -4,7 +4,7 @@ import {
   ANNOTATION_COLORS,
   type AnnotationColor,
   type COLOR_TOKENS,
-  type PaperStatus,
+  type ReadingStatus,
   type STATUS_TOKENS,
 } from "@labshelf/core";
 
@@ -85,11 +85,11 @@ export const theme = {
     unread: c(STATUS_ANSI["status-unread"]),
     reading: c(STATUS_ANSI["status-reading"]),
     done: c(STATUS_ANSI["status-done"]),
-  } as Record<PaperStatus, Style>,
+  } as Record<ReadingStatus, Style>,
   annotation: Object.fromEntries(
     ANNOTATION_COLORS.map((name) => [name, c({ fg: ANNOTATION_ANSI[name] })]),
   ) as Record<string, Style>,
 };
 
 /** Status glyphs: shape and color both carry the state, so it reads without color too. */
-export const STATUS_GLYPH: Record<PaperStatus, string> = { unread: "○", reading: "◐", done: "●" };
+export const STATUS_GLYPH: Record<ReadingStatus, string> = { unread: "○", reading: "◐", done: "●" };

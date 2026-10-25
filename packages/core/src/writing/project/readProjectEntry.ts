@@ -1,7 +1,7 @@
 /** Reads one project folder into a ready or broken project entry through a folder-scoped port. */
 import type { ILogger } from "../../ports/index.js";
-import { detectMainFile } from "./buildRoot/index.js";
-import type { ProjectEntry, ProjectLocation } from "./projectEntry.js";
+import { detectEntryFile } from "./buildRoot/index.js";
+import type { ProjectEntry, ProjectPlacement } from "./projectEntry.js";
 import { PROJECT_FILE, parseProjectFile } from "./projectFile.js";
 
 /** One project folder as the host sees it; names are relative to the folder. */
@@ -14,7 +14,7 @@ export interface ProjectFolderReader {
 
 interface ReadProjectEntryInput {
   folder: string;
-  location: ProjectLocation;
+  location: ProjectPlacement;
   reader: ProjectFolderReader;
   logger: ILogger;
 }
@@ -31,7 +31,7 @@ export async function readProjectEntry({ folder, location, reader, logger }: Rea
     const parsed = parseProjectFile(text);
     if (!parsed.ok) { return broken(`${PROJECT_FILE}: ${parsed.reason}`); }
     const main = parsed.settings.main
-      ?? await detectMainFile(parsed.settings.format, await reader.rootFileNames(), (name) => reader.readOptionalText(name));
+      ?? await detectEntryFile(parsed.settings.format, await reader.rootFileNames(), (name) => reader.readOptionalText(name));
     return { kind: "ready", folder, location, settings: parsed.settings, main };
   } catch (error) {
     await logger.error("project", error, { folder, action: "read" });

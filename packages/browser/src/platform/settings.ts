@@ -2,14 +2,14 @@
 // The options page edits them; the PDF search consults them (proxies, custom resolvers).
 import { bx } from "./browserApi";
 import {
-  AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, requestLanguageFrom,
+  AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, deriveRequestLanguage,
   type AutoCompileMode, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
-import { migrateMirrorSettings } from "./mirrorToCustomResolver";
+import { deriveMirrorSettings } from "./mirrorToCustomResolver";
 import { DEFAULT_SIDEBAR_SECTIONS, readSidebarSections, type SidebarSections } from "./sidebarSections";
 
 /** Persisted user preferences. */
-export interface LabShelfSettings {
+export interface ExtensionSettings {
   /** Contact email passed to the Unpaywall API and CrossRef User-Agent. */
   contactEmail: string;
   /** Collection the last capture went to; the popup and Scholar buttons default to it. */
@@ -34,7 +34,7 @@ export interface LabShelfSettings {
 
 export const SETTINGS_STORAGE_KEY = "labshelf.settings";
 
-const DEFAULTS: LabShelfSettings = {
+const DEFAULTS: ExtensionSettings = {
   contactEmail: DEFAULT_CONTACT_EMAIL,
   lastFolder: PAPERS_DIR,
   proxies: [],
@@ -75,10 +75,10 @@ const textOr = (raw: unknown): string => (typeof raw === "string" ? raw : "");
  * Reads the merged settings object (defaults overlaid with persisted values).
  * @returns LabShelfSettings
  */
-export async function getSettings(): Promise<LabShelfSettings> {
+export async function readSettings(): Promise<ExtensionSettings> {
   const raw = (await bx.storage.local.get(SETTINGS_STORAGE_KEY)) as Record<string, unknown>;
   let stored = (raw[SETTINGS_STORAGE_KEY] ?? {}) as Record<string, unknown>;
-  const migrated = migrateMirrorSettings(stored);
+  const migrated = deriveMirrorSettings(stored);
   if (migrated) {
     stored = migrated;
     await bx.storage.local.set({ [SETTINGS_STORAGE_KEY]: stored });
@@ -90,7 +90,7 @@ export async function getSettings(): Promise<LabShelfSettings> {
     customResolvers: validResolvers(stored.customResolvers),
     requesterName: textOr(stored.requesterName),
     requesterAffiliation: textOr(stored.requesterAffiliation),
-    requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : requestLanguageFrom(globalThis.navigator?.language),
+    requestLanguage: isRequestLanguage(stored.requestLanguage) ? stored.requestLanguage : deriveRequestLanguage(globalThis.navigator?.language),
     sidebarSections: readSidebarSections(stored.sidebarSections),
     autoCompile: AUTO_COMPILE_MODES.find((mode) => mode === stored.autoCompile) ?? DEFAULTS.autoCompile,
     haltOnError: typeof stored.haltOnError === "boolean" ? stored.haltOnError : DEFAULTS.haltOnError,
@@ -100,8 +100,8 @@ export async function getSettings(): Promise<LabShelfSettings> {
 /**
  * Persists a partial settings patch, merging with whatever is already stored.
  */
-export async function updateSettings(patch: Partial<LabShelfSettings>): Promise<void> {
-  const current = await getSettings();
+export async function updateSettings(patch: Partial<ExtensionSettings>): Promise<void> {
+  const current = await readSettings();
   const next = { ...current, ...patch };
   await bx.storage.local.set({ [SETTINGS_STORAGE_KEY]: next });
 }

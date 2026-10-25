@@ -10,9 +10,9 @@ jest.mock("../../src/platform", () => ({
   } } },
 }));
 
-import { replaceFileText, ShareOpenInAnotherTabError } from "@labshelf/core";
+import { setFileText, ShareOpenInAnotherTabError } from "@labshelf/core";
 import { saveDisplayName } from "../../src/collab";
-import { acquireTabLease } from "../../src/storage";
+import { openTabLease } from "../../src/storage";
 import { FOLDER, MAIN, openProfile, until, type Page, type Profile } from "./pageSharesTestbed";
 
 jest.setTimeout(30_000);
@@ -25,13 +25,13 @@ const kind = (page: Page): string | undefined => page.shares.state(profile.share
 const edit = (page: Page, text: string): void => {
   const live = page.shares.live("thesis");
   if (!live) { throw new Error("the page holds no connection"); }
-  replaceFileText(live.session.openDoc("main.typ"), text, "local");
+  setFileText(live.session.openDoc("main.typ"), text, "local");
 };
 const onDisk = (text: string) => async (): Promise<boolean> => (await profile.fs.readText(MAIN)) === text;
 const invite = () => ({ shareId: profile.shareId, shareKey: new Uint8Array(16).fill(7), relays: [{ url: "https://relay.example" }] });
 
 async function leaseIsFree(): Promise<boolean> {
-  const lease = await acquireTabLease(profile.leaseName);
+  const lease = await openTabLease(profile.leaseName);
   if (lease.kind === "owned") { await lease.lease.release(); }
   return lease.kind === "owned";
 }
@@ -118,7 +118,7 @@ describe("createPageShares", () => {
   });
 
   it("refuses to join a share another tab holds, without observing it", async () => {
-    const held = await acquireTabLease(profile.leaseName);
+    const held = await openTabLease(profile.leaseName);
     const page = profile.openPage();
     await expect(page.shares.connect(invite(), { mode: "join", signal: new AbortController().signal })).rejects.toBeInstanceOf(ShareOpenInAnotherTabError);
     expect(page.shares.state(profile.shareId)).toBeUndefined();

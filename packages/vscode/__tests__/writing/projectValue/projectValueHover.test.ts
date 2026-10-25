@@ -1,7 +1,7 @@
 // Tests the hover on \lsvalue keys and json() members: value, file and path, and the unknown-key message.
 import * as vscode from "vscode";
 
-import { ValueHoverProvider } from "../../../src/writing/projectValue/projectValueHover";
+import { ProjectValueHoverProvider } from "../../../src/writing/projectValue/projectValueHover";
 import { valuesFixture } from "../../support/valueFixtures";
 import { fakeDocument, withCursor } from "../../support/textDocument";
 
@@ -12,7 +12,7 @@ async function hover(marked: string, format: "latex" | "typst" = "latex", values
   const fixture = valuesFixture({ "results.json": RESULTS }, { format, values });
   const { text, position } = withCursor(marked);
   const path = fixture.source(file ?? (format === "latex" ? "main.tex" : "main.typ"));
-  const result = await new ValueHoverProvider(fixture.values).provideHover(fakeDocument(path, text), position);
+  const result = await new ProjectValueHoverProvider(fixture.values).provideHover(fakeDocument(path, text), position);
   return result && { text: (result.contents as unknown as vscode.MarkdownString).value, range: result.range };
 }
 

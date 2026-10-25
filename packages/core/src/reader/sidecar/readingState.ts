@@ -50,7 +50,7 @@ function normalizeSidebar(v: unknown): SidebarState | undefined {
  * Validates an untrusted reading-state value; a corrupt value is dropped rather than half-applied.
  * @returns a clean ReadingState, or undefined when the input is unusable.
  */
-export function normalizeReadingState(raw: unknown): ReadingState | undefined {
+export function normalizeReadingPosition(raw: unknown): ReadingState | undefined {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) { return undefined; }
   const o = raw as Record<string, unknown>;
   const scaleValue = normalizeScaleValue(o["scaleValue"]);
@@ -71,7 +71,7 @@ export function normalizeReadingState(raw: unknown): ReadingState | undefined {
  * Clamps a stored page to the document actually opened, which may have been replaced since the state was saved.
  * @returns a page number within [1, totalPages].
  */
-export function clampPage(page: number, totalPages: number): number {
+export function deriveClampedPage(page: number, totalPages: number): number {
   if (!Number.isFinite(page)) { return 1; }
   return Math.min(Math.max(1, Math.floor(page)), Math.max(1, totalPages));
 }

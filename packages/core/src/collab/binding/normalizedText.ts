@@ -8,11 +8,96 @@
 
 import type * as Y from "yjs";
 import type { ILogger } from "../../ports/index.js";
-import { isEcho, type ChangeSet } from "./editorEcho.js";
-import { countNormalizedOffsets, LineOffsetMap, normalizeLineEnds } from "./lineOffsets.js";
-import { PendingRemoteChanges, replacementBetween } from "./pendingRemoteChanges.js";
-import { applyChanges, changesFromDelta, sortChanges, type TextChange } from "./textChange.js";
+import { PendingRemoteChanges, deriveReplacementBetween } from "./pendingRemoteChanges.js";
+import { applyChanges, deriveChangesFromDelta, orderChanges, type TextChange } from "./textChange.js";
 import type { TextUndoManager, UndoChange } from "./textUndoManager.js";
+
+const LINE_FEED = 10;
+const CARRIAGE_RETURN = 13;
+
+interface NormalizedLineOffset {
+  normalized: number;
+  offset: number;
+}
+
+const isEOL = (char: number): boolean => char === CARRIAGE_RETURN || char === LINE_FEED;
+
+function normalizeLineEnds(text: string, withCR: boolean): string {
+  return text.replace(/\r?\n/g, withCR ? "\r\n" : "\n");
+}
+
+/**
+ * Counts the LF-only offsets of `start` and `end` in `text` by scanning it, for use while the
+ * text is being edited and no map of it exists. It is called about once per edit.
+ */
+function countNormalizedOffsets(text: string, start: number, end: number): [number, number] {
+  let normalizedStart = 0;
+  let normalizedEnd = 0;
+  for (let i = 0; i < end; i++) {
+    if (text.charCodeAt(i) !== CARRIAGE_RETURN) {
+      if (i < start) { normalizedStart++; }
+      normalizedEnd++;
+    }
+  }
+  return [normalizedStart, normalizedEnd];
+}
+
+function computeNormalizedLineOffsets(text: string): NormalizedLineOffset[] {
+  const result: NormalizedLineOffset[] = [{ normalized: 0, offset: 0 }];
+  let normalizationOffset = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    if (isEOL(ch)) {
+      if (ch === CARRIAGE_RETURN && i + 1 < text.length && text.charCodeAt(i + 1) === LINE_FEED) {
+        i++;
+        normalizationOffset++;
+      }
+      const offset = i + 1;
+      result.push({ normalized: offset - normalizationOffset, offset });
+    }
+  }
+  return result;
+}
+
+class LineOffsetMap {
+  private readonly lines: NormalizedLineOffset[];
+
+  constructor(text: string) {
+    this.lines = computeNormalizedLineOffsets(text);
+  }
+
+  toDocumentOffset(normalizedOffset: number): number {
+    const line = this.findLine(normalizedOffset, "normalized");
+    return line.offset + normalizedOffset - line.normalized;
+  }
+
+  toNormalizedOffset(offset: number): number {
+    const line = this.findLine(offset, "offset");
+    return line.normalized + offset - line.offset;
+  }
+
+  private findLine(offset: number, key: keyof NormalizedLineOffset): NormalizedLineOffset {
+    let low = 0;
+    let high = this.lines.length;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (this.lines[mid]![key] > offset) { high = mid; } else { low = mid + 1; }
+    }
+    // INVARIANT: the first line starts at 0 and offsets are not negative, so low is at least 1.
+    // low is the first line that starts after the offset, so the offset lies on the line before it.
+    return this.lines[low - 1]!;
+  }
+}
+
+/** An edit sent to the editor and not yet settled: the document text it was computed against, and the text it yields. */
+interface ChangeSet {
+  before: string;
+  after: string;
+}
+
+function isEcho(inFlight: readonly ChangeSet[], changes: readonly TextChange[]): boolean {
+  return inFlight.some((changeSet) => applyChanges(changeSet.before, changes) === changeSet.after);
+}
 
 const LOG_MODULE = "collab.binding";
 
@@ -20,7 +105,7 @@ const LOG_MODULE = "collab.binding";
 export interface EditorSelection { anchor: number; active: number }
 
 /** Changes to send to the editor, against the document text they were computed from; `settle` once the editor answered. */
-export interface PendingEdit {
+export interface PendingChange {
   readonly changes: readonly TextChange[];
   settle(): void;
 }
@@ -88,17 +173,17 @@ export class NormalizedText {
       // Selections between remote changes the editor has not shown yet have no exact place; undo then keeps the caret.
       this.write(this.pending.rebase(changes, this.editorText, this.text), undefined);
     } else {
-      this.write(sortChanges(changes), selections);
+      this.write(orderChanges(changes), selections);
     }
   }
 
   /** The next edit that brings `documentText`, the editor's current text, closer to the shared text. */
-  nextEdit(documentText: string): PendingEdit | undefined {
+  nextEdit(documentText: string): PendingChange | undefined {
     if (documentText !== this.editorText) {
       void this.logger.log("WARN", LOG_MODULE, "The editor changed without reporting it; sharing the difference as a local edit", {
         expectedLength: this.editorText.length, actualLength: documentText.length,
       });
-      this.applyLocalChanges([replacementBetween(this.editorText, documentText)]);
+      this.applyLocalChanges([deriveReplacementBetween(this.editorText, documentText)]);
     }
     const changes = this.pending.head;
     if (!changes) { return undefined; }
@@ -135,7 +220,7 @@ export class NormalizedText {
     }
     const hasCR = this.text.includes("\r");
     const map = this.lineMap();
-    const changes = changesFromDelta(event.delta).map((change) => ({
+    const changes = deriveChangesFromDelta(event.delta).map((change) => ({
       start: map.toDocumentOffset(change.start),
       end: map.toDocumentOffset(change.end),
       text: normalizeLineEnds(change.text, hasCR),

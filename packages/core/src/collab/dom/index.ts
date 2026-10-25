@@ -2,4 +2,4 @@
 export { runShareProjectDialog } from "./shareProjectDialog.js";
 export { runJoinProjectDialog } from "./joinProjectDialog.js";
 export { runLeaveProjectDialog } from "./leaveProjectDialog.js";
-export { projectShareMenuEntries } from "./projectShareMenuEntries.js";
+export { createProjectShareMenuEntries } from "./createProjectShareMenuEntries.js";

@@ -1,28 +1,58 @@
 /**
  * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add).
  */
-import { SYNTAX_HELP } from "../../../library/index.js";
-import { escapeHtml, icon } from "../../../ui/index.js";
+import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, deriveBreadcrumb } from "../../../library/index.js";
+import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import { deriveScope } from "../../viewModel/index.js";
-import { requestAddPaper } from "../flows/index.js";
-import { toggleSidebar } from "../shell/index.js";
+import { sendAddPaperRequest } from "../flows/index.js";
+import { updateSidebarOpen } from "../shell/index.js";
 import type { UiContext } from "../uiContext.js";
-import { renderCrumbs } from "./breadcrumb.js";
 import { mountShareFolderButton } from "./shareFolderButton.js";
+import { renderElement } from "../../../ui/dom/index.js";
+import { attachDropZone } from "../drag/index.js";
+
+function crumb(ctx: UiContext, label: string, path: string, last: boolean): HTMLElement {
+  const b = renderElement("button", {
+    class: `crumb${last ? " current" : ""}`,
+    type: "button",
+    title: last ? label : `Go to ${label}`,
+    html: `<span>${escapeHtml(label)}</span>`,
+  });
+  if (!last) {
+    b.addEventListener("click", () => ctx.store.openFolder(path));
+    attachDropZone(ctx, b, path);
+  }
+  return b;
+}
+
+function renderCrumbs(ctx: UiContext, container: HTMLElement, folder: string, count: string): void {
+  const chain = deriveBreadcrumb(PAPERS_DIR, folder, "/");
+  const frag = document.createDocumentFragment();
+  if (chain.length === 1) {
+    frag.append(crumb(ctx, LIBRARY_LABEL, PAPERS_DIR, true));
+  } else {
+    chain.forEach((node, i) => {
+      if (i > 0) frag.append(renderElement("span", { class: "crumb-sep", html: renderIcon("chevron-right") }));
+      frag.append(crumb(ctx, node.isRoot ? LIBRARY_LABEL : node.label, node.path, i === chain.length - 1));
+    });
+  }
+  frag.append(renderElement("span", { class: "ls-count", text: count }));
+  container.replaceChildren(frag);
+}
 
 const SEARCH_SYNTAX_TIP = SYNTAX_HELP.map((row) => `${row.syntax}   ${row.description}`).join("\n");
 const SEARCH_DEBOUNCE_MS = 80;
 
 const headerHtml = (addTooltip: string, readOnly: boolean): string => `
-  <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${icon("panel-left")}</button>
+  <button class="ls-icon-btn sidebar-toggle" data-act="sidebar" title="Show library sidebar">${renderIcon("panel-left")}</button>
   <nav class="breadcrumb" aria-label="List scope"></nav>
   <div class="ls-search" title="${escapeHtml(SEARCH_SYNTAX_TIP)}">
-    ${icon("search")}
+    ${renderIcon("search")}
     <input class="ls-library-search" type="text" placeholder="Search papers" spellcheck="false" autocomplete="off" aria-label="Search papers"/>
     <kbd class="ls-search-key" aria-hidden="true">/</kbd>
-    <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${icon("x")}</button>
+    <button class="ls-search-clear" data-act="clear" title="Clear search (Esc)">${renderIcon("x")}</button>
   </div>
-  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${icon("plus")}<span>Add</span></button>`}`;
+  ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${renderIcon("plus")}<span>Add</span></button>`}`;
 
 function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -43,8 +73,8 @@ function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
 function onToolbarClick(ctx: UiContext, act: string | undefined, search: HTMLInputElement): void {
   switch (act) {
     case "clear": ctx.store.set({ query: "" }); search.value = ""; search.focus(); return;
-    case "add": requestAddPaper(ctx); return;
-    case "sidebar": toggleSidebar(ctx.root, ctx.prefs); return;
+    case "add": sendAddPaperRequest(ctx); return;
+    case "sidebar": updateSidebarOpen(ctx.root, ctx.prefs); return;
   }
 }
 

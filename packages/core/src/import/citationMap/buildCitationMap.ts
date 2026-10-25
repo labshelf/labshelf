@@ -3,9 +3,9 @@
 import { openAlexWork, type OpenAlexCitationWork, type RegistryEnv } from "../registries/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import { doiLookup } from "../../library/index.js";
-import { citationCache, isStale, type CachedWork, type CitationCache } from "./citationCache.js";
-import { countMissingCitations, type CitationLink, type ResolvedPaper } from "./missingCitations.js";
+import { createDoiFinder } from "../../library/index.js";
+import { createCitationCache, isStale, type CachedWork, type CitationCache } from "./createCitationCache.js";
+import { countMissingCitations, type CitationEdge, type ResolvedPaper } from "./missingCitations.js";
 
 /** Stays under OpenAlex's polite limit of ten requests a second. */
 const CONCURRENT_LOOKUPS = 4;
@@ -35,7 +35,7 @@ export interface MissingWork extends Omit<OpenAlexCitationWork, "references"> {
 }
 
 export interface CitationMap {
-  links: CitationLink[];
+  links: CitationEdge[];
   /** Most cited first. */
   missing: MissingWork[];
   /** Library papers with a DOI that OpenAlex did not return. */
@@ -50,7 +50,7 @@ export async function buildCitationMap(
 ): Promise<CitationMap> {
   const { minCitingPapers = 3, maxMissing = 50, maxAgeDays = 30 } = options;
   const now = env.now?.() ?? new Date();
-  const cache = citationCache(env.fs, env.cacheDir, env.logger);
+  const cache = createCitationCache(env.fs, env.cacheDir, env.logger);
   const fresh = (entry: CachedWork | undefined): entry is CachedWork => entry !== undefined && !isStale(entry, now, maxAgeDays);
 
   const resolved: ResolvedPaper[] = [];
@@ -65,7 +65,7 @@ export async function buildCitationMap(
   });
 
   const { links, candidates } = countMissingCitations(resolved, minCitingPapers);
-  const libraryDoi = doiLookup(papers);
+  const libraryDoi = createDoiFinder(papers);
   const missing: MissingWork[] = [];
   await eachLimited(candidates.slice(0, maxMissing), async ({ workId, citedBy }) => {
     const cached = await cache.readWork(workId);

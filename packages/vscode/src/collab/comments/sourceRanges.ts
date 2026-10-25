@@ -20,13 +20,13 @@ function lineEnd(text: string, starts: readonly number[], line: number): number 
   return text[next - 2] === "\r" ? next - 2 : next - 1;
 }
 
-export function offsetAt(text: string, { line, character }: LinePosition): number {
+export function deriveOffset(text: string, { line, character }: LinePosition): number {
   const starts = lineStarts(text);
   const row = Math.min(Math.max(line, 0), starts.length - 1);
   return Math.min(starts[row]! + Math.max(character, 0), lineEnd(text, starts, row));
 }
 
-export function positionAt(text: string, offset: number): LinePosition {
+export function derivePosition(text: string, offset: number): LinePosition {
   const starts = lineStarts(text);
   let line = 0;
   while (line + 1 < starts.length && starts[line + 1]! <= offset) { line += 1; }
@@ -46,9 +46,9 @@ function trimmed(text: string, start: number, end: number): TextRange | undefine
  * The text a thread made in the editor anchors to: the selection, or its whole lines when it is empty.
  * @returns undefined when that text is only whitespace
  */
-export function editorCommentRange(text: string, from: LinePosition, to: LinePosition): TextRange | undefined {
-  const start = offsetAt(text, from);
-  const end = offsetAt(text, to);
+export function createEditorCommentRange(text: string, from: LinePosition, to: LinePosition): TextRange | undefined {
+  const start = deriveOffset(text, from);
+  const end = deriveOffset(text, to);
   if (start < end) { return trimmed(text, start, end); }
   const starts = lineStarts(text);
   return trimmed(text, starts[Math.min(from.line, starts.length - 1)]!, lineEnd(text, starts, Math.min(to.line, starts.length - 1)));
@@ -59,7 +59,7 @@ export function editorCommentRange(text: string, from: LinePosition, to: LinePos
  * @param line counts from 1, as SyncTeX does
  * @returns undefined when the line is past the end of the text or blank
  */
-export function sourceCommentRange(text: string, line: number, quote: string): TextRange | undefined {
+export function findSourceCommentRange(text: string, line: number, quote: string): TextRange | undefined {
   const starts = lineStarts(text);
   const row = line - 1;
   if (row < 0 || row >= starts.length) { return undefined; }

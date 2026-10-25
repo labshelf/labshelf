@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/templates.md#cache
 import type { LibraryFileSystem } from "../../ports/index.js";
 import type { PathOps } from "../../library/index.js";
-import type { CachedIndex, CachedSourceId, TemplateCache } from "../sources/index.js";
+import type { CachedCatalogIndex, CachedSourceId, TemplateCache } from "../sources/index.js";
 import { readOptionalBytes } from "./readOptionalBytes.js";
 
 const SEGMENT = /^[^/\\\0]+$/;
@@ -29,13 +29,13 @@ export function createLibraryTemplateCache({ fs, paths, libraryRoot }: LibraryTe
   // TRAP: built per cache, not at module load, because the jsdom test environment has no TextDecoder when a gallery test imports this module.
   const text = new TextDecoder();
   return {
-    async readIndex(source: CachedSourceId): Promise<CachedIndex | undefined> {
+    async readIndex(source: CachedSourceId): Promise<CachedCatalogIndex | undefined> {
       const body = await readOptionalBytes(fs, paths.join(folder(source), "index.json"));
       if (body === undefined) { return undefined; }
       const etag = await readOptionalBytes(fs, paths.join(folder(source), "index.etag"));
       return etag === undefined ? { body: text.decode(body) } : { body: text.decode(body), etag: text.decode(etag).trim() };
     },
-    async writeIndex(source: CachedSourceId, index: CachedIndex): Promise<void> {
+    async writeIndex(source: CachedSourceId, index: CachedCatalogIndex): Promise<void> {
       const dir = folder(source);
       await fs.ensureDir(dir);
       await fs.writeText(paths.join(dir, "index.json"), index.body);

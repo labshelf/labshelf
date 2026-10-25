@@ -1,9 +1,9 @@
-import { paperComparator, recordComparator, type PaperSortKey } from "@labshelf/core";
+import { createPaperComparator, createPaperRecordComparator, type PaperSortColumn } from "@labshelf/core";
 
 import { entry } from "../../support/libraryModelFixtures";
 
-const order = (key: PaperSortKey, reverse: boolean, papers: ReturnType<typeof entry>[]): string[] =>
-  [...papers].sort(paperComparator({ key, reverse })).map((p) => p.record.id);
+const order = (key: PaperSortColumn, reverse: boolean, papers: ReturnType<typeof entry>[]): string[] =>
+  [...papers].sort(createPaperComparator({ key, reverse })).map((p) => p.record.id);
 
 describe("paperComparator", () => {
   it("orders status Unread, Reading, Done", () => {
@@ -44,6 +44,6 @@ describe("paperComparator", () => {
 describe("recordComparator", () => {
   it("orders bare records by the same rules", () => {
     const records = [entry("b", "", { year: 2001 }).record, entry("a", "", { year: 2010 }).record, entry("n").record];
-    expect(records.sort(recordComparator({ key: "year", reverse: false })).map((r) => r.id)).toEqual(["a", "b", "n"]);
+    expect(records.sort(createPaperRecordComparator({ key: "year", reverse: false })).map((r) => r.id)).toEqual(["a", "b", "n"]);
   });
 });

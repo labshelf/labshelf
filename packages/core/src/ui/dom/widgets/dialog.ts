@@ -1,6 +1,6 @@
 // Shows a modal confirmation dialog in place of `window.confirm`; resolves with the chosen button id, or undefined when dismissed.
-import { icon } from "../../icons/index.js";
-import { el } from "../dom.js";
+import { renderIcon } from "../../icons/index.js";
+import { renderElement } from "../dom.js";
 import { mountOverlay } from "./overlay.js";
 
 let dialogCount = 0;
@@ -24,18 +24,18 @@ export interface DialogOptions<T extends string> {
 /** Shows a modal dialog and resolves with the id of the pressed button. */
 export function showDialog<T extends string>(opts: DialogOptions<T>): Promise<T | undefined> {
   return new Promise((resolve) => {
-    const actions = el("div", { class: "ls-dialog-actions" });
+    const actions = renderElement("div", { class: "ls-dialog-actions" });
     const glyph = opts.severity === "info" ? "info" : "warning";
     const id = `ls-dialog-${++dialogCount}`;
-    const box = el("div", {
+    const box = renderElement("div", {
       class: "ls-dialog", role: "alertdialog", "aria-modal": "true",
       "aria-labelledby": `${id}-title`, "aria-describedby": opts.message ? `${id}-msg` : undefined,
     },
-      el("div", { class: "ls-dialog-head" },
-        el("span", { html: icon(glyph) }),
-        el("div", {},
-          el("div", { class: "ls-dialog-title", id: `${id}-title`, text: opts.title }),
-          opts.message ? el("div", { class: "ls-dialog-msg", id: `${id}-msg`, text: opts.message }) : null,
+      renderElement("div", { class: "ls-dialog-head" },
+        renderElement("span", { html: renderIcon(glyph) }),
+        renderElement("div", {},
+          renderElement("div", { class: "ls-dialog-title", id: `${id}-title`, text: opts.title }),
+          opts.message ? renderElement("div", { class: "ls-dialog-msg", id: `${id}-msg`, text: opts.message }) : null,
         ),
       ),
       actions,
@@ -44,12 +44,12 @@ export function showDialog<T extends string>(opts: DialogOptions<T>): Promise<T 
     const { close } = mountOverlay(box, () => resolve(undefined), opts.root ? { root: opts.root } : {});
 
     // Cancel sits first, primary last — VS Code's button order.
-    const cancel = el("button", { class: "ls-btn", type: "button", text: "Cancel" });
+    const cancel = renderElement("button", { class: "ls-btn", type: "button", text: "Cancel" });
     cancel.addEventListener("click", () => { close(); resolve(undefined); });
     actions.append(cancel);
     let primary: HTMLButtonElement | null = null;
     for (const b of opts.buttons) {
-      const btn = el("button", { class: `ls-btn${b.primary ? " ls-btn-primary" : ""}${b.danger ? " ls-btn-danger" : ""}`, type: "button", text: b.label });
+      const btn = renderElement("button", { class: `ls-btn${b.primary ? " ls-btn-primary" : ""}${b.danger ? " ls-btn-danger" : ""}`, type: "button", text: b.label });
       btn.addEventListener("click", () => { close(); resolve(b.id); });
       actions.append(btn);
       if (b.primary) primary = btn;
@@ -59,7 +59,7 @@ export function showDialog<T extends string>(opts: DialogOptions<T>): Promise<T 
 }
 
 /** Two-button confirmation; resolves true when the user accepts. */
-export async function confirmDialog(title: string, message: string, acceptLabel = "OK", danger = false): Promise<boolean> {
+export async function askDialog(title: string, message: string, acceptLabel = "OK", danger = false): Promise<boolean> {
   const result = await showDialog({
     title,
     message,

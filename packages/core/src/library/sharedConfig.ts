@@ -10,7 +10,7 @@ export interface SharedConfig {
 }
 
 /** A change to apply: a key set to undefined is removed. */
-export interface SharedConfigPatch {
+export interface SharedConfigUpdate {
   libraryRoot?: string | undefined;
   [namespace: string]: unknown;
 }
@@ -38,7 +38,7 @@ export function parseSharedConfig(text: string): SharedConfig {
  * updating one preference keeps the others; a key patched to undefined is removed.
  * @returns the merged config
  */
-export function mergeSharedConfig(current: SharedConfig, patch: SharedConfigPatch): SharedConfig {
+export function mergeSharedConfig(current: SharedConfig, patch: SharedConfigUpdate): SharedConfig {
   const next: Record<string, unknown> = { ...current };
   for (const [key, value] of Object.entries(patch)) {
     if (value === undefined) {

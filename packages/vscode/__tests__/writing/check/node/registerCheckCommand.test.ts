@@ -1,23 +1,23 @@
 // Tests Check Before Submitting: it builds first, checks the built PDF and shows the findings in Problems per project.
 import * as vscode from "vscode";
 
-import type { CheckFinding } from "@labshelf/core";
+import type { CheckProblem } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
 import { CHECK_COMMAND } from "../../../../src/writing/check";
 import { registerCheckCommand } from "../../../../src/writing/check/node";
-import { builtPdf } from "../../../../src/writing/preview";
+import { readBuiltPdf } from "../../../../src/writing/preview";
 import { commandHandler, fakeHost, fakeProjects, openInEditor, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), checkProject: jest.fn() }));
-jest.mock("../../../../src/writing/preview", () => ({ builtPdf: jest.fn() }));
+jest.mock("../../../../src/writing/preview", () => ({ readBuiltPdf: jest.fn() }));
 
 const check = checkProject as jest.Mock;
-const pdfFor = builtPdf as jest.Mock;
+const pdfFor = readBuiltPdf as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 const saveAll = (vscode.workspace as unknown as { saveAll: jest.Mock }).saveAll;
 const pdfjs = {} as never;
 
-const TRIO: CheckFinding[] = [
+const TRIO: CheckProblem[] = [
   { rule: "pages", severity: "error", message: "The document has 9 pages; the limit is 8.", location: { kind: "pdf" } },
   { rule: "anonymity", severity: "error", message: "The PDF Author field names the author.", location: { kind: "pdf" } },
   { rule: "fonts", severity: "warning", message: "Type 3 font in use.", location: { kind: "pdf", page: 1 } },

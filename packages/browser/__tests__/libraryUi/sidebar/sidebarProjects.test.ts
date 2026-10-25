@@ -3,7 +3,7 @@
  * @jest-environment-options {"customExportConditions": ["node", "node-addons"]}
  */
 // The browser sidebar lists the library's projects under Projects and offers only what the browser can do.
-import { createSharingHost, LibraryViewStore, type ProjectEntry } from "@labshelf/core";
+import { createShareHost, LibraryViewStore, type ProjectEntry } from "@labshelf/core";
 import type { LibrarySidebar, LibraryUi } from "@labshelf/core/dom";
 import type { PagePrefs } from "../../../src/libraryUi/prefs";
 import type { BrowserProjectRow, ProjectsSource } from "../../../src/writing/projectList";
@@ -24,7 +24,7 @@ async function mount(rows: BrowserProjectRow[] = [ready, broken]) {
     entryOf: jest.fn(async (id: string) => (id === "thesis" ? thesisEntry : undefined)),
   } satisfies ProjectsSource;
   const session = { current: () => undefined, openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
-  const sharing = createSharingHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
+  const sharing = createShareHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
   const slot = document.createElement("div");
   document.body.replaceChildren(slot);
   const openTab = jest.fn();
@@ -100,7 +100,7 @@ describe("sidebar projects glue", () => {
   it("offers the open project the share entries of the latest project list, which a share or leave refreshes", async () => {
     // The session keeps the settings it opened with, so after a leave they still name the share.
     const session = { current: () => ({ ...thesisEntry, settings: { id: "thesis", shared: "share-1" } }) as unknown as ProjectEntry, openProject: jest.fn(async () => true), closeProject: jest.fn(async () => true), attachSidebar: jest.fn(), treeClick: jest.fn(), treeAction: jest.fn(async () => undefined) } satisfies SidebarSession;
-    const host = createSharingHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
+    const host = createShareHost({ place: "this browser", logger: { log: async () => undefined, error: async () => undefined }, clipboard: { write: async () => undefined }, openLink: async () => undefined });
     const sharing = { ...host, offers: () => ({ projects: true, links: false }) };
     const source = { rows: jest.fn(async () => [ready]), openPdf: jest.fn(), entryOf: jest.fn(async () => undefined) } satisfies ProjectsSource;
     const sidebar = { setProjects: jest.fn(), setOpenProject: jest.fn(), setSectionCollapsed: jest.fn(), setProjectOffers: jest.fn() } as unknown as LibrarySidebar;

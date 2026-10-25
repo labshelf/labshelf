@@ -1,7 +1,7 @@
 // Declares the project storage operations a host implements for the All projects page.
 import type { ProjectTarget } from "../project/index.js";
-import type { ProjectDetail } from "./projectDetailPane.js";
-import type { NewProjectKind, ProjectMenuCommand, ProjectRow } from "./projectRow.js";
+import type { ProjectPaneContent } from "./projectDetailPane.js";
+import type { CreateProjectKind, ProjectMenuCommand, ProjectRow } from "./projectRow.js";
 
 /** Every `id` is a ProjectRow id; the implementation binds the logger and the library. */
 export interface ProjectLibraryPort {
@@ -11,8 +11,8 @@ export interface ProjectLibraryPort {
   commands(): ProjectMenuCommand[];
   open(id: string): Promise<void>;
   /** The kinds `create` can make on this host; the page offers only these. */
-  newKinds(): NewProjectKind[];
-  create(kind: NewProjectKind): Promise<void>;
+  newKinds(): CreateProjectKind[];
+  create(kind: CreateProjectKind): Promise<void>;
   rename(id: string, title: string): Promise<void>;
   duplicate(id: string, title: string): Promise<void>;
   move(id: string, folder: string | undefined): Promise<void>;
@@ -25,7 +25,7 @@ export interface ProjectLibraryPort {
   files(id: string): Promise<string[]>;
   /** Opens one of `files(id)`, opening the project first when another one is open. */
   openFile(id: string, path: string): Promise<void>;
-  detail(id: string): Promise<ProjectDetail>;
+  detail(id: string): Promise<ProjectPaneContent>;
   build(id: string): Promise<void>;
   /** Opens the project's last PDF. */
   preview(id: string): Promise<void>;

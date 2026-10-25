@@ -1,7 +1,7 @@
 /**
  * Locates the References section and extracts the entry a citation link points at. Text extraction and layout analysis are lazy and cached per page.
  */
-import { entryAtY, entryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery, type ReferenceEntry, type TextLine } from "../../text/index.js";
+import { findEntryAtY, findEntryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery, type ReferenceEntry, type TextLine } from "../../text/index.js";
 import type { PageTextCache } from "./pageText.js";
 
 export interface ResolvedEntry {
@@ -57,7 +57,7 @@ export class CitationResolver {
   async entryAt(pageNumber: number, y: number, x: number | null): Promise<string | null> {
     const entries = await this.pageEntries(pageNumber);
     const { columnSplit } = await this.pages.get(pageNumber);
-    return entryAtY(entries, { y, x, columnSplit })?.text ?? null;
+    return findEntryAtY(entries, { y, x, columnSplit })?.text ?? null;
   }
 
   /**
@@ -69,7 +69,7 @@ export class CitationResolver {
     if (!region) { return null; }
     const last = this.lastReferencesPage(region);
     for (let p = region.pageNumber; p <= last; p++) {
-      const hit = entryByNumber(await this.pageEntries(p), n);
+      const hit = findEntryByNumber(await this.pageEntries(p), n);
       if (hit) { return { text: hit.text, pageNumber: p, y: hit.yFirst + hit.lineHeight }; }
     }
     return null;

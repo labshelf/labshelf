@@ -15,6 +15,6 @@ const ENGINE_LABELS: Readonly<Record<LatexEngine, string>> = {
   lualatex: "LuaLaTeX",
 };
 
-export function engineLabel(engine: LatexEngine): string {
+export function formatEngineLabel(engine: LatexEngine): string {
   return ENGINE_LABELS[engine];
 }

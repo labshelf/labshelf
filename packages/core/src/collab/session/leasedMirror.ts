@@ -4,8 +4,8 @@ import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/in
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { createWriteRecordStore, type DeviceIdentity } from "../../library/writeRecords/index.js";
 import {
-  acquireFolderLease, startProjectMirror, systemLeaseScheduler,
-  type FolderLease, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorDisk,
+  openFolderLease, startProjectMirror, systemLeaseScheduler,
+  type FolderLease, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorFileSystem,
 } from "../mirror/index.js";
 import type { ConnectionMirror, MirrorFactory, MirrorInput } from "./connectionMirror.js";
 
@@ -20,7 +20,7 @@ export interface LeasedMirrorOptions {
   app: MirrorApp;
   logger: ILogger;
   mergeText: MergeText;
-  disk(folder: string): MirrorDisk;
+  disk(folder: string): MirrorFileSystem;
   /** True for a path an open editor holds; the editor binding syncs it. */
   isEditorOwned?(folder: string, path: string): boolean;
   onConflictCopy?(folder: string, copy: ConflictCopy): void | Promise<void>;
@@ -28,9 +28,9 @@ export interface LeasedMirrorOptions {
   scheduler?: LeaseScheduler;
 }
 
-export function leasedMirrorFactory(options: LeasedMirrorOptions): MirrorFactory {
+export function createLeasedMirrorFactory(options: LeasedMirrorOptions): MirrorFactory {
   const scheduler = options.scheduler ?? systemLeaseScheduler;
-  const acquire = (folder: string) => acquireFolderLease({ fs: options.fs, folder, app: options.app, logger: options.logger, scheduler });
+  const acquire = (folder: string) => openFolderLease({ fs: options.fs, folder, app: options.app, logger: options.logger, scheduler });
   return async (input) => {
     const first = await acquire(input.folder);
     if (first.kind === "owned") { return { kind: "running", mirror: runMirror(options, input, first.lease) }; }
@@ -44,7 +44,7 @@ export function leasedMirrorFactory(options: LeasedMirrorOptions): MirrorFactory
 
 /** Retries the lease until it is ours; undefined once `signal` aborts, with any lease taken meanwhile released. */
 function waitForLease(
-  acquire: () => ReturnType<typeof acquireFolderLease>, signal: AbortSignal, scheduler: LeaseScheduler, logger: ILogger, folder: string,
+  acquire: () => ReturnType<typeof openFolderLease>, signal: AbortSignal, scheduler: LeaseScheduler, logger: ILogger, folder: string,
 ): Promise<FolderLease | undefined> {
   return new Promise((resolve) => {
     let trying = false;

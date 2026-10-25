@@ -2,12 +2,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { fetchPdf, isBotCheck, isPdfBytes, nextHopsFromHtml } from "@labshelf/core";
-import type { InTabAnswer } from "@labshelf/core";
+import { fetchPdf, isBotCheck, isPdfBytes, extractNextHopsFromHtml, type InTabAnswer } from "@labshelf/core";
 
 import { downloadPdf } from "../../../../src/import/pdfFinder/client/index";
-import type { HopSettings } from "../../../../src/import/pdfFinder/client/fetchOnce";
-import { makeEnv } from "../../../../src/import/pdfFinder/env";
+import type { HopSettings } from "../../../../src/import/pdfFinder/client/fetchPdf";
+import { createResolverEnv } from "../../../../src/import/pdfFinder/env";
 import { PDF, html, makeFindingHarness, pdf } from "../../../support/pdfFindingHarness";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "fixtures", name), "utf8");
@@ -17,12 +16,12 @@ const challenge = "<!DOCTYPE html><html><head><title>Just a moment...</title></h
 
 describe("nextHopsFromHtml", () => {
   it("follows an interstitial's redirect to the real file", () => {
-    const hops = nextHopsFromHtml(fixture("sciencedirectInterstitial.html"), "https://www.sciencedirect.com/science/article/pii/X/pdfft");
+    const hops = extractNextHopsFromHtml(fixture("sciencedirectInterstitial.html"), "https://www.sciencedirect.com/science/article/pii/X/pdfft");
     expect(hops[0]).toBe("https://pdf.sciencedirectassets.com/272/1-s2.0-0196677482900074/main.pdf?X-Amz-Token=abc&X-Amz-Date=20261007");
   });
 
   it("finds nothing worth following on a login wall", () => {
-    expect(nextHopsFromHtml(fixture("loginWall.html"), "https://publisher.example/login")).toEqual([]);
+    expect(extractNextHopsFromHtml(fixture("loginWall.html"), "https://publisher.example/login")).toEqual([]);
   });
 });
 
@@ -135,7 +134,7 @@ describe("bot checks", () => {
     const h = makeFindingHarness();
     const url = "https://dl.acm.org/doi/pdf/10.1145/1";
     h.routes[url] = () => html(challenge, 403);
-    const outcome = await downloadPdf(url, h.opts(), makeEnv(h.opts()), hopSettings());
+    const outcome = await downloadPdf(url, h.opts(), createResolverEnv(h.opts()), hopSettings());
     expect(outcome).toEqual({ blocked: [url], outcome: "bot", status: 403 });
     expect(h.logs).toEqual([expect.objectContaining({ level: "WARN", message: "bot check", context: expect.objectContaining({ url }) })]);
   });
@@ -157,7 +156,7 @@ describe("downloadPdf hops", () => {
     net.routes["https://a.example/start"] = () => html(refresh("https://a.example/real.pdf"));
     net.routes["https://a.example/real.pdf"] = pdf;
     const landing = "https://publisher.example/article/1";
-    const outcome = await downloadPdf("https://a.example/start", net.opts(), makeEnv(net.opts()), hopSettings(landing));
+    const outcome = await downloadPdf("https://a.example/start", net.opts(), createResolverEnv(net.opts()), hopSettings(landing));
     expect(outcome.outcome).toBe("pdf");
     expect(net.seen).toEqual([landing, landing]);
   });
@@ -165,7 +164,7 @@ describe("downloadPdf hops", () => {
   it("sends no Referer when none is given", async () => {
     const net = seenReferers();
     net.routes["https://a.example/p.pdf"] = pdf;
-    await downloadPdf("https://a.example/p.pdf", net.opts(), makeEnv(net.opts()), hopSettings());
+    await downloadPdf("https://a.example/p.pdf", net.opts(), createResolverEnv(net.opts()), hopSettings());
     expect(net.seen).toEqual([undefined]);
   });
 
@@ -175,7 +174,7 @@ describe("downloadPdf hops", () => {
     // The tab's session sees a page that points on to a URL that fails.
     const fetchInTab = async (): Promise<InTabAnswer> => ({ finalUrl: "https://a.example/start", html: refresh("https://a.example/gone") });
     const opts = { ...net.opts(), tab: { url: "https://a.example/article", fetchInTab } };
-    const outcome = await downloadPdf("https://a.example/start", opts, makeEnv(opts), hopSettings());
+    const outcome = await downloadPdf("https://a.example/start", opts, createResolverEnv(opts), hopSettings());
     expect(outcome).toEqual({ blocked: [], outcome: "login", status: 200 });
   });
 });

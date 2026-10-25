@@ -1,12 +1,62 @@
 // Builds the ports of the Publish screen from VS Code, the project builders and the core publishing functions.
 import { readFile } from "node:fs/promises";
 
-import { submitTemplatePullRequest, type ProjectFormat, type PublishBuildResult, type TemplateManifest } from "@labshelf/core";
-import { checkTemplateForPublish, renderFirstPagePng, saveProjectAsTemplate } from "@labshelf/core/node";
+import {
+  publishTemplatePullRequest,
+  type ProjectFormat,
+  type PublishBuildResult,
+  type TemplateManifest,
+  type GitHubSignIn,
+  formatEngineLabel,
+} from "@labshelf/core";
+import { checkTemplateForPublish, renderFirstPagePng, writeProjectAsTemplate } from "@labshelf/core/node";
 import type { FinishedBuild } from "../../build/index.js";
 import type { PublishableProject, PublishPorts } from "@labshelf/core";
-import { signInToGitHub } from "./githubAuth.js";
-import { pickPublishProject, publishableById, type PublishProjectDeps } from "./pickPublishProject.js";
+import * as vscode from "vscode";
+import { ensureToolchain } from "../../build/node/index.js";
+import type { ToolchainDeps } from "../../build/toolchain/index.js";
+import type { ReadyProject } from "../../buildRootDocument.js";
+import type { WritingHost, WritingProjects } from "../../session/index.js";
+
+interface PublishProjectDeps {
+  tex: ToolchainDeps["tex"];
+  host: WritingHost;
+  projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
+}
+
+const readyProjects = (deps: PublishProjectDeps): ReadyProject[] =>
+  deps.projects.list().filter((entry): entry is ReadyProject => entry.kind === "ready");
+
+/** The project with its engine; a LaTeX project without one asks for it, and undefined means the user cancelled that. */
+async function toPublishable(deps: PublishProjectDeps, project: ReadyProject): Promise<PublishableProject | undefined> {
+  const { id, format } = project.settings;
+  if (project.main === undefined) { throw new Error(`project "${id}" has no main file`); }
+  const engine = format === "typst" ? "typst" : project.settings.engine ?? (await ensureToolchain({ tex: deps.tex, host: deps.host }, project))?.engine;
+  if (engine === undefined) { return undefined; }
+  const label = engine === "typst" ? "Typst" : formatEngineLabel(engine);
+  return { id, title: id, folder: project.folder, engineLabel: label, format, engine, main: project.main };
+}
+
+async function publishableById(deps: PublishProjectDeps, id: string): Promise<PublishableProject | undefined> {
+  const project = readyProjects(deps).find((entry) => entry.settings.id === id);
+  return project && toPublishable(deps, project);
+}
+
+async function pickPublishProject(deps: PublishProjectDeps): Promise<PublishableProject | undefined> {
+  const items = readyProjects(deps).map((project) => ({ label: project.settings.id, description: project.settings.format, project }));
+  if (items.length === 0) {
+    void vscode.window.showInformationMessage("Create a writing project to publish as a template.");
+    return undefined;
+  }
+  const picked = await vscode.window.showQuickPick(items, { placeHolder: "Project to publish as a template" });
+  return picked && toPublishable(deps, picked.project);
+}
+
+/** Opening a pull request on the catalog needs `public_repo`; the token is used for that call and never stored here. */
+export async function signInToGitHub(): Promise<GitHubSignIn> {
+  const session = await vscode.authentication.getSession("github", ["public_repo"], { createIfNone: true });
+  return { token: session.accessToken, login: session.account.label };
+}
 
 /** Within the 400 to 1600 pixels the catalog accepts for thumbnail.png. */
 const THUMBNAIL_WIDTH_PX = 800;
@@ -33,7 +83,7 @@ async function saveToMyTemplates(deps: PublishPortsDeps, project: PublishablePro
   if (!session) { throw new Error("No library is open to save the template in."); }
   const { name, category, license, description, authors, engine } = manifest;
   const latexEngine = engine === "typst" ? undefined : engine;
-  await saveProjectAsTemplate(session.root, project.id, { name, category, license, description, authors, ...(latexEngine ? { engine: latexEngine } : {}) }, session.logger);
+  await writeProjectAsTemplate(session.root, project.id, { name, category, license, description, authors, ...(latexEngine ? { engine: latexEngine } : {}) }, session.logger);
 }
 
 export function createPublishPorts(deps: PublishPortsDeps): Omit<PublishPorts, "logger" | "post"> {
@@ -43,7 +93,7 @@ export function createPublishPorts(deps: PublishPortsDeps): Omit<PublishPorts, "
     buildPdf: (project) => buildPdf(deps.builders, project),
     renderThumbnail: (pdf) => renderFirstPagePng(pdf, THUMBNAIL_WIDTH_PX),
     check: checkTemplateForPublish,
-    submit: (input) => submitTemplatePullRequest({
+    submit: (input) => publishTemplatePullRequest({
       ...input, fetch: deps.fetch, now: () => new Date(), sleep: (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
     }),
     saveToMyTemplates: (project, manifest) => saveToMyTemplates(deps, project, manifest),

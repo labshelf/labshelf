@@ -1,18 +1,18 @@
 // Tests grouping and analyzing text items into lines.
-import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox } from '../../../src/reader/text/textLines';
+import { detectColumns, deriveLinesFromItems, deriveReadableItems, runOrientation, type TextItemBox } from '../../../src/reader/text/textLines';
 
 function item(str: string, x: number, y: number, width: number, height = 10): TextItemBox {
   return { str, x, y, width, height };
 }
 
-describe('groupItemsIntoLines', () => {
+describe('deriveLinesFromItems', () => {
   it('groups items that share a baseline into one line, sorted by x regardless of input order', () => {
     // A single short line with too few items to trigger two-column detection.
     const hello = item('Hello', 0, 700, 40);
     const world = item('World', 50, 700, 40); // gap of 10 from `hello`'s end (40): needs a space
     const bang = item('!', 90, 700, 5); // touches `world`'s end (90): no extra space
 
-    const lines = groupItemsIntoLines([bang, hello, world], 600);
+    const lines = deriveLinesFromItems([bang, hello, world], 600);
 
     expect(lines).toHaveLength(1);
     expect(lines[0]!.text).toBe('Hello World!');
@@ -25,7 +25,7 @@ describe('groupItemsIntoLines', () => {
     const bTouching = item('bar', 30, 700, 30); // no gap at all
     const cGap = item('baz', 90, 700, 30); // 30px gap from bTouching's end (60)
 
-    const lines = groupItemsIntoLines([a, bTouching, cGap], 600);
+    const lines = deriveLinesFromItems([a, bTouching, cGap], 600);
     expect(lines[0]!.text).toBe('foobar baz');
   });
 
@@ -34,7 +34,7 @@ describe('groupItemsIntoLines', () => {
     const middle = item('Middle', 0, 650, 30);
     const bottom = item('Bottom', 0, 600, 30);
 
-    const lines = groupItemsIntoLines([middle, bottom, top], 600);
+    const lines = deriveLinesFromItems([middle, bottom, top], 600);
     expect(lines.map((l) => l.text)).toEqual(['Top', 'Middle', 'Bottom']);
     expect(lines.map((l) => l.y)).toEqual([700, 650, 600]);
   });
@@ -86,7 +86,7 @@ describe('detectColumns', () => {
   });
 });
 
-describe('groupItemsIntoLines with two columns', () => {
+describe('deriveLinesFromItems with two columns', () => {
   it('reads the whole left column top-to-bottom, then the whole right column, tagging `column`', () => {
     const pageWidth = 600;
     const spacing = 12;
@@ -105,7 +105,7 @@ describe('groupItemsIntoLines with two columns', () => {
     const rightLine2 = row(380, 680, 'R2w', 10);
 
     const shuffled = [...rightLine2, ...leftLine2, ...rightLine1, ...leftLine1];
-    const lines = groupItemsIntoLines(shuffled, pageWidth);
+    const lines = deriveLinesFromItems(shuffled, pageWidth);
 
     expect(lines).toHaveLength(4);
     expect(lines.map((l) => l.column)).toEqual([0, 0, 1, 1]);
@@ -130,7 +130,7 @@ describe('runOrientation', () => {
   });
 });
 
-describe('readableItems', () => {
+describe('deriveReadableItems', () => {
   /** A page of `rows` body lines starting at x=56, one OCR run per word. */
   function bodyPage(rows: number): TextItemBox[] {
     const items: TextItemBox[] = [];
@@ -143,18 +143,18 @@ describe('readableItems', () => {
 
   it('drops a stamp set sideways up the margin, which would otherwise swallow the line at its y', () => {
     const page = [...bodyPage(6), item('[18]', 56, 87, 16, 8), item('McCreight,', 78, 87, 50, 8), stamp];
-    const kept = readableItems(page, 486);
+    const kept = deriveReadableItems(page, 486);
     expect(kept).not.toContain(stamp);
-    const last = groupItemsIntoLines(kept, 486).at(-1)!;
+    const last = deriveLinesFromItems(kept, 486).at(-1)!;
     expect(last.text).toBe('[18] McCreight,');
   });
 
   it('drops the short tokens OCR strands in the outer margin, so line-anchored tests see the real line start', () => {
     const debris = [item('&', 5, 432, 6, 7), item('5', 5, 416, 5, 7), item('[=', 6, 404, 8, 8), item('ES', 2, 392, 9, 9)];
     const page = [...bodyPage(6), ...debris, item('REFERENCES', 215, 432, 60, 7), item('[1]', 61, 416, 12, 7), item('Author,', 78, 416, 40, 7)];
-    const kept = readableItems(page, 486);
+    const kept = deriveReadableItems(page, 486);
     for (const d of debris) { expect(kept).not.toContain(d); }
-    const texts = groupItemsIntoLines(kept, 486).map((l) => l.text);
+    const texts = deriveLinesFromItems(kept, 486).map((l) => l.text);
     expect(texts).toContain('REFERENCES');
     expect(texts).toContain('[1] Author,');
   });
@@ -165,13 +165,13 @@ describe('readableItems', () => {
       items.push(item(`${r + 1}.`, 72, 700 - r * 24, 8, 10));
       for (let w = 0; w < 4; w++) { items.push(item(`entry${r}w${w}`, 108 + w * 60, 700 - r * 24, 52, 10)); }
     }
-    expect(readableItems(items, 612)).toHaveLength(items.length);
+    expect(deriveReadableItems(items, 612)).toHaveLength(items.length);
   });
 
   it('keeps the text of a page drawn entirely sideways, and everything when there is too little text to find margins', () => {
     const sideways = bodyPage(4).map((it) => ({ ...it, orientation: 1 }));
-    expect(readableItems(sideways, 486)).toHaveLength(sideways.length);
+    expect(deriveReadableItems(sideways, 486)).toHaveLength(sideways.length);
     const sparse = [item('&', 5, 432, 6, 7), item('REFERENCES', 215, 432, 60, 7)];
-    expect(readableItems(sparse, 486)).toEqual(sparse);
+    expect(deriveReadableItems(sparse, 486)).toEqual(sparse);
   });
 });

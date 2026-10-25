@@ -5,13 +5,13 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { downloadVerified } from "../index.js";
-import { tinyTexAsset, type TinyTexAsset } from "../../index.js";
+import { findTinyTexAsset, type TinyTexAsset } from "../../index.js";
 
-import { clearQuarantine } from "./removeQuarantine.js";
-import { managedTexRoot } from "./texLayout.js";
+import { removeQuarantine } from "./removeQuarantine.js";
+import { resolveManagedTexDir } from "./texLayout.js";
 import { runTexTool, TEX_MODULE } from "./runTexTool.js";
 import type { TexInstallDeps, TexInstallRun } from "./texInstall.js";
-import { singleTopDir } from "./unpackedDir.js";
+import { findSingleTopDir } from "./unpackedDir.js";
 import { withStagingDir } from "./stagingDir.js";
 
 const execFileAsync = promisify(execFile);
@@ -46,10 +46,10 @@ async function unpack(deps: TexInstallDeps, archive: string, tree: string): Prom
 
 export async function installTinyTex(deps: TexInstallDeps, run: TexInstallRun): Promise<void> {
   run.onProgress(null);
-  const asset = tinyTexAsset(deps.platform, process.arch);
+  const asset = findTinyTexAsset(deps.platform, process.arch);
   if (!asset) { throw new Error(`TinyTeX has no build for ${deps.platform}-${process.arch}`); }
   const bytes = await download(deps, asset);
-  const target = managedTexRoot(run.texRoot, "tinytex");
+  const target = resolveManagedTexDir(run.texRoot, "tinytex");
   await withStagingDir(run.texRoot, "tinytex", async (staging) => {
     const tree = join(staging, "tree");
     const archive = join(tree, asset.name);
@@ -57,12 +57,12 @@ export async function installTinyTex(deps: TexInstallDeps, run: TexInstallRun): 
     await writeFile(archive, bytes);
     await unpack(deps, archive, tree);
     await rm(archive, { force: true });
-    const top = await singleTopDir(tree);
+    const top = await findSingleTopDir(tree);
     // INVARIANT: the old tree goes only after the new one is verified and unpacked.
     await rm(target, { recursive: true, force: true });
     await rename(top, target);
   });
-  if (deps.platform === "darwin") { await clearQuarantine(target, deps.logger, deps.execFileImpl); }
+  if (deps.platform === "darwin") { await removeQuarantine(target, deps.logger, deps.execFileImpl); }
   await deps.logger.log("INFO", TEX_MODULE, "TinyTeX installed", { root: target, asset: asset.name });
   run.onProgress(1);
 }

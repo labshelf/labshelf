@@ -1,7 +1,7 @@
 // Scripts a LabShelf Helper behind a fake native port and a fake WebSocket class so client tests run without a browser.
-import { decodeSocketMessage, encodeSocketMessage, PROTOCOL_VERSION, type HelperBuildStatus, type TexStatus } from "@labshelf/core/helper";
+import { decodeConnectionMessage, encodeConnectionMessage, PROTOCOL_VERSION, type HelperBuildState, type TexToolchain } from "@labshelf/core/helper";
 import type { ILogger } from "@labshelf/core";
-import type { HelperWebSocketConstructor } from "../../../src/helper/client/connection";
+import type { HelperConnectionConstructor } from "../../../src/helper/client/connection";
 import type { NativePort } from "../../../src/platform";
 
 /** `announce` replaces the offsets the helper declares, to script a lying helper. */
@@ -17,10 +17,10 @@ export class FakeSocket {
   onerror: (() => void) | null = null;
   closed = false;
   constructor(readonly url: string, private readonly helper: FakeHelper) { queueMicrotask(() => this.onopen?.()); }
-  send(bytes: Uint8Array): void { this.helper.answer(this, decodeSocketMessage(bytes).envelope); }
+  send(bytes: Uint8Array): void { this.helper.answer(this, decodeConnectionMessage(bytes).envelope); }
   close(): void { this.closed = true; }
   deliver(body: Envelope, payload?: Uint8Array): void {
-    const bytes = encodeSocketMessage({ v: PROTOCOL_VERSION, ...body }, payload);
+    const bytes = encodeConnectionMessage({ v: PROTOCOL_VERSION, ...body }, payload);
     this.onmessage?.({ data: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
   }
   serverClose(reason: string): void { this.onclose?.({ code: 1006, reason }); }
@@ -29,8 +29,8 @@ export class FakeSocket {
 /** Plays the helper: answers hello on the native port and every other message on the socket. */
 export class FakeHelper implements NativePort {
   protocol = PROTOCOL_VERSION;
-  tex: TexStatus = { source: "tinytex", year: 2025, complete: true };
-  built: { status: HelperBuildStatus; pages?: PagesScript } = { status: "failed" };
+  tex: TexToolchain = { source: "tinytex", year: 2025, complete: true };
+  built: { status: HelperBuildState; pages?: PagesScript } = { status: "failed" };
   /** Answers `edit` messages that carry `changes` with a `stale` error. */
   staleChanges = false;
   /** Answers `hello` with a `version` error that carries this `v`, as a helper of that protocol does. */
@@ -88,11 +88,11 @@ export class FakeHelper implements NativePort {
     reply({ type: "pages", pdfSha256: SHA, pageCount: pages.pageCount, changed: pages.announce ?? changed }, payload);
   }
 
-  private makeSocketClass(): HelperWebSocketConstructor {
+  private makeSocketClass(): HelperConnectionConstructor {
     const helper = this;
     return class extends FakeSocket {
       constructor(url: string) { super(url, helper); helper.sockets.push(this); }
-    } as unknown as HelperWebSocketConstructor;
+    } as unknown as HelperConnectionConstructor;
   }
 }
 

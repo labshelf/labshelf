@@ -1,9 +1,9 @@
 // Defines the messages between the sharing dialogs and a SharingHost in another context, and validates them on arrival.
 import { isLibraryPath } from "../protocol/index.js";
-import type { SharingOffers, SharingProgress } from "./shareHost.js";
+import type { ShareOffers, ShareProgress } from "./shareHost.js";
 
 /** The JSON-able arguments of each SharingHost operation, in order; signals and progress callbacks stay on their side. */
-export interface SharingArgs {
+export interface ShareArgs {
   projects: [];
   projectStatus: [projectId: string];
   shareProject: [projectId: string];
@@ -21,17 +21,17 @@ export interface SharingArgs {
   openLink: [url: string];
 }
 
-export type SharingOp = keyof SharingArgs;
+export type ShareOp = keyof ShareArgs;
 
 type Envelope = { channel: "sharing" };
 
-export type SharingCall =
-  | { [K in SharingOp]: Envelope & { type: "call"; id: number; op: K; args: SharingArgs[K] } }[SharingOp]
+export type ShareCall =
+  | { [K in ShareOp]: Envelope & { type: "call"; id: number; op: K; args: ShareArgs[K] } }[ShareOp]
   | (Envelope & { type: "cancel"; id: number })
   | (Envelope & { type: "hello" });
 
 /** A dialog the host asks the UI to open, with what it already knows filled in. */
-export type SharingDialogRequest =
+export type ShareDialogRequest =
   | { kind: "shareProject"; projectId?: string }
   | { kind: "leaveProject"; projectId?: string }
   | { kind: "joinProject"; invite?: string }
@@ -39,12 +39,12 @@ export type SharingDialogRequest =
   | { kind: "manageLinks" }
   | { kind: "importLink"; link?: string };
 
-export type SharingReply =
+export type ShareReply =
   | (Envelope & { type: "result"; id: number; ok: true; value: unknown })
   | (Envelope & { type: "result"; id: number; ok: false; error: string })
-  | (Envelope & { type: "progress"; id: number; progress: SharingProgress })
-  | (Envelope & { type: "offers"; offers: SharingOffers; place: string })
-  | (Envelope & { type: "open"; request: SharingDialogRequest });
+  | (Envelope & { type: "progress"; id: number; progress: ShareProgress })
+  | (Envelope & { type: "offers"; offers: ShareOffers; place: string })
+  | (Envelope & { type: "open"; request: ShareDialogRequest });
 
 type Raw = Record<string, unknown>;
 type Check = (v: unknown) => boolean;
@@ -65,7 +65,7 @@ const isWebUrl: Check = (v) =>
   typeof v === "string" && v.length <= TEXT_MAX && URL.canParse(v) && ["https:", "http:"].includes(new URL(v).protocol);
 
 // The checks for each operation's arguments; the array length is the arity.
-const ARG_CHECKS: Record<SharingOp, Check[]> = {
+const ARG_CHECKS: Record<ShareOp, Check[]> = {
   projects: [],
   projectStatus: [isKey],
   shareProject: [isKey],
@@ -84,29 +84,29 @@ const ARG_CHECKS: Record<SharingOp, Check[]> = {
 };
 
 /** True for any object on the sharing channel, valid or not, so other handlers can leave it alone. */
-export function isSharingMessage(raw: unknown): boolean {
+export function isShareMessage(raw: unknown): boolean {
   return isObject(raw) && raw["channel"] === "sharing";
 }
 
 function validArgs(op: unknown, args: unknown): boolean {
   if (typeof op !== "string" || !Object.hasOwn(ARG_CHECKS, op) || !Array.isArray(args)) return false;
-  const checks = ARG_CHECKS[op as SharingOp];
+  const checks = ARG_CHECKS[op as ShareOp];
   return args.length === checks.length && checks.every((check, i) => check(args[i]));
 }
 
 /** @returns the message when it is a sharing call, cancel or hello with valid fields, else null */
-export function parseSharingCall(raw: unknown): SharingCall | null {
-  if (!isSharingMessage(raw)) return null;
+export function parseShareCall(raw: unknown): ShareCall | null {
+  if (!isShareMessage(raw)) return null;
   const message = raw as Raw;
   switch (message["type"]) {
-    case "hello": return message as SharingCall;
-    case "cancel": return isCallId(message["id"]) ? (message as SharingCall) : null;
-    case "call": return isCallId(message["id"]) && validArgs(message["op"], message["args"]) ? (message as SharingCall) : null;
+    case "hello": return message as ShareCall;
+    case "cancel": return isCallId(message["id"]) ? (message as ShareCall) : null;
+    case "call": return isCallId(message["id"]) && validArgs(message["op"], message["args"]) ? (message as ShareCall) : null;
     default: return null;
   }
 }
 
-const STAGES: readonly unknown[] = ["reading", "encrypting", "uploading"] satisfies Extract<SharingProgress, { stage: unknown }>["stage"][];
+const STAGES: readonly unknown[] = ["reading", "encrypting", "uploading"] satisfies Extract<ShareProgress, { stage: unknown }>["stage"][];
 
 const isProgress = (v: unknown): boolean =>
   isObject(v) && (STAGES.includes(v["stage"]) || (isCount(v["done"]) && isCount(v["total"])));
@@ -116,7 +116,7 @@ const isOffers = (v: unknown): boolean => isObject(v) && isBool(v["projects"]) &
 const optional = (check: Check): Check => (v) => v === undefined || check(v);
 
 // The optional field each dialog request may carry.
-const REQUEST_FIELDS: Record<SharingDialogRequest["kind"], [string, Check] | null> = {
+const REQUEST_FIELDS: Record<ShareDialogRequest["kind"], [string, Check] | null> = {
   shareProject: ["projectId", optional(isKey)],
   leaveProject: ["projectId", optional(isKey)],
   joinProject: ["invite", optional(isText)],
@@ -127,7 +127,7 @@ const REQUEST_FIELDS: Record<SharingDialogRequest["kind"], [string, Check] | nul
 
 function isRequest(v: unknown): boolean {
   if (!isObject(v) || typeof v["kind"] !== "string" || !Object.hasOwn(REQUEST_FIELDS, v["kind"])) return false;
-  const field = REQUEST_FIELDS[v["kind"] as SharingDialogRequest["kind"]];
+  const field = REQUEST_FIELDS[v["kind"] as ShareDialogRequest["kind"]];
   return field === null || field[1](v[field[0]]);
 }
 
@@ -138,13 +138,13 @@ function isResult(m: Raw): boolean {
 }
 
 /** @returns the message when it is a sharing reply with valid fields, else null */
-export function parseSharingReply(raw: unknown): SharingReply | null {
-  if (!isSharingMessage(raw)) return null;
+export function parseShareReply(raw: unknown): ShareReply | null {
+  if (!isShareMessage(raw)) return null;
   const m = raw as Raw;
   const valid =
     (m["type"] === "result" && isResult(m)) ||
     (m["type"] === "progress" && isCallId(m["id"]) && isProgress(m["progress"])) ||
     (m["type"] === "offers" && isOffers(m["offers"]) && typeof m["place"] === "string") ||
     (m["type"] === "open" && isRequest(m["request"]));
-  return valid ? (m as SharingReply) : null;
+  return valid ? (m as ShareReply) : null;
 }

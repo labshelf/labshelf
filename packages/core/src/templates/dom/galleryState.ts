@@ -1,11 +1,11 @@
 // Holds what the template gallery knows (listings, filter, sort, thumbnails, busy and open templates) and derives the entries to show.
 import type { ProjectFormat } from "../../writing/project/index.js";
-import { filterTemplates, type TemplateFilter } from "../filterTemplates.js";
-import { sortTemplates, type TemplateSort } from "../sortTemplates.js";
+import { deriveFilteredTemplates, type TemplateFilter } from "../deriveFilteredTemplates.js";
+import { orderTemplates, type TemplateSort } from "../orderTemplates.js";
 import { TEMPLATE_SOURCES, type TemplateEntry, type TemplateSourceId } from "../templateEntry.js";
-import type { SourceListing, TemplateKey } from "../protocol/index.js";
+import type { SourceListing, TemplateAddress } from "../protocol/index.js";
 
-export const keyOf = (template: TemplateKey): string => `${template.source}/${template.id}`;
+export const deriveTemplateAddress = (template: TemplateAddress): string => `${template.source}/${template.id}`;
 
 export class GalleryState {
   readonly listings: Record<TemplateSourceId, SourceListing> = { community: { status: "loading" }, universe: { status: "loading" }, mine: { status: "loading" } };
@@ -38,7 +38,7 @@ export class GalleryState {
   }
 
   visible(): TemplateEntry[] {
-    return sortTemplates(filterTemplates(this.listed(), this.filter), this.sort);
+    return orderTemplates(deriveFilteredTemplates(this.listed(), this.filter), this.sort);
   }
 
   count(source: TemplateSourceId): number {
@@ -51,18 +51,18 @@ export class GalleryState {
   }
 
   /** Marks the templates not yet requested as requested and returns them. */
-  takeUnrequested(templates: readonly TemplateKey[]): TemplateKey[] {
-    const fresh = templates.filter((t) => !this.requested.has(keyOf(t)));
-    for (const t of fresh) this.requested.add(keyOf(t));
+  takeUnrequested(templates: readonly TemplateAddress[]): TemplateAddress[] {
+    const fresh = templates.filter((t) => !this.requested.has(deriveTemplateAddress(t)));
+    for (const t of fresh) this.requested.add(deriveTemplateAddress(t));
     return fresh;
   }
 
-  setThumbnail(template: TemplateKey, dataUri: string | undefined): void {
-    if (dataUri === undefined) this.thumbnails.delete(keyOf(template));
-    else this.thumbnails.set(keyOf(template), dataUri);
+  setThumbnail(template: TemplateAddress, dataUri: string | undefined): void {
+    if (dataUri === undefined) this.thumbnails.delete(deriveTemplateAddress(template));
+    else this.thumbnails.set(deriveTemplateAddress(template), dataUri);
   }
 
-  isOpen(template: TemplateKey): boolean {
-    return this.open !== null && keyOf(this.open) === keyOf(template);
+  isOpen(template: TemplateAddress): boolean {
+    return this.open !== null && deriveTemplateAddress(this.open) === deriveTemplateAddress(template);
   }
 }

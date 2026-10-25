@@ -3,13 +3,13 @@
 import * as vscode from "vscode";
 
 import {
-  identifiersFromInput,
+  extractIdentifiersFromInput,
   resolveFirstIdentifier,
   searchOnlineCandidates,
 } from "@labshelf/core";
 import type { ILogger, PaperRecord, ResolvedMetadata } from "@labshelf/core";
 import type { PaperService } from "../library/index.js";
-import { enterMetadataManually, truncate } from "./manualMetadataEntry.js";
+import { askMetadataManually, formatTruncated } from "./manualMetadataEntry.js";
 
 /**
  * Asks the user how to identify the paper, resolves it online, and writes the
@@ -28,14 +28,14 @@ export async function fetchMetadataForPaper(
 
   const found = await vscode.window.withProgress(
     { location: vscode.ProgressLocation.Notification, title: "LabShelf: looking up metadata…" },
-    () => lookupUserQuery(query, logger),
+    () => findMetadataForQuery(query, logger),
   );
 
   if (found.length === 0) {
     // Nothing online knows this paper — unpublished work, internal reports and
     // obscure venues all land here, so typing it in must stay possible.
     const choice = await vscode.window.showWarningMessage(
-      `LabShelf: no record matched "${truncate(query, 60)}".`,
+      `LabShelf: no record matched "${formatTruncated(query, 60)}".`,
       "Enter manually",
       "Try again",
       "Cancel",
@@ -44,7 +44,7 @@ export async function fetchMetadataForPaper(
       return fetchMetadataForPaper(paperService, paper, logger);
     }
     if (choice === "Enter manually") {
-      return enterMetadataManually(paperService, paper, query);
+      return askMetadataManually(paperService, paper, query);
     }
     return undefined;
   }
@@ -58,7 +58,7 @@ export async function fetchMetadataForPaper(
 
   const updated = await paperService.applyResolvedMetadata(paper.id, metadata);
   if (updated) {
-    await vscode.window.showInformationMessage(`LabShelf: updated "${truncate(updated.title, 70)}".`);
+    await vscode.window.showInformationMessage(`LabShelf: updated "${formatTruncated(updated.title, 70)}".`);
   }
   return updated;
 }
@@ -79,8 +79,8 @@ async function askForQuery(paper: PaperRecord): Promise<string | undefined> {
  * it can confirm over a title it can only search for.
  * @returns One confirmed record, several candidates, or an empty list.
  */
-export async function lookupUserQuery(query: string, logger: ILogger): Promise<ResolvedMetadata[]> {
-  const identifiers = identifiersFromInput(query);
+export async function findMetadataForQuery(query: string, logger: ILogger): Promise<ResolvedMetadata[]> {
+  const identifiers = extractIdentifiersFromInput(query);
   if (identifiers.length > 0) {
     const confirmed = await resolveFirstIdentifier(identifiers, { logger }).catch(() => undefined);
     if (confirmed) {
@@ -132,7 +132,7 @@ export async function resolveMissingMetadata(paperService: PaperService, logger:
           return;
         }
         progress.report({
-          message: `${index + 1}/${pending.length} — ${truncate(paper.title, 40)}`,
+          message: `${index + 1}/${pending.length} — ${formatTruncated(paper.title, 40)}`,
           increment: 100 / pending.length,
         });
 
@@ -164,7 +164,7 @@ export async function offerMetadataFetch(
 
   const subject =
     papers.length === 1
-      ? `"${truncate(papers[0]!.title, 50)}"`
+      ? `"${formatTruncated(papers[0]!.title, 50)}"`
       : `${papers.length} papers`;
   const choice = await vscode.window.showWarningMessage(
     `LabShelf could not identify ${subject}. Fill in the details now?`,
@@ -179,6 +179,6 @@ export async function offerMetadataFetch(
   for (const paper of papers) {
     await (choice === "Look up"
       ? fetchMetadataForPaper(paperService, paper, logger)
-      : enterMetadataManually(paperService, paper));
+      : askMetadataManually(paperService, paper));
   }
 }

@@ -1,9 +1,9 @@
 // Shows the offer to attach a PDF the user opened or downloaded to the library paper it matched, and acts on it.
-import { $ } from "@labshelf/core/dom";
-import { errorMessage } from "@labshelf/core";
-import { sendRuntime, type AttachPdfData, type PdfOfferView } from "../platform";
-import { folderName } from "./format";
-import { showStatus } from "./render";
+import { findElement } from "@labshelf/core/dom";
+import { formatError } from "@labshelf/core";
+import { sendRuntime, type AttachPdfReply, type PdfOfferView } from "../platform";
+import { formatFolderName } from "./format";
+import { showNotice } from "./render";
 import { popupState, setState } from "./popupState";
 
 export function fetchOffer(tabId: number): Promise<PdfOfferView | null> {
@@ -17,44 +17,44 @@ export function offerFits(offer: PdfOfferView | undefined, pageIsPaper: boolean)
 
 export function showOffer(offer: PdfOfferView): void {
   popupState.offer = offer;
-  $("title").textContent = offer.title;
-  $("title").classList.remove("muted");
-  $("meta").textContent = folderName(offer.folder);
-  $("pdf").hidden = true;
+  findElement("title").textContent = offer.title;
+  findElement("title").classList.remove("muted");
+  findElement("meta").textContent = formatFolderName(offer.folder);
+  findElement("pdf").hidden = true;
   setState("library");
   const what = offer.source === "download" ? "The PDF you downloaded" : "This PDF";
   if (offer.hasBytes) {
-    showStatus({
+    showNotice({
       glyph: "paperclip", tone: "warn", title: `Attach to ${offer.title}`,
       detail: `${what} matches this paper, which has no PDF in your library yet.`, attach: "Attach PDF", dismiss: "Not this paper",
     });
   } else {
-    showStatus({
+    showNotice({
       glyph: "warning", tone: "warn", title: "In your library — without its PDF",
       detail: `${what} matches this paper, but LabShelf could not download the file again. Use "Attach PDF…" in the library.`,
       open: "Open in library", dismiss: "Not this paper",
     });
   }
-  $("open").dataset["folder"] = offer.folder;
-  $("open").dataset["paper"] = offer.paperId;
+  findElement("open").dataset["folder"] = offer.folder;
+  findElement("open").dataset["paper"] = offer.paperId;
 }
 
-export function attachOffered(offer: PdfOfferView): Promise<AttachPdfData> {
-  return sendRuntime<AttachPdfData>({ type: "pdfOffer.attach", offerId: offer.id });
+export function attachOffered(offer: PdfOfferView): Promise<AttachPdfReply> {
+  return sendRuntime<AttachPdfReply>({ type: "pdfOffer.attach", offerId: offer.id });
 }
 
 /** Clears the offer once its paper has a PDF some other way, so the toolbar badge goes too. */
-export async function settleOffer(): Promise<void> {
+export async function attachOffer(): Promise<void> {
   if (!popupState.offer) return;
   await sendRuntime({ type: "pdfOffer.dismiss", offerId: popupState.offer.id });
   popupState.offer = undefined;
 }
 
-export async function dismissOffer(): Promise<void> {
+export async function closeOffer(): Promise<void> {
   try {
-    await settleOffer();
+    await attachOffer();
     window.close();
   } catch (err) {
-    showStatus({ glyph: "warning", tone: "muted", title: "Could not dismiss the offer", detail: errorMessage(err) });
+    showNotice({ glyph: "warning", tone: "muted", title: "Could not dismiss the offer", detail: formatError(err) });
   }
 }

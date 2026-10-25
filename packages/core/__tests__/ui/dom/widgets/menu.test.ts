@@ -4,7 +4,7 @@
 // Tests how a menu closes, which roles its items get, how the keyboard moves focus and where focus returns.
 import { showDialog } from "../../../../src/ui/dom/widgets/dialog";
 import { closeMenu, showMenu } from "../../../../src/ui/dom/widgets/menu";
-import { inputBox } from "../../../../src/ui/dom/widgets/quickInput";
+import { askInputBox } from "../../../../src/ui/dom/widgets/quickInput";
 
 function open(onClose: () => void, onSelect = (): void => undefined): void {
   showMenu({ x: 0, y: 0 }, [{ label: "Pick", onSelect }], { onClose });
@@ -111,7 +111,7 @@ describe("showMenu focus return", () => {
   });
 
   it("returns focus to the invoker when an input box opened by an item is dismissed", () => {
-    pick(() => { void inputBox({ title: "Import" }); });
+    pick(() => { void askInputBox({ title: "Import" }); });
     expect(document.activeElement?.tagName).toBe("INPUT");
     escape();
     expect(document.activeElement).toBe(row);

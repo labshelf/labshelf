@@ -2,11 +2,11 @@
 import type { ProjectEntry } from "@labshelf/core";
 
 import type { Screen } from "../../../screen/index.js";
-import { stringWidth, truncate } from "../../../screen/index.js";
+import { deriveStringWidth, formatTruncated } from "../../../screen/index.js";
 import { mergeStyle } from "../../../screen/index.js";
 import type { Rect } from "../../render.js";
 import { theme } from "../../theme.js";
-import { projectName } from "../viewModel/index.js";
+import { formatProjectName } from "../viewModel/index.js";
 import type { App } from "../app.js";
 
 const SCROLL_MARGIN = 4;
@@ -34,10 +34,10 @@ function drawRow(screen: Screen, rect: Rect, y: number, entry: ProjectEntry, hov
   const inner = rect.w - 2;
   const format = entry.kind === "ready" ? entry.settings.format : "broken";
   const detail = entry.kind === "ready" ? entry.main ?? "" : entry.reason;
-  const detailWidth = Math.min(stringWidth(detail), Math.floor(inner / 2));
+  const detailWidth = Math.min(deriveStringWidth(detail), Math.floor(inner / 2));
   const nameWidth = Math.max(1, inner - FORMAT_WIDTH - detailWidth - 2);
-  screen.text(rect.x + 1, y, truncate(projectName(entry), nameWidth), style(theme.collection));
+  screen.text(rect.x + 1, y, formatTruncated(formatProjectName(entry), nameWidth), style(theme.collection));
   const formatX = rect.x + 1 + nameWidth + 1;
   if (inner > FORMAT_WIDTH + 2) { screen.text(formatX, y, format, style(entry.kind === "ready" ? theme.label : theme.error)); }
-  if (detailWidth) { screen.text(formatX + FORMAT_WIDTH + 1, y, truncate(detail, detailWidth), style(entry.kind === "ready" ? theme.text : theme.warn)); }
+  if (detailWidth) { screen.text(formatX + FORMAT_WIDTH + 1, y, formatTruncated(detail, detailWidth), style(entry.kind === "ready" ? theme.text : theme.warn)); }
 }

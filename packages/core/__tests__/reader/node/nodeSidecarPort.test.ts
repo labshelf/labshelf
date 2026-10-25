@@ -2,16 +2,16 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout } from "../../../src/library/index";
+import { createLibraryLayout } from "../../../src/library/index";
 import { createNodeSidecarPort } from "../../../src/reader/node/index";
-import { PaperDataStore, normalizePaperData, serializePaperData } from "../../../src/reader/index";
+import { PaperSidecarStore, normalizePaperSidecar, serializePaperSidecar } from "../../../src/reader/index";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
 
 async function setup() {
   const root = await makeTempDir();
-  const layout = libraryLayout(root, path.join);
+  const layout = createLibraryLayout(root, path.join);
   return { root, layout };
 }
 
@@ -58,14 +58,14 @@ describe("createNodeSidecarPort", () => {
 
   it("produces the bytes the shared store writes: fixed key order, two-space indent", async () => {
     const { layout } = await setup();
-    const store = new PaperDataStore(createNodeSidecarPort(layout));
+    const store = new PaperSidecarStore(createNodeSidecarPort(layout));
     const highlight = await store.addHighlight("p1", 3, "a sentence", "green", { x: 0.1, y: 0.2, width: 0.3, height: 0.05 });
     await store.setTheme("p1", "dark");
     await store.setReadingState("p1", { page: 3, scaleValue: "page-width", updatedAt: "2025-01-01T00:00:00.000Z" });
     const raw = await fs.readFile(layout.paperDataPath("p1"), "utf8");
-    const normalized = normalizePaperData(JSON.parse(raw) as unknown);
+    const normalized = normalizePaperSidecar(JSON.parse(raw) as unknown);
     expect(normalized.annotations).toEqual([highlight]);
-    expect(raw).toBe(serializePaperData(normalized));
+    expect(raw).toBe(serializePaperSidecar(normalized));
     expect(Object.keys(JSON.parse(raw) as object)).toEqual(["annotations", "theme", "reading"]);
   });
 });

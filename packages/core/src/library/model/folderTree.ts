@@ -21,7 +21,7 @@ export interface SubfolderEntry {
 const PAPER_MARKERS: ReadonlySet<string> = new Set([METADATA_FILE, PDF_FILE]);
 
 /** @returns the papers in a collection and every collection below it ("" is the whole library) */
-export function papersUnder(snapshot: LibrarySnapshot, rel: string): PaperEntry[] {
+export function listPapersUnderFolder(snapshot: LibrarySnapshot, rel: string): PaperEntry[] {
   if (!rel) { return [...snapshot.papers.values()]; }
   const prefix = rel + "/";
   return [...snapshot.papers.values()].filter((entry) => entry.collection === rel || entry.collection.startsWith(prefix));
@@ -32,7 +32,7 @@ export function papersUnder(snapshot: LibrarySnapshot, rel: string): PaperEntry[
  * paper (metadata.yaml or paper.pdf) or is hidden by a leading dot.
  * @returns the top-level collections, children sorted by name
  */
-export function collectionsFromFilePaths(paths: readonly string[], root: string = PAPERS_DIR): FolderTreeNode[] {
+export function deriveFoldersFromFilePaths(paths: readonly string[], root: string = PAPERS_DIR): FolderTreeNode[] {
   const paperDirs = new Set<string>();
   const dirs = new Set<string>();
   for (const path of paths) {
@@ -53,7 +53,7 @@ export function collectionsFromFilePaths(paths: readonly string[], root: string 
  * Finds the folders that hold a paper.pdf. Only the exact name counts: conflict copies and backups do not.
  * @returns the paper folders with a PDF
  */
-export function pdfDirsFromFilePaths(paths: readonly string[]): Set<string> {
+export function derivePdfDirs(paths: readonly string[]): Set<string> {
   const suffix = `/${PDF_FILE}`;
   const dirs = new Set<string>();
   for (const path of paths) {
@@ -72,7 +72,7 @@ export function findNode(tree: readonly FolderTreeNode[], path: string): FolderT
 }
 
 /** @returns the direct sub-collections of `folder` with their recursive paper counts */
-export function subfoldersOf(tree: readonly FolderTreeNode[], folder: string, root: string, paperPaths: readonly string[]): SubfolderEntry[] {
+export function listSubfolders(tree: readonly FolderTreeNode[], folder: string, root: string, paperPaths: readonly string[]): SubfolderEntry[] {
   const children = folder === root ? tree : findNode(tree, folder)?.children ?? [];
   return children.map((child) => ({ label: child.name, path: child.path, count: countPapersUnder(paperPaths, child.path, "/") }));
 }

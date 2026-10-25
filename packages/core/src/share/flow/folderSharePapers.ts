@@ -1,5 +1,5 @@
 // Reads what a share of a library folder holds: the folders that can be shared, and each paper's bib, PDF and annotations.
-import { countPapersUnder, folderPathLabel, isUnderDir, paperFiles, type PathOps } from "../../library/index.js";
+import { countPapersUnder, formatFolderPathLabel, isUnderDir, createPaperFiles, type PathOps } from "../../library/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
 import type { SharePaperInput } from "../buildShare.js";
@@ -13,7 +13,7 @@ export interface FolderShareSources {
 export interface ShareableFolder { dir: string; label: string; count: number }
 
 /** Every folder below the library root that holds a paper at any depth, by its label. */
-export function shareableFolders(papers: readonly PaperRecord[], papersRoot: string, sep: string): ShareableFolder[] {
+export function listShareableFolders(papers: readonly PaperRecord[], papersRoot: string, sep: string): ShareableFolder[] {
   const paths = papers.map((paper) => paper.path);
   const dirs = new Set<string>();
   for (const path of paths) {
@@ -22,19 +22,19 @@ export function shareableFolders(papers: readonly PaperRecord[], papersRoot: str
     }
   }
   return [...dirs]
-    .map((dir) => ({ dir, label: folderPathLabel(papersRoot, dir, sep), count: countPapersUnder(paths, dir, sep) }))
+    .map((dir) => ({ dir, label: formatFolderPathLabel(papersRoot, dir, sep), count: countPapersUnder(paths, dir, sep) }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export function papersInFolder(papers: readonly PaperRecord[], dir: string, sep: string): PaperRecord[] {
+export function listPapersInFolder(papers: readonly PaperRecord[], dir: string, sep: string): PaperRecord[] {
   return papers.filter((paper) => paper.path !== dir && isUnderDir(paper.path, dir, sep));
 }
 
 /** buildShare keeps only the shareable fields of each record, so the user's status, tags and note never leave. */
-export async function sharePaperInputs(papers: readonly PaperRecord[], withAnnotations: boolean, sources: FolderShareSources): Promise<SharePaperInput[]> {
+export async function createSharePaperInputs(papers: readonly PaperRecord[], withAnnotations: boolean, sources: FolderShareSources): Promise<SharePaperInput[]> {
   const inputs: SharePaperInput[] = [];
   for (const paper of papers) {
-    const files = paperFiles(paper.path, sources.paths.join);
+    const files = createPaperFiles(paper.path, sources.paths.join);
     const input: SharePaperInput = { metadata: paper };
     if (await sources.fs.exists(files.bib)) { input.bib = await sources.fs.readText(files.bib); }
     if (await sources.fs.exists(files.pdf)) { input.pdf = await sources.fs.readFile(files.pdf); }

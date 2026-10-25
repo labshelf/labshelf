@@ -1,14 +1,14 @@
 // Exports the Spaces view models: catalog, overview, papers tree, sidebar rows and the .ics export.
 export type {
-  CatalogRow, PapersTree, PapersTreeFolder, Progress, ResolvedPaper, SidebarRow, SpaceOverview, SpaceProjectInfo, TimelineEntry,
+  CatalogRow, PapersTree, PapersTreeFolder, Progress, ResolvedPaper, SidebarRow, SpaceOverview, SpaceProjectEntry, TimelineEntry,
 } from "./spaceViewModel.js";
 export { resolvePaper } from "./resolvePaper.js";
 export type { LibraryPapers } from "./resolvePaper.js";
-export { localDay } from "./localDay.js";
-export { spaceChecklistProgress } from "./taskProgress.js";
-export { catalogRows, filterCatalog } from "./catalogRows.js";
-export type { CatalogFilter } from "./catalogRows.js";
+export { formatLocalDay } from "./formatLocalDay.js";
+export { deriveSpaceChecklistProgress } from "./taskProgress.js";
+export { deriveCatalogRows, deriveFilteredCatalogRows } from "./deriveCatalogRows.js";
+export type { CatalogFilter } from "./deriveCatalogRows.js";
 export { buildOverview } from "./spaceOverview/index.js";
 export { buildPapersTree } from "./papersTree.js";
-export { sidebarRows } from "./sidebarRows.js";
-export { buildIcs } from "./ics/index.js";
+export { deriveSidebarRows } from "./deriveSidebarRows.js";
+export { buildIcs } from "./icsExport.js";

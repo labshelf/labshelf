@@ -1,14 +1,14 @@
 // Mounts the template gallery over its host transport.
-import { el, toast } from "../../ui/dom/index.js";
-import type { GalleryTransport, HostToGallery, TemplateKey } from "../protocol/index.js";
+import { renderElement, showToast } from "../../ui/dom/index.js";
+import type { GalleryTransport, HostToGallery, TemplateAddress } from "../protocol/index.js";
 import { createCardGrid, type CardGrid } from "./cardGrid.js";
-import { createDetailController, type DetailController } from "./viewController.js";
+import { createTemplatePageController, type TemplatePageController } from "./viewController.js";
 import { createFacetBar } from "./facetBar.js";
-import { GalleryState, keyOf } from "./galleryState.js";
+import { GalleryState, deriveTemplateAddress } from "./galleryState.js";
 import { createPublishController, type PublishController } from "./publishController.js";
 import { createGalleryHeader, type GalleryHeader } from "./galleryHeader.js";
 
-export interface TemplateGalleryHandle {
+export interface TemplateGalleryView {
   dispose(): void;
 }
 
@@ -16,7 +16,7 @@ interface RoutedViews {
   state: GalleryState;
   grid: CardGrid;
   header: GalleryHeader;
-  details: DetailController;
+  details: TemplatePageController;
   publishing: PublishController;
 }
 
@@ -38,18 +38,18 @@ function routeHostMessage(message: HostToGallery, { state, grid, header, details
       detail?.setProblem(message.problem);
       return;
     case "use.settled":
-      state.busy.delete(keyOf(message.template));
+      state.busy.delete(deriveTemplateAddress(message.template));
       if (state.isOpen(message.template)) detail?.setBusy(false);
       return;
     case "notice":
-      toast(message.text, message.kind);
+      showToast(message.text, message.kind);
       return;
     case "publish.open":
       publishing.open(message.project, message.draft);
       return;
     case "publish.failed":
       if (publishing.current()) publishing.route(message);
-      else toast(message.error, "error");
+      else showToast(message.error, "error");
       return;
     case "publish.checks":
     case "publish.auth":
@@ -59,11 +59,11 @@ function routeHostMessage(message: HostToGallery, { state, grid, header, details
   }
 }
 
-export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransport): TemplateGalleryHandle {
+export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransport): TemplateGalleryView {
   const state = new GalleryState();
-  const main = el("main", {});
-  const scrollRoot = el("div", { class: "ls-tpl-frame" });
-  const requestThumbnails = (templates: TemplateKey[]): void => {
+  const main = renderElement("main", {});
+  const scrollRoot = renderElement("div", { class: "ls-tpl-frame" });
+  const requestThumbnails = (templates: TemplateAddress[]): void => {
     if (templates.length > 0) transport.post({ type: "thumbnails", templates });
   };
 
@@ -83,14 +83,14 @@ export function mountTemplateGallery(root: HTMLElement, transport: GalleryTransp
     onPublish: () => transport.post({ type: "publish.start" }),
   });
   const showGrid = (): void => main.replaceChildren(facets.element, grid.element);
-  const details = createDetailController({ state, main, grid, transport, showGrid, requestThumbnails });
+  const details = createTemplatePageController({ state, main, grid, transport, showGrid, requestThumbnails });
   const publishing = createPublishController({
     main, transport, showGrid, closeDetail: () => { details.close(); }, updateGrid: grid.update, focusEntry: header.focusPublish,
   });
 
   showGrid();
   scrollRoot.append(header.element, main);
-  const frame = el("div", { class: "ls-tpl" }, scrollRoot);
+  const frame = renderElement("div", { class: "ls-tpl" }, scrollRoot);
   frame.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     details.closeAndFocus();

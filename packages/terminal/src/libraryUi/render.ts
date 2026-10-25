@@ -5,7 +5,7 @@
 import type { PaperEntry } from "@labshelf/core";
 import type { Screen, Style } from "../screen/index.js";
 import { mergeStyle } from "../screen/index.js";
-import { stringWidth, truncate } from "../screen/index.js";
+import { deriveStringWidth, formatTruncated } from "../screen/index.js";
 import type { Line } from "./preview.js";
 import { STATUS_GLYPH, theme } from "./theme.js";
 
@@ -29,7 +29,7 @@ export interface Layout {
  * columns — and a status bar. Narrow terminals keep the focused list pane and the preview, then the focused pane only.
  * @returns the rectangles
  */
-export function computeLayout(width: number, height: number, focus: "folders" | "papers" = "papers"): Layout {
+export function deriveLayout(width: number, height: number, focus: "folders" | "papers" = "papers"): Layout {
   const bodyY = 1;
   const bodyH = Math.max(1, height - 2);
   const header = { x: 0, y: 0, w: width, h: 1 };
@@ -106,7 +106,7 @@ export function drawFolderRow(screen: Screen, x: number, y: number, width: numbe
   const count = String(row.count);
   const indent = Math.min(row.depth * 2, Math.max(0, width - 8));
   const nameWidth = Math.max(1, width - 1 - indent - count.length - 2);
-  screen.text(x + 1 + indent, y, truncate(row.label, nameWidth), base(row.pseudo ? theme.bold : theme.collection));
+  screen.text(x + 1 + indent, y, formatTruncated(row.label, nameWidth), base(row.pseudo ? theme.bold : theme.collection));
   screen.text(x + width - count.length - 1, y, count, base(theme.count));
 }
 
@@ -122,14 +122,14 @@ export function drawPaperRow(screen: Screen, x: number, y: number, width: number
   screen.text(x + 1, y, STATUS_GLYPH[record.status], base(theme.status[record.status]));
   const year = record.year ? String(record.year) : "";
   // The folder name is context, not content: capped so the title keeps most of the row.
-  const shortDetail = detail ? truncate(detail, Math.max(6, Math.min(16, Math.floor(inner * 0.25)))) : undefined;
+  const shortDetail = detail ? formatTruncated(detail, Math.max(6, Math.min(16, Math.floor(inner * 0.25)))) : undefined;
   const tail = shortDetail ? `${shortDetail}  ${year}` : year;
-  const tailWidth = inner > 30 ? stringWidth(tail) : inner > 12 ? year.length : 0;
+  const tailWidth = inner > 30 ? deriveStringWidth(tail) : inner > 12 ? year.length : 0;
   const titleWidth = Math.max(1, inner - 2 - (tailWidth ? tailWidth + 2 : 1));
-  screen.text(x + 3, y, truncate(record.title, titleWidth), base(record.hasPdf === false ? theme.noPdf : theme.text));
+  screen.text(x + 3, y, formatTruncated(record.title, titleWidth), base(record.hasPdf === false ? theme.noPdf : theme.text));
   if (tailWidth) {
     const shown = inner > 30 ? tail : year;
-    screen.text(x + width - stringWidth(shown) - 1, y, shown, base(theme.year));
+    screen.text(x + width - deriveStringWidth(shown) - 1, y, shown, base(theme.year));
   }
 }
 
@@ -144,7 +144,7 @@ export function drawLines(screen: Screen, rect: Rect, lines: Line[], scroll = 0)
     for (const segment of lines[i]!) {
       const room = rect.x + rect.w - col;
       if (room <= 0) { break; }
-      const text = stringWidth(segment.text) > room ? truncate(segment.text, room) : segment.text;
+      const text = deriveStringWidth(segment.text) > room ? formatTruncated(segment.text, room) : segment.text;
       col += screen.text(col, rect.y + row, text, segment.style, room);
     }
   }

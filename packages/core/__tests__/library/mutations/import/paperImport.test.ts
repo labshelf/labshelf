@@ -1,4 +1,4 @@
-import { importPdf, readPaperOnDisk, type ImportOutcome, type PaperRecord } from "@labshelf/core";
+import { importPdf, readPaperOnFileSystem, type ImportOutcome, type PaperRecord } from "@labshelf/core";
 
 import { ATTENTION, makeImportDeps } from "../../../support/importFakes";
 import { makeHarness, PAPERS, pdfBytes, type MutationHarness } from "../../../support/mutationHarness";
@@ -58,7 +58,7 @@ describe("importPdf", () => {
   it("writes what a read from disk returns as the same paper", async () => {
     const h = makeHarness();
     const { record } = added(await importPdf(h.ctx, makeImportDeps(), await writePdf(h), ML));
-    expect(await readPaperOnDisk(h.ctx, record.path)).toEqual(record);
+    expect(await readPaperOnFileSystem(h.ctx, record.path)).toEqual(record);
   });
 
   it("names the source and the stem after sourceName when given (a download in a temp folder)", async () => {

@@ -1,7 +1,7 @@
 // Declares the editor area's tabs, options, prefs port and mount handle.
 import type { IconName } from "../../../ui/icons/index.js";
 
-export type EditorGroupIndex = 0 | 1;
+export type EditorGroupSide = 0 | 1;
 
 export interface EditorTabAction {
   id: string;
@@ -23,17 +23,17 @@ export interface EditorTab {
   id: string;
   title: string;
   icon: IconName;
-  group: EditorGroupIndex;
+  group: EditorGroupSide;
   /** Shows the unsaved dot in place of the close button. */
   dirty?: boolean;
   /** Runs once, on the tab's first activation; the body's `dispose` runs when the tab closes. */
   mount(el: HTMLElement): EditorTabBody;
 }
 
-export interface EditorTabInfo {
+export interface EditorTabView {
   id: string;
   title: string;
-  group: EditorGroupIndex;
+  group: EditorGroupSide;
   dirty: boolean;
   /** Shown in its group. */
   active: boolean;
@@ -52,7 +52,7 @@ export interface EditorAreaOptions {
   onActivate?(id: string): void;
   /** Runs before a tab closes; false, or a promise of false, keeps it open (a dirty tab whose save was cancelled). */
   onClose?(id: string): boolean | void | Promise<boolean | void>;
-  onMove?(id: string, group: EditorGroupIndex): void;
+  onMove?(id: string, group: EditorGroupSide): void;
   prefs?: EditorAreaPrefsPort;
   /** Kept at the end of the titlebar of the right-most group that shows tabs, after the actions bar. */
   trailing?: HTMLElement;
@@ -63,13 +63,13 @@ export interface EditorArea {
    * Adds the tab to `group` (default `tab.group`) and focuses it; an open id updates its title, icon and dirty mark and
    * moves to `group` when given. `background` adds it unfocused (restoring tabs), unless its group shows nothing yet.
    */
-  open(tab: EditorTab, group?: EditorGroupIndex, how?: { background?: boolean }): void;
+  open(tab: EditorTab, group?: EditorGroupSide, how?: { background?: boolean }): void;
   /** Resolves false when the tab is not open or `onClose` kept it. */
   close(id: string): Promise<boolean>;
   activate(id: string): void;
   /** Repaints the toolbar from the body's current `actions` while `id` is its group's active tab, for a body that gets them after mount. */
   refreshActions(id: string): void;
-  tabs(): EditorTabInfo[];
+  tabs(): EditorTabView[];
   /** Moves the focused tab to the other group. */
   split(): void;
   /** Disposes every mounted body and removes the area. */

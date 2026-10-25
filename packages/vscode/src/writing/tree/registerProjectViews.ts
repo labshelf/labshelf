@@ -1,11 +1,11 @@
 // Creates the open project's views with their commands: Figures as a native tree, Files, Outline and Checklist through the sidebar mirror.
 import * as vscode from "vscode";
 
-import type { ILogger, PaperStatus } from "@labshelf/core";
+import type { ILogger, ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
-import { registerChecklistView, signalsReader } from "../checklist/index.js";
-import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, revealOutline } from "../outline/index.js";
+import { registerChecklistView, createSignalsReader } from "../checklist/index.js";
+import { OutlineTreeProvider, REVEAL_OUTLINE_COMMAND, registerTypstOutline, showOutline } from "../outline/index.js";
 import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import { ProjectTreeMirror, SidebarProjectsSource, type ProjectTreeSpec } from "../sidebar/index.js";
@@ -32,7 +32,7 @@ interface ProjectViewsDeps {
   outcomes: BuildOutcomes;
   previews: Pick<BuildPreviews, "onDidCountBodyPages">;
   onDidChangeBacklinks: vscode.Event<void>;
-  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
+  setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
 }
 
 /** What the library sidebar view renders in its Projects section. */
@@ -67,7 +67,7 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
 export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandles {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
-    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: signalsReader(projects), watchFolder,
+    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: createSignalsReader(projects), watchFolder,
   });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);
@@ -81,7 +81,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandle
     watchProjectFiles(session, () => files.refresh()),
     figuresTree,
     outline.follow(),
-    vscode.commands.registerCommand(REVEAL_OUTLINE_COMMAND, revealOutline),
+    vscode.commands.registerCommand(REVEAL_OUTLINE_COMMAND, showOutline),
     registerTypstOutline(),
   );
   registerProjectFileCommands({ context, session, logger, fs: projects.fs });

@@ -1,11 +1,11 @@
 // Builds the options page from core components and autosaves every change, debounced, with a "Saved" flag.
 // Reader preferences mirror VS Code's labshelf.reader.* settings.
-import { $, settingsPage } from "@labshelf/core/dom";
+import { findElement, renderSettingsPage } from "@labshelf/core/dom";
 import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
-import { StorageRingLogSink, bx, createBrowserLogger, getSettings, updateSettings } from "../platform";
-import { loadReaderPrefs, saveReaderPrefs } from "../reader/service";
+import { StorageRingLogSink, bx, createBrowserLogger, readSettings, updateSettings } from "../platform";
+import { loadReaderPrefs, writeReaderPrefs } from "../reader/service";
 import { applyTheme } from "../ui";
-import { createLibrarySourceSection } from "./libraryLocationSection";
+import { createLibraryLocationSection } from "./libraryLocationSection";
 import { createAppearanceSection } from "./appearanceSection";
 import { createResolverSection } from "./resolverSection";
 import type { EditableListSection } from "./editableListSection";
@@ -15,7 +15,7 @@ import { createProxySection } from "./proxySection";
 import { createReaderForm, type ReaderForm } from "./readerForm";
 import { createSavedFlag } from "./savedNotice";
 import { createSidebarSectionsForm } from "./sidebarSectionsForm";
-import { createSharingSection } from "./shareSection";
+import { createShareSection } from "./shareSection";
 
 const ring = new StorageRingLogSink();
 const logger = createBrowserLogger(ring);
@@ -56,7 +56,7 @@ function autosaveForms(general: GeneralForm, reader: ReaderForm, saved: Saved): 
   });
   autosave(reader.controls, async () => {
     // Normalized on save: an out-of-range delay is clamped, and the form shows what was stored.
-    const stored = await saveReaderPrefs(reader.read());
+    const stored = await writeReaderPrefs(reader.read());
     reader.fill(stored, true);
     await logger.log("INFO", "options", "reader preferences saved", stored as unknown as Record<string, unknown>);
     saved.flash();
@@ -80,25 +80,25 @@ async function init(): Promise<void> {
   });
   const log = createLogSection(ring);
 
-  $("root").replaceChildren(settingsPage(
+  findElement("root").replaceChildren(renderSettingsPage(
     { title: "LabShelf Settings", aside: saved.element },
     ...general.sections,
     proxies.element,
     resolvers.element,
     reader.section,
-    createLibrarySourceSection(logger),
+    createLibraryLocationSection(logger),
     createHelperSetupSection(createBrowserLatexHelper(logger), {
       logger,
       getPlatformInfo: () => bx.runtime.getPlatformInfo(),
       openUrl: (url) => void bx.tabs.create({ url }),
     }),
-    createSharingSection(logger),
+    createShareSection(logger),
     sidebar.section,
     createAppearanceSection(saved.flash),
     log.element,
   ));
 
-  const settings = await getSettings();
+  const settings = await readSettings();
   general.fill(settings);
   reader.fill(await loadReaderPrefs());
   sidebar.fill(settings.sidebarSections);

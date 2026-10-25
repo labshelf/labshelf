@@ -1,7 +1,7 @@
 // Holds the demo library in memory, built from the build-time snapshot with core's own metadata and folder readers.
 import {
-  collectionsFromFilePaths, editedTags, paperRecordFromMetadata, paperStatsOf, parsePaperMetadata, pdfDirsFromFilePaths,
-  type LibraryUiSnapshot, type PaperRecord, type PaperStatus, type SidecarSummarySource,
+  deriveFoldersFromFilePaths, deriveEditedTags, createPaperRecord, derivePaperStats, parsePaperMetadata, derivePdfDirs,
+  type LibraryUiSnapshot, type PaperRecord, type ReadingStatus, type SidecarView,
 } from "@labshelf/core";
 
 /** One file of the demo library; `path` starts at "papers". */
@@ -15,15 +15,15 @@ export interface DemoFile {
 export interface DemoData {
   files: DemoFile[];
   metadata: Record<string, string>;
-  sidecars: Record<string, SidecarSummarySource>;
+  sidecars: Record<string, SidecarView>;
 }
 
 export interface DemoLibrary {
   readonly files: readonly DemoFile[];
   paper(id: string): PaperRecord | undefined;
-  sidecar(id: string): SidecarSummarySource;
+  sidecar(id: string): SidecarView;
   snapshot(): LibraryUiSnapshot;
-  setStatus(ids: readonly string[], status: PaperStatus): void;
+  setStatus(ids: readonly string[], status: ReadingStatus): void;
   setTags(ids: readonly string[], add: readonly string[], remove: readonly string[]): void;
   setNote(id: string, note: string): void;
 }
@@ -34,15 +34,15 @@ function readRecords(data: DemoData, pdfDirs: ReadonlySet<string>): Map<string, 
     const meta = parsePaperMetadata(text);
     if (!meta) throw new Error(`Demo library: ${dir}/metadata.yaml is not a YAML mapping`);
     const id = dir.slice(dir.lastIndexOf("/") + 1);
-    records.set(id, paperRecordFromMetadata(meta, { id, path: dir, hasPdf: pdfDirs.has(dir) }));
+    records.set(id, createPaperRecord(meta, { id, path: dir, hasPdf: pdfDirs.has(dir) }));
   }
   return records;
 }
 
 export function createDemoLibrary(data: DemoData, now: () => string = () => new Date().toISOString()): DemoLibrary {
   const paths = data.files.map((f) => f.path);
-  const pdfDirs = pdfDirsFromFilePaths(paths);
-  const folders = collectionsFromFilePaths(paths);
+  const pdfDirs = derivePdfDirs(paths);
+  const folders = deriveFoldersFromFilePaths(paths);
   const records = readRecords(data, pdfDirs);
   const update = (ids: readonly string[], patch: (r: PaperRecord) => Partial<PaperRecord>): void => {
     for (const id of ids) {
@@ -50,18 +50,18 @@ export function createDemoLibrary(data: DemoData, now: () => string = () => new 
       if (record) records.set(id, { ...record, ...patch(record) });
     }
   };
-  const sidecar = (id: string): SidecarSummarySource => data.sidecars[id] ?? { annotations: [] };
+  const sidecar = (id: string): SidecarView => data.sidecars[id] ?? { annotations: [] };
   return {
     files: data.files,
     paper: (id) => records.get(id),
     sidecar,
     snapshot: () => {
       const papers = [...records.values()];
-      const stats = Object.fromEntries(papers.filter((p) => data.sidecars[p.id]).map((p) => [p.id, paperStatsOf(sidecar(p.id))]));
+      const stats = Object.fromEntries(papers.filter((p) => data.sidecars[p.id]).map((p) => [p.id, derivePaperStats(sidecar(p.id))]));
       return { folders, papers, pdfDirs: [...pdfDirs], stats };
     },
     setStatus: (ids, status) => update(ids, (r) => (r.status === status ? {} : { status, statusChangedAt: now() })),
-    setTags: (ids, add, remove) => update(ids, (r) => ({ tags: editedTags(r.tags ?? [], add, remove) })),
+    setTags: (ids, add, remove) => update(ids, (r) => ({ tags: deriveEditedTags(r.tags ?? [], add, remove) })),
     setNote: (id, note) => update([id], () => ({ note })),
   };
 }

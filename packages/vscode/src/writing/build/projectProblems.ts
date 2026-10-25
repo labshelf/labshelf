@@ -1,7 +1,7 @@
 // Holds a diagnostic collection whose entries belong to owners (a project or a build root), so an owner's new entries replace only its own.
 import * as vscode from "vscode";
 
-export class ProjectDiagnostics implements vscode.Disposable {
+export class ProjectProblems implements vscode.Disposable {
   private readonly collection: vscode.DiagnosticCollection;
   private readonly filesByOwner = new Map<string, vscode.Uri[]>();
 

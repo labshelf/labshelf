@@ -1,6 +1,6 @@
 /** Finds the DOI of the journal version of a preprint, from arXiv's author-reported DOI or CrossRef's preprint relation. */
 import { fetchJson, type RegistryEnv } from "./http.js";
-import { arxivById } from "./arxiv.js";
+import { fetchArxivByIdentifier } from "./arxiv.js";
 
 // arXiv's own DOIs (10.48550) and bioRxiv/medRxiv's (10.1101) name the preprint itself, never the journal version.
 const PREPRINT_DOI = /^10\.(48550|1101)\//i;
@@ -19,9 +19,9 @@ export interface PreprintIds {
  * Asks arXiv first (free, and the authors fill it in), then CrossRef for a preprint DOI.
  * @returns the published version's DOI, or undefined when none is recorded
  */
-export async function publishedDoiOf(env: RegistryEnv, preprint: PreprintIds): Promise<string | undefined> {
+export async function findPublishedDoi(env: RegistryEnv, preprint: PreprintIds): Promise<string | undefined> {
   if (preprint.arxivId) {
-    const fromArxiv = (await arxivById(env, preprint.arxivId))?.doi;
+    const fromArxiv = (await fetchArxivByIdentifier(env, preprint.arxivId))?.doi;
     if (isJournalDoi(fromArxiv)) return fromArxiv;
   }
   if (!preprint.doi || !PREPRINT_DOI.test(preprint.doi)) return undefined;

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ProjectEntry } from "@labshelf/core";
-import { executeSafely } from "../../../command/index.js";
+import { runSafely } from "../../../command/index.js";
 import type { WritingHost } from "../../session/index.js";
 
 const PUBLISH_TEMPLATE_COMMAND = "labshelf.templates.publish";
@@ -19,7 +19,7 @@ export function registerPublishCommand({ context, host, openPublish }: PublishCo
     vscode.commands.registerCommand(PUBLISH_TEMPLATE_COMMAND, async (entry?: ProjectEntry) => {
       const session = await host.require();
       if (!session) { return; }
-      await executeSafely(session.logger, PUBLISH_TEMPLATE_COMMAND, () => openPublish(entry?.kind === "ready" ? entry.settings.id : undefined));
+      await runSafely(session.logger, PUBLISH_TEMPLATE_COMMAND, () => openPublish(entry?.kind === "ready" ? entry.settings.id : undefined));
     }),
   );
 }

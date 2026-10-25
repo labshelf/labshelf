@@ -1,13 +1,122 @@
 // Runs the LabShelf comment controller: one store and thread view per open project, over its share when one is connected.
 import * as vscode from "vscode";
 
-import type { Comment, ILogger, ProjectEntry } from "@labshelf/core";
+import {
+  type Comment,
+  type ILogger,
+  type ProjectEntry,
+  addThread,
+  deriveAnchor,
+  COMMENTS_PATH,
+  deriveCommentThreads,
+  updateCommentsDocument,
+  loadCommentsDocument,
+  findThread,
+  addThreadReply,
+  setThreadResolved,
+  type CommentsDocument,
+  type CommentsFileAccess,
+  type CommentThread,
+} from "@labshelf/core";
 import type { WritingProjects } from "../../writing/index.js";
-import { FileComments } from "./fileComments.js";
-import { COMMENTS_LOG_MODULE, type CommentShare, type ProjectComments } from "./projectComments.js";
+import {
+  COMMENTS_LOG_MODULE,
+  type CommentShare,
+  type ProjectComments,
+  createProjectFileUri,
+  readTextFile,
+} from "./projectComments.js";
 import { SharedComments } from "./sharedComments.js";
-import { editorCommentRange, sourceCommentRange } from "./sourceRanges.js";
+import { createEditorCommentRange, findSourceCommentRange } from "./sourceRanges.js";
 import { ThreadView } from "./threadView.js";
+
+/** An unshared project's threads, read from and written to its comments.json. */
+class FileComments implements ProjectComments {
+  private readonly uri: vscode.Uri;
+  private readonly access: CommentsFileAccess;
+  private readonly changeEmitter = new vscode.EventEmitter<void>();
+  readonly onDidChange = this.changeEmitter.event;
+  private readonly watcher: vscode.FileSystemWatcher;
+  private cached: CommentThread[] = [];
+  /** The invalid text last reported, so one broken file is reported once. */
+  private reported: string | undefined;
+
+  constructor(readonly folder: string, private readonly logger: ILogger) {
+    this.uri = createProjectFileUri(folder, COMMENTS_PATH);
+    this.access = {
+      read: () => readTextFile(this.uri),
+      write: async (text) => {
+        await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.uri, ".."));
+        await vscode.workspace.fs.writeFile(this.uri, new TextEncoder().encode(text));
+      },
+    };
+    this.watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(vscode.Uri.file(folder), COMMENTS_PATH));
+    const reload = () => void this.load();
+    this.watcher.onDidChange(reload);
+    this.watcher.onDidCreate(reload);
+    this.watcher.onDidDelete(reload);
+    void this.load();
+  }
+
+  threads(): readonly CommentThread[] {
+    return this.cached;
+  }
+
+  async textOf(file: string): Promise<string | undefined> {
+    const uri = createProjectFileUri(this.folder, file);
+    const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === uri.toString());
+    return open ? open.getText() : readTextFile(uri);
+  }
+
+  locate(thread: CommentThread, text: string) {
+    return findThread(thread, text);
+  }
+
+  anchor(_file: string, text: string, range: { start: number; end: number }) {
+    return deriveAnchor(text, range.start, range.end);
+  }
+
+  add(thread: CommentThread): Promise<void> {
+    return this.edit((doc) => addThread(doc, thread));
+  }
+
+  reply(threadId: string, comment: CommentThread["comments"][number]): Promise<void> {
+    return this.edit((doc) => addThreadReply(doc, threadId, comment));
+  }
+
+  setResolved(threadId: string, resolved: boolean): Promise<void> {
+    return this.edit((doc) => setThreadResolved(doc, threadId, resolved));
+  }
+
+  dispose(): void {
+    this.watcher.dispose();
+    this.changeEmitter.dispose();
+  }
+
+  private async load(): Promise<void> {
+    try {
+      const text = await readTextFile(this.uri);
+      const doc = await loadCommentsDocument({ ...this.access, read: async () => text });
+      if (doc) { this.reported = undefined; } else { this.reportInvalid(text!); }
+      this.cached = doc ? deriveCommentThreads(doc) : [];
+      this.changeEmitter.fire();
+    } catch (error) {
+      void this.logger.error(COMMENTS_LOG_MODULE, error, { action: "read the comments", folder: this.folder });
+    }
+  }
+
+  private reportInvalid(text: string): void {
+    if (this.reported === text) { return; }
+    this.reported = text;
+    void this.logger.log("WARN", COMMENTS_LOG_MODULE, "comments.json is not valid; its threads are not shown and it is not written", { folder: this.folder, path: COMMENTS_PATH });
+    void vscode.window.showWarningMessage(`LabShelf cannot read ${COMMENTS_PATH} in ${this.folder}. Fix the file to see and add comments.`);
+  }
+
+  private async edit(change: (doc: CommentsDocument) => CommentsDocument): Promise<void> {
+    await updateCommentsDocument(this.access, change);
+    await this.load();
+  }
+}
 
 const RELOCATE_DELAY_MS = 300;
 
@@ -54,7 +163,7 @@ export class CommentsController implements vscode.Disposable {
     const source = await target.view.store.textOf(target.file);
     if (source === undefined) { throw new Error(`${target.file} is not a text file of the project`); }
     const range = thread.range ?? new vscode.Range(0, 0, 0, 0);
-    const anchored = editorCommentRange(source, range.start, range.end);
+    const anchored = createEditorCommentRange(source, range.start, range.end);
     if (!anchored) { void vscode.window.showInformationMessage("Comment on a line that has text."); return; }
     const newId = await this.addThread(target.view, target.file, source, anchored, text);
     thread.dispose();
@@ -74,7 +183,7 @@ export class CommentsController implements vscode.Disposable {
     if (!target || target.folder !== request.projectFolder) { throw new Error(`${request.file} is not inside the open project ${request.projectFolder}`); }
     const source = await target.view.store.textOf(target.file);
     if (source === undefined) { throw new Error(`${target.file} is not a text file of the project`); }
-    const anchored = sourceCommentRange(source, request.line, request.quote);
+    const anchored = findSourceCommentRange(source, request.line, request.quote);
     if (!anchored) { throw new Error(`line ${request.line} of ${target.file} holds no text to comment on`); }
     const id = await this.addThread(target.view, target.file, source, anchored, request.body);
     await target.view.refresh(id);

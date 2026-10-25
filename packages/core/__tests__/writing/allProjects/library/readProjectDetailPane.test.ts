@@ -5,8 +5,8 @@ import * as path from "node:path";
 import { posixPathOps } from "../../../../src/library/index";
 import type { PaperRecord } from "../../../../src/model/index";
 import { BIBLIOGRAPHY_HEADER } from "../../../../src/writing/citations/index";
-import { readProjectCites, readProjectDetail } from "../../../../src/writing/allProjects/index";
-import type { ProjectBuildSummary } from "../../../../src/writing/allProjects/index";
+import { readProjectCitations, readProjectPaneContent } from "../../../../src/writing/allProjects/index";
+import type { ProjectBuildReport } from "../../../../src/writing/allProjects/index";
 import type { ProjectSettings } from "../../../../src/writing/project/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
@@ -14,7 +14,7 @@ import { replayLoader } from "../../../support/replayPdfjs";
 
 const PDF_ON_DISK = path.join(__dirname, "..", "..", "checks", "fixtures", "check.pdf");
 const PDF = "/p/build/check.pdf";
-const build: ProjectBuildSummary = { state: "ok", at: 5, warnings: 1, errors: 0 };
+const build: ProjectBuildReport = { state: "ok", at: 5, warnings: 1, errors: 0 };
 
 const papers: PaperRecord[] = [{
   id: "vaswani2017", title: "Attention", path: "/lib/vaswani2017", citeKey: "vaswani2017", status: "done",
@@ -57,12 +57,12 @@ async function latexProject(extra: Partial<ProjectSettings> = {}): Promise<{ fs:
 
 const loader = () => replayLoader(PDF_ON_DISK).loader;
 
-describe("readProjectDetail", () => {
+describe("readProjectPaneContent", () => {
   it("reads the engine, pages, limits, citations, bibliography, versions and sources of a LaTeX project", async () => {
     const { fs, folder, settings } = await latexProject({ check: { pages: 8, words: 12, countUpTo: "references", anonymous: true } });
     const logger = fakeLogger();
     fs.mtimes.set(`${folder}/labshelf.bib`, 1_700_000_000_400);
-    const detail = await readProjectDetail(
+    const detail = await readProjectPaneContent(
       reads(fs, logger), { id: "paper", folder, settings, papers, build, pdf: PDF, log: `${folder}/main.log`, pdfjs: loader() },
     );
     expect(detail).toEqual({
@@ -88,8 +88,8 @@ describe("readProjectDetail", () => {
 
   it("counts words up to the references only when the limit counts up to them", async () => {
     const { fs, folder, settings } = await latexProject({ check: { words: 100, countUpTo: "references", anonymous: true } });
-    const toReferences = await readProjectDetail(reads(fs), { id: "paper", folder, settings, papers, build, pdfjs: loader() });
-    const toEnd = await readProjectDetail(
+    const toReferences = await readProjectPaneContent(reads(fs), { id: "paper", folder, settings, papers, build, pdfjs: loader() });
+    const toEnd = await readProjectPaneContent(
       reads(fs), { id: "paper", folder, settings: { ...settings, check: { words: 100, countUpTo: "end", anonymous: true } }, papers, build, pdfjs: loader() },
     );
     expect(toEnd.limits.words!.counted).toBeGreaterThan(toReferences.limits.words!.counted);
@@ -99,7 +99,7 @@ describe("readProjectDetail", () => {
   it("leaves out the parts that do not exist: no PDF, no log, no bibliography, no versions, no limits", async () => {
     const fs = newFs();
     await write(fs, FOLDER, "main.tex", "\\begin{document}Hello\\end{document}");
-    const detail = await readProjectDetail(
+    const detail = await readProjectPaneContent(
       reads(fs), { id: "p", folder: FOLDER, settings: { id: "p", format: "latex", main: "main.tex" }, papers, build, pdfjs: loader() },
     );
     expect(detail).toEqual({
@@ -110,7 +110,7 @@ describe("readProjectDetail", () => {
   it("logs a missing PDF with the folder and still returns the rest", async () => {
     const { fs, folder, settings } = await latexProject();
     const logger = fakeLogger();
-    const detail = await readProjectDetail(reads(fs, logger), { id: "paper", folder, settings, papers, build, pdf: `${folder}/missing.pdf`, pdfjs: loader() });
+    const detail = await readProjectPaneContent(reads(fs, logger), { id: "paper", folder, settings, papers, build, pdf: `${folder}/missing.pdf`, pdfjs: loader() });
     expect(detail.pages).toBeUndefined();
     expect(detail.limits.pages).toBeUndefined();
     expect(detail.citations).toHaveLength(4);
@@ -119,7 +119,7 @@ describe("readProjectDetail", () => {
 
   it("marks a bibliography the user wrote as not generated", async () => {
     const { fs, folder, settings } = await latexProject({ bibliography: "refs.bib" });
-    const detail = await readProjectDetail(reads(fs), { id: "paper", folder, settings, papers, build, pdfjs: loader() });
+    const detail = await readProjectPaneContent(reads(fs), { id: "paper", folder, settings, papers, build, pdfjs: loader() });
     expect(detail.bibliography).toEqual({ file: "refs.bib", entries: 2, generated: false, written: 0 });
   });
 
@@ -128,20 +128,20 @@ describe("readProjectDetail", () => {
     await write(fs, FOLDER, "main.typ", "= Title\nSee @vaswani2017 and @nobody.\n");
     await write(fs, FOLDER, "other.typ", "@ignored");
     const settings: ProjectSettings = { id: "t", format: "typst", main: "main.typ", typst: "0.13.1" };
-    const detail = await readProjectDetail(reads(fs), { id: "t", folder: FOLDER, settings, papers, build, pdfjs: loader() });
+    const detail = await readProjectPaneContent(reads(fs), { id: "t", folder: FOLDER, settings, papers, build, pdfjs: loader() });
     expect(detail.engine).toBe("Typst 0.13.1");
     expect(detail.sources).toEqual(["main.typ"]);
     expect(detail.citations.map((citation) => [citation.key, citation.source])).toEqual([["nobody", "none"], ["vaswani2017", "library"]]);
   });
 });
 
-describe("readProjectCites", () => {
+describe("readProjectCitations", () => {
   it("counts the distinct cited keys and those found nowhere", async () => {
     const { fs, folder, settings } = await latexProject();
-    expect(await readProjectCites(reads(fs), folder, settings, papers)).toEqual({ cites: 4, unresolved: 1 });
+    expect(await readProjectCitations(reads(fs), folder, settings, papers)).toEqual({ cites: 4, unresolved: 1 });
   });
 
   it("is zero for a project without a main file", async () => {
-    expect(await readProjectCites(reads(newFs()), FOLDER, { id: "p", format: "latex" }, papers)).toEqual({ cites: 0, unresolved: 0 });
+    expect(await readProjectCitations(reads(newFs()), FOLDER, { id: "p", format: "latex" }, papers)).toEqual({ cites: 0, unresolved: 0 });
   });
 });

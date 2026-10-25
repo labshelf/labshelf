@@ -1,13 +1,13 @@
 // The history host records the project on ready, answers diffs, restores a point after confirmation and marks versions.
 import type { HistoryToHost, HostToHistory, ILogger } from "@labshelf/core";
 import { createLoopbackTransport } from "@labshelf/core";
-import { toast, confirmDialog } from "@labshelf/core/dom";
-import { mountHistoryHost, recordProjectEdit } from "../../../src/writing/history";
+import { showToast, askDialog } from "@labshelf/core/dom";
+import { mountHistoryHost, addProjectUpdateEvent } from "../../../src/writing/history";
 import { clearFakeDb } from "../../support/fakeIdb";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
 
-jest.mock("@labshelf/core/dom", () => ({ toast: jest.fn(), confirmDialog: jest.fn(), inputBox: jest.fn() }));
-jest.mock("../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("@labshelf/core/dom", () => ({ showToast: jest.fn(), askDialog: jest.fn(), askInputBox: jest.fn() }));
+jest.mock("../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 const project = { id: "thesis", folder: "proj" };
@@ -42,7 +42,7 @@ describe("mountHistoryHost", () => {
     ui.post({ type: "ready" });
     await settle();
     await fs.writeText("proj/main.typ", "two");
-    await recordProjectEdit({ fs, logger }, project);
+    await addProjectUpdateEvent({ fs, logger }, project);
     await settle();
     expect(history().map((message) => message.rows.length)).toEqual([1, 2]);
   });
@@ -67,13 +67,13 @@ describe("mountHistoryHost", () => {
     ui.post({ type: "ready" });
     await settle();
     const [, first] = history()[1]!.rows;
-    (confirmDialog as jest.Mock).mockResolvedValue(true);
+    (askDialog as jest.Mock).mockResolvedValue(true);
     ui.post({ type: "restore", id: first!.id });
     await settle();
     expect(await fs.readText("proj/main.typ")).toBe("one");
     expect(received.filter((m) => m.type === "busy")).toEqual([{ type: "busy", busy: true }, { type: "busy", busy: false }]);
     expect(history().at(-1)!.rows.length).toBe(3);
-    expect(toast).toHaveBeenCalledWith(expect.stringMatching(/^Restored thesis to /), "ok");
+    expect(showToast).toHaveBeenCalledWith(expect.stringMatching(/^Restored thesis to /), "ok");
   });
 
   it("leaves the files alone when the restore is declined", async () => {
@@ -82,7 +82,7 @@ describe("mountHistoryHost", () => {
     ui.post({ type: "ready" });
     await settle();
     await fs.writeText("proj/main.typ", "two");
-    (confirmDialog as jest.Mock).mockResolvedValue(false);
+    (askDialog as jest.Mock).mockResolvedValue(false);
     ui.post({ type: "restore", id: history()[0]!.rows[0]!.id });
     await settle();
     expect(await fs.readText("proj/main.typ")).toBe("two");
@@ -92,7 +92,7 @@ describe("mountHistoryHost", () => {
     const { ui } = setup();
     ui.post({ type: "compareVersions" });
     await settle();
-    expect(toast).toHaveBeenCalledWith("Compare Versions needs the VS Code extension or the terminal app.");
+    expect(showToast).toHaveBeenCalledWith("Compare Versions needs the VS Code extension or the terminal app.");
   });
 
   it("stops answering after dispose", async () => {

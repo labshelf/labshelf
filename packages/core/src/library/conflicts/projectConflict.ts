@@ -1,6 +1,6 @@
 // Recognises project text copies from provider names, write history or shared lines.
-import { isMergeableTextFile, textHash } from '../../writing/conflict/index.js';
-import { lineSimilarity } from '../../writing/text/index.js';
+import { isMergeableTextFile, deriveTextHash } from '../../writing/conflict/index.js';
+import { deriveLineSimilarity } from '../../writing/text/index.js';
 import type { WriteRecords } from '../writeRecords/index.js';
 import type { ConflictCopy } from './conflictCopy.js';
 import { parseConflictName } from './conflictNames.js';
@@ -15,19 +15,19 @@ export interface ProjectConflictInput extends ProjectConflictText {
   dismissed?: readonly ConflictDismissal[];
 }
 
-export function eligibleProjectConflictPath(file: string): boolean {
+export function isEligibleProjectConflictPath(file: string): boolean {
   return !file.split('/').some(part => part.startsWith('.') || ['node_modules', 'build', 'dist', 'out', 'target'].includes(part))
     && !/ \(copy \d+\)(?:\.[^./]+)?$/.test(file);
 }
 const nameOf = (file: string) => file.split('/').at(-1) ?? file;
 const directoryOf = (file: string) => file.slice(0, file.length - nameOf(file).length);
 const extensionOf = (file: string) => /\.[^.]+$/.exec(nameOf(file))?.[0].toLowerCase();
-const textFile = ({ path, text }: ProjectConflictText) => eligibleProjectConflictPath(path)
+const textFile = ({ path, text }: ProjectConflictText) => isEligibleProjectConflictPath(path)
   && isMergeableTextFile(nameOf(path), new TextEncoder().encode(text));
 
 export async function detectProjectConflict(input: ProjectConflictInput): Promise<ConflictCopy | undefined> {
-  if (!eligibleProjectConflictPath(input.path)) return undefined;
-  const hash = await textHash(input.text);
+  if (!isEligibleProjectConflictPath(input.path)) return undefined;
+  const hash = await deriveTextHash(input.text);
   if (input.dismissed?.some(entry => entry.path === input.path && entry.hash === hash)) return undefined;
   const parsed = parseConflictName(nameOf(input.path));
   const conflict = (original: string, match: 'name' | 'record' | 'similar'): ConflictCopy => ({
@@ -41,7 +41,7 @@ export async function detectProjectConflict(input: ProjectConflictInput): Promis
   const recorded = siblings.find(file => input.records.get(file.path)?.some(entry => entry.hash === hash));
   if (recorded) return conflict(recorded.path, 'record');
   const similar = siblings.filter(file => extensionOf(file.path) === extensionOf(input.path))
-    .map(file => ({ ...file, score: lineSimilarity(input.text, file.text) }))
+    .map(file => ({ ...file, score: deriveLineSimilarity(input.text, file.text) }))
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))[0];
   return similar && similar.score >= VERSION_SIMILARITY ? conflict(similar.path, 'similar') : undefined;
 }

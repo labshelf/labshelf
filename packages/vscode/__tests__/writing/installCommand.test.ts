@@ -3,11 +3,11 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import type { ImportOutcome, PaperRecord } from "@labshelf/core";
-import { queueTextLayersOfAdded } from "../../src/command/index";
+import { addTextLayersOfAdded } from "../../src/command/index";
 import { registerInstallCommand, type InstallServices } from "../../src/writing/index";
 import { commandHandler, fakeHost, fakeLogger, readyEntry } from "../support/writingFixtures";
 
-jest.mock("../../src/command/index", () => ({ ...jest.requireActual("../../src/command/index"), queueTextLayersOfAdded: jest.fn() }));
+jest.mock("../../src/command/index", () => ({ ...jest.requireActual("../../src/command/index"), addTextLayersOfAdded: jest.fn() }));
 
 const window = vscode.window as unknown as Record<string, jest.Mock>;
 const paper = (id: string, over: Partial<PaperRecord> = {}): PaperRecord => ({ id, title: id, path: id, citeKey: id, status: "unread", ...over }) as PaperRecord;
@@ -45,7 +45,7 @@ describe("labshelf.installProjectPapers", () => {
       ["10.1000/lee", undefined, { citeKey: "lee20" }],
       ["10.1000/chen", undefined, { citeKey: "chen21" }],
     ]);
-    expect(queueTextLayersOfAdded).toHaveBeenCalledWith(services, [added("lee20"), added("chen21", false)]);
+    expect(addTextLayersOfAdded).toHaveBeenCalledWith(services, [added("lee20"), added("chen21", false)]);
     expect(window["showWarningMessage"]).toHaveBeenCalledWith(expect.stringContaining("2 added, 1 already in the library, 1 without a PDF, 1 not resolved"));
     expect(window["showWarningMessage"]).toHaveBeenCalledWith(expect.stringContaining("ghost: no DOI listed"));
   });

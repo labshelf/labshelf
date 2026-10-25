@@ -7,30 +7,30 @@ import * as vscode from 'vscode';
 
 import type { PaperRecord } from '@labshelf/core';
 import {
-  currentTextLayerJobs,
+  listTextLayerJobs,
   describeOutcome,
   describePage,
   onTextLayerJobsChanged,
-  queueTextLayers,
+  addTextLayerJobs,
 } from '../../src/command/textLayerQueue';
 import type { TextLayerJob } from '../../src/command/textLayerQueue';
-import type { MakeSearchableResult, PaperTextLayers } from '../../src/library/index';
+import type { CreateTextLayerResult, PaperTextLayers } from '../../src/library/index';
 import type { TextLayerHooks } from '@labshelf/core';
 
 const paper = (id: string): PaperRecord => ({ id, title: `Paper ${id}`, path: `/lib/${id}`, citeKey: id, status: 'unread' });
 
 function serviceWith(
-  run: (id: string, hooks: TextLayerHooks) => Promise<MakeSearchableResult>,
+  run: (id: string, hooks: TextLayerHooks) => Promise<CreateTextLayerResult>,
   check: (id: string) => Promise<PaperRecord | undefined> = async () => undefined,
 ): PaperTextLayers {
   return { makeSearchable: jest.fn(run), checkTextLayer: jest.fn(check) } as unknown as PaperTextLayers;
 }
 
-describe('queueTextLayers', () => {
+describe('addTextLayerJobs', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('stays invisible for a paper that already has text', async () => {
-    await queueTextLayers(serviceWith(async () => ({ status: 'not-needed' })), [paper('a')]);
+    await addTextLayerJobs(serviceWith(async () => ({ status: 'not-needed' })), [paper('a')]);
 
     expect(vscode.window.withProgress).not.toHaveBeenCalled();
     expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
@@ -47,7 +47,7 @@ describe('queueTextLayers', () => {
       return { status: 'added', paper: paper('a'), pagesAdded: 2, pagesFailed: 0 };
     });
 
-    await queueTextLayers(service, [paper('a')]);
+    await addTextLayerJobs(service, [paper('a')]);
 
     expect(vscode.window.withProgress).toHaveBeenCalledTimes(1);
     expect((vscode.window.withProgress as jest.Mock).mock.calls[0][0]).toMatchObject({ cancellable: true });
@@ -75,7 +75,7 @@ describe('queueTextLayers', () => {
       return { status: 'cancelled' };
     });
 
-    await queueTextLayers(service, [paper('a')]);
+    await addTextLayerJobs(service, [paper('a')]);
     expect(seen).toEqual([false, true]);
   });
 
@@ -89,7 +89,7 @@ describe('queueTextLayers', () => {
       return { status: 'not-needed' };
     });
 
-    await queueTextLayers(service, [paper('a'), paper('b')]);
+    await addTextLayerJobs(service, [paper('a'), paper('b')]);
     expect(order).toEqual(['start a', 'end a', 'start b', 'end b']);
   });
 });
@@ -116,7 +116,7 @@ describe('describeOutcome / describePage', () => {
   });
 
   it('mentions pages that could not be read', () => {
-    const result: MakeSearchableResult = { status: 'added', paper: paper('a'), pagesAdded: 1, pagesFailed: 2 };
+    const result: CreateTextLayerResult = { status: 'added', paper: paper('a'), pagesAdded: 1, pagesFailed: 2 };
     expect(describeOutcome('T', result, false)).toContain('(1 page read, 2 could not be)');
     expect(describePage('T', { index: 3, total: 17, pageNumber: 5 })).toBe('Making "T" searchable — reading page 3 of 17…');
   });
@@ -130,7 +130,7 @@ describe('queueTextLayers — modes and the job list', () => {
     const subscription = onTextLayerJobsChanged((jobs) => seen.push(jobs));
     const service = serviceWith(async () => ({ status: 'not-needed' }));
 
-    await queueTextLayers(service, [paper('a')], { mode: 'check' });
+    await addTextLayerJobs(service, [paper('a')], { mode: 'check' });
     subscription.dispose();
 
     expect(service.checkTextLayer).toHaveBeenCalledWith('a');
@@ -145,19 +145,19 @@ describe('queueTextLayers — modes and the job list', () => {
     const subscription = onTextLayerJobsChanged((jobs) => seen.push(jobs));
     const service = serviceWith(async (_id, hooks) => {
       hooks.onProgress?.({ index: 1, total: 3, pageNumber: 1 });
-      expect(currentTextLayerJobs()).toEqual([
+      expect(listTextLayerJobs()).toEqual([
         { paperId: 'a', phase: 'reading', page: 1, total: 3 },
         { paperId: 'b', phase: 'queued' },
       ]);
       return { status: 'not-needed' };
     });
 
-    await queueTextLayers(service, [paper('a'), paper('b')]);
+    await addTextLayerJobs(service, [paper('a'), paper('b')]);
     subscription.dispose();
 
     expect(seen[0]).toEqual([{ paperId: 'a', phase: 'queued' }, { paperId: 'b', phase: 'queued' }]);
     expect(seen.at(-1)).toEqual([]);
-    expect(currentTextLayerJobs()).toEqual([]);
+    expect(listTextLayerJobs()).toEqual([]);
   });
 
   it('queues a paper once, and upgrades a waiting check when OCR is asked for', async () => {
@@ -167,15 +167,15 @@ describe('queueTextLayers — modes and the job list', () => {
       async (id) => { if (id === 'first') { await blocker; } return { status: 'not-needed' }; },
     );
 
-    const first = queueTextLayers(service, [paper('first')]);
-    void queueTextLayers(service, [paper('b')], { mode: 'check' });
-    void queueTextLayers(service, [paper('b')], { mode: 'check' });
-    void queueTextLayers(service, [paper('b')]);
-    expect(currentTextLayerJobs().map((job) => job.paperId)).toEqual(['first', 'b']);
+    const first = addTextLayerJobs(service, [paper('first')]);
+    void addTextLayerJobs(service, [paper('b')], { mode: 'check' });
+    void addTextLayerJobs(service, [paper('b')], { mode: 'check' });
+    void addTextLayerJobs(service, [paper('b')]);
+    expect(listTextLayerJobs().map((job) => job.paperId)).toEqual(['first', 'b']);
 
     release();
     await first;
-    await queueTextLayers(service, []);
+    await addTextLayerJobs(service, []);
 
     expect((service.makeSearchable as jest.Mock).mock.calls.map(([id]) => id)).toEqual(['first', 'b']);
     expect(service.checkTextLayer).not.toHaveBeenCalled();
@@ -186,7 +186,7 @@ describe('queueTextLayers — modes and the job list', () => {
     const bad = onTextLayerJobsChanged(() => { throw new Error('view gone'); });
     const fine = onTextLayerJobsChanged(good);
 
-    await queueTextLayers(serviceWith(async () => ({ status: 'not-needed' })), [paper('a')]);
+    await addTextLayerJobs(serviceWith(async () => ({ status: 'not-needed' })), [paper('a')]);
     bad.dispose(); fine.dispose();
 
     expect(good).toHaveBeenCalled();

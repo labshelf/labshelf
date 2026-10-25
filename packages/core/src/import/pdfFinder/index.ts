@@ -8,4 +8,4 @@ export { isScholarlyHost } from "./rules/index.js";
 export { makeResolveContext } from "./resolveContext.js";
 export { findPaperPdf } from "./findPaperPdf.js";
 export type { PdfSearch } from "./findPaperPdf.js";
-export { fetchPdf, isBotCheck, isSupplementaryUrl, isWallPage, nextHopsFromHtml, proxiedUrl, proxyKind, type ProxyKind } from "./client/index.js";
+export { fetchPdf, isBotCheck, isSupplementaryUrl, isWallPage, extractNextHopsFromHtml, createProxiedUrl, deriveProxyKind, type ProxyKind } from "./client/index.js";

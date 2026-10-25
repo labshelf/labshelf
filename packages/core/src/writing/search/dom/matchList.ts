@@ -1,16 +1,16 @@
 // Renders project search results as collapsible per-file lists of highlighted matches with their replace actions.
-import { el } from "../../../ui/dom/dom.js";
-import { icon } from "../../../ui/icons/index.js";
-import type { MatchLocation } from "../protocol/index.js";
+import { renderElement } from "../../../ui/dom/dom.js";
+import { renderIcon } from "../../../ui/icons/index.js";
+import type { MatchPosition } from "../protocol/index.js";
 import type { FileResults, SearchResults } from "../searchResults.js";
 
-export interface ResultsActions {
-  open(at: MatchLocation): void;
-  replace(at: MatchLocation): void;
+export interface MatchListActions {
+  open(at: MatchPosition): void;
+  replace(at: MatchPosition): void;
   replaceFile(path: string): void;
 }
 
-export interface ResultsList {
+export interface MatchList {
   root: HTMLElement;
   render(results: SearchResults): void;
   /** Shows the per-match and per-file replace buttons only while the replace field is open. */
@@ -19,13 +19,13 @@ export interface ResultsList {
   /** The index of the current match, or -1 when none is. */
   selected(): number;
   /** Marks the match at `index` as current, scrolls to it and returns where it is. */
-  select(index: number): MatchLocation | undefined;
+  select(index: number): MatchPosition | undefined;
 }
 
 const ROW = ".ls-psearch-row";
 
 function actionButton(label: string, name: "replace" | "replace-all", onClick: () => void): HTMLButtonElement {
-  const button = el("button", { type: "button", class: "ls-icon-btn ls-psearch-action", title: label, "aria-label": label, html: icon(name) });
+  const button = renderElement("button", { type: "button", class: "ls-icon-btn ls-psearch-action", title: label, "aria-label": label, html: renderIcon(name) });
   button.addEventListener("click", (event) => { event.stopPropagation(); onClick(); });
   return button;
 }
@@ -50,45 +50,45 @@ function moveFocus(root: HTMLElement, event: KeyboardEvent): void {
 
 /** The file row: it collapses and expands `matches` and carries the file's Replace All button. */
 function fileHeader(file: FileResults, matches: HTMLElement, replaceFile: () => void): HTMLElement {
-  const twistie = el("span", { class: "ls-psearch-twistie", html: icon("chevron-down") });
-  const header = el("div", { class: "ls-psearch-row ls-psearch-file", tabindex: "-1", "aria-expanded": "true", title: file.path },
+  const twistie = renderElement("span", { class: "ls-psearch-twistie", html: renderIcon("chevron-down") });
+  const header = renderElement("div", { class: "ls-psearch-row ls-psearch-file", tabindex: "-1", "aria-expanded": "true", title: file.path },
     twistie,
-    el("span", { class: "ls-psearch-label", text: file.label }),
-    el("span", { class: "ls-count", text: String(file.matches.length) }),
+    renderElement("span", { class: "ls-psearch-label", text: file.label }),
+    renderElement("span", { class: "ls-count", text: String(file.matches.length) }),
     actionButton("Replace All in File", "replace-all", replaceFile));
   activateOnEnter(header, () => {
     const open = matches.hidden;
     matches.hidden = !open;
     header.setAttribute("aria-expanded", String(open));
-    twistie.innerHTML = icon(open ? "chevron-down" : "chevron-right");
+    twistie.innerHTML = renderIcon(open ? "chevron-down" : "chevron-right");
   });
   return header;
 }
 
-export function createResultsList(actions: ResultsActions): ResultsList {
-  const root = el("ul", { class: "ls-psearch-results", role: "list", "aria-label": "Results" });
-  let locations: MatchLocation[] = [];
+export function createMatchList(actions: MatchListActions): MatchList {
+  const root = renderElement("ul", { class: "ls-psearch-results", role: "list", "aria-label": "Results" });
+  let locations: MatchPosition[] = [];
   let matchRows: HTMLElement[] = [];
   let selected = -1;
   root.addEventListener("keydown", (event) => moveFocus(root, event));
 
   function fileGroup(file: FileResults): HTMLElement {
-    const matches = el("ul", { class: "ls-psearch-matches", role: "list" });
+    const matches = renderElement("ul", { class: "ls-psearch-matches", role: "list" });
     const header = fileHeader(file, matches, () => actions.replaceFile(file.path));
     for (const match of file.matches) {
-      const at: MatchLocation = { path: file.path, line: match.line, column: match.column, length: match.length };
-      const row = el("li", { class: "ls-psearch-row ls-psearch-match", tabindex: "-1", title: `${file.label}:${match.line + 1}` },
-        el("span", { class: "ls-psearch-preview" }, match.before, el("mark", { class: "ls-psearch-hit", text: match.text }), match.after),
+      const at: MatchPosition = { path: file.path, line: match.line, column: match.column, length: match.length };
+      const row = renderElement("li", { class: "ls-psearch-row ls-psearch-match", tabindex: "-1", title: `${file.label}:${match.line + 1}` },
+        renderElement("span", { class: "ls-psearch-preview" }, match.before, renderElement("mark", { class: "ls-psearch-hit", text: match.text }), match.after),
         actionButton("Replace", "replace", () => actions.replace(at)));
       activateOnEnter(row, () => { select(locations.indexOf(at)); actions.open(at); });
       locations.push(at);
       matchRows.push(row);
       matches.append(row);
     }
-    return el("li", { class: "ls-psearch-group" }, header, matches);
+    return renderElement("li", { class: "ls-psearch-group" }, header, matches);
   }
 
-  function select(index: number): MatchLocation | undefined {
+  function select(index: number): MatchPosition | undefined {
     selected = index;
     matchRows.forEach((row, i) => row.classList.toggle("ls-psearch-current", i === index));
     matchRows[index]?.scrollIntoView({ block: "nearest" });

@@ -1,5 +1,5 @@
 sha: 0b367695
-files: packages/core/src/ai/**, packages/core/src/collab/**, packages/core/src/writing/versions/**, packages/core/src/bridge/changedEvents.ts
+files: packages/core/src/ai/**, packages/core/src/collab/**, packages/core/src/writing/versions/**, packages/core/src/bridge/createChangedEvents.ts
 source: user product direction, 2026-10-19; interaction design catalogue
 
 # Review contextual AI actions inside LabShelf

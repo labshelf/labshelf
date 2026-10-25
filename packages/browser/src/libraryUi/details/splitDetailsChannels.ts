@@ -1,9 +1,9 @@
 // Splits the Details channel into a library endpoint and an All projects endpoint, and sends details.show after each channel's ready.
-import type { AllProjectsEndpoint, DetailsTarget, DetailsToHost, HostEndpoint, HostToDetails, MessageEnd } from "@labshelf/core";
+import type { AllProjectsEndpoint, DetailsSelection, DetailsToHost, HostEndpoint, HostToDetails, MessageEnd } from "@labshelf/core";
 
 export interface DetailsChannelOptions {
   /** The target Details shows when it mounts. */
-  current(): DetailsTarget;
+  current(): DetailsSelection;
   /** Details asked to open a folder in the paper list; the host never sees this message. */
   onFolderOpen(folder: string): void;
 }

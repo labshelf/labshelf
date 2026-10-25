@@ -2,9 +2,9 @@
 import * as vscode from "vscode";
 
 import {
-  collectProjectSources, type ILogger, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
+  readLatexProjectSources, type ILogger, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
 } from "@labshelf/core";
-import { owningProject, type ReadyProject } from "../../writing/index.js";
+import { findOwningProject, type ReadyProject } from "../../writing/index.js";
 import type { WritingProjects } from "../../writing/session/index.js";
 import { createProjectSourceReader } from "./projectSourceReader.js";
 
@@ -47,7 +47,7 @@ export class LatexProjectSources implements vscode.Disposable {
   /** The LaTeX project that owns a `.tex` file on disk, if any. */
   projectOf(file: vscode.Uri): ReadyProject | undefined {
     if (file.scheme !== "file" || this.workspace.projects.paths.extname(file.fsPath) !== ".tex") { return undefined; }
-    const project = owningProject(this.workspace.projects, file.fsPath);
+    const project = findOwningProject(this.workspace.projects, file.fsPath);
     return project?.settings.format === "latex" ? project : undefined;
   }
 
@@ -89,7 +89,7 @@ export class LatexProjectSources implements vscode.Disposable {
         return text;
       },
     };
-    const sources = await collectProjectSources(main, reader);
+    const sources = await readLatexProjectSources(main, reader);
     return { root, main, ...sources, texts };
   }
 

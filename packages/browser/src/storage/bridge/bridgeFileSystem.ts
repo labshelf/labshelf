@@ -1,9 +1,9 @@
 // Implements the library file system over the bridge host, which serves the library folder on disk.
 import { BridgeError, posixPathOps, type LocalStat } from "@labshelf/core";
 import type { BridgeConnection } from "./bridgeConnection";
-import { ByteBackedFileSystem } from "../bytesFileSystem";
+import { BytesFileSystem } from "../bytesFileSystem";
 
-export class BridgeFileSystem extends ByteBackedFileSystem {
+export class BridgeFileSystem extends BytesFileSystem {
   constructor(private readonly connection: () => Promise<BridgeConnection>) {
     super();
   }

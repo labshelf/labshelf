@@ -11,16 +11,16 @@ const THEME_BY_KIND: Record<number, EffectiveTheme> = {
 };
 
 /** Maps a VS Code ColorThemeKind to a reader theme; unknown kinds read as light. */
-export function readerThemeOfKind(kind: number): EffectiveTheme {
+export function deriveReaderTheme(kind: number): EffectiveTheme {
   return THEME_BY_KIND[kind] ?? "light";
 }
 
 /** The reader theme for the VS Code colour theme that is active now. */
-export function autoReaderTheme(): EffectiveTheme {
-  return readerThemeOfKind(vscode.window.activeColorTheme?.kind ?? 1);
+export function readAutoReaderTheme(): EffectiveTheme {
+  return deriveReaderTheme(vscode.window.activeColorTheme?.kind ?? 1);
 }
 
 /** Calls back with the new reader theme whenever the VS Code colour theme changes. */
 export function onAutoReaderThemeChange(callback: (theme: EffectiveTheme) => void): vscode.Disposable {
-  return vscode.window.onDidChangeActiveColorTheme((event) => { callback(readerThemeOfKind(event.kind)); });
+  return vscode.window.onDidChangeActiveColorTheme((event) => { callback(deriveReaderTheme(event.kind)); });
 }

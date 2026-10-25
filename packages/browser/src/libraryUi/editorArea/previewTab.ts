@@ -1,10 +1,10 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
 import type { BuildOptions, LatexEngine } from "@labshelf/core";
-import { el } from "@labshelf/core/dom";
+import { renderElement } from "@labshelf/core/dom";
 import { mountHelperSetupCard } from "../../helper/setup";
-import { bx, getSettings, updateSettings } from "../../platform";
-import { createBrowserProjectData } from "../../writing/project";
-import { createPreviewFrame, followBuilds, previewRequestHandler, type PreviewLimits } from "../../writing/preview";
+import { bx, readSettings, updateSettings } from "../../platform";
+import { createBrowserProjectContent } from "../../writing/project";
+import { createPreviewFrame, watchBuilds, createPreviewRequestHandler, type PreviewLimits } from "../../writing/preview";
 import type { TabModule } from "./tabKind";
 
 /** Engine and halt-on-error are LaTeX choices, so a Typst project's menu leaves them out. */
@@ -16,7 +16,7 @@ function buildOptionsOf(project: { format?: string; engine?: LatexEngine | undef
 export const mountTab: TabModule["mountTab"] = (host, params, { project, logger, fs, workspace }) => {
   const { helperProject, session } = project();
   const projectId = params["projectId"] ?? "";
-  const body = host.appendChild(el("div", { class: "ls-workspace-fill" }));
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
   let current: { dispose(): void } | undefined;
   let showingFrame = false;
   let disposed = false;
@@ -24,7 +24,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
   const showFrame = async (): Promise<void> => {
     showingFrame = true;
     // The build options menu needs the user's settings before the first roots are posted.
-    const { autoCompile, haltOnError } = await getSettings();
+    const { autoCompile, haltOnError } = await readSettings();
     if (disposed) return;
     current?.dispose();
     body.replaceChildren();
@@ -33,10 +33,10 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     const frame = createPreviewFrame(body, { id: projectId, title: ready?.settings.title ?? projectId });
     const limits: PreviewLimits = { ...ready?.settings.check };
     const options = buildOptionsOf(ready?.settings, { autoCompile, haltOnError });
-    const follow = followBuilds(helperProject, frame, { id: projectId, main: ready?.main, limits: () => limits, options: () => options }, logger);
-    const offRequest = frame.onRequest(previewRequestHandler({
+    const follow = watchBuilds(helperProject, frame, { id: projectId, main: ready?.main, limits: () => limits, options: () => options }, logger);
+    const offRequest = frame.onRequest(createPreviewRequestHandler({
       project: { id: projectId, folder: ready?.folder }, fs, logger, workspace, helperProject,
-      data: createBrowserProjectData({ fs, logger }), builds: follow, limits, options, updateSettings,
+      data: createBrowserProjectContent({ fs, logger }), builds: follow, limits, options, updateSettings,
     }));
     current = { dispose() { offRequest(); follow.dispose(); frame.dispose(); } };
   };
@@ -44,7 +44,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
     showFrame().catch((error: unknown) => logger.error("preview", error, { action: "showFrame", projectId }));
   };
   const showSetup = (): void => {
-    const card = el("div", { class: "ls-preview-setup" });
+    const card = renderElement("div", { class: "ls-preview-setup" });
     body.replaceChildren(card);
     current = mountHelperSetupCard(card, helperProject.setupHelper, {
       logger,

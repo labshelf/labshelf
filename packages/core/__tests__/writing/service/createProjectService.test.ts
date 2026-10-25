@@ -1,12 +1,12 @@
 /** Verifies the project data port runs over an injected file system and keeps device files under the injected folders. */
 import * as path from "node:path";
 
-import { createProjectData, type ProjectDeviceDirs } from "../../../src/writing/service/index";
-import { blankTemplate } from "../../../src/templates/index";
+import { createProjectContent, type ProjectDeviceDirs } from "../../../src/writing/service/index";
+import { createBlankTemplate } from "../../../src/templates/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
-const blank = (title: string) => ({ title, ...blankTemplate("latex", title) });
+const blank = (title: string) => ({ title, ...createBlankTemplate("latex", title) });
 const dirs = {
   projectRegistryPath: "/device/state/projects.json", buildCacheDir: "/device/cache/builds", mergeBasesDir: "/device/state/merge-bases",
 };
@@ -14,10 +14,10 @@ const dirs = {
 async function setup(deviceDirs: ProjectDeviceDirs = dirs) {
   const fs = new MemoryLibraryFs();
   await fs.mkdir("/lib");
-  return { fs, data: createProjectData({ fs, path: path.posix, logger: fakeLogger(), deviceDirs }) };
+  return { fs, data: createProjectContent({ fs, path: path.posix, logger: fakeLogger(), deviceDirs }) };
 }
 
-describe("createProjectData", () => {
+describe("createProjectContent", () => {
   it("lists a project created through the port", async () => {
     const { data } = await setup();
     const created = await data.createProjectFromTemplate("/lib", blank("Deep Nets"));

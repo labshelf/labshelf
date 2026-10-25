@@ -1,7 +1,46 @@
 // Parses the decompressed text of a SyncTeX file into boxes per page and the first position of each source line.
 import { normalizeInputPath } from "./normalizeInputPath.js";
-import { readSyncScale, type SyncScale } from "./syncScale.js";
-import type { SyncBox, SyncFileLines, SyncIndex, SyncMark, SyncNode } from "./synctexMap.js";
+import type { SyncBox, SyncFileLines, SynctexMap, SyncMark, SyncNode } from "./synctexMap.js";
+
+// 65536 sp per TeX point, 72.27 TeX points per 72 PDF points.
+const SP_PER_POINT = 65781.76;
+
+interface SyncScale {
+  /** Converts a horizontal position. */
+  x(raw: number): number;
+  /** Converts a vertical position. */
+  y(raw: number): number;
+  /** Converts a width, height or depth. */
+  size(raw: number): number;
+}
+
+function headerValue(text: string, key: string): number | undefined {
+  const match = new RegExp(`^${key}:\\s*(-?\\d+)`, "m").exec(text);
+  return match ? Number(match[1]) : undefined;
+}
+
+/**
+ * Reads Unit, Magnification and the offsets from the preamble; a post scriptum (added by `synctex update`) overrides them.
+ * Magnification scales coordinates and sizes but not the offsets; Unit scales all three. Checked against `synctex view`.
+ */
+function readSyncScale(text: string): SyncScale {
+  const contentAt = text.indexOf("\nContent:");
+  const postAt = text.lastIndexOf("\nPost scriptum:");
+  const header = contentAt === -1 ? text : text.slice(0, contentAt);
+  const post = postAt === -1 ? "" : text.slice(postAt);
+  const read = (key: string): number | undefined => headerValue(post, key) ?? headerValue(header, key);
+  const unit = read("Unit");
+  const magnification = read("Magnification");
+  const factor = ((unit !== undefined && unit > 0 ? unit : 8192) / SP_PER_POINT);
+  const zoom = (magnification !== undefined && magnification > 0 ? magnification : 1000) / 1000;
+  const xOffset = read("X Offset") ?? 0;
+  const yOffset = read("Y Offset") ?? 0;
+  return {
+    x: (raw) => (raw * zoom + xOffset) * factor,
+    y: (raw) => (raw * zoom + yOffset) * factor,
+    size: (raw) => raw * zoom * factor,
+  };
+}
 
 // PDF points: marks this close to the right edge of their line box are line-end glue.
 const LINE_END_TOLERANCE = 0.5;
@@ -49,7 +88,7 @@ class IndexBuilder {
     }
   }
 
-  build(): SyncIndex {
+  build(): SynctexMap {
     for (const lines of this.byFile.values()) { lines.lines = [...lines.positions.keys()].sort((a, b) => a - b); }
     return { files: this.files, pages: this.pages, byFile: this.byFile };
   }
@@ -100,7 +139,7 @@ class IndexBuilder {
 }
 
 /** Reads the records of a SyncTeX file; `cwd` is the folder the build ran in, which relative input paths are resolved against. */
-export function parseSynctex(text: string, cwd: string): SyncIndex {
+export function parseSynctex(text: string, cwd: string): SynctexMap {
   if (!text.startsWith("SyncTeX Version:")) { throw new Error("Not a SyncTeX file: the version line is missing"); }
   const builder = new IndexBuilder(readSyncScale(text), cwd);
   for (const row of text.split("\n")) {

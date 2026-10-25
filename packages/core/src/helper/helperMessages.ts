@@ -27,11 +27,11 @@ export type HelperHost = (typeof HELPER_HOSTS)[number];
 export const PROGRESS_PHASES = ["installing-tex", "installing-package", "building", "updating"] as const;
 export type ProgressPhase = (typeof PROGRESS_PHASES)[number];
 export const HELPER_BUILD_STATUSES = ["succeeded", "failed", "cancelled", "toolchain-missing", "needs-shell-escape"] as const;
-export type HelperBuildStatus = (typeof HELPER_BUILD_STATUSES)[number];
+export type HelperBuildState = (typeof HELPER_BUILD_STATUSES)[number];
 
 export const COMPILE_MODES = ["preview", "full"] as const;
 export type CompileMode = (typeof COMPILE_MODES)[number];
-export interface TexStatus { source: TexSource; year?: number; complete: boolean }
+export interface TexToolchain { source: TexSource; year?: number; complete: boolean }
 export interface HelperProgress { phase: ProgressPhase; message: string; fraction?: number }
 /** Replaces the characters `from` to `to` of the previous version's text with `insert`. */
 export interface TextChange { from: number; to: number; insert: string }
@@ -58,13 +58,13 @@ export type ToHelperMessage =
 export type ToPageMessage =
   | TemplatePublishReply
   | Envelope<"templatePreview">
-  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexStatus }
+  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexToolchain }
   | Envelope<"session"> & { port: number; token: string }
   | Envelope<"authed">
   | Envelope<"opened"> & { projectId: string; files: string[] }
   | Envelope<"closed"> & { projectId: string }
   | Envelope<"progress"> & HelperProgress
-  | Envelope<"built"> & { status: HelperBuildStatus; problems: LocatedProblem[]; pdfSha256?: string }
+  | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 

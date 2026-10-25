@@ -10,7 +10,7 @@ const mockFs: Pick<LibraryFileSystem, "listDir" | "stat"> = {
 };
 jest.mock("../../src/storage/libraryFileSystem", () => ({ createLibraryFileSystem: () => mockFs }));
 
-import { buildFolderTree, pdfDirs, scanLibrary } from "../../src/storage/folderTreeStore";
+import { buildFolderTree, listPdfDirs, scanLibrary } from "../../src/storage/folderTreeStore";
 
 function seed(fileList: string[], dirList: string[]): void {
   files.clear(); dirs.clear();
@@ -33,7 +33,7 @@ describe("folderTreeStore", () => {
     const scan = await scanLibrary();
     expect(scan.tree.find((node) => node.name === "Thesis")?.children).toEqual([]);
     expect([...scan.pdfDirs]).toEqual(["papers/Thesis/smith"]);
-    await expect(pdfDirs()).resolves.toEqual(new Set(["papers/Thesis/smith"]));
+    await expect(listPdfDirs()).resolves.toEqual(new Set(["papers/Thesis/smith"]));
   });
 
   it("answers an empty tree for a library without a papers folder", async () => {

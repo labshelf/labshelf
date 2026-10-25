@@ -1,11 +1,27 @@
 /** Checks a writing project against the catalog rules and, when all pass, lays out the files of a submission. */
 // CONTRACT: documents/contracts/templates.md#manifest
 
-import { readTemplateFields } from "../templateManifest/index.js";
-import type { PublishCheck, PublishCheckInput, PublishCheckReport } from "../publishCheckReport.js";
-import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, thumbnailProblem } from "./catalog/index.js";
-import { layOutPublishFiles } from "./publishFiles.js";
+import { promises as fs } from "node:fs";
+import { readTemplateFields, serializeTemplateManifest, type TemplateManifest } from "../templateManifest/index.js";
+import type { PublishCheck, PublishCheckInput, PublishCheckReport, PublishFile } from "../publishCheckReport.js";
+import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, deriveThumbnailProblem } from "./catalog/index.js";
 import { runSourceChecks } from "./sourceChecks.js";
+import type { FoundFile } from "./walkFolder.js";
+
+/** @param createProjectFiles the files that passed the checks, laid out under `files/` */
+async function layOutPublishFiles(
+  manifest: TemplateManifest,
+  projectFiles: readonly FoundFile[],
+  thumbnail: Uint8Array,
+  sample: Uint8Array,
+): Promise<PublishFile[]> {
+  const files: PublishFile[] = [{ path: "template.yaml", bytes: new TextEncoder().encode(serializeTemplateManifest(manifest)) }];
+  for (const file of projectFiles) {
+    files.push({ path: `files/${file.path}`, bytes: new Uint8Array(await fs.readFile(file.absolute)) });
+  }
+  files.push({ path: "preview/thumbnail.png", bytes: thumbnail }, { path: "preview/sample.pdf", bytes: sample });
+  return files;
+}
 
 const MODULE = "templates";
 const SKIPPED = "Skipped: an earlier check failed.";
@@ -33,7 +49,7 @@ async function buildCheck(input: PublishCheckInput): Promise<{ check: PublishChe
 async function thumbnailCheck(input: PublishCheckInput, pdf: Uint8Array): Promise<{ check: PublishCheck; png?: Uint8Array }> {
   try {
     const png = await input.renderThumbnail(pdf);
-    const problem = png.byteLength > THUMBNAIL_MAX_BYTES ? `thumbnail.png is over ${THUMBNAIL_MAX_BYTES} bytes` : thumbnailProblem(png);
+    const problem = png.byteLength > THUMBNAIL_MAX_BYTES ? `thumbnail.png is over ${THUMBNAIL_MAX_BYTES} bytes` : deriveThumbnailProblem(png);
     return problem === undefined ? { check: { id: "thumbnail", ok: true }, png } : { check: failed("thumbnail", problem) };
   } catch (error) {
     await input.logger.error(MODULE, error, { action: "publish check thumbnail", projectFolder: input.projectFolder, templateId: input.manifest.id });

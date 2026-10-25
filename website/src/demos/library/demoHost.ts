@@ -1,6 +1,6 @@
 // Answers the library UI from the in-memory demo library; edits stay in memory and every app-only action says so.
 import {
-  errorMessage, listPaperFiles, paperDetailsOf, PDF_FILE,
+  formatError, listPaperFiles, derivePaperDetails, PDF_FILE,
   type HostEndpoint, type HostToUi, type ILogger, type UiToHost,
 } from "@labshelf/core";
 
@@ -24,7 +24,7 @@ async function answer(library: DemoLibrary, m: UiToHost, post: (m: HostToUi) => 
       post({ type: "snapshot", snapshot: library.snapshot() });
       return;
     case "navigate": case "paper.selected": return;
-    case "paper.details": post({ type: "details", id: m.id, details: paperDetailsOf(library.sidecar(m.id), pdfOf(library, m.id)) }); return;
+    case "paper.details": post({ type: "details", id: m.id, details: derivePaperDetails(library.sidecar(m.id), pdfOf(library, m.id)) }); return;
     case "paper.files": {
       const paper = library.paper(m.id);
       if (!paper) throw new Error(`Unknown paper ${m.id}`);
@@ -49,7 +49,7 @@ async function answer(library: DemoLibrary, m: UiToHost, post: (m: HostToUi) => 
 export function attachDemoHost(endpoint: HostEndpoint, library: DemoLibrary, log: ILogger): () => void {
   return endpoint.subscribe((m) => {
     answer(library, m, (reply) => endpoint.post(reply), log).catch((err: unknown) => {
-      endpoint.post({ type: "notice", kind: "error", text: errorMessage(err) });
+      endpoint.post({ type: "notice", kind: "error", text: formatError(err) });
       void log.error(MODULE, err, { type: m.type });
     });
   });

@@ -1,5 +1,5 @@
 // Opens a share link in the page: fetches and decrypts the manifest, then fetches, verifies and reassembles a PDF on demand.
-import { openBlob, openManifest } from "./shareCipher.js";
+import { openShareBlob, openShareManifest } from "./shareCipher.js";
 import { parseShareLink, type ShareLinkParts } from "./shareLink.js";
 import type { ShareManifest, SharedPaper } from "./shareManifest.js";
 import type { ShareReader } from "./shareBackend.js";
@@ -29,7 +29,7 @@ async function loadPdf(reader: ShareReader, shareId: string, paper: SharedPaper)
       return { ok: false, error: "network", detail: `blob ${part.blob}: ${String(error)}` };
     }
     if (!bytes) { return { ok: false, error: "missing" }; }
-    const plaintext = await openBlob(part, bytes);
+    const plaintext = await openShareBlob(part, bytes);
     if (!plaintext) { return { ok: false, error: "tampered" }; }
     out.set(plaintext, offset);
     offset += plaintext.length;
@@ -50,7 +50,7 @@ export async function openShare(text: string, readerFor: (relayUrl: string) => S
     return { ok: false, error: "network", detail: `manifest of ${link.shareId}: ${String(error)}` };
   }
   if (!sealed) { return { ok: false, error: "removed" }; }
-  const manifest = await openManifest(link.key, link.shareId, sealed);
+  const manifest = await openShareManifest(link.key, link.shareId, sealed);
   if (!manifest) { return { ok: false, error: "unreadable" }; }
   return { ok: true, share: { link, manifest, loadPdf: (paper) => loadPdf(reader, link.shareId, paper) } };
 }

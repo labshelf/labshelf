@@ -3,7 +3,7 @@ import { serializeGlossaryFile, serializeSpaceFile } from "../model/index.js";
 import type { Glossary, Space, SpaceReadResult } from "../model/index.js";
 import type { Edited } from "./mutation/index.js";
 import { readGlossaryFile, readSpaceFile } from "./readSpace.js";
-import { serially } from "./serialWrites.js";
+import { runSerially } from "./serialWrites.js";
 import { SPACE_STORE_MODULE, SpaceReadOnlyError, type StoreContext } from "./spaceStoreOptions.js";
 
 export type ReadySpace = Extract<SpaceReadResult, { state: "ready" }>;
@@ -22,10 +22,10 @@ async function writableSpace(ctx: StoreContext, id: string): Promise<Space> {
   return current.space;
 }
 
-export function editSpace<T>(
+export function updateSpace<T>(
   ctx: StoreContext, id: string, action: string, edit: (space: Space) => Edited<T>,
 ): Promise<{ value: T; written: ReadySpace }> {
-  return serially(ctx, id, async () => {
+  return runSerially(ctx, id, async () => {
     const path = ctx.layout.spaceFilePath(id);
     try {
       const { space, value } = edit(await writableSpace(ctx, id));
@@ -39,10 +39,10 @@ export function editSpace<T>(
 }
 
 /** The glossary is written only while its Space may be written. */
-export function editGlossary<T>(
+export function updateGlossary<T>(
   ctx: StoreContext, id: string, action: string, edit: (glossary: Glossary) => { glossary: Glossary; value: T },
 ): Promise<T> {
-  return serially(ctx, id, async () => {
+  return runSerially(ctx, id, async () => {
     const path = ctx.layout.glossaryFilePath(id);
     try {
       await writableSpace(ctx, id);

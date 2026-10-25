@@ -1,15 +1,15 @@
 // Finds addresses to ask a paper's authors for a copy: the article page first, then PubMed's affiliation lines.
-import { errorMessage } from "../../../logging/index.js";
-import { pubMedAuthorsByDoi, type RegistryEnv } from "../../registries/index.js";
+import { formatError } from "../../../logging/index.js";
+import { fetchPubmedAuthorsByDoi, type RegistryEnv } from "../../registries/index.js";
 import { parseHtmlPage } from "../htmlPage.js";
 import type { RawPage } from "../rawPage.js";
-import { authorContacts, type AuthorContact } from "./authorContacts.js";
-import { emailFromAffiliation } from "./affiliation.js";
+import { deriveAuthorContacts, type AuthorContact } from "./deriveAuthorContacts.js";
+import { extractEmailFromAffiliation } from "./affiliation.js";
 
 const MODULE = "authorContacts";
 const PAGE_TIMEOUT_MS = 12_000;
 
-export interface ContactLookup {
+export interface ContactFinder {
   /** The article page; its addresses are read from `page` when the host already probed it. */
   articleUrl?: string;
   page?: RawPage;
@@ -17,13 +17,13 @@ export interface ContactLookup {
 }
 
 /** `env.fetch` carries the host's session (cookies), because many article pages show the correspondence block only to readers who are signed in. */
-export async function findAuthorContacts(lookup: ContactLookup, env: RegistryEnv): Promise<AuthorContact[]> {
+export async function findAuthorContacts(lookup: ContactFinder, env: RegistryEnv): Promise<AuthorContact[]> {
   const page = lookup.page ?? (lookup.articleUrl ? await fetchPage(lookup.articleUrl, env) : undefined);
-  const fromPage = page ? authorContacts(page) : [];
+  const fromPage = page ? deriveAuthorContacts(page) : [];
   if (fromPage.length || !lookup.doi) return fromPage;
-  const authors = await pubMedAuthorsByDoi(env, lookup.doi);
+  const authors = await fetchPubmedAuthorsByDoi(env, lookup.doi);
   const fromPubMed = authors.flatMap(({ name, affiliations }) => {
-    const email = affiliations.map(emailFromAffiliation).find((e) => e !== undefined);
+    const email = affiliations.map(extractEmailFromAffiliation).find((e) => e !== undefined);
     return email ? [{ email, ...(name ? { name } : {}) }] : [];
   });
   await env.logger?.log("INFO", MODULE, "author contacts", { page: lookup.articleUrl ?? null, fromPage: 0, fromPubMed: fromPubMed.length });
@@ -40,7 +40,7 @@ async function fetchPage(url: string, env: RegistryEnv): Promise<RawPage | undef
     }
     return parseHtmlPage(await response.text(), response.url || url);
   } catch (error) {
-    await env.logger?.log("WARN", MODULE, "article page unavailable", { url, message: errorMessage(error) });
+    await env.logger?.log("WARN", MODULE, "article page unavailable", { url, message: formatError(error) });
     return undefined;
   }
 }

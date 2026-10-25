@@ -1,13 +1,13 @@
 // Tests the All projects library: where each project is listed, its build, cites and detail, and what its mutations write.
-import { readProjectCites } from "../../../../src/writing/allProjects/library/readProjectCitationCounts";
-import { readProjectDetail } from "../../../../src/writing/allProjects/library/readProjectDetailPane";
+import { readProjectCitations } from "../../../../src/writing/allProjects/library/readProjectCitationCounts";
+import { readProjectPaneContent } from "../../../../src/writing/allProjects/library/readProjectDetailPane";
 import { libraryHarness, readyEntry } from "../../../support/projectLibraryHarness";
 
 jest.mock("../../../../src/writing/allProjects/library/readProjectCitationCounts", () => ({
-  readProjectCites: jest.fn(async () => ({ cites: 5, unresolved: 2 })),
+  readProjectCitations: jest.fn(async () => ({ cites: 5, unresolved: 2 })),
 }));
 jest.mock("../../../../src/writing/allProjects/library/readProjectDetailPane", () => ({
-  readProjectDetail: jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] })),
+  readProjectPaneContent: jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] })),
 }));
 
 const A = "/lib/projects/a";
@@ -48,7 +48,7 @@ describe("createProjectLibrary", () => {
 
   it("reads cites with the main file filled into the settings", async () => {
     await setup().library.list();
-    expect(readProjectCites).toHaveBeenCalledWith(expect.anything(), A, expect.objectContaining({ id: "a", main: "main.tex" }), expect.anything());
+    expect(readProjectCitations).toHaveBeenCalledWith(expect.anything(), A, expect.objectContaining({ id: "a", main: "main.tex" }), expect.anything());
   });
 
   it("reuses the cites of a project until its modified time changes", async () => {
@@ -58,18 +58,18 @@ describe("createProjectLibrary", () => {
     library.onDidChange(() => {});
     listeners.forEach((listener) => listener());
     await library.list();
-    expect(readProjectCites).toHaveBeenCalledTimes(3);
+    expect(readProjectCitations).toHaveBeenCalledTimes(3);
     data.lastModified.mockResolvedValue(200);
     listeners.forEach((listener) => listener());
     await library.list();
-    expect(readProjectCites).toHaveBeenCalledTimes(6);
+    expect(readProjectCitations).toHaveBeenCalledTimes(6);
   });
 
   it("serves the detail of a project from the core reader with the library papers and the build summary", async () => {
     const { library, papers } = setup();
     const detail = await library.detail(A);
     expect(detail.id).toBe(A);
-    expect(readProjectDetail).toHaveBeenCalledWith(
+    expect(readProjectPaneContent).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ id: A, folder: A, papers, build: expect.objectContaining({ state: "ok", at: 7000 }), settings: expect.objectContaining({ main: "main.tex" }) }),
     );

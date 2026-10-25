@@ -5,9 +5,9 @@
 // Insertions and bold or italic wrapping apply to every selection of the source editor in one transaction.
 import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import type { ILogger } from "@labshelf/core";
-import { tableSnippet } from "@labshelf/core";
+import { type ILogger, createImageSnippet, createTableSnippet } from "@labshelf/core";
 import { mountSourceEditor } from "../../../src/writing/editor/mountSourceEditor";
+import { deriveCodeMirrorTemplate } from "../../../src/writing/source/sourceUpdates";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const ready = { state: "ready" as const, helperVersion: "1", tex: { source: "none" as const, complete: false }, host: "helper" as const };
@@ -85,11 +85,48 @@ describe("insertSnippet", () => {
   it("inserts the table at the cursor with its literal backslashes and braces", async () => {
     const { editor, select, doc } = await mount("before\nafter");
     select([7, 7]);
-    editor.insertSnippet(tableSnippet("latex", { columns: 2, rows: 1 }));
+    editor.insertSnippet(createTableSnippet("latex", { columns: 2, rows: 1 }));
     expect(doc()).toContain("before\n\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{|c|c|}");
     expect(doc()).toContain("\\caption{Caption}");
     expect(doc()).toContain("\\\\\n");
     expect(doc().endsWith("\\end{table}\nafter")).toBe(true);
     await editor.dispose();
+  });
+});
+
+describe("deriveCodeMirrorTemplate", () => {
+  it("unescapes a backslash and a dollar sign", () => {
+    expect(deriveCodeMirrorTemplate("a\\\\b")).toBe("a\\b");
+    expect(deriveCodeMirrorTemplate("cost \\$5")).toBe("cost $5");
+  });
+
+  it("turns the final cursor and bare tab stops into CodeMirror fields", () => {
+    expect(deriveCodeMirrorTemplate("x$0")).toBe("x${0}");
+    expect(deriveCodeMirrorTemplate("$1 and $2")).toBe("${1} and ${2}");
+  });
+
+  it("keeps a placeholder field", () => {
+    expect(deriveCodeMirrorTemplate("${1:Caption}")).toBe("${1:Caption}");
+  });
+
+  it("doubles a literal backslash that sits before a brace, which CodeMirror would read as an escape", () => {
+    expect(deriveCodeMirrorTemplate("\\\\{x}")).toBe("\\\\{x}");
+    expect(deriveCodeMirrorTemplate("\\}")).toBe("}");
+  });
+
+  it("converts a LaTeX image figure", () => {
+    const converted = deriveCodeMirrorTemplate(createImageSnippet("latex", "images/a.png"));
+    expect(converted).toContain("\\begin{figure}[h]");
+    expect(converted).toContain("\\includegraphics[width=0.8\\linewidth]{images/a.png}");
+    expect(converted).toContain("\\caption{${1:Caption}}");
+    expect(converted.endsWith("${0}")).toBe(true);
+  });
+
+  it("converts a Typst table, keeping the cell stops", () => {
+    const converted = deriveCodeMirrorTemplate(createTableSnippet("typst", { columns: 2, rows: 1 }));
+    expect(converted).toContain("columns: 2,");
+    expect(converted).toContain("[${1}], [${2}],");
+    expect(converted).toContain("caption: [${3:Caption}],");
+    expect(converted.endsWith("${0}")).toBe(true);
   });
 });

@@ -1,7 +1,7 @@
 // Shows the cite count and the problems left in the shown PDF, and steps through them with prev/next chevrons.
-import { icon } from "../../../../ui/index.js";
-import { el, toast } from "../../../../ui/dom/index.js";
-import type { PageArea, PdfProblem, PreviewRoots, WebviewToHost } from "../../../index.js";
+import { renderIcon } from "../../../../ui/index.js";
+import { renderElement, showToast } from "../../../../ui/dom/index.js";
+import type { PageArea, PdfProblem, PreviewBuildRoots, WebviewToHost } from "../../../index.js";
 
 interface ProblemsDeps {
   /** The reader's problem marks; `index` counts into the shown root's `pdfProblems`. */
@@ -11,7 +11,7 @@ interface ProblemsDeps {
 }
 
 export interface PreviewProblems {
-  setRoots(roots: PreviewRoots): void;
+  setRoots(roots: PreviewBuildRoots): void;
   /** Moves to the next (1) or previous (-1) problem, wrapping at the ends. */
   step(dir: 1 | -1): void;
 }
@@ -19,7 +19,7 @@ export interface PreviewProblems {
 const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
 function arrow(label: string, glyph: "chevron-left" | "chevron-right", onClick: () => void): HTMLButtonElement {
-  const button = el("button", { class: "rd-preview-problem-step", type: "button", title: label, "aria-label": label, html: icon(glyph) });
+  const button = renderElement("button", { class: "rd-preview-problem-step", type: "button", title: label, "aria-label": label, html: renderIcon(glyph) });
   button.addEventListener("click", onClick);
   return button;
 }
@@ -36,7 +36,7 @@ export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: Prob
       marks.flash(index);
       return;
     }
-    toast(problem.message);
+    showToast(problem.message);
     if (problem.file !== undefined && problem.line !== undefined) {
       post({ command: "openSourceLine", file: problem.file, line: problem.line });
     }
@@ -44,7 +44,7 @@ export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: Prob
 
   function step(dir: 1 | -1): void {
     if (problems.length === 0) {
-      toast("No problems in the PDF");
+      showToast("No problems in the PDF");
       return;
     }
     at = at === -1 && dir === -1 ? problems.length - 1 : (at + dir + problems.length) % problems.length;
@@ -59,10 +59,10 @@ export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: Prob
       at = -1;
       const cites = shown?.cites;
       slot.hidden = cites === undefined && problems.length === 0;
-      const status = el("span", { class: "rd-preview-cites", role: "status", "aria-live": "polite" }, plural(cites ?? 0, "cite"));
+      const status = renderElement("span", { class: "rd-preview-cites", role: "status", "aria-live": "polite" }, plural(cites ?? 0, "cite"));
       if (problems.length > 0) {
         const tone = problems.some((p) => p.kind === "undefinedCitation") ? "error" : "warning";
-        status.append(" · ", el("span", { class: "rd-preview-to-fix", "data-tone": tone }, `${problems.length} to fix`));
+        status.append(" · ", renderElement("span", { class: "rd-preview-to-fix", "data-tone": tone }, `${problems.length} to fix`));
       }
       slot.replaceChildren(status);
       if (problems.length > 0) {

@@ -1,12 +1,12 @@
 // Declares the messages between the All projects page and its host, and the channel that carries them.
 import type { MessageEnd } from "../../../libraryUi/protocol/index.js";
-import type { ProjectDetail } from "../projectDetailPane.js";
-import type { NewProjectKind, ProjectMenuCommand, ProjectRow } from "../projectRow.js";
+import type { ProjectPaneContent } from "../projectDetailPane.js";
+import type { CreateProjectKind, ProjectMenuCommand, ProjectRow } from "../projectRow.js";
 
 export type AllProjectsToHost =
   | { type: "ready" }
   | { type: "open"; id: string }
-  | { type: "create"; kind: NewProjectKind }
+  | { type: "create"; kind: CreateProjectKind }
   | { type: "rename"; id: string; title: string }
   | { type: "duplicate"; id: string; title: string }
   /** `folder` is "/"-joined; absent moves the project to the top level. */
@@ -34,11 +34,11 @@ export type AllProjectsToHost =
   | { type: "setTarget"; id: string; venue?: string; deadline?: string };
 
 export type HostToAllProjects =
-  | { type: "projects"; rows: ProjectRow[]; commands: ProjectMenuCommand[]; newKinds: NewProjectKind[]; openLabel: string }
+  | { type: "projects"; rows: ProjectRow[]; commands: ProjectMenuCommand[]; newKinds: CreateProjectKind[]; openLabel: string }
   | { type: "error"; message: string }
   | { type: "files"; id: string; files: string[] }
   | { type: "files"; id: string; error: string }
-  | { type: "detail"; id: string; detail: ProjectDetail }
+  | { type: "detail"; id: string; detail: ProjectPaneContent }
   | { type: "detail"; id: string; error: string };
 
 /** The page side of the channel. */

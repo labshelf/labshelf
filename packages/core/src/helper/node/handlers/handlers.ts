@@ -4,7 +4,7 @@ import type { ILogger } from "../../../ports/index.js";
 import { parseHelperMessage, PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 
 import { HelperProjectError } from "../projects/index.js";
-import type { HelperSocketOptions } from "../connection/index.js";
+import type { HelperServerOptions } from "../connection/index.js";
 import type { HelperHandlers, HelperSend } from "./helperHandlers.js";
 
 const LOG_MODULE = "helper-dispatch";
@@ -45,14 +45,14 @@ function parseEnvelope(envelope: unknown, reply: ErrorReply, logger: ILogger): T
   return undefined;
 }
 
-export interface Dispatcher {
+export interface HelperAnswerer {
   /** Routes one socket message; the socket's `send` answers it. */
-  handle: HelperSocketOptions["handle"];
+  handle: HelperServerOptions["handle"];
   /** Resolves when every accepted message has been handled. */
   drain(): Promise<void>;
 }
 
-export function createDispatcher(handlers: HelperHandlers, logger: ILogger): Dispatcher {
+export function createHelperAnswerer(handlers: HelperHandlers, logger: ILogger): HelperAnswerer {
   const backlog: Array<{ message: ToHelperMessage; send: HelperSend; payload: Uint8Array }> = [];
   const idleWaiters: Array<() => void> = [];
   let queueBusy = false;
@@ -76,7 +76,7 @@ export function createDispatcher(handlers: HelperHandlers, logger: ILogger): Dis
     });
   }
 
-  const handle: Dispatcher["handle"] = (envelope, payload, socketSend) => {
+  const handle: HelperAnswerer["handle"] = (envelope, payload, socketSend) => {
     // TRAP: interfaces such as HelperProgress lack an index signature, so the message needs a cast to the socket envelope.
     const send: HelperSend = (message, payload) => socketSend(message as unknown as Record<string, unknown>, payload);
     const message = parseEnvelope(envelope, errorReply(send), logger);

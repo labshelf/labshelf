@@ -9,7 +9,7 @@ export interface FileChange {
 }
 
 /** Sorted by path; the first entry of a history has every file as added. */
-export function entryChanges(before: HistoryEntry | undefined, entry: HistoryEntry): FileChange[] {
+export function deriveEntryChanges(before: HistoryEntry | undefined, entry: HistoryEntry): FileChange[] {
   const old = before?.files ?? {};
   const changes: FileChange[] = [];
   for (const [path, hash] of Object.entries(entry.files)) {

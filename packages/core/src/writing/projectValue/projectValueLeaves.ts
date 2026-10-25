@@ -2,27 +2,27 @@
 // CONTRACT: documents/contracts/library-format.md#labshelf-valuestex
 import type { ProjectSettings } from "../project/index.js";
 
-export type LeafValue = number | string | boolean;
+export type LeafProjectValue = number | string | boolean;
 
-export interface ValueLeaf {
+export interface ProjectValueLeaf {
   /** `<file name without .json>.<dotted path>`: what `\lsvalue` takes. */
   key: string;
-  value: LeafValue;
+  value: LeafProjectValue;
   /** The JSON file as listed under `values:`, relative to the project folder. */
   file: string;
   /** Dotted path of the leaf inside the file. */
   path: string;
 }
 
-export interface ValueProject {
+export interface ProjectValueSource {
   folder: string;
   settings: ProjectSettings;
   /** Main file relative to the folder; undefined when the project has none yet. */
   main: string | undefined;
 }
 
-export interface FlattenedValues {
-  leaves: ValueLeaf[];
+export interface FlattenedProjectValues {
+  leaves: ProjectValueLeaf[];
   /** Keys of leaves left out because the key has a character a LaTeX control sequence name cannot carry. */
   skipped: string[];
 }
@@ -30,16 +30,16 @@ export interface FlattenedValues {
 const KEY_CHARACTERS = /^[A-Za-z0-9._-]+$/;
 
 /** The key prefix of a value file: its name without `.json`. */
-export const valueFileBase = (file: string): string => file.replace(/^.*\//, "").replace(/\.json$/i, "");
+export const deriveProjectValueFileBase = (file: string): string => file.replace(/^.*\//, "").replace(/\.json$/i, "");
 
-function isLeaf(node: unknown): node is LeafValue {
+function isLeaf(node: unknown): node is LeafProjectValue {
   return typeof node === "number" || typeof node === "string" || typeof node === "boolean";
 }
 
 /** Leaves in document order; `null` is skipped, array items are numbered from 0. */
-export function flattenValues(file: string, json: unknown): FlattenedValues {
-  const base = valueFileBase(file);
-  const leaves: ValueLeaf[] = [];
+export function deriveProjectValueLeaves(file: string, json: unknown): FlattenedProjectValues {
+  const base = deriveProjectValueFileBase(file);
+  const leaves: ProjectValueLeaf[] = [];
   const skipped: string[] = [];
   const visit = (node: unknown, path: string): void => {
     if (isLeaf(node)) {

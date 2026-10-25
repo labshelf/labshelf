@@ -1,7 +1,7 @@
 // Creates the open project's Checklist and describes it for the sidebar mirror.
 import * as vscode from "vscode";
 
-import { updateChecklist, type ILogger, type PaperStatus } from "@labshelf/core";
+import { updateChecklist, type ILogger, type ReadingStatus } from "@labshelf/core";
 import { CHECK_COMMAND } from "../check/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
@@ -9,7 +9,7 @@ import type { ProjectSession, WritingProjects } from "../session/index.js";
 import type { BuiltTreeSpec } from "../sidebar/index.js";
 import { ChecklistView } from "./checklistView.js";
 import { OpenProjectSignals } from "./openProjectSignals.js";
-import { signalsReader } from "./signalsReader.js";
+import { createSignalsReader } from "./createSignalsReader.js";
 
 export interface ChecklistViewRegistration {
   context: vscode.ExtensionContext;
@@ -20,7 +20,7 @@ export interface ChecklistViewRegistration {
   /** Fires when the project backlinks, and so the reading lists, change. */
   onDidChangeBacklinks: vscode.Event<void>;
   /** Writes paper statuses through the open library and returns the ids that failed; with no library open every id failed. */
-  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
+  setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
   logger: ILogger;
 }
 
@@ -28,7 +28,7 @@ export interface ChecklistViewRegistration {
 export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTreeSpec {
   const { context, session, logger } = deps;
   const signals = new OpenProjectSignals({
-    session, readSignals: signalsReader(deps.projects), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
+    session, readSignals: createSignalsReader(deps.projects), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
     onDidCountBodyPages: deps.previews.onDidCountBodyPages, logger, paths: deps.projects.paths,
   });
   const view = new ChecklistView({

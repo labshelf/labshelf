@@ -2,7 +2,29 @@
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import type { PaperEntry } from "../model/index.js";
 import type { PathOps } from "../mutations/index.js";
-import { concurrencyLimit, type Limiter } from "./concurrencyLimit.js";
+
+/** Pools promises, so scanning a large library never has thousands of file operations in flight at once. */
+type Limiter = <T>(task: () => Promise<T>) => Promise<T>;
+
+/** @returns a function that runs at most `max` of the tasks passed to it at a time */
+export function createConcurrencyLimit(max: number): Limiter {
+  let running = 0;
+  const waiting: Array<() => void> = [];
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (running >= max) {
+      // The finishing task hands its slot to this one, so the count never exceeds `max`.
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    } else {
+      running++;
+    }
+    try {
+      return await task();
+    } finally {
+      const next = waiting.shift();
+      if (next) { next(); } else { running--; }
+    }
+  };
+}
 
 /** The slice of the file-system port a scan reads through. */
 export type ScanFileSystem = Pick<LibraryFileSystem, "listDir" | "stat" | "readText">;
@@ -20,10 +42,10 @@ const SCAN_MODULE = "library/scan";
 const MAX_PARALLEL_OPERATIONS = 32;
 
 export function createScanEnv(fs: ScanFileSystem, ops: PathOps, logger: ILogger, previous: ReadonlyMap<string, PaperEntry> = new Map()): ScanEnv {
-  return { fs, ops, logger, limit: concurrencyLimit(MAX_PARALLEL_OPERATIONS), previous };
+  return { fs, ops, logger, limit: createConcurrencyLimit(MAX_PARALLEL_OPERATIONS), previous };
 }
 
 /** Logs something the scan skipped, with the context to find it. */
-export async function warnSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
+export async function reportSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
   await env.logger.log("WARN", SCAN_MODULE, message, context);
 }

@@ -1,12 +1,12 @@
 // Decides whether two bibliographic records describe the same work.
-import { titleKey } from "../../library/index.js";
-import { surname } from "./titleAgreement.js";
+import { normalizeTitleForMatch } from "../../library/index.js";
+import { deriveSurname } from "./titleAgreement.js";
 
 // TRAP: aggregators and title searches often return a neighbouring paper (BWA for BWA-SW), so a copy that did not
 // come from the DOI's own record must pass this check before it is downloaded.
 
 /** A record thin enough for the comparison: whatever a source managed to supply. */
-export interface WorkRef {
+export interface WorkReference {
   title?: string | undefined;
   year?: number | undefined;
   authors?: string[] | undefined;
@@ -26,18 +26,18 @@ const TITLE_DICE_MIN = 0.9;
  * when both sides list authors they must share a surname.
  * @returns true when `a` and `b` plausibly describe the same paper; false when either has no title.
  */
-export function sameWork(a: WorkRef, b: WorkRef, opts: SameWorkOptions = {}): boolean {
-  const ta = a.title ? titleKey(a.title) : "";
-  const tb = b.title ? titleKey(b.title) : "";
+export function isSameWork(a: WorkReference, b: WorkReference, opts: SameWorkOptions = {}): boolean {
+  const ta = a.title ? normalizeTitleForMatch(a.title) : "";
+  const tb = b.title ? normalizeTitleForMatch(b.title) : "";
   if (!ta || !tb) return false;
-  if (ta !== tb && wordBigramDice(ta, tb) < TITLE_DICE_MIN) return false;
+  if (ta !== tb && deriveWordBigramDice(ta, tb) < TITLE_DICE_MIN) return false;
 
   const yearSlack = opts.yearSlack ?? 1;
   if (a.year !== undefined && b.year !== undefined && Math.abs(a.year - b.year) > yearSlack) return false;
 
   if (a.authors?.length && b.authors?.length) {
-    const surnamesA = new Set(a.authors.map(surname).filter(Boolean));
-    return b.authors.map(surname).some((s) => s !== "" && surnamesA.has(s));
+    const surnamesA = new Set(a.authors.map(deriveSurname).filter(Boolean));
+    return b.authors.map(deriveSurname).some((s) => s !== "" && surnamesA.has(s));
   }
   return true;
 }
@@ -46,7 +46,7 @@ export function sameWork(a: WorkRef, b: WorkRef, opts: SameWorkOptions = {}): bo
  * Dice coefficient over the adjacent word pairs of two normalised titles. Word pairs, not characters or single
  * words, are what separate near neighbours: single words score BWA against BWA-SW at 0.9 and would accept it.
  */
-export function wordBigramDice(normA: string, normB: string): number {
+export function deriveWordBigramDice(normA: string, normB: string): number {
   const a = wordBigrams(normA);
   const b = wordBigrams(normB);
   if (a.length === 0 || b.length === 0) return normA === normB ? 1 : 0;

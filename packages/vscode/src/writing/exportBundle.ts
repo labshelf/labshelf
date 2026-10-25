@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  arxivBundle, bibliographyFiles, DEFAULT_BIBLIOGRAPHY, projectFiles, scanCitationKeys,
+  createArxivBundle, listBibliographyFiles, DEFAULT_BIBLIOGRAPHY, deriveProjectFiles, scanCiteKeys,
   type PathOps,
 } from "@labshelf/core";
 
@@ -29,7 +29,7 @@ async function exportableFiles(paths: PathOps, project: ReadyProject): Promise<{
   const list = found.map((uri) => paths.relative(project.folder, uri.fsPath).split(paths.sep).join("/")).sort();
   // TRAP: core drops only the literal labshelf.bib; a custom `bibliography:` path is removed here.
   const generated = project.settings.bibliography ?? DEFAULT_BIBLIOGRAPHY;
-  return { sources: projectFiles(list).filter((path) => path !== generated), generated };
+  return { sources: deriveProjectFiles(list).filter((path) => path !== generated), generated };
 }
 
 async function readAll(project: ReadyProject, relatives: string[]): Promise<ZipEntries> {
@@ -37,19 +37,19 @@ async function readAll(project: ReadyProject, relatives: string[]): Promise<ZipE
   return Object.fromEntries(relatives.map((relative, index) => [relative, bytes[index]!]));
 }
 
-export async function projectZipEntries(paths: PathOps, project: ReadyProject): Promise<ZipEntries> {
+export async function listProjectZipEntries(paths: PathOps, project: ReadyProject): Promise<ZipEntries> {
   return await readAll(project, (await exportableFiles(paths, project)).sources);
 }
 
 /** The project's files with each .bib cut to the entries the sources cite. */
-export async function arxivZipEntries(paths: PathOps, project: ReadyProject, root: string): Promise<ZipEntries> {
+export async function listArxivZipEntries(paths: PathOps, project: ReadyProject, root: string): Promise<ZipEntries> {
   const { sources, generated } = await exportableFiles(paths, project);
-  const bibPaths = bibliographyFiles(await readText(project, root), generated).filter((path) => sources.includes(path));
+  const bibPaths = listBibliographyFiles(await readText(project, root), generated).filter((path) => sources.includes(path));
   const bibs = await Promise.all(bibPaths.map(async (path) => ({ path, text: await readText(project, path) })));
   const { format } = project.settings;
   const texts = await Promise.all(sources.filter((path) => path.endsWith(SOURCE_EXTENSION[format])).map((path) => readText(project, path)));
-  const cited = [...new Set(texts.flatMap((text) => scanCitationKeys(format, text)))];
-  const bundle = arxivBundle(sources, bibs, cited);
+  const cited = [...new Set(texts.flatMap((text) => scanCiteKeys(format, text)))];
+  const bundle = createArxivBundle(sources, bibs, cited);
   const entries = await readAll(project, bundle.files);
   for (const bib of bundle.bibs) { entries[bib.path] = encoder.encode(bib.text); }
   return entries;

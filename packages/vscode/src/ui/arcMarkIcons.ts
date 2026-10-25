@@ -13,6 +13,6 @@ function themedMark(extensionUri: vscode.Uri, name: string): ThemedIcon {
   };
 }
 
-export function arcIcons(extensionUri: vscode.Uri): ArcIcon {
+export function createArcIcons(extensionUri: vscode.Uri): ArcIcon {
   return (tone, progress) => themedMark(extensionUri, `${tone}-${progress}`);
 }

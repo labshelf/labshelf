@@ -1,9 +1,9 @@
-import { IndexedDbFileSystem } from "../../src/storage/idbFileSystem";
+import { IdbFileSystem } from "../../src/storage/idbFileSystem";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
-jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ openDb: async () => require("../support/fakeIdb").fakeDb }));
 
-const fs = new IndexedDbFileSystem();
+const fs = new IdbFileSystem();
 
 beforeEach(() => fakeFiles.clear());
 

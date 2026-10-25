@@ -3,7 +3,7 @@ import { Prec, type Extension } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import type { TypstLanguageService } from "@labshelf/core/typst/language";
 import type { Workspace } from "../libraryUi/editorArea";
-import { revealInOpenEditor } from "../writing/session";
+import { showInOpenEditor } from "../writing/session";
 
 export interface DefinitionTarget {
   projectId: string;
@@ -16,11 +16,11 @@ async function goToDefinition(
   const definition = await service.definition(path, view.state.doc.toString(), pos);
   if (!definition) return;
   target.openTab("source", { projectId: target.projectId, path: definition.path }, 0);
-  revealInOpenEditor(target.projectId, definition.path, definition.line);
+  showInOpenEditor(target.projectId, definition.path, definition.line);
 }
 
 /** F12 and Ctrl/Cmd+click go to the definition. */
-export function definitionBindings(service: TypstLanguageService, path: string, target: DefinitionTarget): Extension {
+export function createDefinitionBindings(service: TypstLanguageService, path: string, target: DefinitionTarget): Extension {
   return [
     Prec.high(keymap.of([{ key: "F12", run: (view) => { void goToDefinition(view, service, path, view.state.selection.main.head, target); return true; } }])),
     EditorView.domEventHandlers({

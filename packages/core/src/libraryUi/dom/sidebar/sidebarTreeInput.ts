@@ -1,5 +1,5 @@
 // Opens, draws and submits the inline input that adds an item under a project tree row.
-import { el } from "../../../ui/dom/index.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import type { SidebarState } from "./sidebarView.js";
 
 /** Whether an event comes from an inline add input, whose keys and clicks the tree must not take. */
@@ -18,9 +18,9 @@ function close(t: SidebarState, render: () => void): void {
 }
 
 /** The input row; Enter sends a non-blank text, Escape or leaving it empty closes it. */
-export function treeInputRow(t: SidebarState, depth: number, render: () => void): HTMLElement {
+export function renderTreeInputRow(t: SidebarState, depth: number, render: () => void): HTMLElement {
   const state = t.treeInput!;
-  const input = el("input", {
+  const input = renderElement("input", {
     class: "tree-add-input", type: "text", placeholder: state.placeholder, "aria-label": state.placeholder, maxlength: "500", value: state.text,
   }) as HTMLInputElement;
   input.addEventListener("input", () => { state.text = input.value; });
@@ -39,5 +39,5 @@ export function treeInputRow(t: SidebarState, depth: number, render: () => void)
   }));
   // The row is built into a fragment, so focus waits until the render has attached it.
   queueMicrotask(() => { if (input.isConnected) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); } });
-  return el("div", { class: "tree-add-row", style: `--depth:${depth}` }, input);
+  return renderElement("div", { class: "tree-add-row", style: `--depth:${depth}` }, input);
 }

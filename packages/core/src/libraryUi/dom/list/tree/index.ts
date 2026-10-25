@@ -1,5 +1,5 @@
 // Keyboard navigation of the paper treegrid: the cursor walk, expansion keys and the roving tab stop.
-export { paintTabStop, wireTabStop } from "./rovingTabStop.js";
-export { treeCursor } from "./treeCursor.js";
-export { collapseOrLeave, expandOrEnter } from "./treeExpansion.js";
-export { focusRow, focusedChildRow, focusedRow, paperIdOf, paperRowOf, visibleRows } from "./treeRows.js";
+export { drawTabStop, attachTabStop } from "./rovingTabStop.js";
+export { createTreeCursor } from "./createTreeCursor.js";
+export { closeOrLeave, openOrEnter } from "./treeExpansion.js";
+export { showRow, findFocusedChildRow, findFocusedRow, readPaperId, findPaperRow, listVisibleRows } from "./treeRows.js";

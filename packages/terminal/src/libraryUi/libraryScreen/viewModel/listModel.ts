@@ -1,7 +1,7 @@
 /** Computes what is shown: the hovered folder or search, flattening, filtering and sorting, and the papers and folders it yields. */
 import type { PaperEntry } from "@labshelf/core";
 
-import { ALL, parentFolder, type FolderRow, type PaperCursor } from "../screenModel.js";
+import { ALL, deriveParentFolder, type FolderRow, type PaperCursor } from "../screenModel.js";
 import type { App } from "../app.js";
 
 export class ListModel {
@@ -178,7 +178,7 @@ export class ListModel {
     if (app.folder !== ALL && !app.ctx.store.collection(app.folder)) {
       // Renamed or removed elsewhere: fall back to the nearest folder that still exists.
       let rel: string = app.folder;
-      while (rel !== ALL && !app.ctx.store.collection(rel)) { rel = parentFolder(rel); }
+      while (rel !== ALL && !app.ctx.store.collection(rel)) { rel = deriveParentFolder(rel); }
       app.folder = rel;
     }
     if (app.folder === "" && !app.ctx.store.collection("")?.paperIds.length) { app.folder = ALL; }

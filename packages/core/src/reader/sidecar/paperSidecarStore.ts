@@ -1,11 +1,53 @@
 /** Loads, modifies and saves the per-paper sidecar, serializing the work per paper. */
-import type { Annotation, PdfTheme } from "../../model/index.js";
+import {
+  type Annotation,
+  type PdfTheme,
+  ANNOTATION_COLORS,
+  type AnnotationColor,
+  type AnnotationPosition,
+} from "../../model/index.js";
 import type { ILogger, SidecarPort } from "../../ports/index.js";
-import { validateAnnotationColor, validateAnnotationPosition, validatePageNumber } from "./annotationValidation.js";
-import { byPageThenCreated, emptyPaperData, normalizePaperData, pruneDeletionMarkers, serializePaperData, type PaperData } from "./paperSidecar.js";
+import { compareAnnotations, createEmptyPaperSidecar, normalizePaperSidecar, removeStaleDeletionMarkers, serializePaperSidecar, type PaperSidecar } from "./paperSidecar.js";
 import type { ReadingState } from "./readingState.js";
 
-export interface PaperDataStoreOptions {
+/**
+ * Throws when the page number is not a positive integer.
+ */
+function validatePageNumber(pageNumber: number): void {
+  if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+    throw new Error(`Invalid page number: ${pageNumber}. Must be a positive integer`);
+  }
+}
+
+/**
+ * @returns the color, typed; throws for anything outside ANNOTATION_COLORS.
+ */
+function validateAnnotationColor(color: string): AnnotationColor {
+  if (!ANNOTATION_COLORS.includes(color as AnnotationColor)) {
+    throw new Error(`Invalid annotation color: ${color}. Must be one of: ${ANNOTATION_COLORS.join(", ")}`);
+  }
+  return color as AnnotationColor;
+}
+
+/**
+ * @returns a position whose x, y, width and height are normalized to the page (0..1); throws otherwise.
+ */
+export function checkAnnotationPosition(pos: unknown): AnnotationPosition {
+  if (!pos || typeof pos !== "object" || Array.isArray(pos)) {
+    throw new Error("Position must be an object with x, y, width, height");
+  }
+  const p = pos as Record<string, unknown>;
+  const { x, y, width, height } = p;
+  if (typeof x !== "number" || typeof y !== "number" || typeof width !== "number" || typeof height !== "number") {
+    throw new Error("Position fields x, y, width, height must be numbers");
+  }
+  if (x < 0 || y < 0 || width <= 0 || height <= 0 || x > 1 || y > 1 || x + width > 1 || y + height > 1) {
+    throw new Error("Position values must be normalized (0.0-1.0) and width/height must be positive");
+  }
+  return { x, y, width, height };
+}
+
+export interface PaperSidecarStoreOptions {
   now?: () => string;
   newId?: () => string;
   /** Receives a warning when a sidecar cannot be parsed and loads as empty. */
@@ -16,13 +58,13 @@ export interface PaperDataStoreOptions {
  * Load-modify-save over one sidecar per paper. Every mutator of a paper runs in a per-paper queue: the reader saves the
  * reading position while scrolling, and without serialization a position write racing an annotation write drops one.
  */
-export class PaperDataStore {
+export class PaperSidecarStore {
   private readonly queues = new Map<string, Promise<unknown>>();
   private readonly now: () => string;
   private readonly newId: () => string;
   private readonly logger: ILogger | undefined;
 
-  constructor(private readonly port: SidecarPort, options: PaperDataStoreOptions = {}) {
+  constructor(private readonly port: SidecarPort, options: PaperSidecarStoreOptions = {}) {
     this.now = options.now ?? (() => new Date().toISOString());
     this.newId = options.newId ?? (() => globalThis.crypto.randomUUID());
     this.logger = options.logger;
@@ -43,24 +85,24 @@ export class PaperDataStore {
   /**
    * @returns the paper's sidecar, or empty data when it is absent or unreadable.
    */
-  async load(paperId: string): Promise<PaperData> {
+  async load(paperId: string): Promise<PaperSidecar> {
     const text = await this.port.read(paperId);
-    if (text === null) { return emptyPaperData(); }
+    if (text === null) { return createEmptyPaperSidecar(); }
     try {
-      return normalizePaperData(JSON.parse(text) as unknown);
+      return normalizePaperSidecar(JSON.parse(text) as unknown);
     } catch (error) {
       void this.logger?.log("WARN", "sidecar", "Sidecar is not valid JSON; loading it as empty", { paperId, error: String(error) });
-      return emptyPaperData();
+      return createEmptyPaperSidecar();
     }
   }
 
-  private async mutate<T>(paperId: string, change: (data: PaperData) => T | null): Promise<T | null> {
+  private async mutate<T>(paperId: string, change: (data: PaperSidecar) => T | null): Promise<T | null> {
     return this.enqueue(paperId, async () => {
       const data = await this.load(paperId);
       const result = change(data);
       if (result !== null) {
-        if (data.deleted) { data.deleted = pruneDeletionMarkers(data.deleted, this.now()); }
-        await this.port.write(paperId, serializePaperData(data));
+        if (data.deleted) { data.deleted = removeStaleDeletionMarkers(data.deleted, this.now()); }
+        await this.port.write(paperId, serializePaperSidecar(data));
       }
       return result;
     });
@@ -70,7 +112,7 @@ export class PaperDataStore {
    * @returns the paper's annotations, by page then creation time.
    */
   async getAnnotations(paperId: string): Promise<Annotation[]> {
-    return [...(await this.load(paperId)).annotations].sort(byPageThenCreated);
+    return [...(await this.load(paperId)).annotations].sort(compareAnnotations);
   }
 
   /**
@@ -87,7 +129,7 @@ export class PaperDataStore {
     const validColor = validateAnnotationColor(color);
     validatePageNumber(pageNumber);
     if (!content.trim()) { throw new Error("Highlight content cannot be empty"); }
-    const validPosition = position === undefined ? undefined : validateAnnotationPosition(position);
+    const validPosition = position === undefined ? undefined : checkAnnotationPosition(position);
     return this.add(paperId, {
       type: "highlight", pageNumber, content, color: validColor, ...(validPosition ? { position: validPosition } : {}),
     });

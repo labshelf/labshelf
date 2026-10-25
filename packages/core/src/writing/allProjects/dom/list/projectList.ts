@@ -1,23 +1,123 @@
 // Renders the project treegrid: sortable heads, then a windowed flat list of folder headers, projects and the expanded project's files.
-import { paintSortableHeads, sortableHeadHtml, wireSortableHeads } from "../../../../libraryUi/dom/index.js";
-import type { MenuAnchor } from "../../../../ui/dom/index.js";
-import type { ProjectGroup, ProjectSortKey, ProjectViewState } from "../../viewModel/index.js";
-import type { ProjectPlace } from "../../projectRow.js";
+import {
+  drawSortableHeads,
+  renderSortableHeadHtml,
+  attachSortableHeads,
+  formatLabel,
+} from "../../../../libraryUi/dom/index.js";
+import { type MenuAnchor, renderElement, renderHighlightedHtml } from "../../../../ui/dom/index.js";
+import type { ProjectGroup, ProjectSortField, ProjectViewState } from "../../viewModel/index.js";
+import type { ProjectPlace, BuildMark, ProjectBuildState, ProjectRow } from "../../projectRow.js";
 import { createProjectTrayRows, type ProjectTrayFrame, type ProjectTrayHandlers } from "../tray/index.js";
-import { buildGroupRow } from "./groupRowView.js";
-import { keepRowFocus } from "./projectListFocus.js";
-import { wireProjectKeys } from "./projectListShortcuts.js";
+import { createRowFocusKeeper } from "./projectListFocus.js";
+import { attachProjectShortcuts } from "./projectListShortcuts.js";
 import { projectKey, projectListRows, type ProjectListRow } from "./projectListModel.js";
 import { createWindowedRows } from "./projectListWindow.js";
-import { ariaRowOf, paintRowState } from "./projectRowState.js";
-import { buildProjectRow } from "./projectRowView.js";
+import { findAriaRow, updateRowMarks } from "./projectRowState.js";
+import { escapeHtml, renderIcon } from "../../../../ui/index.js";
+import { formatCompactTime } from "../../../../library/index.js";
+import { formatDeadlineText } from "../../formatDeadlineText.js";
+
+interface ProjectRowView {
+  place: ProjectPlace;
+  terms: string[];
+  now: number;
+}
+
+/** The ISO time the date column shows: when the project went to the trash there, its newest source file elsewhere. */
+function shownTime(row: ProjectRow, place: ProjectPlace): string | undefined {
+  if (place === "trash") return row.trashedAt;
+  return row.modified === undefined ? undefined : new Date(row.modified).toISOString();
+}
+
+// A broken project has no files to list, so its first cell stays empty.
+const twistieCell = (row: ProjectRow): string =>
+  row.broken ? `<div></div>` : `<div class="expand-btn collapsed" title="Files">${renderIcon("chevron-down")}</div>`;
+
+function engineCell(row: ProjectRow): string {
+  const content = row.broken ? `<span class="title-state tl-missing" title="${escapeHtml(row.broken)}">${renderIcon("warning")}</span>` : formatLabel(row.format);
+  return `<div class="col-engine">${content}</div>`;
+}
+
+function venueChip(row: ProjectRow, now: number): string {
+  const venue = row.target?.venue;
+  if (!venue) return "";
+  const left = formatDeadlineText(row.target, now);
+  const tone = left && left.tone !== "normal" ? ` is-${left.tone}` : "";
+  return `<span class="venue-chip${tone}">${escapeHtml(left ? `${venue} · ${left.text}` : venue)}</span>`;
+}
+
+function titleCell(row: ProjectRow, v: ProjectRowView): string {
+  const outside = row.external ? `<span class="title-state ls-project-external" title="Outside the library">${renderIcon("link")}</span>` : "";
+  const tip = row.broken ?? row.title;
+  return `<div class="col-title title-cell"><span class="title-text" title="${escapeHtml(tip)}">${renderHighlightedHtml(row.title, v.terms)}</span>${outside}${venueChip(row, v.now)}</div>`;
+}
+
+function citesCell(row: ProjectRow): string {
+  if (row.cites === undefined) return `<div class="col-cites"></div>`;
+  const missing = row.unresolvedCites ?? 0;
+  const tip = missing > 0 ? `${row.cites} cited, ${missing} not found` : `${row.cites} cited`;
+  return `<div class="col-cites" title="${tip}">${row.cites}${missing > 0 ? ` <span class="cites-missing">${missing}</span>` : ""}</div>`;
+}
+
+const BUILT: Record<ProjectBuildState, string> = {
+  ok: "Built", warnings: "Built, with warnings", failed: "Build failed", building: "Building", earlier: "Built in an earlier session", never: "Never built",
+};
+
+function buildTip(mark: BuildMark | undefined, now: number): string {
+  const state = mark?.state ?? "never";
+  const ago = mark?.at !== undefined && (state === "ok" || state === "warnings" || state === "failed") ? ` ${formatCompactTime(mark.at, now)} ago` : "";
+  return `${BUILT[state]}${ago}`;
+}
+
+function buildCell(row: ProjectRow, now: number): string {
+  return `<div class="col-build" title="${buildTip(row.build, now)}"><span class="ls-build-dot b-${row.build?.state ?? "never"}"></span></div>`;
+}
+
+function timeCell(row: ProjectRow, v: ProjectRowView): string {
+  const iso = shownTime(row, v.place);
+  const full = iso ? new Date(iso).toLocaleString() : "";
+  return `<div class="col-meta col-modified" title="${escapeHtml(full)}">${iso ? escapeHtml(formatCompactTime(Date.parse(iso), v.now)) : ""}</div>`;
+}
+
+function rowHtml(row: ProjectRow, v: ProjectRowView): string {
+  const expandable = row.broken ? "" : ` aria-expanded="false"`;
+  return `<div class="paper-row-main${row.broken ? " is-broken" : ""}" role="row" aria-level="1" aria-selected="false" tabindex="-1"${expandable}>` +
+    twistieCell(row) + titleCell(row, v) + engineCell(row) + citesCell(row) + buildCell(row, v.now) + timeCell(row, v) +
+    `<div class="col-actions"><button class="ls-icon-btn" type="button" tabindex="-1" title="Project actions" aria-label="Project actions" data-act="menu">${renderIcon("more")}</button></div>` +
+    `</div>`;
+}
+
+function buildProjectRow(row: ProjectRow, v: ProjectRowView): HTMLElement {
+  const inGroup = v.place === "projects" && !!row.folder;
+  const node = renderElement("div", { class: `paper-row${inGroup ? " in-group" : ""}`, role: "none", "data-id": row.id, html: rowHtml(row, v) });
+  node.querySelectorAll('[role="row"] > div').forEach((cell) => cell.setAttribute("role", "gridcell"));
+  return node;
+}
+
+/** The project row's cell count, which the header's single cell spans. */
+const COLUMNS = 7;
+
+const groupAriaLabel = (g: ProjectGroup): string =>
+  `${g.segments.join(" / ")}, ${g.rows.length} ${g.rows.length === 1 ? "project" : "projects"}`;
+
+function buildGroupRow(group: ProjectGroup, collapsed: boolean, onToggle: (key: string) => void): HTMLElement {
+  const path = group.segments.map((s) => `<span class="group-segment">${escapeHtml(s)}</span>`).join(`<span class="group-sep" aria-hidden="true">/</span>`);
+  const chevron = `<span class="group-chevron" aria-hidden="true">${renderIcon(collapsed ? "chevron-right" : "chevron-down")}</span>`;
+  const node = renderElement("div", {
+    class: "group-label", role: "row", tabindex: "-1", "aria-label": groupAriaLabel(group), title: group.segments.join(" / "),
+    html: `<div class="group-cell" role="gridcell" aria-colspan="${COLUMNS}">${chevron}${path}</div>`,
+  });
+  node.addEventListener("click", () => onToggle(group.key));
+  return node;
+}
 
 export interface ProjectListHandlers extends ProjectTrayHandlers {
   onToggle: (id: string) => void;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onMenu: (id: string, anchor: MenuAnchor | HTMLElement) => void;
-  onSort: (key: ProjectSortKey) => void;
+  onSort: (key: ProjectSortField) => void;
 }
 
 interface ProjectListFrame {
@@ -44,11 +144,11 @@ export interface ProjectList {
 function headsHtml(place: ProjectPlace): string {
   const trash = place === "trash";
   return `<div aria-hidden="true"></div>` +
-    sortableHeadHtml({ key: "title", label: "Title", cls: "", sortable: true }) +
-    sortableHeadHtml({ key: "engine", label: "Engine", cls: "col-engine", sortable: false }) +
-    sortableHeadHtml({ key: "cites", label: "Cites", cls: "col-cites", sortable: true, title: "Cited keys, then those not found" }) +
-    sortableHeadHtml({ key: "build", label: "Build", cls: "col-build", sortable: false }) +
-    sortableHeadHtml({ key: "modified", label: trash ? "Trashed" : "Modified", cls: "col-modified", sortable: true,
+    renderSortableHeadHtml({ key: "title", label: "Title", cls: "", sortable: true }) +
+    renderSortableHeadHtml({ key: "engine", label: "Engine", cls: "col-engine", sortable: false }) +
+    renderSortableHeadHtml({ key: "cites", label: "Cites", cls: "col-cites", sortable: true, title: "Cited keys, then those not found" }) +
+    renderSortableHeadHtml({ key: "build", label: "Build", cls: "col-build", sortable: false }) +
+    renderSortableHeadHtml({ key: "modified", label: trash ? "Trashed" : "Modified", cls: "col-modified", sortable: true,
       ...(trash ? { title: "When the project went to the trash" } : {}) }) +
     `<div class="col-actions" aria-hidden="true"></div>`;
 }
@@ -86,8 +186,8 @@ function createRowWindow(el: HTMLElement, heads: HTMLElement, frame: () => Proje
       : item.kind === "file" ? item.tray.node : buildProjectRow(item.row, { place: frame().view.place, terms: terms(), now: Date.now() }),
     inputs: (item) => item.kind === "group" ? [item.group.key, item.group.rows.length, item.collapsed]
       : item.kind === "file" ? [item.tray.node] : [item.row, frame().view.place, frame().view.query],
-    decorate: (item, node, index) => paintRowState(item, node, index, { selected: frame().selected, expanded: frame().tray.expanded }),
-    focus: keepRowFocus(el),
+    decorate: (item, node, index) => updateRowMarks(item, node, index, { selected: frame().selected, expanded: frame().tray.expanded }),
+    focus: createRowFocusKeeper(el),
   });
 }
 
@@ -109,7 +209,7 @@ function openFolderOf(groups: readonly ProjectGroup[], id: string, collapsed: Se
 
 function paintHeads(el: HTMLElement, heads: HTMLElement, view: ProjectViewState, headsPlace: ProjectPlace | null): void {
   if (headsPlace !== view.place) heads.innerHTML = headsHtml(view.place);
-  paintSortableHeads(heads, view.sort.key, view.sort.dir === "asc");
+  drawSortableHeads(heads, view.sort.key, view.sort.dir === "asc");
   el.style.setProperty("--heads-h", `${heads.offsetHeight}px`);
 }
 
@@ -135,9 +235,9 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
     if (!collapsed.delete(key)) collapsed.add(key);
     if (!frame) return;
     paint(frame);
-    if (header >= 0) { const node = win.reveal(header); if (node) ariaRowOf(node).focus(); }
+    if (header >= 0) { const node = win.reveal(header); if (node) findAriaRow(node).focus(); }
   }
-  wireSortableHeads(heads, (key) => h.onSort(key as ProjectSortKey));
+  attachSortableHeads(heads, (key) => h.onSort(key as ProjectSortField));
   wireRows(el, h);
   const api: ProjectList = {
     render(next) {
@@ -160,6 +260,6 @@ export function mountProjectList(container: HTMLElement, h: ProjectListHandlers)
     toggleGroup,
   };
   const pageSize = (): number => Math.max(1, (win.viewportRows() ?? el.querySelectorAll(".paper-rows > [data-key]").length) - 1);
-  wireProjectKeys(el, h, { rows: api.rows, reveal: api.reveal, toggleGroup, pageSize, selected: () => frame?.selected ?? null });
+  attachProjectShortcuts(el, h, { rows: api.rows, reveal: api.reveal, toggleGroup, pageSize, selected: () => frame?.selected ?? null });
   return api;
 }

@@ -1,8 +1,8 @@
 // Pins cloud copies that arrive ahead of relay updates across two project mirrors.
-import { reconcileBlob } from "../../../src/collab/mirror/blobMirror";
+import { reconcileShareBlob } from "../../../src/collab/mirror/blobMirror";
 import { mergeText } from "../../../src/writing/conflict/node/index";
-import { sha256Hex } from "../../../src/hash/index";
-import { fileText, indexFiles, recordWritten, replaceFileText } from "../../../src/collab/model/index";
+import { deriveSha256Hex } from "../../../src/hash/index";
+import { readFileText, readShareIndexDocFiles, addWrittenVersion, setFileText } from "../../../src/collab/model/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { FakeRelay, runFor } from "../transport/relay/fakeRelay";
 import { memoryFiles } from "./mirrorFiles";
@@ -11,7 +11,7 @@ import { openMirror, readFile, writeFile, type MirrorFixture } from "./mirrorFix
 const path = "main.tex";
 const before = "Title\nIntro\nMiddle\nMore\nEnd\n";
 const after = "Title\nPeer intro\nMiddle\nMore\nEnd\n";
-const text = (device: MirrorFixture) => fileText(device.session.openDoc(path)).toString();
+const text = (device: MirrorFixture) => readFileText(device.session.openDoc(path)).toString();
 
 describe("in-flight mirror writes", () => {
   let fixtures: MirrorFixture[] = [];
@@ -50,7 +50,7 @@ describe("in-flight mirror writes", () => {
 
   it.each([false, true])("A4 keeps a cloud text copy out before relay updates, records copied after file: %s", async (recordsAfter) => {
     const { a, b, clock } = await pair();
-    replaceFileText(a.session.openDoc(path), after, "editor");
+    setFileText(a.session.openDoc(path), after, "editor");
     await a.mirror.idle();
     expect(await readFile(a, path)).toBe(after);
     await cloudCopy(a, b, path, recordsAfter);
@@ -68,13 +68,13 @@ describe("in-flight mirror writes", () => {
     const bytes = new Uint8Array([4, 5, 6]);
     const file = "plot.png";
     const { a, b } = await pair(file, initial);
-    const previous = indexFiles(b.session.index).get(file)?.hash;
+    const previous = readShareIndexDocFiles(b.session.index).get(file)?.hash;
     const hash = await a.store.blobs.put(bytes);
-    indexFiles(a.session.index).set(file, { kind: "blob", hash });
+    readShareIndexDocFiles(a.session.index).set(file, { kind: "blob", hash });
     await a.mirror.idle();
     await cloudCopy(a, b, file);
-    expect(indexFiles(b.session.index).get(file)?.hash).toBe(previous);
-    recordWritten(b.session.index, file, hash, Date.now());
+    expect(readShareIndexDocFiles(b.session.index).get(file)?.hash).toBe(previous);
+    addWrittenVersion(b.session.index, file, hash, Date.now());
     await b.mirror.idle();
     expect(await b.files.read(b.folder, file)).toEqual(initial);
   });
@@ -83,7 +83,7 @@ describe("in-flight mirror writes", () => {
     const { a, b, clock, relay } = await pair();
     relay.up = false;
     relay.dropAll();
-    replaceFileText(a.session.openDoc(path), after, "editor");
+    setFileText(a.session.openDoc(path), after, "editor");
     await a.mirror.idle();
     await cloudCopy(a, b, path);
     await runFor(clock, 60_000, 1000);
@@ -102,8 +102,8 @@ describe("in-flight mirror writes", () => {
     const file = "plot.png";
     const { b } = await pair(file, initial);
     await b.mirror.close();
-    const hash = await sha256Hex(bytes);
-    const entry = indexFiles(b.session.index).get(file)!;
+    const hash = await deriveSha256Hex(bytes);
+    const entry = readShareIndexDocFiles(b.session.index).get(file)!;
     let entered!: () => void;
     const arrived = new Promise<void>((resolve) => { entered = resolve; });
     let release!: () => void;
@@ -120,24 +120,24 @@ describe("in-flight mirror writes", () => {
       logger: b.logger, settingsBase: undefined, missingBlobs: new Set<string>(), waitingWrites: new Map(),
       request: () => {}, attach: () => {},
     };
-    const work = reconcileBlob(context, file, entry, { state: "present", bytes }, true);
+    const work = reconcileShareBlob(context, file, entry, { state: "present", bytes }, true);
     await arrived;
-    recordWritten(b.session.index, file, hash, Date.now());
+    addWrittenVersion(b.session.index, file, hash, Date.now());
     release();
     await work;
-    expect(indexFiles(b.session.index).get(file)).toEqual(entry);
+    expect(readShareIndexDocFiles(b.session.index).get(file)).toEqual(entry);
     spy.mockRestore();
   });
 
   it("uses an app write's recorded parent before the closest stored text", async () => {
     const { a, b, clock } = await pair();
-    replaceFileText(a.session.openDoc(path), after, "editor");
+    setFileText(a.session.openDoc(path), after, "editor");
     expect(await runUntil(clock, () => text(b) === after)).toBe(true);
     await b.mirror.idle();
     const outside = "Title\nIntro\nMiddle\nMore\nOutside end\n";
-    const parent = await sha256Hex(new TextEncoder().encode(before));
-    const hash = await sha256Hex(new TextEncoder().encode(outside));
-    b.store.rememberVersion(path, await sha256Hex(new TextEncoder().encode(outside + "noise\n")), outside + "noise\n");
+    const parent = await deriveSha256Hex(new TextEncoder().encode(before));
+    const hash = await deriveSha256Hex(new TextEncoder().encode(outside));
+    b.store.rememberVersion(path, await deriveSha256Hex(new TextEncoder().encode(outside + "noise\n")), outside + "noise\n");
     await b.writeRecords.append({ path, hash, parent, by: "app", at: Date.now() });
     await writeFile(b, path, outside);
     b.mirror.changed(path);
@@ -176,7 +176,7 @@ describe("in-flight mirror writes", () => {
     b.mirror.changed(path);
     await b.mirror.idle();
     hold = true;
-    replaceFileText(b.session.openDoc(path), after, "editor");
+    setFileText(b.session.openDoc(path), after, "editor");
     await arrived;
     await files.removeFolder(b.folder);
     release();
@@ -203,16 +203,16 @@ describe("in-flight mirror writes", () => {
   it("A4 keeps an in-flight file creation out before its index entry arrives", async () => {
     const { a, b, clock } = await pair();
     const file = "chapter.tex";
-    replaceFileText(a.session.openDoc(file), after, "editor");
-    indexFiles(a.session.index).set(file, { kind: "text" });
+    setFileText(a.session.openDoc(file), after, "editor");
+    readShareIndexDocFiles(a.session.index).set(file, { kind: "text" });
     await a.mirror.idle();
     await cloudCopy(a, b, file);
-    expect(indexFiles(b.session.index).has(file)).toBe(false);
-    expect(fileText(b.session.openDoc(file)).toString()).toBe("");
-    expect(await runUntil(clock, () => fileText(b.session.openDoc(file)).toString() === after)).toBe(true);
+    expect(readShareIndexDocFiles(b.session.index).has(file)).toBe(false);
+    expect(readFileText(b.session.openDoc(file)).toString()).toBe("");
+    expect(await runUntil(clock, () => readFileText(b.session.openDoc(file)).toString() === after)).toBe(true);
     await b.mirror.idle();
-    expect(fileText(a.session.openDoc(file)).toString()).toBe(after);
-    expect(fileText(b.session.openDoc(file)).toString()).toBe(after);
+    expect(readFileText(a.session.openDoc(file)).toString()).toBe(after);
+    expect(readFileText(b.session.openDoc(file)).toString()).toBe(after);
   });
 
   it("preserves an outside edit when the relay removes its index entry during record lookup", async () => {
@@ -232,10 +232,10 @@ describe("in-flight mirror writes", () => {
     const detach = b.session.registerIndexRoundTrip(() => undefined);
     b.mirror.changed(path);
     await arrived;
-    indexFiles(b.session.index).delete(path);
+    readShareIndexDocFiles(b.session.index).delete(path);
     release();
     await b.mirror.idle();
-    expect(indexFiles(b.session.index).has(path)).toBe(true);
+    expect(readShareIndexDocFiles(b.session.index).has(path)).toBe(true);
     expect(text(b)).toBe(outside);
     expect(await readFile(b, path)).toBe(outside);
     detach();
@@ -271,7 +271,7 @@ describe("in-flight mirror writes", () => {
     b.mirror.changed(path);
     await b.mirror.idle();
     jest.spyOn(b.writeRecords, "append").mockRejectedValueOnce(new Error("Record unavailable"));
-    replaceFileText(b.session.openDoc(path), after, "editor");
+    setFileText(b.session.openDoc(path), after, "editor");
     await b.mirror.idle();
     expect(await readFile(b, path)).toBe(before);
     expect(text(b)).toBe(after);

@@ -1,15 +1,15 @@
 // Builds pages of one browser profile over a shared memory library, IndexedDB, fake Web Locks and a network that reaches no relay.
 import "fake-indexeddb/auto";
-import { deriveShareId, fileText, ShareOpenInAnotherTabError, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
+import { deriveShareId, readFileText, ShareOpenInAnotherTabError, type ILogger, type LibraryFileSystem, type RelayNetwork, type StoredInvite } from "@labshelf/core";
 import { createPageShares, createShareKeyStore, type PageShares } from "../../src/collab";
-import type { LibrarySource, LibrarySources } from "../../src/storage";
+import type { LibraryLocation, LibraryLocations } from "../../src/storage";
 import { installFakeLocks, type FakeLocks } from "../support/fakeLocks";
 import { memoryLibraryFs } from "../support/memoryLibraryFs";
 
 export const FOLDER = "projects/thesis";
 export const MAIN = `${FOLDER}/main.typ`;
 const SHARE_KEY = new Uint8Array(16).fill(7);
-const BROWSER: LibrarySource = { kind: "browser", reason: "not-installed" };
+const BROWSER: LibraryLocation = { kind: "browser", reason: "not-installed" };
 
 const offline: RelayNetwork = {
   fetch: async () => { throw new Error("offline"); },
@@ -92,7 +92,7 @@ export async function openProfile(): Promise<Profile> {
         fileSystem: pageFs, browserFileSystem: pageFs, folderFileSystem: pageFs,
         getLibrarySource: async () => BROWSER,
         onLibraryFilesChanged: () => () => undefined,
-      } as unknown as LibrarySources;
+      } as unknown as LibraryLocations;
       const shares = createPageShares({ sources, libraryId: async () => libraryId, keys, projectIdOf: () => "thesis", logger, network: offline });
       const page: Page = {
         shares, writes,
@@ -104,7 +104,7 @@ export async function openProfile(): Promise<Profile> {
             if (!(error instanceof ShareOpenInAnotherTabError)) { throw error; }
           }
         },
-        docText: (path) => { const live = shares.live("thesis"); return live ? fileText(live.session.openDoc(path)).toString() : ""; },
+        docText: (path) => { const live = shares.live("thesis"); return live ? readFileText(live.session.openDoc(path)).toString() : ""; },
       };
       pages.push(page);
       return page;

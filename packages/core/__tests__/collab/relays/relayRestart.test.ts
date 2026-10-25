@@ -1,6 +1,6 @@
 /** Pins that a restarted device puts the edits the relay lacks from an earlier process, and puts nothing when the relay lacks none. */
 import * as Y from "yjs";
-import { memoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
+import { createMemoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { FakeRelay, runFor } from "../transport/relay/fakeRelay";
 import { DOC_PATH, openRelayClient } from "../transport/relay/relayClient";
@@ -17,7 +17,7 @@ describe("relay sync across a restart", () => {
   beforeEach(async () => {
     clock = new FakeClock();
     relay = new FakeRelay(clock);
-    cursors = memoryCursorStore();
+    cursors = createMemoryCursorStore();
     stored = new Y.Doc();
     const first = await openRelayClient(relay, clock, [stored], cursors);
     await runFor(clock, 1000);
@@ -58,7 +58,7 @@ describe("relay sync across a restart", () => {
 
   it("catches up from the first row once when a cursor has no held state, then holds everything", async () => {
     const key = DOC_PATH;
-    const withoutHeld = memoryCursorStore();
+    const withoutHeld = createMemoryCursorStore();
     withoutHeld.set(key, 5);
     const restarted = await openRelayClient(relay, clock, [restored(stored)], withoutHeld);
     await runFor(clock, 3000);
@@ -72,7 +72,7 @@ describe("relay sync across a restart", () => {
   });
 
   it("only puts when the held state lags the relay", async () => {
-    const lagging = memoryCursorStore();
+    const lagging = createMemoryCursorStore();
     lagging.set(DOC_PATH, 0);
     lagging.setHeld(DOC_PATH, Y.encodeSnapshot(Y.snapshot(new Y.Doc())));
     const restarted = await openRelayClient(relay, clock, [restored(stored)], lagging);

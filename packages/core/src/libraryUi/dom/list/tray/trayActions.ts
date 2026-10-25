@@ -1,6 +1,6 @@
 // Gives a file row its hover buttons and its context menu: open, reveal, copy the path and describe.
-import { el, inputBox, showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
-import { icon, type IconName } from "../../../../ui/index.js";
+import { renderElement, askInputBox, showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
+import { renderIcon, type IconName } from "../../../../ui/index.js";
 import type { UiContext } from "../../uiContext.js";
 import type { TrayEntry } from "./fileFacts.js";
 
@@ -22,7 +22,7 @@ function currentDescription(ctx: UiContext, id: string, name: string): string {
 }
 
 async function describe(ctx: UiContext, id: string, name: string): Promise<void> {
-  const text = await inputBox({ title: `Describe ${name}`, value: currentDescription(ctx, id, name), placeholder: "One line about this file" });
+  const text = await askInputBox({ title: `Describe ${name}`, value: currentDescription(ctx, id, name), placeholder: "One line about this file" });
   if (text !== undefined) ctx.transport.post({ type: "paper.describeFile", id, name, description: text.trim() });
 }
 
@@ -39,7 +39,7 @@ export function addRowActions(ctx: UiContext, id: string, e: TrayEntry, row: HTM
   if (e.kind === "note") return;
   const slot = row.querySelector<HTMLElement>(".file-actions");
   for (const a of offered(e)) {
-    const button = el("button", { class: "ls-icon-btn", type: "button", tabindex: "-1", "aria-label": a.label, title: a.label, html: icon(a.glyph) });
+    const button = renderElement("button", { class: "ls-icon-btn", type: "button", tabindex: "-1", "aria-label": a.label, title: a.label, html: renderIcon(a.glyph) });
     button.addEventListener("click", (ev) => {
       ev.stopPropagation();
       ctx.transport.post({ type: a.message, id, name: e.name });

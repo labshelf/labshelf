@@ -2,13 +2,13 @@
 import type { CustomResolver, ILogger, PdfFetchOptions, PdfSearch } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
-jest.mock("../../src/storage/paperRecordStore", () => ({ listAllRecords: async () => [], upsertRecord: async () => undefined }));
+jest.mock("../../src/storage/paperRecordStore", () => ({ listCachedPaperRecords: async () => [], writeCachedPaperRecord: async () => undefined }));
 
 const mockSettings = {
   contactEmail: "me@uni.edu", customResolvers: [] as CustomResolver[],
   proxies: [{ name: "Uni library", template: ".ezproxy.uni.edu", enabled: true }],
 };
-jest.mock("../../src/platform/settings", () => ({ getSettings: async () => mockSettings, updateSettings: async () => undefined }));
+jest.mock("../../src/platform/settings", () => ({ readSettings: async () => mockSettings, updateSettings: async () => undefined }));
 
 const mockFindPaperPdf = jest.fn(async (_opts: PdfFetchOptions, _search: PdfSearch, _attempts: unknown[]) => undefined);
 jest.mock("@labshelf/core", () => ({ ...jest.requireActual("@labshelf/core"), findPaperPdf: (...args: Parameters<typeof mockFindPaperPdf>) => mockFindPaperPdf(...args) }));

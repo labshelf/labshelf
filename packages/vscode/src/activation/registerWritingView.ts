@@ -3,14 +3,14 @@ import * as vscode from "vscode";
 import type { SelectionSources } from "../libraryUi/details/index.js";
 
 import {
-  buildRootOf, publishedVersionLookup, type ILogger, type PaperRecord, type PaperStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionLookup,
+  buildRootOf, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
 } from "@labshelf/core";
 import {
-  WritingProjects, registerMainCommands, registerMainStatusBar, registerProjectCommands,
+  WritingProjects, registerBuildRootCommands, registerBuildRootStatusBar, registerProjectCommands,
   registerProjectItemCommands, registerReadingListCommands, ProjectBacklinkIndex, ProjectReadingLists, type WritingHost,
 } from "../writing/index.js";
 import {
-  BuildDiagnostics, BuildOutcomes, IncludeOnlyState, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
+  BuildProblems, BuildOutcomes, IncludeOnlyState, registerBuildCommand, registerCompilerStatusBar, registerLatexWorkshopNotice, registerPickCompiler,
   setEngine, type IncludeOnlyTarget, type ProjectBuilders,
 } from "../writing/build/index.js";
 import { registerInstallCommand } from "../writing/index.js";
@@ -20,23 +20,23 @@ import { registerAllProjects } from "../writing/allProjects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/versions/index.js";
 import { BuildPreviews, CheckCounts, FocusFollower, registerShowInPreview, registerShowPreview } from "../writing/preview/index.js";
-import { CiteSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
-import { signalsReader } from "../writing/checklist/index.js";
-import { registerLabshelfLinks } from "../writing/paperLink/index.js";
+import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
+import { createSignalsReader } from "../writing/checklist/index.js";
+import { registerPaperLinks } from "../writing/index.js";
 import { registerProjectSession, type ProjectSession } from "../writing/session/index.js";
 import { registerProjectViews } from "../writing/tree/index.js";
 import type { ProjectTreeMirror, SidebarProjectsSource } from "../writing/sidebar/index.js";
 import { ProjectFigures, watchFigureFiles } from "../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
 import { createProjectSourceReader } from "../latex/project/index.js";
-import { activeProjectEditor } from "../writing/preview/buildRoot/index.js";
+import { readActiveProjectEditor } from "../writing/preview/buildRoot/index.js";
 import type { CitationFixDeps } from "../writing/preview/citations/index.js";
 import type { BuildRootOf, PlatformWriting, RegisterPlatformWriting } from "../writing/index.js";
-import { registerWritingValues } from "../writing/projectValue/index.js";
-import { registerBibliographyLint } from "../writing/bibliography/index.js";
-import { arcIcons } from "../ui/index.js";
+import { registerProjectValues } from "../writing/projectValue/index.js";
+import { registerBibliographyCheck } from "../writing/index.js";
+import { createArcIcons } from "../ui/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";
-import { registerProjectSaveEvents } from "../writing/session/index.js";
+import { registerProjectWriteEvents } from "../writing/session/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
 
@@ -106,10 +106,10 @@ interface WritingParts {
   figures: ProjectFigures;
   readingLists: ProjectReadingLists;
   listPapers: () => Promise<PaperRecord[]>;
-  citeSections: CiteSectionsCache;
+  citeSections: CitationSectionsCache;
   includeOnly: IncludeOnlyState;
   includeOnlyTarget: IncludeOnlyTarget;
-  publishedLookup: PublishedVersionLookup;
+  publishedLookup: PublishedVersionFinder;
   adapters: WritingAdapters;
 }
 
@@ -121,8 +121,8 @@ function registerProjectAndFigureCommands(parts: WritingParts): void {
   registerProjectCommands({ context, host, projects });
   registerProjectItemCommands({ context, host, projects });
   registerExportCommands({ context, host, projects, ...(convertDocument && { convertDocument }) });
-  registerMainCommands({ context, host, projects });
-  registerMainStatusBar(context, projects);
+  registerBuildRootCommands({ context, host, projects });
+  registerBuildRootStatusBar(context, projects);
   registerReadingListCommands({ context, host, projects, readingLists, listPapers });
   registerInstallCommand({ context, host, projects, services: () => controller.currentServices() });
 }
@@ -140,7 +140,7 @@ async function recompileRoot(
 
 /** What the preview's citation cards need to fix a citation, while a library is open. */
 function citationFixDeps(
-  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionLookup, projectFolder: string, paths: PathOps,
+  controller: Controller, listPapers: () => Promise<PaperRecord[]>, publishedLookup: PublishedVersionFinder, projectFolder: string, paths: PathOps,
 ): CitationFixDeps | undefined {
   const services = controller.currentServices();
   if (!services) { return undefined; }
@@ -172,7 +172,7 @@ function registerBuildAndPreviewCommands(
     fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder, projects.paths),
   });
   const session = registerProjectSession({ context, host, projects, previews });
-  const diagnostics = new BuildDiagnostics();
+  const diagnostics = new BuildProblems();
   context.subscriptions.push(diagnostics);
   const builds = {
     building: (...args: Parameters<BuildPreviews["building"]>) => { previews.building(...args); outcomes.building(...args); },
@@ -208,11 +208,11 @@ function registerEditingSupport(parts: WritingParts): void {
   };
   const logger = (): ILogger | undefined => controller.currentServices()?.logger;
   registerCitationProviders(context, { projects, session });
-  registerLabshelfLinks(context, { session });
+  registerPaperLinks(context, { session });
   registerLatexCommandCompletion(context);
   registerLatexEditing(context, { projects, logger });
-  registerWritingValues(context, { projects, logger });
-  registerBibliographyLint(context, { logger });
+  registerProjectValues(context, { projects, logger });
+  registerBibliographyCheck(context, { logger });
 }
 
 function createIncludeOnly(
@@ -222,7 +222,7 @@ function createIncludeOnly(
     readerFor: (folder) => createProjectSourceReader(vscode.Uri.file(folder), () => controller.currentServices()?.logger),
   });
   const includeOnlyTarget: IncludeOnlyTarget = async (project, root) => {
-    const editor = activeProjectEditor(projects.paths, project.folder);
+    const editor = readActiveProjectEditor(projects.paths, project.folder);
     if (!editor) { return undefined; }
     const focused = projects.paths.relative(project.folder, editor.document.uri.fsPath).split(projects.paths.sep).join("/");
     return includeOnly.target(project, root, focused);
@@ -237,7 +237,7 @@ function createTrackedProjects(
   const saves = adapters.createProjectSaveTracking(() => host.current()?.root, logger);
   const data = adapters.createProjectData(logger, openLibraryDeviceDirs(controller, adapters.deviceLayout), saves.fs);
   const projects = new WritingProjects(host, adapters.paths, saves.fs, data);
-  registerProjectSaveEvents(context, saves, logger);
+  registerProjectWriteEvents(context, saves, logger);
   return { projects, data };
 }
 
@@ -259,14 +259,14 @@ export function registerWritingView(
     controller.onDidChangeRoot(() => void projects.reload()),
   );
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
-  const readSignals = signalsReader(projects);
-  const citeSections = new CiteSectionsCache({
+  const readSignals = createSignalsReader(projects);
+  const citeSections = new CitationSectionsCache({
     readSources: async (project, siteLogger) => (await readSignals(project, siteLogger)).sources,
     onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
   });
   context.subscriptions.push(citeSections);
   const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects);
-  const publishedLookup = publishedVersionLookup({ fetch: globalThis.fetch, get logger() { return logger; } });
+  const publishedLookup = createPublishedVersionFinder({ fetch: globalThis.fetch, get logger() { return logger; } });
   const parts: WritingParts = {
     context, controller, host, projects, figures, readingLists, listPapers, citeSections, includeOnly, includeOnlyTarget, publishedLookup, adapters,
   };
@@ -274,9 +274,9 @@ export function registerWritingView(
   const outcomes = new BuildOutcomes();
   context.subscriptions.push(outcomes);
   const { session, previews, recompile } = registerBuildAndPreviewCommands(parts, registerPlatformWriting, outcomes);
-  const arcIcon = arcIcons(context.extensionUri);
+  const arcIcon = createArcIcons(context.extensionUri);
   // With no library open every id failed, so the Checklist reports the write as failed.
-  const setStatus = async (ids: string[], status: PaperStatus): Promise<string[]> =>
+  const setStatus = async (ids: string[], status: ReadingStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
   const { projectsSource, projectTrees } = registerProjectViews({
     context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,

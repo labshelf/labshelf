@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { LocatedProblem } from "@labshelf/core";
-import { ProjectDiagnostics } from "./projectProblems.js";
+import { ProjectProblems } from "./projectProblems.js";
 
 const SEVERITY = {
   error: vscode.DiagnosticSeverity.Error,
@@ -18,8 +18,8 @@ function diagnostic(problem: LocatedProblem): vscode.Diagnostic {
   return result;
 }
 
-export class BuildDiagnostics implements vscode.Disposable {
-  private readonly diagnostics = new ProjectDiagnostics("labshelf-latex");
+export class BuildProblems implements vscode.Disposable {
+  private readonly diagnostics = new ProjectProblems("labshelf-latex");
 
   /** `rootPath` is the absolute path of the compiled root; each root's problems replace only its own. */
   publish(rootPath: string, problems: readonly LocatedProblem[]): void {

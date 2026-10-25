@@ -20,7 +20,7 @@ async function loadCoreRecords(scratchDir) {
   const outfile = join(scratchDir, "core-records.mjs");
   await build({
     stdin: {
-      contents: `export { METADATA_FILE, paperRecordFromMetadata, parsePaperMetadata, pdfDirsFromFilePaths } from ${JSON.stringify(join(repo, "packages/core/src/index.ts"))};`,
+      contents: `export { METADATA_FILE, createPaperRecord, parsePaperMetadata, derivePdfDirs } from ${JSON.stringify(join(repo, "packages/core/src/index.ts"))};`,
       resolveDir: repo,
       loader: "ts",
     },
@@ -35,13 +35,13 @@ async function readLibrary(libraryDir, core) {
     const path = relative(libraryDir, abs).split(sep).join("/");
     return { path, bytes, hash: createHash("sha256").update(bytes).digest("hex") };
   }));
-  const pdfs = core.pdfDirsFromFilePaths(files.map((f) => f.path));
+  const pdfs = core.derivePdfDirs(files.map((f) => f.path));
   const records = files.filter((f) => f.path.startsWith("papers/") && f.path.endsWith(`/${core.METADATA_FILE}`)).map((f) => {
     const folderPath = f.path.slice(0, -`/${core.METADATA_FILE}`.length);
     const id = folderPath.slice(folderPath.lastIndexOf("/") + 1);
     const meta = core.parsePaperMetadata(f.bytes.toString("utf8"));
     if (!meta) throw new Error(`seed: unreadable ${f.path}`);
-    return { paperId: id, folderPath, record: core.paperRecordFromMetadata(meta, { id, path: folderPath, hasPdf: pdfs.has(folderPath) }) };
+    return { paperId: id, folderPath, record: core.createPaperRecord(meta, { id, path: folderPath, hasPdf: pdfs.has(folderPath) }) };
   });
   return { files, records };
 }

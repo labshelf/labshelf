@@ -1,9 +1,9 @@
 // Turns a folder of papers into a share: a fresh id and link key, the sealed manifest and the distinct encrypted PDF parts.
 import { bytesToHex } from "../encoding/index.js";
 import type { Annotation } from "../model/index.js";
-import { BLOB_OVERHEAD_BYTES, sealBlob, sealManifest } from "./shareCipher.js";
+import { BLOB_OVERHEAD_BYTES, sealShareBlob, sealShareManifest } from "./shareCipher.js";
 import { SHARE_LINK_KEY_BYTES } from "./shareLink.js";
-import { sharedMetadataOf, SHARE_MANIFEST_VERSION, type ShareManifest, type SharedPaper, type SharedPaperMetadata, type SharedPdf } from "./shareManifest.js";
+import { extractSharedMetadata, SHARE_MANIFEST_VERSION, type ShareManifest, type SharedPaper, type SharedPaperMetadata, type SharedPdf } from "./shareManifest.js";
 
 export interface SharePaperInput {
   metadata: SharedPaperMetadata;
@@ -23,7 +23,7 @@ export interface BuildShareInput {
   partLimits?: SharePartLimits;
 }
 
-export interface StoredBlob { hash: string; bytes: Uint8Array }
+export interface StoredShareBlob { hash: string; bytes: Uint8Array }
 
 export interface BuiltShare {
   shareId: string;
@@ -31,7 +31,7 @@ export interface BuiltShare {
   manifest: ShareManifest;
   sealedManifest: Uint8Array;
   /** Each distinct blob once, in manifest order. */
-  blobs: StoredBlob[];
+  blobs: StoredShareBlob[];
 }
 
 // CONTRACT: documents/contracts/share-link.md#manifest
@@ -45,10 +45,10 @@ function splitPdf(pdf: Uint8Array, limits: SharePartLimits): Uint8Array[] {
   return parts;
 }
 
-async function sharePdf(pdf: Uint8Array, limits: SharePartLimits, blobs: Map<string, StoredBlob>): Promise<SharedPdf> {
+async function sharePdf(pdf: Uint8Array, limits: SharePartLimits, blobs: Map<string, StoredShareBlob>): Promise<SharedPdf> {
   const shared: SharedPdf = { size: pdf.length, parts: [] };
   for (const chunk of splitPdf(pdf, limits)) {
-    const sealed = await sealBlob(chunk);
+    const sealed = await sealShareBlob(chunk);
     shared.parts.push(sealed.part);
     blobs.set(sealed.part.blob, { hash: sealed.part.blob, bytes: sealed.bytes });
   }
@@ -56,10 +56,10 @@ async function sharePdf(pdf: Uint8Array, limits: SharePartLimits, blobs: Map<str
 }
 
 export async function buildShare({ folderName, papers, withAnnotations, partLimits = KV_LIMITS }: BuildShareInput): Promise<BuiltShare> {
-  const blobs = new Map<string, StoredBlob>();
+  const blobs = new Map<string, StoredShareBlob>();
   const shared: SharedPaper[] = [];
   for (const input of papers) {
-    const metadata = sharedMetadataOf(input.metadata);
+    const metadata = extractSharedMetadata(input.metadata);
     if (!metadata) { throw new Error(`Cannot share paper "${String(input.metadata.id)}": it lacks an id, title or cite key`); }
     const paper: SharedPaper = { metadata };
     if (input.bib !== undefined) { paper.bib = input.bib; }
@@ -70,5 +70,5 @@ export async function buildShare({ folderName, papers, withAnnotations, partLimi
   const shareId = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
   const key = crypto.getRandomValues(new Uint8Array(SHARE_LINK_KEY_BYTES));
   const manifest: ShareManifest = { v: SHARE_MANIFEST_VERSION, folder: folderName, papers: shared };
-  return { shareId, key, manifest, sealedManifest: await sealManifest(key, shareId, manifest), blobs: [...blobs.values()] };
+  return { shareId, key, manifest, sealedManifest: await sealShareManifest(key, shareId, manifest), blobs: [...blobs.values()] };
 }

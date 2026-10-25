@@ -2,7 +2,7 @@ import { promises as fs, utimesSync } from "node:fs";
 import * as path from "node:path";
 
 import { scanConflictCopies } from "../../../../src/library/conflicts/node/index";
-import { serializePaperData } from "../../../../src/reader/index";
+import { serializePaperSidecar } from "../../../../src/reader/index";
 import type { Annotation } from "../../../../src/model/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../../support/tempDirs";
@@ -57,23 +57,23 @@ describe("scanConflictCopies", () => {
     const dir = path.join(root, ".research", "papers", "smith2020x");
     const mine = path.join(dir, "data.json");
     const copy = path.join(dir, "data.sync-conflict-20240301-123456-ABCDEFG.json");
-    await write(mine, serializePaperData({ annotations: [note("a")], theme: "auto" }));
-    await write(copy, serializePaperData({ annotations: [note("b")], theme: "dark" }));
+    await write(mine, serializePaperSidecar({ annotations: [note("a")], theme: "auto" }));
+    await write(copy, serializePaperSidecar({ annotations: [note("b")], theme: "dark" }));
     utimesSync(mine, 1000, 1000);
     utimesSync(copy, 2000, 2000);
     const logger = fakeLogger();
 
     expect(await scanConflictCopies(root, logger)).toEqual([]);
     expect(await listFiles(dir)).toEqual(["data.json"]);
-    expect(await fs.readFile(mine, "utf8")).toBe(serializePaperData({ annotations: [note("a"), note("b")], theme: "dark" }));
+    expect(await fs.readFile(mine, "utf8")).toBe(serializePaperSidecar({ annotations: [note("a"), note("b")], theme: "dark" }));
     expect(logger.logs.some((l) => l.level === "INFO" && /merged/i.test(l.message))).toBe(true);
   });
 
   it("merges every sidecar copy in turn and adopts a copy whose original is gone", async () => {
     const root = await makeTempDir();
     const dir = path.join(root, ".research", "papers", "smith2020x");
-    await write(path.join(dir, "data.json.conflict1"), serializePaperData({ annotations: [note("a")], theme: "auto" }));
-    await write(path.join(dir, "data.json.conflict2"), serializePaperData({ annotations: [note("b")], theme: "auto" }));
+    await write(path.join(dir, "data.json.conflict1"), serializePaperSidecar({ annotations: [note("a")], theme: "auto" }));
+    await write(path.join(dir, "data.json.conflict2"), serializePaperSidecar({ annotations: [note("b")], theme: "auto" }));
 
     expect(await scanConflictCopies(root, fakeLogger())).toEqual([]);
     expect(await listFiles(dir)).toEqual(["data.json"]);
@@ -84,7 +84,7 @@ describe("scanConflictCopies", () => {
   it("keeps a sidecar copy it cannot merge and reports it", async () => {
     const root = await makeTempDir();
     const dir = path.join(root, ".research", "papers", "smith2020x");
-    await write(path.join(dir, "data.json"), serializePaperData({ annotations: [note("a")], theme: "auto" }));
+    await write(path.join(dir, "data.json"), serializePaperSidecar({ annotations: [note("a")], theme: "auto" }));
     const copy = path.join(dir, "data (Bob's conflicted copy 2024-03-01).json");
     await write(copy, "{ broken");
     const logger = fakeLogger();

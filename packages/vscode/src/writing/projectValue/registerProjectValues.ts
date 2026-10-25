@@ -1,9 +1,49 @@
 // Registers value completion and hover for `\lsvalue` in LaTeX and json() paths in Typst.
 import * as vscode from "vscode";
 
-import { ProjectValues, type ValuesWorkspace } from "./projectValues.js";
-import { ValueCompletionProvider } from "./projectValueCompletion.js";
-import { ValueHoverProvider } from "./projectValueHover.js";
+import { ProjectValues, type ProjectValueWorkspace } from "./projectValues.js";
+import { ProjectValueHoverProvider } from "./projectValueHover.js";
+import { findLatexProjectValueStart, findTypstProjectValuePrefix, deriveProjectValueMembers, type ProjectValueLeaf } from "@labshelf/core";
+import type { ReadyProject } from "../buildRootDocument.js";
+import { findProjectValueFile } from "./typstProjectValueFile.js";
+
+function item(label: string, leaf: ProjectValueLeaf | undefined, file: string, range: vscode.Range): vscode.CompletionItem {
+  const completion = new vscode.CompletionItem(label, leaf ? vscode.CompletionItemKind.Value : vscode.CompletionItemKind.Field);
+  if (leaf) { completion.detail = String(leaf.value); }
+  completion.documentation = file;
+  completion.insertText = label;
+  completion.range = range;
+  return completion;
+}
+
+export class ProjectValueCompletionProvider implements vscode.CompletionItemProvider {
+  constructor(private readonly values: ProjectValues) {}
+
+  async provideCompletionItems(
+    document: vscode.TextDocument, position: vscode.Position,
+  ): Promise<vscode.CompletionItem[] | undefined> {
+    const project = this.values.sourceProject(document.uri.fsPath);
+    if (!project) { return undefined; }
+    return project.settings.format === "latex"
+      ? this.latexKeys(project, document, position)
+      : this.typstMembers(project, document, position);
+  }
+
+  private async latexKeys(project: ReadyProject, document: vscode.TextDocument, position: vscode.Position) {
+    const start = findLatexProjectValueStart(document.lineAt(position.line).text.slice(0, position.character));
+    if (start === undefined) { return undefined; }
+    const range = new vscode.Range(position.line, start, position.line, position.character);
+    return (await this.values.leaves(project)).map((leaf) => item(leaf.key, leaf, leaf.file, range));
+  }
+
+  private async typstMembers(project: ReadyProject, document: vscode.TextDocument, position: vscode.Position) {
+    const typing = findTypstProjectValuePrefix(document.getText(), document.offsetAt(position));
+    const file = typing && findProjectValueFile(this.values.paths, project, document.uri.fsPath, typing.source);
+    if (!typing || file === undefined) { return undefined; }
+    const range = new vscode.Range(document.positionAt(typing.start), position);
+    return deriveProjectValueMembers(await this.values.leaves(project), file, typing.parent).map((member) => item(member.name, member.leaf, file, range));
+  }
+}
 
 // Typst has no built-in language id, so sources are matched by file name.
 const SOURCES = [
@@ -11,10 +51,10 @@ const SOURCES = [
   { selector: { scheme: "file", pattern: "**/*.typ" }, triggers: ["."] },
 ];
 
-export function registerWritingValues(context: vscode.ExtensionContext, workspace: ValuesWorkspace): void {
+export function registerProjectValues(context: vscode.ExtensionContext, workspace: ProjectValueWorkspace): void {
   const values = new ProjectValues(workspace);
-  const completion = new ValueCompletionProvider(values);
-  const hover = new ValueHoverProvider(values);
+  const completion = new ProjectValueCompletionProvider(values);
+  const hover = new ProjectValueHoverProvider(values);
   context.subscriptions.push(values);
   for (const { selector, triggers } of SOURCES) {
     context.subscriptions.push(

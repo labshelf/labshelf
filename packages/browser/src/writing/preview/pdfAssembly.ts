@@ -11,7 +11,7 @@ export interface ChangedPages {
  * @param previous the last assembled PDF, or undefined before the first build.
  * @returns a PDF of `pageCount` pages: each changed page, else the previous PDF's page at that index.
  */
-export async function assemblePdf(previous: Uint8Array | undefined, pages: ChangedPages): Promise<Uint8Array> {
+export async function mergePdfPages(previous: Uint8Array | undefined, pages: ChangedPages): Promise<Uint8Array> {
   const { pageCount, changed } = pages;
   const byIndex = new Map(changed.map((page) => [page.index, page.bytes]));
   const out = await PDFDocument.create();

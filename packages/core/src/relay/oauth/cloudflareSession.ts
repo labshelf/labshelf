@@ -23,7 +23,7 @@ export interface CloudflareSession {
   accessToken(): Promise<string>;
 }
 
-export function storeCloudflareTokens(slot: SecretSlot, tokens: CloudflareTokens): Promise<void> {
+export function writeCloudflareTokens(slot: SecretSlot, tokens: CloudflareTokens): Promise<void> {
   return slot.store(JSON.stringify(tokens));
 }
 
@@ -52,7 +52,7 @@ export function createCloudflareSession(options: CloudflareSessionOptions): Clou
         if (fresh(latest)) { return latest.accessToken; }
         const rotated = await refreshCloudflareTokens({ refreshToken: latest.refreshToken, fetch: options.fetch, logger, now: () => clock.now() });
         // INVARIANT: stored before the access token is used; the refresh token sent is already revoked.
-        await storeCloudflareTokens(slot, rotated);
+        await writeCloudflareTokens(slot, rotated);
         return rotated.accessToken;
       });
     },

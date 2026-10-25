@@ -1,7 +1,7 @@
 // Keeps a build preview's reading position and theme in memory for the life of its panel and refuses annotation writes.
 import type { SidecarPort } from "../../ports/index.js";
 import type { ReaderSidecarStore } from "../host/index.js";
-import { PaperDataStore } from "./paperSidecarStore.js";
+import { PaperSidecarStore } from "./paperSidecarStore.js";
 
 export const PREVIEW_ANNOTATION_REFUSAL = "Annotations are not saved in a build preview.";
 
@@ -17,7 +17,7 @@ function memoryPort(): SidecarPort {
 const refuse = (): Promise<never> => Promise.reject(new Error(PREVIEW_ANNOTATION_REFUSAL));
 
 export function createPreviewStore(): ReaderSidecarStore {
-  const store = new PaperDataStore(memoryPort());
+  const store = new PaperSidecarStore(memoryPort());
   return {
     load: (id) => store.load(id),
     getAnnotations: (id) => store.getAnnotations(id),

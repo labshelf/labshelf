@@ -13,12 +13,12 @@ const ARXIV_URL = new RegExp(`(?:arxiv\\.org\\/(?:abs|pdf|html)\\/|doi\\.org\\/1
 const BARE_ARXIV_ID = new RegExp(`^${ARXIV_ID_SOURCE}$`, "i");
 
 /** The arXiv id named by an arXiv DOI, if `doi` is one. */
-export function arxivIdFromDoi(doi: string | undefined): string | undefined {
+export function extractArxivIdentifierFromDoi(doi: string | undefined): string | undefined {
   return doi ? ARXIV_DOI.exec(doi)?.[1] : undefined;
 }
 
 /** The arXiv id in an arxiv.org `/abs/`, `/pdf/` or `/html/` URL, or in the doi.org link of an arXiv DOI. */
-export function arxivIdFromUrl(url: string): string | undefined {
+export function extractArxivIdentifierFromUrl(url: string): string | undefined {
   return ARXIV_URL.exec(url)?.[1];
 }
 
@@ -26,7 +26,7 @@ export function arxivIdFromUrl(url: string): string | undefined {
  * Reduces a typed arXiv id to its bare form: no `arXiv:` prefix, no version.
  * @returns The id, or undefined when the text is not a bare arXiv id.
  */
-export function normalizeArxivId(raw: string): string | undefined {
+export function normalizeArxivIdentifier(raw: string): string | undefined {
   const id = raw.trim().replace(/^arxiv:\s*/i, "").replace(/v\d+$/i, "");
   return BARE_ARXIV_ID.test(id) ? id : undefined;
 }

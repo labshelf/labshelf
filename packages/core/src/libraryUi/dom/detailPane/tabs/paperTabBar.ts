@@ -2,19 +2,19 @@
  * Renders the paper detail tabs: Details, Annotations with their count (when the host sends annotations), Notes with a dot when
  * the paper has a note, and Related with its count. The bar stays in reach while a long tab scrolls.
  */
-import { relatedGroups } from "../../../viewModel/index.js";
-import type { DetailTab } from "../../../store/index.js";
+import { deriveRelatedGroups } from "../../../viewModel/index.js";
+import type { DetailsTab } from "../../../store/index.js";
 import type { PaneState, PaperView } from "../paneState.js";
-import { tabBarHtml, type TabSpec } from "./tabBar.js";
+import { renderTabBarHtml, type TabSpec } from "./tabBar.js";
 
-export function paperTabBarHtml(pane: PaneState, v: PaperView): string {
+export function renderPaperTabBarHtml(pane: PaneState, v: PaperView): string {
   const annotations = v.details?.annotations.length ?? v.stats?.annotations ?? 0;
-  const related = relatedGroups(v.p, v.library, v.similar ?? []).total;
-  const tabs: (TabSpec & { id: DetailTab })[] = [
+  const related = deriveRelatedGroups(v.p, v.library, v.similar ?? []).total;
+  const tabs: (TabSpec & { id: DetailsTab })[] = [
     { id: "details", label: "Details" },
     { id: "annotations", label: "Annotations", ...(annotations ? { badge: String(annotations) } : {}) },
     { id: "notes", label: "Notes", dot: !!pane.notes.text(v.p).trim() },
     { id: "related", label: "Related", ...(related ? { badge: String(related) } : {}) },
   ];
-  return tabBarHtml(tabs, pane.tab);
+  return renderTabBarHtml(tabs, pane.tab);
 }

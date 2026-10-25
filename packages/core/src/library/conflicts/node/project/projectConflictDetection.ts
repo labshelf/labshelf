@@ -1,9 +1,9 @@
 // Reads project texts for the shared content-copy detector.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { deviceLocalLayout, NodeLibraryFileSystem } from '../../../node/index.js';
+import { createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../node/index.js';
 import { readWriteRecords } from '../../../writeRecords/index.js';
-import { detectProjectConflict, eligibleProjectConflictPath, readConflictDismissals, parseConflictName } from '../../index.js';
+import { detectProjectConflict, isEligibleProjectConflictPath, readConflictDismissals, parseConflictName } from '../../index.js';
 import type { ConflictCopy, ProjectConflictText } from '../../index.js';
 import type { ILogger } from '../../../../ports/index.js';
 import { isMergeableTextFile, type IProjectVersionStore } from '../../../../writing/conflict/index.js';
@@ -11,20 +11,20 @@ import { listProjectFiles } from '../../../../writing/project/folder/index.js';
 import { nodeFileReads } from '../../../../writing/project/node/index.js';
 
 interface ProjectConflictLocation { root: string; folder: string; projectId: string; logger: ILogger }
-export function conflictDismissalFile(root: string): string {
-  return path.join(path.dirname(deviceLocalLayout(root).mergeBasesDir), 'conflict-dismissals.json');
+export function resolveConflictDismissalFile(root: string): string {
+  return path.join(path.dirname(createDeviceLocalLayout(root).mergeBasesDir), 'conflict-dismissals.json');
 }
 const disk = new NodeLibraryFileSystem();
 async function projectConflictSnapshot(input: ProjectConflictLocation) {
   const files: ProjectConflictText[] = [];
   for (const relative of await listProjectFiles(nodeFileReads, input.folder)) {
-    if (!eligibleProjectConflictPath(relative)) continue;
+    if (!isEligibleProjectConflictPath(relative)) continue;
     const file = path.join(input.folder, relative);
     const bytes = await fs.readFile(file);
     if (isMergeableTextFile(path.basename(file), bytes)) files.push({ path: relative, text: bytes.toString('utf8') });
   }
   const records = await readWriteRecords(disk, input.folder, input.logger);
-  const dismissed = (await readConflictDismissals(disk, conflictDismissalFile(input.root)))
+  const dismissed = (await readConflictDismissals(disk, resolveConflictDismissalFile(input.root)))
     .map(entry => ({ ...entry, path: path.relative(input.folder, entry.path).split(path.sep).join('/') }));
   return { files, records, dismissed };
 }

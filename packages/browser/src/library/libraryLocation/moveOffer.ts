@@ -1,8 +1,8 @@
 // Offers to move the papers still stored in this browser into the library folder, and reports what stayed behind.
-import { errorMessage, type ILogger } from "@labshelf/core";
-import { el, toast } from "@labshelf/core/dom";
-import { bannerShell, setButton } from "./bannerShell";
-import { countBrowserPapers, getLibrarySource, moveBrowserLibraryToFolder } from "../../storage";
+import { formatError, type ILogger } from "@labshelf/core";
+import { renderElement, showToast } from "@labshelf/core/dom";
+import { createBannerShell, setButton } from "./createBannerShell";
+import { countBrowserPapers, readLibraryLocation, moveBrowserLibraryToFolder } from "../../storage";
 
 export interface MoveOfferOptions {
   logger: ILogger;
@@ -19,16 +19,16 @@ const papers = (n: number): string => `${n} ${n === 1 ? "paper" : "papers"}`;
 
 export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): MoveOffer {
   const show = (root: string, count: number, skipped: readonly string[]): void => {
-    const { root: banner, text } = bannerShell("neutral", "upload");
-    const move = el("button", { class: "ls-btn ls-btn-primary", type: "button" });
+    const { root: banner, text } = createBannerShell("neutral", "upload");
+    const move = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
     setButton(move, "upload", `Move ${papers(count)} to ${root}`, false);
     move.addEventListener("click", () => void run(root, move));
     text.append(`${papers(count)} ${count === 1 ? "is" : "are"} still in this browser.`);
     if (skipped.length) {
-      text.append(el("div", { class: "lsrc-reason", text:
+      text.append(renderElement("div", { class: "lsrc-reason", text:
         `${papers(skipped.length)} ${skipped.length === 1 ? "stays" : "stay"} in this browser because the folder already has a paper with the same id: ${skipped.join(", ")}.` }));
     }
-    text.append(el("div", { class: "lsrc-actions" }, move));
+    text.append(renderElement("div", { class: "lsrc-actions" }, move));
     host.replaceChildren(banner);
   };
   const run = async (root: string, move: HTMLButtonElement): Promise<void> => {
@@ -37,10 +37,10 @@ export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): Mo
     try {
       const result = await moveBrowserLibraryToFolder();
       skipped = result.skipped;
-      if (!skipped.length) toast(`Moved ${papers(result.moved.length)} to the folder.`, "ok");
+      if (!skipped.length) showToast(`Moved ${papers(result.moved.length)} to the folder.`, "ok");
     } catch (err) {
       await options.logger.error("library.libraryLocation", err);
-      toast(errorMessage(err), "error");
+      showToast(formatError(err), "error");
     }
     try {
       await options.onMoved();
@@ -51,7 +51,7 @@ export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): Mo
   };
   const refresh = async (skipped: readonly string[] = []): Promise<void> => {
     try {
-      const source = await getLibrarySource();
+      const source = await readLibraryLocation();
       const count = source.kind === "folder" ? await countBrowserPapers() : 0;
       if (source.kind !== "folder" || count === 0) host.replaceChildren();
       else show(source.root, count, skipped);

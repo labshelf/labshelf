@@ -1,5 +1,5 @@
 /** Expands what the user picked for import (files and folders) into the PDF files to import. */
-import { errorMessage } from "../../../logging/index.js";
+import { formatError } from "../../../logging/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
 
 export interface PdfDiscovery {
@@ -10,7 +10,7 @@ export interface PdfDiscovery {
 }
 
 /** @returns the PDFs to import, in input order with each folder's files sorted, and the skipped inputs */
-export async function discoverPdfs(ctx: MutationContext, inputs: string[]): Promise<PdfDiscovery> {
+export async function findPdfsToImport(ctx: MutationContext, inputs: string[]): Promise<PdfDiscovery> {
   const found: PdfDiscovery = { pdfs: [], skipped: [] };
   for (const input of inputs) {
     const stat = await ctx.fs.stat(input);
@@ -32,7 +32,7 @@ async function pdfsUnder(ctx: MutationContext, dir: string): Promise<string[]> {
     names = await ctx.fs.listDir(dir);
   } catch (error) {
     await ctx.logger.log("WARN", MUTATIONS_MODULE, "Import skipped a folder it could not read", {
-      dir, message: errorMessage(error),
+      dir, message: formatError(error),
     });
     return [];
   }

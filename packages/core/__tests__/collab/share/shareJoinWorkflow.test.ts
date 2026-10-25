@@ -1,6 +1,6 @@
 /** Pins sharing and joining a project: the invite one device hands out is the one another joins, and failures leave nothing behind. */
 import { formatInvite, parseInvite } from "../../../src/collab/invite/index";
-import { joinSharedProject, shareProject, type ShareOutcome } from "../../../src/collab/share/index";
+import { joinSharedProject, startProjectShare, type ShareOutcome } from "../../../src/collab/share/index";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, Network, writeProject } from "../session/connectionTestbed";
 import { ONE } from "../relays/relayGroup";
@@ -11,7 +11,7 @@ const never = () => new AbortController().signal;
 async function shared(net: Network, ada: WorkflowDevice): Promise<Extract<ShareOutcome, { kind: "shared" }>> {
   await writeProject(ada);
   await ada.ports.projects.reload();
-  const outcome = await net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }));
+  const outcome = await net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }));
   if (outcome.kind !== "shared") { throw new Error(`not shared: ${outcome.kind}`); }
   await net.drive(outcome.connection.mirror!.idle());
   await runFor(net.clock, 5000);
@@ -75,7 +75,7 @@ describe("sharing and joining a project", () => {
     const connect = ada.ports.connect;
     ada.ports.connect = async (invite, start) => { const connection = await connect(invite, start); cancel.abort(); return connection; };
 
-    await expect(net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: cancel.signal }))).rejects.toThrow(/cancelled/);
+    await expect(net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: cancel.signal }))).rejects.toThrow(/cancelled/);
     expect(ada.keys.size).toBe(0);
     expect(ada.open.size).toBe(0);
     expect(ada.states.size).toBe(0);
@@ -87,7 +87,7 @@ describe("sharing and joining a project", () => {
     const ada = workflowDevice(net, "ada", async () => { throw new Error("the mirror could not start"); });
     await writeProject(ada);
 
-    await expect(net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow("mirror");
+    await expect(net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow("mirror");
     expect(ada.keys.size).toBe(0);
     expect(ada.open.size).toBe(0);
     expect(ada.read(`${FOLDER}/labshelf.yaml`)).toBe("id: thesis\ntitle: Thesis\nformat: typst\nmain: main.typ\n");
@@ -99,7 +99,7 @@ describe("sharing and joining a project", () => {
     await writeProject(ada);
     ada.ports.fetch = async () => { throw new TypeError("fetch failed"); };
 
-    await expect(net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow(/relay/);
+    await expect(net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow(/relay/);
     expect(ada.keys.size).toBe(0);
     expect(ada.open.size).toBe(0);
     expect(ada.states.size).toBe(0);
@@ -114,7 +114,7 @@ describe("sharing and joining a project", () => {
     await ada.catalog.fs.writeText(`${FOLDER}/labshelf.yaml`, untitled);
     ada.ports.fetch = async () => { throw new TypeError("fetch failed"); };
 
-    await expect(net.drive(shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow(/relay/);
+    await expect(net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: never() }))).rejects.toThrow(/relay/);
     expect(ada.read(`${FOLDER}/labshelf.yaml`)).toBe(untitled);
   }, 60_000);
 
@@ -127,7 +127,7 @@ describe("sharing and joining a project", () => {
     ada.ports.requireRelay = requireRelay;
     const connect = jest.spyOn(ada.ports, "connect");
 
-    expect(await shareProject(ada.ports, { folder: FOLDER, shared: undefined, signal: never() })).toEqual({ kind: "noRelay" });
+    expect(await startProjectShare(ada.ports, { folder: FOLDER, shared: undefined, signal: never() })).toEqual({ kind: "noRelay" });
     expect(requireRelay).toHaveBeenCalledTimes(1);
     expect(connect).not.toHaveBeenCalled();
     expect(ada.keys.size).toBe(0);
@@ -139,12 +139,12 @@ describe("sharing and joining a project", () => {
     const { connection } = await shared(net, ada);
     await ada.ports.shares.remove(connection.shareId);
 
-    const again = await net.drive(shareProject(ada.ports, { folder: FOLDER, shared: connection.shareId, signal: never() }));
+    const again = await net.drive(startProjectShare(ada.ports, { folder: FOLDER, shared: connection.shareId, signal: never() }));
     expect(again.kind).toBe("shared");
     expect(ada.open.has(connection.shareId)).toBe(true);
     ada.keys.clear();
     await ada.ports.shares.remove(connection.shareId);
-    expect(await shareProject(ada.ports, { folder: FOLDER, shared: connection.shareId, signal: never() })).toEqual({ kind: "noKey" });
+    expect(await startProjectShare(ada.ports, { folder: FOLDER, shared: connection.shareId, signal: never() })).toEqual({ kind: "noKey" });
     await closeAll(net, ada);
   }, 60_000);
 });

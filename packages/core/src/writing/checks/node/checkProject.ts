@@ -1,16 +1,26 @@
 /** Runs the pre-submission check on a project folder and its built PDF. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
+import { execFile } from "node:child_process";
 
 import type { PdfjsLoader } from "../../../import/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { CheckSettings } from "../../project/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
 import { nodeFileReads } from "../../project/node/index.js";
-import type { CheckFinding, CheckSource } from "../checkReport.js";
+import type { CheckProblem, CheckSource } from "../checkReport.js";
 import { readPdfFacts } from "../readPdfFacts.js";
 import { runChecks } from "../runChecks.js";
-import { gitUserName } from "./readCommitAuthor.js";
+
+/** Undefined when git is missing, the folder is not a repository or no name is set: all ordinary states. */
+function gitUserName(folder: string): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    execFile("git", ["config", "user.name"], { cwd: folder }, (error, stdout) => {
+      const name = stdout.trim();
+      resolve(error === null && name !== "" ? name : undefined);
+    });
+  });
+}
 
 const MODULE = "writing/checks";
 const SOURCE_FILE = /\.(?:tex|typ)$/;
@@ -29,7 +39,7 @@ async function readSources(folder: string): Promise<CheckSource[]> {
 }
 
 /** Source files are absolute paths in the findings. A PDF that cannot be read rejects, with the path in the log. */
-export async function checkProject(check: ProjectCheck, pdfjs: PdfjsLoader, logger: ILogger): Promise<CheckFinding[]> {
+export async function checkProject(check: ProjectCheck, pdfjs: PdfjsLoader, logger: ILogger): Promise<CheckProblem[]> {
   const context = { folder: check.folder, pdf: check.pdfPath };
   try {
     const [facts, sources, gitUser] = await Promise.all([readPdfFacts(nodeFileReads.fs, pdfjs, check.pdfPath), readSources(check.folder), gitUserName(check.folder)]);

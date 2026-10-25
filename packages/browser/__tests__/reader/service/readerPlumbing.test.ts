@@ -6,7 +6,7 @@ import { createInPageChannel } from "@labshelf/core/dom";
 jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
 
 import { createSidecarPort } from "../../../src/storage/sidecarPort";
-import { parseReaderQuery, readerUrl } from "../../../src/reader/service/readerTabs";
+import { parseReaderQuery, createReaderUrl } from "../../../src/reader/service/readerTabs";
 
 describe("reader page shell", () => {
   it("embeds exactly the shared skeleton the VS Code shell uses", () => {
@@ -46,9 +46,9 @@ describe("sidecarPort", () => {
 
 describe("readerTabs", () => {
   it("builds and parses reader URLs", () => {
-    expect(readerUrl("10.1/x y")).toBe("chrome-extension://ext/reader/index.html?paper=10.1%2Fx+y");
-    expect(readerUrl("p", 4)).toBe("chrome-extension://ext/reader/index.html?paper=p&page=4");
-    expect(readerUrl("p", 0)).toBe("chrome-extension://ext/reader/index.html?paper=p");
+    expect(createReaderUrl("10.1/x y")).toBe("chrome-extension://ext/reader/index.html?paper=10.1%2Fx+y");
+    expect(createReaderUrl("p", 4)).toBe("chrome-extension://ext/reader/index.html?paper=p&page=4");
+    expect(createReaderUrl("p", 0)).toBe("chrome-extension://ext/reader/index.html?paper=p");
     expect(parseReaderQuery("?paper=10.1%2Fx+y&page=3")).toEqual({ paperId: "10.1/x y", page: 3 });
     expect(parseReaderQuery("?paper=p&page=abc")).toEqual({ paperId: "p" });
     expect(parseReaderQuery("")).toEqual({ paperId: null });

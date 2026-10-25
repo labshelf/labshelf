@@ -16,7 +16,7 @@ function toWorkspaceEdit(document: vscode.TextDocument, changes: readonly TextCh
   return edit;
 }
 
-export class RemoteEditQueue {
+export class RemoteUpdateQueue {
   private readonly tails = new Map<string, Promise<void>>();
   private readonly waiting = new Set<string>();
 

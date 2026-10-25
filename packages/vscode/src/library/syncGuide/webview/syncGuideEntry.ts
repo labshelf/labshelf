@@ -4,7 +4,7 @@ import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "@labshelf/core/styles/sync-guide.css";
 import { syncGuide } from "@labshelf/core";
-import { $, renderSyncGuide } from "@labshelf/core/dom";
+import { findElement, renderSyncGuide } from "@labshelf/core/dom";
 
 const host = acquireVsCodeApi();
-$("root").append(renderSyncGuide(syncGuide, { onOpenLink: (url) => host.postMessage({ type: "openLink", url }) }));
+findElement("root").append(renderSyncGuide(syncGuide, { onOpenLink: (url) => host.postMessage({ type: "openLink", url }) }));

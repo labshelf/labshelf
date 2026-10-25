@@ -1,5 +1,5 @@
 /** The request email is a mailto: URL that decodes to the intended text in every language and stays under the length cap. */
-import { MAILTO_MAX_LENGTH, requestCopyMailto, type CopyRequest, type RequestLanguage } from "../../../src/libraryUi";
+import { MAILTO_MAX_LENGTH, createCopyRequestMailto, type CopyRequest, type RequestLanguage } from "../../../src/libraryUi";
 
 const paper: CopyRequest["paper"] = {
   title: "Attention Is All You Need", authors: ["Ashish Vaswani", "Noam Shazeer", "Niki Parmar"], year: 2017,
@@ -16,7 +16,7 @@ function parse(url: string): { to: string; subject: string; body: string } {
 
 describe("requestCopyMailto", () => {
   it("writes the subject, citation, DOI link and signature", () => {
-    const { to, subject, body } = parse(requestCopyMailto(request()));
+    const { to, subject, body } = parse(createCopyRequestMailto(request()));
     expect(to).toBe("author@uni.edu");
     expect(subject).toBe('Request for a copy of "Attention Is All You Need"');
     expect(body.split("\r\n")).toEqual([
@@ -34,14 +34,14 @@ describe("requestCopyMailto", () => {
     ["es", 'Solicitud de una copia de "Attention Is All You Need"', "Estimado/a autor/a,", "Es para mi investigación personal."],
     ["en", 'Request for a copy of "Attention Is All You Need"', "Dear author,", "for my personal research."],
   ])("writes in %s", (lang, subjectLine, greeting, personal) => {
-    const { subject, body } = parse(requestCopyMailto(request({ lang })));
+    const { subject, body } = parse(createCopyRequestMailto(request({ lang })));
     expect(subject).toBe(subjectLine);
     expect(body.startsWith(greeting)).toBe(true);
     expect(body).toContain(personal);
   });
 
   it("encodes with percent escapes only: %20 for spaces, %0D%0A for line breaks, never +", () => {
-    const url = requestCopyMailto(request());
+    const url = createCopyRequestMailto(request());
     expect(url).not.toContain("+");
     expect(url).not.toContain(" ");
     expect(url).not.toMatch(/[\r\n]/);
@@ -51,36 +51,36 @@ describe("requestCopyMailto", () => {
 
   it("round-trips quotes, ampersands and accents in the title", () => {
     const title = 'Efeito do "estresse" & da ação: análise e reflexão sobre o café?';
-    const { subject, body } = parse(requestCopyMailto(request({ paper: { ...paper, title }, lang: "pt" })));
+    const { subject, body } = parse(createCopyRequestMailto(request({ paper: { ...paper, title }, lang: "pt" })));
     expect(subject).toBe(`Pedido de cópia de "${title}"`);
     expect(body).toContain(title);
   });
 
   it("round-trips accents in the requester's name and affiliation", () => {
-    const { body } = parse(requestCopyMailto(request({ lang: "es", requester: { name: "José Muñoz", affiliation: "Universidad de São Paulo" } })));
+    const { body } = parse(createCopyRequestMailto(request({ lang: "es", requester: { name: "José Muñoz", affiliation: "Universidad de São Paulo" } })));
     expect(body.endsWith("Muchas gracias,\r\nJosé Muñoz\r\nUniversidad de São Paulo")).toBe(true);
   });
 
   it("leaves the DOI line out when the paper has no DOI", () => {
-    const { body } = parse(requestCopyMailto(request({ paper: { ...paper, doi: undefined } })));
+    const { body } = parse(createCopyRequestMailto(request({ paper: { ...paper, doi: undefined } })));
     expect(body).not.toContain("doi.org");
     expect(body).toContain("NeurIPS.\r\n\r\nCould you");
   });
 
   it("leaves out an empty name and affiliation", () => {
-    const { body } = parse(requestCopyMailto(request({ requester: { name: "", affiliation: "  " } })));
+    const { body } = parse(createCopyRequestMailto(request({ requester: { name: "", affiliation: "  " } })));
     expect(body.endsWith("Thank you very much,")).toBe(true);
-    const named = parse(requestCopyMailto(request({ requester: { name: "Ada", affiliation: "" } }))).body;
+    const named = parse(createCopyRequestMailto(request({ requester: { name: "Ada", affiliation: "" } }))).body;
     expect(named.endsWith("Thank you very much,\r\nAda")).toBe(true);
   });
 
   it("joins several addresses with commas and allows none", () => {
-    expect(requestCopyMailto(request({ to: ["a@x.org", "b@y.org"] })).startsWith("mailto:a@x.org,b@y.org?subject=")).toBe(true);
-    expect(requestCopyMailto(request({ to: [] })).startsWith("mailto:?subject=")).toBe(true);
+    expect(createCopyRequestMailto(request({ to: ["a@x.org", "b@y.org"] })).startsWith("mailto:a@x.org,b@y.org?subject=")).toBe(true);
+    expect(createCopyRequestMailto(request({ to: [] })).startsWith("mailto:?subject=")).toBe(true);
   });
 
   it("copes with a paper that has only a title", () => {
-    const { body } = parse(requestCopyMailto(request({ paper: { title: "Untitled notes" } })));
+    const { body } = parse(createCopyRequestMailto(request({ paper: { title: "Untitled notes" } })));
     expect(body).toContain("\r\nUntitled notes.\r\n");
   });
 
@@ -88,7 +88,7 @@ describe("requestCopyMailto", () => {
     const longTitle = "A very long title about the behaviour of ünïcödé systems ".repeat(60).trim();
 
     it("stays at or under the cap for a long title and decodes cleanly", () => {
-      const url = requestCopyMailto(request({ paper: { ...paper, title: longTitle }, lang: "pt" }));
+      const url = createCopyRequestMailto(request({ paper: { ...paper, title: longTitle }, lang: "pt" }));
       expect(url.length).toBeLessThanOrEqual(MAILTO_MAX_LENGTH);
       expect(() => decodeURIComponent(url.split("body=")[1]!)).not.toThrow();
       const { subject, body } = parse(url);
@@ -100,7 +100,7 @@ describe("requestCopyMailto", () => {
 
     it("shortens the authors before the title", () => {
       const author = `Alexandrovich-${"Verylongfamilyname".repeat(100)}`;
-      const url = requestCopyMailto(request({ paper: { ...paper, authors: [author], title: "Short title" } }));
+      const url = createCopyRequestMailto(request({ paper: { ...paper, authors: [author], title: "Short title" } }));
       expect(url.length).toBeLessThanOrEqual(MAILTO_MAX_LENGTH);
       const { subject, body } = parse(url);
       expect(body).toContain("…");
@@ -110,7 +110,7 @@ describe("requestCopyMailto", () => {
 
     it("shortens the body title before the subject title", () => {
       const title = "Word ".repeat(120).trim();
-      const { subject, body } = parse(requestCopyMailto(request({ paper: { ...paper, title } })));
+      const { subject, body } = parse(createCopyRequestMailto(request({ paper: { ...paper, title } })));
       const inBody = body.split("\r\n").find((line) => line.includes("Word "))!;
       expect(inBody).toContain("…");
       expect(subject).toBe(`Request for a copy of "${title}"`);
@@ -119,7 +119,7 @@ describe("requestCopyMailto", () => {
     it("never splits an astral character or an escape when it cuts", () => {
       const title = "𝔘𝔫𝔦𝔠𝔬𝔡𝔢 ".repeat(300);
       for (const lang of ["en", "pt", "es"] as const) {
-        const url = requestCopyMailto(request({ paper: { ...paper, title }, lang }));
+        const url = createCopyRequestMailto(request({ paper: { ...paper, title }, lang }));
         expect(url.length).toBeLessThanOrEqual(MAILTO_MAX_LENGTH);
         expect(url).not.toMatch(/%(?![0-9A-F]{2})/);
         expect(() => parse(url)).not.toThrow();
@@ -127,7 +127,7 @@ describe("requestCopyMailto", () => {
     });
 
     it("drops the subject title when nothing else brings the URL under the cap", () => {
-      const url = requestCopyMailto(request({ paper: { ...paper, title: "T".repeat(5000) }, requester: { name: "N".repeat(500), affiliation: "A".repeat(500) } }));
+      const url = createCopyRequestMailto(request({ paper: { ...paper, title: "T".repeat(5000) }, requester: { name: "N".repeat(500), affiliation: "A".repeat(500) } }));
       expect(parse(url).subject).toMatch(/^Request for a copy of ".*"$/);
       expect(url.length).toBeLessThanOrEqual(MAILTO_MAX_LENGTH);
     });

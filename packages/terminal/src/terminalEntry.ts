@@ -4,56 +4,56 @@ import * as path from "node:path";
 import * as os from "node:os";
 import { fileURLToPath } from "node:url";
 
-import { Logger, PAPERS_DIR, RESEARCH_DIR, errorMessage, syncGuide } from "@labshelf/core";
-import { FileLogSink, deviceLocalLayout, sharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
+import { Logger, PAPERS_DIR, RESEARCH_DIR, formatError, syncGuide } from "@labshelf/core";
+import { FileLogSink, createDeviceLocalLayout, resolveSharedConfigPath, updateSharedConfig } from "@labshelf/core/node";
 
 import { openLibrary, type AppContext } from "./compositionRoot.js";
 import { loadTerminalConfig, resolveLibraryRoot, type TerminalConfig } from "./config.js";
 import {
-  dumpFrame, isNativeHostCommand, parseArgs, promptForLibrary, refreshSystemLaunchers, runConflicts, runDoctor, runLibraryCommand, runMove,
-  runSystemNativeHostCommand, stringFlag, syncGuideText, USAGE, UsageError, withPrompt, type Output, type ParsedArgs,
+  writeFrame, isNativeHostCommand, parseArgs, askLibraryDir, refreshSystemLaunchers, runConflicts, runDoctor, runLibraryCommand, runMove,
+  runSystemNativeHostCommand, readStringFlag, syncGuideText, USAGE, UsageError, withAsk, type Output, type CliArgs,
 } from "./cli/index.js";
-import { ensureLibraryStructure, LibraryRoot, looksLikeLibrary } from "./library/index.js";
-import { expandHome } from "./platform/index.js";
+import { ensureLibraryStructure, LibraryRoot, isLibraryRoot } from "./library/index.js";
+import { resolveHomePath } from "./platform/index.js";
 import { App } from "./libraryUi/libraryScreen/index.js";
-import { sanitizeForTerminal, Terminal } from "./screen/index.js";
+import { normalizeForTerminal, Terminal } from "./screen/index.js";
 
 const VERSION = "0.1.0";
 const DEFAULT_LIBRARY = "~/LabShelf";
 
 // Everything the CLI prints may contain metadata from PDFs or other devices; control characters never pass through.
 const io: Output = {
-  out: (text) => process.stdout.write(sanitizeForTerminal(text.endsWith("\n") ? text : text + "\n")),
-  err: (text) => process.stderr.write(sanitizeForTerminal(text.endsWith("\n") ? text : text + "\n")),
+  out: (text) => process.stdout.write(normalizeForTerminal(text.endsWith("\n") ? text : text + "\n")),
+  err: (text) => process.stderr.write(normalizeForTerminal(text.endsWith("\n") ? text : text + "\n")),
   columns: process.stdout.columns || 100,
 };
 
 async function adoptLibrary(raw: string): Promise<string> {
-  const root = path.resolve(expandHome(raw));
-  const existed = await looksLikeLibrary(root);
+  const root = path.resolve(resolveHomePath(raw));
+  const existed = await isLibraryRoot(root);
   await ensureLibraryStructure(new LibraryRoot(root));
   await updateSharedConfig({ libraryRoot: root });
   io.err(existed ? `Using the library at ${root}` : `Created a new library at ${root}`);
-  io.err(`Remembered in ${sharedConfigPath()} (the VS Code extension reads it too).`);
+  io.err(`Remembered in ${resolveSharedConfigPath()} (the VS Code extension reads it too).`);
   return root;
 }
 
 function askForLibrary(): Promise<string | undefined> {
   const site = { home: os.homedir(), env: process.env, platform: process.platform };
-  return withPrompt((ask) => promptForLibrary(site, io, ask));
+  return withAsk((ask) => askLibraryDir(site, io, ask));
 }
 
 const DIST_DIR = fileURLToPath(new URL(".", import.meta.url));
 
 // The move and conflict commands run outside the TUI, so their log goes to the library's terminal log file.
 function fileLogger(root: string): Logger {
-  return new Logger([new FileLogSink(deviceLocalLayout(root).terminalLogPath)], { onSinkError: () => undefined });
+  return new Logger([new FileLogSink(createDeviceLocalLayout(root).terminalLogPath)], { onSinkError: () => undefined });
 }
 
 async function resolveRoot(flag: string | undefined, config: TerminalConfig, interactive: boolean): Promise<{ root: string; source: string } | undefined> {
   const resolution = resolveLibraryRoot(flag, process.env, config);
   if (resolution.root) {
-    if (await looksLikeLibrary(resolution.root)) { return { root: resolution.root, source: resolution.source }; }
+    if (await isLibraryRoot(resolution.root)) { return { root: resolution.root, source: resolution.source }; }
     io.err(`${resolution.root} is not a LabShelf library (no ${PAPERS_DIR}/ or ${RESEARCH_DIR}/ folder).`);
     if (resolution.source !== "config" || !interactive) {
       io.err("Run `labshelf init <path>` to create one there.");
@@ -71,8 +71,8 @@ async function resolveRoot(flag: string | undefined, config: TerminalConfig, int
 function printWhere(root: string, source: string): void {
   const paths = new LibraryRoot(root);
   io.out(`library  ${paths.root}  (from ${source})`);
-  io.out(`config   ${sharedConfigPath()}`);
-  io.out(`log      ${deviceLocalLayout(paths.root).terminalLogPath}`);
+  io.out(`config   ${resolveSharedConfigPath()}`);
+  io.out(`log      ${createDeviceLocalLayout(paths.root).terminalLogPath}`);
 }
 
 async function runTui(ctx: AppContext): Promise<number> {
@@ -89,11 +89,11 @@ async function runTui(ctx: AppContext): Promise<number> {
   return 0;
 }
 
-async function runOpenedLibrary(ctx: AppContext, args: ParsedArgs, tuiWanted: boolean): Promise<number> {
+async function runOpenedLibrary(ctx: AppContext, args: CliArgs, tuiWanted: boolean): Promise<number> {
   try {
-    const dump = stringFlag(args.flags, "dump-frame");
+    const dump = readStringFlag(args.flags, "dump-frame");
     if (dump) {
-      await dumpFrame(ctx, dump, stringFlag(args.flags, "keys"), io.out);
+      await writeFrame(ctx, dump, readStringFlag(args.flags, "keys"), io.out);
       return 0;
     }
     if (tuiWanted) { return await runTui(ctx); }
@@ -103,7 +103,7 @@ async function runOpenedLibrary(ctx: AppContext, args: ParsedArgs, tuiWanted: bo
       io.err(error.message);
       return 2;
     }
-    io.err(errorMessage(error));
+    io.err(formatError(error));
     await ctx.logger.error("terminal/cli", error);
     return 1;
   } finally {
@@ -116,13 +116,13 @@ async function runCommand(run: () => Promise<number>): Promise<number> {
   try {
     return await run();
   } catch (error) {
-    io.err(errorMessage(error));
+    io.err(formatError(error));
     return error instanceof UsageError ? 2 : 1;
   }
 }
 
 // Runs the commands that work on the library's location rather than an opened library; undefined for any other.
-async function runLibraryFreeCommand(args: ParsedArgs, config: TerminalConfig, libraryFlag: string | undefined): Promise<number | undefined> {
+async function runLibraryFreeCommand(args: CliArgs, config: TerminalConfig, libraryFlag: string | undefined): Promise<number | undefined> {
   if (args.command === "init") {
     await adoptLibrary(args.positionals[0] ?? libraryFlag ?? config.libraryRoot ?? DEFAULT_LIBRARY);
     return 0;
@@ -161,7 +161,7 @@ async function main(argv: string[]): Promise<number> {
   // Fire and forget: a launcher that cannot be refreshed must not change this run's output or exit code.
   if (!isNativeHostCommand(args.command)) void refreshSystemLaunchers(DIST_DIR);
   const config = await loadTerminalConfig();
-  const libraryFlag = stringFlag(args.flags, "library");
+  const libraryFlag = readStringFlag(args.flags, "library");
 
   const code = await runLibraryFreeCommand(args, config, libraryFlag);
   if (code !== undefined) { return code; }
@@ -181,7 +181,7 @@ async function main(argv: string[]): Promise<number> {
   if (args.command === "conflicts") {
     const logger = fileLogger(resolved.root);
     const interactive = Boolean(process.stdin.isTTY);
-    return runCommand(() => withPrompt((ask) => runConflicts(resolved.root, io, interactive ? ask : undefined, logger)));
+    return runCommand(() => withAsk((ask) => runConflicts(resolved.root, io, interactive ? ask : undefined, logger)));
   }
 
   const ctx = await openLibrary(resolved.root, {

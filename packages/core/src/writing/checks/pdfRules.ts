@@ -1,23 +1,23 @@
 /** Checks the PDF's layout facts against common desk-reject causes: page limit, Type 3 fonts, low-resolution images and unresolved references. */
 import type { CheckSettings } from "../project/index.js";
-import type { CheckFinding, PdfFacts } from "./checkReport.js";
-import { countedPages } from "./limits/index.js";
-import type { PaperBody } from "./paperBody.js";
+import type { CheckProblem, PdfFacts } from "./checkReport.js";
+import { deriveCountedPages } from "./limits/index.js";
+import type { PaperBody } from "./derivePaperBody.js";
 
 const MIN_DPI = 300;
 /** `??` is LaTeX's mark for an unresolved \ref; `[?]` and `(?)` mark unresolved citations in numeric and author-year styles. */
 const UNRESOLVED = /\?\?|\[\?(?:,\s*\?)*\]|\(\?\)/g;
 
-export function pageLimitFindings(body: PaperBody, totalPages: number, settings: CheckSettings | undefined): CheckFinding[] {
+export function derivePageLimitProblems(body: PaperBody, totalPages: number, settings: CheckSettings | undefined): CheckProblem[] {
   const limit = settings?.pages;
   const toEnd = settings?.countUpTo === "end";
-  const { pages } = countedPages(body, totalPages, settings?.countUpTo ?? "references");
+  const { pages } = deriveCountedPages(body, totalPages, settings?.countUpTo ?? "references");
   if (limit === undefined || pages <= limit) { return []; }
   const counted = toEnd ? `${pages} pages` : body.headingFound ? `${pages} pages before the references` : `${pages} pages (no References heading found, so every page counts)`;
   return [{ rule: "pages", severity: "error", message: `The paper has ${counted}; the limit is ${limit}.`, location: { kind: "pdf" } }];
 }
 
-export function type3FontFindings(facts: PdfFacts): CheckFinding[] {
+export function deriveType3FontProblems(facts: PdfFacts): CheckProblem[] {
   const pages = facts.pages.flatMap((page, index) => (page.fonts.some((font) => font.type3) ? [index + 1] : []));
   if (pages.length === 0) { return []; }
   return [{
@@ -28,7 +28,7 @@ export function type3FontFindings(facts: PdfFacts): CheckFinding[] {
   }];
 }
 
-export function imageResolutionFindings(facts: PdfFacts): CheckFinding[] {
+export function deriveImageResolutionProblems(facts: PdfFacts): CheckProblem[] {
   return facts.pages.flatMap((page, index) =>
     page.images.flatMap((image) => {
       if (image.width <= 0 || image.height <= 0) { return []; }
@@ -44,7 +44,7 @@ export function imageResolutionFindings(facts: PdfFacts): CheckFinding[] {
   );
 }
 
-export function unresolvedReferenceFindings(facts: PdfFacts): CheckFinding[] {
+export function deriveUnresolvedReferenceProblems(facts: PdfFacts): CheckProblem[] {
   return facts.pages.flatMap((page, index) => {
     const count = page.lines.reduce((sum, line) => sum + (line.match(UNRESOLVED)?.length ?? 0), 0);
     if (count === 0) { return []; }

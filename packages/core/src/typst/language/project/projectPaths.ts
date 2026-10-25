@@ -16,7 +16,7 @@ export function resolveTypstPath(fromFile: string, written: string): string | un
 }
 
 /** How a file in `fromFile`'s folder writes the project path `target`. */
-export function relativeTypstPath(fromFile: string, target: string): string {
+export function deriveRelativeTypstPath(fromFile: string, target: string): string {
   const from = folderOf(fromFile);
   const to = target.split("/");
   let shared = 0;
@@ -25,7 +25,7 @@ export function relativeTypstPath(fromFile: string, target: string): string {
 }
 
 /** The 0-based line `offset` is on. */
-export function lineAt(text: string, offset: number): number {
+export function deriveLineNumber(text: string, offset: number): number {
   let line = 0;
   for (let at = text.indexOf("\n"); at >= 0 && at < offset; at = text.indexOf("\n", at + 1)) { line++; }
   return line;

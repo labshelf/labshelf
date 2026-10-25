@@ -1,8 +1,8 @@
 // Opens the share link in the page's fragment and shows its folder in the library UI, or one of its papers in the reader.
 import {
-  createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, errorMessage, openShare, type OpenedShare,
+  createLoopbackTransport, createWorkerShareReader, DEFAULT_PREFS, formatError, openShare, type OpenedShare,
 } from "@labshelf/core";
-import { applyThemeToDocument, mountLibraryUi, resolveTheme, toast, type MenuEntry } from "@labshelf/core/dom";
+import { applyThemeToDocument, mountLibraryUi, resolveTheme, showToast, type MenuEntry } from "@labshelf/core/dom";
 
 import { consoleLogger } from "./demos/log/index.js";
 import {
@@ -20,14 +20,14 @@ const openPaper = (id: string): void => { location.assign(`?paper=${encodeURICom
 const backToFolder = (): void => { location.assign(`${location.pathname}${location.hash}`); };
 
 function failure(err: unknown): string {
-  return err instanceof PdfLoadError ? PDF_ERROR_TEXT[err.reason] : errorMessage(err);
+  return err instanceof PdfLoadError ? PDF_ERROR_TEXT[err.reason] : formatError(err);
 }
 
 async function run(what: string, task: () => Promise<void>, context: Record<string, unknown>): Promise<void> {
   try {
     await task();
   } catch (err) {
-    toast(failure(err), "error");
+    showToast(failure(err), "error");
     void consoleLogger.error(MODULE, err, { what, ...context });
   }
 }
@@ -40,11 +40,11 @@ function downloadMenu(share: OpenedShare, library: ShareLibrary, current: () => 
       void run("download pdf", () => downloadPdf(share, paper!), { paperId: paper!.metadata.id });
     } },
     { icon: "download", label: "All papers as .zip", onSelect: () => {
-      const dismiss = toast("Preparing the .zip…");
+      const dismiss = showToast("Preparing the .zip…");
       void run("download zip", async () => {
         const failed = await downloadZip(share, share.manifest.folder, papers);
         if (failed.length > 0) {
-          toast(`${failed.length} PDF${failed.length === 1 ? " was" : "s were"} left out: they could not be read.`, "error");
+          showToast(`${failed.length} PDF${failed.length === 1 ? " was" : "s were"} left out: they could not be read.`, "error");
           void consoleLogger.log("WARN", MODULE, "Left PDFs out of the .zip", { failed: failed.map((f) => f.message) });
         }
       }, { papers: papers.length }).finally(dismiss);
@@ -122,7 +122,7 @@ if (bar && main) {
   installShareStyles(paperParam() === null ? "library" : "reader");
   document.body.dataset["view"] = paperParam() === null ? "library" : "reader";
   open({ bar, main }).catch((err: unknown) => {
-    renderState(main, { icon: "warning", text: "Something went wrong opening this folder", hint: errorMessage(err) });
+    renderState(main, { icon: "warning", text: "Something went wrong opening this folder", hint: formatError(err) });
     void consoleLogger.error(MODULE, err);
   });
 }

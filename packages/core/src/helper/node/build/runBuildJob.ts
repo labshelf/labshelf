@@ -1,16 +1,20 @@
 // Runs one `compile` request to its `built` reply: syncs the working copy, builds (core installs missing packages), classifies the failure and sends the changed pages.
 import * as path from "node:path";
 
-import { builtPdfPath } from "../../../writing/build/index.js";
+import { deriveBuiltPdfPath } from "../../../writing/build/index.js";
 import { type ILogger } from "../../../ports/index.js";
-import { classifyTexProblems, type LocatedProblem } from "../../../latex/build/index.js";
+import { deriveTexProblemClass, type LocatedProblem } from "../../../latex/build/index.js";
 import { type ProjectEntry } from "../../../writing/project/index.js";
 import type { ProjectBuildQueue } from "../../../writing/build/node/index.js";
-import { PROTOCOL_VERSION, type HelperBuildStatus, type ToHelperMessage } from "../../index.js";
+import { PROTOCOL_VERSION, type HelperBuildState, type ToHelperMessage } from "../../index.js";
 
 import type { HelperSend } from "../handlers/index.js";
-import { pageProblems } from "./pageProblems.js";
 import { sendPages, type SentPages } from "./sendPages.js";
+
+// CONTRACT: documents/contracts/helper.md#messages
+function pageProblems(problems: readonly LocatedProblem[], sourceDir: string): LocatedProblem[] {
+  return problems.map((problem) => ({ ...problem, file: path.relative(sourceDir, problem.file).split(path.sep).join("/") }));
+}
 
 export const BUILD_MODULE = "helper/build";
 
@@ -29,7 +33,7 @@ export interface BuildJob {
   sent: SentPages;
 }
 
-function replier(job: BuildJob): (status: Exclude<HelperBuildStatus, "succeeded">, problems?: LocatedProblem[]) => void {
+function replier(job: BuildJob): (status: Exclude<HelperBuildState, "succeeded">, problems?: LocatedProblem[]) => void {
   return (status, problems = []) => job.send({ v: PROTOCOL_VERSION, id: job.message.id, type: "built", status, problems });
 }
 
@@ -48,14 +52,14 @@ export async function runBuildJob(job: BuildJob): Promise<void> {
   if (result.status === "toolchain-missing") { return reply("toolchain-missing"); }
   const problems = pageProblems("problems" in result ? result.problems : [], job.project.folder);
   if (result.status === "succeeded") {
-    await sendPages(message.id, builtPdfPath(path, job.project)!, problems, job.sent, send);
+    await sendPages(message.id, deriveBuiltPdfPath(path, job.project)!, problems, job.sent, send);
     await job.logger.log("INFO", BUILD_MODULE, "Build stages completed", {
       projectId: message.projectId, mode: message.mode, syncMs: synced - started,
       compileMs: compiled - synced, pagesMs: Date.now() - compiled,
     });
     return;
   }
-  const { shellEscape } = classifyTexProblems(problems);
+  const { shellEscape } = deriveTexProblemClass(problems);
   if (shellEscape) { return reply("needs-shell-escape", [{ severity: "error", message: shellEscape, file: message.main }, ...problems]); }
   await job.logger.log("WARN", BUILD_MODULE, "Build failed", { projectId: message.projectId, main: message.main, status: result.status });
   reply("failed", problems);

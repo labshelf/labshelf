@@ -4,7 +4,7 @@ import { createInterface } from "node:readline/promises";
 /** Resolves to the trimmed answer, or undefined when stdin ends. */
 export type Ask = (question: string) => Promise<string | undefined>;
 
-export async function withPrompt<T>(use: (ask: Ask) => Promise<T>): Promise<T> {
+export async function withAsk<T>(use: (ask: Ask) => Promise<T>): Promise<T> {
   const rl = createInterface({ input: process.stdin, output: process.stderr });
   // PLATFORM: a pending readline question is never rejected when stdin ends, so the close event is raced against it.
   const closed = new Promise<undefined>((resolve) => rl.once("close", () => resolve(undefined)));

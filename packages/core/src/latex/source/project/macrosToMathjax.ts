@@ -4,7 +4,7 @@ import type { MacroFact } from "../facts.js";
 export type MathJaxMacros = Record<string, string | [string, number] | [string, number, string]>;
 
 /** Later definitions replace earlier ones; `\providecommand` never replaces an existing definition. */
-export function macrosToMathJax(macros: readonly MacroFact[]): MathJaxMacros {
+export function deriveMathJaxMacros(macros: readonly MacroFact[]): MathJaxMacros {
   const result: MathJaxMacros = {};
   for (const macro of macros) {
     if (macro.command === "providecommand" && macro.name in result) { continue; }

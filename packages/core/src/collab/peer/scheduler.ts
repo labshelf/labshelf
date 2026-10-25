@@ -15,7 +15,7 @@ export const systemScheduler: SessionScheduler = {
 };
 
 /** Runs `fn` every `ms` until the returned function is called. */
-export function every(scheduler: SessionScheduler, ms: number, fn: () => void): () => void {
+export function startInterval(scheduler: SessionScheduler, ms: number, fn: () => void): () => void {
   let cancel = scheduler.after(ms, tick);
   function tick(): void {
     cancel = scheduler.after(ms, tick);

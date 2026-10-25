@@ -7,13 +7,13 @@ import * as path from "node:path";
 import type { SharedConfig, SortSpec } from "@labshelf/core";
 import { loadSharedConfig } from "@labshelf/core/node";
 
-import { expandHome } from "./platform/index.js";
+import { resolveHomePath } from "./platform/index.js";
 
 /** The sort keys the terminal offers, a subset of the core ones. */
 export const SORT_KEYS = ["title", "year", "author", "status", "modified"] as const satisfies readonly SortSpec["key"][];
-export type SortKey = (typeof SORT_KEYS)[number];
+export type SortField = (typeof SORT_KEYS)[number];
 
-export function isSortKey(value: string): value is SortKey {
+export function isSortField(value: string): value is SortField {
   return (SORT_KEYS as readonly string[]).includes(value);
 }
 
@@ -22,7 +22,7 @@ interface TerminalPreferences {
   pdfViewer?: string;
   /** "auto" | "kitty" | "iterm" | "off". */
   images?: string;
-  sort?: SortKey;
+  sort?: SortField;
   sortReverse?: boolean;
 }
 
@@ -47,10 +47,10 @@ export interface LibraryRootResolution {
  * @returns the root (not yet validated) and where it came from
  */
 export function resolveLibraryRoot(flag: string | undefined, env: NodeJS.ProcessEnv, config: TerminalConfig): LibraryRootResolution {
-  if (flag) { return { root: path.resolve(expandHome(flag)), source: "flag" }; }
-  if (env["LABSHELF_LIBRARY"]) { return { root: path.resolve(expandHome(env["LABSHELF_LIBRARY"])), source: "env" }; }
+  if (flag) { return { root: path.resolve(resolveHomePath(flag)), source: "flag" }; }
+  if (env["LABSHELF_LIBRARY"]) { return { root: path.resolve(resolveHomePath(env["LABSHELF_LIBRARY"])), source: "env" }; }
   if (typeof config.libraryRoot === "string" && config.libraryRoot) {
-    return { root: path.resolve(expandHome(config.libraryRoot)), source: "config" };
+    return { root: path.resolve(resolveHomePath(config.libraryRoot)), source: "config" };
   }
   return { root: undefined, source: "none" };
 }

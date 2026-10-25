@@ -14,7 +14,7 @@ const typstString = (text: string): string => `"${text.replace(/\\/g, "\\\\").re
  * The probe includes the main file and appends invisible metadata, so the citations it reports sit where the main's own compile
  * puts them; `mainFromRoot` starts with `/`, which Typst resolves against the project root.
  */
-export function citationProbeSource(mainFromRoot: string): string {
+export function createCitationProbeSource(mainFromRoot: string): string {
   return [
     `#include ${typstString(mainFromRoot)}`,
     "#context [#metadata(query(cite).map(c => {",

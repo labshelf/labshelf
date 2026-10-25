@@ -1,6 +1,6 @@
 // Builds the All projects port of the library page, the one both the All projects tab and the Details pane serve.
 import type { ILogger, LibraryFileSystem, ProjectLibraryPort } from "@labshelf/core";
-import { listAllRecords } from "../../storage";
+import { listCachedPaperRecords } from "../../storage";
 import type { ProjectSession } from "../session";
 import type { Workspace } from "../../libraryUi/editorArea";
 import { askBlankProject } from "./askProject";
@@ -15,5 +15,5 @@ export interface PageProjectLibraryDeps {
 }
 
 export function createPageProjectLibrary(deps: PageProjectLibraryDeps): ProjectLibraryPort {
-  return createBrowserProjectLibrary({ ...deps, pdfjs: browserPdfjs, listPapers: listAllRecords, askBlank: askBlankProject });
+  return createBrowserProjectLibrary({ ...deps, pdfjs: browserPdfjs, listPapers: listCachedPaperRecords, askBlank: askBlankProject });
 }

@@ -1,9 +1,9 @@
 /** Verifies how the papers list follows the cited keys: additions, DOI fill, removal of cited entries only, order. */
 import type { PaperRecord } from "../../../src/model/index";
-import { papersByCiteKey, syncListedPapers } from "../../../src/writing/citations/index";
+import { derivePapersByCiteKey, syncListedPapers } from "../../../src/writing/citations/index";
 
 const paper = (id: string, doi?: string): PaperRecord => ({ id, citeKey: id, title: id, path: id, status: "unread", doi });
-const library = papersByCiteKey([paper("a", "10.1/a"), paper("b"), paper("c", "10.1/c")]);
+const library = derivePapersByCiteKey([paper("a", "10.1/a"), paper("b"), paper("c", "10.1/c")]);
 
 describe("syncListedPapers", () => {
   it("adds each cited key as a cited entry in key order, with the library DOI when there is one", () => {

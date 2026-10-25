@@ -1,9 +1,76 @@
 // Runs one shared project in this page while the page holds the share's tab lease, and waits for the lease while another tab does.
 // CONTRACT: documents/contracts/collaboration.md#persistence-acknowledgment
-import type { ILogger, ShareConnection, ShareConnectionState } from "@labshelf/core";
-import { takeOverTabLease, tabLeaseName, waitForTabLease, type TabLease } from "../storage";
-import type { CommentThreads } from "./comments";
-import { createLiveCommentThreads } from "./liveCommentThreads";
+import {
+  type ILogger,
+  type ShareConnection,
+  type ShareConnectionState,
+  createSharedProjectComments,
+  type Comment,
+  type CommentThread,
+  type ShareSession,
+  type TextRange,
+} from "@labshelf/core";
+import { updateTabLease, createTabLeaseName, watchTabLease, type TabLease } from "../storage";
+import type { CommentThreads, LocatedThread } from "./comments";
+
+const MODULE = "collab.liveComments";
+
+interface LiveCommentThreadsOptions {
+  session: Pick<ShareSession, "index" | "openDoc">;
+  /** The id of the project the share holds. */
+  projectId: string;
+  /** This user's name on the comments they write. */
+  author: () => string;
+  logger: ILogger;
+}
+
+const lineAt = (text: string, offset: number): number => text.slice(0, offset).split("\n").length;
+
+function createLiveCommentThreads({ session, projectId, author, logger }: LiveCommentThreadsOptions): CommentThreads {
+  const comments = createSharedProjectComments(session);
+  const checkProject = (id: string): void => {
+    if (id !== projectId) { throw new Error(`Project ${id} is not the shared project ${projectId}, so its comments cannot be used`); }
+  };
+  const located = (thread: CommentThread): LocatedThread => {
+    const range = comments.locate(thread);
+    const text = comments.textOf(thread.file);
+    return { ...thread, line: range === "detached" || text === undefined ? undefined : lineAt(text, range.start) };
+  };
+  const newComment = (body: string): Comment => ({ id: globalThis.crypto.randomUUID(), author: author(), body, createdAt: new Date().toISOString() });
+  const edit = async (action: string, threadId: string, change: () => void): Promise<void> => {
+    try {
+      change();
+    } catch (error) {
+      await logger.error(MODULE, error, { action, projectId, threadId });
+      throw error;
+    }
+  };
+  const rangesOf = (path: string): TextRange[] => comments.threads().filter((each) => each.file === path && !each.resolved)
+    .map((each) => comments.locate(each)).filter((each): each is TextRange => each !== "detached");
+
+  return {
+    async threads(id, path) {
+      checkProject(id);
+      return comments.threads().filter((each) => path === undefined || each.file === path).map(located);
+    },
+    commentAnchorsFor: (id, path) => ({
+      subscribe(listener) {
+        checkProject(id);
+        listener(rangesOf(path));
+        return comments.onChange(() => listener(rangesOf(path)));
+      },
+    }),
+    async addComment(id, path, range, body) {
+      checkProject(id);
+      const threadId = globalThis.crypto.randomUUID();
+      await edit("add a comment", threadId, () => comments.add({ id: threadId, file: path, anchor: comments.anchor(path, range), comments: [newComment(body)], resolved: false }));
+      await logger.log("INFO", MODULE, "Added a comment to a shared file", { projectId, path, threadId });
+    },
+    reply: (threadId, body) => edit("reply to a comment", threadId, () => comments.reply(threadId, newComment(body))),
+    resolve: (threadId) => edit("resolve a comment", threadId, () => comments.setResolved(threadId, true)),
+    onDidChange: (listener) => comments.onChange(listener),
+  };
+}
 
 const LOG_MODULE = "collab.shares";
 
@@ -72,7 +139,7 @@ export class ProjectShare {
     const waiting = this.waiting = new AbortController();
     this.options.notify();
     const { logger, shareId } = this.options;
-    waitForTabLease(this.leaseName(), waiting.signal).then(
+    watchTabLease(this.leaseName(), waiting.signal).then(
       (lease) => this.reopen(lease).catch((error: unknown) => logger.error(LOG_MODULE, error, { action: "reopen a share after the lease came free", shareId })),
       (error: unknown) => { if (!waiting.signal.aborted) { void logger.error(LOG_MODULE, error, { action: "wait for the share's tab lease", shareId }); } },
     ).finally(() => { if (this.waiting === waiting) { this.waiting = undefined; } });
@@ -82,7 +149,7 @@ export class ProjectShare {
   async takeOver(): Promise<void> {
     if (this.connection || this.closed) { return; }
     this.waiting?.abort();
-    await this.reopen(await takeOverTabLease(this.leaseName()));
+    await this.reopen(await updateTabLease(this.leaseName()));
   }
 
   /** Stops waiting, closes the connection and frees the lease; rejects when the close leaves an update unstored. */
@@ -98,7 +165,7 @@ export class ProjectShare {
   }
 
   private leaseName(): string {
-    return tabLeaseName(this.options.libraryId, this.options.shareId);
+    return createTabLeaseName(this.options.libraryId, this.options.shareId);
   }
 
   private async reopen(lease: TabLease): Promise<void> {

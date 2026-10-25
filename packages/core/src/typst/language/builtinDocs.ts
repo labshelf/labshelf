@@ -1,5 +1,5 @@
 // Looks up standard-library items by dotted name and renders their signature, hover text and completion entry.
-import { TYPST_LIBRARY, type TypstBuiltin, type TypstParam } from "./library/index.js";
+import { TYPST_LIBRARY, type TypstBuiltin, type TypstParam } from "./typstStdlib/index.js";
 import type { TypstCompletion } from "./typstLanguageSpec.js";
 
 /** The item a dotted name like `calc.max` or `datetime.today` names; in math, `attach` also finds `math.attach`. */
@@ -9,12 +9,12 @@ export function findBuiltin(dotted: string, inMath = false): TypstBuiltin | unde
 }
 
 /** A ```typst fence with the item's signature, its doc, then its parameters as a list. */
-export function builtinMarkdown(item: TypstBuiltin, name: string): string {
+export function formatBuiltinMarkdown(item: TypstBuiltin, name: string): string {
   const params = (item.params ?? []).map((param) => `- \`${param.name}\` (\`${param.type}\`): ${param.doc}`);
   return [`\`\`\`typst\n${signature(item, name)}\n\`\`\``, item.doc, ...(params.length ? [params.join("\n")] : [])].join("\n\n");
 }
 
-export function builtinCompletion(item: TypstBuiltin, prefix = ""): TypstCompletion {
+export function createBuiltinCompletion(item: TypstBuiltin, prefix = ""): TypstCompletion {
   const completion: TypstCompletion = { label: item.name, kind: item.kind, doc: item.doc, insert: prefix + item.name, snippet: false };
   if (item.kind === "function") {
     completion.insert = `${prefix}${item.name}(\${1})`;

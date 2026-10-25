@@ -3,7 +3,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { libraryLayout, type LibraryLayout } from "@labshelf/core";
+import { createLibraryLayout, type LibraryLayout } from "@labshelf/core";
 
 export class LibraryRoot {
   readonly root: string;
@@ -11,7 +11,7 @@ export class LibraryRoot {
 
   constructor(root: string) {
     this.root = path.resolve(root);
-    this.layout = libraryLayout(this.root, path.join);
+    this.layout = createLibraryLayout(this.root, path.join);
   }
 
   /** Absolute folder of a collection from its path relative to papers/ ("" is the root). */
@@ -35,8 +35,8 @@ export async function ensureLibraryStructure(library: LibraryRoot): Promise<void
 }
 
 /** Whether a folder looks like a LabShelf library (it has one of the marker folders). */
-export async function looksLikeLibrary(root: string): Promise<boolean> {
-  for (const dir of libraryLayout(root, path.join).markerDirs()) {
+export async function isLibraryRoot(root: string): Promise<boolean> {
+  for (const dir of createLibraryLayout(root, path.join).markerDirs()) {
     try {
       if ((await fs.stat(dir)).isDirectory()) { return true; }
     } catch {

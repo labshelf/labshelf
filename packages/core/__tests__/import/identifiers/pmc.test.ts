@@ -1,6 +1,6 @@
 /** Contract of PubMed Central id extraction from typed text and article URLs. */
 
-import { normalizePmcid, pmcidFromUrl } from '@labshelf/core';
+import { normalizePmcid, extractPmcidFromUrl } from '@labshelf/core';
 
 describe('normalizePmcid', () => {
   it.each([
@@ -26,10 +26,10 @@ describe('pmcidFromUrl', () => {
     'https://europepmc.org/articles/PMC5586528',
     'https://europepmc.org/pmc/articles/PMC5586528',
   ])('reads the PMCID in %s', (url) => {
-    expect(pmcidFromUrl(url)).toBe('PMC5586528');
+    expect(extractPmcidFromUrl(url)).toBe('PMC5586528');
   });
 
   it('returns undefined for other URLs', () => {
-    expect(pmcidFromUrl('https://example.org/articles/PMC5586528')).toBeUndefined();
+    expect(extractPmcidFromUrl('https://example.org/articles/PMC5586528')).toBeUndefined();
   });
 });

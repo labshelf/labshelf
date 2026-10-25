@@ -1,7 +1,7 @@
 // Reads and writes paper sidecars at the library layout's .research/papers/<paperId>/data.json in either library source.
-import { joinWith, libraryLayout, type LibraryFileSystem, type SidecarPort } from "@labshelf/core";
+import { joinWith, createLibraryLayout, type LibraryFileSystem, type SidecarPort } from "@labshelf/core";
 
-const layout = libraryLayout("", joinWith("/"));
+const layout = createLibraryLayout("", joinWith("/"));
 
 /**
  * @returns a SidecarPort reading and writing UTF-8 JSON through the library file system; a missing file reads as null.

@@ -1,6 +1,6 @@
 /** Verifies the checklist.json parser, the valid-item view, the immutable edits and the serializer. */
 import {
-  addManualItem, manualItems, parseChecklistFile, removeManualItem, serializeChecklistFile, setManualItemDone,
+  addManualItem, listManualItems, parseChecklistFile, removeManualItem, serializeChecklistFile, setManualItemDone,
 } from "../../../src/writing/checklist/index";
 
 const T0 = "2026-10-16T09:12:00.000Z";
@@ -15,7 +15,7 @@ function parsed(value: unknown) {
 
 describe("parseChecklistFile", () => {
   it("parses a valid file", () => {
-    expect(manualItems(parsed({ items: [item] }))).toEqual([item]);
+    expect(listManualItems(parsed({ items: [item] }))).toEqual([item]);
   });
 
   it("reads malformed files as undefined", () => {
@@ -28,7 +28,7 @@ describe("parseChecklistFile", () => {
   });
 });
 
-describe("manualItems", () => {
+describe("listManualItems", () => {
   it("returns only valid items", () => {
     const done = { id: "d", text: "Done one", done: true, createdAt: T0, doneAt: T1 };
     const doc = parsed({
@@ -40,12 +40,12 @@ describe("manualItems", () => {
         null, "str", 4,
       ],
     });
-    expect(manualItems(doc).map((entry) => entry.id)).toEqual(["a", "d"]);
+    expect(listManualItems(doc).map((entry) => entry.id)).toEqual(["a", "d"]);
   });
 
   it("hides a done item that has no doneAt and an open item that has one", () => {
     const doc = parsed({ items: [{ ...item, done: true }, { ...item, id: "b", doneAt: T1 }] });
-    expect(manualItems(doc)).toEqual([]);
+    expect(listManualItems(doc)).toEqual([]);
   });
 });
 
@@ -54,7 +54,7 @@ describe("edits", () => {
     const doc = parsed({ items: [item] });
     const before = JSON.stringify(doc);
     const next = addManualItem(doc, { id: "b", text: "Shorten", now: T1 });
-    expect(manualItems(next)).toEqual([item, { id: "b", text: "Shorten", done: false, createdAt: T1 }]);
+    expect(listManualItems(next)).toEqual([item, { id: "b", text: "Shorten", done: false, createdAt: T1 }]);
     expect(JSON.stringify(doc)).toBe(before);
   });
 
@@ -62,24 +62,24 @@ describe("edits", () => {
     const doc = parsed({ items: [item] });
     const before = JSON.stringify(doc);
     const done = setManualItemDone(doc, "a", true, T1);
-    expect(manualItems(done)).toEqual([{ ...item, done: true, doneAt: T1 }]);
+    expect(listManualItems(done)).toEqual([{ ...item, done: true, doneAt: T1 }]);
     const reopened = setManualItemDone(done, "a", false, "2026-10-18T00:00:00.000Z");
-    expect(manualItems(reopened)).toEqual([item]);
-    expect("doneAt" in manualItems(reopened)[0]!).toBe(false);
+    expect(listManualItems(reopened)).toEqual([item]);
+    expect("doneAt" in listManualItems(reopened)[0]!).toBe(false);
     expect(JSON.stringify(doc)).toBe(before);
   });
 
   it("removes an item and leaves the others", () => {
     const doc = parsed({ items: [item, { ...item, id: "b" }] });
     const before = JSON.stringify(doc);
-    expect(manualItems(removeManualItem(doc, "a")).map((entry) => entry.id)).toEqual(["b"]);
+    expect(listManualItems(removeManualItem(doc, "a")).map((entry) => entry.id)).toEqual(["b"]);
     expect(JSON.stringify(doc)).toBe(before);
   });
 
   it("ignores an unknown id", () => {
     const doc = parsed({ items: [item] });
-    expect(manualItems(setManualItemDone(doc, "zzz", true, T1))).toEqual([item]);
-    expect(manualItems(removeManualItem(doc, "zzz"))).toEqual([item]);
+    expect(listManualItems(setManualItemDone(doc, "zzz", true, T1))).toEqual([item]);
+    expect(listManualItems(removeManualItem(doc, "zzz"))).toEqual([item]);
   });
 
   it("keeps invalid items and unknown keys at the top level and in items", () => {
@@ -95,12 +95,12 @@ describe("edits", () => {
 describe("group", () => {
   it("writes the group an item is added to and reads it back", () => {
     const doc = addManualItem(parsed({ items: [] }), { id: "g", text: "Fix fig 2", now: T0, group: "figure" });
-    expect(manualItems(parsed(JSON.parse(serializeChecklistFile(doc))))).toEqual([{ id: "g", text: "Fix fig 2", done: false, createdAt: T0, group: "figure" }]);
+    expect(listManualItems(parsed(JSON.parse(serializeChecklistFile(doc))))).toEqual([{ id: "g", text: "Fix fig 2", done: false, createdAt: T0, group: "figure" }]);
   });
 
   it("reads an unknown or malformed group as My items and keeps it on disk", () => {
     const doc = parsed({ items: [{ ...item, group: "someday" }, { ...item, id: "b", group: 3 }] });
-    expect(manualItems(doc)).toEqual([item, { ...item, id: "b" }]);
+    expect(listManualItems(doc)).toEqual([item, { ...item, id: "b" }]);
     expect(setManualItemDone(doc, "a", true, T1).items[0]).toMatchObject({ group: "someday" });
   });
 
@@ -112,12 +112,12 @@ describe("group", () => {
 describe("section", () => {
   it("writes the section an item is added to and reads it back", () => {
     const doc = addManualItem(parsed({ items: [] }), { id: "s", text: "Cut intro", now: T0, section: "main.tex#Intro" });
-    expect(manualItems(parsed(JSON.parse(serializeChecklistFile(doc))))).toEqual([{ id: "s", text: "Cut intro", done: false, createdAt: T0, section: "main.tex#Intro" }]);
+    expect(listManualItems(parsed(JSON.parse(serializeChecklistFile(doc))))).toEqual([{ id: "s", text: "Cut intro", done: false, createdAt: T0, section: "main.tex#Intro" }]);
   });
 
   it("reads an empty, non-string or over-long section as absent and keeps it on disk", () => {
     const doc = parsed({ items: [{ ...item, section: "" }, { ...item, id: "b", section: 3 }, { ...item, id: "c", section: "x".repeat(201) }] });
-    expect(manualItems(doc)).toEqual([item, { ...item, id: "b" }, { ...item, id: "c" }]);
+    expect(listManualItems(doc)).toEqual([item, { ...item, id: "b" }, { ...item, id: "c" }]);
     expect(setManualItemDone(doc, "a", true, T1).items[0]).toMatchObject({ section: "" });
   });
 });

@@ -46,7 +46,7 @@ function preview(lineText: string, column: number, length: number): Omit<MatchPr
   };
 }
 
-export function collectSearchResults(files: readonly SearchedFile[], pattern: RegExp, limit: number): SearchResults {
+export function deriveSearchMatches(files: readonly SearchedFile[], pattern: RegExp, limit: number): SearchResults {
   const results: SearchResults = { files: [], total: 0, truncated: false };
   for (const file of files) {
     const found = findInText(file.text, pattern);

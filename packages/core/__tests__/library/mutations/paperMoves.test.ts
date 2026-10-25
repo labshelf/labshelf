@@ -1,4 +1,4 @@
-import { movePapers, trashPapers } from "@labshelf/core";
+import { movePapers, movePapersToTrash } from "@labshelf/core";
 
 import { makeHarness, PAPERS, type MutationHarness } from "../../support/mutationHarness";
 
@@ -72,7 +72,7 @@ describe("movePapers", () => {
 describe("trashPapers", () => {
   it("trashes each paper folder and keeps its sidecar", async () => {
     const h = await seeded();
-    const outcome = await trashPapers(h.ctx, [{ id: "p1", path: `${ML}/p1` }]);
+    const outcome = await movePapersToTrash(h.ctx, [{ id: "p1", path: `${ML}/p1` }]);
     expect(outcome).toEqual({ done: ["p1"], failed: [] });
     expect(h.fs.trashed).toEqual([`${ML}/p1`]);
     expect(await h.fs.exists(SIDECAR)).toBe(true);
@@ -82,7 +82,7 @@ describe("trashPapers", () => {
   it("captures and logs a failed trash per paper, leaves that paper in place and carries on", async () => {
     const h = await seeded();
     h.fs.trashFails.add(`${PAPERS}/a`);
-    const outcome = await trashPapers(h.ctx, [{ id: "a", path: `${PAPERS}/a` }, { id: "b", path: `${PAPERS}/b` }]);
+    const outcome = await movePapersToTrash(h.ctx, [{ id: "a", path: `${PAPERS}/a` }, { id: "b", path: `${PAPERS}/b` }]);
     expect(outcome.done).toEqual(["b"]);
     expect(outcome.failed).toEqual([{ id: "a", error: `Cannot move ${PAPERS}/a to the trash` }]);
     expect(await h.fs.exists(`${PAPERS}/a/metadata.yaml`)).toBe(true);

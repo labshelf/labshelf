@@ -1,6 +1,6 @@
 /** Builds a project's reading list: the papers it cites plus those the user added, with whether each was ever opened. */
 import type { PaperRecord } from "../../model/index.js";
-import type { BacklinkIndex } from "../citations/index.js";
+import type { BacklinkMap } from "../citations/index.js";
 import type { ListedPaper } from "../project/index.js";
 
 export interface ReadingListEntry {
@@ -22,14 +22,14 @@ export interface ReadingList {
 
 export interface ReadingListInput {
   project: string;
-  backlinks: BacklinkIndex;
+  backlinks: BacklinkMap;
   listed: readonly ListedPaper[];
   papersByKey: ReadonlyMap<string, PaperRecord>;
   /** Asked once per paper in the list. */
   isOpened: (paperId: string) => Promise<boolean>;
 }
 
-function citedKeysOf(backlinks: BacklinkIndex, project: string): string[] {
+function citedKeysOf(backlinks: BacklinkMap, project: string): string[] {
   const keys: string[] = [];
   for (const [key, links] of backlinks) { if (links.some((link) => link.project === project)) { keys.push(key); } }
   return keys;

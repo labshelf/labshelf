@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import type { ILogger, ProjectSaveTracking } from '@labshelf/core';
 
-export function registerProjectSaveEvents(context: vscode.ExtensionContext, saves: ProjectSaveTracking, logger: ILogger): void {
+export function registerProjectWriteEvents(context: vscode.ExtensionContext, saves: ProjectSaveTracking, logger: ILogger): void {
   const fail = async (file: string, action: string, error: unknown): Promise<void> => {
     await logger.error('writing-merge', error, { file, action });
     void vscode.window.showErrorMessage(`Could not record project save for ${file}: ${error instanceof Error ? error.message : String(error)}`);

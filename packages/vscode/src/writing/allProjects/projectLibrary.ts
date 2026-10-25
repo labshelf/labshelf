@@ -1,12 +1,36 @@
 // Composes the core All projects library with the VS Code editor, build state and project commands.
 import * as vscode from "vscode";
-import { createProjectLibrary as createCoreLibrary, type ILogger, type NewProjectKind, type PaperRecord, type PdfjsLoader, type ProjectEntry, type ProjectHostFunctions, type ProjectLibraryPort } from "@labshelf/core";
+import {
+  createProjectLibrary as createCoreLibrary,
+  type ILogger,
+  type CreateProjectKind,
+  type PaperRecord,
+  type PdfjsLoader,
+  type ProjectEntry,
+  type ProjectHostFunctions,
+  type ProjectLibraryPort,
+  type ProjectMenuCommand,
+} from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
-import { duplicateProject } from "../index.js";
-import { builtPdf, rawLogFile, type RootBuilds } from "../preview/index.js";
+import { copyProjectEntry } from "../index.js";
+import { readBuiltPdf, readRawLogFile, type BuildRootBuilds } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "../session/index.js";
 import type { SidebarProjectsSource } from "../sidebar/index.js";
-import { projectMenuCommands, runProjectCommand } from "./projectCommands.js";
+import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../libraryUi/index.js";
+
+const OPEN = "labshelf.writing.openProject";
+const EXTERNAL_ONLY = "labshelf.writing.removeProject";
+
+function projectMenuCommands(): ProjectMenuCommand[] {
+  return PROJECT_COMMANDS.filter((c) => c.command !== OPEN).map((c) => ({
+    command: c.command, label: c.label, group: c.group, ...(c.command === EXTERNAL_ONLY ? { externalOnly: true } : {}),
+  }));
+}
+
+async function runProjectCommand(command: string, entry: ProjectEntry): Promise<void> {
+  if (!isSidebarProjectCommand(command)) { throw new Error(`${command} is not a project command`); }
+  await vscode.commands.executeCommand(command, entry);
+}
 
 export interface VscodeProjectLibraryDeps {
   host: WritingHost;
@@ -15,7 +39,7 @@ export interface VscodeProjectLibraryDeps {
   session: Pick<ProjectSession, "project">;
   source: Pick<SidebarProjectsSource, "find" | "list" | "update" | "onDidChange">;
   outcomes: Pick<BuildOutcomes, "last" | "onDidChange">;
-  builds: Pick<RootBuilds, "builtRoots" | "problemsOf" | "stateOf">;
+  builds: Pick<BuildRootBuilds, "builtRoots" | "problemsOf" | "stateOf">;
   onDidChangeRootBuild: vscode.Event<void>;
   listPapers: () => Promise<PaperRecord[]>;
   logger: ILogger;
@@ -26,7 +50,7 @@ export interface VscodeProjectLibraryDeps {
 
 const SHOW_PREVIEW_COMMAND = "labshelf.writing.showPreview";
 
-const CREATE_COMMANDS: Record<NewProjectKind, string> = {
+const CREATE_COMMANDS: Record<CreateProjectKind, string> = {
   blank: "labshelf.writing.newBlankProject",
   template: "labshelf.templates.open",
   folder: "labshelf.writing.addExistingFolder",
@@ -41,8 +65,8 @@ export function createProjectLibrary(deps: VscodeProjectLibraryDeps): ProjectLib
     projects: { find: (folder) => source.find(folder), list: () => source.list(), update: (folder, patch) => source.update(folder, patch), reload: () => projects.reload() },
     outcomes, builds, listPapers: deps.listPapers, pdfjs: deps.pdfjs,
     locate: {
-      pdf: (project) => builtPdf(projects, project, project.main),
-      rawLog: (project, root) => rawLogFile(projects, project, root),
+      pdf: (project) => readBuiltPdf(projects, project, project.main),
+      rawLog: (project, root) => readRawLogFile(projects, project, root),
     },
     host: createHostFunctions(deps),
   });
@@ -63,7 +87,7 @@ function createHostFunctions(deps: VscodeProjectLibraryDeps): ProjectHostFunctio
       await vscode.commands.executeCommand(SHOW_PREVIEW_COMMAND);
     },
     openLog: async (path) => { await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(path)); },
-    duplicate: (entry, title) => duplicateProject({ host: deps.host, projects }, entry, title),
+    duplicate: (entry, title) => copyProjectEntry({ host: deps.host, projects }, entry, title),
     runCommand: runProjectCommand,
     commands: () => projectMenuCommands(),
     newKinds: () => ["blank", "template", "folder"],

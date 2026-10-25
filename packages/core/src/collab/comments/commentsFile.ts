@@ -1,7 +1,7 @@
 // Parses, edits and serializes a project's .labshelf/comments.json, keeping what it does not understand.
 // CONTRACT: documents/contracts/library-format.md#labshelfcommentsjson
 import { parseJsonObject } from "../../writing/project/index.js";
-import { isRecord, readThread, type Comment, type CommentThread } from "./commentThread.js";
+import { isJsonObject, readThread, type Comment, type CommentThread } from "./commentThread.js";
 
 export const COMMENTS_PATH = ".labshelf/comments.json";
 
@@ -23,14 +23,14 @@ const COMMENT_KEYS = ["id", "author", "body", "createdAt"];
 
 // Members write the same threads from maps whose key order differs, so the known keys always come first, in order.
 function ordered(value: unknown, keys: readonly string[]): unknown {
-  if (!isRecord(value)) { return value; }
+  if (!isJsonObject(value)) { return value; }
   const known = keys.filter((key) => key in value).map((key) => [key, value[key]]);
   return Object.fromEntries([...known, ...Object.entries(value).filter(([key]) => !keys.includes(key))]);
 }
 
 function orderedThread(value: unknown): unknown {
   const thread = ordered(value, THREAD_KEYS);
-  if (!isRecord(thread)) { return thread; }
+  if (!isJsonObject(thread)) { return thread; }
   const comments = thread["comments"];
   return {
     ...thread,
@@ -44,7 +44,7 @@ export function serializeCommentsFile(doc: CommentsDocument): string {
 }
 
 /** @returns the valid threads in file order, each with its valid comments */
-export function commentThreads(doc: CommentsDocument): CommentThread[] {
+export function deriveCommentThreads(doc: CommentsDocument): CommentThread[] {
   return doc.threads.map(readThread).filter((each): each is CommentThread => each !== undefined);
 }
 
@@ -54,10 +54,10 @@ export function addThread(doc: CommentsDocument, thread: CommentThread): Comment
 
 // Only a valid thread is edited, so an entry this version cannot read stays exactly as written.
 function editThread(doc: CommentsDocument, id: string, edit: (thread: Record<string, unknown>) => Record<string, unknown>): CommentsDocument {
-  return { ...doc, threads: doc.threads.map((each) => (isRecord(each) && each["id"] === id && readThread(each) ? edit(each) : each)) };
+  return { ...doc, threads: doc.threads.map((each) => (isJsonObject(each) && each["id"] === id && readThread(each) ? edit(each) : each)) };
 }
 
-export function replyToThread(doc: CommentsDocument, threadId: string, comment: Comment): CommentsDocument {
+export function addThreadReply(doc: CommentsDocument, threadId: string, comment: Comment): CommentsDocument {
   return editThread(doc, threadId, (thread) => ({ ...thread, comments: [...(thread["comments"] as unknown[]), comment] }));
 }
 

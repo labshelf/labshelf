@@ -1,9 +1,9 @@
 // Answers a project preview frame's requests: recompile, open a problem, compare and mark versions, and save the check limits and build options.
-import type { AutoCompileMode, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectDataPort } from "@labshelf/core";
-import type { LabShelfSettings } from "../../platform";
-import { revealInOpenEditor } from "../session";
+import type { AutoCompileMode, BuildOptions, ILogger, LatexEngine, LibraryFileSystem, PreviewRequest, ProjectContentPort } from "@labshelf/core";
+import type { ExtensionSettings } from "../../platform";
+import { showInOpenEditor } from "../session";
 import type { FollowedBuilds, PreviewLimits } from "./previewBuilds";
-import { markProjectVersion } from "../history";
+import { writeProjectVersion } from "../history";
 import type { Workspace } from "../../libraryUi/editorArea";
 
 const MODULE = "writing.preview";
@@ -19,13 +19,13 @@ export interface PreviewRequestDeps {
     lastFullPdf(projectId: string): Uint8Array | undefined;
     setBuild(projectId: string, patch: { autoCompile?: AutoCompileMode; engine?: LatexEngine; haltOnError?: boolean }): void;
   };
-  data: Pick<ProjectDataPort, "updateProjectSettings">;
+  data: Pick<ProjectContentPort, "updateProjectSettings">;
   builds: Pick<FollowedBuilds, "roots" | "resendRoots">;
   /** The limits the roots carry; a saved change updates them. */
   limits: PreviewLimits;
   /** The build options the roots carry; a saved change updates them. */
   options: BuildOptions;
-  updateSettings(patch: Partial<Pick<LabShelfSettings, "autoCompile" | "haltOnError">>): Promise<void>;
+  updateSettings(patch: Partial<Pick<ExtensionSettings, "autoCompile" | "haltOnError">>): Promise<void>;
 }
 
 async function openProblem({ project, logger, workspace, builds }: PreviewRequestDeps, root: string, index: number): Promise<void> {
@@ -36,7 +36,7 @@ async function openProblem({ project, logger, workspace, builds }: PreviewReques
   }
   workspace.openTab("source", { projectId: project.id, path: problem.file }, 0);
   // Problem lines count from 1; the editor reveals zero-based lines.
-  revealInOpenEditor(project.id, problem.file, Math.max(0, (problem.line ?? 1) - 1));
+  showInOpenEditor(project.id, problem.file, Math.max(0, (problem.line ?? 1) - 1));
 }
 
 async function saveLimits(deps: PreviewRequestDeps, folder: string, change: Extract<PreviewRequest, { command: "setCheckLimits" }>["limits"]): Promise<void> {
@@ -77,14 +77,14 @@ async function answer(deps: PreviewRequestDeps, request: PreviewRequest): Promis
   else if (request.command === "setEngine") await saveEngine(deps, folder as string, request.engine);
   else if (request.command === "setAutoCompile") await saveUserOption(deps, { autoCompile: request.mode });
   else if (request.command === "setHaltOnError") await saveUserOption(deps, { haltOnError: request.on });
-  else if (request.command === "runCommand" && request.id === "markVersion") await markProjectVersion({ fs: deps.fs, logger, lastFullPdf: deps.helperProject.lastFullPdf }, { id: project.id, folder: folder as string });
+  else if (request.command === "runCommand" && request.id === "markVersion") await writeProjectVersion({ fs: deps.fs, logger, lastFullPdf: deps.helperProject.lastFullPdf }, { id: project.id, folder: folder as string });
   // The history tab lists the versions to compare.
   else if (request.command === "runCommand" && request.id === "compareVersions") deps.workspace.openTab("history", { projectId: project.id }, 1);
   else await logger.log("WARN", MODULE, "the library page does not handle this preview request", { command: request.command, projectId: project.id });
 }
 
 /** @returns the frame's request listener; a failed request is logged with its command. */
-export function previewRequestHandler(deps: PreviewRequestDeps): (request: PreviewRequest) => void {
+export function createPreviewRequestHandler(deps: PreviewRequestDeps): (request: PreviewRequest) => void {
   return (request) => {
     answer(deps, request).catch((error: unknown) => deps.logger.error(MODULE, error, { action: request.command, projectId: deps.project.id }));
   };

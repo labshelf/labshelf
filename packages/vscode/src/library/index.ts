@@ -5,5 +5,5 @@ export { PaperImporter } from "./paperImporter.js";
 export { PaperFileService } from "./paperFileService.js";
 export { PaperService } from "./paperService.js";
 export { PaperTextLayers } from "./paperTextLayers.js";
-export type { MakeSearchableResult } from "./paperTextLayers.js";
+export type { CreateTextLayerResult } from "./paperTextLayers.js";
 export { createLibraryEvents, onPaperChange, type LibraryEvents } from "./libraryEvents.js";

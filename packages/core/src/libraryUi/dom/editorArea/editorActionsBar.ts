@@ -1,5 +1,5 @@
 // Builds the toolbar at the end of a group's tab strip and paints the active tab's actions into it.
-import { el, icon, showMenu } from "../../../ui/dom/index.js";
+import { renderElement, renderIcon, showMenu } from "../../../ui/dom/index.js";
 import type { EditorTabAction } from "./editorAreaOptions.js";
 
 export interface EditorActionsBar {
@@ -9,13 +9,13 @@ export interface EditorActionsBar {
 }
 
 function actionButton(label: string, glyph: string, onClick: (button: HTMLButtonElement) => void): HTMLButtonElement {
-  const button = el("button", { class: "ls-icon-btn ls-editor-action", type: "button", title: label, "aria-label": label, html: glyph });
+  const button = renderElement("button", { class: "ls-icon-btn ls-editor-action", type: "button", title: label, "aria-label": label, html: glyph });
   button.addEventListener("click", () => onClick(button));
   return button;
 }
 
 export function createEditorActionsBar(): EditorActionsBar {
-  const bar = el("div", { class: "ls-editor-actions", role: "toolbar", "aria-label": "Editor actions", hidden: true });
+  const bar = renderElement("div", { class: "ls-editor-actions", role: "toolbar", "aria-label": "Editor actions", hidden: true });
   let shown: readonly EditorTabAction[] | null = null;
 
   return {
@@ -25,9 +25,9 @@ export function createEditorActionsBar(): EditorActionsBar {
       shown = actions;
       const inline = actions.filter((a) => !a.overflow);
       const overflow = actions.filter((a) => a.overflow);
-      const buttons = inline.map((a) => actionButton(a.label, icon(a.icon), () => a.run()));
+      const buttons = inline.map((a) => actionButton(a.label, renderIcon(a.icon), () => a.run()));
       if (overflow.length > 0) {
-        buttons.push(actionButton("More Actions…", icon("more"), (anchor) => {
+        buttons.push(actionButton("More Actions…", renderIcon("more"), (anchor) => {
           showMenu(anchor, overflow.map((a) => ({ label: a.label, icon: a.icon, onSelect: () => a.run() })));
         }));
       }

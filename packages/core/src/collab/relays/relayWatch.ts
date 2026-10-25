@@ -1,11 +1,11 @@
 // Bridges this client's presence to the other relays of a share over awareness-only sockets and reads the presence there.
 import type { ILogger } from "../../ports/index.js";
-import type { WebCryptoKey } from "../shareKey/index.js";
-import { attachAwareness, type PresenceHandle, type PresenceState, type RelayReport } from "../presence/index.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
+import { attachPresence, type PresenceStore, type PresenceState, type RelayReport } from "../presence/index.js";
 import { createSecureMesh, type SessionScheduler } from "../peer/index.js";
-import { createRelayTransport, globalSocketFactory, type RelaySocketFactory } from "../transport/index.js";
-import { observeConnection, type ConnectionReports } from "./observedConnection.js";
-import { onRemoteChange, reportOf } from "./relayPresence.js";
+import { createRelayTransport, createGlobalRelayConnection, type RelayConnectionPortFactory } from "../transport/index.js";
+import { createObservedConnection, type ConnectionReports } from "./observedConnection.js";
+import { onRemoteChange, reportOf } from "./createRelayPresence.js";
 
 const LOG_MODULE = "collab.relays";
 /** A relay is watched once it has stayed wanted this long, so a client that has not yet heard its peers opens no socket it drops. */
@@ -17,12 +17,12 @@ export type WatchReports = (relayUrl: string) => ConnectionReports;
 export interface RelayWatchOptions {
   shareId: string;
   relayToken: string;
-  contentKey: WebCryptoKey;
-  awarenessKey: WebCryptoKey;
+  contentKey: DerivedShareKey;
+  awarenessKey: DerivedShareKey;
   logger: ILogger;
   scheduler: SessionScheduler;
   fetch?: typeof fetch;
-  socketFactory?: RelaySocketFactory;
+  socketFactory?: RelayConnectionPortFactory;
 }
 
 export interface RelayWatch {
@@ -36,7 +36,7 @@ export interface RelayWatch {
   close(): Promise<void>;
 }
 
-interface Watched { presence: PresenceHandle; close(): Promise<void> }
+interface Watched { presence: PresenceStore; close(): Promise<void> }
 
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export function createRelayWatch(options: RelayWatchOptions): RelayWatch {
@@ -52,14 +52,14 @@ export function createRelayWatch(options: RelayWatchOptions): RelayWatch {
   // The mesh acks the doc and blob messages the peers there send it, so none of them is resent.
   const open = (url: string, reports: WatchReports): Watched => {
     const { shareId, relayToken, logger, scheduler } = options;
-    const connection = observeConnection(
-      { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? globalSocketFactory }, reports(url),
+    const connection = createObservedConnection(
+      { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? createGlobalRelayConnection }, reports(url),
     );
     const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
     const mesh = createSecureMesh({
       shareId: options.shareId, key: options.contentKey, transport, logger: options.logger, scheduler: options.scheduler, ackUnknownKinds: true,
     });
-    const presence = attachAwareness(mesh, { awarenessKey: options.awarenessKey, logger: options.logger });
+    const presence = attachPresence(mesh, { awarenessKey: options.awarenessKey, logger: options.logger });
     if (local) { presence.setLocal(local); }
     const stopChanges = onRemoteChange(presence.awareness, changed);
     void options.logger.log("INFO", LOG_MODULE, "Watching a relay for clients of the share", { url });

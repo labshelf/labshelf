@@ -1,13 +1,46 @@
 // Asks where a first-run library should live: a detected sync folder, the local folder, a typed path or the sync guide.
 import { syncGuide, type ILogger } from "@labshelf/core";
-import { detectSyncFolders, inspectLibraryFolder } from "@labshelf/core/node";
+import {
+  detectSyncFolders,
+  detectLibraryFolder,
+  type SyncFolder,
+  type SyncFolderTool,
+} from "@labshelf/core/node";
 
-import { expandHome } from "../../platform/index.js";
+import { resolveHomePath } from "../../platform/index.js";
 import type { Output } from "../usage.js";
-import { firstRunChoices, type FirstRunChoice } from "./firstRunChoices.js";
-import { libraryTargetFor } from "./pickLibraryDir.js";
+import { resolveLibraryDir, LIBRARY_FOLDER_NAME } from "./pickLibraryDir.js";
 import type { Ask } from "../ask.js";
 import { syncGuideText } from "../syncGuide/index.js";
+import * as path from "node:path";
+
+type FirstRunChoice =
+  | { kind: "folder"; label: string; detail: string; path: string }
+  | { kind: "custom"; label: string }
+  | { kind: "guide"; label: string };
+
+const TOOL_NAMES: Record<SyncFolderTool, string> = {
+  dropbox: "Dropbox", googledrive: "Google Drive", onedrive: "OneDrive", icloud: "iCloud Drive", nextcloud: "Nextcloud", syncthing: "Syncthing",
+};
+
+function shown(target: string, home: string): string {
+  return target.startsWith(home + path.sep) ? `~${target.slice(home.length)}` : target;
+}
+
+/** @returns one choice per detected sync folder, the local folder, a typed path and the sync guide, in that order */
+export function listFirstRunChoices(folders: readonly SyncFolder[], home: string): FirstRunChoice[] {
+  const synced = folders.map((folder): FirstRunChoice => {
+    const target = path.join(folder.path, LIBRARY_FOLDER_NAME);
+    return { kind: "folder", label: shown(target, home), detail: `synced by ${TOOL_NAMES[folder.tool]}`, path: target };
+  });
+  const local = path.join(home, LIBRARY_FOLDER_NAME);
+  return [
+    ...synced,
+    { kind: "folder", label: shown(local, home), detail: "only on this computer", path: local },
+    { kind: "custom", label: "Choose a folder…" },
+    { kind: "guide", label: "How to sync between computers" },
+  ];
+}
 
 export interface FirstRunSite {
   home: string;
@@ -27,7 +60,7 @@ function printChoices(choices: readonly FirstRunChoice[], io: Output): void {
 
 // An existing library is opened only after the user confirms it.
 async function confirmFolder(target: string, ask: Ask): Promise<boolean> {
-  const info = await inspectLibraryFolder(target);
+  const info = await detectLibraryFolder(target);
   if (!info.isLibrary) { return true; }
   const answer = await ask(`Found your library with ${info.paperCount} papers. Open it? [Y/n] `);
   return answer !== undefined && !/^n/i.test(answer);
@@ -43,7 +76,7 @@ async function resolveChoice(choice: FirstRunChoice, io: Output, ask: Ask): Prom
     const typed = await ask("Folder: ");
     if (typed === undefined) { return undefined; }
     if (!typed) { return "again"; }
-    target = await libraryTargetFor(expandHome(typed));
+    target = await resolveLibraryDir(resolveHomePath(typed));
   } else {
     target = choice.path;
   }
@@ -54,9 +87,9 @@ async function resolveChoice(choice: FirstRunChoice, io: Output, ask: Ask): Prom
  * Lists the choices until the user picks a folder.
  * @returns the chosen library folder, or undefined when the input ends
  */
-export async function promptForLibrary(site: FirstRunSite, io: Output, ask: Ask): Promise<string | undefined> {
+export async function askLibraryDir(site: FirstRunSite, io: Output, ask: Ask): Promise<string | undefined> {
   const folders = await detectSyncFolders(site);
-  const choices = firstRunChoices(folders, site.home);
+  const choices = listFirstRunChoices(folders, site.home);
   io.err("No LabShelf library is configured yet.");
   for (;;) {
     printChoices(choices, io);

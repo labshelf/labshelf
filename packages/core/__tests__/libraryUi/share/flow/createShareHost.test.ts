@@ -1,12 +1,12 @@
 /** Pins what the assembled sharing host offers, how it refuses a half the app does not run, and its clipboard and link checks. */
 import type { ILogger } from "../../../../src/ports/index";
-import { createSharingHost } from "../../../../src/libraryUi/share/flow/index";
+import { createShareHost } from "../../../../src/libraryUi/share/flow/index";
 
 const logger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 
 function host(write: (text: string) => Promise<void> = async () => undefined) {
   const openLink = jest.fn(async () => undefined);
-  return { openLink, sharing: createSharingHost({ place: "this device", logger, clipboard: { write }, openLink }) };
+  return { openLink, sharing: createShareHost({ place: "this device", logger, clipboard: { write }, openLink }) };
 }
 
 describe("createSharingHost", () => {

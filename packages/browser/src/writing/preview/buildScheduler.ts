@@ -12,11 +12,11 @@ export interface BuildTimers {
   clearTimeout(handle: unknown): void;
 }
 
-export type BuildTarget = Omit<HelperCompileRequest, "mode" | "editedFile" | "editedLine">;
+export type BuildSpec = Omit<HelperCompileRequest, "mode" | "editedFile" | "editedLine">;
 
 export interface BuildSchedulerOptions {
   helper: Pick<ILatexHelper, "compile" | "cancel">;
-  target: BuildTarget;
+  target: BuildSpec;
   /** When edits and saves start builds; `build` always does. */
   mode: AutoCompileMode;
   /** An edit supersedes an in-flight result; a save waits for the active preview. */
@@ -35,7 +35,7 @@ export interface BuildScheduler {
   build(): void;
   setMode(mode: AutoCompileMode): void;
   /** The next build compiles with the changed target. */
-  setTarget(patch: Partial<Pick<BuildTarget, "engine" | "haltOnError">>): void;
+  setTarget(patch: Partial<Pick<BuildSpec, "engine" | "haltOnError">>): void;
   dispose(): void;
 }
 
@@ -47,7 +47,7 @@ const browserTimers: BuildTimers = {
 export function createBuildScheduler(options: BuildSchedulerOptions): BuildScheduler {
   const { timers = browserTimers } = options;
   // INVARIANT: the runner reads this object on every build, so `setTarget` reaches the next compile.
-  const target: BuildTarget = { ...options.target };
+  const target: BuildSpec = { ...options.target };
   const { build, supersede } = createBuildRunner({ ...options, target });
   let mode = options.mode;
   let previewTimer: unknown;

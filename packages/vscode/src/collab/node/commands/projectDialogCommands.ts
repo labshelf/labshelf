@@ -1,7 +1,7 @@
 // Registers the share, join and leave project commands, which open the matching sharing dialog in the Library sidebar.
 import * as vscode from "vscode";
 
-import type { SharingDialogRequest } from "@labshelf/core";
+import type { ShareDialogRequest } from "@labshelf/core";
 import { sharingWebviews } from "../../../share/index.js";
 
 export const SHARE_COMMAND = "labshelf.collab.share";
@@ -16,14 +16,14 @@ function projectFolder(target: unknown): string | undefined {
   return typeof folder === "string" ? folder : undefined;
 }
 
-const projectRequest = (kind: "shareProject" | "leaveProject", target: unknown): SharingDialogRequest => {
+const projectRequest = (kind: "shareProject" | "leaveProject", target: unknown): ShareDialogRequest => {
   const projectId = projectFolder(target);
   return projectId === undefined ? { kind } : { kind, projectId };
 };
 
 /** `requireLibrary` offers the library setup when none is open and resolves to undefined when the user declines. */
 export function registerProjectDialogCommands(requireLibrary: () => Promise<string | undefined>): vscode.Disposable {
-  const open = async (request: SharingDialogRequest): Promise<void> => {
+  const open = async (request: ShareDialogRequest): Promise<void> => {
     if (await requireLibrary()) { await sharingWebviews.open(request); }
   };
   return vscode.Disposable.from(

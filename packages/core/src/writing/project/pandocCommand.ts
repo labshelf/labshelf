@@ -9,7 +9,7 @@ export const DOCUMENT_EXPORT_EXTENSIONS: Record<DocumentExport, string> = { docx
 const PANDOC_WRITERS: Record<DocumentExport, string> = { docx: "docx", markdown: "gfm", html: "html" };
 
 /** The arguments after `pandoc`; `main` is relative to the folder pandoc runs in, so relative images resolve. */
-export function pandocArgs(format: ProjectFormat, main: string, target: DocumentExport, output: string): string[] {
+export function createPandocArgs(format: ProjectFormat, main: string, target: DocumentExport, output: string): string[] {
   return [
     "--from", format, "--to", PANDOC_WRITERS[target],
     ...(target === "html" ? ["--standalone"] : []),

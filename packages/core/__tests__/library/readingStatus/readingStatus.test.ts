@@ -1,7 +1,7 @@
 /**
  * Tests the paper status list, its guard, its labels and the click-to-cycle order.
  */
-import { PAPER_STATUSES, STATUS_LABEL, isPaperStatus, nextStatus } from '@labshelf/core';
+import { PAPER_STATUSES, STATUS_LABEL, isReadingStatus, deriveNextReadingStatus } from '@labshelf/core';
 
 describe('paper status', () => {
   it('lists the statuses in display order', () => {
@@ -9,8 +9,8 @@ describe('paper status', () => {
   });
 
   it('accepts only listed statuses', () => {
-    for (const status of PAPER_STATUSES) { expect(isPaperStatus(status)).toBe(true); }
-    for (const value of ['Unread', '', undefined, null, 3, {}]) { expect(isPaperStatus(value)).toBe(false); }
+    for (const status of PAPER_STATUSES) { expect(isReadingStatus(status)).toBe(true); }
+    for (const value of ['Unread', '', undefined, null, 3, {}]) { expect(isReadingStatus(value)).toBe(false); }
   });
 
   it('labels each status in the product vocabulary', () => {
@@ -18,8 +18,8 @@ describe('paper status', () => {
   });
 
   it('cycles unread, reading, done, then unread', () => {
-    expect(nextStatus('unread')).toBe('reading');
-    expect(nextStatus('reading')).toBe('done');
-    expect(nextStatus('done')).toBe('unread');
+    expect(deriveNextReadingStatus('unread')).toBe('reading');
+    expect(deriveNextReadingStatus('reading')).toBe('done');
+    expect(deriveNextReadingStatus('done')).toBe('unread');
   });
 });

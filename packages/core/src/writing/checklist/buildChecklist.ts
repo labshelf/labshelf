@@ -1,17 +1,17 @@
 /** Groups a project's checklist items by kind or by section, with open counts. */
-import type { PaperStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/readingStatus/index.js";
 import type { ManualItem } from "./checklistFile.js";
 import type { ChecklistSection, SectionPlacer } from "./sectionPlacement.js";
 import type { TodoItem } from "./scanTodos.js";
 
-export interface BrokenRef { file: string; line: number; ref: string }
+export interface BrokenReference { file: string; line: number; ref: string }
 export interface StaleFigure { name: string }
 export interface PageOverflow { pages: number; limit: number }
-export interface ReadingItem { key: string; title: string; status: PaperStatus; statusChangedAt?: string }
+export interface ReadingItem { key: string; title: string; status: ReadingStatus; statusChangedAt?: string }
 
 export interface ChecklistInput {
   todos: readonly TodoItem[];
-  brokenRefs: readonly BrokenRef[];
+  brokenRefs: readonly BrokenReference[];
   staleFigures: readonly StaleFigure[];
   /** Undefined when the body fits its page limit or no limit is set. */
   pageOverflow: PageOverflow | undefined;
@@ -23,7 +23,7 @@ export interface ChecklistInput {
 
 export type ChecklistItem =
   | { kind: "todo"; done: false; todo: TodoItem }
-  | { kind: "ref"; done: false; ref: BrokenRef }
+  | { kind: "ref"; done: false; ref: BrokenReference }
   | { kind: "figure"; done: false; figure: StaleFigure }
   | { kind: "pages"; done: false; overflow: PageOverflow }
   | { kind: "manual"; done: boolean; manual: ManualItem }

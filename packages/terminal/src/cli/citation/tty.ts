@@ -5,7 +5,7 @@ import * as tty from "node:tty";
 import { UsageError } from "../usage.js";
 
 /** The terminal the picker uses; `close` releases the descriptors. */
-export interface CiteTty {
+export interface CitationTty {
   input: tty.ReadStream;
   output: tty.WriteStream;
   close(): void;
@@ -14,7 +14,7 @@ export interface CiteTty {
 /**
  * @throws UsageError when the process has no controlling terminal (cron, CI)
  */
-export function openDevTty(): CiteTty {
+export function openDevTty(): CitationTty {
   let readFd: number | undefined;
   let writeFd: number | undefined;
   try {

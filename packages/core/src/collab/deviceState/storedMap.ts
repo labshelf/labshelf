@@ -1,12 +1,12 @@
 // Keeps a string-keyed map of a share's device-local state, coalescing changes into whole-map saves through the storage port.
 import type { ILogger } from "../../ports/index.js";
-import type { CollabStateStorage, StateMapName } from "./collabStorage.js";
+import type { CollabDeviceStateStorage, DeviceStateMapName } from "./collabStorage.js";
 
 const LOG_MODULE = "collab.state";
 
 export interface PersistedMapOptions<V> {
-  storage: CollabStateStorage;
-  name: StateMapName;
+  storage: CollabDeviceStateStorage;
+  name: DeviceStateMapName;
   /** What the map holds, for log lines and errors. */
   label: string;
   isValue(value: unknown): value is V;

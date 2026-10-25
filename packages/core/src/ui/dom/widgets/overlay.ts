@@ -1,5 +1,5 @@
 // Mounts cancellable modal overlays with trapped keyboard focus.
-import { el } from "../dom.js";
+import { renderElement } from "../dom.js";
 
 /** Options for where an overlay mounts. */
 export interface OverlayOptions {
@@ -12,7 +12,7 @@ export function mountOverlay(content: HTMLElement, onDismiss: () => void, opts: 
   if (opts.signal?.aborted) { onDismiss(); return { close: () => {} }; }
   const parent: ShadowRoot | HTMLElement = opts.root ?? document.body;
   const scope: DocumentOrShadowRoot = opts.root ?? document;
-  const scrim = el("div", { class: "ls-scrim dim" });
+  const scrim = renderElement("div", { class: "ls-scrim dim" });
   const previous = scope.activeElement as HTMLElement | null;
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); dismiss(); }

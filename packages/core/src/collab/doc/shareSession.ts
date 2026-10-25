@@ -1,17 +1,17 @@
 // Opens a share session: its index and file docs kept in sync, encrypted, with the peers of a transport.
 import * as Y from "yjs";
-import type { WebCryptoKey } from "../shareKey/index.js";
-import { indexFiles } from "../model/index.js";
+import type { DerivedShareKey } from "../shareKey/index.js";
+import { readShareIndexDocFiles } from "../model/index.js";
 import type { PeerId, PeerTransport } from "../transport/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { DocSync } from "./docSync.js";
-import { createSecureMesh, every, systemScheduler, type Channel, type ChannelSpec, type SessionScheduler, type SessionStatus } from "../peer/index.js";
+import { createSecureMesh, startInterval, systemScheduler, type Channel, type ChannelSpec, type SessionScheduler, type SessionPhase } from "../peer/index.js";
 
 const DEFAULT_BACKGROUND_INTERVAL_MS = 2000;
 
 export interface ShareSessionOptions {
   shareId: string;
-  contentKey: WebCryptoKey;
+  contentKey: DerivedShareKey;
   transport: PeerTransport;
   logger: ILogger;
   scheduler?: SessionScheduler;
@@ -35,8 +35,8 @@ export interface ShareSession {
   onDoc(listener: (docKey: string, doc: Y.Doc) => void): () => void;
   /** The transaction origin of updates that came from peers; a layer applying peer updates uses it so they are not sent back. */
   readonly remoteOrigin: unknown;
-  readonly status: SessionStatus;
-  onStatus(listener: (status: SessionStatus) => void): () => void;
+  readonly status: SessionPhase;
+  onStatus(listener: (status: SessionPhase) => void): () => void;
   /** The peers connected right now. */
   readonly peers: readonly PeerId[];
   onPeer(listener: (peer: PeerId, joined: boolean) => void): () => void;
@@ -53,9 +53,9 @@ export function createShareSession(options: ShareSessionOptions): ShareSession {
   const mesh = createSecureMesh({ shareId: options.shareId, key: options.contentKey, transport: options.transport, logger: options.logger, scheduler });
   const index = options.index ?? new Y.Doc();
   const sync = new DocSync({ mesh, key: options.contentKey, index, createDoc: options.createDoc ?? (() => new Y.Doc()) });
-  const stopBackground = every(scheduler, options.backgroundIntervalMs ?? DEFAULT_BACKGROUND_INTERVAL_MS, () => {
+  const stopBackground = startInterval(scheduler, options.backgroundIntervalMs ?? DEFAULT_BACKGROUND_INTERVAL_MS, () => {
     if (mesh.peers.length === 0) { return; }
-    for (const [path, entry] of indexFiles(index)) {
+    for (const [path, entry] of readShareIndexDocFiles(index)) {
       if (entry.kind === "text" && !sync.docs.has(path)) { sync.open(path); return; }
     }
   });

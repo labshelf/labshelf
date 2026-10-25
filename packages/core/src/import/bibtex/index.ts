@@ -1,3 +1,3 @@
 /** Exports the BibTeX entry builder and the paper artifact writer. */
-export { bibtexEntry } from "./bibtexEntry.js";
-export { BibTeXService } from "./bibtexService.js";
+export { createBibtexEntry } from "./createBibtexEntry.js";
+export { BibtexService } from "./BibtexService.js";

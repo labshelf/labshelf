@@ -2,16 +2,65 @@
 import * as vscode from "vscode";
 
 import {
-  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, checklistSidebarNodes, citeSections, nextStatus, removeManualItem, sectionPlacer, setManualItemDone,
-  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type PaperStatus, type PathOps,
+  MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNextReadingStatus, removeManualItem, createSectionPlacer, setManualItemDone,
+  type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemGroup, type ReadingStatus, type PathOps,
   type ReadingItem, type ReadingPaper, type SidebarTreeNode,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "../figures/index.js";
 import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectTreeRequest } from "../sidebar/index.js";
-import { ChecklistMemory } from "./checklistMemory.js";
 import type { OpenProjectSignals, ProjectSignals } from "./openProjectSignals.js";
+
+type GroupIds = Partial<Record<ChecklistGrouping, string[]>>;
+
+interface ProjectMemory {
+  grouping: ChecklistGrouping;
+  expanded: GroupIds;
+  collapsed?: GroupIds;
+}
+
+const keyOf = (folder: string): string => `labshelf.writing.checklist:${folder}`;
+
+class ChecklistMemory {
+  constructor(private readonly memento: vscode.Memento) {}
+
+  grouping(folder: string): ChecklistGrouping {
+    return this.read(folder).grouping;
+  }
+
+  async setGrouping(folder: string, grouping: ChecklistGrouping): Promise<void> {
+    await this.write(folder, { ...this.read(folder), grouping });
+  }
+
+  /** @returns the user's last toggle of the group, else `byDefault` */
+  isExpanded(folder: string, grouping: ChecklistGrouping, groupId: string, byDefault: boolean): boolean {
+    const memory = this.read(folder);
+    if (memory.expanded[grouping]?.includes(groupId)) { return true; }
+    if (memory.collapsed?.[grouping]?.includes(groupId)) { return false; }
+    return byDefault;
+  }
+
+  async setExpanded(folder: string, grouping: ChecklistGrouping, groupId: string, expanded: boolean): Promise<void> {
+    const memory = this.read(folder);
+    const without = (ids: GroupIds | undefined) => (ids?.[grouping] ?? []).filter((id) => id !== groupId);
+    const open = without(memory.expanded);
+    const closed = without(memory.collapsed);
+    await this.write(folder, {
+      ...memory,
+      expanded: { ...memory.expanded, [grouping]: expanded ? [...open, groupId] : open },
+      collapsed: { ...memory.collapsed, [grouping]: expanded ? closed : [...closed, groupId] },
+    });
+  }
+
+  private read(folder: string): ProjectMemory {
+    return this.memento.get<ProjectMemory>(keyOf(folder)) ?? { grouping: "kind", expanded: {} };
+  }
+
+  private async write(folder: string, memory: ProjectMemory): Promise<void> {
+    await this.memento.update(keyOf(folder), memory);
+  }
+}
 
 const MODULE = "writing/checklist";
 const REGENERATE_FIGURE_COMMAND = "labshelf.writing.regenerateFigure";
@@ -21,7 +70,7 @@ export interface ChecklistViewDeps {
   signals: Pick<OpenProjectSignals, "current" | "onDidChange" | "refresh">;
   reading: Pick<ProjectReadingLists, "of"> & { onDidChange: vscode.Event<void> };
   memory: vscode.Memento;
-  setStatus: (paperIds: string[], status: PaperStatus) => Promise<string[]>;
+  setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
   updateChecklist: (folder: string, edit: (doc: ChecklistDocument) => ChecklistDocument) => Promise<void>;
   logger: ILogger;
   newId: () => string;
@@ -57,7 +106,7 @@ export class ChecklistView implements vscode.Disposable {
     const rendered = this.rendered;
     if (!rendered) { this.items.clear(); this.groups.clear(); return []; }
     const { project, grouping, checklist, pageCount } = rendered;
-    const tree = checklistSidebarNodes({
+    const tree = deriveChecklistSidebarNodes({
       paths: this.deps.paths, checklist, grouping, pageCount, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
       isExpanded: (groupId, byDefault) => this.memory.isExpanded(project.folder, grouping, groupId, byDefault),
     });
@@ -162,7 +211,7 @@ export class ChecklistView implements vscode.Disposable {
     const { key, status } = item.paper;
     const paperId = this.reading?.papers.get(key)?.paperId;
     if (!paperId) { return; }
-    const target = nextStatus(status);
+    const target = deriveNextReadingStatus(status);
     try {
       const failed = await this.deps.setStatus([paperId], target);
       if (failed.length > 0) { throw new Error(`Could not write the status of ${failed.length} paper(s)`); }
@@ -219,7 +268,7 @@ export class ChecklistView implements vscode.Disposable {
     const grouping = this.memory.grouping(project.folder);
     const reading = this.reading?.folder === project.folder ? this.reading.items : [];
     const checklist = buildChecklist({
-      ...signals, pageOverflow, reading, placeSection: sectionPlacer(signals.sources, main), citeSections: citeSections(signals.sources, main),
+      ...signals, pageOverflow, reading, placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
     }, grouping);
     this.rendered = { project, grouping, checklist, pageCount };
     this.changeEmitter.fire();

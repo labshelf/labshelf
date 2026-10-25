@@ -11,13 +11,13 @@ import {
 
 jest.mock("../../../../src/platform/system", () => ({
   ...jest.requireActual<typeof import("../../../../src/platform/system")>("../../../../src/platform/system"),
-  trashSupported: jest.fn(),
+  canTrash: jest.fn(),
   moveToTrash: jest.fn(),
   openExternal: jest.fn(),
 }));
 
 const mocked = {
-  trashSupported: jest.mocked(system.trashSupported),
+  canTrash: jest.mocked(system.canTrash),
   moveToTrash: jest.mocked(system.moveToTrash),
   openExternal: jest.mocked(system.openExternal),
 };
@@ -28,7 +28,7 @@ let ctx: AppContext;
 let app: App;
 
 beforeEach(async () => {
-  mocked.trashSupported.mockReset().mockReturnValue(true);
+  mocked.canTrash.mockReset().mockReturnValue(true);
   mocked.moveToTrash.mockReset().mockRejectedValue(new Error("the real trash must never be used by the tests"));
   mocked.openExternal.mockReset();
   ({ tmp, root } = await makeTmpRoot());
@@ -259,7 +259,7 @@ describe("App trash (d) asks for confirmation", () => {
   });
 
   it("reports when the platform cannot trash", () => {
-    mocked.trashSupported.mockReturnValue(false);
+    mocked.canTrash.mockReturnValue(false);
     press(app, "d");
     expect(app.overlay).toBeUndefined();
     expect(app.message?.text).toBe("Moving to the trash is not supported on this system");

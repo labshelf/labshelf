@@ -1,5 +1,5 @@
 // Which finished downloads and tab addresses the PDF watcher looks at, and which it may fetch again.
-import { canRefetch, isPdfDownload, looksLikePdfUrl } from "../../../src/background/import/pdfSignals";
+import { canRefetch, isPdfDownload, isPdfUrl } from "../../../src/background/import/pdfSignals";
 
 describe("the download filter", () => {
   it("takes a download served as a PDF, whatever its file name", () => {
@@ -28,11 +28,11 @@ describe("the PDF tab guess", () => {
     "https://www.science.org/doi/pdf/10.1126/science.abc1234",
     "https://onlinelibrary.wiley.com/doi/epdf/10.1002/x.1",
     "https://host.example/files/paper.pdf?download=1",
-  ])("takes %s", (url) => expect(looksLikePdfUrl(url)).toBe(true));
+  ])("takes %s", (url) => expect(isPdfUrl(url)).toBe(true));
 
   it.each([
     "https://www.science.org/doi/10.1126/science.abc1234",
     "https://pdfs.example.com/about",
     "not a url",
-  ])("skips %s", (url) => expect(looksLikePdfUrl(url)).toBe(false));
+  ])("skips %s", (url) => expect(isPdfUrl(url)).toBe(false));
 });

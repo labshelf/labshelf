@@ -1,5 +1,5 @@
 import type { CitationMapView } from "@labshelf/core";
-import { citationGraph, missingNodeId } from "../../../src/libraryUi/citationMap";
+import { createCitationMapGraph, missingNodeId } from "../../../src/libraryUi/citationMap";
 
 const map: CitationMapView = {
   papers: [{ id: "a", title: "A" }, { id: "b", title: "B" }],
@@ -12,7 +12,7 @@ const map: CitationMapView = {
 
 describe("citationGraph", () => {
   it("has a node per named paper and per missing work, and only edges between them", () => {
-    const g = citationGraph(map);
+    const g = createCitationMapGraph(map);
     expect(g.nodes.map((n) => [n.id, n.kind])).toEqual([["a", "paper"], ["b", "paper"], [missingNodeId("W1"), "missing"], [missingNodeId("W2"), "missing"]]);
     expect(g.edges).toEqual([
       { from: "a", to: "b" },
@@ -23,7 +23,7 @@ describe("citationGraph", () => {
   });
 
   it("grows a missing work's node with the papers citing it", () => {
-    const [, , often, once] = citationGraph(map).nodes;
+    const [, , often, once] = createCitationMapGraph(map).nodes;
     expect(often!.radius).toBeGreaterThan(once!.radius);
   });
 });

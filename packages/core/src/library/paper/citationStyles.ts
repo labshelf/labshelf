@@ -4,7 +4,7 @@
  */
 import type { PaperRecord } from "../../model/index.js";
 import { formatAuthors, splitName, type PersonName } from "./authors.js";
-import { paperLink } from "./paperUrl.js";
+import { derivePaperUrl } from "./paperUrl.js";
 
 export type CitedPaper = Pick<PaperRecord, "title" | "authors" | "year" | "journal" | "publisher" | "volume" | "issue" | "pages" | "doi" | "url">;
 
@@ -17,13 +17,13 @@ export interface CitationSet {
 }
 
 /** @returns "Family, year", "A & B, year" or "A et al., year"; the title stands in for no authors and "n.d." for no year. */
-export function inTextCitation(paper: Pick<PaperRecord, "title" | "authors" | "year">): string {
+export function formatInTextCitation(paper: Pick<PaperRecord, "title" | "authors" | "year">): string {
   return `${formatAuthors(paper.authors) || paper.title}, ${paper.year ?? "n.d."}`;
 }
 
 /** @returns every reference style for one paper */
 export function formatCitations(paper: CitedPaper): CitationSet {
-  return { apa: apa(paper), mla: mla(paper), chicago: chicago(paper), inText: inTextCitation(paper) };
+  return { apa: apa(paper), mla: mla(paper), chicago: chicago(paper), inText: formatInTextCitation(paper) };
 }
 
 function initials(given: string): string {
@@ -65,7 +65,7 @@ function apa(paper: CitedPaper): string {
     if (paper.pages) { source += `, ${dashes(paper.pages)}`; }
     parts.push(`${source}.`);
   }
-  const link = paperLink(paper);
+  const link = derivePaperUrl(paper);
   if (link) { parts.push(link); }
   return parts.join(" ");
 }
@@ -115,7 +115,7 @@ function chicago(paper: CitedPaper): string {
     if (paper.pages) { source += `: ${dashes(paper.pages)}`; }
     parts.push(`${source}.`);
   }
-  const link = paperLink(paper);
+  const link = derivePaperUrl(paper);
   if (link) { parts.push(sentence(link)); }
   return parts.join(" ");
 }

@@ -3,14 +3,14 @@ import * as vscode from "vscode";
 
 import type { LatexEngine } from "@labshelf/core";
 import { buildOptions, setAutoCompile, setEngine, setHaltOnError } from "../../../src/writing/build/index";
-import { saveEngine } from "../../../src/writing/build/toolchain";
+import { writeEngine } from "../../../src/writing/build/toolchain";
 import type { ReadyProject } from "../../../src/writing/buildRootDocument";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("../../../src/writing/build/toolchain", () => ({ saveEngine: jest.fn() }));
+jest.mock("../../../src/writing/build/toolchain", () => ({ writeEngine: jest.fn() }));
 
 const workspace = vscode.workspace as unknown as { _config: Record<string, Record<string, unknown>>; _configUpdate: jest.Mock };
-const save = saveEngine as jest.Mock;
+const save = writeEngine as jest.Mock;
 const latex = (engine?: LatexEngine) => readyEntry("/p/tex", { settings: { id: "tex", format: "latex", ...(engine ? { engine } : {}) } }) as ReadyProject;
 const typst = readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } }) as ReadyProject;
 

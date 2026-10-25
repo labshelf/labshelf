@@ -5,14 +5,14 @@ import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { parseTemplateManifest, type CatalogBlob, type CatalogEntry } from "../../templateManifest/index.js";
+import { parseTemplateManifest, type CatalogAsset, type CatalogEntry } from "../../templateManifest/index.js";
 import { readTemplateTree } from "../readTemplateTree.js";
 import { readPreviews } from "./readPreviews.js";
 
 export interface CatalogProblem { id: string; reason: string }
 export interface LoadedCatalog { entries: CatalogEntry[]; problems: CatalogProblem[] }
 
-const describe = (bytes: Uint8Array): CatalogBlob => ({ size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
+const describe = (bytes: Uint8Array): CatalogAsset => ({ size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
 
 /** The index entry of one template folder; throws a reason naming what is wrong. */
 async function loadTemplate(folder: string, id: string): Promise<CatalogEntry> {

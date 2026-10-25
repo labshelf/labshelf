@@ -2,7 +2,7 @@
 // The parser keys on the result link and its h3, never on Google's generated class names.
 import { isScholarlyHost } from "@labshelf/core";
 import type { SearchHit } from "../platform";
-import { idsFromHit } from "./searchHitIds";
+import { extractIdentifiersFromHit } from "./searchHitIds";
 
 // Google's own hosts: www.google.com and its country domains. The manifest glob
 // "www.google.*" alone would also match www.google.<anything>.com.
@@ -28,7 +28,7 @@ export function isGoogleSearchUrl(url: string | undefined): boolean {
 }
 
 /** Organic result blocks: positioned results inside the main column, never ads. */
-export function googleResults(root: ParentNode): Element[] {
+export function findGoogleHits(root: ParentNode): Element[] {
   const AD = "#tads, #bottomads, [data-text-ad]";
   return [...root.querySelectorAll("#rso [data-rpos]")].filter((el) => !el.closest(AD) && !el.querySelector(AD));
 }
@@ -42,7 +42,7 @@ export function parseByline(text: string): { authors: string[]; year: number } |
 }
 
 /** Reads one result block; undefined for blocks without a title link (People also ask, AI overview, knowledge panels). */
-export function readGoogleResult(el: Element): SearchHit | undefined {
+export function readGoogleHit(el: Element): SearchHit | undefined {
   const heading = el.querySelector("a[href] > h3");
   const link = heading?.parentElement as HTMLAnchorElement | null | undefined;
   if (!heading || !link || !/^https?:/.test(link.href) || isGoogleUrl(link.href)) return undefined;
@@ -64,7 +64,7 @@ export function readGoogleResult(el: Element): SearchHit | undefined {
 export function isPaperHit(hit: SearchHit): boolean {
   if (!hit.url) return false;
   // TRAP: a snippet's DOI is no signal; on a DOI search Google highlights the DOI on every page that cites the paper.
-  return isScholarlyHost(hit.url) || Object.keys(idsFromHit(hit)).length > 0 || (hit.authors.length > 0 && !!hit.year);
+  return isScholarlyHost(hit.url) || Object.keys(extractIdentifiersFromHit(hit)).length > 0 || (hit.authors.length > 0 && !!hit.year);
 }
 
 function isGoogleUrl(url: string): boolean {

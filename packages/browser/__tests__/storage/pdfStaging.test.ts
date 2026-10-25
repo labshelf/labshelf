@@ -9,23 +9,23 @@ jest.mock("idb", () => ({
   }),
 }));
 
-import { keepStagedPdfs, stagePdf, stagedPdf, unstagePdf } from "../../src/storage";
+import { removeStagedPdfsExcept, writeStagedPdf, readStagedPdf, removeStagedPdf } from "../../src/storage";
 
 const PDF = new TextEncoder().encode("%PDF-1.7");
 
 beforeEach(() => rows.clear());
 
 it("hands back staged bytes until they are unstaged", async () => {
-  await stagePdf("a", PDF);
-  expect(await stagedPdf("a")).toBe(PDF);
-  await unstagePdf("a");
-  expect(await stagedPdf("a")).toBeUndefined();
+  await writeStagedPdf("a", PDF);
+  expect(await readStagedPdf("a")).toBe(PDF);
+  await removeStagedPdf("a");
+  expect(await readStagedPdf("a")).toBeUndefined();
 });
 
 it("drops old bytes no offer names, and keeps young ones a match may still be using", async () => {
-  await stagePdf("kept", PDF);
-  await stagePdf("young", PDF);
+  await writeStagedPdf("kept", PDF);
+  await writeStagedPdf("young", PDF);
   rows.set("orphan", { id: "orphan", bytes: PDF, at: Date.now() - 11 * 60_000 });
-  await keepStagedPdfs(["kept"]);
+  await removeStagedPdfsExcept(["kept"]);
   expect([...rows.keys()].sort()).toEqual(["kept", "young"]);
 });

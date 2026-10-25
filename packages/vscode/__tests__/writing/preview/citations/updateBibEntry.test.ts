@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { BIBLIOGRAPHY_HEADER } from "@labshelf/core";
-import { publishedVenueOf, updateBibEntry } from "../../../../src/writing/preview/citations/updateBibEntry";
+import { readPublishedVenue, updateBibEntry } from "../../../../src/writing/preview/citations/updateBibEntry";
 import { fakeDocument } from "../../../support/textDocument";
 import { fakeLogger } from "../../../support/writingFixtures";
 
@@ -46,14 +46,14 @@ describe("updateBibEntry", () => {
   });
 });
 
-describe("publishedVenueOf", () => {
+describe("readPublishedVenue", () => {
   it("returns the journal of the published version", async () => {
     const { deps } = setup();
-    expect(await publishedVenueOf(deps, "vaswani2017")).toBe("NeurIPS");
+    expect(await readPublishedVenue(deps, "vaswani2017")).toBe("NeurIPS");
   });
 
   it("returns undefined for a key that is not in the user's .bib", async () => {
     const { deps } = setup();
-    expect(await publishedVenueOf(deps, "missing")).toBeUndefined();
+    expect(await readPublishedVenue(deps, "missing")).toBeUndefined();
   });
 });

@@ -1,8 +1,8 @@
 // Moves projects between My projects folders and archives them by rewriting each project's labshelf.yaml.
 import * as vscode from "vscode";
 import type { ProjectEntry, ProjectSettingsPatch } from "@labshelf/core";
-import { validateFolderNameInput } from "./folderNameInput.js";
-import type { ProjectEdit, ProjectFolderAction } from "./sidebarMessages.js";
+import { checkFolderNameInput } from "./folderNameInput.js";
+import type { ProjectUpdate, ProjectFolderAction } from "./sidebarMessages.js";
 
 type ReadyEntry = Extract<ProjectEntry, { kind: "ready" }>;
 
@@ -27,7 +27,7 @@ async function applyAll(port: ProjectOrganizerPort, edits: Array<[ReadyEntry, Pr
 }
 
 const folderName = (prompt: string, value = ""): Thenable<string | undefined> =>
-  vscode.window.showInputBox({ prompt, value, validateInput: validateFolderNameInput });
+  vscode.window.showInputBox({ prompt, value, validateInput: checkFolderNameInput });
 
 /** Every folder some active project sits in, with its parents. */
 function knownFolders(port: ProjectOrganizerPort): string[] {
@@ -95,7 +95,7 @@ async function moveProject(port: ProjectOrganizerPort, entry: ReadyEntry): Promi
   await applyAll(port, [[entry, { folder: path || undefined }]]);
 }
 
-export async function runProjectEdit(port: ProjectOrganizerPort, id: string, edit: ProjectEdit): Promise<void> {
+export async function runProjectUpdate(port: ProjectOrganizerPort, id: string, edit: ProjectUpdate): Promise<void> {
   const entry = ready(port).find((candidate) => candidate.folder === id);
   if (!entry) { return; }
   if (edit === "move") { await moveProject(port, entry); return; }

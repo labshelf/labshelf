@@ -1,6 +1,6 @@
 /** Verifies that a thread finds its text again after edits, live through relative positions and on disk by its quote. */
 import * as Y from "yjs";
-import { anchorFor, liveAnchorFor, locateThread, type CommentThread } from "../../../src/collab/comments/index";
+import { deriveAnchor, deriveLiveAnchor, findThread, type CommentThread } from "../../../src/collab/comments/index";
 
 const text = "We compare against a strong baseline on three datasets and report the mean.";
 const start = text.indexOf("a strong baseline");
@@ -17,41 +17,41 @@ function liveText(content: string): Y.Text {
   return yText;
 }
 
-describe("anchorFor", () => {
+describe("deriveAnchor", () => {
   it("keeps the quote with up to 32 characters of context", () => {
-    expect(anchorFor(text, start, end)).toEqual({ quote: "a strong baseline", prefix: "We compare against ", suffix: " on three datasets and report th" });
+    expect(deriveAnchor(text, start, end)).toEqual({ quote: "a strong baseline", prefix: "We compare against ", suffix: " on three datasets and report th" });
   });
 });
 
-describe("locateThread", () => {
+describe("findThread", () => {
   it("follows relative positions when text is inserted before and at the edges of the range", () => {
     const yText = liveText(text);
-    const thread = threadOn(liveAnchorFor(yText, start, end));
+    const thread = threadOn(deriveLiveAnchor(yText, start, end));
     yText.insert(0, "Intro. ");
     yText.insert(end + 7, "!!");
     yText.insert(start + 7, "[");
-    const range = locateThread(thread, yText.toString(), yText);
+    const range = findThread(thread, yText.toString(), yText);
     expect(range).not.toBe("detached");
     if (range === "detached") { return; }
     expect(yText.toString().slice(range.start, range.end)).toBe("a strong baseline");
   });
 
   it("re-anchors the quote on disk after the text moves", () => {
-    const thread = threadOn(anchorFor(text, start, end));
+    const thread = threadOn(deriveAnchor(text, start, end));
     const moved = `Section one.\n\n${text}`;
-    const range = locateThread(thread, moved);
+    const range = findThread(thread, moved);
     expect(range).toEqual({ start: start + 14, end: end + 14 });
   });
 
   it("picks the occurrence whose context matches", () => {
     const doubled = "a strong baseline is rare. We compare against a strong baseline on three datasets.";
-    const range = locateThread(threadOn(anchorFor(text, start, end)), doubled);
+    const range = findThread(threadOn(deriveAnchor(text, start, end)), doubled);
     expect(range).toEqual({ start: doubled.lastIndexOf("a strong baseline"), end: doubled.lastIndexOf("a strong baseline") + 17 });
   });
 
   it("finds a slightly edited quote approximately", () => {
     const edited = text.replace("a strong baseline", "a strong baselines");
-    const range = locateThread(threadOn(anchorFor(text, start, end)), edited);
+    const range = findThread(threadOn(deriveAnchor(text, start, end)), edited);
     expect(range).not.toBe("detached");
     if (range === "detached") { return; }
     expect(edited.slice(range.start, range.end)).toMatch(/^a strong baseline/);
@@ -59,9 +59,9 @@ describe("locateThread", () => {
 
   it("detaches a thread whose quote was deleted, live and on disk", () => {
     const yText = liveText(text);
-    const thread = threadOn(liveAnchorFor(yText, start, end));
+    const thread = threadOn(deriveLiveAnchor(yText, start, end));
     yText.delete(start, end - start);
-    expect(locateThread(thread, yText.toString(), yText)).toBe("detached");
-    expect(locateThread(threadOn(anchorFor(text, start, end)), yText.toString())).toBe("detached");
+    expect(findThread(thread, yText.toString(), yText)).toBe("detached");
+    expect(findThread(threadOn(deriveAnchor(text, start, end)), yText.toString())).toBe("detached");
   });
 });

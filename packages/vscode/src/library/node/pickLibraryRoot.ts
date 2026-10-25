@@ -2,13 +2,42 @@
 import * as os from "node:os";
 import * as vscode from "vscode";
 
-import { errorMessage, type ILogger } from "@labshelf/core";
-import { deviceLocalLayout, detectSyncFolders, inspectLibraryFolder } from "@labshelf/core/node";
+import { formatError, type ILogger } from "@labshelf/core";
+import {
+  createDeviceLocalLayout,
+  detectSyncFolders,
+  detectLibraryFolder,
+  type SyncFolder,
+} from "@labshelf/core/node";
 import type { SharedLibraryConfig } from "../../storage/paths/index.js";
-import { libraryTargetFolder } from "./syncFolders/index.js";
-import { firstRunChoices, type FirstRunChoice } from "./firstRunChoices.js";
+import {
+  resolveLibraryDir,
+  formatPath,
+  LIBRARY_FOLDER_NAME,
+  syncToolName,
+} from "./syncFolders/index.js";
+import * as path from "node:path";
 
-export interface ChooseLibraryRootDeps {
+type FirstRunChoice =
+  | { kind: "folder"; path: string; label: string; detail: string }
+  | { kind: "browse"; label: string }
+  | { kind: "guide"; label: string };
+
+export function listFirstRunChoices(detected: readonly SyncFolder[], home: string): FirstRunChoice[] {
+  const synced = detected.map((folder): FirstRunChoice => {
+    const target = path.join(folder.path, LIBRARY_FOLDER_NAME);
+    return { kind: "folder", path: target, label: formatPath(target, home), detail: `synced by ${syncToolName(folder.tool)}` };
+  });
+  const local = path.join(home, LIBRARY_FOLDER_NAME);
+  return [
+    ...synced,
+    { kind: "folder", path: local, label: formatPath(local, home), detail: "only on this computer" },
+    { kind: "browse", label: "Choose a folder…" },
+    { kind: "guide", label: "How to sync between computers…" },
+  ];
+}
+
+export interface PickLibraryRootDeps {
   sharedLibraryConfig: SharedLibraryConfig;
   createLogger(appLogPath: string): ILogger;
 }
@@ -24,12 +53,12 @@ async function browseForFolder(): Promise<string | undefined> {
     title: "LabShelf: Choose Library Folder",
   });
   const picked = folders?.[0];
-  return picked ? libraryTargetFolder(picked.fsPath) : undefined;
+  return picked ? resolveLibraryDir(picked.fsPath) : undefined;
 }
 
 // An existing library is opened as it is, so the user never ends up with two libraries by accident.
 async function confirmExistingLibrary(target: string): Promise<boolean> {
-  const info = await inspectLibraryFolder(target);
+  const info = await detectLibraryFolder(target);
   if (!info.isLibrary) { return true; }
   const answer = await vscode.window.showInformationMessage(
     `Found your library with ${info.paperCount} papers. Open it?`, { modal: true }, "Open",
@@ -37,25 +66,25 @@ async function confirmExistingLibrary(target: string): Promise<boolean> {
   return answer === "Open";
 }
 
-async function record(target: string, deps: ChooseLibraryRootDeps): Promise<vscode.Uri | undefined> {
-  const logger = deps.createLogger(deviceLocalLayout(target).appLogPath);
+async function record(target: string, deps: PickLibraryRootDeps): Promise<vscode.Uri | undefined> {
+  const logger = deps.createLogger(createDeviceLocalLayout(target).appLogPath);
   try {
     await deps.sharedLibraryConfig.recordRoot(target, logger);
     await logger.log("INFO", "firstRun", "Library location chosen", { root: target });
     return vscode.Uri.file(target);
   } catch (error) {
     await logger.error("firstRun", error, { action: "record library root", root: target });
-    await vscode.window.showErrorMessage(`LabShelf: Failed to use ${target}: ${errorMessage(error)}`);
+    await vscode.window.showErrorMessage(`LabShelf: Failed to use ${target}: ${formatError(error)}`);
     return undefined;
   }
 }
 
 /** @returns the chosen library root, or undefined when the user cancelled or the choice could not be saved */
-export async function chooseLibraryRoot(deps: ChooseLibraryRootDeps): Promise<vscode.Uri | undefined> {
+export async function pickLibraryRoot(deps: PickLibraryRootDeps): Promise<vscode.Uri | undefined> {
   const home = os.homedir();
   const detected = await detectSyncFolders({ home, env: process.env, platform: process.platform });
   for (;;) {
-    const items: PickedChoice[] = firstRunChoices(detected, home).map((choice) => ({
+    const items: PickedChoice[] = listFirstRunChoices(detected, home).map((choice) => ({
       label: choice.label, ...(choice.kind === "folder" ? { detail: choice.detail } : {}), choice,
     }));
     const picked = await vscode.window.showQuickPick(items, { title: "LabShelf: Where should your library live?" });

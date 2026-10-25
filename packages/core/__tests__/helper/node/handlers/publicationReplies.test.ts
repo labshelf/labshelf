@@ -1,5 +1,5 @@
 // Verifies that binary thumbnail replies can unblock a publication waiting in the ordered socket queue.
-import { createDispatcher } from "../../../../src/helper/node/handlers/index";
+import { createHelperAnswerer } from "../../../../src/helper/node/handlers/index";
 import { PROTOCOL_VERSION } from "../../../../src/helper/index";
 
 it("delivers thumbnail payloads before the waiting publication finishes", async () => {
@@ -7,7 +7,7 @@ it("delivers thumbnail payloads before the waiting publication finishes", async 
   const gate = new Promise<void>((resolve) => { release = resolve; });
   let received: Uint8Array | undefined;
   const logger = { log: async () => {}, error: async () => {} };
-  const dispatcher = createDispatcher({
+  const dispatcher = createHelperAnswerer({
     publishTemplate: async () => { await gate; },
     templateThumbnail: async (_message, _send, payload) => { received = payload; release(); },
   }, logger);

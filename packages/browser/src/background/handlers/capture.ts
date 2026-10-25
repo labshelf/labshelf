@@ -3,18 +3,18 @@
 import type { IfNoPdf, ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
 import type {
-  AttachPdfData, DraftView, PdfStatusData, RuntimeMessage, SaveOutcome, SavedPaperData,
+  AttachPdfReply, DraftView, FindPdfReply, RuntimeMessage, WriteOutcome, WrittenPaperReply,
 } from "../../platform";
 import {
-  attachPdfToPaper, findPdf, refreshExisting, resetPdfSearch, saveOrAsk, summarizeAttempts,
+  attachPdfToPaper, findPdf, refreshExisting, refreshPdfSearch, writeOrAsk, derivePdfMiss,
 } from "../../capture/index";
-import type { CaptureDraft, SaveDecision, SavedPaper } from "../../capture/index";
-import { draftForTab, hitDraftFor } from "../draftCache";
-import { broadcastChanged } from "../broadcast";
+import type { CaptureDraft, WriteDecision, SavedPaper } from "../../capture/index";
+import { readTabDraft, readHitDraft } from "../draftCache";
+import { sendLibraryChanged } from "../broadcast";
 import type { LibraryMutations } from "../../storage";
-import { pdfExists, ref } from "./libraryReference";
-import { accessTabDeps, openAccessAfterCapture } from "./access";
-import { askAuthor, type AskAuthorDeps } from "../copyRequest";
+import { hasPdfFile, createLibraryReference } from "./libraryReference";
+import { createAccessTabDeps, openAccessAfterCapture } from "./access";
+import { sendCopyRequest, type CopyRequestDeps } from "../copyRequest";
 
 async function tabUrl(tabId: number): Promise<string> {
   const tab = await bx.tabs.get(tabId);
@@ -30,12 +30,12 @@ async function draftView(d: CaptureDraft): Promise<DraftView> {
     authors: m.authors ?? [],
     ...(m.year ? { year: m.year } : {}),
     ...(venue ? { venue } : {}),
-    ...(d.existing ? { existing: ref(d.existing.id, d.existing.path, await pdfExists(d.existing.path)) } : {}),
+    ...(d.existing ? { existing: createLibraryReference(d.existing.id, d.existing.path, await hasPdfFile(d.existing.path)) } : {}),
   };
 }
 
 /** Turns a consent-gated save decision into the reply the surfaces switch on. */
-function outcome(draft: CaptureDraft, decision: SaveDecision): SaveOutcome {
+function outcome(draft: CaptureDraft, decision: WriteDecision): WriteOutcome {
   if (decision.kind === "saved") return saved(decision.saved);
   return {
     status: "no-pdf",
@@ -45,21 +45,21 @@ function outcome(draft: CaptureDraft, decision: SaveDecision): SaveOutcome {
 }
 
 // A capture wrote to IDB; tell open pages.
-function saved(result: SavedPaper): SavedPaperData {
+function saved(result: SavedPaper): WrittenPaperReply {
   const { paper } = result;
-  broadcastChanged("capture", paper.id);
+  sendLibraryChanged("capture", paper.id);
   return {
-    ...ref(paper.id, paper.path, result.pdfSource !== null),
+    ...createLibraryReference(paper.id, paper.path, result.pdfSource !== null),
     status: "saved",
     title: paper.title,
     pdfSource: result.pdfSource,
   };
 }
 
-async function libraryCopy(d: CaptureDraft): Promise<SavedPaperData> {
+async function libraryCopy(d: CaptureDraft): Promise<WrittenPaperReply> {
   const paper = d.existing!;
   return {
-    ...ref(paper.id, paper.path, await pdfExists(paper.path)),
+    ...createLibraryReference(paper.id, paper.path, await hasPdfFile(paper.path)),
     status: "saved",
     title: paper.title,
     pdfSource: null,
@@ -67,8 +67,8 @@ async function libraryCopy(d: CaptureDraft): Promise<SavedPaperData> {
   };
 }
 
-export async function handleCaptureInspect(log: ILogger, msg: Extract<RuntimeMessage, { type: "capture.inspect" }>): Promise<DraftView> {
-  const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId));
+export async function answerCaptureInspect(log: ILogger, msg: Extract<RuntimeMessage, { type: "capture.inspect" }>): Promise<DraftView> {
+  const draft = await readTabDraft(log, msg.tabId, await tabUrl(msg.tabId));
   const view = await draftView(draft);
   // Start the PDF search now; also for a library copy that still has no PDF,
   // so the popup can offer to attach what this page yields. The popup asks
@@ -77,23 +77,23 @@ export async function handleCaptureInspect(log: ILogger, msg: Extract<RuntimeMes
   return view;
 }
 
-export async function handleCaptureFindPdf(log: ILogger, msg: Extract<RuntimeMessage, { type: "capture.findPdf" }>): Promise<PdfStatusData> {
-  const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId));
+export async function answerCaptureFindPdf(log: ILogger, msg: Extract<RuntimeMessage, { type: "capture.findPdf" }>): Promise<FindPdfReply> {
+  const draft = await readTabDraft(log, msg.tabId, await tabUrl(msg.tabId));
   const pdf = await findPdf(log, draft);
   return pdf
     ? { found: true, source: pdf.source }
-    : { found: false, miss: summarizeAttempts(draft.pdfAttempts) };
+    : { found: false, miss: derivePdfMiss(draft.pdfAttempts) };
 }
 
-export async function handleCaptureSave(
+export async function answerCaptureWrite(
   log: ILogger,
   mutations: LibraryMutations,
   msg: Extract<RuntimeMessage, { type: "capture.save" }>,
-): Promise<SaveOutcome> {
-  const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId));
-  if (msg.retryPdf) resetPdfSearch(draft);
+): Promise<WriteOutcome> {
+  const draft = await readTabDraft(log, msg.tabId, await tabUrl(msg.tabId));
+  if (msg.retryPdf) refreshPdfSearch(draft);
   const ifNoPdf = msg.ifNoPdf ?? "ask";
-  const decision = await saveOrAsk(log, mutations, draft, {
+  const decision = await writeOrAsk(log, mutations, draft, {
     ...(msg.folder ? { folder: msg.folder } : {}),
     ...(msg.tags ? { tags: msg.tags } : {}),
     ...(msg.note ? { note: msg.note } : {}),
@@ -106,11 +106,11 @@ export async function handleCaptureSave(
 // The "open" and "author" choices: the reference is saved (or was already there) without a PDF, so the page in the way
 // or the request email opens. The email opens in the captured tab.
 async function afterSave(
-  deps: AskAuthorDeps, draft: CaptureDraft, reply: SaveOutcome | SavedPaperData, ifNoPdf: IfNoPdf, tabId: number | undefined,
+  deps: CopyRequestDeps, draft: CaptureDraft, reply: WriteOutcome | WrittenPaperReply, ifNoPdf: IfNoPdf, tabId: number | undefined,
 ): Promise<void> {
   if (reply.status !== "saved" || reply.hasPdf || !draft.existing) return;
-  if (ifNoPdf === "open") await openAccessAfterCapture(accessTabDeps(deps.log, deps.mutations), draft, { id: reply.id, title: reply.title });
-  if (ifNoPdf === "author") await askAuthor(deps, draft.existing, { tabId, page: draft.page, articleUrl: draft.pageUrl });
+  if (ifNoPdf === "open") await openAccessAfterCapture(createAccessTabDeps(deps.log, deps.mutations), draft, { id: reply.id, title: reply.title });
+  if (ifNoPdf === "author") await sendCopyRequest(deps, draft.existing, { tabId, page: draft.page, articleUrl: draft.pageUrl });
 }
 
 interface UnlessSaved {
@@ -127,35 +127,35 @@ async function saveUnlessInLibrary(
   mutations: LibraryMutations,
   draft: CaptureDraft,
   request: UnlessSaved,
-): Promise<SaveOutcome | SavedPaperData> {
-  if (request.retryPdf) resetPdfSearch(draft);
+): Promise<WriteOutcome | WrittenPaperReply> {
+  if (request.retryPdf) refreshPdfSearch(draft);
   await refreshExisting(draft);
   const ifNoPdf = request.ifNoPdf ?? "ask";
   const reply = draft.existing
     ? await libraryCopy(draft)
-    : outcome(draft, await saveOrAsk(log, mutations, draft, request.folder ? { folder: request.folder } : {}, ifNoPdf));
+    : outcome(draft, await writeOrAsk(log, mutations, draft, request.folder ? { folder: request.folder } : {}, ifNoPdf));
   await afterSave({ log, mutations }, draft, reply, ifNoPdf, request.tabId);
   return reply;
 }
 
-export async function handleCaptureTab(
+export async function answerCaptureTab(
   log: ILogger,
   mutations: LibraryMutations,
   msg: Extract<RuntimeMessage, { type: "capture.tab" }>,
-): Promise<SaveOutcome | SavedPaperData> {
+): Promise<WriteOutcome | WrittenPaperReply> {
   // Fresh look on the first call; the "Save without PDF" confirmation reuses
   // the cached draft (and its finished search).
-  const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId), msg.ifNoPdf !== "save");
+  const draft = await readTabDraft(log, msg.tabId, await tabUrl(msg.tabId), msg.ifNoPdf !== "save");
   return saveUnlessInLibrary(log, mutations, draft, { folder: msg.targetFolder, ifNoPdf: msg.ifNoPdf, retryPdf: msg.retryPdf, tabId: msg.tabId });
 }
 
-export async function handleSearchHitSave(
+export async function answerSearchHitWrite(
   log: ILogger,
   mutations: LibraryMutations,
   msg: Extract<RuntimeMessage, { type: "searchHit.save" }>,
   pageTabId: number | undefined,
-): Promise<SaveOutcome | SavedPaperData> {
-  return saveUnlessInLibrary(log, mutations, await hitDraftFor(log, msg.hit), { ...msg, tabId: pageTabId });
+): Promise<WriteOutcome | WrittenPaperReply> {
+  return saveUnlessInLibrary(log, mutations, await readHitDraft(log, msg.hit), { ...msg, tabId: pageTabId });
 }
 
 /**
@@ -167,22 +167,22 @@ export async function attachFoundPdf(
   mutations: LibraryMutations,
   draft: CaptureDraft,
   id: string,
-): Promise<AttachPdfData> {
+): Promise<AttachPdfReply> {
   const pdf = await findPdf(log, draft);
-  if (!pdf) return { id, attached: false, miss: summarizeAttempts(draft.pdfAttempts) };
+  if (!pdf) return { id, attached: false, miss: derivePdfMiss(draft.pdfAttempts) };
   const { written } = await attachPdfToPaper(mutations, id, pdf.bytes, { version: pdf.version });
   if (written) {
-    broadcastChanged("attach", id);
+    sendLibraryChanged("attach", id);
   }
   return { id, attached: written, ...(written ? { source: pdf.source } : { alreadyHadPdf: true }) };
 }
 
-export async function handleCaptureAttachPdf(
+export async function answerCaptureAttachPdf(
   log: ILogger,
   mutations: LibraryMutations,
   msg: Extract<RuntimeMessage, { type: "capture.attachPdf" }>,
-): Promise<AttachPdfData> {
-  const draft = await draftForTab(log, msg.tabId, await tabUrl(msg.tabId));
+): Promise<AttachPdfReply> {
+  const draft = await readTabDraft(log, msg.tabId, await tabUrl(msg.tabId));
   if (!draft.existing) throw new Error("This paper is not in your library.");
   // The search already ran at inspect; findPdf returns the memoised result.
   return attachFoundPdf(log, mutations, draft, draft.existing.id);

@@ -13,7 +13,7 @@ export interface HistoryStorage {
 }
 
 /** A project folder, how to read and restore its files, and where its history is kept. */
-export interface HistoryTarget {
+export interface HistoryProject {
   project: Pick<ProjectReadContext, "fs" | "paths">;
   folder: string;
   storage: HistoryStorage;

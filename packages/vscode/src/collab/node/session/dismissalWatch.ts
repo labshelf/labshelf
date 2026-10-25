@@ -1,11 +1,11 @@
 // Retries held copies when another process dismisses their content match.
 import { watch } from 'node:fs';
 import * as path from 'node:path';
-import type { ILogger, MirrorDisk } from '@labshelf/core';
+import type { ILogger, MirrorFileSystem } from '@labshelf/core';
 
 export function watchConflictDismissals(
-  disk: MirrorDisk, file: string, candidates: ReadonlySet<string>, logger: ILogger,
-): MirrorDisk {
+  disk: MirrorFileSystem, file: string, candidates: ReadonlySet<string>, logger: ILogger,
+): MirrorFileSystem {
   return { ...disk, watch: (onChange) => {
     const watcher = watch(path.dirname(file), (_event, name) => {
       if (name === null || name.toString() === path.basename(file)) candidates.forEach(onChange);

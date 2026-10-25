@@ -1,6 +1,6 @@
 // Finds the library record that matches a queried paper, so the host can skip saving a duplicate.
 // A DOI or arXiv id settles it; otherwise the normalised title must match and the years must not disagree.
-import { titleKey } from "../../library/index.js";
+import { normalizeTitleForMatch } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 
 export interface PaperQuery {
@@ -26,8 +26,8 @@ export function findInLibrary(records: PaperRecord[], query: PaperQuery): PaperR
       r.doi?.toLowerCase() === `10.48550/arxiv.${arxiv}` || (r.url ?? "").toLowerCase().includes(`arxiv.org/abs/${arxiv}`));
     if (hit) return hit;
   }
-  const title = query.title ? titleKey(query.title) : "";
+  const title = query.title ? normalizeTitleForMatch(query.title) : "";
   if (title.length < MIN_TITLE_CHARS) return undefined;
   return records.find((r) =>
-    titleKey(r.title) === title && !(query.year && r.year && Math.abs(query.year - r.year) > 1));
+    normalizeTitleForMatch(r.title) === title && !(query.year && r.year && Math.abs(query.year - r.year) > 1));
 }

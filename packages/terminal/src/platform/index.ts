@@ -1,5 +1,5 @@
 /** Exports the platform module's public API: operating-system access for directories, the clipboard, the browser, the trash and the editor. */
-export { expandHome } from "./expandPath.js";
+export { resolveHomePath } from "./expandPath.js";
 export {
-  copyToClipboard, hasCommand, moveToTrash, openExternal, revealInFileManager, runEditor, trashSupported, viewerTakesPage,
+  copyToClipboard, hasCommand, moveToTrash, openExternal, showInFileSystem, runEditor, canTrash, canReaderOpenPage,
 } from "./system.js";

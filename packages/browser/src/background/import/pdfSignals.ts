@@ -14,7 +14,7 @@ export function isPdfDownload(item: FinishedDownload): boolean {
 }
 
 /** A guess from the address alone; the %PDF header of the fetched bytes is the real check. */
-export function looksLikePdfUrl(url: string): boolean {
+export function isPdfUrl(url: string): boolean {
   let path: string;
   try {
     path = new URL(url).pathname;

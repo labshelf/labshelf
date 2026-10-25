@@ -1,7 +1,7 @@
 // Turns an existing project into a project share; the disk mirror then lists its files and settings in the index.
 import type { Doc } from "yjs";
 import { parseProjectFile, PROJECT_FILE, updateProjectFile, type ProjectReadContext } from "../../writing/project/index.js";
-import { createProjectIndex } from "../model/index.js";
+import { createShareIndexDoc } from "../model/index.js";
 
 export interface StartShareRequest {
   folder: string;
@@ -17,7 +17,7 @@ export interface StartShareRequest {
 export async function startShare({ fs, paths, logger }: ProjectReadContext, request: StartShareRequest): Promise<void> {
   const file = paths.join(request.folder, PROJECT_FILE);
   const text = await fs.readText(file);
-  createProjectIndex(request.index);
+  createShareIndexDoc(request.index);
   // `id` is per user and only `title` is shared, so without one a joiner's copy would get the slug fallback name.
   const parsed = parseProjectFile(text);
   const title = parsed.ok && parsed.settings.title === undefined ? { title: parsed.settings.id } : {};

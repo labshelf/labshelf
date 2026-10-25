@@ -1,10 +1,9 @@
 // Lists the library's writing projects as sidebar rows, each with its built PDF and reading progress, and opens their PDF.
 import {
-  PaperDataStore, brokenProjectItem, buildReadingList, papersByCiteKey, readyProjectItem,
+  PaperSidecarStore, createBrokenProjectItem, buildReadingList, derivePapersByCiteKey, createReadyProjectItem,
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
-import { createSidecarPort, listAllRecords } from "../../storage";
-import type { BrowserProjects } from "../../storage/projects";
+import { createSidecarPort, listCachedPaperRecords, type BrowserProjects } from "../../storage";
 
 const MODULE = "writing.projectList";
 
@@ -44,12 +43,12 @@ async function builtPdf({ fileSystem }: ProjectsSourceDeps, entry: ReadyEntry): 
 /** INVARIANT: the browser keeps no backlink index, so only the papers a project lists count, never the ones it merely cites. */
 async function readingListOf({ fileSystem, logger }: ProjectsSourceDeps, entry: ReadyEntry): Promise<ReadingList> {
   try {
-    const store = new PaperDataStore(createSidecarPort(fileSystem), { logger });
+    const store = new PaperSidecarStore(createSidecarPort(fileSystem), { logger });
     return await buildReadingList({
       project: entry.settings.id,
       backlinks: new Map(),
       listed: entry.settings.papers ?? [],
-      papersByKey: papersByCiteKey(await listAllRecords()),
+      papersByKey: derivePapersByCiteKey(await listCachedPaperRecords()),
       isOpened: async (paperId) => (await store.getReadingState(paperId)) !== null,
     });
   } catch (error) {
@@ -61,7 +60,7 @@ async function readingListOf({ fileSystem, logger }: ProjectsSourceDeps, entry: 
 /** The browser runs no checklist or build, so a row carries no open-item count and no last-build line. */
 async function readyRow(deps: ProjectsSourceDeps, entry: ReadyEntry): Promise<BrowserProjectRow> {
   const [pdf, reading] = await Promise.all([builtPdf(deps, entry), readingListOf(deps, entry)]);
-  return { ...readyProjectItem(entry, undefined, undefined, reading), projectId: entry.settings.id, ...(pdf ? { pdf } : {}) };
+  return { ...createReadyProjectItem(entry, undefined, undefined, reading), projectId: entry.settings.id, ...(pdf ? { pdf } : {}) };
 }
 
 export function createProjectsSource(deps: ProjectsSourceDeps): ProjectsSource {
@@ -71,7 +70,7 @@ export function createProjectsSource(deps: ProjectsSourceDeps): ProjectsSource {
     async rows() {
       try {
         const entries = await projects.listBrowserProjects();
-        return await Promise.all(entries.map((entry) => (entry.kind === "broken" ? brokenProjectItem(entry) : readyRow(deps, entry))));
+        return await Promise.all(entries.map((entry) => (entry.kind === "broken" ? createBrokenProjectItem(entry) : readyRow(deps, entry))));
       } catch (error) {
         await logger.error(MODULE, error, { action: "listProjects" });
         throw error;

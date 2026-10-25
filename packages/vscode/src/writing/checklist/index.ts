@@ -2,4 +2,4 @@
 export { OpenProjectSignals } from "./openProjectSignals.js";
 export { ChecklistView } from "./checklistView.js";
 export { registerChecklistView } from "./registerChecklistView.js";
-export { signalsReader } from "./signalsReader.js";
+export { createSignalsReader } from "./createSignalsReader.js";

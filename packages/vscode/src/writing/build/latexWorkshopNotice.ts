@@ -1,7 +1,7 @@
 // Tells the user once per workspace that LaTeX Workshop builds on save too, and offers to turn that off.
 import * as vscode from "vscode";
 
-import { owningProject } from "../buildRootDocument.js";
+import { findOwningProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 
 const LATEX_WORKSHOP_ID = "James-Yu.latex-workshop";
@@ -47,7 +47,7 @@ export function registerLatexWorkshopNotice(deps: NoticeDeps): void {
     if (deps.context.workspaceState.get<boolean>(SHOWN_KEY)) { return; }
     if (!vscode.extensions.getExtension(LATEX_WORKSHOP_ID)) { return; }
     const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? owningProject(deps.projects, file.fsPath) : undefined;
+    const project = file?.scheme === "file" ? findOwningProject(deps.projects, file.fsPath) : undefined;
     if (project?.settings.format === "latex") { void showNotice(deps); }
   };
   deps.context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(check));

@@ -1,5 +1,5 @@
 /** Lists the files of a paper folder and stores their descriptions in the paper's metadata.yaml. */
-import { describePaperFileOnDisk, errorMessage, listPaperFiles } from "@labshelf/core";
+import { describePaperFileOnFileSystem, formatError, listPaperFiles } from "@labshelf/core";
 import type { ILogger, LibraryFileSystem, MutationContext, PaperFilesState, PaperRecord } from "@labshelf/core";
 import type { ReindexSummary } from "../storage/index.js";
 
@@ -31,9 +31,9 @@ export class PaperFileService {
   async describe(paperId: string, name: string, description: string): Promise<PaperFilesState | undefined> {
     const paper = await this.findPaper(paperId);
     try {
-      if (!paper || !(await describePaperFileOnDisk(this.ctx, paper.path, name, description))) { throw new Error("The paper is not in the library"); }
+      if (!paper || !(await describePaperFileOnFileSystem(this.ctx, paper.path, name, description))) { throw new Error("The paper is not in the library"); }
     } catch (error) {
-      await this.logger.log("WARN", LOG_MODULE, "File description refused", { id: paperId, name, path: paper?.path, message: errorMessage(error) });
+      await this.logger.log("WARN", LOG_MODULE, "File description refused", { id: paperId, name, path: paper?.path, message: formatError(error) });
       return undefined;
     }
     await this.reindex();

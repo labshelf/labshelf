@@ -1,14 +1,48 @@
 // Registers Show History and keeps every writing project's history: a snapshot when a project file opens and after each save.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
-import { executeSafely } from "../../../command/index.js";
-import { activeProject } from "../../build/index.js";
-import { owningProject, type ReadyProject } from "../../buildRootDocument.js";
+import {
+  type ILogger,
+  readHistoryDiff,
+  readHistoryRows,
+  writeSnapshot,
+  applySnapshot,
+  type DiffLine,
+  type HistoryKind,
+} from "@labshelf/core";
+import { runSafely } from "../../../command/index.js";
+import { readActiveProject } from "../../build/index.js";
+import { findOwningProject, type ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
-import { HistoryPanel } from "../historyPanel.js";
-import { NodeHistoryStore } from "./nodeHistoryStore.js";
+import { HistoryPanel, type ProjectHistoryStore } from "../historyPanel.js";
 import type { ProjectHistoryRecorder } from "../../platformWritingPort.js";
+import * as path from "node:path";
+import { createNodeHistoryProject } from "@labshelf/core/node";
+
+class NodeHistoryStore implements ProjectHistoryStore {
+  constructor(private readonly storageDir: string, private readonly logger: ILogger) {}
+
+  // History is per device: it lives outside the project folder, so the user's sync tool never copies it between devices.
+  private target(project: ReadyProject) {
+    return createNodeHistoryProject(project.folder, path.join(this.storageDir, "history", encodeURIComponent(project.settings.id)));
+  }
+
+  record(project: ReadyProject, kind: HistoryKind, label?: string): Promise<unknown> {
+    return writeSnapshot(this.target(project), kind, this.logger, label);
+  }
+
+  rows(project: ReadyProject) {
+    return readHistoryRows(this.target(project).storage, this.logger);
+  }
+
+  diff(project: ReadyProject, id: string, file: string): Promise<DiffLine[] | null> {
+    return readHistoryDiff(this.target(project).storage, id, file, this.logger);
+  }
+
+  async restore(project: ReadyProject, id: string): Promise<void> {
+    await applySnapshot(this.target(project), id, this.logger);
+  }
+}
 
 const SHOW_HISTORY_COMMAND = "labshelf.writing.showHistory";
 /** Save All writes several files at once; one snapshot covers them. */
@@ -35,14 +69,14 @@ export function registerProjectHistory({ context, host, projects }: ProjectHisto
       .catch((error: unknown) => logger.error("writing/history", error, { action: "record", folder: project.folder, kind }));
   };
   const recordSoon = (document: vscode.TextDocument): void => {
-    const project = document.uri.scheme === "file" ? owningProject(projects, document.uri.fsPath) : undefined;
+    const project = document.uri.scheme === "file" ? findOwningProject(projects, document.uri.fsPath) : undefined;
     if (!project) { return; }
     clearTimeout(timers.get(project.folder));
     timers.set(project.folder, setTimeout(() => { timers.delete(project.folder); record(project, "edit"); }, SAVE_SETTLE_MS));
   };
 
-  const show = (): Promise<void> => executeSafely(logger, SHOW_HISTORY_COMMAND, async () => {
-    const project = activeProject(projects) ?? projects.list().find((entry): entry is ReadyProject => entry.kind === "ready" && entry.folder === panel?.folder);
+  const show = (): Promise<void> => runSafely(logger, SHOW_HISTORY_COMMAND, async () => {
+    const project = readActiveProject(projects) ?? projects.list().find((entry): entry is ReadyProject => entry.kind === "ready" && entry.folder === panel?.folder);
     if (!project) {
       await vscode.window.showInformationMessage("Open a file of a writing project to see its history.");
       return;

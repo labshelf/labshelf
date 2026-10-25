@@ -4,39 +4,39 @@ import { createServer, type IncomingMessage } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Duplex } from "node:stream";
 import type { ILogger } from "../../../ports/index.js";
-import { HelperSocketConnection, type SocketHandler } from "./helperConnection.js";
+import { HelperConnection, type ConnectionHandler } from "./helperConnection.js";
 import { checkUpgrade } from "./upgrade.js";
 
 const MODULE = "helperSocket";
 const AUTH_TIMEOUT_MS = 10_000;
 
-export interface HelperSocketOptions {
+export interface HelperServerOptions {
   token: string;
   /** The origin the page sent in `hello`. */
   origin: string;
   /** The caller origin Chrome passed as the helper's first argument, when it did. */
   callerOrigin?: string | undefined;
   logger: ILogger;
-  handle: SocketHandler;
+  handle: ConnectionHandler;
   /** Closes a socket that has not authenticated within this time; 10 s when absent. */
   authTimeoutMs?: number;
 }
 
-export interface HelperSocket {
+export interface HelperServer {
   port: number;
   close(): Promise<void>;
 }
 
-export async function startHelperSocket(options: HelperSocketOptions): Promise<HelperSocket> {
+export async function startHelperServer(options: HelperServerOptions): Promise<HelperServer> {
   const { logger } = options;
-  const connections = new Set<HelperSocketConnection>();
-  let live: HelperSocketConnection | undefined;
+  const connections = new Set<HelperConnection>();
+  let live: HelperConnection | undefined;
   // INVARIANT: the token authenticates one socket; the page reconnects through a new native hello, which mints a new token.
   let spent = false;
   const hooks = {
     token: options.token, logger, handle: options.handle, authTimeoutMs: options.authTimeoutMs ?? AUTH_TIMEOUT_MS,
-    claim: (connection: HelperSocketConnection) => (live === undefined && !spent ? ((live = connection), true) : false),
-    release: (connection: HelperSocketConnection) => {
+    claim: (connection: HelperConnection) => (live === undefined && !spent ? ((live = connection), true) : false),
+    release: (connection: HelperConnection) => {
       connections.delete(connection);
       if (live === connection) { live = undefined; spent = true; }
     },
@@ -51,7 +51,7 @@ export async function startHelperSocket(options: HelperSocketOptions): Promise<H
       return;
     }
     socket.write(verdict.response);
-    const connection = new HelperSocketConnection(socket, hooks);
+    const connection = new HelperConnection(socket, hooks);
     connections.add(connection);
     if (head.length > 0) { socket.unshift(head); }
   });

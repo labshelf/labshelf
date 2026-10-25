@@ -1,14 +1,14 @@
 /**
  * Restores the stored reading position once both the laid-out pages and the host's init message are in, whichever arrives second.
  */
-import { type HostToWebview, clampPage } from "../../index.js";
+import { type HostToWebview, deriveClampedPage } from "../../index.js";
 import type { ThemeController } from "../chrome/index.js";
 import type { HostBridge, PerfMarks, ReaderContext } from "../session/index.js";
 import type { ReaderUi } from "./buildReaderUi.js";
 
 type InitMessage = Extract<HostToWebview, { type: "init" }>;
 
-export interface RestoreTarget {
+export interface RestoreAnchor {
   ctx: ReaderContext;
   ui: ReaderUi;
   theme: ThemeController;
@@ -33,7 +33,7 @@ export class PositionRestore {
   /**
    * Connects the restore to the open document; an init that arrives from here on is applied at once.
    */
-  attach(target: RestoreTarget): void {
+  attach(target: RestoreAnchor): void {
     const markMoved = (): void => { this.readerMoved = true; };
     for (const type of ["wheel", "touchmove", "pointerdown"] as const) {
       target.ctx.container.addEventListener(type, markMoved, { passive: true, once: true });
@@ -43,7 +43,7 @@ export class PositionRestore {
     target.ctx.eventBus.on("pagesinit", () => this.onPagesInit(target));
   }
 
-  private onPagesInit(target: RestoreTarget): void {
+  private onPagesInit(target: RestoreAnchor): void {
     // A reload lays the pages out again; DocumentReloader keeps the reader's spot for that one.
     if (this.pagesReady) { return; }
     const { ctx, perf, loadingMsg } = target;
@@ -59,7 +59,7 @@ export class PositionRestore {
     if (this.init) { this.applyInit(target, this.init); }
   }
 
-  private applyInit({ ctx, ui, theme }: RestoreTarget, msg: InitMessage): void {
+  private applyInit({ ctx, ui, theme }: RestoreAnchor, msg: InitMessage): void {
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
     theme.apply(msg.theme, msg.effectiveTheme);
@@ -70,7 +70,7 @@ export class PositionRestore {
     const reading = msg.prefs.restorePosition && !this.readerMoved ? msg.reading : null;
     if (reading) {
       ctx.pdfViewer.currentScaleValue = reading.scaleValue;
-      const pageNumber = clampPage(reading.page, ctx.pdfDocument.numPages);
+      const pageNumber = deriveClampedPage(reading.page, ctx.pdfDocument.numPages);
       ctx.pdfViewer.scrollPageIntoView(reading.top !== undefined
         ? { pageNumber, destArray: [null, { name: "XYZ" }, reading.left ?? null, reading.top, null], allowNegativeOffset: true }
         : { pageNumber });

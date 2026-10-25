@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { PaperRecord, ProjectEntry } from "@labshelf/core";
-import { executeSafely, paperPickItem } from "../../command/index.js";
+import { runSafely, createPaperPickItem } from "../../command/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import type { ProjectReadingLists } from "./projectReadingLists.js";
@@ -25,13 +25,13 @@ async function addPaper(deps: ReadingListCommandsDeps, target: ProjectEntry | un
   const session = await deps.host.require();
   const project = target?.kind === "ready" ? latest(deps.projects, target.folder) : undefined;
   if (!session || !project) { return; }
-  await executeSafely(session.logger, "labshelf.writing.addToReadingList", async () => {
+  await runSafely(session.logger, "labshelf.writing.addToReadingList", async () => {
     // A paper the sync listed as cited can be added to pin it, so it stays when the sources stop citing it.
     const syncedKeys = new Set((project.settings.papers ?? []).filter((entry) => entry.cited).map((entry) => entry.key));
     const inList = new Set((await deps.readingLists.of(project)).entries.map((entry) => entry.key).filter((key) => !syncedKeys.has(key)));
     const choices = (await deps.listPapers()).filter((paper) => !inList.has(paper.citeKey))
       .sort((a, b) => a.title.localeCompare(b.title))
-      .map(paperPickItem);
+      .map(createPaperPickItem);
     if (choices.length === 0) {
       void vscode.window.showInformationMessage("Every paper in the library is already in this reading list.");
       return;

@@ -2,7 +2,7 @@
 import type { MessageEnd } from "../../../libraryUi/protocol/index.js";
 import type { FileChange } from "../historyChanges.js";
 import type { HistoryKind } from "../historyEntry.js";
-import type { DiffLine } from "../lineDiff.js";
+import type { DiffLine } from "../compareLines.js";
 
 /** One entry as the page shows it. */
 export interface HistoryRow {

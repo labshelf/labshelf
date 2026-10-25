@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests how a build preview treats links: hover cards and clicks use the host's citation answers, a library reader asks nothing.
-import { interceptCitationClicks, PreviewCitations } from "../../../../../src/reader/dom/hover/citations";
+import { attachCitationClicks, PreviewCitations } from "../../../../../src/reader/dom/hover/citations";
 import type { ReaderContext } from "../../../../../src/reader/dom/session";
 import type { CitationEntry } from "../../../../../src/reader";
 
@@ -33,7 +33,7 @@ function setup(options: { preview?: boolean; answer?: CitationEntry[] } = {}) {
     eventBus: { on: jest.fn() },
   } as unknown as ReaderContext;
   citations = new PreviewCitations(ctx);
-  interceptCitationClicks(viewer, ctx, citations);
+  attachCitationClicks(viewer, ctx, citations);
   const click = async () => {
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
     document.getElementById("link")!.dispatchEvent(event);

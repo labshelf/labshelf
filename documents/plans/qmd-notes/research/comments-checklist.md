@@ -1,5 +1,5 @@
 sha: 0069f02
-files: documents/contracts/library-format.md, documents/contracts/collaboration.md, packages/core/src/collab/comments/**, packages/core/src/writing/checklist/**, packages/core/src/writing/citations/**, packages/core/src/writing/citations/projectSources.ts, packages/core/src/reader/previewRequests.ts, packages/vscode/src/collab/comments/**, packages/browser/src/libraryUi/{review,editor/comments,tabs/comments}/**
+files: documents/contracts/library-format.md, documents/contracts/collaboration.md, packages/core/src/collab/comments/**, packages/core/src/writing/checklist/**, packages/core/src/writing/citations/**, packages/core/src/writing/citations/walkProjectSources.ts, packages/core/src/reader/previewRequests.ts, packages/vscode/src/collab/comments/**, packages/browser/src/libraryUi/{review,editor/comments,tabs/comments}/**
 source: Explore scout
 
 # Comments, review comments, checklist, backlinks
@@ -23,7 +23,7 @@ source: Explore scout
 
 ## Comment UI
 - vscode: collab/comments/{commentsController,threadView,fileComments,sharedComments}.ts.
-- browser: collab/comments/{commentThreads,routedCommentThreads,commentSupport,addComment (Mod-Alt-m),commentMarks}.ts; collab/liveCommentThreads.ts; libraryUi/editorArea/commentsTab.ts.
+- browser: collab/comments/{commentThreads,routedCommentThreads,createCommentSupport,addComment (Mod-Alt-m),commentMarks}.ts; collab/liveCommentThreads.ts; libraryUi/editorArea/commentsTab.ts.
 
 ## Checklist
 - Contract library-format.md:222-241: `.labshelf/checklist.json` `{items:[{id,text,done,createdAt[,doneAt,group,section]}]}`; group in todo|ref|figure|pages|reading. Code: checklistFile.ts, readManualItems.ts, updateChecklist.ts.

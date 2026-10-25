@@ -1,7 +1,7 @@
 // Draws other collaborators' cursors and selections in an editor, each in their colour with their name on hover.
 import * as vscode from "vscode";
 
-/** Offsets are document offsets; `colour` comes from core's `peerColour`, which only returns palette values. */
+/** Offsets are document offsets; `colour` comes from core's `derivePeerColour`, which only returns palette values. */
 export interface PeerCursor {
   clientId: number;
   name: string;

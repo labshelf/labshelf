@@ -2,18 +2,18 @@
  * Handles the reader session messages: the init handshake, readiness, open timing, and theme choice.
  */
 import { isPdfTheme } from "../../model/index.js";
-import { byPageThenCreated } from "../sidecar/index.js";
-import { READER_LOG_MODULE, type MessageHandlers } from "./hostContext.js";
+import { compareAnnotations } from "../sidecar/index.js";
+import { READER_LOG_MODULE, type MessageAnswers } from "./hostContext.js";
 
 export const sessionHandlers: Pick<
-  MessageHandlers,
+  MessageAnswers,
   "ready-for-init" | "ready" | "perf" | "selectTheme"
 > = {
   "ready-for-init": async (ctx) => {
     const { ports, state } = ctx;
     const data = await ports.store.load(ports.paper.id);
     state.themePreference = data.theme;
-    const annotations = [...data.annotations].sort(byPageThenCreated);
+    const annotations = [...data.annotations].sort(compareAnnotations);
     state.lastAnnotationsKey = JSON.stringify(annotations);
     ports.post({
       type: "init",

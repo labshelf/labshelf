@@ -1,11 +1,11 @@
 /** Runs the : command line: a small set of ex-style commands over the same actions the keys trigger. */
-import { isSortKey, SORT_KEYS } from "../../../config.js";
-import { textInput } from "../../textInput.js";
+import { isSortField, SORT_KEYS } from "../../../config.js";
+import { createTextInput } from "../../createTextInput.js";
 import { ALL } from "../screenModel.js";
 import type { App } from "../app.js";
 import { openConflicts } from "../conflicts/index.js";
-import { submitPrompt } from "../input/index.js";
-import { importInputs, targetFolder } from "./createAndRename.js";
+import { applyAsk } from "../input/index.js";
+import { importInputs, readAddFolder } from "./createAndRename.js";
 import { setSort } from "./paperExportActions.js";
 
 export function runCommand(app: App, line: string): void {
@@ -18,15 +18,15 @@ export function runCommand(app: App, line: string): void {
     case "help": case "h": app.overlay = { kind: "help", scroll: 0 }; return;
     case "export":
       if (!rest) { app.taskStatus.notify("Usage: :export <file.bib>", "warn"); return; }
-      submitPrompt(app, { kind: "prompt", purpose: "export", title: "", input: textInput(rest), completions: [], targets: [] });
+      applyAsk(app, { kind: "prompt", purpose: "export", title: "", input: createTextInput(rest), completions: [], targets: [] });
       return;
     case "mkdir":
       if (!rest) { app.taskStatus.notify("Usage: :mkdir <name>", "warn"); return; }
-      submitPrompt(app, { kind: "prompt", purpose: "add", title: "", input: textInput(rest), completions: [], targets: [targetFolder(app), "folder"] });
+      applyAsk(app, { kind: "prompt", purpose: "add", title: "", input: createTextInput(rest), completions: [], targets: [readAddFolder(app), "folder"] });
       return;
     case "add":
       if (!rest) { app.taskStatus.notify("Usage: :add <pdf | folder | url | doi | arxiv id>", "warn"); return; }
-      void importInputs(app, [rest], targetFolder(app));
+      void importInputs(app, [rest], readAddFolder(app));
       return;
     case "conflicts": openConflicts(app); return;
     case "sort": return runSort(app, args);
@@ -41,7 +41,7 @@ export function runCommand(app: App, line: string): void {
 
 function runSort(app: App, args: string[]): void {
   const key = args[0] ?? "title";
-  if (!isSortKey(key)) { app.taskStatus.notify(`Unknown sort key "${key}" (${SORT_KEYS.join(", ")})`, "warn"); return; }
+  if (!isSortField(key)) { app.taskStatus.notify(`Unknown sort key "${key}" (${SORT_KEYS.join(", ")})`, "warn"); return; }
   setSort(app, args[1] === "desc" || args[1] === "reverse" ? `${key}!` : key);
 }
 

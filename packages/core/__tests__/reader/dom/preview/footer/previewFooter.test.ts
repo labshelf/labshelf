@@ -4,9 +4,9 @@
 // Tests the preview footer: breadcrumb with its sections menu, build status precedence, slots and the status clock.
 import { mountPreviewFooter } from "../../../../../src/reader/dom/preview/footer/index";
 import type { OutlineRow } from "../../../../../src/reader/outlineModel";
-import type { PreviewRoot, PreviewRoots } from "../../../../../src/reader/previewProtocol";
+import type { PreviewBuildRoot, PreviewBuildRoots } from "../../../../../src/reader/previewProtocol";
 
-function root(path: string, over: Partial<PreviewRoot> = {}): PreviewRoot {
+function root(path: string, over: Partial<PreviewBuildRoot> = {}): PreviewBuildRoot {
   return { path, failed: false, rawLog: true, sourceLinks: true, problems: [], ...over };
 }
 
@@ -14,7 +14,7 @@ function errors(n: number) {
   return Array.from({ length: n }, (_, i) => ({ severity: "error" as const, message: `e${i}` }));
 }
 
-function roots(shown: string, focused: string, list: PreviewRoot[]): PreviewRoots {
+function roots(shown: string, focused: string, list: PreviewBuildRoot[]): PreviewBuildRoots {
   return { main: "/p/main.tex", focused, shown, roots: list };
 }
 

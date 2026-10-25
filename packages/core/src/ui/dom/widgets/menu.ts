@@ -4,8 +4,8 @@
  * shadow root.
  */
 import { escapeHtml } from "../../escapeHtml.js";
-import { icon, type IconName } from "../../icons/index.js";
-import { el } from "../dom.js";
+import { renderIcon, type IconName } from "../../icons/index.js";
+import { renderElement } from "../dom.js";
 
 export interface MenuItem {
   label: string;
@@ -43,10 +43,10 @@ export function closeMenu(): void {
 export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[], opts: MenuOptions = {}): void {
   closeMenu();
 
-  const menu = el("div", { class: "ls-menu", role: "menu" });
+  const menu = renderElement("div", { class: "ls-menu", role: "menu" });
   for (const entry of entries) {
-    if (entry === "separator") { menu.append(el("div", { class: "ls-menu-sep", role: "separator" })); continue; }
-    const item = el("button", {
+    if (entry === "separator") { menu.append(renderElement("div", { class: "ls-menu-sep", role: "separator" })); continue; }
+    const item = renderElement("button", {
       class: `ls-menu-item${entry.danger ? " danger" : ""}${entry.checked ? " checked" : ""}`,
       role: entry.checked === undefined ? "menuitem" : entry.radio ? "menuitemradio" : "menuitemcheckbox",
       "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
@@ -58,7 +58,7 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     menu.append(item);
   }
 
-  const scrim = el("div", { class: "ls-scrim" });
+  const scrim = renderElement("div", { class: "ls-scrim" });
   scrim.addEventListener("mousedown", close);
   scrim.addEventListener("contextmenu", (e) => { e.preventDefault(); close(); });
   (opts.root ?? document.body).append(scrim, menu);
@@ -98,8 +98,8 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
 }
 
 function leadOf(entry: MenuItem): string {
-  if (entry.checked) return icon("check");
-  return entry.icon ? icon(entry.icon) : entry.lead ?? "";
+  if (entry.checked) return renderIcon("check");
+  return entry.icon ? renderIcon(entry.icon) : entry.lead ?? "";
 }
 
 function anchorPoint(anchor: HTMLElement): MenuAnchor {

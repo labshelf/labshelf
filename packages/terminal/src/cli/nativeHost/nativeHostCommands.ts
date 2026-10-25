@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import {
-  BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, installNativeHost, nativeHostStatus, uninstallNativeHost,
+  BRIDGE_HOST_SPEC, HELPER_HOST_SPEC, installNativeHost, checkNativeHost, uninstallNativeHost,
   type NativeHostEnv, type NativeHostSpec, type NativeHostWarning, type ScriptLaunch,
 } from "@labshelf/core/nativeHost/node";
 
@@ -25,12 +25,12 @@ const HOSTS: Record<NativeHostCommand, HostCommandInfo> = {
 
 export const NATIVE_HOST_COMMANDS = Object.keys(HOSTS) as NativeHostCommand[];
 
-export function nativeHostSpec(command: NativeHostCommand): NativeHostSpec {
+export function createNativeHostSpec(command: NativeHostCommand): NativeHostSpec {
   return HOSTS[command].spec;
 }
 
 /** @returns the launch that runs this app's bundled host script, found in `distDir` next to labshelf.mjs */
-export function terminalLaunch(command: NativeHostCommand, distDir: string): ScriptLaunch {
+export function createTerminalLaunch(command: NativeHostCommand, distDir: string): ScriptLaunch {
   return { kind: "script", owner: "terminal", nodePath: process.execPath, hostScript: path.join(distDir, HOSTS[command].hostFile), electronRunAsNode: false };
 }
 
@@ -61,7 +61,7 @@ async function install(command: NativeHostCommand, replace: boolean, env: Native
 }
 
 async function status(command: NativeHostCommand, env: NativeHostEnv, io: Output): Promise<number> {
-  const result = await nativeHostStatus(env, HOSTS[command].spec);
+  const result = await checkNativeHost(env, HOSTS[command].spec);
   io.out(`launcher  ${result.launcher}`);
   for (const browser of result.browsers) {
     if (!browser.present) {

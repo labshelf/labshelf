@@ -6,7 +6,7 @@ const PUBLISHER_MAILBOX =
   /^(?:[^@]*(?:permissions?|support|no-?reply)|rights|info|help|helpdesk|contact|admin|webmaster|editors?|editorial|journals?|donotreply|customer[-.]?(?:service|care)|production|publisher|press|office|service|services|subscriptions?|reprints?|licensing|copyright|feedback|privacy|library|sales)(?:[._+-].*)?@/i;
 
 /** @returns the trimmed address when it is well formed, otherwise undefined */
-export function validEmail(raw: string | undefined): string | undefined {
+export function normalizeEmail(raw: string | undefined): string | undefined {
   const email = raw?.trim().replace(/\.+$/, "");
   return email && EMAIL.test(email) ? email : undefined;
 }
@@ -17,7 +17,7 @@ export function isPublisherMailbox(email: string): boolean {
 }
 
 /** @returns the addresses of one mailto: href, without query string, percent-decoded and validated */
-export function addressesOfMailto(href: string): string[] {
+export function parseMailtoAddresses(href: string): string[] {
   const body = href.replace(/^mailto:/i, "").split(/[?#]/)[0] ?? "";
   let decoded = body;
   try {
@@ -25,5 +25,5 @@ export function addressesOfMailto(href: string): string[] {
   } catch {
     // A malformed escape leaves the raw text, which the address check then rejects or accepts as it stands.
   }
-  return decoded.split(/[,;]/).map(validEmail).filter((e): e is string => !!e);
+  return decoded.split(/[,;]/).map(normalizeEmail).filter((e): e is string => !!e);
 }

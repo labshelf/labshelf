@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import {
-  DEFAULT_PREFS, createLoopbackTransport, type DetailsTarget, type DetailsToHost, type HostToDetails, type HostToUi, type LibraryUiPrefs, type PaperRecord,
+  DEFAULT_PREFS, createLoopbackTransport, type DetailsSelection, type DetailsToHost, type HostToDetails, type HostToUi, type LibraryUiPrefs, type PaperRecord,
 } from "@labshelf/core";
 import { mountDetails } from "../../../../src/libraryUi/details/dom";
 import { row } from "../../../writing/allProjects/dom/detailPane/fixtures";
@@ -32,7 +32,7 @@ function mountForTest(pins: LibraryUiPrefs["detailsPins"] = []) {
   const library = (msg: HostToUi): void => host.post({ channel: "library", msg });
   const snapshot = (papers: PaperRecord[]): void =>
     library({ type: "snapshot", snapshot: JSON.parse(JSON.stringify({ folders: [], papers, pdfDirs: [], stats: {} })) });
-  const show = (target: DetailsTarget): void => host.post({ type: "details.show", target });
+  const show = (target: DetailsSelection): void => host.post({ type: "details.show", target });
   const slot = (kind: "paper" | "project"): HTMLElement => container.querySelector<HTMLElement>(`.ls-details-${kind}`)!;
   const shown = (el: HTMLElement): boolean => !el.hidden;
   const empty = (): HTMLElement => container.querySelector<HTMLElement>(".ls-details-empty")!;

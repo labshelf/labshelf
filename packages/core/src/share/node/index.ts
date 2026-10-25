@@ -1,2 +1,2 @@
 /** Exports the Node file store of the device's share list. */
-export { fileShareRegistryStore } from "./fileShareRegistryStore.js";
+export { createFileShareRegistryStore } from "./createFileShareRegistryStore.js";

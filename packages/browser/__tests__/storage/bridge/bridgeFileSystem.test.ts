@@ -1,10 +1,10 @@
 // Pins the bridge file system over a fake host: connecting, renames, deletes, reconnects and changed events.
-import { BridgeFileSystem, BridgeLink } from "../../../src/storage/bridge";
+import { BridgeFileSystem, BridgeClient } from "../../../src/storage/bridge";
 import { FakeBridgeHost, silentLogger } from "./fakeBridgeHost";
 
 function setup() {
   const hosts: FakeBridgeHost[] = [];
-  const link = new BridgeLink(() => {
+  const link = new BridgeClient(() => {
     const host = new FakeBridgeHost();
     if (hosts.length > 0) host.files = hosts[0]!.files;
     hosts.push(host);

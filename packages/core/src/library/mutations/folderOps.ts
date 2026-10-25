@@ -1,5 +1,5 @@
 /** Creates, renames, moves and trashes the folders papers are grouped in; every path in and out is absolute. */
-import { validateFolderName } from "../paper/index.js";
+import { checkFolderName } from "../paper/index.js";
 import { isUnderDir } from "../model/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
 
@@ -41,7 +41,7 @@ export async function moveFolder(ctx: MutationContext, dir: string, targetParent
 }
 
 /** Sends a folder and everything in it to the trash; a failure is passed on with nothing deleted by this call. */
-export async function trashFolder(ctx: MutationContext, dir: string): Promise<void> {
+export async function moveFolderToTrash(ctx: MutationContext, dir: string): Promise<void> {
   refuseRoot(ctx, dir, "deleted");
   await ctx.fs.trash(dir);
   await ctx.logger.log("INFO", MUTATIONS_MODULE, "Folder moved to trash", { dir });
@@ -52,7 +52,7 @@ function refuseRoot(ctx: MutationContext, dir: string, verb: string): void {
 }
 
 function checkedName(name: string): string {
-  const problem = validateFolderName(name);
+  const problem = checkFolderName(name);
   if (problem) { throw new Error(problem); }
   return name.trim();
 }

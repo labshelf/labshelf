@@ -7,12 +7,51 @@ import {
   createNonce,
   PROTOCOL_VERSION,
   type EffectiveTheme,
-  type ReaderBootParams,
+  type ReaderStartupParams,
   type ReaderPrefs,
+  escapeHtml,
+  READER_SHELL_BODY,
 } from "@labshelf/core";
-import { autoReaderTheme } from "./vscodeTheme.js";
-import { readerDocument } from "./readerDocument.js";
-import { bundleExists, bundleMissingHtml } from "../ui/index.js";
+import { readAutoReaderTheme } from "./vscodeTheme.js";
+import { hasBundleFile, renderBundleMissingHtml } from "../ui/index.js";
+
+interface ReaderDocumentParts {
+  nonce: string;
+  cspSource: string;
+  title: string;
+  effectiveTheme: EffectiveTheme;
+  assets: ReaderStartupParams["assets"];
+  bootJson: string;
+  viewerCssUrl: string;
+  scriptUrl: string;
+  styleUrl: string;
+}
+
+function readerDocument(parts: ReaderDocumentParts): string {
+  const { nonce: n, cspSource, title, effectiveTheme, assets, bootJson, viewerCssUrl, scriptUrl, styleUrl } = parts;
+  const { pdfjsUrl, viewerUrl, workerUrl, pdfUrl } = assets;
+  return `<!doctype html>
+<html id="root" lang="en" data-pdf-theme="${escapeHtml(effectiveTheme)}">
+<head>
+<meta charset="UTF-8"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${n}' 'wasm-unsafe-eval' ${cspSource}; worker-src ${cspSource} blob:; style-src 'unsafe-inline' ${cspSource}; img-src ${cspSource} blob: data:; connect-src ${cspSource}; font-src ${cspSource};"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>${escapeHtml(title)}</title>
+${pdfjsUrl  ? `<link rel="modulepreload" href="${pdfjsUrl}"/>` : ""}
+${viewerUrl ? `<link rel="modulepreload" href="${viewerUrl}"/>` : ""}
+<link rel="modulepreload" href="${scriptUrl}"/>
+${workerUrl ? `<link rel="preload" href="${workerUrl}" as="fetch" crossorigin="anonymous"/>` : ""}
+<link rel="preload" href="${pdfUrl}" as="fetch" crossorigin="anonymous"/>
+${viewerCssUrl ? `<link rel="stylesheet" href="${viewerCssUrl}"/>` : ""}
+<link rel="stylesheet" href="${styleUrl}"/>
+</head>
+<body>
+${READER_SHELL_BODY}
+<script id="labshelf-boot" type="application/json">${bootJson}</script>
+<script nonce="${n}" type="module" src="${scriptUrl}"></script>
+</body>
+</html>`;
+}
 
 export interface RenderParams {
   webview: vscode.Webview;
@@ -78,7 +117,7 @@ export interface ReaderBundleUris {
  * Directory holding the esbuild output of the reader webview, for use in localResourceRoots.
  * @returns <extension>/dist/reader
  */
-export function getReaderBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
+export function readReaderBundleDir(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "reader");
 }
 
@@ -90,9 +129,9 @@ export async function resolveReaderBundleUris(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
 ): Promise<ReaderBundleUris | null> {
-  const dir = getReaderBundleDirectory(extensionUri);
+  const dir = readReaderBundleDir(extensionUri);
   const script = vscode.Uri.joinPath(dir, "reader.js");
-  if (!(await bundleExists(script))) { return null; }
+  if (!(await hasBundleFile(script))) { return null; }
   return {
     scriptUri: webview.asWebviewUri(script),
     styleUri: webview.asWebviewUri(vscode.Uri.joinPath(dir, "reader.css")),
@@ -107,11 +146,11 @@ export async function renderReaderShell(params: RenderParams): Promise<string> {
   const { webview, extensionUri, pdfUri, paperTitle } = params;
 
   const bundle = await resolveReaderBundleUris(webview, extensionUri);
-  if (!bundle) { return bundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
+  if (!bundle) { return renderBundleMissingHtml({ title: paperTitle, heading: "Reader bundle not built", file: "dist/reader/reader.js", reopen: "the PDF" }); }
 
   const nonce = createNonce();
   const resolved = resolvePdfjsUris(webview, params.pdfjs);
-  const effectiveTheme = autoReaderTheme();
+  const effectiveTheme = readAutoReaderTheme();
   const boot = buildBootParams(params, resolved, webview.asWebviewUri(pdfUri).toString(), effectiveTheme);
 
   return readerDocument({
@@ -120,7 +159,7 @@ export async function renderReaderShell(params: RenderParams): Promise<string> {
     title: paperTitle,
     effectiveTheme,
     assets: boot.assets,
-    bootJson: serializeBoot(boot),
+    bootJson: serializeStartup(boot),
     viewerCssUrl: resolved?.viewerCssWebviewUri.toString() ?? "",
     scriptUrl: bundle.scriptUri.toString(),
     styleUrl: bundle.styleUri.toString(),
@@ -132,7 +171,7 @@ function buildBootParams(
   resolved: ResolvedUris | null,
   pdfUrl: string,
   effectiveTheme: EffectiveTheme,
-): ReaderBootParams {
+): ReaderStartupParams {
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
@@ -161,7 +200,7 @@ function buildBootParams(
  * JSON for an inert <script type="application/json"> block. `<` is escaped so a paper title containing "</script>" cannot terminate the block, and U+2028/2029 because they are line terminators in older parsers.
  * @returns the JSON-encoded boot payload, safe to embed inside a script tag.
  */
-export function serializeBoot(boot: ReaderBootParams): string {
+export function serializeStartup(boot: ReaderStartupParams): string {
   return JSON.stringify(boot)
     .replace(/</g, "\\u003c")
     .replace(/\u2028/g, "\\u2028")

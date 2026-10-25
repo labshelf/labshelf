@@ -1,6 +1,6 @@
 // Declares a share's manifest and reads one from untrusted JSON, keeping only the fields the contract names.
 import { BIBLIOGRAPHIC_STRING_FIELDS, type Annotation, type BibliographicFields } from "../model/index.js";
-import { normalizePaperData } from "../reader/index.js";
+import { normalizePaperSidecar } from "../reader/index.js";
 import { isSha256Hex } from "../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#manifest
@@ -37,7 +37,7 @@ const isStringList = (value: unknown): value is string[] => Array.isArray(value)
 const isSize = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
 
 /** The shareable fields of a paper; the user's own fields (status, tags, note, files) never pass. */
-export function sharedMetadataOf(value: unknown): SharedPaperMetadata | undefined {
+export function extractSharedMetadata(value: unknown): SharedPaperMetadata | undefined {
   if (!isObject(value) || !isString(value["id"]) || !isString(value["title"]) || !isString(value["citeKey"])) { return undefined; }
   const metadata: SharedPaperMetadata = { id: value["id"], title: value["title"], citeKey: value["citeKey"] };
   if (isStringList(value["authors"])) { metadata.authors = value["authors"]; }
@@ -62,11 +62,11 @@ function pdfOf(value: unknown): SharedPdf | undefined {
 }
 
 function paperOf(value: unknown): SharedPaper | undefined {
-  const metadata = isObject(value) ? sharedMetadataOf(value["metadata"]) : undefined;
+  const metadata = isObject(value) ? extractSharedMetadata(value["metadata"]) : undefined;
   if (!isObject(value) || !metadata) { return undefined; }
   const paper: SharedPaper = { metadata };
   if (isString(value["bib"])) { paper.bib = value["bib"]; }
-  if (Array.isArray(value["annotations"])) { paper.annotations = normalizePaperData({ annotations: value["annotations"] }).annotations; }
+  if (Array.isArray(value["annotations"])) { paper.annotations = normalizePaperSidecar({ annotations: value["annotations"] }).annotations; }
   const pdf = pdfOf(value["pdf"]);
   if (pdf) { paper.pdf = pdf; }
   return paper;

@@ -2,11 +2,40 @@
 import * as os from "node:os";
 import * as vscode from "vscode";
 
-import { detectSyncFolders, inspectLibraryFolder, loadSharedConfig, updateSharedConfig } from "@labshelf/core/node";
+import {
+  detectSyncFolders,
+  detectLibraryFolder,
+  loadSharedConfig,
+  updateSharedConfig,
+  type SyncFolder,
+} from "@labshelf/core/node";
 import type { LibraryRootController } from "../../activation/index.js";
-import { displayPath, syncToolName } from "./syncFolders/index.js";
+import { formatPath, syncToolName, LIBRARY_FOLDER_NAME } from "./syncFolders/index.js";
 import { moveLibraryTo } from "./moveLibraryTo.js";
-import { moveOfferTarget, pickMoveOffer } from "./pickMoveOffer.js";
+import * as path from "node:path";
+
+function isInside(child: string, parent: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function moveOfferTarget(folder: SyncFolder): string {
+  return path.join(folder.path, LIBRARY_FOLDER_NAME);
+}
+
+/**
+ * @param existingTargets `<syncFolder>/LabShelf` paths that already exist; moving onto them would mix two libraries
+ * @returns the first detected folder worth offering, or undefined when the root is already synced or every tool was dismissed
+ */
+export function pickMoveOffer(
+  root: string,
+  detected: readonly SyncFolder[],
+  dismissed: readonly string[],
+  existingTargets: ReadonlySet<string>,
+): SyncFolder | undefined {
+  if (detected.some((folder) => isInside(root, folder.path))) { return undefined; }
+  return detected.find((folder) => !dismissed.includes(folder.tool) && !existingTargets.has(moveOfferTarget(folder)));
+}
 
 async function readDismissed(): Promise<string[]> {
   const namespace = (await loadSharedConfig()).vscode;
@@ -28,14 +57,14 @@ export async function offerLibraryMove(controller: LibraryRootController): Promi
   const detected = await detectSyncFolders({ home, env: process.env, platform: process.platform, logger: services.logger });
   const existing = new Set<string>();
   for (const folder of detected) {
-    if ((await inspectLibraryFolder(moveOfferTarget(folder))).exists) { existing.add(moveOfferTarget(folder)); }
+    if ((await detectLibraryFolder(moveOfferTarget(folder))).exists) { existing.add(moveOfferTarget(folder)); }
   }
   const offer = pickMoveOffer(root.fsPath, detected, await readDismissed(), existing);
   if (!offer) { return; }
 
   const target = moveOfferTarget(offer);
   const answer = await vscode.window.showInformationMessage(
-    `LabShelf: Found ${syncToolName(offer.tool)}. Move the library to ${displayPath(target, home)}?`, "Move", "Not now",
+    `LabShelf: Found ${syncToolName(offer.tool)}. Move the library to ${formatPath(target, home)}?`, "Move", "Not now",
   );
   if (answer === "Move") { await moveLibraryTo(controller, target); }
   if (answer === "Not now") {

@@ -14,7 +14,7 @@ export function decodeEntities(text: string): string {
 }
 
 /** Attributes of one tag, keys lower-cased, values entity-decoded. */
-export function attributes(tag: string): Record<string, string> {
+export function parseAttributes(tag: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const m of tag.matchAll(/([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/g)) {
     out[m[1]!.toLowerCase()] = decodeEntities(m[3] ?? m[4] ?? m[5] ?? "");
@@ -23,7 +23,7 @@ export function attributes(tag: string): Record<string, string> {
 }
 
 /** @returns the URL resolved against `base`, or undefined for a script, blob, data or non-http(s) link */
-export function absoluteHttpUrl(raw: string | undefined, base: string): string | undefined {
+export function resolveAbsoluteHttpUrl(raw: string | undefined, base: string): string | undefined {
   if (!raw || /^(javascript|blob|data):/i.test(raw)) return undefined;
   try {
     const url = new URL(raw.trim(), base).href;
@@ -34,9 +34,9 @@ export function absoluteHttpUrl(raw: string | undefined, base: string): string |
 }
 
 /** @returns each non-empty `<meta>` as its lowercased name or property and its trimmed content, in document order */
-export function* metaPairs(html: string): Generator<{ key: string; value: string }> {
+export function* walkMetaPairs(html: string): Generator<{ key: string; value: string }> {
   for (const m of html.matchAll(/<meta\b[^>]*>/gi)) {
-    const a = attributes(m[0]);
+    const a = parseAttributes(m[0]);
     const key = (a["name"] ?? a["property"] ?? "").trim().toLowerCase();
     const value = (a["content"] ?? "").trim();
     if (value) yield { key, value };

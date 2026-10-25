@@ -1,7 +1,7 @@
 // Tests back/forward history navigation.
-import { HISTORY_CAP, HistoryStack, type ViewLocation } from '../../../src/reader/navigation/historyStack';
+import { HISTORY_CAP, HistoryStack, type ViewPosition } from '../../../src/reader/navigation/historyStack';
 
-function loc(pageNumber: number, top = 0): ViewLocation {
+function loc(pageNumber: number, top = 0): ViewPosition {
   return { pageNumber, top };
 }
 
@@ -59,7 +59,7 @@ describe('HistoryStack', () => {
         stack.visit(loc(page));
       }
 
-      const popped: ViewLocation[] = [];
+      const popped: ViewPosition[] = [];
       let current = loc(9999);
       while (stack.canGoBack) {
         const target = stack.back(current);

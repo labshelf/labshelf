@@ -3,8 +3,8 @@
  * few at a time, with a bot wall retried through a real tab when the host offers one. Publisher pages that asked for a
  * sign-in are retried last, through that tab and the library's proxies.
  */
-import { accessBest, DEFAULT_LIMITS, downloadBest, rankedCandidates, startLookups } from "./engine/index.js";
-import { makeEnv } from "./env.js";
+import { runBestAccess, DEFAULT_LIMITS, downloadBest, walkRankedCandidates, startFinds } from "./engine/index.js";
+import { createResolverEnv } from "./env.js";
 import type { PdfAttempt, PdfFetchOptions, ResolveContext, ResolvedPdf } from "./pdfResolver.js";
 
 /**
@@ -16,12 +16,12 @@ export async function resolvePdf(
   opts: PdfFetchOptions = {},
   attempts: PdfAttempt[] = [],
 ): Promise<ResolvedPdf | undefined> {
-  const env = makeEnv(opts);
+  const env = createResolverEnv(opts);
   const lookups = new AbortController();
-  const steps = startLookups(ctx, opts, env, DEFAULT_LIMITS.lookupCapMs, lookups.signal);
+  const steps = startFinds(ctx, opts, env, DEFAULT_LIMITS.lookupCapMs, lookups.signal);
   const run = { opts, env, limits: DEFAULT_LIMITS };
-  const found = await downloadBest(ctx, rankedCandidates(steps), run, attempts);
+  const found = await downloadBest(ctx, walkRankedCandidates(steps), run, attempts);
   // Lookups still running once a PDF won would only cost requests.
   lookups.abort();
-  return found ?? accessBest(ctx, run, attempts);
+  return found ?? runBestAccess(ctx, run, attempts);
 }

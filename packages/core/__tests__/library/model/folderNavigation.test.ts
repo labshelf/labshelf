@@ -1,4 +1,4 @@
-import { breadcrumbFor, countPapersUnder, folderLabel, folderPathLabel, parentDir, relativeFolder, baseName } from "@labshelf/core";
+import { deriveBreadcrumb, countPapersUnder, formatFolderLabel, formatFolderPathLabel, deriveParentDir, deriveRelativeFolder, deriveBaseName } from "@labshelf/core";
 
 describe("folder navigation", () => {
   describe.each([
@@ -9,7 +9,7 @@ describe("folder navigation", () => {
     const join = (...parts: string[]): string => parts.join(sep);
 
     it("builds a root-first breadcrumb", () => {
-      expect(breadcrumbFor(root, deep, sep)).toEqual([
+      expect(deriveBreadcrumb(root, deep, sep)).toEqual([
         { label: "All papers", path: root, isRoot: true },
         { label: "ML", path: join(root, "ML"), isRoot: false },
         { label: "Vision", path: deep, isRoot: false },
@@ -17,15 +17,15 @@ describe("folder navigation", () => {
     });
 
     it("returns only the root for the root itself or a folder outside it", () => {
-      expect(breadcrumbFor(root, root, sep)).toHaveLength(1);
-      expect(breadcrumbFor(root, join(root + "-other", "x"), sep)).toHaveLength(1);
+      expect(deriveBreadcrumb(root, root, sep)).toHaveLength(1);
+      expect(deriveBreadcrumb(root, join(root + "-other", "x"), sep)).toHaveLength(1);
     });
 
     it("finds parents, names and labels", () => {
-      expect(parentDir(deep, sep)).toBe(join(root, "ML"));
-      expect(baseName(deep, sep)).toBe("Vision");
-      expect(folderLabel(root, root, sep)).toBe("All papers");
-      expect(folderLabel(root, deep, sep)).toBe("Vision");
+      expect(deriveParentDir(deep, sep)).toBe(join(root, "ML"));
+      expect(deriveBaseName(deep, sep)).toBe("Vision");
+      expect(formatFolderLabel(root, root, sep)).toBe("All papers");
+      expect(formatFolderLabel(root, deep, sep)).toBe("Vision");
     });
 
     it("counts papers at any depth and not siblings that share a prefix", () => {
@@ -35,24 +35,24 @@ describe("folder navigation", () => {
     });
 
     it("labels a folder by its path inside the library, the root as All papers", () => {
-      expect(folderPathLabel(root, deep, sep)).toBe("ML / Vision");
-      expect(folderPathLabel(root, root, sep)).toBe("All papers");
-      expect(folderPathLabel(root, join(root + "-other", "x"), sep)).toBe("All papers");
+      expect(formatFolderPathLabel(root, deep, sep)).toBe("ML / Vision");
+      expect(formatFolderPathLabel(root, root, sep)).toBe("All papers");
+      expect(formatFolderPathLabel(root, join(root + "-other", "x"), sep)).toBe("All papers");
     });
 
     it("names the holder folder relative to the open one, joined with ' / '", () => {
-      expect(relativeFolder(join(deep, "p"), root, sep)).toBe("ML / Vision");
-      expect(relativeFolder(join(root, "p"), root, sep)).toBe("");
-      expect(relativeFolder(join(deep, "p"), deep, sep)).toBe("");
-      expect(relativeFolder(join(root + "-other", "p"), root, sep)).toBe("");
+      expect(deriveRelativeFolder(join(deep, "p"), root, sep)).toBe("ML / Vision");
+      expect(deriveRelativeFolder(join(root, "p"), root, sep)).toBe("");
+      expect(deriveRelativeFolder(join(deep, "p"), deep, sep)).toBe("");
+      expect(deriveRelativeFolder(join(root + "-other", "p"), root, sep)).toBe("");
     });
   });
 
   it("treats the empty path as the root", () => {
-    expect(folderLabel("papers", "", "/")).toBe("All papers");
+    expect(formatFolderLabel("papers", "", "/")).toBe("All papers");
   });
 
   it("keeps a path without a separator as its own parent", () => {
-    expect(parentDir("papers", "/")).toBe("papers");
+    expect(deriveParentDir("papers", "/")).toBe("papers");
   });
 });

@@ -1,7 +1,7 @@
 // Holds one doc's relay state: local updates waiting for a put, requests awaiting an answer, the cursor it holds rows up to and the state the relay holds.
 import * as Y from "yjs";
 import type { RelayCursorStore } from "./relayCursors.js";
-import { growHeld, missingUpdate } from "./relayHeldState.js";
+import { addHeldUpdate, deriveMissingUpdate } from "./relayHeldState.js";
 
 /** The relay answers each store request of a doc in order, so answers match these first in, first out. */
 export type OutstandingRequest = { type: "put"; update: Uint8Array } | { type: "since" } | { type: "snapshot" };
@@ -28,13 +28,13 @@ export class RelayDocLane {
   }
 
   relayHolds(update: Uint8Array): void {
-    this.held = growHeld(this.held, update);
+    this.held = addHeldUpdate(this.held, update);
   }
 
   /** What the doc holds beyond the relay's state and the puts in flight, as one update; undefined when nothing. */
   missing(): Uint8Array | undefined {
-    const expected = this.outstanding.reduce((state, request) => (request.type === "put" ? growHeld(state, request.update) : state), this.held);
-    return missingUpdate(this.doc, expected);
+    const expected = this.outstanding.reduce((state, request) => (request.type === "put" ? addHeldUpdate(state, request.update) : state), this.held);
+    return deriveMissingUpdate(this.doc, expected);
   }
 
   /** Puts sent on a socket that dropped go back to pending, since the relay may never have stored them. */

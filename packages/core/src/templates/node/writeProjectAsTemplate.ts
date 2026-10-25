@@ -4,12 +4,12 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { claimCiteKey, joinWith, libraryLayout } from "../../library/index.js";
+import { ensureCiteKey, joinWith, createLibraryLayout } from "../../library/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE, projectIdSlug, type LatexEngine, type ProjectEntry } from "../../writing/project/index.js";
-import { listProjectsOnDisk } from "../../writing/project/node/index.js";
-import { parseTemplateManifest, serializeTemplateManifest, templateTreeProblem, type TemplateCategory, type TemplateManifest } from "../templateManifest/index.js";
+import { listLibraryProjects } from "../../writing/project/node/index.js";
+import { parseTemplateManifest, serializeTemplateManifest, deriveTemplateTreeProblem, type TemplateCategory, type TemplateManifest } from "../templateManifest/index.js";
 import { listProjectFiles } from "./projectFiles.js";
 import type { FoundFile } from "./walkFolder.js";
 
@@ -19,7 +19,7 @@ const MANIFEST_FILE = "template.yaml";
 const MAX_ID_BASE = 60;
 
 /** What the user fills in when saving; `engine` is the one the app resolved for the build, used when labshelf.yaml names none. */
-export interface SaveTemplateDetails {
+export interface WriteTemplateInput {
   name: string;
   category: TemplateCategory;
   license: string;
@@ -31,7 +31,7 @@ export interface SaveTemplateDetails {
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 async function findProject(libraryRoot: string, projectId: string, logger: ILogger): Promise<ReadyProject> {
-  const entry = (await listProjectsOnDisk(libraryRoot, logger)).find((e) => e.kind === "ready" && e.settings.id === projectId);
+  const entry = (await listLibraryProjects(libraryRoot, logger)).find((e) => e.kind === "ready" && e.settings.id === projectId);
   if (entry === undefined || entry.kind !== "ready") { throw new Error(`no project has the id "${projectId}"`); }
   return entry;
 }
@@ -39,12 +39,12 @@ async function findProject(libraryRoot: string, projectId: string, logger: ILogg
 /** The kept files of the project; a symbolic link or a tree that breaks the path rules throws naming the path. */
 async function projectFiles(folder: string): Promise<FoundFile[]> {
   const files = await listProjectFiles(folder);
-  const problem = templateTreeProblem(files);
+  const problem = deriveTemplateTreeProblem(files);
   if (problem !== undefined) { throw new Error(problem); }
   return files;
 }
 
-function buildManifest(project: ReadyProject, details: SaveTemplateDetails, id: string): TemplateManifest {
+function buildManifest(project: ReadyProject, details: WriteTemplateInput, id: string): TemplateManifest {
   const { format, engine: projectEngine } = project.settings;
   const engine = format === "typst" ? "typst" : projectEngine ?? details.engine;
   if (engine === undefined) { throw new Error(`project "${project.settings.id}" has no engine; set engine in its ${PROJECT_FILE}`); }
@@ -63,7 +63,7 @@ async function claimTemplateId(templatesRoot: string, name: string): Promise<str
     throw error;
   });
   const base = projectIdSlug(name).slice(0, MAX_ID_BASE).replace(/-+$/, "");
-  return claimCiteKey(base, taken, (id) => fs.stat(path.join(templatesRoot, id)).then(() => true, () => false));
+  return ensureCiteKey(base, taken, (id) => fs.stat(path.join(templatesRoot, id)).then(() => true, () => false));
 }
 
 async function stageTemplate(staging: string, manifest: TemplateManifest, files: readonly FoundFile[]): Promise<void> {
@@ -77,13 +77,13 @@ async function stageTemplate(staging: string, manifest: TemplateManifest, files:
  * Copies the project's files and a template.yaml into a staging folder under .research/staging/, then renames it into
  * <library>/templates/<id>/, so a failure never leaves a half-written template.
  */
-export async function saveProjectAsTemplate(
+export async function writeProjectAsTemplate(
   libraryRoot: string,
   projectId: string,
-  details: SaveTemplateDetails,
+  details: WriteTemplateInput,
   logger: ILogger,
 ): Promise<TemplateManifest> {
-  const layout = libraryLayout(libraryRoot, joinWith(path.sep as "/" | "\\"));
+  const layout = createLibraryLayout(libraryRoot, joinWith(path.sep as "/" | "\\"));
   const templatesRoot = path.join(libraryRoot, "templates");
   let staging: string | undefined;
   let folder: string | undefined;

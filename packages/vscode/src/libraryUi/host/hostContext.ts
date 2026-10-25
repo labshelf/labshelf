@@ -3,7 +3,7 @@
  * webview, notices, paper lookup, and the panel's own reactions to the UI's ready and navigate messages.
  */
 import type { HostToUi, PaperRecord } from '@labshelf/core';
-import type { LibraryPaths } from '../libraryPaths.js';
+import type { LibraryPaths } from '../createLibraryPaths.js';
 import type { ListPanelDeps } from '../listPanelDeps.js';
 
 export interface ListHostContext {

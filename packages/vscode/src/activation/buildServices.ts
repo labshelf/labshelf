@@ -1,12 +1,12 @@
 // Constructs and wires every application service for a given library root.
 import * as vscode from "vscode";
 
-import { LibraryStore, PaperDataStore, PdfImportParser, BibTeXService, libraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
+import { LibraryStore, PaperSidecarStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
 import { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
 import { ensureLibraryStructure } from "../storage/paths/index.js";
 import { VscodeFileSystem } from "../storage/index.js";
-import { queueTextLayers } from "../command/index.js";
-import { reindexLibrary, type ReindexSummary } from "../storage/index.js";
+import { addTextLayerJobs } from "../command/index.js";
+import { refreshLibrary, type ReindexSummary } from "../storage/index.js";
 import type { ActiveServices } from "../command/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import type { ILogger } from "@labshelf/core";
@@ -24,10 +24,10 @@ function createReindexer(
   logger: ILogger,
   getTextLayers: () => PaperTextLayers,
 ): () => Promise<ReindexSummary> {
-  return () => reindexLibrary({
+  return () => refreshLibrary({
     store,
     events,
-    queueCheck: (papers) => void queueTextLayers(getTextLayers(), papers, { mode: "check", logger }),
+    queueCheck: (papers) => void addTextLayerJobs(getTextLayers(), papers, { mode: "check", logger }),
   });
 }
 
@@ -38,14 +38,14 @@ export async function buildServices(
   events: LibraryEvents,
   adapters: HostAdapters,
 ): Promise<ActiveServices> {
-  const paths = libraryLayout(root, vscode.Uri.joinPath);
+  const paths = createLibraryLayout(root, vscode.Uri.joinPath);
   const fileSystem = createFileSystem(root, adapters);
   await ensureLibraryStructure(root, fileSystem);
   const device = adapters.deviceLayout(root.fsPath);
   const logger = adapters.createLogger(device.appLogPath);
   const { ocr, textLayerBuilder } = adapters.createPdfTextServices(logger);
   const pdfImportParser = new PdfImportParser(adapters.pdfOpener, { ocr, logger });
-  const bibTeXService = new BibTeXService(fileSystem);
+  const bibTeXService = new BibtexService(fileSystem);
   const mutations: MutationContext = {
     fs: fileSystem, paths: adapters.paths, artifacts: bibTeXService, logger, papersRoot: paths.papersRoot().fsPath,
   };
@@ -65,7 +65,7 @@ export async function buildServices(
   };
   const importer = new PaperImporter(mutations, store, reindex, parse, network);
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
-  const paperDataStore = new PaperDataStore(adapters.createSidecarPort(libraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
+  const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
   // Library sidebar and the list panel all attach after buildServices returns — so the paper:added events this

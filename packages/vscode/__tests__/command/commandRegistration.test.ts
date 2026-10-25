@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { describeLibraryTextLayers, ensurePaperPdf, registerCommands } from '../../src/command/index.js';
-import type { ActiveServices, RequireServices } from '../../src/command/index.js';
+import type { ActiveServices, EnsureServices } from '../../src/command/index.js';
 import type { PaperService } from '../../src/library/index';
 import type { ILogger, PaperRecord } from '@labshelf/core';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
@@ -9,11 +9,11 @@ import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 // which papers a command hands it, so stub it and keep the rest real.
 jest.mock('../../src/command/textLayerQueue', () => ({
   ...jest.requireActual('../../src/command/textLayerQueue'),
-  queueTextLayers: jest.fn(async () => undefined),
+  addTextLayerJobs: jest.fn(async () => undefined),
 }));
-import { queueTextLayers } from '../../src/command/textLayerQueue';
+import { addTextLayerJobs } from '../../src/command/textLayerQueue';
 
-function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<ILogger>): RequireServices {
+function makeRequireServices(paperService?: Partial<PaperService>, logger?: Partial<ILogger>): EnsureServices {
   const ps = paperService ?? { listPapers: jest.fn(async () => []), regenerateBibTeX: jest.fn(async () => 0), reconcilePdf: jest.fn(async () => undefined) };
   const lg = logger ?? { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
   const store = makeMemoryPaperDataStore();
@@ -25,7 +25,7 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   }));
 }
 
-function makeNullRequireServices(): RequireServices {
+function makeNullRequireServices(): EnsureServices {
   return jest.fn(async () => null);
 }
 
@@ -202,8 +202,8 @@ describe('labshelf.makeLibrarySearchable', () => {
 
     await handlerFor('labshelf.makeLibrarySearchable')();
 
-    expect(queueTextLayers as jest.Mock).toHaveBeenCalledTimes(1);
-    const passed = (queueTextLayers as jest.Mock).mock.calls[0][1] as PaperRecord[];
+    expect(addTextLayerJobs as jest.Mock).toHaveBeenCalledTimes(1);
+    const passed = (addTextLayerJobs as jest.Mock).mock.calls[0][1] as PaperRecord[];
     expect(passed.map((p) => p.id)).toEqual(['a', 'c']);
   });
 });

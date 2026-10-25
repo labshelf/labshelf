@@ -1,7 +1,7 @@
 // Registers the Library sidebar webview and the helpers other registration modules use to sync or refresh it.
 import * as vscode from "vscode";
 
-import { libraryLayout } from "@labshelf/core";
+import { createLibraryLayout } from "@labshelf/core";
 import { LibrarySidebarView, type SidebarProjectTreesDep, type SidebarProjectsDep, type SidebarSpacesDep } from "../libraryUi/index.js";
 import type { LibraryNode } from "../libraryUi/index.js";
 import { ListWebviewPanel } from "../libraryUi/index.js";
@@ -53,7 +53,7 @@ export function registerLibrarySidebar(deps: LibrarySidebarDeps): LibrarySidebar
   const initialRoot = papersRootUri();
   if (initialRoot) { view.setLibrary(initialRoot); }
   controller.onDidChangeRoot(({ root }) => {
-    view.setLibrary(libraryLayout(root, vscode.Uri.joinPath).papersRoot());
+    view.setLibrary(createLibraryLayout(root, vscode.Uri.joinPath).papersRoot());
   });
 
   return {

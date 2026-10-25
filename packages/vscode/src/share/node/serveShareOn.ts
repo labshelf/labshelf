@@ -1,10 +1,10 @@
 // Serves the sharing channel of one webview from the desktop sharing host.
 import * as vscode from "vscode";
 
-import { serveSharing, type ILogger, type SharingHost } from "@labshelf/core";
+import { serveShare, type ILogger, type ShareHost } from "@labshelf/core";
 
-export function serveSharingOn(webview: vscode.Webview, host: SharingHost, logger: ILogger): vscode.Disposable {
-  const stop = serveSharing(host, {
+export function serveShareOn(webview: vscode.Webview, host: ShareHost, logger: ILogger): vscode.Disposable {
+  const stop = serveShare(host, {
     post: (reply) => { void webview.postMessage(reply); },
     subscribe: (handler) => {
       const listener = webview.onDidReceiveMessage(handler);

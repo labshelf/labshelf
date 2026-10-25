@@ -34,7 +34,7 @@ interface HistoryObjectRow {
   bytes: Uint8Array;
 }
 
-export interface LabShelfSchema {
+export interface IdbSchema {
   files: {
     key: string;
     value: FileRow;

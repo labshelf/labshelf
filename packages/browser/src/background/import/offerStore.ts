@@ -31,7 +31,7 @@ async function allOffers(): Promise<PdfOffer[]> {
 }
 
 /** Stores `offer` as the newest; a tab keeps one offer, and only the latest download's offer stays. */
-export async function saveOffer(offer: PdfOffer): Promise<{ kept: PdfOffer[]; dropped: PdfOffer[] }> {
+export async function writeOffer(offer: PdfOffer): Promise<{ kept: PdfOffer[]; dropped: PdfOffer[] }> {
   const others = (await allOffers()).filter((o) => o.id !== offer.id);
   const replaced = (o: PdfOffer): boolean => o.tabId === offer.tabId || (offer.source === "download" && o.source === "download");
   const kept = [offer, ...others.filter((o) => !replaced(o))].slice(0, MAX_OFFERS);
@@ -46,25 +46,25 @@ export async function offerForTab(tabId: number, now = Date.now()): Promise<PdfO
     ?? all.find((o) => o.source === "download" && now - o.at < DOWNLOAD_OFFER_MS);
 }
 
-export async function offerById(id: string): Promise<PdfOffer | undefined> {
+export async function readOffer(id: string): Promise<PdfOffer | undefined> {
   return (await allOffers()).find((o) => o.id === id);
 }
 
-export async function dropOffer(id: string): Promise<void> {
+export async function removeOffer(id: string): Promise<void> {
   const all = await allOffers();
   const rest = all.filter((o) => o.id !== id);
   if (rest.length !== all.length) await bx.storage.session.set({ [OFFERS]: rest });
 }
 
 /** The tab offer of `tabId`, dropped from the store; used when the tab leaves its PDF or closes. */
-export async function takeTabOffer(tabId: number): Promise<PdfOffer | undefined> {
+export async function removeTabOffer(tabId: number): Promise<PdfOffer | undefined> {
   const offer = (await allOffers()).find((o) => o.tabId === tabId && o.source === "tab");
-  if (offer) await dropOffer(offer.id);
+  if (offer) await removeOffer(offer.id);
   return offer;
 }
 
 /** @returns true the first time `url` is seen in this browser session */
-export async function firstSighting(url: string): Promise<boolean> {
+export async function isFirstSighting(url: string): Promise<boolean> {
   const seen = ((await bx.storage.session.get(SEEN))[SEEN] as string[] | undefined) ?? [];
   if (seen.includes(url)) return false;
   await bx.storage.session.set({ [SEEN]: [url, ...seen].slice(0, MAX_SEEN) });

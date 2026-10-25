@@ -1,5 +1,5 @@
 /** Verifies that a project's labshelf.bib follows its citations and the main file loads it once. */
-import { BIBLIOGRAPHY_HEADER, projectCitationKeys, updateProjectBibliography, type PaperRecord, type ProjectFormat } from "@labshelf/core";
+import { BIBLIOGRAPHY_HEADER, listProjectCiteKeys, updateProjectBibliography, type PaperRecord, type ProjectFormat } from "@labshelf/core";
 
 import { memoryCatalog, readText, writeTree, type MemoryCatalog } from "../../support/memoryProjectCatalog";
 
@@ -18,13 +18,13 @@ const read = (context: MemoryCatalog, name: string): string => readText(context.
 const project = (format: ProjectFormat, main: string, bibliography?: string) =>
   ({ folder: DIR, main, settings: { id: "p", format, bibliography } });
 
-describe("projectCitationKeys", () => {
+describe("listProjectCiteKeys", () => {
   it("reads every source file of the format, skipping hidden folders and node_modules", async () => {
     const context = await folderWith({
       "main.tex": "\\cite{a}", "chapters/one.tex": "\\cite{b}", "notes.typ": "@c",
       ".git/x.tex": "\\cite{d}", "node_modules/y.tex": "\\cite{e}",
     });
-    expect((await projectCitationKeys(context, DIR, "latex")).sort()).toEqual(["a", "b"]);
+    expect((await listProjectCiteKeys(context, DIR, "latex")).sort()).toEqual(["a", "b"]);
   });
 });
 

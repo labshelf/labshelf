@@ -9,7 +9,7 @@ export interface TabLease {
 
 export type TabLeaseResult = { kind: "busy" } | { kind: "owned"; lease: TabLease };
 
-export function tabLeaseName(libraryId: string, shareId: string): string {
+export function createTabLeaseName(libraryId: string, shareId: string): string {
   return `labshelf:collab:${libraryId}:${shareId}`;
 }
 
@@ -54,20 +54,20 @@ function holdLock(name: string, options: LockOptions): Promise<TabLease | undefi
 }
 
 /** Takes the share's lock only if no other tab holds it. */
-export async function acquireTabLease(name: string): Promise<TabLeaseResult> {
+export async function openTabLease(name: string): Promise<TabLeaseResult> {
   const lease = await holdLock(name, { mode: "exclusive", ifAvailable: true });
   return lease ? { kind: "owned", lease } : { kind: "busy" };
 }
 
 /** Takes the share's lock from the tab holding it ("Use here"). */
-export async function takeOverTabLease(name: string): Promise<TabLease> {
+export async function updateTabLease(name: string): Promise<TabLease> {
   const lease = await holdLock(name, { mode: "exclusive", steal: true });
   if (!lease) { throw new Error(`The browser granted no lock for ${name} on a steal request`); }
   return lease;
 }
 
 /** Waits until no other tab holds the share's lock, then takes it; rejects with the AbortError when `signal` aborts first. */
-export async function waitForTabLease(name: string, signal: AbortSignal): Promise<TabLease> {
+export async function watchTabLease(name: string, signal: AbortSignal): Promise<TabLease> {
   const lease = await holdLock(name, { mode: "exclusive", signal });
   if (!lease) { throw new Error(`The browser granted no lock for ${name} on a waiting request`); }
   return lease;

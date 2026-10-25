@@ -3,15 +3,15 @@
 import {
   decodeClientMessage, encodeRelayMessage, RELAY_ERROR_CODE, type RelayClientMessage, type RelayServerMessage,
 } from "../connection/index.js";
-import { openSocketPair, upgradeResponse, type HibernatingSocket, type RoomState } from "./cloudflareRuntime.js";
+import { openConnectionPair, createUpgradeResponse, type HibernatingConnection, type RoomState } from "./cloudflareRuntime.js";
 import { MAX_STORED_FRAME_BYTES, RoomStorage } from "./roomStorage.js";
 
 /** The paths the Worker uses to ask a share's Durable Object about its claim; the body is the relay-token hash. */
 export const ROOM_PATH = { claim: "/claim", check: "/check" } as const;
 
-const peerIdOf = (socket: HibernatingSocket): number => (socket.deserializeAttachment() as { id: number }).id;
+const peerIdOf = (socket: HibernatingConnection): number => (socket.deserializeAttachment() as { id: number }).id;
 
-function send(socket: HibernatingSocket, message: RelayServerMessage): void {
+function send(socket: HibernatingConnection, message: RelayServerMessage): void {
   try {
     socket.send(encodeRelayMessage(message));
   } catch (error) {
@@ -29,9 +29,9 @@ export class Room {
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
-      const { client, server } = openSocketPair();
+      const { client, server } = openConnectionPair();
       this.admit(server);
-      return upgradeResponse(client);
+      return createUpgradeResponse(client);
     }
     const path = new URL(request.url).pathname;
     const tokenHash = await request.text();
@@ -41,7 +41,7 @@ export class Room {
   }
 
   /** Accepts a server socket with the Hibernation API and introduces it to the peers already connected. */
-  admit(socket: HibernatingSocket): void {
+  admit(socket: HibernatingConnection): void {
     const id = this.storage.nextPeerId();
     const others = this.ctx.getWebSockets();
     this.ctx.acceptWebSocket(socket);
@@ -50,7 +50,7 @@ export class Room {
     for (const other of others) { send(other, { type: "joined", id }); }
   }
 
-  webSocketMessage(socket: HibernatingSocket, message: string | ArrayBuffer): void {
+  webSocketMessage(socket: HibernatingConnection, message: string | ArrayBuffer): void {
     // CONTRACT: documents/contracts/relay.md#socket-messages — a text message is ignored.
     if (typeof message === "string") { return; }
     const decoded = decodeClientMessage(new Uint8Array(message));
@@ -60,22 +60,22 @@ export class Room {
     send(socket, { type: "error", code: RELAY_ERROR_CODE[code] });
   }
 
-  webSocketClose(socket: HibernatingSocket): void {
+  webSocketClose(socket: HibernatingConnection): void {
     // PLATFORM: from compatibility date 2026-04-07 the runtime answers the close frame itself, so the socket is not closed here.
     const id = peerIdOf(socket);
     for (const other of this.others(socket)) { send(other, { type: "left", id }); }
   }
 
-  webSocketError(socket: HibernatingSocket, error: unknown): void {
+  webSocketError(socket: HibernatingConnection, error: unknown): void {
     console.warn(`relay room: socket of peer ${peerIdOf(socket)} failed: ${String(error)}`);
     this.webSocketClose(socket);
   }
 
-  private others(socket: HibernatingSocket): HibernatingSocket[] {
+  private others(socket: HibernatingConnection): HibernatingConnection[] {
     return this.ctx.getWebSockets().filter((other) => other !== socket);
   }
 
-  private handle(socket: HibernatingSocket, message: RelayClientMessage): void {
+  private handle(socket: HibernatingConnection, message: RelayClientMessage): void {
     const from = peerIdOf(socket);
     if ((message.type === "put" || message.type === "snapshot") && message.frame.length > MAX_STORED_FRAME_BYTES) {
       send(socket, { type: "error", code: RELAY_ERROR_CODE.tooLarge, doc: message.doc });

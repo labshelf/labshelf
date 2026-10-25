@@ -1,4 +1,5 @@
 import { describeIfSqlite, placeholderEnvTest, sqliteAvailable } from "./sqliteAvailable";
+import { decodeEmbedding, encodeEmbedding } from "../../../src/ai/node/sqliteVectorIndex";
 
 placeholderEnvTest("SqliteVectorStore");
 
@@ -46,5 +47,19 @@ describeIfSqlite("SqliteVectorStore", () => {
     await store.deleteByPaper("p1");
     const results = await store.search(new Float32Array([1, 0, 0]), 5);
     expect(results).toEqual([]);
+  });
+});
+
+describe("embeddingCodec", () => {
+  it("round-trips a Float32Array", () => {
+    const original = new Float32Array([0.1, -0.5, 1e-3, 2.5]);
+    const buf = encodeEmbedding(original);
+    const decoded = decodeEmbedding(buf, original.length);
+    expect(Array.from(decoded)).toEqual(Array.from(original));
+  });
+
+  it("throws on dimension mismatch", () => {
+    const buf = encodeEmbedding(new Float32Array([1, 2, 3]));
+    expect(() => decodeEmbedding(buf, 4)).toThrow();
   });
 });

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import {
-  arxivIdFromUrl, bibCardEntry, extractDoi, normalizeArxivId, plainField, writeNewPaper,
+  extractArxivIdentifierFromUrl, createBibliographyCardEntry, extractDoi, normalizeArxivIdentifier, extractPlainField, createPaper,
   type BibEntry, type ILogger, type MutationContext,
 } from "@labshelf/core";
 import type { PaperImporter } from "../../../library/index.js";
@@ -11,7 +11,7 @@ import { findBibEntry } from "./projectBibliographyFiles.js";
 
 const MODULE = "writing/preview";
 
-export interface AddBibDeps {
+export interface AddBibliographyDeps {
   projectFolder: string;
   logger: ILogger;
   importer: Pick<PaperImporter, "importFromNetwork">;
@@ -25,18 +25,18 @@ export interface AddBibDeps {
 
 /** The DOI or arXiv id the entry names, in a form the importer takes. */
 function identifierOf(entry: BibEntry): string | undefined {
-  const field = (name: string): string => plainField(entry.fields.get(name));
+  const field = (name: string): string => extractPlainField(entry.fields.get(name));
   const doi = extractDoi(field("doi"));
   if (doi) { return doi; }
-  const arxiv = normalizeArxivId(field("eprint")) ?? arxivIdFromUrl(field("url"));
+  const arxiv = normalizeArxivIdentifier(field("eprint")) ?? extractArxivIdentifierFromUrl(field("url"));
   return arxiv ? `arXiv:${arxiv}` : undefined;
 }
 
-async function writeFromFields(deps: AddBibDeps, entry: BibEntry, file: string): Promise<string> {
-  const card = bibCardEntry(entry);
-  const url = plainField(entry.fields.get("url"));
-  const publisher = plainField(entry.fields.get("publisher"));
-  const record = await writeNewPaper(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, {
+async function writeFromFields(deps: AddBibliographyDeps, entry: BibEntry, file: string): Promise<string> {
+  const card = createBibliographyCardEntry(entry);
+  const url = extractPlainField(entry.fields.get("url"));
+  const publisher = extractPlainField(entry.fields.get("publisher"));
+  const record = await createPaper(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, {
     citeKey: entry.key,
     fields: {
       title: card.title ?? entry.key,
@@ -52,7 +52,7 @@ async function writeFromFields(deps: AddBibDeps, entry: BibEntry, file: string):
   return record.id;
 }
 
-export async function addBibToLibrary(deps: AddBibDeps, key: string): Promise<void> {
+export async function addBibliographyToLibrary(deps: AddBibliographyDeps, key: string): Promise<void> {
   let file: string | undefined;
   try {
     const found = await findBibEntry(deps.projectFolder, key);

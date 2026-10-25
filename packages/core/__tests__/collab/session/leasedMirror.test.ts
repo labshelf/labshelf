@@ -1,8 +1,8 @@
 /** Pins that one mirror at a time writes a shared project folder, and that a waiting mirror takes over once the lease frees. */
-import { fileText, indexFiles } from "../../../src/collab/model/index";
+import { readFileText, readShareIndexDocFiles } from "../../../src/collab/model/index";
 import type { LeaseScheduler } from "../../../src/collab/mirror/mirrorScheduler";
-import { libraryMirrorDisk } from "../../../src/collab/mirror/index";
-import { leasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
+import { createLibraryMirrorFileSystem } from "../../../src/collab/mirror/index";
+import { createLeasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { runUntil, type FakeClock } from "../peer/fakeNetwork";
 import { runFor } from "../transport/relay/fakeRelay";
@@ -26,11 +26,11 @@ function leaseScheduler(clock: FakeClock): LeaseScheduler {
 /** A host on `device`'s library whose mirror records the paths it writes. */
 function host(net: Network, device: Device) {
   const writes: string[] = [];
-  const startMirror = leasedMirrorFactory({
+  const startMirror = createLeasedMirrorFactory({
     identity: { id: async () => "11111111-1111-4111-8111-111111111111" },
     fs: device.catalog.fs, app: "vscode", logger: device.catalog.logger, mergeText, scheduler: leaseScheduler(net.clock),
     disk: (folder) => {
-      const disk = libraryMirrorDisk(device.catalog.fs, folder);
+      const disk = createLibraryMirrorFileSystem(device.catalog.fs, folder);
       return { ...disk, write: async (path, bytes) => { writes.push(path); await disk.write(path, bytes); } };
     },
   });
@@ -57,8 +57,8 @@ describe("a leased mirror", () => {
 
     // The owner's first scan adds main.typ to the share after real-time settle waits, so the edit must come after it.
     await net.drive(owner.mirror!.idle());
-    expect(await runUntil(net.clock, () => indexFiles(owner.session.index).has("main.typ"))).toBe(true);
-    fileText(owner.session.openDoc("main.typ")).insert(0, "Draft ");
+    expect(await runUntil(net.clock, () => readShareIndexDocFiles(owner.session.index).has("main.typ"))).toBe(true);
+    readFileText(owner.session.openDoc("main.typ")).insert(0, "Draft ");
     await runFor(net.clock, 3000);
     await net.drive(owner.mirror!.idle());
     expect(ada.read(`${FOLDER}/main.typ`)).toBe("Draft = Hello\n");

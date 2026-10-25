@@ -1,6 +1,6 @@
 /** Stores the user's description of one file in a paper folder under the `files` key of metadata.yaml. */
 import type { PaperRecord } from "../../model/index.js";
-import { readPaperOnDisk, writePaperRecord, type MutationContext } from "../mutations/index.js";
+import { readPaperOnFileSystem, writePaperRecord, type MutationContext } from "../mutations/index.js";
 import { describePaperFile } from "./describePaperFile.js";
 import { isHiddenPaperEntry } from "./hiddenEntries.js";
 
@@ -9,13 +9,13 @@ import { isHiddenPaperEntry } from "./hiddenEntries.js";
  * @returns the paper as written, or undefined when the folder holds no paper
  * @throws when `name` is not a visible entry of the paper folder
  */
-export async function describePaperFileOnDisk(
+export async function describePaperFileOnFileSystem(
   ctx: MutationContext,
   folder: string,
   name: string,
   description: string,
 ): Promise<PaperRecord | undefined> {
-  const current = await readPaperOnDisk(ctx, folder);
+  const current = await readPaperOnFileSystem(ctx, folder);
   if (!current) { return undefined; }
   const onDisk = (await ctx.fs.listDir(folder)).filter((entry) => !isHiddenPaperEntry(entry));
   const files = isHiddenPaperEntry(name) ? undefined : describePaperFile(current.files, name, description, onDisk);

@@ -3,12 +3,12 @@ import { join } from "node:path";
 
 import type { ILogger } from "../../../../ports/index.js";
 import type { FetchLike } from "../index.js";
-import { systemTexProvider } from "../systemTex/index.js";
+import { createSystemTexProvider } from "../systemTex/index.js";
 
 import { installTexLive } from "./installTexLive.js";
 import { installTinyTex } from "./installTinyTex.js";
 import { createManagedTexProvider, type ManagedTexProvider } from "./managedTexProvider.js";
-import { sharedToolsRoot } from "./toolsDir.js";
+import { resolveSharedToolsDir } from "./toolsDir.js";
 
 export interface SharedTexProviderOptions {
   env: NodeJS.ProcessEnv;
@@ -21,10 +21,10 @@ export interface SharedTexProviderOptions {
 export function createSharedTexProvider({ env, platform, homeDir, logger, fetchImpl }: SharedTexProviderOptions): ManagedTexProvider {
   const deps = { fetchImpl, logger, platform };
   return createManagedTexProvider({
-    texRoot: join(sharedToolsRoot(env, platform, homeDir), "tex"),
+    texRoot: join(resolveSharedToolsDir(env, platform, homeDir), "tex"),
     logger,
     platform,
-    system: systemTexProvider(),
+    system: createSystemTexProvider(),
     installers: { tinytex: (run) => installTinyTex(deps, run), texlive: (run) => installTexLive(deps, run) },
   });
 }

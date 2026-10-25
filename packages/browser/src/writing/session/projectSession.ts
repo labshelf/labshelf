@@ -1,6 +1,6 @@
 // Opens and closes the project shown in the library page: its tabs, the sidebar's trees and what a tree click does.
 import type { ChecklistGrouping, ILogger, ProjectEntry, ProjectTreeView, SidebarOpenProject } from "@labshelf/core";
-import { parseTabId } from "../../libraryUi/editorArea";
+import { parseTab } from "../../libraryUi/editorArea";
 import type { Workspace } from "../../libraryUi/editorArea";
 import type { OpenProjectSnapshot } from "./openProjectSnapshot";
 
@@ -39,7 +39,7 @@ const mainOf = (entry: ProjectEntry): string | undefined => (entry.kind === "rea
 
 function belongsTo(projectId: string): (tabId: string) => boolean {
   return (tabId) => {
-    const tab = parseTabId(tabId);
+    const tab = parseTab(tabId);
     return tab !== null && (tab.kind === "source" || tab.kind === "preview" || tab.kind === "comments" || tab.kind === "history") && tab.params["projectId"] === projectId;
   };
 }

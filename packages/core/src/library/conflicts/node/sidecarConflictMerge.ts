@@ -3,7 +3,7 @@ import { promises as fs, type Stats } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { libraryLayout, SIDECAR_FILE } from "../../layout.js";
+import { createLibraryLayout, SIDECAR_FILE } from "../../layout.js";
 import { writeFileAtomic } from "../../node/atomicWrite.js";
 import type { ConflictCopy } from "../conflictCopy.js";
 import { parseConflictName } from "../conflictNames.js";
@@ -112,7 +112,7 @@ async function mergePaper(conflicts: ConflictCopy[], dataJson: string, tmpDir: s
  * @returns the copies that could not be merged; they stay on disk.
  */
 export async function mergeSidecarConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]> {
-  const layout = libraryLayout(root, path.join);
+  const layout = createLibraryLayout(root, path.join);
   const unmerged: ConflictCopy[] = [];
   for (const paper of await readDirOrEmpty(layout.paperDataRoot())) {
     if (!paper.isDirectory()) { continue; }

@@ -2,14 +2,14 @@
 import * as vscode from "vscode";
 
 import {
-  citationEntries, citedKeysAt,
+  deriveCitationEntries, findCiteKeysAt,
   type Annotation, type CitationEntry, type CitationQuery, type ILogger, type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type TypstCite,
 } from "@labshelf/core";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
-import type { SynctexLookup } from "../synctex/index.js";
-import { cardDetails, warn } from "./citationCardFacts.js";
-import { citingSites, type CitingSite } from "./citingCommands.js";
-import { sourceLineAt, type LocatedSourceLine } from "./sourceLineAt.js";
+import type { SynctexFinder } from "../synctex/index.js";
+import { readCardDetails, reportWarning } from "./citationCardFacts.js";
+import { listCitingSites, type CitingSite } from "./citingCommands.js";
+import { findSourceLine, type LocatedSourceLine } from "./findSourceLine.js";
 
 export interface PreviewCitationDeps {
   logger: ILogger;
@@ -19,7 +19,7 @@ export interface PreviewCitationDeps {
   listPapers: () => Promise<PaperRecord[]>;
   /** Where the Typst build behind the shown PDF placed its citations. */
   typstCites: () => readonly TypstCite[];
-  synctex: () => Promise<SynctexLookup>;
+  synctex: () => Promise<SynctexFinder>;
   highlightsOf: (paperId: string) => Promise<Annotation[]>;
 }
 
@@ -28,16 +28,16 @@ function areaCenter(area: CitationQuery["area"]): PagePoint {
 }
 
 /** Answers with no entries on a failure; a hover must not raise a notice every time. */
-export async function lookupCitation(deps: PreviewCitationDeps, query: CitationQuery): Promise<CitationEntry[]> {
+export async function findCitation(deps: PreviewCitationDeps, query: CitationQuery): Promise<CitationEntry[]> {
   try {
     // The source line behind the place is read once: it finds the keys of a LaTeX text and the citing command of every key.
     let located: Promise<LocatedSourceLine | undefined> | undefined;
-    const locate = (point: PagePoint): Promise<LocatedSourceLine | undefined> => (located ??= sourceLineAt(deps.synctex, point));
-    const keys = await citedKeysAt(query, { format: deps.format, typstCites: deps.typstCites(), sourceLineAt: locate });
+    const locate = (point: PagePoint): Promise<LocatedSourceLine | undefined> => (located ??= findSourceLine(deps.synctex, point));
+    const keys = await findCiteKeysAt(query, { format: deps.format, typstCites: deps.typstCites(), sourceLineAt: locate });
     if (keys.length === 0) { return []; }
     const papers = await deps.listPapers();
     const sites = deps.format === "latex" ? await citingSitesAt(deps, keys, () => locate(areaCenter(query.area))) : new Map<string, CitingSite>();
-    return citationEntries(keys, papers, await cardDetails(deps, keys, papers, sites));
+    return deriveCitationEntries(keys, papers, await readCardDetails(deps, keys, papers, sites));
   } catch (error) {
     await deps.logger.log("WARN", PREVIEW_LOG_MODULE, "Citation lookup failed", { projectFolder: deps.projectFolder, page: query.area.page, error: String(error) });
     return [];
@@ -50,9 +50,9 @@ async function citingSitesAt(
 ): Promise<Map<string, CitingSite>> {
   try {
     const source = await locate();
-    return source ? citingSites(deps.paths, deps.format, deps.projectFolder, source, keys) : new Map();
+    return source ? listCitingSites(deps.paths, deps.format, deps.projectFolder, source, keys) : new Map();
   } catch (error) {
-    await warn(deps, "Reading the citing source for the citation card failed", error);
+    await reportWarning(deps, "Reading the citing source for the citation card failed", error);
     return new Map();
   }
 }

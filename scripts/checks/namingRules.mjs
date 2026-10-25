@@ -180,10 +180,12 @@ function featureViolations(tokens, srcPath) {
 function folderViolations(index, segment, level) {
   if (!CAMEL.test(segment)) return [{ rule: "folder-case", message: `folder "${segment}" is not camelCase`, hint: "rename it in camelCase", words: [] }];
   const context = `folder "${segment}": `;
+  // A declared domain or runtime names its top-level folder even when the bare word is compoundOnly elsewhere (browser/src/options).
+  if (level === 0 && index.domains.has(segment)) return [];
   const tokens = analyse(index, segment, false);
   const found = wordViolations(tokens, context);
   if (level === 0) {
-    if (!index.domains.has(segment)) found.push({ rule: "folder-term", message: `${context}top-level folder is not a domain or runtime`, hint: "add it under domains in vocabulary.yaml or use an existing one", words: [segment] });
+    found.push({ rule: "folder-term", message: `${context}top-level folder is not a domain or runtime`, hint: "add it under domains in vocabulary.yaml or use an existing one", words: [segment] });
     return found;
   }
   const single = tokens.length === 1 ? tokens[0] : undefined;

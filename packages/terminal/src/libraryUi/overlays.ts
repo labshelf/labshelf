@@ -3,16 +3,16 @@
 import { SYNTAX_HELP } from "@labshelf/core";
 
 import type { Screen, Style } from "../screen/index.js";
-import { fit, stringWidth, truncate, wrap } from "../screen/index.js";
-import { BINDINGS, keyLabel, type BindingGroup } from "./keymap.js";
-import type { TextInputState } from "./textInput.js";
+import { formatFitted, deriveStringWidth, formatTruncated, splitWrapped } from "../screen/index.js";
+import { BINDINGS, formatShortcut, type BindingGroup } from "./keymap.js";
+import type { TextInputState } from "./createTextInput.js";
 import { theme } from "./theme.js";
 
-export type PromptPurpose = "add" | "tags" | "tagsBatch" | "rename" | "command" | "export";
+export type AskPurpose = "add" | "tags" | "tagsBatch" | "rename" | "command" | "export";
 
-export interface PromptOverlay {
+export interface AskOverlay {
   kind: "prompt";
-  purpose: PromptPurpose;
+  purpose: AskPurpose;
   title: string;
   hint?: string;
   input: TextInputState;
@@ -50,7 +50,7 @@ export interface HelpOverlay {
   scroll: number;
 }
 
-export type Overlay = PromptOverlay | ConfirmOverlay | PickerOverlay | HelpOverlay;
+export type Overlay = AskOverlay | ConfirmOverlay | PickerOverlay | HelpOverlay;
 
 type InlinePurpose = "filter" | "find" | "search";
 
@@ -81,7 +81,7 @@ export function drawBox(screen: Screen, box: Box, title: string): Box {
     screen.text(x + w - 1, row, "│", border);
   }
   screen.text(x, y + h - 1, "╰" + "─".repeat(Math.max(0, w - 2)) + "╯", border);
-  if (title) { screen.text(x + 2, y, ` ${truncate(title, w - 6)} `, theme.popupTitle); }
+  if (title) { screen.text(x + 2, y, ` ${formatTruncated(title, w - 6)} `, theme.popupTitle); }
   return { x: x + 2, y: y + 1, w: w - 4, h: h - 2 };
 }
 
@@ -96,7 +96,7 @@ export function drawField(screen: Screen, x: number, y: number, width: number, s
   const after = state.value.slice(state.cursor + (cp === undefined ? 0 : at.length));
   let shown = before;
   // Keep the cursor inside the field by dropping text on the left.
-  while (stringWidth(shown) > width - 2 && shown.length) { shown = shown.slice(1); }
+  while (deriveStringWidth(shown) > width - 2 && shown.length) { shown = shown.slice(1); }
   let col = x + screen.text(x, y, shown, style, width);
   col += screen.text(col, y, at, { ...style, reverse: true }, x + width - col);
   screen.text(col, y, after, style, x + width - col);
@@ -120,26 +120,26 @@ export function drawOverlay(screen: Screen, overlay: Overlay): void {
   }
 }
 
-function drawPrompt(screen: Screen, prompt: PromptOverlay): void {
+function drawPrompt(screen: Screen, prompt: AskOverlay): void {
   const shownCompletions = prompt.completions.slice(0, 8);
   const box = centered(screen, 74, 3);
   // Hints wrap rather than get cut: they advertise what the prompt accepts.
-  const hintLines = prompt.hint ? wrap(prompt.hint, Math.max(10, box.w - 4)).slice(0, 4) : [];
+  const hintLines = prompt.hint ? splitWrapped(prompt.hint, Math.max(10, box.w - 4)).slice(0, 4) : [];
   const extra = hintLines.length + (shownCompletions.length ? shownCompletions.length + 1 : 0);
   const inner = drawBox(screen, centered(screen, 74, 3 + extra), prompt.title);
   drawField(screen, inner.x, inner.y, inner.w, prompt.input);
   let row = inner.y + 1;
-  for (const line of hintLines) { screen.text(inner.x, row++, truncate(line, inner.w), theme.dim); }
+  for (const line of hintLines) { screen.text(inner.x, row++, formatTruncated(line, inner.w), theme.dim); }
   if (shownCompletions.length) {
     row++;
-    for (const completion of shownCompletions) { screen.text(inner.x, row++, truncate(completion, inner.w), theme.dim); }
+    for (const completion of shownCompletions) { screen.text(inner.x, row++, formatTruncated(completion, inner.w), theme.dim); }
   }
 }
 
 function drawConfirm(screen: Screen, confirm: ConfirmOverlay): void {
-  const width = Math.max(40, ...confirm.lines.map((l) => stringWidth(l) + 6));
+  const width = Math.max(40, ...confirm.lines.map((l) => deriveStringWidth(l) + 6));
   const inner = drawBox(screen, centered(screen, Math.min(width, 80), confirm.lines.length + 4), confirm.title);
-  confirm.lines.forEach((line, i) => screen.text(inner.x, inner.y + i, truncate(line, inner.w)));
+  confirm.lines.forEach((line, i) => screen.text(inner.x, inner.y + i, formatTruncated(line, inner.w)));
   const row = inner.y + confirm.lines.length + 1;
   let col = inner.x;
   col += screen.text(col, row, "y", theme.key);
@@ -161,9 +161,9 @@ function drawPicker(screen: Screen, picker: PickerOverlay): void {
     const hovered = offset + i === picker.index;
     const style = hovered ? theme.hover : theme.text;
     const detail = item.detail ? `  ${item.detail}` : "";
-    const labelWidth = Math.max(10, inner.w - stringWidth(detail));
-    screen.text(inner.x, listTop + i, fit(item.label, labelWidth), style);
-    if (detail) { screen.text(inner.x + labelWidth, listTop + i, truncate(detail, inner.w - labelWidth), hovered ? theme.hover : theme.dim); }
+    const labelWidth = Math.max(10, inner.w - deriveStringWidth(detail));
+    screen.text(inner.x, listTop + i, formatFitted(item.label, labelWidth), style);
+    if (detail) { screen.text(inner.x + labelWidth, listTop + i, formatTruncated(detail, inner.w - labelWidth), hovered ? theme.hover : theme.dim); }
   }
   if (!picker.filtered.length) { screen.text(inner.x, listTop, "No match", theme.dim); }
 }
@@ -174,12 +174,12 @@ const HELP_GROUPS: BindingGroup[] = ["Navigate", "Find", "Select", "Papers", "Co
  * The help screen's lines, generated from the keymap.
  * @returns [keys, description, isHeader] rows
  */
-export function helpRows(): Array<{ keys: string; desc: string; header?: boolean }> {
+export function listHelpRows(): Array<{ keys: string; desc: string; header?: boolean }> {
   const rows: Array<{ keys: string; desc: string; header?: boolean }> = [];
   for (const group of HELP_GROUPS) {
     rows.push({ keys: group, desc: "", header: true });
     for (const binding of BINDINGS) {
-      if (binding.group === group && !binding.alias) { rows.push({ keys: keyLabel(binding.keys), desc: binding.desc }); }
+      if (binding.group === group && !binding.alias) { rows.push({ keys: formatShortcut(binding.keys), desc: binding.desc }); }
     }
     rows.push({ keys: "", desc: "" });
   }
@@ -192,7 +192,7 @@ export function helpRows(): Array<{ keys: string; desc: string; header?: boolean
 
 function drawHelp(screen: Screen, help: HelpOverlay): void {
   const inner = drawBox(screen, centered(screen, 96, screen.height - 2), "LabShelf keys — j/k scroll, Esc close");
-  const rows = helpRows();
+  const rows = listHelpRows();
   const keyWidth = 22;
   const start = Math.min(help.scroll, Math.max(0, rows.length - inner.h));
   for (let i = 0; i < inner.h; i++) {
@@ -202,7 +202,7 @@ function drawHelp(screen: Screen, help: HelpOverlay): void {
       screen.text(inner.x, inner.y + i, row.keys, theme.popupTitle);
       continue;
     }
-    screen.text(inner.x, inner.y + i, fit(row.keys, keyWidth), theme.key);
-    screen.text(inner.x + keyWidth, inner.y + i, truncate(row.desc, inner.w - keyWidth));
+    screen.text(inner.x, inner.y + i, formatFitted(row.keys, keyWidth), theme.key);
+    screen.text(inner.x + keyWidth, inner.y + i, formatTruncated(row.desc, inner.w - keyWidth));
   }
 }

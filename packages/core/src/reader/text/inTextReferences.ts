@@ -1,10 +1,10 @@
 // Finds numeric, author–year and figure/table/equation references in running text without PDF link annotations.
 // PLATFORM: OCR text arrives one word per text run, so detection works on a visual line re-joined from its runs.
-import { fold } from "../../library/index.js";
+import { normalizeText } from "../../library/index.js";
 
 export type FloatKind = "figure" | "table" | "equation";
 
-export type InTextRef =
+export type InTextReference =
   | { kind: "numeric"; start: number; end: number; numbers: number[] }
   | { kind: "authorYear"; start: number; end: number; surname: string; coauthors: string[]; years: string[] }
   | { kind: "float"; start: number; end: number; floatKind: FloatKind; label: string };
@@ -107,14 +107,14 @@ const NOT_AUTHORS = new Set([
 function authorNames(chunk: string): string[] {
   const names: string[] = [];
   for (const m of chunk.matchAll(NAME_RE)) {
-    const folded = fold(m[0]);
+    const folded = normalizeText(m[0]);
     if (folded.length >= 2 && !NOT_AUTHORS.has(folded)) { names.push(m[0]); }
   }
   return names;
 }
 
-function parentheticalRefs(text: string): InTextRef[] {
-  const refs: InTextRef[] = [];
+function parentheticalRefs(text: string): InTextReference[] {
+  const refs: InTextReference[] = [];
   for (const m of text.matchAll(PAREN)) {
     const inner = m[1]!;
     if (!YEAR_RE.test(inner)) { YEAR_RE.lastIndex = 0; continue; }
@@ -151,11 +151,11 @@ function parentheticalRefs(text: string): InTextRef[] {
   return refs;
 }
 
-function narrativeRefs(text: string): InTextRef[] {
-  const refs: InTextRef[] = [];
+function narrativeRefs(text: string): InTextReference[] {
+  const refs: InTextReference[] = [];
   for (const m of text.matchAll(NARRATIVE)) {
     const surname = m[1]!;
-    if (NOT_AUTHORS.has(fold(surname))) { continue; }
+    if (NOT_AUTHORS.has(normalizeText(surname))) { continue; }
     const years = [...m[3]!.matchAll(YEAR_RE)].map((y) => y[0]);
     if (years.length === 0) { continue; }
     refs.push({
@@ -186,8 +186,8 @@ const FLOAT = new RegExp(
 /**
  * @returns the kind of float a label word ("Fig.", "Tabela", "Eq") denotes.
  */
-export function floatKindOf(word: string): FloatKind {
-  const w = fold(word);
+export function deriveFloatKind(word: string): FloatKind {
+  const w = normalizeText(word);
   if (w.startsWith("tab") || w.startsWith("quadro") || w.startsWith("cuadro")) { return "table"; }
   if (w.startsWith("eq")) { return "equation"; }
   return "figure";
@@ -198,14 +198,14 @@ export function floatKindOf(word: string): FloatKind {
 /**
  * @returns every reference found in a line of text, with its character range.
  */
-export function findInTextRefs(text: string): InTextRef[] {
-  const refs: InTextRef[] = [];
+export function findInTextReferences(text: string): InTextReference[] {
+  const refs: InTextReference[] = [];
   for (const m of text.matchAll(BRACKET)) {
     const numbers = expandNumbers(m[1] ?? "");
     if (numbers.length > 0) { refs.push({ kind: "numeric", start: m.index, end: m.index + m[0].length, numbers }); }
   }
   for (const m of text.matchAll(FLOAT)) {
-    refs.push({ kind: "float", start: m.index, end: m.index + m[0].length, floatKind: floatKindOf(m[1]!), label: m[2]!.toLowerCase() });
+    refs.push({ kind: "float", start: m.index, end: m.index + m[0].length, floatKind: deriveFloatKind(m[1]!), label: m[2]!.toLowerCase() });
   }
   refs.push(...narrativeRefs(text), ...parentheticalRefs(text));
   return refs;
@@ -214,8 +214,8 @@ export function findInTextRefs(text: string): InTextRef[] {
 /**
  * @returns the narrowest reference covering a character offset, or null.
  */
-export function refAtOffset(refs: readonly InTextRef[], offset: number): InTextRef | null {
-  let best: InTextRef | null = null;
+export function findReferenceAtOffset(refs: readonly InTextReference[], offset: number): InTextReference | null {
+  let best: InTextReference | null = null;
   for (const ref of refs) {
     if (offset < ref.start || offset >= ref.end) { continue; }
     if (!best || ref.end - ref.start < best.end - best.start) { best = ref; }

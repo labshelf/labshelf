@@ -1,5 +1,5 @@
 // Remembers per project whether the preview builds only the focused `\include` chapter, and finds the chapter to build.
-import { collectProjectSources, type BuildOptions, type ProjectSourceReader } from "@labshelf/core";
+import { readLatexProjectSources, type BuildOptions, type ProjectSourceReader } from "@labshelf/core";
 
 import type { ReadyProject } from "../buildRootDocument.js";
 
@@ -47,7 +47,7 @@ export class IncludeOnlyState {
   // The path exactly as written in the `\include`, because `\includeonly` matches it literally.
   private async includedAs(project: ReadyProject, root: string, focusedFile: string): Promise<string | undefined> {
     if (project.settings.format !== "latex") { return undefined; }
-    const tree = await collectProjectSources(root, this.deps.readerFor(project.folder));
+    const tree = await readLatexProjectSources(root, this.deps.readerFor(project.folder));
     for (const { facts } of tree.files) {
       for (const include of facts.includes) {
         if (include.command !== "include" || !SAFE_PATH.test(include.path)) { continue; }

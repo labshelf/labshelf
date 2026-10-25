@@ -2,17 +2,17 @@
  * Answers the reader's messages on the host side: validates each one and replies through the host's ports.
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
-import { errorMessage } from "../../logging/index.js";
-import type { BuildState, PageArea, PagePoint, PreviewRoots } from "../previewProtocol.js";
+import { formatError } from "../../logging/index.js";
+import type { BuildState, PageArea, PagePoint, PreviewBuildRoots } from "../previewProtocol.js";
 import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol/index.js";
 import { annotationHandlers } from "./annotationMessages.js";
-import { READER_LOG_MODULE, type HostContext, type HostState, type MessageHandler, type MessageHandlers } from "./hostContext.js";
+import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers } from "./hostContext.js";
 import type { ReaderHostPorts } from "./ports.js";
 import { previewHandlers } from "./previewMessages.js";
 import { sessionHandlers } from "./sessionMessages.js";
 import { shareHandlers } from "./shareMessages.js";
 
-const HANDLERS: MessageHandlers = { ...sessionHandlers, ...annotationHandlers, ...shareHandlers, ...previewHandlers };
+const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...shareHandlers, ...previewHandlers };
 
 export interface ReaderHostOptions {
   /** Page to show once the reader has laid out the document. */
@@ -48,10 +48,10 @@ export class ReaderHostController {
     }
     try {
       // The table pairs each command with its handler; TypeScript cannot correlate the union on lookup.
-      await (HANDLERS[raw.command] as MessageHandler<WebviewToHost["command"]>)(this.ctx, raw);
+      await (HANDLERS[raw.command] as MessageAnswer<WebviewToHost["command"]>)(this.ctx, raw);
     } catch (err) {
       void logger.error(READER_LOG_MODULE, err, { paperId: paper.id, command: raw.command });
-      this.ports.notify(`Reader action failed: ${errorMessage(err)}`, "error");
+      this.ports.notify(`Reader action failed: ${formatError(err)}`, "error");
     }
   }
 
@@ -108,7 +108,7 @@ export class ReaderHostController {
   /**
    * Shows the build roots of a writing project with their problems, replacing the earlier list.
    */
-  setPreviewRoots(roots: PreviewRoots): void {
+  setPreviewRoots(roots: PreviewBuildRoots): void {
     this.postWhenReady({ type: "previewRoots", roots });
   }
 

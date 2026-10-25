@@ -1,5 +1,5 @@
 /** The globals and FeatureTest patch that let pdf.js load inside an Electron utility process. */
-import { installElectronGlobals, patchFeatureTestPlatform } from '../../../src/import/node/pdfjsShims.js';
+import { installElectronGlobals, updateFeatureTestPlatform } from '../../../src/import/node/pdfjsShims.js';
 
 describe('electron shims', () => {
   const savedNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
@@ -51,7 +51,7 @@ describe('electron shims', () => {
     });
     const shadow = jest.fn();
 
-    patchFeatureTestPlatform({ FeatureTest: featureTest, shadow });
+    updateFeatureTestPlatform({ FeatureTest: featureTest, shadow });
 
     expect(shadow).toHaveBeenCalledWith(featureTest, 'platform', expect.objectContaining({ isLinux: true }));
   });
@@ -59,7 +59,7 @@ describe('electron shims', () => {
   it('leaves FeatureTest alone when reading it works', () => {
     const shadow = jest.fn();
 
-    patchFeatureTestPlatform({ FeatureTest: { platform: { isMac: true } }, shadow });
+    updateFeatureTestPlatform({ FeatureTest: { platform: { isMac: true } }, shadow });
 
     expect(shadow).not.toHaveBeenCalled();
   });

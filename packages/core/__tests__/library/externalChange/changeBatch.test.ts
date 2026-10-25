@@ -1,4 +1,4 @@
-import { processChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
+import { applyChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
 
 const copy: ConflictCopy = { owner: { kind: "paper", id: "p" }, original: "/lib/papers/p/metadata.yaml", copy: "/lib/papers/p/m (conflicted copy).yaml", tool: "dropbox" };
 
@@ -19,7 +19,7 @@ function setup(overrides: { scan?: () => Promise<ConflictCopy[]>; present?: bool
 describe("processChangeBatch", () => {
   it("scans conflict copies, logs how many are unresolved, then re-indexes", async () => {
     const { deps, order, logs } = setup();
-    await processChangeBatch(deps);
+    await applyChangeBatch(deps);
     expect(order).toEqual(["scan", "conflicts:1", "reindex"]);
     expect(logs.find((l) => l.level === "INFO")?.context).toMatchObject({ unresolved: 1 });
   });
@@ -27,14 +27,14 @@ describe("processChangeBatch", () => {
   it("re-indexes even when the conflict scan fails, and logs a WARN", async () => {
     const { deps, order, logs } = setup({ scan: async () => { throw new Error("boom"); } });
     deps.reindex = async () => { order.push("reindex"); };
-    await processChangeBatch(deps);
+    await applyChangeBatch(deps);
     expect(order).toEqual(["reindex"]);
     expect(logs.some((l) => l.level === "WARN" && l.context?.["message"] === "boom")).toBe(true);
   });
 
   it("does nothing while the library root is missing, so an unmounted folder never empties the library", async () => {
     const { deps, order } = setup({ present: false });
-    await processChangeBatch(deps);
+    await applyChangeBatch(deps);
     expect(order).toEqual([]);
   });
 });

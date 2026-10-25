@@ -3,8 +3,8 @@
 import type { Node } from "prosemirror-model";
 import { qmdSchema } from "./schema/index.js";
 import { serializeBlock } from "./serializeBlocks.js";
-import { bodyLines, rawText } from "./blockLines.js";
-import { sliceBlocks, type BlockSlice } from "./parseBlocks.js";
+import { splitBodyLines, extractRawText } from "./blockLines.js";
+import { splitBlocks, type BlockSlice } from "./parseBlocks.js";
 
 /** INVARIANT: a block whose node does not write back to its exact source bytes is kept as a raw block. */
 function exactBlock(block: BlockSlice, source: string, eol: string): Node {
@@ -18,9 +18,9 @@ function exactBlock(block: BlockSlice, source: string, eol: string): Node {
 }
 
 export function bodyToDoc(body: string): Node {
-  const { lines, eol, unterminated } = bodyLines(body);
-  const { blocks, trailing } = sliceBlocks(lines);
-  const nodes = blocks.map((block) => exactBlock(block, rawText(lines, block.start, block.end), eol));
+  const { lines, eol, unterminated } = splitBodyLines(body);
+  const { blocks, trailing } = splitBlocks(lines);
+  const nodes = blocks.map((block) => exactBlock(block, extractRawText(lines, block.start, block.end), eol));
   if (nodes.length === 0) {
     return qmdSchema.nodes.doc!.createChecked({ eol, trailing: body, unterminated: false }, [qmdSchema.nodes.paragraph!.createChecked()]);
   }

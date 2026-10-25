@@ -1,7 +1,7 @@
 // Tests that typing in a LaTeX source saves it after a pause, only in typing mode.
 import * as vscode from "vscode";
 
-import { registerLatexTypingSaves } from "../../../src/writing/build/latexTypingWrites";
+import { registerLatexTypingWrites } from "../../../src/writing/build/latexTypingWrites";
 import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 const workspace = vscode.workspace as unknown as {
@@ -18,7 +18,7 @@ const type = (document: unknown, contentChanges: unknown[] = [{}]) => workspace.
 function setup(host = fakeHost()) {
   const projects = fakeProjects([readyEntry("/p/tex", { main: "main.tex" }), readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } })]);
   context = { subscriptions: [] };
-  registerLatexTypingSaves({ context, host, projects: projects as never });
+  registerLatexTypingWrites({ context, host, projects: projects as never });
 }
 
 beforeEach(() => {
@@ -31,7 +31,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe("registerLatexTypingSaves", () => {
+describe("registerLatexTypingWrites", () => {
   it("saves once, 300 ms after the last keystroke of a burst", async () => {
     setup();
     const document = doc("/p/tex/main.tex");

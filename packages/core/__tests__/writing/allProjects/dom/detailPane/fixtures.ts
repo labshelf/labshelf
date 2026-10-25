@@ -1,5 +1,5 @@
 // Shares one project row and detail across the All projects detail pane tests.
-import type { ProjectDetail, ProjectRow } from "../../../../../src/writing/allProjects/index";
+import type { ProjectPaneContent, ProjectRow } from "../../../../../src/writing/allProjects/index";
 
 export const NOW = new Date(2026, 9, 17, 12, 0).getTime();
 const HOUR = 3_600_000;
@@ -9,7 +9,7 @@ export const row: ProjectRow = {
   modified: NOW - 2 * HOUR, target: { venue: "ICLR 2027", deadline: "2026-11-27" }, folder: "Thesis",
 };
 
-export const detail: ProjectDetail = {
+export const detail: ProjectPaneContent = {
   id: row.id, location: "/lib/projects/attn", engine: "xelatex", pages: 8,
   limits: { countUpTo: "references", pages: { counted: 8, limit: 9 }, words: { counted: 5120 } },
   build: { state: "warnings", at: NOW - HOUR, warnings: 2, errors: 0, first: { message: "Overfull hbox", file: "main.tex", line: 12 } },

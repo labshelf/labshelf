@@ -2,7 +2,7 @@
 import type { ILogger } from "../../ports/index.js";
 import { openTypstSession, type TypstSession } from "../typstSession.js";
 import { nodeTypstFiles } from "./typstFileAccess.js";
-import { loadTypstFonts, missingTypstFonts } from "./typstFonts.js";
+import { loadTypstFonts, listMissingTypstFonts } from "./typstFonts.js";
 import { TypstPackageStore, type TypstPackageDirs } from "./typstPackages.js";
 
 const MODULE = "writing/typst";
@@ -39,7 +39,7 @@ export class TypstCompilerHost {
   private async fonts(logger: ILogger): Promise<Uint8Array[]> {
     const { fontsDir, withFontDownload } = this.options;
     const load = (): Promise<Uint8Array[]> => loadTypstFonts(fontsDir, { logger });
-    if ((await missingTypstFonts(fontsDir)).length === 0 || !withFontDownload) { return load(); }
+    if ((await listMissingTypstFonts(fontsDir)).length === 0 || !withFontDownload) { return load(); }
     return withFontDownload(load);
   }
 

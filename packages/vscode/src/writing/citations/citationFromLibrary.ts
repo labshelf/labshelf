@@ -1,11 +1,65 @@
 // Registers Cite from Library, which inserts a citation of a picked paper, and optionally one of its highlights, at every cursor.
 import * as vscode from "vscode";
 
-import { choiceCitationOptions, citationSnippet, quotableHighlights, type HighlightChoice, type PaperRecord, type ProjectFormat } from "@labshelf/core";
-import { paperPickItem } from "../../command/index.js";
+import {
+  deriveChoiceCitationSpec,
+  createCitationSnippet,
+  listQuotableHighlights,
+  type HighlightChoice,
+  type PaperRecord,
+  type ProjectFormat,
+  CITE_WITHOUT_PAGE,
+  formatHighlightLabel,
+  formatHighlightPage,
+  type Annotation,
+} from "@labshelf/core";
+import { createPaperPickItem } from "../../command/index.js";
 import { UPDATE_BIBLIOGRAPHY_COMMAND } from "./citationCompletion.js";
-import { citingProject, type CitationSession, type CitationWorkspace } from "./citationWorkspace.js";
-import { chooseHighlight } from "./highlightChoice.js";
+import { findCitingProject, type CitationSession, type CitationWorkspace } from "./citationWorkspace.js";
+
+const QUOTE_BUTTON: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon("quote"), tooltip: "Cite with quotation" };
+
+interface HighlightPickItem extends vscode.QuickPickItem {
+  highlight?: Annotation;
+}
+
+function pickItems(highlights: readonly Annotation[]): HighlightPickItem[] {
+  return [
+    { label: CITE_WITHOUT_PAGE },
+    ...highlights.map((highlight) => ({
+      label: formatHighlightLabel(highlight),
+      description: formatHighlightPage(highlight),
+      buttons: [QUOTE_BUTTON],
+      highlight,
+    })),
+  ];
+}
+
+/** Resolves when the user accepts an item or clicks its quote button; undefined when the picker is dismissed. */
+function chooseHighlight(highlights: readonly Annotation[]): Promise<HighlightChoice | undefined> {
+  return new Promise((resolve) => {
+    const picker = vscode.window.createQuickPick<HighlightPickItem>();
+    let choice: HighlightChoice | undefined;
+    const settle = (picked: HighlightChoice): void => {
+      choice = picked;
+      picker.hide();
+    };
+    picker.title = "Cite from Library";
+    picker.placeholder = "Pick a highlight to cite its page";
+    picker.matchOnDescription = true;
+    picker.items = pickItems(highlights);
+    picker.onDidAccept(() => {
+      const [item] = picker.selectedItems;
+      if (item) { settle({ ...(item.highlight ? { highlight: item.highlight } : {}), quote: false }); }
+    });
+    picker.onDidTriggerItemButton(({ item }) => settle({ ...(item.highlight ? { highlight: item.highlight } : {}), quote: true }));
+    picker.onDidHide(() => {
+      picker.dispose();
+      resolve(choice);
+    });
+    picker.show();
+  });
+}
 
 const CITE_FROM_LIBRARY_COMMAND = "labshelf.writing.citeFromLibrary";
 
@@ -15,7 +69,7 @@ async function pickPaper(session: CitationSession): Promise<PaperRecord | undefi
     void vscode.window.showInformationMessage("LabShelf library is empty.");
     return undefined;
   }
-  const picked = await vscode.window.showQuickPick(papers.map(paperPickItem), {
+  const picked = await vscode.window.showQuickPick(papers.map(createPaperPickItem), {
     title: "Cite from Library", placeHolder: "Pick the paper to cite", matchOnDescription: true, matchOnDetail: true,
   });
   return picked?.paper;
@@ -25,7 +79,7 @@ async function pickPaper(session: CitationSession): Promise<PaperRecord | undefi
 async function pickHighlight(session: CitationSession, paper: PaperRecord): Promise<HighlightChoice | undefined> {
   let highlights;
   try {
-    highlights = quotableHighlights(await session.highlightsOf(paper.id));
+    highlights = listQuotableHighlights(await session.highlightsOf(paper.id));
   } catch (error) {
     void session.logger.log("WARN", "citations", "Highlights of a paper could not be read; citing without a page", { paperId: paper.id, error: String(error) });
     return { quote: false };
@@ -36,7 +90,7 @@ async function pickHighlight(session: CitationSession, paper: PaperRecord): Prom
 async function insertCitation(
   editor: vscode.TextEditor, session: CitationSession, format: ProjectFormat, paper: PaperRecord, choice: HighlightChoice,
 ): Promise<boolean> {
-  const text = citationSnippet(format, paper.citeKey, choiceCitationOptions(choice));
+  const text = createCitationSnippet(format, paper.citeKey, deriveChoiceCitationSpec(choice));
   const applied = await editor.edit((edit) => {
     for (const selection of editor.selections) { edit.replace(selection, text); }
   });
@@ -50,7 +104,7 @@ async function citeFromLibrary(workspace: CitationWorkspace): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const session = workspace.session();
   // The project's source extension stands in for the language id: Typst has no built-in one.
-  const project = editor && citingProject(workspace.projects, editor.document.uri.fsPath);
+  const project = editor && findCitingProject(workspace.projects, editor.document.uri.fsPath);
   if (!editor || !session || !project) { return; }
   const paper = await pickPaper(session);
   if (!paper) { return; }
@@ -62,6 +116,6 @@ async function citeFromLibrary(workspace: CitationWorkspace): Promise<void> {
   }
 }
 
-export function registerCiteFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace): void {
+export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace): void {
   context.subscriptions.push(vscode.commands.registerCommand(CITE_FROM_LIBRARY_COMMAND, () => citeFromLibrary(workspace)));
 }

@@ -21,7 +21,7 @@ function hasUnmatchedEnd(name: string, text: string): boolean {
  * The name to close, or undefined when the line before the cursor does not end in `\begin{name}` (with optional
  * arguments) or an `\end{name}` already follows. `textAfterCursor` is lazy because most lines do not end in a \begin.
  */
-export function environmentToClose(lineBeforeCursor: string, textAfterCursor: () => string): string | undefined {
+export function findEnvironmentToClose(lineBeforeCursor: string, textAfterCursor: () => string): string | undefined {
   const name = BEGIN_AT_END.exec(lineBeforeCursor)?.[1];
   if (name === undefined) { return undefined; }
   if (COMMENT_START.test(lineBeforeCursor)) { return undefined; }
