@@ -2,9 +2,9 @@
  * Renders a paper's annotations as a Markdown reading-notes document grouped by page.
  */
 import type { Annotation } from "../model/index.js";
-import { byPageThenCreated } from "./sidecar/index.js";
+import { compareAnnotations } from "./sidecar/index.js";
 import { formatInTextCitation } from "../library/index.js";
-import { cleanQuote, type CitablePaper } from "./citationFormat.js";
+import { normalizeQuote, type CitablePaper } from "./citationFormat.js";
 
 /**
  * Highlights become block quotes tagged with their colour; notes and comments become plain paragraphs.
@@ -16,14 +16,14 @@ export function formatAnnotationsMarkdown(paper: CitablePaper, annotations: read
     lines.push("_No annotations._", "");
     return lines.join("\n");
   }
-  const sorted = [...annotations].sort(byPageThenCreated);
+  const sorted = [...annotations].sort(compareAnnotations);
   let page = -1;
   for (const ann of sorted) {
     if (ann.pageNumber !== page) {
       page = ann.pageNumber;
       lines.push(`## Page ${page}`, "");
     }
-    const body = cleanQuote(ann.content);
+    const body = normalizeQuote(ann.content);
     if (ann.type === "highlight") {
       lines.push(`> ${body}`, "", `<!-- highlight: ${ann.color ?? "yellow"} --> [@${paper.citeKey}, p. ${page}]`, "");
     } else {

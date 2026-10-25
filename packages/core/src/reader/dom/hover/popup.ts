@@ -1,10 +1,10 @@
 /** Drives the #hover-popup element: fills it with a title, actions and body, places it next to its anchor and hides it. */
-import { clamp, iconButton } from "../elements/index.js";
+import { deriveClampedNumber, renderReaderIconButton } from "../elements/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import type { PopupContent } from "./hoverAnchor.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
-export function textContent(texts: string[], jump: () => void): PopupContent {
+export function renderTextContent(texts: string[], jump: () => void): PopupContent {
   return { title: "Reference", body: renderElement("div", { class: "rd-hover-text" }, ...texts.map((t) => renderElement("p", {}, t))), copyText: texts.join("\n\n"), jump };
 }
 
@@ -26,11 +26,11 @@ export class HoverPopup {
     const actions = renderElement("div", { class: "rd-hover-actions" });
     const { copyText } = content;
     if (copyText) {
-      const copy = iconButton(renderIcon("copy"), "Copy reference", "rd-btn-sm");
+      const copy = renderReaderIconButton(renderIcon("copy"), "Copy reference", "rd-btn-sm");
       copy.addEventListener("click", () => onCopy(copyText));
       actions.append(copy);
     }
-    const go = iconButton(renderIcon("arrow-right"), content.jumpLabel ?? "Jump to destination", "rd-btn-sm");
+    const go = renderReaderIconButton(renderIcon("arrow-right"), content.jumpLabel ?? "Jump to destination", "rd-btn-sm");
     go.addEventListener("click", onJump);
     actions.append(go);
 
@@ -39,7 +39,7 @@ export class HoverPopup {
     const p = this.el.getBoundingClientRect();
     const below = anchor.bottom + 8;
     const top = below + p.height <= window.innerHeight - 8 ? below : anchor.top - p.height - 8;
-    this.el.style.top = `${clamp(top, 8, Math.max(8, window.innerHeight - p.height - 8))}px`;
-    this.el.style.left = `${clamp(anchor.left + anchor.width / 2 - p.width / 2, 8, Math.max(8, window.innerWidth - p.width - 8))}px`;
+    this.el.style.top = `${deriveClampedNumber(top, 8, Math.max(8, window.innerHeight - p.height - 8))}px`;
+    this.el.style.left = `${deriveClampedNumber(anchor.left + anchor.width / 2 - p.width / 2, 8, Math.max(8, window.innerWidth - p.width - 8))}px`;
   }
 }

@@ -13,7 +13,7 @@ export class TlmgrFailed extends Error {
 }
 
 export interface Tlmgr {
-  /** The package that provides `fileName`, or null when no package does. */
+  /** The package that provides `deriveFileName`, or null when no package does. */
   searchFile(fileName: string): Promise<string | null>;
   install(packages: string[], onProgress?: (fraction: number) => void): Promise<void>;
   listInstalled(): Promise<string[]>;

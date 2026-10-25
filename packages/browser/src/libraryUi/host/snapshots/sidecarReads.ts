@@ -3,7 +3,7 @@
  * the row marks and the details the detail pane shows.
  */
 import {
-  PAPERS_DIR, PDF_FILE, PaperDataStore, createSidecarReader, derivePaperDetails, type ILogger, type PaperDetails, type PaperRecord, type PaperStats,
+  PAPERS_DIR, PDF_FILE, PaperSidecarStore, createSidecarReader, derivePaperDetails, type ILogger, type PaperDetails, type PaperRecord, type PaperStats,
 } from "@labshelf/core";
 import { createLibraryFileSystem, createSidecarPort } from "../../../storage";
 
@@ -18,7 +18,7 @@ export interface SidecarReads {
 
 export function createSidecarReads(log: ILogger): SidecarReads {
   const fs = createLibraryFileSystem();
-  const store = new PaperDataStore(createSidecarPort(fs), { logger: log });
+  const store = new PaperSidecarStore(createSidecarPort(fs), { logger: log });
   const reader = createSidecarReader((id) => store.load(id), log, "libraryUi/sidecars");
 
   async function pdfOnDevice(paper: PaperRecord): Promise<PaperDetails["pdf"]> {

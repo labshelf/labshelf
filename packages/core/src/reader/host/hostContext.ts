@@ -27,9 +27,9 @@ export interface HostContext {
   pushAnnotations(annotations: Annotation[], force: boolean): void;
 }
 
-export type MessageHandler<C extends WebviewToHost["command"]> = (
+export type MessageAnswer<C extends WebviewToHost["command"]> = (
   ctx: HostContext,
   msg: Extract<WebviewToHost, { command: C }>,
 ) => Promise<void> | void;
 
-export type MessageHandlers = { [C in WebviewToHost["command"]]: MessageHandler<C> };
+export type MessageAnswers = { [C in WebviewToHost["command"]]: MessageAnswer<C> };

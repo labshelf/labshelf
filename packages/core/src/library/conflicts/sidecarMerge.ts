@@ -1,6 +1,6 @@
 // Merges a sidecar with its conflict copy per annotation, honouring deletion markers.
 import type { Annotation } from "../../model/index.js";
-import { byPageThenCreated, normalizePaperData, serializePaperData, type PaperData } from "../../reader/sidecar/index.js";
+import { compareAnnotations, normalizePaperSidecar, serializePaperSidecar, type PaperSidecar } from "../../reader/sidecar/index.js";
 
 export interface SidecarVersion {
   text: string;
@@ -8,10 +8,10 @@ export interface SidecarVersion {
 }
 
 /** @returns the sidecar in `text`, or null when it is not a JSON object. */
-export function parseSidecar(text: string): PaperData | null {
+export function parseSidecar(text: string): PaperSidecar | null {
   try {
     const parsed: unknown = JSON.parse(text);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? normalizePaperData(parsed) : null;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? normalizePaperSidecar(parsed) : null;
   } catch {
     return null;
   }
@@ -52,5 +52,5 @@ export function mergeSidecars(mine: SidecarVersion, other: SidecarVersion): stri
     kept.push(annotation);
     markers.delete(annotation.id);
   }
-  return serializePaperData({ ...newer, annotations: kept.sort(byPageThenCreated), deleted: [...markers.values()] });
+  return serializePaperSidecar({ ...newer, annotations: kept.sort(compareAnnotations), deleted: [...markers.values()] });
 }

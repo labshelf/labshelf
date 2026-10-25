@@ -1,6 +1,6 @@
 // Declares a share's manifest and reads one from untrusted JSON, keeping only the fields the contract names.
 import { BIBLIOGRAPHIC_STRING_FIELDS, type Annotation, type BibliographicFields } from "../model/index.js";
-import { normalizePaperData } from "../reader/index.js";
+import { normalizePaperSidecar } from "../reader/index.js";
 import { isSha256Hex } from "../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#manifest
@@ -66,7 +66,7 @@ function paperOf(value: unknown): SharedPaper | undefined {
   if (!isObject(value) || !metadata) { return undefined; }
   const paper: SharedPaper = { metadata };
   if (isString(value["bib"])) { paper.bib = value["bib"]; }
-  if (Array.isArray(value["annotations"])) { paper.annotations = normalizePaperData({ annotations: value["annotations"] }).annotations; }
+  if (Array.isArray(value["annotations"])) { paper.annotations = normalizePaperSidecar({ annotations: value["annotations"] }).annotations; }
   const pdf = pdfOf(value["pdf"]);
   if (pdf) { paper.pdf = pdf; }
   return paper;

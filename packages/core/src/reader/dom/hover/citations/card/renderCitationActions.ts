@@ -37,7 +37,7 @@ function fixButton(entry: CitationEntry, fix: CitationCardFix, post: PostRequest
 }
 
 /** @returns the action row and the fix row for a card of a build preview; each is null when it has nothing to offer. */
-export function citationActions(entry: CitationEntry, open: (paperId: string, page?: number) => void, post: PostRequest): HTMLElement[] {
+export function renderCitationActions(entry: CitationEntry, open: (paperId: string, page?: number) => void, post: PostRequest): HTMLElement[] {
   const { paper, site, fix } = entry;
   const actions = [
     paper && button(openLabel(entry), () => openAt(open, paper.id, entry.citedPage)),

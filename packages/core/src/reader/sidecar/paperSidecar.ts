@@ -1,9 +1,9 @@
 // Defines the per-paper sidecar (data.json: annotations, theme, reading position) every app reads and writes.
 // INVARIANT: every app reads and writes the same data.json, so the format must not drift.
 import { isPdfTheme, type Annotation, type PdfTheme } from "../../model/index.js";
-import { normalizeReadingState, type ReadingState } from "./readingState.js";
+import { normalizeReadingPosition, type ReadingState } from "./readingState.js";
 
-export interface PaperData {
+export interface PaperSidecar {
   annotations: Annotation[];
   theme: PdfTheme;
   /** Last reading position; absent until the paper has been opened in the reader. */
@@ -31,7 +31,7 @@ function isDeletionMarker(value: unknown): value is DeletionMarker {
 /**
  * @returns the markers deleted within `DELETION_MARKER_DAYS` before `now`.
  */
-export function pruneDeletionMarkers(markers: DeletionMarker[], now: string): DeletionMarker[] {
+export function removeStaleDeletionMarkers(markers: DeletionMarker[], now: string): DeletionMarker[] {
   const cutoff = new Date(Date.parse(now) - DELETION_MARKER_DAYS * 86_400_000).toISOString();
   return markers.filter((m) => m.deletedAt >= cutoff);
 }
@@ -39,16 +39,16 @@ export function pruneDeletionMarkers(markers: DeletionMarker[], now: string): De
 /**
  * @returns the sidecar of a paper that has never been opened.
  */
-export function emptyPaperData(): PaperData {
+export function createEmptyPaperSidecar(): PaperSidecar {
   return { annotations: [], theme: "auto" };
 }
 
 /**
  * Defensive normalization so a corrupt or hand-edited sidecar never throws and never half-applies.
- * @returns clean PaperData; unknown or malformed fields fall back to their defaults.
+ * @returns clean PaperSidecar; unknown or malformed fields fall back to their defaults.
  */
-export function normalizePaperData(parsed: unknown): PaperData {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { return emptyPaperData(); }
+export function normalizePaperSidecar(parsed: unknown): PaperSidecar {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { return createEmptyPaperSidecar(); }
   const obj = parsed as Record<string, unknown>;
   const annotations = Array.isArray(obj["annotations"])
     ? (obj["annotations"].filter(
@@ -56,8 +56,8 @@ export function normalizePaperData(parsed: unknown): PaperData {
       ) as Annotation[])
     : [];
   const theme = isPdfTheme(obj["theme"]) ? obj["theme"] : "auto";
-  const data: PaperData = { annotations, theme };
-  const reading = normalizeReadingState(obj["reading"]);
+  const data: PaperSidecar = { annotations, theme };
+  const reading = normalizeReadingPosition(obj["reading"]);
   if (reading) { data.reading = reading; }
   const deleted = Array.isArray(obj["deleted"]) ? obj["deleted"].filter(isDeletionMarker).map(({ id, deletedAt }) => ({ id, deletedAt })) : [];
   if (deleted.length > 0) { data.deleted = deleted; }
@@ -69,8 +69,8 @@ export function normalizePaperData(parsed: unknown): PaperData {
  * markers sorted by id so two devices holding the same markers write the same bytes.
  * @returns the JSON text of the sidecar.
  */
-export function serializePaperData(data: PaperData): string {
-  const payload: PaperData = { annotations: data.annotations, theme: data.theme };
+export function serializePaperSidecar(data: PaperSidecar): string {
+  const payload: PaperSidecar = { annotations: data.annotations, theme: data.theme };
   if (data.reading) { payload.reading = data.reading; }
   if (data.deleted && data.deleted.length > 0) { payload.deleted = [...data.deleted].sort((a, b) => a.id.localeCompare(b.id)); }
   return JSON.stringify(payload, null, 2);
@@ -80,6 +80,6 @@ export function serializePaperData(data: PaperData): string {
  * The order the reader lists annotations in: by page, then by creation time.
  * @returns a negative number when `a` comes first, positive when `b` does, 0 when they tie.
  */
-export function byPageThenCreated(a: Annotation, b: Annotation): number {
+export function compareAnnotations(a: Annotation, b: Annotation): number {
   return a.pageNumber - b.pageNumber || a.createdAt.localeCompare(b.createdAt);
 }

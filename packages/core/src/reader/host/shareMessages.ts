@@ -4,10 +4,10 @@
 import { formatQuoteWithCitation } from "../citationFormat.js";
 import { isSafeExternalUrl } from "../protocol/index.js";
 import { exportAnnotations } from "./exportAnnotations.js";
-import { READER_LOG_MODULE, type MessageHandlers } from "./hostContext.js";
+import { READER_LOG_MODULE, type MessageAnswers } from "./hostContext.js";
 
 export const shareHandlers: Pick<
-  MessageHandlers,
+  MessageAnswers,
   "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject"
 > = {
   copyText: async (ctx, msg) => {

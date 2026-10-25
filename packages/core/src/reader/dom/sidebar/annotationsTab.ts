@@ -2,8 +2,8 @@
  * Renders the Annotations tab: the paper's highlights and notes grouped by page, with jump, delete and Markdown export.
  */
 import type { Annotation } from "../../../model/index.js";
-import { byPageThenCreated } from "../../sidecar/index.js";
-import { iconButton } from "../elements/index.js";
+import { compareAnnotations } from "../../sidecar/index.js";
+import { renderReaderIconButton } from "../elements/index.js";
 import type { HostBridge } from "../session/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import type { SidebarPanel } from "./sidebar.js";
@@ -17,8 +17,8 @@ export class AnnotationsTab implements SidebarPanel {
   private annotations: Annotation[] = [];
 
   constructor(private readonly host: HostBridge, private readonly goToPage: (page: number) => void) {
-    const copyBtn = iconButton(renderIcon("clipboard"), "Copy annotations as Markdown", "rd-btn-sm");
-    const fileBtn = iconButton(renderIcon("download"), "Export annotations to a Markdown file", "rd-btn-sm");
+    const copyBtn = renderReaderIconButton(renderIcon("clipboard"), "Copy annotations as Markdown", "rd-btn-sm");
+    const fileBtn = renderReaderIconButton(renderIcon("download"), "Export annotations to a Markdown file", "rd-btn-sm");
     copyBtn.addEventListener("click", () => host.post({ command: "exportAnnotations", target: "clipboard" }));
     fileBtn.addEventListener("click", () => host.post({ command: "exportAnnotations", target: "file" }));
     this.el.append(
@@ -44,7 +44,7 @@ export class AnnotationsTab implements SidebarPanel {
       this.list.replaceChildren(renderElement("div", { class: "rd-empty" }, "No annotations yet. Select text to highlight it."));
       return;
     }
-    const sorted = [...this.annotations].sort(byPageThenCreated);
+    const sorted = [...this.annotations].sort(compareAnnotations);
     const frag = document.createDocumentFragment();
     let page = -1;
     for (const ann of sorted) {
@@ -54,7 +54,7 @@ export class AnnotationsTab implements SidebarPanel {
       }
       const content = ann.content ?? "";
       const preview = content.length > PREVIEW_CHARS ? `${content.slice(0, PREVIEW_CHARS)}…` : content;
-      const del = iconButton(renderIcon("trash"), "Delete annotation", "rd-btn-sm rd-ann-delete");
+      const del = renderReaderIconButton(renderIcon("trash"), "Delete annotation", "rd-btn-sm rd-ann-delete");
       del.addEventListener("click", (e) => {
         e.stopPropagation();
         this.host.post({ command: "deleteAnnotation", id: ann.id });

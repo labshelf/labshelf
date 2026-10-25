@@ -1,6 +1,6 @@
 // Answers the demo reader with the shared host controller over an in-memory sidecar, so nothing leaves the page.
 import {
-  PaperDataStore, ReaderHostController, DEFAULT_READER_PREFS,
+  PaperSidecarStore, ReaderHostController, DEFAULT_READER_PREFS,
   type HostToWebview, type SidecarPort,
 } from "@labshelf/core";
 import { createInPageChannel, showToast, type InPageChannel } from "@labshelf/core/dom";
@@ -17,7 +17,7 @@ function memorySidecar(): SidecarPort {
 
 /** @returns the reader-side channel of a host whose sidecar already holds the seeded highlight and opening state. */
 export async function createMemoryHost(): Promise<InPageChannel> {
-  const store = new PaperDataStore(memorySidecar(), { logger: consoleLogger });
+  const store = new PaperSidecarStore(memorySidecar(), { logger: consoleLogger });
   const { pageNumber, content, color } = SEEDED_HIGHLIGHT;
   await store.addHighlight(DEMO_PAPER.id, pageNumber, content, color);
   await store.setReadingState(DEMO_PAPER.id, { ...OPENING_STATE, updatedAt: new Date().toISOString() });

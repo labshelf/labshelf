@@ -5,12 +5,12 @@ import type { PDFDocumentProxy } from "pdfjs-dist";
 import { PDF_FILE } from "../../../library/index.js";
 import { formatError } from "../../../logging/index.js";
 import type { ReaderAssets } from "../../index.js";
-import type { PdfjsLib, ViewerLib } from "./readerContext.js";
+import type { PdfjsLib, PdfjsReaderLib } from "./readerContext.js";
 import type { PerfMarks } from "./perfMarks.js";
 
 export interface LoadedPdf {
   pdfjsLib: PdfjsLib;
-  viewerLib: ViewerLib;
+  viewerLib: PdfjsReaderLib;
   pdfDocument: PDFDocumentProxy;
 }
 
@@ -47,7 +47,7 @@ export async function loadPdf(assets: ReaderAssets, perf: PerfMarks, hooks: PdfS
   if (worker.own) { pdfjsLib.GlobalWorkerOptions.workerPort = worker.own; }
   const workerReady = bootFetchedWorker(pdfjsLib, worker.source, perf);
   const [viewerLib, pdfBytes] = await Promise.all([
-    import(assets.viewerUrl) as Promise<ViewerLib>,
+    import(assets.viewerUrl) as Promise<PdfjsReaderLib>,
     pdfBytesPromise,
     workerReady,
   ]);

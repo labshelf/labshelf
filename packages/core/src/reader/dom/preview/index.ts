@@ -2,6 +2,6 @@
 export { LogsView } from "./logsView.js";
 export { mountPreviewChrome, type PreviewChrome } from "./mountPreviewChrome.js";
 export { countBodyPages } from "./countBodyPages.js";
-export { areaScroller } from "./pageScroll.js";
-export { previewOutlineSource } from "./outlineSource.js";
-export { ReviewNote, type ReviewSelection } from "./askComment.js";
+export { createAreaScroller } from "./pageScroll.js";
+export { createPreviewOutlineSource } from "./outlineSource.js";
+export { CommentAsk, type CommentSelection } from "./askComment.js";

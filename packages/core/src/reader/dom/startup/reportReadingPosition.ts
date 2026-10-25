@@ -3,18 +3,18 @@
  */
 import type { ReadingState } from "../../index.js";
 import { createDebouncer, isPresetScale } from "../../navigation/index.js";
-import type { PdfLocation, ReaderContext } from "../session/index.js";
+import type { PdfPosition, ReaderContext } from "../session/index.js";
 import type { Sidebar } from "../sidebar/index.js";
 
 const SAVE_DEBOUNCE_MS = 800;
 
-export class ReadingStateReporter {
-  private location: PdfLocation | null = null;
+export class ReadingPositionReporter {
+  private location: PdfPosition | null = null;
   private enabled = false;
   private readonly save = createDebouncer(() => this.post(), SAVE_DEBOUNCE_MS);
 
   constructor(private readonly ctx: ReaderContext, private readonly sidebar: Sidebar) {
-    ctx.eventBus.on("updateviewarea", (evt: { location?: PdfLocation }) => {
+    ctx.eventBus.on("updateviewarea", (evt: { location?: PdfPosition }) => {
       if (!evt.location) { return; }
       this.location = evt.location;
       if (this.enabled) { this.save.call(); }

@@ -61,7 +61,7 @@ export interface EntryQuery {
 /**
  * @returns the entry whose first line is the nearest at or below the destination, or null if none is plausibly close.
  */
-export function entryAtY(entries: readonly ReferenceEntry[], q: EntryQuery): ReferenceEntry | null {
+export function findEntryAtY(entries: readonly ReferenceEntry[], q: EntryQuery): ReferenceEntry | null {
   let pool = [...entries];
   if (q.columnSplit != null && q.x != null) {
     const column = q.x > q.columnSplit ? 1 : 0;
@@ -129,6 +129,6 @@ export function matchAuthorYear(entries: readonly ReferenceEntry[], q: AuthorYea
  * Lookup for plain-text markers such as "[12]", where there is no link destination to measure against.
  * @returns the entry whose leading marker carries that number, or null.
  */
-export function entryByNumber(entries: readonly ReferenceEntry[], n: number): ReferenceEntry | null {
+export function findEntryByNumber(entries: readonly ReferenceEntry[], n: number): ReferenceEntry | null {
   return entries.find((e) => e.number === n) ?? null;
 }

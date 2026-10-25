@@ -9,7 +9,7 @@ import type { DocumentReloader, ReaderContext } from "../session/index.js";
 import type { ReaderUi } from "./buildReaderUi.js";
 import type { DeferredHover } from "./deferredHover.js";
 
-export interface HostMessageTargets {
+export interface HostMessageParts {
   ctx: ReaderContext;
   ui: ReaderUi;
   keyboard: Keyboard;
@@ -23,7 +23,7 @@ export interface HostMessageTargets {
 /**
  * Subscribes the open reader to the host messages it acts on.
  */
-export function bindHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync, changeMarks, citations }: HostMessageTargets): void {
+export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, sourceSync, changeMarks, citations }: HostMessageParts): void {
   const { host } = ctx;
   host.on("command", (msg) => keyboard.dispatch(msg.id, "host"));
   host.on("scrollToPage", (msg) => ui.goToPage(msg.pageNumber));

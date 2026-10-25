@@ -26,7 +26,7 @@ export function renderHighlightedHtml(text: unknown, terms: string[]): string {
 
 type Attrs = Record<string, string | number | boolean | null | undefined>;
 
-/** Creates an element with attributes and children; `html` sets innerHTML, `text` sets textContent. */
+/** Creates an element with attributes and children; `html` sets innerHTML, `text` sets renderTextContent. */
 export function renderElement<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   attrs: Attrs & { html?: string; text?: string } = {},

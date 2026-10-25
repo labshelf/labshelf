@@ -2,7 +2,7 @@
 import { renderIcon } from "../../../../ui/index.js";
 import { renderElement } from "../../../../ui/dom/index.js";
 import type { WebviewToHost } from "../../../index.js";
-import { iconButton } from "../../elements/index.js";
+import { renderReaderIconButton } from "../../elements/index.js";
 
 export type RecompileState = "current" | "stale" | "building";
 type HeaderSlotName = "options" | "only" | "logs";
@@ -42,9 +42,9 @@ export function mountPreviewHeader({ post, pill, setPagesDark }: PreviewHeaderDe
     SLOT_NAMES.map((name) => [name, renderElement("span", { class: "rd-preview-slot", "data-slot": name, hidden: true })]),
   ) as Record<HeaderSlotName, HTMLElement>;
 
-  const compare = iconButton(renderIcon("git-compare"), "Compare");
-  const mark = iconButton(renderIcon("tag"), "Mark");
-  const dark = iconButton(renderIcon("contrast"), "Dark PDF");
+  const compare = renderReaderIconButton(renderIcon("git-compare"), "Compare");
+  const mark = renderReaderIconButton(renderIcon("tag"), "Mark");
+  const dark = renderReaderIconButton(renderIcon("contrast"), "Dark PDF");
   compare.addEventListener("click", () => post({ command: "runCommand", id: "compareVersions" }));
   mark.addEventListener("click", () => post({ command: "runCommand", id: "markVersion" }));
 

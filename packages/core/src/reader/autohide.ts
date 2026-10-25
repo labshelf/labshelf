@@ -47,7 +47,7 @@ function pinned(i: AutohideInputs): boolean {
 /**
  * @returns the next state; callers apply `visible` to the DOM only when it changes.
  */
-export function toolbarVisibility(
+export function deriveToolbarVisibility(
   state: AutohideState,
   event: AutohideEvent,
   inputs: AutohideInputs,

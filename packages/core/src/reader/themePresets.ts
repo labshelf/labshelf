@@ -17,7 +17,7 @@ export const THEME_PRESETS = Object.fromEntries(
  * Looks up a preset, falling back to light for an unknown theme name.
  * @returns the page colours for the theme.
  */
-export function presetFor(theme: string): PagePreset {
+export function findPagePreset(theme: string): PagePreset {
   return (THEME_PRESETS as Record<string, PagePreset>)[theme] ?? THEME_PRESETS.light;
 }
 
@@ -25,7 +25,7 @@ export function presetFor(theme: string): PagePreset {
  * pdf.js treats `null` pageColors as "render the PDF's own colours"; black on white must map to that so the light theme never recolours figures.
  * @returns a pageColors object, or null for untouched rendering.
  */
-export function toPageColors(bg: string, text: string): { background: string; foreground: string } | null {
+export function derivePageColors(bg: string, text: string): { background: string; foreground: string } | null {
   const isIdentity = bg.toLowerCase() === "#ffffff" && text.toLowerCase() === "#000000";
   return isIdentity ? null : { background: bg, foreground: text };
 }

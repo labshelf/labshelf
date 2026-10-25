@@ -3,17 +3,17 @@
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { EventBus, PDFFindController, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
-import type { ReaderBootParams, ReaderPrefs } from "../../index.js";
+import type { ReaderStartupParams, ReaderPrefs } from "../../index.js";
 import type { HostBridge } from "./hostBridge.js";
 
 export type PdfjsLib = typeof import("pdfjs-dist");
-export type ViewerLib = typeof import("pdfjs-dist/web/pdf_viewer.mjs", { with: { "resolution-mode": "import" } });
+export type PdfjsReaderLib = typeof import("pdfjs-dist/web/pdf_viewer.mjs", { with: { "resolution-mode": "import" } });
 
 export interface ReaderContext {
-  boot: ReaderBootParams;
+  boot: ReaderStartupParams;
   host: HostBridge;
   pdfjsLib: PdfjsLib;
-  viewerLib: ViewerLib;
+  viewerLib: PdfjsReaderLib;
   pdfDocument: PDFDocumentProxy;
   pdfViewer: PDFViewer;
   eventBus: EventBus;
@@ -27,7 +27,7 @@ export interface ReaderContext {
 }
 
 /** Location payload of pdf.js' `updateviewarea` event. */
-export interface PdfLocation {
+export interface PdfPosition {
   pageNumber: number;
   scale: number | string;
   left: number;

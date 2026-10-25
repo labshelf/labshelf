@@ -1,16 +1,16 @@
 /**
  * Records back/forward navigation. Installed into PDFLinkService through its duck-typed `setHistory()`, so every internal link, outline click and named destination records the place the reader left.
  */
-import { HistoryStack, type ViewLocation } from "../../navigation/index.js";
-import type { PdfLocation, ReaderContext } from "../session/index.js";
+import { HistoryStack, type ViewPosition } from "../../navigation/index.js";
+import type { PdfPosition, ReaderContext } from "../session/index.js";
 
-export class NavHistory {
+export class NavigationHistory {
   private readonly stack = new HistoryStack();
-  private location: PdfLocation | null = null;
+  private location: PdfPosition | null = null;
   private readonly listeners: Array<() => void> = [];
 
   constructor(private readonly ctx: ReaderContext) {
-    ctx.eventBus.on("updateviewarea", (evt: { location?: PdfLocation }) => {
+    ctx.eventBus.on("updateviewarea", (evt: { location?: PdfPosition }) => {
       if (evt.location) { this.location = evt.location; }
     });
     // PDFLinkService calls pushCurrentPosition() immediately before it scrolls; push()/pushPage() carry the
@@ -41,7 +41,7 @@ export class NavHistory {
   /**
    * Records an explicit departure point, for jumps only recognised after they happened.
    */
-  visit(from: ViewLocation): void {
+  visit(from: ViewPosition): void {
     this.stack.visit(from);
     this.emit();
   }
@@ -67,14 +67,14 @@ export class NavHistory {
    * key repeat) would record the first jump's departure point twice and lose the second; update() recomputes it on the spot.
    * @returns the reader's current view location.
    */
-  current(): ViewLocation {
+  current(): ViewPosition {
     this.ctx.pdfViewer.update();
     const loc = this.location;
     if (!loc) { return { pageNumber: this.ctx.pdfViewer.currentPageNumber }; }
     return { pageNumber: loc.pageNumber, left: loc.left, top: loc.top };
   }
 
-  private go(target: ViewLocation): void {
+  private go(target: ViewPosition): void {
     const destArray = target.top !== undefined
       ? [null, { name: "XYZ" }, target.left ?? null, target.top, null]
       : undefined;

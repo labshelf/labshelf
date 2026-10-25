@@ -3,7 +3,7 @@ import type { CitationBibEntry, CitationCardPaper, CitationEntry } from "../../.
 import { renderElement } from "../../../../../ui/dom/index.js";
 
 /** Authors and year on one line; either may be missing. */
-export function byline(record: Pick<CitationBibEntry, "authors" | "year">): string {
+export function formatByline(record: Pick<CitationBibEntry, "authors" | "year">): string {
   return [record.authors.join(", "), record.year === undefined ? "" : String(record.year)].filter(Boolean).join(" · ");
 }
 
@@ -25,7 +25,7 @@ function tag(entry: CitationEntry): HTMLElement | null {
   return entry.bib ? renderElement("span", { class: "rd-cite-tag", text: "BIB" }) : null;
 }
 
-export function citationHead(entry: CitationEntry): HTMLElement {
+export function renderCitationHead(entry: CitationEntry): HTMLElement {
   const record: CitationCardPaper | CitationBibEntry | undefined = entry.paper ?? entry.bib;
   const title = record?.title ?? entry.key;
   const { site } = entry;

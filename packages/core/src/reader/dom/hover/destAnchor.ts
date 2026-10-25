@@ -1,26 +1,26 @@
 /** Builds hover targets for PDF link annotations: finds the link under the pointer and prepares the popup for its destination. */
-import { destPoint } from "../../index.js";
+import { deriveDestPoint } from "../../index.js";
 import type { CitationResolver } from "../text/index.js";
 import type { PreviewCitations } from "./citations/index.js";
 import type { ReaderContext } from "../session/index.js";
 import type { DestPreview } from "./destPreview.js";
-import type { ExplicitDest, HoverTarget, PopupContent } from "./hoverAnchor.js";
-import { textContent } from "./popup.js";
+import type { ExplicitDest, HoverAnchor, PopupContent } from "./hoverAnchor.js";
+import { renderTextContent } from "./popup.js";
 
 const LINK_SELECTOR = "section.linkAnnotation[data-internal-link]";
 
 /**
  * @returns the internal link annotation the event is on, or null.
  */
-export function findLink(e: MouseEvent): HTMLElement | null {
+export function findDestAnchor(e: MouseEvent): HTMLElement | null {
   return (e.target as Element).closest?.<HTMLElement>(LINK_SELECTOR) ?? null;
 }
 
-export function linkHoverTarget(link: HTMLElement): HoverTarget {
+export function createDestHoverAnchor(link: HTMLElement): HoverAnchor {
   return { group: [link], ref: null, rect: () => link.getBoundingClientRect() };
 }
 
-export class LinkContent {
+export class DestContent {
   constructor(
     private readonly ctx: ReaderContext,
     private readonly resolver: CitationResolver,
@@ -44,12 +44,12 @@ export class LinkContent {
       ? (await doc.getPageIndex(ref as Parameters<typeof doc.getPageIndex>[0])) + 1
       : typeof ref === "number" ? ref + 1 : 0;
     if (!targetPage || !isCurrent()) { return null; }
-    const point = destPoint(explicit) ?? { x: null, y: null, kind: "Fit" };
+    const point = deriveDestPoint(explicit) ?? { x: null, y: null, kind: "Fit" };
     const jump = (): void => { void this.ctx.linkService.goToDestination(dest as ExplicitDest); };
 
     if (point.y !== null && await this.resolver.isInReferences(targetPage, point.y, point.x)) {
       const text = await this.resolver.entryAt(targetPage, point.y, point.x);
-      if (text) { return textContent([text], jump); }
+      if (text) { return renderTextContent([text], jump); }
       // No reliable entry boundaries: a picture of the destination is never wrong, extracted text could be.
     }
     if (!isCurrent()) { return null; }

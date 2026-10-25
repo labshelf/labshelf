@@ -3,7 +3,7 @@
  */
 // Tests the footer's cites status: its text, the problem stepping with wrap-around and what each step does.
 import { mountProblems } from "../../../../../src/reader/dom/preview/footer/index";
-import type { PdfProblem, PreviewRoots } from "../../../../../src/reader/previewProtocol";
+import type { PdfProblem, PreviewBuildRoots } from "../../../../../src/reader/previewProtocol";
 import { showToast } from "../../../../../src/ui/dom/widgets/showToast";
 
 jest.mock("../../../../../src/ui/dom/widgets/showToast", () => ({ showToast: jest.fn() }));
@@ -11,7 +11,7 @@ jest.mock("../../../../../src/ui/dom/widgets/showToast", () => ({ showToast: jes
 const area = (page: number) => ({ page, left: 0, top: 0, right: 10, bottom: 10 });
 const problem = (message: string, extra: Partial<PdfProblem> = {}): PdfProblem => ({ kind: "undefinedCitation", message, ...extra });
 
-function roots(cites: number | undefined, pdfProblems: PdfProblem[]): PreviewRoots {
+function roots(cites: number | undefined, pdfProblems: PdfProblem[]): PreviewBuildRoots {
   const root = { path: "/p/main.pdf", failed: false, rawLog: false, sourceLinks: true, problems: [], pdfProblems, ...(cites === undefined ? {} : { cites }) };
   const other = { path: "/p/other.pdf", failed: false, rawLog: false, sourceLinks: true, problems: [], pdfProblems: [problem("elsewhere")], cites: 99 };
   return { main: "/p/main.pdf", focused: "/p/main.pdf", shown: "/p/main.pdf", roots: [other, root] };

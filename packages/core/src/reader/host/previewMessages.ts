@@ -3,7 +3,7 @@
  */
 import type { CitationEntry } from "../previewProtocol.js";
 import type { PreviewRequest } from "../previewRequests.js";
-import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
+import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostContext.js";
 
 // The reader shows the logs view, double-click to source and citation cards only in a preview, so a missing port is a host bug.
 function previewPorts(ctx: HostContext, command: string) {
@@ -15,7 +15,7 @@ function previewPorts(ctx: HostContext, command: string) {
 }
 
 export const previewHandlers: Pick<
-  MessageHandlers,
+  MessageAnswers,
   PreviewRequest["command"]
 > = {
   showSource: async (ctx, msg) => {

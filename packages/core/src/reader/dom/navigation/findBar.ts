@@ -2,9 +2,9 @@
  * Renders the find bar and drives pdf.js' PDFFindController through the EventBus. "Highlight all" is always on: seeing every hit at once is the point of searching a paper.
  */
 import type { ReaderContext } from "../session/index.js";
-import { iconButton } from "../elements/index.js";
+import { renderReaderIconButton } from "../elements/index.js";
 import { renderIcon } from "../../../ui/index.js";
-import type { NavHistory } from "./navigationHistory.js";
+import type { NavigationHistory } from "./navigationHistory.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 const FAR_JUMP_SETTLE_MS = 300;
@@ -21,14 +21,14 @@ export class FindBar {
   private open = false;
   private readonly toggleListeners: Array<(open: boolean) => void> = [];
 
-  constructor(private readonly ctx: ReaderContext, private readonly history: NavHistory) {
+  constructor(private readonly ctx: ReaderContext, private readonly history: NavigationHistory) {
     this.input = renderElement("input", { class: "rd-find-input", type: "text", placeholder: "Find in document", "aria-label": "Find in document", spellcheck: "false" });
     this.count = renderElement("span", { class: "rd-find-count", "aria-live": "polite" });
     this.caseBtn = renderElement("button", { class: "rd-toggle", type: "button", title: "Match case", "aria-pressed": "false" }, "Aa");
     this.wordBtn = renderElement("button", { class: "rd-toggle", type: "button", title: "Whole words", "aria-pressed": "false" }, "W");
-    const prev = iconButton(renderIcon("chevron-up"), "Previous match (Shift+Enter)", "rd-btn-sm");
-    const next = iconButton(renderIcon("chevron-down"), "Next match (Enter)", "rd-btn-sm");
-    const close = iconButton(renderIcon("x"), "Close (Esc)", "rd-btn-sm");
+    const prev = renderReaderIconButton(renderIcon("chevron-up"), "Previous match (Shift+Enter)", "rd-btn-sm");
+    const next = renderReaderIconButton(renderIcon("chevron-down"), "Next match (Enter)", "rd-btn-sm");
+    const close = renderReaderIconButton(renderIcon("x"), "Close (Esc)", "rd-btn-sm");
     this.el.append(this.input, this.count, this.caseBtn, this.wordBtn, prev, next, close);
 
     this.input.addEventListener("input", () => this.dispatch(""));

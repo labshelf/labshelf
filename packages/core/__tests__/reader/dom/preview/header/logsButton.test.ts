@@ -3,12 +3,12 @@
  */
 // Tests the header logs button: problem count, hidden count at zero, menu entries and their messages.
 import { mountLogsButton } from "../../../../../src/reader/dom/preview/header/index";
-import type { PreviewProblem, PreviewRoot, PreviewRoots } from "../../../../../src/reader/index";
+import type { PreviewProblem, PreviewBuildRoot, PreviewBuildRoots } from "../../../../../src/reader/index";
 
-const root = (path: string, problems: PreviewProblem[], rawLog = false): PreviewRoot =>
+const root = (path: string, problems: PreviewProblem[], rawLog = false): PreviewBuildRoot =>
   ({ path, failed: false, rawLog, sourceLinks: true, problems });
 
-const roots = (shown: string, list: PreviewRoot[]): PreviewRoots =>
+const roots = (shown: string, list: PreviewBuildRoot[]): PreviewBuildRoots =>
   ({ main: list[0]!.path, focused: shown, shown, roots: list });
 
 const PROBLEMS: PreviewProblem[] = [

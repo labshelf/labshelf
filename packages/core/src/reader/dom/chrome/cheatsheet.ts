@@ -1,7 +1,7 @@
 /**
  * Shows the `?` overlay listing every active shortcut, generated from the keymap so it can never drift from the real bindings.
  */
-import { cheatsheetRows } from "../../navigation/index.js";
+import { deriveCheatsheetRows } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
@@ -30,7 +30,7 @@ export class Cheatsheet {
   }
 
   private open(): void {
-    const rows = cheatsheetRows({ vimKeys: this.ctx.prefs.vimKeys, isMac: this.ctx.boot.isMac, preview: this.ctx.boot.preview });
+    const rows = deriveCheatsheetRows({ vimKeys: this.ctx.prefs.vimKeys, isMac: this.ctx.boot.isMac, preview: this.ctx.boot.preview });
     const card = renderElement("div", { class: "rd-cheat-card", role: "dialog", "aria-label": "Keyboard shortcuts" });
     card.append(renderElement("div", { class: "rd-cheat-title" }, "Keyboard shortcuts"));
     const grid = renderElement("div", { class: "rd-cheat-grid" });

@@ -1,6 +1,6 @@
 // Asks which library paper to cite and which of its highlights, reading the highlights from the paper's sidecar.
 import {
-  CITE_WITHOUT_PAGE, PaperDataStore, highlightLabel, highlightPage, paperPickText, quotableHighlights,
+  CITE_WITHOUT_PAGE, PaperSidecarStore, highlightLabel, highlightPage, paperPickText, quotableHighlights,
   type Annotation, type HighlightChoice, type ILogger, type LibraryFileSystem, type PaperRecord,
 } from "@labshelf/core";
 import { pickQuickEntry, showToast, type QuickPickEntry } from "@labshelf/core/dom";
@@ -34,7 +34,7 @@ function highlightEntries(heading: string, highlights: readonly Annotation[], qu
 /** A paper whose highlights cannot be read is still cited, without a page. */
 async function readHighlights(fs: LibraryFileSystem, logger: ILogger, paper: PaperRecord): Promise<Annotation[]> {
   try {
-    return quotableHighlights(await new PaperDataStore(createSidecarPort(fs), { logger }).getAnnotations(paper.id));
+    return quotableHighlights(await new PaperSidecarStore(createSidecarPort(fs), { logger }).getAnnotations(paper.id));
   } catch (error) {
     void logger.log("WARN", MODULE, "Highlights of a paper could not be read; citing without a page", { paperId: paper.id, error: String(error) });
     return [];

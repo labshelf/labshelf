@@ -7,7 +7,7 @@ import {
   createNonce,
   PROTOCOL_VERSION,
   type EffectiveTheme,
-  type ReaderBootParams,
+  type ReaderStartupParams,
   type ReaderPrefs,
   escapeHtml,
   READER_SHELL_BODY,
@@ -20,7 +20,7 @@ interface ReaderDocumentParts {
   cspSource: string;
   title: string;
   effectiveTheme: EffectiveTheme;
-  assets: ReaderBootParams["assets"];
+  assets: ReaderStartupParams["assets"];
   bootJson: string;
   viewerCssUrl: string;
   scriptUrl: string;
@@ -171,7 +171,7 @@ function buildBootParams(
   resolved: ResolvedUris | null,
   pdfUrl: string,
   effectiveTheme: EffectiveTheme,
-): ReaderBootParams {
+): ReaderStartupParams {
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
@@ -200,7 +200,7 @@ function buildBootParams(
  * JSON for an inert <script type="application/json"> block. `<` is escaped so a paper title containing "</script>" cannot terminate the block, and U+2028/2029 because they are line terminators in older parsers.
  * @returns the JSON-encoded boot payload, safe to embed inside a script tag.
  */
-export function serializeBoot(boot: ReaderBootParams): string {
+export function serializeBoot(boot: ReaderStartupParams): string {
   return JSON.stringify(boot)
     .replace(/</g, "\\u003c")
     .replace(/\u2028/g, "\\u2028")

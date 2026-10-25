@@ -2,7 +2,7 @@
  * Renders the reader's single left sidebar: a tab strip (Thumbnails / Outline / Annotations), a drag-resizable width, and open/tab/width state reported for persistence.
  */
 import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, type SidebarState, type SidebarTab } from "../../index.js";
-import { clamp } from "../elements/index.js";
+import { deriveClampedNumber } from "../elements/index.js";
 import { renderIcon, type IconName } from "../../../ui/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
@@ -62,7 +62,7 @@ export class Sidebar {
    */
   restore(state: SidebarState): void {
     this.tab = state.tab;
-    this.width = clamp(state.width ?? DEFAULT_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
+    this.width = deriveClampedNumber(state.width ?? DEFAULT_WIDTH, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
     this.setOpen(state.open, false);
   }
 
@@ -119,7 +119,7 @@ export class Sidebar {
       const startWidth = this.width;
       document.documentElement.classList.add("rd-resizing");
       const move = (e: PointerEvent): void => {
-        this.width = clamp(startWidth + e.clientX - startX, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
+        this.width = deriveClampedNumber(startWidth + e.clientX - startX, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH);
         this.el.style.width = `${this.width}px`;
       };
       const up = (): void => {

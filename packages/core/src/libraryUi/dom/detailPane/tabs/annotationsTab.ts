@@ -4,7 +4,7 @@
  */
 import { formatRelativeTime } from "../../../../library/index.js";
 import { ANNOTATION_COLORS, type Annotation } from "../../../../model/index.js";
-import { byPageThenCreated } from "../../../../reader/index.js";
+import { compareAnnotations } from "../../../../reader/index.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { renderIconButton, renderLoading, renderMuted } from "../detailPaneMarkup.js";
 import type { PaneState, PaperView } from "../paneState.js";
@@ -16,7 +16,7 @@ const annText = (a: Annotation): string => a.content.trim();
 /** The annotations the filter field and the colour buttons let through, by page. */
 export function deriveFilteredAnnotations(pane: PaneState, all: readonly Annotation[]): Annotation[] {
   const f = pane.annFilter.toLowerCase();
-  return [...all].sort(byPageThenCreated).filter((a) => (!pane.annColor || a.color === pane.annColor) && (!f || annText(a).toLowerCase().includes(f)));
+  return [...all].sort(compareAnnotations).filter((a) => (!pane.annColor || a.color === pane.annColor) && (!f || annText(a).toLowerCase().includes(f)));
 }
 
 /** One annotation as a card that opens the PDF at its page. */

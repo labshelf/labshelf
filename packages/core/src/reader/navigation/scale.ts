@@ -15,7 +15,7 @@ const PRESETS = new Set(["page-width", "page-fit", "page-actual", "auto"]);
 /**
  * @returns the scale limited to [MIN_SCALE, MAX_SCALE]; 1 for a non-finite input.
  */
-export function clampScale(scale: number): number {
+export function deriveClampedScale(scale: number): number {
   if (!Number.isFinite(scale)) { return 1; }
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
@@ -32,7 +32,7 @@ export function isPresetScale(value: string | null | undefined): boolean {
  * Next rung of the zoom ladder for the +/- buttons and keys.
  * @returns the neighbouring step, or the clamped current scale at either end.
  */
-export function nextZoomStep(current: number, direction: 1 | -1): number {
+export function deriveNextZoomStep(current: number, direction: 1 | -1): number {
   const eps = 0.005;
   if (direction > 0) {
     return ZOOM_STEPS.find((s) => s > current + eps) ?? MAX_SCALE;
@@ -48,7 +48,7 @@ const WHEEL_NOTCH_PX = 50;
  * Trackpad pinches arrive as many small pixel deltas and map smoothly; mouse wheels arrive as coarse notches and map to 10% steps.
  * @returns a factor in [0.5, 2]; 1 means no change.
  */
-export function wheelToScaleFactor(deltaY: number, deltaMode: number): number {
+export function deriveScaleFactor(deltaY: number, deltaMode: number): number {
   if (!Number.isFinite(deltaY) || deltaY === 0) { return 1; }
   let factor: number;
   if (deltaMode !== DOM_DELTA_PIXEL || Math.abs(deltaY) >= WHEEL_NOTCH_PX) {
@@ -66,9 +66,9 @@ export function wheelToScaleFactor(deltaY: number, deltaMode: number): number {
  * Limits a factor so `current * factor` stays inside [MIN_SCALE, MAX_SCALE].
  * @returns the (possibly reduced) factor; 1 when already pinned at a bound.
  */
-export function boundedFactor(current: number, factor: number): number {
+export function deriveBoundedFactor(current: number, factor: number): number {
   if (!(current > 0)) { return 1; }
-  return clampScale(current * factor) / current;
+  return deriveClampedScale(current * factor) / current;
 }
 
 export interface Box {
@@ -81,7 +81,7 @@ export interface Box {
  * A raw clientX/clientY would therefore drift by the sidebar width; this rebases the pointer into that space.
  * @returns `[x, y]` to pass as `origin`.
  */
-export function anchorOrigin(
+export function deriveAnchorOrigin(
   clientX: number,
   clientY: number,
   containerRect: Box,
@@ -97,5 +97,5 @@ export function anchorOrigin(
  * @returns the scale as a whole percentage, e.g. "125%".
  */
 export function formatZoomLabel(scale: number): string {
-  return `${Math.round(clampScale(scale) * 100)}%`;
+  return `${Math.round(deriveClampedScale(scale) * 100)}%`;
 }

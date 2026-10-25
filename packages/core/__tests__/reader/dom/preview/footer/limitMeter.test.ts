@@ -3,9 +3,9 @@
  */
 // Tests the footer limit meter: thresholds, the single bodyPages report per PDF and the limits popover's posts.
 import { mountLimitMeter } from "../../../../../src/reader/dom/preview/footer/limitMeter";
-import type { PreviewRoots } from "../../../../../src/reader/previewProtocol";
+import type { PreviewBuildRoots } from "../../../../../src/reader/previewProtocol";
 
-function roots(extra: Partial<PreviewRoots> = {}, words?: number): PreviewRoots {
+function roots(extra: Partial<PreviewBuildRoots> = {}, words?: number): PreviewBuildRoots {
   const root = { path: "/p/main.tex", failed: false, rawLog: true, sourceLinks: true, problems: [], ...(words === undefined ? {} : { words }) };
   return { main: "/p/main.tex", focused: "/p/main.tex", shown: "/p/main.tex", roots: [root], ...extra };
 }
@@ -89,7 +89,7 @@ describe("limit meter", () => {
 });
 
 describe("limit popover", () => {
-  const open = async (r: PreviewRoots) => {
+  const open = async (r: PreviewBuildRoots) => {
     const s = setup();
     s.meter.setRoots(r);
     await s.flush();

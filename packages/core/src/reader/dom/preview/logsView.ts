@@ -1,9 +1,9 @@
 // Shows a build root's problems over the page area, by severity tab, with its raw log one click away.
 import { renderElement } from "../../../ui/dom/index.js";
 import { renderIcon, type IconName } from "../../../ui/index.js";
-import type { PreviewRoot, PreviewRoots, WebviewToHost, PreviewProblem } from "../../index.js";
-import { iconButton } from "../elements/index.js";
-import { fileName } from "./fileName.js";
+import type { PreviewBuildRoot, PreviewBuildRoots, WebviewToHost, PreviewProblem } from "../../index.js";
+import { renderReaderIconButton } from "../elements/index.js";
+import { deriveFileName } from "./deriveFileName.js";
 import { TabList } from "../chrome/index.js";
 
 /** Which problems a logs tab lists. */
@@ -49,7 +49,7 @@ class LogsTabs {
 const SEVERITY_ICON: Record<PreviewProblem["severity"], IconName> = { error: "warning", warning: "warning", info: "info" };
 
 function location(problem: PreviewProblem): string {
-  return problem.line === undefined ? fileName(problem.file!) : `${fileName(problem.file!)}:${problem.line}`;
+  return problem.line === undefined ? deriveFileName(problem.file!) : `${deriveFileName(problem.file!)}:${problem.line}`;
 }
 
 function entryBody(problem: PreviewProblem): Array<HTMLElement | null> {
@@ -91,15 +91,15 @@ interface LogsViewDeps {
 export class LogsView {
   private readonly pane = renderElement("section", { class: "rd-logs", role: "region", "aria-label": "Build logs", hidden: true });
   private readonly title = renderElement("span", { class: "rd-logs-title" });
-  private readonly rawLog = iconButton(renderIcon("file-text"), "Open raw log");
+  private readonly rawLog = renderReaderIconButton(renderIcon("file-text"), "Open raw log");
   private readonly header: HTMLElement;
   private readonly body = renderElement("div", { class: "rd-logs-body" });
   private readonly tabs = new LogsTabs(() => this.renderEntries());
-  private roots: PreviewRoots | null = null;
+  private roots: PreviewBuildRoots | null = null;
   private rootPath: string | null = null;
 
   constructor(private readonly deps: LogsViewDeps) {
-    const back = iconButton(renderIcon("arrow-left"), "Back to PDF");
+    const back = renderReaderIconButton(renderIcon("arrow-left"), "Back to PDF");
     back.addEventListener("click", () => this.close());
     this.rawLog.addEventListener("click", () => {
       if (this.rootPath !== null) { deps.post({ command: "openRawLog", root: this.rootPath }); }
@@ -128,20 +128,20 @@ export class LogsView {
   }
 
   /** Refreshes the open view's entries in place; a closed view only keeps the roots for its next open. */
-  setRoots(roots: PreviewRoots): void {
+  setRoots(roots: PreviewBuildRoots): void {
     this.roots = roots;
     if (!this.isOpen) { return; }
     this.renderHeader();
     this.renderEntries();
   }
 
-  private root(): PreviewRoot | undefined {
+  private root(): PreviewBuildRoot | undefined {
     return this.roots?.roots.find((r) => r.path === this.rootPath);
   }
 
   private renderHeader(): void {
     const root = this.root();
-    this.title.textContent = this.rootPath === null ? "" : fileName(this.rootPath);
+    this.title.textContent = this.rootPath === null ? "" : deriveFileName(this.rootPath);
     if (root?.rawLog) { this.header.append(this.rawLog); } else { this.rawLog.remove(); }
     this.tabs.setCounts(root?.problems ?? []);
   }

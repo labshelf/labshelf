@@ -30,7 +30,7 @@ const MAX_ROWS = 5000;
 /**
  * @returns rows in document order with stable numeric ids.
  */
-export function flattenOutline(nodes: readonly RawOutlineNode[] | null | undefined): OutlineRow[] {
+export function deriveOutlineRows(nodes: readonly RawOutlineNode[] | null | undefined): OutlineRow[] {
   const rows: OutlineRow[] = [];
   const walk = (list: readonly RawOutlineNode[], depth: number, parentId: number | null): void => {
     for (const node of list) {
@@ -57,7 +57,7 @@ export function flattenOutline(nodes: readonly RawOutlineNode[] | null | undefin
 /**
  * @returns the rows not hidden beneath a collapsed ancestor.
  */
-export function visibleRows(rows: readonly OutlineRow[], collapsed: ReadonlySet<number>): OutlineRow[] {
+export function deriveVisibleRows(rows: readonly OutlineRow[], collapsed: ReadonlySet<number>): OutlineRow[] {
   const hidden = new Set<number>();
   const out: OutlineRow[] = [];
   for (const row of rows) {
@@ -72,7 +72,7 @@ export function visibleRows(rows: readonly OutlineRow[], collapsed: ReadonlySet<
  * The active outline entry is the last one starting at or before the current page.
  * @returns an index into `rowPages`, or -1 when no entry qualifies (pages not yet resolved are null).
  */
-export function activeOutlineIndex(rowPages: readonly (number | null)[], currentPage: number): number {
+export function deriveActiveOutlineRow(rowPages: readonly (number | null)[], currentPage: number): number {
   let best = -1;
   let bestPage = -1;
   rowPages.forEach((page, i) => {

@@ -3,8 +3,8 @@
  */
 import type { WebviewToHost } from "../protocol/index.js";
 import { formatError } from "../../logging/index.js";
-import { normalizeReadingState } from "../sidecar/index.js";
-import { READER_LOG_MODULE, type HostContext, type MessageHandlers } from "./hostContext.js";
+import { normalizeReadingPosition } from "../sidecar/index.js";
+import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostContext.js";
 
 type StoreResult<T> = { ok: true; value: T } | { ok: false };
 
@@ -29,7 +29,7 @@ async function pushStoredAnnotations(ctx: HostContext): Promise<void> {
 }
 
 export const annotationHandlers: Pick<
-  MessageHandlers,
+  MessageAnswers,
   "createAnnotation" | "updateAnnotation" | "deleteAnnotation" | "saveReadingState"
 > = {
   createAnnotation: async (ctx, msg) => {
@@ -61,7 +61,7 @@ export const annotationHandlers: Pick<
 
   // Not a sidecar change for the host: the position rides along with the next sync.
   saveReadingState: async (ctx, msg) => {
-    const state = normalizeReadingState(msg.state);
+    const state = normalizeReadingPosition(msg.state);
     if (state) { await ctx.ports.store.setReadingState(ctx.ports.paper.id, state); }
   },
 };

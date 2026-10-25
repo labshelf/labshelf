@@ -1,6 +1,6 @@
 // Mounts the header's `<file> only` toggle, which builds only the focused included file.
 import { renderElement } from "../../../../ui/dom/index.js";
-import type { PreviewRoots, WebviewToHost } from "../../../index.js";
+import type { PreviewBuildRoots, WebviewToHost } from "../../../index.js";
 
 interface OnlyToggleDeps {
   post: (msg: WebviewToHost) => void;
@@ -10,7 +10,7 @@ interface OnlyToggleDeps {
  * Mounts the toggle into the header's `only` slot; the slot stays hidden while the shown root offers no `includeOnly`.
  * @returns `setRoots`, which the host's roots messages drive.
  */
-export function mountOnlyToggle(slot: HTMLElement, { post }: OnlyToggleDeps): { setRoots(roots: PreviewRoots): void } {
+export function mountOnlyToggle(slot: HTMLElement, { post }: OnlyToggleDeps): { setRoots(roots: PreviewBuildRoots): void } {
   const button = renderElement("button", { class: "rd-preview-only", type: "button", "aria-pressed": "false" });
   let on = false;
   button.addEventListener("click", () => post({ command: "setIncludeOnly", on: !on }));

@@ -3,7 +3,7 @@
  */
 // Tests the reader theme controller: the effective theme reaches the document and its listeners from any source.
 import { ThemeController } from "../../../../src/reader/dom/chrome/index";
-import { presetFor } from "../../../../src/reader/index";
+import { findPagePreset } from "../../../../src/reader/index";
 
 describe("ThemeController", () => {
   it("tells effective-theme listeners about every applied theme, init included", () => {
@@ -39,7 +39,7 @@ describe("ThemeController", () => {
     expect(document.documentElement.dataset["pdfTheme"]).toBe("dark");
     expect(document.documentElement.dataset["pdfPages"]).toBe("light");
     expect(theme.pageTheme).toBe("light");
-    expect(theme.colors.bg).toBe(presetFor("light").bg);
+    expect(theme.colors.bg).toBe(findPagePreset("light").bg);
     expect(container.style.background).toBe("");
   });
 
@@ -49,7 +49,7 @@ describe("ThemeController", () => {
     theme.lockPages("dark");
 
     expect(theme.pageTheme).toBe("dark");
-    expect(theme.colors.bg).toBe(presetFor("dark").bg);
+    expect(theme.colors.bg).toBe(findPagePreset("dark").bg);
     expect(document.documentElement.dataset["pdfPages"]).toBe("dark");
   });
 });

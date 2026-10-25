@@ -3,11 +3,11 @@
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import type { EventBus, PDFFindController, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
-import { presetFor, toPageColors } from "../../index.js";
-import type { ViewerLib } from "./readerContext.js";
+import { findPagePreset, derivePageColors } from "../../index.js";
+import type { PdfjsReaderLib } from "./readerContext.js";
 import { createReaderFind } from "./readerFindController.js";
 
-export interface ViewerParts {
+export interface PdfjsReaderParts {
   eventBus: EventBus;
   linkService: PDFLinkService;
   findController: PDFFindController;
@@ -19,19 +19,19 @@ export interface ViewerParts {
 /**
  * @returns the constructed viewer parts with the document already attached.
  */
-export function createViewer(
-  viewerLib: ViewerLib,
+export function createPdfjsReader(
+  viewerLib: PdfjsReaderLib,
   pdfDocument: PDFDocumentProxy,
   container: HTMLDivElement,
   viewer: HTMLDivElement,
   pageTheme: string,
   preview: boolean,
-): ViewerParts {
+): PdfjsReaderParts {
   const eventBus = new viewerLib.EventBus();
   // A link's stored zoom ("XYZ ... 0.8") would silently undo the reader's chosen zoom on every click.
   const linkService = new viewerLib.PDFLinkService({ eventBus, ignoreDestinationZoom: true });
   const { findController, markFindOrigin } = createReaderFind(viewerLib, container, linkService, eventBus);
-  const preset = presetFor(pageTheme);
+  const preset = findPagePreset(pageTheme);
   const pdfViewer = new viewerLib.PDFViewer({
     container,
     viewer,
@@ -49,8 +49,8 @@ export function createViewer(
     maxCanvasDim: 32767,
     enableDetailCanvas: true,
     enableHWA: true,
-    pageColors: toPageColors(preset.bg, preset.text),
-  } as ConstructorParameters<ViewerLib["PDFViewer"]>[0]);
+    pageColors: derivePageColors(preset.bg, preset.text),
+  } as ConstructorParameters<PdfjsReaderLib["PDFViewer"]>[0]);
   linkService.setViewer(pdfViewer);
   linkService.setDocument(pdfDocument, null);
   // Also hands the document to the find controller.

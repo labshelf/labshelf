@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests the citation card of a build preview: tag, venue and folder, citing command, page-first highlights, actions and fix row.
-import { citationContent } from "../../../../../../src/reader/dom/hover/citations/card";
+import { renderCitationContent } from "../../../../../../src/reader/dom/hover/citations/card";
 import type { CitationEntry } from "../../../../../../src/reader";
 
 const site = { file: "chapters/intro.tex", line: 42, text: "\\cite[p.~3]{smith2020}" };
@@ -20,7 +20,7 @@ const noSite: CitationEntry = { key: "smith2020", paper, citedPage: 3 };
 
 function render(e: CitationEntry, open = jest.fn(), post = jest.fn()) {
   document.body.innerHTML = "";
-  const card = citationContent([e], open, post);
+  const card = renderCitationContent([e], open, post);
   document.body.append(card!.body);
   const buttons = (): HTMLButtonElement[] => [...card!.body.querySelectorAll<HTMLButtonElement>(".rd-cite-acts button, .rd-cite-fix button")];
   const button = (label: string): HTMLButtonElement | undefined => buttons().find((b) => b.textContent === label);

@@ -42,7 +42,7 @@ export interface ReaderAssets {
 }
 
 /** Serialized into the inert JSON boot block of the HTML shell. */
-export interface ReaderBootParams {
+export interface ReaderStartupParams {
   protocolVersion: number;
   assets: ReaderAssets;
   paperId: string;

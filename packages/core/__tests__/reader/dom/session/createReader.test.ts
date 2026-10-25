@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 // Checks that preview fitting uses the viewport without pdf.js page margins.
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { createViewer } from "../../../../src/reader/dom/session";
+import { createPdfjsReader } from "../../../../src/reader/dom/session";
 
 function setup(preview: boolean): Record<string, unknown> {
   let options: Record<string, unknown> = {};
@@ -12,8 +12,8 @@ function setup(preview: boolean): Record<string, unknown> {
   }
   const viewerLib = {
     EventBus: class {}, PDFLinkService: LinkService, PDFViewer: Viewer, PDFFindController: class {},
-  } as unknown as Parameters<typeof createViewer>[0];
-  createViewer(viewerLib, {} as PDFDocumentProxy, document.createElement("div"), document.createElement("div"), "light", preview);
+  } as unknown as Parameters<typeof createPdfjsReader>[0];
+  createPdfjsReader(viewerLib, {} as PDFDocumentProxy, document.createElement("div"), document.createElement("div"), "light", preview);
   return options;
 }
 

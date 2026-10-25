@@ -11,7 +11,7 @@ export type CitablePaper = Pick<PaperRecord, "citeKey" | "title" | "authors" | "
  * Text-layer selections carry hard line breaks and hyphenation from the PDF layout; a quote should read as running prose.
  * @returns the quote with hyphenation joined and whitespace collapsed.
  */
-export function cleanQuote(text: string): string {
+export function normalizeQuote(text: string): string {
   return text
     .replace(/(\p{L})-\s*\n\s*(\p{Ll})/gu, "$1$2")
     .replace(/\s+/g, " ")
@@ -28,7 +28,7 @@ export function formatQuoteWithCitation(
   pageNumber: number,
   style: CitationStyle,
 ): string {
-  const quote = cleanQuote(text);
+  const quote = normalizeQuote(text);
   switch (style) {
     case "pandoc":
       return `> ${quote}\n\n[@${paper.citeKey}, p. ${pageNumber}]`;

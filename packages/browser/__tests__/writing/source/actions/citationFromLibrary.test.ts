@@ -13,7 +13,7 @@ const updateProjectBibliography = jest.fn();
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), toast: jest.fn(), quickPick: jest.fn() }));
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
-  PaperDataStore: jest.fn().mockImplementation(() => ({ getAnnotations })),
+  PaperSidecarStore: jest.fn().mockImplementation(() => ({ getAnnotations })),
 }));
 jest.mock("../../../../src/writing/project", () => ({ createBrowserProjectData: () => ({ updateProjectBibliography }) }));
 

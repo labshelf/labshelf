@@ -2,9 +2,9 @@
 import type { CitationEntry, CitationQuery } from "../../../index.js";
 import { type ReaderContext, DOCUMENT_REPLACED } from "../../session/index.js";
 import type { PageViewportLike } from "../../navigation/index.js";
-import type { HoverTarget, PopupContent } from "../hoverAnchor.js";
-import { citationContent } from "./card/index.js";
-import { rectArea, screenArea } from "./pageAreas.js";
+import type { HoverAnchor, PopupContent } from "../hoverAnchor.js";
+import { renderCitationContent } from "./card/index.js";
+import { deriveRectArea, deriveScreenArea } from "./pageAreas.js";
 
 interface LinkAnnotationData {
   id: string;
@@ -39,7 +39,7 @@ class LinkAnnotations {
 /** The host always answers; this only bounds the wait when the host is gone or stuck. */
 export const LOOKUP_TIMEOUT_MS = 1500;
 
-export class CitationLookup {
+export class CitationFinder {
   private nextRequest = 1;
   private readonly waiting = new Map<number, (entries: CitationEntry[] | null) => void>();
   private readonly answers = new Map<string, Promise<CitationEntry[]>>();
@@ -84,11 +84,11 @@ export class CitationLookup {
 interface PageViewLike { viewport?: PageViewportLike }
 
 export class PreviewCitations {
-  readonly lookup: CitationLookup;
+  readonly lookup: CitationFinder;
   readonly annotations: LinkAnnotations;
 
   constructor(private readonly ctx: ReaderContext) {
-    this.lookup = new CitationLookup(ctx);
+    this.lookup = new CitationFinder(ctx);
     this.annotations = new LinkAnnotations(ctx);
   }
 
@@ -103,21 +103,21 @@ export class PreviewCitations {
     const viewport = this.viewport(page);
     if (!annotation?.rect || !viewport) { return []; }
     const dest = typeof annotation.dest === "string" ? annotation.dest : undefined;
-    const area = rectArea(page, annotation.rect, viewport.viewBox);
+    const area = deriveRectArea(page, annotation.rect, viewport.viewBox);
     return this.lookup.lookup({ area, link: true, ...(dest === undefined ? {} : { dest }) }, `${page}:${id}`);
   }
 
   /** The card for an internal link, or null when it cites no library paper. */
   async linkCard(link: HTMLElement): Promise<PopupContent | null> {
-    return citationContent(await this.linkEntries(link), (id, citedPage) => this.open(id, citedPage), (request) => this.ctx.host.post(request));
+    return renderCitationContent(await this.linkEntries(link), (id, citedPage) => this.open(id, citedPage), (request) => this.ctx.host.post(request));
   }
 
   /** The card for text read as an in-text citation, or null when it cites no library paper. */
-  async textCard(target: HoverTarget, pageEl: HTMLElement, page: number): Promise<PopupContent | null> {
+  async textCard(target: HoverAnchor, pageEl: HTMLElement, page: number): Promise<PopupContent | null> {
     const viewport = this.viewport(page);
     if (!this.ctx.boot.preview || !viewport) { return null; }
-    const area = screenArea(page, viewport, pageEl, target.rect());
-    return citationContent(await this.lookup.lookup({ area, link: false }), (id, citedPage) => this.open(id, citedPage), (request) => this.ctx.host.post(request));
+    const area = deriveScreenArea(page, viewport, pageEl, target.rect());
+    return renderCitationContent(await this.lookup.lookup({ area, link: false }), (id, citedPage) => this.open(id, citedPage), (request) => this.ctx.host.post(request));
   }
 
   open(paperId: string, page?: number): void {

@@ -1,5 +1,5 @@
 // Pins how the preview tab answers frame requests: problems open their source line, Mark and Compare reach the history, limits and build options are saved.
-import type { ILogger, LibraryFileSystem, PreviewRoots } from "@labshelf/core";
+import type { ILogger, LibraryFileSystem, PreviewBuildRoots } from "@labshelf/core";
 import { revealInOpenEditor } from "../../../src/writing/session";
 import { markProjectVersion } from "../../../src/writing/history/markProjectVersion";
 import { previewRequestHandler, type PreviewRequestDeps } from "../../../src/writing/preview/previewRequests";
@@ -8,7 +8,7 @@ jest.mock("../../../src/writing/session/openEditors", () => ({ revealInOpenEdito
 jest.mock("../../../src/writing/history/markProjectVersion", () => ({ markProjectVersion: jest.fn(async () => true) }));
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
-const roots: PreviewRoots = {
+const roots: PreviewBuildRoots = {
   main: "main.tex", focused: "main.tex", shown: "main.tex",
   roots: [{ path: "main.tex", failed: true, rawLog: false, sourceLinks: false, problems: [{ severity: "error", message: "a" }, { severity: "error", message: "b", file: "intro.tex", line: 7 }] }],
 };

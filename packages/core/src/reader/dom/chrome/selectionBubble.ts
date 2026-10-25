@@ -3,21 +3,21 @@
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { clamp, iconButton } from "../elements/index.js";
-import { boxInPage, pageFrame } from "../highlights/index.js";
+import { deriveClampedNumber, renderReaderIconButton } from "../elements/index.js";
+import { deriveBoxInPage, derivePageFrame } from "../highlights/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
 
-export interface SelectionInfo {
+export interface SelectionBubbleContent {
   text: string;
   pageNumber: number;
   page: HTMLElement;
 }
 
 /** Comments on the selection; `start` is its first line on screen and `bounds` its whole extent. */
-export type CommentOnSelection = (selection: SelectionInfo & { start: DOMRect; bounds: DOMRect }) => void;
+export type CommentOnSelection = (selection: SelectionBubbleContent & { start: DOMRect; bounds: DOMRect }) => void;
 
 export class SelectionBubble {
   private readonly el = findElement("selection-toolbar");
@@ -31,11 +31,11 @@ export class SelectionBubble {
       btn.addEventListener("click", () => this.highlight(color));
       this.el.append(btn);
     }
-    const cite = iconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
+    const cite = renderReaderIconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
     if (commentOn) {
-      const comment = iconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
+      const comment = renderReaderIconButton(renderIcon("message"), "Comment on the source", "rd-btn-sm");
       // Hidden until the host's roots say the shown PDF maps to its source, which a comment needs.
       comment.hidden = true;
       comment.addEventListener("click", () => this.comment());
@@ -64,7 +64,7 @@ export class SelectionBubble {
    * The highlight belongs to the page that contains the selected text, which is not necessarily the viewer's "current" page when two pages share the screen.
    * @returns the selected text and the page it belongs to, or null when nothing usable is selected.
    */
-  currentSelection(): SelectionInfo | null {
+  currentSelection(): SelectionBubbleContent | null {
     const sel = window.getSelection();
     const text = sel?.toString().trim() ?? "";
     if (!sel || !text || sel.rangeCount === 0) { return null; }
@@ -113,8 +113,8 @@ export class SelectionBubble {
     const sel = window.getSelection();
     if (!info || !sel) { return; }
     // Measured before the selection is cleared; a page without a size yet gives a highlight that is only listed.
-    const frame = pageFrame(info.page);
-    const position = frame ? boxInPage(sel.getRangeAt(0).getBoundingClientRect(), frame) : null;
+    const frame = derivePageFrame(info.page);
+    const position = frame ? deriveBoxInPage(sel.getRangeAt(0).getBoundingClientRect(), frame) : null;
     this.ctx.host.post({
       command: "createAnnotation", type: "highlight", pageNumber: info.pageNumber, content: info.text, color,
       ...(position ? { position: { ...position } } : {}),
@@ -132,7 +132,7 @@ export class SelectionBubble {
     const own = this.el.getBoundingClientRect();
     const above = rect.top - own.height - 8;
     const top = above >= 8 ? above : rect.bottom + 8;
-    this.el.style.top = `${clamp(top, 8, window.innerHeight - own.height - 8)}px`;
-    this.el.style.left = `${clamp(rect.left + rect.width / 2 - own.width / 2, 8, window.innerWidth - own.width - 8)}px`;
+    this.el.style.top = `${deriveClampedNumber(top, 8, window.innerHeight - own.height - 8)}px`;
+    this.el.style.left = `${deriveClampedNumber(rect.left + rect.width / 2 - own.width / 2, 8, window.innerWidth - own.width - 8)}px`;
   }
 }

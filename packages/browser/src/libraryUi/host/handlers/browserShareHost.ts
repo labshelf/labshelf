@@ -3,7 +3,7 @@ import {
   createShareHost,
   createWorkerShareReader,
   PAPERS_DIR,
-  PaperDataStore,
+  PaperSidecarStore,
   posixPathOps,
   resolveRelayBackend,
   type ILogger,
@@ -65,7 +65,7 @@ export interface ShareLinkRelay {
 
 export function createBrowserSharingHost(ctx: HostContext, relay: ShareLinkRelay, logger: ILogger): PageSharingHost {
   const fs = createLibraryFileSystem();
-  const sidecars = new PaperDataStore(createSidecarPort(fs), { logger });
+  const sidecars = new PaperSidecarStore(createSidecarPort(fs), { logger });
   return createPageSharingHost((projects) => createShareHost({
     place: "this browser",
     logger,

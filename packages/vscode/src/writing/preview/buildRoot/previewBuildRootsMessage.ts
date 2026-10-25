@@ -1,11 +1,11 @@
 // Assembles the build roots a preview reader is told about: one entry per built root with its problems and what the host can open.
 import {
-  previewProblems,
+  derivePreviewProblems,
   type BuildOptions,
   type LocatedProblem,
   type PathOps,
-  type PreviewRoot,
-  type PreviewRoots,
+  type PreviewBuildRoot,
+  type PreviewBuildRoots,
   type ILogger,
   type PdfProblem,
 } from "@labshelf/core";
@@ -58,7 +58,7 @@ function projectRelative(paths: PathOps, folder: string, file: string): string {
   return (relative.startsWith("..") || paths.isAbsolute(relative) ? file : relative).split(paths.sep).join("/");
 }
 
-async function previewRoot(input: PreviewRootsInput, root: string): Promise<PreviewRoot> {
+async function previewRoot(input: PreviewRootsInput, root: string): Promise<PreviewBuildRoot> {
   const { paths, project } = input;
   return {
     ...(await rootFindings(input, root)),
@@ -66,11 +66,11 @@ async function previewRoot(input: PreviewRootsInput, root: string): Promise<Prev
     failed: input.failed(root),
     rawLog: (await rawLogFile(input, project, root)) !== undefined,
     sourceLinks: project.settings.format === "latex",
-    problems: previewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
+    problems: derivePreviewProblems(input.problemsOf(root), (file) => projectRelative(paths, project.folder, file)),
   };
 }
 
-export async function previewRootsMessage(input: PreviewRootsInput): Promise<PreviewRoots> {
+export async function previewRootsMessage(input: PreviewRootsInput): Promise<PreviewBuildRoots> {
   const roots = await Promise.all([...input.built].map((root) => previewRoot(input, root)));
   const { pages: pageLimit, words: wordLimit, countUpTo } = input.project.settings.check ?? {};
   return {

@@ -1,7 +1,7 @@
 /** Finds the reference under the pointer in plain text (scans, papers without link annotations) and describes it as a hover target. */
-import { refAtOffset, type InTextRef } from "../../text/index.js";
-import type { HoverTarget } from "./hoverAnchor.js";
-import { charRangeRect, TEXT_RUN_SELECTOR, unionRect, visualLine, type VisualLine } from "./textGeometry.js";
+import { findReferenceAtOffset, type InTextReference } from "../../text/index.js";
+import type { HoverAnchor } from "./hoverAnchor.js";
+import { deriveCharRangeRect, TEXT_RUN_SELECTOR, deriveUnionRect, deriveVisualLine, type VisualLine } from "./textGeometry.js";
 
 // OCR text is one run per word, and a reader points at the word, not at a character of it: on a run this short the
 // whole box answers for the one reference it belongs to ("[1])," — the pointer may sit on the comma).
@@ -16,11 +16,11 @@ export function runUnderPointer(e: MouseEvent): HTMLElement | null {
   return run;
 }
 
-export class TextTargets {
+export class TextAnchors {
   /** Lines are rebuilt from geometry; pointer movement inside one run must not pay for that again. Spans are replaced when a page re-renders, which drops their entries. */
   private readonly lines = new WeakMap<HTMLElement, VisualLine>();
 
-  targetAt(run: HTMLElement, clientX: number, clientY: number): HoverTarget | null {
+  targetAt(run: HTMLElement, clientX: number, clientY: number): HoverAnchor | null {
     const layer = run.closest<HTMLElement>(".textLayer");
     if (!layer) { return null; }
     const line = this.lineOf(layer, run);
@@ -29,14 +29,14 @@ export class TextTargets {
     const runStart = line.joined.starts[index] ?? 0;
     const runEnd = runStart + (line.parts[index]?.text.length ?? 0);
 
-    let ref: InTextRef | null = null;
+    let ref: InTextReference | null = null;
     const caret = document.caretRangeFromPoint(clientX, clientY);
     if (caret && run.contains(caret.startContainer)) {
       // Characters of this run that precede the pointer (the run may hold nested find-highlight spans).
       const before = document.createRange();
       before.setStart(run, 0);
       before.setEnd(caret.startContainer, caret.startOffset);
-      ref = refAtOffset(line.refs, runStart + before.toString().length);
+      ref = findReferenceAtOffset(line.refs, runStart + before.toString().length);
     }
     if (!ref && runEnd - runStart <= WHOLE_RUN_MAX_CHARS) {
       const touching = line.refs.filter((r) => r.start < runEnd && r.end > runStart);
@@ -54,13 +54,13 @@ export class TextTargets {
       }
     });
     if (pieces.length === 0) { return null; }
-    return { group: pieces.map((p) => p.span), ref: found, rect: () => unionRect(pieces.map((p) => charRangeRect(p.span, p.from, p.to))) };
+    return { group: pieces.map((p) => p.span), ref: found, rect: () => deriveUnionRect(pieces.map((p) => deriveCharRangeRect(p.span, p.from, p.to))) };
   }
 
   private lineOf(layer: HTMLElement, run: HTMLElement): VisualLine {
     const cached = this.lines.get(run);
     if (cached && cached.spans.every((s) => s.isConnected)) { return cached; }
-    const line = visualLine(layer, run);
+    const line = deriveVisualLine(layer, run);
     // Kept for this run only: membership is judged from the probed run's own height, so it is not symmetric.
     this.lines.set(run, line);
     return line;

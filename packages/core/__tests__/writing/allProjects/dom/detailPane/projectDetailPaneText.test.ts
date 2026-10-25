@@ -38,7 +38,7 @@ describe("limitSentence", () => {
   });
 });
 
-describe("buildStatusText", () => {
+describe("formatBuildStateText", () => {
   it("names the four outcomes", () => {
     expect(buildStatusText({ state: "warnings", warnings: 2 })).toBe("2 warnings");
     expect(buildStatusText({ state: "ok" })).toBe("Built");

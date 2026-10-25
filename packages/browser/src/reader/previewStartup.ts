@@ -1,6 +1,6 @@
 // Turns the reader page into a build preview embedded by the library page: PDFs, build states and roots come from the parent page, requests go back to it.
 // Opened as reader/index.html?preview=1&project=<id>&title=<name>.
-import type { BuildState, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewRoots, ReaderHostController } from "@labshelf/core";
+import type { BuildState, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewBuildRoots, ReaderHostController } from "@labshelf/core";
 
 const BUILD_STATES: readonly BuildState[] = ["building", "succeeded", "failed"];
 
@@ -15,7 +15,7 @@ function isFromParentPage(event: MessageEvent): boolean {
   return event.origin === location.origin && event.source === window.parent && window.parent !== window;
 }
 
-function isPreviewRoots(v: unknown): v is PreviewRoots {
+function isPreviewRoots(v: unknown): v is PreviewBuildRoots {
   if (typeof v !== "object" || v === null) return false;
   const roots = v as Record<string, unknown>;
   return typeof roots["main"] === "string" && typeof roots["shown"] === "string" && Array.isArray(roots["roots"]);

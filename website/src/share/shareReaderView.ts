@@ -1,7 +1,7 @@
 // Opens a shared paper's PDF in the core reader, with the sharer's annotations; nothing the visitor does leaves the page.
 import {
-  DEFAULT_READER_PREFS, PaperDataStore, PROTOCOL_VERSION, READER_SHELL_BODY, ReaderHostController,
-  type HostToWebview, type ILogger, type PaperRecord, type ReaderBootParams, type SharedPaper, type SidecarPort,
+  DEFAULT_READER_PREFS, PaperSidecarStore, PROTOCOL_VERSION, READER_SHELL_BODY, ReaderHostController,
+  type HostToWebview, type ILogger, type PaperRecord, type ReaderStartupParams, type SharedPaper, type SidecarPort,
 } from "@labshelf/core";
 import { createInPageChannel, PerfMarks, resolveTheme, startReader, showToast } from "@labshelf/core/dom";
 
@@ -19,7 +19,7 @@ function memorySidecar(paper: SharedPaper): SidecarPort {
   };
 }
 
-function bootParams(record: PaperRecord, pdfUrl: string, theme: "light" | "dark"): ReaderBootParams {
+function bootParams(record: PaperRecord, pdfUrl: string, theme: "light" | "dark"): ReaderStartupParams {
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
@@ -46,7 +46,7 @@ function bootParams(record: PaperRecord, pdfUrl: string, theme: "light" | "dark"
 export async function mountShareReader(container: HTMLElement, record: PaperRecord, paper: SharedPaper, bytes: Uint8Array, logger: ILogger): Promise<void> {
   container.innerHTML = READER_SHELL_BODY;
   const theme = resolveTheme("auto");
-  const store = new PaperDataStore(memorySidecar(paper), { logger });
+  const store = new PaperSidecarStore(memorySidecar(paper), { logger });
   let send: (msg: HostToWebview) => void = () => undefined;
   const host = new ReaderHostController({
     paper: record,

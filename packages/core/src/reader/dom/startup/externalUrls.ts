@@ -6,7 +6,7 @@ import type { HostBridge } from "../session/index.js";
 /**
  * Intercepts http(s) and mailto link clicks inside `viewer` in the capture phase.
  */
-export function interceptExternalLinks(viewer: HTMLElement, host: HostBridge): void {
+export function attachExternalUrls(viewer: HTMLElement, host: HostBridge): void {
   viewer.addEventListener("click", (e) => {
     const a = (e.target as Element).closest?.("a[href]");
     const href = a?.getAttribute("href") ?? "";

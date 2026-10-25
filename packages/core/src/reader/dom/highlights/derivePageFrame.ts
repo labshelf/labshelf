@@ -12,7 +12,7 @@ export interface PageFrame {
  * pdf.js gives `.page` a border and lays the canvas and text layer over its content box, so the frame is that box.
  * @returns the page's content box in viewport pixels, or null while the page has no size.
  */
-export function pageFrame(page: HTMLElement): PageFrame | null {
+export function derivePageFrame(page: HTMLElement): PageFrame | null {
   const rect = page.getBoundingClientRect();
   const width = page.clientWidth;
   const height = page.clientHeight;
@@ -23,7 +23,7 @@ export function pageFrame(page: HTMLElement): PageFrame | null {
 /**
  * @returns the part of `rect` inside the frame, normalised to 0..1 of the page; null when nothing of it is inside.
  */
-export function boxInPage(rect: Pick<DOMRect, "left" | "top" | "right" | "bottom">, frame: PageFrame): AnnotationPosition | null {
+export function deriveBoxInPage(rect: Pick<DOMRect, "left" | "top" | "right" | "bottom">, frame: PageFrame): AnnotationPosition | null {
   const x1 = clamp01((rect.left - frame.left) / frame.width);
   const x2 = clamp01((rect.right - frame.left) / frame.width);
   const y1 = clamp01((rect.top - frame.top) / frame.height);

@@ -1,17 +1,17 @@
 /**
  * Builds the reader's chrome, sidebar and navigation around an open document and keeps the toolbar in step with them.
  */
-import { clampPage, type WebviewToHost } from "../../index.js";
-import { BuildBanner, Cheatsheet, SelectionBubble, StatusPill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
+import { deriveClampedPage, type WebviewToHost } from "../../index.js";
+import { BuildBanner, Cheatsheet, SelectionBubble, PagePill, type ThemeController, openThemePopover, Toolbar } from "../chrome/index.js";
 import { PageHighlights } from "../highlights/index.js";
-import { FindBar, NavHistory, ZoomController } from "../navigation/index.js";
-import { areaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, previewOutlineSource, ReviewNote } from "../preview/index.js";
+import { FindBar, NavigationHistory, ZoomController } from "../navigation/index.js";
+import { createAreaScroller, countBodyPages, LogsView, mountPreviewChrome, type PreviewChrome, createPreviewOutlineSource, CommentAsk } from "../preview/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { AnnotationsTab, OutlineTab, Sidebar, ThumbnailsTab } from "../sidebar/index.js";
-import { ReadingStateReporter } from "./reportReadingPosition.js";
+import { ReadingPositionReporter } from "./reportReadingPosition.js";
 
 export interface ReaderUi {
-  history: NavHistory;
+  history: NavigationHistory;
   zoom: ZoomController;
   goToPage(page: number): void;
   annotationsTab: AnnotationsTab;
@@ -19,9 +19,9 @@ export interface ReaderUi {
   sidebar: Sidebar;
   findBar: FindBar;
   cheatsheet: Cheatsheet;
-  pill: StatusPill;
+  pill: PagePill;
   bubble: SelectionBubble;
-  reporter: ReadingStateReporter;
+  reporter: ReadingPositionReporter;
   toolbar: Toolbar;
   buildBanner: BuildBanner;
   /** The preview's header, logs view and page count; null in the paper reader. */
@@ -34,7 +34,7 @@ export interface ReaderUi {
  * @returns every UI piece of the reader, constructed in the order their listeners must register.
  */
 export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): ReaderUi {
-  const history = new NavHistory(ctx);
+  const history = new NavigationHistory(ctx);
   const zoom = new ZoomController(ctx);
   const goToPage = pageJumper(ctx, history);
   const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
@@ -46,10 +46,10 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   });
   const findBar = new FindBar(ctx, history);
   const cheatsheet = new Cheatsheet(ctx);
-  const pill = new StatusPill(ctx, zoom, goToPage);
-  const reviewNote = ctx.boot.preview ? new ReviewNote(ctx) : null;
+  const pill = new PagePill(ctx, zoom, goToPage);
+  const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined);
-  const reporter = new ReadingStateReporter(ctx, sidebar);
+  const reporter = new ReadingPositionReporter(ctx, sidebar);
   const toolbar = new Toolbar(ctx.container, ctx.boot.paperTitle, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
     toggleSidebar: () => sidebar.toggle(),
     historyBack: () => history.back(),
@@ -78,9 +78,9 @@ function attachPreview(ctx: ReaderContext, theme: ThemeController, ui: ReaderUi)
   const logs = new LogsView({ parent: ctx.container.parentElement ?? ctx.container, post });
   ui.openLogs = (rootPath) => logs.open(rootPath);
   const chrome = mountPreviewChrome({
-    post, logs, outline: previewOutlineSource(ctx),
+    post, logs, outline: createPreviewOutlineSource(ctx),
     countBodyPages: () => countBodyPages(ctx.pdfDocument),
-    pdfViewer: ctx.pdfViewer, scrollTo: areaScroller(ctx),
+    pdfViewer: ctx.pdfViewer, scrollTo: createAreaScroller(ctx),
     setPagesDark: (dark) => theme.lockPages(dark ? "dark" : "light"),
   });
   ui.previewChrome = {
@@ -93,9 +93,9 @@ function attachPreview(ctx: ReaderContext, theme: ThemeController, ui: ReaderUi)
 }
 
 /** A jump records the departure first, so Back returns to where the reader was. */
-function pageJumper(ctx: ReaderContext, history: NavHistory): (page: number) => void {
+function pageJumper(ctx: ReaderContext, history: NavigationHistory): (page: number) => void {
   return (page) => {
-    const target = clampPage(page, ctx.pdfDocument.numPages);
+    const target = deriveClampedPage(page, ctx.pdfDocument.numPages);
     if (target === ctx.pdfViewer.currentPageNumber) { return; }
     history.recordDeparture();
     ctx.pdfViewer.currentPageNumber = target;

@@ -3,8 +3,8 @@
  * or with another file, shown where it was last left, else on its first page.
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { clampPage } from "../../index.js";
-import type { PdfLocation, ReaderContext } from "./readerContext.js";
+import { deriveClampedPage } from "../../index.js";
+import type { PdfPosition, ReaderContext } from "./readerContext.js";
 import { openPdfDocument, readPdfBytes, type PdfSourceHooks } from "./pdfLoader.js";
 
 /**
@@ -14,13 +14,13 @@ import { openPdfDocument, readPdfBytes, type PdfSourceHooks } from "./pdfLoader.
 export const DOCUMENT_REPLACED = "labshelfdocumentreplaced";
 
 interface Spot {
-  location: PdfLocation | null;
+  location: PdfPosition | null;
   pageNumber: number;
   scaleValue: string;
 }
 
 export class DocumentReloader {
-  private location: PdfLocation | null = null;
+  private location: PdfPosition | null = null;
   // INVARIANT: true from the swap until the position is restored, so the new document's page-1 layout is never taken as the reader's spot.
   private swapping = false;
   private readonly spotsByUrl = new Map<string, Spot>();
@@ -30,7 +30,7 @@ export class DocumentReloader {
   private next: Promise<void> | null = null;
 
   constructor(private readonly ctx: ReaderContext, private readonly hooks: PdfSourceHooks) {
-    ctx.eventBus.on("updateviewarea", (evt: { location?: PdfLocation }) => {
+    ctx.eventBus.on("updateviewarea", (evt: { location?: PdfPosition }) => {
       if (evt.location && !this.swapping) { this.location = evt.location; }
     });
   }
@@ -91,7 +91,7 @@ export class DocumentReloader {
   private restore({ location, pageNumber, scaleValue }: Spot): void {
     const { pdfViewer, pdfDocument } = this.ctx;
     pdfViewer.currentScaleValue = scaleValue;
-    const page = clampPage(location?.pageNumber ?? pageNumber, pdfDocument.numPages);
+    const page = deriveClampedPage(location?.pageNumber ?? pageNumber, pdfDocument.numPages);
     pdfViewer.scrollPageIntoView(location
       ? { pageNumber: page, destArray: [null, { name: "XYZ" }, location.left, location.top, null], allowNegativeOffset: true }
       : { pageNumber: page });

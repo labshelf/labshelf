@@ -1,5 +1,5 @@
 /** Draws the preview pane: the folder summary or the library overview, and the paper's Info/Abstract/Notes/BibTeX tabs. */
-import type { PaperData, PaperEntry } from "@labshelf/core";
+import type { PaperSidecar, PaperEntry } from "@labshelf/core";
 import { createPaperComparator, createPaperFiles } from "@labshelf/core";
 import * as path from "node:path";
 
@@ -49,7 +49,7 @@ function drawPaperSide(app: App, screen: Screen, inner: Rect, paper: PaperEntry)
 }
 
 // Caches sidecar data per paper id; a miss kicks off the load and redraws once it resolves.
-function sidecarFor(app: App, id: string): PaperData | undefined {
+function sidecarFor(app: App, id: string): PaperSidecar | undefined {
   const cached = app.sidecars.get(id);
   if (cached) { return cached; }
   if (!app.sidecarLoading.has(id)) {

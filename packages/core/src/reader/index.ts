@@ -2,7 +2,7 @@
  * The reader UI is exported from `dom/`. */
 export * from "./protocol/index.js";
 export * from "./previewProtocol.js";
-export * from "./previewProblems.js";
+export * from "./derivePreviewProblems.js";
 export * from "./previewRequests.js";
 export * from "./sidecar/index.js";
 export * from "./themePresets.js";
@@ -14,4 +14,4 @@ export * from "./host/index.js";
 export * from "./autohide.js";
 export * from "./hoverCrop.js";
 export * from "./outlineModel.js";
-export * from "./outlineTrail.js";
+export * from "./deriveOutlineTrail.js";

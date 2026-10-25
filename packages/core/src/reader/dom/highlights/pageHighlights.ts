@@ -1,7 +1,7 @@
 // Draws the paper's positioned highlights over their rendered pages.
 import type { Annotation, AnnotationPosition } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { pageFrame, boxInPage, type PageFrame } from "./pageFrame.js";
+import { derivePageFrame, deriveBoxInPage, type PageFrame } from "./derivePageFrame.js";
 
 interface CharAt {
   node: Text;
@@ -25,7 +25,7 @@ function textBoxes(page: HTMLElement, frame: PageFrame, content: string, box: An
   const range = document.createRange();
   range.setStart(first.node, first.offset);
   range.setEnd(last.node, last.offset + 1);
-  const boxes = [...range.getClientRects()].map((r) => boxInPage(r, frame)).filter((b): b is AnnotationPosition => b !== null);
+  const boxes = [...range.getClientRects()].map((r) => deriveBoxInPage(r, frame)).filter((b): b is AnnotationPosition => b !== null);
   return boxes.length > 0 ? boxes : null;
 }
 
@@ -77,7 +77,7 @@ export class PageHighlights {
     if (!annotations) { return; }
     const layer = document.createElement("div");
     layer.className = LAYER_CLASS;
-    const frame = pageFrame(page);
+    const frame = derivePageFrame(page);
     for (const ann of annotations) {
       const box = ann.position!;
       const boxes = (frame && textBoxes(page, frame, ann.content, box)) ?? [box];

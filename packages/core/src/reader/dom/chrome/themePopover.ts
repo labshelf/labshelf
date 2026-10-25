@@ -3,7 +3,7 @@
  */
 import { PDF_THEMES, type PdfTheme } from "../../../model/index.js";
 import type { HostBridge } from "../session/index.js";
-import { togglePopover } from "../elements/index.js";
+import { updatePopoverOpen } from "../elements/index.js";
 import type { ThemeController } from "./theme.js";
 import { renderElement } from "../../../ui/dom/index.js";
 
@@ -53,5 +53,5 @@ export function openThemePopover(anchor: HTMLElement, theme: ThemeController, ho
       renderElement("label", {}, "Text", textInput),
     ),
   );
-  togglePopover(anchor, content, "below");
+  updatePopoverOpen(anchor, content, "below");
 }

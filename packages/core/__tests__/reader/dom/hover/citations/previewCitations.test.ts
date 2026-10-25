@@ -1,5 +1,5 @@
 // Tests the citation lookup client: answers match their request, silence resolves empty, and links are cached per document.
-import { CitationLookup, LOOKUP_TIMEOUT_MS } from "../../../../../src/reader/dom/hover/citations/previewCitations";
+import { CitationFinder, LOOKUP_TIMEOUT_MS } from "../../../../../src/reader/dom/hover/citations/previewCitations";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../../../../../src/reader/dom/session";
 import type { CitationEntry, CitationQuery } from "../../../../../src/reader";
 
@@ -10,10 +10,10 @@ function setup() {
   const handlers = new Map<string, () => void>();
   const post = jest.fn();
   const ctx = { host: { post }, eventBus: { on: (name: string, fn: () => void) => handlers.set(name, fn) } } as unknown as ReaderContext;
-  return { lookup: new CitationLookup(ctx), post, handlers, requests: () => post.mock.calls.map((c) => (c[0] as { request: number }).request) };
+  return { lookup: new CitationFinder(ctx), post, handlers, requests: () => post.mock.calls.map((c) => (c[0] as { request: number }).request) };
 }
 
-describe("CitationLookup", () => {
+describe("CitationFinder", () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 

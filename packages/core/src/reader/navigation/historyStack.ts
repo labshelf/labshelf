@@ -3,7 +3,7 @@
  * PLATFORM: pdf.js' PDFHistory rides on window.history and the URL hash, neither usable inside a VS Code webview.
  */
 
-export interface ViewLocation {
+export interface ViewPosition {
   pageNumber: number;
   /** pdf.js location space (PDF points). */
   left?: number;
@@ -18,7 +18,7 @@ const NEAR_POINTS = 120;
 /**
  * @returns true when both locations are on the same page and close enough to count as one place.
  */
-function isNearLocation(a: ViewLocation, b: ViewLocation): boolean {
+function isNearLocation(a: ViewPosition, b: ViewPosition): boolean {
   if (a.pageNumber !== b.pageNumber) { return false; }
   return Math.abs((a.top ?? 0) - (b.top ?? 0)) < NEAR_POINTS;
 }
@@ -27,13 +27,13 @@ function isNearLocation(a: ViewLocation, b: ViewLocation): boolean {
  * The stack stores departure points. `visit(from)` is called right before a jump; `back(current)` swaps the current position onto the forward side so the round trip is lossless.
  */
 export class HistoryStack {
-  private backStack: ViewLocation[] = [];
-  private forwardStack: ViewLocation[] = [];
+  private backStack: ViewPosition[] = [];
+  private forwardStack: ViewPosition[] = [];
 
   /**
    * Records the position being left by a jump; any forward branch is discarded, as in a browser.
    */
-  visit(from: ViewLocation): void {
+  visit(from: ViewPosition): void {
     this.forwardStack = [];
     const last = this.backStack[this.backStack.length - 1];
     if (last && isNearLocation(last, from)) { return; }
@@ -45,7 +45,7 @@ export class HistoryStack {
    * Pops the most recent departure point and pushes `current` onto the forward stack so the trip can be replayed.
    * @returns the location to jump to, or null when the back stack is empty.
    */
-  back(current: ViewLocation): ViewLocation | null {
+  back(current: ViewPosition): ViewPosition | null {
     const target = this.backStack.pop();
     if (!target) { return null; }
     this.forwardStack.push(current);
@@ -56,7 +56,7 @@ export class HistoryStack {
    * Pops the most recent forward target and pushes `current` back onto the back stack.
    * @returns the location to jump to, or null when the forward stack is empty.
    */
-  forward(current: ViewLocation): ViewLocation | null {
+  forward(current: ViewPosition): ViewPosition | null {
     const target = this.forwardStack.pop();
     if (!target) { return null; }
     this.backStack.push(current);

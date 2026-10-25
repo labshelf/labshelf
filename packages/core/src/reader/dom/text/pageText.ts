@@ -2,7 +2,7 @@
  * Extracts page text lazily and caches it per page: reading-order lines plus the column split. Shared by the citation and float
  * resolvers so a page is extracted and analysed once.
  */
-import { detectColumns, groupItemsIntoLines, readableItems, runOrientation, type TextItemBox, type TextLine } from "../../text/index.js";
+import { detectColumns, deriveLinesFromItems, deriveReadableItems, runOrientation, type TextItemBox, type TextLine } from "../../text/index.js";
 import type { ReaderContext } from "../session/index.js";
 
 export interface PageText {
@@ -48,7 +48,7 @@ export class PageTextCache {
         orientation: runOrientation(it.transform),
       });
     }
-    const items = readableItems(all, width);
-    return { lines: groupItemsIntoLines(items, width), columnSplit: detectColumns(items, width), width, height };
+    const items = deriveReadableItems(all, width);
+    return { lines: deriveLinesFromItems(items, width), columnSplit: detectColumns(items, width), width, height };
   }
 }

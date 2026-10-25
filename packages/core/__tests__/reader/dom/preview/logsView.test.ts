@@ -3,15 +3,15 @@
  */
 // Tests the build logs view: tab counts, filtering, keyboard, jump messages, raw log, closing and refresh.
 import { LogsView } from "../../../../src/reader/dom/preview/index";
-import type { PreviewProblem, PreviewRoot, PreviewRoots } from "../../../../src/reader/previewProtocol";
+import type { PreviewProblem, PreviewBuildRoot, PreviewBuildRoots } from "../../../../src/reader/previewProtocol";
 
 const MAIN = "/p/chapters/main.tex";
 
-function root(path: string, problems: PreviewProblem[], over: Partial<PreviewRoot> = {}): PreviewRoot {
+function root(path: string, problems: PreviewProblem[], over: Partial<PreviewBuildRoot> = {}): PreviewBuildRoot {
   return { path, failed: false, rawLog: true, sourceLinks: true, problems, ...over };
 }
 
-function roots(list: PreviewRoot[]): PreviewRoots {
+function roots(list: PreviewBuildRoot[]): PreviewBuildRoots {
   return { main: MAIN, focused: MAIN, shown: MAIN, roots: list };
 }
 
@@ -23,7 +23,7 @@ const mixed: PreviewProblem[] = [
   { severity: "warning", message: "Citation undefined", file: "/p/c.tex", line: 9 },
 ];
 
-function setup(list: PreviewRoot[] = [root(MAIN, mixed)]) {
+function setup(list: PreviewBuildRoot[] = [root(MAIN, mixed)]) {
   document.body.innerHTML = "";
   const parent = document.createElement("div");
   document.body.append(parent);

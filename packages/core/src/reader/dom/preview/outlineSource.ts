@@ -1,12 +1,12 @@
 // Gives the preview chrome the open document's outline, its page positions and the jump to an entry.
-import { flattenOutline, type OutlineRow, type RawOutlineNode } from "../../index.js";
+import { deriveOutlineRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
 import type { ReaderContext } from "../session/index.js";
 import { resolveOutlinePages } from "../sidebar/outlinePages.js";
 import type { PreviewOutlineSource } from "./mountPreviewChrome.js";
 
 type Destination = Parameters<ReaderContext["linkService"]["goToDestination"]>[0];
 
-export function previewOutlineSource(ctx: ReaderContext): PreviewOutlineSource {
+export function createPreviewOutlineSource(ctx: ReaderContext): PreviewOutlineSource {
   return {
     async load() {
       const doc = ctx.pdfDocument;
@@ -16,7 +16,7 @@ export function previewOutlineSource(ctx: ReaderContext): PreviewOutlineSource {
       } catch (err) {
         console.warn("LabShelf reader: could not read the PDF outline", err);
       }
-      const rows = flattenOutline(raw);
+      const rows = deriveOutlineRows(raw);
       return { rows, pages: await resolveOutlinePages(doc, rows, () => doc === ctx.pdfDocument) };
     },
     currentPage: () => ctx.pdfViewer.currentPageNumber,

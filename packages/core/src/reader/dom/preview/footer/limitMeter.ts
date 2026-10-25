@@ -1,7 +1,7 @@
 // Shows body pages and words against the project's limits as a meter, with a popover that edits the limits.
 import { renderElement } from "../../../../ui/dom/index.js";
-import type { PreviewRoots, WebviewToHost, CheckLimitsChange } from "../../../index.js";
-import { closePopover, togglePopover } from "../../elements/index.js";
+import type { PreviewBuildRoots, WebviewToHost, CheckLimitsChange } from "../../../index.js";
+import { closePopover, updatePopoverOpen } from "../../elements/index.js";
 import type { CountUpTo } from "../../../../writing/project/index.js";
 
 interface LimitValues {
@@ -87,7 +87,7 @@ const figure = (value: number, limit: number | undefined, unit: string): string 
  * Body pages are counted once per shown PDF and reported with `bodyPages`.
  * @returns `setRoots`, driven by the host's roots messages, and `documentChanged`, for a replaced PDF.
  */
-export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: LimitMeterDeps): { setRoots(roots: PreviewRoots): void; documentChanged(): void } {
+export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: LimitMeterDeps): { setRoots(roots: PreviewBuildRoots): void; documentChanged(): void } {
   const fill = renderElement("i");
   const text = renderElement("span", { class: "rd-limit-text" });
   const button = renderElement("button", { class: "rd-limit", type: "button", "aria-haspopup": "dialog", "aria-expanded": "false", title: "Page and word limits" },
@@ -95,7 +95,7 @@ export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: Lim
   slot.hidden = false;
   slot.append(button);
 
-  let roots: PreviewRoots | null = null;
+  let roots: PreviewBuildRoots | null = null;
   let counted: { root: string; pages: number } | null = null;
   // False from a document change until the shown root is counted again.
   let fresh = false;
@@ -108,7 +108,7 @@ export function mountLimitMeter(slot: HTMLElement, { post, countBodyPages }: Lim
   button.addEventListener("click", () => {
     if (!roots) { return; }
     const values = { file: roots.shown, pages: roots.pageLimit, words: roots.wordLimit, countUpTo: roots.countUpTo ?? "references" };
-    togglePopover(button, buildLimitPopover(values, (limits) => post({ command: "setCheckLimits", limits }), closeAndFocus), "above");
+    updatePopoverOpen(button, buildLimitPopover(values, (limits) => post({ command: "setCheckLimits", limits }), closeAndFocus), "above");
   });
 
   function render(): void {

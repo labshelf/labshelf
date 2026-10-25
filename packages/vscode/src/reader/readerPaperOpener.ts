@@ -2,14 +2,14 @@
  * Opens a library paper in a reader panel, with its sidecar store and the events the list listens to.
  */
 import * as vscode from "vscode";
-import { createPaperFiles, type ILogger, type PaperDataStore, type PaperRecord } from "@labshelf/core";
+import { createPaperFiles, type ILogger, type PaperSidecarStore, type PaperRecord } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "./ReaderPanel.js";
 import { emitSidecarChanges } from "./readerHostPorts.js";
 import type { LibraryEvents } from "../library/index.js";
 
 export interface PdfViewerDeps extends ReaderPanelDeps {
   events: LibraryEvents;
-  store: PaperDataStore;
+  store: PaperSidecarStore;
   logger: ILogger;
 }
 

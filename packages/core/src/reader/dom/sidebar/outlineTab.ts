@@ -1,7 +1,7 @@
 /**
  * Renders the Outline tab: the PDF's table of contents as a collapsible tree whose active entry follows the current page.
  */
-import { activeOutlineIndex, flattenOutline, visibleRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
+import { deriveActiveOutlineRow, deriveOutlineRows, deriveVisibleRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import { resolveOutlinePages } from "./outlinePages.js";
@@ -52,7 +52,7 @@ export class OutlineTab implements SidebarPanel {
     }
     // A reload during the read loads the new outline itself.
     if (doc !== this.ctx.pdfDocument) { return; }
-    this.rows = flattenOutline(raw);
+    this.rows = deriveOutlineRows(raw);
     // Deep outlines open collapsed past the second level so the structure is scannable.
     for (const row of this.rows) {
       if (row.hasChildren && row.depth >= 1 && this.rows.length > 40) { this.collapsed.add(row.id); }
@@ -77,7 +77,7 @@ export class OutlineTab implements SidebarPanel {
       return;
     }
     const frag = document.createDocumentFragment();
-    for (const row of visibleRows(this.rows, this.collapsed)) {
+    for (const row of deriveVisibleRows(this.rows, this.collapsed)) {
       const isCollapsed = this.collapsed.has(row.id);
       const twisty = renderElement("span", {
         class: `rd-twisty${row.hasChildren ? "" : " rd-twisty-leaf"}`,
@@ -125,7 +125,7 @@ export class OutlineTab implements SidebarPanel {
   }
 
   private highlightActive(): void {
-    let active = activeOutlineIndex(this.rowPages, this.ctx.pdfViewer.currentPageNumber);
+    let active = deriveActiveOutlineRow(this.rowPages, this.ctx.pdfViewer.currentPageNumber);
     // Under a collapsed parent the nearest visible ancestor stands in for the active entry.
     while (active >= 0 && !this.list.querySelector(`[data-row="${active}"]`)) {
       active = this.rows[active]?.parentId ?? -1;

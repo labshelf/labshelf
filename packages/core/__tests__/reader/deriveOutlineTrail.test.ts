@@ -1,5 +1,5 @@
 // Tests the section and subsection chain the preview footer shows for a page.
-import { outlineTrail } from "../../src/reader/outlineTrail";
+import { deriveOutlineTrail } from "../../src/reader/deriveOutlineTrail";
 import type { OutlineRow } from "../../src/reader/outlineModel";
 
 function row(id: number, parentId: number | null, depth: number, title: string): OutlineRow {
@@ -14,15 +14,15 @@ const rows = [
   row(4, 3, 2, "Details"),
 ];
 const pages = [2, 3, 5, 6, 7];
-const titles = (page: number, p: (number | null)[] = pages) => outlineTrail(rows, p, page).map((r) => r.title);
+const titles = (page: number, p: (number | null)[] = pages) => deriveOutlineTrail(rows, p, page).map((r) => r.title);
 
-describe("outlineTrail", () => {
+describe("deriveOutlineTrail", () => {
   it("is empty before the first entry", () => {
     expect(titles(1)).toEqual([]);
   });
 
   it("is empty without rows", () => {
-    expect(outlineTrail([], [], 4)).toEqual([]);
+    expect(deriveOutlineTrail([], [], 4)).toEqual([]);
   });
 
   it("gives the section alone for a top-level entry", () => {

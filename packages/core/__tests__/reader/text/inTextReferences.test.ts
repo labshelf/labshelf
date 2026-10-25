@@ -1,15 +1,15 @@
 // Tests in-text reference detection and formatting.
 import {
-  findInTextRefs,
-  floatKindOf,
+  findInTextReferences,
+  deriveFloatKind,
   joinLineParts,
-  refAtOffset,
-  type InTextRef,
+  findReferenceAtOffset,
+  type InTextReference,
   type LinePart,
 } from '../../../src/reader/text/inTextReferences';
 
-const at = (text: string, needle: string): InTextRef | null =>
-  refAtOffset(findInTextRefs(text), text.indexOf(needle) + Math.floor(needle.length / 2));
+const at = (text: string, needle: string): InTextReference | null =>
+  findReferenceAtOffset(findInTextReferences(text), text.indexOf(needle) + Math.floor(needle.length / 2));
 
 // OCR emits one run per word: equal heights, a word-space gap between runs.
 function words(text: string): LinePart[] {
@@ -45,7 +45,7 @@ describe('joinLineParts', () => {
   });
 });
 
-describe('findInTextRefs - numeric citations', () => {
+describe('findInTextReferences - numeric citations', () => {
   it('finds single, list and range markers, with en dashes', () => {
     expect(at('as in [12] before', '[12]')).toMatchObject({ kind: 'numeric', numbers: [12] });
     expect(at('as in [3, 7] before', '[3, 7]')).toMatchObject({ numbers: [3, 7] });
@@ -55,7 +55,7 @@ describe('findInTextRefs - numeric citations', () => {
 
   it('reads a marker that OCR split into separate word runs', () => {
     const joined = joinLineParts(words('results [12, 13] and'));
-    const ref = refAtOffset(findInTextRefs(joined.text), joined.starts[2]! + 1); // pointer on the run "13]"
+    const ref = findReferenceAtOffset(findInTextReferences(joined.text), joined.starts[2]! + 1); // pointer on the run "13]"
     expect(ref).toMatchObject({ kind: 'numeric', numbers: [12, 13] });
   });
 
@@ -66,16 +66,16 @@ describe('findInTextRefs - numeric citations', () => {
   });
 
   it('ignores brackets that are not citations', () => {
-    expect(findInTextRefs('a [sic] b [2020] c [] d [O] e [abc]')).toEqual([]);
+    expect(findInTextReferences('a [sic] b [2020] c [] d [O] e [abc]')).toEqual([]);
   });
 
   it('drops descending and absurd ranges', () => {
-    expect(findInTextRefs('[9-3]')).toEqual([]);
-    expect(findInTextRefs('[1-400]')).toEqual([]);
+    expect(findInTextReferences('[9-3]')).toEqual([]);
+    expect(findInTextReferences('[1-400]')).toEqual([]);
   });
 });
 
-describe('findInTextRefs - author-year citations', () => {
+describe('findInTextReferences - author-year citations', () => {
   it('reads parenthetical citations', () => {
     expect(at('shown before (Silva, 2020).', 'Silva, 2020')).toMatchObject({ kind: 'authorYear', surname: 'Silva', years: ['2020'], coauthors: [] });
     expect(at('shown (Silva et al., 2019a).', 'Silva')).toMatchObject({ surname: 'Silva', years: ['2019a'] });
@@ -101,9 +101,9 @@ describe('findInTextRefs - author-year citations', () => {
   });
 
   it('does not mistake dates, floats or bare years for authors', () => {
-    expect(findInTextRefs('(Received 12 March 2019)')).toEqual([]);
-    expect(findInTextRefs('in that year (2020) it')).toEqual([]);
-    expect(findInTextRefs('(see Figure 3, 2019 data)').filter((r) => r.kind === 'authorYear')).toEqual([]);
+    expect(findInTextReferences('(Received 12 March 2019)')).toEqual([]);
+    expect(findInTextReferences('in that year (2020) it')).toEqual([]);
+    expect(findInTextReferences('(see Figure 3, 2019 data)').filter((r) => r.kind === 'authorYear')).toEqual([]);
   });
 
   it('skips the capitalised non-author but keeps the real one', () => {
@@ -111,7 +111,7 @@ describe('findInTextRefs - author-year citations', () => {
   });
 });
 
-describe('findInTextRefs - figures, tables and equations', () => {
+describe('findInTextReferences - figures, tables and equations', () => {
   it('finds references in English and Portuguese, any case', () => {
     expect(at('as Fig. 3 shows', 'Fig. 3')).toMatchObject({ kind: 'float', floatKind: 'figure', label: '3' });
     expect(at('na figura 12a vemos', 'figura 12a')).toMatchObject({ floatKind: 'figure', label: '12a' });
@@ -130,7 +130,7 @@ describe('findInTextRefs - figures, tables and equations', () => {
 
   it('survives OCR word splitting: "Fig." and "3" are separate runs', () => {
     const joined = joinLineParts(words('shown in Fig. 3 above'));
-    expect(refAtOffset(findInTextRefs(joined.text), joined.starts[3]!)).toMatchObject({ kind: 'float', label: '3' });
+    expect(findReferenceAtOffset(findInTextReferences(joined.text), joined.starts[3]!)).toMatchObject({ kind: 'float', label: '3' });
   });
 
   it('reads "Fig." through OCR look-alikes for its i', () => {
@@ -139,23 +139,23 @@ describe('findInTextRefs - figures, tables and equations', () => {
   });
 
   it('does not fire on ordinary words that start the same way', () => {
-    expect(findInTextRefs('Equipment 3 and Figaro 2 and Tabulated 4')).toEqual([]);
+    expect(findInTextReferences('Equipment 3 and Figaro 2 and Tabulated 4')).toEqual([]);
   });
 });
 
-describe('refAtOffset', () => {
+describe('findReferenceAtOffset', () => {
   it('prefers the narrowest reference and returns null outside any', () => {
     const text = '(see Fig. 2 in Silva, 2020)';
     expect(at(text, 'Fig. 2')).toMatchObject({ kind: 'float' });
-    expect(refAtOffset(findInTextRefs('plain text only'), 3)).toBeNull();
+    expect(findReferenceAtOffset(findInTextReferences('plain text only'), 3)).toBeNull();
   });
 });
 
 describe('helpers', () => {
   it('classifies float label words', () => {
-    expect(floatKindOf('Tabela')).toBe('table');
-    expect(floatKindOf('Quadro')).toBe('table');
-    expect(floatKindOf('Eq')).toBe('equation');
-    expect(floatKindOf('Gráfico')).toBe('figure');
+    expect(deriveFloatKind('Tabela')).toBe('table');
+    expect(deriveFloatKind('Quadro')).toBe('table');
+    expect(deriveFloatKind('Eq')).toBe('equation');
+    expect(deriveFloatKind('Gráfico')).toBe('figure');
   });
 });

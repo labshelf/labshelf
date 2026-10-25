@@ -1,7 +1,7 @@
 // Shows the cite count and the problems left in the shown PDF, and steps through them with prev/next chevrons.
 import { renderIcon } from "../../../../ui/index.js";
 import { renderElement, showToast } from "../../../../ui/dom/index.js";
-import type { PageArea, PdfProblem, PreviewRoots, WebviewToHost } from "../../../index.js";
+import type { PageArea, PdfProblem, PreviewBuildRoots, WebviewToHost } from "../../../index.js";
 
 interface ProblemsDeps {
   /** The reader's problem marks; `index` counts into the shown root's `pdfProblems`. */
@@ -11,7 +11,7 @@ interface ProblemsDeps {
 }
 
 export interface PreviewProblems {
-  setRoots(roots: PreviewRoots): void;
+  setRoots(roots: PreviewBuildRoots): void;
   /** Moves to the next (1) or previous (-1) problem, wrapping at the ends. */
   step(dir: 1 | -1): void;
 }

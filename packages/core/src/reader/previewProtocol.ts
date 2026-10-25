@@ -108,7 +108,7 @@ export interface BuildOptions {
 }
 
 /** One document a writing project builds, with what the reader needs to show its problems and logs. */
-export interface PreviewRoot {
+export interface PreviewBuildRoot {
   path: string;
   failed: boolean;
   /** True when the build kept a raw log the host can open. */
@@ -125,11 +125,11 @@ export interface PreviewRoot {
 }
 
 /** The build roots of a writing project: the main one, the one following the editor focus and the one the reader shows. */
-export interface PreviewRoots {
+export interface PreviewBuildRoots {
   main: string;
   focused: string;
   shown: string;
-  roots: PreviewRoot[];
+  roots: PreviewBuildRoot[];
   /** The project's page limit; absent when it sets none. */
   pageLimit?: number;
   wordLimit?: number;

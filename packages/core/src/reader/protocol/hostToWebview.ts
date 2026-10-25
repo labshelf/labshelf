@@ -2,7 +2,7 @@
  * Declares the messages the host sends to the reader (discriminant: `type`).
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
-import type { BuildState, CitationEntry, PageArea, PagePoint, PreviewRoots } from "../previewProtocol.js";
+import type { BuildState, CitationEntry, PageArea, PagePoint, PreviewBuildRoots } from "../previewProtocol.js";
 import type { ReadingState } from "../sidecar/index.js";
 import type { EffectiveTheme, ReaderCommandId, ReaderPrefs } from "./startupParams.js";
 
@@ -37,6 +37,6 @@ export type HostToWebview =
   /** Answers `lookupCitation` with the same `request`; no entries when the place cites nothing the host can name. */
   | { type: "citation"; request: number; entries: CitationEntry[] }
   /** The build roots of a writing project with their problems; replaces the earlier list. */
-  | { type: "previewRoots"; roots: PreviewRoots }
+  | { type: "previewRoots"; roots: PreviewBuildRoots }
   /** Opens the reader's problems view for a build root. */
   | { type: "showLogs"; root: string };

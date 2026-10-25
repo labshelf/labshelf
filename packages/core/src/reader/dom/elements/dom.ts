@@ -7,7 +7,7 @@ import { renderElement } from "../../../ui/dom/index.js";
  * Icon-only button with an accessible name; the tooltip doubles as shortcut documentation.
  * @returns the button element.
  */
-export function iconButton(iconHtml: string, title: string, extraClass = ""): HTMLButtonElement {
+export function renderReaderIconButton(iconHtml: string, title: string, extraClass = ""): HTMLButtonElement {
   return renderElement("button", {
     class: `rd-btn ${extraClass}`.trim(),
     type: "button",
@@ -33,6 +33,6 @@ export function isTextInput(target: EventTarget | null): boolean {
 /**
  * @returns `n` limited to [min, max].
  */
-export function clamp(n: number, min: number, max: number): number {
+export function deriveClampedNumber(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }

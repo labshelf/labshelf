@@ -1,7 +1,7 @@
 // Constructs and wires every application service for a given library root.
 import * as vscode from "vscode";
 
-import { LibraryStore, PaperDataStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
+import { LibraryStore, PaperSidecarStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
 import { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
 import { ensureLibraryStructure } from "../storage/paths/index.js";
 import { VscodeFileSystem } from "../storage/index.js";
@@ -65,7 +65,7 @@ export async function buildServices(
   };
   const importer = new PaperImporter(mutations, store, reindex, parse, network);
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
-  const paperDataStore = new PaperDataStore(adapters.createSidecarPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
+  const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
   // Library sidebar and the list panel all attach after buildServices returns — so the paper:added events this

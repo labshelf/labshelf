@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { scanConflictCopies } from "../../../../src/library/conflicts/node/index";
 import * as atomicWrite from "../../../../src/library/node/atomicWrite";
-import { serializePaperData, type PaperData } from "../../../../src/reader/index";
+import { serializePaperSidecar, type PaperSidecar } from "../../../../src/reader/index";
 import type { Annotation } from "../../../../src/model/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../../../support/tempDirs";
@@ -27,13 +27,13 @@ async function sidecarDir(): Promise<{ root: string; dir: string; dataJson: stri
   return { root, dir, dataJson: path.join(dir, "data.json") };
 }
 
-async function write(file: string, data: PaperData, mtimeSeconds?: number): Promise<void> {
-  await fs.writeFile(file, serializePaperData(data));
+async function write(file: string, data: PaperSidecar, mtimeSeconds?: number): Promise<void> {
+  await fs.writeFile(file, serializePaperSidecar(data));
   if (mtimeSeconds !== undefined) { nodeFs.utimesSync(file, mtimeSeconds, mtimeSeconds); }
 }
 
-async function read(file: string): Promise<PaperData> {
-  return JSON.parse(await fs.readFile(file, "utf8")) as PaperData;
+async function read(file: string): Promise<PaperSidecar> {
+  return JSON.parse(await fs.readFile(file, "utf8")) as PaperSidecar;
 }
 
 /** Makes every read of a conflict copy first change data.json, as a sync tool or the reader would. */
@@ -43,8 +43,8 @@ function editDataJsonWhileReadingCopies(dataJson: string, times: number): void {
   jest.spyOn(fs, "readFile").mockImplementation((async (file: nodeFs.PathLike, options?: unknown) => {
     if (String(file).includes("conflict") && edits < times) {
       edits++;
-      const current = JSON.parse(await realReadFile(dataJson, "utf8")) as PaperData;
-      await fs.writeFile(dataJson, serializePaperData({ ...current, annotations: [...current.annotations, note(`c${edits}`)] }));
+      const current = JSON.parse(await realReadFile(dataJson, "utf8")) as PaperSidecar;
+      await fs.writeFile(dataJson, serializePaperSidecar({ ...current, annotations: [...current.annotations, note(`c${edits}`)] }));
     }
     return realReadFile(file, options as BufferEncoding);
   }) as typeof fs.readFile);

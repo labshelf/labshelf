@@ -1,5 +1,5 @@
-/** An in-memory SidecarPort and a PaperDataStore over it, for tests that must not touch disk. */
-import { PaperDataStore, type SidecarPort } from '@labshelf/core';
+/** An in-memory SidecarPort and a PaperSidecarStore over it, for tests that must not touch disk. */
+import { PaperSidecarStore, type SidecarPort } from '@labshelf/core';
 
 export function makeMemorySidecarPort(): SidecarPort {
   const files = new Map<string, string>();
@@ -9,6 +9,6 @@ export function makeMemorySidecarPort(): SidecarPort {
   };
 }
 
-export function makeMemoryPaperDataStore(): PaperDataStore {
-  return new PaperDataStore(makeMemorySidecarPort());
+export function makeMemoryPaperDataStore(): PaperSidecarStore {
+  return new PaperSidecarStore(makeMemorySidecarPort());
 }

@@ -1,6 +1,6 @@
 // Lists the library's writing projects as sidebar rows, each with its built PDF and reading progress, and opens their PDF.
 import {
-  PaperDataStore, createBrokenProjectItem, buildReadingList, papersByCiteKey, createReadyProjectItem,
+  PaperSidecarStore, createBrokenProjectItem, buildReadingList, papersByCiteKey, createReadyProjectItem,
   type ILogger, type LibraryFileSystem, type ProjectEntry, type ReadingList, type ReadyEntry, type SidebarProjectItem,
 } from "@labshelf/core";
 import { createSidecarPort, listAllRecords, type BrowserProjects } from "../../storage";
@@ -43,7 +43,7 @@ async function builtPdf({ fileSystem }: ProjectsSourceDeps, entry: ReadyEntry): 
 /** INVARIANT: the browser keeps no backlink index, so only the papers a project lists count, never the ones it merely cites. */
 async function readingListOf({ fileSystem, logger }: ProjectsSourceDeps, entry: ReadyEntry): Promise<ReadingList> {
   try {
-    const store = new PaperDataStore(createSidecarPort(fileSystem), { logger });
+    const store = new PaperSidecarStore(createSidecarPort(fileSystem), { logger });
     return await buildReadingList({
       project: entry.settings.id,
       backlinks: new Map(),

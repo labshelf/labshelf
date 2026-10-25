@@ -1,7 +1,7 @@
 /**
  * Shows one anchored popover at a time, used for the theme picker and the zoom menu.
  */
-import { clamp } from "./dom.js";
+import { deriveClampedNumber } from "./dom.js";
 import { renderElement } from "../../../ui/dom/index.js";
 
 let current: { popover: HTMLElement; anchor: HTMLElement; cleanup: () => void } | null = null;
@@ -29,7 +29,7 @@ export function closePopover(): void {
 /**
  * Opens `content` next to `anchor`; clicking the same anchor again closes it.
  */
-export function togglePopover(anchor: HTMLElement, content: HTMLElement, placement: "below" | "above"): void {
+export function updatePopoverOpen(anchor: HTMLElement, content: HTMLElement, placement: "below" | "above"): void {
   const wasSameAnchor = current?.anchor === anchor;
   closePopover();
   if (wasSameAnchor) { return; }
@@ -38,10 +38,10 @@ export function togglePopover(anchor: HTMLElement, content: HTMLElement, placeme
   document.body.append(popover);
   const a = anchor.getBoundingClientRect();
   const p = popover.getBoundingClientRect();
-  const left = clamp(a.right - p.width, 8, window.innerWidth - p.width - 8);
+  const left = deriveClampedNumber(a.right - p.width, 8, window.innerWidth - p.width - 8);
   const top = placement === "below" ? a.bottom + 6 : a.top - p.height - 6;
   popover.style.left = `${left}px`;
-  popover.style.top = `${clamp(top, 8, window.innerHeight - p.height - 8)}px`;
+  popover.style.top = `${deriveClampedNumber(top, 8, window.innerHeight - p.height - 8)}px`;
   anchor.setAttribute("aria-expanded", "true");
 
   const onDown = (e: MouseEvent): void => {

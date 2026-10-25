@@ -1,7 +1,7 @@
 // Builds the preview pane content as styled lines: a paper's tabs or a summary of the hovered folder.
 // Pure functions of the snapshot and the sidecar, so tests render them without a terminal.
 import {
-  type Annotation, type FolderNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, cleanQuote, formatAuthors, formatBytes, listPapersUnderFolder, describeTextLayer, formatVenueLine, type PaperData,
+  type Annotation, type FolderNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, normalizeQuote, formatAuthors, formatBytes, listPapersUnderFolder, describeTextLayer, formatVenueLine, type PaperSidecar,
 } from "@labshelf/core";
 
 import type { Style } from "../screen/index.js";
@@ -57,7 +57,7 @@ function field(label: string, value: string, width: number, valueStyle?: Style):
  * The Info tab: title, authors, venue, status and tags, identifiers, where it lives, PDF and reading state, note.
  * @returns the lines
  */
-export function infoLines(entry: PaperEntry, data: PaperData | undefined, width: number): Line[] {
+export function infoLines(entry: PaperEntry, data: PaperSidecar | undefined, width: number): Line[] {
   const r = entry.record;
   const lines: Line[] = [];
   lines.push(...para(r.title, width, theme.title, 4));
@@ -127,7 +127,7 @@ function annotationLines(annotations: Annotation[], width: number): Line[] {
     }
     const bar = theme.annotation[annotation.color ?? "yellow"] ?? theme.annotation["yellow"]!;
     // Text-layer selections carry the PDF's line breaks; the reader's own cleanup makes them read as prose.
-    const text = (annotation.type === "highlight" ? cleanQuote(annotation.content) : annotation.content.trim()) || "(empty)";
+    const text = (annotation.type === "highlight" ? normalizeQuote(annotation.content) : annotation.content.trim()) || "(empty)";
     for (const row of wrap(text, Math.max(4, width - 2))) {
       lines.push([{ text: "▌ ", style: bar }, { text: row, ...(annotation.type === "highlight" ? {} : { style: theme.bold }) }]);
     }
@@ -139,7 +139,7 @@ function annotationLines(annotations: Annotation[], width: number): Line[] {
  * Lines of one preview tab of a paper.
  * @returns the lines and whether a thumbnail fits under them
  */
-export function paperPreview(entry: PaperEntry, data: PaperData | undefined, tab: PreviewTab, width: number, bibtex: string): PaperPreview {
+export function paperPreview(entry: PaperEntry, data: PaperSidecar | undefined, tab: PreviewTab, width: number, bibtex: string): PaperPreview {
   switch (tab) {
     case "Info": return { lines: infoLines(entry, data, width), wantsImage: entry.record.hasPdf !== false };
     case "Abstract": return { lines: abstractLines(entry.record, width), wantsImage: false };

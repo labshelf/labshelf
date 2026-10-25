@@ -1,4 +1,4 @@
-import type { Annotation, PaperData, PaperRecord } from "@labshelf/core";
+import type { Annotation, PaperSidecar, PaperRecord } from "@labshelf/core";
 
 import { stringWidth } from "../../src/screen/text";
 import {
@@ -24,7 +24,7 @@ function annotation(pageNumber: number, content: string, extra: Partial<Annotati
   };
 }
 
-function sidecar(annotations: Annotation[], extra: Partial<PaperData> = {}): PaperData {
+function sidecar(annotations: Annotation[], extra: Partial<PaperSidecar> = {}): PaperSidecar {
   return { annotations, theme: "auto", ...extra };
 }
 

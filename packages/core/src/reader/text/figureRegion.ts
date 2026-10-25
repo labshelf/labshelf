@@ -1,5 +1,5 @@
 /** Computes the region to preview for a caption or equation label: the caption block plus the float it describes. */
-import { columnBounds, type CaptionHit } from "./captions.js";
+import { deriveColumnBounds, type CaptionHit } from "./captions.js";
 import type { TextLine } from "./textLines.js";
 
 /** Rectangle in PDF user space (origin bottom-left): yTop > yBottom. */
@@ -106,7 +106,7 @@ function figureRegion(lines: readonly TextLine[], hit: CaptionHit, f: FloatFrame
  * and legends OCR picked up from the figure itself, so they do not end the band.
  * @returns the region in PDF user space, clamped to the page.
  */
-export function floatRegion(
+export function deriveFloatRegion(
   lines: readonly TextLine[],
   hit: CaptionHit,
   pageWidth: number,
@@ -114,7 +114,7 @@ export function floatRegion(
   columnSplit: number | null,
 ): PdfRegion {
   const cap = lines[hit.lineIndex]!;
-  const [x0, x1] = columnBounds(cap, pageWidth, columnSplit);
+  const [x0, x1] = deriveColumnBounds(cap, pageWidth, columnSplit);
   const frame: FloatFrame = { x0, x1, pageHeight, clampY: (y) => Math.min(pageHeight, Math.max(0, y)) };
   if (hit.kind === "equation") { return equationRegion(cap, frame); }
   if (hit.kind === "table") { return tableRegion(lines, hit, frame); }

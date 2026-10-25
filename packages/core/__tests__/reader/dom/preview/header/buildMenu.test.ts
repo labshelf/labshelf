@@ -2,11 +2,11 @@
  * @jest-environment jsdom
  */
 // Tests the header options menu: hidden without options, Typst shows the compile modes, LaTeX adds engines and error handling, items post their messages.
-import { mountOptionsMenu } from "../../../../../src/reader/dom/preview/header/index";
+import { mountBuildMenu } from "../../../../../src/reader/dom/preview/header/index";
 import { closeMenu } from "../../../../../src/ui/dom/index";
-import type { BuildOptions, PreviewRoots } from "../../../../../src/reader/index";
+import type { BuildOptions, PreviewBuildRoots } from "../../../../../src/reader/index";
 
-const roots = (options?: BuildOptions): PreviewRoots => ({
+const roots = (options?: BuildOptions): PreviewBuildRoots => ({
   main: "a", focused: "a", shown: "a", roots: [], ...(options && { options }),
 });
 
@@ -15,14 +15,14 @@ function setup() {
   const slot = document.createElement("span");
   slot.hidden = true;
   document.body.replaceChildren(slot);
-  const menu = mountOptionsMenu(slot, { post });
+  const menu = mountBuildMenu(slot, { post });
   const button = () => slot.querySelector<HTMLButtonElement>("button")!;
   const items = () => [...document.querySelectorAll<HTMLButtonElement>(".ls-menu-item")];
   const item = (text: string) => items().find((b) => b.textContent?.includes(text))!;
   return { menu, post, slot, button, items, item };
 }
 
-describe("mountOptionsMenu", () => {
+describe("mountBuildMenu", () => {
   afterEach(() => { closeMenu(); document.body.replaceChildren(); });
 
   it("keeps the slot hidden while the roots carry no options", () => {

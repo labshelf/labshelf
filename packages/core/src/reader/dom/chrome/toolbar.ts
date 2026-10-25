@@ -1,8 +1,8 @@
 /**
  * Renders the overlay toolbar. It floats above the page (never part of the layout) so showing or hiding it cannot resize the viewer and trigger a re-raster.
  */
-import { initialAutohide, toolbarVisibility, type AutohideEvent, type AutohideState } from "../../index.js";
-import { iconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
+import { initialAutohide, deriveToolbarVisibility, type AutohideEvent, type AutohideState } from "../../index.js";
+import { renderReaderIconButton, isPopoverOpen, onPopoverToggle } from "../elements/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
@@ -37,12 +37,12 @@ export class Toolbar {
     this.autoHide = autoHide;
     const mod = isMac ? "Cmd" : "Ctrl";
     const alt = isMac ? "Option" : "Alt";
-    this.sidebarBtn = iconButton(renderIcon("panel-left"), "Toggle sidebar (F4)");
-    this.backBtn = iconButton(renderIcon("arrow-left"), `Back (${alt}+Left)`);
-    this.forwardBtn = iconButton(renderIcon("arrow-right"), `Forward (${alt}+Right)`);
-    const findBtn = iconButton(renderIcon("search"), `Find (${mod}+F)`);
-    const themeBtn = iconButton(renderIcon("droplet"), "Page theme");
-    const helpBtn = iconButton(renderIcon("help"), "Keyboard shortcuts (?)");
+    this.sidebarBtn = renderReaderIconButton(renderIcon("panel-left"), "Toggle sidebar (F4)");
+    this.backBtn = renderReaderIconButton(renderIcon("arrow-left"), `Back (${alt}+Left)`);
+    this.forwardBtn = renderReaderIconButton(renderIcon("arrow-right"), `Forward (${alt}+Right)`);
+    const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
+    const themeBtn = renderReaderIconButton(renderIcon("droplet"), "Page theme");
+    const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
     this.backBtn.disabled = true;
     this.forwardBtn.disabled = true;
 
@@ -119,7 +119,7 @@ export class Toolbar {
   }
 
   private step(event: AutohideEvent): void {
-    const next = toolbarVisibility(this.state, event, {
+    const next = deriveToolbarVisibility(this.state, event, {
       enabled: this.autoHide,
       engaged: this.engaged,
       scrollTop: this.container.scrollTop,

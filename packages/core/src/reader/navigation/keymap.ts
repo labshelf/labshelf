@@ -1,10 +1,10 @@
 /**
  * Resolves keyboard bindings for the reader: a conventional table that is always active, a vim layer gated by `labshelf.reader.vimKeys` and a preview layer.
- * DOM-free so jest (node env) can cover it; dom/navigation/keyboard.ts adapts KeyboardEvent into KeyInput.
+ * DOM-free so jest (node env) can cover it; dom/navigation/keyboard.ts adapts KeyboardEvent into ShortcutInput.
  */
 import { CONVENTIONAL, PREVIEW, VIM, type Binding, type ReaderAction } from "./shortcuts.js";
 
-export interface KeyInput {
+export interface ShortcutInput {
   key: string;
   /** KeyboardEvent.code, when available. */
   code?: string;
@@ -14,7 +14,7 @@ export interface KeyInput {
   shift: boolean;
 }
 
-export interface KeyContext {
+export interface ShortcutContext {
   vimKeys: boolean;
   isMac: boolean;
   /** Focus is in an input/textarea/contenteditable: only modified chords, function keys and Escape may fire. */
@@ -25,7 +25,7 @@ export interface KeyContext {
   preview?: boolean;
 }
 
-export interface KeyResolution {
+export interface ShortcutResolution {
   action: ReaderAction | null;
   /** Prefix the caller must remember (and expire after CHORD_TIMEOUT_MS) for the next keydown. */
   pendingPrefix: string | null;
@@ -39,11 +39,11 @@ export const CHORD_TIMEOUT_MS = 800;
  */
 export const ACTIONS_BLOCKED_WHILE_TYPING: ReadonlySet<ReaderAction> = new Set<ReaderAction>(["historyBack", "historyForward"]);
 
-function primaryMod(input: KeyInput, isMac: boolean): boolean {
+function primaryMod(input: ShortcutInput, isMac: boolean): boolean {
   return isMac ? input.meta && !input.ctrl : input.ctrl && !input.meta;
 }
 
-function matches(b: Binding, input: KeyInput, isMac: boolean): boolean {
+function matches(b: Binding, input: ShortcutInput, isMac: boolean): boolean {
   if (b.macOnly && !isMac) { return false; }
   const wantMod = b.mod === true;
   if (wantMod !== primaryMod(input, isMac)) { return false; }
@@ -61,8 +61,8 @@ function matches(b: Binding, input: KeyInput, isMac: boolean): boolean {
  * Resolves one keydown into a reader action.
  * @returns the action (or null) and the chord prefix to carry into the next keydown.
  */
-export function resolveKey(input: KeyInput, ctx: KeyContext): KeyResolution {
-  const none: KeyResolution = { action: null, pendingPrefix: null };
+export function resolveShortcut(input: ShortcutInput, ctx: ShortcutContext): ShortcutResolution {
+  const none: ShortcutResolution = { action: null, pendingPrefix: null };
   const bare = !input.ctrl && !input.meta && !input.alt;
 
   if (ctx.inTextInput) {
@@ -112,7 +112,7 @@ function displayKey(b: Binding, isMac: boolean): string {
  * Rows for the `?` overlay: one per action with every key that triggers it, vim keys included only when the layer is on.
  * @returns rows in table order, grouped by `group`.
  */
-export function cheatsheetRows(ctx: Pick<KeyContext, "vimKeys" | "isMac" | "preview">): CheatsheetRow[] {
+export function deriveCheatsheetRows(ctx: Pick<ShortcutContext, "vimKeys" | "isMac" | "preview">): CheatsheetRow[] {
   const rows = new Map<ReaderAction, CheatsheetRow>();
   const add = (b: Binding): void => {
     if (b.macOnly && !ctx.isMac) { return; }

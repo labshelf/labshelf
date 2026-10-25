@@ -1,6 +1,6 @@
 // Tests the paper data store for annotations and reading state.
-import { PaperDataStore, validateAnnotationPosition } from "../../../src/reader/sidecar/paperSidecarStore";
-import { emptyPaperData } from '../../../src/reader/sidecar/paperSidecar';
+import { PaperSidecarStore, checkAnnotationPosition } from "../../../src/reader/sidecar/paperSidecarStore";
+import { createEmptyPaperSidecar } from '../../../src/reader/sidecar/paperSidecar';
 import type { SidecarPort } from '../../../src/ports/index';
 
 function memoryPort(seed: Record<string, string> = {}): SidecarPort & { files: Record<string, string>; writes: number } {
@@ -14,12 +14,12 @@ function memoryPort(seed: Record<string, string> = {}): SidecarPort & { files: R
 }
 
 let seq = 0;
-const store = (port: SidecarPort) => new PaperDataStore(port, { now: () => '2026-10-07T12:00:00.000Z', newId: () => `id-${++seq}` });
+const store = (port: SidecarPort) => new PaperSidecarStore(port, { now: () => '2026-10-07T12:00:00.000Z', newId: () => `id-${++seq}` });
 
-describe('PaperDataStore', () => {
+describe('PaperSidecarStore', () => {
   it('returns empty data when the sidecar is absent or corrupt', async () => {
-    expect(await store(memoryPort()).load('p')).toEqual(emptyPaperData());
-    expect(await store(memoryPort({ p: '{not json' })).load('p')).toEqual(emptyPaperData());
+    expect(await store(memoryPort()).load('p')).toEqual(createEmptyPaperSidecar());
+    expect(await store(memoryPort({ p: '{not json' })).load('p')).toEqual(createEmptyPaperSidecar());
   });
 
   it('adds highlights and notes, and lists them by page then creation time', async () => {
@@ -97,7 +97,7 @@ describe('PaperDataStore', () => {
   });
 });
 
-describe('PaperDataStore theme and reading state', () => {
+describe('PaperSidecarStore theme and reading state', () => {
   const reading = { page: 7, scaleValue: 'page-width', left: 0, top: 412.5, updatedAt: '2026-02-03T10:00:00.000Z' };
 
   it('defaults the theme to auto and round-trips a chosen one', async () => {
@@ -155,7 +155,7 @@ describe('PaperDataStore theme and reading state', () => {
   });
 });
 
-describe('PaperDataStore annotations', () => {
+describe('PaperSidecarStore annotations', () => {
   it('accepts all five colours', async () => {
     const s = store(memoryPort());
     for (const color of ['yellow', 'green', 'blue', 'red', 'pink']) {
@@ -197,27 +197,27 @@ describe('PaperDataStore annotations', () => {
   });
 });
 
-describe('PaperDataStore logging', () => {
+describe('PaperSidecarStore logging', () => {
   it('logs a warning when the sidecar does not parse, and still loads empty data', async () => {
     const log = jest.fn(async () => undefined);
     const logger = { log, error: jest.fn(async () => undefined) };
-    const s = new PaperDataStore(memoryPort({ p: '{not json' }), { logger });
-    expect(await s.load('p')).toEqual(emptyPaperData());
+    const s = new PaperSidecarStore(memoryPort({ p: '{not json' }), { logger });
+    expect(await s.load('p')).toEqual(createEmptyPaperSidecar());
     expect(log).toHaveBeenCalledWith('WARN', 'sidecar', expect.any(String), expect.objectContaining({ paperId: 'p' }));
   });
 
   it('does not log for a missing sidecar', async () => {
     const log = jest.fn(async () => undefined);
-    await new PaperDataStore(memoryPort(), { logger: { log, error: jest.fn(async () => undefined) } }).load('p');
+    await new PaperSidecarStore(memoryPort(), { logger: { log, error: jest.fn(async () => undefined) } }).load('p');
     expect(log).not.toHaveBeenCalled();
   });
 });
 
-describe('validateAnnotationPosition', () => {
+describe('checkAnnotationPosition', () => {
   it('accepts a normalized box and rejects anything outside the page', () => {
-    expect(validateAnnotationPosition({ x: 0.1, y: 0.2, width: 0.3, height: 0.1 })).toEqual({ x: 0.1, y: 0.2, width: 0.3, height: 0.1 });
-    expect(() => validateAnnotationPosition({ x: 0.9, y: 0, width: 0.2, height: 0.1 })).toThrow('normalized');
-    expect(() => validateAnnotationPosition({ x: '0' })).toThrow('numbers');
-    expect(() => validateAnnotationPosition(null)).toThrow('object');
+    expect(checkAnnotationPosition({ x: 0.1, y: 0.2, width: 0.3, height: 0.1 })).toEqual({ x: 0.1, y: 0.2, width: 0.3, height: 0.1 });
+    expect(() => checkAnnotationPosition({ x: 0.9, y: 0, width: 0.2, height: 0.1 })).toThrow('normalized');
+    expect(() => checkAnnotationPosition({ x: '0' })).toThrow('numbers');
+    expect(() => checkAnnotationPosition(null)).toThrow('object');
   });
 });

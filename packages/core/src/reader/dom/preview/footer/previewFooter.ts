@@ -1,11 +1,11 @@
 // Mounts the preview footer: where the page sits in the document, the build status and the slots the checks fill.
 import { renderElement } from "../../../../ui/dom/index.js";
-import { type PreviewRoots, outlineTrail, type OutlineRow } from "../../../index.js";
+import { type PreviewBuildRoots, deriveOutlineTrail, type OutlineRow } from "../../../index.js";
 import type { PreviewOutlineSource } from "../mountPreviewChrome.js";
-import { type PreviewBuildStatus, buildStatusText } from "./buildStateText.js";
+import { type PreviewBuildState, formatBuildStateText } from "./buildStateText.js";
 import { renderIcon } from "../../../../ui/index.js";
-import { buildMenu, togglePopover } from "../../elements/index.js";
-import { pdfName } from "../fileName.js";
+import { buildMenu, updatePopoverOpen } from "../../elements/index.js";
+import { derivePdfName } from "../deriveFileName.js";
 
 interface LoadedOutline {
   rows: OutlineRow[];
@@ -27,14 +27,14 @@ function createCrumbs(outline: PreviewOutlineSource): Crumbs {
     const items = rows
       .filter((r) => r.depth < 2)
       .map((r) => ({ label: r.title, checked: inTrail.has(r.id), run: () => outline.jump(r) }));
-    togglePopover(anchor, buildMenu(items), "above");
+    updatePopoverOpen(anchor, buildMenu(items), "above");
   }
 
   return {
     element,
     render(path, loaded) {
-      const name = path === undefined ? "" : pdfName(path);
-      const trail = outlineTrail(loaded.rows, loaded.pages, outline.currentPage());
+      const name = path === undefined ? "" : derivePdfName(path);
+      const trail = deriveOutlineTrail(loaded.rows, loaded.pages, outline.currentPage());
       const next = `${name}|${loaded.rows.length > 0}|${trail.map((r) => r.id).join(",")}`;
       if (next === key) { return; }
       key = next;
@@ -61,17 +61,17 @@ interface StatusViewDeps {
 
 interface StatusView {
   element: HTMLElement;
-  render(roots: PreviewRoots | null, build: PreviewBuildStatus): void;
+  render(roots: PreviewBuildRoots | null, build: PreviewBuildState): void;
 }
 
 function createStatusView({ openLogs, now }: StatusViewDeps): StatusView {
   const element = renderElement("div", { class: "rd-preview-status", role: "status", "aria-live": "polite" });
   let clock: ReturnType<typeof setInterval> | null = null;
-  let latest: { roots: PreviewRoots | null; build: PreviewBuildStatus } | null = null;
+  let latest: { roots: PreviewBuildRoots | null; build: PreviewBuildState } | null = null;
 
-  function render(roots: PreviewRoots | null, build: PreviewBuildStatus): void {
+  function render(roots: PreviewBuildRoots | null, build: PreviewBuildState): void {
     latest = { roots, build };
-    const { text, tone, logsRoot, timed } = buildStatusText(roots, build, now());
+    const { text, tone, logsRoot, timed } = formatBuildStateText(roots, build, now());
     element.dataset["tone"] = tone;
     const glyph = tone === "error" ? "warning" : null;
     const label = renderElement("span", { class: "rd-preview-status-text" }, text);
@@ -105,8 +105,8 @@ interface PreviewFooterDeps {
 export interface PreviewFooter {
   element: HTMLElement;
   slots: Record<FooterSlotName, HTMLElement>;
-  setRoots(roots: PreviewRoots): void;
-  setBuild(build: PreviewBuildStatus): void;
+  setRoots(roots: PreviewBuildRoots): void;
+  setBuild(build: PreviewBuildState): void;
   /** The open document was replaced, so its outline is read again. */
   documentChanged(): void;
 }
@@ -124,8 +124,8 @@ function createSlots(): Record<FooterSlotName, HTMLElement> {
  * @returns the element, its empty slots and the setters the host messages drive.
  */
 export function mountPreviewFooter({ openLogs, outline, now = Date.now }: PreviewFooterDeps): PreviewFooter {
-  let roots: PreviewRoots | null = null;
-  let build: PreviewBuildStatus = { state: "succeeded", errors: 0 };
+  let roots: PreviewBuildRoots | null = null;
+  let build: PreviewBuildState = { state: "succeeded", errors: 0 };
   let loaded: LoadedOutline = { rows: [], pages: [] };
   let started = false;
   // INVARIANT: only the load started last may land, so the outline of a replaced document never shows.

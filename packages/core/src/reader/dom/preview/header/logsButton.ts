@@ -1,19 +1,19 @@
 // Shows the shown root's warning and error count in the header, with a menu that opens each problem or the logs.
 import { renderElement } from "../../../../ui/dom/index.js";
 import { renderIcon } from "../../../../ui/index.js";
-import type { PreviewRoot, PreviewRoots, WebviewToHost } from "../../../index.js";
-import { buildMenu, iconButton, togglePopover, type MenuItem } from "../../elements/index.js";
+import type { PreviewBuildRoot, PreviewBuildRoots, WebviewToHost } from "../../../index.js";
+import { buildMenu, renderReaderIconButton, updatePopoverOpen, type MenuItem } from "../../elements/index.js";
 
 interface LogsButtonDeps {
   post: (msg: WebviewToHost) => void;
   openLogs(root: string): void;
 }
 
-function isProblem(p: PreviewRoot["problems"][number]): boolean {
+function isProblem(p: PreviewBuildRoot["problems"][number]): boolean {
   return p.severity !== "info";
 }
 
-function menuItems(root: PreviewRoot, { post, openLogs }: LogsButtonDeps): MenuItem[] {
+function menuItems(root: PreviewBuildRoot, { post, openLogs }: LogsButtonDeps): MenuItem[] {
   const items: MenuItem[] = [];
   root.problems.forEach((problem, index) => {
     if (!isProblem(problem)) { return; }
@@ -29,16 +29,16 @@ function menuItems(root: PreviewRoot, { post, openLogs }: LogsButtonDeps): MenuI
  * Mounts the logs button into the header's `logs` slot and reveals the slot.
  * @returns `setRoots`, which the host's roots messages drive.
  */
-export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setRoots(roots: PreviewRoots): void } {
-  const button = iconButton(renderIcon("log"), "Logs");
+export function mountLogsButton(slot: HTMLElement, deps: LogsButtonDeps): { setRoots(roots: PreviewBuildRoots): void } {
+  const button = renderReaderIconButton(renderIcon("log"), "Logs");
   button.setAttribute("aria-haspopup", "menu");
   button.setAttribute("aria-expanded", "false");
   const count = renderElement("span", { class: "rd-logs-count", "aria-hidden": "true", hidden: true });
   button.append(count);
-  let shown: PreviewRoot | undefined;
+  let shown: PreviewBuildRoot | undefined;
 
   button.addEventListener("click", () => {
-    if (shown) { togglePopover(button, buildMenu(menuItems(shown, deps)), "below"); }
+    if (shown) { updatePopoverOpen(button, buildMenu(menuItems(shown, deps)), "below"); }
   });
   slot.hidden = false;
   slot.append(button);

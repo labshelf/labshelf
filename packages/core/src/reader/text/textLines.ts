@@ -53,7 +53,7 @@ const MARKER_SHAPED = /^(?:[[(]\s*[\p{L}\d]{1,3}\s*[\])]?|[\p{L}\d]{1,3}[.)\]])$
  *    a heading, "5 [1] A. Author" not a numbered entry, "p FIG. 1. An example" not a caption.
  * @returns the items that belong to the page's running text, in their original order.
  */
-export function readableItems(items: readonly TextItemBox[], pageWidth: number): TextItemBox[] {
+export function deriveReadableItems(items: readonly TextItemBox[], pageWidth: number): TextItemBox[] {
   const mass = [0, 0, 0, 0];
   for (const it of items) { mass[it.orientation ?? 0]! += it.str.trim().length; }
   const dominant = mass.indexOf(Math.max(...mass));
@@ -119,7 +119,7 @@ function joinLine(parts: TextItemBox[]): string {
 /**
  * @returns lines in reading order: left column top-to-bottom, then right column.
  */
-export function groupItemsIntoLines(items: readonly TextItemBox[], pageWidth: number): TextLine[] {
+export function deriveLinesFromItems(items: readonly TextItemBox[], pageWidth: number): TextLine[] {
   const split = detectColumns(items, pageWidth);
   const columns: TextItemBox[][] = [[], []];
   for (const it of items) {

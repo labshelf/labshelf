@@ -4,7 +4,7 @@
  */
 import type { PageViewport, RenderTask } from "pdfjs-dist";
 import { type PdfRegion } from "../../text/index.js";
-import { cropRectForPreview, type Rect } from "../../index.js";
+import { deriveCropRectForPreview, type Rect } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
 import type { ThemeController } from "../chrome/index.js";
 
@@ -53,7 +53,7 @@ export class DestPreview {
     if (!full) { return null; }
     // convertToViewportPoint handles the page's rotation and the bottom-left PDF origin.
     const anchorY = pdfY === null ? null : (full.viewport.convertToViewportPoint(pdfX ?? 0, pdfY)[1] ?? null);
-    return this.crop(full, cropRectForPreview(anchorY, full.canvas.width, full.canvas.height), popupWidth());
+    return this.crop(full, deriveCropRectForPreview(anchorY, full.canvas.width, full.canvas.height), popupWidth());
   }
 
   /**

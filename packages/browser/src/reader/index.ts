@@ -2,12 +2,12 @@
 // The host keeps annotations, reader theme and reading position in the paper's sidecar.
 import {
   PROTOCOL_VERSION,
-  PaperDataStore,
+  PaperSidecarStore,
   createPreviewStore,
   ReaderHostController,
   type EffectiveTheme,
   type HostToWebview,
-  type ReaderBootParams,
+  type ReaderStartupParams,
   type PaperRecord,
   type PreviewPorts,
   type ReaderPrefs,
@@ -112,7 +112,7 @@ function createHostWithChannel(
   return { host, channel };
 }
 
-function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): ReaderBootParams {
+function bootParams(paper: PaperRecord, prefs: ReaderPrefs, preview: boolean): ReaderStartupParams {
   return {
     protocolVersion: PROTOCOL_VERSION,
     assets: {
@@ -185,7 +185,7 @@ async function main(): Promise<void> {
   const { paper, prefs } = opened;
 
   let currentPrefs = prefs;
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperDataStore(createSidecarPort(fs)));
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)));
   const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);

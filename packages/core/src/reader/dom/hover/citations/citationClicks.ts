@@ -1,17 +1,17 @@
 // Opens the cited library paper when a preview's citation link is clicked; every other link keeps its own jump.
 import type { ReaderContext } from "../../session/index.js";
-import { findLink } from "../destAnchor.js";
+import { findDestAnchor } from "../destAnchor.js";
 import type { PreviewCitations } from "./previewCitations.js";
 
 /**
  * Takes over internal link clicks in the capture phase, because the answer is asynchronous and pdf.js' handler is not.
  * A link that cites no library paper is clicked again, so pdf.js follows it as it would have.
  */
-export function interceptCitationClicks(viewer: HTMLElement, ctx: ReaderContext, citations: PreviewCitations): void {
+export function attachCitationClicks(viewer: HTMLElement, ctx: ReaderContext, citations: PreviewCitations): void {
   if (!ctx.boot.preview) { return; }
   let replaying = false;
   viewer.addEventListener("click", (e) => {
-    const link = replaying ? null : findLink(e);
+    const link = replaying ? null : findDestAnchor(e);
     if (!link) { return; }
     e.preventDefault();
     e.stopPropagation();

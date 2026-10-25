@@ -2,18 +2,18 @@
 import type { CitationEntry } from "../../../../index.js";
 import { renderElement } from "../../../../../ui/dom/index.js";
 import type { PopupContent } from "../../hoverAnchor.js";
-import { citationActions, openAt, openLabel, OPEN_PAPER_LABEL, type PostRequest } from "./citationActions.js";
-import { byline, citationHead } from "./citationHead.js";
-import { flatHighlights } from "./citationHighlights.js";
+import { renderCitationActions, openAt, openLabel, OPEN_PAPER_LABEL, type PostRequest } from "./renderCitationActions.js";
+import { formatByline, renderCitationHead } from "./renderCitationHead.js";
+import { renderFlatHighlights } from "./citationHighlights.js";
 
 export { OPEN_PAPER_LABEL };
 
 function singleBody(entry: CitationEntry, open: (paperId: string, page?: number) => void, post: PostRequest): HTMLElement {
   const { paper } = entry;
   return renderElement("div", { class: "rd-hover-cite rd-cite-flat" },
-    citationHead(entry),
-    paper?.highlights?.length ? flatHighlights(paper.highlights, entry.citedPage) : null,
-    ...citationActions(entry, open, post));
+    renderCitationHead(entry),
+    paper?.highlights?.length ? renderFlatHighlights(paper.highlights, entry.citedPage) : null,
+    ...renderCitationActions(entry, open, post));
 }
 
 function row(entry: CitationEntry, open: (paperId: string, page?: number) => void): HTMLElement {
@@ -23,7 +23,7 @@ function row(entry: CitationEntry, open: (paperId: string, page?: number) => voi
   }
   const button = renderElement("button", { class: "rd-cite-row rd-cite-row-paper", type: "button", "aria-label": `${OPEN_PAPER_LABEL}: ${paper.title}` },
     renderElement("span", { class: "rd-cite-title" }, paper.title),
-    byline(paper) && renderElement("span", { class: "rd-cite-byline" }, byline(paper)),
+    formatByline(paper) && renderElement("span", { class: "rd-cite-byline" }, formatByline(paper)),
     renderElement("code", { class: "rd-cite-key" }, entry.key),
   );
   button.addEventListener("click", () => open(paper.id));
@@ -34,7 +34,7 @@ function row(entry: CitationEntry, open: (paperId: string, page?: number) => voi
  * @returns the card for the entries, or null when none of them is a card subject; `post` lets the card go to a source line and
  * run its fix.
  */
-export function citationContent(entries: CitationEntry[], open: (paperId: string, page?: number) => void, post: PostRequest): PopupContent | null {
+export function renderCitationContent(entries: CitationEntry[], open: (paperId: string, page?: number) => void, post: PostRequest): PopupContent | null {
   const first = entries.find((entry) => entry.paper);
   const only = entries.length === 1 ? entries[0] : undefined;
   if (only && (only.paper || only.bib || only.fix)) {

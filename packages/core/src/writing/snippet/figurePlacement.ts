@@ -10,7 +10,7 @@ export const IMAGE_EXTENSIONS: Record<WritingLanguage, string[]> = {
   typst: ["png", "jpg", "jpeg", "gif", "svg"],
 };
 
-/** The first path in `folder` for `fileName` that does not exist: `stem.ext`, `stem-2.ext`, `stem-3.ext`, ... */
+/** The first path in `folder` for `deriveFileName` that does not exist: `stem.ext`, `stem-2.ext`, `stem-3.ext`, ... */
 export async function freeImageName(
   paths: Pick<PathOps, "join" | "extname" | "basename">,
   folder: string,

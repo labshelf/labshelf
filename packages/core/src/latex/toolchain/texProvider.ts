@@ -5,6 +5,6 @@ import type { LatexToolchain } from "./latexToolchain.js";
 export interface TexProvider {
   /** The latexmk of `engine`, or "missing" when no TeX installation is found. */
   resolve(engine: LatexEngine): Promise<LatexToolchain | "missing">;
-  /** Installs the TeX package that provides `fileName`; false when nothing was installed. */
+  /** Installs the TeX package that provides `deriveFileName`; false when nothing was installed. */
   installMissing(fileName: string): Promise<boolean>;
 }

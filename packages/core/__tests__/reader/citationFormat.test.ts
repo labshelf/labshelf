@@ -1,20 +1,20 @@
-import { cleanQuote, formatQuoteWithCitation, type CitablePaper } from '../../src/reader/citationFormat';
+import { normalizeQuote, formatQuoteWithCitation, type CitablePaper } from '../../src/reader/citationFormat';
 
 function paper(overrides: Partial<CitablePaper> = {}): CitablePaper {
   return { citeKey: 'nasser2024', title: 'A Great Paper', authors: ['Luca Nasser'], year: 2024, ...overrides };
 }
 
-describe('cleanQuote', () => {
+describe('normalizeQuote', () => {
   it('collapses newlines and repeated whitespace into single spaces', () => {
-    expect(cleanQuote('The   quick\n\tbrown\nfox')).toBe('The quick brown fox');
+    expect(normalizeQuote('The   quick\n\tbrown\nfox')).toBe('The quick brown fox');
   });
 
   it('joins a hyphenated line break, e.g. "inter-\\nnational" -> "international"', () => {
-    expect(cleanQuote('inter-\nnational')).toBe('international');
+    expect(normalizeQuote('inter-\nnational')).toBe('international');
   });
 
   it('keeps a real hyphen when the continuation starts with an uppercase letter', () => {
-    expect(cleanQuote('non-\nEuropean countries')).toBe('non- European countries');
+    expect(normalizeQuote('non-\nEuropean countries')).toBe('non- European countries');
   });
 });
 

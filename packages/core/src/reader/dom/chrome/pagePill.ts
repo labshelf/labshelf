@@ -4,9 +4,9 @@
 import { formatZoomLabel } from "../../navigation/index.js";
 import type { ZoomPreset } from "../../index.js";
 import { DOCUMENT_REPLACED, type ReaderContext } from "../session/index.js";
-import { iconButton } from "../elements/index.js";
+import { renderReaderIconButton } from "../elements/index.js";
 import { renderIcon } from "../../../ui/index.js";
-import { buildMenu, togglePopover, type MenuItem } from "../elements/index.js";
+import { buildMenu, updatePopoverOpen, type MenuItem } from "../elements/index.js";
 import type { ZoomController } from "../navigation/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";
 
@@ -14,7 +14,7 @@ const PERCENT_CHOICES = [50, 75, 100, 125, 150, 200, 300, 400];
 const PREVIEW_PERCENT_CHOICES = [50, 75, 100, 125, 150, 200];
 const PRESETS = ["page-width", "page-fit", "page-actual", "auto"];
 
-export class StatusPill {
+export class PagePill {
   private readonly pageInput: HTMLInputElement;
   private readonly zoomBtn: HTMLButtonElement;
   private readonly zoomText: HTMLElement;
@@ -36,8 +36,8 @@ export class StatusPill {
     this.zoomBtn = renderElement("button", { class: "rd-zoom-label", type: "button", title: "Zoom options", "aria-haspopup": "menu" });
     this.zoomText = renderElement("span", {});
     this.zoomBtn.append(this.zoomText);
-    const out = iconButton(renderIcon("minus"), "Zoom out", "rd-btn-sm");
-    const inn = iconButton(renderIcon("plus"), "Zoom in", "rd-btn-sm");
+    const out = renderReaderIconButton(renderIcon("minus"), "Zoom out", "rd-btn-sm");
+    const inn = renderReaderIconButton(renderIcon("plus"), "Zoom in", "rd-btn-sm");
     out.addEventListener("click", () => zoom.zoomOut());
     inn.addEventListener("click", () => zoom.zoomIn());
     this.zoomBtn.addEventListener("click", () => this.openZoomMenu());
@@ -53,8 +53,8 @@ export class StatusPill {
     const zoomGroup = renderElement("div", { class: "rd-pill-group" }, out, this.zoomBtn, inn);
     if (ctx.boot.preview) {
       // The preview header reads left to right as navigation, then zoom: arrows, page box, "/ N", rule, − + and the label.
-      const prev = iconButton(renderIcon("chevron-up"), "Previous page", "rd-btn-sm");
-      const next = iconButton(renderIcon("chevron-down"), "Next page", "rd-btn-sm");
+      const prev = renderReaderIconButton(renderIcon("chevron-up"), "Previous page", "rd-btn-sm");
+      const next = renderReaderIconButton(renderIcon("chevron-down"), "Next page", "rd-btn-sm");
       prev.addEventListener("click", () => ctx.pdfViewer.previousPage());
       next.addEventListener("click", () => ctx.pdfViewer.nextPage());
       this.zoomBtn.append(renderElement("span", { class: "rd-zoom-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
@@ -113,7 +113,7 @@ export class StatusPill {
       checked: Math.round(this.zoom.scale * 100) === p && !PRESETS.includes(value),
       run: () => this.zoom.setScale(p / 100),
     }));
-    togglePopover(this.zoomBtn, buildMenu([...presets, ...percents]), preview ? "below" : "above");
+    updatePopoverOpen(this.zoomBtn, buildMenu([...presets, ...percents]), preview ? "below" : "above");
   }
 
   private presetItem(label: string, preset: ZoomPreset): MenuItem {

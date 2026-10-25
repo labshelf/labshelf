@@ -1,6 +1,6 @@
 // Checks how the reader applies a host's changed regions around a reload.
 import type { HostToWebview } from "../../../../src/reader/protocol/index";
-import { bindHostMessages, type HostMessageTargets } from "../../../../src/reader/dom/startup/hostMessages";
+import { attachReaderHostMessages, type HostMessageParts } from "../../../../src/reader/dom/startup/hostMessages";
 
 type Handler = (msg: HostToWebview) => void;
 
@@ -14,13 +14,13 @@ function setup(previewChrome: unknown = null) {
     ui: { buildBanner: { showReloadError: jest.fn() }, previewChrome },
     reloader,
     changeMarks,
-  } as unknown as HostMessageTargets;
-  bindHostMessages(targets);
+  } as unknown as HostMessageParts;
+  attachReaderHostMessages(targets);
   const send = (msg: HostToWebview) => handlers.get(msg.type)!(msg);
   return { send, changeMarks, order };
 }
 
-describe("bindHostMessages", () => {
+describe("attachReaderHostMessages", () => {
   it("shows the regions a host marks as changed", () => {
     const { send, changeMarks } = setup();
     const areas = [{ page: 2, left: 1, top: 2, right: 3, bottom: 4 }];
