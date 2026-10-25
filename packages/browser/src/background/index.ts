@@ -4,10 +4,10 @@ import { bx, createBrowserLogger } from "../platform";
 import { createLibraryMutations, getLibrarySource, onFolderRecordsRebuilt, onLibraryFilesChanged, rebuildFromFiles } from "../storage";
 import { broadcastChanged } from "./broadcast";
 import { forgetDraft } from "./draftCache";
-import { registerMessageRouter } from "./router";
+import { registerMessageRouter } from "./registerHandlers";
 import { accessTabDeps } from "./handlers/index";
 import { dropWatch, onTabLoaded } from "../capture/index";
-import { onDownloadChanged, onPdfTabLoaded, retireTabOffer } from "./pdfOffer/index";
+import { onDownloadChanged, onPdfTabLoaded, retireTabOffer } from "./import";
 
 const log = createBrowserLogger();
 const MODULE = "background";

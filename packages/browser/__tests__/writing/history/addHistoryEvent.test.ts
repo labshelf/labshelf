@@ -1,12 +1,12 @@
 // A saved edit becomes a history entry; a failure is logged and never reaches the editor.
 import type { ILogger } from "@labshelf/core";
 import { historyRows } from "@labshelf/core";
-import { idbHistoryStorage } from "../../../src/storage/idb/idbHistoryStorage";
+import { idbHistoryStorage } from "../../../src/storage/idbHistoryStorage";
 import { recordProjectEdit } from "../../../src/writing/history";
 import { clearFakeDb } from "../../support/fakeIdb";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
 
-jest.mock("../../../src/storage/idb/db", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) } as unknown as ILogger;
 

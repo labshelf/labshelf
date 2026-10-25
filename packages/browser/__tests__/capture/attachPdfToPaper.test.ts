@@ -3,7 +3,7 @@ import type { ILogger, PaperRecord } from "@labshelf/core";
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 
 // The real IndexedDbFileSystem runs over a Map-backed store, so attachPdfToPaper exercises its real write path.
-jest.mock("../../src/storage/idb/db", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
 let mockRecords: PaperRecord[] = [];
 jest.mock("../../src/storage/paperRecordStore", () => ({

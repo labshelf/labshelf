@@ -6,7 +6,7 @@ import { escapeHtml, icon, type IconName } from "@labshelf/core";
 import type { DraftView, LibraryRef, PdfStatusData } from "../platform";
 import { folderName, metaLine } from "./format";
 import { pdfLineText } from "../ui";
-import { popupState, setState } from "./state";
+import { popupState, setState } from "./popupState";
 
 export function showStatus(opts: {
   glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string;

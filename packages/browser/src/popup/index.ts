@@ -3,13 +3,13 @@
 import { bx, createBrowserLogger, sendRuntime } from "../platform";
 import type { FoldersData } from "../platform";
 import { $ } from "@labshelf/core/dom";
-import { mountSourceBanner } from "../library-source";
+import { mountSourceBanner } from "../library/libraryLocation";
 import { applyTheme } from "../ui";
 import { errorMessage, icon } from "@labshelf/core";
 import { renderFolders, showStatus, autoGrow } from "./render";
-import { attachPdf, inspect, save, undo } from "./saveFlow";
+import { attachPdf, inspect, save, undo } from "./captureFlow";
 import { dismissOffer, fetchOffer, showOffer } from "./offerCard";
-import { popupState, setState } from "./state";
+import { popupState, setState } from "./popupState";
 
 function wire(): void {
   $("form").addEventListener("submit", (e) => { e.preventDefault(); void save(); });

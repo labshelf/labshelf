@@ -12,7 +12,7 @@ import type { LibraryMutations } from "../../storage";
 import { forgetPaper } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import { hashForFolder } from "../../libraryUi";
-import { ref } from "./libraryRef";
+import { ref } from "./libraryReference";
 import { PAPERS_DIR, findInLibrary, isPrePublication, publishedDoiOf, type FolderTreeNode, type ILogger } from "@labshelf/core";
 
 // "Find PDF" for a paper already saved (no tab). One run per id is kept in

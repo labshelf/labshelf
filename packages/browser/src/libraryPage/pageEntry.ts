@@ -4,7 +4,7 @@ import {
 } from "@labshelf/core";
 import { el, mountLibraryUi } from "@labshelf/core/dom";
 import { createBrowserLogger, getSettings } from "../platform";
-import { mountMoveOffer, mountSourceBanner } from "../library-source";
+import { mountMoveOffer, mountSourceBanner } from "../library/libraryLocation";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
 import { createLibraryFileSystem } from "../storage";
 import { applyTheme } from "../ui";

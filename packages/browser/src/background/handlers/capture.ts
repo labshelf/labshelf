@@ -12,9 +12,9 @@ import type { CaptureDraft, SaveDecision, SavedPaper } from "../../capture/index
 import { draftForTab, hitDraftFor } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
 import type { LibraryMutations } from "../../storage";
-import { pdfExists, ref } from "./libraryRef";
+import { pdfExists, ref } from "./libraryReference";
 import { accessTabDeps, openAccessAfterCapture } from "./access";
-import { askAuthor, type AskAuthorDeps } from "./askAuthor";
+import { askAuthor, type AskAuthorDeps } from "../copyRequest";
 
 async function tabUrl(tabId: number): Promise<string> {
   const tab = await bx.tabs.get(tabId);

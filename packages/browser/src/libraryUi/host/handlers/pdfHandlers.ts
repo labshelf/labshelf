@@ -4,7 +4,7 @@
 import { PDF_FILE, errorMessage, isPdfBytes, pdfSourceLabel, type LibraryFileSystem, type PdfAccess } from "@labshelf/core";
 import { attachPdfToPaper } from "../../../capture";
 import { sendRuntime, type AskAuthorData, type AttachPdfData } from "../../../platform";
-import { openReader } from "../../../reader/access";
+import { openReader } from "../../../reader/service";
 import { createLibraryFileSystem } from "../../../storage";
 import type { HostContext } from "../hostContext";
 

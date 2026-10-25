@@ -2,6 +2,7 @@
 export { inspectTab, findPdf, safeFolder, summarizeAttempts, resetPdfSearch, saveOrAsk, refreshExisting } from "./captureService";
 export type { CaptureDraft, SavedPaper, SaveDecision } from "./captureService";
 export { draftFromSearchHit } from "./searchHitCapture";
-export { draftFromRecord } from "./recordCapture";
+export { draftFromRecord } from "./paperCapture";
 export { attachPdfToPaper } from "./attachPdfToPaper";
-export { dropWatch, onTabLoaded, openAccessTab, watchOfTab, type AccessTabDeps } from "./watch";
+export { onTabLoaded, openAccessTab, type AccessTabDeps } from "./accessTab";
+export { dropWatch, watchOfTab } from "./accessWatches";

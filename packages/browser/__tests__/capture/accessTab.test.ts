@@ -17,7 +17,7 @@ jest.mock("../../src/capture/tab", () => ({ fetchInTab: (tabId: number, url: str
 const probeTab = jest.fn();
 jest.mock("../../src/capture/tabProbe", () => ({ probeTab: (...args: unknown[]) => probeTab(...args) }));
 
-import { onTabLoaded, openAccessTab, type AccessTabDeps } from "../../src/capture/watch";
+import { onTabLoaded, openAccessTab, type AccessTabDeps } from "../../src/capture";
 
 const PDF = new TextEncoder().encode("%PDF-1.5 body");
 const PAPER = { id: "p1", title: "Deep residual learning for image recognition" };

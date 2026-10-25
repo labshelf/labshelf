@@ -1,5 +1,5 @@
 // Renders the first sample PDF page as an 800-pixel-wide PNG using the extension's PDF.js worker.
-import { loadPdfjs } from "../pdfText";
+import { loadPdfjs } from "../import";
 
 export async function renderTemplateThumbnail(pdf: Uint8Array): Promise<Uint8Array> {
   const task = (await loadPdfjs()).getDocument({ data: pdf.slice() });

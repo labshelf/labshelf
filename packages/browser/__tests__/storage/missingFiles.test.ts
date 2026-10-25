@@ -1,11 +1,11 @@
 // Pins that both library sources answer a missing path the way the LocalFileSystem port promises.
 import type { LibraryFileSystem } from "@labshelf/core";
 import { BridgeFileSystem, BridgeLink } from "../../src/storage/bridge";
-import { IndexedDbFileSystem } from "../../src/storage/indexedDbFileSystem";
+import { IndexedDbFileSystem } from "../../src/storage/idbFileSystem";
 import { fakeFiles } from "../support/fakeIdb";
 import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
 
-jest.mock("../../src/storage/idb/db", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("../../src/storage/idbDatabase", () => ({ getDb: async () => require("../support/fakeIdb").fakeDb }));
 
 beforeEach(() => fakeFiles.clear());
 

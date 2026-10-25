@@ -18,11 +18,11 @@ import { createInPageChannel, startReader, PerfMarks, resolveTheme, toast } from
 import { bx, createBrowserLogger, downloadTextFile } from "../platform";
 import { createLibraryFileSystem, createSidecarPort, getRecord } from "../storage";
 import { getThemePref, onThemeChange } from "../ui";
-import { loadReaderPrefs, onReaderPrefsChange } from "./access";
+import { loadReaderPrefs, onReaderPrefsChange } from "./service";
 import { installPageGuards, isMacPlatform } from "./pageGuards";
-import { parseReaderQuery } from "./access";
+import { parseReaderQuery } from "./service";
 import { announceSidecarChange } from "./sidecarChangeNotice";
-import { bindPreviewPage, previewPaper, previewPorts } from "./previewBoot";
+import { bindPreviewPage, previewPaper, previewPorts } from "./previewStartup";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
 const perf = new PerfMarks();

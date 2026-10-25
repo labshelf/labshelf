@@ -4,7 +4,7 @@ export { createBrowserLogger, StorageRingLogSink } from "./logging";
 export { sendRuntime } from "./sendRuntime";
 export { downloadTextFile } from "./downloadTextFile";
 export { connectBrowserNative, type NativePort } from "./nativePort";
-export { isHostNotFound } from "./hostNotFound";
+export { isHostNotFound } from "./nativeHostMissing";
 export { getSettings, updateSettings, type LabShelfSettings } from "./settings";
 export { withSidebarSection, type SidebarSections } from "./sidebarSections";
 export type {

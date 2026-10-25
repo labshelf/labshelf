@@ -2,7 +2,7 @@
 import type { HostToUi, PaperRecord, UiToHost } from "@labshelf/core";
 import { clearFakeDb, putFile, textAt } from "../../../support/fakeIdb";
 
-jest.mock("../../../../src/storage/idb/db", () => ({ getDb: async () => require("../../../support/fakeIdb").fakeDb }));
+jest.mock("../../../../src/storage/idbDatabase", () => ({ getDb: async () => require("../../../support/fakeIdb").fakeDb }));
 
 const mockApi = {
   runtime: { sendMessage: jest.fn(async () => undefined), onMessage: { addListener: jest.fn(), removeListener: jest.fn() } },
@@ -15,7 +15,7 @@ jest.mock("../../../../src/platform", () => ({
   createBrowserLogger: () => ({ log: async () => undefined, error: async () => undefined }),
 }));
 jest.mock("../../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
-jest.mock("../../../../src/reader/access", () => ({ openReader: jest.fn() }));
+jest.mock("../../../../src/reader/service", () => ({ openReader: jest.fn() }));
 
 import { createLoopbackTransport } from "@labshelf/core";
 import { downloadTextFile } from "../../../../src/platform";

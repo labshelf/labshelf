@@ -71,9 +71,9 @@
         "src/popup/index.ts",
         "src/options/index.ts",
         "src/libraryPage/pageEntry.ts",
-        "src/pdfText/offscreen.ts",
+        "src/import/offscreen.ts",
         "src/reader/index.ts",
-        "src/ui/themeBoot.ts",
+        "src/ui/themeStartup.ts",
         "src/content/searchResults.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"

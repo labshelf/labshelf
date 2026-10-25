@@ -3,7 +3,7 @@
 - **Goal:** web pages show what the user already owns, and OpenReview submissions open in a reviewer mode.
 - **Starts from:** sessions 1a and 1b committed (project store, runtime message types `sites.lookup` and `review.start`).
 - **Ends with:** three criteria pinned in tests on fixture pages (session 3 does the live check). A7: "Opening an arXiv PDF of a library paper shows the 'You have this paper' offer." A8: "A Google Scholar result page marks the library papers." A9: "On an OpenReview submission, 'Review this submission' saves the PDF under `Reviews/` and opens the reader with a review draft."
-- **Owns:** `packages/browser/src/content/sites/`, `packages/browser/src/content/scholar*.ts`, `packages/browser/src/content/index.ts`, `packages/browser/src/background/pdfOffer/`, `packages/browser/src/background/reviews/`
+- **Owns:** `packages/browser/src/content/sites/`, `packages/browser/src/content/scholar*.ts`, `packages/browser/src/content/index.ts`, `packages/browser/src/background/import/`, `packages/browser/src/background/reviews/`
 
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
@@ -22,9 +22,9 @@
 ## 2e.1 — "You have this paper"
 
 - **Goal:** a publisher or arXiv PDF that matches a library paper with a PDF offers the "open your copy" offer.
-- **Read only:** `packages/browser/src/background/pdfOffer/considerPdf.ts:1-87` (the match offers to attach a PDF); `packages/browser/src/background/pdfOffer/offerHandlers.ts:1-84`; `packages/browser/src/background/pdfOffer/offerStore.ts:1-72`; `packages/browser/src/background/pdfOffer/offerBadge.ts:1-29`.
+- **Read only:** `packages/browser/src/background/import/considerPdf.ts:1-87` (the match offers to attach a PDF); `packages/browser/src/background/import/offerHandlers.ts:1-84`; `packages/browser/src/background/import/offerStore.ts:1-72`; `packages/browser/src/background/import/offerBadge.ts:1-29`.
 - **Decided:** reuse `matchPdfToPaper` (DOI or arXiv id in the URL, then `titleKey`); a matched paper with a PDF gets the "open your copy" offer, one without keeps the attach offer.
-- **Done when:** tests in `packages/browser/__tests__/background/pdfOffer/`, written first, pin both offers and the highlight count.
+- **Done when:** tests in `packages/browser/__tests__/background/import/`, written first, pin both offers and the highlight count.
 
 ## 2e.2 — Library marks
 

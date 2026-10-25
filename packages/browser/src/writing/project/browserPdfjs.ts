@@ -1,6 +1,6 @@
 // Gives the core pdf.js loader port the vendored pdf.js of the extension.
 import type { PdfjsLoader, PdfLoadingTask } from "@labshelf/core";
-import { loadPdfjs } from "../../pdfText";
+import { loadPdfjs } from "../../import";
 
 export const browserPdfjs: PdfjsLoader = {
   load: async () => (await loadPdfjs()) as unknown as Record<string, unknown>,

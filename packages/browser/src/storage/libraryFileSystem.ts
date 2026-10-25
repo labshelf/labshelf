@@ -3,9 +3,9 @@
 import { BRIDGE_HOST_NAME, type ILogger, type LibraryFileSystem } from "@labshelf/core";
 import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
 import { BridgeFileSystem, BridgeLink, classifyBridgeFailure, setBridgeLibrary, type BridgeFailureReason, type OpenBridge } from "./bridge";
-import { IndexedDbFileSystem } from "./indexedDbFileSystem";
-import { DirectoryFileSystem, grantedFolder, loadPickedFolder, onPickedFolderAnnounced } from "./picked";
-import { rebuildRecords } from "./rebuild";
+import { IndexedDbFileSystem } from "./idbFileSystem";
+import { DirectoryFileSystem, grantedFolder, loadPickedFolder, onPickedFolderAnnounced } from "./pickedDir";
+import { rebuildRecords } from "./rebuildPaperRecords";
 
 export type LibrarySource =
   | { kind: "folder"; root: string; via: "bridge" | "picked" }

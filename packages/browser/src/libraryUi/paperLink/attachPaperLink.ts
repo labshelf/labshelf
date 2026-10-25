@@ -2,7 +2,7 @@
 import type { ILogger } from "@labshelf/core";
 import { toast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
-import { readerUrl } from "../../reader/access";
+import { readerUrl } from "../../reader/service";
 import { listAllRecords } from "../../storage";
 import { openLinkParam } from "./openPaperLinkParam";
 import { registerLinkHandler } from "./registerProtocolHandler";

@@ -5,7 +5,7 @@ import {
   AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, requestLanguageFrom,
   type AutoCompileMode, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
-import { migrateMirrorSettings } from "./migrations";
+import { migrateMirrorSettings } from "./mirrorToCustomResolver";
 import { DEFAULT_SIDEBAR_SECTIONS, readSidebarSections, type SidebarSections } from "./sidebarSections";
 
 /** Persisted user preferences. */

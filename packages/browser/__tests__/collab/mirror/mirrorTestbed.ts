@@ -8,7 +8,7 @@ import {
   startBrowserProjectMirror, type BrowserMirrorStart, type BrowserMirrorStopReason, type BrowserProjectMirror,
 } from "../../../src/collab/mirror";
 import { acquireTabLease, tabLeaseName, type LibrarySource, type TabLease } from "../../../src/storage";
-import { openBrowserCollabStorage } from "../../../src/storage/collaboration";
+import { openBrowserCollabStorage } from "../../../src/storage/collab";
 import { installFakeLocks } from "../../support/fakeLocks";
 import { loopback } from "../../support/loopbackRelay";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";

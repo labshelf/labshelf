@@ -4,7 +4,7 @@ import {
   type CloudflareAccount, type ILogger, type RelayAccount, type RelayAccountDeps,
 } from "@labshelf/core";
 import { openBrowserRelayAccountStore } from "./browserRelayAccountStore";
-import { requestLoopbackAccess } from "./requestLoopbackAccess";
+import { requestLoopbackAccess } from "./ensureLoopback";
 import { signInInTab } from "./signInInTab";
 
 const LIFECYCLE_LOCK = "labshelf:relay-account:lifecycle";
