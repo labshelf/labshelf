@@ -1,7 +1,7 @@
 /** Lists the files of a paper folder and stores their descriptions in the paper's metadata.yaml. */
 import { describePaperFileOnFileSystem, formatError, listPaperFiles } from "@labshelf/core";
 import type { ILogger, LibraryFileSystem, MutationContext, PaperFilesState, PaperRecord } from "@labshelf/core";
-import type { ReindexSummary } from "../storage/index.js";
+import type { RefreshLibraryResult } from "../storage/index.js";
 
 const LOG_MODULE = "library/paperFiles";
 
@@ -11,7 +11,7 @@ export class PaperFileService {
     private readonly findPaper: (id: string) => Promise<PaperRecord | undefined>,
     private readonly ctx: MutationContext,
     private readonly logger: ILogger,
-    private readonly reindex: () => Promise<ReindexSummary>,
+    private readonly reindex: () => Promise<RefreshLibraryResult>,
   ) {}
 
   /** @returns the paper folder's entries with their descriptions, or a failed state when the paper or folder is unreadable */

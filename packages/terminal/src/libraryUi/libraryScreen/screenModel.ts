@@ -5,13 +5,13 @@
 import type { CellRect } from "../../screen/index.js";
 import type { InputEvent } from "../../screen/index.js";
 import type { Screen } from "../../screen/index.js";
-import type { TerminalSize } from "../../screen/index.js";
-import type { FolderRowData } from "../render.js";
+import type { ScreenSize } from "../../screen/index.js";
+import type { FolderRowInput } from "../render.js";
 
 /** What the App needs from the real terminal; tests and --dump-frame pass a fake. */
 export interface TerminalLike {
-  size(): TerminalSize;
-  listen(onInput: (event: InputEvent) => void, onResize: (size: TerminalSize) => void): void;
+  size(): ScreenSize;
+  listen(onInput: (event: InputEvent) => void, onResize: (size: ScreenSize) => void): void;
   enter(): void;
   leave(): void;
   draw(frame: Screen, extra?: string): void;
@@ -26,7 +26,7 @@ export const ALL = "*all";
 
 export type Focus = "folders" | "papers" | "writing";
 
-export interface FolderRow extends FolderRowData {
+export interface FolderRow extends FolderRowInput {
   key: string;
 }
 
@@ -47,7 +47,7 @@ export interface Message {
   until: number;
 }
 
-export interface ImagePlan {
+export interface ThumbnailPlan {
   key: string;
   rect: CellRect;
   png: Uint8Array;

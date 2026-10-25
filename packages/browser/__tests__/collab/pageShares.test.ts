@@ -11,7 +11,7 @@ jest.mock("../../src/platform", () => ({
 }));
 
 import { setFileText, ShareOpenInAnotherTabError } from "@labshelf/core";
-import { saveDisplayName } from "../../src/collab";
+import { writeMemberName } from "../../src/collab";
 import { openTabLease } from "../../src/storage";
 import { FOLDER, MAIN, openProfile, until, type Page, type Profile } from "./pageSharesTestbed";
 
@@ -136,7 +136,7 @@ describe("createPageShares", () => {
 
   it("uses the stored display name, and the default before one is stored", async () => {
     expect(profile.openPage().shares.name()).toBe("Guest");
-    await saveDisplayName("Ada");
+    await writeMemberName("Ada");
     const page = profile.openPage();
     await until(() => page.shares.name() === "Ada");
   });

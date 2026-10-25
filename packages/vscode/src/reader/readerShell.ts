@@ -65,7 +65,7 @@ export interface RenderParams {
   isMac: boolean;
 }
 
-export interface ResolvedUris {
+export interface PdfjsUrls {
   pdfjsWebviewUri: vscode.Uri;
   workerWebviewUri: vscode.Uri;
   viewerWebviewUri: vscode.Uri;
@@ -91,9 +91,9 @@ export type PdfjsLocator = () => PdfjsFiles | null;
 /**
  * Converts the located pdf.js files to webview-safe URIs. The root serves cmaps/, standard_fonts/, wasm/ and iccs/,
  * which the worker fetches at runtime so CJK fonts, Type-1 fonts, JBIG2 and ICC profiles render at full fidelity.
- * @returns A ResolvedUris object with all webview URIs, or null if pdf.js was not located.
+ * @returns A PdfjsUrls object with all webview URIs, or null if pdf.js was not located.
  */
-export function resolvePdfjsUris(webview: vscode.Webview, files: PdfjsFiles | null): ResolvedUris | null {
+export function resolvePdfjsUris(webview: vscode.Webview, files: PdfjsFiles | null): PdfjsUrls | null {
   if (!files) { return null; }
   const rootUri = webview.asWebviewUri(files.root).toString().replace(/\/?$/, "/");
   return {
@@ -168,7 +168,7 @@ export async function renderReaderShell(params: RenderParams): Promise<string> {
 
 function buildBootParams(
   params: RenderParams,
-  resolved: ResolvedUris | null,
+  resolved: PdfjsUrls | null,
   pdfUrl: string,
   effectiveTheme: EffectiveTheme,
 ): ReaderStartupParams {

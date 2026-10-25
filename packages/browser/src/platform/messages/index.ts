@@ -4,5 +4,5 @@ export type {
   CopyRequestReply, AttachPdfReply, DraftView, PdfOfferView, FindPdfReply, WriteOutcome, WrittenPaperReply, SearchHit,
 } from "./captureMessages";
 export type {
-  FolderOption, FoldersReply, LibraryChangedEvent, LibraryReference, LibraryFindReply, LibraryFindItem, TabSummary,
+  FolderOption, FoldersReply, LibraryChangedEvent, LibraryReference, LibraryFindReply, LibraryFindItem, BrowserTab,
 } from "./libraryMessages";

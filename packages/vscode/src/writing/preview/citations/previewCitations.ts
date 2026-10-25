@@ -8,7 +8,7 @@ import {
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
 import type { SynctexFinder } from "../synctex/index.js";
 import { readCardDetails, reportWarning } from "./citationCardFacts.js";
-import { listCitingSites, type CitingSite } from "./citingCommands.js";
+import { listCitingSites, type CitedCommand } from "./citingCommands.js";
 import { findSourceLine, type LocatedSourceLine } from "./findSourceLine.js";
 
 export interface PreviewCitationDeps {
@@ -36,7 +36,7 @@ export async function findCitation(deps: PreviewCitationDeps, query: CitationQue
     const keys = await findCiteKeysAt(query, { format: deps.format, typstCites: deps.typstCites(), sourceLineAt: locate });
     if (keys.length === 0) { return []; }
     const papers = await deps.listPapers();
-    const sites = deps.format === "latex" ? await citingSitesAt(deps, keys, () => locate(areaCenter(query.area))) : new Map<string, CitingSite>();
+    const sites = deps.format === "latex" ? await citingSitesAt(deps, keys, () => locate(areaCenter(query.area))) : new Map<string, CitedCommand>();
     return deriveCitationEntries(keys, papers, await readCardDetails(deps, keys, papers, sites));
   } catch (error) {
     await deps.logger.log("WARN", PREVIEW_LOG_MODULE, "Citation lookup failed", { projectFolder: deps.projectFolder, page: query.area.page, error: String(error) });
@@ -47,7 +47,7 @@ export async function findCitation(deps: PreviewCitationDeps, query: CitationQue
 /** The citing commands are extra: a source that cannot be read is logged and the card answers without them. */
 async function citingSitesAt(
   deps: PreviewCitationDeps, keys: readonly string[], locate: () => Promise<LocatedSourceLine | undefined>,
-): Promise<Map<string, CitingSite>> {
+): Promise<Map<string, CitedCommand>> {
   try {
     const source = await locate();
     return source ? listCitingSites(deps.paths, deps.format, deps.projectFolder, source, keys) : new Map();

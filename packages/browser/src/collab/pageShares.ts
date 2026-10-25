@@ -3,7 +3,7 @@ import { ShareOpenInAnotherTabError, type ILogger, type RelayNetwork, type Share
 import { openTabLease, createTabLeaseName, type TabLease } from "../storage";
 import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
 import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
-import { loadDisplayName } from "./shareKeyStore";
+import { readMemberName } from "./shareKeyStore";
 
 const LOG_MODULE = "collab.shares";
 export const DEFAULT_DISPLAY_NAME = "Guest";
@@ -50,7 +50,7 @@ class PageShareRegistry implements PageShares {
   private readonly notify = (): void => this.listeners.forEach((listener) => listener());
 
   constructor(private readonly options: PageSharesOptions) {
-    void loadDisplayName().then(
+    void readMemberName().then(
       (stored) => { if (stored !== undefined && stored !== "") { this.displayName = stored; } },
       (error: unknown) => options.logger.error(LOG_MODULE, error, { action: "read display name" }),
     );

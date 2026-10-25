@@ -3,4 +3,4 @@ export { CONNECT_RELAY_COMMAND } from "./connectRelay.js";
 export { openRelayAccounts } from "./relayAccounts.js";
 export { registerRelay } from "./registerRelay.js";
 export { signInToCloudflare } from "./cloudflareSignIn.js";
-export { LoopbackUnavailableError } from "./oauthCallback.js";
+export { OauthCallbackError } from "./oauthCallback.js";

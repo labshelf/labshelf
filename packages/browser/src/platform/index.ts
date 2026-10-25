@@ -10,5 +10,5 @@ export { withSidebarSection, type SidebarSections } from "./sidebarSections";
 export type {
   CopyRequestReply, AttachPdfReply, DraftView, FolderOption, FoldersReply,
   LibraryChangedEvent, LibraryReference, LibraryFindReply, LibraryFindItem, PdfOfferView, FindPdfReply, RuntimeMessage,
-  RuntimeResponse, WriteOutcome, WrittenPaperReply, SearchHit, TabSummary,
+  RuntimeResponse, WriteOutcome, WrittenPaperReply, SearchHit, BrowserTab,
 } from "./messages";

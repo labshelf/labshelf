@@ -17,7 +17,7 @@ function withExtension(written: string): string {
 }
 
 /** Finds what a build of a root of the project builds alone: the `\include` path the editor focuses, else undefined. */
-export type IncludeOnlyTarget = (project: ReadyProject, root: string) => Promise<string | undefined>;
+export type FindIncludeOnly = (project: ReadyProject, root: string) => Promise<string | undefined>;
 
 export class IncludeOnlyState {
   // Off by default and kept in memory only: a restart builds the whole document again.

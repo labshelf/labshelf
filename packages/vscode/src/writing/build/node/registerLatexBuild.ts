@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import type { BuildPreviews } from "../../preview/index.js";
 import type { BuildProblems } from "../buildProblems.js";
-import type { IncludeOnlyTarget } from "../includeOnly.js";
+import type { FindIncludeOnly } from "../includeOnly.js";
 import { registerLatexWriteBuilds } from "../latexWriteBuilds.js";
 import { registerLatexTypingWrites } from "../latexTypingWrites.js";
 import { createProjectBuildDeps } from "./createProjectBuildDeps.js";
@@ -102,7 +102,7 @@ interface LatexBuildDeps {
   previews: Pick<BuildPreviews, "building" | "finished">;
   diagnostics: Pick<BuildProblems, "publish">;
   /** The `\include` path a save builds alone while the preview's include-only toggle is on. */
-  includeOnlyTarget?: IncludeOnlyTarget;
+  includeOnlyTarget?: FindIncludeOnly;
 }
 
 /** Registers the save builds and returns the builds, which the Build Project command also uses. */

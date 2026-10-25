@@ -44,7 +44,7 @@ export function removeTabDraft(tabId: number): void {
  * are part of the identity: two results that share a title but link to
  * different papers must not collide.
  */
-export function hitCacheKey(hit: SearchHit): string {
+export function createHitCacheKey(hit: SearchHit): string {
   return JSON.stringify([hit.key, hit.url ?? "", hit.pdfUrl ?? "", hit.title]);
 }
 
@@ -56,7 +56,7 @@ export function hitCacheKey(hit: SearchHit): string {
 export function readHitDraft(log: ILogger, hit: SearchHit): Promise<CaptureDraft> {
   const now = Date.now();
   for (const [k, e] of hitEntries) if (now - e.at > TTL_MS) hitEntries.delete(k);
-  const key = hitCacheKey(hit);
+  const key = createHitCacheKey(hit);
   const cached = hitEntries.get(key);
   if (cached) return cached.draft;
   const draft = createDraftFromSearchHit(log, hit);

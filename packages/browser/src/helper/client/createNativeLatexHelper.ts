@@ -4,7 +4,7 @@ import {
   type ILatexHelper, type TemplatePublishEvent, type TemplatePublishRequest,
 } from "@labshelf/core/helper";
 import { formatError, type ILogger } from "@labshelf/core";
-import { statusFromReady, type RequestBody } from "./connection";
+import { deriveHelperStatus, type RequestBody } from "./connection";
 import { createCompileStep, UpdateTracker, deriveProgress } from "./project";
 import { NativeHelperSession, type NativeHelperSessionDeps } from "./nativeHelperSession";
 
@@ -75,7 +75,7 @@ class NativeLatexHelper implements ILatexHelper {
       if (m.type === "progress") onProgress(deriveProgress(m));
       return m.type === "ready" ? { done: m } : undefined;
     });
-    this.session.status = statusFromReady(ready, PROTOCOL_VERSION);
+    this.session.status = deriveHelperStatus(ready, PROTOCOL_VERSION);
   }
 
   installTex(kind: "tinytex" | "texlive", onProgress: OnHelperProgress): Promise<void> {

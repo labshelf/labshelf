@@ -8,7 +8,7 @@ import {
   type TypstSources,
   type TypstLanguageService,
 } from "@labshelf/core/typst/language";
-import { createDefinitionBindings, type DefinitionTarget } from "./openDefinition";
+import { createDefinitionBindings, type DefinitionDeps } from "./openDefinition";
 import { createTypstCompletion } from "./createTypstCompletion";
 import { typstLanguage } from "./typstLanguage";
 
@@ -34,7 +34,7 @@ function hoverSource(service: TypstLanguageService, path: string): (view: Editor
   };
 }
 
-export interface TypstSupportDeps extends DefinitionTarget {
+export interface TypstSupportDeps extends DefinitionDeps {
   path: string;
   files: TypstSources;
   logger: ILogger;

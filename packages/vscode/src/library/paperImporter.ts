@@ -1,7 +1,7 @@
 /** Imports picked PDFs and folders, and papers named by an identifier or link, through the core imports, putting each added paper in the index as it lands. */
 import { createDoiFinder, importNetworkInput, importPaths } from "@labshelf/core";
 import type { IdentifierImportOptions, ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PdfParse } from "@labshelf/core";
-import type { ReindexSummary } from "../storage/index.js";
+import type { RefreshLibraryResult } from "../storage/index.js";
 
 /** How the extension reaches the network for an import, and where a download waits while it is read. */
 interface NetworkTransport {
@@ -13,7 +13,7 @@ export class PaperImporter {
   constructor(
     private readonly ctx: MutationContext,
     private readonly store: LibraryStore,
-    private readonly reindex: () => Promise<ReindexSummary>,
+    private readonly reindex: () => Promise<RefreshLibraryResult>,
     private readonly parse: PdfParse,
     private readonly network: NetworkTransport,
   ) {}

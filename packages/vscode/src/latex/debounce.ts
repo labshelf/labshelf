@@ -1,10 +1,10 @@
 // Runs a callback for a key once calls for that key have been quiet for a delay.
-export interface KeyedDebounce<K> {
+export interface Debounce<K> {
   call(key: K): void;
   dispose(): void;
 }
 
-export function createTrailingDebounce<K>(ms: number, run: (key: K) => void): KeyedDebounce<K> {
+export function createTrailingDebounce<K>(ms: number, run: (key: K) => void): Debounce<K> {
   const timers = new Map<K, ReturnType<typeof setTimeout>>();
   return {
     call(key) {

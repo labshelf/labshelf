@@ -5,7 +5,7 @@ import type { SourceUpdates, SourceLanguage } from "../sourceUpdates";
 
 const MODULE = "tabs.source";
 
-export interface ImageInsertion {
+export interface AddImageDeps {
   edits: SourceUpdates;
   language: SourceLanguage;
   entry: Extract<ProjectEntry, { kind: "ready" }>;
@@ -27,7 +27,7 @@ function pickImage(language: SourceLanguage): Promise<File | undefined> {
   });
 }
 
-async function copyIntoProject({ edits, language, entry, path, fs, logger }: ImageInsertion, file: File): Promise<void> {
+async function copyIntoProject({ edits, language, entry, path, fs, logger }: AddImageDeps, file: File): Promise<void> {
   const { join, dirname, relative } = posixPathOps;
   const target = await findFreeImageName(posixPathOps, join(entry.folder, IMAGE_FOLDER), file.name, (candidate) => fs.exists(candidate));
   await fs.ensureDir(dirname(target));
@@ -37,7 +37,7 @@ async function copyIntoProject({ edits, language, entry, path, fs, logger }: Ima
   edits.insertSnippet(createImageSnippet(language, relative(base, target)));
 }
 
-export async function addImage(insertion: ImageInsertion): Promise<void> {
+export async function addImage(insertion: AddImageDeps): Promise<void> {
   const file = await pickImage(insertion.language);
   if (!file) return;
   try {

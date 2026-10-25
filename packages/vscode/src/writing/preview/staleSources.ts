@@ -6,7 +6,7 @@ export interface SourceEvents {
   onSourceChanged(listener: (filePath: string) => void): { dispose(): void };
 }
 
-export interface StaleStatus {
+export interface StaleSourcesState {
   stale?: boolean;
   builtAt?: number;
 }
@@ -45,7 +45,7 @@ export class StaleSources {
     this.record(folder, root).changedSinceStart = false;
   }
 
-  statusOf(folder: string, root: string): StaleStatus {
+  statusOf(folder: string, root: string): StaleSourcesState {
     const record = this.roots.get(folder)?.get(root);
     return record?.builtAt === undefined ? {} : { stale: record.stale, builtAt: record.builtAt };
   }

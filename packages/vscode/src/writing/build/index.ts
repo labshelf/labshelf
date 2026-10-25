@@ -12,7 +12,7 @@ export { createAutoCompileGate } from "./buildMode.js";
 export { readAutoCompileMode, onAutoCompileChange } from "./buildMode.js";
 export { shouldHaltOnError } from "./haltOnError.js";
 export { buildOptions, setAutoCompile, setEngine, setHaltOnError } from "./buildOptions.js";
-export { IncludeOnlyState, type IncludeOnlyTarget } from "./includeOnly.js";
+export { IncludeOnlyState, type FindIncludeOnly } from "./includeOnly.js";
 export { registerLatexWriteBuilds } from "./latexWriteBuilds.js";
 export { registerLatexTypingWrites } from "./latexTypingWrites.js";
 export { registerLatexOpenBuild } from "./latexOpenBuild.js";

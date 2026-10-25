@@ -20,7 +20,7 @@ import {
   NodeLibraryFileSystem,
   createNodeMirrorFileSystem,
 } from "@labshelf/core/node";
-import { shareStateDir } from "./shareState.js";
+import { deriveShareDir } from "./removeShareDir.js";
 import * as vscode from "vscode";
 import * as path from "node:path";
 import { watchConflictDismissals } from "./dismissalWatch.js";
@@ -62,7 +62,7 @@ export function connectDesktopShare(options: ConnectOptions, start: ShareStart):
   const { libraryRoot, shareId, shareKey, relays, name, logger } = options;
   return connectShare({
     shareId, shareKey, relays, name, logger,
-    storage: createNodeCollabStorage({ dir: shareStateDir(libraryRoot, shareId), shareId }),
+    storage: createNodeCollabStorage({ dir: deriveShareDir(libraryRoot, shareId), shareId }),
     projects: { context: createNodeProjectCatalogCompositionRoot(logger), libraryRoot },
     startMirror: createDesktopMirrorFactory(libraryRoot, logger, (folder, path) => options.isEditorOwned(folder, path)),
   }, start);

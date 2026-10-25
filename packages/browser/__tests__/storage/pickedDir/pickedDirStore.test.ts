@@ -7,7 +7,7 @@ jest.mock("idb", () => ({
   }),
 }));
 
-import { readPickedDir, loadPickedFolderId, writePickedDir } from "../../../src/storage/pickedDir";
+import { readPickedDir, readPickedDirId, writePickedDir } from "../../../src/storage/pickedDir";
 import { FakeDir } from "../../support/fakeDirectoryHandle";
 
 const asHandle = (dir: FakeDir): FileSystemDirectoryHandle => dir as unknown as FileSystemDirectoryHandle;
@@ -18,30 +18,30 @@ describe("picked folder library id", () => {
   it("gives a picked folder an id that later loads return", async () => {
     const papers = asHandle(new FakeDir("Papers"));
     await writePickedDir(papers);
-    const id = await loadPickedFolderId();
+    const id = await readPickedDirId();
     expect(id).toMatch(/^[\w-]{16,}$/);
-    expect(await loadPickedFolderId()).toBe(id);
+    expect(await readPickedDirId()).toBe(id);
     expect(await readPickedDir()).toBe(papers);
   });
 
   it("keeps the id when the same folder is picked again and changes it for another folder", async () => {
     const papers = asHandle(new FakeDir("Papers"));
     await writePickedDir(papers);
-    const first = await loadPickedFolderId();
+    const first = await readPickedDirId();
     await writePickedDir(papers);
-    expect(await loadPickedFolderId()).toBe(first);
+    expect(await readPickedDirId()).toBe(first);
     await writePickedDir(asHandle(new FakeDir("Papers")));
-    expect(await loadPickedFolderId()).not.toBe(first);
+    expect(await readPickedDirId()).not.toBe(first);
   });
 
   it("gives a folder stored without an id one id and keeps it", async () => {
     rows.set("library", new FakeDir("Papers"));
-    const id = await loadPickedFolderId();
+    const id = await readPickedDirId();
     expect(id).toBeDefined();
-    expect(await loadPickedFolderId()).toBe(id);
+    expect(await readPickedDirId()).toBe(id);
   });
 
   it("has no id when no folder was picked", async () => {
-    expect(await loadPickedFolderId()).toBeUndefined();
+    expect(await readPickedDirId()).toBeUndefined();
   });
 });

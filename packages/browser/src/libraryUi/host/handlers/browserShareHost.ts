@@ -13,7 +13,7 @@ import {
 } from "@labshelf/core";
 import { bx } from "../../../platform";
 import { createBrowserShareRegistryStore } from "../../../share";
-import { createLibraryFileSystem, createSidecarPort, currentLibraryId } from "../../../storage";
+import { createLibraryFileSystem, createSidecarPort, readCurrentLibraryId } from "../../../storage";
 import type { HostContext } from "../hostContext";
 
 interface PageSharingHost {
@@ -75,7 +75,7 @@ export function createBrowserShareHost(ctx: HostContext, relay: ShareLinkRelay, 
       papersRoot: PAPERS_DIR,
       sep: "/",
       sources: { fs, paths: posixPathOps, annotations: (paperId) => sidecars.getAnnotations(paperId) },
-      registry: createBrowserShareRegistryStore({ get: (key) => bx.storage.local.get(key), set: (items) => bx.storage.local.set(items) }, currentLibraryId),
+      registry: createBrowserShareRegistryStore({ get: (key) => bx.storage.local.get(key), set: (items) => bx.storage.local.set(items) }, readCurrentLibraryId),
       relay: { require: relay.requireRelay, connected: relay.connectedRelay },
       backendFor: resolveRelayBackend,
       readerFor: (relayUrl) => createWorkerShareReader({ relayUrl }),

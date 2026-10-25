@@ -7,14 +7,14 @@ jest.mock("../../src/platform", () => ({
   } } },
 }));
 
-import { readLibraryShares, readSharesRecord, toShare } from "../../src/collab/storedShareKeys";
+import { readLibraryShares, readStoredShares, parseStoredShare } from "../../src/collab/storedShareKeys";
 import { updateUnscopedShares } from "../../src/collab/updateUnscopedShares";
 
 const A = "a".repeat(32);
 const B = "b".repeat(32);
 const entry = { key: "AQID", relays: [{ url: "https://relay.test" }] };
 /** The library's entry for the share as stored, read past the key store, which would run the migration itself. */
-const loadShare = async (libraryId: string, shareId: string) => toShare(readLibraryShares(await readSharesRecord(), libraryId)[shareId]);
+const loadShare = async (libraryId: string, shareId: string) => parseStoredShare(readLibraryShares(await readStoredShares(), libraryId)[shareId]);
 const stored = (): { shares?: Record<string, unknown>; libraries?: Record<string, Record<string, unknown>>; displayName?: string } =>
   local["collabShares"] as never;
 

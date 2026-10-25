@@ -13,7 +13,7 @@ import { createGeneralForm, type GeneralForm } from "./generalForm";
 import { createLogSection } from "./logSection";
 import { createProxySection } from "./proxySection";
 import { createReaderForm, type ReaderForm } from "./readerForm";
-import { createSavedFlag } from "./savedNotice";
+import { createSavedNotice } from "./savedNotice";
 import { createSidebarSectionsForm } from "./sidebarSectionsForm";
 import { createShareSection } from "./shareSection";
 
@@ -35,7 +35,7 @@ function autosave(controls: HTMLElement[], save: () => Promise<void>): () => voi
   return schedule;
 }
 
-type Saved = ReturnType<typeof createSavedFlag>;
+type Saved = ReturnType<typeof createSavedNotice>;
 
 /** Persists a proxy or resolver list as one settings key and logs how many entries were stored. */
 function autosaveList(section: EditableListSection, key: "proxies" | "customResolvers", message: string, saved: Saved): () => void {
@@ -65,7 +65,7 @@ function autosaveForms(general: GeneralForm, reader: ReaderForm, saved: Saved): 
 
 async function init(): Promise<void> {
   applyTheme();
-  const saved = createSavedFlag();
+  const saved = createSavedNotice();
   const general = createGeneralForm();
   const reader = createReaderForm();
   let scheduleProxySave = (): void => undefined;

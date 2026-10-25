@@ -22,7 +22,7 @@ export const popupState: {
   offer: undefined,
 };
 
-export function setState(state: PopupState): void {
+export function showPopupView(state: PopupState): void {
   findElement("popup").dataset["state"] = state;
   findElement("form").hidden = !(state === "form" || state === "saving");
   findElement("status").hidden = !(state === "library" || state === "empty" || state === "saved");

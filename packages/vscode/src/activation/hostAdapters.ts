@@ -6,7 +6,7 @@ import type {
 import type { PdfjsLocator } from "../reader/index.js";
 import type { UriOfPath } from "../storage/index.js";
 import type { SharedLibraryConfig } from "../storage/paths/index.js";
-import type { ConvertDocument } from "../writing/index.js";
+import type { ConvertProject } from "../writing/index.js";
 
 /** OCR (absent when the user turned it off) and the step that gives scans a text layer. */
 interface PdfTextServices {
@@ -43,7 +43,7 @@ export interface HostAdapters {
   scanLibraryConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]>;
   resolveConflictCopy(copy: ConflictCopy, resolution: ConflictResolution, logger: ILogger, root: string): Promise<void>;
   /** Absent where documents cannot be converted (no pandoc on the web). */
-  convertDocument?: ConvertDocument;
+  convertDocument?: ConvertProject;
   sharedLibraryConfig: SharedLibraryConfig;
   reader: {
     locatePdfjs: PdfjsLocator;

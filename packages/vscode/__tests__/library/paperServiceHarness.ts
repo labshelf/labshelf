@@ -5,7 +5,7 @@ import { BibtexService, LibraryStore, scanLibrary, type ILogger, type MutationCo
 import { PaperImporter } from '../../src/library/paperImporter';
 import { PaperService } from '../../src/library/paperService';
 import { PaperTextLayers } from '../../src/library/paperTextLayers';
-import { refreshLibrary, type ReindexSummary } from '../../src/storage/refreshLibrary';
+import { refreshLibrary, type RefreshLibraryResult } from '../../src/storage/refreshLibrary';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
 import { createLibraryEvents } from '../../src/library/index.js';
 
@@ -26,7 +26,7 @@ export interface Glue {
   /** How many times the index was rebuilt from disk; a no-op change does not reindex. */
   reindexCalls: () => number;
   /** The reindexer the services share: reloads the store from disk and announces the changes. */
-  reindex: () => Promise<ReindexSummary>;
+  reindex: () => Promise<RefreshLibraryResult>;
   service: PaperService;
   importer: PaperImporter;
   textLayers: (builder?: { build?: jest.Mock; detect?: jest.Mock }) => PaperTextLayers;
@@ -50,7 +50,7 @@ export function makeGlue(): Glue {
   const scan = () => scanLibrary(fs, path, PAPERS_ROOT, logger);
   const store = new LibraryStore({ root: PAPERS_ROOT, scan });
   let reindexCalls = 0;
-  const reindex = (): Promise<ReindexSummary> => {
+  const reindex = (): Promise<RefreshLibraryResult> => {
     reindexCalls += 1;
     return refreshLibrary({ store, events });
   };

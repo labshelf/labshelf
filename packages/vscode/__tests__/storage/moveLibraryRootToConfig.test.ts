@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as vscode from 'vscode';
 import type { ILogger } from '@labshelf/core';
 import { readSharedLibraryRoot, resolveSharedConfigPath, updateSharedConfig } from '@labshelf/core/node';
-import { migrateLibraryRootFromGlobalState } from '../../src/storage/index';
+import { moveLibraryRootToConfig } from '../../src/storage/index';
 import { resolveLibraryRoot } from '../../src/storage/paths/index';
 import { nodeSharedLibraryConfig as shared } from '../../src/storage/node/index';
 
@@ -27,13 +27,13 @@ afterEach(() => {
   fs.rmSync(resolveSharedConfigPath(), { force: true, recursive: true });
 });
 
-describe('migrateLibraryRootFromGlobalState', () => {
+describe('moveLibraryRootToConfig', () => {
   it('opens the same library after the upgrade: copies a globalState-only root and clears globalState', async () => {
     const state = makeState('/Users/me/Library');
     const logger = makeLogger();
     const loggerFor = jest.fn(() => logger);
 
-    await migrateLibraryRootFromGlobalState(state, shared, loggerFor);
+    await moveLibraryRootToConfig(state, shared, loggerFor);
 
     expect(await readSharedLibraryRoot()).toBe('/Users/me/Library');
     expect(state.get(KEY)).toBeUndefined();
@@ -48,7 +48,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
     const state = makeState('/Users/me/FromVscode');
     const logger = makeLogger();
 
-    await migrateLibraryRootFromGlobalState(state, shared, () => logger);
+    await moveLibraryRootToConfig(state, shared, () => logger);
 
     expect(await readSharedLibraryRoot()).toBe('/Users/me/FromTerminal');
     expect(JSON.parse(fs.readFileSync(resolveSharedConfigPath(), 'utf8')).terminal).toEqual({ sort: 'year' });
@@ -64,7 +64,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
     const state = makeState('/Users/me/Library');
     const logger = makeLogger();
 
-    await expect(migrateLibraryRootFromGlobalState(state, shared, () => logger)).resolves.toBe('/Users/me/Library');
+    await expect(moveLibraryRootToConfig(state, shared, () => logger)).resolves.toBe('/Users/me/Library');
 
     expect(state.get(KEY)).toBe('/Users/me/Library');
     expect(state.update).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('migrateLibraryRootFromGlobalState', () => {
     const state = makeState();
     const loggerFor = jest.fn(makeLogger);
 
-    await migrateLibraryRootFromGlobalState(state, shared, loggerFor);
+    await moveLibraryRootToConfig(state, shared, loggerFor);
 
     expect(fs.existsSync(resolveSharedConfigPath())).toBe(false);
     expect(state.update).not.toHaveBeenCalled();

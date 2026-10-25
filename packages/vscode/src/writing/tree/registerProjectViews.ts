@@ -36,7 +36,7 @@ interface ProjectViewsDeps {
 }
 
 /** What the library sidebar view renders in its Projects section. */
-export interface ProjectViewsHandles {
+export interface ProjectViewsResult {
   projectsSource: SidebarProjectsSource;
   projectTrees: ProjectTreeMirror;
 }
@@ -64,7 +64,7 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
   };
 }
 
-export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsHandles {
+export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
     projects, logger, readingLists, buildOutcomes: outcomes, readSignals: createSignalsReader(projects), watchFolder,

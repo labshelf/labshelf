@@ -3,10 +3,10 @@ import { formatError, BridgeError } from "@labshelf/core";
 import { isHostNotFound } from "../../platform";
 import { BridgeClosedError } from "./bridgeConnection";
 
-export type BridgeFailureReason = "not-installed" | "protocol-mismatch" | "no-library" | "failed";
+export type BridgeFailureKind = "not-installed" | "protocol-mismatch" | "no-library" | "failed";
 
 export interface BridgeFailure {
-  reason: BridgeFailureReason;
+  reason: BridgeFailureKind;
   detail?: string;
 }
 

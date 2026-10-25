@@ -3,7 +3,7 @@ import { HELPER_HOST_NAME, PROTOCOL_VERSION, type HelperState, type ToPageMessag
 import type { ILogger } from "@labshelf/core";
 import { isHostNotFound } from "../../platform";
 import {
-  HelperClosedError, HelperConnection, HelperVersionError, createNativeChannel, openConnectionChannel, statusFromReady, statusFromVersionError,
+  HelperClosedError, HelperConnection, HelperVersionError, createNativeChannel, openConnectionChannel, deriveHelperStatus, deriveVersionErrorStatus,
   type ConnectionHooks, type HelperPortFactory, type HelperConnectionConstructor,
 } from "./connection";
 
@@ -54,7 +54,7 @@ export async function runHandshake(deps: HandshakeDeps, hooks: ConnectionHooks &
   try {
     native = new HelperConnection(createNativeChannel(deps.connectNative()), deps.logger, { onClose: hooks.onClose });
     const { ready, session } = await native.request({ type: "hello", extensionVersion: deps.extensionVersion, origin: deps.origin }, helloStep());
-    const status = statusFromReady(ready, PROTOCOL_VERSION);
+    const status = deriveHelperStatus(ready, PROTOCOL_VERSION);
     if (status.state !== "ready" || !session) {
       native.disconnect();
       return { status };
@@ -64,7 +64,7 @@ export async function runHandshake(deps: HandshakeDeps, hooks: ConnectionHooks &
     native?.disconnect();
     if (error instanceof HelperVersionError) {
       await deps.logger.log("WARN", "browser.helper", "LabShelf Helper and this page speak different protocol versions", { helperProtocol: error.helperProtocol, pageProtocol: PROTOCOL_VERSION });
-      return { status: statusFromVersionError(error, PROTOCOL_VERSION) };
+      return { status: deriveVersionErrorStatus(error, PROTOCOL_VERSION) };
     }
     if (!isHostNotFound(failureReason(error))) {
       await deps.logger.error("browser.helper", error, { step: "handshake", host: HELPER_HOST_NAME });

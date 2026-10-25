@@ -1,16 +1,16 @@
 // Keeps the key and relay list of each share per library, and the member's display name, in extension storage.
 import { base64UrlToBytes, bytesToBase64Url, type ShareKeyStore, type StoredInvite } from "@labshelf/core";
 import { updateUnscopedShares } from "./updateUnscopedShares";
-import { readLibraryShares, readSharesRecord, toShare, withLibraryShares, writeSharesRecord } from "./storedShareKeys";
+import { readLibraryShares, readStoredShares, parseStoredShare, withLibraryShares, writeStoredShares } from "./storedShareKeys";
 
 /** `libraryId` names the library open at the time of each call; the user can switch libraries while the page is open. */
 export function createShareKeyStore(libraryId: () => Promise<string>): ShareKeyStore {
   const update = async (change: (shares: Record<string, unknown>) => void): Promise<void> => {
     const library = await libraryId();
-    const record = await readSharesRecord();
+    const record = await readStoredShares();
     const shares = { ...readLibraryShares(record, library) };
     change(shares);
-    await writeSharesRecord(withLibraryShares(record, library, shares));
+    await writeStoredShares(withLibraryShares(record, library, shares));
   };
   return {
     remember: ({ shareId, shareKey, relays }) => update((shares) => { shares[shareId] = { key: bytesToBase64Url(shareKey), relays }; }),
@@ -19,7 +19,7 @@ export function createShareKeyStore(libraryId: () => Promise<string>): ShareKeyS
       const library = await libraryId();
       // INVARIANT: the share workflows ask only for share ids of this library's projects or connections, which the migration needs.
       await updateUnscopedShares(library, [shareId]);
-      const share = toShare(readLibraryShares(await readSharesRecord(), library)[shareId]);
+      const share = parseStoredShare(readLibraryShares(await readStoredShares(), library)[shareId]);
       return share === undefined ? undefined : decoded(shareId, share);
     },
   };
@@ -34,11 +34,11 @@ function decoded(shareId: string, share: { key: string; relays: StoredInvite["re
   }
 }
 
-export async function saveDisplayName(name: string): Promise<void> {
-  await writeSharesRecord({ ...(await readSharesRecord()), displayName: name });
+export async function writeMemberName(name: string): Promise<void> {
+  await writeStoredShares({ ...(await readStoredShares()), displayName: name });
 }
 
-export async function loadDisplayName(): Promise<string | undefined> {
-  const name = (await readSharesRecord())["displayName"];
+export async function readMemberName(): Promise<string | undefined> {
+  const name = (await readStoredShares())["displayName"];
   return typeof name === "string" ? name : undefined;
 }

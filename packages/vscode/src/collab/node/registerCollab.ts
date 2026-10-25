@@ -31,7 +31,7 @@ import {
   JOIN_COMMAND,
 } from "./commands/index.js";
 import { SharedEditors, SharedPresence } from "./editors/index.js";
-import { ActiveShares, connectDesktopShare, deleteShareState, ShareKeys } from "./session/index.js";
+import { ActiveShares, connectDesktopShare, removeShareDir, ShareKeys } from "./session/index.js";
 import { createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import {
   ADD_SOURCE_COMMENT_COMMAND,
@@ -123,7 +123,7 @@ export function createCollabPorts(deps: CollabPortsDeps): ShareFlowPorts {
       const isEditorOwned = (folder: string, file: string) => editors.isOwned(folder, file);
       return connectDesktopShare({ libraryRoot: openRoot(deps.libraryRoot), shareId, shareKey, relays, name: userName(), logger, isEditorOwned }, start);
     },
-    deleteState: (shareId) => deleteShareState(openRoot(deps.libraryRoot), shareId),
+    deleteState: (shareId) => removeShareDir(openRoot(deps.libraryRoot), shareId),
     userName,
     logger,
   };

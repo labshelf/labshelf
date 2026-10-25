@@ -21,10 +21,10 @@ export function onAutoCompileChange(fn: (mode: BuildSchedule) => void): vscode.D
 }
 
 /** What started the build: "typing" is an edit, "save" is a save or opening the project. */
-export type AutoCompileTrigger = "typing" | "save";
+export type BuildCause = "typing" | "save";
 
 /** Decides per save or edit whether a build may start; when it may not it logs the skip once until the setting changes. */
-export function createAutoCompileGate(logger: () => ILogger | undefined): vscode.Disposable & { allows(trigger: AutoCompileTrigger): boolean } {
+export function createAutoCompileGate(logger: () => ILogger | undefined): vscode.Disposable & { allows(trigger: BuildCause): boolean } {
   let logged = false;
   const subscription = onAutoCompileChange(() => { logged = false; });
   return {

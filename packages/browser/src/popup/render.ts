@@ -6,7 +6,7 @@ import { escapeHtml, renderIcon, type IconName } from "@labshelf/core";
 import type { DraftView, LibraryReference, FindPdfReply } from "../platform";
 import { formatFolderName, formatMetaLine } from "./format";
 import { describePdfLine } from "../ui";
-import { popupState, setState } from "./popupState";
+import { popupState, showPopupView } from "./popupState";
 
 export function showNotice(opts: {
   glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string;
@@ -66,7 +66,7 @@ export function renderFolders(): void {
 }
 
 export function showLibraryCopy(existing: LibraryReference): void {
-  setState("library");
+  showPopupView("library");
   if (existing.hasPdf) {
     showNotice({ glyph: "check", tone: "ok", title: "Already in your library", detail: formatFolderName(existing.folder), open: "Open in library" });
   } else {

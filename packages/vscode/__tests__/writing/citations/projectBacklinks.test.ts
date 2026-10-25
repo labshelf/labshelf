@@ -1,7 +1,7 @@
 // Tests that the backlink index is rebuilt, debounced, when projects change or a project source is saved or edited.
 import * as vscode from "vscode";
 
-import { ProjectBacklinkIndex } from "../../../src/writing/citations/index";
+import { ProjectBacklinks } from "../../../src/writing/citations/index";
 import { fakeDocument } from "../../support/textDocument";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
@@ -11,7 +11,7 @@ const workspace = vscode.workspace as unknown as {
 };
 const link = { project: "survey", file: "main.tex", line: 2, section: "Intro" };
 
-const created: ProjectBacklinkIndex[] = [];
+const created: ProjectBacklinks[] = [];
 
 function setup(logger = fakeLogger()) {
   const changed = new vscode.EventEmitter<void>();
@@ -19,7 +19,7 @@ function setup(logger = fakeLogger()) {
   const projects = { ...fakeProjects(entries), onDidChange: changed.event };
   const build = projects.data.projectBacklinks;
   build.mockResolvedValue(new Map([["smith2020", [link]]]));
-  const index = new ProjectBacklinkIndex(projects as never, fakeHost(logger));
+  const index = new ProjectBacklinks(projects as never, fakeHost(logger));
   const onChange = jest.fn();
   index.onDidChange(onChange);
   created.push(index);
@@ -33,7 +33,7 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-describe("ProjectBacklinkIndex", () => {
+describe("ProjectBacklinks", () => {
   it("rebuilds once, a second after the project list changes, and reads open editors", async () => {
     const { index, changed, onChange, build } = setup();
     changed.fire();

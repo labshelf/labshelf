@@ -14,7 +14,7 @@ const MODULE = "storage";
  * @param loggerFor builds the logger of the library the stored root points at
  * @returns the globalState root when the shared config could not take it, so this session still opens that library
  */
-export async function migrateLibraryRootFromGlobalState(
+export async function moveLibraryRootToConfig(
   state: vscode.Memento,
   sharedConfig: SharedLibraryConfig,
   loggerFor: (root: string) => ILogger,

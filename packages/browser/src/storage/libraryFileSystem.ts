@@ -2,14 +2,14 @@
 // and routes every call there.
 import { BRIDGE_HOST_NAME, type ILogger, type LibraryFileSystem } from "@labshelf/core";
 import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
-import { BridgeFileSystem, BridgeClient, deriveBridgeFailure, setBridgeLibrary, type BridgeFailureReason, type OpenBridge } from "./bridge";
+import { BridgeFileSystem, BridgeClient, deriveBridgeFailure, setBridgeLibrary, type BridgeFailureKind, type OpenBridge } from "./bridge";
 import { IdbFileSystem } from "./idbFileSystem";
 import { DirFileSystem, ensureFolderGranted, readPickedDir, onPickedDirChange } from "./pickedDir";
 import { refreshPaperRecords } from "./rebuildPaperRecords";
 
 export type LibraryLocation =
   | { kind: "folder"; root: string; via: "bridge" | "picked" }
-  | { kind: "browser"; reason: BridgeFailureReason; detail?: string };
+  | { kind: "browser"; reason: BridgeFailureKind; detail?: string };
 type FolderSource = Extract<LibraryLocation, { kind: "folder" }>;
 
 export interface LibraryLocations {

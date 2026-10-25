@@ -6,7 +6,7 @@ import type { RelayDeps } from "./connectRelay.js";
 import { LOG_MODULE } from "./relayAccounts.js";
 import { startOauthCallback } from "./oauthCallback.js";
 
-/** Throws `LoopbackUnavailableError` before opening the browser when the redirect port cannot be used. */
+/** Throws `OauthCallbackError` before opening the browser when the redirect port cannot be used. */
 export async function signInToCloudflare(deps: RelayDeps): Promise<void> {
   const { accounts, logger } = deps;
   const authorization = await startCloudflareAuthorization();

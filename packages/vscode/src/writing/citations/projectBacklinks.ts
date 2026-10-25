@@ -8,7 +8,7 @@ import type { WritingHost, WritingProjects } from "../session/index.js";
 const REBUILD_DEBOUNCE_MS = 1000;
 const SOURCE_FILE = /\.(tex|typ)$/;
 
-export class ProjectBacklinkIndex implements vscode.Disposable {
+export class ProjectBacklinks implements vscode.Disposable {
   private built: BacklinkMap = new Map();
   private rebuildCount = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;

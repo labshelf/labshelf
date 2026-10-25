@@ -1,7 +1,7 @@
 // Builds the Sharing section: whether a Cloudflare relay account is connected, with a way to the library page to change it.
 import type { ILogger } from "@labshelf/core";
 import { renderActionButton, renderElement, renderSettingRow, renderSettingsSection, renderTextField } from "@labshelf/core/dom";
-import { DEFAULT_DISPLAY_NAME, loadDisplayName, saveDisplayName } from "../collab";
+import { DEFAULT_DISPLAY_NAME, readMemberName, writeMemberName } from "../collab";
 import { bx } from "../platform";
 import { openBrowserRelayAccountStore } from "../relay";
 
@@ -17,7 +17,7 @@ function displayNameRow(logger: ILogger): HTMLElement {
     error.textContent = NAME_FAILED;
     await logger.error("options", err, { action });
   };
-  void loadDisplayName().then((name) => {
+  void readMemberName().then((name) => {
     saved = name ?? "";
     input.value = saved;
   }, (err: unknown) => fail(err, "read display name"));
@@ -26,7 +26,7 @@ function displayNameRow(logger: ILogger): HTMLElement {
     // An empty name would show collaborators a blank label, so the last non-empty name stays.
     if (name === "") { input.value = saved; return; }
     error.textContent = "";
-    void saveDisplayName(name).then(() => { saved = name; input.value = name; }, (err: unknown) => fail(err, "save display name"));
+    void writeMemberName(name).then(() => { saved = name; input.value = name; }, (err: unknown) => fail(err, "save display name"));
   });
   return renderSettingRow(
     { label: "Your name in shared projects", description: "Collaborators see it next to your cursor and comments." },

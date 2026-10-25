@@ -89,7 +89,7 @@ function rowBase(screen: Screen, x: number, y: number, width: number, marks: Row
   return (style) => (hover ? mergeStyle(style, hover) : style ?? {});
 }
 
-export interface FolderRowData {
+export interface FolderRowInput {
   label: string;
   depth: number;
   count: number;
@@ -100,7 +100,7 @@ export interface FolderRowData {
 /**
  * One row of the folders pane: indentation by depth, the folder name and its paper count.
  */
-export function drawFolderRow(screen: Screen, x: number, y: number, width: number, row: FolderRowData, marks: RowMarks): void {
+export function drawFolderRow(screen: Screen, x: number, y: number, width: number, row: FolderRowInput, marks: RowMarks): void {
   if (width <= 3) { return; }
   const base = rowBase(screen, x, y, width, marks);
   const count = String(row.count);
