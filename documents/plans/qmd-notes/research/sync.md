@@ -17,7 +17,7 @@ source: Explore scout
 - library/conflicts/node/spaces/spaceConflictScan.ts:23 only space.json/glossary.json directly in spaces/<id>/.
 - writing/merge/node/projectConflictScan.ts:67 scanProjectConflicts (projects/ + registered folders, via listProjectsOnDisk); seedBases :42 skips files with copies; hidden names skipped.
 - writing/merge/node/projectCopyMerge.ts:48 mergeProjectCopies: base, local, copies folded vs same base (mergeAll :31), recheck, writeFileAtomic, read back :66, rm copies, base=copy if 1 copy.
-- writing/merge/textMerge.ts:27 createTextMerge (diff3, markers); node/mergeText.ts:9; browser binds its own for the collab mirror only (packages/browser/src/library-page/editor/collab/mirror/mergeText.ts).
+- writing/merge/textMerge.ts:27 createTextMerge (diff3, markers); node/mergeText.ts:9; browser binds its own for the collab mirror only (packages/browser/src/collab/mirror/mergeText.ts).
 - writing/merge/mergeableTextFile.ts:3 extension set (.qmd absent); fileMergeBaseStore.ts:18 FileMergeBaseStore, mergeBaseStore.ts IMergeBaseStore {read,write(projectId,relPath)}: project-keyed.
 
 ## Sidecar merge

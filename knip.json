@@ -70,7 +70,7 @@
         "src/background/index.ts",
         "src/popup/index.ts",
         "src/options/index.ts",
-        "src/library-page/main.ts",
+        "src/libraryPage/pageEntry.ts",
         "src/pdfText/offscreen.ts",
         "src/reader/index.ts",
         "src/ui/themeBoot.ts",

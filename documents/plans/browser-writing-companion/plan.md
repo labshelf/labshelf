@@ -43,7 +43,7 @@ Sessions run in order. A session that changes `package.json`, the lockfile, a ts
 |---|---|---|---|---|
 | 1a | [sessions/1a-projects-store.md](sessions/1a-projects-store.md) | project store API over the native bridge | `packages/browser/src/storage/projects/` | 1b |
 | 1b | [sessions/1b-message-seams.md](sessions/1b-message-seams.md) | reader-host `citeInProject` message; runtime message types for the panel, editors and sites | `packages/core/src/reader/protocol.ts`, `packages/core/src/reader/protocol/`, `packages/core/src/reader/host/`, `packages/browser/src/platform/`, `documents/contracts/reader-host.md` | 1a |
-| 2a | [sessions/2a-writing-tab.md](sessions/2a-writing-tab.md) | Writing tab on the library page | `packages/core/src/libraryUi/dom/writing/`, `packages/browser/src/library-page/` | 2b, 2c |
+| 2a | [sessions/2a-writing-tab.md](sessions/2a-writing-tab.md) | Writing tab on the library page | `packages/core/src/libraryUi/dom/writing/`, `packages/browser/src/libraryUi/` | 2b, 2c |
 | 2b | [sessions/2b-panel-insertion.md](sessions/2b-panel-insertion.md) | panel search section, editor adapters, insertion with clipboard fallback | `packages/browser/src/side-panel/search/`, `packages/browser/src/content/editors/`, `packages/browser/src/background/editors/` | 2a, 2c |
 | 2c | [sessions/2c-bibliography.md](sessions/2c-bibliography.md) | health section | `packages/browser/src/side-panel/health/`, `packages/browser/src/background/bibliography/` | 2a, 2b |
 | 2d | [sessions/2d-cite-from-reading.md](sessions/2d-cite-from-reading.md) | "Cite in project" in the reader and on page selections | `packages/core/src/reader/dom/chrome/`, `packages/browser/src/reader/`, `packages/browser/src/background/citeInProject/` | 2e |

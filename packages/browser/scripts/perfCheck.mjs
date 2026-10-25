@@ -115,7 +115,7 @@ async function main() {
     const cdp = await context.newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: THROTTLE });
 
-    await page.goto(`chrome-extension://${id}/library-page/index.html`);
+    await page.goto(`chrome-extension://${id}/libraryPage/index.html`);
     await page.waitForFunction(() => window.__perf.sidebarAt !== null, undefined, { timeout: 60_000 });
     const sidebarMs = await page.evaluate(() => window.__perf.sidebarAt);
     await page.waitForTimeout(3000);
@@ -152,7 +152,7 @@ async function main() {
 async function fillPaperCache(context, id) {
   try {
     const page = await context.newPage();
-    await page.goto(`chrome-extension://${id}/library-page/index.html`);
+    await page.goto(`chrome-extension://${id}/libraryPage/index.html`);
     for (let attempt = 0; attempt < 12; attempt++) {
       await page.waitForTimeout(5000);
       await page.reload();

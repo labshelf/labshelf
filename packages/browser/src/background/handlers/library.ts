@@ -11,7 +11,7 @@ import { listAllRecords, buildFolderTree, pdfDirs } from "../../storage";
 import type { LibraryMutations } from "../../storage";
 import { forgetPaper } from "../draftCache";
 import { broadcastChanged } from "../broadcast";
-import { hashForFolder } from "../../library-page";
+import { hashForFolder } from "../../libraryUi";
 import { ref } from "./libraryRef";
 import { PAPERS_DIR, findInLibrary, isPrePublication, publishedDoiOf, type FolderTreeNode, type ILogger } from "@labshelf/core";
 
@@ -102,7 +102,7 @@ export async function handleLibraryLookup(items: LookupItem[]): Promise<LookupDa
 export async function handleLibraryOpen(msg: Extract<RuntimeMessage, { type: "library.open" }>): Promise<{ opened: true }> {
   const folder = safeFolder(msg.folder);
   const query = msg.paperId ? `?paper=${encodeURIComponent(msg.paperId)}` : "";
-  await bx.tabs.create({ url: `${bx.runtime.getURL("library-page/index.html")}${query}${hashForFolder(folder)}` });
+  await bx.tabs.create({ url: `${bx.runtime.getURL("libraryPage/index.html")}${query}${hashForFolder(folder)}` });
   return { opened: true };
 }
 

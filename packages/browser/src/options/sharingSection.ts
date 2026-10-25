@@ -1,7 +1,7 @@
 // Builds the Sharing section: whether a Cloudflare relay account is connected, with a way to the library page to change it.
 import type { ILogger } from "@labshelf/core";
 import { actionButton, el, settingRow, settingsSection, textField } from "@labshelf/core/dom";
-import { DEFAULT_DISPLAY_NAME, loadDisplayName, saveDisplayName } from "../library-page/editor/collab";
+import { DEFAULT_DISPLAY_NAME, loadDisplayName, saveDisplayName } from "../collab";
 import { bx } from "../platform";
 import { openBrowserRelayAccountStore } from "../relay";
 
@@ -45,7 +45,7 @@ export function createSharingSection(logger: ILogger): HTMLElement {
       row.replaceChildren(actionButton({
         label: account ? "Open the library to disconnect" : "Open the library to connect",
         icon: "library",
-        onClick: () => void bx.tabs.create({ url: bx.runtime.getURL("library-page/index.html") }),
+        onClick: () => void bx.tabs.create({ url: bx.runtime.getURL("libraryPage/index.html") }),
       }));
     } catch (err) {
       status.textContent = READ_FAILED;

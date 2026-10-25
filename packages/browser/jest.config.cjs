@@ -15,8 +15,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [
-    'src/library-page/prefs/**/*.ts',
-    'src/library-page/router.ts',
+    'src/libraryUi/prefs/**/*.ts',
+    'src/libraryUi/folderHash.ts',
     'src/storage/folderTreeStore.ts',
     'src/capture/**/*.ts',
     'src/content/scholar/scholarParse.ts',

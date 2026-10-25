@@ -24,7 +24,7 @@
     {
       "protocol": "web+labshelf",
       "name": "LabShelf",
-      "uriTemplate": "/library-page/index.html?link=%s"
+      "uriTemplate": "/libraryPage/index.html?link=%s"
     }
   ],
   "permissions": [
@@ -78,7 +78,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "library-page/index.html"
+        "libraryPage/index.html"
       ],
       "matches": [
         "<all_urls>"

@@ -24,7 +24,7 @@ jest.mock("../../../src/capture/index", () => ({
 jest.mock("../../../src/background/handlers/capture", () => ({ attachFoundPdf: jest.fn() }));
 jest.mock("../../../src/background/draftCache", () => ({ forgetPaper: jest.fn() }));
 jest.mock("../../../src/background/broadcast", () => ({ broadcastChanged: (...a: unknown[]) => mockBroadcast(...a) }));
-jest.mock("../../../src/library-page", () => ({ hashForFolder: () => "" }));
+jest.mock("../../../src/libraryUi", () => ({ hashForFolder: () => "" }));
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
   publishedDoiOf: (...a: unknown[]) => mockPublishedDoiOf(...a),

@@ -1,5 +1,5 @@
 sha: 0069f02
-files: packages/browser/src/library-page/editor/**, packages/core/src/latex/{hover,source}/**, packages/core/src/writing/insert/**, packages/core/src/ui/**, packages/core/package.json, packages/vscode/build/*.mjs, packages/browser/build/build.mjs, packages/vscode/src/**/*Html.ts, packages/browser/manifest.chrome.json
+files: packages/browser/src/writing/editor/**, packages/core/src/latex/{hover,source}/**, packages/core/src/writing/insert/**, packages/core/src/ui/**, packages/core/package.json, packages/vscode/build/*.mjs, packages/browser/build/build.mjs, packages/vscode/src/**/*Html.ts, packages/browser/manifest.chrome.json
 source: Explore scout
 
 ## Reuse
@@ -10,7 +10,7 @@ source: Explore scout
 - LaTeX scan `packages/core/src/latex/source/scanLatexSource.ts` + `commands/{scanReferences,scanSections,scanMacros,scanIncludes}`; `facts.ts:1-70` `LatexSourceFacts {labels, refs, sections, macros, includes}` with zero-based `LatexRange`. Cite positions: confirm in scan/ before relying.
 
 ## Current state
-- CodeMirror 6 only in `packages/browser/src/library-page/editor/` (LaTeX, Typst, BibTeX); VS Code uses its native editor. `y-codemirror.next` only in `editor/collab/binding/collabExtensions.ts:6,41`.
+- CodeMirror 6 only in `packages/browser/src/writing/editor/` (LaTeX, Typst, BibTeX); VS Code uses its native editor. `y-codemirror.next` only in `editor/collab/binding/collabExtensions.ts:6,41`.
 - No Markdown parser or renderer anywhere; no .qmd code. `reader/annotationsMarkdown.ts` only generates Markdown.
 - `yaml` ^2.7.1 in core and terminal (values, userKeys, merge/mergeableTextFile, typst language).
 - Component shape: folder under `<domain>/dom/` with index.ts, .ts files, a self-contained .css using `var(--ls-*)`; exported in core package.json as `"./styles/<name>.css"`; folder index re-exported by `packages/core/src/dom/index.ts`; `@labshelf/core/dom` = `packages/core/src/ui/dom/index.ts`. Tokens regenerate with `pnpm --filter @labshelf/core tokens`.

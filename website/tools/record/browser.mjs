@@ -86,7 +86,7 @@ async function recordSave(context, worker, extensionId) {
   await popup.waitForSelector('#popup[data-state="saved"]', { timeout: 60_000 });
   await pause(2200);
 
-  const libraryOpened = context.waitForEvent("page", { predicate: (p) => p.url().includes("/library-page/") });
+  const libraryOpened = context.waitForEvent("page", { predicate: (p) => p.url().includes("/libraryPage/") });
   await popup.click("#open");
   const library = await libraryOpened;
   const popupUntil = Date.now() / 1000;

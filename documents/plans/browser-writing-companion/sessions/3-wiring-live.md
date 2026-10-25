@@ -30,7 +30,7 @@ Each lives in a folder `index.ts` and exports `handle<Name>(msg, deps): Promise<
 - `background/bibliography/` handles `bib.health`; `side-panel/health/` mounts the health section.
 - `background/citeInProject/` handles `cite.inProject` and exports `registerCiteMenu(deps)`.
 - `background/pdfOffer/` and `content/sites/`: lookups (`sites.lookup`); `background/reviews/` handles `review.start`.
-- Core `mountWritingTab(root, host)` is already mounted by `library-page/`.
+- Core `mountWritingTab(root, host)` is already mounted by `libraryPage/`.
 
 ## 3.1 — Router
 
@@ -42,7 +42,7 @@ Each lives in a folder `index.ts` and exports `handle<Name>(msg, deps): Promise<
 ## 3.2 — Manifests and page shell
 
 - **Goal:** the extension declares and builds everything the earlier sessions added.
-- **Read only:** `packages/browser/manifest.chrome.json`; `packages/browser/manifest.firefox.json`; `packages/browser/build/build.mjs:10-60`; `packages/browser/src/library-page/main.ts:1-47` (a page entry).
+- **Read only:** `packages/browser/manifest.chrome.json`; `packages/browser/manifest.firefox.json`; `packages/browser/build/build.mjs:10-60`; `packages/browser/src/libraryPage/pageEntry.ts:1-47` (a page entry).
 - **Decided:** Chrome `side_panel` and `sidePanel` permission, Firefox `sidebar_action`; overleaf.com and typst.app as optional host permissions requested from the panel; content scripts for editors, sites and OpenReview; `contextMenus`. The shell mounts the search and health sections.
 - **Done when:** `pnpm --filter @labshelf/browser build` for both targets; a manifest test, written first, pins the entries.
 

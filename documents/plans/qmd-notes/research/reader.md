@@ -24,7 +24,7 @@ source: Explore scout
 - core: model/paperRecord.ts:20; library/paperMetadata.ts:56; mutations/paperRecordWrite.ts:3-35, paperFields.ts:56-65; search/searchDoc.ts:25,33, matchPaper.ts:10, query.ts, aliases.ts, syntaxHelp.ts:14, parseQuery.ts:45-52.
 - library-ui: state/libraryViewStore.ts:67; dom/flows/paper/paperCommands.ts:38; dom/detail/noteEditor.ts, detailActions.ts:100; list/tray/fileFacts.ts:60, shortNote.ts; protocol/messages.ts:39, messageGuards.ts:65.
 - vscode: ui/list/host/messageHandler.ts:49, paperHandlers.ts:20; core/paperService.ts:127,170.
-- browser: popup/index.html:42, index.ts:16, saveFlow.ts:119-122; captureMessages.ts:11; background/handlers/capture.ts:99; capture/captureService.ts:42,136; storage/libraryMutations.ts:22,120; library-page/host/hostController.ts:65, handlers/paperHandlers.ts:22.
+- browser: popup/index.html:42, index.ts:16, saveFlow.ts:119-122; captureMessages.ts:11; background/handlers/capture.ts:99; capture/captureService.ts:42,136; storage/libraryMutations.ts:22,120; libraryUi/host/hostController.ts:65, handlers/paperHandlers.ts:22.
 - terminal: cli/show/showText.ts:27; ui/preview.ts:89; keymap.ts:84, keyDispatch.ts:102; actions/paperFieldActions.ts:57-68 ($EDITOR); library/papers/paperService.ts:122.
 - Contracts: library-format.md:86,97; library-ui-host.md:61,128; share-link.md:48.
 - Review comments (reader-host.md:46, addReviewComment) are unrelated.

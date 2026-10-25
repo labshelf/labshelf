@@ -106,12 +106,12 @@ Playwright's full Chrome for Testing loads the unpacked extension. Run it outsid
 
 - The DevTools port is in `<user-data-dir>/DevToolsActivePort`. Node has a global `WebSocket`, so the protocol needs no dependency.
 - Pick the extension's service worker by `url.endsWith("/background/index.js")`; Chrome for Testing ships a component extension whose worker comes first. Read `chrome.storage.local` by evaluating in that worker.
-- To test a page without the background, serve `dist/chrome` statically and inject a callback-style `window.chrome` stub (webextension-polyfill needs only `runtime.id`). Seed IndexedDB `labshelf` v1 on the same origin before navigating to `library-page/index.html`, which mounts core's library UI over an in-page loopback ([library-ui-host.md](../contracts/library-ui-host.md)) and the Details pane over a second one ([details-host.md](../contracts/details-host.md)).
+- To test a page without the background, serve `dist/chrome` statically and inject a callback-style `window.chrome` stub (webextension-polyfill needs only `runtime.id`). Seed IndexedDB `labshelf` v1 on the same origin before navigating to `libraryPage/index.html`, which mounts core's library UI over an in-page loopback ([library-ui-host.md](../contracts/library-ui-host.md)) and the Details pane over a second one ([details-host.md](../contracts/details-host.md)).
 - Search-page content script: `Fetch.enable` for `https://scholar.google.com/scholar*` or `https://www.google.com/search*` and fulfil the request with fixture HTML.
 - Popup against an article tab: open `popup/index.html` in a 340 px target, overriding `chrome.tabs.query` through `Page.addScriptToEvaluateOnNewDocument`.
 - Reader parity with VS Code: render both readers on the same real paper and pixel-diff the toolbar and sidebar. CDP drags create no text selection in either reader; select with a `Range` plus a synthetic `mouseup`.
 
-A headless run cannot reach: downloads from Cloudflare-protected publishers (ACM, SIAM, ScienceDirect), which block headless browsers and plain `fetch` (test by hand); a click on a `web+labshelf:` link, because Chrome's protocol-handler registration needs the user's approval in a headed browser (`library-page/index.html?link=<link>` exercises the resolution, [links.md](../contracts/links.md)); calendar import and theme appearance.
+A headless run cannot reach: downloads from Cloudflare-protected publishers (ACM, SIAM, ScienceDirect), which block headless browsers and plain `fetch` (test by hand); a click on a `web+labshelf:` link, because Chrome's protocol-handler registration needs the user's approval in a headed browser (`libraryPage/index.html?link=<link>` exercises the resolution, [links.md](../contracts/links.md)); calendar import and theme appearance.
 
 ### Collaboration against a local relay
 
@@ -120,7 +120,7 @@ Relay URLs must be `https:`, so a local relay needs TLS and no Cloudflare accoun
 - Bundle the Worker with `bundleRelayWorker` from `packages/core/tools/relayWorker/`. Run it with `wrangler dev --local --local-protocol https --ip 127.0.0.1 --persist-to <scratch>`, binding the Durable Object `ROOM` (class `Room`, `new_sqlite_classes`) and a KV namespace `KV`, with `OWNER_SECRET` in `.dev.vars`.
 - Launch Chromium with `--ignore-certificate-errors` (it covers `wss`) and `--no-proxy-server`. Set `NO_PROXY=127.0.0.1,localhost` for Node tooling.
 - Seed the owner profile's relay account in IndexedDB `labshelf-relay-account` (store `secrets`, key `account`) as the JSON of `{accountId, relayUrl, ownerSecret, kvNamespaceId, credential:{kind:"token", token}}`. A local relay needs no Cloudflare API call; the joining profile needs no account.
-- Join in a second profile at `library-page/index.html#/join/<invite>`. Read the `labshelf` and `labshelf-collab` databases to check stored content.
+- Join in a second profile at `libraryPage/index.html#/join/<invite>`. Read the `labshelf` and `labshelf-collab` databases to check stored content.
 
 ### Headless Firefox
 
@@ -128,7 +128,7 @@ Drive stock Firefox through geckodriver; Playwright's Firefox needs its patched 
 
 - Start geckodriver with `--allow-system-access`; without it, extension pages are unscriptable.
 - Run Firefox with `-headless` and the pref `extensions.webextensions.uuids={"labshelf@lucanaasser.dev":"<fixed uuid>"}` so the page URL is known. Install `dist/firefox` as a temporary add-on.
-- Navigation to `moz-extension://` is refused. Load an http page, then set `location.href` to `moz-extension://<uuid>/library-page/index.html` from `executeScript`. Only web-accessible pages open this way.
+- Navigation to `moz-extension://` is refused. Load an http page, then set `location.href` to `moz-extension://<uuid>/libraryPage/index.html` from `executeScript`. Only web-accessible pages open this way.
 
 ### Chrome DevTools MCP
 
@@ -136,7 +136,7 @@ The project-scope `.mcp.json` registers `chrome-devtools-mcp` (headless, isolate
 
 1. `pnpm --filter @labshelf/browser build:chrome`.
 2. `install_extension` with the absolute `packages/browser/dist/chrome` path returns the extension id.
-3. `new_page` on `chrome-extension://<id>/popup/index.html` (or `library-page/`, `options/`), then `take_snapshot` and `take_screenshot` with the page id `new_page` lists. `reload_extension` after a rebuild.
+3. `new_page` on `chrome-extension://<id>/popup/index.html` (or `libraryPage/`, `options/`), then `take_snapshot` and `take_screenshot` with the page id `new_page` lists. `reload_extension` after a rebuild.
 
 - Extension tools need the launched-browser (pipe) connection, so `--browserUrl`, `--wsEndpoint` and `--autoConnect` cannot be used with them.
 - File arguments must lie under the repo or the OS temp directory.
