@@ -1,5 +1,5 @@
 /** Builds the text of a project's generated labshelf.bib from the library papers it cites. */
-// CONTRACT: documents/contracts/library-format.md#labshelfbib
+// CONTRACT: documents/contracts/library-format.md#generated-files
 
 import { createBibtexEntry } from "../../import/bibtex/index.js";
 import type { PaperRecord } from "../../model/index.js";

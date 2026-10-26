@@ -1,6 +1,6 @@
 // Encodes and decodes the messages of the blob channel: a request, a chunk of the answer and a refusal.
 
-// CONTRACT: documents/contracts/collaboration.md#blobs
+// CONTRACT: documents/contracts/collaboration.md#messages
 export const BLOB_CHUNK_BYTES = 64 * 1024;
 export const MAX_BLOB_BYTES = 256 * 1024 * 1024;
 const MAX_BLOB_CHUNKS = MAX_BLOB_BYTES / BLOB_CHUNK_BYTES;

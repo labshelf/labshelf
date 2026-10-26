@@ -1,5 +1,5 @@
 // Generates project value macros through the host project writer.
-// CONTRACT: documents/contracts/library-format.md#labshelf-valuestex
+// CONTRACT: documents/contracts/library-format.md#generated-files
 
 import * as path from "node:path";
 

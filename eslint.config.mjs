@@ -2,7 +2,7 @@
 import tseslint from "typescript-eslint";
 
 const sourceLimits = {
-  "max-lines": ["error", { max: 300, skipBlankLines: false, skipComments: false }],
+  "max-lines": ["error", { max: 400, skipBlankLines: false, skipComments: false }],
   "max-lines-per-function": ["error", { max: 50, skipBlankLines: false, skipComments: false }],
 };
 

@@ -1,5 +1,5 @@
 // Validates each socket message and routes it, in arrival order, to the handler registered for its type.
-// CONTRACT: documents/contracts/helper.md#envelope
+// CONTRACT: documents/contracts/helper.md#messages
 import type { ILogger } from "../../../ports/index.js";
 import { parseHelperMessage, type ToHelperMessage } from "../../index.js";
 

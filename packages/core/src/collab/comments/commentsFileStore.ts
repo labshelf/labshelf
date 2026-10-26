@@ -1,5 +1,5 @@
 // Loads and edits a project's comments.json through an injected file access, never writing a file it cannot read.
-// CONTRACT: documents/contracts/library-format.md#labshelfcommentsjson
+// CONTRACT: documents/contracts/library-format.md#project-folder-labshelf
 import { COMMENTS_PATH, parseCommentsFile, serializeCommentsFile, type CommentsDocument } from "./commentsFile.js";
 
 /** Reads and writes the text of one comments.json; the adapter creates missing folders on write. */

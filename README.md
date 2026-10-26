@@ -1,6 +1,6 @@
 # LabShelf
 
-A local-first research paper manager. Your library is an ordinary folder of PDFs and text files that you own. LabShelf imports papers, extracts and resolves their metadata, keeps BibTeX in step, lets you read and annotate PDFs, and optionally syncs everything through Google Drive.
+A local-first research paper manager. Your library is an ordinary folder of PDFs and text files that you own. LabShelf imports papers, extracts and resolves their metadata, keeps BibTeX in step, lets you read and annotate PDFs.
 
 It ships as three apps of one product:
 
@@ -15,7 +15,7 @@ pnpm install
 pnpm -r typecheck && pnpm -r test
 ```
 
-Building, running and verifying each app is covered in [documents/apps/verify.md](documents/apps/verify.md).
+Running and verifying each app for real is the `verify` skill ([.claude/skills/verify/](.claude/skills/verify/)).
 
 ## Repository
 
@@ -24,7 +24,7 @@ packages/core/       shared code: domain, formats, sync, PDF pipeline, reader, d
 packages/vscode/     VS Code extension
 packages/browser/    browser extension
 packages/terminal/   terminal app
-documents/           architecture, contracts between apps, setup, plans
+documents/           product, code placement, contracts between apps, plans
 ```
 
-Rules for contributors and coding agents are in [documents/rules.md](documents/rules.md); `node scripts/docs/doc.mjs` lists every document.
+[documents/product.md](documents/product.md) and [documents/code.md](documents/code.md) hold the product and code decisions; `node scripts/docs/doc.mjs` lists every document.

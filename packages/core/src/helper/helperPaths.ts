@@ -1,5 +1,5 @@
 /** Checks that a project path or project id is safe to resolve inside the helper's data folder. */
-// CONTRACT: documents/contracts/helper.md#paths
+// CONTRACT: documents/contracts/helper.md#messages
 
 import { MAX_PATH_LENGTH } from "./helperMessages.js";
 

@@ -2,37 +2,19 @@
 
 Read when you change how LabShelf reads or writes a `.qmd` file of notes, comments or discussion messages.
 
-Every place a user writes outside LaTeX or Typst is a `.qmd` item file: one file per case (all notes of a paper, one discussion thread), holding one item per note, comment or message. The files sit in libraries, projects and Spaces that sync tools and other people's apps change, and users open them in Quarto or any text editor, so the format cannot change without breaking files already on disk. Core's `qmd` domain is the one parser and writer; every app uses it.
+Every place a user writes outside LaTeX or Typst is a `.qmd` item file: one file per case (all notes of a paper, one discussion thread), holding one item per note, comment or message. The files sit in libraries, projects and Spaces that sync tools and other people's apps change, and users open them in Quarto or any text editor, so the format cannot change without breaking files already on disk. Every app reads and writes it the same way.
 
 ## Format
 
-An item file is UTF-8 text in "LabShelf Markdown", a subset of [Quarto Markdown](https://quarto.org/docs/authoring/markdown-basics.html). LabShelf shows and edits these constructs:
+An item file is UTF-8 text in "LabShelf Markdown", a subset of [Quarto Markdown](https://quarto.org/docs/authoring/markdown-basics.html). The editor shows paragraphs with emphasis, strong and inline code, ATX headings, bullet, ordered and task lists, inline and display math (`$$…$$ {#eq-<label>}`), code cells (`#|` options kept verbatim), cell results ([Outputs](#outputs)), images, paper links (`[text](labshelf:…)`, [links.md](links.md#grammar)) and citations (`[@key]`).
 
-| Construct | Written as |
-|---|---|
-| Paragraph | text with `*emphasis*`, `**strong**` and `` `inline code` `` |
-| Heading | ATX, `#` to `######` |
-| List | bullet (`-`) or ordered (`1.`) |
-| Task list | `- [ ] open task`, `- [x] done task` |
-| Inline math | `$…$` |
-| Display math | `$$…$$`, optionally followed by ` {#eq-<label>}` |
-| Code cell | ```` ```{python} ```` … ```` ``` ````; its first lines may be `#|` options such as `#| label: <label>`, kept verbatim |
-| Cell result | an output block, see [Outputs](#outputs) |
-| Image | `![alt](path)` |
-| Paper link | `[text](labshelf:…)`, grammar in [links.md](links.md#grammar) |
-| Citation | `[@key]`, `[@a; @b]` |
-
-Any other Markdown (tables, block quotes, callouts, raw HTML, YAML front matter) is kept byte for byte as a raw block: shown as source, written back unchanged, never dropped.
-
-- Line endings are whatever the file uses. LabShelf writes new lines with the line ending of the file's first line, and `\n` in a file without one.
-- A file that LabShelf reads and writes back without an edit is byte-identical, including its line endings, a missing final newline and a leading byte order mark.
-- A code fence is three or more `` ` `` or `~`, indented at most three spaces, followed by nothing, by one word, by an attribute block `{…}`, or by one word and an attribute block, as in Pandoc. It counts only when a closing fence of the same character, at least as long, follows it; until then it is ordinary text.
-- The editor reads an item body into these constructs without changing its bytes. An unclosed code fence and everything after it in its container stay one raw block. A block whose reading would not write back to its exact bytes (a lazy list line, mixed line endings) stays a raw block, and inline syntax that would not write back stays literal text.
-- Text typed in the editor is written as typed, without escaping. A block built in the editor is written with `-` bullets, `*` emphasis, `**` strong, three-backtick fences and one empty line between blocks.
+- Any other Markdown (tables, block quotes, callouts, raw HTML, front matter) is kept as a raw block: shown as source, written back unchanged, never dropped.
+- A file read and written back without an edit is byte-identical: line endings, a missing final newline and a leading byte order mark included. Any other edit changes only the bytes of what it edits. A block or inline syntax that would not write back to its exact bytes stays raw or literal text.
+- A code fence follows Pandoc: three or more `` ` `` or `~`, and it counts only when a closing fence of the same character, at least as long, follows it. An unclosed fence is ordinary text.
 
 ## Items
 
-An item is a fenced div at the top level of the file, outside any code fence, whose opening line carries the class `labshelf-item` and an id:
+An item is a top-level fenced div whose opening line carries the class `labshelf-item` and an id:
 
 ```
 ::: {#n-01JB2Q8Z5K7M3V9X4C6T8R2W0Y .labshelf-item anchor="p10 box 0.12 0.4 0.3 0.1" author="Ana" created="2026-10-22T09:12:00.000Z"}
@@ -40,90 +22,39 @@ The bound is tight when $\epsilon \to 0$.
 :::
 ```
 
-- The opening line is `:::` (three or more colons), optional spaces, and one attribute block `{…}`, optionally followed by colons. The block holds `#<id>`, `.<class>` and `<key>="<value>"`, `<key>='<value>'` or `<key>=<value>` entries separated by spaces. Inside a quoted value, `\"`, `\'` and `\\` stand for `"`, `'` and `\`, and every other backslash is itself; values never span lines. HTML entities in values and an `id=` key are not read as Pandoc reads them, so a fence that relies on them is loose text.
-- A div opens on a line of three or more colons followed by an attribute block or one word, at the start of the file or body or after an empty line, a heading, a div fence or a closing code fence. As in Pandoc, an opening line right after paragraph text is text.
-- The item ends at the first line that is only colons (three or more) and optional spaces, at the same nesting depth: nested divs open and close inside it, and lines inside code fences do not count. A fenced div at the top level that is not an item is loose text as a whole, and items inside it are not items.
-- The item's body is every byte between its opening and closing lines. Its content is LabShelf Markdown.
-- Attributes:
-  - `#<id>`: required; the item's identity, see [Ids](#ids). Ids are unique in a file. When a hand edit repeats an id, every item with it is still shown and kept.
-  - `anchor`: optional; what the item is attached to, see [Anchors](#anchors).
-  - `author`: optional; the display name of the person who wrote the item.
-  - `created`: optional; ISO-8601 UTC timestamp of when the item was written.
-  - Any other class or attribute is kept, in its order, when LabShelf rewrites the item.
-- LabShelf writes a new item's opening line in this order: `#id`, `.labshelf-item`, `anchor`, `author`, `created`, then further attributes; an attribute with an absent or empty value is left out. Values are written in double quotes.
-- An item is written as its opening line, its body (ending with a line ending), and a closing line `:::`. A new item goes at the end of the file, after one empty line; when the file lacks a final line ending, one is added first. Removing an item also removes one empty line next to it. Any other edit changes only the bytes of the item it edits.
-- A body that LabShelf writes never changes how the rest of the file reads: every nested div it opens is closed inside it, it holds no closing line of its own, and every code fence it opens is closed inside it. LabShelf reads the file again before writing and rejects, without writing, an edit after which any other part reads differently.
-
-### Text outside items
-
-Anything that is not an item is loose text: YAML front matter, text a user typed between items, a fenced div without `labshelf-item` or without an id, and a fence that does not parse.
-
-- Loose text is kept byte for byte, in place.
-- Loose text that holds more than whitespace is shown in its place as a note without an anchor.
-- An opening line whose div is never closed is an ordinary line of loose text, and reading goes on after it: the items that follow are still items. This differs from Pandoc, which closes the div at the end of the file, on purpose: one broken item never hides the rest. The broken item's text shows as a note without an anchor until its closing line is restored.
+- The body is every byte between the opening and closing lines. The closing line is the first line of only colons at the same nesting depth; lines inside code fences do not count.
+- Attributes: `anchor`, `author`, `created`. Any other class or attribute is kept, in order, when LabShelf rewrites the item.
+- A body LabShelf writes never changes how the rest of the file reads: every div and fence it opens, it closes. LabShelf reads the file again before writing and rejects an edit after which any other part reads differently.
+- Anything that is not an item (front matter, text between items, a div without `labshelf-item` or an id) is loose text, kept byte for byte in place.
+- An opening line whose div is never closed is loose text, and reading goes on: the items after it are still items. This differs from Pandoc, which closes the div at the end of the file, on purpose. One broken item never hides the rest.
+- Ids are unique in a file, but a hand edit may repeat one. Every item with the repeated id is still shown and kept.
 
 ## Ids
 
-An item id is `n-` followed by a [ULID](https://github.com/ulid/spec): 26 characters of Crockford base32 (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`), the first 10 encoding the creation time in milliseconds since the Unix epoch and the last 16 encoding 80 random bits.
-
-- Any device creates ids without coordination; ids sort by creation time.
-- Ids that one device creates within the same millisecond increase: the random part of the previous id plus one.
-- An id is never reused and never changes, also when the item moves or its anchor changes.
-- LabShelf reads items with any non-empty id, so hand-written ids work; it creates only ids of this form.
+An item id is `n-` plus a [ULID](https://github.com/ulid/spec). Any device creates ids without coordination, and they sort by creation time. An id is never reused and never changes, also when the item moves or its anchor changes. LabShelf reads any non-empty id, so hand-written ids work; it creates only this form.
 
 ## Anchors
 
-The `anchor` attribute says what an item is attached to. LabShelf writes these forms:
+`anchor` says what an item is attached to: nothing, a highlight of the paper (`hl:<annotation id>` in the paper's `data.json`, [library-format.md](library-format.md#sidecar-datajson)), a text box on a PDF page (`p<page> box <x> <y> <w> <h>`, fractions of the page from the top-left, like highlights) or a passage of a project text file (`quote:<base64url>` of the JSON `{quote, prefix, suffix}`, the rules of a comment anchor in [library-format.md](library-format.md#project-folder-labshelf)).
 
-| Anchor | Meaning |
-|---|---|
-| absent or empty | not attached |
-| `hl:<annotation id>` | a highlight of the paper, by its id in `data.json` ([library-format.md](library-format.md)) |
-| `p<page> box <x> <y> <w> <h>` | a text box on a PDF page |
-| `quote:<base64url>` | a passage of a project text file |
-
-- A text box: `page` is a 1-based integer; `x`, `y`, `w`, `h` are fractions of the page width and height measured from the top-left corner, as for highlights. Each is a decimal between 0 and 1 with at most 4 digits after the point; `w` and `h` are greater than 0, `x + w` and `y + h` at most 1. Tokens are separated by single spaces.
-- A passage: the value is the unpadded base64url of the UTF-8 JSON object `{"quote": …, "prefix": …, "suffix": …}`, with the same fields and rules as a comment anchor in [library-format.md](library-format.md#labshelfcommentsjson): `quote` non-empty, `prefix` and `suffix` up to 32 characters around it. Other keys in the object are ignored.
-- An anchor in no form above, or a box or passage that breaks its rules, is kept verbatim and the item is shown as not attached.
+An anchor in no known form, or one that breaks its rules, is kept verbatim and the item is shown as not attached.
 
 ## Outputs
 
-A code cell's result follows the cell, inside the same item, as a fenced div with the class `labshelf-output`:
+A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`. Results travel inside the file, so a reader sees them without running anything.
 
-````
-```{python}
-#| label: bound
-import sympy as sp
-x = sp.symbols("x")
-sp.integrate(sp.exp(-x**2), (x, -sp.oo, sp.oo))
-```
-
-::: {.labshelf-output cell="bound" source="3f9a1c0b7d2e" engine="python-3.12 sympy-1.13" ran="2026-10-22T09:15:03.000Z"}
-$$\sqrt{\pi}$$
-:::
-````
-
-- `cell`: the `#| label:` of the cell the result belongs to. A cell with a result has a label.
-- `source`: the first 12 lowercase hex characters of the SHA-256 of the cell's code. The code is the text between the cell's fences, split into lines at `\r\n`, `\n` or `\r`, without the lines that start with `#|`, joined with `\n`, with trailing line endings removed, encoded as UTF-8. Line endings therefore never make a result out of date.
-- `engine`: the runtime and libraries that produced the result, as `<name>-<version>` words separated by spaces, for example `python-3.12 sympy-1.13`.
-- `ran`: ISO-8601 UTC timestamp of the run.
-- The content is LabShelf Markdown: text, math and images. It follows the rule of an item body: a result that would close the block early is rejected, not written.
-- A result whose `source` differs from the hash of its cell's current code is shown as out of date. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
-- Results travel inside the file, so a reader sees them without running anything.
+- `cell` is the cell's `#| label:`. A cell with a result has a label.
+- `source` is the first 12 hex characters of the SHA-256 of the cell's code with the `#|` lines removed, lines joined with `\n` and trailing line endings removed. Every device must compute it the same way, and line endings must never make a result out of date.
+- A result whose `source` differs from its cell's current code is shown as out of date. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
+- A result that would close its block early is rejected, not written.
 
 ## Merge
 
-Two versions of one item file merge item by item, three-way against the device's base for the file. "The file" is the version on disk and "the other" is the sync tool's conflict copy or the divergent version. When and where merges run: [sync.md](sync.md#conflict-copies).
+Two versions of one item file merge item by item, three-way against the device's base. When merges run: [library-format.md](library-format.md#conflict-copies).
 
-- Items match by id; a repeated id matches by its rank among the items with that id.
-- An item new on one side is kept; an item both sides added with the same id is kept once, in the file's place.
-- An item one side edited and the other left as in the base takes the edit.
-- An item one side deleted and the other left as in the base is deleted. An item one side deleted and the other edited is kept, edited. An item both sides deleted is deleted.
-- An item both sides edited merges in parts:
-  - opening line: each attribute and class comes from the side that changed it; an attribute both sides changed differently keeps the file's value, unless the file removed it.
-  - cell results: a cell whose result differs on the two sides keeps the result with the later `ran`; a tie keeps the file's result.
-  - body: merged line by line; overlapping edits are kept in full between `<<<<<<< local`, `=======` and `>>>>>>> <other>` lines inside the body. When the merged body would open or close a fence it does not close or open, both versions are kept as two items with the same id.
-- Order: items of the base keep base order. Items one side added follow the base item that precedes them on that side, as one run; when both sides add runs at the same place, the run whose first id is smaller goes first. One empty line separates an added item from an adjacent item.
-- Loose text after the same item (or at the start of the file) merges line by line, with the same markers.
-- Without a base, every item counts as added on its side: the result is the union by id, a delete is not honoured, and an item both sides hold with different bodies gets markers inside its body. A base that shares no item with one of the sides counts as no base, because that side was created apart from it.
-- The merged file is read again; when it would not hold the merged item ids in the merged order, the merge fails and both files stay.
+- Items match by id. An item new on one side is kept; one both sides added is kept once.
+- An edit wins over an untouched side. A delete wins over an untouched side but loses to an edit on the other side.
+- An item both sides edited merges per attribute (a conflicting attribute keeps the file's value), per cell result (the later `ran` wins) and per body line, with overlaps kept between `<<<<<<< local`, `=======` and `>>>>>>> <other>` lines. If the merged body would leave a fence open, both versions are kept as two items with the same id.
+- Without a base the result is the union by id, and no delete is honoured. A base that shares no item with one side counts as no base.
+- The merged file is read again. If it would not hold the merged ids in the merged order, the merge fails and both files stay.
+- The base never takes a copy's text, because a copy may be this device's own version.

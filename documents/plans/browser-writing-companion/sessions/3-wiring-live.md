@@ -20,7 +20,7 @@ Runs alone: it changes manifests and a build script, and a host verify needs a g
 | 3.1 | Router: dispatch and the page-message gate per host | contract | implementer (sonnet), tests first | gate tests pass | [ ] |
 | 3.2 | Manifests, build entries, side panel page shell | contract | implementer (sonnet), tests first | build of both targets; manifest test | [ ] |
 | 3.3 | Headless verify and live checks | — | `verify` skill + user | A1–A9 (no A4) | [ ] |
-| 3.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 3.4 | Check, commit | — | `pnpm gate` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## Modules to wire
 

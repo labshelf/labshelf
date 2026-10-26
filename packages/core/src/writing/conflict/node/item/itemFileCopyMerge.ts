@@ -1,5 +1,5 @@
 // Merges the conflict copies of one qmd item file into it item by item, against the device's base for the file.
-// CONTRACT: documents/contracts/sync.md#conflict-copies
+// CONTRACT: documents/contracts/library-format.md#conflict-copies
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 

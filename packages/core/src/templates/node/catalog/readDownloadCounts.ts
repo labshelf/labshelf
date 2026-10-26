@@ -1,5 +1,5 @@
 /** Reads a catalog's downloads.json, the per-template download counts written by a scheduled CI job. */
-// CONTRACT: documents/contracts/templates.md#downloadsjson
+// CONTRACT: documents/contracts/templates.md#community-catalog
 
 import * as fs from "node:fs";
 import * as path from "node:path";

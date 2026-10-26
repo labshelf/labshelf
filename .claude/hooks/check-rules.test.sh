@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fixture-driven test for check-rules.sh: builds a throwaway git repo per case,
+# Fixture-driven test for the check-rules.sh dispatcher and the rules it runs: builds a throwaway git repo per case,
 # introduces one violation (or none) against a committed HEAD, and checks the hook's verdict.
 set -u
 hook="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/check-rules.sh"
@@ -132,12 +132,13 @@ run_case_deleted_test() {
   git -C "$repo" config user.name test
   mkdir -p "$repo/packages/core/__tests__" "$repo/packages/core/src" "$repo/documents/contracts"
   printf '%s\n' '# Sync' '' '## Conflict resolution' > "$repo/documents/contracts/sync.md"
-  printf 'it("a", () => {});\n' > "$repo/packages/core/__tests__/gone.ts"
+  printf 'it("a", () => {});\n' > "$repo/packages/core/__tests__/gone.test.ts"
+  printf '// Gone.\nexport const g = 1;\n' > "$repo/packages/core/src/gone.ts"
   printf '// Other file.\nexport const x = 1;\n' > "$repo/packages/core/src/other.ts"
   git -C "$repo" add -A
   git -C "$repo" commit -q -m init
 
-  rm "$repo/packages/core/__tests__/gone.ts"
+  rm "$repo/packages/core/__tests__/gone.test.ts"
   printf '// Other file.\nexport const x = 2;\n' > "$repo/packages/core/src/other.ts"
 
   local out
@@ -145,7 +146,7 @@ run_case_deleted_test() {
   local code=$?
   rm -rf "$repo"
 
-  if [ "$code" -eq 2 ] && printf '%s' "$out" | grep -qiE 'deleted'; then
+  if [ "$code" -eq 2 ] && printf '%s' "$out" | grep -qiE 'its code still exists'; then
     echo "PASS: deleted test file flagged"
   else
     echo "FAIL: deleted test file flagged (exit=$code, output follows)"
@@ -165,12 +166,13 @@ run_case_renamed_test() {
   git -C "$repo" config user.name test
   mkdir -p "$repo/packages/core/__tests__" "$repo/packages/core/src" "$repo/documents/contracts"
   printf '%s\n' '# Sync' '' '## Conflict resolution' > "$repo/documents/contracts/sync.md"
-  printf 'it("a", () => {});\n' > "$repo/packages/core/__tests__/old.ts"
+  printf 'it("a", () => {});\n' > "$repo/packages/core/__tests__/old.test.ts"
+  printf '// Old.\nexport const o = 1;\n' > "$repo/packages/core/src/old.ts"
   printf '// Other file.\nexport const x = 1;\n' > "$repo/packages/core/src/other.ts"
   git -C "$repo" add -A
   git -C "$repo" commit -q -m init
 
-  git -C "$repo" mv packages/core/__tests__/old.ts packages/core/__tests__/renamed.ts
+  git -C "$repo" mv packages/core/__tests__/old.test.ts packages/core/__tests__/renamed.test.ts
   printf '// Other file.\nexport const x = 2;\n' > "$repo/packages/core/src/other.ts"
 
   local out
@@ -227,21 +229,13 @@ export const x = 1;
 " \
   0 ""
 
-run_case "new file with a noun-phrase header" \
+run_case "new file with a noun-phrase header is not flagged" \
   "packages/core/src/newfile.ts" \
   "" \
   "// PubMed client: record lookup by PMID.
 export const x = 1;
 " \
-  2 "capability sentence"
-
-run_case "new file with a plural-noun header" \
-  "packages/core/src/newfile.ts" \
-  "" \
-  "// Handlers for the popup messages.
-export const x = 1;
-" \
-  2 "capability sentence"
+  0 ""
 
 run_case "new CSS file with a capability header is not flagged" \
   "packages/core/src/newfile.css" \
@@ -303,7 +297,7 @@ export const x = 2;
 " \
   0 ""
 
-# Banned words come from scripts/checks/bannedWords.mjs.
+# Banned words come from scripts/lint/bannedWords.mjs.
 run_case "TODO tag added" \
   "packages/core/src/sample.ts" \
   "// Sample.
@@ -353,6 +347,81 @@ run_case "new test file without a mirrored source" \
 it('a', () => {});
 " \
   2 "no source file"
+
+# Cases that seed extra files and read both streams: run_repo_case <name> <tool> <response-json> <rel> <content> <expect-exit> <stderr-grep> <stdout-grep>
+# Seeded files: src/lib/thing/a.ts (folder), src/lib/sib.ts (60 lines, header "Reads siblings.").
+run_repo_case() {
+  local name="$1" tool="$2" response="$3" rel="$4" content="$5" expect_exit="$6" err_grep="$7" out_grep="$8"
+  total=$((total + 1))
+  local repo
+  repo=$(mktemp -d)
+  git -C "$repo" init -q
+  git -C "$repo" config user.email test@test.com
+  git -C "$repo" config user.name test
+  mkdir -p "$repo/packages/core/src/lib/thing" "$repo/documents/contracts"
+  printf '// Folder member.\nexport const a = 1;\n' > "$repo/packages/core/src/lib/thing/a.ts"
+  { printf '/** Reads siblings. */\n'; for i in $(seq 1 59); do printf 'export const v%s = %s;\n' "$i" "$i"; done; } > "$repo/packages/core/src/lib/sib.ts"
+  git -C "$repo" add -A
+  git -C "$repo" commit -q -m init
+  mkdir -p "$repo/$(dirname "$rel")"
+  printf '%s' "$content" > "$repo/$rel"
+
+  local stdout stderr code
+  stdout=$(mktemp); stderr=$(mktemp)
+  printf '{"tool_name":"%s","tool_input":{"file_path":"%s"},"tool_response":%s}' "$tool" "$repo/$rel" "$response" \
+    | CLAUDE_PROJECT_DIR="$repo" "$hook" >"$stdout" 2>"$stderr"
+  code=$?
+  local out err
+  out=$(cat "$stdout"); err=$(cat "$stderr")
+  rm -rf "$repo" "$stdout" "$stderr"
+
+  local ok=true
+  [ "$code" -eq "$expect_exit" ] || ok=false
+  if [ -n "$err_grep" ]; then printf '%s' "$err" | grep -qE "$err_grep" || ok=false; elif [ "$expect_exit" -eq 0 ] && [ -n "$err" ]; then ok=false; fi
+  if [ -n "$out_grep" ]; then printf '%s' "$out" | grep -qE "$out_grep" || ok=false; elif [ -n "$out" ]; then ok=false; fi
+  if [ "$ok" = true ]; then
+    echo "PASS: $name"
+  else
+    echo "FAIL: $name (exit=$code expected=$expect_exit)"
+    echo "    stdout: $out"; echo "    stderr: $err" | head -8
+    fail=$((fail + 1))
+  fi
+}
+
+run_repo_case "test may mirror a whole source folder" Write '{"type":"create"}' \
+  "packages/core/__tests__/lib/thing.test.ts" "// Tests the thing folder.
+it('a', () => {});
+" \
+  0 "" ""
+
+run_repo_case "new Write of a source file adds the sibling reminder as JSON" Write '{"type":"create"}' \
+  "packages/core/src/lib/fresh.ts" "// Holds fresh code.
+export const f = 1;
+" \
+  0 "" '"hookEventName":"PostToolUse".*sib\.ts \(60 lines\): Reads siblings\..*Before adding a file'
+
+run_repo_case "reminder falls back to HEAD when the response has no type" Write '"ok"' \
+  "packages/core/src/lib/fresh.ts" "// Holds fresh code.
+export const f = 1;
+" \
+  0 "" 'additionalContext'
+
+run_repo_case "overwriting an existing file adds no reminder" Write '{"type":"update"}' \
+  "packages/core/src/lib/sib.ts" "// Reads siblings.
+export const v = 1;
+" \
+  0 "" ""
+
+run_repo_case "an Edit adds no reminder" Edit '{}' \
+  "packages/core/src/lib/sib.ts" "// Reads siblings.
+export const v = 2;
+" \
+  0 "" ""
+
+run_repo_case "reminder is appended to the problems when the file also fails" Write '{"type":"create"}' \
+  "packages/core/src/lib/fresh.ts" "export const f = 1;
+" \
+  2 "sib\.ts \(60 lines\)" ""
 
 echo "----"
 echo "$((total - fail))/$total passed"

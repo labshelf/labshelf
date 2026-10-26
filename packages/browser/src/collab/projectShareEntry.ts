@@ -1,5 +1,5 @@
 // Runs one shared project in this page while the page holds the share's tab lease, and waits for the lease while another tab does.
-// CONTRACT: documents/contracts/collaboration.md#persistence-acknowledgment
+// CONTRACT: documents/contracts/collaboration.md#device-local-state
 import {
   type ILogger,
   type ShareConnection,

@@ -41,7 +41,7 @@ A suggestion is triaged with Add to Space, Add to Library or Dismiss. A dismisse
 
 ## Glossary suggestions and reuse
 
-Manual terms, symbols, definitions and sources follow the [Spaces contract](../contracts/spaces.md#glossaryjson). The following capabilities remain ideas:
+Manual terms, symbols, definitions and sources follow the [Spaces contract](../contracts/spaces.md#layout). The following capabilities remain ideas:
 
 - Suggest acronyms, definitions and symbols from the Space's papers, using extraction rules and, with [embedded AI](../plans/ai-embedded/plan.md), equation context.
 - Show the source passage and require explicit accept, edit or dismiss for every suggestion.

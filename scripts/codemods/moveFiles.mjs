@@ -10,7 +10,7 @@ const SCAN_FOLDERS = ["packages", "website"];
 const MOCK_CALLS = new Set(["mock", "doMock", "unmock", "dontMock", "requireActual", "requireMock", "createMockFromModule", "setMock"]);
 const RESOLVE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"];
 const JS_TO_TS = { ".js": [".ts", ".tsx"], ".jsx": [".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] };
-const CONFIG_FILE = /(^|\/)(package\.json|tsconfig[^/]*\.json|jest\.config\.[cm]?js|knip\.json|\.dependency-cruiser\.cjs)$/;
+const CONFIG_FILE = /(^|\/)(package\.json|tsconfig[^/]*\.json|jest\.config\.[cm]?js|knip\.json|jscpd\.json|dependencyCruiser\.cjs)$/;
 
 const toPosix = (path) => path.split(sep).join("/");
 const isCode = (file) => CODE_EXTENSIONS.includes(extname(file));

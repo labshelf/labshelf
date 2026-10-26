@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | 2d.1 | Reader action "Cite in project" | behaviour | implementer (sonnet) | typecheck of core | [ ] |
 | 2d.2 | Browser host port, background handler, selection menu | behaviour | implementer (sonnet), test first | A6 logic in tests | [ ] |
-| 2d.3 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 2d.3 | Check, commit | — | `pnpm gate` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## Plan-wide decision this session uses
 

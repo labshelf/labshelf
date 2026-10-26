@@ -1,5 +1,5 @@
 /** Flattens parsed JSON into the number, string and boolean leaves that sources read by key. */
-// CONTRACT: documents/contracts/library-format.md#labshelf-valuestex
+// CONTRACT: documents/contracts/library-format.md#generated-files
 import type { ProjectSettings } from "../project/index.js";
 
 export type LeafProjectValue = number | string | boolean;

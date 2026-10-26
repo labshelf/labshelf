@@ -33,7 +33,7 @@ const LIST_ONLY = new Set<HostToUi["type"]>(["navigate", "searchTag", "reveal", 
 class DetailsViewStore extends LibraryViewStore {
   private readonly post: (message: UiToHost) => void;
   constructor(post: (message: UiToHost) => void) { super(); this.post = post; }
-  // CONTRACT: documents/contracts/details-host.md#envelope
+  // INVARIANT: the host answers folder.open by showing the folder in the paper list, never as a library message.
   override openFolder(folder: string): void { this.post({ type: "folder.open", folder }); }
 }
 

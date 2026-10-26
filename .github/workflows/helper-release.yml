@@ -192,7 +192,7 @@ jobs:
       - name: Sign latest.json
         env:
           HELPER_UPDATE_KEY: ${{ secrets.HELPER_UPDATE_KEY }}
-        run: node scripts/release/helperReleaseKey.mjs sign assets/latest.json
+        run: node tools/release/helperReleaseKey.mjs sign assets/latest.json
       - name: Write SHA256SUMS
         working-directory: assets
         run: sha256sum -- * > ../SHA256SUMS && mv ../SHA256SUMS .

@@ -11,6 +11,6 @@ if printf '%s' "$command" | grep -qiE '(pkill|killall)[^|;&]*(code|electron|chro
   deny "Stop only the PID you launched or the process with your unique --user-data-dir; never kill VS Code, Electron or Chrome by name."
 fi
 if printf '%s' "$command" | grep -qF '/Applications/Visual Studio Code.app'; then
-  deny "Run checks on a VS Code copy downloaded by @vscode/test-electron, never the installed app (documents/apps/verify.md#rules)."
+  deny "Run checks on a VS Code copy downloaded by @vscode/test-electron, never the installed app"
 fi
 exit 0

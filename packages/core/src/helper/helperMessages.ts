@@ -11,7 +11,7 @@ export const PROTOCOL_VERSION = 5;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
 export const HELPER_VERSION = "0.3.0";
 
-// CONTRACT: documents/contracts/helper.md#limits
+// CONTRACT: documents/contracts/helper.md#messages
 export const MAX_SOCKET_MESSAGE_BYTES = 16 * 1024 * 1024;
 export const MAX_OPEN_PROJECTS = 8;
 export const MAX_PROJECT_FILES = 5000;

@@ -1,5 +1,5 @@
 // Parses, edits and serializes a project's .labshelf/comments.json, keeping what it does not understand.
-// CONTRACT: documents/contracts/library-format.md#labshelfcommentsjson
+// CONTRACT: documents/contracts/library-format.md#project-folder-labshelf
 import { parseJsonObject } from "../../writing/project/index.js";
 import { isJsonObject, readThread, type Comment, type CommentThread } from "./commentThread.js";
 

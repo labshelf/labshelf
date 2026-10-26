@@ -1,5 +1,5 @@
 // Reads and writes the OpenAlex citation cache: one file per library paper and one per cited work, each with its fetch date.
-// CONTRACT: documents/contracts/library-format.md#researchopenalex
+// CONTRACT: documents/contracts/library-format.md#device-local-files
 import type { OpenAlexCitationWork } from "../registries/index.js";
 import { formatError } from "../../logging/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";

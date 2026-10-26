@@ -1,0 +1,134 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/*/*.mjs",
+        "scripts/verify/library/shoot.mjs",
+        "tools/*/*.mjs"
+      ],
+      "project": [
+        "scripts/*/*.mjs",
+        "scripts/verify/library/*.mjs",
+        "tools/*/*.mjs"
+      ],
+      "ignoreBinaries": [
+        "tsc"
+      ]
+    },
+    "packages/core": {
+      "entry": [
+        "src/bridge/node/hostEntry.ts",
+        "__tests__/**/*.ts"
+      ],
+      "ignoreBinaries": [
+        "pdflatex",
+        "pdftotext",
+        "reg"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "__tests__/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@napi-rs/canvas"
+      ]
+    },
+    "packages/vscode": {
+      "entry": [
+        "src/extension.ts",
+        "src/helperHost.ts",
+        "src/reader/webview/readerEntry.ts",
+        "src/libraryUi/webview/libraryEntry.ts",
+        "src/libraryUi/details/webview/detailsEntry.ts",
+        "src/writing/templates/webview/galleryEntry.ts",
+        "src/libraryUi/webview/sidebarEntry.ts",
+        "src/writing/search/webview/searchEntry.ts",
+        "src/writing/history/webview/historyEntry.ts",
+        "src/writing/allProjects/webview/allProjectsEntry.ts",
+        "src/library/syncGuide/webview/syncGuideEntry.ts",
+        "src/spaces/webview/researchChatEntry.ts",
+        "src/spaces/webview/spacesEntry.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "ignoreBinaries": [
+        "wait"
+      ],
+      "ignoreDependencies": [
+        "@napi-rs/canvas",
+        "pdf-lib",
+        "pdfjs-dist",
+        "tesseract.js"
+      ]
+    },
+    "packages/browser": {
+      "entry": [
+        "src/background/index.ts",
+        "src/popup/index.ts",
+        "src/options/index.ts",
+        "src/libraryPage/pageEntry.ts",
+        "src/import/offscreen.ts",
+        "src/reader/index.ts",
+        "src/ui/themeStartup.ts",
+        "src/content/searchResults.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@fontsource/*"
+      ]
+    },
+    "packages/terminal": {
+      "entry": [
+        "src/terminalEntry.ts",
+        "src/helper/helperEntry.ts",
+        "src/helperHost.ts",
+        "src/libraryUi/thumbnailWorker.ts",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "build/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "ignoreBinaries": [
+        "pdftoppm",
+        "reg.exe"
+      ],
+      "ignoreDependencies": [
+        "@napi-rs/canvas",
+        "pdfjs-dist",
+        "tesseract.js"
+      ]
+    },
+    "website": {
+      "entry": [
+        "js/main.js",
+        "src/demos/library.ts",
+        "src/demos/reader.ts",
+        "src/share.ts",
+        "build/*.mjs",
+        "tools/*.mjs",
+        "__tests__/**/*.ts"
+      ],
+      "project": [
+        "js/**/*.js",
+        "src/**/*.ts",
+        "build/*.mjs",
+        "tools/*.mjs",
+        "__tests__/**/*.ts"
+      ]
+    }
+  }
+}

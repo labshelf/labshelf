@@ -117,7 +117,7 @@ interface WritingParts {
 type WritingAdapters = Pick<HostAdapters, "paths" | "uriOf" | "fs" | "createProjectWriteTracking" | "createProjectData" | "deviceLayout" | "reader" | "pdfjs" | "convertDocument">;
 
 function registerProjectAndFigureCommands(parts: WritingParts): void {
-  const { context, controller, host, projects, figures, readingLists, listPapers, adapters: { convertDocument } } = parts;
+  const { context, controller, host, projects, readingLists, listPapers, adapters: { convertDocument } } = parts;
   registerProjectCommands({ context, host, projects });
   registerProjectItemCommands({ context, host, projects });
   registerExportCommands({ context, host, projects, ...(convertDocument && { convertDocument }) });

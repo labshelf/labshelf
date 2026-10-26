@@ -10,7 +10,6 @@ export function showPaper(ctx: UiContext, id: string): void {
   const s = ctx.store.get();
   const paper = s.papers.find((p) => p.id === id);
   if (!paper) return;
-  // CONTRACT: documents/contracts/library-ui-host.md#messages
   if (s.folder !== PAPERS_DIR && !isUnderDir(paper.path, s.folder, "/")) ctx.store.openFolder(deriveParentDir(paper.path, "/"));
   else if (!deriveListView(ctx.store.get()).rows.some((p) => p.id === id)) {
     ctx.store.set({ query: "" });

@@ -1,5 +1,5 @@
 // Stops sharing a project on this device: closes its connection, forgets its key and share id, and keeps every file.
-// CONTRACT: documents/contracts/collaboration.md#sharing-joining-and-leaving
+// CONTRACT: documents/contracts/collaboration.md#membership
 import { parseProjectFile, PROJECT_FILE, updateProjectFile, type ProjectReadContext } from "../../../writing/project/index.js";
 import { LOG_MODULE, type ShareFlowPorts } from "./sharePorts.js";
 

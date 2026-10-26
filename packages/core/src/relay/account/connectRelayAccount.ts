@@ -38,7 +38,7 @@ async function connectWith(deps: ConnectRelayAccountDeps, credential: RelayCrede
   if (!accountId) { return undefined; }
   deps.progress?.("deploying");
   const deployed = await deployRelay({ token, accountId, script: deps.script, workerName: RELAY_WORKER_NAME, logger, fetch });
-  // CONTRACT: documents/contracts/relay.md#owner-account
+  // CONTRACT: documents/contracts/relay.md#deploy
   await deps.store.save({ credential, accountId, ...deployed });
   deps.progress?.("waiting");
   await assertRelayServing({ relayUrl: deployed.relayUrl, fetch, logger, clock: deps.clock });

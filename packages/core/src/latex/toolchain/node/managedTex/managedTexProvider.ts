@@ -1,5 +1,5 @@
 // Resolves TeX as managed, then system, then missing, and installs TeX and its packages into the shared managed install.
-// CONTRACT: documents/contracts/managed-tools.md#resolution
+// CONTRACT: documents/contracts/managed-tools.md#tex-resolution
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 

@@ -12,7 +12,7 @@ import { HelperProjectError } from "../projects/index.js";
 /** The hashes of the pages last sent for one project; the next `pages` carries only the pages that differ. */
 export interface SentPages { hashes: string[]; pdfSha256?: string }
 
-// CONTRACT: documents/contracts/helper.md#limits
+// CONTRACT: documents/contracts/helper.md#messages
 const LENGTH_PREFIX_BYTES = 4;
 
 /** @throws limit when the changed pages would not fit one socket message */

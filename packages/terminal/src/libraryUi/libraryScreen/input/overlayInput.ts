@@ -3,7 +3,7 @@ import { orderFuzzy } from "@labshelf/core";
 
 import type { InputEvent } from "../../../screen/index.js";
 import { updateText, createTextInput } from "../../createTextInput.js";
-import { listHelpRows, type QuestionOverlay, type HelpOverlay, type PickerOverlay, type AskOverlay, type AskPurpose } from "../../overlays.js";
+import { listHelpRows, type QuestionOverlay, type HelpOverlay, type PickerOverlay, type AskPurpose } from "../../overlays.js";
 import type { App } from "../app.js";
 import { applyAskCompletion } from "./askCompletion.js";
 import { applyAsk } from "./applyAsk.js";

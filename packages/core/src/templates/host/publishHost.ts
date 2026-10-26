@@ -2,7 +2,7 @@
 import type { PublishDraft, PublishProject } from "../protocol/index.js";
 import type { PublishHost } from "./galleryHost.js";
 import { reportPublishFailure, ensurePublishableProject, type PublishContext, deriveDraftFingerprint } from "./publishContext.js";
-import type { PublishableProject, PublishMessage, PublishPorts } from "./publishPorts.js";
+import type { PublishableProject, PublishPorts } from "./publishPorts.js";
 import { TEMPLATES_LOG_MODULE } from "./createTemplateProject.js";
 import type { TemplateManifest } from "../templateManifest/index.js";
 import { createPublishTemplateManifest, withAuthors } from "./createTemplateManifest.js";

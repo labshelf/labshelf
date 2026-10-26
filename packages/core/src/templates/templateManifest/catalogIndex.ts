@@ -1,5 +1,5 @@
 /** Parses the Community catalog's index.json, keeping the entries that pass the manifest and path rules. */
-// CONTRACT: documents/contracts/templates.md#index
+// CONTRACT: documents/contracts/templates.md#community-catalog
 
 import { isCatalogJsonObject, parseCatalogIndexJson } from "./catalogJson.js";
 import { deriveTemplateTreeProblem } from "./templatePaths.js";

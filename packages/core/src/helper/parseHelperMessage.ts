@@ -1,5 +1,5 @@
 /** Turns an untrusted frame into a typed helper protocol message or a typed rejection, without throwing. */
-// CONTRACT: documents/contracts/helper.md#envelope
+// CONTRACT: documents/contracts/helper.md#messages
 
 import {
   PROTOCOL_VERSION,
@@ -22,7 +22,7 @@ export type MessageFor<D extends HelperDirection> = D extends "toHelper" ? ToHel
 export function parseHelperMessage<D extends HelperDirection>(raw: unknown, direction: D): HelperParseResult<MessageFor<D>> {
   if (!isBody(raw)) { return reject("malformed", "frame is not a JSON object"); }
   const { id, v, type } = raw;
-  // CONTRACT: documents/contracts/helper.md#envelope — only an `error` reply may come without an id.
+  // CONTRACT: documents/contracts/helper.md#messages — only an `error` reply may come without an id.
   const mayLackId = direction === "toPage" && type === "error";
   if (!(mayLackId && id === undefined) && (typeof id !== "string" || id === "" || id.length > MAX_ID_LENGTH)) {
     return reject("malformed", `id is not a string of 1 to ${MAX_ID_LENGTH} characters`);

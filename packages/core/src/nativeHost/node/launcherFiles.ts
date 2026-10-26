@@ -38,7 +38,7 @@ export async function writeLauncher(env: NativeHostEnv, layout: HostLayout, laun
   await writeFileAtomic(layout.launcherPath, launcherScript(env.platform, launch));
   if (posix) await fs.chmod(layout.launcherPath, 0o755);
   const { owner, nodePath, hostScript, electronRunAsNode } = launch;
-  // CONTRACT: documents/contracts/native-host.md#host-record
+  // CONTRACT: documents/contracts/native-host.md#host-record-and-refresh
   // INVARIANT: host.json describes the launcher next to it; refresh compares against it, so both are rewritten together.
   await writeFileAtomic(layout.recordPath, `${JSON.stringify({ owner, nodePath, hostScript, electronRunAsNode }, null, 2)}\n`, undefined, posix ? PRIVATE_FILE_MODE : undefined);
 }

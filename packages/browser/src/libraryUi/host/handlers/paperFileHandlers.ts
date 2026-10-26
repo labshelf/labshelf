@@ -12,7 +12,6 @@ export interface PaperFileHandlers {
   copyPath(id: string, name: string): Promise<void>;
 }
 
-// CONTRACT: documents/contracts/library-ui-host.md#rules
 // File messages name one direct entry of the paper folder, so a name that leaves it is refused.
 function isEntryName(name: string): boolean {
   return name !== "" && name !== "." && name !== ".." && !name.includes("/");

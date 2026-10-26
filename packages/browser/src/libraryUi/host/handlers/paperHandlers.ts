@@ -14,7 +14,7 @@ export async function setReadingStatus(ctx: HostContext, ids: readonly string[],
 }
 
 export async function setTags(ctx: HostContext, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
-  const { done, failed } = await ctx.mutations.editTags(deriveReferences(ctx.papers(ids)), deriveCleanTags(add), deriveCleanTags(remove));
+  const { failed } = await ctx.mutations.editTags(deriveReferences(ctx.papers(ids)), deriveCleanTags(add), deriveCleanTags(remove));
   await ctx.snapshots.refresh();
   if (failed.length) ctx.notice("error", formatKeptFieldNotice("tags", failed.length, failed[0]!.error));
 }

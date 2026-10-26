@@ -8,7 +8,7 @@
 | Id | Package | Level | Runner | Done when | OK |
 |---|---|---|---|---|---|
 | 2c.3 | Read project sources; health section; import by DOI | behaviour | implementer (opus), test first | A5 logic in tests | [ ] |
-| 2c.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 2c.4 | Check, commit | — | `pnpm gate` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## Plan-wide decisions this session uses
 

@@ -1,5 +1,5 @@
 // Regenerates a project's labshelf.bib from the keys its sources cite and loads it from the main file on the first citation.
-// CONTRACT: documents/contracts/library-format.md#labshelfbib
+// CONTRACT: documents/contracts/library-format.md#generated-files
 import { mergeGeneratedBibliography } from "../../collab/model/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";

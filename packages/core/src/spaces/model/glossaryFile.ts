@@ -1,5 +1,5 @@
 // Reads and writes glossary.json, keeping unknown keys and refusing writes over a file it could not understand.
-// CONTRACT: documents/contracts/spaces.md#glossaryjson
+// CONTRACT: documents/contracts/spaces.md#layout
 import { SPACE_FORMAT_VERSION } from "./space.js";
 import type { Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm } from "./space.js";
 import {

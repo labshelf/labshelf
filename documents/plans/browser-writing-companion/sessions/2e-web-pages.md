@@ -10,7 +10,7 @@
 | 2e.1 | "You have this paper" on PDFs | behaviour | implementer (sonnet), test first | A7 logic in tests | [ ] |
 | 2e.2 | Marks on arXiv and Semantic Scholar; "Cited in" on all three | behaviour | implementer (sonnet) | A8 fail-closed logic in tests | [ ] |
 | 2e.3 | OpenReview reviewer mode | behaviour | implementer (sonnet), test first | A9 logic in tests | [ ] |
-| 2e.4 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 2e.4 | Check, commit | — | `pnpm gate` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## Plan-wide decisions this session uses
 

@@ -1,5 +1,5 @@
 // Splits a synced JSON array into its valid entries and the raw entries it cannot read.
-// CONTRACT: documents/contracts/spaces.md#reading
+// CONTRACT: documents/contracts/spaces.md#reading-and-writing
 import { isNonEmptyString, isJsonObject } from "./fieldChecks.js";
 
 /** An entry, or the reason it is invalid. */

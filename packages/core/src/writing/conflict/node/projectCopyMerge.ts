@@ -40,7 +40,7 @@ function mergeAll(name: string, base: string | undefined, local: string, copies:
 }
 
 // INVARIANT: only a single copy supplies the ancestor from which the other device keeps editing.
-// CONTRACT: documents/contracts/sync.md#conflict-copies
+// CONTRACT: documents/contracts/library-format.md#conflict-copies
 export async function mergeProjectCopies(
   copies: ConflictCopy[], relativePath: string, store: IProjectVersionStore, logger: ILogger,
   recording: { folder: string; identity: DeviceIdentity }, selectedBase?: string,
@@ -83,7 +83,7 @@ export async function mergeProjectCopies(
   }
 }
 
-// CONTRACT: documents/contracts/sync.md#conflict-copies
+// CONTRACT: documents/contracts/library-format.md#conflict-copies
 export async function mergeProjectContentCopy(
   conflict: ConflictCopy, relativePath: string, store: IProjectVersionStore, logger: ILogger,
   recording: { folder: string; identity: DeviceIdentity }, base: string | undefined,

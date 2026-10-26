@@ -79,7 +79,7 @@ Placement follows [architecture.md](../architecture.md):
 - **browser:** wires the same adapters, plus a `chrome.tts` adapter, and stores models in the Origin Private File System.
 - **terminal:** a `say`/`espeak-ng`/Piper-CLI adapter and a plain-text translated view in the preview pane.
 
-The reader asks its host for models and cached translations through the reader-host messages, so [contracts/reader-host.md](../contracts/reader-host.md) gains those messages.
+The reader asks its host for models and cached translations through new messages in the reader protocol (core `reader/protocol`).
 
 ## Storage
 

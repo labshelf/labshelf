@@ -1,5 +1,5 @@
 // Writes a Space as space.json bytes that every app produces identically.
-// CONTRACT: documents/contracts/spaces.md#writing
+// CONTRACT: documents/contracts/spaces.md#reading-and-writing
 import { SPACE_FORMAT_VERSION } from "./space.js";
 import type { Space, SpaceDate, SpaceFolder, SpaceReference } from "./space.js";
 import { withUnknownFields } from "./json/index.js";

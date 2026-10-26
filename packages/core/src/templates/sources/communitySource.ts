@@ -1,5 +1,5 @@
 /** Lists the Community catalog's templates and downloads their files at the commit the index was built from. */
-// CONTRACT: documents/contracts/templates.md#index
+// CONTRACT: documents/contracts/templates.md#community-catalog
 
 import type { ILogger, FetchLike } from "../../ports/index.js";
 import { deriveSha256Hex } from "../../hash/index.js";

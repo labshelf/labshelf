@@ -1,5 +1,5 @@
 /** Merges one member's generated labshelf.bib into the shared one without removing what other members' libraries added. */
-// CONTRACT: documents/contracts/library-format.md#labshelfbib
+// CONTRACT: documents/contracts/library-format.md#generated-files
 
 import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, normalizeArxivIdentifier } from "../../import/index.js";
 import { parseBibEntries, extractPlainField, type BibEntry } from "../../writing/bibliography/index.js";

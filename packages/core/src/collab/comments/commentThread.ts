@@ -1,5 +1,5 @@
 // Defines a comment thread and reads one from untrusted JSON, keeping only what this version understands.
-// CONTRACT: documents/contracts/library-format.md#labshelfcommentsjson
+// CONTRACT: documents/contracts/library-format.md#project-folder-labshelf
 
 /** The text a thread is on; `start` and `end` are base64 Yjs relative positions, present only in a shared project. */
 export interface CommentAnchor {

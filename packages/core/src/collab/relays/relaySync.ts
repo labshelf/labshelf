@@ -45,7 +45,7 @@ export async function openStored(context: StoredFrameContext, docKey: string, by
 const LOG_MODULE = "collab.relay";
 export const SNAPSHOT_AFTER_PUTS = 500;
 
-// CONTRACT: documents/contracts/relay.md#clients
+// CONTRACT: documents/contracts/relay.md#client-obligations
 export function attachRelaySync(session: ShareSession, options: RelaySyncOptions): RelaySync {
   return new RelayDocSync(session, options);
 }

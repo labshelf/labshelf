@@ -1,5 +1,5 @@
 // Reads space.json text into a Space without ever throwing: broken files become unreadable, newer versions and wrong-typed keys read-only.
-// CONTRACT: documents/contracts/spaces.md#reading
+// CONTRACT: documents/contracts/spaces.md#reading-and-writing
 import {
   type SpaceReadResult,
   SPACE_DATE_KINDS,

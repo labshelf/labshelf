@@ -1,5 +1,5 @@
 // Tracks the Yjs state a relay is known to hold for a doc, and encodes what a doc holds beyond it as one update.
-// CONTRACT: documents/contracts/relay.md#clients
+// CONTRACT: documents/contracts/relay.md#client-obligations
 import * as Y from "yjs";
 
 export const createEmptyHeld = (): Y.Snapshot => Y.createSnapshot(Y.createDeleteSet(), new Map());

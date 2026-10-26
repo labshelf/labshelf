@@ -50,7 +50,7 @@ class Listeners<A extends unknown[]> {
   emit(...args: A): void { this.set.forEach((fn) => fn(...args)); }
 }
 
-// CONTRACT: documents/contracts/relay.md#clients
+// CONTRACT: documents/contracts/relay.md#client-obligations
 export function createRelayTransport(options: RelayTransportOptions): RelayTransport {
   return new RelayConnection(options);
 }

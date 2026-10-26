@@ -1,5 +1,5 @@
 // Connects this device to one shared project: stored state, the peer session over its relays, presence, blobs and the disk mirror.
-// CONTRACT: documents/contracts/collaboration.md#connection-lifecycle
+// CONTRACT: documents/contracts/collaboration.md#membership
 import type { ILogger } from "../../ports/index.js";
 import { derivePeerColour } from "../binding/index.js";
 import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../shareKey/index.js";

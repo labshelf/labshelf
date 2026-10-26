@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | 2b.1 | Panel search section | behaviour | implementer (sonnet), test first for the citation format | format tests pass | [ ] |
 | 2b.2 | Editor adapters and background relay | behaviour | implementer (opus), test first | A2, A3 logic in tests | [ ] |
-| 2b.3 | Check, commit | — | `check` on Owns, `git commit` of Owns | gate passes | [ ] |
+| 2b.3 | Check, commit | — | `pnpm gate` on Owns, `git commit` of Owns | gate passes | [ ] |
 
 ## Plan-wide decisions this session uses
 

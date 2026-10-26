@@ -1,5 +1,4 @@
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
-// CONTRACT: documents/contracts/reader-host.md#preview
 import type { ReadingStatus } from "../library/readingStatus/index.js";
 import type { CountUpTo, LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";

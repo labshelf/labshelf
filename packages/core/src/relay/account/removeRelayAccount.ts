@@ -20,7 +20,7 @@ export async function removeRelayAccount(deps: DisconnectRelayAccountDeps): Prom
   await deps.withdrawFromShares(relayUrl);
   deps.progress?.("deleting");
   await removeRelay({ token, accountId, workerName: RELAY_WORKER_NAME, kvNamespaceId, logger: deps.logger, fetch: deps.fetch });
-  // CONTRACT: documents/contracts/relay.md#owner-account
+  // CONTRACT: documents/contracts/relay.md#deploy
   await deps.store.forget();
   await deps.logger.log("INFO", RELAY_ACCOUNT_LOG_MODULE, "Disconnected Cloudflare", { accountId, relayUrl });
   return { accountId, relayUrl };

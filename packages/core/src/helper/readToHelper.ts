@@ -1,5 +1,5 @@
 /** Validates the body of a message an extension page sends to LabShelf Helper. */
-// CONTRACT: documents/contracts/helper.md#page-to-helper
+// CONTRACT: documents/contracts/helper.md#messages
 
 import { COMPILE_MODES, MAX_EDIT_CHANGES, type TextChange, type ToHelperMessage } from "./helperMessages.js";
 import { TEX_INSTALL_KINDS } from "../latex/index.js";

@@ -1,5 +1,5 @@
 /** Validates the body of a message LabShelf Helper sends to an extension page. */
-// CONTRACT: documents/contracts/helper.md#helper-to-page
+// CONTRACT: documents/contracts/helper.md#messages
 
 import type { BuildProblemKind, LocatedProblem } from "../latex/index.js";
 import {

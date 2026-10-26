@@ -21,7 +21,7 @@ function isCredential(value: unknown): value is RelayCredential {
   return record.kind === "oauth" || (record.kind === "token" && typeof record.token === "string");
 }
 
-// CONTRACT: documents/contracts/relay.md#owner-account
+// CONTRACT: documents/contracts/relay.md#deploy
 export function parseRelayAccount(text: string): RelayAccount | undefined {
   let value: unknown;
   try { value = JSON.parse(text); } catch { return undefined; }

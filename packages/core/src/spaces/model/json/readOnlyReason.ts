@@ -1,5 +1,5 @@
 // Gives the reason a space.json or glossary.json must not be written: a version it cannot write or a known key of the wrong type.
-// CONTRACT: documents/contracts/spaces.md#reading
+// CONTRACT: documents/contracts/spaces.md#reading-and-writing
 import { SPACE_FORMAT_VERSION } from "../space.js";
 import { isOptional, isString } from "./fieldChecks.js";
 

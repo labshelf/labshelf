@@ -1,5 +1,5 @@
 // Declares the in-memory shape of a Space and its glossary, as read from space.json and glossary.json.
-// CONTRACT: documents/contracts/spaces.md#spacejson
+// CONTRACT: documents/contracts/spaces.md#layout
 
 /** The only file version this code writes; a file with a higher version is read-only. */
 export const SPACE_FORMAT_VERSION = 1;

@@ -2,7 +2,7 @@
 import { parseRelayAccount } from "../../../src/relay/index";
 import { accountWorld, connectedAccount } from "./fakeRelayAccount";
 
-// CONTRACT: documents/contracts/relay.md#owner-account
+// CONTRACT: documents/contracts/relay.md#deploy
 const STORED = '{"credential":{"kind":"token","token":"tok-SECRET"},"accountId":"acc-1","relayUrl":"https://labshelf-relay.lab.workers.dev",'
   + '"ownerSecret":"owner-SECRET","kvNamespaceId":"kv-1"}';
 

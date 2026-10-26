@@ -1,5 +1,5 @@
 /** Builds the text of a catalog's index.json from its template folders, refusing a catalog with any problem. */
-// CONTRACT: documents/contracts/templates.md#index
+// CONTRACT: documents/contracts/templates.md#community-catalog
 
 import { loadCatalog } from "./loadCatalog.js";
 import { readDownloadCounts } from "./readDownloadCounts.js";

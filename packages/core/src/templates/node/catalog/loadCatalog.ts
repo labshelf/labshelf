@@ -1,5 +1,5 @@
 /** Reads every template folder of a catalog checkout into index entries, collecting a problem for each folder that breaks the rules. */
-// CONTRACT: documents/contracts/templates.md#index
+// CONTRACT: documents/contracts/templates.md#community-catalog
 
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";

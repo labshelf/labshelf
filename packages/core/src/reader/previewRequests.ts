@@ -1,5 +1,4 @@
 /** Declares and validates the requests a preview reader sends its host. */
-// CONTRACT: documents/contracts/reader-host.md#preview
 import { LATEX_ENGINES, type CountUpTo, type LatexEngine } from "../writing/project/index.js";
 import { AUTO_COMPILE_MODES, type BuildSchedule } from "../writing/build/index.js";
 import { isCitationQuery, isPagePoint, type CitationQuery, type PagePoint } from "./previewProtocol.js";
