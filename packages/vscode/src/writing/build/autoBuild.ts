@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { AUTO_COMPILE_MODES, AUTO_SAVE_DELAY_MS, buildRootOf, formatError, type BuildSchedule, type ILogger } from "@labshelf/core";
 import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
+import { readActiveProject } from "./builds.js";
 import type { FindIncludeOnly } from "./includeOnly.js";
 
 const MODULE = "writing/build";
@@ -210,8 +211,7 @@ export function registerLatexWorkshopNotice(deps: NoticeDeps): void {
   const check = (): void => {
     if (deps.context.workspaceState.get<boolean>(SHOWN_KEY)) { return; }
     if (!vscode.extensions.getExtension(LATEX_WORKSHOP_ID)) { return; }
-    const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? findOwningProject(deps.projects, file.fsPath) : undefined;
+    const project = readActiveProject(deps.projects);
     if (project?.settings.format === "latex") { void showNotice(deps); }
   };
   deps.context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(check));

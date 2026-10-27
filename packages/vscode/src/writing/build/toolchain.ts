@@ -5,6 +5,7 @@ import { LATEX_ENGINES, formatEngineLabel, type LatexEngine, type TexSetupAsk } 
 import { runSafely } from "../../command/index.js";
 import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
+import { readActiveProject } from "./builds.js";
 
 const LIGHT = "Install Light";
 const FULL = "Install Full";
@@ -96,8 +97,7 @@ export function registerCompilerStatusBar(context: vscode.ExtensionContext, proj
   item.command = PICK_COMPILER_COMMAND;
 
   const update = (): void => {
-    const file = vscode.window.activeTextEditor?.document.uri;
-    const project = file?.scheme === "file" ? findOwningProject(projects, file.fsPath) : undefined;
+    const project = readActiveProject(projects);
     if (project?.settings.format !== "latex") {
       item.hide();
       return;

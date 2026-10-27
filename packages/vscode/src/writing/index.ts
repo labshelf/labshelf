@@ -4,6 +4,7 @@ export { registerBuildRootStatusBar } from "./buildRootStatusBar.js";
 export { registerAddExistingFolder, registerProjectCommands } from "./projectCommands.js";
 export { copyProjectEntry, registerProjectItemCommands } from "./projectItemCommands.js";
 export { findOwningProject } from "./buildRootDocument.js";
+export { readActiveProject } from "./build/index.js";
 export type { ReadyProject } from "./buildRootDocument.js";
 export { WritingProjects } from "./session/index.js";
 export type { WritingHost, WritingSession } from "./session/index.js";

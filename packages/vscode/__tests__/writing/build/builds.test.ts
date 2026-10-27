@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { LatexEngine } from "@labshelf/core";
-import { BUILD_COMMAND, BuildOutcomes, buildOptions, registerBuildCommand, setAutoCompile, setEngine, setHaltOnError } from "../../../src/writing/build/builds";
+import { BUILD_COMMAND, BuildOutcomes, buildOptions, readActiveProject, registerBuildCommand, setAutoCompile, setEngine, setHaltOnError } from "../../../src/writing/build/builds";
 import { writeEngine } from "../../../src/writing/build/toolchain";
 import type { ReadyProject } from "../../../src/writing/buildRootDocument";
 import { commandHandler, fakeHost, fakeLogger, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
@@ -117,6 +117,41 @@ describe("BuildOutcomes", () => {
       expect(changed).not.toHaveBeenCalled();
       outcomes.finished(project, "main.tex", { status: "failed", problems: [] }, "focus");
       expect(changed).toHaveBeenCalledWith("/lib/projects/a");
+    });
+  });
+});
+
+// Tests the lookup of the project that owns the file open in the active editor.
+describe("readActiveProject", () => {
+  const projects = fakeProjects([readyEntry("/p/outer"), readyEntry("/p/outer/inner"), readyEntry("/p/other")]);
+
+  beforeEach(() => { (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined; });
+
+  describe("readActiveProject", () => {
+    it("finds nothing without an active editor", () => {
+      expect(readActiveProject(projects)).toBeUndefined();
+    });
+
+    it("finds nothing for a document that is not a file", () => {
+      openInEditor("/p/other/main.tex", "untitled");
+      expect(readActiveProject(projects)).toBeUndefined();
+    });
+
+    it("finds nothing for a file outside every project", () => {
+      openInEditor("/elsewhere/a.tex");
+      expect(readActiveProject(projects)).toBeUndefined();
+    });
+
+    it("finds the project that contains the file", () => {
+      openInEditor("/p/other/chapters/one.tex");
+      expect(readActiveProject(projects)?.folder).toBe("/p/other");
+    });
+
+    it("prefers the deepest project when projects are nested", () => {
+      openInEditor("/p/outer/inner/main.tex");
+      expect(readActiveProject(projects)?.folder).toBe("/p/outer/inner");
+      openInEditor("/p/outer/main.tex");
+      expect(readActiveProject(projects)?.folder).toBe("/p/outer");
     });
   });
 });

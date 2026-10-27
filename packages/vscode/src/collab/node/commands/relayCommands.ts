@@ -10,7 +10,7 @@ import {
 import { CONNECT_RELAY_COMMAND } from "../../../relay/node/index.js";
 import { formatProjectName, reportFailure, showRefusedOffer, type CollabHost } from "../collabHost.js";
 import * as path from "node:path";
-import { findOwningProject, type WritingProjects } from "../../../writing/index.js";
+import { readActiveProject, type WritingProjects } from "../../../writing/index.js";
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 /** A project folder path (from a script or another command) or a project entry (from a view). */
@@ -22,8 +22,7 @@ async function pickProject(
   const ready = projects.list().filter((entry): entry is ReadyProject => entry.kind === "ready" && filter(entry));
   if (typeof target === "string") { return ready.find((entry) => entry.folder === path.resolve(target)); }
   if (target) { return ready.find((entry) => entry.folder === target.folder); }
-  const file = vscode.window.activeTextEditor?.document.uri;
-  const active = file?.scheme === "file" ? findOwningProject(projects, file.fsPath) : undefined;
+  const active = readActiveProject(projects);
   if (active && filter(active)) { return active; }
   if (ready.length === 0) { return undefined; }
   const picked = await vscode.window.showQuickPick(
