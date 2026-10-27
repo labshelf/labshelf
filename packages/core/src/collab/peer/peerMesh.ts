@@ -2,7 +2,7 @@
 import { bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { openFrame, sealFrame, type DerivedShareKey } from "../invite/index.js";
-import type { PeerId, PeerTransport } from "../transport/index.js";
+import type { PeerId, PeerTransport } from "../relays/index.js";
 import {
   createDocIdCache, createEpochSource, decodeAck, decodeEnvelope, DOC_ID_BYTES, encodeAck, encodeEnvelope, MESSAGE_KIND, openDocFrame,
   ReliableConnection, sealDocFrame,

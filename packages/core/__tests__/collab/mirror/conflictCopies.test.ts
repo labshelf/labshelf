@@ -2,7 +2,7 @@
 import { readShareIndexDocFiles } from "../../../src/collab/doc/index";
 import type { ConflictCopy } from "../../../src/library/conflicts/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
-import { FakeRelay } from "../transport/relay/fakeRelay";
+import { FakeRelay } from "../relays/fakeRelay";
 import { memoryFiles } from "./mirrorFiles";
 import { openMirror, readFile, writeFile, type MirrorFixture } from "./mirrorFixture";
 

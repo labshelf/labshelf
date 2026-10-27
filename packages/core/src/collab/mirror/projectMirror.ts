@@ -23,7 +23,7 @@ import {
   type ShareBlobExchange,
   type ShareSession,
 } from "../doc/index.js";
-import type { CollabStore } from "../deviceState/index.js";
+import type { CollabStore } from "../session/index.js";
 import { DISK_ORIGIN, LOG_MODULE, reconcileShareBlob, reconcileUntracked, writeMirrored, type MergeText, type MirrorContext } from "./fileReconcile.js";
 import { MirrorLostError } from "./projectLease.js";
 import { MirrorProjectDirUnavailable, type MirrorFileRead, type MirrorFileSystem } from "./mirrorFileSystem.js";

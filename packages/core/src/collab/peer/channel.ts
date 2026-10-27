@@ -2,7 +2,7 @@
 // and the reliable and doc-bound messages they carry.
 import { bytesToHex } from "../../encoding/index.js";
 import { openFrame, sealFrame, type DerivedShareKey, type FrameError } from "../invite/index.js";
-import type { PeerId } from "../transport/index.js";
+import type { PeerId } from "../relays/index.js";
 
 export type SessionPhase = "open" | "closed";
 

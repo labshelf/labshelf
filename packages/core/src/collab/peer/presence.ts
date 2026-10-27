@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate, removeAwarenessStates } from "y-protocols/awareness";
 import type { ILogger } from "../../ports/index.js";
 import type { DerivedShareKey } from "../invite/index.js";
-import type { PeerId } from "../transport/index.js";
+import type { PeerId } from "../relays/index.js";
 import type { ShareSession } from "../doc/index.js";
 import { CHANNEL_KIND, type Channel } from "./channel.js";
 

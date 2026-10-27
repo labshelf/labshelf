@@ -1,11 +1,11 @@
-import type { RelayAccount } from "../../src/relay/account/index";
+import type { RelayAccount } from "../../src/relay/index";
 import { encodeRelayBody } from "../../src/relay/index";
 import { connectShare, type MirrorFactory, type ShareConnection } from "../../src/collab/session/index";
 import type { ShareFlowPorts, StoredInvite } from "../../src/share/index";
 import { parseProjectFile, type ProjectEntry } from "../../src/writing/project/index";
 import { LIB, readText } from "../support/memoryProjectCatalog";
 import { mirrorFactory, Network, newDevice, type Device } from "../collab/session/connectionTestbed";
-import { memoryStorage, type MemoryStorage } from "../collab/deviceState/memoryStorage";
+import { memoryStorage, type MemoryStorage } from "../collab/session/memoryStorage";
 import { ONE } from "../collab/relays/relayGroup";
 
 export interface WorkflowDevice extends Device {

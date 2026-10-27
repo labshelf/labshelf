@@ -1,15 +1,20 @@
-/** Exports the relay list of a share and the choice of the one relay its clients use, with failover between them. */
-export { addRelay, readShareIndexDocRelays, readRelayList, removeOwnRelay, type RelayEntry } from "./readRelayList.js";
-export { FAILURES_BEFORE_HOLD, RELAY_DOWN_HOLD_MS } from "./relayHolds.js";
-export { createRelayPresence, type RelayPresence } from "./createRelayPresence.js";
-export { PROBE_TIMEOUT_MS, createRelayProbe, type RelayProbeOptions, type RelayVerdict } from "./createRelayProbe.js";
+/** Exports the relay list of a share, the choice of the one relay its clients use with failover between them, and the transport shares sync over. */
+export { addRelay, readShareIndexDocRelays, readRelayList, removeOwnRelay, type RelayEntry } from "./relayList.js";
+export { FAILURES_BEFORE_HOLD, RELAY_DOWN_HOLD_MS, createRelayPresence, type RelayPresence } from "./relayPresence.js";
 export {
-  createRelaySelector, type RelayFailure, type RelaySelector, type RelaySelectorOptions,
+  PROBE_TIMEOUT_MS, createRelayProbe, createRelayWatch,
+  type RelayProbeOptions, type RelayVerdict, type RelayWatch, type RelayWatchOptions,
+} from "./relayWatch.js";
+export {
+  createRelaySelector, startRelaySelectionFollow,
+  type RelayFailure, type RelayFollower, type RelayFollowOptions, type RelaySelector, type RelaySelectorOptions,
 } from "./relaySelector.js";
-export { createSwitchableTransport, type SwitchableTransport } from "./switchableTransport.js";
-export { createRelayWatch, type RelayWatch, type RelayWatchOptions } from "./relayWatch.js";
-export { startRelaySelectionFollow, type RelayFollower, type RelayFollowOptions } from "./startRelaySelectionFollow.js";
-export { attachRelaySync, SNAPSHOT_AFTER_PUTS } from "./relaySync.js";
-export { PUT_INTERVAL_MS } from "./relayDocPuts.js";
-export type { RelaySync, RelaySyncOptions } from "./relaySyncOptions.js";
-export { createMemoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
+export { attachRelaySync, SNAPSHOT_AFTER_PUTS, type RelaySync, type RelaySyncOptions } from "./relaySync.js";
+export { PUT_INTERVAL_MS, createMemoryCursorStore, type RelayCursorStore } from "./relayDocLane.js";
+export {
+  addRelayShare, createGlobalRelayConnection, createRelayTransport, createSwitchableTransport, fetchTicket,
+  RECONNECT_FIRST_MS, RECONNECT_MAX_MS, RELAY_AWARENESS_INTERVAL_MS, RelayRequestError,
+  type ClaimRequestOptions, type PeerId, type PeerTransport, type RelayConnectionPort, type RelayConnectionPortFactory,
+  type RelayStore, type RelayStoreAnswer, type RelayStoreRequest, type RelayTransport, type RelayTransportOptions,
+  type SwitchableTransport, type TicketRequestOptions,
+} from "./relayTransport.js";

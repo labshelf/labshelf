@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { findProjectConflict, resolveConflictDismissalFile, resolveProjectConflictCopy } from '../../../../../src/writing/conflict/node/index';
 import { readConflictDismissals } from '../../../../../src/library/conflicts/index';
-import { createNodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
+import { createNodeCollabStorage } from '../../../../../src/collab/node/index';
 import { FileProjectVersionStore } from '../../../../../src/writing/conflict/index';
 import { deriveTextSha256Hex } from '../../../../../src/hash/index';
 import { NodeLibraryFileSystem, createDeviceLocalLayout } from '../../../../../src/library/node/index';

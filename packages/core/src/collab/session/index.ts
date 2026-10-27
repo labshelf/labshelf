@@ -1,8 +1,14 @@
 /** Exports the connection of this device to a shared project: its stored state, relays, blobs and disk mirror, opened and closed in one order. */
-export type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
-export { createLeasedMirrorFactory, type LeasedMirrorOptions } from "./leasedMirror.js";
-export { ensureSharedProject, type PlacedProject, type ShareProjects, type ShareStart } from "./ensureSharedProject.js";
-export { ensureShareIndexDocReady, UnknownShareKindError } from "./shareIndexDocReady.js";
-export { connectShare, type ShareConnection, type ShareConnectionOptions, type ShareConnectionState } from "./shareConnection.js";
-export { startShareRelays, type RelayNetwork, type ShareRelays, type ShareRelayState } from "./shareRelays.js";
-export { applyRestoredFiles, type ApplyRestoredFilesOptions } from "./applyRestoredFiles.js";
+export {
+  connectShare, createLeasedMirrorFactory, startShareRelays,
+  type ConnectionMirror, type LeasedMirrorOptions, type MirrorFactory, type MirrorInput, type MirrorStart, type MirrorState,
+  type RelayNetwork, type ShareConnection, type ShareConnectionOptions, type ShareConnectionState, type ShareRelays, type ShareRelayState,
+} from "./shareConnection.js";
+export {
+  applyRestoredFiles, ensureSharedProject, ensureShareIndexDocReady, UnknownShareKindError,
+  type ApplyRestoredFilesOptions, type PlacedProject, type ShareProjects, type ShareStart,
+} from "./sharedProject.js";
+export {
+  loadVersionHistory, openCollabStore, ShareBlobCache, StoredMap, VERSIONS_PER_PATH,
+  type CollabDeviceStateStorage, type CollabStore, type CollabStoreOptions, type DeviceStateMapName, type StoredDoc, type StoredVersion,
+} from "./collabStore.js";

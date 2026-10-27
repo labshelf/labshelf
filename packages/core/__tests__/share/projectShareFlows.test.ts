@@ -6,7 +6,7 @@ import {
 } from "../../src/share/index";
 import { LIB, memoryCatalog, readText, writeTree } from "../support/memoryProjectCatalog";
 import { formatInvite, parseInvite } from "../../src/collab/invite/index";
-import { runFor } from "../collab/transport/relay/fakeRelay";
+import { runFor } from "../collab/relays/fakeRelay";
 import { FOLDER, Network, writeProject } from "../collab/session/connectionTestbed";
 import { ONE, TWO } from "../collab/relays/relayGroup";
 import { closeAll, workflowDevice, type WorkflowDevice } from "./workflowTestbed";

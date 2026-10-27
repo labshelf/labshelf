@@ -17,7 +17,7 @@ import {
   type ShareSession,
   type SharedSettings,
 } from "../doc/index.js";
-import type { CollabStore } from "../deviceState/index.js";
+import type { CollabStore } from "../session/index.js";
 import type { MirrorFileRead, MirrorFileSystem } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
 

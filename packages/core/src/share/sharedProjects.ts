@@ -3,12 +3,11 @@
  * shared projects.
  */
 import type { ILogger } from "../ports/index.js";
-import type { RelayAccount } from "../relay/account/index.js";
+import type { RelayAccount } from "../relay/index.js";
 import type { ProjectEntry, ProjectReadContext } from "../writing/project/index.js";
 import { type Invite, deriveRelayToken, formatInvite } from "../collab/invite/index.js";
 import type { ShareConnection, ShareStart } from "../collab/session/index.js";
-import { readRelayList, addRelay, removeOwnRelay } from "../collab/relays/index.js";
-import { addRelayShare } from "../collab/transport/index.js";
+import { addRelay, addRelayShare, readRelayList, removeOwnRelay } from "../collab/relays/index.js";
 
 /** What a device keeps of a share: its key and the relays to try while the index lists none. */
 export type StoredInvite = Pick<Invite, "shareId" | "shareKey" | "relays">;

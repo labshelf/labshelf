@@ -3,7 +3,7 @@ import * as Y from "yjs";
 import { deriveContentShareKey, sealFrame } from "../../../src/collab/invite/index";
 import { readShareIndexDocFiles, createShareSession, type ShareSession, INDEX_DOC_KEY } from "../../../src/collab/doc/index";
 import { deriveDocId, encodeEnvelope, MESSAGE_KIND } from "../../../src/collab/peer/index";
-import type { PeerTransport } from "../../../src/collab/transport/index";
+import type { PeerTransport } from "../../../src/collab/relays/index";
 import type { ILogger } from "../../../src/ports/index";
 import { FakeClock, FakeNetwork, runUntil } from "../peer/fakeNetwork";
 

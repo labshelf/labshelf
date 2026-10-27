@@ -1,8 +1,10 @@
 // Keeps a share session's docs on its relay: batched encrypted puts, catch-up from stored rows, and snapshots that compact them.
 import * as Y from "yjs";
 import { bytesToHex } from "../../encoding/index.js";
-import type { RelayStoreAnswer } from "../transport/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { RELAY_ERROR_CODE } from "../../relay/index.js";
 import { INDEX_DOC_KEY, type ShareSession } from "../doc/index.js";
+import type { DerivedShareKey } from "../invite/index.js";
 import {
   createDocIdCache,
   MESSAGE_KIND,
@@ -11,14 +13,31 @@ import {
   encodeEnvelope,
   openDocFrame,
   sealDocFrame,
+  type SessionScheduler,
 } from "../peer/index.js";
-import { createMemoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
-import { RELAY_ERROR_CODE } from "../../relay/index.js";
-import { RelayDocLane } from "./relayDocLane.js";
-import { RelayDocPuts } from "./relayDocPuts.js";
-import { decodeHeld, createEmptyHeld } from "./relayHeldState.js";
-import type { RelaySync, RelaySyncOptions } from "./relaySyncOptions.js";
-import type { DerivedShareKey } from "../invite/index.js";
+import {
+  createEmptyHeld, createMemoryCursorStore, decodeHeld, RelayDocLane, RelayDocPuts, type RelayCursorStore,
+} from "./relayDocLane.js";
+import type { RelayStore, RelayStoreAnswer } from "./relayTransport.js";
+
+export interface RelaySyncOptions {
+  relay: RelayStore;
+  shareId: string;
+  contentKey: DerivedShareKey;
+  logger: ILogger;
+  scheduler?: SessionScheduler;
+  /** Defaults to memory, so every app start catches up from cursor 0. */
+  cursors?: RelayCursorStore;
+  /** True on the one connected client that writes snapshots, the one with the lowest awareness id, so the relay does not refuse copies at the same cursor. */
+  isSnapshotWriter: () => boolean;
+}
+
+export interface RelaySync {
+  /** Puts every pending update now. */
+  flush(): Promise<void>;
+  /** Flushes and stops; call it before closing the session, whose transport closes the socket. */
+  close(): Promise<void>;
+}
 
 // CONTRACT: documents/contracts/relay.md#client-obligations
 const STORED_KIND_NAME: Record<number, string> = { [MESSAGE_KIND.update]: "update", [MESSAGE_KIND.syncStep2]: "syncStep2" };

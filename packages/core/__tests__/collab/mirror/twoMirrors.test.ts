@@ -6,7 +6,7 @@ import { joinShare, startShare } from "../../../src/share/index";
 import { createNodeProjectCatalogCompositionRoot } from "../../../src/writing/project/node/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
 import { fakeLogger, SHARE_ID } from "../doc/testSession";
-import { FakeRelay } from "../transport/relay/fakeRelay";
+import { FakeRelay } from "../relays/fakeRelay";
 import { tempDir } from "./mirrorFiles";
 import { openMirror, type MirrorFixture } from "./mirrorFixture";
 

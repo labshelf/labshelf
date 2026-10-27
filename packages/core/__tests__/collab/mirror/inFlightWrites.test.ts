@@ -4,7 +4,7 @@ import { mergeText } from "../../../src/writing/conflict/node/index";
 import { deriveSha256Hex } from "../../../src/hash/index";
 import { readFileText, readShareIndexDocFiles, addWrittenVersion, setFileText } from "../../../src/collab/doc/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";
-import { FakeRelay, runFor } from "../transport/relay/fakeRelay";
+import { FakeRelay, runFor } from "../relays/fakeRelay";
 import { memoryFiles } from "./mirrorFiles";
 import { openMirror, readFile, writeFile, type MirrorFixture } from "./mirrorFixture";
 

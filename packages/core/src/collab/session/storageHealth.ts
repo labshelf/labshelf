@@ -1,5 +1,5 @@
 // Tells whether a share's device-local state is being stored, by watching every write its storage port makes.
-import type { CollabDeviceStateStorage } from "../deviceState/index.js";
+import type { CollabDeviceStateStorage } from "./collabStore.js";
 import { createListeners } from "../../events/index.js";
 import { formatError } from "../../errors/index.js";
 

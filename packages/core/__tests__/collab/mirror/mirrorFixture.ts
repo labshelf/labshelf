@@ -3,14 +3,14 @@ import { createShareIndexDoc, attachShareBlobs, type ShareBlobExchange, createSh
 import { startProjectMirror, type MirrorFileSystem, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
 import { createNodeCollabStorage } from "../../../src/collab/node/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
-import { openCollabStore, type CollabStore } from "../../../src/collab/deviceState/index";
+import { openCollabStore, type CollabStore } from "../../../src/collab/session/index";
 import { deriveRelayToken } from "../../../src/collab/invite/index";
-import { attachRelaySync } from "../../../src/collab/relays/relaySync";
-import { createRelayTransport, type PeerTransport } from "../../../src/collab/transport/index";
+import { attachRelaySync } from "../../../src/collab/relays/index";
+import { createRelayTransport, type PeerTransport } from "../../../src/collab/relays/index";
 import { FakeClock, FakeNetwork } from "../peer/fakeNetwork";
 import { contentKey, fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../doc/testSession";
-import type { FakeRelay } from "../transport/relay/fakeRelay";
-import { RELAY_URL } from "../transport/relay/relayClient";
+import type { FakeRelay } from "../relays/fakeRelay";
+import { RELAY_URL } from "../relays/relayClient";
 import { nodeFiles, tempDir, type MirrorFiles } from "./mirrorFiles";
 
 export const STABLE_MS = 40;

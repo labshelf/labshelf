@@ -2,7 +2,7 @@
 import * as Y from "yjs";
 import type { ILogger } from "../../ports/index.js";
 import type { DerivedShareKey } from "../invite/index.js";
-import type { PeerId, PeerTransport } from "../transport/index.js";
+import type { PeerId, PeerTransport } from "../relays/index.js";
 import { MESSAGE_KIND, createSecureMesh, startInterval, systemScheduler, type Channel, type ChannelSpec, type PeerMesh, type SessionScheduler, type SessionPhase } from "../peer/index.js";
 import { readShareIndexDocFiles } from "./shareIndexDoc.js";
 
