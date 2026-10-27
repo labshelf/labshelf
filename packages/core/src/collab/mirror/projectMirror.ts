@@ -2,6 +2,7 @@
 import type { ConflictCopy } from "../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type * as Y from "yjs";
+import { deriveTextSha256Hex } from "../../hash/index.js";
 import { COMMENTS_PATH, renderCommentsFile } from "../comments/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
@@ -24,7 +25,7 @@ import type { ShareBlobExchange, ShareSession } from "../doc/index.js";
 import type { CollabStore } from "../deviceState/index.js";
 import type { MirrorProjectDirUnavailable, MirrorFileSystem, MirrorFileRead } from "./fileSystem/index.js";
 import { createMirrorLifecycle, withGatedFileSystem, withGatedWriteRecords } from "./mirrorLifecycle.js";
-import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext, deriveMirrorHash, writeMirrored } from "./mirrorContext.js";
+import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext, writeMirrored } from "./mirrorContext.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
 import { reconcileShareBlob } from "./reconcileShareBlob.js";
 import { reconcileText } from "./textMirror.js";
@@ -55,7 +56,7 @@ async function reconcileSettings(context: MirrorContext, disk: MirrorFileRead, s
     return "done";
   }
   const yaml = new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes);
-  const diskHash = await deriveMirrorHash(yaml);
+  const diskHash = await deriveTextSha256Hex(yaml);
   const known = store.known.get(PROJECT_FILE);
   const map = readShareIndexDocSettings(session.index);
   try {

@@ -1,5 +1,5 @@
 /** Pins the base64 codec: lossless round trips and refusal of anything but canonical padded base64. */
-import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../src/encoding/index";
+import { base64ToBytes, bytesToBase64, bytesToBinary, isCanonicalBase64 } from "../../src/encoding/index";
 
 describe("base64", () => {
   it("round-trips bytes, including input larger than one conversion slice", () => {
@@ -24,5 +24,16 @@ describe("base64", () => {
 
   it("accepts canonical padded base64", () => {
     expect(["", "AA==", "AAA=", "AAAA", "+/8="].every(isCanonicalBase64)).toBe(true);
+  });
+});
+
+describe("bytesToBinary", () => {
+  it("gives one char code per byte, for empty input and input larger than one slice", () => {
+    expect(bytesToBinary(new Uint8Array())).toBe("");
+    const bytes = Uint8Array.from({ length: 100_000 }, (_, i) => (i * 31) % 256);
+    const binary = bytesToBinary(bytes);
+    expect(binary).toBe(Buffer.from(bytes).toString("latin1"));
+    expect(bytesToBase64(bytes)).toBe(Buffer.from(bytes).toString("base64"));
+    expect(bytesToBase64(new Uint8Array())).toBe("");
   });
 });

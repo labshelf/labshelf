@@ -1,5 +1,5 @@
 // Turns a folder of papers into a share: a fresh id and link key, the sealed manifest and the distinct encrypted PDF parts.
-import { bytesToHex } from "../encoding/index.js";
+import { randomHex } from "../encoding/index.js";
 import type { Annotation } from "../model/index.js";
 import { BLOB_OVERHEAD_BYTES, sealShareBlob, sealShareManifest } from "./shareCipher.js";
 import { SHARE_LINK_KEY_BYTES } from "./shareLink.js";
@@ -67,7 +67,7 @@ export async function buildShare({ folderName, papers, withAnnotations, partLimi
     if (input.pdf && input.pdf.length > 0) { paper.pdf = await sharePdf(input.pdf, partLimits, blobs); }
     shared.push(paper);
   }
-  const shareId = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+  const shareId = randomHex(16);
   const key = crypto.getRandomValues(new Uint8Array(SHARE_LINK_KEY_BYTES));
   const manifest: ShareManifest = { v: SHARE_MANIFEST_VERSION, folder: folderName, papers: shared };
   return { shareId, key, manifest, sealedManifest: await sealShareManifest(key, shareId, manifest), blobs: [...blobs.values()] };

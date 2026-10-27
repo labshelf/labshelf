@@ -1,5 +1,6 @@
 // Recognises project text copies from provider names, write history or shared lines.
-import { isMergeableTextFile, deriveTextHash } from '../../writing/conflict/index.js';
+import { isMergeableTextFile } from '../../writing/conflict/index.js';
+import { deriveTextSha256Hex } from '../../hash/index.js';
 import { deriveLineSimilarity } from '../../writing/text/index.js';
 import type { WriteRecords } from '../writeRecords/index.js';
 import type { ConflictCopy } from './conflictCopy.js';
@@ -27,7 +28,7 @@ const textFile = ({ path, text }: ProjectConflictText) => isEligibleProjectConfl
 
 export async function detectProjectConflict(input: ProjectConflictInput): Promise<ConflictCopy | undefined> {
   if (!isEligibleProjectConflictPath(input.path)) return undefined;
-  const hash = await deriveTextHash(input.text);
+  const hash = await deriveTextSha256Hex(input.text);
   if (input.dismissed?.some(entry => entry.path === input.path && entry.hash === hash)) return undefined;
   const parsed = parseConflictName(nameOf(input.path));
   const conflict = (original: string, match: 'name' | 'record' | 'similar'): ConflictCopy => ({

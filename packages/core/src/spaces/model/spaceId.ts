@@ -1,5 +1,6 @@
 // Makes the ids of a Space and of the folders, dates and terms inside its files.
 // CONTRACT: documents/contracts/spaces.md#ids
+import { fillRandom, randomHex } from "../../encoding/index.js";
 
 const MAX_SPACE_ID_LENGTH = 48;
 const EMPTY_SPACE_ID = "space";
@@ -22,14 +23,11 @@ export function deriveSpaceId(name: string, existing: ReadonlySet<string>): stri
 }
 
 type FillRandom = (bytes: Uint8Array<ArrayBuffer>) => void;
-const cryptoFill: FillRandom = (bytes) => { crypto.getRandomValues(bytes); };
 
 /** A random 8-hex-character id not in `existing`; `fill` is injectable so tests can force a collision. */
-export function createEntryId(existing: ReadonlySet<string>, fill: FillRandom = cryptoFill): string {
+export function createEntryId(existing: ReadonlySet<string>, fill: FillRandom = fillRandom): string {
   for (;;) {
-    const bytes = new Uint8Array(4);
-    fill(bytes);
-    const id = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const id = randomHex(4, (bytes) => { fill(bytes); return bytes; });
     if (!existing.has(id)) { return id; }
   }
 }

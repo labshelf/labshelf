@@ -22,10 +22,10 @@ A subfolder below a domain is a package: its `index.ts` is the public API and th
 Generic helpers live in a core module named after their subject and are imported, never rewritten in a private copy; `pnpm lint:modules` fails a private function named like one of their exports. Read the module's `index.ts` before writing a helper.
 
 - `packages/core/src/async`: debouncers, sleep, deadlines.
-- `packages/core/src/encoding`: bytes, base64, base64url, hex.
+- `packages/core/src/encoding`: base64, base64url, hex (strict decode), byte comparison and joining, random bytes and random hex, fixed-length key decoding.
 - `packages/core/src/errors`: formatError, describeError, toError, errorCode, isAbortError for a thrown unknown.
 - `packages/core/src/guards`: narrowing predicates over unknown for parsers.
-- `packages/core/src/hash`: SHA-256 content hashes.
+- `packages/core/src/hash`: SHA-256 hex of bytes or text.
 - `packages/core/src/json`: parseJsonObject, JSON text to a plain object or undefined.
 - `packages/core/src/path`: path math over the `PathOps` port, `LibraryPath` and `ProjectPath`.
 - `packages/core/src/url`: parse a URL without throwing, host and origin of a URL string.

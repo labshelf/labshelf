@@ -1,6 +1,6 @@
 // Pins project copy detection independently of provider naming conventions.
 import { detectProjectConflict } from '../../../src/library/conflicts/index';
-import { deriveTextHash } from '../../../src/writing/conflict/index';
+import { deriveTextSha256Hex } from '../../../src/hash/index';
 
 const original = Array.from({ length: 10 }, (_, i) => `Line ${i}`).join('\n');
 const input = (text: string) => ({ projectId: 'p', path: 'main (1).tex', text, siblings: [{ path: 'main.tex', text: original }], records: new Map() });
@@ -13,11 +13,11 @@ it('leaves a chapter with ten percent equal lines alone', async () => {
 });
 it('matches a recorded hash regardless of similarity', async () => {
   const text = 'Unrelated recorded text';
-  const records = new Map([['main.tex', [{ hash: await deriveTextHash(text), parent: null, by: 'app' as const, at: 1 }]]]);
+  const records = new Map([['main.tex', [{ hash: await deriveTextSha256Hex(text), parent: null, by: 'app' as const, at: 1 }]]]);
   expect(await detectProjectConflict({ ...input(text), records })).toMatchObject({ match: 'record' });
 });
 it('dismisses exactly the offered content', async () => {
-  const dismissed = [{ path: 'main (1).tex', hash: await deriveTextHash(original) }];
+  const dismissed = [{ path: 'main (1).tex', hash: await deriveTextSha256Hex(original) }];
   expect(await detectProjectConflict({ ...input(original), dismissed })).toBeUndefined();
   expect(await detectProjectConflict({ ...input(`${original}\nAdditional`), dismissed })).toMatchObject({ match: 'similar' });
 });

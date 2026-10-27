@@ -1,5 +1,6 @@
 // Encrypts a share's manifest under its link key and its PDF parts convergently, and opens and verifies both.
 import { openFrame, sealFrame, type FrameContext, type DerivedShareKey } from "../collab/shareKey/index.js";
+import { hexToBytes } from "../encoding/index.js";
 import { deriveSha256Hex } from "../hash/index.js";
 import { decodeShareManifest, type ShareManifest, type SharedPdfPart } from "./shareManifest.js";
 
@@ -41,10 +42,6 @@ export async function openShareManifest(linkKey: Uint8Array, shareId: string, se
     // An authentic frame that is not UTF-8 JSON came from a broken writer; it reads as no manifest, like a forged one.
     return undefined;
   }
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  return Uint8Array.from(hex.match(/../g) ?? [], (pair) => parseInt(pair, 16));
 }
 
 // INVARIANT: the key and nonce derive from the plaintext's hash, so a key only ever seals that one plaintext and the fixed nonce is safe.

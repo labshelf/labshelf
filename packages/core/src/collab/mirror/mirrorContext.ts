@@ -2,7 +2,7 @@
 import type { ConflictCopy } from "../../library/conflicts/index.js";
 import type { WriteRecordStore } from "../../library/writeRecords/index.js";
 import type { WaitingWrite } from "./waitForWrite.js";
-import { deriveSha256Hex } from "../../hash/index.js";
+import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { readShareIndexDocFiles, addWrittenVersion, type SharedSettings } from "../model/index.js";
 import type { ShareBlobExchange, ShareSession } from "../doc/index.js";
@@ -40,15 +40,11 @@ export interface MirrorContext {
   attach(path: string): void;
 }
 
-const encode = (content: string | Uint8Array): Uint8Array => typeof content === "string" ? new TextEncoder().encode(content) : content;
-
-export const deriveMirrorHash = (content: string | Uint8Array): Promise<string> => deriveSha256Hex(encode(content));
-
 /** Writes the file atomically and records its content as the one disk and doc agree on. */
 export async function writeMirrored(context: MirrorContext, relative: string, content: string | Uint8Array): Promise<void> {
-  const hash = await deriveMirrorHash(content);
+  const hash = await deriveTextSha256Hex(content);
   await context.writeRecords.append({ path: relative, hash, parent: context.store.known.get(relative) ?? null, by: "mirror", at: Date.now() });
-  await context.disk.write(relative, encode(content));
+  await context.disk.write(relative, typeof content === "string" ? new TextEncoder().encode(content) : content);
   addMirroredPath(context, relative, content, hash);
   await context.logger.log("INFO", LOG_MODULE, "Wrote a shared file from the share", { folder: context.folder, path: relative, length: content.length });
 }

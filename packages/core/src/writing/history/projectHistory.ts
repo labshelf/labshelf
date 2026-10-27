@@ -1,17 +1,14 @@
 // Records, lists and restores the snapshots of a project's local history, one operation at a time per project folder.
+import { randomHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { parseHistoryLine, serializeHistoryLine, type HistoryEntry, type HistoryKind } from "./historyEntry.js";
 import type { HistoryStorage, HistoryProject } from "./historyStorage.js";
+import { deriveSha256Hex } from "../../hash/index.js";
 import { listProjectFiles } from "../project/folder/index.js";
 
 /** Larger files, such as datasets or videos, would make every snapshot slow and the store large. */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const BUILT_SIBLINGS = [".tex", ".typ"];
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes as Uint8Array<ArrayBuffer>));
-  return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
 
 // A PDF next to a source of the same name is the build's copy of its output, which every save rewrites.
 function isBuiltPdf(file: string, all: ReadonlySet<string>): boolean {
@@ -31,7 +28,7 @@ async function snapshotFiles({ project, folder, storage }: HistoryProject): Prom
     const stat = await project.fs.stat(full);
     if (!stat || stat.size > MAX_FILE_BYTES) { continue; }
     const content = await project.fs.readFile(full);
-    const hash = await sha256Hex(content);
+    const hash = await deriveSha256Hex(content);
     if (!(await storage.hasObject(hash))) { await storage.writeObject(hash, content); }
     map[relative] = hash;
   }
@@ -63,8 +60,7 @@ const sameFiles = (a: Record<string, string>, b: Record<string, string>): boolea
   Object.keys(a).length === Object.keys(b).length && Object.entries(a).every(([file, hash]) => b[file] === hash);
 
 function entryId(at: string): string {
-  const suffix = Array.from(crypto.getRandomValues(new Uint8Array(3)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `${Date.parse(at)}-${suffix}`;
+  return `${Date.parse(at)}-${randomHex(3)}`;
 }
 
 async function append(storage: HistoryStorage, kind: HistoryKind, files: Record<string, string>, label?: string): Promise<HistoryEntry> {

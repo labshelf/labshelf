@@ -1,4 +1,5 @@
 // Installs a template as a new library project through a staging folder, so a failure never leaves half a project.
+import { randomHex } from "../../../encoding/index.js";
 import { createLibraryLayout } from "../../../library/index.js";
 import { deriveTemplatePathProblem, deriveTemplateTreeProblem, type ProjectTemplate, type TemplateFile } from "../../../templates/index.js";
 import { readProject } from "../folder/index.js";
@@ -26,10 +27,6 @@ function projectSettings(id: string, template: ProjectTemplate): ProjectSettings
   return format === "latex" && engine !== undefined && engine !== "typst" ? { id, format, main, engine } : { id, format, main };
 }
 
-function randomSuffix(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 /** Stages every file and labshelf.yaml under .research/staging/, then renames the staging folder to projects/<id>/. */
 export async function createProjectFromTemplate(
   context: ProjectCatalogContext,
@@ -41,7 +38,7 @@ export async function createProjectFromTemplate(
   checkTemplateFiles(template, files);
   const id = await createProjectId(context, libraryRoot, request.title);
   const layout = createLibraryLayout(libraryRoot, (base, ...segments) => paths.join(base, ...segments));
-  const staging = paths.join(layout.researchRoot(), "staging", `${id}-${randomSuffix()}`);
+  const staging = paths.join(layout.researchRoot(), "staging", `${id}-${randomHex()}`);
   const folder = paths.join(layout.projectsRoot(), id);
   let step = `staging ${staging}`;
   try {

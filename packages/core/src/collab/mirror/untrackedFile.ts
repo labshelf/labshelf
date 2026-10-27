@@ -1,9 +1,10 @@
 // Reconciles unlisted disk files before admitting them to a project share.
+import { deriveTextSha256Hex } from "../../hash/index.js";
 import { detectProjectConflict, isEligibleProjectConflictPath } from "../../library/conflicts/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../writing/project/index.js";
 import { checkWaitingWrite } from "./waitForWrite.js";
 import { readShareIndexDocFiles, setFileText, deriveSharedFileKind, deriveSharedPaths, type ShareFileEntry } from "../model/index.js";
-import { removeMirroredFile, DISK_ORIGIN, removeMirroredPath, deriveMirrorHash, LOG_MODULE, addMirroredPath, type MirrorContext } from "./mirrorContext.js";
+import { removeMirroredFile, DISK_ORIGIN, removeMirroredPath, LOG_MODULE, addMirroredPath, type MirrorContext } from "./mirrorContext.js";
 import type { MirrorFileRead } from "./fileSystem/index.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
 
@@ -11,7 +12,7 @@ export async function reconcileUntracked(context: MirrorContext, path: string, d
   const { session, store, logger } = context;
   if (disk.state === "changing") { return "changing"; }
   if (disk.state === "missing") { removeMirroredPath(context, path); return "done"; }
-  const diskHash = await deriveMirrorHash(disk.bytes);
+  const diskHash = await deriveTextSha256Hex(disk.bytes);
   const known = store.known.get(path);
   // The share removed a file this device still holds as last synced, so the removal applies here too.
   if (known === diskHash) { await removeMirroredFile(context, path); return "done"; }
@@ -66,7 +67,7 @@ async function holdConflictCopy(context: MirrorContext, path: string, bytes: Uin
   const conflict = await detectProjectConflict({ projectId: context.folder.split(/[\\/]/).pop() ?? context.folder,
     path, text: new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes), siblings, records, dismissed });
   const current = await context.disk.read(path);
-  if (current.state !== "present" || await deriveMirrorHash(current.bytes) !== hash) { context.request(path, true); return true; }
+  if (current.state !== "present" || await deriveTextSha256Hex(current.bytes) !== hash) { context.request(path, true); return true; }
   if (!conflict) { context.conflictReports?.delete(path); return false; }
   if (context.conflictReports?.get(path) !== hash) {
     await context.logger.log("INFO", LOG_MODULE, "Held a conflict copy out of the share", { folder: context.folder, path, original: conflict.original, match: conflict.match });

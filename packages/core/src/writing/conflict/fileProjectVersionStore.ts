@@ -1,7 +1,7 @@
 // Keeps project ancestors and the newest twenty version texts outside the synced library.
 import { isProjectPath, type PathOps } from "../../path/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
-import { parseVersionJournal, deriveTextHash, type VersionJournal } from "./versionJournal.js";
+import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { IProjectVersionStore } from "./projectVersionStore.js";
 
 /**
@@ -13,6 +13,29 @@ function safeSegments(label: string, value: string, singleSegment: boolean): str
     throw new Error(`Invalid merge base ${label}: ${JSON.stringify(value)}`);
   }
   return value.split("/");
+}
+
+interface VersionJournal { versions: Array<{ hash: string; text: string }>; pending?: string; known?: string }
+
+async function parseVersionJournal(text: string): Promise<VersionJournal> {
+  const value: unknown = JSON.parse(text);
+  if (!value || typeof value !== 'object' || !('versions' in value) || !Array.isArray(value.versions) || value.versions.length > 20) {
+    throw new Error('Invalid project version journal');
+  }
+  for (const entry of value.versions) {
+    if (!entry || typeof entry.hash !== 'string' || typeof entry.text !== 'string' || await deriveTextSha256Hex(entry.text) !== entry.hash) {
+      throw new Error('Invalid project version text or hash');
+    }
+  }
+  const pending = 'pending' in value ? value.pending : undefined;
+  if (pending !== undefined && (typeof pending !== 'string' || !pending || /[/\\\0]/.test(pending) || pending === '.' || pending === '..')) {
+    throw new Error('Invalid pending conflict path');
+  }
+  const known = 'known' in value ? value.known : undefined;
+  if (known !== undefined && (typeof known !== 'string' || !value.versions.some(entry => entry.hash === known))) {
+    throw new Error('Invalid latest project version');
+  }
+  return { versions: value.versions, ...(known === undefined ? {} : { known }), ...(pending === undefined ? {} : { pending }) };
 }
 
 const queued = new Map<string, Promise<void>>();
@@ -82,7 +105,7 @@ export class FileProjectVersionStore implements IProjectVersionStore {
 
   private saveVersion(projectId: string, relativePath: string, text: string, known: boolean): Promise<void> {
     return this.mutate(projectId, relativePath, async journal => {
-      const hash = await deriveTextHash(text);
+      const hash = await deriveTextSha256Hex(text);
       journal.versions = [...journal.versions.filter(entry => entry.hash !== hash), { hash, text }];
       if (known) journal.known = hash;
       while (journal.versions.length > 20) journal.versions.splice(journal.versions.findIndex(entry => entry.hash !== journal.known), 1);

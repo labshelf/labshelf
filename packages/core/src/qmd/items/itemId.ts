@@ -1,5 +1,6 @@
 // Creates and recognises item ids: `n-` plus a ULID, time-sortable and made without coordination.
 // CONTRACT: documents/contracts/qmd-items.md#ids
+import { fillRandom } from "../../encoding/index.js";
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const TIME_CHARS = 10;
@@ -9,10 +10,8 @@ const ITEM_ID = /^n-[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 
 export type RandomBytes = (bytes: Uint8Array<ArrayBuffer>) => Uint8Array<ArrayBuffer>;
 
-const cryptoFill: RandomBytes = (bytes) => globalThis.crypto.getRandomValues(bytes);
-
 /** Returns an id generator whose ids increase also within one millisecond of `now`. */
-export function createItemIdGenerator(now: () => number = Date.now, random: RandomBytes = cryptoFill): () => string {
+export function createItemIdGenerator(now: () => number = Date.now, random: RandomBytes = fillRandom): () => string {
   let lastTime = -1;
   let lastRandom: number[] = [];
   return () => {

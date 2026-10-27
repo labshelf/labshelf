@@ -1,14 +1,11 @@
 // Snapshots a project's sources and built PDF into a named version, replacing a version of the same name.
+import { randomHex } from "../../encoding/index.js";
 import { listProjectFiles, type ProjectReadContext } from "../project/folder/index.js";
 import type { MarkVersionRequest } from "./projectVersion.js";
 import { serializeVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionFile.js";
 import { deriveVersionSlug } from "./deriveVersionSlug.js";
 
 const MODULE = "writing/versions";
-
-function randomSuffix(): string {
-  return Array.from(crypto.getRandomValues(new Uint8Array(4)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
 
 /** Copies one file at a time, so no write is still in flight when a failure removes the temp folder. */
 async function writeSnapshot({ fs, paths }: ProjectReadContext, request: MarkVersionRequest, dir: string): Promise<number> {
@@ -36,7 +33,7 @@ export async function addProjectVersion(context: ProjectReadContext, request: Ma
     throw new Error(`Cannot mark a version without the built PDF at ${request.pdfPath}`);
   }
   const versions = paths.join(request.folder, VERSIONS_DIR);
-  const temp = paths.join(versions, `.${slug}.tmp-${randomSuffix()}`);
+  const temp = paths.join(versions, `.${slug}.tmp-${randomHex()}`);
   const target = paths.join(versions, slug);
   try {
     const files = await writeSnapshot(context, request, temp);

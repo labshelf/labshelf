@@ -15,7 +15,8 @@ import { isEligibleProjectConflictPath, parseConflictName, type ConflictCopy } f
 import type { ILogger } from "../../../ports/index.js";
 import { listProjectFiles } from "../../project/folder/index.js";
 import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js";
-import { hasMergeableExtension, isMergeableTextFile, type IProjectVersionStore, deriveTextHash } from "../index.js";
+import { hasMergeableExtension, isMergeableTextFile, type IProjectVersionStore } from "../index.js";
+import { deriveTextSha256Hex } from "../../../hash/index.js";
 import { mergeProjectCopies } from "./projectCopyMerge.js";
 import { createWriteRecordStore, recordFor } from "../../../library/writeRecords/index.js";
 import { addProjectWriteRecord } from "./projectWriteRecord.js";
@@ -73,14 +74,14 @@ async function mergeProjectDivergence(input: DivergenceFile): Promise<ConflictCo
   const pending = await pendingConflict(input, other);
   if (pending) return pending;
   const local = await store.latest(projectId, relativePath);
-  const diskHash = await deriveTextHash(other);
+  const diskHash = await deriveTextSha256Hex(other);
   if (local === undefined || local === other) { await store.remember(projectId, relativePath, other); return undefined; }
   const identity = createDeviceIdentity(createDeviceLocalLayout(input.root), logger);
   const records = createWriteRecordStore(new NodeLibraryFileSystem(), folder, identity, logger);
   const record = recordFor(await records.read(), relativePath, diskHash);
   const base = record?.parent ? await store.version(projectId, relativePath, record.parent) : undefined;
   if (!record) return undefined;
-  if (record.parent === await deriveTextHash(local) || base === undefined) {
+  if (record.parent === await deriveTextSha256Hex(local) || base === undefined) {
     await store.remember(projectId, relativePath, other);
     return undefined;
   }

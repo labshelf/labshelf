@@ -1,5 +1,5 @@
 // Writes and parses share links, whose fragment carries the Worker host, the share id and the link key.
-import { base64UrlToBytes, bytesToBase64Url } from "../encoding/index.js";
+import { bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
 import { isShareId } from "../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#link
@@ -17,7 +17,6 @@ export type ShareLinkError = "notShareLink" | "badHost" | "badShareId" | "badKey
 export type ShareLinkResult = { ok: true; link: ShareLinkParts } | { ok: false; error: ShareLinkError };
 
 const HOST = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-const KEY = /^[A-Za-z0-9_-]{22}$/;
 
 export function formatShareLink({ relayUrl, shareId, key }: ShareLinkParts): string {
   return `${SHARE_PAGE_ORIGIN}/share/#${new URL(relayUrl).hostname}/${shareId}/${bytesToBase64Url(key)}`;
@@ -43,18 +42,7 @@ export function parseShareLink(text: string): ShareLinkResult {
   const [host, shareId, keyText] = parts as [string, string, string];
   if (!HOST.test(host)) { return { ok: false, error: "badHost" }; }
   if (!isShareId(shareId)) { return { ok: false, error: "badShareId" }; }
-  const key = decodeKey(keyText);
+  const key = decodeKeyBytes(keyText, SHARE_LINK_KEY_BYTES);
   if (!key) { return { ok: false, error: "badKey" }; }
   return { ok: true, link: { relayUrl: `https://${host}`, shareId, key } };
-}
-
-function decodeKey(text: string): Uint8Array | undefined {
-  if (!KEY.test(text)) { return undefined; }
-  try {
-    const key = base64UrlToBytes(text);
-    return key.length === SHARE_LINK_KEY_BYTES ? key : undefined;
-  } catch {
-    // TRAP: 22 base64url characters hold 132 bits, so a last character with stray low bits is not canonical and throws.
-    return undefined;
-  }
 }

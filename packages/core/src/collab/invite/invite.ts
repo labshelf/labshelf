@@ -1,5 +1,5 @@
 // Formats the invite link that carries a share key, and parses one from pasted text.
-import { base64UrlToBytes, bytesToBase64Url } from "../../encoding/index.js";
+import { bytesToBase64Url, decodeKeyBytes } from "../../encoding/index.js";
 import { SHARE_KEY_BYTES, deriveShareId } from "../shareKey/index.js";
 import { decodeRelayList, encodeRelayList } from "./relayList.js";
 import type { InviteRelay } from "./relayList.js";
@@ -40,15 +40,6 @@ export async function formatInvite(share: { shareKey: Uint8Array; relays: Invite
   return INVITE_PREFIX + segments.join(".");
 }
 
-function decodeKey(text: string): Uint8Array | undefined {
-  try {
-    const bytes = base64UrlToBytes(text);
-    return bytes.length === SHARE_KEY_BYTES ? bytes : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Finds the link anywhere in pasted text; never throws on user input. */
 export async function parseInvite(text: string): Promise<ParseInviteResult> {
   // A sentence may end right after the link, and no segment ends in these characters, so they are punctuation.
@@ -59,7 +50,7 @@ export async function parseInvite(text: string): Promise<ParseInviteResult> {
   if (segments.length !== 4) { return { ok: false, error: "notAnInvite" }; }
   const [, shareId, keyText, relayText] = segments as [string, string, string, string];
   if (!/^[0-9a-f]{32}$/.test(shareId)) { return { ok: false, error: "badShareId" }; }
-  const shareKey = decodeKey(keyText);
+  const shareKey = decodeKeyBytes(keyText, SHARE_KEY_BYTES);
   if (!shareKey) { return { ok: false, error: "badKey" }; }
   const relays = decodeRelayList(relayText);
   if (!relays) { return { ok: false, error: "badRelayList" }; }

@@ -1,11 +1,7 @@
 // Copies files between two libraries and proves each copy by reading it back.
-import { posixPathOps, type ILogger, type LibraryFileSystem } from "@labshelf/core";
+import { posixPathOps, sameBytes, type ILogger, type LibraryFileSystem } from "@labshelf/core";
 
 const MODULE = "browser.storage.move";
-
-function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
-  return a.length === b.length && a.every((byte, index) => byte === b[index]);
-}
 
 /** Throws on the first write or read-back mismatch; the caller removes `written` and keeps the source. */
 export async function copyVerified(from: LibraryFileSystem, to: LibraryFileSystem, files: readonly string[], written: string[]): Promise<void> {
