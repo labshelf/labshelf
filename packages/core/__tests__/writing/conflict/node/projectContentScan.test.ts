@@ -1,9 +1,8 @@
 // Pins canonical selection across repeated scans of content-matched copies.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { scanLibraryConflicts, scanSharedProjectConflicts } from '../../../../src/writing/conflict/node/index';
+import { resolveProjectConflictCopy, scanLibraryConflicts, scanSharedProjectConflicts } from '../../../../src/writing/conflict/node/index';
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';
-import { resolveProjectConflictCopy } from '../../../../src/library/conflicts/node/index';
 import { NodeLibraryFileSystem } from '../../../../src/library/node/index';
 import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
 import { createProjectFromTemplate } from '../../../../src/writing/project/index';

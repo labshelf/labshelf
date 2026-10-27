@@ -1,5 +1,5 @@
 /** Verifies which project files get a merge base: known text extensions with valid UTF-8 content. */
-import { isMergeableTextFile } from "../../../src/writing/conflict/index";
+import { isMergeableTextFile } from "../../../src/library/conflicts/index";
 
 const utf8 = (text: string) => new TextEncoder().encode(text);
 

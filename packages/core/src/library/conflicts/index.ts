@@ -1,8 +1,11 @@
 /** Exports conflict-copy detection and the sidecar merge; scanning and resolving on disk live in node/. */
-export { formatConflictOwnerLabel, deriveConflictResolutions, type ConflictCopy, type ConflictOwner, type ConflictResolution, type SyncTool } from "./conflictCopy.js";
-export { parseConflictName, type ParsedConflictCopy } from "./conflictNames.js";
+export {
+  formatConflictOwnerLabel, deriveConflictResolutions, parseConflictName, listConflictAskChoices, describeContentConflict,
+  readConflictDismissals, writeProjectConflictDismissal,
+  type ConflictCopy, type ConflictOwner, type ConflictResolution, type SyncTool, type ParsedConflictCopy,
+  type ConflictAskChoice, type ConflictAskResolution, type ConflictDismissal,
+} from "./conflictCopy.js";
 export { mergeSidecars, type SidecarVersion } from "./sidecarMerge.js";
-
-export { detectProjectConflict, isEligibleProjectConflictPath, VERSION_SIMILARITY, type ProjectConflictText, type ProjectConflictInput } from './projectConflict.js';
-export { readConflictDismissals, writeProjectConflictDismissal, type ConflictDismissal } from './conflictDismissals.js';
-export { listConflictAskChoices, describeContentConflict, type ConflictAskChoice, type ConflictAskResolution } from './askConflict.js';
+export { hasMergeableExtension, isItemFileName, isMergeableTextFile, type IProjectVersionStore, type ProjectWriteTracking } from "./mergeBase.js";
+export { isExternalChangeNoise, applyChangeBatch, LibraryRootPresenceMonitor, type ChangeBatchDeps, type LibraryRootPresenceDeps } from "./externalChange.js";
+export { syncGuide, type SyncGuide, type SyncGuidePlatform, type SyncGuideTool } from "./syncGuide.js";

@@ -1,6 +1,6 @@
 /** Decides whether a shared file is a text doc or a blob. */
 
-import { isMergeableTextFile } from "../../writing/conflict/index.js";
+import { isMergeableTextFile } from "../../library/conflicts/index.js";
 import type { ShareFileEntry } from "./shareIndexDoc.js";
 
 /** A file with a text extension and valid UTF-8 is a text doc; anything else would be corrupted by character edits. */

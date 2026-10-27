@@ -1,6 +1,6 @@
 // Reconciles unlisted disk files before admitting them to a project share.
 import { deriveTextSha256Hex } from "../../hash/index.js";
-import { detectProjectConflict, isEligibleProjectConflictPath } from "../../library/conflicts/index.js";
+import { detectProjectConflict, isEligibleProjectConflictPath } from "../../writing/conflict/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../writing/project/index.js";
 import { checkWaitingWrite } from "./waitForWrite.js";
 import { readShareIndexDocFiles, setFileText, deriveSharedFileKind, deriveSharedPaths, type ShareFileEntry } from "../model/index.js";

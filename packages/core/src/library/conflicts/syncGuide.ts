@@ -1,5 +1,25 @@
-/** Holds the text of the "How to sync between computers" guide: which sync tools carry a library, and how to set each up. */
-import type { SyncGuide } from "./syncGuideSpec.js";
+/** Holds the "How to sync between computers" guide every app renders: its shape, and the text of which sync tools carry a library and how to set each up. */
+export type SyncGuidePlatform = "macOS" | "Windows" | "Linux";
+
+export interface SyncGuideTool {
+  id: string;
+  name: string;
+  /** One line saying what the tool is for. */
+  pitch: string;
+  steps: readonly [string, string, string];
+  /** The vendor's official download or help page. */
+  url: string;
+  platforms: readonly SyncGuidePlatform[];
+}
+
+export interface SyncGuide {
+  title: string;
+  intro: string;
+  tools: readonly SyncGuideTool[];
+  /** The option for people who want no cloud service. */
+  noCloud: { title: string; tool: SyncGuideTool };
+  afterSetup: { title: string; steps: readonly string[]; conflictNote: string };
+}
 
 export const syncGuide: SyncGuide = {
   title: "How to sync between computers",

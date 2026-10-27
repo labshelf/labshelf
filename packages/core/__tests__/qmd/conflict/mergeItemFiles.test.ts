@@ -1,7 +1,7 @@
 import { mergeItemFiles } from "../../../src/qmd/conflict/index";
 import { addItem, parseItemFile, removeItem, setItemBody, serializeItemFile } from "../../../src/qmd/items/index";
 import { formatOutput } from "../../../src/qmd/cellOutput/index";
-import { mergeText } from "../../../src/writing/conflict/node/mergeText";
+import { mergeText } from "../../../src/writing/conflict/node/itemFileMerge";
 
 const A = "n-01JB2QN0000000000000000000";
 const B = "n-01JB2QP0000000000000000000";

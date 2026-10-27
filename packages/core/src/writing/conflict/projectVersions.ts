@@ -2,7 +2,7 @@
 import { isProjectPath, type PathOps } from "../../path/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
 import { deriveTextSha256Hex } from "../../hash/index.js";
-import type { IProjectVersionStore } from "./projectVersionStore.js";
+import type { IProjectVersionStore } from "../../library/conflicts/index.js";
 
 /**
  * @throws unless the value is a "/"-separated path inside its folder, and one segment for a project id:

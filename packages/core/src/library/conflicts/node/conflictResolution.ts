@@ -2,10 +2,9 @@
 import { constants as fsConstants, promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { isMergeableTextFile, type ProjectWriteTracking } from "../../../writing/conflict/index.js";
+import { isMergeableTextFile, type ProjectWriteTracking } from "../mergeBase.js";
 import type { ILogger } from "../../../ports/index.js";
-import { deriveConflictResolutions, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
-import { parseConflictName } from "../conflictNames.js";
+import { deriveConflictResolutions, parseConflictName, type ConflictCopy, type ConflictResolution } from "../conflictCopy.js";
 
 /** Copies `copy` to the first free `<name> (copy N).<ext>` next to the original, then deletes it. */
 async function keepBoth(original: string, copy: string, tracking: Pick<ProjectWriteTracking, "beforeSave" | "afterSave"> | undefined): Promise<void> {

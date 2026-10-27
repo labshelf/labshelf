@@ -11,4 +11,4 @@ export {
   type LibraryFolderChoice, type LibraryFolderDetails, type MoveLibraryOptions,
 } from "./location.js";
 export { detectSyncFolders, formatSyncTool, type DetectSyncFoldersOptions, type SyncFolder, type SyncFolderTool } from "./syncFolders.js";
-export { resolveConflictCopy, resolveConflictDismissalFile, findProjectConflict, resolveProjectConflictCopy, type ProjectConflictResolutionContext } from '../conflicts/node/index.js';
+export { resolveConflictCopy } from '../conflicts/node/index.js';

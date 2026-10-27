@@ -1,5 +1,5 @@
 // Pins project copy detection independently of provider naming conventions.
-import { detectProjectConflict } from '../../../src/library/conflicts/index';
+import { detectProjectConflict } from '../../../src/writing/conflict/index';
 import { deriveTextSha256Hex } from '../../../src/hash/index';
 
 const original = Array.from({ length: 10 }, (_, i) => `Line ${i}`).join('\n');

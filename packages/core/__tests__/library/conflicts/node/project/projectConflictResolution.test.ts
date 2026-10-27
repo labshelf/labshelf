@@ -1,9 +1,8 @@
 // Pins content-copy resolution through atomic recorded project writes.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { findProjectConflict, resolveProjectConflictCopy } from '../../../../../src/library/conflicts/node/index';
+import { findProjectConflict, resolveConflictDismissalFile, resolveProjectConflictCopy } from '../../../../../src/writing/conflict/node/index';
 import { readConflictDismissals } from '../../../../../src/library/conflicts/index';
-import { resolveConflictDismissalFile } from '../../../../../src/library/conflicts/node/index';
 import { createNodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
 import { FileProjectVersionStore } from '../../../../../src/writing/conflict/index';
 import { deriveTextSha256Hex } from '../../../../../src/hash/index';

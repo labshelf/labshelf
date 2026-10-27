@@ -1,5 +1,5 @@
 /** @jest-environment jsdom */
-import { syncGuide } from "../../../../src/library/syncGuide/index.js";
+import { syncGuide } from "../../../../src/library/conflicts/syncGuide.js";
 import { renderSyncGuide } from "../../../../src/ui/dom/syncGuide.js";
 
 describe("renderSyncGuide", () => {

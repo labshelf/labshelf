@@ -1,11 +1,8 @@
 // Recognises project text copies from provider names, write history or shared lines.
-import { isMergeableTextFile } from '../../writing/conflict/index.js';
 import { deriveTextSha256Hex } from '../../hash/index.js';
-import { deriveLineSimilarity } from '../../writing/text/index.js';
-import type { WriteRecords } from '../mutations/index.js';
-import type { ConflictCopy } from './conflictCopy.js';
-import { parseConflictName } from './conflictNames.js';
-import type { ConflictDismissal } from './conflictDismissals.js';
+import { deriveLineSimilarity } from '../text/index.js';
+import type { WriteRecords } from '../../library/mutations/index.js';
+import { isMergeableTextFile, parseConflictName, type ConflictCopy, type ConflictDismissal } from '../../library/conflicts/index.js';
 
 export const VERSION_SIMILARITY = 0.6;
 export interface ProjectConflictText { path: string; text: string }

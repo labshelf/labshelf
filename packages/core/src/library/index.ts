@@ -25,9 +25,7 @@ export {
   SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles, SharedConfig, SharedConfigUpdate } from "./layout.js";
-export * from "./externalChange/index.js";
 export * from "./mutations/index.js";
 export * from "./search.js";
 export * from "./searchText.js";
 export * from "./conflicts/index.js";
-export * from "./syncGuide/index.js";

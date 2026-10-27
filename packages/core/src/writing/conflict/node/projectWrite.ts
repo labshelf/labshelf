@@ -1,12 +1,44 @@
-// Tracks app file writes and editor saves before their project bytes reach disk.
+// Records app-authored project text versions with the bytes present before their save, and tracks app file writes and editor saves before their bytes reach disk.
 import * as path from 'node:path';
-import { FileProjectVersionStore } from '../index.js';
-import type { ProjectWriteTracking } from '../index.js';
-import { isMergeableTextFile } from '../index.js';
-import { createDeviceIdentity, createDeviceLocalLayout } from '../../../library/node/index.js';
+import { isMergeableTextFile, type IProjectVersionStore, type ProjectWriteTracking } from '../../../library/conflicts/index.js';
+import { createWriteRecordStore, type DeviceIdentity } from '../../../library/mutations/index.js';
+import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../library/node/index.js';
 import type { ILogger, LibraryFileSystem } from '../../../ports/index.js';
+import { deriveTextSha256Hex } from '../../../hash/index.js';
 import { listLibraryProjects } from '../../project/node/index.js';
-import { addProjectWriteRecord } from './projectWriteRecord.js';
+import { FileProjectVersionStore } from '../projectVersions.js';
+
+const recordFileSystem = new NodeLibraryFileSystem();
+
+export interface ProjectWrite {
+  folder: string;
+  projectId: string;
+  relativePath: string;
+  text: string;
+  parentText: string | undefined;
+  store: IProjectVersionStore;
+  identity: DeviceIdentity;
+  logger: ILogger;
+}
+
+export async function addProjectWriteRecord(save: ProjectWrite): Promise<void> {
+  const { store, projectId, relativePath, text, parentText, logger } = save;
+  try {
+    if (parentText !== undefined) await store.retain(projectId, relativePath, parentText);
+    await store.retain(projectId, relativePath, text);
+    await createWriteRecordStore(recordFileSystem, save.folder, save.identity, logger).append({
+      path: relativePath, hash: await deriveTextSha256Hex(text), parent: parentText === undefined ? null : await deriveTextSha256Hex(parentText), by: 'app', at: Date.now(),
+    });
+  } catch (error) {
+    await logger.error('writing-merge', error, { projectId, path: relativePath, action: 'record project save' });
+    throw error;
+  }
+}
+
+export async function addProjectWrite(save: ProjectWrite): Promise<void> {
+  await addProjectWriteRecord(save);
+  await save.store.remember(save.projectId, save.relativePath, save.text);
+}
 
 export function createProjectWriteTracking(fs: LibraryFileSystem, root: () => string | undefined, logger: ILogger): ProjectWriteTracking {
   const parents = new Map<string, string | undefined>();
