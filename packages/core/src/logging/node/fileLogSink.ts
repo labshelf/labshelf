@@ -5,7 +5,7 @@ import * as path from "node:path";
 import type { LogEntry } from "../../model/index.js";
 import { ensurePrivateDir, PRIVATE_FILE_MODE } from "../../library/node/index.js";
 import type { LogSink } from "../../ports/index.js";
-import { formatLogLine } from "../logEntry.js";
+import { formatLogLine } from "../logger.js";
 
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 

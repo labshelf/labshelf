@@ -1,10 +1,33 @@
 /**
- * Declares the metadata of one paper as the library, the databases and the apps exchange it.
+ * Declares a paper's metadata as the library, the databases and the apps exchange it: the record, the bibliographic
+ * fields it shares with registry answers and parsed PDFs, and the venue derived for display and sorting.
  */
-import type { BibliographicFields } from "./bibliographicFields.js";
 import type { ReadingStatus } from "../library/readingStatus/index.js";
-import type { PdfVersion } from "./pdfVersion.js";
-import type { TextLayerDetails } from "./textLayer.js";
+import type { TextLayerDetails } from "./annotation.js";
+import type { PdfVersion } from "./pdf.js";
+
+export interface BibliographicFields {
+  authors?: string[] | undefined;
+  year?: number | undefined;
+  summary?: string | undefined;
+  journal?: string | undefined;
+  publisher?: string | undefined;
+  volume?: string | undefined;
+  issue?: string | undefined;
+  pages?: string | undefined;
+  doi?: string | undefined;
+  url?: string | undefined;
+  issn?: string | undefined;
+  language?: string | undefined;
+  /** Author or publisher supplied subject terms, when the PDF or a registry states them. */
+  keywords?: string[] | undefined;
+}
+
+export const BIBLIOGRAPHIC_STRING_FIELDS = [
+  "summary", "journal", "publisher", "volume", "issue", "pages", "doi", "url", "issn", "language",
+] as const satisfies ReadonlyArray<keyof BibliographicFields>;
+
+export const BIBLIOGRAPHIC_FIELDS = ["authors", "year", ...BIBLIOGRAPHIC_STRING_FIELDS, "keywords"] as const satisfies ReadonlyArray<keyof BibliographicFields>;
 
 export interface PaperRecord extends BibliographicFields {
   id: string;
@@ -37,4 +60,9 @@ export interface PaperRecord extends BibliographicFields {
   // (VS Code indexer, browser file keys), never written to metadata.yaml.
   // Undefined = unknown, treated as present.
   hasPdf?: boolean;
+}
+
+/** The journal, else the publisher, else an empty string. */
+export function deriveVenue(record: { journal?: string | undefined; publisher?: string | undefined }): string {
+  return record.journal || record.publisher || "";
 }

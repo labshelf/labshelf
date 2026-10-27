@@ -1,5 +1,5 @@
 /* Frames Space views with the proportions of the research workspace. */
-@import "../../../ui/dom/widgets/page/page.css";
+@import "../../../ui/dom/widgets/page.css";
 @import "../../../ui/dom/widgets/arcMark.css";
 @import "../spaceOverview/overview.css";
 @import "../papers/papers.css";

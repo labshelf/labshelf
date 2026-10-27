@@ -3,7 +3,7 @@
  * outside click or Escape, arrow keys to move, focus handed back to the invoker; one at a time, on document.body or inside a
  * shadow root.
  */
-import { escapeHtml } from "../../escapeHtml.js";
+import { escapeHtml } from "../../htmlSafety.js";
 import { renderIcon, type IconName } from "../../icons/index.js";
 import { renderElement } from "../dom.js";
 

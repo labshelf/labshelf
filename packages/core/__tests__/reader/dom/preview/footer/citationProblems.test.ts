@@ -4,9 +4,9 @@
 // Tests the footer's cites status: its text, the problem stepping with wrap-around and what each step does.
 import { mountProblems } from "../../../../../src/reader/dom/preview/footer/index";
 import type { PdfProblem, PreviewBuildRoots } from "../../../../../src/reader/previewProtocol";
-import { showToast } from "../../../../../src/ui/dom/widgets/showToast";
+import { showToast } from "../../../../../src/ui/dom/widgets/toast";
 
-jest.mock("../../../../../src/ui/dom/widgets/showToast", () => ({ showToast: jest.fn() }));
+jest.mock("../../../../../src/ui/dom/widgets/toast", () => ({ showToast: jest.fn() }));
 
 const area = (page: number) => ({ page, left: 0, top: 0, right: 10, bottom: 10 });
 const problem = (message: string, extra: Partial<PdfProblem> = {}): PdfProblem => ({ kind: "undefinedCitation", message, ...extra });

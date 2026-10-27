@@ -2,7 +2,7 @@
  * Provides the DOM helpers every DOM surface shares: element lookup that fails loudly, search-term
  * highlighting, and a terse element factory. Framework-free on purpose.
  */
-import { escapeHtml } from "../escapeHtml.js";
+import { escapeHtml } from "../htmlSafety.js";
 import { findHighlightRanges } from "../../library/search/index.js";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */

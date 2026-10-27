@@ -1,6 +1,17 @@
 /**
- * Declares which version of a paper its PDF is, as the source labelled it, and how the versions rank.
+ * Declares the reader page themes, which version of a paper its PDF is as the source labelled it, and how the
+ * versions rank.
  */
+export const PDF_THEMES = ["auto", "light", "dark", "sepia", "high-contrast"] as const;
+export type PdfTheme = (typeof PDF_THEMES)[number];
+
+/**
+ * @returns true when `value` is one of the reader themes.
+ */
+export function isPdfTheme(value: unknown): value is PdfTheme {
+  return (PDF_THEMES as readonly unknown[]).includes(value);
+}
+
 export const PDF_VERSIONS = ["preprint", "accepted", "published"] as const;
 export type PdfVersion = (typeof PDF_VERSIONS)[number];
 

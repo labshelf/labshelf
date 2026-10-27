@@ -5,5 +5,5 @@ export { findElement, renderElement, renderHighlightedHtml, formatShortTime } fr
 export { renderIcon, type IconName } from "../icons/index.js";
 export { resolveTheme, applyThemeToDocument, deriveNextThemePref, type ThemePref, type ResolvedTheme } from "./theme.js";
 export * from "./widgets/index.js";
-export * from "./settings/index.js";
-export * from "./syncGuide/index.js";
+export * from "./settings.js";
+export * from "./syncGuide.js";

@@ -1,6 +1,45 @@
-// Maps design tokens to the host's VS Code theme.
-import type { COLOR_TOKENS, STATUS_TOKENS } from "./colorTokens.js";
-import type { TYPE_TOKENS, ELEVATION_TOKENS } from "./scaleTokens.js";
+/**
+ * Renders the design tokens as the `--ls-*` stylesheet that `ui/dom/tokens.css` holds, and maps them to the host's VS Code theme in `ui/dom/vscodeHost.css`.
+ */
+import { CODE_FONT_TOKENS, COLOR_TOKENS, ELEVATION_TOKENS, FILE_TYPE_TOKENS, HIGHLIGHT_COLORS, MARK_TOKENS, MOTION_TOKENS, SHAPE_TOKENS, SHEET_TOKENS, SPACE_TOKENS, STATUS_TOKENS, TYPE_TOKENS, createDesignToken, renderCodeFontsCss, type DesignToken } from "./tokens.js";
+import { CODE_THEME_TOKENS, renderCodeThemesCss, renderReaderThemesCss } from "./themes.js";
+
+const ALL_TOKENS: Record<string, DesignToken> = {
+  ...COLOR_TOKENS,
+  ...STATUS_TOKENS,
+  ...MARK_TOKENS,
+  ...FILE_TYPE_TOKENS,
+  ...SHEET_TOKENS,
+  ...CODE_THEME_TOKENS,
+  ...Object.fromEntries(Object.entries(HIGHLIGHT_COLORS).map(([name, value]) => [`hl-${name}`, createDesignToken(value)])),
+  ...TYPE_TOKENS,
+  ...CODE_FONT_TOKENS,
+  ...SPACE_TOKENS,
+  ...SHAPE_TOKENS,
+  ...ELEVATION_TOKENS,
+  ...MOTION_TOKENS,
+};
+
+// The browser sets <html data-theme> before first paint, and its content scripts
+// rewrite these two selectors to :host, so their exact shape is part of the output.
+export function renderTokensCss(tokens: Record<string, DesignToken> = ALL_TOKENS): string {
+  const entries = Object.entries(tokens);
+  const dark = entries.map(([name, t]) => `  --ls-${name}: ${t.value};`);
+  const light = entries.flatMap(([name, t]) => (t.light === undefined ? [] : [`  --ls-${name}: ${t.light};`]));
+  return [
+    "/* Declares the --ls-* design tokens for both themes. Generated from packages/core/src/ui/tokens by `pnpm --filter @labshelf/core tokens`. Do not edit. */",
+    ":root {",
+    "  color-scheme: dark;",
+    ...dark,
+    "}",
+    "",
+    ':root[data-theme="light"] {',
+    "  color-scheme: light;",
+    ...light,
+    "}",
+    "",
+  ].join("\n") + renderReaderThemesCss() + "\n" + renderCodeThemesCss() + renderCodeFontsCss();
+}
 
 type MappedToken = keyof typeof COLOR_TOKENS | keyof typeof STATUS_TOKENS | keyof typeof TYPE_TOKENS | keyof typeof ELEVATION_TOKENS;
 

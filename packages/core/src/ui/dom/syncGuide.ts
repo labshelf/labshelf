@@ -1,7 +1,7 @@
 /** Renders the sync guide as a page: intro, one section per tool, the no-cloud option and the steps after setup. */
-import type { SyncGuide, SyncGuideTool } from "../../../library/syncGuide/index.js";
-import { renderElement } from "../dom.js";
-import { renderIcon, type IconName } from "../../icons/index.js";
+import type { SyncGuide, SyncGuideTool } from "../../library/syncGuide/index.js";
+import { renderElement } from "./dom.js";
+import { renderIcon, type IconName } from "../icons/index.js";
 
 interface ToolSectionOptions {
   tool: SyncGuideTool;

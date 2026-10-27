@@ -1,4 +1,4 @@
-import { PDF_THEMES } from '../../src/model/pdfTheme';
+import { PDF_THEMES } from '../../src/model/index';
 import { THEME_PRESETS, findPagePreset, derivePageColors } from '../../src/reader/themePresets';
 
 describe('theme presets', () => {

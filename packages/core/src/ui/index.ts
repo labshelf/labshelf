@@ -3,6 +3,5 @@
  */
 export * from "./tokens/index.js";
 export * from "./icons/index.js";
-export { escapeHtml } from "./escapeHtml.js";
-export { createNonce } from "./createNonce.js";
+export { escapeHtml, createNonce } from "./htmlSafety.js";
 export { formatCount } from "./formatCount.js";

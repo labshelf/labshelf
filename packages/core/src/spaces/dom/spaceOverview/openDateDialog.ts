@@ -1,5 +1,5 @@
 // Edits a date draft in an accessible modal over the Spaces transport.
-import { renderElement, mountOverlay } from "../../../ui/dom/index.js";
+import { renderElement, mountFormDialog } from "../../../ui/dom/index.js";
 import type { SpaceDate } from "../../model/index.js";
 import { parseDateDraft, type PaperPickItem } from "../../protocol/index.js";
 import type { OverviewContext } from "./index.js";
@@ -60,9 +60,7 @@ export function openDateDialog(ctx: OverviewContext, date?: SpaceDate): () => vo
   const unsubscribe = ctx.end.subscribe(message => {
     if (message.type === "papers") { papers = message.items; paint(); }
   });
-  const overlay = mountOverlay(form, () => unsubscribe());
-  const close = (): void => { unsubscribe(); overlay.close(); };
-  addActions(form, close);
+  const close = mountFormDialog(form, { submitLabel: "Save", unsubscribe });
   form.addEventListener("submit", event => {
     event.preventDefault();
     const draft = parseDateDraft({ kind: fields.kind.value, title: fields.title.value.trim(), date: fields.day.value,
@@ -74,10 +72,4 @@ export function openDateDialog(ctx: OverviewContext, date?: SpaceDate): () => vo
   });
   paint(); fields.title.focus(); ctx.end.post({ type: "listPapers" });
   return close;
-}
-function addActions(form: HTMLElement, close: () => void): void {
-  const cancel = renderElement("button", { class: "ls-btn", type: "button", text: "Cancel" });
-  cancel.addEventListener("click", close);
-  form.append(renderElement("div", { class: "ls-dialog-actions" }, cancel,
-    renderElement("button", { class: "ls-btn ls-btn-primary", type: "submit", text: "Save" })));
 }

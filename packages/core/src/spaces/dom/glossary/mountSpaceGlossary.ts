@@ -1,5 +1,5 @@
 // Keeps the Glossary surface synchronized while preserving unfinished dialogs.
-import { renderElement, renderEmptyNotice, setPlannedNotice, renderIcon, mountOverlay } from "../../../ui/dom/index.js";
+import { renderElement, renderEmptyNotice, setPlannedNotice, renderIcon, mountOverlay, mountFormDialog } from "../../../ui/dom/index.js";
 import type { GlossaryTerm } from "../../model/index.js";
 import { type PaperPickItem, parseTermDraft } from "../../protocol/index.js";
 import { renderOverviewAction, type OverviewContext, type SpaceBody } from "../spaceOverview/index.js";
@@ -69,12 +69,7 @@ function termDialog(ctx: OverviewContext, term?: GlossaryTerm): () => void {
   const form = renderElement("form", { class: "ls-dialog gl-dialog", role: "dialog", "aria-modal": "true", "aria-label": label, novalidate: true },
     renderElement("h2", { text: label }), fields.body, error);
   const unsubscribe = ctx.end.subscribe(message => { if (message.type === "papers") fields.paintPapers(message.items); });
-  const overlay = mountOverlay(form, unsubscribe, ctx.signal ? { signal: ctx.signal } : {});
-  const close = (): void => { unsubscribe(); overlay.close(); };
-  const cancel = renderElement("button", { class: "ls-btn", type: "button", text: "Cancel" });
-  cancel.addEventListener("click", close);
-  form.append(renderElement("div", { class: "ls-dialog-actions" }, cancel,
-    renderElement("button", { class: "ls-btn ls-btn-primary", type: "submit", text: "Save" })));
+  const close = mountFormDialog(form, { submitLabel: "Save", unsubscribe, ...(ctx.signal ? { signal: ctx.signal } : {}) });
   form.addEventListener("submit", event => {
     event.preventDefault();
     if (ctx.readOnly || ctx.signal?.aborted) return;

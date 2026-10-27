@@ -1,7 +1,7 @@
 /**
  * Tests that every icon renders with the shared wrapper and that no two names share a glyph.
  */
-import { FILLED_GLYPHS, STROKE_GLYPHS } from "../../src/ui/icons/glyphs";
+import { FILLED_GLYPHS, STROKE_GLYPHS } from "../../src/ui/icons/renderIcon";
 import { renderIcon, type IconName } from "../../src/ui/icons";
 
 const NAMES = [...Object.keys(STROKE_GLYPHS), ...Object.keys(FILLED_GLYPHS), "logo"] as IconName[];

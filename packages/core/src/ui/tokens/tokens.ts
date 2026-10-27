@@ -1,5 +1,16 @@
-// Defines the colour roles for LabShelf's dark and light themes.
-import { createDesignToken, type DesignToken } from "./designToken.js";
+/**
+ * Declares the design tokens: the token shape, the colour, type, spacing, shape, elevation and motion roles, the source editor's fonts and the annotation highlight palette.
+ */
+import type { AnnotationColor } from "../../model/index.js";
+
+export interface DesignToken {
+  value: string;
+  light?: string;
+}
+
+export function createDesignToken(value: string, light?: string): DesignToken {
+  return light === undefined ? { value } : { value, light };
+}
 
 // Each role stands in for the VS Code colour of the same purpose, so the browser
 // surfaces read as the same product as the VS Code webviews.
@@ -113,3 +124,91 @@ export const FILE_TYPE_TOKENS = {
 export const SHEET_TOKENS = {
   "sheet-light": createDesignToken("#f4f3f0"),
 } satisfies Record<string, DesignToken>;
+
+export const TYPE_TOKENS = {
+  font: createDesignToken('-apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif'),
+  // A brand face for paper titles, so it stays the same in every host; no font file ships, so the stack falls back to Georgia.
+  serif: createDesignToken('"Source Serif 4", Georgia, serif'),
+  mono: createDesignToken('Menlo, Monaco, "SF Mono", "Cascadia Code", Consolas, "Courier New", monospace'),
+  "font-size": createDesignToken("13px"),
+  "text-xs": createDesignToken("10px"),
+  "text-sm": createDesignToken("11px"),
+  "text-md": createDesignToken("12px"),
+  "text-lg": createDesignToken("14px"),
+  "text-xl": createDesignToken("15px"),
+  "text-2xl": createDesignToken("17px"),
+  "text-3xl": createDesignToken("24px"),
+} satisfies Record<string, DesignToken>;
+
+export const SPACE_TOKENS = {
+  "space-1": createDesignToken("2px"),
+  "space-2": createDesignToken("4px"),
+  "space-3": createDesignToken("6px"),
+  "space-4": createDesignToken("8px"),
+  "space-5": createDesignToken("10px"),
+  "space-6": createDesignToken("12px"),
+  "space-7": createDesignToken("16px"),
+  "space-8": createDesignToken("24px"),
+  "space-9": createDesignToken("32px"),
+} satisfies Record<string, DesignToken>;
+
+export const SHAPE_TOKENS = {
+  "editor-cursor-width": createDesignToken("3px"),
+  "radius-sm": createDesignToken("3px"),
+  radius: createDesignToken("4px"),
+  "radius-lg": createDesignToken("6px"),
+  "radius-pill": createDesignToken("999px"),
+  "row-h": createDesignToken("22px"),
+  "pane-footer-h": createDesignToken("24px"),
+  "gallery-sidebar-w": createDesignToken("220px"),
+  "gallery-card-w": createDesignToken("200px"),
+  "gallery-content-w": createDesignToken("1200px"),
+} satisfies Record<string, DesignToken>;
+
+export const ELEVATION_TOKENS = {
+  "pane-shadow": createDesignToken("0 1px 3px rgba(0, 0, 0, .18)", "0 1px 3px rgba(0, 0, 0, .08)"),
+  "widget-shadow": createDesignToken("0 0 8px 2px rgba(0, 0, 0, .36)", "0 0 8px 2px rgba(0, 0, 0, .16)"),
+  "popup-shadow": createDesignToken("0 4px 18px rgba(0, 0, 0, .45)", "0 4px 18px rgba(0, 0, 0, .18)"),
+  "page-shadow": createDesignToken("0 1px 6px rgba(0, 0, 0, .3)"),
+} satisfies Record<string, DesignToken>;
+
+export const MOTION_TOKENS = {
+  fast: createDesignToken("100ms"),
+  normal: createDesignToken("140ms"),
+} satisfies Record<string, DesignToken>;
+
+export const CODE_FONT_NAMES = ["system", "jetbrains-mono", "fira-code", "atkinson-hyperlegible-mono", "opendyslexic"] as const;
+export type SyntaxFontId = (typeof CODE_FONT_NAMES)[number];
+
+export interface SyntaxFont {
+  label: string;
+  family: string;
+}
+
+// Every family but the system stack is a font file the browser extension bundles (see its build/vendorFonts.mjs).
+export const CODE_FONTS: Record<SyntaxFontId, SyntaxFont> = {
+  system: { label: "System monospace", family: "var(--ls-mono)" },
+  "jetbrains-mono": { label: "JetBrains Mono", family: '"JetBrains Mono", var(--ls-mono)' },
+  "fira-code": { label: "Fira Code", family: '"Fira Code", var(--ls-mono)' },
+  "atkinson-hyperlegible-mono": { label: "Atkinson Hyperlegible Mono", family: '"Atkinson Hyperlegible Mono", var(--ls-mono)' },
+  opendyslexic: { label: "OpenDyslexic", family: '"OpenDyslexic", var(--ls-mono)' },
+};
+
+export const CODE_FONT_TOKENS: Record<string, DesignToken> = { "code-font": createDesignToken(CODE_FONTS.system.family) };
+
+// The library page marks the pick on <html data-code-font>.
+export function renderCodeFontsCss(): string {
+  return CODE_FONT_NAMES.filter((name) => name !== "system")
+    .flatMap((name) => [`:root[data-code-font="${name}"] {`, `  --ls-code-font: ${CODE_FONTS[name].family};`, "}", ""])
+    .join("\n");
+}
+
+// `note` paints an annotation that carries no colour of its own.
+export const HIGHLIGHT_COLORS: Record<AnnotationColor | "note", string> = {
+  yellow: "#f5c518",
+  green: "#4caf50",
+  blue: "#2196f3",
+  red: "#f44336",
+  pink: "#e91e63",
+  note: "#9c27b0",
+};

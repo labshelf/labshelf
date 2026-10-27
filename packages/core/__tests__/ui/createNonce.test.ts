@@ -1,7 +1,7 @@
 /**
  * Tests that createNonce returns a CSP-valid base64 nonce carrying 128 random bits.
  */
-import { createNonce } from "../../src/ui/createNonce";
+import { createNonce } from "../../src/ui/htmlSafety";
 
 describe("createNonce", () => {
   it("returns base64 that decodes to 16 bytes", () => {

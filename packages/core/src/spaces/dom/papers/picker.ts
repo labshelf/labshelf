@@ -1,5 +1,5 @@
 // Selects Library papers to add to the current Space folder.
-import { renderElement, renderEmptyNotice, mountOverlay } from '../../../ui/dom/index.js';
+import { renderElement, renderEmptyNotice, mountFormDialog } from '../../../ui/dom/index.js';
 import type { PapersContext } from './papersContext.js';
 export function openPaperPicker(ctx: PapersContext): void {
   if (ctx.readOnly || ctx.signal?.aborted) return;
@@ -21,10 +21,7 @@ export function openPaperPicker(ctx: PapersContext): void {
   });
   const filter = (): void => { for (const row of list.querySelectorAll<HTMLElement>('[data-search]')) row.hidden = !row.dataset['search']!.includes(search.value.toLocaleLowerCase()); };
   search.addEventListener('input', filter);
-  const overlay = mountOverlay(form, unsubscribe, ctx.signal ? { signal: ctx.signal } : {});
-  const close = (): void => { unsubscribe(); overlay.close(); };
-  const cancel = renderElement('button', { type: 'button', class: 'ls-btn', text: 'Cancel' }); cancel.addEventListener('click', close);
-  form.append(renderElement('div', { class: 'ls-dialog-actions' }, cancel, renderElement('button', { type: 'submit', class: 'ls-btn ls-btn-primary', text: 'Add' })));
+  const close = mountFormDialog(form, { submitLabel: 'Add', unsubscribe, ...(ctx.signal ? { signal: ctx.signal } : {}) });
   form.addEventListener('submit', e => {
     e.preventDefault(); if (!selected.size || ctx.readOnly || ctx.signal?.aborted) return;
     ctx.end.post({ type: 'addPapers', id: ctx.data.space.id, paperIds: [...selected], ...(ctx.folder ? { folder: ctx.folder } : {}) }); close();
