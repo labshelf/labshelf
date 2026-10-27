@@ -1,5 +1,5 @@
 /** Contract of the bounded lookup every resolver uses: an 8 s deadline and exactly one WARN per failed lookup. */
-import { fetchResolverJson } from "../../../../src/import/pdfFinder/resolvers/timedFetch";
+import { fetchResolverJson } from "../../../../src/import/pdfFinder/hostPacer";
 import { json, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 describe("lookupJson", () => {

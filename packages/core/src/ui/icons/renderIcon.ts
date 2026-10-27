@@ -78,7 +78,7 @@ export const FILLED_GLYPHS = {
 } as const;
 
 /** The ">" prompt of the wordmark. The brand blue is fixed, not `currentColor`, so it reads as the accent on light and dark themes. */
-export const LOGO_SVG =
+const LOGO_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="#0571df" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 5.5 16 12 8 18.5"/></svg>';
 
 export type IconName = keyof typeof STROKE_GLYPHS | keyof typeof FILLED_GLYPHS | "logo";

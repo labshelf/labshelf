@@ -4,9 +4,8 @@ import { join } from "node:path";
 
 import { fetchPdf, isBotCheck, isPdfBytes, extractNextHopsFromHtml, type InTabAnswer } from "@labshelf/core";
 
-import { downloadPdf } from "../../../../src/import/pdfFinder/client/index";
-import type { HopSettings } from "../../../../src/import/pdfFinder/client/fetchPdf";
-import { createResolverEnv } from "../../../../src/import/pdfFinder/env";
+import { downloadPdf, type HopSettings } from "../../../../src/import/pdfFinder/client";
+import { createResolverEnv } from "../../../../src/import/pdfFinder/finder";
 import { PDF, html, makeFindingHarness, pdf } from "../../../support/pdfFindingHarness";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "fixtures", name), "utf8");

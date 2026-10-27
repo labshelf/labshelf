@@ -1,6 +1,6 @@
 /** A fake network whose answers take time and honour cancellation, with the limits that keep engine tests fast. */
-import type { EngineLimits } from "../../src/import/pdfFinder/engine/index";
-import type { ResolverEnv } from "../../src/import/pdfFinder/pdfResolver";
+import type { EngineLimits } from "../../src/import/pdfFinder/deadline";
+import type { ResolverEnv } from "../../src/import/pdfFinder/finder";
 import { makeFindingHarness, type LogCall } from "./pdfFindingHarness";
 
 /** Tens of milliseconds instead of seconds; each test overrides the limit it exercises. */

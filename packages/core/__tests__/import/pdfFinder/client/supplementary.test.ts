@@ -1,5 +1,5 @@
 /** Which links count as supplementary material rather than the article. */
-import { isSupplementaryUrl } from "../../../../src/import/pdfFinder/client/index";
+import { isSupplementaryUrl } from "../../../../src/import/pdfFinder/client";
 
 describe("isSupplementaryUrl", () => {
   it.each([

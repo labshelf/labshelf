@@ -1,4 +1,4 @@
-import { deriveOrigin, deriveSite } from "../../../src/import/pdfFinder/urlParts";
+import { deriveOrigin, deriveSite } from "../../../src/import/pdfFinder/finder";
 
 describe("originOf", () => {
   it("lower-cases the origin and keeps a non-default port", () => {

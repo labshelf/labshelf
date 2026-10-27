@@ -1,7 +1,8 @@
 /** Contract of the download stage: rank beats arrival within the hold, concurrency and time limits hold. */
-import { downloadBest, type Candidate, type EngineLimits } from "../../../../src/import/pdfFinder/engine/index";
+import { downloadBest, type Candidate } from "../../../../src/import/pdfFinder/engine";
+import type { EngineLimits } from "../../../../src/import/pdfFinder/deadline";
 import type { PdfVersion } from "@labshelf/core";
-import type { PdfAttempt } from "../../../../src/import/pdfFinder/pdfResolver";
+import type { PdfAttempt } from "../../../../src/import/pdfFinder/finder";
 import { pdf, makeContext, html } from "../../../support/pdfFindingHarness";
 import { candidatesOf, FAST_LIMITS, makeSlowNetwork } from "../../../support/slowNetwork";
 

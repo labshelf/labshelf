@@ -2,8 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { isBotCheck, isWallPage } from "../../../../src/import/pdfFinder/client/botCheck";
-import { deriveFetchOutcome } from "../../../../src/import/pdfFinder/client/fetchOutcome";
+import { deriveFetchOutcome, isBotCheck, isWallPage } from "../../../../src/import/pdfFinder/client";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "fixtures", name), "utf8");
 const finalUrl = "https://publisher.example/doi/pdf/10.1/x";

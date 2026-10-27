@@ -1,5 +1,5 @@
 /** Contract of the CrossRef resolver: PDF links the publisher registered, best intent first. */
-import { crossrefResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { crossrefResolver } from "../../../../src/import/pdfFinder/indexes";
 import { json, makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const URL_FOR = "https://api.crossref.org/works/10.1%2Fx";

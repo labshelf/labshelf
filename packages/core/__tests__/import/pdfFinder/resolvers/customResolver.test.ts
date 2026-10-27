@@ -1,5 +1,5 @@
 /** Contract of the custom resolver: it builds addresses from the user's enabled templates and never fetches itself. */
-import { customResolver, isCustomResolverTemplate } from "../../../../src/import/pdfFinder/resolvers/index";
+import { customResolver, isCustomResolverTemplate } from "../../../../src/import/pdfFinder/openAccess";
 import { makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 describe("customResolver", () => {

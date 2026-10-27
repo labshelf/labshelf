@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { deriveFetchOutcome } from "../../../../src/import/pdfFinder/client/fetchOutcome";
+import { deriveFetchOutcome } from "../../../../src/import/pdfFinder/client";
 import { PDF } from "../../../support/pdfFindingHarness";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "..", "fixtures", name), "utf8");

@@ -1,5 +1,5 @@
 /** Contract of the Semantic Scholar learner: externalIds for the resolvers that follow, its open-access link, a literal slash in the DOI. */
-import { semanticScholarResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { semanticScholarResolver } from "../../../../src/import/pdfFinder/indexes";
 import { json, makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const FIELDS = "title,year,authors,externalIds,openAccessPdf";

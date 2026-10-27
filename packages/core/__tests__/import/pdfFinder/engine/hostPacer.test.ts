@@ -1,5 +1,5 @@
 /** Contract of the per-host pacer: spaced starts, a skip after repeated failures, a reset on success. */
-import { createPacedFetch } from "../../../../src/import/pdfFinder/engine/index";
+import { createPacedFetch } from "../../../../src/import/pdfFinder/hostPacer";
 
 type Answer = () => Response | Promise<Response>;
 
