@@ -1,6 +1,7 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
 import type { DotKind, SidebarTreeNode } from "../../../libraryUi/index.js";
 import { deriveFamilyName } from "../../../library/paper/index.js";
+import { formatShortDate } from "../../../time/index.js";
 import type { PathOps } from "../../../path/index.js";
 import { STATUS_LABEL, type ReadingStatus } from "../../../library/readingStatus/index.js";
 import type { ChecklistItem, PageOverflow } from "../buildChecklist.js";
@@ -47,14 +48,12 @@ export function createPagesHead({ pages, limit }: PageOverflow): Omit<SidebarTre
 
 const STATUS_TONE: Record<ReadingStatus, DotKind> = { unread: "muted", reading: "accent", done: "ok" };
 
-const shortDate = (iso: string): string => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
 function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper | undefined): SidebarTreeNode {
   const { title, status, statusChangedAt } = item.paper;
   const author = paper?.authors?.find((a) => a.trim().length > 0);
   const label = author ? [deriveFamilyName(author), paper?.year].filter((part) => part !== undefined).join(" ") : title;
   const description = item.done
-    ? statusChangedAt && shortDate(statusChangedAt)
+    ? statusChangedAt && formatShortDate(statusChangedAt)
     : paper?.cited ? "cited" : paper?.listed ? "added" : undefined;
   return {
     key, label, tooltip: title, ...(description ? { description } : {}),

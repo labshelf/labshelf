@@ -1,7 +1,7 @@
 // Shows the document symbols of the active editor as a tree that follows the cursor.
 import * as vscode from "vscode";
 
-import type { ILogger } from "@labshelf/core";
+import { createDebouncer, type ILogger } from "@labshelf/core";
 import { createOutlineNodes, type OutlineNode } from "./createOutlineNodes.js";
 import { REVEAL_OUTLINE_COMMAND } from "./showOutline.js";
 
@@ -43,8 +43,8 @@ export class OutlineTreeProvider implements vscode.TreeDataProvider<OutlineNode>
 
   /** Keeps the tree on the active editor: its document, its cursor and, after a pause, its edits. */
   follow(): vscode.Disposable {
-    let timer: ReturnType<typeof setTimeout> | undefined;
     const active = (): vscode.TextEditor | undefined => vscode.window.activeTextEditor;
+    const refreshSoon = createDebouncer(() => void this.refresh(active()), REFRESH_DELAY_MS);
     void this.refresh(active());
     return vscode.Disposable.from(
       // An editor-less focus (a webview, a panel) keeps the outline of the last document.
@@ -54,10 +54,9 @@ export class OutlineTreeProvider implements vscode.TreeDataProvider<OutlineNode>
       }),
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (event.document !== active()?.document) { return; }
-        clearTimeout(timer);
-        timer = setTimeout(() => void this.refresh(active()), REFRESH_DELAY_MS);
+        refreshSoon.call();
       }),
-      new vscode.Disposable(() => clearTimeout(timer)),
+      { dispose: () => refreshSoon.cancel() },
     );
   }
 

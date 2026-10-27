@@ -1,6 +1,7 @@
 /**
  * Turns keydown events into reader actions via the pure keymap, and drives held-key scrolling with a rAF loop (key-repeat + smooth scrolling stutters).
  */
+import { createDebouncer } from "../../../async/index.js";
 import { isDuplicateDelivery, type ActionSource, type ActionStamp, ACTIONS_BLOCKED_WHILE_TYPING, CHORD_TIMEOUT_MS, resolveShortcut, type ReaderAction } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 import { isTextInput } from "../elements/index.js";
@@ -18,7 +19,7 @@ const NATIVE_IN_CHROME: ReadonlySet<ReaderAction> = new Set<ReaderAction>([
 
 export class Keyboard {
   private pendingPrefix: string | null = null;
-  private prefixTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly prefixExpiry = createDebouncer(() => { this.pendingPrefix = null; }, CHORD_TIMEOUT_MS);
   private held: { key: string; dir: [number, number] } | null = null;
   private frame: number | null = null;
   private lastFrameTime = 0;
@@ -75,11 +76,8 @@ export class Keyboard {
   }
 
   private setPrefix(prefix: string | null): void {
-    if (this.prefixTimer) { clearTimeout(this.prefixTimer); this.prefixTimer = null; }
     this.pendingPrefix = prefix;
-    if (prefix !== null) {
-      this.prefixTimer = setTimeout(() => { this.pendingPrefix = null; }, CHORD_TIMEOUT_MS);
-    }
+    if (prefix === null) { this.prefixExpiry.cancel(); } else { this.prefixExpiry.call(); }
   }
 
   private startScroll(key: string, dir: [number, number]): void {

@@ -2,7 +2,7 @@
  * Renders the parts of a paper row that say more than the record: the state icon (no text layer, OCR running),
  * the PDF version chip, the Last read cell and the status mark.
  */
-import { formatCompactTime } from "../../../library/index.js";
+import { formatCompactTime } from "../../../time/index.js";
 import { PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
 import { STATUS_LABEL, deriveNextReadingStatus, type ReadingStatus } from "../../../library/readingStatus/index.js";
 import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../ui/index.js";

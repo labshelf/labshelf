@@ -10,6 +10,7 @@ import {
   type ILogger,
   createNonce,
   formatError,
+  formatLocaleDateTime,
 } from "@labshelf/core";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
 import type { ReadyProject } from "../buildRootDocument.js";
@@ -51,8 +52,6 @@ export interface ProjectHistoryStore {
   diff(project: ReadyProject, id: string, path: string): Promise<DiffLine[] | null>;
   restore(project: ReadyProject, id: string): Promise<void>;
 }
-
-const when = (iso: string): string => new Date(iso).toLocaleString();
 
 export class HistoryPanel {
   private ready = false;
@@ -110,7 +109,7 @@ export class HistoryPanel {
     const row = (await this.store.rows(this.project)).find((entry) => entry.id === id);
     if (!row) { return; }
     const answer = await vscode.window.showWarningMessage(
-      `Restore ${this.project.settings.id} to ${when(row.at)}?`,
+      `Restore ${this.project.settings.id} to ${formatLocaleDateTime(row.at)}?`,
       { modal: true, detail: "The project's files go back to that point. The current state stays in the history, so you can return to it." },
       "Restore",
     );
@@ -124,6 +123,6 @@ export class HistoryPanel {
       await this.post({ type: "busy", busy: false });
     }
     await this.refresh();
-    void vscode.window.showInformationMessage(`Restored ${this.project.settings.id} to ${when(row.at)}.`);
+    void vscode.window.showInformationMessage(`Restored ${this.project.settings.id} to ${formatLocaleDateTime(row.at)}.`);
   }
 }

@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import {
+  createKeyedDebouncer,
   type ILogger,
   readHistoryDiff,
   readHistoryRows,
@@ -61,18 +62,23 @@ export function registerProjectHistory({ context, host, projects }: ProjectHisto
   };
   const store = new NodeHistoryStore(context.globalStorageUri.fsPath, logger);
   let panel: HistoryPanel | undefined;
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  const settling = new Map<string, ReadyProject>();
 
   const record = (project: ReadyProject, kind: "edit" | "version", label?: string): void => {
     void store.record(project, kind, label)
       .then(async (entry) => { if (entry && panel?.folder === project.folder) { await panel.refresh(); } })
       .catch((error: unknown) => logger.error("writing/history", error, { action: "record", folder: project.folder, kind }));
   };
+  const settle = createKeyedDebouncer<string>(SAVE_SETTLE_MS, (folder) => {
+    const project = settling.get(folder);
+    settling.delete(folder);
+    if (project) { record(project, "edit"); }
+  });
   const recordSoon = (document: vscode.TextDocument): void => {
     const project = document.uri.scheme === "file" ? findOwningProject(projects, document.uri.fsPath) : undefined;
     if (!project) { return; }
-    clearTimeout(timers.get(project.folder));
-    timers.set(project.folder, setTimeout(() => { timers.delete(project.folder); record(project, "edit"); }, SAVE_SETTLE_MS));
+    settling.set(project.folder, project);
+    settle.call(project.folder);
   };
 
   const show = (): Promise<void> => runSafely(logger, SHOW_HISTORY_COMMAND, async () => {
@@ -91,7 +97,7 @@ export function registerProjectHistory({ context, host, projects }: ProjectHisto
     vscode.workspace.onDidOpenTextDocument(recordSoon),
     vscode.workspace.onDidSaveTextDocument(recordSoon),
     vscode.commands.registerCommand(SHOW_HISTORY_COMMAND, show),
-    { dispose: () => { for (const timer of timers.values()) { clearTimeout(timer); } } },
+    { dispose: () => { settle.dispose(); settling.clear(); } },
   );
   return { recordVersion: (project, name) => record(project, "version", name) };
 }

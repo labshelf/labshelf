@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import {
   PAPERS_DIR,
+  createDebouncer,
   deriveSidebarRows,
   deriveFolderTree,
   type LibrarySnapshot,
@@ -92,10 +93,10 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   private _view: vscode.WebviewView | undefined;
   private _ready = false;
   private _papersRoot: vscode.Uri | null = null;
-  private _timer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _refresh = createDebouncer(() => void this._push(), REFRESH_DEBOUNCE_MS);
   private readonly _subscriptions: vscode.Disposable[] = [];
   private _stopSpaces: (() => void) | undefined;
-  private _projectsTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _refreshProjectsSoon = createDebouncer(() => void this._pushProjects(), REFRESH_DEBOUNCE_MS);
   // Replayed once the webview is ready, so a hidden sidebar still opens on the list's folder and paper.
   private _current: HostToSidebar | null = null;
   private _selected: HostToSidebar | null = null;
@@ -113,8 +114,8 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   dispose(): void {
     this._stopSpaces?.();
     for (const subscription of this._subscriptions) subscription.dispose();
-    if (this._timer) clearTimeout(this._timer);
-    if (this._projectsTimer) clearTimeout(this._projectsTimer);
+    this._refresh.cancel();
+    this._refreshProjectsSoon.cancel();
     this._ready = false;
     this._view = undefined;
   }
@@ -147,13 +148,11 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
 
   /** Re-sends the library to the webview, debounced. */
   refresh(): void {
-    if (this._timer) { clearTimeout(this._timer); }
-    this._timer = setTimeout(() => { this._timer = null; void this._push(); }, REFRESH_DEBOUNCE_MS);
+    this._refresh.call();
   }
 
   private _refreshProjects(): void {
-    if (this._projectsTimer) { clearTimeout(this._projectsTimer); }
-    this._projectsTimer = setTimeout(() => { this._projectsTimer = null; void this._pushProjects(); }, REFRESH_DEBOUNCE_MS);
+    this._refreshProjectsSoon.call();
   }
 
   /** Marks the folder the list panel shows. */

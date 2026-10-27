@@ -2,6 +2,7 @@
 import type * as vscode from 'vscode';
 import {
   type HostToUi,
+  createDebouncer,
   createSidecarReader,
   deriveFolderTree,
   type LibraryUiSnapshot,
@@ -86,7 +87,7 @@ export class LibraryFeed implements vscode.Disposable {
   private readonly _subscriptions: vscode.Disposable[] = [];
   private _loadSeq = 0;
   private _disposed = false;
-  private _reloadTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly _reload = createDebouncer(() => void this.push(), RELOAD_DEBOUNCE_MS);
   private readonly _onSidecarEvent = ({ paperId }: { paperId: string }): void => {
     void this.queue.post({ type: 'sidecarChanged', id: paperId });
     this.scheduleReload();
@@ -130,17 +131,13 @@ export class LibraryFeed implements vscode.Disposable {
   }
 
   scheduleReload(): void {
-    if (this._reloadTimer) { clearTimeout(this._reloadTimer); }
-    this._reloadTimer = setTimeout(() => {
-      this._reloadTimer = null;
-      void this.push();
-    }, RELOAD_DEBOUNCE_MS);
+    this._reload.call();
   }
 
   dispose(): void {
     this._disposed = true;
     this.queue.close();
-    if (this._reloadTimer) { clearTimeout(this._reloadTimer); }
+    this._reload.cancel();
     while (this._subscriptions.length) { this._subscriptions.pop()?.dispose(); }
   }
 }

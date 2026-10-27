@@ -1,5 +1,6 @@
 // Forks the templates repository, commits a template to a branch and opens a pull request.
 import type { PublishTemplateInput, PublishTemplateResult, RepoReference, GitHubStep } from "./templatePullRequest.js";
+import { sleep as sleepFor } from "../../async/index.js";
 import { bytesToBase64 } from "../../encoding/index.js";
 import type { TemplateFile } from "../index.js";
 import { GitHubError } from "./githubError.js";
@@ -124,7 +125,7 @@ function repoPath(repo: RepoReference): string {
 
 export async function publishTemplatePullRequest(input: PublishTemplateInput): Promise<PublishTemplateResult> {
   const client = { fetch: input.fetch, token: input.token };
-  const sleep = input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep = input.sleep ?? sleepFor;
   const date = (input.now ?? (() => new Date()))().toISOString().slice(0, 10);
   const branch = `template/${input.templateId}-${date}`;
   const { upstream } = input;

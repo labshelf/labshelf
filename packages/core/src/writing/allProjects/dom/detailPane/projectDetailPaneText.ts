@@ -1,5 +1,5 @@
 // Writes the sentences of the All projects detail pane: meta line, venue line, limit sentence and build status.
-import { formatCompactTime } from "../../../../library/index.js";
+import { formatCompactTime } from "../../../../time/index.js";
 import type { ProjectSubmission } from "../../../project/index.js";
 import { countDaysUntil } from "../../formatDeadlineText.js";
 import type { CountedLimit, ProjectPaneContent } from "../../projectDetailPane.js";

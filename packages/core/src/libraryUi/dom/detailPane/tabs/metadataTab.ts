@@ -4,7 +4,8 @@
  * chosen style, and File.
  */
 import { CITE_FORMATS } from "../../../store/index.js";
-import { LIBRARY_LABEL, PDF_FILE, formatBytes, formatDateTime, formatRelativeTime } from "../../../../library/index.js";
+import { LIBRARY_LABEL, PDF_FILE, formatBytes } from "../../../../library/index.js";
+import { formatDateTime, formatRelativeTime } from "../../../../time/index.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { formatCitation } from "../../../formatCitation.js";
 import { CITE_LABEL } from "../../flows/index.js";

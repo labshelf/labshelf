@@ -7,7 +7,7 @@ import { openPaperPicker } from "../papers/index.js";
 import { renderOverviewAction } from "./actions.js";
 import { renderTimeline } from "./renderTimeline.js";
 import { renderReadingStatusMark } from "../../../ui/icons/index.js";
-import { formatDay } from "../../../library/index.js";
+import { formatDay } from "../../../time/index.js";
 
 function projectList(ctx: OverviewContext): HTMLElement {
   const list = renderElement("div", { class: "ov-list" });

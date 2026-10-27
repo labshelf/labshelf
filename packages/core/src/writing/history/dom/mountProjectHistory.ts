@@ -4,22 +4,12 @@ import { renderIcon } from "../../../ui/icons/index.js";
 import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol/index.js";
 import { escapeHtml } from "../../../ui/index.js";
 import type { DiffLine } from "../compareLines.js";
-
-const time = (iso: string): string => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const dateTime = (iso: string): string => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-
-function dayLabel(iso: string): string {
-  const day = new Date(iso).toDateString();
-  const today = new Date();
-  if (day === today.toDateString()) { return "Today"; }
-  if (day === new Date(today.getTime() - 86_400_000).toDateString()) { return "Yesterday"; }
-  return new Date(iso).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-}
+import { formatClockTime, formatDayLabel, formatShortDateTime } from "../../../time/index.js";
 
 /** What the row says it did: a version name, a restore or the files it touched. */
 function rowTitle(row: HistoryRow, oldest: boolean): string {
   if (row.kind === "version") { return `Version “${row.label ?? ""}”`; }
-  if (row.kind === "restore") { return `Restored to ${row.label ? dateTime(row.label) : "an earlier point"}`; }
+  if (row.kind === "restore") { return `Restored to ${row.label ? formatShortDateTime(row.label) : "an earlier point"}`; }
   if (oldest) { return "Start of history"; }
   const names = row.changes.map((change) => change.path.split("/").pop() ?? change.path);
   if (names.length === 0) { return "No file changes"; }
@@ -30,7 +20,7 @@ function rowElement(row: HistoryRow, index: number, rows: readonly HistoryRow[],
   const badge = index === 0 ? `<span class="ls-history-badge">Current</span>` : "";
   return renderElement("li", {
     class: `ls-history-row ls-history-${row.kind}${index === 0 ? " ls-history-current" : ""}`, role: "option", "aria-selected": String(selected), "data-index": index, tabindex: "-1",
-    html: `<span class="ls-history-dot" aria-hidden="true"></span><span class="ls-history-time">${escapeHtml(time(row.at))}</span>` +
+    html: `<span class="ls-history-dot" aria-hidden="true"></span><span class="ls-history-time">${escapeHtml(formatClockTime(row.at))}</span>` +
       `<span class="ls-history-title">${escapeHtml(rowTitle(row, index === rows.length - 1))}</span>${badge}`,
   });
 }
@@ -40,7 +30,7 @@ function renderTimeline(list: HTMLElement, rows: readonly HistoryRow[], selected
   const items: HTMLElement[] = [];
   let day = "";
   rows.forEach((row, index) => {
-    const label = dayLabel(row.at);
+    const label = formatDayLabel(row.at);
     if (label !== day) { items.push(renderElement("li", { class: "ls-history-day", role: "presentation", text: label })); day = label; }
     items.push(rowElement(row, index, rows, index === selected));
   });

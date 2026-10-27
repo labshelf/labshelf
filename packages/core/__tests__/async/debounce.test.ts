@@ -1,5 +1,5 @@
-// Tests the debouncer for trailing call execution.
-import { createDebouncer } from '../../../src/reader/navigation/debounce';
+// Tests the debouncers for trailing call execution.
+import { createDebouncer, createKeyedDebouncer } from '../../src/async/debounce';
 
 describe('createDebouncer', () => {
   beforeEach(() => { jest.useFakeTimers(); });
@@ -76,5 +76,50 @@ describe('createDebouncer', () => {
     jest.advanceTimersByTime(400);
     expect(fn).toHaveBeenCalledTimes(1);
     expect(fn).toHaveBeenCalledWith('b');
+  });
+});
+
+describe('createKeyedDebouncer', () => {
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  it('fires two keys separately', () => {
+    const run = jest.fn();
+    const debouncer = createKeyedDebouncer<string>(100, run);
+
+    debouncer.call('a');
+    debouncer.call('b');
+    jest.advanceTimersByTime(100);
+
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(run).toHaveBeenCalledWith('a');
+    expect(run).toHaveBeenCalledWith('b');
+  });
+
+  it('fires repeated calls for one key once', () => {
+    const run = jest.fn();
+    const debouncer = createKeyedDebouncer<string>(100, run);
+
+    debouncer.call('a');
+    jest.advanceTimersByTime(60);
+    debouncer.call('a');
+    jest.advanceTimersByTime(60);
+    expect(run).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(40);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith('a');
+  });
+
+  it('dispose cancels pending calls', () => {
+    const run = jest.fn();
+    const debouncer = createKeyedDebouncer<string>(100, run);
+
+    debouncer.call('a');
+    debouncer.call('b');
+    debouncer.dispose();
+    jest.advanceTimersByTime(500);
+
+    expect(run).not.toHaveBeenCalled();
   });
 });

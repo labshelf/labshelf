@@ -1,7 +1,7 @@
 // Serves the Project Search panel: runs its searches on the active file's writing project and carries out its opens and replacements.
 import * as vscode from "vscode";
 
-import { formatError, createEmptySearchRun, findMatchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeKind, type SearchToHost } from "@labshelf/core";
+import { formatError, createDebouncer, createEmptySearchRun, findMatchesIn, parseSearchMessage, type HostToSearch, type ILogger, type SearchOptions, type SearchScopeKind, type SearchToHost } from "@labshelf/core";
 import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
 import { openMatch } from "./openMatch.js";
@@ -45,7 +45,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
   /** The last file editor, kept while a non-text tab is in front so the panel keeps its project. */
   private activeFile = fileEditorPath(vscode.window.activeTextEditor);
   private run = 0;
-  private timer: NodeJS.Timeout | undefined;
+  private readonly searchSoon = createDebouncer(() => void this.search(), DEBOUNCE_MS);
   private readonly subscriptions: vscode.Disposable[] = [];
 
   constructor(private readonly deps: ProjectSearchDeps) {
@@ -77,7 +77,7 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
   }
 
   dispose(): void {
-    clearTimeout(this.timer);
+    this.searchSoon.cancel();
     this.run += 1;
     while (this.subscriptions.length) { this.subscriptions.pop()?.dispose(); }
   }
@@ -110,12 +110,11 @@ export class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Dis
   }
 
   private schedule(): void {
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.search(), DEBOUNCE_MS);
+    this.searchSoon.call();
   }
 
   private async search(): Promise<void> {
-    clearTimeout(this.timer);
+    this.searchSoon.cancel();
     const ticket = ++this.run;
     const { request } = this;
     if (!request) { return; }

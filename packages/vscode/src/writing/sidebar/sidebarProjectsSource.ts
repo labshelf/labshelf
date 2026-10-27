@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import {
   createBrokenProjectItem,
+  createKeyedDebouncer,
   createReadyProjectItem,
   updateProjectSettings,
   type ChecklistSignals,
@@ -44,7 +45,13 @@ function countOf(signals: ChecklistSignals): Counted {
 class ProjectCounts implements vscode.Disposable {
   private readonly pending = new Map<string, Promise<Counted | undefined>>();
   private readonly results = new Map<string, Counted>();
-  private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** The entry of the latest change per folder, read when its debounce settles. */
+  private readonly changed = new Map<string, ReadyEntry>();
+  private readonly dropSoon = createKeyedDebouncer<string>(DEBOUNCE_MS, (folder) => {
+    const entry = this.changed.get(folder);
+    this.changed.delete(folder);
+    if (entry) { this.drop(entry); }
+  });
   private watchers: vscode.Disposable[] = [];
   private readonly subscription: vscode.Disposable;
 
@@ -78,8 +85,8 @@ class ProjectCounts implements vscode.Disposable {
   dispose(): void {
     this.subscription.dispose();
     this.disposeWatchers();
-    for (const timer of this.timers.values()) { clearTimeout(timer); }
-    this.timers.clear();
+    this.dropSoon.dispose();
+    this.changed.clear();
   }
 
   private async compute(entry: ReadyEntry): Promise<Counted | undefined> {
@@ -107,8 +114,8 @@ class ProjectCounts implements vscode.Disposable {
     for (const entry of this.deps.projects.list()) {
       if (entry.kind !== "ready") { continue; }
       this.watchers.push(this.deps.watchFolder(entry.folder, () => {
-        clearTimeout(this.timers.get(entry.folder));
-        this.timers.set(entry.folder, setTimeout(() => { this.timers.delete(entry.folder); this.drop(entry); }, DEBOUNCE_MS));
+        this.changed.set(entry.folder, entry);
+        this.dropSoon.call(entry.folder);
       }));
     }
   }

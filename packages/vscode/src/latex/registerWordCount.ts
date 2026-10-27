@@ -1,9 +1,8 @@
 // Shows the word count of the active LaTeX project in the status bar, with the active file's count in its tooltip.
 import * as vscode from "vscode";
 
-import { countWords } from "@labshelf/core";
+import { countWords, createKeyedDebouncer } from "@labshelf/core";
 import type { LatexProjectSources } from "./project/index.js";
-import { createTrailingDebounce } from "./debounce.js";
 
 function wordsLabel(count: number): string {
   return `${count.toLocaleString("en-US")} ${count === 1 ? "word" : "words"}`;
@@ -36,7 +35,7 @@ export function registerWordCount(context: vscode.ExtensionContext, sources: Lat
     item.show();
   };
 
-  const refresh = createTrailingDebounce<string>(REFRESH_DELAY_MS, () => void update());
+  const refresh = createKeyedDebouncer<string>(REFRESH_DELAY_MS, () => void update());
   const onSourcesChanged = (folder: string): void => {
     const active = vscode.window.activeTextEditor?.document;
     if (active && sources.projectOf(active.uri)?.folder === folder) { refresh.call(folder); }

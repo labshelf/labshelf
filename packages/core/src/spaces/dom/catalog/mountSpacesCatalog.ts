@@ -2,7 +2,7 @@
 import { renderElement, renderEmptyNotice, renderIcon, askInputBox, renderSegmentedFilter, renderMemberChip, renderProgressMark } from "../../../ui/dom/index.js";
 import type { SpacesTransport, SpaceTab } from "../../protocol/index.js";
 import { deriveFilteredCatalogRows, type CatalogFilter, type CatalogRow } from "../../viewModel/index.js";
-import { formatDay } from "../../../library/index.js";
+import { formatDay } from "../../../time/index.js";
 import { formatCount } from "../../../ui/index.js";
 
 function countLink(count: number, noun: string, open: () => void): HTMLButtonElement {

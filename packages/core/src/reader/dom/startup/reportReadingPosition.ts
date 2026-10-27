@@ -2,7 +2,8 @@
  * Reports the reading position (page, zoom, offset, sidebar) to the host for persistence, debounced while reading and flushed when the panel hides.
  */
 import type { ReadingState } from "../../index.js";
-import { createDebouncer, isPresetScale } from "../../navigation/index.js";
+import { createDebouncer } from "../../../async/index.js";
+import { isPresetScale } from "../../navigation/index.js";
 import type { PdfPosition, ReaderContext } from "../session/index.js";
 import type { Sidebar } from "../sidebar/index.js";
 

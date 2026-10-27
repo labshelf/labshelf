@@ -1,4 +1,4 @@
-import { formatCompactTime } from "../../../src/library/paper/index.js";
+import { formatCompactTime } from "../../src/time/index.js";
 
 const S = 1000;
 const MIN = 60 * S;

@@ -4,8 +4,7 @@ import * as vscode from "vscode";
 import { type LatexProjectSources, deriveVscodeRange, type LatexProject } from "../project/index.js";
 import { ReferenceCompletionProvider } from "./referenceCompletion.js";
 import { ReferenceDefinitionProvider } from "./referenceDefinition.js";
-import { findUndefinedReferences } from "@labshelf/core";
-import { createTrailingDebounce } from "../debounce.js";
+import { createKeyedDebouncer, findUndefinedReferences } from "@labshelf/core";
 
 const REFRESH_DELAY_MS = 300;
 
@@ -28,7 +27,7 @@ function diagnosticsByFile(project: LatexProject): Map<string, vscode.Diagnostic
 export class LabelProblems implements vscode.Disposable {
   private readonly collection = vscode.languages.createDiagnosticCollection("labshelf-labels");
   private readonly published = new Map<string, vscode.Uri[]>();
-  private readonly refresh = createTrailingDebounce<string>(REFRESH_DELAY_MS, (folder) => void this.publish(folder));
+  private readonly refresh = createKeyedDebouncer<string>(REFRESH_DELAY_MS, (folder) => void this.publish(folder));
   private readonly subscriptions: vscode.Disposable[];
 
   constructor(private readonly sources: LatexProjectSources) {

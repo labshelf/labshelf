@@ -1,6 +1,6 @@
 // Fetches a walled PDF from inside a background tab that loads the walled URL and passes its check, then closes the tab.
 // The tab is inactive so the user's focus and the popup stay put.
-import { formatError, fetchPdf, originOf, isWallPage, extractNextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
+import { sleep, formatError, fetchPdf, originOf, isWallPage, extractNextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
 import { readScriptingApi } from "./scripting";
 import { fetchInTab } from "./tabFetch";
@@ -64,7 +64,7 @@ async function settled(tabId: number, signal: AbortSignal): Promise<boolean> {
   const deadline = Date.now() + SETTLE_TIMEOUT_MS;
   let calm = 0;
   while (Date.now() < deadline && !signal.aborted) {
-    await new Promise((r) => setTimeout(r, POLL_MS));
+    await sleep(POLL_MS);
     try {
       const [first] = (await scripting.executeScript({ target: { tabId }, func: pageState, args: [MAX_PAGE_CHARS] })) as Array<{ result?: PageState }>;
       const page = first?.result;

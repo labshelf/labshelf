@@ -1,4 +1,5 @@
 // Marks each placed PDF problem over its area on its page and flashes one on request.
+import { createDebouncer } from "../../../async/index.js";
 import type { PageArea, PdfProblem } from "../../index.js";
 import { derivePixelOffset, type PageViewLike } from "../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
@@ -18,7 +19,8 @@ const FLASH_MS = 1400;
 export function mountProblemMarks(deps: { container: HTMLElement; pdfViewer: ReaderContext["pdfViewer"] }): ProblemMarks {
   const { container, pdfViewer } = deps;
   let problems: readonly PdfProblem[] = [];
-  let flashTimer: ReturnType<typeof setTimeout> | undefined;
+  let flashed: readonly HTMLElement[] = [];
+  const clearFlash = createDebouncer(() => { for (const mark of flashed) { mark.classList.remove(FLASH_CLASS); } }, FLASH_MS);
 
   const drawPage = (page: number): void => {
     const view = pdfViewer.getPageView(page - 1) as PageViewLike | undefined;
@@ -48,10 +50,10 @@ export function mountProblemMarks(deps: { container: HTMLElement; pdfViewer: Rea
     flash(index) {
       const marks = container.querySelectorAll<HTMLElement>(`.${MARK_CLASS}[data-problem-index="${index}"]`);
       if (marks.length === 0) { return; }
-      clearTimeout(flashTimer);
       for (const stale of container.querySelectorAll(`.${FLASH_CLASS}`)) { stale.classList.remove(FLASH_CLASS); }
       for (const mark of marks) { mark.classList.add(FLASH_CLASS); }
-      flashTimer = setTimeout(() => { for (const mark of marks) { mark.classList.remove(FLASH_CLASS); } }, FLASH_MS);
+      flashed = [...marks];
+      clearFlash.call();
     },
   };
 }

@@ -12,10 +12,10 @@ import {
   readEntries,
   deriveTopLevelReadOnlyReason,
   deriveUnknownFields,
-  isDay,
   type EntryParse,
   type ReadEntries,
 } from "./json/index.js";
+import { isCalendarDay } from "../../time/index.js";
 import { isBoolean, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../../guards/index.js";
 
 function withoutKey<T extends object, K extends keyof T>(entry: T, key: K): T {
@@ -97,7 +97,7 @@ const parseDate: EntryParse<SpaceDate> = (raw) => {
   if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, kind, title, date, done, paperIds, projectId } = raw;
   if (!isKind(kind)) { return `unknown kind ${JSON.stringify(kind)}`; }
-  if (!isString(title) || !isDay(date)) { return "title is not text or date is not YYYY-MM-DD"; }
+  if (!isString(title) || !isCalendarDay(date)) { return "title is not text or date is not YYYY-MM-DD"; }
   const base = { id, title, date, extra: deriveUnknownFields(raw, DATE_KEYS) };
   switch (kind) {
     case "task": return isOptional(done, isBoolean) ? { ...base, kind, done: done === true } : "done is not true or false";

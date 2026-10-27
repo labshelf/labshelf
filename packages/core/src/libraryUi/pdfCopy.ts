@@ -1,7 +1,7 @@
 /**
  * Defines the wording of a paper's PDF status on every surface: resolver labels and the "No PDF found" texts.
  */
-import { formatDay } from "../library/index.js";
+import { formatDay } from "../time/index.js";
 import type { PdfAccess, PdfMiss } from "./protocol/index.js";
 
 export const ASK_AUTHOR_LABEL = "Ask the author";

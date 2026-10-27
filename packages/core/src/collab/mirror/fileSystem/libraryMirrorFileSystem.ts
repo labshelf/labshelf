@@ -1,4 +1,5 @@
 // Runs the mirror's disk over the library file-system port, for hosts without a native file watcher.
+import { sleep } from "../../../async/index.js";
 import { posixPathOps } from "../../../path/index.js";
 import type { LibraryFileSystem, LocalStat } from "../../../ports/index.js";
 import { assertProjectDirReadable, listMirrorFiles } from "./listMirrorFiles.js";
@@ -34,7 +35,7 @@ export function createLibraryMirrorFileSystem(fs: LibraryFileSystem, folder: str
     async read(relative: string, stableMs?: number): Promise<MirrorFileRead> {
       const first = await sample(relative);
       if (stableMs !== undefined) {
-        await new Promise((resolve) => setTimeout(resolve, stableMs));
+        await sleep(stableMs);
         if (!same(first, await sample(relative))) { return { state: "changing" }; }
       }
       return first ? { state: "present", bytes: first.bytes } : { state: "missing" };

@@ -1,7 +1,7 @@
 // Watches the figures and inputs of every project with figures and asks for a refresh, debounced, when one changes.
 import * as vscode from "vscode";
 
-import { normalizeInputPath } from "@labshelf/core";
+import { createDebouncer, normalizeInputPath } from "@labshelf/core";
 import type { WritingProjects } from "../session/index.js";
 
 const DEBOUNCE_MS = 300;
@@ -23,11 +23,8 @@ function watchedPatterns(projects: ReturnType<WritingProjects["list"]>): Array<{
 /** The watchers follow the project list: they are rebuilt whenever it changes. */
 export function watchFigureFiles(projects: Pick<WritingProjects, "list" | "onDidChange">, onChange: () => void): vscode.Disposable {
   let watchers: vscode.Disposable[] = [];
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const schedule = (): void => {
-    clearTimeout(timer);
-    timer = setTimeout(onChange, DEBOUNCE_MS);
-  };
+  const changed = createDebouncer(onChange, DEBOUNCE_MS);
+  const schedule = (): void => changed.call();
   const disposeWatchers = (): void => {
     for (const watcher of watchers) { watcher.dispose(); }
     watchers = [];
@@ -43,5 +40,5 @@ export function watchFigureFiles(projects: Pick<WritingProjects, "list" | "onDid
     }
   };
   rebuild();
-  return vscode.Disposable.from(projects.onDidChange(rebuild), { dispose: () => { disposeWatchers(); clearTimeout(timer); } });
+  return vscode.Disposable.from(projects.onDidChange(rebuild), { dispose: () => { disposeWatchers(); changed.cancel(); } });
 }

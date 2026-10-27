@@ -1,6 +1,7 @@
 /**
  * Renders the list header: sidebar toggle, scope title with a match count while narrowed, search box, and toolbar (Add).
  */
+import { createDebouncer } from "../../../async/index.js";
 import { SYNTAX_HELP, LIBRARY_LABEL, PAPERS_DIR, deriveBreadcrumb } from "../../../library/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import { deriveScope } from "../../viewModel/index.js";
@@ -55,11 +56,8 @@ const headerHtml = (addTooltip: string, readOnly: boolean): string => `
   ${readOnly ? "" : `<button class="ls-btn ls-btn-ghost" data-act="add" title="${escapeHtml(addTooltip)}">${renderIcon("plus")}<span>Add</span></button>`}`;
 
 function wireSearch(ctx: UiContext, search: HTMLInputElement): void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  search.addEventListener("input", () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => ctx.store.set({ query: search.value }), SEARCH_DEBOUNCE_MS);
-  });
+  const applyQuery = createDebouncer(() => ctx.store.set({ query: search.value }), SEARCH_DEBOUNCE_MS);
+  search.addEventListener("input", () => applyQuery.call());
   search.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { ctx.store.set({ query: "" }); search.value = ""; ctx.focusList(); e.preventDefault(); }
     else if (e.key === "ArrowDown" || e.key === "Enter") {

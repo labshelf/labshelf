@@ -1,6 +1,7 @@
 // Turns a paper's record and file listing into the ordered rows of its file tray.
 import type { PaperRecord } from "../../../../model/index.js";
 import type { PaperFile } from "../../../protocol/index.js";
+import { formatUtcDate } from "../../../../time/index.js";
 
 type TrayKind = "pdf" | "note" | "file" | "folder";
 type TypeTone = "pdf" | "md" | "dir" | "other";
@@ -16,7 +17,6 @@ export interface TrayEntry {
   title: string;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const PDF_NAME = "paper.pdf";
 
 function formatSize(bytes: number): string {
@@ -25,14 +25,8 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// Fixed month names and UTC keep the text identical across locales and time zones.
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
-
 function tooltip(f: PaperFile): string {
-  const date = formatDate(f.modified);
+  const date = formatUtcDate(f.modified);
   const parts = [f.kind === "file" && f.size !== undefined ? formatSize(f.size) : "", date ? `modified ${date}` : ""];
   return parts.filter(Boolean).join(" · ");
 }

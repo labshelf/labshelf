@@ -1,7 +1,7 @@
 // Answers the shared history page in the same page: records the project, serves diffs, restores a point and marks versions.
 import {
-  applyRestoredFiles, readHistoryDiff, readHistoryRows, applySnapshot, type HistoryRow, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
-  formatError,
+  applyRestoredFiles, readHistoryDiff, readHistoryRows, applySnapshot, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
+  formatError, formatLocaleDateTime,
 } from "@labshelf/core";
 import { askDialog, showToast } from "@labshelf/core/dom";
 import type { PageShares } from "../../collab";
@@ -13,7 +13,6 @@ import { addProjectUpdateEvent } from "./addHistoryEvent";
 
 const MODULE = "writing.history";
 const RESTORE_ORIGIN = "history-restore";
-const when = (row: HistoryRow): string => new Date(row.at).toLocaleString();
 
 export interface HistoryHostOptions {
   fs: LibraryFileSystem;
@@ -45,7 +44,7 @@ async function restore(context: RestoreContext, id: string): Promise<void> {
   const row = (await readHistoryRows(target.storage, logger)).find((entry) => entry.id === id);
   if (!row) return;
   const accepted = await askDialog(
-    `Restore ${project.id} to ${when(row)}?`,
+    `Restore ${project.id} to ${formatLocaleDateTime(row.at)}?`,
     "The project's files go back to that point. The current state stays in the history, so you can return to it.",
     "Restore",
   );
@@ -65,7 +64,7 @@ async function restore(context: RestoreContext, id: string): Promise<void> {
     endpoint.post({ type: "busy", busy: false });
   }
   await context.refresh();
-  showToast(`Restored ${project.id} to ${when(row)}.`, "ok");
+  showToast(`Restored ${project.id} to ${formatLocaleDateTime(row.at)}.`, "ok");
 }
 
 export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, shares }: HistoryHostOptions): { dispose(): void } {

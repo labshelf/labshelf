@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import {
+  createDebouncer,
   type ILogger,
   type IconName,
   type ProjectTreeView,
@@ -145,7 +146,7 @@ export class ProjectTreeMirror implements vscode.Disposable {
   readonly onDidChange = this.changeEmitter.event;
   private readonly subscriptions: vscode.Disposable[] = [];
   private readonly elements = new Map<ProjectTreeView, Map<string, unknown>>();
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  private readonly changeSoon = createDebouncer(() => this.changeEmitter.fire(), CHANGE_DEBOUNCE_MS);
 
   constructor(private readonly deps: ProjectTreeMirrorDeps) {
     const changed = (): void => this.scheduleChange();
@@ -229,12 +230,11 @@ export class ProjectTreeMirror implements vscode.Disposable {
   }
 
   private scheduleChange(): void {
-    if (this.timer) { clearTimeout(this.timer); }
-    this.timer = setTimeout(() => { this.timer = undefined; this.changeEmitter.fire(); }, CHANGE_DEBOUNCE_MS);
+    this.changeSoon.call();
   }
 
   dispose(): void {
-    if (this.timer) { clearTimeout(this.timer); }
+    this.changeSoon.cancel();
     for (const s of this.subscriptions) { s.dispose(); }
     this.changeEmitter.dispose();
   }

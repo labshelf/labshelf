@@ -1,6 +1,7 @@
 /** Retries the publisher pages that asked for a sign-in, through the user's real browser and then the library's proxies. */
 import { reportMessage, reportWarning } from "../env.js";
-import { createDeadline, downloadCandidate, runHelperTabRetry, createPacedFetch, type EngineLimits } from "./index.js";
+import { createDeadline } from "../../../async/index.js";
+import { downloadCandidate, runHelperTabRetry, createPacedFetch, type EngineLimits } from "./index.js";
 import type {
   LibraryProxy,
   PdfAttempt,

@@ -8,6 +8,7 @@ import {
   type TemplateManifest,
   type GitHubSignIn,
   formatEngineLabel,
+  sleep,
 } from "@labshelf/core";
 import { checkTemplateForPublish, renderFirstPagePng, writeProjectAsTemplate } from "@labshelf/core/node";
 import type { FinishedBuild } from "../../build/index.js";
@@ -93,7 +94,7 @@ export function createPublishPorts(deps: PublishPortsDeps): Omit<PublishPorts, "
     renderThumbnail: (pdf) => renderFirstPagePng(pdf, THUMBNAIL_WIDTH_PX),
     check: checkTemplateForPublish,
     submit: (input) => publishTemplatePullRequest({
-      ...input, fetch: deps.fetch, now: () => new Date(), sleep: (ms) => new Promise((resolve) => { setTimeout(resolve, ms); }),
+      ...input, fetch: deps.fetch, now: () => new Date(), sleep,
     }),
     saveToMyTemplates: (project, manifest) => saveToMyTemplates(deps, project, manifest),
   };

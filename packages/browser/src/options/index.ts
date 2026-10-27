@@ -1,5 +1,6 @@
 // Builds the options page from core components and autosaves every change, debounced, with a "Saved" flag.
 // Reader preferences mirror VS Code's labshelf.reader.* settings.
+import { createDebouncer } from "@labshelf/core";
 import { findElement, renderSettingsPage } from "@labshelf/core/dom";
 import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
 import { StorageRingLogSink, bx, createBrowserLogger, readSettings, updateSettings } from "../platform";
@@ -23,11 +24,8 @@ const SAVE_DEBOUNCE_MS = 400;
 
 /** Runs `save` once the user has paused editing any of `controls`; the returned function requests a save for controls the caller manages itself. */
 function autosave(controls: HTMLElement[], save: () => Promise<void>): () => void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const schedule = (): void => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void save(), SAVE_DEBOUNCE_MS);
-  };
+  const debounced = createDebouncer(() => void save(), SAVE_DEBOUNCE_MS);
+  const schedule = (): void => debounced.call();
   for (const control of controls) {
     control.addEventListener("input", schedule);
     control.addEventListener("change", schedule);

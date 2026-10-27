@@ -1,5 +1,5 @@
 // Renders date rows with task completion, goal progress and the Today marker.
-import { formatDay } from "../../../library/index.js";
+import { formatDay } from "../../../time/index.js";
 import { renderElement, renderIcon, renderProgressMark } from "../../../ui/dom/index.js";
 import type { TimelineEntry } from "../../viewModel/index.js";
 import type { SpaceDate } from "../../model/index.js";

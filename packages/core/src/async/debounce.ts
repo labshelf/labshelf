@@ -1,5 +1,5 @@
 /**
- * Debounces calls on the trailing edge with an explicit flush, used for reading-state saves that must not be lost when the panel hides.
+ * Debounces calls on the trailing edge, with an explicit flush for saves that must not be lost when a panel hides, and a keyed variant.
  */
 export interface Debouncer<A extends unknown[]> {
   call(...args: A): void;
@@ -43,5 +43,25 @@ export function createDebouncer<A extends unknown[]>(
       lastArgs = null;
     },
     get pending(): boolean { return handle !== null; },
+  };
+}
+
+/** Runs a callback for a key once calls for that key have been quiet for a delay. */
+export interface KeyedDebouncer<K> {
+  call(key: K): void;
+  dispose(): void;
+}
+
+export function createKeyedDebouncer<K>(ms: number, run: (key: K) => void): KeyedDebouncer<K> {
+  const timers = new Map<K, ReturnType<typeof setTimeout>>();
+  return {
+    call(key) {
+      clearTimeout(timers.get(key));
+      timers.set(key, setTimeout(() => { timers.delete(key); run(key); }, ms));
+    },
+    dispose() {
+      for (const timer of timers.values()) { clearTimeout(timer); }
+      timers.clear();
+    },
   };
 }

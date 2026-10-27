@@ -1,6 +1,7 @@
 // Runs the mirror's disk over a project folder through Node: settled reads, atomic writes and a recursive watch.
 import { promises as fs, watch } from "node:fs";
 import * as path from "node:path";
+import { sleep } from "../../async/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { nodeFileReads } from "../../writing/project/node/index.js";
@@ -30,7 +31,7 @@ const same = (a: Sample | undefined, b: Sample | undefined): boolean =>
 async function readDisk(file: string, settleMs?: number): Promise<MirrorFileRead> {
   const first = await sample(file);
   if (settleMs !== undefined) {
-    await new Promise((resolve) => setTimeout(resolve, settleMs));
+    await sleep(settleMs);
     if (!same(first, await sample(file))) { return { state: "changing" }; }
   }
   return first ? { state: "present", bytes: first.bytes } : { state: "missing" };

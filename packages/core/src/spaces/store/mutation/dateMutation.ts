@@ -1,6 +1,7 @@
 // Changes the dated entries of a Space: tasks, reading plans, project milestones and deadlines.
 import { createEntryId } from "../../model/index.js";
-import { isDay, parseEntryIds } from "../../model/json/index.js";
+import { isCalendarDay } from "../../../time/index.js";
+import { parseEntryIds } from "../../model/json/index.js";
 import { isNonEmptyStringList, isNonEmptyString, isOptional } from "../../../guards/index.js";
 import type { Space, SpaceDate } from "../../model/index.js";
 import type { Edited } from "./folderMutation.js";
@@ -11,7 +12,7 @@ export type SpaceDateInput = DistributiveOmit<SpaceDate, "id" | "extra">;
 
 function checked(draft: SpaceDateInput): void {
   if (draft.title.trim() === "") { throw new Error("A date needs a title."); }
-  if (!isDay(draft.date)) { throw new Error(`"${draft.date}" is not a YYYY-MM-DD date.`); }
+  if (!isCalendarDay(draft.date)) { throw new Error(`"${draft.date}" is not a YYYY-MM-DD date.`); }
   if (draft.kind === "read" && !isOptional(draft.paperIds, isNonEmptyStringList)) { throw new Error("paperIds is not a list of paper ids."); }
   if (draft.kind === "project" && !isOptional(draft.projectId, isNonEmptyString)) { throw new Error("projectId is not a project id."); }
 }

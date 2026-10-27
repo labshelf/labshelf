@@ -17,7 +17,7 @@ import {
   unpaywallResolver,
 } from "../resolvers/index.js";
 import type { PdfFetchOptions, PdfResolver, ResolveContext, ResolverEnv } from "../pdfResolver.js";
-import { createDeadline } from "./createDeadline.js";
+import { createDeadline } from "../../../async/index.js";
 import { fetchLanding } from "../../landing/index.js";
 
 interface LookupStep {

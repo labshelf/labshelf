@@ -3,6 +3,7 @@
 
 import YAML from "yaml";
 import { isOneOf } from "../../guards/index.js";
+import { isCalendarDay } from "../../time/index.js";
 import { readUserSettings, type CountUpTo, type UserSettings } from "./userSettings.js";
 import { readListedPapers, type ListedPaper } from "./listedPapers.js";
 
@@ -65,13 +66,6 @@ export type ProjectFileResult =
 
 const OPTIONAL_STRING_KEYS = ["main", "bibliography", "typst"] as const;
 
-function isCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) { return false; }
-  // The round trip rejects days the month does not have, such as 2026-02-30.
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
-}
-
 function readTarget(value: unknown): ProjectSubmission | undefined | string {
   if (value === null || typeof value !== "object" || Array.isArray(value)) { return "target must be a mapping"; }
   const { venue, deadline } = value as Record<string, unknown>;
@@ -81,7 +75,7 @@ function readTarget(value: unknown): ProjectSubmission | undefined | string {
     if (venue.trim() !== "") { target.venue = venue.trim(); }
   }
   if (deadline !== undefined && deadline !== null) {
-    if (typeof deadline !== "string" || !isCalendarDate(deadline)) { return "target.deadline must be a date as YYYY-MM-DD"; }
+    if (typeof deadline !== "string" || !isCalendarDay(deadline)) { return "target.deadline must be a date as YYYY-MM-DD"; }
     target.deadline = deadline;
   }
   return Object.keys(target).length > 0 ? target : undefined;
@@ -180,7 +174,7 @@ function patchCheckLimits(doc: YAML.Document, check: NonNullable<ProjectSettings
 function patchTarget(doc: YAML.Document, target: ProjectSubmission): void {
   // INVARIANT: a written deadline must parse again, or the whole project file becomes unreadable.
   const deadline = target.deadline?.trim();
-  if (deadline && !isCalendarDate(deadline)) { throw new Error(`target.deadline must be a date as YYYY-MM-DD, got "${deadline}"`); }
+  if (deadline && !isCalendarDay(deadline)) { throw new Error(`target.deadline must be a date as YYYY-MM-DD, got "${deadline}"`); }
   for (const [key, value] of Object.entries(target)) {
     if (value === undefined || value.trim() === "") { doc.deleteIn(["target", key]); } else { doc.setIn(["target", key], value.trim()); }
   }

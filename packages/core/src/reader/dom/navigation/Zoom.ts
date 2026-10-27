@@ -1,6 +1,7 @@
 // Controls the PDF zoom within the visible reader viewport.
 import type { ZoomKind } from "../../index.js";
-import { createDebouncer, deriveAnchorOrigin, deriveBoundedFactor, deriveClampedScale, isPresetScale, deriveNextZoomStep, deriveScaleFactor } from "../../navigation/index.js";
+import { createDebouncer } from "../../../async/index.js";
+import { deriveAnchorOrigin, deriveBoundedFactor, deriveClampedScale, isPresetScale, deriveNextZoomStep, deriveScaleFactor } from "../../navigation/index.js";
 import type { ReaderContext } from "../session/index.js";
 
 // pdf.js CSS-scales the rendered canvases immediately and re-rasters once the gesture has been quiet this long.

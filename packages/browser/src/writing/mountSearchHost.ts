@@ -1,5 +1,6 @@
 // Answers the shared project search page in the same page: searches the project's saved files and applies its opens and replacements.
 import {
+  createDebouncer,
   createEmptySearchRun,
   findMatchesIn,
   posixPathOps,
@@ -122,7 +123,6 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
   let pattern: RegExp | undefined;
   let searched: ReadonlySet<string> = new Set();
   let ticket = 0;
-  let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function search(): Promise<void> {
     const mine = ++ticket;
@@ -138,12 +138,9 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
     endpoint.post(run.message);
   }
 
-  const searchLater = (): void => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      search().catch((error: unknown) => reportSearchFailure({ logger, endpoint, project }, error));
-    }, DEBOUNCE_MS);
-  };
+  const searchLater = createDebouncer(() => {
+    search().catch((error: unknown) => reportSearchFailure({ logger, endpoint, project }, error));
+  }, DEBOUNCE_MS);
 
   async function handle(message: SearchToHost): Promise<void> {
     if (message.type === "ready") {
@@ -151,7 +148,7 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
       endpoint.post({ type: "scope", scope: { project: project.id, folder: project.folder, file: null } });
     } else if (message.type === "search") {
       request = { query: message.query, options: message.options };
-      searchLater();
+      searchLater.call();
     } else if (message.type === "open") {
       if (searched.has(message.path)) openMatch(posixPathOps.relative(project.folder, message.path), message.line);
     } else if (pattern && await replaceMatches({ fs, logger, project }, message, pattern, searched)) {
@@ -162,5 +159,5 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
   const stop = endpoint.subscribe((message) => {
     handle(message).catch((error: unknown) => reportMessageFailure({ logger, project }, message, error));
   });
-  return { dispose: () => { ticket += 1; clearTimeout(timer); stop(); } };
+  return { dispose: () => { ticket += 1; searchLater.cancel(); stop(); } };
 }

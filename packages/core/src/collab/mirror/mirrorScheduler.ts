@@ -1,4 +1,6 @@
 // Supplies the clock and timers a folder lease runs on, injectable so tests drive time.
+import { sleep } from "../../async/index.js";
+
 export interface LeaseScheduler {
   now(): number;
   delay(ms: number): Promise<void>;
@@ -8,7 +10,7 @@ export interface LeaseScheduler {
 
 export const systemLeaseScheduler: LeaseScheduler = {
   now: () => Date.now(),
-  delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  delay: (ms) => sleep(ms),
   every: (ms, task) => {
     const handle = setInterval(task, ms);
     return () => clearInterval(handle);

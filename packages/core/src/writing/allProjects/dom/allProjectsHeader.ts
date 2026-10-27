@@ -1,4 +1,5 @@
 // Renders the All projects header: the place tabs as its title, the search box and the New project or Empty trash button.
+import { createDebouncer } from "../../../async/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
 import type { ProjectPlace } from "../projectRow.js";
 
@@ -36,11 +37,8 @@ const headerHtml = (): string => `
   <button class="ls-btn ls-btn-ghost" type="button" data-act="empty-trash" title="Delete every project in the trash">${renderIcon("trash")}<span>Empty trash</span></button>`;
 
 function wireSearch(search: HTMLInputElement, h: HeaderHandlers): void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  search.addEventListener("input", () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => h.onQuery(search.value), SEARCH_DEBOUNCE_MS);
-  });
+  const applyQuery = createDebouncer(() => h.onQuery(search.value), SEARCH_DEBOUNCE_MS);
+  search.addEventListener("input", () => applyQuery.call());
   search.addEventListener("keydown", (e) => {
     if (e.key === "Escape") { search.value = ""; h.onQuery(""); h.onLeaveSearch(); }
     else if (e.key === "ArrowDown" || e.key === "Enter") h.onLeaveSearch();

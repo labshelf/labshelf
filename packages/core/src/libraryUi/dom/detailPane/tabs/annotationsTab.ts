@@ -2,7 +2,7 @@
  * Renders the Annotations tab: highlights and notes by page, each opening the PDF at its page and copyable as a quote, with a
  * filter field past four, colour filters, Copy as Markdown and Export.
  */
-import { formatRelativeTime } from "../../../../library/index.js";
+import { formatRelativeTime } from "../../../../time/index.js";
 import { ANNOTATION_COLORS, type Annotation } from "../../../../model/index.js";
 import { compareAnnotations } from "../../../../reader/index.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";

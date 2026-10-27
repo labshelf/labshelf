@@ -2,15 +2,16 @@
 // Watches papers/**, the sidecars and projects/** (conflict copies of writing projects); a burst of events is debounced into one re-index.
 import * as vscode from "vscode";
 
-import { SIDECAR_FILE, isExternalChangeNoise, type LibraryLayout } from "@labshelf/core";
+import { SIDECAR_FILE, createDebouncer, isExternalChangeNoise, type Debouncer, type LibraryLayout } from "@labshelf/core";
 
 const DEBOUNCE_MS = 1_000;
 
 export class ExternalChangeWatcher implements vscode.Disposable {
   private readonly watchers: vscode.FileSystemWatcher[] = [];
-  private timer: ReturnType<typeof setTimeout> | undefined;
+  private readonly reindex: Debouncer<[]>;
 
   constructor(paths: LibraryLayout<vscode.Uri>, private readonly onChange: () => void, private readonly debounceMs = DEBOUNCE_MS) {
+    this.reindex = createDebouncer(() => this.onChange(), this.debounceMs);
     const patterns = [
       new vscode.RelativePattern(paths.papersRoot(), "**"),
       new vscode.RelativePattern(paths.paperDataRoot(), `**/${SIDECAR_FILE}`),
@@ -28,12 +29,11 @@ export class ExternalChangeWatcher implements vscode.Disposable {
 
   private schedule(uri: vscode.Uri): void {
     if (isExternalChangeNoise(uri.fsPath)) { return; }
-    clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.onChange(), this.debounceMs);
+    this.reindex.call();
   }
 
   dispose(): void {
-    clearTimeout(this.timer);
+    this.reindex.cancel();
     for (const watcher of this.watchers) { watcher.dispose(); }
   }
 }

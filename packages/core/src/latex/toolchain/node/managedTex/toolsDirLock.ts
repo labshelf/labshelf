@@ -3,6 +3,7 @@
 import { link, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { sleep } from "../../../../async/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 
 const LOCK_MODULE = "ToolLock";
@@ -113,7 +114,7 @@ export async function withToolLock<T>(folder: string, operation: string, logger:
       waiting = true;
       await logger.log("INFO", LOCK_MODULE, "Waiting for another LabShelf process to finish with a managed tool folder", { file, holder: text, operation });
     }
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    await sleep(pollMs);
   }
   try {
     return await run();

@@ -1,6 +1,6 @@
 // Builds the dated timeline of a Space: its own dates plus the deadlines of linked projects.
 import type { Space, SpaceDate } from "../../model/index.js";
-import { countDaysBetween } from "../formatLocalDay.js";
+import { countDaysBetween } from "../../../time/index.js";
 import { resolvePaper, type LibraryPapers } from "../resolvePaper.js";
 import type { Progress, SpaceProjectEntry, TimelineEntry } from "../spaceViewModel.js";
 

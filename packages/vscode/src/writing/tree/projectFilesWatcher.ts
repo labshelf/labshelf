@@ -1,6 +1,7 @@
 // Refreshes a view when files matching a glob appear in or leave the open project's folder outside the view.
 import * as vscode from "vscode";
 
+import { createDebouncer } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectSession } from "../session/index.js";
 import { createProjectFolderUri } from "./projectFilesProvider.js";
@@ -11,11 +12,8 @@ const DEBOUNCE_MS = 200;
 /** Keeps one watcher on `glob` under the open project's folder and replaces it when the session opens another project. */
 export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onDidChange">, refresh: () => void, glob = "**"): vscode.Disposable {
   let watcher: vscode.FileSystemWatcher | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const schedule = (): void => {
-    clearTimeout(timer);
-    timer = setTimeout(refresh, DEBOUNCE_MS);
-  };
+  const refreshSoon = createDebouncer(refresh, DEBOUNCE_MS);
+  const schedule = (): void => refreshSoon.call();
   const watch = (project: ReadyProject | undefined): void => {
     watcher?.dispose();
     watcher = undefined;
@@ -29,7 +27,7 @@ export function watchProjectFiles(session: Pick<ProjectSession, "project" | "onD
   const subscription = session.onDidChange(watch);
   return new vscode.Disposable(() => {
     subscription.dispose();
-    clearTimeout(timer);
+    refreshSoon.cancel();
     watcher?.dispose();
   });
 }

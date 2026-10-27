@@ -1,5 +1,5 @@
 // Builds the Overview tab of the All projects detail pane: target and limits, build, bibliography and location.
-import { formatCompactTime } from "../../../../../library/index.js";
+import { formatCompactTime } from "../../../../../time/index.js";
 import { renderIconButton, renderField, renderMuted, renderSection } from "../../../../../libraryUi/dom/index.js";
 import { escapeHtml } from "../../../../../ui/index.js";
 import type { CountedLimit, ProjectPaneContent } from "../../../projectDetailPane.js";

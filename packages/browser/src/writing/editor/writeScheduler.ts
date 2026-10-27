@@ -1,5 +1,5 @@
 // Saves a source file shortly after the last edit and on close, keeping it dirty while a write fails.
-import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, type ILogger } from "@labshelf/core";
 
 const MODULE = "editor.save";
 
@@ -25,7 +25,6 @@ export interface WriteScheduler {
 export function createWriteScheduler(deps: WriteSchedulerDeps): WriteScheduler {
   let edits = 0;
   let savedEdits = 0;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let writing: Promise<void> = Promise.resolve();
   const isDirty = (): boolean => edits !== savedEdits;
   const write = async (): Promise<void> => {
@@ -42,18 +41,17 @@ export function createWriteScheduler(deps: WriteSchedulerDeps): WriteScheduler {
   };
   // INVARIANT: writes run one at a time, so an older text never lands after a newer one.
   const flush = async (): Promise<boolean> => {
-    clearTimeout(timer);
-    timer = undefined;
+    autosave.cancel();
     writing = writing.then(write);
     await writing;
     return !isDirty();
   };
+  const autosave = createDebouncer(() => { void flush(); }, AUTO_SAVE_DELAY_MS);
   return {
     changed() {
       if (!isDirty()) deps.onDirty(true);
       edits += 1;
-      clearTimeout(timer);
-      timer = setTimeout(() => { void flush(); }, AUTO_SAVE_DELAY_MS);
+      autosave.call();
     },
     flush,
     dirty: isDirty,

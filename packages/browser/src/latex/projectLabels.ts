@@ -1,5 +1,5 @@
 // Keeps the labels of a project's LaTeX files current, rescanning only the edited file after a pause.
-import { scanLatexSource, type ILogger } from "@labshelf/core";
+import { createKeyedDebouncer, scanLatexSource, type ILogger } from "@labshelf/core";
 
 export interface ProjectLabel { name: string; file: string }
 
@@ -17,12 +17,17 @@ const MODULE = "editor.labelIndex";
 
 export function createProjectLabels(logger: ILogger): ProjectLabels {
   const byFile = new Map<string, ProjectLabel[]>();
-  const timers = new Map<string, ReturnType<typeof setTimeout>>();
+  const pendingText = new Map<string, () => string>();
   let all: ProjectLabel[] = [];
   const scan = (file: string, text: string): void => {
     byFile.set(file, scanLatexSource(text).labels.map((label) => ({ name: label.name, file })));
     all = [...byFile.values()].flat();
   };
+  const scanLater = createKeyedDebouncer<string>(SCAN_DELAY_MS, (file) => {
+    const text = pendingText.get(file);
+    pendingText.delete(file);
+    if (text) { scan(file, text()); }
+  });
   return {
     labels: () => all,
     async load(files, read) {
@@ -33,9 +38,9 @@ export function createProjectLabels(logger: ILogger): ProjectLabels {
       }));
     },
     schedule(file, text) {
-      clearTimeout(timers.get(file));
-      timers.set(file, setTimeout(() => { timers.delete(file); scan(file, text()); }, SCAN_DELAY_MS));
+      pendingText.set(file, text);
+      scanLater.call(file);
     },
-    dispose() { timers.forEach((timer) => clearTimeout(timer)); timers.clear(); },
+    dispose() { scanLater.dispose(); pendingText.clear(); },
   };
 }

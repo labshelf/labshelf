@@ -1,5 +1,6 @@
 // Exports a Space's dates and linked project deadlines as an iCalendar file of all-day events.
 import type { Space } from "../model/index.js";
+import { nextDay } from "../../time/index.js";
 import { deriveProjectDeadlines } from "./spaceOverview/index.js";
 import type { SpaceProjectEntry } from "./spaceViewModel.js";
 
@@ -30,10 +31,6 @@ function foldIcsLine(line: string): string {
 }
 
 const compactDate = (day: string): string => day.replace(/-/g, "");
-
-function nextDay(day: string): string {
-  return new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-}
 
 function stampText(ms: number): string {
   return `${new Date(ms).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`;

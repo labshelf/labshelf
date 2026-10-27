@@ -6,6 +6,7 @@ import {
   type ILogger,
   type ProjectEntry,
   addThread,
+  createKeyedDebouncer,
   deriveAnchor,
   isInside,
   COMMENTS_PATH,
@@ -139,7 +140,7 @@ const isOpenProject = (entry: ProjectEntry): entry is Extract<ProjectEntry, { ki
 export class CommentsController implements vscode.Disposable {
   private readonly controller = vscode.comments.createCommentController("labshelf.comments", "LabShelf");
   private readonly views = new Map<string, ProjectView>();
-  private readonly relocations = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly relocate = createKeyedDebouncer<string>(RELOCATE_DELAY_MS, (folder) => { void this.views.get(folder)?.view.refresh(); });
   private readonly subscriptions: vscode.Disposable[];
 
   constructor(private readonly deps: CommentsDeps) {
@@ -192,7 +193,7 @@ export class CommentsController implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.relocations.forEach((timer) => clearTimeout(timer));
+    this.relocate.dispose();
     this.subscriptions.forEach((subscription) => subscription.dispose());
     [...this.views.keys()].forEach((folder) => this.drop(folder));
     this.controller.dispose();
@@ -250,7 +251,6 @@ export class CommentsController implements vscode.Disposable {
   private scheduleRelocate(uri: vscode.Uri): void {
     const target = this.locate(uri);
     if (!target) { return; }
-    clearTimeout(this.relocations.get(target.folder));
-    this.relocations.set(target.folder, setTimeout(() => { this.relocations.delete(target.folder); void target.view.refresh(); }, RELOCATE_DELAY_MS));
+    this.relocate.call(target.folder);
   }
 }

@@ -2,8 +2,8 @@
  * Says how long ago a timestamp was, as sentence text ("just now", "5m ago", "yesterday", "Mar 4", "Mar 2023") or as
  * compact list-cell text ("now", "5 min", "3 h", "1 d", "3 w", "2 mo", "1 y").
  */
+import { MONTHS } from "./months.js";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;

@@ -15,7 +15,7 @@ import { createProjectKey, deriveProjectListRows, type ProjectListRow } from "./
 import { createWindowedRows } from "./projectListWindow.js";
 import { findAriaRow, updateRowMarks } from "./projectRowState.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
-import { formatCompactTime } from "../../../../library/index.js";
+import { formatCompactTime } from "../../../../time/index.js";
 import { formatDeadlineText } from "../../formatDeadlineText.js";
 
 interface ProjectRowView {

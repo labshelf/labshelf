@@ -4,7 +4,6 @@ export type {
 } from "./spaceViewModel.js";
 export { resolvePaper } from "./resolvePaper.js";
 export type { LibraryPapers } from "./resolvePaper.js";
-export { formatLocalDay } from "./formatLocalDay.js";
 export { deriveSpaceChecklistProgress } from "./taskProgress.js";
 export { deriveCatalogRows, deriveFilteredCatalogRows } from "./deriveCatalogRows.js";
 export type { CatalogFilter } from "./deriveCatalogRows.js";

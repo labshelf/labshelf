@@ -1,4 +1,5 @@
 /** Spaces the requests of one run to each host and stops asking a host that keeps refusing. */
+import { sleep } from "../../../async/index.js";
 import type { FetchFn } from "../pdfResolver.js";
 import type { EngineLimits } from "./limits.js";
 
@@ -38,13 +39,4 @@ function hostKeyOf(input: Parameters<FetchFn>[0]): string {
   } catch {
     return url;
   }
-}
-
-function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
-  if (signal?.aborted) return Promise.reject(signal.reason);
-  if (ms <= 0) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
-  });
 }
