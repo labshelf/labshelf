@@ -31,6 +31,7 @@ import {
 import { SharedComments } from "./sharedComments.js";
 import { createEditorCommentRange, findSourceCommentRange } from "./sourceRanges.js";
 import { ThreadView } from "./threadView.js";
+import { disposeAll } from "../../disposables/index.js";
 
 /** An unshared project's threads, read from and written to its comments.json. */
 class FileComments implements ProjectComments {
@@ -194,7 +195,7 @@ export class CommentsController implements vscode.Disposable {
 
   dispose(): void {
     this.relocate.dispose();
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     [...this.views.keys()].forEach((folder) => this.drop(folder));
     this.controller.dispose();
   }

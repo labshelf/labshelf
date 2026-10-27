@@ -18,7 +18,7 @@ import { registerExportCommands } from "../writing/index.js";
 import { registerEditorActions, registerInsertActions } from "../writing/index.js";
 import { registerAllProjects } from "../writing/allProjects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
-import { registerMarkVersionCommand } from "../writing/versions/index.js";
+import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, CheckCounts, FocusFollower, registerShowInPreview, registerShowPreview } from "../writing/preview/index.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { createSignalsReader } from "../writing/checklist/index.js";

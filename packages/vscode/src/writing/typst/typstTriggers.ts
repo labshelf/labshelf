@@ -1,5 +1,6 @@
-// Starts Typst compiles from the editor: live into an open preview while the user types, and a build after every save of a project's files.
+// Starts Typst compiles from the editor: live into an open preview while the user types, and a build after every save of a project's files; records the Typst version a build used.
 import { buildRootOf } from "@labshelf/core";
+import { TYPST_VERSION } from "@labshelf/core/typst";
 import * as vscode from "vscode";
 
 import { createAutoCompileGate } from "../build/index.js";
@@ -11,6 +12,8 @@ import type { WritingHost, WritingProjects } from "../session/index.js";
 export type TypstTrigger = BuildTrigger | "live";
 
 // Short enough to follow typing, long enough that a burst of keystrokes costs one compile.
+const MODULE = "writing/typst";
+
 const LIVE_DEBOUNCE_MS = 150;
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -59,4 +62,35 @@ export function registerTypstTriggers(deps: TypstTriggerDeps): void {
     autoCompile,
     { dispose: () => { disposed = true; timers.forEach((timer) => clearTimeout(timer)); } },
   );
+}
+
+interface VersionPinDeps {
+  host: Pick<WritingHost, "current">;
+  projects: Pick<WritingProjects, "data" | "reload">;
+}
+
+/** Folders already warned about in this session, so a project warns once however often it builds. */
+const warnedFolders = new Set<string>();
+
+function warnOnce(project: ReadyProject, recorded: string): void {
+  if (warnedFolders.has(project.folder)) { return; }
+  warnedFolders.add(project.folder);
+  void vscode.window.showWarningMessage(
+    `Project "${project.settings.id}" was last built with Typst ${recorded}; LabShelf compiles it with Typst ${TYPST_VERSION}. Check the PDF for differences.`,
+  );
+}
+
+/** Called after every successful Typst build; writes labshelf.yaml only when the recorded version differs. */
+export async function writeTypstVersion(project: ReadyProject, deps: VersionPinDeps): Promise<void> {
+  const recorded = project.settings.typst;
+  if (recorded === TYPST_VERSION) { return; }
+  const logger = deps.host.current()?.logger;
+  if (recorded !== undefined) { warnOnce(project, recorded); }
+  if (!logger) { return; }
+  try {
+    await deps.projects.data.updateProjectSettings(project.folder, { typst: TYPST_VERSION });
+    await deps.projects.reload();
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "record-typst-version", folder: project.folder });
+  }
 }

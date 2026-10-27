@@ -19,6 +19,7 @@ import {
 import type { BuildOutcomes } from "../build/index.js";
 import type { ReadyProject } from "../figures/index.js";
 import type { WritingProjects } from "../session/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 const MODULE = "writing/projects";
 // Short enough to feel live, long enough that a build or a save burst costs one recount.
@@ -105,7 +106,7 @@ class ProjectCounts implements vscode.Disposable {
   }
 
   private disposeWatchers(): void {
-    for (const watcher of this.watchers) { watcher.dispose(); }
+    disposeAll(this.watchers);
     this.watchers = [];
   }
 
@@ -167,7 +168,7 @@ export class SidebarProjectsSource implements vscode.Disposable {
   }
 
   dispose(): void {
-    for (const subscription of this.subscriptions) { subscription.dispose(); }
+    disposeAll(this.subscriptions);
     this.counts.dispose();
     this.changeEmitter.dispose();
   }

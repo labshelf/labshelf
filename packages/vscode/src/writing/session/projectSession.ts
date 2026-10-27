@@ -6,6 +6,7 @@ import { BUILD_COMMAND } from "../build/index.js";
 import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import { readBuiltPdf } from "../preview/index.js";
 import type { WritingHost, WritingProjects } from "./projectStore.js";
+import { disposeAll } from "../../disposables/index.js";
 
 async function openProjectMain(paths: PathOps, entry: ProjectEntry | undefined): Promise<void> {
   if (entry?.kind !== "ready") { return; }
@@ -87,7 +88,7 @@ export class ProjectSession implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.changeEmitter.dispose();
   }
 

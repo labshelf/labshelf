@@ -4,11 +4,11 @@ import * as vscode from "vscode";
 
 import { buildProject } from "@labshelf/core/node";
 import { TypstBuilds } from "../../../../src/writing/typst/node/typstBuilds";
-import { writeTypstVersion } from "../../../../src/writing/typst/typstVersionPin";
+import { writeTypstVersion } from "../../../../src/writing/typst/typstTriggers";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildProject: jest.fn() }));
-jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ writeTypstVersion: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/typst/typstTriggers", () => ({ ...jest.requireActual("../../../../src/writing/typst/typstTriggers"), writeTypstVersion: jest.fn(async () => {}) }));
 
 const run = buildProject as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;

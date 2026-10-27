@@ -2,15 +2,13 @@
 import * as vscode from "vscode";
 
 import { hostPdfjs } from "../../reader/node/index.js";
-import { createVscodeTex, registerLatexBuild } from "../build/node/index.js";
-import { registerCheckCommand } from "../check/node/index.js";
+import { createSessionLogger, createVscodeTex, registerCheckCommand, registerLatexBuild } from "../build/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
 import type { RegisterPlatformWriting } from "../platformWritingPort.js";
 import { registerTemplates } from "../templates/node/index.js";
 import { registerTypstLanguage } from "../typst/index.js";
 import { registerTypstBuild } from "../typst/node/index.js";
-import { registerCompareVersionsCommand } from "../versions/node/index.js";
-import { registerProjectHistory } from "../history/node/index.js";
+import { registerCompareVersionsCommand, registerProjectHistory } from "../history/node/index.js";
 import { registerAddExistingFolder } from "../projectCommands.js";
 
 export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
@@ -26,7 +24,7 @@ export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, pr
   registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs, ...(onFindings && { onFindings }) });
   registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
   registerTemplates({ context, host, tex, projects, builders });
-  registerTypstLanguage({ context, host, projects });
+  registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
   const history = registerProjectHistory({ context, host, projects });
   return { builders, history };
 };

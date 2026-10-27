@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { readFileText, derivePeerColour, deriveAbsoluteSelection, deriveRelativeSelection, type PresenceState, type ShareConnection } from "@labshelf/core";
 import { PeerCursors, type PeerCursor } from "../../binding/index.js";
 import type { SharedEditors } from "./sharedEditors.js";
+import { disposeAll } from "../../../disposables/index.js";
 
 const PUBLISH_DELAY_MS = 100;
 
@@ -45,7 +46,7 @@ export class SharedPresence implements vscode.Disposable {
 
   dispose(): void {
     this.pending.forEach((timer) => clearTimeout(timer));
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.cursors.dispose();
   }
 

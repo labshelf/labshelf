@@ -13,6 +13,7 @@ import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
 import { readActiveProjectEditor, readFocusedBuildRoot, createPreviewBuildRootsMessage, createProjectPreprints, createProjectSources } from "./buildRoot/index.js";
 import type { ProjectSynctex } from "./synctex/index.js";
 import type { BuildRootBuilds } from "./buildRootBuilds.js";
+import { disposeAll } from "../../disposables/index.js";
 
 export class MeasureCache {
   private readonly measures = new Map<string, Promise<unknown>>();
@@ -69,7 +70,7 @@ export class BuildRootsPublisher implements vscode.Disposable {
   }
 
   dispose(): void {
-    for (const subscription of this.subscriptions) { subscription.dispose(); }
+    disposeAll(this.subscriptions);
   }
 
   /** Sends the roots of every open preview again. */

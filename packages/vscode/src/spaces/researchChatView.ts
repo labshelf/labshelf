@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import { type ILogger, createNonce } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml } from "../ui/index.js";
+import { disposeAll } from "../disposables/index.js";
 
 function researchChatBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(extensionUri, "dist", "spaces");
@@ -61,5 +62,5 @@ export class ResearchChatView implements vscode.WebviewViewProvider, vscode.Disp
     });
   }
 
-  dispose(): void { this.subscriptions.forEach(subscription => subscription.dispose()); }
+  dispose(): void { disposeAll(this.subscriptions); }
 }

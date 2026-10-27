@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { isInside, readFileText, readShareIndexDocFiles, type ILogger, type ShareConnection } from "@labshelf/core";
 import { nodePathOps } from "@labshelf/core/node";
 import { attachDocument, registerUndoRedo, RemoteUpdateQueue, type DocumentBinding } from "../../binding/index.js";
+import { disposeAll } from "../../../disposables/index.js";
 
 export interface SharedDocument {
   share: ShareConnection;
@@ -64,7 +65,7 @@ export class SharedEditors implements vscode.Disposable {
 
   dispose(): void {
     [...this.bound.keys()].forEach((key) => this.release(key, false));
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.undoRedo.dispose();
     this.changeEmitter.dispose();
   }

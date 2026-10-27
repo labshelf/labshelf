@@ -3,6 +3,7 @@
 import * as vscode from "vscode";
 
 import { SIDECAR_FILE, createDebouncer, isExternalChangeNoise, type Debouncer, type LibraryLayout } from "@labshelf/core";
+import { disposeAll } from "../disposables/index.js";
 
 const DEBOUNCE_MS = 1_000;
 
@@ -34,6 +35,6 @@ export class ExternalChangeWatcher implements vscode.Disposable {
 
   dispose(): void {
     this.reindex.cancel();
-    for (const watcher of this.watchers) { watcher.dispose(); }
+    disposeAll(this.watchers);
   }
 }

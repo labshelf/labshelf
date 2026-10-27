@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { updateChecklist, type ILogger, type ReadingStatus } from "@labshelf/core";
-import { CHECK_COMMAND } from "../check/index.js";
+import { CHECK_COMMAND } from "../build/index.js";
 import type { BuildPreviews } from "../preview/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";

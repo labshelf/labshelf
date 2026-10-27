@@ -26,6 +26,7 @@ import {
 
 import { answerSidebarSpaceMessage, type SidebarSpacesDep } from "./spaces/index.js";
 import { canApplyProjectCommand } from "./projectCommands.js";
+import { disposeAll } from "../disposables/index.js";
 
 /** What the host needs to know about the projects the sidebar lists. */
 interface SidebarProjectsPort {
@@ -113,7 +114,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
 
   dispose(): void {
     this._stopSpaces?.();
-    for (const subscription of this._subscriptions) subscription.dispose();
+    disposeAll(this._subscriptions);
     this._refresh.cancel();
     this._refreshProjectsSoon.cancel();
     this._ready = false;

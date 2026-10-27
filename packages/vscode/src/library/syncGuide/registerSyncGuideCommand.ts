@@ -1,7 +1,7 @@
 // Registers the command that opens the sync guide.
 import * as vscode from "vscode";
 import { type ILogger, formatError, createNonce, syncGuide } from "@labshelf/core";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
 
 const GUIDE_URLS: ReadonlySet<string> = new Set([...syncGuide.tools, syncGuide.noCloud.tool].map((tool) => tool.url));
 
@@ -27,22 +27,13 @@ async function syncGuideHtml(webview: vscode.Webview, extensionUri: vscode.Uri):
   if (!(await hasBundleFile(script))) {
     return renderBundleMissingHtml({ title: "Sync guide", heading: "Sync guide bundle not built", file: "dist/syncGuide/syncGuide.js", reopen: "the sync guide" });
   }
-  const nonce = createNonce();
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="${csp}"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Sync guide</title>
-<link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(dir, "syncGuide.css")).toString()}"/>
-</head>
-<body>
-<div id="root"></div>
-<script nonce="${nonce}" type="module" src="${webview.asWebviewUri(script).toString()}"></script>
-</body>
-</html>`;
+  return renderHtmlShell({
+    nonce: createNonce(),
+    cspSource: webview.cspSource,
+    title: "Sync guide",
+    stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "syncGuide.css")).toString(),
+    scriptUrl: webview.asWebviewUri(script).toString(),
+  });
 }
 
 const MODULE = "library/syncGuide";

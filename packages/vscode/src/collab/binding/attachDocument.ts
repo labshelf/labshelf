@@ -3,6 +3,7 @@ import type * as Y from "yjs";
 import * as vscode from "vscode";
 import { NormalizedText, TextUndoManager, type EditorSelection, type ILogger } from "@labshelf/core";
 import type { RemoteUpdateQueue } from "./remoteUpdateQueue.js";
+import { disposeAll } from "../../disposables/index.js";
 
 // The Y.Text of a shared file; named through core, as this package does not depend on yjs.
 
@@ -58,7 +59,7 @@ export function attachDocument(document: vscode.TextDocument, yText: Y.Text, { q
     undo,
     settled: () => queue.idle(document),
     dispose: () => {
-      subscriptions.forEach((subscription) => subscription.dispose());
+      disposeAll(subscriptions);
       text.dispose();
       undo.destroy();
     },

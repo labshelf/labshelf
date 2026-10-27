@@ -14,6 +14,7 @@ import {
 } from "@labshelf/core";
 import type { ProjectTreeMessage } from "../../libraryUi/index.js";
 import type { ProjectSession } from "../session/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 /** What a node's context menu offers for one `contextValue`; `command` runs with the element as its argument. */
 interface ProjectTreeMenuEntry { label: string; action: string; danger?: boolean; command: string }
@@ -235,7 +236,7 @@ export class ProjectTreeMirror implements vscode.Disposable {
 
   dispose(): void {
     this.changeSoon.cancel();
-    for (const s of this.subscriptions) { s.dispose(); }
+    disposeAll(this.subscriptions);
     this.changeEmitter.dispose();
   }
 }

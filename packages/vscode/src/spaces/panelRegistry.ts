@@ -11,6 +11,7 @@ import {
 } from "@labshelf/core";
 import type { SpacesService } from "./spacesService.js";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../ui/index.js";
+import { disposeAll } from "../disposables/index.js";
 
 interface SpacesView { view: "catalog" | "space"; id?: string; tab?: SpaceTab }
 const spacesBundleDirectory = (extension: vscode.Uri): vscode.Uri => vscode.Uri.joinPath(extension, "dist", "spaces");
@@ -68,7 +69,7 @@ class SpacesPanel {
     this.disposed = true;
     this.stop();
     this.panel.dispose();
-    for (const subscription of this.subscriptions) subscription.dispose();
+    disposeAll(this.subscriptions);
   }
 }
 

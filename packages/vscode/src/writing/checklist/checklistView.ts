@@ -12,6 +12,7 @@ import { REVEAL_OUTLINE_COMMAND } from "../outline/index.js";
 import type { ProjectReadingLists } from "../readingList/index.js";
 import type { ProjectTreeRequest } from "../sidebar/index.js";
 import type { OpenProjectSignals, ProjectSignals } from "./openProjectSignals.js";
+import { disposeAll } from "../../disposables/index.js";
 
 type GroupIds = Partial<Record<ChecklistGrouping, string[]>>;
 
@@ -276,7 +277,7 @@ export class ChecklistView implements vscode.Disposable {
   }
 
   dispose(): void {
-    for (const subscription of this.subscriptions) { subscription.dispose(); }
+    disposeAll(this.subscriptions);
     this.changeEmitter.dispose();
   }
 }

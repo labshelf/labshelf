@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { isInside, type ChecklistSignals, type ILogger, type PageOverflow, type PathOps } from "@labshelf/core";
 import type { ReadyProject } from "../figures/index.js";
 import type { BodyPagesCount } from "../preview/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -59,7 +60,7 @@ export class OpenProjectSignals implements vscode.Disposable {
   dispose(): void {
     this.generation++;
     this.clearTimer();
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.changeEmitter.dispose();
   }
 

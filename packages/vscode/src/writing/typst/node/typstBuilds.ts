@@ -1,15 +1,17 @@
-// Compiles Typst roots: live into the preview while typing, and into <root>.pdf on save and on Build Project, then shows the result.
+// Compiles Typst roots: live into the preview while typing, and into <root>.pdf on save and on Build Project, then shows the result; registers the triggers behind them and creates the extension's one Typst compiler.
+import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { isInside, type PathOps, type ProjectEntry } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
-import { buildProject, type ProjectBuildDeps, type ProjectBuildQueue } from "@labshelf/core/node";
+import { TypstCompilerHost, resolveTypstPackageDirs } from "@labshelf/core/typst/node";
+import { buildProject, ProjectBuildQueue, type ProjectBuildDeps } from "@labshelf/core/node";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
-import { writeTypstVersion, type TypstTrigger } from "../index.js";
-
+import { createProjectBuildDeps, type ProjectBuildDepsSource } from "../../build/node/index.js";
+import { registerTypstTriggers, writeTypstVersion, type TypstTrigger } from "../typstTriggers.js";
 
 export interface TypstBuildsDeps {
   /** Runs the saved and command builds, one at a time per project. */
@@ -108,4 +110,32 @@ export class TypstBuilds {
       return undefined;
     }
   }
+}
+
+function createTypstCompilerHost(storageDir: string): TypstCompilerHost {
+  return new TypstCompilerHost({
+    wasm: async () => new Uint8Array(await readFile(require.resolve("@myriaddreamin/typst-ts-web-compiler/wasm"))),
+    fontsDir: path.join(storageDir, "typst", "fonts"),
+    packageDirs: resolveTypstPackageDirs(),
+    withFontDownload: (run) => Promise.resolve(vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Downloading Typst's default fonts (9 MB, once)" }, run,
+    )),
+  });
+}
+
+interface TypstBuildRegistration extends Omit<TypstBuildsDeps, "queue" | "buildDeps"> {
+  context: vscode.ExtensionContext;
+  host: WritingHost;
+  tex: ProjectBuildDepsSource["tex"];
+  projects: WritingProjects;
+  hasPreview: (projectFolder: string) => boolean;
+}
+
+/** Registers the triggers and returns the builds, which the Build Project command also uses. */
+export function registerTypstBuild(deps: TypstBuildRegistration): TypstBuilds {
+  const storageDir = deps.context.globalStorageUri.fsPath;
+  const buildDeps = createProjectBuildDeps({ host: deps.host, projects: deps.projects, tex: deps.tex, typst: createTypstCompilerHost(storageDir) });
+  const builds = new TypstBuilds({ ...deps, buildDeps, queue: new ProjectBuildQueue(buildDeps) });
+  registerTypstTriggers({ ...deps, request: (folder, root, trigger) => builds.request(folder, root, trigger) });
+  return builds;
 }

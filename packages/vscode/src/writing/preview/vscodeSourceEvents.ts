@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import type { SourceEvents } from "./staleSources.js";
+import { disposeAll } from "../../disposables/index.js";
 
 export const vscodeSourceEvents: SourceEvents = {
   onSourceChanged(listener) {
@@ -11,6 +12,6 @@ export const vscodeSourceEvents: SourceEvents = {
         if (event.document.uri.scheme === "file" && event.contentChanges.length > 0) { listener(event.document.uri.fsPath); }
       }),
     ];
-    return { dispose: () => subscriptions.forEach((subscription) => subscription.dispose()) };
+    return { dispose: () => disposeAll(subscriptions) };
   },
 };

@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import type { CommentThread, ILogger } from "@labshelf/core";
 import { COMMENTS_LOG_MODULE, createProjectFileUri, type ProjectComments } from "./projectComments.js";
 import { derivePosition } from "./sourceRanges.js";
+import { disposeAll } from "../../disposables/index.js";
 
 const OPEN_THREAD_CONTEXT = "labshelf.thread.open";
 const RESOLVED_THREAD_CONTEXT = "labshelf.thread.resolved";
@@ -45,7 +46,7 @@ export class ThreadView implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.shown.forEach((thread) => thread.dispose());
+    disposeAll([...this.shown.values()]);
     this.shown.clear();
   }
 

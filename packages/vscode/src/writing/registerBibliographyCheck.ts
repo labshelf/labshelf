@@ -11,6 +11,7 @@ import {
   checkBibliography,
   type PublishedVersionFinder,
 } from "@labshelf/core";
+import { disposeAll } from "../disposables/index.js";
 
 const DIAGNOSTIC_SOURCE = "LabShelf";
 
@@ -47,7 +48,7 @@ export class BibliographyProblems implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.collection.dispose();
   }
 

@@ -5,9 +5,7 @@ import { runFigureCommand } from "@labshelf/core/node";
 import type { ILogger, FigureRunResult } from "@labshelf/core";
 import { runSafely } from "../../../command/index.js";
 import type { WritingHost } from "../../session/index.js";
-import { askFigureCommand } from "../figureConsent.js";
-import type { FigureNode } from "../figureNode.js";
-import type { ProjectFigures } from "../projectFigures.js";
+import { askFigureCommand, type FigureNode, type ProjectFigures } from "../projectFigures.js";
 
 const COMMAND = "labshelf.writing.regenerateFigure";
 const MODULE = "writing/figures";

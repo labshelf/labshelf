@@ -7,7 +7,7 @@ import {
   type GalleryHostDeps,
   createNonce,
 } from "@labshelf/core";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
 import type { TemplateGalleryDeps } from "./index.js";
 
 /** <extension>/dist/templates, for localResourceRoots. */
@@ -21,23 +21,15 @@ async function galleryHtml(webview: vscode.Webview, extensionUri: vscode.Uri): P
   if (!(await hasBundleFile(script))) {
     return renderBundleMissingHtml({ title: "Templates", heading: "Template gallery bundle not built", file: "dist/templates/templates.js", reopen: "the gallery" });
   }
-  const nonce = createNonce();
-  // Thumbnails arrive as data: URIs, so images allow data: next to the extension's own resources.
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; img-src ${webview.cspSource} data:; font-src ${webview.cspSource};`;
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="${csp}"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Templates</title>
-<link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(dir, "templates.css")).toString()}"/>
-</head>
-<body>
-<div id="root"></div>
-<script nonce="${nonce}" type="module" src="${webview.asWebviewUri(script).toString()}"></script>
-</body>
-</html>`;
+  return renderHtmlShell({
+    nonce: createNonce(),
+    cspSource: webview.cspSource,
+    title: "Templates",
+    stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "templates.css")).toString(),
+    scriptUrl: webview.asWebviewUri(script).toString(),
+    // Thumbnails arrive as data: URIs.
+    dataImages: true,
+  });
 }
 
 /** @returns the trimmed title, or undefined when the user cancels */

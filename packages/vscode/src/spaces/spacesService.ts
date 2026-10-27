@@ -11,6 +11,7 @@ import {
 } from '@labshelf/core';
 import type { LibraryRootController } from '../activation/index.js';
 import type { ActiveServices } from '../command/index.js';
+import { disposeAll } from "../disposables/index.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;
@@ -114,7 +115,7 @@ export class SpacesService implements vscode.Disposable {
   }
 
   private bind({ root, services }: { root: vscode.Uri; services: ActiveServices }): void {
-    this.rootSubscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.rootSubscriptions);
     const store = new SpaceStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
     const port = createSpacesHostPort({ ...this.options, services, logger: services.logger });
     this.active = { store, port, logger: services.logger };
@@ -134,8 +135,8 @@ export class SpacesService implements vscode.Disposable {
   }
 
   dispose(): void {
-    this.rootSubscriptions.forEach((subscription) => subscription.dispose());
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.rootSubscriptions);
+    disposeAll(this.subscriptions);
     this.active = undefined;
     this.changes.dispose();
   }

@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { createDebouncer, type BacklinkMap } from "@labshelf/core";
 import { openEditorSources } from "./index.js";
 import type { WritingHost, WritingProjects } from "../session/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 const REBUILD_DEBOUNCE_MS = 1000;
 const SOURCE_FILE = /\.(tex|typ)$/;
@@ -67,7 +68,7 @@ export class ProjectBacklinks implements vscode.Disposable {
 
   dispose(): void {
     this.rebuildSoon.cancel();
-    for (const subscription of this.subscriptions) { subscription.dispose(); }
+    disposeAll(this.subscriptions);
     this.changeEmitter.dispose();
   }
 }

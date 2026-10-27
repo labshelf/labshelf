@@ -5,6 +5,7 @@ import { type LatexProjectSources, deriveVscodeRange, type LatexProject } from "
 import { ReferenceCompletionProvider } from "./referenceCompletion.js";
 import { ReferenceDefinitionProvider } from "./referenceDefinition.js";
 import { createKeyedDebouncer, findUndefinedReferences } from "@labshelf/core";
+import { disposeAll } from "../../disposables/index.js";
 
 const REFRESH_DELAY_MS = 300;
 
@@ -41,7 +42,7 @@ export class LabelProblems implements vscode.Disposable {
 
   dispose(): void {
     this.refresh.dispose();
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.collection.dispose();
   }
 

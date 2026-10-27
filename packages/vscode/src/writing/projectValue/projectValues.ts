@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import type { ILogger, PathOps, ProjectValueLeaf } from "@labshelf/core";
 import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
 import type { WritingProjects } from "../session/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 /** What the providers read per request: the project list and the open library's logger. */
 export interface ProjectValueWorkspace {
@@ -49,12 +50,12 @@ export class ProjectValues implements vscode.Disposable {
 
   dispose(): void {
     this.subscription.dispose();
-    this.watchers.forEach((watcher) => watcher.dispose());
+    disposeAll(this.watchers);
     this.watchers = [];
   }
 
   private watch(): void {
-    this.watchers.forEach((watcher) => watcher.dispose());
+    disposeAll(this.watchers);
     this.watchers = [];
     for (const entry of this.workspace.projects.list()) {
       if (entry.kind !== "ready") { continue; }

@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { createProjectFileRow, listVisibleEntries, type ILogger } from "@labshelf/core";
 import type { ReadyProject } from "../buildRootDocument.js";
 import type { ProjectSession, WritingProjects } from "../session/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 /** A file or folder below the open project's folder. */
 export interface ProjectFileNode {
@@ -69,7 +70,7 @@ export class ProjectFilesProvider implements vscode.TreeDataProvider<ProjectFile
   }
 
   dispose(): void {
-    this.subscriptions.forEach((subscription) => subscription.dispose());
+    disposeAll(this.subscriptions);
     this.changeEmitter.dispose();
   }
 }

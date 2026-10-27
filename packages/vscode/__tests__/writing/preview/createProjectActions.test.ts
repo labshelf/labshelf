@@ -7,7 +7,7 @@ import { setCheckLimits } from "../../../src/writing/preview/limits";
 import { applyCitationFix } from "../../../src/writing/preview/citations/index";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
 
-jest.mock("../../../src/writing/build/buildOptions", () => ({ setAutoCompile: jest.fn(async () => {}), setHaltOnError: jest.fn(async () => {}) }));
+jest.mock("../../../src/writing/build/builds", () => ({ setAutoCompile: jest.fn(async () => {}), setHaltOnError: jest.fn(async () => {}) }));
 jest.mock("../../../src/writing/preview/limits", () => ({ setCheckLimits: jest.fn(async () => {}) }));
 jest.mock("../../../src/writing/preview/citations/applyCitationFix", () => ({ applyCitationFix: jest.fn(async () => {}) }));
 

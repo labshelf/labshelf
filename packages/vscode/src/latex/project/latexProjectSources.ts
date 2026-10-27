@@ -7,6 +7,7 @@ import {
 import { findOwningProject, type ReadyProject } from "../../writing/index.js";
 import type { WritingProjects } from "../../writing/session/index.js";
 import { createProjectSourceReader } from "./projectSourceReader.js";
+import { disposeAll } from "../../disposables/index.js";
 
 /** A LaTeX project read from its main file through every file it includes. */
 export interface LatexProject {
@@ -64,7 +65,7 @@ export class LatexProjectSources implements vscode.Disposable {
   }
 
   dispose(): void {
-    for (const subscription of this.subscriptions) { subscription.dispose(); }
+    disposeAll(this.subscriptions);
   }
 
   private load(project: ReadyProject): Promise<LatexProject | undefined> {

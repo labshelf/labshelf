@@ -17,6 +17,7 @@ import { readBuiltPdf, readRawLogFile, type BuildRootBuilds } from "../preview/i
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "../session/index.js";
 import type { SidebarProjectsSource } from "../sidebar/index.js";
 import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../libraryUi/index.js";
+import { disposeAll } from "../../disposables/index.js";
 
 const OPEN = "labshelf.writing.openProject";
 const EXTERNAL_ONLY = "labshelf.writing.removeProject";
@@ -95,7 +96,7 @@ function createHostFunctions(deps: VscodeProjectLibraryDeps): ProjectHostFunctio
     isOpen: (entry) => session.project?.folder === entry.folder,
     onChange(listener) {
       const subscriptions = [source.onDidChange(listener), deps.outcomes.onDidChange(listener), deps.onDidChangeRootBuild(listener)];
-      return () => subscriptions.forEach((subscription) => subscription.dispose());
+      return () => disposeAll(subscriptions);
     },
   };
 }
