@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-import type { LocatedProblem } from "../../../latex/build/index.js";
+import type { LocatedProblem } from "../../../latex/index.js";
 import { MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION, type ChangedPage } from "../../index.js";
 
 import type { HelperSend } from "../handlers/index.js";

@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { findProblems } from "../../../../src/latex/build/node/findProblems";
+import { findProblems } from "../../../../src/latex/node/run";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
 afterEach(cleanupTempDirs);

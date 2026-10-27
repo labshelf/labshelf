@@ -1,5 +1,5 @@
 // Turns the located problems of a build into the problems a preview root shows.
-import type { LocatedProblem } from "../latex/build/index.js";
+import type { LocatedProblem } from "../latex/index.js";
 import type { PreviewProblem } from "./previewProtocol.js";
 
 /** `deriveFileName` turns a problem's file into the name the reader shows; the file is kept as given when absent. */

@@ -1,6 +1,7 @@
 /** Verifies how an edit is mapped to the recorded section that holds it, and every reason a section cannot be previewed alone. */
-import { createSectionPreviewPlan } from "../../../../src/latex/build/section/index";
-import type { SectionPreviewInput, SectionState } from "../../../../src/latex/build/section/index";
+import { createSectionPreviewPlan } from "../../../../src/latex/sectionPlan";
+import type { SectionPreviewInput } from "../../../../src/latex/sectionPlan";
+import type { SectionState } from "../../../../src/latex/sectionState";
 
 const MAIN = [
   "\\documentclass{article}",

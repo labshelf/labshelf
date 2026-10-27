@@ -1,5 +1,5 @@
 /** Verifies that a section typeset alone gets the document-body definitions that come before it, in source order. */
-import { extractDefinitionsBeforeSection } from "../../../../src/latex/build/section/index";
+import { extractDefinitionsBeforeSection } from "../../../../src/latex/sectionPlan";
 
 describe("extractDefinitionsBeforeSection", () => {
   it("takes main's body definitions before the section and skips the preamble and what follows", () => {

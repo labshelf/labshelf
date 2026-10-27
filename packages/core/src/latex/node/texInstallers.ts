@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { createHash } from "node:crypto";
 import type { ILogger, FetchLike } from "../../ports/index.js";
 import { formatError } from "../../errors/index.js";
-import { runCancellable, type RunOutcome } from "../build/node/index.js";
+import { runCancellable, type RunOutcome } from "./run.js";
 import { findTinyTexFile, type TinyTexFile } from "../toolchain.js";
 import { extractArchive, verifyDetachedSignature, downloadVerified } from "./verify.js";
 import type { ManagedTexKind } from "./managedTex.js";

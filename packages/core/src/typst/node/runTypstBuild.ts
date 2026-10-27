@@ -3,7 +3,7 @@ import * as path from "node:path";
 
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger, FetchLike } from "../../ports/index.js";
-import type { LocatedProblem } from "../../latex/build/index.js";
+import type { LocatedProblem } from "../../latex/index.js";
 import type { TypstBuildResult } from "../typstBuildResult.js";
 import { deriveTypstProblems } from "../deriveTypstProblems.js";
 import type { TypstCompileResult, TypstSession } from "../typstSession.js";

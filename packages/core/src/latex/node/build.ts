@@ -2,23 +2,15 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { writeFileAtomic } from "../../../library/node/index.js";
-import type { ILogger } from "../../../ports/index.js";
-import type { LatexToolchain } from "../../toolchain.js";
 import {
-  type LatexBuildResult,
-  createLatexBuildCommand,
-  type PartialBuild,
-  type BuildCommand,
-  createLatexPreviewCommand,
-} from "../index.js";
-import { writeSectionBuildStatePackage } from "../section/node/index.js";
-import { deriveSectionBuildStateFileName } from "../section/index.js";
-import { buildLatexProject } from "./buildLatexProject.js";
-import type { ProblemPlaces } from "./findProblems.js";
-import { withIncludeOnlyFile } from "./includeOnlyFile.js";
-import { runSectionPreview, deriveShownPdfName } from "./runSectionPreview.js";
-import { buildPreambleFormat } from "./buildPreambleFormat.js";
+  type BuildCommand, createLatexBuildCommand, createLatexPreviewCommand, type LatexBuildResult, type PartialBuild,
+} from "../build.js";
+import { writeFileAtomic } from "../../library/node/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { deriveSectionBuildStateFileName } from "../sectionState.js";
+import type { LatexToolchain } from "../toolchain.js";
+import { buildPreambleFormat, deriveShownPdfName, runSectionPreview, withIncludeOnlyFile, writeSectionBuildStatePackage } from "./preview.js";
+import { buildLatexProject, type ProblemPlaces } from "./run.js";
 
 interface PreviewPlanInput {
   toolchain: LatexToolchain;
@@ -37,8 +29,6 @@ interface PreviewPlan {
   /** The chapter to hand the format through the include-only file; the command carries it when no format is used. */
   includeOnlyFile: string | undefined;
 }
-
-
 
 async function planLatexPreview(input: PreviewPlanInput): Promise<PreviewPlan | undefined> {
   const base = path.basename(input.main, path.extname(input.main));

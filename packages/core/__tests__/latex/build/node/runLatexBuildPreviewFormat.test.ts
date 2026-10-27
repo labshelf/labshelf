@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { runLatexBuild, type LatexBuildRequest } from "../../../../src/latex/build/node/index";
+import { runLatexBuild, type LatexBuildRequest } from "../../../../src/latex/node/index";
 import { fakeLogger, type RecordingLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 

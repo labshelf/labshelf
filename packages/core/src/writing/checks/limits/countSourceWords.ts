@@ -1,5 +1,5 @@
 /** Counts the words of a root's sources, from the start up to the References heading or the end of the document. */
-import { countWords, removeComments } from "../../../latex/source/index.js";
+import { countWords, removeComments } from "../../../latex/source.js";
 import type { CountUpTo } from "../../project/index.js";
 
 const BIBLIOGRAPHY = /\\(?:print)?bibliography|#bibliography/;

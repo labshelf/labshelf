@@ -3,8 +3,8 @@ import { spawnSync } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { runLatexBuild } from "../../../../../src/latex/build/node/index";
-import { readSectionBuildStates } from "../../../../../src/latex/build/section/node/index";
+import { runLatexBuild } from "../../../../../src/latex/node/index";
+import { readSectionBuildStates } from "../../../../../src/latex/node/index";
 import { fakeLogger } from "../../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../../support/tempDirs";
 

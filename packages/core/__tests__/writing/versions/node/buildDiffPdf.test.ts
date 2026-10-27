@@ -3,13 +3,11 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { buildMarkedUpDiff, type DiffRequest } from "../../../../src/writing/versions/node/index";
-import { runCancellable } from "../../../../src/latex/build/node/index";
-import { findExecutable } from "../../../../src/latex/node/index";
+import { findExecutable, runCancellable } from "../../../../src/latex/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
-jest.mock("../../../../src/latex/build/node/index", () => ({ ...jest.requireActual("../../../../src/latex/build/node/index"), runCancellable: jest.fn() }));
-jest.mock("../../../../src/latex/node/index", () => ({ ...jest.requireActual("../../../../src/latex/node/index"), findExecutable: jest.fn() }));
+jest.mock("../../../../src/latex/node/index", () => ({ ...jest.requireActual("../../../../src/latex/node/index"), runCancellable: jest.fn(), findExecutable: jest.fn() }));
 
 const run = runCancellable as jest.Mock;
 const find = findExecutable as jest.Mock;

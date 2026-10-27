@@ -1,5 +1,5 @@
 // Describes the outcome of compiling a Typst project: the PDF and citation placements on success, the problems on failure.
-import type { LocatedProblem } from "../latex/build/index.js";
+import type { LocatedProblem } from "../latex/index.js";
 import type { TypstCitation } from "../writing/quotes/index.js";
 
 export type TypstBuildResult =

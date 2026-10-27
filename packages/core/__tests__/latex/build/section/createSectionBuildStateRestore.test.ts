@@ -1,5 +1,5 @@
 /** Verifies the TeX that restores the counters a full build captured before a section. */
-import { createSectionBuildStateRestore } from "../../../../src/latex/build/section/index";
+import { createSectionBuildStateRestore } from "../../../../src/latex/sectionState";
 
 describe("createSectionBuildStateRestore", () => {
   it("sets every captured counter, the page included, skipping counters the document does not define", () => {

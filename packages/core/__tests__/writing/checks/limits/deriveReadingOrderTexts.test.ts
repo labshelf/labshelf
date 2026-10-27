@@ -1,5 +1,5 @@
 /** Verifies that an include tree flattens into the order the text reads, with each include where it is written. */
-import { readLatexProjectSources } from "../../../../src/latex/source/project";
+import { readLatexProjectSources } from "../../../../src/latex/sourceProject";
 import { deriveReadingOrderTexts, countWordsUpTo } from "../../../../src/writing/checks/limits";
 
 async function flatten(files: Record<string, string>) {

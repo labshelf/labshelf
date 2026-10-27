@@ -1,6 +1,6 @@
 import { parseTexLog } from "../../../src/latex/log/index.js";
 
-import { deriveTexProblemClass } from "../../../src/latex/build/deriveTexProblemClass";
+import { deriveTexProblemClass } from "../../../src/latex/problems";
 
 type Problem = { severity: "error" | "warning" | "info"; message: string };
 const error = (message: string): Problem => ({ severity: "error", message });

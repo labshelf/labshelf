@@ -1,5 +1,5 @@
-// Spots the two build problems the helper reacts to: a missing TeX file and a document that needs shell escape.
-import type { BuildProblem } from "../log/index.js";
+/** Classifies the problems of a build: the ones the helper reacts to, and a section document's problems moved onto the edited file's lines. */
+import type { BuildProblem } from "./log/index.js";
 
 export interface TexProblemClass {
   missingFile?: string;
@@ -34,4 +34,23 @@ export function deriveTexProblemClass(problems: BuildProblem[]): TexProblemClass
     }
   }
   return result;
+}
+
+export interface SectionPlacement {
+  /** Base name of the section document the engine compiled. */
+  documentName: string;
+  editedFile: string;
+  /** Lines the section document holds above the section's first line. */
+  headerLines: number;
+  /** Zero-based line of the section's first line in the edited file. */
+  startLine: number;
+}
+
+/** A problem on a header line has no source line, so it lands on the section's first line. */
+export function deriveSectionProblems<P extends { file?: string; line?: number }>(problems: readonly P[], place: SectionPlacement): P[] {
+  return problems.map((problem) => {
+    if (problem.file?.split(/[\\/]/).pop() !== place.documentName) { return problem; }
+    const line = problem.line === undefined ? place.startLine + 1 : Math.max(problem.line - place.headerLines, 1) + place.startLine;
+    return { ...problem, file: place.editedFile, line };
+  });
 }

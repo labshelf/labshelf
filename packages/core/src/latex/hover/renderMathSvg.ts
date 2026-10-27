@@ -8,7 +8,7 @@ import { AllPackages } from "mathjax-full/js/input/tex/AllPackages.js";
 import { mathjax } from "mathjax-full/js/mathjax.js";
 import { SVG } from "mathjax-full/js/output/svg.js";
 
-import type { MathJaxMacros } from "../source/index.js";
+import type { MathJaxMacros } from "../sourceProject.js";
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);

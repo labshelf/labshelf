@@ -1,6 +1,6 @@
 /** Verifies which pages of the full PDF a section covers, from the page its heading lands on and the page the next one starts on. */
-import { deriveSectionPageRange } from "../../../../src/latex/build/section/index";
-import type { SectionState } from "../../../../src/latex/build/section/index";
+import { deriveSectionPageRange } from "../../../../src/latex/sectionPlan";
+import type { SectionState } from "../../../../src/latex/sectionState";
 
 const at = (command: string, absolutePage: number, fillingPage = absolutePage): SectionState =>
   ({ command, absolutePage, fillingPage, line: 1, file: "main.tex", counters: {} });

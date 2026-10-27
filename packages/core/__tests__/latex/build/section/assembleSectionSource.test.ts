@@ -1,5 +1,5 @@
 /** Verifies the order of a section document and the line offset that maps its problems back to the source. */
-import { createSectionDocument } from "../../../../src/latex/build/section/index";
+import { createSectionDocument } from "../../../../src/latex/sectionPlan";
 
 describe("createSectionDocument", () => {
   const state = { command: "section", absolutePage: 3, fillingPage: 3, line: 12, file: "main.tex", counters: { section: 2 } };
