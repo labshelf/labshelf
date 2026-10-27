@@ -1,5 +1,2 @@
-// Exports the library UI's page-level API: the folder hash, the router over it and the sections plan.
+// Exports what other browser folders use from the library UI: the folder hash the background worker opens the library with.
 export { createFolderHash } from "./folderHash";
-export { attachHashHandlers } from "./folderHash";
-export { derivePagePlan } from "./pagePlan";
-export type { PagePlan } from "./pagePlan";

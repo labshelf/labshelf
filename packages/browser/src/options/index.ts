@@ -3,9 +3,8 @@
 import { createDebouncer } from "@labshelf/core";
 import { findElement, renderSettingsPage } from "@labshelf/core/dom";
 import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
-import { StorageRingLogSink, bx, createBrowserLogger, readSettings, updateSettings } from "../platform";
-import { loadReaderPrefs, writeReaderPrefs } from "../reader/service";
-import { applyTheme } from "../ui";
+import { StorageRingLogSink, applyTheme, bx, createBrowserLogger, readSettings, updateSettings } from "../platform";
+import { loadReaderPrefs, writeReaderPrefs } from "../libraryUi/readerTabs";
 import { createLibraryLocationSection } from "./libraryLocationSection";
 import { createAppearanceSection } from "./appearanceSection";
 import { createResolverSection } from "./resolverSection";

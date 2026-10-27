@@ -4,7 +4,7 @@ import {
 } from "@labshelf/core";
 import { renderElement, mountTemplateGallery, pickQuickEntry } from "@labshelf/core/dom";
 import { askProjectTitle, createBrowserProjectContent } from "../../writing/project";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 import { createBrowserPublish } from "../../templates";
 import { createBrowserLatexHelper } from "../../helper/client";
 

@@ -1,11 +1,6 @@
 // Mounts the core Spaces catalog over the browser host port.
-import { createLoopbackTransport, formatLocalDay, serveSpaces, type SpacesToHost, type HostToSpaces } from '@labshelf/core';
 import { mountSpacesCatalog } from '@labshelf/core/dom';
-import type { TabModule } from './tabKind';
+import { mountSpacesTab } from './mountSpacesTab';
+import type { TabModule } from './tabKinds';
 
-export const mountTab: TabModule['mountTab'] = (host, _params, ctx) => {
-  const { ui, host: endpoint } = createLoopbackTransport<SpacesToHost, HostToSpaces>();
-  const stop = serveSpaces(endpoint, { ...ctx.spaces, logger: ctx.logger, today: () => formatLocalDay(Date.now()) });
-  const dispose = mountSpacesCatalog(host, ui);
-  return { dispose: () => { dispose(); stop(); } };
-};
+export const mountTab: TabModule['mountTab'] = (host, _params, ctx) => mountSpacesTab(host, ctx, mountSpacesCatalog);

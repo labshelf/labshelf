@@ -1,10 +1,9 @@
 // Saves the paper on the current tab from the toolbar popup.
 // States (data-state on #popup): loading, form | library | empty, saving, saved. A matched PDF offer shows as library.
-import { bx, createBrowserLogger, sendRuntime } from "../platform";
+import { applyTheme, bx, createBrowserLogger, sendRuntime } from "../platform";
 import type { FoldersReply } from "../platform";
 import { findElement } from "@labshelf/core/dom";
 import { mountSourceBanner } from "../library/libraryLocation";
-import { applyTheme } from "../ui";
 import { formatError, renderIcon } from "@labshelf/core";
 import { renderFolders, showNotice, updateTextAreaHeight } from "./render";
 import { attachPdf, detectCapture, writeCapture, removeCapture } from "./captureFlow";

@@ -1,7 +1,7 @@
 /** Builds the Appearance section: the theme preference shared by every browser surface, as a segmented control. */
 import { renderIcon, type IconName } from "@labshelf/core";
 import { renderElement, renderSettingRow, renderSettingsSection, type ThemePref } from "@labshelf/core/dom";
-import { readThemePref, onThemeChange, setThemePref } from "../ui";
+import { readThemePref, onThemeChange, setThemePref } from "../platform";
 
 const THEME_OPTIONS: Array<[ThemePref, string, IconName]> = [["auto", "System", "globe"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]];
 

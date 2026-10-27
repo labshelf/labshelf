@@ -2,7 +2,7 @@
 import { createLoopbackTransport, serveAllProjects, type AllProjectsToHost, type HostToAllProjects } from "@labshelf/core";
 import { renderElement, mountAllProjects } from "@labshelf/core/dom";
 import { createPageProjectLibrary } from "../../writing/project";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 
 export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {
   const library = createPageProjectLibrary({ fs: ctx.fs, logger: ctx.logger, workspace: ctx.workspace, session: ctx.project().session });

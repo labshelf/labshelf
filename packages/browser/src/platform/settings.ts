@@ -1,12 +1,34 @@
-// Reads and writes the user-facing preferences held in bx.storage.local.
-// The options page edits them; the PDF search consults them (proxies, custom resolvers).
-import { bx } from "./browserApi";
+// Reads and writes the user-facing preferences held in bx.storage.local, with the sidebar sections setting and the migration
+// of the old mirror keys. The options page edits them; the PDF search consults them (proxies, custom resolvers).
+import { bx } from "./bx";
 import {
   AUTO_COMPILE_MODES, DEFAULT_CONTACT_EMAIL, PAPERS_DIR, isCustomResolverTemplate, isRequestLanguage, deriveRequestLanguage,
   type BuildSchedule, type CustomResolver, type LibraryProxy, type RequestLanguage,
 } from "@labshelf/core";
-import { deriveMirrorSettings } from "./mirrorToCustomResolver";
-import { DEFAULT_SIDEBAR_SECTIONS, readSidebarSections, type SidebarSections } from "./sidebarSections";
+
+/** Which sidebar sections the library page shows; at least one is always on. */
+export interface SidebarSections {
+  library: boolean;
+  projects: boolean;
+}
+
+export const DEFAULT_SIDEBAR_SECTIONS: SidebarSections = { library: true, projects: true };
+
+/** Reads a stored value; storage is outside the type system, so anything unreadable shows both sections. */
+export function readSidebarSections(raw: unknown): SidebarSections {
+  const { library, projects } = (typeof raw === "object" && raw !== null ? raw : {}) as Partial<Record<keyof SidebarSections, unknown>>;
+  const next = {
+    library: typeof library === "boolean" ? library : DEFAULT_SIDEBAR_SECTIONS.library,
+    projects: typeof projects === "boolean" ? projects : DEFAULT_SIDEBAR_SECTIONS.projects,
+  };
+  return next.library || next.projects ? next : DEFAULT_SIDEBAR_SECTIONS;
+}
+
+/** Sets one section; turning off the last visible one leaves the choice as it was. */
+export function withSidebarSection(current: SidebarSections, section: keyof SidebarSections, on: boolean): SidebarSections {
+  const next = { ...current, [section]: on };
+  return next.library || next.projects ? next : current;
+}
 
 /** Persisted user preferences. */
 export interface ExtensionSettings {
@@ -104,4 +126,23 @@ export async function updateSettings(patch: Partial<ExtensionSettings>): Promise
   const current = await readSettings();
   const next = { ...current, ...patch };
   await bx.storage.local.set({ [SETTINGS_STORAGE_KEY]: next });
+}
+
+// Turns the stored mirror toggle and address of earlier releases into one custom resolver entry.
+// Delete once no browser profile older than this release can exist.
+const LEGACY_KEYS = ["enableSciHub", "sciHubMirror"] as const;
+
+/**
+ * @returns the stored settings without the old keys, plus one enabled entry when the toggle was on, or undefined when
+ * the stored settings hold none of the old keys
+ */
+export function deriveMirrorSettings(stored: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!LEGACY_KEYS.some((key) => key in stored)) return undefined;
+  const { enableSciHub, sciHubMirror, ...rest } = stored;
+  const mirror = typeof sciHubMirror === "string" ? sciHubMirror.trim().replace(/\/+$/, "") : "";
+  if (enableSciHub !== true || !mirror) return rest;
+  const entry = { name: "Custom resolver", template: `${mirror}/{doi}`, enabled: true };
+  const existing = Array.isArray(rest.customResolvers) ? rest.customResolvers : [];
+  const taken = existing.some((e) => (e as { template?: unknown } | null)?.template === entry.template);
+  return { ...rest, customResolvers: taken ? existing : [...existing, entry] };
 }

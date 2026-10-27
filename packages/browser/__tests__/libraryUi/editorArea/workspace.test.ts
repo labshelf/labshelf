@@ -1,6 +1,6 @@
-// Pins which tabs a page load opens for a tabs hash, a folder deep link and a bare URL.
+// Pins which tabs a page load opens for a tabs hash, a folder deep link and a bare URL, and the tabs hash itself.
 import { derivePagePlan } from "../../../src/libraryUi/pagePlan";
-import { deriveRestorePlan as restore } from "../../../src/libraryUi/editorArea/workspace";
+import { deriveRestorePlan as restore, formatWorkspaceHash, parseWorkspaceHash, extractJoinInvite } from "../../../src/libraryUi/editorArea/workspace";
 
 const both = derivePagePlan({ library: true, projects: true });
 const planRestore = (hash: string, kept: string | null) => restore(hash, kept, both);
@@ -45,5 +45,46 @@ describe("restore plan with a hidden section", () => {
 
   it("ignores a folder deep link when the Library is hidden", () => {
     expect(restore("#/papers/Refs", "#/tabs/templates", noLibrary)).toEqual({ tabs: ["all-projects"], active: "all-projects", folderLink: false });
+  });
+});
+
+describe("workspace hash", () => {
+  it("round-trips tab ids that contain the separators", () => {
+    const state = { tabs: ["library", "source:th%2Cesis:main.tex", "preview:a;b"], active: "preview:a;b" };
+    const hash = formatWorkspaceHash(state);
+    expect(hash.startsWith("#/tabs/")).toBe(true);
+    expect(parseWorkspaceHash(hash)).toEqual(state);
+  });
+
+  it("leaves the active part out when no tab is active", () => {
+    expect(formatWorkspaceHash({ tabs: ["library", "templates"], active: null })).toBe("#/tabs/library,templates");
+    expect(parseWorkspaceHash("#/tabs/library,templates")).toEqual({ tabs: ["library", "templates"], active: null });
+  });
+
+  it("reads an empty tab list", () => {
+    expect(parseWorkspaceHash(formatWorkspaceHash({ tabs: [], active: null }))).toEqual({ tabs: [], active: null });
+  });
+
+  it("returns null for a hash that is not a tabs hash", () => {
+    expect(parseWorkspaceHash("#/papers/Refs")).toBeNull();
+    expect(parseWorkspaceHash("")).toBeNull();
+  });
+
+  it("drops an active id that is not among the tabs and a malformed escape", () => {
+    expect(parseWorkspaceHash("#/tabs/library;active=templates")).toEqual({ tabs: ["library"], active: null });
+    expect(parseWorkspaceHash("#/tabs/library,%E0%A4%A")).toEqual({ tabs: ["library"], active: null });
+  });
+});
+
+describe("join hash", () => {
+  it("takes the invite from a join hash, decoded", () => {
+    expect(extractJoinInvite("#/join/abc%20def")).toBe("abc def");
+    expect(extractJoinInvite("#/join/labshelf%3Ajoin%2Fx")).toBe("labshelf:join/x");
+  });
+
+  it("takes nothing from any other hash or from an empty or badly encoded invite", () => {
+    for (const hash of ["", "#/papers/A", "#/tabs/library", "#/join/", "#/join/%E0%A4%A"]) {
+      expect(extractJoinInvite(hash)).toBeUndefined();
+    }
   });
 });

@@ -15,16 +15,15 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   collectCoverageFrom: [
-    'src/libraryUi/prefs/**/*.ts',
+    'src/libraryUi/prefs.ts',
     'src/libraryUi/folderHash.ts',
     'src/storage/folderTreeStore.ts',
     'src/capture/**/*.ts',
     'src/content/scholarParse.ts',
     'src/content/searchHitIds.ts',
     'src/popup/format.ts',
-    'src/reader/sidecarChangeNotice.ts',
+    'src/libraryUi/readerPreview.ts',
     'src/storage/sidecarPort.ts',
-    'src/reader/inPageTransport.ts',
     // Injected into pages or driving real tabs: verified in a browser, not in node.
     '!src/capture/pageProbe.ts',
     '!src/capture/tab/**',

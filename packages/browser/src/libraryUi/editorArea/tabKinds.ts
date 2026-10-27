@@ -1,6 +1,69 @@
-// Registers the workspace tab kinds and turns a tab id back into its kind and params.
+// Declares the workspace tab kinds, registers them and turns a tab id back into its kind and params.
 import { baseName } from "@labshelf/core";
-import type { TabKind, TabKindName, TabModule, TabParams } from "./tabKind";
+import type { ILogger, IconName, LibraryFileSystem, SelectionHub, ShareHost } from "@labshelf/core";
+import type { EditorTabBody } from "@labshelf/core/dom";
+import type { PageShare } from "../../collab";
+import type { HelperProject } from "../../helper/project";
+import type { PagePrefs } from "../prefs";
+import type { CommentThreads } from "../../collab/comments";
+import type { ProjectSession } from "../../writing/session";
+import type { PageSpaces } from "../spaces";
+import type { Workspace } from "./workspace";
+
+export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search";
+
+export type TabParams = Readonly<Record<string, string>>;
+
+/** What a tab body can tell the workspace about its own tab. */
+export interface TabHooks {
+  /** Shows or clears the unsaved dot on the tab. */
+  setDirty(dirty: boolean): void;
+  /** Replaces the handler that runs before the tab closes; it resolves false to keep the tab open (a failed save). */
+  onBeforeClose(handler: () => Promise<boolean> | boolean): void;
+}
+
+/** What only project tabs use; created when the page loads its project wiring. */
+export interface ProjectServices {
+  session: ProjectSession;
+  helperProject: HelperProject;
+  /** The open project's comment threads, shared by every tab. */
+  comments: CommentThreads;
+  /** The shared projects of this page: their connections and the share workflows. */
+  sharing: PageShare;
+}
+
+export interface TabContext {
+  spaces: PageSpaces;
+  /** The library UI, mounted once at page level so the sidebar's Library section follows its store. */
+  libraryView: HTMLElement;
+  workspace: Workspace;
+  tab: TabHooks;
+  logger: ILogger;
+  /** The library folder, shared by every tab so they read one cache. */
+  fs: LibraryFileSystem;
+  prefs: PagePrefs;
+  /** Where a tab reports what the user selected, for the Details pane. */
+  selection: SelectionHub;
+  /** The library page's sharing operations, which the All projects tab hands to its menus. */
+  sharing: ShareHost;
+  /** The project services; throws when the page has not loaded them, which only a project tab on a page without Projects would hit. */
+  project(): ProjectServices;
+}
+
+/** What each tab body chunk (`tabs/<kind>/index.ts`) exports. */
+export interface TabModule {
+  mountTab(el: HTMLElement, params: TabParams, ctx: TabContext): EditorTabBody;
+}
+
+export interface TabKind {
+  kind: TabKindName;
+  /** The param names, in the order the tab id carries them. */
+  params: readonly string[];
+  id(params: TabParams): string;
+  title(params: TabParams): string;
+  icon: IconName;
+  load(): Promise<TabModule>;
+}
 
 // INVARIANT: an id is the kind, then each param URI-encoded, joined by ":"; encoding keeps ":" out of the params.
 function define(kind: TabKindName, params: readonly string[], title: (p: TabParams) => string, icon: TabKind["icon"], load: () => Promise<TabModule>): TabKind {

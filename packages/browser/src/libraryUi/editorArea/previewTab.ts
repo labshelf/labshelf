@@ -6,7 +6,7 @@ import { mountHelperSetupCard } from "../../helper/setup";
 import { bx, readSettings, updateSettings } from "../../platform";
 import { createBrowserProjectContent } from "../../writing/project";
 import { createPreviewFrame, watchBuilds, createPreviewRequestHandler, type PreviewLimits } from "../../writing/preview";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 
 /** Engine and halt-on-error are LaTeX choices, so a Typst project's menu leaves them out. */
 function buildOptionsOf(project: { format?: string; engine?: LatexEngine | undefined } | undefined, user: Pick<BuildOptions, "autoCompile" | "haltOnError">): BuildOptions {

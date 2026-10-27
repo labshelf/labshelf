@@ -2,7 +2,7 @@
 import type { ProjectEntry } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import { findProject } from "../../writing/project";
-import type { TabContext } from "./tabKind";
+import type { TabContext } from "./tabKinds";
 
 export interface ProjectPage {
   /** The page in the loading and failure lines, like "history". */

@@ -6,7 +6,7 @@ import { findProject } from "../../writing/project";
 import { addProjectUpdateEvent } from "../../writing/history";
 import { renderObservingNotice, mountOnTakeover, createSourceActions, readSourceFileMode, deriveSourceLanguage, openSharedProjectHere, renderUnresolvedNotice, type SourceFileMode } from "../../writing/source";
 import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../writing/editor/index.js";
-import type { TabContext, TabModule } from "./tabKind";
+import type { TabContext, TabModule } from "./tabKinds";
 
 export { readSourceFileMode };
 

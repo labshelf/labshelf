@@ -4,7 +4,7 @@ import { mountProjectSearch } from "@labshelf/core/dom";
 import { showInOpenEditor } from "../../writing/session";
 import { mountSearchHost } from "../../writing";
 import { mountProjectPage } from "./projectPageTab";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 
 const MODULE = "tabs.search";
 

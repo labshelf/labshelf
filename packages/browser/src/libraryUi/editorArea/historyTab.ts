@@ -3,7 +3,7 @@ import { createLoopbackTransport, type HistoryToHost, type HostToHistory } from 
 import { mountProjectHistory } from "@labshelf/core/dom";
 import { mountHistoryHost } from "../../writing/history";
 import { mountProjectPage } from "./projectPageTab";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 
 const MODULE = "tabs.history";
 

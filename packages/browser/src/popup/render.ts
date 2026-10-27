@@ -4,8 +4,7 @@ import { findElement } from "@labshelf/core/dom";
 import { escapeHtml, renderIcon, type IconName } from "@labshelf/core";
 
 import type { DraftView, LibraryReference, FindPdfReply } from "../platform";
-import { formatFolderName, formatMetaLine } from "./format";
-import { describePdfLine } from "../ui";
+import { describePdfLine, formatFolderName, formatMetaLine } from "./format";
 import { popupState, showPopupView } from "./popupState";
 
 export function showNotice(opts: {
