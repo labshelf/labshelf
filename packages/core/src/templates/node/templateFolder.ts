@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { comparePaths, deriveTemplateTreeProblem } from "../templateManifest/index.js";
-import type { TemplateFile } from "../sources/index.js";
+import type { TemplateFile } from "../communitySource.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
 
 export interface FoundFile {

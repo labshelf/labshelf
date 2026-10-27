@@ -1,5 +1,5 @@
 // Mounts the Space Overview with dialogs kept alive across refreshes, a date editor, and the timeline, actions and context it shares with other Space surfaces.
-import type { SpaceDate } from "../model/index.js";
+import type { SpaceDate } from "../space.js";
 import { parseDateDraft, type HostToSpaces, type PaperPickItem, type SpacesTransport } from "../spacesProtocol.js";
 import type { SpaceProjectEntry, TimelineEntry } from "../spaceViews.js";
 import { renderElement, renderIcon, mountFormDialog, renderEmptyNotice, renderMemberChip, setPlannedNotice, renderSectionCard, renderProgressMark, pickQuickEntry, type IconName } from "../../ui/dom/index.js";

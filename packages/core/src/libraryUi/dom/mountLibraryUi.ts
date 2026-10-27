@@ -4,15 +4,14 @@
  */
 import type { LibraryUiCapabilities, LibraryUiLabels } from "../hostConfig.js";
 import type { LibraryTransport } from "../protocol/index.js";
-import type { ShareHost } from "../share/index.js";
+import type { ShareHost } from "../../share/index.js";
 import { LibraryViewStore, type PrefsPort } from "../store/index.js";
-import { mountCitationMap } from "./citationMap/index.js";
-import { attachDropZone } from "./drag/index.js";
+import { mountCitationMap } from "./citationMapView.js";
+import { attachDropZone } from "./paperDrag.js";
 import { askRemoveFolder, askCreateFolder, askRenameFolder } from "./flows/index.js";
-import { mountListHeader } from "./header/index.js";
 import { attachHostMessages } from "./hostMessages.js";
 import { mountPaperList } from "./list/index.js";
-import { buildFrame } from "./shell/index.js";
+import { buildFrame, mountListHeader } from "./libraryChrome.js";
 import { createUiCompositionRoot, type UiContext } from "./uiContext.js";
 
 /** Posts `paper.selected` with every selected id, empty for none; returns the stop function. */

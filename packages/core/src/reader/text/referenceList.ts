@@ -50,7 +50,7 @@ export interface ReferenceEntry {
   lineHeight: number;
 }
 
-export interface EntryQuery {
+interface EntryQuery {
   /** Destination y in PDF space; link destinations sit at or slightly above the entry's first line. */
   y: number;
   x?: number | null;

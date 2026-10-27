@@ -2,7 +2,7 @@
 import type { ILogger } from "../../ports/index.js";
 import type { ProjectCatalogContext } from "../../writing/project/index.js";
 import { COMMENTS_PATH, importCommentsFile } from "../comments/index.js";
-import { joinShare, startShare } from "../share/index.js";
+import { joinShare, startShare } from "../../share/index.js";
 import type { ShareSession } from "../doc/index.js";
 import { ensureShareIndexDocReady } from "./shareIndexDocReady.js";
 

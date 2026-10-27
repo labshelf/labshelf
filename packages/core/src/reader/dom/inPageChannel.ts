@@ -1,7 +1,7 @@
 // Provides the reader transport for a page where host and reader UI share one document.
 // INVARIANT: messages are structured-cloned and delivered asynchronously, as across a VS Code webview boundary.
 import type { HostToWebview, WebviewToHost } from "../../index.js";
-import type { ReaderTransport } from "./session/index.js";
+import type { ReaderTransport } from "./readerSession.js";
 
 export interface InPageChannel {
   /** Handed to startReader. */

@@ -1,6 +1,6 @@
 // Draws the box of a PDF area over its page, shared by the change marks and the problem marks.
 import type { PageArea } from "../index.js";
-import { derivePixelOffset, type PageViewLike } from "./navigation/navigation.js";
+import { derivePixelOffset, type PageViewLike } from "./navigation.js";
 
 /**
  * Positioned in percent of the page, so the mark keeps its place while pdf.js scales the page before re-rendering it.

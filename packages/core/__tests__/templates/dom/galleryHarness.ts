@@ -1,6 +1,6 @@
 // Mounts the template gallery on a fake transport and an IntersectionObserver stub for jsdom tests.
 import { mountTemplateGallery } from "../../../src/templates/dom/index";
-import type { GalleryToHost, HostToGallery, TemplateAddress } from "../../../src/templates/host/index";
+import type { GalleryToHost, HostToGallery, TemplateAddress } from "../../../src/templates/index";
 import type { TemplateEntry } from "../../../src/templates/templateCatalog";
 
 export function entry(source: TemplateEntry["source"], id: string, extra: Partial<TemplateEntry> = {}): TemplateEntry {

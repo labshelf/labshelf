@@ -1,6 +1,6 @@
 // Asks for what a project action needs (a title, a folder, a confirmation), posts it to the host, and lists the actions of a project row's menu.
 import { createProjectShareMenuEntries } from "../../../collab/dom/index.js";
-import type { ShareHost } from "../../../libraryUi/share/index.js";
+import type { ShareHost } from "../../../share/index.js";
 import { askDialog, askInputBox, pickQuickEntry, type MenuEntry, type QuickPickItem } from "../../../ui/dom/index.js";
 import { listMoveFolders, type ProjectMenuCommand, type ProjectRow } from "../projectModel.js";
 import type { AllProjectsToHost } from "../protocol.js";
@@ -9,12 +9,12 @@ export type Post = (message: AllProjectsToHost) => void;
 
 const requireName = (value: string): string | null => (value.trim() ? null : "Enter a name");
 
-export async function renameProject(row: ProjectRow, post: Post): Promise<void> {
+async function renameProject(row: ProjectRow, post: Post): Promise<void> {
   const title = await askInputBox({ title: "Rename project", value: row.title, validate: requireName });
   if (title !== undefined && title.trim() !== row.title) post({ type: "rename", id: row.id, title: title.trim() });
 }
 
-export async function copyProject(row: ProjectRow, post: Post): Promise<void> {
+async function copyProject(row: ProjectRow, post: Post): Promise<void> {
   const title = await askInputBox({ title: "Duplicate project", prompt: "Name of the copy", value: `${row.title} copy`, validate: requireName });
   if (title !== undefined) post({ type: "duplicate", id: row.id, title: title.trim() });
 }
@@ -24,7 +24,7 @@ const NEW_FOLDER = Symbol("new folder");
 /** `folder` is the "/"-joined path; segments are trimmed and empty ones dropped. */
 const cleanPath = (path: string): string => path.split("/").map((s) => s.trim()).filter(Boolean).join("/");
 
-export async function moveProject(row: ProjectRow, rows: readonly ProjectRow[], post: Post): Promise<void> {
+async function moveProject(row: ProjectRow, rows: readonly ProjectRow[], post: Post): Promise<void> {
   const items: QuickPickItem<string | typeof NEW_FOLDER>[] = [
     { label: "Top level", icon: "folder", value: "" },
     ...listMoveFolders(rows).map((folder) => ({ label: folder, icon: "folder" as const, value: folder })),
@@ -42,7 +42,7 @@ export async function moveProject(row: ProjectRow, rows: readonly ProjectRow[], 
   post(folder ? { type: "move", id: row.id, folder } : { type: "move", id: row.id });
 }
 
-export async function removeProjectForever(row: ProjectRow, post: Post): Promise<void> {
+async function removeProjectForever(row: ProjectRow, post: Post): Promise<void> {
   const ok = row.external
     ? await askDialog(`Remove ${row.title} from LabShelf?`, "Its files stay where they are.", "Remove", true)
     : await askDialog(`Delete ${row.title} forever?`, "Its folder is deleted from this device. The folder stays on disk.", "Delete forever", true);

@@ -1,6 +1,6 @@
 // Lists the share links this host made and lets the user copy, open or revoke one.
 import { openProgressDialog, pickQuickEntry, showDialog, showToast } from "../../ui/dom/index.js";
-import type { ShareLinkView, ShareHost } from "../../libraryUi/share/index.js";
+import type { ShareLinkView, ShareHost } from "../index.js";
 import { describeCopiedShareLink, describeRevokeShareOutcome, describeRevokeShareNotice } from "../flow/index.js";
 import { reportFailure } from "./reportFailure.js";
 

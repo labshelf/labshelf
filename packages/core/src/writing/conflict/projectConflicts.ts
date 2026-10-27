@@ -1,6 +1,6 @@
 // Recognises project text copies from provider names, write history or shared lines.
 import { deriveTextSha256Hex } from '../../hash/index.js';
-import { deriveLineSimilarity } from '../text/index.js';
+import { deriveLineSimilarity } from '../textMerge.js';
 import type { WriteRecords } from '../../library/index.js';
 import { isMergeableTextFile, parseConflictName, type ConflictCopy, type ConflictDismissal } from '../../library/conflicts/index.js';
 

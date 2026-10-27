@@ -4,7 +4,8 @@ import * as path from "node:path";
 import type { Annotation, PaperRecord } from "../../../src/model/index";
 import { listQuotableHighlights, listQuotedHighlights, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, type TypstCitation, findCiteKeysAt, findCiteKeysOnLine, type CitationSources } from "../../../src/writing/citations/index";
 import { createBibliographyCardEntry, parseBibEntries } from "../../../src/index.js";
-import { parseSynctex, findSourcePosition } from "../../../src/writing/synctex";
+import { parseSynctex } from "../../../src/writing/synctexFile";
+import { findSourcePosition } from "../../../src/writing/synctexLookup";
 import { pdfLinks } from "../../support/pdfLinks";
 
 const annotation = (type: string, content: string) => ({ type, content }) as unknown as Annotation;

@@ -1,5 +1,5 @@
 /** Builds Spaces, library entries and project infos for the view tests. */
-import type { Space, SpaceDate, SpaceReadResult } from "../../../src/spaces/model/index";
+import type { Space, SpaceDate, SpaceReadResult } from "../../../src/spaces/index";
 import type { SpaceProjectEntry } from "../../../src/spaces/spaceViews";
 import type { PaperRecord } from "../../../src/model/index";
 

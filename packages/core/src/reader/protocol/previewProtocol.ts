@@ -145,13 +145,13 @@ export interface PreviewBuildRoots {
 
 const isPage = (v: unknown): boolean => isNumber(v) && Number.isInteger(v) && v >= 1;
 
-export const isPagePoint = (v: unknown): v is PagePoint =>
+const isPagePoint = (v: unknown): v is PagePoint =>
   isRecord(v) && isPage(v["page"]) && isNumber(v["x"]) && isNumber(v["y"]);
 
 const isPageArea = (v: unknown): v is PageArea =>
   isRecord(v) && isPage(v["page"]) && isNumber(v["left"]) && isNumber(v["top"]) && isNumber(v["right"]) && isNumber(v["bottom"]);
 
-export const isCitationQuery = (v: unknown): v is CitationQuery =>
+const isCitationQuery = (v: unknown): v is CitationQuery =>
   isRecord(v) && isPageArea(v["area"]) && isBoolean(v["link"]) && (v["dest"] === undefined || isString(v["dest"]));
 
 /** Declares and validates the requests a preview reader sends its host. */

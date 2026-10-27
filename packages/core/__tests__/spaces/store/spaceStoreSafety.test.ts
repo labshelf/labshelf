@@ -1,6 +1,6 @@
 // Verifies safe Space persistence at concurrency and filesystem boundaries.
 import { seededFixture, ROOT } from "./spaceStoreFixture";
-import { SpaceStore } from "../../../src/spaces/store/index";
+import { SpaceStore } from "../../../src/spaces/spaceStore";
 import { posixPathOps } from "../../../src/path/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 

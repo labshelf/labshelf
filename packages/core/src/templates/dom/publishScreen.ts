@@ -8,7 +8,7 @@ import type {
   PublishCheckResult,
   PublishDraft,
   PublishProject,
-} from "../host/index.js";
+} from "../protocol.js";
 import { CATEGORY_LABELS, PUBLISH_CHECK_IDS, publishCheckLabel, type PublishCheckId } from "../templateLabels.js";
 import { updateThumbnailBox } from "./templateCards.js";
 
@@ -201,7 +201,7 @@ export function createPublishScreen(options: PublishScreenOptions): PublishScree
   return { element: layout.element, route, focus: () => layout.heading.focus(), dispose: () => layout.element.remove() };
 }
 
-export interface PublishForm {
+interface PublishForm {
   element: HTMLElement;
   /** The current values of the four controls. */
   read(): PublishDraft;
@@ -227,7 +227,7 @@ function select(options: ReadonlyArray<readonly [string, string]>): HTMLSelectEl
 }
 
 /** @param onEdit called after any control changed, so the caller can drop results that no longer match. */
-export function createPublishForm(onEdit: () => void): PublishForm {
+function createPublishForm(onEdit: () => void): PublishForm {
   const name = renderElement("input", { class: "ls-input", type: "text", required: true, "aria-required": "true" });
   const category = select(CATEGORIES);
   const license = select(LICENSES.map((id) => [id, id] as const));
@@ -255,7 +255,7 @@ export function createPublishForm(onEdit: () => void): PublishForm {
 
 type CheckRowState = "idle" | "running" | "passed" | "failed";
 
-export interface CheckList {
+interface CheckList {
   element: HTMLElement;
   /** Patches every row and the summary; `canRun` enables the run button when the form is valid. */
   update(results: readonly PublishCheckResult[], running: boolean, canRun: boolean): void;
@@ -290,7 +290,7 @@ function buildRow(id: PublishCheckId, engineLabel: string): Row {
   return { id, item, icon: iconBox, message };
 }
 
-export function createCheckList(engineLabel: string, onRun: () => void): CheckList {
+function createCheckList(engineLabel: string, onRun: () => void): CheckList {
   const rows = PUBLISH_CHECK_IDS.map((id) => buildRow(id, engineLabel));
   const run = renderElement("button", { class: "ls-btn", type: "button", text: "Run checks" });
   const summary = renderElement("p", { class: "ls-tpl-check-summary", "aria-live": "polite" });
@@ -328,14 +328,14 @@ interface GithubStepState {
   error: string | undefined;
 }
 
-export interface GithubStep {
+interface GithubStep {
   element: HTMLElement;
   update(state: GithubStepState): void;
   /** Moves focus to the Submit button, where the sign-in button was. */
   focusSubmit(): void;
 }
 
-export interface GithubStepHandlers {
+interface GithubStepHandlers {
   onSignIn(): void;
   onSubmit(): void;
 }
@@ -349,7 +349,7 @@ function fillButton(button: HTMLButtonElement, busy: boolean, label: string, bus
     renderElement("span", { text: busy ? busyLabel : label }));
 }
 
-export function createGithubStep(handlers: GithubStepHandlers): GithubStep {
+function createGithubStep(handlers: GithubStepHandlers): GithubStep {
   const intro = renderElement("p", { class: "ls-tpl-github-intro", text: "Sign in once with GitHub. LabShelf opens the pull request for you." });
   const signedAs = renderElement("p", { class: "ls-tpl-github-intro" });
   const signIn = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });

@@ -1,17 +1,17 @@
-// Renders the sidebar from a library tree, with its expansion, focus, current folder, and selected paper.
-import { PAPERS_DIR, isUnderDir, deriveParentDir } from "../../../library/index.js";
+// Draws the Library section of the sidebar: the folder and tag tree with its counts, and the rows it is made of.
+import { PAPERS_DIR, isUnderDir, deriveParentDir, ROOT_LABEL } from "../../../library/index.js";
 import { renderElement } from "../../../ui/dom/index.js";
-import { renderIcon } from "../../../ui/index.js";
-import type { LibraryTree, TagCount } from "../../viewModel/index.js";
-import { createTagQuery } from "../../searchQueries.js";
-import { createProjectListActions, renderProjectTreeNodes, type ProjectOffers, type SidebarProjectActions } from "./sidebarProjects.js";
-import type { SidebarProject } from "../../viewModel/index.js";
-import { GROUP_ROW_DEPTH, renderAllProjectsRow, renderExploreTemplatesRow, renderFolderRow, renderPaperRow, readRowKey, renderAllPapersRow, renderTagRow } from "./sidebarRows.js";
-import { renderGroupRow, renderSectionRow, type GroupId, type SectionId } from "./sidebarSections.js";
-import { renderSpaceRows, type SidebarSpacesState } from "./spaces/index.js";
-import { addOpenProject } from "./sidebarOpenProject.js";
-import type { ShareHost } from "../../share/index.js";
-import type { SidebarOpenProject } from "../../sidebarTrees.js";
+import { renderIcon, escapeHtml } from "../../../ui/index.js";
+import type { LibraryTree, SidebarProject } from "../../folderModel.js";
+import type { TagCount } from "../../listModel.js";
+import { createTagQuery } from "../../store/index.js";
+import {
+  createProjectListActions, renderProjectTreeNodes, type ProjectOffers, type SidebarProjectActions, addOpenProject,
+} from "./sidebarProjects.js";
+import { renderGroupRow, renderSectionRow, type GroupId, type SectionId } from "./librarySidebar.js";
+import { renderSpaceRows, type SidebarSpacesState } from "./sidebarSpaces.js";
+import type { ShareHost } from "../../../share/index.js";
+import type { SidebarOpenProject } from "../../folderModel.js";
 
 /** Every focusable row: section headers, group headings and tree rows. */
 export const NAV_ROWS = ".tree-row, .tree-section, .tree-group";
@@ -188,4 +188,83 @@ function appendSpaces(t: SidebarState, frag: DocumentFragment): void {
   const body = appendPane(frag, "spaces", renderSectionRow("spaces", "Spaces", open, action), open);
   body.setAttribute("role", "group");
   if (open) body.append(...renderSpaceRows(t));
+}
+
+/** Row identity shared by focus, keyboard and click handling: `section:<id>`, `group:<id>`, `all-papers`, `folder:<path>`, `paper:<id>`, `tag:<tag>` or `project:<id>`. */
+export const readRowKey = (r: HTMLElement): string => r.dataset["key"] ?? "";
+
+/** The depth of the rows directly under a Library group heading (Folders, Tags): one indent step past its chevron, as in VS Code's trees. */
+export const GROUP_ROW_DEPTH = 1;
+
+const countHtml = (count: number): string => (count > 0 ? `<span class="tree-count">${count}</span>` : "");
+
+export function renderTreeItem(key: string, depth: number, current: boolean, attrs: Record<string, string | undefined>, html: string): HTMLElement {
+  return renderElement("div", {
+    class: `tree-row${current ? " current" : ""}${attrs["aria-expanded"] === "false" ? " collapsed" : ""}`,
+    role: "treeitem",
+    "data-key": key,
+    style: `--depth:${depth}`,
+    ...attrs,
+    html,
+  });
+}
+
+/** The row that opens the library root; `current` when the list shows it. */
+function renderAllPapersRow(count: number, current: boolean): HTMLElement {
+  return renderTreeItem("all-papers", 0, current, { "data-all-papers": "", "aria-current": current ? "true" : undefined, "aria-selected": "false" },
+    `<span class="tree-icon">${renderIcon("book-open")}</span><span class="tree-label">${escapeHtml(ROOT_LABEL)}</span>${countHtml(count)}`);
+}
+
+/** The fixed row that opens the template gallery, as All papers opens the library root. */
+function renderExploreTemplatesRow(): HTMLElement {
+  return renderTreeItem("templates", 0, false, { "data-templates": "", "aria-selected": "false" },
+    `<span class="tree-icon">${renderIcon("layers")}</span><span class="tree-label">Explore templates</span>`);
+}
+
+/** The fixed row that opens the All projects tab, where archived and trashed projects live. */
+function renderAllProjectsRow(): HTMLElement {
+  return renderTreeItem("allProjects", 0, false, { "data-all-projects": "", "aria-selected": "false" },
+    `<span class="tree-icon">${renderIcon("list")}</span><span class="tree-label">All projects</span>`);
+}
+
+export interface FolderRowState { depth: number; count: number; open: boolean; current: boolean }
+
+function renderFolderRow(name: string, path: string, s: FolderRowState): HTMLElement {
+  return renderTreeItem(`folder:${path}`, s.depth, s.current, {
+    "data-path": path,
+    "aria-current": s.current ? "true" : undefined,
+    "aria-selected": "false",
+    "aria-expanded": String(s.open),
+    title: path.slice(PAPERS_DIR.length + 1),
+  }, `<span class="tree-twisty">${renderIcon("chevron-down")}</span>` +
+    `<span class="tree-label">${escapeHtml(name)}</span>` +
+    countHtml(s.count));
+}
+
+/** A paper; its title ellipsizes, so the full title sits in the tooltip. */
+function renderPaperRow(id: string, title: string, depth: number, selected: boolean): HTMLElement {
+  return renderTreeItem(`paper:${id}`, depth, false, { "data-id": id, "aria-selected": String(selected), title },
+    `<span class="tree-twisty leaf">${renderIcon("chevron-down")}</span><span class="tree-ref">REF</span><span class="tree-label">${escapeHtml(title)}</span>`);
+}
+
+/** A tag over the whole library; `current` when the list's search is exactly that tag. */
+function renderTagRow(tag: string, count: number, current: boolean): HTMLElement {
+  return renderTreeItem(`tag:${tag}`, GROUP_ROW_DEPTH, current, { "data-tag": tag, "aria-current": current ? "true" : undefined, "aria-selected": "false", title: `Show papers tagged ${tag}` },
+    `<span class="tree-twisty leaf">${renderIcon("chevron-down")}</span><span class="tree-label"><span class="tree-hash" aria-hidden="true">#</span>${escapeHtml(tag)}</span>${countHtml(count)}`);
+}
+
+export const formatLabel = (format: SidebarProject["format"]): string =>
+  format ? `<span class="tree-ref ${format === "latex" ? "tex" : "typ"}">${format === "latex" ? "TEX" : "TYP"}</span>` : `<span class="tree-ref"></span>`;
+
+/** A folder of My projects; it exists only while a project sits under it. */
+export function renderProjectFolderRow(name: string, path: string, s: FolderRowState): HTMLElement {
+  return renderTreeItem(`project-folder:${path}`, s.depth, false, { "data-project-folder": path, "aria-selected": "false", "aria-expanded": String(s.open), title: path },
+    `<span class="tree-twisty">${renderIcon("chevron-down")}</span><span class="tree-label">${escapeHtml(name)}</span>` + countHtml(s.count));
+}
+
+/** A writing project: its format label (TEX or TYP, like a paper's REF), name and optional count. */
+export function renderProjectRow(p: SidebarProject, depth: number): HTMLElement {
+  return renderTreeItem(`project:${p.id}`, depth, false, { "data-project": p.id, "aria-selected": "false", title: p.tooltip },
+    `<span class="tree-twisty leaf">${renderIcon("chevron-down")}</span>${formatLabel(p.format)}<span class="tree-label">${escapeHtml(p.name)}</span>` +
+    (p.count ? `<span class="tree-count">${escapeHtml(p.count)}</span>` : ""));
 }

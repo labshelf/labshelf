@@ -1,6 +1,6 @@
 // Resolves the project a dialog acts on: the given id, or the user's pick from the host's list.
 import { pickQuickEntry, showToast } from "../../ui/dom/index.js";
-import type { ShareHost, ShareProject } from "../../libraryUi/share/index.js";
+import type { ShareHost, ShareProject } from "../../share/index.js";
 
 /** `onlyShared` lists just the projects this device shares. Undefined when nothing was chosen. */
 export async function pickProject(host: ShareHost, projectId: string | undefined, onlyShared: boolean, title: string): Promise<ShareProject | undefined> {

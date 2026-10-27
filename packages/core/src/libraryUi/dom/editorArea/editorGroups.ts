@@ -1,8 +1,8 @@
 // Keeps the open tabs of the two editor groups: which group holds each, which one each group shows and which group has focus.
 import { renderElement } from "../../../ui/dom/index.js";
-import { createEditorActionsBar, type EditorActionsBar } from "./editorActionsBar.js";
-import { createTabEntry, drawTab, setTabShown, type TabEntry } from "./editorTab.js";
-import type { EditorAreaOptions, EditorAreaSide, EditorTab, EditorTabAction, EditorTabView } from "./editorAreaOptions.js";
+import {
+  createEditorActionsBar, createTabEntry, drawTab, setTabShown, type EditorActionsBar, type TabEntry, type EditorAreaOptions, type EditorAreaSide, type EditorTab, type EditorTabAction, type EditorTabView,
+} from "./editorArea.js";
 
 export interface EditorGroup {
   index: EditorAreaSide;

@@ -2,7 +2,7 @@
  * Does the paper work the UI asks for: set the status, tags and note, move, remove (to the trash) and copy text to the clipboard. Each change
  * goes through the core library mutations and posts a fresh snapshot.
  */
-import { PAPERS_DIR, deriveBaseName, deriveCleanTags, formatError, formatKeptFieldNotice, moveNotice, removeNotice, type ReadingStatus } from "@labshelf/core";
+import { PAPERS_DIR, deriveBaseName, deriveCleanTags, formatError, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type ReadingStatus } from "@labshelf/core";
 import { deriveReferences, type HostContext } from "../hostContext";
 
 export async function setReadingStatus(ctx: HostContext, ids: readonly string[], status: ReadingStatus): Promise<void> {
@@ -31,8 +31,7 @@ export async function movePapers(ctx: HostContext, ids: readonly string[], targe
   const papers = ctx.papers(ids);
   const { done, failed } = await ctx.mutations.movePapers(deriveReferences(papers), target);
   if (done.length) await ctx.snapshots.refresh();
-  const titleOf = (id: string): string => papers.find((p) => p.id === id)?.title ?? id;
-  const notice = moveNotice(done.length, failed, target === PAPERS_DIR ? undefined : deriveBaseName(target, "/"), titleOf);
+  const notice = moveNotice(done.length, failed, target === PAPERS_DIR ? undefined : deriveBaseName(target, "/"), titleResolver(papers));
   if (notice) ctx.notice(notice.kind, notice.text);
 }
 
@@ -40,7 +39,7 @@ export async function removePapers(ctx: HostContext, ids: readonly string[]): Pr
   const papers = ctx.papers(ids);
   const { done, failed } = await ctx.mutations.trashPapers(deriveReferences(papers));
   await ctx.snapshots.refresh();
-  const notice = removeNotice(done, failed, (id) => papers.find((p) => p.id === id)?.title ?? id);
+  const notice = removeNotice(done, failed, titleResolver(papers));
   if (notice) ctx.notice(notice.kind, notice.text);
 }
 

@@ -12,7 +12,7 @@ import {
 } from "./mirrorContext.js";
 import type { MirrorFileRead } from "./fileSystem/index.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
-import { deriveLineSimilarity } from "../../writing/text/index.js";
+import { deriveLineSimilarity } from "../../writing/index.js";
 
 function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, parent?: string) {
   const versions = context.store.storedVersions(path);

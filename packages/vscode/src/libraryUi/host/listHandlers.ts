@@ -8,6 +8,7 @@ import {
   formatKeptFieldNotice,
   moveNotice,
   removeNotice,
+  titleResolver,
   type ReadingStatus,
 } from '@labshelf/core';
 import { LOG_MODULE, type ListHostContext } from './hostContext.js';
@@ -33,8 +34,7 @@ async function setNote(ctx: ListHostContext, id: string, note: string): Promise<
 }
 
 async function titleLookup(ctx: ListHostContext, ids: string[]): Promise<(id: string) => string> {
-  const papers = await ctx.papers(ids);
-  return (id) => papers.find((p) => p.id === id)?.title ?? id;
+  return titleResolver(await ctx.papers(ids));
 }
 
 async function movePapers(ctx: ListHostContext, ids: string[], targetDir: string): Promise<void> {
@@ -47,8 +47,7 @@ async function movePapers(ctx: ListHostContext, ids: string[], targetDir: string
 async function removePapers(ctx: ListHostContext, ids: string[]): Promise<void> {
   const papers = await ctx.papers(ids);
   const outcome = await ctx.deps.paperService.trashPapers(papers.map((p) => p.id));
-  const titleOf = (id: string): string => papers.find((p) => p.id === id)?.title ?? id;
-  const notice = removeNotice(outcome.done, outcome.failed, titleOf);
+  const notice = removeNotice(outcome.done, outcome.failed, titleResolver(papers));
   if (notice) { ctx.notice(notice.kind, notice.text); }
 }
 

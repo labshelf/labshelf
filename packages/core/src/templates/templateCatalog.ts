@@ -2,7 +2,8 @@
 
 import type { FetchLike } from "../ports/index.js";
 import type { ProjectFormat } from "../writing/project/index.js";
-import { isNewerVersion, type TemplateFile } from "./sources/index.js";
+import type { TemplateFile } from "./communitySource.js";
+import { isNewerVersion } from "./universeSource.js";
 import type { ProjectTemplate, TemplateEngine, TemplateKind, TemplateManifest } from "./templateManifest/index.js";
 
 export const TEMPLATE_SOURCES = ["community", "universe", "mine"] as const;

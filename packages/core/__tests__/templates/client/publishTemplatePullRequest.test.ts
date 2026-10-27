@@ -1,5 +1,5 @@
 // Tests the GitHub fork-to-pull-request flow against a recording fake fetch.
-import { GitHubError, publishTemplatePullRequest } from '../../../src/templates/host/index';
+import { GitHubError, publishTemplatePullRequest } from '../../../src/templates/index';
 
 type Reply = [status: number, body: unknown];
 type Handler = Reply | ((body: any) => Reply);

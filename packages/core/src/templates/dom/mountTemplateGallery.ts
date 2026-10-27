@@ -1,6 +1,6 @@
 // Mounts the template gallery over its host transport and opens and closes the template detail page in place of the grid.
 import { renderElement, showToast } from "../../ui/dom/index.js";
-import type { GalleryTransport, HostToGallery, TemplateAddress } from "../host/index.js";
+import type { GalleryTransport, HostToGallery, TemplateAddress } from "../protocol.js";
 import type { TemplateEntry } from "../templateCatalog.js";
 import { createFacetBar, createGalleryHeader, deriveTemplateAddress, GalleryState, type GalleryHeader } from "./galleryControls.js";
 import { createPublishController, type PublishController } from "./publishController.js";
@@ -110,7 +110,7 @@ function disposeGallery(root: HTMLElement, unsubscribe: () => void, views: Route
   root.replaceChildren();
 }
 
-export interface TemplatePageController {
+interface TemplatePageController {
   /** The page being shown, or `null` while the grid is. */
   current(): TemplatePage | null;
   open(entry: TemplateEntry): void;
@@ -120,7 +120,7 @@ export interface TemplatePageController {
   close(): TemplateAddress | undefined;
 }
 
-export interface TemplatePageControllerDeps {
+interface TemplatePageControllerDeps {
   state: GalleryState;
   main: HTMLElement;
   grid: CardGrid;
@@ -131,7 +131,7 @@ export interface TemplatePageControllerDeps {
 
 const keyFor = (entry: TemplateEntry): TemplateAddress => ({ source: entry.source, id: entry.id });
 
-export function createTemplatePageController(parts: TemplatePageControllerDeps): TemplatePageController {
+function createTemplatePageController(parts: TemplatePageControllerDeps): TemplatePageController {
   const { state, main, grid, transport } = parts;
   let detail: TemplatePage | null = null;
 

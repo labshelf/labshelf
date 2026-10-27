@@ -79,7 +79,7 @@ export interface ProjectLibraryDeps {
   readers?: Partial<ProjectSourceReaders> | undefined;
 }
 
-export interface ProjectSourceReaders {
+interface ProjectSourceReaders {
   citations: typeof readProjectCitations;
   paneContent: typeof readProjectPaneContent;
 }

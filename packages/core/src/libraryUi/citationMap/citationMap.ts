@@ -1,5 +1,6 @@
 // Builds the library's citation map from OpenAlex, refetching only the cache entries that are missing or stale, and
 // reads and writes the OpenAlex citation cache: one file per library paper and one per cited work, each with its fetch date.
+// It also shapes a built map for the library UI, naming only the library papers a link or a missing work mentions.
 // CONTRACT: documents/contracts/library-format.md#device-local-files
 import { openAlexWork, type OpenAlexCitationWork, type RegistryEnv } from "../../import/registries/index.js";
 import { isRecord, isStringArray } from "../../guards/index.js";
@@ -7,6 +8,7 @@ import { formatError } from "../../errors/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { createDoiFinder } from "../../library/index.js";
+import type { CitationMapView } from "../protocol/index.js";
 
 /** Stays under OpenAlex's polite limit of ten requests a second. */
 const CONCURRENT_LOOKUPS = 4;
@@ -248,4 +250,16 @@ function countMissingCitations(
     .map(([workId, papers]) => ({ workId, citedBy: [...papers] }))
     .sort((a, b) => b.citedBy.length - a.citedBy.length || a.workId.localeCompare(b.workId));
   return { links, candidates };
+}
+
+export function createCitationMapView(map: CitationMap, papers: ReadonlyArray<Pick<PaperRecord, "id" | "title">>): CitationMapView {
+  const mentioned = new Set<string>([
+    ...map.links.flatMap((link) => [link.from, link.to]),
+    ...map.missing.flatMap((work) => work.citedBy),
+  ]);
+  return {
+    papers: papers.filter((paper) => mentioned.has(paper.id)).map(({ id, title }) => ({ id, title })),
+    links: map.links,
+    missing: map.missing,
+  };
 }

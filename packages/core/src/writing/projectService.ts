@@ -7,7 +7,7 @@ import type { SidebarTreeNode } from "../libraryUi/index.js";
 import { deriveFileIcon } from "../libraryUi/index.js";
 import { deriveProjectBacklinks, updateProjectBibliography, type BacklinkMap, type BibliographyUpdate, type CitingProject } from "./citations/index.js";
 import { readFigureBuildStates, type FigureState } from "./figures/index.js";
-import { readSynctexFile, type SynctexRead } from "./synctex/index.js";
+import { readSynctexFile, type SynctexRead } from "./synctexFile.js";
 import {
   listVersions, addProjectVersion, createProjectCatalog, addExistingFolder, createProjectFromTemplate, removeProjectFolderForever,
   updateProjectSettings, readLastModified, listProjectFiles, listProjects, listBuildRootFileNames, readProjectValues,

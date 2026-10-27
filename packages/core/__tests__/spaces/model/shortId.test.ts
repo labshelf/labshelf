@@ -1,5 +1,5 @@
 /** Verifies that short entry ids are lowercase hex and unique within the ids already in the file. */
-import { createEntryId } from "../../../src/spaces/model/index";
+import { createEntryId } from "../../../src/spaces/index";
 
 describe("createEntryId", () => {
   it("gives an 8-character hex id", () => {

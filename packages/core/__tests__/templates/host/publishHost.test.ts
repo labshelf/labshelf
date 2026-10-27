@@ -1,8 +1,8 @@
 // Pins the Publish screen's host: checks, sign-in, the pull request and every failure path (logged, posted and noticed).
 import type { HostToGallery, PublishDraft } from "../../../src/index";
 import type { PublishCheckReport } from "../../../src/index";
-import { createPublishHost } from "../../../src/templates/host/index.js";
-import type { PublishableProject, PublishPorts } from "../../../src/templates/host/index.js";
+import { createPublishHost } from "../../../src/templates/index.js";
+import type { PublishableProject, PublishPorts } from "../../../src/templates/index.js";
 import { jestLogger as fakeLogger } from "./jestLogger.js";
 
 const project: PublishableProject = {

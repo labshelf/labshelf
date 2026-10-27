@@ -1,6 +1,6 @@
 // Shows a shared project's invite link with its copy and stop-sharing actions.
 import { showDialog, showToast } from "../../ui/dom/index.js";
-import type { ShareHost } from "../../libraryUi/share/index.js";
+import type { ShareHost } from "../../share/index.js";
 import { reportFailure } from "../../share/dom/index.js";
 import { runLeaveProjectDialog } from "./leaveProjectDialog.js";
 

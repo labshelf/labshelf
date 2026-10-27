@@ -6,7 +6,7 @@ import * as path from "node:path";
 import type * as NodeDiff3 from "node-diff3" with { "resolution-mode": "import" };
 
 import { mergeItemFiles } from "../../../qmd/index.js";
-import { createTextMerge } from "../../text/index.js";
+import { createTextMerge } from "../../textMerge.js";
 import { isItemFileName, isMergeableTextFile, parseConflictName, type ConflictCopy, type IProjectVersionStore } from "../../../library/conflicts/index.js";
 import { listPaperFolders, readConflictCopies, readDirOrEmpty } from "../../../library/conflicts/node/index.js";
 import { createLibraryLayout, PAPER_NOTES_FILE } from "../../../library/index.js";

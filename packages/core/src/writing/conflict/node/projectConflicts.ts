@@ -10,7 +10,7 @@ import {
 import { detectProjectConflict, isEligibleProjectConflictPath, type ProjectConflictText } from '../projectConflicts.js';
 import type { ILogger } from '../../../ports/index.js';
 import { deriveTextSha256Hex } from '../../../hash/index.js';
-import { deriveLineSimilarity } from '../../text/index.js';
+import { deriveLineSimilarity } from '../../textMerge.js';
 import { listProjectFiles } from '../../project/index.js';
 import { listLibraryProjects, nodeFileReads } from '../../project/node/index.js';
 import { isInside } from '../../../path/index.js';

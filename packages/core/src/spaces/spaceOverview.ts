@@ -1,6 +1,6 @@
 // Builds the overview of one Space (timeline, papers in focus, linked projects) and exports its dates as an iCalendar file.
 import { countDaysBetween, nextDay } from "../time/index.js";
-import type { Space, SpaceDate } from "./model/index.js";
+import type { Space, SpaceDate } from "./space.js";
 import { resolvePaper, type LibraryPapers, type Progress, type SpaceOverview, type SpaceProjectEntry, type TimelineEntry } from "./spaceViews.js";
 
 export function buildOverview(space: Space, library: LibraryPapers, projects: readonly SpaceProjectEntry[], today: string): SpaceOverview {

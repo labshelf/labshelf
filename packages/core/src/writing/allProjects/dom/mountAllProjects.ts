@@ -3,7 +3,7 @@
  * Host stylesheets: tokens.css, vscodeHost.css (VS Code), base.css, toast.css, library-ui.css, library-list.css, library-sidebar.css, library-detail.css, library-tabs.css, all-projects.css.
  */
 import { buildFrame } from "../../../libraryUi/dom/index.js";
-import type { ShareHost } from "../../../libraryUi/share/index.js";
+import type { ShareHost } from "../../../share/index.js";
 import type { PanePrefsPort } from "../../../libraryUi/store/index.js";
 import { showMenu, showToast, type MenuAnchor, renderElement } from "../../../ui/dom/index.js";
 import { createDebouncer } from "../../../async/index.js";

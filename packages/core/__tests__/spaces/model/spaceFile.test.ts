@@ -1,6 +1,6 @@
 /** Verifies the space.json reader's repair rules, its unreadable and read-only states, and the byte-stable serializer. */
-import { parseSpaceFile, serializeSpaceFile } from "../../../src/spaces/model/index";
-import type { Space, SpaceReadResult } from "../../../src/spaces/model/index";
+import { parseSpaceFile, serializeSpaceFile } from "../../../src/spaces/index";
+import type { Space, SpaceReadResult } from "../../../src/spaces/index";
 
 const where = { id: "internship", path: "spaces/internship/space.json" };
 

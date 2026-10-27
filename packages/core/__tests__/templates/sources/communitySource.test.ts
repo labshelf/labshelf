@@ -1,5 +1,5 @@
 /** Verifies the Community catalog source: listing from index.json and checked file downloads at the pinned commit. */
-import { COMMUNITY_INDEX_URL, createCommunitySource } from "../../../src/templates/sources/index.js";
+import { COMMUNITY_INDEX_URL, createCommunitySource } from "../../../src/templates/index.js";
 import { deriveSha256Hex } from "../../../src/hash/index";
 import { contextLogger, memoryCache, scriptedFetch, type Reply } from "./fakes";
 

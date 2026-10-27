@@ -14,7 +14,7 @@ const URL_TAIL = /\/(?:abstract|full|fulltext|pdf|epdf|pdfdirect|html|meta|refer
 /**
  * Tells whether a value is DOI-shaped: `10.`, a registrant prefix of four or more digits
  * (with optional `.n` sub-parts), a slash and a suffix. This is the lenient shape used to
- * clean candidates from pages and PDFs; the protocol guard in `libraryUi/protocol/messageGuards.ts`
+ * clean candidates from pages and PDFs; the protocol guard in `libraryUi/protocol/messages.ts`
  * checks a stricter, anchored pattern (`^10\.\d{4,9}/\S+$`) on purpose.
  */
 export function isDoi(value: unknown): value is Doi {

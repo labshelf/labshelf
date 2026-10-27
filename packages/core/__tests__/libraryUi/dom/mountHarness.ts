@@ -5,7 +5,7 @@
 import {
   DEFAULT_PREFS, createLoopbackTransport, type LibraryUiCapabilities, type LibraryUiPrefs, type PaperRecord, type PaperFilesState, type PaperStats, type UiToHost,
 } from "@labshelf/core";
-import type { ShareHost } from "../../../src/libraryUi/share";
+import type { ShareHost } from "../../../src/share/index";
 import { createUiCompositionRoot, mountDetailPane, mountLibraryUi } from "../../../src/libraryUi/dom";
 
 export function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): PaperRecord {

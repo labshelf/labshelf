@@ -8,7 +8,6 @@ export * from "./transport/index.js";
 export * from "./peer/index.js";
 export * from "./doc/index.js";
 export * from "./presence/index.js";
-export * from "./share/index.js";
 export * from "./relays/index.js";
 export * from "./deviceState/index.js";
 export * from "./mirror/index.js";

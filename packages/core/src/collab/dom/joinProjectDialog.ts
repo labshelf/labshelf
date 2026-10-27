@@ -1,6 +1,6 @@
 // Joins a shared project from a pasted invite link, waiting for a member to answer.
 import { askInputBox, openProgressDialog, showDialog, showToast } from "../../ui/dom/index.js";
-import type { JoinProjectResult, ShareHost } from "../../libraryUi/share/index.js";
+import type { JoinProjectResult, ShareHost } from "../../share/index.js";
 import { showNoticeDialog, reportFailure } from "../../share/dom/index.js";
 
 export function runJoinProjectDialog(host: ShareHost, invite?: string): Promise<void> {

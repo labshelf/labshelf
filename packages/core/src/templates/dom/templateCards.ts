@@ -1,7 +1,7 @@
 // Renders the visible templates as a keyboard-navigable card grid with its skeleton and empty states, one template as a card, and a template's detail page.
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
-import type { TemplateAddress } from "../host/index.js";
+import type { TemplateAddress } from "../protocol.js";
 import type { TemplateEntry } from "../templateCatalog.js";
 import { CATEGORY_LABELS, formatDistinctEngineLabel, FORMAT_LABELS, formatTemplateByLine, formatTemplateMetaLine, formatTemplateUsesCount, formatTemplateUsesLabel } from "../templateLabels.js";
 import { deriveTemplateAddress, type GalleryState } from "./galleryControls.js";
@@ -162,13 +162,13 @@ export function updateThumbnailBox(box: HTMLElement, dataUri: string | undefined
   box.replaceChildren(renderElement("img", { src: dataUri, alt, loading: "lazy" }));
 }
 
-export interface TemplateCard {
+interface TemplateCard {
   item: HTMLLIElement;
   button: HTMLButtonElement;
   setThumbnail(dataUri: string | undefined): void;
 }
 
-export function renderTemplateCard(entry: TemplateEntry, thumbnail: string | undefined): TemplateCard {
+function renderTemplateCard(entry: TemplateEntry, thumbnail: string | undefined): TemplateCard {
   const by = formatTemplateByLine(entry);
   const thumb = renderElement("div", { class: "ls-tpl-thumb" });
   const button = renderElement("button", { class: "ls-tpl-card", type: "button", "aria-label": entry.name, tabindex: -1 },

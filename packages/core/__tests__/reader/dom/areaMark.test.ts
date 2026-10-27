@@ -3,7 +3,7 @@
  */
 // Tests the area mark: the percent geometry of a PDF area over its page, and the margin-bar variant.
 import { renderAreaMark } from "../../../src/reader/dom/areaMark";
-import type { PageViewportLike } from "../../../src/reader/dom/navigation/navigation";
+import type { PageViewportLike } from "../../../src/reader/dom/navigation";
 
 const WIDTH = 600;
 const HEIGHT = 800;

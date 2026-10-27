@@ -2,7 +2,7 @@
 import type { PaperRecord } from "../model/index.js";
 import type { ReadingStatus } from "../library/index.js";
 import { buildChecklist, type ChecklistSignals, type ReadingItem } from "../writing/index.js";
-import type { Space, SpaceDateKind, SpaceReadResult } from "./model/index.js";
+import type { Space, SpaceDateKind, SpaceReadResult } from "./space.js";
 
 /** A writing project as the host reports it; supplied by the host port. */
 export interface SpaceProjectEntry {

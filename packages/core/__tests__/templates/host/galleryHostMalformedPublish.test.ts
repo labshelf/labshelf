@@ -1,6 +1,6 @@
 // Pins how the gallery host answers a malformed publish.* message: the page is told, and the failure is logged.
 import type { HostToGallery } from "../../../src/templates/index.js";
-import { createGalleryHost } from "../../../src/templates/host/index.js";
+import { createGalleryHost } from "../../../src/templates/index.js";
 import { jestLogger } from "./jestLogger.js";
 
 function setup() {

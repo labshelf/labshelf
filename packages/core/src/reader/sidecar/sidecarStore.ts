@@ -15,7 +15,7 @@ export interface PaperSidecar {
   deleted?: DeletedAnnotation[];
 }
 
-export interface DeletedAnnotation {
+interface DeletedAnnotation {
   id: string;
   /** ISO time of the deletion, comparable with an annotation's `updatedAt`. */
   deletedAt: string;
@@ -34,7 +34,7 @@ function isDeletionMarker(value: unknown): value is DeletedAnnotation {
 /**
  * @returns the markers deleted within `DELETION_MARKER_DAYS` before `now`.
  */
-export function removeStaleDeletionMarkers(markers: DeletedAnnotation[], now: string): DeletedAnnotation[] {
+function removeStaleDeletionMarkers(markers: DeletedAnnotation[], now: string): DeletedAnnotation[] {
   const cutoff = new Date(Date.parse(now) - DELETION_MARKER_DAYS * 86_400_000).toISOString();
   return markers.filter((m) => m.deletedAt >= cutoff);
 }

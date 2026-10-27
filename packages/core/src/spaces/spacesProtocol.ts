@@ -2,8 +2,9 @@
 import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
-import { isPage, type GlossaryTerm, type Space } from "./model/index.js";
-import type { SpaceDateInput, TermInput } from "./store/index.js";
+import { isPage } from "./parseSpaceFile.js";
+import type { GlossaryTerm, Space } from "./space.js";
+import type { SpaceDateInput, TermInput } from "./spaceMutations.js";
 import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectEntry } from "./spaceViews.js";
 
 export const SPACE_TABS = ["overview", "papers", "notes", "discussions", "discover", "glossary"] as const;

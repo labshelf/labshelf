@@ -1,6 +1,6 @@
 // Walks the user through sharing a paper folder as a link: rights notice, progress, then the link.
 import { openProgressDialog, showDialog, showToast } from "../../ui/dom/index.js";
-import type { ShareHost, ShareProgress } from "../../libraryUi/share/index.js";
+import type { ShareHost, ShareProgress } from "../index.js";
 import { SHARE_STAGE_TEXT, SHARE_WITHOUT_ANNOTATIONS, SHARE_WITH_ANNOTATIONS, describeCopiedShareLink, describeShareRightsNotice } from "../flow/index.js";
 import { showNoticeDialog } from "./noticeDialog.js";
 import { reportFailure } from "./reportFailure.js";

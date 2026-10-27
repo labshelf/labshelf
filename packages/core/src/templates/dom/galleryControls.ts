@@ -2,7 +2,7 @@
 import { renderIcon } from "../../ui/index.js";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
 import { PROJECT_FORMATS, type ProjectFormat } from "../../writing/project/index.js";
-import type { SourceListing, TemplateAddress } from "../host/index.js";
+import type { SourceListing, TemplateAddress } from "../protocol.js";
 import { deriveFilteredTemplates, orderTemplates, TEMPLATE_SOURCES, type TemplateEntry, type TemplateFilter, type TemplateSort, type TemplateSourceId } from "../templateCatalog.js";
 import { CATEGORY_LABELS, FORMAT_LABELS, SOURCE_LABELS } from "../templateLabels.js";
 import { TEMPLATE_CATEGORIES, type TemplateKind } from "../templateManifest/index.js";

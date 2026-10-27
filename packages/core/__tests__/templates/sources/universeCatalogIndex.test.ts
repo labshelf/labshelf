@@ -1,5 +1,5 @@
 /** Verifies mapping Typst Universe's package index to gallery entries. */
-import { parseUniverseCatalogIndex } from "../../../src/templates/sources/index.js";
+import { parseUniverseCatalogIndex } from "../../../src/templates/index.js";
 
 function pkg(name: string, over: Record<string, unknown> = {}): Record<string, unknown> {
   return {

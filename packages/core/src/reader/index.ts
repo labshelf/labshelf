@@ -2,6 +2,8 @@
  * The reader UI is exported from `dom/`. */
 export * from "./protocol/index.js";
 export * from "./sidecar/index.js";
-export * from "./host/index.js";
-export { deriveCropRectForPreview, deriveDestPoint, type CropOptions, type PdfDestinationSpec, type Rect } from "./text/geometry.js";
-export * from "./navigation/outline.js";
+export { ReaderHostController, type ReaderHostOptions } from "./hostController.js";
+export { exportAnnotations } from "./hostMessages.js";
+export type { ExportAnnotationsPorts, NoticeKind, PreviewPorts, ReaderHostPorts, SidecarChange } from "./hostPorts.js";
+export { deriveCropRectForPreview, deriveDestPoint, type CropOptions, type PdfDestinationSpec, type Rect } from "./text/index.js";
+export * from "./outline.js";
