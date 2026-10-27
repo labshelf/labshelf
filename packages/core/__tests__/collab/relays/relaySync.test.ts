@@ -1,13 +1,13 @@
 /** Pins relay sync: stored frames, snapshots, put retry, a restart, and convergence of share sessions that meet only through a fake relay. */
 import * as Y from "yjs";
-import { readShareIndexDocFiles, INDEX_DOC_KEY } from "../../../src/collab/doc/index";
-import { decodeEnvelope, MESSAGE_KIND, createDocIdCache, CHANNEL_KIND } from "../../../src/collab/peer/index";
+import { readShareIndexDocFiles, INDEX_DOC_KEY } from "../../../src/collab/index";
+import { decodeEnvelope, MESSAGE_KIND, createDocIdCache, CHANNEL_KIND } from "../../../src/collab/index";
 import {
   createMemoryCursorStore, PUT_INTERVAL_MS, SNAPSHOT_AFTER_PUTS, type RelayCursorStore,
 } from "../../../src/collab/relays/index";
 import { openStored, sealStored } from "../../../src/collab/relays/relaySync";
-import { contentKey, SHARE_ID } from "../doc/testSession";
-import { FakeClock, runUntil, seededRandom } from "../peer/fakeNetwork";
+import { contentKey, SHARE_ID } from "../testSession";
+import { FakeClock, runUntil, seededRandom } from "../fakeNetwork";
 import { FakeRelay, runFor } from "./fakeRelay";
 import { DOC_PATH, openRelayClient, type RelayClient } from "./relayClient";
 

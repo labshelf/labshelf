@@ -18,9 +18,9 @@ export type HelperHandler = (message: ToHelperMessage, send: HelperSend, payload
 export type HelperHandlers = Partial<Record<ToHelperMessage["type"], HelperHandler>>;
 
 /** Answers message `id` with an error envelope. */
-export type ErrorReply = (id: string, code: string, message: string) => void;
+type ErrorReply = (id: string, code: string, message: string) => void;
 
-export const createErrorReply = (send: HelperSend): ErrorReply => (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
+const createErrorReply = (send: HelperSend): ErrorReply => (id, code, message) => send({ v: PROTOCOL_VERSION, id, type: "error", code, message });
 
 const SESSION_LOG_MODULE = "helper-session";
 

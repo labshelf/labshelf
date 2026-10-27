@@ -14,7 +14,7 @@ export { PUT_INTERVAL_MS, createMemoryCursorStore, type RelayCursorStore } from 
 export {
   addRelayShare, createGlobalRelayConnection, createRelayTransport, createSwitchableTransport, fetchTicket,
   RECONNECT_FIRST_MS, RECONNECT_MAX_MS, RELAY_AWARENESS_INTERVAL_MS, RelayRequestError,
-  type ClaimRequestOptions, type PeerId, type PeerTransport, type RelayConnectionPort, type RelayConnectionPortFactory,
+  type ClaimRequestOptions, type RelayConnectionPort, type RelayConnectionPortFactory,
   type RelayStore, type RelayStoreAnswer, type RelayStoreRequest, type RelayTransport, type RelayTransportOptions,
   type SwitchableTransport, type TicketRequestOptions,
 } from "./relayTransport.js";

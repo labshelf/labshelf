@@ -5,8 +5,8 @@ import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { LIB, memoryCatalog, readText, writeTree, type MemoryCatalog } from "../../support/memoryProjectCatalog";
 import { memoryStorage, type MemoryStorage } from "./memoryStorage";
-import { FakeClock } from "../peer/fakeNetwork";
-import { SHARE_ID, SHARE_KEY } from "../doc/testSession";
+import { FakeClock } from "../fakeNetwork";
+import { SHARE_ID, SHARE_KEY } from "../testSession";
 import { ONE, RelayHosts } from "../relays/relayGroup";
 import { runFor } from "../relays/fakeRelay";
 

@@ -1,4 +1,7 @@
-/** Declares what the native-host installer needs from its host and how a host is launched. */
+/** Declares what the native-host installer needs from its host and how a host is launched, and builds that environment from this machine (including the Windows `reg` runner). */
+import { execFile } from "node:child_process";
+import * as os from "node:os";
+
 import type { ILogger } from "../../ports/index.js";
 
 /** Runs `reg` with the given arguments; a non-zero exit code is returned, not thrown. */
@@ -50,4 +53,27 @@ export const INSTALL_LOG_MODULE = "native-host-install";
 export function ensureRegistry(env: NativeHostEnv): RegistryRunner {
   if (!env.registry) throw new Error("Installing a LabShelf native host on Windows needs a registry runner");
   return env.registry;
+}
+
+/** Runs the Windows `reg` tool for the native-host installer. */
+export const runSystemRegistry: RegistryRunner = (args) =>
+  new Promise((resolve) => {
+    execFile("reg", [...args], { windowsHide: true }, (error, stdout, stderr) => {
+      const code = (error as { code?: unknown } | null)?.code;
+      // A failed spawn has a string code such as ENOENT; the installer reads that as a failed command.
+      resolve({ exitCode: error ? (typeof code === "number" ? code : 1) : 0, stdout, stderr: stderr || (error && typeof code !== "number" ? error.message : "") });
+    });
+  });
+
+export function createSystemNativeHostEnv(logger: ILogger): NativeHostEnv {
+  const platform = process.platform;
+  const env: NativeHostEnv = { home: os.homedir(), platform, logger };
+  const configHome = process.env["XDG_CONFIG_HOME"];
+  if (configHome) env.configHome = configHome;
+  if (platform === "win32") {
+    env.registry = runSystemRegistry;
+    const localAppData = process.env["LOCALAPPDATA"];
+    if (localAppData) env.localAppData = localAppData;
+  }
+  return env;
 }

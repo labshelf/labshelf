@@ -3,18 +3,9 @@ import * as Y from "yjs";
 import { bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { RELAY_ERROR_CODE } from "../../relay/index.js";
-import { INDEX_DOC_KEY, type ShareSession } from "../doc/index.js";
+import { INDEX_DOC_KEY, type ShareSession } from "../docSync.js";
 import type { DerivedShareKey } from "../invite/index.js";
-import {
-  createDocIdCache,
-  MESSAGE_KIND,
-  systemScheduler,
-  decodeEnvelope,
-  encodeEnvelope,
-  openDocFrame,
-  sealDocFrame,
-  type SessionScheduler,
-} from "../peer/index.js";
+import { createDocIdCache, MESSAGE_KIND, systemScheduler, decodeEnvelope, encodeEnvelope, openDocFrame, sealDocFrame, type SessionScheduler } from "../channel.js";
 import {
   createEmptyHeld, createMemoryCursorStore, decodeHeld, RelayDocLane, RelayDocPuts, type RelayCursorStore,
 } from "./relayDocLane.js";

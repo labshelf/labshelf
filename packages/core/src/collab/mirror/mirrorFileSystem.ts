@@ -4,7 +4,7 @@ import { sameBytes } from "../../encoding/index.js";
 import { posixPathOps } from "../../path/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
 import { listProjectFiles, type ProjectReadContext } from "../../writing/project/index.js";
-import { SHARED_TOOL_FILES } from "../doc/index.js";
+import { SHARED_TOOL_FILES } from "../sharedFiles.js";
 
 export type MirrorFileRead = { state: "missing" } | { state: "present"; bytes: Uint8Array } | { state: "changing" };
 

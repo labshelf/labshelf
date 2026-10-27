@@ -13,7 +13,7 @@ export {
   type ClaimRequest, type ClaimResponse, type Refusal, type RequestResult, type ResponseResult, type TicketRequest, type TicketResponse,
   type VersionResponse,
 } from "./relayHttp.js";
-export { RELAY_PATH, RELAY_REFUSAL, RELAY_WORKER_NAME } from "./relayPaths.js";
+export { RELAY_PATH, RELAY_REFUSAL, RELAY_WORKER_NAME, SHARE_PATH, SHARE_REFUSAL } from "./relayPaths.js";
 export {
   assertRelayServing, CloudflareApiError, compareWorkerBuilds, createCloudflareClient, deployRelay, listCloudflareAccounts, parseWorkerBuild,
   removeRelay, updateRelayIfOlder, verifyCloudflareToken,

@@ -233,9 +233,9 @@ class FrameReader {
 
 const SOCKET_LOG_MODULE = "helperSocket";
 
-export type ConnectionEnvelope = Record<string, unknown>;
-export type ConnectionSend = (envelope: ConnectionEnvelope, payload?: Uint8Array) => void;
-export type ConnectionHandler = (envelope: ConnectionEnvelope, payload: Uint8Array, send: ConnectionSend) => void | Promise<void>;
+type ConnectionEnvelope = Record<string, unknown>;
+type ConnectionSend = (envelope: ConnectionEnvelope, payload?: Uint8Array) => void;
+type ConnectionHandler = (envelope: ConnectionEnvelope, payload: Uint8Array, send: ConnectionSend) => void | Promise<void>;
 
 interface ConnectionHooks {
   token: string;

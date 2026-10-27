@@ -3,7 +3,7 @@ import {
   decodeClientMessage, encodeRelayBody, encodeRelayMessage, RELAY_PATH, RELAY_WORKER_BUILD, type RelayRow, type RelayServerMessage,
 } from "../../../src/relay/index";
 import type { RelayConnectionPort } from "../../../src/collab/relays/index";
-import type { FakeClock } from "../peer/fakeNetwork";
+import type { FakeClock } from "../fakeNetwork";
 
 const LATENCY_MS = 5;
 /** Incoming socket messages are billed at 20 to 1. */

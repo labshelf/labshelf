@@ -127,7 +127,7 @@ export async function listCloudflareAccounts(client: CloudflareClient): Promise<
 const COMPATIBILITY_DATE = "2026-10-01";
 const SCRIPT_FILE = "worker.js";
 
-export interface WorkerUpload { accountId: string; workerName: string; script: string; kvNamespaceId: string; withMigrations: boolean }
+interface WorkerUpload { accountId: string; workerName: string; script: string; kvNamespaceId: string; withMigrations: boolean }
 
 /** Migrations go only on the first upload: they create the Room class; later uploads keep its data and the secrets. */
 function workerMetadata(kvNamespaceId: string, withMigrations: boolean): Record<string, unknown> {
@@ -143,7 +143,7 @@ function workerMetadata(kvNamespaceId: string, withMigrations: boolean): Record<
   };
 }
 
-export async function uploadWorker(client: CloudflareClient, upload: WorkerUpload): Promise<void> {
+async function uploadWorker(client: CloudflareClient, upload: WorkerUpload): Promise<void> {
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(workerMetadata(upload.kvNamespaceId, upload.withMigrations))], { type: "application/json" }));
   form.append(SCRIPT_FILE, new Blob([upload.script], { type: "application/javascript+module" }), SCRIPT_FILE);
@@ -166,7 +166,7 @@ export function compareWorkerBuilds(a: WorkerBuild, b: WorkerBuild): number {
 }
 
 /** Reads the public /version of a relay; throws with context when it does not answer a build. */
-export async function fetchWorkerBuild(relayUrl: string, doFetch: typeof fetch, logger: ILogger): Promise<WorkerBuild> {
+async function fetchWorkerBuild(relayUrl: string, doFetch: typeof fetch, logger: ILogger): Promise<WorkerBuild> {
   const url = `${relayUrl.replace(/\/+$/, "")}${RELAY_PATH.version}`;
   try {
     const response = await doFetch(url, { method: "GET" });
@@ -183,7 +183,7 @@ export async function fetchWorkerBuild(relayUrl: string, doFetch: typeof fetch, 
   }
 }
 
-export const formatWorkerBuild = (build: WorkerBuild): string => `${build.major}.${build.minor}.${build.patch}`;
+const formatWorkerBuild = (build: WorkerBuild): string => `${build.major}.${build.minor}.${build.patch}`;
 
 const NO_SUBDOMAIN_CODE = 10007;
 

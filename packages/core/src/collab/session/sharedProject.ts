@@ -1,10 +1,10 @@
 // Finds or creates the project folder a share connection mirrors, waits for a joined share's index to name its kind, and writes a history restore into the share.
 import type { ILogger } from "../../ports/index.js";
 import type { ProjectCatalogContext } from "../../writing/project/index.js";
-import {
-  COMMENTS_PATH, importCommentsFile, readFileText, readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind, isSafeSharePath, setFileText,
-  type ShareSession,
-} from "../doc/index.js";
+import { COMMENTS_PATH, importCommentsFile } from "../commentsFile.js";
+import { readFileText, isSafeSharePath, setFileText } from "../sharedFiles.js";
+import { readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind } from "../shareIndexDoc.js";
+import { type ShareSession } from "../docSync.js";
 import { joinShare, startShare } from "../../share/index.js";
 
 const JOIN_TIMEOUT_MS = 120_000;

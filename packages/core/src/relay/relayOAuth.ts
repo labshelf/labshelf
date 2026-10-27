@@ -5,14 +5,14 @@ import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
 import type { RelayClock } from "./relayClient.js";
 
-export const CLOUDFLARE_CLIENT_ID = "6bf60d8231e753c5249c7044aa0c4aff";
-export const CLOUDFLARE_AUTHORIZE_URL = "https://dash.cloudflare.com/oauth2/auth";
-export const CLOUDFLARE_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";
+const CLOUDFLARE_CLIENT_ID = "6bf60d8231e753c5249c7044aa0c4aff";
+const CLOUDFLARE_AUTHORIZE_URL = "https://dash.cloudflare.com/oauth2/auth";
+const CLOUDFLARE_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";
 /** Registered exactly, port included: the desktop app listens here for the consent redirect. */
 export const CLOUDFLARE_REDIRECT_PORT = 8976;
 export const CLOUDFLARE_REDIRECT_URI = `http://127.0.0.1:${CLOUDFLARE_REDIRECT_PORT}/callback`;
 // TRAP: the server checks every scope against the client's registered list before login, and refuses with invalid_scope.
-export const CLOUDFLARE_SCOPES = "workers-scripts.admin workers-kv-storage.write account-settings.read offline_access";
+const CLOUDFLARE_SCOPES = "workers-scripts.admin workers-kv-storage.write account-settings.read offline_access";
 const CONNECTED_PAGE = "https://labshelf.org/connected/?service=cloudflare";
 
 /** The page the loopback sends the browser to; it carries an error code, never a token or a code. */
@@ -89,7 +89,7 @@ export function fetchCloudflareTokens(options: TokenRequestOptions & { code: str
 }
 
 /** Cloudflare rotates the refresh token on every refresh: the one sent stops being valid. */
-export function refreshCloudflareTokens(options: TokenRequestOptions & { refreshToken: string }): Promise<CloudflareTokens> {
+function refreshCloudflareTokens(options: TokenRequestOptions & { refreshToken: string }): Promise<CloudflareTokens> {
   return requestTokens(options, "refresh_token", { refresh_token: options.refreshToken });
 }
 

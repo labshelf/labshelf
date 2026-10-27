@@ -3,7 +3,7 @@ export { formatShareImportUri, formatShareLink, parseShareLink, SHARE_IMPORT_PAT
 export type { ShareLinkError, ShareLinkParts, ShareLinkResult } from "./shareLink.js";
 export { decodeShareManifest, extractSharedMetadata, SHARE_MANIFEST_VERSION, BLOB_OVERHEAD_BYTES, openShareBlob, openShareManifest, sealShareBlob, sealShareManifest } from "./shareCrypto.js";
 export type { ShareManifest, SharedPaper, SharedPaperMetadata, SharedPdf, SharedPdfPart, SealedShareBlob } from "./shareCrypto.js";
-export { SHARE_PATH, SHARE_REFUSAL, ShareRequestError, createWorkerShareBackend, createWorkerShareReader, resolveRelayBackend } from "./shareBackend.js";
+export { ShareRequestError, createWorkerShareBackend, createWorkerShareReader, resolveRelayBackend } from "./shareBackend.js";
 export type { ShareBackend, ShareReader, WorkerShareBackendOptions, WorkerShareReaderOptions } from "./shareBackend.js";
 export { buildShare, loadShareRegistry, deriveShareLinkOfEntry, updateShareRegistry, uploadShare, openShare, removeShare } from "./shareFlows.js";
 export type {

@@ -8,7 +8,7 @@ import {
 } from "../writing/project/index.js";
 import {
   createShareIndexDoc, applySharedSettings, readShareIndexDocSettings, readShareIndexDocKind, readSettingsMap,
-} from "../collab/doc/index.js";
+} from "../collab/index.js";
 import { createLibraryLayout } from "../library/index.js";
 import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/invite/index.js";
 import type { ShareConnection } from "../collab/session/index.js";

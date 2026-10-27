@@ -1,14 +1,15 @@
 /** Opens a project mirror on a project folder over a share session, alone or on a fake relay, for the tests of the disk mirror. */
-import { createShareIndexDoc, attachShareBlobs, type ShareBlobExchange, createShareSession, type ShareSession } from "../../../src/collab/doc/index";
+import { createShareIndexDoc, attachShareBlobs, type ShareBlobExchange, createShareSession, type ShareSession } from "../../../src/collab/index";
 import { startProjectMirror, type MirrorFileSystem, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
-import { createNodeCollabStorage } from "../../../src/collab/node/index";
+import { createNodeCollabStorage } from "../../../src/collab/session/node/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { openCollabStore, type CollabStore } from "../../../src/collab/session/index";
 import { deriveRelayToken } from "../../../src/collab/invite/index";
 import { attachRelaySync } from "../../../src/collab/relays/index";
-import { createRelayTransport, type PeerTransport } from "../../../src/collab/relays/index";
-import { FakeClock, FakeNetwork } from "../peer/fakeNetwork";
-import { contentKey, fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../doc/testSession";
+import { createRelayTransport } from "../../../src/collab/relays/index";
+import type { PeerTransport } from "../../../src/collab/index";
+import { FakeClock, FakeNetwork } from "../fakeNetwork";
+import { contentKey, fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../testSession";
 import type { FakeRelay } from "../relays/fakeRelay";
 import { RELAY_URL } from "../relays/relayClient";
 import { nodeFiles, tempDir, type MirrorFiles } from "./mirrorFiles";

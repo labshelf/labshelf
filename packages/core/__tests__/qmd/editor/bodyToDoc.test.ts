@@ -1,7 +1,6 @@
 import type { Node } from "prosemirror-model";
-import { parseItemFile } from "../../../src/qmd/items/index";
-import { bodyToDoc } from "../../../src/qmd/editor/bodyToDoc";
-import { docToBody } from "../../../src/qmd/editor/docToBody";
+import { parseItemFile } from "../../../src/qmd/itemFile";
+import { bodyToDoc, docToBody } from "../../../src/qmd/editor/qmdDoc";
 import { qmdFixtures, readQmdFixture } from "../fixtures/qmdFixtures";
 
 const types = (doc: Node) => doc.content.content.map((block) => block.type.name);

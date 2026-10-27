@@ -5,7 +5,7 @@ import { parseJsonObject } from "../../json/index.js";
 import type { IFileSystem, ILogger, LibraryFileSystem } from "../../ports/index.js";
 
 const LOG_MODULE = "collab.ownership";
-export const LEASE_TTL_MS = 30_000;
+const LEASE_TTL_MS = 30_000;
 const LEASE_DIR = ".labshelf";
 const LEASE_NAME = "mirror-lease.json";
 
@@ -16,12 +16,12 @@ export interface LeaseHolder {
   renewedAt: number;
 }
 
-export interface LeaseFileContent extends LeaseHolder {
+interface LeaseFileContent extends LeaseHolder {
   owner: string;
   ttlMs: number;
 }
 
-export function deriveLeasePath(folder: string): string {
+function deriveLeasePath(folder: string): string {
   return `${folder.replace(/\/+$/, "")}/${LEASE_DIR}/${LEASE_NAME}`;
 }
 
@@ -36,7 +36,7 @@ function parseLease(text: string): LeaseFileContent | undefined {
 }
 
 /** The lease in the folder; a missing file is undefined, and a malformed one is undefined with a WARN because it counts as expired. */
-export async function readLease(fs: IFileSystem, folder: string, logger: ILogger): Promise<LeaseFileContent | undefined> {
+async function readLease(fs: IFileSystem, folder: string, logger: ILogger): Promise<LeaseFileContent | undefined> {
   const file = deriveLeasePath(folder);
   if (!(await fs.exists(file))) { return undefined; }
   const lease = parseLease(await fs.readText(file));
@@ -44,12 +44,12 @@ export async function readLease(fs: IFileSystem, folder: string, logger: ILogger
   return lease;
 }
 
-export async function writeLease(fs: IFileSystem, folder: string, lease: LeaseFileContent): Promise<void> {
+async function writeLease(fs: IFileSystem, folder: string, lease: LeaseFileContent): Promise<void> {
   await fs.ensureDir(`${folder.replace(/\/+$/, "")}/${LEASE_DIR}`);
   await fs.writeText(deriveLeasePath(folder), JSON.stringify(lease));
 }
 
-export function isLive(lease: LeaseFileContent, now: number): boolean {
+function isLive(lease: LeaseFileContent, now: number): boolean {
   return lease.renewedAt + lease.ttlMs > now;
 }
 
@@ -86,14 +86,14 @@ export interface FolderLease {
   release(): Promise<void>;
 }
 
-export interface HeldLeaseOptions {
+interface HeldLeaseOptions {
   fs: LibraryFileSystem;
   folder: string;
   logger: ILogger;
   scheduler: LeaseScheduler;
 }
 
-export class HeldFolderLease implements FolderLease {
+class HeldFolderLease implements FolderLease {
   private readonly listeners: Array<(error: MirrorLostError) => void> = [];
   private lost: MirrorLostError | undefined;
   private released = false;

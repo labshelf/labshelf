@@ -5,18 +5,10 @@ import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { detectProjectConflict, isEligibleProjectConflictPath } from "../../writing/conflict/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../writing/project/index.js";
-import {
-  addWrittenVersion,
-  deriveSharedFileKind,
-  deriveSharedPaths,
-  readShareIndexDocFiles,
-  readWrittenHashes,
-  setFileText,
-  type ShareBlobExchange,
-  type ShareFileEntry,
-  type ShareSession,
-  type SharedSettings,
-} from "../doc/index.js";
+import { addWrittenVersion, readShareIndexDocFiles, readWrittenHashes, type ShareFileEntry } from "../shareIndexDoc.js";
+import { deriveSharedFileKind, deriveSharedPaths, setFileText, type SharedSettings } from "../sharedFiles.js";
+import { type ShareBlobExchange } from "../shareBlobs.js";
+import { type ShareSession } from "../docSync.js";
 import type { CollabStore } from "../session/index.js";
 import type { MirrorFileRead, MirrorFileSystem } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
@@ -61,7 +53,7 @@ export async function writeMirrored(context: MirrorContext, relative: string, co
   await context.logger.log("INFO", LOG_MODULE, "Wrote a shared file from the share", { folder: context.folder, path: relative, length: content.length });
 }
 
-export async function removeMirroredFile(context: MirrorContext, relative: string): Promise<void> {
+async function removeMirroredFile(context: MirrorContext, relative: string): Promise<void> {
   await context.disk.remove(relative);
   removeMirroredPath(context, relative);
   await context.logger.log("INFO", LOG_MODULE, "Deleted a file the share removed", { folder: context.folder, path: relative });
@@ -84,7 +76,7 @@ export function addMirroredPath(context: MirrorContext, path: string, content: s
   }
 }
 
-export interface WaitingWrite { hash: string; mirror: boolean; answered: boolean; canceled?: boolean }
+interface WaitingWrite { hash: string; mirror: boolean; answered: boolean; canceled?: boolean }
 
 export async function checkWaitingWrite(context: MirrorContext, path: string, hash: string): Promise<{ waiting: boolean; parent?: string | undefined }> {
   if (readWrittenHashes(context.session.index, path).has(hash)) { context.waitingWrites.delete(path); return { waiting: false }; }

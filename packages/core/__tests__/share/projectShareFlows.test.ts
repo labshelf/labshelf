@@ -1,6 +1,6 @@
 // Tests the shared-project workflows: sharing, joining, leaving and resuming.
 import * as Y from "yjs";
-import { createShareIndexDoc, readShareIndexDocSettings, readShareIndexDocKind } from "../../src/collab/doc/index";
+import { createShareIndexDoc, readShareIndexDocSettings, readShareIndexDocKind } from "../../src/collab/index";
 import {
   joinShare, startShare, joinSharedProject, startProjectShare, type ShareOutcome, createShareResumer, readCurrentInvite, leaveSharedProject, offerOwnRelay, ShareOpenInAnotherTabError, removeOwnRelayOffer, removeOwnRelayOfferFromShares,
 } from "../../src/share/index";

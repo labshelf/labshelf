@@ -13,8 +13,11 @@ import {
   openFolderLease, startProjectMirror, systemLeaseScheduler,
   type FolderLease, type LeaseHolder, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorFileSystem,
 } from "../mirror/index.js";
-import { attachPresence, systemScheduler, type PresenceStore, type RelayReport, type SessionPhase, type SessionScheduler } from "../peer/index.js";
-import { attachShareBlobs, createShareSession, derivePeerColour, type ShareBlobExchange, type ShareSession } from "../doc/index.js";
+import { attachPresence, type PresenceStore, type RelayReport } from "../presence.js";
+import { systemScheduler, type SessionPhase, type SessionScheduler } from "../channel.js";
+import { attachShareBlobs, type ShareBlobExchange } from "../shareBlobs.js";
+import { createShareSession, type ShareSession } from "../docSync.js";
+import { derivePeerColour } from "../cursors.js";
 import { openCollabStore, type CollabDeviceStateStorage, type CollabStore } from "./collabStore.js";
 import { ensureSharedProject, type ShareProjects, type ShareStart } from "./sharedProject.js";
 import { watchStorageHealth, type StorageHealth } from "./storageHealth.js";
@@ -80,7 +83,7 @@ export interface RelayNetwork {
   socketFactory?: RelayConnectionPortFactory;
 }
 
-export interface ShareRelaysOptions {
+interface ShareRelaysOptions {
   session: ShareSession;
   /** The transport the session was created over. */
   slot: SwitchableTransport;

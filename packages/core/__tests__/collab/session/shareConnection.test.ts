@@ -1,9 +1,9 @@
 /** Pins the connection lifecycle both apps share: start, join, rollback of a partial start, close ordering and persistence failure; how connections pick relays; and that one leased mirror at a time writes a shared project folder. */
-import { readFileText, readShareIndexDocFiles } from "../../../src/collab/doc/index";
+import { readFileText, readShareIndexDocFiles } from "../../../src/collab/index";
 import { createLibraryMirrorFileSystem, type LeaseScheduler } from "../../../src/collab/mirror/index";
 import { createLeasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
-import { runUntil, type FakeClock } from "../peer/fakeNetwork";
+import { runUntil, type FakeClock } from "../fakeNetwork";
 import { ONE, TWO } from "../relays/relayGroup";
 import { runFor } from "../relays/fakeRelay";
 import { FOLDER, mirrorFactory, Network, newDevice, writeProject, type Device } from "./connectionTestbed";

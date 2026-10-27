@@ -3,11 +3,11 @@ import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from 
 import {
   createRelayProbe, createRelayWatch, PROBE_TIMEOUT_MS, RELAY_DOWN_HOLD_MS, type RelayConnectionPort,
 } from "../../../src/collab/relays/index";
-import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/index";
+import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/index";
 import { deriveSha256Hex } from "../../../src/hash/index";
 import { RELAY_PATH } from "../../../src/relay/index";
-import { FakeClock, runUntil } from "../peer/fakeNetwork";
-import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
+import { FakeClock, runUntil } from "../fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY } from "../testSession";
 import { openRelayClient, RELAY_URL, type RelayClient } from "./relayClient";
 import { FakeRelay, runFor } from "./fakeRelay";
 import { ONE, openGroupClient, RelayHosts, TWO, typeFor, type GroupClient } from "./relayGroup";

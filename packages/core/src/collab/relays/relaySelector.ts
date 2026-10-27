@@ -3,8 +3,8 @@ import type { Doc } from "yjs";
 import { createListeners } from "../../events/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { DerivedShareKey } from "../invite/index.js";
-import { systemScheduler, type SessionScheduler } from "../peer/index.js";
-import type { ShareSession } from "../doc/index.js";
+import { systemScheduler, type SessionScheduler } from "../channel.js";
+import type { ShareSession } from "../docSync.js";
 import { RelayHolds, type RelayPresence } from "./relayPresence.js";
 import { readShareIndexDocRelays, readRelayList } from "./relayList.js";
 import { attachRelaySync, type RelaySync } from "./relaySync.js";
@@ -219,7 +219,7 @@ class Selector implements RelaySelector {
   }
 }
 
-export class RelayFollow {
+class RelayFollow {
   /** Relays peers were seen on that this client retried once for them; cleared when no peer reports the relay any more. */
   private readonly followed = new Set<string>();
   private connected: string | undefined;

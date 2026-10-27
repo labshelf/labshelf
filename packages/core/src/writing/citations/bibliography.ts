@@ -2,7 +2,7 @@
 
 import { createBibtexEntry } from "../../import/bibtex/index.js";
 import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, normalizeArxivIdentifier, type PreprintIds } from "../../import/index.js";
-import { mergeGeneratedBibliography } from "../../collab/doc/index.js";
+import { mergeGeneratedBibliography } from "../../collab/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import {
   readOptionalText, DEFAULT_BIBLIOGRAPHY, updateProjectSettings, type ProjectReadContext, type OpenSources, type ProjectFormat,

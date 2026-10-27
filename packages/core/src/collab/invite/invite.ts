@@ -61,7 +61,7 @@ export interface InviteRelay {
   relayToken?: string;
 }
 
-export function encodeRelayList(relays: InviteRelay[]): string {
+function encodeRelayList(relays: InviteRelay[]): string {
   return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(relays)));
 }
 
@@ -82,7 +82,7 @@ function toRelay(value: unknown): InviteRelay | undefined {
 }
 
 /** Returns undefined for anything but a JSON array of https relays with known fields. */
-export function decodeRelayList(text: string): InviteRelay[] | undefined {
+function decodeRelayList(text: string): InviteRelay[] | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(base64UrlToBytes(text)));

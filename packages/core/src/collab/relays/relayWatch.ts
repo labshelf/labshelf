@@ -3,7 +3,9 @@ import type { ILogger } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
 import { decodeVersionResponse, RELAY_PATH } from "../../relay/index.js";
 import type { DerivedShareKey } from "../invite/index.js";
-import { attachPresence, createSecureMesh, systemScheduler, type PresenceStore, type PresenceState, type RelayReport, type SessionScheduler } from "../peer/index.js";
+import { attachPresence, type PresenceStore, type PresenceState, type RelayReport } from "../presence.js";
+import { createSecureMesh } from "../peerMesh.js";
+import { systemScheduler, type SessionScheduler } from "../channel.js";
 import { createRelayTransport, createGlobalRelayConnection, type RelayConnectionPort, type RelayConnectionPortFactory } from "./relayTransport.js";
 import { onRemoteChange, reportOf } from "./relayPresence.js";
 import type { RelayFailure } from "./relaySelector.js";
@@ -117,7 +119,7 @@ export interface ConnectionReports {
 }
 
 // TRAP: Cloudflare answers a Worker past its daily requests with its own error page, code 1027, not the relay's JSON.
-export const isLimitRefusal = async (response: Response) =>
+const isLimitRefusal = async (response: Response) =>
   response.status === 429 || (!response.ok && /\b1027\b/.test(await response.clone().text().catch(() => "")));
 
 /** The fetch and socket factory to hand a relay transport; each reports to `reports` and otherwise behaves like `base`. */

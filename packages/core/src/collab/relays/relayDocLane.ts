@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/relay.md#client-obligations
 import * as Y from "yjs";
 import type { ILogger } from "../../ports/index.js";
-import { MESSAGE_KIND, type SessionScheduler } from "../peer/index.js";
+import { MESSAGE_KIND, type SessionScheduler } from "../channel.js";
 import type { RelayStore } from "./relayTransport.js";
 
 /** The caller persists cursors with the doc state they describe, so a restart asks `since` only for rows it lacks. */

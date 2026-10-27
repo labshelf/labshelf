@@ -5,10 +5,10 @@ import {
   addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, startRelaySelectionFollow, createRelayPresence, createRelayProbe, createMemoryCursorStore,
   type RelayConnectionPort, type RelayCursorStore, type RelaySelector,
 } from "../../../src/collab/relays/index";
-import { attachPresence, type PresenceStore } from "../../../src/collab/peer/index";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/index";
-import type { FakeClock } from "../peer/fakeNetwork";
-import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
+import { attachPresence, type PresenceStore } from "../../../src/collab/index";
+import { createShareSession, type ShareSession } from "../../../src/collab/index";
+import type { FakeClock } from "../fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY } from "../testSession";
 import { FakeRelay } from "./fakeRelay";
 
 export const ONE = "https://one.example.workers.dev";

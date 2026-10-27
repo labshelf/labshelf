@@ -1,5 +1,5 @@
-// The ports through which shares reach the owner's Worker (owner writes, and the public reads of the share page), the Worker's share paths and error, the HTTP client that implements the ports, and the account-bound backend that refuses a share living on another relay.
-import { decodeRefusal, type RelayAccount } from "../relay/index.js";
+// The ports through which shares reach the owner's Worker (owner writes, and the public reads of the share page), the share request error, the HTTP client that implements the ports, and the account-bound backend that refuses a share living on another relay.
+import { decodeRefusal, SHARE_PATH, type RelayAccount } from "../relay/index.js";
 
 // CONTRACT: documents/contracts/share-link.md#worker-endpoints
 export interface ShareBackend {
@@ -16,15 +16,6 @@ export interface ShareReader {
   fetchManifest(shareId: string): Promise<Uint8Array | undefined>;
   fetchBlob(shareId: string, hash: string): Promise<Uint8Array | undefined>;
 }
-
-// CONTRACT: documents/contracts/share-link.md#worker-endpoints
-export const SHARE_PATH = {
-  prefix: "/share/",
-  manifest: (shareId: string) => `/share/${shareId}/manifest`,
-  blob: (shareId: string, hash: string) => `/share/${shareId}/blob/${hash}`,
-} as const;
-
-export const SHARE_REFUSAL = { notFound: "notFound", tooLarge: "tooLarge" } as const;
 
 /** `code` is a relay refusal code, `incompatibleRelay`, `malformed` for an unreadable answer, or `network`. */
 export class ShareRequestError extends Error {

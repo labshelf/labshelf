@@ -5,24 +5,11 @@ import type * as Y from "yjs";
 import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
-import {
-  COMMENTS_PATH,
-  renderCommentsFile,
-  readShareIndexDocComments,
-  readShareIndexDocFiles,
-  readShareIndexDocSettings,
-  readWrittenVersions,
-  isSafeSharePath,
-  deriveSharedPaths,
-  type ShareFileEntry,
-  applySharedSettings,
-  readSettingsMap,
-  parseSharedSettings,
-  writeSettingsChanges,
-  writeSettingsMap,
-  type ShareBlobExchange,
-  type ShareSession,
-} from "../doc/index.js";
+import { COMMENTS_PATH, renderCommentsFile } from "../commentsFile.js";
+import { readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readWrittenVersions, type ShareFileEntry } from "../shareIndexDoc.js";
+import { isSafeSharePath, deriveSharedPaths, applySharedSettings, readSettingsMap, parseSharedSettings, writeSettingsChanges, writeSettingsMap } from "../sharedFiles.js";
+import { type ShareBlobExchange } from "../shareBlobs.js";
+import { type ShareSession } from "../docSync.js";
 import type { CollabStore } from "../session/index.js";
 import { DISK_ORIGIN, LOG_MODULE, reconcileShareBlob, reconcileUntracked, writeMirrored, type MergeText, type MirrorContext } from "./fileReconcile.js";
 import { MirrorLostError } from "./projectLease.js";
@@ -245,7 +232,7 @@ async function scan(context: MirrorContext, queue: PathQueue): Promise<void> {
   await context.logger.log("INFO", LOG_MODULE, "Started mirroring a shared project", { folder: context.folder, listed: listed.length, onDisk: onDisk.length });
 }
 
-export function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (() => void)[], stopQueue: () => void) {
+function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (() => void)[], stopQueue: () => void) {
   let stopped: MirrorStopReason | undefined;
   const gate = async () => {
     if (stopped) { throw stopped; }
@@ -268,7 +255,7 @@ export function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (()
   return { gate, guarded, isStopped: () => stopped !== undefined };
 }
 
-export function withGatedFileSystem(disk: MirrorFileSystem, gate: () => Promise<void>): MirrorFileSystem {
+function withGatedFileSystem(disk: MirrorFileSystem, gate: () => Promise<void>): MirrorFileSystem {
   return {
     read: (path, stableMs) => disk.read(path, stableMs),
     write: async (path, bytes) => { await gate(); await disk.write(path, bytes); },
@@ -277,7 +264,7 @@ export function withGatedFileSystem(disk: MirrorFileSystem, gate: () => Promise<
   };
 }
 
-export function withGatedWriteRecords(records: WriteRecordStore, gate: () => Promise<void>, disk: MirrorFileSystem): WriteRecordStore {
+function withGatedWriteRecords(records: WriteRecordStore, gate: () => Promise<void>, disk: MirrorFileSystem): WriteRecordStore {
   return {
     read: () => records.read(),
     append: async (entry) => { await gate(); await disk.list(); await records.append(entry); },

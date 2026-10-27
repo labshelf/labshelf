@@ -1,10 +1,10 @@
 /** Pins the project a share connection mirrors: sharing seeds the comments map from comments.json, and a history restore reaches peers as doc edits and index removals. */
 import * as Y from "yjs";
-import { readFileText, readLiveThreads, readShareIndexDocFiles, type ShareSession } from "../../../src/collab/doc/index";
+import { readFileText, readLiveThreads, readShareIndexDocFiles, type ShareSession } from "../../../src/collab/index";
 import { applyRestoredFiles, ensureSharedProject } from "../../../src/collab/session/index";
 import type { ILogger } from "../../../src/ports/index";
 import type { ProjectCatalogContext } from "../../../src/writing/project/index";
-import { fakeLogger } from "../doc/testSession";
+import { fakeLogger } from "../testSession";
 
 const FOLDER = "/lib/p";
 const SHARE_ID = "f".repeat(32);

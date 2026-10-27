@@ -1,6 +1,7 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
 import { deriveTextSha256Hex } from "../../hash/index.js";
-import { readFileText, readShareIndexDocFiles, setFileText, readWrittenHashes } from "../doc/index.js";
+import { readFileText, setFileText } from "../sharedFiles.js";
+import { readShareIndexDocFiles, readWrittenHashes } from "../shareIndexDoc.js";
 import {
   DISK_ORIGIN,
   removeMirroredPath,

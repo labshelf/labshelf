@@ -1,8 +1,7 @@
 // Pins the inline Markdown reader and writer: exact round trip, structure and canonical output.
 import { Fragment, type Node } from "prosemirror-model";
-import { parseInline } from "../../../src/qmd/editor/parseInline";
-import { serializeInline } from "../../../src/qmd/editor/serializeInline";
-import { qmdSchema } from "../../../src/qmd/editor/schema";
+import { parseInline, serializeInline } from "../../../src/qmd/editor/qmdInline";
+import { qmdSchema } from "../../../src/qmd/editor/qmdSchema";
 
 const roundTrip = (text: string): string => serializeInline(Fragment.from(parseInline(text)));
 

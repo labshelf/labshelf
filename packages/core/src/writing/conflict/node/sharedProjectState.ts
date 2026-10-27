@@ -5,9 +5,9 @@ import { createDeviceLocalLayout, readOptionalFile } from "../../../library/node
 import type { ILogger } from "../../../ports/index.js";
 import { deriveTextSha256Hex } from "../../../hash/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../project/index.js";
-import { createNodeCollabStorage } from "../../../collab/node/index.js";
+import { createNodeCollabStorage } from "../../../collab/session/node/index.js";
 import { loadVersionHistory, StoredMap } from "../../../collab/session/index.js";
-import { INDEX_DOC_KEY, readShareIndexDocFiles } from "../../../collab/doc/index.js";
+import { INDEX_DOC_KEY, readShareIndexDocFiles } from "../../../collab/index.js";
 
 // Shared project state: the device-local storage of a project's share.
 

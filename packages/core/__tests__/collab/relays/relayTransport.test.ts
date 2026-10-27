@@ -3,9 +3,9 @@ import { createHash } from "node:crypto";
 import {
   addRelayShare, createRelayPresence, createRelayProbe, createRelaySelector, fetchTicket, PUT_INTERVAL_MS, RelayRequestError, SNAPSHOT_AFTER_PUTS,
 } from "../../../src/collab/relays/index";
-import { MESSAGE_KIND } from "../../../src/collab/peer/index";
+import { MESSAGE_KIND } from "../../../src/collab/index";
 import { ONE, openGroupClient, RelayHosts, TWO } from "./relayGroup";
-import { FakeClock, seededRandom } from "../peer/fakeNetwork";
+import { FakeClock, seededRandom } from "../fakeNetwork";
 import { FakeRelay, runFor } from "./fakeRelay";
 import { openRelayClient, RELAY_URL, type RelayClient } from "./relayClient";
 

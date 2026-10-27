@@ -7,21 +7,7 @@ import {
   MAX_RELAY_MESSAGE_BYTES, RELAY_PATH,
   type RelayClientMessage, type RelayServerMessage, type ResponseResult, type TicketResponse,
 } from "../../relay/index.js";
-import { CHANNEL_KIND, systemScheduler, type SessionScheduler } from "../peer/index.js";
-
-/** A peer as the transport names it; stable for one connection, new after a reconnect. */
-export type PeerId = string;
-
-export interface PeerTransport {
-  /** The peers connected right now. */
-  readonly peers: readonly PeerId[];
-  /** Sends one frame to one peer, or to every connected peer when `to` is "all". */
-  send(to: PeerId | "all", bytes: Uint8Array): void;
-  onMessage(listener: (from: PeerId, bytes: Uint8Array) => void): () => void;
-  onPeerJoin(listener: (peer: PeerId) => void): () => void;
-  onPeerLeave(listener: (peer: PeerId) => void): () => void;
-  close(): Promise<void>;
-}
+import { CHANNEL_KIND, systemScheduler, type PeerId, type PeerTransport, type SessionScheduler } from "../channel.js";
 
 /** The part of the WebSocket API the relay transport uses. */
 export interface RelayConnectionPort {

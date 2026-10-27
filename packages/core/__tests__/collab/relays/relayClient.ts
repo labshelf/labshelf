@@ -1,11 +1,11 @@
 /** Opens share sessions that reach each other only through a fake relay, with the relay sync and presence attached. */
 import * as Y from "yjs";
 import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/invite/index";
-import { attachPresence, type PresenceStore } from "../../../src/collab/peer/index";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/index";
+import { attachPresence, type PresenceStore } from "../../../src/collab/index";
+import { createShareSession, type ShareSession } from "../../../src/collab/index";
 import { attachRelaySync, createRelayTransport, type RelayCursorStore, type RelaySync, type RelayTransport } from "../../../src/collab/relays/index";
-import type { FakeClock } from "../peer/fakeNetwork";
-import { fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../doc/testSession";
+import type { FakeClock } from "../fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../testSession";
 import type { FakeRelay } from "./fakeRelay";
 
 export const RELAY_URL = "https://relay.example.workers.dev";

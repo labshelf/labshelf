@@ -43,9 +43,9 @@ export type TemplatePublishRequest =
   | { action: "open" }
   | { action: "check"; draft: PublishDraft }
   | { action: "submit"; draft: PublishDraft; token: string };
-export type TemplatePublishMessage = { v: number; id: string; type: "publishTemplate"; projectId: string } & TemplatePublishRequest;
+type TemplatePublishMessage = { v: number; id: string; type: "publishTemplate"; projectId: string } & TemplatePublishRequest;
 export type TemplatePublishEvent = PublishFromHost | Extract<HostToGallery, { type: "notice" }>;
-export type TemplatePublishReply = { v: number; id: string; type: "templatePublish"; event?: TemplatePublishEvent; done: boolean };
+type TemplatePublishReply = { v: number; id: string; type: "templatePublish"; event?: TemplatePublishEvent; done: boolean };
 
 export type ToHelperMessage =
   | TemplatePublishMessage
