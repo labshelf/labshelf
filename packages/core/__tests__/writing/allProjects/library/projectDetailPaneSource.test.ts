@@ -1,6 +1,6 @@
 // Tests how a project's build in this session is summarised for the All projects page.
-import { deriveBuildReport } from "../../../../src/writing/allProjects/library/projectDetailPaneSource";
-import type { BuildSources } from "../../../../src/writing/allProjects/library/projectLibraryDeps";
+import { deriveBuildReport } from "../../../../src/writing/allProjects/projectDetails";
+import type { BuildSources } from "../../../../src/writing/allProjects/projectLibrary";
 import { readyEntry } from "../../../support/projectLibraryHarness";
 
 const project = readyEntry("/lib/projects/a");

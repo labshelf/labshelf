@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { renderVersionsTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/versionsTab";
+import { renderVersionsTabHtml } from "../../../../../../src/writing/allProjects/dom/projectDetailTabs";
 import { NOW, detail } from "../fixtures";
 
 const render = (html: string): HTMLElement => { const el = document.createElement("div"); el.innerHTML = html; return el; };

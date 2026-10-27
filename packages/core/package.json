@@ -78,10 +78,10 @@
     "./styles/project-search.css": "./src/writing/search/dom/project-search.css",
     "./styles/project-history.css": "./src/writing/history/dom/project-history.css",
     "./styles/all-projects.css": "./src/writing/allProjects/dom/all-projects.css",
-    "./styles/spaces-catalog.css": "./src/spaces/dom/catalog/catalog.css",
-    "./styles/spaces.css": "./src/spaces/dom/frame/space.css",
+    "./styles/spaces-catalog.css": "./src/spaces/dom/catalog.css",
+    "./styles/spaces.css": "./src/spaces/dom/space.css",
     "./styles/research-chat.css": "./src/spaces/dom/research-chat.css",
-    "./styles/spaces-overview.css": "./src/spaces/dom/spaceOverview/overview.css",
+    "./styles/spaces-overview.css": "./src/spaces/dom/overview.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./package.json": "./package.json"

@@ -2,10 +2,10 @@
  * @jest-environment jsdom
  */
 // Tests the project detail pane: its empty, loading and error states, tab and fold memory across updates, and the actions it posts.
-import { mountProjectPane } from "../../../../../src/writing/allProjects/dom/detailPane/index";
-import type { AllProjectsToHost } from "../../../../../src/writing/allProjects/protocol/index";
+import { mountProjectPane } from "../../../../../src/writing/allProjects/dom/projectDetailPane";
+import type { AllProjectsToHost } from "../../../../../src/writing/allProjects/protocol";
 import { detail, row, NOW } from "./fixtures";
-import { renderProjectPaneHeadHtml } from "../../../../../src/writing/allProjects/dom/detailPane/mountProjectDetailPane";
+import { renderProjectPaneHeadHtml } from "../../../../../src/writing/allProjects/dom/projectDetailPane";
 
 function mount() {
   document.body.innerHTML = "";

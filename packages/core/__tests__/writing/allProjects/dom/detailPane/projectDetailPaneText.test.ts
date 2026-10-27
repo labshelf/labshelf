@@ -1,5 +1,5 @@
 // Tests the sentences of the All projects detail pane: meta line, venue line, limit sentence and build status.
-import { formatProjectBuildStateText, describeLimits, formatMetaLine, formatProjectVenueLine } from "../../../../../src/writing/allProjects/dom/detailPane/projectDetailPaneText";
+import { formatProjectBuildStateText, describeLimits, formatMetaLine, formatProjectVenueLine } from "../../../../../src/writing/allProjects/dom/projectDetailTabs";
 import { NOW, detail, row } from "./fixtures";
 
 describe("formatMetaLine", () => {

@@ -1,6 +1,6 @@
 // Declares the messages between the Details surface and its host: the library and All projects protocols in a channel envelope, plus what to show.
 import type { HostToUi, UiToHost } from "../../protocol/index.js";
-import type { AllProjectsToHost, HostToAllProjects } from "../../../writing/allProjects/protocol/index.js";
+import type { AllProjectsToHost, HostToAllProjects } from "../../../writing/allProjects/protocol.js";
 
 /** What the Details surface shows: one or more papers, one project, or nothing. */
 export type DetailsSelection = { kind: "paper"; ids: string[] } | { kind: "project"; id: string } | null;

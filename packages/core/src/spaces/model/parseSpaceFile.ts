@@ -3,14 +3,13 @@
 import {
   type SpaceReadResult,
   SPACE_DATE_KINDS,
+  SPACE_FORMAT_VERSION,
   type SpaceDate,
   type SpaceDateKind,
   type SpaceFolder,
   type SpaceReference,
+  type UnknownFields,
 } from "./space.js";
-import { readEntries, type EntryParse, type ReadEntries } from "./readEntries.js";
-import { deriveTopLevelReadOnlyReason } from "./readOnlyReason.js";
-import { deriveUnknownFields } from "./unknownFields.js";
 import { isCalendarDay } from "../../time/index.js";
 import { isBoolean, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../../guards/index.js";
 
@@ -134,3 +133,83 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
   const readOnlyReason = deriveTopLevelReadOnlyReason(raw, "space.json");
   return { state: "ready", path, space, warnings, ...(readOnlyReason === undefined ? {} : { readOnlyReason }) };
 }
+
+// CONTRACT: documents/contracts/spaces.md#reading-and-writing
+/** An entry, or the reason it is invalid. */
+export type EntryParse<T> = (raw: unknown) => T | string;
+
+export interface ReadEntries<T> {
+  readonly valid: T[];
+  /** Invalid entries, unchanged, so a write puts them back after the valid ones. */
+  readonly raw: unknown[];
+}
+
+/** Valid entries in file order; a repeated id keeps its first entry and the repeats are dropped. */
+export function readEntries<T extends { id: string }>(
+  list: unknown, label: string, parse: EntryParse<T>, warnings: string[],
+): ReadEntries<T> {
+  const result: ReadEntries<T> = { valid: [], raw: [] };
+  // INVARIANT: a list that is not an array makes the file read-only, so reading it as empty never erases it.
+  if (!Array.isArray(list)) { return result; }
+  const seen = new Set<string>();
+  list.forEach((entry, index) => {
+    const parsed = parse(entry);
+    if (typeof parsed === "string") { warnings.push(`${label}[${index}] kept unread: ${parsed}`); result.raw.push(entry); return; }
+    if (seen.has(parsed.id)) { warnings.push(`${label}[${index}] dropped: repeats id ${parsed.id}`); return; }
+    seen.add(parsed.id);
+    result.valid.push(parsed);
+  });
+  return result;
+}
+
+/** The ids that raw entries still claim, so a new entry never reuses one. */
+export function parseEntryIds(raw: readonly unknown[]): string[] {
+  return raw.flatMap((entry) => (isRecord(entry) && isNonEmptyString(entry["id"]) ? [entry["id"]] : []));
+}
+
+// CONTRACT: documents/contracts/spaces.md#reading-and-writing
+const TOP_LEVEL_CHECKS = {
+  "space.json": { arrays: ["folders", "papers", "projects", "dates"], strings: ["name", "purpose", "createdAt"] },
+  "glossary.json": { arrays: ["terms"], strings: [] },
+} as const;
+
+/** A missing version reads as 1. */
+export function deriveTopLevelReadOnlyReason(raw: Record<string, unknown>, file: keyof typeof TOP_LEVEL_CHECKS): string | undefined {
+  const version = raw["version"];
+  if (version !== undefined && typeof version !== "number") {
+    return `${file} has a version that is not a number, so it is read-only. Fix version to edit it.`;
+  }
+  if (typeof version === "number" && version > SPACE_FORMAT_VERSION) {
+    return `${file} has version ${version}; this LabShelf writes version 1 only, so the Space is read-only. Update LabShelf to edit it.`;
+  }
+  const { arrays, strings } = TOP_LEVEL_CHECKS[file];
+  const wrong = [
+    ...arrays.filter((key) => !isOptional(raw[key], Array.isArray)),
+    ...strings.filter((key) => !isOptional(raw[key], isString)),
+  ];
+  if (wrong.length === 0) { return undefined; }
+  return `${file} has ${wrong.join(", ")} of the wrong type, so it is read-only. Fix ${wrong.length === 1 ? "it" : "them"} to edit it.`;
+}
+
+// TRAP: plain assignment of "__proto__" sets the prototype, and `in` sees inherited names such as "toString";
+// own-property checks and defineProperty keep those keys as ordinary data.
+function setOwn(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, { value, enumerable: true, writable: true, configurable: true });
+}
+
+export function deriveUnknownFields(raw: Record<string, unknown>, known: readonly string[]): UnknownFields {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(raw)) { if (!known.includes(key)) { setOwn(out, key, raw[key]); } }
+  return out;
+}
+
+/** Drops unset known keys, then appends unknown keys; a known key always wins over an unknown one of the same name. */
+export function withUnknownFields(known: Record<string, unknown>, extra: UnknownFields): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(known)) { if (value !== undefined) { setOwn(out, key, value); } }
+  for (const [key, value] of Object.entries(extra)) { if (!Object.hasOwn(known, key)) { setOwn(out, key, value); } }
+  return out;
+}
+
+// Checks the type of one field read from a synced JSON file.
+export const isPage = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 1;

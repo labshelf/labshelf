@@ -1,21 +1,105 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
 import { createListeners } from "../../events/index.js";
 import { formatError } from "../../errors/index.js";
-import { createLibraryLayout } from "../../library/index.js";
+import { createLibraryLayout, type LibraryLayout } from "../../library/index.js";
+import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
+import type { PathOps } from "../../path/index.js";
 import {
   type Glossary,
   type GlossaryReadResult,
   type Space,
   type SpaceReadResult,
-  serializeSpaceFile,
   deriveSpaceId,
+  parseGlossaryFile,
+  parseSpaceFile,
+  serializeSpaceFile,
 } from "../model/index.js";
-import * as edit from "./mutation/index.js";
-import type { SpaceDateInput, TermInput } from "./mutation/index.js";
-import { updateGlossary, updateSpace, type ReadySpace } from "./updateSpace.js";
-import { readAllSpaces, readGlossaryFile, readSpaceFile } from "./readSpace.js";
-import { type SpaceStoreOptions, type StoreContext, SPACE_STORE_MODULE } from "./spaceStoreOptions.js";
-import { runSerially } from "./serialWrites.js";
+import * as edit from "./spaceMutations.js";
+import { updateGlossary, updateSpace, type ReadySpace, type SpaceDateInput, type TermInput } from "./spaceMutations.js";
+
+
+export interface SpaceStoreOptions {
+  /** The library folder. */
+  readonly root: string;
+  readonly fs: LibraryFileSystem;
+  readonly paths: Pick<PathOps, "join">;
+  readonly logger: ILogger;
+  /** ISO timestamp for createdAt and addedAt; the wall clock when absent. */
+  readonly now?: () => string;
+}
+
+export interface StoreContext {
+  readonly fs: LibraryFileSystem;
+  readonly logger: ILogger;
+  readonly layout: LibraryLayout<string>;
+  readonly now: () => string;
+  /** The tail of each key's write queue: a space id, or the spaces root for creation. */
+  readonly writes: Map<string, Promise<unknown>>;
+}
+
+export const SPACE_STORE_MODULE = "spaces/store";
+
+/** Thrown when a write is refused because the file is from a newer version or could not be understood. */
+export class SpaceReadOnlyError extends Error {
+  override readonly name = "SpaceReadOnlyError";
+  constructor(readonly path: string, readonly reason: string) {
+    super(`${path} is read-only: ${reason}`);
+  }
+}
+
+/** A failed write settles its slot, so the writes queued after it still run. */
+export function runSerially<T>(ctx: StoreContext, key: string, write: () => Promise<T>): Promise<T> {
+  const previous = ctx.writes.get(key) ?? Promise.resolve();
+  const result = previous.then(write);
+  const settled = result.then(() => undefined, () => undefined);
+  ctx.writes.set(key, settled);
+  void settled.then(() => { if (ctx.writes.get(key) === settled) { ctx.writes.delete(key); } });
+  return result;
+}
+
+export async function readSpaceFile(ctx: StoreContext, id: string): Promise<SpaceReadResult> {
+  const path = ctx.layout.spaceFilePath(id);
+  let result: SpaceReadResult;
+  try {
+    result = parseSpaceFile(await ctx.fs.readText(path), { id, path });
+  } catch (error) {
+    result = { state: "unreadable", id, path, reason: formatError(error) };
+  }
+  if (result.state === "unreadable") {
+    await ctx.logger.log("WARN", SPACE_STORE_MODULE, "Space is unreadable", { path, reason: result.reason });
+  } else {
+    for (const warning of result.warnings) { await ctx.logger.log("WARN", SPACE_STORE_MODULE, warning, { path }); }
+  }
+  return result;
+}
+
+export async function readGlossaryFile(ctx: StoreContext, id: string): Promise<GlossaryReadResult> {
+  const path = ctx.layout.glossaryFilePath(id);
+  let result: GlossaryReadResult;
+  try {
+    result = parseGlossaryFile(await ctx.fs.exists(path) ? await ctx.fs.readText(path) : undefined);
+  } catch (error) {
+    const empty = parseGlossaryFile(undefined);
+    const reason = `glossary.json could not be read: ${formatError(error)}`;
+    result = { ...empty, readOnlyReason: reason };
+    await ctx.logger.log("WARN", SPACE_STORE_MODULE, "Glossary is unreadable", { path, reason });
+  }
+  for (const warning of result.warnings) { await ctx.logger.log("WARN", SPACE_STORE_MODULE, warning, { path }); }
+  return result;
+}
+
+/** Every folder of spaces/ that holds a space.json, hidden entries skipped, sorted by id. */
+export async function readAllSpaces(ctx: StoreContext): Promise<SpaceReadResult[]> {
+  const names = (await ctx.fs.listDir(ctx.layout.spacesRoot())).filter((name) => !name.startsWith(".")).sort();
+  const results: SpaceReadResult[] = [];
+  for (const name of names) {
+    const stat = await ctx.fs.stat(ctx.layout.spaceDir(name));
+    if (!stat?.isDirectory || !(await ctx.fs.exists(ctx.layout.spaceFilePath(name)))) { continue; }
+    results.push(await readSpaceFile(ctx, name));
+  }
+  return results;
+}
+
 
 /** TRAP: another device may create the same folder between the listing and the write, so the id is re-checked last. */
 async function freeSpaceId(ctx: StoreContext, name: string, taken: Set<string>): Promise<string> {

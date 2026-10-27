@@ -1,7 +1,7 @@
 /** Pins the LibraryPath and ProjectPath guards, including every input the old per-module validators disagreed on. */
 import { isLibraryPath, isProjectPath } from "../../src/path/index";
 import { parseUiMessage } from "../../src/libraryUi/protocol/index";
-import { parseAllProjectsMessage } from "../../src/writing/allProjects/protocol/parseAllProjectsMessage";
+import { parseAllProjectsMessage } from "../../src/writing/allProjects/protocol";
 import { parseHistoryLine } from "../../src/writing/history/index";
 
 const NUL = "a\u0000b";

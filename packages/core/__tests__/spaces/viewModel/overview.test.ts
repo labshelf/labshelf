@@ -1,5 +1,5 @@
 /** Verifies the overview: timeline order and phases, goal progress, project deadlines, focus papers and missing links. */
-import { buildOverview } from "../../../src/spaces/viewModel/index";
+import { buildOverview } from "../../../src/spaces/spaceOverview";
 import { date, library, paperRef, project, space } from "./viewFixture";
 
 const lib = library({ id: "a", status: "done", title: "Alpha", authors: ["X"], year: 2020 }, { id: "b", status: "reading" });

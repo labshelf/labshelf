@@ -2,7 +2,7 @@
 import { renderElement } from "../../../../ui/dom/index.js";
 import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../../ui/index.js";
 import { STATUS_LABEL } from "../../../../library/index.js";
-import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/viewModel/index.js";
+import type { PapersTree, ResolvedPaper, SidebarRow } from "../../../../spaces/spaceViews.js";
 import type { SidebarSpacesState, SidebarSpaceActions } from "./spaceActions.js";
 import { PAPER_DRAG_MIME, parsePaperDragPayload } from "../../drag/index.js";
 

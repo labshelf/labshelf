@@ -1,7 +1,7 @@
 // Builds the project infos a Spaces host reports from its project rows and a checklist reader.
 import type { ILogger } from "../ports/index.js";
 import type { ProjectRow } from "../writing/allProjects/index.js";
-import type { Progress, SpaceProjectEntry } from "./viewModel/index.js";
+import type { Progress, SpaceProjectEntry } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
 
 const MODULE = "spaces/projects";

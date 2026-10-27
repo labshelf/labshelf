@@ -7,10 +7,11 @@ import {
   type SpacesEndpoint,
   type SpacesToHost,
   type SpaceMutation,
-} from "./protocol/index.js";
+} from "./spacesProtocol.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./store/index.js";
-import { buildIcs, buildOverview, buildPapersTree, deriveCatalogRows, resolvePaper } from "./viewModel/index.js";
+import { buildIcs, buildOverview } from "./spaceOverview.js";
+import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
 
 const LOAD_CATALOG = "Load Spaces";

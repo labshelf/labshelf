@@ -1,9 +1,8 @@
 /** Checks Space interactions across the page transport.
  * @jest-environment jsdom
  */
-import { mountSpace } from '../../../../src/spaces/dom/frame/index.js';
-import type { HostToSpaces, SpacesToHost, SpacesTransport } from '../../../../src/spaces/protocol/index.js';
-import { mountSpacePositioned } from "../../../../src/spaces/dom/frame/mountSpace.js";
+import { mountSpace, mountSpacePositioned } from '../../../../src/spaces/dom/mountSpace.js';
+import type { HostToSpaces, SpacesToHost, SpacesTransport } from '../../../../src/spaces/spacesProtocol.js';
 
 function channel() {
   const sent: SpacesToHost[] = [];

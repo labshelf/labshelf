@@ -1,5 +1,5 @@
 // Declares the host actions available from the Spaces sidebar section.
-import type { SidebarRow } from "../../../../spaces/viewModel/index.js";
+import type { SidebarRow } from "../../../../spaces/spaceViews.js";
 
 export interface SidebarSpaceActions {
   openCatalog(): void;

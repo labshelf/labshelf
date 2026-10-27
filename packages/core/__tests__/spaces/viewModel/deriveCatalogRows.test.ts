@@ -1,5 +1,5 @@
 /** Verifies catalog rows: reading progress, next open date, counts, unreadable Spaces and filtering. */
-import { deriveCatalogRows, deriveFilteredCatalogRows } from "../../../src/spaces/viewModel/index";
+import { deriveCatalogRows, deriveFilteredCatalogRows } from "../../../src/spaces/spaceViews";
 import { date, folder, library, paperRef, ready, space } from "./viewFixture";
 
 const lib = library({ id: "a", status: "done" }, { id: "b", status: "reading" });

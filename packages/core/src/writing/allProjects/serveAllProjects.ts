@@ -1,8 +1,8 @@
 // Serves the All projects page from a host's project library: posts the rows and runs the page's actions.
 import type { ILogger } from "../../ports/index.js";
 import type { ProjectSubmission } from "../project/index.js";
-import type { AllProjectsEndpoint, AllProjectsToHost } from "./protocol/index.js";
-import type { ProjectLibraryPort } from "./projectLibraryPort.js";
+import type { AllProjectsEndpoint, AllProjectsToHost } from "./protocol.js";
+import type { ProjectLibraryPort } from "./projectModel.js";
 import { formatError } from "../../errors/index.js";
 
 const MODULE = "allProjects";

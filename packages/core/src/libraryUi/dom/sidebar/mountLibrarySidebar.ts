@@ -26,7 +26,7 @@ import {
   type SidebarState,
 } from "./sidebarView.js";
 import { runSpaceRow, showSpaceMenu, type SidebarSpaceActions, updateSpaceRowOpen } from "./spaces/index.js";
-import type { SidebarRow } from "../../../spaces/viewModel/index.js";
+import type { SidebarRow } from "../../../spaces/spaceViews.js";
 import { runImportShareLinkDialog, runManageShareLinksDialog, runShareFolderDialog } from "../../../share/dom/index.js";
 import { showMenu, type MenuEntry } from "../../../ui/dom/index.js";
 

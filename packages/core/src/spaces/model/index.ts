@@ -4,9 +4,5 @@ export type {
   Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm, Space, SpaceDate, SpaceDateKind,
   SpaceFolder, SpaceInvalidEntries, SpaceReference, SpaceProjectDate, SpaceReadDate, SpaceReadResult, SpaceTaskDate, UnknownFields,
 } from "./space.js";
-export { parseSpaceFile } from "./parseSpaceFile.js";
-export { serializeSpaceFile } from "./serializeSpaceFile.js";
-export { parseGlossaryFile, serializeGlossaryFile } from "./glossaryFile.js";
-export { createEntryId, deriveSpaceId } from "./spaceId.js";
-export { isPage } from "./fieldChecks.js";
-export { parseEntryIds } from "./readEntries.js";
+export { createEntryId, deriveSpaceId, parseGlossaryFile, serializeGlossaryFile, serializeSpaceFile } from "./space.js";
+export { isPage, parseEntryIds, parseSpaceFile } from "./parseSpaceFile.js";

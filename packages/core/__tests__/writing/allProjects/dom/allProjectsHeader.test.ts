@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 // Tests that the All projects search box reports a query once, after typing pauses.
-import { mountAllProjectsHeader } from "../../../../src/writing/allProjects/dom/allProjectsHeader";
+import { mountAllProjectsHeader } from "../../../../src/writing/allProjects/dom/mountAllProjects";
 
 describe("all projects header search", () => {
   beforeEach(() => jest.useFakeTimers());

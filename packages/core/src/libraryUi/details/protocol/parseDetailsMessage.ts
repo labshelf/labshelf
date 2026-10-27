@@ -1,6 +1,6 @@
 // Validates a message from the Details surface: the channel envelope here, the wrapped message by its own protocol's guard.
 import { parseUiMessage } from "../../protocol/index.js";
-import { parseAllProjectsMessage } from "../../../writing/allProjects/protocol/index.js";
+import { parseAllProjectsMessage } from "../../../writing/allProjects/protocol.js";
 import type { DetailsToHost } from "./detailsMessages.js";
 
 /** @returns the message when its channel is known and the wrapped message passes that channel's guard, else null */

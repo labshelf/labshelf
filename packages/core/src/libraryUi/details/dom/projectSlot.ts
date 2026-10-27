@@ -1,8 +1,8 @@
 // Shows the project the Details surface targets in the All projects detail pane, fed by the projects channel alone.
 import type { MessageEnd } from "../../protocol/index.js";
 import { showToast } from "../../../ui/dom/index.js";
-import { createPaneRequests, mountProjectPane } from "../../../writing/allProjects/dom/detailPane/index.js";
-import type { AllProjectsToHost } from "../../../writing/allProjects/protocol/index.js";
+import { createPaneRequests, mountProjectPane } from "../../../writing/allProjects/dom/projectDetailPane.js";
+import type { AllProjectsToHost } from "../../../writing/allProjects/protocol.js";
 import type { ProjectMenuCommand, ProjectRow } from "../../../writing/allProjects/index.js";
 import type { DetailsToHost, HostToDetails } from "../protocol/index.js";
 
