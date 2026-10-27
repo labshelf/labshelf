@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as Y from "yjs";
-import { readShareIndexDocFiles, addWrittenVersion, readWrittenHashes } from "../../../src/collab/model/index";
+import { readShareIndexDocFiles, addWrittenVersion, readWrittenHashes } from "../../../src/collab/doc/index";
 import { createNodeCollabStorage } from "../../../src/collab/node/index";
 import { openCollabStore } from "../../../src/collab/deviceState/index";
 import { fakeLogger } from "../doc/testSession";

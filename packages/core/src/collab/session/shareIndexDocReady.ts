@@ -1,6 +1,5 @@
 // Waits until peers have synced a joined share's index far enough to name its kind and shared settings.
-import { readShareIndexDocSettings, readShareIndexDocKind } from "../model/index.js";
-import type { ShareSession } from "../doc/index.js";
+import { readShareIndexDocSettings, readShareIndexDocKind, type ShareSession } from "../doc/index.js";
 
 const JOIN_TIMEOUT_MS = 120_000;
 

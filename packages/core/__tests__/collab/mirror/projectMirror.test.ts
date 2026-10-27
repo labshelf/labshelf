@@ -1,6 +1,6 @@
 /** Pins that project files on disk follow the share docs and that outside edits, new files and deletes enter the docs. */
 import * as Y from "yjs";
-import { readFileText, readShareIndexDocFiles, readShareIndexDocSettings, readSettingsMap, setFileText } from "../../../src/collab/model/index";
+import { readFileText, readShareIndexDocFiles, readShareIndexDocSettings, readSettingsMap, setFileText, addLiveThread, addLiveThreadReply } from "../../../src/collab/doc/index";
 import { DISK_ORIGIN } from "../../../src/collab/mirror/index";
 import { deriveSha256Hex } from "../../../src/hash/index";
 import { memoryFiles, nodeFiles } from "./mirrorFiles";
@@ -14,7 +14,6 @@ import {
   type FixtureOptions,
   type MirrorFixture,
 } from "./mirrorFixture";
-import { addLiveThread, addLiveThreadReply } from "../../../src/collab/comments/index";
 
 function textFile(fixture: MirrorFixture, file: string, text: string): Y.Doc {
   const doc = fixture.session.openDoc(file);

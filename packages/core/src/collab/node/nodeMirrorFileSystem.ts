@@ -4,7 +4,7 @@ import * as path from "node:path";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { nodeFileReads } from "../../writing/project/node/index.js";
-import { assertProjectDirReadable, listMirrorFiles, MirrorProjectDirUnavailable, readStable, type MirrorFileSystem, type MirrorSample } from "../mirror/fileSystem/index.js";
+import { assertProjectDirReadable, listMirrorFiles, MirrorProjectDirUnavailable, readStable, type MirrorFileSystem, type MirrorSample } from "../mirror/index.js";
 
 async function sample(file: string): Promise<MirrorSample | undefined> {
   try {

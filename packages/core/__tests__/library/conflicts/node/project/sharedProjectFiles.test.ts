@@ -2,9 +2,8 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import * as Y from 'yjs';
-import { readShareIndexDocFiles } from '../../../../../src/collab/model/index';
+import { readShareIndexDocFiles, INDEX_DOC_KEY } from "../../../../../src/collab/doc/index";
 import { createNodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
-import { INDEX_DOC_KEY } from "../../../../../src/collab/doc/docSync";
 import { readSharedProjectFiles } from '../../../../../src/writing/conflict/node/sharedProjectState';
 import { createDeviceLocalLayout } from '../../../../../src/library/node/index';
 import { cleanupTempDirs, makeTempDir } from '../../../../support/tempDirs';

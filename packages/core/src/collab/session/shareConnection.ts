@@ -2,14 +2,11 @@
 // CONTRACT: documents/contracts/collaboration.md#membership
 import type { ILogger } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
-import { derivePeerColour } from "../binding/index.js";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../shareKey/index.js";
-import type { InviteRelay } from "../invite/index.js";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type InviteRelay } from "../invite/index.js";
 import { createSwitchableTransport } from "../relays/index.js";
 import { openCollabStore, type CollabDeviceStateStorage, type CollabStore } from "../deviceState/index.js";
-import { attachPresence, type PresenceStore } from "../presence/index.js";
-import { attachShareBlobs, createShareSession, type ShareBlobExchange, type ShareSession } from "../doc/index.js";
-import { type SessionPhase } from "../peer/index.js";
+import { attachPresence, type PresenceStore, type SessionPhase } from "../peer/index.js";
+import { attachShareBlobs, createShareSession, derivePeerColour, type ShareBlobExchange, type ShareSession } from "../doc/index.js";
 import type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
 import { ensureSharedProject, type ShareProjects, type ShareStart } from "./ensureSharedProject.js";
 import { startShareRelays, type RelayNetwork, type ShareRelays } from "./shareRelays.js";

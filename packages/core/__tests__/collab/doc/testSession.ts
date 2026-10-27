@@ -1,6 +1,6 @@
 /** Opens share sessions on a fake network for the tests of channels layered on a session. */
-import { derivePresenceShareKey, deriveContentShareKey } from "../../../src/collab/shareKey/index";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
+import { derivePresenceShareKey, deriveContentShareKey } from "../../../src/collab/invite/index";
+import { createShareSession, type ShareSession } from "../../../src/collab/doc/index";
 import type { ILogger } from "../../../src/ports/index";
 import type { FakeClock, FakeNetwork } from "../peer/fakeNetwork";
 

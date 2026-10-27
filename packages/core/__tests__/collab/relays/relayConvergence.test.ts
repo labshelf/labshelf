@@ -1,7 +1,6 @@
 /** Pins that share sessions meeting only through a fake relay converge, catch a late client up and exchange presence. */
-import { readShareIndexDocFiles } from "../../../src/collab/model/index";
-import { CHANNEL_KIND } from "../../../src/collab/peer/envelope";
-import { INDEX_DOC_KEY } from "../../../src/collab/doc/docSync";
+import { readShareIndexDocFiles, INDEX_DOC_KEY } from "../../../src/collab/doc/index";
+import { CHANNEL_KIND } from "../../../src/collab/peer/index";
 import { FakeClock, runUntil, seededRandom } from "../peer/fakeNetwork";
 import { FakeRelay, runFor } from "../transport/relay/fakeRelay";
 import { openRelayClient, type RelayClient } from "../transport/relay/relayClient";

@@ -1,7 +1,7 @@
 /** Pins that ordered link epochs keep a reopened link apart from the one it replaced, for frames and for acks. */
 import {
   ACK_DELAY_MS, createEpochSource, decodeAck, encodeAck, RESEND_AFTER_MS, ReliableConnection, type ConnectionIo,
-} from "../../../src/collab/peer/reliableChannel";
+} from "../../../src/collab/peer/channel";
 import { FakeClock } from "./fakeNetwork";
 
 function recordingIo() {

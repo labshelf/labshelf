@@ -1,6 +1,5 @@
 /** Pins the clear envelope header and the opaque doc id every share message travels under. */
-import { decodeEnvelope, encodeEnvelope, ENVELOPE_HEADER_BYTES, EXTENSION_KIND_MIN, MESSAGE_KIND, ENVELOPE_VERSION } from "../../../src/collab/peer/envelope";
-import { deriveDocId } from "../../../src/collab/peer/docId";
+import { decodeEnvelope, encodeEnvelope, ENVELOPE_HEADER_BYTES, EXTENSION_KIND_MIN, MESSAGE_KIND, ENVELOPE_VERSION, deriveDocId } from "../../../src/collab/peer/index";
 
 describe("envelope", () => {
   it("pins the protocol version and message kinds", () => {

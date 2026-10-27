@@ -1,9 +1,7 @@
 /** Pins that blobs travel in verified chunks from any peer that holds them and are refused when corrupted or missing. */
 import { deriveSha256Hex } from "../../../src/hash/index";
-import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/attachShareBlobs";
-import { BLOB_CHUNK_BYTES } from "../../../src/collab/doc/shareBlobMessage";
-import { ShareBlobFetchError } from "../../../src/collab/doc/ShareBlobFetchError";
-import { CHANNEL_KIND } from "../../../src/collab/peer/envelope";
+import { attachShareBlobs, type ShareBlobExchange, BLOB_CHUNK_BYTES, ShareBlobFetchError } from "../../../src/collab/doc/index";
+import { CHANNEL_KIND } from "../../../src/collab/peer/index";
 import { FakeClock, FakeNetwork, runUntil } from "../peer/fakeNetwork";
 import { contentKey, openSession, type TestClient } from "./testSession";
 

@@ -3,10 +3,9 @@
 import * as Y from "yjs";
 import { isCount, isString } from "../../guards/index.js";
 import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../encoding/index.js";
-import { readShareIndexDocFiles } from "../model/index.js";
+import { INDEX_DOC_KEY, readShareIndexDocFiles } from "../doc/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { RelayCursorStore } from "../relays/index.js";
-import { INDEX_DOC_KEY } from "../doc/index.js";
 import { ShareBlobCache } from "./ShareBlobCache.js";
 import type { CollabDeviceStateStorage } from "./collabStorage.js";
 import { StoredMap } from "./storedMap.js";

@@ -1,7 +1,6 @@
 // Writes the files a history restore put on disk into the share's docs and index, so peers receive the restored version.
 import type { ILogger } from "../../ports/index.js";
-import { readFileText, readShareIndexDocFiles, isSafeSharePath, setFileText } from "../model/index.js";
-import type { ShareSession } from "../doc/index.js";
+import { readFileText, readShareIndexDocFiles, isSafeSharePath, setFileText, type ShareSession } from "../doc/index.js";
 
 const LOG_MODULE = "collab.restore";
 

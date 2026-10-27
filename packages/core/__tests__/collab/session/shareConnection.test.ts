@@ -1,5 +1,5 @@
 /** Pins the connection lifecycle both apps share: start, join, rollback of a partial start, close ordering and persistence. */
-import { readFileText } from "../../../src/collab/model/index";
+import { readFileText } from "../../../src/collab/doc/index";
 import { ONE } from "../relays/relayGroup";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, mirrorFactory, Network, newDevice, writeProject } from "./connectionTestbed";

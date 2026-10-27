@@ -1,5 +1,5 @@
 /** Pins that a link one side reopens, while the other keeps its own, still catches up whichever side reopened. */
-import { createShareSession } from "../../../src/collab/doc/shareSession";
+import { createShareSession } from "../../../src/collab/doc/index";
 import type { PeerId, PeerTransport } from "../../../src/collab/transport/index";
 import { FakeClock, FakeNetwork, runUntil } from "./fakeNetwork";
 import { contentKey, fakeLogger, openSession, SHARE_ID, type TestClient } from "../doc/testSession";

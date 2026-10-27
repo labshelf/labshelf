@@ -1,7 +1,6 @@
 /** Pins that one mirror at a time writes a shared project folder, and that a waiting mirror takes over once the lease frees. */
-import { readFileText, readShareIndexDocFiles } from "../../../src/collab/model/index";
-import type { LeaseScheduler } from "../../../src/collab/mirror/mirrorScheduler";
-import { createLibraryMirrorFileSystem } from "../../../src/collab/mirror/index";
+import { readFileText, readShareIndexDocFiles } from "../../../src/collab/doc/index";
+import { createLibraryMirrorFileSystem, type LeaseScheduler } from "../../../src/collab/mirror/index";
 import { createLeasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { runUntil, type FakeClock } from "../peer/fakeNetwork";

@@ -1,6 +1,6 @@
 /** Pins the relay path: an hour of typing within the free plan, catch-up with nobody online, and reconnects after a drop. */
 import { createRelaySelector, createRelayPresence, createRelayProbe } from "../../../../src/collab/relays/index";
-import { MESSAGE_KIND } from "../../../../src/collab/peer/envelope";
+import { MESSAGE_KIND } from "../../../../src/collab/peer/index";
 import { PUT_INTERVAL_MS } from "../../../../src/collab/relays/relayDocPuts";
 import { SNAPSHOT_AFTER_PUTS } from "../../../../src/collab/relays/relaySync";
 import { ONE, openGroupClient, RelayHosts, TWO } from "../../relays/relayGroup";

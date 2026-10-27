@@ -5,10 +5,9 @@
 import type { ILogger } from "../ports/index.js";
 import type { RelayAccount } from "../relay/account/index.js";
 import type { ProjectEntry, ProjectReadContext } from "../writing/project/index.js";
-import { type Invite, formatInvite } from "../collab/invite/index.js";
+import { type Invite, deriveRelayToken, formatInvite } from "../collab/invite/index.js";
 import type { ShareConnection, ShareStart } from "../collab/session/index.js";
 import { readRelayList, addRelay, removeOwnRelay } from "../collab/relays/index.js";
-import { deriveRelayToken } from "../collab/shareKey/index.js";
 import { addRelayShare } from "../collab/transport/index.js";
 
 /** What a device keeps of a share: its key and the relays to try while the index lists none. */

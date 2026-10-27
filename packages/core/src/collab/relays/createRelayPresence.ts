@@ -1,6 +1,6 @@
 // Carries a client's relay choice and holds through the presence of a share session and its relay watch, and reads its peers' ones.
 import type { Awareness } from "y-protocols/awareness";
-import { isPeerPresence, type PresenceStore, type PresenceState, type RelayReport } from "../presence/index.js";
+import { isPeerPresence, type PresenceStore, type PresenceState, type RelayReport } from "../peer/index.js";
 import type { RelayWatch, WatchReports } from "./relayWatch.js";
 
 /** The port the relay selector publishes its report through and reads peers' reports from. */

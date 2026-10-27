@@ -1,9 +1,9 @@
 /** Opens share sessions that reach each other only through a fake relay, with the relay sync and presence attached. */
 import * as Y from "yjs";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../../src/collab/shareKey/index";
-import { attachPresence, type PresenceStore } from "../../../../src/collab/presence/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../../src/collab/invite/index";
+import { attachPresence, type PresenceStore } from "../../../../src/collab/peer/index";
 import { attachRelaySync } from "../../../../src/collab/relays/relaySync";
-import { createShareSession, type ShareSession } from "../../../../src/collab/doc/shareSession";
+import { createShareSession, type ShareSession } from "../../../../src/collab/doc/index";
 import { type RelayCursorStore } from "../../../../src/collab/relays/relayCursors";
 import { type RelaySync } from "../../../../src/collab/relays/relaySyncOptions";
 import { createRelayTransport, type RelayTransport } from "../../../../src/collab/transport/index";

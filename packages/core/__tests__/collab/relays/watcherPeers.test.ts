@@ -1,7 +1,7 @@
 /** Pins that the clients of a watched relay keep a watcher out of their blob fetches and do not flood its socket. */
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/invite/index";
 import { createRelayWatch } from "../../../src/collab/relays/index";
-import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/attachShareBlobs";
+import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/index";
 import type { RelayConnectionPort } from "../../../src/collab/transport/index";
 import { deriveSha256Hex } from "../../../src/hash/index";
 import { FakeClock } from "../peer/fakeNetwork";

@@ -1,13 +1,13 @@
 // Carries encrypted, authenticated channel messages between the connected peers of a share over a transport.
 import { bytesToHex } from "../../encoding/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { openFrame, sealFrame, type DerivedShareKey } from "../shareKey/index.js";
+import { openFrame, sealFrame, type DerivedShareKey } from "../invite/index.js";
 import type { PeerId, PeerTransport } from "../transport/index.js";
-import { decodeEnvelope, DOC_ID_BYTES, encodeEnvelope, MESSAGE_KIND, type Envelope } from "./envelope.js";
-import { createDocIdCache, openDocFrame, sealDocFrame } from "./docMessage.js";
-import { createEpochSource, decodeAck, encodeAck, ReliableConnection } from "./reliableChannel.js";
-import type { SessionScheduler } from "./scheduler.js";
-import type { Channel, ChannelSpec, PeerMesh, SessionPhase } from "./channel.js";
+import {
+  createDocIdCache, createEpochSource, decodeAck, decodeEnvelope, DOC_ID_BYTES, encodeAck, encodeEnvelope, MESSAGE_KIND, openDocFrame,
+  ReliableConnection, sealDocFrame,
+  type Channel, type ChannelSpec, type Envelope, type PeerMesh, type SessionPhase, type SessionScheduler,
+} from "./channel.js";
 
 const LOG_MODULE = "collab.sync";
 const ACK_DOC_ID = new Uint8Array(DOC_ID_BYTES);

@@ -1,11 +1,8 @@
 /** Pins that a share session refuses foreign frames and delivers extension channel messages over the mesh. */
 import * as Y from "yjs";
-import { deriveContentShareKey, sealFrame } from "../../../src/collab/shareKey/index";
-import { readShareIndexDocFiles } from "../../../src/collab/model/index";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
-import { deriveDocId } from "../../../src/collab/peer/docId";
-import { INDEX_DOC_KEY } from "../../../src/collab/doc/docSync";
-import { encodeEnvelope, MESSAGE_KIND } from "../../../src/collab/peer/envelope";
+import { deriveContentShareKey, sealFrame } from "../../../src/collab/invite/index";
+import { readShareIndexDocFiles, createShareSession, type ShareSession, INDEX_DOC_KEY } from "../../../src/collab/doc/index";
+import { deriveDocId, encodeEnvelope, MESSAGE_KIND } from "../../../src/collab/peer/index";
 import type { PeerTransport } from "../../../src/collab/transport/index";
 import type { ILogger } from "../../../src/ports/index";
 import { FakeClock, FakeNetwork, runUntil } from "../peer/fakeNetwork";

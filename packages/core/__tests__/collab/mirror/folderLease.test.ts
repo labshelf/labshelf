@@ -1,6 +1,4 @@
-import { openFolderLease } from "../../../src/collab/mirror/openProjectLease";
-import { MirrorLostError } from "../../../src/collab/mirror/MirrorLostError";
-import { type LeaseScheduler } from "../../../src/collab/mirror/mirrorScheduler";
+import { MirrorLostError, openFolderLease, type LeaseScheduler } from "../../../src/collab/mirror/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 import { fakeLogger } from "../../support/fakeLogger";
 

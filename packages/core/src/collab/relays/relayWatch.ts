@@ -1,9 +1,8 @@
 // Bridges this client's presence to the other relays of a share over awareness-only sockets and reads the presence there.
 import type { ILogger } from "../../ports/index.js";
 import { createListeners } from "../../events/index.js";
-import type { DerivedShareKey } from "../shareKey/index.js";
-import { attachPresence, type PresenceStore, type PresenceState, type RelayReport } from "../presence/index.js";
-import { createSecureMesh, type SessionScheduler } from "../peer/index.js";
+import type { DerivedShareKey } from "../invite/index.js";
+import { attachPresence, createSecureMesh, type PresenceStore, type PresenceState, type RelayReport, type SessionScheduler } from "../peer/index.js";
 import { createRelayTransport, createGlobalRelayConnection, type RelayConnectionPortFactory } from "../transport/index.js";
 import { createObservedConnection, type ConnectionReports } from "./observedConnection.js";
 import { onRemoteChange, reportOf } from "./createRelayPresence.js";

@@ -1,16 +1,16 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
 import { deriveTextSha256Hex } from "../../hash/index.js";
-import { checkWaitingWrite } from "./waitForWrite.js";
-import { readFileText, readShareIndexDocFiles, setFileText, readWrittenHashes } from "../model/index.js";
+import { readFileText, readShareIndexDocFiles, setFileText, readWrittenHashes } from "../doc/index.js";
 import {
   DISK_ORIGIN,
   removeMirroredPath,
   LOG_MODULE,
   addMirroredPath,
+  checkWaitingWrite,
   writeMirrored,
   type MirrorContext,
-} from "./mirrorContext.js";
-import type { MirrorFileRead } from "./fileSystem/index.js";
+} from "./fileReconcile.js";
+import type { MirrorFileRead } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
 import { deriveLineSimilarity } from "../../writing/index.js";
 

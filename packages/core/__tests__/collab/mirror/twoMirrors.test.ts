@@ -1,7 +1,7 @@
 /** Pins that two members' project folders converge, text and blobs, through a fake relay only. */
 import { readFileSync, existsSync, promises as fs } from "node:fs";
 import * as path from "node:path";
-import { readShareIndexDocSettings } from "../../../src/collab/model/index";
+import { readShareIndexDocSettings } from "../../../src/collab/doc/index";
 import { joinShare, startShare } from "../../../src/share/index";
 import { createNodeProjectCatalogCompositionRoot } from "../../../src/writing/project/node/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";

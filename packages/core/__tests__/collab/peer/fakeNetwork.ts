@@ -1,6 +1,6 @@
 /** Simulates a peer mesh on virtual time that can partition and rejoin peers. */
 import type { PeerId, PeerTransport } from "../../../src/collab/transport/index";
-import type { SessionScheduler } from "../../../src/collab/peer/scheduler";
+import type { SessionScheduler } from "../../../src/collab/peer/index";
 
 export class FakeClock implements SessionScheduler {
   private time = 0;

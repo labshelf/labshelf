@@ -1,6 +1,6 @@
 // Keeps a share session on the relay its selector chooses: one relay transport and relay sync at a time, swapped on a change.
 import type { ILogger } from "../../ports/index.js";
-import type { DerivedShareKey } from "../shareKey/index.js";
+import type { DerivedShareKey } from "../invite/index.js";
 import { attachRelaySync } from "./relaySync.js";
 import { createMemoryCursorStore, type RelayCursorStore } from "./relayCursors.js";
 import { systemScheduler, type SessionScheduler } from "../peer/index.js";

@@ -1,8 +1,7 @@
 /** Verifies that sharing a project seeds the comments map from comments.json and tolerates adapters that report a missing file as a plain Error. */
 import * as Y from "yjs";
-import { readLiveThreads } from "../../../src/collab/comments/index";
+import { readLiveThreads, type ShareSession } from "../../../src/collab/doc/index";
 import { ensureSharedProject } from "../../../src/collab/session/ensureSharedProject";
-import type { ShareSession } from "../../../src/collab/doc/shareSession";
 import type { ProjectCatalogContext } from "../../../src/writing/project/index";
 import { fakeLogger } from "../doc/testSession";
 

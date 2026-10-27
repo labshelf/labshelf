@@ -1,6 +1,6 @@
 // Declares the options and handle of the relay sync that keeps a share session's docs on its relay.
 import type { ILogger } from "../../ports/index.js";
-import type { DerivedShareKey } from "../shareKey/index.js";
+import type { DerivedShareKey } from "../invite/index.js";
 import type { RelayStore } from "../transport/index.js";
 import type { SessionScheduler } from "../peer/index.js";
 import type { RelayCursorStore } from "./relayCursors.js";

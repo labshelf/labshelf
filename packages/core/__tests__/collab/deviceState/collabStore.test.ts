@@ -1,6 +1,6 @@
 /** Pins the store rules over any storage: hydration, compaction, and that relay cursors never claim updates not stored. */
 import * as Y from "yjs";
-import { readFileText } from "../../../src/collab/model/index";
+import { readFileText } from "../../../src/collab/doc/index";
 import { openCollabStore } from "../../../src/collab/deviceState/index";
 import { fakeLogger } from "../doc/testSession";
 import { memoryStorage } from "./memoryStorage";

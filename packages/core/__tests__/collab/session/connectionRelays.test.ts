@@ -1,5 +1,5 @@
 /** Pins how share connections pick relays: past a failing first relay, around a relay refusing new sockets, one snapshot writer. */
-import { readFileText } from "../../../src/collab/model/index";
+import { readFileText } from "../../../src/collab/doc/index";
 import { ONE, TWO } from "../relays/relayGroup";
 import { runFor } from "../transport/relay/fakeRelay";
 import { FOLDER, Network, newDevice, writeProject } from "./connectionTestbed";

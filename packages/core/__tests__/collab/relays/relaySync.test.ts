@@ -1,6 +1,5 @@
 /** Pins that a relay-stored message carries epoch and seq 0 and opens back to its update. */
-import { decodeEnvelope, MESSAGE_KIND } from "../../../src/collab/peer/envelope";
-import { createDocIdCache } from "../../../src/collab/peer/docMessage";
+import { decodeEnvelope, MESSAGE_KIND, createDocIdCache } from "../../../src/collab/peer/index";
 import { openStored, sealStored } from "../../../src/collab/relays/relaySync";
 import { contentKey, SHARE_ID } from "../doc/testSession";
 

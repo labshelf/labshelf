@@ -1,11 +1,11 @@
 /** Runs real share sessions over two in-process relays whose hosts can refuse, page for limits or be blocked per client. */
 import * as Y from "yjs";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/invite/index";
 import {
   addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, startRelaySelectionFollow, createRelayPresence, createRelayProbe, type RelaySelector,
 } from "../../../src/collab/relays/index";
-import { attachPresence, type PresenceStore } from "../../../src/collab/presence/index";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
+import { attachPresence, type PresenceStore } from "../../../src/collab/peer/index";
+import { createShareSession, type ShareSession } from "../../../src/collab/doc/index";
 import { createMemoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
 import type { RelayConnectionPort } from "../../../src/collab/transport/index";
 import type { FakeClock } from "../peer/fakeNetwork";

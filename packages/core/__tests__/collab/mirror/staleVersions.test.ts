@@ -1,5 +1,5 @@
 // Pins stale text, binary restores and offline edits across two relayed project mirrors.
-import { readFileText, readShareIndexDocFiles } from "../../../src/collab/model/index";
+import { readFileText, readShareIndexDocFiles } from "../../../src/collab/doc/index";
 import { reconcileText } from "../../../src/collab/mirror/textMirror";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { FakeClock, runUntil } from "../peer/fakeNetwork";

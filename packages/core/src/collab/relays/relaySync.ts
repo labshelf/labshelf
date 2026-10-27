@@ -18,7 +18,7 @@ import { RelayDocLane } from "./relayDocLane.js";
 import { RelayDocPuts } from "./relayDocPuts.js";
 import { decodeHeld, createEmptyHeld } from "./relayHeldState.js";
 import type { RelaySync, RelaySyncOptions } from "./relaySyncOptions.js";
-import type { DerivedShareKey } from "../shareKey/index.js";
+import type { DerivedShareKey } from "../invite/index.js";
 
 // CONTRACT: documents/contracts/relay.md#client-obligations
 const STORED_KIND_NAME: Record<number, string> = { [MESSAGE_KIND.update]: "update", [MESSAGE_KIND.syncStep2]: "syncStep2" };

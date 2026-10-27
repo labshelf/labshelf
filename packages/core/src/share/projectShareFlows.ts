@@ -8,10 +8,9 @@ import {
 } from "../writing/project/index.js";
 import {
   createShareIndexDoc, applySharedSettings, readShareIndexDocSettings, readShareIndexDocKind, readSettingsMap,
-} from "../collab/model/index.js";
+} from "../collab/doc/index.js";
 import { createLibraryLayout } from "../library/index.js";
-import { InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/invite/index.js";
-import { deriveShareId, createShareKey } from "../collab/shareKey/index.js";
+import { createShareKey, deriveShareId, InviteWithoutRelayError, parseInvite, type Invite, type InviteError } from "../collab/invite/index.js";
 import type { ShareConnection } from "../collab/session/index.js";
 import { readCurrentInvite, offerOwnRelay, type OwnRelayOffer, LOG_MODULE, type ShareFlowPorts } from "./sharedProjects.js";
 
