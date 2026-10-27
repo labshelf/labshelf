@@ -74,7 +74,7 @@ export async function findBibliographySources(sources: readonly BibliographySour
 }
 
 /** The subset of the emscripten module biber's run uses. */
-export interface BiberModule {
+interface BiberModule {
   FS: {
     mkdirTree(folder: string): void;
     writeFile(file: string, data: Uint8Array): void;
@@ -85,7 +85,7 @@ export interface BiberModule {
   callMain(args: string[]): number;
 }
 
-export interface BiberModuleOptions {
+interface BiberModuleOptions {
   noInitialRun: true;
   instantiateWasm(imports: object, receive: (instance: unknown) => void): object;
   locateFile(file: string): string;

@@ -2,6 +2,7 @@
 import type { PaperRecord } from "../../../model/index.js";
 import { deriveCiteKeySlug } from "../../paper/index.js";
 import { formatError } from "../../../logging/index.js";
+import { stemOf } from "../../../path/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
 import { deriveMetadataFields, isLowConfidenceImport, type ParsedImport } from "./importedPaperRecord.js";
 import { createPaper } from "./createPaper.js";
@@ -50,7 +51,7 @@ export async function importPdf(
   try {
     const bytes = await ctx.fs.readFile(file);
     if (!isPdfBytes(bytes)) { throw new Error("Not a PDF file"); }
-    const stem = fileStem(ctx.paths.basename(input));
+    const stem = stemOf(ctx.paths.basename(input));
     const parsed = await deps.parse(bytes, stem);
     // A PDF backend that transfers the buffer it parses leaves it empty: writing it would store a zero-byte paper.pdf.
     if (bytes.byteLength === 0) {
@@ -74,9 +75,4 @@ export async function importPdf(
     await ctx.logger.log("WARN", MUTATIONS_MODULE, "PDF import failed", { file, message: formatError(error) });
     return { status: "failed", error: formatError(error), input };
   }
-}
-
-// The name without its extension; a leading dot belongs to the name.
-function fileStem(name: string): string {
-  return name.replace(/(?<=.)\.[^.]*$/, "");
 }

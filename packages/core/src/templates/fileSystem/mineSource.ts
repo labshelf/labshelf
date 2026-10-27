@@ -1,7 +1,7 @@
 /** Lists the user's own templates from <library>/templates and reads their files. */
 // CONTRACT: documents/contracts/templates.md#my-templates
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
-import type { PathOps } from "../../library/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 import { parseTemplateManifest, deriveTemplatePathProblem, deriveTemplateTreeProblem } from "../templateManifest/index.js";
 import type { TemplateFile, TemplateListing, TemplateSource } from "../sources/index.js";
@@ -51,18 +51,19 @@ export interface MineSourceDeps {
   logger: ILogger;
 }
 
-export function createMineSource({ fs, paths, libraryRoot, logger }: MineSourceDeps): TemplateSource {
-  const templatesDir = paths.join(libraryRoot, "templates");
-
-  async function listFilePaths(folder: string): Promise<string[] | undefined> {
-    if (await fs.stat(folder) === undefined) { return undefined; }
-    try {
-      return (await walkLibraryFolder(fs, paths, folder)).map((file) => file.path);
-    } catch (error) {
-      await logger.error(MODULE, error, { action: "list My template files", folder });
-      return undefined;
-    }
+async function listFilePaths({ fs, paths, logger }: MineSourceDeps, folder: string): Promise<string[] | undefined> {
+  if (await fs.stat(folder) === undefined) { return undefined; }
+  try {
+    return (await walkLibraryFolder(fs, paths, folder)).map((file) => file.path);
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "list My template files", folder });
+    return undefined;
   }
+}
+
+export function createMineSource(deps: MineSourceDeps): TemplateSource {
+  const { fs, paths, libraryRoot, logger } = deps;
+  const templatesDir = paths.join(libraryRoot, "templates");
 
   async function readEntry(folderName: string): Promise<TemplateEntry | undefined> {
     const bytes = await readOptionalBytes(fs, paths.join(templatesDir, folderName, "template.yaml"));
@@ -73,7 +74,7 @@ export function createMineSource({ fs, paths, libraryRoot, logger }: MineSourceD
       await logger.error(MODULE, new Error(`My template left out: ${reason}`), { folder: folderName });
       return undefined;
     }
-    const files = await listFilePaths(paths.join(templatesDir, folderName, "files"));
+    const files = await listFilePaths(deps, paths.join(templatesDir, folderName, "files"));
     return { ...parsed.manifest, source: "mine", ...(files === undefined ? {} : { files }) };
   }
 

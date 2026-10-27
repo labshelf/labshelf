@@ -1,5 +1,6 @@
 /** Finds the files of a project that build to a PDF of their own: LaTeX by \documentclass, Typst by the include graph. */
 
+import { extensionOf } from "../../../path/index.js";
 import { resolveTypstPath } from "../../../typst/language/project/index.js";
 import { DOCUMENT_CLASS } from "./entryDetection.js";
 
@@ -10,10 +11,6 @@ export interface BuildRootCandidate { readonly path: string; readonly text: stri
 const TYPST_REFERENCE = /(#?)\b(?:include|import)\s+(?:"((?:[^"\\\n]|\\.)*)"(\s*\+)?|(?=[\w(]))/g;
 // TRAP: the lookbehind keeps `https://` inside strings from being cut as a line comment.
 const TYPST_COMMENT = /\/\*[\s\S]*?\*\/|(?<!:)\/\/.*$/gm;
-
-function extensionOf(path: string): string {
-  return path.slice(path.lastIndexOf(".")).toLowerCase();
-}
 
 function isLatexRoot(text: string): boolean {
   const end = text.indexOf("\\begin{document}");

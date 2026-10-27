@@ -1,7 +1,7 @@
 // Declares the Space store's options, its internal context and the error for refused writes.
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import type { LibraryLayout } from "../../library/index.js";
-import type { PathOps } from "../../library/mutations/index.js";
+import type { PathOps } from "../../path/index.js";
 
 export interface SpaceStoreOptions {
   /** The library folder. */

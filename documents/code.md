@@ -23,6 +23,7 @@ Generic helpers live in a core module named after their subject and are imported
 
 - `packages/core/src/encoding`: bytes, base64, base64url, hex.
 - `packages/core/src/hash`: SHA-256 content hashes.
+- `packages/core/src/path`: path math over the `PathOps` port, `LibraryPath` and `ProjectPath`.
 
 ## Contracts
 

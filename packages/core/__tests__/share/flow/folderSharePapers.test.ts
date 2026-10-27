@@ -1,5 +1,5 @@
 // Tests that a library folder's papers become share inputs with their bib, PDF and, when asked, annotations, and which folders can be shared.
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import type { Annotation, PaperRecord } from "../../../src/model/index";
 import { listPapersInFolder, listShareableFolders, createSharePaperInputs } from "../../../src/share/index";
 

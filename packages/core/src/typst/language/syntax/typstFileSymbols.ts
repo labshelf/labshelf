@@ -40,7 +40,7 @@ export interface TypstLabelDefinition {
   context: string;
 }
 
-export interface TypstPathReference {
+interface TypstPathReference {
   path: string;
   from: number;
   to: number;

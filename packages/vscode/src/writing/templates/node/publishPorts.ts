@@ -13,8 +13,7 @@ import { checkTemplateForPublish, renderFirstPagePng, writeProjectAsTemplate } f
 import type { FinishedBuild } from "../../build/index.js";
 import type { PublishableProject, PublishPorts } from "@labshelf/core";
 import * as vscode from "vscode";
-import { ensureToolchain } from "../../build/node/index.js";
-import type { ToolchainDeps } from "../../build/toolchain/index.js";
+import { ensureToolchain, type ToolchainDeps } from "../../build/node/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 

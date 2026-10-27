@@ -7,8 +7,7 @@ import {
 import { writeProjectAsTemplate, type WriteTemplateInput } from "@labshelf/core/node";
 import { runSafely } from "../../../command/index.js";
 import { readActiveProject } from "../../build/index.js";
-import { ensureToolchain } from "../../build/node/index.js";
-import type { ToolchainDeps } from "../../build/toolchain/index.js";
+import { ensureToolchain, type ToolchainDeps } from "../../build/node/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 

@@ -5,7 +5,7 @@ import { deriveLeasePath, readLease, writeLease, type LeaseFileContent } from ".
 import type { LeaseScheduler } from "./mirrorScheduler.js";
 import { MirrorLostError } from "./MirrorLostError.js";
 
-export const LEASE_RENEW_MS = 10_000;
+const LEASE_RENEW_MS = 10_000;
 const LOG_MODULE = "collab.ownership";
 
 export interface FolderLease {

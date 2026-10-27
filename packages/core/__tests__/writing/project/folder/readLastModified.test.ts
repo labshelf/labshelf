@@ -1,5 +1,5 @@
 /** Verifies the newest-source-edit time of a project folder. */
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 import { readLastModified } from "../../../../src/writing/project/folder/index";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
 

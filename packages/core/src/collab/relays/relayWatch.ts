@@ -38,6 +38,32 @@ export interface RelayWatch {
 
 interface Watched { presence: PresenceStore; close(): Promise<void> }
 
+interface WatchSocketRequest { url: string; reports: WatchReports; local: PresenceState | undefined; changed: () => void }
+
+// INVARIANT: no relay sync is attached, so a watch socket carries presence only: no puts and no catch-up.
+// The mesh acks the doc and blob messages the peers there send it, so none of them is resent.
+function openWatchSocket(options: RelayWatchOptions, { url, reports, local, changed }: WatchSocketRequest): Watched {
+  const { shareId, relayToken, logger, scheduler } = options;
+  const connection = createObservedConnection(
+    { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? createGlobalRelayConnection }, reports(url),
+  );
+  const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
+  const mesh = createSecureMesh({ shareId, key: options.contentKey, transport, logger, scheduler, ackUnknownKinds: true });
+  const presence = attachPresence(mesh, { awarenessKey: options.awarenessKey, logger });
+  if (local) { presence.setLocal(local); }
+  const stopChanges = onRemoteChange(presence.awareness, changed);
+  void logger.log("INFO", LOG_MODULE, "Watching a relay for clients of the share", { url });
+  return {
+    presence,
+    close: async () => {
+      stopChanges();
+      await presence.close();
+      await mesh.close();
+      void logger.log("INFO", LOG_MODULE, "Stopped watching a relay", { url });
+    },
+  };
+}
+
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export function createRelayWatch(options: RelayWatchOptions): RelayWatch {
   const watched = new Map<string, Watched>();
@@ -48,31 +74,7 @@ export function createRelayWatch(options: RelayWatchOptions): RelayWatch {
   /** Relays waiting out the settle delay, with the cancel of their timer. */
   const settling = new Map<string, () => void>();
 
-  // INVARIANT: no relay sync is attached, so a watch socket carries presence only: no puts and no catch-up.
-  // The mesh acks the doc and blob messages the peers there send it, so none of them is resent.
-  const open = (url: string, reports: WatchReports): Watched => {
-    const { shareId, relayToken, logger, scheduler } = options;
-    const connection = createObservedConnection(
-      { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? createGlobalRelayConnection }, reports(url),
-    );
-    const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
-    const mesh = createSecureMesh({
-      shareId: options.shareId, key: options.contentKey, transport, logger: options.logger, scheduler: options.scheduler, ackUnknownKinds: true,
-    });
-    const presence = attachPresence(mesh, { awarenessKey: options.awarenessKey, logger: options.logger });
-    if (local) { presence.setLocal(local); }
-    const stopChanges = onRemoteChange(presence.awareness, changed);
-    void options.logger.log("INFO", LOG_MODULE, "Watching a relay for clients of the share", { url });
-    return {
-      presence,
-      close: async () => {
-        stopChanges();
-        await presence.close();
-        await mesh.close();
-        void options.logger.log("INFO", LOG_MODULE, "Stopped watching a relay", { url });
-      },
-    };
-  };
+  const open = (url: string, reports: WatchReports): Watched => openWatchSocket(options, { url, reports, local, changed });
 
   const stop = (url: string) => {
     const entry = watched.get(url);

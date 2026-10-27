@@ -1,5 +1,5 @@
 /** Verifies the built PDF is named next to its root file with "/" project paths. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import { deriveBuiltPdfPath } from "../../../src/writing/build/index";
 import type { ProjectEntry } from "../../../src/writing/project/index";
 

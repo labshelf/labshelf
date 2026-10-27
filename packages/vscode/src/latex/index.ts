@@ -3,4 +3,3 @@ export { registerLatexCommandCompletion } from "./registerLatexCommandCompletion
 export { registerLatexEditing } from "./registerLatexEditing.js";
 export { LatexProjectSources } from "./project/index.js";
 export { createMathHoverProvider } from "./mathHover.js";
-export { registerWordCount } from "./registerWordCount.js";

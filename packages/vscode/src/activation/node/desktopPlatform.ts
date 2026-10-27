@@ -13,6 +13,7 @@ import * as path from "node:path";
 import { FileProjectVersionStore, createProjectContent } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
+  nodePathOps,
   NodePdfOpener,
   exportWithPandoc,
   createNodeSidecarPort,
@@ -36,7 +37,7 @@ import type { HostAdapters } from "../hostAdapters.js";
 export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapters {
   const fs = new NodeLibraryFileSystem();
   return {
-    paths: path,
+    paths: nodePathOps,
     fs,
     uriOf: (target) => vscode.Uri.file(target),
     createLogger: createExtensionLogger,
@@ -50,13 +51,13 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
     openAiStorage,
     deviceLayout: createDeviceLocalLayout,
     createProjectWriteTracking: (root, logger) => createProjectWriteTracking(fs, root, logger),
-    createProjectData: (logger, deviceDirs, projectFs) => createProjectContent({ fs: projectFs, path, logger, deviceDirs }),
+    createProjectData: (logger, deviceDirs, projectFs) => createProjectContent({ fs: projectFs, path: nodePathOps, logger, deviceDirs }),
     scanLibraryConflicts: (root, logger) =>
-      scanLibraryConflicts(root, new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir), logger,
+      scanLibraryConflicts(root, new FileProjectVersionStore(fs, nodePathOps, createDeviceLocalLayout(root).mergeBasesDir), logger,
         (file) => { void vscode.window.showInformationMessage(`Combined changes from another device in ${path.basename(file)}.`); }),
     resolveConflictCopy: (copy, resolution, logger, root) => {
       if (resolution === "mergeAutomatically" || resolution === "notAVersion") {
-        const store = new FileProjectVersionStore(fs, path, createDeviceLocalLayout(root).mergeBasesDir);
+        const store = new FileProjectVersionStore(fs, nodePathOps, createDeviceLocalLayout(root).mergeBasesDir);
         return resolveProjectConflictCopy(copy, resolution, { root, store, logger });
       }
       return resolveConflictCopy(copy, resolution, logger, createProjectWriteTracking(fs, () => root, logger));

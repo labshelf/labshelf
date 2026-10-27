@@ -1,5 +1,5 @@
 // Pins the project search outcome over file texts: labelled results, an invalid query and matches by file.
-import { posixPathOps } from "../../../src/library/index.js";
+import { posixPathOps } from "../../../src/path/index";
 import { findMatchesIn, searchProjectTexts } from "../../../src/writing/search/index.js";
 
 const project = { folder: "/lib/thesis", paths: posixPathOps };

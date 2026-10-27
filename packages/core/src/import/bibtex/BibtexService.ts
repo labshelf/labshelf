@@ -12,7 +12,7 @@ import { createBibtexEntry } from "./createBibtexEntry.js";
 const posixJoin = joinWith("/");
 
 // Returns the trailing name of a path, accepting both POSIX and Windows separators.
-function baseName(p: string): string {
+function fileNameAnySeparator(p: string): string {
   const lastSlash = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
   return lastSlash < 0 ? p : p.slice(lastSlash + 1);
 }
@@ -26,7 +26,7 @@ const OWNED_KEYS = new Set([
 // Rewrites after import pass the library's own copy, "paper.pdf", which says
 // nothing; the name the user imported is kept from the existing file.
 function sourceName(existing: Record<string, unknown>, sourceFileName: string): string {
-  const given = baseName(sourceFileName);
+  const given = fileNameAnySeparator(sourceFileName);
   if (given !== PDF_FILE) {
     return given;
   }

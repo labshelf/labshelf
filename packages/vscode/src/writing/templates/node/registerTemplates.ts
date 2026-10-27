@@ -12,8 +12,7 @@ import {
   createLibraryTemplateSources,
   TEMPLATE_SOURCES,
 } from "@labshelf/core";
-import { createSessionLogger } from "../../build/node/index.js";
-import type { ToolchainDeps } from "../../build/toolchain/index.js";
+import { createSessionLogger, type ToolchainDeps } from "../../build/node/index.js";
 import { runSafely } from "../../../command/index.js";
 import type { WritingHost, WritingProjects } from "../../session/index.js";
 import { OPEN_PROJECT_COMMAND } from "../../session/index.js";

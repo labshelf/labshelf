@@ -3,8 +3,8 @@ import type { ShareConnection, ShareConnectionState } from "../../../collab/sess
 import type { ProjectEntry } from "../../../writing/project/index.js";
 import type { ProjectShareState } from "../shareHost.js";
 
-export const TRASHED = "This project is in the trash.";
-export const UNREADABLE = "LabShelf cannot read this project's settings.";
+const TRASHED = "This project is in the trash.";
+const UNREADABLE = "LabShelf cannot read this project's settings.";
 
 /** Undefined when the project may be shared or left here. */
 export function deriveIneligibleReason(entry: ProjectEntry): string | undefined {

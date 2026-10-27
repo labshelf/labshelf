@@ -119,11 +119,21 @@ function createSlots(): Record<FooterSlotName, HTMLElement> {
   ) as Record<FooterSlotName, HTMLElement>;
 }
 
+function createFooterParts({ openLogs, outline, now = Date.now }: PreviewFooterDeps) {
+  const slots = createSlots();
+  const crumbs = createCrumbs(outline);
+  const status = createStatusView({ openLogs, now });
+  const element = renderElement("footer", { class: "rd-preview-footer" }, crumbs.element,
+    renderElement("div", { class: "rd-preview-footer-end" }, status.element, slots.cites, slots.limit, slots.checks));
+  return { slots, crumbs, status, element };
+}
+
 /**
  * Mounts the footer; the caller inserts `element` into the shell.
  * @returns the element, its empty slots and the setters the host messages drive.
  */
-export function mountPreviewFooter({ openLogs, outline, now = Date.now }: PreviewFooterDeps): PreviewFooter {
+export function mountPreviewFooter(deps: PreviewFooterDeps): PreviewFooter {
+  const { outline } = deps;
   let roots: PreviewBuildRoots | null = null;
   let build: PreviewBuildState = { state: "succeeded", errors: 0 };
   let loaded: LoadedOutline = { rows: [], pages: [] };
@@ -131,11 +141,7 @@ export function mountPreviewFooter({ openLogs, outline, now = Date.now }: Previe
   // INVARIANT: only the load started last may land, so the outline of a replaced document never shows.
   let generation = 0;
 
-  const slots = createSlots();
-  const crumbs = createCrumbs(outline);
-  const status = createStatusView({ openLogs, now });
-  const element = renderElement("footer", { class: "rd-preview-footer" }, crumbs.element,
-    renderElement("div", { class: "rd-preview-footer-end" }, status.element, slots.cites, slots.limit, slots.checks));
+  const { slots, crumbs, status, element } = createFooterParts(deps);
 
   const renderCrumbs = (): void => crumbs.render(roots?.shown, loaded);
   const renderStatus = (): void => status.render(roots, build);

@@ -1,5 +1,5 @@
 /** Verifies listing the library's projects with registered folders and finding a library project folder by id. */
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 import { findLibraryProjectFolder, listProjects } from "../../../../src/writing/project/folder/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";

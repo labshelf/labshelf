@@ -1,5 +1,5 @@
 // Names the PDF a Typst root's live preview shows, kept in the root's build folder apart from the saved <root>.pdf.
-import type { PathOps } from "../../library/mutations/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { ProjectEntry } from "../project/index.js";
 import { deriveBuildRootFolder } from "../project/buildRoot/index.js";
 import type { ProjectContentPort } from "../service/index.js";

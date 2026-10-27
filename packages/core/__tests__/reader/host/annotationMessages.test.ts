@@ -6,7 +6,7 @@ const stored = (files: Record<string, string>) => JSON.parse(files.p1!).annotati
 describe("reader annotation messages", () => {
   describe("createAnnotation", () => {
     it("stores a highlight, pushes the list and reports the change", async () => {
-      const { host, posted, files, changes, ports } = setupHost();
+      const { host, posted, files, changes } = setupHost();
       await host.handle({
         command: "createAnnotation", type: "highlight", pageNumber: 1, content: "quote", color: "green",
         position: { x: 0.1, y: 0.1, width: 0.5, height: 0.05 },

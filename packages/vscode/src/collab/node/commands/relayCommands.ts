@@ -7,7 +7,7 @@ import {
   type ShareConnection,
   type ProjectEntry,
 } from "@labshelf/core";
-import { CONNECT_RELAY_COMMAND } from "../../../relay/index.js";
+import { CONNECT_RELAY_COMMAND } from "../../../relay/node/index.js";
 import { formatProjectName, reportFailure, showRefusedOffer, type CollabHost } from "../collabHost.js";
 import * as path from "node:path";
 import { findOwningProject, type WritingProjects } from "../../../writing/index.js";

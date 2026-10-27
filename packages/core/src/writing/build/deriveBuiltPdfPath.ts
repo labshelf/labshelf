@@ -1,5 +1,5 @@
 // Names the PDF a successful build leaves next to a root file.
-import type { PathOps } from "../../library/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { ProjectEntry } from "../project/index.js";
 
 /** `root` is project-relative with "/" separators; undefined when the project has no root to build. */

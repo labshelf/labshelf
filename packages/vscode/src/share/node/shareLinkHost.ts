@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { RelayAccount, RelayAccountStore, ShareRegistryStore } from "@labshelf/core";
 import { createDeviceLocalLayout, createFileShareRegistryStore } from "@labshelf/core/node";
-import { CONNECT_RELAY_COMMAND } from "../../relay/index.js";
+import { CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
 
 export interface ShareLinkHost {
   libraryRoot: () => string | undefined;

@@ -5,7 +5,7 @@ import { HeldFolderLease, type FolderLease } from "./projectLease.js";
 import { isLive, LEASE_TTL_MS, readLease, writeLease, type LeaseHolder, type LeaseFileContent, type MirrorApp } from "./leaseFile.js";
 import { systemLeaseScheduler, type LeaseScheduler } from "./mirrorScheduler.js";
 
-export const LEASE_CONFIRM_MS = 1_500;
+const LEASE_CONFIRM_MS = 1_500;
 const LOG_MODULE = "collab.ownership";
 
 export interface AcquireFolderLeaseOptions {

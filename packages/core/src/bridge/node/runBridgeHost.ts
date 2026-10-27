@@ -20,6 +20,13 @@ export interface BridgeHostOptions {
   watchDebounceMs?: number;
 }
 
+// The write callback reports a destroyed stdout, where waiting for "drain" would hang forever.
+function frameSender(output: NodeJS.WritableStream): (message: HostMessage) => Promise<void> {
+  return (message) => new Promise((resolve, reject) => {
+    output.write(encodeFrame(message), (error) => (error ? reject(error) : resolve()));
+  });
+}
+
 function hostLogger(root: string | undefined, env: NodeJS.ProcessEnv): ILogger {
   const logsDir = root ? createDeviceLocalLayout(root, env).logsDir : path.join(resolveDeviceStateDir(env), "logs");
   return new Logger([new FileLogSink(path.join(logsDir, "bridge.log"))]);
@@ -35,10 +42,7 @@ export async function runBridgeHost(options: BridgeHostOptions = {}): Promise<vo
   await logger.log("INFO", "bridge", "Host started", { libraryRoot: root ?? null });
   const logFailure = (action: string) => (error: unknown): void => { void logger.error("bridge", error, { action }); };
   output.on("error", logFailure("write"));
-  // The write callback reports a destroyed stdout, where waiting for "drain" would hang forever.
-  const send = (message: HostMessage): Promise<void> => new Promise((resolve, reject) => {
-    output.write(encodeFrame(message), (error) => (error ? reject(error) : resolve()));
-  });
+  const send = frameSender(output);
   let broken = false;
   let stop: () => void = () => {};
   const stopped = new Promise<void>((resolve) => { stop = resolve; });

@@ -1,5 +1,5 @@
 /** Verifies the value files a project lists are read in order, with skipped files and keys logged. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import type { ProjectSettings } from "../../../src/writing/project/index";
 import { readProjectValues } from "../../../src/writing/projectValue/index";
 import { fakeLogger } from "../../support/fakeLogger";

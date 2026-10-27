@@ -4,7 +4,7 @@
 import { checkPreviewRequest, type PreviewRequest } from "../previewRequests.js";
 import type { WebviewToHost } from "./webviewToHost.js";
 
-export const MAX_CITE_QUOTE_LENGTH = 2000;
+const MAX_CITE_QUOTE_LENGTH = 2000;
 
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);

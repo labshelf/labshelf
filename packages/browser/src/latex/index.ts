@@ -2,4 +2,4 @@
 export { createLatexSupport } from "./createLatexSupport";
 export { deriveSnippetTemplate } from "./deriveSnippetTemplate";
 export { createProjectLabels, type ProjectLabels } from "./projectLabels";
-export { createCitationOption, listLibraryCitations } from "./createCitationOption";
+export { listLibraryCitations } from "./createCitationOption";

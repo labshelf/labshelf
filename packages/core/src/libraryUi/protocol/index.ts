@@ -5,4 +5,4 @@ export type {
 } from "./payloads.js";
 export type { HostEndpoint, LibraryTransport, MessageEnd } from "./transport.js";
 export { createLoopbackTransport } from "./loopbackTransport.js";
-export { isLibraryPath, parseUiMessage } from "./messageGuards.js";
+export { parseUiMessage } from "./messageGuards.js";

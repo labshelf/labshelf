@@ -14,5 +14,5 @@ export { comparePages } from "./comparePages.js";
 export type { PageDiff } from "./comparePages.js";
 export { createHelperProjects, HelperProjectError } from "./projects/index.js";
 export type { ChangeBody, HelperProjectErrorCode, HelperProjects, HelperProjectsOptions } from "./projects/index.js";
-export { downloadVerified } from "../../latex/toolchain/node/downloadVerified.js";
+export { downloadVerified } from "../../latex/toolchain/node/index.js";
 export type { FetchLike } from "../../ports/index.js";

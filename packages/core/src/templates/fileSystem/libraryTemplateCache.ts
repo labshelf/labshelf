@@ -1,7 +1,7 @@
 // Stores the last received template index and the fetched thumbnails of each remote source under the library's .research folder.
 // CONTRACT: documents/contracts/templates.md#cache
 import type { LibraryFileSystem } from "../../ports/index.js";
-import type { PathOps } from "../../library/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { CachedCatalogIndex, CachedSourceId, TemplateCache } from "../sources/index.js";
 import { readOptionalBytes } from "./readOptionalBytes.js";
 

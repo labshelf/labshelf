@@ -1,5 +1,5 @@
 /** Pins sharing a folder as a link: its nested papers, annotations only when chosen, the stages and the listed share. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import type { Annotation, PaperRecord } from "../../../src/model/index";
 import { loadShareRegistry, openShare, createShareLink, type ShareFolderStage } from "../../../src/share/index";
 import { makeHarness, PAPERS } from "../../support/mutationHarness";

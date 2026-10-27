@@ -1,6 +1,6 @@
 // Declares the ports of the shared template publication workflow.
 import type { ILogger } from "../../ports/index.js";
-import type { GalleryToHost, HostToGallery } from "../protocol/index.js";
+import type { HostToGallery } from "../protocol/index.js";
 import type { PublishBuildResult, PublishCheckInput, PublishCheckReport } from "../publishCheckReport.js";
 import type { PublishTemplateInput, PublishTemplateResult } from "../client/index.js";
 import type { TemplateManifest } from "../templateManifest/index.js";
@@ -17,8 +17,6 @@ export interface PublishableProject {
   /** Path of the main file, relative to the project folder. */
   main: string;
 }
-
-export type PublishMessage = Extract<GalleryToHost, { type: `publish.${string}` }>;
 
 export interface GitHubSignIn {
   token: string;

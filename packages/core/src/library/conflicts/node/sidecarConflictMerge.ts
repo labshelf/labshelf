@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import { createLibraryLayout, SIDECAR_FILE } from "../../layout.js";
-import { writeFileAtomic } from "../../node/atomicWrite.js";
+import { writeFileAtomic } from "../../node/index.js";
 import type { ConflictCopy } from "../conflictCopy.js";
 import { mergeSidecars, parseSidecar, type SidecarVersion } from "../sidecarMerge.js";
 import { listPaperFolders, readConflictCopies } from "./readConflictCopies.js";

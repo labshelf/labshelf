@@ -1,6 +1,6 @@
 // Tests the Checklist tree rows: By kind order, the folded "N read" row and the item keys the host looks rows up by.
 import { deriveChecklistSidebarNodes, type Checklist } from "../../../../src/writing/index";
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 
 const checklist: Checklist = {
   groups: [

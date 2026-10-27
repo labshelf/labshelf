@@ -161,6 +161,10 @@ async function serveBlob(serving: BlobServing, peer: PeerId, hash: string): Prom
   for (const [index, chunk] of chunks.entries()) { await serving.channel.send(peer, hash, encodeShareBlobChunk(index, chunks.length, chunk)); }
 }
 
+const serveRequest = (serving: BlobServing, peer: PeerId, hash: string): Promise<void> => HASH_PATTERN.test(hash)
+  ? serveBlob(serving, peer, hash)
+  : serving.channel.send(peer, hash, encodeShareBlobMissing());
+
 const LOG_MODULE = "collab.blobs";
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 
@@ -197,13 +201,9 @@ export function attachShareBlobs(session: ShareSession, options: ShareBlobsOptio
       const message = decodeShareBlobMessage(payload);
       if (closed) { return; }
       if (!message) { return void logger.log("WARN", LOG_MODULE, "Dropped an unreadable blob message", { peer: from, hash }); }
-      if (message.type === "request") { void serve(from, hash); } else { fetches.get(hash)?.receive(from, message); }
+      if (message.type === "request") { void serveRequest({ channel, getBlob: options.getBlob, logger }, from, hash); } else { fetches.get(hash)?.receive(from, message); }
     },
   });
-
-  const serve = (peer: PeerId, hash: string) => HASH_PATTERN.test(hash)
-    ? serveBlob({ channel, getBlob: options.getBlob, logger }, peer, hash)
-    : channel.send(peer, hash, encodeShareBlobMissing());
 
   const stopPeers = session.onPeer((peer, joined) => {
     if (joined && !isSource(peer)) { return; }

@@ -1,5 +1,5 @@
 // Maps a writing project entry to the row the All projects page lists.
-import type { PathOps } from "../../../library/mutations/index.js";
+import type { PathOps } from "../../../path/index.js";
 import type { ProjectEntry } from "../../project/index.js";
 import type { BuildMark, ProjectPlace, ProjectRow } from "../projectRow.js";
 

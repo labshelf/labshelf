@@ -2,12 +2,19 @@
 import * as vscode from "vscode";
 
 import { deriveTexLiveGuideUrl, type LatexToolchain, type ToolchainMissing } from "@labshelf/core";
-import { ensureToolchain as ensureCoreToolchain } from "@labshelf/core/node";
+import { ensureToolchain as ensureCoreToolchain, type ToolchainDeps as CoreToolchainDeps } from "@labshelf/core/node";
 import { runSafely } from "../../../command/index.js";
 import type { ReadyProject } from "../../buildRootDocument.js";
-import { createVscodeToolchainAsk, type ToolchainDeps } from "../toolchain/index.js";
+import type { WritingHost } from "../../session/index.js";
+import { createVscodeToolchainAsk } from "../toolchain/index.js";
 
 const OPEN_GUIDE = "Open install guide";
+
+export interface ToolchainDeps {
+  /** The per-user TeX every LabShelf app shares. */
+  tex: CoreToolchainDeps["tex"];
+  host: Pick<WritingHost, "current">;
+}
 
 /** Explains a toolchain that could not be prepared; a declined prompt needs no message because the user chose it. */
 export async function reportToolchainMissing(missing: ToolchainMissing): Promise<void> {

@@ -2,4 +2,4 @@
 export { DirFileSystem } from "./dirFileSystem";
 export { readPickedDir, readPickedDirId, writePickedDir } from "./pickedDirStore";
 export { sendPickedDirChange, onPickedDirChange } from "./pickedDirSignal";
-export { FolderAccessError, readFolderPermission, ensureFolderGranted, askFolderPermission } from "./readFolderPermission";
+export { readFolderPermission, ensureFolderGranted, askFolderPermission } from "./readFolderPermission";

@@ -1,5 +1,5 @@
 // Implements the project data port with the neutral project functions over an injected library file system.
-import type { PathOps } from "../../library/mutations/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { deriveProjectBacklinks } from "../citations/index.js";
 import { updateProjectBibliography } from "../citations/index.js";

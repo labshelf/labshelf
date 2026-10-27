@@ -1,5 +1,6 @@
 // Reads what a share of a library folder holds: the folders that can be shared, and each paper's bib, PDF and annotations.
-import { countPapersUnder, formatFolderPathLabel, isUnderDir, createPaperFiles, type PathOps } from "../../library/index.js";
+import { countPapersUnder, formatFolderPathLabel, isUnderDir, createPaperFiles } from "../../library/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
 import type { SharePaperInput } from "../buildShare.js";

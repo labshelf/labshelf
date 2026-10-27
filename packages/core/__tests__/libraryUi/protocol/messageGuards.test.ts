@@ -1,5 +1,6 @@
 // Tests validation of untrusted library UI messages.
-import { isLibraryPath, parseUiMessage } from "../../../src/libraryUi/protocol";
+import { isLibraryPath } from "../../../src/path";
+import { parseUiMessage } from "../../../src/libraryUi/protocol";
 
 describe("isLibraryPath", () => {
   it("accepts papers and the folders below it", () => {

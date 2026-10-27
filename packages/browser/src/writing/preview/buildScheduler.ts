@@ -12,7 +12,7 @@ export interface BuildTimers {
   clearTimeout(handle: unknown): void;
 }
 
-export type BuildSpec = Omit<HelperCompileRequest, "mode" | "editedFile" | "editedLine">;
+type BuildSpec = Omit<HelperCompileRequest, "mode" | "editedFile" | "editedLine">;
 
 export interface BuildSchedulerOptions {
   helper: Pick<ILatexHelper, "compile" | "cancel">;

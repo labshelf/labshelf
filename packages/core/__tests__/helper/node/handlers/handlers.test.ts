@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../../src/ports/index.js";
-import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../src/helper/index.js";
+import { PROTOCOL_VERSION } from "../../../../src/helper/index.js";
 import { createHelperAnswerer, createProjectHandlers, type HelperHandlers } from "../../../../src/helper/node/handlers/index.js";
 import { createLibraryProjects, type LibraryProjects } from "../../../../src/helper/node/projects/index.js";
 

@@ -1,5 +1,5 @@
 // Handles one batch of external library changes: scans conflict copies, then re-indexes.
-import type { ILogger } from "../../ports/logger.js";
+import type { ILogger } from "../../ports/index.js";
 import type { ConflictCopy } from "../conflicts/index.js";
 import { formatError } from "../../logging/index.js";
 

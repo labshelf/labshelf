@@ -3,7 +3,7 @@
 export type TypstMode = "markup" | "code" | "math";
 
 /** How far a `#` expression has got: it ends on its own when the next token cannot continue it. */
-export type TypstEmbedState = "start" | "ident" | "after" | "statement" | "block";
+type TypstEmbedState = "start" | "ident" | "after" | "statement" | "block";
 
 export interface TypstFrame {
   mode: TypstMode;

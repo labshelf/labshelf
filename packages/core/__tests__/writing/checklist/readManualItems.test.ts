@@ -1,5 +1,5 @@
 /** Verifies the hand-added checklist items read through the file-system port: missing, valid and malformed files. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import { readManualItems } from "../../../src/writing/checklist/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";

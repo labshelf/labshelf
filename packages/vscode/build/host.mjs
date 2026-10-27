@@ -48,7 +48,7 @@ const bridgeHostOptions = {
 // The LaTeX helper host: started by the browser like the bridge, bundles core's helper only.
 const helperHostOptions = {
   ...options,
-  entryPoints: [resolve(pkgRoot, "src/helperHost.ts")],
+  entryPoints: [resolve(pkgRoot, "src/node/helperHost.ts")],
   outfile: resolve(outDir, "helperHost.js"),
   external: ["@myriaddreamin/typst-ts-renderer"],
 };

@@ -1,5 +1,5 @@
 /** Verifies reading a project folder, its root file names and its optional files over the library file-system port. */
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 import { readOptionalText, readProject, listBuildRootFileNames } from "../../../../src/writing/project/folder/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";

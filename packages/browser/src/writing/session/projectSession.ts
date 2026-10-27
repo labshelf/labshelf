@@ -44,78 +44,97 @@ function belongsTo(projectId: string): (tabId: string) => boolean {
   };
 }
 
-export function createProjectSession({ workspace, snapshot, logger, onReveal, onProjectChange }: ProjectSessionOptions): ProjectSession {
-  let sidebar: SessionSidebar | undefined;
-  let open: ProjectEntry | undefined;
-  let grouping: ChecklistGrouping = "kind";
-  // Bumped by every open and close, so a snapshot that finishes after the project changed is dropped.
-  let generation = 0;
-
-  const notifyChange = async (entry: ProjectEntry | undefined): Promise<void> => {
-    try {
-      await onProjectChange?.(entry);
-    } catch (error) {
-      await logger.error(MODULE, error, { action: "notify project change", folder: entry?.folder });
-    }
-  };
-
-  async function publish(entry: ProjectEntry, mine: number): Promise<void> {
-    try {
-      const built = await snapshot(entry, grouping);
-      if (mine === generation) { sidebar?.setOpenProject(built); }
-    } catch (error) {
-      await logger.error(MODULE, error, { action: "build open project snapshot", folder: entry.folder });
-    }
+async function notifyProjectChange({ logger, onProjectChange }: Pick<ProjectSessionOptions, "logger" | "onProjectChange">, entry: ProjectEntry | undefined): Promise<void> {
+  try {
+    await onProjectChange?.(entry);
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "notify project change", folder: entry?.folder });
   }
+}
 
+/** A click in the files tree opens the file; one in the outline reveals the heading (its key is the path, a colon and the zero-based line). */
+function clickTree({ workspace, onReveal }: Pick<ProjectSessionOptions, "workspace" | "onReveal">, projectId: string, view: ProjectTreeView, key: string): void {
+  if (view === "files") { workspace.openTab("source", { projectId, path: key }, 0); return; }
+  if (view !== "outline") { return; }
+  const colon = key.lastIndexOf(":");
+  const line = Number(key.slice(colon + 1));
+  if (colon > 0 && Number.isInteger(line)) { onReveal?.(key.slice(0, colon), line); }
+}
+
+/** What the session remembers between calls. */
+interface SessionState {
+  sidebar: SessionSidebar | undefined;
+  open: ProjectEntry | undefined;
+  grouping: ChecklistGrouping;
+  // Bumped by every open and close, so a snapshot that finishes after the project changed is dropped.
+  generation: number;
+}
+
+type SessionContext = ProjectSessionOptions & { state: SessionState };
+
+async function publish({ snapshot, logger, state }: SessionContext, entry: ProjectEntry, mine: number): Promise<void> {
+  try {
+    const built = await snapshot(entry, state.grouping);
+    if (mine === state.generation) { state.sidebar?.setOpenProject(built); }
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "build open project snapshot", folder: entry.folder });
+  }
+}
+
+async function openProject(context: SessionContext, session: ProjectSession, entry: ProjectEntry): Promise<boolean> {
+  const { workspace, logger, state } = context;
+  const id = projectIdOf(entry);
+  if (id === undefined) {
+    await logger.log("WARN", MODULE, "A broken project cannot be opened", { folder: entry.folder });
+    return false;
+  }
+  if (state.open !== undefined && projectIdOf(state.open) !== id && !(await session.closeProject())) { return false; }
+  state.open = entry;
+  const mine = ++state.generation;
+  const main = mainOf(entry);
+  if (main !== undefined) { workspace.openTab("source", { projectId: id, path: main }, 0); }
+  workspace.openTab("preview", { projectId: id }, 1);
+  state.sidebar?.collapseLibrary();
+  await publish(context, entry, mine);
+  await notifyProjectChange(context, entry);
+  return true;
+}
+
+async function closeProject(context: SessionContext): Promise<boolean> {
+  const { workspace, state } = context;
+  if (state.open === undefined) { return true; }
+  const id = projectIdOf(state.open);
+  if (id !== undefined && !(await workspace.closeTabs(belongsTo(id)))) { return false; }
+  state.open = undefined;
+  state.generation += 1;
+  state.sidebar?.setOpenProject(undefined);
+  await notifyProjectChange(context, undefined);
+  return true;
+}
+
+async function runTreeAction(context: SessionContext, action: string): Promise<void> {
+  const { workspace, state } = context;
+  const id = state.open === undefined ? undefined : projectIdOf(state.open);
+  if (state.open === undefined || id === undefined) { return; }
+  if (action === "comments" || action === "history") { workspace.openTab(action, { projectId: id }, 1); return; }
+  if (action !== "byKind" && action !== "bySection") { return; }
+  state.grouping = action === "byKind" ? "kind" : "section";
+  await publish(context, state.open, ++state.generation);
+}
+
+export function createProjectSession(options: ProjectSessionOptions): ProjectSession {
+  const context: SessionContext = { ...options, state: { sidebar: undefined, open: undefined, grouping: "kind", generation: 0 } };
+  const { state } = context;
   const session: ProjectSession = {
-    async openProject(entry) {
-      const id = projectIdOf(entry);
-      if (id === undefined) {
-        await logger.log("WARN", MODULE, "A broken project cannot be opened", { folder: entry.folder });
-        return false;
-      }
-      if (open !== undefined && projectIdOf(open) !== id && !(await session.closeProject())) { return false; }
-      open = entry;
-      const mine = ++generation;
-      const main = mainOf(entry);
-      if (main !== undefined) { workspace.openTab("source", { projectId: id, path: main }, 0); }
-      workspace.openTab("preview", { projectId: id }, 1);
-      sidebar?.collapseLibrary();
-      await publish(entry, mine);
-      await notifyChange(entry);
-      return true;
-    },
-    async closeProject() {
-      if (open === undefined) { return true; }
-      const id = projectIdOf(open);
-      if (id !== undefined && !(await workspace.closeTabs(belongsTo(id)))) { return false; }
-      open = undefined;
-      generation += 1;
-      sidebar?.setOpenProject(undefined);
-      await notifyChange(undefined);
-      return true;
-    },
-    current: () => open,
-    attachSidebar(next) { sidebar = next; },
+    openProject: (entry) => openProject(context, session, entry),
+    closeProject: () => closeProject(context),
+    current: () => state.open,
+    attachSidebar(next) { state.sidebar = next; },
     treeClick(view, key) {
-      const id = open === undefined ? undefined : projectIdOf(open);
-      if (id === undefined) { return; }
-      if (view === "files") { workspace.openTab("source", { projectId: id, path: key }, 0); return; }
-      if (view !== "outline") { return; }
-      const colon = key.lastIndexOf(":");
-      const line = Number(key.slice(colon + 1));
-      if (colon > 0 && Number.isInteger(line)) { onReveal?.(key.slice(0, colon), line); }
+      const id = state.open === undefined ? undefined : projectIdOf(state.open);
+      if (id !== undefined) { clickTree(context, id, view, key); }
     },
-    async treeAction(action) {
-      const id = open === undefined ? undefined : projectIdOf(open);
-      if (open === undefined || id === undefined) { return; }
-      if (action === "comments") { workspace.openTab("comments", { projectId: id }, 1); return; }
-      if (action === "history") { workspace.openTab("history", { projectId: id }, 1); return; }
-      if (action !== "byKind" && action !== "bySection") { return; }
-      grouping = action === "byKind" ? "kind" : "section";
-      await publish(open, ++generation);
-    },
+    treeAction: (action) => runTreeAction(context, action),
   };
   return session;
 }

@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 import type { ArcState, ArcKind } from "@labshelf/core";
 
-export type ThemedIcon = { light: vscode.Uri; dark: vscode.Uri };
+type ThemedIcon = { light: vscode.Uri; dark: vscode.Uri };
 export type ArcIcon = (tone: ArcKind, progress: ArcState) => ThemedIcon;
 
 function themedMark(extensionUri: vscode.Uri, name: string): ThemedIcon {

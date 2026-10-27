@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { formatError, DOCUMENT_EXPORT_EXTENSIONS, type DocumentExport, type ILogger, type ProjectFormat } from "@labshelf/core";
 
 import type { ReadyProject } from "./buildRootDocument.js";
-import { readBuiltPdf } from "./preview/readBuiltPdf.js";
+import { readBuiltPdf } from "./preview/index.js";
 import type { WritingProjects } from "./session/index.js";
 import { listArxivZipEntries, listProjectZipEntries } from "./exportBundle.js";
 

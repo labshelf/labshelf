@@ -1,13 +1,10 @@
 // Validates a message from the All projects page before the host acts on it.
+import { isProjectPath } from "../../../path/index.js";
 import type { AllProjectsToHost } from "./messages.js";
 
 const KINDS: readonly unknown[] = ["blank", "template", "folder"];
 
 const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
-
-// The host joins the path to the project folder, so a rooted path or a ".." segment would reach files outside it.
-const isProjectPath = (value: unknown): value is string =>
-  isText(value) && !/^([/\\]|[a-zA-Z]:)/.test(value) && !value.includes("\0") && !value.split(/[/\\]/).includes("..");
 
 const MAX_VENUE = 200;
 
@@ -40,7 +37,8 @@ export function parseAllProjectsMessage(raw: unknown): AllProjectsToHost | undef
   if (typeof id !== "string") { return undefined; }
   switch (type) {
     case "open": case "deleteForever": case "files": case "detail": case "build": case "preview": case "openLog": return { type, id };
-    case "openFile": case "createFile": return isProjectPath(path) ? { type, id, path } : undefined;
+    // The host joins the path to the project folder, so it must stay inside it.
+    case "openFile": case "createFile": return isText(path) && isProjectPath(path) ? { type, id, path } : undefined;
     case "setTarget": return parseTarget(id, venue, deadline);
     case "rename": case "duplicate": return isText(title) ? { type, id, title: title.trim() } : undefined;
     case "move":

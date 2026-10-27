@@ -5,7 +5,7 @@ import {
 } from "@labshelf/core";
 import { deriveProjectPath, type ReadyProject } from "../buildRootDocument.js";
 import { PREVIEW_LOG_MODULE } from "./previewStrings.js";
-import type { SynctexFinder } from "./synctex/projectSynctex.js";
+import type { SynctexFinder } from "./synctex/index.js";
 
 export interface PdfProblemsDeps {
   logger: ILogger;

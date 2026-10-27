@@ -4,8 +4,7 @@
 // Tests the library sidebar through its mount handle: rows, counts, expansion, current folder, selection and keyboard.
 import { fakeHost, tick } from "../../../collab/dom/fakeHost";
 import type { ShareHost } from "../../../../src/libraryUi/share";
-import { mountLibrarySidebar } from "../../../../src/libraryUi/dom";
-import { compact, folder, folders, key, mount, paper, papers, rows, tagged } from "./sidebarFixture";
+import { compact, folder, folders, key, mount, rows, tagged } from "./sidebarFixture";
 
 const section = (slot: HTMLElement, id: string): HTMLElement => slot.querySelector<HTMLElement>(`[data-section="${id}"]`)!;
 const allPapers = (slot: HTMLElement): HTMLElement => slot.querySelector<HTMLElement>("[data-all-papers]")!;

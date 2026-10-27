@@ -1,6 +1,6 @@
 // Validates untrusted library UI messages before a host handles them.
-import { PAPERS_DIR } from "../../library/index.js";
 import { PAPER_STATUSES, type ReadingStatus } from "../../library/readingStatus/index.js";
+import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import type { UiToHost } from "./messages.js";
 
 type Raw = Record<string, unknown>;
@@ -20,20 +20,10 @@ const isEntryName = (v: unknown): boolean =>
   typeof v === "string" && v !== "" && v !== "." && v !== ".." && !v.includes("/") && !v.includes("\\");
 const isDoi = (v: unknown): boolean => typeof v === "string" && /^10\.\d{4,9}\/\S+$/.test(v);
 
-/** A "/"-separated path below a project folder: no leading "/", no empty, "." or ".." segment and no backslash. */
-const isProjectPath = (v: unknown): boolean =>
-  typeof v === "string" && !v.includes("\\") && v.split("/").every((s) => s !== "" && s !== "." && s !== "..");
 const isWebUrl = (v: unknown): boolean => typeof v === "string" && /^https?:\/\//i.test(v) && URL.canParse(v);
 // The page a host opens in a browser tab: only a web address, never a script or extension URL.
 const isAccess = (v: unknown): boolean =>
   !!v && typeof v === "object" && ((v as Raw)["kind"] === "login" || (v as Raw)["kind"] === "bot") && isWebUrl((v as Raw)["url"]);
-
-/** A "/"-separated library path: "papers" or below it, with no empty, "." or ".." segment and no backslash. */
-export function isLibraryPath(v: unknown): v is string {
-  if (typeof v !== "string" || v.includes("\\")) return false;
-  const [head, ...rest] = v.split("/");
-  return head === PAPERS_DIR && rest.every((s) => s !== "" && s !== "." && s !== "..");
-}
 
 // The fields each message must carry, and how each one is checked.
 const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {

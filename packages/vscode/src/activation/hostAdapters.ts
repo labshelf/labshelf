@@ -15,7 +15,7 @@ interface PdfTextServices {
 }
 
 /** The per-device places of one library that the extension writes outside the library folder. */
-export type HostDeviceLayout = ProjectDeviceDirs & {
+type HostDeviceLayout = ProjectDeviceDirs & {
   readonly appLogPath: string;
   readonly aiDatabasePath: string;
   readonly openAlexCacheDir: string;

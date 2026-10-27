@@ -16,4 +16,4 @@ export { countBrowserPapers, moveBrowserLibraryToFolder } from "./libraryLocatio
 export { sendPickedDirChange, readFolderPermission, readPickedDir, askFolderPermission, writePickedDir } from "./pickedDir";
 export { createBrowserDeviceIdentity, removeBrowserCollabDocs, openBrowserCollabStorage } from "./collab";
 export { createBrowserProjects, type BrowserProjects } from "./browserProjects";
-export { openTabLease, updateTabLease, createTabLeaseName, watchTabLease, type TabLease, type TabLeaseResult } from "./tabLease";
+export { openTabLease, updateTabLease, createTabLeaseName, watchTabLease, type TabLease } from "./tabLease";

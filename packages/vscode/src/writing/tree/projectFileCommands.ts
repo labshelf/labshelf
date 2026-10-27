@@ -14,7 +14,7 @@ interface ProjectFileCommandsDeps {
   fs: Pick<LibraryFileSystem, "writeFile">;
 }
 
-const baseName = (uri: vscode.Uri): string => uri.path.split("/").pop() ?? uri.path;
+const uriBaseName = (uri: vscode.Uri): string => uri.path.split("/").pop() ?? uri.path;
 
 /** Rejects names that would leave the target folder or name nothing. */
 function invalidFileName(value: string): string | undefined {
@@ -51,7 +51,7 @@ async function run(logger: ILogger, action: string, uri: vscode.Uri, operation: 
     return true;
   } catch (error) {
     await logger.error(MODULE, error, { action, uri: uri.fsPath });
-    void vscode.window.showErrorMessage(`Could not ${action} ${baseName(uri)}: ${formatError(error)}`);
+    void vscode.window.showErrorMessage(`Could not ${action} ${uriBaseName(uri)}: ${formatError(error)}`);
     return false;
   }
 }
@@ -75,15 +75,15 @@ async function create(deps: ProjectFileCommandsDeps, kind: "file" | "folder", ta
 }
 
 async function rename(deps: ProjectFileCommandsDeps, target: ProjectFileNode): Promise<void> {
-  const name = await askName("New name", baseName(target.uri));
-  if (!name || name === baseName(target.uri)) { return; }
+  const name = await askName("New name", uriBaseName(target.uri));
+  if (!name || name === uriBaseName(target.uri)) { return; }
   const renamed = vscode.Uri.joinPath(target.uri, "..", name);
   await run(deps.logger, "rename", target.uri, () => vscode.workspace.fs.rename(target.uri, renamed, { overwrite: false }));
 }
 
 async function remove(deps: ProjectFileCommandsDeps, target: ProjectFileNode): Promise<void> {
   const choice = await vscode.window.showWarningMessage(
-    `Delete ${baseName(target.uri)}?`, { modal: true, detail: "It moves to the trash." }, "Delete",
+    `Delete ${uriBaseName(target.uri)}?`, { modal: true, detail: "It moves to the trash." }, "Delete",
   );
   if (choice !== "Delete") { return; }
   await run(deps.logger, "delete", target.uri, () => vscode.workspace.fs.delete(target.uri, { recursive: true, useTrash: true }));

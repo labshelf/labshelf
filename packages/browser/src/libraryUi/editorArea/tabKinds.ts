@@ -1,4 +1,5 @@
 // Registers the workspace tab kinds and turns a tab id back into its kind and params.
+import { baseName } from "@labshelf/core";
 import type { TabKind, TabKindName, TabModule, TabParams } from "./tabKind";
 
 // INVARIANT: an id is the kind, then each param URI-encoded, joined by ":"; encoding keeps ":" out of the params.
@@ -6,8 +7,6 @@ function define(kind: TabKindName, params: readonly string[], title: (p: TabPara
   const id = (p: TabParams): string => [kind, ...params.map((name) => encodeURIComponent(p[name] ?? ""))].join(":");
   return { kind, params, id, title, icon, load };
 }
-
-const baseName = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
 
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {

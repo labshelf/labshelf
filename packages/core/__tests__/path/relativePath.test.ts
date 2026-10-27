@@ -1,5 +1,5 @@
 /** Verifies the rules every relative path inside a library folder must follow. */
-import { checkRelativePath } from "../../src/library/index";
+import { checkRelativePath } from "../../src/path/index";
 
 describe("relativePathProblem", () => {
   it.each(["main.tex", "sections/intro.tex", ".gitignore", "a/b/c/d.tex"])("accepts %s", (path) => {

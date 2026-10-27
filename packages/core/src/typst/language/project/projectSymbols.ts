@@ -21,7 +21,7 @@ export async function readImportedSymbols(files: ProjectFiles, file: ProjectFile
     if (!imported) { continue; }
     const { names } = reference;
     if (names === undefined) {
-      result.modules.push({ name: reference.alias ?? stemOf(imported.path), file: imported });
+      result.modules.push({ name: reference.alias ?? typstStem(imported.path), file: imported });
       continue;
     }
     for (const binding of imported.symbols.bindings) {
@@ -72,6 +72,6 @@ async function readAll(files: ProjectFiles, paths: string[]): Promise<ProjectFil
   return (await Promise.all(paths.map((path) => files.file(path)))).filter((file): file is ProjectFile => file !== null);
 }
 
-function stemOf(path: string): string {
+function typstStem(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1).replace(/\.typ$/, "");
 }

@@ -7,7 +7,7 @@ import { DEFAULT_CONTACT_EMAIL, type DetectedIdentifier, type ResolvedMetadata }
 import { UsageError, type Output } from "../../../src/cli";
 import { runInstall } from "../../../src/cli/project";
 import { cleanupTempDirs, makeTempDir } from "../../fixtures/library";
-import { harness, pdfResponse, type Harness } from "../../fixtures/paperService";
+import { harness, pdfResponse } from "../../fixtures/paperService";
 
 afterEach(cleanupTempDirs);
 

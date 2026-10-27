@@ -1,5 +1,4 @@
 // Verifies project save ancestry is recorded before writes without advancing unsuccessful versions.
-import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { createProjectWriteTracking, addProjectWrite, scanLibraryConflicts } from '../../../../src/writing/conflict/node/index';
 import { FileProjectVersionStore } from '../../../../src/writing/conflict/index';

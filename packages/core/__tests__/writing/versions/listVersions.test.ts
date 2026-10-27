@@ -1,5 +1,5 @@
 /** Verifies listing the version snapshots a project folder holds. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import { listVersions } from "../../../src/writing/versions/index";
 import { fakeLogger } from "../../support/fakeLogger";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";

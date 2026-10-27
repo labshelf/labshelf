@@ -13,6 +13,5 @@ export { checkFolderNameInput } from './folderNameInput.js';
 export type { ProjectTreeMessage } from './sidebarMessages.js';
 export { PROJECT_COMMANDS, isSidebarProjectCommand } from './projectCommands.js';
 export type { SidebarSpacesDep } from "./spaces/index.js";
-export type { ListHostEvents } from './createFeedHostCompositionRoot.js';
 export { LibraryFeed } from "./libraryFeed.js";
 export { createFeedHostCompositionRoot } from "./createFeedHostCompositionRoot.js";

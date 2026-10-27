@@ -3,11 +3,8 @@ import { findCaptionLines, pickCaption } from '../../../src/reader/text/captions
 import type { TextLine } from '../../../src/reader/text/textLines';
 
 const W = 612;
-const H = 792;
 const line = (text: string, y: number, over: Partial<TextLine> = {}): TextLine =>
   ({ text, x: 72, xEnd: 540, y, height: 11, column: 0, ...over });
-const body = (fromY: number, count: number): TextLine[] =>
-  Array.from({ length: count }, (_, i) => line('Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod', fromY - i * 15));
 
 describe('findCaptionLines', () => {
   it('recognises captions by how the line starts', () => {

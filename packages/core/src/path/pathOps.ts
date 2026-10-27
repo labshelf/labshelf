@@ -1,5 +1,16 @@
-/** Implements PathOps for "/"-separated paths, for runtimes without node:path (the browser's relative store keys). */
-import type { PathOps } from "./mutationDeps.js";
+/** Declares PathOps, the path-arithmetic port, and implements it for "/"-separated paths for runtimes without node:path (the browser's relative store keys). */
+
+/** Path arithmetic in the app's path style; Node's `path` module satisfies it as is. */
+export interface PathOps {
+  readonly sep: string;
+  join(...parts: string[]): string;
+  dirname(target: string): string;
+  basename(target: string, ext?: string): string;
+  extname(target: string): string;
+  isAbsolute(target: string): boolean;
+  resolve(...parts: string[]): string;
+  relative(from: string, to: string): string;
+}
 
 function join(...parts: string[]): string {
   const joined = parts.filter((part) => part !== "").join("/").replace(/\/{2,}/g, "/");

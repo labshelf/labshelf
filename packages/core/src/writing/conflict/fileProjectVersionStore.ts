@@ -1,7 +1,6 @@
 // Keeps project ancestors and the newest twenty version texts outside the synced library.
-import type { PathOps } from "../../library/mutations/index.js";
+import { isProjectPath, type PathOps } from "../../path/index.js";
 import type { LibraryFileSystem } from "../../ports/index.js";
-import { isProjectPath } from "../history/index.js";
 import { parseVersionJournal, deriveTextHash, type VersionJournal } from "./versionJournal.js";
 import type { IProjectVersionStore } from "./projectVersionStore.js";
 
@@ -10,7 +9,7 @@ import type { IProjectVersionStore } from "./projectVersionStore.js";
  * ids and paths come from disk and sync. A backslash is refused so that `a\b` and `a/b` never share a base.
  */
 function safeSegments(label: string, value: string, singleSegment: boolean): string[] {
-  if (!isProjectPath(value) || /[\\\0]/.test(value) || (singleSegment && value.includes("/"))) {
+  if (!isProjectPath(value) || (singleSegment && value.includes("/"))) {
     throw new Error(`Invalid merge base ${label}: ${JSON.stringify(value)}`);
   }
   return value.split("/");

@@ -5,7 +5,6 @@ export { deriveSectionAux } from "./deriveSectionAux.js";
 export { createSectionPreviewPlan } from "./createSectionPreviewPlan.js";
 export type { SectionPreviewInput } from "./createSectionPreviewPlan.js";
 export { deriveSectionPageRange } from "./deriveSectionPageRange.js";
-export type { PageRange } from "./deriveSectionPageRange.js";
 export { createSectionBuildStateRestore } from "./createSectionBuildStateRestore.js";
 export { parseSectionBuildStates } from "./sectionBuildStateFile.js";
 export type { ParsedSectionStates, SectionState } from "./sectionBuildStateFile.js";

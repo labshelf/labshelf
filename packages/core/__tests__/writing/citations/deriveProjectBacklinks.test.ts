@@ -1,5 +1,5 @@
 /** Verifies that the backlink index covers every ready project's sources and survives an unreadable one. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import { deriveProjectBacklinks } from "../../../src/writing/citations";
 import type { ProjectEntry } from "../../../src/writing/project/index";
 import { fakeLogger } from "../../support/fakeLogger";

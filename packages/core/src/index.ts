@@ -6,6 +6,7 @@ export * from "./ports/index.js";
 export * from "./import/index.js";
 export * from "./hash/index.js";
 export * from "./encoding/index.js";
+export * from "./path/index.js";
 export * from "./library/index.js";
 export * from "./logging/index.js";
 export * from "./ai/index.js";

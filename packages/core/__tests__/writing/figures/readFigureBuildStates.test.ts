@@ -1,5 +1,5 @@
 /** Verifies figure staleness read from a project folder's file modification times. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import { readFigureBuildStates as readStates } from "../../../src/writing/figures/index";
 import type { FigureRecipe } from "../../../src/writing/project/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";

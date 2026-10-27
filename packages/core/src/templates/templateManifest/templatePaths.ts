@@ -1,6 +1,6 @@
 /** Checks the paths and sizes of a template's files against the rules every app and the catalog CI share. */
 // CONTRACT: documents/contracts/templates.md#paths
-import { checkRelativePath } from "../../library/index.js";
+import { checkRelativePath } from "../../path/index.js";
 
 const MAX_PATH_LENGTH = 255;
 const MAX_FILES = 500;

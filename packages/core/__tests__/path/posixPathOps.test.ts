@@ -1,6 +1,6 @@
 import * as path from "node:path";
 
-import { posixPathOps, type PathOps } from "@labshelf/core";
+import { posixPathOps, type PathOps } from "../../src/path/index";
 
 describe("posixPathOps", () => {
   it("agrees with node:path's posix flavour on library paths", () => {

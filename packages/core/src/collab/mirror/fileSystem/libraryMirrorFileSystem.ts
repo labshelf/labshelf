@@ -1,5 +1,5 @@
 // Runs the mirror's disk over the library file-system port, for hosts without a native file watcher.
-import { posixPathOps } from "../../../library/index.js";
+import { posixPathOps } from "../../../path/index.js";
 import type { LibraryFileSystem, LocalStat } from "../../../ports/index.js";
 import { assertProjectDirReadable, listMirrorFiles } from "./listMirrorFiles.js";
 import type { MirrorFileRead, MirrorFileSystem } from "./mirrorFileSystem.js";

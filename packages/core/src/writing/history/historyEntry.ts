@@ -1,4 +1,5 @@
 // Reads and writes one line of a project's history log, which is validated on read because the file outlives app versions.
+import { isProjectPath } from "../../path/index.js";
 import { parseJsonObject } from "../project/index.js";
 
 /** "edit" is a save, "restore" a jump back to an earlier entry, "version" a marked version. */
@@ -17,11 +18,6 @@ export interface HistoryEntry {
 
 const KINDS: readonly string[] = ["edit", "restore", "version"];
 const HASH = /^[0-9a-f]{64}$/;
-
-/** A path that stays inside the project folder. */
-export function isProjectPath(value: string): boolean {
-  return value !== "" && !value.startsWith("/") && !/^[a-zA-Z]:/.test(value) && !value.split("/").some((part) => part === ".." || part === "" || part === ".");
-}
 
 function parseFiles(raw: unknown): Record<string, string> | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) { return undefined; }

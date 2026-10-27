@@ -1,5 +1,5 @@
 // Defines the messages between the sharing dialogs and a SharingHost in another context, and validates them on arrival.
-import { isLibraryPath } from "../protocol/index.js";
+import { isLibraryPath } from "../../path/index.js";
 import type { ShareOffers, ShareProgress } from "./shareHost.js";
 
 /** The JSON-able arguments of each SharingHost operation, in order; signals and progress callbacks stay on their side. */

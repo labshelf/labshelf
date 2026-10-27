@@ -2,7 +2,7 @@
 
 import { parseRelayVersion, RELAY_PROTOCOL_MAJOR } from "../protocolVersion.js";
 
-export type Fields = Record<string, unknown>;
+type Fields = Record<string, unknown>;
 
 /** A decoder copies only the fields it knows, so keys of a newer minor never reach the caller. */
 export type BodyReader<T> = (body: Fields) => Omit<T, "v"> | undefined;

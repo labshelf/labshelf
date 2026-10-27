@@ -21,7 +21,7 @@ export function isEligibleProjectConflictPath(file: string): boolean {
 }
 const nameOf = (file: string) => file.split('/').at(-1) ?? file;
 const directoryOf = (file: string) => file.slice(0, file.length - nameOf(file).length);
-const extensionOf = (file: string) => /\.[^.]+$/.exec(nameOf(file))?.[0].toLowerCase();
+const conflictExtension = (file: string) => /\.[^.]+$/.exec(nameOf(file))?.[0].toLowerCase();
 const textFile = ({ path, text }: ProjectConflictText) => isEligibleProjectConflictPath(path)
   && isMergeableTextFile(nameOf(path), new TextEncoder().encode(text));
 
@@ -40,7 +40,7 @@ export async function detectProjectConflict(input: ProjectConflictInput): Promis
     && !parseConflictName(nameOf(file.path)) && textFile(file));
   const recorded = siblings.find(file => input.records.get(file.path)?.some(entry => entry.hash === hash));
   if (recorded) return conflict(recorded.path, 'record');
-  const similar = siblings.filter(file => extensionOf(file.path) === extensionOf(input.path))
+  const similar = siblings.filter(file => conflictExtension(file.path) === conflictExtension(input.path))
     .map(file => ({ ...file, score: deriveLineSimilarity(input.text, file.text) }))
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))[0];
   return similar && similar.score >= VERSION_SIMILARITY ? conflict(similar.path, 'similar') : undefined;

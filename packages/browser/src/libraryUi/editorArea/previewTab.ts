@@ -1,6 +1,7 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
-import type { BuildOptions, LatexEngine } from "@labshelf/core";
+import type { BuildOptions, ILogger, LatexEngine } from "@labshelf/core";
 import { renderElement } from "@labshelf/core/dom";
+import type { HelperProject } from "../../helper/project";
 import { mountHelperSetupCard } from "../../helper/setup";
 import { bx, readSettings, updateSettings } from "../../platform";
 import { createBrowserProjectContent } from "../../writing/project";
@@ -11,6 +12,17 @@ import type { TabModule } from "./tabKind";
 function buildOptionsOf(project: { format?: string; engine?: LatexEngine | undefined } | undefined, user: Pick<BuildOptions, "autoCompile" | "haltOnError">): BuildOptions {
   if (project?.format !== "latex") return { autoCompile: user.autoCompile };
   return { ...user, engine: project.engine ?? null };
+}
+
+/** The card that walks the user through setting up the helper in the preview's body. */
+function mountSetupCard(body: HTMLElement, helperProject: HelperProject, logger: ILogger): { dispose(): void } {
+  const card = renderElement("div", { class: "ls-preview-setup" });
+  body.replaceChildren(card);
+  return mountHelperSetupCard(card, helperProject.setupHelper, {
+    logger,
+    getPlatformInfo: () => bx.runtime.getPlatformInfo(),
+    openUrl: (url) => void bx.tabs.create({ url }),
+  });
 }
 
 export const mountTab: TabModule["mountTab"] = (host, params, { project, logger, fs, workspace }) => {
@@ -43,18 +55,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, { project, logger,
   const openFrame = (): void => {
     showFrame().catch((error: unknown) => logger.error("preview", error, { action: "showFrame", projectId }));
   };
-  const showSetup = (): void => {
-    const card = renderElement("div", { class: "ls-preview-setup" });
-    body.replaceChildren(card);
-    current = mountHelperSetupCard(card, helperProject.setupHelper, {
-      logger,
-      getPlatformInfo: () => bx.runtime.getPlatformInfo(),
-      openUrl: (url) => void bx.tabs.create({ url }),
-    });
-  };
-
   const offOpened = helperProject.onOpened((openedId) => { if (openedId === projectId && !showingFrame) openFrame(); });
-  if (helperProject.isOpen(projectId)) openFrame(); else showSetup();
+  if (helperProject.isOpen(projectId)) openFrame(); else current = mountSetupCard(body, helperProject, logger);
 
   return {
     dispose() {

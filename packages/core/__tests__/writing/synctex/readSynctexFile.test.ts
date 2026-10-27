@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import { findPagePoint, readSynctexFile } from "../../../src/writing/synctex/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 

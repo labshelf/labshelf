@@ -69,7 +69,7 @@ function runProjectDetailAction(action: string, anchor: HTMLElement, row: Projec
   else if (action === "editTarget") void editTarget(row, deps.post);
 }
 
-export interface ProjectPaneView {
+interface ProjectPaneView {
   row: ProjectRow | undefined;
   detail: ProjectPaneContent | undefined;
   error: string | undefined;

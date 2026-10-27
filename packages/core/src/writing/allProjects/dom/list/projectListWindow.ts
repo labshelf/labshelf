@@ -19,18 +19,30 @@ export interface WindowedRows<T> {
   viewportRows(): number | null;
 }
 
-/** `heads` is the sticky column-heads row, which covers the top of the scroll viewport. */
-export function createWindowedRows<T extends { id: string }>(list: HTMLElement, body: HTMLElement, heads: HTMLElement, parts: WindowParts<T>): WindowedRows<T> {
-  const rows = new RowReconciler<T>(body, (item) => {
+function keyedRows<T extends { id: string }>(body: HTMLElement, parts: WindowParts<T>): RowReconciler<T> {
+  return new RowReconciler<T>(body, (item) => {
     const node = parts.build(item);
     node.dataset["key"] = item.id;
     return node;
   }, parts.inputs);
+}
+
+/** Repaints at most once per animation frame while the list scrolls. */
+function repaintOnScroll(list: HTMLElement, paint: () => void): void {
+  let pending = 0;
+  list.addEventListener("scroll", () => {
+    if (pending) return;
+    pending = requestAnimationFrame(() => { pending = 0; paint(); });
+  }, { passive: true });
+}
+
+/** `heads` is the sticky column-heads row, which covers the top of the scroll viewport. */
+export function createWindowedRows<T extends { id: string }>(list: HTMLElement, body: HTMLElement, heads: HTMLElement, parts: WindowParts<T>): WindowedRows<T> {
+  const rows = keyedRows(body, parts);
   let items: readonly T[] = [];
   let empty: HTMLElement | null = null;
   let nodes = new Map<string, HTMLElement>();
   let win: RowWindow | null = null;
-  let pending = 0;
   // A list without layout (hidden, or jsdom) has no viewport, so every row renders.
   const viewport = (): RowViewport | null => {
     const height = list.clientHeight - heads.offsetHeight;
@@ -49,10 +61,7 @@ export function createWindowedRows<T extends { id: string }>(list: HTMLElement, 
     nodes = new Map(shown.map((item, i) => [item.id, body.children[i] as HTMLElement]));
     shown.forEach((item, i) => parts.decorate(item, nodes.get(item.id)!, s.start + i));
   }, (key) => nodes.get(key));
-  list.addEventListener("scroll", () => {
-    if (pending) return;
-    pending = requestAnimationFrame(() => { pending = 0; paint(); });
-  }, { passive: true });
+  repaintOnScroll(list, paint);
   // ResizeObserver is absent where the list renders without layout (jsdom); a resize can change the row height token too.
   if (typeof ResizeObserver !== "undefined") new ResizeObserver(() => { win = null; paint(); }).observe(list);
   return {

@@ -9,7 +9,7 @@ import { formatCount } from "../../../../ui/index.js";
 const MAX_CONTENTS = 4;
 
 const toneOf = (ext: string): TrayEntry["tone"] => ext === "pdf" ? "pdf" : ext === "md" ? "md" : "other";
-const baseName = (path: string): string => /([^/]*?)(\.[^./]*)?$/.exec(path)?.[1] ?? path;
+const trayStem = (path: string): string => /([^/]*?)(\.[^./]*)?$/.exec(path)?.[1] ?? path;
 
 // The build outcome only counts problems when a build ran in this session.
 const hasOutcome = (d: ProjectPaneContent): boolean => d.build.state === "ok" || d.build.state === "warnings" || d.build.state === "failed";
@@ -33,7 +33,7 @@ export function deriveBibliographyFact(bib: NonNullable<ProjectPaneContent["bibl
 }
 
 function contentsFact(folder: string, sources: readonly string[]): string | null {
-  const inside = sources.filter((s) => s.startsWith(`${folder}/`)).map(baseName);
+  const inside = sources.filter((s) => s.startsWith(`${folder}/`)).map(trayStem);
   if (inside.length === 0) return null;
   const names = [...new Set(inside)];
   return names.slice(0, MAX_CONTENTS).join(", ") + (names.length > MAX_CONTENTS ? ", …" : "");

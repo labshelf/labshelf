@@ -9,7 +9,6 @@ export {
   joinWith, createLibraryLayout, createPaperFiles,
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles } from "./layout.js";
-export { checkRelativePath } from "./relativePath.js";
 export * from "./paper/index.js";
 export { SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig } from "./sharedConfig.js";
 export type { SharedConfig, SharedConfigUpdate } from "./sharedConfig.js";

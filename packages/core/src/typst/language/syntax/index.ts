@@ -6,9 +6,7 @@ export type {
   TypstBinding,
   TypstCursorContext,
   TypstFileSymbols,
-  TypstImport,
   TypstLabelDefinition,
-  TypstPathReference,
 } from "./typstFileSymbols.js";
 export { scanTypstHeadings } from "./typstHeadings.js";
 export type { TypstHeading } from "./typstHeadings.js";

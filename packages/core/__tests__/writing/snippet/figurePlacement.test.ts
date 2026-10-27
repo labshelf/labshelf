@@ -1,5 +1,5 @@
 // Tests the free-name search and the base folder of an inserted image.
-import { posixPathOps } from "../../../src/library/mutations/index";
+import { posixPathOps } from "../../../src/path/index";
 import { findFreeImageName, deriveImageBaseFolder } from "../../../src/writing/snippet/index";
 
 describe("findFreeImageName", () => {

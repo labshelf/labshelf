@@ -1,7 +1,7 @@
 // Resolves library and project paths with the bridge's confinement and maps its refusal to the helper's `path` code.
 import { promises as fs } from "node:fs";
-import { BridgeError } from "../../../bridge/bridgeError.js";
-import { resolveInLibrary } from "../../../bridge/node/pathConfinement.js";
+import { BridgeError } from "../../../bridge/index.js";
+import { resolveInLibrary } from "../../../bridge/node/index.js";
 import { checkHelperPath } from "../../helperPaths.js";
 import { HelperProjectError } from "./helperProjectError.js";
 

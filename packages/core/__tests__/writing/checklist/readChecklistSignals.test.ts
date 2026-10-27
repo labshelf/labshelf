@@ -1,5 +1,5 @@
 /** Verifies the open-item signals read from a real writing project folder. */
-import { posixPathOps } from "../../../src/library/index";
+import { posixPathOps } from "../../../src/path/index";
 import type { ProjectEntry } from "../../../src/writing/project/index";
 import { readChecklistSignals } from "../../../src/writing/checklist/index";
 import { fakeLogger } from "../../support/fakeLogger";

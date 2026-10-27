@@ -1,7 +1,7 @@
 /** Declares what a scan runs over: the file-system port, path style, logger and the cap on parallel file operations. */
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import type { PaperEntry } from "../model/index.js";
-import type { PathOps } from "../mutations/index.js";
+import type { PathOps } from "../../path/index.js";
 
 /** Pools promises, so scanning a large library never has thousands of file operations in flight at once. */
 type Limiter = <T>(task: () => Promise<T>) => Promise<T>;

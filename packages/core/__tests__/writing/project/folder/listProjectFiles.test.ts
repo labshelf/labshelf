@@ -1,5 +1,5 @@
 /** Verifies the project file walk: nested files are listed relative and sorted, hidden folders and node_modules are not. */
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 import { listProjectFiles } from "../../../../src/writing/project/folder/index";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
 

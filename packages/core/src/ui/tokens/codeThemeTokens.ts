@@ -4,7 +4,7 @@
 import { createDesignToken, type DesignToken } from "./designToken.js";
 
 const CODE_ROLES = ["keyword", "command", "argument", "string", "number", "math", "comment", "heading", "reference", "bracket"] as const;
-export type SyntaxRole = (typeof CODE_ROLES)[number];
+type SyntaxRole = (typeof CODE_ROLES)[number];
 
 export const CODE_THEME_NAMES = ["labshelf", "one", "github", "catppuccin", "solarized"] as const;
 export type SyntaxThemeId = (typeof CODE_THEME_NAMES)[number];

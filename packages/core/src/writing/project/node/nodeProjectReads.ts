@@ -1,7 +1,6 @@
 // Runs the neutral project reads and writes over the local disk and the device's folder registry.
-import * as path from "node:path";
-
 import { NodeLibraryFileSystem, createDeviceLocalLayout } from "../../../library/node/index.js";
+import { nodePathOps } from "../../../path/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { listProjects, type ProjectReadContext } from "../folder/index.js";
 import type { ProjectEntry } from "../projectEntry.js";
@@ -9,10 +8,10 @@ import { loadProjectRegistry, createProjectFolderRegistry } from "../deviceLocal
 import type { ProjectCatalogContext } from "../mutation/index.js";
 
 /** The file access the neutral file listings need, for Node callers that have no logger. */
-export const nodeFileReads: Pick<ProjectReadContext, "fs" | "paths"> = { fs: new NodeLibraryFileSystem(), paths: path };
+export const nodeFileReads: Pick<ProjectReadContext, "fs" | "paths"> = { fs: new NodeLibraryFileSystem(), paths: nodePathOps };
 
 export function createNodeProjectReadCompositionRoot(logger: ILogger): ProjectReadContext {
-  return { fs: new NodeLibraryFileSystem(), paths: path, logger };
+  return { fs: new NodeLibraryFileSystem(), paths: nodePathOps, logger };
 }
 
 const registryPathOf = (libraryRoot: string): string => createDeviceLocalLayout(libraryRoot).projectRegistryPath;

@@ -1,7 +1,7 @@
 /** Scans papers/ completely: every paper from its metadata.yaml, every collection, orphan folders and duplicate ids. */
 import type { ILogger } from "../../ports/index.js";
 import type { LibraryScan, PaperEntry } from "../model/index.js";
-import type { PathOps } from "../mutations/index.js";
+import type { PathOps } from "../../path/index.js";
 import { readFolderLevel, type PaperFolder } from "./folderLevel.js";
 import { formatError } from "../../logging/index.js";
 import { createScanEnv, reportSkipped, type ScanEnv, type ScanFileSystem } from "./scanEnv.js";

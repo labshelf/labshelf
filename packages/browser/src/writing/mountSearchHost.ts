@@ -76,6 +76,47 @@ export interface SearchHostOptions {
 
 type Replacing = Extract<SearchToHost, { type: "replace" | "replaceFile" | "replaceAll" }>;
 
+async function matchesToReplace(fs: LibraryFileSystem, folder: string, message: Replacing, regex: RegExp): Promise<MatchPosition[]> {
+  if (message.type === "replace") return [message];
+  const texts = await projectSearchTexts(fs, folder);
+  return findMatchesIn(texts, regex, message.type === "replaceFile" ? message.path : undefined);
+}
+
+/** Replaces what the last search found, after the user agrees when it is every match; false when nothing changed. */
+async function replaceMatches(
+  { fs, logger, project }: Pick<SearchHostOptions, "fs" | "logger" | "project">,
+  message: Replacing, regex: RegExp, searched: ReadonlySet<string>,
+): Promise<boolean> {
+  if (!(await writeProjectEditors(project.id))) {
+    void logger.log("WARN", MODULE, "replace aborted: an open file could not be saved", { projectId: project.id });
+    showToast(`Could not save an open file of ${project.id}, so nothing was replaced.`, "error");
+    return false;
+  }
+  const matches = await matchesToReplace(fs, project.folder, message, regex);
+  // The page is not trusted with arbitrary paths: only files the last search covered change.
+  if (matches.length === 0 || matches.some(({ path }) => !searched.has(path))) return false;
+  if (message.type === "replaceAll") {
+    const files = new Set(matches.map(({ path }) => path)).size;
+    const question = `Replace ${matches.length} ${matches.length === 1 ? "match" : "matches"} in ${files} ${files === 1 ? "file" : "files"}?`;
+    if (!(await askDialog(question, "The change is saved to the files at once. The project history keeps the previous text.", "Replace All"))) return false;
+  }
+  const count = await writeReplacements(fs, matches, regex, message.replacement);
+  await refreshProjectEditors(project.id);
+  await addProjectUpdateEvent({ fs, logger }, project);
+  void logger.log("INFO", MODULE, "replaced matches in a project", { projectId: project.id, matches: count });
+  return true;
+}
+
+function reportSearchFailure({ logger, endpoint, project }: Pick<SearchHostOptions, "logger" | "endpoint" | "project">, error: unknown): void {
+  void logger.error(MODULE, error, { action: "search", projectId: project.id, folder: project.folder });
+  endpoint.post({ type: "invalid", message: `Search failed: ${formatError(error)}` });
+}
+
+function reportMessageFailure({ logger, project }: Pick<SearchHostOptions, "logger" | "project">, message: SearchToHost, error: unknown): void {
+  void logger.error(MODULE, error, { action: message.type, projectId: project.id, folder: project.folder });
+  showToast(`Search: ${formatError(error)}`, "error");
+}
+
 export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: SearchHostOptions): { dispose(): void } {
   let request: { query: string; options: SearchOptions } | undefined;
   let pattern: RegExp | undefined;
@@ -100,41 +141,9 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
   const searchLater = (): void => {
     clearTimeout(timer);
     timer = setTimeout(() => {
-      search().catch((error: unknown) => {
-        void logger.error(MODULE, error, { action: "search", projectId: project.id, folder: project.folder });
-        endpoint.post({ type: "invalid", message: `Search failed: ${formatError(error)}` });
-      });
+      search().catch((error: unknown) => reportSearchFailure({ logger, endpoint, project }, error));
     }, DEBOUNCE_MS);
   };
-
-  async function matchesToReplace(message: Replacing, regex: RegExp): Promise<MatchPosition[]> {
-    if (message.type === "replace") return [message];
-    const texts = await projectSearchTexts(fs, project.folder);
-    return findMatchesIn(texts, regex, message.type === "replaceFile" ? message.path : undefined);
-  }
-
-  async function replace(message: Replacing): Promise<void> {
-    const regex = pattern;
-    if (!regex) return;
-    if (!(await writeProjectEditors(project.id))) {
-      void logger.log("WARN", MODULE, "replace aborted: an open file could not be saved", { projectId: project.id });
-      showToast(`Could not save an open file of ${project.id}, so nothing was replaced.`, "error");
-      return;
-    }
-    const matches = await matchesToReplace(message, regex);
-    // The page is not trusted with arbitrary paths: only files the last search covered change.
-    if (matches.length === 0 || matches.some(({ path }) => !searched.has(path))) return;
-    if (message.type === "replaceAll") {
-      const files = new Set(matches.map(({ path }) => path)).size;
-      const question = `Replace ${matches.length} ${matches.length === 1 ? "match" : "matches"} in ${files} ${files === 1 ? "file" : "files"}?`;
-      if (!(await askDialog(question, "The change is saved to the files at once. The project history keeps the previous text.", "Replace All"))) return;
-    }
-    const count = await writeReplacements(fs, matches, regex, message.replacement);
-    await refreshProjectEditors(project.id);
-    await addProjectUpdateEvent({ fs, logger }, project);
-    void logger.log("INFO", MODULE, "replaced matches in a project", { projectId: project.id, matches: count });
-    await search();
-  }
 
   async function handle(message: SearchToHost): Promise<void> {
     if (message.type === "ready") {
@@ -145,16 +154,13 @@ export function mountSearchHost({ fs, logger, endpoint, project, openMatch }: Se
       searchLater();
     } else if (message.type === "open") {
       if (searched.has(message.path)) openMatch(posixPathOps.relative(project.folder, message.path), message.line);
-    } else {
-      await replace(message);
+    } else if (pattern && await replaceMatches({ fs, logger, project }, message, pattern, searched)) {
+      await search();
     }
   }
 
   const stop = endpoint.subscribe((message) => {
-    handle(message).catch((error: unknown) => {
-      void logger.error(MODULE, error, { action: message.type, projectId: project.id, folder: project.folder });
-      showToast(`Search: ${formatError(error)}`, "error");
-    });
+    handle(message).catch((error: unknown) => reportMessageFailure({ logger, project }, message, error));
   });
   return { dispose: () => { ticket += 1; clearTimeout(timer); stop(); } };
 }

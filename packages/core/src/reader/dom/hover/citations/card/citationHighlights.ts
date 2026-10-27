@@ -15,7 +15,7 @@ function item(highlight: Highlight): HTMLElement {
 const list = (highlights: Highlight[]): HTMLElement => renderElement("ul", { class: "rd-cite-list" }, ...highlights.map(item));
 
 /** @returns the highlights in one list, or, when a page is cited, that page's highlights above a folded group of the others. */
-export function renderHighlightsPanel(highlights: Highlight[], citedPage: number | undefined): HTMLElement {
+function renderHighlightsPanel(highlights: Highlight[], citedPage: number | undefined): HTMLElement {
   if (citedPage === undefined) { return renderElement("div", { class: "rd-cite-highlights" }, list(highlights)); }
   const onPage = highlights.filter((h) => h.page === citedPage);
   const others = highlights.filter((h) => h.page !== citedPage);

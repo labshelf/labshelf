@@ -13,7 +13,7 @@ import {
 } from "@labshelf/core";
 import type { LibraryRootController } from "../../activation/index.js";
 import { openLibraryLogger } from "../../activation/index.js";
-import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/index.js";
+import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
 import type { WritingProjects } from "../../writing/index.js";
 import {
   showRefusedOffer,

@@ -14,6 +14,9 @@
       ],
       "ignoreBinaries": [
         "tsc"
+      ],
+      "ignoreDependencies": [
+        "boring-avatars-vanilla"
       ]
     },
     "packages/core": {
@@ -24,20 +27,31 @@
       "ignoreBinaries": [
         "pdflatex",
         "pdftotext",
-        "reg"
+        "reg",
+        "perl",
+        "biber"
       ],
       "project": [
         "src/**/*.ts",
         "__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@napi-rs/canvas"
+        "@napi-rs/canvas",
+        "prosemirror-commands",
+        "prosemirror-history",
+        "prosemirror-inputrules",
+        "prosemirror-keymap",
+        "prosemirror-state",
+        "prosemirror-transform",
+        "prosemirror-view",
+        "y-prosemirror",
+        "@vscode/codicons"
       ]
     },
     "packages/vscode": {
       "entry": [
         "src/extension.ts",
-        "src/helperHost.ts",
+        "src/node/helperHost.ts",
         "src/reader/webview/readerEntry.ts",
         "src/libraryUi/webview/libraryEntry.ts",
         "src/libraryUi/details/webview/detailsEntry.ts",
@@ -64,7 +78,8 @@
         "@napi-rs/canvas",
         "pdf-lib",
         "pdfjs-dist",
-        "tesseract.js"
+        "tesseract.js",
+        "@vscode/test-web"
       ]
     },
     "packages/browser": {
@@ -86,7 +101,8 @@
         "__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@fontsource/*"
+        "@fontsource/*",
+        "jest-environment-jsdom"
       ]
     },
     "packages/terminal": {
@@ -103,8 +119,7 @@
         "__tests__/**/*.ts"
       ],
       "ignoreBinaries": [
-        "pdftoppm",
-        "reg.exe"
+        "pdftoppm"
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",
@@ -115,6 +130,7 @@
     "website": {
       "entry": [
         "js/main.js",
+        "js/connected.js",
         "src/demos/library.ts",
         "src/demos/reader.ts",
         "src/share.ts",

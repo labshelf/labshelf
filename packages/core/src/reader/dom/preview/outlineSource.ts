@@ -1,7 +1,7 @@
 // Gives the preview chrome the open document's outline, its page positions and the jump to an entry.
 import { deriveOutlineRows, type OutlineRow, type RawOutlineNode } from "../../index.js";
 import type { ReaderContext } from "../session/index.js";
-import { resolveOutlinePages } from "../sidebar/outlinePages.js";
+import { resolveOutlinePages } from "../sidebar/index.js";
 import type { PreviewOutlineSource } from "./mountPreviewChrome.js";
 
 type Destination = Parameters<ReaderContext["linkService"]["goToDestination"]>[0];

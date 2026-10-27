@@ -1,18 +1,7 @@
 /** Declares what every library mutation runs over: the injected ports and the shapes of its results. */
 import type { PaperRecord } from "../../model/index.js";
+import type { PathOps } from "../../path/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
-
-/** Path arithmetic in the app's path style; Node's `path` module satisfies it as is. */
-export interface PathOps {
-  readonly sep: string;
-  join(...parts: string[]): string;
-  dirname(target: string): string;
-  basename(target: string, ext?: string): string;
-  extname(target: string): string;
-  isAbsolute(target: string): boolean;
-  resolve(...parts: string[]): string;
-  relative(from: string, to: string): string;
-}
 
 /** Writes metadata.yaml and bib.bib for a paper; the core BibTeXService satisfies it. */
 export interface MetadataWriter {

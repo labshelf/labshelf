@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import * as path from "node:path";
 
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 import type { PaperRecord } from "../../../../src/model/index";
 import { BIBLIOGRAPHY_HEADER } from "../../../../src/writing/citations/index";
 import { readProjectCitations, readProjectPaneContent } from "../../../../src/writing/allProjects/index";

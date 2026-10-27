@@ -4,9 +4,9 @@ import * as vscode from "vscode";
 import type { ShareDialogRequest } from "@labshelf/core";
 import { sharingWebviews } from "../../../share/index.js";
 
-export const SHARE_COMMAND = "labshelf.collab.share";
+const SHARE_COMMAND = "labshelf.collab.share";
 export const JOIN_COMMAND = "labshelf.collab.join";
-export const LEAVE_COMMAND = "labshelf.collab.leave";
+const LEAVE_COMMAND = "labshelf.collab.leave";
 
 /** A folder path or a project entry from a view names the project; anything else, such as a URI from a menu, names none. */
 function projectFolder(target: unknown): string | undefined {

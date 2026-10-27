@@ -2,7 +2,7 @@
 import { readGitHubIdentity } from "./githubIdentity.js";
 import { fetchGithubOAuthResponse, type GitHubDeviceAuthorization } from "./deviceAuthorization.js";
 
-export function runGithubPollDelay(ms: number, signal: AbortSignal): Promise<void> {
+function runGithubPollDelay(ms: number, signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const cancel = () => { clearTimeout(timer); reject(signal.reason); };

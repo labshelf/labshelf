@@ -24,6 +24,50 @@ export interface HistoryHostOptions {
   shares: Pick<PageShares, "live">;
 }
 
+interface RestoreContext extends Pick<HistoryHostOptions, "fs" | "logger" | "endpoint" | "project" | "shares"> {
+  target: ReturnType<typeof createHistoryProject>;
+  refresh(): Promise<void>;
+}
+
+// The restore writes to disk only, so a shared file's doc is brought to the restored text before the disk mirror writes the doc back.
+async function syncShareToRestore({ fs, logger, project, shares }: RestoreContext): Promise<void> {
+  const share = shares.live(project.id);
+  if (!share) return;
+  const restored = async (path: string): Promise<string | null> => {
+    const file = `${project.folder}/${path}`;
+    return (await fs.exists(file)) ? fs.readText(file) : null;
+  };
+  await applyRestoredFiles({ session: share.session, restored, origin: RESTORE_ORIGIN, logger });
+}
+
+async function restore(context: RestoreContext, id: string): Promise<void> {
+  const { logger, endpoint, project, target } = context;
+  const row = (await readHistoryRows(target.storage, logger)).find((entry) => entry.id === id);
+  if (!row) return;
+  const accepted = await askDialog(
+    `Restore ${project.id} to ${when(row)}?`,
+    "The project's files go back to that point. The current state stays in the history, so you can return to it.",
+    "Restore",
+  );
+  if (!accepted) return;
+  endpoint.post({ type: "busy", busy: true });
+  try {
+    // Unsaved edits are written first, so the history keeps them, and the editors reload after, so none saves its stale text over the restore.
+    if (!(await writeProjectEditors(project.id))) {
+      void logger.log("WARN", MODULE, "kept the project as it is: an open file could not be saved", { projectId: project.id, id });
+      showToast(`Could not save an open file of ${project.id}, so nothing was restored.`, "error");
+      return;
+    }
+    await applySnapshot(target, id, logger);
+    await syncShareToRestore(context);
+    await refreshProjectEditors(project.id);
+  } finally {
+    endpoint.post({ type: "busy", busy: false });
+  }
+  await context.refresh();
+  showToast(`Restored ${project.id} to ${when(row)}.`, "ok");
+}
+
 export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, shares }: HistoryHostOptions): { dispose(): void } {
   const target = createHistoryProject(fs, project.folder, project.id);
 
@@ -40,44 +84,6 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
     });
   };
 
-  // The restore writes to disk only, so a shared file's doc is brought to the restored text before the disk mirror writes the doc back.
-  const syncShareToRestore = async (): Promise<void> => {
-    const share = shares.live(project.id);
-    if (!share) return;
-    const restored = async (path: string): Promise<string | null> => {
-      const file = `${project.folder}/${path}`;
-      return (await fs.exists(file)) ? fs.readText(file) : null;
-    };
-    await applyRestoredFiles({ session: share.session, restored, origin: RESTORE_ORIGIN, logger });
-  };
-
-  async function restore(id: string): Promise<void> {
-    const row = (await readHistoryRows(target.storage, logger)).find((entry) => entry.id === id);
-    if (!row) return;
-    const accepted = await askDialog(
-      `Restore ${project.id} to ${when(row)}?`,
-      "The project's files go back to that point. The current state stays in the history, so you can return to it.",
-      "Restore",
-    );
-    if (!accepted) return;
-    endpoint.post({ type: "busy", busy: true });
-    try {
-      // Unsaved edits are written first, so the history keeps them, and the editors reload after, so none saves its stale text over the restore.
-      if (!(await writeProjectEditors(project.id))) {
-        void logger.log("WARN", MODULE, "kept the project as it is: an open file could not be saved", { projectId: project.id, id });
-        showToast(`Could not save an open file of ${project.id}, so nothing was restored.`, "error");
-        return;
-      }
-      await applySnapshot(target, id, logger);
-      await syncShareToRestore();
-      await refreshProjectEditors(project.id);
-    } finally {
-      endpoint.post({ type: "busy", busy: false });
-    }
-    await refresh();
-    showToast(`Restored ${project.id} to ${when(row)}.`, "ok");
-  }
-
   async function handle(message: HistoryToHost): Promise<void> {
     if (message.type === "ready") {
       await addProjectUpdateEvent({ fs, logger }, project);
@@ -86,7 +92,7 @@ export function mountHistoryHost({ fs, logger, endpoint, project, lastFullPdf, s
     } else if (message.type === "diff") {
       endpoint.post({ ...message, lines: await readHistoryDiff(target.storage, message.id, message.path, logger) });
     } else if (message.type === "restore") {
-      await restore(message.id);
+      await restore({ fs, logger, endpoint, project, shares, target, refresh }, message.id);
     } else if (message.type === "markVersion") {
       if (await writeProjectVersion({ fs, logger, lastFullPdf }, project)) await refresh();
     } else {

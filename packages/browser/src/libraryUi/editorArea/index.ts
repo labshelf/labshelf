@@ -4,4 +4,4 @@ export { createPageShell, type PageShell } from "./pageShell";
 export type { Workspace } from "./workspace";
 export { JOIN_PREFIX, extractJoinInvite } from "./workspaceHash";
 export { TAB_KINDS, parseTab } from "./tabKinds";
-export type { ProjectServices, TabContext, TabHooks, TabKindName, TabParams, TabModule } from "./tabKind";
+export type { ProjectServices, TabContext, TabKindName } from "./tabKind";

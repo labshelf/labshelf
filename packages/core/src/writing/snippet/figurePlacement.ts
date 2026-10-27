@@ -1,5 +1,5 @@
 // Decides where a figure's image file lives in a writing project and which file types a picker offers.
-import type { PathOps } from "../../library/mutations/index.js";
+import type { PathOps } from "../../path/index.js";
 
 type WritingLanguage = "latex" | "typst";
 

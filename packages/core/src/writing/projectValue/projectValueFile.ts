@@ -1,7 +1,7 @@
 /** Builds the text of a project's generated labshelf-values.tex from the JSON leaves its sources read. */
 // CONTRACT: documents/contracts/library-format.md#generated-files
 
-import { posixPathOps } from "../../library/mutations/index.js";
+import { posixPathOps } from "../../path/index.js";
 import type { ProjectValueLeaf } from "./projectValueLeaves.js";
 
 export const VALUES_FILE_NAME = "labshelf-values.tex";

@@ -1,5 +1,5 @@
 /** Pins the folder-link half of the sharing host: which folders it shares, the relay check, the link list, revoke, import outcomes and opening folders. */
-import { posixPathOps } from "../../../../src/library/index";
+import { posixPathOps } from "../../../../src/path/index";
 import type { PaperRecord } from "../../../../src/model/index";
 import type { RelayAccount } from "../../../../src/relay/index";
 import type { ImportShareLinkResult } from "../../../../src/share/index";

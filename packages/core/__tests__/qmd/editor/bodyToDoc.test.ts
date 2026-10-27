@@ -4,7 +4,6 @@ import { bodyToDoc } from "../../../src/qmd/editor/bodyToDoc";
 import { docToBody } from "../../../src/qmd/editor/docToBody";
 import { qmdFixtures, readQmdFixture } from "../fixtures/qmdFixtures";
 
-const roundTrip = (body: string) => docToBody(bodyToDoc(body));
 const types = (doc: Node) => doc.content.content.map((block) => block.type.name);
 
 const bodies = qmdFixtures().flatMap((fixture) =>

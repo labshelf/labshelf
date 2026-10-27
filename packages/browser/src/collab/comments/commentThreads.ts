@@ -37,69 +37,73 @@ export interface CommentThreadsOptions {
 
 const lineAt = (text: string, offset: number): number => text.slice(0, offset).split("\n").length;
 
+type Session = Pick<ProjectSession, "current">;
+
+function openFolder(session: Session, projectId?: string): string {
+  const entry = session.current();
+  if (entry?.kind !== "ready" || (projectId !== undefined && entry.settings.id !== projectId)) {
+    throw new Error(`Project ${projectId ?? "(none)"} is not the open project, so its comments cannot be used`);
+  }
+  return entry.folder;
+}
+
+function accessOf(fs: LibraryFileSystem, folder: string): CommentsFileAccess {
+  const file = posixPathOps.join(folder, COMMENTS_PATH);
+  return {
+    read: async () => (await fs.exists(file) ? fs.readText(file) : undefined),
+    write: async (text) => { await fs.ensureDir(posixPathOps.dirname(file)); await fs.writeText(file, text); },
+  };
+}
+
+async function readFileText(fs: LibraryFileSystem, folder: string, path: string): Promise<string | undefined> {
+  const file = posixPathOps.join(folder, path);
+  return await fs.exists(file) ? fs.readText(file) : undefined;
+}
+
+async function stored(fs: LibraryFileSystem, folder: string): Promise<CommentThread[]> {
+  const doc = await loadCommentsDocument(accessOf(fs, folder));
+  if (!doc) { throw new Error(`${COMMENTS_PATH} is not valid JSON with a threads list. Fix the file to see and add comments.`); }
+  return deriveCommentThreads(doc);
+}
+
+async function locateThreads(fs: LibraryFileSystem, folder: string, path: string | undefined): Promise<LocatedThread[]> {
+  const inFile = (await stored(fs, folder)).filter((each) => path === undefined || each.file === path);
+  const texts = new Map<string, string | undefined>();
+  for (const file of new Set(inFile.map((each) => each.file))) { texts.set(file, await readFileText(fs, folder, file)); }
+  return inFile.map((each) => {
+    const text = texts.get(each.file);
+    const range = text === undefined ? "detached" : findThread(each, text);
+    return { ...each, line: range === "detached" ? undefined : lineAt(text!, range.start) };
+  });
+}
+
+async function openRanges(fs: LibraryFileSystem, folder: string, path: string): Promise<TextRange[]> {
+  const text = await readFileText(fs, folder, path);
+  if (text === undefined) { return []; }
+  const located = (await stored(fs, folder)).filter((each) => each.file === path && !each.resolved).map((each) => findThread(each, text));
+  return located.filter((each): each is TextRange => each !== "detached");
+}
+
+const newComment = (body: string): Comment => ({ id: globalThis.crypto.randomUUID(), author: AUTHOR, body, createdAt: new Date().toISOString() });
+
 export function createCommentThreads({ fs, session, logger }: CommentThreadsOptions): CommentThreads {
   const listeners = new Set<() => void>();
   const notify = (): void => { for (const listener of [...listeners]) { listener(); } };
   const onDidChange = (listener: () => void): (() => void) => { listeners.add(listener); return () => void listeners.delete(listener); };
 
-  const openFolder = (projectId?: string): string => {
-    const entry = session.current();
-    if (entry?.kind !== "ready" || (projectId !== undefined && entry.settings.id !== projectId)) {
-      throw new Error(`Project ${projectId ?? "(none)"} is not the open project, so its comments cannot be used`);
-    }
-    return entry.folder;
-  };
-  const accessOf = (folder: string): CommentsFileAccess => {
-    const file = posixPathOps.join(folder, COMMENTS_PATH);
-    return {
-      read: async () => (await fs.exists(file) ? fs.readText(file) : undefined),
-      write: async (text) => { await fs.ensureDir(posixPathOps.dirname(file)); await fs.writeText(file, text); },
-    };
-  };
-  const readFileText = async (folder: string, path: string): Promise<string | undefined> => {
-    const file = posixPathOps.join(folder, path);
-    return await fs.exists(file) ? fs.readText(file) : undefined;
-  };
   const edit = async (folder: string, change: Parameters<typeof updateCommentsDocument>[1], action: string): Promise<void> => {
     try {
-      await updateCommentsDocument(accessOf(folder), change);
+      await updateCommentsDocument(accessOf(fs, folder), change);
     } catch (error) {
       await logger.error(MODULE, error, { action, folder });
       throw error;
     }
     notify();
   };
-
-  const stored = async (folder: string): Promise<CommentThread[]> => {
-    const doc = await loadCommentsDocument(accessOf(folder));
-    if (!doc) { throw new Error(`${COMMENTS_PATH} is not valid JSON with a threads list. Fix the file to see and add comments.`); }
-    return deriveCommentThreads(doc);
-  };
-
-  const threads: CommentThreads["threads"] = async (projectId, path) => {
-    const folder = openFolder(projectId);
-    const inFile = (await stored(folder)).filter((each) => path === undefined || each.file === path);
-    const texts = new Map<string, string | undefined>();
-    for (const file of new Set(inFile.map((each) => each.file))) { texts.set(file, await readFileText(folder, file)); }
-    return inFile.map((each) => {
-      const text = texts.get(each.file);
-      const range = text === undefined ? "detached" : findThread(each, text);
-      return { ...each, line: range === "detached" ? undefined : lineAt(text!, range.start) };
-    });
-  };
-
-  const rangesOf = async (projectId: string, path: string): Promise<TextRange[]> => {
-    const folder = openFolder(projectId);
-    const text = await readFileText(folder, path);
-    if (text === undefined) { return []; }
-    const located = (await stored(folder)).filter((each) => each.file === path && !each.resolved).map((each) => findThread(each, text));
-    return located.filter((each): each is TextRange => each !== "detached");
-  };
-
-  const newComment = (body: string): Comment => ({ id: globalThis.crypto.randomUUID(), author: AUTHOR, body, createdAt: new Date().toISOString() });
+  const rangesOf = async (projectId: string, path: string): Promise<TextRange[]> => openRanges(fs, openFolder(session, projectId), path);
 
   return {
-    threads,
+    threads: async (projectId, path) => locateThreads(fs, openFolder(session, projectId), path),
     onDidChange,
     commentAnchorsFor: (projectId, path) => ({
       subscribe(listener) {
@@ -114,13 +118,13 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
       },
     }),
     async addComment(projectId, path, range, text) {
-      const folder = openFolder(projectId);
-      const source = await readFileText(folder, path);
+      const folder = openFolder(session, projectId);
+      const source = await readFileText(fs, folder, path);
       if (source === undefined) { throw new Error(`${path} does not exist in the project, so it cannot be commented`); }
       const thread: CommentThread = { id: globalThis.crypto.randomUUID(), file: path, anchor: deriveAnchor(source, range.start, range.end), comments: [newComment(text)], resolved: false };
       await edit(folder, (doc) => addThread(doc, thread), "add a comment");
     },
-    reply: (threadId, text) => edit(openFolder(), (doc) => addThreadReply(doc, threadId, newComment(text)), "reply to a comment"),
-    resolve: (threadId) => edit(openFolder(), (doc) => setThreadResolved(doc, threadId, true), "resolve a comment"),
+    reply: (threadId, text) => edit(openFolder(session), (doc) => addThreadReply(doc, threadId, newComment(text)), "reply to a comment"),
+    resolve: (threadId) => edit(openFolder(session), (doc) => setThreadResolved(doc, threadId, true), "resolve a comment"),
   };
 }

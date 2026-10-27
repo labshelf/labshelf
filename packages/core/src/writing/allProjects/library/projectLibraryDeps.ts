@@ -1,6 +1,6 @@
 // Declares what a host supplies to the All projects library: the project list, disk, build state and editor actions.
 import type { PdfjsLoader } from "../../../import/index.js";
-import type { PathOps } from "../../../library/mutations/index.js";
+import type { PathOps } from "../../../path/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
 import type { ProjectContentPort } from "../../service/index.js";
