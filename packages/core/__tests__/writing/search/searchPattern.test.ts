@@ -1,5 +1,5 @@
-/** Verifies the query-to-RegExp conversion for case, regex and whole-word options. */
-import { searchPattern } from "../../../src/writing/search/index";
+/** Verifies the query-to-RegExp conversion for case, regex and whole-word options and which project files Search in Project reads. */
+import { isSearchTextFile, searchPattern } from "../../../src/writing/search/index";
 
 const off = { matchCase: false, regex: false, wholeWord: false };
 
@@ -36,5 +36,15 @@ describe("searchPattern", () => {
 
   it("reports an empty query", () => {
     expect(searchPattern("", off)).toHaveProperty("error");
+  });
+});
+
+describe("isSearchTextFile", () => {
+  it.each(["a/main.tex", "b.TYP", "refs.bib", "x.cls", "x.sty", "x.bst", "n.txt", "n.md", "c.yaml", "c.yml", "d.json", "e.csv"])(
+    "accepts %s", (path) => { expect(isSearchTextFile(path)).toBe(true); },
+  );
+
+  it.each(["fig.pdf", "fig.png", "main.tex.bak", "tex", "main.aux"])("rejects %s", (path) => {
+    expect(isSearchTextFile(path)).toBe(false);
   });
 });

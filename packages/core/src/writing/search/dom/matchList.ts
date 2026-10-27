@@ -2,7 +2,7 @@
 import { renderElement } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 import type { MatchPosition } from "../protocol/index.js";
-import type { FileResults, SearchResults } from "../searchResults.js";
+import type { FileResults, SearchResults } from "../searchRun.js";
 
 export interface MatchListActions {
   open(at: MatchPosition): void;

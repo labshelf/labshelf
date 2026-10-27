@@ -1,5 +1,5 @@
 /** Runs a figure's shell command in the project folder, streaming its output and stopping it on cancel. */
-import type { FigureRunResult } from "../figureRunResult.js";
+import type { FigureRunResult } from "../figureState.js";
 import { BuildCancelled, runCancellable } from "../../../latex/node/index.js";
 
 export interface FigureRun {

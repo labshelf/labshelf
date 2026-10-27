@@ -1,7 +1,21 @@
-// Merges two edited versions of a text against their common base, line by line, marking overlaps.
+// Compares and merges texts line by line: line similarity for merge-base selection and the three-way merge marking overlaps.
+import { countCommon } from "../../text/index.js";
 import type { TextMerge } from "../../qmd/index.js";
-import { splitTextLines } from "./splitTextLines.js";
 import type * as NodeDiff3 from "node-diff3" with { "resolution-mode": "import" };
+
+/** Splits text into lines with line-ending differences excluded. */
+function splitTextLines(text: string): string[] {
+  return text === "" ? [] : text.replace(/\r?\n$/, "").split(/\r?\n/);
+}
+
+/** Measures shared lines relative to the larger text, including repeated lines by occurrence. */
+export function deriveLineSimilarity(a: string, b: string): number {
+  const left = splitTextLines(a);
+  const right = splitTextLines(b);
+  const total = Math.max(left.length, right.length);
+  if (total === 0) { return 1; }
+  return countCommon(left, right) / total;
+}
 
 /** node-diff3's merge, injected because each runtime loads that package its own way. */
 export type Diff3Merge = typeof NodeDiff3.diff3Merge;

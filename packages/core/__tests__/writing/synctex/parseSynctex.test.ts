@@ -1,8 +1,9 @@
-// Tests parsing a real pdfTeX SyncTeX file: inputs, pages, boxes in points and the unit, magnification and offset conversion.
+// Tests parsing a real pdfTeX SyncTeX file (inputs, pages, boxes in points, unit, magnification and offset conversion) and that input paths become comparable absolute paths.
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { parseSynctex, findPagePoint } from "../../../src/writing/synctex";
+import { normalizeInputPath } from "../../../src/writing/synctex/synctexFile";
 
 const text = fs.readFileSync(path.join(__dirname, "fixtures/main.synctex"), "utf8");
 const CWD = "/work/project";
@@ -56,5 +57,22 @@ describe("parseSynctex", () => {
 
   it("rejects text that is not a SyncTeX file", () => {
     expect(() => parseSynctex("%PDF-1.5", CWD)).toThrow("Not a SyncTeX file");
+  });
+});
+
+describe("normalizeInputPath", () => {
+  it("drops ./ segments of an absolute path", () => {
+    expect(normalizeInputPath("/work/project/./chapters/extra.tex", "/cwd")).toBe("/work/project/chapters/extra.tex");
+  });
+
+  it("resolves a relative path against the build folder", () => {
+    expect(normalizeInputPath("main.tex", "/work/project")).toBe("/work/project/main.tex");
+    expect(normalizeInputPath("./a/../b/c.tex", "/work/project")).toBe("/work/project/b/c.tex");
+    expect(normalizeInputPath("../shared/x.tex", "/work/project")).toBe("/work/shared/x.tex");
+  });
+
+  it("uses forward slashes and a lowercase drive letter for Windows paths", () => {
+    expect(normalizeInputPath("C:\\Users\\me\\paper\\.\\main.tex", "D:/other")).toBe("c:/Users/me/paper/main.tex");
+    expect(normalizeInputPath("chapter.tex", "C:\\Users\\me\\paper")).toBe("c:/Users/me/paper/chapter.tex");
   });
 });

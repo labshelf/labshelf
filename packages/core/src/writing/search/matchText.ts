@@ -1,9 +1,30 @@
-// Computes the replacement text for one search match, if it still matches at its position.
+// Finds every match of a pattern in a text, line by line, and computes the replacement text for one match if it still matches at its position.
+
+export interface TextMatch {
+  /** 0-based. */
+  line: number;
+  /** 0-based, in UTF-16 code units. */
+  column: number;
+  length: number;
+  lineText: string;
+}
 
 /** Where a match sits in its line, in UTF-16 code units. */
 export interface MatchSpan {
   column: number;
   length: number;
+}
+
+/** Matches never span lines. Zero-length matches are skipped because they select nothing. */
+export function findInText(text: string, pattern: RegExp): TextMatch[] {
+  const matches: TextMatch[] = [];
+  const lines = text.split(/\r?\n/);
+  for (const [line, lineText] of lines.entries()) {
+    for (const match of lineText.matchAll(pattern)) {
+      if (match[0].length > 0) { matches.push({ line, column: match.index, length: match[0].length, lineText }); }
+    }
+  }
+  return matches;
 }
 
 /**
