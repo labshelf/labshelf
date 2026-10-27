@@ -1,8 +1,11 @@
 // Interprets a page's citation_* / Dublin Core / PRISM meta tags into paper facts and PDF links to try.
 // Publishers emit these tags for Google Scholar, so they are present even when a registry lookup fails.
+// The page is fetched here too, because reading it is the only reason to fetch it.
+import type { ILogger } from "../../ports/index.js";
+import { formatError } from "../../errors/index.js";
 import { hostOf } from "../../url/index.js";
 import { extractYear, type ResolvedMetadata } from "../registries/index.js";
-import type { PageFacts, RawPage, PdfCandidate } from "./rawPage.js";
+import { parseHtmlPage, type PageFacts, type RawPage, type PdfCandidate } from "./htmlPage.js";
 import {
   extractArxivIdentifierFromDoi,
   extractArxivIdentifierFromUrl,
@@ -175,4 +178,41 @@ function metadataOf(
 function setIf<K extends keyof ResolvedMetadata>(target: ResolvedMetadata, key: K, value: string | undefined): void {
   const v = value ? squash(value) : "";
   if (v) (target as Record<string, unknown>)[key] = v;
+}
+
+// Fetching: the page's facts read from the network.
+
+const LANDING_MODULE = "landing";
+
+export interface LandingFetchOptions {
+  fetch: typeof fetch;
+  timeoutMs: number;
+  /** Sends the user's cookies when "include", so a page behind an institutional login reads like the tab. */
+  credentials?: "include" | "omit" | "same-origin";
+  headers?: Record<string, string>;
+  logger?: ILogger;
+}
+
+/**
+ * Callers treat a page they cannot read (a bot wall, a PDF, a timeout) as "no landing page", so failures yield
+ * undefined instead of throwing.
+ * @returns the page's facts, or undefined when it cannot be fetched or is not HTML
+ */
+export async function fetchLanding(url: string, options: LandingFetchOptions): Promise<PageFacts | undefined> {
+  // A bare reference: a browser's fetch throws "Illegal invocation" when called as a method of another object.
+  const doFetch = options.fetch;
+  try {
+    const res = await doFetch(url, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(options.timeoutMs),
+      ...(options.credentials ? { credentials: options.credentials } : {}),
+      ...(options.headers ? { headers: options.headers } : {}),
+    });
+    if (!res.ok || !(res.headers.get("content-type") ?? "").includes("html")) return undefined;
+    return derivePageFacts(parseHtmlPage(await res.text(), res.url || url));
+  } catch (error) {
+    // A page that cannot be read is routine, so the failure is a warning that names the url.
+    await options.logger?.log("WARN", LANDING_MODULE, "Landing page fetch failed", { url, message: formatError(error) });
+    return undefined;
+  }
 }

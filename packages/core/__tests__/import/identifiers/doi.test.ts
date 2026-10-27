@@ -1,6 +1,7 @@
 /** Contract of DOI extraction and cleanup, whatever source the candidate came from. */
 
 import { normalizeDoiCandidate, deriveDoiVariants, encodeDoiPathSegment, extractDoi } from '@labshelf/core';
+import { doiOf } from '../../support/doi';
 
 describe('extractDoi', () => {
   it.each([
@@ -45,14 +46,14 @@ describe('cleanDoiCandidate', () => {
 
 describe('doiVariants', () => {
   it('expands a component DOI into itself and its parent article DOI', () => {
-    expect(deriveDoiVariants('10.7554/eLife.28383.001')).toEqual([
+    expect(deriveDoiVariants(doiOf('10.7554/eLife.28383.001'))).toEqual([
       '10.7554/eLife.28383.001',
       '10.7554/eLife.28383',
     ]);
   });
 
   it('returns only the DOI itself when there is no numeric component suffix', () => {
-    expect(deriveDoiVariants('10.1038/nature12373')).toEqual(['10.1038/nature12373']);
+    expect(deriveDoiVariants(doiOf('10.1038/nature12373'))).toEqual(['10.1038/nature12373']);
   });
 });
 

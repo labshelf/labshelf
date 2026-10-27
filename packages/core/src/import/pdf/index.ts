@@ -13,17 +13,17 @@ export type {
   PdfjsModule,
   PdfLoadingTask,
 } from "./pdfDocument.js";
-export { extractTitleBlocks, extractPageTexts, extractUrls } from "./textExtraction.js";
-export { extractTitleFromBlocks, extractAuthorsFromBlocks } from "./frontPageLayout.js";
-export { normalizeAuthors } from "./authors.js";
+export { extractTitleBlocks, extractPageTexts, extractUrls, isNaturalText, isSparseText } from "./textExtraction.js";
+export {
+  extractTitleFromBlocks,
+  extractAuthorsFromBlocks,
+  normalizeAuthors,
+  extractTitleFromPlainText,
+  normalizeTitle,
+  deriveUsableTitle,
+} from "./frontPage.js";
+export { extractAbstract, extractKeywords, extractYearFromText, extractJournalFromRunningHead } from "./frontMatter.js";
 export { extractMetadataFromXmp } from "./xmp.js";
 export { extractPublisherMetadata, hasTrustworthyTimestamps } from "./pdfDictionary.js";
-export { extractJournalFromRunningHead } from "./pageHeader.js";
-export { extractAbstract } from "./abstract.js";
-export { extractKeywords } from "./keywords.js";
-export { extractTitleFromPlainText } from "./plainTextTitle.js";
-export { extractYearFromText } from "./publicationYear.js";
-export { normalizeTitle, deriveUsableTitle } from "./titleQuality.js";
-export { isNaturalText, isSparseText } from "./textQuality.js";
-export { PdfImportParser } from "./parser/index.js";
-export type { PdfImportParserOptions } from "./parser/index.js";
+export { PdfImportParser } from "./parser.js";
+export type { PdfImportParserOptions } from "./parser.js";

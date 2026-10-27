@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseHtmlPage, findRedirectUrls } from "@labshelf/core";
-import { decodeEntities } from "../../../src/import/landing/htmlTags";
+import { decodeEntities } from "../../../src/import/landing/htmlPage";
 
 const fixture = (name: string): string => readFileSync(join(__dirname, "..", "..", "fixtures", name), "utf8");
 

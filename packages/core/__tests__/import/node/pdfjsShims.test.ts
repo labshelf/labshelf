@@ -1,5 +1,5 @@
 /** The globals and FeatureTest patch that let pdf.js load inside an Electron utility process. */
-import { installElectronGlobals, updateFeatureTestPlatform } from '../../../src/import/node/pdfjsShims.js';
+import { installElectronGlobals, updateFeatureTestPlatform } from '../../../src/import/node/pdfjs.js';
 
 describe('electron shims', () => {
   const savedNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');

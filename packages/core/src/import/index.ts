@@ -31,5 +31,3 @@ export * from "./bibtex/index.js";
 export * from "./landing/index.js";
 export * from "./paper/index.js";
 export * from "./pdfFinder/index.js";
-export * from "./flow/index.js";
-export * from "./citationMap/index.js";

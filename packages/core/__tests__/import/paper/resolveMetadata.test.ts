@@ -1,6 +1,6 @@
 import type { DetectedIdentifier, ResolvedMetadata } from "@labshelf/core";
 import { PAGE_TRUST, resolveMetadata, withAbstract } from "@labshelf/core";
-import { checkTitleAgreement } from "../../../src/import/paper/titleAgreement";
+import { checkTitleAgreement } from "../../../src/import/paper/samePaper";
 import { doiOf } from "../../support/doi";
 import { makeFindingHarness } from "../../support/pdfFindingHarness";
 

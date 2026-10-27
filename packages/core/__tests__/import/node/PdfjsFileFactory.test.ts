@@ -1,8 +1,7 @@
 /** The BinaryDataFactory that reads pdf.js' data files from disk when pdf.js does not detect Node. */
 import * as fs from 'node:fs';
 
-import { PdfjsFileFactory } from '../../../src/import/node/PdfjsFileFactory.js';
-import { createPdfjsOptions } from '../../../src/import/node/createPdfjsOptions.js';
+import { PdfjsFileFactory, createPdfjsOptions } from '../../../src/import/node/pdfjs.js';
 
 describe('DiskBinaryDataFactory', () => {
   it('reads binary data from disk rather than over fetch()', async () => {

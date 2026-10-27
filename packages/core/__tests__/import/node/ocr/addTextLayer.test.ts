@@ -9,12 +9,13 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 import { createPdfjsLoader } from '../../../../src/import/node/index';
 
-import { TextLayerPdfBuilder } from '../../../../src/import/node/ocr/addTextLayer';
-import { openPdfForOcr } from '../../../../src/import/node/ocr/ocrDocument';
-import type { OcrDocument } from '../../../../src/import/node/ocr/ocrDocument';
-import type { TesseractOcrEngine } from '../../../../src/import/node/ocr/tesseractOcrEngine';
+import { TextLayerPdfBuilder } from '../../../../src/import/node/textLayer.js';
+import { openPdfForOcr, type OcrDocument, type TesseractOcrEngine } from '../../../../src/import/node/ocr.js';
 
-jest.mock('../../../../src/import/node/ocr/ocrDocument', () => ({ openPdfForOcr: jest.fn() }));
+jest.mock('../../../../src/import/node/ocr.js', () => ({
+  ...jest.requireActual('../../../../src/import/node/ocr.js'),
+  openPdfForOcr: jest.fn(),
+}));
 
 const pdfjs = createPdfjsLoader();
 

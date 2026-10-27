@@ -1,7 +1,7 @@
 // A failed identifier lookup is logged with context and parsing goes on without a confirmed identifier.
 import type { ILogger, PdfOpener } from '@labshelf/core';
 
-import { PdfImportParser } from '../../../../src/import/pdf/parser/PdfImportParser';
+import { PdfImportParser } from '../../../../src/import/pdf/parser';
 
 jest.mock('../../../../src/import/search/index', () => ({
   ...jest.requireActual('../../../../src/import/search/index'),

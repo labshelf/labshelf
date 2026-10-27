@@ -1,6 +1,6 @@
 /** Declares the PDF import pipeline's types: the parsed record and the pdf.js shapes it reads. */
 import type { BibliographicFields } from "../../model/index.js";
-import type { MetadataConfidence } from "../registries/index.js";
+import type { MetadataConfidence, ResolvedMetadata } from "../registries/index.js";
 
 export interface ParsedPdfImport extends BibliographicFields {
   title: string;
@@ -90,4 +90,14 @@ export interface PdfjsLoader {
   load(): Promise<PdfjsModule>;
   /** Opens a loading task with the loader's document options; `options` wins over them. */
   getDocument(options: Record<string, unknown>): Promise<PdfLoadingTask>;
+}
+
+// Everything read out of the file itself, before anything goes over the network.
+export interface PdfSignals {
+  info: Record<string, unknown>;
+  xmp: ResolvedMetadata | undefined;
+  pageTexts: string[];
+  frontMatter: string;
+  titleBlocks: TextBlock[];
+  linkUrls: string[];
 }

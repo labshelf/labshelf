@@ -1,23 +1,33 @@
 /**
  * Orchestrates the PDF import pipeline: collects every available signal, then merges them field by field.
  * Pdfjs bootstrap lives in the consumer package; core only sees the injected opener.
+ * Holds the parser, the file-signal reader and the record builder it runs on.
  */
-import { detectIdentifiers, type DetectedIdentifier } from "../../identifiers/index.js";
-import { isPdfBytes } from "../../../library/index.js";
-import type { ILogger } from "../../../ports/index.js";
-import { formatError } from "../../../errors/index.js";
-import { resolveFirstIdentifier } from "../../search/index.js";
-import { parseString } from "../../registries/index.js";
-import { extractAbstract } from "../abstract.js";
-import { extractTitleFromPlainText } from "../plainTextTitle.js";
-import { extractTitleFromBlocks } from "../frontPageLayout.js";
-import { isSparseText, isNaturalText } from "../textQuality.js";
-import { deriveUsableTitle } from "../titleQuality.js";
-import type { ParsedPdfImport, PdfOpener, PdfOcrEngine } from "../pdfDocument.js";
-import { resolveOnline, type ConfirmedIdentifier } from "./registrySources.js";
-import { createParsedPaperRecord } from "./parsedImport.js";
-import { readPdf, type PdfSignals } from "./readPdf.js";
-import { deriveLocalSources } from "./signalSources.js";
+import { detectIdentifiers, type DetectedIdentifier } from "../identifiers/index.js";
+import { createCiteKey, isPdfBytes } from "../../library/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { formatError } from "../../errors/index.js";
+import { resolveFirstIdentifier } from "../search/index.js";
+import {
+  mergeMetadata,
+  parseString,
+  SOURCE_TRUST,
+  type MetadataSource,
+  type MetadataConfidence,
+  type ResolvedMetadata,
+} from "../registries/index.js";
+import { extractAbstract, extractYearFromText } from "./frontMatter.js";
+import {
+  extractTitleFromPlainText,
+  extractTitleFromBlocks,
+  normalizeAuthors,
+  normalizeTitle,
+  deriveUsableTitle,
+} from "./frontPage.js";
+import { isSparseText, isNaturalText, extractUrls, extractPageTexts, extractTitleBlocks } from "./textExtraction.js";
+import { extractMetadataFromXmp } from "./xmp.js";
+import type { ParsedPdfImport, PdfDocumentLike, PdfOpener, PdfOcrEngine, PdfSignals } from "./pdfDocument.js";
+import { resolveOnline, deriveLocalSources, type ConfirmedIdentifier } from "./sources.js";
 
 const PDF_PARSER_MODULE = "import/pdf";
 // OCR is expensive, so only the pages that carry the masthead are read.
@@ -193,4 +203,149 @@ async function identify(signals: PdfSignals, frontMatter: string, logger: ILogge
     return undefined;
   });
   return { identifiers, confirmed };
+}
+
+// Builds the ParsedPdfImport record from the merged metadata of every source.
+function gradeConfidence(
+  identifierConfirmed: boolean,
+  resolvedOnline: boolean,
+  metadata: ResolvedMetadata,
+): MetadataConfidence {
+  if (identifierConfirmed) {
+    return "high";
+  }
+  if (resolvedOnline) {
+    return "medium";
+  }
+  return metadata.title ? "medium" : "low";
+}
+
+export interface PaperRecordInput {
+  sources: MetadataSource[];
+  fileStem: string;
+  frontMatter: string;
+  textIsReadable: boolean;
+  identifiers: DetectedIdentifier[];
+  identifierConfirmed: boolean;
+  resolvedOnline: boolean;
+  origin: string | undefined;
+  usedOcr: boolean;
+}
+
+export function createParsedPaperRecord(input: PaperRecordInput): ParsedPdfImport {
+  const merged = mergeMetadata(input.sources);
+  const metadata = merged.metadata;
+  const title = normalizeTitle(metadata.title ?? input.fileStem);
+  const year = metadata.year ?? (input.textIsReadable ? extractYearFromText(input.frontMatter) : undefined);
+  const authors = normalizeAuthors(metadata.authors);
+  // CONTRACT: documents/contracts/library-format.md#paper-identity (the key names the folder for good, so a guessed surname stays wrong)
+  const keyAuthors = authorTrust(input.sources, merged.fieldSources["authors"]) >= SOURCE_TRUST.xmp ? authors : [];
+  const citeKey = createCiteKey({ authors: keyAuthors, year, title }, title);
+
+  return {
+    title,
+    citeKey,
+    authors,
+    confidence: gradeConfidence(input.identifierConfirmed, input.resolvedOnline, metadata),
+    ...presentField("source", describeOrigin(input.origin, merged.fieldSources, input.usedOcr)),
+    ...(year ? { year } : {}),
+    ...presentField("doi", metadata.doi),
+    ...presentField("journal", metadata.journal),
+    ...presentField("publisher", metadata.publisher),
+    ...presentField("volume", metadata.volume),
+    ...presentField("issue", metadata.issue),
+    ...presentField("pages", metadata.pages),
+    ...presentField("url", metadata.url),
+    ...presentField("issn", metadata.issn),
+    ...presentField("language", metadata.language),
+    ...presentField("summary", metadata.summary),
+    ...(metadata.keywords?.length ? { keywords: metadata.keywords } : {}),
+  };
+}
+
+function authorTrust(sources: MetadataSource[], winner: string | undefined): number {
+  return sources.find((source) => source.name === winner)?.trust ?? 0;
+}
+
+// Names the winning route plus how many distinct sources contributed, which is
+// what a maintainer reading the log actually wants to know.
+function describeOrigin(
+  origin: string | undefined,
+  fieldSources: Record<string, string>,
+  usedOcr: boolean,
+): string | undefined {
+  const contributors = new Set(Object.values(fieldSources));
+  if (contributors.size === 0) {
+    return origin;
+  }
+  const base = origin ?? [...contributors][0] ?? "pdf";
+  const suffix = usedOcr ? " +ocr" : "";
+  return `${base}${suffix} (${contributors.size} source${contributors.size === 1 ? "" : "s"})`;
+}
+
+// Emits a single-key object only when the value is present, keeping presentField
+// fields absent rather than set to undefined under exactOptionalPropertyTypes.
+function presentField<K extends string>(key: K, value: string | undefined): Record<K, string> | Record<string, never> {
+  return value ? ({ [key]: value } as Record<K, string>) : {};
+}
+
+// Reads every signal the PDF file itself carries, in one pass over the document.
+function describePdfError(error: unknown): Error {
+  const name = (error as { name?: unknown })?.name;
+  const message = formatError(error);
+
+  if (name === "PasswordException") {
+    return new Error("The PDF is password-protected and could not be read.");
+  }
+  if (name === "InvalidPDFException" || /\b(root reference|xref|invalid pdf)\b/i.test(message)) {
+    return new Error("The PDF is corrupted or incomplete and could not be read.");
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
+// Front matter carrying the title, authors and DOI rarely runs past page 3.
+const FRONT_MATTER_PAGES = 3;
+const PDF_SIGNALS_MODULE = "import/pdf";
+
+export async function readPdf(
+  opener: PdfOpener,
+  pdfBytes: Uint8Array,
+  logger: ILogger | undefined,
+): Promise<PdfSignals> {
+  const document = await openDocument(opener, pdfBytes);
+  try {
+    const metadata = await readOrEmpty(document.getMetadata(), undefined, "metadata", logger);
+    const pageTexts = (await extractPageTexts(document, FRONT_MATTER_PAGES, logger)).map((page) => page.text);
+    return {
+      info: (metadata?.info as Record<string, unknown>) ?? {},
+      xmp: extractMetadataFromXmp(metadata?.metadata),
+      pageTexts,
+      frontMatter: pageTexts.join("\n"),
+      titleBlocks: await readOrEmpty(extractTitleBlocks(document), [], "title blocks", logger),
+      linkUrls: await readOrEmpty(extractUrls(document, FRONT_MATTER_PAGES, logger), [], "link annotations", logger),
+    };
+  } finally {
+    await readOrEmpty((async () => document.destroy())(), undefined, "cleanup", logger);
+  }
+}
+
+// One unreadable signal must not cost the others, so a failure is logged and the signal left empty.
+async function readOrEmpty<T>(read: Promise<T>, empty: T, signal: string, logger: ILogger | undefined): Promise<T> {
+  try {
+    return await read;
+  } catch (error) {
+    await logger?.log("WARN", PDF_SIGNALS_MODULE, `PDF ${signal} unreadable; continuing without it`, {
+      message: formatError(error),
+    });
+    return empty;
+  }
+}
+
+// Wraps the injected opener with friendly error mapping for password-protected and corrupt PDFs.
+async function openDocument(opener: PdfOpener, pdfBytes: Uint8Array): Promise<PdfDocumentLike> {
+  try {
+    return await opener.open(pdfBytes);
+  } catch (error) {
+    throw describePdfError(error);
+  }
 }
