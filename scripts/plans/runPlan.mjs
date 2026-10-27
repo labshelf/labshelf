@@ -70,6 +70,9 @@ const UNATTENDED = [
   "that keeps current behaviour and note it in the handoff. The approved plan authorises the session's commits.",
   "If the session cannot finish, write the remainder as sessions/<id>-<name>.md as the handoff reference says,",
   "commit what is done, and stop. Never leave tracked changes uncommitted.",
+  "TRAP: this is `claude -p`, so ending your turn ends the process and the session never finishes. Launch every",
+  "subagent with run_in_background: false so its report returns inside the same turn, never end a turn to wait for",
+  "an agent, and do not stop until the session file is deleted and the session is committed (or a remainder file is).",
   "Testing policy for this run, which overrides every `pnpm gate`, lint, baseline and knip/jscpd step in the session",
   "file and the gate step of the finish skill: implementers never run `pnpm gate` or any lint; they check their work",
   "only with `pnpm --filter @labshelf/<pkg> typecheck` for each package they changed and `pnpm --filter",
@@ -91,7 +94,7 @@ const MILESTONE = [
 const isMilestone = (pendingCount, every) => pendingCount === 1 || (every > 0 && pendingCount % every === 1);
 
 const RESUME = [
-  "A previous run of this session stopped at the usage limit before it committed. The uncommitted changes are that",
+  "A previous run of this session stopped (usage limit, or it ended its turn early) before it committed. The uncommitted changes are that",
   "run's partial work: read `git status` and `git diff --stat`, the session file's OK column and its research/ files,",
   "keep what is correct, do not redo finished packages, and continue from there. The dirty tree is expected; do not",
   "stop because the repo differs from Starts from in those changes.",
@@ -104,6 +107,7 @@ const FALLBACK_WAIT_MS = 20 * 60 * 1000;
 const MARGIN_MS = 3 * 60 * 1000;
 const STALL_MS = 60 * 60 * 1000;
 const MAX_RESUMES = 10; // limit interruptions of one session before the runner gives up
+const MAX_CONTINUES = 3; // runs of one session that end without a commit before the runner gives up
 
 // Returns when to retry if the text says the usage limit was hit, else null.
 function limitRetryAt(text, now = new Date()) {
@@ -228,6 +232,7 @@ async function main() {
   let ran = 0;
   let resume = options.resume ? queue[0] ?? null : null; // session id interrupted by the usage limit
   const resumes = new Map();
+  const continues = new Map();
   for (;;) {
     const pending = pendingSessions(sessionsDir);
     const [session] = pending;
@@ -257,6 +262,14 @@ async function main() {
       }
     }
     if (failed) throw new Error(`session ${session} ${stalled ? "stalled" : "failed"} (exit ${code}, ${result?.subtype ?? "no result"}) while Claude answers normally`);
+    // A run that ended its turn early (e.g. waiting for background agents) leaves the session pending without a commit.
+    const stillPending = pendingSessions(sessionsDir).includes(session);
+    if (stillPending && git("rev-parse", "HEAD") === headBefore && (continues.get(session) ?? 0) < MAX_CONTINUES) {
+      continues.set(session, (continues.get(session) ?? 0) + 1);
+      console.log(`[plan] session ${session} ended without a commit; continuing it (${continues.get(session)}/${MAX_CONTINUES})`);
+      resume = session;
+      continue;
+    }
     resume = null;
     ran++;
     attempts.set(session, (attempts.get(session) ?? 0) + 1);
