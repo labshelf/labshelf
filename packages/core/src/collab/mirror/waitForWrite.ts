@@ -1,5 +1,5 @@
 // Keeps cloud writes outside the share until their relay history arrives.
-import { recordFor } from "../../library/writeRecords/index.js";
+import { recordFor } from "../../library/mutations/index.js";
 import { readWrittenHashes } from "../model/index.js";
 import { LOG_MODULE, type MirrorContext } from "./mirrorContext.js";
 

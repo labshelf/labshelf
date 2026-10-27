@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { ConflictCopy } from "../../../library/conflicts/index.js";
 import { writeFileAtomic } from "../../../library/node/index.js";
-import type { DeviceIdentity } from "../../../library/writeRecords/index.js";
+import type { DeviceIdentity } from "../../../library/mutations/index.js";
 import { addProjectWriteRecord } from "./projectWriteRecord.js";
 import type { ILogger } from "../../../ports/index.js";
 import { isItemFileName, isMergeableTextFile } from "../index.js";

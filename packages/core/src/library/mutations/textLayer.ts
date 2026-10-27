@@ -1,7 +1,51 @@
-/** Turns text-layer checks and OCR jobs into the verdict stored on a paper, and decides when a new verdict is worth writing. */
-import type { TextLayerDetails } from "../../../model/index.js";
-import { formatError } from "../../../errors/index.js";
-import type { TextLayerDetection, TextLayerOutcome } from "./textLayerOutcome.js";
+/**
+ * The text-layer step apps run on PDFs and the verdict it leaves on a paper: what a check or OCR job reports, the
+ * port that runs it, and the rules that turn a report into a stored verdict and decide when it is worth writing.
+ */
+import type { TextLayerDetails } from "../../model/index.js";
+import { formatError } from "../../errors/index.js";
+
+/** Where the text of a PDF that has some comes from. */
+export type ExistingLayer = "native" | "ocr";
+
+/** Why a document that needs OCR was deliberately not read; apps map the code to their own wording (settings, flags). */
+export type TextLayerSkipKind = "ocr-disabled" | "page-limit";
+
+export type TextLayerOutcome =
+  // The document carries a text layer on `pagesAdded` pages.
+  | { status: "added"; bytes: Uint8Array; pagesAdded: number; pagesFailed: number }
+  // The PDF already has text: its own, or an OCR layer added earlier.
+  | { status: "not-needed"; layer: ExistingLayer }
+  | { status: "cancelled" }
+  // The document needs OCR but was deliberately not read (OCR off, too many pages).
+  // `reason` is neutral text, safe to store on the paper and show in any app.
+  | { status: "skipped"; code: TextLayerSkipKind; reason: string }
+  // OCR could not run or produced nothing usable; `reason` says why.
+  | { status: "unavailable"; reason: string };
+
+/** What a document's own text layer looks like, before any OCR. */
+export type TextLayerDetection =
+  | { status: ExistingLayer }
+  | { status: "missing"; textlessPages: number; totalPages: number }
+  | { status: "unavailable"; reason: string };
+
+export interface TextLayerProgress {
+  // 1-based position among the pages being read, not the page number.
+  index: number;
+  total: number;
+  pageNumber: number;
+}
+
+export interface TextLayerHooks {
+  onProgress?: (progress: TextLayerProgress) => void;
+  isCancelled?: () => boolean;
+}
+
+/** Adds a text layer to PDFs that lack one. */
+export interface PdfTextLayerBuilder {
+  build(pdfBytes: Uint8Array, hooks?: TextLayerHooks): Promise<TextLayerOutcome>;
+  detect(pdfBytes: Uint8Array): Promise<TextLayerDetection>;
+}
 
 /** @returns the current time as an ISO timestamp */
 export function readWallClock(): string {

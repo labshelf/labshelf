@@ -2,7 +2,7 @@
 import { isMergeableTextFile } from '../../writing/conflict/index.js';
 import { deriveTextSha256Hex } from '../../hash/index.js';
 import { deriveLineSimilarity } from '../../writing/text/index.js';
-import type { WriteRecords } from '../writeRecords/index.js';
+import type { WriteRecords } from '../mutations/index.js';
 import type { ConflictCopy } from './conflictCopy.js';
 import { parseConflictName } from './conflictNames.js';
 import type { ConflictDismissal } from './conflictDismissals.js';

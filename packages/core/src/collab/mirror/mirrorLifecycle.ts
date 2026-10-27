@@ -1,5 +1,5 @@
 // Stops a project mirror when its folder or ownership is lost.
-import type { WriteRecordStore } from "../../library/writeRecords/index.js";
+import type { WriteRecordStore } from "../../library/mutations/index.js";
 import { MirrorLostError } from "./MirrorLostError.js";
 import { MirrorProjectDirUnavailable, type MirrorFileSystem } from "./fileSystem/index.js";
 import { LOG_MODULE } from "./mirrorContext.js";

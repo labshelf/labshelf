@@ -1,6 +1,6 @@
 /** Runs share connections of separate devices over in-process relays, each with in-memory state and an in-memory library. */
 import { createLibraryMirrorFileSystem, startProjectMirror } from "../../../src/collab/mirror/index";
-import { createWriteRecordStore } from "../../../src/library/writeRecords/index";
+import { createWriteRecordStore } from "../../../src/library/mutations/index";
 import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
 import { LIB, memoryCatalog, readText, writeTree, type MemoryCatalog } from "../../support/memoryProjectCatalog";

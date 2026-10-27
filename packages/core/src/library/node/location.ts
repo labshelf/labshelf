@@ -1,15 +1,90 @@
-// Moves a library folder to a new location without losing a file, and records the new root in the shared config.
+/** Decides where a library lives and moves it: inspects folders, resolves the target of a picked folder, lists the
+ * folders a first run offers, formats paths for display, and moves a library without losing a file. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { isDirectory } from "../../../files/node/index.js";
-import type { ILogger } from "../../../ports/index.js";
-import { formatError } from "../../../errors/index.js";
-import { deriveLibraryKey, resolveDeviceStateDir } from "../layout.js";
-import { resolveSharedConfigPath, updateSharedConfig } from "../sharedConfigFile.js";
-import { isLibraryFolder } from "./detectLibraryFolder.js";
-import { deriveSha256Hex } from "../../../hash/index.js";
-import { resolveCacheDir } from "../resolveCacheDir.js";
+import { formatError } from "../../errors/index.js";
+import { isDirectory } from "../../files/node/index.js";
+import { deriveSha256Hex } from "../../hash/index.js";
+import { isInside } from "../../path/index.js";
+import { nodePathOps } from "../../path/node/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { createLibraryLayout, METADATA_FILE } from "../layout.js";
+import { deriveLibraryKey, resolveCacheDir, resolveDeviceStateDir, resolveSharedConfigPath, updateSharedConfig } from "./layout.js";
+import { formatSyncTool, type SyncFolder } from "./syncFolders.js";
+
+// A folder with a metadata file is a paper and is not descended into; any other folder is a collection.
+// Dirent reports a symlink as neither file nor folder, so links are never followed or counted; a missing folder counts 0.
+export async function countPaperFolders(dir: string): Promise<number> {
+  const entries = await fs.readdir(dir, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") { return []; }
+    throw error;
+  });
+  if (entries.some((entry) => entry.isFile() && entry.name === METADATA_FILE)) { return 1; }
+  const counts = await Promise.all(entries.filter((entry) => entry.isDirectory()).map((entry) => countPaperFolders(path.join(dir, entry.name))));
+  return counts.reduce((sum, count) => sum + count, 0);
+}
+
+export interface LibraryFolderDetails {
+  exists: boolean;
+  isLibrary: boolean;
+  paperCount: number;
+}
+
+/** @returns true when every marker folder of the library layout exists in `root` */
+export async function isLibraryFolder(root: string): Promise<boolean> {
+  const checks = await Promise.all(createLibraryLayout(root, path.join).markerDirs().map(isDirectory));
+  return checks.every(Boolean);
+}
+
+/** @returns what the folder holds; a missing folder is `exists: false`, not an error */
+export async function detectLibraryFolder(root: string): Promise<LibraryFolderDetails> {
+  if (!(await isDirectory(root))) { return { exists: false, isLibrary: false, paperCount: 0 }; }
+  if (!(await isLibraryFolder(root))) { return { exists: true, isLibrary: false, paperCount: 0 }; }
+  const papersRoot = createLibraryLayout(root, path.join).papersRoot();
+  return { exists: true, isLibrary: true, paperCount: await countPaperFolders(papersRoot) };
+}
+
+export const LIBRARY_FOLDER_NAME = "LabShelf";
+
+/**
+ * A missing, empty or library folder is the target itself; a non-empty folder that is not a library gets a
+ * `LabShelf` subfolder, so a library never mixes with unrelated files.
+ * @param options.unreadableAsEmpty treats a folder that cannot be listed as empty instead of rejecting
+ * @returns the absolute target folder
+ */
+export async function resolveLibraryDir(picked: string, options: { unreadableAsEmpty?: boolean } = {}): Promise<string> {
+  const folder = path.resolve(picked);
+  const info = await detectLibraryFolder(folder);
+  if (!info.exists || info.isLibrary) { return folder; }
+  const listing = fs.readdir(folder);
+  const entries = options.unreadableAsEmpty ? await listing.catch(() => []) : await listing;
+  return entries.length > 0 ? path.join(folder, LIBRARY_FOLDER_NAME) : folder;
+}
+
+export function formatPath(target: string, home: string): string {
+  const relative = path.relative(home, target);
+  if (relative === "") { return "~"; }
+  if (!isInside(nodePathOps, home, target)) { return target; }
+  return `~/${relative.split(path.sep).join("/")}`;
+}
+
+export interface LibraryFolderChoice {
+  path: string;
+  /** The path in `~/…` form. */
+  label: string;
+  /** Which sync tool keeps the folder, or that it stays on this computer. */
+  detail: string;
+}
+
+export function listLibraryFolders(folders: readonly SyncFolder[], home: string): LibraryFolderChoice[] {
+  const synced = folders.map((folder) => {
+    const target = path.join(folder.path, LIBRARY_FOLDER_NAME);
+    return { path: target, label: formatPath(target, home), detail: `synced by ${formatSyncTool(folder.tool)}` };
+  });
+  const local = path.join(home, LIBRARY_FOLDER_NAME);
+  return [...synced, { path: local, label: formatPath(local, home), detail: "only on this computer" }];
+}
 
 /** A folder that cannot move stays where it is and is logged; the library move has already succeeded. */
 async function moveDeviceLocalFolders(

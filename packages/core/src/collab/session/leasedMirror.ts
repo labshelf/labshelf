@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
 import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
-import { createWriteRecordStore, type DeviceIdentity } from "../../library/writeRecords/index.js";
+import { createWriteRecordStore, type DeviceIdentity } from "../../library/mutations/index.js";
 import {
   openFolderLease, startProjectMirror, systemLeaseScheduler,
   type FolderLease, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorFileSystem,

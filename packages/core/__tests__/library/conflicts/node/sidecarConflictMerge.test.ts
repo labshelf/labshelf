@@ -3,7 +3,7 @@ import * as nodeFs from "node:fs";
 import * as path from "node:path";
 
 import { scanConflictCopies } from "../../../../src/library/conflicts/node/index";
-import * as atomicWrite from "../../../../src/library/node/atomicWrite";
+import * as atomicWrite from "../../../../src/library/node/fileSystem";
 import { serializePaperSidecar, type PaperSidecar } from "../../../../src/reader/index";
 import type { Annotation } from "../../../../src/model/index";
 import { fakeLogger } from "../../../support/fakeLogger";

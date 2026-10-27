@@ -1,6 +1,6 @@
 // Mirrors a shared project between its share docs and its folder on disk, in both directions.
 import type { ConflictCopy } from "../../library/conflicts/index.js";
-import type { WriteRecordStore } from "../../library/writeRecords/index.js";
+import type { WriteRecordStore } from "../../library/mutations/index.js";
 import type * as Y from "yjs";
 import { deriveTextSha256Hex } from "../../hash/index.js";
 import { COMMENTS_PATH, renderCommentsFile } from "../comments/index.js";

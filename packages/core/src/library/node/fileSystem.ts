@@ -1,8 +1,71 @@
-/** Implements the library, sync and BibTeX file-system ports over node:fs; writes are atomic through the library's temp folder. */
+/** Reads and writes the library's files on disk: atomic writes, owner-only folders, optional reads, and the Node
+ * implementation of the library, sync and BibTeX file-system ports (its writes are atomic through the library's temp folder). */
+import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
+import * as path from "node:path";
 
 import type { LibraryFileSystem, LocalStat } from "../../ports/index.js";
-import { writeFileAtomic } from "./atomicWrite.js";
+
+/**
+ * Writes a file atomically: temp file in tmpDir (same volume as the library), then rename over the target.
+ * `mode` is the new file's permission bits (POSIX).
+ */
+export async function writeFileAtomic(target: string, content: string | Uint8Array, tmpDir?: string, mode?: number): Promise<void> {
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  const dir = tmpDir ?? path.dirname(target);
+  await fs.mkdir(dir, { recursive: true });
+  const tmp = path.join(dir, `.${path.basename(target)}.${randomUUID()}.tmp`);
+  try {
+    await writeSyncedFile(tmp, content, mode);
+    await fs.rename(tmp, target);
+  } catch (error) {
+    await fs.rm(tmp, { force: true }).catch(() => undefined);
+    // A temp dir on another volume (rename EXDEV) falls back to a direct write.
+    if ((error as NodeJS.ErrnoException).code === "EXDEV") {
+      await fs.writeFile(target, content, mode === undefined ? undefined : { mode });
+      return;
+    }
+    throw error;
+  }
+}
+
+/** Writes and fsyncs a temp file, so a rename over the target never exposes an empty file after a crash. */
+export async function writeSyncedFile(file: string, content: string | Uint8Array, mode?: number): Promise<void> {
+  const handle = await fs.open(file, "w", mode);
+  try {
+    await handle.writeFile(content);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+/** Mode of a folder only its owner can use. */
+export const PRIVATE_DIR_MODE = 0o700;
+/** Mode of a file only its owner can read. */
+export const PRIVATE_FILE_MODE = 0o600;
+
+/**
+ * Creates the folder and its missing parents, then sets the folder itself to 0o700 even when it already existed.
+ * PLATFORM: Windows has no POSIX modes; callers skip this there.
+ */
+export async function ensurePrivateDir(dir: string): Promise<void> {
+  await fs.mkdir(dir, { recursive: true, mode: PRIVATE_DIR_MODE });
+  await fs.chmod(dir, PRIVATE_DIR_MODE);
+}
+
+export function isGroupOrOtherWritable(mode: number): boolean {
+  return (mode & 0o022) !== 0;
+}
+
+export async function readOptionalFile(file: string): Promise<string | undefined> {
+  try {
+    return await fs.readFile(file, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") { return undefined; }
+    throw error;
+  }
+}
 
 export class NodeLibraryFileSystem implements LibraryFileSystem {
   /**

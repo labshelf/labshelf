@@ -2,7 +2,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../node/index.js';
-import { readWriteRecords } from '../../../writeRecords/index.js';
+import { readWriteRecords } from '../../../mutations/index.js';
 import { detectProjectConflict, isEligibleProjectConflictPath, readConflictDismissals, parseConflictName } from '../../index.js';
 import type { ConflictCopy, ProjectConflictText } from '../../index.js';
 import type { ILogger } from '../../../../ports/index.js';

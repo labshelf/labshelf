@@ -6,7 +6,7 @@ import { createProjectFromTemplate } from '../../../../src/writing/project/index
 import { createNodeProjectCatalogCompositionRoot } from '../../../../src/writing/project/node/index';
 import { createBlankTemplate } from '../../../../src/templates/index';
 import { createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../../src/library/node/index';
-import { readWriteRecords } from '../../../../src/library/writeRecords/index';
+import { readWriteRecords } from '../../../../src/library/mutations/index';
 import { cleanupTempDirs, makeTempDir } from '../../../support/tempDirs';
 import type { ILogger } from '../../../../src/ports/index';
 

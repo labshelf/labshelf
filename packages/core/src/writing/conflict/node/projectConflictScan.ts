@@ -18,7 +18,7 @@ import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js"
 import { hasMergeableExtension, isMergeableTextFile, type IProjectVersionStore } from "../index.js";
 import { deriveTextSha256Hex } from "../../../hash/index.js";
 import { mergeProjectCopies } from "./projectCopyMerge.js";
-import { createWriteRecordStore, recordFor } from "../../../library/writeRecords/index.js";
+import { createWriteRecordStore, recordFor } from "../../../library/mutations/index.js";
 import { addProjectWriteRecord } from "./projectWriteRecord.js";
 import { mergeFileText } from "./mergeText.js";
 

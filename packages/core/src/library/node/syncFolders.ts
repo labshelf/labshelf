@@ -1,11 +1,12 @@
-// Finds the folders that Dropbox, Google Drive, OneDrive, iCloud Drive, Nextcloud and Syncthing sync on this computer.
+/** Finds the folders that Dropbox, Google Drive, OneDrive, iCloud Drive, Nextcloud and Syncthing sync on this computer,
+ * and names them the way their own apps do. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { isDirectory } from "../../../files/node/index.js";
-import type { SyncTool } from "../../conflicts/index.js";
-import type { ILogger } from "../../../ports/index.js";
-import { formatError } from "../../../errors/index.js";
+import { formatError } from "../../errors/index.js";
+import { isDirectory } from "../../files/node/index.js";
+import type { ILogger } from "../../ports/index.js";
+import type { SyncTool } from "../conflicts/index.js";
 
 interface ClientConfigSite {
   home: string;
@@ -172,4 +173,17 @@ export async function detectSyncFolders(options: DetectSyncFoldersOptions): Prom
   });
   const exists = await Promise.all(unique.map((candidate) => isDirectory(candidate.path)));
   return unique.filter((_candidate, index) => exists[index]);
+}
+
+const NAMES: Record<SyncFolderTool, string> = {
+  dropbox: "Dropbox",
+  googledrive: "Google Drive",
+  onedrive: "OneDrive",
+  icloud: "iCloud Drive",
+  nextcloud: "Nextcloud",
+  syncthing: "Syncthing",
+};
+
+export function formatSyncTool(tool: SyncFolderTool): string {
+  return NAMES[tool];
 }

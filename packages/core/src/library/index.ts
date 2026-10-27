@@ -31,4 +31,3 @@ export * from "./search.js";
 export * from "./searchText.js";
 export * from "./conflicts/index.js";
 export * from "./syncGuide/index.js";
-export * from "./writeRecords/index.js";

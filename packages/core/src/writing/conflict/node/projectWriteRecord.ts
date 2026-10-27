@@ -1,5 +1,5 @@
 // Records app-authored project text versions with the bytes present before their save.
-import { createWriteRecordStore, type DeviceIdentity } from '../../../library/writeRecords/index.js';
+import { createWriteRecordStore, type DeviceIdentity } from '../../../library/mutations/index.js';
 import { NodeLibraryFileSystem } from '../../../library/node/index.js';
 import type { ILogger } from '../../../ports/index.js';
 import { deriveTextSha256Hex } from '../../../hash/index.js';

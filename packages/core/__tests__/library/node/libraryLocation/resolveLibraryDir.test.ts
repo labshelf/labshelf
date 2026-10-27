@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { resolveLibraryDir } from "../../../../src/library/node/libraryLocation/resolveLibraryDir";
+import { resolveLibraryDir } from "../../../../src/library/node/location";
 
 let dir: string;
 beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), "labshelf-target-")); });
