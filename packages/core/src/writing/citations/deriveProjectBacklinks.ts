@@ -1,7 +1,7 @@
 // Builds the backlink index from the sources of every ready writing project.
 import { DISK_ONLY, walkProjectSources } from "./index.js";
 import type { OpenSources, ProjectEntry } from "../project/index.js";
-import type { ProjectReadContext } from "../project/folder/index.js";
+import type { ProjectReadContext } from "../project/projectReads.js";
 import { addBacklinks, type Backlink, type BacklinkMap } from "./backlinkEntries.js";
 import { findCitationSites } from "./findCitationSites.js";
 

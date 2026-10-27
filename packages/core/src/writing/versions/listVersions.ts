@@ -1,6 +1,6 @@
 // Lists the versions a project folder holds, oldest first, skipping snapshots that cannot be read.
-import type { ProjectReadContext } from "../project/folder/index.js";
-import { readOptionalText } from "../project/folder/index.js";
+import type { ProjectReadContext } from "../project/projectReads.js";
+import { readOptionalText } from "../project/projectReads.js";
 import type { ProjectVersion } from "./projectVersion.js";
 import { parseVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionFile.js";
 

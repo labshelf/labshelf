@@ -1,6 +1,6 @@
 // Snapshots a project's sources and built PDF into a named version, replacing a version of the same name.
 import { randomHex } from "../../encoding/index.js";
-import { listProjectFiles, type ProjectReadContext } from "../project/folder/index.js";
+import { listProjectFiles, type ProjectReadContext } from "../project/projectReads.js";
 import type { MarkVersionRequest } from "./projectVersion.js";
 import { serializeVersionFile, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionFile.js";
 import { deriveVersionSlug } from "./deriveVersionSlug.js";

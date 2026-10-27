@@ -4,7 +4,7 @@ import type { ILogger } from "../../ports/index.js";
 import { parseHistoryLine, serializeHistoryLine, type HistoryEntry, type HistoryKind } from "./historyEntry.js";
 import type { HistoryStorage, HistoryProject } from "./historyStorage.js";
 import { deriveSha256Hex } from "../../hash/index.js";
-import { listProjectFiles } from "../project/folder/index.js";
+import { listProjectFiles } from "../project/projectReads.js";
 
 /** Larger files, such as datasets or videos, would make every snapshot slow and the store large. */
 const MAX_FILE_BYTES = 10 * 1024 * 1024;

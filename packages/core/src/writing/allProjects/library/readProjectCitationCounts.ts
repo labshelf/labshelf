@@ -1,7 +1,7 @@
 // Counts the distinct keys a project cites and those found in neither the library nor a .bib file.
 import type { PaperRecord } from "../../../model/index.js";
 import type { ProjectSettings } from "../../project/index.js";
-import type { ProjectReadContext } from "../../project/folder/index.js";
+import type { ProjectReadContext } from "../../project/projectReads.js";
 import { deriveProjectCitations } from "./deriveProjectCitations.js";
 import { readProjectSources } from "./readProjectSources.js";
 

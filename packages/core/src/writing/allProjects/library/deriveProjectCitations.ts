@@ -4,7 +4,7 @@ import type { PaperRecord } from "../../../model/index.js";
 import { parseBibEntries } from "../../bibliography/index.js";
 import { derivePapersByCiteKey, scanCiteKeys } from "../../citations/index.js";
 import { DEFAULT_BIBLIOGRAPHY, type ProjectSettings } from "../../project/index.js";
-import { readOptionalText, listBuildRootFileNames, type ProjectReadContext } from "../../project/folder/index.js";
+import { readOptionalText, listBuildRootFileNames, type ProjectReadContext } from "../../project/projectReads.js";
 import type { ProjectCitation } from "../projectDetailPane.js";
 import type { ProjectSourceTexts } from "./readProjectSources.js";
 

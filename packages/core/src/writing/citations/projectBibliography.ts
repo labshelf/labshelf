@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#generated-files
 import { mergeGeneratedBibliography } from "../../collab/model/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
+import { readOptionalText, type ProjectReadContext } from "../project/projectReads.js";
 import { DEFAULT_BIBLIOGRAPHY, updateProjectSettings, type OpenSources, type ProjectFormat } from "../project/index.js";
 import { createBibliography } from "./bibliographyFile.js";
 import { withBibliographyLine } from "./bibliographyLine.js";

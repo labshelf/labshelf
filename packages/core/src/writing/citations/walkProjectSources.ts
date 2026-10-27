@@ -1,6 +1,6 @@
 // Reads a project's LaTeX or Typst sources, taking an open editor's unsaved text over the disk.
 import type { OpenSources, ProjectFormat } from "../project/index.js";
-import { listProjectFiles, type ProjectReadContext } from "../project/folder/index.js";
+import { listProjectFiles, type ProjectReadContext } from "../project/projectReads.js";
 
 export const DISK_ONLY: OpenSources = { text: () => undefined, replace: async () => false };
 

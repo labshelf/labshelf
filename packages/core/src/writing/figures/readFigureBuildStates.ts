@@ -1,5 +1,5 @@
 /** Reads the staleness of a project's figures from the modification times of the figures and their inputs. */
-import { listProjectFiles, type ProjectReadContext } from "../project/folder/index.js";
+import { listProjectFiles, type ProjectReadContext } from "../project/projectReads.js";
 import type { FigureRecipe } from "../project/index.js";
 import { deriveFigureBuildState, type FigureFacts, type FigureState } from "./figureState.js";
 import { isGlobPattern, isInputPatternMatch, normalizeInputPath } from "./inputPattern.js";

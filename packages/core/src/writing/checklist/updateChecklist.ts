@@ -1,5 +1,5 @@
 // Edits a project's .labshelf/checklist.json, keeping every field the edit does not change.
-import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
+import { readOptionalText, type ProjectReadContext } from "../project/projectReads.js";
 import { CHECKLIST_DIR, CHECKLIST_FILE, parseChecklistFile, serializeChecklistFile, type ChecklistDocument } from "./checklistFile.js";
 
 /** A file that does not parse is left untouched and the call fails, so no coauthor's item is lost. */

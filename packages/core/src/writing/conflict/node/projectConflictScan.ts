@@ -9,7 +9,7 @@ import { hasMergeableExtension, isMergeableTextFile, parseConflictName, type Con
 import { createWriteRecordStore, recordFor } from "../../../library/mutations/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { deriveTextSha256Hex } from "../../../hash/index.js";
-import { listProjectFiles } from "../../project/folder/index.js";
+import { listProjectFiles } from "../../project/projectReads.js";
 import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js";
 import { isEligibleProjectConflictPath } from "../projectConflicts.js";
 import { mergeProjectCopies, readSharedProjectFiles, scanProjectContentConflicts } from "./projectConflicts.js";

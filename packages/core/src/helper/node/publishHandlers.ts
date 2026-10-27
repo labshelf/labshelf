@@ -20,7 +20,7 @@ import { deriveBuiltPdfPath } from "../../writing/build/index.js";
 import { readSharedLibraryRoot } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { resolveInLibrary } from "../../bridge/node/index.js";
-import { readProject } from "../../writing/project/folder/index.js";
+import { readProject } from "../../writing/project/projectReads.js";
 import { createNodeProjectReadCompositionRoot } from "../../writing/project/node/index.js";
 import { formatEngineLabel } from "../../latex/index.js";
 import { deriveTemplateTreeProblem } from "../../templates/templateManifest/index.js";

@@ -4,7 +4,7 @@ import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { deriveCountedPages, derivePaperBody, readPdfFacts, countWordsUpTo } from "../../checks/index.js";
 import { type ProjectSettings, DEFAULT_BIBLIOGRAPHY } from "../../project/index.js";
-import { type ProjectReadContext, readOptionalText } from "../../project/folder/index.js";
+import { type ProjectReadContext, readOptionalText } from "../../project/projectReads.js";
 import { listVersions } from "../../versions/index.js";
 import type { ProjectBuildReport, ProjectPaneContent } from "../projectDetailPane.js";
 import { deriveProjectCitations } from "./deriveProjectCitations.js";

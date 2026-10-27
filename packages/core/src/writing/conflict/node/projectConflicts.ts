@@ -12,7 +12,7 @@ import { detectProjectConflict, isEligibleProjectConflictPath, type ProjectConfl
 import type { ILogger } from '../../../ports/index.js';
 import { deriveTextSha256Hex } from '../../../hash/index.js';
 import { deriveLineSimilarity } from '../../text/index.js';
-import { listProjectFiles } from '../../project/folder/index.js';
+import { listProjectFiles } from '../../project/projectReads.js';
 import { listLibraryProjects, nodeFileReads } from '../../project/node/index.js';
 import { parseProjectFile, PROJECT_FILE } from '../../project/index.js';
 import { createNodeCollabStorage } from '../../../collab/node/deviceState/index.js';

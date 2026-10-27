@@ -2,7 +2,7 @@
 import { readLatexProjectSources } from "../../../latex/index.js";
 import { deriveReadingOrderTexts } from "../../checks/index.js";
 import type { ProjectSettings } from "../../project/index.js";
-import { readOptionalText, type ProjectReadContext } from "../../project/folder/index.js";
+import { readOptionalText, type ProjectReadContext } from "../../project/projectReads.js";
 
 export interface ProjectSourceTexts {
   /** Project-relative paths, main first. */

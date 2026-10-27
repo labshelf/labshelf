@@ -2,7 +2,7 @@
 import { readFigureBuildStates } from "../figures/index.js";
 import { readLatexProjectSources, findUndefinedReferences } from "../../latex/index.js";
 import type { ProjectEntry } from "../project/index.js";
-import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
+import { readOptionalText, type ProjectReadContext } from "../project/projectReads.js";
 import type { BrokenReference, StaleFigure } from "./buildChecklist.js";
 import type { ManualItem } from "./checklistFile.js";
 import { readManualItems } from "./readManualItems.js";

@@ -6,7 +6,7 @@ import { execFile } from "node:child_process";
 import type { PdfjsLoader } from "../../../import/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { CheckSettings } from "../../project/index.js";
-import { listProjectFiles } from "../../project/folder/index.js";
+import { listProjectFiles } from "../../project/projectReads.js";
 import { nodeFileReads } from "../../project/node/index.js";
 import type { CheckProblem, CheckSource } from "../checkReport.js";
 import { readPdfFacts } from "../readPdfFacts.js";

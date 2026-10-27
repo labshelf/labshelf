@@ -1,5 +1,5 @@
 // Reads and decompresses the SyncTeX file a LaTeX build left in its build folder.
-import type { ProjectReadContext } from "../project/folder/index.js";
+import type { ProjectReadContext } from "../project/projectReads.js";
 import { parseSynctex } from "./parseSynctex.js";
 import type { SynctexRead } from "./synctexMap.js";
 

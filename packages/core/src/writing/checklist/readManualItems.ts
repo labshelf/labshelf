@@ -1,5 +1,5 @@
 // Reads a project's hand-added checklist items through the file-system port.
-import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
+import { readOptionalText, type ProjectReadContext } from "../project/projectReads.js";
 import { CHECKLIST_DIR, CHECKLIST_FILE, listManualItems, parseChecklistFile, type ManualItem } from "./checklistFile.js";
 
 const MODULE = "checklist";

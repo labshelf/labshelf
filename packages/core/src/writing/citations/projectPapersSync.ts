@@ -1,7 +1,7 @@
 // Brings the papers list of a project's labshelf.yaml in line with the keys its sources cite.
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 import type { PaperRecord } from "../../model/index.js";
-import { readOptionalText, type ProjectReadContext } from "../project/folder/index.js";
+import { readOptionalText, type ProjectReadContext } from "../project/projectReads.js";
 import { PROJECT_FILE, parseProjectFile, updateProjectSettings } from "../project/index.js";
 import { syncListedPapers } from "./listedPapersSync.js";
 import { derivePapersByCiteKey } from "./derivePapersByCiteKey.js";

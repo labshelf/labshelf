@@ -4,13 +4,13 @@ export * from "./project/index.js";
 export * from "./quotes/index.js";
 export * from "./synctex/index.js";
 export * from "./figures/index.js";
-export * from "./projectValue/index.js";
 export * from "./checks/index.js";
 export * from "./readingList/index.js";
 export * from "./versions/index.js";
 export * from "./history/index.js";
 export * from "./bibliography/index.js";
-export * from "./service/index.js";
+// Not in project/index: the service loads citations, figures, versions and libraryUi, which import project back.
+export { createProjectContent, createProjectFileRow, listVisibleEntries } from "./project/projectService.js";
 export * from "./checklist/index.js";
 export * from "./snippet/index.js";
 export * from "./search/index.js";

@@ -3,8 +3,7 @@ import type { PdfjsLoader } from "../../../import/index.js";
 import type { PathOps } from "../../../path/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import type { ProjectContentPort } from "../../service/index.js";
-import type { ProjectEntry, ProjectSettingsUpdate } from "../../project/index.js";
+import type { ProjectContentPort, ProjectEntry, ProjectSettingsUpdate } from "../../project/index.js";
 import type { CreateProjectKind, ProjectMenuCommand } from "../projectRow.js";
 
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
