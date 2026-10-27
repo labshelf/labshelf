@@ -3,8 +3,7 @@ import type { PdfVersion } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { extractArxivIdentifierFromDoi, type DetectedIds } from "../identifiers/index.js";
 import type { PdfCandidate } from "../landing/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
-import { DEFAULT_CONTACT_EMAIL } from "../registries/index.js";
+import { DEFAULT_CONTACT_EMAIL, type ResolvedMetadata } from "../registries/index.js";
 import { DEFAULT_LIMITS } from "./deadline.js";
 import { downloadBest, runBestAccess, startFinds, walkRankedCandidates } from "./engine.js";
 

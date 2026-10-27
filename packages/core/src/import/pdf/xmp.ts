@@ -1,7 +1,7 @@
 // Reads bibliographic data from a PDF's XMP packet, the richest offline metadata source.
 // Publishers embed journal, volume, issue, pages, DOI and ISSN there, beyond the Info dictionary.
 import { extractDoi } from "../identifiers/index.js";
-import { normalizeWhitespace, extractYear, type ResolvedMetadata } from "../metadata/index.js";
+import { normalizeWhitespace, extractYear, type ResolvedMetadata } from "../registries/index.js";
 import type { XmpMetadataLike } from "./pdfDocument.js";
 
 // XMP keys arrive with their namespace prefix (`dc:title`, `prism:doi`). Case

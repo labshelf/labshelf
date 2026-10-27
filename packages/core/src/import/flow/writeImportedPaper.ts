@@ -1,7 +1,7 @@
 /** Writes a paper resolved from the network or a captured page into a new folder, with its PDF when one was found. */
 import { createCiteKey, deriveMetadataFields, PDF_FILE, createPaper, type MutationContext } from "../../library/index.js";
 import type { PaperRecord, PdfVersion } from "../../model/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
+import type { ResolvedMetadata } from "../registries/index.js";
 import { NETWORK_IMPORT_MODULE } from "./env.js";
 
 export interface ImportedPaper {

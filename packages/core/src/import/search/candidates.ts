@@ -1,6 +1,5 @@
 /** Lists every plausible registry match for a query so a human can choose between them. */
-import type { ResolvedMetadata } from "../metadata/index.js";
-import { derivePlainMetadata, type RegistryEnv } from "../registries/index.js";
+import { derivePlainMetadata, type RegistryEnv, type ResolvedMetadata } from "../registries/index.js";
 import { searchAllRegistries } from "./registrySearch.js";
 import { normalizeForMatch, deriveTitleOverlap } from "./titleMatch.js";
 

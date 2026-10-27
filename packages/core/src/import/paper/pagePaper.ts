@@ -1,7 +1,7 @@
 /** Settles which paper a page shows: merges its own fields with the registries' record and finds the library's copy. */
 import type { PaperRecord } from "../../model/index.js";
 import type { PageFacts } from "../landing/index.js";
-import type { MetadataSource } from "../metadata/index.js";
+import type { MetadataSource } from "../registries/index.js";
 import { findInLibrary } from "./libraryMatch.js";
 import { PAGE_TRUST, resolveMetadata, type MetadataDeps, type MetadataResult } from "./resolveMetadata.js";
 

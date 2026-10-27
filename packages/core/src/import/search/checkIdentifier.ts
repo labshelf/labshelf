@@ -1,6 +1,5 @@
 /** Confirms identifiers printed in a PDF against the registry that issued them. */
 import { deriveDoiVariants, type DetectedIdentifier } from "../identifiers/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
 import {
   fetchArxivByIdentifier,
   fetchCrossrefByDoi,
@@ -11,6 +10,7 @@ import {
   resolvePmidFromPmcid,
   fetchPubmedByPmid,
   type RegistryEnv,
+  type ResolvedMetadata,
 } from "../registries/index.js";
 
 /**

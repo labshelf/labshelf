@@ -1,5 +1,5 @@
 // Finds DOI, arXiv, PubMed, PMC and ISBN identifiers in a PDF's metadata, link annotations and text.
-import { parseString } from "../metadata/index.js";
+import { parseString } from "../registries/metadata.js";
 import { ARXIV_ID_SOURCE } from "./arxiv.js";
 import { normalizeDoiCandidate, decodeUrlEscapes } from "./doi.js";
 import type { DetectedIdentifier, IdentifierType } from "./detectedIdentifier.js";
@@ -29,14 +29,14 @@ export function detectIdentifiers(
   const found: DetectedIdentifier[] = [];
   const seen = new Set<string>();
 
-  const add = (type: IdentifierType, value: string | undefined): void => {
-    if (!value) {
+  const add = (identifier: DetectedIdentifier | undefined): void => {
+    if (!identifier) {
       return;
     }
-    const key = `${type}:${value.toLowerCase()}`;
+    const key = `${identifier.type}:${identifier.value.toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
-      found.push({ type, value });
+      found.push(identifier);
     }
   };
 
@@ -62,28 +62,33 @@ export function detectIdentifiers(
   if (!found.some((entry) => entry.type === "doi")) {
     const glued = text.replace(/(10\.\d{4,9}\s*\/)\s*/gi, (_m, prefix: string) => prefix.replace(/\s+/g, ""));
     for (const doi of matchAll(glued, DOI_PATTERN)) {
-      add("doi", normalizeDoiCandidate(doi));
+      add(doiIdentifier(doi));
     }
   }
 
   return rank(found, text);
 }
 
-function scanSource(source: string, add: (type: IdentifierType, value: string | undefined) => void): void {
+function doiIdentifier(candidate: string): DetectedIdentifier | undefined {
+  const value = normalizeDoiCandidate(candidate);
+  return value ? { type: "doi", value } : undefined;
+}
+
+function scanSource(source: string, add: (identifier: DetectedIdentifier | undefined) => void): void {
   for (const doi of matchAll(source, DOI_PATTERN)) {
-    add("doi", normalizeDoiCandidate(doi));
+    add(doiIdentifier(doi));
   }
   for (const arxiv of matchAll(source, ARXIV_PATTERN, 1)) {
-    add("arxiv", arxiv);
+    add({ type: "arxiv", value: arxiv });
   }
   for (const pmid of matchAll(source, PMID_PATTERN, 1)) {
-    add("pmid", pmid);
+    add({ type: "pmid", value: pmid });
   }
   for (const pmcid of matchAll(source, PMCID_PATTERN, 1)) {
-    add("pmcid", pmcid.toUpperCase());
+    add({ type: "pmcid", value: pmcid.toUpperCase() });
   }
   for (const isbn of matchAll(source, ISBN_PATTERN, 1)) {
-    add("isbn", isbn.replace(/[-\s]/g, ""));
+    add({ type: "isbn", value: isbn.replace(/[-\s]/g, "") });
   }
 }
 

@@ -1,7 +1,7 @@
 // Interprets a page's citation_* / Dublin Core / PRISM meta tags into paper facts and PDF links to try.
 // Publishers emit these tags for Google Scholar, so they are present even when a registry lookup fails.
 import { hostOf } from "../../url/index.js";
-import { extractYear, type ResolvedMetadata } from "../metadata/index.js";
+import { extractYear, type ResolvedMetadata } from "../registries/index.js";
 import type { PageFacts, RawPage, PdfCandidate } from "./rawPage.js";
 import {
   extractArxivIdentifierFromDoi,
@@ -60,9 +60,9 @@ function identifiersOf(raw: RawPage, first: (...keys: string[]) => string | unde
   const metaDoi = DOI_META_KEYS
     .flatMap((key) => raw.meta[key] ?? [])
     .map((value) => extractDoi(value))
-    .find((d): d is string => !!d);
+    .find((d) => !!d);
   // A page cites many DOIs in its references; a lone doi.org link is its own.
-  const linkDois = [...new Set(raw.doiLinks.map((l) => extractDoi(l)).filter((d): d is string => !!d).map((d) => d.toLowerCase()))];
+  const linkDois = [...new Set(raw.doiLinks.flatMap((l) => extractDoi(l)?.toLowerCase() ?? []))];
   const doi = metaDoi ?? extractDoi(raw.pageUrl) ?? (linkDois.length === 1 ? extractDoi(raw.doiLinks[0]) : undefined);
   if (doi) ids.doi = doi;
   const metaArxiv = first("citation_arxiv_id");

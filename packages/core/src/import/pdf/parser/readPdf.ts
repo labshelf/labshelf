@@ -3,7 +3,7 @@ import { extractUrls, extractPageTexts, extractTitleBlocks } from "../textExtrac
 import { extractMetadataFromXmp } from "../xmp.js";
 import { formatError } from "../../../errors/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { ResolvedMetadata } from "../../metadata/index.js";
+import type { ResolvedMetadata } from "../../registries/index.js";
 import type { PdfDocumentLike, PdfOpener, TextBlock } from "../pdfDocument.js";
 
 function describePdfError(error: unknown): Error {

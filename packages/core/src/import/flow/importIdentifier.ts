@@ -3,7 +3,7 @@ import type { ImportOutcome } from "../../library/index.js";
 import { formatError } from "../../errors/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
 import { extractIdentifiersFromInput } from "../identifiers/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
+import type { ResolvedMetadata } from "../registries/index.js";
 import { resolveOnlineMetadata } from "../search/index.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf, type ResolvedPdf } from "../pdfFinder/index.js";

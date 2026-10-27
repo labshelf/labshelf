@@ -1,5 +1,5 @@
 /** Infers the journal name from the header or footer repeated across pages. */
-import { normalizeWhitespace } from "../metadata/index.js";
+import { normalizeWhitespace } from "../registries/index.js";
 
 /**
  * Infers the journal name from the running header/footer, which is the only

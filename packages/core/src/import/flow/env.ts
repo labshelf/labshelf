@@ -2,9 +2,8 @@
 import type { DetectedIdentifier } from "../identifiers/index.js";
 import type { ImportDeps, MutationContext } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
+import type { RegistryEnv, ResolvedMetadata } from "../registries/index.js";
 import type { PdfFetchOptions } from "../pdfFinder/index.js";
-import type { RegistryEnv } from "../registries/index.js";
 
 export interface NetworkImportEnv {
   ctx: MutationContext;

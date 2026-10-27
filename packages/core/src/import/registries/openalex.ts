@@ -1,7 +1,6 @@
 /** Searches OpenAlex for works by free text, suggests works for a title, and fetches one work with the works it cites. */
-import { parseString } from "../metadata/index.js";
-import { fetchJson, type RegistryEnv } from "./http.js";
-import type { RegistryEntry } from "./registryMetadata.js";
+import { parseString } from "./metadata.js";
+import { fetchJson, type RegistryEntry, type RegistryEnv } from "./http.js";
 
 interface OpenAlexWork {
   title?: string;

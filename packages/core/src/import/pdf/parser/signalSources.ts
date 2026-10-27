@@ -1,5 +1,5 @@
 /** Turns the signals read from the file itself into metadata sources, ranked by how far each can be trusted. */
-import { parseString, extractYear, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../../metadata/index.js";
+import { parseString, extractYear, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../../registries/index.js";
 import { normalizeAuthors } from "../authors.js";
 import { extractAuthorsFromBlocks } from "../frontPageLayout.js";
 import { extractKeywords } from "../keywords.js";

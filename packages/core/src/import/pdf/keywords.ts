@@ -1,5 +1,5 @@
 /** Reads the author-supplied keyword list printed below the abstract. */
-import { normalizeWhitespace } from "../metadata/index.js";
+import { normalizeWhitespace } from "../registries/index.js";
 import { KEYWORDS_STOP, findStopOffset } from "./headings.js";
 
 // Groups: the character before the label, and the delimiter after it — the

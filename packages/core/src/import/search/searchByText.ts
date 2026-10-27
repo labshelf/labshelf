@@ -1,6 +1,5 @@
 /** Finds a paper in the online registries from noisy front-matter text or a title. */
-import { deriveCompleteness, type ResolvedMetadata } from "../metadata/index.js";
-import { derivePlainMetadata, type RegistryEnv, type RegistryEntry } from "../registries/index.js";
+import { deriveCompleteness, derivePlainMetadata, type RegistryEnv, type RegistryEntry, type ResolvedMetadata } from "../registries/index.js";
 import { searchAllRegistries } from "./registrySearch.js";
 import { normalizeForMatch, TITLE_MATCH_THRESHOLD, deriveTitleOverlap, findTitlePosition } from "./titleMatch.js";
 

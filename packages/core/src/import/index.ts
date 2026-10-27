@@ -1,7 +1,5 @@
 /** Exports the paper import's public API: identifier detection, metadata sources, the PDF pipeline, landing pages, PDF finding, network imports, BibTeX and the citation map. */
 export * from "./identifiers/index.js";
-export type { ResolvedMetadata, MetadataConfidence, MetadataSource, MergedMetadata } from "./metadata/index.js";
-export { mergeMetadata, deriveCompleteness, normalizeCitationFields, SOURCE_TRUST, extractYear, parseString } from "./metadata/index.js";
 export {
   fetchCrossrefByDoi,
   searchCrossref,
@@ -19,8 +17,14 @@ export {
   fetchGoogleBooksByIsbn,
   DEFAULT_CONTACT_EMAIL,
   findPublishedDoi,
+  mergeMetadata,
+  deriveCompleteness,
+  normalizeCitationFields,
+  SOURCE_TRUST,
+  extractYear,
+  parseString,
 } from "./registries/index.js";
-export type { OpenAlexCitationWork, PreprintIds, RegistryEnv, RegistryEntry } from "./registries/index.js";
+export type { OpenAlexCitationWork, PreprintIds, RegistryEnv, RegistryEntry, ResolvedMetadata, MetadataConfidence, MetadataSource, MergedMetadata } from "./registries/index.js";
 export * from "./search/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";

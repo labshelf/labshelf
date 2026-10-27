@@ -6,7 +6,7 @@ import {
   type MetadataSource,
   type MetadataConfidence,
   type ResolvedMetadata,
-} from "../../metadata/index.js";
+} from "../../registries/index.js";
 import type { DetectedIdentifier } from "../../identifiers/index.js";
 import { normalizeAuthors } from "../authors.js";
 import { extractYearFromText } from "../publicationYear.js";

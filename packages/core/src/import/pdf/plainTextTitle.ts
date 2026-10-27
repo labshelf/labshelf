@@ -1,5 +1,5 @@
 /** Guesses the title from plain front-matter lines, for OCR text that carries no font sizes. */
-import { normalizeWhitespace } from "../metadata/index.js";
+import { normalizeWhitespace } from "../registries/index.js";
 
 // Lines a masthead prints above the title: article-type labels, the journal's
 // own branding, access badges, identifiers and submission dates.

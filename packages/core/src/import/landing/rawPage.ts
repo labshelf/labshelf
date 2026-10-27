@@ -1,6 +1,6 @@
 /** Declares the shapes a landing page passes through: raw evidence from the page, then the facts read from it. */
 import type { DetectedIds } from "../identifiers/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
+import type { ResolvedMetadata } from "../registries/index.js";
 
 /** A link or viewer on the page that may lead to the article PDF. */
 export interface RawPdfCandidate {

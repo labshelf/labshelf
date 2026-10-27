@@ -1,6 +1,5 @@
 /** Fills fields the confirming registry left blank by asking the registries not yet used. */
-import { SOURCE_TRUST, type MetadataSource } from "../metadata/index.js";
-import { searchEuropePmc, derivePlainMetadata, fetchSemanticScholarByDoi, type RegistryEnv, type RegistryEntry } from "../registries/index.js";
+import { SOURCE_TRUST, searchEuropePmc, derivePlainMetadata, fetchSemanticScholarByDoi, type MetadataSource, type RegistryEnv, type RegistryEntry } from "../registries/index.js";
 
 /**
  * Queries the registries that were not used to confirm the identifier, to fill

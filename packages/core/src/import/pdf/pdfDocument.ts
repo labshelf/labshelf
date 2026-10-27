@@ -1,6 +1,6 @@
 /** Declares the PDF import pipeline's types: the parsed record and the pdf.js shapes it reads. */
 import type { BibliographicFields } from "../../model/index.js";
-import type { MetadataConfidence } from "../metadata/index.js";
+import type { MetadataConfidence } from "../registries/index.js";
 
 export interface ParsedPdfImport extends BibliographicFields {
   title: string;

@@ -1,9 +1,83 @@
+/** Declares the metadata record every source produces, merges the sources by trust, and holds the field helpers the registries and the PDF pipeline share. */
+import { BIBLIOGRAPHIC_FIELDS, type BibliographicFields } from "../../model/index.js";
+
+export interface ResolvedMetadata extends BibliographicFields {
+  title?: string | undefined;
+}
+
 /**
- * Combines every source into one record, field by field, each field taken from the most trustworthy source that has it.
+ * How much the parser trusts the record it produced.
+ * - `high`: confirmed against a registry via an identifier printed in the PDF.
+ * - `medium`: matched online by text, or taken from an embedded XMP packet.
+ * - `low`: inferred from layout or the filename; needs a human to confirm.
  */
-import { BIBLIOGRAPHIC_FIELDS } from "../../model/index.js";
-import { normalizeCitationFields } from "./normalizeCitationFields.js";
-import type { ResolvedMetadata } from "./resolvedMetadata.js";
+export type MetadataConfidence = "high" | "medium" | "low";
+
+/**
+ * Coerces an unknown value to a non-empty trimmed string, returning undefined for blanks and non-strings.
+ * @returns The trimmed string, or undefined.
+ */
+export function parseString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** Collapses runs of whitespace to single spaces; undefined when nothing is left. */
+export function normalizeWhitespace(value: string): string | undefined {
+  const trimmed = value.replace(/\s+/g, " ").trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * Extracts a four-digit year (1900–2099) from a raw date string such as a PDF creation date.
+ * @returns The year as a number, or undefined if no match is found.
+ */
+export function extractYear(rawValue: string | undefined): number | undefined {
+  if (!rawValue) {
+    return undefined;
+  }
+
+  const match = rawValue.match(/(?:(?:19|20)\d{2})/);
+  return match ? Number(match[0]) : undefined;
+}
+
+/**
+ * Registries differ: Semantic Scholar reports volume "25 3" (volume and issue
+ * together), and PubMed abbreviates page ranges the way MEDLINE does ("111-9"
+ * for 111-119).
+ * @returns The same record with volume and pages normalized.
+ */
+export function normalizeCitationFields(metadata: ResolvedMetadata): ResolvedMetadata {
+  const tidy: ResolvedMetadata = { ...metadata };
+  const volume = metadata.volume?.trim();
+  const issue = metadata.issue?.trim();
+  if (volume && issue && volume.endsWith(` ${issue}`)) {
+    tidy.volume = volume.slice(0, -issue.length - 1).trim();
+  } else if (volume && !issue) {
+    // "25 3" with no issue elsewhere: the second number is the issue.
+    const split = volume.match(/^(\d+)\s+\(?(\d+)\)?$/);
+    if (split) {
+      tidy.volume = split[1]!;
+      tidy.issue = split[2]!;
+    }
+  }
+  if (metadata.pages) {
+    tidy.pages = expandPageRange(metadata.pages);
+  }
+  return tidy;
+}
+
+// "111-9" → "111-119", "1023-31" → "1023-1031"; complete ranges stay as they are.
+function expandPageRange(pages: string): string {
+  const range = pages.trim().match(/^(\d+)\s*[-–]\s*(\d+)$/);
+  if (!range) {
+    return pages;
+  }
+  const [, first, last] = range as unknown as [string, string, string];
+  if (last.length >= first.length || Number(last) >= Number(first)) {
+    return `${first}-${last}`;
+  }
+  return `${first}-${first.slice(0, first.length - last.length)}${last}`;
+}
 
 /**
  * How much a source is trusted, relative to the others. Higher wins a field.

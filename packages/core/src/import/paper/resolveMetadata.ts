@@ -1,10 +1,9 @@
 // Resolves a paper's bibliographic record from its registry record, page citation tags and a title search.
 // Fields merge one by one, most trusted source first, so a registry missing the issue number keeps the page's.
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
-import { extractArxivIdentifierFromDoi } from "../identifiers/index.js";
-import { mergeMetadata, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../metadata/index.js";
+import { extractArxivIdentifierFromDoi, toDoi } from "../identifiers/index.js";
+import { mergeMetadata, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata, type RegistryEnv } from "../registries/index.js";
 import { fetchMetadataSourcesByDoi, resolveOnlineMetadata, searchOnlineByTitle } from "../search/index.js";
-import type { RegistryEnv } from "../registries/index.js";
 import { checkTitleAgreement } from "./titleAgreement.js";
 
 /** How much a page's own tags are trusted: below the registry, above a title search. */
@@ -57,7 +56,8 @@ export async function resolveMetadata(input: MetadataInput, deps: MetadataDeps =
   const merged = mergeMetadata(sources).metadata;
   const keywords = sources.sort((a, b) => b.trust - a.trust).find((s) => s.metadata?.keywords?.length)?.metadata?.keywords;
   if (keywords?.length) merged.keywords = keywords;
-  if (!ids.doi && merged.doi) ids.doi = merged.doi;
+  const mergedDoi = merged.doi ? toDoi(merged.doi) : undefined;
+  if (!ids.doi && mergedDoi) ids.doi = mergedDoi;
   if (!ids.arxivId) {
     const arxivId = extractArxivIdentifierFromDoi(merged.doi);
     if (arxivId) ids.arxivId = arxivId;

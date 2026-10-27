@@ -1,5 +1,5 @@
 /** Reads the abstract printed in a paper's front matter. */
-import { normalizeWhitespace } from "../metadata/index.js";
+import { normalizeWhitespace } from "../registries/index.js";
 import { ABSTRACT_STOP, findStopOffset } from "./headings.js";
 
 // The separator after the heading is unpredictable ("Abstract", "Abstract.",

@@ -1,8 +1,45 @@
-/** Looks up Google Books volumes by ISBN. */
-import { parseString, extractYear } from "../metadata/index.js";
-import { fetchJson, type RegistryEnv } from "./http.js";
-import { parseXmlText } from "./text.js";
-import type { RegistryEntry } from "./registryMetadata.js";
+/** Looks up books by ISBN in OpenLibrary and Google Books. */
+import { extractYear, parseString } from "./metadata.js";
+import { fetchJson, parseXmlText, type RegistryEntry, type RegistryEnv } from "./http.js";
+
+// OpenLibrary
+
+interface OpenLibraryBook {
+  title?: string;
+  subtitle?: string;
+  authors?: Array<{ name: string }>;
+  publishers?: Array<{ name: string }>;
+  publish_date?: string;
+  number_of_pages?: number;
+  url?: string;
+}
+
+/**
+ * Looks up a book by ISBN through OpenLibrary.
+ * @returns Book metadata, or undefined.
+ */
+export async function openLibraryByIsbn(env: RegistryEnv, isbn: string): Promise<RegistryEntry | undefined> {
+  const key = `ISBN:${isbn}`;
+  const payload = await fetchJson<Record<string, OpenLibraryBook>>(
+    env,
+    `https://openlibrary.org/api/books?format=json&jscmd=data&bibkeys=${encodeURIComponent(key)}`,
+  );
+  const book = payload?.[key];
+  if (!book?.title) {
+    return undefined;
+  }
+
+  return {
+    title: book.subtitle ? `${book.title}: ${book.subtitle}` : book.title,
+    authors: (book.authors ?? []).map((author) => author.name).filter(Boolean),
+    year: extractYear(book.publish_date),
+    publisher: book.publishers?.[0]?.name,
+    pages: book.number_of_pages ? String(book.number_of_pages) : undefined,
+    url: book.url,
+  };
+}
+
+// Google Books
 
 interface GoogleBooksVolumeInfo {
   title?: string;

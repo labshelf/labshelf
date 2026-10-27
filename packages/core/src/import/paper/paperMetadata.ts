@@ -1,6 +1,6 @@
 /** Reads the bibliographic fields a stored paper record states, in the shape metadata resolution and PDF finding read. */
 import { BIBLIOGRAPHIC_FIELDS, type PaperRecord } from "../../model/index.js";
-import type { ResolvedMetadata } from "../metadata/index.js";
+import type { ResolvedMetadata } from "../registries/index.js";
 
 export function deriveResolvedMetadata(r: PaperRecord): ResolvedMetadata {
   const metadata: ResolvedMetadata = { title: r.title };

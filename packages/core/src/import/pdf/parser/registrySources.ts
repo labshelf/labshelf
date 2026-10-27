@@ -1,7 +1,7 @@
 /** Resolves a paper against the online registries and collects the sources that record contributes. */
 import { formatError } from "../../../errors/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { SOURCE_TRUST, type MetadataSource, parseString } from "../../metadata/index.js";
+import { SOURCE_TRUST, type MetadataSource, parseString } from "../../registries/index.js";
 import { fetchMetadataSourcesByDoi, resolveFirstIdentifier, searchOnlineByQueries } from "../../search/index.js";
 import type { PdfSignals } from "./readPdf.js";
 import { normalizeAuthors } from "../authors.js";

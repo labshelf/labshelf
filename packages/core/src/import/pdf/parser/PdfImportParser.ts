@@ -7,7 +7,7 @@ import { isPdfBytes } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { formatError } from "../../../errors/index.js";
 import { resolveFirstIdentifier } from "../../search/index.js";
-import { parseString } from "../../metadata/index.js";
+import { parseString } from "../../registries/index.js";
 import { extractAbstract } from "../abstract.js";
 import { extractTitleFromPlainText } from "../plainTextTitle.js";
 import { extractTitleFromBlocks } from "../frontPageLayout.js";
