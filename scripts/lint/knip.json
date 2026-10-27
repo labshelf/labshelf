@@ -59,7 +59,7 @@
         "src/libraryUi/webview/sidebarEntry.ts",
         "src/writing/search/webview/searchEntry.ts",
         "src/writing/history/webview/historyEntry.ts",
-        "src/writing/allProjects/webview/allProjectsEntry.ts",
+        "src/writing/projects/webview/allProjectsEntry.ts",
         "src/library/syncGuide/webview/syncGuideEntry.ts",
         "src/spaces/webview/researchChatEntry.ts",
         "src/spaces/webview/spacesEntry.ts",

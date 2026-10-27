@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import { LATEX_ENGINES, formatEngineLabel, type LatexEngine, type TexSetupAsk } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
-import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
-import type { WritingHost, WritingProjects } from "../session/index.js";
+import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readActiveProject } from "./builds.js";
 
 const LIGHT = "Install Light";

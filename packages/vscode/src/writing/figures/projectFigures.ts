@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { createDebouncer, normalizeInputPath } from "@labshelf/core";
 import type { FigureRecipe, FigureState, ProjectContentPort, ProjectEntry } from "@labshelf/core";
-import type { WritingHost, WritingProjects } from "../session/index.js";
+import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { disposeAll } from "../../disposables/index.js";
 
 export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;

@@ -1,11 +1,11 @@
 /** Pins the exact HTML each bundle-backed webview page produces, so moving the skeleton into renderHtmlShell stays byte-identical. */
 import * as vscode from "vscode";
 import { listPanelHtml } from "../../src/libraryUi/listPanelHtml";
-import { searchHtml } from "../../src/writing/search/searchHtml";
+import { searchHtml } from "../../src/writing/search/view";
 import { registerSyncGuideCommand } from "../../src/library/syncGuide/registerSyncGuideCommand";
-import { AllProjectsPanel } from "../../src/writing/allProjects/allProjectsPanel";
+import { AllProjectsPanel } from "../../src/writing/projects/allProjects";
 import { HistoryPanel } from "../../src/writing/history/historyPanel";
-import { GalleryPanel } from "../../src/writing/templates/galleryPanel";
+import { GalleryPanel } from "../../src/writing/templates/gallery";
 
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),

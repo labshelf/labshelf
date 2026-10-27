@@ -5,8 +5,8 @@ import * as vscode from "vscode";
 
 import { createAutoCompileGate } from "../build/index.js";
 import type { BuildTrigger } from "../build/index.js";
-import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
-import type { WritingHost, WritingProjects } from "../session/index.js";
+import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import type { WritingHost, WritingProjects } from "../projects/index.js";
 
 /** "live" compiles unsaved text for the preview only; the others write `<root>.pdf` from the saved files. */
 export type TypstTrigger = BuildTrigger | "live";

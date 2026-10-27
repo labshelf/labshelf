@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import type { ArcKind, PathOps } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
-import type { ProjectSession } from "../session/index.js";
+import type { ProjectSession } from "../projects/index.js";
 import type { FigureNode, ProjectFigures } from "./projectFigures.js";
 import { disposeAll } from "../../disposables/index.js";
 

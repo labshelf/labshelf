@@ -4,8 +4,8 @@ import * as vscode from "vscode";
 import { deriveBuildRootFolder, findPagePoint, findSourcePosition, formatError, type ILogger, type PagePoint, type PathOps, type ProjectContentPort, type SynctexMap } from "@labshelf/core";
 import { addSourceComment } from "../../collab/comments/index.js";
 import { BUILD_COMMAND, readActiveProject } from "../build/index.js";
-import type { ReadyProject } from "../buildRootDocument.js";
-import type { WritingHost, WritingProjects } from "../session/index.js";
+import type { ReadyProject } from "../commands/index.js";
+import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { NOT_BUILT_MESSAGE, NOT_IN_PREVIEW_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE, readBuiltPdf, type BuildPreviews } from "./panel.js";
 
 /** What the SyncTeX data of a project's build holds, or why it cannot be had. */

@@ -13,7 +13,7 @@ import {
   type FolderShareLinkDeps,
 } from "@labshelf/core";
 import { createLibraryPaths, type LibraryPaths } from "../../libraryUi/index.js";
-import { OPEN_PROJECT_COMMAND } from "../../writing/session/index.js";
+import { OPEN_PROJECT_COMMAND } from "../../writing/projects/index.js";
 import type { LibraryRootController } from "../../activation/index.js";
 import type { ActiveServices } from "../../command/index.js";
 import { readConnectedRelay, readShareRegistry, type ShareLinkHost } from "./index.js";

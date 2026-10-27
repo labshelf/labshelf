@@ -16,25 +16,22 @@ import {
 import { registerInstallCommand } from "../writing/index.js";
 import { registerExportCommands } from "../writing/index.js";
 import { registerEditorActions, registerInsertActions } from "../writing/index.js";
-import { registerAllProjects } from "../writing/allProjects/index.js";
+import {
+  createSignalsReader, registerAllProjects, registerProjectSession, registerProjectViews, registerProjectWriteEvents,
+  type ProjectSession, type ProjectTreeMirror, type SidebarProjectsSource,
+} from "../writing/projects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, CheckCounts, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
-import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
-import { createSignalsReader } from "../writing/checklist/index.js";
+import { CitationSectionsCache, registerCitationProviders, registerProjectValues, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
-import { registerProjectSession, type ProjectSession } from "../writing/session/index.js";
-import { registerProjectViews } from "../writing/tree/index.js";
-import type { ProjectTreeMirror, SidebarProjectsSource } from "../writing/sidebar/index.js";
 import { ProjectFigures, watchFigureFiles } from "../writing/figures/index.js";
 import { registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
 import { createProjectSourceReader } from "../latex/project/index.js";
 import type { BuildRootOf, PlatformWriting, RegisterPlatformWriting } from "../writing/index.js";
-import { registerProjectValues } from "../writing/projectValue/index.js";
 import { registerBibliographyCheck } from "../writing/index.js";
 import { createArcIcons } from "../ui/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";
-import { registerProjectWriteEvents } from "../writing/session/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
 

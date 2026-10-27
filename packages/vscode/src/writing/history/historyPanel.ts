@@ -13,7 +13,7 @@ import {
   formatLocaleDateTime,
 } from "@labshelf/core";
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
-import type { ReadyProject } from "../buildRootDocument.js";
+import type { ReadyProject } from "../commands/index.js";
 
 /** <extension>/dist/history, for localResourceRoots. */
 function historyBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {

@@ -4,12 +4,12 @@ import * as vscode from "vscode";
 import { hostPdfjs } from "../../reader/node/index.js";
 import { createSessionLogger, createVscodeTex, registerCheckCommand, registerLatexBuild } from "../build/node/index.js";
 import { registerRegenerateFigure } from "../figures/node/index.js";
-import type { RegisterPlatformWriting } from "../platformWritingPort.js";
+import type { RegisterPlatformWriting } from "../projects/index.js";
 import { registerTemplates } from "../templates/node/index.js";
 import { registerTypstLanguage } from "../typst/index.js";
 import { registerTypstBuild } from "../typst/node/index.js";
 import { registerCompareVersionsCommand, registerProjectHistory } from "../history/node/index.js";
-import { registerAddExistingFolder } from "../projectCommands.js";
+import { registerAddExistingFolder } from "../commands/index.js";
 
 export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
   const output = vscode.window.createOutputChannel("LabShelf Figures");

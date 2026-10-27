@@ -7,7 +7,7 @@ import { createPreviewBuildRootsMessage, createProjectPreprints, createProjectSo
 import { fakeDocument } from "../../support/textDocument";
 import { fakeLogger, fakeProjectData, readyEntry } from "../../support/writingFixtures";
 
-import type { ReadyProject } from "../../../src/writing/buildRootDocument";
+import type { ReadyProject } from "../../../src/writing/commands/index";
 
 describe("roots message", () => {
   const ROOT = "main.tex";

@@ -3,8 +3,8 @@ import {
   readLatexProjectSources, deriveReadingOrderTexts, countWordsUpTo,
   type CheckLimitsChange, type ProjectSourceReader,
 } from "@labshelf/core";
-import type { ReadyProject } from "../buildRootDocument.js";
-import type { WritingProjects } from "../session/index.js";
+import type { ReadyProject } from "../commands/index.js";
+import type { WritingProjects } from "../projects/index.js";
 
 interface RootWordsDeps {
   /** Reads the files of a project folder, open editors first. */

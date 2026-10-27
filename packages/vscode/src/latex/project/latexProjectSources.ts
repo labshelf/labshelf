@@ -5,7 +5,7 @@ import {
   readLatexProjectSources, type ILogger, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
 } from "@labshelf/core";
 import { findOwningProject, type ReadyProject } from "../../writing/index.js";
-import type { WritingProjects } from "../../writing/session/index.js";
+import type { WritingProjects } from "../../writing/projects/index.js";
 import { createProjectSourceReader } from "./projectSourceReader.js";
 import { disposeAll } from "../../disposables/index.js";
 

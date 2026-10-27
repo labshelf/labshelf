@@ -10,7 +10,7 @@ import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
 import { FocusFollower, readBuiltPdf, registerShowPreview } from "../../../src/writing/preview/panel";
 import { commandHandler, fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
-import type { ReadyProject } from "../../../src/writing/buildRootDocument";
+import type { ReadyProject } from "../../../src/writing/commands/index";
 
 jest.mock("../../../src/reader", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));
 

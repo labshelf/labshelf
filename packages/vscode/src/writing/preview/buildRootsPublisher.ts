@@ -5,7 +5,7 @@ import { createPublishedVersionFinder, type RegistryEnv } from "@labshelf/core";
 import type { ReaderPanel } from "../../reader/index.js";
 import { buildOptions, onAutoCompileChange } from "../build/index.js";
 import { createProjectSourceReader } from "../../latex/project/index.js";
-import type { ReadyProject } from "../buildRootDocument.js";
+import type { ReadyProject } from "../commands/index.js";
 import { countBuildRootWords } from "./limits.js";
 import { readPdfProblems } from "./diagnostics.js";
 import { PREVIEW_LOG_MODULE, type BuildPreviewsDeps } from "./panel.js";

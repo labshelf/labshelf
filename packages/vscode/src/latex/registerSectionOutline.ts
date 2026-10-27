@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { type LatexProjectSources, deriveVscodeRange } from "./project/index.js";
 import { scanLatexSource } from "@labshelf/core";
-import { deriveNestedSymbols } from "../writing/outline/index.js";
+import { deriveNestedSymbols } from "../writing/projects/index.js";
 
 export function listSectionSymbols(text: string, endOfFile: vscode.Position): vscode.DocumentSymbol[] {
   const { sections } = scanLatexSource(text);

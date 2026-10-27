@@ -1,8 +1,6 @@
-// Exports the citation providers that let a writing project cite library papers from the editor.
-export { registerCitationProviders } from "./registerCitationProviders.js";
-export type { CitationSession, CitationWorkspace } from "./citationWorkspace.js";
-export { CitationSectionsCache } from "./citationSectionsCache.js";
-export { createPaperHover } from "./hover/index.js";
-export { openEditorSources } from "./openEditorSources.js";
-export { ProjectBacklinks } from "./projectBacklinks.js";
-export { registerCitationFromLibrary } from "./citationFromLibrary.js";
+// Exports what the rest of the writing feature uses from citations: the editor providers, the citation and backlink data, the project values and the reading list.
+export { registerCitationProviders } from "./completion.js";
+export { createPaperHover } from "./hover.js";
+export { CitationSectionsCache, ProjectBacklinks, type CitationSession, type CitationWorkspace } from "./backlinks.js";
+export { registerProjectValues } from "./projectValues.js";
+export { ProjectReadingLists, registerReadingListCommands } from "./readingList.js";

@@ -3,9 +3,8 @@ import * as vscode from "vscode";
 
 import type { BuildSchedule, BuildOptions, LatexBuildResult, LatexEngine, LocatedProblem, ProjectFormat } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
-import { findOwningProject, type ReadyProject } from "../buildRootDocument.js";
-import type { BuildRootOf } from "../platformWritingPort.js";
-import type { WritingProjects } from "../session/index.js";
+import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import type { BuildRootOf, WritingProjects } from "../projects/index.js";
 import { readAutoCompileMode } from "./autoBuild.js";
 import { writeEngine, type WriteEngineDeps } from "./toolchain.js";
 

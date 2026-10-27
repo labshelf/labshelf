@@ -17,7 +17,7 @@ const BUNDLES = {
   "history/history": "src/writing/history/webview/historyEntry.ts",
   "spaces/chat": "src/spaces/webview/researchChatEntry.ts",
   "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
-  "projects/projects": "src/writing/allProjects/webview/allProjectsEntry.ts",
+  "projects/projects": "src/writing/projects/webview/allProjectsEntry.ts",
   "syncGuide/syncGuide": "src/library/syncGuide/webview/syncGuideEntry.ts",
 };
 

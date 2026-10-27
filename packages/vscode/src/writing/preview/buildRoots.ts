@@ -23,8 +23,8 @@ import {
   type TypstCitation,
 } from "@labshelf/core";
 import type { FinishedBuild } from "../build/index.js";
-import { deriveProjectPath, type ReadyProject } from "../buildRootDocument.js";
-import type { BuildRootOf } from "../platformWritingPort.js";
+import { deriveProjectPath, type ReadyProject } from "../commands/index.js";
+import type { BuildRootOf } from "../projects/index.js";
 import { listUserBibliographyFiles } from "./citationFixes.js";
 import { PREVIEW_LOG_MODULE } from "./panel.js";
 import { openSourceLine } from "./synctex.js";
