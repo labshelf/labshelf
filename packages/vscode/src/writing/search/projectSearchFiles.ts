@@ -2,8 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, LibraryFileSystem, PathOps, ProjectText, SearchScopeKind } from "@labshelf/core";
-import { isSearchTextFile, listProjectFiles } from "@labshelf/core";
-import { isInside } from "../buildRootDocument.js";
+import { isInside, isSearchTextFile, listProjectFiles } from "@labshelf/core";
 
 export const SEARCH_LOG_MODULE = "writing/search";
 const MAX_FILE_BYTES = 2 * 1024 * 1024;

@@ -7,6 +7,8 @@ import { execFile } from "node:child_process";
 import { realpath } from "node:fs/promises";
 import { promisify } from "node:util";
 
+import { isInside } from "../../../path/index.js";
+import { nodePathOps } from "../../../path/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { type BiberWasmAssets, BIBER_ASSET_FILES } from "../biberAssets.js";
 import { parseBiberArgs, type BiberArgs } from "../biberArgs.js";
@@ -33,11 +35,6 @@ class DataSourceRefused extends Error {}
 
 const run = promisify(execFile);
 
-const isWithin = (folder: string, file: string): boolean => {
-  const relative = path.relative(folder, file);
-  return !relative.startsWith("..") && !path.isAbsolute(relative);
-};
-
 const real = (file: string): Promise<string | undefined> => realpath(file).catch(() => undefined);
 
 async function kpsewhich(args: string[], places: SourcePlaces): Promise<string | undefined> {
@@ -55,14 +52,14 @@ async function locate(source: BibliographySource, places: SourcePlaces, allowed:
   for (const candidate of [path.resolve(places.cwd, source.path), path.resolve(places.build, source.path)]) {
     const file = await real(candidate);
     if (file === undefined) { continue; }
-    if (!allowed.some((folder) => isWithin(folder, file))) { throw new DataSourceRefused(`Data source ${source.path} is outside the project folder`); }
+    if (!allowed.some((folder) => isInside(nodePathOps, folder, file, { allowEqual: true }))) { throw new DataSourceRefused(`Data source ${source.path} is outside the project folder`); }
     return { file, placed: candidate };
   }
   const found = await kpsewhich([source.path], places);
   const file = found === undefined ? undefined : await real(path.resolve(places.cwd, found));
   const tree = file === undefined ? undefined : await texTree(places);
   if (file === undefined) { throw new DataSourceRefused(`Cannot find data source ${source.path}`); }
-  if (![...allowed, ...(tree ? [tree] : [])].some((folder) => isWithin(folder, file))) {
+  if (![...allowed, ...(tree ? [tree] : [])].some((folder) => isInside(nodePathOps, folder, file, { allowEqual: true }))) {
     throw new DataSourceRefused(`Data source ${source.path} is outside the project folder and the TeX tree`);
   }
   return { file, placed: path.resolve(places.cwd, source.path) };

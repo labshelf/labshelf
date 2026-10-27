@@ -67,3 +67,10 @@ describe("buildRootOf (non-sources and outsiders)", () => {
     expect(await buildRootOf(dir, "main.tex", path.join(dir, ".labshelf/hidden.tex"))).toBe("main.tex");
   });
 });
+
+describe("buildRootOf (project folder)", () => {
+  it("gives main for the project folder itself", async () => {
+    const dir = await project({ "main.tex": DOC });
+    expect(await buildRootOf(dir, "main.tex", dir)).toBe("main.tex");
+  });
+});

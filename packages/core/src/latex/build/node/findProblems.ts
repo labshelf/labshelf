@@ -2,6 +2,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { nodePathOps } from "../../../path/node/index.js";
+import { isInside } from "../../../path/index.js";
 import type { LocatedProblem } from "../buildResult.js";
 import type { BuildProblem } from "../../log/index.js";
 
@@ -12,18 +14,13 @@ export interface ProblemPlaces {
   mainFile: string;
 }
 
-function isInside(folder: string, file: string): boolean {
-  const relative = path.relative(folder, file);
-  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
 async function isFile(file: string): Promise<boolean> {
   return fs.stat(file).then((stat) => stat.isFile(), () => false);
 }
 
 async function projectFile(logPath: string, places: ProblemPlaces): Promise<string | undefined> {
   const absolute = path.resolve(places.workDir, logPath);
-  return isInside(places.projectFolder, absolute) && await isFile(absolute) ? absolute : undefined;
+  return isInside(nodePathOps, places.projectFolder, absolute) && await isFile(absolute) ? absolute : undefined;
 }
 
 /** A problem in a file outside the project (a package, a class) goes on the main file, named after that file. */

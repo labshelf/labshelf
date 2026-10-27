@@ -7,6 +7,7 @@ import {
   type ProjectEntry,
   addThread,
   deriveAnchor,
+  isInside,
   COMMENTS_PATH,
   deriveCommentThreads,
   updateCommentsDocument,
@@ -212,8 +213,8 @@ export class CommentsController implements vscode.Disposable {
     if (uri.scheme !== "file") { return undefined; }
     const { paths } = this.deps.projects;
     for (const [folder, { view }] of this.views) {
+      if (!isInside(paths, folder, uri.fsPath)) { continue; }
       const relative = paths.relative(folder, uri.fsPath);
-      if (!relative || relative.startsWith("..") || paths.isAbsolute(relative)) { continue; }
       const file = relative.split(paths.sep).join("/");
       return file.startsWith(".labshelf/") ? undefined : { folder, file, view };
     }

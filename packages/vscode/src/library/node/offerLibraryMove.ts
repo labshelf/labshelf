@@ -2,12 +2,14 @@
 import * as os from "node:os";
 import * as vscode from "vscode";
 
+import { isInside } from "@labshelf/core";
 import {
   detectSyncFolders,
   detectLibraryFolder,
   formatPath,
   LIBRARY_FOLDER_NAME,
   loadSharedConfig,
+  nodePathOps,
   formatSyncTool,
   updateSharedConfig,
   type SyncFolder,
@@ -15,11 +17,6 @@ import {
 import type { LibraryRootController } from "../../activation/index.js";
 import { moveLibraryTo } from "./moveLibraryTo.js";
 import * as path from "node:path";
-
-function isInside(child: string, parent: string): boolean {
-  const relative = path.relative(parent, child);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-}
 
 function moveOfferTarget(folder: SyncFolder): string {
   return path.join(folder.path, LIBRARY_FOLDER_NAME);
@@ -35,7 +32,7 @@ export function pickMoveOffer(
   dismissed: readonly string[],
   existingTargets: ReadonlySet<string>,
 ): SyncFolder | undefined {
-  if (detected.some((folder) => isInside(root, folder.path))) { return undefined; }
+  if (detected.some((folder) => isInside(nodePathOps, folder.path, root, { allowEqual: true }))) { return undefined; }
   return detected.find((folder) => !dismissed.includes(folder.tool) && !existingTargets.has(moveOfferTarget(folder)));
 }
 

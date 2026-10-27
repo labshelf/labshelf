@@ -1,6 +1,5 @@
 // Tracks whether the PDF of each build root is older than its project's source files, and when it was built.
-import type { PathOps } from "@labshelf/core";
-import { isInside } from "../buildRootDocument.js";
+import { isInside, type PathOps } from "@labshelf/core";
 
 export interface SourceEvents {
   onSourceChanged(listener: (filePath: string) => void): { dispose(): void };

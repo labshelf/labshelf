@@ -17,6 +17,8 @@ import { resolveConflictDismissalFile, findProjectConflict } from './projectConf
 import { loadVersionHistory, StoredMap } from "../../../../collab/deviceState/index.js";
 import { parseProjectFile, PROJECT_FILE } from "../../../../writing/project/index.js";
 import { createSharedProjectStorage } from "./createSharedProjectStorage.js";
+import { isInside } from "../../../../path/index.js";
+import { nodePathOps } from "../../../../path/node/index.js";
 
 async function readSharedProjectVersions(root: string, folder: string, relative: string, logger: ILogger): Promise<string[]> {
   const settings = await readOptionalFile(path.join(folder, PROJECT_FILE));
@@ -63,8 +65,7 @@ export async function resolveProjectConflictCopy(
   try {
     if (conflict.owner.kind !== 'project' || !['record', 'similar'].includes(conflict.match ?? '')) throw new Error(`Not a content conflict: ${conflict.copy}`);
     const folder = await projectFolder(conflict, context);
-    const relativeCopy = path.relative(folder, conflict.copy);
-    if (relativeCopy.startsWith('..') || path.isAbsolute(relativeCopy)) throw new Error(`Conflict copy escapes project: ${conflict.copy}`);
+    if (!isInside(nodePathOps, folder, conflict.copy, { allowEqual: true })) throw new Error(`Conflict copy escapes project: ${conflict.copy}`);
     const detected = await findProjectConflict({ ...context, folder, projectId: conflict.owner.id, file: conflict.copy });
     if (!detected || detected.original !== conflict.original) throw new Error(`Conflict copy changed before resolution: ${conflict.copy}`);
     const text = await fs.readFile(conflict.copy, 'utf8');

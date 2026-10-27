@@ -16,6 +16,13 @@ describe('pickMoveOffer', () => {
     expect(pickMoveOffer('/home/me/Dropbox2/LabShelf', [dropbox], [], new Set())).toBe(dropbox);
   });
 
+  it('keeps the sync folder as the parent: blocks a root equal to or inside it, offers when the root is its parent or unrelated', () => {
+    expect(pickMoveOffer('/home/me/Dropbox', [dropbox], [], new Set())).toBeUndefined();
+    expect(pickMoveOffer('/home/me/Dropbox/deep/LabShelf', [dropbox], [], new Set())).toBeUndefined();
+    expect(pickMoveOffer('/home/me', [dropbox], [], new Set())).toBe(dropbox);
+    expect(pickMoveOffer('/elsewhere/LabShelf', [dropbox], [], new Set())).toBe(dropbox);
+  });
+
   it('skips a tool whose LabShelf folder already exists', () => {
     const taken = new Set(['/home/me/Dropbox/LabShelf']);
     expect(pickMoveOffer('/home/me/LabShelf', [dropbox, nextcloud], [], taken)).toBe(nextcloud);

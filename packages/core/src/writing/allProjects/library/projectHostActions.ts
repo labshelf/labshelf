@@ -1,4 +1,5 @@
 // Runs the All projects page's build, preview, log, new file and target actions on any project.
+import { isInside } from "../../../path/index.js";
 import type { ProjectSubmission } from "../../project/index.js";
 import type { ProjectLibraryPort } from "../projectLibraryPort.js";
 import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
@@ -36,8 +37,7 @@ export function createProjectHostActions(deps: ProjectHostActionDeps): HostActio
       const { folder } = deps.findReady(id);
       const target = paths.resolve(folder, file);
       // The page's parser already rejects these paths; the resolved path is checked again because it is what gets written.
-      const inside = paths.relative(folder, target);
-      if (!inside || inside.startsWith("..") || paths.isAbsolute(inside)) { throw new Error(`${file} is outside ${folder}`); }
+      if (!isInside(paths, folder, target)) { throw new Error(`${file} is outside ${folder}`); }
       // TRAP: the port has no exclusive create, so a file that appears between this check and the write is overwritten.
       if (await fs.stat(target)) { throw new Error(`${file} already exists in ${folder}`); }
       try {

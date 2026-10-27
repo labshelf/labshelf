@@ -12,12 +12,12 @@ import {
   findFreeImageName,
   deriveImageBaseFolder,
   createImageSnippet,
+  isInside,
   type ILogger,
 } from "@labshelf/core";
 
 import {
   type ProjectFinder,
-  isInside,
   findOwningProject,
   type ReadyProject,
 } from "./buildRootDocument.js";

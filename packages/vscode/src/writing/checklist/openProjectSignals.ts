@@ -1,9 +1,8 @@
 // Keeps the open project's checklist signals current: re-read on open and, debounced, on save, plus its page count.
 import * as vscode from "vscode";
 
-import type { ChecklistSignals, ILogger, PageOverflow, PathOps } from "@labshelf/core";
+import { isInside, type ChecklistSignals, type ILogger, type PageOverflow, type PathOps } from "@labshelf/core";
 import type { ReadyProject } from "../figures/index.js";
-import { isInside } from "../buildRootDocument.js";
 import type { BodyPagesCount } from "../preview/index.js";
 
 const SAVE_DEBOUNCE_MS = 400;

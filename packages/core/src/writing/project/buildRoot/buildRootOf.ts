@@ -1,4 +1,5 @@
 /** Decides which project root a save of a source file builds: the file itself when it is a root, else the main file. */
+import { isInside } from "../../../path/index.js";
 import { listProjectFiles, type ProjectReadContext } from "../folder/index.js";
 import { findBuildRoots } from "./buildRootDetection.js";
 
@@ -18,7 +19,7 @@ async function readSource({ fs }: RootReads, absolute: string, relative: string)
 export async function buildRootOf(reads: RootReads, projectFolder: string, main: string, file: string): Promise<string> {
   const { paths } = reads;
   const relative = paths.relative(projectFolder, file).split(paths.sep).join("/");
-  if (relative.startsWith("..") || paths.isAbsolute(relative) || !SOURCE_EXTENSION.test(relative)) { return main; }
+  if (!isInside(paths, projectFolder, file) || !SOURCE_EXTENSION.test(relative)) { return main; }
   const relatives = (await listProjectFiles(reads, projectFolder)).filter((candidate) => SOURCE_EXTENSION.test(candidate));
   const sources = await Promise.all(relatives.map((candidate) => readSource(reads, paths.join(projectFolder, candidate), candidate)));
   const roots = findBuildRoots(sources.filter((source) => source !== undefined));

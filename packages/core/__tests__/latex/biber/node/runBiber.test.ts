@@ -97,6 +97,10 @@ describe("findBibliographySources", () => {
     await expect(findBibliographySources([{ path: path.join(base, "secret.bib"), type: "file" }], places)).rejects.toThrow(/outside the project/);
   });
 
+  it("accepts a source that is the project folder itself as inside it", async () => {
+    await expect(findBibliographySources([{ path: places.project, type: "file" }], places)).resolves.toEqual([{ file: places.project, placed: places.project }]);
+  });
+
   it("reports a source that neither the folders nor kpsewhich have", async () => {
     await expect(findBibliographySources([{ path: "missing.bib", type: "file" }], places)).rejects.toThrow("Cannot find data source missing.bib");
   });

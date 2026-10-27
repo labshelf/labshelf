@@ -1,8 +1,8 @@
 // Finds the active file editor when it shows a file of the project, and the build root that editor focuses.
 import * as vscode from "vscode";
 
-import type { PathOps } from "@labshelf/core";
-import { isInside, type ReadyProject } from "../../buildRootDocument.js";
+import { isInside, type PathOps } from "@labshelf/core";
+import type { ReadyProject } from "../../buildRootDocument.js";
 import type { BuildRootOf } from "../../platformWritingPort.js";
 
 /** The active editor, or `undefined` when there is none or its file is not inside the project folder. */

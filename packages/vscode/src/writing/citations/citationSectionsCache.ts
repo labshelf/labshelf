@@ -1,8 +1,8 @@
 // Caches, per project folder, which sections cite each key; a save inside the project drops its entry.
 import type * as vscode from "vscode";
 
-import { deriveCitationSections, createSectionPlacer, type ChecklistSection, type ChecklistSource, type ILogger, type PathOps } from "@labshelf/core";
-import { isInside, type ReadyProject } from "../buildRootDocument.js";
+import { isInside, deriveCitationSections, createSectionPlacer, type ChecklistSection, type ChecklistSource, type ILogger, type PathOps } from "@labshelf/core";
+import type { ReadyProject } from "../buildRootDocument.js";
 
 export interface CitationSections {
   /** The sections that cite each key, in source order. */

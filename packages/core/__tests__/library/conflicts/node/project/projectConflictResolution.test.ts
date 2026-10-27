@@ -109,3 +109,10 @@ it.each(['hash', 'shape'])('rejects invalid shared version %s without deleting t
     expect(await fs.readFile(input.file, 'utf8')).toContain('Remote line');
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });
+it('accepts a copy at the project folder as inside it and refuses it only as no conflict copy', async () => {
+  const input = await fixture();
+  const conflict = (await findProjectConflict(input))!;
+  const error: unknown = await resolveProjectConflictCopy({ ...conflict, copy: input.folder }, 'mergeAutomatically', input).catch((caught: unknown) => caught);
+  expect(error).toBeInstanceOf(Error);
+  expect(String(error)).not.toMatch(/escapes project/);
+});

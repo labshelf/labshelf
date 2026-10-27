@@ -2,7 +2,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { ProjectEntry } from "@labshelf/core";
+import { isInside, type PathOps, type ProjectEntry } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
 import { buildProject, type ProjectBuildDeps, type ProjectBuildQueue } from "@labshelf/core/node";
 import type { ReadyProject } from "../../buildRootDocument.js";
@@ -32,8 +32,8 @@ interface FolderState {
 
 const MODULE = "writing/typst";
 
-function unsavedSources(projectFolder: string): Map<string, string> {
-  const inside = (file: string): boolean => !path.relative(projectFolder, file).startsWith("..");
+function unsavedSources(paths: PathOps, projectFolder: string): Map<string, string> {
+  const inside = (file: string): boolean => isInside(paths, projectFolder, file, { allowEqual: true });
   return new Map(vscode.workspace.textDocuments
     .filter((document) => document.isDirty && document.uri.scheme === "file" && inside(document.uri.fsPath))
     .map((document) => [document.uri.fsPath, document.getText()]));
@@ -76,7 +76,7 @@ export class TypstBuilds {
     const project = this.ready(projectFolder);
     if (!project?.main) { return undefined; }
     try {
-      const result = await buildProject(project, this.deps.buildDeps, { root, unsaved: unsavedSources(projectFolder) });
+      const result = await buildProject(project, this.deps.buildDeps, { root, unsaved: unsavedSources(this.deps.projects.paths, projectFolder) });
       // INVARIANT: a live compile that fails leaves the preview and its banner alone; half-typed text is not a failed build.
       if (result.status === "succeeded") { this.deps.previews.finished(project, root, result, "save"); }
     } catch (error) {

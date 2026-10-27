@@ -2,7 +2,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { readFileText, readShareIndexDocFiles, type ILogger, type ShareConnection } from "@labshelf/core";
+import { isInside, readFileText, readShareIndexDocFiles, type ILogger, type ShareConnection } from "@labshelf/core";
+import { nodePathOps } from "@labshelf/core/node";
 import { attachDocument, registerUndoRedo, RemoteUpdateQueue, type DocumentBinding } from "../../binding/index.js";
 
 export interface SharedDocument {
@@ -15,8 +16,8 @@ export interface SharedDocument {
 /** The file's POSIX path inside the folder, or undefined outside it. */
 function relativePath(folder: string, document: vscode.TextDocument): string | undefined {
   if (document.uri.scheme !== "file") { return undefined; }
-  const relative = path.relative(folder, document.uri.fsPath);
-  return relative && !relative.startsWith("..") && !path.isAbsolute(relative) ? relative.split(path.sep).join("/") : undefined;
+  if (!isInside(nodePathOps, folder, document.uri.fsPath)) { return undefined; }
+  return path.relative(folder, document.uri.fsPath).split(path.sep).join("/");
 }
 
 export class SharedEditors implements vscode.Disposable {
