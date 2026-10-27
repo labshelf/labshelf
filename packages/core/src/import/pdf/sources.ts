@@ -1,8 +1,16 @@
 /** Turns a PDF's signals into metadata sources: the online registries' answer, and what the file itself says, each ranked by trust. */
 import { formatError } from "../../errors/index.js";
+import { parseString } from "../../guards/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { SOURCE_TRUST, parseString, extractYear, type MetadataSource, type ResolvedMetadata } from "../registries/index.js";
-import { fetchMetadataSourcesByDoi, resolveFirstIdentifier, searchOnlineByQueries } from "../search/index.js";
+import {
+  SOURCE_TRUST,
+  extractYear,
+  fetchMetadataSourcesByDoi,
+  resolveFirstIdentifier,
+  searchOnlineByQueries,
+  type MetadataSource,
+  type ResolvedMetadata,
+} from "../registries/index.js";
 import { normalizeAuthors, extractAuthorsFromBlocks, deriveUsableTitle } from "./frontPage.js";
 import { extractKeywords, extractJournalFromRunningHead } from "./frontMatter.js";
 import { extractPublisherMetadata, hasTrustworthyTimestamps } from "./pdfDictionary.js";

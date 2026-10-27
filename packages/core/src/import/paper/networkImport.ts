@@ -4,11 +4,11 @@ import { formatError } from "../../errors/index.js";
 import type { PaperRecord, PdfVersion } from "../../model/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
 import { extractIdentifiersFromInput } from "../identifiers/index.js";
-import { derivePageFacts, parseHtmlPage } from "../landing/index.js";
+import { parseHtmlPage } from "../htmlPage.js";
+import { derivePageFacts } from "../pageFacts.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf, type PdfFetchOptions, type ResolvedPdf } from "../pdfFinder/index.js";
-import type { RegistryEnv, ResolvedMetadata } from "../registries/index.js";
-import { resolveOnlineMetadata } from "../search/index.js";
+import { resolveOnlineMetadata, type RegistryEnv, type ResolvedMetadata } from "../registries/index.js";
 import { resolvePagePaper } from "./resolveMetadata.js";
 
 export interface NetworkImportEnv {

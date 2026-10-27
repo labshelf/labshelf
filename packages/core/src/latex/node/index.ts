@@ -5,7 +5,7 @@ export { resolveSharedToolsDir, withToolLock, findManagedTex, readTexLiveYear, c
 export type { ToolsDirLockOptions, ManagedTex, ManagedTexKind, ManagedTexProvider, ManagedTexProviderOptions, TexInstaller, TexProgress, SharedTexProviderOptions } from "./managedTex.js";
 export { deriveProgressFraction, runTexTool, TEX_MODULE, createTexLiveProfile, createTlmgr, isRollover, TlmgrError, installTexLive, installTinyTex, resolveManagedTexDir } from "./texInstallers.js";
 export type { TexToolRun, Tlmgr, TexInstallDeps, TexInstallRun } from "./texInstallers.js";
-export { findBiberAssetsInFolder, runBiber } from "./biber.js";
+export { findBiberAssetsInFolder, runBiber } from "../biber/node/index.js";
 export { BuildCancelled, runCancellable } from "./run.js";
 export type { CancellableOptions, RunOutcome } from "./run.js";
 export { runLatexBuild } from "./build.js";

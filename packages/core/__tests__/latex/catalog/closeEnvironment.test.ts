@@ -1,5 +1,5 @@
 // Tests which environment a typed closing brace of \begin{name} should close.
-import { findEnvironmentToClose } from "../../../src/latex/catalog/index";
+import { findEnvironmentToClose } from "../../../src/latex/catalogCompletion";
 
 const after = (text: string) => () => text;
 

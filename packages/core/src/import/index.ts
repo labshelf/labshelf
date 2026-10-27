@@ -22,12 +22,22 @@ export {
   normalizeCitationFields,
   SOURCE_TRUST,
   extractYear,
-  parseString,
+  resolveOnlineMetadata,
+  resolveFirstIdentifier,
+  fetchMetadataSourcesByDoi,
+  searchOnlineByText,
+  searchOnlineByTitle,
+  searchOnlineByQueries,
+  searchOnlineCandidates,
+  deriveTitleOverlap,
 } from "./registries/index.js";
 export type { OpenAlexCitationWork, PreprintIds, RegistryEnv, RegistryEntry, ResolvedMetadata, MetadataConfidence, MetadataSource, MergedMetadata } from "./registries/index.js";
-export * from "./search/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";
-export * from "./landing/index.js";
+export type { PageFacts, PdfCandidate, RawAuthorEmail, RawMailto, RawPage } from "./htmlPage.js";
+export { parseHtmlPage, findRedirectUrls } from "./htmlPage.js";
+export { derivePageFacts, fetchLanding } from "./pageFacts.js";
+export type { AuthorContact, AuthorContactsInput } from "./authorContacts.js";
+export { deriveAuthorContacts, extractEmailFromAffiliation, findAuthorContacts } from "./authorContacts.js";
 export * from "./paper/index.js";
 export * from "./pdfFinder/index.js";

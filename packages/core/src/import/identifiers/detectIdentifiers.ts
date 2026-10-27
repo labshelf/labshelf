@@ -1,5 +1,5 @@
 // Finds DOI, arXiv, PubMed, PMC and ISBN identifiers in a PDF's metadata, link annotations and text.
-import { parseString } from "../registries/metadata.js";
+import { parseString } from "../../guards/index.js";
 import { ARXIV_ID_SOURCE } from "./arxiv.js";
 import { normalizeDoiCandidate, decodeUrlEscapes } from "./doi.js";
 import type { DetectedIdentifier, IdentifierType } from "./detectedIdentifier.js";

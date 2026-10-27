@@ -1,4 +1,4 @@
-// Fetches and trusts downloaded files: a SHA-256 checked download, a pinned OpenPGP signature check and archive unpacking.
+// Fetches and trusts downloaded files: a SHA-256 checked download, a pinned OpenPGP signature check, the pinned TeX Live key and archive unpacking.
 import { execFile } from "node:child_process";
 import { createHash, createPublicKey, constants, verify, type KeyObject } from "node:crypto";
 import { join } from "node:path";
@@ -165,3 +165,55 @@ export function verifyDetachedSignature(data: Buffer, armoredSignature: string, 
     return verify(hashName, signedBytes, { key, padding: constants.RSA_PKCS1_PADDING }, padded);
   })?.fingerprint;
 }
+
+// Pins the TeX Live Distribution OpenPGP key (primary C78B82D8C79512F79CC0D7C80D5E5D9106BAB6BC) that signs CTAN checksums.
+// Holds the primary key and its signing subkey D8F2F86057A857E42A88106A4CE1877E19438C70 only.
+export const TEX_LIVE_SIGNING_KEY = `-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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
++h323/4=
+=iADv
+-----END PGP PUBLIC KEY BLOCK-----
+`;

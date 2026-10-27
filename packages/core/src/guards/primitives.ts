@@ -16,3 +16,11 @@ export const isTimestamp = (value: unknown): value is string => typeof value ===
 export function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
   return typeof value === "string" && (values as readonly string[]).includes(value);
 }
+
+/**
+ * Coerces an unknown value to a non-empty trimmed string, returning undefined for blanks and non-strings.
+ * @returns The trimmed string, or undefined.
+ */
+export function parseString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}

@@ -13,4 +13,5 @@ export {
   isStringArray,
   isStringUpTo,
   isTimestamp,
+  parseString,
 } from "./primitives.js";

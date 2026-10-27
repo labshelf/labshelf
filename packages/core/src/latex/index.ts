@@ -8,8 +8,11 @@ export {
   createSectionBuildStatePackage, createSectionBuildStateRestore, deriveSectionBuildStateFileName, parseSectionBuildStates, SECTION_STATE_PACKAGE,
 } from "./sectionState.js";
 export type { ParsedSectionStates, SectionState } from "./sectionState.js";
-export * from "./catalog/index.js";
-export * from "./log/index.js";
+export type { LatexCatalogEntry } from "./catalog.js";
+export { LATEX_COMMANDS, LATEX_ENVIRONMENTS } from "./catalog.js";
+export { findEnvironmentToClose, findLatexCompletionSpan, type LatexCompletionSpan } from "./catalogCompletion.js";
+export type { BuildProblem, BuildProblemKind, BuildProblemSeverity } from "./log.js";
+export { parseTexLog } from "./log.js";
 export type {
   LatexInclude, LabelFact, LatexPosition, LatexRange, LatexSourceFacts, MacroFact, ReferenceFact, SectionFact,
 } from "./source.js";
@@ -21,5 +24,5 @@ export {
 export type {
   MissingSource, ProjectSourceFile, ProjectSourceReader, ProjectSources, MathJaxMacros, UndefinedReference,
 } from "./sourceProject.js";
-export { createBiberAssignment, type BiberCommand, BIBER_FLAG, parseBiberArgs, BIBER_ASSET_FILES, parseBiberReleaseManifest, type BiberWasmAssets, extractBiberErrors, parseControlFile } from "./biber.js";
+export { createBiberAssignment, type BiberCommand, BIBER_FLAG, parseBiberArgs, BIBER_ASSET_FILES, parseBiberReleaseManifest, type BiberWasmAssets, extractBiberErrors, parseControlFile } from "./biber/index.js";
 export * from "./toolchain.js";

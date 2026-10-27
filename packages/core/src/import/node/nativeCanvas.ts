@@ -4,13 +4,13 @@ import { createRequire } from "node:module";
 import type { PdfDocumentLike, PdfOpener, PdfjsLoader } from "../pdf/index.js";
 import { createPdfjsLoader, resolvePdfjsPackageJson } from "./pdfjs.js";
 
-export interface NativeCanvasContext {
+interface NativeCanvasContext {
   fillStyle: string;
   fillRect(x: number, y: number, width: number, height: number): void;
   getImageData(x: number, y: number, width: number, height: number): { data: Uint8ClampedArray };
 }
 
-export interface NativeCanvas {
+interface NativeCanvas {
   width: number;
   height: number;
   getContext(kind: "2d", options?: Record<string, unknown>): NativeCanvasContext;

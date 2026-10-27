@@ -64,7 +64,7 @@ export interface FormatRequest {
 }
 
 /** The file through which a preview passes `\includeonly`; the format's hook reads it at `\begin{document}`. */
-export const INCLUDE_ONLY_FILE = "labshelf-includeonly.tex";
+const INCLUDE_ONLY_FILE = "labshelf-includeonly.tex";
 const FORMAT_FOLDER = ".labshelf-fmt";
 const MODULE = "writing/build";
 const LOG_TAIL_LINES = 20;

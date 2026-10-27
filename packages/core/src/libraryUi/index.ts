@@ -1,6 +1,7 @@
 /** Exports the runtime-neutral library UI's public API: host protocol and configuration, view state, list derivations and keymap, PDF copy, the request-a-copy email, outcome copy, sidecar reads, the last-read paper, sidebar project rows, the sharing channel and the Details surface's protocol and tabs. */
 export * from "./protocol/index.js";
-export { createCitationMapView } from "./citationMap/index.js";
+export { buildCitationMap, createCitationMapView } from "./citationMap/index.js";
+export type { CitationMap, CitationMapEnv, CitationMapOptions, MissingWork, CitationEdge } from "./citationMap/index.js";
 export * from "./store/index.js";
 export * from "./viewModel/index.js";
 export type { LibraryUiCapabilities, LibraryUiLabels } from "./hostConfig.js";

@@ -1,5 +1,6 @@
 /** Looks up books by ISBN in OpenLibrary and Google Books. */
-import { extractYear, parseString } from "./metadata.js";
+import { parseString } from "../../guards/index.js";
+import { extractYear } from "./metadata.js";
 import { fetchJson, parseXmlText, type RegistryEntry, type RegistryEnv } from "./http.js";
 
 // OpenLibrary

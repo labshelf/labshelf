@@ -16,7 +16,7 @@ export function resolvePdfjsPackageJson(): string | undefined {
   }
 }
 
-export function resolvePdfjsPackageDir(): string | undefined {
+function resolvePdfjsPackageDir(): string | undefined {
   const packageJson = resolvePdfjsPackageJson();
   return packageJson ? dirname(packageJson) : undefined;
 }

@@ -1,6 +1,6 @@
 /** Looks up DOI registries (CrossRef, DataCite, Semantic Scholar) and finds the journal DOI of a preprint. */
 import { encodeDoiPathSegment, toDoi, type Doi } from "../identifiers/index.js";
-import { parseString } from "./metadata.js";
+import { parseString } from "../../guards/index.js";
 import { fetchJson, findFirstNonEmpty, parseXmlText, type RegistryEntry, type RegistryEnv } from "./http.js";
 import { fetchArxivByIdentifier } from "./bibliographic.js";
 

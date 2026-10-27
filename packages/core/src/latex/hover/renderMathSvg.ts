@@ -1,5 +1,6 @@
 /**
- * Renders TeX math to standalone SVG markup with MathJax, using a project's own macros.
+ * Renders TeX math to standalone SVG markup with MathJax, using a project's own macros, and turns that SVG into a
+ * self-contained image: a fixed colour and pixel size, as a data URI.
  */
 import { liteAdaptor } from "mathjax-full/js/adaptors/liteAdaptor.js";
 import { RegisterHTMLHandler } from "mathjax-full/js/handlers/html.js";
@@ -8,6 +9,7 @@ import { AllPackages } from "mathjax-full/js/input/tex/AllPackages.js";
 import { mathjax } from "mathjax-full/js/mathjax.js";
 import { SVG } from "mathjax-full/js/output/svg.js";
 
+import { bytesToBase64 } from "../../encoding/index.js";
 import type { MathJaxMacros } from "../sourceProject.js";
 
 const adaptor = liteAdaptor();
@@ -40,4 +42,22 @@ function documentFor(macros: MathJaxMacros): MathDocument {
     cached = { key, document: mathjax.document("", { InputJax: input, OutputJax: new SVG({ fontCache: "local" }) }) };
   }
   return cached.document;
+}
+
+// INVARIANT: MathJax sizes its SVG in `ex`; an image loses the surrounding font, so
+// the size is fixed in pixels at roughly a 14px editor font.
+const PX_PER_EX = 7;
+
+export interface MathColors {
+  text: string;
+  /** Replaces MathJax's red for commands it does not know. */
+  error: string;
+}
+
+/** An `<img>` cannot inherit `currentColor`, so the caller passes the theme's colours. */
+export function createMathImageUri(svg: string, colors: MathColors): string {
+  const sized = svg.replace(/(width|height)="([\d.]+)ex"/g, (_m, side: string, ex: string) =>
+    `${side}="${(Number(ex) * PX_PER_EX).toFixed(1)}px"`);
+  const coloured = sized.replace(/"currentColor"/g, `"${colors.text}"`).replace(/"red"/g, `"${colors.error}"`);
+  return `data:image/svg+xml;base64,${bytesToBase64(new TextEncoder().encode(coloured))}`;
 }

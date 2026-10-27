@@ -2,7 +2,8 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-jest.mock("../../../../../src/latex/node/texLiveKeyring", () => ({
+jest.mock("../../../../../src/latex/node/verify", () => ({
+  ...jest.requireActual("../../../../../src/latex/node/verify"),
   TEX_LIVE_SIGNING_KEY: jest.requireActual("../fakeOpenPgp").TEST_SIGNING_KEY.armoredPublicKey,
 }));
 

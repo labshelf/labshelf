@@ -7,10 +7,10 @@ import { detectIdentifiers, type DetectedIdentifier } from "../identifiers/index
 import { createCiteKey, isPdfBytes } from "../../library/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { formatError } from "../../errors/index.js";
-import { resolveFirstIdentifier } from "../search/index.js";
+import { parseString } from "../../guards/index.js";
 import {
   mergeMetadata,
-  parseString,
+  resolveFirstIdentifier,
   SOURCE_TRUST,
   type MetadataSource,
   type MetadataConfidence,
@@ -307,7 +307,7 @@ function describePdfError(error: unknown): Error {
 const FRONT_MATTER_PAGES = 3;
 const PDF_SIGNALS_MODULE = "import/pdf";
 
-export async function readPdf(
+async function readPdf(
   opener: PdfOpener,
   pdfBytes: Uint8Array,
   logger: ILogger | undefined,

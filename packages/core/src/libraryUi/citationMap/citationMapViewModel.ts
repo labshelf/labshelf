@@ -1,5 +1,5 @@
 // Shapes a built citation map for the library UI, naming only the library papers a link or a missing work mentions.
-import type { CitationMap } from "../../import/index.js";
+import type { CitationMap } from "./citationMap.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { CitationMapView } from "../protocol/index.js";
 

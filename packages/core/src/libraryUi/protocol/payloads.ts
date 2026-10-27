@@ -2,7 +2,7 @@
  * Declares the data shapes the library UI protocol carries: library snapshot, per-paper reading stats and details,
  * a paper's file listing, the projects citing a paper, text-layer jobs, similar papers, the PDF and add-paper replies, and the citation map. All plain JSON.
  */
-import type { CitationEdge, MissingWork } from "../../import/index.js";
+import type { CitationEdge, MissingWork } from "../citationMap/index.js";
 import type { FolderTreeNode } from "../../library/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";

@@ -1,6 +1,6 @@
 /** Flattens a LaTeX include tree into the pieces of text in the order they read, each include at the place it is written. */
 import { deriveLineOffsets } from "../../../text/index.js";
-import { resolveIncludePath, type ProjectSourceFile } from "../../../latex/sourceProject.js";
+import { resolveIncludePath, type ProjectSourceFile } from "../../../latex/index.js";
 
 /** `files` lists the main file first; a file reached twice is placed at its first include only. */
 export function deriveReadingOrderTexts(files: readonly ProjectSourceFile[], texts: ReadonlyMap<string, string>): { text: string }[] {

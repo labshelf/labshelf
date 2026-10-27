@@ -1,6 +1,6 @@
 /** Builds the command lines of a LaTeX build and its preview, runs them in a sandbox that keeps untrusted sources from running programs, and describes the build's outcome. */
-import { createBiberAssignment, type BiberCommand } from "./biber.js";
-import type { BuildProblem } from "./log/index.js";
+import { createBiberAssignment, type BiberCommand } from "./biber/index.js";
+import type { BuildProblem } from "./log.js";
 import { SECTION_STATE_PACKAGE } from "./sectionState.js";
 import type { LatexToolchain } from "./toolchain.js";
 

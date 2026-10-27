@@ -1,7 +1,7 @@
 /** Finds the files of a project that build to a PDF of their own: LaTeX by \documentclass, Typst by the include graph. */
 
 import { extensionOf } from "../../../path/index.js";
-import { resolveTypstPath } from "../../../typst/language/project/index.js";
+import { resolveTypstPath } from "../../../typst/language/index.js";
 import { DOCUMENT_CLASS } from "./entryDetection.js";
 
 export interface BuildRootCandidate { readonly path: string; readonly text: string }

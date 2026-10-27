@@ -3,10 +3,18 @@
 import { BIBLIOGRAPHIC_FIELDS, type PaperRecord } from "../../model/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
 import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, extractPmidFromUrl, toDoi } from "../identifiers/index.js";
-import type { PageFacts } from "../landing/index.js";
-import { mergeMetadata, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata, type RegistryEnv } from "../registries/index.js";
-import { fetchMetadataSourcesByDoi, resolveOnlineMetadata, searchOnlineByTitle } from "../search/index.js";
-import { checkTitleAgreement, findInLibrary } from "./samePaper.js";
+import type { PageFacts } from "../htmlPage.js";
+import {
+  mergeMetadata,
+  SOURCE_TRUST,
+  fetchMetadataSourcesByDoi,
+  resolveOnlineMetadata,
+  searchOnlineByTitle,
+  type MetadataSource,
+  type ResolvedMetadata,
+  type RegistryEnv,
+} from "../registries/index.js";
+import { checkTitleAgreement, findInLibrary } from "../samePaper.js";
 
 /** How much a page's own tags are trusted: below the registry, above a title search. */
 export const PAGE_TRUST = { structured: 80, titleOnly: 25 } as const;

@@ -1,6 +1,6 @@
 /** Builds an in-memory Typst project and a language service over it for the language-service tests. */
 import type { ILogger } from "../../../src/ports/index";
-import { createTypstLanguageService } from "../../../src/typst/language/index";
+import { createTypstLanguageService } from "../../../src/typst/language/service";
 
 export const PROJECT: Record<string, string> = {
   "lib.typ": "/// Draws a note.\n#let note(body, color: red) = box(body)\n#let helper = 1\n= Lib <lib-sec>\n",

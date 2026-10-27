@@ -1,5 +1,5 @@
 // Reads the source texts of a project from its main file, in the order they read.
-import { readLatexProjectSources } from "../../../latex/sourceProject.js";
+import { readLatexProjectSources } from "../../../latex/index.js";
 import { deriveReadingOrderTexts } from "../../checks/index.js";
 import type { ProjectSettings } from "../../project/index.js";
 import { readOptionalText, type ProjectReadContext } from "../../project/folder/index.js";

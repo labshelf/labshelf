@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { findCiteKeysAt } from "../../src/writing/quotes";
-import { readProbeAnswer } from "../../src/typst/typstCitationProbe";
+import { readProbeAnswer } from "../../src/typst/typst";
 import type { TypstSession } from "../../src/typst/index";
 import { deriveTypstCompilerPath } from "../../src/typst/node/index";
 import { pdfLinks } from "../support/pdfLinks";

@@ -1,9 +1,8 @@
 /** Matches records to the paper being searched, finds its title twin and tells which version a candidate URL holds. */
 import { extractArxivIdentifierFromUrl } from "../identifiers/index.js";
 import type { PdfVersion } from "../../model/index.js";
-// Not the paper barrel: it re-exports networkImport, which imports pdfFinder.
-import { isSameWork, deriveSurname } from "../paper/samePaper.js";
-import type { WorkReference } from "../paper/samePaper.js";
+import { isSameWork, deriveSurname } from "../samePaper.js";
+import type { WorkReference } from "../samePaper.js";
 import { openAlexAutocomplete, parseArxivFeed } from "../registries/index.js";
 import type { RegistryEnv, RegistryEntry } from "../registries/index.js";
 import { reportWarning, type PdfResolver, type ResolveContext, type ResolverEnv } from "./finder.js";

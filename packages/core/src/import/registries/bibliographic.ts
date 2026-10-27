@@ -1,5 +1,6 @@
 /** Looks up arXiv, PubMed, Europe PMC and DBLP records, and reads arXiv Atom answers and PubMed author affiliations. */
-import { extractYear, parseString } from "./metadata.js";
+import { parseString } from "../../guards/index.js";
+import { extractYear } from "./metadata.js";
 import { fetchJson, fetchText, findFirstNonEmpty, matchTag, normalizeArray, parseXmlText, type RegistryEntry, type RegistryEnv } from "./http.js";
 
 // arXiv

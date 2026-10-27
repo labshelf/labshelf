@@ -1,5 +1,5 @@
 /** Verifies biber's error messages are picked from its log and its stderr. */
-import { extractBiberErrors } from "../../../src/latex/biber";
+import { extractBiberErrors } from "../../../src/latex/biber/index";
 
 describe("extractBiberErrors", () => {
   it("returns the ERROR messages of a .blg and of stderr, ignoring INFO and WARN lines", () => {

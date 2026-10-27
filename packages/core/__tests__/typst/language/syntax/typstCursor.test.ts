@@ -1,5 +1,5 @@
 /** Verifies the Typst cursor context: mode switches, skipped comments, strings and raw text, triggers and calls. */
-import { deriveTypstCursor } from "../../../../src/typst/language/syntax/index";
+import { deriveTypstCursor } from "../../../../src/typst/language/syntax";
 
 const FENCE = "```";
 

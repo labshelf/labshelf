@@ -13,14 +13,6 @@ export interface ResolvedMetadata extends BibliographicFields {
  */
 export type MetadataConfidence = "high" | "medium" | "low";
 
-/**
- * Coerces an unknown value to a non-empty trimmed string, returning undefined for blanks and non-strings.
- * @returns The trimmed string, or undefined.
- */
-export function parseString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
 /** Collapses runs of whitespace to single spaces; undefined when nothing is left. */
 export function normalizeWhitespace(value: string): string | undefined {
   const trimmed = value.replace(/\s+/g, " ").trim();

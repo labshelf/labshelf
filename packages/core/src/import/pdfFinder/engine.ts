@@ -23,7 +23,7 @@ import { customResolver, europePmcResolver, openalexResolver, pmcResolver, publi
 import { deriveHostAccess } from "./rules.js";
 import { createDeadline } from "../../async/index.js";
 import { compareVersions, isPreferredVersion, type PdfVersion } from "../../model/index.js";
-import { fetchLanding } from "../landing/index.js";
+import { fetchLanding } from "../pageFacts.js";
 
 // Starts every lookup at once, each under its own deadline, and hands their candidates out in rank order.
 interface LookupStep {

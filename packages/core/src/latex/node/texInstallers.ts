@@ -8,9 +8,8 @@ import type { ILogger, FetchLike } from "../../ports/index.js";
 import { formatError } from "../../errors/index.js";
 import { runCancellable, type RunOutcome } from "./run.js";
 import { findTinyTexFile, type TinyTexFile } from "../toolchain.js";
-import { extractArchive, verifyDetachedSignature, downloadVerified } from "./verify.js";
+import { extractArchive, verifyDetachedSignature, downloadVerified, TEX_LIVE_SIGNING_KEY } from "./verify.js";
 import type { ManagedTexKind } from "./managedTex.js";
-import { TEX_LIVE_SIGNING_KEY } from "./texLiveKeyring.js";
 
 export function resolveManagedTexDir(texRoot: string, kind: ManagedTexKind): string {
   return join(texRoot, kind);
@@ -32,7 +31,7 @@ export interface TexInstallRun {
 }
 
 /** Calls `step` with an empty directory inside `texRoot`, so the final rename stays on one file system. */
-export async function withStagingDir<T>(texRoot: string, prefix: string, step: (staging: string) => Promise<T>): Promise<T> {
+async function withStagingDir<T>(texRoot: string, prefix: string, step: (staging: string) => Promise<T>): Promise<T> {
   await mkdir(texRoot, { recursive: true });
   const staging = await mkdtemp(join(texRoot, `.staging-${prefix}-`));
   try {
@@ -42,7 +41,7 @@ export async function withStagingDir<T>(texRoot: string, prefix: string, step: (
   }
 }
 
-export async function findSingleTopDir(parent: string): Promise<string> {
+async function findSingleTopDir(parent: string): Promise<string> {
   const dirs = (await readdir(parent, { withFileTypes: true })).filter((entry) => entry.isDirectory());
   const [only] = dirs;
   if (dirs.length !== 1 || only === undefined) {

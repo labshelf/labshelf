@@ -1,7 +1,7 @@
 // Lists the headings of a LaTeX or Typst source with their level, so any host can nest them into an outline.
 import { scanLatexSource } from "../../latex/index.js";
 import type { ProjectFormat } from "../project/index.js";
-import { scanTypstHeadings } from "../../typst/language/syntax/index.js";
+import { scanTypstHeadings } from "../../typst/language/index.js";
 
 export interface OutlineHeading {
   /** Smaller is higher; LaTeX runs from part (-1) to subparagraph (5), Typst from 1. */

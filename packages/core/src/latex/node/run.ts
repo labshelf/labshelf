@@ -9,8 +9,8 @@ import { readOptionalFile } from "../../library/node/index.js";
 import { isInside } from "../../path/index.js";
 import { nodePathOps } from "../../path/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { extractBiberErrors } from "../biber.js";
-import { parseTexLog, type BuildProblem } from "../log/index.js";
+import { extractBiberErrors } from "../biber/index.js";
+import { parseTexLog, type BuildProblem } from "../log.js";
 import { formatEngineLabel, type LatexToolchain } from "../toolchain.js";
 import { withToolchainOnPath } from "./systemTex.js";
 

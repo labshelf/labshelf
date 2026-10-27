@@ -1,4 +1,4 @@
-import { parseTexLog } from "../../../src/latex/log/index.js";
+import { parseTexLog } from "../../../src/latex/log.js";
 
 import { deriveTexProblemClass } from "../../../src/latex/problems";
 

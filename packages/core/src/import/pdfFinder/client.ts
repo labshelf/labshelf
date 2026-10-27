@@ -7,7 +7,8 @@ import { listPdfUrlsForLanding } from "./rules.js";
 import { formatError } from "../../errors/index.js";
 import { isPdfBytes } from "../../library/index.js";
 import { hostOf } from "../../url/index.js";
-import { derivePageFacts, parseHtmlPage, findRedirectUrls } from "../landing/index.js";
+import { parseHtmlPage, findRedirectUrls } from "../htmlPage.js";
+import { derivePageFacts } from "../pageFacts.js";
 
 // Lists the markers that bot-protection services leave in their challenge answers.
 /** Reads one response header by name, as `Headers.get` does. */

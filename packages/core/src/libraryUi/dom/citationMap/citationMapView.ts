@@ -3,8 +3,7 @@
 import { renderIcon, escapeHtml } from "../../../ui/index.js";
 import type { CitationMapState, CitationMapView } from "../../protocol/index.js";
 import type { UiContext } from "../uiContext.js";
-import { GRAPH_MAX_RADIUS, createCitationMapGraph, deriveForceLayout, type GraphNode, type Point } from "../../citationMap/index.js";
-import type { MissingWork } from "../../../import/index.js";
+import { GRAPH_MAX_RADIUS, createCitationMapGraph, deriveForceLayout, type GraphNode, type Point, type MissingWork } from "../../citationMap/index.js";
 
 const SHOWN_AUTHORS = 3;
 const NO_DOI_TIP = "This work has no DOI, so LabShelf cannot import it";

@@ -1,6 +1,5 @@
 // Tests verifying detached OpenPGP signatures against a pinned key block, including a real TeX Live signature.
-import { derivePinnedFingerprints, verifyDetachedSignature } from "../../../../src/latex/node/verify";
-import { TEX_LIVE_SIGNING_KEY } from "../../../../src/latex/node/texLiveKeyring";
+import { derivePinnedFingerprints, verifyDetachedSignature, TEX_LIVE_SIGNING_KEY } from "../../../../src/latex/node/verify";
 import { armoredSignature, createTestSigningKey } from "./fakeOpenPgp";
 
 // The install-tl-unx.tar.gz.sha512 and .sha512.asc that CTAN served on 2026-10-18.

@@ -1,5 +1,5 @@
 /** Classifies the problems of a build: the ones the helper reacts to, and a section document's problems moved onto the edited file's lines. */
-import type { BuildProblem } from "./log/index.js";
+import type { BuildProblem } from "./log.js";
 
 export interface TexProblemClass {
   missingFile?: string;
