@@ -1,7 +1,7 @@
 /** Resolves the files a build log names to source files of the project, so every problem can be shown in an editor. */
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isFile } from "../../../files/node/index.js";
 import { nodePathOps } from "../../../path/node/index.js";
 import { isInside } from "../../../path/index.js";
 import type { LocatedProblem } from "../buildResult.js";
@@ -12,10 +12,6 @@ export interface ProblemPlaces {
   /** The folder the build ran in; log paths are relative to it. */
   workDir: string;
   mainFile: string;
-}
-
-async function isFile(file: string): Promise<boolean> {
-  return fs.stat(file).then((stat) => stat.isFile(), () => false);
 }
 
 async function projectFile(logPath: string, places: ProblemPlaces): Promise<string | undefined> {

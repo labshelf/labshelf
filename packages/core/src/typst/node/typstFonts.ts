@@ -2,6 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isFile } from "../../files/node/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
 import type { ILogger, FetchLike } from "../../ports/index.js";
 import { downloadVerified } from "../../latex/toolchain/node/index.js";
@@ -20,13 +21,9 @@ function versionDir(fontsDir: string): string {
   return path.join(fontsDir, TYPST_VERSION);
 }
 
-async function exists(file: string): Promise<boolean> {
-  return fs.stat(file).then((stat) => stat.isFile(), () => false);
-}
-
 /** The default fonts not stored yet; a font is only ever written after its checksum matched. */
 export async function listMissingTypstFonts(fontsDir: string): Promise<TypstFontFile[]> {
-  const present = await Promise.all(TYPST_FONTS.map((font) => exists(path.join(versionDir(fontsDir), font.file))));
+  const present = await Promise.all(TYPST_FONTS.map((font) => isFile(path.join(versionDir(fontsDir), font.file))));
   return TYPST_FONTS.filter((_, index) => !present[index]);
 }
 

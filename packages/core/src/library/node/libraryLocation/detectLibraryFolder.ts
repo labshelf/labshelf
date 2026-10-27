@@ -1,7 +1,7 @@
 // Tells whether a folder is a LabShelf library and how many papers it holds.
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isDirectory } from "../../../files/node/index.js";
 import { createLibraryLayout } from "../../layout.js";
 import { countPaperFolders } from "./countPaperFolders.js";
 
@@ -9,10 +9,6 @@ export interface LibraryFolderDetails {
   exists: boolean;
   isLibrary: boolean;
   paperCount: number;
-}
-
-async function isDirectory(target: string): Promise<boolean> {
-  return fs.stat(target).then((stat) => stat.isDirectory(), () => false);
 }
 
 /** @returns true when every marker folder of the library layout exists in `root` */

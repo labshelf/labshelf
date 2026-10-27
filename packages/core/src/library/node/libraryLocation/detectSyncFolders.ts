@@ -2,6 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isDirectory } from "../../../files/node/index.js";
 import type { SyncTool } from "../../conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { formatError } from "../../../errors/index.js";
@@ -106,10 +107,6 @@ export interface DetectSyncFoldersOptions {
 
 // Google Drive names the root of the account after the interface language.
 const GOOGLE_DRIVE_ROOTS = ["My Drive", "Meu Drive", "Mi unidad", "Mon Drive", "Meine Ablage", "Il mio Drive"];
-
-async function isDirectory(target: string): Promise<boolean> {
-  return fs.stat(target).then((stat) => stat.isDirectory(), () => false);
-}
 
 async function childrenStartingWith(dir: string, prefix: string): Promise<string[]> {
   const names = await fs.readdir(dir).catch(() => [] as string[]);

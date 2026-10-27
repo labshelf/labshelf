@@ -1,4 +1,3 @@
-// Exposes the plain-text helpers of the writing domain: offset-to-line mapping, line similarity and the three-way text merge.
-export { findLineOfOffset, deriveLineOffsets } from "./lineOffsets.js";
+// Exposes the plain-text helpers of the writing domain: line similarity and the three-way text merge.
 export { deriveLineSimilarity } from "./deriveLineSimilarity.js";
 export { createTextMerge } from "./textMerge.js";

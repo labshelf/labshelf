@@ -1,5 +1,5 @@
 /** Places each citation of a source by line and by the heading it falls under. */
-import { findLineOfOffset, deriveLineOffsets } from "../text/index.js";
+import { findLineOfOffset, deriveLineOffsets } from "../../text/index.js";
 import { findCiteKeyOccurrences } from "./index.js";
 import type { ProjectFormat } from "../project/index.js";
 import { findSourceHeadings } from "./findSourceHeadings.js";

@@ -2,6 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isDirectory } from "../../../files/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { formatError } from "../../../errors/index.js";
 import { deriveLibraryKey, resolveDeviceStateDir } from "../deviceState/index.js";
@@ -21,7 +22,7 @@ async function moveDeviceLocalFolders(
   for (const base of [resolveCacheDir(env), resolveDeviceStateDir(env)]) {
     const source = path.join(base, "libraries", fromKey);
     const target = path.join(base, "libraries", toKey);
-    if (!(await fs.stat(source).then((stat) => stat.isDirectory(), () => false))) { continue; }
+    if (!(await isDirectory(source))) { continue; }
     try {
       await fs.rename(source, target);
     } catch (error) {

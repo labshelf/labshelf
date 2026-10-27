@@ -1,5 +1,5 @@
 // Lists the preprints of a project's .bib files that have a published version, as findings the preview places on the PDF.
-import { checkBibliography, type ILogger, type PublishedVersionFinder } from "@labshelf/core";
+import { checkBibliography, lineAt, type ILogger, type PublishedVersionFinder } from "@labshelf/core";
 import type { ReadyProject } from "../../buildRootDocument.js";
 import { listUserBibliographyFiles } from "../citations/index.js";
 import { PREVIEW_LOG_MODULE } from "../previewStrings.js";
@@ -11,8 +11,6 @@ export interface ProjectPreprintsDeps {
 }
 
 type Preprint = { key: string; message: string; file?: string; line?: number };
-
-const lineAt = (text: string, offset: number): number => text.slice(0, offset).split("\n").length;
 
 export function createProjectPreprints(deps: ProjectPreprintsDeps): (project: ReadyProject) => Promise<Preprint[]> {
   return async (project) => {

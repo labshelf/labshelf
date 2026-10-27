@@ -2,3 +2,4 @@
 export { createLibraryMirrorFileSystem } from "./libraryMirrorFileSystem.js";
 export { assertProjectDirReadable, listMirrorFiles } from "./listMirrorFiles.js";
 export { MirrorProjectDirUnavailable, type MirrorFileRead, type MirrorFileSystem } from "./mirrorFileSystem.js";
+export { readStable, type MirrorSample } from "./readStable.js";

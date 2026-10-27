@@ -1,7 +1,7 @@
 /** Finds which browsers this user has installed, and which are sandboxed Flatpak or Snap installs a native host cannot reach. */
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isDirectory } from "../../../files/node/index.js";
 import { ensureRegistry, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "../nativeHostEnv.js";
 import type { BrowserHostSite } from "./resolveHostLayout.js";
 
@@ -17,7 +17,7 @@ const FLATPAK_IDS: Record<BrowserId, string> = {
 const SNAP_NAMES: Partial<Record<BrowserId, string>> = { chromium: "chromium", brave: "brave", firefox: "firefox" };
 
 export async function isBrowserPresent(env: NativeHostEnv, target: BrowserHostSite): Promise<boolean> {
-  if (target.presence.kind === "dir") return isDir(target.presence.path);
+  if (target.presence.kind === "dir") return isDirectory(target.presence.path);
   const { exitCode } = await ensureRegistry(env)(["query", target.presence.key]);
   return exitCode === 0;
 }
@@ -27,9 +27,9 @@ export async function detectSandboxWarnings(env: NativeHostEnv, targets: readonl
   if (env.platform !== "linux") return [];
   const warnings: NativeHostWarning[] = [];
   for (const { browser, label } of targets) {
-    if (await isDir(path.join(env.home, ".var", "app", FLATPAK_IDS[browser]))) warnings.push(sandboxWarning(browser, label, "flatpak"));
+    if (await isDirectory(path.join(env.home, ".var", "app", FLATPAK_IDS[browser]))) warnings.push(sandboxWarning(browser, label, "flatpak"));
     const snap = SNAP_NAMES[browser];
-    if (snap && (await isDir(path.join(env.home, "snap", snap)))) warnings.push(sandboxWarning(browser, label, "snap"));
+    if (snap && (await isDirectory(path.join(env.home, "snap", snap)))) warnings.push(sandboxWarning(browser, label, "snap"));
   }
   return warnings;
 }
@@ -38,8 +38,4 @@ function sandboxWarning(browser: BrowserId, label: string, kind: "flatpak" | "sn
   const name = kind === "flatpak" ? "Flatpak" : "Snap";
   const message = `${label} is installed as a ${name}, and its sandbox cannot start LabShelf's native hosts. Install ${label} from its vendor or your distribution to connect it.`;
   return { browser, kind, message };
-}
-
-async function isDir(target: string): Promise<boolean> {
-  return fs.stat(target).then((stat) => stat.isDirectory(), () => false);
 }

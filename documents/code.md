@@ -25,6 +25,8 @@ Generic helpers live in a core module named after their subject and are imported
 - `packages/core/src/encoding`: base64, base64url, hex (strict decode), byte comparison and joining, random bytes and random hex, fixed-length key decoding.
 - `packages/core/src/errors`: formatError, describeError, toError, errorCode, isAbortError for a thrown unknown.
 - `packages/core/src/events`: listener registry (createListeners).
+- `packages/core/src/files`: Node file probes (fsProbe).
+- `packages/core/src/text`: line offsets and multiset overlap of strings.
 - `packages/core/src/guards`: narrowing predicates over unknown for parsers.
 - `packages/core/src/hash`: SHA-256 hex of bytes or text.
 - `packages/core/src/json`: parseJsonObject, JSON text to a plain object or undefined.

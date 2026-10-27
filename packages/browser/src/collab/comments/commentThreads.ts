@@ -1,7 +1,7 @@
 // Stores a project's comment threads in its .labshelf/comments.json over the page's library folder and places them in the project's files.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import {
-  addThread, deriveAnchor, COMMENTS_PATH, deriveCommentThreads, updateCommentsDocument, loadCommentsDocument, findThread, posixPathOps, addThreadReply, setThreadResolved,
+  addThread, lineAt, deriveAnchor, COMMENTS_PATH, deriveCommentThreads, updateCommentsDocument, loadCommentsDocument, findThread, posixPathOps, addThreadReply, setThreadResolved,
   type Comment, type CommentsFileAccess, type CommentThread, type ILogger, type LibraryFileSystem, type TextRange,
 } from "@labshelf/core";
 import type { ProjectSession } from "../../writing/session";
@@ -34,8 +34,6 @@ export interface CommentThreadsOptions {
   session: Pick<ProjectSession, "current">;
   logger: ILogger;
 }
-
-const lineAt = (text: string, offset: number): number => text.slice(0, offset).split("\n").length;
 
 type Session = Pick<ProjectSession, "current">;
 

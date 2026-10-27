@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { isDirectory } from "../../files/node/index.js";
 import type { LocalStat } from "../../ports/index.js";
 import { createLibraryLayout } from "../../library/index.js";
 import { countPaperFolders, writeSyncedFile } from "../../library/node/index.js";
@@ -21,7 +22,7 @@ export class LibraryFileOperations {
   /** @throws BridgeError `noLibrary` when `root` is not an existing folder */
   static async open(root: string): Promise<LibraryFileOperations> {
     if (!path.isAbsolute(root)) throw new BridgeError("protocol", `The library folder must be an absolute path: ${root}`);
-    const isFolder = await fs.stat(root).then((s) => s.isDirectory(), () => false);
+    const isFolder = await isDirectory(root);
     if (!isFolder) throw new BridgeError("noLibrary", `The library folder ${root} does not exist or is not a folder`);
     return new LibraryFileOperations(root);
   }

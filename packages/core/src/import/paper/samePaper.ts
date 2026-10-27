@@ -1,5 +1,6 @@
 // Decides whether two bibliographic records describe the same work.
 import { normalizeTitleForMatch } from "../../library/index.js";
+import { countCommon } from "../../text/index.js";
 import { deriveSurname } from "./titleAgreement.js";
 
 // TRAP: aggregators and title searches often return a neighbouring paper (BWA for BWA-SW), so a copy that did not
@@ -50,17 +51,7 @@ export function deriveWordBigramDice(normA: string, normB: string): number {
   const a = wordBigrams(normA);
   const b = wordBigrams(normB);
   if (a.length === 0 || b.length === 0) return normA === normB ? 1 : 0;
-  const counts = new Map<string, number>();
-  for (const g of a) counts.set(g, (counts.get(g) ?? 0) + 1);
-  let overlap = 0;
-  for (const g of b) {
-    const left = counts.get(g) ?? 0;
-    if (left > 0) {
-      overlap += 1;
-      counts.set(g, left - 1);
-    }
-  }
-  return (2 * overlap) / (a.length + b.length);
+  return (2 * countCommon(a, b)) / (a.length + b.length);
 }
 
 // A one-word title falls back to that word so short titles still compare instead of scoring 0.

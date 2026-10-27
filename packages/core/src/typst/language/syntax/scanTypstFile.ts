@@ -1,5 +1,5 @@
 // Collects the bindings, labels, imports, includes and bibliographies a Typst file defines.
-import { findLineOfOffset, deriveLineOffsets } from "../../../writing/text/index.js";
+import { findLineOfOffset, deriveLineOffsets } from "../../../text/index.js";
 import type { TypstBinding, TypstFileSymbols, TypstImport } from "./typstFileSymbols.js";
 import { walkTypst } from "./typstWalk.js";
 
