@@ -6,15 +6,12 @@ export {
 } from "./helperMessages.js";
 export type {
   ChangedPage, BuildKind, HelperBuildState, HelperDirection, HelperHost, HelperParseResult, HelperProgress,
-  HelperRejection, HelperRejectionKind, HelperPhase, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
+  HelperRejection, HelperRejectionKind, HelperPhase, TemplatePublishEvent, TemplatePublishRequest, TexSource, TexToolchain, TextChange, ToHelperMessage, ToPageMessage,
 } from "./helperMessages.js";
-export { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
+export { checkHelperPath, decodeConnectionMessage, encodeConnectionMessage, isHelperProjectId } from "./helperPaths.js";
+export type {
+  ConnectionMessage, HelperCompileRequest, HelperCompileResult, HelperChange, HelperPageBytes, OnHelperProgress,
+  HelperState, ILatexHelper,
+} from "./helperPaths.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
 export type { MessageFor } from "./parseHelperMessage.js";
-export type {
-  HelperCompileRequest, HelperCompileResult, HelperChange, HelperPageBytes, OnHelperProgress,
-  HelperState, ILatexHelper,
-} from "./latexHelper.js";
-export { decodeConnectionMessage, encodeConnectionMessage } from "./connectionFrame.js";
-export type { ConnectionMessage } from "./connectionFrame.js";
-export type { TemplatePublishRequest, TemplatePublishEvent } from "./template/index.js";

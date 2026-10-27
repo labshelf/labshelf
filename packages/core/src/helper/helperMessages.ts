@@ -2,9 +2,8 @@
 // CONTRACT: documents/contracts/helper.md#messages
 
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
+import type { HostToGallery, PublishDraft, PublishFromHost } from "../templates/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
-
-import type { TemplatePublishMessage, TemplatePublishReply } from "./template/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
 export const PROTOCOL_VERSION = 5;
@@ -38,6 +37,15 @@ export interface TextChange { from: number; to: number; insert: string }
 export interface ChangedPage { index: number; offset: number; length: number }
 
 type Envelope<T extends string> = { v: number; id: string; type: T };
+
+// Template publication socket messages.
+export type TemplatePublishRequest =
+  | { action: "open" }
+  | { action: "check"; draft: PublishDraft }
+  | { action: "submit"; draft: PublishDraft; token: string };
+export type TemplatePublishMessage = { v: number; id: string; type: "publishTemplate"; projectId: string } & TemplatePublishRequest;
+export type TemplatePublishEvent = PublishFromHost | Extract<HostToGallery, { type: "notice" }>;
+export type TemplatePublishReply = { v: number; id: string; type: "templatePublish"; event?: TemplatePublishEvent; done: boolean };
 
 export type ToHelperMessage =
   | TemplatePublishMessage

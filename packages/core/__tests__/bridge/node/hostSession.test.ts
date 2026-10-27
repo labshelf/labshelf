@@ -1,4 +1,4 @@
-/** Pins that a failed send never stops the session from answering later requests. */
+/** Pins that a failed send never stops the session from answering later requests, and that the watcher reports library changes as batched relative paths. */
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { BRIDGE_PROTOCOL, type HostMessage, BRIDGE_CHUNK_BYTES } from "../../../src/bridge/index";
@@ -86,5 +86,27 @@ describe("stagedWrites", () => {
       expect(await bridge.call({ id: 2, op: "commit", size: BRIDGE_CHUNK_BYTES })).toEqual([{ id: 2, ok: true, result: { size: BRIDGE_CHUNK_BYTES } }]);
       await bridge.close();
     }, 30_000);
+  });
+});
+
+describe("changed events", () => {
+  afterEach(cleanupTempDirs);
+
+  it("reports changes in the library as relative paths and skips noise", async () => {
+    const root = path.join(await makeTempDir(), "library");
+    await fs.mkdir(path.join(root, "papers", "a"), { recursive: true });
+    const bridge = await startBridge(root);
+    await bridge.hello();
+    await fs.writeFile(path.join(root, "papers", "a", ".DS_Store"), "x");
+    await fs.writeFile(path.join(root, "papers", "a", "metadata.yaml"), "title: x\n");
+    const seen = new Set<string>();
+    while (!seen.has("papers/a/metadata.yaml")) {
+      const event = await bridge.next((m) => "event" in m);
+      expect(event).toMatchObject({ event: "changed" });
+      for (const changed of (event as { paths: string[] }).paths) { seen.add(changed); }
+    }
+    expect([...seen].some((changed) => changed.endsWith(".DS_Store"))).toBe(false);
+    expect([...seen].every((changed) => !path.isAbsolute(changed) && !changed.includes("\\"))).toBe(true);
+    await bridge.close();
   });
 });

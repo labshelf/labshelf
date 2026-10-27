@@ -5,12 +5,9 @@ import { Logger } from "../../logging/index.js";
 import { FileLogSink } from "../../logging/node/index.js";
 import { createDeviceLocalLayout, readSharedLibraryRoot, resolveSharedConfigPath, resolveDeviceStateDir, updateSharedConfig } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { createChangedEvents } from "../createChangedEvents.js";
-import { encodeFrame, FrameDecoder } from "../framing.js";
-import type { HostMessage } from "../protocol.js";
-import { LibraryFileOperations } from "./fileOperations.js";
-import { BridgeHostSession } from "./hostSession.js";
-import { watchLibrary } from "./libraryWatcher.js";
+import { createChangedEvents, encodeFrame, FrameDecoder, type HostMessage } from "../protocol.js";
+import { LibraryFileOperations } from "./libraryFiles.js";
+import { BridgeHostSession, watchLibrary } from "./hostSession.js";
 
 export interface BridgeHostOptions {
   input?: NodeJS.ReadableStream;
@@ -18,6 +15,11 @@ export interface BridgeHostOptions {
   configFile?: string;
   env?: NodeJS.ProcessEnv;
   watchDebounceMs?: number;
+}
+
+/** Names the log file the bridge host and its installer write to when no library is configured. */
+export function resolveBridgeLogPath(): string {
+  return path.join(resolveDeviceStateDir(), "logs", "bridge.log");
 }
 
 // The write callback reports a destroyed stdout, where waiting for "drain" would hang forever.
