@@ -1,6 +1,6 @@
 // Fetches a walled PDF from inside a background tab that loads the walled URL and passes its check, then closes the tab.
 // The tab is inactive so the user's focus and the popup stay put.
-import { formatError, fetchPdf, isWallPage, extractNextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
+import { formatError, fetchPdf, originOf, isWallPage, extractNextHopsFromHtml, type FetchedPdf, type ILogger } from "@labshelf/core";
 import { bx } from "../../platform";
 import { readScriptingApi } from "./scripting";
 import { fetchInTab } from "./tabFetch";
@@ -54,10 +54,6 @@ async function fetchFromTab(log: ILogger, tabId: number, origin: string, url: st
     if (pdf) return pdf;
   }
   return undefined;
-}
-
-function originOf(url: string | undefined): string | undefined {
-  try { return url ? new URL(url).origin : undefined; } catch { return undefined; }
 }
 
 // Waits until the tab shows a PDF or a real page — not a bot check, not the blank document a challenge passes through

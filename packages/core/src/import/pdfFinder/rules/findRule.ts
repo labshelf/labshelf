@@ -1,4 +1,5 @@
 /** Reads the publisher rule table for the PDF URLs a DOI or a landing page gives. */
+import { parseUrl } from "../../../url/index.js";
 import { PUBLISHER_RULES } from "./platforms/index.js";
 import type { PublisherRule } from "./publisherRule.js";
 
@@ -27,12 +28,4 @@ export function deriveHostAccess(hostname: string): "open" | "paywalled" | undef
 
 function rulesOn(page: URL): PublisherRule[] {
   return PUBLISHER_RULES.filter((r) => r.hosts.test(page.hostname));
-}
-
-function parseUrl(url: string): URL | undefined {
-  try {
-    return new URL(url);
-  } catch {
-    return undefined;
-  }
 }

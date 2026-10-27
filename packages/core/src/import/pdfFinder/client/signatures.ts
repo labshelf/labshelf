@@ -1,4 +1,5 @@
 // Lists the markers that bot-protection services leave in their challenge answers.
+import { hostOf } from "../../../url/index.js";
 
 /** Reads one response header by name, as `Headers.get` does. */
 export interface HeaderReader {
@@ -41,12 +42,4 @@ export function hasWallSignature(html: string, finalUrl: string | undefined, hea
  */
 export function hasImpervaHeader(headers: HeaderReader | undefined): boolean {
   return headers?.get("x-iinfo") != null;
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
 }

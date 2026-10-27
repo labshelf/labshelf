@@ -1,13 +1,9 @@
 // Lists the window's tabs as add sources and captures the picked one into the open folder.
 // A capture with no PDF writes nothing until the UI confirms; an existing paper is selected, not duplicated.
 import type { MissingPdfAction } from "@labshelf/core";
-import { formatPdfSourceLabel } from "@labshelf/core";
+import { formatPdfSourceLabel, hostOf } from "@labshelf/core";
 import { sendRuntime, type WriteOutcome, type BrowserTab } from "../../../platform";
 import type { HostContext } from "../hostContext";
-
-function hostOf(url: string): string {
-  try { return new URL(url).hostname; } catch { return ""; }
-}
 
 export async function offerOpenTabs(ctx: HostContext, folder: string): Promise<void> {
   const tabs = await sendRuntime<BrowserTab[]>({ type: "tabs.list" });

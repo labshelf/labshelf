@@ -1,5 +1,6 @@
 // Interprets a page's citation_* / Dublin Core / PRISM meta tags into paper facts and PDF links to try.
 // Publishers emit these tags for Google Scholar, so they are present even when a registry lookup fails.
+import { hostOf } from "../../url/index.js";
 import { extractYear, type ResolvedMetadata } from "../metadata/index.js";
 import type { PageFacts, RawPage, PdfCandidate } from "./rawPage.js";
 import {
@@ -44,10 +45,6 @@ function pdfCandidatesOf(raw: RawPage, metaPdfUrls: string[], ids: DetectedIds):
     .slice(0, MAX_ANCHOR_CANDIDATES)
     .forEach((l) => add(l.url));
   return out;
-}
-
-function hostOf(url: string): string {
-  try { return new URL(url).hostname; } catch { return ""; }
 }
 
 function safeDecode(url: string): string {

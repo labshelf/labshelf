@@ -10,7 +10,7 @@ export function createPacedFetch(fetchFn: FetchFn, limits: PacerLimits): FetchFn
   const failures = new Map<string, number>();
   const fail = (host: string): void => { failures.set(host, (failures.get(host) ?? 0) + 1); };
   return async (input, init) => {
-    const host = hostOf(input);
+    const host = hostKeyOf(input);
     if ((failures.get(host) ?? 0) >= limits.hostMaxFailures) {
       throw new Error(`${host} skipped after ${limits.hostMaxFailures} failed requests`);
     }
@@ -31,7 +31,7 @@ export function createPacedFetch(fetchFn: FetchFn, limits: PacerLimits): FetchFn
   };
 }
 
-function hostOf(input: Parameters<FetchFn>[0]): string {
+function hostKeyOf(input: Parameters<FetchFn>[0]): string {
   const url = input instanceof Request ? input.url : String(input);
   try {
     return new URL(url).host;
