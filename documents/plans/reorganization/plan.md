@@ -16,11 +16,11 @@ Turn the fragmented code (55% of files under 40 lines, 385 barrels, private help
 - [x] **D4** No other behaviour change; protocols, on-disk formats and contract texts stay as they are unless a session says otherwise.
 - [x] **D5** Sessions run one at a time, in order, on branch `refactor/reorganization`, unattended through `pnpm plan:run documents/plans/reorganization` (`scripts/plans/runPlan.mjs`): one fresh headless Claude process per session, stopping at the first failure, uncommitted change or session without a commit.
 - [x] **D6** Every session starts by rebuilding `analysis/labshelf.db` (`sh analysis/scripts/run.sh`) and writing its current sites to `research/<id>.md`; package briefs live in `research/<id>.<n>.md` because session files are limited to 6,000 characters.
-- [x] **D7** Each session shrinks, never grows, `scripts/lint/modulesBaseline.json` and `scripts/lint/duplicatesBaseline.json`; each new shared module joins `SHARED_MODULES` in `scripts/lint/modules.mjs` and the "Shared modules" list in `documents/code.md`.
+- [x] **D7** Testing is light (set in `scripts/plans/runPlan.mjs`, overriding the session files): implementers check with the typecheck and the tests of the code they changed; each session runs `pnpm gate --no-lint` once before its commit; every 5th session counted back from the last (and the last itself) is a lint milestone that runs the full `pnpm gate`, `pnpm lint` and the baseline updates and fixes what earlier sessions left (`--lint-every N` changes the interval). New shared modules still join `SHARED_MODULES` and `documents/code.md`.
 
 ## 3. Acceptance
 
-- [ ] **A1** `pnpm gate` passes after every session (typecheck, tests, lint for core, vscode, browser and terminal).
+- [ ] **A1** `pnpm gate --no-lint` passes after every session; the full `pnpm gate` and `pnpm lint` pass after each lint milestone and after the last session.
 - [ ] **A2** `scripts/lint/modulesBaseline.json` and `duplicatesBaseline.json` are smaller at the end than at plan start (689 module violations).
 - [ ] **A3** The duplicate families of `analysis/reorganization.md` §3 marked for merging have one canonical version; `node analysis/scripts/validate.mjs` shows no T1/T2 family among them.
 - [ ] **A4** No helper of a shared module is re-declared privately (`pnpm lint:modules` rule `shared-name`).
