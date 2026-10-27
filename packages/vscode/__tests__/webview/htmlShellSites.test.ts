@@ -1,6 +1,6 @@
 /** Pins the exact HTML each bundle-backed webview page produces, so moving the skeleton into renderHtmlShell stays byte-identical. */
 import * as vscode from "vscode";
-import { listPanelHtml } from "../../src/libraryUi/listPanelHtml";
+import { listPanelHtml } from "../../src/libraryUi/listPanel";
 import { searchHtml } from "../../src/writing/search/view";
 import { registerSyncGuideCommand } from "../../src/library/syncGuide";
 import { AllProjectsPanel } from "../../src/writing/projects/allProjects";

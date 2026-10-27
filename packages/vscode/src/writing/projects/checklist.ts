@@ -8,10 +8,9 @@ import {
   type ReadingItem, type ReadingPaper, type SidebarTreeNode,
   formatError,
 } from "@labshelf/core";
-import { CHECK_COMMAND } from "../build/index.js";
-import type { FigureNode, ReadyProject } from "../figures/index.js";
+import type { FigureNode, ReadyProject } from "./projectFigures.js";
 import type { BuildPreviews } from "../preview/index.js";
-import type { ProjectReadingLists } from "../citations/index.js";
+import type { ProjectReadingLists } from "./readingList.js";
 import { REVEAL_OUTLINE_COMMAND } from "./outline.js";
 import type { BuiltTreeSpec, ProjectTreeRequest } from "./mirror.js";
 import type { ProjectSession, WritingProjects } from "./session.js";
@@ -70,6 +69,9 @@ class ChecklistMemory {
 
 const MODULE = "writing/checklist";
 const REGENERATE_FIGURE_COMMAND = "labshelf.writing.regenerateFigure";
+
+/** Named here so views can run the Check Before Submitting command without loading its Node side. */
+export const CHECK_COMMAND = "labshelf.writing.checkBeforeSubmitting";
 
 export interface ChecklistViewDeps {
   paths: PathOps;

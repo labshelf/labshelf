@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { isInside, readChecklistSignals, type ChecklistSignals, type ILogger, type PageOverflow, type PathOps } from "@labshelf/core";
 import type { BodyPagesCount } from "../preview/index.js";
-import type { ReadyProject } from "../commands/index.js";
+import type { ReadyProject } from "./commands.js";
 import type { WritingProjects } from "./session.js";
 import { disposeAll } from "../../disposables/index.js";
 

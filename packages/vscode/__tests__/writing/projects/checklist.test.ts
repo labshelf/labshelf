@@ -9,7 +9,7 @@ import * as vscode from "vscode";
 import { deriveNextReadingStatus, type ChecklistSignals, type PaperRecord, type ReadingList, type SidebarTreeNode, addManualItem, readManualItems, updateChecklist } from "@labshelf/core";
 import { createNodeProjectReadCompositionRoot } from "@labshelf/core/node";
 import { ChecklistView } from "../../../src/writing/projects/checklist";
-import type { ReadyProject } from "../../../src/writing/figures";
+import type { ReadyProject } from "../../../src/writing/projects/index";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
 
 describe("checklistView", () => {

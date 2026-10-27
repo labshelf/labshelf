@@ -2,8 +2,7 @@
 import * as vscode from "vscode";
 
 import { createSelectionHub, createLibraryLayout, type AiService } from "@labshelf/core";
-import { createSelectionSources, type DetailsView } from "../libraryUi/details/index.js";
-import { ListWebviewPanel } from "../libraryUi/index.js";
+import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
   ConflictHandling, createLibraryEvents, moveLibraryRootToConfig, registerConflictCommand, registerSyncGuideCommand, resolveLibraryRoot, type LibraryEvents,

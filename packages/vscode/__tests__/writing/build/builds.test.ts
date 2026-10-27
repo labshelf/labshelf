@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import type { LatexEngine } from "@labshelf/core";
 import { BUILD_COMMAND, BuildOutcomes, buildOptions, readActiveProject, registerBuildCommand, setAutoCompile, setEngine, setHaltOnError } from "../../../src/writing/build/builds";
 import { writeEngine } from "../../../src/writing/build/toolchain";
-import type { ReadyProject } from "../../../src/writing/commands/index";
+import type { ReadyProject } from "../../../src/writing/projects/index";
 import { commandHandler, fakeHost, fakeLogger, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/writing/build/toolchain", () => ({ writeEngine: jest.fn() }));

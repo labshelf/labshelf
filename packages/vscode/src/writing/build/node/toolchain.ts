@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { deriveTexLiveGuideUrl, type ILogger, type LatexToolchain, type ToolchainMissing } from "@labshelf/core";
 import { createSharedTexProvider, ensureToolchain as ensureCoreToolchain, type ProjectBuildDeps, type ToolchainDeps as CoreToolchainDeps } from "@labshelf/core/node";
 import { runSafely } from "../../../command/index.js";
-import type { ReadyProject } from "../../commands/index.js";
+import type { ReadyProject } from "../../projects/index.js";
 import type { WritingHost, WritingProjects } from "../../projects/index.js";
 import { createVscodeToolchainAsk } from "../toolchain.js";
 

@@ -7,7 +7,7 @@ import { disposeAll } from "../../disposables/index.js";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
 import type { UriOfPath } from "../../library/index.js";
 import { BUILD_COMMAND, readActiveProject, type BuildListener, type BuildTrigger, type FinishedBuild, type IncludeOnlyState } from "../build/index.js";
-import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { BuildRootOf, WritingHost, WritingProjects } from "../projects/index.js";
 import { BuildRootBuilds, createWritingActions } from "./buildRoots.js";
 import { BuildRootsPublisher } from "./buildRootsPublisher.js";
@@ -54,7 +54,7 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
 }
 
 /** The paper a preview reader opens for a project's PDF. */
-export function createPreviewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
+function createPreviewPaper(paths: PathOps, project: ReadyProject, pdf: string): PaperRecord {
   return { id: `preview:${project.settings.id}`, title: paths.basename(pdf), path: paths.dirname(pdf), citeKey: "", status: "reading" };
 }
 
@@ -70,7 +70,7 @@ export async function readBuiltPdf(projects: Pick<WritingProjects, "data" | "pat
 }
 
 /** Reports saved and edited files of the workspace as source changes. */
-export const vscodeSourceEvents: SourceEvents = {
+const vscodeSourceEvents: SourceEvents = {
   onSourceChanged(listener) {
     const subscriptions = [
       vscode.workspace.onDidSaveTextDocument((document) => { if (document.uri.scheme === "file") { listener(document.uri.fsPath); } }),

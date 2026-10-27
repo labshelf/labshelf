@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { AUTO_COMPILE_MODES, AUTO_SAVE_DELAY_MS, buildRootOf, formatError, type BuildSchedule, type ILogger } from "@labshelf/core";
-import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readActiveProject } from "./builds.js";
 import type { FindIncludeOnly } from "./includeOnly.js";

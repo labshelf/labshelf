@@ -6,7 +6,7 @@ import {
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
 import { BUILD_COMMAND } from "../build/index.js";
-import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import { findOwningProject, type ReadyProject } from "./commands.js";
 import { readBuiltPdf } from "../preview/index.js";
 import { disposeAll } from "../../disposables/index.js";
 

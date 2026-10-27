@@ -23,7 +23,7 @@ import {
   type ProjectFormat,
 } from "@labshelf/core";
 import { createPaperPickItem } from "../../command/index.js";
-import type { ReadyProject } from "../commands/index.js";
+import type { ReadyProject } from "../projects/index.js";
 import { findCitingProject, openEditorSources, type CitationSession, type CitationWorkspace } from "./backlinks.js";
 import { CitationHoverProvider } from "./hover.js";
 
@@ -96,7 +96,7 @@ async function highlightsOfPapers(
  * The page-argument items at the cursor, or undefined when the cursor is not in a page argument.
  * An empty list means a page argument whose paper has no highlight text.
  */
-export async function findPageArgumentCompletion(
+async function findPageArgumentCompletion(
   format: ProjectFormat, session: CitationSession, document: vscode.TextDocument, position: vscode.Position,
 ): Promise<vscode.CompletionItem[] | undefined> {
   const text = document.lineAt(position.line).text;

@@ -4,9 +4,10 @@ import * as vscode from "vscode";
 import { createDebouncer, createProjectFileRow, formatError, listVisibleEntries, type ILogger, type LibraryFileSystem, type ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
-import type { ProjectReadingLists } from "../citations/index.js";
-import type { ReadyProject } from "../commands/index.js";
-import { ProjectFiguresView, type ProjectFigures } from "../figures/index.js";
+import type { ProjectReadingLists } from "./readingList.js";
+import type { ReadyProject } from "./commands.js";
+import { ProjectFiguresView } from "./figuresView.js";
+import type { ProjectFigures } from "./projectFigures.js";
 import type { BuildPreviews } from "../preview/index.js";
 import { registerChecklistView } from "./checklist.js";
 import { createSignalsReader } from "./checklistSignals.js";
@@ -31,7 +32,7 @@ interface ProjectFilesDeps {
 
 const isFolder = (type: vscode.FileType): boolean => (type & vscode.FileType.Directory) !== 0;
 
-export function createProjectFolderUri(project: ReadyProject): vscode.Uri {
+function createProjectFolderUri(project: ReadyProject): vscode.Uri {
   return vscode.Uri.file(project.folder);
 }
 

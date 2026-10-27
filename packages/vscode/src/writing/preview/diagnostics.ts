@@ -3,7 +3,7 @@ import {
   findCiteKeyOccurrences, orderPdfProblems, findPagePoint, isInside,
   type ILogger, type LocatedProblem, type PageArea, type PagePoint, type PathOps, type PdfProblem, type SynctexMap, type TypstCitation,
 } from "@labshelf/core";
-import { deriveProjectPath, type ReadyProject } from "../commands/index.js";
+import { deriveProjectPath, type ReadyProject } from "../projects/index.js";
 import { PREVIEW_LOG_MODULE } from "./panel.js";
 import type { SynctexFinder } from "./synctex.js";
 

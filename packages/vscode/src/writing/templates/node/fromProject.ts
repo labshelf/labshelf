@@ -8,7 +8,7 @@ import { writeProjectAsTemplate, type WriteTemplateInput } from "@labshelf/core/
 import { runSafely } from "../../../command/index.js";
 import { readActiveProject } from "../../build/index.js";
 import { ensureToolchain, type ToolchainDeps } from "../../build/node/index.js";
-import type { ReadyProject } from "../../commands/index.js";
+import type { ReadyProject } from "../../projects/index.js";
 import type { WritingHost, WritingProjects } from "../../projects/index.js";
 
 const SAVE_TEMPLATE_COMMAND = "labshelf.templates.saveProject";

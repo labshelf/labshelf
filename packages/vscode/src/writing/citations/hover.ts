@@ -8,7 +8,7 @@ import {
   type PaperRecord,
   type QuotedHighlight,
 } from "@labshelf/core";
-import type { ReadyProject } from "../commands/index.js";
+import type { ReadyProject } from "../projects/index.js";
 import { findCitingProject, type CitationSession, type CitationWorkspace } from "./backlinks.js";
 
 const escapeMarkdown = (text: string): string => text.replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");

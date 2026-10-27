@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import type { CheckProblem } from "@labshelf/core";
 import { checkProject } from "@labshelf/core/node";
 import { BuildProblems } from "../../../../src/writing/build/builds";
-import { CHECK_COMMAND } from "../../../../src/writing/build/index";
+import { CHECK_COMMAND } from "../../../../src/writing/projects/index";
 import { LatexBuilds, registerCheckCommand } from "../../../../src/writing/build/node/builds";
 import { reportToolchainMissing } from "../../../../src/writing/build/node/toolchain";
 import { readBuiltPdf } from "../../../../src/writing/preview";

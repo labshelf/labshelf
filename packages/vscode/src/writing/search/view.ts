@@ -6,7 +6,7 @@ import {
   type HostToSearch, type ILogger, type MatchPosition, type SearchOptions, type SearchRun, type SearchScopeKind, type SearchToHost,
 } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
-import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../commands/index.js";
+import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, writeReplacementsInProject, type SearchScope } from "./replace.js";
 

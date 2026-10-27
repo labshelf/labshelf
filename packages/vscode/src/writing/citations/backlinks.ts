@@ -16,7 +16,7 @@ import {
   type PathOps,
 } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
-import { findOwningProject, type ProjectFinder, type ReadyProject } from "../commands/index.js";
+import { findOwningProject, type ProjectFinder, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 
 export interface CitationSession {

@@ -5,7 +5,7 @@
 import * as vscode from "vscode";
 
 import { ProjectFilesProvider, type ProjectFileNode, watchProjectFiles, registerProjectFileCommands } from "../../../src/writing/projects/tree";
-import type { ReadyProject } from "../../../src/writing/figures";
+import type { ReadyProject } from "../../../src/writing/projects/index";
 import { fakeLogger, readyEntry, commandHandler } from "../../support/writingFixtures";
 
 describe("projectFilesProvider", () => {

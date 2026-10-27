@@ -4,7 +4,7 @@ import * as path from "node:path";
 import type { LocatedProblem, SynctexMap, TypstCitation } from "@labshelf/core";
 import { readPdfProblems, StaleSources, type PdfProblemsDeps } from "../../../src/writing/preview/diagnostics";
 import type { SynctexFinder } from "../../../src/writing/preview/synctex";
-import type { ReadyProject } from "../../../src/writing/commands/index";
+import type { ReadyProject } from "../../../src/writing/projects/index";
 import { fakeLogger, readyEntry } from "../../support/writingFixtures";
 
 describe("pdf problems", () => {

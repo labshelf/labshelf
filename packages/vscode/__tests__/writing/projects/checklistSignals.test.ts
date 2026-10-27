@@ -6,7 +6,7 @@ import * as vscode from "vscode";
 
 import type { ChecklistSignals } from "@labshelf/core";
 import { OpenProjectSignals, createSignalsReader } from "../../../src/writing/projects/checklistSignals";
-import type { ReadyProject } from "../../../src/writing/figures";
+import type { ReadyProject } from "../../../src/writing/projects/index";
 import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 describe("openProjectSignals", () => {

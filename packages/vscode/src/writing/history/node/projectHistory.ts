@@ -13,7 +13,7 @@ import {
 } from "@labshelf/core";
 import { runSafely } from "../../../command/index.js";
 import { readActiveProject } from "../../build/index.js";
-import { findOwningProject, type ReadyProject } from "../../commands/index.js";
+import { findOwningProject, type ReadyProject } from "../../projects/index.js";
 import type { ProjectHistoryRecorder, WritingHost, WritingProjects } from "../../projects/index.js";
 import { HistoryPanel, type ProjectHistoryStore } from "../historyPanel.js";
 import * as path from "node:path";

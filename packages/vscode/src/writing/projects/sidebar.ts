@@ -24,8 +24,8 @@ import {
   type ProjectMenuCommand,
 } from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
-import { copyProjectEntry } from "../commands/index.js";
-import type { ReadyProject } from "../figures/index.js";
+import { copyProjectEntry } from "./commands.js";
+import type { ReadyProject } from "./projectFigures.js";
 import { readBuiltPdf, readRawLogFile, type BuildRootBuilds } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "./session.js";
 import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../libraryUi/index.js";

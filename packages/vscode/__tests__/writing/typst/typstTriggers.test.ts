@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { TYPST_VERSION } from "@labshelf/core/typst";
-import type { ReadyProject } from "../../../src/writing/commands/index";
+import type { ReadyProject } from "../../../src/writing/projects/index";
 import { writeTypstVersion } from "../../../src/writing/typst/typstTriggers";
 import { fakeHost, fakeProjects, readyEntry } from "../../support/writingFixtures";
 

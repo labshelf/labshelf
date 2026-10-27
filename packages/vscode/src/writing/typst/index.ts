@@ -1,2 +1,2 @@
-/** Exports Typst in VS Code: the completion, hover and go-to-definition providers. */
-export { registerTypstLanguage } from "./typstLanguage.js";
+// Typst exports nothing to other folders; the Typst language providers are registered from ../typstLanguage.ts.
+export {};

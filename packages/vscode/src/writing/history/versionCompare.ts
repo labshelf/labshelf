@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { createPreviewStore, type ILogger, type PageArea, type PaperRecord, type PathOps, type ProjectVersion } from "@labshelf/core";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
 import type { ProjectBuilders } from "../build/index.js";
-import type { ReadyProject } from "../commands/index.js";
+import type { ReadyProject } from "../projects/index.js";
 import { readBuiltPdf } from "../preview/index.js";
 import type { WritingProjects } from "../projects/index.js";
 

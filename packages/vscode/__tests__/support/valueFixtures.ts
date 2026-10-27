@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { deriveProjectValueLeaves, type ProjectSettings } from "@labshelf/core";
-import { ProjectValues } from "../../src/writing/citations/projectValues";
+import { ProjectValues } from "../../src/writing/projects/projectValues";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 
 const FOLDER = path.join(path.sep, "projects", "paper");

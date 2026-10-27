@@ -11,14 +11,14 @@ const BUNDLES = {
   "reader/reader": "src/reader/webview/readerEntry.ts",
   "library/library": "src/libraryUi/webview/libraryEntry.ts",
   "library/sidebar": "src/libraryUi/webview/sidebarEntry.ts",
-  "library/details": "src/libraryUi/details/webview/detailsEntry.ts",
+  "library/details": "src/libraryUi/webview/detailsEntry.ts",
   "templates/templates": "src/writing/templates/webview/galleryEntry.ts",
   "search/search": "src/writing/search/webview/searchEntry.ts",
   "history/history": "src/writing/history/webview/historyEntry.ts",
   "spaces/chat": "src/spaces/webview/researchChatEntry.ts",
   "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
-  "projects/projects": "src/writing/projects/webview/allProjectsEntry.ts",
-  "syncGuide/syncGuide": "src/library/syncGuide/webview/syncGuideEntry.ts",
+  "projects/projects": "src/writing/webview/allProjectsEntry.ts",
+  "syncGuide/syncGuide": "src/library/webview/syncGuideEntry.ts",
 };
 
 const watch = process.argv.includes("--watch");

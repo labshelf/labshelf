@@ -3,7 +3,7 @@ import { type ChecklistSource } from "@labshelf/core";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { CitationSectionsCache, ProjectBacklinks } from "../../../src/writing/citations/backlinks";
-import { type ReadyProject } from "../../../src/writing/commands/index";
+import { type ReadyProject } from "../../../src/writing/projects/index";
 import { fakeDocument } from "../../support/textDocument";
 import { fakeLogger, readyEntry, fakeHost, fakeProjects } from "../../support/writingFixtures";
 

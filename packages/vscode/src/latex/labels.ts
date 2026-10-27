@@ -5,7 +5,7 @@ import { createKeyedDebouncer, findUndefinedReferences, scanLatexSource, type La
 import { disposeAll } from "../disposables/index.js";
 import { deriveVscodeRange, type LatexProject, type LatexProjectSources } from "./project.js";
 
-export interface ProjectLabel {
+interface ProjectLabel {
   name: string;
   /** The project-root-relative path of the file defining it. */
   path: string;
@@ -14,7 +14,7 @@ export interface ProjectLabel {
   line: string;
 }
 
-export function listProjectLabels(project: LatexProject): ProjectLabel[] {
+function listProjectLabels(project: LatexProject): ProjectLabel[] {
   return project.files.flatMap((file) => {
     const lines = project.texts.get(file.path)?.split("\n") ?? [];
     return file.facts.labels.map((label) => ({

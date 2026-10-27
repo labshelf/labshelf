@@ -1,7 +1,7 @@
 // Remembers per project whether the preview builds only the focused `\include` chapter, and finds the chapter to build.
 import { readLatexProjectSources, type BuildOptions, type ProjectSourceReader } from "@labshelf/core";
 
-import type { ReadyProject } from "../commands/index.js";
+import type { ReadyProject } from "../projects/index.js";
 
 interface IncludeOnlyDeps {
   /** Reads the files of a project folder, open editors first. */

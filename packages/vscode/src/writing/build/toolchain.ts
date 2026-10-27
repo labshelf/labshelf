@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { LATEX_ENGINES, formatEngineLabel, type LatexEngine, type TexSetupAsk } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
-import { findOwningProject, type ReadyProject } from "../commands/index.js";
+import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readActiveProject } from "./builds.js";
 
@@ -55,7 +55,7 @@ export function createVscodeToolchainAsk(): TexSetupAsk {
   };
 }
 
-export const PICK_COMPILER_COMMAND = "labshelf.writing.pickCompiler";
+const PICK_COMPILER_COMMAND = "labshelf.writing.pickCompiler";
 
 interface PickCompilerDeps {
   context: vscode.ExtensionContext;

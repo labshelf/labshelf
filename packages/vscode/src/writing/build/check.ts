@@ -1,10 +1,7 @@
-// Names the Check Before Submitting command and turns pre-submission findings into Problems entries on the source line or built PDF they concern.
+// Turns pre-submission findings into Problems entries on the source line or built PDF they concern.
 import * as vscode from "vscode";
 
 import type { CheckProblem } from "@labshelf/core";
-
-/** Named here so views can run the command without loading its Node side. */
-export const CHECK_COMMAND = "labshelf.writing.checkBeforeSubmitting";
 
 const SEVERITY = { error: vscode.DiagnosticSeverity.Error, warning: vscode.DiagnosticSeverity.Warning } as const;
 

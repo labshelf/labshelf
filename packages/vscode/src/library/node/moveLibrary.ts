@@ -20,7 +20,7 @@ import {
 import type { LibraryRootController } from "../../activation/index.js";
 
 /** @returns true when the library now lives at `target` and its services were rebuilt there */
-export async function moveLibraryTo(controller: LibraryRootController, target: string): Promise<boolean> {
+async function moveLibraryTo(controller: LibraryRootController, target: string): Promise<boolean> {
   const root = controller.currentRoot();
   const services = controller.currentServices();
   if (!root || !services) {
