@@ -2,7 +2,7 @@
 // to the share's Durable Object.
 
 import { base64UrlToBytes, bytesToBase64Url, bytesToHex } from "../../encoding/index.js";
-import { SHARE_PATH, SHARE_REFUSAL } from "../../share/http/index.js";
+import { SHARE_PATH, SHARE_REFUSAL } from "../../share/shareBackend.js";
 import { RELAY_WORKER_BUILD } from "../protocolVersion.js";
 import { decodeClaimRequest, decodeTicketRequest, encodeRelayBody, isSha256Hex, isShareId } from "../relayHttp.js";
 import { RELAY_PATH, RELAY_REFUSAL } from "../relayPaths.js";

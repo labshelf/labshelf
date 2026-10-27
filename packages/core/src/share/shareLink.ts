@@ -1,4 +1,4 @@
-// Writes and parses share links, whose fragment carries the Worker host, the share id and the link key.
+// Writes and parses share links, whose fragment carries the Worker host, the share id and the link key, and writes the vscode:// URI through which the share page asks LabShelf in VS Code to import a share.
 import { bytesToBase64Url, decodeKeyBytes } from "../encoding/index.js";
 import { isShareId } from "../relay/index.js";
 
@@ -45,4 +45,13 @@ export function parseShareLink(text: string): ShareLinkResult {
   const key = decodeKeyBytes(keyText, SHARE_LINK_KEY_BYTES);
   if (!key) { return { ok: false, error: "badKey" }; }
   return { ok: true, link: { relayUrl: `https://${host}`, shareId, key } };
+}
+
+// CONTRACT: documents/contracts/share-link.md#open-in-labshelf
+/** `<publisher>.<name>` of the VS Code extension; VS Code routes a vscode:// URI to the extension its authority names. */
+export const VSCODE_EXTENSION_ID = "labshelf.labshelf";
+export const SHARE_IMPORT_PATH = "/importShare";
+
+export function formatShareImportUri(link: ShareLinkParts): string {
+  return `vscode://${VSCODE_EXTENSION_ID}${SHARE_IMPORT_PATH}?link=${encodeURIComponent(formatShareLink(link))}`;
 }

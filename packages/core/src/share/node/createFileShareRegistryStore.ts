@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { writeFileAtomic } from "../../library/node/index.js";
-import type { ShareRegistryStore } from "../shareRegistry.js";
+import type { ShareRegistryStore } from "../shareFlows.js";
 
 const sections = new Map<string, Promise<unknown>>();
 

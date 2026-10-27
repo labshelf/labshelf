@@ -1,9 +1,11 @@
-// Copies an opened share's papers into a fresh library folder, skipping papers the library already holds by DOI or arXiv id.
+// Copies the papers of an opened share into a fresh library folder, skipping papers the library already holds, and runs that for a pasted or opened share link as a typed outcome the host shows.
 import { extractPaperIdentifiers } from "../import/index.js";
 import { deriveCiteKeySlug, createFolder, deriveMetadataFields, checkFolderName, createPaper, type MutationContext } from "../library/index.js";
 import type { PaperRecord } from "../model/index.js";
-import type { OpenedShare } from "./openShare.js";
-import type { SharedPaper } from "./shareManifest.js";
+import { type OpenedShare, openShare, type OpenShareError } from "./shareFlows.js";
+import type { SharedPaper } from "./shareCrypto.js";
+import { parseShareLink } from "./shareLink.js";
+import type { ShareReader } from "./shareBackend.js";
 
 export interface ImportSharedPapersOptions {
   ctx: MutationContext;
@@ -82,4 +84,41 @@ export async function importSharedPapers({ ctx, share, parentDir, known, onProgr
     shareId: share.link.shareId, folder: summary.folder, added: summary.added.length, duplicates: summary.duplicates.length, missingPdfs: summary.missingPdfs.length,
   });
   return summary;
+}
+
+export interface ImportShareLinkOptions extends Omit<ImportSharedPapersOptions, "share"> {
+  text: string;
+  readerFor: (relayUrl: string) => ShareReader;
+}
+
+/** `refused` carries the parse error of a link that does not parse; `withAnnotations` says the share held annotations. */
+export type ImportShareLinkResult =
+  | { status: "refused"; error: string }
+  | { status: "openFailed"; error: OpenShareError }
+  | { status: "imported"; summary: SharedImportOutcome; withAnnotations: boolean };
+
+// CONTRACT: documents/contracts/share-link.md#open-in-labshelf
+/** Rejects only when writing the papers fails; a bad, revoked or unreachable link is a typed result. */
+export async function importShareLink(options: ImportShareLinkOptions): Promise<ImportShareLinkResult> {
+  const { text, ctx, readerFor } = options;
+  const parsed = parseShareLink(text);
+  if (!parsed.ok) {
+    await ctx.logger.log("WARN", MODULE, "Refused a share link that does not parse", { error: parsed.error });
+    return { status: "refused", error: parsed.error };
+  }
+  const opened = await openShare(text, readerFor);
+  if (!opened.ok) {
+    const context = { shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl, error: opened.error, detail: opened.detail };
+    await ctx.logger.log("WARN", MODULE, "Could not open a share link", context);
+    return { status: "openFailed", error: opened.error };
+  }
+  let summary: SharedImportOutcome;
+  try {
+    summary = await importSharedPapers({ ...options, share: opened.share });
+  } catch (error) {
+    await ctx.logger.error(MODULE, error, { action: "import the shared papers", shareId: parsed.link.shareId, relayUrl: parsed.link.relayUrl });
+    throw error;
+  }
+  const withAnnotations = opened.share.manifest.papers.some((paper) => (paper.annotations?.length ?? 0) > 0);
+  return { status: "imported", summary, withAnnotations };
 }

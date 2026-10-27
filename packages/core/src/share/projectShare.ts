@@ -7,12 +7,9 @@ import type { ProjectEntry } from "../writing/project/index.js";
 import type { ProjectShareState, JoinProjectResult, ShareHost, ShareProjectResult, ShareLinkImportResult } from "./libraryShareHost.js";
 import { joinSharedProject, leaveSharedProject, startProjectShare } from "./projectShareFlows.js";
 import { isSharedProject, readCurrentInvite, type SharedProject, type ShareFlowPorts } from "./sharedProjects.js";
-import {
-  OPEN_SHARE_FAILURE, describeRefusedShareLink, describeSharedImport, listShareableFolders, createShareLink,
-  type FolderShareSources, type ImportShareLinkOptions, type ImportShareLinkResult,
-} from "./flow/index.js";
-import { deriveShareLinkOfEntry, loadShareRegistry, type ShareRegistryStore } from "./shareRegistry.js";
-import { removeShare } from "./removeShare.js";
+import { OPEN_SHARE_FAILURE, describeRefusedShareLink, describeSharedImport, listShareableFolders, createShareLink, type FolderShareSources } from "./folderShare.js";
+import type { ImportShareLinkOptions, ImportShareLinkResult } from "./shareImport.js";
+import { deriveShareLinkOfEntry, loadShareRegistry, removeShare, type ShareRegistryStore } from "./shareFlows.js";
 import type { ShareBackend, ShareReader } from "./shareBackend.js";
 import type { ILogger } from "../ports/index.js";
 import { isUnderDir } from "../library/index.js";

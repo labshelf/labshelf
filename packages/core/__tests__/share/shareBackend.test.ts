@@ -1,5 +1,6 @@
-/** Pins the Worker share client: endpoint paths, owner auth on writes, 404 as absent, and refusals as typed errors. */
-import { createWorkerShareBackend, createWorkerShareReader, ShareRequestError } from "../../../src/share/index";
+/** Pins the Worker share client (endpoint paths, owner auth on writes, 404 as absent, refusals as typed errors) and that owner writes go only to the connected relay, a share on another relay refused by name. */
+import { createWorkerShareBackend, createWorkerShareReader, ShareRequestError, resolveRelayBackend } from "../../src/share/index";
+import type { RelayAccount } from "../../src/relay/index";
 
 const relayUrl = "https://relay.someone.workers.dev/";
 const id = "0123456789abcdef0123456789abcdef";
@@ -51,5 +52,18 @@ describe("Worker share client", () => {
     expect(found.calls[0]!.init?.headers).toBeUndefined();
     const missing = fakeFetch(() => new Response(JSON.stringify({ v: "2.0", error: "notFound" }), { status: 404 }));
     expect(await createWorkerShareReader({ relayUrl, fetch: missing.doFetch }).fetchManifest(id)).toBeUndefined();
+  });
+});
+
+const account = { relayUrl: "https://relay.me.workers.dev", ownerSecret: "secret" } as RelayAccount;
+
+describe("resolveRelayBackend", () => {
+  it("gives the owner backend of the connected relay", () => {
+    expect(typeof resolveRelayBackend(account)(account.relayUrl).putManifest).toBe("function");
+  });
+
+  it("refuses a relay this device is not connected to, naming its host", () => {
+    expect(() => resolveRelayBackend(account)("https://relay.other.workers.dev")).toThrow(/relay\.other\.workers\.dev.*not connected/);
+    expect(() => resolveRelayBackend(undefined)(account.relayUrl)).toThrow(/relay\.me\.workers\.dev/);
   });
 });

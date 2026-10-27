@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
-// Tests that the import dialog refuses a link that does not parse while the user types, before any import runs.
-import { runImportShareLinkDialog } from "../../../src/share/dom/index.js";
+// Tests that the share dialogs refuse a path without papers and a link that does not parse, before any share or import runs.
+import { runImportShareLinkDialog, runShareFolderDialog } from "../../../src/share/dom/index.js";
 import { fakeHost } from "../../collab/dom/fakeHost";
 
 const input = (): HTMLInputElement => document.querySelector<HTMLInputElement>(".ls-quick input")!;
@@ -26,5 +26,13 @@ describe("import shared link dialog", () => {
     void runImportShareLinkDialog(fakeHost());
     type("https://labshelf.org/share/#relay.example.workers.dev/0d234622993a6ca71be4ce6fd949d76c/DOVu8neJE_p2eK3MMgOCFg");
     expect(input().getAttribute("aria-invalid")).toBe("false");
+  });
+});
+
+describe("share folder dialog", () => {
+  it("never shares a path that holds no papers", async () => {
+    const host = fakeHost();
+    await runShareFolderDialog(host, "empty");
+    expect(host.shareFolder).not.toHaveBeenCalled();
   });
 });

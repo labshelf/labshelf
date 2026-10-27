@@ -2,7 +2,7 @@
  * The sharing host contract: the operations a host offers the common sharing dialogs (project invites, joins and leaves,
  * paper-folder links) and the results they return.
  */
-import type { ShareFolderStage } from "./flow/index.js";
+import type { ShareFolderStage } from "./folderShare.js";
 
 /** A writing project as the sharing dialogs list it; `id` is the project's folder, the key every host and surface uses. */
 export interface ShareProject {
