@@ -3,9 +3,8 @@ import type { PathOps } from "../../path/index.js";
 import type { PageArea, PdfProblem, PdfProblemKind } from "../../reader/index.js";
 import type { LatexBuildResult, LocatedProblem, TexInstallKind } from "../../latex/index.js";
 import type { TypstBuildResult } from "../../typst/index.js";
-import type { ProjectEntry } from "../project/index.js";
-import { deriveBuildRootFolder } from "../project/buildRoot.js";
-import type { ProjectContentPort } from "../project/index.js";
+import { deriveBuildRootFolder, type ProjectEntry } from "../project/index.js";
+import type { ProjectContentPort } from "../projectService.js";
 
 // --- The TeX setup prompt ---
 

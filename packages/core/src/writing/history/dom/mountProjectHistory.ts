@@ -1,9 +1,9 @@
 // Mounts the project history page: a timeline to step through, the selected entry's changes and the restore action.
 import { renderElement } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
-import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol/index.js";
+import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol.js";
 import { escapeHtml } from "../../../ui/index.js";
-import type { DiffLine } from "../compareLines.js";
+import type { DiffLine } from "../historyEntries.js";
 import { formatClockTime, formatDayLabel, formatShortDateTime } from "../../../time/index.js";
 
 /** What the row says it did: a version name, a restore or the files it touched. */

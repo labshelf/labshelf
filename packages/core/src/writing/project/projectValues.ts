@@ -38,7 +38,7 @@ export interface FlattenedProjectValues {
 const KEY_CHARACTERS = /^[A-Za-z0-9._-]+$/;
 
 /** The key prefix of a value file: its name without `.json`. */
-export const deriveProjectValueFileBase = (file: string): string => file.replace(/^.*\//, "").replace(/\.json$/i, "");
+const deriveProjectValueFileBase = (file: string): string => file.replace(/^.*\//, "").replace(/\.json$/i, "");
 
 function isLeaf(node: unknown): node is LeafProjectValue {
   return typeof node === "number" || typeof node === "string" || typeof node === "boolean";

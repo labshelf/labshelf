@@ -2,8 +2,7 @@
  * Lists the open folder's papers as the list sees them: scoped to the folder, decorated with where each one sits,
  * and narrowed by the search.
  */
-import { isUnderDir, deriveParentDir, deriveRelativeFolder } from "../../library/index.js";
-import { isEmptyQuery, isPaperMatch, searchDoc, type Query } from "../../library/search.js";
+import { isUnderDir, deriveParentDir, deriveRelativeFolder, isEmptyQuery, isPaperMatch, searchDoc, type Query } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 
 const SEP = "/";

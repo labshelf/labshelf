@@ -3,3 +3,4 @@ export {
   AUTO_COMPILE_MODES, AUTO_SAVE_DELAY_MS, buildTypstPreviewPdf, deriveBuiltPdfPath, formatAutoCompileLabel, orderPdfProblems,
   type BuildSchedule, type OrderPdfProblemsInput, type ProjectBuildResult, type TexSetupAsk, type ToolchainMissing,
 } from "./projectBuild.js";
+export { buildInstallingPackages } from "./texPackageInstall.js";

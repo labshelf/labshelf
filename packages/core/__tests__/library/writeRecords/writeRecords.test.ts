@@ -1,5 +1,5 @@
 // Pins the per-device write record contract at the file boundary.
-import { addWriteRecord, readWriteRecords, recordFor, createWriteRecordStore } from '../../../src/library/mutations/index';
+import { addWriteRecord, readWriteRecords, recordFor, createWriteRecordStore } from '../../../src/library/writeRecords';
 import { MemoryLibraryFs } from '../../support/memoryLibraryFs';
 import { fakeLogger } from '../../support/fakeLogger';
 

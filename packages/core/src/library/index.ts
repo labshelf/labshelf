@@ -11,7 +11,7 @@ export {
 export type { Crumb, FolderTreeNode, SubfolderEntry } from "./folderTree.js";
 export { nameCollator, createPaperComparator, createPaperRecordComparator, comparePapers } from "./paperOrder.js";
 export type { PaperDiff } from "./paperOrder.js";
-export { describePaperFile, describePaperFileOnFileSystem, listPaperFiles } from "./paperFiles.js";
+export { describePaperFile, listPaperFiles } from "./paperFiles.js";
 export type { PaperFile, PaperFilesState } from "./paperFiles.js";
 export * from "./record.js";
 export { deriveCiteKeySlug, ensureCiteKey, createCiteKey, deriveUniqueCiteKey } from "./citeKey.js";
@@ -26,6 +26,9 @@ export {
 } from "./layout.js";
 export type { Join, LibraryLayout, PaperFiles, SharedConfig, SharedConfigUpdate } from "./layout.js";
 export * from "./mutations/index.js";
+export { DEVICE_ID, addWriteRecord, createWriteRecordStore, readWriteRecords, recordFor } from "./writeRecords.js";
+export type { DeviceIdentity, WriteRecord, WriteRecordEntry, WriteRecordFileSystem, WriteRecords, WriteRecordStore } from "./writeRecords.js";
+export { syncGuide, type SyncGuide, type SyncGuidePlatform, type SyncGuideTool } from "./syncGuide.js";
 export * from "./search.js";
 export * from "./searchText.js";
 export * from "./conflicts/index.js";

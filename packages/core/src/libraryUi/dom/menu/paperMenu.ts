@@ -1,7 +1,6 @@
 // Builds paper menus from the host capabilities.
-import { PAPERS_DIR } from "../../../library/index.js";
+import { PAPERS_DIR, PAPER_STATUSES, STATUS_LABEL } from "../../../library/index.js";
 import { isPrePublication } from "../../../model/index.js";
-import { PAPER_STATUSES, STATUS_LABEL } from "../../../library/record.js";
 import { showMenu, type MenuAnchor, type MenuEntry } from "../../../ui/dom/index.js";
 import { listPapersUnder, type ListPaper } from "../../viewModel/index.js";
 import {

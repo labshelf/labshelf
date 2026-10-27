@@ -3,7 +3,8 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { buildTypstPreviewPdf } from "../../../../src/writing/build/index";
-import { buildInstallingPackages, buildProject, ensureToolchain } from "../../../../src/writing/build/node/index";
+import { buildInstallingPackages } from "../../../../src/writing/build/index";
+import { buildProject, ensureToolchain } from "../../../../src/writing/build/node/index";
 import { cleanupTempDirs, pathExists } from "../../../support/tempDirs";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { buildFixture, runCount } from "./projectBuildFixtures";

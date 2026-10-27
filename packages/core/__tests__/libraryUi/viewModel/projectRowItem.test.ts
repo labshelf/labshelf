@@ -1,6 +1,6 @@
 // Tests the sidebar project row mapper: counts, hidden flags, tooltips and broken rows.
 import { createBrokenProjectItem, describeProjectDetails, createReadyProjectItem, type BrokenEntry, type ReadyEntry } from "../../../src/libraryUi/viewModel";
-import type { ReadingList } from "../../../src/writing/readingList";
+import type { ReadingList } from "../../../src/writing/citations/index";
 
 const ready = (folder: string, over: Partial<ReadyEntry> = {}): ReadyEntry => ({
   kind: "ready", folder, location: "library", main: "main.tex", settings: { id: folder.split("/").pop()!, format: "latex" }, ...over,

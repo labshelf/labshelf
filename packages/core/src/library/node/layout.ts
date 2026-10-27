@@ -11,7 +11,7 @@ import type { ILogger } from "../../ports/index.js";
 import {
   mergeSharedConfig, parseSharedConfig, serializeSharedConfig, type SharedConfig, type SharedConfigUpdate,
 } from "../layout.js";
-import { DEVICE_ID, type DeviceIdentity } from "../mutations/index.js";
+import { DEVICE_ID, type DeviceIdentity } from "../writeRecords.js";
 import { writeFileAtomic } from "./fileSystem.js";
 
 export function resolveCacheDir(env: NodeJS.ProcessEnv = process.env): string {

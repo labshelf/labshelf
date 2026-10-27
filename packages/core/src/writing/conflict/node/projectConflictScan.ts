@@ -6,13 +6,14 @@ import { randomUUID } from "node:crypto";
 import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem, writeFileAtomic } from "../../../library/node/index.js";
 import { scanConflictCopies, scanSpaceConflicts } from "../../../library/conflicts/node/index.js";
 import { hasMergeableExtension, isMergeableTextFile, parseConflictName, type ConflictCopy, type IProjectVersionStore } from "../../../library/conflicts/index.js";
-import { createWriteRecordStore, recordFor } from "../../../library/mutations/index.js";
+import { createWriteRecordStore, recordFor } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { deriveTextSha256Hex } from "../../../hash/index.js";
-import { listProjectFiles } from "../../project/projectReads.js";
+import { listProjectFiles } from "../../project/index.js";
 import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js";
 import { isEligibleProjectConflictPath } from "../projectConflicts.js";
-import { mergeProjectCopies, readSharedProjectFiles, scanProjectContentConflicts } from "./projectConflicts.js";
+import { mergeProjectCopies, scanProjectContentConflicts } from "./projectConflicts.js";
+import { readSharedProjectFiles } from "./sharedProjectState.js";
 import { addProjectWriteRecord } from "./projectWrite.js";
 import { mergeFileText, mergePaperNotesConflicts, mergeSpaceItemFileConflicts } from "./itemFileMerge.js";
 

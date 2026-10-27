@@ -1,6 +1,6 @@
 // Serves the project side of the Typst language service: per-request file reads, Typst paths and cross-file symbols.
 import type { ILogger } from "../../ports/index.js";
-import { parseBibEntries, type BibEntry } from "../../writing/bibliography/index.js";
+import { parseBibEntries, type BibEntry } from "../../writing/citations/index.js";
 import { scanTypstFile, type TypstBinding, type TypstFileSymbols, type TypstLabelDefinition } from "./syntax.js";
 
 export interface TypstSources {

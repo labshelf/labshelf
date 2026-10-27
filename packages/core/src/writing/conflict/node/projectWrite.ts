@@ -1,7 +1,7 @@
 // Records app-authored project text versions with the bytes present before their save, and tracks app file writes and editor saves before their bytes reach disk.
 import * as path from 'node:path';
 import { isMergeableTextFile, type IProjectVersionStore, type ProjectWriteTracking } from '../../../library/conflicts/index.js';
-import { createWriteRecordStore, type DeviceIdentity } from '../../../library/mutations/index.js';
+import { createWriteRecordStore, type DeviceIdentity } from '../../../library/index.js';
 import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../library/node/index.js';
 import type { ILogger, LibraryFileSystem } from '../../../ports/index.js';
 import { deriveTextSha256Hex } from '../../../hash/index.js';

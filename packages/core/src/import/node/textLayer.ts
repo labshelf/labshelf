@@ -7,7 +7,7 @@ import type {
   TextLayerDetection,
   TextLayerHooks,
   TextLayerOutcome,
-} from "../../library/index.js";
+} from "../textLayer.js";
 import { isSparseText, type PdfjsLoader } from "../pdf/index.js";
 import { openPdfForOcr, type OcrDocument, type TesseractOcrEngine } from "./ocr.js";
 import { formatError } from "../../errors/index.js";

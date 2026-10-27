@@ -3,14 +3,11 @@ import type { PdfjsLoader } from "../../../import/index.js";
 import type { PaperRecord } from "../../../model/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { deriveCountedPages, derivePaperBody, readPdfFacts, countWordsUpTo } from "../../checks/index.js";
-import { type ProjectSettings, DEFAULT_BIBLIOGRAPHY } from "../../project/index.js";
-import { type ProjectReadContext, readOptionalText } from "../../project/projectReads.js";
-import { listVersions } from "../../versions/index.js";
+import { DEFAULT_BIBLIOGRAPHY, listVersions, readOptionalText, type ProjectSettings, type ProjectReadContext } from "../../project/index.js";
 import type { ProjectBuildReport, ProjectPaneContent } from "../projectDetailPane.js";
 import { deriveProjectCitations } from "./deriveProjectCitations.js";
 import { readProjectSources } from "./readProjectSources.js";
-import { parseBibEntries } from "../../bibliography/index.js";
-import { BIBLIOGRAPHY_HEADER } from "../../citations/index.js";
+import { BIBLIOGRAPHY_HEADER, parseBibEntries } from "../../citations/index.js";
 import { formatError } from "../../../errors/index.js";
 
 /** Undefined when the project has no bibliography file yet. */

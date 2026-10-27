@@ -2,9 +2,8 @@
  * Renders the paper list as a treegrid: column heads and one paper unit per paper in scope, grouped by subfolder and kept
  * in step by id so a refresh rebuilds only the rows that changed. Selection changes repaint attributes only, so scroll and focus survive.
  */
-import { PAPERS_DIR, formatFolderLabel } from "../../../library/index.js";
+import { PAPERS_DIR, formatFolderLabel, deriveNextReadingStatus } from "../../../library/index.js";
 import { type PaperRecord } from "../../../model/index.js";
-import { deriveNextReadingStatus } from "../../../library/record.js";
 import { deriveListView, type ListPaper, deriveFirstSortDir } from "../../viewModel/index.js";
 import { COLUMN_KEYS, type ListColumn, type SortDir, type SortColumn } from "../../store/index.js";
 import { stopPaperDrag, startPaperDrag } from "../drag/index.js";

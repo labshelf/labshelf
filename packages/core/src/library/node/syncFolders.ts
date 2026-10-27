@@ -6,7 +6,6 @@ import * as path from "node:path";
 import { formatError } from "../../errors/index.js";
 import { isDirectory } from "../../files/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import type { SyncTool } from "../conflicts/index.js";
 
 interface ClientConfigSite {
   home: string;
@@ -92,7 +91,7 @@ function syncthingFolders(site: ClientConfigSite): Promise<string[]> {
 }
 
 /** The tools whose folders can be detected; rclone has no fixed folder. */
-export type SyncFolderTool = Exclude<SyncTool, "rclone" | "app" | "unknown"> | "googledrive" | "onedrive" | "icloud";
+export type SyncFolderTool = "syncthing" | "nextcloud" | "dropbox" | "googledrive" | "onedrive" | "icloud";
 
 export interface SyncFolder {
   tool: SyncFolderTool;

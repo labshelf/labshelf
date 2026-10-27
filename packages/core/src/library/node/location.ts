@@ -32,7 +32,7 @@ export interface LibraryFolderDetails {
 }
 
 /** @returns true when every marker folder of the library layout exists in `root` */
-export async function isLibraryFolder(root: string): Promise<boolean> {
+async function isLibraryFolder(root: string): Promise<boolean> {
   const checks = await Promise.all(createLibraryLayout(root, path.join).markerDirs().map(isDirectory));
   return checks.every(Boolean);
 }

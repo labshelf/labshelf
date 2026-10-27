@@ -1,9 +1,8 @@
 // Merges, detects and resolves copies of a writing project's files on disk, using its write records, version store and shared state.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import * as Y from 'yjs';
-import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem, readOptionalFile, writeFileAtomic } from '../../../library/node/index.js';
-import { readWriteRecords, type DeviceIdentity } from '../../../library/mutations/index.js';
+import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem, writeFileAtomic } from '../../../library/node/index.js';
+import { readWriteRecords, type DeviceIdentity } from '../../../library/index.js';
 import {
   isItemFileName, isMergeableTextFile, parseConflictName, readConflictDismissals, writeProjectConflictDismissal,
   type ConflictCopy, type IProjectVersionStore,
@@ -12,17 +11,13 @@ import { detectProjectConflict, isEligibleProjectConflictPath, type ProjectConfl
 import type { ILogger } from '../../../ports/index.js';
 import { deriveTextSha256Hex } from '../../../hash/index.js';
 import { deriveLineSimilarity } from '../../text/index.js';
-import { listProjectFiles } from '../../project/projectReads.js';
+import { listProjectFiles } from '../../project/index.js';
 import { listLibraryProjects, nodeFileReads } from '../../project/node/index.js';
-import { parseProjectFile, PROJECT_FILE } from '../../project/index.js';
-import { createNodeCollabStorage } from '../../../collab/node/deviceState/index.js';
-import { loadVersionHistory, StoredMap } from '../../../collab/deviceState/index.js';
-import { readShareIndexDocFiles } from '../../../collab/model/index.js';
-import { INDEX_DOC_KEY } from '../../../collab/doc/index.js';
 import { isInside } from '../../../path/index.js';
 import { nodePathOps } from '../../../path/node/index.js';
 import { addProjectWriteRecord } from './projectWrite.js';
 import { mergeFileText } from './itemFileMerge.js';
+import { readSharedProjectVersions } from './sharedProjectState.js';
 
 // Copy merge: one project text file merged three-way against its merge base.
 
@@ -109,30 +104,6 @@ export async function mergeProjectContentCopy(
   }
 }
 
-// Shared project state: the device-local storage of a project's share.
-
-function createSharedProjectStorage(root: string, shareId: string) {
-  if (!shareId || /[/\\\0]/.test(shareId) || shareId === '.' || shareId === '..') {
-    throw new Error(`Invalid share id for project conflict scan: ${shareId}`);
-  }
-  return createNodeCollabStorage({ dir: path.join(createDeviceLocalLayout(root).collabDir, shareId), shareId });
-}
-
-export async function readSharedProjectFiles(root: string, shareId: string, logger: ILogger): Promise<ReadonlySet<string>> {
-  const storage = createSharedProjectStorage(root, shareId);
-  const stored = (await storage.loadDocs()).get(storage.docId(INDEX_DOC_KEY));
-  if (!stored) return new Set();
-  const doc = new Y.Doc();
-  try {
-    if (stored.torn) await logger.log('WARN', 'conflicts', 'Skipped a partial shared index record during conflict scan', { shareId });
-    if (stored.snapshot) Y.applyUpdate(doc, stored.snapshot);
-    for (const update of stored.updates) Y.applyUpdate(doc, update);
-    return new Set(readShareIndexDocFiles(doc).keys());
-  } finally {
-    doc.destroy();
-  }
-}
-
 // Detection: project texts read from disk for the shared content-copy detector.
 
 interface ProjectConflictLocation { root: string; folder: string; projectId: string; logger: ILogger }
@@ -183,27 +154,6 @@ export async function scanProjectContentConflicts(input: ProjectConflictLocation
 }
 
 // Resolution: merges a content copy or dismisses it, without discarding either side's edits.
-
-async function readSharedProjectVersions(root: string, folder: string, relative: string, logger: ILogger): Promise<string[]> {
-  const settings = await readOptionalFile(path.join(folder, PROJECT_FILE));
-  if (settings === undefined) return [];
-  const project = parseProjectFile(settings);
-  if (!project.ok) throw new Error(`Cannot read project settings for merge history: ${folder}: ${project.reason}`);
-  const shareId = project.settings.shared;
-  if (!shareId) return [];
-  const storage = createSharedProjectStorage(root, shareId);
-  const versions = await loadVersionHistory(storage, logger);
-  const texts: string[] = [];
-  for (const version of versions.storedVersions(relative)) {
-    if (await deriveTextSha256Hex(version.text) === version.hash) texts.push(version.text);
-    else await logger.log('WARN', 'conflicts', 'Ignored a shared text version with a mismatched hash', { shareId, path: relative, hash: version.hash });
-  }
-  const bases = await StoredMap.load({ storage, name: 'bases', label: 'file merge bases', logger,
-    isValue: (value: unknown): value is string => typeof value === 'string' });
-  const base = bases.get(relative);
-  if (base !== undefined) texts.push(base);
-  return texts;
-}
 
 export interface ProjectConflictResolutionContext {
   root: string; folder?: string; store: IProjectVersionStore; logger: ILogger;

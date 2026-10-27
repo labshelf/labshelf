@@ -139,7 +139,7 @@ async function mergePaper(conflicts: ConflictCopy[], dataJson: string, tmpDir: s
  * Merges every sidecar conflict copy in the library into its data.json, oldest modification first.
  * @returns the copies that could not be merged; they stay on disk.
  */
-export async function mergeSidecarConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]> {
+async function mergeSidecarConflicts(root: string, logger: ILogger): Promise<ConflictCopy[]> {
   const layout = createLibraryLayout(root, path.join);
   const unmerged: ConflictCopy[] = [];
   for (const { id, dir } of await listPaperFolders(layout)) {

@@ -5,11 +5,10 @@ import { execFile } from "node:child_process";
 
 import type { PdfjsLoader } from "../../../import/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { CheckSettings } from "../../project/index.js";
-import { listProjectFiles } from "../../project/projectReads.js";
+import { listProjectFiles, type CheckSettings } from "../../project/index.js";
 import { nodeFileReads } from "../../project/node/index.js";
-import type { CheckProblem, CheckSource } from "../checkReport.js";
-import { readPdfFacts } from "../readPdfFacts.js";
+import type { CheckProblem, CheckSource } from "../runChecks.js";
+import { readPdfFacts } from "../pdfFacts.js";
 import { runChecks } from "../runChecks.js";
 
 /** Undefined when git is missing, the folder is not a repository or no name is set: all ordinary states. */

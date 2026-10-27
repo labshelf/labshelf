@@ -19,7 +19,7 @@ import {
   type TypstCursorContext,
   type TypstLabelDefinition,
 } from "./syntax.js";
-import { extractPlainField, type BibEntry } from "../../writing/bibliography/index.js";
+import { extractPlainField, type BibEntry } from "../../writing/citations/index.js";
 
 // The service's contract: its project-file source and its completion, hover and definition results.
 export type TypstCompletionKind =

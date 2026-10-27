@@ -1,9 +1,9 @@
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
 import { isBoolean, isNumber, isRecord, isString } from "../guards/index.js";
-import type { ReadingStatus } from "../library/record.js";
+import type { ReadingStatus } from "../library/index.js";
 import type { CountUpTo, LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
-import type { QuotedHighlight } from "../writing/quotes/index.js";
+import type { QuotedHighlight } from "../writing/citations/index.js";
 
 /** The state of the build whose output a preview reader shows. */
 export type BuildState = "building" | "succeeded" | "failed";

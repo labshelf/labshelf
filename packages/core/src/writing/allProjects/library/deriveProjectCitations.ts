@@ -1,10 +1,8 @@
 // Lists the keys a project cites and where each resolves: a library paper, a .bib entry or nowhere.
-import { formatAuthors } from "../../../library/record.js";
+import { formatAuthors } from "../../../library/index.js";
 import type { PaperRecord } from "../../../model/index.js";
-import { parseBibEntries } from "../../bibliography/index.js";
-import { derivePapersByCiteKey, scanCiteKeys } from "../../citations/index.js";
-import { DEFAULT_BIBLIOGRAPHY, type ProjectSettings } from "../../project/index.js";
-import { readOptionalText, listBuildRootFileNames, type ProjectReadContext } from "../../project/projectReads.js";
+import { derivePapersByCiteKey, parseBibEntries, scanCiteKeys } from "../../citations/index.js";
+import { DEFAULT_BIBLIOGRAPHY, readOptionalText, listBuildRootFileNames, type ProjectSettings, type ProjectReadContext } from "../../project/index.js";
 import type { ProjectCitation } from "../projectDetailPane.js";
 import type { ProjectSourceTexts } from "./readProjectSources.js";
 

@@ -1,21 +1,22 @@
 /**
  * Changes an app makes to papers and folders on disk: resolving ids to folders, moving and trashing paper folders,
- * changing the fields the user owns (reading each paper from disk first), and creating, renaming, moving and trashing
- * the folders papers are grouped in. Every path in and out is absolute.
+ * changing the fields the user owns (reading each paper from disk first) and the descriptions of a paper's files, and
+ * creating, renaming, moving and trashing the folders papers are grouped in. Every path in and out is absolute.
  */
 import type { PaperRecord } from "../../model/index.js";
 import { formatError } from "../../errors/index.js";
 import { checkFolderName } from "../folders.js";
 import { isUnderDir } from "../folderTree.js";
+import { describePaperFile, isHiddenPaperEntry } from "../paperFiles.js";
 import { deriveEditedTags, normalizeTags, type ReadingStatus } from "../record.js";
 import {
-  MUTATIONS_MODULE,
   readPaperOnFileSystem,
   writePaperRecord,
   type BatchOutcome,
   type MutationContext,
   type Reference,
 } from "./paperRecordWrite.js";
+import { MUTATIONS_MODULE } from "./folderReads.js";
 
 /** What an app's index knows about one paper: its folder, and its record when the index holds one. */
 export interface PaperHit {
@@ -193,6 +194,28 @@ async function eachPaper(
     }
   }
   return outcome;
+}
+
+/**
+ * Sets (trimmed) or clears the description of `name`, dropping descriptions of names missing from the folder.
+ * @returns the paper as written, or undefined when the folder holds no paper
+ * @throws when `name` is not a visible entry of the paper folder
+ */
+export async function describePaperFileOnFileSystem(
+  ctx: MutationContext,
+  folder: string,
+  name: string,
+  description: string,
+): Promise<PaperRecord | undefined> {
+  const current = await readPaperOnFileSystem(ctx, folder);
+  if (!current) { return undefined; }
+  const onDisk = (await ctx.fs.listDir(folder)).filter((entry) => !isHiddenPaperEntry(entry));
+  const files = isHiddenPaperEntry(name) ? undefined : describePaperFile(current.files, name, description, onDisk);
+  if (!files) { throw new Error(`Cannot describe "${name}": it is not a file of the paper in ${folder}`); }
+  // CONTRACT: documents/contracts/library-format.md#metadatayaml
+  const written = await writePaperRecord(ctx, { ...current, files }, { ownsStatus: true });
+  await ctx.logger.log("INFO", "paperFiles", "File description saved", { id: current.id, name, cleared: !description.trim() });
+  return written;
 }
 
 /** @returns the new folder's path */

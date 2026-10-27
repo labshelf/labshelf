@@ -71,7 +71,7 @@ function readCheck(value: unknown): CheckSettings | string {
 }
 
 /** The user keys of a parsed labshelf.yaml mapping, or the reason they are invalid. */
-export function readUserSettings(raw: Record<string, unknown>): UserSettings | string {
+function readUserSettings(raw: Record<string, unknown>): UserSettings | string {
   const keys: UserSettings = {};
   if (!isAbsent(raw["figures"])) {
     const figures = readFigures(raw["figures"]);

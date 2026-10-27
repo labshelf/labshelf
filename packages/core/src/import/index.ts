@@ -41,3 +41,6 @@ export type { AuthorContact, AuthorContactsInput } from "./authorContacts.js";
 export { deriveAuthorContacts, extractEmailFromAffiliation, findAuthorContacts } from "./authorContacts.js";
 export * from "./paper/index.js";
 export * from "./pdfFinder/index.js";
+export { shouldWriteVerdict, deriveVerdictForDetection, deriveVerdictForError, deriveVerdictForOutcome, readWallClock } from "./textLayer.js";
+export type { ExistingLayer, TextLayerDetection, TextLayerOutcome, TextLayerSkipKind } from "./textLayer.js";
+export type { PdfTextLayerBuilder, TextLayerHooks, TextLayerProgress } from "./textLayer.js";

@@ -1,9 +1,8 @@
 /** Prepares a project for leaving the app: the files of an exported zip, the arXiv bundle, the pandoc command line for Word, Markdown and HTML, and the install plan and report that bring the papers it lists into the library. */
 
-import { parseBibEntries } from "../bibliography/index.js";
+import { derivePapersByCiteKey, parseBibEntries } from "../citations/index.js";
 import { createDoiFinder, type ImportOutcome } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import { derivePapersByCiteKey } from "../citations/index.js";
 import { DEFAULT_BIBLIOGRAPHY, type ListedPaper, type ProjectFormat } from "./projectFile.js";
 
 // --- Files of an export ---

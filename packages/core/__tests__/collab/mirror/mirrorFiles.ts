@@ -6,7 +6,7 @@ import { createLibraryMirrorFileSystem, type MirrorFileSystem } from "../../../s
 import { createNodeMirrorFileSystem } from "../../../src/collab/node/index";
 import type { ILogger } from "../../../src/ports/index";
 import { NodeLibraryFileSystem } from "../../../src/library/node/index";
-import { createWriteRecordStore, type WriteRecordStore } from "../../../src/library/mutations/index";
+import { createWriteRecordStore, type WriteRecordStore } from "../../../src/library/writeRecords";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 export interface MirrorFiles {

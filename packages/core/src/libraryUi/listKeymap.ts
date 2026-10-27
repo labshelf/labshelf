@@ -1,7 +1,7 @@
 /**
  * Maps a key press to a list action as a pure function, so every host gets the same keys.
  */
-import type { ReadingStatus } from "../library/record.js";
+import type { ReadingStatus } from "../library/index.js";
 
 /** The parts of a keyboard event the keymap reads. */
 export interface ShortcutPress {

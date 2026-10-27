@@ -1,6 +1,6 @@
 // Provides the state for mirroring shared project files.
 import type { ConflictCopy } from "../../library/conflicts/index.js";
-import type { WriteRecordStore } from "../../library/mutations/index.js";
+import type { WriteRecordStore } from "../../library/index.js";
 import type { WaitingWrite } from "./waitForWrite.js";
 import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";

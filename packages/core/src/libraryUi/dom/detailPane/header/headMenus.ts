@@ -1,7 +1,7 @@
 /**
  * Renders the detail head's dropdown buttons (Cite, status, the corner More actions) and opens their menus.
  */
-import { PAPER_STATUSES, STATUS_LABEL, type ReadingStatus } from "../../../../library/record.js";
+import { PAPER_STATUSES, STATUS_LABEL, type ReadingStatus } from "../../../../library/index.js";
 import { showMenu, type MenuEntry } from "../../../../ui/dom/index.js";
 import { renderIcon, renderReadingStatusMark } from "../../../../ui/index.js";
 import type { CitationFormat } from "../../../store/index.js";

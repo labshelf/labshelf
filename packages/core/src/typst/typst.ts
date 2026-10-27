@@ -3,7 +3,7 @@ import { createTypstCompiler, initOptions, loadFonts, type TypstCompiler } from 
 
 import { formatError } from "../errors/index.js";
 import type { BuildProblem, LocatedProblem } from "../latex/index.js";
-import type { TypstCitation } from "../writing/quotes/index.js";
+import type { TypstCitation } from "../writing/citations/index.js";
 
 // Pins the Typst compiler LabShelf ships and the default fonts it loads, so a document renders the same in every app.
 

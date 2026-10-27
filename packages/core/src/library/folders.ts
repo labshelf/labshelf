@@ -71,13 +71,13 @@ export function createScanEnv(fs: ScanFileSystem, ops: PathOps, logger: ILogger,
 }
 
 /** Logs something the scan skipped, with the context to find it. */
-export async function reportSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
+async function reportSkipped(env: ScanEnv, message: string, context: Record<string, unknown>): Promise<void> {
   await env.logger.log("WARN", SCAN_MODULE, message, context);
 }
 
 // ---- one directory level ----
 
-export interface PaperFolder {
+interface PaperFolder {
   path: string;
   metadata: LocalStat;
   pdf?: LocalStat;

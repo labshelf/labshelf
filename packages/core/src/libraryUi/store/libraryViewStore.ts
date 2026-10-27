@@ -2,9 +2,8 @@
  * Holds the reactive store behind the library UI. Views subscribe to slices with {@link LibraryViewStore.select} and repaint
  * only when their slice changes; the host's snapshots go through {@link LibraryViewStore.applySnapshot}.
  */
-import { deriveEditedTags } from "../../library/index.js";
+import { deriveEditedTags, type ReadingStatus } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import type { ReadingStatus } from "../../library/record.js";
 import { createTagQuery } from "../searchQueries.js";
 import type {
   CitationMapState,

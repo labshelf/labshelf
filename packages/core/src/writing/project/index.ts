@@ -1,4 +1,4 @@
-/** Exports the runtime-neutral project model: labshelf.yaml, reading a project folder, main and root detection, root build folders, project ids, the registry, the project values and the project data port with its implementation. */
+/** Exports the runtime-neutral project model: labshelf.yaml, reading a project folder, main and root detection, root build folders, project ids, the registry, the project values and the version snapshots. */
 export { buildRootOf, detectFormat, detectEntryFile, findBuildRoots, findEntryCandidates, deriveBuildRootFolder } from "./buildRoot.js";
 export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,
@@ -24,7 +24,7 @@ export {
   listBibliographyFiles,
 } from "./projectReads.js";
 export type { ProjectReadContext, OpenSources } from "./projectReads.js";
-export { addExistingFolder, createProjectFromTemplate, removeProjectFolderForever, createProjectId, updateProjectSettings } from "./projectMutations.js";
+export { addExistingFolder, createProjectFromTemplate, removeProjectFolderForever, createProjectId, updateProjectSettings, createProjectCatalog } from "./projectMutations.js";
 export type { ProjectCatalogContext, ProjectFolderRegistry } from "./projectMutations.js";
 export {
   readProjectValues, deriveProjectValueLeaves, deriveProjectValueMembers, VALUES_FILE_NAME, VALUES_HEADER, createProjectValueFile,
@@ -35,6 +35,5 @@ export type {
   FlattenedProjectValues, LeafProjectValue, ProjectValueLeaf, ProjectValueSource, ProjectValueMember, ProjectValueInputResult,
   LatexProjectValueReference, TypstProjectValuePrefix, TypstProjectValueReference,
 } from "./projectValues.js";
-export type {
-  ProjectContentDeps, ProjectContentPort, ProjectDeviceDirs, DirEntry, ProjectFileContext, ProjectFileKind, ProjectFileRow,
-} from "./projectService.js";
+export { listVersions, deriveVersionSlug, parseVersionFile, serializeVersionFile, addProjectVersion, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionSnapshots.js";
+export type { VersionEntry, MarkVersionRequest, ProjectVersion } from "./versionSnapshots.js";

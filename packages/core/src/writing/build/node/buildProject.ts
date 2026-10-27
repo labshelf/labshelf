@@ -2,20 +2,18 @@
 import * as path from "node:path";
 
 import type { ILogger, LibraryFileSystem } from "../../../ports/index.js";
-import { deriveTexProblemClass, type LatexBuildResult, type LatexToolchain, type TexInstallKind, type TexProvider } from "../../../latex/index.js";
+import { deriveTexProblemClass, type LatexBuildResult, type LatexToolchain, type TexInstallKind } from "../../../latex/index.js";
 import { runLatexBuild, type ManagedTexProvider } from "../../../latex/node/index.js";
-import type { ProjectEntry } from "../../project/index.js";
-import { deriveBuildRootFolder } from "../../project/buildRoot.js";
-import { removeFlatBuildFiles } from "../../project/node/exportProject.js";
-import type { ProjectContentPort } from "../../project/index.js";
+import { deriveBuildRootFolder, type ProjectEntry } from "../../project/index.js";
+import type { ProjectContentPort } from "../../projectService.js";
+import { removeFlatBuildFiles, updateProjectValues } from "../../project/node/index.js";
 import type { TypstBuildResult, TypstSession } from "../../../typst/index.js";
 import { runTypstBuild, type TypstPackageStore } from "../../../typst/node/index.js";
-import { updateProjectValues } from "../../project/node/index.js";
 import { formatError } from "../../../errors/index.js";
+import { buildInstallingPackages } from "../texPackageInstall.js";
 import { buildTypstPreviewPdf, type ProjectBuildResult, type TexSetupAsk, type ToolchainMissing } from "../projectBuild.js";
 
 const MODULE = "writing/build";
-const MAX_INSTALL_ROUNDS = 10;
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
@@ -66,34 +64,6 @@ export async function ensureToolchain(
   if (installed !== "missing") { return installed; }
   await deps.logger.log("WARN", MODULE, "TeX is still missing after the install", { ...context, kind });
   return { status: "toolchain-missing", reason: "install-failed", message: `The ${kind} install finished but no TeX was found` };
-}
-
-// --- Installing missing TeX files ---
-
-export interface InstallingBuild<R> {
-  compile(round: { force: boolean }): Promise<R>;
-  /** The TeX file the build missed, if any. */
-  missingFile(result: R): string | undefined;
-  tex: Pick<TexProvider, "installMissing">;
-  logger: ILogger;
-}
-
-/** The last build's result: one without a missing file, one whose file could not be installed, or the one after the last allowed round. */
-export async function buildInstallingPackages<R>(run: InstallingBuild<R>): Promise<R> {
-  // TRAP: latexmk does not rerun a failed build whose sources are unchanged, so a rebuild after an install is forced.
-  let result = await run.compile({ force: false });
-  for (let round = 1; ; round++) {
-    const fileName = run.missingFile(result);
-    if (!fileName) { return result; }
-    if (round > MAX_INSTALL_ROUNDS) {
-      await run.logger.log("WARN", MODULE, "Stopped installing missing TeX files", { fileName, rounds: MAX_INSTALL_ROUNDS });
-      return result;
-    }
-    const installed = await run.tex.installMissing(fileName);
-    await run.logger.log(installed ? "INFO" : "WARN", MODULE, installed ? "Installed a missing TeX file" : "Could not install a missing TeX file", { fileName, round });
-    if (!installed) { return result; }
-    result = await run.compile({ force: true });
-  }
 }
 
 // --- Building ---

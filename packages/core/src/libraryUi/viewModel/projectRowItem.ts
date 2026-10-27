@@ -1,6 +1,6 @@
 // Maps a writing project entry to the row the sidebar Projects section shows, with its count and tooltip.
 import type { ProjectEntry } from "../../writing/project/index.js";
-import type { ReadingList } from "../../writing/readingList/index.js";
+import type { ReadingList } from "../../writing/citations/index.js";
 
 /** A writing project as the sidebar lists it; `id` is the host's opaque key (a folder path). */
 export interface SidebarProject {

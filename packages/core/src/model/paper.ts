@@ -2,7 +2,7 @@
  * Declares a paper's metadata as the library, the databases and the apps exchange it: the record, the bibliographic
  * fields it shares with registry answers and parsed PDFs, and the venue derived for display and sorting.
  */
-import type { ReadingStatus } from "../library/record.js";
+import type { ReadingStatus } from "../library/index.js";
 import type { TextLayerDetails } from "./annotation.js";
 import type { PdfVersion } from "./pdf.js";
 

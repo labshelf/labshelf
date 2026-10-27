@@ -2,9 +2,8 @@
  * Renders the Related tab: papers with similar content (when the host finds them), the same authors, shared tags and
  * keywords, and the same venue. A click selects the paper where it lives; a double-click opens it.
  */
-import { formatAuthors } from "../../../../library/index.js";
+import { formatAuthors, STATUS_LABEL } from "../../../../library/index.js";
 import { type PaperRecord } from "../../../../model/index.js";
-import { STATUS_LABEL } from "../../../../library/record.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { deriveRelatedGroups } from "../../../viewModel/index.js";
 import { renderIconButton, renderLoading, renderSection } from "../detailPaneMarkup.js";

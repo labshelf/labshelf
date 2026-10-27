@@ -1,4 +1,4 @@
-import { syncGuide } from "../../../src/library/conflicts/syncGuide.js";
+import { syncGuide } from "../../../src/library/syncGuide.js";
 
 describe("syncGuide", () => {
   const tools = [...syncGuide.tools, syncGuide.noCloud.tool];

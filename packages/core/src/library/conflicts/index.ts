@@ -8,4 +8,3 @@ export {
 export { mergeSidecars, type SidecarVersion } from "./sidecarMerge.js";
 export { hasMergeableExtension, isItemFileName, isMergeableTextFile, type IProjectVersionStore, type ProjectWriteTracking } from "./mergeBase.js";
 export { isExternalChangeNoise, applyChangeBatch, LibraryRootPresenceMonitor, type ChangeBatchDeps, type LibraryRootPresenceDeps } from "./externalChange.js";
-export { syncGuide, type SyncGuide, type SyncGuidePlatform, type SyncGuideTool } from "./syncGuide.js";

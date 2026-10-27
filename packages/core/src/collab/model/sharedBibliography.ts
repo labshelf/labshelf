@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#generated-files
 
 import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, normalizeArxivIdentifier } from "../../import/index.js";
-import { parseBibEntries, extractPlainField, type BibEntry } from "../../writing/bibliography/index.js";
+import { parseBibEntries, extractPlainField, type BibEntry } from "../../writing/citations/index.js";
 
 /** A cite key both files use for different works; the shared entry is kept. Ids read `doi:<doi>` or `arXiv:<id>`. */
 export interface BibliographyClash {

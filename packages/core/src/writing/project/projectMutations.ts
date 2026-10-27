@@ -9,6 +9,7 @@ import {
   type ProjectFormat, type ProjectSettings, type ProjectSettingsUpdate,
 } from "./projectFile.js";
 import { listProjects, readOptionalText, readProject, type ProjectReadContext } from "./projectReads.js";
+import { createProjectFolderRegistry } from "./projectRegistry.js";
 
 const MODULE = "project";
 
@@ -23,6 +24,20 @@ export interface ProjectFolderRegistry {
 /** What creating, adding and deleting projects runs over: the read context plus the device's folder registry. */
 export interface ProjectCatalogContext extends ProjectReadContext {
   registry: ProjectFolderRegistry;
+}
+
+// A device without a registry path lists only the library's own projects and refuses to remember outside folders.
+/** The catalog context of a device whose folder registry file is `registryPath()`, read at every call; undefined means the device keeps none. */
+export function createProjectCatalog(reads: ProjectReadContext, registryPath: () => string | undefined): ProjectCatalogContext {
+  const filed = createProjectFolderRegistry(reads, () => registryPath() ?? "");
+  const refuse = (): never => { throw new Error("This device keeps no project folder registry, so only projects inside the library can be used"); };
+  const keeps = (): boolean => registryPath() !== undefined;
+  const registry: ProjectFolderRegistry = {
+    folders: (root) => (keeps() ? filed.folders(root) : Promise.resolve([])),
+    register: (root, folder) => (keeps() ? filed.register(root, folder) : refuse()),
+    unregister: (root, folder) => (keeps() ? filed.unregister(root, folder) : Promise.resolve()),
+  };
+  return { ...reads, registry };
 }
 
 // --- Project ids and paths ---
