@@ -1,11 +1,10 @@
 // Validates the date and term drafts inside Spaces page messages, keeping only the known fields.
-import { isBoolean, isDay, isNonEmptyStringList, isNonEmptyString, isPage, isJsonObject, isString } from "../model/json/index.js";
+import { isDay, isPage } from "../model/json/index.js";
+import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isRecord, isString } from "../../guards/index.js";
 import type { SpaceDateInput, TermInput } from "../store/index.js";
 
-const isText = (value: unknown): value is string => isString(value) && value.trim() !== "";
-
 export function parseDateDraft(raw: unknown): SpaceDateInput | undefined {
-  if (!isJsonObject(raw) || !isText(raw["title"]) || !isDay(raw["date"])) { return undefined; }
+  if (!isRecord(raw) || !isNonBlankString(raw["title"]) || !isDay(raw["date"])) { return undefined; }
   const { kind, title, date, done, paperIds, projectId } = raw;
   switch (kind) {
     case "task": return isBoolean(done) ? { kind, title, date, done } : undefined;
@@ -21,14 +20,14 @@ export function parseDateDraft(raw: unknown): SpaceDateInput | undefined {
 }
 
 function parseSource(raw: unknown): TermInput["source"] | null {
-  if (!isJsonObject(raw) || !isNonEmptyString(raw["paperId"])) { return null; }
+  if (!isRecord(raw) || !isNonEmptyString(raw["paperId"])) { return null; }
   const { paperId, page } = raw;
   if (page === undefined) { return { paperId }; }
   return isPage(page) ? { paperId, page } : null;
 }
 
 export function parseTermDraft(raw: unknown): TermInput | undefined {
-  if (!isJsonObject(raw) || !isText(raw["term"]) || !isString(raw["definition"])) { return undefined; }
+  if (!isRecord(raw) || !isNonBlankString(raw["term"]) || !isString(raw["definition"])) { return undefined; }
   const { term, definition, symbol, source } = raw;
   if (symbol !== undefined && !isString(symbol)) { return undefined; }
   const parsedSource = source === undefined ? undefined : parseSource(source);

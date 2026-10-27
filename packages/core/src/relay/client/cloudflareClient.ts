@@ -1,4 +1,5 @@
 // Calls the Cloudflare v4 API with a bearer token and turns failures into typed errors, logging each call without bodies or the token.
+import { isRecord } from "../../guards/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { CloudflareApiError } from "./cloudflareError.js";
 
@@ -44,8 +45,6 @@ function requestInit(method: string, token: string, body: unknown): RequestInit 
   if (body instanceof FormData) { return { method, headers, body }; }
   return { method, headers: { ...headers, "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
-
 async function readJson(response: Response): Promise<unknown> {
   const text = await response.text();
   try { return JSON.parse(text); } catch { return text; }

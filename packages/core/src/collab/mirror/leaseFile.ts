@@ -1,5 +1,6 @@
 // Reads and writes the mirror lease file that marks which app mirrors a project folder.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
+import { parseJsonObject } from "../../json/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 
 export const LEASE_TTL_MS = 30_000;
@@ -24,10 +25,9 @@ export function deriveLeasePath(folder: string): string {
 }
 
 function parseLease(text: string): LeaseFileContent | undefined {
-  let value: unknown;
-  try { value = JSON.parse(text); } catch { return undefined; }
-  if (typeof value !== "object" || value === null) { return undefined; }
-  const { owner, app, renewedAt, ttlMs } = value as Record<string, unknown>;
+  const root = parseJsonObject(text);
+  if (!root) { return undefined; }
+  const { owner, app, renewedAt, ttlMs } = root;
   if (typeof owner !== "string" || owner === "" || (app !== "vscode" && app !== "browser")) { return undefined; }
   if (typeof renewedAt !== "number" || !Number.isFinite(renewedAt)) { return undefined; }
   if (typeof ttlMs !== "number" || !(ttlMs > 0)) { return undefined; }

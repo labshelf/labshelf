@@ -1,5 +1,6 @@
 // Persists each device's bounded write history without modifying its peers' files.
 import type { ILogger } from '../../ports/index.js';
+import { parseJsonObject } from "../../json/index.js";
 import { checkRelativePath } from "../../path/index.js";
 import {
   DEVICE_ID,
@@ -19,10 +20,9 @@ function validRecord(value: unknown): value is WriteRecord {
 }
 
 function parseRecords(text: string): WriteRecords | undefined {
-  let value: unknown;
-  try { value = JSON.parse(text); } catch { return undefined; }
-  if (!value || typeof value !== 'object') { return undefined; }
-  const { version, files } = value as Record<string, unknown>;
+  const root = parseJsonObject(text);
+  if (!root) { return undefined; }
+  const { version, files } = root;
   if (version !== 1 || !files || typeof files !== 'object' || Array.isArray(files)) { return undefined; }
   const records: WriteRecords = new Map();
   for (const [path, entries] of Object.entries(files)) {

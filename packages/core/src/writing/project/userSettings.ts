@@ -1,5 +1,6 @@
 /** Validates the user keys of labshelf.yaml: figure recipes, JSON value files and the pre-submission check (whose limits the preview also writes). */
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
+import { isNonBlankString } from "../../guards/index.js";
 
 /** How one figure is made: the command and the files whose changes make the figure stale. */
 export interface FigureRecipe {
@@ -33,8 +34,7 @@ export interface UserSettings {
   check?: CheckSettings | undefined;
 }
 
-const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
-const isTextList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isText);
+const isTextList = (value: unknown): value is string[] => Array.isArray(value) && value.every(isNonBlankString);
 const isMapping = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 const isPositiveWhole = (value: unknown): value is number => Number.isInteger(value) && (value as number) > 0;
@@ -46,7 +46,7 @@ function readFigures(value: unknown): Record<string, FigureRecipe> | string {
   for (const [path, recipe] of Object.entries(value)) {
     if (!isMapping(recipe)) { return `figures.${path} must be a mapping`; }
     const { run, inputs } = recipe;
-    if (!isText(run)) { return `figures.${path}.run must be text`; }
+    if (!isNonBlankString(run)) { return `figures.${path}.run must be text`; }
     if (!isAbsent(inputs) && !isTextList(inputs)) { return `figures.${path}.inputs must be a list of paths`; }
     figures[path] = { run, inputs: inputs ?? [] };
   }

@@ -1,4 +1,5 @@
 // Describes the owner's stored Cloudflare connection and reads it back from its JSON.
+import { parseJsonObject } from "../../json/index.js";
 import type { DeployedRelay } from "../client/index.js";
 
 /** The Worker name in the owner's account, which also names its address. */
@@ -23,10 +24,8 @@ function isCredential(value: unknown): value is RelayCredential {
 
 // CONTRACT: documents/contracts/relay.md#deploy
 export function parseRelayAccount(text: string): RelayAccount | undefined {
-  let value: unknown;
-  try { value = JSON.parse(text); } catch { return undefined; }
-  if (typeof value !== "object" || value === null) { return undefined; }
-  const record = value as Record<string, unknown>;
+  const record = parseJsonObject(text);
+  if (!record) { return undefined; }
   const valid = FIELDS.every((field) => typeof record[field] === "string") && isCredential(record.credential);
   return valid ? (record as unknown as RelayAccount) : undefined;
 }

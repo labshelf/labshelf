@@ -1,7 +1,8 @@
 /** Maps Typst Universe's package index to gallery entries, one per template package at its highest version. */
 // CONTRACT: documents/contracts/templates.md#typst-universe
 
-import { isCatalogJsonObject, parseCatalogIndexJson, deriveTemplatePathProblem, type SkippedEntry, type TemplateKind } from "../templateManifest/index.js";
+import { isRecord } from "../../guards/index.js";
+import { parseCatalogIndexJson, deriveTemplatePathProblem, type SkippedEntry, type TemplateKind } from "../templateManifest/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
 
 export const UNIVERSE_INDEX_URL = "https://packages.typst.org/preview/index.json";
@@ -77,7 +78,7 @@ export function parseUniverseCatalogIndex(jsonText: string): UniverseCatalogInde
   if (!Array.isArray(value)) { return { ok: false, reason: "index.json is not an array" }; }
   const latest = new Map<string, Record<string, unknown>>();
   for (const pkg of value) {
-    if (!isCatalogJsonObject(pkg) || !isCatalogJsonObject(pkg["template"])) { continue; }
+    if (!isRecord(pkg) || !isRecord(pkg["template"])) { continue; }
     const name = text(pkg["name"]);
     const version = text(pkg["version"]);
     if (name === undefined || version === undefined) { continue; }

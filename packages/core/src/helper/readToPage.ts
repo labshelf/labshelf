@@ -1,13 +1,14 @@
 /** Validates the body of a message LabShelf Helper sends to an extension page. */
 // CONTRACT: documents/contracts/helper.md#messages
 
+import { isRecord } from "../guards/index.js";
 import type { BuildProblemKind, LocatedProblem } from "../latex/index.js";
 import {
   HELPER_BUILD_STATUSES, HELPER_HOSTS, PROGRESS_PHASES, TEX_SOURCES,
   type ChangedPage, type TexToolchain, type ToPageMessage,
 } from "./helperMessages.js";
 import {
-  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, readArray, readBody, readBoolean, readChoice, readNumber, readPaths,
+  FieldError, isNonNegativeInteger, isPositiveInteger, readArray, readBody, readBoolean, readChoice, readNumber, readPaths,
   readProjectId, readSha256, readString, readText, readOptionalField, type Body,
 } from "./messageFields.js";
 
@@ -30,7 +31,7 @@ function readTex(body: Body): TexToolchain {
 
 function readProblems(body: Body): LocatedProblem[] {
   return readArray(body, "problems").map((entry, index): LocatedProblem => {
-    if (!isBody(entry)) { throw new FieldError("invalid-field", `problems[${index}] is not an object`); }
+    if (!isRecord(entry)) { throw new FieldError("invalid-field", `problems[${index}] is not an object`); }
     return {
       severity: readChoice(entry, "severity", SEVERITIES),
       message: readString(entry, "message"),
@@ -45,7 +46,7 @@ function readProblems(body: Body): LocatedProblem[] {
 
 function readChangedPages(body: Body): ChangedPage[] {
   return readArray(body, "changed").map((entry, index): ChangedPage => {
-    if (!isBody(entry)) { throw new FieldError("invalid-field", `changed[${index}] is not an object`); }
+    if (!isRecord(entry)) { throw new FieldError("invalid-field", `changed[${index}] is not an object`); }
     return {
       index: readNumber(entry, "index", isNonNegativeInteger),
       offset: readNumber(entry, "offset", isNonNegativeInteger),

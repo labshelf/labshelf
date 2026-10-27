@@ -1,6 +1,7 @@
 // Changes the dated entries of a Space: tasks, reading plans, project milestones and deadlines.
 import { createEntryId } from "../../model/index.js";
-import { isDay, isNonEmptyStringList, isNonEmptyString, isOptional, parseEntryIds } from "../../model/json/index.js";
+import { isDay, parseEntryIds } from "../../model/json/index.js";
+import { isNonEmptyStringList, isNonEmptyString, isOptional } from "../../../guards/index.js";
 import type { Space, SpaceDate } from "../../model/index.js";
 import type { Edited } from "./folderMutation.js";
 

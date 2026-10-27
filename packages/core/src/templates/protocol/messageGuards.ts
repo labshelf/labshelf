@@ -2,6 +2,7 @@
  * Validates what a host receives from the template gallery when it runs in a webview: every message is untrusted
  * until its type and every field check out.
  */
+import { isRecord, isStringUpTo } from "../../guards/index.js";
 import { TEMPLATE_CATEGORIES } from "../templateManifest/index.js";
 import { TEMPLATE_SOURCES } from "../templateEntry.js";
 import type { GalleryToHost } from "./messages.js";
@@ -13,7 +14,6 @@ const MAX_ID_LENGTH = 128;
 // Far more cards than one view shows; a larger batch is a broken or hostile page, not a scroll.
 const MAX_THUMBNAIL_BATCH = 200;
 
-const isRecord = (v: unknown): v is Raw => !!v && typeof v === "object" && !Array.isArray(v);
 const isKey = (v: unknown): boolean =>
   isRecord(v)
   && (TEMPLATE_SOURCES as readonly unknown[]).includes(v["source"])
@@ -22,8 +22,8 @@ const isKeys = (v: unknown): boolean => Array.isArray(v) && v.length <= MAX_THUM
 
 // Far longer than any name or description; a larger string is a broken or hostile page.
 const MAX_TEXT_LENGTH = 20_000;
-const isText = (v: unknown): boolean => typeof v === "string" && v.length <= MAX_TEXT_LENGTH;
-const hasTexts = (v: unknown, fields: string[]): boolean => isRecord(v) && fields.every((f) => isText(v[f]));
+const isCappedText = isStringUpTo(MAX_TEXT_LENGTH);
+const hasTexts = (v: unknown, fields: string[]): boolean => isRecord(v) && fields.every((f) => isCappedText(v[f]));
 const isProject = (v: unknown): boolean => hasTexts(v, ["id", "title", "engineLabel"]);
 const isDraft = (v: unknown): boolean =>
   hasTexts(v, ["name", "license", "description"]) && (TEMPLATE_CATEGORIES as readonly unknown[]).includes((v as Raw)["category"]);

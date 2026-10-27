@@ -46,4 +46,13 @@ describe("Cloudflare token and accounts", () => {
     const client = createCloudflareClient({ token: TOKEN, fetch: fetchStub, logger: recordingLogger() });
     await expect(client.call("GET", "/accounts")).rejects.toMatchObject({ status: 502, message: expect.stringContaining("bad gateway") });
   });
+
+  it("treats a JSON array body like any other non-object: it is the result, and on failure only the status is read", async () => {
+    const okStub = (async () => new Response("[]", { status: 200 })) as typeof fetch;
+    const okClient = createCloudflareClient({ token: TOKEN, fetch: okStub, logger: recordingLogger() });
+    await expect(okClient.call("GET", "/accounts")).resolves.toEqual([]);
+    const failStub = (async () => new Response('[{"code":1000,"message":"x"}]', { status: 502 })) as typeof fetch;
+    const failClient = createCloudflareClient({ token: TOKEN, fetch: failStub, logger: recordingLogger() });
+    await expect(failClient.call("GET", "/accounts")).rejects.toMatchObject({ status: 502, code: 0 });
+  });
 });

@@ -2,6 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#labshelfyaml
 
 import YAML from "yaml";
+import { isOneOf } from "../../guards/index.js";
 import { readUserSettings, type CountUpTo, type UserSettings } from "./userSettings.js";
 import { readListedPapers, type ListedPaper } from "./listedPapers.js";
 
@@ -63,10 +64,6 @@ export type ProjectFileResult =
   | { ok: false; reason: string };
 
 const OPTIONAL_STRING_KEYS = ["main", "bibliography", "typst"] as const;
-
-function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
-  return typeof value === "string" && (values as readonly string[]).includes(value);
-}
 
 function isCalendarDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) { return false; }

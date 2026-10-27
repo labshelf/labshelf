@@ -1,8 +1,4 @@
-// Parses an index.json text and tests parsed values for being plain objects, for the Community and Universe index readers.
-
-export function isCatalogJsonObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
+// Parses an index.json text for the Community and Universe index readers.
 
 export type ParsedJson = { ok: true; value: unknown } | { ok: false; reason: string };
 

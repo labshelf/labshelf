@@ -1,5 +1,6 @@
 // Defines a comment thread and reads one from untrusted JSON, keeping only what this version understands.
 // CONTRACT: documents/contracts/library-format.md#project-folder-labshelf
+import { isNonEmptyString, isRecord, isTimestamp } from "../../guards/index.js";
 
 /** The text a thread is on; `start` and `end` are base64 Yjs relative positions, present only in a shared project. */
 export interface CommentAnchor {
@@ -27,25 +28,19 @@ export interface CommentThread {
   resolved: boolean;
 }
 
-export function isJsonObject(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-const isText = (value: unknown): value is string => typeof value === "string" && value !== "";
-const isTimestamp = (value: unknown): value is string => typeof value === "string" && !Number.isNaN(Date.parse(value));
 
 function readAnchor(value: unknown): CommentAnchor | undefined {
-  if (!isJsonObject(value)) { return undefined; }
+  if (!isRecord(value)) { return undefined; }
   const { quote, prefix, suffix, start, end } = value;
-  if (!isText(quote) || typeof prefix !== "string" || typeof suffix !== "string") { return undefined; }
-  const live = isText(start) && isText(end) ? { start, end } : {};
+  if (!isNonEmptyString(quote) || typeof prefix !== "string" || typeof suffix !== "string") { return undefined; }
+  const live = isNonEmptyString(start) && isNonEmptyString(end) ? { start, end } : {};
   return { quote, prefix, suffix, ...live };
 }
 
 function readComment(value: unknown): Comment | undefined {
-  if (!isJsonObject(value)) { return undefined; }
+  if (!isRecord(value)) { return undefined; }
   const { id, author, body, createdAt } = value;
-  return isText(id) && isText(author) && isText(body) && isTimestamp(createdAt) ? { id, author, body, createdAt } : undefined;
+  return isNonEmptyString(id) && isNonEmptyString(author) && isNonEmptyString(body) && isTimestamp(createdAt) ? { id, author, body, createdAt } : undefined;
 }
 
 /**
@@ -53,10 +48,10 @@ function readComment(value: unknown): Comment | undefined {
  * @returns undefined when a key of the thread is missing or invalid; invalid comments are left out
  */
 export function readThread(value: unknown): CommentThread | undefined {
-  if (!isJsonObject(value)) { return undefined; }
+  if (!isRecord(value)) { return undefined; }
   const { id, file, resolved } = value;
   const anchor = readAnchor(value["anchor"]);
-  if (!isText(id) || !isText(file) || typeof resolved !== "boolean" || !anchor || !Array.isArray(value["comments"])) { return undefined; }
+  if (!isNonEmptyString(id) || !isNonEmptyString(file) || typeof resolved !== "boolean" || !anchor || !Array.isArray(value["comments"])) { return undefined; }
   const comments = value["comments"].map(readComment).filter((each): each is Comment => each !== undefined);
   return comments.length === 0 ? undefined : { id, file, anchor, comments, resolved };
 }

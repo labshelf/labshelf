@@ -1,6 +1,7 @@
 // Moves share keys stored without a library under the library whose projects hold their share ids.
 // Delete when no installed extension can still hold a `collabShares.shares` record, which only versions that kept shares without library ids wrote.
-import { isJsonObject, readLibraryShares, readStoredShares, parseStoredShare, withLibraryShares, writeStoredShares } from "./storedShareKeys";
+import { isRecord } from "@labshelf/core";
+import { readLibraryShares, readStoredShares, parseStoredShare, withLibraryShares, writeStoredShares } from "./storedShareKeys";
 
 /**
  * `shareIds` are the share ids of projects in the library's folder; an unscoped entry no project of this library holds stays
@@ -8,7 +9,7 @@ import { isJsonObject, readLibraryShares, readStoredShares, parseStoredShare, wi
  */
 export async function updateUnscopedShares(libraryId: string, shareIds: Iterable<string>): Promise<void> {
   const record = await readStoredShares();
-  if (!isJsonObject(record["shares"])) return;
+  if (!isRecord(record["shares"])) return;
   const unscoped = { ...record["shares"] };
   const scoped = { ...readLibraryShares(record, libraryId) };
   let moved = false;

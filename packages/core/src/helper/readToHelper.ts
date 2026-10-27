@@ -1,11 +1,12 @@
 /** Validates the body of a message an extension page sends to LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#messages
 
+import { isRecord } from "../guards/index.js";
 import { COMPILE_MODES, MAX_EDIT_CHANGES, type TextChange, type ToHelperMessage } from "./helperMessages.js";
 import { TEX_INSTALL_KINDS } from "../latex/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  FieldError, isBody, isNonNegativeInteger, isPositiveInteger, readOptionalField, readArray, readBoolean, readChoice, readNumber, readPath,
+  FieldError, isNonNegativeInteger, isPositiveInteger, readOptionalField, readArray, readBoolean, readChoice, readNumber, readPath,
   readProjectId, readString, readText, type Body,
 } from "./messageFields.js";
 
@@ -16,7 +17,7 @@ type Readers = { [T in ToHelperMessage["type"]]: (body: Body, envelope: Envelope
 
 function readChanges(body: Body): TextChange[] {
   return readArray(body, "changes", MAX_EDIT_CHANGES).map((entry, index): TextChange => {
-    if (!isBody(entry)) { throw new FieldError("invalid-field", `changes[${index}] is not an object`); }
+    if (!isRecord(entry)) { throw new FieldError("invalid-field", `changes[${index}] is not an object`); }
     const from = readNumber(entry, "from", isNonNegativeInteger);
     const to = readNumber(entry, "to", isNonNegativeInteger);
     if (to < from) { throw new FieldError("invalid-field", `changes[${index}] ends before it starts`); }

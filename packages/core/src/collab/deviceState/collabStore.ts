@@ -1,6 +1,7 @@
 // Persists a share's device-local collaboration state.
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import * as Y from "yjs";
+import { isCount, isString } from "../../guards/index.js";
 import { base64ToBytes, bytesToBase64, isCanonicalBase64 } from "../../encoding/index.js";
 import { readShareIndexDocFiles } from "../model/index.js";
 import type { ILogger } from "../../ports/index.js";
@@ -123,8 +124,6 @@ export interface CollabStore {
   close(): Promise<void>;
 }
 
-const isString = (value: unknown): value is string => typeof value === "string";
-const isCursor = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
 
 // Bytes that fail to decode make the caller log the held state as unreadable instead of dropping it silently.
 const heldBytes = (value: string): Uint8Array => isCanonicalBase64(value) ? base64ToBytes(value) : new Uint8Array();
@@ -161,7 +160,7 @@ export async function openCollabStore({ storage, logger }: CollabStoreOptions): 
   const bases = await StoredMap.load({ storage, name: "bases", label: "file merge bases", isValue: isString, logger });
   const versions = await loadVersionHistory(storage, logger);
   const cursors = await StoredMap.load({
-    storage, name: "relay-cursors", label: "relay cursors", isValue: isCursor, logger, maySave: allDocsStored,
+    storage, name: "relay-cursors", label: "relay cursors", isValue: isCount, logger, maySave: allDocsStored,
   });
   // The held state describes the relay, not this device's docs, so it saves without waiting for doc updates.
   const held = await StoredMap.load({ storage, name: "relay-held", label: "relay held states", isValue: isString, logger });

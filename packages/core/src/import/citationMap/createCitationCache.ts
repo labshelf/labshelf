@@ -1,5 +1,6 @@
 // Reads and writes the OpenAlex citation cache: one file per library paper and one per cited work, each with its fetch date.
 // CONTRACT: documents/contracts/library-format.md#device-local-files
+import { isRecord, isStringArray } from "../../guards/index.js";
 import type { OpenAlexCitationWork } from "../registries/index.js";
 import { formatError } from "../../logging/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
@@ -56,7 +57,7 @@ export function isStale(entry: CitationCacheEntry, now: Date, maxAgeDays: number
 }
 
 function parseCachedWork(value: unknown): CitationCacheEntry | undefined {
-  if (!isObject(value) || typeof value.fetchedAt !== "string" || !isObject(value.work)) {
+  if (!isRecord(value) || typeof value.fetchedAt !== "string" || !isRecord(value.work)) {
     return undefined;
   }
   const work = value.work;
@@ -76,14 +77,6 @@ function parseCachedWork(value: unknown): CitationCacheEntry | undefined {
       references: work.references.filter((ref) => /^W\d+$/.test(ref)),
     },
   };
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 function optionalString(value: unknown): string | undefined {

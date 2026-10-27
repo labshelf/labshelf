@@ -1,6 +1,6 @@
 // Reads and writes the version.json of a snapshot, which comes from a synced folder and is validated on read.
 // CONTRACT: documents/contracts/library-format.md#project-folder-labshelf
-import { parseJsonObject } from "../project/index.js";
+import { parseJsonObject } from "../../json/index.js";
 
 /** Where a project keeps its version snapshots, relative to the project folder. */
 export const VERSIONS_DIR = ".labshelf/versions";

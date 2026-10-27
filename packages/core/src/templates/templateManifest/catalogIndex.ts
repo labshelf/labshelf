@@ -1,7 +1,8 @@
 /** Parses the Community catalog's index.json, keeping the entries that pass the manifest and path rules. */
 // CONTRACT: documents/contracts/templates.md#community-catalog
 
-import { isCatalogJsonObject, parseCatalogIndexJson } from "./catalogJson.js";
+import { isRecord } from "../../guards/index.js";
+import { parseCatalogIndexJson } from "./catalogJson.js";
 import { deriveTemplateTreeProblem } from "./templatePaths.js";
 import { readTemplateFields, findSchemaProblem, type TemplateManifest } from "./templateManifest.js";
 
@@ -25,7 +26,7 @@ const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 
 function readBlob(value: unknown): CatalogAsset | undefined {
-  if (!isCatalogJsonObject(value)) { return undefined; }
+  if (!isRecord(value)) { return undefined; }
   const { size, sha256 } = value;
   const valid = typeof size === "number" && Number.isInteger(size) && size >= 0
     && typeof sha256 === "string" && SHA256_PATTERN.test(sha256);
@@ -37,7 +38,7 @@ function readFiles(value: unknown): CatalogFile[] | undefined {
   const files: CatalogFile[] = [];
   for (const item of value) {
     const blob = readBlob(item);
-    const path = isCatalogJsonObject(item) ? item["path"] : undefined;
+    const path = isRecord(item) ? item["path"] : undefined;
     if (blob === undefined || typeof path !== "string") { return undefined; }
     files.push({ path, ...blob });
   }
@@ -71,7 +72,7 @@ function readEntries(templates: unknown[]): { entries: CatalogEntry[]; skipped: 
   const skipped: SkippedEntry[] = [];
   const seen = new Set<string>();
   for (const raw of templates) {
-    if (!isCatalogJsonObject(raw)) { skipped.push({ id: undefined, reason: "entry is not an object" }); continue; }
+    if (!isRecord(raw)) { skipped.push({ id: undefined, reason: "entry is not an object" }); continue; }
     const id = typeof raw["id"] === "string" ? raw["id"] : undefined;
     const parsed = readEntry(raw);
     if ("problem" in parsed) { skipped.push({ id, reason: parsed.problem }); continue; }
@@ -87,7 +88,7 @@ export function parseCatalogIndex(jsonText: string): CatalogIndexResult {
   const json = parseCatalogIndexJson(jsonText);
   if (!json.ok) { return json; }
   const value = json.value;
-  if (!isCatalogJsonObject(value)) { return { ok: false, reason: "index.json is not an object" }; }
+  if (!isRecord(value)) { return { ok: false, reason: "index.json is not an object" }; }
   const problem = findSchemaProblem(value["schema"]);
   if (problem !== undefined) { return { ok: false, reason: problem }; }
   const commit = value["commit"];

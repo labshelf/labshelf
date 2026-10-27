@@ -1,5 +1,6 @@
 /** Reads typed fields from an untrusted message body, throwing a FieldError that names the refused field. */
 
+import { isRecord } from "../guards/index.js";
 import { checkHelperPath, isHelperProjectId } from "./helperPaths.js";
 import { MAX_PROJECT_FILES, type HelperRejectionKind } from "./helperMessages.js";
 
@@ -12,13 +13,9 @@ export class FieldError extends Error {
   }
 }
 
-export function isBody(value: unknown): value is Body {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 export function readBody(body: Body, key: string): Body {
   const value = body[key];
-  if (!isBody(value)) { throw new FieldError("invalid-field", `${key} is not an object`); }
+  if (!isRecord(value)) { throw new FieldError("invalid-field", `${key} is not an object`); }
   return value;
 }
 

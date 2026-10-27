@@ -3,8 +3,9 @@
 import { SPACE_FORMAT_VERSION } from "./space.js";
 import type { Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm } from "./space.js";
 import {
-  isNonEmptyString, isOptional, isPage, isJsonObject, isString, readEntries, deriveTopLevelReadOnlyReason, deriveUnknownFields, withUnknownFields,
+  isPage, readEntries, deriveTopLevelReadOnlyReason, deriveUnknownFields, withUnknownFields,
 } from "./json/index.js";
+import { isNonEmptyString, isOptional, isRecord, isString } from "../../guards/index.js";
 
 const EMPTY: Glossary = { terms: [], invalidTerms: [], extra: {} };
 const GLOSSARY_KEYS = ["version", "terms"];
@@ -12,13 +13,13 @@ const TERM_KEYS = ["id", "term", "symbol", "definition", "source"];
 const SOURCE_KEYS = ["paperId", "page"];
 
 function parseSource(raw: unknown): GlossarySource | undefined {
-  if (!isJsonObject(raw) || !isNonEmptyString(raw["paperId"]) || !isOptional(raw["page"], isPage)) { return undefined; }
+  if (!isRecord(raw) || !isNonEmptyString(raw["paperId"]) || !isOptional(raw["page"], isPage)) { return undefined; }
   const page = raw["page"] as number | undefined;
   return { paperId: raw["paperId"], ...(page === undefined ? {} : { page }), extra: deriveUnknownFields(raw, SOURCE_KEYS) };
 }
 
 function parseTerm(raw: unknown): GlossaryTerm | string {
-  if (!isJsonObject(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, term, symbol, definition } = raw;
   if (!isString(term) || !isString(definition) || !isOptional(symbol, isString)) { return "term, definition or symbol is not text"; }
   const source = raw["source"] === undefined ? undefined : parseSource(raw["source"]);
@@ -38,7 +39,7 @@ export function parseGlossaryFile(text: string | undefined): GlossaryReadResult 
   } catch (error) {
     return { glossary: EMPTY, warnings: [], readOnlyReason: `glossary.json is not valid JSON (${(error as Error).message}); fix it to edit the glossary.` };
   }
-  if (!isJsonObject(raw)) { return { glossary: EMPTY, warnings: [], readOnlyReason: "glossary.json is not a JSON object; fix it to edit the glossary." }; }
+  if (!isRecord(raw)) { return { glossary: EMPTY, warnings: [], readOnlyReason: "glossary.json is not a JSON object; fix it to edit the glossary." }; }
   const warnings: string[] = [];
   const terms = readEntries(raw["terms"], "terms", parseTerm, warnings);
   const glossary = { terms: terms.valid, invalidTerms: terms.raw, extra: deriveUnknownFields(raw, GLOSSARY_KEYS) };

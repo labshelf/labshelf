@@ -1,9 +1,7 @@
 // Gives the reason a space.json or glossary.json must not be written: a version it cannot write or a known key of the wrong type.
 // CONTRACT: documents/contracts/spaces.md#reading-and-writing
 import { SPACE_FORMAT_VERSION } from "../space.js";
-import { isOptional, isString } from "./fieldChecks.js";
-
-const isArray = (value: unknown): value is unknown[] => Array.isArray(value);
+import { isOptional, isString } from "../../../guards/index.js";
 
 const TOP_LEVEL_CHECKS = {
   "space.json": { arrays: ["folders", "papers", "projects", "dates"], strings: ["name", "purpose", "createdAt"] },
@@ -21,7 +19,7 @@ export function deriveTopLevelReadOnlyReason(raw: Record<string, unknown>, file:
   }
   const { arrays, strings } = TOP_LEVEL_CHECKS[file];
   const wrong = [
-    ...arrays.filter((key) => !isOptional(raw[key], isArray)),
+    ...arrays.filter((key) => !isOptional(raw[key], Array.isArray)),
     ...strings.filter((key) => !isOptional(raw[key], isString)),
   ];
   if (wrong.length === 0) { return undefined; }

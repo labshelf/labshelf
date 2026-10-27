@@ -1,6 +1,7 @@
 // Parses, edits and serializes a project's .labshelf/checklist.json, keeping what it does not understand.
 // CONTRACT: documents/contracts/library-format.md#project-folder-labshelf
-import { parseJsonObject } from "../project/index.js";
+import { isRecord, isTimestamp } from "../../guards/index.js";
+import { parseJsonObject } from "../../json/index.js";
 
 export const CHECKLIST_DIR = ".labshelf";
 export const CHECKLIST_FILE = "checklist.json";
@@ -36,14 +37,6 @@ export function parseChecklistFile(text: string): ChecklistDocument | undefined 
 
 export function serializeChecklistFile(doc: ChecklistDocument): string {
   return `${JSON.stringify(doc, null, 2)}\n`;
-}
-
-function isTimestamp(value: unknown): value is string {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 // The file syncs from other machines, so every key is checked; doneAt must be present exactly when done is true.

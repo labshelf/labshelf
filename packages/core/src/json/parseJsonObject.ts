@@ -1,4 +1,5 @@
 // Parses JSON text that must be a plain object, for files read from disk or a synced folder.
+import { isRecord } from "../guards/index.js";
 
 /** @returns undefined when the text is not valid JSON or its root is not a non-array object */
 export function parseJsonObject(text: string): Record<string, unknown> | undefined {
@@ -8,5 +9,5 @@ export function parseJsonObject(text: string): Record<string, unknown> | undefin
   } catch {
     return undefined;
   }
-  return raw !== null && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : undefined;
+  return isRecord(raw) ? raw : undefined;
 }

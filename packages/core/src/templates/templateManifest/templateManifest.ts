@@ -2,6 +2,7 @@
 // CONTRACT: documents/contracts/templates.md#manifest
 
 import YAML from "yaml";
+import { isOneOf } from "../../guards/index.js";
 import { LATEX_ENGINES, PROJECT_FORMATS, type ProjectFormat } from "../../writing/project/index.js";
 import { isLicenseExpression } from "./templateLicense.js";
 import { deriveTemplatePathProblem } from "./templatePaths.js";
@@ -34,10 +35,6 @@ export type TemplateManifestResult = { ok: true; manifest: TemplateManifest } | 
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
-
-function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
-  return typeof value === "string" && (values as readonly string[]).includes(value);
-}
 
 function textProblem(value: unknown, maxLength: number, singleLine: boolean): string | undefined {
   if (typeof value !== "string" || value.trim() === "") { return "is missing"; }

@@ -1,6 +1,6 @@
 /** Reads and edits the device-local list of project folders outside the library, keeping keys other versions wrote. */
 // CONTRACT: documents/contracts/library-format.md#device-local-files
-import { parseJsonObject } from "./parseJsonObject.js";
+import { parseJsonObject } from "../../../json/index.js";
 
 export interface ProjectRegistry {
   /** Absolute paths, in the order they were added. */

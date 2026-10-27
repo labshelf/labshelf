@@ -1,4 +1,5 @@
 // Defines the messages between the sharing dialogs and a SharingHost in another context, and validates them on arrival.
+import { isBoolean, isCount, isNonEmptyString, isRecord, isStringUpTo } from "../../guards/index.js";
 import { isLibraryPath } from "../../path/index.js";
 import type { ShareOffers, ShareProgress } from "./shareHost.js";
 
@@ -52,17 +53,14 @@ type Check = (v: unknown) => boolean;
 const ID_MAX = 4096;
 const TEXT_MAX = 16384;
 
-const isObject = (v: unknown): v is Raw => !!v && typeof v === "object" && !Array.isArray(v);
-const isCallId = (v: unknown): boolean => typeof v === "number" && Number.isInteger(v) && v >= 0;
-const isCount = isCallId;
-const isKey: Check = (v) => typeof v === "string" && v.length > 0 && v.length <= ID_MAX;
-const isSecret: Check = (v) => typeof v === "string" && v.length > 0 && v.length <= TEXT_MAX;
-const isText: Check = (v) => typeof v === "string" && v.length <= TEXT_MAX;
-const isBool: Check = (v) => typeof v === "boolean";
+const isIdUpTo = isStringUpTo(ID_MAX);
+const isCappedText = isStringUpTo(TEXT_MAX);
+const isKey: Check = (v) => isNonEmptyString(v) && isIdUpTo(v);
+const isSecret: Check = (v) => isNonEmptyString(v) && isCappedText(v);
 const isFolder: Check = (v) => isLibraryPath(v) && v.length <= ID_MAX;
 // Only a web address reaches the host's browser opener, never a script, file or extension URL.
 const isWebUrl: Check = (v) =>
-  typeof v === "string" && v.length <= TEXT_MAX && URL.canParse(v) && ["https:", "http:"].includes(new URL(v).protocol);
+  isCappedText(v) && URL.canParse(v) && ["https:", "http:"].includes(new URL(v).protocol);
 
 // The checks for each operation's arguments; the array length is the arity.
 const ARG_CHECKS: Record<ShareOp, Check[]> = {
@@ -74,18 +72,18 @@ const ARG_CHECKS: Record<ShareOp, Check[]> = {
   leaveProject: [isKey],
   openProject: [isKey],
   shareableFolder: [isFolder],
-  shareFolder: [isFolder, isBool],
+  shareFolder: [isFolder, isBoolean],
   sharedLinks: [],
   revokeLink: [isKey],
   importLink: [isSecret],
   openFolder: [isFolder],
-  copyText: [isText],
+  copyText: [isCappedText],
   openLink: [isWebUrl],
 };
 
 /** True for any object on the sharing channel, valid or not, so other handlers can leave it alone. */
 export function isShareMessage(raw: unknown): boolean {
-  return isObject(raw) && raw["channel"] === "sharing";
+  return isRecord(raw) && raw["channel"] === "sharing";
 }
 
 function validArgs(op: unknown, args: unknown): boolean {
@@ -100,8 +98,8 @@ export function parseShareCall(raw: unknown): ShareCall | null {
   const message = raw as Raw;
   switch (message["type"]) {
     case "hello": return message as ShareCall;
-    case "cancel": return isCallId(message["id"]) ? (message as ShareCall) : null;
-    case "call": return isCallId(message["id"]) && validArgs(message["op"], message["args"]) ? (message as ShareCall) : null;
+    case "cancel": return isCount(message["id"]) ? (message as ShareCall) : null;
+    case "call": return isCount(message["id"]) && validArgs(message["op"], message["args"]) ? (message as ShareCall) : null;
     default: return null;
   }
 }
@@ -109,9 +107,9 @@ export function parseShareCall(raw: unknown): ShareCall | null {
 const STAGES: readonly unknown[] = ["reading", "encrypting", "uploading"] satisfies Extract<ShareProgress, { stage: unknown }>["stage"][];
 
 const isProgress = (v: unknown): boolean =>
-  isObject(v) && (STAGES.includes(v["stage"]) || (isCount(v["done"]) && isCount(v["total"])));
+  isRecord(v) && (STAGES.includes(v["stage"]) || (isCount(v["done"]) && isCount(v["total"])));
 
-const isOffers = (v: unknown): boolean => isObject(v) && isBool(v["projects"]) && isBool(v["links"]);
+const isOffers = (v: unknown): boolean => isRecord(v) && isBoolean(v["projects"]) && isBoolean(v["links"]);
 
 const optional = (check: Check): Check => (v) => v === undefined || check(v);
 
@@ -119,20 +117,20 @@ const optional = (check: Check): Check => (v) => v === undefined || check(v);
 const REQUEST_FIELDS: Record<ShareDialogRequest["kind"], [string, Check] | null> = {
   shareProject: ["projectId", optional(isKey)],
   leaveProject: ["projectId", optional(isKey)],
-  joinProject: ["invite", optional(isText)],
+  joinProject: ["invite", optional(isCappedText)],
   shareFolder: ["path", optional(isFolder)],
   manageLinks: null,
-  importLink: ["link", optional(isText)],
+  importLink: ["link", optional(isCappedText)],
 };
 
 function isRequest(v: unknown): boolean {
-  if (!isObject(v) || typeof v["kind"] !== "string" || !Object.hasOwn(REQUEST_FIELDS, v["kind"])) return false;
+  if (!isRecord(v) || typeof v["kind"] !== "string" || !Object.hasOwn(REQUEST_FIELDS, v["kind"])) return false;
   const field = REQUEST_FIELDS[v["kind"] as ShareDialogRequest["kind"]];
   return field === null || field[1](v[field[0]]);
 }
 
 function isResult(m: Raw): boolean {
-  if (!isCallId(m["id"])) return false;
+  if (!isCount(m["id"])) return false;
   if (m["ok"] === true) return true;
   return m["ok"] === false && typeof m["error"] === "string";
 }
@@ -143,7 +141,7 @@ export function parseShareReply(raw: unknown): ShareReply | null {
   const m = raw as Raw;
   const valid =
     (m["type"] === "result" && isResult(m)) ||
-    (m["type"] === "progress" && isCallId(m["id"]) && isProgress(m["progress"])) ||
+    (m["type"] === "progress" && isCount(m["id"]) && isProgress(m["progress"])) ||
     (m["type"] === "offers" && isOffers(m["offers"]) && typeof m["place"] === "string") ||
     (m["type"] === "open" && isRequest(m["request"]));
   return valid ? (m as ShareReply) : null;

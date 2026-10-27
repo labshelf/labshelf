@@ -1,4 +1,5 @@
 /** Defines the config file LabShelf apps share on this computer: its shape, parsing, merging and serialization. */
+import { isRecord } from "../guards/index.js";
 
 export const SHARED_CONFIG_VERSION = 1;
 
@@ -15,10 +16,6 @@ export interface SharedConfigUpdate {
   [namespace: string]: unknown;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 /**
  * Parses the file text; anything that is not a JSON object reads as an empty config.
  * @returns the config, with every key the file holds and version forced to 1
@@ -26,7 +23,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 export function parseSharedConfig(text: string): SharedConfig {
   try {
     const parsed: unknown = JSON.parse(text);
-    if (isPlainObject(parsed)) { return { ...parsed, version: SHARED_CONFIG_VERSION }; }
+    if (isRecord(parsed)) { return { ...parsed, version: SHARED_CONFIG_VERSION }; }
   } catch {
     // A corrupt file reads as empty; the next update rewrites it.
   }
@@ -43,7 +40,7 @@ export function mergeSharedConfig(current: SharedConfig, patch: SharedConfigUpda
   for (const [key, value] of Object.entries(patch)) {
     if (value === undefined) {
       delete next[key];
-    } else if (isPlainObject(value) && isPlainObject(current[key])) {
+    } else if (isRecord(value) && isRecord(current[key])) {
       next[key] = { ...current[key], ...value };
     } else {
       next[key] = value;

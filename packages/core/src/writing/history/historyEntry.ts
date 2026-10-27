@@ -1,6 +1,6 @@
 // Reads and writes one line of a project's history log, which is validated on read because the file outlives app versions.
 import { isProjectPath } from "../../path/index.js";
-import { parseJsonObject } from "../project/index.js";
+import { parseJsonObject } from "../../json/index.js";
 
 /** "edit" is a save, "restore" a jump back to an earlier entry, "version" a marked version. */
 export type HistoryKind = "edit" | "restore" | "version";

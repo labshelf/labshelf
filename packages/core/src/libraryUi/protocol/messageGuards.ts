@@ -1,4 +1,5 @@
 // Validates untrusted library UI messages before a host handles them.
+import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { PAPER_STATUSES, type ReadingStatus } from "../../library/readingStatus/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import type { UiToHost } from "./messages.js";
@@ -6,14 +7,8 @@ import type { UiToHost } from "./messages.js";
 type Raw = Record<string, unknown>;
 type FieldCheck = (value: unknown) => boolean;
 
-const isText = (v: unknown): v is string => typeof v === "string";
-const isId = (v: unknown): v is string => typeof v === "string" && v.length > 0;
-const isIds = (v: unknown): v is string[] => Array.isArray(v) && v.every(isId);
-const isTexts = (v: unknown): v is string[] => Array.isArray(v) && v.every(isText);
 const isStatus = (v: unknown): v is ReadingStatus => (PAPER_STATUSES as readonly unknown[]).includes(v);
 const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number" && Number.isInteger(v) && v > 0);
-const isBool = (v: unknown): boolean => typeof v === "boolean";
-const isLine = (v: unknown): boolean => typeof v === "number" && Number.isInteger(v) && v >= 0;
 const isWorkId = (v: unknown): boolean => typeof v === "string" && /^W\d+$/.test(v);
 // One entry of a paper folder: a single segment, never "." or "..", never a path.
 const isEntryName = (v: unknown): boolean =>
@@ -30,37 +25,37 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "ready": {},
   "navigate": { folder: isLibraryPath },
   "folder.open": { folder: isLibraryPath },
-  "folder.create": { parent: isLibraryPath, name: isId },
-  "folder.rename": { path: isLibraryPath, name: isId },
+  "folder.create": { parent: isLibraryPath, name: isNonEmptyString },
+  "folder.rename": { path: isLibraryPath, name: isNonEmptyString },
   "folder.delete": { path: isLibraryPath },
-  "paper.open": { id: isId, page: isPage },
-  "paper.openExternal": { id: isId },
-  "paper.reveal": { id: isId },
-  "paper.details": { id: isId },
-  "paper.similar": { id: isId },
-  "paper.selected": { ids: isIds },
-  "paper.files": { id: isId },
-  "paper.describeFile": { id: isId, name: isEntryName, description: isText },
-  "paper.openFile": { id: isId, name: isEntryName },
-  "paper.revealFile": { id: isId, name: isEntryName },
-  "paper.copyFilePath": { id: isId, name: isEntryName },
-  "paper.findPdf": { id: isId, replace: (v) => v === undefined || isBool(v) },
-  "paper.attachPdf": { id: isId },
-  "paper.openForPdf": { id: isId, access: isAccess },
-  "paper.askAuthor": { id: isId },
-  "paper.fetchMetadata": { id: isId },
-  "paper.makeSearchable": { ids: isIds },
-  "paper.setStatus": { ids: isIds, status: isStatus },
-  "paper.setTags": { ids: isIds, add: isTexts, remove: isTexts },
-  "paper.setNote": { id: isId, note: isText },
-  "paper.addToSpace": { ids: (v) => isIds(v) && v.length > 0 },
-  "paper.move": { ids: isIds, target: isLibraryPath },
-  "paper.remove": { ids: isIds },
+  "paper.open": { id: isNonEmptyString, page: isPage },
+  "paper.openExternal": { id: isNonEmptyString },
+  "paper.reveal": { id: isNonEmptyString },
+  "paper.details": { id: isNonEmptyString },
+  "paper.similar": { id: isNonEmptyString },
+  "paper.selected": { ids: isNonEmptyStringList },
+  "paper.files": { id: isNonEmptyString },
+  "paper.describeFile": { id: isNonEmptyString, name: isEntryName, description: isString },
+  "paper.openFile": { id: isNonEmptyString, name: isEntryName },
+  "paper.revealFile": { id: isNonEmptyString, name: isEntryName },
+  "paper.copyFilePath": { id: isNonEmptyString, name: isEntryName },
+  "paper.findPdf": { id: isNonEmptyString, replace: (v) => v === undefined || isBoolean(v) },
+  "paper.attachPdf": { id: isNonEmptyString },
+  "paper.openForPdf": { id: isNonEmptyString, access: isAccess },
+  "paper.askAuthor": { id: isNonEmptyString },
+  "paper.fetchMetadata": { id: isNonEmptyString },
+  "paper.makeSearchable": { ids: isNonEmptyStringList },
+  "paper.setStatus": { ids: isNonEmptyStringList, status: isStatus },
+  "paper.setTags": { ids: isNonEmptyStringList, add: isStringArray, remove: isStringArray },
+  "paper.setNote": { id: isNonEmptyString, note: isString },
+  "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },
+  "paper.move": { ids: isNonEmptyStringList, target: isLibraryPath },
+  "paper.remove": { ids: isNonEmptyStringList },
   "paper.add": { folder: isLibraryPath },
-  "paper.addFrom": { folder: isLibraryPath, sourceId: isId, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open" || v === "author", retryPdf: isBool },
-  "annotations.export": { id: isId },
-  "project.openSource": { project: isId, file: isProjectPath, line: isLine },
-  "clipboard.write": { text: isText, label: (v) => v === undefined || isText(v) },
+  "paper.addFrom": { folder: isLibraryPath, sourceId: isNonEmptyString, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open" || v === "author", retryPdf: isBoolean },
+  "annotations.export": { id: isNonEmptyString },
+  "project.openSource": { project: isNonEmptyString, file: isProjectPath, line: isCount },
+  "clipboard.write": { text: isString, label: (v) => v === undefined || isString(v) },
   "citationMap.refresh": {},
   "citationMap.import": { workId: isWorkId, doi: isDoi },
 };

@@ -1,4 +1,5 @@
 /** Declares the shapes a preview reader and its host exchange: build state, build roots, page positions and the citations behind them. */
+import { isBoolean, isNumber, isRecord, isString } from "../guards/index.js";
 import type { ReadingStatus } from "../library/readingStatus/index.js";
 import type { CountUpTo, LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
@@ -139,16 +140,13 @@ export interface PreviewBuildRoots {
   options?: BuildOptions;
 }
 
-const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-const isObj = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-const isPage = (v: unknown): boolean => isNum(v) && Number.isInteger(v) && v >= 1;
+const isPage = (v: unknown): boolean => isNumber(v) && Number.isInteger(v) && v >= 1;
 
 export const isPagePoint = (v: unknown): v is PagePoint =>
-  isObj(v) && isPage(v["page"]) && isNum(v["x"]) && isNum(v["y"]);
+  isRecord(v) && isPage(v["page"]) && isNumber(v["x"]) && isNumber(v["y"]);
 
 const isPageArea = (v: unknown): v is PageArea =>
-  isObj(v) && isPage(v["page"]) && isNum(v["left"]) && isNum(v["top"]) && isNum(v["right"]) && isNum(v["bottom"]);
+  isRecord(v) && isPage(v["page"]) && isNumber(v["left"]) && isNumber(v["top"]) && isNumber(v["right"]) && isNumber(v["bottom"]);
 
 export const isCitationQuery = (v: unknown): v is CitationQuery =>
-  isObj(v) && isPageArea(v["area"]) && typeof v["link"] === "boolean" && (v["dest"] === undefined || typeof v["dest"] === "string");
+  isRecord(v) && isPageArea(v["area"]) && isBoolean(v["link"]) && (v["dest"] === undefined || isString(v["dest"]));

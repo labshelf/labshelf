@@ -6,7 +6,8 @@ import {
   type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
-import { FieldError, isBody } from "./messageFields.js";
+import { isRecord } from "../guards/index.js";
+import { FieldError } from "./messageFields.js";
 import { readToHelper } from "./readToHelper.js";
 import { readToPage } from "./readToPage.js";
 import { formatError } from "../logging/index.js";
@@ -20,7 +21,7 @@ function reject(code: HelperRejectionKind, reason: string, id?: string): HelperR
 export type MessageFor<D extends HelperDirection> = D extends "toHelper" ? ToHelperMessage : ToPageMessage;
 
 export function parseHelperMessage<D extends HelperDirection>(raw: unknown, direction: D): HelperParseResult<MessageFor<D>> {
-  if (!isBody(raw)) { return reject("malformed", "frame is not a JSON object"); }
+  if (!isRecord(raw)) { return reject("malformed", "frame is not a JSON object"); }
   const { id, v, type } = raw;
   // CONTRACT: documents/contracts/helper.md#messages — only an `error` reply may come without an id.
   const mayLackId = direction === "toPage" && type === "error";

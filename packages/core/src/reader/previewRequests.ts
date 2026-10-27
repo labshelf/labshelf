@@ -1,4 +1,5 @@
 /** Declares and validates the requests a preview reader sends its host. */
+import { isBoolean, isCount, isNonEmptyString, isNumber, isOneOf, isRecord, isString } from "../guards/index.js";
 import { LATEX_ENGINES, type CountUpTo, type LatexEngine } from "../writing/project/index.js";
 import { AUTO_COMPILE_MODES, type BuildSchedule } from "../writing/build/index.js";
 import { isCitationQuery, isPagePoint, type CitationQuery, type PagePoint } from "./previewProtocol.js";
@@ -50,45 +51,38 @@ export type PreviewRequest =
 
 type Fields = Record<string, unknown>;
 
-const isStr = (v: unknown): v is string => typeof v === "string";
-const isFilled = (v: unknown): v is string => isStr(v) && v.length > 0;
-const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
-const isCount = (v: unknown): boolean => isNum(v) && Number.isInteger(v) && v >= 0;
-const isLine = (v: unknown): boolean => isCount(v) && (v as number) >= 1;
-const isBool = (v: unknown): v is boolean => typeof v === "boolean";
-const isObj = (v: unknown): v is Fields => typeof v === "object" && v !== null && !Array.isArray(v);
-const isOneOf = (list: readonly string[], v: unknown): boolean => isStr(v) && list.includes(v);
+const isLine = (v: unknown): boolean => isCount(v) && v >= 1;
 
 const isLimit = (v: unknown): boolean => v === undefined || v === null || isLine(v);
 
 const isLimitsChange = (v: unknown): boolean =>
-  isObj(v) && isLimit(v["pages"]) && isLimit(v["words"])
+  isRecord(v) && isLimit(v["pages"]) && isLimit(v["words"])
   && (v["countUpTo"] === undefined || v["countUpTo"] === "references" || v["countUpTo"] === "end");
 
 function isCitationFix(v: unknown): boolean {
-  if (!isObj(v) || !isFilled(v["key"])) { return false; }
-  if (v["kind"] === "replace") { return isFilled(v["replacement"]) && isFilled(v["file"]) && isLine(v["line"]); }
+  if (!isRecord(v) || !isNonEmptyString(v["key"])) { return false; }
+  if (v["kind"] === "replace") { return isNonEmptyString(v["replacement"]) && isNonEmptyString(v["file"]) && isLine(v["line"]); }
   return v["kind"] === "update" || v["kind"] === "add";
 }
 
 const GUARDS: { [C in PreviewRequest["command"]]: (m: Fields) => boolean } = {
   showSource: (m) => isPagePoint(m["point"]),
-  lookupCitation: (m) => isNum(m["request"]) && isCitationQuery(m["query"]),
-  openCitedPaper: (m) => isFilled(m["paperId"]) && (m["page"] === undefined || isLine(m["page"])),
+  lookupCitation: (m) => isNumber(m["request"]) && isCitationQuery(m["query"]),
+  openCitedPaper: (m) => isNonEmptyString(m["paperId"]) && (m["page"] === undefined || isLine(m["page"])),
   recompile: () => true,
   revealCursor: () => true,
-  openProblem: (m) => isFilled(m["root"]) && isCount(m["index"]),
-  openRawLog: (m) => isFilled(m["root"]),
-  bodyPages: (m) => isFilled(m["root"]) && isCount(m["contentPages"]),
+  openProblem: (m) => isNonEmptyString(m["root"]) && isCount(m["index"]),
+  openRawLog: (m) => isNonEmptyString(m["root"]),
+  bodyPages: (m) => isNonEmptyString(m["root"]) && isCount(m["contentPages"]),
   runCommand: (m) => isOneOf(PROJECT_COMMANDS, m["id"]),
   setAutoCompile: (m) => isOneOf(AUTO_COMPILE_MODES, m["mode"]),
   setEngine: (m) => isOneOf(LATEX_ENGINES, m["engine"]),
-  setIncludeOnly: (m) => isBool(m["on"]),
-  setHaltOnError: (m) => isBool(m["on"]),
+  setIncludeOnly: (m) => isBoolean(m["on"]),
+  setHaltOnError: (m) => isBoolean(m["on"]),
   setCheckLimits: (m) => isLimitsChange(m["limits"]),
   fixCitation: (m) => isCitationFix(m["fix"]),
-  openSourceLine: (m) => isFilled(m["file"]) && isLine(m["line"]),
-  addReviewComment: (m) => isPagePoint(m["point"]) && isStr(m["quote"]) && isStr(m["note"]) && m["note"].trim().length > 0,
+  openSourceLine: (m) => isNonEmptyString(m["file"]) && isLine(m["line"]),
+  addReviewComment: (m) => isPagePoint(m["point"]) && isString(m["quote"]) && isString(m["note"]) && m["note"].trim().length > 0,
 };
 
 /**
@@ -97,6 +91,6 @@ const GUARDS: { [C in PreviewRequest["command"]]: (m: Fields) => boolean } = {
  */
 export function checkPreviewRequest(m: Fields): boolean | null {
   const command = m["command"];
-  if (!isStr(command) || !Object.hasOwn(GUARDS, command)) { return null; }
+  if (!isString(command) || !Object.hasOwn(GUARDS, command)) { return null; }
   return GUARDS[command as PreviewRequest["command"]](m);
 }

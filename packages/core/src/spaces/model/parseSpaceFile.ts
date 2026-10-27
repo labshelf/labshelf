@@ -9,19 +9,14 @@ import {
   type SpaceReference,
 } from "./space.js";
 import {
-  isNonEmptyString,
-  isJsonObject,
-  isString,
   readEntries,
   deriveTopLevelReadOnlyReason,
   deriveUnknownFields,
-  isBoolean,
   isDay,
-  isNonEmptyStringList,
-  isOptional,
   type EntryParse,
   type ReadEntries,
 } from "./json/index.js";
+import { isBoolean, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../../guards/index.js";
 
 function withoutKey<T extends object, K extends keyof T>(entry: T, key: K): T {
   const { [key]: _dropped, ...rest } = entry;
@@ -74,7 +69,7 @@ function readProjectIds(list: unknown, warnings: string[]): ReadEntries<string> 
 
 const FOLDER_KEYS = ["id", "name", "parent"];
 const parseFolder: EntryParse<SpaceFolder> = (raw) => {
-  if (!isJsonObject(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, name, parent } = raw;
   if (!isString(name) || !isOptional(parent, isNonEmptyString)) { return "name or parent has the wrong type"; }
   return { id, name, ...(parent === undefined ? {} : { parent: parent as string }), extra: deriveUnknownFields(raw, FOLDER_KEYS) };
@@ -82,7 +77,7 @@ const parseFolder: EntryParse<SpaceFolder> = (raw) => {
 
 const PAPER_KEYS = ["id", "folder", "addedAt", "focus"];
 const parsePaperRef: EntryParse<SpaceReference> = (raw) => {
-  if (!isJsonObject(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, folder, addedAt, focus } = raw;
   if (!isOptional(folder, isNonEmptyString) || !isOptional(addedAt, isString) || !isOptional(focus, isBoolean)) {
     return "folder, addedAt or focus has the wrong type";
@@ -99,7 +94,7 @@ const DATE_KEYS = ["id", "kind", "title", "date", "done", "paperIds", "projectId
 const isKind = (value: unknown): value is SpaceDateKind => (SPACE_DATE_KINDS as readonly unknown[]).includes(value);
 
 const parseDate: EntryParse<SpaceDate> = (raw) => {
-  if (!isJsonObject(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
+  if (!isRecord(raw) || !isNonEmptyString(raw["id"])) { return "missing id"; }
   const { id, kind, title, date, done, paperIds, projectId } = raw;
   if (!isKind(kind)) { return `unknown kind ${JSON.stringify(kind)}`; }
   if (!isString(title) || !isDay(date)) { return "title is not text or date is not YYYY-MM-DD"; }
@@ -123,7 +118,7 @@ export function parseSpaceFile<P>(text: string, where: { readonly id: string; re
   } catch (error) {
     return { state: "unreadable", id, path, reason: `space.json is not valid JSON: ${(error as Error).message}` };
   }
-  if (!isJsonObject(raw)) { return { state: "unreadable", id, path, reason: "space.json is not a JSON object" }; }
+  if (!isRecord(raw)) { return { state: "unreadable", id, path, reason: "space.json is not a JSON object" }; }
 
   const warnings: string[] = [];
   const { name, purpose, createdAt } = raw;

@@ -7,7 +7,6 @@ export {
   parseProjectFile, withProjectId, serializeProjectFile, updateProjectFile,
 } from "./projectFile.js";
 export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsUpdate, ProjectSubmission } from "./projectFile.js";
-export { parseJsonObject } from "./deviceLocal/index.js";
 export type { OpenSources } from "./openSources.js";
 export type { ProjectEntry, ProjectPlacement } from "./projectEntry.js";
 export { readProjectEntry, type ProjectFolderReader } from "./readProjectEntry.js";

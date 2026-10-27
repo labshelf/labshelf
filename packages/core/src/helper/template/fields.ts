@@ -1,9 +1,10 @@
 // Validates template publication fields crossing the helper socket.
+import { isRecord } from "../../guards/index.js";
 import { TEMPLATE_CATEGORIES } from "../../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../../templates/index.js";
 import {
   FieldError, readBody, readBoolean, readChoice, readProjectId, readString, readText, readArray,
-  readOptionalField, isBody, type Body,
+  readOptionalField, type Body,
 } from "../messageFields.js";
 import type { TemplatePublishEvent, TemplatePublishRequest } from "./messages.js";
 
@@ -40,7 +41,7 @@ export function readTemplatePublishEvent(body: Body): TemplatePublishEvent {
     case "publish.checks": return {
       type: "publish.checks", running: readBoolean(event, "running"), ...readOptionalField(event, "thumbnail", readString),
       checks: readArray(event, "checks", PUBLISH_CHECK_IDS.length).map((c) => {
-        if (!isBody(c)) throw new FieldError("invalid-field", "check is not an object");
+        if (!isRecord(c)) throw new FieldError("invalid-field", "check is not an object");
         return { id: readChoice(c, "id", PUBLISH_CHECK_IDS), ...readOptionalField(c, "ok", readBoolean), ...readOptionalField(c, "message", readString) };
       }),
     };

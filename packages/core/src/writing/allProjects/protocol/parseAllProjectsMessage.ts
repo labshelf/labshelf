@@ -1,10 +1,10 @@
 // Validates a message from the All projects page before the host acts on it.
+import { isNonBlankString } from "../../../guards/index.js";
 import { isProjectPath } from "../../../path/index.js";
 import type { AllProjectsToHost } from "./messages.js";
 
 const KINDS: readonly unknown[] = ["blank", "template", "folder"];
 
-const isText = (value: unknown): value is string => typeof value === "string" && value.trim() !== "";
 
 const MAX_VENUE = 200;
 
@@ -33,14 +33,14 @@ export function parseAllProjectsMessage(raw: unknown): AllProjectsToHost | undef
   const { type, id, kind, title, folder, archived, trashed, command, path, venue, deadline } = raw as Record<string, unknown>;
   if (type === "ready" || type === "emptyTrash") { return { type }; }
   if (type === "create") { return KINDS.includes(kind) ? { type, kind: kind as "blank" | "template" | "folder" } : undefined; }
-  if (type === "project.selected") { return id === null || isText(id) ? { type, id } : undefined; }
+  if (type === "project.selected") { return id === null || isNonBlankString(id) ? { type, id } : undefined; }
   if (typeof id !== "string") { return undefined; }
   switch (type) {
     case "open": case "deleteForever": case "files": case "detail": case "build": case "preview": case "openLog": return { type, id };
     // The host joins the path to the project folder, so it must stay inside it.
-    case "openFile": case "createFile": return isText(path) && isProjectPath(path) ? { type, id, path } : undefined;
+    case "openFile": case "createFile": return isNonBlankString(path) && isProjectPath(path) ? { type, id, path } : undefined;
     case "setTarget": return parseTarget(id, venue, deadline);
-    case "rename": case "duplicate": return isText(title) ? { type, id, title: title.trim() } : undefined;
+    case "rename": case "duplicate": return isNonBlankString(title) ? { type, id, title: title.trim() } : undefined;
     case "move":
       if (folder === undefined) { return { type, id }; }
       return typeof folder === "string" ? { type, id, folder } : undefined;

@@ -1,4 +1,5 @@
 // Verifies a pasted API token and lists the accounts it can use.
+import { isRecord } from "../../guards/index.js";
 import type { CloudflareClient } from "./cloudflareClient.js";
 import { CloudflareApiError } from "./cloudflareError.js";
 
@@ -32,5 +33,3 @@ export async function listCloudflareAccounts(client: CloudflareClient): Promise<
   return result.flatMap((item: unknown) =>
     isRecord(item) && typeof item.id === "string" ? [{ id: item.id, name: typeof item.name === "string" ? item.name : item.id }] : []);
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
