@@ -17,6 +17,7 @@
     "jscpd": "node scripts/lint/duplicates.mjs",
     "jscpd:update-baseline": "node scripts/lint/duplicates.mjs --update",
     "gate": "node scripts/lint/gate.mjs",
+    "plan:run": "node scripts/plans/runPlan.mjs",
     "verify:library": "sh scripts/verify/library/run.sh"
   },
   "devDependencies": {
