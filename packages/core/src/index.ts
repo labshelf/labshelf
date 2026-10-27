@@ -12,6 +12,7 @@ export * from "./guards/index.js";
 export * from "./json/index.js";
 export * from "./time/index.js";
 export * from "./async/index.js";
+export * from "./events/index.js";
 export * from "./errors/index.js";
 export * from "./library/index.js";
 export * from "./logging/index.js";

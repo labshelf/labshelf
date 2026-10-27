@@ -1,5 +1,6 @@
 // Bridges this client's presence to the other relays of a share over awareness-only sockets and reads the presence there.
 import type { ILogger } from "../../ports/index.js";
+import { createListeners } from "../../events/index.js";
 import type { DerivedShareKey } from "../shareKey/index.js";
 import { attachPresence, type PresenceStore, type PresenceState, type RelayReport } from "../presence/index.js";
 import { createSecureMesh, type SessionScheduler } from "../peer/index.js";
@@ -67,8 +68,8 @@ function openWatchSocket(options: RelayWatchOptions, { url, reports, local, chan
 // CONTRACT: documents/contracts/collaboration.md#relay-list
 export function createRelayWatch(options: RelayWatchOptions): RelayWatch {
   const watched = new Map<string, Watched>();
-  const listeners = new Set<() => void>();
-  const changed = () => listeners.forEach((listener) => listener());
+  const listeners = createListeners();
+  const changed = () => listeners.emit();
   let local: PresenceState | undefined;
   let wanted: string[] = [];
   /** Relays waiting out the settle delay, with the cancel of their timer. */
@@ -97,10 +98,7 @@ export function createRelayWatch(options: RelayWatchOptions): RelayWatch {
       watched.forEach(({ presence }) => presence.setLocal(state));
     },
     reports: () => [...watched.values()].flatMap(({ presence }) => [...presence.remote().values()].map(reportOf)),
-    onChange: (listener) => {
-      listeners.add(listener);
-      return () => { listeners.delete(listener); };
-    },
+    onChange: (listener) => listeners.add(listener),
     close: async () => {
       wanted = [];
       settling.forEach((cancel) => cancel());

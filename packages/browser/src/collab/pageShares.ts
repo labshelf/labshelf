@@ -1,5 +1,5 @@
 // Holds the page's shared project connections, one per share and each under its tab lease, as the core share workflows use them.
-import { ShareOpenInAnotherTabError, type ILogger, type RelayNetwork, type ShareConnection, type ShareConnections, type ShareKeyStore, type ShareStart, type StoredInvite } from "@labshelf/core";
+import { ShareOpenInAnotherTabError, createListeners, type ILogger, type RelayNetwork, type ShareConnection, type ShareConnections, type ShareKeyStore, type ShareStart, type StoredInvite } from "@labshelf/core";
 import { openTabLease, createTabLeaseName, type TabLease } from "../storage";
 import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
 import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
@@ -44,10 +44,10 @@ class PageShareRegistry implements PageShares {
   /** Leases of connections opened but not yet added. */
   private readonly opened = new Map<string, { lease: TabLease; libraryId: string }>();
   private readonly busy = new Set<string>();
-  private readonly listeners = new Set<() => void>();
+  private readonly listeners = createListeners();
   private displayName = DEFAULT_DISPLAY_NAME;
   private closed = false;
-  private readonly notify = (): void => this.listeners.forEach((listener) => listener());
+  private readonly notify = (): void => this.listeners.emit();
 
   constructor(private readonly options: PageSharesOptions) {
     void readMemberName().then(
@@ -122,8 +122,7 @@ class PageShareRegistry implements PageShares {
 
 
   onChange(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return this.listeners.add(listener);
   }
 
   async closeAll(): Promise<void> {

@@ -1,5 +1,6 @@
 // Chooses the one relay a share's clients use: the first listed relay that is not held down and answers its probes, shared through presence.
 import type { Doc } from "yjs";
+import { createListeners } from "../../events/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { SessionScheduler } from "../peer/index.js";
 import { RelayHolds } from "./relayHolds.js";
@@ -45,7 +46,7 @@ export function createRelaySelector(options: RelaySelectorOptions): RelaySelecto
 
 class Selector implements RelaySelector {
   current: string | undefined;
-  private readonly listeners = new Set<(relayUrl: string | undefined) => void>();
+  private readonly listeners = createListeners<string | undefined>();
   private readonly holds: RelayHolds;
   /** Relays whose last probe failed, waiting for their retry. */
   private readonly failing = new Set<string>();
@@ -73,8 +74,7 @@ class Selector implements RelaySelector {
   }
 
   onChange(listener: (relayUrl: string | undefined) => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return this.listeners.add(listener);
   }
 
   reportFailure(relayUrl: string, kind: RelayFailure): void {
@@ -204,7 +204,7 @@ class Selector implements RelaySelector {
     if (url !== this.current) {
       void this.options.logger.log("INFO", LOG_MODULE, "Switched relay", { from: this.current ?? null, to: url ?? null });
       this.current = url;
-      this.listeners.forEach((listener) => listener(url));
+      this.listeners.emit(url);
     }
     const report = { relay: this.current ?? null, relaysDown: this.holds.active() };
     const text = JSON.stringify(report);

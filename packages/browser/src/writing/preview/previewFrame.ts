@@ -1,5 +1,5 @@
 // Connects the project preview frame to its library page.
-import { checkPreviewRequest, type HostToWebview, type PreviewRequest, type PreviewBuildRoots } from "@labshelf/core";
+import { checkPreviewRequest, createListeners, type HostToWebview, type PreviewRequest, type PreviewBuildRoots } from "@labshelf/core";
 
 const READER_PAGE = "../reader/index.html";
 
@@ -28,12 +28,12 @@ export function createPreviewFrame(container: HTMLElement, project: { id: string
   element.title = project.title;
   const messages = createFrameMessages(element);
   const urls: string[] = [];
-  const listeners = new Set<(request: PreviewRequest) => void>();
+  const listeners = createListeners<PreviewRequest>();
   const onMessage = (event: MessageEvent): void => {
     if (event.origin !== location.origin || event.source === null || event.source !== element.contentWindow) return;
     const data: unknown = event.data;
     if (typeof data !== "object" || data === null || checkPreviewRequest(data as Record<string, unknown>) !== true) return;
-    for (const listener of listeners) listener(data as PreviewRequest);
+    listeners.emit(data as PreviewRequest);
   };
   window.addEventListener("message", onMessage);
   container.append(element);
@@ -55,10 +55,7 @@ export function createPreviewFrame(container: HTMLElement, project: { id: string
     setPreviewRoots(roots) {
       messages.post({ type: "previewRoots", roots });
     },
-    onRequest(listener) {
-      listeners.add(listener);
-      return () => { listeners.delete(listener); };
-    },
+    onRequest: (listener) => listeners.add(listener),
     dispose() {
       for (const url of urls.splice(0)) URL.revokeObjectURL(url);
       messages.dispose();

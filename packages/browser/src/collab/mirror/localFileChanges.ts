@@ -1,19 +1,18 @@
 // Tells this page's running share mirrors which library files the page itself wrote, so a shared project picks them up at once.
 // TRAP: browser storage has no watcher and a folder is rescanned only every 30 s, so a page write reaches the share only through this.
-import type { LibraryFileSystem } from "@labshelf/core";
+import { createListeners, type LibraryFileSystem } from "@labshelf/core";
 
 type Listener = (paths: readonly string[]) => void;
 
-const listeners = new Set<Listener>();
+const listeners = createListeners<readonly string[]>();
 
 function report(paths: readonly string[]): void {
-  listeners.forEach((listener) => listener(paths));
+  listeners.emit(paths);
 }
 
 /** Paths are "/"-separated library paths: the written file, both paths of a rename, or the root of a removed tree. */
 export function onLocalFileChanges(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => { listeners.delete(listener); };
+  return listeners.add(listener);
 }
 
 /** The page's file system, which reports every write it completes; the mirrors write past it, so their own writes come back to none. */

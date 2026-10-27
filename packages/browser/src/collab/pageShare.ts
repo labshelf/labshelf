@@ -1,5 +1,6 @@
 // Composes the page's sharing: its connections and the workflow ports over them, the resume that follows the project list.
 import {
+  createListeners,
   createShareResumer,
   startProjectShare,
   type ILogger,
@@ -97,11 +98,11 @@ export function createPageShare(options: PageShareOptions): PageShare {
   const closing = new AbortController();
   // The resumer runs on every reload of the catalog, which the workflows call too; it exists once the ports do.
   let sync = (): Promise<void> => Promise.resolve();
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   const catalog = createBrowserShareCatalog(sources, logger, () => {
     if (closing.signal.aborted) return;
     void sync();
-    for (const listener of listeners) listener();
+    listeners.emit();
   });
   const projectIdOf = (folder: string): string | undefined => {
     const entry = catalog.list().find((candidate) => candidate.folder === folder);

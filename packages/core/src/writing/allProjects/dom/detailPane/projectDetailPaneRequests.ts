@@ -1,4 +1,5 @@
 // Keeps the last detail of each project and asks the host for the selected one.
+import { createListeners } from "../../../../events/index.js";
 import type { ProjectPaneContent } from "../../projectDetailPane.js";
 import type { AllProjectsToHost, HostToAllProjects } from "../../protocol/index.js";
 
@@ -16,19 +17,16 @@ export interface PaneRequests {
 export function createPaneRequests(post: (message: AllProjectsToHost) => void): PaneRequests {
   const details = new Map<string, ProjectPaneContent>();
   const errors = new Map<string, string>();
-  const listeners = new Set<(id: string) => void>();
+  const listeners = createListeners<string>();
   return {
     request: (id) => post({ type: "detail", id }),
     receive(message) {
       if ("error" in message) errors.set(message.id, message.error);
       else { details.set(message.id, message.detail); errors.delete(message.id); }
-      listeners.forEach((listener) => listener(message.id));
+      listeners.emit(message.id);
     },
     get: (id) => details.get(id),
     error: (id) => errors.get(id),
-    onChange(listener) {
-      listeners.add(listener);
-      return () => void listeners.delete(listener);
-    },
+    onChange: (listener) => listeners.add(listener),
   };
 }

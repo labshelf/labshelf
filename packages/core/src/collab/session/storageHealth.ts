@@ -1,5 +1,6 @@
 // Tells whether a share's device-local state is being stored, by watching every write its storage port makes.
 import type { CollabDeviceStateStorage } from "../deviceState/index.js";
+import { createListeners } from "../../events/index.js";
 import { formatError } from "../../errors/index.js";
 
 export interface StorageHealth {
@@ -12,7 +13,7 @@ export interface StorageHealth {
 export function watchStorageHealth(storage: CollabDeviceStateStorage): { storage: CollabDeviceStateStorage; health: StorageHealth } {
   // Keyed by what was written, so a later write of the same doc, map or blob clears its failure.
   const failing = new Map<string, string>();
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   const failure = (): string | undefined => failing.values().next().value;
   const track = async (key: string, write: () => Promise<void>): Promise<void> => {
     const before = failure();
@@ -23,7 +24,7 @@ export function watchStorageHealth(storage: CollabDeviceStateStorage): { storage
       failing.set(key, formatError(error));
       throw error;
     } finally {
-      if (failure() !== before) { listeners.forEach((listener) => listener()); }
+      if (failure() !== before) { listeners.emit(); }
     }
   };
   return {
@@ -36,7 +37,7 @@ export function watchStorageHealth(storage: CollabDeviceStateStorage): { storage
     },
     health: {
       get failure() { return failure(); },
-      onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      onChange: (listener) => listeners.add(listener),
     },
   };
 }

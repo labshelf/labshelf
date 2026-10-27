@@ -1,6 +1,8 @@
 // Composes Spaces over the browser's library folder and workspace navigation.
 import {
   SpaceStore,
+  createListeners,
+  type Listeners,
   posixPathOps,
   type ProjectEntry,
   type ILogger,
@@ -100,11 +102,11 @@ export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
   const { fs, logger, transport } = options;
   const store = new SpaceStore({ root: '', fs, paths: posixPathOps, logger });
   let library: LibraryPapers = new Map();
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   const stopSnapshots = transport.subscribe(message => {
     if (message.type !== 'snapshot') return;
     library = new Map(message.snapshot.papers.map(record => [record.id, { record }]));
-    listeners.forEach(listener => listener());
+    listeners.emit();
   });
   const port = createPort(options, () => library, listeners);
   const reload = async (): Promise<void> => { await store.reload(); };
@@ -112,12 +114,12 @@ export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
   return { store, port, reload, dispose: () => { stopWatch(); stopSnapshots(); listeners.clear(); } };
 }
 
-function createPort(options: PageSpacesOptions, library: () => LibraryPapers, listeners: Set<() => void>): SpacesHostPort {
+function createPort(options: PageSpacesOptions, library: () => LibraryPapers, listeners: Listeners): SpacesHostPort {
   const { transport, selection } = options;
   const projects = createSpaceProjects({ ...options, library });
   return {
     library,
-    onLibraryChange: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    onLibraryChange: listener => listeners.add(listener),
     projects: projects.projects,
     onProjectsChange: projects.onChange,
     openPaper: async paperId => { transport.post({ type: 'paper.open', id: paperId }); },

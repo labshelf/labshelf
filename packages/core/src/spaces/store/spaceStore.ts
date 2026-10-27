@@ -1,4 +1,5 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
+import { createListeners } from "../../events/index.js";
 import { formatError } from "../../errors/index.js";
 import { createLibraryLayout } from "../../library/index.js";
 import {
@@ -76,7 +77,7 @@ const idOf = (result: SpaceReadResult): string => (result.state === "ready" ? re
 export class SpaceStore {
   private readonly ctx: StoreContext;
   private spaces: SpaceReadResult[] = [];
-  private readonly listeners = new Set<() => void>();
+  private readonly listeners = createListeners();
 
   constructor(options: SpaceStoreOptions) {
     const join = (base: string, ...segments: string[]) => options.paths.join(base, ...segments);
@@ -106,8 +107,7 @@ export class SpaceStore {
   }
 
   onChange(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.listeners.add(listener);
   }
 
   async createSpace(name: string): Promise<string> {
@@ -178,6 +178,6 @@ export class SpaceStore {
   }
 
   private notify(): void {
-    for (const listener of this.listeners) { listener(); }
+    this.listeners.emit();
   }
 }

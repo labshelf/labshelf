@@ -1,5 +1,6 @@
 // Holds the in-memory library snapshot with collection listings, search and change notification.
 // Reloads are coalesced, so a burst of file events (a sync pulling twenty papers) costs one rescan.
+import { createListeners } from "../../events/index.js";
 import { deriveSnapshot, createEmptySnapshot } from "./snapshot.js";
 import { listPapersUnderFolder } from "./folderTree.js";
 import { nameCollator, createPaperComparator } from "./paperSort.js";
@@ -73,7 +74,7 @@ type Listener = (snapshot: LibrarySnapshot) => void;
 
 export class LibraryStore {
   private current: LibrarySnapshot;
-  private readonly listeners = new Set<Listener>();
+  private readonly listeners = createListeners<LibrarySnapshot>();
   private reloading: Promise<LibrarySnapshot> | undefined;
   private reloadAgain = false;
   private readonly searchIndex = new PaperSearchIndex();
@@ -89,8 +90,7 @@ export class LibraryStore {
 
   /** @returns an unsubscribe function */
   onChange(listener: Listener): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return this.listeners.add(listener);
   }
 
   /**
@@ -187,7 +187,7 @@ export class LibraryStore {
       snapshot = deriveSnapshot(this.options.root, await this.options.scan(this.previousByPath()));
     } while (this.reloadAgain);
     this.current = snapshot;
-    for (const listener of this.listeners) { listener(snapshot); }
+    this.listeners.emit(snapshot);
     return snapshot;
   }
 }

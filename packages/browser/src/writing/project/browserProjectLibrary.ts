@@ -1,6 +1,6 @@
 // Composes the core All projects library over the library folder: lists its projects and opens one in the page's project session.
 import {
-  createBlankTemplate, createProjectContent, createProjectLibrary, posixPathOps,
+  createBlankTemplate, createListeners, createProjectContent, createProjectLibrary, posixPathOps,
   type ILogger, type LibraryFileSystem, type PaperRecord, type PdfjsLoader, type ProjectContentPort, type ProjectEntry, type ProjectLibraryPort,
 } from "@labshelf/core";
 import type { ProjectSession } from "../session";
@@ -36,9 +36,9 @@ const none = async (): Promise<undefined> => undefined;
 export function createBrowserProjectLibrary(deps: BrowserProjectLibraryDeps): ProjectLibraryPort {
   const { fs, logger, workspace, session } = deps;
   const data = createBrowserProjectContent(deps);
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   let entries: ProjectEntry[] = [];
-  const reload = async (): Promise<void> => { entries = await data.listProjects(ROOT); listeners.forEach((listener) => listener()); };
+  const reload = async (): Promise<void> => { entries = await data.listProjects(ROOT); listeners.emit(); };
   const open = async (entry: ProjectEntry): Promise<void> => { await session.openProject(entry); };
   const library = createProjectLibrary({
     data, fs, paths: posixPathOps, logger,
@@ -75,7 +75,7 @@ export function createBrowserProjectLibrary(deps: BrowserProjectLibraryDeps): Pr
       newKinds: () => ["blank"],
       openLabel: () => "Open",
       isOpen: (entry) => session.current()?.folder === entry.folder,
-      onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      onChange: (listener) => listeners.add(listener),
     },
   });
   void reload().catch((error: unknown) => logger.error("writing.project", error, { action: "listProjects" }));

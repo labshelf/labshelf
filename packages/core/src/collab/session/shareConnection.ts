@@ -1,6 +1,7 @@
 // Connects this device to one shared project: stored state, the peer session over its relays, presence, blobs and the disk mirror.
 // CONTRACT: documents/contracts/collaboration.md#membership
 import type { ILogger } from "../../ports/index.js";
+import { createListeners } from "../../events/index.js";
 import { derivePeerColour } from "../binding/index.js";
 import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../shareKey/index.js";
 import type { InviteRelay } from "../invite/index.js";
@@ -139,14 +140,14 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
   if (start.mode === "join") { await parts.mirror?.idle(); }
   void logger.log("INFO", LOG_MODULE, "Connected a shared project", { shareId, folder: placed.folder, mode: start.mode, mirror: mirrors.state().kind });
   let closing: Promise<void> | undefined;
-  const listeners = new Set<() => void>();
-  const notify = (): void => listeners.forEach((listener) => listener());
+  const listeners = createListeners();
+  const notify = (): void => listeners.emit();
   const stops = [session.onStatus(notify), relays.onChange(notify), health.onChange(notify), mirrors.onChange(notify)];
   return {
     shareId, shareKey, folder: placed.folder, joinedId: placed.joinedId, session, presence, relays,
     get mirror() { return parts.mirror; },
     state: () => ({ status: session.status, relay: relays.current, persistenceFailure: health.failure, mirror: mirrors.state() }),
-    onStateChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    onStateChange: (listener) => listeners.add(listener),
     close: () => (closing ??= (async () => {
       stops.forEach((stop) => stop());
       mirrors.stop();
@@ -160,9 +161,9 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
 /** Starts the mirror into `parts.mirror`, also once a busy folder frees, and keeps what the connection reports of it. */
 function trackMirror(startMirror: MirrorFactory, input: Omit<MirrorInput, "onStopped" | "signal">, parts: Parts, logger: ILogger) {
   let state: MirrorState = { kind: "stopped", reason: "not started" };
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   const closed = new AbortController();
-  const set = (next: MirrorState): void => { state = next; listeners.forEach((listener) => listener()); };
+  const set = (next: MirrorState): void => { state = next; listeners.emit(); };
   const run = (mirror: ConnectionMirror): void => {
     if (closed.signal.aborted) {
       void mirror.close().catch((error: unknown) => logger.error(LOG_MODULE, error, { folder: input.folder, action: "close late mirror" }));
@@ -181,7 +182,7 @@ function trackMirror(startMirror: MirrorFactory, input: Omit<MirrorInput, "onSto
   const onStopped = (reason: string): void => set({ kind: "stopped", reason });
   return {
     state: () => state,
-    onChange: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    onChange: (listener: () => void) => listeners.add(listener),
     start: async () => apply(await startMirror({ ...input, onStopped, signal: closed.signal })),
     stop: () => closed.abort(),
   };
