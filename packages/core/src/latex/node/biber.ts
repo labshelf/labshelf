@@ -1,20 +1,33 @@
-// Runs one biber invocation of latexmk: biber's WASM build when it reads the control file's version, else the TeX's own biber.
-import { promises as fs } from "node:fs";
-import * as path from "node:path";
+// Node side of running biber for latexmk: the WASM assets read from a folder and one biber invocation, in biber's WASM build when it reads the control file's version, else the TeX's own biber.
+import { existsSync, promises as fs, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { compileFunction } from "node:vm";
 import { execFile } from "node:child_process";
-import { realpath } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
+import * as path from "node:path";
 import { promisify } from "node:util";
 
-import { isInside } from "../../../path/index.js";
-import { nodePathOps } from "../../../path/node/index.js";
-import type { ILogger } from "../../../ports/index.js";
-import { type BiberWasmAssets, BIBER_ASSET_FILES } from "../biberAssets.js";
-import { parseBiberArgs, type BiberArgs } from "../biberArgs.js";
-import { parseControlFile, type BibliographySource } from "../controlFile.js";
+import { formatError } from "../../errors/index.js";
+import { isInside } from "../../path/index.js";
+import { nodePathOps } from "../../path/node/index.js";
+import type { ILogger } from "../../ports/index.js";
+import {
+  BIBER_ASSET_FILES, parseBiberArgs, parseBiberReleaseManifest, parseControlFile,
+  type BiberArgs, type BibliographySource, type BiberWasmAssets,
+} from "../biber.js";
 import { runNativeBiber } from "./runNativeBiber.js";
-import { formatError } from "../../../errors/index.js";
+
+/** Undefined when the folder holds no manifest: the build shipped without biber's WASM. */
+export function findBiberAssetsInFolder(folder: string): BiberWasmAssets | undefined {
+  const manifestFile = path.join(folder, BIBER_ASSET_FILES.manifest);
+  if (!existsSync(manifestFile)) { return undefined; }
+  return {
+    manifest: parseBiberReleaseManifest(readFileSync(manifestFile, "utf8")),
+    factorySource: () => readFile(path.join(folder, BIBER_ASSET_FILES.factory), "utf8"),
+    wasm: async () => new Uint8Array(await readFile(path.join(folder, BIBER_ASSET_FILES.wasm))),
+    dataFile: () => Promise.resolve(path.join(folder, BIBER_ASSET_FILES.data)),
+  };
+}
 
 export interface SourcePlaces {
   /** The folder latexmk runs biber in: the main file's folder. */

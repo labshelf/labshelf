@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import { writeFileAtomic } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { LatexToolchain } from "../../toolchain/index.js";
+import type { LatexToolchain } from "../../toolchain.js";
 import {
   type LatexBuildResult,
   createLatexBuildCommand,

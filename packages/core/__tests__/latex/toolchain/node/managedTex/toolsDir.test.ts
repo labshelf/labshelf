@@ -1,7 +1,7 @@
 // Tests the per-user folder that every LabShelf app shares for its managed tools.
 import { join } from "node:path";
 
-import { resolveSharedToolsDir } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { resolveSharedToolsDir } from "../../../../../src/latex/node/index";
 
 const HOME = "/home/ada";
 

@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { createTlmgr, isRollover, TlmgrError } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { createTlmgr, isRollover, TlmgrError } from "../../../../../src/latex/node/index";
 import { asLogger, createTexFixture, ROLLOVER_MESSAGE, STALE_TLMGR_MESSAGE, writeTexTree, type FakeTlmgr, type TexFixture } from "./fakeTex";
 
 describe("tlmgr", () => {

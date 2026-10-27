@@ -4,4 +4,5 @@ export * from "./build/index.js";
 export * from "./catalog/index.js";
 export * from "./log/index.js";
 export * from "./source/index.js";
-export * from "./toolchain/index.js";
+export { createBiberAssignment, type BiberCommand, BIBER_FLAG, parseBiberArgs, BIBER_ASSET_FILES, parseBiberReleaseManifest, type BiberWasmAssets, extractBiberErrors, parseControlFile } from "./biber.js";
+export * from "./toolchain.js";

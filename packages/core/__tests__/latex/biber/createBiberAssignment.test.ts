@@ -1,7 +1,7 @@
 /** Verifies latexmk's `$biber` setting survives Perl's string rules and the shell, whatever the paths contain. */
 import { execFileSync } from "node:child_process";
 
-import { createBiberAssignment } from "../../../src/latex/biber/index";
+import { createBiberAssignment } from "../../../src/latex/biber";
 
 const hasPerl = (() => { try { execFileSync("perl", ["-e", "1"]); return true; } catch { return false; } })();
 

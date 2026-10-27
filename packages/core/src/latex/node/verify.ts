@@ -1,6 +1,47 @@
+// Fetches and trusts downloaded files: a SHA-256 checked download, a pinned OpenPGP signature check and archive unpacking.
+import { execFile } from "node:child_process";
+import { createHash, createPublicKey, constants, verify, type KeyObject } from "node:crypto";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
+import type { FetchLike } from "../../ports/index.js";
+
+/** The downloaded bytes; throws when the request fails, is aborted or the hash differs from `sha256`. */
+export async function downloadVerified(
+  url: string,
+  sha256: string,
+  fetchImpl: FetchLike,
+  signal?: AbortSignal,
+): Promise<Buffer> {
+  const response = await fetchImpl(url, signal ? { signal } : {});
+  if (!response.ok) { throw new Error(`Download failed with HTTP ${response.status} from ${url}`); }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const actual = createHash("sha256").update(bytes).digest("hex");
+  if (actual !== sha256) {
+    throw new Error(`Checksum mismatch for ${url}: expected ${sha256}, got ${actual}`);
+  }
+  return bytes;
+}
+
+const run = promisify(execFile);
+
+function tarProgram(): string {
+  // PLATFORM: on Windows a GNU tar earlier on PATH (Git for Windows) cannot read .zip; the system bsdtar can.
+  const systemRoot = process.env["SystemRoot"];
+  return process.platform === "win32" && systemRoot ? join(systemRoot, "System32", "tar.exe") : "tar";
+}
+
+export async function extractArchive(
+  archive: string,
+  kind: "tar.gz" | "zip",
+  destination: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await run(tarProgram(), [kind === "tar.gz" ? "-xzf" : "-xf", archive, "-C", destination], signal ? { signal } : {});
+}
+
 // Verifies a detached OpenPGP v4 RSA signature against a pinned public key block.
 // The pinned key is the trust anchor: key expiry and revocation are not checked.
-import { createHash, createPublicKey, constants, verify, type KeyObject } from "node:crypto";
 
 interface OpenPgpPacket {
   tag: number;

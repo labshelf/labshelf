@@ -1,7 +1,7 @@
 /** Builds the command line that compiles a LaTeX main file with every output file in one build folder. */
 
-import { createBiberAssignment, type BiberCommand } from "../biber/index.js";
-import type { LatexToolchain } from "../toolchain/index.js";
+import { createBiberAssignment, type BiberCommand } from "../biber.js";
+import type { LatexToolchain } from "../toolchain.js";
 import { SECTION_STATE_PACKAGE } from "./section/index.js";
 import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "./texSandbox.js";
 

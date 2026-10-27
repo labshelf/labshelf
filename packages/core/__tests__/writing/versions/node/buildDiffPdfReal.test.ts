@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { buildMarkedUpDiff } from "../../../../src/writing/versions/node/index";
-import { findExecutable } from "../../../../src/latex/toolchain/node/index";
+import { findExecutable } from "../../../../src/latex/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 

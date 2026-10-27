@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { createTexLiveProfile } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { createTexLiveProfile } from "../../../../../src/latex/node/index";
 
 describe("createTexLiveProfile", () => {
   const lines = createTexLiveProfile("/tex").split("\n");

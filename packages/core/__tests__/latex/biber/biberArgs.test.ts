@@ -1,5 +1,5 @@
 /** Verifies latexmk's biber arguments are split into the project root, biber's options and the control file. */
-import { parseBiberArgs } from "../../../src/latex/biber/index";
+import { parseBiberArgs } from "../../../src/latex/biber";
 
 const BCF = "/Users/x/Library/Application Support/LabShelf Helper/projects/p/build/main.tex/main.bcf";
 

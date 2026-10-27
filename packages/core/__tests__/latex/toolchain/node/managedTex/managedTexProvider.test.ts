@@ -3,8 +3,8 @@ import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { TexProvider } from "../../../../../src/latex/toolchain/index.js";
-import { createManagedTexProvider, resolveManagedTexDir, type TexInstaller } from "../../../../../src/latex/toolchain/node/managedTex/index.js";
+import type { TexProvider } from "../../../../../src/latex/toolchain.js";
+import { createManagedTexProvider, resolveManagedTexDir, type TexInstaller } from "../../../../../src/latex/node/index";
 import { asLogger, createTexFixture, writeTexTree, type FakeTlmgr, type TexFixture } from "./fakeTex.js";
 
 let fx: TexFixture;

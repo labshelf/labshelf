@@ -2,7 +2,7 @@
 import * as path from "node:path";
 
 import { readOptionalFile } from "../../../library/node/index.js";
-import { extractBiberErrors } from "../../biber/index.js";
+import { extractBiberErrors } from "../../biber.js";
 import type { LocatedProblem } from "../buildResult.js";
 
 // PLATFORM: latexmk prints this line when the `$biber` command exits non-zero.

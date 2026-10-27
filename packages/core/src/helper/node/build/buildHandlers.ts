@@ -4,7 +4,7 @@ import * as path from "node:path";
 import type { ILogger } from "../../../ports/index.js";
 import { ProjectBuildQueue, type ProjectBuildDeps } from "../../../writing/build/node/index.js";
 import type { TexSetupAsk } from "../../../writing/build/index.js";
-import type { ManagedTexProvider } from "../../../latex/toolchain/node/managedTex/index.js";
+import type { ManagedTexProvider } from "../../../latex/node/index.js";
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../../index.js";
 
 import type { HelperHandler, HelperSend } from "../handlers/index.js";

@@ -1,6 +1,6 @@
 /** Builds the command line of a preview: one engine pass over a LaTeX main file, optionally typesetting one chapter. */
 
-import type { LatexToolchain } from "../toolchain/index.js";
+import type { LatexToolchain } from "../toolchain.js";
 import type { BuildCommand } from "./createLatexBuildCommand.js";
 import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "./texSandbox.js";
 

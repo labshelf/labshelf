@@ -8,7 +8,7 @@ import { PROTOCOL_VERSION, type ToPageMessage } from "../../../../src/helper/ind
 
 import { createBuildHandlers } from "../../../../src/helper/node/build/index";
 import { createHelperProjects, type HelperProjects } from "../../../../src/helper/node/projects/index";
-import type { ManagedTexProvider } from "../../../../src/latex/toolchain/node/managedTex/index";
+import type { ManagedTexProvider } from "../../../../src/latex/node/index";
 import { TypstPackageStore } from "../../../../src/typst/node/index";
 import type { TypstSession } from "../../../../src/typst/index";
 import { openTestSession, TYPST_TEST_FONT_SETTING } from "../../../support/typstFixtures";

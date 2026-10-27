@@ -1,5 +1,5 @@
 // Asks the host's user how to set up TeX; core decides when to ask and the host decides the wording.
-import type { TexInstallKind } from "../../latex/toolchain/index.js";
+import type { TexInstallKind } from "../../latex/toolchain.js";
 
 // The managed TeX install cannot be cancelled once it starts, so progress carries no abort signal.
 export interface TexSetupAsk {

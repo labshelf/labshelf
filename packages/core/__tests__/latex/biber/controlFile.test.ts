@@ -2,7 +2,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { parseControlFile } from "../../../src/latex/biber/index";
+import { parseControlFile } from "../../../src/latex/biber";
 
 describe("parseControlFile", () => {
   it("reads the version and the file data source of a biblatex control file", () => {

@@ -4,12 +4,11 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { PassThrough } from "node:stream";
 
-import { findBiberAssetsInFolder, runBiber } from "../../../../src/latex/biber/node/index";
-import { runNativeBiber } from "../../../../src/latex/biber/node/runNativeBiber";
-import type { BiberWasmAssets } from "../../../../src/latex/biber/index";
-import { findBibliographySources } from "../../../../src/latex/biber/node/runBiber";
+import { findBiberAssetsInFolder, findBibliographySources, runBiber } from "../../../../src/latex/node/biber";
+import { runNativeBiber } from "../../../../src/latex/node/runNativeBiber";
+import type { BiberWasmAssets } from "../../../../src/latex/biber";
 
-jest.mock("../../../../src/latex/biber/node/runNativeBiber", () => ({ runNativeBiber: jest.fn(async () => 0) }));
+jest.mock("../../../../src/latex/node/runNativeBiber", () => ({ runNativeBiber: jest.fn(async () => 0) }));
 
 const FIXTURES = path.join(__dirname, "../fixtures");
 // Our build of biber's WASM; BIBER_WASM_DIR points at another copy.

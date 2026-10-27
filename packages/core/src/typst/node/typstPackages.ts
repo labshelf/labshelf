@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { extractArchive } from "../../latex/toolchain/node/index.js";
+import { extractArchive } from "../../latex/node/index.js";
 import type { TypstPackageResolver, TypstPackageSpec } from "../typstSession.js";
 import { deriveTypstCompilerPath } from "./typstFileAccess.js";
 import type { FetchLike } from "../../ports/index.js";

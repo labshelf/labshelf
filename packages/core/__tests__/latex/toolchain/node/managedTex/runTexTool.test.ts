@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { deriveProgressFraction, runTexTool } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { deriveProgressFraction, runTexTool } from "../../../../../src/latex/node/index";
 import { asLogger, createTexFixture, writeTexTree, type TexFixture } from "./fakeTex";
 
 describe("deriveProgressFraction", () => {

@@ -1,4 +1,4 @@
-import { removeQuarantine } from "../../../../../src/latex/toolchain/node/managedTex/removeQuarantine";
+import { removeQuarantine } from "../../../../../src/latex/node/texInstallers";
 import { asLogger } from "./fakeTex";
 
 const logger = () => ({ log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) });

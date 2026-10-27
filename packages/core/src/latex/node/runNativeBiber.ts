@@ -1,7 +1,7 @@
 // Runs the TeX installation's own biber with latexmk's arguments, for a control file the WASM build does not read.
 import { spawn } from "node:child_process";
 
-import type { BiberArgs } from "../biberArgs.js";
+import type { BiberArgs } from "../biber.js";
 
 /** Returns biber's exit code; output goes straight to latexmk. */
 export function runNativeBiber(args: BiberArgs): Promise<number> {

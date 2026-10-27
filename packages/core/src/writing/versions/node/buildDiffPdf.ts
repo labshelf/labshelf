@@ -5,8 +5,8 @@ import * as path from "node:path";
 import type { ILogger } from "../../../ports/index.js";
 import { createLatexBuildCommand } from "../../../latex/build/index.js";
 import { runCancellable } from "../../../latex/build/node/index.js";
-import type { LatexToolchain } from "../../../latex/toolchain/index.js";
-import { findExecutable } from "../../../latex/toolchain/node/index.js";
+import type { LatexToolchain } from "../../../latex/toolchain.js";
+import { findExecutable } from "../../../latex/node/index.js";
 
 interface LatexdiffRequest {
   beforeMain: string;

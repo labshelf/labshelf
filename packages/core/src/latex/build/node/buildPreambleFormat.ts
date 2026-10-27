@@ -5,9 +5,9 @@ import { createHash } from "node:crypto";
 
 import { readOptionalFile } from "../../../library/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import type { LatexToolchain } from "../../toolchain/index.js";
+import type { LatexToolchain } from "../../toolchain.js";
 import { NO_SHELL_ESCAPE, TEX_FILE_ACCESS_ENV } from "../texSandbox.js";
-import { withToolchainOnPath } from "../../toolchain/node/systemTex/index.js";
+import { withToolchainOnPath } from "../../node/systemTex.js";
 import { BuildCancelled, runCancellable } from "./runCancellable.js";
 import { resolveIncludePath, scanLatexSource } from "../../source/index.js";
 

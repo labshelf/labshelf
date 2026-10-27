@@ -1,20 +1,184 @@
-// Resolves TeX as managed, then system, then missing, and installs TeX and its packages into the shared managed install.
-// CONTRACT: documents/contracts/managed-tools.md#tex-resolution
-import { mkdir, writeFile } from "node:fs/promises";
+// Keeps the shared managed-tools folder and its lock, finds the managed TeX in it, and resolves and installs TeX through the shared provider.
+import * as path from "node:path";
+import { link, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { promises as fs } from "node:fs";
+import { sleep } from "../../async/index.js";
+import { errorCode } from "../../errors/index.js";
+import type { ILogger, FetchLike } from "../../ports/index.js";
+import type { TexToolchain } from "../../helper/index.js";
+import type { LatexEngine } from "../../writing/project/index.js";
+import type { TexInstallKind, TexProvider } from "../toolchain.js";
+import { removeQuarantine, type RunFile, type TexInstallRun, TEX_MODULE, createTlmgr, isRollover, TlmgrError, type Tlmgr, installTexLive, installTinyTex, resolveManagedTexDir } from "./texInstallers.js";
+import { createSystemTexProvider } from "./systemTex.js";
 
-import type { ILogger } from "../../../../ports/index.js";
-import type { TexToolchain } from "../../../../helper/index.js";
-import type { LatexEngine } from "../../../../writing/project/index.js";
+// CONTRACT: documents/contracts/managed-tools.md#layout
+export function resolveSharedToolsDir(env: NodeJS.ProcessEnv, platform: NodeJS.Platform, homeDir: string): string {
+  if (platform === "darwin") { return path.join(homeDir, "Library", "Application Support", "LabShelf"); }
+  if (platform === "win32") { return path.join(env["LOCALAPPDATA"] || path.join(homeDir, "AppData", "Local"), "LabShelf"); }
+  return path.join(env["XDG_DATA_HOME"] || path.join(homeDir, ".local", "share"), "labshelf");
+}
 
-import type { TexInstallKind, TexProvider } from "../../index.js";
-import { removeQuarantine, type RunFile } from "./removeQuarantine.js";
-import type { TexInstallRun } from "./texInstall.js";
-import { TEX_MODULE } from "./runTexTool.js";
-import { withToolLock } from "./toolsDirLock.js";
-import { findManagedTex, type ManagedTex } from "./texLayout.js";
-import { createTlmgr, isRollover, TlmgrError, type Tlmgr } from "./tlmgr.js";
+// CONTRACT: documents/contracts/managed-tools.md#lock
+const LOCK_MODULE = "ToolLock";
 
+export interface ToolsDirLockOptions {
+  pollMs?: number;
+  timeoutMs?: number;
+  isAlive?: (pid: number) => boolean;
+}
+
+interface Holder { pid: number; operation: string; startedAt: string }
+
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: the process exists but belongs to another user.
+    return errorCode(error) === "EPERM";
+  }
+}
+
+async function tryCreate(file: string, content: string): Promise<boolean> {
+  try {
+    await writeFile(file, content, { flag: "wx" });
+    return true;
+  } catch (error) {
+    if (errorCode(error) === "EEXIST") { return false; }
+    throw error;
+  }
+}
+
+/** The lock's text, or null when it vanished between the failed create and this read. */
+async function readLock(file: string): Promise<string | null> {
+  try {
+    return await readFile(file, "utf8");
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") { return null; }
+    throw error;
+  }
+}
+
+function parseHolder(text: string): Holder | null {
+  try {
+    const value = JSON.parse(text) as Partial<Holder>;
+    return typeof value.pid === "number" && typeof value.operation === "string" ? value as Holder : null;
+  } catch {
+    return null;
+  }
+}
+
+async function isStale(file: string, text: string, timeoutMs: number, isAlive: (pid: number) => boolean): Promise<boolean> {
+  const holder = parseHolder(text);
+  if (holder) { return !isAlive(holder.pid); }
+  // TRAP: a holder may be between creating the file and writing it, so only an old garbled lock is stale.
+  try {
+    return Date.now() - (await stat(file)).mtimeMs > timeoutMs;
+  } catch {
+    return false;
+  }
+}
+
+/** Removes the lock only if it still holds `text`; a lock another process took in between is put back. */
+async function removeStale(file: string, text: string, logger: ILogger): Promise<void> {
+  const aside = `${file}.stale-${process.pid}-${Date.now()}`;
+  try {
+    await rename(file, aside);
+  } catch (error) {
+    if (errorCode(error) === "ENOENT") { return; }
+    throw error;
+  }
+  if ((await readLock(aside)) !== text) {
+    await link(aside, file).catch((error: unknown) => logger.error(LOCK_MODULE, error, { step: "restore a tool lock taken over by mistake", file }));
+  }
+  await rm(aside, { force: true });
+}
+
+async function releaseOwn(file: string, own: string, logger: ILogger): Promise<void> {
+  try {
+    if ((await readLock(file)) === own) { await rm(file, { force: true }); }
+  } catch (error) {
+    await logger.error(LOCK_MODULE, error, { step: "release tool lock", file });
+  }
+}
+
+/** Runs `run` while holding `<folder>/.lock`; waits for another holder and takes over a stale lock. */
+export async function withToolLock<T>(folder: string, operation: string, logger: ILogger, run: () => Promise<T>, options: ToolsDirLockOptions = {}): Promise<T> {
+  const { pollMs = 500, timeoutMs = 15 * 60_000, isAlive = processAlive } = options;
+  const file = join(folder, ".lock");
+  const own = JSON.stringify({ pid: process.pid, operation, startedAt: new Date().toISOString() } satisfies Holder);
+  await mkdir(folder, { recursive: true });
+  const deadline = Date.now() + timeoutMs;
+  let waiting = false;
+  while (!(await tryCreate(file, own))) {
+    const text = await readLock(file);
+    if (text === null) { continue; }
+    if (await isStale(file, text, timeoutMs, isAlive)) {
+      await logger.log("WARN", LOCK_MODULE, "Taking over a stale tool lock", { file, holder: text, operation });
+      await removeStale(file, text, logger);
+      continue;
+    }
+    if (Date.now() >= deadline) {
+      throw new Error(`Timed out after ${Math.round(timeoutMs / 1000)} s waiting to ${operation}: ${folder} is locked by ${text}`);
+    }
+    if (!waiting) {
+      waiting = true;
+      await logger.log("INFO", LOCK_MODULE, "Waiting for another LabShelf process to finish with a managed tool folder", { file, holder: text, operation });
+    }
+    await sleep(pollMs);
+  }
+  try {
+    return await run();
+  } finally {
+    await releaseOwn(file, own, logger);
+  }
+}
+
+export type ManagedTexKind = "texlive" | "tinytex";
+
+export interface ManagedTex {
+  kind: ManagedTexKind;
+  root: string;
+  /** `<root>/bin/<arch>`, holding tlmgr and latexmk. */
+  binDir: string;
+  /** The TeX Live release, or null when `release-texlive.txt` is missing or unreadable. */
+  year: number | null;
+}
+
+// INVARIANT: a full TeX Live is preferred over TinyTeX when both are present.
+const KINDS: ManagedTexKind[] = ["texlive", "tinytex"];
+
+async function firstBinDir(root: string): Promise<string | null> {
+  try {
+    const arches = (await fs.readdir(join(root, "bin"), { withFileTypes: true })).filter((entry) => entry.isDirectory());
+    const arch = arches.map((entry) => entry.name).sort()[0];
+    return arch === undefined ? null : join(root, "bin", arch);
+  } catch {
+    return null;
+  }
+}
+
+export async function readTexLiveYear(root: string): Promise<number | null> {
+  try {
+    const match = /version (\d{4})/.exec(await fs.readFile(join(root, "release-texlive.txt"), "utf8"));
+    return match?.[1] ? Number(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The managed TeX under `texRoot`, or null when none has a bin dir. */
+export async function findManagedTex(texRoot: string): Promise<ManagedTex | null> {
+  for (const kind of KINDS) {
+    const root = resolveManagedTexDir(texRoot, kind);
+    const binDir = await firstBinDir(root);
+    if (binDir !== null) { return { kind, root, binDir, year: await readTexLiveYear(root) }; }
+  }
+  return null;
+}
+
+// CONTRACT: documents/contracts/managed-tools.md#tex-resolution
 export type TexInstaller = (run: TexInstallRun) => Promise<void>;
 export type TexProgress = (fraction: number | null) => void;
 
@@ -178,4 +342,23 @@ export function createManagedTexProvider(ctx: ManagedTexProviderOptions): Manage
       return { ...(await texStatus(ctx)), complete: true };
     },
   };
+}
+
+export interface SharedTexProviderOptions {
+  env: NodeJS.ProcessEnv;
+  platform: NodeJS.Platform;
+  homeDir: string;
+  logger: ILogger;
+  fetchImpl: FetchLike;
+}
+
+export function createSharedTexProvider({ env, platform, homeDir, logger, fetchImpl }: SharedTexProviderOptions): ManagedTexProvider {
+  const deps = { fetchImpl, logger, platform };
+  return createManagedTexProvider({
+    texRoot: join(resolveSharedToolsDir(env, platform, homeDir), "tex"),
+    logger,
+    platform,
+    system: createSystemTexProvider(),
+    installers: { tinytex: (run) => installTinyTex(deps, run), texlive: (run) => installTexLive(deps, run) },
+  });
 }

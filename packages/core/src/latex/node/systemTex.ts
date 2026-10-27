@@ -1,12 +1,42 @@
-// Finds the TeX installation already on this computer and never installs anything.
-import { dirname, delimiter, join } from "node:path";
-import { promises as fs } from "node:fs";
+// Finds a TeX installation already on this computer, never installs anything, and puts its programs first on PATH for a build.
+import { promises as fs, constants } from "node:fs";
 import { homedir } from "node:os";
+import { dirname, delimiter, join } from "node:path";
 
-import type { LatexEngine } from "../../../../writing/project/index.js";
+import type { LatexEngine } from "../../writing/project/index.js";
 
-import type { TexProvider } from "../../index.js";
-import { findExecutable } from "../index.js";
+import type { LatexToolchain, TexProvider } from "../toolchain.js";
+
+async function isExecutable(file: string): Promise<boolean> {
+  try {
+    if (!(await fs.stat(file)).isFile()) { return false; }
+    await fs.access(file, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function envValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
+  // PLATFORM: Windows environment variable names are case-insensitive, so PATH may be spelled Path.
+  const name = Object.keys(env).find((candidate) => candidate.toUpperCase() === key);
+  return name === undefined ? undefined : env[name];
+}
+
+/** The first match for `name` on PATH, or undefined. */
+export async function findExecutable(name: string, env: NodeJS.ProcessEnv = process.env): Promise<string | undefined> {
+  const dirs = (envValue(env, "PATH") ?? "").split(delimiter).filter(Boolean);
+  const extensions = process.platform === "win32"
+    ? (envValue(env, "PATHEXT") ?? ".EXE;.CMD;.BAT").split(";").filter(Boolean)
+    : [""];
+  for (const dir of dirs) {
+    for (const extension of extensions) {
+      const candidate = join(dir, name + extension);
+      if (await isExecutable(candidate)) { return candidate; }
+    }
+  }
+  return undefined;
+}
 
 async function subdirs(dir: string): Promise<string[]> {
   try {
@@ -66,4 +96,16 @@ export function createSystemTexProvider(options: SystemTexOptions = {}): TexProv
     },
     installMissing: () => Promise.resolve(false),
   };
+}
+
+
+/** The environment that puts the directory of the toolchain's latexmk first on PATH. */
+// TRAP: latexmk looks the engine up by name on PATH, so a managed or off-PATH TeX needs its bin folder there.
+// The environment is copied, never assigned to process.env, because the VS Code extension host is shared.
+export function withToolchainOnPath(toolchain: LatexToolchain, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const dir = toolchain.binDir ?? dirname(toolchain.executable);
+  // PLATFORM: Windows environment variable names are case-insensitive, so PATH may be spelled Path.
+  const key = Object.keys(env).find((name) => name.toUpperCase() === "PATH");
+  const rest = ((key === undefined ? undefined : env[key]) ?? "").split(delimiter).filter((entry) => entry && entry !== dir);
+  return { ...env, [key ?? "PATH"]: [dir, ...rest].join(delimiter) };
 }
