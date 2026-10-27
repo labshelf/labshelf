@@ -1,5 +1,5 @@
 import type { PaperRecord } from "../../../src/model/index";
-import { formatCitations, formatInTextCitation } from "../../../src/library/paper/index";
+import { formatCitations, formatInTextCitation } from "../../../src/library/record";
 
 function paper(extra: Partial<PaperRecord> = {}): PaperRecord {
   return {

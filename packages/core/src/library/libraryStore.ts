@@ -1,19 +1,114 @@
-// Holds the in-memory library snapshot with collection listings, search and change notification.
+// Holds the in-memory library: the shapes a scan produces, the immutable snapshot built from it, the store that serves
+// listings, search and change notification, and the re-indexing of paper records when a folder moves.
 // Reloads are coalesced, so a burst of file events (a sync pulling twenty papers) costs one rescan.
-import { createListeners } from "../../events/index.js";
-import { deriveSnapshot, createEmptySnapshot } from "./snapshot.js";
-import { listPapersUnderFolder } from "./folderTree.js";
-import { nameCollator, createPaperComparator } from "./paperSort.js";
-import type {
-  FolderNode,
-  LibraryScan,
-  LibrarySnapshot,
-  PaperEntry,
-  SortSpec,
-  PaperFilter,
-} from "./librarySnapshot.js";
-import type { PaperRecord } from "../../model/index.js";
-import { isEmptyQuery, matchPaper, matchTerms, parseQuery, searchDoc, type SearchDoc } from "../search/index.js";
+import { createListeners } from "../events/index.js";
+import type { PaperRecord } from "../model/index.js";
+import { PAPERS_DIR } from "./layout.js";
+import { isUnderDir, listPapersUnderFolder } from "./folderTree.js";
+import { nameCollator, createPaperComparator } from "./paperOrder.js";
+import { isEmptyQuery, matchPaper, matchTerms, parseQuery, searchDoc, type SearchDoc } from "./search.js";
+
+export interface PaperEntry {
+  record: PaperRecord;
+  /** Collection path relative to papers/, "/"-separated ("" for the root). */
+  collection: string;
+  /** mtime of metadata.yaml, used by the "modified" sort. */
+  modifiedMs: number;
+  pdfBytes?: number;
+}
+
+/** What one pass over papers/ finds. */
+export interface LibraryScan {
+  /** One entry per paper id, in path order. */
+  papers: PaperEntry[];
+  /** Every collection path relative to papers/, empty ones included. */
+  folders: string[];
+  /** Folders that hold a paper.pdf and no metadata.yaml. */
+  orphans: string[];
+  /** Paper folders whose id was already taken by an earlier folder. */
+  duplicates: string[];
+}
+
+export interface FolderNode {
+  /** Path relative to papers/, "/"-separated; "" is the library root. */
+  rel: string;
+  name: string;
+  parent: string | undefined;
+  children: string[];
+  /** Papers directly inside this collection. */
+  paperIds: string[];
+  /** Papers in this collection and every collection below it. */
+  total: number;
+}
+
+export interface LibrarySnapshot {
+  root: string;
+  papers: ReadonlyMap<string, PaperEntry>;
+  collections: ReadonlyMap<string, FolderNode>;
+  duplicates: string[];
+  orphans: string[];
+  scannedAt: number;
+}
+
+/** "lastRead" orders by when the paper was last open in the reader, which the caller supplies. */
+export type PaperSortColumn = "title" | "author" | "venue" | "year" | "status" | "modified" | "lastRead";
+
+export interface SortSpec {
+  key: PaperSortColumn;
+  reverse: boolean;
+}
+
+/** A parsed search the library applies to its listings; the app supplies the query language. */
+export interface PaperFilter {
+  /** Whether a collection with this name stays in a listing. */
+  keepsCollection(name: string): boolean;
+  /** Relevance of a paper; a score of 0 or less hides it. */
+  score(entry: PaperEntry): number;
+}
+
+function rootCollection(): FolderNode {
+  return { rel: "", name: PAPERS_DIR, parent: undefined, children: [], paperIds: [], total: 0 };
+}
+
+// Creates the node for `rel` and every ancestor that does not exist yet.
+function ensureNode(collections: Map<string, FolderNode>, rel: string): FolderNode {
+  const existing = collections.get(rel);
+  if (existing) { return existing; }
+  const slash = rel.lastIndexOf("/");
+  const parent = ensureNode(collections, slash < 0 ? "" : rel.slice(0, slash));
+  const node: FolderNode = { rel, name: rel.slice(slash + 1), parent: parent.rel, children: [], paperIds: [], total: 0 };
+  collections.set(rel, node);
+  parent.children.push(rel);
+  return node;
+}
+
+function countPaper(collections: Map<string, FolderNode>, entry: PaperEntry): void {
+  const home = ensureNode(collections, entry.collection);
+  home.paperIds.push(entry.record.id);
+  for (let node: FolderNode | undefined = home; node; node = node.parent === undefined ? undefined : collections.get(node.parent)) {
+    node.total++;
+  }
+}
+
+/** @returns a snapshot with no papers and only the root collection */
+export function createEmptySnapshot(root: string): LibrarySnapshot {
+  return { root, papers: new Map(), collections: new Map([["", rootCollection()]]), duplicates: [], orphans: [], scannedAt: 0 };
+}
+
+/** @returns the snapshot of a scan; each collection lists its sub-collections by name */
+export function deriveSnapshot(root: string, scan: LibraryScan, scannedAt: number = Date.now()): LibrarySnapshot {
+  const collections = new Map<string, FolderNode>([["", rootCollection()]]);
+  for (const rel of scan.folders) { ensureNode(collections, rel); }
+  const papers = new Map<string, PaperEntry>();
+  for (const entry of scan.papers) {
+    papers.set(entry.record.id, entry);
+    countPaper(collections, entry);
+  }
+  for (const node of collections.values()) {
+    node.children.sort((a, b) => nameCollator.compare(collections.get(a)!.name, collections.get(b)!.name));
+  }
+  return { root, papers, collections, duplicates: [...scan.duplicates], orphans: [...scan.orphans], scannedAt };
+}
 
 interface CachedDoc { record: PaperRecord; annotations: string; doc: SearchDoc }
 
@@ -189,5 +284,28 @@ export class LibraryStore {
     this.current = snapshot;
     this.listeners.emit(snapshot);
     return snapshot;
+  }
+}
+
+
+/** The index surface the reindexing needs, so the browser can pass a small adapter over its IndexedDB record store. */
+export interface IPaperRecordCache {
+  listPapers(): Promise<PaperRecord[]>;
+  upsertPaper(paper: PaperRecord): Promise<void>;
+  deletePaper(id: string): Promise<void>;
+}
+
+/** Upserts every paper under `oldDir` with its path re-rooted under `newDir` (paths are "/"-separated). */
+export async function movePapersUnder(index: IPaperRecordCache, oldDir: string, newDir: string): Promise<void> {
+  for (const paper of await index.listPapers()) {
+    if (!isUnderDir(paper.path, oldDir, "/")) continue;
+    await index.upsertPaper({ ...paper, path: newDir + paper.path.slice(oldDir.length) });
+  }
+}
+
+/** Deletes every paper record whose stored path lies under `dirPath`. */
+export async function removePapersUnder(index: IPaperRecordCache, dirPath: string): Promise<void> {
+  for (const paper of await index.listPapers()) {
+    if (isUnderDir(paper.path, dirPath, "/")) await index.deletePaper(paper.id);
   }
 }

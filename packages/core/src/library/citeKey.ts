@@ -1,6 +1,7 @@
 /** Generates "authorYearWord" cite keys and claims them without collisions (the key is the paper id and folder name). */
+// CONTRACT: documents/contracts/library-format.md#paper-identity
 
-import { normalizeText } from "../search/index.js";
+import { normalizeText } from "./searchText.js";
 
 // Title words that make a poor cite-key suffix.
 const STOPWORDS = new Set(["a", "an", "the", "on", "of", "in", "for", "and", "to", "with", "from", "by", "at", "is", "are"]);

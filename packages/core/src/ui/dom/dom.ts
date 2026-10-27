@@ -3,7 +3,7 @@
  * highlighting, and a terse element factory. Framework-free on purpose.
  */
 import { escapeHtml } from "../htmlSafety.js";
-import { findHighlightRanges } from "../../library/search/index.js";
+import { findHighlightRanges } from "../../library/searchText.js";
 
 /** Returns the element with the given id or throws — missing mount points are programmer errors. */
 export function findElement<T extends HTMLElement = HTMLElement>(id: string, root: ParentNode = document): T {

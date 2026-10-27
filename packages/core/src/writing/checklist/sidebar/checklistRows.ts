@@ -1,9 +1,8 @@
 // Renders one Checklist item as a sidebar row: its label, location or status, and what clicking it does.
 import type { DotKind, SidebarTreeNode } from "../../../libraryUi/index.js";
-import { deriveFamilyName } from "../../../library/paper/index.js";
 import { formatShortDate } from "../../../time/index.js";
 import type { PathOps } from "../../../path/index.js";
-import { STATUS_LABEL, type ReadingStatus } from "../../../library/readingStatus/index.js";
+import { STATUS_LABEL, deriveFamilyName, type ReadingStatus } from "../../../library/record.js";
 import type { ChecklistItem, PageOverflow } from "../buildChecklist.js";
 
 /** What the Checklist knows about a reading-list paper beyond its checklist item. */

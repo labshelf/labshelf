@@ -5,7 +5,7 @@ import * as path from "node:path";
 import { isDirectory } from "../../../files/node/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import { formatError } from "../../../errors/index.js";
-import { deriveLibraryKey, resolveDeviceStateDir } from "../deviceState/index.js";
+import { deriveLibraryKey, resolveDeviceStateDir } from "../layout.js";
 import { resolveSharedConfigPath, updateSharedConfig } from "../sharedConfigFile.js";
 import { isLibraryFolder } from "./detectLibraryFolder.js";
 import { deriveSha256Hex } from "../../../hash/index.js";

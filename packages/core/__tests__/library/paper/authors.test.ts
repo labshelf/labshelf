@@ -1,4 +1,4 @@
-import { normalizeAuthor, deriveFamilyName, formatAuthors, splitName } from "../../../src/library/paper/index";
+import { normalizeAuthor, deriveFamilyName, formatAuthors, splitName } from "../../../src/library/record";
 
 describe("familyName", () => {
   it("takes the surname of 'First Last' and of 'Last, First'", () => {

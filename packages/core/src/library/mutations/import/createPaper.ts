@@ -1,6 +1,6 @@
 /** Writes a new paper folder: claims a free cite key, saves the PDF when there is one and writes the metadata files. */
 import type { PaperRecord } from "../../../model/index.js";
-import { ensureCiteKey } from "../../paper/index.js";
+import { ensureCiteKey } from "../../citeKey.js";
 import type { MutationContext } from "../mutationDeps.js";
 import { PDF_FILE } from "../../layout.js";
 

@@ -1,8 +1,7 @@
 /** Reads a paper as its folder holds it right now, since another app or a sync may have changed it since the last scan. */
 import { type PaperRecord } from "../../model/index.js";
-import { isReadingStatus } from "../readingStatus/index.js";
 import { METADATA_FILE, PDF_FILE } from "../layout.js";
-import { createPaperRecord, parsePaperMetadata } from "../paperMetadata.js";
+import { createPaperRecord, isReadingStatus, parsePaperMetadata } from "../record.js";
 import type { MutationContext } from "./mutationDeps.js";
 
 /** @returns the paper in `folder`, or undefined when its metadata.yaml is missing or not a mapping */

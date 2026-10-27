@@ -3,7 +3,7 @@
  * and narrowed by the search.
  */
 import { isUnderDir, deriveParentDir, deriveRelativeFolder } from "../../library/index.js";
-import { isEmptyQuery, isPaperMatch, searchDoc, type Query } from "../../library/search/index.js";
+import { isEmptyQuery, isPaperMatch, searchDoc, type Query } from "../../library/search.js";
 import type { PaperRecord } from "../../model/index.js";
 
 const SEP = "/";

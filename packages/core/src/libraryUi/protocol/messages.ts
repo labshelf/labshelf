@@ -1,5 +1,5 @@
 // Declares JSON messages exchanged between the library UI and its host.
-import type { ReadingStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/record.js";
 import type {
   AddSource, CitationMapState, MissingPdfAction, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
 } from "./payloads.js";

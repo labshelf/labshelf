@@ -1,5 +1,5 @@
 /** Defines the notice wording for batch paper changes (status, tags, move, remove) on every host. */
-import { ROOT_LABEL } from "../library/model/index.js";
+import { ROOT_LABEL } from "../library/folderTree.js";
 import { formatCount } from "../ui/index.js";
 
 export interface BatchError {

@@ -4,7 +4,7 @@
  */
 import { formatAuthors } from "../../../../library/index.js";
 import { type PaperRecord } from "../../../../model/index.js";
-import { STATUS_LABEL } from "../../../../library/readingStatus/index.js";
+import { STATUS_LABEL } from "../../../../library/record.js";
 import { escapeHtml, renderIcon } from "../../../../ui/index.js";
 import { deriveRelatedGroups } from "../../../viewModel/index.js";
 import { renderIconButton, renderLoading, renderSection } from "../detailPaneMarkup.js";

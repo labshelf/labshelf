@@ -6,7 +6,7 @@ import * as path from "node:path";
 import type { ILogger } from "../../ports/index.js";
 import {
   mergeSharedConfig, parseSharedConfig, serializeSharedConfig, type SharedConfig, type SharedConfigUpdate,
-} from "../sharedConfig.js";
+} from "../layout.js";
 import { writeFileAtomic } from "./atomicWrite.js";
 
 /** @returns the LabShelf config directory; an empty XDG_CONFIG_HOME counts as unset */

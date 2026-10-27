@@ -1,7 +1,6 @@
 /** Changes the fields the user owns on papers (reading status, tags, note, the day a copy was requested), reading each paper from disk first. */
 import type { PaperRecord } from "../../model/index.js";
-import type { ReadingStatus } from "../readingStatus/index.js";
-import { deriveEditedTags, normalizeTags } from "../paper/index.js";
+import { deriveEditedTags, normalizeTags, type ReadingStatus } from "../record.js";
 import { formatError } from "../../errors/index.js";
 import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type Reference } from "./mutationDeps.js";
 import { readPaperOnFileSystem } from "./paperOnFileSystem.js";

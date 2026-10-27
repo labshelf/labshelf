@@ -1,6 +1,6 @@
 /** Creates, renames, moves and trashes the folders papers are grouped in; every path in and out is absolute. */
-import { checkFolderName } from "../paper/index.js";
-import { isUnderDir } from "../model/index.js";
+import { checkFolderName } from "../folders.js";
+import { isUnderDir } from "../folderTree.js";
 import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
 
 /** @returns the new folder's path */

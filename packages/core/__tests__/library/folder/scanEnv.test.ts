@@ -1,4 +1,4 @@
-import { createConcurrencyLimit as limit } from "../../../src/library/folder/scanEnv";
+import { createConcurrencyLimit as limit } from "../../../src/library/folders";
 
 describe("concurrencyLimit", () => {
   it("never runs more than max tasks at once and finishes them all", async () => {

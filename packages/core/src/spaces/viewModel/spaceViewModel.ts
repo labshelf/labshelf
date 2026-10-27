@@ -1,5 +1,5 @@
 // Declares the view models Spaces screens show, derived from a Space, the Library and the projects.
-import type { ReadingStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/record.js";
 import type { SpaceDateKind } from "../model/index.js";
 
 /** A writing project as the host reports it; supplied by the host port. */

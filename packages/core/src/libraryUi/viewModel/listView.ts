@@ -2,7 +2,7 @@
  * Derives from one state everything the header and list show: the folder's papers with its subfolders', the search
  * scope and the sorted rows.
  */
-import { parseQuery } from "../../library/search/index.js";
+import { parseQuery } from "../../library/search.js";
 import type { LibraryViewState } from "../store/index.js";
 import { listPapersUnder, findPapersInScope, type ListPaper } from "./listPapers.js";
 import { orderPapers } from "./orderPapers.js";

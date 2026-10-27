@@ -4,7 +4,7 @@
  */
 import { formatCompactTime } from "../../../time/index.js";
 import { PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
-import { STATUS_LABEL, deriveNextReadingStatus, type ReadingStatus } from "../../../library/readingStatus/index.js";
+import { STATUS_LABEL, deriveNextReadingStatus, type ReadingStatus } from "../../../library/record.js";
 import { escapeHtml, renderIcon, renderReadingStatusMark } from "../../../ui/index.js";
 import { hasMissingTextLayer, describeTextLayerJob, type ListPaper } from "../../viewModel/index.js";
 import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";

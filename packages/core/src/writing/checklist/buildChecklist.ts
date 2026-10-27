@@ -1,5 +1,5 @@
 /** Groups a project's checklist items by kind or by section, with open counts. */
-import type { ReadingStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/record.js";
 import type { ManualItem } from "./checklistFile.js";
 import type { ChecklistSection, SectionPlacer } from "./sectionPlacement.js";
 import type { TodoItem } from "./scanTodos.js";

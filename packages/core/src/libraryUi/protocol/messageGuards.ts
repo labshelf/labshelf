@@ -1,6 +1,6 @@
 // Validates untrusted library UI messages before a host handles them.
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
-import { PAPER_STATUSES, type ReadingStatus } from "../../library/readingStatus/index.js";
+import { PAPER_STATUSES, type ReadingStatus } from "../../library/record.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import type { UiToHost } from "./messages.js";
 

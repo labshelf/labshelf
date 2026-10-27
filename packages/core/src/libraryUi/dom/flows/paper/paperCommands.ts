@@ -2,7 +2,7 @@
  * Runs the paper actions that need no dialog. Each asks the host; status, tag and note changes and queued OCR also
  * show at once, before the host confirms them.
  */
-import type { ReadingStatus } from "../../../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../../../library/record.js";
 import { hasMissingTextLayer, listPapersUnder } from "../../../viewModel/index.js";
 import { PAPERS_DIR } from "../../../../library/index.js";
 import type { UiContext } from "../../uiContext.js";

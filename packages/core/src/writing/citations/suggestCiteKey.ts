@@ -1,5 +1,5 @@
 // Suggests the shelf cite key an undefined key most likely meant, ranking by edit distance and author/year overlap.
-import { deriveCiteKeySlug } from "../../library/paper/index.js";
+import { deriveCiteKeySlug } from "../../library/citeKey.js";
 
 export interface SuggestableCiteKey {
   key: string;

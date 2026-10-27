@@ -4,7 +4,7 @@
  */
 import { deriveEditedTags } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
-import type { ReadingStatus } from "../../library/readingStatus/index.js";
+import type { ReadingStatus } from "../../library/record.js";
 import { createTagQuery } from "../searchQueries.js";
 import type {
   CitationMapState,

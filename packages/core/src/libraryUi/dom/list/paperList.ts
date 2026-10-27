@@ -4,7 +4,7 @@
  */
 import { PAPERS_DIR, formatFolderLabel } from "../../../library/index.js";
 import { type PaperRecord } from "../../../model/index.js";
-import { deriveNextReadingStatus } from "../../../library/readingStatus/index.js";
+import { deriveNextReadingStatus } from "../../../library/record.js";
 import { deriveListView, type ListPaper, deriveFirstSortDir } from "../../viewModel/index.js";
 import { COLUMN_KEYS, type ListColumn, type SortDir, type SortColumn } from "../../store/index.js";
 import { stopPaperDrag, startPaperDrag } from "../drag/index.js";
