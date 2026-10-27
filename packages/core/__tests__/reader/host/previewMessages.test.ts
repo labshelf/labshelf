@@ -1,4 +1,3 @@
-// Tests the preview side of the reader host: messages held until ready, build status, and the preview requests.
 import { setupHost } from "./hostFixture";
 
 describe("preview messages", () => {
@@ -173,5 +172,43 @@ describe("preview roots, logs and writing actions", () => {
     await expect(host.handle(message)).resolves.toBeUndefined();
     expect(ports.notify).not.toHaveBeenCalled();
     expect(ports.logger.log).toHaveBeenCalledWith("WARN", "reader", "Preview request in a reader that previews nothing", { paperId: "p1", command: message.command });
+  });
+});
+
+const cases: Array<[string, Record<string, unknown>, unknown[]]> = [
+  ["runCommand", { id: "markVersion" }, ["markVersion"]],
+  ["setAutoCompile", { mode: "save" }, ["save"]],
+  ["setEngine", { engine: "xelatex" }, ["xelatex"]],
+  ["setIncludeOnly", { on: false }, [false]],
+  ["setHaltOnError", { on: true }, [true]],
+  ["setCheckLimits", { limits: { pages: 8, words: null, countUpTo: "end" } }, [{ pages: 8, words: null, countUpTo: "end" }]],
+  ["fixCitation", { fix: { kind: "replace", key: "a", replacement: "b", file: "m.tex", line: 2 } }, [{ kind: "replace", key: "a", replacement: "b", file: "m.tex", line: 2 }]],
+  ["openSourceLine", { file: "m.tex", line: 9 }, ["m.tex", 9]],
+];
+
+describe("preview command messages", () => {
+  it.each(cases)("%s calls the port of the same name with its payload", async (command, payload, args) => {
+    const { host, ports } = setupHost();
+    const port = jest.fn(async () => undefined);
+    Object.assign(ports, { preview: { [command]: port } });
+    await host.handle({ command, ...payload } as never);
+    expect(port).toHaveBeenCalledWith(...args);
+  });
+
+  it.each(cases)("%s is ignored when the port lacks the method", async (command, payload) => {
+    const { host, ports } = setupHost();
+    Object.assign(ports, { preview: { recompile: jest.fn() } });
+    await expect(host.handle({ command, ...payload } as never)).resolves.not.toThrow();
+    expect(ports.notify).not.toHaveBeenCalled();
+  });
+
+  it("openCitedPaper passes the page along, and nothing when none is given", async () => {
+    const { host, ports } = setupHost();
+    const openCitedPaper = jest.fn(async () => undefined);
+    Object.assign(ports, { preview: { openCitedPaper } });
+    await host.handle({ command: "openCitedPaper", paperId: "p", page: 4 } as never);
+    expect(openCitedPaper).toHaveBeenLastCalledWith("p", 4);
+    await host.handle({ command: "openCitedPaper", paperId: "p" } as never);
+    expect(openCitedPaper).toHaveBeenLastCalledWith("p", undefined);
   });
 });

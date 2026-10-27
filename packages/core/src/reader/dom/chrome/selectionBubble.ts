@@ -3,7 +3,7 @@
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../../model/index.js";
 import type { ReaderContext } from "../session/index.js";
-import { deriveClampedNumber, renderReaderIconButton } from "../elements/index.js";
+import { deriveClampedNumber, renderReaderIconButton } from "../highlights/elements.js";
 import { deriveBoxInPage, derivePageFrame } from "../highlights/index.js";
 import { renderIcon } from "../../../ui/index.js";
 import { findElement, renderElement } from "../../../ui/dom/index.js";

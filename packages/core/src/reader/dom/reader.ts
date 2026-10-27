@@ -16,10 +16,6 @@ import {
   type PdfSourceHooks,
   type PerfMarks,
   createPdfjsReader,
-} from "./session/index.js";
-import { attachCitationClicks, PreviewCitations } from "./hover/index.js";
-import { ChangeMarks, Keyboard, SourceSync } from "./navigation/index.js";
-import {
   DeferredHover,
   ReadingPositionRestore,
   attachReaderHostMessages,
@@ -27,7 +23,9 @@ import {
   createActionRunner,
   attachExternalUrls,
   reportFirstRender,
-} from "./startup/index.js";
+} from "./session/index.js";
+import { attachCitationClicks, PreviewCitations } from "./hover/index.js";
+import { ChangeMarks, Keyboard, SourceSync } from "./navigation/index.js";
 import { findElement } from "../../ui/dom/index.js";
 
 export interface ReaderStartOptions {

@@ -1,8 +1,7 @@
-/** Exports the reader session group's public API. */
-export type { PdfPosition, ReaderContext } from "./readerContext.js";
-export { installTextLayerFocusGuard } from "./focusGuard.js";
-export { HostBridge, type ReaderTransport } from "./hostBridge.js";
-export { DOCUMENT_REPLACED, PdfReloader } from "./PdfReloader.js";
-export { describeLoadError, loadPdf, type PdfSourceHooks } from "./pdfLoader.js";
-export { PerfMarks } from "./perfMarks.js";
-export { createPdfjsReader } from "./createReader.js";
+/** Exports the reader session group's public API: the session parts, the pdf loader and the steps startReader runs to bring an open document to life. */
+export {
+  createPdfjsReader, HostBridge, installTextLayerFocusGuard, PerfMarks, type PdfPosition, type ReaderContext, type ReaderTransport,
+} from "./readerSession.js";
+export { DOCUMENT_REPLACED, describeLoadError, loadPdf, PdfReloader, type PdfSourceHooks } from "./pdfLoader.js";
+export { attachExternalUrls, createActionRunner, ReadingPositionRestore, reportFirstRender } from "./startup.js";
+export { attachReaderHostMessages, buildReaderUi, DeferredHover } from "./readerUi.js";

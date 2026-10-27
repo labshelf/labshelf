@@ -1,0 +1,102 @@
+// Models the pdf.js outline as rows and derives the section trail of a page.
+
+// Flattens a pdf.js outline tree into rows the Outline tab can render, collapse and track against the current page.
+
+/** Structural subset of pdf.js' `getOutline()` node. */
+export interface RawOutlineNode {
+  title: string;
+  dest?: string | unknown[] | null;
+  url?: string | null;
+  bold?: boolean;
+  italic?: boolean;
+  items?: RawOutlineNode[];
+}
+
+export interface OutlineRow {
+  id: number;
+  parentId: number | null;
+  depth: number;
+  title: string;
+  dest: string | unknown[] | null;
+  url: string | null;
+  hasChildren: boolean;
+  bold: boolean;
+}
+
+// Some generators emit cyclic or absurdly deep outlines; stop before the tab becomes unusable.
+const MAX_DEPTH = 12;
+const MAX_ROWS = 5000;
+
+/**
+ * @returns rows in document order with stable numeric ids.
+ */
+export function deriveOutlineRows(nodes: readonly RawOutlineNode[] | null | undefined): OutlineRow[] {
+  const rows: OutlineRow[] = [];
+  const walk = (list: readonly RawOutlineNode[], depth: number, parentId: number | null): void => {
+    for (const node of list) {
+      if (rows.length >= MAX_ROWS) { return; }
+      const children = depth + 1 < MAX_DEPTH ? (node.items ?? []) : [];
+      const id = rows.length;
+      rows.push({
+        id,
+        parentId,
+        depth,
+        title: (node.title ?? "").replace(/\s+/g, " ").trim() || "Untitled",
+        dest: node.dest ?? null,
+        url: node.url ?? null,
+        hasChildren: children.length > 0,
+        bold: node.bold === true,
+      });
+      if (children.length > 0) { walk(children, depth + 1, id); }
+    }
+  };
+  walk(nodes ?? [], 0, null);
+  return rows;
+}
+
+/**
+ * @returns the rows not hidden beneath a collapsed ancestor.
+ */
+export function deriveVisibleRows(rows: readonly OutlineRow[], collapsed: ReadonlySet<number>): OutlineRow[] {
+  const hidden = new Set<number>();
+  const out: OutlineRow[] = [];
+  for (const row of rows) {
+    const parentHidden = row.parentId !== null && (hidden.has(row.parentId) || collapsed.has(row.parentId));
+    if (parentHidden) { hidden.add(row.id); continue; }
+    out.push(row);
+  }
+  return out;
+}
+
+/**
+ * The active outline entry is the last one starting at or before the current page.
+ * @returns an index into `rowPages`, or -1 when no entry qualifies (pages not yet resolved are null).
+ */
+export function deriveActiveOutlineRow(rowPages: readonly (number | null)[], currentPage: number): number {
+  let best = -1;
+  let bestPage = -1;
+  rowPages.forEach((page, i) => {
+    if (page !== null && page <= currentPage && page >= bestPage) {
+      best = i;
+      bestPage = page;
+    }
+  });
+  return best;
+}
+
+// Gives the section and subsection an outline places a page in, for the preview footer's breadcrumb.
+
+/**
+ * A deeper entry gives its top-level section and that section's child on the way to it.
+ * @returns the section first, at most two rows; empty before the first resolved entry.
+ */
+export function deriveOutlineTrail(rows: readonly OutlineRow[], rowPages: readonly (number | null)[], page: number): OutlineRow[] {
+  const active = rows[deriveActiveOutlineRow(rowPages, page)];
+  if (!active) { return []; }
+  // INVARIANT: a row's id is its index, as `deriveOutlineRows` numbers them.
+  const chain: OutlineRow[] = [];
+  for (let row: OutlineRow | undefined = active; row; row = row.parentId === null ? undefined : rows[row.parentId]) {
+    chain.unshift(row);
+  }
+  return chain.slice(0, 2);
+}

@@ -3,14 +3,14 @@
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
 import { formatError } from "../../errors/index.js";
-import type { BuildState, PageArea, PagePoint, PreviewBuildRoots } from "../previewProtocol.js";
+import type { BuildState, PageArea, PagePoint, PreviewBuildRoots } from "../protocol/previewProtocol.js";
 import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol/index.js";
-import { annotationHandlers } from "./annotationMessages.js";
-import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers } from "./hostContext.js";
-import type { ReaderHostPorts } from "./ports.js";
-import { previewHandlers } from "./previewMessages.js";
-import { sessionHandlers } from "./sessionMessages.js";
-import { shareHandlers } from "./shareMessages.js";
+import { annotationHandlers } from "./hostMessages.js";
+import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers } from "./hostPorts.js";
+import type { ReaderHostPorts } from "./hostPorts.js";
+import { previewHandlers } from "./hostMessages.js";
+import { sessionHandlers } from "./hostMessages.js";
+import { shareHandlers } from "./hostMessages.js";
 
 const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...shareHandlers, ...previewHandlers };
 

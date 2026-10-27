@@ -1,7 +1,4 @@
 /** Exports the preview chrome: the header, build logs view and page counting a build preview adds to the reader. */
-export { LogsView } from "./logsView.js";
-export { mountPreviewChrome, type PreviewChrome } from "./mountPreviewChrome.js";
-export { countBodyPages } from "./countBodyPages.js";
-export { createAreaScroller } from "./pageScroll.js";
-export { createPreviewOutlineSource } from "./outlineSource.js";
-export { CommentAsk } from "./askComment.js";
+export { mountPreviewChrome, countBodyPages, createAreaScroller, createPreviewOutlineSource, type PreviewChrome } from "./previewChrome.js";
+export { CommentAsk } from "./previewFooter.js";
+export { LogsView } from "./previewProblems.js";

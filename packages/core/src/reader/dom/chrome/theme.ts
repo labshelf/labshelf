@@ -1,7 +1,13 @@
-// Applies the selected colour preset to the PDF reader.
-import type { PdfTheme } from "../../../model/index.js";
-import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs" with { "resolution-mode": "import" };
+// Applies the reader theme, offers the theme popover and shows the shortcut cheatsheet.
+import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
+import { type PdfTheme, PDF_THEMES } from "../../../model/index.js";
 import { type EffectiveTheme, findPagePreset, derivePageColors } from "../../index.js";
+import type { HostBridge, ReaderContext } from "../session/readerSession.js";
+import { updatePopoverOpen } from "../highlights/elements.js";
+import { renderElement, findElement } from "../../../ui/dom/index.js";
+import { deriveCheatsheetRows } from "../../navigation/index.js";
+
+// Applies the selected colour preset to the PDF reader.
 
 export type PageColors = { background: string; foreground: string } | null;
 
@@ -104,5 +110,115 @@ export class ThemeController {
       viewer.update();
       for (const fn of this.listeners) { fn(); }
     }, REFRESH_DELAY_MS);
+  }
+}
+
+/**
+ * Renders the theme picker: the five persisted presets plus session-only custom page colours.
+ */
+
+const THEME_LABELS: Record<PdfTheme, string> = {
+  auto: "Auto",
+  light: "Light",
+  dark: "Dark",
+  sepia: "Sepia",
+  "high-contrast": "High contrast",
+};
+
+/**
+ * A preset is persisted per paper by the host; custom colours apply to this session only.
+ */
+export function openThemePopover(anchor: HTMLElement, theme: ThemeController, host: HostBridge): void {
+  const list = renderElement("div", { class: "rd-theme-list", role: "radiogroup", "aria-label": "Page theme" });
+  for (const value of PDF_THEMES) {
+    const btn = renderElement(
+      "button",
+      { class: "rd-theme-item", type: "button", role: "radio", "aria-checked": theme.preference === value ? "true" : "false" },
+      renderElement("span", { class: `rd-theme-swatch rd-theme-swatch-${value}` }),
+      THEME_LABELS[value],
+    );
+    btn.addEventListener("click", () => {
+      // The host persists the choice and echoes `applyTheme` with the resolved effective theme.
+      host.post({ command: "selectTheme", theme: value });
+      for (const b of list.querySelectorAll("button")) { b.setAttribute("aria-checked", b === btn ? "true" : "false"); }
+    });
+    list.append(btn);
+  }
+
+  const { bg, text } = theme.colors;
+  const bgInput = renderElement("input", { type: "color", value: bg, "aria-label": "Page background colour" });
+  const textInput = renderElement("input", { type: "color", value: text, "aria-label": "Text colour" });
+  const applyCustom = (): void => theme.applyPageColors(bgInput.value, textInput.value);
+  bgInput.addEventListener("change", applyCustom);
+  textInput.addEventListener("change", applyCustom);
+
+  const content = renderElement(
+    "div",
+    { class: "rd-theme-popover" },
+    list,
+    renderElement("div", { class: "rd-menu-sep" }),
+    renderElement("div", { class: "rd-theme-custom" },
+      renderElement("span", { class: "rd-theme-custom-title" }, "Custom"),
+      renderElement("label", {}, "Page", bgInput),
+      renderElement("label", {}, "Text", textInput),
+    ),
+  );
+  updatePopoverOpen(anchor, content, "below");
+}
+
+/**
+ * Shows the `?` overlay listing every active shortcut, generated from the keymap so it can never drift from the real bindings.
+ */
+
+export class Cheatsheet {
+  private readonly el = findElement("cheatsheet");
+
+  constructor(private readonly ctx: ReaderContext) {
+    this.el.addEventListener("mousedown", (e) => { if (e.target === this.el) { this.close(); } });
+  }
+
+  get isOpen(): boolean { return this.el.classList.contains("rd-open"); }
+
+  /**
+   * Opens the overlay if closed, closes it if open.
+   */
+  toggle(): void {
+    if (this.isOpen) { this.close(); } else { this.open(); }
+  }
+
+  /**
+   * Closes the overlay and clears its content.
+   */
+  close(): void {
+    this.el.classList.remove("rd-open");
+    this.el.replaceChildren();
+  }
+
+  private open(): void {
+    const rows = deriveCheatsheetRows({ vimKeys: this.ctx.prefs.vimKeys, isMac: this.ctx.boot.isMac, preview: this.ctx.boot.preview });
+    const card = renderElement("div", { class: "rd-cheat-card", role: "dialog", "aria-label": "Keyboard shortcuts" });
+    card.append(renderElement("div", { class: "rd-cheat-title" }, "Keyboard shortcuts"));
+    const grid = renderElement("div", { class: "rd-cheat-grid" });
+    let group = "";
+    let column: HTMLElement | null = null;
+    for (const row of rows) {
+      if (row.group !== group || !column) {
+        group = row.group;
+        column = renderElement("div", { class: "rd-cheat-col" }, renderElement("div", { class: "rd-cheat-group" }, group));
+        grid.append(column);
+      }
+      const keys = renderElement("span", { class: "rd-cheat-keys" });
+      row.keys.forEach((k, i) => {
+        if (i > 0) { keys.append(" "); }
+        keys.append(renderElement("kbd", {}, k));
+      });
+      column.append(renderElement("div", { class: "rd-cheat-row" }, renderElement("span", {}, row.label), keys));
+    }
+    card.append(grid);
+    if (!this.ctx.prefs.vimKeys) {
+      card.append(renderElement("div", { class: "rd-cheat-note" }, "Enable labshelf.reader.vimKeys for single-key vim navigation (j/k, gg/G, /, n/N, H/L)."));
+    }
+    this.el.replaceChildren(card);
+    this.el.classList.add("rd-open");
   }
 }

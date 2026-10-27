@@ -1,8 +1,13 @@
-// Tests keyboard input resolution to reader actions.
-import { ACTIONS_BLOCKED_WHILE_TYPING, deriveCheatsheetRows, resolveShortcut, type ShortcutContext, type ShortcutInput } from '../../../src/reader/navigation/keymap';
+import {
+  ACTIONS_BLOCKED_WHILE_TYPING,
+  deriveCheatsheetRows,
+  resolveShortcut,
+  type ShortcutContext,
+  type ShortcutInput,
+} from "../../../src/reader/navigation/keymap";
 
-function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
-  return { vimKeys: false, isMac: false, inTextInput: false, pendingPrefix: null, ...overrides };
+function ctx(overrides: Record<string, unknown> = {}): ShortcutContext {
+  return { vimKeys: false, isMac: false, inTextInput: false, pendingPrefix: null, ...overrides } as ShortcutContext;
 }
 
 function key(overrides: Partial<ShortcutInput> & { key: string }): ShortcutInput {
@@ -256,5 +261,39 @@ describe('deriveCheatsheetRows', () => {
       lastIndex = index;
     }
     expect(new Set(rows.map((r) => r.group))).toEqual(new Set(order));
+  });
+});
+
+describe('preview key bindings', () => {
+  it('resolves Ctrl+S to recompile on Windows and Linux, Cmd+S on macOS', () => {
+    expect(resolveShortcut(key({ key: 's', ctrl: true }), ctx({ preview: true })).action).toBe('recompile');
+    expect(resolveShortcut(key({ key: 's', meta: true }), ctx({ preview: true, isMac: true })).action).toBe('recompile');
+    expect(resolveShortcut(key({ key: 's', meta: true }), ctx({ preview: true })).action).toBeNull();
+  });
+
+  it('resolves F8 and Shift+F8 to next and previous problem', () => {
+    expect(resolveShortcut(key({ key: 'F8' }), ctx({ preview: true })).action).toBe('nextProblem');
+    expect(resolveShortcut(key({ key: 'F8', shift: true }), ctx({ preview: true })).action).toBe('prevProblem');
+  });
+
+  it('still fires from a text input, as function keys and modified chords do', () => {
+    expect(resolveShortcut(key({ key: 'F8' }), ctx({ preview: true, inTextInput: true })).action).toBe('nextProblem');
+    expect(resolveShortcut(key({ key: 's', ctrl: true }), ctx({ preview: true, inTextInput: true })).action).toBe('recompile');
+  });
+
+  it('resolves nothing when the reader is not a preview', () => {
+    for (const preview of [false, undefined]) {
+      expect(resolveShortcut(key({ key: 's', ctrl: true }), ctx({ preview })).action).toBeNull();
+      expect(resolveShortcut(key({ key: 'F8' }), ctx({ preview })).action).toBeNull();
+      expect(resolveShortcut(key({ key: 'F8', shift: true }), ctx({ preview })).action).toBeNull();
+    }
+  });
+
+  it('lists the bindings under a Preview group in the cheatsheet of a preview only', () => {
+    const rows = deriveCheatsheetRows(ctx({ preview: true }) as never);
+    const preview = rows.filter((r) => (r.group as string) === 'Preview');
+    expect(preview.flatMap((r) => r.keys)).toEqual(expect.arrayContaining(['Ctrl+S', 'F8', 'Shift+F8']));
+    const plain = deriveCheatsheetRows(ctx({ preview: false }) as never);
+    expect(plain.some((r) => (r.group as string) === 'Preview')).toBe(false);
   });
 });

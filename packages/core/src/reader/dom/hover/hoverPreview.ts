@@ -1,15 +1,15 @@
+// Shows the hover preview of in-text references and links: the preview itself, its popup and where it anchors.
+import type { CitationResolver, FloatResolver } from "../highlights/textLayer.js";
+import type { ReaderContext } from "../session/index.js";
+import type { PreviewCitations } from "./citations.js";
+import { type DestPreview, findDestAnchor, DestContent, createDestHoverAnchor, renderTextContent, runUnderPointer, TextAnchors } from "./hoverTarget.js";
+import { findElement, renderElement } from "../../../ui/dom/index.js";
+import type { FloatKind, InTextReference } from "../../text/index.js";
+import { deriveClampedNumber, renderReaderIconButton } from "../highlights/elements.js";
+import { renderIcon } from "../../../ui/index.js";
+
 // Opens one hover popup for a PDF link annotation or a text reference under the pointer.
 // Owns the timers, targets and the `attempt` token that drops stale async work.
-import type { CitationResolver, FloatResolver } from "../text/index.js";
-import type { ReaderContext } from "../session/index.js";
-import type { PreviewCitations } from "./citations/index.js";
-import type { DestPreview } from "./destPreview.js";
-import { isSameHoverAnchor, type HoverAnchor, type PopupContent, type PdfDestination } from "./hoverAnchor.js";
-import { findDestAnchor, DestContent, createDestHoverAnchor } from "./destAnchor.js";
-import { HoverPopup, renderTextContent } from "./popup.js";
-import { runUnderPointer, TextAnchors } from "./textAnchor.js";
-import { findElement } from "../../../ui/dom/index.js";
-import type { FloatKind, InTextReference } from "../../text/index.js";
 
 const MAX_MARKER_ENTRIES = 3;
 const FLOAT_TITLES: Record<FloatKind, string> = { figure: "Figure", table: "Table", equation: "Equation" };
@@ -247,4 +247,70 @@ export class HoverPreview {
       () => { this.close(); content.jump(); },
     );
   }
+}
+
+/** Drives the #hover-popup element: fills it with a title, actions and body, places it next to its anchor and hides it. */
+
+export class HoverPopup {
+  private readonly el = findElement("hover-popup");
+
+  onEnter(handler: () => void): void { this.el.addEventListener("mouseenter", handler); }
+
+  onLeave(handler: () => void): void { this.el.addEventListener("mouseleave", handler); }
+
+  contains(node: Node): boolean { return this.el.contains(node); }
+
+  hide(): void {
+    this.el.classList.remove("rd-visible");
+    this.el.replaceChildren();
+  }
+
+  show(content: PopupContent, anchor: DOMRect, onCopy: (text: string) => void, onJump: () => void): void {
+    const actions = renderElement("div", { class: "rd-hover-actions" });
+    const { copyText } = content;
+    if (copyText) {
+      const copy = renderReaderIconButton(renderIcon("copy"), "Copy reference", "rd-btn-sm");
+      copy.addEventListener("click", () => onCopy(copyText));
+      actions.append(copy);
+    }
+    const go = renderReaderIconButton(renderIcon("arrow-right"), content.jumpLabel ?? "Jump to destination", "rd-btn-sm");
+    go.addEventListener("click", onJump);
+    actions.append(go);
+
+    this.el.replaceChildren(...(content.bare ? [content.body] : [renderElement("div", { class: "rd-hover-header" }, renderElement("span", {}, content.title), actions), content.body]));
+    this.el.classList.add("rd-visible");
+    const p = this.el.getBoundingClientRect();
+    const below = anchor.bottom + 8;
+    const top = below + p.height <= window.innerHeight - 8 ? below : anchor.top - p.height - 8;
+    this.el.style.top = `${deriveClampedNumber(top, 8, Math.max(8, window.innerHeight - p.height - 8))}px`;
+    this.el.style.left = `${deriveClampedNumber(anchor.left + anchor.width / 2 - p.width / 2, 8, Math.max(8, window.innerWidth - p.width - 8))}px`;
+  }
+}
+
+/** Declares what a pending or visible hover popup belongs to, and what it shows. */
+
+export type PdfDestination = Parameters<ReaderContext["linkService"]["goToDestination"]>[0];
+
+export interface HoverAnchor {
+  /** Every element of the target: a link, or the text runs of a reference — OCR text is one run per word, and crossing words must neither restart nor close the popup. */
+  group: Element[];
+  /** The reference inside those runs; tells two references in one long run apart. Null for a link annotation. */
+  ref: InTextReference | null;
+  /** Where the reference sits on screen, for placing the popup. */
+  rect(): DOMRect;
+}
+
+export interface PopupContent {
+  title: string;
+  body: HTMLElement;
+  copyText: string | null;
+  jump: () => void;
+  /** Names what the jump button does; defaults to going to the destination. */
+  jumpLabel?: string;
+  /** The card brings its own actions, so the popup shows no title bar. */
+  bare?: boolean;
+}
+
+export function isSameHoverAnchor(a: HoverAnchor | null, b: HoverAnchor | null): boolean {
+  return a !== null && b !== null && a.group[0] === b.group[0] && a.ref?.start === b.ref?.start && a.ref?.end === b.ref?.end;
 }
