@@ -1,7 +1,7 @@
 // Words the messages and confirmations every app shows for share links.
 import type { OpenShareError } from "../openShare.js";
 import type { SharedImportOutcome } from "../importSharedPapers.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { ShareFolderStage } from "./shareFolder.js";
 
 export const OPEN_SHARE_FAILURE: Record<OpenShareError, string> = {

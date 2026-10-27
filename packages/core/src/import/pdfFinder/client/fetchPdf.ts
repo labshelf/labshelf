@@ -6,7 +6,7 @@ import { deriveSite } from "../urlParts.js";
 import { extractNextHopsFromHtml } from "./hops.js";
 import { isPdfBytes } from "../../../library/index.js";
 import { deriveFetchOutcome } from "./fetchOutcome.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 const MAX_PDF_BYTES = 200 * 1024 * 1024;
 const MAX_HTML_BYTES = 4 * 1024 * 1024;

@@ -1,5 +1,5 @@
 /** Fetches registry responses on the host's fetch for every client: bounded wait, JSON parsing, and undefined after a WARN on any failure. */
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { DEFAULT_CONTACT_EMAIL } from "./registryEmail.js";
 

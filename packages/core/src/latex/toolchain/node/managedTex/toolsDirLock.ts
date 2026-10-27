@@ -4,6 +4,7 @@ import { link, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/prom
 import { join } from "node:path";
 
 import { sleep } from "../../../../async/index.js";
+import { errorCode } from "../../../../errors/index.js";
 import type { ILogger } from "../../../../ports/index.js";
 
 const LOCK_MODULE = "ToolLock";
@@ -22,11 +23,9 @@ function processAlive(pid: number): boolean {
     return true;
   } catch (error) {
     // EPERM: the process exists but belongs to another user.
-    return (error as NodeJS.ErrnoException).code === "EPERM";
+    return errorCode(error) === "EPERM";
   }
 }
-
-const errorCode = (error: unknown): string | undefined => (error as NodeJS.ErrnoException).code;
 
 async function tryCreate(file: string, content: string): Promise<boolean> {
   try {

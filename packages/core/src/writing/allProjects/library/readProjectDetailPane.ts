@@ -11,6 +11,7 @@ import { deriveProjectCitations } from "./deriveProjectCitations.js";
 import { readProjectSources } from "./readProjectSources.js";
 import { parseBibEntries } from "../../bibliography/index.js";
 import { BIBLIOGRAPHY_HEADER } from "../../citations/index.js";
+import { formatError } from "../../../errors/index.js";
 
 /** Undefined when the project has no bibliography file yet. */
 async function bibliographySummary(
@@ -47,7 +48,7 @@ async function part<T>(logger: ILogger, folder: string, name: string, read: () =
     return await read();
   } catch (error) {
     await logger.log("WARN", MODULE, `Could not read the ${name} of a project`, {
-      folder, part: name, error: error instanceof Error ? error.message : String(error),
+      folder, part: name, error: formatError(error),
     });
     return undefined;
   }

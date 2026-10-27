@@ -5,6 +5,7 @@ import type { ManagedTexProvider } from "../../../latex/toolchain/node/managedTe
 import type { ProjectEntry } from "../../project/index.js";
 import type { ToolchainMissing } from "../projectBuildResult.js";
 import type { TexSetupAsk } from "../askTexToolchain.js";
+import { formatError } from "../../../errors/index.js";
 
 const MODULE = "writing/build";
 
@@ -26,7 +27,7 @@ async function install(deps: ToolchainDeps, kind: TexInstallKind, context: Recor
       deps.tex.install(kind, (fraction) => report(fraction === null ? "" : `${Math.round(fraction * 100)}%`)));
   } catch (error) {
     await deps.logger.error(MODULE, error, { ...context, kind, action: "install-tex" });
-    return { status: "toolchain-missing", reason: "install-failed", message: error instanceof Error ? error.message : String(error) };
+    return { status: "toolchain-missing", reason: "install-failed", message: formatError(error) };
   }
   await deps.logger.log("INFO", MODULE, "Installed TeX", { ...context, kind });
   return undefined;

@@ -4,7 +4,7 @@
  */
 import type { PaperRecord } from "../../model/index.js";
 import { PDF_FILE } from "../layout.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
 import { readReadingStatusOnFileSystem } from "./paperOnFileSystem.js";
 

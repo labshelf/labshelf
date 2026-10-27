@@ -1,6 +1,6 @@
 // Recovers text from scans and broken-font PDFs by rendering pages with pdfjs and reading them with Tesseract.
 // INVARIANT: both dependencies load lazily and their absence is non-fatal; callers fall back to the text layer.
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import type { PdfOcrEngine, PdfjsLoader } from "../../pdf/index.js";
 import { loadNativeCanvas } from "../nativeCanvas.js";
 import { openPdfForOcr } from "./ocrDocument.js";

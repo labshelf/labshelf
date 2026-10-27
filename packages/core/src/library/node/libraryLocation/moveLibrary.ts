@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import { deriveLibraryKey, resolveDeviceStateDir } from "../deviceState/index.js";
 import { resolveSharedConfigPath, updateSharedConfig } from "../sharedConfigFile.js";
 import { isLibraryFolder } from "./detectLibraryFolder.js";

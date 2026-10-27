@@ -2,9 +2,10 @@
 // CONTRACT: documents/contracts/spaces.md#layout
 import { SPACE_FORMAT_VERSION } from "./space.js";
 import type { Glossary, GlossaryReadResult, GlossarySource, GlossaryTerm } from "./space.js";
-import {
-  isPage, readEntries, deriveTopLevelReadOnlyReason, deriveUnknownFields, withUnknownFields,
-} from "./json/index.js";
+import { isPage } from "./fieldChecks.js";
+import { readEntries } from "./readEntries.js";
+import { deriveTopLevelReadOnlyReason } from "./readOnlyReason.js";
+import { deriveUnknownFields, withUnknownFields } from "./unknownFields.js";
 import { isNonEmptyString, isOptional, isRecord, isString } from "../../guards/index.js";
 
 const EMPTY: Glossary = { terms: [], invalidTerms: [], extra: {} };

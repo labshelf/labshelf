@@ -1,4 +1,5 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
+import { formatError } from "../../errors/index.js";
 import { createLibraryLayout } from "../../library/index.js";
 import {
   type Glossary,
@@ -14,8 +15,6 @@ import { updateGlossary, updateSpace, type ReadySpace } from "./updateSpace.js";
 import { readAllSpaces, readGlossaryFile, readSpaceFile } from "./readSpace.js";
 import { type SpaceStoreOptions, type StoreContext, SPACE_STORE_MODULE } from "./spaceStoreOptions.js";
 import { runSerially } from "./serialWrites.js";
-
-const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 /** TRAP: another device may create the same folder between the listing and the write, so the id is re-checked last. */
 async function freeSpaceId(ctx: StoreContext, name: string, taken: Set<string>): Promise<string> {
@@ -44,8 +43,8 @@ function createSpaceFile(ctx: StoreContext, name: string): Promise<Space> {
       return space;
     } catch (error) {
       const path = ctx.layout.spaceFilePath(id);
-      await ctx.logger.log("ERROR", SPACE_STORE_MODULE, "Space creation failed", { spaceId: id, path, error: message(error) });
-      throw new Error(`Creating the Space failed for ${path}: ${message(error)}`, { cause: error });
+      await ctx.logger.log("ERROR", SPACE_STORE_MODULE, "Space creation failed", { spaceId: id, path, error: formatError(error) });
+      throw new Error(`Creating the Space failed for ${path}: ${formatError(error)}`, { cause: error });
     }
   });
 }
@@ -57,8 +56,8 @@ function trashSpaceFolder(ctx: StoreContext, id: string): Promise<void> {
       if (!(await ctx.fs.exists(ctx.layout.spaceFilePath(id)))) { throw new Error("the Space does not exist"); }
       await ctx.fs.trash(dir);
     } catch (error) {
-      await ctx.logger.log("ERROR", SPACE_STORE_MODULE, "Space deletion failed", { spaceId: id, path: dir, error: message(error) });
-      throw new Error(`Deleting the Space failed for ${dir}: ${message(error)}`, { cause: error });
+      await ctx.logger.log("ERROR", SPACE_STORE_MODULE, "Space deletion failed", { spaceId: id, path: dir, error: formatError(error) });
+      throw new Error(`Deleting the Space failed for ${dir}: ${formatError(error)}`, { cause: error });
     }
     await ctx.logger.log("INFO", SPACE_STORE_MODULE, "Space moved to trash", { spaceId: id });
   });

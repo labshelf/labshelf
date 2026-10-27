@@ -4,6 +4,7 @@ import { sleep as sleepFor } from "../../async/index.js";
 import { bytesToBase64 } from "../../encoding/index.js";
 import type { TemplateFile } from "../index.js";
 import { GitHubError } from "./githubError.js";
+import { formatError } from "../../errors/index.js";
 
 const API = "https://api.github.com";
 
@@ -31,7 +32,7 @@ async function githubRequest<T>(
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch (err) {
-    throw new GitHubError(step, 0, err instanceof Error ? err.message : String(err));
+    throw new GitHubError(step, 0, formatError(err));
   }
   const data = (await response.json().catch(() => ({}))) as { message?: unknown };
   if (!response.ok) {

@@ -3,6 +3,7 @@
 import type { ProjectReadContext } from "../project/folder/index.js";
 import { deriveProjectValueLeaves, deriveProjectValueFileBase, type ProjectValueLeaf, type ProjectValueSource } from "./projectValueLeaves.js";
 import { deriveProjectValueFilePath } from "./projectValueFile.js";
+import { formatError } from "../../errors/index.js";
 
 const MODULE = "writing/projectValue";
 
@@ -22,7 +23,7 @@ export async function readProjectValues(project: Pick<ProjectValueSource, "folde
     try {
       json = JSON.parse(await fs.readText(paths.join(project.folder, file)));
     } catch (error) {
-      await logger.log("WARN", MODULE, "value file skipped", { ...context, reason: error instanceof Error ? error.message : String(error) });
+      await logger.log("WARN", MODULE, "value file skipped", { ...context, reason: formatError(error) });
       continue;
     }
     const flat = deriveProjectValueLeaves(file, json);

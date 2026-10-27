@@ -2,6 +2,7 @@
 import { isRecord } from "../../guards/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { CloudflareApiError } from "./cloudflareError.js";
+import { formatError } from "../../errors/index.js";
 
 const CLOUDFLARE_API = "https://api.cloudflare.com/client/v4";
 const LOG_MODULE = "relay.deploy";
@@ -22,7 +23,7 @@ export function createCloudflareClient({ token, fetch: doFetch, logger }: Cloudf
       try {
         response = await doFetch(`${CLOUDFLARE_API}${path}`, init);
       } catch (error) {
-        const failure = new CloudflareApiError(method, path, 0, 0, error instanceof Error ? error.message : String(error));
+        const failure = new CloudflareApiError(method, path, 0, 0, formatError(error));
         await logger.log("ERROR", LOG_MODULE, "Cloudflare API unreachable", { method, path, error: failure.cloudflareMessage });
         throw failure;
       }

@@ -1,6 +1,6 @@
 // Pairs bridge requests with the host's answers over one native port and fails every pending request when it closes.
 import {
-  base64ToBytes, BridgeError, joinBytes, splitFileChunks,
+  base64ToBytes, BridgeError, joinBytes, splitFileChunks, toError,
   type BridgeErrorCode, type BridgeRequest, type BridgeResults, type ILogger,
 } from "@labshelf/core";
 import type { NativePort } from "../../platform";
@@ -93,7 +93,7 @@ export class BridgeConnection {
         for (const message of messages) this.port.post({ id, ...message });
       } catch (error) {
         this.pending.delete(id);
-        reject(error instanceof Error ? error : new Error(String(error)));
+        reject(toError(error));
       }
     });
   }

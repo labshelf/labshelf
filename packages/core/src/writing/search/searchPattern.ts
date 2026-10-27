@@ -1,5 +1,6 @@
 // Builds the global RegExp for a project search query and its Match Case, Regex and Whole Word options.
 import { escapeRegExp } from "./escapePattern.js";
+import { formatError } from "../../errors/index.js";
 
 export interface SearchOptions {
   matchCase: boolean;
@@ -14,6 +15,6 @@ export function searchPattern(query: string, options: SearchOptions): RegExp | {
   try {
     return new RegExp(options.wholeWord ? `\\b(?:${source})\\b` : source, options.matchCase ? "g" : "gi");
   } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
+    return { error: formatError(error) };
   }
 }

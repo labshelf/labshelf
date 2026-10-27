@@ -5,7 +5,7 @@
 import { detectIdentifiers, type DetectedIdentifier } from "../../identifiers/index.js";
 import { isPdfBytes } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import { resolveFirstIdentifier } from "../../search/index.js";
 import { parseString } from "../../metadata/index.js";
 import { extractAbstract } from "../abstract.js";

@@ -3,6 +3,7 @@ import { createTypstCompiler, initOptions, loadFonts, type TypstCompiler } from 
 
 import { createCitationProbeSource, PROBE_FILE, PROBE_LABEL, readProbeAnswer, type TypstCitations } from "./typstCitationProbe.js";
 import type { TypstCompilerProblem } from "./deriveTypstProblems.js";
+import { formatError } from "../errors/index.js";
 
 /** Synchronous file access: the compiler asks for files in the middle of a compile and cannot await. Paths are compiler paths. */
 export interface TypstFileAccess {
@@ -80,7 +81,7 @@ export class TypstSession {
         return readProbeAnswer(await world.query({ selector: `<${PROBE_LABEL}>`, field: "value" }));
       });
     } catch (error) {
-      return { failure: error instanceof Error ? error.message : String(error) };
+      return { failure: formatError(error) };
     }
   }
 }

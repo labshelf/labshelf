@@ -5,6 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 import { isDownloadCount } from "../../templateManifest/index.js";
+import { formatError } from "../../../errors/index.js";
 
 /** Counts by template id, or an empty map when `<root>/downloads.json` is missing; throws naming the file when it is invalid. */
 export async function readDownloadCounts(root: string): Promise<Map<string, number>> {
@@ -16,7 +17,7 @@ export async function readDownloadCounts(root: string): Promise<Map<string, numb
   if (text === undefined) { return new Map(); }
   let value: unknown;
   try { value = JSON.parse(text); } catch (error) {
-    throw new Error(`downloads.json: is not valid JSON (${error instanceof Error ? error.message : String(error)})`);
+    throw new Error(`downloads.json: is not valid JSON (${formatError(error)})`);
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error("downloads.json: must be an object mapping template id to a download count");

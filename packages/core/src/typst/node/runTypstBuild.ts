@@ -9,6 +9,7 @@ import { deriveTypstProblems } from "../deriveTypstProblems.js";
 import type { TypstCompileResult, TypstSession } from "../typstSession.js";
 import { deriveFilePathFromCompilerPath, deriveTypstCompilerPath } from "./typstFileAccess.js";
 import { formatPackageLabel, type TypstPackageStore } from "./typstPackages.js";
+import { formatError } from "../../errors/index.js";
 
 const MODULE = "writing/typst";
 
@@ -44,7 +45,7 @@ async function fetchMissing(request: TypstBuildRequest, mainFile: string): Promi
       await request.logger.log("INFO", MODULE, "Downloaded Typst package", { package: formatPackageLabel(spec) });
     } catch (error) {
       await request.logger.error(MODULE, error, { package: formatPackageLabel(spec) });
-      failures.push({ severity: "error", message: `Could not download ${formatPackageLabel(spec)}: ${error instanceof Error ? error.message : String(error)}`, file: mainFile });
+      failures.push({ severity: "error", message: `Could not download ${formatPackageLabel(spec)}: ${formatError(error)}`, file: mainFile });
     }
   }
   return failures;

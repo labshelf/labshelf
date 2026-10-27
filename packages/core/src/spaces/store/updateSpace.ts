@@ -1,4 +1,5 @@
 // Applies one edit to space.json or glossary.json as read-modify-write, re-reading just before the atomic write.
+import { toError } from "../../errors/index.js";
 import { serializeGlossaryFile, serializeSpaceFile } from "../model/index.js";
 import type { Glossary, Space, SpaceReadResult } from "../model/index.js";
 import type { Edited } from "./mutation/index.js";
@@ -12,8 +13,6 @@ async function refuse(ctx: StoreContext, action: string, id: string, path: strin
   await ctx.logger.log("ERROR", SPACE_STORE_MODULE, `${action} failed`, { spaceId: id, path, error: error.message });
   throw error instanceof SpaceReadOnlyError ? error : new Error(`${action} failed for ${path}: ${error.message}`, { cause: error });
 }
-
-const asError = (error: unknown): Error => (error instanceof Error ? error : new Error(String(error)));
 
 async function writableSpace(ctx: StoreContext, id: string): Promise<Space> {
   const current = await readSpaceFile(ctx, id);
@@ -33,7 +32,7 @@ export function updateSpace<T>(
       await ctx.logger.log("INFO", SPACE_STORE_MODULE, action, { spaceId: id });
       return { value, written: { state: "ready", path, space, warnings: [] } };
     } catch (error) {
-      return refuse(ctx, action, id, path, asError(error));
+      return refuse(ctx, action, id, path, toError(error));
     }
   });
 }
@@ -53,7 +52,7 @@ export function updateGlossary<T>(
       await ctx.logger.log("INFO", SPACE_STORE_MODULE, action, { spaceId: id });
       return value;
     } catch (error) {
-      return refuse(ctx, action, id, path, asError(error));
+      return refuse(ctx, action, id, path, toError(error));
     }
   });
 }

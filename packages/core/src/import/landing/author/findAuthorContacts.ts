@@ -1,5 +1,5 @@
 // Finds addresses to ask a paper's authors for a copy: the article page first, then PubMed's affiliation lines.
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import { fetchPubmedAuthorsByDoi, type RegistryEnv } from "../../registries/index.js";
 import { parseHtmlPage } from "../htmlPage.js";
 import type { RawPage } from "../rawPage.js";

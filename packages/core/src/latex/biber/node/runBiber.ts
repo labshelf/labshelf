@@ -14,6 +14,7 @@ import { type BiberWasmAssets, BIBER_ASSET_FILES } from "../biberAssets.js";
 import { parseBiberArgs, type BiberArgs } from "../biberArgs.js";
 import { parseControlFile, type BibliographySource } from "../controlFile.js";
 import { runNativeBiber } from "./runNativeBiber.js";
+import { formatError } from "../../../errors/index.js";
 
 export interface SourcePlaces {
   /** The folder latexmk runs biber in: the main file's folder. */
@@ -203,6 +204,6 @@ export async function runBiber(io: BiberRun, assets: BiberWasmAssets, logger: IL
     return await runWasm(io, args, dataSources, assets, logger);
   } catch (error) {
     await logger.error(MODULE, error, { args: io.args, cwd: io.cwd });
-    return fail(io, args, error instanceof DataSourceRefused ? error.message : `Biber could not run: ${error instanceof Error ? error.message : String(error)}`);
+    return fail(io, args, error instanceof DataSourceRefused ? error.message : `Biber could not run: ${formatError(error)}`);
   }
 }

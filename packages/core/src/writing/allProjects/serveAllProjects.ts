@@ -3,6 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import type { ProjectSubmission } from "../project/index.js";
 import type { AllProjectsEndpoint, AllProjectsToHost } from "./protocol/index.js";
 import type { ProjectLibraryPort } from "./projectLibraryPort.js";
+import { formatError } from "../../errors/index.js";
 
 const MODULE = "allProjects";
 
@@ -68,7 +69,7 @@ export function serveAllProjects(endpoint: AllProjectsEndpoint, port: ProjectLib
   let ready = false;
 
   const logFailure = (action: string, error: unknown, context: Record<string, unknown>): string => {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     void logger.log("ERROR", MODULE, `${action} failed`, { ...context, error: reason });
     return reason;
   };

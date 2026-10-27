@@ -3,7 +3,7 @@
  */
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { PDF_FILE } from "../../../library/index.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import type { ReaderAssets } from "../../index.js";
 import type { PdfjsLib, PdfjsReaderLib } from "./readerContext.js";
 import type { PerfMarks } from "./perfMarks.js";

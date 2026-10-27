@@ -2,7 +2,7 @@
  * Answers the reader's messages on the host side: validates each one and replies through the host's ports.
  */
 import type { Annotation, PdfTheme } from "../../model/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { BuildState, PageArea, PagePoint, PreviewBuildRoots } from "../previewProtocol.js";
 import { isWebviewMessage, type EffectiveTheme, type HostToWebview, type WebviewToHost } from "../protocol/index.js";
 import { annotationHandlers } from "./annotationMessages.js";

@@ -1,7 +1,7 @@
 /** Runs one bounded lookup against a service: a deadline, a read of the body, and a single WARN when it fails. */
 import { reportWarning } from "../env.js";
 import type { FetchFn, ResolverEnv } from "../pdfResolver.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 const LOOKUP_TIMEOUT_MS = 8000;
 const JSON_HEADERS = { Accept: "application/json" };

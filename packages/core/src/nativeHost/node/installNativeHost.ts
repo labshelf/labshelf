@@ -1,5 +1,5 @@
 /** Installs a native host: writes its launcher (script launch) and registers a manifest with every browser this user has. */
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { NativeHostSpec } from "../hostSpecs.js";
 import { resolveHostLayout, isBrowserPresent, detectSandboxWarnings, type BrowserHostSite, type HostLayout } from "./layout/index.js";
 import {

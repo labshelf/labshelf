@@ -5,7 +5,7 @@ import { PROTOCOL_VERSION, type HelperHost, type HelperPhase, type TexToolchain 
 
 import type { HelperHandler, HelperSend } from "./handlers/index.js";
 import { TEX_MODULE, TexInstallError, type ManagedTexProvider, type TexProgress } from "../../latex/toolchain/node/managedTex/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 
 export interface TexInstallHandlerOptions {
   tex: ManagedTexProvider;

@@ -2,7 +2,7 @@
 import type { PaperRecord } from "../../model/index.js";
 import type { ReadingStatus } from "../readingStatus/index.js";
 import { deriveEditedTags, normalizeTags } from "../paper/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import { MUTATIONS_MODULE, type BatchOutcome, type MutationContext, type Reference } from "./mutationDeps.js";
 import { readPaperOnFileSystem } from "./paperOnFileSystem.js";
 import { writePaperRecord } from "./paperRecordWrite.js";

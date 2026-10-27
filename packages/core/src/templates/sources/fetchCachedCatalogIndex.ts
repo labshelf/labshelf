@@ -3,6 +3,7 @@
 
 import type { ILogger, FetchLike } from "../../ports/index.js";
 import type { CachedCatalogIndex, CachedSourceId, TemplateCache } from "./templateSource.js";
+import { formatError } from "../../errors/index.js";
 
 export interface CachedCatalogIndexRequest {
   url: string;
@@ -41,7 +42,7 @@ async function attempt(request: CachedCatalogIndexRequest, deps: CachedCatalogIn
   } catch (error) {
     // An abort is the caller's decision, not a failure to paper over with stale data.
     if (signal?.aborted) { throw error; }
-    return { failure: { error: error instanceof Error ? error.message : String(error) } };
+    return { failure: { error: formatError(error) } };
   }
 }
 

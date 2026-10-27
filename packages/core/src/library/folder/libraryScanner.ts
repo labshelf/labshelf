@@ -3,7 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import type { LibraryScan, PaperEntry } from "../model/index.js";
 import type { PathOps } from "../../path/index.js";
 import { readFolderLevel, type PaperFolder } from "./folderLevel.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import { createScanEnv, reportSkipped, type ScanEnv, type ScanFileSystem } from "./scanEnv.js";
 import type { PaperRecord } from "../../model/index.js";
 import { METADATA_FILE } from "../layout.js";

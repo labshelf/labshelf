@@ -8,13 +8,9 @@ import {
   type SpaceFolder,
   type SpaceReference,
 } from "./space.js";
-import {
-  readEntries,
-  deriveTopLevelReadOnlyReason,
-  deriveUnknownFields,
-  type EntryParse,
-  type ReadEntries,
-} from "./json/index.js";
+import { readEntries, type EntryParse, type ReadEntries } from "./readEntries.js";
+import { deriveTopLevelReadOnlyReason } from "./readOnlyReason.js";
+import { deriveUnknownFields } from "./unknownFields.js";
 import { isCalendarDay } from "../../time/index.js";
 import { isBoolean, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../../guards/index.js";
 

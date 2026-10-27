@@ -2,7 +2,7 @@
  * Applies the host's messages to an open reader: commands, page jumps, annotation updates, preference changes, and a
  * preview's reloads, build state, logs, revealed source points and citation answers, and changed regions.
  */
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import type { PreviewCitations } from "../hover/index.js";
 import type { ChangeMarks, Keyboard, SourceSync } from "../navigation/index.js";
 import type { PdfReloader, ReaderContext } from "../session/index.js";

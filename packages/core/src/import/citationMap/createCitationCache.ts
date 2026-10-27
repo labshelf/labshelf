@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/library-format.md#device-local-files
 import { isRecord, isStringArray } from "../../guards/index.js";
 import type { OpenAlexCitationWork } from "../registries/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { IFileSystem, ILogger } from "../../ports/index.js";
 
 const CACHE_MODULE = "citationMap";

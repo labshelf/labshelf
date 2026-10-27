@@ -1,7 +1,7 @@
 /** Imports one PDF file as a paper: <targetDir>/<citeKey>/paper.pdf with metadata.yaml and bib.bib beside it. */
 import type { PaperRecord } from "../../../model/index.js";
 import { deriveCiteKeySlug } from "../../paper/index.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import { stemOf } from "../../../path/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
 import { deriveMetadataFields, isLowConfidenceImport, type ParsedImport } from "./importedPaperRecord.js";

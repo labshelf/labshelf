@@ -4,6 +4,7 @@ import type { TemplateManifest } from "../templateManifest/index.js";
 import type { HostToGallery, TemplateAddress } from "../protocol/index.js";
 import type { TemplateFile, TemplateSource } from "../sources/index.js";
 import type { TemplateEntry } from "../templateEntry.js";
+import { formatError } from "../../errors/index.js";
 
 export const TEMPLATES_LOG_MODULE = "writing/templates";
 
@@ -25,7 +26,7 @@ export async function createTemplateProject(ports: UseTemplatePorts, source: Tem
     await ports.createProject(title, entry, files);
   } catch (error) {
     await ports.logger.error(TEMPLATES_LOG_MODULE, error, { ...template, action: "use" });
-    const cause = error instanceof Error ? error.message : String(error);
+    const cause = formatError(error);
     ports.post({ type: "notice", kind: "error", text: `Could not create a project from "${entry.name}": ${cause}` });
   } finally {
     ports.post({ type: "use.settled", template });

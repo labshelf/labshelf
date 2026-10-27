@@ -1,4 +1,5 @@
 // Holds the state the Publish handlers share (ports, GitHub session, cached passing report) and reports their failures.
+import { formatError, toError } from "../../errors/index.js";
 import { TEMPLATES_LOG_MODULE } from "./createTemplateProject.js";
 import type { PublishDraft } from "../protocol/index.js";
 import type { PublishCheckReport } from "../publishCheckReport.js";
@@ -13,8 +14,6 @@ export interface PublishContext {
   passed: { key: string; report: PublishCheckReport } | undefined;
 }
 
-const describeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
-const toError = (value: unknown): Error => (value instanceof Error ? value : new Error(String(value)));
 const statusOf = (error: unknown): number | undefined => {
   const status = (error as { status?: unknown } | null)?.status;
   return typeof status === "number" ? status : undefined;
@@ -25,7 +24,7 @@ export const deriveDraftFingerprint = (projectId: string, d: PublishDraft): stri
 /** Logs the failure, posts an error notice and returns the cause for the page. */
 export async function reportPublishFailure(ctx: PublishContext, step: PublishStep, projectId: string | undefined, error: unknown, notice: string): Promise<string> {
   await ctx.ports.logger.error(TEMPLATES_LOG_MODULE, toError(error), { action: "publish", step, projectId, status: statusOf(error) });
-  const cause = describeError(error);
+  const cause = formatError(error);
   ctx.ports.post({ type: "notice", kind: "error", text: `${notice}: ${cause}` });
   return cause;
 }

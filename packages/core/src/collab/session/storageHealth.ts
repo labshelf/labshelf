@@ -1,5 +1,6 @@
 // Tells whether a share's device-local state is being stored, by watching every write its storage port makes.
 import type { CollabDeviceStateStorage } from "../deviceState/index.js";
+import { formatError } from "../../errors/index.js";
 
 export interface StorageHealth {
   /** The error of a write that failed and has not succeeded since; undefined while every write is stored. */
@@ -19,7 +20,7 @@ export function watchStorageHealth(storage: CollabDeviceStateStorage): { storage
       await write();
       failing.delete(key);
     } catch (error) {
-      failing.set(key, error instanceof Error ? error.message : String(error));
+      failing.set(key, formatError(error));
       throw error;
     } finally {
       if (failure() !== before) { listeners.forEach((listener) => listener()); }

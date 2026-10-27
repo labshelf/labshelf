@@ -13,6 +13,7 @@ import { runTexTool, TEX_MODULE } from "./runTexTool.js";
 import type { TexInstallDeps, TexInstallRun } from "./texInstall.js";
 import { findSingleTopDir } from "./unpackedDir.js";
 import { withStagingDir } from "./stagingDir.js";
+import { formatError } from "../../../../errors/index.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -24,7 +25,7 @@ async function download(deps: TexInstallDeps, asset: TinyTexFile): Promise<Buffe
     return bytes;
   } catch (error) {
     await deps.logger.log("WARN", TEX_MODULE, "TinyTeX download failed its HTTP or checksum check", {
-      asset: asset.name, url: asset.url, expected: asset.sha256, error: error instanceof Error ? error.message : String(error),
+      asset: asset.name, url: asset.url, expected: asset.sha256, error: formatError(error),
     });
     throw error;
   }

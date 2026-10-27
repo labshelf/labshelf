@@ -2,7 +2,7 @@
 import { reportWarning } from "../env.js";
 import type { FetchedPdf, PdfFetchOptions, ResolverEnv } from "../pdfResolver.js";
 import { deriveOrigin } from "../urlParts.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 // A tab costs seconds: it tries a few of the site's walled URLs, best first.
 const URLS_PER_TAB = 3;

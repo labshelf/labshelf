@@ -1,7 +1,8 @@
 /** Fans each log entry out to every sink independently and never rejects. */
 import type { LogEntry } from "../model/index.js";
 import type { ILogger, LogSink } from "../ports/index.js";
-import { createLogEntry, describeError } from "./logEntry.js";
+import { describeError } from "../errors/index.js";
+import { createLogEntry } from "./logEntry.js";
 
 export interface LoggerOptions {
   /** Called when a sink fails; the failing sink is the only one affected. */

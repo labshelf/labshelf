@@ -6,7 +6,7 @@ import { parseHelperMessage, type ToHelperMessage } from "../../index.js";
 import { HelperProjectError } from "../projects/index.js";
 import type { HelperServerOptions } from "../connection/index.js";
 import { createErrorReply, type ErrorReply, type HelperHandlers, type HelperSend } from "./helperHandlers.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 const LOG_MODULE = "helper-dispatch";
 // A message that never parsed has no id to answer; the envelope still needs one.

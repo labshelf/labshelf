@@ -1,6 +1,6 @@
 // Watches whether the library root folder exists and reports when it disappears or returns.
 import type { ILogger } from "../../ports/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 
 const MODULE = "externalChange";
 

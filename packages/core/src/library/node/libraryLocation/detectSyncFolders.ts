@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import type { SyncTool } from "../../conflicts/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 interface ClientConfigSite {
   home: string;

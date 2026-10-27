@@ -1,6 +1,7 @@
 // Reads the build a relay reports at /version and orders builds so the relay is only ever upgraded.
 import type { ILogger } from "../../ports/index.js";
 import { RELAY_PATH } from "../http/index.js";
+import { formatError } from "../../errors/index.js";
 
 /** A Worker build `<major>.<minor>.<patch>`: the protocol version it serves and a counter that grows with every bundle. */
 export interface WorkerBuild { major: number; minor: number; patch: number }
@@ -29,7 +30,7 @@ export async function fetchWorkerBuild(relayUrl: string, doFetch: typeof fetch, 
     if (!build) { throw new Error("the answer has no valid worker build"); }
     return build;
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     await logger.log("WARN", "relay.deploy", "Relay /version unreadable", { url, error: reason });
     throw new Error(`Could not read the relay's version at ${url}: ${reason}`, { cause: error });
   }

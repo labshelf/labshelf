@@ -11,7 +11,7 @@ import type {
 import { isSparseText, type PdfjsLoader } from "../../pdf/index.js";
 import { openPdfForOcr, type OcrDocument } from "./ocrDocument.js";
 import type { TesseractOcrEngine } from "./tesseractOcrEngine.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 type RewriteTarget =
   | { status: "ready"; target: PDFDocument }

@@ -1,6 +1,6 @@
 // Splits a synced JSON array into its valid entries and the raw entries it cannot read.
 // CONTRACT: documents/contracts/spaces.md#reading-and-writing
-import { isNonEmptyString, isRecord } from "../../../guards/index.js";
+import { isNonEmptyString, isRecord } from "../../guards/index.js";
 
 /** An entry, or the reason it is invalid. */
 export type EntryParse<T> = (raw: unknown) => T | string;

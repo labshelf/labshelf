@@ -1,6 +1,5 @@
 // Changes the folders of a Space and the paper references inside them.
-import { createEntryId } from "../../model/index.js";
-import { parseEntryIds } from "../../model/json/index.js";
+import { createEntryId, parseEntryIds } from "../../model/index.js";
 import type { Space, SpaceFolder } from "../../model/index.js";
 import { withOptionalField } from "./optionalField.js";
 

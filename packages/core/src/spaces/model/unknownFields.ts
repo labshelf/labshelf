@@ -1,5 +1,5 @@
 // Carries the keys a JSON object has beyond the known ones through a rewrite.
-import type { UnknownFields } from "../space.js";
+import type { UnknownFields } from "./space.js";
 
 // TRAP: plain assignment of "__proto__" sets the prototype, and `in` sees inherited names such as "toString";
 // own-property checks and defineProperty keep those keys as ordinary data.

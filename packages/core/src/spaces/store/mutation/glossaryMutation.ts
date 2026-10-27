@@ -1,6 +1,5 @@
 // Changes the terms of a Space's glossary.
-import { createEntryId } from "../../model/index.js";
-import { isPage, parseEntryIds } from "../../model/json/index.js";
+import { createEntryId, isPage, parseEntryIds } from "../../model/index.js";
 import { isNonEmptyString, isOptional } from "../../../guards/index.js";
 import type { Glossary, GlossaryTerm } from "../../model/index.js";
 

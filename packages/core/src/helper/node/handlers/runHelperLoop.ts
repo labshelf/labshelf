@@ -6,7 +6,7 @@ import { parseHelperMessage, type HelperParseResult, type ToHelperMessage } from
 import { readFrames } from "../transport/index.js";
 import type { HelloMessage } from "./answerHello.js";
 import { createErrorReply, type ErrorReply, type HelperSend } from "./helperHandlers.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 const LOG_MODULE = "helper-loop";
 // A frame that never parsed has no id to answer; the envelope still needs one.

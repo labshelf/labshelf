@@ -1,5 +1,5 @@
 // Answers the sharing dialogs' calls from another context by running them on a SharingHost.
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { MessageEnd } from "../protocol/index.js";
 import type { ShareHost, ShareProgress } from "./shareHost.js";

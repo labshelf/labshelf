@@ -1,6 +1,6 @@
 /** Turns text-layer checks and OCR jobs into the verdict stored on a paper, and decides when a new verdict is worth writing. */
 import type { TextLayerDetails } from "../../../model/index.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import type { TextLayerDetection, TextLayerOutcome } from "./textLayerOutcome.js";
 
 /** @returns the current time as an ISO timestamp */

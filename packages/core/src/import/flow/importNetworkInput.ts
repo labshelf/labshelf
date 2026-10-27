@@ -3,7 +3,7 @@ import { type ImportOutcome, importPdf, isPdfBytes } from "../../library/index.j
 import { extractIdentifiersFromInput } from "../identifiers/index.js";
 import { type NetworkImportEnv, NETWORK_IMPORT_MODULE, createPdfFinderOptions, createRegistryEnv } from "./env.js";
 import { importIdentifier, type IdentifierImportOptions } from "./importIdentifier.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import { derivePageFacts, parseHtmlPage } from "../landing/index.js";
 import { normalizeTitle } from "../pdf/index.js";
 import { findPaperPdf } from "../pdfFinder/index.js";

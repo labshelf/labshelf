@@ -7,7 +7,7 @@ import { BRIDGE_PROTOCOL } from "../protocol.js";
 import { assertSameProtocol, parseBridgeRequest, parseRequestId } from "../requestValidation.js";
 import type { LibraryFileOperations } from "./fileOperations.js";
 import { base64ToBytes, joinBytes } from "../../encoding/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 
 // CONTRACT: documents/contracts/bridge.md#file-transfer
 const MAX_OPEN_WRITES = 8;

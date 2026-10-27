@@ -1,5 +1,5 @@
 /** Expands what the user picked for import (files and folders) into the PDF files to import. */
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import { MUTATIONS_MODULE, type MutationContext } from "../mutationDeps.js";
 
 export interface PdfDiscovery {

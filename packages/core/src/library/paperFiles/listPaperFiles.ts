@@ -3,7 +3,7 @@ import type { LibraryFileSystem, ILogger } from "../../ports/index.js";
 import { PDF_FILE } from "../layout.js";
 import { isHiddenPaperEntry } from "./hiddenEntries.js";
 import type { PaperFile, PaperFilesState } from "./paperFile.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 
 const byName = (a: PaperFile, b: PaperFile): number => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 

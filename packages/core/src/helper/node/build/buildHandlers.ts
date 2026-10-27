@@ -12,7 +12,7 @@ import { HelperProjectError, type HelperProjects } from "../projects/index.js";
 import { BUILD_MODULE, runBuildJob, type BuildToken } from "./runBuildJob.js";
 import { createHelperToolchainAsk } from "./askHelperToolchain.js";
 import type { SentPages } from "./sendPages.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 export interface BuildHandlerOptions {
   /** The helper's data folder; each project builds in `projects/<id>/src` and `projects/<id>/build`. */

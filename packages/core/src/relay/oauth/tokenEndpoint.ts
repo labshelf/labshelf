@@ -2,6 +2,7 @@
 import type { ILogger } from "../../ports/index.js";
 import { CLOUDFLARE_CLIENT_ID, CLOUDFLARE_REDIRECT_URI, CLOUDFLARE_TOKEN_URL } from "./oauthClient.js";
 import { CloudflareOauthError } from "./oauthError.js";
+import { formatError } from "../../errors/index.js";
 
 const LOG_MODULE = "relay.deploy";
 
@@ -32,7 +33,7 @@ async function requestTokens(options: TokenRequestOptions, grant: string, fields
   try {
     response = await options.fetch(CLOUDFLARE_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     await logger.log("ERROR", LOG_MODULE, "Cloudflare token endpoint unreachable", { grant, error: reason });
     throw new CloudflareOauthError("unreachable", reason);
   }

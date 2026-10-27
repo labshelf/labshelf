@@ -1,5 +1,5 @@
 /** Uninstalls a native host: removes only the manifests that point at this install, their registry keys and its launcher. */
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { NativeHostSpec } from "../hostSpecs.js";
 import { resolveHostLayout, type BrowserHostSite } from "./layout/index.js";
 import { INSTALL_LOG_MODULE, type BinaryEntry, type BrowserId, type NativeHostEnv, type NativeHostWarning } from "./nativeHostEnv.js";

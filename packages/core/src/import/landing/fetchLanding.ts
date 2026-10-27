@@ -3,7 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import { parseHtmlPage } from "./htmlPage.js";
 import { derivePageFacts } from "./pageFacts.js";
 import type { PageFacts } from "./rawPage.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 
 const LANDING_MODULE = "landing";
 

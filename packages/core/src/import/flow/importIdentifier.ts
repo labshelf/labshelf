@@ -1,6 +1,6 @@
 /** Imports a paper from an identifier: resolves its record through the registries and looks for its PDF. */
 import type { ImportOutcome } from "../../library/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
 import { extractIdentifiersFromInput } from "../identifiers/index.js";
 import type { ResolvedMetadata } from "../metadata/index.js";

@@ -1,5 +1,5 @@
 // Reads title blocks, identifier-detection text and link annotation targets from a PdfDocumentLike.
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import type { ILogger } from "../../ports/index.js";
 import type { PageText, PdfDocumentLike, TextBlock } from "./pdfDocument.js";
 

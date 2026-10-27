@@ -3,6 +3,7 @@
 
 import type { ILogger, FetchLike } from "../../ports/index.js";
 import type { TemplateCache } from "./templateSource.js";
+import { formatError } from "../../errors/index.js";
 
 export interface CachedThumbnailRequest {
   url: string;
@@ -28,7 +29,7 @@ async function download(request: CachedThumbnailRequest, deps: CachedThumbnailDe
   } catch (error) {
     // An abort is the caller's decision, not a missing thumbnail.
     if (signal?.aborted) { throw error; }
-    return { error: error instanceof Error ? error.message : String(error) };
+    return { error: formatError(error) };
   }
 }
 

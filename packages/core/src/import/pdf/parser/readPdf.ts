@@ -1,7 +1,7 @@
 /** Reads every signal the PDF file itself carries, in one pass over the document. */
 import { extractUrls, extractPageTexts, extractTitleBlocks } from "../textExtraction.js";
 import { extractMetadataFromXmp } from "../xmp.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 import type { ILogger } from "../../../ports/index.js";
 import type { ResolvedMetadata } from "../../metadata/index.js";
 import type { PdfDocumentLike, PdfOpener, TextBlock } from "../pdfDocument.js";

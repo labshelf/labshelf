@@ -2,7 +2,7 @@
 // CONTRACT: documents/contracts/spaces.md#reading-and-writing
 import { SPACE_FORMAT_VERSION } from "./space.js";
 import type { Space, SpaceDate, SpaceFolder, SpaceReference } from "./space.js";
-import { withUnknownFields } from "./json/index.js";
+import { withUnknownFields } from "./unknownFields.js";
 
 const folderJson = (folder: SpaceFolder) => withUnknownFields({ id: folder.id, name: folder.name, parent: folder.parent }, folder.extra);
 

@@ -2,7 +2,7 @@
  * Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
  */
 import type { WebviewToHost } from "../protocol/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 import { normalizeReadingPosition } from "../sidecar/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostContext.js";
 

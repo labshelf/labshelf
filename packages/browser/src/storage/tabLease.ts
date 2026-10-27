@@ -1,5 +1,6 @@
 // Holds the Web Lock that lets one tab of this browser profile run a share's session and mirror.
 // CONTRACT: documents/contracts/collaboration.md#mirror-ownership
+import { isAbortError } from "@labshelf/core";
 
 export interface TabLease {
   /** Fires once when another tab takes the lock over, also for a listener added after that; the tab then stops writing to disk. */
@@ -11,10 +12,6 @@ export type TabLeaseResult = { kind: "busy" } | { kind: "owned"; lease: TabLease
 
 export function createTabLeaseName(libraryId: string, shareId: string): string {
   return `labshelf:collab:${libraryId}:${shareId}`;
-}
-
-function isAbort(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
 }
 
 // INVARIANT: the lock is held while the request callback's promise is pending; resolving it releases the lock.
@@ -46,7 +43,7 @@ function holdLock(name: string, options: LockOptions): Promise<TabLease | undefi
       () => { ended = true; },
       (error: unknown) => {
         ended = true;
-        if (acquired && isAbort(error)) { lost = true; for (const listener of listeners) { listener(); } return; }
+        if (acquired && isAbortError(error)) { lost = true; for (const listener of listeners) { listener(); } return; }
         rejectAcquire(error);
       },
     );

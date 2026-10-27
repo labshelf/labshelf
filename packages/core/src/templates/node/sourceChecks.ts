@@ -5,6 +5,7 @@ import { isLicenseExpression, deriveTemplateSizeProblem, deriveTemplateStructure
 import type { PublishCheckId } from "../publishCheckLabels.js";
 import { listProjectFiles } from "./projectFiles.js";
 import type { FoundFile } from "./walkFolder.js";
+import { formatError } from "../../errors/index.js";
 
 type SourceCheckId = Extract<PublishCheckId, "license" | "paths" | "latexmkrc" | "sizes">;
 export interface SourceCheck {
@@ -38,7 +39,7 @@ export async function runSourceChecks(
     const linked = files.find((file) => file.nlink > 1);
     if (linked) throw new Error(`"${linked.path}" is a hard link`);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     return { files: undefined, checks: [license, result("paths", reason), result("latexmkrc", NOT_LISTED), result("sizes", NOT_LISTED)] };
   }
   const rc = files.find((file) => isLatexmkrc(file.path));

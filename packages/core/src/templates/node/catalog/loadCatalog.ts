@@ -8,6 +8,7 @@ import * as path from "node:path";
 import { parseTemplateManifest, type CatalogAsset, type CatalogEntry } from "../../templateManifest/index.js";
 import { readTemplateTree } from "../readTemplateTree.js";
 import { readPreviews } from "./readPreviews.js";
+import { formatError } from "../../../errors/index.js";
 
 export interface CatalogProblem { id: string; reason: string }
 export interface LoadedCatalog { entries: CatalogEntry[]; problems: CatalogProblem[] }
@@ -43,7 +44,7 @@ export async function loadCatalog(root: string): Promise<LoadedCatalog> {
   const result: LoadedCatalog = { entries: [], problems: [] };
   for (const id of ids) {
     try { result.entries.push(await loadTemplate(path.join(root, "templates", id), id)); } catch (error) {
-      result.problems.push({ id, reason: error instanceof Error ? error.message : String(error) });
+      result.problems.push({ id, reason: formatError(error) });
     }
   }
   return result;

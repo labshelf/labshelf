@@ -2,11 +2,11 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
+import { errorCode } from "../../errors/index.js";
 import { BridgeError } from "../bridgeError.js";
 
 type PathApi = Pick<typeof path, "relative" | "isAbsolute" | "sep">;
 
-const errnoCode = (error: unknown): string | undefined => (error as NodeJS.ErrnoException).code;
 const outside = (relative: string): BridgeError =>
   new BridgeError("outsideLibrary", `Path "${relative}" is outside the library`);
 // The library is shared across OSes, so a name Windows cannot hold is refused everywhere.
@@ -23,7 +23,7 @@ async function realPathOrAncestor(target: string, relative: string): Promise<str
   try {
     return await fs.realpath(target);
   } catch (error) {
-    if (errnoCode(error) !== "ENOENT") throw error;
+    if (errorCode(error) !== "ENOENT") throw error;
   }
   // A dangling symlink resolves nowhere, and a write through it would create its target wherever it points.
   if (await fs.lstat(target).then((s) => s.isSymbolicLink(), () => false)) throw outside(relative);
@@ -35,7 +35,7 @@ async function realRootOf(root: string): Promise<string> {
   try {
     return await fs.realpath(root);
   } catch (error) {
-    throw new BridgeError("noLibrary", `Library folder "${root}" is not reachable (${errnoCode(error) ?? String(error)})`);
+    throw new BridgeError("noLibrary", `Library folder "${root}" is not reachable (${errorCode(error) ?? String(error)})`);
   }
 }
 

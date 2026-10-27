@@ -3,6 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import { detectEntryFile } from "./buildRoot/index.js";
 import type { ProjectEntry, ProjectPlacement } from "./projectEntry.js";
 import { PROJECT_FILE, parseProjectFile } from "./projectFile.js";
+import { formatError } from "../../errors/index.js";
 
 /** One project folder as the host sees it; names are relative to the folder. */
 export interface ProjectFolderReader {
@@ -35,6 +36,6 @@ export async function readProjectEntry({ folder, location, reader, logger }: Rea
     return { kind: "ready", folder, location, settings: parsed.settings, main };
   } catch (error) {
     await logger.error("project", error, { folder, action: "read" });
-    return { kind: "broken", folder, location, reason: error instanceof Error ? error.message : String(error) };
+    return { kind: "broken", folder, location, reason: formatError(error) };
   }
 }

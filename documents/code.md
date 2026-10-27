@@ -23,6 +23,7 @@ Generic helpers live in a core module named after their subject and are imported
 
 - `packages/core/src/async`: debouncers, sleep, deadlines.
 - `packages/core/src/encoding`: bytes, base64, base64url, hex.
+- `packages/core/src/errors`: formatError, describeError, toError, errorCode, isAbortError for a thrown unknown.
 - `packages/core/src/guards`: narrowing predicates over unknown for parsers.
 - `packages/core/src/hash`: SHA-256 content hashes.
 - `packages/core/src/json`: parseJsonObject, JSON text to a plain object or undefined.

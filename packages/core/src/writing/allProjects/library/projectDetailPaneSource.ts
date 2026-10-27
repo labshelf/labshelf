@@ -3,6 +3,7 @@ import type { ProjectBuildReport, ProjectPaneContent } from "../projectDetailPan
 import { readProjectCitations } from "./readProjectCitationCounts.js";
 import { readProjectPaneContent } from "./readProjectDetailPane.js";
 import type { ProjectLibraryDeps, ReadyProject, BuildProblem, BuildSources } from "./projectLibraryDeps.js";
+import { formatError } from "../../../errors/index.js";
 
 function problemsOf({ builds }: BuildSources, folder: string): BuildProblem[] {
   return [...builds.builtRoots(folder)].flatMap((root) => builds.problemsOf(folder, root) ?? []);
@@ -63,7 +64,7 @@ export function createProjectPaneSource(deps: ProjectLibraryDeps): ProjectPaneSo
         return value;
       } catch (error) {
         await logger.log("WARN", "writing.allProjects", "could not read the cites of a project", {
-          folder: project.folder, error: error instanceof Error ? error.message : String(error),
+          folder: project.folder, error: formatError(error),
         });
         return undefined;
       }

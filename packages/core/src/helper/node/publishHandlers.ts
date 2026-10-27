@@ -24,7 +24,7 @@ import { readProject } from "../../writing/project/folder/index.js";
 import { createNodeProjectReadCompositionRoot } from "../../writing/project/node/index.js";
 import { formatEngineLabel } from "../../latex/index.js";
 import { deriveTemplateTreeProblem } from "../../templates/templateManifest/index.js";
-import { formatError } from "../../logging/index.js";
+import { formatError } from "../../errors/index.js";
 
 async function checkPublishSnapshot(dataDir: string, input: PublishCheckInput, build: (folder: string) => ReturnType<PublishCheckInput["buildPdf"]>): Promise<PublishCheckReport> {
   const source = await runSourceChecks(input.projectFolder, input.manifest);

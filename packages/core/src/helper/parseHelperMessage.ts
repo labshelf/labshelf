@@ -10,7 +10,7 @@ import { isRecord } from "../guards/index.js";
 import { FieldError } from "./messageFields.js";
 import { readToHelper } from "./readToHelper.js";
 import { readToPage } from "./readToPage.js";
-import { formatError } from "../logging/index.js";
+import { formatError } from "../errors/index.js";
 
 const MAX_ID_LENGTH = 64;
 

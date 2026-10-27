@@ -7,7 +7,7 @@ import { MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION } from "../../helperMessages
 import { parseHelperMessage } from "../../parseHelperMessage.js";
 import { decodeConnectionMessage, encodeConnectionMessage } from "../../connectionFrame.js";
 import { encodeServerFrame, FrameReader, OPCODE, type FrameEvent } from "./frameCodec.js";
-import { formatError } from "../../../logging/index.js";
+import { formatError } from "../../../errors/index.js";
 
 const MODULE = "helperSocket";
 

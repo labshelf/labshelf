@@ -1,9 +1,8 @@
 // Reads Space files with diagnostics for unreadable content.
+import { formatError } from "../../errors/index.js";
 import { parseGlossaryFile, parseSpaceFile } from "../model/index.js";
 import type { GlossaryReadResult, SpaceReadResult } from "../model/index.js";
 import { SPACE_STORE_MODULE, type StoreContext } from "./spaceStoreOptions.js";
-
-const message = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
 export async function readSpaceFile(ctx: StoreContext, id: string): Promise<SpaceReadResult> {
   const path = ctx.layout.spaceFilePath(id);
@@ -11,7 +10,7 @@ export async function readSpaceFile(ctx: StoreContext, id: string): Promise<Spac
   try {
     result = parseSpaceFile(await ctx.fs.readText(path), { id, path });
   } catch (error) {
-    result = { state: "unreadable", id, path, reason: message(error) };
+    result = { state: "unreadable", id, path, reason: formatError(error) };
   }
   if (result.state === "unreadable") {
     await ctx.logger.log("WARN", SPACE_STORE_MODULE, "Space is unreadable", { path, reason: result.reason });
@@ -28,7 +27,7 @@ export async function readGlossaryFile(ctx: StoreContext, id: string): Promise<G
     result = parseGlossaryFile(await ctx.fs.exists(path) ? await ctx.fs.readText(path) : undefined);
   } catch (error) {
     const empty = parseGlossaryFile(undefined);
-    const reason = `glossary.json could not be read: ${message(error)}`;
+    const reason = `glossary.json could not be read: ${formatError(error)}`;
     result = { ...empty, readOnlyReason: reason };
     await ctx.logger.log("WARN", SPACE_STORE_MODULE, "Glossary is unreadable", { path, reason });
   }

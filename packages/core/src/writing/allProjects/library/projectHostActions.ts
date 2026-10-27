@@ -3,6 +3,7 @@ import { isInside } from "../../../path/index.js";
 import type { ProjectSubmission } from "../../project/index.js";
 import type { ProjectLibraryPort } from "../projectLibraryPort.js";
 import type { ProjectLibraryDeps, ReadyProject } from "./projectLibraryDeps.js";
+import { formatError } from "../../../errors/index.js";
 
 export interface ProjectHostActionDeps extends Pick<ProjectLibraryDeps, "fs" | "paths" | "host" | "locate"> {
   /** Throws when the id is not a readable project of the library. */
@@ -44,7 +45,7 @@ export function createProjectHostActions(deps: ProjectHostActionDeps): HostActio
         await fs.ensureDir(paths.dirname(target));
         await fs.writeFile(target, new Uint8Array());
       } catch (error) {
-        throw new Error(`${file} could not be created in ${folder}: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`${file} could not be created in ${folder}: ${formatError(error)}`);
       }
       await deps.openFile(id, file);
     },

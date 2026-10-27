@@ -1,6 +1,6 @@
 // Pairs requests with the helper's replies by id over a channel and fails every pending request when the channel closes.
 import { parseHelperMessage, PROTOCOL_VERSION, type ToHelperMessage, type ToPageMessage } from "@labshelf/core/helper";
-import type { ILogger } from "@labshelf/core";
+import { toError, type ILogger } from "@labshelf/core";
 import type { HelperChannel } from "./helperChannel";
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -106,7 +106,7 @@ export class HelperConnection {
       const step = pending.step(message, payload);
       if (step) { this.pending.delete(message.id); pending.resolve(step.done); }
     } catch (error) {
-      this.settleError(message.id, error instanceof Error ? error : new Error(String(error)));
+      this.settleError(message.id, toError(error));
     }
   }
 
