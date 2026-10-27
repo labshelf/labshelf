@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import { registerCollab } from "../../collab/node/index.js";
-import { pickLibraryRoot, offerLibraryMove, runMoveLibraryCommand } from "../../library/node/index.js";
+import { nodeSharedLibraryConfig, pickLibraryRoot, offerLibraryMove, runMoveLibraryCommand } from "../../library/node/index.js";
 import { registerShareLinks } from "../../share/node/index.js";
 import { sharingWebviews } from "../../share/index.js";
 import { createVscodeShareHost, serveShareOn } from "../../share/node/index.js";
@@ -10,7 +10,7 @@ import { registerNodeWriting } from "../../writing/node/index.js";
 import type { ExtensionPlatform } from "../extensionPlatform.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as path from "node:path";
-import { FileProjectVersionStore, createProjectContent } from "@labshelf/core";
+import { FileProjectVersionStore, Logger, createProjectContent, type ILogger } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   nodePathOps,
@@ -23,16 +23,24 @@ import {
   resolveProjectConflictCopy,
   scanLibraryConflicts,
   createProjectWriteTracking,
+  FileLogSink,
 } from "@labshelf/core/node";
-import { createExtensionLogger } from "../../logging/node/index.js";
 import {
   createOcrEngine,
   createTextLayerBuilder,
   hostPdfjs,
   findPdfjs,
 } from "../../reader/node/index.js";
-import { nodeSharedLibraryConfig } from "../../storage/node/index.js";
 import type { HostAdapters } from "../hostAdapters.js";
+
+/** Builds the extension's logger: the rotating app.log file, with the extension host console as the fallback channel when the sink fails. */
+export function createExtensionLogger(appLogPath: string): ILogger {
+  return new Logger([new FileLogSink(appLogPath)], {
+    onSinkError: (error, entry) => {
+      console.error("LabShelf: failed to write a log entry", { module: entry.module, message: entry.message, error });
+    },
+  });
+}
 
 export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapters {
   const fs = new NodeLibraryFileSystem();

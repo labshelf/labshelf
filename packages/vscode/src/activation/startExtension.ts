@@ -2,13 +2,12 @@
 import * as vscode from "vscode";
 
 import { createSelectionHub, createLibraryLayout, type AiService } from "@labshelf/core";
-import { resolveLibraryRoot } from "../storage/paths/index.js";
-import { moveLibraryRootToConfig } from "../storage/index.js";
 import { createSelectionSources, type DetailsView } from "../libraryUi/details/index.js";
 import { ListWebviewPanel } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
-import { createLibraryEvents, type LibraryEvents } from "../library/index.js";
-import { ConflictHandling, registerConflictCommand, registerSyncGuideCommand } from "../library/index.js";
+import {
+  ConflictHandling, createLibraryEvents, moveLibraryRootToConfig, registerConflictCommand, registerSyncGuideCommand, resolveLibraryRoot, type LibraryEvents,
+} from "../library/index.js";
 import type { ExtensionPlatform } from "./extensionPlatform.js";
 import { ExternalChangeHandling } from "./externalChangeHandling.js";
 import { LibraryRootController } from "./libraryRootController.js";

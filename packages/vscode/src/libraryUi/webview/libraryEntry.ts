@@ -12,7 +12,9 @@ import "@labshelf/core/styles/library-detail.css";
 import "@labshelf/core/styles/library-tabs.css";
 import "@labshelf/core/styles/library-citation-map.css";
 import { findElement, mountLibraryUi } from "@labshelf/core/dom";
-import { createWebviewChannel, libraryUiCapabilities, libraryUiLabels } from "./index.js";
+import type { HostToUi, UiToHost } from "@labshelf/core";
+import { createWebviewChannel } from "../../webview/index.js";
+import { libraryUiCapabilities, libraryUiLabels } from "./index.js";
 
-const { transport, prefs, sharing } = createWebviewChannel();
+const { transport, prefs, sharing } = createWebviewChannel<UiToHost, HostToUi>();
 mountLibraryUi(findElement("root"), { transport, prefs, sharing, capabilities: libraryUiCapabilities, labels: libraryUiLabels });

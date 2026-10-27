@@ -1,10 +1,15 @@
-/** Changes and reads papers already in the library: disk first through the core mutations, then the index and its events. */
+/** Changes and reads papers already in the library, and lists and describes the files of a paper folder: disk first through the core mutations, then the index and its events. */
 import * as vscode from "vscode";
 
-import { updatePaperTags, movePapers, createPaperFiles, resolveReferences, movePapersToTrash, updatePaperFields, withResolvedMetadata, writePaperRecord } from "@labshelf/core";
-import type { BatchOutcome, LibraryStore, MoveOutcome, MutationContext, PaperFieldsUpdate, PaperRecord, PdfParse, PaperRecordMetadata } from "@labshelf/core";
-import type { LibraryEvents } from "./libraryEvents.js";
-import type { RefreshLibraryResult } from "../storage/index.js";
+import {
+  updatePaperTags, movePapers, createPaperFiles, resolveReferences, movePapersToTrash, updatePaperFields, withResolvedMetadata, writePaperRecord,
+  describePaperFileOnFileSystem, formatError, listPaperFiles,
+} from "@labshelf/core";
+import type {
+  BatchOutcome, ILogger, LibraryFileSystem, LibraryStore, MoveOutcome, MutationContext, PaperFieldsUpdate, PaperFilesState, PaperRecord, PdfParse, PaperRecordMetadata,
+} from "@labshelf/core";
+import type { LibraryEvents } from "./events.js";
+import type { RefreshLibraryResult } from "./location.js";
 
 export class PaperService {
   constructor(
@@ -183,5 +188,43 @@ export class PaperService {
       const record = this.store.snapshot.papers.get(id)?.record;
       return record && { path: record.path, record };
     });
+  }
+}
+
+const LOG_MODULE = "library/paperFiles";
+
+export class PaperFileService {
+  constructor(
+    private readonly fs: Pick<LibraryFileSystem, "listDir" | "stat">,
+    private readonly findPaper: (id: string) => Promise<PaperRecord | undefined>,
+    private readonly ctx: MutationContext,
+    private readonly logger: ILogger,
+    private readonly reindex: () => Promise<RefreshLibraryResult>,
+  ) {}
+
+  /** @returns the paper folder's entries with their descriptions, or a failed state when the paper or folder is unreadable */
+  async list(paperId: string): Promise<PaperFilesState> {
+    const paper = await this.findPaper(paperId);
+    if (!paper) {
+      await this.logger.log("WARN", LOG_MODULE, "Files asked for a paper not in the library", { id: paperId });
+      return { status: "failed", message: "The paper is not in the library" };
+    }
+    return listPaperFiles(this.fs, paper.path, paper.files, this.logger);
+  }
+
+  /**
+   * Sets (trimmed) or clears one file's description; an empty description removes it.
+   * @returns the fresh listing, or undefined when the paper is unknown or `name` is not one of its files
+   */
+  async describe(paperId: string, name: string, description: string): Promise<PaperFilesState | undefined> {
+    const paper = await this.findPaper(paperId);
+    try {
+      if (!paper || !(await describePaperFileOnFileSystem(this.ctx, paper.path, name, description))) { throw new Error("The paper is not in the library"); }
+    } catch (error) {
+      await this.logger.log("WARN", LOG_MODULE, "File description refused", { id: paperId, name, path: paper?.path, message: formatError(error) });
+      return undefined;
+    }
+    await this.reindex();
+    return this.list(paperId);
   }
 }

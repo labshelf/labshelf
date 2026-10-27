@@ -2,13 +2,9 @@
 import * as vscode from "vscode";
 
 import { LibraryStore, PaperSidecarStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
-import { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
-import { ensureLibraryStructure } from "../storage/paths/index.js";
-import { VscodeFileSystem } from "../storage/index.js";
+import { PaperImporter, PaperService, PaperTextLayers, VscodeFileSystem, ensureLibraryStructure, refreshLibrary, type LibraryEvents, type RefreshLibraryResult } from "../library/index.js";
 import { addTextLayerJobs } from "../command/index.js";
-import { refreshLibrary, type RefreshLibraryResult } from "../storage/index.js";
 import type { ActiveServices } from "../command/index.js";
-import type { LibraryEvents } from "../library/index.js";
 import type { ILogger } from "@labshelf/core";
 import type { HostAdapters } from "./hostAdapters.js";
 

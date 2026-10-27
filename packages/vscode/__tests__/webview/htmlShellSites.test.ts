@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { listPanelHtml } from "../../src/libraryUi/listPanelHtml";
 import { searchHtml } from "../../src/writing/search/view";
-import { registerSyncGuideCommand } from "../../src/library/syncGuide/registerSyncGuideCommand";
+import { registerSyncGuideCommand } from "../../src/library/syncGuide";
 import { AllProjectsPanel } from "../../src/writing/projects/allProjects";
 import { HistoryPanel } from "../../src/writing/history/historyPanel";
 import { GalleryPanel } from "../../src/writing/templates/gallery";

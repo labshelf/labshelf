@@ -5,7 +5,7 @@ import type { Annotation, ILogger, LatexEngine, PaperRecord, PathOps, ProjectCon
 import { buildTypstPreviewPdf, createPreviewStore, deriveBuiltPdfPath } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
-import type { UriOfPath } from "../../storage/index.js";
+import type { UriOfPath } from "../../library/index.js";
 import { BUILD_COMMAND, readActiveProject, type BuildListener, type BuildTrigger, type FinishedBuild, type IncludeOnlyState } from "../build/index.js";
 import { findOwningProject, type ReadyProject } from "../commands/index.js";
 import type { BuildRootOf, WritingHost, WritingProjects } from "../projects/index.js";

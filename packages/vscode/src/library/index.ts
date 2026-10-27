@@ -1,9 +1,15 @@
-/** Exports the library host: its services, change events, conflict copies and library-location flows. */
-export { ConflictHandling, registerConflictCommand } from "./conflicts/index.js";
-export { registerSyncGuideCommand } from "./syncGuide/index.js";
-export { PaperImporter } from "./paperImporter.js";
-export { PaperFileService } from "./paperFileService.js";
-export { PaperService } from "./paperService.js";
-export { PaperTextLayers } from "./paperTextLayers.js";
-export type { CreateTextLayerResult } from "./paperTextLayers.js";
-export { createLibraryEvents, onPaperChange, type LibraryEvents } from "./libraryEvents.js";
+/** Exports the library host: its services, change events, file system and watcher, location flows, and the conflict and sync guide commands. */
+export { ConflictHandling, registerConflictCommand } from "./conflicts.js";
+export { registerSyncGuideCommand } from "./syncGuide.js";
+export { PaperService, PaperFileService } from "./paperService.js";
+export { PaperImporter, PaperTextLayers, type CreateTextLayerResult } from "./import.js";
+export { createLibraryEvents, onPaperChange, type LibraryEvents } from "./events.js";
+export { VscodeFileSystem, ExternalChangeWatcher, type UriOfPath } from "./fileSystem.js";
+export {
+  ensureLibraryStructure,
+  moveLibraryRootToConfig,
+  refreshLibrary,
+  resolveLibraryRoot,
+  type RefreshLibraryResult,
+  type SharedLibraryConfig,
+} from "./location.js";

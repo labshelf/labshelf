@@ -26,8 +26,7 @@ import { BuildPreviews, CheckCounts, FocusFollower, readActiveProjectEditor, reg
 import { CitationSectionsCache, registerCitationProviders, registerProjectValues, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { ProjectFigures, watchFigureFiles } from "../writing/figures/index.js";
-import { registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
-import { createProjectSourceReader } from "../latex/project/index.js";
+import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
 import type { BuildRootOf, PlatformWriting, RegisterPlatformWriting } from "../writing/index.js";
 import { registerBibliographyCheck } from "../writing/index.js";
 import { createArcIcons } from "../ui/index.js";

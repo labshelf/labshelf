@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { BibtexService, createBibtexEntry } from '@labshelf/core';
-import { VscodeFileSystem } from '../../src/storage/vscodeFileSystem';
+import { VscodeFileSystem } from '../../src/library/fileSystem';
 import type { PaperRecord } from '@labshelf/core';
 
 function makePaper(overrides: Partial<PaperRecord> = {}): PaperRecord {

@@ -2,12 +2,11 @@
 import * as path from 'node:path';
 import { BibtexService, LibraryStore, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
 
-import { PaperImporter } from '../../src/library/paperImporter';
+import { PaperImporter, PaperTextLayers } from '../../src/library/import';
 import { PaperService } from '../../src/library/paperService';
-import { PaperTextLayers } from '../../src/library/paperTextLayers';
-import { refreshLibrary, type RefreshLibraryResult } from '../../src/storage/refreshLibrary';
+import { refreshLibrary, type RefreshLibraryResult } from '../../src/library/location';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
-import { createLibraryEvents } from '../../src/library/index.js';
+import { createLibraryEvents } from '../../src/library/events';
 
 export const PAPERS_ROOT = '/lib/papers';
 
