@@ -1,4 +1,4 @@
-/** Saves a writing project of the library as a My template under <library>/templates/<template id>/. */
+/** Saves templates into <library>/templates/<template id>/: a writing project of the library, or an exact submission with its compiled previews. */
 // CONTRACT: documents/contracts/templates.md#my-templates
 
 import { promises as fs } from "node:fs";
@@ -6,12 +6,17 @@ import * as path from "node:path";
 
 import { ensureCiteKey, joinWith, createLibraryLayout } from "../../library/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
+import { resolveInLibrary } from "../../bridge/node/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE, deriveProjectIdSlug, type LatexEngine, type ProjectEntry } from "../../writing/project/index.js";
 import { listLibraryProjects } from "../../writing/project/node/index.js";
-import { parseTemplateManifest, serializeTemplateManifest, deriveTemplateTreeProblem, type TemplateKind, type TemplateManifest } from "../templateManifest/index.js";
-import { listProjectFiles } from "./projectFiles.js";
-import type { FoundFile } from "./walkFolder.js";
+import type { PublishFile } from "../templateLabels.js";
+import {
+  parseTemplateManifest, serializeTemplateManifest, deriveTemplateTreeProblem, deriveTemplatePathProblem,
+  type TemplateKind, type TemplateManifest,
+} from "../templateManifest/index.js";
+import { listProjectFiles, type FoundFile } from "./templateFolder.js";
+
 
 const MODULE = "templates";
 const MANIFEST_FILE = "template.yaml";
@@ -106,5 +111,34 @@ export async function writeProjectAsTemplate(
     if (staging !== undefined) { await fs.rm(staging, { recursive: true, force: true }); }
     await logger.error(MODULE, error, { action: "save project as template", projectId, staging, folder });
     throw new Error(`saving project "${projectId}" as a template failed: ${(error as Error).message}`, { cause: error });
+  }
+}
+
+/** Saves the exact submitted template with its compiled previews into My templates atomically. */
+export async function writePublishedTemplate(libraryRoot: string, manifest: TemplateManifest, files: readonly PublishFile[]): Promise<void> {
+  const templates = await resolveInLibrary(libraryRoot, "templates");
+  await fs.mkdir(templates, { recursive: true });
+  const names = await fs.readdir(templates);
+  const id = await ensureCiteKey(manifest.id, names, async (name) => {
+    try { await fs.lstat(path.join(templates, name)); return true; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return false; throw error; }
+  });
+  const stagingRoot = await resolveInLibrary(libraryRoot, ".research/staging");
+  await fs.mkdir(stagingRoot, { recursive: true });
+  const staging = await fs.mkdtemp(path.join(stagingRoot, "template-"));
+  try {
+    for (const file of files) {
+      const problem = deriveTemplatePathProblem(file.path);
+      if (problem) throw new Error(problem);
+      const target = path.join(staging, ...file.path.split("/"));
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, file.path === "template.yaml" ? serializeTemplateManifest({ ...manifest, id }) : file.bytes);
+    }
+    const destination = await resolveInLibrary(libraryRoot, `templates/${id}`);
+    try { await fs.lstat(destination); throw new Error(`Template "${id}" already exists`); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    await fs.rename(staging, destination);
+  } finally {
+    await fs.rm(staging, { recursive: true, force: true });
   }
 }

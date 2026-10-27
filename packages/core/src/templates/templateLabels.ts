@@ -1,7 +1,8 @@
-// Names the template sources, formats, engines and categories the way the gallery shows them, and composes a template's by-line and meta line.
+// Names the template sources, formats, engines, categories and pre-publish checks the way the gallery and the Publish screen show them, and declares the shapes of a publish check.
+import type { ILogger } from "../ports/index.js";
 import type { ProjectFormat } from "../writing/project/index.js";
-import type { TemplateEntry, TemplateSourceId } from "./templateEntry.js";
-import type { TemplateKind, TemplateEngine } from "./templateManifest/index.js";
+import type { TemplateEntry, TemplateSourceId } from "./templateCatalog.js";
+import type { TemplateEngine, TemplateKind, TemplateManifest } from "./templateManifest/index.js";
 
 export const SOURCE_LABELS: Record<TemplateSourceId, string> = {
   community: "LabShelf Community",
@@ -61,4 +62,57 @@ export function formatTemplateUsesCount(entry: TemplateEntry): string | undefine
 export function formatTemplateUsesLabel(entry: TemplateEntry): string | undefined {
   const count = formatTemplateUsesCount(entry);
   return count === undefined ? undefined : `${count} ${entry.downloads === 1 ? "use" : "uses"}`;
+}
+
+export const PUBLISH_CHECK_IDS = ["manifest", "license", "paths", "latexmkrc", "sizes", "build", "thumbnail"] as const;
+
+export type PublishCheckId = (typeof PUBLISH_CHECK_IDS)[number];
+
+const FIXED_LABELS: Record<Exclude<PublishCheckId, "build">, string> = {
+  manifest: "Name and description set",
+  license: "License set",
+  paths: "All files inside the project",
+  latexmkrc: "No latexmkrc",
+  sizes: "File sizes within limits",
+  thumbnail: "Thumbnail compiled",
+};
+
+/** @param formatEngineLabel the engine's display name ("pdfLaTeX"), shown in the build row. */
+export function publishCheckLabel(id: PublishCheckId, engineLabel: string): string {
+  return id === "build" ? `Builds with ${engineLabel}` : FIXED_LABELS[id];
+}
+
+
+export interface PublishFile {
+  /** Relative to the template's folder in the catalog. */
+  path: string;
+  bytes: Uint8Array;
+}
+
+export interface PublishCheck {
+  id: PublishCheckId;
+  ok: boolean;
+  /** Why the check failed; absent when it passed. */
+  message?: string;
+}
+
+/** `files`, `thumbnail` and `sample` are present only when every check passed. */
+export interface PublishCheckReport {
+  checks: PublishCheck[];
+  ok: boolean;
+  files?: PublishFile[];
+  thumbnail?: Uint8Array;
+  sample?: Uint8Array;
+}
+
+export type PublishBuildResult = { ok: true; pdf: Uint8Array } | { ok: false; problems: string[] };
+
+export interface PublishCheckInput {
+  projectFolder: string;
+  manifest: TemplateManifest;
+  /** Builds the project with its declared engine; never with shell escape. */
+  buildPdf: () => Promise<PublishBuildResult>;
+  /** Renders page 1 of the built PDF to a PNG. */
+  renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>;
+  logger: ILogger;
 }

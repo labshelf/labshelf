@@ -1,11 +1,84 @@
 // Answers the template gallery page: lists each source on its own, serves thumbnails and engine checks, and runs "Use template".
-import { deriveEngineProblem, type AvailableEngines } from "../deriveEngineProblem.js";
-import { parseGalleryMessage, type GalleryToHost, type TemplateAddress } from "../protocol/index.js";
-import type { TemplateSource } from "../sources/index.js";
-import type { TemplateEntry, TemplateSourceId } from "../templateEntry.js";
-import { SOURCE_LABELS } from "../templateLabels.js";
-import { createThumbnailUri } from "./thumbnailUri.js";
-import { TEMPLATES_LOG_MODULE, createTemplateProject, type UseTemplatePorts } from "./createTemplateProject.js";
+import { bytesToBase64 } from "../../encoding/index.js";
+import { formatError } from "../../errors/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { deriveProjectIdSlug } from "../../writing/project/index.js";
+import type { TemplateFile, TemplateSource } from "../sources/index.js";
+import { deriveEngineProblem, type AvailableEngines, type TemplateEntry, type TemplateSourceId } from "../templateCatalog.js";
+import { SOURCE_LABELS, type PublishFile } from "../templateLabels.js";
+import { serializeTemplateManifest, TEMPLATE_CATEGORIES, type TemplateManifest } from "../templateManifest/index.js";
+import { parseGalleryMessage, type GalleryToHost, type HostToGallery, type PublishDraft, type TemplateAddress } from "./protocol.js";
+import type { PublishableProject } from "./publishHost.js";
+
+
+export const TEMPLATES_LOG_MODULE = "writing/templates";
+
+export interface UseTemplatePorts {
+  logger: ILogger;
+  post: (message: HostToGallery) => void;
+  /** Asks for the project's title; undefined when the user cancels. */
+  askTitle: (defaultTitle: string) => Promise<string | undefined>;
+  createProject: (title: string, template: TemplateManifest, files: TemplateFile[]) => Promise<void>;
+}
+
+/** Always ends with `use.settled`, so the page's button never stays busy; a failure also reaches the user as an error notice. */
+export async function createTemplateProject(ports: UseTemplatePorts, source: TemplateSource, entry: TemplateEntry, signal: AbortSignal): Promise<void> {
+  const template: TemplateAddress = { source: entry.source, id: entry.id };
+  try {
+    const title = await ports.askTitle(entry.name);
+    if (title === undefined) { return; }
+    const files = await source.files(entry, signal);
+    await ports.createProject(title, entry, files);
+  } catch (error) {
+    await ports.logger.error(TEMPLATES_LOG_MODULE, error, { ...template, action: "use" });
+    const cause = formatError(error);
+    ports.post({ type: "notice", kind: "error", text: `Could not create a project from "${entry.name}": ${cause}` });
+  } finally {
+    ports.post({ type: "use.settled", template });
+  }
+}
+
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47];
+const WEBP_TAG = [0x57, 0x45, 0x42, 0x50]; // "WEBP" at offset 8, after "RIFF" and the size.
+const RIFF_MAGIC = [0x52, 0x49, 0x46, 0x46];
+
+const startsWith = (bytes: Uint8Array, magic: number[], offset = 0): boolean => magic.every((b, i) => bytes[offset + i] === b);
+
+/** @returns the data: URI of a PNG or WebP image, or undefined for any other bytes (a page must never render unknown content) */
+export function createThumbnailUri(bytes: Uint8Array): string | undefined {
+  const mime = startsWith(bytes, PNG_MAGIC) ? "image/png"
+    : startsWith(bytes, RIFF_MAGIC) && startsWith(bytes, WEBP_TAG, 8) ? "image/webp"
+    : undefined;
+  return mime ? `data:${mime};base64,${bytesToBase64(bytes)}` : undefined;
+}
+
+const MAX_ID_LENGTH = 60;
+const MAX_NAME_LENGTH = 80;
+const MAX_DESCRIPTION_LENGTH = 500;
+/** The manifest needs one author before sign-in; the submission replaces it with the GitHub login. */
+const PLACEHOLDER_AUTHOR = "unsigned";
+
+export type PublishTemplateManifestResult = { ok: true; manifest: TemplateManifest } | { ok: false; error: string };
+
+/** The page is untrusted, so the draft is validated again here. */
+export function createPublishTemplateManifest(draft: PublishDraft, project: PublishableProject): PublishTemplateManifestResult {
+  const name = draft.name.trim();
+  if (name === "") { return { ok: false, error: "Give the template a name." }; }
+  if (name.length > MAX_NAME_LENGTH) { return { ok: false, error: `The name is over ${MAX_NAME_LENGTH} characters.` }; }
+  const category = TEMPLATE_CATEGORIES.find((c) => c === draft.category);
+  if (category === undefined) { return { ok: false, error: `Category must be one of ${TEMPLATE_CATEGORIES.join(", ")}.` }; }
+  const description = draft.description.trim();
+  if (description.length > MAX_DESCRIPTION_LENGTH) { return { ok: false, error: `The description is over ${MAX_DESCRIPTION_LENGTH} characters.` }; }
+  const id = deriveProjectIdSlug(name).slice(0, MAX_ID_LENGTH).replace(/-+$/, "");
+  const { format, engine, main } = project;
+  return { ok: true, manifest: { id, name, description, category, format, engine, main, license: draft.license.trim(), authors: [PLACEHOLDER_AUTHOR] } };
+}
+
+/** Replaces template.yaml in the checked files with a copy that names `login` as the author. */
+export function withAuthors(files: readonly PublishFile[], manifest: TemplateManifest, login: string): PublishFile[] {
+  const yaml = new TextEncoder().encode(serializeTemplateManifest({ ...manifest, authors: [login] }));
+  return files.map((file) => (file.path === "template.yaml" ? { path: file.path, bytes: yaml } : file));
+}
 
 /** What the gallery needs from the Publish screen; the host forwards validated `publish.*` messages to it. */
 export interface PublishHost {

@@ -1,19 +1,16 @@
 // Renders the Publish screen: form, checks, GitHub step and result on the left, the compiled preview on the right.
+import { renderIcon, type IconName } from "../../ui/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import type {
   GalleryToHost,
   GalleryTransport,
   HostToGallery,
+  PublishCheckResult,
   PublishDraft,
   PublishProject,
-  PublishCheckResult,
-} from "../protocol/index.js";
-import { updateThumbnailBox } from "./templateCard.js";
-import { createCheckList } from "./checkList.js";
-import { createGithubStep } from "./githubStep.js";
-import { createPublishForm } from "./publishForm.js";
-import { renderIcon } from "../../ui/index.js";
-import { renderElement } from "../../ui/dom/index.js";
-import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
+} from "../host/index.js";
+import { CATEGORY_LABELS, PUBLISH_CHECK_IDS, publishCheckLabel, type PublishCheckId } from "../templateLabels.js";
+import { updateThumbnailBox } from "./templateCards.js";
 
 interface PublishLayoutParts {
   project: PublishProject;
@@ -202,4 +199,179 @@ export function createPublishScreen(options: PublishScreenOptions): PublishScree
   form.fill(draft);
   render();
   return { element: layout.element, route, focus: () => layout.heading.focus(), dispose: () => layout.element.remove() };
+}
+
+export interface PublishForm {
+  element: HTMLElement;
+  /** The current values of the four controls. */
+  read(): PublishDraft;
+  /** Puts the draft's values back into the controls. */
+  fill(draft: PublishDraft): void;
+  /** Reports whether the required fields have a value. */
+  isValid(): boolean;
+}
+
+const LICENSES = ["MIT", "MIT-0", "CC-BY-4.0", "LPPL-1.3c", "Apache-2.0"];
+// "Other" is a catalog fallback, not something an author picks.
+const CATEGORIES = Object.entries(CATEGORY_LABELS).filter(([id]) => id !== "other");
+
+let nextFieldId = 0;
+
+function labelled(label: string, control: HTMLElement): HTMLElement {
+  control.id = `ls-tpl-publish-field-${nextFieldId++}`;
+  return renderElement("div", { class: "ls-tpl-field" }, renderElement("label", { for: control.id, text: label }), control);
+}
+
+function select(options: ReadonlyArray<readonly [string, string]>): HTMLSelectElement {
+  return renderElement("select", { class: "ls-input" }, ...options.map(([value, text]) => renderElement("option", { value, text })));
+}
+
+/** @param onEdit called after any control changed, so the caller can drop results that no longer match. */
+export function createPublishForm(onEdit: () => void): PublishForm {
+  const name = renderElement("input", { class: "ls-input", type: "text", required: true, "aria-required": "true" });
+  const category = select(CATEGORIES);
+  const license = select(LICENSES.map((id) => [id, id] as const));
+  const description = renderElement("textarea", { class: "ls-input", rows: 4, required: true, "aria-required": "true" });
+  const element = renderElement("div", { class: "ls-tpl-form" },
+    labelled("Name", name), labelled("Category", category), labelled("License", license), labelled("Description", description));
+  element.addEventListener("input", onEdit);
+
+  return {
+    element,
+    read: () => ({ name: name.value, category: category.value, license: license.value, description: description.value }),
+    fill(draft) {
+      // A license the host prefilled that the list lacks stays selectable instead of silently turning into MIT.
+      if (!LICENSES.includes(draft.license) && ![...license.options].some((o) => o.value === draft.license)) {
+        license.append(renderElement("option", { value: draft.license, text: draft.license }));
+      }
+      name.value = draft.name;
+      category.value = draft.category;
+      license.value = draft.license;
+      description.value = draft.description;
+    },
+    isValid: () => name.value.trim() !== "",
+  };
+}
+
+type CheckRowState = "idle" | "running" | "passed" | "failed";
+
+export interface CheckList {
+  element: HTMLElement;
+  /** Patches every row and the summary; `canRun` enables the run button when the form is valid. */
+  update(results: readonly PublishCheckResult[], running: boolean, canRun: boolean): void;
+}
+
+// The icon set has no empty circle; a dash reads as "not run yet".
+const ROW_ICONS: Record<CheckRowState, IconName> = { idle: "minus", running: "loader", passed: "check", failed: "x" };
+
+interface Row { id: PublishCheckId; item: HTMLLIElement; icon: HTMLElement; message: HTMLElement }
+
+function rowState(result: PublishCheckResult | undefined, running: boolean): CheckRowState {
+  if (result?.ok === true) return "passed";
+  if (result?.ok === false) return "failed";
+  return running ? "running" : "idle";
+}
+
+/** "All checks passed", "2 checks failed", "3 of 6 checks passed" or "" before any run. */
+function checkSummary(states: readonly CheckRowState[], running: boolean): string {
+  const passed = states.filter((s) => s === "passed").length;
+  const failed = states.filter((s) => s === "failed").length;
+  if (failed > 0) return `${failed} ${failed === 1 ? "check" : "checks"} failed`;
+  if (running) return "Running checks…";
+  if (passed === states.length) return "All checks passed";
+  return passed > 0 ? `${passed} of ${states.length} checks passed` : "";
+}
+
+function buildRow(id: PublishCheckId, engineLabel: string): Row {
+  const iconBox = renderElement("span", { class: "ls-tpl-check-icon" });
+  const message = renderElement("div", { class: "ls-tpl-check-message" });
+  const item = renderElement("li", { class: "ls-tpl-check", "data-state": "idle" },
+    iconBox, renderElement("div", { class: "ls-tpl-check-text" }, renderElement("div", { text: publishCheckLabel(id, engineLabel) }), message));
+  return { id, item, icon: iconBox, message };
+}
+
+export function createCheckList(engineLabel: string, onRun: () => void): CheckList {
+  const rows = PUBLISH_CHECK_IDS.map((id) => buildRow(id, engineLabel));
+  const run = renderElement("button", { class: "ls-btn", type: "button", text: "Run checks" });
+  const summary = renderElement("p", { class: "ls-tpl-check-summary", "aria-live": "polite" });
+  run.addEventListener("click", onRun);
+  const element = renderElement("div", { class: "ls-tpl-checks" },
+    renderElement("div", { class: "ls-tpl-publish-section" }, renderElement("h2", { text: "Checks" }), run),
+    renderElement("ul", { class: "ls-tpl-check-list", role: "list" }, ...rows.map((row) => row.item)),
+    summary);
+
+  const update = (results: readonly PublishCheckResult[], running: boolean, canRun: boolean): void => {
+    const states = rows.map((row) => {
+      const result = results.find((r) => r.id === row.id);
+      const state = rowState(result, running);
+      row.item.dataset["state"] = state;
+      if (state === "running") row.item.setAttribute("aria-busy", "true");
+      else row.item.removeAttribute("aria-busy");
+      row.icon.innerHTML = renderIcon(ROW_ICONS[state]);
+      row.icon.classList.toggle("ls-tpl-spin", state === "running");
+      row.message.textContent = state === "failed" ? (result?.message ?? "") : "";
+      return state;
+    });
+    summary.textContent = checkSummary(states, running);
+    run.disabled = running || !canRun;
+  };
+  update([], false, true);
+  return { element, update };
+}
+
+interface GithubStepState {
+  /** Shown only once every check passed. */
+  visible: boolean;
+  login: string | undefined;
+  signingIn: boolean;
+  submitting: boolean;
+  error: string | undefined;
+}
+
+export interface GithubStep {
+  element: HTMLElement;
+  update(state: GithubStepState): void;
+  /** Moves focus to the Submit button, where the sign-in button was. */
+  focusSubmit(): void;
+}
+
+export interface GithubStepHandlers {
+  onSignIn(): void;
+  onSubmit(): void;
+}
+
+function fillButton(button: HTMLButtonElement, busy: boolean, label: string, busyLabel: string): void {
+  button.disabled = busy;
+  if (busy) button.setAttribute("aria-busy", "true");
+  else button.removeAttribute("aria-busy");
+  button.replaceChildren(
+    ...(busy ? [renderElement("span", { class: "ls-tpl-spin", html: renderIcon("loader") })] : []),
+    renderElement("span", { text: busy ? busyLabel : label }));
+}
+
+export function createGithubStep(handlers: GithubStepHandlers): GithubStep {
+  const intro = renderElement("p", { class: "ls-tpl-github-intro", text: "Sign in once with GitHub. LabShelf opens the pull request for you." });
+  const signedAs = renderElement("p", { class: "ls-tpl-github-intro" });
+  const signIn = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
+  const submit = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
+  const alert = renderElement("p", { class: "ls-tpl-engine ls-tpl-publish-alert", role: "alert" });
+  const element = renderElement("div", { class: "ls-tpl-github" }, intro, signedAs, signIn, submit, alert);
+  signIn.addEventListener("click", handlers.onSignIn);
+  submit.addEventListener("click", handlers.onSubmit);
+
+  const update = (state: GithubStepState): void => {
+    const signedIn = state.login !== undefined;
+    element.hidden = !state.visible;
+    intro.hidden = signedIn;
+    signIn.hidden = signedIn;
+    signedAs.hidden = !signedIn;
+    submit.hidden = !signedIn;
+    signedAs.textContent = signedIn ? `Signed in as ${state.login}` : "";
+    fillButton(signIn, state.signingIn, "Sign in with GitHub", "Signing in…");
+    fillButton(submit, state.submitting, "Submit for review", "Submitting…");
+    alert.hidden = state.error === undefined;
+    alert.replaceChildren(
+      ...(state.error === undefined ? [] : [renderElement("span", { class: "ls-tpl-engine-icon", html: renderIcon("warning") }), renderElement("span", { text: state.error })]));
+  };
+  return { element, update, focusSubmit: () => submit.focus() };
 }

@@ -1,14 +1,81 @@
 // Runs the Publish screen's work: opens a project, runs its checks, signs in to GitHub and submits the pull request.
-import type { PublishDraft, PublishProject } from "../protocol/index.js";
-import type { PublishHost } from "./galleryHost.js";
-import { reportPublishFailure, ensurePublishableProject, type PublishContext, deriveDraftFingerprint } from "./publishContext.js";
-import type { PublishableProject, PublishPorts } from "./publishPorts.js";
-import { TEMPLATES_LOG_MODULE } from "./createTemplateProject.js";
+import { formatError, toError } from "../../errors/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { PUBLISH_CHECK_IDS, type PublishBuildResult, type PublishCheckInput, type PublishCheckReport } from "../templateLabels.js";
 import type { TemplateManifest } from "../templateManifest/index.js";
-import { createPublishTemplateManifest, withAuthors } from "./createTemplateManifest.js";
-import { PUBLISH_CHECK_IDS } from "../publishCheckLabels.js";
-import { createThumbnailUri } from "./thumbnailUri.js";
-import type { PublishCheckReport } from "../publishCheckReport.js";
+import type { PublishTemplateInput, PublishTemplateResult } from "./githubClient.js";
+import { createPublishTemplateManifest, createThumbnailUri, TEMPLATES_LOG_MODULE, withAuthors, type PublishHost } from "./galleryHost.js";
+import type { HostToGallery, PublishDraft, PublishProject } from "./protocol.js";
+
+/** A writing project ready to publish: its build engine is already resolved. */
+export interface PublishableProject {
+  id: string;
+  title: string;
+  folder: string;
+  /** Display name of the engine ("pdfLaTeX"). */
+  engineLabel: string;
+  format: TemplateManifest["format"];
+  engine: TemplateManifest["engine"];
+  /** Path of the main file, relative to the project folder. */
+  main: string;
+}
+
+export interface GitHubSignIn {
+  token: string;
+  login: string;
+}
+
+export interface PublishPorts {
+  logger: ILogger;
+  post: (message: HostToGallery) => void;
+  auth: {
+    /** Throws when the user refuses or GitHub is unreachable. */
+    signIn: () => Promise<GitHubSignIn>;
+  };
+  projects: {
+    /** Quick pick of the projects; undefined when the user cancels. */
+    pick: () => Promise<PublishableProject | undefined>;
+    byId: (id: string) => Promise<PublishableProject | undefined>;
+  };
+  /** Builds the project with its declared engine. */
+  buildPdf: (project: PublishableProject) => Promise<PublishBuildResult>;
+  renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>;
+  check: (input: PublishCheckInput) => Promise<PublishCheckReport>;
+  /** Opens the pull request; the adapter supplies `fetch`. */
+  submit: (input: Omit<PublishTemplateInput, "fetch" | "now" | "sleep">) => Promise<PublishTemplateResult>;
+  /** Saves the submitted template into the library's My templates. */
+  saveToMyTemplates: (project: PublishableProject, manifest: TemplateManifest) => Promise<void>;
+}
+
+export type PublishStep = "open" | "check" | "signIn" | "submit" | "saveToMyTemplates";
+
+export interface PublishContext {
+  ports: PublishPorts;
+  signedIn: GitHubSignIn | undefined;
+  /** INVARIANT: only a report whose checks all passed is cached, under the key of the project and draft it ran for. */
+  passed: { key: string; report: PublishCheckReport } | undefined;
+}
+
+const statusOf = (error: unknown): number | undefined => {
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? status : undefined;
+};
+
+export const deriveDraftFingerprint = (projectId: string, d: PublishDraft): string => JSON.stringify([projectId, d.name, d.category, d.license, d.description]);
+
+/** Logs the failure, posts an error notice and returns the cause for the page. */
+export async function reportPublishFailure(ctx: PublishContext, step: PublishStep, projectId: string | undefined, error: unknown, notice: string): Promise<string> {
+  await ctx.ports.logger.error(TEMPLATES_LOG_MODULE, toError(error), { action: "publish", step, projectId, status: statusOf(error) });
+  const cause = formatError(error);
+  ctx.ports.post({ type: "notice", kind: "error", text: `${notice}: ${cause}` });
+  return cause;
+}
+
+export async function ensurePublishableProject(ctx: PublishContext, id: string): Promise<PublishableProject> {
+  const project = await ctx.ports.projects.byId(id);
+  if (project === undefined) { throw new Error(`no project has the id "${id}"`); }
+  return project;
+}
 
 async function runPublishChecks(ctx: PublishContext, project: PublishableProject, draft: PublishDraft): Promise<PublishCheckReport> {
   const { ports } = ctx;

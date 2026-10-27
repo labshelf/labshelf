@@ -1,12 +1,65 @@
 /** Checks a writing project against the catalog rules and, when all pass, lays out the files of a submission. */
-// CONTRACT: documents/contracts/templates.md#manifest
+// CONTRACT: documents/contracts/templates.md#paths
 
 import { promises as fs } from "node:fs";
-import { readTemplateFields, serializeTemplateManifest, type TemplateManifest } from "../templateManifest/index.js";
-import type { PublishCheck, PublishCheckInput, PublishCheckReport, PublishFile } from "../publishCheckReport.js";
-import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, deriveThumbnailProblem } from "./catalog/index.js";
-import { runSourceChecks } from "./sourceChecks.js";
-import type { FoundFile } from "./walkFolder.js";
+
+import {
+  isLicenseExpression, readTemplateFields, serializeTemplateManifest, deriveTemplateSizeProblem, deriveTemplateStructureProblem,
+  type TemplateManifest,
+} from "../templateManifest/index.js";
+import type { PublishCheck, PublishCheckId, PublishCheckInput, PublishCheckReport, PublishFile } from "../templateLabels.js";
+import { SAMPLE_MAX_BYTES, THUMBNAIL_MAX_BYTES, deriveThumbnailProblem } from "./catalog.js";
+import { listProjectFiles, type FoundFile } from "./templateFolder.js";
+import { formatError } from "../../errors/index.js";
+
+
+type SourceCheckId = Extract<PublishCheckId, "license" | "paths" | "latexmkrc" | "sizes">;
+interface SourceCheck {
+  id: SourceCheckId;
+  ok: boolean;
+  message?: string;
+}
+
+const NOT_LISTED = "Not checked: the project's files could not be listed.";
+
+// latexmk runs a latexmkrc found in the project, which could run any command during the build.
+const isLatexmkrc = (path: string): boolean => path.split("/").some((segment) => ["latexmkrc", ".latexmkrc"].includes(segment.toLowerCase()));
+
+function result(id: SourceCheckId, problem: string | undefined): SourceCheck {
+  return problem === undefined ? { id, ok: true } : { id, ok: false, message: problem };
+}
+
+function licenseProblem(manifest: TemplateManifest): string | undefined {
+  return isLicenseExpression(manifest.license) ? undefined : `"${manifest.license}" is not an SPDX license identifier.`;
+}
+
+/** The four source checks in display order, and the project's files when they could be listed. */
+export async function runSourceChecks(
+  projectFolder: string,
+  manifest: TemplateManifest,
+): Promise<{ checks: SourceCheck[]; files: FoundFile[] | undefined }> {
+  const license = result("license", licenseProblem(manifest));
+  let files: FoundFile[];
+  try {
+    files = await listProjectFiles(projectFolder);
+    const linked = files.find((file) => file.nlink > 1);
+    if (linked) throw new Error(`"${linked.path}" is a hard link`);
+  } catch (error) {
+    const reason = formatError(error);
+    return { files: undefined, checks: [license, result("paths", reason), result("latexmkrc", NOT_LISTED), result("sizes", NOT_LISTED)] };
+  }
+  const rc = files.find((file) => isLatexmkrc(file.path));
+  const kept = files.filter((file) => !isLatexmkrc(file.path));
+  return {
+    files,
+    checks: [
+      license,
+      result("paths", deriveTemplateStructureProblem(kept)),
+      result("latexmkrc", rc === undefined ? undefined : `"${rc.path}" is a latexmkrc, which could run commands during the build.`),
+      result("sizes", deriveTemplateSizeProblem(files)),
+    ],
+  };
+}
 
 /** @param createProjectFiles the files that passed the checks, laid out under `files/` */
 async function layOutPublishFiles(

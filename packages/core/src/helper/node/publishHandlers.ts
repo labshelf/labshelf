@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 import { constants, promises as fs } from "node:fs";
 import type { HelperLogger } from "./log/index.js";
-import { publishTemplatePullRequest, readGitHubIdentity } from "../../templates/client/index.js";
+import { publishTemplatePullRequest, readGitHubIdentity } from "../../templates/host/index.js";
 import { createPublishHost, type PublishPorts, type PublishableProject } from "../../templates/host/index.js";
 import { writePublishedTemplate, checkTemplateForPublish, runSourceChecks } from "../../templates/node/index.js";
 import type {

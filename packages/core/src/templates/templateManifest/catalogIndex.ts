@@ -1,8 +1,8 @@
-/** Parses the Community catalog's index.json, keeping the entries that pass the manifest and path rules. */
+/** Parses the Community catalog's index.json, keeping the entries that pass the manifest and path rules, and the JSON text both catalog index readers share. */
 // CONTRACT: documents/contracts/templates.md#community-catalog
 
+import { formatError } from "../../errors/index.js";
 import { isRecord } from "../../guards/index.js";
-import { parseCatalogIndexJson } from "./catalogJson.js";
 import { deriveTemplateTreeProblem } from "./templatePaths.js";
 import { readTemplateFields, findSchemaProblem, type TemplateManifest } from "./templateManifest.js";
 
@@ -19,6 +19,17 @@ export interface SkippedEntry { id: string | undefined; reason: string }
 export type CatalogIndexResult =
   | { ok: true; commit: string; entries: CatalogEntry[]; skipped: SkippedEntry[] }
   | { ok: false; reason: string };
+
+
+export type ParsedJson = { ok: true; value: unknown } | { ok: false; reason: string };
+
+export function parseCatalogIndexJson(jsonText: string): ParsedJson {
+  try {
+    return { ok: true, value: JSON.parse(jsonText) };
+  } catch (error) {
+    return { ok: false, reason: `invalid JSON: ${formatError(error)}` };
+  }
+}
 
 type Parsed<T> = { value: T } | { problem: string };
 

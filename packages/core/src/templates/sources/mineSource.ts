@@ -1,12 +1,69 @@
-/** Lists the user's own templates from <library>/templates and reads their files. */
-// CONTRACT: documents/contracts/templates.md#my-templates
-import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
-import type { PathOps } from "../../path/index.js";
-import type { TemplateEntry } from "../templateEntry.js";
-import { parseTemplateManifest, deriveTemplatePathProblem, deriveTemplateTreeProblem } from "../templateManifest/index.js";
-import type { TemplateFile, TemplateListing, TemplateSource } from "../sources/index.js";
-import { readOptionalBytes } from "./readOptionalBytes.js";
+/** Lists the user's own templates from <library>/templates and reads their files, and builds the gallery's three sources and the index cache over one library folder. */
 
+import type { ILogger, FetchLike, LibraryFileSystem } from "../../ports/index.js";
+import type { PathOps } from "../../path/index.js";
+import type { TemplateEntry, TemplateSourceId } from "../templateCatalog.js";
+import { comparePaths, parseTemplateManifest, deriveTemplatePathProblem, deriveTemplateTreeProblem } from "../templateManifest/index.js";
+import { createCommunitySource, type CachedCatalogIndex, type CachedSourceId, type TemplateCache, type TemplateFile, type TemplateListing, type TemplateSource } from "./communitySource.js";
+import { createUniverseSource } from "./universeSource.js";
+
+/** Reads a file's bytes through the library file-system port, or returns undefined when it is not a file. */
+export async function readOptionalBytes(fs: LibraryFileSystem, file: string): Promise<Uint8Array | undefined> {
+  const stat = await fs.stat(file);
+  return stat?.isFile === true ? fs.readFile(file) : undefined;
+}
+
+// CONTRACT: documents/contracts/templates.md#cache
+const SEGMENT = /^[^/\\\0]+$/;
+
+export interface LibraryTemplateCacheDeps {
+  fs: LibraryFileSystem;
+  paths: PathOps;
+  libraryRoot: string;
+}
+
+export function createLibraryTemplateCache({ fs, paths, libraryRoot }: LibraryTemplateCacheDeps): TemplateCache {
+  const root = paths.join(libraryRoot, ".research", "templates");
+  const folder = (source: CachedSourceId) => paths.join(root, source);
+
+  // Keys are "<source>/<file>"; anything else could point outside <source>/thumbnails.
+  function thumbnailFile(key: string): string {
+    const parts = key.split("/");
+    const [source, file] = parts;
+    const plain = (segment: string | undefined): segment is string => segment !== undefined && SEGMENT.test(segment) && segment !== "." && segment !== "..";
+    if (parts.length !== 2 || !plain(source) || !plain(file)) { throw new Error(`"${key}" is not a thumbnail cache key`); }
+    return paths.join(root, source, "thumbnails", file);
+  }
+
+  // TRAP: built per cache, not at module load, because the jsdom test environment has no TextDecoder when a gallery test imports this module.
+  const text = new TextDecoder();
+  return {
+    async readIndex(source: CachedSourceId): Promise<CachedCatalogIndex | undefined> {
+      const body = await readOptionalBytes(fs, paths.join(folder(source), "index.json"));
+      if (body === undefined) { return undefined; }
+      const etag = await readOptionalBytes(fs, paths.join(folder(source), "index.etag"));
+      return etag === undefined ? { body: text.decode(body) } : { body: text.decode(body), etag: text.decode(etag).trim() };
+    },
+    async writeIndex(source: CachedSourceId, index: CachedCatalogIndex): Promise<void> {
+      const dir = folder(source);
+      await fs.ensureDir(dir);
+      await fs.writeText(paths.join(dir, "index.json"), index.body);
+      const etagFile = paths.join(dir, "index.etag");
+      if (index.etag === undefined) { await fs.deleteFile(etagFile); }
+      else { await fs.writeText(etagFile, index.etag); }
+    },
+    async readThumbnail(key: string): Promise<Uint8Array | undefined> {
+      return readOptionalBytes(fs, thumbnailFile(key));
+    },
+    async writeThumbnail(key: string, bytes: Uint8Array): Promise<void> {
+      const file = thumbnailFile(key);
+      await fs.ensureDir(paths.dirname(file));
+      await fs.writeFile(file, bytes);
+    },
+  };
+}
+
+// CONTRACT: documents/contracts/templates.md#my-templates
 interface LibraryFile {
   /** Relative to the walked folder, segments joined by `/`. */
   path: string;
@@ -31,7 +88,7 @@ async function walkLibraryFolder(fs: LibraryFileSystem, paths: PathOps, folder: 
   if ((await fs.stat(folder))?.isDirectory !== true) { throw new Error(`${folder} is not a folder`); }
   const found: LibraryFile[] = [];
   await walk(fs, paths, folder, "", found);
-  return found.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+  return found.sort((a, b) => comparePaths(a.path, b.path));
 }
 
 /** The folder's files sorted by their `/`-joined relative path; throws naming the path of the first one that breaks a rule. */
@@ -104,5 +161,20 @@ export function createMineSource(deps: MineSourceDeps): TemplateSource {
         throw error;
       }
     },
+  };
+}
+
+export interface LibraryTemplateSourcesDeps extends LibraryTemplateCacheDeps {
+  fetch: FetchLike;
+  logger: ILogger;
+}
+
+export function createLibraryTemplateSources(deps: LibraryTemplateSourcesDeps): Record<TemplateSourceId, TemplateSource> {
+  const { fetch, logger } = deps;
+  const cache = createLibraryTemplateCache(deps);
+  return {
+    community: createCommunitySource({ fetch, cache, logger }),
+    universe: createUniverseSource({ fetch, cache, logger }),
+    mine: createMineSource(deps),
   };
 }

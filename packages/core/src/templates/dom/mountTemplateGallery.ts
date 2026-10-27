@@ -1,12 +1,10 @@
-// Mounts the template gallery over its host transport.
+// Mounts the template gallery over its host transport and opens and closes the template detail page in place of the grid.
 import { renderElement, showToast } from "../../ui/dom/index.js";
-import type { GalleryTransport, HostToGallery, TemplateAddress } from "../protocol/index.js";
-import { createCardGrid, type CardGrid } from "./cardGrid.js";
-import { createTemplatePageController, type TemplatePageController } from "./viewController.js";
-import { createFacetBar } from "./facetBar.js";
-import { GalleryState, deriveTemplateAddress } from "./galleryState.js";
+import type { GalleryTransport, HostToGallery, TemplateAddress } from "../host/index.js";
+import type { TemplateEntry } from "../templateCatalog.js";
+import { createFacetBar, createGalleryHeader, deriveTemplateAddress, GalleryState, type GalleryHeader } from "./galleryControls.js";
 import { createPublishController, type PublishController } from "./publishController.js";
-import { createGalleryHeader, type GalleryHeader } from "./galleryHeader.js";
+import { createCardGrid, renderTemplatePage, type CardGrid, type TemplatePage } from "./templateCards.js";
 
 export interface TemplateGalleryView {
   dispose(): void;
@@ -110,4 +108,67 @@ function disposeGallery(root: HTMLElement, unsubscribe: () => void, views: Route
   views.details.current()?.dispose();
   views.publishing.current()?.dispose();
   root.replaceChildren();
+}
+
+export interface TemplatePageController {
+  /** The page being shown, or `null` while the grid is. */
+  current(): TemplatePage | null;
+  open(entry: TemplateEntry): void;
+  /** Returns to the grid and focuses the card that was open; does nothing when no page is open. */
+  closeAndFocus(): void;
+  /** Returns to the grid and reports which template was open. */
+  close(): TemplateAddress | undefined;
+}
+
+export interface TemplatePageControllerDeps {
+  state: GalleryState;
+  main: HTMLElement;
+  grid: CardGrid;
+  transport: GalleryTransport;
+  showGrid(): void;
+  requestThumbnails(templates: TemplateAddress[]): void;
+}
+
+const keyFor = (entry: TemplateEntry): TemplateAddress => ({ source: entry.source, id: entry.id });
+
+export function createTemplatePageController(parts: TemplatePageControllerDeps): TemplatePageController {
+  const { state, main, grid, transport } = parts;
+  let detail: TemplatePage | null = null;
+
+  const close = (): TemplateAddress | undefined => {
+    if (detail === null || state.open === null) return undefined;
+    const opened = keyFor(state.open);
+    detail.dispose();
+    detail = null;
+    state.open = null;
+    state.openProblem = undefined;
+    parts.showGrid();
+    grid.update();
+    return opened;
+  };
+
+  const closeAndFocus = (): void => {
+    const opened = close();
+    if (opened) grid.focusCard(opened);
+  };
+
+  const open = (entry: TemplateEntry): void => {
+    const template = keyFor(entry);
+    state.open = entry;
+    state.openProblem = undefined;
+    detail = renderTemplatePage({
+      entry,
+      thumbnail: state.thumbnails.get(deriveTemplateAddress(entry)),
+      problem: undefined,
+      busy: state.busy.has(deriveTemplateAddress(entry)),
+      onBack: closeAndFocus,
+      onUse: () => { state.busy.add(deriveTemplateAddress(entry)); detail?.setBusy(true); transport.post({ type: "use", template }); },
+    });
+    main.replaceChildren(detail.element);
+    detail.focus();
+    transport.post({ type: "detail", template });
+    parts.requestThumbnails(state.takeUnrequested([template]));
+  };
+
+  return { current: () => detail, open, closeAndFocus, close };
 }

@@ -1,6 +1,6 @@
 /** Verifies the in-memory tar.gz reader: names, entry kinds, long names and the limits on hostile archives. */
 import { gzipSync } from "node:zlib";
-import { readTarGz } from "../../../src/templates/sources/readTarball.js";
+import { readTarGz } from "../../../src/templates/sources/universeSource.js";
 import { tar, tarGz } from "./tarFixture";
 
 const LIMIT = 1024 * 1024;
