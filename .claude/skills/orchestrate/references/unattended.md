@@ -12,25 +12,24 @@ If the session cannot finish:
 
 Never leave tracked changes uncommitted.
 
+The main thread routes; it does not implement. The `main-guard` hook denies its Edit and Write outside `documents/plans/<slug>/`: turn any code change into a spec package in the session file and run it with an `implementer`. Past 100k tokens of context the `context-budget` hook stops the session: record every unfinished package as pending in the session file and end the turn; the runner continues the session in a fresh process when the stopped run made progress.
+
 TRAP: this is `claude -p`, so ending your turn ends the process and the session never finishes. Launch every subagent with `run_in_background: false` so its report returns inside the same turn, never end a turn to wait for an agent, and do not stop until the session is closed (YAML: `plan close`; legacy: session file deleted and committed) or set blocked (YAML) or a remainder file is committed (legacy).
 
 ### Testing policy
 
 This policy overrides every `pnpm gate`, lint, baseline and knip/jscpd step in the session and the gate step of the finish skill:
 - Implementers never run `pnpm gate` or any lint. They check their work only with `node scripts/agents/run.mjs typecheck <pkg>` for each package they changed and `node scripts/agents/run.mjs test <pkg> -- <test files of the code they changed>` (in the YAML flow, their spec's `tests.command` and `commands`). Say so in every implementer brief or spec.
-- The session runs one check before its commit, `pnpm gate --no-lint` (typecheck and tests of the touched packages), and passes `gate: --no-lint only, no lint, no baselines` to `finish session`.
+- The session runs one check before its commit, `pnpm gate --no-lint` (typecheck and tests of the touched packages), inside the finisher: pass `gate: --no-lint only, no lint, no baselines` to `finish session`.
 - Skip `node scripts/lint/modules.mjs --update` and `pnpm jscpd:update-baseline`, unless this session is a lint milestone.
 
 ## Lint milestone
 
-This session is a lint milestone (the runner says so, or the YAML session has `milestone: true`). Before its commit, after its own packages:
-1. Run the full `pnpm gate`, then `node scripts/lint/modules.mjs --update`, `pnpm jscpd:update-baseline` and `pnpm lint`.
-2. Fix what fails, including problems earlier sessions left (they skipped lint): split files over 400 lines by concept, fix module rule violations, merge new duplicates. Never grow a baseline to pass.
-3. Commit the fixes and the smaller baselines with the session (YAML: through `plan close`), and say in the handoff what the milestone fixed.
+This session is a lint milestone (the runner says so, or the YAML session has `milestone: true`). Before its commit, after its own packages, pass `gate: lint milestone` to `finish session`. The finisher, not the main thread, runs the full `pnpm gate`, `node scripts/lint/modules.mjs --update`, `pnpm jscpd:update-baseline` and `pnpm lint`, and fixes what fails, including problems earlier sessions left. The main thread routes what the finisher returns: each needs-judgment item (a file to split by concept, a module rule violation, a duplicate to merge) becomes a spec package in the session file, run by an `implementer`; then `finish session` again. Never grow a baseline to pass. Commit the fixes and the smaller baselines with the session (YAML: through `plan close`), and say in the handoff what the milestone fixed.
 
 ## Resume
 
-A previous run of this session stopped (usage limit, or it ended its turn early) before it committed. The uncommitted changes are that run's partial work:
+A previous run of this session stopped (usage limit, context stop, or it ended its turn early) before it finished. The uncommitted changes are that run's partial work:
 - read `git status` and `git diff --stat`, then the session's progress: the session file's OK column and its `research/` files (legacy), or each package's report in `.git/labshelf-runs/<plan>/` and the `plan status` output (YAML);
 - keep what is correct, do not redo finished packages, and continue from there.
 

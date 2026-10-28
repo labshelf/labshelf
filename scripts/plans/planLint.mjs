@@ -1,7 +1,11 @@
 // `plan lint <dir>`: structural checks of a plan folder beyond the schemas. Returns one string per problem.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { newModuleProblems } from "../lint/modules.mjs";
+import { testMirrorProblems } from "../lint/sourceRules.mjs";
 import { loadYamlFile, planPath } from "./planFiles.mjs";
+
+const MAX_IMPLEMENTER_PACKAGES = 3;
 
 const norm = (path) => path.replace(/\/+$/, "");
 const covers = (outer, inner) => norm(inner) === norm(outer) || norm(inner).startsWith(`${norm(outer)}/`);
@@ -80,6 +84,32 @@ function checkSessions(plan, sessions, problems) {
   }
 }
 
+// A session runs at most MAX_IMPLEMENTER_PACKAGES implementers; task packages do not count.
+function checkSessionSize(sessions, problems) {
+  for (const { file, session } of sessions) {
+    const count = session.packages.filter((spec) => spec.runner.agent === "implementer" && spec.level !== "task").length;
+    if (count > MAX_IMPLEMENTER_PACKAGES) problems.push(`${file}: session ${session.id} has ${count} implementer packages (limit ${MAX_IMPLEMENTER_PACKAGES}); split the session`);
+  }
+}
+
+// The source rules a new file must meet that paths alone can check: new modules get an index.ts
+// (scripts/lint/modules.mjs), and a new package test mirrors a source file that exists or the plan writes
+// (scripts/lint/sourceRules.mjs). A hidden test is checked at the in-repo path `plan start` copies it to.
+function checkLayout(root, plan, specs, problems) {
+  const writes = specs.flatMap(({ spec }) => [...spec.edit.map((e) => e.path), ...(spec.create ?? [])]);
+  const onDisk = (path) => existsSync(join(root, path));
+  const exists = (path) => onDisk(path) || writes.some((entry) => covers(entry, path));
+  for (const line of newModuleProblems(specs.flatMap(({ spec }) => spec.create ?? []), onDisk)) problems.push(`plan create paths: ${line}`);
+  for (const { file, spec } of specs) {
+    if (!spec.tests || "none" in spec.tests) continue;
+    const prefix = `documents/plans/${plan.slug}/tests/${spec.id}/`;
+    for (const hidden of spec.tests.hidden.filter((path) => path.startsWith(prefix))) {
+      const target = hidden.slice(prefix.length);
+      for (const line of testMirrorProblems(target, onDisk(target) ? "" : null, exists)) problems.push(`${file}: spec ${spec.id} hidden test: ${line}`);
+    }
+  }
+}
+
 function checkSpecs(plan, sessions, problems) {
   const specs = sessions.flatMap(({ file, session }) => session.packages.map((spec) => ({ file, session, spec })));
   for (const id of duplicates(specs.map((s) => s.spec.id))) problems.push(`duplicate spec id ${id}`);
@@ -136,6 +166,9 @@ export function planLint(root, dir) {
   const { plan, sessions } = loadAll(dir, problems);
   if (!plan) return problems;
   checkSessions(plan, sessions, problems);
-  checkTests(root, checkSpecs(plan, sessions, problems), problems);
+  checkSessionSize(sessions, problems);
+  const specs = checkSpecs(plan, sessions, problems);
+  checkTests(root, specs, problems);
+  checkLayout(root, plan, specs, problems);
   return problems;
 }

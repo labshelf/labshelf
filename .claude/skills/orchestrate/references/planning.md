@@ -22,7 +22,7 @@ Split the work into packages. Each package (a `spec/v1` in the YAML flow) states
 - **Depends on**: other package ids.
 - **Tier, runner and model**: see the table below.
 - **Level**: how much process it gets, by risk:
-  - **task** (move, rename, delete after `facts callers`, compact, docs): no new test and no agent of its own; all of a session's tasks go in one Tasks package, or the main thread does them directly;
+  - **task** (move, rename, delete after `facts callers`, compact, docs): no new test and no agent of its own; all of a session's tasks go in one Tasks package, or the main thread does them directly (unattended, it edits only `documents/`);
   - **behaviour**: one `implementer` works test first on its own (writes the failing test, sees it fail, implements);
   - **contract** (touches `documents/contracts/`, an on-disk format, a protocol, sync, or an extension manifest or its permissions): one `implementer` writes the failing tests first, then implements; `finish session` checks it against its contract section before the commit. These are the hard-to-reverse packages.
 - **Acceptance**: the checks that prove it is done; for behaviour and contract, the test seam and the acceptance items the failing tests pin.
@@ -41,6 +41,7 @@ Escalation: a Sonnet package that fails its acceptance checks twice, or returns 
 Rules for the plan:
 - If the user named models ("Fable does the visual"), follow them.
 - Size each package by what its agent must read, not by the feature: its brief names 5–8 files with line ranges, so it finishes under the 60k subagent budget. A package that needs more is two packages. A sweep ("what is unused?", "where is X used?") is a scout's job before the brief is written; the brief gets the list of candidates, never the sweep.
+- A session holds at most 3 packages that run an `implementer` (task packages do not count); split a larger session in two. `plan lint` flags a session over the limit.
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.
 - Shared logic lands in core first; app packages depend on it.
 - Doubt step: a contract package that still has two viable designs is put to the user as the fork in two lines, with your recommendation; the user decides.

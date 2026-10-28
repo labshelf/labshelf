@@ -177,6 +177,21 @@ export function findViolations(graph) {
   return { violations: violations.sort(order), warnings: latentModules(index).sort(order) };
 }
 
+/** The no-index rule from paths alone: every module folder that new product files open must get an index.ts too. */
+export function newModuleProblems(created, exists) {
+  const planned = new Set(created);
+  const folders = new Set();
+  for (const path of created.filter(isProductPath)) {
+    for (let folder = dirOf(path); depthOf(folder) >= 2; folder = dirOf(folder)) {
+      if (isModuleFolder(folder) && !exists(folder)) folders.add(folder);
+    }
+  }
+  return [...folders]
+    .filter((folder) => !planned.has(`${folder}/index.ts`))
+    .sort()
+    .map((folder) => `${folder} is a new module with no index.ts; add ${folder}/index.ts to create, exporting only what other folders use.`);
+}
+
 export const keyOf = (violation) => `${violation.rule} ${violation.path}`;
 
 /** Splits violations into new failures and baselined ones, and lists baseline entries that no longer fail. */
