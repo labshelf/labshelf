@@ -28,7 +28,6 @@ test('the main thread of an unattended session cannot edit code', () => {
   const inputs = [
     edit('/repo/scripts/x.mjs'),
     edit('packages/core/src/a.ts'),
-    { tool_name: 'Write', tool_input: { file_path: '/repo/documents/plans/other/plan.yaml' } },
     { tool_name: 'NotebookEdit', tool_input: { notebook_path: '/repo/n.ipynb' } },
     edit('/tmp/elsewhere.txt'),
   ];
@@ -39,7 +38,8 @@ test('the main thread of an unattended session cannot edit code', () => {
   }
 });
 
-test('the plan folder stays editable', () => {
+test('documents stay editable: the plan folder, contracts and docs', () => {
+  assert.equal(run(edit('/repo/documents/contracts/qmd-items.md')), undefined);
   assert.equal(run(edit('/repo/documents/plans/demo/sessions/3.yaml')), undefined);
   assert.equal(run({ tool_name: 'Write', tool_input: { file_path: 'documents/plans/demo/tests/3.1/a.test.mjs' } }), undefined);
 });
