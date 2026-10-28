@@ -2,7 +2,7 @@
 const mockSendRuntime = jest.fn();
 jest.mock("../../../src/platform", () => ({ sendRuntime: (...a: unknown[]) => mockSendRuntime(...a) }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
-jest.mock("../../../src/libraryUi/readerTabs", () => ({ openReader: jest.fn() }));
+jest.mock("../../../src/libraryUi/reader/readerTabs", () => ({ openReader: jest.fn() }));
 jest.mock("../../../src/storage", () => ({ createLibraryFileSystem: () => ({}) }));
 
 import { createPdfHandlers } from "../../../src/libraryUi/host/handlers";

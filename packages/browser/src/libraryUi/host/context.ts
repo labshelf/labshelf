@@ -1,10 +1,10 @@
-// Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder) and the dispatch of UI messages to them.
+// Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, formatError, movePaperFolders, removePapers, sendPaperDetails, setPaperNote, setPaperTags, type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type UiToHost,
+  PAPERS_DIR, formatError, movePaperFolders, removePapers, sendPaperDetails, setPaperNote, setPaperTags, type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
+import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
 import { bx, type LibraryChangedEvent } from "../../platform";
 import { createLibraryMutations, type LibraryMutations } from "../../storage";
-import { addToSpace, type PageSpaces } from "../spaces";
 import {
   addTabPaper, createFolder, createLibraryUiHost, createPaperFileHandlers, createPdfHandlers, exportAnnotations, offerOpenTabs, removeFolder,
   renameFolder, setReadingStatus, writeClipboard, type PaperFileHandlers, type PdfHandlers,
@@ -26,7 +26,7 @@ export interface HostContext {
   papers(ids: readonly string[]): PaperRecord[];
 }
 
-export function createHostCompositionRoot(endpoint: HostEndpoint, log: ILogger): HostContext {
+function createHostCompositionRoot(endpoint: HostEndpoint, log: ILogger): HostContext {
   const sidecars = createSidecarReads(log);
   const snapshots = createLibrarySnapshots(endpoint, sidecars);
   return {
@@ -54,7 +54,8 @@ function watchChangeNotices(ctx: HostContext): () => void {
 
 export interface LibraryHostOptions {
   log: ILogger;
-  spaces?: PageSpaces;
+  /** The page's Spaces, which papers are added to. */
+  spaces?: { store: SpaceStore };
   /** A paper to select once the library has loaded (the page opened from the popup or Scholar). */
   initialPaper?: string | null;
   /** Receives the ids the UI reports as selected (an empty list when nothing is). */
@@ -122,6 +123,25 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
       // open in the default app, fetch metadata) and never shows the citation map, so the UI never sends them.
       void ctx.log.log("WARN", "libraryUi", "Unhandled library UI message", { type: m.type });
   }
+}
+
+/** Adds papers to the Space the user picks, or to a new one. */
+export async function addToSpace(
+  store: SpaceStore, ids: string[], notice: (kind: "ok", text: string) => void, log: ILogger,
+): Promise<void> {
+  const choices = store.list().flatMap((result) => result.state === "ready" ? [{ label: result.space.name, value: result.space.id }] : []);
+  const choice = await pickQuickEntry<string | { create: true }>([...choices, { label: "New Space…", value: { create: true } }], { title: "Add to Space" });
+  if (choice === undefined) return;
+  let id: string;
+  if (typeof choice === "string") id = choice;
+  else {
+    const name = await askInputBox({ title: "New Space", validate: (value) => value.trim() ? null : "Enter a Space name" });
+    if (name === undefined) return;
+    id = await store.createSpace(name);
+  }
+  await store.addPapers(id, ids);
+  void log.log("INFO", "spaces", "Added papers to Space", { spaceId: id, paperIds: ids });
+  notice("ok", `Added ${ids.length === 1 ? "paper" : "papers"} to Space`);
 }
 
 /** Starts answering the UI on `endpoint`. */

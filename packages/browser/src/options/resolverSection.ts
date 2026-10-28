@@ -14,7 +14,7 @@ interface RowVerdict {
   isError: boolean;
 }
 
-export interface EditableListSpec {
+interface EditableListSpec {
   title: string;
   description: (string | Node)[];
   /** Prefix of the row element ids. */
@@ -65,7 +65,7 @@ function createRow(spec: EditableListSpec, value: EditableRow, onRemove: (row: H
   return row;
 }
 
-export function createEditableListSection(spec: EditableListSpec, onChange: () => void): EditableListSection {
+function createEditableListSection(spec: EditableListSpec, onChange: () => void): EditableListSection {
   const list = renderElement("div", { class: "editable-list" });
   const labelRows = (): void => {
     [...list.children].forEach((row, i) => row.setAttribute("aria-label", `${spec.rowLabel} ${i + 1}`));

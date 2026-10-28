@@ -4,8 +4,7 @@ import { renderElement } from "@labshelf/core/dom";
 import type { HelperProject } from "@labshelf/core/helper";
 import { mountHelperSetupCard } from "../../helper";
 import { bx, readSettings, updateSettings } from "../../platform";
-import { createBrowserProjectContent } from "../../writing";
-import { createPreviewFrame, watchBuilds, createPreviewRequestHandler } from "../../writing/preview";
+import { createBrowserProjectContent, createPreviewFrame, watchBuilds, createPreviewRequestHandler } from "../../writing";
 import type { PreviewLimits } from "@labshelf/core";
 import type { TabModule } from "./tabKinds";
 

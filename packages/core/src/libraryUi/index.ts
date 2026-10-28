@@ -1,5 +1,7 @@
-/** Exports the runtime-neutral library UI's public API: host protocol and configuration, view state, list derivations and keymap, copy and notice text, the request-a-copy email, sidecar reads, sidebar project rows, the citation map and the Details surface's protocol and tabs. */
+/** Exports the runtime-neutral library UI's public API: host protocol and configuration, the Library sidebar's messages and guard, view state, list derivations and keymap, copy and notice text, the request-a-copy email, sidecar reads, sidebar project rows, the citation map and the Details surface's protocol and tabs. */
 export * from "./protocol/index.js";
+export type { HostToSidebar, SidebarToHost, ProjectTreeMessage, SidebarSpaceMessage, ProjectAction, ProjectFolderAction, ProjectUpdate } from "./sidebarMessages.js";
+export { parseSidebarMessage } from "./sidebarMessages.js";
 export { buildCitationMap, createCitationMapView } from "./citationMap/index.js";
 export type { CitationMap, CitationMapEnv, CitationMapOptions, MissingWork, CitationEdge } from "./citationMap/index.js";
 export * from "./store/index.js";

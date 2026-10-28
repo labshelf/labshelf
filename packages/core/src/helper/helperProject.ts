@@ -11,14 +11,14 @@ import { mergePdfPages } from "./pageMerge.js";
 export type HelperProblem = HelperCompileResult["problems"][number];
 type ProblemListener = (problems: readonly HelperProblem[]) => void;
 
-export interface ProblemStore {
+interface ProblemStore {
   /** Calls `listener` at once with the file's current problems; returns the function that stops listening. */
   subscribe(path: string, listener: ProblemListener): () => void;
   /** Replaces every file's problems with those of `problems`; files without any get an empty list. */
   publish(problems: readonly HelperProblem[]): void;
 }
 
-export function createProblemStore(): ProblemStore {
+function createProblemStore(): ProblemStore {
   let byFile = new Map<string, HelperProblem[]>();
   const listeners = new Map<string, Set<ProblemListener>>();
   return {
@@ -80,8 +80,8 @@ export interface HelperProject {
   projectChanged(entry: ProjectEntry | undefined): Promise<void>;
 }
 
-export interface BuildSettings { autoCompile: BuildSchedule; haltOnError: boolean }
-export type BuildUpdate = Partial<BuildSettings> & { engine?: LatexEngine };
+interface BuildSettings { autoCompile: BuildSchedule; haltOnError: boolean }
+type BuildUpdate = Partial<BuildSettings> & { engine?: LatexEngine };
 
 export interface HelperProjectOptions {
   helper: ILatexHelper;

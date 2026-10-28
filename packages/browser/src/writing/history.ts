@@ -1,28 +1,27 @@
 // Records and shows a project's history in the library page: edit entries, the history host, restore and Mark Version.
 import {
-  addProjectVersion, applyRestoredFiles, applySnapshot, deriveVersionSlug, formatError, formatLocaleDateTime, listVersions, posixPathOps, readHistoryDiff, readHistoryRows, writeSnapshot,
-  type HistoryProject, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type MessageEnd,
+  addProjectVersion, applyRestoredFiles, applySnapshot, createListeners, deriveVersionSlug, formatError, formatLocaleDateTime, listVersions, posixPathOps, readHistoryDiff, readHistoryRows, writeSnapshot,
+  type HistoryProject, type HistoryToHost, type HostToHistory, type ILogger, type LibraryFileSystem, type Listeners, type MessageEnd,
 } from "@labshelf/core";
 import { askDialog, askInputBox, showToast } from "@labshelf/core/dom";
 import type { PageShares } from "../collab";
 import { createIdbHistoryStorage } from "../storage";
 import { writeProjectEditors, refreshProjectEditors } from "./session";
 
-const listeners = new Map<string, Set<() => void>>();
+const listeners = new Map<string, Listeners>();
 
 /** Calls the listener after each edit entry recorded for the project; returns the call that stops it. */
-export function onUpdateRecorded(projectId: string, listener: () => void): () => void {
-  const set = listeners.get(projectId) ?? new Set();
-  listeners.set(projectId, set);
-  set.add(listener);
-  return () => { set.delete(listener); };
+function onUpdateRecorded(projectId: string, listener: () => void): () => void {
+  const registry = listeners.get(projectId) ?? createListeners();
+  listeners.set(projectId, registry);
+  return registry.add(listener);
 }
 
-export function sendUpdateRecorded(projectId: string): void {
-  for (const listener of listeners.get(projectId) ?? []) listener();
+function sendUpdateRecorded(projectId: string): void {
+  listeners.get(projectId)?.emit();
 }
 
-export function createHistoryProject(fs: LibraryFileSystem, folder: string, projectId: string): HistoryProject {
+function createHistoryProject(fs: LibraryFileSystem, folder: string, projectId: string): HistoryProject {
   return { project: { fs, paths: posixPathOps }, folder, storage: createIdbHistoryStorage(projectId) };
 }
 

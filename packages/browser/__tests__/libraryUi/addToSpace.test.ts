@@ -2,7 +2,7 @@
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(), askInputBox: jest.fn() }));
 import type { SpaceStore } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
-import { addToSpace } from "../../src/libraryUi/spaces";
+import { addToSpace } from "../../src/libraryUi/host/context";
 
 const notice = jest.fn();
 const log = { log: jest.fn(), error: jest.fn() };

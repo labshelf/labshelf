@@ -13,7 +13,7 @@ jest.mock("../../src/storage/records", () => ({ ...jest.requireActual("../../src
 
 import { attachPdfToPaper } from "../../src/capture/attach";
 import { normalizeFolder } from "../../src/capture/pdfFinding";
-import { createLibraryMutations } from "../../src/storage/libraryFileSystem";
+import { createLibraryMutations } from "../../src/storage/libraryMutations";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };

@@ -7,7 +7,7 @@ import {
 } from "@labshelf/core";
 import { openDb } from "./idb";
 import { createLibraryFileSystem, readLibraryLocation, type LibraryLocation } from "./libraryFileSystem";
-import { readPickedDirId } from "./library";
+import { readPickedDirId } from "./pickedDir";
 
 // Caches PaperRecord objects persistently, derived from the metadata.yaml files, so reads never re-parse YAML.
 
@@ -37,7 +37,7 @@ export async function listCachedPaperRecords(): Promise<PaperRecord[]> {
 }
 
 /** Replaces the whole cache with these records in one transaction, so a reader never sees it half-filled. */
-export async function setCachedPaperRecords(records: readonly PaperRecord[]): Promise<void> {
+async function setCachedPaperRecords(records: readonly PaperRecord[]): Promise<void> {
   const db = await openDb();
   const tx = db.transaction("metadata", "readwrite");
   await tx.store.clear();

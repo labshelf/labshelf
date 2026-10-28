@@ -1,5 +1,5 @@
 // Connects a page to LabShelf Helper over two transports: id-paired requests, the protocol version check and the handshake that opens a session.
-import { isHostNotFound } from "../bridge/hostNotFound.js";
+import { isHostNotFound } from "../bridge/index.js";
 import { toError } from "../errors/index.js";
 import type { ILogger, NativeMessagePort } from "../ports/index.js";
 import { HELPER_HOST_NAME, PROTOCOL_VERSION, type ToHelperMessage, type ToPageMessage } from "./helperMessages.js";

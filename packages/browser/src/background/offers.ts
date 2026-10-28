@@ -52,7 +52,7 @@ export function canRefetch(url: string): boolean {
 const TEXT = "PDF";
 const COLOR = COLOR_TOKENS.focus.value;
 
-export async function showOfferBadge(log: ILogger, tabId: number, title: string): Promise<void> {
+async function showOfferBadge(log: ILogger, tabId: number, title: string): Promise<void> {
   try {
     await bx.action.setBadgeBackgroundColor({ tabId, color: COLOR });
     await bx.action.setBadgeText({ tabId, text: TEXT });
@@ -63,7 +63,7 @@ export async function showOfferBadge(log: ILogger, tabId: number, title: string)
   }
 }
 
-export async function removeOfferBadge(log: ILogger, tabId: number): Promise<void> {
+async function removeOfferBadge(log: ILogger, tabId: number): Promise<void> {
   try {
     // PLATFORM: null (not "") removes the tab's own value in Chrome and Firefox, so the toolbar button shows its default state again.
     await bx.action.setBadgeText({ tabId, text: null });
@@ -124,21 +124,21 @@ export async function readOffer(id: string): Promise<PdfOffer | undefined> {
   return (await allOffers()).find((o) => o.id === id);
 }
 
-export async function removeOffer(id: string): Promise<void> {
+async function removeOffer(id: string): Promise<void> {
   const all = await allOffers();
   const rest = all.filter((o) => o.id !== id);
   if (rest.length !== all.length) await bx.storage.session.set({ [OFFERS]: rest });
 }
 
 /** The tab offer of `tabId`, dropped from the store; used when the tab leaves its PDF or closes. */
-export async function removeTabOffer(tabId: number): Promise<PdfOffer | undefined> {
+async function removeTabOffer(tabId: number): Promise<PdfOffer | undefined> {
   const offer = (await allOffers()).find((o) => o.tabId === tabId && o.source === "tab");
   if (offer) await removeOffer(offer.id);
   return offer;
 }
 
 /** @returns true the first time `url` is seen in this browser session */
-export async function isFirstSighting(url: string): Promise<boolean> {
+async function isFirstSighting(url: string): Promise<boolean> {
   const seen = ((await bx.storage.session.get(SEEN))[SEEN] as string[] | undefined) ?? [];
   if (seen.includes(url)) return false;
   await bx.storage.session.set({ [SEEN]: [url, ...seen].slice(0, MAX_SEEN) });
@@ -148,7 +148,7 @@ export async function isFirstSighting(url: string): Promise<boolean> {
 // ----- Matching a PDF to a paper
 
 /** A PDF the browser showed or saved. */
-export interface SeenPdf {
+interface SeenPdf {
   source: PdfOffer["source"];
   url: string;
   /** The page a download started from; only it can be the article page, so tabs pass none. */
@@ -158,7 +158,7 @@ export interface SeenPdf {
 }
 
 /** @returns the offer made, or undefined when the PDF belongs to no library paper without a PDF */
-export async function offerPdf(log: ILogger, seen: SeenPdf): Promise<PdfOffer | undefined> {
+async function offerPdf(log: ILogger, seen: SeenPdf): Promise<PdfOffer | undefined> {
   const papers = (await listCachedPaperRecords()).filter((r) => r.hasPdf === false);
   if (papers.length === 0) return undefined;
   const id = crypto.randomUUID();

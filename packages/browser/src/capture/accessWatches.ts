@@ -36,11 +36,11 @@ export async function watchOfTab(tabId: number): Promise<AccessWatch | undefined
   return (await allWatches())[String(tabId)];
 }
 
-export async function watchOfPaper(paperId: string): Promise<AccessWatch | undefined> {
+async function watchOfPaper(paperId: string): Promise<AccessWatch | undefined> {
   return Object.values(await allWatches()).find((w) => w.paperId === paperId);
 }
 
-export async function writeWatch(watch: AccessWatch): Promise<void> {
+async function writeWatch(watch: AccessWatch): Promise<void> {
   const all = await allWatches();
   all[String(watch.tabId)] = watch;
   await bx.storage.session.set({ [KEY]: all });

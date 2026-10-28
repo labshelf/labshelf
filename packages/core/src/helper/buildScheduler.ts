@@ -100,7 +100,7 @@ const LOG_MODULE = "preview";
 type BuildRunnerOptions = Omit<BuildSchedulerOptions, "timers">;
 
 // A save follows the active preview so autosave cannot repeatedly interrupt format creation.
-export function createBuildRunner({ helper, target, onResult, onStart, logger }: BuildRunnerOptions) {
+function createBuildRunner({ helper, target, onResult, onStart, logger }: BuildRunnerOptions) {
   let generation = 0;
   let running: BuildKind | undefined;
   let pendingFull = false;

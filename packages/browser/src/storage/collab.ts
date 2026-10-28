@@ -12,7 +12,7 @@ export interface CollabSchema extends DBSchema {
   blobs: { key: [string, string]; value: Uint8Array };
 }
 
-export const COLLAB_STORES = ["docs", "updates", "maps", "blobs"] as const;
+const COLLAB_STORES = ["docs", "updates", "maps", "blobs"] as const;
 
 let db: Promise<IDBPDatabase<CollabSchema>> | undefined;
 

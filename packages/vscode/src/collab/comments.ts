@@ -6,9 +6,11 @@ import {
   type ILogger,
   type ProjectEntry,
   addThread,
+  createEditorCommentRange,
   createKeyedDebouncer,
   createSharedProjectComments,
   deriveAnchor,
+  findSourceCommentRange,
   isInside,
   COMMENTS_PATH,
   deriveCommentThreads,
@@ -29,9 +31,7 @@ import {
   type CommentShare,
   type ProjectComments,
   ThreadView,
-  createEditorCommentRange,
   createProjectFileUri,
-  findSourceCommentRange,
   readTextFile,
 } from "./threads.js";
 import { disposeAll } from "../disposables/index.js";

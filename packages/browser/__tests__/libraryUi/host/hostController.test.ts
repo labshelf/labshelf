@@ -15,7 +15,7 @@ jest.mock("../../../src/storage", () => ({
   onPaperRecordsRebuilt: () => () => undefined,
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
-jest.mock("../../../src/libraryUi/readerTabs", () => ({ openReader: jest.fn() }));
+jest.mock("../../../src/libraryUi/reader/readerTabs", () => ({ openReader: jest.fn() }));
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(async () => "research") }));
 

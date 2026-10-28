@@ -2,7 +2,7 @@
 import { derivePapersByCiteKey, formatError, parsePaperLink, type ILogger, type PaperRecord } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import { bx } from "../platform";
-import { createReaderUrl } from "./readerTabs";
+import { createReaderUrl } from "./reader";
 import { listCachedPaperRecords } from "../storage";
 
 // ---- Resolving

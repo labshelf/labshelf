@@ -1,7 +1,7 @@
-// Answers the reader's requests from a build preview: opens the source behind a double-click, runs its writing actions and project actions, and names the papers it cites.
+// Answers the reader's requests from a build preview: opens the source behind a double-click, runs its writing actions and project actions (writing check limits into labshelf.yaml), and names the papers it cites.
 import * as vscode from "vscode";
 
-import { formatError, type ILogger, type LatexEngine, type PreviewPorts } from "@labshelf/core";
+import { deriveCheckLimitsPatch, formatError, type CheckLimitsChange, type ILogger, type LatexEngine, type PreviewPorts } from "@labshelf/core";
 import type { IncludeOnlyState } from "../build/index.js";
 import { setAutoCompile, setHaltOnError } from "../build/index.js";
 import type { ReadyProject } from "../projects/index.js";
@@ -9,9 +9,18 @@ import type { WritingProjects } from "../projects/index.js";
 import type { WritingActions } from "./buildRoots.js";
 import { applyCitationFix, withCitationFixes, type CitationFixDeps } from "./citationFixes.js";
 import { findCitation, openCitedPaper, type PreviewCitationDeps } from "./citations.js";
-import { setCheckLimits } from "./limits.js";
 import { PREVIEW_LOG_MODULE } from "./panel.js";
 import { addPreviewComment, showSource } from "./synctex.js";
+
+/** A number sets a limit, null removes it, and an absent field keeps what the file holds. */
+export async function setCheckLimits(
+  projects: Pick<WritingProjects, "data" | "reload">,
+  project: ReadyProject,
+  change: CheckLimitsChange,
+): Promise<void> {
+  await projects.data.updateProjectSettings(project.folder, { check: deriveCheckLimitsPatch(change) });
+  await projects.reload();
+}
 
 export type ProjectActions = Required<Pick<PreviewPorts, "runCommand" | "setAutoCompile" | "setHaltOnError" | "setEngine" | "setIncludeOnly" | "setCheckLimits" | "fixCitation">>;
 

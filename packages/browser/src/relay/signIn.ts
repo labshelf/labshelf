@@ -24,7 +24,7 @@ function isRedirect(url: string | undefined): url is string {
 }
 
 /** Resolves with the redirect URL the tab reached; rejects on close, abort or timeout. */
-export function watchRedirectTab(tabId: number, logger: ILogger, signal?: AbortSignal): Promise<string> {
+function watchRedirectTab(tabId: number, logger: ILogger, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
     const finish = (userClosed: boolean): void => {
       bx.tabs.onUpdated.removeListener(onUpdated);

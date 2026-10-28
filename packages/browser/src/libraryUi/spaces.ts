@@ -1,4 +1,4 @@
-// Composes Spaces over the browser's library folder and workspace navigation, reloads them when library files change outside the page, and adds papers to the Space the user picks.
+// Composes Spaces over the browser's library folder and workspace navigation and reloads them when library files change outside the page.
 import {
   SpaceStore,
   createListeners,
@@ -19,7 +19,6 @@ import {
   readChecklistSignals,
   type Progress,
 } from '@labshelf/core';
-import { askInputBox, pickQuickEntry } from '@labshelf/core/dom';
 import { downloadTextFile, watchVisibility } from '../platform';
 import { onPaperRecordsRebuilt } from '../storage';
 import { onLocalFileChanges } from '../collab';
@@ -136,22 +135,4 @@ function createPort(options: PageSpacesOptions, library: () => LibraryPapers, li
     openCatalog: async () => { options.workspace().openTab('spaces'); },
     saveFile: (name, text) => downloadTextFile(name, text, 'text/calendar;charset=utf-8'),
   };
-}
-
-export async function addToSpace(
-  store: SpaceStore, ids: string[], notice: (kind: "ok", text: string) => void, log: ILogger,
-): Promise<void> {
-  const choices = store.list().flatMap((result) => result.state === "ready" ? [{ label: result.space.name, value: result.space.id }] : []);
-  const choice = await pickQuickEntry<string | { create: true }>([...choices, { label: "New Space…", value: { create: true } }], { title: "Add to Space" });
-  if (choice === undefined) return;
-  let id: string;
-  if (typeof choice === "string") id = choice;
-  else {
-    const name = await askInputBox({ title: "New Space", validate: (value) => value.trim() ? null : "Enter a Space name" });
-    if (name === undefined) return;
-    id = await store.createSpace(name);
-  }
-  await store.addPapers(id, ids);
-  void log.log("INFO", "spaces", "Added papers to Space", { spaceId: id, paperIds: ids });
-  notice("ok", `Added ${ids.length === 1 ? "paper" : "papers"} to Space`);
 }

@@ -3,5 +3,5 @@ export { createCommentSupport, createCommentThreads, createRoutedCommentThreads,
 export { onLocalFileChanges, reportPageWrites } from "./mirror";
 export { createPageShare, createPageShares, createResumeReports, DEFAULT_DISPLAY_NAME, type PageShare, type PageShares } from "./pageShares";
 export { createCollabExtensions } from "./register";
-export { createBrowserShareRegistryStore, type ShareListArea } from "./shareRegistry";
+export { createBrowserShareRegistryStore } from "./shareRegistry";
 export { createShareKeyStore, readMemberName, writeMemberName } from "./keys";

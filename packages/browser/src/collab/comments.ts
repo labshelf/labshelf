@@ -7,7 +7,7 @@ import {
   type Comment, type CommentsFileAccess, type CommentThread, type ILogger, type LibraryFileSystem, type TextRange,
 } from "@labshelf/core";
 import { askInputBox, showToast } from "@labshelf/core/dom";
-import { createSourceFooter } from "../libraryUi/prefs";
+import { createSourceFooter } from "../libraryUi";
 import type { ProjectSession } from "../writing";
 import type { PageShares } from "./pageShares";
 

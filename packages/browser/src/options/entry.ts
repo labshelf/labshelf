@@ -4,7 +4,7 @@ import { createDebouncer } from "@labshelf/core";
 import { findElement, renderSettingsPage } from "@labshelf/core/dom";
 import { createBrowserLatexHelper, createHelperSetupSection } from "../helper";
 import { StorageRingLogSink, applyTheme, bx, createBrowserLogger, readSettings, updateSettings } from "../platform";
-import { loadReaderPrefs, writeReaderPrefs } from "../libraryUi/readerTabs";
+import { loadReaderPrefs, writeReaderPrefs } from "../libraryUi";
 import { createLibraryLocationSection, createAppearanceSection, createGeneralForm, type GeneralForm, createLogSection, createSavedNotice, createSidebarSectionsForm } from "./sections";
 import { createResolverSection, createProxySection } from "./resolverSection";
 import type { EditableListSection } from "./resolverSection";

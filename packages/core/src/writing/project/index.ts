@@ -8,7 +8,7 @@ export type {
   CheckLimits, CheckSettings, CountUpTo, FigureRecipe, LatexEngine, ListedPaper, ProjectFileResult,
   ProjectFormat, ProjectSettings, ProjectSettingsUpdate, ProjectSubmission, UserSettings,
 } from "./projectFile.js";
-export { readProjectEntry, type ProjectEntry, type ProjectFolderReader, type ProjectPlacement } from "./projectEntry.js";
+export { readProjectEntry, type ProjectEntry, type ReadyProject, type ProjectFolderReader, type ProjectPlacement } from "./projectEntry.js";
 export {
   loadProjectRegistry, parseProjectRegistry, createProjectFolderRegistry, registerProjectFolder, serializeProjectRegistry,
   removeProjectFolder, withFolder, withProjectFolderRemoved,

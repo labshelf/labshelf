@@ -13,7 +13,7 @@ import { attachPdfToPaper } from "../../capture";
 import {
   bx, downloadTextFile, sendRuntime, type AttachPdfReply, type BrowserTab, type CopyRequestReply, type WriteOutcome,
 } from "../../platform";
-import { openReader } from "../readerTabs";
+import { openReader } from "../reader";
 import { createLibraryFileSystem } from "../../storage";
 import type { HostContext } from "./context";
 

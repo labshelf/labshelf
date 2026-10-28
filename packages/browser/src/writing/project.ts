@@ -16,14 +16,14 @@ export function askProjectTitle(defaultTitle: string): Promise<string | undefine
   }).then((title) => title?.trim());
 }
 
-export async function askBlankProject(): Promise<{ title: string; format: "latex" | "typst" } | undefined> {
+async function askBlankProject(): Promise<{ title: string; format: "latex" | "typst" } | undefined> {
   const title = await askProjectTitle("");
   if (!title) return undefined;
   const format = await pickQuickEntry([{ label: "LaTeX", value: "latex" as const }, { label: "Typst", value: "typst" as const }], { title: "Format of the new project" });
   return format === undefined ? undefined : { title, format };
 }
 
-export const browserPdfjs: PdfjsLoader = {
+const browserPdfjs: PdfjsLoader = {
   load: async () => (await loadPdfjs()) as unknown as Record<string, unknown>,
   getDocument: async (options) => (await loadPdfjs()).getDocument(options) as unknown as PdfLoadingTask,
 };

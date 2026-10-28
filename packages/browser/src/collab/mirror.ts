@@ -189,7 +189,7 @@ function onVisible(listener: () => void): () => void {
 /** Bounds the stat calls of one scan; a project folder past this is not mirrored in full. */
 const RESCAN_MAX_PATHS = 2_000;
 
-export interface FolderRescanOptions {
+interface FolderRescanOptions {
   fs: LibraryFileSystem;
   folder: string;
   disk: MirrorFileSystem;
@@ -197,12 +197,12 @@ export interface FolderRescanOptions {
   logger: ILogger;
 }
 
-export interface FolderRescan {
+interface FolderRescan {
   /** Reports every path changed, created or deleted since the last scan; the first scan only records. Throws MirrorProjectDirUnavailable. */
   scan(): Promise<void>;
 }
 
-export function createFolderRescan(options: FolderRescanOptions): FolderRescan {
+function createFolderRescan(options: FolderRescanOptions): FolderRescan {
   const { fs, folder, disk, changed, logger } = options;
   let known: Map<string, string> | undefined;
   let running: Promise<void> | undefined;

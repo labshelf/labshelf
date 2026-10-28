@@ -27,8 +27,9 @@ export {
   type CommentsDocument, type CommentsFileAccess, type SharedProjectComments,
 } from "./commentsFile.js";
 export {
-  addLiveThread, addLiveThreadReply, deriveAnchor, deriveLiveAnchor, findThread, readLiveThreads, setLiveThreadResolved,
-  type Comment, type CommentAnchor, type CommentThread, type TextRange,
+  addLiveThread, addLiveThreadReply, createEditorCommentRange, deriveAnchor, deriveLiveAnchor, deriveOffset, derivePosition, findSourceCommentRange,
+  findThread, readLiveThreads, setLiveThreadResolved,
+  type Comment, type CommentAnchor, type CommentThread, type LinePosition, type TextRange,
 } from "./comments.js";
 export {
   createShareIndexDoc, readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind,

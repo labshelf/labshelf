@@ -45,7 +45,7 @@ export function parseWorkspaceHash(hash: string): WorkspaceHashState | null {
 }
 
 /** True for a folder deep link (`#/papers/...`), the hash the library router writes. */
-export const isFolderHash = (hash: string): boolean => hash === `#/${PAPERS_DIR}` || hash.startsWith(`#/${PAPERS_DIR}/`);
+const isFolderHash = (hash: string): boolean => hash === `#/${PAPERS_DIR}` || hash.startsWith(`#/${PAPERS_DIR}/`);
 
 export const JOIN_PREFIX = "#/join/";
 
@@ -60,13 +60,13 @@ export function extractJoinInvite(hash: string): string | undefined {
 
 const MODULE = "libraryUi.editorArea";
 
-export interface TabBodies {
+interface TabBodies {
   mount(id: string, kind: TabKindName, params: TabParams, host: HTMLElement): EditorTabBody;
   /** True when the tab may close: its body's guard agrees, or it has none. */
   confirmClose(id: string): Promise<boolean>;
 }
 
-export interface TabBodiesDeps {
+interface TabBodiesDeps {
   logger: ILogger;
   services: () => Omit<TabContext, "workspace" | "tab">;
   workspace: () => Workspace;
@@ -74,7 +74,7 @@ export interface TabBodiesDeps {
   refreshActions(id: string): void;
 }
 
-export function createTabBodies({ logger, services, workspace, setDirty, refreshActions }: TabBodiesDeps): TabBodies {
+function createTabBodies({ logger, services, workspace, setDirty, refreshActions }: TabBodiesDeps): TabBodies {
   // One handler per tab id: a body replaces its own, and the area asks it before the tab closes.
   const beforeClose = new Map<string, () => Promise<boolean> | boolean>();
 

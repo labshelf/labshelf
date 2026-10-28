@@ -21,7 +21,7 @@ jest.mock("../../../src/storage", () => ({
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
 const mockOpenReader = jest.fn();
-jest.mock("../../../src/libraryUi/readerTabs", () => ({ openReader: (...a: unknown[]) => mockOpenReader(...a) }));
+jest.mock("../../../src/libraryUi/reader/readerTabs", () => ({ openReader: (...a: unknown[]) => mockOpenReader(...a) }));
 
 import { createLoopbackTransport, type HostToUi, type PaperFilesState } from "@labshelf/core";
 import { attachLibraryHost } from "../../../src/libraryUi/host";

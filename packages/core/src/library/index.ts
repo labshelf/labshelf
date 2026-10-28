@@ -31,8 +31,6 @@ export type { DeviceIdentity, WriteRecord, WriteRecordEntry, WriteRecordFileSyst
 export { syncGuide, type SyncGuide, type SyncGuidePlatform, type SyncGuideTool } from "./syncGuide.js";
 export { MoveToFolderError, countPapers, moveToFolder } from "./moveToFolder.js";
 export type { MoveDeps, MoveResult } from "./moveToFolder.js";
-export { PaperService, PaperFileService } from "./paperService.js";
-export type { PaperUpdateSink, PdfPresence } from "./paperService.js";
 export * from "./search.js";
 export * from "./searchText.js";
 export * from "./conflicts/index.js";

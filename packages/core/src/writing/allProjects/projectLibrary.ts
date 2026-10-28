@@ -4,12 +4,10 @@ import type { PdfjsLoader } from "../../import/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import { isInside, type PathOps } from "../../path/index.js";
 import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
-import type { ProjectEntry, ProjectSettingsUpdate, ProjectSubmission } from "../project/index.js";
+import type { ProjectEntry, ProjectSettingsUpdate, ProjectSubmission, ReadyProject } from "../project/index.js";
 import type { ProjectContentPort } from "../projectService.js";
 import { createProjectPaneSource, type readProjectCitations, type readProjectPaneContent } from "./projectDetails.js";
 import type { CreateProjectKind, ProjectLibraryPort, ProjectMenuCommand, ProjectPaneContent, ProjectRow, BuildMark, ProjectPlace } from "./projectModel.js";
-
-export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 export interface BuildProblem {
   severity: "error" | "warning" | "info";

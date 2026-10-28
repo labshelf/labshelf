@@ -3,7 +3,7 @@ import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEnt
 import { renderElement, showToast } from "@labshelf/core/dom";
 import { listCachedPaperRecords } from "../../storage";
 import {
-  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
+  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
   type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceFileMode,
 } from "../../writing";
 import type { TabContext, TabModule } from "./tabKinds";
@@ -51,7 +51,7 @@ async function loadEditor(
   const { session, sharing } = project();
   const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   try {
-    const loadingModule = import("../../writing/editor.js");
+    const loadingModule = loadSourceEditor();
     const entry = await findProject(fs, logger, session.current(), projectId);
     const { mountSourceEditor } = await loadingModule;
     if (disposed()) return undefined;

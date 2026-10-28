@@ -23,6 +23,11 @@ const keyOf = (projectId: string, path: string): string => `${projectPrefix(proj
 const editorsOf = (projectId: string): OpenEditor[] =>
   [...editors].filter(([key]) => key.startsWith(projectPrefix(projectId))).map(([, editor]) => editor);
 
+/** Loads the CodeMirror source editor in its own chunk, so a page downloads it only when it opens a source file. */
+export function loadSourceEditor(): Promise<typeof import("./editor.js")> {
+  return import("./editor.js");
+}
+
 /** Adds a mounted editor and applies a reveal asked for before it mounted; returns the call that removes it. */
 export function registerOpenEditor(projectId: string, path: string, editor: OpenEditor): () => void {
   const key = keyOf(projectId, path);

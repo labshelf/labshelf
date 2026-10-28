@@ -2,7 +2,7 @@ import type { ILogger, LibraryFileSystem, LocalStat } from "@labshelf/core";
 import { IdbFileSystem } from "../../src/storage/idb";
 import { buildFolderTree, createBrowserProjects, deriveLibraryId, listPdfDirs, MissingProjectFileError, refreshPaperRecords, scanLibrary } from "../../src/storage/records";
 import { clearFakeDb, fakeRows, putFile } from "../support/fakeIdb";
-import { MemoryFolderFs } from "./library/memoryFolderFs";
+import { MemoryFolderFs } from "./memoryFolderFs";
 
 jest.mock("webextension-polyfill", () => ({}));
 jest.mock("idb", () => ({ openDB: async () => require("../support/fakeIdb").fakeDb }));

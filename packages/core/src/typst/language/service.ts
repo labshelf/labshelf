@@ -1,4 +1,4 @@
-// Creates the Typst language service: completion, hover and definition over the edited text and the project's files.
+// Creates the Typst language service: completion, hover and definition over the edited text and the project's files, and the plain text of a hover for a tooltip.
 import type { ILogger } from "../../ports/index.js";
 import {
   createProjectFiles,
@@ -185,6 +185,13 @@ function hoverText(symbol: TypstSymbol): string {
 
 function fence(code: string): string {
   return `\`\`\`typst\n${code}\n\`\`\``;
+}
+
+const FENCE = /^```.*$/gm;
+
+/** Turns the markdown a hover answers in into the plain text an editor tooltip shows: drops the code fence lines and trims; empty when nothing is left to show. */
+export function derivePlainHoverText(markdown: string): string {
+  return markdown.replace(FENCE, "").trim();
 }
 
 async function typstDefinition(files: ProjectFiles, offset: number): Promise<TypstDefinition | null> {

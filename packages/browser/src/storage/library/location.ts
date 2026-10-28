@@ -1,7 +1,7 @@
 // Decides where the library lives for the user: why it is stored in the browser, a re-check of the connection and the pick of a folder on disk.
 import type { ILogger } from "@labshelf/core";
 import { attachPickedDir, refreshFromFiles, refreshStoredLibraryLocation, type LibraryLocation } from "../libraryFileSystem";
-import { sendPickedDirChange, writePickedDir } from "./pickedDir";
+import { sendPickedDirChange, writePickedDir } from "../pickedDir";
 
 export type BrowserSource = Extract<LibraryLocation, { kind: "browser" }>;
 

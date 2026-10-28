@@ -85,14 +85,14 @@
     },
     "packages/browser": {
       "entry": [
-        "src/background/index.ts",
-        "src/popup/index.ts",
-        "src/options/index.ts",
-        "src/libraryPage/pageEntry.ts",
-        "src/import/offscreen.ts",
-        "src/reader/index.ts",
-        "src/ui/themeStartup.ts",
-        "src/content/searchResults.ts",
+        "src/background/entry.ts",
+        "src/popup/entry.ts",
+        "src/options/entry.ts",
+        "src/libraryUi/libraryPage.ts",
+        "src/libraryUi/reader/readerPage.ts",
+        "src/capture/offscreen.ts",
+        "src/platform/themeStartup.ts",
+        "src/content/entry.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],

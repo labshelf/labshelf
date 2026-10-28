@@ -1,4 +1,5 @@
-/** Verifies Typst completion after #, @, <, ., inside calls and in path strings, and where it stays silent. */
+/** Verifies Typst completion after #, @, <, ., inside calls and in path strings, and where it stays silent, and the plain text a markdown hover becomes. */
+import { derivePlainHoverText } from "../../../src/typst/language/index";
 import { at, fixture } from "./typstProjectFixture";
 
 async function complete(marked: string, options: { path?: string; prefix?: string; explicit?: boolean } = {}) {
@@ -161,5 +162,15 @@ describe("Typst hover", () => {
 
   it("is null on plain text", async () => {
     expect(await hover("Plain wo|rd")).toBeNull();
+  });
+});
+
+describe("derivePlainHoverText", () => {
+  it("drops the code fence lines and trims", () => {
+    expect(derivePlainHoverText("```typst\nlet x = 1\n```\n\nA value")).toBe("let x = 1\n\n\nA value");
+  });
+
+  it("is empty when only fences remain", () => {
+    expect(derivePlainHoverText("```\n```")).toBe("");
   });
 });

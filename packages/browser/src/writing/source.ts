@@ -162,7 +162,7 @@ export async function addImage(insertion: AddImageDeps): Promise<void> {
 }
 
 
-export async function pickPaper(papers: () => Promise<PaperRecord[]>): Promise<PaperRecord | undefined> {
+async function pickPaper(papers: () => Promise<PaperRecord[]>): Promise<PaperRecord | undefined> {
   const all = await papers();
   if (all.length === 0) {
     showToast("LabShelf library is empty.", "info");
@@ -196,7 +196,7 @@ async function readHighlights(fs: LibraryFileSystem, logger: ILogger, paper: Pap
 }
 
 /** Undefined when the picker is dismissed. */
-export async function pickHighlight(fs: LibraryFileSystem, logger: ILogger, paper: PaperRecord): Promise<HighlightChoice | undefined> {
+async function pickHighlight(fs: LibraryFileSystem, logger: ILogger, paper: PaperRecord): Promise<HighlightChoice | undefined> {
   const highlights = await readHighlights(fs, logger, paper);
   if (highlights.length === 0) return { quote: false };
   return pickQuickEntry<HighlightChoice>([

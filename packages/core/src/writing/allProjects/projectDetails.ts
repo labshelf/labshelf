@@ -9,8 +9,9 @@ import { deriveCountedPages, derivePaperBody, readPdfFacts, countWordsUpTo, deri
 import { BIBLIOGRAPHY_HEADER, derivePapersByCiteKey, parseBibEntries, scanCiteKeys } from "../citations/index.js";
 import {
   DEFAULT_BIBLIOGRAPHY, listBuildRootFileNames, listVersions, readOptionalText, type ProjectReadContext, type ProjectSettings,
+  type ReadyProject,
 } from "../project/index.js";
-import type { BuildProblem, BuildSources, ProjectLibraryDeps, ReadyProject } from "./projectLibrary.js";
+import type { BuildProblem, BuildSources, ProjectLibraryDeps } from "./projectLibrary.js";
 import type { ProjectBuildReport, ProjectCitation, ProjectPaneContent } from "./projectModel.js";
 
 interface ProjectSourceTexts {

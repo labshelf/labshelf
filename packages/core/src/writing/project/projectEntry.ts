@@ -18,6 +18,9 @@ export type ProjectEntry =
   }
   | { kind: "broken"; folder: string; location: ProjectPlacement; reason: string };
 
+/** A project entry whose folder and settings were read. */
+export type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
+
 /** One project folder as the host sees it; names are relative to the folder. */
 export interface ProjectFolderReader {
   readOptionalText(name: string): Promise<string | undefined>;

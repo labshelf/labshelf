@@ -11,7 +11,8 @@ import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger,
 import type { EditorHelperPort, HelperProblem, TextChange } from "@labshelf/core/helper";
 import type * as Y from "yjs";
 import { createCollabExtensions, createCommentSupport, type EditorComments } from "../collab";
-import { createLatexSupport, typstLanguage, createTypstSupport, type DefinitionDeps } from "./languages";
+import { createLatexSupport } from "./latex";
+import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./source";
 import { registerOpenEditor } from "./session";
 

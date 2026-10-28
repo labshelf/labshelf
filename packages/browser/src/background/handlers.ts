@@ -23,12 +23,12 @@ import { sendCopyRequest, type CopyRequestDeps } from "./copyRequest";
 
 // ----- Library references
 
-export function createLibraryReference(id: string, path: string, hasPdf: boolean): LibraryReference {
+function createLibraryReference(id: string, path: string, hasPdf: boolean): LibraryReference {
   return { id, path, folder: deriveParentDir(path, "/"), hasPdf };
 }
 
 /** Whether `<path>/paper.pdf` exists (one stat; library.lookup uses a bulk scan). */
-export async function hasPdfFile(path: string): Promise<boolean> {
+async function hasPdfFile(path: string): Promise<boolean> {
   return (await createLibraryFileSystem().stat(`${path}/${PDF_FILE}`)) !== undefined;
 }
 
@@ -59,7 +59,7 @@ export async function answerOpenForPdf(deps: AccessTabDeps, msg: { id: string; a
 }
 
 /** A capture saved with "open": opens the access page its PDF search ran into, for the paper it saved. */
-export async function openAccessAfterCapture(deps: AccessTabDeps, draft: CaptureDraft, paper: { id: string; title: string }): Promise<void> {
+async function openAccessAfterCapture(deps: AccessTabDeps, draft: CaptureDraft, paper: { id: string; title: string }): Promise<void> {
   const { access } = derivePdfMiss(draft.pdfAttempts);
   if (access) await openAccessTab(deps, paper, access);
   else void deps.log.log("WARN", "capture", "open asked, but no sign-in or bot check stood in the way", { paperId: paper.id });
@@ -213,7 +213,7 @@ export async function answerSearchHitWrite(
  * Runs (or reuses) the draft's PDF search and writes what it finds into the paper already saved under `id`.
  * @returns whether paper.pdf was written now, or what the search tried
  */
-export async function attachFoundPdf(
+async function attachFoundPdf(
   log: ILogger,
   mutations: LibraryMutations,
   draft: CaptureDraft,

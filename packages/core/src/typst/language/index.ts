@@ -4,7 +4,7 @@ export { createTypstLanguageService } from "./service.js";
 export type {
   TypstCompletion, TypstCompletionKind, TypstCompletions, TypstDefinition, TypstHover, TypstLanguageService,
 } from "./service.js";
-export { derivePlainHoverText } from "./hoverText.js";
+export { derivePlainHoverText } from "./service.js";
 export { resolveTypstPath } from "./project.js";
 export type { TypstSources } from "./project.js";
 export { scanTypstHeadings } from "./syntax.js";

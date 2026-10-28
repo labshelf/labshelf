@@ -1,14 +1,12 @@
-// Tests the preview's project actions: command mapping, include-only, check limits and citation fixes without a library.
+// Tests the preview's project actions: command mapping, include-only, check limits (and the labshelf.yaml patch) and citation fixes without a library.
 import * as vscode from "vscode";
 
 import { setAutoCompile, setHaltOnError } from "../../../src/writing/build/index";
-import { createProjectActions, type ProjectActionsDeps } from "../../../src/writing/preview/ports";
-import { setCheckLimits } from "../../../src/writing/preview/limits";
+import { createProjectActions, setCheckLimits, type ProjectActionsDeps } from "../../../src/writing/preview/ports";
 import { applyCitationFix } from "../../../src/writing/preview/citationFixes";
-import { fakeLogger, readyEntry } from "../../support/writingFixtures";
+import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/writing/build/builds", () => ({ setAutoCompile: jest.fn(async () => {}), setHaltOnError: jest.fn(async () => {}) }));
-jest.mock("../../../src/writing/preview/limits", () => ({ setCheckLimits: jest.fn(async () => {}) }));
 jest.mock("../../../src/writing/preview/citationFixes", () => ({ applyCitationFix: jest.fn(async () => {}) }));
 
 const project = readyEntry("/lib/paper") as ReturnType<ProjectActionsDeps["project"]> & object;
@@ -54,9 +52,11 @@ describe("createProjectActions", () => {
   });
 
   it("writes the check limits and resends the roots", async () => {
-    const { deps, actions } = setup();
+    const projects = fakeProjects();
+    const { deps, actions } = setup({ projects } as unknown as Partial<ProjectActionsDeps>);
     await actions.setCheckLimits({ pages: 8 });
-    expect(setCheckLimits).toHaveBeenCalledWith(deps.projects, project, { pages: 8 });
+    expect(projects.data.updateProjectSettings).toHaveBeenCalledWith("/lib/paper", { check: { pages: 8 } });
+    expect(projects.reload).toHaveBeenCalledTimes(1);
     expect(deps.resendRoots).toHaveBeenCalledTimes(1);
   });
 
@@ -81,5 +81,29 @@ describe("createProjectActions", () => {
     await actions.setIncludeOnly(true);
     expect(deps.includeOnly.set).not.toHaveBeenCalled();
     expect(vscode.window.showWarningMessage).toHaveBeenCalled();
+  });
+});
+
+describe("limits patch", () => {
+  const project = readyEntry("/p/tex") as Parameters<typeof setCheckLimits>[1];
+
+  describe("setCheckLimits", () => {
+    it("patches only the fields in the change and reloads the projects", async () => {
+      const projects = fakeProjects();
+      await setCheckLimits(projects, project, { pages: 8, countUpTo: "end" });
+      const patch = projects.data.updateProjectSettings.mock.calls[0]![1];
+      expect(projects.data.updateProjectSettings.mock.calls[0]![0]).toBe("/p/tex");
+      expect(patch).toEqual({ check: { pages: 8, countUpTo: "end" } });
+      expect(Object.keys(patch.check)).toEqual(["pages", "countUpTo"]);
+      expect(projects.reload).toHaveBeenCalledTimes(1);
+    });
+
+    it("turns null into a removal", async () => {
+      const projects = fakeProjects();
+      await setCheckLimits(projects, project, { words: null });
+      const patch = projects.data.updateProjectSettings.mock.calls[0]![1];
+      expect(Object.keys(patch.check)).toEqual(["words"]);
+      expect(patch.check.words).toBeUndefined();
+    });
   });
 });

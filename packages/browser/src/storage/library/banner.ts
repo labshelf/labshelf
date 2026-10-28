@@ -1,32 +1,12 @@
-// Shows where the library lives: the warning banner, the offer to move the browser's papers and the form for the folder path.
-import { formatError, renderIcon, type IconName, type ILogger } from "@labshelf/core";
+// Shows where the library lives: the warning banner, the folder access prompt and the form for the folder path.
+import { formatError, type ILogger } from "@labshelf/core";
 import { renderElement, renderInlineCode, renderTextField, showToast } from "@labshelf/core/dom";
 import { bx } from "../../platform";
 import { createHelperDownloadUrl } from "../../helper";
 import { readLibraryLocation, refreshFromFiles, setLibraryFolder, type LibraryLocation } from "../libraryFileSystem";
-import { askFolderPermission, readFolderPermission, readPickedDir } from "./pickedDir";
+import { askFolderPermission, readFolderPermission, readPickedDir } from "../pickedDir";
 import { canPickFolder, describeSourceReason, pickLibraryFolder, refreshLibraryLocation, type BrowserSource } from "./location";
-import { countBrowserPapers, moveBrowserLibraryToFolder } from "./move";
-
-export interface BannerShell {
-  root: HTMLElement;
-  text: HTMLElement;
-}
-
-export function createBannerShell(tone: "warn" | "neutral", glyph: IconName): BannerShell {
-  const text = renderElement("div", { class: "lsrc-text" });
-  const root = renderElement("div", { class: `lsrc-banner ${tone}` }, renderElement("span", { class: "lsrc-icon", html: renderIcon(glyph) }), text);
-  return { root, text };
-}
-
-/** Shows `label` beside `glyph`; a busy button is disabled and its icon spins. */
-export function setButton(button: HTMLButtonElement, glyph: IconName, label: string, busy: boolean): void {
-  button.disabled = busy;
-  button.replaceChildren(
-    renderElement("span", { class: busy ? "lsrc-spin" : "lsrc-glyph", html: renderIcon(busy ? "loader" : glyph) }),
-    renderElement("span", { text: label }),
-  );
-}
+import { createBannerShell, setButton } from "./shell";
 
 const FIELD_ID = "library-folder";
 
@@ -56,65 +36,6 @@ export function renderFolderPathForm(logger: ILogger, onChosen: (source: Library
     })();
   });
   return form;
-}
-
-export interface MoveOfferOptions {
-  logger: ILogger;
-  /** Runs after every move attempt, once the paper records are rebuilt, so the page can reload its snapshots. */
-  onMoved(): void | Promise<void>;
-}
-
-export interface MoveOffer {
-  /** Looks again at where the library lives and how many papers the browser still holds. */
-  refresh(): Promise<void>;
-}
-
-const papers = (n: number): string => `${n} ${n === 1 ? "paper" : "papers"}`;
-
-export function mountMoveOffer(host: HTMLElement, options: MoveOfferOptions): MoveOffer {
-  const show = (root: string, count: number, skipped: readonly string[]): void => {
-    const { root: banner, text } = createBannerShell("neutral", "upload");
-    const move = renderElement("button", { class: "ls-btn ls-btn-primary", type: "button" });
-    setButton(move, "upload", `Move ${papers(count)} to ${root}`, false);
-    move.addEventListener("click", () => void run(root, move));
-    text.append(`${papers(count)} ${count === 1 ? "is" : "are"} still in this browser.`);
-    if (skipped.length) {
-      text.append(renderElement("div", { class: "lsrc-reason", text:
-        `${papers(skipped.length)} ${skipped.length === 1 ? "stays" : "stay"} in this browser because the folder already has a paper with the same id: ${skipped.join(", ")}.` }));
-    }
-    text.append(renderElement("div", { class: "lsrc-actions" }, move));
-    host.replaceChildren(banner);
-  };
-  const run = async (root: string, move: HTMLButtonElement): Promise<void> => {
-    setButton(move, "upload", "Moving papers…", true);
-    let skipped: readonly string[] = [];
-    try {
-      const result = await moveBrowserLibraryToFolder();
-      skipped = result.skipped;
-      if (!skipped.length) showToast(`Moved ${papers(result.moved.length)} to the folder.`, "ok");
-    } catch (err) {
-      await options.logger.error("library.libraryLocation", err);
-      showToast(formatError(err), "error");
-    }
-    try {
-      await options.onMoved();
-    } catch (err) {
-      await options.logger.error("library.libraryLocation", err);
-    }
-    await refresh(skipped);
-  };
-  const refresh = async (skipped: readonly string[] = []): Promise<void> => {
-    try {
-      const source = await readLibraryLocation();
-      const count = source.kind === "folder" ? await countBrowserPapers() : 0;
-      if (source.kind !== "folder" || count === 0) host.replaceChildren();
-      else show(source.root, count, skipped);
-    } catch (err) {
-      host.replaceChildren();
-      await options.logger.error("library.libraryLocation", err);
-    }
-  };
-  return { refresh: () => refresh() };
 }
 
 /** Renders into `host` only while the picked folder lacks permission; `onGranted` runs once the records are rebuilt. */

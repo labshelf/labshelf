@@ -73,9 +73,6 @@ importers:
       node-diff3:
         specifier: ^3.2.1
         version: 3.2.1
-      pdf-lib:
-        specifier: ^1.17.1
-        version: 1.17.1
       pdfjs-dist:
         specifier: ~6.3.289
         version: 6.3.289

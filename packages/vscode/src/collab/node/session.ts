@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 
 import {
   connectShare,
+  createShareRegistry,
   describeContentConflict,
   createLeasedMirrorFactory,
   formatInvite,
@@ -17,6 +18,7 @@ import {
   type ShareConnection,
   type ShareConnections,
   type ShareKeyStore,
+  type OpenShareRegistry,
   type ShareStart,
   type StoredInvite,
 } from "@labshelf/core";
@@ -102,59 +104,44 @@ export function connectDesktopShare(options: ConnectOptions, start: ShareStart):
 /** What else runs while a share is connected, such as the editor binding; disposed when it closes. */
 type OnOpen = (share: ShareConnection) => vscode.Disposable;
 
+interface OpenShare { share: ShareConnection; attached: vscode.Disposable }
+
 export class ActiveShares implements ShareConnections, vscode.Disposable {
-  private readonly open = new Map<string, { share: ShareConnection; attached: vscode.Disposable }>();
-  private readonly busy = new Set<string>();
-  private readonly changeEmitter = new vscode.EventEmitter<void>();
-  readonly onDidChange = this.changeEmitter.event;
+  private readonly registry: OpenShareRegistry<OpenShare> = createShareRegistry<OpenShare>({
+    connectionOf: ({ share }) => share,
+    close: ({ share }) => share.close(),
+    onRelease: ({ attached }) => attached.dispose(),
+  });
 
   constructor(private readonly onOpen: OnOpen) {}
 
-  list(): ShareConnection[] {
-    return [...this.open.values()].map(({ share }) => share);
-  }
+  readonly onDidChange = (listener: () => void): vscode.Disposable => new vscode.Disposable(this.registry.onChange(listener));
 
-  active(shareId: string): ShareConnection | undefined {
-    return this.open.get(shareId)?.share;
-  }
+  list(): ShareConnection[] { return this.registry.list(); }
+
+  active(shareId: string): ShareConnection | undefined { return this.registry.active(shareId); }
 
   /** True while a share, join or leave of the share runs; the project list then lags behind and must not be acted on. */
-  isBusy(shareId: string): boolean {
-    return this.busy.has(shareId);
-  }
+  isBusy(shareId: string): boolean { return this.registry.isBusy(shareId); }
 
-  async hold<T>(shareId: string, task: () => Promise<T>): Promise<T> {
-    this.busy.add(shareId);
-    try {
-      return await task();
-    } finally {
-      this.busy.delete(shareId);
-    }
-  }
+  hold<T>(shareId: string, task: () => Promise<T>): Promise<T> { return this.registry.hold(shareId, task); }
 
   add(share: ShareConnection): void {
-    const fire = () => this.changeEmitter.fire();
+    const fire = () => this.registry.notify();
     // The state covers the session status, the relay, storage health and the mirror.
     const stopState = share.onStateChange(fire);
     const stopPeers = share.session.onPeer(fire);
     const attached = vscode.Disposable.from(this.onOpen(share), { dispose: () => { stopState(); stopPeers(); } });
-    this.open.set(share.shareId, { share, attached });
+    this.registry.set(share.shareId, { share, attached });
     fire();
   }
 
   /** Disconnects the share; its files and stored state stay. Rejects when the close leaves an update unstored. */
-  async remove(shareId: string): Promise<void> {
-    const entry = this.open.get(shareId);
-    if (!entry) { return; }
-    this.open.delete(shareId);
-    entry.attached.dispose();
-    this.changeEmitter.fire();
-    await entry.share.close();
-  }
+  remove(shareId: string): Promise<void> { return this.registry.remove(shareId); }
 
   dispose(): void {
-    [...this.open.keys()].forEach((shareId) => void this.remove(shareId));
-    this.changeEmitter.dispose();
+    this.registry.list().forEach(({ shareId }) => void this.remove(shareId));
+    this.registry.clearListeners();
   }
 }
 

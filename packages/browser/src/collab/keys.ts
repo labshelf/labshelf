@@ -66,7 +66,7 @@ export async function readStoredShares(): Promise<Record<string, unknown>> {
   return isRecord(raw) ? raw : {};
 }
 
-export const writeStoredShares = (record: Record<string, unknown>): Promise<void> => bx.storage.local.set({ [SHARES_STORAGE_KEY]: record });
+const writeStoredShares = (record: Record<string, unknown>): Promise<void> => bx.storage.local.set({ [SHARES_STORAGE_KEY]: record });
 
 /** The shares of one library as stored, entries of the wrong shape included. */
 export function readLibraryShares(record: Record<string, unknown>, libraryId: string): Record<string, unknown> {
@@ -74,7 +74,7 @@ export function readLibraryShares(record: Record<string, unknown>, libraryId: st
   return isRecord(libraries[libraryId]) ? libraries[libraryId] : {};
 }
 
-export function withLibraryShares(record: Record<string, unknown>, libraryId: string, shares: Record<string, unknown>): Record<string, unknown> {
+function withLibraryShares(record: Record<string, unknown>, libraryId: string, shares: Record<string, unknown>): Record<string, unknown> {
   const libraries = isRecord(record["libraries"]) ? record["libraries"] : {};
   return { ...record, libraries: { ...libraries, [libraryId]: shares } };
 }

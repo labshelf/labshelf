@@ -1,6 +1,7 @@
-// Mounts the browser library workspace with its shared Details pane.
+// Mounts the browser library workspace with its shared Details pane, and binds the open folder to the URL hash
+// (`#/papers/Project/Refs`) so back/forward walk the folder history and a reload lands on the same folder.
 import {
-  type TabKindName, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
+  type TabKindName, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
@@ -15,12 +16,45 @@ import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
 import { createPageSpaces } from "./spaces";
-import { attachHashHandlers } from "./folderHash";
 import { derivePagePlan, type PagePlan } from "./pagePlan";
-import type { ProjectServices } from "./editorArea";
-import { createPageShell, createWorkspace, extractJoinInvite, type Workspace } from "./editorArea";
+import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, type ProjectServices, type Workspace } from "./editorArea";
 
 const log = createBrowserLogger();
+
+/**
+ * Starts syncing the UI's folder with location.hash; returns a disposer. A hash that is the path of a paper opens the
+ * paper's folder and selects it.
+ */
+export function attachHashHandlers(endpoint: HostEndpoint, paperIdAtPath: (path: string) => Promise<string | null>): () => void {
+  let latest = 0;
+  // The folder the UI reports after opening a paper's hash must not replace that hash, so a reload keeps the paper.
+  let paperHash: { hash: string; folder: string } | null = null;
+  const onHash = async (): Promise<void> => {
+    // A tabs hash (`#/tabs/...`) belongs to the workspace and a join hash carries an invite; neither names a folder, so the open folder stays.
+    if (location.hash.startsWith("#/tabs/") || location.hash.startsWith(JOIN_PREFIX)) return;
+    const hash = location.hash;
+    const path = parseFolderHash(hash);
+    const turn = ++latest;
+    const id = await paperIdAtPath(path);
+    if (turn !== latest) return;
+    if (!id) { paperHash = null; endpoint.post({ type: "navigate", folder: path }); return; }
+    const folder = deriveParentDir(path, "/");
+    paperHash = { hash, folder };
+    endpoint.post({ type: "navigate", folder });
+    endpoint.post({ type: "select", id });
+  };
+  const run = (): void => { void onHash(); };
+  window.addEventListener("hashchange", run);
+  const off = endpoint.subscribe((m) => {
+    if (m.type === "ready") run();
+    if (m.type !== "navigate") return;
+    const next = createFolderHash(m.folder);
+    const keepsPaperHash = paperHash && location.hash === paperHash.hash && m.folder === paperHash.folder;
+    if (location.hash !== next && !keepsPaperHash) history.pushState(null, "", next);
+    document.title = createFolderTitle(m.folder);
+  });
+  return () => { window.removeEventListener("hashchange", run); off(); };
+}
 
 /** Puts the storage banner and the move offer above the library frame, which keeps filling the remaining height. */
 function mountSourceSurfaces(root: HTMLElement, reloadSnapshots: () => Promise<void>): void {
@@ -59,7 +93,7 @@ async function loadProjectWiring(plan: PagePlan, invite: string | undefined, opt
 /** Serves the All projects channel of Details from the same port factory as the All projects tab; a failed load leaves that channel unanswered. */
 async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: ProjectServices, workspace: Workspace, fs: LibraryFileSystem): Promise<ProjectLibraryPort | null> {
   try {
-    const { createPageProjectLibrary } = await import("../writing/project.js");
+    const { createPageProjectLibrary } = await import("../writing/index.js");
     const library = createPageProjectLibrary({ fs, logger: log, workspace, session: services.session });
     serveAllProjects(endpoint, library, log);
     return library;
