@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs test, typecheck, build or any command; keeps the full log, prints at most 40 summary lines, counts spec test attempts and blocks stalled ones.
+// Runs test, typecheck, build or any command; keeps the full log, prints at most 40 summary lines (cmd: logs of up to 60 lines whole, longer ones summarised by the local model or cut to head and tail), counts spec test attempts and blocks stalled ones.
 import { spawnSync } from "node:child_process";
 import { constants as osConstants, tmpdir } from "node:os";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -13,6 +13,15 @@ const MAX_JEST_FAILURES = 8;
 const MAX_RUNS = 5;
 const BLOCKED_EXIT = 3;
 const LINE_WIDTH = 200;
+const CMD_SHORT_LOG = 60;
+const CMD_HEAD = 10;
+const CMD_TAIL = 25;
+const MODEL_INPUT_LINES = 400;
+const MODEL_URL = "http://localhost:11434";
+const MODEL_NAME = "qwen3.5:9b";
+const MODEL_UP_TIMEOUT_MS = 1500;
+const MODEL_TIMEOUT_MS = 20_000;
+const MODEL_SYSTEM = "You summarise the log of a command. Report the errors (with file and line when shown) and the final state of the run in at most 30 lines. Plain text, no preamble.";
 const TOOLING_GLOBS = ["scripts/*/__tests__/*.test.mjs", "tools/*/__tests__/*.test.mjs", ".claude/hooks/__tests__/*.test.mjs"];
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -177,11 +186,54 @@ function summarizeTail(text, count = 30) {
   return lines.length > count ? [`… ${lines.length - count} earlier lines in the log`, ...lines.slice(-count).map((l) => clip(l))] : lines.map((l) => clip(l));
 }
 
-function summarizeCmd(text) {
+/** First 10 and last 25 lines of a log, with a marker for the omitted middle. */
+function headTail(lines) {
+  if (lines.length <= CMD_HEAD + CMD_TAIL) return lines.map((l) => clip(l));
+  return [...lines.slice(0, CMD_HEAD).map((l) => clip(l)), `… ${lines.length - CMD_HEAD - CMD_TAIL} lines omitted, see the log …`, ...lines.slice(-CMD_TAIL).map((l) => clip(l))];
+}
+
+/** Asks the local ollama model for a summary. `{system, input}` in, text out; null when ollama is down, times out or answers nothing. */
+export async function ollamaChat({ system, input }) {
+  try {
+    const up = await fetch(`${MODEL_URL}/api/tags`, { signal: AbortSignal.timeout(MODEL_UP_TIMEOUT_MS) });
+    if (!up.ok) return null;
+    const response = await fetch(`${MODEL_URL}/api/chat`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        stream: false,
+        think: false,
+        options: { temperature: 0 },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: input },
+        ],
+      }),
+      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const content = (await response.json())?.message?.content;
+    return typeof content === "string" && content.trim() ? content : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Body lines for a `cmd` log: whole up to 60 lines, else the model summary (`chat({system, input})`, at most 30 lines), else head and tail. */
+export async function summarizeCmd(text, chat = ollamaChat) {
   const lines = splitLines(text);
   while (lines.length && !lines.at(-1).trim()) lines.pop();
-  if (lines.length <= 34) return lines.map((l) => clip(l));
-  return [...lines.slice(0, 14).map((l) => clip(l)), `… ${lines.length - 34} lines omitted, see the log …`, ...lines.slice(-20).map((l) => clip(l))];
+  if (lines.length <= CMD_SHORT_LOG) return lines.map((l) => clip(l));
+  let answer = null;
+  try {
+    answer = await chat({ system: MODEL_SYSTEM, input: lines.slice(-MODEL_INPUT_LINES).join("\n") });
+  } catch {
+    /* model unavailable: fall back to head and tail */
+  }
+  const summary = typeof answer === "string" ? splitLines(answer).filter((l) => l.trim()) : [];
+  if (!summary.length) return headTail(lines);
+  return [...summary.slice(0, 30).map((l) => clip(l)), `(model summary of ${lines.length} lines, see the log)`];
 }
 
 // ---- progress -------------------------------------------------------------------------------------------------
@@ -266,8 +318,8 @@ function writeLog(dir, kind, content) {
   }
 }
 
-/** Runs one wrapper invocation and returns the exit code. `deps`: `root`, `spawn(command, args, options)`, `out(line)`. */
-export function main(argv, deps = {}) {
+/** Runs one wrapper invocation and returns the exit code. `deps`: `root`, `spawn(command, args, options)`, `out(line)`, `chat({system, input})` (the local model for long `cmd` logs). */
+export async function main(argv, deps = {}) {
   const root = deps.root ?? DEFAULT_ROOT;
   const out = deps.out ?? ((line) => process.stdout.write(`${line}\n`));
   const spawn = deps.spawn ?? defaultSpawn;
@@ -322,11 +374,11 @@ export function main(argv, deps = {}) {
     ({ lines: body, failing } = summarizeNodeTest(output));
   } else if (parsed.kind === "typecheck") body = code === 0 ? ["tsc: no errors"] : summarizeTsc(output);
   else if (parsed.kind === "build") body = code === 0 ? ["build ok"] : /error TS\d+/.test(output) ? summarizeTsc(output) : summarizeTail(output);
-  else body = summarizeCmd(output);
+  else body = await summarizeCmd(output, deps.chat);
 
   const label = parsed.kind === "cmd" ? `cmd ${parsed.rest[0]}` : `${parsed.kind} ${parsed.pkg}`;
   const lines = [`[${label}] exit ${code}`, ...body];
-  const kept = lines.length > MAX_LINES - 1 ? [...lines.slice(0, MAX_LINES - 2), `… ${lines.length - (MAX_LINES - 2)} more lines in the log`] : lines;
+  const kept = parsed.kind !== "cmd" && lines.length > MAX_LINES - 1 ? [...lines.slice(0, MAX_LINES - 2), `… ${lines.length - (MAX_LINES - 2)} more lines in the log`] : lines;
   for (const line of kept) out(line);
   out(`log: ${logFile}`);
 
@@ -342,5 +394,5 @@ export function main(argv, deps = {}) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);
-  process.exitCode = argv.includes("--help") || argv.includes("-h") ? (console.log(USAGE), 0) : main(argv);
+  process.exitCode = argv.includes("--help") || argv.includes("-h") ? (console.log(USAGE), 0) : await main(argv);
 }

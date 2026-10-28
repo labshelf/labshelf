@@ -38,11 +38,12 @@ const events = () =>
     : [];
 
 // Runs main with a fake spawn; returns { code, lines, calls }.
-function run(argv, spawn) {
+async function run(argv, spawn, chat = async () => null) {
   const lines = [];
   const calls = [];
-  const code = main(argv, {
+  const code = await main(argv, {
     root,
+    chat,
     out: (line) => lines.push(line),
     spawn: (command, args, options) => {
       calls.push({ command, args, options });
@@ -171,8 +172,8 @@ describe("blockReason", () => {
 });
 
 describe("main", () => {
-  it("jest: at most 40 lines, original exit code, log written, log path printed", () => {
-    const { code, lines, calls } = run(["test", "core", "--", "__tests__/thing.test.ts"], fakeJest([names(60)]));
+  it("jest: at most 40 lines, original exit code, log written, log path printed", async () => {
+    const { code, lines, calls } = await run(["test", "core", "--", "__tests__/thing.test.ts"], fakeJest([names(60)]));
     assert.equal(code, 1);
     assert.ok(lines.length <= 40, `${lines.length} lines`);
     const logFiles = readdirSync(logs);
@@ -185,43 +186,43 @@ describe("main", () => {
     assert.equal(calls[0].args.at(-1), "__tests__/thing.test.ts");
   });
 
-  it("jest: passing run prints a short summary and exits 0", () => {
-    const { code, lines } = run(["test", "core"], fakeJest([[]]));
+  it("jest: passing run prints a short summary and exits 0", async () => {
+    const { code, lines } = await run(["test", "core"], fakeJest([[]]));
     assert.equal(code, 0);
     assert.ok(lines.length <= 5);
   });
 
-  it("typecheck: summarizes tsc output and keeps the exit code", () => {
+  it("typecheck: summarizes tsc output and keeps the exit code", async () => {
     const out = Array.from({ length: 30 }, (_, i) => `src/f${i}.ts(1,1): error TS2322: bad ${i}`).join("\n");
-    const { code, lines, calls } = run(["typecheck", "core"], () => ({ status: 2, stdout: out, stderr: "" }));
+    const { code, lines, calls } = await run(["typecheck", "core"], () => ({ status: 2, stdout: out, stderr: "" }));
     assert.equal(code, 2);
     assert.ok(lines.length <= 40);
     assert.deepEqual(calls[0].args, ["--filter", "@labshelf/core", "typecheck"]);
     assert.equal(readdirSync(logs).length, 1);
   });
 
-  it("build: runs the package build and keeps the exit code", () => {
-    const { code, calls } = run(["build", "core"], () => ({ status: 0, stdout: "built\n", stderr: "" }));
+  it("build: runs the package build and keeps the exit code", async () => {
+    const { code, calls } = await run(["build", "core"], () => ({ status: 0, stdout: "built\n", stderr: "" }));
     assert.equal(code, 0);
     assert.deepEqual(calls[0].args, ["--filter", "@labshelf/core", "build"]);
   });
 
-  it("tooling: runs node --test with the tap reporter on the given paths", () => {
-    const { code, calls } = run(["test", "tooling", "--", "scripts/agents/__tests__/run.test.mjs"], () => ({ status: 0, stdout: "# tests 1\n# pass 1\n# fail 0\n", stderr: "" }));
+  it("tooling: runs node --test with the tap reporter on the given paths", async () => {
+    const { code, calls } = await run(["test", "tooling", "--", "scripts/agents/__tests__/run.test.mjs"], () => ({ status: 0, stdout: "# tests 1\n# pass 1\n# fail 0\n", stderr: "" }));
     assert.equal(code, 0);
     assert.equal(calls[0].command, process.execPath);
     assert.deepEqual(calls[0].args, ["--test", "--test-reporter=tap", "scripts/agents/__tests__/run.test.mjs"]);
   });
 
-  it("tooling: defaults to the test:tooling globs", () => {
-    const { calls } = run(["test", "tooling"], () => ({ status: 0, stdout: "", stderr: "" }));
+  it("tooling: defaults to the test:tooling globs", async () => {
+    const { calls } = await run(["test", "tooling"], () => ({ status: 0, stdout: "", stderr: "" }));
     assert.ok(calls[0].args.includes("scripts/*/__tests__/*.test.mjs"));
     assert.ok(calls[0].args.includes(".claude/hooks/__tests__/*.test.mjs"));
   });
 
-  it("cmd: keeps the exit code and shows the head and tail of long output in at most 40 lines", () => {
+  it("cmd: keeps the exit code and shows the head and tail of long output when the model is down", async () => {
     const out = Array.from({ length: 300 }, (_, i) => `line ${i}`).join("\n");
-    const { code, lines, calls } = run(["cmd", "--", "echo", "hi"], () => ({ status: 7, stdout: out, stderr: "" }));
+    const { code, lines, calls } = await run(["cmd", "--", "echo", "hi"], () => ({ status: 7, stdout: out, stderr: "" }));
     assert.equal(code, 7);
     assert.ok(lines.length <= 40);
     assert.ok(lines.some((l) => l === "line 0"));
@@ -230,21 +231,79 @@ describe("main", () => {
     assert.deepEqual(calls[0].args, ["hi"]);
   });
 
-  it("rejects an unknown kind or package with exit 2", () => {
-    assert.equal(run(["nope"], () => ({ status: 0 })).code, 2);
-    assert.equal(run(["test", "ghost"], () => ({ status: 0 })).code, 2);
+  const logOf = (n) => Array.from({ length: n }, (_, i) => `line ${i}`).join("\n");
+  const logPath = (lines) => lines.find((l) => l.startsWith("log: "))?.slice(5);
+
+  it("cmd: a 200-line unrecognised log is summarised by the model; the input is the last 400 lines at most", async () => {
+    const seen = [];
+    const chat = async (request) => {
+      seen.push(request);
+      return "model says: 2 errors\nfinal state: failed";
+    };
+    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 4, stdout: logOf(200), stderr: "" }), chat);
+    assert.equal(code, 4);
+    assert.equal(seen.length, 1);
+    assert.ok(seen[0].system.length > 0);
+    assert.ok(seen[0].input.includes("line 199"));
+    assert.ok(lines.includes("model says: 2 errors"));
+    assert.ok(lines.includes("final state: failed"));
+    assert.ok(!lines.includes("line 100"));
+    assert.ok(existsSync(logPath(lines)));
+    assert.ok(readFileSync(logPath(lines), "utf8").includes("line 0"));
   });
 
-  it("rejects --spec without a plan with exit 2", () => {
-    const { code, calls } = run(["test", "core", "--spec", "2.1"], fakeJest([[]]));
+  it("cmd: only the last 400 lines of a longer log reach the model", async () => {
+    const seen = [];
+    await run(["cmd", "--", "make"], () => ({ status: 0, stdout: logOf(1000), stderr: "" }), async (request) => (seen.push(request), "ok"));
+    assert.ok(seen[0].input.includes("line 999"));
+    assert.ok(seen[0].input.includes("line 600"));
+    assert.ok(!seen[0].input.includes("line 599\n"));
+  });
+
+  it("cmd: model down prints the first 10 and last 25 lines, the log path and the exit code", async () => {
+    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 9, stdout: logOf(200), stderr: "" }), async () => null);
+    assert.equal(code, 9);
+    for (const i of [0, 9, 175, 199]) assert.ok(lines.includes(`line ${i}`), `line ${i}`);
+    for (const i of [10, 100, 174]) assert.ok(!lines.includes(`line ${i}`), `line ${i}`);
+    assert.ok(existsSync(logPath(lines)));
+  });
+
+  it("cmd: a model that throws (timeout) falls back to head and tail", async () => {
+    const chat = async () => {
+      throw new Error("timeout");
+    };
+    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 0, stdout: logOf(200), stderr: "" }), chat);
+    assert.equal(code, 0);
+    assert.ok(lines.includes("line 9"));
+    assert.ok(lines.includes("line 175"));
+    assert.ok(!lines.includes("line 50"));
+  });
+
+  it("cmd: a log of at most 60 lines is printed as is and the model is not asked", async () => {
+    let asked = 0;
+    const chat = async () => (asked += 1, "nope");
+    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 1, stdout: logOf(60), stderr: "" }), chat);
+    assert.equal(code, 1);
+    assert.equal(asked, 0);
+    for (let i = 0; i < 60; i += 1) assert.ok(lines.includes(`line ${i}`));
+    assert.ok(logPath(lines));
+  });
+
+  it("rejects an unknown kind or package with exit 2", async () => {
+    assert.equal((await run(["nope"], () => ({ status: 0 }))).code, 2);
+    assert.equal((await run(["test", "ghost"], () => ({ status: 0 }))).code, 2);
+  });
+
+  it("rejects --spec without a plan with exit 2", async () => {
+    const { code, calls } = await run(["test", "core", "--spec", "2.1"], fakeJest([[]]));
     assert.equal(code, 2);
     assert.equal(calls.length, 0);
   });
 
-  it("with --spec: records each run and emits test_run", () => {
+  it("with --spec: records each run and emits test_run", async () => {
     const argv = ["test", "core", "--spec", "2.1", "--plan", "demo"];
-    run(argv, fakeJest([names(3)]));
-    run(argv, fakeJest([names(2)]));
+    await run(argv, fakeJest([names(3)]));
+    await run(argv, fakeJest([names(2)]));
     const state = JSON.parse(readFileSync(join(runs, "demo", "2.1.json"), "utf8"));
     assert.equal(state.length, 2);
     assert.equal(state[0].failing.length, 3);
@@ -254,16 +313,16 @@ describe("main", () => {
     assert.deepEqual(testRuns.map((e) => [e.attempt, e.failing, e.exit]), [[1, 3, 1], [2, 2, 1]]);
   });
 
-  it("without --spec: keeps no state and emits nothing", () => {
-    run(["test", "core"], fakeJest([names(3)]));
+  it("without --spec: keeps no state and emits nothing", async () => {
+    await run(["test", "core"], fakeJest([names(3)]));
     assert.equal(existsSync(runs), false);
     assert.equal(events().length, 0);
   });
 
-  it("blocks after two non-shrinking runs: exit 3, nothing spawned, test_blocked emitted", () => {
+  it("blocks after two non-shrinking runs: exit 3, nothing spawned, test_blocked emitted", async () => {
     const argv = ["test", "core", "--spec", "2.1", "--plan", "demo"];
-    for (let i = 0; i < 3; i += 1) assert.equal(run(argv, fakeJest([names(3)])).code, 1);
-    const blocked = run(argv, fakeJest([names(3)]));
+    for (let i = 0; i < 3; i += 1) assert.equal((await run(argv, fakeJest([names(3)]))).code, 1);
+    const blocked = await run(argv, fakeJest([names(3)]));
     assert.equal(blocked.code, 3);
     assert.equal(blocked.calls.length, 0);
     assert.ok(blocked.lines.join("\n").includes("BLOCKED: return report status blocked_tests"));
@@ -273,17 +332,17 @@ describe("main", () => {
     assert.equal(JSON.parse(readFileSync(join(runs, "demo", "2.1.json"), "utf8")).length, 3);
   });
 
-  it("keeps running while the failing set shrinks, then blocks at five runs", () => {
+  it("keeps running while the failing set shrinks, then blocks at five runs", async () => {
     const argv = ["test", "core", "--spec", "2.1", "--plan", "demo"];
-    for (const n of [6, 5, 4, 3, 2]) assert.equal(run(argv, fakeJest([names(n)])).code, 1);
-    const blocked = run(argv, fakeJest([names(1)]));
+    for (const n of [6, 5, 4, 3, 2]) assert.equal((await run(argv, fakeJest([names(n)]))).code, 1);
+    const blocked = await run(argv, fakeJest([names(1)]));
     assert.equal(blocked.code, 3);
     assert.equal(blocked.calls.length, 0);
     assert.equal(events().find((e) => e.kind === "test_blocked").reason, "max_runs");
   });
 
-  it("a different spec has its own counter", () => {
-    for (let i = 0; i < 3; i += 1) run(["test", "core", "--spec", "a", "--plan", "demo"], fakeJest([names(3)]));
-    assert.equal(run(["test", "core", "--spec", "b", "--plan", "demo"], fakeJest([names(3)])).code, 1);
+  it("a different spec has its own counter", async () => {
+    for (let i = 0; i < 3; i += 1) await run(["test", "core", "--spec", "a", "--plan", "demo"], fakeJest([names(3)]));
+    assert.equal((await run(["test", "core", "--spec", "b", "--plan", "demo"], fakeJest([names(3)]))).code, 1);
   });
 });

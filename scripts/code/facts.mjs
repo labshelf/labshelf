@@ -7,7 +7,8 @@ import { DatabaseSync } from "node:sqlite";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { emit } from "../agents/telemetry.mjs";
-import { DB_PATH, DIRTY_PATH, LOCK_PATH, ROOT, ftsQuery, jaccard, lockHeld, multisetOverlap, splitTopLevel, typeKey } from "./lib.mjs";
+import { DB_PATH, DIRTY_PATH, LOCK_PATH, ROOT, ftsQuery, lockHeld, multisetOverlap, splitTopLevel, typeKey } from "./lib.mjs";
+import { labelOf, matchPrint, shinglesOf, unitFactRows } from "./match.mjs";
 
 const CODE_DIR = dirname(fileURLToPath(import.meta.url));
 const CAP = 30;
@@ -136,8 +137,6 @@ function def(db, args) {
 const FN_LIMIT = 12;
 const SIG_LIMIT = 15;
 const SIMILAR_LIMIT = 10;
-const SIMILAR_MIN_NODES = 10;
-const labelOf = (unit) => (unit.owner ? `${unit.owner}.${unit.name}` : unit.name);
 const visibilityOf = (unit) => (unit.exported ? "exported" : "private");
 const unitLine = (unit) => `${unit.file}:${unit.start_line} ${labelOf(unit)} ${clip(unit.signature, 110)}`;
 
@@ -154,11 +153,6 @@ function fn(db, args) {
     .all(query, FN_LIMIT);
   printRows(rows, (unit) => `${unitLine(unit)} — ${clip(unit.header, 100)} (${visibilityOf(unit)})`, FN_LIMIT);
 }
-
-const unitFactRows = (db, where = "") =>
-  db
-    .prepare(`SELECT u.*, uf.nodes, uf.t1, uf.t2, uf.body_t1, uf.body_t2, uf.shingles, uf.params, uf.returns, uf.calls FROM units u JOIN unit_facts uf ON uf.id = u.id ${where}`)
-    .all();
 
 /** Units ranked by how many of the wanted parameter types (any order), return type and called names they have. */
 function sig(db, args) {
@@ -178,8 +172,6 @@ function sig(db, args) {
   scored.sort((a, b) => b.score - a.score || a.extra - b.extra || a.unit.signature.length - b.unit.signature.length);
   printRows(scored, ({ unit, score }) => `${score}/${wanted} ${unitLine(unit)} (${visibilityOf(unit)})`, SIG_LIMIT);
 }
-
-const shinglesOf = (blob) => (blob ? new Uint32Array(new Uint8Array(blob).buffer) : new Uint32Array());
 
 /** Units whose normalized code is closest to a snippet on stdin (`-`) or a line range: 4-shingle Jaccard plus exact T1/T2 hits. */
 async function similar(db, args) {
@@ -202,15 +194,7 @@ async function similar(db, args) {
     // A name the snippet uses without declaring is local unless the codebase mostly uses it as a free (imported or global) name.
     print = snippetFingerprint(text, (name) => !uses.has(name) || uses.get(name).local_n >= uses.get(name).free_n);
   }
-  const hits = [];
-  for (const unit of unitFactRows(db, `WHERE uf.nodes >= ${SIMILAR_MIN_NODES}`)) {
-    if (unit.id === selfId) continue;
-    const exact =
-      unit.t1 === print.t1 || unit.body_t1 === print.bodyT1 ? "T1" : unit.t2 === print.t2 || unit.body_t2 === print.bodyT2 ? "T2" : "";
-    const similarity = jaccard(print.shingles, shinglesOf(unit.shingles));
-    if (exact || similarity > 0) hits.push({ unit, exact, similarity });
-  }
-  hits.sort((a, b) => Number(Boolean(b.exact)) - Number(Boolean(a.exact)) || b.similarity - a.similarity);
+  const hits = matchPrint(db, print, { excludeId: selfId });
   printRows(hits, ({ unit, exact, similarity }) => `${similarity.toFixed(2)}${exact ? ` ${exact}` : ""} ${unitLine(unit)} (${visibilityOf(unit)})`, SIMILAR_LIMIT);
 }
 

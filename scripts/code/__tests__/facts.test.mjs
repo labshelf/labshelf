@@ -93,3 +93,15 @@ test('the commands that needed a model are gone and no model package is imported
     assert.doesNotMatch(readFileSync(join(CODE_DIR, file), 'utf8'), /@huggingface|oxc-parser|oxc-resolver/, file);
   }
 });
+
+test('similar prints the closest units for a snippet and for a line range, exact copies first and the unit itself left out', () => {
+  const body = Array.from({ length: 6 }, (_, i) => `  total += step(${i});`).join('\n');
+  put('packages/core/src/e.ts', `export function sumSteps(step: (n: number) => number): number {\n  let total = 0;\n${body}\n  return total;\n}\n`);
+  put('packages/vscode/src/f.ts', `export function addSteps(fn: (k: number) => number): number {\n  let acc = 0;\n${body.replaceAll('total', 'acc').replaceAll('step', 'fn')}\n  return acc;\n}\n`);
+  assert.equal(facts('build', '--quiet').status, 0);
+  const lines = facts('similar', '--file', 'packages/core/src/e.ts', '--lines', '1-10').out.trim().split('\n');
+  assert.match(lines[0], /^1\.00 T2 packages\/vscode\/src\/f\.ts:1 addSteps \(fn: \(k: number\) => number\): number \(exported\)$/);
+  assert.ok(lines.every((line) => !line.includes('sumSteps')));
+  const piped = spawnSync(process.execPath, [join(CODE_DIR, 'facts.mjs'), 'similar', '-'], { env, encoding: 'utf8', input: readFileSync(join(root, 'packages/core/src/e.ts'), 'utf8') });
+  assert.match(piped.stdout.split('\n')[0], /^1\.00 T1 packages\/core\/src\/e\.ts:1 sumSteps /);
+});

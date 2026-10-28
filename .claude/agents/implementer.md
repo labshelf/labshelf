@@ -28,6 +28,7 @@ The spec is the whole scope. Its `decided` entries are settled; do not re-decide
 ## Always
 
 - Shared logic goes to core; apps get glue only. UI uses core components and `--ls-*` tokens.
+- Before writing a new function, check it does not exist with the index (`facts` is `node scripts/code/facts.mjs`): `facts def <name>`, `facts fn '<what it does>'`, `facts sig '<type>'`, or a draft on stdin to `facts similar -`. Call these directly; never spawn an explorer for it. When a hook prints `possible duplicate`, reuse or extend the match, or say why not in the report's `concerns`.
 - Other sessions may be editing the same worktree. Never run `git stash`, `git reset` or `git checkout` on files. A failure in a file outside your paths goes under `concerns`, not into a fix.
 - Keep your context small: never read a file twice, and use `git diff --stat` before a full diff. When a hook says you are over the context budget, stop and report what is left.
 - Do not update `documents/`, commit or run reviews; the finishing pass does that.

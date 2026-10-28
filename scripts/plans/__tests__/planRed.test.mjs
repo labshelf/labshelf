@@ -61,10 +61,10 @@ const setup = ({ hidden = GOOD_TEST, existing = null } = {}) => {
 const args = (dir) => ({ planDir: dir, sessionId: "1", specId: "1.1" });
 
 describe("planRed", () => {
-  it("accepts tests that all fail with not implemented and leaves the tree as it was", () => {
+  it("accepts tests that all fail with not implemented and leaves the tree as it was", async () => {
     const { root, dir } = setup();
     const before = porcelain(root);
-    const result = planRed(root, args(dir));
+    const result = await planRed(root, args(dir));
     assert.deepEqual(result.problems, []);
     assert.equal(result.ok, true);
     assert.equal(result.total, 2);
@@ -73,27 +73,27 @@ describe("planRed", () => {
     assert.equal(existsSync(redRecordPath(root)), false);
   });
 
-  it("restores an existing seam file with uncommitted edits byte for byte", () => {
+  it("restores an existing seam file with uncommitted edits byte for byte", async () => {
     const { root, dir } = setup({ existing: "export function other() {}\n" });
     write(root, "scripts/x/lib.mjs", "export function other() { return 1; }\n// local edit\n");
     const before = porcelain(root);
-    const result = planRed(root, args(dir));
+    const result = await planRed(root, args(dir));
     assert.equal(result.ok, true, result.problems.join("\n"));
     assert.equal(readFileSync(join(root, "scripts/x/lib.mjs"), "utf8"), "export function other() { return 1; }\n// local edit\n");
     assert.equal(porcelain(root), before);
   });
 
-  it("rejects a test file with an import error and still restores", () => {
+  it("rejects a test file with an import error and still restores", async () => {
     const { root, dir } = setup({ hidden: GOOD_TEST.replace("../lib.mjs", "../missing.mjs") });
     const before = porcelain(root);
-    const result = planRed(root, args(dir));
+    const result = await planRed(root, args(dir));
     assert.equal(result.ok, false);
     assert.ok(result.problems.length > 0);
     assert.equal(porcelain(root), before);
     assert.equal(existsSync(redRecordPath(root)), false);
   });
 
-  it("rejects a test that fails for another reason or passes, naming it", () => {
+  it("rejects a test that fails for another reason or passes, naming it", async () => {
     const hidden = `import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { add } from "../lib.mjs";
@@ -104,7 +104,7 @@ describe("add", () => {
 });
 `;
     const { root, dir } = setup({ hidden });
-    const result = planRed(root, args(dir));
+    const result = await planRed(root, args(dir));
     assert.equal(result.ok, false);
     const text = result.problems.join("\n");
     assert.match(text, /A1 other failure/);
@@ -112,17 +112,17 @@ describe("add", () => {
     assert.doesNotMatch(text, /A3 not implemented/);
   });
 
-  it("rejects a syntax error in the test file", () => {
+  it("rejects a syntax error in the test file", async () => {
     const { root, dir } = setup({ hidden: "import { add } from '../lib.mjs';\nit(\n" });
-    assert.equal(planRed(root, args(dir)).ok, false);
+    assert.equal((await planRed(root, args(dir))).ok, false);
   });
 
-  it("does not count the run: no state file for the spec is written", () => {
+  it("does not count the run: no state file for the spec is written", async () => {
     const { root, dir } = setup();
     const runs = mkdtempSync(join(tmpdir(), "plan-red-runs-"));
     process.env.LABSHELF_RUNS_DIR = runs;
     try {
-      planRed(root, args(dir));
+      await planRed(root, args(dir));
     } finally {
       delete process.env.LABSHELF_RUNS_DIR;
     }
@@ -131,7 +131,7 @@ describe("add", () => {
 });
 
 describe("plan red --restore", () => {
-  it("restores the tree after a simulated crash and deletes the record", () => {
+  it("restores the tree after a simulated crash and deletes the record", async () => {
     const { root, dir } = setup({ existing: "export function other() {}\n" });
     const before = porcelain(root);
     prepareRed(root, loadSession(dir, "1").packages[0]);
@@ -146,7 +146,7 @@ describe("plan red --restore", () => {
     assert.deepEqual(restoreRed(root), []);
   });
 
-  it("removes created files and folders", () => {
+  it("removes created files and folders", async () => {
     const { root, dir } = setup();
     const before = porcelain(root);
     prepareRed(root, loadSession(dir, "1").packages[0]);

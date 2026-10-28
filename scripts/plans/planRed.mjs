@@ -72,7 +72,7 @@ export function restoreRed(root) {
 }
 
 // Runs run.mjs in process and captures the raw output (and the jest json) its summary would hide.
-function runCaptured(root, argv) {
+async function runCaptured(root, argv) {
   const captured = { output: "", json: null };
   const spawn = (command, args, options) => {
     const env = { ...options.env };
@@ -90,7 +90,7 @@ function runCaptured(root, argv) {
     return result;
   };
   const lines = [];
-  const code = runMain(argv, { root, spawn, out: (line) => lines.push(line) });
+  const code = await runMain(argv, { root, spawn, out: (line) => lines.push(line) });
   return { ...captured, code, summary: lines };
 }
 
@@ -104,11 +104,11 @@ export function redProblems(tests) {
 }
 
 /** Runs red for a spec; returns `{ ok, problems, total }` and always restores the tree. */
-export function planRed(root, { planDir, sessionId, specId }) {
+export async function planRed(root, { planDir, sessionId, specId }) {
   const spec = findSpec(planDir, sessionId, specId);
   const argv = prepareRed(root, spec);
   try {
-    const run = runCaptured(root, argv);
+    const run = await runCaptured(root, argv);
     const tests = argv[1] === "tooling" ? parseTap(run.output) : run.json ? parseJest(run.json, { root }) : [];
     const problems = redProblems(tests);
     if (problems.length > 0 && tests.length === 0) problems.push(...run.summary.slice(0, 10));

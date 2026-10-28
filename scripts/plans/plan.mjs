@@ -56,13 +56,13 @@ export const COMMANDS = {
     if (!sessionId || !specId) throw new Error("plan tests: <session> <id> are required");
     out(`created ${planTests(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId })}`);
   },
-  red: ({ root, positional: [sessionId, specId], flags, out }) => {
+  red: async ({ root, positional: [sessionId, specId], flags, out }) => {
     if (flags.restore) {
       restoreRed(root).forEach((path) => out(`restored ${path}`));
       return 0;
     }
     if (!sessionId || !specId) throw new Error("plan red: <session> <id> are required (or --restore)");
-    const { ok, problems, total } = planRed(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId });
+    const { ok, problems, total } = await planRed(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId });
     problems.forEach(out);
     out(ok ? `red: ${total} tests, all fail with "not implemented"` : "red: rejected");
     return ok ? 0 : 1;
@@ -103,17 +103,17 @@ export function parseArgs(argv) {
 
 const repoRoot = () => execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 
-function main(argv) {
+async function main(argv) {
   const [cmd, ...rest] = argv;
   const command = Object.hasOwn(COMMANDS, cmd ?? "") ? COMMANDS[cmd] : null;
   if (!command) throw new Error(`plan: unknown command ${cmd ?? "(none)"} (expected one of ${Object.keys(COMMANDS).join(", ")})`);
   const { positional, flags } = parseArgs(rest);
-  return command({ root: repoRoot(), positional, flags, out: (line) => console.log(line) }) ?? 0;
+  return (await command({ root: repoRoot(), positional, flags, out: (line) => console.log(line) })) ?? 0;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    process.exitCode = main(process.argv.slice(2));
+    process.exitCode = await main(process.argv.slice(2));
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

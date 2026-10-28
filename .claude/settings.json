@@ -50,6 +50,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/facts-refresh.mjs",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/dup-guard.mjs",
+            "timeout": 5
           }
         ]
       },
