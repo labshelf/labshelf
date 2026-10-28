@@ -1,5 +1,5 @@
 // Tests that the Spaces guard accepts space.runCell and space.cancelCell and drops them whole with a missing or mistyped field.
-import { parseSpacesMessage } from "../../src/spaces/spacesProtocol";
+import { parseSpacesMessage } from "../src/spaces/spacesProtocol";
 
 const run = { type: "space.runCell", path: "notes/ideas.qmd", itemId: "i1", label: "calc", code: "print(1)", requestId: "r1" };
 const cancel = { type: "space.cancelCell", requestId: "r1" };
@@ -23,7 +23,7 @@ describe("space.runCell and space.cancelCell guards", () => {
     expect(parseSpacesMessage({ ...run, [field]: 7 })).toBeUndefined();
   });
   it("12.5a drops space.runCell with a path that escapes the Space notes", () => {
-    expect(parseSpacesMessage({ ...run, path: "../outside.qmd" })).toBeUndefined();
+    expect(parseSpacesMessage({ ...run, path: "./outside.qmd" })).toBeUndefined();
   });
   it.each(["notes.qmd", "papers/a.qmd", "projects/p/notes.qmd", "other/ideas.qmd", "/notes/ideas.qmd"])(
     "12.5a drops space.runCell with the path %s outside notes/ and discussions/", (path) => {

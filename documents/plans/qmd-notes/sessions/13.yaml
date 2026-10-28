@@ -85,8 +85,8 @@ packages:
         check: a malformed comment is ignored, not an error
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/13.1/packages/core/__tests__/writing/noteLinks/origins.test.ts
-      command: node scripts/agents/run.mjs test core --spec 13.1 --plan qmd-notes -- packages/core/__tests__/writing/noteLinks/origins.test.ts
+        - documents/plans/qmd-notes/tests/13.1/packages/core/__tests__/writing/noteLinks/index.test.ts
+      command: node scripts/agents/run.mjs test core --spec 13.1 --plan qmd-notes -- packages/core/__tests__/writing/noteLinks/index.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core

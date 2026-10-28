@@ -1,6 +1,6 @@
 import { matchPaper, parseQuery, searchDoc, type PaperRecord } from "@labshelf/core";
 
-import { entry, loadedStore } from "../../support/libraryModelFixtures";
+import { entry, loadedStore } from "../support/libraryModelFixtures";
 
 const TITLE = { key: "title", reverse: false } as const;
 

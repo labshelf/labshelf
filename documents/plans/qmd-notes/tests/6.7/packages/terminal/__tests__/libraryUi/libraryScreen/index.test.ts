@@ -4,17 +4,17 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import type { AppContext } from "../../src/compositionRoot";
-import * as system from "../../src/platform/system";
-import { App } from "../../src/libraryUi/libraryScreen";
-import { CliSessionHarness, PAPERS } from "../fixtures/cliSession";
-import type { TempLibrary } from "../fixtures/library";
+import type { AppContext } from "../../../src/compositionRoot";
+import * as system from "../../../src/platform/system";
+import { App } from "../../../src/libraryUi/libraryScreen";
+import { CliSessionHarness, PAPERS } from "../../fixtures/cliSession";
+import type { TempLibrary } from "../../fixtures/library";
 import {
   ATTENTION, ZEBRA, eventually, idle, ids, makeTmpRoot, openApp, pane, press, seedLibrary, typeText, writeFile,
-} from "../fixtures/appHarness";
+} from "../../fixtures/appHarness";
 
-jest.mock("../../src/platform/system", () => ({
-  ...jest.requireActual<typeof import("../../src/platform/system")>("../../src/platform/system"),
+jest.mock("../../../src/platform/system", () => ({
+  ...jest.requireActual<typeof import("../../../src/platform/system")>("../../../src/platform/system"),
   runEditor: jest.fn(),
 }));
 

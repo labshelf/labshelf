@@ -2,9 +2,9 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { BuildCancelled, ProcessTimedOut, runCancellable } from "../../../../src/latex/node/run";
-import { fakeLogger } from "../../../support/fakeLogger";
-import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
+import { BuildCancelled, ProcessTimedOut, runCancellable } from "../../../src/latex/node/run";
+import { fakeLogger } from "../../support/fakeLogger";
+import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 
 afterEach(cleanupTempDirs);
 

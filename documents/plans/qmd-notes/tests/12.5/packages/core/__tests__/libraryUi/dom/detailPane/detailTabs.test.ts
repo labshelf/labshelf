@@ -6,7 +6,7 @@
 // matches /run/i and /cancel/i; a cell is a ```{python} fence with a `#| label:` line; the Notes tab is chosen by the `detailTab` pref;
 // canRunCells is set on the `details` message and also in its `details` payload (both are sent, either placement works).
 import { TextEncoder as NodeTextEncoder } from "node:util";
-import { ALL_CAPABILITIES, mountForTest, paper } from "./mountHarness";
+import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
 
 if (typeof (globalThis as { TextEncoder?: unknown }).TextEncoder === "undefined") {
   Object.defineProperty(globalThis, "TextEncoder", { value: NodeTextEncoder, configurable: true });

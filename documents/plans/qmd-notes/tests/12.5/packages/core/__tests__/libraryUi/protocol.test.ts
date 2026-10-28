@@ -1,5 +1,5 @@
 // Tests that the library UI guards accept the run and cancel messages and drop them whole with a missing or mistyped field.
-import { parseUiMessage, parseDetailsMessage } from "../../../src/libraryUi/protocol/index";
+import { parseUiMessage, parseDetailsMessage } from "../../src/libraryUi/protocol/index";
 
 const run = { type: "paper.runCell", id: "p1", itemId: "n1", label: "calc", code: "print(1)", requestId: "r1" };
 const cancel = { type: "paper.cancelCell", requestId: "r1" };

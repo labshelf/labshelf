@@ -97,8 +97,8 @@ packages:
         check: guard rejects createAnnotation with type note
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/7.2/packages/core/__tests__/reader/protocol/noteMessages.test.ts
-      command: node scripts/agents/run.mjs test core --spec 7.2 --plan qmd-notes -- packages/core/__tests__/reader/protocol/noteMessages.test.ts
+        - documents/plans/qmd-notes/tests/7.2/packages/core/__tests__/reader/protocol/index.test.ts
+      command: node scripts/agents/run.mjs test core --spec 7.2 --plan qmd-notes -- packages/core/__tests__/reader/protocol/index.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core

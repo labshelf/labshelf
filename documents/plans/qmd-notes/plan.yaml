@@ -340,7 +340,7 @@ sessions:
       - packages/core/src/qmd/item/cellOutput.ts
       - documents/contracts/qmd-items.md
       - packages/core/__tests__/qmd/compute/
-      - packages/core/__tests__/latex/build/node/
+      - packages/core/__tests__/latex/node/
   - id: 12b
     file: sessions/12b.yaml
     depends_on:
@@ -372,6 +372,9 @@ sessions:
       - packages/core/__tests__/libraryUi/protocol/
       - packages/core/__tests__/reader/protocol/
       - packages/core/__tests__/spaces/
+      - packages/core/__tests__/spaces.test.ts
+      - packages/core/__tests__/libraryUi/protocol.test.ts
+      - packages/core/__tests__/reader/protocol.test.ts
       - packages/core/__tests__/libraryUi/dom/
       - packages/core/__tests__/reader/dom/
   - id: 12c

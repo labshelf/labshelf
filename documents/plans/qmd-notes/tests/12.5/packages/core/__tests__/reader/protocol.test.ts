@@ -1,6 +1,6 @@
 // Tests that the reader guard accepts runCell and cancelCell and drops them whole with a missing or mistyped field.
 // The reader's view-to-host messages are discriminated by `command` (the existing WebviewToHost style), so the guard is fed `command`.
-import { isWebviewMessage } from "../../../src/reader/protocol/index";
+import { isWebviewMessage } from "../../src/reader/protocol/index";
 
 const run = { command: "runCell", itemId: "n1", label: "calc", code: "print(1)", requestId: "r1" };
 const cancel = { command: "cancelCell", requestId: "r1" };

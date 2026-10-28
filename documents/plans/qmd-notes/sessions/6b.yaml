@@ -162,8 +162,8 @@ packages:
         check: 'when `addItem` rejects, the error is logged and `writeOrAsk` still resolves to `{kind: "saved"}`'
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/6.6/packages/browser/__tests__/capture/pdfFindingNotes.test.ts
-      command: node scripts/agents/run.mjs test browser --spec 6.6 --plan qmd-notes -- packages/browser/__tests__/capture/pdfFindingNotes.test.ts
+        - documents/plans/qmd-notes/tests/6.6/packages/browser/__tests__/capture/pdfFinding.test.ts
+      command: node scripts/agents/run.mjs test browser --spec 6.6 --plan qmd-notes -- packages/browser/__tests__/capture/pdfFinding.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck browser
       - node scripts/agents/run.mjs test browser
@@ -238,8 +238,8 @@ packages:
         check: the terminal shows the same notes as VS Code and the browser, from `notes.qmd`, and reads no `note` key
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/6.7/packages/terminal/__tests__/cli/showNotes.test.ts
-      command: node scripts/agents/run.mjs test terminal --spec 6.7 --plan qmd-notes -- packages/terminal/__tests__/cli/showNotes.test.ts
+        - documents/plans/qmd-notes/tests/6.7/packages/terminal/__tests__/libraryUi/libraryScreen/index.test.ts
+      command: node scripts/agents/run.mjs test terminal --spec 6.7 --plan qmd-notes -- packages/terminal/__tests__/libraryUi/libraryScreen/index.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck terminal
       - node scripts/agents/run.mjs test terminal

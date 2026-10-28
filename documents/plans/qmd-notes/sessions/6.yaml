@@ -202,8 +202,8 @@ packages:
         check: no core code reads a `note` key of `metadata.yaml`; the notes text for search comes from `notes.qmd` (the app and terminal halves are 6.5-6.7)
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/6.3/packages/core/__tests__/library/search/notesSearch.test.ts
-      command: node scripts/agents/run.mjs test core --spec 6.3 --plan qmd-notes -- packages/core/__tests__/library/search/notesSearch.test.ts
+        - documents/plans/qmd-notes/tests/6.3/packages/core/__tests__/library/search.test.ts
+      command: node scripts/agents/run.mjs test core --spec 6.3 --plan qmd-notes -- packages/core/__tests__/library/search.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
@@ -296,8 +296,8 @@ packages:
         check: the guard no longer accepts `paper.setNote`, and core's tests pass with it gone
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/6.4/packages/core/__tests__/libraryUi/protocol/paperNoteMessages.test.ts
-      command: node scripts/agents/run.mjs test core --spec 6.4 --plan qmd-notes -- packages/core/__tests__/libraryUi/protocol/paperNoteMessages.test.ts
+        - documents/plans/qmd-notes/tests/6.4/packages/core/__tests__/libraryUi/protocol/index.test.ts
+      command: node scripts/agents/run.mjs test core --spec 6.4 --plan qmd-notes -- packages/core/__tests__/libraryUi/protocol/index.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core

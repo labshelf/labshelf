@@ -56,8 +56,8 @@ packages:
         check: a key without notes is skipped
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/9.4/packages/core/__tests__/writing/citations/citeSiteNotes.test.ts
-      command: node scripts/agents/run.mjs test core --spec 9.4 --plan qmd-notes -- packages/core/__tests__/writing/citations/citeSiteNotes.test.ts
+        - documents/plans/qmd-notes/tests/9.4/packages/core/__tests__/writing/citations/index.test.ts
+      command: node scripts/agents/run.mjs test core --spec 9.4 --plan qmd-notes -- packages/core/__tests__/writing/citations/index.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core

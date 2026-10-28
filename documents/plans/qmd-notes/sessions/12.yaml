@@ -10,7 +10,7 @@ owns:
   - packages/core/src/qmd/item/cellOutput.ts
   - documents/contracts/qmd-items.md
   - packages/core/__tests__/qmd/compute/
-  - packages/core/__tests__/latex/build/node/
+  - packages/core/__tests__/latex/node/
 status: pending
 packages:
   - id: "12.1"
@@ -133,8 +133,8 @@ packages:
         check: existing build and cancel tests pass and build callers are unchanged
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/12.2/packages/core/__tests__/latex/build/node/runCancellable.test.ts
-      command: node scripts/agents/run.mjs test core --spec 12.2 --plan qmd-notes -- packages/core/__tests__/latex/build/node/runCancellable.test.ts
+        - documents/plans/qmd-notes/tests/12.2/packages/core/__tests__/latex/node/run.test.ts
+      command: node scripts/agents/run.mjs test core --spec 12.2 --plan qmd-notes -- packages/core/__tests__/latex/node/run.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core

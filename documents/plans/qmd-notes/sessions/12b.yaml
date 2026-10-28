@@ -30,6 +30,9 @@ owns:
   - packages/core/__tests__/libraryUi/protocol/
   - packages/core/__tests__/reader/protocol/
   - packages/core/__tests__/spaces/
+  - packages/core/__tests__/spaces.test.ts
+  - packages/core/__tests__/libraryUi/protocol.test.ts
+  - packages/core/__tests__/reader/protocol.test.ts
   - packages/core/__tests__/libraryUi/dom/
   - packages/core/__tests__/reader/dom/
 status: pending
@@ -130,9 +133,9 @@ packages:
         check: the protocol version is bumped and a mismatched version is refused as before
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/12.4/packages/core/__tests__/helper/parseCellMessages.test.ts
+        - documents/plans/qmd-notes/tests/12.4/packages/core/__tests__/helper/index.test.ts
         - documents/plans/qmd-notes/tests/12.4/packages/core/__tests__/helper/node/cellHandlers.test.ts
-      command: node scripts/agents/run.mjs test core --spec 12.4 --plan qmd-notes -- packages/core/__tests__/helper/parseCellMessages.test.ts packages/core/__tests__/helper/node/cellHandlers.test.ts
+      command: node scripts/agents/run.mjs test core --spec 12.4 --plan qmd-notes -- packages/core/__tests__/helper/index.test.ts packages/core/__tests__/helper/node/cellHandlers.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
@@ -264,12 +267,12 @@ packages:
         check: each view passes `onRunCell` to its editors only when the host says `canRunCells`, sends `runCell` with the item id, label, code and a request id when Run is pressed, shows Cancel while a matching `cellState` is running and removes it on the four end states, mentions Python on missing-python, and ignores a `cellState` for an unknown request (library UI, reader Notes tab and text boxes, Space notes and discussions)
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/libraryUi/protocol/runCellMessages.test.ts
-        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/reader/protocol/runCellMessages.test.ts
-        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/spaces/runCellMessages.test.ts
-        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/libraryUi/dom/runCellView.test.ts
-        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/reader/dom/runCellView.test.ts
-        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/spaces/dom/runCellView.test.ts
+        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/libraryUi/protocol.test.ts
+        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/reader/protocol.test.ts
+        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/spaces.test.ts
+        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/libraryUi/dom/detailPane/detailTabs.test.ts
+        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/reader/dom/notesTab.test.ts
+        - documents/plans/qmd-notes/tests/12.5/packages/core/__tests__/spaces/dom/mountSpaceNotes.test.ts
       command: node scripts/agents/run.mjs test core --spec 12.5 --plan qmd-notes -- packages/core/__tests__/libraryUi packages/core/__tests__/reader packages/core/__tests__/spaces
     commands:
       - node scripts/agents/run.mjs typecheck core

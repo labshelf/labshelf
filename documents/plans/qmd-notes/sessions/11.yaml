@@ -184,9 +184,9 @@ packages:
         check: PROTOCOL_VERSION is one higher and a client with the old version is refused
     tests:
       hidden:
-        - documents/plans/qmd-notes/tests/11.2/packages/core/__tests__/helper/parseInstallPython.test.ts
+        - documents/plans/qmd-notes/tests/11.2/packages/core/__tests__/helper/helperMessages.test.ts
         - documents/plans/qmd-notes/tests/11.2/packages/core/__tests__/helper/node/pythonHandlers.test.ts
-      command: node scripts/agents/run.mjs test core --spec 11.2 --plan qmd-notes -- packages/core/__tests__/helper/parseInstallPython.test.ts packages/core/__tests__/helper/node/pythonHandlers.test.ts
+      command: node scripts/agents/run.mjs test core --spec 11.2 --plan qmd-notes -- packages/core/__tests__/helper/helperMessages.test.ts packages/core/__tests__/helper/node/pythonHandlers.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
