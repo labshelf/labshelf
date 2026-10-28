@@ -31,7 +31,7 @@ The browser without a folder keeps the same tree in IndexedDB under the same rel
 
 The source of truth for a paper; every paper list is rebuilt from it. Each key belongs to one action, and every other rewrite keeps it, so actions never clobber each other:
 
-- A metadata refresh never touches `status`, `tags` or `note`, which are the user's.
+- A metadata refresh never touches `status` or `tags`, which are the user's.
 - `pdfVersion` belongs to writing `paper.pdf`: set, or removed when the new version is unknown.
 - `pdfRequestedAt` belongs to the request-a-copy action. It holds a day; the author's address is never stored.
 - `statusChangedAt` belongs to a status change to a different value.

@@ -123,7 +123,7 @@ const hoursAgo = (h: number): string => new Date(now.getTime() - h * 3600_000).t
 describe("row marks", () => {
   it("keeps the title cell to the title, and says when the paper was last read", () => {
     const t = mountForTest({ columns: [...DEFAULT_COLUMNS, "lastRead"] });
-    t.snapshot([paper("a", "papers", { note: "check eq. 3" })], ["papers/a"], [], { a: { annotations: 4, lastPage: 7, lastRead: hoursAgo(3) } });
+    t.snapshot([paper("a", "papers")], ["papers/a"], [], { a: { annotations: 4, lastPage: 7, lastRead: hoursAgo(3) } });
     const title = t.container.querySelector<HTMLElement>(".paper-row .title-cell")!;
     expect(title.children).toHaveLength(1);
     expect(title.querySelector("svg")).toBeNull();

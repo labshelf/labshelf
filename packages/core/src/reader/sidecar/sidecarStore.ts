@@ -1,4 +1,5 @@
 // Defines the per-paper sidecar and the stores over it: the on-disk store and the in-memory preview store.
+import { KeyedQueue } from "../../async/index.js";
 import { isPdfTheme, type Annotation, type PdfTheme, ANNOTATION_COLORS, type AnnotationColor, type AnnotationPosition } from "../../model/index.js";
 import { normalizeReadingPosition, type ReadingState } from "./readingState.js";
 import type { ILogger, SidecarPort } from "../../ports/index.js";
@@ -138,7 +139,7 @@ export interface PaperSidecarStoreOptions {
  * reading position while scrolling, and without serialization a position write racing an annotation write drops one.
  */
 export class PaperSidecarStore {
-  private readonly queues = new Map<string, Promise<unknown>>();
+  private readonly queue = new KeyedQueue();
   private readonly now: () => string;
   private readonly newId: () => string;
   private readonly logger: ILogger | undefined;
@@ -147,18 +148,6 @@ export class PaperSidecarStore {
     this.now = options.now ?? (() => new Date().toISOString());
     this.newId = options.newId ?? (() => globalThis.crypto.randomUUID());
     this.logger = options.logger;
-  }
-
-  private enqueue<T>(paperId: string, task: () => Promise<T>): Promise<T> {
-    const previous = this.queues.get(paperId) ?? Promise.resolve();
-    // A failed write must not poison the writes queued behind it.
-    const next = previous.then(task, task);
-    const settled = next.catch(() => undefined);
-    this.queues.set(paperId, settled);
-    void settled.then(() => {
-      if (this.queues.get(paperId) === settled) { this.queues.delete(paperId); }
-    });
-    return next;
   }
 
   /**
@@ -176,7 +165,7 @@ export class PaperSidecarStore {
   }
 
   private async mutate<T>(paperId: string, change: (data: PaperSidecar) => T | null): Promise<T | null> {
-    return this.enqueue(paperId, async () => {
+    return this.queue.run(paperId, async () => {
       const data = await this.load(paperId);
       const result = change(data);
       if (result !== null) {
