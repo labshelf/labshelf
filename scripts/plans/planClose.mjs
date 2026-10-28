@@ -1,9 +1,10 @@
-// `plan close <session>`: gates once, commits each finished package with only its paths, parks unfinished ones as patches, closes the session.
+// `plan close <session>`: gates once (or reuses the gate the finisher recorded for this exact tree), commits each finished package with only its paths, parks unfinished ones as patches, closes the session.
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { parse } from "yaml";
 import { emit } from "../agents/telemetry.mjs";
+import { gatePassed, touchedPackages, treeState } from "../lint/gateRecord.mjs";
 import { loadPlan, loadSession, saveSession, sessionPath } from "./planFiles.mjs";
 
 const TRAILER = "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>";
@@ -38,10 +39,12 @@ export function runsDir(root) {
   return join(resolve(root, common), "labshelf-runs");
 }
 
+/** Returns "recorded" when a passing gate at least as strong already covers this exact tree, else runs it and returns "ran". */
 function runGate(root, milestone) {
+  if (gatePassed(root, { fingerprint: treeState(root).fingerprint, lint: milestone, packages: touchedPackages(root) })) return "recorded";
   const command = process.env.LABSHELF_CLOSE_GATE || (milestone ? "pnpm gate" : "pnpm gate --no-lint");
   const run = spawnSync(command, { cwd: root, shell: true, encoding: "utf8", maxBuffer: 1 << 28 });
-  if (run.status === 0) return;
+  if (run.status === 0) return "ran";
   const tail = `${run.stdout ?? ""}${run.stderr ?? ""}`.trim().split("\n").slice(-20).join("\n");
   throw new Error(`plan close: gate failed (${command}), nothing committed\n${tail}`);
 }
@@ -62,6 +65,9 @@ export function reportStatus(runs, planSlug, specId) {
     return "no report";
   }
 }
+
+/** The marker a passed finishing pass leaves for its session (see planFinished.mjs). */
+export const finishedPath = (runs, planSlug, sessionId) => join(runs, safeId(planSlug), `${safeId(sessionId)}.finished`);
 
 function commit(root, files, subject, body) {
   git(root, ["add", "-A", "--", ...files]);
@@ -92,7 +98,7 @@ const stamp = () => {
 
 /**
  * Closes a session. Throws (nothing committed) when a changed file lies outside the session owns or the gate fails.
- * Returns `{ status: "done" | "blocked", commits: string[] }`.
+ * Returns `{ status: "done" | "blocked", commits: string[], gate: "recorded" | "ran" }`.
  */
 export function planClose(root, { planDir, sessionId }) {
   const plan = loadPlan(planDir);
@@ -104,7 +110,7 @@ export function planClose(root, { planDir, sessionId }) {
   if (outside.length > 0) throw new Error(`plan close: changed files outside the session owns, nothing committed:\n${outside.map((f) => `  ${f.file}`).join("\n")}`);
 
   // 2. Gate once.
-  runGate(root, session.milestone === true);
+  const gate = runGate(root, session.milestone === true);
 
   // 3 and 4. Per spec in session order: commit it, or park it.
   const runs = runsDir(root);
@@ -137,7 +143,8 @@ export function planClose(root, { planDir, sessionId }) {
     commits.push(commit(root, rest.map((f) => f.file), reviewFixes ? `Session ${sessionId} review fixes` : `Session ${sessionId} close`));
   }
 
-  // 6.
+  // 6. The finished marker only describes the open session.
+  rmSync(finishedPath(runs, plan.slug, sessionId), { force: true });
   emit("session_closed", { status, commits: commits.length });
-  return { status, commits };
+  return { status, commits, gate };
 }

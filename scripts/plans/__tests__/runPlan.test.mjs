@@ -192,7 +192,7 @@ const [, dir, id] = match;
 const count = process.env.FAKE_LOG + "." + id;
 const runs = fs.existsSync(count) ? Number(fs.readFileSync(count, "utf8")) + 1 : 1;
 fs.writeFileSync(count, String(runs));
-fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ session: id, stopFile: process.env.LABSHELF_BUDGET_STOP_FILE }) + "\\n");
+fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ session: id, stopFile: process.env.LABSHELF_BUDGET_STOP_FILE, system: process.argv[process.argv.indexOf("--append-system-prompt") + 1] }) + "\\n");
 if (runs === 1) {
   fs.writeFileSync(process.env.LABSHELF_BUDGET_STOP_FILE, "{}");
   if (process.env.FAKE_PROGRESS) {
@@ -217,6 +217,9 @@ describe("runPlan after a context stop", () => {
     const calls = fakeCalls();
     assert.deepEqual(calls.map((c) => c.session), ["1", "1"]);
     assert.ok(calls[0].stopFile && calls[0].stopFile !== calls[1].stopFile);
+    assert.doesNotMatch(calls[0].system, /Resume/);
+    assert.match(calls[1].system, /"Resume" section/);
+    assert.match(calls[1].system, /plan\.mjs finished 1 --check`: on "finished on this tree" run `plan close 1`/);
     assert.match(out.stdout, /session 1 stopped at the context limit after progress; running it again in a fresh process \(1\/5\)/);
     assert.deepEqual(events().filter((e) => e.kind === "session_closed").map((e) => [e.session, e.status, e.cost_usd]), [["1", "done", 1]]);
   });

@@ -70,7 +70,8 @@ const MILESTONE = `This session is a lint milestone: also follow the "Lint miles
 // Counted back from the last session, so a restart or a remainder file keeps the milestones stable.
 const isMilestone = (pendingCount, every) => pendingCount === 1 || (every > 0 && pendingCount % every === 1);
 
-const RESUME = `This session is resumed after an interrupted run: also follow the "Resume" section of ${RULES}.`;
+const resumeLine = (entry) => `This session is resumed after an interrupted run: also follow the "Resume" section of ${RULES}.` +
+  (entry.format === "yaml" ? ` Start with \`node scripts/plans/plan.mjs finished ${entry.id} --check\`: on "finished on this tree" run \`plan close ${entry.id}\` and nothing else; on "changed since the finishing pass" run \`finish session\` only on the files it lists, then \`plan close\`.` : "");
 
 const LIMIT = /usage limit|hit your limit|limit reached|limit will reset/i;
 const RESET_EPOCH = /limit reached\|(\d{10})/i;
@@ -144,7 +145,7 @@ function runSession(options, slug, entry, logPath, resume, milestone, stopFile) 
   const prompt = entry.format === "yaml"
     ? `/orchestrate ${options.planDir}/plan.yaml session ${session}`
     : `/orchestrate ${options.planDir}/plan.md session ${session}`;
-  const system = [UNATTENDED, milestone ? MILESTONE : "", resume ? RESUME : ""].filter(Boolean).join(" ");
+  const system = [UNATTENDED, milestone ? MILESTONE : "", resume ? resumeLine(entry) : ""].filter(Boolean).join(" ");
   if (milestone) console.log(`[plan] session ${session} is a lint milestone`);
   const args = ["-p", prompt, "--model", options.model, "--permission-mode", options.permissionMode, "--permission-prompts", "none",
     "--output-format", "stream-json", "--verbose", "--append-system-prompt", system];

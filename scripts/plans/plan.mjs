@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolvePlanDir } from "./planFiles.mjs";
 import { planClose } from "./planClose.mjs";
+import { checkFinished, markFinished } from "./planFinished.mjs";
 import { planFromBrief } from "./planFromBrief.mjs";
 import { planLint } from "./planLint.mjs";
 import { planNew } from "./planNew.mjs";
@@ -43,8 +44,24 @@ export const COMMANDS = {
   },
   close: ({ root, positional: [sessionId], flags, out }) => {
     if (!sessionId) throw new Error("plan close: <session> is required");
-    const { status, commits } = planClose(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId });
-    out(`session ${sessionId} ${status}: ${commits.length} commit(s)`);
+    const { status, commits, gate } = planClose(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId });
+    out(`session ${sessionId} ${status}: ${commits.length} commit(s)${gate === "recorded" ? " (gate: reused the recorded pass)" : ""}`);
+  },
+  finished: ({ root, positional: [sessionId], flags, out }) => {
+    if (!sessionId) throw new Error("plan finished: <session> is required");
+    const planDir = resolvePlanDir(root, { plan: flags.plan });
+    if (!flags.check) {
+      out(`finished ${markFinished(root, { planDir, sessionId })}`);
+      return 0;
+    }
+    const { state, files } = checkFinished(root, { planDir, sessionId });
+    if (state === "unchanged") out(`session ${sessionId}: finished on this tree, run plan close`);
+    else if (state === "none") out(`session ${sessionId}: not finished`);
+    else {
+      out(`session ${sessionId}: changed since the finishing pass:`);
+      files.forEach((file) => out(`  ${file}`));
+    }
+    return state === "unchanged" ? 0 : 1;
   },
   stubs: ({ root, positional: [sessionId, specId], flags, out }) => {
     if (!sessionId || !specId) throw new Error("plan stubs: <session> <id> are required");
