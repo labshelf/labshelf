@@ -7,6 +7,8 @@ Read when you decide where code goes or change what crosses an app, process or f
 - Code that two apps need, or plausibly will, goes in core, including UI that two apps show. An app holds only its wiring and the code only its platform can run.
 - Runtime-neutral core reaches the platform only through ports that each app implements. Core code that needs Node or the DOM sits in a `node/` or `dom/` folder of its domain.
 - Only an app's entry points build adapters: `extension.ts` in VS Code, `compositionRoot.ts` in the terminal, and the background worker and each page in the browser.
+- Code stays in an app when only its platform can run it: functions serialized into `executeScript`, `navigator.locks` leases, CodeMirror glue, and the browser's helper/writing build-status bridge, which would make core's helper and writing import each other.
+- A family of near-duplicate functions that differ by injected script or by host behaviour stays as separate versions; merging them would change behaviour.
 
 ## Modules
 
