@@ -1,7 +1,7 @@
 // Shows a build's problems for one file as editor diagnostics on the problem's line.
 import { setDiagnostics, type Diagnostic } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
-import type { HelperProblem } from "../../helper/project";
+import type { HelperProblem } from "../../helper";
 
 /** Listens to one file's problems; returns the function that stops listening. */
 export type ProblemSource = (path: string, listener: (problems: readonly HelperProblem[]) => void) => () => void;

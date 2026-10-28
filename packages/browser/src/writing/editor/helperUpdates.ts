@@ -2,7 +2,7 @@
 import type { ChangeSet, Text } from "@codemirror/state";
 import type { ILogger } from "@labshelf/core";
 import type { TextChange } from "@labshelf/core/helper";
-import type { EditorHelperPort } from "../../helper/project";
+import type { EditorHelperPort } from "../../helper";
 
 const MODULE = "editor.helperEdits";
 

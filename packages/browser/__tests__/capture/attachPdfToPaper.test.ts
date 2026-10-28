@@ -3,17 +3,17 @@ import type { ILogger, PaperRecord } from "@labshelf/core";
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
 
 // The real IndexedDbFileSystem runs over a Map-backed store, so attachPdfToPaper exercises its real write path.
-jest.mock("../../src/storage/idbDatabase", () => ({ openDb: async () => require("../support/fakeIdb").fakeDb }));
+jest.mock("idb", () => ({ openDB: async () => require("../support/fakeIdb").fakeDb }));
 
 let mockRecords: PaperRecord[] = [];
-jest.mock("../../src/storage/paperRecordStore", () => ({
+jest.mock("../../src/storage/records", () => ({ ...jest.requireActual("../../src/storage/records"),
   listCachedPaperRecords: async () => mockRecords,
   writeCachedPaperRecord: async () => undefined,
 }));
 
 import { attachPdfToPaper } from "../../src/capture/attachPdfToPaper";
 import { normalizeFolder } from "../../src/capture/captureService";
-import { createLibraryMutations } from "../../src/storage/libraryMutations";
+import { createLibraryMutations } from "../../src/storage/libraryFileSystem";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
 
 const log: ILogger = { log: async () => undefined, error: async () => undefined };

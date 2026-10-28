@@ -2,7 +2,7 @@
 import type { PdfAttempt } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
-jest.mock("../../src/storage/paperRecordStore", () => ({ listCachedPaperRecords: async () => [], writeCachedPaperRecord: async () => undefined }));
+jest.mock("../../src/storage/records", () => ({ ...jest.requireActual("../../src/storage/records"), listCachedPaperRecords: async () => [], writeCachedPaperRecord: async () => undefined }));
 jest.mock("../../src/platform/settings", () => ({ readSettings: async () => ({}), updateSettings: async () => undefined }));
 
 import { derivePdfMiss } from "../../src/capture/captureService";

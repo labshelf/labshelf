@@ -3,7 +3,7 @@
 import { applyTheme, bx, createBrowserLogger, sendRuntime } from "../platform";
 import type { FoldersReply } from "../platform";
 import { findElement } from "@labshelf/core/dom";
-import { mountSourceBanner } from "../library/libraryLocation";
+import { mountSourceBanner } from "../storage/library";
 import { formatError, renderIcon } from "@labshelf/core";
 import { renderFolders, showNotice, updateTextAreaHeight } from "./render";
 import { attachPdf, detectCapture, writeCapture, removeCapture } from "./captureFlow";

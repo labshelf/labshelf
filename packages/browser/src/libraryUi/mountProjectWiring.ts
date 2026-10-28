@@ -9,20 +9,18 @@ import {
   createStoreFailureNotices,
   removeOwnRelayOfferFromShares,
 } from "@labshelf/core";
-import { createBrowserLatexHelper } from "../helper/client";
+import { createBrowserLatexHelper, createHelperProject } from "../helper";
 import { readSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
-import { createHelperProject } from "../helper/project";
 import { showInOpenEditor } from "../writing/session";
 import { createProjectsSource, showPdfInTab } from "../writing/projectList";
-import { createCommentThreads, createRoutedCommentThreads } from "../collab/comments";
 import { createOpenProjectSnapshot, createProjectSession, openRestoredProject } from "../writing/session";
 import { createSidebarProjects, type SidebarProjects } from "./sidebar";
 import type { ProjectServices, TabKindName } from "./editorArea";
 import type { Workspace } from "./editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
 import { createBrowserProjects, readCurrentLibraryId, readLibraryLocations } from "../storage";
-import { createPageShare, createResumeReports, type PageShare } from "../collab";
+import { createCommentThreads, createPageShare, createResumeReports, createRoutedCommentThreads, type PageShare } from "../collab";
 
 interface PageSharingWiringOptions {
   logger: ILogger;

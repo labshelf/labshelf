@@ -1,5 +1,0 @@
-// Exports the library folder picked in the browser: its file system, its stored handle and its permission.
-export { DirFileSystem } from "./dirFileSystem";
-export { readPickedDir, readPickedDirId, writePickedDir } from "./pickedDirStore";
-export { sendPickedDirChange, onPickedDirChange } from "./pickedDirSignal";
-export { readFolderPermission, ensureFolderGranted, askFolderPermission } from "./readFolderPermission";

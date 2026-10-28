@@ -3,7 +3,7 @@ import "fake-indexeddb/auto";
 import type { LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { createPageShare, type PageShare } from "../../src/collab";
 import type { LibraryLocation, LibraryLocations } from "../../src/storage";
-import { openCollabDb, createNamespaceRange } from "../../src/storage/collab/openCollabDb";
+import { openCollabDb, createNamespaceRange } from "../../src/storage/collab";
 import { installFakeLocks } from "../support/fakeLocks";
 import type { RelayNet } from "../support/relayNetwork";
 import { libraryFs } from "./pageSharesTestbed";

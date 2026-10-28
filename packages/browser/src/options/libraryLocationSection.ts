@@ -1,7 +1,7 @@
 // Builds the Library section: where the library lives, the choice of a folder, and a re-check of the connection.
 import { formatError, type ILogger } from "@labshelf/core";
 import { renderActionButton, renderElement, renderInlineCode, renderSettingRow, renderSettingsSection, createToneLine } from "@labshelf/core/dom";
-import { canPickFolder, renderFolderPathForm, pickLibraryFolder, refreshLibraryLocation, describeSourceReason } from "../library/libraryLocation";
+import { canPickFolder, renderFolderPathForm, pickLibraryFolder, refreshLibraryLocation, describeSourceReason } from "../storage/library";
 import { readLibraryLocation, type LibraryLocation } from "../storage";
 
 function sourceRow(source: LibraryLocation): HTMLElement {

@@ -2,10 +2,9 @@
 import { baseName } from "@labshelf/core";
 import type { ILogger, IconName, LibraryFileSystem, SelectionHub, ShareHost } from "@labshelf/core";
 import type { EditorTabBody } from "@labshelf/core/dom";
-import type { PageShare } from "../../collab";
-import type { HelperProject } from "../../helper/project";
+import type { CommentThreads, PageShare } from "../../collab";
+import type { HelperProject } from "../../helper";
 import type { PagePrefs } from "../prefs";
-import type { CommentThreads } from "../../collab/comments";
 import type { ProjectSession } from "../../writing/session";
 import type { PageSpaces } from "../spaces";
 import type { Workspace } from "./workspace";

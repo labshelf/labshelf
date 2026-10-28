@@ -1,8 +1,8 @@
 /** What the browser hands the core PDF search: the draft's record, the user's custom resolvers, cookies and the tab. */
-import type { CustomResolver, ILogger, PdfFetchOptions, PdfSearch } from "@labshelf/core";
+import type { CustomResolver, Doi, ILogger, PdfFetchOptions, PdfSearch } from "@labshelf/core";
 
 jest.mock("webextension-polyfill", () => ({ storage: { local: { get: async () => ({}), set: async () => undefined } } }));
-jest.mock("../../src/storage/paperRecordStore", () => ({ listCachedPaperRecords: async () => [], writeCachedPaperRecord: async () => undefined }));
+jest.mock("../../src/storage/records", () => ({ ...jest.requireActual("../../src/storage/records"), listCachedPaperRecords: async () => [], writeCachedPaperRecord: async () => undefined }));
 
 const mockSettings = {
   contactEmail: "me@uni.edu", customResolvers: [] as CustomResolver[],
@@ -20,7 +20,7 @@ const log: ILogger = { log: async () => undefined, error: async () => undefined 
 
 const draft = (over: Partial<CaptureDraft> = {}): CaptureDraft => ({
   pageUrl: "https://pub.example/article/1",
-  ids: { doi: "10.1/x" },
+  ids: { doi: "10.1/x" as Doi },
   metadata: { title: "Attention is all you need", authors: ["Ashish Vaswani"], year: 2017 },
   origin: "registry",
   isPaper: true,

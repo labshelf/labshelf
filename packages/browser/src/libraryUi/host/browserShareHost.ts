@@ -12,7 +12,7 @@ import {
   type ShareHost,
 } from "@labshelf/core";
 import { bx } from "../../platform";
-import { createBrowserShareRegistryStore } from "../../share";
+import { createBrowserShareRegistryStore } from "../../collab";
 import { createLibraryFileSystem, createSidecarPort, readCurrentLibraryId } from "../../storage";
 import type { HostContext } from "./context";
 

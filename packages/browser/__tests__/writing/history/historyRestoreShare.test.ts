@@ -12,7 +12,7 @@ import { clearFakeDb } from "../../support/fakeIdb";
 import { memoryLibraryFs } from "../../support/memoryLibraryFs";
 
 jest.mock("@labshelf/core/dom", () => ({ showToast: jest.fn(), askDialog: jest.fn(), askInputBox: jest.fn() }));
-jest.mock("../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("idb", () => ({ openDB: async () => require("../../support/fakeIdb").fakeDb }));
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const project = { id: "thesis", folder: "proj" };

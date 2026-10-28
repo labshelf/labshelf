@@ -2,7 +2,7 @@
 import type { HostToUi, PaperRecord, UiToHost } from "@labshelf/core";
 import { clearFakeDb, putFile, textAt } from "../../support/fakeIdb";
 
-jest.mock("../../../src/storage/idbDatabase", () => ({ openDb: async () => require("../../support/fakeIdb").fakeDb }));
+jest.mock("idb", () => ({ openDB: async () => require("../../support/fakeIdb").fakeDb }));
 
 const mockApi = {
   runtime: { sendMessage: jest.fn(async () => undefined), onMessage: { addListener: jest.fn(), removeListener: jest.fn() } },
@@ -24,7 +24,7 @@ jest.mock("../../../src/libraryUi/readerTabs", () => ({ openReader: jest.fn() })
 import { createLoopbackTransport } from "@labshelf/core";
 import { downloadTextFile } from "../../../src/platform";
 import { attachLibraryHost } from "../../../src/libraryUi/host";
-import { writeCachedPaperRecord } from "../../../src/storage";
+import { writeCachedPaperRecord } from "../../../src/storage/records";
 
 const PAPER: PaperRecord = { id: "smith2020", title: "A Paper", citeKey: "smith2020", path: "papers/smith2020", status: "unread", authors: ["Smith, Jane"], year: 2020 };
 const METADATA = "title: A Paper\nstatus: unread\ncitekey: smith2020\nyear: 2020\nauthors:\n  - Smith, Jane\ntags: [old]\n";

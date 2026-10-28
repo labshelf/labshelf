@@ -1,8 +1,7 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
 import type { BuildOptions, ILogger, LatexEngine } from "@labshelf/core";
 import { renderElement } from "@labshelf/core/dom";
-import type { HelperProject } from "../../helper/project";
-import { mountHelperSetupCard } from "../../helper/setup";
+import { mountHelperSetupCard, type HelperProject } from "../../helper";
 import { bx, readSettings, updateSettings } from "../../platform";
 import { createBrowserProjectContent } from "../../writing/project";
 import { createPreviewFrame, watchBuilds, createPreviewRequestHandler, type PreviewLimits } from "../../writing/preview";

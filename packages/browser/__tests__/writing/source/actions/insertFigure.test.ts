@@ -5,7 +5,7 @@
 // Copying a picked image into the project's images folder, and inserting the figure that shows it.
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
-import { onLocalFileChanges, reportPageWrites } from "../../../../src/collab/mirror/localFileChanges";
+import { onLocalFileChanges, reportPageWrites } from "../../../../src/collab/mirror";
 import { addImage, type AddImageDeps } from "../../../../src/writing/source/actions/insertFigure";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn() }));

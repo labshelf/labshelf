@@ -7,8 +7,8 @@ import {
   RELAY_PURPOSE,
 } from "@labshelf/core";
 import { showToast, pickQuickEntry, showDialog } from "@labshelf/core/dom";
-import { createBrowserRelayAccount, type BrowserRelayAccount } from "./browserRelayAccount";
-import { RelaySignInCancelledError } from "./watchRedirectTab";
+import { createBrowserRelayAccount, type BrowserRelayAccount } from "./account";
+import { RelaySignInCancelledError } from "./signIn";
 
 async function confirmConnect(): Promise<boolean> {
   const answer = await showDialog({

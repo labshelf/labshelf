@@ -6,7 +6,7 @@ import { renderElement, mountTemplateGallery, pickQuickEntry } from "@labshelf/c
 import { askProjectTitle, createBrowserProjectContent } from "../../writing/project";
 import type { TabModule } from "./tabKinds";
 import { createBrowserPublish } from "../../templates";
-import { createBrowserLatexHelper } from "../../helper/client";
+import { createBrowserLatexHelper } from "../../helper";
 
 // The bridge root is the library folder itself, so the library root path is empty.
 const LIBRARY_ROOT = "";
