@@ -137,6 +137,41 @@ export function summarizeNodeTest(text) {
   return { lines, failing: leaves.map((f) => f.name) };
 }
 
+/** Per-test status of a jest --json result: `{name, ok, message}`; a suite that failed to run (compile or import error) is one failing entry named by its file. */
+export function parseJest(json, { root }) {
+  const tests = [];
+  for (const suite of json?.testResults ?? []) {
+    const file = rel(root, suite.name ?? "");
+    const results = suite.assertionResults ?? [];
+    for (const t of results) tests.push({ name: `${file} > ${t.fullName ?? t.title}`, ok: t.status === "passed", message: stripAnsi((t.failureMessages ?? []).join("\n")) });
+    if (!results.length && suite.status === "failed") tests.push({ name: file, ok: false, message: stripAnsi(suite.message ?? "") });
+  }
+  return tests;
+}
+
+/** Per-test status of node --test TAP output: `{name, ok, message}` for every leaf test (suites that only group tests are left out); a file that fails to load is one failing entry. */
+export function parseTap(text) {
+  const all = splitLines(text);
+  const indentOf = (line) => line.length - line.trimStart().length;
+  const results = [];
+  for (let i = 0; i < all.length; i += 1) {
+    const match = all[i].match(/^(\s*)(not )?ok \d+ - (.*)$/);
+    if (match) results.push({ line: i, indent: match[1].length, ok: !match[2], name: match[3] });
+  }
+  const tests = [];
+  results.forEach((result, n) => {
+    const next = results[n + 1];
+    const end = next ? next.line : all.length;
+    const previous = results.slice(0, n).reverse().find((r) => r.indent <= result.indent);
+    const from = previous ? previous.line + 1 : 0;
+    const isSuite = results.some((r) => r.line >= from && r.line < result.line && r.indent > result.indent);
+    if (isSuite) return;
+    const block = all.slice(result.line + 1, end).filter((l) => l.trim() && !/^\s*# Subtest/.test(l) && indentOf(l) > result.indent);
+    tests.push({ name: result.name, ok: result.ok, message: result.ok ? "" : block.join("\n").trim() });
+  });
+  return tests;
+}
+
 function summarizeTail(text, count = 30) {
   const lines = splitLines(text).filter((l) => l.trim());
   return lines.length > count ? [`… ${lines.length - count} earlier lines in the log`, ...lines.slice(-count).map((l) => clip(l))] : lines.map((l) => clip(l));

@@ -4,11 +4,16 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolvePlanDir } from "./planFiles.mjs";
+import { planClose } from "./planClose.mjs";
 import { planFromBrief } from "./planFromBrief.mjs";
 import { planLint } from "./planLint.mjs";
 import { planNew } from "./planNew.mjs";
 import { planPrompt } from "./planPrompt.mjs";
+import { planRed, restoreRed } from "./planRed.mjs";
 import { planStale } from "./planStale.mjs";
+import { planStart } from "./planStart.mjs";
+import { planStubs } from "./planStubs.mjs";
+import { planTests } from "./planTests.mjs";
 
 // A command is (ctx) => exit code | void, with ctx = { root, positional, flags, out(line) }.
 // To add a command: import its module and add one entry here.
@@ -33,6 +38,39 @@ export const COMMANDS = {
   prompt: ({ root, positional: [sessionId, specId], flags, out }) => {
     if (!sessionId || !specId) throw new Error("plan prompt: <session> <id> are required");
     out(planPrompt(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId }));
+  },
+  close: ({ root, positional: [sessionId], flags, out }) => {
+    if (!sessionId) throw new Error("plan close: <session> is required");
+    const { status, commits } = planClose(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId });
+    out(`session ${sessionId} ${status}: ${commits.length} commit(s)`);
+  },
+  stubs: ({ root, positional: [sessionId, specId], flags, out }) => {
+    if (!sessionId || !specId) throw new Error("plan stubs: <session> <id> are required");
+    const { created, appended } = planStubs(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId });
+    created.forEach((path) => out(`created ${path}`));
+    appended.forEach((path) => out(`appended ${path}`));
+  },
+  tests: ({ root, positional: [sessionId, specId], flags, out }) => {
+    if (!sessionId || !specId) throw new Error("plan tests: <session> <id> are required");
+    out(`created ${planTests(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId })}`);
+  },
+  red: ({ root, positional: [sessionId, specId], flags, out }) => {
+    if (flags.restore) {
+      restoreRed(root).forEach((path) => out(`restored ${path}`));
+      return 0;
+    }
+    if (!sessionId || !specId) throw new Error("plan red: <session> <id> are required (or --restore)");
+    const { ok, problems, total } = planRed(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId });
+    problems.forEach(out);
+    out(ok ? `red: ${total} tests, all fail with "not implemented"` : "red: rejected");
+    return ok ? 0 : 1;
+  },
+  start: ({ root, positional: [sessionId, specId], flags, out }) => {
+    if (!sessionId || !specId) throw new Error("plan start: <session> <id> are required");
+    const { copied, created, appended } = planStart(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId });
+    copied.forEach((path) => out(`test ${path}`));
+    created.forEach((path) => out(`created ${path}`));
+    appended.forEach((path) => out(`appended ${path}`));
   },
   stale: ({ root, positional: [sessionId, specId], flags, out }) => {
     if (!sessionId || !specId) throw new Error("plan stale: <session> <id> are required");
