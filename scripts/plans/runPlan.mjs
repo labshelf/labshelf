@@ -1,7 +1,11 @@
 // Runs every session of an approved plan unattended, one fresh headless Claude process per session, so each session
 // starts with an empty context. Stops at the first session that fails, leaves the tree dirty or makes no progress.
 // Usage: node scripts/plans/runPlan.mjs documents/plans/<slug> [--model opus] [--permission-mode auto]
-//        [--max-sessions N] [--lint-every N] [--no-wait] [--resume] [--dry-run]
+//        [--max-sessions N] [--max-budget-usd N] [--lint-every N] [--no-wait] [--resume] [--dry-run]
+// Plans are `plan.yaml` + `sessions/<id>.yaml` (run in `depends_on` order; a session that ends blocked is logged and the
+// runner goes on with the sessions that do not depend on it) or the older `plan.md` + `sessions/*.md`.
+// --dry-run prints the ordered queue (and the sessions it leaves out) and runs nothing.
+// Telemetry (scripts/agents/telemetry.mjs): run_started, session_started, session_closed, all under LABSHELF_PLAN_RUN_ID.
 // Every N-th session counted back from the last one (default 5, and always the last) is a lint milestone that runs
 // the full gate, lint and baseline updates; the others run only typecheck and tests. --lint-every 0: last only.
 // The runner itself detects the usage limit, without relying on any agent: after a failed or stalled session it sends
@@ -11,20 +15,26 @@
 // by hand: it runs the first pending session on top of the uncommitted changes a stopped run left behind.
 // Logs: .git/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { createInterface } from "node:readline";
+import { emit } from "../agents/telemetry.mjs";
+import { loadPlan, loadSession, planPath } from "./planFiles.mjs";
+import { pendingSessions, planQueue } from "./planQueue.mjs";
 
-const root = resolve(import.meta.dirname, "..", "..");
+// LABSHELF_PLAN_ROOT points the runner at another repo; the end-to-end tests use it with a temp git repo.
+const root = process.env.LABSHELF_PLAN_ROOT ? resolve(process.env.LABSHELF_PLAN_ROOT) : resolve(import.meta.dirname, "..", "..");
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 
 function parseArgs(argv) {
-  const options = { model: "opus", permissionMode: "auto", maxSessions: Infinity, dryRun: false, wait: true, resume: false, lintEvery: 5, planDir: null };
+  const options = { model: "opus", permissionMode: "auto", maxSessions: Infinity, maxBudgetUsd: null, dryRun: false, wait: true, resume: false, lintEvery: 5, planDir: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--model") options.model = argv[++i];
     else if (arg === "--permission-mode") options.permissionMode = argv[++i];
     else if (arg === "--max-sessions") options.maxSessions = Number(argv[++i]);
+    else if (arg === "--max-budget-usd") options.maxBudgetUsd = Number(argv[++i]);
     else if (arg === "--dry-run") options.dryRun = true;
     else if (arg === "--no-wait") options.wait = false;
     else if (arg === "--resume") options.resume = true;
@@ -34,22 +44,6 @@ function parseArgs(argv) {
   }
   if (!options.planDir) throw new Error("usage: node scripts/plans/runPlan.mjs documents/plans/<slug> [options]");
   return options;
-}
-
-// Session files sort by their numeric prefix, then by suffix: 2.md < 10.md < 10a.md < 10b.md < 10-rest.md.
-function pendingSessions(sessionsDir) {
-  if (!existsSync(sessionsDir)) return [];
-  const key = (name) => {
-    const match = /^(\d+)(.*)\.md$/.exec(name);
-    return match ? [Number(match[1]), match[2]] : [Infinity, name];
-  };
-  return readdirSync(sessionsDir)
-    .filter((name) => name.endsWith(".md"))
-    .sort((a, b) => {
-      const [na, sa] = key(a), [nb, sb] = key(b);
-      return na - nb || sa.localeCompare(sb);
-    })
-    .map((name) => name.slice(0, -3));
 }
 
 const dirtyTracked = () => git("status", "--porcelain", "--untracked-files=no");
@@ -158,16 +152,29 @@ async function waitForUsage(model, firstRetryAt) {
   return true;
 }
 
-function runSession(options, slug, session, logPath, resume, milestone) {
-  const prompt = `/orchestrate ${options.planDir}/plan.md session ${session}`;
+// Runs the `build` of the code-facts index before a session; a failure only warns.
+function refreshFacts() {
+  const facts = join(root, "scripts", "code", "facts.mjs");
+  if (!existsSync(facts)) return;
+  const run = spawnSync("node", [facts, "build", "--quiet"], { cwd: root, stdio: "ignore" });
+  if (run.status !== 0) console.log(`[plan] warning: facts build failed (exit ${run.status}); continuing`);
+}
+
+function runSession(options, slug, entry, logPath, resume, milestone) {
+  const session = entry.id;
+  const prompt = entry.format === "yaml"
+    ? `/orchestrate ${options.planDir}/plan.yaml session ${session}`
+    : `/orchestrate ${options.planDir}/plan.md session ${session}`;
   const system = [UNATTENDED, milestone ? MILESTONE : "", resume ? RESUME : ""].filter(Boolean).join(" ");
   if (milestone) console.log(`[plan] session ${session} is a lint milestone`);
-  const args = ["-p", prompt, "--model", options.model, "--permission-mode", options.permissionMode,
+  const args = ["-p", prompt, "--model", options.model, "--permission-mode", options.permissionMode, "--permission-prompts", "none",
     "--output-format", "stream-json", "--verbose", "--append-system-prompt", system];
+  if (options.maxBudgetUsd !== null) args.push("--max-budget-usd", String(options.maxBudgetUsd));
   console.log(`[plan] ${slug} session ${session}: claude ${args.slice(0, 6).join(" ")} …`);
   console.log(`[plan] transcript: ${logPath}`);
   return new Promise((resolvePromise) => {
-    const child = spawn("claude", args, { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+    const env = { ...process.env, LABSHELF_PLAN: slug, LABSHELF_PLAN_SESSION: session };
+    const child = spawn("claude", args, { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
     const log = createWriteStream(logPath);
     let result = null;
     let stderr = "";
@@ -188,6 +195,7 @@ function runSession(options, slug, session, logPath, resume, milestone) {
       log.write(`${line}\n`);
       let event;
       try { event = JSON.parse(line); } catch { return; }
+      if (event.type === "system" && event.subtype === "init") emit("session_started", { session, session_id: event.session_id, model: event.model ?? options.model });
       if (event.type === "result") result = event;
       if (event.type === "assistant") {
         for (const part of event.message?.content ?? []) {
@@ -209,20 +217,40 @@ function runSession(options, slug, session, logPath, resume, milestone) {
   });
 }
 
+// Where a session stands after a run: "done" (file gone), "blocked" (YAML only) or "pending".
+function sessionState(planDir, entry) {
+  if (entry.format === "md") return pendingSessions(planDir).some((e) => e.id === entry.id) ? "pending" : "done";
+  if (!existsSync(entry.file)) return "done";
+  return loadSession(planDir, entry.id).status;
+}
+
+function planStatus(planDir, label) {
+  if (existsSync(planPath(planDir))) {
+    const status = loadPlan(planDir).status;
+    return { status, ok: status === "approved" || status === "in_progress" };
+  }
+  const planFile = join(planDir, "plan.md");
+  if (!existsSync(planFile)) throw new Error(`no plan at ${label}/plan.yaml or ${label}/plan.md`);
+  const status = /^Status:\s*(.+)$/m.exec(readFileSync(planFile, "utf8"))?.[1]?.trim() ?? "";
+  return { status, ok: /^(approved|in progress)/.test(status) };
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const planDir = resolve(root, options.planDir);
   const slug = basename(planDir);
-  const sessionsDir = join(planDir, "sessions");
-  const planFile = join(planDir, "plan.md");
-  if (!existsSync(planFile)) throw new Error(`no plan at ${options.planDir}/plan.md`);
-  const status = /^Status:\s*(.+)$/m.exec(readFileSync(planFile, "utf8"))?.[1]?.trim() ?? "";
-  if (!/^(approved|in progress)/.test(status)) throw new Error(`plan status is "${status}"; approve it first`);
-  const queue = pendingSessions(sessionsDir);
-  console.log(`[plan] ${slug}: ${queue.length} sessions pending: ${queue.join(", ")}`);
-  const milestones = queue.filter((_, i) => isMilestone(queue.length - i, options.lintEvery));
-  console.log(`[plan] lint milestones: ${milestones.join(", ")}`);
+  const runId = process.env.LABSHELF_PLAN_RUN_ID || randomUUID();
+  process.env.LABSHELF_PLAN_RUN_ID = runId;
+  process.env.LABSHELF_PLAN = slug;
+  const plan = planStatus(planDir, options.planDir);
+  if (!plan.ok) throw new Error(`plan status is "${plan.status}"; approve it first`);
+  const { queue: initial, skipped } = planQueue(planDir);
+  console.log(`[plan] ${slug}: ${initial.length} sessions pending: ${initial.map((e) => e.id).join(", ")}`);
+  for (const s of skipped) console.log(`[plan] skipped ${s.id}: ${s.reason}`);
+  const milestones = initial.filter((_, i) => isMilestone(initial.length - i, options.lintEvery));
+  console.log(`[plan] lint milestones: ${milestones.map((e) => e.id).join(", ")}`);
   if (options.dryRun) return;
+  emit("run_started", { options: { ...options, maxSessions: Number.isFinite(options.maxSessions) ? options.maxSessions : null } });
   if (!options.resume && dirtyTracked()) throw new Error("tracked changes are uncommitted; commit or stash them, or pass --resume to continue the stopped session on top of them");
   ensureBranch(slug);
   const logDir = join(root, ".git", "plan-runs", slug);
@@ -230,13 +258,18 @@ async function main() {
 
   const attempts = new Map();
   let ran = 0;
-  let resume = options.resume ? queue[0] ?? null : null; // session id interrupted by the usage limit
+  let resume = options.resume ? initial[0]?.id ?? null : null; // session id interrupted by the usage limit
   const resumes = new Map();
   const continues = new Map();
+  const costs = new Map();
   for (;;) {
-    const pending = pendingSessions(sessionsDir);
-    const [session] = pending;
-    if (!session) break;
+    const { queue: pending, skipped: left } = planQueue(planDir);
+    const [entry] = pending;
+    if (!entry) {
+      for (const s of left) console.log(`[plan] not run ${s.id}: ${s.reason}`);
+      break;
+    }
+    const session = entry.id;
     if (ran >= options.maxSessions) { console.log(`[plan] stopped after ${ran} sessions (--max-sessions)`); return; }
     if ((attempts.get(session) ?? 0) >= 1) throw new Error(`session ${session} is still pending after a run; read its transcript in ${logDir}`);
     if (resume !== session && dirtyTracked()) throw new Error(`tracked changes are uncommitted before session ${session}`);
@@ -244,8 +277,14 @@ async function main() {
     const headBefore = git("rev-parse", "HEAD");
     const started = Date.now();
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const { code, result, stalled, tail } = await runSession(options, slug, session, join(logDir, `${session}-${stamp}.jsonl`), resume === session,
+    refreshFacts();
+    const { code, result, stalled, tail } = await runSession(options, slug, entry, join(logDir, `${session}-${stamp}.jsonl`), resume === session,
       isMilestone(pending.length, options.lintEvery));
+    costs.set(session, (costs.get(session) ?? 0) + (result?.total_cost_usd ?? 0));
+    const closeEvent = (status) => emit("session_closed", {
+      session, status, commits: Number(git("rev-list", "--count", `${headBefore}..HEAD`)), cost_usd: costs.get(session),
+    });
+    const fail = (message) => { closeEvent("failed"); throw new Error(message); };
     const minutes = ((Date.now() - started) / 60000).toFixed(1);
     console.log(`\n[plan] session ${session} ended in ${minutes} min, exit ${code}` +
       (result?.total_cost_usd ? `, $${result.total_cost_usd.toFixed(2)}` : ""));
@@ -261,10 +300,10 @@ async function main() {
         continue;
       }
     }
-    if (failed) throw new Error(`session ${session} ${stalled ? "stalled" : "failed"} (exit ${code}, ${result?.subtype ?? "no result"}) while Claude answers normally`);
+    if (failed) fail(`session ${session} ${stalled ? "stalled" : "failed"} (exit ${code}, ${result?.subtype ?? "no result"}) while Claude answers normally`);
     // A run that ended its turn early (e.g. waiting for background agents) leaves the session pending without a commit.
-    const stillPending = pendingSessions(sessionsDir).includes(session);
-    if (stillPending && git("rev-parse", "HEAD") === headBefore && (continues.get(session) ?? 0) < MAX_CONTINUES) {
+    const state = sessionState(planDir, entry);
+    if (state === "pending" && git("rev-parse", "HEAD") === headBefore && (continues.get(session) ?? 0) < MAX_CONTINUES) {
       continues.set(session, (continues.get(session) ?? 0) + 1);
       console.log(`[plan] session ${session} ended without a commit; continuing it (${continues.get(session)}/${MAX_CONTINUES})`);
       resume = session;
@@ -273,10 +312,13 @@ async function main() {
     resume = null;
     ran++;
     attempts.set(session, (attempts.get(session) ?? 0) + 1);
-    if (dirtyTracked()) throw new Error(`session ${session} left uncommitted tracked changes:\n${dirtyTracked()}`);
+    if (dirtyTracked()) fail(`session ${session} left uncommitted tracked changes:\n${dirtyTracked()}`);
     const advanced = git("rev-parse", "HEAD") !== headBefore;
-    if (!advanced) throw new Error(`session ${session} made no commit`);
-    console.log(`[plan] commits: ${git("log", "--oneline", `${headBefore}..HEAD`).split("\n").join(" | ")}\n`);
+    if (state === "blocked") {
+      console.log(`[plan] session ${session} is blocked: ${loadSession(planDir, session).blocked_reason ?? "no reason recorded"}; going on with the sessions that do not depend on it`);
+    } else if (!advanced) fail(`session ${session} made no commit`);
+    if (advanced) console.log(`[plan] commits: ${git("log", "--oneline", `${headBefore}..HEAD`).split("\n").join(" | ")}\n`);
+    closeEvent(state === "blocked" ? "blocked" : state === "done" ? "done" : "failed");
   }
   console.log(`[plan] ${slug}: no sessions left after ${ran} runs.`);
 }

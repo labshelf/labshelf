@@ -12,6 +12,7 @@ import { planPrompt } from "./planPrompt.mjs";
 import { planRed, restoreRed } from "./planRed.mjs";
 import { planStale } from "./planStale.mjs";
 import { planStart } from "./planStart.mjs";
+import { planStatus } from "./planStatus.mjs";
 import { planStubs } from "./planStubs.mjs";
 import { planTests } from "./planTests.mjs";
 
@@ -77,6 +78,9 @@ export const COMMANDS = {
     const changed = planStale(root, { planDir: resolvePlanDir(root, { plan: flags.plan }), sessionId, specId });
     changed.forEach(out);
     return changed.length > 0 ? 1 : 0;
+  },
+  status: ({ root, out }) => {
+    planStatus(root).forEach(out);
   },
 };
 
