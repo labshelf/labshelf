@@ -4,6 +4,7 @@ export * from "../library/node/index.js";
 export * from "../logging/node/index.js";
 export * from "../import/node/index.js";
 export * from "../reader/node/index.js";
+export * from "../qmd/node/index.js";
 export * from "../ai/node/index.js";
 export * from "../writing/project/node/index.js";
 export * from "../templates/node/index.js";

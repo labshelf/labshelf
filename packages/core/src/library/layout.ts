@@ -41,6 +41,8 @@ export interface LibraryLayout<T> {
   paperDataRoot(): T;
   paperDataDir(paperId: string): T;
   paperDataPath(paperId: string): T;
+  /** The paper's notes.qmd, beside its data.json. */
+  paperNotesPath(paperId: string): T;
   /** Folders a library needs. Creating them recursively, in order, yields the full structure. */
   requiredDirs(): T[];
   /** Folders whose presence marks a folder as a library. */
@@ -65,6 +67,7 @@ export function createLibraryLayout<T>(root: T, join: Join<T>): LibraryLayout<T>
     paperDataRoot,
     paperDataDir,
     paperDataPath: (paperId) => join(paperDataDir(paperId), SIDECAR_FILE),
+    paperNotesPath: (paperId) => join(paperDataDir(paperId), PAPER_NOTES_FILE),
     requiredDirs: () => [research(), paperDataRoot(), join(root, PAPERS_DIR)],
     markerDirs: () => [join(root, PAPERS_DIR), research()],
   };
