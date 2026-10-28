@@ -16,7 +16,9 @@
         "tsc"
       ],
       "ignoreDependencies": [
-        "boring-avatars-vanilla"
+        "boring-avatars-vanilla",
+        "oxc-parser",
+        "oxc-resolver"
       ]
     },
     "packages/core": {

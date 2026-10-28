@@ -5,6 +5,7 @@ Shared rules every package brief relies on. Briefs say "per conventions" instead
 ## Scripts
 
 - Files are camelCase `.mjs` (CLI entry points may be short lowercase names: `run.mjs`, `plan.mjs`, `facts.mjs`). Argument parsing in the style of `parseArgs` from `scripts/codemods/shared.mjs`.
+- `scripts/plans/plan.mjs <cmd>` dispatches through the `COMMANDS` table, one `plan<Cmd>.mjs` module per command; a new command adds one entry. The repo root is `git rev-parse --show-toplevel` of the cwd. Commands that need a plan take `--plan <slug|dir>`, else the plan above the brief file or cwd, else the only plan under `documents/plans`. Errors go to stderr with exit 1.
 - Telemetry: `import { emit } from "<rel>/scripts/agents/telemetry.mjs"`; `emit(kind, fields)` never throws. Kinds and fields: `research/telemetry-events.md`. Shell hooks use `node scripts/agents/telemetry.mjs <kind> '<json>'`.
 - Handoff blocks: `parseBlocks` and `validate` from `scripts/agents/schemas.mjs` (from session 3 on). Fields: `research/schemas.md`.
 - Tests: `node:test` in `scripts/<dir>/__tests__/*.test.mjs` or `.claude/hooks/__tests__/*.test.mjs` (both already in `pnpm test:tooling`). Temp dirs from `fs.mkdtempSync(os.tmpdir())`; never write into the real `.git/`: every state path takes an env override (`LABSHELF_RUNS_DIR`, `LABSHELF_LOGS_DIR`, `LABSHELF_FACTS_DB`, `LABSHELF_FACTS_ROOT`, `LABSHELF_DUP_GUARD`, `LABSHELF_HOOK_STATE_DIR`, `LABSHELF_TELEMETRY_SPOOL`).
