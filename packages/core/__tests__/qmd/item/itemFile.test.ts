@@ -7,8 +7,8 @@ import {
   serializeItemFile,
   type ItemSegment,
   type Segment,
-} from "../../src/qmd/itemFile";
-import { qmdFixtures, readQmdFixture } from "./fixtures/qmdFixtures";
+} from "../../../src/qmd/item/itemFile";
+import { qmdFixtures, readQmdFixture } from "../fixtures/qmdFixtures";
 
 describe("itemAnchor", () => {
   it.each<[string, ItemAnchor]>([

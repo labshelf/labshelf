@@ -15,3 +15,4 @@
 - 2026-10-23 — 2.6 gate: pnpm -r typecheck passes; core tests 6538 pass, relayOutage fails (baseline); app tests not run (no app code changed). Peak context: main ~120k, reviewer not reported.
 - 2026-10-28 — plan: converted to plan.yaml and sessions/*.yaml (YAML flow); sessions 1–3 recorded as done; paths updated to the current code layout.
 - 2026-10-28 — plan: hidden tests written by testers for every spec with tests; specs completed from the tester reports (seams, decided, by-hand checks split into task specs); plan red passes for 4.3.
+- 2026-10-28 18:27 — session 4 done: 4.1, 4.2, 4.3, 4.4

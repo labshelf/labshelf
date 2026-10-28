@@ -1,6 +1,6 @@
 // Finds and writes the output blocks that hold a code cell's stored result inside an item body, and hashes the code they date.
 // CONTRACT: documents/contracts/qmd-items.md#outputs
-import { deriveTextSha256Hex } from "../hash/index.js";
+import { deriveTextSha256Hex } from "../../hash/index.js";
 import { readAttribute, formatDivOpener, isBalanced, extractLineContent, parseDivOpener, splitLines, findTopLevelDivs } from "./itemFile.js";
 
 export const OUTPUT_CLASS = "labshelf-output";

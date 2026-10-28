@@ -68,8 +68,8 @@ packages:
       - {path: packages/core/src/reader/sidecar/sidecarStore.ts, lines: "129-192", why: "per-paper queue, injected options and the load-modify-save pattern to mirror"}
       - {path: packages/core/src/reader/node/nodeSidecarPort.ts, lines: "1-34", why: "Node port over the layout with an atomic write, to mirror"}
       - {path: packages/core/src/ports/hostPorts.ts, lines: "26-30", why: "SidecarPort, the shape the notes port copies"}
-      - {path: packages/core/src/qmd/itemUpdate.ts, lines: "92-135", why: "addItem, setItemBody, removeItem and newItemId used by the store"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "245-290", why: "ItemAnchor and parseAnchor/formatAnchor for setAnchor"}
+      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "92-135", why: "addItem, setItemBody, removeItem and newItemId used by the store"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "245-290", why: "ItemAnchor and parseAnchor/formatAnchor for setAnchor"}
     seams:
       - {path: packages/core/src/library/layout.ts, signature: "paperNotesPath(paperId: string): T;"}
       - {path: packages/core/src/qmd/paperNotes.ts, signature: "export interface PaperNotesPort { read(paperId: string): Promise<string | null>; write(paperId: string, text: string): Promise<void> }"}

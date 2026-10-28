@@ -51,13 +51,13 @@ packages:
       - {path: packages/core/src/reader/protocol/messages.ts, lines: "78-99", why: "HostToWebview init and updateAnnotations"}
       - {path: packages/core/src/reader/protocol/messages.ts, lines: "122-150", why: "WebviewToHost createAnnotation and update/delete"}
       - {path: packages/core/src/reader/protocol/messages.ts, lines: "166-205", why: "isWebviewMessage guard"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "248-295", why: "ItemAnchor, parseAnchor, formatAnchor"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "248-295", why: "ItemAnchor, parseAnchor, formatAnchor"}
     seams:
       - {path: packages/core/src/reader/protocol/messages.ts, signature: "export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string }"}
     decided:
       - "Host to webview: `updateNotes {items: ReaderNote[]}`, also carried by `init` as `notes: ReaderNote[]` (the same list). `anchor` is the attribute string, empty when the item has none."
       - "Webview to host: `addNote {anchor: string, body: string}`, `editNote {id, body}`, `moveNote {id, anchor}` (text-box move/resize) and `removeNote {id}`."
-      - "Anchors travel as the attribute string and the guard validates them with `parseAnchor` from `packages/core/src/qmd/itemFile.ts`: an anchor of unknown kind is rejected for `addNote` (and for `moveNote`, which also carries an anchor); an empty anchor is valid (unanchored)."
+      - "Anchors travel as the attribute string and the guard validates them with `parseAnchor` from `packages/core/src/qmd/item/itemFile.ts`: an anchor of unknown kind is rejected for `addNote` (and for `moveNote`, which also carries an anchor); an empty anchor is valid (unanchored)."
       - "`createAnnotation` creates only highlights: type becomes `\"highlight\"`, and its guard branch for `\"note\"` goes."
       - "The reader-host contract no longer exists (`documents/contracts/` holds only what both sides cannot read from one codebase), so the protocol is specified by these types and their guard tests; no contract file is edited. finish checks this against `documents/code.md#contracts`."
     acceptance:
@@ -144,7 +144,7 @@ packages:
       - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "100-125", why: "highlight(): how createAnnotation is posted"}
       - {path: packages/core/src/reader/dom/readerUi.ts, lines: "188-213", why: "attachReaderHostMessages: how `updateAnnotations` reaches the UI"}
       - {path: packages/core/src/reader/protocol/messages.ts, lines: "78-99", why: "init, updateNotes and ReaderNote"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "248-295", why: "parseAnchor and ItemAnchor kinds for the anchor chip and filters"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "248-295", why: "parseAnchor and ItemAnchor kinds for the anchor chip and filters"}
       - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "1-60", why: "icon set for the tab (file-text, message exist)"}
     seams:
       - {path: packages/core/src/reader/dom/notesTab.ts, signature: "export class NotesTab implements SidebarPanel { readonly el: HTMLElement; show(notes: readonly ReaderNote[]): void; onShow(): void; onHide(): void }"}
@@ -226,7 +226,7 @@ packages:
       - {path: packages/core/src/reader/dom/pageHighlights.ts, lines: "56-139", why: "PageHighlights layer: textlayerrendered rebuild, percent positions set through CSSOM, derivePageFrame and deriveBoxInPage"}
       - {path: packages/core/src/reader/dom/styles/reader.css, lines: "250-270", why: ".rd-hl-layer rules (pointer-events none)"}
       - {path: packages/core/src/reader/text/textBoxPlacement.ts, lines: "1-1", why: "fitEmptyBox and snapBox from 7.5 (re-read whole file)"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "248-295", why: "formatAnchor and the box ItemAnchor"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "248-295", why: "formatAnchor and the box ItemAnchor"}
       - {path: documents/plans/qmd-notes/research/reader.md, lines: "12-15", why: "Drawing: page lookup, no rotation code"}
     seams:
       - {path: packages/core/src/reader/dom/noteBoxes.ts, signature: "export class NoteBoxLayer { constructor(ctx: Pick<ReaderContext, \"eventBus\" | \"host\">); show(notes: readonly ReaderNote[]): void }"}

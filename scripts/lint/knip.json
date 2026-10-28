@@ -1,5 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": [
+    "documents/plans/*/tests/**"
+  ],
   "workspaces": {
     ".": {
       "entry": [
@@ -37,14 +40,6 @@
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",
-        "prosemirror-commands",
-        "prosemirror-history",
-        "prosemirror-inputrules",
-        "prosemirror-keymap",
-        "prosemirror-state",
-        "prosemirror-transform",
-        "prosemirror-view",
-        "y-prosemirror",
         "@vscode/codicons"
       ]
     },

@@ -3,7 +3,7 @@ import { sendTo, type SendRequest, type SendTarget } from "../../../src/qmd/send
 import { createProjectNoteWriter, type IProjectAssetWriter } from "../../../src/qmd/sendTo/projectNoteWriter";
 import { createRecentTargets, type IKeyValueStore } from "../../../src/qmd/sendTo/recentTargets";
 import { createProjectNotesStore, type IProjectNoteFiles } from "../../../src/qmd/projectNotes/projectNotesStore";
-import { parseItemFile, type ItemSegment } from "../../../src/qmd/itemFile";
+import { parseItemFile, type ItemSegment } from "../../../src/qmd/item/itemFile";
 import type { ILogger } from "../../../src/ports/hostPorts";
 
 const PROJECT = "proj-1";

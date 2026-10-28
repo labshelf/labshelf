@@ -1,5 +1,5 @@
 /** Verifies the Space notes store: a note is one `notes/<slug>.qmd` file whose first item starts with `# <title>`. */
-import { parseItemFile, type ItemSegment } from "../../src/qmd/itemFile";
+import { parseItemFile, type ItemSegment } from "../../src/qmd/item/itemFile";
 import { seededFixture, ROOT } from "./store/spaceStoreFixture";
 
 const space = { version: 1, name: "Thesis", folders: [], papers: [], projects: [], dates: [] };

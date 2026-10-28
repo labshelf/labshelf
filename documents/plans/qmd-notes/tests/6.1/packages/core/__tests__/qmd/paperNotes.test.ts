@@ -9,8 +9,8 @@ import {
   type PaperNotesPort,
 } from "../../src/qmd/paperNotes";
 import { createNodePaperNotesPort } from "../../src/qmd/node/index";
-import { parseItemFile, serializeItemFile, type ItemSegment } from "../../src/qmd/itemFile";
-import { removeItem, setItemBody } from "../../src/qmd/itemUpdate";
+import { parseItemFile, serializeItemFile, type ItemSegment } from "../../src/qmd/item/itemFile";
+import { removeItem, setItemBody } from "../../src/qmd/item/itemUpdate";
 import { fakeLogger } from "../support/fakeLogger";
 import { cleanupTempDirs, listFiles, makeTempDir } from "../support/tempDirs";
 

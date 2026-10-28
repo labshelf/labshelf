@@ -39,8 +39,8 @@ packages:
       - packages/core/src/qmd/projectNotes/
     read:
       - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore: store shape to mirror (created by session 6)"}
-      - {path: packages/core/src/qmd/itemUpdate.ts, lines: "92-140", why: "pure addItem, setItemBody, removeItem on an ItemFile, and newItemId (:45)"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "341-395", why: "parseItemFile and serializeItemFile"}
+      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "92-140", why: "pure addItem, setItemBody, removeItem on an ItemFile, and newItemId (:45)"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "341-395", why: "parseItemFile and serializeItemFile"}
       - {path: packages/core/src/writing/project/projectFile.ts, lines: "120-130", why: "PROJECT_FORMATS stays latex/typst"}
       - {path: packages/core/src/collab/commentsFile.ts, lines: "1-180", why: "injected file access pattern (comments file store)"}
       - {path: documents/contracts/qmd-items.md, lines: "15-60", why: "#items and #merge"}
@@ -69,9 +69,9 @@ packages:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
     do_not_touch:
-      - packages/core/src/qmd/itemFile.ts
-      - packages/core/src/qmd/itemUpdate.ts
-      - packages/core/src/qmd/mergeItemFiles.ts
+      - packages/core/src/qmd/item/itemFile.ts
+      - packages/core/src/qmd/item/itemUpdate.ts
+      - packages/core/src/qmd/item/mergeItemFiles.ts
       - apps
 
   - id: "9.2"
@@ -116,8 +116,8 @@ packages:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
     do_not_touch:
-      - packages/core/src/qmd/itemFile.ts
-      - packages/core/src/qmd/itemUpdate.ts
+      - packages/core/src/qmd/item/itemFile.ts
+      - packages/core/src/qmd/item/itemUpdate.ts
       - "the `.labshelf/checklist.json` format (`parseChecklistFile`, `serializeChecklistFile`, `ManualItem`)"
 
   - id: "9.3"
@@ -134,7 +134,7 @@ packages:
       - {path: packages/core/src/library/record.ts, lines: "310-335", why: "paper link grammar and formatPaperLink"}
       - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore (created by 9.1)"}
       - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore.addItem, the paper-note writer (created by session 6)"}
-      - {path: packages/core/src/qmd/itemUpdate.ts, lines: "30-140", why: "newItemId, addItem"}
+      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "30-140", why: "newItemId, addItem"}
       - {path: documents/contracts/qmd-items.md, lines: "7-14", why: "#format"}
     seams:
       - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export type SendTarget = { kind: 'projectNote'; projectId: string; path: string } | { kind: 'spaceNote'; spaceId: string; path: string } | { kind: 'discussion'; spaceId: string; path: string }"}

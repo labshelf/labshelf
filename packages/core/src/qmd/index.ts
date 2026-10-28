@@ -1,6 +1,3 @@
-// Exports LabShelf Markdown item files: ids, anchors, items and stored cell results.
-export * from "./itemFile.js";
-export * from "./itemUpdate.js";
-export * from "./mergeItemFiles.js";
-export * from "./cellOutput.js";
+// Exports LabShelf Markdown items: the file format and stored cell results, and the body editor model.
+export * from "./item/index.js";
 export * from "./editor/index.js";

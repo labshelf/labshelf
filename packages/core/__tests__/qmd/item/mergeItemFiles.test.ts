@@ -1,8 +1,8 @@
-import { mergeItemFiles } from "../../src/qmd/mergeItemFiles";
-import { addItem, removeItem, setItemBody } from "../../src/qmd/itemUpdate";
-import { parseItemFile, serializeItemFile } from "../../src/qmd/itemFile";
-import { formatOutput } from "../../src/qmd/cellOutput";
-import { mergeText } from "../../src/writing/conflict/node/itemFileMerge";
+import { mergeItemFiles } from "../../../src/qmd/item/mergeItemFiles";
+import { addItem, removeItem, setItemBody } from "../../../src/qmd/item/itemUpdate";
+import { parseItemFile, serializeItemFile } from "../../../src/qmd/item/itemFile";
+import { formatOutput } from "../../../src/qmd/item/cellOutput";
+import { mergeText } from "../../../src/writing/conflict/node/itemFileMerge";
 
 const A = "n-01JB2QN0000000000000000000";
 const B = "n-01JB2QP0000000000000000000";

@@ -30,9 +30,9 @@ packages:
     read:
       - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "5-11", why: "Reuse: LaTeX scan and the insert snippet builders"}
       - {path: packages/core/src/latex/source.ts, lines: "1-136", why: "removeComments, LatexRange and LatexPosition; scanLatexSource facts (labels, includes) to import, not change"}
-      - {path: packages/core/src/qmd/cellOutput.ts, lines: "1-75", why: "deriveCodeHash: the 12-hex-char SHA-256 shape the origin hash reuses"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "1-75", why: "deriveCodeHash: the 12-hex-char SHA-256 shape the origin hash reuses"}
       - {path: packages/core/src/hash/contentHash.ts, lines: "1-14", why: "deriveTextSha256Hex"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "1-385", why: "parse an item file to find an equation by label inside an item body"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "1-385", why: "parse an item file to find an equation by label inside an item body"}
     seams:
       - {path: packages/core/src/writing/noteLinks/originComment.ts, signature: "export function parseOriginComment(line: string): { notePath: string; label: string; hash: string } | undefined"}
       - {path: packages/core/src/writing/noteLinks/originComment.ts, signature: "export function formatOriginComment(language: \"latex\" | \"typst\", origin: { notePath: string; label: string; hash: string }): string"}
@@ -49,7 +49,7 @@ packages:
       - "D12: an inserted equation ends with `% labshelf: <note path>#<eq label> @<hash>` (Typst: `// labshelf: <note path>#<eq label> @<hash>`)."
       - "`<note path>` is POSIX, relative to the project folder for project notes, `paper:<paper id>/notes.qmd` for paper notes."
       - "`<eq label>` is the `{#eq-…}` label, or the output's `cell` label for an output."
-      - "`<hash>` is the first 12 hex chars of SHA-256 of the inserted LaTeX (the text between `\\begin{equation}` and `\\label{…}`, trimmed), the same hash function and length as `deriveCodeHash` in `packages/core/src/qmd/cellOutput.ts`."
+      - "`<hash>` is the first 12 hex chars of SHA-256 of the inserted LaTeX (the text between `\\begin{equation}` and `\\label{…}`, trimmed), the same hash function and length as `deriveCodeHash` in `packages/core/src/qmd/item/cellOutput.ts`."
       - "LaTeX insert shape: `\\begin{equation}<latex>\\label{<eq label>}\\end{equation} % labshelf: …` on one block, the comment on the `\\end{equation}` line."
       - "Typst insert shape: `$ <typst math> $ <<eq label>> // labshelf: …`. LaTeX to Typst math is converted only where `packages/core/src/writing/snippets.ts` or the typst domain already converts; otherwise Typst insert is offered for outputs with a `text` form only, and the picker says so."
       - "`scanOrigins` takes manuscript text and returns `{line, notePath, label, hash, insertedRange}[]` (`ManuscriptOrigin`); the LaTeX range uses `LatexRange` from `packages/core/src/latex/source.ts`."
@@ -87,7 +87,7 @@ packages:
       - {path: packages/core/src/writing/noteLinks/index.ts, lines: "1-12", why: "the origin API from 13.1"}
       - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore.list and read: the project notes to scan for equations (created by 9.1)"}
       - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore.read: the notes of the cited papers to scan for equations (created by 6.1)"}
-      - {path: packages/core/src/qmd/cellOutput.ts, lines: "1-75", why: "findOutputs, CellOutputBlock and deriveCodeHash for output blocks and the out-of-date check (D3)"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "1-75", why: "findOutputs, CellOutputBlock and deriveCodeHash for output blocks and the out-of-date check (D3)"}
       - {path: packages/core/src/writing/citations/index.ts, lines: "1-27", why: "findCitationSites, scanCiteKeys and derivePapersByCiteKey: cited keys to papers"}
       - {path: packages/core/src/writing/snippets.ts, lines: "1-30", why: "createImageSnippet: the existing LaTeX/Typst insert builder to mirror"}
       - {path: packages/core/src/writing/project/projectValues.ts, lines: "1-40", why: "values: leaves and keys the picker lists under Values"}

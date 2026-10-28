@@ -1,6 +1,6 @@
 // Creates item ids and adds, rewrites and removes items of a parsed item file, changing only the bytes of the item edited.
 // CONTRACT: documents/contracts/qmd-items.md#ids
-import { fillRandom } from "../encoding/index.js";
+import { fillRandom } from "../../encoding/index.js";
 import {
   ITEM_CLASS,
   extractLineEnding,

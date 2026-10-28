@@ -57,7 +57,7 @@ packages:
     seams:
       - {path: packages/core/src/collab/commentsQmd.ts, signature: "export function parseCommentsQmd(text: string): CommentsDocument | undefined"}
       - {path: packages/core/src/collab/commentsQmd.ts, signature: "export function serializeCommentsQmd(doc: CommentsDocument): string"}
-      - {path: packages/core/src/collab/commentsQmd.ts, signature: "export function threadsToItems(threads: readonly CommentThread[]): ItemSegment[]  // ItemSegment from packages/core/src/qmd/itemFile.ts; one item per comment"}
+      - {path: packages/core/src/collab/commentsQmd.ts, signature: "export function threadsToItems(threads: readonly CommentThread[]): ItemSegment[]  // ItemSegment from packages/core/src/qmd/item/itemFile.ts; one item per comment"}
       - {path: packages/core/src/collab/commentsFile.ts, signature: "export interface CommentsDocument { [key: string]: unknown; threads: readonly CommentThread[] }  // other keys carry what a rewrite must keep (unknown attributes, loose text), opaque to callers"}
       - {path: packages/core/src/collab/commentsFile.ts, signature: "export function loadCommentsDocument(access: CommentsFileAccess): Promise<CommentsDocument | undefined>  // missing file -> {threads: []}; unreadable (conflict markers) -> undefined; a read error rejects"}
       - {path: packages/core/src/collab/commentsFile.ts, signature: "export function updateCommentsDocument(access: CommentsFileAccess, change: (doc: CommentsDocument) => CommentsDocument): Promise<void>  // rejects, writes nothing, when the file is unreadable or the read throws"}
@@ -92,7 +92,7 @@ packages:
       - "node scripts/agents/run.mjs typecheck core"
       - "node scripts/agents/run.mjs test core"
     do_not_touch:
-      - "packages/core/src/qmd/itemFile.ts, itemUpdate.ts, cellOutput.ts, mergeItemFiles.ts"
+      - "packages/core/src/qmd/item/itemFile.ts, itemUpdate.ts, cellOutput.ts, mergeItemFiles.ts"
       - "packages/vscode/, packages/browser/"
   - id: "8.3"
     plan: qmd-notes

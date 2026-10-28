@@ -1,4 +1,4 @@
-import { deriveCodeHash, findOutputs } from "../../../src/qmd/cellOutput";
+import { deriveCodeHash, findOutputs } from "../../../src/qmd/item/cellOutput";
 import type { CellResult } from "../../../src/qmd/compute/cellRunner";
 import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
 

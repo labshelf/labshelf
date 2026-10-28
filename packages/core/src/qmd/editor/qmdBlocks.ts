@@ -1,8 +1,7 @@
 // Reads item bodies into blocks and writes blocks back to the exact source text.
 // CONTRACT: documents/contracts/qmd-items.md#format
 import type { Node } from "prosemirror-model";
-import { findOutputs, OUTPUT_CLASS } from "../cellOutput.js";
-import { findTopLevelDivs, findCodeFences, findUnclosedCodeFences, isBlankLine, extractLineContent, extractLineEnding, splitLines } from "../itemFile.js";
+import { findOutputs, OUTPUT_CLASS, findTopLevelDivs, findCodeFences, findUnclosedCodeFences, isBlankLine, extractLineContent, extractLineEnding, splitLines } from "../item/index.js";
 import { qmdSchema } from "./qmdSchema.js";
 import { parseInline, serializeInline } from "./qmdInline.js";
 

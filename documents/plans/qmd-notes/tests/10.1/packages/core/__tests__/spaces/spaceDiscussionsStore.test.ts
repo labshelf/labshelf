@@ -1,5 +1,5 @@
 /** Verifies the Space discussions store: a thread is one `discussions/<slug>.qmd` file, a topic item then one item per message. */
-import { parseItemFile, type ItemSegment } from "../../src/qmd/itemFile";
+import { parseItemFile, type ItemSegment } from "../../src/qmd/item/itemFile";
 import { seededFixture, ROOT, NOW } from "./store/spaceStoreFixture";
 
 const space = { version: 1, name: "Thesis", folders: [], papers: [], projects: [], dates: [] };

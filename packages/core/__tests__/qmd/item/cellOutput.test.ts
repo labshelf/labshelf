@@ -1,6 +1,6 @@
-import { parseItemFile, type ItemSegment } from "../../src/qmd/itemFile";
-import { deriveCodeHash, findOutputs, formatOutput } from "../../src/qmd/cellOutput";
-import { readQmdFixture } from "./fixtures/qmdFixtures";
+import { parseItemFile, type ItemSegment } from "../../../src/qmd/item/itemFile";
+import { deriveCodeHash, findOutputs, formatOutput } from "../../../src/qmd/item/cellOutput";
+import { readQmdFixture } from "../fixtures/qmdFixtures";
 
 describe("outputBlock", () => {
   it("finds the output block of a cell with its attributes and offsets", () => {

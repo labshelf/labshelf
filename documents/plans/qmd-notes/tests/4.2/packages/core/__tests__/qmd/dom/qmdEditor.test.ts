@@ -6,7 +6,7 @@
 // contenteditable `.ProseMirror`; Source mode is a plain <textarea>; the toggle is a <button> in the mount root
 // whose text, aria-label or title mentions "source" (to enter Source) or "visual" (to return to Visual).
 import { mountQmdEditor, type QmdEditorHandle } from "../../../src/qmd/dom/qmdEditor";
-import { QMD_VOCABULARY } from "../../../src/qmd/dom/vocabulary";
+import { QMD_VOCABULARY } from "../../../src/qmd/dom";
 
 const DEBOUNCE_MS = 300;
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

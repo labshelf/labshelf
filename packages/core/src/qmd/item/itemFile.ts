@@ -1,6 +1,6 @@
 // Reads and writes qmd item files: lines, code fences, fenced divs, attributes, anchors, and the items parsed from them.
 // CONTRACT: documents/contracts/qmd-items.md#items
-import { base64UrlToBytes, bytesToBase64Url } from "../encoding/index.js";
+import { base64UrlToBytes, bytesToBase64Url } from "../../encoding/index.js";
 
 // ---- Parsed shape
 

@@ -1,5 +1,5 @@
 import type { Node } from "prosemirror-model";
-import { parseItemFile } from "../../../src/qmd/itemFile";
+import { parseItemFile } from "../../../src/qmd/item/itemFile";
 import { bodyToDoc, docToBody } from "../../../src/qmd/editor/qmdDoc";
 import { qmdFixtures, readQmdFixture } from "../fixtures/qmdFixtures";
 

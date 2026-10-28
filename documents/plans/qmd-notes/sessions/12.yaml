@@ -13,7 +13,7 @@ owns:
   - packages/core/src/helper/node/cellHandlers.ts
   - packages/core/src/helper/node/helperHandlers.ts
   - packages/core/src/helper/node/helperProjects.ts
-  - packages/core/src/qmd/cellOutput.ts
+  - packages/core/src/qmd/item/cellOutput.ts
   - packages/core/src/helper/node/runHelperHost.ts
   - packages/core/src/libraryUi/protocol/messages.ts
   - packages/core/src/libraryUi/paperHandlers.ts
@@ -53,26 +53,26 @@ packages:
     level: contract
     runner: {agent: implementer, model: opus}
     edit:
-      - {path: packages/core/src/qmd/cellOutput.ts, lines: "20-69", why: "CreateOutputInput gains an optional status; formatOutput writes it as the last opener attribute when present"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "20-69", why: "CreateOutputInput gains an optional status; formatOutput writes it as the last opener attribute when present"}
       - {path: documents/contracts/qmd-items.md, lines: "42-48", why: "#outputs: document the optional status=error attribute"}
     create:
       - packages/core/src/qmd/compute/index.ts
       - packages/core/src/qmd/compute/cellRunner.ts
       - packages/core/src/qmd/compute/writeCellOutput.ts
     read:
-      - {path: packages/core/src/qmd/cellOutput.ts, lines: "1-76", why: "findOutputs and deriveCodeHash (the cell source hash, async) to reuse by import"}
-      - {path: packages/core/src/qmd/itemUpdate.ts, lines: "92-135", why: "setItemBody and the item edit style; the writer returns a new body, the host stores it"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "1-60", why: "line splitting and code fence helpers (findCodeFences) to locate a cell and its end"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "1-76", why: "findOutputs and deriveCodeHash (the cell source hash, async) to reuse by import"}
+      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "92-135", why: "setItemBody and the item edit style; the writer returns a new body, the host stores it"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "1-60", why: "line splitting and code fence helpers (findCodeFences) to locate a cell and its end"}
     seams:
       - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: 'export type CellStatus = "ok" | "error" | "timeout" | "cancelled" | "missing-python";'}
       - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface CellResult { status: CellStatus; latex?: string; text?: string; error?: string; durationMs: number }"}
       - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface ICellRunner { run(code: string, opts: { cwd: string; signal: AbortSignal; timeoutMs: number }): Promise<CellResult> }"}
       - {path: packages/core/src/qmd/compute/writeCellOutput.ts, signature: "export function writeCellOutput(body: string, cellLabel: string, result: CellResult, meta: { engine: string; ran: string }): Promise<string>"}
-      - {path: packages/core/src/qmd/cellOutput.ts, signature: "export interface CreateOutputInput { readonly cell: string; readonly source: string; readonly engine: string; readonly ran: string; readonly content: string; readonly status?: \"error\" }"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, signature: "export interface CreateOutputInput { readonly cell: string; readonly source: string; readonly engine: string; readonly ran: string; readonly content: string; readonly status?: \"error\" }"}
     decided:
       - "D11: cells run through a core port ICellRunner in packages/core/src/qmd/compute/cellRunner.ts; cancel kills the process (12.2, 12.3). The port is runtime-neutral: no Node import in cellRunner.ts, writeCellOutput.ts or index.ts."
       - "CellResult.status is one of ok, error, timeout, cancelled, missing-python; latex, text and error are optional; durationMs is always present."
-      - "writeCellOutput takes an item body, a cell label and a result and returns the new body. It inserts or replaces the `::: {.labshelf-output cell=<label> source=<hash> engine=... ran=...}` block right after that cell (D3). source = deriveCodeHash(cell code) from packages/core/src/qmd/cellOutput.ts (first 12 hex chars of SHA-256, `#|` lines excluded, trailing newline trimmed); ran is ISO-8601 UTC; engine is like `python-3.12 sympy-1.13`. The function is async because deriveCodeHash is."
+      - "writeCellOutput takes an item body, a cell label and a result and returns the new body. It inserts or replaces the `::: {.labshelf-output cell=<label> source=<hash> engine=... ran=...}` block right after that cell (D3). source = deriveCodeHash(cell code) from packages/core/src/qmd/item/cellOutput.ts (first 12 hex chars of SHA-256, `#|` lines excluded, trailing newline trimmed); ran is ISO-8601 UTC; engine is like `python-3.12 sympy-1.13`. The function is async because deriveCodeHash is."
       - "Block content: `$$ <latex> $$` when latex is present, else the text in a plain fenced code block; an error result writes the error text and the block gets the attribute status=error. cancelled and missing-python write nothing and return the body unchanged. Uses formatOutput and findOutputs from cellOutput.ts; a formatOutput throw (content closing the block early) is not caught."
       - "A cell without `#| label:` gets `#| label: cell-<n>` written on first run (n = the cell position in the item, 1-based) so the output can reference it; a rerun finds the cell by that label and replaces the existing block."
       - "Writes never touch text outside the item body it was given (the host passes one item body and stores the result with setItemBody)."
@@ -97,8 +97,8 @@ packages:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
     do_not_touch:
-      - packages/core/src/qmd/itemFile.ts
-      - packages/core/src/qmd/itemUpdate.ts
+      - packages/core/src/qmd/item/itemFile.ts
+      - packages/core/src/qmd/item/itemUpdate.ts
 
   - id: "12.2"
     plan: qmd-notes

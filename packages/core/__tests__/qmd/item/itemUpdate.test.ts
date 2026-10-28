@@ -1,7 +1,7 @@
 
-import { addItem, removeItem, setItemBody, isItemId, createItemIdGenerator, newItemId } from "../../src/qmd/itemUpdate";
-import { parseItemFile, serializeItemFile } from "../../src/qmd/itemFile";
-import { readQmdFixture } from "./fixtures/qmdFixtures";
+import { addItem, removeItem, setItemBody, isItemId, createItemIdGenerator, newItemId } from "../../../src/qmd/item/itemUpdate";
+import { parseItemFile, serializeItemFile } from "../../../src/qmd/item/itemFile";
+import { readQmdFixture } from "../fixtures/qmdFixtures";
 
 const ID_A = "n-01JB2QN0000000000000000000";
 const ID_B = "n-01JB2QP0000000000000000000";

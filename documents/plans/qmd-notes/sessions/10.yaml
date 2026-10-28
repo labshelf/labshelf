@@ -24,8 +24,8 @@ packages:
       - {path: documents/plans/qmd-notes/research/spaces-collab.md, lines: "5-9", why: "Spaces on disk"}
       - {path: documents/contracts/spaces.md, lines: "1-37", why: "layout and conflict copies"}
       - {path: packages/core/src/spaces/spaceStore.ts, lines: "1-267", why: "StoreContext, runSerially (serial writes per Space), readSpaceFile"}
-      - {path: packages/core/src/qmd/itemFile.ts, lines: "1-385", why: "parse and serialize item files"}
-      - {path: packages/core/src/qmd/itemUpdate.ts, lines: "1-209", why: "item edits"}
+      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "1-385", why: "parse and serialize item files"}
+      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "1-209", why: "item edits"}
       - {path: packages/core/src/ports/fileSystem.ts, lines: "1-52", why: "LibraryFileSystem port used by the stores"}
       - {path: packages/core/src/qmd/projectNotes/noteSlug.ts, lines: "1-40", why: "deriveNoteSlug (created by 9.1)"}
     seams:

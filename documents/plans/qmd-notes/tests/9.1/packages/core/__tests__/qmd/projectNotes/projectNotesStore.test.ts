@@ -1,6 +1,6 @@
 import { deriveNoteSlug } from "../../../src/qmd/projectNotes/noteSlug";
 import { createProjectNotesStore, type IProjectNoteFiles } from "../../../src/qmd/projectNotes/projectNotesStore";
-import { parseItemFile, type ItemSegment } from "../../../src/qmd/itemFile";
+import { parseItemFile, type ItemSegment } from "../../../src/qmd/item/itemFile";
 import type { ILogger } from "../../../src/ports/hostPorts";
 
 const PROJECT = "proj-1";

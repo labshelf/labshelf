@@ -1,5 +1,5 @@
 // Core test setup: exposes Web Crypto and setImmediate as globals where the environment lacks them (Node versions, jsdom).
-if (typeof (globalThis as { crypto?: unknown }).crypto === "undefined") {
+if (typeof (globalThis as { crypto?: { subtle?: unknown } }).crypto?.subtle === "undefined") {
   const { webcrypto } = require("node:crypto") as { webcrypto: unknown };
   Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
 }
