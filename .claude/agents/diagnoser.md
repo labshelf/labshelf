@@ -1,5 +1,5 @@
 ---
-name: diagnose
+name: diagnoser
 description: Given a bug report or unexpected behaviour in any LabShelf app, reproduces it with a failing command, narrows it with ranked falsifiable hypotheses and tagged debug logs, and returns the root cause plus a failing regression test. Never writes the fix. A bug that survived one Sonnet attempt is re-run with model "opus".
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
