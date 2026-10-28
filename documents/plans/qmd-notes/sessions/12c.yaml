@@ -1,0 +1,129 @@
+schema: session/v1
+id: 12c
+goal: VS Code runs cells through the core node runner and the browser through the helper.
+depends_on:
+  - 12b
+owns:
+  - packages/browser/src/helper/cellRunner.ts
+  - packages/browser/src/helper/index.ts
+  - packages/browser/src/libraryUi/
+  - packages/vscode/src/qmd/
+  - packages/vscode/src/activation/startExtension.ts
+  - packages/vscode/src/libraryUi/
+  - packages/browser/__tests__/helper/
+status: pending
+packages:
+  - id: "12.7"
+    plan: qmd-notes
+    goal: VS Code note editors pass `onRunCell` and run cells with `NodeCellRunner` directly.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on: []
+    edit:
+      - path: packages/vscode/src/libraryUi/handlers.ts
+        lines: 1-349
+        why: "library UI host: the paper-notes messages of 6.5 gain the run-cell answer, using createRunCell and writing back through PaperNotesStore.editItem"
+      - path: packages/vscode/src/activation/startExtension.ts
+        lines: 1-152
+        why: "composition root: build createNodeCellRunner and createSharedPythonProvider and pass createRunCell to the note hosts (9.7 edits the same file for the note stores)"
+    create:
+      - packages/vscode/src/qmd/runCell.ts
+    read:
+      - path: packages/core/src/reader/noteMessages.ts
+        lines: 1-200
+        why: "noteHandlers of the reader notes host (created by 7.3): the reader notes write back through it"
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore.editItem, the write-back for paper notes (created by 6.1)
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        lines: 1-200
+        why: ProjectNotesStore.editItem, the write-back for project notes (created by 9.1)
+      - path: packages/vscode/src/writing/build/node/toolchain.ts
+        lines: 1-60
+        why: composition pattern for the shared provider (createSharedTexProvider)
+      - path: packages/core/src/qmd/compute/index.ts
+        lines: 1-20
+        why: port and writeCellOutput (12.1)
+      - path: packages/core/src/qmd/compute/node/index.ts
+        lines: 1-20
+        why: createNodeCellRunner (12.3)
+    seams:
+      - path: packages/vscode/src/qmd/runCell.ts
+        signature: "export function createRunCell(deps: { runner: ICellRunner; python: PythonProvider; store: NoteBodyStore; logger: ILogger }): (itemId: string, label: string, code: string) => Promise<void>"
+    decided:
+      - The runner (createNodeCellRunner) and `createSharedPythonProvider` (11.1) are built in the composition root (`packages/vscode/src/activation/startExtension.ts`); Run writes back via writeCellOutput and the note store, with the default timeout of 60 s.
+      - status missing-python shows the install prompt that runs the shared provider `install` with progress; cancelled and missing-python write nothing.
+      - "Opening a note runs nothing: Run is only ever called by the user pressing it."
+      - "The VS Code hosts answer the run-cell messages of 12.5 (core protocols, the views already pass `onRunCell`): the library UI host answers `paper.runCell`/`paper.cancelCell` in `packages/vscode/src/libraryUi/handlers.ts` (paper notes, 6.5) and sets `canRunCells`; the reader host and the Space host receive the runner as the `runCell` port of 12.5 built from `createRunCell` in the composition root `startExtension.ts`; project notes (9.7) pass `onRunCell` from `createRunCell`. Writes go back through the notes store of each area and the host pushes the updated items after each write as it already does; `cellState` follows. `packages/core/` stays untouched here."
+      - The result of 12.6 (button states, out-of-date mark, prompt) is written here when 12.6 is done.
+    acceptance:
+      - id: 12.7a
+        check: typecheck and vscode tests pass
+      - id: 12.7b
+        check: "A9 by hand in VS Code: without Python Run explains what to install, after install a SymPy cell runs and its result is written into the note, a stuck cell is cancelled, editing the cell marks the result out of date, and opening a note runs nothing"
+    tests:
+      none: UI wiring checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+    do_not_touch:
+      - packages/core/
+  - id: "12.8"
+    plan: qmd-notes
+    goal: Browser note editors pass `onRunCell` and run cells through the helper client.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on: []
+    edit:
+      - path: packages/browser/src/helper/index.ts
+        lines: 1-3
+        why: export the cell runner
+      - path: packages/browser/src/libraryUi/host/handlers.ts
+        lines: 1-309
+        why: "browser library host: the paper-notes messages of 6.5 gain the run-cell answer through createHelperCellRunner, writing back with writeCellOutput and PaperNotesStore.editItem"
+      - path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+        lines: 1-120
+        why: "project note tab (created by 9.8): pass onRunCell to mountQmdEditor"
+    create:
+      - packages/browser/src/helper/cellRunner.ts
+    read:
+      - path: packages/browser/src/libraryUi/editorArea/commentsTab.ts
+        lines: 1-55
+        why: "comment threads (8.5) pass no onRunCell: cells do not run in comments"
+      - path: packages/core/src/spaces/dom/mountSpaceNotes.ts
+        lines: 1-200
+        why: "Space notes view (created by 10.6): core file, read only here"
+      - path: packages/browser/src/helper/client.ts
+        lines: 1-20
+        why: createBrowserLatexHelper, the helper the runner sits on
+      - path: packages/browser/src/helper/setup.ts
+        lines: 200-303
+        why: the helper setup card and its link, for the no-helper state
+      - path: packages/core/src/qmd/compute/index.ts
+        lines: 1-20
+        why: ICellRunner and writeCellOutput (12.1)
+    seams:
+      - path: packages/browser/src/helper/cellRunner.ts
+        signature: "export function createHelperCellRunner(helper: ILatexHelper): ICellRunner"
+    decided:
+      - createHelperCellRunner implements ICellRunner over ILatexHelper.runCell; aborting the signal sends cancelCell through the helper client.
+      - "No helper: Run shows the helper setup link. Helper without Python (cellResult missing-python): the install prompt sends installPython (session 11). Cancel sends cancelCell."
+      - "The browser hosts answer the run-cell messages of 12.5 (core protocols, the views already pass `onRunCell`) with `createHelperCellRunner`: `paper.runCell`/`paper.cancelCell` in `packages/browser/src/libraryUi/host/handlers.ts` (paper notes, 6.5, sets `canRunCells`), the reader and Space hosts through the `runCell` port of 12.5, and the project note tab (9.8, `packages/browser/src/libraryUi/editorArea/projectNoteTab.ts`) passes `onRunCell` to `mountQmdEditor` itself. Results are written with `writeCellOutput` through each area's notes store, then the host pushes the updated items as it already does and sends `cellState`. `packages/core/` stays untouched here."
+      - Opening a note runs nothing.
+      - The result of 12.6 is written here when 12.6 is done.
+    acceptance:
+      - id: 12.8a
+        check: a test shows aborting the signal posts cancelCell for the running request
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/12.8/packages/browser/__tests__/helper/cellRunner.test.ts
+      command: node scripts/agents/run.mjs test browser --spec 12.8 --plan qmd-notes -- packages/browser/__tests__/helper/cellRunner.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/

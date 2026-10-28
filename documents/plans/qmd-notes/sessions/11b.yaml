@@ -1,0 +1,79 @@
+schema: session/v1
+id: 11b
+goal: The browser helper setup offers the Python install with its progress.
+depends_on:
+  - "11"
+owns:
+  - packages/browser/src/helper/
+status: pending
+packages:
+  - id: "11.5"
+    plan: qmd-notes
+    goal: Design the setup row Python for calculations in the browser helper setup card.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    edit: []
+    create: []
+    read:
+      - path: documents/ui.md
+        lines: 1-32
+        why: principles, where things are, how to design
+      - path: documents/plans/qmd-notes/research/helper.md
+        lines: 28-32
+        why: Installer and browser
+    decided:
+      - "The row has three states: not installed with an Install action, installing with progress, installed with the version."
+    acceptance:
+      - id: 11.5a
+        check: outcome written into the decided of 11.6
+    tests:
+      none: design, no code
+    commands: []
+  - id: "11.6"
+    plan: qmd-notes
+    goal: The setup card shows the Python row and sends `installPython`.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "11.5"
+    edit:
+      - path: packages/browser/src/helper/setup.ts
+        lines: 1-303
+        why: the Python row, its three states, Install and progress
+      - path: packages/browser/src/helper/client.ts
+        lines: 1-56
+        why: expose ready.python and installPython if the client wrapper needs it
+      - path: packages/browser/src/helper/setupProgress.css
+        lines: 1-6
+        why: row styles, tokens only
+    create: []
+    read:
+      - path: packages/core/src/helper/helperClient.ts
+        lines: 1-189
+        why: client API from 11.2
+      - path: packages/browser/__tests__/helper/setup.test.ts
+        lines: 1-340
+        why: existing setup tests to extend
+    decided:
+      - The row reads `ready.python`; Install sends `installPython` and shows `progress`; failures show the helper error text. Tokens only.
+      - The design outcome of 11.5 is appended here before the run.
+      - "Browser A9 (part): without Python, the setup state shows Python for calculations: not installed with an install action."
+    acceptance:
+      - id: 11.6a
+        check: the row shows not installed, installing with progress, and installed with version, and Install sends installPython
+      - id: 11.6b
+        check: a failed install shows the helper error text
+      - id: A9
+        check: "without Python the browser setup state shows Python for calculations: not installed with an install action; installing puts a working Python + SymPy in the shared root python folder; VS Code and the terminal resolve it (proved with 11.1 and 11.7; Run and cancel are checked in session 12)"
+    tests:
+      none: UI checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/

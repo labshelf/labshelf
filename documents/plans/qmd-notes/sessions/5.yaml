@@ -23,7 +23,7 @@ owns:
   - packages/vscode/__tests__/ui/htmlShell.test.ts
   - packages/vscode/__tests__/webview/htmlShellSites.test.ts
   - documents/code.md
-status: blocked
+status: done
 packages:
   - id: "5.1"
     plan: qmd-notes
@@ -105,28 +105,4 @@ packages:
       - node scripts/agents/run.mjs typecheck browser
     do_not_touch:
       - packages/browser/src/
-  - id: "5.3"
-    plan: qmd-notes
-    goal: Verify in both apps that the editor mounts, renders `$x^2$` and raises no CSP errors; remove any scratch mount before finishing.
-    level: task
-    runner:
-      agent: main
-      model: opus
-    depends_on:
-      - "5.1"
-      - "5.2"
-    read:
-      - path: documents/ui.md
-        lines: 1-32
-        why: UI rules the mounted editor is judged against
-    edit: []
-    decided:
-      - Mount the editor in a scratch webview and in the library page, type `$x^2$`, see rendered math, no CSP errors in the console; remove any scratch mount before finishing.
-    acceptance:
-      - id: 5.3a
-        check: no CSP error and rendered math in a VS Code webview and in the browser library page
-      - id: A3
-        check: "first half of A3: a note editor mounts in a VS Code webview and in the browser library page with rendered math and no syntax visible"
-    tests:
-      none: checked by the user by hand in the app
-blocked_reason: "5.3: no report"
+blocked_reason: null

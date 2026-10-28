@@ -1,0 +1,139 @@
+schema: session/v1
+id: 8b
+goal: The VS Code and browser comment views read and write comments through the `.qmd` comments store.
+depends_on:
+  - "8"
+owns:
+  - packages/vscode/src/collab/comments.ts
+  - packages/vscode/src/collab/threads.ts
+  - packages/browser/src/collab/comments.ts
+  - packages/browser/src/libraryUi/editorArea/commentsTab.ts
+  - packages/browser/src/libraryUi/editorArea/sourceTab.ts
+  - packages/browser/__tests__/collab/
+status: pending
+packages:
+  - id: "8.6"
+    plan: qmd-notes
+    goal: Design comment bodies with math and code in VS Code threads and the browser comments tab.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    edit: []
+    read:
+      - path: documents/ui.md
+        lines: 1-32
+        why: UI principles and where things are
+      - path: documents/plans/qmd-notes/research/comments-checklist.md
+        lines: 24-27
+        why: the comment UI of both apps
+    decided:
+      - UI text says "comment" for comments and "note" for items elsewhere (D16, from one vocabulary entry).
+      - Design from `documents/ui.md` how comment bodies with math and code show in VS Code comment threads and in the browser comments tab.
+    acceptance:
+      - id: 8.6a
+        check: outcome written into the decided of 8.7 and 8.8
+    tests:
+      none: design, no code
+  - id: "8.7"
+    plan: qmd-notes
+    goal: VS Code comment threads read and write through the 8.1 store and show math.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "8.6"
+    edit:
+      - path: packages/vscode/src/collab/comments.ts
+        lines: 1-321
+        why: FileComments reads comments.qmd through the store; review comments (addSourceComment) land as items; bodies render math; the doc comment (line 39) and the WARN message (line 117) name comments.qmd instead of comments.json
+      - path: packages/vscode/src/collab/threads.ts
+        lines: 1-136
+        why: commentsOf builds MarkdownString bodies with rendered math
+    create: []
+    read:
+      - path: documents/plans/qmd-notes/research/comments-checklist.md
+        lines: 19-27
+        why: Review comments and Comment UI
+      - path: packages/vscode/src/collab/comments.ts
+        lines: 40-125
+        why: FileComments, the unshared project's store
+      - path: packages/vscode/src/collab/comments.ts
+        lines: 264-311
+        why: SharedComments, the shared project's store
+      - path: packages/core/src/collab/index.ts
+        lines: 1-44
+        why: the core comment API
+    decided:
+      - Bodies are `MarkdownString`; math is rendered in the host with `renderMathSvg` (`@labshelf/core/math`, loaded lazily) into `data:image/svg+xml` images.
+      - "PLATFORM: confirm the comment widget shows data-URI images; if it does not, stop and report."
+      - Review comments (`addReviewComment` → `addSourceComment`) keep their path and land as items of `comments.qmd`.
+      - Apply the design outcome of 8.6.
+    acceptance:
+      - id: 8.7a
+        check: typecheck and vscode tests pass
+      - id: 8.7b
+        check: threads show and can be added with math in their bodies
+      - id: A7
+        check: comments and review comments of a project of a project live in `.labshelf/comments.qmd` and show rendered math, in VS Code
+    tests:
+      none: UI checked by hand, glue over the 8.1 store
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+    do_not_touch:
+      - packages/core/
+  - id: "8.8"
+    plan: qmd-notes
+    goal: Browser comment threads show bodies with `mountQmdEditor` (read-only, edit on demand) and add comments with it.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "8.6"
+    edit:
+      - path: packages/browser/src/collab/comments.ts
+        lines: 1-311
+        why: the store works over comments.qmd through the 8.1 API (doc comments at lines 1, 24 and 137 name comments.qmd, not comments.json); addComment and the Mod-Alt-m input use the core editor
+      - path: packages/browser/src/libraryUi/editorArea/commentsTab.ts
+        lines: 1-55
+        why: thread bodies are shown with mountQmdEditor read-only, edit on demand; the reply box is the core editor
+      - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+        lines: 24-24
+        why: the doc comment names comments.qmd instead of comments.json
+      - path: packages/browser/__tests__/collab/comments.test.ts
+        lines: 15-106
+        why: "the comments.json assertions (lines 15, 40, 50, 73-77, 106) move to .labshelf/comments.qmd: files keyed by the .qmd path, threads read with parseCommentsQmd instead of JSON.parse, the invalid file is `<<<<<<< ours\\n`"
+    create: []
+    read:
+      - path: packages/browser/src/collab/comments.ts
+        lines: 92-233
+        why: createCommentThreads and createRoutedCommentThreads
+      - path: packages/browser/src/collab/comments.ts
+        lines: 256-311
+        why: createCommentSupport and the Add comment action
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 1-60
+        why: mountQmdEditor (created by session 4)
+    decided:
+      - "`Mod-Alt-m` keeps adding a comment; the input is the core editor (`mountQmdEditor`); there is no Run button (`onRunCell` absent)."
+      - Thread bodies show read-only and switch to editing on demand.
+      - Apply the design outcome of 8.6.
+    acceptance:
+      - id: 8.8a
+        check: typecheck and browser tests pass
+      - id: 8.8b
+        check: threads show and add comments with the core editor
+      - id: A7
+        check: comments and review comments of a project of a project live in `.labshelf/comments.qmd` and show rendered math, in the browser; no code reads `comments.json`; shared projects keep live comments and live .qmd editing
+    tests:
+      none: UI checked by hand, glue over the 8.1 store
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/
+      - packages/browser/src/writing/ (editor collab)

@@ -1,7 +1,8 @@
 schema: session/v1
 id: "14"
 goal: The ideas doc keeps only what is not built, A3 to A10 are confirmed by hand, and the plan directory is gone.
-depends_on: ["13"]
+depends_on:
+  - 13b
 owns:
   - documents/ideas/computational-notes.md
   - documents/plans/qmd-notes/
@@ -11,49 +12,147 @@ packages:
     plan: qmd-notes
     goal: The ideas doc links to the `qmd-items` contract and keeps only what the plan left for later.
     level: task
-    runner: {agent: main, model: opus}
+    runner:
+      agent: main
+      model: opus
     edit:
-      - {path: documents/ideas/computational-notes.md, lines: "1-120", why: "link to documents/contracts/qmd-items.md and delete every part this plan built"}
+      - path: documents/ideas/computational-notes.md
+        lines: 1-120
+        why: link to documents/contracts/qmd-items.md and delete every part this plan built
     read:
-      - {path: documents/contracts/qmd-items.md, lines: "1-60", why: "what the contract now specifies, to link to it"}
+      - path: documents/contracts/qmd-items.md
+        lines: 1-60
+        why: what the contract now specifies, to link to it
     decided:
-      - "Link to `documents/contracts/qmd-items.md`."
+      - Link to `documents/contracts/qmd-items.md`.
       - "Delete every part this plan built: format, editor, notes surfaces, Send to, managed Python, running cells, manuscript links."
-      - "Keep what D13 left for later: equation capture from PDFs, AI, notation tables, \"check this step\", terminal cells."
-      - "Present tense, no history words."
+      - 'Keep what D13 left for later: equation capture from PDFs, AI, notation tables, "check this step", terminal cells.'
+      - Present tense, no history words.
     acceptance:
-      - {id: "14.2a", check: "the ideas doc links to qmd-items.md and no built part remains"}
-    tests: {none: "docs"}
+      - id: 14.2a
+        check: the ideas doc links to qmd-items.md and no built part remains
+    tests:
+      none: docs
   - id: "14.3"
     plan: qmd-notes
     goal: The user confirms the hand-checked plan acceptance items A3 to A10, each in its app.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["14.2"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "14.2"
     edit: []
     read:
-      - {path: documents/plans/qmd-notes/plan.yaml, lines: "1-200", why: "acceptance A3 to A10 with their steps"}
+      - path: documents/plans/qmd-notes/plan.yaml
+        lines: 1-200
+        why: acceptance A3 to A10 with their steps
     decided:
-      - "Give the user the list A3 to A10 with the app and the steps to check each; the user checks them by hand in the app. Report what was not checked. A1 and A2 are proved by tests in sessions 1 and 2."
+      - Give the user the list A3 to A10 with the app and the steps to check each; the user checks them by hand in the app. Report what was not checked. A1 and A2 are proved by tests in sessions 1 and 2.
     acceptance:
-      - {id: A3, check: "In VS Code and in the browser, a note shows headings, lists, task lists, rendered display and inline math, a code cell and its result, with no Markdown syntax visible; Source mode shows the `.qmd` (check in VS Code and in the browser)"}
-      - {id: A4, check: "A paper's notes live as items in `notes.qmd`; `metadata.yaml` has no `note` key and no code reads one; the terminal shows the same notes (check in the terminal and in VS Code)"}
-      - {id: A5, check: "In the reader, the text-box tool draws a box in an empty area of page 10, shows its rendered content at any zoom, and opening the paper on another device shows it in the same place (check in VS Code and in the browser)"}
-      - {id: A6, check: "Selecting a passage in the reader and choosing Send to a project adds an item with a link back to the page to that project's note; a `- [ ]` in it appears in the project Checklist, and ticking it there ticks it in the note (check in VS Code and in the browser)"}
-      - {id: A7, check: "Comments and review comments of a project live in `.labshelf/comments.qmd` and show math; no code reads `comments.json` (check in VS Code and in the browser)"}
-      - {id: A8, check: "A Space has Notes and Discussions tabs backed by one `.qmd` per note or thread (check in the browser and in VS Code)"}
-      - {id: A9, check: "Without Python installed, Run explains what to install; after installing from the app, a SymPy cell runs from VS Code and from the browser through the helper, its result is written into the note, a stuck cell is cancelled, and editing the cell marks the result out of date (check in VS Code and in the browser)"}
-      - {id: A10, check: "Inserting an equation from a note writes the origin comment; editing the note marks it stale with an update action; editing the manuscript marks it diverged and nothing is overwritten (check in VS Code and in the browser)"}
-    tests: {none: "checked by the user by hand in the app"}
+      - id: A3
+        check: In VS Code and in the browser, a note shows headings, lists, task lists, rendered display and inline math, a code cell and its result, with no Markdown syntax visible; Source mode shows the `.qmd` (check in VS Code and in the browser)
+      - id: A4
+        check: A paper's notes live as items in `notes.qmd`; `metadata.yaml` has no `note` key and no code reads one; the terminal shows the same notes (check in the terminal and in VS Code)
+      - id: A5
+        check: In the reader, the text-box tool draws a box in an empty area of page 10, shows its rendered content at any zoom, and opening the paper on another device shows it in the same place (check in VS Code and in the browser)
+      - id: A6
+        check: Selecting a passage in the reader and choosing Send to a project adds an item with a link back to the page to that project's note; a `- [ ]` in it appears in the project Checklist, and ticking it there ticks it in the note (check in VS Code and in the browser)
+      - id: A7
+        check: Comments and review comments of a project live in `.labshelf/comments.qmd` and show math; no code reads `comments.json` (check in VS Code and in the browser)
+      - id: A8
+        check: A Space has Notes and Discussions tabs backed by one `.qmd` per note or thread (check in the browser and in VS Code)
+      - id: A9
+        check: Without Python installed, Run explains what to install; after installing from the app, a SymPy cell runs from VS Code and from the browser through the helper, its result is written into the note, a stuck cell is cancelled, and editing the cell marks the result out of date (check in VS Code and in the browser)
+      - id: A10
+        check: Inserting an equation from a note writes the origin comment; editing the note marks it stale with an update action; editing the manuscript marks it diverged and nothing is overwritten (check in VS Code and in the browser)
+    tests:
+      none: checked by the user by hand in the app
+  - id: "5.3"
+    plan: qmd-notes
+    goal: Verify in both apps that the editor mounts, renders `$x^2$` and raises no CSP errors; remove any scratch mount before finishing.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    read:
+      - path: documents/ui.md
+        lines: 1-32
+        why: UI rules the mounted editor is judged against
+    edit: []
+    decided:
+      - Mount the editor in a scratch webview and in the library page, type `$x^2$`, see rendered math, no CSP errors in the console; remove any scratch mount before finishing.
+    acceptance:
+      - id: 5.3a
+        check: no CSP error and rendered math in a VS Code webview and in the browser library page
+      - id: A3
+        check: "first half of A3: a note editor mounts in a VS Code webview and in the browser library page with rendered math and no syntax visible"
+    tests:
+      none: checked by the user by hand in the app
+  - id: "6.9"
+    plan: qmd-notes
+    goal: The user checks by hand that the detail pane shows a paper's note items, one editor each, and that adding, editing and removing an item works.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    edit: []
+    acceptance:
+      - id: 6.9a
+        check: the detail pane renders the items of `details.notes` with one editor each and posts `paper.addNote`, `paper.editNote` and `paper.removeNote` (moved from 6.4b)
+    tests:
+      none: checked by the user by hand in the app
+  - id: "11.8"
+    plan: qmd-notes
+    goal: Check by hand that each helper installer offers Python for calculations and that a failed Python install does not fail the helper install.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    edit: []
+    create: []
+    read: []
+    acceptance:
+      - id: 11.8a
+        check: each installer (Windows task installpython, macOS pkg choice, Linux --with-python) has the option, runs the helper with --install-python when chosen, and a failed Python install does not fail the helper install
+    tests:
+      none: checked by the user by hand in the app
+    commands: []
+  - id: "12.9"
+    plan: qmd-notes
+    goal: Check A9 by hand in the browser.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    edit: []
+    acceptance:
+      - id: 12.9a
+        check: "A9 by hand in the browser: with the helper and no Python the install prompt appears, after install a SymPy cell runs and its result is written into the note, a stuck cell is cancelled, editing the cell marks the result out of date"
+    tests:
+      none: checked by the user by hand in the app
   - id: "14.4"
     plan: qmd-notes
     goal: The plan directory is deleted and no document links to it.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["14.3"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "14.3"
+      - "5.3"
+      - "6.9"
+      - "11.8"
+      - "12.9"
     edit: []
     decided:
-      - "Delete `documents/plans/qmd-notes/` and remove any link to it from `documents/` (a grep of documents/ for `plans/qmd-notes` outside the plan directory found none when this session was converted; grep again before deleting)."
+      - Delete `documents/plans/qmd-notes/` and remove any link to it from `documents/` (a grep of documents/ for `plans/qmd-notes` outside the plan directory found none when this session was converted; grep again before deleting).
     acceptance:
-      - {id: "14.4a", check: "the plan directory is gone and `grep -r plans/qmd-notes documents` finds nothing"}
-    tests: {none: "docs"}
+      - id: 14.4a
+        check: the plan directory is gone and `grep -r plans/qmd-notes documents` finds nothing
+    tests:
+      none: docs

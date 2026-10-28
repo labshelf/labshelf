@@ -1,70 +1,83 @@
 schema: session/v1
 id: "9"
-goal: Projects hold notes as `.qmd` files in `notes/`; task-list items in them are checklist items ticked from either place; any reader selection or editor item can be sent to a `.qmd` target with a back-link; a manuscript line that cites a paper shows that paper's notes.
-depends_on: ["7", "8"]
+goal: Projects hold notes as `.qmd` files whose task-list items feed the checklist, and core can send a selection or item to a `.qmd` target with a back-link.
+depends_on:
+  - 7b
+  - 8b
 owns:
   - packages/core/src/qmd/index.ts
   - packages/core/src/qmd/projectNotes/
   - packages/core/src/qmd/sendTo/
   - packages/core/src/writing/checks/
-  - packages/core/src/writing/citations/
-  - packages/core/src/reader/dom/
-  - packages/vscode/src/writing/
-  - packages/vscode/src/activation/startExtension.ts
-  - packages/vscode/package.json
-  - packages/browser/src/writing/
-  - packages/browser/src/libraryUi/
-  - packages/browser/src/storage/
   - documents/contracts/library-format.md
   - documents/contracts/qmd-items.md
   - packages/core/__tests__/qmd/projectNotes/
   - packages/core/__tests__/qmd/sendTo/
   - packages/core/__tests__/writing/checks/
-  - packages/core/__tests__/writing/citations/
-  - packages/core/__tests__/reader/dom/
-  - packages/vscode/__tests__/writing/
-  - packages/browser/__tests__/writing/
-  - packages/browser/__tests__/libraryUi/
-  - packages/browser/__tests__/storage/
 status: pending
 packages:
   - id: "9.1"
     plan: qmd-notes
     goal: "`ProjectNotesStore` lists, creates, reads and edits the `.qmd` notes of a project."
     level: contract
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     edit:
-      - {path: packages/core/src/qmd/index.ts, lines: "1-6", why: "export the project notes API"}
+      - path: packages/core/src/qmd/index.ts
+        lines: 1-6
+        why: export the project notes API
     create:
       - packages/core/src/qmd/projectNotes/
     read:
-      - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore: store shape to mirror (created by session 6)"}
-      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "92-140", why: "pure addItem, setItemBody, removeItem on an ItemFile, and newItemId (:45)"}
-      - {path: packages/core/src/qmd/item/itemFile.ts, lines: "341-395", why: "parseItemFile and serializeItemFile"}
-      - {path: packages/core/src/writing/project/projectFile.ts, lines: "120-130", why: "PROJECT_FORMATS stays latex/typst"}
-      - {path: packages/core/src/collab/commentsFile.ts, lines: "1-180", why: "injected file access pattern (comments file store)"}
-      - {path: documents/contracts/qmd-items.md, lines: "15-60", why: "#items and #merge"}
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: "PaperNotesStore: store shape to mirror (created by session 6)"
+      - path: packages/core/src/qmd/item/itemUpdate.ts
+        lines: 92-140
+        why: pure addItem, setItemBody, removeItem on an ItemFile, and newItemId (:45)
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 341-395
+        why: parseItemFile and serializeItemFile
+      - path: packages/core/src/writing/project/projectFile.ts
+        lines: 120-130
+        why: PROJECT_FORMATS stays latex/typst
+      - path: packages/core/src/collab/commentsFile.ts
+        lines: 1-180
+        why: injected file access pattern (comments file store)
+      - path: documents/contracts/qmd-items.md
+        lines: 15-60
+        why: "#items and #merge"
     seams:
-      - {path: packages/core/src/qmd/projectNotes/noteSlug.ts, signature: "export function deriveNoteSlug(title: string, taken: ReadonlySet<string>): string"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, signature: "export interface IProjectNoteFiles { list(projectId: string): Promise<string[]>; read(projectId: string, path: string): Promise<string | null>; write(projectId: string, path: string, text: string): Promise<void> }"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, signature: "export function createProjectNotesStore(files: IProjectNoteFiles, logger: ILogger): ProjectNotesStore"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, signature: "export interface ProjectNoteEntry { path: string; title: string }"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, signature: "export interface ProjectNotesStore { list(projectId: string): Promise<ProjectNoteEntry[]>; create(projectId: string, title: string): Promise<string>; read(projectId: string, path: string): Promise<string | null>; addItem(projectId: string, path: string, body: string, author?: string, id?: string): Promise<string>; editItem(projectId: string, path: string, id: string, body: string): Promise<void>; removeItem(projectId: string, path: string, id: string): Promise<void> }"}
+      - path: packages/core/src/qmd/projectNotes/noteSlug.ts
+        signature: "export function deriveNoteSlug(title: string, taken: ReadonlySet<string>): string"
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        signature: "export interface IProjectNoteFiles { list(projectId: string): Promise<string[]>; read(projectId: string, path: string): Promise<string | null>; write(projectId: string, path: string, text: string): Promise<void> }"
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        signature: "export function createProjectNotesStore(files: IProjectNoteFiles, logger: ILogger): ProjectNotesStore"
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        signature: "export interface ProjectNoteEntry { path: string; title: string }"
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        signature: "export interface ProjectNotesStore { list(projectId: string): Promise<ProjectNoteEntry[]>; create(projectId: string, title: string): Promise<string>; read(projectId: string, path: string): Promise<string | null>; addItem(projectId: string, path: string, body: string, author?: string, id?: string): Promise<string>; editItem(projectId: string, path: string, id: string, body: string): Promise<void>; removeItem(projectId: string, path: string, id: string): Promise<void> }"
     decided:
-      - "Project notes are `<project>/notes/<slug>.qmd`; slug = lowercase ASCII words of the title joined by `-`, suffix `-2`, `-3` on collision. The first item's body starts with `# <title>`. `PROJECT_FORMATS` stays `latex`/`typst` (notes are not a manuscript format)."
+      - Project notes are `<project>/notes/<slug>.qmd`; slug = lowercase ASCII words of the title joined by `-`, suffix `-2`, `-3` on collision. The first item's body starts with `# <title>`. `PROJECT_FORMATS` stays `latex`/`typst` (notes are not a manuscript format).
       - "Files under `packages/core/src/qmd/projectNotes/`: `projectNotesStore.ts` (`ProjectNotesStore` with `list(projectId)`, `create(projectId, title)`, `read(projectId, path)`, `addItem`, `editItem`, `removeItem`), `noteSlug.ts`, `index.ts`. `ProjectNotesStore` is a thin layer over the pure `addItem`/`setItemBody`/`removeItem` of `qmd/itemUpdate.ts` and the parser of `qmd/itemFile.ts`."
-      - "File IO goes through an injected `IProjectNoteFiles {list, read, write}` port; each write re-reads, applies, writes atomically, serial per file. A missing file reads as empty. Every write failure is logged through `ILogger`."
-      - "Merge across devices is the block merge of `qmd/mergeItemFiles.ts` (`.qmd` is already in the mergeable set); nothing here."
-      - "The store is runtime-neutral; the apps build `IProjectNoteFiles` in their composition roots."
-      - "Port paths are relative to the project folder (`notes/<slug>.qmd`); `IProjectNoteFiles.list` may return any project file paths and the store keeps only names ending exactly in `.qmd` (not `.qmd.bak`). Taken slugs for `create` are the base names of the listed `.qmd` files. `create` returns the new path."
+      - File IO goes through an injected `IProjectNoteFiles {list, read, write}` port; each write re-reads, applies, writes atomically, serial per file. A missing file reads as empty. Every write failure is logged through `ILogger`.
+      - Merge across devices is the block merge of `qmd/mergeItemFiles.ts` (`.qmd` is already in the mergeable set); nothing here.
+      - The store is runtime-neutral; the apps build `IProjectNoteFiles` in their composition roots.
+      - Port paths are relative to the project folder (`notes/<slug>.qmd`); `IProjectNoteFiles.list` may return any project file paths and the store keeps only names ending exactly in `.qmd` (not `.qmd.bak`). Taken slugs for `create` are the base names of the listed `.qmd` files. `create` returns the new path.
       - "`addItem` returns the item id (a new `newItemId()` unless `id` is passed, which Send to uses); `addItem` on a missing file creates the file with that one item. `editItem` and `removeItem` change only the named item. `read` returns the file text or `null`."
     acceptance:
-      - {id: "9.1a", check: "create with a title whose slug is taken gives `-2`, then `-3`; the first item body starts with `# <title>`"}
-      - {id: "9.1b", check: "list ignores files that are not `.qmd`"}
-      - {id: "9.1c", check: "two concurrent addItem on one file keep both items"}
+      - id: 9.1a
+        check: create with a title whose slug is taken gives `-2`, then `-3`; the first item body starts with `# <title>`
+      - id: 9.1b
+        check: list ignores files that are not `.qmd`
+      - id: 9.1c
+        check: two concurrent addItem on one file keep both items
     tests:
-      hidden: [documents/plans/qmd-notes/tests/9.1/packages/core/__tests__/qmd/projectNotes/projectNotesStore.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 9.1 --plan qmd-notes -- packages/core/__tests__/qmd/projectNotes/projectNotesStore.test.ts"
+      hidden:
+        - documents/plans/qmd-notes/tests/9.1/packages/core/__tests__/qmd/projectNotes/projectNotesStore.test.ts
+      command: node scripts/agents/run.mjs test core --spec 9.1 --plan qmd-notes -- packages/core/__tests__/qmd/projectNotes/projectNotesStore.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
@@ -73,248 +86,188 @@ packages:
       - packages/core/src/qmd/item/itemUpdate.ts
       - packages/core/src/qmd/item/mergeItemFiles.ts
       - apps
-
+    depends_on: []
   - id: "9.2"
     plan: qmd-notes
     goal: "D9: the checklist and problems are views derived from project `.qmd` files; `- [ ]` / `- [x]` in a project note is a checklist item, and ticking it in the Checklist view edits the note."
     level: contract
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["9.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "9.1"
     edit:
-      - {path: packages/core/src/writing/checks/checklist.ts, lines: "152-258", why: "ChecklistInput (:152), ChecklistItem (:164), toItems (:198), byKind (:212), bySection (:231) gain the noteTask member"}
-      - {path: packages/core/src/writing/checks/checklistSignals.ts, lines: "1-116", why: "readChecklistSignals fills noteTasks from ProjectNotesStore.list"}
-      - {path: packages/core/src/writing/checks/checklistSidebar.ts, lines: "20-80", why: "row key (:24-29) and row (:67-75) for a noteTask"}
-      - {path: packages/core/src/writing/checks/index.ts, lines: "1-11", why: "export the note task API"}
-      - {path: packages/core/__tests__/writing/checks/checklist.test.ts, lines: "263-281", why: "the buildChecklist inputs gain `noteTasks` and `noteTitles`"}
-      - {path: packages/core/__tests__/writing/checks/checklistSignals.test.ts, lines: "170-180", why: "the empty signals gain `noteTasks: []`"}
+      - path: packages/core/src/writing/checks/checklist.ts
+        lines: 152-258
+        why: ChecklistInput (:152), ChecklistItem (:164), toItems (:198), byKind (:212), bySection (:231) gain the noteTask member
+      - path: packages/core/src/writing/checks/checklistSignals.ts
+        lines: 1-116
+        why: readChecklistSignals fills noteTasks from ProjectNotesStore.list
+      - path: packages/core/src/writing/checks/checklistSidebar.ts
+        lines: 20-80
+        why: row key (:24-29) and row (:67-75) for a noteTask
+      - path: packages/core/src/writing/checks/index.ts
+        lines: 1-11
+        why: export the note task API
+      - path: packages/core/__tests__/writing/checks/checklist.test.ts
+        lines: 263-281
+        why: the buildChecklist inputs gain `noteTasks` and `noteTitles`
+      - path: packages/core/__tests__/writing/checks/checklistSignals.test.ts
+        lines: 170-180
+        why: "the empty signals gain `noteTasks: []`"
     create:
       - packages/core/src/writing/checks/noteTasks.ts
     read:
-      - {path: documents/plans/qmd-notes/research/comments-checklist.md, lines: "28-33", why: "Checklist section of the research"}
-      - {path: packages/core/src/writing/checks/todoMarkers.ts, lines: "1-54", why: "scanTodos, the sibling signal scanner"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore (created by 9.1)"}
+      - path: documents/plans/qmd-notes/research/comments-checklist.md
+        lines: 28-33
+        why: Checklist section of the research
+      - path: packages/core/src/writing/checks/todoMarkers.ts
+        lines: 1-54
+        why: scanTodos, the sibling signal scanner
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        lines: 1-200
+        why: ProjectNotesStore (created by 9.1)
     seams:
-      - {path: packages/core/src/writing/checks/noteTasks.ts, signature: "export interface NoteTask { file: string; itemId: string; line: number; text: string; done: boolean }"}
-      - {path: packages/core/src/writing/checks/noteTasks.ts, signature: "export function scanNoteTasks(file: string, text: string): NoteTask[]"}
-      - {path: packages/core/src/writing/checks/noteTasks.ts, signature: "export function toggleNoteTask(store: ProjectNotesStore, projectId: string, task: NoteTask): Promise<{ status: 'ok' } | { status: 'changed' }>"}
+      - path: packages/core/src/writing/checks/noteTasks.ts
+        signature: "export interface NoteTask { file: string; itemId: string; line: number; text: string; done: boolean }"
+      - path: packages/core/src/writing/checks/noteTasks.ts
+        signature: "export function scanNoteTasks(file: string, text: string): NoteTask[]"
+      - path: packages/core/src/writing/checks/noteTasks.ts
+        signature: "export function toggleNoteTask(store: ProjectNotesStore, projectId: string, task: NoteTask): Promise<{ status: 'ok' } | { status: 'changed' }>"
     decided:
       - "New input field `noteTasks: NoteTask[]` on `ChecklistInput` with `NoteTask = {file, itemId, line, text, done}` (line = zero-based line inside the file); new union member `{kind: \"noteTask\", done: boolean, task: NoteTask}` of `ChecklistItem`, grouped as `todo` in `byKind`, placed under the note's title in `bySection`."
-      - "Code in `packages/core/src/writing/checks/noteTasks.ts`: `scanNoteTasks` reads task-list lines from item bodies, skipping code cells and output blocks; `toggleNoteTask` flips `[ ]` and `[x]` on that line through `ProjectNotesStore.editItem`, after checking the line text still matches, else reports \"changed on disk\" and the caller rereads."
+      - 'Code in `packages/core/src/writing/checks/noteTasks.ts`: `scanNoteTasks` reads task-list lines from item bodies, skipping code cells and output blocks; `toggleNoteTask` flips `[ ]` and `[x]` on that line through `ProjectNotesStore.editItem`, after checking the line text still matches, else reports "changed on disk" and the caller rereads.'
       - "`readChecklistSignals` fills `noteTasks` from `ProjectNotesStore.list` (the store is passed in the read context by the apps). Manual `.labshelf/checklist.json` items stay as they are."
       - "`scanNoteTasks(file, text)` takes the whole `.qmd` text; only lines inside `.labshelf-item` blocks count; lines inside code fences (```` ```{lang} ```` cells and plain ```` ``` ```` fences) and inside `.labshelf-output` blocks are skipped; `line` is zero-based in the file; `text` is the line without the `- [ ] ` / `- [x] ` marker."
       - "`toggleNoteTask` passes `task.file` as the path to `ProjectNotesStore.editItem`, writes once on success, keeps every other byte (CRLF included), and returns `{status: 'changed'}` with no write when the line on disk differs in any way from the task (other text, lines moved, already in the target state)."
       - "`readChecklistSignals(context, project, notes?: { store: ProjectNotesStore; projectId: string })` gains an optional third argument (no change to `ProjectReadContext`); `ChecklistSignals` gains `noteTasks: NoteTask[]` and `noteTitles: Map<string, string>` (file to title from `list`), both empty when `notes` is absent. `ChecklistInput` gains the same two fields; `bySection` puts a note's tasks under section `{id: \"note:<file>\", title, file}`."
       - "`checklistSidebar.ts` renders a noteTask row with the note's title as tooltip and a link to the note; the row key is `noteTask:<file>:<itemId>:<line>`."
     acceptance:
-      - {id: "9.2a", check: "scanNoteTasks finds open and done tasks and ignores tasks inside code cells and output blocks"}
-      - {id: "9.2b", check: "toggleNoteTask edits only that line of the note"}
-      - {id: "9.2c", check: "toggleNoteTask on a line that changed refuses and leaves the file untouched"}
+      - id: 9.2a
+        check: scanNoteTasks finds open and done tasks and ignores tasks inside code cells and output blocks
+      - id: 9.2b
+        check: toggleNoteTask edits only that line of the note
+      - id: 9.2c
+        check: toggleNoteTask on a line that changed refuses and leaves the file untouched
     tests:
-      hidden: [documents/plans/qmd-notes/tests/9.2/packages/core/__tests__/writing/checks/noteTasks.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 9.2 --plan qmd-notes -- packages/core/__tests__/writing/checks/noteTasks.test.ts"
+      hidden:
+        - documents/plans/qmd-notes/tests/9.2/packages/core/__tests__/writing/checks/noteTasks.test.ts
+      command: node scripts/agents/run.mjs test core --spec 9.2 --plan qmd-notes -- packages/core/__tests__/writing/checks/noteTasks.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
     do_not_touch:
       - packages/core/src/qmd/item/itemFile.ts
       - packages/core/src/qmd/item/itemUpdate.ts
-      - "the `.labshelf/checklist.json` format (`parseChecklistFile`, `serializeChecklistFile`, `ManualItem`)"
-
+      - the `.labshelf/checklist.json` format (`parseChecklistFile`, `serializeChecklistFile`, `ManualItem`)
   - id: "9.3"
     plan: qmd-notes
-    goal: "D10: \"Send to…\" on a selection (PDF passage, figure crop, equation, item) appends an item with a `labshelf:` back-link to a chosen `.qmd` target, remembering recent targets per device."
+    goal: 'D10: "Send to…" on a selection (PDF passage, figure crop, equation, item) appends an item with a `labshelf:` back-link to a chosen `.qmd` target, remembering recent targets per device.'
     level: contract
-    runner: {agent: implementer, model: opus}
-    depends_on: ["9.1"]
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "9.1"
     edit:
-      - {path: packages/core/src/qmd/index.ts, lines: "1-6", why: "export the Send to API"}
+      - path: packages/core/src/qmd/index.ts
+        lines: 1-6
+        why: export the Send to API
     create:
       - packages/core/src/qmd/sendTo/
     read:
-      - {path: packages/core/src/library/record.ts, lines: "310-335", why: "paper link grammar and formatPaperLink"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore (created by 9.1)"}
-      - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore.addItem, the paper-note writer (created by session 6)"}
-      - {path: packages/core/src/qmd/item/itemUpdate.ts, lines: "30-140", why: "newItemId, addItem"}
-      - {path: documents/contracts/qmd-items.md, lines: "7-14", why: "#format"}
+      - path: packages/core/src/library/record.ts
+        lines: 310-335
+        why: paper link grammar and formatPaperLink
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        lines: 1-200
+        why: ProjectNotesStore (created by 9.1)
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore.addItem, the paper-note writer (created by session 6)
+      - path: packages/core/src/qmd/item/itemUpdate.ts
+        lines: 30-140
+        why: newItemId, addItem
+      - path: documents/contracts/qmd-items.md
+        lines: 7-14
+        why: "#format"
     seams:
-      - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export type SendTarget = { kind: 'projectNote'; projectId: string; path: string } | { kind: 'spaceNote'; spaceId: string; path: string } | { kind: 'discussion'; spaceId: string; path: string }"}
-      - {path: packages/core/src/qmd/sendTo/sendBody.ts, signature: "export type SendPayload = { kind: 'quote'; key: string; page: number; text: string } | { kind: 'figure'; key: string; page: number; image: Uint8Array; mime: string } | { kind: 'equation'; key: string; page: number; latex: string } | { kind: 'item'; sourcePath: string; itemId: string; body: string }"}
-      - {path: packages/core/src/qmd/sendTo/sendBody.ts, signature: "export function createSendBody(payload: SendPayload, itemId: string): string"}
-      - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export interface SendExtra { itemId?: string; author?: string; blob?: { path: string; bytes: Uint8Array } }"}
-      - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export interface ISendTargetWriter { append(target: SendTarget, body: string, extra?: SendExtra): Promise<void> }"}
-      - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export interface SendRequest { target: SendTarget; payload: SendPayload; sender?: string }"}
-      - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export function sendTo(writers: Partial<Record<SendTarget['kind'], ISendTargetWriter>>, deps: { logger: ILogger; newItemId: () => string }): (request: SendRequest) => Promise<{ itemId: string }>"}
-      - {path: packages/core/src/qmd/sendTo/projectNoteWriter.ts, signature: "export interface IProjectAssetWriter { write(projectId: string, path: string, bytes: Uint8Array): Promise<void> }"}
-      - {path: packages/core/src/qmd/sendTo/projectNoteWriter.ts, signature: "export function createProjectNoteWriter(store: ProjectNotesStore, assets: IProjectAssetWriter): ISendTargetWriter"}
-      - {path: packages/core/src/qmd/sendTo/recentTargets.ts, signature: "export interface IKeyValueStore { get(key: string): Promise<unknown>; set(key: string, value: unknown): Promise<void> }"}
-      - {path: packages/core/src/qmd/sendTo/recentTargets.ts, signature: "export function createRecentTargets(store: IKeyValueStore, key: string): { list(): Promise<SendTarget[]>; push(target: SendTarget): Promise<void> }"}
+      - path: packages/core/src/qmd/sendTo/sendTo.ts
+        signature: "export type SendTarget = { kind: 'projectNote'; projectId: string; path: string } | { kind: 'spaceNote'; spaceId: string; path: string } | { kind: 'discussion'; spaceId: string; path: string }"
+      - path: packages/core/src/qmd/sendTo/sendBody.ts
+        signature: "export type SendPayload = { kind: 'quote'; key: string; page: number; text: string } | { kind: 'figure'; key: string; page: number; image: Uint8Array; mime: string } | { kind: 'equation'; key: string; page: number; latex: string } | { kind: 'item'; sourcePath: string; itemId: string; body: string }"
+      - path: packages/core/src/qmd/sendTo/sendBody.ts
+        signature: "export function createSendBody(payload: SendPayload, itemId: string): string"
+      - path: packages/core/src/qmd/sendTo/sendTo.ts
+        signature: "export interface SendExtra { itemId?: string; author?: string; blob?: { path: string; bytes: Uint8Array } }"
+      - path: packages/core/src/qmd/sendTo/sendTo.ts
+        signature: "export interface ISendTargetWriter { append(target: SendTarget, body: string, extra?: SendExtra): Promise<void> }"
+      - path: packages/core/src/qmd/sendTo/sendTo.ts
+        signature: "export interface SendRequest { target: SendTarget; payload: SendPayload; sender?: string }"
+      - path: packages/core/src/qmd/sendTo/sendTo.ts
+        signature: "export function sendTo(writers: Partial<Record<SendTarget['kind'], ISendTargetWriter>>, deps: { logger: ILogger; newItemId: () => string }): (request: SendRequest) => Promise<{ itemId: string }>"
+      - path: packages/core/src/qmd/sendTo/projectNoteWriter.ts
+        signature: "export interface IProjectAssetWriter { write(projectId: string, path: string, bytes: Uint8Array): Promise<void> }"
+      - path: packages/core/src/qmd/sendTo/projectNoteWriter.ts
+        signature: "export function createProjectNoteWriter(store: ProjectNotesStore, assets: IProjectAssetWriter): ISendTargetWriter"
+      - path: packages/core/src/qmd/sendTo/recentTargets.ts
+        signature: "export interface IKeyValueStore { get(key: string): Promise<unknown>; set(key: string, value: unknown): Promise<void> }"
+      - path: packages/core/src/qmd/sendTo/recentTargets.ts
+        signature: "export function createRecentTargets(store: IKeyValueStore, key: string): { list(): Promise<SendTarget[]>; push(target: SendTarget): Promise<void> }"
     decided:
       - "Code in `packages/core/src/qmd/sendTo/`: `sendBody.ts` (`SendPayload`, `createSendBody`), `sendTo.ts` (`SendTarget`, `SendExtra`, `ISendTargetWriter`, `SendRequest`, `sendTo`), `projectNoteWriter.ts` (the `projectNote` writer over `ProjectNotesStore`), `recentTargets.ts` (`IKeyValueStore`, `createRecentTargets`), `index.ts` exporting all of them."
-      - "`sendTo` picks the item id first with the injected `newItemId()`, builds the body with `createSendBody(payload, itemId)`, and calls the writer of `target.kind` with `extra = {itemId, author: request.sender, blob}`; `blob` is set for a figure only, as `{path: \"assets/<item id>.png\", bytes: payload.image}`. It resolves `{itemId}`. A target kind with no registered writer rejects with an error and is logged. The `created` time comes from the store, not from `sendTo`."
+      - '`sendTo` picks the item id first with the injected `newItemId()`, builds the body with `createSendBody(payload, itemId)`, and calls the writer of `target.kind` with `extra = {itemId, author: request.sender, blob}`; `blob` is set for a figure only, as `{path: "assets/<item id>.png", bytes: payload.image}`. It resolves `{itemId}`. A target kind with no registered writer rejects with an error and is logged. The `created` time comes from the store, not from `sendTo`.'
       - "`blob.path` is relative to the folder of the target file (the folder holding `target.path`), so the body's `![](assets/<item id>.png)` resolves from the note. Writers write the blob first and append the item only after the blob write succeeded."
-      - "A writer error (blob or append) makes `sendTo` log it through `logger.error` with the target and reject with the same error; on a blob failure the note file is never written."
+      - A writer error (blob or append) makes `sendTo` log it through `logger.error` with the target and reject with the same error; on a blob failure the note file is never written.
       - "Bodies (blocks separated by one blank line): quote is every line of `text` prefixed `> `, then `[<key>, p. <page>](labshelf:<key>#p<page>)`, e.g. `> Attention is all you need.\\n\\n[vaswani2017, p. 3](labshelf:vaswani2017#p3)`; equation is `$$\\n<latex>\\n$$` then the same link; figure is `![](assets/<item id>.png)` then the same link; item is its `body` then `[Source](<sourcePath>#<itemId>)` with the source item's path and id. The link format follows `formatPaperLink` in `library/record.ts`."
       - "`createProjectNoteWriter` appends with `store.addItem(projectId, target.path, body, extra.author, extra.itemId)` and writes a blob through `IProjectAssetWriter.write(projectId, <dirname of target.path>/<blob.path>, bytes)` (path relative to the project folder). A target path whose file does not exist yet is created by `addItem` (9.1), holding just the sent item."
       - "Recents: `list` gives at most 8 targets, most recent first; `push` moves an equal target (same kind, project or space id, path) to the front instead of duplicating it; a stored value that is not a valid list reads as empty. Stored device-locally under `key` through `IKeyValueStore` (VS Code `globalState`, browser `chrome.storage.local`), never in the library. The caller pushes after a successful send."
-      - "Space targets write through session 10's writers (10.7); until they are registered, `spaceNote`/`discussion` sends reject as unregistered and the menu lists projects only."
+      - Space targets write through session 10's writers (10.7); until they are registered, `spaceNote`/`discussion` sends reject as unregistered and the menu lists projects only.
       - "The project checklist note is an ordinary project note: no separate kind."
     acceptance:
-      - {id: "9.3a", check: "createSendBody gives the documented body for each payload kind (quote, equation, figure with `assets/<item id>.png`, item with its source link)"}
-      - {id: "9.3b", check: "sendTo with the `createProjectNoteWriter` writer to a project note path that does not exist yet creates that file holding one item whose id is the injected `newItemId()` and whose author is the request `sender`"}
-      - {id: "9.3c", check: "after 10 pushes `list` returns the last 8, most recent first; pushing an existing target moves it to the front without a duplicate"}
-      - {id: "9.3d", check: "a figure send whose asset write rejects makes `sendTo` reject, leaves the note file unwritten and logs one error; a successful figure send writes `notes/assets/<item id>.png` before the item"}
+      - id: 9.3a
+        check: createSendBody gives the documented body for each payload kind (quote, equation, figure with `assets/<item id>.png`, item with its source link)
+      - id: 9.3b
+        check: sendTo with the `createProjectNoteWriter` writer to a project note path that does not exist yet creates that file holding one item whose id is the injected `newItemId()` and whose author is the request `sender`
+      - id: 9.3c
+        check: after 10 pushes `list` returns the last 8, most recent first; pushing an existing target moves it to the front without a duplicate
+      - id: 9.3d
+        check: a figure send whose asset write rejects makes `sendTo` reject, leaves the note file unwritten and logs one error; a successful figure send writes `notes/assets/<item id>.png` before the item
     tests:
-      hidden: [documents/plans/qmd-notes/tests/9.3/packages/core/__tests__/qmd/sendTo/sendTo.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 9.3 --plan qmd-notes -- packages/core/__tests__/qmd/sendTo/sendTo.test.ts"
+      hidden:
+        - documents/plans/qmd-notes/tests/9.3/packages/core/__tests__/qmd/sendTo/sendTo.test.ts
+      command: node scripts/agents/run.mjs test core --spec 9.3 --plan qmd-notes -- packages/core/__tests__/qmd/sendTo/sendTo.test.ts
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs test core
     do_not_touch:
       - packages/core/src/library/record.ts
       - apps
-
-  - id: "9.4"
-    plan: qmd-notes
-    goal: "From backlinks, each cite site in a manuscript knows how many notes the cited paper has, for \"N notes\" in the editors."
-    level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    edit:
-      - {path: packages/core/src/writing/citations/backlinks.ts, lines: "1-51", why: "add citeSiteNotes next to the backlink index"}
-      - {path: packages/core/src/writing/citations/index.ts, lines: "21-21", why: "export citeSiteNotes and its type"}
-    read:
-      - {path: documents/plans/qmd-notes/research/comments-checklist.md, lines: "34-38", why: "Backlinks section of the research"}
-      - {path: packages/core/src/writing/citations/citeKeys.ts, lines: "100-140", why: "findCitationSites and CitationSite"}
-      - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore.read: item count of a paper's notes (created by session 6)"}
-    seams:
-      - {path: packages/core/src/writing/citations/backlinks.ts, signature: "export function citeSiteNotes(sites: readonly { file: string; line: number; key: string }[], notesCount: (citeKey: string) => number): CiteSiteNotes[]"}
-      - {path: packages/core/src/writing/citations/backlinks.ts, signature: "export interface CiteSiteNotes { file: string; line: number; citeKey: string; notes: number }"}
-    decided:
-      - "`citeSiteNotes(sites, notesCount: (citeKey) => number)` returns `{file, line, citeKey, notes}[]` with `notes > 0` only, in `packages/core/src/writing/citations/backlinks.ts` (the backlinks concept file; the old plan's `writing/backlinks/` folder does not exist)."
-      - "Cite key to paper id resolution is the caller's, with `derivePapersByCiteKey` (`citeKeys.ts`) as `addBacklinks` callers already do; `citeSiteNotes` only counts."
-      - "`citeSiteNotes` keeps the input order of the sites and calls `notesCount` with the site's `key`; a count of 0 skips the site."
-      - "Counts are recomputed when `projectBacklinks` runs (`deriveProjectBacklinks` in `backlinks.ts`), never per keystroke."
-    acceptance:
-      - {id: "9.4a", check: "two cite sites of one key both report its count"}
-      - {id: "9.4b", check: "a key without notes is skipped"}
-    tests:
-      hidden: [documents/plans/qmd-notes/tests/9.4/packages/core/__tests__/writing/citations/citeSiteNotes.test.ts]
-      command: "node scripts/agents/run.mjs test core --spec 9.4 --plan qmd-notes -- packages/core/__tests__/writing/citations/citeSiteNotes.test.ts"
-    commands:
-      - node scripts/agents/run.mjs typecheck core
-      - node scripts/agents/run.mjs test core
-    do_not_touch:
-      - packages/core/src/writing/citations/projectSources.ts
-
-  - id: "9.6"
-    plan: qmd-notes
-    goal: "Design the UI of project notes, Send to and cite-site notes from `documents/ui.md`."
-    level: task
-    runner: {agent: main, model: opus}
-    edit: []
-    read:
-      - {path: documents/ui.md, lines: "1-60", why: "#principles, #where-things-are, #how-to-design (find ranges with `node scripts/docs/doc.mjs ui`)"}
-      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "1-27", why: "editor UI research"}
-    decided:
-      - "Design from `documents/ui.md`: \"New note\" in the project view and the notes list, checklist rows of kind `noteTask` (link to the note), the Send to menu (recent targets first, then projects, then Spaces) in the reader selection menu and the editor item menu, and \"N notes\" at cite sites (VS Code code lens + hover, browser CodeMirror gutter + popover)."
-      - "UI text uses the word \"note\" from the single vocabulary entry (D16), so a rename is one change."
-    acceptance:
-      - {id: "9.6a", check: "outcome written into the decided of 9.7 and 9.8"}
-    tests: {none: "design, no code"}
-
-  - id: "9.7"
-    plan: qmd-notes
-    goal: "VS Code creates and opens project notes, shows note tasks in the checklist and ticks them, offers Send to, and shows \"N notes\" at cite sites."
-    level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["9.1", "9.2", "9.3", "9.4", "9.6"]
-    edit:
-      - {path: packages/vscode/src/writing/projects/checklist.ts, lines: "1-343", why: "act on noteTask rows: tick through toggleNoteTask, reread when the note changed on disk"}
-      - {path: packages/vscode/src/writing/projects/checklistSignals.ts, lines: "1-124", why: "pass the ProjectNotesStore to readChecklistSignals"}
-      - {path: packages/vscode/src/writing/projects/commands.ts, lines: "1-245", why: "New note and Open note commands"}
-      - {path: packages/vscode/src/writing/citations/index.ts, lines: "1-5", why: "export the note lens and hover registration"}
-      - {path: packages/vscode/src/writing/citations/backlinks.ts, lines: "1-181", why: "compute citeSiteNotes when ProjectBacklinks refreshes (:164)"}
-      - {path: packages/vscode/src/activation/startExtension.ts, lines: "1-152", why: "composition root builds the stores and Send to writers"}
-      - {path: packages/vscode/package.json, lines: "582-740", why: "commands and menu entries (checklist commands at :582, :736)"}
-      - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "1-138", why: "Send to entry in the reader selection menu; the only core file this package touches"}
-    create:
-      - packages/vscode/src/writing/citations/noteLens.ts
-    read:
-      - {path: packages/vscode/src/writing/citations/hover.ts, lines: "1-116", why: "HoverProvider pattern for cite keys"}
-      - {path: packages/core/src/qmd/sendTo/index.ts, lines: "1-20", why: "Send to API (created by 9.3)"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore (created by 9.1)"}
-      - {path: packages/core/src/writing/citations/index.ts, lines: "1-27", why: "citeSiteNotes built by 9.4"}
-      - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "13-70", why: "SelectionBubbleContent and CommentOnSelection, the selection menu"}
-    decided:
-      - "Stores and Send to writers are built in the composition root (`startExtension.ts`)."
-      - "Cite sites: a `CodeLensProvider` on `.tex`/`.typ` shows \"N notes\"; a `HoverProvider` shows the first lines of the last items; the lens opens the paper's notes."
-      - "Recent Send to targets use `globalState`."
-      - "Design details come from 9.6 (written into this decided by the main thread)."
-      - "The only core change is the Send to entry in `selectionBubble.ts`, which posts a message the VS Code and browser hosts both handle."
-    acceptance:
-      - {id: "9.7a", check: "typecheck and vscode tests pass"}
-      - {id: "9.7b", check: "A6 by hand in VS Code: select a passage in the reader, Send to the project note, the item appears with a link to the page; its `- [ ]` is in the Checklist and ticking there ticks it in the note; the manuscript cite site shows \"N notes\""}
-      - {id: A6, check: "selecting a passage in the reader and choosing Send to → project \"modern-thesis\" adds an item with a link back to the page to that project's note; a `- [ ]` in it appears in the project Checklist, and ticking it there ticks it in the note; manuscript cite sites show \"N notes\" in VS Code and the browser"}
-    tests: {none: "UI and host glue, checked by the user by hand in the app"}
-    commands:
-      - node scripts/agents/run.mjs typecheck vscode
-      - node scripts/agents/run.mjs test vscode
-    do_not_touch:
-      - "core, except the Send to entry in `packages/core/src/reader/dom/selectionBubble.ts`"
-
-  - id: "9.8"
-    plan: qmd-notes
-    goal: "The browser library page creates and opens project notes, shows note tasks in the checklist and ticks them, offers Send to, and shows \"N notes\" in the source editor gutter."
-    level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["9.1", "9.2", "9.3", "9.4", "9.6", "9.7"]
-    edit:
-      - {path: packages/browser/src/libraryUi/spaces.ts, lines: "1-138", why: "project checklist progress counts note tasks (projectChecklist :28)"}
-      - {path: packages/browser/src/writing/session.ts, lines: "85-95", why: "checklistNodes builds the checklist with noteTasks"}
-      - {path: packages/browser/src/writing/editor.ts, lines: "241-249", why: "createEditorExtensions gains the notes gutter"}
-      - {path: packages/browser/src/libraryUi/editorArea/projectPageTab.ts, lines: "1-33", why: "New note and notes list"}
-      - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "1-71", why: "a project note tab kind"}
-    create:
-      - packages/browser/src/writing/noteGutter.ts
-      - packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
-      - packages/browser/src/storage/recentSendTargets.ts
-    read:
-      - {path: packages/browser/src/collab/comments.ts, lines: "224-232", why: "CodeMirror gutter marker pattern (ls-comment-gutter)"}
-      - {path: packages/browser/src/writing/source.ts, lines: "1-40", why: "source editor mount"}
-      - {path: packages/core/src/qmd/sendTo/index.ts, lines: "1-20", why: "Send to API (created by 9.3)"}
-      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore (created by 9.1)"}
-      - {path: packages/core/src/writing/citations/index.ts, lines: "1-27", why: "citeSiteNotes built by 9.4"}
-      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-400", why: "mountQmdEditor (created by session 4)"}
-    decided:
-      - "Gutter marker as a CodeMirror `gutter` extension with a popover listing items, in `packages/browser/src/writing/noteGutter.ts`."
-      - "Recent Send to targets in `chrome.storage.local`."
-      - "Notes open in `mountQmdEditor` in a project note tab."
-      - "`projectTaskProgress.ts` of the old plan is now `projectChecklist` in `packages/browser/src/libraryUi/spaces.ts`."
-      - "Design details come from 9.6 (written into this decided by the main thread)."
-    acceptance:
-      - {id: "9.8a", check: "typecheck and browser tests pass"}
-      - {id: "9.8b", check: "A6 by hand in the browser: Send to the project note, the checklist row appears and ticking it ticks the note; the source editor gutter shows \"N notes\" at a cite site"}
-    tests: {none: "UI and host glue, checked by the user by hand in the app"}
-    commands:
-      - node scripts/agents/run.mjs typecheck browser
-      - node scripts/agents/run.mjs test browser
-    do_not_touch:
-      - core
-      - packages/browser/src/writing/collab
-
   - id: "9.9"
     plan: qmd-notes
-    goal: "The contracts describe `notes/*.qmd` and the derived checklist."
+    goal: The contracts describe `notes/*.qmd` and the derived checklist.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["9.1", "9.2", "9.3"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "9.1"
+      - "9.2"
+      - "9.3"
     edit:
-      - {path: documents/contracts/qmd-items.md, lines: "1-60", why: "add `#project-notes`"}
-      - {path: documents/contracts/library-format.md, lines: "73-83", why: "project folder section (`.labshelf/` and the checklist.json line :77) states that note tasks are derived and links to qmd-items.md#project-notes"}
+      - path: documents/contracts/qmd-items.md
+        lines: 1-60
+        why: add `#project-notes`
+      - path: documents/contracts/library-format.md
+        lines: 73-83
+        why: project folder section (`.labshelf/` and the checklist.json line :77) states that note tasks are derived and links to qmd-items.md#project-notes
     decided:
       - "`qmd-items.md` gains `#project-notes`: location `notes/<slug>.qmd`, task items as checklist source, Send to body shape."
-      - "The `library-format.md` project folder section states that note tasks are derived and links to it; the notes folder is listed there."
-      - "Present tense, each fact once."
-      - "finish checks this against documents/contracts/qmd-items.md and documents/code.md#contracts."
+      - The `library-format.md` project folder section states that note tasks are derived and links to it; the notes folder is listed there.
+      - Present tense, each fact once.
+      - finish checks this against documents/contracts/qmd-items.md and documents/code.md#contracts.
     acceptance:
-      - {id: "9.9a", check: "contracts describe `notes/*.qmd` and the derived checklist"}
-    tests: {none: "docs"}
+      - id: 9.9a
+        check: contracts describe `notes/*.qmd` and the derived checklist
+    tests:
+      none: docs

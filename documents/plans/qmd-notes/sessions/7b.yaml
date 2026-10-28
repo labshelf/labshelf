@@ -1,0 +1,145 @@
+schema: session/v1
+id: 7b
+goal: The reader lists a paper's note items in a side panel, adds a note from a selection, and draws text boxes on PDF pages that are always visible and never change the PDF.
+depends_on:
+  - "7"
+owns:
+  - packages/core/src/reader/dom/
+  - packages/core/src/reader/sidecar/readingState.ts
+status: pending
+packages:
+  - id: "7.4"
+    plan: qmd-notes
+    goal: A Notes tab lists the paper's items with a filter, each editable in the core editor with a jump to its anchor, and "Add to note" in the selection bubble adds an item on a new highlight.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on: []
+    edit:
+      - path: packages/core/src/reader/dom/sidebar.ts
+        lines: 1-241
+        why: register the Notes tab in TAB_META and the panels record
+      - path: packages/core/src/reader/sidecar/readingState.ts
+        lines: 1-77
+        why: SidebarTab gains "notes" and its normalisation accepts it
+      - path: packages/core/src/reader/dom/selectionBubble.ts
+        lines: 1-138
+        why: '"Add to note" button beside the highlight colours'
+      - path: packages/core/src/reader/dom/readerUi.ts
+        lines: 50-213
+        why: build the Notes tab and feed it from `init` and `updateNotes`
+      - path: packages/core/src/reader/dom/styles/reader.css
+        lines: 1-278
+        why: panel styles with tokens only
+    create:
+      - packages/core/src/reader/dom/notesTab.ts
+    read:
+      - path: packages/core/src/reader/dom/sidebar.ts
+        lines: 144-218
+        why: "AnnotationsTab: page groups, preview, jump, delete (the pattern and the goToPage jump to reuse)"
+      - path: packages/core/src/reader/dom/selectionBubble.ts
+        lines: 100-125
+        why: "highlight(): how createAnnotation is posted"
+      - path: packages/core/src/reader/dom/readerUi.ts
+        lines: 188-213
+        why: "attachReaderHostMessages: how `updateAnnotations` reaches the UI"
+      - path: packages/core/src/reader/protocol/messages.ts
+        lines: 78-99
+        why: init, updateNotes and ReaderNote
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 248-295
+        why: parseAnchor and ItemAnchor kinds for the anchor chip and filters
+      - path: packages/core/src/ui/icons/renderIcon.ts
+        lines: 1-60
+        why: icon set for the tab (file-text, message exist)
+    seams:
+      - path: packages/core/src/reader/dom/notesTab.ts
+        signature: "export class NotesTab implements SidebarPanel { readonly el: HTMLElement; show(notes: readonly ReaderNote[]): void; onShow(): void; onHide(): void }"
+    decided:
+      - The 7.1 design outcome is written here before this package runs.
+      - UI text names an item "note" through the vocabulary entry of `packages/core/src/qmd/dom/vocabulary.ts` (D16).
+      - "Filter: All / This page / On highlights / Text boxes / Unanchored, plus a text filter on the body. Order by page then created; unanchored items last."
+      - Each row edits its body in `mountQmdEditor` (session 4, `packages/core/src/qmd/dom/`); an edit sends `editNote`, delete sends `removeNote`. No `onRunCell` here (cells run from session 12 on).
+      - "\"Add to note\" posts the existing `createAnnotation` highlight, and when the next `updateAnnotations` list holds an annotation id not in the previous list, posts `addNote {anchor: \"hl:<that annotation id>\", body: \"\"}` and focuses the new item's editor. D6: a note on a highlight anchors to the annotation id; geometry stays in `data.json`."
+      - Jump uses the page scroll the Annotations tab already uses (its `goToPage`).
+      - Panel CSS uses tokens only, in `reader.css`.
+    acceptance:
+      - id: 7.4a
+        check: typecheck passes for core
+      - id: 7.4b
+        check: the panel lists items, the filters narrow the list, an item body edits and saves, and a click jumps to its page
+      - id: 7.4c
+        check: selecting text and choosing Add to note creates a highlight and a new focused item anchored to it (checked by the user by hand)
+    tests:
+      none: UI checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs build vscode
+    do_not_touch:
+      - packages/core/src/reader/dom/pageHighlights.ts
+  - id: "7.6"
+    plan: qmd-notes
+    goal: "D7: a text box is a paper-note item with anchor `p<page> box <x> <y> <w> <h>`, drawn over its page, always visible, never changing the PDF; long content is clipped and expands on click."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "7.4"
+    edit:
+      - path: packages/core/src/reader/dom/toolbar.ts
+        lines: 1-354
+        why: text-box tool toggle button and its ToolbarActions entry
+      - path: packages/core/src/reader/dom/readerUi.ts
+        lines: 50-213
+        why: build the box layer and the tool, feed the layer from the same `init`/`updateNotes` source as the Notes tab
+      - path: packages/core/src/reader/dom/styles/reader.css
+        lines: 250-278
+        why: "`.rd-note-layer`, box, clip fade and expanded state, tokens only"
+    create:
+      - packages/core/src/reader/dom/noteBoxes.ts
+      - packages/core/src/reader/dom/boxTool.ts
+    read:
+      - path: packages/core/src/reader/dom/pageHighlights.ts
+        lines: 56-139
+        why: "PageHighlights layer: textlayerrendered rebuild, percent positions set through CSSOM, derivePageFrame and deriveBoxInPage"
+      - path: packages/core/src/reader/dom/styles/reader.css
+        lines: 250-270
+        why: .rd-hl-layer rules (pointer-events none)
+      - path: packages/core/src/reader/text/textBoxPlacement.ts
+        lines: 1-1
+        why: fitEmptyBox and snapBox from 7.5 (re-read whole file)
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 248-295
+        why: formatAnchor and the box ItemAnchor
+      - path: documents/plans/qmd-notes/research/reader.md
+        lines: 12-15
+        why: "Drawing: page lookup, no rotation code"
+    seams:
+      - path: packages/core/src/reader/dom/noteBoxes.ts
+        signature: 'export class NoteBoxLayer { constructor(ctx: Pick<ReaderContext, "eventBus" | "host">); show(notes: readonly ReaderNote[]): void }'
+      - path: packages/core/src/reader/dom/boxTool.ts
+        signature: "export class BoxTool { constructor(ctx: ReaderContext); setActive(on: boolean): void }"
+    decided:
+      - The 7.1 design outcome is written here before this package runs.
+      - 'Creation mode is a toolbar toggle. In it a click calls `fitEmptyBox` and a drag calls `snapBox`; Escape leaves the mode. Then the tool sends `addNote {anchor: formatAnchor({kind: "box", ...}), body: ""}` and the box opens in edit state.'
+      - "The layer `.rd-note-layer` per page is built like `.rd-hl-layer`: rebuilt on pdf.js `textlayerrendered` (PLATFORM: pdf.js drops page children on re-render), positions in percent so zoom needs no recompute. The layer has `pointer-events: none` and the boxes `pointer-events: auto`; it is inserted above the text layer so boxes are clickable while empty space still selects text. Unrendered pages have no layer."
+      - "Box content renders read-only through the core editor (`mountQmdEditor` with `readOnly: true`, session 4); it is clipped to the box with a token-based fade; a click expands it to show all content and edit it, an outside click or Escape collapses it."
+      - Move and resize handles send `moveNote {id, anchor}` with the snapped box.
+      - Text rects for snapping come from the live DOM `.textLayer` of the page, measured with `derivePageFrame`/`deriveBoxInPage` of `pageHighlights.ts`.
+      - Positions are set through the CSSOM like `pageHighlights.ts` does, never through markup `style=` strings.
+    acceptance:
+      - id: 7.6a
+        check: typecheck passes for core and the vscode and browser reader bundles build
+      - id: A5
+        check: in VS Code and the browser reader, the tool draws a box in an empty area of page 10; it shows rendered content at any zoom and in the same place on another device
+    tests:
+      none: checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs build vscode
+      - node scripts/agents/run.mjs build browser
+    do_not_touch:
+      - packages/core/src/reader/text/textBoxPlacement.ts
+      - packages/core/src/reader/dom/pageHighlights.ts

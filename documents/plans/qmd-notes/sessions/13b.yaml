@@ -1,0 +1,146 @@
+schema: session/v1
+id: 13b
+goal: VS Code and the browser editor insert equations from notes and show stale and diverged copies with their actions.
+depends_on:
+  - "13"
+owns:
+  - packages/vscode/src/writing/
+  - packages/browser/src/writing/
+  - packages/vscode/package.json
+  - packages/vscode/__tests__/writing/
+  - packages/browser/__tests__/writing/
+status: pending
+packages:
+  - id: "13.6"
+    plan: qmd-notes
+    goal: Design the "Insert from note" picker, the state mark on an origin line, the update action and the side-by-side diff.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on: []
+    edit: []
+    read:
+      - path: documents/ui.md
+        lines: 1-60
+        why: Principles, Where things are and How to design (find the line ranges with `node scripts/docs/doc.mjs ui`)
+      - path: documents/plans/qmd-notes/research/editor-ui.md
+        lines: 1-30
+        why: Reuse of core widgets and the editor
+    decided:
+      - "Design from `documents/ui.md`: the picker (groups: Equations, Outputs, Figures, Values; source note shown), the state mark on an origin line (fresh none, stale, diverged, missing), the update action and the side-by-side diff. Components, tokens and states (empty, loading, error, narrow, light and dark, keyboard focus), no pixel values or colours."
+    acceptance:
+      - id: 13.6a
+        check: outcome written into the decided of 13.7 and 13.8
+    tests:
+      none: design, no code
+  - id: "13.7"
+    plan: qmd-notes
+    goal: VS Code gets the command "Insert from note", a hover with state and diff, and a code action "Update from note" on stale origins.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "13.6"
+    edit:
+      - path: packages/vscode/src/writing/citations/index.ts
+        lines: 1-5
+        why: export the new registration if it sits beside the citation providers
+      - path: packages/vscode/src/writing/index.ts
+        lines: 1-14
+        why: export and wire the note-link registration
+      - path: packages/vscode/package.json
+        lines: 360-540
+        why: "contributes.commands: register `labshelf.writing.insertFromNote` and `labshelf.writing.updateFromNote`"
+    create:
+      - packages/vscode/src/writing/noteLinks.ts
+      - packages/vscode/__tests__/writing/noteLinks.test.ts
+    read:
+      - path: packages/vscode/src/writing/citations/hover.ts
+        lines: 96-116
+        why: an existing HoverProvider
+      - path: packages/vscode/src/writing/citations/editing.ts
+        lines: 1-266
+        why: command registration and code actions for insert (registerInsertActions)
+      - path: packages/core/src/writing/noteLinks/index.ts
+        lines: 1-12
+        why: the API from 13.1 and 13.2
+      - path: packages/core/src/ui/dom/widgets/quickInput.ts
+        lines: 1-145
+        why: picker widget (core), if the VS Code QuickPick is not used
+      - path: packages/vscode/src/writing/projects/commands.ts
+        lines: 1-60
+        why: how writing commands are registered
+    seams:
+      - path: packages/vscode/src/writing/noteLinks.ts
+        signature: "export function registerNoteLinks(context: vscode.ExtensionContext, deps: NoteLinkDeps): void"
+    decided:
+      - Command "Insert from note", hover with state and diff, code action "Update from note" on stale origins; the commands are registered in `package.json`.
+      - A diverged or both origin shows a diff via `vscode.diff` on two virtual documents; no write action exists for it.
+      - State is recomputed on open and save, never per keystroke; the update applies one WorkspaceEdit.
+      - UI follows the outcome of 13.6 (written into this decided by the main thread).
+    acceptance:
+      - id: 13.7a
+        check: typecheck and vscode tests pass
+      - id: 13.7b
+        check: "A10 is checked by hand in VS Code: insert an equation (origin comment written), edit the note (stale, update action), edit the manuscript (diverged, nothing overwritten)"
+    tests:
+      none: glue and UI, checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+    do_not_touch:
+      - packages/core/
+  - id: "13.8"
+    plan: qmd-notes
+    goal: The CodeMirror source editor gets the insert command, a line decoration with the state, an "Update from note" action and a diff popover.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "13.6"
+    edit:
+      - path: packages/browser/src/writing/editor.ts
+        lines: 1-392
+        why: add the note-link extension to the CodeMirror extensions of the mount
+    create:
+      - packages/browser/src/writing/noteLinks.ts
+      - packages/browser/__tests__/writing/noteLinks.test.ts
+    read:
+      - path: packages/browser/src/writing/editor.ts
+        lines: 1-392
+        why: the mount and the existing extensions and theme
+      - path: packages/browser/src/writing/source.ts
+        lines: 1-360
+        why: the source editor actions and citation hooks (and the session 9 cite-site gutter, if it sits here)
+      - path: packages/core/src/writing/noteLinks/index.ts
+        lines: 1-12
+        why: the API from 13.1 and 13.2
+      - path: packages/core/src/ui/dom/widgets/quickInput.ts
+        lines: 1-145
+        why: picker widget
+      - path: packages/core/src/ui/dom/widgets/dialog.ts
+        lines: 1-200
+        why: mountOverlay for the diff popover
+    seams:
+      - path: packages/browser/src/writing/noteLinks.ts
+        signature: "export function noteLinkExtension(deps: NoteLinkDeps): Extension"
+    decided:
+      - Insert command, line decoration with the state, "Update from note" action and a diff popover in the CodeMirror source editor.
+      - State is recomputed on open and save; the update applies one CodeMirror transaction; a diverged or both origin offers the diff and no write.
+      - UI follows the outcome of 13.6 (written into this decided by the main thread).
+    acceptance:
+      - id: 13.8a
+        check: typecheck and browser tests pass
+      - id: 13.8b
+        check: "A10 is checked by hand in the browser: insert an equation (origin comment written), edit the note (stale, update action), edit the manuscript (diverged, nothing overwritten)"
+    tests:
+      none: glue and UI, checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/
+      - packages/browser/src/collab/

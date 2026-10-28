@@ -1,0 +1,279 @@
+schema: session/v1
+id: 6b
+goal: The VS Code and browser hosts, browser capture and the terminal read and edit paper notes through the notes store, and the contracts describe the notes file.
+depends_on:
+  - "6"
+owns:
+  - packages/vscode/src/libraryUi/handlers.ts
+  - packages/vscode/src/activation/
+  - packages/browser/src/libraryUi/host/
+  - packages/browser/src/storage/libraryMutations.ts
+  - packages/browser/src/storage/records.ts
+  - packages/browser/src/storage/index.ts
+  - packages/browser/src/capture/pdfFinding.ts
+  - packages/browser/src/background/handlers.ts
+  - packages/terminal/src/cli/libraryCommands.ts
+  - packages/terminal/src/library/paperService.ts
+  - packages/terminal/src/library/sidecars.ts
+  - packages/terminal/src/libraryUi/preview.ts
+  - packages/terminal/src/libraryUi/libraryScreen/actions/paperFieldActions.ts
+  - packages/terminal/src/compositionRoot.ts
+  - documents/contracts/library-format.md
+  - documents/contracts/share-link.md
+  - packages/browser/__tests__/capture/
+  - packages/terminal/__tests__/cli/
+  - packages/terminal/__tests__/libraryUi/
+status: pending
+packages:
+  - id: "6.5"
+    plan: qmd-notes
+    goal: The VS Code and browser hosts answer the 6.4 messages through `PaperNotesStore` and feed note text to search.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on: []
+    edit:
+      - path: packages/vscode/src/libraryUi/handlers.ts
+        lines: 250-258
+        why: setNote (:255) calls updatePaperFields({note}); replace with the notes store
+      - path: packages/vscode/src/libraryUi/handlers.ts
+        lines: 280-322
+        why: error labels (:284) and dispatch (:319) for paper.setNote
+      - path: packages/vscode/src/activation/libraryRootController.ts
+        lines: 55-75
+        why: build PaperNotesStore beside the PaperSidecarStore (:66)
+      - path: packages/vscode/src/activation/hostAdapters.ts
+        lines: 30-40
+        why: adapter createPaperNotesPort beside createSidecarPort
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 50-65
+        why: wire createNodePaperNotesPort like createNodeSidecarPort (:58)
+      - path: packages/browser/src/libraryUi/host/handlers.ts
+        lines: 32-50
+        why: setNote (:40) goes through the notes store
+      - path: packages/browser/src/libraryUi/host/context.ts
+        lines: 100-112
+        why: dispatch of paper.setNote (:108) becomes the three new messages
+      - path: packages/browser/src/libraryUi/host/snapshots.ts
+        lines: 20-30
+        why: set the notes text for search
+      - path: packages/browser/src/storage/records.ts
+        lines: 120-140
+        why: add createPaperNotesPort beside createSidecarPort (:127) over the same file system
+      - path: packages/browser/src/storage/index.ts
+        lines: 1-9
+        why: export createPaperNotesPort
+      - path: packages/browser/src/storage/libraryMutations.ts
+        lines: 15-30
+        why: drop setNote from the interface
+      - path: packages/browser/src/storage/libraryMutations.ts
+        lines: 115-125
+        why: drop the setNote implementation (:121)
+    read:
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore and PaperNotesPort (6.1)
+      - path: packages/core/src/libraryUi/paperHandlers.ts
+        lines: 1-57
+        why: the shared handler port the hosts implement (6.4)
+      - path: packages/vscode/__tests__/libraryUi/listPanel.test.ts
+        lines: 183-192
+        why: the existing note routing test to rewrite
+    decided:
+      - "The notes store is built in each app's composition: VS Code in `activation/libraryRootController.ts` with `createNodePaperNotesPort`; the browser from `createPaperNotesPort(fs)` in `storage/records.ts`, writing `layout.paperNotesPath(id)` through the library file system like the sidecar port."
+      - Hosts put the items into `details.notes` and answer `paper.addNote`/`paper.editNote`/`paper.removeNote`; a note change refreshes the details and the notes text for search (`setNotesText`).
+      - "`libraryMutations.setNote` and `hostController`-level `note` fields are removed; nothing in the hosts reads or writes a record `note`."
+    acceptance:
+      - id: 6.5a
+        check: VS Code and browser hosts add, edit and remove an item through the store and the details message shows it
+      - id: 6.5b
+        check: the details of a paper carry its `notes.qmd` items and no host reads a record `note`
+      - id: 6.5c
+        check: typecheck and tests of vscode and browser pass
+      - id: A4
+        check: VS Code and the browser show the same notes from `notes.qmd`; neither reads a `note` key of metadata.yaml
+    tests:
+      none: glue between existing host ports and the tested store; the hosts' existing suites are updated and must pass
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/
+      - packages/browser/src/popup/
+      - packages/browser/src/capture/
+  - id: "6.6"
+    plan: qmd-notes
+    goal: The note typed in the browser capture popup becomes the first item of the captured paper's `notes.qmd`.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "6.5"
+    edit:
+      - path: packages/browser/src/capture/pdfFinding.ts
+        lines: 130-150
+        why: importPaper no longer receives `note` in `extra` (:145); the note is written after the paper exists
+      - path: packages/browser/src/background/handlers.ts
+        lines: 135-155
+        why: capture.save passes msg.note (:150) on to the save, which writes it with PaperNotesStore.addItem
+      - path: packages/browser/src/storage/libraryMutations.ts
+        lines: 1-142
+        why: drop any remaining `note` use (the field leaves the record in 6.3)
+    read:
+      - path: packages/browser/src/popup/captureFlow.ts
+        lines: 110-125
+        why: the popup sends `note` in capture.save (:117-120); stays as is
+      - path: packages/browser/src/platform/messages.ts
+        lines: 10-20
+        why: capture.save message shape (`note`, :16); stays as is
+      - path: packages/browser/src/popup/entry.ts
+        lines: 10-20
+        why: the popup's note field wiring; stays as is
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore.addItem
+      - path: packages/browser/__tests__/capture/pdfFindingSave.test.ts
+        lines: 1-60
+        why: layout and fixtures of the existing save tests
+    seams:
+      - path: packages/browser/src/capture/pdfFinding.ts
+        signature: 'interface SaveOptions { folder?: string; tags?: string[]; note?: string; notes?: Pick<PaperNotesStore, "addItem"> }'
+      - path: packages/browser/src/capture/pdfFinding.ts
+        signature: 'export async function writeOrAsk(log: ILogger, mutations: LibraryMutations, draft: CaptureDraft, opts: SaveOptions = {}, ifNoPdf: MissingPdfAction = "ask"): Promise<WriteDecision>'
+      - path: packages/browser/src/storage/records.ts
+        signature: 'export function createPaperNotesPort(fs: Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">): PaperNotesPort'
+    decided:
+      - The popup field (`popup/index.html`, `popup/entry.ts`) and the `capture.save` `note` field stay unchanged.
+      - The notes store reaches the save through `SaveOptions.notes` (only `addItem` is needed); `writeOrAsk` keeps its signature. `background/handlers.ts` builds `new PaperNotesStore(createPaperNotesPort(fs))` (6.5) and passes it with `msg.note`.
+      - "After `importPaper` resolves, the save calls `opts.notes.addItem(paper.id, {body: note.trim()})` with `paper.id` of the `PaperRecord` that `importPaper` returned. The `extra` passed to `importPaper` has no `note` key."
+      - A note that is missing, empty or only whitespace calls no `addItem`, so no `notes.qmd` is created.
+      - 'A rejected `addItem` is logged with `log.error` and the capture still returns `{kind: "saved"}` with the saved paper; nothing is rolled back.'
+      - The captured paper's record has no `note` key.
+    acceptance:
+      - id: 6.6a
+        check: '`writeOrAsk` with `opts.note` "  idea  " and a fake `notes` calls `addItem(paper.id, {body: "idea"})` once after `importPaper`, and the `extra` given to `importPaper` has no `note` key'
+      - id: 6.6b
+        check: "`writeOrAsk` with no note, an empty note or a whitespace note never calls `addItem`"
+      - id: 6.6c
+        check: 'when `addItem` rejects, the error is logged and `writeOrAsk` still resolves to `{kind: "saved"}`'
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/6.6/packages/browser/__tests__/capture/pdfFindingNotes.test.ts
+      command: node scripts/agents/run.mjs test browser --spec 6.6 --plan qmd-notes -- packages/browser/__tests__/capture/pdfFindingNotes.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/
+      - packages/browser/src/libraryUi/
+  - id: "6.7"
+    plan: qmd-notes
+    goal: "D13: the terminal prints a paper's notes in `show` and opens `notes.qmd` itself in `$EDITOR`; no rich editor, no cells."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on: []
+    edit:
+      - path: packages/terminal/src/cli/libraryCommands.ts
+        lines: 40-60
+        why: "`show` prints each item instead of the record note (:57)"
+      - path: packages/terminal/src/libraryUi/preview.ts
+        lines: 55-95
+        why: Info tab shows the first lines of the last item instead of r.note (:89-92)
+      - path: packages/terminal/src/libraryUi/libraryScreen/actions/paperFieldActions.ts
+        lines: 50-73
+        why: updateNote opens notes.qmd in $EDITOR instead of a temp .md of record.note
+      - path: packages/terminal/src/library/paperService.ts
+        lines: 115-150
+        why: updateFields (:142) loses `note`
+      - path: packages/terminal/src/library/sidecars.ts
+        lines: 1-51
+        why: build the PaperNotesStore beside the sidecar store (:16) with createNodePaperNotesPort
+      - path: packages/terminal/src/compositionRoot.ts
+        lines: 1-186
+        why: wire the notes store into the library context and set the notes text for search
+      - path: packages/terminal/__tests__/cli/libraryCommands.test.ts
+        lines: 20-470
+        why: show and search cases that seed or expect a record `note` (:27, :92, :192-227, :268, :305, :357, :397-399, :463); seed `notes.qmd` instead
+      - path: packages/terminal/__tests__/libraryUi/preview.test.ts
+        lines: 30-370
+        why: Info-tab cases built on `r.note` (:33, :119-140, :165, :217-293, :348-364); use notes items
+      - path: packages/terminal/__tests__/libraryUi/libraryScreen/actions/paperFieldActions.test.ts
+        lines: 195-243
+        why: updateNote cases expect a temp .md and a record note write; expect notes.qmd opened in $EDITOR
+      - path: packages/terminal/__tests__/libraryUi/libraryScreen/view/preview.test.ts
+        lines: 55-99
+        why: preview note rendering from the record (:61-97); use the last item
+    read:
+      - path: packages/terminal/src/libraryUi/keymap.ts
+        lines: 80-90
+        why: the `e` shortcut (:84) keeps the action name `note`; only its help text changes
+      - path: packages/terminal/src/libraryUi/libraryScreen/input/runShortcut.ts
+        lines: 95-105
+        why: dispatch of the note shortcut (:102); unchanged
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore and notesText (6.1)
+      - path: packages/terminal/__tests__/cli/libraryCommands.test.ts
+        lines: 1-60
+        why: layout and fixtures of the existing show tests
+    decided:
+      - "D13: `labshelf show` prints the segments of `notes.qmd` in file order: each item as a line starting with `— ` followed by the `YYYY-MM-DD` of `created` and, when anchored, the anchor attribute text (e.g. `— 2026-10-23 p10 box 0.12 0.4 0.3 0.1`), then its body lines; loose text is printed as is, with no dated line. A paper without `notes.qmd` or with an empty one prints no notes block and no `— ` line."
+      - "`show` never prints a `note:` line or a `note` key left in `metadata.yaml`; `show --json` prints the record without a `note` key."
+      - Editing notes in `$EDITOR` writes only `notes.qmd`; `metadata.yaml` is untouched.
+      - The note key (`e`) opens `notes.qmd` itself in `$EDITOR` (creating it empty if missing) and reloads after the editor exits; an editor failure shows the existing warning and changes nothing.
+      - The preview shows the first lines of the last item.
+      - The terminal feeds `LibraryStore.setNotesText` so search finds note text; the terminal's search help text keeps listing notes.
+    acceptance:
+      - id: 6.7a
+        check: "`show` of a paper with two items prints both bodies, each under its dated line, and loose text as is"
+      - id: 6.7b
+        check: the note action opens `notes.qmd` and the terminal reloads the notes after exit
+      - id: A4
+        check: the terminal shows the same notes as VS Code and the browser, from `notes.qmd`, and reads no `note` key
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/6.7/packages/terminal/__tests__/cli/showNotes.test.ts
+      command: node scripts/agents/run.mjs test terminal --spec 6.7 --plan qmd-notes -- packages/terminal/__tests__/cli/showNotes.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck terminal
+      - node scripts/agents/run.mjs test terminal
+    do_not_touch:
+      - packages/core/
+  - id: "6.8"
+    plan: qmd-notes
+    goal: The contracts describe `notes.qmd`, with no `note` key and no `note` annotation type.
+    level: task
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "6.5"
+      - "6.6"
+      - "6.7"
+    edit:
+      - path: documents/contracts/library-format.md
+        lines: 1-60
+        why: layout already lists notes.qmd (:18); metadata.yaml section (:34) drops `note` from the keys a refresh never touches; no legacy text
+      - path: documents/contracts/library-format.md
+        lines: 84-95
+        why: "sidecar section: annotation types are highlight, comment and tag; no `note` type and no legacy text"
+      - path: documents/contracts/share-link.md
+        lines: 26-26
+        why: the manifest never holds `status`, `tags`, `notes` or `files` (:26 says `note`)
+    decided:
+      - Present tense, each fact once; link `qmd-items.md` instead of restating item rules.
+      - "`library-ui-host.md` no longer exists: the library UI to host boundary is specified by its TypeScript types and tests (code.md#contracts), so the four messages of 6.4 get no contract text."
+      - "documents/code.md#contracts: there are no old libraries to preserve (D18), so the contracts mention no legacy `note` key, no `note` annotation type and no migration."
+      - finish checks this against documents/contracts/library-format.md and documents/contracts/qmd-items.md.
+    acceptance:
+      - id: 6.8a
+        check: library-format.md and share-link.md contain no `note` key or annotation type and describe `notes.qmd`
+    tests:
+      none: docs
+    commands: []
