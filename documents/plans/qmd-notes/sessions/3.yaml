@@ -1,0 +1,22 @@
+schema: session/v1
+id: "3"
+goal: A runtime-neutral ProseMirror schema for LabShelf Markdown and a conversion between an item body and a ProseMirror document that round-trips byte for byte on files LabShelf wrote.
+depends_on: ["1"]
+owns:
+  - packages/core/src/qmd/editor/
+  - packages/core/package.json
+  - pnpm-lock.yaml
+  - packages/core/__tests__/qmd/editor/
+status: done
+packages:
+  - id: "3.1"
+    plan: qmd-notes
+    goal: ProseMirror and y-prosemirror dependencies, `qmdSchema`, and `bodyToDoc`/`docToBody` in `packages/core/src/qmd/editor/`; built and reviewed before the YAML flow.
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit: []
+    create:
+      - packages/core/src/qmd/editor/
+    acceptance:
+      - {id: "3.1a", check: "docToBody(bodyToDoc(b)) === b for every fixture item body; an editor-built doc serializes in canonical form; malformed input never loses text"}
+    tests: {none: "done before the YAML flow; its tests live in packages/core/__tests__/qmd/editor/"}

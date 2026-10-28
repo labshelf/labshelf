@@ -1,0 +1,252 @@
+schema: session/v1
+id: "7"
+goal: The reader lists a paper's note items in a side panel, adds a note from a selection, and draws text boxes on PDF pages that are always visible and never change the PDF.
+depends_on: ["6"]
+owns:
+  - packages/core/src/reader/dom/
+  - packages/core/src/reader/protocol/
+  - packages/core/src/reader/text/textBoxPlacement.ts
+  - packages/core/src/reader/text/index.ts
+  - packages/core/src/reader/noteMessages.ts
+  - packages/core/src/reader/hostMessages.ts
+  - packages/core/src/reader/hostPorts.ts
+  - packages/core/src/reader/hostController.ts
+  - packages/core/src/reader/sidecar/sidecarStore.ts
+  - packages/core/src/model/annotation.ts
+  - packages/core/src/reader/sidecar/readingState.ts
+  - packages/core/__tests__/reader/
+status: pending
+packages:
+  - id: "7.1"
+    plan: qmd-notes
+    goal: Design the Notes tab, its filter and rows, the text-box tool in the reader toolbar and the look of a box, and write the outcome into the decided of 7.4 and 7.6.
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    read:
+      - {path: documents/ui.md, lines: "7-16", why: "Principles"}
+      - {path: documents/ui.md, lines: "25-32", why: "How to design"}
+      - {path: documents/plans/qmd-notes/research/reader.md, lines: "16-19", why: "Protocol and sidebar: what the Annotations tab does today"}
+    decided:
+      - "A Notes tab beside the Annotations tab in the reader sidebar, a filter control, item rows with an anchor chip (page, highlight colour, box), the text-box tool in the reader toolbar, the box look (border, clip fade, expanded state)."
+      - "UI text names an item \"note\" through the one vocabulary entry in core (`packages/core/src/qmd/dom/vocabulary.ts`, built by session 4) so a rename is one change (D16)."
+      - "Icons come from the core set in `packages/core/src/ui/icons/`; a missing icon is added there in the same style."
+    acceptance:
+      - {id: "7.1a", check: "outcome written into the decided of 7.4 and 7.6"}
+    tests: {none: "design, no code"}
+
+  - id: "7.2"
+    plan: qmd-notes
+    goal: Add the note messages to the reader protocol and their guards, and stop the protocol from creating annotations of type note.
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: []
+    edit:
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "1-219", why: "HostToWebview init/updateNotes, WebviewToHost addNote/editNote/moveNote/removeNote, createAnnotation type narrowed to highlight, guards in isWebviewMessage"}
+      - {path: packages/core/src/reader/hostMessages.ts, lines: "37-48", why: "createAnnotation handler: only highlights are created, drop the store.addNote branch so it still typechecks"}
+      - {path: packages/core/__tests__/reader/protocol/messages.test.ts, lines: "1-1", why: "update any createAnnotation case that uses type note (re-locate with grep before editing)"}
+    create: []
+    read:
+      - {path: documents/plans/qmd-notes/research/reader.md, lines: "16-19", why: "Protocol and sidebar"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "78-99", why: "HostToWebview init and updateAnnotations"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "122-150", why: "WebviewToHost createAnnotation and update/delete"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "166-205", why: "isWebviewMessage guard"}
+      - {path: packages/core/src/qmd/itemFile.ts, lines: "248-295", why: "ItemAnchor, parseAnchor, formatAnchor"}
+    seams:
+      - {path: packages/core/src/reader/protocol/messages.ts, signature: "export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string }"}
+    decided:
+      - "Host to webview: `updateNotes {items: ReaderNote[]}`, also carried by `init` as `notes: ReaderNote[]` (the same list). `anchor` is the attribute string, empty when the item has none."
+      - "Webview to host: `addNote {anchor: string, body: string}`, `editNote {id, body}`, `moveNote {id, anchor}` (text-box move/resize) and `removeNote {id}`."
+      - "Anchors travel as the attribute string and the guard validates them with `parseAnchor` from `packages/core/src/qmd/itemFile.ts`: an anchor of unknown kind is rejected for `addNote` (and for `moveNote`, which also carries an anchor); an empty anchor is valid (unanchored)."
+      - "`createAnnotation` creates only highlights: type becomes `\"highlight\"`, and its guard branch for `\"note\"` goes."
+      - "The reader-host contract no longer exists (`documents/contracts/` holds only what both sides cannot read from one codebase), so the protocol is specified by these types and their guard tests; no contract file is edited. finish checks this against `documents/code.md#contracts`."
+    acceptance:
+      - {id: "7.2a", check: "guard accepts valid addNote, editNote, moveNote and removeNote messages"}
+      - {id: "7.2b", check: "guard rejects malformed note messages: empty id, non-string body, addNote with an anchor of unknown kind"}
+      - {id: "7.2c", check: "guard rejects createAnnotation with type note"}
+    tests:
+      hidden: [documents/plans/qmd-notes/tests/7.2/packages/core/__tests__/reader/protocol/noteMessages.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 7.2 --plan qmd-notes -- packages/core/__tests__/reader/protocol/noteMessages.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/core/src/reader/dom/
+
+  - id: "7.3"
+    plan: qmd-notes
+    goal: The reader host reads and writes the paper's notes through `PaperNotesStore` and pushes the full list after each write.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["7.2"]
+    edit:
+      - {path: packages/core/src/reader/hostPorts.ts, lines: "1-110", why: "add the injected notes store port (`notes?: PaperNotesStore`) and the last-sent key for notes in HostState"}
+      - {path: packages/core/src/reader/hostController.ts, lines: "1-155", why: "add noteHandlers to HANDLERS and the notes push helper to the context"}
+      - {path: packages/core/src/reader/hostMessages.ts, lines: "180-205", why: "ready-for-init also posts the notes in `init`"}
+      - {path: packages/core/src/reader/sidecar/sidecarStore.ts, lines: "1-326", why: "delete addNote from PaperSidecarStore, ReaderSidecarStore and createPreviewStore; normalizePaperSidecar (:53) drops entries of type `note` (not read, not rewritten)"}
+      - {path: packages/core/src/model/annotation.ts, lines: "1-30", why: "AnnotationType loses `note` (:12)"}
+      - {path: packages/core/__tests__/reader/hostMessages.test.ts, lines: "40-70", why: "the update test creates its annotation with addNote; create a highlight instead"}
+      - {path: packages/core/__tests__/reader/sidecar/sidecarStore.test.ts, lines: "1-300", why: "remove the addNote cases or rewrite them with addHighlight (re-locate with grep)"}
+    create:
+      - packages/core/src/reader/noteMessages.ts
+    read:
+      - {path: packages/core/src/reader/hostMessages.ts, lines: "1-75", why: "writeAnnotation and pushStoredAnnotations: the push-after-write shape to copy"}
+      - {path: packages/core/src/reader/sidecar/sidecarStore.ts, lines: "294-326", why: "createPreviewStore and its refusal"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "78-99", why: "updateNotes and ReaderNote from 7.2"}
+      - {path: packages/core/__tests__/reader/hostFixture.ts, lines: "1-1", why: "fixture the host tests build ports with (re-read whole file)"}
+    seams:
+      - {path: packages/core/src/reader/noteMessages.ts, signature: "export const noteHandlers: Pick<MessageAnswers, \"addNote\" | \"editNote\" | \"moveNote\" | \"removeNote\">"}
+    decided:
+      - "The handlers go in the sibling file `packages/core/src/reader/noteMessages.ts`, with the same push-after-write shape as `annotationHandlers` in `hostMessages.ts`: write, then post `updateNotes` with the full list read back from the store."
+      - "`moveNote` replaces the item's `anchor` attribute only (`PaperNotesStore.setAnchor` from session 6)."
+      - "The store is injected through `ReaderHostPorts.notes` (apps already build it in session 6); the host does not construct it."
+      - "A host without the notes port (build preview documents, whose store is `createPreviewStore`) refuses note writes with a notice like `PREVIEW_ANNOTATION_REFUSAL` and sends an empty list in `init` and `updateNotes`."
+      - "No migration (documents/code.md#contracts): `AnnotationType` is `highlight | comment | tag`; an annotation of type `note` in an old `data.json` is not read. Search all packages for other uses of the `note` type before removing it."
+      - "Delete `addNote` of the sidecar store; a search of all packages finds only `hostMessages.ts`, `sidecarStore.ts` and their tests using it (re-run the search before deleting)."
+      - "A failed write (including an unknown item id) is logged with `ctx.ports.logger.error` and shown with `notify(<message>, \"error\")`; no `updateNotes` is posted and the reader keeps the list it has."
+      - "A host without `ports.notes` answers each note write with exactly one `notify(<message>, \"info\")` and posts `{type: \"updateNotes\", items: []}`; it writes no file. Its `init` carries `notes: []`."
+      - "`ReaderNote.anchor` is the item's anchor attribute text (\"\" when unanchored), `body` the item body, `created` and `author` the attribute values (\"\" when absent)."
+      - "`PaperNotesStore`, `parseItemFile` and `ItemSegment` are imported from `@labshelf/core` by the tests (exported through `qmd/index.ts` in 6.1)."
+      - "`packages/core/__tests__/reader/hostFixture.ts` keeps its seeded annotation of type `note` (id `b`): the 7.3d tests rely on it to show an old `note` entry is neither read nor rewritten."
+    acceptance:
+      - {id: "7.3a", check: "addNote, editNote and removeNote each write through the store and push the full updated list"}
+      - {id: "7.3b", check: "moveNote changes only the anchor attribute of the item and pushes the list"}
+      - {id: "7.3c", check: "a preview host refuses note writes and sends an empty list"}
+      - {id: "7.3d", check: "init carries the notes; sidecar store and host tests still pass without addNote"}
+    tests:
+      hidden: [documents/plans/qmd-notes/tests/7.3/packages/core/__tests__/reader/noteMessages.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 7.3 --plan qmd-notes -- packages/core/__tests__/reader/noteMessages.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/vscode/
+      - packages/browser/
+      - packages/terminal/
+      - packages/core/src/qmd/
+
+  - id: "7.4"
+    plan: qmd-notes
+    goal: A Notes tab lists the paper's items with a filter, each editable in the core editor with a jump to its anchor, and "Add to note" in the selection bubble adds an item on a new highlight.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["7.1", "7.2"]
+    edit:
+      - {path: packages/core/src/reader/dom/sidebar.ts, lines: "1-241", why: "register the Notes tab in TAB_META and the panels record"}
+      - {path: packages/core/src/reader/sidecar/readingState.ts, lines: "1-77", why: "SidebarTab gains \"notes\" and its normalisation accepts it"}
+      - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "1-138", why: "\"Add to note\" button beside the highlight colours"}
+      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "50-213", why: "build the Notes tab and feed it from `init` and `updateNotes`"}
+      - {path: packages/core/src/reader/dom/styles/reader.css, lines: "1-278", why: "panel styles with tokens only"}
+    create:
+      - packages/core/src/reader/dom/notesTab.ts
+    read:
+      - {path: packages/core/src/reader/dom/sidebar.ts, lines: "144-218", why: "AnnotationsTab: page groups, preview, jump, delete (the pattern and the goToPage jump to reuse)"}
+      - {path: packages/core/src/reader/dom/selectionBubble.ts, lines: "100-125", why: "highlight(): how createAnnotation is posted"}
+      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "188-213", why: "attachReaderHostMessages: how `updateAnnotations` reaches the UI"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "78-99", why: "init, updateNotes and ReaderNote"}
+      - {path: packages/core/src/qmd/itemFile.ts, lines: "248-295", why: "parseAnchor and ItemAnchor kinds for the anchor chip and filters"}
+      - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "1-60", why: "icon set for the tab (file-text, message exist)"}
+    seams:
+      - {path: packages/core/src/reader/dom/notesTab.ts, signature: "export class NotesTab implements SidebarPanel { readonly el: HTMLElement; show(notes: readonly ReaderNote[]): void; onShow(): void; onHide(): void }"}
+    decided:
+      - "The 7.1 design outcome is written here before this package runs."
+      - "UI text names an item \"note\" through the vocabulary entry of `packages/core/src/qmd/dom/vocabulary.ts` (D16)."
+      - "Filter: All / This page / On highlights / Text boxes / Unanchored, plus a text filter on the body. Order by page then created; unanchored items last."
+      - "Each row edits its body in `mountQmdEditor` (session 4, `packages/core/src/qmd/dom/`); an edit sends `editNote`, delete sends `removeNote`. No `onRunCell` here (cells run from session 12 on)."
+      - "\"Add to note\" posts the existing `createAnnotation` highlight, and when the next `updateAnnotations` list holds an annotation id not in the previous list, posts `addNote {anchor: \"hl:<that annotation id>\", body: \"\"}` and focuses the new item's editor. D6: a note on a highlight anchors to the annotation id; geometry stays in `data.json`."
+      - "Jump uses the page scroll the Annotations tab already uses (its `goToPage`)."
+      - "Panel CSS uses tokens only, in `reader.css`."
+    acceptance:
+      - {id: "7.4a", check: "typecheck passes for core"}
+      - {id: "7.4b", check: "the panel lists items, the filters narrow the list, an item body edits and saves, and a click jumps to its page"}
+      - {id: "7.4c", check: "selecting text and choosing Add to note creates a highlight and a new focused item anchored to it (checked by the user by hand)"}
+    tests: {none: "UI checked by the user by hand in the app"}
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs build vscode"
+    do_not_touch:
+      - packages/core/src/reader/dom/pageHighlights.ts
+
+  - id: "7.5"
+    plan: qmd-notes
+    goal: Pure functions that find the largest empty box around a point of a page and snap a dragged box to text and page margins.
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: []
+    edit:
+      - {path: packages/core/src/reader/text/index.ts, lines: "1-5", why: "export textBoxPlacement"}
+    create:
+      - packages/core/src/reader/text/textBoxPlacement.ts
+    read:
+      - {path: packages/core/src/reader/dom/pageHighlights.ts, lines: "1-139", why: "textBoxes, derivePageFrame, deriveBoxInPage: how text and page fractions are measured today (do not import DOM code into the new file)"}
+      - {path: packages/core/src/reader/text/geometry.ts, lines: "160-195", why: "existing Rect type in this folder"}
+      - {path: documents/plans/qmd-notes/research/reader.md, lines: "32-33", why: "Text layer: geometry exists only live in the DOM"}
+    seams:
+      - {path: packages/core/src/reader/text/textBoxPlacement.ts, signature: "export interface PageRect { x: number; y: number; w: number; h: number }"}
+      - {path: packages/core/src/reader/text/textBoxPlacement.ts, signature: "export function fitEmptyBox(point: { x: number; y: number }, rects: readonly PageRect[]): PageRect | null"}
+      - {path: packages/core/src/reader/text/textBoxPlacement.ts, signature: "export function snapBox(rect: PageRect, rects: readonly PageRect[]): PageRect"}
+    decided:
+      - "Runtime-neutral, no DOM, in `packages/core/src/reader/text/textBoxPlacement.ts` (the old plan's `reader/geometry/` folder is the existing runtime-neutral `reader/text/` folder now); inputs are in page fractions: text rects `{x, y, w, h}[]` and a click point or a drag rect."
+      - "`fitEmptyBox(point, rects)`: the largest rectangle around the point that overlaps no text rect, capped at 0.4 page width and 0.25 page height, at least 0.05 by 0.03, else null."
+      - "`snapBox(rect, rects)`: edges within 0.01 of a text rect edge or of the page margin snap to it; a rect overlapping text is shrunk off the text on its smallest-overlap side."
+      - "Fractions are rounded to 4 decimals (the anchor contract in `documents/contracts/qmd-items.md`)."
+      - "The page margin is the page edge: 0 and 1 on each axis."
+      - "`fitEmptyBox`: the box contains the point; the caps apply per axis (w <= 0.4, h <= 0.25); among boxes that contain the point, overlap no text rect and stay inside the page, it returns the one with the largest area under those caps. A point on text returns null."
+      - "`snapBox`: snapping moves only the edge that is within 0.01, leaving the opposite edge in place; a rect that touches no text and has no edge within 0.01 is returned unchanged. Every fraction of the result is rounded to 4 decimals."
+      - "Text rects come only from the live DOM `.textLayer` (no stored geometry exists), gathered by 7.6; this package never reads the DOM."
+    acceptance:
+      - {id: "7.5a", check: "an empty column gives a box capped at 0.4 by 0.25"}
+      - {id: "7.5b", check: "a point between two paragraphs gives a box that fits the gap"}
+      - {id: "7.5c", check: "a drag rect over text is shrunk off the text on its smallest-overlap side"}
+      - {id: "7.5d", check: "edges within 0.01 of the page margin or a text edge snap to it"}
+      - {id: "7.5e", check: "an area smaller than 0.05 by 0.03 returns null"}
+    tests:
+      hidden: [documents/plans/qmd-notes/tests/7.5/packages/core/__tests__/reader/text/textBoxPlacement.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 7.5 --plan qmd-notes -- packages/core/__tests__/reader/text/textBoxPlacement.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/core/src/reader/dom/
+
+  - id: "7.6"
+    plan: qmd-notes
+    goal: "D7: a text box is a paper-note item with anchor `p<page> box <x> <y> <w> <h>`, drawn over its page, always visible, never changing the PDF; long content is clipped and expands on click."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["7.1", "7.3", "7.4", "7.5"]
+    edit:
+      - {path: packages/core/src/reader/dom/toolbar.ts, lines: "1-354", why: "text-box tool toggle button and its ToolbarActions entry"}
+      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "50-213", why: "build the box layer and the tool, feed the layer from the same `init`/`updateNotes` source as the Notes tab"}
+      - {path: packages/core/src/reader/dom/styles/reader.css, lines: "250-278", why: "`.rd-note-layer`, box, clip fade and expanded state, tokens only"}
+    create:
+      - packages/core/src/reader/dom/noteBoxes.ts
+      - packages/core/src/reader/dom/boxTool.ts
+    read:
+      - {path: packages/core/src/reader/dom/pageHighlights.ts, lines: "56-139", why: "PageHighlights layer: textlayerrendered rebuild, percent positions set through CSSOM, derivePageFrame and deriveBoxInPage"}
+      - {path: packages/core/src/reader/dom/styles/reader.css, lines: "250-270", why: ".rd-hl-layer rules (pointer-events none)"}
+      - {path: packages/core/src/reader/text/textBoxPlacement.ts, lines: "1-1", why: "fitEmptyBox and snapBox from 7.5 (re-read whole file)"}
+      - {path: packages/core/src/qmd/itemFile.ts, lines: "248-295", why: "formatAnchor and the box ItemAnchor"}
+      - {path: documents/plans/qmd-notes/research/reader.md, lines: "12-15", why: "Drawing: page lookup, no rotation code"}
+    seams:
+      - {path: packages/core/src/reader/dom/noteBoxes.ts, signature: "export class NoteBoxLayer { constructor(ctx: Pick<ReaderContext, \"eventBus\" | \"host\">); show(notes: readonly ReaderNote[]): void }"}
+      - {path: packages/core/src/reader/dom/boxTool.ts, signature: "export class BoxTool { constructor(ctx: ReaderContext); setActive(on: boolean): void }"}
+    decided:
+      - "The 7.1 design outcome is written here before this package runs."
+      - "Creation mode is a toolbar toggle. In it a click calls `fitEmptyBox` and a drag calls `snapBox`; Escape leaves the mode. Then the tool sends `addNote {anchor: formatAnchor({kind: \"box\", ...}), body: \"\"}` and the box opens in edit state."
+      - "The layer `.rd-note-layer` per page is built like `.rd-hl-layer`: rebuilt on pdf.js `textlayerrendered` (PLATFORM: pdf.js drops page children on re-render), positions in percent so zoom needs no recompute. The layer has `pointer-events: none` and the boxes `pointer-events: auto`; it is inserted above the text layer so boxes are clickable while empty space still selects text. Unrendered pages have no layer."
+      - "Box content renders read-only through the core editor (`mountQmdEditor` with `readOnly: true`, session 4); it is clipped to the box with a token-based fade; a click expands it to show all content and edit it, an outside click or Escape collapses it."
+      - "Move and resize handles send `moveNote {id, anchor}` with the snapped box."
+      - "Text rects for snapping come from the live DOM `.textLayer` of the page, measured with `derivePageFrame`/`deriveBoxInPage` of `pageHighlights.ts`."
+      - "Positions are set through the CSSOM like `pageHighlights.ts` does, never through markup `style=` strings."
+    acceptance:
+      - {id: "7.6a", check: "typecheck passes for core and the vscode and browser reader bundles build"}
+      - {id: "A5", check: "in VS Code and the browser reader, the tool draws a box in an empty area of page 10; it shows rendered content at any zoom and in the same place on another device"}
+    tests: {none: "checked by the user by hand in the app"}
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs build vscode"
+      - "node scripts/agents/run.mjs build browser"
+    do_not_touch:
+      - packages/core/src/reader/text/textBoxPlacement.ts
+      - packages/core/src/reader/dom/pageHighlights.ts

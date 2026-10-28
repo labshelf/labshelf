@@ -1,0 +1,220 @@
+schema: session/v1
+id: "10"
+goal: A Space has working Notes and Discussions tabs, each note and each thread one `.qmd` file in the Space folder, and Send to lists Space notes and discussions.
+depends_on: ["9"]
+owns:
+  - packages/core/src/spaces/
+  - documents/contracts/spaces.md
+  - packages/core/__tests__/spaces/
+status: pending
+packages:
+  - id: "10.1"
+    plan: qmd-notes
+    goal: Store Space notes as `spaces/<id>/notes/<slug>.qmd` and discussion threads as `spaces/<id>/discussions/<slug>.qmd`, with create, list, read and edit.
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: []
+    edit:
+      - {path: packages/core/src/spaces/spaceStore.ts, lines: "1-267", why: "expose the notes and discussions stores built on the store context (StoreContext, runSerially), so apps need no wiring change"}
+      - {path: packages/core/src/spaces/index.ts, lines: "1-28", why: "export the two stores and their types"}
+    create:
+      - packages/core/src/spaces/spaceNotesStore.ts
+      - packages/core/src/spaces/spaceDiscussionsStore.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/spaces-collab.md, lines: "5-9", why: "Spaces on disk"}
+      - {path: documents/contracts/spaces.md, lines: "1-37", why: "layout and conflict copies"}
+      - {path: packages/core/src/spaces/spaceStore.ts, lines: "1-267", why: "StoreContext, runSerially (serial writes per Space), readSpaceFile"}
+      - {path: packages/core/src/qmd/itemFile.ts, lines: "1-385", why: "parse and serialize item files"}
+      - {path: packages/core/src/qmd/itemUpdate.ts, lines: "1-209", why: "item edits"}
+      - {path: packages/core/src/ports/fileSystem.ts, lines: "1-52", why: "LibraryFileSystem port used by the stores"}
+      - {path: packages/core/src/qmd/projectNotes/noteSlug.ts, lines: "1-40", why: "deriveNoteSlug (created by 9.1)"}
+    seams:
+      - {path: packages/core/src/spaces/spaceNotesStore.ts, signature: "export interface SpaceNotesStore { list(spaceId: string): Promise<SpaceNoteEntry[]>; create(spaceId: string, title: string): Promise<string>; read(spaceId: string, path: string): Promise<SpaceQmdItem[]>; addItem(spaceId: string, path: string, body: string, author?: string, id?: string): Promise<string>; editItem(spaceId: string, path: string, id: string, body: string): Promise<void>; removeItem(spaceId: string, path: string, id: string): Promise<void> }"}
+      - {path: packages/core/src/spaces/spaceNotesStore.ts, signature: "export function createSpaceNotesStore(ctx: StoreContext): SpaceNotesStore"}
+      - {path: packages/core/src/spaces/spaceNotesStore.ts, signature: "export interface SpaceNoteEntry { path: string; title: string; updated: string }"}
+      - {path: packages/core/src/spaces/spaceNotesStore.ts, signature: "export interface SpaceQmdItem { id: string; body: string; author?: string; created?: string }"}
+      - {path: packages/core/src/spaces/spaceDiscussionsStore.ts, signature: "export type ThreadStatus = 'open' | 'resolved'"}
+      - {path: packages/core/src/spaces/spaceDiscussionsStore.ts, signature: "export interface SpaceThreadEntry { path: string; title: string; status: ThreadStatus; messages: number; updated: string }"}
+      - {path: packages/core/src/spaces/spaceStore.ts, signature: "readonly notes: SpaceNotesStore; readonly discussions: SpaceDiscussionsStore (members of SpaceStore)"}
+      - {path: packages/core/src/spaces/spaceDiscussionsStore.ts, signature: "export interface SpaceDiscussionsStore { list(spaceId: string): Promise<SpaceThreadEntry[]>; create(spaceId: string, title: string, body: string, author?: string): Promise<string>; read(spaceId: string, path: string): Promise<SpaceQmdItem[]>; addMessage(spaceId: string, path: string, body: string, author?: string, id?: string): Promise<string>; editMessage(spaceId: string, path: string, id: string, body: string): Promise<void>; removeMessage(spaceId: string, path: string, id: string): Promise<void>; setStatus(spaceId: string, path: string, status: ThreadStatus): Promise<void> }"}
+      - {path: packages/core/src/spaces/spaceDiscussionsStore.ts, signature: "export function createSpaceDiscussionsStore(ctx: StoreContext): SpaceDiscussionsStore"}
+    decided:
+      - "One file per note and one per thread. A note file: items as in any `.qmd`; the first item starts with `# <title>`. A thread file: the first item is the topic (`# <title>` plus body, attribute `status=\"open\"|\"resolved\"`); each message is one item with `author` and `created`, in file order."
+      - "Code is flat in `packages/core/src/spaces/` per documents/code.md#modules: `spaceNotesStore.ts` and `spaceDiscussionsStore.ts`, no subfolder. Shared path helpers (slug-to-path, the `notes/` and `discussions/` folder names) live in `spaceNotesStore.ts` and are imported by the discussions store, never copied."
+      - "Slugs reuse `deriveNoteSlug(title, taken)` from `packages/core/src/qmd/projectNotes/noteSlug.ts` (created by 9.1), imported, never copied."
+      - "Writes go through `runSerially(ctx, spaceId, …)` of `spaceStore.ts` (serial per Space), re-read first, atomic, identical bytes in all apps (documents/code.md#files). If importing from `spaceStore.ts` makes an import cycle, move `StoreContext` and `runSerially` to the new notes file and re-export them from `spaceStore.ts`."
+      - "`SpaceStore` exposes `notes` and `discussions` built from its own context, so `serveSpaces` and the apps take them from the store they already have."
+      - "Merge across devices is session 2's block merge (the Space scan already walks `spaces/<id>/**/*.qmd`); nothing here."
+      - "Store paths are relative to the Space folder (`notes/<slug>.qmd`, `discussions/<slug>.qmd`); `create` returns that path. `list` of a Space without the folder is `[]`. `title` is the first item's `# ` heading; `updated` is the file's modification time as an ISO string; a thread entry's `messages` counts the items after the topic."
+      - "`addItem`/`addMessage` return the item id (new from `newItemId()` unless `id` is passed, which Send to uses) and stamp `created` from `ctx.now()`; `author` is written only when given. `read` returns the items in file order with `id`, `body`, `author`, `created`."
+      - "`setStatus` changes only the `status` attribute value of the topic item: the file bytes differ by that value alone, and setting it back restores the original bytes."
+      - "D17: sharing a Space is out of scope: files and local UI only, no share kind, no relay doc."
+    acceptance:
+      - {id: "10.1a", check: "create note: the file `notes/<slug>.qmd` exists with a first item starting `# <title>`; list returns it with title and updated time"}
+      - {id: "10.1b", check: "create thread: `discussions/<slug>.qmd` has a topic item with `status=\"open\"`"}
+      - {id: "10.1c", check: "add message keeps `author` and `created` and appends in file order"}
+      - {id: "10.1d", check: "setStatus resolved sets `status=\"resolved\"` on the topic and nothing else changes"}
+      - {id: "10.1e", check: "concurrent adds to one thread keep both messages"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/10.1/packages/core/__tests__/spaces/spaceNotesStore.test.ts
+        - documents/plans/qmd-notes/tests/10.1/packages/core/__tests__/spaces/spaceDiscussionsStore.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 10.1 --plan qmd-notes -- packages/core/__tests__/spaces/spaceNotesStore.test.ts packages/core/__tests__/spaces/spaceDiscussionsStore.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/core/src/qmd/
+      - packages/core/src/collab/
+  - id: "10.2"
+    plan: qmd-notes
+    goal: The Space views read and edit notes and threads through Space protocol messages, guarded by the page parser and served by `serveSpaces`.
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["10.1"]
+    edit:
+      - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "1-201", why: "new message types in SpacesToHost and HostToSpaces, their parsers in parseSpacesMessage, path validation"}
+      - {path: packages/core/src/spaces/serveSpaces.ts, lines: "1-185", why: "ACTION_LABELS entries, handlers for the new messages, posting spaceNotes, spaceDiscussions and spaceQmd"}
+      - {path: packages/core/src/spaces/index.ts, lines: "1-28", why: "export the new message types"}
+    create: []
+    read:
+      - {path: packages/core/src/spaces/spacesHostPort.ts, lines: "1-19", why: "host port, unchanged"}
+      - {path: packages/core/src/spaces/spaceStore.ts, lines: "1-267", why: "notes and discussions accessors from 10.1"}
+    seams:
+      - {path: packages/core/src/spaces/spacesProtocol.ts, signature: "export function isSpaceQmdPath(spaceId: string, path: unknown): path is string"}
+    decided:
+      - "host to view: `spaceNotes {spaceId, notes: {path, title, updated}[]}`, `spaceDiscussions {spaceId, threads: {path, title, status, messages, updated}[]}`, `spaceQmd {spaceId, path, items: {id, body, author, created}[]}`."
+      - "view to host: `createSpaceNote {spaceId, title}`, `createSpaceThread {spaceId, title, body}`, `addSpaceItem {spaceId, path, body}`, `editSpaceItem {spaceId, path, id, body}`, `removeSpaceItem {spaceId, path, id}`, `setThreadStatus {spaceId, path, status}`."
+      - "Every `path` is validated to stay inside `notes/` or `discussions/` of that Space: reject `..`, absolute paths and anything not ending in `.qmd`; a message that fails is dropped whole (documents/code.md#messages)."
+      - "The new messages are not `SpaceMutation`s (they act on the notes and discussions stores, not on the Space file); they are added to the `SpacesToHost` union and parsed in `parseSpacesMessage`. The `ACTION_LABELS` record must gain an entry for each new view-to-host type; a failed handler is logged and shown as a notice."
+      - "`serveSpaces` posts `spaceNotes` and `spaceDiscussions` with the open Space and `spaceQmd` on request and after each change; `spaceQmd` is posted for the path the view has open."
+      - "Apps are not touched: they already hand `serveSpaces` the store."
+      - "Message paths are relative to the Space folder (`notes/<slug>.qmd`), the same paths the stores take; `isSpaceQmdPath` is exported from `spacesProtocol.ts` (and `spaces/index.ts`)."
+      - "`spaceDiscussions.threads[].messages` is the message count (items after the topic). `serveSpaces` posts `spaceQmd` for the changed path after every item change (add, edit, remove), `spaceNotes` after `createSpaceNote` and `spaceDiscussions` after `createSpaceThread`, `setThreadStatus` and a new message."
+      - "A failed note or thread action is logged through `ILogger` and posted as the existing error notice; a dropped message (bad path) writes nothing."
+    acceptance:
+      - {id: "10.2a", check: "guard tests for each new view-to-host message accept a valid one and drop one with a missing or mistyped field"}
+      - {id: "10.2b", check: "path escapes (`..`, absolute, other Space folder, not `.qmd`, outside `notes/` and `discussions/`) are rejected by the guard"}
+      - {id: "10.2c", check: "a `serveSpaces` test: an `addSpaceItem` appends one item and the host posts the updated `spaceQmd`"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/10.2/packages/core/__tests__/spaces/spaceItemMessages.test.ts
+        - documents/plans/qmd-notes/tests/10.2/packages/core/__tests__/spaces/serveSpacesItems.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 10.2 --plan qmd-notes -- packages/core/__tests__/spaces/spaceItemMessages.test.ts packages/core/__tests__/spaces/serveSpacesItems.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/vscode/
+      - packages/browser/
+      - packages/terminal/
+  - id: "10.3"
+    plan: qmd-notes
+    goal: "`documents/contracts/spaces.md` describes the note and discussion files and the messages once."
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["10.2"]
+    edit:
+      - {path: documents/contracts/spaces.md, lines: "1-37", why: "layout gains notes and discussions; messages; conflict handling"}
+    create: []
+    read:
+      - {path: documents/contracts/spaces.md, lines: "7-18", why: "the Layout section"}
+    decided:
+      - "The folder list gains `notes/<slug>.qmd` and `discussions/<slug>.qmd` (link to `qmd-items.md`, thread attribute `status`), the messages of 10.2, and conflict handling links to `qmd-items.md#merge`. Present tense, each fact once."
+      - "finish checks this against documents/contracts/spaces.md and documents/contracts/qmd-items.md (spaces store files and protocol)."
+    acceptance:
+      - {id: "10.3a", check: "spaces.md lists the two folders, the thread `status` attribute, the messages and the link to qmd-items.md#merge, each fact once, present tense"}
+    tests: {none: "docs"}
+    commands: []
+  - id: "10.5"
+    plan: qmd-notes
+    goal: Design the Notes tab and the Discussions tab from documents/ui.md.
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: []
+    edit: []
+    create: []
+    read:
+      - {path: documents/ui.md, lines: "1-32", why: "principles, where things are, how to design"}
+      - {path: documents/plans/qmd-notes/research/spaces-collab.md, lines: "10-17", why: "Notes, Discussions, Research chat placeholders"}
+    decided:
+      - "Notes tab: list, New note, a note open in the core editor. Discussions tab: topic list with Open/Resolved filter and search, thread view with messages, reply box in the core editor."
+      - "Space notes only; the Paper notes group of the placeholder is removed unless the outcome keeps it with a source."
+      - "UI text per `packages/core/src/qmd/dom/vocabulary.ts` (D16, created by session 4)."
+    acceptance:
+      - {id: "10.5a", check: "outcome written into the decided of 10.6"}
+    tests: {none: "design, no code"}
+    commands: []
+  - id: "10.6"
+    plan: qmd-notes
+    goal: Replace the placeholder Notes and Discussions with working views.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["10.2", "10.5"]
+    edit:
+      - {path: packages/core/src/spaces/dom/mountSpace.ts, lines: "1-167", why: "remove the placeholder spaceNotes, group and renderSpaceDiscussions; mountSpacePositioned keeps Not available yet only for discover; mountBody mounts the new views"}
+      - {path: packages/core/src/spaces/dom/positioned.css, lines: "1-31", why: "drop rules nothing uses, add rules for the working views, tokens only"}
+    create:
+      - packages/core/src/spaces/dom/mountSpaceNotes.ts
+      - packages/core/src/spaces/dom/mountSpaceDiscussions.ts
+    read:
+      - {path: packages/core/src/spaces/dom/mountSpacePapers.ts, lines: "1-159", why: "shape of a Space tab view: mount, update, dispose over the transport"}
+      - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "1-201", why: "messages from 10.2"}
+      - {path: packages/core/src/spaces/dom/index.ts, lines: "1-4", why: "exports"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-400", why: "mountQmdEditor (created by session 4)"}
+    seams:
+      - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, signature: "export function mountSpaceNotes(root: HTMLElement, context: OverviewContext): SpaceBody"}
+      - {path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts, signature: "export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContext): SpaceBody"}
+    decided:
+      - "Two files named like the other tab views (`mountSpaceNotes.ts`, `mountSpaceDiscussions.ts`) replace the placeholders; the placeholder markup and CSS rules nothing uses are deleted."
+      - "The editor is `mountQmdEditor` from `packages/core/src/qmd/dom/qmdEditor.ts` (created by session 4)."
+      - "`mountSpacePositioned` keeps Not available yet only for `discover`. Tokens only. No `onRunCell` here (cells run from session 12 on)."
+      - "The design outcome of 10.5 is appended here before the run."
+    acceptance:
+      - {id: "10.6a", check: "typecheck of core, vscode and browser passes"}
+      - {id: A8, check: "in VS Code and the browser a Space has Notes and Discussions tabs backed by one `.qmd` per note or thread"}
+    tests: {none: "UI checked by the user by hand in the app"}
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs typecheck vscode"
+      - "node scripts/agents/run.mjs typecheck browser"
+    do_not_touch:
+      - packages/vscode/
+      - packages/browser/
+  - id: "10.7"
+    plan: qmd-notes
+    goal: Register the `spaceNote` and `discussion` writers of Send to on the 10.1 stores, so Send to lists Space notes and threads.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["10.2"]
+    edit:
+      - {path: packages/core/src/spaces/index.ts, lines: "1-28", why: "export the Send to writers"}
+    create:
+      - packages/core/src/spaces/spaceSendTargets.ts
+    read:
+      - {path: packages/core/src/spaces/spaceNotesStore.ts, lines: "1-400", why: "store created by 10.1 (whole file)"}
+      - {path: packages/core/src/spaces/spaceDiscussionsStore.ts, lines: "1-400", why: "store created by 10.1 (whole file)"}
+      - {path: packages/core/src/qmd/sendTo/sendTo.ts, lines: "1-120", why: "SendTarget and ISendTargetWriter (created by 9.3)"}
+    seams:
+      - {path: packages/core/src/spaces/spaceSendTargets.ts, signature: "export interface SpaceAssetWriter { write(spaceId: string, path: string, bytes: Uint8Array): Promise<void> }"}
+      - {path: packages/core/src/spaces/spaceSendTargets.ts, signature: "export function createSpaceSendWriters(notes: SpaceNotesStore, discussions: SpaceDiscussionsStore, assets: SpaceAssetWriter): { spaceNote: ISendTargetWriter; discussion: ISendTargetWriter }"}
+      - {path: packages/core/src/qmd/sendTo/sendTo.ts, signature: "export interface ISendTargetWriter { append(target: SendTarget, body: string, extra?: SendExtra): Promise<void> } (from 9.3; SendExtra = { itemId?: string; author?: string; blob?: { path: string; bytes: Uint8Array } })"}
+    decided:
+      - "The writers implement the `ISendTargetWriter` of Send to (`packages/core/src/qmd/sendTo/sendTo.ts`, created by 9.3; `SendTarget` kinds `spaceNote` and `discussion`). They live in `spaces/` so session 10 does not edit session 9's files; the apps register them where they register the project-note writer."
+      - "`spaceNote` appends with `notes.addItem(spaceId, target.path, body, extra?.author, extra?.itemId)`; `discussion` appends a message with `discussions.addMessage(spaceId, target.path, body, extra?.author, extra?.itemId)`. The author is the `sender` of the send request, passed by `sendTo` as `extra.author`; the item id is the one `sendTo` chose (`extra.itemId`), so the body's image path already holds it."
+      - "A figure blob: `extra.blob.path` is `assets/<item id>.png`, relative to the folder of the target file; the writer writes it with `assets.write(spaceId, <dirname of target.path>/<blob.path>, bytes)` (path relative to the Space folder, e.g. `discussions/assets/<item id>.png`), before the append. A rejected asset write rejects `append` and nothing is appended; `sendTo` logs it (9.3)."
+      - "Listing: Send to lists the Space notes and threads from the 10.1 `list` calls."
+    acceptance:
+      - {id: "10.7a", check: "sending a quote to a Space note appends one item with the `labshelf:` back-link"}
+      - {id: "10.7b", check: "appending a quote to a thread with `extra = {itemId: \"n-1\", author: \"Ana\"}` calls `addMessage` with author `Ana` and id `n-1`; a figure with `blob.path` `assets/n-1.png` writes `discussions/assets/n-1.png` through `SpaceAssetWriter` before `addMessage`; a rejected asset write rejects and calls no `addMessage`"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/10.7/packages/core/__tests__/spaces/spaceSendTargets.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 10.7 --plan qmd-notes -- packages/core/__tests__/spaces/spaceSendTargets.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/vscode/
+      - packages/browser/
+      - packages/core/src/qmd/

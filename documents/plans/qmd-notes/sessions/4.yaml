@@ -1,0 +1,162 @@
+schema: session/v1
+id: "4"
+goal: A core DOM editor for one item body that shows LabShelf Markdown rendered (headings, lists, task lists, math, code cells with results, links, citations) and never shows syntax, with a Source toggle.
+depends_on: ["3"]
+owns:
+  - packages/core/src/qmd/dom/
+  - packages/core/src/ui/icons/renderIcon.ts
+  - packages/core/src/dom/index.ts
+  - packages/core/package.json
+  - packages/core/__tests__/qmd/dom/
+  - packages/core/__tests__/ui/icons.test.ts
+status: pending
+packages:
+  - id: "4.1"
+    plan: qmd-notes
+    goal: Design the item editor from `documents/ui.md` (inline in a pane, toolbar on focus, item header with author/date, Visual/Source toggle, Run button and out-of-date state on code cells) and write the outcome into the decided of 4.2, 4.3 and 4.4.
+    level: task
+    runner: {agent: main, model: opus}
+    read:
+      - {path: documents/ui.md, lines: "1-32", why: "Principles, Where things are, How to design: layout and vocabulary rules the editor follows"}
+      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "1-27", why: "Reuse, current state and risks of the editor surface"}
+    edit: []
+    decided:
+      - "UI text names an item \"note\" (D16), from one vocabulary entry `packages/core/src/qmd/dom/vocabulary.ts` so a rename is one change."
+    acceptance:
+      - {id: "4.1a", check: "outcome written into the decided of 4.2, 4.3 and 4.4"}
+    tests: {none: "design, no code"}
+  - id: "4.2"
+    plan: qmd-notes
+    goal: "`mountQmdEditor(root, {body, onChange(body), onRunCell(label, code), readOnly?, collab?}) -> {setBody, focus, destroy}`: editor state, keymap, input rules and the Visual/Source toggle."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["4.1"]
+    edit: []
+    create:
+      - packages/core/src/qmd/dom/index.ts
+      - packages/core/src/qmd/dom/vocabulary.ts
+      - packages/core/src/qmd/dom/qmdEditor.ts
+      - packages/core/src/qmd/dom/qmdInputRules.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "1-27", why: "component shape, reuse and risks"}
+      - {path: packages/core/src/qmd/editor/index.ts, lines: "1-3", why: "qmdSchema, bodyToDoc, docToBody exports"}
+      - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "1-180", why: "node and mark names the input rules create"}
+      - {path: packages/core/src/ui/dom/index.ts, lines: "1-10", why: "core DOM helpers and widgets to reuse"}
+      - {path: packages/core/src/spaces/dom/index.ts, lines: "1-4", why: "shape of one existing dom component folder (index.ts + concept files + self-contained css)"}
+    seams:
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, signature: "export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): QmdEditorHandle"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, signature: "export interface QmdEditorOptions { body: string; onChange(body: string): void; onRunCell?(label: string, code: string): void; onOpenLink?(href: string): void; readOnly?: boolean; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, signature: "export interface QmdEditorHandle { setBody(body: string): void; focus(): void; destroy(): void }"}
+      - {path: packages/core/src/qmd/dom/vocabulary.ts, signature: "export const QMD_VOCABULARY: { item: string }"}
+    decided:
+      - "D5: rich editor on ProseMirror in `packages/core/src/qmd/dom/` (flat folder: `index.ts` is the public API, concept files below); conversion via `bodyToDoc`/`docToBody` from `packages/core/src/qmd/editor/`."
+      - "`onChange` fires debounced (300 ms, through the core `async` debouncer, not a private copy) with `docToBody(doc)`; it is the only way content leaves the editor."
+      - "Input rules: `# ` heading, `- ` bullet, `1. ` ordered, `[ ] ` task, `$...$` inline math, `$$` display math, three backticks + `python` code cell."
+      - "Source mode: a plain `<textarea>` with the item body; switching back parses it with `bodyToDoc`. Toggle state is per editor, not persisted."
+      - "Collab (D14): `collab?: {fragment: Y.XmlFragment, awareness}` plugs `ySyncPlugin`, `yCursorPlugin`, `yUndoPlugin` from y-prosemirror; when present, the history plugin is off. Wiring to shares is not in this plan's sessions beyond this option."
+      - "CSP: list, library and details webviews forbid inline styles (`style-src ${cspSource}`). ProseMirror view writes `style=` only for some decorations; use classes. Keep any unavoidable inline style out of node views (see 4.3)."
+      - "UI text for an item comes from `vocabulary.ts` (D16); the design outcome of 4.1 is added here before delegating."
+      - "DOM contract the tests pin: the visual surface is the ProseMirror default contenteditable `.ProseMirror` (`contenteditable=\"false\"` when `readOnly`); Source mode is one `<textarea>` inside the mount root whose `value` is the item body, and an `input` event on it updates the body; the toggle is a `<button>` inside the mount root whose text, `aria-label` or `title` contains `Source` (to enter Source) or `Visual` (to return); toggling back removes the textarea and parses its value with `bodyToDoc`."
+      - "`onChange` is not called on mount; after `destroy()` it is never called again and `.ProseMirror` is gone from the root; `setBody` replaces the shown content without calling `onChange`."
+      - "Input rules (`qmdInputRules.ts`) have no acceptance item here; their behaviour is checked by the user by hand in the app after session 5."
+    acceptance:
+      - {id: "4.2a", check: "jsdom test: mount, type text, `onChange` gives the expected body"}
+      - {id: "4.2b", check: "jsdom test: toggle Source, edit, toggle back to Visual keeps the change"}
+    tests:
+      hidden: [documents/plans/qmd-notes/tests/4.2/packages/core/__tests__/qmd/dom/qmdEditor.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan qmd-notes -- packages/core/__tests__/qmd/dom/qmdEditor.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - packages/core/src/qmd/editor/
+  - id: "4.3"
+    plan: qmd-notes
+    goal: Node views for `math_inline`, `math_display`, `code_cell`, `output`, `task_item`, the link mark and `citation`.
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["4.2"]
+    edit:
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-400", why: "register the node views and pass onRunCell and onOpenLink to them"}
+      - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "7-84", why: "add missing icon names (run, link) to STROKE_GLYPHS; iconGlyphs.ts is generated and not edited by hand"}
+      - {path: packages/core/__tests__/ui/icons.test.ts, lines: "1-47", why: "iterates every STROKE_GLYPHS name and requires distinct glyphs: new icons must pass it; update only if a rule changes"}
+    create:
+      - packages/core/src/qmd/dom/mathView.ts
+      - packages/core/src/qmd/dom/codeCellView.ts
+      - packages/core/src/qmd/dom/inlineViews.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "1-27", why: "Reuse and Risks"}
+      - {path: packages/core/src/latex/hover/renderMathSvg.ts, lines: "1-40", why: "renderMathSvg(tex, display, macros) throws on a parse error"}
+      - {path: packages/core/src/latex/hover/index.ts, lines: "1-6", why: "TRAP: the math entry is imported only as @labshelf/core/math"}
+      - {path: packages/core/src/qmd/cellOutput.ts, lines: "66-75", why: "deriveCodeHash(code) is async; the hash an output's `source` is compared with"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-400", why: "where node views are registered"}
+      - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "1-95", why: "renderIcon and the glyph tables"}
+    seams:
+      - {path: packages/core/src/qmd/dom/mathView.ts, signature: "export function createMathView(display: boolean, loadMath?: () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>): NodeViewConstructor"}
+      - {path: packages/core/src/qmd/dom/codeCellView.ts, signature: "export function createCodeCellView(onRunCell?: (label: string, code: string) => void): NodeViewConstructor"}
+      - {path: packages/core/src/qmd/dom/codeCellView.ts, signature: "export function createOutputView(loadMath?: () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>): NodeViewConstructor"}
+      - {path: packages/core/src/qmd/dom/inlineViews.ts, signature: "export function createCitationView(): NodeViewConstructor"}
+      - {path: packages/core/src/qmd/dom/inlineViews.ts, signature: "export function createTaskItemView(): NodeViewConstructor"}
+    decided:
+      - "Math: render with `renderMathSvg` loaded lazily through `await import(\"@labshelf/core/math\")`. TRAP: `@labshelf/core/math` is about 2.5 MB of CJS with side effects; never import it statically or from the core root. Show the TeX source in a small inline input while the node is selected; a parse error shows the TeX with an error class."
+      - "MathJax SVG carries `style=` attributes: strip `style` from the SVG root and nested nodes and map the vertical-align value to a class or a CSS custom property set via `CSSStyleDeclaration` (CSSOM is allowed under CSP; markup `style=` is not). Record the choice in a `// PLATFORM:` comment."
+      - "Code cell: monospace editable code and a Run button (core icon) that calls `onRunCell(label, code)`; the button is hidden when `onRunCell` is absent, so hosts without a runner still show cells."
+      - "Output: renders text output and LaTeX output (math through the same lazy loader); marked out of date when `await deriveCodeHash(cell code) !== output.source` (`deriveCodeHash` is in `packages/core/src/qmd/cellOutput.ts`)."
+      - "Task item: a checkbox toggles `checked` through a transaction."
+      - "`labshelf:` link: styled as an internal link with a core icon; a click calls an injected `onOpenLink(href)`."
+      - "Citation: shows `[@key]` keys as a chip; no lookup here."
+      - "Icons from the core icon set only; add names to `STROKE_GLYPHS` in `renderIcon.ts` if missing (the old `glyphs.ts` no longer exists)."
+      - "Any file stays under 400 lines; if the three view files grow, split by concept rather than by node."
+      - "DOM contract the tests pin: an out-of-date output gets the class `is-out-of-date` on its view root (an up-to-date one never does); the output view finds its cell by the `label` in the `#| label:` line of the preceding `code_cell`'s `options`, and re-evaluates when that cell's `code` changes; the output text is shown in the view; the task checkbox is an `input[type=checkbox]` that reflects `checked` and toggles it through a transaction on click; a math parse error shows the TeX source in an element with class `qmd-math-error` and no `svg`; the loader defaults to `() => import(\"@labshelf/core/math\")`."
+      - "The Run button, `onRunCell`, `onOpenLink` and the citation chip have no acceptance item here; they are checked by the user by hand in the app after session 5."
+    acceptance:
+      - {id: "4.3a", check: "jsdom test: task checkbox toggles `checked` in the document"}
+      - {id: "4.3b", check: "jsdom test: an output whose `source` differs from the hash of its cell code is marked out of date"}
+      - {id: "4.3c", check: "jsdom test: the math node view renders through a stubbed loader and shows the error class when the stub throws"}
+    tests:
+      hidden: [documents/plans/qmd-notes/tests/4.3/packages/core/__tests__/qmd/dom/nodeViews.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.3 --plan qmd-notes -- packages/core/__tests__/qmd/dom/nodeViews.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - packages/core/src/latex/hover/
+  - id: "4.4"
+    plan: qmd-notes
+    goal: A formatting toolbar (bold, italic, heading, list, task, inline math, display math, code cell, link) and `qmd-editor.css`, exported from core.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.3"]
+    edit:
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-400", why: "mount the toolbar on focus and wire its commands"}
+      - {path: packages/core/src/qmd/dom/index.ts, lines: "1-20", why: "export the toolbar and editor API"}
+      - {path: packages/core/src/ui/icons/renderIcon.ts, lines: "7-84", why: "add toolbar icon names to STROKE_GLYPHS if missing"}
+      - {path: packages/core/package.json, lines: "60-86", why: "add the `./styles/qmd-editor.css` entry to `exports`"}
+      - {path: packages/core/src/dom/index.ts, lines: "1-11", why: "one export line re-exporting the qmd/dom index"}
+    create:
+      - packages/core/src/qmd/dom/qmdToolbar.ts
+      - packages/core/src/qmd/dom/qmd-editor.css
+    read:
+      - {path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-129", why: "showMenu, MenuItem for toolbar menus"}
+      - {path: packages/core/src/ui/dom/widgets/quickInput.ts, lines: "1-145", why: "askInputBox for link insertion"}
+      - {path: packages/core/src/ui/icons/index.ts, lines: "1-5", why: "renderIcon and IconName"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "1-400", why: "editor view and commands the toolbar drives"}
+      - {path: packages/core/package.json, lines: "60-86", why: "exports styles entries"}
+      - {path: packages/core/src/dom/index.ts, lines: "1-11", why: "export list of the DOM entry"}
+    seams:
+      - {path: packages/core/src/qmd/dom/qmdToolbar.ts, signature: "export function mountQmdToolbar(root: HTMLElement, view: EditorView): { destroy(): void }"}
+    decided:
+      - "Buttons use core icons and core widget styles; link insertion uses `askInputBox` (the `quickInput` widget)."
+      - "CSS uses only `var(--ls-*)` tokens: no hard-coded colour, font, size, spacing, radius or shadow; exported as `\"./styles/qmd-editor.css\"` in `packages/core/package.json`."
+      - "The qmd/dom index is re-exported by `packages/core/src/dom/index.ts` with one line."
+      - "Keyboard: every toolbar action has a shortcut and an `aria-label`."
+      - "finish checks the editor against `documents/ui.md` and the module rules in `documents/code.md#modules`."
+    acceptance:
+      - {id: "4.4a", check: "typecheck passes; the toolbar uses core widgets and icons; qmd-editor.css holds only `var(--ls-*)` values"}
+      - {id: "4.4b", check: "every toolbar action has a shortcut and an aria-label"}
+    tests: {none: "UI checked by the user by hand in the app, after session 5"}
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs build core
+    do_not_touch:
+      - packages/core/src/ui/tokens/

@@ -1,0 +1,28 @@
+schema: session/v1
+id: "1"
+goal: Define LabShelf Markdown and its item files in a contract, and give core a byte-faithful parser and serializer for them.
+depends_on: []
+owns:
+  - documents/contracts/qmd-items.md
+  - packages/core/src/qmd/index.ts
+  - packages/core/src/qmd/itemFile.ts
+  - packages/core/src/qmd/itemUpdate.ts
+  - packages/core/src/qmd/cellOutput.ts
+  - packages/core/__tests__/qmd/
+status: done
+packages:
+  - id: "1.1"
+    plan: qmd-notes
+    goal: The `qmd-items` contract, item ids and anchors, item file parse/serialize and output blocks with source hash, built and reviewed before the YAML flow.
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit: []
+    create:
+      - documents/contracts/qmd-items.md
+      - packages/core/src/qmd/index.ts
+      - packages/core/src/qmd/itemFile.ts
+      - packages/core/src/qmd/itemUpdate.ts
+      - packages/core/src/qmd/cellOutput.ts
+    acceptance:
+      - {id: A1, check: "parse → serialize is byte-identical on fixtures; text outside items survives; unknown attributes survive; a malformed fence never loses text"}
+    tests: {none: "done before the YAML flow; its tests live in packages/core/__tests__/qmd/"}

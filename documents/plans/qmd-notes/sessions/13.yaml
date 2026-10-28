@@ -1,0 +1,268 @@
+schema: session/v1
+id: "13"
+goal: An equation from a note is inserted into a LaTeX or Typst manuscript with an origin comment, and the editor tells fresh, stale and diverged copies apart without ever overwriting a manuscript edit.
+depends_on: ["12"]
+owns:
+  - packages/core/src/writing/noteLinks/
+  - packages/core/src/writing/checks/
+  - packages/vscode/src/writing/
+  - packages/browser/src/writing/
+  - packages/vscode/package.json
+  - documents/contracts/qmd-items.md
+  - documents/contracts/links.md
+  - packages/core/__tests__/writing/noteLinks/
+  - packages/core/__tests__/writing/checks/
+  - packages/vscode/__tests__/writing/
+  - packages/browser/__tests__/writing/
+status: pending
+packages:
+  - id: "13.1"
+    plan: qmd-notes
+    goal: Find origin comments in a manuscript and compute each one's state (fresh, stale, diverged, both, missing).
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit: []
+    create:
+      - packages/core/src/writing/noteLinks/originComment.ts
+      - packages/core/src/writing/noteLinks/scanOrigins.ts
+      - packages/core/src/writing/noteLinks/originState.ts
+      - packages/core/src/writing/noteLinks/index.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "5-11", why: "Reuse: LaTeX scan and the insert snippet builders"}
+      - {path: packages/core/src/latex/source.ts, lines: "1-136", why: "removeComments, LatexRange and LatexPosition; scanLatexSource facts (labels, includes) to import, not change"}
+      - {path: packages/core/src/qmd/cellOutput.ts, lines: "1-75", why: "deriveCodeHash: the 12-hex-char SHA-256 shape the origin hash reuses"}
+      - {path: packages/core/src/hash/contentHash.ts, lines: "1-14", why: "deriveTextSha256Hex"}
+      - {path: packages/core/src/qmd/itemFile.ts, lines: "1-385", why: "parse an item file to find an equation by label inside an item body"}
+    seams:
+      - {path: packages/core/src/writing/noteLinks/originComment.ts, signature: "export function parseOriginComment(line: string): { notePath: string; label: string; hash: string } | undefined"}
+      - {path: packages/core/src/writing/noteLinks/originComment.ts, signature: "export function formatOriginComment(language: \"latex\" | \"typst\", origin: { notePath: string; label: string; hash: string }): string"}
+      - {path: packages/core/src/writing/noteLinks/originComment.ts, signature: "export function deriveOriginHash(latex: string): Promise<string>"}
+      - {path: packages/core/src/writing/noteLinks/scanOrigins.ts, signature: "export function scanOrigins(language: \"latex\" | \"typst\", text: string): ManuscriptOrigin[]"}
+      - {path: packages/core/src/writing/noteLinks/scanOrigins.ts, signature: "export interface ManuscriptOrigin { line: number; notePath: string; label: string; hash: string; insertedRange: LatexRange }"}
+      - {path: packages/core/src/writing/noteLinks/scanOrigins.ts, signature: "export function readOriginLatex(language: \"latex\" | \"typst\", text: string, origin: ManuscriptOrigin): string"}
+      - {path: packages/core/src/writing/noteLinks/originState.ts, signature: "export type OriginState = \"fresh\" | \"stale\" | \"diverged\" | \"both\" | \"missing\""}
+      - {path: packages/core/src/writing/noteLinks/originState.ts, signature: "export function deriveOriginState(origin: ManuscriptOrigin, manuscriptHash: string, note: { hash: string } | undefined): OriginState"}
+    decided:
+      - "`ManuscriptOrigin` is defined in `scanOrigins.ts` and re-exported with `OriginState`, `deriveOriginState` and the other functions from `noteLinks/index.ts`. `ManuscriptOrigin.line` is the zero-based line of the comment; `insertedRange` is a `LatexRange` (zero-based line and character) from the start of `\\begin{equation}` (Typst: the opening `$`) to the end of the comment line, so it replaces the whole insert."
+      - "`readOriginLatex(language, text, origin)` returns the manuscript text the hash covers (between `\\begin{equation}` and `\\label{…}`, or between the `$` pair for Typst), trimmed; `manuscriptHash` for `deriveOriginState` is `deriveOriginHash(readOriginLatex(…))`."
+      - "`deriveOriginHash(latex)` trims its input before hashing and returns lowercase 12-hex (`deriveTextSha256Hex(trimmed).slice(0, 12)`). `parseOriginComment` accepts the `%` and `//` markers in any line (trailing text before the marker is ignored) and returns `{notePath, label, hash}` only when the path, a non-empty label after `#` and a `@` plus exactly 12 lowercase hex chars are all present; anything else returns undefined."
+      - "D12: an inserted equation ends with `% labshelf: <note path>#<eq label> @<hash>` (Typst: `// labshelf: <note path>#<eq label> @<hash>`)."
+      - "`<note path>` is POSIX, relative to the project folder for project notes, `paper:<paper id>/notes.qmd` for paper notes."
+      - "`<eq label>` is the `{#eq-…}` label, or the output's `cell` label for an output."
+      - "`<hash>` is the first 12 hex chars of SHA-256 of the inserted LaTeX (the text between `\\begin{equation}` and `\\label{…}`, trimmed), the same hash function and length as `deriveCodeHash` in `packages/core/src/qmd/cellOutput.ts`."
+      - "LaTeX insert shape: `\\begin{equation}<latex>\\label{<eq label>}\\end{equation} % labshelf: …` on one block, the comment on the `\\end{equation}` line."
+      - "Typst insert shape: `$ <typst math> $ <<eq label>> // labshelf: …`. LaTeX to Typst math is converted only where `packages/core/src/writing/snippets.ts` or the typst domain already converts; otherwise Typst insert is offered for outputs with a `text` form only, and the picker says so."
+      - "`scanOrigins` takes manuscript text and returns `{line, notePath, label, hash, insertedRange}[]` (`ManuscriptOrigin`); the LaTeX range uses `LatexRange` from `packages/core/src/latex/source.ts`."
+      - "States in `originState.ts`: `fresh` = manuscript hash and note hash both equal `@hash`; `stale` = only the note changed; `diverged` = only the manuscript changed; `both` = both changed; `missing` = the note or the label is gone."
+      - "Note text is read through an injected reader; scanning runs on open and save, never per keystroke."
+      - "A malformed comment is ignored, not an error."
+      - "Placement: the folder `writing/noteLinks/` is kept; its files work together and the rest of `writing/` reaches them through `index.ts`."
+      - "finish checks this against documents/contracts/qmd-items.md#manuscript-links."
+    acceptance:
+      - {id: "13.1a", check: "parse and format round-trip for both languages"}
+      - {id: "13.1b", check: "fresh, stale, diverged and both are computed on fixtures"}
+      - {id: "13.1c", check: "a label removed from the note gives `missing`"}
+      - {id: "13.1d", check: "a malformed comment is ignored, not an error"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/13.1/packages/core/__tests__/writing/noteLinks/origins.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 13.1 --plan qmd-notes -- packages/core/__tests__/writing/noteLinks/origins.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - packages/core/src/latex/ (import only)
+      - packages/core/src/qmd/
+  - id: "13.2"
+    plan: qmd-notes
+    goal: '"Insert from note" lists equations and outputs of the project''s notes and the cited papers'' notes, and builds the insert text, the update edit and the diff texts.'
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["13.1"]
+    edit:
+      - {path: packages/core/src/writing/noteLinks/index.ts, lines: "1-12", why: "export the insertables, buildInsert, buildUpdate and diffOrigin API"}
+    create:
+      - packages/core/src/writing/noteLinks/noteInsertables.ts
+    read:
+      - {path: packages/core/src/writing/noteLinks/index.ts, lines: "1-12", why: "the origin API from 13.1"}
+      - {path: packages/core/src/qmd/projectNotes/projectNotesStore.ts, lines: "1-200", why: "ProjectNotesStore.list and read: the project notes to scan for equations (created by 9.1)"}
+      - {path: packages/core/src/qmd/paperNotes.ts, lines: "1-200", why: "PaperNotesStore.read: the notes of the cited papers to scan for equations (created by 6.1)"}
+      - {path: packages/core/src/qmd/cellOutput.ts, lines: "1-75", why: "findOutputs, CellOutputBlock and deriveCodeHash for output blocks and the out-of-date check (D3)"}
+      - {path: packages/core/src/writing/citations/index.ts, lines: "1-27", why: "findCitationSites, scanCiteKeys and derivePapersByCiteKey: cited keys to papers"}
+      - {path: packages/core/src/writing/snippets.ts, lines: "1-30", why: "createImageSnippet: the existing LaTeX/Typst insert builder to mirror"}
+      - {path: packages/core/src/writing/project/projectValues.ts, lines: "1-40", why: "values: leaves and keys the picker lists under Values"}
+      - {path: packages/core/src/writing/figures/index.ts, lines: "1-6", why: "figures: build state the picker lists under Figures"}
+    seams:
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, signature: "export interface NoteInsertable { notePath: string; label: string; latex: string; source: \"equation\" | \"output\"; title: string; outOfDate?: boolean }"}
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, signature: "export function listNoteInsertables(project: NoteInsertSource): Promise<NoteInsertable[]>"}
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, signature: "export function buildInsert(item: NoteInsertable, language: \"latex\" | \"typst\"): Promise<string>"}
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, signature: "export interface NoteInsertSource { listProjectNotes(): Promise<{ path: string; title: string }[]>; readProjectNote(path: string): Promise<string | undefined>; listCitedPaperIds(): Promise<string[]>; readPaperNote(paperId: string): Promise<string | undefined> }"}
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, signature: "export function buildUpdate(origin: ManuscriptOrigin, state: OriginState, item: NoteInsertable, language?: \"latex\" | \"typst\"): Promise<{ range: LatexRange; text: string } | undefined>"}
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, signature: "export function diffOrigin(origin: ManuscriptOrigin, manuscriptLatex: string, item: NoteInsertable): { manuscript: string; note: string }"}
+    decided:
+      - "`listNoteInsertables(project)` returns `{notePath, label, latex, source: \"equation\" | \"output\", title}[]` from `$$ … $$ {#eq-…}` equations in the project's notes and the notes of the papers the project cites, and from output blocks with `latex`."
+      - "Out-of-date outputs (D3 hash mismatch) are listed with a mark and are not insertable until rerun."
+      - "`NoteInsertSource` is a plain object of injected readers (no store class): `listProjectNotes` gives `{path, title}` with the POSIX project-relative path, `readProjectNote(path)` and `readPaperNote(paperId)` give the whole item-file text (`undefined` when absent), `listCitedPaperIds` gives the papers the project cites (resolved by the caller from `derivePapersByCiteKey`). Paper notes get `notePath` `paper:<paperId>/notes.qmd`."
+      - "Listing parses each note text with the item-file parser: a `$$ … $$ {#eq-…}` display equation gives `{source: \"equation\", label: <eq label>, latex: <tex trimmed>, title: <note title>}`; an output block (`findOutputs`) whose content holds a `$$ … $$` display block gives `{source: \"output\", label: <output.cell>, latex: <that tex trimmed>, title: <note title>}`; an output without such a block is not listed. Project notes come first in `listProjectNotes` order, then cited papers' notes in `listCitedPaperIds` order."
+      - "An output is out of date when `deriveCodeHash(code of the cell whose `#| label:` equals output.cell) !== output.source` (D3, the same rule as 4.3); it is listed with `outOfDate: true` (other items omit the field) and `buildInsert` rejects with an `Error` for it."
+      - "`buildInsert(item, \"latex\")` returns `\\begin{equation}\\n<latex>\\n\\label{<label>}\\n\\end{equation} % labshelf: <notePath>#<label> @<deriveOriginHash(latex)>` (no trailing newline), parseable by `scanOrigins`. `buildInsert(item, \"typst\")` rejects with an `Error` stating that Typst insert needs a LaTeX to Typst conversion, until a converter exists (the picker shows that message)."
+      - "`buildUpdate(origin, state, item, language = \"latex\")` returns `{range: origin.insertedRange, text: await buildInsert(item, language)}` (so the new latex and the new hash replace the whole inserted block); it returns undefined for `fresh` (nothing to do) and `missing`, and refuses (returns undefined) for `diverged` and `both`; nothing the user edited in the manuscript is ever overwritten."
+      - "`diffOrigin(origin, manuscriptLatex, item)` returns `{manuscript: manuscriptLatex, note: item.latex}`, the two LaTeX texts for a side-by-side view; it has no acceptance item here and is checked by the user by hand in the picker (13.7, 13.8)."
+      - "Figures and numbers reuse `labshelf.yaml` `figures:` and `values:`: a cell that writes `values/<name>.json` or a figure file listed under `figures:` is picked up by the existing machinery. Nothing new beyond listing them in the picker under \"Figures\" and \"Values\" with their existing insert snippets."
+      - "finish checks this against documents/contracts/qmd-items.md#manuscript-links."
+    acceptance:
+      - {id: "13.2a", check: "`listNoteInsertables` on a fixture `NoteInsertSource` with one project note (one `$$ … $$ {#eq-…}` equation, one up-to-date output with a `$$ … $$` result) and one cited paper note (one equation) returns the three insertables in order with notePath `notes/<file>.qmd` and `paper:<id>/notes.qmd`, correct label, latex, source and title"}
+      - {id: "13.2d", check: "`listNoteInsertables` lists an output whose `source` differs from the hash of its cell code with `outOfDate: true`, and `buildInsert` rejects for it"}
+      - {id: "13.2b", check: "insert text for LaTeX carries the origin comment"}
+      - {id: "13.2c", check: "update is refused on a diverged origin and on both"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/13.2/packages/core/__tests__/writing/noteLinks/noteInsertables.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 13.2 --plan qmd-notes -- packages/core/__tests__/writing/noteLinks/noteInsertables.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - labshelf.yaml readers (import only)
+  - id: "13.3"
+    plan: qmd-notes
+    goal: The problems list shows stale, diverged, both and missing copies with their location.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["13.1"]
+    edit:
+      - {path: packages/core/src/writing/checks/checklist.ts, lines: "1-265", why: "ChecklistInput gets `noteOrigins`, ChecklistItem gets the `noteOrigin` member, toItems and byKind place it in group `ref`"}
+      - {path: packages/core/src/writing/checks/checklistSignals.ts, lines: "1-116", why: "readChecklistSignals fills `noteOrigins` by scanning the project sources with scanOrigins and computing each state"}
+      - {path: packages/core/src/writing/checks/checklistSidebar.ts, lines: "1-186", why: "render a noteOrigin item as a row with its file, line and state"}
+      - {path: packages/core/src/writing/checks/index.ts, lines: "1-11", why: "export any new type"}
+      - {path: packages/core/__tests__/writing/checks/checklist.test.ts, lines: "258-282", why: "the `base` and `empty` ChecklistInput objects gain `noteOrigins: []` (beside 9.2's `noteTasks: []`)"}
+      - {path: packages/core/__tests__/writing/checks/checklistSignals.test.ts, lines: "170-182", why: "the empty-signals `toEqual` gains `noteOrigins: []` (beside 9.2's `noteTasks: []`)"}
+    create:
+      - packages/core/src/writing/checks/noteOrigins.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/comments-checklist.md, lines: "28-33", why: "Checklist section of the research"}
+      - {path: packages/core/src/writing/checks/noteTasks.ts, lines: "1-120", why: "NoteTask, the sibling note-derived signal added by 9.2 (created by 9.2); noteOrigins follows its pattern"}
+      - {path: packages/core/src/writing/noteLinks/index.ts, lines: "1-12", why: "scanOrigins and deriveOriginState from 13.1"}
+    seams:
+      - {path: packages/core/src/writing/checks/noteOrigins.ts, signature: "export type OriginNoteReader = (notePath: string, label: string) => Promise<{ hash: string } | undefined>"}
+      - {path: packages/core/src/writing/checks/noteOrigins.ts, signature: "export function readNoteOrigins(sources: readonly ChecklistSource[], readNote: OriginNoteReader): Promise<NoteOrigin[]>"}
+      - {path: packages/core/src/writing/checks/noteOrigins.ts, signature: "export interface NoteOrigin { file: string; line: number; notePath: string; label: string; state: \"stale\" | \"diverged\" | \"both\" | \"missing\" }"}
+      - {path: packages/core/src/writing/checks/checklistSignals.ts, signature: "export function readChecklistSignals(context: ProjectReadContext, project: ReadyProject, readNote?: OriginNoteReader): Promise<ChecklistSignals>"}
+    decided:
+      - "`NoteOrigin.line` is the zero-based line of the origin comment (the sidebar row shows it one-based); `readNoteOrigins` scans every source with `scanOrigins(source.format, source.text)`, computes `manuscriptHash` from `readOriginLatex` and the state with `deriveOriginState`, and drops `fresh`. `ChecklistSignals` gains `noteOrigins: NoteOrigin[]`, `[]` when `readNote` is absent or the signals are empty; the apps pass a reader over the project notes and cited papers' notes."
+      - "`noteOrigins` is a required field of `ChecklistInput`. Sidebar row label: `<file>:<line, one-based> — <state>` (file shown as its path, state as the lowercase word), key `noteOrigin:<file>:<line>`; clicking opens the file at that line like a `ref` row."
+      - "Input field `noteOrigins: {file, line, notePath, label, state}[]` holding stale, diverged, both and missing only; fresh origins are not listed."
+      - "Union member `{kind: \"noteOrigin\", done: false, origin}` of `ChecklistItem`; it sits in group `ref`."
+      - "The `noteTasks` field and `noteTask` member that session 9 (9.2, `packages/core/src/writing/checks/noteTasks.ts`) added to the same files stay as they are; `noteOrigins` is added beside them."
+      - "The checklist reads live in `writing/checks/`, which is flat after the core reorganization; keep to the 400-line file limit by moving the noteOrigin reading to a new file of that folder if `checklistSignals.ts` would pass it."
+    acceptance:
+      - {id: "13.3a", check: "one stale and one diverged origin appear in the problems; fresh ones do not"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/13.3/packages/core/__tests__/writing/checks/noteOrigins.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 13.3 --plan qmd-notes -- packages/core/__tests__/writing/checks/noteOrigins.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - the checklist.json file format (parseChecklistFile, serializeChecklistFile)
+  - id: "13.4"
+    plan: qmd-notes
+    goal: The contract `qmd-items.md#manuscript-links` states the origin comment grammar, path forms, hash rule, the five states and the never-overwrite rule, with one link from `links.md`.
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["13.1"]
+    edit:
+      - {path: documents/contracts/qmd-items.md, lines: "1-60", why: "add the section `#manuscript-links` after the merge section"}
+      - {path: documents/contracts/links.md, lines: "1-40", why: "one line linking to qmd-items.md#manuscript-links"}
+    read:
+      - {path: documents/contracts/qmd-items.md, lines: "42-60", why: "outputs and merge sections: style and neighbouring facts"}
+    decided:
+      - "Content: origin comment grammar for LaTeX and Typst, path forms, hash rule, the five states and the never-overwrite rule. Present tense, each fact once."
+      - "finish checks the section against the code of 13.1 and 13.2."
+    acceptance:
+      - {id: "13.4a", check: "grammar and states are described once in `#manuscript-links`, and `links.md` links to it in one line"}
+    tests: {none: "docs"}
+  - id: "13.6"
+    plan: qmd-notes
+    goal: Design the "Insert from note" picker, the state mark on an origin line, the update action and the side-by-side diff.
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["13.2"]
+    edit: []
+    read:
+      - {path: documents/ui.md, lines: "1-60", why: "Principles, Where things are and How to design (find the line ranges with `node scripts/docs/doc.mjs ui`)"}
+      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "1-30", why: "Reuse of core widgets and the editor"}
+    decided:
+      - "Design from `documents/ui.md`: the picker (groups: Equations, Outputs, Figures, Values; source note shown), the state mark on an origin line (fresh none, stale, diverged, missing), the update action and the side-by-side diff. Components, tokens and states (empty, loading, error, narrow, light and dark, keyboard focus), no pixel values or colours."
+    acceptance:
+      - {id: "13.6a", check: "outcome written into the decided of 13.7 and 13.8"}
+    tests: {none: "design, no code"}
+  - id: "13.7"
+    plan: qmd-notes
+    goal: 'VS Code gets the command "Insert from note", a hover with state and diff, and a code action "Update from note" on stale origins.'
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["13.2", "13.3", "13.6"]
+    edit:
+      - {path: packages/vscode/src/writing/citations/index.ts, lines: "1-5", why: "export the new registration if it sits beside the citation providers"}
+      - {path: packages/vscode/src/writing/index.ts, lines: "1-14", why: "export and wire the note-link registration"}
+      - {path: packages/vscode/package.json, lines: "360-540", why: "contributes.commands: register `labshelf.writing.insertFromNote` and `labshelf.writing.updateFromNote`"}
+    create:
+      - packages/vscode/src/writing/noteLinks.ts
+      - packages/vscode/__tests__/writing/noteLinks.test.ts
+    read:
+      - {path: packages/vscode/src/writing/citations/hover.ts, lines: "96-116", why: "an existing HoverProvider"}
+      - {path: packages/vscode/src/writing/citations/editing.ts, lines: "1-266", why: "command registration and code actions for insert (registerInsertActions)"}
+      - {path: packages/core/src/writing/noteLinks/index.ts, lines: "1-12", why: "the API from 13.1 and 13.2"}
+      - {path: packages/core/src/ui/dom/widgets/quickInput.ts, lines: "1-145", why: "picker widget (core), if the VS Code QuickPick is not used"}
+      - {path: packages/vscode/src/writing/projects/commands.ts, lines: "1-60", why: "how writing commands are registered"}
+    seams:
+      - {path: packages/vscode/src/writing/noteLinks.ts, signature: "export function registerNoteLinks(context: vscode.ExtensionContext, deps: NoteLinkDeps): void"}
+    decided:
+      - "Command \"Insert from note\", hover with state and diff, code action \"Update from note\" on stale origins; the commands are registered in `package.json`."
+      - "A diverged or both origin shows a diff via `vscode.diff` on two virtual documents; no write action exists for it."
+      - "State is recomputed on open and save, never per keystroke; the update applies one WorkspaceEdit."
+      - "UI follows the outcome of 13.6 (written into this decided by the main thread)."
+    acceptance:
+      - {id: "13.7a", check: "typecheck and vscode tests pass"}
+      - {id: "13.7b", check: "A10 is checked by hand in VS Code: insert an equation (origin comment written), edit the note (stale, update action), edit the manuscript (diverged, nothing overwritten)"}
+    tests: {none: "glue and UI, checked by the user by hand in the app"}
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+    do_not_touch:
+      - packages/core/
+  - id: "13.8"
+    plan: qmd-notes
+    goal: The CodeMirror source editor gets the insert command, a line decoration with the state, an "Update from note" action and a diff popover.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["13.2", "13.3", "13.6"]
+    edit:
+      - {path: packages/browser/src/writing/editor.ts, lines: "1-392", why: "add the note-link extension to the CodeMirror extensions of the mount"}
+    create:
+      - packages/browser/src/writing/noteLinks.ts
+      - packages/browser/__tests__/writing/noteLinks.test.ts
+    read:
+      - {path: packages/browser/src/writing/editor.ts, lines: "1-392", why: "the mount and the existing extensions and theme"}
+      - {path: packages/browser/src/writing/source.ts, lines: "1-360", why: "the source editor actions and citation hooks (and the session 9 cite-site gutter, if it sits here)"}
+      - {path: packages/core/src/writing/noteLinks/index.ts, lines: "1-12", why: "the API from 13.1 and 13.2"}
+      - {path: packages/core/src/ui/dom/widgets/quickInput.ts, lines: "1-145", why: "picker widget"}
+      - {path: packages/core/src/ui/dom/widgets/dialog.ts, lines: "1-200", why: "mountOverlay for the diff popover"}
+    seams:
+      - {path: packages/browser/src/writing/noteLinks.ts, signature: "export function noteLinkExtension(deps: NoteLinkDeps): Extension"}
+    decided:
+      - "Insert command, line decoration with the state, \"Update from note\" action and a diff popover in the CodeMirror source editor."
+      - "State is recomputed on open and save; the update applies one CodeMirror transaction; a diverged or both origin offers the diff and no write."
+      - "UI follows the outcome of 13.6 (written into this decided by the main thread)."
+    acceptance:
+      - {id: "13.8a", check: "typecheck and browser tests pass"}
+      - {id: "13.8b", check: "A10 is checked by hand in the browser: insert an equation (origin comment written), edit the note (stale, update action), edit the manuscript (diverged, nothing overwritten)"}
+    tests: {none: "glue and UI, checked by the user by hand in the app"}
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/
+      - packages/browser/src/collab/

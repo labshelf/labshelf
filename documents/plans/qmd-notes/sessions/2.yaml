@@ -1,0 +1,27 @@
+schema: session/v1
+id: "2"
+goal: Conflict copies of `.qmd` item files merge item by item in projects, paper folders and Space folders, so two offline additions never produce conflict markers.
+depends_on: ["1"]
+owns:
+  - packages/core/src/qmd/mergeItemFiles.ts
+  - packages/core/src/writing/textMerge.ts
+  - packages/core/src/writing/conflict/node/itemFileMerge.ts
+  - documents/contracts/sync.md
+  - documents/contracts/library-format.md
+  - documents/contracts/spaces.md
+  - documents/contracts/qmd-items.md
+  - packages/core/__tests__/qmd/mergeItemFiles.test.ts
+status: done
+packages:
+  - id: "2.1"
+    plan: qmd-notes
+    goal: Three-way block merge of item files (D4), wired into project, paper-folder and Space conflict scans, with the merge rules in `qmd-items.md#merge`; built and reviewed before the YAML flow.
+    level: contract
+    runner: {agent: implementer, model: opus}
+    edit: []
+    create:
+      - packages/core/src/qmd/mergeItemFiles.ts
+      - packages/core/src/writing/conflict/node/itemFileMerge.ts
+    acceptance:
+      - {id: A2, check: "two offline appends both survive without markers; delete vs untouched stays deleted; delete vs edit stays edited"}
+    tests: {none: "done before the YAML flow; its tests live in packages/core/__tests__/qmd/ and packages/core/__tests__/writing/"}

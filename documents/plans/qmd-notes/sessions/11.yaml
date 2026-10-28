@@ -1,0 +1,250 @@
+schema: session/v1
+id: "11"
+goal: Python with SymPy is a managed tool under `<shared root>/python/`, pinned by version and SHA-256, installed on demand from the app through the helper or by an installer option.
+depends_on: ["9"]
+owns:
+  - packages/core/src/qmd/compute/pythonPin.ts
+  - packages/core/src/latex/node/texInstallers.ts
+  - packages/core/src/helper/helperPaths.ts
+  - packages/core/src/helper/helperClientConnection.ts
+  - packages/core/src/qmd/compute/node/
+  - packages/core/src/helper/helperMessages.ts
+  - packages/core/src/helper/parseHelperMessage.ts
+  - packages/core/src/helper/helperClient.ts
+  - packages/core/src/helper/node/runHelperHost.ts
+  - packages/core/src/helper/node/helperHandlers.ts
+  - packages/core/src/helper/node/pythonHandlers.ts
+  - packages/core/src/helper/node/index.ts
+  - packages/browser/src/helper/
+  - packages/terminal/installers/
+  - packages/terminal/src/helper/helperEntry.ts
+  - packages/terminal/src/helper/installPythonFlag.ts
+  - documents/contracts/managed-tools.md
+  - documents/contracts/helper.md
+  - packages/core/__tests__/qmd/compute/
+  - packages/core/__tests__/helper/
+  - packages/browser/__tests__/helper/
+  - packages/terminal/__tests__/helper/
+status: pending
+packages:
+  - id: "11.1"
+    plan: qmd-notes
+    goal: "`createSharedPythonProvider` builds a provider that reports status and installs python-build-standalone plus SymPy and mpmath wheels under the shared tools lock."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: []
+    edit:
+      - {path: packages/core/src/latex/node/texInstallers.ts, lines: "33-50", why: "add `export` to withStagingDir and findSingleTopDir (no other change)"}
+    create:
+      - packages/core/src/qmd/compute/pythonPin.ts
+      - packages/core/src/qmd/compute/node/managedPython.ts
+      - packages/core/src/qmd/compute/node/installPython.ts
+      - packages/core/src/qmd/compute/node/index.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/helper.md, lines: "5-21", why: "Contracts and Managed TeX"}
+      - {path: packages/core/src/latex/toolchain.ts, lines: "1-70", why: "TeX toolchain status shape to mirror"}
+      - {path: packages/core/src/latex/node/managedTex.ts, lines: "1-364", why: "resolveSharedToolsDir, withToolLock, createManagedTexProvider, createSharedTexProvider: the shape to follow"}
+      - {path: packages/core/src/latex/node/verify.ts, lines: "1-219", why: "downloadVerified and extractArchive"}
+      - {path: packages/core/src/latex/node/texInstallers.ts, lines: "1-331", why: "stage, extract, single top dir, quarantine and swap-in steps of the TeX install"}
+    seams:
+      - {path: packages/core/src/qmd/compute/pythonPin.ts, signature: "export const PYTHON_PIN: PythonPin"}
+      - {path: packages/core/src/qmd/compute/pythonPin.ts, signature: "export interface PythonPin { release: string; version: string; archives: Record<PythonPlatform, { url: string; sha256: string }>; wheels: { sympy: PythonWheel; mpmath: PythonWheel } }"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export type PythonStatus = { state: \"missing\" } | { state: \"installed\"; version: string; sympy: string }"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export interface PythonProvider { status(): Promise<PythonStatus>; install(onProgress?: (message: string, fraction?: number) => void): Promise<PythonStatus>; pythonPath?(): string }"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export interface ManagedPythonOptions { root: string; platform: NodeJS.Platform; arch?: string; logger: ILogger; fetchImpl: FetchLike; execFileImpl?: RunFile }"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export interface SharedPythonOptions { env: NodeJS.ProcessEnv; platform: NodeJS.Platform; homeDir: string; logger: ILogger; fetchImpl: FetchLike }"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export function managedPythonPaths(root: string, platform: NodeJS.Platform, version: string): { python: string; sitePackages: string }"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export function createManagedPythonProvider(options: ManagedPythonOptions): PythonProvider"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, signature: "export function createSharedPythonProvider(options: SharedPythonOptions): PythonProvider"}
+    decided:
+      - "D11: Python + SymPy is a managed tool under `<shared root>/python/`, pinned by version and SHA-256 like TeX. No Pyodide, nothing bundled in the extension."
+      - "Pin `packages/core/src/qmd/compute/pythonPin.ts` (runtime-neutral data): python-build-standalone release tag and Python version, one `{url, sha256}` per `darwin-arm64`, `darwin-x64`, `linux-x64`, `linux-arm64`, `win32-x64` (`install_only` archives); `sympy` and `mpmath` pure-Python wheels `{version, url, sha256}`."
+      - "Node code is flat in `packages/core/src/qmd/compute/node/` (documents/code.md#modules: one concept per file, a file under 80 lines used by one file belongs in it): `managedPython.ts` (layout, status, install under `withToolLock(root, \"install\", logger, …)`; the shared factory with root `resolveSharedToolsDir(...)/\"python\"`), `installPython.ts` (download each archive with `downloadVerified`, stage in the staging dir, extract and take the single top dir, install wheels by unzipping into `site-packages` (a wheel is a zip; no pip run), clear quarantine on macOS, swap in), `index.ts` (exports managedPython.ts's public names)."
+      - "Layout: the archive's single top dir (python-build-standalone `install_only`, top dir `python/`) becomes the contents of `<root>`: `managedPythonPaths` gives the interpreter `<root>/bin/python3` and site-packages `<root>/lib/python<major.minor>/site-packages` (major.minor from `PYTHON_PIN.version`), and on win32 `<root>/python.exe` and `<root>/Lib/site-packages`. The hidden test fixture also carries `bin/<arch>/python` files; the implementation relies only on these paths."
+      - "Status (no lock, creates nothing on disk): installed when the interpreter file and `<sitePackages>/sympy-<pin sympy version>.dist-info` both exist; it reports `{state: \"installed\", version: PYTHON_PIN.version, sympy: PYTHON_PIN.wheels.sympy.version}` with exactly these three keys, else `{state: \"missing\"}`."
+      - "`pythonPath()` returns the interpreter path of `managedPythonPaths` whether or not it is installed; the managed and shared providers implement it. It is optional on the interface so fakes with only status and install stay valid; session 12's runner treats a provider without it as missing Python."
+      - "Archive key `${platform}-${arch}` with `arch` defaulting to `process.arch`; a key missing from `PYTHON_PIN.archives` throws `no Python build for <key>`. Every archive is `.tar.gz` (extractArchive kind `tar.gz`)."
+      - "Install, inside the lock: when `<root>/.pin.json` equals the JSON of `{release, version, archive: <this key's {url, sha256}>, wheels}` of the current pin, return status without downloading (the recheck that makes a concurrent second install a no-op); otherwise download and verify the archive and both wheels with `downloadVerified` before anything is written, then in `withStagingDir(root, \"python\", …)`: extract, `findSingleTopDir`, unzip the wheels into the staged tree's site-packages, then swap in: remove every entry of `<root>` except `.lock` and `.staging-*`, rename each child of the staged top dir into `<root>`, write `.pin.json` last. On darwin run `removeQuarantine(root, …)` after the swap. A failed install leaves the previous install and `.pin.json` as they were."
+      - "Wheel unzip without external tools (GNU tar on Linux cannot read zip): read the end-of-central-directory record and central directory with Buffer, inflate method 8 with `zlib.inflateRawSync`, copy method 0, reject other methods and entry names that are absolute or contain `..`; directories come from the entry paths. Lives in installPython.ts."
+      - "Progress: `onProgress(message, fraction)` with fractions in 0..1 (downloads, extract, wheels, 1 at the end)."
+      - "Reuse `resolveSharedToolsDir`, `withToolLock`, `downloadVerified` and `extractArchive` from `packages/core/src/latex/node/` by import; the staging-dir, single-top-dir and clear-quarantine helpers of the TeX install are imported too (find them with `node scripts/code/facts.mjs fn 'stage install dir'` or `def`); never copy. `withStagingDir` and `findSingleTopDir` are private to `texInstallers.ts`: add `export` to both (the only edit under packages/core/src/latex/); `removeQuarantine` and `RunFile` are already exported."
+      - "Status is `{state: \"missing\"} | {state: \"installed\", version, sympy}`. A system Python is not used (pinned SymPy is the contract for reproducible outputs)."
+      - "Progress and failures go through `ILogger`; a hash mismatch aborts before anything is written."
+    acceptance:
+      - {id: "11.1a", check: "install from local fixture archives into a temp root yields a layout whose status is installed with version and sympy"}
+      - {id: "11.1b", check: "a hash mismatch leaves no folder"}
+      - {id: "11.1c", check: "a second install under the lock waits and rechecks instead of installing twice"}
+      - {id: "11.1d", check: "status reads without taking the lock"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/11.1/packages/core/__tests__/qmd/compute/node/managedPython.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 11.1 --plan qmd-notes -- packages/core/__tests__/qmd/compute/node/managedPython.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/core/src/latex/node/managedTex.ts
+      - packages/core/src/latex/node/verify.ts
+  - id: "11.2"
+    plan: qmd-notes
+    goal: The browser asks the helper to install Python and learns whether it is installed.
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["11.1"]
+    edit:
+      - {path: packages/core/src/helper/helperMessages.ts, lines: "1-94", why: "installPython message, progress phase python, ready.python, PROTOCOL_VERSION bump (now 5 at :9, PROGRESS_PHASES :26)"}
+      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "1-319", why: "guard for installPython"}
+      - {path: packages/core/src/helper/helperClient.ts, lines: "1-189", why: "client exposes ready.python and sends installPython"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "1-86", why: "spread the python handlers, queued, and give ready its python status"}
+      - {path: packages/core/src/helper/node/helperHandlers.ts, lines: "1-200", why: "ready carries python at the hello (:52 sends ready with texStatus)"}
+      - {path: packages/core/src/helper/node/index.ts, lines: "1-18", why: "export the python handlers"}
+      - {path: packages/core/src/helper/helperPaths.ts, lines: "85-89", why: "HelperState ready gains python?"}
+      - {path: packages/core/src/helper/helperClientConnection.ts, lines: "154-158", why: "deriveHelperStatus copies ready.python when present"}
+      - {path: packages/core/__tests__/helper/parseHelperMessage.test.ts, lines: "41-41", why: "asserts PROTOCOL_VERSION 5: becomes 6"}
+    create:
+      - packages/core/src/helper/node/pythonHandlers.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/helper.md, lines: "22-27", why: "Handlers"}
+      - {path: packages/core/src/qmd/compute/node/managedPython.ts, lines: "1-400", why: "PythonProvider from 11.1 (whole file)"}
+    seams:
+      - {path: packages/core/src/helper/node/pythonHandlers.ts, signature: "export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }"}
+      - {path: packages/core/src/helper/node/pythonHandlers.ts, signature: "export function createPythonHandlers(options: PythonHandlersOptions): { installPython: HelperHandler }"}
+      - {path: packages/core/src/helper/node/helperHandlers.ts, signature: "HelloOptions gains `pythonStatus?(): Promise<PythonStatus>`; when given, the hello `ready` carries `python: status.state`"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, signature: "HelperHostOptions gains `python?: PythonProvider`"}
+      - {path: packages/core/src/helper/helperMessages.ts, signature: "Envelope<\"ready\"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexToolchain; python?: \"missing\" | \"installed\" }"}
+    decided:
+      - "Message `installPython {}` produces `progress` (new phase `python` in `PROGRESS_PHASES`) then `ready`; `ready` gains an optional `python: \"missing\" | \"installed\"` (the parser rejects any other value with `invalid-field` and keeps it absent when absent). The hello `ready` and the `installPython` `ready` always carry it; the TeX install replies do not (they stay unchanged), and the client keeps the last known `python` when a `ready` omits it."
+      - "installPython handler: throws if handed another type (like the TeX handlers); sends `{type: \"progress\", phase: \"python\", message: \"Installing Python\", fraction?}` for each provider progress callback (fraction only when given), then `{type: \"ready\", protocol: PROTOCOL_VERSION, helperVersion, host, tex: await texStatus(), python: <installed status>.state}` with the request id. When install throws: log through `logger.error`, send `{type: \"error\", code: \"python-install-failed\", message: formatError(error)}` with the request id, and no ready."
+      - "runHelperHost builds `options.python ?? createSharedPythonProvider({env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch})`, spreads `createPythonHandlers({python, texStatus: () => tex.status(), helperVersion, host, logger})` into the handlers and passes `pythonStatus: () => python.status()` to answerHello. Handler map type is `HelperHandlers` from helperHandlers.ts."
+      - "Handler file `packages/core/src/helper/node/pythonHandlers.ts` is modelled on the TeX install handlers in `helperHandlers.ts` and spread into `runHelperHost.ts`. Queued (not UNQUEUED). The provider defaults to `createSharedPythonProvider` when `runHelperHost` options give none, so no app wiring changes."
+      - "Bump `PROTOCOL_VERSION` by one (documents/code.md#messages: a changed message raises the version)."
+      - "finish checks this against documents/contracts/helper.md."
+    acceptance:
+      - {id: "11.2a", check: "guard test: `installPython` passes the parser and a malformed one is dropped"}
+      - {id: "11.2b", check: "createPythonHandlers with a fake provider: installPython sends progress with phase python (one per provider callback, same id) then ready with python installed and tex from texStatus; a provider whose install throws yields one error with code python-install-failed and no ready; answerHello with pythonStatus returning missing sends a ready with python missing"}
+      - {id: "11.2c", check: "PROTOCOL_VERSION is one higher and a client with the old version is refused"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/11.2/packages/core/__tests__/helper/parseInstallPython.test.ts
+        - documents/plans/qmd-notes/tests/11.2/packages/core/__tests__/helper/node/pythonHandlers.test.ts
+      command: "node scripts/agents/run.mjs test core --spec 11.2 --plan qmd-notes -- packages/core/__tests__/helper/parseInstallPython.test.ts packages/core/__tests__/helper/node/pythonHandlers.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core"
+    do_not_touch:
+      - packages/core/src/helper/node/helperBuild.ts
+      - packages/core/src/helper/node/projectHandlers.ts
+  - id: "11.3"
+    plan: qmd-notes
+    goal: "`managed-tools.md` and `helper.md` describe Python beside TeX, each fact once."
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["11.1", "11.2"]
+    edit:
+      - {path: documents/contracts/managed-tools.md, lines: "1-31", why: "tool folders tex/ and python/, layout, pin, installed rule, same lock"}
+      - {path: documents/contracts/helper.md, lines: "1-51", why: "installPython, ready.python, progress phase python, protocol version"}
+    create: []
+    read:
+      - {path: documents/contracts/managed-tools.md, lines: "1-31", why: "the TeX sections to sit beside"}
+    decided:
+      - "managed-tools.md: tool folders are `tex/` and `python/`; Python layout, pin (version + SHA-256 per OS/arch, wheels by SHA-256), installed rule, same lock. helper.md: `installPython`, `ready.python`, `progress` phase `python`, protocol version. Present tense, each fact once."
+      - "finish checks the protocol and managed layout against documents/contracts/helper.md and documents/contracts/managed-tools.md."
+    acceptance:
+      - {id: "11.3a", check: "Python is described once beside TeX in managed-tools.md and the new message, field, phase and version once in helper.md"}
+    tests: {none: "docs"}
+    commands: []
+  - id: "11.5"
+    plan: qmd-notes
+    goal: Design the setup row Python for calculations in the browser helper setup card.
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: []
+    edit: []
+    create: []
+    read:
+      - {path: documents/ui.md, lines: "1-32", why: "principles, where things are, how to design"}
+      - {path: documents/plans/qmd-notes/research/helper.md, lines: "28-32", why: "Installer and browser"}
+    decided:
+      - "The row has three states: not installed with an Install action, installing with progress, installed with the version."
+    acceptance:
+      - {id: "11.5a", check: "outcome written into the decided of 11.6"}
+    tests: {none: "design, no code"}
+    commands: []
+  - id: "11.6"
+    plan: qmd-notes
+    goal: The setup card shows the Python row and sends `installPython`.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["11.2", "11.5"]
+    edit:
+      - {path: packages/browser/src/helper/setup.ts, lines: "1-303", why: "the Python row, its three states, Install and progress"}
+      - {path: packages/browser/src/helper/client.ts, lines: "1-56", why: "expose ready.python and installPython if the client wrapper needs it"}
+      - {path: packages/browser/src/helper/setupProgress.css, lines: "1-6", why: "row styles, tokens only"}
+    create: []
+    read:
+      - {path: packages/core/src/helper/helperClient.ts, lines: "1-189", why: "client API from 11.2"}
+      - {path: packages/browser/__tests__/helper/setup.test.ts, lines: "1-340", why: "existing setup tests to extend"}
+    decided:
+      - "The row reads `ready.python`; Install sends `installPython` and shows `progress`; failures show the helper error text. Tokens only."
+      - "The design outcome of 11.5 is appended here before the run."
+      - "Browser A9 (part): without Python, the setup state shows Python for calculations: not installed with an install action."
+    acceptance:
+      - {id: "11.6a", check: "the row shows not installed, installing with progress, and installed with version, and Install sends installPython"}
+      - {id: "11.6b", check: "a failed install shows the helper error text"}
+      - {id: A9, check: "without Python the browser setup state shows Python for calculations: not installed with an install action; installing puts a working Python + SymPy in the shared root python folder; VS Code and the terminal resolve it (proved with 11.1 and 11.7; Run and cancel are checked in session 12)"}
+    tests: {none: "UI checked by the user by hand in the app"}
+    commands:
+      - "node scripts/agents/run.mjs typecheck browser"
+      - "node scripts/agents/run.mjs test browser"
+    do_not_touch:
+      - packages/core/
+  - id: "11.7"
+    plan: qmd-notes
+    goal: Each helper installer offers Python for calculations and runs the same install through the helper binary.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["11.1"]
+    edit:
+      - {path: packages/terminal/src/helper/helperEntry.ts, lines: "1-125", why: "accept --install-python (MANAGEMENT_FLAGS at :74, flag dispatch at :99)"}
+      - {path: packages/terminal/installers/windows/labshelf-helper.iss, lines: "1-42", why: "[Tasks] entry installpython and a [Run] line"}
+      - {path: packages/terminal/installers/macos/build-pkg.sh, lines: "1-26", why: "pkg choice that runs a postinstall calling the flag"}
+      - {path: packages/terminal/installers/macos/distribution.xml, lines: "1-14", why: "the optional pkg choice"}
+      - {path: packages/terminal/installers/macos/scripts/postinstall, lines: "1-11", why: "call the flag when the choice is selected, never failing the install"}
+      - {path: packages/terminal/installers/linux/build-linux.sh, lines: "1-53", why: "--with-python flag of the install script"}
+    create:
+      - packages/terminal/src/helper/installPythonFlag.ts
+    read:
+      - {path: documents/plans/qmd-notes/research/helper.md, lines: "28-32", why: "Installer and browser"}
+      - {path: packages/terminal/build/sea.mjs, lines: "1-171", why: "how the helper entry is built, to find where the flag is handled"}
+    decided:
+      - "D15: the helper binary accepts `--install-python` (calls the shared Python provider's `install`, exits non-zero with a message on failure)."
+      - "Windows: `[Tasks]` entry `installpython` unchecked by default and a `[Run]` line with `Tasks: installpython`. macOS: a pkg choice that runs a postinstall calling the flag. Linux: `--with-python` flag of the install script."
+      - "A failed Python install never fails the helper install."
+      - "Test the flag handler against a fake provider; the handler takes the provider as a parameter so the test needs no network."
+      - "`runInstallPython` calls `provider.install` once, passing progress messages to `write`; on success it writes one line naming the installed Python version and returns 0; when install throws or resolves `missing` it writes one line starting `Python install failed:` with the error text and returns 1. It never throws. helperEntry.ts calls it with `createSharedPythonProvider` and exits with its code."
+    seams:
+      - {path: packages/terminal/src/helper/installPythonFlag.ts, signature: "export async function runInstallPython(provider: PythonProvider, write: (message: string) => void): Promise<number>"}
+    acceptance:
+      - {id: "11.7a", check: "runInstallPython with a fake provider calls install once and returns 0 after a success; returns 1 and writes a message starting `Python install failed:` when install throws or resolves missing; never throws"}
+    tests:
+      hidden:
+        - documents/plans/qmd-notes/tests/11.7/packages/terminal/__tests__/helper/installPythonFlag.test.ts
+      command: "node scripts/agents/run.mjs test terminal --spec 11.7 --plan qmd-notes -- packages/terminal/__tests__/helper/installPythonFlag.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck terminal"
+      - "node scripts/agents/run.mjs test terminal"
+    do_not_touch:
+      - packages/core/
+  - id: "11.8"
+    plan: qmd-notes
+    goal: Check by hand that each helper installer offers Python for calculations and that a failed Python install does not fail the helper install.
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["11.7"]
+    edit: []
+    create: []
+    read: []
+    acceptance:
+      - {id: "11.8a", check: "each installer (Windows task installpython, macOS pkg choice, Linux --with-python) has the option, runs the helper with --install-python when chosen, and a failed Python install does not fail the helper install"}
+    tests: {none: "checked by the user by hand in the app"}
+    commands: []

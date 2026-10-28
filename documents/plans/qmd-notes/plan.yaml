@@ -1,0 +1,425 @@
+schema: plan/v1
+slug: qmd-notes
+title: Notes in Quarto Markdown everywhere
+status: in_progress
+level: N3
+goal: >-
+  Every place a user writes outside LaTeX or Typst (paper notes, text boxes on a PDF page, project notes, comments and
+  review suggestions, Space notes and discussions) is Quarto Markdown underneath, edited in one rich editor that never
+  shows the syntax. One `.qmd` file holds every item of one case (all notes of a paper, one discussion thread), and
+  LabShelf shows the items one by one. Notes carry math, code cells with their results, and links back to papers; they
+  feed the project checklist and the manuscript, and code cells run in an optional Python that the user chooses to
+  install through the helper.
+decisions:
+  - id: D1
+    text: >-
+      The format is "LabShelf Markdown": a defined subset of Quarto Markdown, specified in the contract
+      `documents/contracts/qmd-items.md`. Code lives in the core domain `packages/core/src/qmd/` (runtime-neutral root,
+      `dom/` for the editor).
+    why: One format, one parser, one editor for every writing field.
+  - id: D2
+    text: >-
+      One file per case. Each item is a fenced div `::: {#<id> .labshelf-item anchor="…" author="…" created="…"}` …
+      `:::`. Ids are `n-` + ULID. An anchor is `hl:<annotation id>`, `p<page> box <x> <y> <w> <h>`,
+      `quote:<base64url JSON of quote, prefix and suffix>`, or absent. Text outside any item is kept and shown as an item
+      without anchor; nothing a user wrote is ever dropped.
+    why: Few files, readable in Quarto, safe against hand edits.
+  - id: D3
+    text: >-
+      A cell result is stored inside the file, right after its cell, as `::: {.labshelf-output cell="<label>"
+      source="<first 12 hex characters of the SHA-256 of the cell code without its #| lines>" engine="…" ran="…"}`. A
+      result whose `source` does not match the cell code shows as out of date.
+    why: A note or a message carries its results; the receiver sees them without running anything.
+  - id: D4
+    text: >-
+      `.qmd` item files merge by block: three-way against the existing per-device base, keyed by item id (union of new
+      items, one-sided edits kept, deletes honoured, edit beats delete, both-sided edits merged as text inside the item).
+      Applies in projects, paper folders and Space folders.
+    why: Line merge turns two appends into conflict markers.
+  - id: D5
+    text: >-
+      Rich editor on ProseMirror. The schema and the `.qmd` ↔ ProseMirror conversion live in
+      `packages/core/src/qmd/editor/` and round-trip byte for byte on files LabShelf wrote; the DOM editor lives under
+      `packages/core/src/qmd/dom/`. Math renders through `@labshelf/core/math` (MathJax SVG), loaded lazily.
+    why: The user asked for an editor that never shows syntax.
+  - id: D6
+    text: >-
+      Paper notes live in `.research/papers/<id>/notes.qmd`. The paper record has no `note` field and annotations have no
+      `note` type; old values are not read. Highlight geometry stays in `data.json`, and a note on a highlight anchors
+      to the annotation id.
+    why: One home for what a user writes about a paper.
+  - id: D7
+    text: >-
+      A text box on a PDF page is a paper-note item with anchor `p<page> box <x> <y> <w> <h>` in page fractions (as
+      highlights), drawn over the page, always visible, never changing the PDF; long content is clipped and expands on
+      click.
+    why: The macOS Preview behaviour the user asked for.
+  - id: D8
+    text: >-
+      Project comments, review comments and suggestions become items in `.labshelf/comments.qmd` (anchor = the existing
+      quote/prefix/suffix anchor). The first item of a thread carries its anchor, file and resolved state; replies carry
+      `thread=<first item id>`. `comments.json` is not read.
+    why: Same paradigm; comment bodies get math and code.
+  - id: D9
+    text: >-
+      The project checklist and problems are views derived from project `.qmd` files: a task-list item `- [ ]` in a
+      project note is a checklist item, and ticking it in either place edits the note.
+    why: One source of truth, no copies.
+  - id: D10
+    text: >-
+      "Send to…" on any selection (PDF passage, figure crop, equation, item) appends an item with a `labshelf:`
+      back-link to a chosen `.qmd` target (project note, Space note or discussion), remembering recent targets.
+    why: Capture without leaving the reader.
+  - id: D11
+    text: >-
+      Python + SymPy is a managed tool under `<shared root>/python/`, pinned by version and SHA-256 like TeX
+      (`documents/contracts/managed-tools.md`). Cells run through a core port `ICellRunner`; the helper adds
+      `runCell`/`cancelCell` messages for the browser, VS Code runs the same core node runner directly. Cancel kills the
+      process. No Pyodide, nothing bundled in the extension.
+    why: The user chooses what to install.
+  - id: D12
+    text: >-
+      An equation inserted into a manuscript ends with `% labshelf: <note path>#<eq label> @<hash of inserted LaTeX>`.
+      The editor compares hashes: manuscript changed → diverged (never overwritten), note changed → stale (one-click
+      update). Figures and numbers from notes reuse the existing `figures:` and `values:` of `labshelf.yaml`.
+    why: Stateless provenance that survives sync and git.
+  - id: D13
+    text: >-
+      Terminal: notes open as `.qmd` text in `$EDITOR`, `labshelf show` prints them; no rich editor, no cells. Equation
+      capture from PDFs, AI, notation tables and "check this step" stay in `documents/ideas/computational-notes.md`.
+    why: Keeps the terminal a text tool and this plan bounded.
+  - id: D14
+    text: >-
+      Live collaboration of a shared `.qmd` file: the shared doc holds its item bodies as `Y.XmlFragment`s bound with
+      y-prosemirror, and the disk mirror serializes them to `.qmd`. Other text files keep `Y.Text`.
+    why: y-prosemirror is the maintained binding; a text-diff bridge loses cursor intent. (Q1, answered 2026-10-22.)
+  - id: D15
+    text: >-
+      Python is installed on demand from the app (Run → "Install Python for calculations", as TeX today) and by an
+      option in the helper installers that runs the same install.
+    why: The installers have no component pages today and a user who skipped it can still add it later. (Q2.)
+  - id: D16
+    text: The UI calls an item "note", from one vocabulary entry so a rename is one change.
+    why: No better word was proposed. (Q3.)
+  - id: D17
+    text: Space discussions get the format and the local UI now; sharing a Space comes with a Space-sharing plan.
+    why: Space sharing does not exist yet. (Q4.)
+  - id: D18
+    text: >-
+      No migrations: legacy data (`note` key, note annotations, `comments.json`) is not read and its code is deleted.
+    why: "documents/code.md#contracts: there are no old libraries to preserve."
+acceptance:
+  - id: A1
+    check: >-
+      `qmd-items` contract tests: parse → serialize is byte-identical on fixtures; text outside items survives; unknown
+      attributes survive; a malformed fence never loses text.
+  - id: A2
+    check: >-
+      Two devices each add a note to the same `notes.qmd` offline; after sync both notes are there, no conflict markers.
+      A note deleted on one device and untouched on the other stays deleted; deleted on one and edited on the other
+      stays, edited.
+  - id: A3
+    check: >-
+      In VS Code and in the browser, a note shows headings, lists, task lists, rendered display and inline math, a code
+      cell and its result, with no Markdown syntax visible; Source mode shows the `.qmd`.
+  - id: A4
+    check: >-
+      A paper's notes live as items in `notes.qmd`; `metadata.yaml` has no `note` key and no code reads one; the
+      terminal shows the same notes.
+  - id: A5
+    check: >-
+      In the reader, the text-box tool draws a box in an empty area of page 10; it shows its rendered content on the
+      page at any zoom, and opening the paper on another device shows it in the same place.
+  - id: A6
+    check: >-
+      Selecting a passage in the reader and choosing Send to → project "modern-thesis" adds an item with a link back to
+      the page to that project's note; a `- [ ]` in it appears in the project Checklist, and ticking it there ticks it
+      in the note.
+  - id: A7
+    check: >-
+      Comments and review comments of a project live in `.labshelf/comments.qmd` and show math; no code reads
+      `comments.json`.
+  - id: A8
+    check: A Space has Notes and Discussions tabs backed by one `.qmd` per note or thread.
+  - id: A9
+    check: >-
+      Without Python installed, Run explains what to install; after installing from the app, a SymPy cell runs from VS
+      Code and from the browser through the helper, its result is written into the note, a stuck cell is cancelled, and
+      editing the cell marks the result out of date.
+  - id: A10
+    check: >-
+      Inserting an equation from a note writes the origin comment; editing the note marks it stale with an update
+      action; editing the manuscript marks it diverged and nothing is overwritten.
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - documents/contracts/qmd-items.md
+      - packages/core/src/qmd/index.ts
+      - packages/core/src/qmd/itemFile.ts
+      - packages/core/src/qmd/itemUpdate.ts
+      - packages/core/src/qmd/cellOutput.ts
+      - packages/core/__tests__/qmd/
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/core/src/qmd/mergeItemFiles.ts
+      - packages/core/src/writing/textMerge.ts
+      - packages/core/src/writing/conflict/node/itemFileMerge.ts
+      - documents/contracts/sync.md
+      - documents/contracts/library-format.md
+      - documents/contracts/spaces.md
+      - documents/contracts/qmd-items.md
+      - packages/core/__tests__/qmd/mergeItemFiles.test.ts
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/core/src/qmd/editor/
+      - packages/core/package.json
+      - pnpm-lock.yaml
+      - packages/core/__tests__/qmd/editor/
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns:
+      - packages/core/src/qmd/dom/
+      - packages/core/src/ui/icons/renderIcon.ts
+      - packages/core/src/dom/index.ts
+      - packages/core/package.json
+      - packages/core/__tests__/qmd/dom/
+      - packages/core/__tests__/ui/icons.test.ts
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns:
+      - packages/vscode/build/
+      - packages/browser/build/
+      - packages/vscode/src/ui/htmlShell.ts
+      - packages/vscode/src/spaces/view.ts
+      - packages/browser/manifest.chrome.json
+  - id: "6"
+    file: sessions/6.yaml
+    depends_on: ["2", "5"]
+    owns:
+      - packages/core/src/qmd/paperNotes.ts
+      - packages/core/src/qmd/node/
+      - packages/core/src/qmd/index.ts
+      - packages/core/src/node/index.ts
+      - packages/core/src/library/layout.ts
+      - packages/core/src/library/record.ts
+      - packages/core/src/library/search.ts
+      - packages/core/src/library/libraryStore.ts
+      - packages/core/src/library/mutations/
+      - packages/core/src/model/paper.ts
+      - packages/core/src/import/paper/networkImport.ts
+      - packages/core/src/libraryUi/paperHandlers.ts
+      - packages/core/src/libraryUi/protocol/messages.ts
+      - packages/core/src/libraryUi/store/libraryStore.ts
+      - packages/core/src/libraryUi/dom/detailPane/
+      - packages/core/src/libraryUi/dom/list/tray.ts
+      - packages/core/src/libraryUi/dom/flows/paperFlows.ts
+      - packages/vscode/src/libraryUi/handlers.ts
+      - packages/vscode/src/activation/
+      - packages/browser/src/libraryUi/host/
+      - packages/browser/src/storage/libraryMutations.ts
+      - packages/browser/src/storage/records.ts
+      - packages/browser/src/storage/index.ts
+      - packages/browser/src/capture/pdfFinding.ts
+      - packages/browser/src/background/handlers.ts
+      - packages/browser/src/popup/captureFlow.ts
+      - packages/terminal/src/cli/libraryCommands.ts
+      - packages/terminal/src/library/paperService.ts
+      - packages/terminal/src/library/sidecars.ts
+      - packages/terminal/src/libraryUi/preview.ts
+      - packages/terminal/src/libraryUi/libraryScreen/actions/paperFieldActions.ts
+      - packages/terminal/src/compositionRoot.ts
+      - documents/contracts/library-format.md
+      - documents/contracts/share-link.md
+      - packages/core/__tests__/qmd/
+      - packages/core/__tests__/library/
+      - packages/core/__tests__/libraryUi/
+      - packages/vscode/__tests__/libraryUi/
+      - packages/browser/__tests__/capture/
+      - packages/browser/__tests__/storage/
+      - packages/browser/__tests__/libraryUi/
+      - packages/terminal/__tests__/cli/
+      - packages/terminal/__tests__/library/
+      - packages/terminal/__tests__/libraryUi/
+  - id: "7"
+    file: sessions/7.yaml
+    depends_on: ["6"]
+    owns:
+      - packages/core/src/reader/dom/
+      - packages/core/src/reader/protocol/
+      - packages/core/src/reader/text/textBoxPlacement.ts
+      - packages/core/src/reader/text/index.ts
+      - packages/core/src/reader/noteMessages.ts
+      - packages/core/src/reader/hostMessages.ts
+      - packages/core/src/reader/hostPorts.ts
+      - packages/core/src/reader/hostController.ts
+      - packages/core/src/reader/sidecar/sidecarStore.ts
+      - packages/core/src/model/annotation.ts
+      - packages/core/src/reader/sidecar/readingState.ts
+      - packages/core/__tests__/reader/
+  - id: "8"
+    file: sessions/8.yaml
+    depends_on: ["6"]
+    owns:
+      - packages/core/src/collab/commentsFile.ts
+      - packages/core/src/collab/commentsQmd.ts
+      - packages/core/src/collab/sharedFiles.ts
+      - packages/core/src/collab/index.ts
+      - packages/core/src/collab/mirror/projectMirror.ts
+      - packages/core/src/collab/mirror/textMirror.ts
+      - packages/core/src/collab/session/sharedProject.ts
+      - packages/core/src/collab/shareIndexDoc.ts
+      - packages/core/src/collab/docSync.ts
+      - packages/core/src/collab/mirror/fileReconcile.ts
+      - packages/core/src/templates/node/templateFolder.ts
+      - packages/core/src/qmd/collab/
+      - packages/vscode/src/collab/comments.ts
+      - packages/vscode/src/collab/threads.ts
+      - packages/browser/src/collab/comments.ts
+      - packages/browser/src/libraryUi/editorArea/commentsTab.ts
+      - packages/browser/src/libraryUi/editorArea/sourceTab.ts
+      - documents/contracts/collaboration.md
+      - documents/contracts/library-format.md
+      - documents/contracts/qmd-items.md
+      - packages/core/__tests__/collab/
+      - packages/core/__tests__/qmd/collab/
+      - packages/core/__tests__/qmd/
+      - packages/core/__tests__/templates/node/
+      - packages/vscode/__tests__/collab/
+      - packages/browser/__tests__/collab/
+      - packages/browser/__tests__/libraryUi/editorArea/
+  - id: "9"
+    file: sessions/9.yaml
+    depends_on: ["7", "8"]
+    owns:
+      - packages/core/src/qmd/index.ts
+      - packages/core/src/qmd/projectNotes/
+      - packages/core/src/qmd/sendTo/
+      - packages/core/src/writing/checks/
+      - packages/core/src/writing/citations/
+      - packages/core/src/reader/dom/
+      - packages/vscode/src/writing/
+      - packages/vscode/src/activation/startExtension.ts
+      - packages/vscode/package.json
+      - packages/browser/src/writing/
+      - packages/browser/src/libraryUi/
+      - packages/browser/src/storage/
+      - documents/contracts/library-format.md
+      - documents/contracts/qmd-items.md
+      - packages/core/__tests__/qmd/projectNotes/
+      - packages/core/__tests__/qmd/sendTo/
+      - packages/core/__tests__/writing/checks/
+      - packages/core/__tests__/writing/citations/
+      - packages/core/__tests__/reader/dom/
+      - packages/vscode/__tests__/writing/
+      - packages/browser/__tests__/writing/
+      - packages/browser/__tests__/libraryUi/
+      - packages/browser/__tests__/storage/
+  - id: "10"
+    file: sessions/10.yaml
+    depends_on: ["9"]
+    owns:
+      - packages/core/src/spaces/
+      - documents/contracts/spaces.md
+      - packages/core/__tests__/spaces/
+  - id: "11"
+    file: sessions/11.yaml
+    depends_on: ["9"]
+    owns:
+      - packages/core/src/qmd/compute/pythonPin.ts
+      - packages/core/src/latex/node/texInstallers.ts
+      - packages/core/src/helper/helperPaths.ts
+      - packages/core/src/helper/helperClientConnection.ts
+      - packages/core/src/qmd/compute/node/
+      - packages/core/src/helper/helperMessages.ts
+      - packages/core/src/helper/parseHelperMessage.ts
+      - packages/core/src/helper/helperClient.ts
+      - packages/core/src/helper/node/runHelperHost.ts
+      - packages/core/src/helper/node/helperHandlers.ts
+      - packages/core/src/helper/node/pythonHandlers.ts
+      - packages/core/src/helper/node/index.ts
+      - packages/browser/src/helper/
+      - packages/terminal/installers/
+      - packages/terminal/src/helper/helperEntry.ts
+      - packages/terminal/src/helper/installPythonFlag.ts
+      - documents/contracts/managed-tools.md
+      - documents/contracts/helper.md
+      - packages/core/__tests__/qmd/compute/
+      - packages/core/__tests__/helper/
+      - packages/browser/__tests__/helper/
+      - packages/terminal/__tests__/helper/
+  - id: "12"
+    file: sessions/12.yaml
+    depends_on: ["10", "11"]
+    owns:
+      - packages/core/src/qmd/compute/
+      - packages/core/src/latex/node/run.ts
+      - packages/core/src/helper/helperMessages.ts
+      - packages/core/src/helper/parseHelperMessage.ts
+      - packages/core/src/helper/helperClient.ts
+      - packages/core/src/helper/helperPaths.ts
+      - packages/core/src/helper/index.ts
+      - packages/core/src/helper/node/cellHandlers.ts
+      - packages/core/src/helper/node/helperHandlers.ts
+      - packages/core/src/helper/node/helperProjects.ts
+      - packages/core/src/qmd/cellOutput.ts
+      - packages/core/src/helper/node/runHelperHost.ts
+      - packages/core/src/libraryUi/protocol/messages.ts
+      - packages/core/src/libraryUi/paperHandlers.ts
+      - packages/core/src/libraryUi/dom/detailPane/
+      - packages/core/src/reader/protocol/messages.ts
+      - packages/core/src/reader/noteMessages.ts
+      - packages/core/src/reader/hostPorts.ts
+      - packages/core/src/reader/dom/notesTab.ts
+      - packages/core/src/reader/dom/noteBoxes.ts
+      - packages/core/src/spaces/spacesProtocol.ts
+      - packages/core/src/spaces/serveSpaces.ts
+      - packages/core/src/spaces/dom/mountSpaceNotes.ts
+      - packages/core/src/spaces/dom/mountSpaceDiscussions.ts
+      - packages/browser/src/helper/cellRunner.ts
+      - packages/browser/src/helper/index.ts
+      - packages/browser/src/libraryUi/
+      - packages/vscode/src/qmd/
+      - packages/vscode/src/activation/startExtension.ts
+      - packages/vscode/src/libraryUi/
+      - documents/contracts/helper.md
+      - documents/contracts/qmd-items.md
+      - packages/core/__tests__/qmd/compute/
+      - packages/core/__tests__/latex/build/node/
+      - packages/core/__tests__/helper/
+      - packages/core/__tests__/libraryUi/protocol/
+      - packages/core/__tests__/reader/protocol/
+      - packages/core/__tests__/spaces/
+      - packages/browser/__tests__/helper/
+      - packages/browser/__tests__/libraryUi/
+      - packages/vscode/__tests__/qmd/
+      - packages/vscode/__tests__/libraryUi/
+  - id: "13"
+    file: sessions/13.yaml
+    depends_on: ["12"]
+    owns:
+      - packages/core/src/writing/noteLinks/
+      - packages/core/src/writing/checks/
+      - packages/vscode/src/writing/
+      - packages/browser/src/writing/
+      - packages/vscode/package.json
+      - documents/contracts/qmd-items.md
+      - documents/contracts/links.md
+      - packages/core/__tests__/writing/noteLinks/
+      - packages/core/__tests__/writing/checks/
+      - packages/vscode/__tests__/writing/
+      - packages/browser/__tests__/writing/
+  - id: "14"
+    file: sessions/14.yaml
+    depends_on: ["13"]
+    owns:
+      - documents/ideas/computational-notes.md
+      - documents/plans/qmd-notes/
+
