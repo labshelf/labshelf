@@ -23,7 +23,7 @@ import {
 import type { HostAdapters, LibraryRootController, WritingViewResult } from "../activation/index.js";
 import type { ActiveServices } from "../command/index.js";
 import { disposeAll } from "../disposables/index.js";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, webviewChunksDir } from "../ui/index.js";
 
 interface SpacesPortOptions {
   services: ActiveServices;
@@ -165,7 +165,7 @@ async function spacesHtml(webview: vscode.Webview, extension: vscode.Uri, view: 
   }
   const nonce = createNonce();
   const config = JSON.stringify(view).replace(/</g, "\\u003c");
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
   return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="${csp}"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -183,7 +183,7 @@ class SpacesPanel {
 
   constructor(extension: vscode.Uri, readonly view: SpacesView, title: string, binding: Binding, activate: () => void, close: () => void) {
     const panel = this.panel = vscode.window.createWebviewPanel("labshelfSpaces", title, vscode.ViewColumn.One, {
-      enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [spacesBundleDirectory(extension)],
+      enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [spacesBundleDirectory(extension), webviewChunksDir(extension)],
     });
     panel.iconPath = createTabIcon(extension);
     const handlers = new Set<(message: SpacesToHost) => void>();
@@ -298,7 +298,7 @@ async function researchChatHtml(webview: vscode.Webview, extensionUri: vscode.Ur
     return renderBundleMissingHtml({ title: "Research chat", heading: "Research chat bundle not built", file: "dist/spaces/chat.js", reopen: "Research chat" });
   }
   const nonce = createNonce();
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
   return `<!doctype html><html lang="en"><head><meta charset="UTF-8"/>
 <meta http-equiv="Content-Security-Policy" content="${csp}"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
@@ -321,7 +321,7 @@ class ResearchChatView implements vscode.WebviewViewProvider, vscode.Disposable 
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this.view = view;
-    view.webview.options = { enableScripts: true, localResourceRoots: [researchChatBundleDirectory(this.extensionUri)] };
+    view.webview.options = { enableScripts: true, localResourceRoots: [researchChatBundleDirectory(this.extensionUri), webviewChunksDir(this.extensionUri)] };
     const messages = view.webview.onDidReceiveMessage((raw: unknown) => {
       if (raw && typeof raw === "object" && "type" in raw && raw.type === "ready") { this.postContext(); }
     });

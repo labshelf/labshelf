@@ -29,6 +29,9 @@ const options = {
   outdir: distDir,
   bundle: true,
   format: "esm",
+  // Dynamic imports (the editor's `@labshelf/core/math`) become separate chunks under dist/chunks, loaded on first use.
+  splitting: true,
+  chunkNames: "chunks/[name]-[hash]",
   platform: "browser",
   // Matches the Chromium shipped with the Electron of engines.vscode ^1.106 (Electron 37, Chromium 138).
   target: ["chrome138"],
@@ -44,7 +47,9 @@ const options = {
 };
 
 async function main() {
-  for (const dir of new Set(Object.keys(BUNDLES).map((out) => out.split("/")[0]))) {
+  const dirs = new Set(Object.keys(BUNDLES).map((out) => out.split("/")[0]));
+  dirs.add("chunks");
+  for (const dir of dirs) {
     await rm(resolve(distDir, dir), { recursive: true, force: true });
     await mkdir(resolve(distDir, dir), { recursive: true });
   }
