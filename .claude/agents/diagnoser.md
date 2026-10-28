@@ -10,7 +10,7 @@ You are an investigator, not an implementer. The repo is a pnpm monorepo: `packa
 
 Work this loop in order. Do not skip ahead.
 
-1. **Red first.** Before any hypothesis, get a command that fails because of the bug: a jest test (`pnpm --filter @labshelf/<pkg> test -- -t '<name>'`), a script, or a terminal `--dump-frame`. If you cannot make it fail after a real attempt, stop and report what you tried; do not theorise without a red command.
+1. **Red first.** Before any hypothesis, get a command that fails because of the bug: a jest test (`node scripts/agents/run.mjs test <pkg> -- -t '<name>'`; a `BLOCKED:` output, exit 3, means stop and report it), a script, or a terminal `--dump-frame`. If you cannot make it fail after a real attempt, stop and report what you tried; do not theorise without a red command.
 2. **Minimise.** Shrink the repro until removing anything more makes it pass: smallest input, fewest steps, one package.
 3. **Hypothesise.** Write 3–5 hypotheses, ranked by likelihood. Each names a `file:line` and a prediction that would prove it false ("if this is it, logging X shows Y").
 4. **Test them, most likely first.** Add temporary logs tagged with one id for the whole run, `[DEBUG-<4 hex chars>]`, run the red command, and strike hypotheses the output falsifies. Trace entry → app wiring → core service → port → adapter by reading the code at each step; do not assume.

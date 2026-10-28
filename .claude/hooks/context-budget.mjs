@@ -3,13 +3,17 @@
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-const BUDGETS = { main: 150_000, subagent: 60_000 };
+import { emit } from '../../scripts/agents/telemetry.mjs';
+
+// Token budget by agent type; the main thread has no agent_id, any other subagent type gets the default.
+const BUDGETS = { main: 150_000, explorer: 100_000 };
+const DEFAULT_SUBAGENT_BUDGET = 60_000;
 const REWARN_STEP = 40_000;
 const TAIL_BYTES = 256 * 1024;
 
 const MESSAGES = {
-  subagent: (k) => `Context ≈${k}k tokens, over the 60k budget: finish the current edit, run no new broad reads, and return your report now with what is left undone.`,
-  main: (k) => `Context ≈${k}k tokens, over the 150k budget: avoid new broad reads and delegate what is left of the session; write a new session file only if it cannot finish here.`,
+  subagent: (k, budget) => `Context ≈${k}k tokens, over the ${budget / 1000}k budget: finish the current edit, run no new broad reads, and return your report now with what is left undone.`,
+  main: (k, budget) => `Context ≈${k}k tokens, over the ${budget / 1000}k budget: avoid new broad reads and delegate what is left of the session; write a new session file only if it cannot finish here.`,
 };
 
 // Context tokens an agent carries into a turn: everything the API read or cached for it.
@@ -55,10 +59,12 @@ function readWarnedAt(file) {
   }
 }
 
+const budgetFor = (agentType) => BUDGETS[agentType] ?? DEFAULT_SUBAGENT_BUDGET;
+
 // Returns the warning to show, or undefined; keeps the context of the last warning in a state file.
-function decide(role, context, stateFile) {
+function decide(role, budget, context, stateFile) {
   const warnedAt = readWarnedAt(stateFile);
-  if (context <= BUDGETS[role]) {
+  if (context <= budget) {
     // Compaction or a fresh start brought the context back under budget, so the next crossing warns again.
     if (warnedAt !== undefined) rmSync(stateFile, { force: true });
     return undefined;
@@ -66,20 +72,23 @@ function decide(role, context, stateFile) {
   if (warnedAt !== undefined && context < warnedAt + REWARN_STEP) return undefined;
   mkdirSync(dirname(stateFile), { recursive: true });
   writeFileSync(stateFile, JSON.stringify({ warnedAt: context }));
-  return MESSAGES[role](Math.round(context / 1000));
+  return MESSAGES[role](Math.round(context / 1000), budget);
 }
 
 try {
   const input = JSON.parse(readFileSync(0, 'utf8'));
   const role = input.agent_id ? 'subagent' : 'main';
+  const agentType = input.agent_id ? input.agent_type : 'main';
+  const budget = budgetFor(agentType);
   const stateDir = process.env.LABSHELF_BUDGET_STATE_DIR ?? join(tmpdir(), 'labshelf-context-budget');
   // A session whose id is a file in <stateDir>/off gets no warnings, its subagents included (benchmark and test sessions).
   const off = existsSync(join(stateDir, 'off', input.session_id));
   const context = off ? undefined : latestContext(transcriptFor(input));
   if (context !== undefined) {
     const stateFile = join(stateDir, `${input.session_id}-${input.agent_id ?? 'main'}.json`);
-    const additionalContext = decide(role, context, stateFile);
+    const additionalContext = decide(role, budget, context, stateFile);
     if (additionalContext) {
+      emit('budget_warning', { agent_type: agentType ?? null, session_id: input.session_id, context_tokens: context, budget });
       process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext } }));
     }
   }

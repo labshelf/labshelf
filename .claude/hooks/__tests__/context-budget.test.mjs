@@ -1,7 +1,7 @@
 // Pins the context-budget hook: warns once per crossing, stays silent otherwise, never fails.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -31,7 +31,7 @@ function writeSession(dir, sessionId, { mainContext, agentContext, agentId = 'ab
 }
 
 function run(input, stateDir) {
-  const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, LABSHELF_BUDGET_STATE_DIR: stateDir } });
+  const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, LABSHELF_BUDGET_STATE_DIR: stateDir, LABSHELF_TELEMETRY_SPOOL: join(stateDir, 'spool') } });
   assert.equal(result.status, 0);
   return result;
 }
@@ -51,6 +51,35 @@ test('a subagent over 60k is warned once, again only after another 40k', () => {
   assert.equal(run(input, stateDir).stdout, '');
   writeJsonl(agent, [assistant('a3', 106_000)]);
   assert.match(warning(run(input, stateDir)), /≈106k/);
+});
+
+test('an explorer has a 100k budget', () => {
+  const dir = tempDir();
+  const stateDir = tempDir();
+  const { main, agent } = writeSession(dir, 'sess', { mainContext: 10_000, agentContext: 99_000 });
+  const input = { session_id: 'sess', transcript_path: main, agent_id: 'abc', agent_type: 'explorer' };
+  assert.equal(run(input, stateDir).stdout, '');
+  writeJsonl(agent, [assistant('a2', 101_000)]);
+  assert.match(warning(run(input, stateDir)), /≈101k tokens, over the 100k budget/);
+});
+
+test('an implementer has the default 60k budget and each first warning emits budget_warning', () => {
+  const dir = tempDir();
+  const stateDir = tempDir();
+  const { main, agent } = writeSession(dir, 'sess', { mainContext: 10_000, agentContext: 59_000 });
+  const input = { session_id: 'sess', transcript_path: main, agent_id: 'abc', agent_type: 'implementer' };
+  assert.equal(run(input, stateDir).stdout, '');
+  assert.equal(existsSync(join(stateDir, 'spool')), false);
+  writeJsonl(agent, [assistant('a2', 61_000)]);
+  assert.match(warning(run(input, stateDir)), /≈61k tokens, over the 60k budget/);
+  run(input, stateDir);
+  const [file] = readdirSync(join(stateDir, 'spool'));
+  const events = readFileSync(join(stateDir, 'spool', file), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  assert.equal(events.length, 1);
+  assert.equal(events[0].kind, 'budget_warning');
+  assert.equal(events[0].agent_type, 'implementer');
+  assert.equal(events[0].context_tokens, 61_000);
+  assert.equal(events[0].budget, 60_000);
 });
 
 test('the main thread has a 150k budget and a delegate-what-is-left message', () => {
