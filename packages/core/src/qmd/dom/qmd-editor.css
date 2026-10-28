@@ -1,0 +1,96 @@
+/* Styles the .qmd notes editor: header, formatting toolbar, Visual body, node views and Source mode. Colours come from the tokens only. */
+.qmd-editor { display: flex; flex-direction: column; gap: var(--ls-space-3); min-width: 0; color: var(--ls-fg); font: var(--ls-font-size) / 1.6 var(--ls-font); }
+.qmd-editor :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
+
+/* Header: author and date on the left, the Visual/Source toggle on the right. */
+.qmd-editor-header { display: flex; align-items: center; gap: var(--ls-space-4); min-height: var(--ls-row-h); }
+.qmd-editor-meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.qmd-editor-toggle { margin-left: auto; font-size: var(--ls-text-sm); }
+
+/* Toolbar: one row of ghost icon buttons, shown only while focus is inside the editor; wraps at narrow width. */
+.qmd-editor-toolbar { display: none; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) 0; padding: var(--ls-space-1) 0; border-bottom: 1px solid var(--ls-border-soft); }
+.qmd-editor:focus-within .qmd-editor-toolbar { display: flex; }
+.qmd-editor .qmd-editor-toolbar[hidden] { display: none; }
+.qmd-toolbar-group { display: flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-3); }
+.qmd-toolbar-group:first-child { padding-left: 0; }
+.qmd-toolbar-group + .qmd-toolbar-group { border-left: 1px solid var(--ls-border-soft); }
+.qmd-toolbar-btn { display: inline-flex; align-items: center; justify-content: center; min-width: var(--ls-row-h); min-height: var(--ls-row-h); padding: var(--ls-space-1); border-radius: var(--ls-radius-sm); color: var(--ls-fg); transition: background var(--ls-fast), color var(--ls-fast); }
+.qmd-toolbar-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.qmd-toolbar-btn:hover:enabled { background: var(--ls-toolbar-hover); }
+.qmd-toolbar-btn[aria-pressed="true"] { background: var(--ls-toolbar-active); color: var(--ls-fg); }
+.qmd-toolbar-btn:disabled { opacity: 0.4; cursor: default; }
+.qmd-toolbar-btn:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+
+/* Visual body. */
+.qmd-editor .ProseMirror { position: relative; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0; outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
+.qmd-editor .ProseMirror:focus-visible { outline: none; }
+.qmd-editor .ProseMirror > * + * { margin-top: var(--ls-space-4); }
+.qmd-editor .ProseMirror p { margin: 0; }
+.qmd-editor .ProseMirror h1, .qmd-editor .ProseMirror h2, .qmd-editor .ProseMirror h3 { margin: var(--ls-space-6) 0 var(--ls-space-3); font-family: var(--ls-font); font-weight: 600; line-height: 1.3; }
+.qmd-editor .ProseMirror h1 { font-size: var(--ls-text-2xl); }
+.qmd-editor .ProseMirror h2 { font-size: var(--ls-text-xl); }
+.qmd-editor .ProseMirror h3 { font-size: var(--ls-text-lg); }
+.qmd-editor .ProseMirror ul, .qmd-editor .ProseMirror ol { margin: 0; padding-left: var(--ls-space-7); }
+.qmd-editor .ProseMirror li + li { margin-top: var(--ls-space-1); }
+.qmd-editor .ProseMirror code { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); font: var(--ls-text-sm) var(--ls-mono); }
+.qmd-editor .ProseMirror blockquote { margin: 0; padding-left: var(--ls-space-4); border-left: 1px solid var(--ls-border); color: var(--ls-desc); }
+.qmd-editor .ProseMirror ::selection { background: var(--ls-editor-selection-bg); }
+.qmd-editor .ProseMirror-selectednode { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); border-radius: var(--ls-radius-sm); }
+.qmd-editor .ProseMirror-gapcursor { display: none; }
+
+/* Placeholder on the first empty block, drawn from its data attribute. */
+.qmd-editor-placeholder { position: relative; }
+.qmd-editor-placeholder::before { content: attr(data-placeholder); position: absolute; left: 0; top: 0; color: var(--ls-desc); pointer-events: none; }
+
+/* Remote collaborators' cursors and selections. */
+.qmd-editor-cursor { position: relative; margin: 0 calc(-1 * var(--ls-editor-cursor-width) / 2); border-left: var(--ls-editor-cursor-width) solid var(--ls-link); pointer-events: none; word-break: normal; }
+.qmd-editor-cursor-name { position: absolute; left: calc(-1 * var(--ls-editor-cursor-width)); bottom: 100%; padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-link); color: var(--ls-bg); font: var(--ls-text-xs) / 1.4 var(--ls-font); white-space: nowrap; user-select: none; }
+.qmd-editor-selection { background: var(--ls-editor-inactive-selection-bg); }
+
+/* Links: internal labshelf: links carry the link icon. */
+.qmd-link { color: var(--ls-link); text-decoration: underline; text-underline-offset: var(--ls-space-1); cursor: pointer; }
+.qmd-link-icon { display: inline-flex; vertical-align: middle; margin-right: var(--ls-space-1); }
+.qmd-link-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-link-text { text-decoration: inherit; }
+
+/* Citations. */
+.qmd-citation { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-badge-bg); color: var(--ls-badge-fg); font-size: var(--ls-text-sm); white-space: nowrap; }
+
+/* Task items. */
+.qmd-editor .ProseMirror li.qmd-task { display: flex; align-items: flex-start; gap: var(--ls-space-2); list-style: none; margin-left: calc(-1 * var(--ls-space-6)); }
+.qmd-task-box { display: inline-flex; align-items: center; min-height: calc(var(--ls-font-size) * 1.6); }
+.qmd-task-check { margin: 0; accent-color: var(--ls-focus); cursor: pointer; }
+.qmd-task-content { flex: 1; min-width: 0; }
+.qmd-task[data-task="done"] .qmd-task-content { color: var(--ls-desc); text-decoration: line-through; }
+
+/* Math: inline sits on the baseline; display math scrolls horizontally. */
+.qmd-math { cursor: pointer; }
+.qmd-math-inline { display: inline-block; max-width: 100%; vertical-align: baseline; }
+.qmd-math-display { display: block; max-width: 100%; overflow-x: auto; padding: var(--ls-space-3) 0; text-align: center; }
+.qmd-math-rendered svg { vertical-align: var(--qmd-math-valign); max-width: none; }
+.qmd-math-source { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-fg); font: var(--ls-text-sm) var(--ls-mono); white-space: pre; }
+input.qmd-math-source { min-width: calc(var(--ls-space-9) * 3); border: 1px solid var(--ls-input-border); background: var(--ls-input-bg); color: var(--ls-input-fg); }
+.qmd-math-error { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-error); font: var(--ls-text-sm) var(--ls-mono); white-space: pre; }
+
+/* Code cells: a header with language and label, then code that scrolls horizontally. */
+.qmd-cell { border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-code-bg); overflow: hidden; }
+.qmd-cell-header { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-1) var(--ls-space-4); border-bottom: 1px solid var(--ls-border-soft); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-mono); user-select: none; }
+.qmd-cell-lang { font-weight: 600; }
+.qmd-cell-label:empty { display: none; }
+.qmd-cell-code { margin: 0; padding: var(--ls-space-3) var(--ls-space-4); overflow-x: auto; color: var(--ls-fg); font: var(--ls-text-sm) / 1.5 var(--ls-mono); white-space: pre; tab-size: 4; }
+.qmd-cell-code code { padding: 0; background: none; font: inherit; }
+
+/* Cell output; out-of-date output is dimmed under a warning badge. */
+.qmd-output { position: relative; margin-top: var(--ls-space-2); padding: var(--ls-space-3) var(--ls-space-4); border-left: 1px solid var(--ls-border); }
+.qmd-output-body { min-width: 0; overflow-x: auto; transition: opacity var(--ls-fast); }
+.qmd-output-text { margin: 0; color: var(--ls-fg); font: var(--ls-text-sm) / 1.5 var(--ls-mono); white-space: pre; }
+.qmd-output.is-out-of-date { border-left-color: var(--ls-warning-border); }
+.qmd-output.is-out-of-date .qmd-output-body { opacity: 0.5; }
+.qmd-output-badge { display: inline-flex; align-items: center; gap: var(--ls-space-1); margin-bottom: var(--ls-space-2); padding: 0 var(--ls-space-2); border: 1px solid var(--ls-warning-border); border-radius: var(--ls-radius-pill); background: var(--ls-warning-bg); color: var(--ls-warning); font-size: var(--ls-text-xs); user-select: none; }
+.qmd-output-badge svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+
+/* Source mode: the raw .qmd body in a monospace textarea. */
+.qmd-editor-source { display: block; width: 100%; min-height: calc(var(--ls-row-h) * 12); box-sizing: border-box; padding: var(--ls-space-3) var(--ls-space-4); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius); background: var(--ls-input-bg); color: var(--ls-input-fg); font: var(--ls-text-sm) / 1.6 var(--ls-mono); resize: vertical; tab-size: 4; }
+.qmd-editor-source:focus { outline: 1px solid var(--ls-focus); outline-offset: 0; }
+
+@media (max-width: 560px) { .qmd-editor-header { flex-wrap: wrap; } .qmd-toolbar-group { padding: 0 var(--ls-space-2); } }
