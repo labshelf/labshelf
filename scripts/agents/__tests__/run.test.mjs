@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { blockReason, main, summarizeJest, summarizeNodeTest, summarizeTsc } from "../run.mjs";
+import { blockReason, main, summarizeCmd, summarizeJest, summarizeNodeTest, summarizeTsc } from "../run.mjs";
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const saved = { ...process.env };
@@ -38,12 +38,11 @@ const events = () =>
     : [];
 
 // Runs main with a fake spawn; returns { code, lines, calls }.
-async function run(argv, spawn, chat = async () => null) {
+async function run(argv, spawn) {
   const lines = [];
   const calls = [];
   const code = await main(argv, {
     root,
-    chat,
     out: (line) => lines.push(line),
     spawn: (command, args, options) => {
       calls.push({ command, args, options });
@@ -118,6 +117,70 @@ describe("summarizeTsc", () => {
 
   it("says so when there are no errors", () => {
     assert.match(summarizeTsc("").join("\n"), /no errors/i);
+  });
+});
+
+const padded = (head, tail = []) => [...Array.from({ length: 80 }, (_, i) => `progress ${i}`), ...head, ...Array.from({ length: 80 }, (_, i) => `more progress ${i}`), ...tail].join("\n");
+
+describe("summarizeCmd", () => {
+  it("tsc log: keeps every error TS line and drops the progress lines", () => {
+    const errors = ["src/a.ts(3,5): error TS2322: Type 'string' is not assignable to type 'number'.", "src/b.ts(9,1): error TS2304: Cannot find name 'x'."];
+    const lines = summarizeCmd(padded(errors, ["Found 2 errors in 2 files."]));
+    for (const e of errors) assert.ok(lines.includes(e), e);
+    assert.ok(lines.includes("Found 2 errors in 2 files."));
+    assert.ok(!lines.includes("progress 3"));
+    assert.ok(lines.length <= 38);
+  });
+
+  it("jest log: keeps the failing test, expected/received and repo frames but not node_modules frames", () => {
+    const failure = [
+      "FAIL packages/core/__tests__/thing.test.ts",
+      "  ● thing › adds up",
+      "    expect(received).toBe(expected) // Object.is equality",
+      "    Expected: 1",
+      "    Received: 2",
+      "      at Object.toBe (/repo/node_modules/expect/build/index.js:10:5)",
+      "      at helper (/repo/packages/core/src/thing/helper.ts:7:3)",
+      "      at Promise.then (node:internal/process:1:1)",
+    ];
+    const lines = summarizeCmd(padded(failure, ["Tests:       1 failed, 3 passed, 4 total"]));
+    for (const l of failure.filter((x) => !/node_modules|node:/.test(x))) assert.ok(lines.includes(l), l);
+    assert.ok(!lines.some((l) => l.includes("node_modules")));
+    assert.ok(!lines.some((l) => l.includes("node:internal")));
+    assert.ok(lines.includes("Tests:       1 failed, 3 passed, 4 total"));
+  });
+
+  it("node:test log: keeps the not ok lines and the error line, not the ok lines", () => {
+    const tap = ["ok 1 - fine", "not ok 2 - breaks", "  ---", "  error: 'expected 1 got 2'", "  ..."];
+    const lines = summarizeCmd(padded(tap, ["# tests 80", "# pass 79", "# fail 1"]));
+    assert.ok(lines.includes("not ok 2 - breaks"));
+    assert.ok(lines.includes("# fail 1"));
+    assert.ok(!lines.includes("ok 1 - fine"));
+  });
+
+  it("eslint log: keeps the problem lines with their file and the problem count", () => {
+    const eslint = ["/repo/src/a.ts", "  4:7  error  'x' is assigned a value but never used  no-unused-vars", "  5:1  warning  Unexpected console  no-console"];
+    const lines = summarizeCmd(padded(eslint, ["✖ 2 problems (1 error, 1 warning)"]));
+    assert.ok(lines.includes("/repo/src/a.ts"));
+    assert.ok(lines.includes(eslint[1]));
+    assert.ok(lines.includes("✖ 2 problems (1 error, 1 warning)"));
+    assert.ok(!lines.includes(eslint[2]));
+  });
+
+  it("noisy build log: repeated lines are counted once and the output stays within 38 lines", () => {
+    const noise = Array.from({ length: 300 }, (_, i) => (i % 3 === 0 ? "Error: asset missing" : `[webpack] compiling module ${i}`));
+    const distinct = Array.from({ length: 100 }, (_, i) => `Error: failure number ${i}`);
+    const lines = summarizeCmd([...noise, ...distinct, "build failed", "exit status 1"].join("\n"));
+    assert.ok(lines.includes("Error: asset missing (x100)"));
+    assert.ok(lines.length <= 38);
+    assert.ok(lines.some((l) => /more distinct error lines/.test(l)));
+    assert.ok(lines.includes("exit status 1"));
+    assert.ok(!lines.some((l) => l.startsWith("[webpack]")));
+  });
+
+  it("counts error lines in the header", () => {
+    const lines = summarizeCmd(padded(["Error: a", "Error: a", "Error: b"]));
+    assert.match(lines[0], /3 error lines, 2 distinct/);
   });
 });
 
@@ -220,13 +283,14 @@ describe("main", () => {
     assert.ok(calls[0].args.includes(".claude/hooks/__tests__/*.test.mjs"));
   });
 
-  it("cmd: keeps the exit code and shows the head and tail of long output when the model is down", async () => {
-    const out = Array.from({ length: 300 }, (_, i) => `line ${i}`).join("\n");
+  it("cmd: keeps the exit code and filters long output to its error lines and last lines", async () => {
+    const out = Array.from({ length: 300 }, (_, i) => (i === 120 ? "Error: boom" : `line ${i}`)).join("\n");
     const { code, lines, calls } = await run(["cmd", "--", "echo", "hi"], () => ({ status: 7, stdout: out, stderr: "" }));
     assert.equal(code, 7);
     assert.ok(lines.length <= 40);
-    assert.ok(lines.some((l) => l === "line 0"));
-    assert.ok(lines.some((l) => l === "line 299"));
+    assert.ok(lines.includes("Error: boom"));
+    assert.ok(lines.includes("line 299"));
+    assert.ok(!lines.includes("line 0"));
     assert.equal(calls[0].command, "echo");
     assert.deepEqual(calls[0].args, ["hi"]);
   });
@@ -234,57 +298,20 @@ describe("main", () => {
   const logOf = (n) => Array.from({ length: n }, (_, i) => `line ${i}`).join("\n");
   const logPath = (lines) => lines.find((l) => l.startsWith("log: "))?.slice(5);
 
-  it("cmd: a 200-line unrecognised log is summarised by the model; the input is the last 400 lines at most", async () => {
-    const seen = [];
-    const chat = async (request) => {
-      seen.push(request);
-      return "model says: 2 errors\nfinal state: failed";
-    };
-    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 4, stdout: logOf(200), stderr: "" }), chat);
-    assert.equal(code, 4);
-    assert.equal(seen.length, 1);
-    assert.ok(seen[0].system.length > 0);
-    assert.ok(seen[0].input.includes("line 199"));
-    assert.ok(lines.includes("model says: 2 errors"));
-    assert.ok(lines.includes("final state: failed"));
-    assert.ok(!lines.includes("line 100"));
+  it("cmd: a long log with no error lines shows the last lines and the log path, with at most 40 lines", async () => {
+    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 9, stdout: logOf(200), stderr: "" }));
+    assert.equal(code, 9);
+    assert.ok(lines.length <= 40);
+    for (const i of [192, 199]) assert.ok(lines.includes(`line ${i}`), `line ${i}`);
+    for (const i of [0, 100, 191]) assert.ok(!lines.includes(`line ${i}`), `line ${i}`);
+    assert.ok(lines.some((l) => /no error lines/.test(l)));
     assert.ok(existsSync(logPath(lines)));
     assert.ok(readFileSync(logPath(lines), "utf8").includes("line 0"));
   });
 
-  it("cmd: only the last 400 lines of a longer log reach the model", async () => {
-    const seen = [];
-    await run(["cmd", "--", "make"], () => ({ status: 0, stdout: logOf(1000), stderr: "" }), async (request) => (seen.push(request), "ok"));
-    assert.ok(seen[0].input.includes("line 999"));
-    assert.ok(seen[0].input.includes("line 600"));
-    assert.ok(!seen[0].input.includes("line 599\n"));
-  });
-
-  it("cmd: model down prints the first 10 and last 25 lines, the log path and the exit code", async () => {
-    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 9, stdout: logOf(200), stderr: "" }), async () => null);
-    assert.equal(code, 9);
-    for (const i of [0, 9, 175, 199]) assert.ok(lines.includes(`line ${i}`), `line ${i}`);
-    for (const i of [10, 100, 174]) assert.ok(!lines.includes(`line ${i}`), `line ${i}`);
-    assert.ok(existsSync(logPath(lines)));
-  });
-
-  it("cmd: a model that throws (timeout) falls back to head and tail", async () => {
-    const chat = async () => {
-      throw new Error("timeout");
-    };
-    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 0, stdout: logOf(200), stderr: "" }), chat);
-    assert.equal(code, 0);
-    assert.ok(lines.includes("line 9"));
-    assert.ok(lines.includes("line 175"));
-    assert.ok(!lines.includes("line 50"));
-  });
-
-  it("cmd: a log of at most 60 lines is printed as is and the model is not asked", async () => {
-    let asked = 0;
-    const chat = async () => (asked += 1, "nope");
-    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 1, stdout: logOf(60), stderr: "" }), chat);
+  it("cmd: a log of at most 60 lines is printed as is", async () => {
+    const { code, lines } = await run(["cmd", "--", "make"], () => ({ status: 1, stdout: logOf(60), stderr: "" }));
     assert.equal(code, 1);
-    assert.equal(asked, 0);
     for (let i = 0; i < 60; i += 1) assert.ok(lines.includes(`line ${i}`));
     assert.ok(logPath(lines));
   });

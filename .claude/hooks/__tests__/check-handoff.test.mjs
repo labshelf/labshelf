@@ -177,3 +177,21 @@ test('the subagent transcript is the fallback when the response has no report te
   const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, ...env } });
   assert.equal(result.stdout, '');
 });
+
+const LAUNCH_TEXT = "Async agent launched successfully. (This tool result is internal metadata.)\nagentId: a86ca7688ce8b2029 (internal ID)\nThe agent is working in the background. You will be notified automatically when it completes.";
+
+test('a background launch result passes silently and is not counted as an invalid handoff', () => {
+  const { dir, env } = setup();
+  const launched = { isAsync: true, status: 'async_launched', agentId: 'a86ca7688ce8b2029', description: 'd', prompt: 'do it' };
+  assert.equal(run(env, { response: launched, agentId: 'a86ca7688ce8b2029' }).stdout, '');
+  // Only the launch text, as a string or a text array, is recognised too.
+  assert.equal(run(env, { response: LAUNCH_TEXT }).stdout, '');
+  assert.equal(run(env, { response: { agentId: 'a2', content: [{ type: 'text', text: LAUNCH_TEXT }] } }).stdout, '');
+  assert.equal(events(dir).filter((event) => event.kind === 'handoff_invalid').length, 0);
+});
+
+test('a synchronous result without a block still returns a notice next to a launch-like word in the prompt', () => {
+  const { env } = setup();
+  const result = run(env, { prompt: 'Async agent launched successfully', response: reply('no block') });
+  assert.match(notice(result).additionalContext, /report\/v1/);
+});

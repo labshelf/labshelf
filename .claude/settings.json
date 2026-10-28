@@ -13,6 +13,11 @@
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-bash.mjs",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diff-gate/diff-gate.mjs --pre-commit",
+            "timeout": 60
           }
         ]
       },
@@ -35,6 +40,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/read-ledger.mjs",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -54,6 +69,16 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/dup-guard.mjs",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/read-ledger.mjs",
             "timeout": 5
           }
         ]
@@ -87,6 +112,33 @@
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-context.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diff-gate/diff-gate.mjs --session-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diff-gate/diff-gate.mjs --hook",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/diff-gate/diff-gate.mjs --hook",
+            "timeout": 120
           }
         ]
       }

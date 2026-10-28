@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs test, typecheck, build or any command; keeps the full log, prints at most 40 summary lines (cmd: logs of up to 60 lines whole, longer ones summarised by the local model or cut to head and tail), counts spec test attempts and blocks stalled ones.
+// Runs test, typecheck, build or any command; keeps the full log, prints at most 40 summary lines (cmd: logs of up to 60 lines whole, longer ones cut by a deterministic filter to the error lines, repeats counted, and the last lines), counts spec test attempts and blocks stalled ones.
 import { spawnSync } from "node:child_process";
 import { constants as osConstants, tmpdir } from "node:os";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -14,14 +14,8 @@ const MAX_RUNS = 5;
 const BLOCKED_EXIT = 3;
 const LINE_WIDTH = 200;
 const CMD_SHORT_LOG = 60;
-const CMD_HEAD = 10;
-const CMD_TAIL = 25;
-const MODEL_INPUT_LINES = 400;
-const MODEL_URL = "http://localhost:11434";
-const MODEL_NAME = "qwen3.5:9b";
-const MODEL_UP_TIMEOUT_MS = 1500;
-const MODEL_TIMEOUT_MS = 20_000;
-const MODEL_SYSTEM = "You summarise the log of a command. Report the errors (with file and line when shown) and the final state of the run in at most 30 lines. Plain text, no preamble.";
+const CMD_BODY = MAX_LINES - 2;
+const CMD_FINAL = 8;
 const TOOLING_GLOBS = ["scripts/*/__tests__/*.test.mjs", "tools/*/__tests__/*.test.mjs", ".claude/hooks/__tests__/*.test.mjs"];
 const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -186,54 +180,57 @@ function summarizeTail(text, count = 30) {
   return lines.length > count ? [`… ${lines.length - count} earlier lines in the log`, ...lines.slice(-count).map((l) => clip(l))] : lines.map((l) => clip(l));
 }
 
-/** First 10 and last 25 lines of a log, with a marker for the omitted middle. */
-function headTail(lines) {
-  if (lines.length <= CMD_HEAD + CMD_TAIL) return lines.map((l) => clip(l));
-  return [...lines.slice(0, CMD_HEAD).map((l) => clip(l)), `… ${lines.length - CMD_HEAD - CMD_TAIL} lines omitted, see the log …`, ...lines.slice(-CMD_TAIL).map((l) => clip(l))];
-}
+const ERROR_LINE = [
+  /error TS\d+/,
+  /^\s*●/,
+  /^\s*FAIL\b/,
+  /^\s*(Expected|Received)\b|\bexpect\(/,
+  /^\s*not ok\b/,
+  /^\s+\d+:\d+\s+error\s/,
+  /^\s*✖\s+\d+ problems?/,
+  /\bError:|\*\*\* Error|\bERR!/,
+  /^\s*(error|ERROR|fatal|FATAL)\b[:\s[]/,
+];
+const ESLINT_PROBLEM = /^\s+\d+:\d+\s+error\s/;
+const ESLINT_FILE = /^(?:\/|\.{0,2}\/|[A-Za-z]:\\)?[^\s:]+\.\w+$/;
 
-/** Asks the local ollama model for a summary. `{system, input}` in, text out; null when ollama is down, times out or answers nothing. */
-export async function ollamaChat({ system, input }) {
-  try {
-    const up = await fetch(`${MODEL_URL}/api/tags`, { signal: AbortSignal.timeout(MODEL_UP_TIMEOUT_MS) });
-    if (!up.ok) return null;
-    const response = await fetch(`${MODEL_URL}/api/chat`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        stream: false,
-        think: false,
-        options: { temperature: 0 },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: input },
-        ],
-      }),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
-    });
-    if (!response.ok) return null;
-    const content = (await response.json())?.message?.content;
-    return typeof content === "string" && content.trim() ? content : null;
-  } catch {
-    return null;
-  }
-}
+/** True for a stack frame that points to a file outside node_modules and node internals. */
+const isRepoFrame = (line) => {
+  const match = line.match(/^\s*at\s+(?:.*?\()?([^()\s]+:\d+:\d+)\)?\s*$/);
+  return Boolean(match) && !/node_modules|node:/.test(match[1]);
+};
 
-/** Body lines for a `cmd` log: whole up to 60 lines, else the model summary (`chat({system, input})`, at most 30 lines), else head and tail. */
-export async function summarizeCmd(text, chat = ollamaChat) {
+/** Body lines for a `cmd` log: whole up to 60 lines; longer ones keep the error lines (tsc, jest, node:test, eslint, `Error:`, repo stack frames) once each with a repeat count, then the last 8 lines, at most 38 lines. */
+export function summarizeCmd(text) {
   const lines = splitLines(text);
   while (lines.length && !lines.at(-1).trim()) lines.pop();
   if (lines.length <= CMD_SHORT_LOG) return lines.map((l) => clip(l));
-  let answer = null;
-  try {
-    answer = await chat({ system: MODEL_SYSTEM, input: lines.slice(-MODEL_INPUT_LINES).join("\n") });
-  } catch {
-    /* model unavailable: fall back to head and tail */
+
+  const kept = new Map();
+  let matches = 0;
+  let eslintFile = null;
+  const keep = (line) => {
+    const key = line.trim();
+    kept.set(key, { line, count: (kept.get(key)?.count ?? 0) + 1 });
+  };
+  for (const line of lines) {
+    if (ESLINT_FILE.test(line)) eslintFile = line;
+    if (!ERROR_LINE.some((re) => re.test(line)) && !isRepoFrame(line)) continue;
+    matches += 1;
+    if (ESLINT_PROBLEM.test(line) && eslintFile && !kept.has(eslintFile.trim())) keep(eslintFile);
+    keep(line);
   }
-  const summary = typeof answer === "string" ? splitLines(answer).filter((l) => l.trim()) : [];
-  if (!summary.length) return headTail(lines);
-  return [...summary.slice(0, 30).map((l) => clip(l)), `(model summary of ${lines.length} lines, see the log)`];
+  const final = lines.filter((l) => l.trim()).slice(-CMD_FINAL);
+  const finalKeys = new Set(final.map((l) => l.trim()));
+  const entries = [...kept.entries()].filter(([key, entry]) => !(finalKeys.has(key) && entry.count === 1));
+  const budget = CMD_BODY - final.length - 3;
+  const shown = entries.length > budget ? entries.slice(0, budget - 1) : entries;
+  const body = [`(${lines.length} lines filtered: ${matches} error lines, ${kept.size} distinct; full log below)`];
+  for (const [, { line, count }] of shown) body.push(clip(count > 1 ? `${line} (x${count})` : line));
+  if (shown.length < entries.length) body.push(`… ${entries.length - shown.length} more distinct error lines in the log`);
+  if (!matches) body.push("(no error lines recognised)");
+  body.push(`(last ${final.length} lines)`, ...final.map((l) => clip(l)));
+  return body;
 }
 
 // ---- progress -------------------------------------------------------------------------------------------------
@@ -318,7 +315,7 @@ function writeLog(dir, kind, content) {
   }
 }
 
-/** Runs one wrapper invocation and returns the exit code. `deps`: `root`, `spawn(command, args, options)`, `out(line)`, `chat({system, input})` (the local model for long `cmd` logs). */
+/** Runs one wrapper invocation and returns the exit code. `deps`: `root`, `spawn(command, args, options)`, `out(line)`. */
 export async function main(argv, deps = {}) {
   const root = deps.root ?? DEFAULT_ROOT;
   const out = deps.out ?? ((line) => process.stdout.write(`${line}\n`));
@@ -374,7 +371,7 @@ export async function main(argv, deps = {}) {
     ({ lines: body, failing } = summarizeNodeTest(output));
   } else if (parsed.kind === "typecheck") body = code === 0 ? ["tsc: no errors"] : summarizeTsc(output);
   else if (parsed.kind === "build") body = code === 0 ? ["build ok"] : /error TS\d+/.test(output) ? summarizeTsc(output) : summarizeTail(output);
-  else body = await summarizeCmd(output, deps.chat);
+  else body = summarizeCmd(output);
 
   const label = parsed.kind === "cmd" ? `cmd ${parsed.rest[0]}` : `${parsed.kind} ${parsed.pkg}`;
   const lines = [`[${label}] exit ${code}`, ...body];

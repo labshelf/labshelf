@@ -175,3 +175,14 @@ test('CLI reports a deleted test only while its code exists, and honours --base'
     rmSync(repo, { recursive: true, force: true });
   }
 });
+
+test('CLI fails when the base revision does not exist instead of passing on nothing', () => {
+  const repo = repoWith({ 'packages/core/src/a.ts': '// A.\nexport const a = 1;\n' }, () => {});
+  try {
+    const result = cli(repo, '--base', 'no-such-rev');
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /base revision "no-such-rev" does not exist/);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});

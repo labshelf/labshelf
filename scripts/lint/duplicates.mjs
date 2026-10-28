@@ -1,7 +1,7 @@
 // Runs jscpd and fails if the duplicate clone count grew past scripts/lint/duplicatesBaseline.json.
 // `--update` rewrites the baseline with the current count instead of gating.
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,16 +9,26 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const baselineFile = join(root, "scripts", "lint", "duplicatesBaseline.json");
 const reportFile = join(root, ".jscpd-report", "jscpd-report.json");
 
-const run = spawnSync("pnpm", ["exec", "jscpd", "--config", "scripts/lint/jscpd.json", "--silent"], {
+// The report is deleted first, so a stale file from an earlier run can never be read as this run's result.
+rmSync(join(root, ".jscpd-report"), { recursive: true, force: true });
+const run = spawnSync("pnpm", ["exec", "jscpd", "--config", "scripts/lint/jscpd.json", "--silent", "--output", join(root, ".jscpd-report")], {
   encoding: "utf8",
   cwd: root,
   maxBuffer: 64 * 1024 * 1024,
 });
+if (run.status !== 0) {
+  console.error(`jscpd failed (exit ${run.status ?? run.error?.message}):\n${run.stdout}${run.stderr}`);
+  process.exit(1);
+}
 let statistics;
 try {
   ({ statistics } = JSON.parse(readFileSync(reportFile, "utf8")));
 } catch (error) {
   console.error(`jscpd did not produce a report: ${error.message}\n${run.stderr}`);
+  process.exit(1);
+}
+if (!(statistics.total.sources > 0)) {
+  console.error("jscpd scanned 0 files: check the paths in scripts/lint/jscpd.json.");
   process.exit(1);
 }
 

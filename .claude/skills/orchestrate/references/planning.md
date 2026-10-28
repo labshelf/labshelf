@@ -10,6 +10,8 @@ Read when you split work into packages or write a plan directory. `plan <cmd>` m
 4. One `tester` per spec with tests; its prompt is the spec block only. Then `plan red <session> <id>`; a test it rejects goes back to the tester with the output.
 5. `plan lint <plan dir>` must print nothing. N3: leave `status: draft`, show the plan and ask for approval. N2: set `status: approved` and run it.
 
+A package that renames a symbol or moves files is level task and its spec names the command in `commands`, not manual edits: `node scripts/codemods/renameSymbol.mjs <file> <old> <new>` or `node scripts/codemods/moveFiles.mjs <tsv>` (lines `old<TAB>new`, `--dry-run` first).
+
 Before specifying a new function, check it does not exist: `node scripts/code/facts.mjs def <name>`, `fn '<what it does>'`, `sig '<type>'` or `similar -` in this thread, never through an explorer.
 
 ## Packages
@@ -20,7 +22,7 @@ Split the work into packages. Each package (a `spec/v1` in the YAML flow) states
 - **Depends on**: other package ids.
 - **Tier, runner and model**: see the table below.
 - **Level**: how much process it gets, by risk:
-  - **task** (move, rename, delete after a grep, compact, docs): no new test and no agent of its own; all of a session's tasks go in one Tasks package, or the main thread does them directly;
+  - **task** (move, rename, delete after `facts callers`, compact, docs): no new test and no agent of its own; all of a session's tasks go in one Tasks package, or the main thread does them directly;
   - **behaviour**: one `implementer` works test first on its own (writes the failing test, sees it fail, implements);
   - **contract** (touches `documents/contracts/`, an on-disk format, a protocol, sync, or an extension manifest or its permissions): one `implementer` writes the failing tests first, then implements; `finish session` checks it against its contract section before the commit. These are the hard-to-reverse packages.
 - **Acceptance**: the checks that prove it is done; for behaviour and contract, the test seam and the acceptance items the failing tests pin.

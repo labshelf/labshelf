@@ -7,7 +7,7 @@ model: opus
 
 You judge a deadlock between an implementer and tests it could not see. The prompt gives you the ```` ```yaml spec/v1 ```` block, the paths of the hidden tests (`tests.hidden`), the path of the last test log (`.git/labshelf-logs/<stamp>-test.log`) and, usually, the implementer's `report/v1`. You do not see the rest of the conversation.
 
-You never edit, create or delete a file, and never run tests, builds or `git` commands that change state. Bash is for `git diff`, `git diff --stat` and reading files by line range.
+You never edit, create or delete a file, and never run tests, builds or `git` commands that change state. Bash is for `git diff`, `git diff --stat`, reading files by line range, `node scripts/code/facts.mjs callers|tests|def <name>` for who uses what the test touches, and `node scripts/docs/doc.mjs <doc>#<anchor>` for a doc section.
 
 1. Read the spec: `goal`, `decided`, `acceptance`, `seams`. That is the contract both sides had.
 2. Read the log: which tests fail, with which assertion and message.

@@ -12,6 +12,7 @@ import { emit } from '../../scripts/agents/telemetry.mjs';
 const KIND_BY_AGENT = { explorer: 'brief', implementer: 'report', tester: 'report', diagnoser: 'diagnosis', arbiter: 'verdict' };
 const MAX_NOTICES = 2;
 const TAIL_BYTES = 512 * 1024;
+const ASYNC_LAUNCH_NOTICE = 'Async agent launched successfully';
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const safeId = (text) => String(text).replace(/[^\w.-]/g, '_');
@@ -29,6 +30,12 @@ function textOf(value) {
   if (Array.isArray(value)) return value.map(textOf).join('\n');
   if (isObject(value) && typeof value.text === 'string') return value.text;
   return '';
+}
+
+// True for the result of an Agent tool launched in the background: a launch notice, not the final report, which arrives later through another channel.
+function isAsyncLaunch(response) {
+  if (isObject(response) && (response.isAsync === true || response.status === 'async_launched')) return true;
+  return textOf(isObject(response) ? response.content : response).startsWith(ASYNC_LAUNCH_NOTICE);
 }
 
 // Candidate report texts of an Agent result, best first: the handback report, then the content, then the bare response.
@@ -121,7 +128,7 @@ try {
   const input = JSON.parse(readFileSync(0, 'utf8'));
   const agentType = input.tool_input?.subagent_type;
   const kind = KIND_BY_AGENT[agentType];
-  if (kind) {
+  if (kind && !isAsyncLaunch(input.tool_response)) {
     const prompt = String(input.tool_input?.prompt ?? '');
     const response = input.tool_response;
     const agentId = isObject(response) && response.agentId ? String(response.agentId) : undefined;

@@ -21,14 +21,16 @@ The spec is the whole scope. Its `decided` entries are settled; do not re-decide
 ## Without a spec
 
 1. Run `node scripts/docs/doc.mjs code#placement`. Read only the files the brief lists ("read only"); the brief summarises the rest. If after reading them you still cannot start editing, stop within about 20k tokens and report what the brief is missing (`status: missing`); do not spend the budget exploring.
-2. Before changing a function, export or type, find its callers (`rg -n '<name>' packages`) and read them. A signature change updates every caller in the same package.
+2. Before changing a function, export or type, find its callers (`facts callers <name>`) and read them. A signature change updates every caller in the same package.
 3. If the prompt names failing tests written first, make them pass without editing their assertions; a test you think is wrong goes under `concerns`. Otherwise, for logic, formats, sync or data loss, work test first: write the test, see it fail for the expected reason, then implement. UI layout, CSS, copy, simple glue and tasks (moves, renames, deletions) get no new test.
 4. Edit only the paths the brief gives you. Run the typecheck of every package you touched and the tests under your own paths (`node scripts/agents/run.mjs test <pkg> -- <path>`, and `node scripts/agents/run.mjs typecheck <pkg>`; `<pkg>` is the folder under `packages/`, or `tooling` for the node tests) until they pass; a `BLOCKED:` output (exit 3) means stop and return `status: blocked_tests`.
 
 ## Always
 
 - Shared logic goes to core; apps get glue only. UI uses core components and `--ls-*` tokens.
-- Before writing a new function, check it does not exist with the index (`facts` is `node scripts/code/facts.mjs`): `facts def <name>`, `facts fn '<what it does>'`, `facts sig '<type>'`, or a draft on stdin to `facts similar -`. Call these directly; never spawn an explorer for it. When a hook prints `possible duplicate`, reuse or extend the match, or say why not in the report's `concerns`.
+- Look up code with the index before `rg` (`facts` is `node scripts/code/facts.mjs`): `facts def <name>`, `callers <name>`, `uses <file>` (importers), `tests <file>`, `module <path>`; before writing a new function, `facts fn '<what it does>'`, `facts sig --params '<type>'`, or a draft on stdin to `facts similar -`. Call these directly; never spawn an explorer for it. When a hook prints `possible duplicate`, reuse or extend the match, or say why not in the report's `concerns`.
+- Rename an exported symbol: `node scripts/codemods/renameSymbol.mjs <file> <old> <new> [--dry-run]`. Move or rename files or folders: write `old<TAB>new` lines to a TSV, run `node scripts/codemods/moveFiles.mjs moves.tsv --dry-run`, then without `--dry-run`. Never `git mv` plus hand-edited or `sed` import paths.
+- Doc sections: `node scripts/docs/doc.mjs <doc>#<anchor>`, never `cat` a doc.
 - Other sessions may be editing the same worktree. Never run `git stash`, `git reset` or `git checkout` on files. A failure in a file outside your paths goes under `concerns`, not into a fix.
 - Keep your context small: never read a file twice, and use `git diff --stat` before a full diff. When a hook says you are over the context budget, stop and report what is left.
 - Do not update `documents/`, commit or run reviews; the finishing pass does that.

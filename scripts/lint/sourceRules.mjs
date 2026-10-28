@@ -224,6 +224,10 @@ function run(argv) {
     return 1;
   }
   const gitRoot = realpathSync(top.trim());
+  if (git(gitRoot, ["rev-parse", "--verify", "--quiet", `${base}^{commit}`]) === null) {
+    console.error(`sourceRules: base revision "${base}" does not exist, so nothing can be compared.`);
+    return 1;
+  }
   const ctx = {
     exists: (path) => existsSync(resolve(gitRoot, path)),
     readContract: (name) => {
