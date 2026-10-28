@@ -8,7 +8,7 @@ import {
 } from "@labshelf/core";
 import { askInputBox, showToast } from "@labshelf/core/dom";
 import { createSourceFooter } from "../libraryUi/prefs";
-import type { ProjectSession } from "../writing/session";
+import type { ProjectSession } from "../writing";
 import type { PageShares } from "./pageShares";
 
 const THREADS_MODULE = "collab.comments";

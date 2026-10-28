@@ -5,8 +5,7 @@ import {
   type LibrarySidebar, type LibraryUi, type MenuEntry, type ProjectOffers, type SidebarProjectActions, type SidebarSpaceActions,
 } from "@labshelf/core/dom";
 import { bx } from "../platform";
-import type { BrowserProjectRow, ProjectsSource } from "../writing/projectList";
-import type { ProjectSession } from "../writing/session";
+import type { BrowserProjectRow, ProjectSession, ProjectsSource } from "../writing";
 import type { TabKindName } from "./editorArea";
 import type { PagePrefs } from "./prefs";
 import type { PageSpaces } from "./spaces";

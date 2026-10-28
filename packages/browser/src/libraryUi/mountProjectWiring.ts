@@ -12,9 +12,7 @@ import {
 import { createBrowserLatexHelper, createHelperProject } from "../helper";
 import { readSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
-import { showInOpenEditor } from "../writing/session";
-import { createProjectsSource, showPdfInTab } from "../writing/projectList";
-import { createOpenProjectSnapshot, createProjectSession, openRestoredProject } from "../writing/session";
+import { createOpenProjectSnapshot, createProjectSession, createProjectsSource, openRestoredProject, showInOpenEditor, showPdfInTab } from "../writing";
 import { createSidebarProjects, type SidebarProjects } from "./sidebar";
 import type { ProjectServices, TabKindName } from "./editorArea";
 import type { Workspace } from "./editorArea";

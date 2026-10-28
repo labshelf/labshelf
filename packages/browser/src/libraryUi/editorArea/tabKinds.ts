@@ -5,7 +5,7 @@ import type { EditorTabBody } from "@labshelf/core/dom";
 import type { CommentThreads, PageShare } from "../../collab";
 import type { HelperProject } from "../../helper";
 import type { PagePrefs } from "../prefs";
-import type { ProjectSession } from "../../writing/session";
+import type { ProjectSession } from "../../writing";
 import type { PageSpaces } from "../spaces";
 import type { Workspace } from "./workspace";
 

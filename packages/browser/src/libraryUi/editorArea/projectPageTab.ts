@@ -1,7 +1,7 @@
 // Mounts a tab that finds its project and then shows one project page, with a loading line until the project is found.
 import type { ProjectEntry } from "@labshelf/core";
 import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
-import { findProject } from "../../writing/project";
+import { findProject } from "../../writing";
 import type { TabContext } from "./tabKinds";
 
 export interface ProjectPage {

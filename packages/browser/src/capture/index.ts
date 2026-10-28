@@ -1,8 +1,9 @@
 // Exports the capture module's public API.
-export { detectTabDraft, findPdf, normalizeFolder, derivePdfMiss, refreshPdfSearch, writeOrAsk, refreshExisting } from "./captureService";
-export type { CaptureDraft, SavedPaper, WriteDecision } from "./captureService";
-export { createDraftFromSearchHit } from "./searchHitCapture";
-export { createDraftFromPaper } from "./paperCapture";
-export { attachPdfToPaper } from "./attachPdfToPaper";
-export { onTabLoaded, openAccessTab, type AccessTabDeps } from "./accessTab";
-export { removeWatch, watchOfTab } from "./accessWatches";
+export {
+  detectTabDraft, findPdf, normalizeFolder, derivePdfMiss, refreshPdfSearch, writeOrAsk, refreshExisting, createDraftFromSearchHit, createDraftFromPaper,
+  loadPdfjs, readFirstPageText,
+} from "./pdfFinding";
+export type { CaptureDraft, SavedPaper, WriteDecision } from "./pdfFinding";
+export { attachPdfToPaper } from "./attach";
+export { onTabLoaded, openAccessTab, removeWatch, watchOfTab, type AccessTabDeps } from "./accessWatches";
+export { fetchInTab } from "./tabFetch";

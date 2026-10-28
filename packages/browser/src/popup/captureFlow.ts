@@ -6,9 +6,7 @@ import { formatError, formatPdfSourceLabel, type MissingPdfAction, type PdfMiss 
 import {
   sendRuntime, type AttachPdfReply, type DraftView, type LibraryReference, type PdfOfferView, type FindPdfReply, type WriteOutcome,
 } from "../platform";
-import { formatFolderName, parseTags } from "./format";
-import { renderPaper, renderPdf, showError, showLibraryCopy, showNotice } from "./render";
-import { popupState, showPopupView } from "./popupState";
+import { formatFolderName, parseTags, renderPaper, renderPdf, showError, showLibraryCopy, showNotice, popupState, showPopupView } from "./render";
 import { attachOffered, offerFits, attachOffer, showOffer } from "./offerCard";
 
 // A paper already saved without its PDF: a PDF this tab showed or the user downloaded for it is attached in one click;

@@ -13,7 +13,7 @@ jest.mock("../../src/platform", () => ({
 import { deriveShareId, readFileText, joinSharedProject, leaveSharedProject, parseProjectFile, setFileText, ShareOpenInAnotherTabError, startProjectShare, type ShareConnection } from "@labshelf/core";
 import { reportPageWrites, writeMemberName } from "../../src/collab";
 import { openTabLease } from "../../src/storage";
-import { writeReplacements } from "../../src/writing/mountSearchHost";
+import { writeReplacements } from "../../src/writing/searchHost";
 import { relayNet, type RelayNet } from "../support/relayNetwork";
 import { FOLDER, MAIN, openProfile, until, type Page, type Profile } from "./pageSharesTestbed";
 import { FOLDER as SHARE_FOLDER, installSharingGlobals, MAIN as SHARE_MAIN, openLibrary, PROJECT_FILE, type SharingLibrary, type SharingPage } from "./shareTestbed";

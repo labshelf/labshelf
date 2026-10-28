@@ -3,9 +3,9 @@ import {
   createGalleryHost, createLibraryTemplateSources, createLoopbackTransport, posixPathOps, type GalleryToHost, type HostToGallery,
 } from "@labshelf/core";
 import { renderElement, mountTemplateGallery, pickQuickEntry } from "@labshelf/core/dom";
-import { askProjectTitle, createBrowserProjectContent } from "../../writing/project";
+import { askProjectTitle, createBrowserProjectContent } from "../../writing";
 import type { TabModule } from "./tabKinds";
-import { createBrowserPublish } from "../../templates";
+import { createBrowserPublish } from "../../writing/languages";
 import { createBrowserLatexHelper } from "../../helper";
 
 // The bridge root is the library folder itself, so the library root path is empty.

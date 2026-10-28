@@ -7,7 +7,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { IFileSystem, ILogger, LibraryFileSystem, ProjectEntry, TextRange } from "@labshelf/core";
 import { addCommentSupport, createCommentThreads, createRoutedCommentThreads, type CommentThreads, type EditorComments } from "../../src/collab/comments";
-import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor/mountSourceEditor";
+import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
 
 const mockInputBox = jest.fn<Promise<string | undefined>, []>();
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), askInputBox: () => mockInputBox() }));

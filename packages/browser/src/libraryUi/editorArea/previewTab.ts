@@ -3,7 +3,7 @@ import type { BuildOptions, ILogger, LatexEngine } from "@labshelf/core";
 import { renderElement } from "@labshelf/core/dom";
 import { mountHelperSetupCard, type HelperProject } from "../../helper";
 import { bx, readSettings, updateSettings } from "../../platform";
-import { createBrowserProjectContent } from "../../writing/project";
+import { createBrowserProjectContent } from "../../writing";
 import { createPreviewFrame, watchBuilds, createPreviewRequestHandler, type PreviewLimits } from "../../writing/preview";
 import type { TabModule } from "./tabKinds";
 

@@ -23,7 +23,7 @@ import { askInputBox, pickQuickEntry } from '@labshelf/core/dom';
 import { downloadTextFile, watchVisibility } from '../platform';
 import { onPaperRecordsRebuilt } from '../storage';
 import { onLocalFileChanges } from '../collab';
-import { createBrowserProjectContent } from '../writing/project';
+import { createBrowserProjectContent } from '../writing';
 import type { Workspace } from './editorArea';
 
 async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: Extract<ProjectEntry, { kind: 'ready' }>, library: LibraryPapers): Promise<Progress | undefined> {

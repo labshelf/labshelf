@@ -59,7 +59,7 @@ async function loadProjectWiring(plan: PagePlan, invite: string | undefined, opt
 /** Serves the All projects channel of Details from the same port factory as the All projects tab; a failed load leaves that channel unanswered. */
 async function serveProjectsToDetails(endpoint: AllProjectsEndpoint, services: ProjectServices, workspace: Workspace, fs: LibraryFileSystem): Promise<ProjectLibraryPort | null> {
   try {
-    const { createPageProjectLibrary } = await import("../writing/project/index.js");
+    const { createPageProjectLibrary } = await import("../writing/project.js");
     const library = createPageProjectLibrary({ fs, logger: log, workspace, session: services.session });
     serveAllProjects(endpoint, library, log);
     return library;

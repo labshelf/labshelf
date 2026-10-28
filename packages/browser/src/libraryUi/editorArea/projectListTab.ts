@@ -1,7 +1,7 @@
 // Shows the All projects page as a workspace tab, served by the browser's project library over the library folder.
 import { createLoopbackTransport, serveAllProjects, type AllProjectsToHost, type HostToAllProjects } from "@labshelf/core";
 import { renderElement, mountAllProjects } from "@labshelf/core/dom";
-import { createPageProjectLibrary } from "../../writing/project";
+import { createPageProjectLibrary } from "../../writing";
 import type { TabModule } from "./tabKinds";
 
 export const mountTab: TabModule["mountTab"] = (host, _params, ctx) => {

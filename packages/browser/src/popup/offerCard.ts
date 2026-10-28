@@ -2,9 +2,7 @@
 import { findElement } from "@labshelf/core/dom";
 import { formatError } from "@labshelf/core";
 import { sendRuntime, type AttachPdfReply, type PdfOfferView } from "../platform";
-import { formatFolderName } from "./format";
-import { showNotice } from "./render";
-import { popupState, showPopupView } from "./popupState";
+import { formatFolderName, showNotice, popupState, showPopupView } from "./render";
 
 export function fetchOffer(tabId: number): Promise<PdfOfferView | null> {
   return sendRuntime<PdfOfferView | null>({ type: "pdfOffer.get", tabId }).catch(() => null);
