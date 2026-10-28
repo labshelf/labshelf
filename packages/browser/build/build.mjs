@@ -20,8 +20,9 @@ const ENTRIES = [
   // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under libraryPage/chunks.
   // Only the library page deploys the relay, so only it carries the Worker script.
   { entry: "libraryUi/libraryPage.ts", out: "libraryPage/pageEntry.js", format: "esm", splitting: true, relayWorker: true },
-  // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
-  { entry: "libraryUi/reader/readerPage.ts", out: "reader/index.js", format: "esm" },
+  // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host. It hosts notes, so the math chunk loads lazily
+  // here too, emitted under reader/chunks.
+  { entry: "libraryUi/reader/readerPage.ts", out: "reader/index.js", format: "esm", splitting: true },
   // Chrome's offscreen document, where pdf.js reads page 1 of a PDF the background matches to a paper.
   { entry: "capture/offscreen.ts", out: "import/offscreen.js", format: "esm", chromeOnly: true },
   // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
