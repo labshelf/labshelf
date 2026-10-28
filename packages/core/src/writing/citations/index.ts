@@ -1,29 +1,27 @@
-/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, labshelf.bib text and the main file's bibliography line, the page argument of a citation, papers by cite key, the papers list of labshelf.yaml, the fixes a citation card offers, writing a project's labshelf.bib, the words of the Cite from Library pickers. */
-export { BIBLIOGRAPHY_HEADER, createBibliography } from "./bibliographyFile.js";
-export type { GeneratedBibliography } from "./bibliographyFile.js";
-export { withBibliographyLine } from "./bibliographyLine.js";
-export type { BibliographyLineResult } from "./bibliographyLine.js";
-export { findPartialCiteKeyStart } from "./citationCompletion.js";
-export { createCitationSnippet, derivePageSupplement, deriveQuotationBefore } from "./citedText.js";
-export { derivePageArgument } from "./pageArgument.js";
-export type { PageArgumentContext } from "./pageArgument.js";
-export { syncListedPapers } from "./listedPapersSync.js";
-export type { BibliographyUpdate, CitingProject } from "./listedPapersSync.js";
-export { derivePapersByCiteKey } from "./derivePapersByCiteKey.js";
-export { findCiteKeyOccurrences, scanCiteKeys } from "./scanCitations.js";
-export type { CiteKeyOccurrence } from "./scanCitations.js";
-export { addBacklinks } from "./backlinkEntries.js";
-export type { Backlink, BacklinkMap } from "./backlinkEntries.js";
-export { findCitationSites } from "./findCitationSites.js";
-export type { CitationSite } from "./findCitationSites.js";
-export { findSourceHeadings } from "./findSourceHeadings.js";
-export type { SourceHeading } from "./findSourceHeadings.js";
-export { deriveProjectBacklinks } from "./deriveProjectBacklinks.js";
-export { CITE_WITHOUT_PAGE, deriveChoiceCitationSpec, formatHighlightLabel, formatHighlightPage, derivePaperPickText } from "./citationPickText.js";
-export type { HighlightChoice, PickText } from "./citationPickText.js";
-export { deriveSuggestedCiteKey } from "./suggestCiteKey.js";
-export type { SuggestableCiteKey } from "./suggestCiteKey.js";
-export { listQuotableHighlights } from "./listQuotableHighlights.js";
-export { listProjectCiteKeys, updateProjectBibliography } from "./projectBibliography.js";
-export { DISK_ONLY, walkProjectSources } from "./walkProjectSources.js";
-export type { ProjectSource } from "./walkProjectSources.js";
+/** Exports the runtime-neutral citation API: citations in sources, where a key is being typed, the citation text and page argument, papers by cite key, the cite keys behind a compiled PDF and the library papers they name, labshelf.bib and the main file's bibliography line, the papers list of labshelf.yaml and the reading list, backlinks, and the bibliography linter. */
+export { findCiteKeyOccurrences, scanCiteKeys, findCitationSites } from "./citeKeys.js";
+export type { CiteKeyOccurrence, CitationSite } from "./citeKeys.js";
+export { findPartialCiteKeyStart, derivePageArgument } from "./citeKeys.js";
+export type { PageArgumentContext } from "./citeKeys.js";
+export { createCitationSnippet, derivePageSupplement, deriveQuotationBefore } from "./citeKeys.js";
+export { CITE_WITHOUT_PAGE, deriveChoiceCitationSpec, formatHighlightLabel, formatHighlightPage, derivePaperPickText } from "./citeKeys.js";
+export type { HighlightChoice, PickText } from "./citeKeys.js";
+export { deriveSuggestedCiteKey, derivePapersByCiteKey, findSourceHeadings } from "./citeKeys.js";
+export type { SuggestableCiteKey, SourceHeading } from "./citeKeys.js";
+
+export { parseBibEntries, extractPlainField, readBibField, BIBLIOGRAPHY_HEADER, createBibliography, withBibliographyLine, listProjectCiteKeys, updateProjectBibliography } from "./bibliography.js";
+export type { BibEntry, GeneratedBibliography, BibliographyLineResult } from "./bibliography.js";
+
+export { checkBibliography, deriveMissingDoiFix, createPublishedVersionFinder } from "./bibliographyChecks.js";
+export type { BibliographyProblem, BibliographyFix, BibliographyCheckRule, PublishedVersion, PublishedVersionFinder } from "./bibliographyChecks.js";
+
+export { syncListedPapers, buildReadingList } from "./papersSync.js";
+export type { BibliographyUpdate, CitingProject, ReadingList, ReadingListEntry, ReadingListInput } from "./papersSync.js";
+
+export { addBacklinks, deriveProjectBacklinks } from "./backlinks.js";
+export type { Backlink, BacklinkMap } from "./backlinks.js";
+export { DISK_ONLY, walkProjectSources } from "./projectSources.js";
+export type { ProjectSource } from "./projectSources.js";
+
+export { listQuotableHighlights, listQuotedHighlights, createBibliographyCardEntry, deriveCitationEntries, deriveCiteKey, findTypstCitationAt, findCiteKeysAt, findCiteKeysOnLine } from "./quotes.js";
+export type { QuotedHighlight, CitationDetails, TypstCitation, CitationSources, SourceLine } from "./quotes.js";

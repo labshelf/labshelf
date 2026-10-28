@@ -1,5 +1,5 @@
 // Tests the tab list of the All projects detail pane and its count badges.
-import { deriveProjectPaneTabs } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/projectDetailPaneTabs";
+import { deriveProjectPaneTabs } from "../../../../../../src/writing/allProjects/dom/projectDetailTabs";
 import { detail } from "../fixtures";
 
 describe("deriveProjectPaneTabs", () => {

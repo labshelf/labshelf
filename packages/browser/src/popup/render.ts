@@ -1,12 +1,7 @@
-// Renders the popup form's DOM: paper title/byline, PDF status line, folder select, the shared
-// status banner (used for the library copy, errors and the saved confirmation), and textarea auto-grow.
+// Renders the popup form: the popup session state and its data-state view toggle, text formatting (byline, tags, folder name, PDF line), and the paper, PDF status, folder select, notice banner and textarea DOM.
 import { findElement } from "@labshelf/core/dom";
-import { escapeHtml, renderIcon, type IconName } from "@labshelf/core";
-
-import type { DraftView, LibraryReference, FindPdfReply } from "../platform";
-import { formatFolderName, formatMetaLine } from "./format";
-import { describePdfLine } from "../ui";
-import { popupState, showPopupView } from "./popupState";
+import { escapeHtml, renderIcon, type IconName, PAPERS_DIR, formatFolderPathLabel, formatAuthors, normalizeTags, formatVenueLine, formatPdfSourceLabel } from "@labshelf/core";
+import type { DraftView, LibraryReference, FindPdfReply, FoldersReply, PdfOfferView, WrittenPaperReply } from "../platform";
 
 export function showNotice(opts: {
   glyph: IconName; tone: "ok" | "muted" | "warn"; title: string; detail: string;
@@ -86,4 +81,60 @@ export function showError(message: string): void {
 export function updateTextAreaHeight(area: HTMLTextAreaElement): void {
   area.style.height = "auto";
   area.style.height = `${Math.min(area.scrollHeight, 96)}px`;
+}
+
+export type PopupState = "loading" | "form" | "library" | "empty" | "saving" | "saved";
+
+export const popupState: {
+  tabId: number;
+  folders: FoldersReply;
+  saved: WrittenPaperReply | undefined;
+  pdfStatus: FindPdfReply | undefined;
+  /** A PDF this tab showed, or the latest download, that matched a paper without a PDF. */
+  offer: PdfOfferView | undefined;
+} = {
+  tabId: -1,
+  folders: { folders: [{ path: PAPERS_DIR, depth: 0 }], lastFolder: PAPERS_DIR },
+  saved: undefined,
+  pdfStatus: undefined,
+  offer: undefined,
+};
+
+export function showPopupView(state: PopupState): void {
+  findElement("popup").dataset["state"] = state;
+  findElement("form").hidden = !(state === "form" || state === "saving");
+  findElement("status").hidden = !(state === "library" || state === "empty" || state === "saved");
+  const busy = state === "saving";
+  for (const id of ["folder", "tags", "note", "save"]) findElement<HTMLInputElement>(id).disabled = busy;
+  // While searching, pdfStatus is undefined; Save then waits on the search.
+  findElement("save").innerHTML = busy
+    ? `<span class="spin">${renderIcon("refresh")}</span><span>${popupState.pdfStatus ? "Saving…" : "Looking for the PDF…"}</span>`
+    : `<span>Save to LabShelf</span>`;
+}
+
+/** "Edelman et al. · SIAM J. Matrix Anal. Appl. · 1998" — surnames, et al. past two. */
+export function formatMetaLine(d: Pick<DraftView, "authors" | "venue" | "year">): string {
+  return [formatAuthors(d.authors), formatVenueLine({ journal: d.venue, year: d.year })].filter(Boolean).join(" · ");
+}
+
+/** "ml, #Thesis ch2 , ML" → ["ml", "Thesis ch2"]: split on , and ;, a leading # dropped, then normalised. */
+export function parseTags(text: string): string[] {
+  return normalizeTags(text.split(/[,;]/).map((raw) => raw.trim().replace(/^#/, "")));
+}
+
+/** The folder's display name: its path inside the library ("Thesis / Chapter 2"), "All papers" for the root. */
+export function formatFolderName(path: string): string {
+  return formatFolderPathLabel(PAPERS_DIR, path, "/");
+}
+
+/** The status line while searching, when found, and when the search ended empty (the user is asked before saving). */
+export function describePdfLine(status: FindPdfReply | "searching"): string {
+  if (status === "searching") return "Looking for the PDF…";
+  if (status.found) return `PDF found · ${formatPdfSourceLabel(status.source)}`;
+  const tried = status.miss?.tried ?? 0;
+  if (tried > 0) {
+    const links = tried === 1 ? "link" : "links";
+    return `No PDF found (tried ${tried} ${links}) — you'll be asked before saving`;
+  }
+  return "No PDF found — you'll be asked before saving";
 }

@@ -1,5 +1,5 @@
 /** Verifies the Typst file scanner finds bindings, labels, imports, includes and bibliographies. */
-import { scanTypstFile } from "../../../../src/typst/language/syntax/index";
+import { scanTypstFile } from "../../../../src/typst/language/syntax";
 
 describe("scanTypstFile bindings", () => {
   it("reads a plain #let binding", () => {

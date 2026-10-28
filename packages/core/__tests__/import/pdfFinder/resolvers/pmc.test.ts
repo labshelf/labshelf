@@ -1,5 +1,5 @@
 /** Contract of the PMC resolver: the newest version of the article in the open-data bucket, nothing else. */
-import { pmcResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { pmcResolver } from "../../../../src/import/pdfFinder/openAccess";
 import { makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const BUCKET = "https://pmc-oa-opendata.s3.amazonaws.com";

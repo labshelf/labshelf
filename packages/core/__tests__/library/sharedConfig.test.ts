@@ -1,6 +1,6 @@
 import {
   mergeSharedConfig, parseSharedConfig, serializeSharedConfig, type SharedConfig,
-} from "../../src/library/sharedConfig";
+} from "../../src/library/layout";
 
 describe("parseSharedConfig", () => {
   it.each([

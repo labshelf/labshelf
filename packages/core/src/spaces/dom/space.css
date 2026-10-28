@@ -1,0 +1,36 @@
+/* Frames Space views with the proportions of the research workspace. */
+@import "../../ui/dom/widgets/page.css";
+@import "../../ui/dom/widgets/arcMark.css";
+@import "./overview.css";
+@import "./papers.css";
+@import "./glossary.css";
+@import "./positioned.css";
+.sp { max-width: var(--ls-gallery-content-w); margin: 0 auto; padding: var(--ls-space-9); width: 100%; height: 100%; min-height: 0; overflow: auto; color: var(--ls-fg); background: var(--ls-bg); font: var(--ls-font-size) var(--ls-font); }
+.sp-head { display: flex; align-items: center; gap: var(--ls-space-7); padding-bottom: var(--ls-space-7); }
+.sp-title { flex: 1; min-width: 0; }
+.sp-title h1 { margin: 0; }
+.sp-name, .sp-purpose { display: block; width: 100%; min-width: 0; border: 1px solid transparent; border-radius: var(--ls-radius-sm); padding: var(--ls-space-1) var(--ls-space-2); margin-left: calc(-1 * var(--ls-space-2)); background: none; color: inherit; transition: background var(--ls-fast), border-color var(--ls-fast); }
+.sp-name { font: 600 var(--ls-text-3xl) / 1.25 var(--ls-font); }
+.sp-purpose { margin-top: var(--ls-space-2); color: var(--ls-desc); font: var(--ls-text-lg) / 1.6 var(--ls-font); }
+.sp-name:hover:enabled, .sp-purpose:hover:enabled { border-color: var(--ls-border-soft); }
+.sp-name:focus, .sp-purpose:focus { background: var(--ls-input-bg); }
+.sp-name:disabled, .sp-purpose:disabled { opacity: 1; }
+.sp-people { display: flex; align-items: center; gap: var(--ls-space-4); }
+.sp-head .ls-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.sp .ls-page-tabs { position: sticky; top: 0; z-index: 2; margin: 0; gap: var(--ls-space-4); border-bottom-color: var(--ls-border-soft); background: var(--ls-bg); }
+.sp .ls-page-tab { padding: var(--ls-space-6) var(--ls-space-4); font-size: var(--ls-font-size); transition: background var(--ls-fast), color var(--ls-fast), border-color var(--ls-fast); }
+.sp .ls-page-tab:hover { background: var(--ls-border-faint); }
+.sp .ls-page-tab[aria-selected="true"] { font-weight: 600; }
+.sp-body { padding-top: var(--ls-space-8); }
+.sp .ls-btn { min-height: calc(var(--ls-row-h) + var(--ls-space-3)); font-size: var(--ls-text-md); }
+.sp :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
+.sp .ls-empty-hint { opacity: 1; line-height: 1.6; }
+.sp-date-fields, .sp-goal-fields { display: flex; flex-direction: column; gap: var(--ls-space-4); }
+.sp-date-fields label, .sp-goal-fields label { display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.sp-goal-fields fieldset { max-height: calc(var(--ls-row-h) * 8); overflow: auto; margin: var(--ls-space-4) 0; padding: var(--ls-space-3); border: 1px solid var(--ls-border-soft); }
+.sp-goal-fields fieldset label { flex-direction: row; align-items: center; }
+.sp-date-dialog { max-height: calc(100vh - var(--ls-space-7) * 2); overflow: auto; }
+.sp [role="alert"]:not(:empty) { color: var(--ls-error); margin: var(--ls-space-4) var(--ls-space-7); }
+.sp-date-dialog h2 { margin: 0 0 var(--ls-space-5); font-size: var(--ls-text-lg); }
+@media (max-width: 900px) { .sp { padding: var(--ls-space-7); } }
+@media (max-width: 560px) { .sp-head { flex-wrap: wrap; } .sp-title { flex-basis: 100%; } .sp .ls-page-tabs { flex-wrap: wrap; gap: 0 var(--ls-space-4); } }

@@ -1,9 +1,9 @@
 // Shows the project's history page, answered in the same page over a loopback channel.
 import { createLoopbackTransport, type HistoryToHost, type HostToHistory } from "@labshelf/core";
 import { mountProjectHistory } from "@labshelf/core/dom";
-import { mountHistoryHost } from "../../writing/history";
+import { mountHistoryHost } from "../../writing";
 import { mountProjectPage } from "./projectPageTab";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 
 const MODULE = "tabs.history";
 

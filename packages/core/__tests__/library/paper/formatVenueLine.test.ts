@@ -1,4 +1,4 @@
-import { formatVenueLine } from "../../../src/library/paper/index";
+import { formatVenueLine } from "../../../src/library/record";
 
 describe("formatProjectVenueLine", () => {
   it("joins venue, year, volume(issue) and pages", () => {

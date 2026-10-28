@@ -1,5 +1,3 @@
 // Exports the project-sharing dialogs and the menu entries that open them.
-export { runShareProjectDialog } from "./shareProjectDialog.js";
-export { runJoinProjectDialog } from "./joinProjectDialog.js";
-export { runLeaveProjectDialog } from "./leaveProjectDialog.js";
-export { createProjectShareMenuEntries } from "./createProjectShareMenuEntries.js";
+export { runJoinProjectDialog, runLeaveProjectDialog, runShareProjectDialog } from "./collabDialogs.js";
+export { createProjectShareMenuEntries } from "./projectShareMenu.js";

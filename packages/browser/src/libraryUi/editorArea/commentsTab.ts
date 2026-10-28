@@ -1,8 +1,8 @@
 // Lists the open project's comment threads with a reply box and a Resolve button on each.
 import { formatError } from "@labshelf/core";
 import { renderElement, renderIcon } from "@labshelf/core/dom";
-import type { TabModule } from "./tabKind";
-import type { CommentThreads, LocatedThread } from "../../collab/comments";
+import type { TabModule } from "./tabKinds";
+import type { CommentThreads, LocatedThread } from "../../collab";
 
 const MODULE = "libraryUi.comments";
 

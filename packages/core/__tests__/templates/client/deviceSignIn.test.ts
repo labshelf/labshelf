@@ -1,6 +1,6 @@
 // Verifies device authorization scopes, polling, refusal and cancellation without a client secret.
-import { startGitHubDeviceSignIn, fetchGithubDeviceToken } from "../../../src/templates/client/index";
-import type { GitHubDeviceAuthorization } from "../../../src/templates/client/index";
+import { startGitHubDeviceSignIn, fetchGithubDeviceToken } from "../../../src/templates/index";
+import type { GitHubDeviceAuthorization } from "../../../src/templates/index";
 
 const authorization: GitHubDeviceAuthorization = { deviceCode: "private-device", userCode: "ABCD-EFGH", verificationUri: "https://github.com/login/device", expiresIn: 900, interval: 5 };
 const response = (body: unknown, status = 200) => ({ ok: status === 200, status, json: async () => body }) as Response;

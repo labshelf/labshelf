@@ -6,7 +6,7 @@ import {
   detectLatexmk,
   createSystemTexProvider,
   listTexLiveBinDirs,
-} from "../../../../../src/latex/toolchain/node/systemTex/createSystemTexProvider";
+} from "../../../../../src/latex/node/systemTex";
 
 let root: string;
 

@@ -1,9 +1,5 @@
-/**
- * Declares the library UI preferences a host persists (sort, panes, folded sections, detail tab, citation style, Details pins),
- * the port it persists them through, and `sanitizePrefs`, which turns whatever storage returns into valid prefs.
- */
-import { COLUMN_KEYS, DEFAULT_COLUMNS, type ListColumn } from "./columns.js";
-import type { SortDir, SortColumn } from "./viewState.js";
+// Declares the persisted library UI prefs, their defaults and validation, and the optional list columns they choose from.
+import type { SortDir, SortColumn } from "./libraryStore.js";
 
 export const DETAIL_TABS = ["details", "annotations", "notes", "related"] as const;
 export type DetailsTab = (typeof DETAIL_TABS)[number];
@@ -42,6 +38,13 @@ export interface PanePrefsPort {
   load(): PanePrefs;
   save(patch: Partial<PanePrefs>): void;
 }
+
+/** Every list column except the title, which is always shown. */
+export type ListColumn = Exclude<SortColumn, "title">;
+
+export const COLUMN_KEYS: readonly ListColumn[] = ["creator", "venue", "year", "lastRead", "status"];
+
+export const DEFAULT_COLUMNS: ListColumn[] = ["creator", "year", "status"];
 
 /** Drag limits of the sidebar; dragging below `collapseAt` hides it. */
 export const PANE_LIMITS = {

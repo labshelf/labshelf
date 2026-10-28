@@ -1,5 +1,5 @@
 /** Contract of the Unpaywall resolver: the best open-access copy first, then publisher before repository copies. */
-import { unpaywallResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { unpaywallResolver } from "../../../../src/import/pdfFinder/openAccess";
 import { json, makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const URL_FOR = "https://api.unpaywall.org/v2/10.1%2Fx?email=me%40uni.edu";

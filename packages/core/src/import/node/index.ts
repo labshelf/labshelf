@@ -1,8 +1,8 @@
-/** Exports the Node-only pdf.js support: the loader, the PDF opener, the first-page PNG render and the document opener on the native canvas. */
-export { createPdfjsLoader } from "./loadPdfjs.js";
-export type { PdfjsLoaderOptions } from "./loadPdfjs.js";
-export { NodePdfOpener } from "./nodePdfOpener.js";
-export { renderFirstPagePng } from "./renderFirstPagePng.js";
-export { withPdfDocument } from "./withPdfDocument.js";
-export { TextLayerPdfBuilder, TesseractOcrEngine } from "./ocr/index.js";
-export type { OcrDocument, TextLayerPdfOptions, TesseractOcrOptions } from "./ocr/index.js";
+/** Exports the Node-only pdf.js support: the loader, the PDF opener, the first-page PNG render, the document opener on the native canvas and OCR. */
+export { createPdfjsLoader } from "./pdfjs.js";
+export type { PdfjsLoaderOptions } from "./pdfjs.js";
+export { NodePdfOpener, renderFirstPagePng, withPdfDocument } from "./nativeCanvas.js";
+export { TesseractOcrEngine } from "./ocr.js";
+export type { OcrDocument, TesseractOcrOptions } from "./ocr.js";
+export { TextLayerPdfBuilder } from "./textLayer.js";
+export type { TextLayerPdfOptions } from "./textLayer.js";

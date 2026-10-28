@@ -1,6 +1,7 @@
 /**
  * Finds the math expression of a LaTeX source that covers an offset: inline, display or a math environment.
  */
+import { lineEnd } from "../../text/index.js";
 
 export interface MathSpan {
   /** What MathJax renders: the inner TeX for delimiters, the whole `\begin…\end` for environments. */
@@ -76,9 +77,4 @@ function environment(text: string, start: number, name: string): MathSpan | unde
   if (endAt < 0) return undefined;
   const end = endAt + endTag.length;
   return { tex: text.slice(start, end), display: true, start, end };
-}
-
-function lineEnd(text: string, i: number): number {
-  const newline = text.indexOf("\n", i);
-  return newline < 0 ? text.length : newline + 1;
 }

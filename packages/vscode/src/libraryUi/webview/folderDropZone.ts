@@ -1,5 +1,5 @@
 // Makes a folder row draggable and a drop target for other folders and for files dragged from the OS.
-import type { SidebarToHost } from "../sidebarMessages.js";
+import type { SidebarToHost } from "@labshelf/core";
 
 const FOLDER_MIME = "application/x-labshelf-folder";
 

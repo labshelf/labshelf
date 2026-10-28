@@ -118,9 +118,6 @@ describe("resolvePdf", () => {
 
 describe("the order of the chain", () => {
   const OPENALEX = "https://api.openalex.org/";
-  const S2 = "https://api.semanticscholar.org/";
-  const EPMC = "https://www.ebi.ac.uk/";
-  const firstIndex = (calls: string[], prefix: string): number => calls.findIndex((u) => u.startsWith(prefix));
 
   it("downloads candidates in rank order whatever order the lookups answer in", async () => {
     const h = makeFindingHarness();

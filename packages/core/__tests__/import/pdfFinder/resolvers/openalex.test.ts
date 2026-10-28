@@ -1,5 +1,5 @@
 /** Contract of the OpenAlex learner: identifiers for the resolvers that follow, publisher and repository copies, and nothing from another paper's record. */
-import { openalexResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { openalexResolver } from "../../../../src/import/pdfFinder/openAccess";
 import { json, makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const LOOKUP = "https://api.openalex.org/works/doi:10.1%2Fx?select=id,doi,title,publication_year,authorships,ids,open_access,best_oa_location,locations&mailto=me%40uni.edu";

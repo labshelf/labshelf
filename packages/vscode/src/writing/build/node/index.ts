@@ -1,6 +1,3 @@
-/** Exports the Node side of the build: the LaTeX build registration, the toolchain setup it needs and the core build deps. */
-export { registerLatexBuild } from "./registerLatexBuild.js";
-export { ensureToolchain } from "./ensureToolchain.js";
-export { createProjectBuildDeps, type ProjectBuildDepsSource } from "./createProjectBuildDeps.js";
-export { createSessionLogger } from "./createSessionLogger.js";
-export { createVscodeTex } from "./sharedTex.js";
+/** Exports the Node side of the build: the LaTeX build and Check Before Submitting registrations, the toolchain setup they need and the core build deps. */
+export { registerCheckCommand, registerLatexBuild } from "./builds.js";
+export { createProjectBuildDeps, createSessionLogger, createVscodeTex, ensureToolchain, type ProjectBuildDepsSource, type ToolchainDeps } from "./toolchain.js";

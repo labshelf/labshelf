@@ -28,7 +28,7 @@ export interface CloudflareStubLike {
   fetch(request: Request): Promise<Response>;
 }
 
-export interface CloudflareNamespaceLike {
+interface CloudflareNamespaceLike {
   idFromName(name: string): unknown;
   get(id: unknown): CloudflareStubLike;
 }

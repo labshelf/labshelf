@@ -1,25 +1,15 @@
 // Mounts the project history page: a timeline to step through, the selected entry's changes and the restore action.
-import { renderElement } from "../../../ui/dom/dom.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
-import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol/index.js";
-import { escapeHtml } from "../../../ui/escapeHtml.js";
-import type { DiffLine } from "../compareLines.js";
-
-const time = (iso: string): string => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const dateTime = (iso: string): string => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-
-function dayLabel(iso: string): string {
-  const day = new Date(iso).toDateString();
-  const today = new Date();
-  if (day === today.toDateString()) { return "Today"; }
-  if (day === new Date(today.getTime() - 86_400_000).toDateString()) { return "Yesterday"; }
-  return new Date(iso).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
-}
+import type { HistoryRow, HistoryTransport, HostToHistory } from "../protocol.js";
+import { escapeHtml } from "../../../ui/index.js";
+import type { DiffLine } from "../historyEntries.js";
+import { formatClockTime, formatDayLabel, formatShortDateTime } from "../../../time/index.js";
 
 /** What the row says it did: a version name, a restore or the files it touched. */
 function rowTitle(row: HistoryRow, oldest: boolean): string {
   if (row.kind === "version") { return `Version “${row.label ?? ""}”`; }
-  if (row.kind === "restore") { return `Restored to ${row.label ? dateTime(row.label) : "an earlier point"}`; }
+  if (row.kind === "restore") { return `Restored to ${row.label ? formatShortDateTime(row.label) : "an earlier point"}`; }
   if (oldest) { return "Start of history"; }
   const names = row.changes.map((change) => change.path.split("/").pop() ?? change.path);
   if (names.length === 0) { return "No file changes"; }
@@ -30,7 +20,7 @@ function rowElement(row: HistoryRow, index: number, rows: readonly HistoryRow[],
   const badge = index === 0 ? `<span class="ls-history-badge">Current</span>` : "";
   return renderElement("li", {
     class: `ls-history-row ls-history-${row.kind}${index === 0 ? " ls-history-current" : ""}`, role: "option", "aria-selected": String(selected), "data-index": index, tabindex: "-1",
-    html: `<span class="ls-history-dot" aria-hidden="true"></span><span class="ls-history-time">${escapeHtml(time(row.at))}</span>` +
+    html: `<span class="ls-history-dot" aria-hidden="true"></span><span class="ls-history-time">${escapeHtml(formatClockTime(row.at))}</span>` +
       `<span class="ls-history-title">${escapeHtml(rowTitle(row, index === rows.length - 1))}</span>${badge}`,
   });
 }
@@ -40,7 +30,7 @@ function renderTimeline(list: HTMLElement, rows: readonly HistoryRow[], selected
   const items: HTMLElement[] = [];
   let day = "";
   rows.forEach((row, index) => {
-    const label = dayLabel(row.at);
+    const label = formatDayLabel(row.at);
     if (label !== day) { items.push(renderElement("li", { class: "ls-history-day", role: "presentation", text: label })); day = label; }
     items.push(rowElement(row, index, rows, index === selected));
   });
@@ -90,6 +80,49 @@ function buildLayout(root: HTMLElement) {
   return { title, older, newer, mark, compare, timeline, entryTitle, entryWhen, restore, files, diff };
 }
 
+type HistoryUi = ReturnType<typeof buildLayout>;
+
+/** Shows the entry at `selected` of `count` in the detail head and enables the buttons that can still move or restore. */
+function renderEntry(ui: HistoryUi, row: HistoryRow, selected: number, count: number): void {
+  ui.entryTitle.textContent = rowTitle(row, selected === count - 1);
+  ui.entryWhen.textContent = `${new Date(row.at).toLocaleString()} · ${row.changes.length} ${row.changes.length === 1 ? "file" : "files"} changed`;
+  ui.restore.disabled = selected === 0;
+  ui.newer.disabled = selected === 0;
+  ui.older.disabled = selected === count - 1;
+}
+
+interface HistoryNavigation {
+  select(index: number): void;
+  /** Shows the diff of the file at `path` in the selected entry. */
+  pick(path: string): void;
+  selected(): number;
+  row(): HistoryRow | undefined;
+  count(): number;
+}
+
+/** Wires the toolbar buttons, the restore button, the file list and the timeline's clicks and arrow keys. */
+function bindNavigation(ui: HistoryUi, transport: HistoryTransport, nav: HistoryNavigation): void {
+  ui.older.addEventListener("click", () => nav.select(nav.selected() + 1));
+  ui.newer.addEventListener("click", () => nav.select(nav.selected() - 1));
+  ui.mark.addEventListener("click", () => transport.post({ type: "markVersion" }));
+  ui.compare.addEventListener("click", () => transport.post({ type: "compareVersions" }));
+  ui.restore.addEventListener("click", () => { const row = nav.row(); if (row) { transport.post({ type: "restore", id: row.id }); } });
+  ui.timeline.addEventListener("click", (event) => {
+    const index = (event.target as HTMLElement).closest<HTMLElement>("[data-index]")?.dataset["index"];
+    if (index !== undefined) { nav.select(Number(index)); }
+  });
+  ui.files.addEventListener("click", (event) => {
+    const picked = (event.target as HTMLElement).closest<HTMLElement>("[data-path]")?.dataset["path"];
+    if (picked) { nav.pick(picked); }
+  });
+  ui.timeline.addEventListener("keydown", (event) => {
+    const step = { ArrowDown: 1, ArrowUp: -1, Home: -nav.count(), End: nav.count() }[event.key];
+    if (step === undefined) { return; }
+    event.preventDefault();
+    nav.select(nav.selected() + step);
+  });
+}
+
 export function mountProjectHistory(root: HTMLElement, transport: HistoryTransport): void {
   const ui = buildLayout(root);
   let rows: HistoryRow[] = [];
@@ -107,36 +140,19 @@ export function mountProjectHistory(root: HTMLElement, transport: HistoryTranspo
     const row = rows[selected]!;
     if (!keepPath || !row.changes.some((change) => change.path === path)) { path = row.changes[0]?.path; }
     renderTimeline(ui.timeline, rows, selected);
-    ui.entryTitle.textContent = rowTitle(row, selected === rows.length - 1);
-    ui.entryWhen.textContent = `${new Date(row.at).toLocaleString()} · ${row.changes.length} ${row.changes.length === 1 ? "file" : "files"} changed`;
-    ui.restore.disabled = selected === 0;
-    ui.newer.disabled = selected === 0;
-    ui.older.disabled = selected === rows.length - 1;
+    renderEntry(ui, row, selected, rows.length);
     renderFiles(ui.files, row, path);
     requestDiff();
   }
 
-  ui.older.addEventListener("click", () => select(selected + 1));
-  ui.newer.addEventListener("click", () => select(selected - 1));
-  ui.mark.addEventListener("click", () => transport.post({ type: "markVersion" }));
-  ui.compare.addEventListener("click", () => transport.post({ type: "compareVersions" }));
-  ui.restore.addEventListener("click", () => { const row = rows[selected]; if (row) { transport.post({ type: "restore", id: row.id }); } });
-  ui.timeline.addEventListener("click", (event) => {
-    const index = (event.target as HTMLElement).closest<HTMLElement>("[data-index]")?.dataset["index"];
-    if (index !== undefined) { select(Number(index)); }
-  });
-  ui.timeline.addEventListener("keydown", (event) => {
-    const step = { ArrowDown: 1, ArrowUp: -1, Home: -rows.length, End: rows.length }[event.key];
-    if (step === undefined) { return; }
-    event.preventDefault();
-    select(selected + step);
-  });
-  ui.files.addEventListener("click", (event) => {
-    const picked = (event.target as HTMLElement).closest<HTMLElement>("[data-path]")?.dataset["path"];
-    if (!picked) { return; }
+  function pick(picked: string): void {
     path = picked;
     renderFiles(ui.files, rows[selected]!, path);
     requestDiff();
+  }
+
+  bindNavigation(ui, transport, {
+    select, pick, selected: () => selected, row: () => rows[selected], count: () => rows.length,
   });
   transport.subscribe((message: HostToHistory) => {
     if (message.type === "history") {

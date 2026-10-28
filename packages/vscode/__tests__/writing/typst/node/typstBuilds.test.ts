@@ -4,11 +4,11 @@ import * as vscode from "vscode";
 
 import { buildProject } from "@labshelf/core/node";
 import { TypstBuilds } from "../../../../src/writing/typst/node/typstBuilds";
-import { writeTypstVersion } from "../../../../src/writing/typst/typstVersionPin";
+import { writeTypstVersion } from "../../../../src/writing/typst/typstTriggers";
 import { fakeHost, fakeLogger, fakeProjects, readyEntry } from "../../../support/writingFixtures";
 
 jest.mock("@labshelf/core/node", () => ({ ...jest.requireActual("@labshelf/core/node"), buildProject: jest.fn() }));
-jest.mock("../../../../src/writing/typst/typstVersionPin", () => ({ writeTypstVersion: jest.fn(async () => {}) }));
+jest.mock("../../../../src/writing/typst/typstTriggers", () => ({ ...jest.requireActual("../../../../src/writing/typst/typstTriggers"), writeTypstVersion: jest.fn(async () => {}) }));
 
 const run = buildProject as jest.Mock;
 const window = vscode.window as unknown as Record<string, jest.Mock>;
@@ -21,7 +21,7 @@ function document(fsPath: string, over: Record<string, unknown> = {}) {
   return { isDirty: true, uri: Object.assign(vscode.Uri.file(fsPath), { scheme: "file" }), getText: () => `text of ${fsPath}`, ...over };
 }
 
-function setup(over: Parameters<typeof readyEntry>[1] = {}) {
+function setup(over: Parameters<typeof readyEntry>[1] = {}, folder = "/p/paper") {
   const logger = fakeLogger();
   let saved: Record<string, unknown> | Error = succeeded;
   const request = jest.fn(() => (saved instanceof Error ? Promise.reject(saved) : Promise.resolve(saved)));
@@ -29,7 +29,7 @@ function setup(over: Parameters<typeof readyEntry>[1] = {}) {
     queue: { request } as never,
     buildDeps: { id: "build deps" } as never,
     host: fakeHost(logger),
-    projects: fakeProjects([readyEntry("/p/paper", { main: "main.typ", settings: { id: "paper", format: "typst" }, ...over })]),
+    projects: fakeProjects([readyEntry(folder, { main: "main.typ", settings: { id: "paper", format: "typst" }, ...over })]),
     diagnostics: { publish: jest.fn() },
     previews: { building: jest.fn(), finished: jest.fn() },
   };
@@ -57,6 +57,14 @@ describe("TypstBuilds live compiles", () => {
       root: "main.typ", unsaved: new Map([["/p/paper/main.typ", "text of /p/paper/main.typ"]]),
     });
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("does not treat a file on another Windows drive as inside the project", async () => {
+    workspace.textDocuments = [document("C:\\p\\paper\\main.typ"), document("D:\\p\\paper\\main.typ")];
+    const { builds, deps } = setup({}, "C:\\p\\paper");
+    deps.projects.paths = path.win32;
+    await builds.request("C:\\p\\paper", "main.typ", "live");
+    expect([...(run.mock.calls[0]?.[2] as { unsaved: Map<string, string> }).unsaved.keys()]).toEqual([vscode.Uri.file("C:\\p\\paper\\main.typ").fsPath]);
   });
 });
 

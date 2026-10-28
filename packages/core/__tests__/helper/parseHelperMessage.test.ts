@@ -1,5 +1,5 @@
 /** Verifies that every helper protocol message survives a JSON round trip and that malformed, unknown, oversized or wrong-version frames are rejected. */
-import { PROTOCOL_VERSION, parseHelperMessage, type ToHelperMessage, type ToPageMessage } from "../../src/helper/index";
+import { HELPER_HOST_NAME, PROTOCOL_VERSION, parseHelperMessage, type ToHelperMessage, type ToPageMessage } from "../../src/helper/index";
 
 const sha = "a".repeat(64);
 const env = (id: string) => ({ v: PROTOCOL_VERSION, id });
@@ -39,6 +39,7 @@ const reject = (raw: unknown, direction: "toHelper" | "toPage" = "toHelper") => 
 
 describe("parseHelperMessage round trip", () => {
   it("is protocol version 5", () => { expect(PROTOCOL_VERSION).toBe(5); });
+  it("names the native host dev.labshelf.helper", () => { expect(HELPER_HOST_NAME).toBe("dev.labshelf.helper"); });
 
   it.each(toHelper.map((m) => [m.type, m]))("reads %s sent to the helper", (_type, message) => {
     expect(parseHelperMessage(roundTrip(message), "toHelper")).toEqual({ ok: true, message });
@@ -140,5 +141,45 @@ describe("parseHelperMessage limits", () => {
   it("accepts 10000 changes and rejects 10001 with limit", () => {
     expect(parseHelperMessage(edit(10000), "toHelper").ok).toBe(true);
     expect(parseHelperMessage(edit(10001), "toHelper")).toMatchObject({ ok: false, code: "limit", id: "1" });
+  });
+});
+
+describe("template publication messages", () => {
+  const draft = { name: "Research", category: "article", license: "MIT", description: "Starter" };
+  const envelope = { v: PROTOCOL_VERSION, id: "1" };
+
+
+  it.each([
+    { action: "open" }, { action: "check", draft }, { action: "submit", draft, token: "secret" },
+  ])("round trips a $action request and drops undeclared fields", (request) => {
+    const message = { ...envelope, type: "publishTemplate", projectId: "paper", ...request };
+    expect(parseHelperMessage({ ...message, root: "/outside", files: ["secret"] }, "toHelper")).toEqual({ ok: true, message });
+  });
+
+  it.each([
+    { projectId: "../outside", action: "open" },
+    { projectId: "paper", action: "submit", draft },
+    { projectId: "paper", action: "submit", draft, token: "" },
+    { projectId: "paper", action: "check", draft: { ...draft, category: "invalid" } },
+    { projectId: "paper", action: "check", draft: { ...draft, name: "x".repeat(20_001) } },
+  ])("rejects malformed publication fields %#", (fields) => {
+    expect(parseHelperMessage({ ...envelope, type: "publishTemplate", ...fields }, "toHelper").ok).toBe(false);
+  });
+
+  it("round trips thumbnail requests, failure messages and publication replies", () => {
+    const request = { ...envelope, type: "templateThumbnail", requestId: "publication", error: "Rendering failed" };
+    expect(parseHelperMessage(request, "toHelper")).toEqual({ ok: true, message: request });
+    for (const message of [
+      { ...envelope, type: "templatePreview" },
+      { ...envelope, type: "templatePublish", done: true },
+      { ...envelope, type: "templatePublish", done: false, event: { type: "publish.failed", error: "Build failed" } },
+      { ...envelope, type: "templatePublish", done: false, event: { type: "publish.checks", running: false, checks: [{ id: "build", ok: false, message: "Missing engine" }] } },
+    ]) expect(parseHelperMessage(message, "toPage")).toEqual({ ok: true, message });
+  });
+
+  it("rejects unknown nested events and invalid check results", () => {
+    for (const event of [{ type: "source" }, { type: "publish.checks", running: false, checks: [{ id: "unknown", ok: true }] }]) {
+      expect(parseHelperMessage({ ...envelope, type: "templatePublish", done: false, event }, "toPage").ok).toBe(false);
+    }
   });
 });

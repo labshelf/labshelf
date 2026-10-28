@@ -1,5 +1,5 @@
 /** Scholarly-host test: publisher and repository hosts count, reference and encyclopedia pages do not. */
-import { isScholarlyHost } from "../../../../src/import/pdfFinder/rules/index";
+import { isScholarlyHost } from "../../../../src/import/pdfFinder/rules";
 
 describe("isScholarlyHost", () => {
   it.each([

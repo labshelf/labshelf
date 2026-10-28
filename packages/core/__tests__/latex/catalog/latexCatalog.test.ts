@@ -1,5 +1,5 @@
 // Tests that the completion catalog has unique names and snippets in valid VS Code snippet syntax.
-import { LATEX_COMMANDS, LATEX_ENVIRONMENTS, type LatexCatalogEntry } from "../../../src/latex/catalog/index";
+import { LATEX_COMMANDS, LATEX_ENVIRONMENTS, type LatexCatalogEntry } from "../../../src/latex/catalog";
 
 // Placeholders hold no braces, so removing every well-formed tab stop must leave no `$`.
 function tabStopsAreWellFormed(snippet: string): boolean {

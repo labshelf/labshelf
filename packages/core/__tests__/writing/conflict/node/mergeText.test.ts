@@ -1,5 +1,5 @@
 /** Verifies the three-way line merge of project text: clean merges, conflict markers, line endings, no lost text. */
-import { mergeFileText, mergeText } from "../../../../src/writing/conflict/node/mergeText";
+import { mergeFileText, mergeText } from "../../../../src/writing/conflict/node/itemFileMerge";
 
 const PARAGRAPHS = [
   "\\section{Introduction}\nDeep networks learn hierarchical features from raw data.\nWe study their robustness.",

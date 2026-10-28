@@ -1,5 +1,5 @@
 // Tests that a project's file paths become the tray's visible rows: folders first, open folders unfolded one level deeper.
-import { deriveProjectFileTree } from "../../../../../src/writing/allProjects/dom/tray/deriveProjectFileTree";
+import { deriveProjectFileTree } from "../../../../../src/writing/allProjects/dom/projectTray";
 
 const paths = ["main.tex", "sec/b.tex", "sec/a.tex", "fig/plot10.pdf", "fig/plot2.pdf", "refs.bib", "sec/deep/x.tex"];
 

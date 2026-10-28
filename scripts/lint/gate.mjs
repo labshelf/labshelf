@@ -1,5 +1,6 @@
 // Runs typecheck, tests and lint for the packages a change touches, then the module rules once, and prints only PASS/FAIL with the errors that matter.
-// Usage: pnpm gate [pkg...] — with no packages, gates those touched by the uncommitted change (core pulls in every app).
+// Usage: pnpm gate [--no-lint] [pkg...] — with no packages, gates those touched by the uncommitted change (core pulls in
+// every app). --no-lint runs only typecheck and tests, and skips the module rules.
 // A PASS is cached per working tree in .git/labshelf-gate, so a second run on the same tree returns at once.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -46,7 +47,11 @@ function runStep(pkg, step) {
   return { status: summary ? `FAIL (${summary})` : "FAIL", errors: [...new Set(errors)].map((line) => `${pkg} ${step}: ${line}`) };
 }
 
-const packages = process.argv.slice(2).length ? process.argv.slice(2) : touchedPackages();
+const args = process.argv.slice(2);
+const noLint = args.includes("--no-lint");
+const named = args.filter((arg) => !arg.startsWith("--"));
+const steps = noLint ? STEPS.filter((step) => step !== "lint") : STEPS;
+const packages = named.length ? named : touchedPackages();
 if (packages.length === 0) {
   console.log("Gate: PASS (no package changed)");
   process.exit(0);
@@ -63,14 +68,14 @@ if (cached[0] === fingerprint && cached[1] === "PASS" && packages.every((pkg) =>
 const lines = [];
 const errors = [];
 for (const pkg of packages) {
-  const results = STEPS.map((step) => [step, runStep(pkg, step)]);
+  const results = steps.map((step) => [step, runStep(pkg, step)]);
   lines.push(`${pkg}: ${results.map(([step, result]) => `${step} ${result.status}`).join(" · ")}`);
   for (const [, result] of results) errors.push(...result.errors);
 }
 // The module rules span every package, so they run once for the whole tree.
-const modules = spawnSync("node", [join(root, "scripts", "lint", "modules.mjs")], { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 });
-lines.push(`modules: ${modules.status === 0 ? "PASS" : "FAIL"}`);
-if (modules.status !== 0) {
+const modules = noLint ? null : spawnSync("node", [join(root, "scripts", "lint", "modules.mjs")], { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 });
+if (modules) lines.push(`modules: ${modules.status === 0 ? "PASS" : "FAIL"}`);
+if (modules && modules.status !== 0) {
   const problems = `${modules.stderr}`.split("\n").filter((line) => line && !line.startsWith("warning "));
   errors.push(...(problems.length > 0 ? problems : [modules.stdout.trim() || "modules.mjs crashed"]).map((line) => `modules: ${line}`));
 }
@@ -84,5 +89,6 @@ if (!passed) {
   errors.sort((a, b) => Number(LOCATED.test(b)) - Number(LOCATED.test(a)));
   console.log(errors.slice(0, MAX_ERRORS).map((line) => `- ${line}`).join("\n"));
 }
-writeFileSync(cacheFile, `${fingerprint} ${passed ? "PASS" : "FAIL"} ${packages.join(" ")}\n`);
+// A --no-lint pass proves less than a full one, so only a full run is cached.
+if (!noLint) writeFileSync(cacheFile, `${fingerprint} ${passed ? "PASS" : "FAIL"} ${packages.join(" ")}\n`);
 process.exit(passed ? 0 : 1);

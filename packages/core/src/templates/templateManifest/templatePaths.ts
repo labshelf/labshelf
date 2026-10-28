@@ -1,6 +1,6 @@
 /** Checks the paths and sizes of a template's files against the rules every app and the catalog CI share. */
 // CONTRACT: documents/contracts/templates.md#paths
-import { checkRelativePath } from "../../library/index.js";
+import { checkRelativePath } from "../../path/index.js";
 
 const MAX_PATH_LENGTH = 255;
 const MAX_FILES = 500;
@@ -8,6 +8,11 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 // INVARIANT: lowercase, because segments are compared case-insensitively.
 const FORBIDDEN_SEGMENTS = new Set(["latexmkrc", ".latexmkrc", ".git"]);
+
+/** Orders two template paths by UTF-16 code unit, never by locale, so every app lists files the same way. */
+export function comparePaths(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
 
 /** The reason a path is unsafe inside a template, or undefined when it is safe. */
 export function deriveTemplatePathProblem(path: string): string | undefined {

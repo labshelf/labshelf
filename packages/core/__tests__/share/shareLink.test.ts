@@ -1,5 +1,5 @@
-/** Pins the share link: round trip through the page URL, and typed refusal of malformed links. */
-import { formatShareLink, parseShareLink, SHARE_PAGE_ORIGIN } from "../../src/share/index";
+/** Pins the share link: round trip through the page URL, typed refusal of malformed links, and that the Open in LabShelf URI carries the link, percent-encoded, to the extension's importShare path. */
+import { formatShareLink, parseShareLink, SHARE_PAGE_ORIGIN, formatShareImportUri } from "../../src/share/index";
 
 const shareId = "0123456789abcdef0123456789abcdef";
 const key = new Uint8Array(16).map((_, index) => index * 17);
@@ -39,5 +39,17 @@ describe("share link", () => {
     [`${SHARE_PAGE_ORIGIN}/share/#a.dev/${shareId}/AAAAAAAAAAAAAAAAAAAAA+`, "badKey"],
   ])("refuses %s as %s without throwing", (text, error) => {
     expect(parseShareLink(text)).toEqual({ ok: false, error });
+  });
+});
+
+describe("formatShareImportUri", () => {
+  it("names the extension and the importShare path, and its link query parses back to the share", () => {
+    const link = { relayUrl: "https://labshelf-relay.me.workers.dev", shareId: "a".repeat(32), key: new Uint8Array(16).fill(7) };
+    const uri = new URL(formatShareImportUri(link));
+    expect(`${uri.protocol}//${uri.host}${uri.pathname}`).toBe("vscode://labshelf.labshelf/importShare");
+    const text = uri.searchParams.get("link");
+    expect(text).toBe(formatShareLink(link));
+    const parsed = parseShareLink(text!);
+    expect(parsed.ok && parsed.link.shareId).toBe(link.shareId);
   });
 });

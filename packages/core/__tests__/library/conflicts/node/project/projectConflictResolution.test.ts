@@ -1,11 +1,11 @@
 // Pins content-copy resolution through atomic recorded project writes.
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { findProjectConflict, resolveProjectConflictCopy } from '../../../../../src/library/conflicts/node/index';
+import { findProjectConflict, resolveConflictDismissalFile, resolveProjectConflictCopy } from '../../../../../src/writing/conflict/node/index';
 import { readConflictDismissals } from '../../../../../src/library/conflicts/index';
-import { resolveConflictDismissalFile } from '../../../../../src/library/conflicts/node/index';
-import { createNodeCollabStorage } from '../../../../../src/collab/node/deviceState/index';
-import { FileProjectVersionStore, deriveTextHash } from '../../../../../src/writing/conflict/index';
+import { createNodeCollabStorage } from '../../../../../src/collab/session/node/index';
+import { FileProjectVersionStore } from '../../../../../src/writing/conflict/index';
+import { deriveTextSha256Hex } from '../../../../../src/hash/index';
 import { NodeLibraryFileSystem, createDeviceLocalLayout } from '../../../../../src/library/node/index';
 import { fakeLogger } from '../../../../support/fakeLogger';
 import { cleanupTempDirs, makeTempDir } from '../../../../support/tempDirs';
@@ -82,7 +82,7 @@ it.each(['versions', 'bases'] as const)('merges with persisted shared %s when pr
   const dir = path.join(createDeviceLocalLayout(input.root).collabDir, shareId);
   const storage = createNodeCollabStorage({ dir, shareId });
   await fs.writeFile(path.join(input.folder, 'labshelf.yaml'), `id: p\nformat: latex\nshared: ${shareId}\n`);
-  await storage.saveMap(name, { 'main.tex': name === 'bases' ? input.base : [{ hash: await deriveTextHash(input.base), text: input.base }] });
+  await storage.saveMap(name, { 'main.tex': name === 'bases' ? input.base : [{ hash: await deriveTextSha256Hex(input.base), text: input.base }] });
   const before = await storage.loadMap(name);
   const store = new FileProjectVersionStore(new NodeLibraryFileSystem(), path, path.join(input.root, 'empty-project-history'));
   try {
@@ -108,4 +108,11 @@ it.each(['hash', 'shape'])('rejects invalid shared version %s without deleting t
     await expect(resolveProjectConflictCopy((await findProjectConflict(input))!, 'mergeAutomatically', { ...input, store })).rejects.toThrow('Cannot merge project copy');
     expect(await fs.readFile(input.file, 'utf8')).toContain('Remote line');
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
+});
+it('accepts a copy at the project folder as inside it and refuses it only as no conflict copy', async () => {
+  const input = await fixture();
+  const conflict = (await findProjectConflict(input))!;
+  const error: unknown = await resolveProjectConflictCopy({ ...conflict, copy: input.folder }, 'mergeAutomatically', input).catch((caught: unknown) => caught);
+  expect(error).toBeInstanceOf(Error);
+  expect(String(error)).not.toMatch(/escapes project/);
 });

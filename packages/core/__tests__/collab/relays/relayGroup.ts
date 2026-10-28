@@ -1,16 +1,15 @@
 /** Runs real share sessions over two in-process relays whose hosts can refuse, page for limits or be blocked per client. */
 import * as Y from "yjs";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/shareKey/index";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../../../src/collab/invite/index";
 import {
-  addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, startRelaySelectionFollow, createRelayPresence, createRelayProbe, type RelaySelector,
+  addRelay, createRelaySelector, createRelayWatch, createSwitchableTransport, startRelaySelectionFollow, createRelayPresence, createRelayProbe, createMemoryCursorStore,
+  type RelayConnectionPort, type RelayCursorStore, type RelaySelector,
 } from "../../../src/collab/relays/index";
-import { attachPresence, type PresenceStore } from "../../../src/collab/presence/index";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
-import { createMemoryCursorStore, type RelayCursorStore } from "../../../src/collab/relays/relayCursors";
-import type { RelayConnectionPort } from "../../../src/collab/transport/index";
-import type { FakeClock } from "../peer/fakeNetwork";
-import { fakeLogger, SHARE_ID, SHARE_KEY } from "../doc/testSession";
-import { FakeRelay } from "../transport/relay/fakeRelay";
+import { attachPresence, type PresenceStore } from "../../../src/collab/index";
+import { createShareSession, type ShareSession } from "../../../src/collab/index";
+import type { FakeClock } from "../fakeNetwork";
+import { fakeLogger, SHARE_ID, SHARE_KEY } from "../testSession";
+import { FakeRelay } from "./fakeRelay";
 
 export const ONE = "https://one.example.workers.dev";
 export const TWO = "https://two.example.workers.dev";

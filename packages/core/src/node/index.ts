@@ -1,4 +1,5 @@
 /** Exports the @labshelf/core/node entry point: code that needs Node built-ins, for VS Code and the terminal. */
+export * from "../path/node/index.js";
 export * from "../library/node/index.js";
 export * from "../logging/node/index.js";
 export * from "../import/node/index.js";
@@ -6,16 +7,14 @@ export * from "../reader/node/index.js";
 export * from "../ai/node/index.js";
 export * from "../writing/project/node/index.js";
 export * from "../templates/node/index.js";
-export * from "../writing/project/buildRoot/node/index.js";
-export * from "../latex/toolchain/node/index.js";
-export * from "../latex/build/node/index.js";
+export * from "../latex/node/index.js";
 export * from "../writing/build/node/index.js";
 export * from "../writing/figures/node/index.js";
-export * from "../writing/projectValue/node/index.js";
 export * from "../writing/checks/node/index.js";
-export * from "../writing/versions/node/index.js";
 export * from "../writing/history/node/index.js";
 export * from "../writing/conflict/node/index.js";
 export * from "../bridge/node/index.js";
-export * from "../collab/node/index.js";
+export * from "../collab/mirror/node/index.js";
+export * from "../collab/session/node/index.js";
 export * from "../share/node/index.js";
+export * from "../files/node/index.js";

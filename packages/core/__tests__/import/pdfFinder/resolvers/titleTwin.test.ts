@@ -1,5 +1,5 @@
 /** Contract of the title-only twin search: arXiv by title and surname, then OpenAlex's free autocomplete, each hit checked against the title. */
-import { titleTwinResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { titleTwinResolver } from "../../../../src/import/pdfFinder/matching";
 import { json, makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const TITLE = "Attention Is All You Need";

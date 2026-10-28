@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { findManagedTex, readTexLiveYear } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { findManagedTex, readTexLiveYear } from "../../../../../src/latex/node/index";
 import { createTexFixture, writeTexTree, type TexFixture } from "./fakeTex";
 
 const TLMGR = { rollover: false, installed: [] };

@@ -1,7 +1,7 @@
 // Verifies safe Space persistence at concurrency and filesystem boundaries.
 import { seededFixture, ROOT } from "./spaceStoreFixture";
-import { SpaceStore } from "../../../src/spaces/store/index";
-import { posixPathOps } from "../../../src/library/mutations/index";
+import { SpaceStore } from "../../../src/spaces/spaceStore";
+import { posixPathOps } from "../../../src/path/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 const base = { version: 1, name: "S", folders: [], papers: [], projects: [], dates: [] };

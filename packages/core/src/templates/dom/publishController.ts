@@ -1,5 +1,5 @@
 // Opens and closes the Publish screen in place of the grid or detail page and hands it the host's publish messages.
-import type { GalleryTransport, HostToGallery, PublishDraft, PublishProject } from "../protocol/index.js";
+import type { GalleryTransport, HostToGallery, PublishDraft, PublishProject } from "../protocol.js";
 import { createPublishScreen, type PublishScreen } from "./publishScreen.js";
 
 export interface PublishController {

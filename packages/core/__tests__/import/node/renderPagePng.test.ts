@@ -1,6 +1,5 @@
 /** A page is drawn onto a white canvas sized to its viewport and returned as PNG bytes. */
-import type { NativeCanvasModule } from '../../../src/import/node/nativeCanvas.js';
-import { renderPagePng } from '../../../src/import/node/renderPagePng.js';
+import { renderPagePng, type NativeCanvasModule } from '../../../src/import/node/nativeCanvas.js';
 
 describe('renderPagePng', () => {
   it('paints a white sheet, renders the page onto it and returns the PNG', async () => {

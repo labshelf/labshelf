@@ -14,6 +14,9 @@
       ],
       "ignoreBinaries": [
         "tsc"
+      ],
+      "ignoreDependencies": [
+        "boring-avatars-vanilla"
       ]
     },
     "packages/core": {
@@ -24,29 +27,41 @@
       "ignoreBinaries": [
         "pdflatex",
         "pdftotext",
-        "reg"
+        "reg",
+        "perl",
+        "biber"
       ],
       "project": [
         "src/**/*.ts",
         "__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@napi-rs/canvas"
+        "@napi-rs/canvas",
+        "prosemirror-commands",
+        "prosemirror-history",
+        "prosemirror-inputrules",
+        "prosemirror-keymap",
+        "prosemirror-state",
+        "prosemirror-transform",
+        "prosemirror-view",
+        "y-prosemirror",
+        "@vscode/codicons"
       ]
     },
     "packages/vscode": {
       "entry": [
         "src/extension.ts",
-        "src/helperHost.ts",
+        "src/node/helperHost.ts",
         "src/reader/webview/readerEntry.ts",
         "src/libraryUi/webview/libraryEntry.ts",
-        "src/libraryUi/details/webview/detailsEntry.ts",
+        "src/libraryUi/webview/detailsEntry.ts",
         "src/writing/templates/webview/galleryEntry.ts",
         "src/libraryUi/webview/sidebarEntry.ts",
         "src/writing/search/webview/searchEntry.ts",
         "src/writing/history/webview/historyEntry.ts",
-        "src/writing/allProjects/webview/allProjectsEntry.ts",
-        "src/library/syncGuide/webview/syncGuideEntry.ts",
+        "src/writing/webview/allProjectsEntry.ts",
+        "src/writing/typst/index.ts",
+        "src/library/webview/syncGuideEntry.ts",
         "src/spaces/webview/researchChatEntry.ts",
         "src/spaces/webview/spacesEntry.ts",
         "build/*.mjs",
@@ -64,19 +79,20 @@
         "@napi-rs/canvas",
         "pdf-lib",
         "pdfjs-dist",
-        "tesseract.js"
+        "tesseract.js",
+        "@vscode/test-web"
       ]
     },
     "packages/browser": {
       "entry": [
-        "src/background/index.ts",
-        "src/popup/index.ts",
-        "src/options/index.ts",
-        "src/libraryPage/pageEntry.ts",
-        "src/import/offscreen.ts",
-        "src/reader/index.ts",
-        "src/ui/themeStartup.ts",
-        "src/content/searchResults.ts",
+        "src/background/entry.ts",
+        "src/popup/entry.ts",
+        "src/options/entry.ts",
+        "src/libraryUi/libraryPage.ts",
+        "src/libraryUi/reader/readerPage.ts",
+        "src/capture/offscreen.ts",
+        "src/platform/themeStartup.ts",
+        "src/content/entry.ts",
         "build/*.mjs",
         "__tests__/**/*.ts"
       ],
@@ -86,7 +102,8 @@
         "__tests__/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@fontsource/*"
+        "@fontsource/*",
+        "jest-environment-jsdom"
       ]
     },
     "packages/terminal": {
@@ -103,8 +120,7 @@
         "__tests__/**/*.ts"
       ],
       "ignoreBinaries": [
-        "pdftoppm",
-        "reg.exe"
+        "pdftoppm"
       ],
       "ignoreDependencies": [
         "@napi-rs/canvas",
@@ -115,6 +131,7 @@
     "website": {
       "entry": [
         "js/main.js",
+        "js/connected.js",
         "src/demos/library.ts",
         "src/demos/reader.ts",
         "src/share.ts",

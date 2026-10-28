@@ -1,7 +1,7 @@
 /**
  * Tests that escapeHtml escapes the five HTML-significant characters and empties nullish values.
  */
-import { escapeHtml } from "../../src/ui/escapeHtml";
+import { escapeHtml } from "../../src/ui/htmlSafety";
 
 describe("escapeHtml", () => {
   it("escapes ampersand, angle brackets and both quote kinds", () => {

@@ -1,5 +1,5 @@
-import { qmdSchema as s } from "../../../src/qmd/editor/schema/index";
-import { docToBody } from "../../../src/qmd/editor/docToBody";
+import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
+import { docToBody } from "../../../src/qmd/editor/qmdDoc";
 
 const p = (text: string) => s.node("paragraph", null, [s.text(text)]);
 

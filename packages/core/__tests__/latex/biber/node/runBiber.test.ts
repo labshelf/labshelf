@@ -2,14 +2,21 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { EventEmitter } from "node:events";
+import { spawn } from "node:child_process";
 import { PassThrough } from "node:stream";
 
-import { findBiberAssetsInFolder, runBiber } from "../../../../src/latex/biber/node/index";
-import { runNativeBiber } from "../../../../src/latex/biber/node/runNativeBiber";
+import { findBiberAssetsInFolder, findBibliographySources, runBiber } from "../../../../src/latex/biber/node/biber";
 import type { BiberWasmAssets } from "../../../../src/latex/biber/index";
-import { findBibliographySources } from "../../../../src/latex/biber/node/runBiber";
 
-jest.mock("../../../../src/latex/biber/node/runNativeBiber", () => ({ runNativeBiber: jest.fn(async () => 0) }));
+jest.mock("node:child_process", () => ({
+  ...jest.requireActual("node:child_process"),
+  spawn: jest.fn(() => {
+    const child = new EventEmitter();
+    setImmediate(() => child.emit("exit", 0, null));
+    return child;
+  }),
+}));
 
 const FIXTURES = path.join(__dirname, "../fixtures");
 // Our build of biber's WASM; BIBER_WASM_DIR points at another copy.
@@ -42,7 +49,7 @@ describe("runBiber", () => {
   it("leaves a control file of another version to the TeX's own biber", async () => {
     const code = await runBiber(io(["--root", project, path.join(build, "main.bcf")]), fakeAssets("3.10"), logger);
     expect(code).toBe(0);
-    expect(runNativeBiber).toHaveBeenCalledWith({ root: project, options: [], controlFile: path.join(build, "main.bcf") });
+    expect(spawn).toHaveBeenCalledWith("biber", [path.join(build, "main.bcf")], { stdio: "inherit" });
   });
 
   it("fails with biber's ERROR line in stderr and the .blg when a data source is outside the project", async () => {
@@ -53,7 +60,7 @@ describe("runBiber", () => {
     expect(code).toBe(2);
     expect(String(run.stderr.read())).toBe("ERROR - Data source ../outside.bib is outside the project folder\n");
     expect(fs.readFileSync(path.join(build, "main.blg"), "utf8")).toContain("ERROR - Data source ../outside.bib");
-    expect(runNativeBiber).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
   });
 
   (realAssets ? it : it.skip)("writes the .bbl and .blg native biber writes beside the control file", async () => {
@@ -95,6 +102,10 @@ describe("findBibliographySources", () => {
     await expect(findBibliographySources([{ path: "../../secret.bib", type: "file" }], places)).rejects.toThrow(/outside the project/);
     await expect(findBibliographySources([{ path: "link.bib", type: "file" }], places)).rejects.toThrow(/outside the project/);
     await expect(findBibliographySources([{ path: path.join(base, "secret.bib"), type: "file" }], places)).rejects.toThrow(/outside the project/);
+  });
+
+  it("accepts a source that is the project folder itself as inside it", async () => {
+    await expect(findBibliographySources([{ path: places.project, type: "file" }], places)).resolves.toEqual([{ file: places.project, placed: places.project }]);
   });
 
   it("reports a source that neither the folders nor kpsewhich have", async () => {

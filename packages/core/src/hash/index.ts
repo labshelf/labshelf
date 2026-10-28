@@ -1,2 +1,2 @@
-// Exports the content hash function.
-export { deriveSha256Hex } from "./contentHash.js";
+// Exports the content hash functions.
+export { deriveSha256Hex, deriveTextSha256Hex } from "./contentHash.js";

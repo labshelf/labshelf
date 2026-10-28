@@ -1,5 +1,5 @@
 // Tests that the Spaces page parser accepts well-formed messages and rejects unknown types and malformed fields.
-import { parseSpacesMessage } from "../../../src/spaces/protocol/index";
+import { parseSpacesMessage } from "../../../src/spaces/spacesProtocol";
 
 describe("parseSpacesMessage", () => {
   it.each([

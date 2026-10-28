@@ -1,6 +1,6 @@
 /** Verifies that space.json and glossary.json keep invalid entries and inherited-name keys, and refuse writes over wrong-typed top-level keys. */
-import { parseGlossaryFile, parseSpaceFile, serializeGlossaryFile, serializeSpaceFile } from "../../../src/spaces/model/index";
-import type { SpaceReadResult } from "../../../src/spaces/model/index";
+import { parseGlossaryFile, parseSpaceFile, serializeGlossaryFile, serializeSpaceFile } from "../../../src/spaces/index";
+import type { SpaceReadResult } from "../../../src/spaces/index";
 
 const where = { id: "s", path: "spaces/s/space.json" };
 

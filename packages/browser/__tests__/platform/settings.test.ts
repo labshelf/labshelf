@@ -9,7 +9,9 @@ jest.mock("webextension-polyfill", () => ({
   },
 }));
 
-import { SETTINGS_STORAGE_KEY, readSettings, updateSettings } from "../../src/platform/settings";
+import {
+  DEFAULT_SIDEBAR_SECTIONS, SETTINGS_STORAGE_KEY, deriveMirrorSettings, readSettings, readSidebarSections, updateSettings, withSidebarSection,
+} from "../../src/platform/settings";
 
 const proxy = { name: "Uni library", template: "https://login.ezproxy.uni.edu/login?url=$@", enabled: true };
 
@@ -145,5 +147,66 @@ describe("settings build options", () => {
     expect(await readSettings()).toMatchObject({ autoCompile: "save", haltOnError: true });
     store[SETTINGS_STORAGE_KEY] = { autoCompile: "sometimes", haltOnError: "yes" };
     expect(await readSettings()).toMatchObject({ autoCompile: "typing", haltOnError: false });
+  });
+});
+
+describe("deriveMirrorSettings", () => {
+  it("turns an enabled mirror into one enabled entry and removes the old keys", () => {
+    expect(deriveMirrorSettings({ enableSciHub: true, sciHubMirror: "https://mirror.example//", contactEmail: "me@uni.edu" })).toEqual({
+      contactEmail: "me@uni.edu",
+      customResolvers: [{ name: "Custom resolver", template: "https://mirror.example/{doi}", enabled: true }],
+    });
+  });
+
+  it("adds no entry when the toggle was off or missing, but still removes the old keys", () => {
+    expect(deriveMirrorSettings({ enableSciHub: false, sciHubMirror: "https://mirror.example" })).toEqual({});
+    expect(deriveMirrorSettings({ sciHubMirror: "https://mirror.example", proxies: [] })).toEqual({ proxies: [] });
+  });
+
+  it("appends after existing entries and skips an identical template", () => {
+    const mine = { name: "Mine", template: "https://other.example/{doi}", enabled: true };
+    const old = { enableSciHub: true, sciHubMirror: "https://mirror.example" };
+    const migrated = deriveMirrorSettings({ ...old, customResolvers: [mine] });
+    expect(migrated?.["customResolvers"]).toEqual([mine, { name: "Custom resolver", template: "https://mirror.example/{doi}", enabled: true }]);
+    const twin = { name: "Twin", template: "https://mirror.example/{doi}", enabled: false };
+    expect(deriveMirrorSettings({ ...old, customResolvers: [twin] })?.["customResolvers"]).toEqual([twin]);
+  });
+
+  it("leaves current settings alone", () => {
+    expect(deriveMirrorSettings({ contactEmail: "me@uni.edu", customResolvers: [] })).toBeUndefined();
+  });
+});
+
+
+describe("reading the sidebar sections", () => {
+  it("shows both sections by default and for anything unreadable", () => {
+    expect(DEFAULT_SIDEBAR_SECTIONS).toEqual({ library: true, projects: true });
+    for (const bad of [undefined, null, "x", 3, [], {}, { library: "no", projects: 0 }]) {
+      expect(readSidebarSections(bad)).toEqual({ library: true, projects: true });
+    }
+  });
+
+  it("keeps a valid choice and defaults a missing half", () => {
+    expect(readSidebarSections({ library: false, projects: true })).toEqual({ library: false, projects: true });
+    expect(readSidebarSections({ projects: false })).toEqual({ library: true, projects: false });
+  });
+
+  it("restores both sections when storage hides both", () => {
+    expect(readSidebarSections({ library: false, projects: false })).toEqual({ library: true, projects: true });
+  });
+});
+
+describe("changing a sidebar section", () => {
+  it("turns a section off while the other stays on", () => {
+    expect(withSidebarSection({ library: true, projects: true }, "projects", false)).toEqual({ library: true, projects: false });
+  });
+
+  it("refuses to turn off the last visible section", () => {
+    const only = { library: false, projects: true };
+    expect(withSidebarSection(only, "projects", false)).toEqual(only);
+  });
+
+  it("turns a section back on", () => {
+    expect(withSidebarSection({ library: false, projects: true }, "library", true)).toEqual({ library: true, projects: true });
   });
 });

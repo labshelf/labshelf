@@ -1,27 +1,28 @@
 /**
  * Renders the paper list as a treegrid: column heads and one paper unit per paper in scope, grouped by subfolder and kept
  * in step by id so a refresh rebuilds only the rows that changed. Selection changes repaint attributes only, so scroll and focus survive.
+ * It also holds the parts of a row that say more than the record (state icon, PDF version chip, Last read, status mark) and the
+ * reconciler that keeps a container's rows in step with an id-keyed list.
  */
-import { PAPERS_DIR, formatFolderLabel } from "../../../library/index.js";
-import { type PaperRecord } from "../../../model/index.js";
-import { deriveNextReadingStatus } from "../../../library/readingStatus/index.js";
-import { deriveListView, type ListPaper, deriveFirstSortDir } from "../../viewModel/index.js";
+import { PAPERS_DIR, formatFolderLabel, deriveNextReadingStatus, STATUS_LABEL, type ReadingStatus } from "../../../library/index.js";
+import { type PaperRecord, PDF_VERSION_LABEL, isPrePublication, type PdfVersion } from "../../../model/index.js";
+import { deriveListView, type ListPaper, deriveFirstSortDir } from "../../listModel.js";
+import { hasMissingTextLayer, describeTextLayerJob } from "../../folderModel.js";
 import { COLUMN_KEYS, type ListColumn, type SortDir, type SortColumn } from "../../store/index.js";
-import { stopPaperDrag, startPaperDrag } from "../drag/index.js";
+import { stopPaperDrag, startPaperDrag } from "../paperDrag.js";
 import { openPaper, sendAddPaperRequest, setReadingStatus } from "../flows/index.js";
-import { showPaperMenu, showColumnsMenu } from "../menu/index.js";
+import { showPaperMenu, showColumnsMenu } from "../libraryChrome.js";
 import { isOverlayOpen, type UiContext } from "../uiContext.js";
-import { GroupedRows } from "./groupedRows.js";
-import { deriveGroupAriaLabel, derivePaperGroups, type PaperGroup } from "./derivePaperGroups.js";
-import { attachListShortcuts } from "./listShortcuts.js";
-import { drawTray, attachFilesRequest } from "./tray/index.js";
-import { buildPaperRow, type RowHandlers, type RowView } from "./paperRow.js";
-import { RowReconciler } from "./rowReconciler.js";
-import { drawSortableHeads, renderSortableHeadHtml, attachSortableHeads } from "./sortHeads.js";
-import { drawTabStop, createTreeCursor, attachTabStop } from "./tree/index.js";
-import { createWindowedList, type WindowedList } from "./window/index.js";
-import { renderIcon } from "../../../ui/index.js";
+import {
+  GroupedRows, deriveGroupAriaLabel, derivePaperGroups, type PaperGroup, attachListShortcuts, buildPaperRow, type RowHandlers, type RowView, drawSortableHeads, renderSortableHeadHtml, attachSortableHeads,
+} from "./paperRows.js";
+import { drawTray, attachFilesRequest } from "./tray.js";
+import { drawTabStop, createTreeCursor, attachTabStop } from "./tree.js";
+import { createWindowedList, type WindowedList } from "./windowedList.js";
+import { renderIcon, escapeHtml, renderReadingStatusMark } from "../../../ui/index.js";
 import { renderElement, renderEmptyNotice } from "../../../ui/dom/index.js";
+import { formatCompactTime } from "../../../time/index.js";
+import type { PaperStats, TextLayerJobView } from "../../protocol/index.js";
 
 interface EmptyStateOptions {
   narrowed: boolean;
@@ -266,4 +267,82 @@ export function mountPaperList(ctx: UiContext, container: HTMLElement): () => vo
   headsObserver?.observe(list.heads);
   const offSel = ctx.store.select((s) => ({ selected: s.selected, cursor: s.cursor }), () => paintSelection(list));
   return () => { headsObserver?.disconnect(); list.windowed.dispose(); offRows(); offFiles(); offSel(); offKeys(); offTabStop(); };
+}
+
+/** An icon after the title for a PDF that needs attention; a readable PDF shows none. */
+export function renderTextLayerIconHtml(p: ListPaper, job: TextLayerJobView | undefined, textLayer: boolean): string {
+  const cell = (cls: string, title: string, html: string): string =>
+    `<span class="title-state ${cls}" role="img" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}">${html}</span>`;
+  if (job) return cell("tl-busy", describeTextLayerJob(job), `<span class="spin">${renderIcon("loader")}</span>`);
+  // A missing PDF gets no icon: the detail pane says so and offers Find PDF.
+  if (textLayer && hasMissingTextLayer(p)) {
+    return cell("tl-missing", "No text layer: search and text selection do not work in this PDF. Select the paper to make it searchable.", renderIcon("file-no-text"));
+  }
+  return "";
+}
+
+const VERSION_HINT = {
+  preprint: "This PDF is a preprint: the version before peer review.",
+  accepted: "This PDF is the accepted manuscript: peer-reviewed, without the publisher's layout.",
+} as const;
+
+/** A "Preprint" or "Accepted" chip; the published version and an unknown one show none. */
+export function renderVersionChipHtml(version: PdfVersion | null | undefined): string {
+  return isPrePublication(version)
+    ? `<span class="version-chip" title="${escapeHtml(VERSION_HINT[version])}">${PDF_VERSION_LABEL[version]}</span>`
+    : "";
+}
+
+export function renderLastReadHtml(stats: PaperStats | undefined): string {
+  const at = stats?.lastRead ? Date.parse(stats.lastRead) : NaN;
+  if (!Number.isFinite(at)) return `<div class="col-meta col-read">—</div>`;
+  const title = `Last read ${new Date(at).toLocaleString()}${stats?.lastPage ? `, page ${stats.lastPage}` : ""}`;
+  return `<div class="col-meta col-read" title="${escapeHtml(title)}">${formatCompactTime(at)}</div>`;
+}
+
+/** A button that cycles the status, drawn as a dot for Unread and an Arc mark for Reading and Done, named by the status word. */
+export function renderReadingStatusMarkHtml(status: ReadingStatus): string {
+  return `<button class="status-mark s-${status}" data-cycle="1" title="Click to mark as ${STATUS_LABEL[deriveNextReadingStatus(status)]}">` +
+    `<span class="status-mark-glyph" role="img" aria-label="${STATUS_LABEL[status]}">${renderReadingStatusMark(status)}</span></button>`;
+}
+
+interface Row {
+  node: HTMLElement;
+  inputs: readonly unknown[];
+}
+
+function sameInputs(a: readonly unknown[], b: readonly unknown[]): boolean {
+  return a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+}
+
+export class RowReconciler<T extends { id: string }> {
+  private rows = new Map<string, Row>();
+
+  constructor(
+    private readonly container: HTMLElement,
+    private readonly build: (item: T) => HTMLElement,
+    /** The values a row renders from; a row is rebuilt when any of them changes identity. */
+    private readonly inputsOf: (item: T) => readonly unknown[],
+  ) {}
+
+  /** Renders `items` in order, followed by `trailing` (an empty state) when given. */
+  update(items: readonly T[], trailing: HTMLElement | null = null): void {
+    const next = new Map<string, Row>();
+    for (const item of items) {
+      const inputs = this.inputsOf(item);
+      const prev = this.rows.get(item.id);
+      next.set(item.id, { node: prev && sameInputs(prev.inputs, inputs) ? prev.node : this.build(item), inputs });
+    }
+    // Stale nodes go first, so the walk below meets only kept nodes and moves one only when the order changed.
+    const nodes = [...next.values()].map((r) => r.node);
+    const kept = new Set<Element>(nodes);
+    for (const child of [...this.container.children]) if (!kept.has(child)) child.remove();
+    let cursor: ChildNode | null = this.container.firstChild;
+    for (const node of nodes) {
+      if (node === cursor) cursor = cursor.nextSibling;
+      else this.container.insertBefore(node, cursor);
+    }
+    if (trailing) this.container.append(trailing);
+    this.rows = next;
+  }
 }

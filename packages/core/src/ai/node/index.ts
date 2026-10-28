@@ -1,2 +1,2 @@
 /** Exports the Node-only part of the AI subsystem: its SQLite storage. */
-export { openAiStorage } from "./openAiStorage.js";
+export { openAiStorage } from "./sqliteStore.js";

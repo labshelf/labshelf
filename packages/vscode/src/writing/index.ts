@@ -1,21 +1,12 @@
 // Exports the writing view: the project list, its commands and the store behind them.
-export { registerBuildRootCommands } from "./buildRootCommands.js";
-export { registerBuildRootStatusBar } from "./buildRootStatusBar.js";
-export { registerAddExistingFolder, registerProjectCommands } from "./projectCommands.js";
-export { copyProjectEntry, registerProjectItemCommands } from "./projectItemCommands.js";
-export { deriveBuildRootPath, findOwningProject } from "./buildRootDocument.js";
-export type { ReadyProject } from "./buildRootDocument.js";
-export { WritingProjects } from "./session/index.js";
-export type { WritingHost, WritingSession } from "./session/index.js";
-export { ProjectReadingLists, registerReadingListCommands } from "./readingList/index.js";
-export { ProjectBacklinks } from "./citations/index.js";
-export { registerEditorActions } from "./registerEditorActions.js";
-export { registerInsertActions } from "./registerInsertActions.js";
-export { listProjectZipEntries } from "./exportBundle.js";
-export { registerExportCommands } from "./registerExportCommands.js";
-export type { ConvertProject } from "./exportProject.js";
-export { registerInstallCommand } from "./installCommand.js";
-export type { InstallServices } from "./installCommand.js";
-export type { BuildRootOf, PlatformWriting, ProjectHistoryRecorder, RegisterPlatformWriting } from "./platformWritingPort.js";
-export { registerBibliographyCheck } from "./registerBibliographyCheck.js";
-export { registerPaperLinks } from "./registerPaperLinks.js";
+export {
+  findOwningProject, registerBuildRootCommands, registerBuildRootStatusBar,
+  registerExportCommands, registerInstallCommand, registerProjectCommands, registerProjectItemCommands, ProjectReadingLists, registerReadingListCommands,
+  type ConvertProject, type ReadyProject,
+} from "./projects/index.js";
+export { registerBibliographyCheck } from "./bibliographyCheck.js";
+export { registerEditorActions, registerInsertActions, registerPaperLinks, ProjectBacklinks } from "./citations/index.js";
+export { readActiveProject } from "./build/index.js";
+export { WritingProjects } from "./projects/index.js";
+export type { WritingHost, WritingSession } from "./projects/index.js";
+export type { BuildRootOf, PlatformWriting, RegisterPlatformWriting } from "./projects/index.js";

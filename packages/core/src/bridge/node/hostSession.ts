@@ -1,13 +1,16 @@
 /** Answers one browser connection's requests in arrival order, streaming reads and staging writes until commit. */
+import { watch } from "node:fs";
+
+import { base64ToBytes, joinBytes } from "../../encoding/index.js";
+import { formatError } from "../../errors/index.js";
+import { isExternalChangeNoise } from "../../library/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { BridgeError } from "../bridgeError.js";
-import { splitFileChunks } from "../fileChunks.js";
-import type { BridgeRequest, BridgeResults, HostMessage } from "../protocol.js";
-import { BRIDGE_PROTOCOL } from "../protocol.js";
-import { assertSameProtocol, parseBridgeRequest, parseRequestId } from "../requestValidation.js";
-import type { LibraryFileOperations } from "./fileOperations.js";
-import { base64ToBytes, joinBytes } from "../../encoding/index.js";
-import { formatError } from "../../logging/index.js";
+import {
+  assertSameProtocol, BRIDGE_PROTOCOL, parseBridgeRequest, parseRequestId, splitFileChunks,
+  type BridgeRequest, type BridgeResults, type HostMessage,
+} from "../protocol.js";
+import type { LibraryFileOperations } from "./libraryFiles.js";
 
 // CONTRACT: documents/contracts/bridge.md#file-transfer
 const MAX_OPEN_WRITES = 8;
@@ -197,4 +200,35 @@ function describe(message: unknown): unknown {
   if (typeof message !== "object" || message === null) return message;
   const { data: _data, ...rest } = message as Record<string, unknown>;
   return rest;
+}
+
+// CONTRACT: documents/contracts/bridge.md#events
+/** @returns a function that stops watching */
+export function watchLibrary(
+  root: string,
+  onChanged: (paths: string[]) => void,
+  logger: ILogger,
+  debounceMs: number,
+): () => void {
+  const pending = new Set<string>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const flush = (): void => {
+    timer = undefined;
+    const paths = [...pending].sort();
+    pending.clear();
+    if (paths.length > 0) onChanged(paths);
+  };
+  // PLATFORM: recursive fs.watch needs Node 20 on Linux; macOS and Windows have it natively.
+  const watcher = watch(root, { recursive: true }, (_event, filename) => {
+    if (!filename) return;
+    const relative = filename.toString().split(/[\\/]/).join("/");
+    if (isExternalChangeNoise(relative)) return;
+    pending.add(relative);
+    timer ??= setTimeout(flush, debounceMs);
+  });
+  watcher.on("error", (error) => { void logger.error("bridge", error, { root, action: "watch" }); });
+  return () => {
+    if (timer) clearTimeout(timer);
+    watcher.close();
+  };
 }

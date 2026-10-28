@@ -1,6 +1,6 @@
 // Runs the sharing dialog a library UI request asks for.
 import { showToast } from "../../ui/dom/index.js";
-import type { ShareDialogRequest, ShareHost } from "../share/index.js";
+import type { ShareDialogRequest, ShareHost } from "../../share/index.js";
 import { runJoinProjectDialog, runLeaveProjectDialog, runShareProjectDialog } from "../../collab/dom/index.js";
 import { runImportShareLinkDialog, runManageShareLinksDialog, runShareFolderDialog } from "../../share/dom/index.js";
 

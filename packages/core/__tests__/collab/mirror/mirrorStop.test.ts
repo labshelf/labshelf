@@ -1,7 +1,6 @@
 /** Pins that a mirror which loses its folder lease or its folder stops touching disk and keeps every share edit. */
-import { readFileText, readShareIndexDocFiles, setFileText } from "../../../src/collab/model/index";
-import { MirrorProjectDirUnavailable, type MirrorStopReason } from "../../../src/collab/mirror/index";
-import { MirrorLostError } from "../../../src/collab/mirror/MirrorLostError";
+import { readFileText, readShareIndexDocFiles, setFileText } from "../../../src/collab/index";
+import { MirrorLostError, MirrorProjectDirUnavailable, type MirrorStopReason } from "../../../src/collab/mirror/index";
 import { memoryFiles, nodeFiles } from "./mirrorFiles";
 import { openMirror, type MirrorFixture } from "./mirrorFixture";
 

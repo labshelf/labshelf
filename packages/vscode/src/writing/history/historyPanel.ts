@@ -10,9 +10,10 @@ import {
   type ILogger,
   createNonce,
   formatError,
+  formatLocaleDateTime,
 } from "@labshelf/core";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml } from "../../ui/index.js";
-import type { ReadyProject } from "../buildRootDocument.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
+import type { ReadyProject } from "../projects/index.js";
 
 /** <extension>/dist/history, for localResourceRoots. */
 function historyBundleDirectory(extensionUri: vscode.Uri): vscode.Uri {
@@ -25,22 +26,13 @@ async function historyHtml(webview: vscode.Webview, extensionUri: vscode.Uri): P
   if (!(await hasBundleFile(script))) {
     return renderBundleMissingHtml({ title: "History", heading: "History bundle not built", file: "dist/history/history.js", reopen: "the history" });
   }
-  const nonce = createNonce();
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}'; style-src ${webview.cspSource}; font-src ${webview.cspSource};`;
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="${csp}"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>History</title>
-<link rel="stylesheet" href="${webview.asWebviewUri(vscode.Uri.joinPath(dir, "history.css")).toString()}"/>
-</head>
-<body>
-<div id="root"></div>
-<script nonce="${nonce}" type="module" src="${webview.asWebviewUri(script).toString()}"></script>
-</body>
-</html>`;
+  return renderHtmlShell({
+    nonce: createNonce(),
+    cspSource: webview.cspSource,
+    title: "History",
+    stylesheetUrl: webview.asWebviewUri(vscode.Uri.joinPath(dir, "history.css")).toString(),
+    scriptUrl: webview.asWebviewUri(script).toString(),
+  });
 }
 
 /** What the panel reads and changes in a project's history. */
@@ -51,8 +43,6 @@ export interface ProjectHistoryStore {
   diff(project: ReadyProject, id: string, path: string): Promise<DiffLine[] | null>;
   restore(project: ReadyProject, id: string): Promise<void>;
 }
-
-const when = (iso: string): string => new Date(iso).toLocaleString();
 
 export class HistoryPanel {
   private ready = false;
@@ -110,7 +100,7 @@ export class HistoryPanel {
     const row = (await this.store.rows(this.project)).find((entry) => entry.id === id);
     if (!row) { return; }
     const answer = await vscode.window.showWarningMessage(
-      `Restore ${this.project.settings.id} to ${when(row.at)}?`,
+      `Restore ${this.project.settings.id} to ${formatLocaleDateTime(row.at)}?`,
       { modal: true, detail: "The project's files go back to that point. The current state stays in the history, so you can return to it." },
       "Restore",
     );
@@ -124,6 +114,6 @@ export class HistoryPanel {
       await this.post({ type: "busy", busy: false });
     }
     await this.refresh();
-    void vscode.window.showInformationMessage(`Restored ${this.project.settings.id} to ${when(row.at)}.`);
+    void vscode.window.showInformationMessage(`Restored ${this.project.settings.id} to ${formatLocaleDateTime(row.at)}.`);
   }
 }

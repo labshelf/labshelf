@@ -4,33 +4,19 @@
  */
 import type { ReaderStartupParams } from "../index.js";
 import { installPolyfills } from "./polyfills.js";
-import { ThemeController } from "./chrome/index.js";
+import { ThemeController } from "./theme.js";
 import {
-  type ReaderContext,
-  installTextLayerFocusGuard,
-  HostBridge,
-  type ReaderTransport,
-  describeLoadError,
-  PdfReloader,
-  loadPdf,
-  type PdfSourceHooks,
-  type PerfMarks,
-  createPdfjsReader,
-} from "./session/index.js";
-import { attachCitationClicks, PreviewCitations } from "./hover/index.js";
-import { ChangeMarks, Keyboard, SourceSync } from "./navigation/index.js";
-import {
-  DeferredHover,
-  ReadingPositionRestore,
-  attachReaderHostMessages,
-  buildReaderUi,
-  createActionRunner,
-  attachExternalUrls,
-  reportFirstRender,
-} from "./startup/index.js";
+  type ReaderContext, installTextLayerFocusGuard, HostBridge, type ReaderTransport, type PerfMarks, createPdfjsReader,
+} from "./readerSession.js";
+import { describeLoadError, PdfReloader, loadPdf, type PdfSourceHooks } from "./pdfLoader.js";
+import { DeferredHover, attachReaderHostMessages, buildReaderUi } from "./readerUi.js";
+import { ReadingPositionRestore, createActionRunner, attachExternalUrls, reportFirstRender } from "./startup.js";
+import { attachCitationClicks, PreviewCitations } from "./citations.js";
+import { ChangeMarks } from "./findMarks.js";
+import { Keyboard, SourceSync } from "./navigation.js";
 import { findElement } from "../../ui/dom/index.js";
 
-export interface ReaderStartOptions {
+interface ReaderStartOptions {
   boot: ReaderStartupParams;
   transport: ReaderTransport;
   /** Created by the entry's first statement so `scriptStart` still measures the whole open. */

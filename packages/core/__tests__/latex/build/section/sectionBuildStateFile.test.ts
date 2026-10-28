@@ -1,5 +1,5 @@
 /** Verifies the parser of the `.lsstate` file a full build writes at each sectioning command. */
-import { parseSectionBuildStates } from "../../../../src/latex/build/section/index";
+import { parseSectionBuildStates } from "../../../../src/latex/sectionState";
 
 describe("parseSectionBuildStates", () => {
   it("reads the command, absolute page, source place and every counter of each line", () => {

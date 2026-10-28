@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { LibraryRootPresenceMonitor, formatError, createLibraryLayout, applyChangeBatch, type ConflictCopy, type ILogger } from "@labshelf/core";
-import { ExternalChangeWatcher } from "../storage/index.js";
+import { ExternalChangeWatcher } from "../library/index.js";
 import type { ActiveServices } from "../command/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 

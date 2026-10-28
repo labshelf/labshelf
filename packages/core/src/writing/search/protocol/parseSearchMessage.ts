@@ -1,12 +1,10 @@
 // Validates a message from the project search page before the host acts on it.
+import { isCount, isRecord, isString } from "../../../guards/index.js";
 import type { SearchOptions } from "../searchPattern.js";
 import type { MatchPosition, SearchToHost } from "./messages.js";
 
 type Raw = Record<string, unknown>;
 
-const isRecord = (value: unknown): value is Raw => !!value && typeof value === "object" && !Array.isArray(value);
-const isText = (value: unknown): value is string => typeof value === "string";
-const isCount = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0;
 
 function options(raw: unknown): SearchOptions | undefined {
   if (!isRecord(raw)) { return undefined; }
@@ -17,7 +15,7 @@ function options(raw: unknown): SearchOptions | undefined {
 
 function location(raw: Raw): MatchPosition | undefined {
   const { path, line, column, length } = raw;
-  return isText(path) && isCount(line) && isCount(column) && isCount(length) ? { path, line, column, length } : undefined;
+  return isString(path) && isCount(line) && isCount(column) && isCount(length) ? { path, line, column, length } : undefined;
 }
 
 /** The typed message, or undefined when any field is missing or of the wrong type. */
@@ -29,12 +27,12 @@ export function parseSearchMessage(raw: unknown): SearchToHost | undefined {
     case "search": {
       const parsed = options(raw["options"]);
       const { query, scope } = raw;
-      return parsed && isText(query) && (scope === "file" || scope === "project") ? { type: "search", query, options: parsed, scope } : undefined;
+      return parsed && isString(query) && (scope === "file" || scope === "project") ? { type: "search", query, options: parsed, scope } : undefined;
     }
     case "open": return at && { type: "open", ...at };
-    case "replace": return at && isText(raw["replacement"]) ? { type: "replace", ...at, replacement: raw["replacement"] } : undefined;
-    case "replaceFile": return isText(raw["path"]) && isText(raw["replacement"]) ? { type: "replaceFile", path: raw["path"], replacement: raw["replacement"] } : undefined;
-    case "replaceAll": return isText(raw["replacement"]) ? { type: "replaceAll", replacement: raw["replacement"] } : undefined;
+    case "replace": return at && isString(raw["replacement"]) ? { type: "replace", ...at, replacement: raw["replacement"] } : undefined;
+    case "replaceFile": return isString(raw["path"]) && isString(raw["replacement"]) ? { type: "replaceFile", path: raw["path"], replacement: raw["replacement"] } : undefined;
+    case "replaceAll": return isString(raw["replacement"]) ? { type: "replaceAll", replacement: raw["replacement"] } : undefined;
     default: return undefined;
   }
 }

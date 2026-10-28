@@ -1,0 +1,81 @@
+// Records app-authored project text versions with the bytes present before their save, and tracks app file writes and editor saves before their bytes reach disk.
+import * as path from 'node:path';
+import { isMergeableTextFile, type IProjectVersionStore, type ProjectWriteTracking } from '../../../library/conflicts/index.js';
+import { createWriteRecordStore, type DeviceIdentity } from '../../../library/index.js';
+import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem } from '../../../library/node/index.js';
+import type { ILogger, LibraryFileSystem } from '../../../ports/index.js';
+import { deriveTextSha256Hex } from '../../../hash/index.js';
+import { listLibraryProjects } from '../../project/node/index.js';
+import { FileProjectVersionStore } from '../projectVersions.js';
+
+const recordFileSystem = new NodeLibraryFileSystem();
+
+export interface ProjectWrite {
+  folder: string;
+  projectId: string;
+  relativePath: string;
+  text: string;
+  parentText: string | undefined;
+  store: IProjectVersionStore;
+  identity: DeviceIdentity;
+  logger: ILogger;
+}
+
+export async function addProjectWriteRecord(save: ProjectWrite): Promise<void> {
+  const { store, projectId, relativePath, text, parentText, logger } = save;
+  try {
+    if (parentText !== undefined) await store.retain(projectId, relativePath, parentText);
+    await store.retain(projectId, relativePath, text);
+    await createWriteRecordStore(recordFileSystem, save.folder, save.identity, logger).append({
+      path: relativePath, hash: await deriveTextSha256Hex(text), parent: parentText === undefined ? null : await deriveTextSha256Hex(parentText), by: 'app', at: Date.now(),
+    });
+  } catch (error) {
+    await logger.error('writing-merge', error, { projectId, path: relativePath, action: 'record project save' });
+    throw error;
+  }
+}
+
+export async function addProjectWrite(save: ProjectWrite): Promise<void> {
+  await addProjectWriteRecord(save);
+  await save.store.remember(save.projectId, save.relativePath, save.text);
+}
+
+export function createProjectWriteTracking(fs: LibraryFileSystem, root: () => string | undefined, logger: ILogger): ProjectWriteTracking {
+  const parents = new Map<string, string | undefined>();
+  const stores = new Map<string, FileProjectVersionStore>();
+  const record = async (file: string, text: string, parentText: string | undefined, committed: boolean): Promise<void> => {
+    const libraryRoot = root();
+    if (!libraryRoot || !isMergeableTextFile(path.basename(file), new TextEncoder().encode(text))) return;
+    const projects = await listLibraryProjects(libraryRoot, logger);
+    const project = projects.filter(entry => entry.kind === 'ready' && file.startsWith(`${entry.folder}${path.sep}`))
+      .sort((a, b) => b.folder.length - a.folder.length)[0];
+    if (!project || project.kind !== 'ready' || project.settings.shared) return;
+    const layout = createDeviceLocalLayout(libraryRoot);
+    let store = stores.get(libraryRoot);
+    if (!store) { store = new FileProjectVersionStore(fs, path, layout.mergeBasesDir); stores.set(libraryRoot, store); }
+    if (committed) { await store.remember(project.settings.id, path.relative(project.folder, file).split(path.sep).join('/'), text); return; }
+    await addProjectWriteRecord({ folder: project.folder, projectId: project.settings.id, relativePath: path.relative(project.folder, file).split(path.sep).join('/'),
+      text, parentText, store, identity: createDeviceIdentity(layout, logger), logger });
+  };
+  const parent = async (file: string): Promise<string | undefined> => {
+    try { return await fs.readText(file); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
+  };
+  const beforeWrite = async (file: string, bytes: Uint8Array): Promise<void> => {
+    if (isMergeableTextFile(path.basename(file), bytes)) await record(file, Buffer.from(bytes).toString('utf8'), await parent(file), false);
+  };
+  const tracked = new Proxy(fs, { get(target, key) {
+    if (key === 'writeText') return async (file: string, text: string) => { await beforeWrite(file, new TextEncoder().encode(text)); await fs.writeText(file, text); await record(file, text, undefined, true); };
+    if (key === 'writeFile') return async (file: string, bytes: Uint8Array) => { await beforeWrite(file, bytes); await fs.writeFile(file, bytes); if (isMergeableTextFile(path.basename(file), bytes)) await record(file, Buffer.from(bytes).toString('utf8'), undefined, true); };
+    const member = Reflect.get(target, key);
+    return typeof member === 'function' ? member.bind(target) : member;
+  } });
+  return {
+    fs: tracked,
+    beforeSave: async (file, text) => { const previous = await parent(file); parents.set(file, previous); await record(file, text, previous, false); },
+    afterSave: async (file, text) => {
+      if (!parents.has(file)) throw new Error(`Project save has no captured parent: ${file}`);
+      const previous = parents.get(file); parents.delete(file); await record(file, text, previous, false); await record(file, text, previous, true);
+    },
+  };
+}

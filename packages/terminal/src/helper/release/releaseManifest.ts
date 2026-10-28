@@ -1,6 +1,7 @@
 // Fetches the release manifest and returns this platform's asset only when the manifest's Ed25519 signature verifies.
 import { createPublicKey, verify } from "node:crypto";
 
+import { isRecord } from "@labshelf/core";
 import type { FetchLike } from "@labshelf/core/helper/node";
 
 export const LATEST_MANIFEST_URL = "https://github.com/labshelf/labshelf/releases/latest/download/latest.json";
@@ -21,10 +22,6 @@ function verifySignature(manifest: Buffer, signature: Buffer, publicKey: string)
   const key = createPublicKey({ key: Buffer.from(publicKey, "base64"), format: "der", type: "spki" });
   const signatureBytes = Buffer.from(signature.toString("utf8").trim(), "base64");
   if (!verify(null, manifest, key, signatureBytes)) { throw new Error("latest.json signature does not verify"); }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 // TRAP: only call this on bytes whose signature verified; the shape check guards against a release bug, not an attacker.

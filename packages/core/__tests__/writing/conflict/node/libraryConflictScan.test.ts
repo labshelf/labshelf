@@ -7,7 +7,8 @@ import { addExistingFolder, createProjectFromTemplate } from "../../../../src/wr
 import { createBlankTemplate } from "../../../../src/templates/index";
 import { NodeLibraryFileSystem } from "../../../../src/library/node/index";
 import { scanLibraryConflicts } from "../../../../src/writing/conflict/node/index";
-import { FileProjectVersionStore, type IProjectVersionStore } from "../../../../src/writing/conflict/index";
+import { FileProjectVersionStore } from "../../../../src/writing/conflict/index";
+import type { IProjectVersionStore } from "../../../../src/library/conflicts/index";
 import { MemoryLibraryFs } from "../../../support/memoryLibraryFs";
 import type { ILogger } from "../../../../src/ports/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";

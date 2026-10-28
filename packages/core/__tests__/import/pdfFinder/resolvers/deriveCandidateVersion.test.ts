@@ -1,5 +1,5 @@
 /** Contract of candidateVersion: a preprint server's address, then the publisher rule, then an aggregator's label, which the article's own links never take. */
-import { deriveCandidateVersion, isPreprintServerUrl } from "../../../../src/import/pdfFinder/resolvers/index";
+import { deriveCandidateVersion, isPreprintServerUrl } from "../../../../src/import/pdfFinder/matching";
 import { makeContext } from "../../../support/pdfFindingHarness";
 
 describe("candidateVersion", () => {

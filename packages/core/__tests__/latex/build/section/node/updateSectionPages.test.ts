@@ -1,7 +1,7 @@
 /** Verifies that a section's pages replace their range in the full PDF and leave every other page byte-identical. */
 import { PDFDocument, StandardFonts } from "pdf-lib";
 
-import { updateSectionPages } from "../../../../../src/latex/build/section/node/index";
+import { updateSectionPages } from "../../../../../src/latex/node/preview";
 import { comparePages } from "../../../../../src/helper/node/index";
 
 async function pdfOf(labels: string[]): Promise<Uint8Array> {

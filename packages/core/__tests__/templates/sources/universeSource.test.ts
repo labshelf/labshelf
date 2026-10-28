@@ -1,5 +1,5 @@
 /** Verifies the Typst Universe source: listing from the index and reading a template from the package archive. */
-import { createUniverseSource } from "../../../src/templates/sources/index.js";
+import { createUniverseSource } from "../../../src/templates/index.js";
 import { contextLogger, memoryCache } from "./fakes";
 import { tarGz, type TarFixtureEntry } from "./tarFixture";
 

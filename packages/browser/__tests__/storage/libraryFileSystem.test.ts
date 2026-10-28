@@ -1,7 +1,9 @@
 // Pins how the library picks the folder or browser storage, keeps that choice and routes every call to one source.
 import type { LibraryFileSystem } from "@labshelf/core";
 import { createLibraryLocations, type PickedDir } from "../../src/storage/libraryFileSystem";
-import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
+import { FakeBridgeHost, silentLogger } from "../../../core/__tests__/bridge/fakeBridgeHost";
+
+jest.mock("idb", () => ({ openDB: async () => require("../support/fakeIdb").fakeDb }));
 
 function setup(configure: (host: FakeBridgeHost, index: number) => void = () => undefined) {
   const hosts: FakeBridgeHost[] = [];

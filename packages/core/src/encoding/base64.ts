@@ -1,6 +1,5 @@
 /** Converts bytes to and from canonical padded base64 on any runtime that has btoa and atob. */
 
-// PLATFORM: String.fromCharCode spreads its arguments on the stack, so large buffers convert in slices.
 const CHARS_PER_CALL = 0x8000;
 
 // Padded, standard alphabet, and the bits a pad hides are zero, so every byte string has exactly one encoding.
@@ -10,12 +9,18 @@ export function isCanonicalBase64(text: string): boolean {
   return CANONICAL_BASE64.test(text);
 }
 
-export function bytesToBase64(bytes: Uint8Array): string {
+/** Gives the binary string, one char code per byte, that btoa and the Latin-1 web APIs take. */
+export function bytesToBinary(bytes: Uint8Array): string {
   let binary = "";
+  // PLATFORM: String.fromCharCode spreads its arguments on the stack, so large buffers convert in slices.
   for (let i = 0; i < bytes.length; i += CHARS_PER_CALL) {
     binary += String.fromCharCode(...bytes.subarray(i, i + CHARS_PER_CALL));
   }
-  return btoa(binary);
+  return binary;
+}
+
+export function bytesToBase64(bytes: Uint8Array): string {
+  return btoa(bytesToBinary(bytes));
 }
 
 /** Throws when `text` is not canonical padded base64; atob alone accepts unpadded and non-zero pad bits. */

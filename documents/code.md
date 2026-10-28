@@ -7,6 +7,8 @@ Read when you decide where code goes or change what crosses an app, process or f
 - Code that two apps need, or plausibly will, goes in core, including UI that two apps show. An app holds only its wiring and the code only its platform can run.
 - Runtime-neutral core reaches the platform only through ports that each app implements. Core code that needs Node or the DOM sits in a `node/` or `dom/` folder of its domain.
 - Only an app's entry points build adapters: `extension.ts` in VS Code, `compositionRoot.ts` in the terminal, and the background worker and each page in the browser.
+- Code stays in an app when only its platform can run it: functions serialized into `executeScript`, `navigator.locks` leases, CodeMirror glue, and the browser's helper/writing build-status bridge, which would make core's helper and writing import each other.
+- A family of near-duplicate functions that differ by injected script or by host behaviour stays as separate versions; merging them would change behaviour.
 
 ## Modules
 
@@ -21,8 +23,18 @@ A subfolder below a domain is a package: its `index.ts` is the public API and th
 
 Generic helpers live in a core module named after their subject and are imported, never rewritten in a private copy; `pnpm lint:modules` fails a private function named like one of their exports. Read the module's `index.ts` before writing a helper.
 
-- `packages/core/src/encoding`: bytes, base64, base64url, hex.
-- `packages/core/src/hash`: SHA-256 content hashes.
+- `packages/core/src/async`: debouncers, sleep, deadlines.
+- `packages/core/src/encoding`: base64, base64url, hex (strict decode), byte comparison and joining, random bytes and random hex, fixed-length key decoding.
+- `packages/core/src/errors`: formatError, describeError, toError, errorCode, isAbortError for a thrown unknown.
+- `packages/core/src/events`: listener registry (createListeners).
+- `packages/core/src/files`: Node file probes (fsProbe).
+- `packages/core/src/text`: line offsets and multiset overlap of strings.
+- `packages/core/src/guards`: narrowing predicates over unknown for parsers.
+- `packages/core/src/hash`: SHA-256 hex of bytes or text.
+- `packages/core/src/json`: parseJsonObject, JSON text to a plain object or undefined.
+- `packages/core/src/path`: path math over the `PathOps` port, `LibraryPath` and `ProjectPath`.
+- `packages/core/src/url`: parse a URL without throwing, host and origin of a URL string.
+- `packages/core/src/time`: calendar days, relative and display dates.
 
 ## Contracts
 

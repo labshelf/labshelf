@@ -1,7 +1,7 @@
 import type { Node } from "prosemirror-model";
-import { qmdSchema as s } from "../../../src/qmd/editor/schema/index";
-import { docToBody } from "../../../src/qmd/editor/docToBody";
-import { serializeBlock } from "../../../src/qmd/editor/serializeBlocks";
+import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
+import { docToBody } from "../../../src/qmd/editor/qmdDoc";
+import { serializeBlock } from "../../../src/qmd/editor/qmdBlocks";
 
 const p = (text: string, gap: string | null = null) => s.node("paragraph", { gap }, [s.text(text)]);
 const doc = (blocks: Node[], attrs: Record<string, unknown> = {}) => s.node("doc", attrs, blocks);

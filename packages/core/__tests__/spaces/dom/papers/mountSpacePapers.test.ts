@@ -1,9 +1,9 @@
 /** Checks Space paper reference actions through the transport.
  * @jest-environment jsdom
  */
-import { mountSpacePapers } from '../../../../src/spaces/dom/papers/index.js';
-import type { SpaceSnapshot } from '../../../../src/spaces/dom/spaceOverview/index.js';
-import type { HostToSpaces, SpacesToHost, SpacesTransport } from '../../../../src/spaces/protocol/index.js';
+import { mountSpacePapers } from '../../../../src/spaces/dom/mountSpacePapers.js';
+import type { SpaceSnapshot } from '../../../../src/spaces/dom/mountOverview.js';
+import type { HostToSpaces, SpacesToHost, SpacesTransport } from '../../../../src/spaces/spacesProtocol.js';
 function setup(folder?: string) {
   const data: SpaceSnapshot = { type: 'space', space: { id: 's', name: 'Space', folders: [{ id: 'f', name: 'Folder', extra: {} }],
     papers: [{ id: 'p', focus: false, extra: {} }, { id: 'gone', focus: false, extra: {} }], projects: [], dates: [], extra: {},

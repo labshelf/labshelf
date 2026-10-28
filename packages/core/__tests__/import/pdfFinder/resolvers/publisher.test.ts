@@ -1,5 +1,5 @@
 /** Contract of the publisher resolver: the rule table's PDF URLs for the landing page, then for the DOI. */
-import { publisherResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { publisherResolver } from "../../../../src/import/pdfFinder/openAccess";
 import { makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const { env } = makeFindingHarness();

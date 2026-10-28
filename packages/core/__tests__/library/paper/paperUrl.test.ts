@@ -1,4 +1,4 @@
-import { derivePaperUrl } from "../../../src/library/paper/index";
+import { derivePaperUrl } from "../../../src/library/record";
 
 describe("paperLink", () => {
   it("builds a doi.org link from a bare DOI", () => {

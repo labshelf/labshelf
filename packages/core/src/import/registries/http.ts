@@ -1,7 +1,10 @@
-/** Fetches registry responses on the host's fetch for every client: bounded wait, JSON parsing, and undefined after a WARN on any failure. */
-import { formatError } from "../../logging/index.js";
+/** Fetches registry responses on the host's fetch for every client: bounded wait, JSON parsing, and undefined after a WARN on any failure; also the record shape, text helpers and contact address they share. */
+import { formatError } from "../../errors/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { DEFAULT_CONTACT_EMAIL } from "./registryEmail.js";
+import type { ResolvedMetadata } from "./metadata.js";
+
+/** The contact address the registries' polite pools see when the user has not set one. */
+export const DEFAULT_CONTACT_EMAIL = "contact@labshelf.org";
 
 const REGISTRIES_MODULE = "registries";
 const REQUEST_TIMEOUT_MS = 12_000;
@@ -45,4 +48,42 @@ export async function fetchText(env: RegistryEnv, url: string): Promise<string |
     await env.logger?.log("WARN", REGISTRIES_MODULE, "Registry lookup failed", { url, message: formatError(error) });
     return undefined;
   }
+}
+
+/** A registry record plus the kind of work it describes. */
+export interface RegistryEntry extends ResolvedMetadata {
+  // CrossRef mints separate DOIs for a paper's abstract, figures and tables.
+  // Those records carry the wrong title, so callers must be able to skip them.
+  isComponent?: boolean;
+}
+
+/** Turns a registry record into plain metadata by dropping the registry-only flags. */
+export function derivePlainMetadata(record: RegistryEntry | undefined): ResolvedMetadata | undefined {
+  if (!record) {
+    return undefined;
+  }
+  const { isComponent: _isComponent, ...metadata } = record;
+  return metadata;
+}
+
+// Cleans strings and reads payload shapes for the registry mappers.
+
+export function findFirstNonEmpty(values: string[] | undefined): string | undefined {
+  return values?.map((value) => value.trim()).find((value) => value.length > 0);
+}
+
+/** Normalizes an API field that is one value when singular and a list when not. */
+export function normalizeArray<T>(value: T | T[] | undefined): T[] {
+  if (value === undefined) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
+export function matchTag(content: string, tagName: string): string | undefined {
+  return content.match(new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, "i"))?.[1];
+}
+
+export function parseXmlText(value: string | undefined): string | undefined {
+  return value?.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim() || undefined;
 }

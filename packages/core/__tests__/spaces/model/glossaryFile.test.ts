@@ -1,5 +1,5 @@
 /** Verifies the glossary.json reader and serializer: missing file, invalid terms, read-only states and unknown keys. */
-import { parseGlossaryFile, serializeGlossaryFile } from "../../../src/spaces/model/index";
+import { parseGlossaryFile, serializeGlossaryFile } from "../../../src/spaces/index";
 
 describe("parseGlossaryFile", () => {
   it("reads a missing file as an empty, writable glossary", () => {

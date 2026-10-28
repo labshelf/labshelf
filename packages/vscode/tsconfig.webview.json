@@ -18,13 +18,12 @@
     "src/reader/webview/**/*",
     "src/spaces/webview/**/*",
     "src/libraryUi/webview/**/*",
-    "src/libraryUi/details/webview/**/*",
     "src/webview/**/*",
     "src/writing/templates/webview/**/*",
     "src/writing/search/webview/**/*",
     "src/writing/history/webview/**/*",
-    "src/writing/allProjects/webview/**/*",
-    "src/library/syncGuide/webview/**/*",
+    "src/writing/webview/**/*",
+    "src/library/webview/**/*",
     "src/webviewGlobals.d.ts"
   ]
 }

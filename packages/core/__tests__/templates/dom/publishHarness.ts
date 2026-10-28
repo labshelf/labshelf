@@ -1,5 +1,5 @@
 // Opens the publish screen on the fake gallery transport and reads its controls for jsdom tests.
-import type { HostToGallery } from "../../../src/templates/protocol/index";
+import type { HostToGallery } from "../../../src/templates/index";
 import { mountGallery, type Gallery } from "./galleryHarness";
 
 export const PROJECT = { id: "p1", title: "My Thesis", engineLabel: "pdfLaTeX" };

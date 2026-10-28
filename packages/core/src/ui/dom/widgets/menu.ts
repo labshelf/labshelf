@@ -3,7 +3,7 @@
  * outside click or Escape, arrow keys to move, focus handed back to the invoker; one at a time, on document.body or inside a
  * shadow root.
  */
-import { escapeHtml } from "../../escapeHtml.js";
+import { escapeHtml } from "../../htmlSafety.js";
 import { renderIcon, type IconName } from "../../icons/index.js";
 import { renderElement } from "../dom.js";
 
@@ -43,20 +43,7 @@ export function closeMenu(): void {
 export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[], opts: MenuOptions = {}): void {
   closeMenu();
 
-  const menu = renderElement("div", { class: "ls-menu", role: "menu" });
-  for (const entry of entries) {
-    if (entry === "separator") { menu.append(renderElement("div", { class: "ls-menu-sep", role: "separator" })); continue; }
-    const item = renderElement("button", {
-      class: `ls-menu-item${entry.danger ? " danger" : ""}${entry.checked ? " checked" : ""}`,
-      role: entry.checked === undefined ? "menuitem" : entry.radio ? "menuitemradio" : "menuitemcheckbox",
-      "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
-      type: "button",
-      disabled: entry.disabled ? true : undefined,
-      html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
-    });
-    item.addEventListener("click", () => { close(); entry.onSelect(); });
-    menu.append(item);
-  }
+  const menu = buildMenu(entries, close);
 
   const scrim = renderElement("div", { class: "ls-scrim" });
   scrim.addEventListener("mousedown", close);
@@ -67,16 +54,7 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
   const point = anchor instanceof HTMLElement ? anchorPoint(anchor) : anchor;
   place(menu, point, anchor instanceof HTMLElement ? anchor.getBoundingClientRect().height : 0);
 
-  const onKey = (e: KeyboardEvent): void => {
-    const items = Array.from(menu.querySelectorAll<HTMLButtonElement>(".ls-menu-item:not(:disabled)"));
-    const idx = items.indexOf(focusScope.activeElement as HTMLButtonElement);
-    if (e.key === "Escape") { e.preventDefault(); close(); }
-    else if (e.key === "ArrowDown") { e.preventDefault(); items[(idx + 1) % items.length]?.focus(); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus(); }
-    else if (e.key === "Home") { e.preventDefault(); items[0]?.focus(); }
-    else if (e.key === "End") { e.preventDefault(); items[items.length - 1]?.focus(); }
-    else if (e.key === "Tab") { e.preventDefault(); }
-  };
+  const onKey = menuKeyHandler(menu, focusScope, close);
   document.addEventListener("keydown", onKey, true);
   const invoker = focusScope.activeElement as HTMLElement | null;
   menu.querySelector<HTMLButtonElement>(".ls-menu-item:not(:disabled)")?.focus();
@@ -95,6 +73,37 @@ export function showMenu(anchor: MenuAnchor | HTMLElement, entries: MenuEntry[],
     opts.onClose?.();
   }
   closeCurrent = close;
+}
+
+function buildMenu(entries: MenuEntry[], close: () => void): HTMLElement {
+  const menu = renderElement("div", { class: "ls-menu", role: "menu" });
+  for (const entry of entries) {
+    if (entry === "separator") { menu.append(renderElement("div", { class: "ls-menu-sep", role: "separator" })); continue; }
+    const item = renderElement("button", {
+      class: `ls-menu-item${entry.danger ? " danger" : ""}${entry.checked ? " checked" : ""}`,
+      role: entry.checked === undefined ? "menuitem" : entry.radio ? "menuitemradio" : "menuitemcheckbox",
+      "aria-checked": entry.checked === undefined ? undefined : String(entry.checked),
+      type: "button",
+      disabled: entry.disabled ? true : undefined,
+      html: `<span class="ls-menu-lead">${leadOf(entry)}</span><span class="ls-menu-label">${escapeHtml(entry.label)}</span>${entry.hint ? `<span class="hint">${escapeHtml(entry.hint)}</span>` : ""}`,
+    });
+    item.addEventListener("click", () => { close(); entry.onSelect(); });
+    menu.append(item);
+  }
+  return menu;
+}
+
+function menuKeyHandler(menu: HTMLElement, focusScope: DocumentOrShadowRoot, close: () => void): (e: KeyboardEvent) => void {
+  return (e) => {
+    const items = Array.from(menu.querySelectorAll<HTMLButtonElement>(".ls-menu-item:not(:disabled)"));
+    const idx = items.indexOf(focusScope.activeElement as HTMLButtonElement);
+    if (e.key === "Escape") { e.preventDefault(); close(); }
+    else if (e.key === "ArrowDown") { e.preventDefault(); items[(idx + 1) % items.length]?.focus(); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus(); }
+    else if (e.key === "Home") { e.preventDefault(); items[0]?.focus(); }
+    else if (e.key === "End") { e.preventDefault(); items[items.length - 1]?.focus(); }
+    else if (e.key === "Tab") { e.preventDefault(); }
+  };
 }
 
 function leadOf(entry: MenuItem): string {

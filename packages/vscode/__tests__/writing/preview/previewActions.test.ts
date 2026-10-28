@@ -5,10 +5,10 @@ import * as path from "node:path";
 import { gzipSync } from "node:zlib";
 import * as vscode from "vscode";
 
-import { createProjectContent, deriveBuildRootFolder } from "@labshelf/core";
+import { CheckCounts, createProjectContent, deriveBuildRootFolder } from "@labshelf/core";
 import { NodeLibraryFileSystem, createDeviceLocalLayout } from "@labshelf/core/node";
 import { ReaderPanel } from "../../../src/reader";
-import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
+import { BuildPreviews } from "../../../src/writing/preview";
 import { fakeHost, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 
 jest.mock("../../../src/reader", () => ({ ReaderPanel: { createOrShow: jest.fn() } }));

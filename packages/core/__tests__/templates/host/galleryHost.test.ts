@@ -1,6 +1,6 @@
 // Pins how the template gallery's host answers the page: listings per source, thumbnails, engine checks and "Use template".
 import type { HostToGallery, TemplateEntry, TemplateFile, TemplateSource, TemplateSourceId } from "../../../src/templates/index.js";
-import { createGalleryHost, type GalleryHostDeps, type PublishHost } from "../../../src/templates/host/index.js";
+import { createGalleryHost, type GalleryHostDeps, type PublishHost } from "../../../src/templates/index.js";
 import { jestLogger } from "./jestLogger.js";
 
 const entry = (source: TemplateSourceId, id: string, engine: TemplateEntry["engine"] = "typst"): TemplateEntry => ({

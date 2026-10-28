@@ -1,10 +1,5 @@
 /**
  * Exports the platform-abstracting ports that apps implement and inject.
  */
-export type { IFileSystem } from "./fileSystem.js";
-export type { ILogger } from "./logger.js";
-export type { LogSink } from "./logSink.js";
-export type { LocalStat, LocalFileSystem } from "./localFileSystem.js";
-export type { LibraryFileSystem } from "./libraryFileSystem.js";
-export type { SidecarPort } from "./sidecarPort.js";
-export type { FetchLike } from "./fetchLike.js";
+export type { IFileSystem, LocalStat, LocalFileSystem, LibraryFileSystem } from "./fileSystem.js";
+export type { ILogger, LogSink, SidecarPort, FetchLike, NativeMessagePort } from "./hostPorts.js";

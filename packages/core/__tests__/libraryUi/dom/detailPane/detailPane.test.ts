@@ -1,8 +1,10 @@
 /**
  * @jest-environment jsdom
  */
+// Tests the detail pane through the mounted library UI: head, host data, Cited in, tabs, multi-selection, and the note editor's autosave.
 import type { Annotation } from "@labshelf/core";
 import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
+import { createNoteEditor } from "../../../../src/libraryUi/dom/detailPane/paneState";
 
 const library = [
   paper("a", "papers", {
@@ -144,5 +146,35 @@ describe("multi-selection", () => {
     t.snapshot([paper("a", "papers", { status: "done" }), paper("b", "papers", { status: "done" })], ["papers/a"], [], {});
     t.lib.store.set({ selected: new Set(["a", "b"]) });
     expect(t.detail().querySelector(".status-btn")?.textContent).toContain("Done");
+  });
+});
+
+function setup() {
+  const post = jest.fn();
+  const applyNote = jest.fn();
+  const ctx = { store: { applyNote }, transport: { post } };
+  const editor = createNoteEditor(ctx as never, document.createElement("div"));
+  return { editor, post };
+}
+
+describe("note editor autosave", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("posts the latest draft once after rapid changes", () => {
+    const { editor, post } = setup();
+    for (const text of ["a", "ab", "abc"]) { editor.changed("p1", text); }
+    expect(post).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(5000);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "paper.setNote", id: "p1", note: "abc" });
+  });
+
+  it("does not post a second time after a flush", () => {
+    const { editor, post } = setup();
+    editor.changed("p1", "x");
+    editor.flush();
+    jest.advanceTimersByTime(5000);
+    expect(post).toHaveBeenCalledTimes(1);
   });
 });

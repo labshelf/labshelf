@@ -1,6 +1,6 @@
 /** Verifies paper, folder, date and term mutations: idempotence, re-parenting and survival of unknown keys. */
 import { seededFixture } from "./spaceStoreFixture";
-import type { SpaceStore } from "../../../src/spaces/store/index";
+import type { SpaceStore } from "../../../src/spaces/spaceStore";
 
 const seed = () => ({
   version: 1, name: "S", future: "top", projects: ["pr"],

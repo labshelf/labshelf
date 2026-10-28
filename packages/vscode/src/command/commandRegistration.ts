@@ -4,10 +4,9 @@ import * as vscode from "vscode";
 import { registerImportCommands } from "./importCommands.js";
 import { registerTextLayerCommands } from "./textLayerCommands.js";
 import { type EnsureServices, runSafely } from "./commandContext.js";
-import { type PaperRecord, createPaperFiles } from "@labshelf/core";
+import { type PaperRecord, type PaperService, createPaperFiles } from "@labshelf/core";
 import { ensurePaperPdf, resolvePaper } from "./paperResolution.js";
 import { fetchMetadataForPaper, resolveMissingMetadata } from "./fetchMetadata.js";
-import type { PaperService } from "../library/index.js";
 
 const REMOVE = "Remove";
 

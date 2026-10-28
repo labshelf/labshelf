@@ -1,6 +1,7 @@
 /** Contract of the helper-tab retry: a wall goes to a tab as soon as it is seen, one tab per site, and a better PDF cancels it. */
-import { downloadBest, type EngineLimits } from "../../../../src/import/pdfFinder/engine/index";
-import type { FetchedPdf, PdfAttempt, PdfFetchOptions } from "../../../../src/import/pdfFinder/pdfResolver";
+import { downloadBest } from "../../../../src/import/pdfFinder/engine";
+import type { EngineLimits } from "../../../../src/import/pdfFinder/deadline";
+import type { FetchedPdf, PdfAttempt, PdfFetchOptions } from "../../../../src/import/pdfFinder/finder";
 import { PDF, pdf, makeContext, html } from "../../../support/pdfFindingHarness";
 import { candidatesOf, FAST_LIMITS, makeSlowNetwork } from "../../../support/slowNetwork";
 

@@ -1,14 +1,9 @@
 // Tests the All projects library: where each project is listed, its build, cites and detail, and what its mutations write.
-import { readProjectCitations } from "../../../../src/writing/allProjects/library/readProjectCitationCounts";
-import { readProjectPaneContent } from "../../../../src/writing/allProjects/library/readProjectDetailPane";
 import { libraryHarness, readyEntry } from "../../../support/projectLibraryHarness";
 
-jest.mock("../../../../src/writing/allProjects/library/readProjectCitationCounts", () => ({
-  readProjectCitations: jest.fn(async () => ({ cites: 5, unresolved: 2 })),
-}));
-jest.mock("../../../../src/writing/allProjects/library/readProjectDetailPane", () => ({
-  readProjectPaneContent: jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] })),
-}));
+const readProjectCitations = jest.fn(async () => ({ cites: 5, unresolved: 2 }));
+const readProjectPaneContent = jest.fn(async (_context: unknown, request: { id: string }) => ({ id: request.id, citations: [] }));
+const readers = { citations: readProjectCitations as never, paneContent: readProjectPaneContent as never };
 
 const A = "/lib/projects/a";
 
@@ -19,7 +14,7 @@ function setup() {
     readyEntry("/lib/projects/c", { settings: { id: "c", format: "latex", trashed: "2026-01-01T00:00:00.000Z" } }),
     { kind: "broken" as const, folder: "/lib/projects/d", location: "library" as const, reason: "no labshelf.yaml" },
   ];
-  const harness = libraryHarness(entries);
+  const harness = libraryHarness(entries, { readers });
   harness.outcomes.last.mockImplementation((folder) => (folder === A ? { ok: true, at: new Date(7000) } : undefined));
   return harness;
 }

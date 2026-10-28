@@ -1,6 +1,6 @@
 // Decides what the library page mounts from the sidebar sections setting: the sections, the tab kinds it may open and the default tab.
+import type { TabKindName } from "@labshelf/core";
 import type { SidebarSections } from "../platform";
-import type { TabKindName } from "./editorArea";
 
 export interface PagePlan extends SidebarSections {
   /** The tab a page load opens when nothing says otherwise. */

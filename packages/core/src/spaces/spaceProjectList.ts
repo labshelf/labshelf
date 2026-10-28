@@ -1,7 +1,8 @@
 // Builds the project infos a Spaces host reports from its project rows and a checklist reader.
 import type { ILogger } from "../ports/index.js";
 import type { ProjectRow } from "../writing/allProjects/index.js";
-import type { Progress, SpaceProjectEntry } from "./viewModel/index.js";
+import type { Progress, SpaceProjectEntry } from "./spaceViews.js";
+import { formatError } from "../errors/index.js";
 
 const MODULE = "spaces/projects";
 
@@ -30,7 +31,7 @@ async function readSafely(row: ProjectRow, readChecklist: ChecklistReader, logge
   try {
     return await readChecklist(row);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     void logger.log("WARN", MODULE, "Project checklist unreadable; shown without it", { projectId: row.id, error: reason });
     return undefined;
   }

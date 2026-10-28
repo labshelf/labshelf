@@ -1,5 +1,6 @@
 /** Contract of the publisher rule table: every rule gives its verified examples' PDF URLs, and rules never overlap. */
-import { PUBLISHER_RULES, listPdfUrlsForDoi, listPdfUrlsForLanding } from "../../../../src/import/pdfFinder/rules/index";
+import { PUBLISHER_RULES } from "../../../../src/import/pdfFinder/platforms";
+import { listPdfUrlsForDoi, listPdfUrlsForLanding } from "../../../../src/import/pdfFinder/rules";
 
 const isDoi = (from: string): boolean => from.startsWith("10.");
 

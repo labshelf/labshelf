@@ -1,6 +1,6 @@
 // Runs project builds one at a time per project: a newer request cancels the running build and replaces the waiting one.
 import type { ProjectEntry } from "../../project/index.js";
-import type { ProjectBuildResult } from "../projectBuildResult.js";
+import type { ProjectBuildResult } from "../projectBuild.js";
 import { buildProject, type ProjectBuildDeps, type ProjectBuildOptions } from "./buildProject.js";
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;

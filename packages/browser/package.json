@@ -27,7 +27,6 @@
     "@lezer/highlight": "^1.2.5",
     "idb": "^8.0.0",
     "node-diff3": "^3.2.1",
-    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "~6.3.289",
     "webextension-polyfill": "^0.12.0",
     "y-codemirror.next": "^0.3.6",

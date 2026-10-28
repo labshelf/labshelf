@@ -1,23 +1,120 @@
-// Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step and restores them on load.
-import type { ILogger } from "@labshelf/core";
+// Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step, restores them on load and frames them with the page shell.
+import { PANE_LIMITS, PAPERS_DIR, parseTab, type ILogger, type TabKindName, type TabParams } from "@labshelf/core";
 import {
+  attachSash,
   mountEditorArea,
+  renderElement,
   type EditorArea,
   type EditorAreaPrefsPort,
   type EditorAreaSide,
-  type EditorTabView,
   type EditorTab,
+  type EditorTabBody,
+  type EditorTabView,
 } from "@labshelf/core/dom";
 import { type PagePlan, isKindShown } from "../pagePlan";
-import type { TabContext, TabKindName, TabParams } from "./tabKind";
-import { createTabBodies, type TabBodies } from "./tabBodies";
-import {
-  isFolderHash,
-  parseWorkspaceHash,
-  type WorkspaceHashState,
-  formatWorkspaceHash,
-} from "./workspaceHash";
-import { parseTab, TAB_KINDS } from "./tabKinds";
+import type { PagePrefs } from "../prefs";
+import { TAB_KINDS, type TabContext, type TabHooks } from "./tabKinds";
+
+// --- Tab hash: the page hash that lists the open tabs and the active one (`#/tabs/library,templates;active=library`) ---
+
+const TABS_PREFIX = "#/tabs/";
+const ACTIVE_MARK = ";active=";
+
+export interface WorkspaceHashState {
+  tabs: string[];
+  active: string | null;
+}
+
+export function formatWorkspaceHash({ tabs, active }: WorkspaceHashState): string {
+  return `${TABS_PREFIX}${tabs.map(encodeURIComponent).join(",")}${active === null ? "" : ACTIVE_MARK + encodeURIComponent(active)}`;
+}
+
+const decode = (part: string): string | null => {
+  try { return decodeURIComponent(part); } catch { return null; }
+};
+
+/** Reads a tabs hash; null for any other hash. A badly encoded id is dropped, and so is an active id that is not open. */
+export function parseWorkspaceHash(hash: string): WorkspaceHashState | null {
+  if (!hash.startsWith(TABS_PREFIX)) return null;
+  const body = hash.slice(TABS_PREFIX.length);
+  const split = body.indexOf(ACTIVE_MARK);
+  const list = split === -1 ? body : body.slice(0, split);
+  const tabs = list.split(",").filter((part) => part !== "").flatMap((part) => decode(part) ?? []);
+  const active = split === -1 ? null : decode(body.slice(split + ACTIVE_MARK.length));
+  return { tabs, active: active !== null && tabs.includes(active) ? active : null };
+}
+
+/** True for a folder deep link (`#/papers/...`), the hash the library router writes. */
+const isFolderHash = (hash: string): boolean => hash === `#/${PAPERS_DIR}` || hash.startsWith(`#/${PAPERS_DIR}/`);
+
+export const JOIN_PREFIX = "#/join/";
+
+/** The invite a join link carries in its fragment, which never reaches a server; undefined for any other hash. */
+export function extractJoinInvite(hash: string): string | undefined {
+  if (!hash.startsWith(JOIN_PREFIX)) return undefined;
+  const invite = decode(hash.slice(JOIN_PREFIX.length));
+  return invite === null || invite === "" ? undefined : invite;
+}
+
+// --- Tab bodies: mounted lazily, with the close guards the bodies register ---
+
+const MODULE = "libraryUi.editorArea";
+
+interface TabBodies {
+  mount(id: string, kind: TabKindName, params: TabParams, host: HTMLElement): EditorTabBody;
+  /** True when the tab may close: its body's guard agrees, or it has none. */
+  confirmClose(id: string): Promise<boolean>;
+}
+
+interface TabBodiesDeps {
+  logger: ILogger;
+  services: () => Omit<TabContext, "workspace" | "tab">;
+  workspace: () => Workspace;
+  setDirty(id: string, kind: TabKindName, params: TabParams, dirty: boolean): void;
+  refreshActions(id: string): void;
+}
+
+function createTabBodies({ logger, services, workspace, setDirty, refreshActions }: TabBodiesDeps): TabBodies {
+  // One handler per tab id: a body replaces its own, and the area asks it before the tab closes.
+  const beforeClose = new Map<string, () => Promise<boolean> | boolean>();
+
+  const hooks = (id: string, kind: TabKindName, params: TabParams): TabHooks => ({
+    setDirty: (dirty) => setDirty(id, kind, params, dirty),
+    onBeforeClose: (handler) => { beforeClose.set(id, handler); },
+  });
+
+  return {
+    mount(id, kind, params, host) {
+      let disposed = false;
+      let body: EditorTabBody | null = null;
+      TAB_KINDS[kind].load()
+        .then((module) => {
+          if (disposed) return;
+          body = module.mountTab(host, params, { ...services(), workspace: workspace(), tab: hooks(id, kind, params) });
+          refreshActions(id);
+        })
+        .catch((error: unknown) => {
+          void logger.error(MODULE, error, { action: "mountTab", kind });
+          host.append(renderElement("p", { class: "ls-workspace-placeholder", role: "alert" }, `Could not load the ${TAB_KINDS[kind].title(params)} tab.`));
+        });
+      return {
+        get actions() { return body?.actions ?? []; },
+        dispose: () => { disposed = true; beforeClose.delete(id); body?.dispose(); },
+      };
+    },
+    async confirmClose(id) {
+      const handler = beforeClose.get(id);
+      if (!handler) return true;
+      // A handler that throws keeps the tab open: closing could drop unsaved work.
+      return (async () => handler())().catch((error: unknown) => {
+        void logger.error(MODULE, error, { action: "beforeClose", id });
+        return false;
+      });
+    },
+  };
+}
+
+// --- Workspace ---
 
 const STORED_HASH_KEY = "labshelf.library.tabs";
 
@@ -197,4 +294,65 @@ export function createWorkspace(slot: HTMLElement, { prefs, services, logger, pl
     },
   };
   return workspace;
+}
+
+// --- Page shell: the sidebar, centre and persistent right pane around the workspace ---
+
+export interface PageShell {
+  root: HTMLElement;
+  sidebar: HTMLElement;
+  centre: HTMLElement;
+  details: HTMLElement;
+  chat: HTMLElement;
+  togglePane(pane: "details" | "chat"): void;
+}
+
+const DETAILS_COLLAPSED = "details-collapsed";
+const DETAILS_LIMITS = { min: 260, max: 760, collapseAt: 180 };
+
+export function createPageShell(host: HTMLElement, prefs: PagePrefs): PageShell {
+  const saved = { ...prefs.load(), ...prefs.detailPane() };
+  const root = renderElement("div", { class: "ls-library has-sidebar ls-pane-frame" });
+  const sidebar = renderElement("aside", { class: "sidebar", "aria-label": "Library" });
+  const sash = renderElement("div", { class: "sash sash-sidebar", title: "Drag to resize" });
+  const centre = renderElement("div", { class: "ls-workspace-centre" });
+  const right = renderElement("aside", { class: "ls-page-details ls-pane", "aria-label": "Details" });
+  const details = renderElement("div", { class: "ls-workspace-fill" });
+  const chat = renderElement("div", { class: "ls-workspace-fill" });
+  right.append(details, chat);
+  const show = (pane: "details" | "chat"): void => {
+    details.hidden = pane !== "details";
+    chat.hidden = pane !== "chat";
+    root.dataset["rightPane"] = pane;
+    right.setAttribute("aria-label", pane === "chat" ? "Research chat" : "Details");
+  };
+  show(saved.rightPane);
+  const detailSash = renderElement("div", { class: "sash sash-detail", title: "Drag to resize" });
+  // INVARIANT: An undragged right pane follows the sidebar width within its own minimum.
+  const detailDefault = Math.max(DETAILS_LIMITS.min, saved.sidebarWidth);
+  sidebar.style.width = `${saved.sidebarWidth}px`;
+  right.style.width = `${saved.detailWidth ?? detailDefault}px`;
+  root.classList.toggle("sidebar-collapsed", saved.sidebarCollapsed);
+  root.classList.toggle(DETAILS_COLLAPSED, saved.detailCollapsed);
+  attachSash(sash, {
+    root, pane: sidebar, collapsedClass: "sidebar-collapsed", limits: PANE_LIMITS.sidebar,
+    widthFromPointer: (x) => x - root.getBoundingClientRect().left,
+    persist: (sidebarWidth, sidebarCollapsed) => prefs.save({ sidebarWidth, sidebarCollapsed }),
+  });
+  attachSash(detailSash, {
+    root, pane: right, collapsedClass: DETAILS_COLLAPSED, limits: DETAILS_LIMITS, defaultWidth: detailDefault,
+    widthFromPointer: (x) => root.getBoundingClientRect().right - x,
+    persist: (detailWidth, detailCollapsed) => prefs.saveDetailPane({ detailWidth, detailCollapsed }),
+  });
+  root.append(sidebar, sash, centre, detailSash, right);
+  const titlebar = renderElement("header", { class: "ls-workspace-titlebar", "aria-hidden": "true" });
+  const statusbar = renderElement("footer", { class: "ls-workspace-statusbar", "aria-hidden": "true" });
+  host.append(titlebar, root, statusbar);
+  const togglePane = (pane: "details" | "chat"): void => {
+    const collapsed = root.dataset["rightPane"] === pane && !root.classList.contains(DETAILS_COLLAPSED);
+    show(pane);
+    root.classList.toggle(DETAILS_COLLAPSED, collapsed);
+    prefs.saveDetailPane({ rightPane: pane, detailCollapsed: collapsed });
+  };
+  return { root, sidebar, centre, details, chat, togglePane };
 }

@@ -2,7 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { findExecutable } from "../../../../src/latex/toolchain/node/index";
+import { findExecutable } from "../../../../src/latex/node/index";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 
 afterEach(cleanupTempDirs);

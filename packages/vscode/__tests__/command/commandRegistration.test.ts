@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { describeLibraryTextLayers, ensurePaperPdf, registerCommands } from '../../src/command/index.js';
 import type { ActiveServices, EnsureServices } from '../../src/command/index.js';
-import type { PaperService } from '../../src/library/index';
-import type { ILogger, PaperRecord } from '@labshelf/core';
+import type { ILogger, PaperRecord, PaperService } from '@labshelf/core';
 import { makeMemoryPaperDataStore } from '../support/memorySidecarPort';
 
 // The OCR queue is driven by its own unit test; here we only need to observe

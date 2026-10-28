@@ -1,10 +1,10 @@
 // A registry search that throws is logged with context and the import goes on without an online record.
 import type { ILogger, PdfOpener } from '@labshelf/core';
 
-import { PdfImportParser } from '../../../../src/import/pdf/parser/PdfImportParser';
+import { PdfImportParser } from '../../../../src/import/pdf/parser';
 
-jest.mock('../../../../src/import/search/index', () => ({
-  ...jest.requireActual('../../../../src/import/search/index'),
+jest.mock('../../../../src/import/registries/index', () => ({
+  ...jest.requireActual('../../../../src/import/registries/index'),
   searchOnlineByQueries: jest.fn(() => Promise.reject(new Error('search exploded'))),
 }));
 

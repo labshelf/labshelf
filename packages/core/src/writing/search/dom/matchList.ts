@@ -1,8 +1,8 @@
 // Renders project search results as collapsible per-file lists of highlighted matches with their replace actions.
-import { renderElement } from "../../../ui/dom/dom.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 import type { MatchPosition } from "../protocol/index.js";
-import type { FileResults, SearchResults } from "../searchResults.js";
+import type { FileResults, SearchResults } from "../searchRun.js";
 
 export interface MatchListActions {
   open(at: MatchPosition): void;

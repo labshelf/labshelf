@@ -1,2 +1,3 @@
-// Exports the Node side of the project history: the Show History command and the recorder that keeps each project's history.
-export { registerProjectHistory } from "./registerProjectHistory.js";
+// Exports the Node side of the project history and the versions: the Show History and Compare Versions commands.
+export { registerProjectHistory } from "./projectHistory.js";
+export { registerCompareVersionsCommand } from "./compareVersions.js";

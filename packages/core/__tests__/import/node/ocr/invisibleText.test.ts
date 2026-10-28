@@ -2,7 +2,7 @@
  * Unit tests for telling an OCR text layer from a born-digital one: OCR tools
  * draw their text invisibly (render mode 3) over the scanned image.
  */
-import { deriveInvisibleShare } from '../../../../src/import/node/ocr/invisibleTextShare';
+import { deriveInvisibleShare } from '../../../../src/import/node/ocr.js';
 
 const OPS = { save: 10, restore: 11, setTextRenderingMode: 39, showText: 44, showSpacedText: 45, nextLineShowText: 46, nextLineSetSpacingShowText: 47, paintImageXObject: 85 };
 const list = (...ops: Array<[number, unknown[]?]>) => ({ fnArray: ops.map(([fn]) => fn), argsArray: ops.map(([, args]) => args ?? []) });

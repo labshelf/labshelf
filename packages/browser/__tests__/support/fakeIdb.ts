@@ -1,5 +1,5 @@
 /** Map-backed stand-ins for the IndexedDB stores, for tests of code that goes through getDb(). */
-import type { FileRow } from "../../src/storage/idbSchema";
+import type { FileRow } from "../../src/storage/idb";
 
 export const fakeFiles = new Map<string, FileRow>();
 

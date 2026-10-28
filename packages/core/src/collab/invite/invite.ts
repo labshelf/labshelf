@@ -1,8 +1,6 @@
-// Formats the invite link that carries a share key, and parses one from pasted text.
-import { base64UrlToBytes, bytesToBase64Url } from "../../encoding/index.js";
-import { SHARE_KEY_BYTES, deriveShareId } from "../shareKey/index.js";
-import { decodeRelayList, encodeRelayList } from "./relayList.js";
-import type { InviteRelay } from "./relayList.js";
+// Formats the invite link that carries a share key, parses one from pasted text, and encodes the relay list it carries.
+import { base64UrlToBytes, bytesToBase64Url, decodeKeyBytes } from "../../encoding/index.js";
+import { SHARE_KEY_BYTES, deriveShareId } from "./shareKey.js";
 
 // The secrets sit in the fragment so they never reach a server that sees the URL.
 const INVITE_PREFIX = "labshelf://join#";
@@ -40,15 +38,6 @@ export async function formatInvite(share: { shareKey: Uint8Array; relays: Invite
   return INVITE_PREFIX + segments.join(".");
 }
 
-function decodeKey(text: string): Uint8Array | undefined {
-  try {
-    const bytes = base64UrlToBytes(text);
-    return bytes.length === SHARE_KEY_BYTES ? bytes : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /** Finds the link anywhere in pasted text; never throws on user input. */
 export async function parseInvite(text: string): Promise<ParseInviteResult> {
   // A sentence may end right after the link, and no segment ends in these characters, so they are punctuation.
@@ -59,10 +48,48 @@ export async function parseInvite(text: string): Promise<ParseInviteResult> {
   if (segments.length !== 4) { return { ok: false, error: "notAnInvite" }; }
   const [, shareId, keyText, relayText] = segments as [string, string, string, string];
   if (!/^[0-9a-f]{32}$/.test(shareId)) { return { ok: false, error: "badShareId" }; }
-  const shareKey = decodeKey(keyText);
+  const shareKey = decodeKeyBytes(keyText, SHARE_KEY_BYTES);
   if (!shareKey) { return { ok: false, error: "badKey" }; }
   const relays = decodeRelayList(relayText);
   if (!relays) { return { ok: false, error: "badRelayList" }; }
   if ((await deriveShareId(shareKey)) !== shareId) { return { ok: false, error: "shareIdMismatch" }; }
   return { ok: true, invite: { shareId, shareKey, relays } };
+}
+
+export interface InviteRelay {
+  url: string;
+  relayToken?: string;
+}
+
+function encodeRelayList(relays: InviteRelay[]): string {
+  return bytesToBase64Url(new TextEncoder().encode(JSON.stringify(relays)));
+}
+
+export function isHttpsUrl(text: string): boolean {
+  try {
+    return new URL(text).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function toRelay(value: unknown): InviteRelay | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) { return undefined; }
+  const { url, relayToken, ...rest } = value as Record<string, unknown>;
+  if (Object.keys(rest).length > 0 || typeof url !== "string" || !isHttpsUrl(url)) { return undefined; }
+  if (relayToken === undefined) { return { url }; }
+  return typeof relayToken === "string" ? { url, relayToken } : undefined;
+}
+
+/** Returns undefined for anything but a JSON array of https relays with known fields. */
+function decodeRelayList(text: string): InviteRelay[] | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(base64UrlToBytes(text)));
+  } catch {
+    return undefined;
+  }
+  if (!Array.isArray(parsed)) { return undefined; }
+  const relays = parsed.map(toRelay);
+  return relays.every((relay) => relay !== undefined) ? (relays as InviteRelay[]) : undefined;
 }

@@ -1,5 +1,5 @@
 /** Verifies the Typst heading scanner finds headings in document order and skips non-heading text. */
-import { scanTypstHeadings } from "../../../../src/typst/language/syntax/index";
+import { scanTypstHeadings } from "../../../../src/typst/language/syntax";
 
 const FENCE = "```";
 

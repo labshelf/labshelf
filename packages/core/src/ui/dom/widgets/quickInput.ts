@@ -1,7 +1,7 @@
 // Shows a filterable quick pick and a validated input box; both resolve to `undefined` when dismissed.
 import { renderIcon, type IconName } from "../../icons/index.js";
 import { renderElement, renderHighlightedHtml } from "../dom.js";
-import { mountOverlay } from "./overlay.js";
+import { mountOverlay } from "./dialog.js";
 
 export interface QuickPickItem<T> {
   label: string;

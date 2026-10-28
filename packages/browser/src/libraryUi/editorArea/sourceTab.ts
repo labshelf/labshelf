@@ -2,11 +2,11 @@
 import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
 import { listCachedPaperRecords } from "../../storage";
-import { findProject } from "../../writing/project";
-import { addProjectUpdateEvent } from "../../writing/history";
-import { renderObservingNotice, mountOnTakeover, createSourceActions, readSourceFileMode, deriveSourceLanguage, openSharedProjectHere, renderUnresolvedNotice, type SourceFileMode } from "../../writing/source";
-import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "../../writing/editor/index.js";
-import type { TabContext, TabModule } from "./tabKind";
+import {
+  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
+  type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceFileMode,
+} from "../../writing";
+import type { TabContext, TabModule } from "./tabKinds";
 
 export { readSourceFileMode };
 
@@ -51,7 +51,7 @@ async function loadEditor(
   const { session, sharing } = project();
   const loading = body.appendChild(renderElement("p", { class: "ls-workspace-placeholder" }, `Loading ${path}…`));
   try {
-    const loadingModule = import("../../writing/editor/index.js");
+    const loadingModule = loadSourceEditor();
     const entry = await findProject(fs, logger, session.current(), projectId);
     const { mountSourceEditor } = await loadingModule;
     if (disposed()) return undefined;

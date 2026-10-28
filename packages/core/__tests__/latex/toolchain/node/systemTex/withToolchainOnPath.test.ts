@@ -1,7 +1,7 @@
 // Pins the copied environment that puts the toolchain's directory first on PATH.
 import { delimiter, dirname, join } from "node:path";
 
-import { withToolchainOnPath } from "../../../../../src/latex/toolchain/node/systemTex/withToolchainOnPath";
+import { withToolchainOnPath } from "../../../../../src/latex/node/systemTex";
 
 const executable = join("/opt", "tex", "bin", "latexmk");
 const toolchain = { engine: "pdflatex", executable } as const;

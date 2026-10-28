@@ -1,7 +1,7 @@
 // Mounts the project search panel into a root element and connects its form and results to the host.
-import { renderElement } from "../../../ui/dom/dom.js";
+import { renderElement } from "../../../ui/dom/index.js";
 import type { HostToSearch, SearchScopeLabel, SearchTransport, SearchScopeKind } from "../protocol/index.js";
-import type { SearchResults } from "../searchResults.js";
+import type { SearchResults } from "../searchRun.js";
 import { createMatchList, type MatchList } from "./matchList.js";
 import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { SearchOptions } from "../searchPattern.js";

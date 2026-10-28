@@ -1,15 +1,31 @@
-// Runs a helper session inside a desktop app's process, answering as that app, or the `--biber` mode latexmk starts during its LaTeX builds.
+// Runs a helper session inside a desktop app's process, answering as that app, or the `--biber` mode latexmk starts during its LaTeX builds;
+// resolves the helper's data folder both use.
 import { readFile, realpath } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { BIBER_FLAG } from "../../latex/biber/index.js";
-import { findBiberAssetsInFolder } from "../../latex/biber/node/index.js";
+import { BIBER_FLAG, type BiberWasmAssets } from "../../latex/biber/index.js";
+import { findBiberAssetsInFolder, runBiber } from "../../latex/biber/node/index.js";
 import { HELPER_VERSION, type HelperHost } from "../index.js";
-import { resolveHelperDir } from "./helperDir.js";
-import { createHelperLogger } from "./log/index.js";
-import { runHelperBiber } from "./runHelperBiber.js";
+import { createHelperLogger } from "./helperPrivacy.js";
 import { runHelperHost } from "./runHelperHost.js";
+
+// --- The helper's data folder: build working copies and logs; the managed TeX lives in the shared TeX folder ---
+
+// CONTRACT: documents/contracts/helper.md#data-folder
+export function resolveHelperDir(env: NodeJS.ProcessEnv, platform: NodeJS.Platform, homeDir: string): string {
+  if (platform === "darwin") { return path.join(homeDir, "Library", "Application Support", "LabShelf Helper"); }
+  if (platform === "win32") { return path.join(env["LOCALAPPDATA"] ?? path.join(homeDir, "AppData", "Local"), "LabShelf Helper"); }
+  return path.join(env["XDG_DATA_HOME"] || path.join(homeDir, ".local", "share"), "labshelf-helper");
+}
+
+// --- The `--biber` mode: the biber command latexmk starts during a LaTeX build, logging to the helper's log ---
+
+/** `args` follow `--biber`; returns the exit code for latexmk. */
+export function runHelperBiber(args: readonly string[], assets: BiberWasmAssets): Promise<number> {
+  const logger = createHelperLogger(resolveHelperDir(process.env, process.platform, os.homedir()));
+  return runBiber({ args, cwd: process.cwd(), env: process.env, stdout: process.stdout, stderr: process.stderr }, assets, logger);
+}
 
 // The file name the apps' builds give the copy of typst.ts's compiler WASM that sits beside the helper script.
 const TYPST_WASM_FILE = "typst_ts_web_compiler_bg.wasm";

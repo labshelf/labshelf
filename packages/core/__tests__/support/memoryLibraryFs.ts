@@ -27,6 +27,8 @@ export class MemoryLibraryFs implements LibraryFileSystem {
   readonly trashFails = new Set<string>();
   readonly trashed: string[] = [];
   readonly renames: Array<[string, string]> = [];
+  /** Set to make every writeFile fail. */
+  failWrites: Error | undefined;
   writes = 0;
 
   async ensureDir(dir: string): Promise<void> {
@@ -40,6 +42,7 @@ export class MemoryLibraryFs implements LibraryFileSystem {
   }
 
   async writeFile(file: string, content: Uint8Array): Promise<void> {
+    if (this.failWrites) { throw this.failWrites; }
     await this.ensureDir(parentOf(file));
     this.files.set(file, content.slice());
     this.writes += 1;

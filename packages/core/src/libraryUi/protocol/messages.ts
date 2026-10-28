@@ -1,8 +1,12 @@
-// Declares JSON messages exchanged between the library UI and its host.
-import type { ReadingStatus } from "../../library/readingStatus/index.js";
-import type {
-  AddSource, CitationMapState, MissingPdfAction, LibraryUiSnapshot, PaperDetails, PaperFilesState, PdfAccess, PdfMiss, SimilarPaper, TextLayerJobView,
-} from "./payloads.js";
+// Declares the library UI protocol: the messages the UI and its host exchange, the data shapes they carry, the guard for untrusted UI messages, and the Details surface's channel envelope with its guard.
+import { type ReadingStatus, type FolderTreeNode, type PaperFilesState, PAPER_STATUSES } from "../../library/index.js";
+import type { CitationEdge, MissingWork } from "../citationMap/index.js";
+import type { Annotation, PaperRecord } from "../../model/index.js";
+import type { Backlink } from "../../writing/index.js";
+import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
+import { isLibraryPath, isProjectPath } from "../../path/index.js";
+import { type AllProjectsToHost, type HostToAllProjects, parseAllProjectsMessage } from "../../writing/allProjects/index.js";
+export type { PaperFile, PaperFilesState } from "../../library/index.js";
 
 export type UiToHost =
   | { type: "ready" }
@@ -73,3 +77,188 @@ export type HostToUi =
   | { type: "citationMap.imported"; workId: string }
   /** The host has already told the user why with an error `notice`; the UI only clears the row's busy state. */
   | { type: "citationMap.importFailed"; workId: string };
+
+/** What the reader's sidecar says about a paper, for the row marks and the Last read column. */
+export interface PaperStats {
+  annotations: number;
+  lastPage?: number;
+  /** ISO timestamp of the last reading position. */
+  lastRead?: string;
+}
+
+/**
+ * The library as the UI renders it. Paths are "/"-separated and start at "papers". `pdfDirs` lists the record paths
+ * whose folder holds the paper's PDF; `stats` is keyed by paper id and may leave papers out.
+ */
+export interface LibraryUiSnapshot {
+  folders: FolderTreeNode[];
+  papers: PaperRecord[];
+  pdfDirs: string[];
+  stats: Record<string, PaperStats>;
+}
+
+/** The heavy per-paper data the detail pane asks for when a paper is shown. */
+export interface PaperDetails {
+  annotations: Annotation[];
+  reading: { page: number; updatedAt: string } | null;
+  /** The PDF on this device: its size and its path below the library root; null when it is not here. */
+  pdf: { size: number; relPath: string } | null;
+  /** Where writing projects cite the paper; only hosts that answer `project.openSource` send it. */
+  citedIn?: Backlink[];
+}
+
+/** A paper waiting for, or in the middle of, OCR. */
+export interface TextLayerJobView {
+  paperId: string;
+  phase: "queued" | "reading";
+  /** While reading: the 1-based page among `total` pages to read. */
+  page?: number;
+  total?: number;
+}
+
+/** A paper whose content resembles another's; `score` runs from 0 to 1. */
+export interface SimilarPaper {
+  paperId: string;
+  score: number;
+}
+
+/** What a PDF search tried before it gave up. */
+export interface PdfMiss {
+  /** Candidate URLs downloaded and rejected. */
+  tried: number;
+  /** Resolver ids consulted, in chain order. */
+  sources: string[];
+  /** At least one candidate answered with a bot check. */
+  blocked: boolean;
+  /** At least one candidate answered with a login or paywall page. */
+  needsLogin: boolean;
+  /** The best-ranked page that asked for a sign-in or a bot check, for the user to open; set only by a host with a browser session. */
+  access?: PdfAccess;
+}
+
+/** A page that stood between LabShelf and a PDF: a sign-in or paywall page, or a bot check the user can pass. */
+export interface PdfAccess {
+  kind: "login" | "bot";
+  url: string;
+}
+
+/** Something the host can add a paper from, such as an open browser tab. */
+export interface AddSource {
+  id: string;
+  label: string;
+  description: string;
+}
+
+/**
+ * Whether a capture without a PDF asks first, saves the reference anyway, saves it and opens the miss's access page
+ * for the user to sign in or pass the check (attaching the PDF once that page yields it), or saves it and drafts an
+ * email asking the authors for a copy.
+ */
+export type MissingPdfAction = "ask" | "save" | "open" | "author";
+
+/** The citation map as the UI draws it; `papers` names every library paper that a link or a missing work's `citedBy` mentions. */
+export interface CitationMapView {
+  papers: Array<{ id: string; title: string }>;
+  links: CitationEdge[];
+  /** Most cited first. */
+  missing: MissingWork[];
+}
+
+/** What the citation map view shows: the map being built, the map, or why building it failed. */
+export type CitationMapState =
+  | { status: "loading" }
+  | { status: "ready"; map: CitationMapView }
+  | { status: "failed"; message: string };
+
+type Raw = Record<string, unknown>;
+type FieldCheck = (value: unknown) => boolean;
+
+const isStatus = (v: unknown): v is ReadingStatus => (PAPER_STATUSES as readonly unknown[]).includes(v);
+const isPage = (v: unknown): boolean => v === undefined || (typeof v === "number" && Number.isInteger(v) && v > 0);
+const isWorkId = (v: unknown): boolean => typeof v === "string" && /^W\d+$/.test(v);
+// One entry of a paper folder: a single segment, never "." or "..", never a path.
+const isEntryName = (v: unknown): boolean =>
+  typeof v === "string" && v !== "" && v !== "." && v !== ".." && !v.includes("/") && !v.includes("\\");
+const isDoi = (v: unknown): boolean => typeof v === "string" && /^10\.\d{4,9}\/\S+$/.test(v);
+
+const isWebUrl = (v: unknown): boolean => typeof v === "string" && /^https?:\/\//i.test(v) && URL.canParse(v);
+// The page a host opens in a browser tab: only a web address, never a script or extension URL.
+const isAccess = (v: unknown): boolean =>
+  !!v && typeof v === "object" && ((v as Raw)["kind"] === "login" || (v as Raw)["kind"] === "bot") && isWebUrl((v as Raw)["url"]);
+
+// The fields each message must carry, and how each one is checked.
+const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
+  "ready": {},
+  "navigate": { folder: isLibraryPath },
+  "folder.open": { folder: isLibraryPath },
+  "folder.create": { parent: isLibraryPath, name: isNonEmptyString },
+  "folder.rename": { path: isLibraryPath, name: isNonEmptyString },
+  "folder.delete": { path: isLibraryPath },
+  "paper.open": { id: isNonEmptyString, page: isPage },
+  "paper.openExternal": { id: isNonEmptyString },
+  "paper.reveal": { id: isNonEmptyString },
+  "paper.details": { id: isNonEmptyString },
+  "paper.similar": { id: isNonEmptyString },
+  "paper.selected": { ids: isNonEmptyStringList },
+  "paper.files": { id: isNonEmptyString },
+  "paper.describeFile": { id: isNonEmptyString, name: isEntryName, description: isString },
+  "paper.openFile": { id: isNonEmptyString, name: isEntryName },
+  "paper.revealFile": { id: isNonEmptyString, name: isEntryName },
+  "paper.copyFilePath": { id: isNonEmptyString, name: isEntryName },
+  "paper.findPdf": { id: isNonEmptyString, replace: (v) => v === undefined || isBoolean(v) },
+  "paper.attachPdf": { id: isNonEmptyString },
+  "paper.openForPdf": { id: isNonEmptyString, access: isAccess },
+  "paper.askAuthor": { id: isNonEmptyString },
+  "paper.fetchMetadata": { id: isNonEmptyString },
+  "paper.makeSearchable": { ids: isNonEmptyStringList },
+  "paper.setStatus": { ids: isNonEmptyStringList, status: isStatus },
+  "paper.setTags": { ids: isNonEmptyStringList, add: isStringArray, remove: isStringArray },
+  "paper.setNote": { id: isNonEmptyString, note: isString },
+  "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },
+  "paper.move": { ids: isNonEmptyStringList, target: isLibraryPath },
+  "paper.remove": { ids: isNonEmptyStringList },
+  "paper.add": { folder: isLibraryPath },
+  "paper.addFrom": { folder: isLibraryPath, sourceId: isNonEmptyString, ifNoPdf: (v) => v === "ask" || v === "save" || v === "open" || v === "author", retryPdf: isBoolean },
+  "annotations.export": { id: isNonEmptyString },
+  "project.openSource": { project: isNonEmptyString, file: isProjectPath, line: isCount },
+  "clipboard.write": { text: isString, label: (v) => v === undefined || isString(v) },
+  "citationMap.refresh": {},
+  "citationMap.import": { workId: isWorkId, doi: isDoi },
+};
+
+/** @returns the message when it is one the UI can send with valid fields, else null */
+export function parseUiMessage(raw: unknown): UiToHost | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const type = (raw as Raw)["type"];
+  if (typeof type !== "string" || !Object.hasOwn(SHAPES, type)) return null;
+  const shape = SHAPES[type as UiToHost["type"]];
+  const ok = Object.entries(shape).every(([field, check]) => check((raw as Raw)[field]));
+  return ok ? (raw as UiToHost) : null;
+}
+
+/** What the Details surface shows: one or more papers, one project, or nothing. */
+export type DetailsSelection = { kind: "paper"; ids: string[] } | { kind: "project"; id: string } | null;
+
+export type DetailsToHost =
+  | { channel: "library"; msg: UiToHost }
+  | { channel: "projects"; msg: AllProjectsToHost };
+
+export type HostToDetails =
+  | { channel: "library"; msg: HostToUi }
+  | { channel: "projects"; msg: HostToAllProjects }
+  | { type: "details.show"; target: DetailsSelection };
+
+/** @returns the message when its channel is known and the wrapped message passes that channel's guard, else null */
+export function parseDetailsMessage(raw: unknown): DetailsToHost | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const { channel, msg } = raw as Record<string, unknown>;
+  if (channel === "library") {
+    const inner = parseUiMessage(msg);
+    return inner ? { channel, msg: inner } : null;
+  }
+  if (channel === "projects") {
+    const inner = parseAllProjectsMessage(msg);
+    return inner ? { channel, msg: inner } : null;
+  }
+  return null;
+}

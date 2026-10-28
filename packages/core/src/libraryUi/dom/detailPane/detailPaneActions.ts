@@ -1,19 +1,17 @@
 /**
- * Handles a click on a `data-action` element in the detail pane: paper commands and host actions, copying, search
- * shortcuts, and the pane's own toggles (tab, citation style, folds, annotation filters, note tools).
+ * Handles a click on a `data-action` element in the detail pane (paper commands and host actions, copying, search
+ * shortcuts, the pane's own toggles).
  */
 import { deriveParentDir } from "../../../library/index.js";
 import type { AnnotationColor } from "../../../model/index.js";
 import { formatAnnotationsMarkdown, formatQuoteWithCitation } from "../../../reader/index.js";
-import { createAuthorQuery, createKeywordQuery } from "../../searchQueries.js";
-import type { CitationFormat, DetailsTab } from "../../store/index.js";
+import { createAuthorQuery, createKeywordQuery, type CitationFormat, type DetailsTab } from "../../store/index.js";
 import {
-  sendCopyRequest, attachPdf, updateTags, askFindBetterPdf, copyCitation, copyText, findPdf, findFixablePapers, runHostFileAction,
-  createTextLayer, openPaper, openSource, pickMoveFolder, showPaper,
+  sendCopyRequest, attachPdf, updateTags, askFindBetterPdf, copyCitation, copyText, findPdf, findFixablePapers, runHostFileAction, createTextLayer, openPaper, openSource, pickMoveFolder, showPaper,
 } from "../flows/index.js";
-import { openTagMenu, runHeadMenu } from "./header/index.js";
+import { openTagMenu, runHeadMenu } from "./detailHeader.js";
 import type { PaneState } from "./paneState.js";
-import { deriveFilteredAnnotations } from "./tabs/index.js";
+import { deriveFilteredAnnotations } from "./detailTabs.js";
 
 /** Re-renders the pane; set by the pane when it mounts. */
 export type Rerender = () => void;

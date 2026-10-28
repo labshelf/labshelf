@@ -2,9 +2,14 @@
 import * as vscode from "vscode";
 
 import { createLibraryLayout } from "@labshelf/core";
-import { LibrarySidebarView, type SidebarProjectTreesDep, type SidebarProjectsDep, type SidebarSpacesDep } from "../libraryUi/index.js";
-import type { LibraryNode } from "../libraryUi/index.js";
-import { ListWebviewPanel } from "../libraryUi/index.js";
+import {
+  LibrarySidebarView,
+  ListWebviewPanel,
+  type LibraryNode,
+  type SidebarProjectTreesDep,
+  type SidebarProjectsDep,
+  type SidebarSpacesDep,
+} from "../libraryUi/index.js";
 import { importPapers, moveFolders, type FolderCommandHost } from "../command/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";

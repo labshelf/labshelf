@@ -13,7 +13,7 @@ const PACKAGES = ["core", "vscode", "browser", "terminal"];
 const PRODUCT = new RegExp(`^packages/(${PACKAGES.join("|")})/src/.+\\.tsx?$`);
 const RUNTIME_FOLDERS = new Set(["node", "dom", "worker", "webview"]);
 // Core modules whose exports no other file may re-declare privately. Add each new core/<subject> module here.
-const SHARED_MODULES = ["packages/core/src/encoding", "packages/core/src/hash"];
+const SHARED_MODULES = ["packages/core/src/encoding", "packages/core/src/errors", "packages/core/src/guards", "packages/core/src/hash", "packages/core/src/json", "packages/core/src/path", "packages/core/src/url", "packages/core/src/time", "packages/core/src/async", "packages/core/src/events", "packages/core/src/files", "packages/core/src/text"];
 const SATELLITE_LINES = 80;
 export const RULES = ["no-index", "hides-nothing", "orphan-file", "misplaced", "cycle-with-parent", "satellite", "shared-name"];
 

@@ -1,7 +1,7 @@
 // Pins how the Publish form becomes a template manifest: validation of the untrusted draft and the author swap at submit.
 import { parseTemplateManifest, serializeTemplateManifest, type PublishDraft } from "../../../src/index";
-import { createPublishTemplateManifest, withAuthors } from "../../../src/templates/host/index.js";
-import type { PublishableProject } from "../../../src/templates/host/index.js";
+import { createPublishTemplateManifest, withAuthors } from "../../../src/templates/index.js";
+import type { PublishableProject } from "../../../src/templates/index.js";
 
 const project: PublishableProject = {
   id: "thesis", title: "My thesis", folder: "/lib/projects/thesis", engineLabel: "pdfLaTeX",

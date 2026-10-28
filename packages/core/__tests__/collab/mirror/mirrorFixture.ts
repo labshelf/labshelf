@@ -1,18 +1,17 @@
 /** Opens a project mirror on a project folder over a share session, alone or on a fake relay, for the tests of the disk mirror. */
-import { createShareIndexDoc } from "../../../src/collab/model/index";
+import { createShareIndexDoc, attachShareBlobs, type ShareBlobExchange, createShareSession, type ShareSession } from "../../../src/collab/index";
 import { startProjectMirror, type MirrorFileSystem, type MirrorStopReason, type ProjectMirror, type ProjectMirrorOptions } from "../../../src/collab/mirror/index";
-import { createNodeCollabStorage } from "../../../src/collab/node/index";
+import { createNodeCollabStorage } from "../../../src/collab/session/node/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
-import { openCollabStore, type CollabStore } from "../../../src/collab/deviceState/index";
-import { deriveRelayToken } from "../../../src/collab/shareKey/index";
-import { attachShareBlobs, type ShareBlobExchange } from "../../../src/collab/doc/attachShareBlobs";
-import { attachRelaySync } from "../../../src/collab/relays/relaySync";
-import { createShareSession, type ShareSession } from "../../../src/collab/doc/shareSession";
-import { createRelayTransport, type PeerTransport } from "../../../src/collab/transport/index";
-import { FakeClock, FakeNetwork } from "../peer/fakeNetwork";
-import { contentKey, fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../doc/testSession";
-import type { FakeRelay } from "../transport/relay/fakeRelay";
-import { RELAY_URL } from "../transport/relay/relayClient";
+import { openCollabStore, type CollabStore } from "../../../src/collab/session/index";
+import { deriveRelayToken } from "../../../src/collab/invite/index";
+import { attachRelaySync } from "../../../src/collab/relays/index";
+import { createRelayTransport } from "../../../src/collab/relays/index";
+import type { PeerTransport } from "../../../src/collab/index";
+import { FakeClock, FakeNetwork } from "../fakeNetwork";
+import { contentKey, fakeLogger, SHARE_ID, SHARE_KEY, type FakeLogger } from "../testSession";
+import type { FakeRelay } from "../relays/fakeRelay";
+import { RELAY_URL } from "../relays/relayClient";
 import { nodeFiles, tempDir, type MirrorFiles } from "./mirrorFiles";
 
 export const STABLE_MS = 40;

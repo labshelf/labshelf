@@ -1,5 +1,4 @@
 // Runs `labshelf doctor`, checking everything the terminal app depends on without needing a working library.
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { createLibraryLayout } from "@labshelf/core";
@@ -7,7 +6,7 @@ import { createLibraryLayout } from "@labshelf/core";
 import type { TerminalConfig } from "../config.js";
 import { hasCommand } from "../platform/index.js";
 import { detectImageProtocol } from "../screen/index.js";
-import { resolveSharedConfigDir, resolveSharedConfigPath } from "@labshelf/core/node";
+import { isDirectory, resolveSharedConfigDir, resolveSharedConfigPath } from "@labshelf/core/node";
 import type { Output } from "./usage.js";
 
 /**
@@ -27,7 +26,7 @@ export async function runDoctor(root: string | undefined, rootSource: string, co
     essentialMissing = true;
   } else {
     const layout = createLibraryLayout(root, path.join);
-    const exists = await fs.stat(layout.papersRoot()).then((s) => s.isDirectory(), () => false);
+    const exists = await isDirectory(layout.papersRoot());
     line(exists, "library", `${root} (from ${rootSource})`);
     if (!exists) { essentialMissing = true; }
   }

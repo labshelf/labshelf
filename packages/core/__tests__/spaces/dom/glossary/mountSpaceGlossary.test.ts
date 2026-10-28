@@ -1,9 +1,9 @@
 /** Checks manual Glossary editing through the Spaces transport.
  * @jest-environment jsdom
  */
-import { mountSpaceGlossary } from '../../../../src/spaces/dom/glossary/index.js';
-import type { OverviewContext, SpaceSnapshot } from '../../../../src/spaces/dom/spaceOverview/index.js';
-import type { HostToSpaces, SpacesToHost } from '../../../../src/spaces/protocol/index.js';
+import { mountSpaceGlossary } from '../../../../src/spaces/dom/mountSpaceGlossary.js';
+import type { OverviewContext, SpaceSnapshot } from '../../../../src/spaces/dom/mountOverview.js';
+import type { HostToSpaces, SpacesToHost } from '../../../../src/spaces/spacesProtocol.js';
 
 function snapshot(): SpaceSnapshot {
   return { type: 'space', space: { id: 'study', name: 'Study', papers: [], folders: [], projects: [], dates: [], extra: {},

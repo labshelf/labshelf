@@ -6,7 +6,7 @@ import { PassThrough } from "node:stream";
 
 import { runHelperHost } from "../../../src/helper/node/runHelperHost.js";
 import { PROTOCOL_VERSION } from "../../../src/helper/index.js";
-import { encodeFrame } from "./transport/frameCodec.js";
+import { encodeFrame } from "./helperConnectionHarness.js";
 
 const logger = { log: async () => undefined, error: async () => undefined, redact: () => undefined } as never;
 

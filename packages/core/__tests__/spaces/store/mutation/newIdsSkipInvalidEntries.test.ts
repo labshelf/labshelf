@@ -1,6 +1,6 @@
 /** Verifies that new folder, date and term ids never reuse an id held by an invalid entry kept for write-back. */
-import { withDate, withFolder, withTerm } from "../../../../src/spaces/store/mutation/index";
-import type { Glossary, Space } from "../../../../src/spaces/model/index";
+import { withDate, withFolder, withTerm } from "../../../../src/spaces/spaceMutations";
+import type { Glossary, Space } from "../../../../src/spaces/index";
 
 const TAKEN = "00000001";
 const held = { id: TAKEN, name: 3 };

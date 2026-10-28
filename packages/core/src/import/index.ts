@@ -1,7 +1,5 @@
 /** Exports the paper import's public API: identifier detection, metadata sources, the PDF pipeline, landing pages, PDF finding, network imports, BibTeX and the citation map. */
 export * from "./identifiers/index.js";
-export type { ResolvedMetadata, MetadataConfidence, MetadataSource, MergedMetadata } from "./metadata/index.js";
-export { mergeMetadata, deriveCompleteness, normalizeCitationFields, SOURCE_TRUST, extractYear, parseString } from "./metadata/index.js";
 export {
   fetchCrossrefByDoi,
   searchCrossref,
@@ -19,13 +17,30 @@ export {
   fetchGoogleBooksByIsbn,
   DEFAULT_CONTACT_EMAIL,
   findPublishedDoi,
+  mergeMetadata,
+  deriveCompleteness,
+  normalizeCitationFields,
+  SOURCE_TRUST,
+  extractYear,
+  resolveOnlineMetadata,
+  resolveFirstIdentifier,
+  fetchMetadataSourcesByDoi,
+  searchOnlineByText,
+  searchOnlineByTitle,
+  searchOnlineByQueries,
+  searchOnlineCandidates,
+  deriveTitleOverlap,
 } from "./registries/index.js";
-export type { OpenAlexCitationWork, PreprintIds, RegistryEnv, RegistryEntry } from "./registries/index.js";
-export * from "./search/index.js";
+export type { OpenAlexCitationWork, PreprintIds, RegistryEnv, RegistryEntry, ResolvedMetadata, MetadataConfidence, MetadataSource, MergedMetadata } from "./registries/index.js";
 export * from "./pdf/index.js";
 export * from "./bibtex/index.js";
-export * from "./landing/index.js";
+export type { PageFacts, PdfCandidate, RawAuthorEmail, RawMailto, RawPage } from "./htmlPage.js";
+export { parseHtmlPage, findRedirectUrls } from "./htmlPage.js";
+export { derivePageFacts, fetchLanding } from "./pageFacts.js";
+export type { AuthorContact, AuthorContactsInput } from "./authorContacts.js";
+export { deriveAuthorContacts, extractEmailFromAffiliation, findAuthorContacts } from "./authorContacts.js";
 export * from "./paper/index.js";
 export * from "./pdfFinder/index.js";
-export * from "./flow/index.js";
-export * from "./citationMap/index.js";
+export { shouldWriteVerdict, deriveVerdictForDetection, deriveVerdictForError, deriveVerdictForOutcome, readWallClock } from "./textLayer.js";
+export type { ExistingLayer, TextLayerDetection, TextLayerOutcome, TextLayerSkipKind } from "./textLayer.js";
+export type { PdfTextLayerBuilder, TextLayerHooks, TextLayerProgress } from "./textLayer.js";

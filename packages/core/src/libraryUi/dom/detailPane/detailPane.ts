@@ -5,26 +5,12 @@
 import type { UiContext } from "../uiContext.js";
 import { runDetailsAction } from "./detailPaneActions.js";
 import {
-  onTagInput,
-  onTagKeydown,
-  renderPaperHeadHtml,
-  renderCitationMenuButton,
-  renderMoreMenuButton,
-  renderSelectionBanner,
-  renderReadingStatusMenuButton,
-  renderTagRowHtml,
-} from "./header/index.js";
-import { createNoteEditor } from "./noteEditor.js";
-import { derivePaperView, type PaneState } from "./paneState.js";
+  onTagInput, onTagKeydown, renderPaperHeadHtml, renderCitationMenuButton, renderMoreMenuButton, renderSelectionBanner, renderReadingStatusMenuButton, renderTagRowHtml,
+} from "./detailHeader.js";
+import { createNoteEditor, derivePaperView, type PaneState } from "./paneState.js";
 import {
-  renderAnnotationListHtml,
-  renderAnnotationsTabHtml,
-  renderDetailsTabHtml,
-  renderNotesTabHtml,
-  renderPaperTabBarHtml,
-  renderRelatedTabHtml,
-  renderPaperLine,
-} from "./tabs/index.js";
+  renderAnnotationListHtml, renderAnnotationsTabHtml, renderDetailsTabHtml, renderNotesTabHtml, renderPaperTabBarHtml, renderRelatedTabHtml, renderPaperLine,
+} from "./detailTabs.js";
 import type { PaperRecord } from "../../../model/index.js";
 import { escapeHtml, renderIcon } from "../../../ui/index.js";
 

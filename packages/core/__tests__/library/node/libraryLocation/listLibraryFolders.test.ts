@@ -1,4 +1,4 @@
-import { listLibraryFolders } from "../../../../src/library/node/libraryLocation/listLibraryFolders";
+import { listLibraryFolders } from "../../../../src/library/node/location";
 
 describe("listLibraryFolders", () => {
   it("lists each sync folder's LabShelf folder, then the local one", () => {

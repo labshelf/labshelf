@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const mockPin = { sha256: "" };
 
-jest.mock("../../../../../src/latex/toolchain/tinyTex", () => ({
+jest.mock("../../../../../src/latex/toolchain", () => ({
   findTinyTexFile: (platform: string, arch: string) => (platform === "linux" || platform === "darwin") && arch === "x64"
     ? {
       version: "2026.10",
@@ -15,8 +15,7 @@ jest.mock("../../../../../src/latex/toolchain/tinyTex", () => ({
     : undefined,
 }));
 
-import { installTinyTex } from "../../../../../src/latex/toolchain/node/managedTex/installTinyTex";
-import type { RunFile } from "../../../../../src/latex/toolchain/node/managedTex/removeQuarantine";
+import { installTinyTex, type RunFile } from "../../../../../src/latex/node/texInstallers";
 import { asLogger, createTexFixture, TINYTEX_URL, type TexFixture } from "./fakeTex";
 
 const TLMGR = { rollover: false, installed: [] };

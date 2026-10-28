@@ -1,5 +1,5 @@
 /** The pdf.js loader: one import per loader, pdf.js before its in-process worker, shims only for Electron hosts. */
-import { PdfjsFileFactory } from '../../../src/import/node/PdfjsFileFactory.js';
+import { PdfjsFileFactory } from '../../../src/import/node/pdfjs.js';
 import { createPdfjsLoader } from '../../../src/import/node/index.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -69,7 +69,7 @@ describe('createPdfjsLoader', () => {
         order.push('worker');
         return { WorkerMessageHandler: class {} };
       });
-      const { createPdfjsLoader: isolated } = require('../../../src/import/node/loadPdfjs.js');
+      const { createPdfjsLoader: isolated } = require('../../../src/import/node/pdfjs.js');
       return isolated().load();
     });
     await new Promise((resolve) => setImmediate(resolve));

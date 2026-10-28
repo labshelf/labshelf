@@ -1,12 +1,16 @@
-// Chooses the one relay a share's clients use: the first listed relay that is not held down and answers its probes, shared through presence.
+// Chooses the one relay a share's clients use: the first listed relay that is not held down and answers its probes, shared through presence, and keeps the session on it.
 import type { Doc } from "yjs";
+import { createListeners } from "../../events/index.js";
 import type { ILogger } from "../../ports/index.js";
-import type { SessionScheduler } from "../peer/index.js";
-import { RelayHolds } from "./relayHolds.js";
-import { readShareIndexDocRelays, readRelayList } from "./readRelayList.js";
-import type { RelayPresence } from "./createRelayPresence.js";
-import type { RelayVerdict } from "./createRelayProbe.js";
-import { RelayFollow } from "./RelayFollow.js";
+import type { DerivedShareKey } from "../invite/index.js";
+import { systemScheduler, type SessionScheduler } from "../channel.js";
+import type { ShareSession } from "../docSync.js";
+import { RelayHolds, type RelayPresence } from "./relayPresence.js";
+import { readShareIndexDocRelays, readRelayList } from "./relayList.js";
+import { attachRelaySync, type RelaySync } from "./relaySync.js";
+import { createMemoryCursorStore, type RelayCursorStore } from "./relayDocLane.js";
+import { createRelayTransport, createGlobalRelayConnection, type RelayConnectionPortFactory, type RelayTransport, type SwitchableTransport } from "./relayTransport.js";
+import { createObservedConnection, type RelayVerdict, type WatchReports } from "./relayWatch.js";
 
 const LOG_MODULE = "collab.relays";
 /** The relay in use, the relays listed before it and the ones this client's probes held down are probed this often. */
@@ -45,7 +49,7 @@ export function createRelaySelector(options: RelaySelectorOptions): RelaySelecto
 
 class Selector implements RelaySelector {
   current: string | undefined;
-  private readonly listeners = new Set<(relayUrl: string | undefined) => void>();
+  private readonly listeners = createListeners<string | undefined>();
   private readonly holds: RelayHolds;
   /** Relays whose last probe failed, waiting for their retry. */
   private readonly failing = new Set<string>();
@@ -73,8 +77,7 @@ class Selector implements RelaySelector {
   }
 
   onChange(listener: (relayUrl: string | undefined) => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return this.listeners.add(listener);
   }
 
   reportFailure(relayUrl: string, kind: RelayFailure): void {
@@ -204,7 +207,7 @@ class Selector implements RelaySelector {
     if (url !== this.current) {
       void this.options.logger.log("INFO", LOG_MODULE, "Switched relay", { from: this.current ?? null, to: url ?? null });
       this.current = url;
-      this.listeners.forEach((listener) => listener(url));
+      this.listeners.emit(url);
     }
     const report = { relay: this.current ?? null, relaysDown: this.holds.active() };
     const text = JSON.stringify(report);
@@ -214,4 +217,127 @@ class Selector implements RelaySelector {
   private logHold(url: string, reason: RelayFailure | "peer", source: "probe" | "connection" | "peer"): void {
     void this.options.logger.log("WARN", LOG_MODULE, "Holding a relay down", { url, reason, source, untilMs: this.holds.active()[url] });
   }
+}
+
+class RelayFollow {
+  /** Relays peers were seen on that this client retried once for them; cleared when no peer reports the relay any more. */
+  private readonly followed = new Set<string>();
+  private connected: string | undefined;
+
+  constructor(private presence: RelayPresence, private holds: RelayHolds, private logger: ILogger, private reports: WatchReports) {}
+
+  /** A socket to `url` as the relay in use opened. */
+  connectedTo(url: string): void { this.connected = url; }
+
+  /**
+   * A relay listed before the one in use that peers report using is retried at once, so a client that skipped it for a passing
+   * failure joins the group within seconds; one that cannot use it holds it down by the usual rules, and its presence moves the group.
+   */
+  retryGroupRelays(urls: readonly string[], current: string | undefined, groupRelays: readonly (string | null)[], failing: Set<string>): void {
+    const end = current === undefined ? urls.length : urls.indexOf(current);
+    urls.slice(0, end < 0 ? urls.length : end).forEach((url) => {
+      if (!groupRelays.includes(url) || this.holds.isDown(url)) { this.followed.delete(url); return; }
+      if (this.followed.has(url)) { return; }
+      this.followed.add(url);
+      if (failing.delete(url)) { void this.logger.log("INFO", LOG_MODULE, "Retrying the relay peers use", { url }); }
+    });
+  }
+
+  /** Until its socket to the relay in use opens, this client has not heard the peers there and cannot tell whether it is their watcher. */
+  watchOthers(urls: readonly string[], current: string | undefined): void {
+    const ready = current !== undefined && this.connected === current;
+    this.presence.watch(ready ? urls.filter((url) => url !== current && !this.holds.isDown(url)) : [], this.reports);
+  }
+}
+
+export interface RelayFollowOptions {
+  session: ShareSession;
+  /** The switchable transport the session was created over. */
+  slot: SwitchableTransport;
+  selector: RelaySelector;
+  shareId: string;
+  relayToken: string;
+  contentKey: DerivedShareKey;
+  logger: ILogger;
+  scheduler?: SessionScheduler;
+  fetch?: typeof fetch;
+  socketFactory?: RelayConnectionPortFactory;
+  /** See `RelaySyncOptions.isSnapshotWriter`. */
+  isSnapshotWriter: () => boolean;
+  /** The persisted cursors of one relay; defaults to memory. */
+  cursorsFor?: (relayUrl: string) => RelayCursorStore;
+}
+
+export interface RelayFollower {
+  /** The relay transport in use, for its status; undefined while no relay is usable. */
+  readonly relay: RelayTransport | undefined;
+  /** Flushes and closes the relay sync and transport; call it before closing the session. */
+  close(): Promise<void>;
+}
+
+interface Active { url: string; transport: RelayTransport; sync: RelaySync }
+
+/** Every later attachment catches up from cursor 0, so the relay gets what it lacks from the time the group was elsewhere. */
+const fromStart = (store: RelayCursorStore): RelayCursorStore => ({
+  get: () => undefined,
+  set: (docKey, cursor) => store.set(docKey, cursor),
+  held: () => undefined,
+  setHeld: (docKey, snapshot) => store.setHeld(docKey, snapshot),
+});
+
+function startRelay(options: RelayFollowOptions, scheduler: SessionScheduler, url: string, replayFromStart: boolean): Active {
+  const { session, slot, selector, shareId, relayToken, contentKey, logger, isSnapshotWriter } = options;
+  const connection = createObservedConnection(
+    { fetch: () => options.fetch ?? fetch, socketFactory: options.socketFactory ?? createGlobalRelayConnection },
+    { failure: (kind) => selector.reportFailure(url, kind), connected: () => selector.reportConnected(url) },
+  );
+  const transport = createRelayTransport({ relayUrl: url, shareId, relayToken, logger, scheduler, ...connection });
+  slot.use(transport);
+  const stored = options.cursorsFor?.(url) ?? createMemoryCursorStore();
+  const sync = attachRelaySync(session, { relay: transport, shareId, contentKey, logger, scheduler, isSnapshotWriter, cursors: replayFromStart ? fromStart(stored) : stored });
+  return { url, transport, sync };
+}
+
+// CONTRACT: documents/contracts/collaboration.md#relay-list
+export function startRelaySelectionFollow(options: RelayFollowOptions): RelayFollower {
+  const { slot, selector } = options;
+  const scheduler = options.scheduler ?? systemScheduler;
+  let active: Active | undefined;
+  let attached = false;
+  let closed = false;
+  let queue = Promise.resolve();
+
+  const detach = async () => {
+    if (!active) { return; }
+    const { transport, sync } = active;
+    active = undefined;
+    await sync.close();
+    slot.use(undefined);
+    await transport.close();
+  };
+
+  const attach = (url: string) => {
+    active = startRelay(options, scheduler, url, attached);
+    attached = true;
+  };
+
+  const follow = (url: string | undefined) => {
+    queue = queue.then(async () => {
+      if (closed || active?.url === url) { return; }
+      await detach();
+      if (url && !closed) { attach(url); }
+    }).catch((error) => void options.logger.error("collab.relays", error, { shareId: options.shareId, relayUrl: url ?? null }));
+  };
+
+  const stop = selector.onChange(follow);
+  follow(selector.current);
+  return {
+    get relay() { return active?.transport; },
+    close: async () => {
+      closed = true;
+      stop();
+      await queue;
+      await detach();
+    },
+  };
 }

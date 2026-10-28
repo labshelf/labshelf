@@ -4,8 +4,7 @@ import type {
   PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectWriteTracking, SidecarPort,
 } from "@labshelf/core";
 import type { PdfjsLocator } from "../reader/index.js";
-import type { UriOfPath } from "../storage/index.js";
-import type { SharedLibraryConfig } from "../storage/paths/index.js";
+import type { SharedLibraryConfig, UriOfPath } from "../library/index.js";
 import type { ConvertProject } from "../writing/index.js";
 
 /** OCR (absent when the user turned it off) and the step that gives scans a text layer. */
@@ -15,7 +14,7 @@ interface PdfTextServices {
 }
 
 /** The per-device places of one library that the extension writes outside the library folder. */
-export type HostDeviceLayout = ProjectDeviceDirs & {
+type HostDeviceLayout = ProjectDeviceDirs & {
   readonly appLogPath: string;
   readonly aiDatabasePath: string;
   readonly openAlexCacheDir: string;

@@ -1,34 +1,21 @@
 // Mirrors a shared project between its share docs and its folder on disk, in both directions.
 import type { ConflictCopy } from "../../library/conflicts/index.js";
-import type { WriteRecordStore } from "../../library/writeRecords/index.js";
+import type { WriteRecordStore } from "../../library/index.js";
 import type * as Y from "yjs";
-import { COMMENTS_PATH, renderCommentsFile } from "../comments/index.js";
+import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
-import {
-  readShareIndexDocComments,
-  readShareIndexDocFiles,
-  readShareIndexDocSettings,
-  readWrittenVersions,
-  isSafeSharePath,
-  deriveSharedPaths,
-  type ShareFileEntry,
-  applySharedSettings,
-  readSettingsMap,
-  parseSharedSettings,
-  writeSettingsChanges,
-  writeSettingsMap,
-} from "../model/index.js";
-import type { MirrorLostError } from "./MirrorLostError.js";
-import type { ShareBlobExchange, ShareSession } from "../doc/index.js";
-import type { CollabStore } from "../deviceState/index.js";
-import type { MirrorProjectDirUnavailable, MirrorFileSystem, MirrorFileRead } from "./fileSystem/index.js";
-import { createMirrorLifecycle, withGatedFileSystem, withGatedWriteRecords } from "./mirrorLifecycle.js";
-import { DISK_ORIGIN, LOG_MODULE, type MergeText, type MirrorContext, deriveMirrorHash, writeMirrored } from "./mirrorContext.js";
+import { COMMENTS_PATH, renderCommentsFile } from "../commentsFile.js";
+import { readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readWrittenVersions, type ShareFileEntry } from "../shareIndexDoc.js";
+import { isSafeSharePath, deriveSharedPaths, applySharedSettings, readSettingsMap, parseSharedSettings, writeSettingsChanges, writeSettingsMap } from "../sharedFiles.js";
+import { type ShareBlobExchange } from "../shareBlobs.js";
+import { type ShareSession } from "../docSync.js";
+import type { CollabStore } from "../session/index.js";
+import { DISK_ORIGIN, LOG_MODULE, reconcileShareBlob, reconcileUntracked, writeMirrored, type MergeText, type MirrorContext } from "./fileReconcile.js";
+import { MirrorLostError } from "./projectLease.js";
+import { MirrorProjectDirUnavailable, type MirrorFileRead, type MirrorFileSystem } from "./mirrorFileSystem.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
-import { reconcileShareBlob } from "./reconcileShareBlob.js";
 import { reconcileText } from "./textMirror.js";
-import { reconcileUntracked } from "./untrackedFile.js";
 
 async function reconcileComments(context: MirrorContext, disk: MirrorFileRead): Promise<ReconcileOutcome> {
   if (disk.state === "changing") { return "changing"; }
@@ -55,7 +42,7 @@ async function reconcileSettings(context: MirrorContext, disk: MirrorFileRead, s
     return "done";
   }
   const yaml = new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes);
-  const diskHash = await deriveMirrorHash(yaml);
+  const diskHash = await deriveTextSha256Hex(yaml);
   const known = store.known.get(PROJECT_FILE);
   const map = readShareIndexDocSettings(session.index);
   try {
@@ -243,4 +230,43 @@ async function scan(context: MirrorContext, queue: PathQueue): Promise<void> {
   const paths = new Set([PROJECT_FILE, COMMENTS_PATH, ...listed, ...deriveSharedPaths(onDisk)]);
   paths.forEach((path) => queue.request(path, false));
   await context.logger.log("INFO", LOG_MODULE, "Started mirroring a shared project", { folder: context.folder, listed: listed.length, onDisk: onDisk.length });
+}
+
+function createMirrorLifecycle(options: ProjectMirrorOptions, detach: (() => void)[], stopQueue: () => void) {
+  let stopped: MirrorStopReason | undefined;
+  const gate = async () => {
+    if (stopped) { throw stopped; }
+    await options.ownership?.assertOwned();
+  };
+  async function guarded<T>(work: () => Promise<T>, fallback: T): Promise<T> {
+    try { return await work(); } catch (error) {
+      if (!(error instanceof MirrorLostError) && !(error instanceof MirrorProjectDirUnavailable)) { throw error; }
+      if (!stopped) {
+        stopped = error;
+        detach.splice(0).forEach((stop) => stop());
+        // TRAP: The queue cannot await its own running reconcile.
+        stopQueue();
+        void options.logger.log("WARN", LOG_MODULE, "Stopped mirroring a shared project", { folder: options.folder, reason: error.name, message: error.message });
+        options.onStopped?.(error);
+      }
+      return fallback;
+    }
+  }
+  return { gate, guarded, isStopped: () => stopped !== undefined };
+}
+
+function withGatedFileSystem(disk: MirrorFileSystem, gate: () => Promise<void>): MirrorFileSystem {
+  return {
+    read: (path, stableMs) => disk.read(path, stableMs),
+    write: async (path, bytes) => { await gate(); await disk.write(path, bytes); },
+    remove: async (path) => { await gate(); await disk.remove(path); },
+    list: () => disk.list(),
+  };
+}
+
+function withGatedWriteRecords(records: WriteRecordStore, gate: () => Promise<void>, disk: MirrorFileSystem): WriteRecordStore {
+  return {
+    read: () => records.read(),
+    append: async (entry) => { await gate(); await disk.list(); await records.append(entry); },
+  };
 }

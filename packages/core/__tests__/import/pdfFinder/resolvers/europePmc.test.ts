@@ -1,5 +1,5 @@
 /** Contract of the Europe PMC learner: the PMCID and non-Europe-PMC PDF links, only from the record with the searched DOI. */
-import { europePmcResolver } from "../../../../src/import/pdfFinder/resolvers/index";
+import { europePmcResolver } from "../../../../src/import/pdfFinder/openAccess";
 import { json, makeContext, makeFindingHarness } from "../../../support/pdfFindingHarness";
 
 const search = (query: string): string =>

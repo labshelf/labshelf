@@ -9,8 +9,8 @@ export {
   closeOrLeave, openOrEnter, showRow, findFocusedChildRow, findFocusedRow, readPaperId, findPaperRow, listVisibleRows,
   createRowWindow, readRowHeight, type RowSlice, type RowViewport, type RowWindow,
 } from "./list/index.js";
-export { attachSash, buildFrame, type FrameOptions, type FrameSlots, type SashOptions } from "./shell/index.js";
-export { renderIconButton, renderField, renderLoading, mountDetailPane, renderMuted, renderSection, renderTabBarHtml, type TabSpec } from "./detailPane/index.js";
+export { attachSash, buildFrame, type FrameOptions, type FrameSlots, type SashOptions } from "./libraryChrome.js";
+export { renderIconButton, renderField, renderLoading, mountDetailPane, mountDetails, renderMuted, renderSection, renderTabBarHtml, type DetailsOptions, type TabSpec } from "./detailPane/index.js";
 export { attachHostMessages } from "./hostMessages.js";
 export { createUiCompositionRoot, type UiContext } from "./uiContext.js";
 export { mountEditorArea, type EditorArea, type EditorAreaOptions, type EditorAreaPrefsPort, type EditorAreaSide, type EditorTab, type EditorTabAction, type EditorTabBody, type EditorTabView } from "./editorArea/index.js";

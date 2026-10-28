@@ -1,6 +1,7 @@
 /** Reads the PDF Info dictionary: publisher-stamped keys and whether its timestamps can be trusted. */
 import { extractDoi } from "../identifiers/index.js";
-import { parseString, extractYear, type ResolvedMetadata } from "../metadata/index.js";
+import { parseString } from "../../guards/index.js";
+import { extractYear, type ResolvedMetadata } from "../registries/index.js";
 
 // Tools that re-print an existing document stamp CreationDate with the moment
 // the user saved the copy, which says nothing about when the paper was published.

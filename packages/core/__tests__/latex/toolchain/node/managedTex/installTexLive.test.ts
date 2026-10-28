@@ -2,11 +2,12 @@ import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-jest.mock("../../../../../src/latex/toolchain/node/managedTex/texLiveKeyring", () => ({
+jest.mock("../../../../../src/latex/node/verify", () => ({
+  ...jest.requireActual("../../../../../src/latex/node/verify"),
   TEX_LIVE_SIGNING_KEY: jest.requireActual("../fakeOpenPgp").TEST_SIGNING_KEY.armoredPublicKey,
 }));
 
-import { installTexLive } from "../../../../../src/latex/toolchain/node/managedTex/installTexLive";
+import { installTexLive } from "../../../../../src/latex/node/texInstallers";
 import { armoredSignature, createTestSigningKey } from "../fakeOpenPgp";
 import { asLogger, createTexFixture, INSTALL_TL_MIRROR, type TexFixture } from "./fakeTex";
 

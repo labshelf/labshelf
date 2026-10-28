@@ -1,7 +1,30 @@
-/** Fans each log entry out to every sink independently and never rejects. */
+/** Builds and serialises structured log entries, then fans each one out to every sink independently and never rejects. */
 import type { LogEntry } from "../model/index.js";
 import type { ILogger, LogSink } from "../ports/index.js";
-import { createLogEntry, describeError } from "./logEntry.js";
+import { describeError } from "../errors/index.js";
+
+export function createLogEntry(
+  level: LogEntry["level"],
+  module: string,
+  message: string,
+  context: Record<string, unknown> = {},
+  stack?: string,
+  now: () => Date = () => new Date(),
+): LogEntry {
+  return {
+    timestamp: now().toISOString(),
+    level,
+    module,
+    message,
+    context,
+    ...(stack ? { stack } : {}),
+  };
+}
+
+/** One JSON line, the on-disk log format. */
+export function formatLogLine(entry: LogEntry): string {
+  return `${JSON.stringify(entry)}\n`;
+}
 
 export interface LoggerOptions {
   /** Called when a sink fails; the failing sink is the only one affected. */

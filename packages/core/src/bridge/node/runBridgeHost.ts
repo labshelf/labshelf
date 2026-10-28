@@ -5,12 +5,9 @@ import { Logger } from "../../logging/index.js";
 import { FileLogSink } from "../../logging/node/index.js";
 import { createDeviceLocalLayout, readSharedLibraryRoot, resolveSharedConfigPath, resolveDeviceStateDir, updateSharedConfig } from "../../library/node/index.js";
 import type { ILogger } from "../../ports/index.js";
-import { createChangedEvents } from "../createChangedEvents.js";
-import { encodeFrame, FrameDecoder } from "../framing.js";
-import type { HostMessage } from "../protocol.js";
-import { LibraryFileOperations } from "./fileOperations.js";
-import { BridgeHostSession } from "./hostSession.js";
-import { watchLibrary } from "./libraryWatcher.js";
+import { createChangedEvents, encodeFrame, FrameDecoder, type HostMessage } from "../protocol.js";
+import { LibraryFileOperations } from "./libraryFiles.js";
+import { BridgeHostSession, watchLibrary } from "./hostSession.js";
 
 export interface BridgeHostOptions {
   input?: NodeJS.ReadableStream;
@@ -18,6 +15,18 @@ export interface BridgeHostOptions {
   configFile?: string;
   env?: NodeJS.ProcessEnv;
   watchDebounceMs?: number;
+}
+
+/** Names the log file the bridge host and its installer write to when no library is configured. */
+export function resolveBridgeLogPath(): string {
+  return path.join(resolveDeviceStateDir(), "logs", "bridge.log");
+}
+
+// The write callback reports a destroyed stdout, where waiting for "drain" would hang forever.
+function frameSender(output: NodeJS.WritableStream): (message: HostMessage) => Promise<void> {
+  return (message) => new Promise((resolve, reject) => {
+    output.write(encodeFrame(message), (error) => (error ? reject(error) : resolve()));
+  });
 }
 
 function hostLogger(root: string | undefined, env: NodeJS.ProcessEnv): ILogger {
@@ -35,10 +44,7 @@ export async function runBridgeHost(options: BridgeHostOptions = {}): Promise<vo
   await logger.log("INFO", "bridge", "Host started", { libraryRoot: root ?? null });
   const logFailure = (action: string) => (error: unknown): void => { void logger.error("bridge", error, { action }); };
   output.on("error", logFailure("write"));
-  // The write callback reports a destroyed stdout, where waiting for "drain" would hang forever.
-  const send = (message: HostMessage): Promise<void> => new Promise((resolve, reject) => {
-    output.write(encodeFrame(message), (error) => (error ? reject(error) : resolve()));
-  });
+  const send = frameSender(output);
   let broken = false;
   let stop: () => void = () => {};
   const stopped = new Promise<void>((resolve) => { stop = resolve; });

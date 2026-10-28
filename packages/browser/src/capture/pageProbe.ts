@@ -1,6 +1,7 @@
-// Collects raw page evidence (meta values, PDF, DOI and mailto links) inside a tab via scripting.executeScript.
+// Collects raw page evidence (meta values, PDF, DOI and mailto links) inside a tab via scripting.executeScript, and reads a landing page from the background.
 // Interpretation stays in core's interpretPage, so DOM and DOM-less paths apply identical rules.
-import type { RawPage } from "@labshelf/core";
+import { formatError, fetchLanding, type ILogger, type PageFacts, type RawPage } from "@labshelf/core";
+import { readScriptingApi } from "./tabFetch";
 
 export type PageMetaFields = Pick<RawPage, "pageUrl" | "meta" | "authorEmails" | "documentTitle" | "pageIsPdf">;
 export type PageAnchors = Pick<RawPage, "pdfLinks" | "doiLinks" | "mailtoLinks">;
@@ -74,4 +75,34 @@ export function readPageAnchors(): PageAnchors {
     return { href: a.getAttribute("href") ?? "", text, context: full.slice(Math.max(0, at - 200), at + text.length + 80) };
   });
   return { pdfLinks: pdfLinks.slice(0, 40), doiLinks, mailtoLinks };
+}
+
+/** Reads a tab's page for the capture flow, with the URL alone as the fallback for a tab the probe cannot enter. */
+// A tab the probe cannot enter (the browser's own PDF viewer on some versions) is still usable when its URL is a PDF.
+export async function readTabPage(log: ILogger, tabId: number, tabUrl: string): Promise<RawPage> {
+  const scripting = readScriptingApi();
+  try {
+    if (!scripting) throw new Error("scripting API unavailable");
+    const target = { tabId };
+    const [metaRun, linksRun] = await Promise.all([
+      scripting.executeScript({ target, func: readPageMeta }) as Promise<Array<{ result?: PageMetaFields }>>,
+      scripting.executeScript({ target, func: readPageAnchors }) as Promise<Array<{ result?: PageAnchors }>>,
+    ]);
+    const meta = metaRun[0]?.result;
+    const links = linksRun[0]?.result;
+    if (meta && links) return { ...meta, ...links };
+    throw new Error("probe returned nothing");
+  } catch (err) {
+    void log.log("WARN", "capture", "probe failed, using the URL alone", { url: tabUrl, error: formatError(err) });
+    const pageIsPdf = /\.pdf(?:[?#]|$)/i.test(tabUrl);
+    return { pageUrl: tabUrl, meta: {}, pdfLinks: [], doiLinks: [], mailtoLinks: [], authorEmails: [], ...(pageIsPdf ? { pageIsPdf: true } : {}) };
+  }
+}
+
+/** Reads an article's landing page from the extension's background, with the user's cookies, bounded in time. */
+const LANDING_TIMEOUT_MS = 12_000;
+
+/** @returns the page's facts, or undefined when it cannot be fetched or is not HTML (a bot wall, a PDF, a timeout) */
+export function fetchLandingFacts(log: ILogger, url: string): Promise<PageFacts | undefined> {
+  return fetchLanding(url, { fetch, timeoutMs: LANDING_TIMEOUT_MS, credentials: "include", logger: log });
 }

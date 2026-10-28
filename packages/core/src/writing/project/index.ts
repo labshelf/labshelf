@@ -1,30 +1,39 @@
-/** Exports the runtime-neutral project model: labshelf.yaml, reading a project folder, main and root detection, root build folders, project ids and the registry. */
-export type { CheckSettings, CountUpTo, FigureRecipe, UserSettings } from "./userSettings.js";
-export type { ListedPaper } from "./listedPapers.js";
-export { buildRootOf, detectFormat, detectEntryFile, findBuildRoots, findEntryCandidates, deriveBuildRootFolder } from "./buildRoot/index.js";
+/** Exports the runtime-neutral project model: labshelf.yaml, reading a project folder, main and root detection, root build folders, project ids, the registry, the project values and the version snapshots. */
+export { buildRootOf, detectFormat, detectEntryFile, findBuildRoots, findEntryCandidates, deriveBuildRootFolder } from "./buildRoot.js";
 export {
   DEFAULT_BIBLIOGRAPHY, LATEX_ENGINES, PROJECT_FILE, PROJECT_FORMATS,
-  parseProjectFile, withProjectId, serializeProjectFile, updateProjectFile,
+  parseProjectFile, withProjectId, serializeProjectFile, updateProjectFile, deriveProjectIdSlug,
 } from "./projectFile.js";
-export type { CheckLimits, LatexEngine, ProjectFileResult, ProjectFormat, ProjectSettings, ProjectSettingsUpdate, ProjectSubmission } from "./projectFile.js";
-export { parseJsonObject } from "./deviceLocal/index.js";
-export type { OpenSources } from "./openSources.js";
-export type { ProjectEntry, ProjectPlacement } from "./projectEntry.js";
-export { readProjectEntry, type ProjectFolderReader } from "./readProjectEntry.js";
-export { deriveProjectIdSlug } from "./projectId.js";
+export type {
+  CheckLimits, CheckSettings, CountUpTo, FigureRecipe, LatexEngine, ListedPaper, ProjectFileResult,
+  ProjectFormat, ProjectSettings, ProjectSettingsUpdate, ProjectSubmission, UserSettings,
+} from "./projectFile.js";
+export { readProjectEntry, type ProjectEntry, type ReadyProject, type ProjectFolderReader, type ProjectPlacement } from "./projectEntry.js";
 export {
   loadProjectRegistry, parseProjectRegistry, createProjectFolderRegistry, registerProjectFolder, serializeProjectRegistry,
   removeProjectFolder, withFolder, withProjectFolderRemoved,
-} from "./deviceLocal/index.js";
-export type { ProjectRegistry, ProjectRegistryFileContext } from "./deviceLocal/index.js";
-export { createInstallPlan } from "./createInstallPlan.js";
-export type { InstallEntry } from "./createInstallPlan.js";
-export { describeInstall, isInstallResolved, describeInstallReport } from "./installReport.js";
-export type { InstallLine, InstallResult } from "./installReport.js";
-export { createArxivBundle } from "./createArxivBundle.js";
-export type { ArxivBundle, BibliographyText } from "./createArxivBundle.js";
-export { listBibliographyFiles } from "./listBibliographyFiles.js";
-export { deriveBuiltPdfPaths, isBuildOrToolPath, deriveProjectFiles } from "./exportFiles.js";
-export { DOCUMENT_EXPORT_EXTENSIONS, createPandocArgs, type DocumentExport } from "./pandocCommand.js";
-export * from "./folder/index.js";
-export * from "./mutation/index.js";
+} from "./projectRegistry.js";
+export type { ProjectRegistry, ProjectRegistryFileContext } from "./projectRegistry.js";
+export {
+  createInstallPlan, describeInstall, isInstallResolved, describeInstallReport, createArxivBundle, deriveBuiltPdfPaths, isBuildOrToolPath,
+  deriveProjectFiles, DOCUMENT_EXPORT_EXTENSIONS, createPandocArgs,
+} from "./projectExport.js";
+export type { InstallEntry, InstallLine, InstallResult, ArxivBundle, BibliographyText, DocumentExport } from "./projectExport.js";
+export {
+  readLastModified, listProjectFiles, findLibraryProjectFolder, listProjects, readProject, listBuildRootFileNames, listDirEntries, readOptionalText,
+  listBibliographyFiles,
+} from "./projectReads.js";
+export type { ProjectReadContext, OpenSources } from "./projectReads.js";
+export { addExistingFolder, createProjectFromTemplate, removeProjectFolderForever, createProjectId, updateProjectSettings, createProjectCatalog } from "./projectMutations.js";
+export type { ProjectCatalogContext, ProjectFolderRegistry } from "./projectMutations.js";
+export {
+  readProjectValues, deriveProjectValueLeaves, deriveProjectValueMembers, VALUES_FILE_NAME, VALUES_HEADER, createProjectValueFile,
+  deriveProjectValueFilePath, withProjectValueInput, findLatexProjectValueStart, findLatexProjectValue, findTypstProjectValue,
+  findTypstProjectValuePrefix,
+} from "./projectValues.js";
+export type {
+  FlattenedProjectValues, LeafProjectValue, ProjectValueLeaf, ProjectValueSource, ProjectValueMember, ProjectValueInputResult,
+  LatexProjectValueReference, TypstProjectValuePrefix, TypstProjectValueReference,
+} from "./projectValues.js";
+export { listVersions, deriveVersionSlug, parseVersionFile, serializeVersionFile, addProjectVersion, VERSIONS_DIR, VERSION_FILE, VERSION_PDF, VERSION_SOURCES } from "./versionSnapshots.js";
+export type { VersionEntry, MarkVersionRequest, ProjectVersion } from "./versionSnapshots.js";

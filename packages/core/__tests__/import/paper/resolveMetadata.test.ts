@@ -1,6 +1,7 @@
 import type { DetectedIdentifier, ResolvedMetadata } from "@labshelf/core";
 import { PAGE_TRUST, resolveMetadata, withAbstract } from "@labshelf/core";
-import { checkTitleAgreement } from "../../../src/import/paper/titleAgreement";
+import { checkTitleAgreement } from "../../../src/import/samePaper";
+import { doiOf } from "../../support/doi";
 import { makeFindingHarness } from "../../support/pdfFindingHarness";
 
 const resolveIdentifier = jest.fn<Promise<ResolvedMetadata | undefined>, [DetectedIdentifier]>();
@@ -18,7 +19,7 @@ describe("resolveMetadata", () => {
   it("lets the registry win each field it has and keeps what only the page states", async () => {
     resolveIdentifier.mockResolvedValue({ title: "Registry Title", authors: ["Oscar H. Ibarra"], year: 1982, journal: "Journal of Algorithms", volume: "3" });
     const r = await resolveMetadata({
-      ids: { doi: "10.1016/0196-6774(82)90007-4" },
+      ids: { doi: doiOf("10.1016/0196-6774(82)90007-4") },
       sources: [page({ title: "Page title", journal: "J. Algorithms", issue: "1", pages: "45-56" })],
     }, deps);
     expect(r.origin).toBe("registry");
@@ -42,7 +43,7 @@ describe("resolveMetadata", () => {
 
   it("asks arXiv, not the registry, for an arXiv DOI", async () => {
     resolveIdentifier.mockResolvedValue({ title: "Attention Is All You Need" });
-    await resolveMetadata({ ids: { doi: "10.48550/arXiv.1706.03762", arxivId: "1706.03762" }, sources: [] }, deps);
+    await resolveMetadata({ ids: { doi: doiOf("10.48550/arXiv.1706.03762"), arxivId: "1706.03762" }, sources: [] }, deps);
     expect(resolveIdentifier).toHaveBeenCalledWith({ type: "arxiv", value: "1706.03762" });
   });
 });

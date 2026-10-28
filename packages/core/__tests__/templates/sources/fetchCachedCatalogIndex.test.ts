@@ -1,5 +1,5 @@
 /** Verifies the conditional, cache-backed fetch of a remote catalog index. */
-import { fetchCachedCatalogIndex } from "../../../src/templates/sources/index.js";
+import { fetchCachedCatalogIndex } from "../../../src/templates/index.js";
 import { contextLogger, memoryCache, scriptedFetch } from "./fakes";
 
 const URL = "https://example.test/index.json";

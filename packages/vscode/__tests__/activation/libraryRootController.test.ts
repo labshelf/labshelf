@@ -4,9 +4,6 @@ import { createLibraryEvents } from '../../src/library/index.js';
 import type { ActiveServices } from '../../src/command/index.js';
 
 const buildServices = jest.fn();
-jest.mock('../../src/activation/buildServices.js', () => ({
-  buildServices: (...args: unknown[]) => buildServices(...args),
-}));
 
 import type { HostAdapters } from '../../src/activation/index.js';
 import { LibraryRootController } from '../../src/activation/libraryRootController.js';
@@ -36,7 +33,7 @@ describe('LibraryRootController', () => {
     const context = fakeContext();
     const events = createLibraryEvents();
     const externalChangeHandling = { watch: jest.fn() } as unknown as ExternalChangeHandling;
-    return new LibraryRootController(context, events, externalChangeHandling, adapters, chooseRoot);
+    return new LibraryRootController(context, events, externalChangeHandling, adapters, chooseRoot, buildServices);
   }
 
   it('require() builds services once and caches the result', async () => {

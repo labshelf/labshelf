@@ -18,9 +18,8 @@ import {
 import type { AppContext } from "../../compositionRoot.js";
 import { UsageError, type Output } from "../usage.js";
 import { openDevTty, type CitationTty } from "./tty.js";
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
-import { createNodeProjectReadCompositionRoot, readOptionalFile, writeFileAtomic } from "@labshelf/core/node";
+import { isFile, createNodeProjectReadCompositionRoot, readOptionalFile, writeFileAtomic } from "@labshelf/core/node";
 import { Terminal, Screen, type InputEvent } from "../../screen/index.js";
 import { theme, updateText, createTextInput, type TextInputState } from "../../libraryUi/index.js";
 
@@ -126,8 +125,8 @@ function pickPaper(papers: readonly PaperRecord[], tty: CitationTty): Promise<Pa
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
-async function hasProjectFile(folder: string): Promise<boolean> {
-  return fs.stat(path.join(folder, PROJECT_FILE)).then((stat) => stat.isFile(), () => false);
+function hasProjectFile(folder: string): Promise<boolean> {
+  return isFile(path.join(folder, PROJECT_FILE));
 }
 
 /** The folder itself, else the nearest folder above it that holds labshelf.yaml. */

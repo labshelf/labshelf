@@ -1,9 +1,9 @@
 // Registers the Writing sidebar view with its commands, builds, previews, citations and editing support.
 import * as vscode from "vscode";
-import type { SelectionSources } from "../libraryUi/details/index.js";
+import type { SelectionSources } from "../libraryUi/index.js";
 
 import {
-  buildRootOf, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
+  buildRootOf, CheckCounts, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
 } from "@labshelf/core";
 import {
   WritingProjects, registerBuildRootCommands, registerBuildRootStatusBar, registerProjectCommands,
@@ -16,27 +16,20 @@ import {
 import { registerInstallCommand } from "../writing/index.js";
 import { registerExportCommands } from "../writing/index.js";
 import { registerEditorActions, registerInsertActions } from "../writing/index.js";
-import { registerAllProjects } from "../writing/allProjects/index.js";
+import {
+  ProjectFigures, createSignalsReader, registerAllProjects, registerProjectSession, registerProjectValues, registerProjectViews, registerProjectWriteEvents,
+  watchFigureFiles, type ProjectSession, type ProjectTreeMirror, type SidebarProjectsSource,
+} from "../writing/projects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
-import { registerMarkVersionCommand } from "../writing/versions/index.js";
-import { BuildPreviews, CheckCounts, FocusFollower, registerShowInPreview, registerShowPreview } from "../writing/preview/index.js";
+import { registerMarkVersionCommand } from "../writing/history/index.js";
+import { BuildPreviews, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
-import { createSignalsReader } from "../writing/checklist/index.js";
 import { registerPaperLinks } from "../writing/index.js";
-import { registerProjectSession, type ProjectSession } from "../writing/session/index.js";
-import { registerProjectViews } from "../writing/tree/index.js";
-import type { ProjectTreeMirror, SidebarProjectsSource } from "../writing/sidebar/index.js";
-import { ProjectFigures, watchFigureFiles } from "../writing/figures/index.js";
-import { registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
-import { createProjectSourceReader } from "../latex/project/index.js";
-import { readActiveProjectEditor } from "../writing/preview/buildRoot/index.js";
-import type { CitationFixDeps } from "../writing/preview/citations/index.js";
+import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
 import type { BuildRootOf, PlatformWriting, RegisterPlatformWriting } from "../writing/index.js";
-import { registerProjectValues } from "../writing/projectValue/index.js";
 import { registerBibliographyCheck } from "../writing/index.js";
 import { createArcIcons } from "../ui/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";
-import { registerProjectWriteEvents } from "../writing/session/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
 

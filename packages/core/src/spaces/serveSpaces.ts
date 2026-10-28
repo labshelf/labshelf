@@ -7,10 +7,12 @@ import {
   type SpacesEndpoint,
   type SpacesToHost,
   type SpaceMutation,
-} from "./protocol/index.js";
+} from "./spacesProtocol.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
-import type { SpaceStore } from "./store/index.js";
-import { buildIcs, buildOverview, buildPapersTree, deriveCatalogRows, resolvePaper } from "./viewModel/index.js";
+import type { SpaceStore } from "./spaceStore.js";
+import { buildIcs, buildOverview } from "./spaceOverview.js";
+import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
+import { formatError } from "../errors/index.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -149,7 +151,7 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
   let tail: Promise<void> = Promise.resolve();
 
   const fail = (action: string, error: unknown, context: Record<string, unknown>): void => {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = formatError(error);
     void logger.log("ERROR", MODULE, `${action} failed`, { ...context, error: reason });
     post({ type: "error", action, message: `${action} failed: ${reason}` });
   };

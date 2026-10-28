@@ -1,18 +1,19 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
-import { checkWaitingWrite } from "./waitForWrite.js";
-import { readFileText, readShareIndexDocFiles, setFileText, readWrittenHashes } from "../model/index.js";
+import { deriveTextSha256Hex } from "../../hash/index.js";
+import { readFileText, setFileText } from "../sharedFiles.js";
+import { readShareIndexDocFiles, readWrittenHashes } from "../shareIndexDoc.js";
 import {
   DISK_ORIGIN,
   removeMirroredPath,
-  deriveMirrorHash,
   LOG_MODULE,
   addMirroredPath,
+  checkWaitingWrite,
   writeMirrored,
   type MirrorContext,
-} from "./mirrorContext.js";
-import type { MirrorFileRead } from "./fileSystem/index.js";
+} from "./fileReconcile.js";
+import type { MirrorFileRead } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
-import { deriveLineSimilarity } from "../../writing/text/index.js";
+import { deriveLineSimilarity } from "../../writing/index.js";
 
 function mergeDiskText(context: MirrorContext, path: string, docText: string, diskText: string, parent?: string) {
   const versions = context.store.storedVersions(path);
@@ -40,7 +41,7 @@ export async function reconcileText(context: MirrorContext, path: string, disk: 
   const diskText = decodeText(disk.bytes);
   // TRAP: A text file cut inside a UTF-8 sequence is mid-write.
   if (diskText === undefined) { return settled ? "changing" : (context.request(path, true), "done"); }
-  const diskHash = await deriveMirrorHash(diskText);
+  const diskHash = await deriveTextSha256Hex(diskText);
   const doc = session.openDoc(path);
   const docText = readFileText(doc).toString();
   if (diskText === docText) { addMirroredPath(context, path, docText, diskHash); return "done"; }

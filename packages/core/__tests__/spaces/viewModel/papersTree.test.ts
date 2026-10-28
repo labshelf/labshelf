@@ -1,5 +1,5 @@
 /** Verifies the papers tree and sidebar rows: nesting, resolved references, missing papers and unreadable Spaces. */
-import { buildPapersTree, deriveSidebarRows } from "../../../src/spaces/viewModel/index";
+import { buildPapersTree, deriveSidebarRows } from "../../../src/spaces/spaceViews";
 import { folder, library, paperRef, ready, space } from "./viewFixture";
 
 const lib = library({ id: "a", title: "Alpha", authors: ["X", "Y"], year: 2020, status: "reading" });

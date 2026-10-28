@@ -1,13 +1,9 @@
 /**
- * Exports the AI primitives' public API: platform-agnostic types, chunking, embedding, retrieval and the ingestion pipeline.
+ * Exports the AI primitives' public API: platform-agnostic types, chunking, embedding, retrieval, the ingestion pipeline and the service.
  * SQLite persistence lives in ./node; UI lives in consumer packages.
  */
-export * from "./aiStorage.js";
-export * from "./chunk/index.js";
-export * from "./embedding/index.js";
-export { runIngestion } from "./ingestion.js";
-export type { IngestionContext, IngestionResult } from "./ingestion.js";
-export { PdfTextExtractor } from "./pdfTextExtractor.js";
-export { AiIndexer } from "./aiIndexer.js";
-export type { AiIndexerDeps } from "./aiIndexer.js";
-export * from "./service/index.js";
+export * from "./chunk.js";
+export * from "./embedding.js";
+export * from "./ingestion.js";
+export { AiService, createAiService, findSimilarPapers, findTopK } from "./aiService.js";
+export type { AiServiceDependencies, AiServiceDeps, RetrieveOptions } from "./aiService.js";

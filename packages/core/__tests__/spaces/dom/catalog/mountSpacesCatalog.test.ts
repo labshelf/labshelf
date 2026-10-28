@@ -3,9 +3,9 @@
  * @jest-environment jsdom
  */
 import { createLoopbackTransport } from "../../../../src/libraryUi/protocol/index.js";
-import type { HostToSpaces, SpacesToHost } from "../../../../src/spaces/protocol/index.js";
-import type { CatalogRow } from "../../../../src/spaces/viewModel/index.js";
-import { mountSpacesCatalog } from "../../../../src/spaces/dom/catalog/index.js";
+import type { HostToSpaces, SpacesToHost } from "../../../../src/spaces/spacesProtocol.js";
+import type { CatalogRow } from "../../../../src/spaces/spaceViews.js";
+import { mountSpacesCatalog } from "../../../../src/spaces/dom/mountSpacesCatalog.js";
 
 const row = (id: string, name: string, purpose: string): CatalogRow => ({
   id, name, purpose, reading: { done: 1, total: 2 }, next: null,

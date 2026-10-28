@@ -1,4 +1,4 @@
-import { formatPath } from "../../../../src/library/node/libraryLocation/formatPath";
+import { formatPath } from "../../../../src/library/node/location";
 
 describe("formatPath", () => {
   it("abbreviates the home folder", () => {

@@ -1,0 +1,237 @@
+// Tests the build preview facts: problems placed through SyncTeX or Typst cite targets and counted, and which source changes mark a PDF stale.
+import * as path from "node:path";
+
+import type { LocatedProblem } from "../../../src/latex/index";
+import type { ILogger } from "../../../src/ports/index";
+import type { ReadyProject } from "../../../src/writing/project/index";
+import type { TypstCitation } from "../../../src/writing/citations/index";
+import { readPdfProblems, type PdfProblemsDeps } from "../../../src/writing/build/index";
+import { StaleSources, type SynctexFinder } from "../../../src/writing/index";
+import type { SynctexMap } from "../../../src/writing/synctexFile";
+
+function fakeLogger(): { log: jest.Mock; error: jest.Mock } & ILogger {
+  return { log: jest.fn(async () => {}), error: jest.fn(async () => {}) };
+}
+
+function readyEntry(folder: string): ReadyProject {
+  return { kind: "ready", folder, location: "library", main: "main.tex", settings: { id: folder.split("/").pop()!, format: "latex" } } as ReadyProject;
+}
+
+describe("pdf problems", () => {
+  const latex = readyEntry("/lib/paper");
+  const typst = { ...latex, main: "main.typ", settings: { ...latex.settings, format: "typst" } } as ReadyProject;
+
+  function indexOf(lines: Record<number, { page: number; x: number; y: number }>): SynctexMap {
+    const positions = new Map(Object.entries(lines).map(([line, at]) => [Number(line), { ...at, mark: false }]));
+    const byFile = new Map([["/lib/paper/main.tex", { positions, lines: [...positions.keys()].sort((a, b) => a - b) }]]);
+    return { files: new Map(), pages: new Map(), byFile };
+  }
+
+  const found = (lines: Record<number, { page: number; x: number; y: number }>): SynctexFinder => ({ status: "found", index: indexOf(lines) });
+
+  const problem = (over: Partial<LocatedProblem>): LocatedProblem => ({
+    severity: "warning", message: "m", file: "/lib/paper/main.tex", ...over,
+  });
+
+  function deps(over: Partial<PdfProblemsDeps> = {}) {
+    const logger = fakeLogger();
+    const all: PdfProblemsDeps = {
+      logger, paths: path,
+      problemsOf: () => [],
+      preprints: async () => [],
+      synctex: async () => found({}),
+      typstCites: () => [],
+      readSources: async () => [],
+      ...over,
+    };
+    return { all, logger };
+  }
+
+  describe("readPdfProblems", () => {
+    it("places LaTeX problems by SyncTeX with project-relative files", async () => {
+      const { all } = deps({
+        problemsOf: () => [problem({ kind: "undefinedCitation", subject: "a", line: 4 })],
+        synctex: async () => found({ 4: { page: 2, x: 30, y: 40 } }),
+      });
+      const { pdfProblems } = await readPdfProblems(all, latex, "main.tex");
+      expect(pdfProblems).toEqual([
+        { kind: "undefinedCitation", subject: "a", message: "m", file: "main.tex", line: 4, area: { page: 2, left: 30, right: 30, top: 40, bottom: 40 } },
+      ]);
+    });
+
+    it("orders placed problems by reading position and leaves the rest last", async () => {
+      const { all } = deps({
+        problemsOf: () => [
+          problem({ kind: "undefinedReference", subject: "r", line: 9 }),
+          problem({ kind: "overfull", line: 4 }),
+          problem({ kind: "undefinedCitation", subject: "c", file: "/lib/paper/other.tex", line: 1 }),
+        ],
+        synctex: async () => found({ 4: { page: 1, x: 5, y: 5 }, 9: { page: 3, x: 5, y: 5 } }),
+      });
+      const kinds = (await readPdfProblems(all, latex, "main.tex")).pdfProblems.map((p) => p.kind);
+      expect(kinds).toEqual(["overfull", "undefinedReference", "undefinedCitation"]);
+    });
+
+    it("includes preprint entries and places them by their source line", async () => {
+      const { all } = deps({
+        preprints: async () => [{ key: "p", message: "preprint", file: "main.tex", line: 4 }],
+        synctex: async () => found({ 4: { page: 1, x: 1, y: 2 } }),
+      });
+      const { pdfProblems } = await readPdfProblems(all, latex, "main.tex");
+      expect(pdfProblems).toMatchObject([{ kind: "preprint", subject: "p", file: "main.tex", area: { page: 1 } }]);
+    });
+
+    it("keeps problems unplaced and logs once when SyncTeX is unreadable", async () => {
+      const { all, logger } = deps({
+        problemsOf: () => [problem({ kind: "undefinedCitation", subject: "a", line: 4 }), problem({ kind: "overfull", line: 6 })],
+        synctex: async () => ({ status: "unreadable" }),
+      });
+      const { pdfProblems } = await readPdfProblems(all, latex, "main.tex");
+      expect(pdfProblems.map((p) => "area" in p)).toEqual([false, false]);
+      expect(logger.log).toHaveBeenCalledTimes(1);
+      expect(logger.log.mock.calls[0]![3]).toMatchObject({ root: "main.tex", reason: "unreadable" });
+    });
+
+    it("keeps problems unplaced and logs the error when the SyncTeX load throws", async () => {
+      const { all, logger } = deps({
+        problemsOf: () => [problem({ kind: "overfull", line: 6 })],
+        synctex: async () => { throw new Error("boom"); },
+      });
+      const { pdfProblems } = await readPdfProblems(all, latex, "main.tex");
+      expect(pdfProblems).toHaveLength(1);
+      expect(logger.error).toHaveBeenCalledTimes(1);
+    });
+
+    it("places only citation and preprint problems of a Typst root, by cite key", async () => {
+      const cites: TypstCitation[] = [{ key: "a", at: { page: 2, x: 10, y: 20 } }];
+      const { all } = deps({
+        problemsOf: () => [
+          problem({ kind: "undefinedCitation", subject: "a", file: "/lib/paper/main.typ", line: 2 }),
+          problem({ kind: "undefinedReference", subject: "a", file: "/lib/paper/main.typ", line: 3 }),
+          problem({ kind: "undefinedCitation", subject: "zz", file: "/lib/paper/main.typ", line: 5 }),
+        ],
+        preprints: async () => [{ key: "a", message: "preprint", file: "main.typ", line: 7 }],
+        typstCites: () => cites,
+      });
+      const { pdfProblems } = await readPdfProblems(all, typst, "main.typ");
+      const placed = pdfProblems.filter((p) => p.area).map((p) => p.kind);
+      expect(placed).toEqual(["undefinedCitation", "preprint"]);
+      expect(pdfProblems.filter((p) => !p.area).map((p) => p.line)).toEqual([3, 5]);
+    });
+
+    it("does not load SyncTeX for a Typst root", async () => {
+      const synctex = jest.fn(async () => found({}));
+      const { all } = deps({ synctex, problemsOf: () => [problem({ kind: "overfull", line: 1 })] });
+      await readPdfProblems(all, typst, "main.typ");
+      expect(synctex).not.toHaveBeenCalled();
+    });
+
+    it("counts distinct cited keys across the root's sources", async () => {
+      const { all } = deps({
+        readSources: async () => [
+          { file: "main.tex", text: "\\cite{a,b} and \\citep{a}" },
+          { file: "ch1.tex", text: "\\cite{c} \\cite{b}" },
+        ],
+      });
+      expect((await readPdfProblems(all, latex, "main.tex")).cites).toBe(3);
+    });
+
+    it("counts Typst references", async () => {
+      const { all } = deps({ readSources: async () => [{ file: "main.typ", text: "see @a and @b, then @a" }] });
+      expect((await readPdfProblems(all, typst, "main.typ")).cites).toBe(2);
+    });
+  });
+});
+
+describe("stale sources", () => {
+  function setup() {
+    let emit: (filePath: string) => void = () => {};
+    const dispose = jest.fn();
+    const events = { onSourceChanged: (listener: (filePath: string) => void) => { emit = listener; return { dispose }; } };
+    let clock = 1000;
+    const onStale = jest.fn();
+    const sources = new StaleSources(path, events, () => clock, onStale);
+    return { sources, onStale, dispose, edit: (file: string) => emit(file), tick: (to: number) => { clock = to; } };
+  }
+
+  const folder = "/p/paper";
+
+  describe("StaleSources", () => {
+    it("marks a built root stale on a source edit and fires once for repeated edits", () => {
+      const { sources, onStale, edit } = setup();
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({ stale: false, builtAt: 1000 });
+      edit("/p/paper/main.tex");
+      edit("/p/paper/chapters/intro.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({ stale: true, builtAt: 1000 });
+      expect(onStale).toHaveBeenCalledTimes(1);
+      expect(onStale).toHaveBeenCalledWith(folder, "main.tex");
+    });
+
+    it("clears stale and records the time on a successful build", () => {
+      const { sources, onStale, edit, tick } = setup();
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      edit("/p/paper/refs.bib");
+      tick(2000);
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({ stale: false, builtAt: 2000 });
+      edit("/p/paper/main.typ");
+      expect(onStale).toHaveBeenCalledTimes(2);
+    });
+
+    it("stays stale when a source changed during the build", () => {
+      const { sources, edit, tick } = setup();
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      edit("/p/paper/main.tex");
+      sources.building(folder, "main.tex");
+      edit("/p/paper/main.tex");
+      tick(3000);
+      sources.succeeded(folder, "main.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({ stale: true, builtAt: 3000 });
+    });
+
+    it("keeps stale as it is when a build fails", () => {
+      const { sources, edit } = setup();
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      edit("/p/paper/main.tex");
+      sources.building(folder, "main.tex");
+      sources.failed(folder, "main.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({ stale: true, builtAt: 1000 });
+    });
+
+    it("ignores built outputs, other extensions and files outside the folder", () => {
+      const { sources, onStale, edit } = setup();
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      for (const file of ["main.log", "main.aux", "main.pdf", "/p/paper/notes.md", "/p/other/main.tex", "/p/paper-two/main.tex"]) { edit(file.startsWith("/") ? file : `/p/paper/${file}`); }
+      expect(sources.statusOf(folder, "main.tex")).toEqual({ stale: false, builtAt: 1000 });
+      expect(onStale).not.toHaveBeenCalled();
+    });
+
+    it("marks nothing before a root has been built", () => {
+      const { sources, onStale, edit } = setup();
+      edit("/p/paper/main.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({});
+      sources.building(folder, "main.tex");
+      sources.failed(folder, "main.tex");
+      edit("/p/paper/main.tex");
+      expect(sources.statusOf(folder, "main.tex")).toEqual({});
+      expect(onStale).not.toHaveBeenCalled();
+    });
+
+    it("tracks each root of a folder on its own and stops listening on dispose", () => {
+      const { sources, dispose, edit } = setup();
+      sources.building(folder, "main.tex");
+      sources.succeeded(folder, "main.tex");
+      expect(sources.statusOf(folder, "b/main.tex")).toEqual({});
+      edit("/p/paper/main.tex");
+      sources.dispose();
+      expect(dispose).toHaveBeenCalledTimes(1);
+    });
+  });
+});

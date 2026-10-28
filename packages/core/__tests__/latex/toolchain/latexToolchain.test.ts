@@ -1,5 +1,5 @@
 /** Verifies the label shown for each LaTeX engine. */
-import { formatEngineLabel } from "../../../src/latex/toolchain/index";
+import { formatEngineLabel } from "../../../src/latex/toolchain";
 
 describe("formatEngineLabel", () => {
   it("names every engine as users see it", () => {

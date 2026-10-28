@@ -1,5 +1,5 @@
 /** Contract of next-hop reading: an HTML answer on a known platform's landing page leads to the rule's PDF URL. */
-import { extractNextHopsFromHtml } from "../../../../src/import/pdfFinder/client/hops";
+import { extractNextHopsFromHtml } from "../../../../src/import/pdfFinder/client";
 
 describe("nextHopsFromHtml", () => {
   it("follows the publisher rule for a landing page a hop reaches", () => {

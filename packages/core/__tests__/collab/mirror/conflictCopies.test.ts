@@ -1,8 +1,8 @@
 // Pins that project conflict copies stay local until the user dismisses their content match.
-import { readShareIndexDocFiles } from "../../../src/collab/model/index";
+import { readShareIndexDocFiles } from "../../../src/collab/index";
 import type { ConflictCopy } from "../../../src/library/conflicts/index";
-import { FakeClock, runUntil } from "../peer/fakeNetwork";
-import { FakeRelay } from "../transport/relay/fakeRelay";
+import { FakeClock, runUntil } from "../fakeNetwork";
+import { FakeRelay } from "../relays/fakeRelay";
 import { memoryFiles } from "./mirrorFiles";
 import { openMirror, readFile, writeFile, type MirrorFixture } from "./mirrorFixture";
 

@@ -1,5 +1,5 @@
 import type { PaperRecord } from "../../../src/model/index";
-import { formatCitations, formatDateTime, formatInTextCitation } from "../../../src/library/paper/index";
+import { formatCitations, formatInTextCitation } from "../../../src/library/record";
 
 function paper(extra: Partial<PaperRecord> = {}): PaperRecord {
   return {
@@ -53,18 +53,5 @@ describe("formatCitations", () => {
     expect(bare.mla).toBe("“Notes.”");
     expect(bare.chicago).toBe("n.d. “Notes.”");
     expect(bare.inText).toBe("Notes, n.d.");
-  });
-});
-
-describe("formatDateTime", () => {
-  it("is empty for a missing or broken timestamp", () => {
-    expect(formatDateTime(undefined)).toBe("");
-    expect(formatDateTime("not a date")).toBe("");
-  });
-
-  it("shows the date and the time", () => {
-    const text = formatDateTime("2024-03-04T14:05:00");
-    expect(text).toContain("Mar 4, 2024");
-    expect(text).toMatch(/2:05\s?PM/);
   });
 });

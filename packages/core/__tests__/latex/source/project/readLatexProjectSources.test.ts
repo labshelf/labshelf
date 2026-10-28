@@ -1,5 +1,5 @@
 /** Verifies the include walk: tree order, cycles, repeated includes and files that do not exist. */
-import { readLatexProjectSources, type ProjectSourceReader } from "../../../../src/latex/index";
+import { readLatexProjectSources, readLatexProjectTexts, type ProjectSourceReader } from "../../../../src/latex/index";
 
 function readerOf(files: Record<string, string>): ProjectSourceReader & { reads: string[] } {
   const reads: string[] = [];
@@ -42,5 +42,15 @@ describe("readLatexProjectSources", () => {
     expect(withMacro.missing.map((entry) => entry.path)).toEqual(["\\jobname-x", "../out"]);
     const noMain = await readLatexProjectSources("main.tex", readerOf({}));
     expect(noMain).toEqual({ files: [], missing: [{ path: "main.tex", includedFrom: undefined }] });
+  });
+});
+
+describe("readLatexProjectTexts", () => {
+  it("returns the include tree with the text of every file that exists", async () => {
+    const reader = readerOf({ "main.tex": "\\input{a}\\input{gone}", "a.tex": "\\label{a}" });
+    const { files, missing, texts } = await readLatexProjectTexts("main.tex", reader);
+    expect(files.map((file) => file.path)).toEqual(["main.tex", "a.tex"]);
+    expect(missing.map((entry) => entry.path)).toEqual(["gone.tex"]);
+    expect([...texts]).toEqual([["main.tex", "\\input{a}\\input{gone}"], ["a.tex", "\\label{a}"]]);
   });
 });

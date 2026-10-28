@@ -1,5 +1,5 @@
 /** Verifies that the aux copy a section loads keeps references and drops the lines that would write tables or bibliography setup. */
-import { deriveSectionAux } from "../../../../src/latex/build/section/index";
+import { deriveSectionAux } from "../../../../src/latex/sectionPlan";
 
 describe("deriveSectionAux", () => {
   it("keeps labels, cites and nested aux inputs, drops writefile, contentsline and bib setup", () => {

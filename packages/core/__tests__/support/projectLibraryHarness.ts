@@ -1,7 +1,7 @@
 /** Builds a project library over an in-memory disk with mocked host functions, for the All projects library tests. */
 import type { ProjectEntry } from "../../src/writing/project/index";
-import { createProjectLibrary, type ProjectLibraryDeps } from "../../src/writing/allProjects/library/index";
-import { posixPathOps } from "../../src/library/mutations/pathOps";
+import { createProjectLibrary, type ProjectLibraryDeps } from "../../src/writing/allProjects/projectLibrary";
+import { posixPathOps } from "../../src/path/index";
 import { fakeLogger } from "./fakeLogger";
 import { MemoryLibraryFs } from "./memoryLibraryFs";
 

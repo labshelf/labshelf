@@ -1,9 +1,9 @@
-/** Reads and validates a template's template.yaml, and the manifest fields the catalog index shares. */
+/** Reads and validates a template's template.yaml, the manifest fields the catalog index shares, and the licence string's SPDX shape. */
 // CONTRACT: documents/contracts/templates.md#manifest
 
 import YAML from "yaml";
+import { isOneOf } from "../../guards/index.js";
 import { LATEX_ENGINES, PROJECT_FORMATS, type ProjectFormat } from "../../writing/project/index.js";
-import { isLicenseExpression } from "./templateLicense.js";
 import { deriveTemplatePathProblem } from "./templatePaths.js";
 
 export const TEMPLATE_CATEGORIES = ["article", "thesis", "poster", "slides", "cv", "other"] as const;
@@ -34,10 +34,6 @@ export type TemplateManifestResult = { ok: true; manifest: TemplateManifest } | 
 
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
-
-function isOneOf<T extends string>(values: readonly T[], value: unknown): value is T {
-  return typeof value === "string" && (values as readonly string[]).includes(value);
-}
 
 function textProblem(value: unknown, maxLength: number, singleLine: boolean): string | undefined {
   if (typeof value !== "string" || value.trim() === "") { return "is missing"; }
@@ -131,4 +127,53 @@ export function parseTemplateManifest(yamlText: string): TemplateManifestResult 
 export function serializeTemplateManifest(manifest: TemplateManifest): string {
   const { id, name, description, category, format, engine, main, compiler, license, authors } = manifest;
   return YAML.stringify({ schema: 1, id, name, description, category, format, engine, main, ...(compiler === undefined ? {} : { compiler }), license, authors });
+}
+
+const REFUSED = new Set(["NOASSERTION", "NONE"]);
+const IDENTIFIER = /^[A-Za-z0-9.+-]+$/;
+
+function tokenize(text: string): string[] {
+  return text.replace(/[()]/g, " $& ").split(/\s+/).filter((token) => token !== "");
+}
+
+// expression := term (("AND" | "OR") term)*   term := "(" expression ")" | id ("WITH" id)?
+class ExpressionReader {
+  private position = 0;
+  constructor(private readonly tokens: readonly string[]) {}
+
+  atEnd(): boolean { return this.position >= this.tokens.length; }
+
+  private next(): string | undefined { return this.tokens[this.position++]; }
+  private peek(): string | undefined { return this.tokens[this.position]; }
+
+  private identifier(): boolean {
+    const token = this.next();
+    return token !== undefined && IDENTIFIER.test(token) && !["AND", "OR", "WITH"].includes(token);
+  }
+
+  private term(): boolean {
+    if (this.peek() === "(") {
+      this.next();
+      return this.expression() && this.next() === ")";
+    }
+    if (!this.identifier()) { return false; }
+    if (this.peek() === "WITH") { this.next(); return this.identifier(); }
+    return true;
+  }
+
+  expression(): boolean {
+    if (!this.term()) { return false; }
+    while (this.peek() === "AND" || this.peek() === "OR") {
+      this.next();
+      if (!this.term()) { return false; }
+    }
+    return true;
+  }
+}
+
+/** True for `MIT`, `MIT OR Apache-2.0` and `GPL-2.0+ WITH Classpath-exception-2.0`; false for `NOASSERTION`, `NONE` and malformed text. */
+export function isLicenseExpression(text: string): boolean {
+  if (REFUSED.has(text.trim())) { return false; }
+  const reader = new ExpressionReader(tokenize(text));
+  return reader.expression() && reader.atEnd();
 }

@@ -1,10 +1,9 @@
 // Shows the project's search page, answered in the same page over a loopback channel.
 import { createLoopbackTransport, type HostToSearch, type SearchToHost } from "@labshelf/core";
 import { mountProjectSearch } from "@labshelf/core/dom";
-import { showInOpenEditor } from "../../writing/session";
-import { mountSearchHost } from "../../writing";
+import { mountSearchHost, showInOpenEditor } from "../../writing";
 import { mountProjectPage } from "./projectPageTab";
-import type { TabModule } from "./tabKind";
+import type { TabModule } from "./tabKinds";
 
 const MODULE = "tabs.search";
 

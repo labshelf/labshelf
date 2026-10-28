@@ -1,20 +1,135 @@
 // Connects this device to one shared project: stored state, the peer session over its relays, presence, blobs and the disk mirror.
 // CONTRACT: documents/contracts/collaboration.md#membership
-import type { ILogger } from "../../ports/index.js";
-import { derivePeerColour } from "../binding/index.js";
-import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken } from "../shareKey/index.js";
-import type { InviteRelay } from "../invite/index.js";
-import { createSwitchableTransport } from "../relays/index.js";
-import { openCollabStore, type CollabDeviceStateStorage, type CollabStore } from "../deviceState/index.js";
-import { attachPresence, type PresenceStore } from "../presence/index.js";
-import { attachShareBlobs, createShareSession, type ShareBlobExchange, type ShareSession } from "../doc/index.js";
-import { type SessionPhase } from "../peer/index.js";
-import type { ConnectionMirror, MirrorFactory, MirrorInput, MirrorStart, MirrorState } from "./connectionMirror.js";
-import { ensureSharedProject, type ShareProjects, type ShareStart } from "./ensureSharedProject.js";
-import { startShareRelays, type RelayNetwork, type ShareRelays } from "./shareRelays.js";
+import type { ConflictCopy, ConflictDismissal } from "../../library/conflicts/index.js";
+import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
+import { createListeners } from "../../events/index.js";
+import { createWriteRecordStore, type DeviceIdentity } from "../../library/index.js";
+import { derivePresenceShareKey, deriveContentShareKey, deriveRelayToken, type DerivedShareKey, type InviteRelay } from "../invite/index.js";
+import {
+  createSwitchableTransport, createRelaySelector, createRelayWatch, startRelaySelectionFollow, readRelayList, createRelayPresence, createRelayProbe,
+  type RelayConnectionPortFactory, type RelayCursorStore, type SwitchableTransport,
+} from "../relays/index.js";
+import {
+  openFolderLease, startProjectMirror, systemLeaseScheduler,
+  type FolderLease, type LeaseHolder, type LeaseScheduler, type MergeText, type MirrorApp, type MirrorFileSystem,
+} from "../mirror/index.js";
+import { attachPresence, type PresenceStore, type RelayReport } from "../presence.js";
+import { systemScheduler, type SessionPhase, type SessionScheduler } from "../channel.js";
+import { attachShareBlobs, type ShareBlobExchange } from "../shareBlobs.js";
+import { createShareSession, type ShareSession } from "../docSync.js";
+import { derivePeerColour } from "../cursors.js";
+import { openCollabStore, type CollabDeviceStateStorage, type CollabStore } from "./collabStore.js";
+import { ensureSharedProject, type ShareProjects, type ShareStart } from "./sharedProject.js";
 import { watchStorageHealth, type StorageHealth } from "./storageHealth.js";
 
 const LOG_MODULE = "collab.connection";
+const LEASE_LOG_MODULE = "collab.mirror.lease";
+// Half the lease renewal interval, so a dead owner's folder is taken within about 35 s of its last renewal.
+const RETRY_MS = 5_000;
+
+export interface ConnectionMirror {
+  /** Reports a changed path relative to the project folder; also call it when an editor lets a path go. */
+  changed(path: string): void;
+  idle(): Promise<void>;
+  close(): Promise<void>;
+}
+
+/**
+ * `busy` while another mirror owns the folder; the connection then runs without one.
+ * `running` resolves with the mirror once the folder frees, or undefined when the connection closes first.
+ */
+export type MirrorStart =
+  | { kind: "running"; mirror: ConnectionMirror }
+  | { kind: "busy"; holder: LeaseHolder | "tab"; running?: Promise<ConnectionMirror | undefined> };
+
+export interface MirrorInput {
+  folder: string;
+  session: ShareSession;
+  blobs: ShareBlobExchange;
+  store: CollabStore;
+  /** Aborts when the connection closes; a mirror still waiting for the folder then gives up. */
+  signal: AbortSignal;
+  /** Called once when the mirror stops by itself; the share docs keep every edit, only the disk stops following them. */
+  onStopped(reason: string): void;
+}
+
+export type MirrorFactory = (input: MirrorInput) => Promise<MirrorStart>;
+
+export type MirrorState =
+  | { kind: "running" }
+  | { kind: "busy"; holder: LeaseHolder | "tab" }
+  | { kind: "stopped"; reason: string };
+
+export interface ShareRelayState {
+  url: string;
+  /** The epoch milliseconds the relay's hold ends, when it is held down. */
+  downUntil: number | undefined;
+}
+
+export interface ShareRelays {
+  /** The relay in use; undefined while none of the share's relays is usable. */
+  readonly current: string | undefined;
+  /** The relays in the order clients try them. */
+  list(): ShareRelayState[];
+  onChange(listener: () => void): () => void;
+  /** Flushes and closes the relay in use; call it before closing the session. */
+  close(): Promise<void>;
+}
+
+/** How a connection reaches its relays; tests pass in-process relays and a fake clock. */
+export interface RelayNetwork {
+  scheduler?: SessionScheduler;
+  fetch?: typeof fetch;
+  socketFactory?: RelayConnectionPortFactory;
+}
+
+interface ShareRelaysOptions {
+  session: ShareSession;
+  /** The transport the session was created over. */
+  slot: SwitchableTransport;
+  presence: PresenceStore;
+  inviteRelays: readonly string[];
+  shareId: string;
+  relayToken: string;
+  contentKey: DerivedShareKey;
+  awarenessKey: DerivedShareKey;
+  cursorsFor(relayUrl: string): RelayCursorStore;
+  logger: ILogger;
+  network?: RelayNetwork;
+}
+
+/** The index list, else the invite's while the index lists none, as the selector tries them. */
+const shareRelayUrls = (index: ShareSession["index"], inviteRelays: readonly string[]): string[] => {
+  const listed = readRelayList(index).map((entry) => entry.url);
+  return listed.length > 0 ? listed : [...inviteRelays];
+};
+
+// CONTRACT: documents/contracts/collaboration.md#relay-list
+export function startShareRelays(options: ShareRelaysOptions): ShareRelays {
+  const { session, slot, presence, inviteRelays, shareId, relayToken, contentKey, awarenessKey, cursorsFor, logger } = options;
+  const { scheduler = systemScheduler, ...reach } = options.network ?? {};
+  const watch = createRelayWatch({ shareId, relayToken, contentKey, awarenessKey, logger, scheduler, ...reach });
+  const port = createRelayPresence(presence, watch);
+  let report: RelayReport = { relay: null, relaysDown: {} };
+  const selector = createRelaySelector({
+    index: session.index, inviteRelays, probe: createRelayProbe({ logger, scheduler, ...(reach.fetch ? { fetch: reach.fetch } : {}) }), clock: scheduler, logger,
+    presence: { ...port, publish: (next) => { report = next; port.publish(next); } },
+  });
+  // INVARIANT: only the connected client with the lowest awareness id writes relay snapshots, so two never race for one cursor.
+  const follower = startRelaySelectionFollow({
+    session, slot, selector, shareId, relayToken, contentKey, logger, scheduler, cursorsFor, isSnapshotWriter: () => presence.isLowestId(), ...reach,
+  });
+  return {
+    get current() { return selector.current; },
+    list: () => shareRelayUrls(session.index, inviteRelays).map((url) => ({ url, downUntil: report.relaysDown[url] })),
+    onChange: (listener) => selector.onChange(() => listener()),
+    close: async () => {
+      selector.close();
+      await follower.close();
+      await watch.close();
+    },
+  };
+}
 
 export interface ShareConnectionState {
   readonly status: SessionPhase;
@@ -139,14 +254,14 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
   if (start.mode === "join") { await parts.mirror?.idle(); }
   void logger.log("INFO", LOG_MODULE, "Connected a shared project", { shareId, folder: placed.folder, mode: start.mode, mirror: mirrors.state().kind });
   let closing: Promise<void> | undefined;
-  const listeners = new Set<() => void>();
-  const notify = (): void => listeners.forEach((listener) => listener());
+  const listeners = createListeners();
+  const notify = (): void => listeners.emit();
   const stops = [session.onStatus(notify), relays.onChange(notify), health.onChange(notify), mirrors.onChange(notify)];
   return {
     shareId, shareKey, folder: placed.folder, joinedId: placed.joinedId, session, presence, relays,
     get mirror() { return parts.mirror; },
     state: () => ({ status: session.status, relay: relays.current, persistenceFailure: health.failure, mirror: mirrors.state() }),
-    onStateChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    onStateChange: (listener) => listeners.add(listener),
     close: () => (closing ??= (async () => {
       stops.forEach((stop) => stop());
       mirrors.stop();
@@ -160,9 +275,9 @@ async function connectParts(options: ShareConnectionOptions, start: ShareStart, 
 /** Starts the mirror into `parts.mirror`, also once a busy folder frees, and keeps what the connection reports of it. */
 function trackMirror(startMirror: MirrorFactory, input: Omit<MirrorInput, "onStopped" | "signal">, parts: Parts, logger: ILogger) {
   let state: MirrorState = { kind: "stopped", reason: "not started" };
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   const closed = new AbortController();
-  const set = (next: MirrorState): void => { state = next; listeners.forEach((listener) => listener()); };
+  const set = (next: MirrorState): void => { state = next; listeners.emit(); };
   const run = (mirror: ConnectionMirror): void => {
     if (closed.signal.aborted) {
       void mirror.close().catch((error: unknown) => logger.error(LOG_MODULE, error, { folder: input.folder, action: "close late mirror" }));
@@ -181,8 +296,94 @@ function trackMirror(startMirror: MirrorFactory, input: Omit<MirrorInput, "onSto
   const onStopped = (reason: string): void => set({ kind: "stopped", reason });
   return {
     state: () => state,
-    onChange: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    onChange: (listener: () => void) => listeners.add(listener),
     start: async () => apply(await startMirror({ ...input, onStopped, signal: closed.signal })),
     stop: () => closed.abort(),
   };
+}
+
+export interface LeasedMirrorOptions {
+  /** The file port the folder paths the connection reports resolve on. */
+  fs: LibraryFileSystem;
+  identity: DeviceIdentity;
+  app: MirrorApp;
+  logger: ILogger;
+  mergeText: MergeText;
+  disk(folder: string): MirrorFileSystem;
+  /** True for a path an open editor holds; the editor binding syncs it. */
+  isEditorOwned?(folder: string, path: string): boolean;
+  onConflictCopy?(folder: string, copy: ConflictCopy): void | Promise<void>;
+  readConflictDismissals?(folder: string): Promise<readonly ConflictDismissal[]>;
+  scheduler?: LeaseScheduler;
+}
+
+export function createLeasedMirrorFactory(options: LeasedMirrorOptions): MirrorFactory {
+  const scheduler = options.scheduler ?? systemLeaseScheduler;
+  const acquire = (folder: string) => openFolderLease({ fs: options.fs, folder, app: options.app, logger: options.logger, scheduler });
+  return async (input) => {
+    const first = await acquire(input.folder);
+    if (first.kind === "owned") { return { kind: "running", mirror: runMirror(options, input, first.lease) }; }
+    void options.logger.log("INFO", LEASE_LOG_MODULE, "Another mirror owns the shared project folder; waiting for it to free", {
+      folder: input.folder, holder: first.holder,
+    });
+    const lease = waitForLease(() => acquire(input.folder), input.signal, scheduler, options.logger, input.folder);
+    return { kind: "busy", holder: first.holder, running: lease.then((held) => held && runMirror(options, input, held)) };
+  };
+}
+
+/** Retries the lease until it is ours; undefined once `signal` aborts, with any lease taken meanwhile released. */
+function waitForLease(
+  acquire: () => ReturnType<typeof openFolderLease>, signal: AbortSignal, scheduler: LeaseScheduler, logger: ILogger, folder: string,
+): Promise<FolderLease | undefined> {
+  return new Promise((resolve) => {
+    let trying = false;
+    const finish = (lease: FolderLease | undefined): void => { stop(); signal.removeEventListener("abort", onAbort); resolve(lease); };
+    const onAbort = (): void => { if (!trying) { finish(undefined); } };
+    const stop = scheduler.every(RETRY_MS, () => {
+      if (trying || signal.aborted) { return; }
+      trying = true;
+      acquire().then(async (result) => {
+        trying = false;
+        if (signal.aborted) {
+          if (result.kind === "owned") { await result.lease.release(); }
+          finish(undefined);
+        } else if (result.kind === "owned") {
+          finish(result.lease);
+        }
+      }).catch((error: unknown) => {
+        trying = false;
+        void logger.error(LEASE_LOG_MODULE, error, { folder, op: "retryMirrorLease" });
+        if (signal.aborted) { finish(undefined); }
+      });
+    });
+    signal.addEventListener("abort", onAbort);
+  });
+}
+
+function runMirror(options: LeasedMirrorOptions, input: MirrorInput, lease: FolderLease): ConnectionMirror {
+  const { folder } = input;
+  const { logger } = options;
+  void logger.log("INFO", LEASE_LOG_MODULE, "Mirroring the shared project folder", { folder, app: options.app });
+  let closing: Promise<void> | undefined;
+  const isEditorOwned = options.isEditorOwned;
+  const mirror = startProjectMirror({
+    folder, disk: options.disk(folder), mergeText: options.mergeText, session: input.session, blobs: input.blobs, store: input.store, logger,
+    ownership: lease, onStopped: (reason) => stop(reason.message),
+    writeRecords: createWriteRecordStore(options.fs, folder, options.identity, logger),
+    ...(options.onConflictCopy ? { onConflictCopy: (copy: ConflictCopy) => options.onConflictCopy!(folder, copy) } : {}),
+    ...(options.readConflictDismissals ? { readConflictDismissals: () => options.readConflictDismissals!(folder) } : {}),
+    ...(isEditorOwned ? { isEditorOwned: (path: string) => isEditorOwned(folder, path) } : {}),
+  });
+  const close = (): Promise<void> => (closing ??= (async () => {
+    const released = lease.release().catch((error: unknown) => { void logger.error(LEASE_LOG_MODULE, error, { folder, op: "releaseMirrorLease" }); });
+    await Promise.all([mirror.close(), released]);
+  })());
+  function stop(reason: string): void {
+    if (closing) { return; }
+    void logger.log("WARN", LEASE_LOG_MODULE, "The shared project mirror stopped writing to disk", { folder, reason });
+    void close();
+    input.onStopped(reason);
+  }
+  lease.onLost((error) => stop(error.message));
+  return { changed: (path) => mirror.changed(path), idle: () => mirror.idle(), close };
 }

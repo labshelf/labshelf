@@ -1,4 +1,4 @@
-import { isExternalChangeNoise } from "../../../src/library/externalChange/index";
+import { isExternalChangeNoise } from "../../../src/library/conflicts/externalChange.js";
 
 const SYNC_TOOL_AND_SCRATCH_NOISE = [
   // Dropbox

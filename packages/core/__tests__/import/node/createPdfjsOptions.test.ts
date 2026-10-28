@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 
 import { createPdfjsLoader } from '../../../src/import/node/index.js';
-import { createPdfjsOptions } from '../../../src/import/node/createPdfjsOptions.js';
+import { createPdfjsOptions } from '../../../src/import/node/pdfjs.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfjsMock = require('../../../__mocks__/pdfjs-dist-legacy.js');

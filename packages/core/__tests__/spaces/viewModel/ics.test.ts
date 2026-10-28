@@ -1,5 +1,5 @@
 /** Verifies the .ics export: events, escaping, CRLF, folding at 75 octets and stable UIDs. */
-import { buildIcs } from "../../../src/spaces/viewModel/index";
+import { buildIcs } from "../../../src/spaces/spaceOverview";
 import { date, project, space } from "./viewFixture";
 
 const STAMP = Date.UTC(2026, 9, 21, 8, 30, 0);

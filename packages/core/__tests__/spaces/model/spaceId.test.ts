@@ -1,5 +1,5 @@
 /** Verifies the space id slug rule: ASCII folding, separators, the empty fallback, the 48-character cap and collision suffixes. */
-import { deriveSpaceId } from "../../../src/spaces/model/index";
+import { deriveSpaceId } from "../../../src/spaces/index";
 
 const none = new Set<string>();
 

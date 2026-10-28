@@ -1,12 +1,52 @@
 /**
- * Writes a paper record to metadata.yaml and bib.bib under the ownership rules of the library-format and sync contracts:
- * tags, note and the reading status belong to whoever set them, and hasPdf is never stored.
+ * The write path every metadata.yaml change goes through: the ports a mutation runs over, the read of a paper as its
+ * folder holds it now, the record write under the library-format and sync ownership rules (tags, note and the reading
+ * status belong to whoever set them, hasPdf is never stored).
  */
 import type { PaperRecord } from "../../model/index.js";
+import { formatError } from "../../errors/index.js";
+import type { PathOps } from "../../path/index.js";
+import type { ILogger, LibraryFileSystem } from "../../ports/index.js";
 import { PDF_FILE } from "../layout.js";
-import { formatError } from "../../logging/index.js";
-import { MUTATIONS_MODULE, type MutationContext } from "./mutationDeps.js";
-import { readReadingStatusOnFileSystem } from "./paperOnFileSystem.js";
+import { createPaperRecord } from "../record.js";
+import { MUTATIONS_MODULE, readMetadata, readReadingStatusOnFileSystem } from "./folderReads.js";
+
+/** Writes metadata.yaml and bib.bib for a paper; the core BibTeXService satisfies it. */
+export interface MetadataWriter {
+  writePaperArtifacts(folder: string, paper: PaperRecord, sourceFileName: string): Promise<void>;
+}
+
+export interface MutationContext {
+  fs: LibraryFileSystem;
+  paths: PathOps;
+  artifacts: MetadataWriter;
+  logger: ILogger;
+  /** The papers/ folder: folder operations refuse to rename, move or trash it. */
+  papersRoot: string;
+  /** ISO timestamp for text-layer verdicts; the wall clock when absent. */
+  now?: () => string;
+}
+
+/** A paper as the app's index knows it: enough to find its folder. */
+export interface Reference {
+  id: string;
+  path: string;
+}
+
+export interface BatchOutcome {
+  done: string[];
+  failed: Array<{ id: string; error: string }>;
+}
+
+// Reads a paper as its folder holds it right now, since another app or a sync may have changed it since the last scan.
+
+/** @returns the paper in `folder`, or undefined when its metadata.yaml is missing or not a mapping */
+export async function readPaperOnFileSystem(ctx: MutationContext, folder: string): Promise<PaperRecord | undefined> {
+  const meta = await readMetadata(ctx, folder);
+  if (!meta) { return undefined; }
+  const pdf = await ctx.fs.stat(ctx.paths.join(folder, PDF_FILE));
+  return createPaperRecord(meta, { id: ctx.paths.basename(folder), path: folder, hasPdf: pdf?.isFile === true });
+}
 
 export interface WriteRecordOptions {
   /** True only for an explicit status change; any other rewrite keeps the status metadata.yaml holds. */

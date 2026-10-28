@@ -1,25 +1,21 @@
-// Finds unresolved project conflicts from recorded versions or sync copies.
+// Finds unresolved project conflicts from recorded versions or sync copies, and scans a whole library for sync conflict copies.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
 
-import {
-  createDeviceIdentity,
-  createDeviceLocalLayout,
-  NodeLibraryFileSystem,
-  writeFileAtomic,
-} from "../../../library/node/index.js";
-import { scanProjectContentConflicts } from "../../../library/conflicts/node/index.js";
-import { readSharedProjectFiles } from "../../../library/conflicts/node/project/index.js";
-import { isEligibleProjectConflictPath, parseConflictName, type ConflictCopy } from "../../../library/conflicts/index.js";
+import { createDeviceIdentity, createDeviceLocalLayout, NodeLibraryFileSystem, writeFileAtomic } from "../../../library/node/index.js";
+import { scanConflictCopies, scanSpaceConflicts } from "../../../library/conflicts/node/index.js";
+import { hasMergeableExtension, isMergeableTextFile, parseConflictName, type ConflictCopy, type IProjectVersionStore } from "../../../library/conflicts/index.js";
+import { createWriteRecordStore, recordFor } from "../../../library/index.js";
 import type { ILogger } from "../../../ports/index.js";
-import { listProjectFiles } from "../../project/folder/index.js";
+import { deriveTextSha256Hex } from "../../../hash/index.js";
+import { listProjectFiles } from "../../project/index.js";
 import { listLibraryProjects, nodeFileReads } from "../../project/node/index.js";
-import { hasMergeableExtension, isMergeableTextFile, type IProjectVersionStore, deriveTextHash } from "../index.js";
-import { mergeProjectCopies } from "./projectCopyMerge.js";
-import { createWriteRecordStore, recordFor } from "../../../library/writeRecords/index.js";
-import { addProjectWriteRecord } from "./projectWriteRecord.js";
-import { mergeFileText } from "./mergeText.js";
+import { isEligibleProjectConflictPath } from "../projectConflicts.js";
+import { mergeProjectCopies, scanProjectContentConflicts } from "./projectConflicts.js";
+import { readSharedProjectFiles } from "./sharedProjectState.js";
+import { addProjectWriteRecord } from "./projectWrite.js";
+import { mergeFileText, mergePaperNotesConflicts, mergeSpaceItemFileConflicts } from "./itemFileMerge.js";
 
 interface DivergenceFile {
   root: string; folder: string; projectId: string; file: string; relativePath: string;
@@ -73,14 +69,14 @@ async function mergeProjectDivergence(input: DivergenceFile): Promise<ConflictCo
   const pending = await pendingConflict(input, other);
   if (pending) return pending;
   const local = await store.latest(projectId, relativePath);
-  const diskHash = await deriveTextHash(other);
+  const diskHash = await deriveTextSha256Hex(other);
   if (local === undefined || local === other) { await store.remember(projectId, relativePath, other); return undefined; }
   const identity = createDeviceIdentity(createDeviceLocalLayout(input.root), logger);
   const records = createWriteRecordStore(new NodeLibraryFileSystem(), folder, identity, logger);
   const record = recordFor(await records.read(), relativePath, diskHash);
   const base = record?.parent ? await store.version(projectId, relativePath, record.parent) : undefined;
   if (!record) return undefined;
-  if (record.parent === await deriveTextHash(local) || base === undefined) {
+  if (record.parent === await deriveTextSha256Hex(local) || base === undefined) {
     await store.remember(projectId, relativePath, other);
     return undefined;
   }
@@ -158,7 +154,7 @@ async function scanProject(root: string, folder: string, projectId: string, stor
 }
 
 /** @returns the project conflict copies left for the user; a project that cannot be listed is logged and skipped. */
-export async function scanProjectConflicts(libraryRoot: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
+async function scanProjectConflicts(libraryRoot: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
   const unresolved: ConflictCopy[] = [];
   for (const entry of await listLibraryProjects(libraryRoot, logger)) {
     if (entry.kind !== "ready" || entry.settings.shared) { continue; }
@@ -184,4 +180,28 @@ export async function scanSharedProjectConflicts(root: string, store: IProjectVe
     }
   }
   return unresolved.sort((a, b) => a.copy.localeCompare(b.copy));
+}
+
+// Library scan: papers, sidecars, Spaces and writing projects.
+
+/** The last scan queued per library root. */
+const queued = new Map<string, Promise<unknown>>();
+
+async function scan(root: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void): Promise<ConflictCopy[]> {
+  const papers = [...await scanConflictCopies(root, logger), ...await mergePaperNotesConflicts(root, store, logger)];
+  const projects = await scanProjectConflicts(root, store, logger, onMerged);
+  const shared = await scanSharedProjectConflicts(root, store, logger);
+  const spaces = [...await scanSpaceConflicts(root, logger), ...await mergeSpaceItemFileConflicts(root, store, logger)];
+  return [...papers, ...spaces, ...projects, ...shared].sort((a, b) => a.copy.localeCompare(b.copy));
+}
+
+/**
+ * Scans run one at a time per library: a scan writes files, and two at once would merge one copy twice.
+ * @returns the conflict copies left for the user, sorted by copy path.
+ */
+export function scanLibraryConflicts(root: string, store: IProjectVersionStore, logger: ILogger, onMerged: (file: string) => void = () => {}): Promise<ConflictCopy[]> {
+  const run = (queued.get(root) ?? Promise.resolve()).catch(() => undefined).then(() => scan(root, store, logger, onMerged));
+  queued.set(root, run);
+  void run.finally(() => { if (queued.get(root) === run) { queued.delete(root); } }).catch(() => undefined);
+  return run;
 }

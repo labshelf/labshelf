@@ -1,5 +1,5 @@
 /** Verifies that problems a section document reports point at the edited file's own lines. */
-import { deriveSectionProblems } from "../../../../src/latex/build/section/index";
+import { deriveSectionProblems } from "../../../../src/latex/problems";
 
 describe("deriveSectionProblems", () => {
   const place = { documentName: "main-section.tex", editedFile: "chapters/chap.tex", headerLines: 5, startLine: 10 };

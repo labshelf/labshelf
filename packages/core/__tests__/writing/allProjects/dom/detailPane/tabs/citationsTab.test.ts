@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { renderCitationsTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/citationsTab";
+import { renderCitationsTabHtml } from "../../../../../../src/writing/allProjects/dom/projectDetailTabs";
 import { detail } from "../fixtures";
 
 const render = (html: string): HTMLElement => { const el = document.createElement("div"); el.innerHTML = html; return el; };

@@ -1,5 +1,5 @@
 // Mounts the library sidebar over sample folders and papers and offers the DOM queries its tests share.
-import type { ShareHost } from "../../../../src/libraryUi/share";
+import type { ShareHost } from "../../../../src/share/index";
 import { mountLibrarySidebar, type SidebarPaper, type SidebarProjectActions } from "../../../../src/libraryUi/dom";
 
 export const paper = (id: string, folder: string, title: string, status: "unread" | "reading" | "done"): SidebarPaper =>

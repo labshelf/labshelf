@@ -1,6 +1,6 @@
 /** Verifies that the definitions a section needs are collected in source order, body only, without nested copies. */
-import { extractDefinitions } from "../../../../src/latex/build/section/index";
-import { scanLatexSource } from "../../../../src/latex/source/index";
+import { extractDefinitions } from "../../../../src/latex/sectionPlan";
+import { scanLatexSource } from "../../../../src/latex/source";
 
 const collect = (text: string): string[] => extractDefinitions(text, scanLatexSource(text));
 

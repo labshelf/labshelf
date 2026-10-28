@@ -34,7 +34,7 @@ import {
   type PdfImportParser,
   type ResolvedMetadata,
 } from "@labshelf/core";
-import { NodeLibraryFileSystem } from "@labshelf/core/node";
+import { NodeLibraryFileSystem, nodePathOps } from "@labshelf/core/node";
 
 import type { LibraryRoot } from "./libraryRoot.js";
 import { resolveHomePath } from "../platform/index.js";
@@ -80,7 +80,7 @@ export class TerminalPaperService {
   constructor(private readonly deps: PaperServiceDeps) {
     this.ctx = {
       fs: new NodeLibraryFileSystem(deps.paths.layout.tmpDir(), deps.trash),
-      paths: path,
+      paths: nodePathOps,
       artifacts: deps.bibtex,
       logger: deps.logger,
       papersRoot: deps.paths.layout.papersRoot(),

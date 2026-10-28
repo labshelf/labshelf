@@ -1,16 +1,15 @@
 // Picks where the library files live, a folder (picked in the browser or served by the bridge) or this browser's storage,
 // and routes every call there.
-import { BRIDGE_HOST_NAME, type ILogger, type LibraryFileSystem } from "@labshelf/core";
-import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
-import { BridgeFileSystem, BridgeClient, deriveBridgeFailure, setBridgeLibrary, type BridgeFailureKind, type OpenBridge } from "./bridge";
-import { IdbFileSystem } from "./idbFileSystem";
+import { BRIDGE_HOST_NAME, BridgeClient, BridgeFileSystem, deriveBridgeFailure, setBridgeLibrary } from "@labshelf/core";
+import type { BridgeFailureKind, ILogger, LibraryFileSystem, NativeMessagePort, OpenBridge } from "@labshelf/core";
+import { connectBrowserNative, createBrowserLogger } from "../platform";
+import { IdbFileSystem } from "./idb";
 import { DirFileSystem, ensureFolderGranted, readPickedDir, onPickedDirChange } from "./pickedDir";
-import { refreshPaperRecords } from "./rebuildPaperRecords";
+import { refreshPaperRecords } from "./records";
 
 export type LibraryLocation =
   | { kind: "folder"; root: string; via: "bridge" | "picked" }
   | { kind: "browser"; reason: BridgeFailureKind; detail?: string };
-type FolderSource = Extract<LibraryLocation, { kind: "folder" }>;
 
 export interface LibraryLocations {
   /** INVARIANT: one shared object; each call goes to exactly one source, never both. */
@@ -36,8 +35,8 @@ export interface PickedDir {
   fs: LibraryFileSystem;
 }
 
-interface SourceDeps {
-  connect: () => NativePort;
+export interface SourceDeps {
+  connect: () => NativeMessagePort;
   /** The folder the user picked in the browser, which wins over the bridge. */
   pickedFolder: () => Promise<PickedDir | undefined>;
   onPickedFolderAnnounced: (listener: () => void) => void;
@@ -47,100 +46,120 @@ interface SourceDeps {
   rebuild: (folderFs: LibraryFileSystem) => Promise<void>;
 }
 
+type FolderSource = Extract<LibraryLocation, { kind: "folder" }>;
+
 const MODULE = "browser.storage.source";
 // Contexts that chose browser storage find a bridge connected later without a restart; a missing host fails fast.
 const BROWSER_CHOICE_MS = 60_000;
 
-export function createLibraryLocations(deps: SourceDeps): LibraryLocations {
-  const { connect, logger, browserFs, rebuild } = deps;
-  const link = new BridgeClient(connect, logger);
+/** Remembers which source the library files come from, a folder or this browser's storage, and probes for it when none is chosen. */
+class LibraryLocationChoice {
   // INVARIANT: once set, this context uses only the folder until the user picks one; a dead link or a revoked
   // permission fails calls and never falls back to browser storage.
-  let folder: FolderSource | undefined;
-  const openFolder = async (): Promise<OpenBridge> => {
-    const opened = await link.open();
-    if (folder?.via === "bridge") folder = { kind: "folder", root: opened.hello.libraryRoot, via: "bridge" };
-    return opened;
-  };
+  private folder: FolderSource | undefined;
+  private browserChoice: Promise<LibraryLocation> | undefined;
+  private browserSince: number | undefined;
+  private readonly rebuiltListeners = new Set<() => void>();
+  private readonly logger: ILogger;
   // Every folder call opens the link, so after the port dies the next call probes the bridge again.
-  const bridgeFs = new BridgeFileSystem(async () => (await openFolder()).connection);
-  let folderFs: LibraryFileSystem = bridgeFs;
-  let browserChoice: Promise<LibraryLocation> | undefined;
-  let browserSince: number | undefined;
-  const rebuiltListeners = new Set<() => void>();
+  private readonly bridgeFs = new BridgeFileSystem(async () => (await this.openFolder()).connection);
+  /** The files of the chosen folder; the bridge's until a folder is chosen. */
+  folderFs: LibraryFileSystem = this.bridgeFs;
 
-  const getLibrarySource = (): Promise<LibraryLocation> => {
-    if (folder) return Promise.resolve(folder);
-    if (browserSince !== undefined && Date.now() - browserSince > BROWSER_CHOICE_MS) {
-      browserChoice = undefined;
-      browserSince = undefined;
-    }
-    return (browserChoice ??= probe());
+  constructor(private readonly deps: SourceDeps, private readonly link: BridgeClient) {
+    this.logger = deps.logger;
+  }
+
+  /** The chosen source, probing for it first when none is chosen or the browser choice is old enough to retry. */
+  getLibrarySource = (): Promise<LibraryLocation> => {
+    if (this.folder) return Promise.resolve(this.folder);
+    if (this.browserSince !== undefined && Date.now() - this.browserSince > BROWSER_CHOICE_MS) this.forgetBrowserChoice();
+    return (this.browserChoice ??= this.probe());
   };
 
-  const chooseFolder = (source: FolderSource, fs: LibraryFileSystem): FolderSource => {
-    void logger.log("INFO", MODULE, "Library files come from the folder", { root: source.root, via: source.via });
-    folder = source;
-    folderFs = fs;
+  async recheckLibrarySource(): Promise<LibraryLocation> {
+    if (!this.folder) {
+      this.forgetBrowserChoice();
+      return this.getLibrarySource();
+    }
+    if (this.folder.via === "picked") return this.folder;
+    await this.openFolder().catch((error: unknown) => this.logger.error(MODULE, error, { note: "the folder stays the library source; its calls fail until the bridge is back" }));
+    return this.folder;
+  }
+
+  switchToPickedFolder(): Promise<LibraryLocation> {
+    this.folder = undefined;
+    this.forgetBrowserChoice();
+    return this.getLibrarySource();
+  }
+
+  onFolderRecordsRebuilt(listener: () => void): () => void {
+    this.rebuiltListeners.add(listener);
+    return () => { this.rebuiltListeners.delete(listener); };
+  }
+
+  private forgetBrowserChoice(): void {
+    this.browserChoice = undefined;
+    this.browserSince = undefined;
+  }
+
+  private async openFolder(): Promise<OpenBridge> {
+    const opened = await this.link.open();
+    if (this.folder?.via === "bridge") this.folder = { kind: "folder", root: opened.hello.libraryRoot, via: "bridge" };
+    return opened;
+  }
+
+  private chooseFolder(source: FolderSource, fs: LibraryFileSystem): FolderSource {
+    void this.logger.log("INFO", MODULE, "Library files come from the folder", { root: source.root, via: source.via });
+    this.folder = source;
+    this.folderFs = fs;
     // The cache holds whatever an earlier choice left, so the folder's papers are not listed until it is rebuilt.
     // INVARIANT: not awaited, because the scan reads through `fs`, which does not wait for this probe.
-    rebuild(fs).then(
-      () => rebuiltListeners.forEach((listener) => listener()),
-      (error: unknown) => logger.error(MODULE, error, { op: "rebuildOnFolderChoice", root: source.root, via: source.via }),
+    this.deps.rebuild(fs).then(
+      () => this.rebuiltListeners.forEach((listener) => listener()),
+      (error: unknown) => this.logger.error(MODULE, error, { op: "rebuildOnFolderChoice", root: source.root, via: source.via }),
     );
     return source;
-  };
+  }
 
-  const loadPicked = (): Promise<PickedDir | undefined> => deps.pickedFolder().catch((error: unknown) => {
-    void logger.error(MODULE, error, { op: "loadPickedFolder", note: "probing the bridge instead" });
-    return undefined;
-  });
+  private loadPicked(): Promise<PickedDir | undefined> {
+    return this.deps.pickedFolder().catch((error: unknown) => {
+      void this.logger.error(MODULE, error, { op: "loadPickedFolder", note: "probing the bridge instead" });
+      return undefined;
+    });
+  }
 
-  const probe = async (): Promise<LibraryLocation> => {
-    const picked = await loadPicked();
-    if (picked) return chooseFolder({ kind: "folder", root: picked.name, via: "picked" }, picked.fs);
-    return probeBridge();
-  };
+  private async probe(): Promise<LibraryLocation> {
+    const picked = await this.loadPicked();
+    if (picked) return this.chooseFolder({ kind: "folder", root: picked.name, via: "picked" }, picked.fs);
+    return this.link.open().then(
+      ({ hello }): LibraryLocation => this.chooseFolder({ kind: "folder", root: hello.libraryRoot, via: "bridge" }, this.bridgeFs),
+      (error: unknown): LibraryLocation => {
+        const failure = deriveBridgeFailure(error);
+        this.browserSince = Date.now();
+        void this.logger.log("WARN", MODULE, "Library files come from browser storage", { ...failure });
+        return { kind: "browser", ...failure };
+      },
+    );
+  }
+}
 
-  const probeBridge = (): Promise<LibraryLocation> => link.open().then(
-    ({ hello }): LibraryLocation => chooseFolder({ kind: "folder", root: hello.libraryRoot, via: "bridge" }, bridgeFs),
-    (error: unknown): LibraryLocation => {
-      const failure = deriveBridgeFailure(error);
-      browserSince = Date.now();
-      void logger.log("WARN", MODULE, "Library files come from browser storage", { ...failure });
-      return { kind: "browser", ...failure };
-    },
-  );
-
-  const fileSystem = routedFileSystem(async () => ((await getLibrarySource()).kind === "browser" ? browserFs : folderFs));
-  const recheckLibrarySource = async (): Promise<LibraryLocation> => {
-    if (!folder) {
-      browserChoice = undefined;
-      browserSince = undefined;
-      return getLibrarySource();
-    }
-    if (folder.via === "picked") return folder;
-    await openFolder().catch((error: unknown) => logger.error(MODULE, error, { note: "the folder stays the library source; its calls fail until the bridge is back" }));
-    return folder;
-  };
-  const switchToPickedFolder = (): Promise<LibraryLocation> => {
-    folder = undefined;
-    browserChoice = undefined;
-    browserSince = undefined;
-    return getLibrarySource();
-  };
+export function createLibraryLocations(deps: SourceDeps): LibraryLocations {
+  const { connect, logger, browserFs } = deps;
+  const link = new BridgeClient(connect, logger);
+  const choice = new LibraryLocationChoice(deps, link);
+  const fileSystem = routedFileSystem(async () => ((await choice.getLibrarySource()).kind === "browser" ? browserFs : choice.folderFs));
   deps.onPickedFolderAnnounced(() => {
-    switchToPickedFolder().catch((error: unknown) => logger.error(MODULE, error, { op: "switchToPickedFolder" }));
+    choice.switchToPickedFolder().catch((error: unknown) => logger.error(MODULE, error, { op: "switchToPickedFolder" }));
   });
-  const setLibraryFolder = async (root: string): Promise<void> => { await setBridgeLibrary(connect, logger, root); };
   return {
-    fileSystem, folderFileSystem: routedFileSystem(async () => folderFs), browserFileSystem: browserFs, getLibrarySource, recheckLibrarySource,
-    switchToPickedFolder, setLibraryFolder,
+    fileSystem, folderFileSystem: routedFileSystem(async () => choice.folderFs), browserFileSystem: browserFs,
+    getLibrarySource: choice.getLibrarySource,
+    recheckLibrarySource: () => choice.recheckLibrarySource(),
+    switchToPickedFolder: () => choice.switchToPickedFolder(),
+    setLibraryFolder: async (root) => { await setBridgeLibrary(connect, logger, root); },
     onLibraryFilesChanged: (listener) => link.onChanged(listener),
-    onFolderRecordsRebuilt: (listener) => {
-      rebuiltListeners.add(listener);
-      return () => { rebuiltListeners.delete(listener); };
-    },
+    onFolderRecordsRebuilt: (listener) => choice.onFolderRecordsRebuilt(listener),
   };
 }
 

@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { renderOverviewTabHtml } from "../../../../../../src/writing/allProjects/dom/detailPane/tabs/overviewTab";
+import { renderOverviewTabHtml } from "../../../../../../src/writing/allProjects/dom/projectDetailTabs";
 import type { ProjectPaneContent } from "../../../../../../src/writing/allProjects/index";
 import { NOW, detail, row } from "../fixtures";
 

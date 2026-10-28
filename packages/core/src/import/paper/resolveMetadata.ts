@@ -1,11 +1,20 @@
 // Resolves a paper's bibliographic record from its registry record, page citation tags and a title search.
 // Fields merge one by one, most trusted source first, so a registry missing the issue number keeps the page's.
+import { BIBLIOGRAPHIC_FIELDS, type PaperRecord } from "../../model/index.js";
 import type { DetectedIdentifier, DetectedIds } from "../identifiers/index.js";
-import { extractArxivIdentifierFromDoi } from "../identifiers/index.js";
-import { mergeMetadata, SOURCE_TRUST, type MetadataSource, type ResolvedMetadata } from "../metadata/index.js";
-import { fetchMetadataSourcesByDoi, resolveOnlineMetadata, searchOnlineByTitle } from "../search/index.js";
-import type { RegistryEnv } from "../registries/index.js";
-import { checkTitleAgreement } from "./titleAgreement.js";
+import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, extractPmidFromUrl, toDoi } from "../identifiers/index.js";
+import type { PageFacts } from "../htmlPage.js";
+import {
+  mergeMetadata,
+  SOURCE_TRUST,
+  fetchMetadataSourcesByDoi,
+  resolveOnlineMetadata,
+  searchOnlineByTitle,
+  type MetadataSource,
+  type ResolvedMetadata,
+  type RegistryEnv,
+} from "../registries/index.js";
+import { checkTitleAgreement, findInLibrary } from "../samePaper.js";
 
 /** How much a page's own tags are trusted: below the registry, above a title search. */
 export const PAGE_TRUST = { structured: 80, titleOnly: 25 } as const;
@@ -57,7 +66,8 @@ export async function resolveMetadata(input: MetadataInput, deps: MetadataDeps =
   const merged = mergeMetadata(sources).metadata;
   const keywords = sources.sort((a, b) => b.trust - a.trust).find((s) => s.metadata?.keywords?.length)?.metadata?.keywords;
   if (keywords?.length) merged.keywords = keywords;
-  if (!ids.doi && merged.doi) ids.doi = merged.doi;
+  const mergedDoi = merged.doi ? toDoi(merged.doi) : undefined;
+  if (!ids.doi && mergedDoi) ids.doi = mergedDoi;
   if (!ids.arxivId) {
     const arxivId = extractArxivIdentifierFromDoi(merged.doi);
     if (arxivId) ids.arxivId = arxivId;
@@ -100,4 +110,70 @@ async function registryRecord(
 
 function bestPageRecord(sources: MetadataSource[]): ResolvedMetadata | undefined {
   return [...sources].sort((a, b) => b.trust - a.trust).find((s) => s.metadata?.title)?.metadata;
+}
+
+// Stored records: the bibliographic fields and identifiers a paper record states, in the shape metadata resolution and PDF finding read.
+
+export function deriveResolvedMetadata(r: PaperRecord): ResolvedMetadata {
+  const metadata: ResolvedMetadata = { title: r.title };
+  for (const field of BIBLIOGRAPHIC_FIELDS) {
+    const value = r[field];
+    if (value !== undefined) Object.assign(metadata, { [field]: value });
+  }
+  return metadata;
+}
+
+
+/** @returns the record's DOI, the arXiv id named by an arXiv DOI or an arxiv.org URL, and a PMID in a PubMed URL */
+export function extractPaperIdentifiers(r: Pick<PaperRecord, "doi" | "url">): DetectedIds {
+  const doi = extractDoi(r.doi);
+  const arxivId = extractArxivIdentifierFromDoi(r.doi) ?? (r.url ? extractArxivIdentifierFromUrl(r.url) : undefined);
+  const pmid = r.url ? extractPmidFromUrl(r.url) : undefined;
+  return {
+    ...(doi ? { doi } : {}),
+    ...(arxivId ? { arxivId } : {}),
+    ...(pmid ? { pmid } : {}),
+  };
+}
+
+// A page's paper: merges the page's own fields with the registries' record and finds the library's copy.
+
+
+export interface PagePaper extends MetadataResult {
+  /** The page names a paper, or a registry or title search recognised what it states. */
+  isPaper: boolean;
+  /** The library's copy, when the paper is already there. */
+  existing?: PaperRecord;
+}
+
+export interface PagePaperOptions {
+  /** Sources besides the page, such as a Scholar result's own line. */
+  extraSources?: MetadataSource[];
+  deps?: MetadataDeps;
+}
+
+/**
+ * A page that is not a paper and brings no other source is not looked up: its title alone would send a title search
+ * after any web page.
+ * @returns the resolved record; `records` is read only for a paper
+ */
+export async function resolvePagePaper(
+  facts: PageFacts,
+  records: () => PaperRecord[] | Promise<PaperRecord[]>,
+  options: PagePaperOptions = {},
+): Promise<PagePaper> {
+  const extraSources = options.extraSources ?? [];
+  const pageSource: MetadataSource = {
+    name: "page",
+    trust: facts.structured ? PAGE_TRUST.structured : PAGE_TRUST.titleOnly,
+    metadata: facts.metadata,
+  };
+  const resolved = facts.isPaper || extraSources.length
+    ? await resolveMetadata({ ids: facts.ids, sources: [pageSource, ...extraSources] }, options.deps)
+    : { metadata: facts.metadata, ids: facts.ids, origin: "none" as const };
+  const isPaper = facts.isPaper || resolved.origin === "registry" || resolved.origin === "search";
+  const existing = isPaper
+    ? findInLibrary(await records(), { ...resolved.ids, title: resolved.metadata.title, year: resolved.metadata.year })
+    : undefined;
+  return { ...resolved, isPaper, ...(existing ? { existing } : {}) };
 }

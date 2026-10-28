@@ -1,5 +1,5 @@
 // Tests that the gallery protocol guards accept well-formed messages and reject malformed ones.
-import { parseGalleryMessage } from "../../../src/templates/protocol";
+import { parseGalleryMessage } from "../../../src/templates/index";
 
 describe("parseGalleryMessage", () => {
   it("passes every well-formed message through", () => {

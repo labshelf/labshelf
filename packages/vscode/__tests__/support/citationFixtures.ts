@@ -1,6 +1,6 @@
 // Builds the papers and the citation workspace the citation provider tests share.
 import type { Annotation, ChecklistSection, PaperRecord } from "@labshelf/core";
-import type { CitationWorkspace } from "../../src/writing/citations/index.js";
+import type { CitationWorkspace } from "../../src/writing/citations/backlinks.js";
 import { fakeLogger, fakeProjects, readyEntry } from "./writingFixtures";
 
 export function paper(over: Partial<PaperRecord> = {}): PaperRecord {

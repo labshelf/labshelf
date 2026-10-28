@@ -5,15 +5,13 @@ import * as path from "node:path";
 
 import type { HelperHost } from "../index.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
-import { createSharedTexProvider } from "../../latex/toolchain/node/managedTex/index.js";
-import type { HelperLogger } from "./log/index.js";
-import { createTemplatePublishHandlers } from "./publishHandlers.js";
-import { createBuildHandlers } from "./build/index.js";
-import { answerHello, createHelperAnswerer, createProjectHandlers, runHelperLoop, type HelloAnswer } from "./handlers/index.js";
-import { createLibraryProjects } from "./projects/index.js";
-import type { HelperServer } from "./connection/index.js";
-import { createFrameWriter } from "./transport/index.js";
-import { createTexInstallHandlers } from "./texInstallHandlers.js";
+import { createSharedTexProvider } from "../../latex/node/index.js";
+import type { HelperLogger } from "./helperPrivacy.js";
+import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
+import { createBuildHandlers } from "./helperBuild.js";
+import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer } from "./helperHandlers.js";
+import { createLibraryProjects } from "./helperProjects.js";
+import { createFrameWriter, type HelperServer } from "./helperConnection.js";
 
 export interface HelperHostOptions {
   dataDir: string;

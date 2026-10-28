@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 import {
   renderCheckboxField, renderInlineCode, renderNumberField, renderPickField, setRowDisabled, renderSettingRow, renderSettingsPage, renderSettingsSection, renderTextField,
-} from "../../../../src/ui/dom/settings/index.js";
+} from "../../../../src/ui/dom/settings.js";
 
 describe("settings layout", () => {
   it("frames the sections under the brand, the title and the aside", () => {

@@ -1,5 +1,3 @@
-// Exposes project text history and three-way merging.
-export { FileProjectVersionStore } from "./fileProjectVersionStore.js";
-export type { IProjectVersionStore, ProjectWriteTracking } from "./projectVersionStore.js";
-export { hasMergeableExtension, isItemFileName, isMergeableTextFile } from "./mergeableTextFile.js";
-export { deriveTextHash } from "./versionJournal.js";
+// Exposes project text history and the detection of project text copies.
+export { FileProjectVersionStore } from "./projectVersions.js";
+export { detectProjectConflict, isEligibleProjectConflictPath, VERSION_SIMILARITY, type ProjectConflictText, type ProjectConflictInput } from "./projectConflicts.js";

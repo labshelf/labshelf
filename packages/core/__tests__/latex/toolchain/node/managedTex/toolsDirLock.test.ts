@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { withToolLock } from "../../../../../src/latex/toolchain/node/managedTex/index";
+import { withToolLock } from "../../../../../src/latex/node/index";
 import { asLogger, createTexFixture, type TexFixture } from "./fakeTex";
 
 let fx: TexFixture;

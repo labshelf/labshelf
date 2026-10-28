@@ -7,8 +7,7 @@ import {
   resolveFirstIdentifier,
   searchOnlineCandidates,
 } from "@labshelf/core";
-import type { ILogger, PaperRecord, ResolvedMetadata } from "@labshelf/core";
-import type { PaperService } from "../library/index.js";
+import type { ILogger, PaperRecord, PaperService, ResolvedMetadata } from "@labshelf/core";
 import { askMetadataManually, formatTruncated } from "./manualMetadataEntry.js";
 
 /**

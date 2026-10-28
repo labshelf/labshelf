@@ -2,20 +2,21 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId } from "@labshelf/core";
+import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId } from "@labshelf/core";
 import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts } from "../reader/index.js";
-import { DetailsView, registerDetailsView, type SelectionSources } from "../libraryUi/details/index.js";
 import {
+  DetailsView,
   ListWebviewPanel,
-  type ListPanelDeps,
+  createCitationMapPorts,
   createLibraryPaths,
   createLibraryRootNode,
+  registerDetailsView,
+  type LibraryNode,
+  type ListPanelDeps,
+  type SelectionSources,
 } from "../libraryUi/index.js";
-import { createCitationMapPorts } from "../libraryUi/citationMap/index.js";
-import { PaperFileService } from "../library/index.js";
-import type { LibraryNode } from "../libraryUi/index.js";
-import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { LibraryEvents } from "../library/index.js";
+import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 interface DetailsWiring {

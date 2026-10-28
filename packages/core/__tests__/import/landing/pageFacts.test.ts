@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { derivePageFacts, parseHtmlPage, type RawPage } from "@labshelf/core";
-import { mergeAuthors, derivePageRange } from "../../../src/import/landing/pageFacts";
+import { mergeAuthors, derivePageRange } from "../../../src/import/pageFacts";
 
 const springer = (): RawPage => parseHtmlPage(
   readFileSync(join(__dirname, "..", "..", "fixtures", "springerArticle.html"), "utf8"),

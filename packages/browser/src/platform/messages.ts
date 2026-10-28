@@ -1,0 +1,184 @@
+// Declares the typed runtime messages between the background, the extension pages and the content scripts, with their replies.
+import type { MissingPdfAction, PdfAccess, PdfMiss } from "@labshelf/core";
+
+export type RuntimeMessage = CaptureMessage | LibraryMessage;
+
+export type RuntimeResponse =
+  | { ok: true; data?: unknown }
+  | { ok: false; error: string };
+
+type CaptureMessage =
+  /** Reads the paper shown in a tab (the popup's first call). */
+  | { type: "capture.inspect"; tabId: number }
+  /** Waits for the PDF search the inspect started; the popup shows the result. */
+  | { type: "capture.findPdf"; tabId: number }
+  /** Saves the inspected paper into `folder` with the user's tags and note. */
+  | { type: "capture.save"; tabId: number; folder?: string; tags?: string[]; note?: string; ifNoPdf?: MissingPdfAction; retryPdf?: boolean }
+  /** Inspects and saves a tab in one go (the library page's "Add from open tab"). */
+  | { type: "capture.tab"; tabId: number; targetFolder?: string; ifNoPdf?: MissingPdfAction; retryPdf?: boolean }
+  /** Saves one Google Scholar or Google search result. */
+  | { type: "searchHit.save"; hit: SearchHit; folder?: string; ifNoPdf?: MissingPdfAction; retryPdf?: boolean }
+  /** Popup, paper already in the library without a PDF: attach the PDF found for this tab to that copy. */
+  | { type: "capture.attachPdf"; tabId: number }
+  /** Library page "Find PDF": run the resolver chain for a saved paper and attach what it finds. */
+  /** `replace` looks only for a better version than the paper's preprint or accepted PDF, and replaces it. */
+  | { type: "paper.findPdf"; id: string; replace?: boolean }
+  /** Library page: opens the page that stood in the way of a saved paper's PDF and attaches the PDF once the user gets through. */
+  | { type: "paper.openForPdf"; id: string; access: PdfAccess }
+  /** Library page "Ask the author": drafts the request email for a saved paper without a PDF. */
+  | { type: "paper.askAuthor"; id: string }
+  /** Popup: the offer to attach a PDF this tab showed, or the latest download, to a paper without one; null when none. */
+  | { type: "pdfOffer.get"; tabId: number }
+  | { type: "pdfOffer.attach"; offerId: string }
+  | { type: "pdfOffer.dismiss"; offerId: string };
+
+/** What the popup shows about the tab before saving. */
+export interface DraftView {
+  isPaper: boolean;
+  title: string;
+  authors: string[];
+  year?: number;
+  venue?: string;
+  existing?: LibraryReference;
+}
+
+export interface FindPdfReply {
+  found: boolean;
+  /** Who supplied it: page, scholar, publisher, arxiv, crossref, unpaywall, custom. */
+  source?: string;
+  /** Present when found is false: lets the popup open the dialog instantly, with no round trip. */
+  miss?: PdfMiss;
+}
+
+export interface WrittenPaperReply extends LibraryReference {
+  status: "saved";
+  title: string;
+  /** Resolver that supplied the PDF, or null when the paper was saved without one. */
+  pdfSource: string | null;
+  /** True when nothing was written because the library already had it. */
+  alreadyInLibrary?: boolean;
+}
+
+/** A save sent with ifNoPdf "ask" found no PDF: NOTHING was written. Re-send with ifNoPdf "save" to confirm. */
+interface NoPdfData {
+  status: "no-pdf";
+  title: string;
+  miss: PdfMiss;
+}
+
+/** Reply to capture.save, capture.tab and searchHit.save. */
+export type WriteOutcome = WrittenPaperReply | NoPdfData;
+
+/** Reply to capture.attachPdf and paper.findPdf. */
+export interface AttachPdfReply {
+  id: string;
+  /** paper.pdf was written now. */
+  attached: boolean;
+  /** The PDF written replaced a preprint or accepted manuscript. */
+  replaced?: boolean;
+  source?: string;
+  /** Nothing written because a PDF was already there (e.g. it was attached from another tab meanwhile). */
+  alreadyHadPdf?: boolean;
+  /** Present when nothing was found. */
+  miss?: PdfMiss;
+}
+
+/**
+ * Reply to paper.askAuthor: "mail" opened the request email, "article" opened the article page because no author
+ * address was found, "none" means the paper has neither an address nor a page to open.
+ */
+export interface CopyRequestReply {
+  id: string;
+  opened: "mail" | "article" | "none";
+}
+
+/** Reply to pdfOffer.get: a PDF the user opened or downloaded that matched a paper without a PDF. */
+export interface PdfOfferView {
+  id: string;
+  paperId: string;
+  title: string;
+  /** Collection holding the paper. */
+  folder: string;
+  /** The PDF could be fetched again; without it the paper can only be opened in the library. */
+  hasBytes: boolean;
+  source: "tab" | "download";
+  /** The offer is badged on the tab the popup asked for. */
+  onThisTab: boolean;
+}
+
+/** One Google Scholar or Google search result, as the content script reads it. */
+export interface SearchHit {
+  /** Identity on its page: Scholar's cluster id (data-cid), or the result link on Google. */
+  key: string;
+  title: string;
+  /** The title link — the article's landing page. */
+  url?: string;
+  /** Scholar's "[PDF]" link in the right column. */
+  pdfUrl?: string;
+  /** As printed: abbreviated, possibly truncated. */
+  authors: string[];
+  venue?: string;
+  year?: number;
+}
+
+type LibraryMessage =
+  /** Removes a paper just saved (the popup's undo). */
+  | { type: "paper.remove"; id: string }
+  /** Collections a paper can be saved into, plus the last one used. */
+  | { type: "library.folders" }
+  /** Which of these papers the library already holds, by key. */
+  | { type: "library.lookup"; items: LibraryFindItem[] }
+  /** Opens the library page on a collection, optionally selecting a paper. */
+  | { type: "library.open"; folder?: string; paperId?: string }
+  /** Lists the current window's http(s) tabs, excluding extension pages. */
+  | { type: "tabs.list" };
+
+/** The library's copy of a paper. */
+export interface LibraryReference {
+  id: string;
+  path: string;
+  /** Collection holding it. */
+  folder: string;
+  /** `<path>/paper.pdf` exists in the IndexedDB files store. Required, so the compiler finds every producer. */
+  hasPdf: boolean;
+}
+
+/**
+ * Background (or the reader, for "annotations") -> extension pages after the library changed. Kept OUT of
+ * RuntimeMessage, because background/index forces every RuntimeMessage to be
+ * handled and this broadcast is not a request.
+ */
+export interface LibraryChangedEvent {
+  type: "library.changed";
+  reason: "capture" | "attach" | "remove" | "annotations" | "askAuthor" | "folder";
+  paperId?: string;
+  /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
+  notice?: string;
+}
+
+export interface FolderOption {
+  path: string;
+  /** 0 for the root, 1 for its children, … */
+  depth: number;
+}
+
+export interface FoldersReply {
+  folders: FolderOption[];
+  lastFolder: string;
+}
+
+export interface LibraryFindItem {
+  key: string;
+  doi?: string;
+  arxivId?: string;
+  title?: string;
+  year?: number;
+}
+
+export type LibraryFindReply = Record<string, LibraryReference>;
+
+export interface BrowserTab {
+  id: number;
+  title: string;
+  url: string;
+}

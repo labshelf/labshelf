@@ -1,6 +1,6 @@
 /** Builds a SpaceStore over an in-memory library with a recording logger, for the Space store tests. */
-import { SpaceStore } from "../../../src/spaces/store/index";
-import { posixPathOps } from "../../../src/library/mutations/index";
+import { SpaceStore } from "../../../src/spaces/spaceStore";
+import { posixPathOps } from "../../../src/path/index";
 import type { ILogger } from "../../../src/ports/index";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 

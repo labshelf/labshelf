@@ -3,10 +3,10 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { createLibraryMirrorFileSystem, type MirrorFileSystem } from "../../../src/collab/mirror/index";
-import { createNodeMirrorFileSystem } from "../../../src/collab/node/index";
+import { createNodeMirrorFileSystem } from "../../../src/collab/mirror/node/index";
 import type { ILogger } from "../../../src/ports/index";
 import { NodeLibraryFileSystem } from "../../../src/library/node/index";
-import { createWriteRecordStore, type WriteRecordStore } from "../../../src/library/writeRecords/index";
+import { createWriteRecordStore, type WriteRecordStore } from "../../../src/library/writeRecords";
 import { MemoryLibraryFs } from "../../support/memoryLibraryFs";
 
 export interface MirrorFiles {

@@ -1,6 +1,6 @@
 /** Contract of the lookup stage: all lookups start together, each under its own cap, candidates come out in rank order. */
-import { walkRankedCandidates, startFinds, type Candidate } from "../../../../src/import/pdfFinder/engine/index";
-import type { ResolveContext } from "../../../../src/import/pdfFinder/pdfResolver";
+import { walkRankedCandidates, startFinds, type Candidate } from "../../../../src/import/pdfFinder/engine";
+import type { ResolveContext } from "../../../../src/import/pdfFinder/finder";
 import { json, makeContext } from "../../../support/pdfFindingHarness";
 import { makeSlowNetwork, redirectedTo, type SlowNetwork } from "../../../support/slowNetwork";
 

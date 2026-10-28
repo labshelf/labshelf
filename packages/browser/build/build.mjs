@@ -1,7 +1,7 @@
 /** Bundles the @labshelf/browser MV3 extension for chrome and firefox targets. */
 import { build as esbuild } from "esbuild";
 import { mkdir, rm } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bundleRelayWorker } from "../../core/tools/relayWorker/bundleRelayWorker.mjs";
 import { copyAssets } from "./copyAssets.mjs";
@@ -14,20 +14,20 @@ const srcRoot = resolve(pkgRoot, "src");
 const outRoot = resolve(pkgRoot, "dist");
 
 const ENTRIES = [
-  { entry: "background/index.ts", out: "background/index.js", format: "esm" },
-  { entry: "popup/index.ts", out: "popup/index.js", format: "esm" },
-  { entry: "options/index.ts", out: "options/index.js", format: "esm" },
+  { entry: "background/entry.ts", out: "background/index.js", format: "esm" },
+  { entry: "popup/entry.ts", out: "popup/index.js", format: "esm" },
+  { entry: "options/entry.ts", out: "options/index.js", format: "esm" },
   // Code-split: each workspace tab kind is a dynamic import, emitted as its own chunk under libraryPage/chunks.
   // Only the library page deploys the relay, so only it carries the Worker script.
-  { entry: "libraryPage/pageEntry.ts", out: "libraryPage/pageEntry.js", format: "esm", splitting: true, relayWorker: true },
+  { entry: "libraryUi/libraryPage.ts", out: "libraryPage/pageEntry.js", format: "esm", splitting: true, relayWorker: true },
   // The PDF reader page: the shared reader UI from @labshelf/core/dom over an in-page host.
-  { entry: "reader/index.ts", out: "reader/index.js", format: "esm" },
+  { entry: "libraryUi/reader/readerPage.ts", out: "reader/index.js", format: "esm" },
   // Chrome's offscreen document, where pdf.js reads page 1 of a PDF the background matches to a paper.
-  { entry: "import/offscreen.ts", out: "import/offscreen.js", format: "esm", chromeOnly: true },
+  { entry: "capture/offscreen.ts", out: "import/offscreen.js", format: "esm", chromeOnly: true },
   // Classic script: runs in <head> before the stylesheets so the theme is set pre-paint.
-  { entry: "ui/themeStartup.ts", out: "ui/themeStartup.js", format: "iife" },
+  { entry: "platform/themeStartup.ts", out: "ui/themeStartup.js", format: "iife" },
   // Content scripts are classic scripts too: no module loading in page worlds.
-  { entry: "content/searchResults.ts", out: "content/searchResults.js", format: "iife" },
+  { entry: "content/entry.ts", out: "content/searchResults.js", format: "iife" },
 ];
 
 const TARGETS = ["chrome", "firefox"];
@@ -50,10 +50,9 @@ async function buildOne(target, relayWorkerScript) {
   await Promise.all(
     ENTRIES.filter((e) => !e.chromeOnly || target === "chrome").map((e) =>
       esbuild({
-        entryPoints: [resolve(srcRoot, e.entry)],
         ...(e.splitting
-          ? { outdir: resolve(outDir, dirname(e.out)), outbase: resolve(srcRoot, dirname(e.entry)), entryNames: "[dir]/[name]", chunkNames: "chunks/[name]-[hash]", splitting: true }
-          : { outfile: resolve(outDir, e.out) }),
+          ? { entryPoints: [{ in: resolve(srcRoot, e.entry), out: basename(e.out, ".js") }], outdir: resolve(outDir, dirname(e.out)), entryNames: "[name]", chunkNames: "chunks/[name]-[hash]", splitting: true }
+          : { entryPoints: [resolve(srcRoot, e.entry)], outfile: resolve(outDir, e.out) }),
         bundle: true,
         format: e.format,
         // pdf.js 6.3 (the reader) needs Chrome 125 / Firefox 128; the manifests declare the same minimums.

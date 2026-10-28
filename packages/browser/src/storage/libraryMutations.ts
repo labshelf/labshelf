@@ -1,14 +1,15 @@
-/** Applies the core library mutations to the IndexedDB library and keeps the paper-record cache in step with the files. */
+// Applies the core library mutations to the current library files and keeps the paper-record cache in step with them.
 import {
-  BibtexService, createFolder, describePaperFileOnFileSystem, updatePaperTags, importShareLink, listPaperFiles, movePapers, posixPathOps, readPaperOnFileSystem, movePapersUnder, removePapersUnder, renameFolder, setPapersReadingStatus,
-  moveFolderToTrash, movePapersToTrash, updatePaperFields, writeImportedPaper, writePaperRecord, PAPERS_DIR,
+  BibtexService, createFolder, describePaperFileOnFileSystem, importShareLink, listPaperFiles, moveFolderToTrash, movePapers, movePapersToTrash,
+  movePapersUnder, posixPathOps, readPaperOnFileSystem, removePapersUnder, renameFolder, setPapersReadingStatus, updatePaperFields, updatePaperTags,
+  writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
-  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordCache, MoveOutcome, MutationContext,
-  PaperFilesState, PaperRecord, Reference, ReadingStatus, PdfVersion,
+  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordCache, MoveOutcome,
+  MutationContext, PaperFilesState, PaperRecord, PdfVersion, ReadingStatus, Reference,
 } from "@labshelf/core";
 import { createLibraryFileSystem } from "./libraryFileSystem";
-import { removeCachedPaperRecord, listCachedPaperRecords, writeCachedPaperRecord } from "./paperRecordStore";
+import { listCachedPaperRecords, removeCachedPaperRecord, writeCachedPaperRecord } from "./records";
 
 export interface LibraryMutations {
   /** Writes a new paper folder under targetDir, with a cite key no cached paper or existing folder holds. */

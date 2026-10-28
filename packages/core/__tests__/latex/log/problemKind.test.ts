@@ -1,5 +1,5 @@
 // Tests that explained TeX messages carry the kind and subject the preview marks on the PDF.
-import { describeTexMessage } from '../../../src/latex/log/describeTexMessage';
+import { describeTexMessage } from '../../../src/latex/log';
 
 type Kinded = { kind?: string; subject?: string };
 const explain = (m: Parameters<typeof describeTexMessage>[0]) => describeTexMessage(m, 'pdflatex') as (Kinded & object) | null;

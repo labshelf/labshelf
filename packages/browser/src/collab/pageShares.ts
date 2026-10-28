@@ -1,9 +1,13 @@
-// Holds the page's shared project connections, one per share and each under its tab lease, as the core share workflows use them.
-import { ShareOpenInAnotherTabError, type ILogger, type RelayNetwork, type ShareConnection, type ShareConnections, type ShareKeyStore, type ShareStart, type StoredInvite } from "@labshelf/core";
-import { openTabLease, createTabLeaseName, type TabLease } from "../storage";
-import { connectBrowserShare, type ShareSources } from "./browserShareConnection";
-import { ProjectShare, type LiveShare, type ShareEntryState } from "./projectShareEntry";
-import { readMemberName } from "./shareKeyStore";
+// Runs the page's shares: the connections it holds, one per share and each under its tab lease, the workflow ports over them and the resume reports.
+import {
+  ShareOpenInAnotherTabError, createListeners, createShareRegistry, createShareResumer, startProjectShare, posixPathOps, formatError,
+  type ILogger, type ProjectEntry, type RelayAccount, type RelayNetwork, type ResumeReports, type ShareConnection, type ShareConnections, type ShareFlowPorts,
+  type ShareKeyStore, type OpenShareRegistry, type ShareStart, type SharedProject, type StoredInvite,
+} from "@labshelf/core";
+import { showDialog, showToast } from "@labshelf/core/dom";
+import { openTabLease, createTabLeaseName, createBrowserProjects, removeBrowserCollabDocs, type TabLease } from "../storage";
+import { createShareKeyStore, readMemberName } from "./keys";
+import { ProjectShare, connectBrowserShare, type LiveShare, type ShareEntryState, type ShareSources } from "./register";
 
 const LOG_MODULE = "collab.shares";
 export const DEFAULT_DISPLAY_NAME = "Guest";
@@ -40,14 +44,15 @@ export function createPageShares(options: PageSharesOptions): PageShares {
 }
 
 class PageShareRegistry implements PageShares {
-  private readonly entries = new Map<string, ProjectShare>();
+  private readonly entries: OpenShareRegistry<ProjectShare> = createShareRegistry<ProjectShare>({
+    connectionOf: (entry) => entry.running,
+    close: (entry) => entry.close(),
+  });
   /** Leases of connections opened but not yet added. */
   private readonly opened = new Map<string, { lease: TabLease; libraryId: string }>();
-  private readonly busy = new Set<string>();
-  private readonly listeners = new Set<() => void>();
   private displayName = DEFAULT_DISPLAY_NAME;
   private closed = false;
-  private readonly notify = (): void => this.listeners.forEach((listener) => listener());
+  private readonly notify = (): void => this.entries.notify();
 
   constructor(private readonly options: PageSharesOptions) {
     void readMemberName().then(
@@ -87,54 +92,32 @@ class PageShareRegistry implements PageShares {
     this.entry(connection.shareId, opened.libraryId, connection.folder, connection.joinedId).adopt(opened.lease, connection);
   }
 
-  async remove(shareId: string): Promise<void> {
-    const entry = this.entries.get(shareId);
-    if (!entry) { return; }
-    this.entries.delete(shareId);
-    this.notify();
-    await entry.close();
-  }
+  remove(shareId: string): Promise<void> { return this.entries.remove(shareId); }
 
-  active(shareId: string): ShareConnection | undefined { return this.entries.get(shareId)?.running; }
+  active(shareId: string): ShareConnection | undefined { return this.entries.active(shareId); }
 
-  list(): ShareConnection[] { return [...this.entries.values()].flatMap((entry) => (entry.running ? [entry.running] : [])); }
+  list(): ShareConnection[] { return this.entries.list(); }
 
-  isBusy(shareId: string): boolean { return this.busy.has(shareId); }
+  isBusy(shareId: string): boolean { return this.entries.isBusy(shareId); }
 
-  async hold<T>(shareId: string, run: () => Promise<T>): Promise<T> {
-    this.busy.add(shareId);
-    try {
-      return await run();
-    } finally {
-      this.busy.delete(shareId);
-    }
-  }
+  hold<T>(shareId: string, run: () => Promise<T>): Promise<T> { return this.entries.hold(shareId, run); }
 
   live(projectId: string): LiveShare | undefined {
-    return [...this.entries.values()].find((entry) => entry.projectId === projectId)?.live();
+    return this.entries.entries().find((entry) => entry.projectId === projectId)?.live();
   }
 
-  state(shareId: string): ShareEntryState | undefined { return this.entries.get(shareId)?.state(); }
+  state(shareId: string): ShareEntryState | undefined { return this.entries.entry(shareId)?.state(); }
 
-  async takeOver(shareId: string): Promise<void> { await this.entries.get(shareId)?.takeOver(); }
+  async takeOver(shareId: string): Promise<void> { await this.entries.entry(shareId)?.takeOver(); }
 
   name(): string { return this.displayName; }
 
-
-  onChange(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
-  }
+  onChange(listener: () => void): () => void { return this.entries.onChange(listener); }
 
   async closeAll(): Promise<void> {
     this.closed = true;
-    const closing = [...this.entries.entries()];
-    this.entries.clear();
-    const results = await Promise.allSettled(closing.map(([, entry]) => entry.close()));
-    results.forEach((result, index) => {
-      if (result.status === "rejected") { void this.options.logger.error(LOG_MODULE, result.reason, { action: "close a share as the page closed", shareId: closing[index]?.[0] }); }
-    });
-    this.notify();
+    const failures = await this.entries.closeAll();
+    failures.forEach(({ shareId, reason }) => { void this.options.logger.error(LOG_MODULE, reason, { action: "close a share as the page closed", shareId }); });
   }
 
   private open(invite: StoredInvite, libraryId: string, tab: TabLease, start: ShareStart): Promise<ShareConnection> {
@@ -144,7 +127,7 @@ class PageShareRegistry implements PageShares {
 
   /** The share's entry, made when the page has none; `joinedId` names the project a join created. */
   private entry(shareId: string, libraryId: string, folder: string, joinedId?: string): ProjectShare {
-    const existing = this.entries.get(shareId);
+    const existing = this.entries.entry(shareId);
     if (existing) { return existing; }
     const projectId = joinedId ?? this.options.projectIdOf(folder);
     if (projectId === undefined) {
@@ -156,9 +139,147 @@ class PageShareRegistry implements PageShares {
         const stored = await this.options.keys.invite(shareId);
         return stored && this.open(stored, libraryId, lease, { mode: "resume", folder });
       },
-      ended: () => { if (this.entries.get(shareId) === entry) { this.entries.delete(shareId); this.notify(); } },
+      ended: () => this.entries.release(shareId, entry),
     });
     this.entries.set(shareId, entry);
     return entry;
   }
+}
+
+/** The project list the workflows read; `reload` re-reads the library's projects and then calls `reloaded`. */
+interface BrowserShareCatalog {
+  list(): readonly ProjectEntry[];
+  reload(): Promise<void>;
+}
+
+function createBrowserShareCatalog(sources: ShareSources, logger: ILogger, reloaded: () => void): BrowserShareCatalog {
+  const projects = createBrowserProjects({ fileSystem: sources.fileSystem, logger });
+  let entries: readonly ProjectEntry[] = [];
+  return {
+    list: () => entries,
+    reload: async () => {
+      entries = await projects.listBrowserProjects();
+      reloaded();
+    },
+  };
+}
+
+interface BrowserSharePortsOptions {
+  sources: ShareSources;
+  libraryId: () => Promise<string>;
+  keys: ShareKeyStore;
+  shares: PageShares;
+  projects: BrowserShareCatalog;
+  relay: { get(): Promise<RelayAccount | undefined> };
+  requireRelay(): Promise<boolean>;
+  logger: ILogger;
+  fetch?: typeof fetch | undefined;
+}
+
+function createBrowserSharePorts(options: BrowserSharePortsOptions): ShareFlowPorts {
+  const { sources, libraryId, keys, shares, projects, relay, requireRelay, logger } = options;
+  return {
+    keys, shares, projects, relay, requireRelay, logger,
+    files: { fs: sources.fileSystem, paths: posixPathOps, logger },
+    connect: (invite, start) => shares.connect(invite, start),
+    deleteState: async (shareId) => removeBrowserCollabDocs(`${await libraryId()}/${shareId}`),
+    userName: () => shares.name(),
+    // PLATFORM: a detached window.fetch throws "Illegal invocation" in Chrome.
+    fetch: options.fetch ?? ((input, init) => globalThis.fetch(input, init)),
+  };
+}
+
+const SHARING_MODULE = "collab.sharing";
+
+export interface PageShareOptions {
+  sources: ShareSources;
+  libraryId: () => Promise<string>;
+  logger: ILogger;
+  /** The owner's Cloudflare relay account, when this browser connected one. */
+  relay: { get(): Promise<RelayAccount | undefined> };
+  /** Offers to connect a relay; false when the owner did not. */
+  requireRelay(): Promise<boolean>;
+  /** What the resume reports once per share. */
+  reports: ResumeReports;
+  /** Tests pass relays that run in process. */
+  network?: RelayNetwork;
+  fetch?: typeof fetch;
+}
+
+export interface PageShare {
+  ports: ShareFlowPorts;
+  shares: PageShares;
+  /** Resolves once the first read of the project list and the resume it starts are done. */
+  ready(): Promise<void>;
+  /** Re-reads the project list and resumes or closes the shares it changed. */
+  reload(): Promise<void>;
+  /** Calls `listener` after every re-read of the project list, the ones a share, join or leave makes included. */
+  onProjectsChange(listener: () => void): void;
+  /** The live share of a shared project's file; `retry` reconnects it from its stored key instead of waiting for the resume. */
+  liveShare(entry: ProjectEntry, retry: boolean): Promise<LiveShare | undefined>;
+  closeAll(): Promise<void>;
+}
+
+export function createPageShare(options: PageShareOptions): PageShare {
+  const { sources, libraryId, logger } = options;
+  const keys = createShareKeyStore(libraryId);
+  const closing = new AbortController();
+  // The resumer runs on every reload of the catalog, which the workflows call too; it exists once the ports do.
+  let sync = (): Promise<void> => Promise.resolve();
+  const listeners = createListeners();
+  const catalog = createBrowserShareCatalog(sources, logger, () => {
+    if (closing.signal.aborted) return;
+    void sync();
+    listeners.emit();
+  });
+  const projectIdOf = (folder: string): string | undefined => {
+    const entry = catalog.list().find((candidate) => candidate.folder === folder);
+    return entry?.kind === "ready" ? entry.settings.id : undefined;
+  };
+  const shares = createPageShares({ sources, libraryId, keys, projectIdOf, logger, network: options.network });
+  const ports = createBrowserSharePorts({
+    sources, libraryId, keys, shares, projects: catalog, relay: options.relay, requireRelay: options.requireRelay, logger, fetch: options.fetch,
+  });
+  const resumer = createShareResumer(ports, options.reports);
+  sync = resumer.sync;
+  const reload = async (): Promise<void> => {
+    if (closing.signal.aborted) { return; }
+    await catalog.reload();
+    await resumer.sync();
+  };
+  const first = reload().catch((error: unknown) => logger.error(SHARING_MODULE, error, { action: "read the shared projects at page start" }));
+  return {
+    ports, shares, reload,
+    onProjectsChange: (listener) => { listeners.add(listener); },
+    ready: () => first,
+    liveShare: async (entry, retry) => {
+      if (entry.kind !== "ready" || entry.settings.shared === undefined) { return undefined; }
+      await first;
+      if (retry) { await startProjectShare(ports, { folder: entry.folder, shared: entry.settings.shared, signal: closing.signal }); } else { await resumer.sync(); }
+      return shares.live(entry.settings.id);
+    },
+    closeAll: async () => {
+      closing.abort();
+      await shares.closeAll();
+    },
+  };
+}
+
+const projectName = (project: SharedProject): string => project.settings.title ?? project.settings.id;
+
+/** `join` asks for an invite. */
+export function createResumeReports(join: () => void): ResumeReports {
+  return {
+    missingKey: (project) => {
+      void showDialog({
+        title: `Shared project "${projectName(project)}": paste the invite to reconnect`,
+        message: "This device holds no key of the share, so the project's files stay as they are until you join it again.",
+        severity: "info",
+        buttons: [{ id: "join" as const, label: "Join Shared Project…", primary: true }, { id: "later" as const, label: "Not Now" }],
+      }).then((choice) => { if (choice === "join") { join(); } });
+    },
+    failed: (project, error) => {
+      showToast(`Could not reconnect the shared project "${projectName(project)}": ${formatError(error)}`, "error");
+    },
+  };
 }
