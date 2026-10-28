@@ -38,3 +38,6 @@ tools/biber-wasm/dist/
 
 # Codex agent definitions and local mockup sites
 .codex/
+
+# Code facts database and module map, rebuilt by scripts/code/facts.mjs.
+.code-facts/

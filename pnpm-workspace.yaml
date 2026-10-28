@@ -6,6 +6,10 @@ allowBuilds:
   '@playwright/browser-chromium': false
   # esbuild needs its postinstall to fetch the platform binary used by @labshelf/browser.
   esbuild: true
+  # onnxruntime-node's postinstall only fetches optional CUDA libraries on Linux; the CPU binary ships in the package.
+  onnxruntime-node: false
+  # protobufjs' postinstall only picks a CLI dependency version scheme.
+  protobufjs: false
   # spawn-sync is a legacy jest transitive; its postinstall is only needed on Node < 0.12.
   spawn-sync: false
   # tesseract.js' postinstall only prints a donation banner.

@@ -17,10 +17,12 @@
     "jscpd": "node scripts/lint/duplicates.mjs",
     "jscpd:update-baseline": "node scripts/lint/duplicates.mjs --update",
     "gate": "node scripts/lint/gate.mjs",
+    "facts": "node scripts/code/facts.mjs",
     "plan:run": "node scripts/plans/runPlan.mjs",
     "verify:library": "sh scripts/verify/library/run.sh"
   },
   "devDependencies": {
+    "@huggingface/transformers": "^4.3.1",
     "boring-avatars-vanilla": "1.0.2",
     "dependency-cruiser": "^18.5.0",
     "esbuild": "^0.24.0",
