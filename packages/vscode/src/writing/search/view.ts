@@ -5,7 +5,7 @@ import {
   createDebouncer, createEmptySearchRun, createNonce, findMatchesIn, formatError, parseSearchMessage, searchProjectTexts,
   type HostToSearch, type ILogger, type MatchPosition, type SearchOptions, type SearchRun, type SearchScopeKind, type SearchToHost,
 } from "@labshelf/core";
-import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
+import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, writeReplacementsInProject, type SearchScope } from "./replace.js";
@@ -107,7 +107,7 @@ class ProjectSearchView implements vscode.WebviewViewProvider, vscode.Disposable
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
     this.ready = false;
-    view.webview.options = { enableScripts: true, localResourceRoots: [readSearchBundleDir(this.deps.extensionUri)] };
+    view.webview.options = { enableScripts: true, localResourceRoots: [readSearchBundleDir(this.deps.extensionUri), webviewChunksDir(this.deps.extensionUri)] };
     view.webview.onDidReceiveMessage((raw: unknown) => { void this.handle(raw); });
     view.onDidDispose(() => { this.view = undefined; this.ready = false; });
     void searchHtml(view.webview, this.deps.extensionUri).then((html) => { if (this.view === view) { view.webview.html = html; } });

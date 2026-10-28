@@ -12,7 +12,7 @@ import {
   createNonce,
 } from "@labshelf/core";
 import { sharingWebviews } from "../../share/index.js";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import { createProjectLibrary, type VscodeProjectLibraryDeps } from "./sidebar.js";
 
 /** <extension>/dist/projects, for localResourceRoots. */
@@ -74,7 +74,7 @@ export class AllProjectsPanel {
     const panel = vscode.window.createWebviewPanel("labshelfAllProjects", "All projects", vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [allProjectsBundleDirectory(extensionUri)],
+      localResourceRoots: [allProjectsBundleDirectory(extensionUri), webviewChunksDir(extensionUri)],
     });
     panel.iconPath = createTabIcon(extensionUri);
     return new AllProjectsPanel(panel, extensionUri, port, logger, selection, onDispose);

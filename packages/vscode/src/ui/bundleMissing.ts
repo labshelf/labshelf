@@ -13,6 +13,15 @@ export async function hasBundleFile(uri: vscode.Uri): Promise<boolean> {
 }
 
 /**
+ * Directory of the code chunks every webview entry imports (shared modules and the editor's lazy math chunk).
+ * Each webview lists it in `localResourceRoots`, next to its own bundle directory.
+ * @returns <extension>/dist/chunks
+ */
+export function webviewChunksDir(extensionUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.joinPath(extensionUri, "dist", "chunks");
+}
+
+/**
  * Builds the page a webview shows when its bundle is not in dist/. Text only, with no style or script, so the
  * strictest CSP holds; it tells a dev checkout compiled without the webview build, instead of a blank panel.
  */

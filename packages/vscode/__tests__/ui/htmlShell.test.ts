@@ -4,12 +4,12 @@ import { renderHtmlShell } from "../../src/ui/htmlShell";
 const base = { nonce: "N", cspSource: "SRC", title: "T", stylesheetUrl: "css-url", scriptUrl: "js-url" };
 
 describe("renderHtmlShell", () => {
-  it("builds the document with a nonce-only script policy", () => {
+  it("builds the document with a nonce script policy that also loads extension module chunks", () => {
     expect(renderHtmlShell(base)).toBe(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-N'; style-src SRC; font-src SRC;"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-N' SRC; style-src SRC; font-src SRC;"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>T</title>
 <link rel="stylesheet" href="css-url"/>

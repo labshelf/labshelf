@@ -16,3 +16,4 @@
 - 2026-10-28 — plan: converted to plan.yaml and sessions/*.yaml (YAML flow); sessions 1–3 recorded as done; paths updated to the current code layout.
 - 2026-10-28 — plan: hidden tests written by testers for every spec with tests; specs completed from the tester reports (seams, decided, by-hand checks split into task specs); plan red passes for 4.3.
 - 2026-10-28 18:27 — session 4 done: 4.1, 4.2, 4.3, 4.4
+- 2026-10-28 18:34 — session 5 blocked: 5.3: no report

@@ -1,7 +1,7 @@
 // Registers the command that opens the sync guide.
 import * as vscode from "vscode";
 import { type ILogger, formatError, createNonce, syncGuide } from "@labshelf/core";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../ui/index.js";
 
 const GUIDE_URLS: ReadonlySet<string> = new Set([...syncGuide.tools, syncGuide.noCloud.tool].map((tool) => tool.url));
 
@@ -44,7 +44,7 @@ let current: vscode.WebviewPanel | undefined;
 async function openSyncGuide(extensionUri: vscode.Uri, logger: ILogger | undefined): Promise<void> {
   if (current) { current.reveal(); return; }
   const panel = vscode.window.createWebviewPanel("labshelfSyncGuide", "Sync guide", vscode.ViewColumn.Active, {
-    enableScripts: true, localResourceRoots: [syncGuideBundleDirectory(extensionUri)],
+    enableScripts: true, localResourceRoots: [syncGuideBundleDirectory(extensionUri), webviewChunksDir(extensionUri)],
   });
   current = panel;
   panel.iconPath = createTabIcon(extensionUri);

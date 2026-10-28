@@ -8,7 +8,7 @@ import { createNonce, isUnderDir } from '@labshelf/core';
 import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PaperService, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { LibraryEvents } from '../library/index.js';
 import { sharingWebviews } from '../share/index.js';
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from '../ui/index.js';
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from '../ui/index.js';
 import { answerListMessage, type ListHostContext } from './handlers.js';
 import { showCitationMap, type CitationMapPorts } from './citationMap.js';
 import { createFeedHostCompositionRoot, LibraryFeed } from './feed.js';
@@ -130,7 +130,7 @@ export class ListWebviewPanel {
     const panel = vscode.window.createWebviewPanel('labshelfList', folder?.label ?? 'LabShelf', vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [readLibraryBundleDir(deps.extensionUri)],
+      localResourceRoots: [readLibraryBundleDir(deps.extensionUri), webviewChunksDir(deps.extensionUri)],
     });
     panel.iconPath = createTabIcon(deps.extensionUri);
     ListWebviewPanel.currentPanel = new ListWebviewPanel(panel, deps, folder);

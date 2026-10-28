@@ -18,6 +18,7 @@ import {
 } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../library/index.js";
 import { sharingWebviews } from "../share/index.js";
+import { webviewChunksDir } from "../ui/index.js";
 import { readLibraryBundleDir, listPanelHtml } from "./listPanel.js";
 import { createLibraryPaths, createLibraryRootNode, type LibraryPaths, type LibraryNode } from "./paths.js";
 import { runProjectUpdate, runProjectFolderAction, type ProjectOrganizerPort } from "./organizer.js";
@@ -131,7 +132,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this._view = view;
     this._ready = false;
-    view.webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri)] };
+    view.webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri), webviewChunksDir(this._deps.extensionUri)] };
     view.webview.onDidReceiveMessage((raw: unknown) => { const m = parseSidebarMessage(raw, isSidebarProjectCommand); if (m) { void this._handle(m); } });
     const sharing = sharingWebviews.attach(view.webview, { opensDialogs: true });
     view.onDidDispose(() => { this._view = undefined; this._ready = false; sharing.dispose(); });

@@ -57,6 +57,7 @@ These hold for every file LabShelf writes in a library, a project or the device 
 ## Messages
 
 - Input from another process, a webview or a page is untrusted: it passes the shared parser for its protocol, and a message that fails is dropped whole, never half-applied. Hiding a control is not authorization; the host checks every call.
+- A webview's CSP allows scripts only from its nonce and `cspSource`, so lazy module chunks load; every webview lists the `dist/chunks` folder (`webviewChunksDir`) in `localResourceRoots`. The browser reader and library pages code-split their lazy chunks under `reader/chunks` and `libraryPage/chunks`.
 - External URLs open only through `isSafeExternalUrl` (`http:`, `https:`, `mailto:`).
 - A UI in core owns everything on screen, including prompts, menus and confirmations. Its host does the work and answers with a result, a progress or a notice; only native pickers the platform requires are the host's.
 - One controller in core answers a surface's messages for every host. A host implements ports and its own lifecycle, and buffers what it sends before the UI reports `ready`.

@@ -13,7 +13,7 @@ import {
   type TemplateManifest,
   type TemplateSource,
 } from "@labshelf/core";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 
 export interface TemplateGalleryDeps {
   context: vscode.ExtensionContext;
@@ -86,7 +86,7 @@ export class GalleryPanel {
     const panel = vscode.window.createWebviewPanel("labshelfTemplates", "Templates", vscode.ViewColumn.One, {
       enableScripts: true,
       retainContextWhenHidden: true,
-      localResourceRoots: [galleryBundleDirectory(deps.context.extensionUri)],
+      localResourceRoots: [galleryBundleDirectory(deps.context.extensionUri), webviewChunksDir(deps.context.extensionUri)],
     });
     panel.iconPath = createTabIcon(deps.context.extensionUri);
     return new GalleryPanel(panel, deps, onDispose);

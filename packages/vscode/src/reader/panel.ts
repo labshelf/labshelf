@@ -21,7 +21,7 @@ import {
   type SidecarChange,
 } from "@labshelf/core";
 import type { LibraryEvents } from "../library/index.js";
-import { createTabIcon } from "../ui/index.js";
+import { createTabIcon, webviewChunksDir } from "../ui/index.js";
 import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, onAutoReaderThemeChange, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
@@ -195,7 +195,7 @@ export class ReaderPanel {
     }
 
     const pdfjs = deps.locatePdfjs();
-    const resourceRoots: vscode.Uri[] = [readReaderBundleDir(deps.extensionUri), source.rootDir];
+    const resourceRoots: vscode.Uri[] = [readReaderBundleDir(deps.extensionUri), webviewChunksDir(deps.extensionUri), source.rootDir];
     if (pdfjs) { resourceRoots.push(pdfjs.root); }
 
     const show = source.show ?? getReaderViewColumn();

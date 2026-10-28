@@ -1,39 +1,73 @@
 schema: session/v1
 id: "5"
 goal: The core item editor and its lazy MathJax chunk load in the VS Code webviews and browser pages that will host notes, under their CSP.
-depends_on: ["4"]
+depends_on:
+  - "4"
 owns:
   - packages/vscode/build/
   - packages/browser/build/
   - packages/vscode/src/ui/htmlShell.ts
   - packages/vscode/src/spaces/view.ts
   - packages/browser/manifest.chrome.json
-status: pending
+  - packages/vscode/src/ui/bundleMissing.ts
+  - packages/vscode/src/ui/index.ts
+  - packages/vscode/src/reader/panel.ts
+  - packages/vscode/src/libraryUi/listPanel.ts
+  - packages/vscode/src/libraryUi/details.ts
+  - packages/vscode/src/libraryUi/sidebarView.ts
+  - packages/vscode/src/library/syncGuide.ts
+  - packages/vscode/src/writing/projects/allProjects.ts
+  - packages/vscode/src/writing/search/view.ts
+  - packages/vscode/src/writing/history/historyPanel.ts
+  - packages/vscode/src/writing/templates/gallery.ts
+  - packages/vscode/__tests__/ui/htmlShell.test.ts
+  - packages/vscode/__tests__/webview/htmlShellSites.test.ts
+  - documents/code.md
+status: blocked
 packages:
   - id: "5.1"
     plan: qmd-notes
     goal: Webview bundles that include the editor can load `@labshelf/core/math` as a separate file on first use, under the webview CSP.
     level: contract
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     edit:
-      - {path: packages/vscode/build/webviews.mjs, lines: "1-65", why: "enable splitting with esm and outdir so the dynamic import of @labshelf/core/math becomes its own chunk"}
-      - {path: packages/vscode/src/ui/htmlShell.ts, lines: "16-23", why: "CSP line: script-src is nonce-only, so a dynamic import of a chunk file needs ${cspSource} added"}
-      - {path: packages/vscode/src/spaces/view.ts, lines: "168-170", why: "CSP line of the spaces webview, same script-src change if it will host the editor"}
-      - {path: packages/vscode/src/spaces/view.ts, lines: "301-303", why: "second CSP line of the spaces webview"}
+      - path: packages/vscode/build/webviews.mjs
+        lines: 1-65
+        why: enable splitting with esm and outdir so the dynamic import of @labshelf/core/math becomes its own chunk
+      - path: packages/vscode/src/ui/htmlShell.ts
+        lines: 16-23
+        why: "CSP line: script-src is nonce-only, so a dynamic import of a chunk file needs ${cspSource} added"
+      - path: packages/vscode/src/spaces/view.ts
+        lines: 168-170
+        why: CSP line of the spaces webview, same script-src change if it will host the editor
+      - path: packages/vscode/src/spaces/view.ts
+        lines: 301-303
+        why: second CSP line of the spaces webview
     read:
-      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "18-22", why: "Bundling and CSP"}
-      - {path: packages/vscode/build/host.mjs, lines: "15-35", why: "host keeps core deps external; not changed"}
-      - {path: packages/vscode/src/reader/shell.ts, lines: "54-60", why: "the reader webview already allows ${cspSource} scripts and unsafe-inline styles"}
+      - path: documents/plans/qmd-notes/research/editor-ui.md
+        lines: 18-22
+        why: Bundling and CSP
+      - path: packages/vscode/build/host.mjs
+        lines: 15-35
+        why: host keeps core deps external; not changed
+      - path: packages/vscode/src/reader/shell.ts
+        lines: 54-60
+        why: the reader webview already allows ${cspSource} scripts and unsafe-inline styles
     decided:
-      - "Enable `splitting: true` with `format: \"esm\"` and `outdir` for the webview build so the dynamic `import(\"@labshelf/core/math\")` becomes its own chunk; script tags already load entries as `type=\"module\"`."
-      - "Check that `localResourceRoots` covers the chunk folder; `script-src 'nonce-...'` alone does not allow a dynamically imported chunk, so add `${cspSource}` to `script-src` in the shell (the old `*Html.ts` files and `readerDocument.ts` no longer exist; the CSP lines are in `htmlShell.ts` and `spaces/view.ts`; `reader/shell.ts` already has it)."
+      - 'Enable `splitting: true` with `format: "esm"` and `outdir` for the webview build so the dynamic `import("@labshelf/core/math")` becomes its own chunk; script tags already load entries as `type="module"`.'
+      - Check that `localResourceRoots` covers the chunk folder; `script-src 'nonce-...'` alone does not allow a dynamically imported chunk, so add `${cspSource}` to `script-src` in the shell (the old `*Html.ts` files and `readerDocument.ts` no longer exist; the CSP lines are in `htmlShell.ts` and `spaces/view.ts`; `reader/shell.ts` already has it).
       - "CSP stays without `'unsafe-inline'` for styles: the editor sets no markup `style=` (session 4). If a violation remains, fix it in core, not by relaxing the CSP; report it."
-      - "Do not add the editor to any bundle yet beyond a check that it builds; sessions 6 to 10 mount it."
-      - "finish checks this against `documents/code.md#messages` (webview input and CSP rules)."
+      - Do not add the editor to any bundle yet beyond a check that it builds; sessions 6 to 10 mount it.
+      - finish checks this against `documents/code.md#messages` (webview input and CSP rules).
     acceptance:
-      - {id: "5.1a", check: "`node scripts/agents/run.mjs build vscode` passes and the output has a separate math chunk"}
-      - {id: "5.1b", check: "bundle size of entries without math stays within 5% of before"}
-    tests: {none: "build output checked by command; no build test exists"}
+      - id: 5.1a
+        check: "`node scripts/agents/run.mjs build vscode` passes and the output has a separate math chunk"
+      - id: 5.1b
+        check: bundle size of entries without math stays within 5% of before
+    tests:
+      none: build output checked by command; no build test exists
     commands:
       - node scripts/agents/run.mjs build vscode
       - node scripts/agents/run.mjs typecheck vscode
@@ -43,19 +77,29 @@ packages:
     plan: qmd-notes
     goal: The library page and reader page bundles of the browser extension load the math chunk lazily.
     level: contract
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     edit:
-      - {path: packages/browser/build/build.mjs, lines: "14-31", why: "reuse the library page splitting; add splitting to the reader page entry if the reader hosts notes (session 7 does)"}
+      - path: packages/browser/build/build.mjs
+        lines: 14-31
+        why: reuse the library page splitting; add splitting to the reader page entry if the reader hosts notes (session 7 does)
     read:
-      - {path: documents/plans/qmd-notes/research/editor-ui.md, lines: "18-22", why: "Bundling and CSP"}
-      - {path: packages/browser/manifest.chrome.json, lines: "70-75", why: "extension_pages CSP: script-src 'self' 'wasm-unsafe-eval'"}
+      - path: documents/plans/qmd-notes/research/editor-ui.md
+        lines: 18-22
+        why: Bundling and CSP
+      - path: packages/browser/manifest.chrome.json
+        lines: 70-75
+        why: "extension_pages CSP: script-src 'self' 'wasm-unsafe-eval'"
     decided:
       - "Reuse the existing chunk splitting of the library page (`splitting: true`, `chunks/[name]-[hash]`); add the reader page entry to it if the reader hosts notes (session 7 does)."
-      - "CSP `script-src 'self' 'wasm-unsafe-eval'` already allows extension-origin chunks; leave `manifest.chrome.json` unchanged."
+      - CSP `script-src 'self' 'wasm-unsafe-eval'` already allows extension-origin chunks; leave `manifest.chrome.json` unchanged.
       - "`qmd-editor.css` is imported as text like other core styles (the build's `.css` loader is already `text`)."
     acceptance:
-      - {id: "5.2a", check: "`node scripts/agents/run.mjs build browser` passes and the math chunk is a separate file"}
-    tests: {none: "build output checked by command; no build test exists"}
+      - id: 5.2a
+        check: "`node scripts/agents/run.mjs build browser` passes and the math chunk is a separate file"
+    tests:
+      none: build output checked by command; no build test exists
     commands:
       - node scripts/agents/run.mjs build browser
       - node scripts/agents/run.mjs typecheck browser
@@ -65,14 +109,24 @@ packages:
     plan: qmd-notes
     goal: Verify in both apps that the editor mounts, renders `$x^2$` and raises no CSP errors; remove any scratch mount before finishing.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["5.1", "5.2"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "5.1"
+      - "5.2"
     read:
-      - {path: documents/ui.md, lines: "1-32", why: "UI rules the mounted editor is judged against"}
+      - path: documents/ui.md
+        lines: 1-32
+        why: UI rules the mounted editor is judged against
     edit: []
     decided:
-      - "Mount the editor in a scratch webview and in the library page, type `$x^2$`, see rendered math, no CSP errors in the console; remove any scratch mount before finishing."
+      - Mount the editor in a scratch webview and in the library page, type `$x^2$`, see rendered math, no CSP errors in the console; remove any scratch mount before finishing.
     acceptance:
-      - {id: "5.3a", check: "no CSP error and rendered math in a VS Code webview and in the browser library page"}
-      - {id: A3, check: "first half of A3: a note editor mounts in a VS Code webview and in the browser library page with rendered math and no syntax visible"}
-    tests: {none: "checked by the user by hand in the app"}
+      - id: 5.3a
+        check: no CSP error and rendered math in a VS Code webview and in the browser library page
+      - id: A3
+        check: "first half of A3: a note editor mounts in a VS Code webview and in the browser library page with rendered math and no syntax visible"
+    tests:
+      none: checked by the user by hand in the app
+blocked_reason: "5.3: no report"

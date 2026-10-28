@@ -15,6 +15,7 @@ import {
   type AllProjectsToHost,
   type HostToAllProjects,
 } from "@labshelf/core";
+import { webviewChunksDir } from "../ui/index.js";
 import { readLibraryBundleDir, listPanelHtml, type ListPanelDeps } from "./listPanel.js";
 import { createFeedHostCompositionRoot, LibraryFeed } from "./feed.js";
 import { answerListMessage, type ListHostContext } from "./handlers.js";
@@ -179,7 +180,7 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this._session?.dispose();
     const { webview } = view;
-    webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri)] };
+    webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri), webviewChunksDir(this._deps.extensionUri)] };
     const session = new DetailsSession(webview, {
       ...this._deps, target: () => this._target, onFolderOpen: (folder) => this._folderRequests.fire(folder),
     });

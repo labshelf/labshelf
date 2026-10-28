@@ -12,7 +12,7 @@ import {
   formatError,
   formatLocaleDateTime,
 } from "@labshelf/core";
-import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from "../../ui/index.js";
+import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { ReadyProject } from "../projects/index.js";
 
 /** <extension>/dist/history, for localResourceRoots. */
@@ -58,7 +58,7 @@ export class HistoryPanel {
 
   static async open(extensionUri: vscode.Uri, project: ReadyProject, store: ProjectHistoryStore, logger: ILogger, onDispose: () => void): Promise<HistoryPanel> {
     const panel = vscode.window.createWebviewPanel("labshelfHistory", `History: ${project.settings.id}`, vscode.ViewColumn.Active, {
-      enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [historyBundleDirectory(extensionUri)],
+      enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [historyBundleDirectory(extensionUri), webviewChunksDir(extensionUri)],
     });
     panel.iconPath = createTabIcon(extensionUri);
     const view = new HistoryPanel(panel, project, store, logger, onDispose);
