@@ -12,7 +12,7 @@
 // a one-line probe prompt on the same model; while the probe fails it stands by (until the reset time the message
 // names, else re-probing every 20 minutes), then runs the same session again, telling it that the uncommitted changes
 // are its own partial work. A session silent for 60 minutes counts as stalled and is killed.
-// A session the context-budget hook stopped (its main thread passed the unattended limit) runs again in a fresh process
+// A session left pending after the context-budget hook marked it (its main thread passed the unattended warning) runs again in a fresh process
 // when that run made progress (a commit or a package report turned done), and stops the runner when it made none. --no-wait stops instead. --resume does the same
 // by hand: it runs the first pending session on top of the uncommitted changes a stopped run left behind.
 // Logs: .git/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
