@@ -4,10 +4,10 @@ Shared rules every package brief relies on. Briefs say "per conventions" instead
 
 ## Scripts
 
-- Files are camelCase `.mjs` (CLI entry points may be short lowercase names: `run.mjs`, `plan.mjs`, `ctx.mjs`). Argument parsing in the style of `parseArgs` from `scripts/codemods/shared.mjs`.
+- Files are camelCase `.mjs` (CLI entry points may be short lowercase names: `run.mjs`, `plan.mjs`, `facts.mjs`). Argument parsing in the style of `parseArgs` from `scripts/codemods/shared.mjs`.
 - Telemetry: `import { emit } from "<rel>/scripts/agents/telemetry.mjs"`; `emit(kind, fields)` never throws. Kinds and fields: `research/telemetry-events.md`. Shell hooks use `node scripts/agents/telemetry.mjs <kind> '<json>'`.
 - Handoff blocks: `parseBlocks` and `validate` from `scripts/agents/schemas.mjs` (from session 3 on). Fields: `research/schemas.md`.
-- Tests: `node:test` in `scripts/<dir>/__tests__/*.test.mjs` or `.claude/hooks/__tests__/*.test.mjs` (both already in `pnpm test:tooling`). Temp dirs from `fs.mkdtempSync(os.tmpdir())`; never write into the real `.git/`: every state path takes an env override (`LABSHELF_RUNS_DIR`, `LABSHELF_LOGS_DIR`, `LABSHELF_CTX_DB`, `LABSHELF_HOOK_STATE_DIR`, `LABSHELF_TELEMETRY_SPOOL`).
+- Tests: `node:test` in `scripts/<dir>/__tests__/*.test.mjs` or `.claude/hooks/__tests__/*.test.mjs` (both already in `pnpm test:tooling`). Temp dirs from `fs.mkdtempSync(os.tmpdir())`; never write into the real `.git/`: every state path takes an env override (`LABSHELF_RUNS_DIR`, `LABSHELF_LOGS_DIR`, `LABSHELF_FACTS_DB`, `LABSHELF_FACTS_ROOT`, `LABSHELF_DUP_GUARD`, `LABSHELF_HOOK_STATE_DIR`, `LABSHELF_TELEMETRY_SPOOL`).
 - From session 2.1 on, run tests through the wrapper: `node scripts/agents/run.mjs test tooling -- <test path>`; raw `node --test` is denied once 2.2 registers its hook.
 
 ## State paths (all under `.git/`, never committed)
@@ -19,7 +19,7 @@ Shared rules every package brief relies on. Briefs say "per conventions" instead
 | `.git/labshelf-runs/<plan>/<id>.report.yaml` | `check-handoff` | `plan close`, orchestrator |
 | `.git/labshelf-runs/<plan>/<id>.patch` | `plan close` | orchestrator, next session |
 | `.git/labshelf-red.json` | `plan red` | `plan red --restore` |
-| `.git/labshelf-ctx.db` | `scripts/ctx/` | `ctx` CLI, `plan size` |
+| `.code-facts/facts.db` (git-ignored, not under `.git/`) | `scripts/code/extract.mjs` | `facts` CLI, `plan size`, `dup-guard` |
 
 ## Hooks
 

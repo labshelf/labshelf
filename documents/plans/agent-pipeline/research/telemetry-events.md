@@ -14,7 +14,9 @@ Every line: `{ts, kind, run_id, plan, session, spec, agent_type, session_id, cwd
 | `arbiter_verdict` | `check-handoff` | `verdict` |
 | `spec_deny` | `spec-guard` | `tool`, `target` |
 | `missing` | `check-handoff` | `needs` (count) |
-| `index_query` | `ctx` CLI | `query_kind` (def, refs, q), `results`, `chars` |
+| `index_query` | `facts` CLI | `query_kind` (def, callers, uses, fn, sig, similar, find, tests), `results`, `chars` |
+| `dup_check` | `dup-guard` | `units`, `warned`, `ms` |
+| `dup_warning` | `dup-guard` | `unit`, `match`, `score`, `reason` (exact, similar, name) |
 | `budget_warning` | `context-budget.mjs` | `context_tokens`, `budget` |
 | `commit` | `plan close` | `hash`, `files` |
 | `handoff_invalid` | `check-handoff` | `schema`, `errors` (count), `blocks` |
