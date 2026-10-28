@@ -2,10 +2,9 @@
 // comment tags, tests, per-unit search text and clone fingerprints, and full-text indexes, through one TypeScript program over all packages.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { listFiles, ts } from "../codemods/shared.mjs";
-import { buildEmbeddings } from "./embed.mjs";
 import { unitFingerprint } from "./tokens.mjs";
 import {
   DB_PATH,
@@ -32,6 +31,7 @@ const quiet = process.argv.includes("--quiet");
 const say = (line) => quiet || console.log(line);
 
 mkdirSync(FACTS_DIR, { recursive: true });
+mkdirSync(dirname(DB_PATH), { recursive: true });
 const release = acquireLock(LOCK_PATH);
 if (!release) {
   say("facts: another build holds .code-facts/build.lock; skipping");
@@ -150,10 +150,9 @@ async function build() {
     CREATE TABLE module_edges (from_module TEXT, to_module TEXT, weight INTEGER, PRIMARY KEY (from_module, to_module));
     CREATE TABLE tags (file TEXT, line INTEGER, tag TEXT, text TEXT);
     CREATE TABLE tests (test_file TEXT, source_file TEXT, how TEXT, PRIMARY KEY (test_file, source_file, how));
-    CREATE TABLE embed_items (kind TEXT, ref TEXT, text_hash TEXT);
-    CREATE TABLE embeddings (text_hash TEXT PRIMARY KEY, model TEXT, vector BLOB);
+    CREATE TABLE reexports (file TEXT, line INTEGER, name TEXT, from_file TEXT);
     CREATE VIRTUAL TABLE search_fts USING fts5(kind, ref, name, words, body, tokenize = 'porter unicode61');
-    CREATE TABLE unit_facts (id INTEGER PRIMARY KEY, nodes INTEGER, t1 TEXT, t2 TEXT, body_t1 TEXT, body_t2 TEXT, shingles BLOB, params TEXT, returns TEXT, calls TEXT, embed_text TEXT);
+    CREATE TABLE unit_facts (id INTEGER PRIMARY KEY, nodes INTEGER, t1 TEXT, t2 TEXT, body_t1 TEXT, body_t2 TEXT, shingles BLOB, params TEXT, returns TEXT, calls TEXT);
     CREATE TABLE idents (name TEXT PRIMARY KEY, local_n INTEGER, free_n INTEGER);
     CREATE VIRTUAL TABLE unit_fts USING fts5(unit_id UNINDEXED, name, types, calls, text, header, tokenize = 'porter unicode61');
   `);
@@ -169,7 +168,8 @@ async function build() {
     tag: insert("tags", 4),
     test: db.prepare("INSERT OR IGNORE INTO tests VALUES (?,?,?)"),
     fts: insert("search_fts", 5),
-    unitFacts: insert("unit_facts", 11),
+    reexport: insert("reexports", 4),
+    unitFacts: insert("unit_facts", 10),
     ident: insert("idents", 3),
     unitFts: insert("unit_fts", 6),
     meta: insert("meta", 2),
@@ -408,7 +408,6 @@ async function build() {
       JSON.stringify(params.map(typeKey)),
       typeKey(returns),
       JSON.stringify(calls),
-      search.embed,
     );
     ins.unitFts.run(id, search.name, search.types, search.calls, search.text, search.header);
   }
@@ -465,6 +464,18 @@ async function build() {
       moduleWeights.set(key, (moduleWeights.get(key) ?? 0) + 1);
     }
   }
+  // `export { a } from "./x"` lines, with the file that declares each name, for `facts def`.
+  for (const path of productFiles) {
+    const sf = sources.get(path);
+    if (!sf) continue;
+    for (const statement of sf.statements) {
+      if (!ts.isExportDeclaration(statement) || !statement.moduleSpecifier || !statement.exportClause || !ts.isNamedExports(statement.exportClause)) continue;
+      for (const element of statement.exportClause.elements) {
+        const from = declFilesOf(element.name).find((file) => productSet.has(file));
+        if (from && from !== path) ins.reexport.run(path, lineOf(sf, element.getStart(sf)), element.name.text, from);
+      }
+    }
+  }
   for (const [key, weight] of moduleWeights) ins.moduleEdge.run(...key.split("\0"), weight);
 
   // ---------- tests ----------
@@ -484,13 +495,7 @@ async function build() {
   db.exec("INSERT INTO search_fts(search_fts) VALUES ('optimize')");
   db.exec("INSERT INTO unit_fts(unit_fts) VALUES ('optimize')");
 
-  if (!process.argv.includes("--no-embed")) {
-    const { embedded, total } = await buildEmbeddings(db, { say, warn: (line) => console.error(line) });
-    say(`facts: embedded ${embedded} new of ${total} items`);
-    db.prepare("UPDATE meta SET value = ? WHERE key = 'build_ms'").run(String(Date.now() - started));
-  }
-
-  const counts = ["files", "modules", "exports", "units", "calls", "file_edges", "module_edges", "tags", "tests", "search_fts"].map(
+  const counts = ["files", "modules", "exports", "units", "calls", "file_edges", "module_edges", "reexports", "tags", "tests", "search_fts"].map(
     (table) => `${table} ${db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n}`,
   );
   db.close();

@@ -9,7 +9,7 @@ import { emit } from '../../scripts/agents/telemetry.mjs';
 
 const ROLES = new Set(['implementer', 'tester', 'arbiter']);
 const REASON = 'Outside your spec: return report/v1 with status missing and say what you needed.';
-const CTX_QUOTA = 10;
+const INDEX_QUOTA = 10;
 const FILE_TOOLS = { Read: 'file_path', Edit: 'file_path', Write: 'file_path', MultiEdit: 'file_path', NotebookEdit: 'notebook_path' };
 const WRITE_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit']);
 const COMPOUND = /[;&|`<>\n]|\$\(/;
@@ -84,7 +84,7 @@ function saveState(file, state) {
 const hasRunId = (command, id) => new RegExp(`(^|\\s)--spec(\\s+|=)${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(command);
 const RUN = /^node\s+(\.\/)?scripts\/agents\/run\.mjs(\s|$)/;
 const DOC = /^node\s+(\.\/)?scripts\/docs\/doc\.mjs(\s|$)/;
-const CTX = /^node\s+(\.\/)?scripts\/ctx\/ctx\.mjs\s+(def|refs|q)(\s|$)/;
+const INDEX = /^(?:node\s+(?:\.\/)?scripts\/code\/facts\.mjs|pnpm\s+-s\s+facts)\s+(def|fn|sig|similar|find|callers|uses|tests)(\s|$)/;
 const GIT = /^git\s+(diff|status)(\s|$)/;
 
 // Arguments of a git command that are paths: not flags, not the `--` separator.
@@ -140,11 +140,11 @@ function checkBash(role, spec, command, state) {
     if (ok) return undefined;
     throw new Deny();
   }
-  const ctx = CTX.exec(trimmed);
-  if (ctx) {
-    if ((state.file.ctx ?? 0) >= CTX_QUOTA) throw new Deny();
-    state.file.ctx = (state.file.ctx ?? 0) + 1;
-    state.ctxQuery = ctx[2];
+  const index = INDEX.exec(trimmed);
+  if (index) {
+    if ((state.file.index ?? 0) >= INDEX_QUOTA) throw new Deny();
+    state.file.index = (state.file.index ?? 0) + 1;
+    state.indexQuery = index[1];
     return undefined;
   }
   throw new Deny();
@@ -165,7 +165,7 @@ function main(input) {
   if (!isObject(file) || !('spec' in file)) {
     const prompt = firstPrompt(input);
     if (prompt === undefined) return;
-    file = { spec: specFrom(prompt), ctx: 0 };
+    file = { spec: specFrom(prompt), index: 0 };
     saveState(stateFile, file);
   }
   const spec = file.spec;
@@ -200,10 +200,8 @@ function main(input) {
     process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: REASON } }));
     return;
   }
-  if (state.ctxQuery) {
-    saveState(stateFile, file);
-    emit('index_query', { ...common, query_kind: state.ctxQuery });
-  }
+  // The facts CLI emits index_query itself; the guard only counts the quota.
+  if (state.indexQuery) saveState(stateFile, file);
 }
 
 try {

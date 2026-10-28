@@ -123,7 +123,9 @@ test('implementer Bash allowlist', () => {
     'git diff',
     'git diff --stat scripts/thing.mjs',
     'git diff -- scripts/newdir/a.mjs',
-    'node scripts/ctx/ctx.mjs def emit',
+    'node scripts/code/facts.mjs def emit',
+    'node scripts/code/facts.mjs similar "parse a spec block"',
+    'pnpm -s facts callers emit',
   ];
   for (const command of allowed) assert.equal(call(env, 'implementer', 'Bash', { command }), null, command);
   const denied = [
@@ -135,7 +137,10 @@ test('implementer Bash allowlist', () => {
     'node scripts/docs/doc.mjs code | sh',
     'node scripts/docs/doc.mjs `whoami`',
     'node scripts/docs/doc.mjs $(whoami)',
-    'node scripts/ctx/ctx.mjs index',
+    'node scripts/code/facts.mjs build',
+    'node scripts/code/facts.mjs sql "select 1"',
+    'node scripts/code/facts.mjs def x && ls',
+    'pnpm facts def x',
     'ls',
     'rm scripts/thing.mjs',
     'pnpm test',
@@ -144,18 +149,17 @@ test('implementer Bash allowlist', () => {
   for (const command of denied) assertDenied(call(env, 'implementer', 'Bash', { command }));
 });
 
-test('the 11th ctx call is denied, and each allowed call emits index_query', () => {
+test('the 11th index call is denied', () => {
   const env = setup(specBlock());
-  for (let i = 0; i < 10; i += 1) assert.equal(call(env, 'implementer', 'Bash', { command: `node scripts/ctx/ctx.mjs refs symbol${i}` }), null, `call ${i + 1}`);
-  assertDenied(call(env, 'implementer', 'Bash', { command: 'node scripts/ctx/ctx.mjs q "x"' }));
+  for (let i = 0; i < 10; i += 1) assert.equal(call(env, 'implementer', 'Bash', { command: `node scripts/code/facts.mjs callers symbol${i}` }), null, `call ${i + 1}`);
+  assertDenied(call(env, 'implementer', 'Bash', { command: 'pnpm -s facts find "x"' }));
   const all = events(env);
-  assert.equal(all.filter((event) => event.kind === 'index_query').length, 10);
-  assert.equal(all.filter((event) => event.kind === 'index_query')[0].query_kind, 'refs');
+  assert.equal(all.filter((event) => event.kind === 'index_query').length, 0);
   assert.equal(all.filter((event) => event.kind === 'spec_deny').length, 1);
   // Another agent has its own quota.
   const other = { ...env, agentId: 'ag2' };
   writeFileSync(join(env.dir, 'sess', 'subagents', 'agent-ag2.jsonl'), readFileSync(join(env.dir, 'sess', 'subagents', 'agent-ag1.jsonl')));
-  assert.equal(call(other, 'implementer', 'Bash', { command: 'node scripts/ctx/ctx.mjs def x' }), null);
+  assert.equal(call(other, 'implementer', 'Bash', { command: 'node scripts/code/facts.mjs def x' }), null);
 });
 
 test('the spec is read from agent_transcript_path when the input has it', () => {
@@ -180,7 +184,7 @@ test('tester writes only in its tests dir and runs only run.mjs and doc.mjs', ()
   assert.equal(call(env, 'tester', 'Bash', { command: 'node scripts/agents/run.mjs test tooling -- documents/plans/demo/tests/9.1/a.test.mjs' }), null);
   assert.equal(call(env, 'tester', 'Bash', { command: 'node scripts/docs/doc.mjs code#placement' }), null);
   assertDenied(call(env, 'tester', 'Bash', { command: 'git diff' }));
-  assertDenied(call(env, 'tester', 'Bash', { command: 'node scripts/ctx/ctx.mjs def x' }));
+  assertDenied(call(env, 'tester', 'Bash', { command: 'node scripts/code/facts.mjs def x' }));
   assertDenied(call(env, 'tester', 'Bash', { command: 'ls' }));
 });
 

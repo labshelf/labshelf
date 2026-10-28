@@ -107,5 +107,4 @@ test('the unit search text holds name words, visibility, types, calls, comment a
   assert.match(text.types, /private string string/);
   assert.equal(text.calls, 'url');
   assert.match(text.text, /The host of a url\..*https:/);
-  assert.match(text.embed, /host of \(function, private\)[\s\S]*calls: URL[\s\S]*Url helpers\./);
 });

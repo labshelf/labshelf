@@ -10,6 +10,7 @@ import { planLint } from "./planLint.mjs";
 import { planNew } from "./planNew.mjs";
 import { planPrompt } from "./planPrompt.mjs";
 import { planRed, restoreRed } from "./planRed.mjs";
+import { planSize } from "./planSize.mjs";
 import { planStale } from "./planStale.mjs";
 import { planStart } from "./planStart.mjs";
 import { planStatus } from "./planStatus.mjs";
@@ -81,6 +82,10 @@ export const COMMANDS = {
   },
   status: ({ root, out }) => {
     planStatus(root).forEach(out);
+  },
+  size: ({ root, positional, out }) => {
+    if (positional.length === 0) throw new Error("plan size: <paths…> are required");
+    planSize(root, positional.map((path) => resolve(path))).forEach(out);
   },
 };
 

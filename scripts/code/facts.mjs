@@ -1,18 +1,25 @@
-// Command line over the code-facts database: build it, find code by words, find any function (private included) by words,
-// by parameter and return types and calls, or by a similar snippet, and read a module, its callers, importers, tests and comment tags.
+// Command line over the code-facts database: build it, say where a name is defined, find code by words, find any function
+// (private included) by words, by parameter and return types and calls, or by a similar snippet, and read a module, its
+// callers, importers, tests and comment tags. No model is involved; every answer is capped and reported as an index_query event.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { join } from "node:path";
-import { cosineRanking, embedQuery, fuse } from "./embed.mjs";
-import { DB_PATH, ROOT, ftsQuery, jaccard, multisetOverlap, splitTopLevel, typeKey } from "./lib.mjs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { emit } from "../agents/telemetry.mjs";
+import { DB_PATH, DIRTY_PATH, LOCK_PATH, ROOT, ftsQuery, jaccard, lockHeld, multisetOverlap, splitTopLevel, typeKey } from "./lib.mjs";
 
+const CODE_DIR = dirname(fileURLToPath(import.meta.url));
 const CAP = 30;
 const FIND_LIMIT = 15;
-const SEARCH_POOL = 50;
+const MAX_CHARS = 32000;
 const MAX_TEXT = 140;
 process.stdout.on("error", () => process.exit(0));
-const out = (line) => process.stdout.write(`${line}\n`);
+const stats = { results: 0, chars: 0 };
+const out = (line) => {
+  stats.chars += line.length + 1;
+  process.stdout.write(`${line}\n`);
+};
 const clip = (text, max = MAX_TEXT) => {
   const flat = String(text ?? "").replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
@@ -38,11 +45,20 @@ function warnIfStale(db) {
   if (built && head && built !== head) out(`warning: facts built at ${built.slice(0, 8)}, HEAD is ${head.slice(0, 8)}; run: pnpm facts build`);
 }
 
-/** Prints at most `cap` rows and says how many were left out, so a long answer never floods the scout. */
+/** Prints at most `cap` rows and `MAX_CHARS` characters and says how many were left out, so a long answer never floods the reader. */
 function printRows(rows, format, cap = CAP) {
   if (rows.length === 0) out("(no results)");
-  for (const row of rows.slice(0, cap)) out(format(row));
-  if (rows.length > cap) out(`... ${rows.length - cap} more (narrow the query or use sql)`);
+  let printed = 0;
+  let chars = 0;
+  for (const row of rows.slice(0, cap)) {
+    const line = format(row);
+    if (printed > 0 && chars + line.length + 1 > MAX_CHARS) break;
+    out(line);
+    chars += line.length + 1;
+    printed++;
+  }
+  stats.results += rows.length;
+  if (rows.length > printed) out(`... ${rows.length - printed} more (narrow the query or use sql)`);
 }
 
 function parseFlags(args, valueFlags = []) {
@@ -57,15 +73,21 @@ function parseFlags(args, valueFlags = []) {
 }
 
 // ---------- commands ----------
+/** Rebuilds the database. The edit hook leaves `.code-facts/dirty`; it is cleared before the run and, if an edit set it again meanwhile, the run is repeated once. */
 function build(args) {
   const { flags } = parseFlags(args);
-  const passed = ["quiet", "no-embed"].filter((name) => flags[name]).map((name) => `--${name}`);
-  const stdio = flags.quiet ? "ignore" : "inherit";
-  for (const script of ["extract.mjs", "moduleMap.mjs"]) {
-    const file = join(ROOT, "scripts", "code", script);
-    if (!existsSync(file)) continue;
-    const run = spawnSync(process.execPath, [file, ...passed], { cwd: ROOT, stdio });
-    if (run.status !== 0) fail(`${script} failed (exit ${run.status})`);
+  const file = join(CODE_DIR, "extract.mjs");
+  const extract = () => {
+    const run = spawnSync(process.execPath, [file, ...(flags.quiet ? ["--quiet"] : [])], { cwd: ROOT, stdio: flags.quiet ? "ignore" : "inherit" });
+    if (run.status !== 0) fail(`extract.mjs failed (exit ${run.status})`);
+  };
+  // While another build runs, its marker stays: that build repeats itself at the end when the marker is there.
+  const owner = !lockHeld(LOCK_PATH);
+  if (owner) rmSync(DIRTY_PATH, { force: true });
+  extract();
+  if (owner && existsSync(DIRTY_PATH)) {
+    rmSync(DIRTY_PATH, { force: true });
+    extract();
   }
 }
 
@@ -89,24 +111,25 @@ function find(db, args) {
   printRows(ftsRows(db, args.join(" "), FIND_LIMIT), formatHit, FIND_LIMIT);
 }
 
-/** Questions in plain words: full-text matches fused with embedding neighbours, so a hit needs no shared vocabulary. */
-async function search(db, args) {
-  const { flags, rest } = parseFlags(args);
-  const question = rest.join(" ");
-  if (!ftsQuery(question)) fail('usage: facts search [--no-embed] "<question>"');
-  const textual = ftsRows(db, question, SEARCH_POOL);
-  const hasVectors = !flags["no-embed"] && db.prepare("SELECT 1 FROM embeddings LIMIT 1").get();
-  if (!flags["no-embed"] && !hasVectors) process.stderr.write("facts: no embeddings in this database (built with --no-embed or offline); using text matches only\n");
-  const vector = hasVectors ? await embedQuery(question, (line) => process.stderr.write(`${line}\n`)) : null;
-  if (!vector) return printRows(textual.slice(0, FIND_LIMIT), formatHit, FIND_LIMIT);
-  const known = new Map();
-  for (const row of db.prepare("SELECT kind, ref, name, body FROM search_fts WHERE kind IN ('file', 'module', 'export', 'unit')").all()) {
-    const key = `${row.kind}\0${row.ref}`;
-    if (!known.has(key)) known.set(key, row);
+/** Where a name is defined: units by name or `Owner.method`, exported declarations by export name, and the re-exports of it. */
+function def(db, args) {
+  const name = args[0];
+  if (!name) fail("usage: facts def <name>");
+  const units = db
+    .prepare("SELECT * FROM units WHERE name = ? OR (owner <> '' AND owner || '.' || name = ?) ORDER BY file, start_line")
+    .all(name, name);
+  const rows = units.map((unit) => ({ file: unit.file, line: unit.start_line, text: `${unit.kind} ${labelOf(unit)} ${clip(unit.signature, 110)} (${visibilityOf(unit)})` }));
+  const unitFiles = new Set(units.map((unit) => `${unit.file}\0${unit.name}`));
+  const seen = new Set();
+  for (const item of db.prepare("SELECT name, kind, signature, file, line FROM exports WHERE name = ? ORDER BY file, line").all(name)) {
+    const key = `${item.file}:${item.line}`;
+    if (seen.has(key) || unitFiles.has(`${item.file}\0${item.name}`)) continue;
+    seen.add(key);
+    rows.push({ file: item.file, line: item.line, text: `${item.kind} ${item.name} ${clip(item.signature, 110)} (exported)` });
   }
-  for (const row of textual) known.set(`${row.kind}\0${row.ref}`, row);
-  const fused = fuse([textual, cosineRanking(db, vector, SEARCH_POOL)]).slice(0, FIND_LIMIT);
-  printRows(fused.map((hit) => known.get(`${hit.kind}\0${hit.ref}`)).filter(Boolean), formatHit, FIND_LIMIT);
+  for (const item of db.prepare("SELECT file, line, from_file FROM reexports WHERE name = ? ORDER BY file, line").all(name))
+    rows.push({ file: item.file, line: item.line, text: `re-export of ${item.from_file}` });
+  printRows(rows, (row) => `${row.file}:${row.line} ${row.text}`.replace(/ {2,}/g, " "));
 }
 
 // ---------- functions: by words, by structure, by similar code ----------
@@ -265,7 +288,7 @@ function sql(db, args) {
 }
 
 // Commands that need the database get it opened and checked for staleness first.
-const COMMANDS = { build, find, fn, sig, similar, search, module: moduleCommand, callers, uses, tests: testsCommand, tags: tagsCommand, sql };
+const COMMANDS = { build, def, find, fn, sig, similar, module: moduleCommand, callers, uses, tests: testsCommand, tags: tagsCommand, sql };
 
 const [command, ...args] = process.argv.slice(2);
 if (!command || !Object.hasOwn(COMMANDS, command)) fail(`usage: facts <${Object.keys(COMMANDS).join("|")}> ...`);
@@ -274,4 +297,5 @@ else {
   const db = openDb();
   warnIfStale(db);
   await COMMANDS[command](db, args);
+  emit("index_query", { query_kind: command, results: stats.results, chars: stats.chars });
 }

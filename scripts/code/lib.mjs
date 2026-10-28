@@ -1,13 +1,17 @@
 // Path rules and text helpers for the code-facts database: where it lives, its build lock, which module and runtime a file belongs
 // to, file headers, comment tags, test mirrors, name splitting and the full-text query built from the user's words.
-import { openSync, readFileSync, rmSync, writeSync, closeSync } from "node:fs";
+import { closeSync, openSync, readFileSync, realpathSync, rmSync, writeSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+// LABSHELF_FACTS_ROOT and LABSHELF_FACTS_DB point the tools at another repo and database (tests use a temp repo).
+export const ROOT = process.env.LABSHELF_FACTS_ROOT
+  ? realpathSync(process.env.LABSHELF_FACTS_ROOT) // TypeScript reports symlink-free paths, so a root behind a link (macOS /var) must be too
+  : resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export const FACTS_DIR = join(ROOT, ".code-facts");
-export const DB_PATH = join(FACTS_DIR, "facts.db");
+export const DB_PATH = process.env.LABSHELF_FACTS_DB ? resolve(process.env.LABSHELF_FACTS_DB) : join(FACTS_DIR, "facts.db");
 export const LOCK_PATH = join(FACTS_DIR, "build.lock");
+export const DIRTY_PATH = join(FACTS_DIR, "dirty");
 export const SCHEMA_VERSION = "1";
 export const PACKAGES = ["core", "vscode", "browser", "terminal"];
 
@@ -19,6 +23,16 @@ const isAlive = (pid) => {
     return error.code === "EPERM";
   }
 };
+
+/** True while a live process holds the lock file at `path`. */
+export function lockHeld(path) {
+  try {
+    const owner = Number(readFileSync(path, "utf8"));
+    return owner > 0 && isAlive(owner);
+  } catch {
+    return false;
+  }
+}
 
 /** Takes the lock file at `path` for this process; returns its release function, or null while a live process holds it. */
 export function acquireLock(path) {
@@ -210,11 +224,9 @@ export function multisetOverlap(wanted, have) {
   return count;
 }
 
-const MAX_UNIT_EMBED_CHARS = 900;
-
 /**
- * The searchable text of a unit, as columns for the `facts fn` index and one string for its embedding: name words,
- * kind and visibility with the parameter and return types, called names, and comment, signature and string literals.
+ * The searchable text of a unit, as columns for the `facts fn` index: name words, kind and visibility with the
+ * parameter and return types, called names, and comment, signature and string literals.
  */
 export function unitSearchText(unit) {
   const name = splitWords(unit.owner ? `${unit.owner} ${unit.name}` : unit.name);
@@ -223,15 +235,5 @@ export function unitSearchText(unit) {
   const calls = unit.calls.map(splitWords).join(" ");
   const about = unit.comment || unit.doc;
   const text = [about, unit.signature, unit.literals.join(" ")].filter(Boolean).join(" ");
-  const embed = [
-    `${name} (${unit.kind}, ${visibility}) ${unit.signature}`,
-    about,
-    unit.calls.length ? `calls: ${unit.calls.join(", ")}` : "",
-    unit.literals.length ? `strings: ${unit.literals.join(" ")}` : "",
-    unit.header,
-  ]
-    .filter(Boolean)
-    .join("\n")
-    .slice(0, MAX_UNIT_EMBED_CHARS);
-  return { name, types, calls, text, header: unit.header, embed };
+  return { name, types, calls, text, header: unit.header };
 }
