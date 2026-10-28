@@ -62,7 +62,7 @@ export function planSizeProblems(rel, text) {
   let hint = "";
   if (/^documents\/plans\/[^/]+\/plan\.md$/.test(rel)) {
     limit = 12000;
-    hint = "Split it: move detail into sessions/ or research/ (plan format: documents/plans/TEMPLATE/plan.md).";
+    hint = "Split it: move detail into sessions/ or research/.";
   } else if (/^documents\/plans\/[^/]+\/sessions\/[^/]+\.md$/.test(rel)) {
     limit = 6000;
     hint = "Split the session or move context into research/.";

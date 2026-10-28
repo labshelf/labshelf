@@ -1,6 +1,6 @@
 ---
 name: finish
-description: The finishing pass after a change — quality gate, delete what the change made unused, comment standard, docs in documents/, review. Two modes - finishing a plan session (before its commit) and finishing a whole plan or standalone change. Runs on Sonnet in its own context, fixes mechanical issues itself and returns only what needs the main model's judgment. Use at the end of any session or change instead of doing these chores in the main thread.
+description: The finishing pass after a change — quality gate, delete what the change made unused, comment standard, docs in documents/, review. Two modes - finishing a plan session (before its commit, or before `plan close` for YAML sessions) and finishing a whole plan or standalone change. Runs on Sonnet in its own context, fixes mechanical issues itself and returns only what needs the main model's judgment. Use at the end of any session or change instead of doing these chores in the main thread.
 argument-hint: session <session file> | plan <plan dir> | <brief of a standalone change>
 context: fork
 agent: finisher
@@ -12,7 +12,7 @@ background: false
 Args: $ARGUMENTS
 
 Pick the mode from the args and read only its file:
-- `session <documents/plans/<slug>/sessions/<file>>` → [references/session.md](references/session.md): one plan session, before its commit.
+- `session <documents/plans/<slug>/sessions/<file>>` (`.md` or `.yaml`) → [references/session.md](references/session.md): one plan session (`.md` before its commit; `.yaml` before `plan close`, which commits).
 - `plan <documents/plans/<slug>>` → [references/plan.md](references/plan.md): the whole plan, after its last session.
 - anything else, or nothing → a standalone change: run the steps of [references/session.md](references/session.md) and then those of [references/plan.md](references/plan.md) on the uncommitted change, with the args as the spec.
 

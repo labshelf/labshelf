@@ -1,6 +1,6 @@
 # Plan: Agent pipeline
 
-Status: approved
+Status: done
 Size: 10 sessions — each layer (filter, schemas, guard, scaffolding, close, runner, index, skill) is usable on its own and must land before the next one builds on it.
 
 ## 1. Goal
@@ -28,19 +28,19 @@ Open (blocks approval): none. Defaults applied: agent names `tester`/`arbiter`; 
 
 ## 3. Acceptance
 
-- [ ] **A1** An implementer with a `spec/v1` block cannot Read, Edit or Write a path outside the spec, cannot touch a hidden test, and gets a deny that says to report `missing`; without a spec block nothing changes (hook tests).
-- [ ] **A2** A subagent whose final message has an invalid or missing YAML block for its type is sent back once with the errors; an implementer reporting `done` without a green last run is sent back (hook tests).
-- [ ] **A3** `run.mjs test` and `run.mjs typecheck` print at most 40 lines for a failing jest or tsc run, keep the exit code and save the full log; a raw `pnpm --filter @labshelf/core test` is denied with the wrapper command in the reason.
-- [ ] **A4** After two non-improving runs or five runs, `run.mjs test --spec <id>` prints `BLOCKED` and exits 3.
-- [ ] **A5** `plan new`, `plan lint`, `plan from-brief`, `plan prompt`, `plan stale` work on a fixture plan; `plan lint` is silent on success and fails on overlapping `edit` paths in parallel packages and on an acceptance id without a test.
-- [ ] **A6** `plan red` accepts tests that fail with `not implemented` against stubs and rejects a test with an import error; the working tree is unchanged afterwards.
-- [ ] **A7** `plan close` on a fixture repo makes one commit per package with only its spec paths and the spec-derived message, and fails when a changed file is outside Owns.
-- [ ] **A8** `runPlan.mjs --dry-run` orders a fixture YAML plan by `depends_on`, skips a session that depends on a blocked one, and still runs a legacy `.md` plan.
-- [ ] **A9** A fixture spool loads into `plan_events`, and the agent-telemetry report has a pipeline section with package status counts, test runs, verdicts, index queries and cost per level.
-- [ ] **A10** On a fixture repo `facts def <name>`, `facts callers <name>` and `facts uses <file>` return the right paths and lines (including a `.js` → `.ts` import and a re-export through `index.ts`); an Edit triggers a background rebuild that updates the rows; output stays within the cap; no command loads a model and the root devDependencies have no `@huggingface/transformers`, `oxc-parser`, `oxc-resolver`.
-- [ ] **A11** `.claude/agents/` has `diagnoser.md`, `tester.md`, `arbiter.md` and no `diagnose.md`; `rg --hidden -w diagnose .claude scripts documents` finds no agent reference.
-- [ ] **A12** The orchestrate skill routes N0–N3 and runs a YAML session end to end on a fixture plan in a dry run (spec → implementer prompt → report → close).
-- [ ] **A13** An Edit adding a renamed copy of a fixture function gets one `additionalContext` line with the original's `path:line name signature`; an unrelated function, a non-product path or a missing DB gives no output; the hook never denies and a warm run takes < 1 s in the test (hook tests).
+- [x] **A1** An implementer with a `spec/v1` block cannot Read, Edit or Write a path outside the spec, cannot touch a hidden test, and gets a deny that says to report `missing`; without a spec block nothing changes (hook tests).
+- [x] **A2** A subagent whose final message has an invalid or missing YAML block for its type is sent back once with the errors; an implementer reporting `done` without a green last run is sent back (hook tests).
+- [x] **A3** `run.mjs test` and `run.mjs typecheck` print at most 40 lines for a failing jest or tsc run, keep the exit code and save the full log; a raw `pnpm --filter @labshelf/core test` is denied with the wrapper command in the reason.
+- [x] **A4** After two non-improving runs or five runs, `run.mjs test --spec <id>` prints `BLOCKED` and exits 3.
+- [x] **A5** `plan new`, `plan lint`, `plan from-brief`, `plan prompt`, `plan stale` work on a fixture plan; `plan lint` is silent on success and fails on overlapping `edit` paths in parallel packages and on an acceptance id without a test.
+- [x] **A6** `plan red` accepts tests that fail with `not implemented` against stubs and rejects a test with an import error; the working tree is unchanged afterwards.
+- [x] **A7** `plan close` on a fixture repo makes one commit per package with only its spec paths and the spec-derived message, and fails when a changed file is outside Owns.
+- [x] **A8** `runPlan.mjs --dry-run` orders a fixture YAML plan by `depends_on`, skips a session that depends on a blocked one, and still runs a legacy `.md` plan.
+- [x] **A9** A fixture spool loads into `plan_events`, and the agent-telemetry report has a pipeline section with package status counts, test runs, verdicts, index queries and cost per level.
+- [x] **A10** On a fixture repo `facts def <name>`, `facts callers <name>` and `facts uses <file>` return the right paths and lines (including a `.js` → `.ts` import and a re-export through `index.ts`); an Edit triggers a background rebuild that updates the rows; output stays within the cap; no command loads a model and the root devDependencies have no `@huggingface/transformers`, `oxc-parser`, `oxc-resolver`.
+- [x] **A11** `.claude/agents/` has `diagnoser.md`, `tester.md`, `arbiter.md` and no `diagnose.md`; `rg --hidden -w diagnose .claude scripts documents` finds no agent reference.
+- [x] **A12** The orchestrate skill routes N0–N3 and runs a YAML session end to end on a fixture plan in a dry run (spec → implementer prompt → report → close).
+- [x] **A13** An Edit adding a renamed copy of a fixture function gets one `additionalContext` line with the original's `path:line name signature`; an unrelated function, a non-product path or a missing DB gives no output; the hook never denies and a warm run takes < 1 s in the test (hook tests).
 
 ## 4. Sessions
 

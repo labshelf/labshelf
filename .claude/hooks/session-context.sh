@@ -11,7 +11,9 @@ LabShelf is a local-first research paper manager shipped as a VS Code extension,
 - When you have a recommendation, apply it and report it. Ask only when there is no clear recommendation, or before a hard-to-reverse action.
 - No ceremony the user did not ask for: no extra logs, gates, or `verify` runs.
 - End replies with what was not checked.
-- Delegate code changes to `implementer` and codebase questions to `explorer`; use `general-purpose` only for web research or work neither fits.
+- Delegate by role: `explorer` (codebase questions, returns `brief/v1`), `implementer` (code changes, returns `report/v1`), `diagnoser` (after a `failed` report), `tester` (writes the hidden tests from a spec), `arbiter` (judges a `blocked_tests` report); `general-purpose` only for web research or work neither fits.
+- Size the work first with `node scripts/plans/plan.mjs size <paths…>`: N0 main thread edits, N1 one implementer with an inline spec, N2 a one-session plan (`plan new --level N2`), N3 a multi-session plan approved by the user. The `orchestrate` skill has the flow.
+- Run tests, typecheck and builds through `node scripts/agents/run.mjs test|typecheck|build <pkg>`; exit 3 `BLOCKED:` means stop and report. Check "does X exist?" with `node scripts/code/facts.mjs def|fn|sig|similar`, not an explorer.
 - Docs: `node scripts/docs/doc.mjs` lists them; fetch sections, never whole files. Product: `node scripts/docs/doc.mjs product`; code placement: `node scripts/docs/doc.mjs code`; UI: `node scripts/docs/doc.mjs ui`.
 RULES
 

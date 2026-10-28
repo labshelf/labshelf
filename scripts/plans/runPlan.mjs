@@ -58,41 +58,16 @@ function ensureBranch(slug) {
   return target;
 }
 
-const UNATTENDED = [
-  "You are running unattended from scripts/plans/runPlan.mjs: nobody reads this conversation until it ends and nobody",
-  "answers questions. Never ask the user; apply the session file's decisions, and where it is silent pick the option",
-  "that keeps current behaviour and note it in the handoff. The approved plan authorises the session's commits.",
-  "If the session cannot finish, write the remainder as sessions/<id>-<name>.md as the handoff reference says,",
-  "commit what is done, and stop. Never leave tracked changes uncommitted.",
-  "TRAP: this is `claude -p`, so ending your turn ends the process and the session never finishes. Launch every",
-  "subagent with run_in_background: false so its report returns inside the same turn, never end a turn to wait for",
-  "an agent, and do not stop until the session file is deleted and the session is committed (or a remainder file is).",
-  "Testing policy for this run, which overrides every `pnpm gate`, lint, baseline and knip/jscpd step in the session",
-  "file and the gate step of the finish skill: implementers never run `pnpm gate` or any lint; they check their work",
-  "only with `node scripts/agents/run.mjs typecheck <pkg>` for each package they changed and `node scripts/agents/run.mjs",
-  "test <pkg> -- <test files of the code they changed>`; say so in every implementer brief. The session runs",
-  "one check before its commit, `pnpm gate --no-lint` (typecheck and tests of the touched packages), and passes",
-  "`gate: --no-lint only, no lint, no baselines` to `finish session`. Skip `modules.mjs --update` and",
-  "`jscpd:update-baseline`, unless this session is a lint milestone (said below).",
-].join(" ");
+// The rules live in the orchestrate skill (one source); the runner only names the modes that apply.
+const RULES = ".claude/skills/orchestrate/references/unattended.md";
+const UNATTENDED = `Unattended run: follow ${RULES}, sections "Unattended" and "Testing policy".`;
 
-const MILESTONE = [
-  "This session is a lint milestone. Before its commit, after its own packages, run the full `pnpm gate`, then",
-  "`node scripts/lint/modules.mjs --update`, `pnpm jscpd:update-baseline` and `pnpm lint`, and fix what fails,",
-  "including problems earlier sessions left (they skipped lint): split files over 400 lines by concept, fix module",
-  "rule violations, merge new duplicates. Never grow a baseline to pass. Commit the fixes and the smaller baselines",
-  "with the session, and say in the handoff what the milestone fixed.",
-].join(" ");
+const MILESTONE = `This session is a lint milestone: also follow the "Lint milestone" section of ${RULES}.`;
 
 // Counted back from the last session, so a restart or a remainder file keeps the milestones stable.
 const isMilestone = (pendingCount, every) => pendingCount === 1 || (every > 0 && pendingCount % every === 1);
 
-const RESUME = [
-  "A previous run of this session stopped (usage limit, or it ended its turn early) before it committed. The uncommitted changes are that",
-  "run's partial work: read `git status` and `git diff --stat`, the session file's OK column and its research/ files,",
-  "keep what is correct, do not redo finished packages, and continue from there. The dirty tree is expected; do not",
-  "stop because the repo differs from Starts from in those changes.",
-].join(" ");
+const RESUME = `This session is resumed after an interrupted run: also follow the "Resume" section of ${RULES}.`;
 
 const LIMIT = /usage limit|hit your limit|limit reached|limit will reset/i;
 const RESET_EPOCH = /limit reached\|(\d{10})/i;

@@ -1,6 +1,6 @@
 ---
 name: brainstorm
-description: Brainstorming mode for a new feature, design or idea, in one of two modes — spar (short opinionated back-and-forth, the default) or grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then writes the plan directory from documents/plans/TEMPLATE/. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
+description: Brainstorming mode for a new feature, design or idea, in one of two modes — spar (short opinionated back-and-forth, the default) or grill (each round asks the whole frontier of open questions, numbered, each with a recommended answer). Gives its own opinion, disagrees when it should, does not plan or implement until the user approves; then creates the plan with `plan new`. Use when the user says brainstorm or grill me, wants to think an idea through, or asks "what do you think about…" before deciding.
 argument-hint: [grill:] <the idea or question to think through>
 disable-model-invocation: true
 ---
@@ -61,7 +61,7 @@ Only an explicit go-ahead to plan or build counts: "approved", "aprovado", "fech
 On approval:
 
 1. **Builder check.** Launch one fresh `general-purpose` agent with `model: "sonnet"`, giving it only the final recap and the paths of the docs it rests on: "You will build this from this text alone. List, in 10 lines or fewer, the questions you would have to ask before starting, and the decisions you would have to guess." Fold its answers into the decisions, or turn them into open questions, and ask the user only the ones that change the design.
-2. **Plan.** Write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/`, following [planning.md](../orchestrate/references/planning.md) (`plan.md` with the decisions and sessions overview, one `sessions/NN.md` per session, an empty `log.md`): decisions from the conversation, open questions, size in sessions, each session file self-contained and ending green and committed. The "Not doing" list goes into the decisions. Run one or two `explorer` scouts first if the session briefs need facts about the code that you do not have. Keep it short.
-3. **Reply** in three to six lines: the plan path, its size and number of sessions, the decisions it rests on, and any open question that blocks approval. Then stop. Execution starts only with `/orchestrate documents/plans/<slug>/plan.md`.
+2. **Plan.** Run `node scripts/plans/plan.mjs new <slug> --level N2|N3 [--title <t>]` (N2: one session; N3: several, stop for approval), then fill `plan.yaml`, `sessions/*.yaml` and the specs as [planning.md](../orchestrate/references/planning.md) describes (`plan from-brief` per package, `plan lint documents/plans/<slug>` silent): decisions from the conversation, open questions, size in sessions, each session self-contained. The "Not doing" list goes into the decisions. Run one or two `explorer` scouts first if the briefs need facts about the code that you do not have. Keep it short.
+3. **Reply** in three to six lines: the plan path, its size and number of sessions, the decisions it rests on, and any open question that blocks approval. Then stop. Execution starts only with `/orchestrate documents/plans/<slug>`.
 
 Chat in the user's language. The plan file is in English, following the repo rule.

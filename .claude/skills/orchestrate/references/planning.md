@@ -1,8 +1,20 @@
 # Planning
 
-Read when you split work into packages or write a plan directory.
+Read when you split work into packages or write a plan directory. `plan <cmd>` means `node scripts/plans/plan.mjs <cmd>`.
 
-Split the work into packages. Each package states:
+## YAML planning flow (N2, N3)
+
+1. One `explorer` per area returns a `brief/v1`; save it to `documents/plans/<slug>/research/<area>.brief.yaml`.
+2. `plan new <slug> --level N2|N3`, then `plan from-brief <brief> --spec <id>` per package; it copies `edit`, `read`, `callers`, `commands` and `sha` into a draft spec.
+3. Fill each spec yourself: `goal`, `acceptance`, `seams`, `decided`, `level`, `runner.model`, and `tests`: the hidden test paths plus a `tests.command` through `node scripts/agents/run.mjs test <pkg> --spec <id> --plan <slug> -- <path>`, or `{none: <reason>}` for layout, CSS, copy and glue. `plan stubs` generates the seams' stubs.
+4. One `tester` per spec with tests; its prompt is the spec block only. Then `plan red <session> <id>`; a test it rejects goes back to the tester with the output.
+5. `plan lint <plan dir>` must print nothing. N3: leave `status: draft`, show the plan and ask for approval. N2: set `status: approved` and run it.
+
+Before specifying a new function, check it does not exist: `node scripts/code/facts.mjs def <name>`, `fn '<what it does>'`, `sig '<type>'` or `similar -` in this thread, never through an explorer.
+
+## Packages
+
+Split the work into packages. Each package (a `spec/v1` in the YAML flow) states:
 - **Id and goal**: one sentence.
 - **Files**: the files it creates or changes, and what it must not touch.
 - **Depends on**: other package ids.
@@ -31,5 +43,5 @@ Rules for the plan:
 - Shared logic lands in core first; app packages depend on it.
 - Doubt step: a contract package that still has two viable designs is put to the user as the fork in two lines, with your recommendation; the user decides.
 - Size the plan in sessions. Between two sizes, pick the smaller.
-- If the plan is M or larger, or has more than about four packages, write the directory `documents/plans/<slug>/` from `documents/plans/TEMPLATE/`: self-contained session files, each delegated package's brief written in full in its session file. Sessions run in order; at most three run at the same time, and only with disjoint Owns. Then stop after approval and give the user the first prompts from [handoff.md](handoff.md). Otherwise, keep the plan in the conversation in the same shape, shortened, and run it here.
+- N2 and N3 plans are written with `plan new` as above: self-contained session files, each package a full spec. Sessions run in `depends_on` order; at most three run at the same time, and only with disjoint `owns`. After an N3 approval, stop and give the user the first prompts from [handoff.md](handoff.md). N0 and N1 keep the plan in the conversation and run it here. Legacy `.md` plans are no longer written; existing ones still run.
 - Show the plan to the user and wait for approval before executing, unless they said to go ahead.
