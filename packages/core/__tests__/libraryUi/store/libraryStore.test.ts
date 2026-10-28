@@ -161,13 +161,12 @@ describe("LibraryViewStore snapshots", () => {
     expect(store.get().stats).toBe(same);
   });
 
-  it("applies tags and a note at once, keeping untouched papers", () => {
+  it("applies tags at once, keeping untouched papers", () => {
     const store = new LibraryViewStore();
     store.applySnapshot(snapshot([record("a", { tags: ["NLP", "old"] }), record("b")]));
     const b = store.get().papers[1];
     store.applyTags(["a"], ["vision", "nlp"], ["OLD"]);
-    store.applyNote("a", "read twice");
-    expect(store.get().papers[0]).toMatchObject({ tags: ["NLP", "vision"], note: "read twice" });
+    expect(store.get().papers[0]).toMatchObject({ tags: ["NLP", "vision"] });
     expect(store.get().papers[1]).toBe(b);
   });
 

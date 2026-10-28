@@ -23,7 +23,7 @@ describe("matchPaper: terms and ranking", () => {
   it("ranks title hits above author hits above everything else", () => {
     const inTitle = rec({ id: "t", title: "BERT: Pre-training of Deep Bidirectional Transformers" });
     const inAuthors = rec({ id: "a", title: "Language models", authors: ["Bert Smith"] });
-    const inRest = rec({ id: "r", title: "Language models", note: "reproduce the bert baseline" });
+    const inRest = rec({ id: "r", title: "Language models", summary: "reproduce the bert baseline" });
     const nowhere = rec({ id: "n", title: "Language models" });
 
     expect(score(inTitle, "bert")).toBeGreaterThan(score(inAuthors, "bert"));
@@ -39,10 +39,11 @@ describe("matchPaper: terms and ranking", () => {
   });
 
   it("requires every term, each in any field", () => {
-    const paper = rec({ title: "Attention Is All You Need", authors: ["Ashish Vaswani"], note: "revisit multi-head part" });
-    expect(score(paper, "attention vaswani")).toBeGreaterThan(0);
-    expect(score(paper, "attention multi-head")).toBeGreaterThan(0);
-    expect(score(paper, "attention nonsense")).toBe(0);
+    const paper = rec({ title: "Attention Is All You Need", authors: ["Ashish Vaswani"] });
+    const extra = { notesText: "revisit multi-head part" };
+    expect(score(paper, "attention vaswani", extra)).toBeGreaterThan(0);
+    expect(score(paper, "attention multi-head", extra)).toBeGreaterThan(0);
+    expect(score(paper, "attention nonsense", extra)).toBe(0);
   });
 
   it("scores more matching terms higher", () => {
@@ -69,13 +70,13 @@ describe("matchPaper: terms and ranking", () => {
     const paper = rec({
       id: "vaswani2017attention", citeKey: "vaswani2017attention", title: "T", journal: "NeurIPS Proceedings",
       publisher: "Curran", doi: "10.5555/3295222", url: "https://arxiv.org/abs/1706.03762", summary: "We propose the Transformer",
-      note: "my reading note", year: 2017, keywords: ["sequence transduction"], tags: ["nlp"],
+      year: 2017, keywords: ["sequence transduction"], tags: ["nlp"],
     });
     for (const query of [
       "vaswani2017attention", "neurips", "curran", "10.5555/3295222", "1706.03762", "propose", "reading note",
       "2017", "transduction", "nlp",
     ]) {
-      expect(score(paper, query)).toBeGreaterThan(0);
+      expect(score(paper, query, { notesText: "my reading note" })).toBeGreaterThan(0);
     }
   });
 
@@ -97,7 +98,7 @@ describe("matchPaper: host text", () => {
 describe("matchPaper: field aliases", () => {
   const paper = rec({
     title: "Attention Is All You Need", citeKey: "vaswani2017", journal: "NeurIPS", publisher: "Curran Associates",
-    keywords: ["sequence transduction", "Self-Attention"], note: "Revisit the multi-head part", summary: "We propose the Transformer",
+    keywords: ["sequence transduction", "Self-Attention"], summary: "We propose the Transformer",
     authors: ["Ashish Vaswani"],
   });
 
@@ -106,12 +107,13 @@ describe("matchPaper: field aliases", () => {
     ["venue:neurips", "venue:nature"], ["venue:curran", "journal:nature"], ["journal:neur", "journal:vision"],
     ["note:multi-head", "note:vaswani"], ["key:vaswani2017", "key:smith"], ["abstract:propose", "abstract:revisit"],
   ])("%s matches and %s does not", (hit, miss) => {
-    expect(score(paper, hit)).toBeGreaterThan(0);
-    expect(score(paper, miss)).toBe(0);
+    const extra = { notesText: "Revisit the multi-head part" };
+    expect(score(paper, hit, extra)).toBeGreaterThan(0);
+    expect(score(paper, miss, extra)).toBe(0);
   });
 
   it("restricts the match to the named field", () => {
-    expect(score(paper, "note:attention")).toBe(0);
+    expect(score(paper, "note:attention", { notesText: "Revisit the multi-head part" })).toBe(0);
     expect(score(paper, "kw:attention")).toBeGreaterThan(0);
   });
 
@@ -147,9 +149,10 @@ describe("matchPaper: operators", () => {
   it("excludes a paper containing a -word anywhere in title, authors or the rest", () => {
     const survey = rec({ title: "A Survey of Transformers" });
     const byAuthor = rec({ title: "Transformers", authors: ["Survey Author"] });
-    const byNote = rec({ title: "Transformers", note: "survey-like overview" });
+    const byNote = rec({ title: "Transformers" });
     const clean = rec({ title: "Transformers" });
-    for (const paper of [survey, byAuthor, byNote]) { expect(score(paper, "transformers -survey")).toBe(0); }
+    for (const paper of [survey, byAuthor]) { expect(score(paper, "transformers -survey")).toBe(0); }
+    expect(score(byNote, "transformers -survey", { notesText: "survey-like overview" })).toBe(0);
     expect(score(clean, "transformers -survey")).toBeGreaterThan(0);
   });
 
@@ -222,8 +225,9 @@ describe("matchPaper: operators", () => {
   });
 
   it("has:note ignores whitespace-only notes; has:doi, has:tags and has:abstract look at their fields", () => {
-    expect(score(rec({ note: "a note" }), "has:note")).toBeGreaterThan(0);
-    expect(score(rec({ note: "   " }), "has:note")).toBe(0);
+    expect(score(rec(), "has:note", { notesText: "a note" })).toBeGreaterThan(0);
+    expect(score(rec(), "has:note", { notesText: "   " })).toBe(0);
+    expect(score(rec(), "has:note")).toBe(0);
     expect(score(rec(), "no:note")).toBeGreaterThan(0);
     expect(score(rec({ doi: "10.1/x" }), "has:doi")).toBeGreaterThan(0);
     expect(score(rec(), "has:doi")).toBe(0);

@@ -1,6 +1,7 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
-import type { HostToUi, PaperDetails } from "./protocol/index.js";
+import type { PaperNotesStore } from "../qmd/index.js";
+import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
 import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";
 
 /** What the shared paper handlers need from the app hosting the library UI. */
@@ -13,8 +14,8 @@ export interface LibraryUiHost {
   refresh(): Promise<void>;
   /** `add` and `remove` are already trimmed. */
   editTags(ids: readonly string[], add: string[], remove: string[]): Promise<{ failed: readonly BatchError[] }>;
-  /** @returns false when the paper is not in the library */
-  setNote(id: string, note: string): Promise<boolean>;
+  /** The paper notes; a host without it serves read-only notes. */
+  readonly notes?: PaperNotesStore;
   trashPapers(papers: readonly PaperRecord[]): Promise<{ done: readonly string[]; failed: readonly BatchError[] }>;
   movePapers(ids: readonly string[], target: string): Promise<{ done: readonly string[]; failed: readonly BatchError[] }>;
   /** The folder name a move notice shows, or undefined for the library root. */
@@ -29,9 +30,25 @@ export async function setPaperTags(host: LibraryUiHost, ids: readonly string[], 
   if (first) host.notice("error", formatKeptFieldNotice("tags", failed.length, first.error));
 }
 
-export async function setPaperNote(host: LibraryUiHost, id: string, note: string): Promise<void> {
-  if (!(await host.setNote(id, note))) { host.notice("error", "The note could not be saved — the paper is not in the library"); return; }
-  await host.refresh();
+async function changeNotes(host: LibraryUiHost, run: (notes: PaperNotesStore) => Promise<void>): Promise<boolean> {
+  if (!host.notes) return false;
+  try { await run(host.notes); return true; } catch (error) {
+    host.notice("error", `The note could not be saved — ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+export async function addPaperNote(host: LibraryUiHost, id: string, body: string): Promise<void> {
+  if (await changeNotes(host, async (notes) => { await notes.addItem(id, { body }); })) await sendPaperDetails(host, id);
+}
+
+/** Does not resend the details: the open editor holds the text. */
+export async function editPaperNote(host: LibraryUiHost, id: string, itemId: string, body: string): Promise<void> {
+  await changeNotes(host, (notes) => notes.editItem(id, itemId, body));
+}
+
+export async function removePaperNote(host: LibraryUiHost, id: string, itemId: string): Promise<void> {
+  if (await changeNotes(host, (notes) => notes.removeItem(id, itemId))) await sendPaperDetails(host, id);
 }
 
 /** Moves paper folders under `target`; the titles in the notice are looked up after the move. */
@@ -53,5 +70,14 @@ export async function removePapers(host: LibraryUiHost, ids: readonly string[]):
 export async function sendPaperDetails(host: LibraryUiHost, id: string): Promise<void> {
   const [paper] = await host.papers([id]);
   if (!paper) return;
-  await host.post({ type: "details", id, details: await host.details(paper) });
+  const details = await host.details(paper);
+  const notes = host.notes ? await readNoteViews(host.notes, id) : undefined;
+  await host.post({ type: "details", id, details: notes ? { ...details, notes } : details });
+}
+
+async function readNoteViews(store: PaperNotesStore, id: string): Promise<PaperNoteView[]> {
+  const file = await store.read(id);
+  return file.segments.flatMap((s) => s.kind !== "item" ? [] : [{
+    id: s.id, anchor: s.attrs.find(([key]) => key === "anchor")?.[1] ?? "", body: s.body, created: s.created ?? "", author: s.author ?? "",
+  }]);
 }

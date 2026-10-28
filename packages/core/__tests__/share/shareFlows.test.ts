@@ -19,7 +19,7 @@ const relayUrl = "https://relay.someone.workers.dev";
 
 const record: PaperRecord = {
   id: "vaswani2017attention", title: "Attention Is All You Need", citeKey: "vaswani2017attention", path: "papers/x",
-  status: "reading", tags: ["mine"], note: "private", authors: ["Ashish Vaswani"], year: 2017, doi: "10.48550/arXiv.1706.03762",
+  status: "reading", tags: ["mine"], authors: ["Ashish Vaswani"], year: 2017, doi: "10.48550/arXiv.1706.03762",
 };
 const annotation: Annotation = {
   id: "a1", paperId: record.id, type: "highlight", pageNumber: 3, content: "key idea", color: "yellow",

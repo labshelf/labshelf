@@ -40,7 +40,10 @@ export type UiToHost =
   | { type: "paper.makeSearchable"; ids: string[] }
   | { type: "paper.setStatus"; ids: string[]; status: ReadingStatus }
   | { type: "paper.setTags"; ids: string[]; add: string[]; remove: string[] }
-  | { type: "paper.setNote"; id: string; note: string }
+  /** Adds a note item to the paper; `body` may be empty or multi-line. */
+  | { type: "paper.addNote"; id: string; body: string }
+  | { type: "paper.editNote"; id: string; itemId: string; body: string }
+  | { type: "paper.removeNote"; id: string; itemId: string }
   | { type: "paper.addToSpace"; ids: string[] }
   | { type: "paper.move"; ids: string[]; target: string }
   | { type: "paper.remove"; ids: string[] }
@@ -97,6 +100,9 @@ export interface LibraryUiSnapshot {
   stats: Record<string, PaperStats>;
 }
 
+/** One note item of a paper: `anchor` is the text of its anchor attribute, empty when it has none. */
+export interface PaperNoteView { id: string; anchor: string; body: string; created: string; author: string }
+
 /** The heavy per-paper data the detail pane asks for when a paper is shown. */
 export interface PaperDetails {
   annotations: Annotation[];
@@ -105,6 +111,8 @@ export interface PaperDetails {
   pdf: { size: number; relPath: string } | null;
   /** Where writing projects cite the paper; only hosts that answer `project.openSource` send it. */
   citedIn?: Backlink[];
+  /** The paper's note items in file order; absent where the host serves no notes, and the pane is read-only then. */
+  notes?: PaperNoteView[];
 }
 
 /** A paper waiting for, or in the middle of, OCR. */
@@ -213,7 +221,9 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.makeSearchable": { ids: isNonEmptyStringList },
   "paper.setStatus": { ids: isNonEmptyStringList, status: isStatus },
   "paper.setTags": { ids: isNonEmptyStringList, add: isStringArray, remove: isStringArray },
-  "paper.setNote": { id: isNonEmptyString, note: isString },
+  "paper.addNote": { id: isNonEmptyString, body: isString },
+  "paper.editNote": { id: isNonEmptyString, itemId: isNonEmptyString, body: isString },
+  "paper.removeNote": { id: isNonEmptyString, itemId: isNonEmptyString },
   "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },
   "paper.move": { ids: isNonEmptyStringList, target: isLibraryPath },
   "paper.remove": { ids: isNonEmptyStringList },

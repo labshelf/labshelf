@@ -107,13 +107,15 @@
 
 /* ── Notes ──────────────────────────────────────────────────────── */
 .ls-details .notes-tab { display: flex; flex-direction: column; }
-.ls-details .note-input {
-  margin: var(--ls-space-5) var(--pane-x) 0; min-height: 240px; height: 42vh; resize: vertical; padding: var(--ls-space-4) var(--ls-space-5);
-  border-radius: var(--ls-radius); outline: none; font-family: var(--ls-mono); font-size: var(--ls-text-md); line-height: 1.55;
+.ls-details .note-item {
+  position: relative; margin: var(--ls-space-5) var(--pane-x) 0; padding: var(--ls-space-4) var(--ls-space-5);
+  border-radius: var(--ls-radius); font-family: var(--ls-mono); font-size: var(--ls-text-md); line-height: 1.55;
   background: var(--ls-input-bg); color: var(--ls-input-fg); border: 1px solid var(--ls-input-border);
 }
-.ls-details .note-input:focus { border-color: var(--ls-focus); }
-.ls-details .note-input::placeholder { color: var(--ls-input-placeholder); }
+.ls-details .note-item:focus-within { border-color: var(--ls-focus); }
+.ls-details .note-editor { min-height: 80px; }
+.ls-details .note-editor-new { min-height: 120px; }
+.ls-details .note-item > .ls-icon-btn { position: absolute; top: var(--ls-space-2); right: var(--ls-space-2); }
 .ls-details .notes-tab > .muted-note { padding: var(--ls-space-5) var(--pane-x); }
 
 /* ── Related papers, and the list of a multi-selection ──────────── */

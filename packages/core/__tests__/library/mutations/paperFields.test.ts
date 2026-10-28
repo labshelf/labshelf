@@ -18,11 +18,11 @@ async function withBase(): Promise<MutationHarness> {
 }
 
 describe("updatePaperFields", () => {
-  it("writes status, tags and note to metadata.yaml and returns the updated record", async () => {
+  it("writes status and tags to metadata.yaml and returns the updated record", async () => {
     const h = await withBase();
-    const next = await updatePaperFields(h.ctx, P1, { status: "reading", tags: ["NLP", "Vision"], note: "Read section 3 again" });
-    expect(await h.readMeta(P1)).toMatchObject({ status: "reading", tags: ["NLP", "Vision"], note: "Read section 3 again" });
-    expect(next).toMatchObject({ id: "p1", path: P1, status: "reading", tags: ["NLP", "Vision"], note: "Read section 3 again" });
+    const next = await updatePaperFields(h.ctx, P1, { status: "reading", tags: ["NLP", "Vision"] });
+    expect(await h.readMeta(P1)).toMatchObject({ status: "reading", tags: ["NLP", "Vision"] });
+    expect(next).toMatchObject({ id: "p1", path: P1, status: "reading", tags: ["NLP", "Vision"] });
   });
 
   it("preserves the source, unknown keys and every other field", async () => {
@@ -50,21 +50,19 @@ describe("updatePaperFields", () => {
     expect(await h.readMeta(P1)).not.toHaveProperty("hasPdf");
   });
 
-  it("leaves tags and note alone when the patch does not set them", async () => {
+  it("leaves tags and a foreign note key alone when the patch does not set them", async () => {
     const h = makeHarness();
     await h.seedPaper(P1, { title: "T", tags: ["keep"], note: "keep this note" });
     await updatePaperFields(h.ctx, P1, { status: "reading" });
     expect(await h.readMeta(P1)).toMatchObject({ tags: ["keep"], note: "keep this note" });
   });
 
-  it("removes the note key for an empty note and the tags key for an empty tag list", async () => {
+  it("removes the tags key for an empty tag list and keeps a foreign note key", async () => {
     const h = makeHarness();
     await h.seedPaper(P1, { title: "T", tags: ["a"], note: "something" });
-    await updatePaperFields(h.ctx, P1, { note: "" });
-    expect(await h.readMeta(P1)).not.toHaveProperty("note");
-    expect(await h.readMeta(P1)).toHaveProperty("tags", ["a"]);
     await updatePaperFields(h.ctx, P1, { tags: [] });
     expect(await h.readMeta(P1)).not.toHaveProperty("tags");
+    expect(await h.readMeta(P1)).toHaveProperty("note", "something");
   });
 
   it("normalizes tags: trim, collapse spaces, case-insensitive de-duplication, first spelling wins", async () => {
@@ -77,7 +75,7 @@ describe("updatePaperFields", () => {
     const h = makeHarness();
     await h.seedPaper(P1, { ...BASE_META, tags: ["NLP"], note: "n", status: "reading" });
     const writes = h.fs.writes;
-    expect((await updatePaperFields(h.ctx, P1, { status: "reading", tags: ["NLP"], note: "n" }))?.id).toBe("p1");
+    expect((await updatePaperFields(h.ctx, P1, { status: "reading", tags: ["NLP"] }))?.id).toBe("p1");
     expect((await updatePaperFields(h.ctx, P1, {}))?.id).toBe("p1");
     expect((await updatePaperFields(h.ctx, P1, { tags: ["  NLP  ", "nlp"] }))?.id).toBe("p1");
     expect(h.fs.writes).toBe(writes);
@@ -127,7 +125,7 @@ describe("updatePaperFields", () => {
     const odd = "  Spaced   Title: with a colon # and a hash, é 日本 ";
     const h = makeHarness();
     await h.seedPaper(P1, { title: odd });
-    await updatePaperFields(h.ctx, P1, { status: "done", tags: ["x"], note: "n" });
+    await updatePaperFields(h.ctx, P1, { status: "done", tags: ["x"] });
     expect((await h.readMeta(P1))["title"]).toBe(odd);
   });
 
@@ -242,20 +240,20 @@ describe("statusChangedAt", () => {
     const h = makeHarness();
     await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
     await setPapersReadingStatus(h.ctx, [{ id: "p1", path: P1 }], "reading");
-    await updatePaperFields(h.ctx, P1, { status: "reading", note: "n" });
+    await updatePaperFields(h.ctx, P1, { status: "reading", tags: ["n"] });
     expect((await h.readMeta(P1))["statusChangedAt"]).toBe(CHANGED);
   });
 
   it("stays absent when the same status is set on a record without it", async () => {
     const h = await withBase();
-    await updatePaperFields(h.ctx, P1, { status: "unread", note: "n" });
+    await updatePaperFields(h.ctx, P1, { status: "unread", tags: ["n"] });
     expect(await h.readMeta(P1)).not.toHaveProperty("statusChangedAt");
   });
 
   it("is kept by a patch without status", async () => {
     const h = makeHarness();
     await h.seedPaper(P1, { title: "T", status: "reading", statusChangedAt: CHANGED });
-    await updatePaperFields(h.ctx, P1, { note: "n" });
+    await updatePaperFields(h.ctx, P1, { tags: ["n"] });
     await updatePaperTags(h.ctx, [{ id: "p1", path: P1 }], ["x"], []);
     expect((await h.readMeta(P1))["statusChangedAt"]).toBe(CHANGED);
   });

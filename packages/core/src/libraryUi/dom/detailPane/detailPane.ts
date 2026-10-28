@@ -60,7 +60,7 @@ function render(pane: Pane): void {
   const key = [...ids].sort().join("|");
   const active = document.activeElement as HTMLInputElement | null;
   const inPane = !!active && pane.el.contains(active);
-  if (key === pane.key && (pane.pointerDown || (inPane && active.classList.contains("note-input")))) { pane.stale = true; return; }
+  if (key === pane.key && (pane.pointerDown || (inPane && active.closest(".note-editor")))) { pane.stale = true; return; }
   if (key !== pane.key) {
     pane.notes.flush();
     Object.assign(pane, { key, abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, tagEditing: false });
@@ -72,6 +72,7 @@ function render(pane: Pane): void {
   const scroll = pane.el.scrollTop;
   pane.el.innerHTML = ids.length === 0 ? "" : ids.length > 1 ? multiDetailHtml(pane, ids) : singleHtml(pane, ids[0]!);
   pane.el.scrollTop = scroll;
+  if (ids.length === 1) pane.notes.mount(pane.el, ids[0]!, pane.ctx.readOnly || !pane.ctx.store.get().details[ids[0]!]?.notes);
   if (!keep) {
     if (pane.tagEditing) pane.el.querySelector<HTMLInputElement>(".tag-input")?.focus();
     return;
@@ -119,7 +120,7 @@ function onKey(pane: Pane, e: KeyboardEvent): void {
     if (e.key === "Escape") pane.tagEditing = false;
     onTagKeydown(pane.ctx, e, t as HTMLInputElement, ids, tags);
     if (!pane.tagEditing) render(pane);
-  } else if (t.classList.contains("note-input") && e.key === "Escape") {
+  } else if (t.closest(".note-editor") && e.key === "Escape") {
     pane.notes.flush();
     pane.ctx.focusList();
     e.preventDefault();
@@ -142,8 +143,7 @@ function onAnnFilter(pane: Pane, value: string): void {
 function onInput(pane: Pane, e: Event): void {
   const t = e.target as HTMLInputElement;
   const ids = [...pane.ctx.store.get().selected];
-  if (t.classList.contains("note-input") && ids[0]) pane.notes.changed(ids[0], t.value);
-  else if (t.classList.contains("ann-filter")) onAnnFilter(pane, t.value);
+  if (t.classList.contains("ann-filter")) onAnnFilter(pane, t.value);
   else if (t.classList.contains("tag-input")) onTagInput(pane.ctx, t, ids);
 }
 
@@ -171,7 +171,7 @@ function wirePointer(pane: Pane): () => void {
   }, true);
   pane.el.addEventListener("focusout", (e) => {
     if ((e.target as HTMLElement).classList.contains("tag-input")) closeTagField(pane);
-    if (!(e.target as HTMLElement).classList.contains("note-input")) return;
+    if (!(e.target as HTMLElement).closest(".note-editor")) return;
     pane.notes.flush();
     if (!pane.pointerDown) setTimeout(catchUp, 0);
   });
@@ -185,7 +185,7 @@ export function mountDetailPane(ctx: UiContext, container: HTMLElement): () => v
   const pane: Pane = {
     ctx, el: container, tab: saved.detailTab, citeFormat: saved.citeFormat, collapsed: saved.secCollapsed,
     abstractOpen: false, authorsOpen: false, annFilter: "", annColor: null, tagEditing: false, key: "\u0000", stale: false, pointerDown: false,
-    notes: createNoteEditor(ctx, container),
+    notes: createNoteEditor(ctx),
   };
   container.addEventListener("click", (e) => onClick(pane, e));
   container.addEventListener("dblclick", (e) => {

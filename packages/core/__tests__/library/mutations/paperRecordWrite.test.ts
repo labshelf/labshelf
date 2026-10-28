@@ -62,14 +62,14 @@ describe("writePaperRecord", () => {
     expect(h.logs.some((l) => l.level === "WARN")).toBe(true);
   });
 
-  it("keeps the file's tags, note and foreign keys unless the caller sets tags or note", async () => {
+  it("keeps the file's tags and foreign keys (a note key included) unless the caller sets tags", async () => {
     const h = makeHarness();
     await h.seedPaper(FOLDER, { title: "Attention", tags: ["kept"], note: "kept note", browserOnly: { a: 1 } });
-    await writePaperRecord(h.ctx, { ...indexed, tags: ["stale"], note: "stale" }, { ownsStatus: false });
+    await writePaperRecord(h.ctx, { ...indexed, tags: ["stale"] }, { ownsStatus: false });
     expect(await h.readMeta(FOLDER)).toMatchObject({ tags: ["kept"], note: "kept note", browserOnly: { a: 1 } });
 
-    await writePaperRecord(h.ctx, indexed, { ownsStatus: false, tags: ["mine"], note: "my note" });
-    expect(await h.readMeta(FOLDER)).toMatchObject({ tags: ["mine"], note: "my note", browserOnly: { a: 1 } });
+    await writePaperRecord(h.ctx, indexed, { ownsStatus: false, tags: ["mine"] });
+    expect(await h.readMeta(FOLDER)).toMatchObject({ tags: ["mine"], note: "kept note", browserOnly: { a: 1 } });
   });
 
   it("stores the text-layer verdict, never hasPdf, and regenerates bib.bib", async () => {

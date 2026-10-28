@@ -5,6 +5,7 @@
 import { deriveRelatedGroups } from "../../listModel.js";
 import { describeTextLayer } from "../../folderModel.js";
 import { type DetailsTab, CITE_FORMATS } from "../../store/index.js";
+import type { PaperNoteView } from "../../protocol/index.js";
 import { type PaneState, type PaperView, renderIconButton, renderLoading, renderMuted, renderSection, copyBtn, renderField } from "./paneState.js";
 import { formatRelativeTime, formatDateTime } from "../../../time/index.js";
 import { ANNOTATION_COLORS, type Annotation, type PaperRecord } from "../../../model/index.js";
@@ -37,7 +38,7 @@ export function renderPaperTabBarHtml(pane: PaneState, v: PaperView): string {
   const tabs: (TabSpec & { id: DetailsTab })[] = [
     { id: "details", label: "Details" },
     { id: "annotations", label: "Annotations", ...(annotations ? { badge: String(annotations) } : {}) },
-    { id: "notes", label: "Notes", dot: !!pane.notes.text(v.p).trim() },
+    { id: "notes", label: "Notes", dot: !!pane.notes.text(v.p.id).trim() },
     { id: "related", label: "Related", ...(related ? { badge: String(related) } : {}) },
   ];
   return renderTabBarHtml(tabs, pane.tab);
@@ -98,20 +99,29 @@ export function renderAnnotationsTabHtml(pane: PaneState, v: PaperView): string 
   return toolbar(pane, all) + `<div class="ann-list">${renderAnnotationListHtml(pane, all)}</div>`;
 }
 
-function editor(pane: PaneState, v: PaperView): string {
-  const text = pane.notes.text(v.p);
+function renderNoteItem(item: PaperNoteView, editable: boolean): string {
+  return `<div class="note-item" data-item="${escapeHtml(item.id)}"><div class="note-editor" data-item="${escapeHtml(item.id)}"></div>` +
+    (editable ? renderIconButton("removeNote", "trash", "Remove note", ` data-item="${escapeHtml(item.id)}"`) : "") + `</div>`;
+}
+
+function notesSection(pane: PaneState, v: PaperView): string {
+  const items = pane.notes.items(v.p.id);
+  const editable = !pane.ctx.readOnly && !!v.details?.notes;
   const hasHighlights = v.details?.annotations.some((a) => a.type === "highlight") ?? false;
-  return `<textarea class="note-input" spellcheck="true" aria-label="Your note" placeholder="Your notes on this paper: the key idea, how it relates to your work, what to follow up…">${escapeHtml(text)}</textarea>` +
-    `<div class="tab-toolbar"><span class="note-state muted-text">${text.trim() ? "Saved with the paper · syncs with it" : "Saved automatically with the paper"}</span><span class="tb-spacer"></span>` +
-      (hasHighlights ? `<button class="ls-btn" type="button" data-action="insertHighlights" title="Append your highlights as quotes">${renderIcon("highlighter")}<span>Insert highlights</span></button>` : "") +
-      renderIconButton("copyNote", "copy", "Copy note") +
+  return `<div class="notes-tab">` + items.map((n) => renderNoteItem(n, editable)).join("") +
+    (editable ? `<div class="note-item"><div class="note-editor note-editor-new" aria-label="New note"></div></div>` +
+      `<div class="tab-toolbar"><span class="note-state muted-text">Saved automatically with the paper</span><span class="tb-spacer"></span>` +
+        (hasHighlights ? `<button class="ls-btn" type="button" data-action="insertHighlights" title="Append your highlights as quotes">${renderIcon("highlighter")}<span>Insert highlights</span></button>` : "") +
+        renderIconButton("copyNote", "copy", "Copy notes") + `</div>` : "") +
     `</div>`;
 }
 
 export function renderNotesTabHtml(pane: PaneState, v: PaperView): string {
   const pdfNotes = v.details?.annotations.filter((a) => a.type !== "highlight") ?? [];
-  if (pane.ctx.readOnly && pdfNotes.length === 0) return renderMuted("No notes.");
-  return (pane.ctx.readOnly ? "" : `<div class="notes-tab">${editor(pane, v)}</div>`) +
+  const hasItems = pane.notes.items(v.p.id).length > 0;
+  const editable = !pane.ctx.readOnly && !!v.details?.notes;
+  if (!editable && !hasItems && pdfNotes.length === 0) return renderMuted("No notes.");
+  return (editable || hasItems ? notesSection(pane, v) : "") +
     (pdfNotes.length ? renderSection("pdfnotes", "Notes in the PDF", pdfNotes.map(renderAnnotationCard).join(""), pane.collapsed, { count: pdfNotes.length }) : "");
 }
 

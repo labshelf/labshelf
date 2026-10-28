@@ -80,11 +80,12 @@ const file = (name: string, extra: Partial<PaperFile> = {}): PaperFile => ({ nam
 const folder = (name: string, extra: Partial<PaperFile> = {}): PaperFile => ({ name, kind: "folder", modified: MOD, ...extra });
 
 
-type Setup = { record?: Parameters<typeof paper>[2] };
+type Setup = { record?: Parameters<typeof paper>[2]; notes?: string[] };
 function openWith(files: PaperFile[], setup: Setup = {}): T {
   const t = mountForTest();
   t.snapshot([paper("a", "papers", { title: "Alpha", ...setup.record })], ["papers/a"]);
   t.click(".expand-btn");
+  if (setup.notes) t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes: setup.notes.map((body, i) => ({ id: `n${i}`, anchor: "", body, created: "", author: "" })) } });
   t.files("a", { status: "ready", files });
   return t;
 }
@@ -96,7 +97,7 @@ const text = (t: T, name: string): string => rowNamed(t, name).textContent ?? ""
 
 describe("tray row order", () => {
   it("lists paper.pdf, the Note, other files, then subfolders", () => {
-    const t = openWith([file("paper.pdf"), file("data.csv"), file("zeta.txt"), folder("supplement")], { record: { note: "hello" } });
+    const t = openWith([file("paper.pdf"), file("data.csv"), file("zeta.txt"), folder("supplement")], { notes: ["hello"] });
     expect(names(t)).toEqual(["paper.pdf", "Note", "data.csv", "zeta.txt", "supplement"]);
   });
 
@@ -143,7 +144,7 @@ describe("type labels", () => {
   });
 
   it("labels the synthetic Note row MD", () => {
-    const t = openWith([file("paper.pdf")], { record: { note: "x" } });
+    const t = openWith([file("paper.pdf")], { notes: ["x"] });
     expect(typeOf(t, "Note")).toBe("MD");
   });
 });
@@ -158,8 +159,8 @@ describe("facts", () => {
     expect(text(bare, "paper.pdf")).not.toContain("An abstract");
   });
 
-  it("shows the start of the note, trimmed to its first line, or Empty", () => {
-    const withNote = openWith([file("paper.pdf")], { record: { note: "  First line\nsecond line" } });
+  it("shows the start of the last note, trimmed to its first non-blank line, or Empty", () => {
+    const withNote = openWith([file("paper.pdf")], { notes: ["old", "  First line\nsecond line"] });
     expect(text(withNote, "Note")).toContain("First line");
     expect(text(withNote, "Note")).not.toContain("second line");
     expect(rowNamed(withNote, "Note").querySelector(".file-fact-label")).toBeNull();
@@ -318,7 +319,7 @@ const FILES: PaperFile[] = [
 
 function openedTrayActions(): T {
   const t = mountForTest();
-  t.snapshot([paper("a", "papers", { note: "n" })], ["papers/a"]);
+  t.snapshot([paper("a", "papers")], ["papers/a"]);
   t.click(".expand-btn");
   t.files("a", { status: "ready", files: FILES });
   t.sent.length = 0;

@@ -57,11 +57,11 @@ describe('PaperService field edits', () => {
     const g = await makeGlue();
     await g.seed('p1');
 
-    const updated = await g.service.updatePaperFields('p1', { status: 'done', note: 'read twice' });
+    const updated = await g.service.updatePaperFields('p1', { status: 'done', tags: ['read-twice'] });
 
-    expect(updated).toMatchObject({ status: 'done', note: 'read twice' });
+    expect(updated).toMatchObject({ status: 'done', tags: ['read-twice'] });
     expect(await g.fs.readText(`${PAPERS_ROOT}/p1/metadata.yaml`)).toMatch(/status: done/);
-    expect(g.rows[0]).toMatchObject({ status: 'done', note: 'read twice' });
+    expect(g.rows[0]).toMatchObject({ status: 'done', tags: ['read-twice'] });
     expect(g.emitted).toEqual([['paper:updated', expect.objectContaining({ id: 'p1', status: 'done' })]]);
   });
 

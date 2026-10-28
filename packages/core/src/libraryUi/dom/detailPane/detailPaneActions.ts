@@ -7,10 +7,11 @@ import type { AnnotationColor } from "../../../model/index.js";
 import { formatAnnotationsMarkdown, formatQuoteWithCitation } from "../../../reader/index.js";
 import { createAuthorQuery, createKeywordQuery, type CitationFormat, type DetailsTab } from "../../store/index.js";
 import {
-  sendCopyRequest, attachPdf, updateTags, askFindBetterPdf, copyCitation, copyText, findPdf, findFixablePapers, runHostFileAction, createTextLayer, openPaper, openSource, pickMoveFolder, showPaper,
+  sendCopyRequest, attachPdf, updateTags, askFindBetterPdf, copyCitation, copyText, findPdf, findFixablePapers, runHostFileAction, createTextLayer, removeNote, openPaper, openSource, pickMoveFolder, showPaper,
 } from "../flows/index.js";
 import { openTagMenu, runHeadMenu } from "./detailHeader.js";
 import type { PaneState } from "./paneState.js";
+import { QMD_VOCABULARY } from "../../../qmd/dom/index.js";
 import { deriveFilteredAnnotations } from "./detailTabs.js";
 
 /** Re-renders the pane; set by the pane when it mounts. */
@@ -95,14 +96,8 @@ function annotationAction(pane: PaneState, a: string, el: HTMLElement, rerender:
 }
 
 function insertHighlights(pane: PaneState, markdown: string): void {
-  const input = pane.el.querySelector<HTMLTextAreaElement>(".note-input");
   const id = ids(pane)[0];
-  if (!input || !id) return;
-  input.value = (input.value.trim() ? `${input.value.replace(/ +$/, "")}\n\n` : "") + markdown;
-  pane.notes.changed(id, input.value);
-  input.focus();
-  input.setSelectionRange(input.value.length, input.value.length);
-  input.scrollTop = input.scrollHeight;
+  if (id) pane.notes.append(id, markdown);
 }
 
 // The pane's own toggles and choices.
@@ -116,7 +111,9 @@ function paneAction(pane: PaneState, a: string, el: HTMLElement, rerender: Reren
     case "addTag": pane.tagEditing = true; break;
     case "pickTag": openTagMenu(ctx, el); return true;
     case "copyAbstract": copyText(ctx, paper(pane)?.summary ?? "", "abstract"); return true;
-    case "copyNote": { const p = paper(pane); if (p) copyText(ctx, pane.notes.text(p).trim() ? pane.notes.text(p) : "", "note"); return true; }
+    case "copyNote": { const p = paper(pane); if (p) copyText(ctx, pane.notes.text(p.id), QMD_VOCABULARY.item); return true; }
+    case "removeNote": { const id = ids(pane)[0]; if (id) removeNote(ctx, id, el.dataset["item"] ?? ""); return true; }
+    case "editNote": pane.tab = "notes"; ctx.prefs.save({ detailTab: "notes" }); rerender(); pane.notes.focusNew(); return true;
     default: return false;
   }
   rerender();

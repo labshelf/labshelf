@@ -39,9 +39,16 @@ export function updateTags(ctx: UiContext, ids: readonly string[], add: string[]
   ctx.transport.post({ type: "paper.setTags", ids: [...ids], add, remove });
 }
 
-export function writeNote(ctx: UiContext, id: string, note: string): void {
-  ctx.store.applyNote(id, note);
-  ctx.transport.post({ type: "paper.setNote", id, note });
+export function addNote(ctx: UiContext, id: string, body: string): void {
+  ctx.transport.post({ type: "paper.addNote", id, body });
+}
+
+export function editNote(ctx: UiContext, id: string, itemId: string, body: string): void {
+  ctx.transport.post({ type: "paper.editNote", id, itemId, body });
+}
+
+export function removeNote(ctx: UiContext, id: string, itemId: string): void {
+  ctx.transport.post({ type: "paper.removeNote", id, itemId });
 }
 
 /** The papers among `ids` that OCR could fix and that are not queued yet. */

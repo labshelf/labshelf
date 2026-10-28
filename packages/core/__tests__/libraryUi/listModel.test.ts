@@ -9,7 +9,7 @@ function paper(id: string, dir: string, extra: Partial<PaperRecord> = {}): Paper
 }
 
 const papers = [
-  paper("root1", "papers", { title: "Zeta", authors: ["Ann Zed"], year: 2001, tags: ["Café"], note: "revisit" }),
+  paper("root1", "papers", { title: "Zeta", authors: ["Ann Zed"], year: 2001, tags: ["Café"] }),
   paper("a1", "papers/A", { title: "Alpha", authors: ["Bob Young", "Cy Old", "Di Ng"], year: 2020, status: "done", journal: "Nature" }),
   paper("a11", "papers/A/A1", { title: "Beta", authors: ["Eve Kay"], year: 2010, status: "reading", keywords: ["graphs"] }),
   paper("b1", "papers/B", { title: "Gamma", year: 1999 }),
@@ -55,9 +55,8 @@ describe("papersInScope", () => {
   it("matches the folder path shown in the row", () => {
     expect(scope('"a / a1"')).toEqual(["a11"]);
   });
-  it("searches tags, notes and ids", () => {
+  it("searches tags and ids", () => {
     expect(scope("tag:cafe")).toEqual(["root1"]);
-    expect(scope("revisit")).toEqual(["root1"]);
     expect(scope("b1")).toEqual(["b1"]);
   });
   it("supports phrases, exclusions and operators", () => {

@@ -6,14 +6,14 @@ const log = { message: "Paper captured", context: { page: "https://pub.example/a
 const metadata = { title: "Self-Attention at Scale", authors: ["Ann Lee"], year: 2020, journal: "J. Things" };
 
 describe("writeImportedPaper", () => {
-  it("stores the title as given with the user's tags and note, and the PDF when there is one", async () => {
+  it("stores the title as given with the user's tags, and the PDF when there is one", async () => {
     const h = makeHarness();
 
-    const record = await writeImportedPaper(h.ctx, [], PAPERS, { metadata, pdf: pdfBytes(), extra: { tags: ["NLP"], note: "Read" }, log });
+    const record = await writeImportedPaper(h.ctx, [], PAPERS, { metadata, pdf: pdfBytes(), extra: { tags: ["NLP"] }, log });
 
     expect(record).toEqual({
       id: "lee2020selfattention", citeKey: "lee2020selfattention", path: `${PAPERS}/lee2020selfattention`, status: "unread", hasPdf: true,
-      title: "Self-Attention at Scale", authors: ["Ann Lee"], year: 2020, journal: "J. Things", tags: ["NLP"], note: "Read",
+      title: "Self-Attention at Scale", authors: ["Ann Lee"], year: 2020, journal: "J. Things", tags: ["NLP"],
     });
     expect(await h.readMeta(record.path)).toMatchObject({ title: "Self-Attention at Scale", source: "paper.pdf" });
     expect(h.logs.find((l) => l.message === "Paper captured")).toMatchObject({ context: { page: "https://pub.example/a", id: "lee2020selfattention", withPdf: true } });

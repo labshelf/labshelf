@@ -43,5 +43,5 @@ export { TAB_KIND_SPECS, parseTab, parseFolderHash, createFolderHash, createFold
 export type { TabKindName, TabParams, TabKindSpec } from "./tabModel.js";
 export { parseStoredPrefs, deriveStringList, deriveEditorWidth, deriveCodeStyle, deriveDetailPane, mergePrefs } from "./prefs.js";
 export type { DetailPanePrefs, CodeStyle } from "./prefs.js";
-export { setPaperTags, setPaperNote, movePaperFolders, removePapers, sendPaperDetails } from "./paperHandlers.js";
+export { setPaperTags, addPaperNote, editPaperNote, removePaperNote, movePaperFolders, removePapers, sendPaperDetails } from "./paperHandlers.js";
 export type { LibraryUiHost } from "./paperHandlers.js";

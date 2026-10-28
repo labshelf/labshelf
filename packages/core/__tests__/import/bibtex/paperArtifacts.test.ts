@@ -56,15 +56,15 @@ describe('BibTeXService.writePaperArtifacts', () => {
     expect(metadata(fs).source).toBe('paper.pdf');
   });
 
-  it('writes the tags and note a browser save attaches', async () => {
+  it('writes the tags a browser save attaches', async () => {
     const fs = memoryFs();
 
-    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: ['geometry', 'to-read'], note: 'Cited in ch. 3' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: ['geometry', 'to-read'] }), 'paper.pdf');
 
-    expect(metadata(fs)).toMatchObject({ tags: ['geometry', 'to-read'], note: 'Cited in ch. 3' });
+    expect(metadata(fs)).toMatchObject({ tags: ['geometry', 'to-read'] });
   });
 
-  it('keeps tags, note and hand-added keys when a surface that does not know them rewrites the sidecar', async () => {
+  it('keeps tags and hand-added keys (a note key included) when a surface that does not know them rewrites the sidecar', async () => {
     const fs = memoryFs({
       '/lib/papers/imai1986/metadata.yaml': 'title: Old\nstatus: unread\ntags: [geometry]\nnote: Cited in ch. 3\nrating: 5\n',
     });
@@ -74,13 +74,13 @@ describe('BibTeXService.writePaperArtifacts', () => {
     expect(metadata(fs)).toMatchObject({ title: 'Efficient Algorithms', status: 'done', tags: ['geometry'], note: 'Cited in ch. 3', rating: 5 });
   });
 
-  it('clears tags and note when the record explicitly empties them', async () => {
+  it('clears tags when the record explicitly empties them, and keeps a foreign note key', async () => {
     const fs = memoryFs({ '/lib/papers/imai1986/metadata.yaml': 'title: Old\ntags: [geometry]\nnote: old\n' });
 
-    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: [], note: '' }), 'paper.pdf');
+    await new BibtexService(fs).writePaperArtifacts('/lib/papers/imai1986', paper({ tags: [] }), 'paper.pdf');
 
     expect(metadata(fs)).not.toHaveProperty('tags');
-    expect(metadata(fs)).not.toHaveProperty('note');
+    expect(metadata(fs)).toMatchObject({ note: 'old' });
   });
 
   it('never carries over a stale value for a field it owns', async () => {

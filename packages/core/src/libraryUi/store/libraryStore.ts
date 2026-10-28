@@ -194,11 +194,6 @@ export class LibraryViewStore {
     });
   }
 
-  /** Shows a saved note at once, before the host confirms it with the next snapshot. */
-  applyNote(id: string, note: string): void {
-    this.patchPapers([id], (p) => ((p.note ?? "") === note ? p : { ...p, note }));
-  }
-
   /** Replaces the OCR jobs with the host's list. */
   setJobs(jobs: readonly TextLayerJobView[]): void {
     this.set({ jobs: Object.fromEntries(jobs.map((j) => [j.paperId, j])) });

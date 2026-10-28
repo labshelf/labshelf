@@ -6,9 +6,19 @@ import type { Annotation } from "@labshelf/core";
 import { ALL_CAPABILITIES, mountForTest, paper } from "../mountHarness";
 import { createNoteEditor } from "../../../../src/libraryUi/dom/detailPane/paneState";
 
+// Item editors are ProseMirror views; the tests drive them through the options the pane gives each one.
+const editors: Array<{ root: HTMLElement; options: { body: string; readOnly?: boolean; onChange(body: string): void } }> = [];
+jest.mock("../../../../src/qmd/dom/index", () => ({
+  QMD_VOCABULARY: { item: "note" },
+  mountQmdEditor: (root: HTMLElement, options: never) => {
+    editors.push({ root, options });
+    return { setBody: jest.fn(), focus: jest.fn(), destroy: jest.fn() };
+  },
+}));
+
 const library = [
   paper("a", "papers", {
-    title: "Attention", authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017, journal: "NeurIPS", tags: ["nlp"], note: "",
+    title: "Attention", authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017, journal: "NeurIPS", tags: ["nlp"],
     doi: "10.1/x", summary: "Transformers.",
   }),
   paper("b", "papers/B", { title: "Follow-up", authors: ["Vaswani, A."], year: 2019, tags: ["NLP"] }),
@@ -85,21 +95,34 @@ describe("detail tabs", () => {
     expect(t.sent.at(-1)).toEqual({ type: "paper.open", id: "a", page: 5 });
   });
 
-  it("saves the note after a pause and keeps the field while typing", () => {
+  it("mounts one editor per item and posts the edit after a pause", () => {
     jest.useFakeTimers();
     try {
+      editors.length = 0;
       const t = showA({ detailTab: "notes" });
-      const note = t.detail().querySelector<HTMLTextAreaElement>(".note-input")!;
-      note.focus();
-      note.value = "Key idea";
-      note.dispatchEvent(new Event("input", { bubbles: true }));
-      expect(t.detail().querySelector(".note-state")?.textContent).toBe("Editing…");
+      const notes = [{ id: "n1", anchor: "", body: "first", created: "", author: "" }];
+      t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes } });
+      const item = editors.filter((e) => e.root.dataset["item"] === "n1").at(-1)!;
+      expect(item.options.body).toBe("first");
+      item.options.onChange("Key idea");
+      expect(t.sent.some((m) => m.type === "paper.editNote")).toBe(false);
       jest.advanceTimersByTime(700);
-      expect(t.sent).toContainEqual({ type: "paper.setNote", id: "a", note: "Key idea" });
-      expect(t.detail().querySelector(".note-input")).toBe(note);
+      expect(t.sent).toContainEqual({ type: "paper.editNote", id: "a", itemId: "n1", body: "Key idea" });
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it("adds an item when the user types in the empty one, and shows the notes read-only without host notes", () => {
+    editors.length = 0;
+    const t = showA({ detailTab: "notes" });
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes: [] } });
+    editors.at(-1)!.options.onChange("New thought");
+    expect(t.sent).toContainEqual({ type: "paper.addNote", id: "a", body: "New thought" });
+    editors.length = 0;
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null } });
+    expect(editors).toHaveLength(0);
+    expect(t.detail().textContent).toContain("No notes.");
   });
 
   it("finds related papers by the same author and shared tags across folders, and reveals one", () => {
@@ -151,10 +174,14 @@ describe("multi-selection", () => {
 
 function setup() {
   const post = jest.fn();
-  const applyNote = jest.fn();
-  const ctx = { store: { applyNote }, transport: { post } };
-  const editor = createNoteEditor(ctx as never, document.createElement("div"));
-  return { editor, post };
+  const notes = [{ id: "n1", anchor: "", body: "", created: "", author: "" }];
+  const ctx = { store: { get: () => ({ details: { p1: { notes } } }) }, transport: { post } };
+  const editor = createNoteEditor(ctx as never);
+  const root = document.createElement("div");
+  root.innerHTML = '<div class="note-editor" data-item="n1"></div>';
+  editors.length = 0;
+  editor.mount(root, "p1", false);
+  return { onChange: editors[0]!.options.onChange, editor, post };
 }
 
 describe("note editor autosave", () => {
@@ -162,17 +189,17 @@ describe("note editor autosave", () => {
   afterEach(() => jest.useRealTimers());
 
   it("posts the latest draft once after rapid changes", () => {
-    const { editor, post } = setup();
-    for (const text of ["a", "ab", "abc"]) { editor.changed("p1", text); }
+    const { onChange, post } = setup();
+    for (const text of ["a", "ab", "abc"]) { onChange(text); }
     expect(post).not.toHaveBeenCalled();
     jest.advanceTimersByTime(5000);
     expect(post).toHaveBeenCalledTimes(1);
-    expect(post).toHaveBeenCalledWith({ type: "paper.setNote", id: "p1", note: "abc" });
+    expect(post).toHaveBeenCalledWith({ type: "paper.editNote", id: "p1", itemId: "n1", body: "abc" });
   });
 
   it("does not post a second time after a flush", () => {
-    const { editor, post } = setup();
-    editor.changed("p1", "x");
+    const { onChange, editor, post } = setup();
+    onChange("x");
     editor.flush();
     jest.advanceTimersByTime(5000);
     expect(post).toHaveBeenCalledTimes(1);

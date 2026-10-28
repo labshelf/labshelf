@@ -158,11 +158,12 @@ describe("detail tabs keep their content (A13)", () => {
     const t = mountForTest({ detailTab: tab }, ALL_CAPABILITIES);
     t.snapshot(library, [], folders);
     t.host.post({ type: "select", id: "a" });
+    t.host.post({ type: "details", id: "a", details: { annotations: [], reading: null, pdf: null, notes: [] } });
     const tabs = [...t.detail().querySelectorAll('[data-action="tab"]')].map((e) => e.textContent?.trim());
     expect(tabs).toEqual(expect.arrayContaining(["Details", "Annotations", "Notes", "Related"]));
     expect(t.detail().querySelector(`[data-action="tab"][data-tab="${tab}"]`)).not.toBeNull();
     if (tab === "details") expect(t.detail().textContent).toContain("10.1/x");
-    if (tab === "notes") expect(t.detail().querySelector(".note-input")).not.toBeNull();
+    if (tab === "notes") expect(t.detail().querySelector(".notes-tab .note-editor")).not.toBeNull();
   });
 });
 

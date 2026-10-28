@@ -3,7 +3,7 @@ import type { PaperRecord } from "../../../model/index.js";
 import { openPaper } from "../flows/index.js";
 import type { UiContext } from "../uiContext.js";
 import { renderElement, askInputBox, showMenu, type MenuEntry } from "../../../ui/dom/index.js";
-import type { PaperFile } from "../../protocol/index.js";
+import type { PaperFile, PaperNoteView } from "../../protocol/index.js";
 import { formatUtcDate } from "../../../time/index.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 
@@ -79,7 +79,7 @@ function trayRows(ctx: UiContext, id: string, record: PaperRecord): HTMLElement[
   const state = ctx.store.get().files[id];
   if (!state || state.status === "loading") return [buildLoadingRow()];
   if (state.status === "failed") return [buildFailedRow(state.message)];
-  return deriveTrayEntries(record, state.files).map((e) => {
+  return deriveTrayEntries(record, state.files, ctx.store.get().details[id]?.notes).map((e) => {
     const open = (): void => activate(ctx, id, e);
     const row = buildTrayRow(e, open);
     addRowActions(ctx, id, e, row, open);
@@ -106,7 +106,7 @@ export function updateTrayRows(tray: HTMLElement, rows: HTMLElement[]): void {
 
 /** Paints the tray of the expanded unit and clears the rest; call after the units are rendered and `.expanded` is set. */
 export function drawTray(ctx: UiContext, root: HTMLElement, records: ReadonlyMap<string, PaperRecord>): void {
-  const { files } = ctx.store.get();
+  const { files, details } = ctx.store.get();
   root.querySelectorAll<HTMLElement>(".paper-row").forEach((unit) => {
     const tray = unit.querySelector<HTMLElement>(".paper-children");
     if (!tray) return;
@@ -116,7 +116,7 @@ export function drawTray(ctx: UiContext, root: HTMLElement, records: ReadonlyMap
       if (built.delete(tray)) tray.replaceChildren();
       return;
     }
-    const inputs = [record, files[id]];
+    const inputs = [record, files[id], details[id]?.notes];
     const last = built.get(tray);
     if (last && inputs.every((v, i) => v === last[i])) return;
     built.set(tray, inputs);
@@ -171,13 +171,13 @@ function fileFact(f: PaperFile): TrayEntry["fact"] {
   return f.description ? { label: f.kind === "folder" ? "Source" : "Contents", text: f.description } : null;
 }
 
-function noteEntry(record: PaperRecord): TrayEntry {
-  const first = record.note?.split("\n").map((l) => l.trim()).find(Boolean);
+function noteEntry(notes: readonly PaperNoteView[]): TrayEntry {
+  const first = notes.at(-1)?.body.split("\n").map((l) => l.trim()).find(Boolean);
   return { kind: "note", name: "Note", type: "MD", tone: "md", fact: { label: "", text: first ?? "Empty" }, title: "" };
 }
 
 /** The tray rows in display order: paper.pdf, the Note, other files, then subfolders. */
-export function deriveTrayEntries(record: PaperRecord, listed: readonly PaperFile[]): TrayEntry[] {
+export function deriveTrayEntries(record: PaperRecord, listed: readonly PaperFile[], notes: readonly PaperNoteView[] = []): TrayEntry[] {
   const shown = listed.filter((f) => f.name !== "metadata.yaml");
   const toEntry = (f: PaperFile): TrayEntry => {
     const isPdf = f.kind === "file" && f.name === PDF_NAME;
@@ -185,7 +185,7 @@ export function deriveTrayEntries(record: PaperRecord, listed: readonly PaperFil
   };
   const pdf = shown.filter((f) => f.kind === "file" && f.name === PDF_NAME).map(toEntry);
   const rest = shown.filter((f) => !(f.kind === "file" && f.name === PDF_NAME)).map(toEntry);
-  return [...pdf, noteEntry(record), ...rest];
+  return [...pdf, noteEntry(notes), ...rest];
 }
 
 const cell = (cls: string, html: string): string => `<div class="${cls}" role="gridcell">${html}</div>`;

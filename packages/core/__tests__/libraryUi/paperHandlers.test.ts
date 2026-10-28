@@ -1,5 +1,5 @@
 import {
-  movePaperFolders, removePapers, sendPaperDetails, setPaperNote, setPaperTags, type LibraryUiHost,
+  movePaperFolders, removePapers, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, type LibraryUiHost,
 } from "../../src/libraryUi/paperHandlers";
 import type { PaperDetails } from "../../src/libraryUi/protocol";
 import type { PaperRecord } from "../../src/model";
@@ -18,7 +18,6 @@ function fakeHost(over: Partial<LibraryUiHost> = {}, library: PaperRecord[] = [p
     notice: (kind, text) => { events.push(`${kind}: ${text}`); },
     refresh: async () => { events.push("refresh"); },
     editTags: jest.fn(async () => ({ failed: [] })),
-    setNote: jest.fn(async () => true),
     trashPapers: jest.fn(async (papers) => ({ done: papers.map((p) => p.id), failed: [] })),
     movePapers: jest.fn(async (ids) => ({ done: [...ids], failed: [] })),
     folderName: (target) => (target === "papers" ? undefined : target.split("/").pop()),
@@ -43,18 +42,53 @@ describe("setPaperTags", () => {
   });
 });
 
-describe("setPaperNote", () => {
-  it("refreshes after the note is saved", async () => {
-    const { host, events } = fakeHost();
-    await setPaperNote(host, "a", "read again");
-    expect(host.setNote).toHaveBeenCalledWith("a", "read again");
-    expect(events).toEqual(["refresh"]);
+// A fake PaperNotesStore: the three mutators are mocks, read answers one item.
+function fakeNotes(over: Record<string, unknown> = {}) {
+  return {
+    read: jest.fn(async () => ({ segments: [{ kind: "item", id: "n1", anchor: { kind: "none" }, classes: ["labshelf-item"], attrs: [["anchor", "page=3"]], fence: "", body: "first", close: "", created: "2026-01-01T00:00:00Z", author: "me" }] })),
+    addItem: jest.fn(async () => "n2"),
+    editItem: jest.fn(async () => undefined),
+    removeItem: jest.fn(async () => undefined),
+    ...over,
+  } as never;
+}
+
+describe("paper note handlers", () => {
+  it("adds an item and resends the details with the notes", async () => {
+    const notes = fakeNotes();
+    const { host, posts } = fakeHost({ notes });
+    await addPaperNote(host, "a", "read again");
+    expect((notes as never as { addItem: jest.Mock }).addItem).toHaveBeenCalledWith("a", { body: "read again" });
+    expect(posts).toEqual([{ type: "details", id: "a", details: { ...DETAILS, notes: [{ id: "n1", anchor: "page=3", body: "first", created: "2026-01-01T00:00:00Z", author: "me" }] } }]);
   });
 
-  it("reports a paper not in the library and does not refresh", async () => {
-    const { host, events } = fakeHost({ setNote: async () => false });
-    await setPaperNote(host, "ghost", "x");
-    expect(events).toEqual(["error: The note could not be saved — the paper is not in the library"]);
+  it("edits an item without resending the details", async () => {
+    const notes = fakeNotes();
+    const { host, posts } = fakeHost({ notes });
+    await editPaperNote(host, "a", "n1", "changed");
+    expect((notes as never as { editItem: jest.Mock }).editItem).toHaveBeenCalledWith("a", "n1", "changed");
+    expect(posts).toEqual([]);
+  });
+
+  it("removes an item and resends the details", async () => {
+    const notes = fakeNotes();
+    const { host, posts } = fakeHost({ notes });
+    await removePaperNote(host, "a", "n1");
+    expect((notes as never as { removeItem: jest.Mock }).removeItem).toHaveBeenCalledWith("a", "n1");
+    expect(posts).toHaveLength(1);
+  });
+
+  it("shows an error notice when the store fails, and sends no details", async () => {
+    const { host, events, posts } = fakeHost({ notes: fakeNotes({ editItem: async () => { throw new Error("disk full"); } }) });
+    await editPaperNote(host, "a", "n1", "x");
+    expect(events).toEqual(["error: The note could not be saved — disk full"]);
+    expect(posts).toEqual([]);
+  });
+
+  it("leaves the notes out of the details when the host serves none", async () => {
+    const { host, posts } = fakeHost();
+    await sendPaperDetails(host, "a");
+    expect(posts).toEqual([{ type: "details", id: "a", details: DETAILS }]);
   });
 });
 

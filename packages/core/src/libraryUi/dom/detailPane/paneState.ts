@@ -1,17 +1,18 @@
 /**
  * The detail pane's shared base: the state it keeps (open tab, citation style, folds, filters) with the data one paper's views
  * render from, the markup pieces every part reuses (sections, fields, icon and copy buttons, muted and loading lines) and
- * the Notes tab's autosaving editor.
+ * the Notes tab's item editors.
  */
 import { PAPERS_DIR } from "../../../library/index.js";
 import type { AnnotationColor, PaperRecord } from "../../../model/index.js";
 import { listPapersUnder, type ListPaper } from "../../listModel.js";
-import type { PaperDetails, PaperStats, SimilarPaper, TextLayerJobView } from "../../protocol/index.js";
+import type { PaperDetails, PaperNoteView, PaperStats, SimilarPaper, TextLayerJobView } from "../../protocol/index.js";
 import type { CitationFormat, DetailsTab } from "../../store/index.js";
 import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
-import { writeNote } from "../flows/index.js";
+import { addNote, editNote } from "../flows/index.js";
+import { mountQmdEditor, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
   ctx: UiContext;
@@ -94,39 +95,69 @@ export function renderLoading(text = "Loading…"): string {
 const SAVE_AFTER_MS = 700;
 
 export interface NoteEditor {
-  /** The paper's note as the user sees it: the draft while one exists. */
-  text(p: PaperRecord): string;
-  changed(id: string, text: string): void;
+  /** The paper's note items, with the text being typed in place of the saved one. */
+  items(id: string): PaperNoteView[];
+  /** The items' bodies joined by blank lines. */
+  text(id: string): string;
+  /** Mounts an editor into every `.note-editor` of `root`, and focuses the new-item one when asked to. */
+  mount(root: HTMLElement, id: string, readOnly: boolean): void;
+  /** Appends `markdown` to the last item, or adds an item holding it. */
+  append(id: string, markdown: string): void;
+  /** Focuses the empty new item; no item exists until the user types. */
+  focusNew(): void;
   /** Saves every draft now. */
   flush(): void;
   dispose(): void;
 }
 
-/** `pane` is where the note's state line and the Notes tab live. */
-export function createNoteEditor(ctx: UiContext, pane: HTMLElement): NoteEditor {
-  const drafts = new Map<string, string>();
-  const setState = (text: string): void => {
-    const state = pane.querySelector(".note-state");
-    if (state) state.textContent = text;
-  };
+/** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
+export function createNoteEditor(ctx: UiContext): NoteEditor {
+  const drafts = new Map<string, { paper: string; body: string }>();
+  let handles: Array<{ itemId: string; handle: QmdEditorHandle }> = [];
+  let wantNewFocus = false;
+  const timer = createDebouncer(() => flush(), SAVE_AFTER_MS);
+  const items = (id: string): PaperNoteView[] =>
+    (ctx.store.get().details[id]?.notes ?? []).map((n) => (drafts.has(n.id) ? { ...n, body: drafts.get(n.id)!.body } : n));
   const flush = (): void => {
-    autosave.cancel();
-    if (drafts.size === 0) return;
-    for (const [id, text] of drafts) writeNote(ctx, id, text);
+    timer.cancel();
+    for (const [itemId, d] of drafts) editNote(ctx, d.paper, itemId, d.body);
     drafts.clear();
-    setState("Saved");
   };
-  const autosave = createDebouncer(flush, SAVE_AFTER_MS);
+  const destroy = (): void => { for (const h of handles) h.handle.destroy(); handles = []; };
   const onHide = (): void => { if (document.hidden) flush(); };
   document.addEventListener("visibilitychange", onHide);
   return {
-    text: (p) => drafts.get(p.id) ?? p.note ?? "",
-    changed(id, text) {
-      drafts.set(id, text);
-      setState("Editing…");
-      autosave.call();
+    items,
+    text: (id) => items(id).map((n) => n.body.trim()).filter(Boolean).join("\n\n"),
+    mount(root, id, readOnly) {
+      destroy();
+      for (const el of root.querySelectorAll<HTMLElement>(".note-editor")) {
+        const itemId = el.dataset["item"];
+        const body = itemId ? items(id).find((n) => n.id === itemId)?.body ?? "" : "";
+        if (!itemId) {
+          let added = false;
+          const handle = mountQmdEditor(el, { body, readOnly, onChange: (text) => { if (!added && text.trim()) { added = true; addNote(ctx, id, text); } } });
+          handles.push({ itemId: "", handle });
+          if (wantNewFocus) { wantNewFocus = false; handle.focus(); }
+          continue;
+        }
+        const handle = mountQmdEditor(el, { body, readOnly, onChange: (text) => { drafts.set(itemId, { paper: id, body: text }); timer.call(); } });
+        handles.push({ itemId, handle });
+      }
+    },
+    append(id, markdown) {
+      const last = items(id).at(-1);
+      if (!last) { addNote(ctx, id, markdown); return; }
+      const body = (last.body.trim() ? `${last.body.replace(/\s+$/, "")}\n\n` : "") + markdown;
+      drafts.set(last.id, { paper: id, body });
+      handles.find((h) => h.itemId === last.id)?.handle.setBody(body);
+      flush();
+    },
+    focusNew() {
+      const fresh = handles.find((h) => h.itemId === "");
+      if (fresh) fresh.handle.focus(); else wantNewFocus = true;
     },
     flush,
-    dispose() { flush(); document.removeEventListener("visibilitychange", onHide); },
+    dispose() { flush(); destroy(); document.removeEventListener("visibilitychange", onHide); },
   };
 }

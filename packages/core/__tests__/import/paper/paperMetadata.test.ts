@@ -12,6 +12,6 @@ describe("metadataFromRecord", () => {
   });
 
   it("leaves out fields the record lacks and the library's own bookkeeping", () => {
-    expect(deriveResolvedMetadata(record({ tags: ["t"], note: "n", hasPdf: false }))).toEqual({ title: "A title" });
+    expect(deriveResolvedMetadata(record({ tags: ["t"], hasPdf: false }))).toEqual({ title: "A title" });
   });
 });
