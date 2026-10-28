@@ -1,6 +1,8 @@
 // `plan lint <dir>`: structural checks of a plan folder beyond the schemas. Returns one string per problem.
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
+import { parse } from "yaml";
 import { newModuleProblems } from "../lint/modules.mjs";
 import { testMirrorProblems } from "../lint/sourceRules.mjs";
 import { loadYamlFile, planPath } from "./planFiles.mjs";
@@ -55,7 +57,27 @@ function reaches(graph, from, to, seen = new Set()) {
   return (graph.get(from) ?? []).some((dep) => dep === to || reaches(graph, dep, to, seen));
 }
 
-function loadAll(dir, problems) {
+// `plan close` deletes the file of a session it closes as done and appends "session <id> done:" to log.md.
+function closedInLog(dir, id) {
+  const log = join(dir, "log.md");
+  return existsSync(log) && new RegExp(`— session ${escapeRegExp(id)} done:`).test(readFileSync(log, "utf8"));
+}
+
+// The acceptance ids of a closed session, read from the last commit that still had its file; null when git has none.
+function closedAcceptance(root, file) {
+  const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  try {
+    const path = relative(root, file).split("\\").join("/");
+    const deleted = git("log", "-1", "--format=%H", "--diff-filter=D", "--", path).trim();
+    if (!deleted) return null;
+    const session = parse(git("show", `${deleted}^:${path}`));
+    return (session?.packages ?? []).flatMap((spec) => (spec.acceptance ?? []).map((a) => a.id));
+  } catch {
+    return null;
+  }
+}
+
+function loadAll(root, dir, problems) {
   const guarded = (file, kind) => {
     try {
       return loadYamlFile(join(dir, file), kind);
@@ -66,13 +88,20 @@ function loadAll(dir, problems) {
   };
   const plan = guarded("plan.yaml", "plan");
   const sessions = [];
+  const closedCovered = []; // acceptance ids of sessions closed as done (their files are gone)
   for (const entry of plan?.sessions ?? []) {
+    if (!existsSync(join(dir, entry.file)) && closedInLog(dir, entry.id)) {
+      const ids = closedAcceptance(root, join(dir, entry.file));
+      if (ids) closedCovered.push(...ids);
+      else problems.push(`${entry.file}: session ${entry.id} is closed but git has no committed copy of its file to read its acceptance ids`);
+      continue;
+    }
     const session = guarded(entry.file, "session");
     if (!session) continue;
     if (session.id !== entry.id) problems.push(`${entry.file}: id ${session.id} does not match plan session ${entry.id}`);
     sessions.push({ file: entry.file, session });
   }
-  return { plan, sessions };
+  return { plan, sessions, closedCovered };
 }
 
 function checkSessions(plan, sessions, problems) {
@@ -110,7 +139,7 @@ function checkLayout(root, plan, specs, problems) {
   }
 }
 
-function checkSpecs(plan, sessions, problems) {
+function checkSpecs(plan, sessions, closedCovered, problems) {
   const specs = sessions.flatMap(({ file, session }) => session.packages.map((spec) => ({ file, session, spec })));
   for (const id of duplicates(specs.map((s) => s.spec.id))) problems.push(`duplicate spec id ${id}`);
   const graph = new Map(specs.map(({ spec }) => [spec.id, spec.depends_on ?? []]));
@@ -137,7 +166,7 @@ function checkSpecs(plan, sessions, problems) {
     }
   }
 
-  const covered = new Set(specs.flatMap(({ spec }) => spec.acceptance.map((a) => a.id)));
+  const covered = new Set([...specs.flatMap(({ spec }) => spec.acceptance.map((a) => a.id)), ...closedCovered]);
   for (const { id } of plan.acceptance) if (!covered.has(id)) problems.push(`plan.yaml: acceptance ${id} appears in no spec`);
   return specs;
 }
@@ -163,11 +192,11 @@ function checkTests(root, specs, problems) {
 export function planLint(root, dir) {
   const problems = [];
   if (!existsSync(planPath(dir))) return [`plan.yaml: not found in ${dir}`];
-  const { plan, sessions } = loadAll(dir, problems);
+  const { plan, sessions, closedCovered } = loadAll(root, dir, problems);
   if (!plan) return problems;
   checkSessions(plan, sessions, problems);
   checkSessionSize(sessions, problems);
-  const specs = checkSpecs(plan, sessions, problems);
+  const specs = checkSpecs(plan, sessions, closedCovered, problems);
   checkTests(root, specs, problems);
   checkLayout(root, plan, specs, problems);
   return problems;
