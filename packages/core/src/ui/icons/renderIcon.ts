@@ -67,12 +67,24 @@ export const STROKE_GLYPHS = {
   "git-compare": '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5V15a3 3 0 0 0 3 3h6.5"/><path d="M18 15.5V9a3 3 0 0 0-3-3H8.5"/>',
   contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
   upload: '<path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  bold: '<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
+  italic: '<line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/>',
+  heading: '<path d="M6 12h12"/><path d="M6 20V4"/><path d="M18 20V4"/>',
+  "list-ordered": '<path d="M11 5h10"/><path d="M11 12h10"/><path d="M11 19h10"/><path d="M4 4h1v5"/><path d="M4 9h2"/><path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02"/>',
+  "check-square": '<path d="M21 10.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12.5"/><path d="m9 11 3 3L22 4"/>',
+  sigma: '<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/>',
+  "sigma-block": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 9V8a.5.5 0 0 0-.5-.5H9.5a.25.25 0 0 0-.2.4l2.3 3a1 1 0 0 1 0 1.2l-2.3 3a.25.25 0 0 0 .2.4h5a.5.5 0 0 0 .5-.5v-1"/>',
+  code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
   log: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/>',
 } as const;
 
+/** The generated codicons less `bold` and `italic`, which the stroke set draws for the editor toolbar. */
+const { bold: _codiconBold, italic: _codiconItalic, ...CODICONS } = CODICON_GLYPHS;
+
 /** Filled codicons; the up chevron is the generated down chevron turned half a circle and the left one the right chevron. */
 export const FILLED_GLYPHS = {
-  ...CODICON_GLYPHS,
+  ...CODICONS,
   "chevron-up": `<g transform="rotate(180 8 8)">${CODICON_GLYPHS["chevron-down"]}</g>`,
   "chevron-left": `<g transform="rotate(180 8 8)">${CODICON_GLYPHS["chevron-right"]}</g>`,
 } as const;
