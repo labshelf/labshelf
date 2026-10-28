@@ -1,6 +1,6 @@
 /** Reads and edits a project's Checklist through the file-system port: the open-item signals of its sources and the hand-added items in .labshelf/checklist.json. */
 import { readFigureBuildStates } from "../figures/index.js";
-import { readLatexProjectSources, findUndefinedReferences } from "../../latex/index.js";
+import { readLatexProjectTexts, findUndefinedReferences } from "../../latex/index.js";
 import { readOptionalText, type ProjectEntry, type ProjectReadContext } from "../project/index.js";
 import {
   CHECKLIST_DIR, CHECKLIST_FILE, listManualItems, parseChecklistFile, serializeChecklistFile,
@@ -65,15 +65,8 @@ const readProjectFile = ({ fs, paths }: ProjectReadContext, folder: string, rela
   readOptionalText(fs, paths.join(folder, relative));
 
 async function readLatexSources(context: ProjectReadContext, folder: string, main: string): Promise<{ sources: ChecklistSource[]; brokenRefs: BrokenReference[] }> {
-  const texts = new Map<string, string>();
-  const tree = await readLatexProjectSources(main, {
-    read: async (relative) => {
-      const text = await readProjectFile(context, folder, relative);
-      if (text !== undefined) { texts.set(relative, text); }
-      return text;
-    },
-  });
-  const sources = tree.files.map((file): ChecklistSource => ({ path: file.path, format: "latex", text: texts.get(file.path) ?? "" }));
+  const tree = await readLatexProjectTexts(main, { read: (relative) => readProjectFile(context, folder, relative) });
+  const sources = tree.files.map((file): ChecklistSource => ({ path: file.path, format: "latex", text: tree.texts.get(file.path) ?? "" }));
   const brokenRefs = findUndefinedReferences(tree.files).map(({ path: file, ref }) => ({ file, line: ref.range.start.line, ref: ref.name }));
   return { sources, brokenRefs };
 }

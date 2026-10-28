@@ -1,6 +1,6 @@
 // Mounts the browser library workspace with its shared Details pane.
 import {
-  createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
+  type TabKindName, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
@@ -17,7 +17,7 @@ import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from 
 import { createPageSpaces } from "./spaces";
 import { attachHashHandlers } from "./folderHash";
 import { derivePagePlan, type PagePlan } from "./pagePlan";
-import type { ProjectServices, TabKindName } from "./editorArea";
+import type { ProjectServices } from "./editorArea";
 import { createPageShell, createWorkspace, extractJoinInvite, type Workspace } from "./editorArea";
 
 const log = createBrowserLogger();

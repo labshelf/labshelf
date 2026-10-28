@@ -4,9 +4,9 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { deriveBuildRootFolder } from "@labshelf/core";
+import { CheckCounts, deriveBuildRootFolder } from "@labshelf/core";
 import { ReaderPanel } from "../../../src/reader";
-import { BuildPreviews, CheckCounts } from "../../../src/writing/preview";
+import { BuildPreviews } from "../../../src/writing/preview";
 import { FocusFollower, readBuiltPdf, registerShowPreview } from "../../../src/writing/preview/panel";
 import { commandHandler, fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
 

@@ -1,9 +1,9 @@
-// Tests the build roots module: the roots message (limits and chrome fields), the preprint problems of the user's .bib files and the sources of a root.
+// Tests the build roots module: the roots message (limits and chrome fields), the preprint problems of the user's .bib files.
 import * as path from "node:path";
 import * as vscode from "vscode";
 
 import { BIBLIOGRAPHY_HEADER } from "@labshelf/core";
-import { createPreviewBuildRootsMessage, createProjectPreprints, createProjectSources } from "../../../src/writing/preview/buildRoots";
+import { createPreviewBuildRootsMessage, createProjectPreprints } from "../../../src/writing/preview/buildRoots";
 import { fakeDocument } from "../../support/textDocument";
 import { fakeLogger, fakeProjectData, readyEntry } from "../../support/writingFixtures";
 
@@ -102,32 +102,6 @@ describe("project preprints", () => {
       const logger = fakeLogger();
       expect(await createProjectPreprints({ logger: () => logger, lookup: lookup as never })(project)).toEqual([]);
       expect(logger.error).toHaveBeenCalledWith("writing/preview", expect.any(Error), expect.objectContaining({ projectFolder: "/proj" }));
-    });
-  });
-});
-
-describe("project sources", () => {
-  const FILES: Record<string, string> = { "main.tex": "\\input{intro}", "intro.tex": "hello", "main.typ": '#include "intro.typ"', "intro.typ": "hello" };
-  const readerFor = () => ({ read: async (file: string) => FILES[file] });
-
-  function project(format: "latex" | "typst"): ReadyProject {
-    const base = readyEntry("/lib/paper") as ReadyProject;
-    return { ...base, settings: { ...base.settings, format } } as ReadyProject;
-  }
-
-  describe("walkProjectSources", () => {
-    it("reads a LaTeX root with the files it includes", async () => {
-      const sources = await createProjectSources(readerFor)(project("latex"), "main.tex");
-      expect(sources.map((source) => source.file)).toEqual(["main.tex", "intro.tex"]);
-    });
-
-    it("reads a Typst root alone", async () => {
-      const sources = await createProjectSources(readerFor)(project("typst"), "main.typ");
-      expect(sources).toEqual([{ file: "main.typ", text: '#include "intro.typ"' }]);
-    });
-
-    it("leaves out a Typst root that cannot be read", async () => {
-      expect(await createProjectSources(readerFor)(project("typst"), "gone.typ")).toEqual([]);
     });
   });
 });

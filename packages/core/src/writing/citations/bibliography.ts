@@ -55,6 +55,11 @@ export function extractPlainField(value: string | undefined): string {
   return (value ?? "").replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
 }
 
+/** One field of an entry as plain text; empty when the entry lacks it. */
+export function readBibField(entry: BibEntry, name: string): string {
+  return extractPlainField(entry.fields.get(name));
+}
+
 // Biber reads `%` to the end of the line as a comment outside entries, so an `@` after one starts nothing.
 function nextEntryStart(text: string, from: number): number {
   for (let at = text.indexOf("@", from); at >= 0; at = text.indexOf("@", at + 1)) {

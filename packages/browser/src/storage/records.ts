@@ -2,10 +2,10 @@
 // id, the paper sidecars and the writing projects, each read through IndexedDB or the library file system.
 import {
   PAPERS_DIR, checkRelativePath, createLibraryLayout, deriveFoldersFromFilePaths, derivePdfDirs, deriveSha256Hex,
-  findLibraryProjectFolder, joinWith, listProjects, posixPathOps, scanLibrary as scanPapers,
+  findLibraryProjectFolder, isCaseOnlyRename, joinWith, listProjects, posixPathOps, scanLibrary as scanPapers,
   type FolderTreeNode, type ILogger, type LibraryFileSystem, type LocalStat, type PaperRecord, type ProjectEntry, type SidecarPort,
 } from "@labshelf/core";
-import { isCaseOnlyRename, openDb } from "./idb";
+import { openDb } from "./idb";
 import { createLibraryFileSystem, readLibraryLocation, type LibraryLocation } from "./libraryFileSystem";
 import { readPickedDirId } from "./library";
 

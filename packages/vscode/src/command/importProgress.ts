@@ -5,8 +5,8 @@
 import * as vscode from "vscode";
 
 import { countImportOutcomes } from "@labshelf/core";
-import type { ILogger, ImportOutcome, ImportProgress, MutationContext, PathOps } from "@labshelf/core";
-import type { PaperImporter, PaperService, PaperTextLayers } from "../library/index.js";
+import type { ILogger, ImportOutcome, ImportProgress, MutationContext, PaperService, PathOps } from "@labshelf/core";
+import type { PaperImporter, PaperTextLayers } from "../library/index.js";
 import { offerMetadataFetch } from "./fetchMetadata.js";
 import { addTextLayerJobs } from "./textLayerQueue.js";
 

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import type { SelectionSources } from "../libraryUi/index.js";
 
 import {
-  buildRootOf, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
+  buildRootOf, CheckCounts, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
 } from "@labshelf/core";
 import {
   WritingProjects, registerBuildRootCommands, registerBuildRootStatusBar, registerProjectCommands,
@@ -22,7 +22,7 @@ import {
 } from "../writing/projects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
-import { BuildPreviews, CheckCounts, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
+import { BuildPreviews, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";

@@ -5,8 +5,8 @@
  */
 import * as vscode from 'vscode';
 import { createNonce, isUnderDir } from '@labshelf/core';
-import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
-import type { LibraryEvents, PaperService } from '../library/index.js';
+import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PaperService, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { LibraryEvents } from '../library/index.js';
 import { sharingWebviews } from '../share/index.js';
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell } from '../ui/index.js';
 import { answerListMessage, type ListHostContext } from './handlers.js';

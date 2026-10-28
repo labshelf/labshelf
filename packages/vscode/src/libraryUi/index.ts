@@ -8,7 +8,6 @@ export { createCitationMapPorts } from './citationMap.js';
 export { LibrarySidebarView } from './sidebarView.js';
 export type { SidebarProjectTreesDep, SidebarProjectsDep } from './sidebarView.js';
 export { checkFolderNameInput } from './organizer.js';
-export type { ProjectTreeMessage } from './sidebarMessages.js';
 export { PROJECT_COMMANDS, isSidebarProjectCommand } from './projectCommands.js';
 export { DetailsView, registerDetailsView, createSelectionSources } from './details.js';
 export type { SelectionSources } from './details.js';

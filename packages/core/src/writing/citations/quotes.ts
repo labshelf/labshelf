@@ -4,7 +4,7 @@ import type { Annotation, AnnotationColor, PaperRecord } from "../../model/index
 import { PAPERS_DIR } from "../../library/index.js";
 import type { CitationBibEntry, CitationEntry, CitationCardPaper, CitationQuery, CitingCommand, PageArea, PagePoint } from "../../reader/index.js";
 import type { ProjectFormat } from "../project/index.js";
-import { extractPlainField, type BibEntry } from "./bibliography.js";
+import { extractPlainField, readBibField, type BibEntry } from "./bibliography.js";
 import { derivePapersByCiteKey, findCiteKeyOccurrences } from "./citeKeys.js";
 
 // --- Quotable highlights ---
@@ -87,10 +87,10 @@ const VENUE_FIELDS = ["journal", "journaltitle", "booktitle", "publisher"] as co
 
 /** A `.bib` record in the shape the citation card shows; fields the record lacks are left out. */
 export function createBibliographyCardEntry(entry: BibEntry): CitationBibEntry {
-  const title = extractPlainField(entry.fields.get("title"));
-  const authors = extractPlainField(entry.fields.get("author")).split(/\s+and\s+/).filter((name) => name !== "");
+  const title = readBibField(entry, "title");
+  const authors = readBibField(entry, "author").split(/\s+and\s+/).filter((name) => name !== "");
   const year = Number(/\d{4}/.exec(extractPlainField(entry.fields.get("year") ?? entry.fields.get("date")))?.[0]);
-  const venue = VENUE_FIELDS.map((field) => extractPlainField(entry.fields.get(field))).find((value) => value !== "");
+  const venue = VENUE_FIELDS.map((field) => readBibField(entry, field)).find((value) => value !== "");
   return { authors, ...(title ? { title } : {}), ...(year ? { year } : {}), ...(venue ? { venue } : {}) };
 }
 

@@ -2,7 +2,7 @@
 import { buildShare, formatShareLink, type ILogger, type LibraryFileSystem, type PaperRecord, type ShareReader } from "@labshelf/core";
 import { createLibraryLocations, createLibraryMutations, type PickedDir } from "../../src/storage/libraryFileSystem";
 import { fakeFiles, putFile, textAt } from "../support/fakeIdb";
-import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
+import { FakeBridgeHost, silentLogger } from "../../../core/__tests__/bridge/fakeBridgeHost";
 
 jest.mock("idb", () => ({ openDB: async () => require("../support/fakeIdb").fakeDb }));
 

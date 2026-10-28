@@ -4,9 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { BIBLIOGRAPHY_HEADER, findSourcePosition, type Annotation, type PaperRecord } from "@labshelf/core";
+import { BIBLIOGRAPHY_HEADER, findSourcePosition, type Annotation, type PaperRecord, type SynctexFinder } from "@labshelf/core";
 import { findCitation, findSourceLine, openCitedPaper, type PreviewCitationDeps } from "../../../src/writing/preview/citations";
-import type { SynctexFinder } from "../../../src/writing/preview/synctex";
 import { fakeDocument } from "../../support/textDocument";
 import { fakeLogger } from "../../support/writingFixtures";
 

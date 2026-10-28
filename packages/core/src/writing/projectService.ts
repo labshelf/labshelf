@@ -10,9 +10,9 @@ import { readFigureBuildStates, type FigureState } from "./figures/index.js";
 import { readSynctexFile, type SynctexRead } from "./synctexFile.js";
 import {
   listVersions, addProjectVersion, createProjectCatalog, addExistingFolder, createProjectFromTemplate, removeProjectFolderForever,
-  updateProjectSettings, readLastModified, listProjectFiles, listProjects, listBuildRootFileNames, readProjectValues,
+  updateProjectSettings, readLastModified, listProjectFiles, listProjects, listBuildRootFileNames, listDirEntries, readProjectValues,
   type MarkVersionRequest, type ProjectVersion, type ProjectEntry, type FigureRecipe, type ProjectFormat, type ProjectSettingsUpdate,
-  type OpenSources, type ProjectValueLeaf, type ProjectValueSource,
+  type OpenSources, type ProjectReadContext, type ProjectValueLeaf, type ProjectValueSource,
 } from "./project/index.js";
 
 // --- The port ---
@@ -140,4 +140,19 @@ export function createProjectFileRow(path: string, folder: boolean, context: Pro
     kind: !main && source ? "source" : "file",
     node: { key: path, label: name, icon: deriveFileIcon(name), clickable: true, ...(main ? { description: "main" } : {}) },
   };
+}
+
+/**
+ * The Files tree of a project folder below dir: visible entries, folders first, folders carrying their own children.
+ * @param prefix the path of dir relative to the project folder, "" or ending in "/"
+ */
+export async function listProjectFileTree(
+  context: Pick<ProjectReadContext, "fs" | "paths">, project: Extract<ProjectEntry, { kind: "ready" }>, dir: string, prefix: string,
+): Promise<SidebarTreeNode[]> {
+  const rowContext = { format: project.settings.format, main: project.main };
+  return Promise.all(listVisibleEntries(await listDirEntries(context, dir)).map(async ({ name, folder }) => {
+    const row = createProjectFileRow(`${prefix}${name}`, folder, rowContext);
+    if (!folder) { return row.node; }
+    return { ...row.node, children: await listProjectFileTree(context, project, context.paths.join(dir, name), `${prefix}${name}/`) };
+  }));
 }

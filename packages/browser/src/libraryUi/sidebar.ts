@@ -1,12 +1,11 @@
 // Connects the browser sidebar to library, project and Space actions: the tree mount, the Projects section and the Spaces section.
-import { deriveParentDir, deriveSidebarRows, formatError, isProjectTreeView, renderIcon, type HostEndpoint, type ILogger, type ShareHost, type SpaceStore } from "@labshelf/core";
+import { deriveParentDir, deriveSidebarRows, formatError, isProjectTreeView, type HostEndpoint, type ILogger, type ShareHost, type SpaceStore, type TabKindName } from "@labshelf/core";
 import {
-  askInputBox, createProjectShareMenuEntries, mountLibrarySidebar, renderElement, showMenu, showToast,
+  askInputBox, createProjectShareMenuEntries, headButton, mountLibrarySidebar, showMenu, showToast,
   type LibrarySidebar, type LibraryUi, type MenuEntry, type ProjectOffers, type SidebarProjectActions, type SidebarSpaceActions,
 } from "@labshelf/core/dom";
 import { bx } from "../platform";
 import type { BrowserProjectRow, ProjectSession, ProjectsSource } from "../writing";
-import type { TabKindName } from "./editorArea";
 import type { PagePrefs } from "./prefs";
 import type { PageSpaces } from "./spaces";
 
@@ -144,12 +143,6 @@ export interface SidebarProjectParts {
   manageRelay(): void;
 }
 
-function headButton(label: string, glyph: "gear" | "cloud", onClick: () => void): HTMLElement {
-  const button = renderElement("button", { class: "ls-icon-btn", type: "button", title: label, "aria-label": label, html: renderIcon(glyph) });
-  button.addEventListener("click", onClick);
-  return button;
-}
-
 /**
  * Fills the sidebar slot with the brand and the tree; returns the tree's unsubscribe function.
  * Without `project` the tree has no Projects section; with `showLibrary` false it has no Library section.
@@ -160,8 +153,8 @@ export function mountSidebarTree(
 ): () => void {
   slot.innerHTML = `<div class="tree-head"><span class="ls-brand">LabShelf</span></div>`;
   const head = slot.querySelector(".tree-head")!;
-  if (project) head.append(headButton("Cloudflare relay for shared projects", "cloud", project.manageRelay));
-  head.append(headButton("LabShelf settings", "gear", () => { void bx.runtime.openOptionsPage(); }));
+  if (project) head.append(headButton("ls-icon-btn", "Cloudflare relay for shared projects", "cloud", project.manageRelay));
+  head.append(headButton("ls-icon-btn", "LabShelf settings", "gear", () => { void bx.runtime.openOptionsPage(); }));
   const projects = project?.projects;
   const treeEl = slot.appendChild(document.createElement("div"));
   const { store, folders } = ui;

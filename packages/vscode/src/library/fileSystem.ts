@@ -8,6 +8,19 @@ import { disposeAll } from "../disposables/index.js";
 
 const isNotFound = (error: unknown): boolean => (error as { code?: string }).code === "FileNotFound";
 
+/**
+ * Tells whether a path is a file now. FileType is a bit flag and the indexer counts a symlinked PDF (File|SymbolicLink)
+ * as present, so this does too; otherwise reconcilePdf would undo the indexer.
+ */
+export async function pdfFileExists(pdfPath: string): Promise<boolean> {
+  try {
+    const stat = await vscode.workspace.fs.stat(vscode.Uri.file(pdfPath));
+    return (stat.type & vscode.FileType.File) !== 0;
+  } catch {
+    return false;
+  }
+}
+
 /** Names the URI of a path; the scheme depends on where the path lives. */
 export type UriOfPath = (target: string) => vscode.Uri;
 

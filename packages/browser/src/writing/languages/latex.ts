@@ -1,4 +1,4 @@
-// Combines LaTeX highlighting, completion and the \begin auto-close into one editor extension, with the project label index and the library citation items it completes from.
+// Combines LaTeX highlighting, completion and the \begin auto-close into one editor extension, completing from the project labels and the library citation items.
 import {
   autocompletion,
   type CompletionContext,
@@ -13,9 +13,8 @@ import { Prec, type Extension, EditorSelection, type StateCommand } from "@codem
 import { keymap } from "@codemirror/view";
 import {
   type PaperRecord,
-  createKeyedDebouncer,
-  scanLatexSource,
-  type ILogger,
+  deriveSnippetTemplate,
+  type ProjectLabel,
   findPartialCiteKeyStart,
   findEnvironmentToClose,
   findLatexCompletionSpan,
@@ -23,50 +22,6 @@ import {
   LATEX_ENVIRONMENTS,
   type LatexCatalogEntry,
 } from "@labshelf/core";
-
-export interface ProjectLabel { name: string; file: string }
-
-export interface ProjectLabels {
-  labels(): readonly ProjectLabel[];
-  /** Scans every `.tex` file the project lists; a file that cannot be read is logged and skipped. */
-  load(files: readonly string[], read: (file: string) => Promise<string>): Promise<void>;
-  /** Rescans `file` with its text read at the end of the pause, `SCAN_DELAY_MS` after the last call. */
-  schedule(file: string, text: () => string): void;
-  dispose(): void;
-}
-
-const SCAN_DELAY_MS = 300;
-const MODULE = "editor.labelIndex";
-
-export function createProjectLabels(logger: ILogger): ProjectLabels {
-  const byFile = new Map<string, ProjectLabel[]>();
-  const pendingText = new Map<string, () => string>();
-  let all: ProjectLabel[] = [];
-  const scan = (file: string, text: string): void => {
-    byFile.set(file, scanLatexSource(text).labels.map((label) => ({ name: label.name, file })));
-    all = [...byFile.values()].flat();
-  };
-  const scanLater = createKeyedDebouncer<string>(SCAN_DELAY_MS, (file) => {
-    const text = pendingText.get(file);
-    pendingText.delete(file);
-    if (text) { scan(file, text()); }
-  });
-  return {
-    labels: () => all,
-    async load(files, read) {
-      await Promise.all(files.filter((file) => file.endsWith(".tex")).map(async (file) => {
-        try { scan(file, await read(file)); } catch (error) {
-          void logger.error(MODULE, error, { action: "scanLabels", file });
-        }
-      }));
-    },
-    schedule(file, text) {
-      pendingText.set(file, text);
-      scanLater.call(file);
-    },
-    dispose() { scanLater.dispose(); pendingText.clear(); },
-  };
-}
 
 /** `label` is what the typed text filters on: key, title and authors; the list shows the key and year. */
 export function createCitationOption(paper: PaperRecord): Completion {
@@ -86,11 +41,6 @@ export function createCitationOption(paper: PaperRecord): Completion {
 /** The completion items of the library papers that have a cite key. */
 export async function listLibraryCitations(papers: () => Promise<readonly PaperRecord[]>): Promise<Completion[]> {
   return (await papers()).filter((paper) => paper.citeKey !== "").map(createCitationOption);
-}
-
-/** `$1` becomes `${1}`, and a literal brace after a backslash stays literal (CodeMirror reads `\{` as an escape). */
-export function deriveSnippetTemplate(vscodeSnippet: string): string {
-  return vscodeSnippet.replace(/\\([{}])/g, "\\\\$1").replace(/\$(\d+)/g, "$${$1}");
 }
 
 const OPEN_REFERENCE = /\\(?:ref|eqref|cref|Cref|autoref|pageref)\*?\{([^{}]*)$/;

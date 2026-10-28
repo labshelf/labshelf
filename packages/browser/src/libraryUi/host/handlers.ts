@@ -1,13 +1,13 @@
 /**
  * Answers the library page UI's messages: paper changes (status, tags, note, move, remove, clipboard), a paper's detail and
  * annotations export, folder create/rename/delete, adding a paper from an open tab, the file tray and the PDF requests.
- * Each change goes through the core library mutations and posts a fresh snapshot.
+ * Each change goes through the core library mutations and posts a fresh snapshot; the paper changes shared with VS Code run in
+ * core over createLibraryUiHost.
  * INVARIANT: PDF bytes never cross runtime messaging; the page and the background write the library files themselves.
  */
 import {
-  PAPERS_DIR, PDF_FILE, deriveBaseName, deriveCleanTags, deriveParentDir, formatAnnotationsMarkdown, formatError, formatKeptFieldNotice, formatPdfSourceLabel,
-  hostOf, isPdfBytes, isUnderDir, moveNotice, removeNotice, titleResolver,
-  type LibraryFileSystem, type MissingPdfAction, type PaperRecord, type PdfAccess, type ReadingStatus, type Reference,
+  PAPERS_DIR, PDF_FILE, deriveBaseName, deriveParentDir, formatAnnotationsMarkdown, formatError, formatKeptFieldNotice, formatPdfSourceLabel,
+  hostOf, isPdfBytes, isUnderDir, type LibraryFileSystem, type LibraryUiHost, type MissingPdfAction, type PaperRecord, type PdfAccess, type ReadingStatus, type Reference,
 } from "@labshelf/core";
 import { attachPdfToPaper } from "../../capture";
 import {
@@ -29,34 +29,23 @@ export async function setReadingStatus(ctx: HostContext, ids: readonly string[],
   if (failed.length) ctx.notice("error", formatKeptFieldNotice("status", failed.length, failed[0]!.error));
 }
 
-export async function setTags(ctx: HostContext, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
-  const { failed } = await ctx.mutations.editTags(deriveReferences(ctx.papers(ids)), deriveCleanTags(add), deriveCleanTags(remove));
-  await ctx.snapshots.refresh();
-  if (failed.length) ctx.notice("error", formatKeptFieldNotice("tags", failed.length, failed[0]!.error));
-}
-
-export async function setNote(ctx: HostContext, id: string, note: string): Promise<void> {
-  const [paper] = ctx.papers([id]);
-  const written = paper && (await ctx.mutations.setNote({ id: paper.id, path: paper.path }, note));
-  if (!written) { ctx.notice("error", "The note could not be saved — the paper is not in the library"); return; }
-  await ctx.snapshots.refresh();
-}
-
-/** Moves paper folders under `target`; papers already there are skipped. */
-export async function movePapers(ctx: HostContext, ids: readonly string[], target: string): Promise<void> {
-  const papers = ctx.papers(ids);
-  const { done, failed } = await ctx.mutations.movePapers(deriveReferences(papers), target);
-  if (done.length) await ctx.snapshots.refresh();
-  const notice = moveNotice(done.length, failed, target === PAPERS_DIR ? undefined : deriveBaseName(target, "/"), titleResolver(papers));
-  if (notice) ctx.notice(notice.kind, notice.text);
-}
-
-export async function removePapers(ctx: HostContext, ids: readonly string[]): Promise<void> {
-  const papers = ctx.papers(ids);
-  const { done, failed } = await ctx.mutations.trashPapers(deriveReferences(papers));
-  await ctx.snapshots.refresh();
-  const notice = removeNotice(done, failed, titleResolver(papers));
-  if (notice) ctx.notice(notice.kind, notice.text);
+/** The port the core paper handlers (tags, note, move, remove, details) answer the UI through; changes go only to papers the snapshot knows. */
+export function createLibraryUiHost(ctx: HostContext): LibraryUiHost {
+  return {
+    papers: async (ids) => ctx.papers(ids),
+    post: (m) => ctx.endpoint.post(m),
+    notice: ctx.notice,
+    refresh: () => ctx.snapshots.refresh(),
+    editTags: (ids, add, remove) => ctx.mutations.editTags(deriveReferences(ctx.papers(ids)), add, remove),
+    async setNote(id, note) {
+      const [paper] = ctx.papers([id]);
+      return !!paper && !!(await ctx.mutations.setNote({ id: paper.id, path: paper.path }, note));
+    },
+    trashPapers: (papers) => ctx.mutations.trashPapers(deriveReferences(papers)),
+    movePapers: (ids, target) => ctx.mutations.movePapers(deriveReferences(ctx.papers(ids)), target),
+    folderName: (target) => (target === PAPERS_DIR ? undefined : deriveBaseName(target, "/")),
+    details: (paper) => ctx.sidecars.details(paper),
+  };
 }
 
 /** `label` names what was copied ("2 × cite key"); without it the notice quotes the text. */
@@ -70,12 +59,6 @@ export async function writeClipboard(ctx: HostContext, text: string, label?: str
 }
 
 // ---- Detail pane and annotations export
-
-export async function sendDetails(ctx: HostContext, id: string): Promise<void> {
-  const [paper] = ctx.papers([id]);
-  if (!paper) return;
-  ctx.endpoint.post({ type: "details", id, details: await ctx.sidecars.details(paper) });
-}
 
 export async function exportAnnotations(ctx: HostContext, id: string): Promise<void> {
   const [paper] = ctx.papers([id]);

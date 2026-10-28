@@ -1,9 +1,9 @@
 /** The paper glue over the real core mutations: an in-memory disk, a LibraryStore scanning it, and an event spy. */
 import * as path from 'node:path';
-import { BibtexService, LibraryStore, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
+import { BibtexService, LibraryStore, PaperService, scanLibrary, type ILogger, type MutationContext, type PaperRecord } from '@labshelf/core';
 
 import { PaperImporter, PaperTextLayers } from '../../src/library/import';
-import { PaperService } from '../../src/library/paperService';
+import { pdfFileExists } from '../../src/library/fileSystem';
 import { refreshLibrary, type RefreshLibraryResult } from '../../src/library/location';
 import { MemoryLibraryFs } from '../support/memoryLibraryFs';
 import { createLibraryEvents } from '../../src/library/events';
@@ -54,7 +54,7 @@ export function makeGlue(): Glue {
     return refreshLibrary({ store, events });
   };
 
-  const service = new PaperService(ctx, store, reindex, events, parse);
+  const service = new PaperService(ctx, store, reindex, events, parse, pdfFileExists);
   const importer = new PaperImporter(
     ctx, store, reindex, parse,
     { tmpDir: '/lib/tmp', download: { fetch: jest.fn() as unknown as typeof fetch, headers: { 'User-Agent': 'LabShelf-VSCode/test' } } },

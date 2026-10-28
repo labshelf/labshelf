@@ -20,7 +20,7 @@ export {
 } from "./projectExport.js";
 export type { InstallEntry, InstallLine, InstallResult, ArxivBundle, BibliographyText, DocumentExport } from "./projectExport.js";
 export {
-  readLastModified, listProjectFiles, findLibraryProjectFolder, listProjects, readProject, listBuildRootFileNames, readOptionalText,
+  readLastModified, listProjectFiles, findLibraryProjectFolder, listProjects, readProject, listBuildRootFileNames, listDirEntries, readOptionalText,
   listBibliographyFiles,
 } from "./projectReads.js";
 export type { ProjectReadContext, OpenSources } from "./projectReads.js";

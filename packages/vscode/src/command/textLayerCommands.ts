@@ -1,8 +1,7 @@
 // Registers the OCR text-layer commands, for one paper or the whole library, and summarizes the result.
 import * as vscode from "vscode";
 
-import { type PaperRecord } from "@labshelf/core";
-import type { PaperService } from "../library/index.js";
+import { type PaperRecord, type PaperService } from "@labshelf/core";
 import { addTextLayerJobs } from "./textLayerQueue.js";
 import { resolvePaper } from "./paperResolution.js";
 import { runSafely, type EnsureServices } from "./commandContext.js";

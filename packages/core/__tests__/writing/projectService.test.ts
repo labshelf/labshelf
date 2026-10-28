@@ -1,7 +1,7 @@
 /** Verifies the project data port runs over an injected file system and keeps device files under the injected folders, and the Files tree rows: hidden entries, folders-first order and the main and source marks. */
 import * as path from "node:path";
 
-import { createProjectContent, createProjectFileRow, listVisibleEntries, type ProjectDeviceDirs } from "../../src/writing/projectService";
+import { createProjectContent, createProjectFileRow, listProjectFileTree, listVisibleEntries, type ProjectDeviceDirs } from "../../src/writing/projectService";
 import { createBlankTemplate } from "../../src/templates/index";
 import { fakeLogger } from "../support/fakeLogger";
 import { MemoryLibraryFs } from "../support/memoryLibraryFs";
@@ -109,5 +109,25 @@ describe("createProjectFileRow", () => {
     expect(kind).toBe("folder");
     expect(node).toMatchObject({ label: "src", children: [], open: false });
     expect(node.description).toBeUndefined();
+  });
+});
+
+describe("listProjectFileTree", () => {
+  const project = {
+    kind: "ready", folder: "/p", location: "external", main: "main.tex", settings: { format: "latex" },
+  } as unknown as Parameters<typeof listProjectFileTree>[1];
+
+  it("nests folders first, hides .git and .labshelf, and marks the main file", async () => {
+    const fs = new MemoryLibraryFs();
+    await fs.mkdir("/p/src/deep");
+    await fs.mkdir("/p/.git");
+    await fs.mkdir("/p/.labshelf");
+    for (const file of ["main.tex", "refs.bib", ".hidden.txt", "src/b.tex", "src/a.tex", "src/deep/c.tex"]) { await fs.writeText(`/p/${file}`, ""); }
+    const tree = await listProjectFileTree({ fs, paths: path.posix }, project, "/p", "");
+    expect(tree.map((node) => node.key)).toEqual(["src", ".hidden.txt", "main.tex", "refs.bib"]);
+    const src = tree[0]!;
+    expect(src.children!.map((node) => node.key)).toEqual(["src/deep", "src/a.tex", "src/b.tex"]);
+    expect(src.children![0]!.children!.map((node) => node.key)).toEqual(["src/deep/c.tex"]);
+    expect(tree[2]).toMatchObject({ description: "main", clickable: true });
   });
 });

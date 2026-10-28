@@ -48,11 +48,19 @@ export async function readLastModified(context: Pick<ProjectReadContext, "fs" | 
   return times.length === 0 ? undefined : Math.max(...times);
 }
 
+/** The names in the folder with their kind; a name that vanishes between the listing and its stat is dropped. */
+export async function listDirEntries({ fs, paths }: Pick<ProjectReadContext, "fs" | "paths">, dir: string): Promise<{ name: string; folder: boolean; file: boolean }[]> {
+  const names = await fs.listDir(dir);
+  const stats = await Promise.all(names.map((name) => fs.stat(paths.join(dir, name))));
+  return names.flatMap((name, index) => {
+    const stat = stats[index];
+    return stat ? [{ name, folder: stat.isDirectory, file: stat.isFile }] : [];
+  });
+}
+
 /** Names of the files at the folder's root; sources in subfolders are not main candidates. */
-export async function listBuildRootFileNames({ fs, paths }: Pick<ProjectReadContext, "fs" | "paths">, folder: string): Promise<string[]> {
-  const names = await fs.listDir(folder);
-  const stats = await Promise.all(names.map((name) => fs.stat(paths.join(folder, name))));
-  return names.filter((_, index) => stats[index]?.isFile === true);
+export async function listBuildRootFileNames(context: Pick<ProjectReadContext, "fs" | "paths">, folder: string): Promise<string[]> {
+  return (await listDirEntries(context, folder)).filter((entry) => entry.file).map((entry) => entry.name);
 }
 
 /** Reads the folder through the port; see readProjectEntry for how a project that cannot be read is returned. */

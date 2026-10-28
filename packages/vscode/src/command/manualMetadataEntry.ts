@@ -3,8 +3,7 @@
 import * as vscode from "vscode";
 
 import { extractDoi } from "@labshelf/core";
-import type { PaperRecord, ResolvedMetadata } from "@labshelf/core";
-import type { PaperService } from "../library/index.js";
+import type { PaperRecord, PaperService, ResolvedMetadata } from "@labshelf/core";
 
 interface ManualFields {
   title: string;

@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  extractArxivIdentifierFromUrl, createBibliographyCardEntry, extractDoi, normalizeArxivIdentifier, extractPlainField, createPaper,
+  extractArxivIdentifierFromUrl, createBibliographyCardEntry, extractDoi, normalizeArxivIdentifier, readBibField, createPaper,
   deriveSuggestedCiteKey, formatError, checkBibliography, BIBLIOGRAPHY_HEADER, parseBibEntries,
   type BibEntry, type BibliographyFix, type CitationCardFix, type CitationEntry, type CitationFix, type ILogger, type MutationContext,
   type PathOps, type PublishedVersion, type PublishedVersionFinder,
@@ -149,17 +149,16 @@ interface AddBibliographyDeps {
 
 /** The DOI or arXiv id the entry names, in a form the importer takes. */
 function identifierOf(entry: BibEntry): string | undefined {
-  const field = (name: string): string => extractPlainField(entry.fields.get(name));
-  const doi = extractDoi(field("doi"));
+  const doi = extractDoi(readBibField(entry, "doi"));
   if (doi) { return doi; }
-  const arxiv = normalizeArxivIdentifier(field("eprint")) ?? extractArxivIdentifierFromUrl(field("url"));
+  const arxiv = normalizeArxivIdentifier(readBibField(entry, "eprint")) ?? extractArxivIdentifierFromUrl(readBibField(entry, "url"));
   return arxiv ? `arXiv:${arxiv}` : undefined;
 }
 
 async function writeFromFields(deps: AddBibliographyDeps, entry: BibEntry, file: string): Promise<string> {
   const card = createBibliographyCardEntry(entry);
-  const url = extractPlainField(entry.fields.get("url"));
-  const publisher = extractPlainField(entry.fields.get("publisher"));
+  const url = readBibField(entry, "url");
+  const publisher = readBibField(entry, "publisher");
   const record = await createPaper(deps.ctx, deps.takenIds(), deps.ctx.papersRoot, {
     citeKey: entry.key,
     fields: {

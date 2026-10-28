@@ -4,9 +4,7 @@ import type { PaperRecord } from "@labshelf/core";
 import {
   createCitationCompletion,
   createCitationOption,
-  createProjectLabels,
   closeEnvironmentOnEnter,
-  deriveSnippetTemplate,
   findLatexCommandCompletion,
   createReferenceCompletion,
 } from "../../../src/writing/languages/latex";
@@ -33,11 +31,6 @@ describe("latex command completion", () => {
   it("offers nothing in plain text or after an escaped backslash", () => {
     expect(findLatexCommandCompletion(at("plain|"))).toBeNull();
     expect(findLatexCommandCompletion(at("\\\\|"))).toBeNull();
-  });
-
-  it("writes VS Code snippets as CodeMirror templates", () => {
-    expect(deriveSnippetTemplate("item[$1] $0")).toBe("item[${1}] ${0}");
-    expect(deriveSnippetTemplate("left\\{${1:x}")).toBe("left\\\\{${1:x}");
   });
 });
 
@@ -86,32 +79,5 @@ describe("\\begin auto-close on Enter", () => {
   it("falls through when the environment is already closed or text follows the cursor", () => {
     expect(enter("\\begin{x}|\n\\end{x}")).toBeNull();
     expect(enter("\\begin{x}| tail")).toBeNull();
-  });
-});
-
-// Tests that a file's labels are rescanned once after edits pause, from the latest text.
-describe("project labels", () => {
-  beforeEach(() => jest.useFakeTimers());
-  afterEach(() => jest.useRealTimers());
-
-  it("scans a file once after rapid schedules, using the last text", () => {
-    const labels = createProjectLabels({ error: jest.fn() } as never);
-    const first = jest.fn(() => "\\label{a}");
-    const last = jest.fn(() => "\\label{b}");
-    labels.schedule("main.tex", first);
-    labels.schedule("main.tex", last);
-    jest.advanceTimersByTime(300);
-    expect(first).not.toHaveBeenCalled();
-    expect(last).toHaveBeenCalledTimes(1);
-    expect(labels.labels().map((l) => l.name)).toEqual(["b"]);
-  });
-
-  it("drops a pending scan on dispose", () => {
-    const labels = createProjectLabels({ error: jest.fn() } as never);
-    const text = jest.fn(() => "\\label{a}");
-    labels.schedule("main.tex", text);
-    labels.dispose();
-    jest.advanceTimersByTime(300);
-    expect(text).not.toHaveBeenCalled();
   });
 });

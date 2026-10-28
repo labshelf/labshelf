@@ -1,5 +1,5 @@
 // Builds the footer of a build preview: build state, checks, citation problems and the comment prompt.
-import { renderElement, showToast } from "../../ui/dom/index.js";
+import { headButton, renderElement, showToast } from "../../ui/dom/index.js";
 import {
   type PreviewBuildRoots, deriveOutlineTrail, type OutlineRow, type BuildState, type PreviewBuildRoot, type PageArea,
   type PdfProblem, type WebviewToHost, type PagePoint,
@@ -253,12 +253,6 @@ export interface PreviewProblems {
   step(dir: 1 | -1): void;
 }
 
-function arrow(label: string, glyph: "chevron-left" | "chevron-right", onClick: () => void): HTMLButtonElement {
-  const button = renderElement("button", { class: "rd-preview-problem-step", type: "button", title: label, "aria-label": label, html: renderIcon(glyph) });
-  button.addEventListener("click", onClick);
-  return button;
-}
-
 /** Fills the footer's cites slot; the caller owns the slot element and feeds it the roots. */
 export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: ProblemsDeps): PreviewProblems {
   let problems: PdfProblem[] = [];
@@ -301,7 +295,7 @@ export function mountProblems(slot: HTMLElement, { marks, scrollTo, post }: Prob
       }
       slot.replaceChildren(status);
       if (problems.length > 0) {
-        slot.append(arrow("Previous problem", "chevron-left", () => step(-1)), arrow("Next problem", "chevron-right", () => step(1)));
+        slot.append(headButton("rd-preview-problem-step", "Previous problem", "chevron-left", () => step(-1)), headButton("rd-preview-problem-step", "Next problem", "chevron-right", () => step(1)));
       }
     },
   };

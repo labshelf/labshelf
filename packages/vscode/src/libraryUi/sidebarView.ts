@@ -10,22 +10,19 @@ import {
   type SidebarOpenProject,
   type SidebarProjectItem,
   type ProjectEntry,
+  parseSidebarMessage,
+  type HostToSidebar,
+  type ProjectTreeMessage,
+  type SidebarToHost,
+  type ProjectAction,
 } from "@labshelf/core";
 import { onPaperChange, type LibraryEvents } from "../library/index.js";
 import { sharingWebviews } from "../share/index.js";
 import { readLibraryBundleDir, listPanelHtml } from "./listPanel.js";
 import { createLibraryPaths, createLibraryRootNode, type LibraryPaths, type LibraryNode } from "./paths.js";
 import { runProjectUpdate, runProjectFolderAction, type ProjectOrganizerPort } from "./organizer.js";
-import {
-  parseSidebarMessage,
-  type HostToSidebar,
-  type ProjectTreeMessage,
-  type SidebarToHost,
-  type ProjectAction,
-} from "./sidebarMessages.js";
-
 import { answerSidebarSpaceMessage, type SidebarSpacesDep } from "./handlers.js";
-import { canApplyProjectCommand } from "./projectCommands.js";
+import { canApplyProjectCommand, isSidebarProjectCommand } from "./projectCommands.js";
 import { disposeAll } from "../disposables/index.js";
 
 /** What the host needs to know about the projects the sidebar lists. */
@@ -135,7 +132,7 @@ export class LibrarySidebarView implements vscode.WebviewViewProvider {
     this._view = view;
     this._ready = false;
     view.webview.options = { enableScripts: true, localResourceRoots: [readLibraryBundleDir(this._deps.extensionUri)] };
-    view.webview.onDidReceiveMessage((raw: unknown) => { const m = parseSidebarMessage(raw); if (m) { void this._handle(m); } });
+    view.webview.onDidReceiveMessage((raw: unknown) => { const m = parseSidebarMessage(raw, isSidebarProjectCommand); if (m) { void this._handle(m); } });
     const sharing = sharingWebviews.attach(view.webview, { opensDialogs: true });
     view.onDidDispose(() => { this._view = undefined; this._ready = false; sharing.dispose(); });
     view.webview.html = await listPanelHtml(view.webview, this._deps.extensionUri, "sidebar");

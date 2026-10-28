@@ -1,10 +1,12 @@
 // Shows a project's live PDF preview, or the helper setup card while the helper cannot open the project yet.
 import type { BuildOptions, ILogger, LatexEngine } from "@labshelf/core";
 import { renderElement } from "@labshelf/core/dom";
-import { mountHelperSetupCard, type HelperProject } from "../../helper";
+import type { HelperProject } from "@labshelf/core/helper";
+import { mountHelperSetupCard } from "../../helper";
 import { bx, readSettings, updateSettings } from "../../platform";
 import { createBrowserProjectContent } from "../../writing";
-import { createPreviewFrame, watchBuilds, createPreviewRequestHandler, type PreviewLimits } from "../../writing/preview";
+import { createPreviewFrame, watchBuilds, createPreviewRequestHandler } from "../../writing/preview";
+import type { PreviewLimits } from "@labshelf/core";
 import type { TabModule } from "./tabKinds";
 
 /** Engine and halt-on-error are LaTeX choices, so a Typst project's menu leaves them out. */

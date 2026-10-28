@@ -9,11 +9,10 @@ import {
   deriveVerdictForOutcome,
 } from "@labshelf/core";
 import type {
-  IdentifierImportOptions, ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PdfParse,
+  IdentifierImportOptions, ImportDeps, ImportOutcome, ImportProgress, LibraryStore, MutationContext, NetworkImportEnv, PaperRecord, PaperService, PdfParse,
   TextLayerDetails, TextLayerOutcome, TextLayerSkipKind, PdfTextLayerBuilder, TextLayerHooks,
 } from "@labshelf/core";
 import type { RefreshLibraryResult } from "./location.js";
-import type { PaperService } from "./paperService.js";
 
 /** How the extension reaches the network for an import, and where a download waits while it is read. */
 interface NetworkTransport {

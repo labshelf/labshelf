@@ -52,6 +52,21 @@ export async function readLatexProjectSources(mainPath: string, reader: ProjectS
   return result;
 }
 
+/** The include tree plus the text of every file the reader returned, keyed by project-relative path. */
+export async function readLatexProjectTexts(
+  mainPath: string, reader: ProjectSourceReader,
+): Promise<ProjectSources & { texts: Map<string, string> }> {
+  const texts = new Map<string, string>();
+  const sources = await readLatexProjectSources(mainPath, {
+    read: async (path) => {
+      const text = await reader.read(path);
+      if (text !== undefined) { texts.set(path, text); }
+      return text;
+    },
+  });
+  return { ...sources, texts };
+}
+
 /**
  * LaTeX resolves include paths from the directory TeX runs in, which is the project root,
  * so the including file's folder plays no part. Returns undefined for a path that is absolute,

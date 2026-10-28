@@ -1,16 +1,13 @@
 // Sends an open preview the build roots with their problems, word counts, check findings and build options, and sends them again when any of those changes.
 import * as vscode from "vscode";
 
-import { createPublishedVersionFinder, type RegistryEnv } from "@labshelf/core";
+import { countBuildRootWords, createProjectSources, createPublishedVersionFinder, readPdfProblems, type BuildRootBuilds, type ProjectSynctex, type RegistryEnv } from "@labshelf/core";
 import type { ReaderPanel } from "../../reader/index.js";
 import { buildOptions, onAutoCompileChange } from "../build/index.js";
 import { createProjectSourceReader } from "../../latex/index.js";
 import type { ReadyProject } from "../projects/index.js";
-import { countBuildRootWords } from "./limits.js";
-import { readPdfProblems } from "./diagnostics.js";
 import { PREVIEW_LOG_MODULE, type BuildPreviewsDeps } from "./panel.js";
-import { readActiveProjectEditor, readFocusedBuildRoot, createPreviewBuildRootsMessage, createProjectPreprints, createProjectSources, type BuildRootBuilds } from "./buildRoots.js";
-import type { ProjectSynctex } from "./synctex.js";
+import { readActiveProjectEditor, readFocusedBuildRoot, createPreviewBuildRootsMessage, createProjectPreprints } from "./buildRoots.js";
 import { disposeAll } from "../../disposables/index.js";
 
 export class MeasureCache {
@@ -104,7 +101,7 @@ export class BuildRootsPublisher implements vscode.Disposable {
         failed: (root) => builds.stateOf(project.folder, root)?.state === "failed",
         options: await this.optionsOf(project, shown),
         pdfProblemsOf: (root) => this.pdfProblems(project, root),
-        wordsOf: (root) => this.measures.get(project.folder, root, "words", () => countBuildRootWords({ readerFor: this.readerFor }, project, root)),
+        wordsOf: (root) => this.measures.get(project.folder, root, "words", () => countBuildRootWords(this.readerFor(project.folder), project.settings, root)),
         ...(checks !== undefined && { checks }),
         ...(logger && { logger }),
       }));

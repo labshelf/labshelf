@@ -1,15 +1,15 @@
-// Tells an open preview about a project's build roots: their problems, raw logs, sources, preprints and last builds, and answers the reader's writing actions.
+// Tells an open preview about a project's build roots: their problems, raw logs and preprints, and answers the reader's writing actions.
 import * as vscode from "vscode";
 
 import {
+  deriveProjectPath,
   checkBibliography,
+  createBuildRootsMessage,
   deriveBuildRootFolder,
   derivePreviewProblems,
   isInside,
   lineAt,
-  readLatexProjectSources,
   type BuildOptions,
-  type BuildState,
   type ILogger,
   type LocatedProblem,
   type PathOps,
@@ -18,12 +18,9 @@ import {
   type PreviewBuildRoots,
   type PreviewPorts,
   type ProjectContentPort,
-  type ProjectSourceReader,
   type PublishedVersionFinder,
-  type TypstCitation,
 } from "@labshelf/core";
-import type { FinishedBuild } from "../build/index.js";
-import { deriveProjectPath, type ReadyProject } from "../projects/index.js";
+import type { ReadyProject } from "../projects/index.js";
 import type { BuildRootOf } from "../projects/index.js";
 import { listUserBibliographyFiles } from "./citationFixes.js";
 import { PREVIEW_LOG_MODULE } from "./panel.js";
@@ -111,15 +108,10 @@ async function previewRoot(input: PreviewBuildRootsInput, root: string): Promise
 
 export async function createPreviewBuildRootsMessage(input: PreviewBuildRootsInput): Promise<PreviewBuildRoots> {
   const roots = await Promise.all([...input.built].map((root) => previewRoot(input, root)));
-  const { pages: pageLimit, words: wordLimit, countUpTo } = input.project.settings.check ?? {};
-  return {
+  return createBuildRootsMessage({
     main: input.project.main ?? input.shown, focused: input.focused, shown: input.shown, roots,
-    ...(pageLimit !== undefined ? { pageLimit } : {}),
-    ...(wordLimit !== undefined ? { wordLimit } : {}),
-    ...(countUpTo !== undefined ? { countUpTo } : {}),
-    ...(input.checks !== undefined ? { checks: input.checks } : {}),
-    ...(input.options ? { options: input.options } : {}),
-  };
+    limits: input.project.settings.check ?? {}, checks: input.checks, options: input.options,
+  });
 }
 
 export interface ProjectPreprintsDeps {
@@ -146,25 +138,6 @@ export function createProjectPreprints(deps: ProjectPreprintsDeps): (project: Re
       await deps.logger()?.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder, action: "preprints" });
       return [];
     }
-  };
-}
-
-/** `root` is the project-relative path of the root file; a file that cannot be read is left out. */
-export function createProjectSources(
-  readerFor: (folder: string) => ProjectSourceReader,
-): (project: ReadyProject, root: string) => Promise<{ file: string; text: string }[]> {
-  return async (project, root) => {
-    const reader = readerFor(project.folder);
-    // Typst includes are not followed, so its root counts as its own file.
-    const files = project.settings.format === "typst"
-      ? [root]
-      : (await readLatexProjectSources(root, reader)).files.map((file) => file.path);
-    const sources: { file: string; text: string }[] = [];
-    for (const file of files) {
-      const text = await reader.read(file);
-      if (text !== undefined) { sources.push({ file, text }); }
-    }
-    return sources;
   };
 }
 
@@ -239,58 +212,4 @@ export function createWritingActions(deps: WritingActionsDeps): WritingActions {
     openProblem: (root, index) => openProblem(deps, root, index),
     openRawLog: (root) => openRawLog(deps, root),
   };
-}
-
-export interface BuildRootBuildState {
-  state: BuildState;
-  errors: number;
-}
-
-export class BuildRootBuilds {
-  private readonly problems = new Map<string, readonly LocatedProblem[]>();
-  // INVARIANT: the cites of a root's last successful Typst build, i.e. of the PDF a preview shows; a failed build leaves them.
-  private readonly cites = new Map<string, readonly TypstCitation[]>();
-  // A preview opened during a build or after a failed one shows that state at once.
-  private readonly states = new Map<string, BuildRootBuildState>();
-  // The roots each project has built, in build order; the reader lists exactly these.
-  private readonly built = new Map<string, Set<string>>();
-
-  constructor(private readonly paths: PathOps) {}
-
-  started(projectFolder: string, root: string): void {
-    this.states.set(this.paths.join(projectFolder, root), { state: "building", errors: 0 });
-  }
-
-  /** Records a finished build and returns the number of errors it reported. */
-  finished(projectFolder: string, root: string, result: FinishedBuild): number {
-    const key = this.paths.join(projectFolder, root);
-    this.problems.set(key, result.problems);
-    this.built.set(projectFolder, (this.built.get(projectFolder) ?? new Set<string>()).add(root));
-    const errors = result.problems.filter((problem) => problem.severity === "error").length;
-    if (result.status === "failed") {
-      this.states.set(key, { state: "failed", errors });
-      return errors;
-    }
-    this.states.delete(key);
-    if ("cites" in result) { this.cites.set(key, result.cites); }
-    return errors;
-  }
-
-  /** The running or failed build of a root; undefined once its last build succeeded. */
-  stateOf(projectFolder: string, root: string): BuildRootBuildState | undefined {
-    return this.states.get(this.paths.join(projectFolder, root));
-  }
-
-  /** The problems of a root's last build, or undefined when the project has not built that root. */
-  problemsOf(projectFolder: string, root: string): readonly LocatedProblem[] | undefined {
-    return this.built.get(projectFolder)?.has(root) ? this.problems.get(this.paths.join(projectFolder, root)) : undefined;
-  }
-
-  citesOf(projectFolder: string, root: string): readonly TypstCitation[] | undefined {
-    return this.cites.get(this.paths.join(projectFolder, root));
-  }
-
-  builtRoots(projectFolder: string): Iterable<string> {
-    return this.built.get(projectFolder) ?? [];
-  }
 }

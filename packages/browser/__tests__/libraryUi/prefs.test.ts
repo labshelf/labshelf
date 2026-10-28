@@ -36,22 +36,6 @@ describe("localStorage prefs", () => {
     ]);
   });
 
-  it("keeps a dragged Details width and leaves an undragged one unset", () => {
-    const storage = new MemoryStorage();
-    const prefs = createLocalStoragePrefs(storage);
-    prefs.save({ sortKey: "year" });
-    expect(prefs.detailPane().detailWidth).toBeNull();
-    prefs.saveDetailPane({ detailWidth: 300 });
-    prefs.save({ sortKey: "title" });
-    expect(prefs.detailPane().detailWidth).toBe(300);
-  });
-
-  it("drops non-string tree entries", () => {
-    const storage = new MemoryStorage();
-    storage.setItem(PREFS_KEY, JSON.stringify({ treeExpanded: ["papers/A", 5] }));
-    expect(createLocalStoragePrefs(storage).treeExpanded()).toEqual(["papers/A"]);
-  });
-
   it("keeps the editor width across other saves", () => {
     const storage = new MemoryStorage();
     const prefs = createLocalStoragePrefs(storage);
@@ -62,17 +46,5 @@ describe("localStorage prefs", () => {
     expect(prefs.editorWidth()).toBe(420);
     storage.setItem(PREFS_KEY, JSON.stringify({ editorWidth: "wide" }));
     expect(prefs.editorWidth()).toBeNull();
-  });
-
-  it("keeps the code colours and font across other saves and drops unknown names", () => {
-    const storage = new MemoryStorage();
-    const prefs = createLocalStoragePrefs(storage);
-    expect(prefs.codeStyle()).toEqual({ codeTheme: "labshelf", codeFont: "system" });
-    prefs.saveCodeStyle({ codeTheme: "one" });
-    prefs.saveCodeStyle({ codeFont: "opendyslexic" });
-    prefs.saveEditorWidth(300);
-    expect(prefs.codeStyle()).toEqual({ codeTheme: "one", codeFont: "opendyslexic" });
-    storage.setItem(PREFS_KEY, JSON.stringify({ codeTheme: "neon", codeFont: 3 }));
-    expect(prefs.codeStyle()).toEqual({ codeTheme: "labshelf", codeFont: "system" });
   });
 });

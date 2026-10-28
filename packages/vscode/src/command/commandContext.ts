@@ -2,8 +2,8 @@
 // Also provides executeSafely, the error-handling wrapper every group's commands run through.
 import * as vscode from "vscode";
 
-import type { PaperImporter, PaperService, PaperTextLayers, RefreshLibraryResult } from "../library/index.js";
-import { formatError, type PaperSidecarStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext } from "@labshelf/core";
+import type { PaperImporter, PaperTextLayers, RefreshLibraryResult } from "../library/index.js";
+import { formatError, type PaperSidecarStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext, type PaperService } from "@labshelf/core";
 
 const LOG_MODULE = "command";
 

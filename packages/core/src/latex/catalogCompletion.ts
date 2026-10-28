@@ -51,3 +51,8 @@ export function findLatexCompletionSpan(lineBeforeCursor: string, lineAfterCurso
   const command = COMMAND_CONTEXT.exec(lineBeforeCursor)?.[1];
   return command === undefined ? undefined : { kind: "command", before: command.length };
 }
+
+/** `$1` becomes `${1}`, and a literal brace after a backslash stays literal (CodeMirror reads `\{` as an escape). */
+export function deriveSnippetTemplate(vscodeSnippet: string): string {
+  return vscodeSnippet.replace(/\\([{}])/g, "\\\\$1").replace(/\$(\d+)/g, "$${$1}");
+}

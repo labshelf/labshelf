@@ -1,6 +1,6 @@
 // Exports the browser platform access the extension's modules share: the WebExtension API, the logger, the runtime messages,
 // the settings and the theme.
-export { bx, sendRuntime, downloadTextFile, connectBrowserNative, isHostNotFound, watchVisibility, type NativePort } from "./bx";
+export { bx, sendRuntime, downloadTextFile, connectBrowserNative, watchVisibility } from "./bx";
 export { createBrowserLogger, StorageRingLogSink } from "./logging";
 export { readSettings, updateSettings, withSidebarSection, type ExtensionSettings, type SidebarSections } from "./settings";
 export { applyTheme, readThemePref, onThemeChange, setThemePref } from "./theme";

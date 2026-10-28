@@ -32,11 +32,6 @@ export function deriveBuildRootPath(paths: PathOps, project: ReadyProject, fileP
   return paths.relative(project.folder, filePath).split(paths.sep).join("/");
 }
 
-/** A project-relative `/`-separated path; a file outside the project keeps its own path. */
-export function deriveProjectPath(paths: PathOps, folder: string, file: string): string {
-  return (isInside(paths, folder, file, { allowEqual: true }) ? paths.relative(folder, file) : file).split(paths.sep).join("/");
-}
-
 // ---- Main document
 
 interface MainCommandsDeps {

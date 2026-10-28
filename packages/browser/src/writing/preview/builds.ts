@@ -1,6 +1,8 @@
 // Follows the builds of a project on its preview frame, and answers the requests the frame sends.
 import {
   checkPreviewRequest,
+  createBuildRootsMessage,
+  deriveCheckLimitsPatch,
   createListeners,
   derivePreviewProblems,
   type BuildOptions,
@@ -10,6 +12,7 @@ import {
   type LatexEngine,
   type LibraryFileSystem,
   type PreviewBuildRoots,
+  type PreviewLimits,
   type PreviewRequest,
   type ProjectContentPort,
 } from "@labshelf/core";
@@ -116,17 +119,10 @@ function statusOf(result: HelperCompileResult): PreviewBuildState {
   }
 }
 
-/** The check limits of the project's labshelf.yaml. */
-export interface PreviewLimits { pages?: number | undefined; words?: number | undefined; countUpTo?: PreviewBuildRoots["countUpTo"] }
-
-function rootsOf(main: string, result: HelperCompileResult, { pages, words, countUpTo }: PreviewLimits, options: BuildOptions | undefined): PreviewBuildRoots {
+function rootsOf(main: string, result: HelperCompileResult, limits: PreviewLimits, options: BuildOptions | undefined): PreviewBuildRoots {
   // The helper builds only the main file and keeps no raw log or source map the page can open.
   const root = { path: main, failed: result.status !== "succeeded", rawLog: false, sourceLinks: false, problems: derivePreviewProblems(result.problems) };
-  return {
-    main, focused: main, shown: main, roots: [root],
-    ...(pages !== undefined ? { pageLimit: pages } : {}), ...(words !== undefined ? { wordLimit: words } : {}), ...(countUpTo !== undefined ? { countUpTo } : {}),
-    ...(options !== undefined ? { options: { ...options } } : {}),
-  };
+  return createBuildRootsMessage({ main, focused: main, shown: main, roots: [root], limits, options: options !== undefined ? { ...options } : undefined });
 }
 
 export interface FollowedBuilds {
@@ -202,10 +198,7 @@ async function openProblem({ project, logger, workspace, builds }: PreviewReques
 }
 
 async function saveLimits(deps: PreviewRequestDeps, folder: string, change: Extract<PreviewRequest, { command: "setCheckLimits" }>["limits"]): Promise<void> {
-  const check: PreviewLimits = {};
-  if (change.pages !== undefined) check.pages = change.pages ?? undefined;
-  if (change.words !== undefined) check.words = change.words ?? undefined;
-  if (change.countUpTo !== undefined) check.countUpTo = change.countUpTo;
+  const check = deriveCheckLimitsPatch(change);
   await deps.data.updateProjectSettings(folder, { check });
   Object.assign(deps.limits, check);
   deps.builds.resendRoots();

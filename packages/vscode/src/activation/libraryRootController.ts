@@ -2,9 +2,9 @@
 // comes from the first-run question, a move or a saved setting.
 import * as vscode from "vscode";
 
-import { LibraryStore, PaperSidecarStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
+import { LibraryStore, PaperService, PaperSidecarStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
 import type { ILogger } from "@labshelf/core";
-import { PaperImporter, PaperService, PaperTextLayers, VscodeFileSystem, ensureLibraryStructure, refreshLibrary, type LibraryEvents, type RefreshLibraryResult } from "../library/index.js";
+import { PaperImporter, PaperTextLayers, VscodeFileSystem, ensureLibraryStructure, pdfFileExists, refreshLibrary, type LibraryEvents, type RefreshLibraryResult } from "../library/index.js";
 import { addTextLayerJobs } from "../command/index.js";
 import type { ActiveServices } from "../command/index.js";
 import { type HostAdapters } from "./hostAdapters.js";
@@ -56,7 +56,7 @@ async function buildServices(
   let textLayers!: PaperTextLayers;
   const reindex = createReindexer(store, events, logger, () => textLayers);
 
-  const paperService = new PaperService(mutations, store, reindex, events, parse);
+  const paperService = new PaperService(mutations, store, reindex, events, parse, pdfFileExists);
   const network = {
     tmpDir: paths.tmpDir().fsPath,
     download: { fetch: globalThis.fetch, headers: { "User-Agent": `LabShelf-VSCode/${context.extension.packageJSON.version}` } },

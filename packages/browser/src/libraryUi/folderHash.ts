@@ -2,19 +2,8 @@
  * Binds the open folder to the URL hash (`#/papers/Project/Refs`), so back/forward walk the folder history and a reload
  * lands on the same folder. The host tells the UI about hash changes and follows the UI's own navigation.
  */
-import { PAPERS_DIR, isLibraryPath, deriveParentDir, type HostEndpoint } from "@labshelf/core";
+import { createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint } from "@labshelf/core";
 import { JOIN_PREFIX } from "./editorArea";
-
-/** Parses a location hash into a folder path, falling back to the root. */
-export function parseFolderHash(hash: string): string {
-  const raw = decodeURIComponent(hash.replace(/^#\/?/, "")).replace(/\/+$/, "");
-  return isLibraryPath(raw) ? raw : PAPERS_DIR;
-}
-
-/** Builds the hash for a folder path. */
-export function createFolderHash(folder: string): string {
-  return `#/${folder.split("/").map(encodeURIComponent).join("/")}`;
-}
 
 /**
  * Starts syncing the UI's folder with location.hash; returns a disposer. A hash that is the path of a paper opens the
@@ -46,7 +35,7 @@ export function attachHashHandlers(endpoint: HostEndpoint, paperIdAtPath: (path:
     const next = createFolderHash(m.folder);
     const keepsPaperHash = paperHash && location.hash === paperHash.hash && m.folder === paperHash.folder;
     if (location.hash !== next && !keepsPaperHash) history.pushState(null, "", next);
-    document.title = m.folder === PAPERS_DIR ? "LabShelf" : `${m.folder.slice(m.folder.lastIndexOf("/") + 1)} — LabShelf`;
+    document.title = createFolderTitle(m.folder);
   });
   return () => { window.removeEventListener("hashchange", run); off(); };
 }

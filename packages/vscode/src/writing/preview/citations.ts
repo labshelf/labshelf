@@ -5,11 +5,10 @@ import {
   derivePapersByCiteKey, deriveCitationEntries, findCiteKeysAt, findCiteKeyOccurrences, findSourcePosition, listQuotedHighlights,
   createBibliographyCardEntry, parseBibEntries,
   type Annotation, type CitationBibEntry, type CitationDetails, type CitationEntry, type CitationQuery, type CitingCommand, type ILogger,
-  type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type SourceLine, type TypstCitation,
+  type PagePoint, type PaperRecord, type PathOps, type ProjectFormat, type SourceLine, type SynctexFinder, type TypstCitation,
 } from "@labshelf/core";
 import { listUserBibliographyFiles } from "./citationFixes.js";
 import { PREVIEW_LOG_MODULE } from "./panel.js";
-import type { SynctexFinder } from "./synctex.js";
 
 /** What the preview's citation answers need from the project and the library. */
 export interface PreviewCitationDeps {

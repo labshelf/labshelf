@@ -7,12 +7,11 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Annotation, EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, type ILogger, type PaperRecord, type PresenceStore } from "@labshelf/core";
-import type { TextChange } from "@labshelf/core/helper";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type PaperRecord, type PresenceStore, type ProjectLabels } from "@labshelf/core";
+import type { EditorHelperPort, HelperProblem, TextChange } from "@labshelf/core/helper";
 import type * as Y from "yjs";
 import { createCollabExtensions, createCommentSupport, type EditorComments } from "../collab";
-import type { EditorHelperPort, HelperProblem } from "../helper";
-import { createProjectLabels, createLatexSupport, typstLanguage, createTypstSupport, type DefinitionDeps, type ProjectLabels } from "./languages";
+import { createLatexSupport, typstLanguage, createTypstSupport, type DefinitionDeps } from "./languages";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./source";
 import { registerOpenEditor } from "./session";
 

@@ -1,10 +1,9 @@
 // Keeps the page's project session: its open source editors, the sidebar snapshot it publishes, opening and closing the project and reopening a restored one.
 import {
-  buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, createProjectFileRow, readChecklistSignals, createSectionPlacer, listVisibleEntries,
+  parseTab, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, listProjectFileTree, readChecklistSignals, createSectionPlacer,
   type ChecklistGrouping, type HeadingNode, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext, type ProjectTreeView,
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
-import { parseTab } from "../libraryUi/editorArea";
 import type { Workspace } from "../libraryUi/editorArea";
 
 export interface OpenEditor {
@@ -66,19 +65,6 @@ export interface OpenProjectSnapshotOptions {
   logger: ILogger;
 }
 
-async function filesNodes(context: ProjectReadContext, project: ReadyProject, dir: string, prefix: string): Promise<SidebarTreeNode[]> {
-  const { fs, paths } = context;
-  const names = await fs.listDir(dir);
-  const stats = await Promise.all(names.map((name) => fs.stat(paths.join(dir, name))));
-  const entries = names.flatMap((name, index) => (stats[index] ? [{ name, folder: stats[index].isDirectory }] : []));
-  const rowContext = { format: project.settings.format, main: project.main };
-  return Promise.all(listVisibleEntries(entries).map(async ({ name, folder }) => {
-    const row = createProjectFileRow(`${prefix}${name}`, folder, rowContext);
-    if (!folder) { return row.node; }
-    return { ...row.node, children: await filesNodes(context, project, paths.join(dir, name), `${prefix}${name}/`) };
-  }));
-}
-
 function outlineNodes(main: string, headings: HeadingNode<OutlineHeading>[]): SidebarTreeNode[] {
   return headings.map(({ entry, children }) => ({
     key: `${main}:${entry.line}`,
@@ -117,7 +103,7 @@ export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOpt
   return async (entry, grouping) => {
     if (entry.kind !== "ready") { throw new Error(`${entry.folder}: a broken project has no sidebar trees`); }
     const [files, outline, checklist] = await Promise.all([
-      guard("files", entry, () => filesNodes(context, entry, entry.folder, "")),
+      guard("files", entry, () => listProjectFileTree(context, entry, entry.folder, "")),
       guard("outline", entry, () => readOutline(context, entry)),
       guard("checklist", entry, () => checklistNodes(context, entry, grouping)),
     ]);

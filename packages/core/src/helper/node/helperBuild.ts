@@ -14,6 +14,7 @@ import { formatError } from "../../errors/index.js";
 import {
   MAX_SOCKET_MESSAGE_BYTES, PROTOCOL_VERSION, type ChangedPage, type HelperBuildState, type ToHelperMessage,
 } from "../index.js";
+import { singlePage } from "../pageMerge.js";
 
 import type { HelperHandler, HelperSend } from "./helperHandlers.js";
 import { HelperProjectError, type HelperProjects } from "./helperProjects.js";
@@ -26,14 +27,6 @@ export interface PageDiff {
   pageCount: number;
   hashes: string[];
   changed: { index: number; bytes: Uint8Array }[];
-}
-
-// INVARIANT: no metadata and no dates are written, so the same page content always yields the same bytes.
-async function singlePage(source: PDFDocument, index: number): Promise<Uint8Array> {
-  const page = await PDFDocument.create({ updateMetadata: false });
-  const [copy] = await page.copyPages(source, [index]);
-  page.addPage(copy);
-  return page.save({ useObjectStreams: false, updateFieldAppearances: false });
 }
 
 export async function comparePages(previousHashes: readonly string[], pdf: Uint8Array): Promise<PageDiff> {

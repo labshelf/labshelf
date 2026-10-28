@@ -5,7 +5,7 @@ import YAML from "yaml";
 import type { Doc, Map as YMap, Text } from "yjs";
 import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDoi, normalizeArxivIdentifier } from "../import/index.js";
 import { isMergeableTextFile } from "../library/conflicts/index.js";
-import { parseBibEntries, extractPlainField, type BibEntry } from "../writing/citations/index.js";
+import { parseBibEntries, readBibField, type BibEntry } from "../writing/citations/index.js";
 import { deriveBuiltPdfPaths, isBuildOrToolPath, PROJECT_FILE } from "../writing/project/index.js";
 import type { ShareFileEntry } from "./shareIndexDoc.js";
 
@@ -163,9 +163,9 @@ export interface MergedBibliography {
 interface WorkIds { doi: string | undefined; arxiv: string | undefined }
 
 function workIds(entry: BibEntry): WorkIds {
-  const doi = extractDoi(extractPlainField(entry.fields.get("doi")))?.toLowerCase();
-  const arxiv = normalizeArxivIdentifier(extractPlainField(entry.fields.get("eprint")))
-    ?? extractArxivIdentifierFromDoi(doi) ?? extractArxivIdentifierFromUrl(extractPlainField(entry.fields.get("url")));
+  const doi = extractDoi(readBibField(entry, "doi"))?.toLowerCase();
+  const arxiv = normalizeArxivIdentifier(readBibField(entry, "eprint"))
+    ?? extractArxivIdentifierFromDoi(doi) ?? extractArxivIdentifierFromUrl(readBibField(entry, "url"));
   return { doi, arxiv: arxiv?.toLowerCase() };
 }
 

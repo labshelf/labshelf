@@ -1,7 +1,6 @@
 // Moves projects between My projects folders and archives them by rewriting each project's labshelf.yaml.
 import * as vscode from "vscode";
-import { checkFolderName, formatError, type ProjectEntry, type ProjectSettingsUpdate } from "@labshelf/core";
-import type { ProjectUpdate, ProjectFolderAction } from "./sidebarMessages.js";
+import { checkFolderName, formatError, type ProjectEntry, type ProjectSettingsUpdate, type ProjectUpdate, type ProjectFolderAction } from "@labshelf/core";
 
 /** Validates folder names typed in an input box, in the shape vscode.InputBoxOptions.validateInput expects. */
 export function checkFolderNameInput(value: string): string | null {

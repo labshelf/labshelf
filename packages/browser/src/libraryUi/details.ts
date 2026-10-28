@@ -1,9 +1,9 @@
 // Wires the page's Details: channel splitting, endpoint merging, the page's capabilities and labels, the mount and the right pane's controls.
-import type {
-  AllProjectsEndpoint, DetailsSelection, DetailsToHost, HostEndpoint, HostToDetails, LibraryUiCapabilities, LibraryUiLabels, MessageEnd, SpaceStore,
+import {
+  parseTab, type AllProjectsEndpoint, DetailsSelection, DetailsToHost, HostEndpoint, HostToDetails, LibraryUiCapabilities, LibraryUiLabels, MessageEnd, SpaceStore,
 } from "@labshelf/core";
 import { mountDetails, mountResearchChat, renderElement, renderIcon } from "@labshelf/core/dom";
-import { parseTab, type PageShell } from "./editorArea";
+import type { PageShell } from "./editorArea";
 import type { PagePrefs } from "./prefs";
 
 // ---- Page capabilities

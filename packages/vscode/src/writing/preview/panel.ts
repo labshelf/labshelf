@@ -1,21 +1,19 @@
 // Keeps one reader preview per writing project: reloads it after a build, shows the build status, follows the focused file's root and opens it when asked.
 import * as vscode from "vscode";
 
-import type { Annotation, ILogger, LatexEngine, PaperRecord, PathOps, ProjectContentPort, ProjectFormat } from "@labshelf/core";
-import { buildTypstPreviewPdf, createPreviewStore, deriveBuiltPdfPath } from "@labshelf/core";
+import type { Annotation, CheckCounts, FinishedBuild, ILogger, LatexEngine, PaperRecord, PathOps, ProjectContentPort, ProjectFormat } from "@labshelf/core";
+import { BuildRootBuilds, ProjectSynctex, StaleSources, buildTypstPreviewPdf, createPreviewStore, deriveBuiltPdfPath, type SourceEvents } from "@labshelf/core";
 import { disposeAll } from "../../disposables/index.js";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
 import type { UriOfPath } from "../../library/index.js";
-import { BUILD_COMMAND, readActiveProject, type BuildListener, type BuildTrigger, type FinishedBuild, type IncludeOnlyState } from "../build/index.js";
+import { BUILD_COMMAND, readActiveProject, type BuildListener, type BuildTrigger, type IncludeOnlyState } from "../build/index.js";
 import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { BuildRootOf, WritingHost, WritingProjects } from "../projects/index.js";
-import { BuildRootBuilds, createWritingActions } from "./buildRoots.js";
+import { createWritingActions } from "./buildRoots.js";
 import { BuildRootsPublisher } from "./buildRootsPublisher.js";
 import type { CitationFixDeps } from "./citationFixes.js";
-import { StaleSources, type SourceEvents } from "./diagnostics.js";
-import type { CheckCounts } from "./limits.js";
 import { type BodyPagesCount, createPreviewPorts, createProjectActions } from "./ports.js";
-import { ProjectSynctex, showInPreview } from "./synctex.js";
+import { showInPreview } from "./synctex.js";
 
 /** The module name the preview logs under. */
 export const PREVIEW_LOG_MODULE = "writing/preview";

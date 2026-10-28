@@ -1,8 +1,8 @@
 import type { LibraryFileSystem } from "@labshelf/core";
-import { BridgeFileSystem, BridgeClient } from "../../src/storage/bridge";
+import { BridgeFileSystem, BridgeClient } from "@labshelf/core";
 import { DB_VERSION, IdbFileSystem, applyDbUpgrade, createIdbHistoryStorage } from "../../src/storage/idb";
 import { clearFakeDb, fakeFiles, fakeRows, putFile, textAt } from "../support/fakeIdb";
-import { FakeBridgeHost, silentLogger } from "./bridge/fakeBridgeHost";
+import { FakeBridgeHost, silentLogger } from "../../../core/__tests__/bridge/fakeBridgeHost";
 
 jest.mock("webextension-polyfill", () => ({}));
 jest.mock("idb", () => ({ openDB: async () => require("../support/fakeIdb").fakeDb }));

@@ -1,7 +1,7 @@
 // Reads what the All projects detail pane shows for one project, and the build summary and cites its list shows, from the core readers.
 import { formatError } from "../../errors/index.js";
 import type { PdfjsLoader } from "../../import/index.js";
-import { readLatexProjectSources } from "../../latex/index.js";
+import { readLatexProjectTexts } from "../../latex/index.js";
 import { formatAuthors } from "../../library/index.js";
 import type { PaperRecord } from "../../model/index.js";
 import type { ILogger } from "../../ports/index.js";
@@ -31,14 +31,7 @@ async function readProjectSources(
     const text = await read(main);
     return text === undefined ? { paths: [], texts: [] } : { paths: [main], texts: [{ text }] };
   }
-  const texts = new Map<string, string>();
-  const { files } = await readLatexProjectSources(main, {
-    read: async (relativePath) => {
-      const text = await read(relativePath);
-      if (text !== undefined) { texts.set(relativePath, text); }
-      return text;
-    },
-  });
+  const { files, texts } = await readLatexProjectTexts(main, { read });
   return { paths: files.map((file) => file.path), texts: deriveReadingOrderTexts(files, texts) };
 }
 

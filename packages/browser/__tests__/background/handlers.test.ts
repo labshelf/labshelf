@@ -23,7 +23,6 @@ jest.mock("../../src/capture/index", () => ({
 }));
 jest.mock("../../src/background/drafts", () => ({ removePaperDrafts: jest.fn() }));
 jest.mock("../../src/background/broadcast", () => ({ sendLibraryChanged: (...a: unknown[]) => mockBroadcast(...a) }));
-jest.mock("../../src/libraryUi", () => ({ createFolderHash: () => "" }));
 jest.mock("@labshelf/core", () => ({
   ...jest.requireActual("@labshelf/core"),
   findPublishedDoi: (...a: unknown[]) => mockPublishedDoiOf(...a),

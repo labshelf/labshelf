@@ -2,14 +2,14 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import type { CheckProblem, ILogger, PdfjsLoader, ProjectBuildResult, ProjectEntry } from "@labshelf/core";
+import type { CheckProblem, FinishedBuild, ILogger, PdfjsLoader, ProjectBuildResult, ProjectEntry } from "@labshelf/core";
 import { ProjectBuildQueue, checkProject, type ProjectBuildDeps } from "@labshelf/core/node";
 import { runSafely } from "../../../command/index.js";
 import { readBuiltPdf, type BuildPreviews } from "../../preview/index.js";
 import { CHECK_COMMAND, type ReadyProject, type WritingHost, type WritingProjects } from "../../projects/index.js";
 import { registerLatexTypingWrites, registerLatexWriteBuilds } from "../autoBuild.js";
 import { deriveCheckProblems } from "../check.js";
-import { ProjectProblems, readActiveProject, shouldHaltOnError, type BuildListener, type BuildProblems, type BuildTrigger, type FinishedBuild, type ProjectBuilders } from "../builds.js";
+import { ProjectProblems, readActiveProject, shouldHaltOnError, type BuildListener, type BuildProblems, type BuildTrigger, type ProjectBuilders } from "../builds.js";
 import type { FindIncludeOnly } from "../includeOnly.js";
 import { createProjectBuildDeps, reportToolchainMissing } from "./toolchain.js";
 

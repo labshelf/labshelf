@@ -1,22 +1,5 @@
 import type { HostEndpoint } from "@labshelf/core";
-import { attachHashHandlers, parseFolderHash, createFolderHash } from "../../src/libraryUi/folderHash";
-
-describe("router hash <-> folder", () => {
-  it("round-trips folders, encoding each segment", () => {
-    for (const f of ["papers", "papers/A", "papers/Reading group/Refs & notes"]) {
-      expect(parseFolderHash(createFolderHash(f))).toBe(f);
-    }
-    expect(createFolderHash("papers/Reading group")).toBe("#/papers/Reading%20group");
-  });
-  it("falls back to the root for empty, foreign or traversal hashes", () => {
-    for (const h of ["", "#", "#/", "#/elsewhere", "#/papers-old/x", "#/papers/../x", "#/papers//x", "#/papers/./x", "#/papers/a%5Cb"]) {
-      expect(parseFolderHash(h)).toBe("papers");
-    }
-  });
-  it("tolerates a trailing slash", () => {
-    expect(parseFolderHash("#/papers/A/")).toBe("papers/A");
-  });
-});
+import { attachHashHandlers } from "../../src/libraryUi/folderHash";
 
 describe("router hashchange", () => {
   function attach(hash: string, paperIdAtPath: (path: string) => Promise<string | null> = async () => null) {

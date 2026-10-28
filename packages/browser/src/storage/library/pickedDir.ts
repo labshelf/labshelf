@@ -1,7 +1,6 @@
 // Keeps the library folder the user picked in the browser: its file system, its stored handle and library id, its permission and the signal that it changed.
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
-import type { LocalStat } from "@labshelf/core";
-import { BytesFileSystem, isCaseOnlyRename } from "../idb";
+import { BytesFileSystem, isCaseOnlyRename, type LocalStat } from "@labshelf/core";
 
 type Entry = FileSystemDirectoryHandle | FileSystemFileHandle;
 

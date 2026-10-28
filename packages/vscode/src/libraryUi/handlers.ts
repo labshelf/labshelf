@@ -7,17 +7,19 @@ import {
   PDF_FILE,
   createPaperFiles,
   createSidecarReader,
-  deriveCleanTags,
   derivePaperDetails,
   formatError,
   formatKeptFieldNotice,
   isShareMessage,
-  moveNotice,
+  movePaperFolders,
   parseUiMessage,
-  removeNotice,
-  titleResolver,
+  removePapers,
+  sendPaperDetails,
+  setPaperNote,
+  setPaperTags,
   type HostToUi,
   type ILogger,
+  type LibraryUiHost,
   type PaperDetails,
   type PaperFilesState,
   type PaperRecord,
@@ -26,11 +28,11 @@ import {
   type SpaceStore,
   type SpacesHostPort,
   type UiToHost,
+  type SidebarSpaceMessage,
 } from '@labshelf/core';
 import { LOG_MODULE, importCitationWork, showCitationMap } from './citationMap.js';
 import type { ListPanelDeps } from './listPanel.js';
 import type { LibraryPaths } from './paths.js';
-import type { SidebarSpaceMessage } from './sidebarMessages.js';
 
 export interface ListHostContext {
   deps: ListPanelDeps;
@@ -157,15 +159,13 @@ async function pdfOnDevice(ctx: ListHostContext, paperPath: string, hasPdf: bool
   }
 }
 
-export async function sendDetails(ctx: ListHostContext, id: string): Promise<void> {
-  const [paper] = await ctx.papers([id]);
-  if (!paper) { return; }
+async function paperDetails(ctx: ListHostContext, paper: PaperRecord): Promise<PaperDetails> {
   const load = ctx.deps.loadSidecar;
-  const sidecar = load ? await createSidecarReader(load, ctx.deps.logger, LOG_MODULE).summaryOf(id) : { annotations: [] };
+  const sidecar = load ? await createSidecarReader(load, ctx.deps.logger, LOG_MODULE).summaryOf(paper.id) : { annotations: [] };
   const details = derivePaperDetails(sidecar, await pdfOnDevice(ctx, paper.path, paper.hasPdf));
   const backlinks = ctx.deps.projectBacklinks;
   if (backlinks) { details.citedIn = [...backlinks.index().get(paper.citeKey) ?? []]; }
-  await ctx.post({ type: 'details', id, details });
+  return details;
 }
 
 async function sendSimilar(ctx: ListHostContext, id: string): Promise<void> {
@@ -243,32 +243,21 @@ async function setStatus(ctx: ListHostContext, ids: string[], status: ReadingSta
   if (failed.length) { ctx.notice('error', formatKeptFieldNotice('status', failed.length, 'not found in the library')); }
 }
 
-async function setTags(ctx: ListHostContext, ids: string[], add: string[], remove: string[]): Promise<void> {
-  const outcome = await ctx.deps.paperService.editTags(ids, deriveCleanTags(add), deriveCleanTags(remove));
-  const first = outcome.failed[0];
-  if (first) { ctx.notice('error', formatKeptFieldNotice('tags', outcome.failed.length, first.error)); }
-}
-
-async function setNote(ctx: ListHostContext, id: string, note: string): Promise<void> {
-  if (!(await ctx.deps.paperService.updatePaperFields(id, { note }))) { ctx.notice('error', 'The note could not be saved — the paper is not in the library'); }
-}
-
-async function titleLookup(ctx: ListHostContext, ids: string[]): Promise<(id: string) => string> {
-  return titleResolver(await ctx.papers(ids));
-}
-
-async function movePapers(ctx: ListHostContext, ids: string[], targetDir: string): Promise<void> {
-  const result = await ctx.deps.paperService.movePapers(ids, targetDir);
-  const where = targetDir === ctx.paths()?.root ? undefined : ctx.deps.pathOps.basename(targetDir);
-  const notice = moveNotice(result.done.length, result.failed, where, await titleLookup(ctx, ids));
-  if (notice) { ctx.notice(notice.kind, notice.text); }
-}
-
-async function removePapers(ctx: ListHostContext, ids: string[]): Promise<void> {
-  const papers = await ctx.papers(ids);
-  const outcome = await ctx.deps.paperService.trashPapers(papers.map((p) => p.id));
-  const notice = removeNotice(outcome.done, outcome.failed, titleResolver(papers));
-  if (notice) { ctx.notice(notice.kind, notice.text); }
+/** The port the core paper handlers answer through; the index pushes its own changes, so refresh does nothing. */
+function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
+  const service = ctx.deps.paperService;
+  return {
+    papers: (ids) => ctx.papers(ids),
+    post: (m) => ctx.post(m),
+    notice: (kind, text) => ctx.notice(kind, text),
+    refresh: async () => {},
+    editTags: (ids, add, remove) => service.editTags([...ids], add, remove),
+    setNote: async (id, note) => !!(await service.updatePaperFields(id, { note })),
+    trashPapers: (papers) => service.trashPapers(papers.map((p) => p.id)),
+    movePapers: (ids, target) => service.movePapers([...ids], target),
+    folderName: (target) => (target === ctx.paths()?.root ? undefined : ctx.deps.pathOps.basename(target)),
+    details: (paper) => paperDetails(ctx, paper),
+  };
 }
 
 async function writeClipboard(ctx: ListHostContext, text: string, label: string | undefined): Promise<void> {
@@ -303,7 +292,7 @@ async function onFolderMessage(ctx: ListHostContext, m: UiToHost, toDisk: (ui: s
     case 'folder.create': await ctx.deps.folders.create(toDisk(m.parent), m.name); return true;
     case 'folder.rename': await ctx.deps.folders.rename(toDisk(m.path), m.name); return true;
     case 'folder.delete': await ctx.deps.folders.trash(toDisk(m.path)); return true;
-    case 'paper.move': await movePapers(ctx, m.ids, toDisk(m.target)); return true;
+    case 'paper.move': await movePaperFolders(libraryUiHost(ctx), m.ids, toDisk(m.target)); return true;
     // Imports land in the folder being viewed, not at the library root.
     case 'paper.add': await runCommand(ctx, 'labshelf.addPaperHere', { label: m.folder.split('/').pop(), dirPath: toDisk(m.folder) }); return true;
     default: return false;
@@ -323,12 +312,12 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.fetchMetadata': await runCommand(ctx, 'labshelf.fetchMetadata', m.id); return true;
     case 'paper.makeSearchable': await runCommand(ctx, 'labshelf.makeSearchable', m.ids); return true;
     case 'annotations.export': await runCommand(ctx, 'labshelf.exportAnnotations', m.id, 'file'); return true;
-    case 'paper.details': await sendDetails(ctx, m.id); return true;
+    case 'paper.details': await sendPaperDetails(libraryUiHost(ctx), m.id); return true;
     case 'paper.similar': await sendSimilar(ctx, m.id); return true;
     case 'paper.setStatus': await setStatus(ctx, m.ids, m.status); return true;
-    case 'paper.setTags': await setTags(ctx, m.ids, m.add, m.remove); return true;
-    case 'paper.setNote': await setNote(ctx, m.id, m.note); return true;
-    case 'paper.remove': await removePapers(ctx, m.ids); return true;
+    case 'paper.setTags': await setPaperTags(libraryUiHost(ctx), m.ids, m.add, m.remove); return true;
+    case 'paper.setNote': await setPaperNote(libraryUiHost(ctx), m.id, m.note); return true;
+    case 'paper.remove': await removePapers(libraryUiHost(ctx), m.ids); return true;
     case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;
     case 'clipboard.write': await writeClipboard(ctx, m.text, m.label); return true;
     case 'citationMap.refresh': await showCitationMap(ctx); return true;

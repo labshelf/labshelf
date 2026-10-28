@@ -3,9 +3,10 @@ import { autocompletion, snippet, type Completion, type CompletionContext, type 
 import { StreamLanguage, type StreamParser } from "@codemirror/language";
 import { Prec, type Extension } from "@codemirror/state";
 import { EditorView, hoverTooltip, keymap, type Tooltip } from "@codemirror/view";
-import type { ILogger, PaperRecord } from "@labshelf/core";
+import { deriveSnippetTemplate, type ILogger, type PaperRecord } from "@labshelf/core";
 import {
   createTypstLanguageService,
+  derivePlainHoverText,
   type TypstCompletion,
   type TypstCompletionKind,
   type TypstLanguageService,
@@ -13,7 +14,7 @@ import {
 } from "@labshelf/core/typst/language";
 import type { Workspace } from "../../libraryUi/editorArea";
 import { showInOpenEditor } from "../session";
-import { deriveSnippetTemplate, listLibraryCitations } from "./latex";
+import { listLibraryCitations } from "./latex";
 
 interface TypstState { comment: number; math: boolean }
 
@@ -135,13 +136,11 @@ export function createDefinitionBindings(service: TypstLanguageService, path: st
   ];
 }
 
-const FENCE = /^```.*$/gm;
-
 /** For `hoverTooltip`: the tooltip is plain text, since the service answers in markdown. */
 function hoverSource(service: TypstLanguageService, path: string): (view: EditorView, pos: number, side: -1 | 1) => Promise<Tooltip | null> {
   return async (view, pos) => {
     const hover = await service.hover(path, view.state.doc.toString(), pos);
-    const text = hover?.text.replace(FENCE, "").trim() ?? "";
+    const text = hover ? derivePlainHoverText(hover.text) : "";
     if (!hover || text === "") return null;
     return {
       pos: hover.from,

@@ -1,8 +1,7 @@
 // Finds a paper for a command, or guards the command when none is selected; every registration group calls it.
 import * as vscode from "vscode";
 
-import { type PaperRecord, isSafeExternalUrl, derivePaperUrl } from "@labshelf/core";
-import type { PaperService } from "../library/index.js";
+import { type PaperRecord, type PaperService, isSafeExternalUrl, derivePaperUrl } from "@labshelf/core";
 import { createPaperPickItem } from "./createPaperPickItem.js";
 import type { ActiveServices } from "./commandContext.js";
 

@@ -1,7 +1,7 @@
 /** The list host's message handlers: sharing and Space messages, the detail pane, the file tray and project sources. */
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { answerListMessage, answerSidebarSpaceMessage, onPaperFileMessage, openProjectSource, sendDetails } from '../../src/libraryUi/handlers';
+import { answerListMessage, answerSidebarSpaceMessage, onPaperFileMessage, openProjectSource } from '../../src/libraryUi/handlers';
 import type { ListHostContext } from '../../src/libraryUi/handlers';
 
 describe('answerListMessage', () => {
@@ -57,12 +57,12 @@ describe('answerDetailPane', () => {
     return { ctx, post };
   }
 
-  describe('sendDetails pdf line', () => {
+  describe('paper.details pdf line', () => {
     it('names the PDF relative to papers/', async () => {
       (vscode.workspace.fs.stat as jest.Mock).mockResolvedValueOnce({ type: vscode.FileType.File, size: 1234 });
       const { ctx, post } = context(`${ROOT}/ML/Refs/p1`);
 
-      await sendDetails(ctx, 'p1');
+      await answerListMessage(ctx, { type: 'paper.details', id: 'p1' });
 
       expect(post).toHaveBeenCalledWith(expect.objectContaining({
         type: 'details',
@@ -74,7 +74,7 @@ describe('answerDetailPane', () => {
       (vscode.workspace.fs.stat as jest.Mock).mockResolvedValueOnce({ type: vscode.FileType.File, size: 5 });
       const { ctx, post } = context(`${ROOT}/p1`, null);
 
-      await sendDetails(ctx, 'p1');
+      await answerListMessage(ctx, { type: 'paper.details', id: 'p1' });
 
       expect(post).toHaveBeenCalledWith(expect.objectContaining({
         details: expect.objectContaining({ pdf: { size: 5, relPath: 'paper.pdf' } }),
@@ -230,14 +230,14 @@ describe('projectSource', () => {
   describe('details citedIn', () => {
     it('lists the projects citing the paper by its cite key', async () => {
       const { ctx, post } = context();
-      await sendDetails(ctx, 'p1');
+      await answerListMessage(ctx, { type: 'paper.details', id: 'p1' });
       expect(post).toHaveBeenCalledWith(expect.objectContaining({ type: 'details', details: expect.objectContaining({ citedIn: [link] }) }));
     });
 
     it('sends an empty list for a paper no project cites', async () => {
       const { ctx, post } = context();
       (ctx.papers as unknown) = async () => [{ id: 'p2', title: 'T', path: '/lib/papers/p2', citeKey: 'nobody' }];
-      await sendDetails(ctx, 'p2');
+      await answerListMessage(ctx, { type: 'paper.details', id: 'p2' });
       expect(post).toHaveBeenCalledWith(expect.objectContaining({ details: expect.objectContaining({ citedIn: [] }) }));
     });
   });

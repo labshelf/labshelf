@@ -12,8 +12,7 @@ import {
   sleep,
 } from "@labshelf/core";
 import { checkTemplateForPublish, renderFirstPagePng, writeProjectAsTemplate } from "@labshelf/core/node";
-import type { FinishedBuild } from "../../build/index.js";
-import type { PublishableProject, PublishPorts } from "@labshelf/core";
+import type { FinishedBuild, PublishableProject, PublishPorts } from "@labshelf/core";
 import * as vscode from "vscode";
 import { runSafely } from "../../../command/index.js";
 import { ensureToolchain, type ToolchainDeps } from "../../build/node/index.js";

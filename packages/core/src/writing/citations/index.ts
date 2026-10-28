@@ -9,7 +9,7 @@ export type { HighlightChoice, PickText } from "./citeKeys.js";
 export { deriveSuggestedCiteKey, derivePapersByCiteKey, findSourceHeadings } from "./citeKeys.js";
 export type { SuggestableCiteKey, SourceHeading } from "./citeKeys.js";
 
-export { parseBibEntries, extractPlainField, BIBLIOGRAPHY_HEADER, createBibliography, withBibliographyLine, listProjectCiteKeys, updateProjectBibliography } from "./bibliography.js";
+export { parseBibEntries, extractPlainField, readBibField, BIBLIOGRAPHY_HEADER, createBibliography, withBibliographyLine, listProjectCiteKeys, updateProjectBibliography } from "./bibliography.js";
 export type { BibEntry, GeneratedBibliography, BibliographyLineResult } from "./bibliography.js";
 
 export { checkBibliography, deriveMissingDoiFix, createPublishedVersionFinder } from "./bibliographyChecks.js";

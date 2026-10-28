@@ -11,7 +11,7 @@ export { deriveNestedSymbols } from "./outline.js";
 export type { BuildRootOf, PlatformWriting, ProjectHistoryRecorder, RegisterPlatformWriting } from "./platformPort.js";
 export { registerExportCommands, registerInstallCommand, type ConvertProject, type InstallServices } from "./exportInstall.js";
 export {
-  deriveBuildRootPath, deriveProjectPath, findOwningProject, registerAddExistingFolder, registerBuildRootCommands,
+  deriveBuildRootPath, findOwningProject, registerAddExistingFolder, registerBuildRootCommands,
   registerBuildRootStatusBar, registerProjectCommands, registerProjectItemCommands,
   type ProjectFinder, type ReadyProject,
 } from "./commands.js";

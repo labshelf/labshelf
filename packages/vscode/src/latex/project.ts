@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import {
-  readLatexProjectSources, type ILogger, type LatexRange, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
+  readLatexProjectTexts, type ILogger, type LatexRange, type MissingSource, type ProjectSourceFile, type ProjectSourceReader,
 } from "@labshelf/core";
 import { disposeAll } from "../disposables/index.js";
 import { findOwningProject, type ReadyProject } from "../writing/index.js";
@@ -106,16 +106,8 @@ export class LatexProjectSources implements vscode.Disposable {
   private async collect(folder: string, main: string): Promise<LatexProject> {
     const root = vscode.Uri.file(folder);
     const base = createProjectSourceReader(root, () => this.workspace.logger());
-    const texts = new Map<string, string>();
-    const reader: ProjectSourceReader = {
-      async read(relativePath) {
-        const text = await base.read(relativePath);
-        if (text !== undefined) { texts.set(relativePath, text); }
-        return text;
-      },
-    };
-    const sources = await readLatexProjectSources(main, reader);
-    return { root, main, ...sources, texts };
+    const sources = await readLatexProjectTexts(main, base);
+    return { root, main, ...sources };
   }
 
   private invalidateFile(file: vscode.Uri): void {

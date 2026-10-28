@@ -2,15 +2,14 @@
 // and routes every call there. Its mutations apply the core library mutations to the IndexedDB library and keep the
 // paper-record cache in step with the files.
 import {
-  BRIDGE_HOST_NAME, BibtexService, createFolder, describePaperFileOnFileSystem, updatePaperTags, importShareLink, listPaperFiles, movePapers, posixPathOps, readPaperOnFileSystem, movePapersUnder, removePapersUnder, renameFolder, setPapersReadingStatus,
+  BRIDGE_HOST_NAME, BibtexService, BridgeClient, BridgeFileSystem, deriveBridgeFailure, setBridgeLibrary, createFolder, describePaperFileOnFileSystem, updatePaperTags, importShareLink, listPaperFiles, movePapers, posixPathOps, readPaperOnFileSystem, movePapersUnder, removePapersUnder, renameFolder, setPapersReadingStatus,
   moveFolderToTrash, movePapersToTrash, updatePaperFields, writeImportedPaper, writePaperRecord, PAPERS_DIR,
 } from "@labshelf/core";
 import type {
-  BatchOutcome, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordCache, LibraryFileSystem, MoveOutcome, MutationContext,
+  BatchOutcome, BridgeFailureKind, FieldsBatchOutcome, ILogger, ImportedPaper, ImportShareLinkOptions, ImportShareLinkResult, IPaperRecordCache, LibraryFileSystem, MoveOutcome, MutationContext, NativeMessagePort, OpenBridge,
   PaperFilesState, PaperRecord, Reference, ReadingStatus, PdfVersion,
 } from "@labshelf/core";
-import { connectBrowserNative, createBrowserLogger, type NativePort } from "../platform";
-import { BridgeClient, BridgeFileSystem, deriveBridgeFailure, setBridgeLibrary, type BridgeFailureKind, type OpenBridge } from "./bridge";
+import { connectBrowserNative, createBrowserLogger } from "../platform";
 import { IdbFileSystem } from "./idb";
 import { DirFileSystem, ensureFolderGranted, readPickedDir, onPickedDirChange } from "./library";
 import { listCachedPaperRecords, refreshPaperRecords, removeCachedPaperRecord, writeCachedPaperRecord } from "./records";
@@ -44,7 +43,7 @@ export interface PickedDir {
 }
 
 export interface SourceDeps {
-  connect: () => NativePort;
+  connect: () => NativeMessagePort;
   /** The folder the user picked in the browser, which wins over the bridge. */
   pickedFolder: () => Promise<PickedDir | undefined>;
   onPickedFolderAnnounced: (listener: () => void) => void;

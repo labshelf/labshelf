@@ -37,3 +37,9 @@ export type { DotKind, FileLabelKind, ProjectTreeView, SidebarNodeIcon, SidebarO
 export { createSelectionHub, closeTab, createInitialTabs, isPinnable, movePreviewToPinned, removeStaleTabs, applyDetailsSelection, setActiveTab, deriveShownSelection } from "./detailsTabs.js";
 export type { SelectionHub, DetailsTabsState } from "./detailsTabs.js";
 export type { LibraryUiCapabilities, LibraryUiLabels } from "./hostConfig.js";
+export { TAB_KIND_SPECS, parseTab, parseFolderHash, createFolderHash, createFolderTitle } from "./tabModel.js";
+export type { TabKindName, TabParams, TabKindSpec } from "./tabModel.js";
+export { parseStoredPrefs, deriveStringList, deriveEditorWidth, deriveCodeStyle, deriveDetailPane, mergePrefs } from "./prefs.js";
+export type { DetailPanePrefs, CodeStyle } from "./prefs.js";
+export { setPaperTags, setPaperNote, movePaperFolders, removePapers, sendPaperDetails } from "./paperHandlers.js";
+export type { LibraryUiHost } from "./paperHandlers.js";

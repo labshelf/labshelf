@@ -10,7 +10,8 @@ export {
 export type { ParsedSectionStates, SectionState } from "./sectionState.js";
 export type { LatexCatalogEntry } from "./catalog.js";
 export { LATEX_COMMANDS, LATEX_ENVIRONMENTS } from "./catalog.js";
-export { findEnvironmentToClose, findLatexCompletionSpan, type LatexCompletionSpan } from "./catalogCompletion.js";
+export { deriveSnippetTemplate, findEnvironmentToClose, findLatexCompletionSpan, type LatexCompletionSpan } from "./catalogCompletion.js";
+export { createProjectLabels, type ProjectLabel, type ProjectLabels } from "./projectLabels.js";
 export type { BuildProblem, BuildProblemKind, BuildProblemSeverity } from "./log.js";
 export { parseTexLog } from "./log.js";
 export type {
@@ -19,7 +20,7 @@ export type {
 export { countWords, removeComments, scanLatexSource } from "./source.js";
 export { readDelimited, findSpaceEnd } from "./sourceCommands.js";
 export {
-  readLatexProjectSources, deriveMathJaxMacros, resolveIncludePath, findUndefinedReferences,
+  readLatexProjectSources, readLatexProjectTexts, deriveMathJaxMacros, resolveIncludePath, findUndefinedReferences,
 } from "./sourceProject.js";
 export type {
   MissingSource, ProjectSourceFile, ProjectSourceReader, ProjectSources, MathJaxMacros, UndefinedReference,

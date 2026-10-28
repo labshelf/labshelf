@@ -1,4 +1,4 @@
-/** Exports the LabShelf Helper protocol: its messages, validation, the client port the browser implements and the wire form of the editor page calls (LaTeX helper and Typst compiles). */
+/** Exports the LabShelf Helper protocol: its messages, validation, the client port the browser implements, the page-side helper client over app transports and the wire form of the editor page calls (LaTeX helper and Typst compiles). */
 export {
   COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOST_NAME, HELPER_HOSTS, HELPER_VERSION, MAX_EDIT_CHANGES,
   MAX_OPEN_PROJECTS, MAX_PATH_LENGTH, MAX_PROJECT_BYTES, MAX_PROJECT_FILES, MAX_SOCKET_MESSAGE_BYTES,
@@ -15,3 +15,18 @@ export type {
 } from "./helperPaths.js";
 export { parseHelperMessage } from "./parseHelperMessage.js";
 export type { MessageFor } from "./parseHelperMessage.js";
+export { createBuildScheduler } from "./buildScheduler.js";
+export type { BuildScheduler, BuildSchedulerOptions, BuildTimers } from "./buildScheduler.js";
+export { mergePdfPages, singlePage } from "./pageMerge.js";
+export type { ChangedPages } from "./pageMerge.js";
+
+export { HelperClosedError, HelperConnection, HelperVersionError, deriveHelperStatus, runHandshake } from "./helperClientConnection.js";
+export type {
+  ConnectionHooks, FrameStep, Handshake, HandshakeDeps, HelperPortFactory, HelperSocketOpener, HelperTransport, RequestBody,
+} from "./helperClientConnection.js";
+export { NativeHelperSession, createNativeLatexHelper } from "./helperClient.js";
+export type { NativeHelperSessionDeps } from "./helperClient.js";
+export { UpdateTracker, createCompileStep, deriveProgress } from "./updateTracker.js";
+export type { UpdateFrame } from "./updateTracker.js";
+export { createHelperProject } from "./helperProject.js";
+export type { BuildEvent, EditorHelperPort, HelperProblem, HelperProject } from "./helperProject.js";

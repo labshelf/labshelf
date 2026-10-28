@@ -22,11 +22,12 @@ import {
   type ProjectHostFunctions,
   type ProjectLibraryPort,
   type ProjectMenuCommand,
+  type BuildRootBuilds,
 } from "@labshelf/core";
 import type { BuildOutcomes } from "../build/index.js";
 import { copyProjectEntry } from "./commands.js";
 import type { ReadyProject } from "./projectFigures.js";
-import { readBuiltPdf, readRawLogFile, type BuildRootBuilds } from "../preview/index.js";
+import { readBuiltPdf, readRawLogFile } from "../preview/index.js";
 import { OPEN_PROJECT_COMMAND, type ProjectSession, type WritingHost, type WritingProjects } from "./session.js";
 import { PROJECT_COMMANDS, isSidebarProjectCommand } from "../../libraryUi/index.js";
 import { disposeAll } from "../../disposables/index.js";

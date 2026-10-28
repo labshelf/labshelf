@@ -2,7 +2,7 @@
 
 import { extractDoi, fetchCrossrefByDoi, findPublishedDoi, searchCrossref, type PreprintIds, type RegistryEntry, type RegistryEnv } from "../../import/index.js";
 import { normalizeTitleForMatch } from "../../library/index.js";
-import { BIBLIOGRAPHY_HEADER, extractPlainField, extractPreprintIdentifiers, parseBibEntries, type BibEntry } from "./bibliography.js";
+import { BIBLIOGRAPHY_HEADER, readBibField, extractPreprintIdentifiers, parseBibEntries, type BibEntry } from "./bibliography.js";
 
 // --- Linter types ---
 
@@ -41,8 +41,8 @@ function duplicateFindings(text: string, entries: readonly BibEntry[]): Bibliogr
   const byTitle = new Map<string, BibEntry>();
   const findings: BibliographyProblem[] = [];
   for (const entry of entries) {
-    const doi = extractDoi(extractPlainField(entry.fields.get("doi")))?.toLowerCase();
-    const title = normalizeTitleForMatch(extractPlainField(entry.fields.get("title")));
+    const doi = extractDoi(readBibField(entry, "doi"))?.toLowerCase();
+    const title = normalizeTitleForMatch(readBibField(entry, "title"));
     const sameKey = byKey.get(entry.key);
     const first = sameKey ?? (doi ? byDoi.get(doi) : undefined) ?? (title ? byTitle.get(title) : undefined);
     if (sameKey) {
@@ -102,10 +102,10 @@ export async function checkBibliography(text: string, lookup: PublishedVersionFi
  * @returns the insertion after the entry's key, or undefined when no candidate matches
  */
 export async function deriveMissingDoiFix(env: RegistryEnv, text: string, entry: BibEntry): Promise<BibliographyFix | undefined> {
-  const title = extractPlainField(entry.fields.get("title"));
+  const title = readBibField(entry, "title");
   if (!normalizeTitleForMatch(title)) { return undefined; }
-  const year = Number.parseInt(extractPlainField(entry.fields.get("year")), 10);
-  const query = `${title} ${extractPlainField(entry.fields.get("author"))}`;
+  const year = Number.parseInt(readBibField(entry, "year"), 10);
+  const query = `${title} ${readBibField(entry, "author")}`;
   const match = (await searchCrossref(env, query)).find((record) =>
     !record.isComponent && record.doi && normalizeTitleForMatch(record.title ?? "") === normalizeTitleForMatch(title)
     && (!record.year || Number.isNaN(year) || record.year === year));

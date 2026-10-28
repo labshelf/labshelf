@@ -5,16 +5,18 @@ import {
   type ProjectShareDeps,
   type RelayAccount,
   type ShareHost,
+  type TabKindName,
   offerOwnRelayToShares,
   createStoreFailureNotices,
   removeOwnRelayOfferFromShares,
 } from "@labshelf/core";
-import { createBrowserLatexHelper, createHelperProject } from "../helper";
+import { createHelperProject } from "@labshelf/core/helper";
+import { createBrowserLatexHelper } from "../helper";
 import { readSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
 import { createOpenProjectSnapshot, createProjectSession, createProjectsSource, openRestoredProject, showInOpenEditor, showPdfInTab } from "../writing";
 import { createSidebarProjects, type SidebarProjects } from "./sidebar";
-import type { ProjectServices, TabKindName } from "./editorArea";
+import type { ProjectServices } from "./editorArea";
 import type { Workspace } from "./editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
 import { createBrowserProjects, readCurrentLibraryId, readLibraryLocations } from "../storage";

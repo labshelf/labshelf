@@ -1,6 +1,7 @@
 // Reaches the browser: the cross-browser WebExtension API, runtime requests, downloads, the native-messaging port and page visibility.
 // Call sites target Chromium and Firefox without conditionals and never touch raw `chrome.*` or `browser.*` globals.
 import polyfill from "webextension-polyfill";
+import type { NativeMessagePort } from "@labshelf/core";
 import type { RuntimeMessage, RuntimeResponse } from "./messages";
 
 export const bx = polyfill;
@@ -23,16 +24,8 @@ export async function downloadTextFile(fileName: string, text: string, mimeType:
   }
 }
 
-/** Adapts the WebExtension native-messaging port to the small surface the native-host clients need. */
-export interface NativePort {
-  post(frame: unknown): void;
-  onMessage(listener: (frame: unknown) => void): void;
-  /** `reason` is the browser's explanation for the close, when it gives one. */
-  onDisconnect(listener: (reason: string | undefined) => void): void;
-  disconnect(): void;
-}
-
-export function connectBrowserNative(hostName: string): NativePort {
+/** Adapts the WebExtension native-messaging port to the core port the native-host clients need. */
+export function connectBrowserNative(hostName: string): NativeMessagePort {
   const port = bx.runtime.connectNative(hostName);
   return {
     post: (frame) => port.postMessage(frame),
@@ -41,14 +34,6 @@ export function connectBrowserNative(hostName: string): NativePort {
     onDisconnect: (listener) => port.onDisconnect.addListener((closed) => listener(closed.error?.message ?? bx.runtime.lastError?.message)),
     disconnect: () => port.disconnect(),
   };
-}
-
-// PLATFORM: Chrome says "Specified native messaging host not found."; Firefox says "No such native application <name>".
-const NOT_FOUND = [/native messaging host not found/i, /no such native application/i];
-
-/** Tells whether a native-messaging failure means the native host is not installed. */
-export function isHostNotFound(reason: string | undefined): boolean {
-  return reason !== undefined && NOT_FOUND.some((pattern) => pattern.test(reason));
 }
 
 /**

@@ -1,13 +1,13 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder) and the dispatch of UI messages to them.
 import {
-  PAPERS_DIR, formatError, type HostEndpoint, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type UiToHost,
+  PAPERS_DIR, formatError, movePaperFolders, removePapers, sendPaperDetails, setPaperNote, setPaperTags, type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type UiToHost,
 } from "@labshelf/core";
 import { bx, type LibraryChangedEvent } from "../../platform";
 import { createLibraryMutations, type LibraryMutations } from "../../storage";
 import { addToSpace, type PageSpaces } from "../spaces";
 import {
-  addTabPaper, createFolder, createPaperFileHandlers, createPdfHandlers, exportAnnotations, movePapers, offerOpenTabs, removeFolder,
-  removePapers, renameFolder, sendDetails, setNote, setReadingStatus, setTags, writeClipboard, type PaperFileHandlers, type PdfHandlers,
+  addTabPaper, createFolder, createLibraryUiHost, createPaperFileHandlers, createPdfHandlers, exportAnnotations, offerOpenTabs, removeFolder,
+  renameFolder, setReadingStatus, writeClipboard, type PaperFileHandlers, type PdfHandlers,
 } from "./handlers";
 import { createBrowserShareHost, type ShareLinkRelay } from "./browserShareHost";
 import { createLibrarySnapshots, createSidecarReads, watchLibraryChanges, type LibrarySnapshots, type SidecarReads } from "./snapshots";
@@ -78,11 +78,12 @@ async function onReady(ctx: HostContext, loaded: () => Promise<void>, initialPap
 }
 
 interface Handlers {
+  ui: LibraryUiHost;
   pdf: PdfHandlers;
   files: PaperFileHandlers;
 }
 
-function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions, repeat: boolean): void {
+function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => Promise<void>, m: UiToHost, options: LibraryHostOptions, repeat: boolean): void {
   switch (m.type) {
     case "ready": run(ctx, () => onReady(ctx, loaded, options.initialPaper, repeat)); return;
     case "navigate": ctx.folder = m.folder; return;
@@ -101,9 +102,9 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
     case "paper.describeFile": run(ctx, () => files.describe(m.id, m.name, m.description)); return;
     case "paper.openFile": run(ctx, () => files.open(m.id, m.name)); return;
     case "paper.copyFilePath": run(ctx, () => files.copyPath(m.id, m.name)); return;
-    case "paper.details": run(ctx, () => sendDetails(ctx, m.id)); return;
-    case "paper.setTags": run(ctx, () => setTags(ctx, m.ids, m.add, m.remove)); return;
-    case "paper.setNote": run(ctx, () => setNote(ctx, m.id, m.note)); return;
+    case "paper.details": run(ctx, () => sendPaperDetails(ui, m.id)); return;
+    case "paper.setTags": run(ctx, () => setPaperTags(ui, m.ids, m.add, m.remove)); return;
+    case "paper.setNote": run(ctx, () => setPaperNote(ui, m.id, m.note)); return;
     case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
     case "paper.addToSpace":
       run(ctx, async () => {
@@ -111,8 +112,8 @@ function dispatch(ctx: HostContext, { pdf, files }: Handlers, loaded: () => Prom
         await addToSpace(options.spaces.store, m.ids, ctx.notice, ctx.log);
       });
       return;
-    case "paper.move": run(ctx, () => movePapers(ctx, m.ids, m.target)); return;
-    case "paper.remove": run(ctx, () => removePapers(ctx, m.ids)); return;
+    case "paper.move": run(ctx, () => movePaperFolders(ui, m.ids, m.target)); return;
+    case "paper.remove": run(ctx, () => removePapers(ui, m.ids)); return;
     case "paper.add": run(ctx, () => offerOpenTabs(ctx, m.folder)); return;
     case "paper.addFrom": run(ctx, () => addTabPaper(ctx, m.folder, m.sourceId, m.ifNoPdf, m.retryPdf)); return;
     case "clipboard.write": run(ctx, () => writeClipboard(ctx, m.text, m.label)); return;
@@ -130,7 +131,7 @@ export function attachLibraryHost(
   const ctx = createHostCompositionRoot(endpoint, options.log);
   const pdf = createPdfHandlers(ctx);
   const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
-  const handlers: Handlers = { pdf, files: createPaperFileHandlers(ctx, pdf.open) };
+  const handlers: Handlers = { ui: createLibraryUiHost(ctx), pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   // The router asks for a paper path while the first load is still running; both wait on the same load.
   let firstLoad: Promise<void> | null = null;
   const loaded = (): Promise<void> => (firstLoad ??= ctx.snapshots.load());

@@ -2,7 +2,7 @@
 // finding and attaching a PDF, opening the page that stood in the way of one, and the library folders, lookup, open and
 // remove requests.
 import {
-  PAPERS_DIR, PDF_FILE, deriveParentDir, findInLibrary, findPublishedDoi, isPrePublication,
+  PAPERS_DIR, PDF_FILE, createFolderHash, deriveParentDir, findInLibrary, findPublishedDoi, isPrePublication,
   type FolderTreeNode, type ILogger, type MissingPdfAction, type PdfAccess,
 } from "@labshelf/core";
 import { bx, readSettings } from "../platform";
@@ -17,7 +17,6 @@ import {
 import type { AccessTabDeps, CaptureDraft, SavedPaper, WriteDecision } from "../capture/index";
 import { buildFolderTree, createLibraryFileSystem, listCachedPaperRecords, listPdfDirs } from "../storage";
 import type { LibraryMutations } from "../storage";
-import { createFolderHash } from "../libraryUi";
 import { sendLibraryChanged } from "./broadcast";
 import { readHitDraft, readTabDraft, removePaperDrafts } from "./drafts";
 import { sendCopyRequest, type CopyRequestDeps } from "./copyRequest";

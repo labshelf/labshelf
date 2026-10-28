@@ -1,61 +1,12 @@
 // Links a build preview and its source through SyncTeX: opens the source behind a point, adds a review note there and scrolls the preview to a source line.
 import * as vscode from "vscode";
 
-import { deriveBuildRootFolder, findPagePoint, findSourcePosition, formatError, type ILogger, type PagePoint, type PathOps, type ProjectContentPort, type SynctexMap } from "@labshelf/core";
+import { findPagePoint, findSourcePosition, formatError, type ILogger, type PagePoint, type PathOps, type SynctexFinder } from "@labshelf/core";
 import { addSourceComment } from "../../collab/index.js";
 import { BUILD_COMMAND, readActiveProject } from "../build/index.js";
-import type { ReadyProject } from "../projects/index.js";
-import type { WritingHost, WritingProjects } from "../projects/index.js";
+import type { WritingProjects } from "../projects/index.js";
 import { NOT_BUILT_MESSAGE, NOT_IN_PREVIEW_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE, readBuiltPdf, type BuildPreviews } from "./panel.js";
 
-/** What the SyncTeX data of a project's build holds, or why it cannot be had. */
-export type SynctexFinder =
-  | { status: "found"; index: SynctexMap }
-  | { status: "missing"; path: string }
-  | { status: "unsupported" }
-  | { status: "unreadable" };
-
-/** Reads a project's SyncTeX data once per build and keeps it until the next build replaces it. */
-export class ProjectSynctex {
-  private readonly lookups = new Map<string, Promise<SynctexFinder>>();
-
-  constructor(
-    private readonly host: Pick<WritingHost, "current">,
-    private readonly paths: PathOps,
-    private readonly data: ProjectContentPort,
-  ) {}
-
-  /** Forgets the project's data; the next lookup reads the file the latest build wrote. */
-  invalidate(projectFolder: string): void {
-    this.lookups.delete(projectFolder);
-  }
-
-  /** The data of a root's build. A missing or unreadable file is not kept, so a later build is picked up. */
-  load(project: ReadyProject, root: string | undefined): Promise<SynctexFinder> {
-    const known = this.lookups.get(project.folder);
-    if (known) { return known; }
-    const pending = this.read(project, root);
-    this.lookups.set(project.folder, pending);
-    void pending.then((lookup) => {
-      if (lookup.status !== "found" && this.lookups.get(project.folder) === pending) { this.lookups.delete(project.folder); }
-    });
-    return pending;
-  }
-
-  private async read(project: ReadyProject, root: string | undefined): Promise<SynctexFinder> {
-    // Typst writes no SyncTeX; its compiler has no PDF-to-source map LabShelf can read.
-    if (project.settings.format !== "latex") { return { status: "unsupported" }; }
-    if (!root) { return { status: "missing", path: project.folder }; }
-    const mainFile = this.paths.join(project.folder, root);
-    try {
-      const base = this.paths.basename(mainFile, this.paths.extname(mainFile));
-      return await this.data.readSynctexFile(this.paths.join(this.data.projectBuildDir(project.settings.id), deriveBuildRootFolder(root)), base, this.paths.dirname(mainFile));
-    } catch (error) {
-      await this.host.current()?.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: project.folder });
-      return { status: "unreadable" };
-    }
-  }
-}
 
 function editorColumn(): vscode.ViewColumn {
   return vscode.window.visibleTextEditors.find((editor) => editor.viewColumn !== undefined)?.viewColumn ?? vscode.ViewColumn.One;

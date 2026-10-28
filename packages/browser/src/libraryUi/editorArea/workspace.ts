@@ -1,5 +1,5 @@
 // Runs the library page's tabs over the core editor area: opens them lazily, keeps the URL hash in step, restores them on load and frames them with the page shell.
-import { PANE_LIMITS, PAPERS_DIR, type ILogger } from "@labshelf/core";
+import { PANE_LIMITS, PAPERS_DIR, parseTab, type ILogger, type TabKindName, type TabParams } from "@labshelf/core";
 import {
   attachSash,
   mountEditorArea,
@@ -13,7 +13,7 @@ import {
 } from "@labshelf/core/dom";
 import { type PagePlan, isKindShown } from "../pagePlan";
 import type { PagePrefs } from "../prefs";
-import { parseTab, TAB_KINDS, type TabContext, type TabHooks, type TabKindName, type TabParams } from "./tabKinds";
+import { TAB_KINDS, type TabContext, type TabHooks } from "./tabKinds";
 
 // --- Tab hash: the page hash that lists the open tabs and the active one (`#/tabs/library,templates;active=library`) ---
 

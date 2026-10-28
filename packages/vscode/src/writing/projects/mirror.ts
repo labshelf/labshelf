@@ -11,8 +11,8 @@ import {
   type SidebarTreeNode,
   deriveFileIcon,
   type SidebarNodeIcon,
+  type ProjectTreeMessage,
 } from "@labshelf/core";
-import type { ProjectTreeMessage } from "../../libraryUi/index.js";
 import type { ProjectSession } from "./session.js";
 import { disposeAll } from "../../disposables/index.js";
 

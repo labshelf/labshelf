@@ -3,12 +3,12 @@ import { readFile } from "node:fs/promises";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { isInside, type PathOps, type ProjectEntry } from "@labshelf/core";
+import { isInside, type FinishedBuild, type PathOps, type ProjectEntry } from "@labshelf/core";
 import type { TypstBuildResult } from "@labshelf/core/typst";
 import { TypstCompilerHost, resolveTypstPackageDirs } from "@labshelf/core/typst/node";
 import { buildProject, ProjectBuildQueue, type ProjectBuildDeps } from "@labshelf/core/node";
 import type { ReadyProject } from "../../projects/index.js";
-import type { BuildListener, BuildTrigger, FinishedBuild } from "../../build/index.js";
+import type { BuildListener, BuildTrigger } from "../../build/index.js";
 import type { WritingHost, WritingProjects } from "../../projects/index.js";
 import { createProjectBuildDeps, type ProjectBuildDepsSource } from "../../build/node/index.js";
 import { registerTypstTriggers, writeTypstVersion, type TypstTrigger } from "../typstTriggers.js";
