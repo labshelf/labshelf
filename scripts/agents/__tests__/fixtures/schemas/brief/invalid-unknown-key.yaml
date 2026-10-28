@@ -1,0 +1,8 @@
+# error: reuse[0].reason
+schema: brief/v1
+area: a
+question: q
+sha: abc1234
+edit: []
+read: []
+reuse: [{symbol: s, path: p, lines: "1-2", why: w, reason: r}]

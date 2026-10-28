@@ -1,0 +1,10 @@
+# error: edit[0].lines
+schema: spec/v1
+id: "3.2"
+goal: g
+level: task
+runner: {agent: implementer, model: sonnet}
+edit:
+  - {path: a.mjs, lines: "10", why: w}
+acceptance: []
+tests: {none: "x"}

@@ -1,0 +1,11 @@
+# error: owner
+schema: plan/v1
+slug: x
+title: X
+status: draft
+level: N2
+goal: g
+owner: me
+decisions: []
+acceptance: []
+sessions: []

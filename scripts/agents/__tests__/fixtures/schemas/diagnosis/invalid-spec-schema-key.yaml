@@ -1,0 +1,7 @@
+# error: spec.schema
+schema: diagnosis/v1
+red: {command: c, failure: f}
+hypotheses: []
+root_cause: {path: a.mjs, lines: "1-2", claim: c}
+regression_test: {path: t, name: n}
+spec: {schema: spec/v1, goal: g}

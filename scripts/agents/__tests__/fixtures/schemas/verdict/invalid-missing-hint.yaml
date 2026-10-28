@@ -1,0 +1,5 @@
+# error: hint
+schema: verdict/v1
+spec: "3.2"
+verdict: code_wrong
+evidence: []

@@ -1,0 +1,20 @@
+schema: session/v1
+id: "3"
+goal: one sentence
+depends_on: ["2"]
+owns: [scripts/agents/schemas.mjs, .claude/agents/]
+milestone: false
+status: pending
+blocked_reason: null
+packages:
+  - id: "3.1"
+    goal: schemas
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: scripts/agents/schemas.mjs, lines: "1-80", why: "new"}
+    acceptance:
+      - {id: A2, check: "rejects unknown keys"}
+    tests:
+      hidden: [documents/plans/x/tests/3.1/a.test.mjs]
+      command: node scripts/agents/run.mjs test tooling -- a.test.mjs

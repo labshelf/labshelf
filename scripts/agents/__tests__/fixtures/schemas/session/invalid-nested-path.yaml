@@ -1,0 +1,17 @@
+# error: packages[0].edit[1].path
+schema: session/v1
+id: "3"
+goal: g
+depends_on: []
+owns: []
+status: pending
+packages:
+  - id: "3.1"
+    goal: g
+    level: task
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: a.mjs, lines: "1-2", why: w}
+      - {path: 5, lines: "1-2", why: w}
+    acceptance: []
+    tests: {none: "move"}

@@ -1,0 +1,9 @@
+schema: report/v1
+spec: "3.2"
+status: done
+changes:
+  - {path: scripts/agents/schemas.mjs, what: "one line"}
+acceptance:
+  - {id: A2, result: pass, note: ""}
+not_touched: ["left on purpose"]
+concerns: []

@@ -1,0 +1,5 @@
+schema: verdict/v1
+spec: "3.2"
+verdict: spec_ambiguous
+evidence: []
+question: "reading one or reading two?"

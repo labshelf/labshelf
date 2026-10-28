@@ -1,0 +1,9 @@
+# error: runner.model
+schema: spec/v1
+id: "3.2"
+goal: g
+level: task
+runner: {agent: implementer, model: haiku}
+edit: []
+acceptance: []
+tests: {none: "x"}

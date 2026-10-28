@@ -1,0 +1,8 @@
+# error: goal
+schema: spec/v1
+id: "3.2"
+level: task
+runner: {agent: implementer, model: sonnet}
+edit: []
+acceptance: []
+tests: {none: "x"}

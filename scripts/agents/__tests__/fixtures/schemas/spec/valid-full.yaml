@@ -1,0 +1,26 @@
+schema: spec/v1
+id: "3.2"
+plan: agent-pipeline
+goal: one sentence
+level: behaviour
+runner: {agent: implementer, model: sonnet}
+sha: 3296ad93
+depends_on: ["3.1"]
+edit:
+  - {path: scripts/agents/schemas.mjs, lines: "1-80", why: "..."}
+create: [scripts/agents/__tests__/]
+read:
+  - {path: .claude/hooks/context-budget.mjs, lines: "40-50", why: "transcript lookup"}
+callers:
+  - {symbol: emit, path: scripts/plans/runPlan.mjs, lines: "160-170"}
+seams:
+  - {path: scripts/agents/schemas.mjs, signature: "export function validate(kind, value)"}
+decided: ["names stay"]
+acceptance:
+  - {id: A2, check: "..."}
+tests:
+  hidden: [documents/plans/agent-pipeline/tests/3.2/scripts/agents/__tests__/schemas.test.mjs]
+  command: node scripts/agents/run.mjs test tooling --spec 3.2 -- scripts/agents/__tests__/schemas.test.mjs
+commands:
+  - node scripts/agents/run.mjs typecheck core
+do_not_touch: [.claude/settings.json]

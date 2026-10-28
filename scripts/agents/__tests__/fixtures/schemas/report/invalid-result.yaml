@@ -1,0 +1,7 @@
+# error: acceptance[0].result
+schema: report/v1
+spec: "3.2"
+status: done
+changes: []
+acceptance:
+  - {id: A2, result: ok}

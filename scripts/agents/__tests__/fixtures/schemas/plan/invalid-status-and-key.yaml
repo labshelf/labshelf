@@ -1,0 +1,10 @@
+# error: status
+schema: plan/v1
+slug: x
+title: X
+status: finished
+level: N3
+goal: g
+decisions: []
+acceptance: []
+sessions: []

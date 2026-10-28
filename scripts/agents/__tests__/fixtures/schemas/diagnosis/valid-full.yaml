@@ -1,0 +1,17 @@
+schema: diagnosis/v1
+red: {command: "node scripts/agents/run.mjs test tooling -- a.test.mjs", failure: "expected 1 got 2"}
+hypotheses:
+  - {status: confirmed, path: a.mjs, lines: "10-12", claim: c, evidence: e}
+  - {status: falsified, path: b.mjs, lines: "1-3", claim: c, evidence: e}
+call_chain: [{path: a.mjs, lines: "1-5"}]
+root_cause: {path: a.mjs, lines: "10-12", claim: c}
+regression_test: {path: a.test.mjs, name: "A1 regression"}
+also_affected: ["b.mjs"]
+spec:
+  goal: fix it
+  edit:
+    - {path: a.mjs, lines: "10-12", why: w}
+  acceptance:
+    - {id: A1, check: c}
+  tests:
+    hidden: [a.test.mjs]

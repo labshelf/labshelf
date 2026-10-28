@@ -1,0 +1,14 @@
+schema: plan/v1
+slug: agent-pipeline
+title: Agent pipeline
+status: in_progress
+level: N3
+goal: >-
+  Two or three sentences.
+decisions:
+  - {id: D1, text: "one", why: "because"}
+acceptance:
+  - {id: A1, check: "observable check"}
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [scripts/agents/]}
+  - {id: "2", file: sessions/2.yaml, depends_on: ["1"], owns: [.claude/agents/]}

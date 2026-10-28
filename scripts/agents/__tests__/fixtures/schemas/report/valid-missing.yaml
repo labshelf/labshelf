@@ -1,0 +1,8 @@
+schema: report/v1
+spec: "3.2"
+status: missing
+changes: []
+acceptance:
+  - {id: A2, result: unchecked}
+missing:
+  - {need: "callers of validate in .claude/hooks", why: "signature change"}

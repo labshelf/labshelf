@@ -23,7 +23,7 @@ Shared rules every package brief relies on. Briefs say "per conventions" instead
 
 ## Hooks
 
-- Read the JSON input from stdin; on any internal error exit 0 with no output (a hook never breaks a session). Deny shape: `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"…"}}` (model: `.claude/hooks/guard-processes.sh`). SubagentStop block: `{"decision":"block","reason":"…"}`.
+- Read the JSON input from stdin; on any internal error exit 0 with no output (a hook never breaks a session). Deny shape: `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"…"}}` (model: `.claude/hooks/guard-processes.sh`). SubagentStop block: `{"decision":"block","reason":"…"}` (unusable, P2; `check-handoff.mjs` uses PostToolUse on `Agent` with `{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"…"}}` instead).
 - `agent_type` names the agent; the main thread has no `agent_id` (`research/findings.md` § Claude Code).
 - The subagent's prompt (and so its `spec/v1` block) is the first user line of `join(dirname(transcript_path), session_id, "subagents", "agent-<agent_id>.jsonl")` (`.claude/hooks/context-budget.mjs:44-48`); prefer `agent_transcript_path` when the input has it.
 - Per-agent state (block counts, parsed spec cache, quotas) lives in `$LABSHELF_HOOK_STATE_DIR` or `os.tmpdir()/labshelf-hooks/<session_id>/<agent_id>.json`.

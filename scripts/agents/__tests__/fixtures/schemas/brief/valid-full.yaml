@@ -1,0 +1,12 @@
+schema: brief/v1
+area: plan scaffolding
+question: "what the scout was asked"
+sha: 3296ad93
+reuse:    [{symbol: emit, path: a.mjs, lines: "1-2", why: w}]
+edit:     [{path: a.mjs, lines: "1-2", why: w}]
+read:     [{path: b.mjs, lines: "3-4", why: w}]
+callers:  [{symbol: emit, path: c.mjs, lines: "5-6"}]
+tests:    [{path: a.test.mjs, covers: "emit"}]
+contracts: ["code#placement"]
+commands: ["node scripts/agents/run.mjs test core -- <path>"]
+risks:    ["none"]

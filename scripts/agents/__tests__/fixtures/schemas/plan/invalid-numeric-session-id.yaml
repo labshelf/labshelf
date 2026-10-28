@@ -1,0 +1,11 @@
+# error: sessions[0].id
+schema: plan/v1
+slug: x
+title: X
+status: draft
+level: N2
+goal: g
+decisions: []
+acceptance: []
+sessions:
+  - {id: 1, file: sessions/1.yaml, depends_on: [], owns: []}

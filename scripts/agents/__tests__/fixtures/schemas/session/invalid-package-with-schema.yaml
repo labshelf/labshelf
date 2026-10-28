@@ -1,0 +1,16 @@
+# error: packages[0].schema
+schema: session/v1
+id: "3"
+goal: g
+depends_on: []
+owns: []
+status: pending
+packages:
+  - schema: spec/v1
+    id: "3.1"
+    goal: g
+    level: task
+    runner: {agent: implementer, model: sonnet}
+    edit: []
+    acceptance: []
+    tests: {none: "move"}

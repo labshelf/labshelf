@@ -1,0 +1,10 @@
+schema: spec/v1
+id: "3.4"
+goal: rename
+level: task
+runner: {agent: implementer, model: fable}
+edit:
+  - {path: a.css, lines: "1-9", why: "copy"}
+acceptance:
+  - {id: A1, check: "looks right"}
+tests: {none: "CSS only"}

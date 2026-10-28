@@ -47,6 +47,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-handoff.mjs",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "SessionStart": [

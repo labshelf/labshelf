@@ -1,0 +1,5 @@
+# error: verdict
+schema: verdict/v1
+spec: "3.2"
+verdict: both_wrong
+evidence: []

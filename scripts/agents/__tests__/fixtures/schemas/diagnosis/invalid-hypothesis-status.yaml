@@ -1,0 +1,8 @@
+# error: hypotheses[0].status
+schema: diagnosis/v1
+red: {command: c, failure: f}
+hypotheses:
+  - {status: maybe, path: a.mjs, lines: "1-2", claim: c, evidence: e}
+root_cause: {path: a.mjs, lines: "1-2", claim: c}
+regression_test: {path: t, name: n}
+spec: {goal: g}
