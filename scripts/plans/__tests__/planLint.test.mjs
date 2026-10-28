@@ -139,6 +139,42 @@ describe("planLint problems", () => {
     assert.ok(problems.every((p) => !p.includes("\n")));
   });
 
+  it("fails on a session with more than 3 implementer packages; task packages do not count", () => {
+    const at = (level, n) => ({ edit: [{ path: `scripts/x/${n}.mjs`, lines: "1-5", why: "w" }], ...(level ? { level } : {}) });
+    const four = fixture({ packages: [spec("1.1"), spec("1.2", at(null, "b")), spec("1.3", at(null, "c")), spec("1.4", at(null, "d"))] });
+    assert.deepEqual(lint(four), ["sessions/1.yaml: session 1 has 4 implementer packages (limit 3); split the session"]);
+    const withTask = fixture({ packages: [spec("1.1"), spec("1.2", at(null, "b")), spec("1.3", at(null, "c")), spec("1.4", at("task", "d"))] });
+    assert.deepEqual(lint(withTask), []);
+  });
+
+  it("fails on a hidden package test that mirrors no source file, and passes one the plan creates or edits", () => {
+    const hidden = "documents/plans/demo/tests/1.1/packages/core/__tests__/text/wrap.test.ts";
+    const withTest = (over) => {
+      const f = fixture({ owns: ["scripts/x/", "packages/core/"], packages: [spec("1.1", { tests: { hidden: [hidden], command: "c" }, ...over })] });
+      mkdirSync(dirname(join(f.root, hidden)), { recursive: true });
+      writeFileSync(join(f.root, hidden), 'it("A1 works", () => {});\n');
+      return f;
+    };
+    const orphan = lint(withTest({}));
+    assert.equal(orphan.length, 1);
+    assert.match(orphan[0], /^sessions\/1\.yaml: spec 1\.1 hidden test: packages\/core\/__tests__\/text\/wrap\.test\.ts has no source file at packages\/core\/src\/text\/wrap\.ts/);
+    assert.deepEqual(lint(withTest({ create: ["packages/core/src/text/wrap.ts"] })), []);
+    assert.deepEqual(lint(withTest({ create: ["packages/core/src/text/"] })), []);
+    const existing = withTest({});
+    mkdirSync(join(existing.root, "packages/core/src/text"), { recursive: true });
+    writeFileSync(join(existing.root, "packages/core/src/text/wrap.ts"), "// x\n");
+    assert.deepEqual(lint(existing), []);
+  });
+
+  it("fails on a created file that opens a new module without an index.ts", () => {
+    const create = (paths) => fixture({ owns: ["scripts/x/", "packages/core/"], packages: [spec("1.1", { create: paths })] });
+    const missing = lint(create(["packages/core/src/text/wrap/lines.ts"]));
+    assert.equal(missing.length, 1);
+    assert.match(missing[0], /packages\/core\/src\/text\/wrap is a new module with no index\.ts/);
+    assert.deepEqual(lint(create(["packages/core/src/text/wrap/lines.ts", "packages/core/src/text/wrap/index.ts"])), []);
+    assert.deepEqual(lint(create(["packages/core/src/text.ts"])), []);
+  });
+
   it("the CLI prints one line per problem and exits 1", () => {
     const f = fixture({ packages: [spec("1.1"), spec("1.2")] });
     const result = spawnSync("node", [cli, "lint", f.dir], { cwd: f.root, encoding: "utf8" });

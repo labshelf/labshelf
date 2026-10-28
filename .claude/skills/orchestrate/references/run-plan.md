@@ -20,7 +20,7 @@ A session reads its `sessions/<id>.yaml` and nothing else of the plan. The specs
       - `failed` → `diagnoser`; the `spec` of its `diagnosis/v1` becomes the next spec, run by a new implementer.
    4. An implementer that returns twice without `done` on Sonnet moves to `opus`; never start a third Sonnet attempt.
 3. After all packages:
-   - `finish session <session file>`: the finisher gates the session's `owns`, reviews, and checks every `possible duplicate` note `dup-guard` printed (reused, extended, or a stated reason why not). Fix only what needs judgment.
+   - `finish session <session file>`: the finisher gates the session's `owns`, reviews, and checks every `possible duplicate` note `dup-guard` printed (reused, extended, or a stated reason why not). The gate, `pnpm lint` and the fixes they need run inside the finisher, never in the main thread. The main thread only routes its result: each needs-judgment item becomes a spec package in the session file, run by an `implementer`.
    - `plan close <session>`: it marks the session `done`, logs it and commits the session's `owns`. Never commit by hand in the YAML flow.
 4. After the plan's last session: `finish plan <plan dir>`.
 5. Reply with the handoff message from [handoff.md](handoff.md) and stop.
@@ -39,7 +39,7 @@ A session reads its session file and nothing else of the plan: not `plan.md`, no
    - Launch independent packages in one message so they run in parallel. If a package's report shows a design problem, fix the plan; do not patch around it.
    - Tick the package's steps in the session file as they finish.
 3. End the session:
-   - run `finish session <session file>`, which gates Owns and returns only what needs judgment;
+   - run `finish session <session file>`, which gates Owns, fixes what the gate and lint report, and returns only what needs judgment; each such item goes to an implementer, never to a gate or lint loop in this thread;
    - append one line to `log.md` with `>>`: date, session id, done/left, commit hash;
    - delete the session file;
    - commit the session's own files with `git add <Owns files> && git commit` in this thread; approving the plan authorises those commits.

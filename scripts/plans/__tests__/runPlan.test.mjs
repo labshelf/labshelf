@@ -181,6 +181,56 @@ describe("runPlan on a YAML plan", () => {
   });
 });
 
+// A fake whose first run of each session hits the context stop: it records the stop where the hook would, commits a
+// partial change when FAKE_PROGRESS is set, and leaves the session pending; later runs finish the session.
+const STOPPING_CLAUDE = `#!/usr/bin/env node
+const { execFileSync } = require("node:child_process");
+const fs = require("node:fs");
+const match = /^\\/orchestrate (\\S+)\\/plan\\.yaml session (\\S+)$/.exec(process.argv[3] ?? "");
+if (!match) { console.log(JSON.stringify({ type: "result", is_error: false, result: "OK" })); process.exit(0); }
+const [, dir, id] = match;
+const count = process.env.FAKE_LOG + "." + id;
+const runs = fs.existsSync(count) ? Number(fs.readFileSync(count, "utf8")) + 1 : 1;
+fs.writeFileSync(count, String(runs));
+fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ session: id, stopFile: process.env.LABSHELF_BUDGET_STOP_FILE }) + "\\n");
+if (runs === 1) {
+  fs.writeFileSync(process.env.LABSHELF_BUDGET_STOP_FILE, "{}");
+  if (process.env.FAKE_PROGRESS) {
+    fs.writeFileSync("partial-" + id + ".txt", "x");
+    execFileSync("git", ["add", "-A"]);
+    execFileSync("git", ["commit", "-q", "-m", "partial " + id]);
+  }
+} else {
+  fs.rmSync(dir + "/sessions/" + id + ".yaml");
+  execFileSync("git", ["add", "-A"]);
+  execFileSync("git", ["commit", "-q", "-m", "session " + id]);
+}
+console.log(JSON.stringify({ type: "result", is_error: false, total_cost_usd: 0.5, result: "stopped" }));
+`;
+
+describe("runPlan after a context stop", () => {
+  it("runs the session again in a fresh process when the stopped run made progress", () => {
+    yamlPlan([["1", "pending"]]);
+    writeFileSync(join(tmp, "bin", "claude"), STOPPING_CLAUDE);
+    const out = run([], { FAKE_PROGRESS: "1" });
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    const calls = fakeCalls();
+    assert.deepEqual(calls.map((c) => c.session), ["1", "1"]);
+    assert.ok(calls[0].stopFile && calls[0].stopFile !== calls[1].stopFile);
+    assert.match(out.stdout, /session 1 stopped at the context limit after progress; running it again in a fresh process \(1\/5\)/);
+    assert.deepEqual(events().filter((e) => e.kind === "session_closed").map((e) => [e.session, e.status, e.cost_usd]), [["1", "done", 1]]);
+  });
+
+  it("stops the runner when the stopped run made no progress", () => {
+    yamlPlan([["1", "pending"]]);
+    writeFileSync(join(tmp, "bin", "claude"), STOPPING_CLAUDE);
+    const out = run([]);
+    assert.equal(out.status, 1);
+    assert.match(out.stderr, /session 1 hit the context limit without progress/);
+    assert.equal(fakeCalls().length, 1);
+  });
+});
+
 describe("runPlan on an .md plan", () => {
   it("keeps today's prompt and success rule", () => {
     mdPlan(["2", "1"]);

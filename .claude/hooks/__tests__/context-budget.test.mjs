@@ -30,8 +30,10 @@ function writeSession(dir, sessionId, { mainContext, agentContext, agentId = 'ab
   return { main, agent };
 }
 
-function run(input, stateDir) {
-  const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, LABSHELF_BUDGET_STATE_DIR: stateDir, LABSHELF_TELEMETRY_SPOOL: join(stateDir, 'spool') } });
+// The hook runs as in an attended session unless `env` names a plan session; a plan run around the tests does not leak in.
+function run(input, stateDir, env = {}) {
+  const { LABSHELF_PLAN: _plan, LABSHELF_PLAN_SESSION: _session, LABSHELF_MAIN_CONTEXT_STOP: _stop, LABSHELF_BUDGET_STOP_FILE: _file, ...base } = process.env;
+  const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: { ...base, LABSHELF_BUDGET_STATE_DIR: stateDir, LABSHELF_TELEMETRY_SPOOL: join(stateDir, 'spool'), ...env } });
   assert.equal(result.status, 0);
   return result;
 }
@@ -112,4 +114,41 @@ test('a missing transcript or bad stdin exits 0 without output on stdout', () =>
   const bad = spawnSync('node', [hook], { input: 'not json', encoding: 'utf8' });
   assert.equal(bad.status, 0);
   assert.equal(bad.stdout, '');
+});
+
+const UNATTENDED = { LABSHELF_PLAN: 'demo', LABSHELF_PLAN_SESSION: '3' };
+
+test('an unattended main thread past 100k is told to park its packages and end the turn, and the stop is recorded', () => {
+  const dir = tempDir();
+  const stateDir = tempDir();
+  const marker = join(stateDir, 'runs', 'stop.json');
+  const env = { ...UNATTENDED, LABSHELF_BUDGET_STOP_FILE: marker };
+  const { main } = writeSession(dir, 'sess', { mainContext: 99_000, agentContext: 5 });
+  const input = { session_id: 'sess', transcript_path: main };
+  assert.equal(run(input, stateDir, env).stdout, '');
+  assert.equal(existsSync(marker), false);
+
+  writeJsonl(main, [assistant('m2', 101_000)]);
+  const first = JSON.parse(run(input, stateDir, env).stdout);
+  assert.equal(first.decision, 'block');
+  assert.match(first.reason, /≈101k tokens, over the 100k limit.*pending in the session file.*end the turn/);
+  assert.equal(first.hookSpecificOutput.additionalContext, first.reason);
+  assert.equal(JSON.parse(readFileSync(marker, 'utf8')).context_tokens, 101_000);
+
+  writeJsonl(main, [assistant('m3', 110_000)]);
+  assert.equal(JSON.parse(run(input, stateDir, env).stdout).decision, 'block');
+  writeJsonl(main, [assistant('m4', 121_000)]);
+  const hard = JSON.parse(run(input, stateDir, env).stdout);
+  assert.equal(hard.continue, false);
+  assert.match(hard.stopReason, /end the turn/);
+});
+
+test('LABSHELF_MAIN_CONTEXT_STOP moves the limit, and subagents of an unattended session keep their warning', () => {
+  const dir = tempDir();
+  const stateDir = tempDir();
+  const { main } = writeSession(dir, 'sess', { mainContext: 60_000, agentContext: 65_000 });
+  const stop = JSON.parse(run({ session_id: 'sess', transcript_path: main }, stateDir, { ...UNATTENDED, LABSHELF_MAIN_CONTEXT_STOP: '50000' }).stdout);
+  assert.match(stop.reason, /over the 50k limit/);
+  const agent = run({ session_id: 'sess', transcript_path: main, agent_id: 'abc' }, stateDir, UNATTENDED);
+  assert.match(warning(agent), /over the 60k budget.*return your report now/);
 });

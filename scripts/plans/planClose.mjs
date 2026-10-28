@@ -32,7 +32,7 @@ function changedFiles(root) {
   return out;
 }
 
-function runsDir(root) {
+export function runsDir(root) {
   if (process.env.LABSHELF_RUNS_DIR) return process.env.LABSHELF_RUNS_DIR;
   const common = git(root, ["rev-parse", "--git-common-dir"]).stdout.trim();
   return join(resolve(root, common), "labshelf-runs");
@@ -53,7 +53,7 @@ function specPaths(spec) {
   return [...(spec.edit ?? []).map((ref) => ref.path), ...(spec.create ?? []), ...tests];
 }
 
-function reportStatus(runs, planSlug, specId) {
+export function reportStatus(runs, planSlug, specId) {
   const file = join(runs, safeId(planSlug), `${safeId(specId)}.report.yaml`);
   if (!existsSync(file)) return "no report";
   try {
