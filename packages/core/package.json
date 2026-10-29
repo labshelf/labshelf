@@ -85,6 +85,7 @@
     "./styles/qmd-editor.css": "./src/qmd/dom/qmd-editor.css",
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
+    "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",
     "./package.json": "./package.json"
   }
 }

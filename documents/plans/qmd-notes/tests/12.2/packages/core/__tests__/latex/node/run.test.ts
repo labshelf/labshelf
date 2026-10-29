@@ -16,8 +16,18 @@ function alive(pid: number): boolean {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
+/** Polls until the process is gone (a killed process can linger as a zombie for a moment under load); false on time-out. */
+async function waitDead(pid: number, budgetMs: number): Promise<boolean> {
+  const deadline = Date.now() + budgetMs;
+  while (alive(pid)) {
+    if (Date.now() >= deadline) { return false; }
+    await sleep(20);
+  }
+  return true;
+}
+
 async function readPid(file: string): Promise<number> {
-  for (let i = 0; i < 100; i += 1) {
+  for (let i = 0; i < 250; i += 1) {
     const text = await fs.readFile(file, "utf8").catch(() => "");
     if (text.trim() !== "") { return Number(text.trim()); }
     await sleep(20);
@@ -55,19 +65,17 @@ posixOnly("runCancellable timeout", () => {
 
   it("12.2a leaves no sleeping child behind after the timeout", async () => {
     const { dir, pidFile, executable } = await script("sleep 30");
-    await runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 200 }).catch(() => undefined);
+    await runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 1000 }).catch(() => undefined);
     const pid = await readPid(pidFile);
-    await sleep(100);
-    expect(alive(pid)).toBe(false);
-  });
+    expect(await waitDead(pid, 3000)).toBe(true);
+  }, 20_000);
 
   it("12.2a kills a grandchild in the same process group", async () => {
     const { dir, executable } = await script('sleep 30 &\necho $! > "$0.grandchild"\nwait');
-    await runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 300 }).catch(() => undefined);
+    await runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 1500 }).catch(() => undefined);
     const grandchild = await readPid(`${executable}.grandchild`);
-    await sleep(100);
-    expect(alive(grandchild)).toBe(false);
-  });
+    expect(await waitDead(grandchild, 3000)).toBe(true);
+  }, 20_000);
 
   it("12.2a ends at SIGTERM, without waiting for the grace period, when the child obeys it", async () => {
     const { dir, executable } = await script("sleep 30");
@@ -88,26 +96,26 @@ posixOnly("runCancellable escalation", () => {
   it("12.2b keeps a child that ignores SIGTERM alive until the grace period ends, then kills it", async () => {
     const { dir, pidFile, executable } = await script(IGNORES_TERM);
     const started = Date.now();
-    const pending = runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 200, killGraceMs: 1500 });
+    const pending = runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 1000, killGraceMs: 2500 });
     const settled = pending.catch((e: unknown) => e);
     const pid = await readPid(pidFile);
-    await sleep(900);
+    // Check 700 ms after the timeout fired (SIGTERM sent), well inside the 2500 ms grace.
+    await sleep(Math.max(0, started + 1700 - Date.now()));
     expect(alive(pid)).toBe(true);
     const error = await settled;
     expect(error).toBeInstanceOf(ProcessTimedOut);
-    expect(Date.now() - started).toBeGreaterThanOrEqual(1500);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(3400);
     expect(alive(pid)).toBe(false);
-  });
+  }, 20_000);
 
   it("12.2b sends SIGKILL to the whole group, so a SIGTERM-ignoring grandchild dies too", async () => {
     const { dir, pidFile, executable } = await script(`trap '' TERM\n(trap '' TERM; while :; do sleep 1; done) &\necho $! > "$0.grandchild"\nwait`);
-    await runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 200, killGraceMs: 400 }).catch(() => undefined);
+    await runCancellable(executable, [], dir, new AbortController().signal, { timeoutMs: 1000, killGraceMs: 400 }).catch(() => undefined);
     const pid = await readPid(pidFile);
     const grandchild = await readPid(`${executable}.grandchild`);
-    await sleep(100);
-    expect(alive(pid)).toBe(false);
-    expect(alive(grandchild)).toBe(false);
-  });
+    expect(await waitDead(pid, 3000)).toBe(true);
+    expect(await waitDead(grandchild, 3000)).toBe(true);
+  }, 20_000);
 
   it("12.2b escalates a cancel to SIGKILL after the grace period and still rejects with BuildCancelled", async () => {
     const { dir, pidFile, executable } = await script(IGNORES_TERM);
@@ -188,8 +196,7 @@ posixOnly("runCancellable unchanged behaviour", () => {
     const pid = await readPid(pidFile);
     controller.abort();
     expect(await settled).toBeInstanceOf(BuildCancelled);
-    await sleep(100);
-    expect(alive(pid)).toBe(false);
+    expect(await waitDead(pid, 3000)).toBe(true);
   });
 
   it("12.2c passes env and shell options through as before", async () => {

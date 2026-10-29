@@ -32,4 +32,4 @@ source: Explore scout
 
 ## Running processes
 - VS Code: registerNodeWriting.ts:17 OutputChannel "LabShelf Figures"; builds via vscode/src/writing/build/node/. Terminal spawn: terminal/src/platform/system.ts.
-- Runner: latex/build/node/runCancellable.ts `runCancellable(exe,args,cwd,AbortSignal,{shell,onOutput,env})` -> {code, 64 KiB output tail}; detached group, SIGTERM -pid (win taskkill /T /F); rejects BuildCancelled. No timeout, no SIGKILL escalation, stdin ignored, stdout/stderr merged.
+- Runner: latex/build/node/runCancellable.ts `runCancellable(exe,args,cwd,AbortSignal,{shell,onOutput,env})` -> {code, 64 KiB output tail}; detached group, SIGTERM -pid (win taskkill /T /F); rejects BuildCancelled. Now at latex/node/run.ts: optional `timeoutMs` (SIGTERM, rejects ProcessTimedOut), SIGKILL to the group after `killGraceMs` (2000), `separateStreams` adds stdout/stderr tails; stdin ignored, `output` still merged.
