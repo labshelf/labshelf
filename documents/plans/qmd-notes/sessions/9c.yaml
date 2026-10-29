@@ -1,0 +1,191 @@
+schema: session/v1
+id: 9c
+goal: The browser wires project notes, the checklist from notes and Send to, and a manuscript line that cites a paper with notes shows "N notes" in VS Code (code lens and hover) and in the browser source editor (gutter and popover).
+depends_on:
+  - 9b
+owns:
+  - packages/vscode/src/writing/citations/
+  - packages/vscode/src/activation/startExtension.ts
+  - packages/browser/src/writing/
+  - packages/browser/src/libraryUi/
+  - packages/browser/src/storage/
+status: pending
+packages:
+  - id: "9.8"
+    plan: qmd-notes
+    goal: The browser library page creates and opens project notes, shows note tasks in the checklist and ticks them, and offers Send to from the reader.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "9.6"
+      - "9.11"
+    edit:
+      - path: packages/browser/src/libraryUi/spaces.ts
+        lines: 1-138
+        why: project checklist progress counts note tasks (projectChecklist :28)
+      - path: packages/browser/src/writing/session.ts
+        lines: 80-100
+        why: checklistNodes builds the checklist with noteTasks; the tick action
+      - path: packages/browser/src/libraryUi/editorArea/projectPageTab.ts
+        lines: 1-33
+        why: New note and the notes list
+      - path: packages/browser/src/libraryUi/editorArea/tabKinds.ts
+        lines: 1-71
+        why: a project note tab kind
+      - path: packages/browser/src/libraryUi/reader/readerPage.ts
+        lines: 80-130
+        why: the reader host ports (saveAnnotations at :101) gain sendToNote
+    create:
+      - packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+      - packages/browser/src/storage/recentSendTargets.ts
+    read:
+      - path: packages/core/src/qmd/sendTo/index.ts
+        lines: 1-8
+        why: sendTo, createProjectNoteWriter, createRecentTargets, deriveSendTargetChoices (9.11)
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        lines: 1-200
+        why: ProjectNotesStore and its IProjectNoteFiles port (created by 9.1)
+      - path: packages/core/src/writing/checks/noteTasks.ts
+        lines: 1-90
+        why: toggleNoteTask and its ok / changed result
+      - path: packages/core/src/writing/checks/checklistSignals.ts
+        lines: 60-130
+        why: the optional ProjectNotesSource readChecklistSignals takes
+      - path: packages/core/src/qmd/dom/qmdEditor.ts
+        lines: 1-200
+        why: mountQmdEditor and QMD_VOCABULARY
+      - path: packages/browser/src/libraryUi/editorArea/commentsTab.ts
+        lines: 1-40
+        why: a tab that mounts mountQmdEditor
+      - path: packages/core/src/ui/dom/widgets/menu.ts
+        lines: 1-80
+        why: showMenu, the Send to picker
+    decided:
+      - One ProjectNotesStore over an IProjectNoteFiles adapter on the browser LibraryFileSystem, rooted at the project folder, built where the library page builds its host context and passed down.
+      - "Notes list: the project page tab gets a `Notes` section listing ProjectNotesStore.list (title, one row each, a click opens it) with a `New note` button (icon `plus`) that asks the title with the core form dialog, creates the note and opens it. Empty state: `No notes yet` with the same button. Long titles ellipsize; rows are focusable buttons."
+      - "Project note tab: a new tab kind that mounts `mountQmdEditor` on the note body and saves through ProjectNotesStore (the same save path the paper notes tab uses); its title is the note title."
+      - "Checklist: `session.ts` and `spaces.ts` pass `{ store, projectId }` to readChecklistSignals so noteTask rows show and count in progress. Clicking a noteTask row opens its note tab; ticking calls `toggleNoteTask`; on `changed` it rereads and shows the toast `The note changed; the checklist was refreshed`."
+      - "Send to (reader): `readerPage.ts` provides `sendToNote` only when at least one project exists. It shows the core `showMenu` at the selection bubble with `deriveSendTargetChoices(recent, projects)`: recent entries first, a separator, then per project its notes and `New note…`; each entry shows the label with the description as secondary text if the menu supports it, else `label — description`. Then `sendTo({ projectNote: createProjectNoteWriter(store, assets) }, …)` with payload `{ kind: \"quote\", key, page, text }`, push the target to recent, toast `Sent to <note title>`. Escape closes the menu and sends nothing."
+      - "`storage/recentSendTargets.ts`: an IKeyValueStore over `chrome.storage.local` used by `createRecentTargets(store, \"sendTo.recent\")`."
+      - UI strings that name the item kind are built from `QMD_VOCABULARY.item` (D16).
+      - "`projectTaskProgress.ts` of the old plan is now `projectChecklist` in `packages/browser/src/libraryUi/spaces.ts`."
+    acceptance:
+      - id: 9.8a
+        check: typecheck and browser tests pass
+      - id: 9.8b
+        check: 'A6 by hand in the browser: Send to the project note, the checklist row appears and ticking it ticks the note'
+    tests:
+      none: UI and host glue, checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core
+      - packages/browser/src/writing/collab
+      - packages/browser/src/writing/editor.ts
+  - id: "9.12"
+    plan: qmd-notes
+    goal: In VS Code, a `.tex`/`.typ` line that cites a paper with notes shows "N notes"; hovering shows the latest items and the lens opens the notes.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "9.4"
+    edit:
+      - path: packages/vscode/src/writing/citations/backlinks.ts
+        lines: 1-181
+        why: compute citeSiteNotes when ProjectBacklinks refreshes (:164)
+      - path: packages/vscode/src/writing/citations/index.ts
+        lines: 1-5
+        why: export the note lens and hover registration
+      - path: packages/vscode/src/activation/startExtension.ts
+        lines: 1-152
+        why: register the lens and hover (one line, next to the other citation providers)
+    create:
+      - packages/vscode/src/writing/citations/noteLens.ts
+    read:
+      - path: packages/vscode/src/writing/citations/hover.ts
+        lines: 1-116
+        why: HoverProvider pattern for cite keys
+      - path: packages/core/src/writing/citations/backlinks.ts
+        lines: 1-70
+        why: citeSiteNotes (9.4)
+      - path: packages/core/src/writing/citations/citeKeys.ts
+        lines: 100-140
+        why: findCitationSites, derivePapersByCiteKey
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore.read, the items of a paper's notes
+      - path: packages/vscode/src/activation/libraryRootController.ts
+        lines: 60-75
+        why: where the PaperNotesStore is built
+    decided:
+      - "When ProjectBacklinks refreshes, it reads each cited paper's item count once (PaperNotesStore.read, keyed by the paper id `derivePapersByCiteKey` resolves) and computes `citeSiteNotes(sites, key => counts.get(key) ?? 0)`; never per keystroke. The lens provider fires `onDidChangeCodeLenses` after that refresh."
+      - "`noteLens.ts`: a CodeLensProvider on `latex` and `typst` documents puts one lens per line with cite sites with notes, at the line start, titled `N note`/`N notes` (from `QMD_VOCABULARY.item`, plural with `s`); several cited papers on one line give one lens per paper titled `@key: N notes`. Its command opens the paper's notes (the existing open-paper-notes command when one exists, else the `notes.qmd` file in the text editor)."
+      - "Hover: on a cite key with notes, a MarkdownString section `**N notes**` followed by the first line of each of the last three items (newest last, each trimmed to one line), appended to the existing cite hover in `hover.ts` if it composes there, otherwise a second HoverProvider in `noteLens.ts`."
+      - A paper without notes shows nothing; a refresh that fails to read one paper's notes logs and counts 0.
+    acceptance:
+      - id: 9.12a
+        check: typecheck and vscode tests pass
+      - id: 9.12b
+        check: 'By hand in VS Code: a manuscript line citing a paper with notes shows "N notes"; hover lists the last items; clicking opens the notes'
+    tests:
+      none: UI and host glue, checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+    do_not_touch:
+      - packages/core
+      - packages/vscode/src/writing/projects
+  - id: "9.13"
+    plan: qmd-notes
+    goal: The browser source editor shows "N notes" in a gutter at lines that cite a paper with notes, with a popover of the latest items.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "9.4"
+    edit:
+      - path: packages/browser/src/writing/editor.ts
+        lines: 230-260
+        why: createEditorExtensions gains the notes gutter (:241)
+      - path: packages/browser/src/writing/source.ts
+        lines: 1-60
+        why: feed the cite-site counts to the mounted editor
+    create:
+      - packages/browser/src/writing/noteGutter.ts
+    read:
+      - path: packages/browser/src/collab/comments.ts
+        lines: 220-240
+        why: CodeMirror gutter marker pattern (ls-comment-gutter)
+      - path: packages/core/src/writing/citations/backlinks.ts
+        lines: 1-70
+        why: citeSiteNotes (9.4)
+      - path: packages/core/src/writing/citations/citeKeys.ts
+        lines: 100-140
+        why: findCitationSites, derivePapersByCiteKey
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-200
+        why: PaperNotesStore.read
+    decided:
+      - "`noteGutter.ts`: a CodeMirror `gutter` extension (class `ls-note-gutter`) fed through a StateEffect/StateField with the CiteSiteNotes of the open file; a marker shows the count with the `note` icon and an aria-label `N notes` (from `QMD_VOCABULARY.item`). Click or Enter on it opens a popover anchored to the marker listing, per cited paper on the line, `@key` and the first line of each of its last three items, plus `Open notes`, which opens the paper's notes where the library page already does. Escape and an outside click close it."
+      - "Counts are computed once when the project's backlinks are derived or the file is opened or saved, never per keystroke: read each cited paper's item count once and call `citeSiteNotes`. Lines move with edits through the StateField's mapping until the next recompute."
+      - Styles use `var(--ls-*)` tokens only, in the stylesheet the source editor already uses; light and dark come from the tokens.
+    acceptance:
+      - id: 9.13a
+        check: typecheck and browser tests pass
+      - id: 9.13b
+        check: 'By hand in the browser: the source editor gutter shows "N notes" at a cite site; the popover lists the last items'
+    tests:
+      none: UI and host glue, checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core
+      - packages/browser/src/writing/collab
+      - packages/browser/src/libraryUi

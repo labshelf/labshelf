@@ -3,6 +3,8 @@ id: "11"
 goal: Python with SymPy is a managed tool under `<shared root>/python/`, pinned by version and SHA-256, installed through the helper or by an installer option.
 depends_on:
   - 9b
+  - 9c
+  - 9b2
 owns:
   - packages/core/src/qmd/compute/pythonPin.ts
   - packages/core/src/latex/node/texInstallers.ts

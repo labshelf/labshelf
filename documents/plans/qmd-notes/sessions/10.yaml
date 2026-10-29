@@ -3,6 +3,8 @@ id: "10"
 goal: Space notes and discussions are `.qmd` files served through the Spaces protocol, and Send to lists them as targets.
 depends_on:
   - 9b
+  - 9c
+  - 9b2
 owns:
   - packages/core/src/spaces/
   - documents/contracts/spaces.md

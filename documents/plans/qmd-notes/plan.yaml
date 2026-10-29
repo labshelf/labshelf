@@ -284,14 +284,43 @@ sessions:
       - packages/vscode/src/writing/
       - packages/vscode/src/activation/startExtension.ts
       - packages/vscode/package.json
+      - packages/core/__tests__/writing/citations/
+      - packages/core/src/reader/protocol/messages.ts
+      - packages/core/src/reader/hostPorts.ts
+      - packages/core/src/reader/hostMessages.ts
+      - packages/core/src/qmd/sendTo/
+      - packages/core/src/ui/icons/renderIcon.ts
+      - packages/core/__tests__/reader/
+      - packages/core/__tests__/qmd/sendTo/
+      - packages/vscode/src/reader/
+      - packages/vscode/src/activation/registerPanelCommands.ts
+      - packages/vscode/src/activation/registerWritingView.ts
+  - id: 9b2
+    file: sessions/9b2.yaml
+    depends_on:
+      - 9b
+    owns:
+      - packages/vscode/src/writing/projects/commands.ts
+      - packages/vscode/src/activation/startExtension.ts
+      - packages/vscode/package.json
+      - packages/vscode/src/reader/
+      - packages/vscode/src/activation/registerPanelCommands.ts
+  - id: 9c
+    file: sessions/9c.yaml
+    depends_on:
+      - 9b
+    owns:
+      - packages/vscode/src/writing/citations/
+      - packages/vscode/src/activation/startExtension.ts
       - packages/browser/src/writing/
       - packages/browser/src/libraryUi/
       - packages/browser/src/storage/
-      - packages/core/__tests__/writing/citations/
   - id: "10"
     file: sessions/10.yaml
     depends_on:
       - 9b
+      - 9c
+      - 9b2
     owns:
       - packages/core/src/spaces/
       - documents/contracts/spaces.md
@@ -306,6 +335,8 @@ sessions:
     file: sessions/11.yaml
     depends_on:
       - 9b
+      - 9c
+      - 9b2
     owns:
       - packages/core/src/qmd/compute/pythonPin.ts
       - packages/core/src/latex/node/texInstallers.ts
