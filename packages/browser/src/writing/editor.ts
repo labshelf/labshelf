@@ -4,17 +4,18 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { lintKeymap, setDiagnostics, type Diagnostic } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { Annotation, EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
+import { EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type PaperRecord, type PresenceStore, type ProjectLabels } from "@labshelf/core";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "@labshelf/core";
 import type { EditorHelperPort, HelperProblem, TextChange } from "@labshelf/core/helper";
 import type * as Y from "yjs";
 import { createCollabExtensions, createCommentSupport, type EditorComments } from "../collab";
 import { createLatexSupport } from "./latex";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./source";
-import { registerOpenEditor } from "./session";
+import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor } from "./session";
+import { createNoteGutter, createNoteRefresh } from "./noteGutter";
 
 const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
@@ -236,13 +237,15 @@ export interface EditorExtensionOptions {
   history?: boolean;
   /** Runs on Cmd/Ctrl+S, which never reaches the browser's "Save page" dialog. */
   onSave(): void;
+  /** The "N notes" gutter; without it the editor marks no cite site. */
+  notesGutter?: Extension;
 }
 
-export function createEditorExtensions(languageSupport: Extension, { history: withHistory = true, onSave }: EditorExtensionOptions): Extension[] {
+export function createEditorExtensions(languageSupport: Extension, { history: withHistory = true, onSave, notesGutter }: EditorExtensionOptions): Extension[] {
   return [
     // A snippet's repeated field (\begin{…} … \end{…}) is one selection per place; without this only the first is edited.
     EditorState.allowMultipleSelections.of(true),
-    lineNumbers(), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
+    lineNumbers(), ...(notesGutter ? [notesGutter] : []), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
     highlightSelectionMatches(), EditorView.lineWrapping, editorTheme, languageSupport,
     keymap.of([{ key: "Mod-s", preventDefault: true, run: () => { onSave(); return true; } }, ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...(withHistory ? historyKeymap : []), ...completionKeymap, ...lintKeymap, indentWithTab]),
   ];
@@ -266,6 +269,10 @@ export interface SourceEditorDeps {
   problems?: ProblemSource;
   /** Opens a definition's file in a tab; without it a Typst file gets highlighting only. */
   openTab?: DefinitionDeps["openTab"];
+  /** Opens the paper's notes where the library page does, from the "N notes" popover; without it the popover has no such button. */
+  openNotes?(paperId: string): void;
+  /** The papers' notes, read for the "N notes" gutter; without it no counts are loaded and the gutter stays empty. */
+  notes?: Pick<PaperNotesStore, "read">;
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
   /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
@@ -286,8 +293,6 @@ export interface SourceEditor extends SourceUpdates {
 }
 
 const MODULE = "editor.mount";
-/** Marks the transaction that loads the file's text from disk, which is not an edit to save. */
-const fromDisk = Annotation.define<boolean>();
 
 /** LaTeX, or Typst with the language service. */
 function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extension {
@@ -298,46 +303,25 @@ function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extensio
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */
-function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string, onSave: () => void): Extension[] {
-  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...createEditorExtensions(languageSupport, { onSave })];
-  return [createCollabExtensions({ ...collab, file: path }), ...createEditorExtensions(languageSupport, { history: false, onSave })];
-}
-
-/**
- * Replaces the editor's text with the file on disk. A shared file's change goes into its shared text, so the peers get it
- * and its file writer saves it; a local file's change is not an edit to save.
- */
-async function loadFromDisk(view: EditorView, { files, path, projectId, logger }: SourceEditorDeps, onLoaded: (disk: string) => void): Promise<void> {
-  try {
-    const disk = await files.read(path);
-    onLoaded(disk);
-    if (disk === view.state.doc.sliceString(0, undefined, view.state.lineBreak)) return;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk }, annotations: fromDisk.of(true) });
-  } catch (error) {
-    void logger.error(MODULE, error, { action: "reloadSource", projectId, path });
-  }
-}
-
-/** Tells the helper which write the user asked for with Mod-s. */
-function explicitSaves(helperEdits: HelperUpdates): { written(): void; flush(save: Pick<WriteScheduler, "flush" | "dirty">): void } {
-  // INVARIANT: set only while a Mod-s flush runs, so exactly the write it causes reaches the helper as an explicit save.
-  let requested = false;
-  return {
-    written() { helperEdits.saved(requested); requested = false; },
-    // Writing a dirty file already asks the helper for a full build; a clean or shared file asks for it here.
-    flush(save) {
-      const wasDirty = save.dirty();
-      requested = wasDirty;
-      void save.flush().then((clean) => {
-        requested = false;
-        if (clean && !wasDirty) helperEdits.saved(true);
-      });
-    },
-  };
+function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string, onSave: () => void, notesGutter: Extension): Extension[] {
+  if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...createEditorExtensions(languageSupport, { onSave, notesGutter })];
+  return [createCollabExtensions({ ...collab, file: path }), ...createEditorExtensions(languageSupport, { history: false, onSave, notesGutter })];
 }
 
 function readOnlyExtensions(readOnly: boolean | undefined): Extension[] {
   return readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+}
+
+/** Reacts to each edit: schedules the save, tells the helper, and refreshes the labels of a LaTeX file; loading from disk is no edit to save. */
+function changeListener({ path, save, helperEdits, labels }: {
+  path: string; save: Pick<WriteScheduler, "changed">; helperEdits: HelperUpdates; labels: ProjectLabels;
+}): Extension {
+  return EditorView.updateListener.of((update) => {
+    if (!update.docChanged) return;
+    if (!update.transactions.some((tr) => tr.annotation(fromDisk))) save.changed();
+    helperEdits.changed(update.changes, update.state.doc);
+    if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
+  });
 }
 
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
@@ -359,28 +343,28 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const save: Pick<WriteScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createWriteScheduler({
     file: path, logger, text: currentText,
     write: async (content) => { await deps.files.write(path, content); savedText = content; },
-    onDirty: deps.onDirty, onSaved: () => { explicit.written(); deps.onSaved?.(); },
+    onDirty: deps.onDirty, onSaved: () => { explicit.written(); refreshNotes(); deps.onSaved?.(); },
   });
-  const saveNow = (): void => explicit.flush(save);
+  const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
+  const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
+  const refreshNotes = noteRefresh.refresh;
   const commentsSupport = deps.comments && createCommentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
-  const onUpdate = EditorView.updateListener.of((update) => {
-    if (!update.docChanged) return;
-    if (!update.transactions.some((tr) => tr.annotation(fromDisk))) save.changed();
-    helperEdits.changed(update.changes, update.state.doc);
-    if (path.endsWith(".tex")) labels.schedule(path, () => update.view.state.doc.toString());
-  });
-  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, saveNow), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
+  const onUpdate = changeListener({ path, save, helperEdits, labels });
+  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, () => explicit.flush(save), noteGutter.extension), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
+  refreshNotes();
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, {
-    revealLine: (line) => showLine(view!, line), flush: save.flush, reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }),
+    revealLine: (line) => showLine(view!, line), flush: save.flush,
+    reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }).then(refreshNotes),
   });
   return {
     ...createSourceUpdates(view, kind),
     flush: save.flush,
     async dispose() {
+      noteRefresh.close();
       unregister();
       stopProblems?.();
       stopComments?.();
