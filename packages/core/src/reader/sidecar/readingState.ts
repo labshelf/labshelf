@@ -2,7 +2,7 @@
  * Defines the per-paper reading position persisted in the sidecar and normalizes anything read from disk or received from the webview.
  */
 
-export type SidebarTab = "thumbnails" | "outline" | "annotations";
+export type SidebarTab = "thumbnails" | "outline" | "annotations" | "notes";
 
 export interface SidebarState {
   open: boolean;
@@ -22,7 +22,7 @@ export interface ReadingState {
 }
 
 const SCALE_PRESETS = new Set(["page-width", "page-fit", "page-actual", "auto"]);
-const SIDEBAR_TABS = new Set<SidebarTab>(["thumbnails", "outline", "annotations"]);
+const SIDEBAR_TABS = new Set<SidebarTab>(["thumbnails", "outline", "annotations", "notes"]);
 export const MIN_SIDEBAR_WIDTH = 160;
 export const MAX_SIDEBAR_WIDTH = 480;
 

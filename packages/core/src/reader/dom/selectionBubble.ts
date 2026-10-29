@@ -6,6 +6,7 @@ import type { ReaderContext } from "./readerSession.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import { deriveBoxInPage, derivePageFrame } from "./pageHighlights.js";
 import { renderIcon } from "../../ui/index.js";
+import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
 
 const HIDE_GRACE_MS = 150;
@@ -24,12 +25,20 @@ export class SelectionBubble {
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   private commentButton: HTMLButtonElement | null = null;
 
-  constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection) {
+  /** `addToNote` runs just before the highlight of "Add to note" is posted. */
+  constructor(private readonly ctx: ReaderContext, private readonly commentOn?: CommentOnSelection, private readonly addToNote?: () => void) {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
       const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
       btn.addEventListener("click", () => this.highlight(color));
       this.el.append(btn);
+    }
+    if (addToNote) {
+      const label = `Add to ${QMD_VOCABULARY.item}`;
+      const add = renderReaderIconButton(renderIcon("note"), label, "rd-btn-sm");
+      add.setAttribute("aria-label", label);
+      add.addEventListener("click", () => this.highlight(ANNOTATION_COLORS[0]!, true));
+      this.el.append(renderElement("div", { class: "rd-pill-sep" }), add);
     }
     const cite = renderReaderIconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
@@ -108,10 +117,11 @@ export class SelectionBubble {
     this.el.classList.remove("rd-visible");
   }
 
-  private highlight(color: AnnotationColor): void {
+  private highlight(color: AnnotationColor, asNote = false): void {
     const info = this.currentSelection();
     const sel = window.getSelection();
     if (!info || !sel) { return; }
+    if (asNote) { this.addToNote?.(); }
     // Measured before the selection is cleared; a page without a size yet gives a highlight that is only listed.
     const frame = derivePageFrame(info.page);
     const position = frame ? deriveBoxInPage(sel.getRangeAt(0).getBoundingClientRect(), frame) : null;

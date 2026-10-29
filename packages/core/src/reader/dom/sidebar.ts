@@ -5,6 +5,7 @@ import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
 import type { Annotation } from "../../model/index.js";
+import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { compareAnnotations } from "../sidecar/index.js";
 import type { HostBridge } from "./readerSession.js";
 
@@ -23,6 +24,7 @@ const TAB_META: Record<SidebarTab, { label: string; icon: IconName }> = {
   thumbnails: { label: "Thumbnails", icon: "grid" },
   outline: { label: "Outline", icon: "list" },
   annotations: { label: "Annotations", icon: "edit" },
+  notes: { label: `${QMD_VOCABULARY.item.charAt(0).toUpperCase()}${QMD_VOCABULARY.item.slice(1)}s`, icon: "note" },
 };
 
 export class Sidebar {

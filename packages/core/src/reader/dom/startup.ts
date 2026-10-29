@@ -72,6 +72,9 @@ export class ReadingPositionRestore {
     theme.apply(msg.theme, msg.effectiveTheme);
     ui.annotationsTab.setAnnotations(msg.annotations);
     ui.highlights.show(msg.annotations);
+    ui.notesTab.setAnnotations(msg.annotations);
+    ui.notesTab.show(msg.notes);
+    ui.noteBoxes.show(msg.notes);
     if (!this.pagesReady || this.restored) { return; }
     this.restored = true;
     const reading = msg.prefs.restorePosition && !this.readerMoved ? msg.reading : null;
@@ -208,6 +211,7 @@ export function createActionRunner({ ctx, ui, hover }: ActionDeps): (action: Rea
       case "historyForward": history.forward(); break;
       case "goToPage": pill.focusPageInput(); break;
       case "toggleSidebar": sidebar.toggle(); break;
+      case "toggleBoxTool": if (!ctx.boot.preview) { ui.boxTool.toggle(); } break;
       case "cheatsheet": cheatsheet.toggle(); break;
       case "recompile": ctx.host.post({ command: "recompile" }); break;
       case "nextProblem": ui.previewChrome?.problems.step(1); break;

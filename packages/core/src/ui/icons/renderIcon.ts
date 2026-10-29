@@ -76,6 +76,7 @@ export const STROKE_GLYPHS = {
   sigma: '<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/>',
   "sigma-block": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 9V8a.5.5 0 0 0-.5-.5H9.5a.25.25 0 0 0-.2.4l2.3 3a1 1 0 0 1 0 1.2l-2.3 3a.25.25 0 0 0 .2.4h5a.5.5 0 0 0 .5-.5v-1"/>',
   code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+  "text-box": '<path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/>',
   log: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h5"/>',
 } as const;
 

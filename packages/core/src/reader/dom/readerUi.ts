@@ -13,6 +13,9 @@ import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED, type PdfReloader } from "./pdfLoader.js";
 import { AnnotationsTab, Sidebar } from "./sidebar.js";
 import { OutlineTab, ThumbnailsTab } from "./sidebarTabs.js";
+import { NotesTab } from "./notesTab.js";
+import { NoteBoxLayer } from "./noteBoxes.js";
+import { BoxTool } from "./boxTool.js";
 import { ReadingPositionReporter } from "./startup.js";
 import { DestPreview } from "./hoverTarget.js";
 import { HoverPreview } from "./hoverPreview.js";
@@ -29,6 +32,9 @@ export interface ReaderUi {
   zoom: Zoom;
   goToPage(page: number): void;
   annotationsTab: AnnotationsTab;
+  notesTab: NotesTab;
+  noteBoxes: NoteBoxLayer;
+  boxTool: BoxTool;
   highlights: PageHighlights;
   sidebar: Sidebar;
   findBar: FindBar;
@@ -52,32 +58,41 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const zoom = new Zoom(ctx);
   const goToPage = pageJumper(ctx, history);
   const annotationsTab = new AnnotationsTab(ctx.host, goToPage);
+  const notesTab = new NotesTab(ctx.host, goToPage, () => ctx.pdfViewer.currentPageNumber, ctx.eventBus);
   const highlights = new PageHighlights(ctx);
+  const noteBoxes = new NoteBoxLayer(ctx);
+  const boxTool = new BoxTool(ctx);
+  boxTool.onCreate = (anchor) => noteBoxes.expectBox(anchor);
   const sidebar = new Sidebar({
     thumbnails: new ThumbnailsTab(ctx, theme, goToPage),
     outline: new OutlineTab(ctx),
     annotations: annotationsTab,
+    notes: notesTab,
   });
+  notesTab.onReveal = () => sidebar.select("notes");
   const findBar = new FindBar(ctx, history);
   const cheatsheet = new Cheatsheet(ctx);
   const pill = new PagePill(ctx, zoom, goToPage);
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
-  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined);
+  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => notesTab.expectHighlight());
   const reporter = new ReadingPositionReporter(ctx, sidebar);
   const toolbar = new Toolbar(ctx.container, ctx.boot.paperTitle, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
     toggleSidebar: () => sidebar.toggle(),
     historyBack: () => history.back(),
     historyForward: () => history.forward(),
     openFind: () => findBar.show(),
+    toggleBoxTool: () => boxTool.toggle(),
     openTheme: (anchor) => openThemePopover(anchor, theme, ctx.host),
     openCheatsheet: () => cheatsheet.toggle(),
   });
   history.onChange(() => toolbar.setHistoryState(history.canGoBack, history.canGoForward));
   sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
   findBar.onToggle((open) => toolbar.setFindOpen(open));
+  boxTool.onChange = (on) => toolbar.setBoxToolActive(on);
+  if (ctx.boot.preview) { toolbar.hideBoxTool(); }
   const buildBanner = new BuildBanner();
   const ui: ReaderUi = {
-    history, zoom, goToPage, annotationsTab, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner,
+    history, zoom, goToPage, annotationsTab, notesTab, noteBoxes, boxTool, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner,
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
   };
@@ -192,6 +207,11 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
   host.on("updateAnnotations", (msg) => {
     ui.annotationsTab.setAnnotations(msg.annotations ?? []);
     ui.highlights.show(msg.annotations ?? []);
+    ui.notesTab.setAnnotations(msg.annotations ?? []);
+  });
+  host.on("updateNotes", (msg) => {
+    ui.notesTab.show(msg.items);
+    ui.noteBoxes.show(msg.items);
   });
   host.on("prefsChanged", (msg) => {
     ctx.prefs = msg.prefs;
