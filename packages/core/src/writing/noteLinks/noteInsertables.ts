@@ -1,8 +1,9 @@
 /** Lists the equations and outputs of the project's notes and the cited papers' notes that "Insert from note" offers, and builds the insert and update texts. */
 // CONTRACT: documents/contracts/qmd-items.md#manuscript-links
 import { deriveCodeHash, extractLineContent, findCodeFences, findOutputs, parseItemFile, splitLines } from "../../qmd/item/index.js";
-import type { LatexRange } from "../../latex/source.js";
-import { deriveOriginHash, formatOriginComment } from "./originComment.js";
+import type { LatexRange } from "../../latex/index.js";
+import { deriveOriginHash } from "./originComment.js";
+import { formatOriginComment } from "./originSyntax.js";
 import type { ManuscriptOrigin } from "./scanOrigins.js";
 import type { OriginState } from "./originState.js";
 

@@ -1,6 +1,7 @@
 /** Finds the equations a manuscript took from notes, by their origin comments, and reads back the text each hash covers. */
-import type { LatexRange } from "../../latex/source.js";
-import { findOriginCommentStart, parseOriginComment } from "./originComment.js";
+import type { LatexRange } from "../../latex/index.js";
+import { findOriginCommentStart } from "./originComment.js";
+import { parseOriginComment } from "./originSyntax.js";
 
 export interface ManuscriptOrigin { line: number; notePath: string; label: string; hash: string; insertedRange: LatexRange }
 
