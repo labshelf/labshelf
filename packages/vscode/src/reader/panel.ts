@@ -23,6 +23,7 @@ import {
 import type { LibraryEvents } from "../library/index.js";
 import { createTabIcon, webviewChunksDir } from "../ui/index.js";
 import { renderReaderShell, readReaderBundleDir, readAutoReaderTheme, onAutoReaderThemeChange, type PdfjsFiles, type PdfjsLocator } from "./shell.js";
+import { createSendToNote, type ReaderSendToDeps } from "./sendToNote.js";
 
 export type VsCodeOutputPorts = Pick<ReaderHostPorts, "writeClipboard" | "notify" | "openExternal" | "saveAnnotations">;
 
@@ -124,6 +125,8 @@ export interface ReaderPanelDeps {
   locatePdfjs: PdfjsLocator;
   /** Whether the host is macOS, which picks the reader's modifier key. */
   isMac: boolean;
+  /** The reader's "Send to…" over the window's writing projects; absent where the host cannot send. */
+  sendTo?: ReaderSendToDeps;
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -226,6 +229,7 @@ export class ReaderPanel {
       getPrefs: getReaderPrefs,
       autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
+      ...(deps.sendTo ? { sendToNote: createSendToNote(deps.sendTo) } : {}),
       logger: deps.logger,
       ...(source.sidecarChanged ? { sidecarChanged: source.sidecarChanged } : {}),
       ...(source.preview ? { preview: source.preview } : {}),

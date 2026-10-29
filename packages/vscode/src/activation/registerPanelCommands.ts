@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId } from "@labshelf/core";
-import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts } from "../reader/index.js";
+import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, type ReaderSendToDeps } from "../reader/index.js";
 import {
   DetailsView,
   ListWebviewPanel,
@@ -73,6 +73,8 @@ export interface PanelCommandsDeps {
   projectLibrary: () => ProjectLibraryPort;
   logger: ILogger;
   sources: SelectionSources;
+  /** The reader's "Send to…" over the writing projects. */
+  sendTo?: ReaderSendToDeps;
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
@@ -146,6 +148,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,
+          ...(deps.sendTo ? { sendTo: deps.sendTo } : {}),
         },
         paper,
         typeof page === "number" ? { page } : {},
