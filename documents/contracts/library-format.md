@@ -83,7 +83,7 @@ Files that travel with a project.
 
 ## Sidecar: `data.json`
 
-Annotations, theme and reading position of one paper.
+Annotations, theme and reading position of one paper. The annotation types are `highlight`, `comment` and `tag`; the paper's notes live in `notes.qmd` ([qmd-items.md](qmd-items.md)).
 
 - Every app writes identical bytes for the same state (key order, `reading` omitted until first opened, `deleted` omitted while empty and sorted by `id`), so two apps never make the sync tool see a conflict.
 - Annotation positions are normalised to the page (0..1), so any app and zoom reads them.

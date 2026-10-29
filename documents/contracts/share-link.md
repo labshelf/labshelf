@@ -23,7 +23,7 @@ The derivation labels are frozen.
 
 ## Manifest
 
-The manifest is JSON with a version `v`; a reader refuses a value it does not know, and drops unknown or mistyped fields. It holds the folder name and, per paper, its bibliographic metadata, its `bib.bib`, optionally annotations, and the PDF as a list of parts. It never holds `status`, `tags`, `note` or `files`, which are the sharer's own.
+The manifest is JSON with a version `v`; a reader refuses a value it does not know, and drops unknown or mistyped fields. It holds the folder name and, per paper, its bibliographic metadata, its `bib.bib`, optionally annotations, and the PDF as a list of parts. It never holds `status`, `tags`, `notes` or `files`, which are the sharer's own.
 
 A blob cannot exceed the KV value limit. A larger PDF is split into parts of plaintext; part sizes sum to the PDF size.
 
