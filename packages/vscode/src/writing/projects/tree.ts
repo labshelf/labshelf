@@ -1,7 +1,7 @@
 // The Files view of the open project (rows, watcher, commands) and the registration of the project's views: Figures, Files, Outline and Checklist.
 import * as vscode from "vscode";
 
-import { createDebouncer, createProjectFileRow, formatError, listVisibleEntries, type ILogger, type LibraryFileSystem, type ReadingStatus } from "@labshelf/core";
+import { createDebouncer, createProjectFileRow, formatError, listVisibleEntries, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
 import type { BuildOutcomes } from "../build/index.js";
 import type { ProjectReadingLists } from "./readingList.js";
@@ -223,6 +223,8 @@ interface ProjectViewsDeps {
   previews: Pick<BuildPreviews, "onDidCountBodyPages">;
   onDidChangeBacklinks: vscode.Event<void>;
   setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
+  /** The window's one notes store, shared with Send to. */
+  notes: ProjectNotesStore;
 }
 
 /** What the library sidebar view renders in its Projects section. */
@@ -257,7 +259,7 @@ function filesSpec(provider: ProjectFilesProvider): ProjectTreeSpec<ProjectFileN
 export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult {
   const { context, projects, figures, session, logger, arcIcon, readingLists, outcomes } = deps;
   const projectsSource = new SidebarProjectsSource({
-    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: createSignalsReader(projects), watchFolder,
+    projects, logger, readingLists, buildOutcomes: outcomes, readSignals: createSignalsReader(projects, deps.notes), watchFolder,
   });
   const files = new ProjectFilesProvider({ session, projects, logger });
   const outline = new OutlineTreeProvider(logger);
@@ -275,7 +277,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
     registerTypstOutline(),
   );
   registerProjectFileCommands({ context, session, logger, fs: projects.fs });
-  const checklist = registerChecklistView({ context, session, projects, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, logger });
+  const checklist = registerChecklistView({ context, session, projects, previews: deps.previews, readingLists, onDidChangeBacklinks: deps.onDidChangeBacklinks, setStatus: deps.setStatus, notes: deps.notes, logger });
   const outlineSpec: ProjectTreeSpec<unknown> = {
     view: "outline", title: "Outline", provider: outline, empty: "Open a source file to see its outline.", actions: [], menus: {},
   };

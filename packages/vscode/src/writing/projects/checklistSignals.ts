@@ -1,14 +1,20 @@
 // The open project's checklist signals: the reader over the project reads and the live copy re-read on open, on save and on a page count.
 import * as vscode from "vscode";
 
-import { isInside, readChecklistSignals, type ChecklistSignals, type ILogger, type PageOverflow, type PathOps } from "@labshelf/core";
+import {
+  isInside, readChecklistSignals, type ChecklistSignals, type ILogger, type PageOverflow, type PathOps, type ProjectNotesStore,
+} from "@labshelf/core";
 import type { BodyPagesCount } from "../preview/index.js";
 import type { ReadyProject } from "./commands.js";
 import type { WritingProjects } from "./session.js";
 import { disposeAll } from "../../disposables/index.js";
 
-export function createSignalsReader(projects: Pick<WritingProjects, "reads">): (project: ReadyProject, logger: ILogger) => Promise<ChecklistSignals> {
-  return (project, logger) => readChecklistSignals(projects.reads(logger), project);
+/** @param notes the window's notes store; without it the signals carry no note tasks */
+export function createSignalsReader(
+  projects: Pick<WritingProjects, "reads">, notes?: ProjectNotesStore,
+): (project: ReadyProject, logger: ILogger) => Promise<ChecklistSignals> {
+  return (project, logger) =>
+    readChecklistSignals(projects.reads(logger), project, notes ? { store: notes, projectId: project.settings.id } : undefined);
 }
 
 const SAVE_DEBOUNCE_MS = 400;

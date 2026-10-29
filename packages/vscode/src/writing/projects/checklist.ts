@@ -3,9 +3,9 @@ import * as vscode from "vscode";
 
 import {
   MANUAL_ITEM_GROUPS, addManualItem, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNextReadingStatus, removeManualItem, createSectionPlacer, setManualItemDone,
-  updateChecklist,
+  toggleNoteTask, updateChecklist,
   type Checklist, type ChecklistDocument, type ChecklistGrouping, type ChecklistItem, type ILogger, type ManualItemKind, type ReadingStatus, type PathOps,
-  type ReadingItem, type ReadingPaper, type SidebarTreeNode,
+  type NoteTask, type ProjectNotesStore, type ReadingItem, type ReadingPaper, type SidebarTreeNode,
   formatError,
 } from "@labshelf/core";
 import type { FigureNode, ReadyProject } from "./projectFigures.js";
@@ -80,6 +80,8 @@ export interface ChecklistViewDeps {
   memory: vscode.Memento;
   setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
   updateChecklist: (folder: string, edit: (doc: ChecklistDocument) => ChecklistDocument) => Promise<void>;
+  /** Ticks note tasks in their note; without it a note task row cannot be ticked. */
+  notes?: ProjectNotesStore;
   logger: ILogger;
   newId: () => string;
   now: () => Date;
@@ -181,9 +183,26 @@ export class ChecklistView implements vscode.Disposable {
 
   private async setChecked(item: ChecklistItem, done: boolean): Promise<void> {
     const project = this.deps.signals.current?.project;
+    if (project && item.kind === "noteTask") { await this.tickNoteTask(project, item.task, done); return; }
     if (!project || item.kind !== "manual") { return; }
     const { id } = item.manual;
     await this.editChecklist(project, "set-done", (doc) => setManualItemDone(doc, id, done, this.deps.now().toISOString()));
+  }
+
+  /** Flips the task's box in its note; a note edited since the last read is not written, only re-read. */
+  private async tickNoteTask(project: ReadyProject, task: NoteTask, done: boolean): Promise<void> {
+    const notes = this.deps.notes;
+    if (notes && task.done !== done) {
+      try {
+        const result = await toggleNoteTask(notes, project.settings.id, task);
+        // D16: QMD_VOCABULARY.item
+        if (result.status === "changed") { void vscode.window.showInformationMessage("The note changed on disk; the checklist was refreshed"); }
+      } catch (error) {
+        // D16: QMD_VOCABULARY.item
+        await this.report("Could not tick the task in the note", error, { action: "tick-note-task", folder: project.folder, file: task.file, line: task.line });
+      }
+    }
+    await this.deps.signals.refresh();
   }
 
   private async removeItem(item: ChecklistItem): Promise<void> {
@@ -195,7 +214,7 @@ export class ChecklistView implements vscode.Disposable {
 
   private async reveal(item: ChecklistItem): Promise<void> {
     const project = this.rendered?.project;
-    const at = item.kind === "todo" ? item.todo : item.kind === "ref" ? item.ref : undefined;
+    const at = item.kind === "todo" ? item.todo : item.kind === "ref" ? item.ref : item.kind === "noteTask" ? item.task : undefined;
     if (!project || !at) { return; }
     const range = new vscode.Range(at.line, 0, at.line, 0);
     await vscode.commands.executeCommand(REVEAL_OUTLINE_COMMAND, vscode.Uri.file(this.deps.paths.join(project.folder, at.file)), range);
@@ -298,14 +317,44 @@ export interface ChecklistViewRegistration {
   onDidChangeBacklinks: vscode.Event<void>;
   /** Writes paper statuses through the open library and returns the ids that failed; with no library open every id failed. */
   setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
+  /** The window's one notes store, shared with Send to. */
+  notes: ProjectNotesStore;
   logger: ILogger;
+}
+
+const NOTE_DEBOUNCE_MS = 400;
+
+/** Re-reads the Checklist, debounced, when a `notes/*.qmd` file of the open project is created, changed or deleted on disk. */
+function watchNoteFiles(session: Pick<ProjectSession, "project" | "onDidChange">, refresh: () => Promise<void>): vscode.Disposable {
+  let watcher: vscode.Disposable | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const clearTimer = (): void => { if (timer) { clearTimeout(timer); timer = undefined; } };
+  const schedule = (): void => {
+    clearTimer();
+    timer = setTimeout(() => { timer = undefined; void refresh(); }, NOTE_DEBOUNCE_MS);
+  };
+  const follow = (project: ReadyProject | undefined): void => {
+    clearTimer();
+    watcher?.dispose();
+    watcher = undefined;
+    if (!project) { return; }
+    const files = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(project.folder, "notes/*.qmd"));
+    watcher = vscode.Disposable.from(files, files.onDidCreate(schedule), files.onDidChange(schedule), files.onDidDelete(schedule));
+  };
+  const subscription = session.onDidChange(follow);
+  follow(session.project);
+  return new vscode.Disposable(() => {
+    subscription.dispose();
+    clearTimer();
+    watcher?.dispose();
+  });
 }
 
 /** @returns the Checklist as the sidebar mirrors it */
 export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTreeSpec {
   const { context, session, logger } = deps;
   const signals = new OpenProjectSignals({
-    session, readSignals: createSignalsReader(deps.projects), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
+    session, readSignals: createSignalsReader(deps.projects, deps.notes), onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument,
     onDidCountBodyPages: deps.previews.onDidCountBodyPages, logger, paths: deps.projects.paths,
   });
   const view = new ChecklistView({
@@ -315,6 +364,7 @@ export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTre
     memory: context.workspaceState,
     setStatus: deps.setStatus,
     updateChecklist: (folder, edit) => updateChecklist(deps.projects.reads(logger), folder, edit),
+    notes: deps.notes,
     logger,
     newId: () => globalThis.crypto.randomUUID(),
     now: () => new Date(),
@@ -323,6 +373,7 @@ export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTre
   context.subscriptions.push(
     signals,
     view,
+    watchNoteFiles(session, () => signals.refresh()),
     command("labshelf.writing.checklist.addItem", () => view.addItem()),
     command("labshelf.writing.checklist.runCheck", () => vscode.commands.executeCommand(CHECK_COMMAND, session.project)),
   );
@@ -337,7 +388,11 @@ export function registerChecklistView(deps: ChecklistViewRegistration): BuiltTre
       ],
       selected: view.grouping === "kind" ? "byKind" : "bySection",
     }),
-    actions: [],
+    // D16: QMD_VOCABULARY.item
+    actions: [
+      { action: "newNote", label: "New Note", icon: "note", run: () => vscode.commands.executeCommand("labshelf.projects.newNote") },
+      { action: "openNote", label: "Open Note…", icon: "search", run: () => vscode.commands.executeCommand("labshelf.projects.openNote") },
+    ],
     handle: (request) => view.handle(request),
   };
 }

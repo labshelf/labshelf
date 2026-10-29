@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import type { SelectionSources } from "../libraryUi/index.js";
 
 import {
-  buildRootOf, CheckCounts, createPublishedVersionFinder, type ILogger, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
+  buildRootOf, CheckCounts, createProjectNotesStore, createPublishedVersionFinder, type ILogger, type ProjectNotesStore, type PaperRecord, type ReadingStatus, type PathOps, type ProjectLibraryPort, type ProjectDeviceDirs, type PublishedVersionFinder,
 } from "@labshelf/core";
 import {
   WritingProjects, registerBuildRootCommands, registerBuildRootStatusBar, registerProjectCommands,
@@ -20,6 +20,7 @@ import {
   ProjectFigures, createSignalsReader, registerAllProjects, registerProjectSession, registerProjectValues, registerProjectViews, registerProjectWriteEvents,
   watchFigureFiles, type ProjectSession, type ProjectTreeMirror, type SidebarProjectsSource,
 } from "../writing/projects/index.js";
+import { createProjectNoteFiles } from "../writing/projects/noteFiles.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
@@ -45,6 +46,8 @@ export interface WritingViewResult {
   projectTrees: ProjectTreeMirror;
   /** The Details view serves the All projects protocol from the same port. */
   projectLibrary: () => ProjectLibraryPort;
+  /** The window's one notes store, so Send to and Checklist ticks queue on the same note file. */
+  notes: ProjectNotesStore;
   logger: ILogger;
 }
 
@@ -252,7 +255,8 @@ export function registerWritingView(
     controller.onDidChangeRoot(() => void projects.reload()),
   );
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
-  const readSignals = createSignalsReader(projects);
+  const notes = createProjectNotesStore(createProjectNoteFiles(projects), logger);
+  const readSignals = createSignalsReader(projects, notes);
   const citeSections = new CitationSectionsCache({
     readSources: async (project, siteLogger) => (await readSignals(project, siteLogger)).sources,
     onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
@@ -272,7 +276,7 @@ export function registerWritingView(
   const setStatus = async (ids: string[], status: ReadingStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
   const { projectsSource, projectTrees } = registerProjectViews({
-    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus,
+    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus, notes,
   });
   const projectLibrary = registerAllProjects({
     context, host, projects, session, source: projectsSource, logger, outcomes, builds: previews.builds,
@@ -281,5 +285,5 @@ export function registerWritingView(
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, logger };
+  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger };
 }
