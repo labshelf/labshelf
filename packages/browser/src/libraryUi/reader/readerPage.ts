@@ -3,6 +3,7 @@
 import {
   PROTOCOL_VERSION,
   PaperSidecarStore,
+  PaperNotesStore,
   createPreviewStore,
   ReaderHostController,
   type EffectiveTheme,
@@ -16,7 +17,8 @@ import {
 import { PDF_FILE, formatError } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange } from "../../platform";
-import { createLibraryFileSystem, createSidecarPort, readCachedPaperRecord } from "../../storage";
+import { getBrowserCellPorts } from "../../helper";
+import { createLibraryFileSystem, createPaperNotesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, parseReaderQuery } from "./readerTabs";
 import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
@@ -102,6 +104,9 @@ function createHostWithChannel(
     openExternal,
     saveAnnotations: (markdown) => downloadTextFile(`${paper.citeKey}-annotations.md`, markdown, "text/markdown"),
     logger,
+    notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
+    runCell: getBrowserCellPorts(logger).runCell,
+    installPython: getBrowserCellPorts(logger).installPython,
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : {}),
     ...(sendToNote ? { sendToNote } : {}),

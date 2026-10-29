@@ -109,7 +109,7 @@ describe("paper.details", () => {
     const app = start();
     await app.send({ type: "ready" });
     await app.send({ type: "paper.details", id: "smith2020" });
-    expect(app.last("details")?.details).toEqual({ annotations: [], reading: null, pdf: null, notes: [] });
+    expect(app.last("details")?.details).toEqual({ annotations: [], reading: null, pdf: null, notes: [], canRunCells: true });
   });
 });
 
