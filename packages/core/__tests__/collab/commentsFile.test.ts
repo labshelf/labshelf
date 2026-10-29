@@ -1,15 +1,13 @@
 /**
- * Verifies parsing, editing and writing a project's .labshelf/comments.json without losing what it cannot read.
- * Verifies loading and editing comments.json through a file access: an invalid file is never written and every edit starts from a fresh read.
- * Verifies that a shared project's comments.json is written from the comments map and seeds it, losing nothing.
+ * Verifies editing a project's comment threads.
+ * Verifies loading and editing comments.qmd through a file access: an unreadable file is never written and every edit starts from a fresh read.
+ * Verifies that a shared project's comments.qmd is written from the comments map and seeds it, losing nothing.
  * Verifies the comment lifecycle over a shared project's session: threads, placement in live texts, edits and change events.
  */
 import {
   addThread,
   deriveCommentThreads,
-  parseCommentsFile,
   addThreadReply,
-  serializeCommentsFile,
   setThreadResolved,
   type CommentThread,
   updateCommentsDocument,
@@ -21,38 +19,16 @@ import {
   readFileText,
   readShareIndexDocFiles,
   createSharedProjectComments,
+  parseCommentsQmd,
+  serializeCommentsQmd,
 } from "../../src/collab/index";
 import * as Y from "yjs";
 
-describe("comments.json", () => {
+describe("comment threads", () => {
   const thread: CommentThread = {
     id: "t1", file: "main.tex", anchor: { quote: "baseline", prefix: "a strong ", suffix: " on" },
     comments: [{ id: "c1", author: "Ana", body: "Which one?", createdAt: "2026-10-16T09:12:00.000Z" }], resolved: false,
   };
-
-  it("reads a missing threads array, invalid JSON and conflict markers as unreadable", () => {
-    expect(parseCommentsFile("{}")).toBeUndefined();
-    expect(parseCommentsFile("[]")).toBeUndefined();
-    expect(parseCommentsFile('<<<<<<< ours\n{"threads": []}\n=======\n{"threads": []}\n>>>>>>> theirs\n')).toBeUndefined();
-  });
-
-  it("writes keys in contract order with two-space indent and a final newline", () => {
-    const shuffled = { threads: [{ resolved: false, comments: [{ createdAt: thread.comments[0]!.createdAt, body: "Which one?", author: "Ana", id: "c1" }],
-      anchor: { suffix: " on", prefix: "a strong ", quote: "baseline" }, file: "main.tex", id: "t1" }] };
-    const text = serializeCommentsFile(shuffled);
-    expect(text).toBe(`${JSON.stringify({ threads: [thread] }, null, 2)}\n`);
-  });
-
-  it("keeps invalid threads, invalid comments and unknown keys on rewrite but shows only valid ones", () => {
-    const invalid = { id: "t2", file: "main.tex" };
-    const raw = { version: 7, threads: [{ ...thread, colour: "red", comments: [...thread.comments, { id: "c2" }] }, invalid] };
-    const doc = parseCommentsFile(JSON.stringify(raw))!;
-    expect(deriveCommentThreads(doc)).toEqual([thread]);
-    const next = parseCommentsFile(serializeCommentsFile(addThreadReply(doc, "t1", { id: "c3", author: "Bo", body: "Ours", createdAt: "2026-10-17T10:00:00.000Z" })))!;
-    expect(next["version"]).toBe(7);
-    expect(next.threads[1]).toEqual(invalid);
-    expect(next.threads[0]).toMatchObject({ colour: "red", comments: [thread.comments[0], { id: "c2" }, { id: "c3" }] });
-  });
 
   it("adds, resolves and reopens threads", () => {
     const added = addThread({ threads: [] }, thread);
@@ -87,11 +63,12 @@ describe("comments file store", () => {
     expect((await loadCommentsDocument(file))?.threads).toHaveLength(1);
   });
 
-  it("leaves an invalid file untouched and throws", async () => {
-    const file = access("{ not json");
+  it("leaves a conflict-marked file untouched and throws", async () => {
+    const conflicted = "<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\n";
+    const file = access(conflicted);
     await expect(updateCommentsDocument(file, (doc) => addThread(doc, thread("t1")))).rejects.toThrow(/left as it is/);
     expect(file.writes).toBe(0);
-    expect(file.text).toBe("{ not json");
+    expect(file.text).toBe(conflicted);
   });
 
   it("reads again before writing, so a change made elsewhere is kept", async () => {
@@ -101,38 +78,41 @@ describe("comments file store", () => {
     await updateCommentsDocument(file, (doc) => addThread(doc, thread("t2")));
     await updateCommentsDocument(file, (doc) => setThreadResolved(addThreadReply(doc, "t1", thread("x").comments[0]!), "t1", true));
     expect(stale?.threads).toHaveLength(1);
-    const ids = (await loadCommentsDocument(file))?.threads.map((each) => (each as CommentThread).id);
+    const ids = (await loadCommentsDocument(file))?.threads.map((each) => each.id);
     expect(ids).toEqual(["t1", "t2"]);
   });
 });
 
-describe("comments.json from the comments map", () => {
+describe("comments.qmd from the comments map", () => {
   const thread = (id: string, createdAt: string): CommentThread => ({
     id, file: "main.tex", anchor: { quote: "q", prefix: "a", suffix: "b" },
     comments: [{ id: `${id}-c`, author: "Ana", body: "x", createdAt }], resolved: false,
   });
+  const qmd = (...threads: CommentThread[]) => serializeCommentsQmd({ threads });
 
-  it("imports valid threads with unknown keys and writes them back with the file's other entries", () => {
-    const file = JSON.stringify({ version: 2, threads: [{ ...thread("t2", "2026-10-16T10:00:00.000Z"), colour: "red" }, { id: "bad" }, thread("t1", "2026-10-16T09:00:00.000Z")] });
+  it("imports valid threads and writes them back with the file's loose text and other items", () => {
+    const other = "::: {#keep .labshelf-item}\nnot a comment\n:::\n";
+    const file = `---\ntitle: Comments\n---\n\n${qmd(thread("t2", "2026-10-16T10:00:00.000Z"))}\n${other}\n${qmd(thread("t1", "2026-10-16T09:00:00.000Z"))}`;
     const doc = new Y.Doc();
     expect(importCommentsFile(doc, file)).toBe(2);
     expect(readLiveThreads(doc).map((each) => each.id)).toEqual(["t1", "t2"]);
-    const written = parseCommentsFile(renderCommentsFile(doc, file)!)!;
-    expect(written["version"]).toBe(2);
-    expect(written.threads).toEqual([thread("t1", "2026-10-16T09:00:00.000Z"), { ...thread("t2", "2026-10-16T10:00:00.000Z"), colour: "red" }, { id: "bad" }]);
+    const written = renderCommentsFile(doc, file)!;
+    expect(written.startsWith("---\ntitle: Comments\n---\n")).toBe(true);
+    expect(written).toContain(other);
+    expect(parseCommentsQmd(written)!.threads).toEqual([thread("t1", "2026-10-16T09:00:00.000Z"), thread("t2", "2026-10-16T10:00:00.000Z")]);
   });
 
   it("writes a fresh file when there is none, and the same text on every member", () => {
     const a = new Y.Doc();
-    importCommentsFile(a, JSON.stringify({ threads: [thread("t1", "2026-10-16T09:00:00.000Z")] }));
+    importCommentsFile(a, qmd(thread("t1", "2026-10-16T09:00:00.000Z")));
     const b = new Y.Doc();
     Y.applyUpdate(b, Y.encodeStateAsUpdate(a));
     expect(renderCommentsFile(b, undefined)).toBe(renderCommentsFile(a, undefined));
-    expect(parseCommentsFile(renderCommentsFile(a, undefined)!)!.threads).toHaveLength(1);
+    expect(parseCommentsQmd(renderCommentsFile(a, undefined)!)!.threads).toHaveLength(1);
   });
 
   it("never overwrites a conflict-marked file and does not import it", () => {
-    const conflicted = '<<<<<<< ours\n{"threads": []}\n=======\n{"threads": []}\n>>>>>>> theirs\n';
+    const conflicted = `<<<<<<< ours\n${qmd(thread("t1", "2026-10-16T09:00:00.000Z"))}=======\n>>>>>>> theirs\n`;
     const doc = new Y.Doc();
     expect(importCommentsFile(doc, conflicted)).toBeUndefined();
     expect(renderCommentsFile(doc, conflicted)).toBeUndefined();
@@ -140,8 +120,8 @@ describe("comments.json from the comments map", () => {
 
   it("does not replace a thread the map already holds", () => {
     const doc = new Y.Doc();
-    importCommentsFile(doc, JSON.stringify({ threads: [thread("t1", "2026-10-16T09:00:00.000Z")] }));
-    expect(importCommentsFile(doc, JSON.stringify({ threads: [{ ...thread("t1", "2026-10-16T09:00:00.000Z"), resolved: true }] }))).toBe(0);
+    importCommentsFile(doc, qmd(thread("t1", "2026-10-16T09:00:00.000Z")));
+    expect(importCommentsFile(doc, qmd({ ...thread("t1", "2026-10-16T09:00:00.000Z"), resolved: true }))).toBe(0);
     expect(readLiveThreads(doc)[0]!.resolved).toBe(false);
   });
 });

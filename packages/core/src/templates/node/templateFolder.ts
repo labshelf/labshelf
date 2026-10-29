@@ -56,7 +56,7 @@ export async function readTemplateTree(folder: string): Promise<TemplateFile[]> 
 
 // Per-device and per-draft state that a new project must not inherit.
 const EXCLUDED_PATHS = new Set([
-  PROJECT_FILE, ".labshelf/versions", ".labshelf/rebuttal", ".labshelf/comments.json", ".labshelf/state.json", ".labshelf/checklist.json",
+  PROJECT_FILE, ".labshelf/versions", ".labshelf/rebuttal", ".labshelf/comments.qmd", ".labshelf/state.json", ".labshelf/checklist.json",
   ".labshelf/mirror-lease.json",
 ]);
 

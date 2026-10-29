@@ -39,6 +39,28 @@ An item id is `n-` plus a [ULID](https://github.com/ulid/spec). Any device creat
 
 An anchor in no known form, or one that breaks its rules, is kept verbatim and the item is shown as not attached.
 
+## Comments
+
+A project's comment threads, review comments and suggestions are the items of `.labshelf/comments.qmd`, one item per comment:
+
+```
+::: {#t1 .labshelf-item anchor="quote:…" file="main.tex" resolved="true" author="Ana" created="2026-10-16T09:12:00.000Z"}
+Which baseline?
+:::
+
+::: {#c2 .labshelf-item thread="t1" author="Bo" created="2026-10-17T10:00:00.000Z"}
+The one in Table 2.
+:::
+```
+
+- The first comment of a thread carries the thread: its id is the thread's id, `anchor` is the thread's quote anchor ([Anchors](#anchors)), `file` the POSIX path of the text file relative to the project folder, `resolved="true"` only when the thread is resolved, and `start`/`end` (base64 Yjs relative positions) only in a shared project ([collaboration.md](collaboration.md#comments)).
+- The first item has `comment="<comment id>"` only when the first comment's id differs from the thread id; without it the thread id is the comment id.
+- A reply is an item with `thread="<thread id>"` and no anchor.
+- `author` and `created` are the comment's; the body is the comment's text in LabShelf Markdown, the item body without its last line ending.
+- Thread order is the order of their first items; reply order is file order. Items merge per id ([Merge](#merge)), so two replies written offline both survive.
+- Existing thread and comment ids are kept as written; new ones are created as in [Ids](#ids).
+- Git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>` lines) outside items make the file unreadable, and LabShelf never overwrites it. Any other text reads; an item that is not a valid comment, unknown attributes and text outside items are kept on a rewrite.
+
 ## Outputs
 
 A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`. Results travel inside the file, so a reader sees them without running anything.

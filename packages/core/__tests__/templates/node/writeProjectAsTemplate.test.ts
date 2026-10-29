@@ -41,7 +41,7 @@ describe("writeProjectAsTemplate", () => {
     const { lib, logger, project, main } = await setup();
     await put(project, "sections/a.tex", "A");
     await put(project, ".labshelf/figures.json", "{}");
-    for (const rel of [".labshelf/versions/v1.json", ".labshelf/rebuttal/1.json", ".labshelf/comments.json", ".labshelf/state.json", ".labshelf/checklist.json", ".labshelf/mirror-lease.json", ".git/HEAD"]) {
+    for (const rel of [".labshelf/versions/v1.json", ".labshelf/rebuttal/1.json", ".labshelf/comments.qmd", ".labshelf/state.json", ".labshelf/checklist.json", ".labshelf/mirror-lease.json", ".git/HEAD"]) {
       await put(project, rel, "x");
     }
     const manifest = await writeProjectAsTemplate(lib, "source", details, logger);

@@ -143,7 +143,7 @@ describe("checkTemplateForPublish", () => {
 
   it("leaves per-device project state out of the files", async () => {
     const { run, project } = await setup();
-    for (const rel of [".labshelf/versions/v1.json", ".labshelf/rebuttal/1.json", ".labshelf/comments.json", ".labshelf/state.json", ".labshelf/checklist.json"]) {
+    for (const rel of [".labshelf/versions/v1.json", ".labshelf/rebuttal/1.json", ".labshelf/comments.qmd", ".labshelf/state.json", ".labshelf/checklist.json"]) {
       await put(project, rel, "x");
     }
     await put(project, ".labshelf/figures.json", "{}");

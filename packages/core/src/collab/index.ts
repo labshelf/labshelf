@@ -3,6 +3,7 @@ export * from "./invite/index.js";
 export * from "./relays/index.js";
 export * from "./mirror/index.js";
 export * from "./session/index.js";
+export { readQmdDoc, readQmdDocText, reconcileQmd, setQmdDocText } from "../qmd/collab/index.js";
 
 // The encrypted peer mesh a share session runs its channels over, the wire format of its messages, and the presence shared over it.
 export { createSecureMesh } from "./peerMesh.js";
@@ -22,10 +23,11 @@ export { NormalizedText, type EditorSelection, type PendingChange, type TextChan
 export { derivePeerColour, deriveAbsoluteSelection, deriveRelativeSelection, type RelativeSelection, type TextSelection } from "./cursors.js";
 export { TextUndoManager, type UndoSelection } from "./textUndoManager.js";
 export {
-  addThread, COMMENTS_PATH, deriveCommentThreads, parseCommentsFile, addThreadReply, serializeCommentsFile, setThreadResolved,
+  addThread, COMMENTS_PATH, deriveCommentThreads, addThreadReply, setThreadResolved,
   createSharedProjectComments, importCommentsFile, loadCommentsDocument, renderCommentsFile, updateCommentsDocument,
   type CommentsDocument, type CommentsFileAccess, type SharedProjectComments,
 } from "./commentsFile.js";
+export { parseCommentsQmd, serializeCommentsQmd, threadsToItems } from "./commentsQmd.js";
 export {
   addLiveThread, addLiveThreadReply, createEditorCommentRange, deriveAnchor, deriveLiveAnchor, deriveOffset, derivePosition, findSourceCommentRange,
   findThread, readLiveThreads, setLiveThreadResolved,
