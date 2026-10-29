@@ -1,10 +1,7 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
-import * as os from "node:os";
-import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { createSelectionHub, createLibraryLayout, createRecentTargets, notesText, type AiService, type ILogger } from "@labshelf/core";
-import { createNodeCellRunner, createSharedPythonProvider } from "@labshelf/core/node";
+import { createSelectionHub, createLibraryLayout, createRecentTargets, notesText, type AiService } from "@labshelf/core";
 import { SEND_TO_RECENT_KEY, createMementoKeyValueStore } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
@@ -25,7 +22,6 @@ import { registerNoteLens } from "../writing/citations/index.js";
 import { registerNoteLinks } from "../writing/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
-import { createInstallPython, createRunCellPort } from "../qmd/runCell.js";
 
 export async function startExtension(context: vscode.ExtensionContext, platform: ExtensionPlatform): Promise<void> {
   const { adapters } = platform;
@@ -49,23 +45,10 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   registerNoteLensOf(context, controller, writing);
-  registerNoteLinks(context, {
-    projects: writing.projects, notes: writing.notes, logger: writing.logger,
-    library: () => {
-      const services = controller.currentServices();
-      return services ? {
-        listPapers: () => services.paperService.listPapers(),
-        readNotesText: async (paperId) => notesText(await services.paperNotesStore.read(paperId)),
-      } : undefined;
-    },
-  });
-  // One runner and one Python per activation, shared by the list panel, the reader and Spaces.
-  const cells = createCellHosts(context, writing.logger);
-  const spaces = registerSpaces(context, controller, adapters, writing, async id => {
-    await vscode.commands.executeCommand("labshelf.revealPaper", id);
-    sources.listSelected([id]);
-    sources.listActivated();
-  }, cells);
+  registerLibraryNoteLinks(context, controller, writing);
+  // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
+  const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
+  const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
   const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
   });
@@ -91,12 +74,23 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   logPaperEvents(events, controller.currentServices());
 }
 
-/** The shared Python and the cell runner built once, as the ports the note hosts run cells and install Python through. */
-function createCellHosts(context: vscode.ExtensionContext, logger: ILogger) {
-  const python = createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
-  // The bundle copies the driver beside extension.js.
-  const runner = createNodeCellRunner({ python, logger, driverPath: path.join(context.extensionPath, "out", "cellDriver.py") });
-  return { runCell: createRunCellPort(runner), installPython: createInstallPython(python, logger) };
+async function revealPaperSelected(sources: ReturnType<typeof createSelectionSources>, id: string): Promise<void> {
+  await vscode.commands.executeCommand("labshelf.revealPaper", id);
+  sources.listSelected([id]);
+  sources.listActivated();
+}
+
+function registerLibraryNoteLinks(context: vscode.ExtensionContext, controller: ReturnType<typeof createLibraryController>, writing: ReturnType<typeof registerWritingView>): void {
+  registerNoteLinks(context, {
+    projects: writing.projects, notes: writing.notes, logger: writing.logger,
+    library: () => {
+      const services = controller.currentServices();
+      return services ? {
+        listPapers: () => services.paperService.listPapers(),
+        readNotesText: async (paperId) => notesText(await services.paperNotesStore.read(paperId)),
+      } : undefined;
+    },
+  });
 }
 
 /** Registers the note lens over the open project, reading the paper library through the active services. */

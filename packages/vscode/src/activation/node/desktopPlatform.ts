@@ -1,4 +1,4 @@
-// Builds the desktop platform: Node adapters, the Node Writing registrations, the library flows over the user's disk and the sharing host.
+// Builds the desktop platform: Node adapters, the Node Writing registrations, the library flows over the user's disk, the sharing host and the cell hosts.
 import * as vscode from "vscode";
 
 import { registerCollab } from "../../collab/node/index.js";
@@ -7,10 +7,11 @@ import { registerShareLinks } from "../../share/node/index.js";
 import { sharingWebviews } from "../../share/index.js";
 import { createVscodeShareHost, serveShareOn } from "../../share/node/index.js";
 import { registerNodeWriting } from "../../writing/node/index.js";
-import type { ExtensionPlatform } from "../extensionPlatform.js";
+import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
+import * as os from "node:os";
 import * as path from "node:path";
-import { FileProjectVersionStore, Logger, createProjectContent, type ILogger } from "@labshelf/core";
+import { FileProjectVersionStore, Logger, createProjectContent, formatError, type ICellRunner, type ILogger, type RunCellPort } from "@labshelf/core";
 import {
   NodeLibraryFileSystem,
   nodePathOps,
@@ -25,6 +26,9 @@ import {
   scanLibraryConflicts,
   createProjectWriteTracking,
   FileLogSink,
+  createNodeCellRunner,
+  createSharedPythonProvider,
+  type PythonProvider,
 } from "@labshelf/core/node";
 import {
   createOcrEngine,
@@ -85,6 +89,7 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
     registerWriting: registerNodeWriting,
     chooseLibraryRoot: () => pickLibraryRoot(adapters),
     afterSavedLibraryOpened: offerLibraryMove,
+    createCellHosts,
     registerPlatformCommands: (extensionContext, controller, projects) => {
       extensionContext.subscriptions.push(vscode.commands.registerCommand("labshelf.moveLibrary", () => runMoveLibraryCommand(controller)));
       registerNativeHostCommands(extensionContext, adapters);
@@ -94,4 +99,47 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
       extensionContext.subscriptions.push(sharingWebviews.serve((webview) => serveShareOn(webview, sharing, collab.logger)));
     },
   };
+}
+
+const MODULE = "qmd/runCell";
+const CELL_TIMEOUT_MS = 60_000;
+
+/** The shared Python and the cell runner built once, as the ports the note hosts run cells and install Python through. */
+function createCellHosts(context: vscode.ExtensionContext, logger: ILogger): CellHosts {
+  const python = createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  // The bundle copies the driver beside extension.js.
+  const runner = createNodeCellRunner({ python, logger, driverPath: path.join(context.extensionPath, "out", "cellDriver.py") });
+  return { runCell: createRunCellPort(runner), installPython: createInstallPython(python, logger) };
+}
+
+/** @returns the port the core hosts run cells through: the runner with the default timeout, in the temp folder. */
+function createRunCellPort(runner: ICellRunner): RunCellPort {
+  return (code, signal) => runner.run(code, { cwd: os.tmpdir(), signal, timeoutMs: CELL_TIMEOUT_MS });
+}
+
+/** @returns an installer of the shared Python that shows its progress; a second call while one runs does nothing. Nothing re-runs after it. */
+function createInstallPython(python: PythonProvider, logger: ILogger): () => void {
+  let installing = false;
+  return () => {
+    if (installing) { return; }
+    installing = true;
+    void installWithProgress(python, logger).finally(() => { installing = false; });
+  };
+}
+
+async function installWithProgress(python: PythonProvider, logger: ILogger): Promise<void> {
+  try {
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: "Installing Python for LabShelf cells" }, async (progress) => {
+      let reported = 0;
+      await python.install((message, fraction) => {
+        const done = Math.round((fraction ?? reported / 100) * 100);
+        progress.report({ message, increment: Math.max(0, done - reported) });
+        reported = Math.max(reported, done);
+      });
+    });
+    void vscode.window.showInformationMessage("Python is installed. Press Run again on the cell.");
+  } catch (error) {
+    await logger.error(MODULE, error, { step: "install python" });
+    void vscode.window.showErrorMessage(`Python could not be installed — ${formatError(error)}`);
+  }
 }
