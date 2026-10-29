@@ -11,6 +11,7 @@ import {
   resolveHelperDir,
   runHelperBiber,
   runHelperHost,
+  runInstallPython,
   BIBER_ASSET_FILES,
   parseBiberReleaseManifest,
   type BiberWasmAssets,
@@ -21,7 +22,6 @@ import { createSharedPythonProvider } from "@labshelf/core/node";
 
 import { registerStandaloneHosts, detectServedHost, uninstallStandaloneHelper, uninstallStandaloneHosts } from "./nativeHost/index.js";
 import { createSelfUpdater } from "./release/index.js";
-import { runInstallPython } from "./installPythonFlag.js";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
