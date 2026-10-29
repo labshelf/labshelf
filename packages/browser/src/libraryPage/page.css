@@ -39,9 +39,12 @@
 .ls-comment-thread { padding: var(--ls-space-3) 0; border-bottom: 1px solid var(--ls-border-soft); display: flex; flex-direction: column; gap: var(--ls-space-2); }
 .ls-comment-place { color: var(--ls-desc); }
 .ls-comment-quote { margin: var(--ls-space-1) 0 0; padding-left: var(--ls-space-3); border-left: 2px solid var(--ls-border); color: var(--ls-desc); }
-.ls-comment-label { color: var(--ls-desc); }
+.ls-comment-head { display: flex; align-items: baseline; gap: var(--ls-space-2); min-width: 0; }
+.ls-comment-head strong { color: var(--ls-fg); }
+.ls-comment-head span { color: var(--ls-desc); }
+.ls-comment-body, .ls-comment-editor { min-width: 0; }
+.ls-comment-reply { display: flex; flex-direction: column; gap: var(--ls-space-2); min-width: 0; }
 .ls-comment-actions { display: flex; gap: var(--ls-space-2); }
-.ls-comment-actions .ls-input { flex: 1; }
 
 /* ── Details pane: the page-level right pane outside the tabs ───── */
 .ls-page-details { flex-shrink: 0; display: flex; min-width: 0; overflow: hidden; background: var(--ls-sidebar-bg); }
