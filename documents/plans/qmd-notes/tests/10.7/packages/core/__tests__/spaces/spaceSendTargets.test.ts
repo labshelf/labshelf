@@ -7,8 +7,8 @@ import type { SpaceDiscussionsStore } from "../../src/spaces/spaceDiscussionsSto
 const QUOTE_BODY = "> Attention is all you need.\n\n[vaswani2017, p. 3](labshelf:vaswani2017#p3)";
 
 function fakeStores() {
-  const noteAdds: Array<{ spaceId: string; path: string; body: string; author?: string; id?: string }> = [];
-  const messageAdds: Array<{ spaceId: string; path: string; body: string; author?: string; id?: string }> = [];
+  const noteAdds: Array<{ spaceId: string; path: string; body: string; author?: string | undefined; id?: string | undefined }> = [];
+  const messageAdds: Array<{ spaceId: string; path: string; body: string; author?: string | undefined; id?: string | undefined }> = [];
   const assetWrites: Array<{ spaceId: string; path: string; bytes: Uint8Array }> = [];
   const order: string[] = [];
   const state = { failAsset: false };

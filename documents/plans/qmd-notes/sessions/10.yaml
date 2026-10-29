@@ -9,7 +9,7 @@ owns:
   - packages/core/src/spaces/
   - documents/contracts/spaces.md
   - packages/core/__tests__/spaces/
-status: pending
+status: blocked
 packages:
   - id: "10.1"
     plan: qmd-notes
@@ -64,8 +64,6 @@ packages:
         signature: export type ThreadStatus = 'open' | 'resolved'
       - path: packages/core/src/spaces/spaceDiscussionsStore.ts
         signature: "export interface SpaceThreadEntry { path: string; title: string; status: ThreadStatus; messages: number; updated: string }"
-      - path: packages/core/src/spaces/spaceStore.ts
-        signature: "readonly notes: SpaceNotesStore; readonly discussions: SpaceDiscussionsStore (members of SpaceStore)"
       - path: packages/core/src/spaces/spaceDiscussionsStore.ts
         signature: "export interface SpaceDiscussionsStore { list(spaceId: string): Promise<SpaceThreadEntry[]>; create(spaceId: string, title: string, body: string, author?: string): Promise<string>; read(spaceId: string, path: string): Promise<SpaceQmdItem[]>; addMessage(spaceId: string, path: string, body: string, author?: string, id?: string): Promise<string>; editMessage(spaceId: string, path: string, id: string, body: string): Promise<void>; removeMessage(spaceId: string, path: string, id: string): Promise<void>; setStatus(spaceId: string, path: string, status: ThreadStatus): Promise<void> }"
       - path: packages/core/src/spaces/spaceDiscussionsStore.ts
@@ -75,7 +73,7 @@ packages:
       - "Code is flat in `packages/core/src/spaces/` per documents/code.md#modules: `spaceNotesStore.ts` and `spaceDiscussionsStore.ts`, no subfolder. Shared path helpers (slug-to-path, the `notes/` and `discussions/` folder names) live in `spaceNotesStore.ts` and are imported by the discussions store, never copied."
       - Slugs reuse `deriveNoteSlug(title, taken)` from `packages/core/src/qmd/projectNotesStore.ts` (created by 9.1), imported, never copied.
       - Writes go through `runSerially(ctx, spaceId, …)` of `spaceStore.ts` (serial per Space), re-read first, atomic, identical bytes in all apps (documents/code.md#files). If importing from `spaceStore.ts` makes an import cycle, move `StoreContext` and `runSerially` to the new notes file and re-export them from `spaceStore.ts`.
-      - "`SpaceStore` exposes `notes` and `discussions` built from its own context, so `serveSpaces` and the apps take them from the store they already have."
+      - "`SpaceStore` gains the members `readonly notes: SpaceNotesStore` and `readonly discussions: SpaceDiscussionsStore`, built from its own context, so `serveSpaces` and the apps take them from the store they already have."
       - Merge across devices is session 2's block merge (the Space scan already walks `spaces/<id>/**/*.qmd`); nothing here.
       - Store paths are relative to the Space folder (`notes/<slug>.qmd`, `discussions/<slug>.qmd`); `create` returns that path. `list` of a Space without the folder is `[]`. `title` is the first item's `# ` heading; `updated` is the file's modification time as an ISO string; a thread entry's `messages` counts the items after the topic.
       - "`addItem`/`addMessage` return the item id (new from `newItemId()` unless `id` is passed, which Send to uses) and stamp `created` from `ctx.now()`; `author` is written only when given. `read` returns the items in file order with `id`, `body`, `author`, `created`."
@@ -162,6 +160,49 @@ packages:
       - packages/vscode/
       - packages/browser/
       - packages/terminal/
+  - id: 10.2.1
+    plan: qmd-notes
+    goal: One Space qmd path check shared by the stores and the protocol guard, and the serveSpaces post counts updated for the new spaceNotes and spaceDiscussions posts.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "10.2"
+    edit:
+      - path: packages/core/src/spaces/spaceNotesStore.ts
+        lines: 1-400
+        why: export the single path check the stores use
+      - path: packages/core/src/spaces/spacesProtocol.ts
+        lines: 1-260
+        why: isSpaceQmdPath reuses the store's check instead of its own regex
+      - path: packages/core/__tests__/spaces/serveSpaces.test.ts
+        lines: 1-400
+        why: two post counts are stale since the open Space also posts spaceNotes and spaceDiscussions
+    create: []
+    read:
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 1-260
+        why: what is posted when a Space opens or changes
+    decided:
+      - "The rule (`notes/<name>.qmd` or `discussions/<name>.qmd`, one plain name, no slash, no leading dot, no `..`) is written once, in `spaceNotesStore.ts`, as an exported function taking `(path: unknown)`; `isSpaceQmdPath(spaceId, path)` in `spacesProtocol.ts` calls it, and the stores call it. If importing it into `spacesProtocol.ts` makes a runtime import cycle, put the function in `spacesProtocol.ts` and import it from the stores instead. Same accept and reject behaviour as today."
+      - "In serveSpaces.test.ts, the tests 'posts the open Space with its overview, papers tree, glossary and projects' (expects 1 post, now 3) and 're-posts the open Space once after an outside store change' (expects 2, now 6) are updated to assert the posts by type: the Space post is still posted once per open or change, plus one `spaceNotes` and one `spaceDiscussions`. Do not loosen other assertions."
+      - "Testing policy: no `pnpm gate`, no lint; only the commands below."
+    acceptance:
+      - id: 10.2.1a
+        check: the Space qmd path rule appears in exactly one function; the stores and isSpaceQmdPath call it
+      - id: 10.2.1b
+        check: "`node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces` is green"
+    tests:
+      none: refactor and an existing test update; checked by the existing spaces tests
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/spaces
+    do_not_touch:
+      - packages/core/src/qmd/
+      - packages/vscode/
+      - packages/browser/
+      - packages/terminal/
   - id: "10.3"
     plan: qmd-notes
     goal: "`documents/contracts/spaces.md` describes the note and discussion files and the messages once."
@@ -242,3 +283,4 @@ packages:
       - packages/vscode/
       - packages/browser/
       - packages/core/src/qmd/
+blocked_reason: "10.1: no report"
