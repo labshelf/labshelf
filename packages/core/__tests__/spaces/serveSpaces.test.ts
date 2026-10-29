@@ -49,8 +49,8 @@ describe("serveSpaces", () => {
     const { ui, posted } = await setup();
     ui.post({ type: "ready", view: "space", id: "thesis" });
     await settle();
-    expect(posted).toHaveLength(1);
-    const message = posted[0] as Extract<HostToSpaces, { type: "space" }>;
+    expect(posted.map((m) => m.type).sort()).toEqual(["space", "spaceDiscussions", "spaceNotes"]);
+    const message = posted.find((m) => m.type === "space") as Extract<HostToSpaces, { type: "space" }>;
     expect(message.type).toBe("space");
     expect(message.space.name).toBe("Thesis");
     expect(message.overview.timeline).toMatchObject([{ kind: "deadline", fromProject: true, date: "2026-11-05" }]);
@@ -76,8 +76,9 @@ describe("serveSpaces", () => {
     await settle();
     await f.store.setPurpose("thesis", "Write it");
     await settle();
-    expect(posted).toHaveLength(2);
-    expect(posted[1]).toMatchObject({ type: "space", space: { purpose: "Write it" } });
+    expect(posted.map((m) => m.type).sort()).toEqual(["space", "space", "spaceDiscussions", "spaceDiscussions", "spaceNotes", "spaceNotes"]);
+    const spacePosts = posted.filter((m) => m.type === "space");
+    expect(spacePosts[1]).toMatchObject({ type: "space", space: { purpose: "Write it" } });
   });
 
   it("coalesces a burst of library changes into one re-post", async () => {
