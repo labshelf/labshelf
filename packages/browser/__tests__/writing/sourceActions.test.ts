@@ -35,6 +35,9 @@ describe("createSourceActions", () => {
       ["citeFromLibrary", "Cite from Library", "quote", false],
       ["bold", "Bold", "bold", true],
       ["italic", "Italic", "italic", true],
+      ["insertFromNote", "Insert from note", "symbol-operator", true],
+      ["updateFromNote", "Update from note", "refresh", true],
+      ["showNoteDifferences", "Show differences", "replace", true],
     ]);
   });
 

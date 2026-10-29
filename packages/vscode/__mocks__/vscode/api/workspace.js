@@ -72,6 +72,8 @@ workspace._fireTextDocumentChange = (event) => _textChangeListeners.forEach((l) 
 workspace.textDocuments = [];
 workspace.applyEdit = jest.fn(async () => true);
 workspace.saveAll = jest.fn(async () => true);
+workspace.registerTextDocumentContentProvider = jest.fn(() => ({ dispose: () => {} }));
+workspace.openTextDocument = jest.fn(async () => { throw new Error('openTextDocument is not stubbed'); });
 
 // Handlers per document event; tests call workspace._fireDocumentEvent("save" | "open" | "close", document).
 const _documentListeners = { save: [], open: [], close: [] };

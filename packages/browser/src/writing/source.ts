@@ -13,6 +13,7 @@ import type { PageShare } from "../collab";
 import type { TabContext } from "../libraryUi/editorArea";
 import { createSidecarPort } from "../storage";
 import type { SourceEditorDeps } from "./editor";
+import type { NoteLinkActions } from "./noteLinks";
 import { createBrowserProjectContent } from "./project";
 
 /** `$1` and `${1:Caption}` become CodeMirror fields, `$0` the final cursor, and `\\`, `\$`, `\}` their literal characters. */
@@ -245,6 +246,8 @@ interface ActionTarget {
   /** Saves the file; resolves whether it is saved afterwards. */
   flush(): Promise<boolean>;
   entry: ProjectEntry;
+  /** The note-link commands of the editor; undefined when it has no notes to read. */
+  noteLinks?: NoteLinkActions | undefined;
 }
 
 export interface SourceActionDeps {
@@ -265,6 +268,10 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
     const current = target();
     if (current) act(current.edits);
   };
+  const withNoteLinks = (act: (links: NoteLinkActions) => Promise<void>): (() => void) => () => {
+    const links = target()?.noteLinks;
+    if (links) void act(links);
+  };
   return [
     { id: "history", icon: "history", label: "Show Project History", run: openHistory },
     { id: "insertSymbol", icon: "symbol-operator", label: "Insert Symbol", run: withEdits((edits) => void addSymbol(edits, language)) },
@@ -280,6 +287,9 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
     } },
     { id: "bold", icon: "bold", label: "Bold", overflow: true, run: withEdits((edits) => edits.wrap("bold")) },
     { id: "italic", icon: "italic", label: "Italic", overflow: true, run: withEdits((edits) => edits.wrap("italic")) },
+    ...(language === "latex" ? [{ id: "insertFromNote", icon: "symbol-operator", label: "Insert from note", overflow: true, run: withNoteLinks((links) => links.insert()) } satisfies EditorTabAction] : []),
+    { id: "updateFromNote", icon: "refresh", label: "Update from note", overflow: true, run: withNoteLinks((links) => links.update()) },
+    { id: "showNoteDifferences", icon: "replace", label: "Show differences", overflow: true, run: withNoteLinks((links) => links.showDifferences()) },
   ];
 }
 

@@ -1,4 +1,4 @@
-/** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, the Checklist, versions and their comparison, the project history, SyncTeX and the citations behind a compiled PDF, the problems and stale sources of a build preview, and the project data port over them. */
+/** Exports the writing domain's runtime-neutral API: projects written in LaTeX or Typst, their citations and backlinks, figures and values, the pre-submission check, the Checklist, versions and their comparison, the project history, SyncTeX and the citations behind a compiled PDF, the problems and stale sources of a build preview, and the project data port over them, and links from manuscript equations back to their notes. */
 export * from "./citations/index.js";
 export * from "./project/index.js";
 export { parseSynctex, readSynctexFile } from "./synctexFile.js";
@@ -6,6 +6,7 @@ export type { SourcePosition, SynctexMap, SynctexRead } from "./synctexFile.js";
 export { findPagePoint, findSourcePosition } from "./synctexLookup.js";
 export * from "./figures/index.js";
 export * from "./checks/index.js";
+export * from "./noteLinks/index.js";
 export * from "./history/index.js";
 export { createProjectContent, createProjectFileRow, listVisibleEntries, listProjectFileTree } from "./projectService.js";
 export type {

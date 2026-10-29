@@ -1,0 +1,122 @@
+schema: brief/v1
+area: browser source editor glue for Insert from note
+question: "where noteLinks.ts plugs into the CodeMirror mount, how project and paper notes are read, widgets, decorations, tests, CSS"
+sha: 10046cb8
+reuse:
+  - symbol: createEditorExtensions
+    path: packages/browser/src/writing/editor.ts
+    lines: "235-252"
+    why: "Builds the extension array: lineNumbers, optional notesGutter, history, theme, languageSupport, keymap with Mod-s calling onSave(). A new extension is a new option like notesGutter, or an entry in the extensions array at editor.ts:353."
+  - symbol: mountSourceEditor
+    path: packages/browser/src/writing/editor.ts
+    lines: "327-376"
+    why: "Mount. extensions at 353 is formattingKeymap, documentExtensions, commentsSupport extensions, onUpdate, readOnly. View created at 354. currentText() at 337 gives the text with the file's own line break. After each successful write the scheduler's onSaved (346) runs explicit.written(), refreshNotes(), deps.onSaved?.(); that is the only post-save hook. Mod-s calls explicit.flush(save) (353), the same write path. dispose at 366-375. Language is deriveSourceLanguage(path) at 339: latex or typst only, any non-.typ path counts as latex."
+  - symbol: createNoteRefresh
+    path: packages/browser/src/writing/noteGutter.ts
+    lines: "259-281"
+    why: "Pattern to model: refresh() runs at open, after each save and after reload, never per keystroke; a request counter makes the latest win; takes view() and text() getters; close() on dispose. Call sites editor.ts:349-350, 346, 356, 361, 367."
+  - symbol: createNoteGutter
+    path: packages/browser/src/writing/noteGutter.ts
+    lines: "195-211"
+    why: "StateField of a RangeSet of GutterMarker, plus gutter with a class, a StateEffect setter and an EditorView.theme. Returns extension and setSites(view, sites). Best model for an extension fed by async data."
+  - symbol: createSourceUpdates
+    path: packages/browser/src/writing/source.ts
+    lines: "37-77"
+    why: "SourceUpdates with insertText, insertSnippet and wrap, returned by mountSourceEditor (editor.ts:364). insertText replaces every selection with userEvent input and focuses the view."
+  - symbol: createSourceActions
+    path: packages/browser/src/writing/source.ts
+    lines: "263-284"
+    why: "Toolbar and tab actions (EditorTabAction with id, icon, label, run, overflow), e.g. citeFromLibrary at 277 and insertSymbol at 270. target() returns edits, flush and entry, or undefined until loaded. Deps type SourceActionDeps at 250-261. An Insert from note action would go here. Editor keymaps are only Mod-s (editor.ts:250), Mod-b and Mod-i (source.ts:80-86)."
+  - symbol: pickQuickEntry
+    path: packages/core/src/ui/dom/widgets/quickInput.ts
+    lines: "6-25"
+    why: "pickQuickEntry(entries, opts with title, placeholder, signal) returns Promise of the value or undefined (function at line 81). QuickPickItem has label, description?, icon?, value. Groups are separate entries of kind separator with a label, shown only while an item follows in the filtered list. No per-item detail or group field. Exported from @labshelf/core/dom."
+  - symbol: mountOverlay
+    path: packages/core/src/ui/dom/widgets/dialog.ts
+    lines: "5-25"
+    why: "mountOverlay(content: HTMLElement, onDismiss: () => void, opts with signal and root) returns an object with close. Traps focus; Escape dismisses. Browser example packages/browser/src/writing/templates.ts:13 and 52."
+  - symbol: addSymbol
+    path: packages/browser/src/writing/source.ts
+    lines: "88-117"
+    why: "Example of the pickers: addSymbol uses pickQuickEntry with separators; pickPaper at 165-175 uses label, description, value; the highlight picker at 178-207 uses separators and an icon; addTable uses askInputBox."
+  - symbol: listNoteInsertables
+    path: packages/core/src/writing/noteLinks/noteInsertables.ts
+    lines: "13-30"
+    why: "Already built. NoteInsertable has notePath, label, latex, source (equation or output), title, outOfDate?. Reads project notes first, then cited papers' notes (notePath is paper:ID/notes.qmd, title is the paper id). Exports in packages/core/src/writing/noteLinks/index.ts."
+  - symbol: createProjectNotesStore
+    path: packages/core/src/qmd/projectNotesStore.ts
+    lines: "30-75"
+    why: "ProjectNotesStore.list(projectId) gives path and title (paths like notes/slug.qmd relative to the project folder); read(projectId, path) gives the whole file text or null. Maps to NoteInsertSource listProjectNotes and readProjectNote (convert null to undefined)."
+  - symbol: createProjectNoteFiles
+    path: packages/browser/src/storage/projectNoteFiles.ts
+    lines: "28-28"
+    why: "Browser IProjectNoteFiles port over LibraryFileSystem; needs a folderOf(projectId) resolver. Re-exported from src/storage/index.ts. Wiring exists twice, both private: createNotesStore in packages/browser/src/libraryUi/mountProjectWiring.ts:99-111 and openProjectNotes in packages/browser/src/libraryUi/reader/sendToNote.ts:55-70. The session also holds a store as notes.store (SessionNotes, mountProjectWiring.ts near line 118)."
+  - symbol: createPaperNotesPort
+    path: packages/browser/src/storage/records.ts
+    lines: "148-150"
+    why: "PaperNotesPort.read(paperId) returns the raw notes.qmd text or null (port type at packages/core/src/qmd/paperNotes.ts:24-25). The editor already gets deps.notes, a PaperNotesStore returning a parsed ItemFile (paperNotes.ts:63), built at sourceTab.ts:31. Raw text needs createPaperNotesPort(fs).read."
+  - symbol: listProjectCiteKeys
+    path: packages/core/src/writing/citations/bibliography.ts
+    lines: "247-256"
+    why: "Cite keys across project sources (context with fs and paths, folder, format). Cited papers: map keys to papers with derivePapersByCiteKey(papers) (citeKeys.ts:351), or findCitationSites(format, text) (citeKeys.ts:120) for the open file only. No existing cited-paper-ids function. deps.papers() is listCachedPaperRecords (sourceTab.ts:28). Use PaperRecord.id for the paper id."
+edit:
+  - path: packages/browser/src/writing/noteLinks.ts
+    why: "new file; exports noteLinkExtension(deps): Extension"
+  - path: packages/browser/src/writing/editor.ts
+    lines: "261-286"
+    why: "SourceEditorDeps has projectId, path, files (list, read, write), papers(), helper, notes?, openNotes?, comments?, collab?, readOnly?, logger, onDirty, onSaved?. It has no note-reading deps; add optional fields here, put the extension into the extensions array at 353, and refresh after save next to refreshNotes at 346."
+  - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+    lines: "23-51"
+    why: "editorDeps(TabContext, entry, file, mode) builds SourceEditorDeps; it has fs, logger, entry (folder) and project() (session, sharing). Add the note readers here."
+  - path: packages/browser/src/writing/source.ts
+    lines: "263-284"
+    why: "Add an Insert from note EditorTabAction if a toolbar action is wanted; createSourceActions is called from sourceTab.ts."
+  - path: packages/browser/src/writing/index.ts
+    why: "barrel of writing exports"
+read:
+  - path: packages/browser/src/writing/editor.ts
+    lines: "20-70"
+    why: "EditorView.theme with var(--ls-*) tokens. editorTheme at 89. Extension styles live in their own EditorView.theme (noteGutter.ts:176-193) or in the main theme (comment styles 42-48 and 63-66)."
+  - path: packages/browser/src/collab/comments.ts
+    lines: "194-230"
+    why: "StateField of ranges plus Decoration.mark with class ls-comment-range, mapped through edits; model for range decorations."
+  - path: packages/browser/src/collab/register.ts
+    lines: "250-290"
+    why: "ViewPlugin.fromClass with Decoration.mark and Decoration.widget (WidgetType) and DecorationSet."
+  - path: packages/browser/src/writing/typst.ts
+    lines: "139-175"
+    why: "Only hoverTooltip use: hoverTooltip(hoverSource(service, path)) at 172; tooltip content is plain text."
+  - path: packages/browser/src/writing/session.ts
+    lines: "76-90"
+    why: "loadFromDisk, registerOpenEditor reload callback, and the fromDisk annotation (such transactions do not mark the file dirty)."
+  - path: packages/core/src/writing/noteLinks/scanOrigins.ts
+    why: "scanOrigins and readOriginLatex API for the decorations"
+callers:
+  - symbol: createEditorExtensions
+    path: packages/browser/src/writing/editor.ts
+    lines: "306-308"
+  - symbol: mountSourceEditor
+    path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+    lines: "61-65"
+  - symbol: createSourceActions
+    path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+tests:
+  - path: packages/browser/__tests__/writing/editorMount.test.ts
+    covers: "Mounts mountSourceEditor in jsdom with a fake SourceFileAccess, finds the view with EditorView.findFromDOM(host), dispatches changes, flush(), dispose(). Best model for a mounted-extension test."
+  - path: packages/browser/__tests__/writing/sourceInsert.test.ts
+    covers: "Mocks pickQuickEntry and askInputBox with jest.mock of @labshelf/core/dom spreading jest.requireActual, asserts entries and insertText calls. Model for the picker flow."
+  - path: packages/browser/__tests__/writing/sourceActions.test.ts
+    covers: "createSourceActions"
+  - path: packages/browser/__tests__/writing/editorSave.test.ts
+    covers: "save scheduling"
+contracts: ["documents/contracts/qmd-items.md#manuscript-links"]
+commands:
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/editorMount.test.ts"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/sourceInsert.test.ts"
+risks:
+  - "Test runner is jest, not vitest. DOM tests start with the docblock jest-environment jsdom plus jest-environment-options with customExportConditions node and node-addons; copy lines 1-4 of editorMount.test.ts. CodeMirror is tested with a real EditorView in jsdom; no EditorState-only test seen."
+  - "CSS: no separate stylesheet for the source editor; styles are JS EditorView.theme in editor.ts:20-70 and noteGutter.ts:176-193. Page-level classes such as ls-source-notice are in packages/browser/src/libraryPage/page.css:25-29. Tokens are in packages/core/src/ui/dom/tokens.css (and vscodeHost.css): --ls-error (line 8), --ls-warning (71), --ls-desc muted text (7), --ls-section-fg gutter and muted (16), --ls-mark-accent comment and note accent (80), plus --ls-focus, --ls-widget-bg, --ls-menu-fg, --ls-menu-border, --ls-widget-shadow, --ls-radius, --ls-space-N, --ls-text-sm. Patterns: lint underline wavy var(--ls-error) or var(--ls-warning); diagnostics border-left 3px; comment range uses color-mix of --ls-mark-accent 22 percent with transparent. No success colour token found."
+  - "Decoration.line is not used anywhere in packages/browser/src; only Decoration.mark, Decoration.widget and gutter markers."
+  - "No existing function lists cited paper ids, and no raw-text project note reader exists; NoteInsertSource must be assembled in browser code. A project notes store exists in the session wiring (mountProjectWiring.ts near 118) but is not passed to TabContext or editorDeps."
+  - "For a shared (collab) file the save scheduler is a no-op (editor.ts:343), so onSaved never fires; refreshNotes runs only on open and reload there."
+  - "Path forms: project note paths from store.list are project-relative (notes/x.qmd); paper notes are paper:ID/notes.qmd and must be mapped back to createPaperNotesPort(fs).read(ID)."

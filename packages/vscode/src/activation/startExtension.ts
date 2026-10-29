@@ -3,7 +3,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { createSelectionHub, createLibraryLayout, createRecentTargets, type AiService, type ILogger } from "@labshelf/core";
+import { createSelectionHub, createLibraryLayout, createRecentTargets, notesText, type AiService, type ILogger } from "@labshelf/core";
 import { createNodeCellRunner, createSharedPythonProvider } from "@labshelf/core/node";
 import { SEND_TO_RECENT_KEY, createMementoKeyValueStore } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
@@ -22,6 +22,7 @@ import { registerSettingsMenu } from "./registerSettingsMenu.js";
 import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
+import { registerNoteLinks } from "../writing/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
 import { createInstallPython, createRunCellPort } from "../qmd/runCell.js";
@@ -48,6 +49,16 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   registerNoteLensOf(context, controller, writing);
+  registerNoteLinks(context, {
+    projects: writing.projects, notes: writing.notes, logger: writing.logger,
+    library: () => {
+      const services = controller.currentServices();
+      return services ? {
+        listPapers: () => services.paperService.listPapers(),
+        readNotesText: async (paperId) => notesText(await services.paperNotesStore.read(paperId)),
+      } : undefined;
+    },
+  });
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces.
   const cells = createCellHosts(context, writing.logger);
   const spaces = registerSpaces(context, controller, adapters, writing, async id => {

@@ -573,6 +573,22 @@
         "icon": "$(quote)"
       },
       {
+        "command": "labshelf.writing.insertFromNote",
+        "title": "Research: Insert from Note",
+        "category": "LabShelf",
+        "icon": "$(symbol-operator)"
+      },
+      {
+        "command": "labshelf.writing.updateFromNote",
+        "title": "Research: Update from Note",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.writing.showNoteDiff",
+        "title": "Research: Show Note Differences",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.searchInProject",
         "title": "Research: Search in Project",
         "category": "LabShelf",
@@ -769,6 +785,18 @@
         {
           "command": "labshelf.writing.citeFromLibrary",
           "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+        },
+        {
+          "command": "labshelf.writing.insertFromNote",
+          "when": "labshelf.writing.inProject && editorLangId == latex"
+        },
+        {
+          "command": "labshelf.writing.updateFromNote",
+          "when": "false"
+        },
+        {
+          "command": "labshelf.writing.showNoteDiff",
+          "when": "false"
         },
         {
           "command": "labshelf.writing.searchInProject",

@@ -1,7 +1,10 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
-import { PaperNotesStore, listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
+import {
+  PaperNotesStore, createProjectNotesStore, derivePapersByCiteKey, formatError, listProjectCiteKeys, listProjectFiles, posixPathOps,
+  type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
+} from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
-import { createPaperNotesPort, listCachedPaperRecords } from "../../storage";
+import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
   type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceFileMode,
@@ -16,6 +19,31 @@ function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAcc
     list: () => listProjectFiles({ fs, paths: posixPathOps }, entry.folder),
     read: (path) => fs.readText(full(path)),
     write: (path, text) => fs.writeText(full(path), text),
+  };
+}
+
+/** The notes "Insert from note" reads: the project's notes and the notes of the papers its sources cite; a reader that fails logs and answers empty, so one bad note never empties the picker. */
+function noteLinkSource(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEntry & { kind: "ready" }): NoteInsertSource {
+  const store = createProjectNotesStore(createProjectNoteFiles(fs, async () => entry.folder), logger);
+  const paperNotes = createPaperNotesPort(fs);
+  const projectId = entry.settings.id;
+  const safe = async <T>(action: string, fallback: T, read: () => Promise<T>): Promise<T> => {
+    try {
+      return await read();
+    } catch (error) {
+      void logger.error(MODULE, error, { action, projectId, message: formatError(error) });
+      return fallback;
+    }
+  };
+  return {
+    listProjectNotes: () => safe("listProjectNotes", [], () => store.list(projectId)),
+    readProjectNote: (path) => safe("readProjectNote", undefined, async () => (await store.read(projectId, path)) ?? undefined),
+    listCitedPaperIds: () => safe("listCitedPaperIds", [], async () => {
+      const keys = await listProjectCiteKeys({ fs, paths: posixPathOps }, entry.folder, entry.settings.format);
+      const byKey = derivePapersByCiteKey(await listCachedPaperRecords());
+      return [...new Set(keys.flatMap((key) => byKey.get(key)?.id ?? []))];
+    }),
+    readPaperNote: (paperId) => safe("readPaperNote", undefined, async () => (await paperNotes.read(paperId)) ?? undefined),
   };
 }
 
@@ -36,6 +64,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
       selection.activate("source-notes");
     },
     ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
+    ...(!readOnly && entry.kind === "ready" ? { noteLinks: noteLinkSource(fs, logger, entry) } : {}),
     ...(readOnly ? { readOnly: true } : {
       comments: {
         subscribe: comments.commentAnchorsFor(projectId, path).subscribe,
@@ -133,7 +162,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   open(false);
   const actions = createSourceActions({
     projectId, path, language: deriveSourceLanguage(path), fs, logger,
-    target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded } : undefined),
+    target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined),
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
     papers: listCachedPaperRecords,
   });

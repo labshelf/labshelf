@@ -9,6 +9,12 @@ owns:
   - packages/vscode/package.json
   - packages/vscode/__tests__/writing/
   - packages/browser/__tests__/writing/
+  - packages/core/src/writing/index.ts
+  - packages/vscode/src/activation/startExtension.ts
+  - packages/vscode/__mocks__/vscode/
+  - packages/browser/src/libraryUi/editorArea/sourceTab.ts
+  - packages/browser/src/libraryPage/page.css
+  - packages/core/src/writing/noteLinks/index.ts
 status: pending
 packages:
   - id: "13.6"
@@ -29,11 +35,68 @@ packages:
         why: Reuse of core widgets and the editor
     decided:
       - "Design from `documents/ui.md`: the picker (groups: Equations, Outputs, Figures, Values; source note shown), the state mark on an origin line (fresh none, stale, diverged, missing), the update action and the side-by-side diff. Components, tokens and states (empty, loading, error, narrow, light and dark, keyboard focus), no pixel values or colours."
+      - "Outcome written into the decided of 13.7 and 13.8 under `UI 13.6:`. Figures and Values have their own insert commands already, and core lists only equations and outputs, so the picker has two groups: Equations and Outputs."
     acceptance:
       - id: 13.6a
         check: outcome written into the decided of 13.7 and 13.8
     tests:
       none: design, no code
+  - id: 13.6b
+    plan: qmd-notes
+    goal: The note-link API of core is exported from the `@labshelf/core` root so VS Code and the browser can import it.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on: []
+    edit:
+      - path: packages/core/src/writing/index.ts
+        lines: 1-40
+        why: add `export * from "./noteLinks/index.js";` beside `export * from "./checks/index.js";`
+    read:
+      - path: packages/core/src/writing/noteLinks/index.ts
+        lines: 1-6
+        why: "the names it re-exports (checked: none collides with another core export)"
+    decided:
+      - One added line in packages/core/src/writing/index.ts; the doc comment at the top of that file gains "links from manuscript equations back to their notes". Nothing else in core changes.
+    acceptance:
+      - id: 13.6ba
+        check: node scripts/agents/run.mjs typecheck core passes and `import { listNoteInsertables, scanOrigins } from "@labshelf/core"` typechecks in vscode
+    tests:
+      none: a re-export line, covered by the typecheck
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+    do_not_touch:
+      - packages/core/src/writing/noteLinks/
+  - id: 13.6c
+    plan: qmd-notes
+    goal: Core also exports `findOriginCommentStart`, which VS Code and the browser use to place the state mark on the origin comment.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - 13.6b
+    edit:
+      - path: packages/core/src/writing/noteLinks/index.ts
+        lines: 1-6
+        why: add `findOriginCommentStart` to the export list from ./originComment.js (it is exported there at originComment.ts:34, but not re-exported)
+    read:
+      - path: packages/core/src/writing/noteLinks/originComment.ts
+        lines: 30-37
+        why: the function
+    decided:
+      - Only the export list changes; never run `pnpm gate` or lint.
+    acceptance:
+      - id: 13.6ca
+        check: node scripts/agents/run.mjs typecheck core passes
+    tests:
+      none: a re-export, covered by the typecheck
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+    do_not_touch:
+      - packages/core/src/writing/noteLinks/originComment.ts
   - id: "13.7"
     plan: qmd-notes
     goal: VS Code gets the command "Insert from note", a hover with state and diff, and a code action "Update from note" on stale origins.
@@ -43,53 +106,108 @@ packages:
       model: sonnet
     depends_on:
       - "13.6"
+      - 13.6b
+      - 13.6c
     edit:
-      - path: packages/vscode/src/writing/citations/index.ts
-        lines: 1-5
-        why: export the new registration if it sits beside the citation providers
       - path: packages/vscode/src/writing/index.ts
         lines: 1-14
-        why: export and wire the note-link registration
+        why: export registerNoteLinks
+      - path: packages/vscode/src/activation/startExtension.ts
+        lines: 40-110
+        why: "wire registerNoteLinks beside registerProjectNoteCommands (line 49) and registerNoteLensOf (50, 92-107): writing.projects, writing.notes, writing.logger and controller.currentServices() / currentRoot() for papers and paper notes"
       - path: packages/vscode/package.json
-        lines: 360-540
-        why: "contributes.commands: register `labshelf.writing.insertFromNote` and `labshelf.writing.updateFromNote`"
+        lines: 560-610
+        why: contributes.commands beside citeFromLibrary (569); commandPalette entries near 770-790; editor/context near 1025
+      - path: packages/vscode/__mocks__/vscode/types/languageFeatures.js
+        lines: 35-55
+        why: add registerTextDocumentContentProvider (returns a disposable) to the languages/workspace mock as the API places it (workspace.registerTextDocumentContentProvider), only if the test needs it
+      - path: packages/vscode/src/writing/noteLinks.ts
+        lines: 1-381
+        why: fix the typecheck errors; keep the design
+      - path: packages/vscode/__mocks__/vscode/api/workspace.js
+        lines: 60-100
+        why: add registerTextDocumentContentProvider / openTextDocument if missing
+      - path: packages/vscode/__mocks__/vscode/types/enums.js
+        lines: 30-60
+        why: add QuickPickItemKind if missing
     create:
       - packages/vscode/src/writing/noteLinks.ts
       - packages/vscode/__tests__/writing/noteLinks.test.ts
     read:
-      - path: packages/vscode/src/writing/citations/hover.ts
-        lines: 96-116
-        why: an existing HoverProvider
+      - path: documents/plans/qmd-notes/research/vscode-note-links.brief.yaml
+        lines: 1-200
+        why: "scout facts: project lookup, notes store, paper notes, registration, package.json lines, test fixtures, mock gaps"
+      - path: packages/vscode/src/writing/citations/noteLens.ts
+        lines: 1-127
+        why: "closest model: SOURCES selectors, deps with projects and library(), hover registration"
       - path: packages/vscode/src/writing/citations/editing.ts
-        lines: 1-266
-        why: command registration and code actions for insert (registerInsertActions)
-      - path: packages/core/src/writing/noteLinks/index.ts
-        lines: 1-12
-        why: the API from 13.1 and 13.2
-      - path: packages/core/src/ui/dom/widgets/quickInput.ts
-        lines: 1-145
-        why: picker widget (core), if the VS Code QuickPick is not used
+        lines: 1-165
+        why: command registration, readWritingLanguage, insert at selection
       - path: packages/vscode/src/writing/projects/commands.ts
-        lines: 1-60
-        why: how writing commands are registered
+        lines: 238-300
+        why: runSafely, quick pick over notes, ProjectNotesStore use
+      - path: packages/core/src/writing/noteLinks/noteInsertables.ts
+        lines: 1-121
+        why: listNoteInsertables, buildInsert, buildUpdate, diffOrigin
+      - path: packages/core/src/writing/noteLinks/scanOrigins.ts
+        lines: 1-40
+        why: ManuscriptOrigin, insertedRange (zero-based line/character), readOriginLatex
+      - path: packages/vscode/__tests__/writing/citations/editing.test.ts
+        lines: 1-80
+        why: test model with the vscode mock and writingFixtures
+      - path: packages/core/src/writing/citations/bibliography.ts
+        lines: 240-260
+        why: listProjectCiteKeys signature
+      - path: packages/core/src/model/paper.ts
+        lines: 30-45
+        why: PaperRecord
+      - path: packages/vscode/src/writing/projects/session.ts
+        lines: 20-80
+        why: WritingProjects (fs, paths, list)
+      - path: packages/vscode/__tests__/support/writingFixtures.ts
+        lines: 1-120
+        why: fakeProjects, readyEntry, commandHandler
+      - path: packages/vscode/__tests__/support/textDocument.ts
+        lines: 1-80
+        why: fakeDocument
+      - path: .git/labshelf-logs/
+        lines: 1-200
+        why: typecheck logs when the runner shows no errors
     seams:
       - path: packages/vscode/src/writing/noteLinks.ts
         signature: "export function registerNoteLinks(context: vscode.ExtensionContext, deps: NoteLinkDeps): void"
     decided:
-      - Command "Insert from note", hover with state and diff, code action "Update from note" on stale origins; the commands are registered in `package.json`.
-      - A diverged or both origin shows a diff via `vscode.diff` on two virtual documents; no write action exists for it.
-      - State is recomputed on open and save, never per keystroke; the update applies one WorkspaceEdit.
-      - UI follows the outcome of 13.6 (written into this decided by the main thread).
+      - "STATE (run 1 stopped at its context budget): packages/vscode/src/writing/noteLinks.ts (381 lines) holds the whole implementation; writing/index.ts, startExtension.ts and package.json are wired. Keep them; do not rewrite. Left: (1) fix the 4 typecheck errors below, (2) write packages/vscode/__tests__/writing/noteLinks.test.ts, (3) run it and fix what fails."
+      - 'Typecheck errors of run 1: writing/index.ts:9 re-exports `NoteLinkLibrary`, which noteLinks.ts:32 does not export (export it); noteLinks.ts:6 imports `findOriginCommentStart` (exported from core by 13.6c); noteLinks.ts:137 passes `logger` to listProjectCiteKeys, whose context is only `Pick<ProjectReadContext, "fs" | "paths">` (drop it); noteLinks.ts:269 passes `NoteInsertable | undefined` to diffOrigin (guard it: no item means missing, no diff).'
+      - "Checked facts: the vscode mock already has CodeActionKind.QuickFix and DiagnosticSeverity (types/enums.js:33-54), ThemeIcon (types/treeItems.js:10), WorkspaceEdit and Range (types/text.js:19-40), workspace.textDocuments and onDidOpenTextDocument (api/workspace.js:72-84), window.visibleTextEditors (api/window.js:61). Add what is still missing (e.g. workspace.registerTextDocumentContentProvider, QuickPickItemKind) to api/workspace.js, types/enums.js or the test itself. PaperRecord has `id` and `title` (core model/paper.ts:32). WritingProjects is at vscode writing/projects/session.ts:25."
+      - "Picker loading: awaiting the list first (so the empty state shows a message instead of an empty picker) is accepted over passing the promise to showQuickPick."
+      - "If `node scripts/agents/run.mjs typecheck <pkg>` prints `tsc: no errors found in the output` with exit 1, the errors are in the log it names (ANSI coloured); read that log, it is in your read list as `.git/labshelf-logs/`."
+      - 'Command `labshelf.writing.insertFromNote` (title "Research: Insert from Note", category LabShelf, icon $(symbol-operator)) and `labshelf.writing.updateFromNote` (title "Research: Update from Note", category LabShelf; arguments: document uri and origin line; hidden from the command palette with `when: false`). insertFromNote in the palette with `labshelf.writing.inProject && editorLangId == latex`. A third internal command `labshelf.writing.showNoteDiff` (same arguments, palette `when: false`) opens the diff. All handlers run through runSafely.'
+      - 'State marks are Diagnostics in their own collection named "LabShelf notes" with source "LabShelf": stale = Information, diverged/both/missing = Warning, code = the state, range = the origin comment. They do not duplicate the Checklist, which lists the same origins in its own sidebar. Cleared when the document closes.'
+      - 'A HoverProvider on .tex and .typ files (same selectors as noteLens.ts) answers on an origin comment with a MarkdownString (isTrusted limited to the two commands via enabledCommands): the state sentence, then command links "Update from note" and "Show differences" as UI 13.6 says. Fresh origins get no hover from this provider.'
+      - A CodeActionProvider (kind QuickFix) offers "Update from note" for a stale diagnostic and "Show differences" for stale, diverged and both, so both are reachable by keyboard (Ctrl/Cmd+.).
+      - Update applies one WorkspaceEdit replacing the `buildUpdate` range; the document stays unsaved.
+      - 'Diff: a TextDocumentContentProvider for the scheme `labshelf-origin` serves the two texts from an in-memory map keyed by the uri; `vscode.diff(left, right, "<label>: manuscript ↔ note")` with left path ending `manuscript.tex` and right `note.tex` so both get LaTeX highlighting. Read-only by nature.'
+      - "Recompute triggers: onDidOpenTextDocument and onDidSaveTextDocument for latex/typst documents of a ready project (findCitingProject), visible ones at activation, and onDidSaveTextDocument of any .qmd re-runs every open latex/typst document of a project. Never onDidChangeTextDocument."
+      - "Tests in packages/vscode/__tests__/writing/noteLinks.test.ts with the existing vscode mock: the picker groups and items from fake readers; the insert text and its line breaks; a stale origin yields an Information diagnostic and an update code action whose WorkspaceEdit replaces the insertedRange; a diverged origin yields a Warning and no update action; the hover lists the right actions. Add to the vscode mock only what these tests call."
+      - "Never run `pnpm gate` or any lint: check only with the commands of this spec and `node scripts/agents/run.mjs test <pkg> -- <your test files>`."
+      - "UI 13.6 – NoteInsertSource: listProjectNotes/readProjectNote over the ProjectNotesStore of the project (`list(project.settings.id)` / `read(id, path)`, null becomes undefined); listCitedPaperIds = `listProjectCiteKeys(...)` of the project mapped through `derivePapersByCiteKey(papers)` to PaperRecord ids (unknown keys dropped, no duplicates); readPaperNote = the raw notes.qmd text of the paper (a PaperNotesPort `read`, or `notesText` of the parsed ItemFile), null becomes undefined. Every reader catches its own error, logs it and returns undefined/[] so one bad note never empties the picker. The `paper:<id>/notes.qmd` notePath is the core convention; parse the id back with that prefix."
+      - "UI 13.6 – Picker \"Insert from note\": one quick pick, title \"Insert from note\", placeholder \"Search equations and outputs by label or note\". Separator entries \"Equations\" then \"Outputs\" (a group with no items is omitted). Each item: label = the item label (e.g. eq-energy); description = the source note title, and for a paper note the paper's title from the paper records (fallback the paper id); equation icon `symbol-operator`-like, output icon `output`-like (use what the app's icon set has). An output with `outOfDate` stays listed with \" · out of date\" appended to its description; picking it shows the error text of `buildInsert` as a warning and inserts nothing. Empty state: no picker, an information message \"No equations or outputs found in this project's notes or the cited papers' notes.\" Loading: VS Code passes the items promise to showQuickPick (its own busy state); the browser awaits the list then opens the picker. Error from the list: an error message \"Could not read the notes: <message>\" and the error logged. Keyboard: the picker is fully keyboard driven (type to filter, arrows, Enter, Escape cancels with no change)."
+      - "UI 13.6 – Insert: LaTeX files only (Typst: the command is not offered; if run anyway it shows the `buildInsert` Typst error as a warning). The `buildInsert` text replaces the selection as one edit; when the cursor's line has text before the cursor a line break is put before it, and when it has text after the cursor a line break is put after it, so the block and its origin comment sit on their own lines. After the insert the state is recomputed once (it is fresh)."
+      - "UI 13.6 – State per origin, computed for every `scanOrigins(language, text)` origin: manuscriptHash = `deriveOriginHash(readOriginLatex(language, text, origin))`; the note side is the `listNoteInsertables` item with the same notePath and label, `{ hash: await deriveOriginHash(item.latex) }`, or undefined; state = `deriveOriginState(...)`. Recomputed when a document opens, after it is saved, after a note .qmd is saved, and after an insert or update; never per keystroke. A later computation wins over an earlier one still running."
+      - 'UI 13.6 – Marks and words: fresh has no mark at all. Mark range = the origin comment on the origin line. stale: info level, message "<label>: the note changed since it was inserted. Update from note replaces this copy."; diverged: warning level, "<label>: edited here, so it differs from the note. LabShelf will not overwrite it."; both: warning level, "<label>: edited here and changed in the note. LabShelf will not overwrite it."; missing: warning level, "<label>: not found in <note path>. The note or its label was removed or renamed." Hover on the mark: the same sentence, then the actions that apply: stale → "Update from note" and "Show differences"; diverged and both → "Show differences" only; missing → none.'
+      - 'UI 13.6 – Update from note (stale only): `buildUpdate(origin, "stale", item, language)`; undefined means the state changed since, so do nothing but recompute. Otherwise apply its range and text as one edit (one undo step); the document is left unsaved like any edit. No write action exists for diverged, both or missing.'
+      - 'UI 13.6 – Show differences: `diffOrigin(origin, readOriginLatex(...), item)` gives two texts, left "In the manuscript", right "In the note", titled "<label>: manuscript ↔ note". Read-only; nothing is written.'
     acceptance:
       - id: 13.7a
-        check: typecheck and vscode tests pass
+        check: node scripts/agents/run.mjs typecheck vscode and node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/noteLinks.test.ts pass
       - id: 13.7b
         check: "A10 is checked by hand in VS Code: insert an equation (origin comment written), edit the note (stale, update action), edit the manuscript (diverged, nothing overwritten)"
     tests:
-      none: glue and UI, checked by the user by hand in the app
+      none: glue and UI; the implementer writes noteLinks.test.ts, the user checks A10 by hand
     commands:
       - node scripts/agents/run.mjs typecheck vscode
-      - node scripts/agents/run.mjs test vscode
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/writing/noteLinks.test.ts
     do_not_touch:
       - packages/core/
   - id: "13.8"
@@ -101,46 +219,180 @@ packages:
       model: sonnet
     depends_on:
       - "13.6"
+      - 13.6b
+      - 13.6c
     edit:
+      - path: packages/browser/src/writing/noteLinks.ts
+        lines: 1-344
+        why: fix the typecheck errors; keep the design
       - path: packages/browser/src/writing/editor.ts
-        lines: 1-392
-        why: add the note-link extension to the CodeMirror extensions of the mount
-    create:
-      - packages/browser/src/writing/noteLinks.ts
-      - packages/browser/__tests__/writing/noteLinks.test.ts
-    read:
-      - path: packages/browser/src/writing/editor.ts
-        lines: 1-392
-        why: the mount and the existing extensions and theme
+        lines: 235-376
+        why: SourceEditorDeps (261-286) gains optional note-link deps; the extension goes into `extensions` (353); refresh at open, in onSaved next to refreshNotes (346) and on reload (356, 361); close on dispose (366-375)
       - path: packages/browser/src/writing/source.ts
-        lines: 1-360
-        why: the source editor actions and citation hooks (and the session 9 cite-site gutter, if it sits here)
-      - path: packages/core/src/writing/noteLinks/index.ts
-        lines: 1-12
-        why: the API from 13.1 and 13.2
-      - path: packages/core/src/ui/dom/widgets/quickInput.ts
-        lines: 1-145
-        why: picker widget
-      - path: packages/core/src/ui/dom/widgets/dialog.ts
+        lines: 250-284
+        why: "SourceActionDeps and createSourceActions: add the three actions"
+      - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+        lines: 23-65
+        why: editorDeps builds the NoteInsertSource readers and passes them to the editor and the actions
+      - path: packages/browser/src/writing/index.ts
+        lines: 1-20
+        why: barrel
+      - path: packages/browser/src/libraryPage/page.css
+        lines: 1-60
+        why: classes for the diff dialog columns
+      - path: packages/browser/__tests__/writing/sourceActions.test.ts
+        lines: 1-64
+        why: only if the new actions break an exact list
+    create: []
+    read:
+      - path: documents/plans/qmd-notes/research/browser-note-links.brief.yaml
         lines: 1-200
-        why: mountOverlay for the diff popover
+        why: "scout facts: mount, refresh pattern, pickers, overlay, notes stores, paper notes port, tests, tokens"
+      - path: packages/browser/src/writing/noteGutter.ts
+        lines: 170-281
+        why: "the model: StateField + effect + theme, createNoteRefresh (latest wins, open/save/reload only)"
+      - path: packages/browser/src/collab/comments.ts
+        lines: 194-230
+        why: Decoration.mark StateField mapped through edits
+      - path: packages/browser/src/writing/typst.ts
+        lines: 139-175
+        why: hoverTooltip use
+      - path: packages/browser/src/writing/templates.ts
+        lines: 30-60
+        why: mountOverlay with ls-dialog markup and ls-btn buttons
+      - path: packages/browser/src/libraryUi/mountProjectWiring.ts
+        lines: 95-125
+        why: how a ProjectNotesStore is built in the browser (createNotesStore)
+      - path: packages/core/src/writing/noteLinks/noteInsertables.ts
+        lines: 1-121
+        why: listNoteInsertables, buildInsert, buildUpdate, diffOrigin
+      - path: packages/core/src/writing/noteLinks/scanOrigins.ts
+        lines: 1-40
+        why: ManuscriptOrigin with zero-based insertedRange, readOriginLatex
+      - path: packages/browser/__tests__/writing/editorMount.test.ts
+        lines: 1-60
+        why: jsdom docblock and mounted-editor test model
+      - path: packages/browser/__tests__/writing/sourceInsert.test.ts
+        lines: 1-60
+        why: mocking pickQuickEntry
+      - path: packages/browser/src/libraryUi/editorArea/tabKinds.ts
+        lines: 25-80
+        why: TabContext
+      - path: packages/core/src/qmd/projectNotesStore.ts
+        lines: 40-100
+        why: store API
+      - path: packages/browser/src/storage/projectNoteFiles.ts
+        lines: 20-40
+        why: createProjectNoteFiles
+      - path: packages/browser/src/storage/records.ts
+        lines: 25-40
+        why: listCachedPaperRecords
+      - path: packages/core/src/writing/citations/bibliography.ts
+        lines: 240-260
+        why: listProjectCiteKeys
+      - path: packages/core/src/ui/icons/iconGlyphs.ts
+        lines: 1-200
+        why: icon names
+      - path: packages/browser/__tests__/writing/sourceActions.test.ts
+        lines: 1-64
+        why: may assert the action list; update it if the new actions change it
+      - path: .git/labshelf-logs/
+        lines: 1-200
+        why: typecheck logs when the runner shows no errors
     seams:
       - path: packages/browser/src/writing/noteLinks.ts
         signature: "export function noteLinkExtension(deps: NoteLinkDeps): Extension"
     decided:
-      - Insert command, line decoration with the state, "Update from note" action and a diff popover in the CodeMirror source editor.
-      - State is recomputed on open and save; the update applies one CodeMirror transaction; a diverged or both origin offers the diff and no write.
-      - UI follows the outcome of 13.6 (written into this decided by the main thread).
+      - "STATE (run 1 stopped at its context budget): packages/browser/src/writing/noteLinks.ts (344 lines: marks StateField, theme, hover with buttons, refresh, insert/update/diff, exports noteLinkExtension, createNoteLinks, NoteLinks, NoteLinkActions, NoteLinkDeps) and editor.ts (optional `noteLinks?: NoteInsertSource` dep, `noteLinks: NoteLinkActions | undefined` on the mounted editor, refresh on open/save/reload, close on dispose) are written. Keep them. Left in THIS package: (1) fix the typecheck errors below, (2) source.ts: `noteLinks?: NoteLinkActions | undefined` on the action target and the three overflow actions, Insert from note only for latex, each runs `target()?.noteLinks?.insert|update|showDifferences()`, (3) sourceTab.ts: build the readers and pass `noteLinks` when the entry is ready and the file is not read-only, and return `noteLinks: editor.noteLinks` from target(), (4) page.css diff classes. The test file is package 13.8t, not this one. Remove the always-true `kind !== undefined` guard run 1 left in editor.ts."
+      - 'Typecheck errors of run 1: noteLinks.ts:6 imports findOriginCommentStart (exported by 13.6c); noteLinks.ts:132 the picker icon `output` is not an IconName (core has `symbol-operator`; for outputs pick an existing glyph from packages/core/src/ui/icons/iconGlyphs.ts or omit the icon); noteLinks.ts:207, 234, 241, 257 pass `"warning"` to showToast, whose ToastKind is `"info" | "ok" | "error"` (use "info" for info and warning level, "error" for errors).'
+      - "Readers in sourceTab.ts: `createProjectNotesStore(createProjectNoteFiles(fs, async () => entry.folder), logger)` (core qmd/projectNotesStore.ts:91; browser storage/projectNoteFiles.ts:28), `createPaperNotesPort(fs).read` (browser storage/records.ts:148), `listProjectCiteKeys({ fs, paths: posixPathOps }, entry.folder, entry.settings.format)` mapped through `derivePapersByCiteKey(await listCachedPaperRecords())` (records.ts:33) to unique PaperRecord ids. No note-save event exists for the editor; the note-save trigger is skipped (refresh on open, save, reload)."
+      - "page.css: `.ls-origin-diff` a two-column grid with token gaps, `.ls-origin-diff-col` with an h3 in var(--ls-desc) and a pre (monospace, pre-wrap, overflow-wrap anywhere, bounded height with scroll, token border), and a narrow-width rule that stacks the columns. Tokens only, no colours."
+      - "If `node scripts/agents/run.mjs typecheck <pkg>` prints `tsc: no errors found in the output` with exit 1, the errors are in the log it names (ANSI coloured); read that log, it is in your read list as `.git/labshelf-logs/`."
+      - "noteLinks.ts owns: a StateField of DecorationSet fed by a StateEffect (mapped through edits, like comments.ts), a refresh object modelled on createNoteRefresh (open, after save, after reload, after insert/update; latest wins; close on dispose), a hoverTooltip on the marks, and the insert/update/diff functions the actions call. For a shared (collab) file onSaved never fires; it refreshes on open and reload only, which is accepted."
+      - "Mark: Decoration.mark on the origin comment with class `ls-origin-mark ls-origin-<state>` plus `title` = the state sentence; styles in an EditorView.theme in noteLinks.ts with tokens only: stale = dotted underline var(--ls-mark-accent); diverged, both, missing = wavy underline var(--ls-warning). Fresh: no decoration. Works in light and dark through the tokens."
+      - 'Hover tooltip on a mark: the state sentence (ls-dialog-msg style text), then real <button class="ls-btn"> elements for the actions UI 13.6 lists ("Update from note" as ls-btn-primary). Buttons are focusable and act on that origin.'
+      - 'Keyboard: three EditorTabActions in createSourceActions, in the overflow menu: "Insert from note" (icon of the equation; LaTeX files only), "Update from note" and "Show differences"; the last two act on the origin whose origin line holds the cursor or whose insertedRange contains it, and otherwise show the info toast "Place the cursor on an equation inserted from a note." An action whose state does not allow it shows the state sentence as a toast and writes nothing.'
+      - Insert uses one CodeMirror transaction (replace selection, line breaks as UI 13.6); Update uses one transaction replacing the `buildUpdate` range converted from zero-based line/character to offsets on the current doc; both are normal user edits (dirty, undoable as one step).
+      - 'Diff popover: mountOverlay with an `ls-dialog` (role dialog, aria-modal, aria-labelledby the title): `ls-dialog-head` with the title "<label>: manuscript ↔ note" and the note title as ls-dialog-msg; a body `ls-origin-diff` with two columns, each a heading ("In the manuscript", "In the note") and a <pre> of the LaTeX (monospace, wraps, scrolls when long); in a narrow width the columns stack (a container/media query in page.css, tokens for gaps). `ls-dialog-actions`: "Close" (ls-btn), and for stale only "Update from note" (ls-btn-primary) which applies the update and closes. Escape and Close dismiss; focus returns to the editor.'
+      - "Readers in sourceTab.ts: project notes through a ProjectNotesStore built as mountProjectWiring.ts does (or the session's store if TabContext reaches it), paper notes raw text through `createPaperNotesPort(fs).read`, cited ids through `listProjectCiteKeys` + `derivePapersByCiteKey(deps.papers())`, paper titles from deps.papers(). The note-link deps are optional on SourceEditorDeps so the existing tests and callers keep working."
+      - "Tests in packages/browser/__tests__/writing/noteLinks.test.ts (jsdom docblock from editorMount.test.ts) with a real EditorView: a stale origin gets the `ls-origin-stale` mark and the update replaces the block in one transaction (one undo restores it); a diverged origin gets `ls-origin-diverged` and the update writes nothing; the picker entries have the Equations/Outputs separators and descriptions (pickQuickEntry mocked); insert puts the block on its own lines."
+      - "Never run `pnpm gate` or any lint: check only with the commands of this spec and `node scripts/agents/run.mjs test <pkg> -- <your test files>`."
+      - "UI 13.6 – NoteInsertSource: listProjectNotes/readProjectNote over the ProjectNotesStore of the project (`list(project.settings.id)` / `read(id, path)`, null becomes undefined); listCitedPaperIds = `listProjectCiteKeys(...)` of the project mapped through `derivePapersByCiteKey(papers)` to PaperRecord ids (unknown keys dropped, no duplicates); readPaperNote = the raw notes.qmd text of the paper (a PaperNotesPort `read`, or `notesText` of the parsed ItemFile), null becomes undefined. Every reader catches its own error, logs it and returns undefined/[] so one bad note never empties the picker. The `paper:<id>/notes.qmd` notePath is the core convention; parse the id back with that prefix."
+      - "UI 13.6 – Picker \"Insert from note\": one quick pick, title \"Insert from note\", placeholder \"Search equations and outputs by label or note\". Separator entries \"Equations\" then \"Outputs\" (a group with no items is omitted). Each item: label = the item label (e.g. eq-energy); description = the source note title, and for a paper note the paper's title from the paper records (fallback the paper id); equation icon `symbol-operator`-like, output icon `output`-like (use what the app's icon set has). An output with `outOfDate` stays listed with \" · out of date\" appended to its description; picking it shows the error text of `buildInsert` as a warning and inserts nothing. Empty state: no picker, an information message \"No equations or outputs found in this project's notes or the cited papers' notes.\" Loading: VS Code passes the items promise to showQuickPick (its own busy state); the browser awaits the list then opens the picker. Error from the list: an error message \"Could not read the notes: <message>\" and the error logged. Keyboard: the picker is fully keyboard driven (type to filter, arrows, Enter, Escape cancels with no change)."
+      - "UI 13.6 – Insert: LaTeX files only (Typst: the command is not offered; if run anyway it shows the `buildInsert` Typst error as a warning). The `buildInsert` text replaces the selection as one edit; when the cursor's line has text before the cursor a line break is put before it, and when it has text after the cursor a line break is put after it, so the block and its origin comment sit on their own lines. After the insert the state is recomputed once (it is fresh)."
+      - "UI 13.6 – State per origin, computed for every `scanOrigins(language, text)` origin: manuscriptHash = `deriveOriginHash(readOriginLatex(language, text, origin))`; the note side is the `listNoteInsertables` item with the same notePath and label, `{ hash: await deriveOriginHash(item.latex) }`, or undefined; state = `deriveOriginState(...)`. Recomputed when a document opens, after it is saved, after a note .qmd is saved, and after an insert or update; never per keystroke. A later computation wins over an earlier one still running."
+      - 'UI 13.6 – Marks and words: fresh has no mark at all. Mark range = the origin comment on the origin line. stale: info level, message "<label>: the note changed since it was inserted. Update from note replaces this copy."; diverged: warning level, "<label>: edited here, so it differs from the note. LabShelf will not overwrite it."; both: warning level, "<label>: edited here and changed in the note. LabShelf will not overwrite it."; missing: warning level, "<label>: not found in <note path>. The note or its label was removed or renamed." Hover on the mark: the same sentence, then the actions that apply: stale → "Update from note" and "Show differences"; diverged and both → "Show differences" only; missing → none.'
+      - 'UI 13.6 – Update from note (stale only): `buildUpdate(origin, "stale", item, language)`; undefined means the state changed since, so do nothing but recompute. Otherwise apply its range and text as one edit (one undo step); the document is left unsaved like any edit. No write action exists for diverged, both or missing.'
+      - 'UI 13.6 – Show differences: `diffOrigin(origin, readOriginLatex(...), item)` gives two texts, left "In the manuscript", right "In the note", titled "<label>: manuscript ↔ note". Read-only; nothing is written.'
     acceptance:
       - id: 13.8a
-        check: typecheck and browser tests pass
+        check: node scripts/agents/run.mjs typecheck browser passes and editorMount and sourceActions tests pass
       - id: 13.8b
         check: "A10 is checked by hand in the browser: insert an equation (origin comment written), edit the note (stale, update action), edit the manuscript (diverged, nothing overwritten)"
     tests:
-      none: glue and UI, checked by the user by hand in the app
+      none: glue and UI; the implementer writes noteLinks.test.ts, the user checks A10 by hand
     commands:
       - node scripts/agents/run.mjs typecheck browser
-      - node scripts/agents/run.mjs test browser
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/editorMount.test.ts packages/browser/__tests__/writing/sourceActions.test.ts
+    do_not_touch:
+      - packages/core/
+      - packages/browser/src/collab/
+  - id: 13.8t
+    plan: qmd-notes
+    goal: "Tests for the browser note links: marks, update in one undo step, no write on diverged, picker groups, insert on its own lines."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "13.8"
+    edit:
+      - path: packages/browser/src/writing/noteLinks.ts
+        lines: 1-400
+        why: only a bug the tests expose
+    create:
+      - packages/browser/__tests__/writing/noteLinks.test.ts
+    read:
+      - path: packages/browser/src/writing/noteLinks.ts
+        lines: 1-400
+        why: the code under test (written by 13.8)
+      - path: .git/labshelf-logs/
+        lines: 1-200
+        why: test logs
+      - path: documents/plans/qmd-notes/research/browser-note-links.brief.yaml
+        lines: 1-200
+        why: "scout facts: mount, refresh pattern, pickers, overlay, notes stores, paper notes port, tests, tokens"
+      - path: packages/core/src/writing/noteLinks/noteInsertables.ts
+        lines: 1-121
+        why: listNoteInsertables, buildInsert, buildUpdate, diffOrigin
+      - path: packages/core/src/writing/noteLinks/scanOrigins.ts
+        lines: 1-40
+        why: ManuscriptOrigin with zero-based insertedRange, readOriginLatex
+      - path: packages/browser/__tests__/writing/editorMount.test.ts
+        lines: 1-60
+        why: jsdom docblock and mounted-editor test model
+      - path: packages/browser/__tests__/writing/sourceInsert.test.ts
+        lines: 1-60
+        why: mocking pickQuickEntry
+    seams:
+      - path: packages/browser/src/writing/noteLinks.ts
+        signature: "export function noteLinkExtension(deps: NoteLinkDeps): Extension"
+    decided:
+      - "Tests in packages/browser/__tests__/writing/noteLinks.test.ts (jsdom docblock from editorMount.test.ts) with a real EditorView: a stale origin gets the `ls-origin-stale` mark and the update replaces the block in one transaction (one undo restores it); a diverged origin gets `ls-origin-diverged` and the update writes nothing; the picker entries have the Equations/Outputs separators and descriptions (pickQuickEntry mocked); insert puts the block on its own lines."
+      - "Never run `pnpm gate` or any lint: check only with the commands of this spec and `node scripts/agents/run.mjs test <pkg> -- <your test files>`."
+      - "UI 13.6 – Picker \"Insert from note\": one quick pick, title \"Insert from note\", placeholder \"Search equations and outputs by label or note\". Separator entries \"Equations\" then \"Outputs\" (a group with no items is omitted). Each item: label = the item label (e.g. eq-energy); description = the source note title, and for a paper note the paper's title from the paper records (fallback the paper id); equation icon `symbol-operator`-like, output icon `output`-like (use what the app's icon set has). An output with `outOfDate` stays listed with \" · out of date\" appended to its description; picking it shows the error text of `buildInsert` as a warning and inserts nothing. Empty state: no picker, an information message \"No equations or outputs found in this project's notes or the cited papers' notes.\" Loading: VS Code passes the items promise to showQuickPick (its own busy state); the browser awaits the list then opens the picker. Error from the list: an error message \"Could not read the notes: <message>\" and the error logged. Keyboard: the picker is fully keyboard driven (type to filter, arrows, Enter, Escape cancels with no change)."
+      - "UI 13.6 – Insert: LaTeX files only (Typst: the command is not offered; if run anyway it shows the `buildInsert` Typst error as a warning). The `buildInsert` text replaces the selection as one edit; when the cursor's line has text before the cursor a line break is put before it, and when it has text after the cursor a line break is put after it, so the block and its origin comment sit on their own lines. After the insert the state is recomputed once (it is fresh)."
+      - 'UI 13.6 – Marks and words: fresh has no mark at all. Mark range = the origin comment on the origin line. stale: info level, message "<label>: the note changed since it was inserted. Update from note replaces this copy."; diverged: warning level, "<label>: edited here, so it differs from the note. LabShelf will not overwrite it."; both: warning level, "<label>: edited here and changed in the note. LabShelf will not overwrite it."; missing: warning level, "<label>: not found in <note path>. The note or its label was removed or renamed." Hover on the mark: the same sentence, then the actions that apply: stale → "Update from note" and "Show differences"; diverged and both → "Show differences" only; missing → none.'
+      - 'UI 13.6 – Update from note (stale only): `buildUpdate(origin, "stale", item, language)`; undefined means the state changed since, so do nothing but recompute. Otherwise apply its range and text as one edit (one undo step); the document is left unsaved like any edit. No write action exists for diverged, both or missing.'
+      - Mock pickQuickEntry and showToast with jest.mock('@labshelf/core/dom', () => ({ ...jest.requireActual(...), ... })). Build origin texts with core `buildInsert` over `listNoteInsertables` of fake readers, then edit the note text (stale) or the manuscript (diverged).
+      - "If `node scripts/agents/run.mjs typecheck <pkg>` prints `tsc: no errors found in the output` with exit 1, the errors are in the log it names (ANSI coloured); read that log, it is in your read list as `.git/labshelf-logs/`."
+    acceptance:
+      - id: 13.8ta
+        check: node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/noteLinks.test.ts passes
+    tests:
+      none: this package writes the tests
+    commands:
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/noteLinks.test.ts
     do_not_touch:
       - packages/core/
       - packages/browser/src/collab/

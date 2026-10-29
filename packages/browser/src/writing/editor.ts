@@ -7,7 +7,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "@labshelf/core";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "@labshelf/core";
 import type { EditorHelperPort, HelperProblem, TextChange } from "@labshelf/core/helper";
 import type * as Y from "yjs";
 import { createCollabExtensions, createCommentSupport, type EditorComments } from "../collab";
@@ -16,6 +16,7 @@ import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst"
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./source";
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor } from "./session";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter";
+import { createNoteLinks, type NoteLinkActions } from "./noteLinks";
 
 const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
@@ -273,6 +274,8 @@ export interface SourceEditorDeps {
   openNotes?(paperId: string): void;
   /** The papers' notes, read for the "N notes" gutter; without it no counts are loaded and the gutter stays empty. */
   notes?: Pick<PaperNotesStore, "read">;
+  /** Where the notes' equations and outputs are read from, for "Insert from note" and the state marks on inserted copies; without it the editor offers neither. */
+  noteLinks?: NoteInsertSource;
   /** The file's comment threads; without it the editor shows and adds no comments. */
   comments?: EditorComments;
   /** The file's shared text: the editor edits it in place, and the share's file writer saves the file. */
@@ -286,6 +289,8 @@ export interface SourceEditorDeps {
 }
 
 export interface SourceEditor extends SourceUpdates {
+  /** The note-link commands of this editor; undefined when it was given no notes to read. */
+  noteLinks: NoteLinkActions | undefined;
   /** Writes pending edits now; resolves whether the file is saved afterwards (false when the write failed). */
   flush(): Promise<boolean>;
   /** Saves pending edits, then removes the editor. */
@@ -343,28 +348,33 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const save: Pick<WriteScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createWriteScheduler({
     file: path, logger, text: currentText,
     write: async (content) => { await deps.files.write(path, content); savedText = content; },
-    onDirty: deps.onDirty, onSaved: () => { explicit.written(); refreshNotes(); deps.onSaved?.(); },
+    onDirty: deps.onDirty, onSaved: () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); },
   });
+  const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
+  const refreshLinks = (): void => { if (noteLinks && view) void noteLinks.refresh(view); };
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
   const refreshNotes = noteRefresh.refresh;
   const commentsSupport = deps.comments && createCommentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
   const onUpdate = changeListener({ path, save, helperEdits, labels });
-  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, () => explicit.flush(save), noteGutter.extension), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
+  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, () => explicit.flush(save), noteGutter.extension), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   refreshNotes();
+  refreshLinks();
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, {
     revealLine: (line) => showLine(view!, line), flush: save.flush,
-    reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }).then(refreshNotes),
+    reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }).then(() => { refreshNotes(); refreshLinks(); }),
   });
   return {
     ...createSourceUpdates(view, kind),
+    noteLinks: noteLinks && noteLinks.actionsFor(view),
     flush: save.flush,
     async dispose() {
       noteRefresh.close();
+      noteLinks?.close();
       unregister();
       stopProblems?.();
       stopComments?.();

@@ -46,6 +46,18 @@
 .ls-comment-reply { display: flex; flex-direction: column; gap: var(--ls-space-2); min-width: 0; }
 .ls-comment-actions { display: flex; gap: var(--ls-space-2); }
 
+/* ── Differences dialog: an inserted equation beside the note's ─── */
+.ls-origin-diff { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ls-space-4); margin: var(--ls-space-3) 0; }
+.ls-origin-diff-col { min-width: 0; display: flex; flex-direction: column; gap: var(--ls-space-2); }
+.ls-origin-diff-col h3 { margin: 0; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.ls-origin-diff-col pre {
+  margin: 0; padding: var(--ls-space-3); max-height: 50vh; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  font-family: var(--ls-mono); color: var(--ls-fg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius);
+}
+@media (max-width: 40em) {
+  .ls-origin-diff { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+}
+
 /* ── Details pane: the page-level right pane outside the tabs ───── */
 .ls-page-details { flex-shrink: 0; display: flex; min-width: 0; overflow: hidden; background: var(--ls-sidebar-bg); }
 .ls-page-details .ls-details { flex: 1; display: flex; min-width: 0; }

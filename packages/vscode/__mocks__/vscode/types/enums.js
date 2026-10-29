@@ -35,6 +35,7 @@ const CompletionItemKind = { Function: 2, Field: 4, Variable: 5, Class: 6, Modul
 const CompletionTriggerKind = { Invoke: 0, TriggerCharacter: 1 };
 const SymbolKind = { Module: 1, Namespace: 2, Class: 4, Property: 6, Field: 7, Struct: 22, Constant: 13 };
 const DiagnosticSeverity = { Error: 0, Warning: 1, Information: 2, Hint: 3 };
+const QuickPickItemKind = { Separator: -1, Default: 0 };
 const StatusBarAlignment = { Left: 1, Right: 2 };
 const ConfigurationTarget = { Global: 1, Workspace: 2, WorkspaceFolder: 3 };
 const ViewColumn = { One: 1, Two: 2, Active: -1, Beside: -2 };
@@ -52,6 +53,7 @@ module.exports = {
   CompletionTriggerKind,
   SymbolKind,
   DiagnosticSeverity,
+  QuickPickItemKind,
   StatusBarAlignment,
   ConfigurationTarget,
   ViewColumn,
