@@ -1,24 +1,28 @@
 # Computational notes
 
-A computational note checks the mathematics of the papers you read and carries it into what you write. You select equation (12) in a PDF, it enters a note as editable LaTeX linked to its page, becomes a symbolic expression, and the note tells you whether (12) really follows from (11). Later, writing in LaTeX, you call the same note back and insert its verified results into the manuscript. This is an idea, not an implementation plan or an on-disk contract.
+A computational note checks the mathematics of the papers you read. You select equation (12) in a PDF, it enters a note as editable LaTeX linked to its page, becomes a symbolic expression, and the note tells you whether (12) really follows from (11). This is an idea, not an implementation plan or an on-disk contract.
 
-LabShelf does not build a notebook. Cells, kernels, execution and reactivity come from Jupyter, marimo, Quarto and the engines they already run. What LabShelf adds is what those tools cannot know: the paper, its equations, and the manuscript that cites them.
+Notes are `.qmd` item files. Their format, anchors, code cells, outputs and the origin comments that link a note's equations into a manuscript are specified in [qmd-items.md](../contracts/qmd-items.md); this idea builds on that contract and does not restate it.
 
-## The note lives everywhere
+## 1. Capture an equation from the paper
 
-A note is a `.qmd` file in the library, attached to a paper, a [Space](spaces.md#notes) or a writing project. The same note opens from the reader while reading, from the LaTeX editor while writing, and as a file in Jupyter, marimo or VS Code's Quarto extension, which run its cells. Equations carry Quarto labels (`$$ … $$ {#eq-smith-12}`), so the note stays a valid, renderable Quarto document outside LabShelf.
-
-The terminal app is out of scope for this idea.
-
-## 1. From the paper to the calculation
-
-**Capture.** In the reader, selecting an equation offers "Add to note". The note gets a block with:
+In the reader, selecting an equation offers "Add to note". The note gets an item with:
 
 - the equation as LaTeX, rendered;
 - its number in the paper and a `labshelf:` link back to the page and region;
 - the expression in SymPy, rendered back as an equation so you see how it was read.
 
-**Verify.** Selecting two captured equations, or one equation and the step before it, offers "Check this step". LabShelf writes the check for a computer algebra system (CAS): SymPy by default, or SageMath or Mathematica through their kernels. The check is an ordinary code cell in the note: visible, editable and runnable in any Jupyter. The kernel the user already has runs it. The cell's result is one of:
+A PDF's text layer turns mathematics into scrambled glyphs, so the LaTeX comes from sources tried in order and labelled in the note:
+
+1. **arXiv HTML.** For papers with an arXiv id, arXiv's HTML rendering carries each formula's TeX in the MathML `alttext` and its equation number. The capture matches the selected region to the formula by number and by the PDF text, giving exact LaTeX. Coverage per paper is to be validated.
+2. **arXiv source.** When the HTML rendering is missing, the e-print source has the formula; the paper's own `\newcommand`s expand before parsing. Downloads are per paper, rate-limited, for the user's own use; the note keeps only the captured equation.
+3. **Formula recognition.** For anything else, the selected region goes to an image-to-LaTeX model: a local recognition model, or the user's configured AI provider. The note then shows the crop of the PDF beside the rendered result and asks for confirmation before the equation counts as captured.
+
+**Reading LaTeX as mathematics.** `sympy.parsing.latex` exists but stays ambiguous: `f(x)`, `dx` inside integrals, subscripts as indices or names. The notation table settles most cases. Rendering the parsed expression back makes a wrong reading visible. AI repair handles what the grammar cannot.
+
+## 2. Check this step
+
+Selecting two captured equations, or one equation and the step before it, offers "Check this step". LabShelf writes the check for a computer algebra system (CAS): SymPy by default, or SageMath or Mathematica through their kernels. The check is an ordinary code cell in the note: visible, editable, and run like any other cell. The cell's result is one of:
 
 | Result | Meaning |
 |---|---|
@@ -28,26 +32,9 @@ The terminal app is out of scope for this idea.
 | Fails at a point | A concrete counterexample: the values, and both sides evaluated |
 | Undecided | The CAS could not decide; the cell says which part it could not simplify |
 
-The honest middle results matter more than the extremes. Papers skip steps, approximate silently and rely on conventions, so a check states what it assumed: the domain of each symbol, the order of an expansion, a convention such as ħ = 1. A step the user fills in becomes its own equation, checked against its neighbours, so a long derivation turns into a chain where every link shows its status.
+The honest middle results matter more than the extremes. Papers skip steps, approximate silently and rely on conventions, so a check states what it assumed: the domain of each symbol, the order of an expansion, a convention such as ħ = 1. A step the user fills in becomes its own equation, checked against its neighbours, so a long derivation turns into a chain where every link shows its status. A check is never a bare yes or no: it says what was proved, under which assumptions, or gives the counterexample.
 
-## 2. From the calculation to the manuscript
-
-In the LaTeX editor, "Insert from note" lists the note's equations and results with their status. Inserting one writes an ordinary `equation` environment with a trailing comment that names its origin:
-
-```latex
-\begin{equation}
-  \frac{\partial I}{\partial a} = -\frac{\sqrt{\pi}}{2a^{3/2}}
-  \label{eq:gauss-derivative}
-\end{equation} % labshelf: notes/derivation.qmd#eq-gauss-derivative
-```
-
-The comment never reaches the PDF, and the `.tex` compiles anywhere. Through it, the editor knows the equation's source:
-
-- **The note changed.** The equation shows as stale beside the source, with the new form and a one-click update.
-- **The manuscript was edited by hand.** The equation shows as diverged; LabShelf never overwrites it and offers the difference instead.
-- **The status is visible while writing.** Hovering the equation shows its check result and opens the note at that equation; an unverified or failing equation is listed among the project's problems.
-
-Backlinks run the other way: the note shows every manuscript that uses each of its equations.
+The status follows the equation into the manuscript: an equation linked from a note shows its check result on hover, and an unverified or failing one is listed among the project's problems.
 
 ## 3. Notation
 
@@ -82,32 +69,17 @@ Each covers what the other cannot. An LLM reads prose, guesses intent and propos
 
 Every equation and step shows its origin (paper, you, AI) and its check status. AI never marks anything verified; only a check can. Provider, credentials and review behaviour follow the [embedded AI plan](../plans/ai-embedded/plan.md).
 
-## Difficulties and how to solve them
+## 5. Cells in the terminal
 
-**Getting the LaTeX of an equation out of a PDF.** A PDF's text layer turns mathematics into scrambled glyphs. Sources, tried in order and labelled in the note:
-
-1. **arXiv HTML.** For papers with an arXiv id, arXiv's HTML rendering carries each formula's TeX in the MathML `alttext` and its equation number. The capture matches the selected region to the formula by number and by the PDF text, giving exact LaTeX. Coverage per paper is to be validated.
-2. **arXiv source.** When the HTML rendering is missing, the e-print source has the formula; the paper's own `\newcommand`s expand before parsing. Downloads are per paper, rate-limited, for the user's own use; the note keeps only the captured equation.
-3. **Formula recognition.** For anything else, the selected region goes to an image-to-LaTeX model: a local recognition model, or the user's configured AI provider. The note then shows the crop of the PDF beside the rendered result and asks for confirmation before the equation counts as captured.
-
-**Reading LaTeX as mathematics.** `sympy.parsing.latex` exists but stays ambiguous: `f(x)`, `dx` inside integrals, subscripts as indices or names. The notation table settles most cases. Rendering the parsed expression back makes a wrong reading visible. AI repair handles what the grammar cannot.
-
-**What "follows from" means.** The table of results above is the answer: never a bare yes or no, always what was proved, under which assumptions, or the counterexample.
-
-**Running the checks.** Checks are plain cells, so they run where the user's notes already run: a Jupyter kernel, marimo, or VS Code's Jupyter extension. In the browser, the helper starts the local Jupyter kernel over its socket ([helper.md](../contracts/helper.md#transport)), and [Pyodide](https://pyodide.org/) with SymPy covers users without Python, at the cost of a slow first start. Mathematica users point the note at the Wolfram Language Jupyter kernel; no check requires a license.
-
-**The manuscript is the user's.** An inserted equation is only ever updated on request, and a hand edit is never overwritten. The origin comment is the whole link; deleting it detaches the equation and nothing breaks.
-
-**Trust.** Opening a note runs nothing. A check cell, whether the user, the paper capture or AI wrote it, runs when the user runs it. A received note shows its recorded results, marked with the engine that produced them.
+The terminal app treats notes as text: a note opens as its `.qmd` file in `$EDITOR`, and `labshelf show` prints it. It has no rich editor and runs no cells. The idea is to run a note's code cells from the terminal, checks included, and write their results back into the note as cell outputs, so a derivation can be checked without leaving the shell. Nothing runs unless the user asks for it.
 
 ## Decisions to validate
 
 - How often arXiv HTML and source recover the exact equation, and which recognition model is good enough for the rest.
 - Whether numeric spot checks with stated domains catch the errors researchers actually find in papers.
-- Where the notation table lives when one note checks several papers.
-- Which `labshelf:` front-matter keys and origin comments become contracts, and how backlinks are indexed.
-- Whether the browser runs checks through the helper's Jupyter, Pyodide or both.
+- Where the notation table lives when one note checks several papers, and whether its front-matter keys become part of the contract.
+- Which kernel the terminal uses to run a note's cells, and whether it runs one cell, a selection or the whole note.
 
 ## Evidence before implementation scope
 
-Take ten derivations from papers in physics and applied mathematics, including one with a known error. Measure how many equations capture exactly from each source, how many steps check symbolically, numerically or not at all, and whether the known error is found. Insert results into a manuscript, edit both sides, and confirm that nothing is overwritten and every divergence is shown.
+Take ten derivations from papers in physics and applied mathematics, including one with a known error. Measure how many equations capture exactly from each source, how many steps check symbolically, numerically or not at all, and whether the known error is found.
