@@ -3,7 +3,7 @@ import { serializePaperSidecar, type PaperSidecar } from "../../../src/reader/in
 import type { Annotation } from "../../../src/model/index";
 
 function note(id: string, content: string, pageNumber = 1): Annotation {
-  return { id, paperId: "p", type: "note", pageNumber, content, createdAt: `2024-01-0${pageNumber}`, updatedAt: "2024-01-01" };
+  return { id, paperId: "p", type: "comment", pageNumber, content, createdAt: `2024-01-0${pageNumber}`, updatedAt: "2024-01-01" };
 }
 
 function text(data: PaperSidecar): string {

@@ -140,7 +140,7 @@ describe('formatAnnotationsMarkdown', () => {
   it('ends with a trailing newline even when there are annotations', () => {
     const result = formatAnnotationsMarkdown(
       markdownPaper(),
-      [annotation({ type: 'note', pageNumber: 1, content: 'x', createdAt: '2024-01-01T00:00:00.000Z' })],
+      [annotation({ type: 'comment', pageNumber: 1, content: 'x',createdAt: '2024-01-01T00:00:00.000Z' })],
     );
     expect(result.endsWith('\n')).toBe(true);
     expect(result.endsWith('\n\n')).toBe(false);
@@ -148,10 +148,10 @@ describe('formatAnnotationsMarkdown', () => {
 
   it('groups annotations under one "## Page N" heading per page, in ascending page order', () => {
     const result = formatAnnotationsMarkdown(markdownPaper(), [
-      annotation({ type: 'note', pageNumber: 3, content: 'third', createdAt: '2024-01-03T00:00:00.000Z' }),
-      annotation({ type: 'note', pageNumber: 1, content: 'first-a', createdAt: '2024-01-01T00:00:00.000Z' }),
-      annotation({ type: 'note', pageNumber: 2, content: 'second', createdAt: '2024-01-02T00:00:00.000Z' }),
-      annotation({ type: 'note', pageNumber: 1, content: 'first-b', createdAt: '2024-01-01T01:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 3, content: 'third', createdAt: '2024-01-03T00:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 1, content: 'first-a', createdAt: '2024-01-01T00:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 2, content: 'second', createdAt: '2024-01-02T00:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 1, content: 'first-b', createdAt: '2024-01-01T01:00:00.000Z' }),
     ]);
 
     expect(result.match(/## Page 1/g)).toHaveLength(1);
@@ -180,17 +180,17 @@ describe('formatAnnotationsMarkdown', () => {
     expect(result).toContain('<!-- highlight: yellow -->');
   });
 
-  it('renders a note as "**Note:** <content>"', () => {
+  it('renders a comment as "**Comment:** <content>"', () => {
     const result = formatAnnotationsMarkdown(markdownPaper(), [
-      annotation({ type: 'note', pageNumber: 1, content: 'Remember this detail', createdAt: '2024-01-01T00:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 1, content: 'Remember this detail', createdAt: '2024-01-01T00:00:00.000Z' }),
     ]);
-    expect(result).toContain('**Note:** Remember this detail');
+    expect(result).toContain('**Comment:** Remember this detail');
   });
 
   it('orders annotations within the same page by createdAt ascending', () => {
     const result = formatAnnotationsMarkdown(markdownPaper(), [
-      annotation({ type: 'note', pageNumber: 1, content: 'later note', createdAt: '2024-01-01T10:00:00.000Z' }),
-      annotation({ type: 'note', pageNumber: 1, content: 'earlier note', createdAt: '2024-01-01T09:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 1, content: 'later note', createdAt: '2024-01-01T10:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 1, content: 'earlier note', createdAt: '2024-01-01T09:00:00.000Z' }),
     ]);
     expect(result.indexOf('earlier note')).toBeLessThan(result.indexOf('later note'));
   });
@@ -198,7 +198,7 @@ describe('formatAnnotationsMarkdown', () => {
   it('produces the exact expected document for a mixed highlight/note, multi-page case', () => {
     const p = markdownPaper({ title: 'Great Paper', citeKey: 'doe2020', authors: ['Jane Doe'], year: 2020 });
     const annotations: Annotation[] = [
-      annotation({ type: 'note', pageNumber: 2, content: 'Second page note', createdAt: '2024-01-02T00:00:00.000Z' }),
+      annotation({ type: 'comment', pageNumber: 2, content: 'Second page note', createdAt: '2024-01-02T00:00:00.000Z' }),
       annotation({ type: 'highlight', pageNumber: 1, content: 'later highlight text', createdAt: '2024-01-01T10:00:00.000Z' }),
       annotation({ type: 'highlight', pageNumber: 1, content: 'first highlight text', color: 'green', createdAt: '2024-01-01T09:00:00.000Z' }),
     ];
@@ -209,7 +209,7 @@ describe('formatAnnotationsMarkdown', () => {
       '> first highlight text', '', '<!-- highlight: green --> [@doe2020, p. 1]', '',
       '> later highlight text', '', '<!-- highlight: yellow --> [@doe2020, p. 1]', '',
       '## Page 2', '',
-      '**Note:** Second page note', '',
+      '**Comment:** Second page note', '',
     ].join('\n');
 
     expect(formatAnnotationsMarkdown(p, annotations)).toBe(expected);

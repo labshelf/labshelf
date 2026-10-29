@@ -29,7 +29,7 @@ describe("listQuotedHighlights", () => {
       note({ content: "second", pageNumber: 2, createdAt: "2026-01-03T00:00:00Z" }),
       note({ content: "first", pageNumber: 2, createdAt: "2026-01-02T00:00:00Z" }),
       note({ content: "  ", pageNumber: 1 }),
-      note({ type: "note", content: "a note", pageNumber: 1 }),
+      note({ type: "comment", content: "a note", pageNumber: 1 }),
       note({ content: "fourth", pageNumber: 5 }),
     ], 3);
     expect(picked).toEqual([{ text: "first", page: 2 }, { text: "second", page: 2 }, { text: "fourth", page: 5 }]);

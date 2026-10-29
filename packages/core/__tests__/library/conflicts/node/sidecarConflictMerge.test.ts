@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 function note(id: string, content = id): Annotation {
-  return { id, paperId: "smith2020x", type: "note", pageNumber: 1, content, createdAt: `2024-${id}`, updatedAt: "2024" };
+  return { id, paperId: "smith2020x", type: "comment", pageNumber: 1, content, createdAt: `2024-${id}`, updatedAt: "2024" };
 }
 
 async function sidecarDir(): Promise<{ root: string; dir: string; dataJson: string }> {

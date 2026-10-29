@@ -10,7 +10,7 @@ import { cleanupTempDirs, listFiles, makeTempDir } from "../../../support/tempDi
 afterEach(cleanupTempDirs);
 
 function note(id: string): Annotation {
-  return { id, paperId: "smith2020x", type: "note", pageNumber: 1, content: id, createdAt: "2024", updatedAt: "2024" };
+  return { id, paperId: "smith2020x", type: "comment", pageNumber: 1, content: id, createdAt: "2024", updatedAt: "2024" };
 }
 
 async function write(file: string, content: string): Promise<void> {

@@ -75,7 +75,7 @@ describe("importSharedPapers", () => {
 });
 
 const relayUrl = "https://relay.someone.workers.dev";
-const annotation = { id: "n1", paperId: "dup", type: "note", pageNumber: 1, content: "x" } as Annotation;
+const annotation = { id: "n1", paperId: "dup", type: "comment", pageNumber: 1, content: "x" } as Annotation;
 const meta = (id: string, doi?: string) => ({ id, title: `Title ${id}`, citeKey: id, ...(doi ? { doi } : {}) });
 
 async function published() {

@@ -24,7 +24,7 @@ const files = new Map<string, string | Uint8Array>([
   [`${ROOT}/Group/a/bib.bib`, "@article{a}"],
   [`${ROOT}/Group/a/paper.pdf`, new Uint8Array([1, 2, 3])],
 ]);
-const annotation = { id: "n1", paperId: "a", type: "note", pageNumber: 1, content: "x" } as Annotation;
+const annotation = { id: "n1", paperId: "a", type: "comment", pageNumber: 1, content: "x" } as Annotation;
 const sources = {
   fs: {
     exists: (path: string) => Promise.resolve(files.has(path)),

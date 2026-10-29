@@ -88,11 +88,11 @@ describe("ReaderHostController", () => {
       await host.refreshAnnotations();
       expect(posted).toHaveLength(1);
       const data = JSON.parse(files.p1!);
-      data.annotations.push({ id: "c", paperId: "p1", type: "note", pageNumber: 3, content: "from VS Code", createdAt: "2026-01-03T00:00:00.000Z", updatedAt: "x" });
+      data.annotations.push({ id: "c", paperId: "p1", type: "comment", pageNumber: 3, content: "from VS Code", createdAt: "2026-01-03T00:00:00.000Z", updatedAt: "x" });
       files.p1 = JSON.stringify(data);
       await host.refreshAnnotations();
       expect(posted.at(-1)).toMatchObject({ type: "updateAnnotations" });
-      expect((posted.at(-1) as { annotations: unknown[] }).annotations).toHaveLength(3);
+      expect((posted.at(-1) as { annotations: unknown[] }).annotations).toHaveLength(2);
       await host.refreshAnnotations();
       expect(posted).toHaveLength(2);
     });
