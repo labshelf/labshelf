@@ -277,6 +277,7 @@ describe("buildChecklist", () => {
     placeSection,
     citeSections: new Map<string, ChecklistSection[]>([["a", [intro, methods]], ["b", [methods]]]),
     noteTasks: [],
+    noteOrigins: [],
     noteTitles: new Map<string, string>(),
   };
 

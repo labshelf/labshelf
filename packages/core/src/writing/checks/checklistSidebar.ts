@@ -24,6 +24,7 @@ function createItemKey(item: ChecklistItem): string {
     case "todo": return `todo:${item.todo.file}:${item.todo.line}`;
     case "noteTask": return `noteTask:${item.task.file}:${item.task.itemId}:${item.task.line}`;
     case "ref": return `ref:${item.ref.file}:${item.ref.line}:${item.ref.ref}`;
+    case "noteOrigin": return `noteOrigin:${item.origin.file}:${item.origin.line}`;
     case "figure": return `figure:${item.figure.name}`;
     case "pages": return "pages";
     case "manual": return `manual:${item.manual.id}`;
@@ -70,6 +71,8 @@ function createItemRow(paths: PathOps, key: string, item: ChecklistItem, reading
       checked: item.done, ...(item.done ? { struck: true } : {}),
     };
     case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);
+    case "noteOrigin": return located(paths, key, `${item.origin.file}:${item.origin.line + 1} — ${item.origin.state}`, item.origin.file, item.origin.line,
+      `${item.origin.notePath} (${item.origin.label}) is ${item.origin.state}`);
     case "figure": return { key, label: item.figure.name, tooltip: "Stale figure", inlineAction: { action: "regenerate", label: "Regenerate" } };
     case "pages": return { key, ...createPagesHead(item.overflow) };
     case "manual": return {
@@ -174,7 +177,7 @@ function byKind(input: ChecklistTreeInput, tree: ChecklistTree): SidebarTreeNode
 function sectionTone(group: ChecklistGroup): DotKind {
   if (group.id === "#reading") { return "muted"; }
   const open = group.items.filter((item) => !item.done);
-  if (open.some((item) => item.kind === "ref" || item.kind === "pages")) { return "err"; }
+  if (open.some((item) => item.kind === "ref" || item.kind === "noteOrigin" || item.kind === "pages")) { return "err"; }
   if (open.some((item) => item.kind === "todo" || item.kind === "figure")) { return "warn"; }
   return open.length > 0 ? "muted" : "ok";
 }

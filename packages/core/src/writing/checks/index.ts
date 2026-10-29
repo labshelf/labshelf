@@ -6,6 +6,7 @@ export type { OperatorList, PageOperators, PdfFacts, PdfPageFacts, PdfTextItem, 
 export * from "./checklist.js";
 export { scanTodos, type TodoItem } from "./todoMarkers.js";
 export { scanNoteTasks, toggleNoteTask, type NoteTask } from "./noteTasks.js";
+export { readNoteOrigins, type NoteOrigin, type OriginNoteReader } from "./noteOrigins.js";
 export { readManualItems, readChecklistSignals, updateChecklist } from "./checklistSignals.js";
 export type { ChecklistSignals, ProjectNotesSource } from "./checklistSignals.js";
 export { deriveChecklistSidebarNodes } from "./checklistSidebar.js";

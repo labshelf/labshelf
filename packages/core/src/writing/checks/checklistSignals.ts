@@ -8,6 +8,7 @@ import {
 } from "./checklist.js";
 import { scanTodos, type TodoItem } from "./todoMarkers.js";
 import { scanNoteTasks, type NoteTask } from "./noteTasks.js";
+import { readNoteOrigins, type NoteOrigin, type OriginNoteReader } from "./noteOrigins.js";
 import type { ProjectNotesStore } from "../../qmd/index.js";
 
 const MODULE = "checklist";
@@ -63,6 +64,8 @@ export interface ChecklistSignals {
   manual: ManualItem[];
   /** The task lines of the project's notes; empty without a notes store. */
   noteTasks: NoteTask[];
+  /** The stale, diverged, both and missing note origins of the sources; empty without a note reader. */
+  noteOrigins: NoteOrigin[];
   /** Note file to note title; empty without a notes store. */
   noteTitles: Map<string, string>;
 }
@@ -87,6 +90,16 @@ async function readNoteTasks({ logger }: ProjectReadContext, { store, projectId 
     await logger.error(MODULE, error, { projectId, action: "list notes" });
   }
   return { noteTasks, noteTitles };
+}
+
+/** A reader that fails is logged and the project lists no origins, so one bad note never hides the other signals. */
+async function readOriginsSafely({ logger }: ProjectReadContext, sources: readonly ChecklistSource[], readNote: OriginNoteReader): Promise<NoteOrigin[]> {
+  try {
+    return await readNoteOrigins(sources, readNote);
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "read note origins" });
+    return [];
+  }
 }
 
 const readProjectFile = ({ fs, paths }: ProjectReadContext, folder: string, relative: string): Promise<string | undefined> =>
@@ -119,11 +132,11 @@ async function readStaleFigures(context: ProjectReadContext, project: ReadyProje
 
 /** An unreadable or missing main file yields empty signals and one warning, so a list row never fails on one project. */
 export async function readChecklistSignals(
-  context: ProjectReadContext, project: ReadyProject, notes?: ProjectNotesSource,
+  context: ProjectReadContext, project: ReadyProject, notes?: ProjectNotesSource, readNote?: OriginNoteReader,
 ): Promise<ChecklistSignals> {
   const { logger } = context;
   const { noteTasks, noteTitles } = notes ? await readNoteTasks(context, notes) : { noteTasks: [], noteTitles: new Map<string, string>() };
-  const empty: ChecklistSignals = { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks, noteTitles };
+  const empty: ChecklistSignals = { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks, noteOrigins: [], noteTitles };
   const main = project.main;
   const where = { folder: project.folder, main };
   if (main === undefined) {
@@ -143,5 +156,6 @@ export async function readChecklistSignals(
   }
   const todos = read.sources.flatMap((source) => scanTodos(source.format, source.path, source.text));
   const [staleFigures, manual] = await Promise.all([readStaleFigures(context, project), readManualItems(context, project.folder)]);
-  return { sources: read.sources, todos, brokenRefs: read.brokenRefs, staleFigures, manual, noteTasks, noteTitles };
+  const noteOrigins = readNote ? await readOriginsSafely(context, read.sources, readNote) : [];
+  return { sources: read.sources, todos, brokenRefs: read.brokenRefs, staleFigures, manual, noteTasks, noteOrigins, noteTitles };
 }
