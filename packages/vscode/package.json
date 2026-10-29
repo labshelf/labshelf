@@ -591,6 +591,16 @@
         "icon": "$(checklist)"
       },
       {
+        "command": "labshelf.projects.newNote",
+        "title": "New Note",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.projects.openNote",
+        "title": "Open Note…",
+        "category": "LabShelf"
+      },
+      {
         "command": "labshelf.writing.regenerateFigure",
         "title": "Research: Regenerate Figure",
         "category": "LabShelf",
@@ -734,6 +744,14 @@
         },
         {
           "command": "labshelf.writing.checklist.addItem",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "command": "labshelf.projects.newNote",
+          "when": "labshelf.writing.projectOpen"
+        },
+        {
+          "command": "labshelf.projects.openNote",
           "when": "labshelf.writing.projectOpen"
         },
         {

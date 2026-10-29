@@ -1,7 +1,8 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
 import * as vscode from "vscode";
 
-import { createSelectionHub, createLibraryLayout, type AiService } from "@labshelf/core";
+import { createSelectionHub, createLibraryLayout, createRecentTargets, type AiService } from "@labshelf/core";
+import { SEND_TO_RECENT_KEY, createMementoKeyValueStore } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
 import {
@@ -16,6 +17,7 @@ import { registerLibrarySidebar } from "./registerLibrarySidebar.js";
 import { registerPanelCommands } from "./registerPanelCommands.js";
 import { registerSettingsMenu } from "./registerSettingsMenu.js";
 import { registerWritingView } from "./registerWritingView.js";
+import { registerProjectNoteCommands } from "../writing/projects/commands.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
 
@@ -39,6 +41,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   let details: DetailsView | undefined;
   const sources = createSelectionSources(createSelectionHub((target) => details?.show(target)), openLibraryLogger(controller));
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
+  registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   const spaces = registerSpaces(context, controller, adapters, writing, async id => {
     await vscode.commands.executeCommand("labshelf.revealPaper", id);
     sources.listSelected([id]);
@@ -55,6 +58,11 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
+    sendTo: {
+      projects: writing.projects, notes: writing.notes, logger: writing.logger,
+      recent: createRecentTargets(createMementoKeyValueStore(context.globalState), SEND_TO_RECENT_KEY),
+      newItemId: () => globalThis.crypto.randomUUID(),
+    },
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });

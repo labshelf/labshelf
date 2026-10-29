@@ -1,9 +1,9 @@
-// Commands that act on writing projects: finding the project a file belongs to, choosing its main file, adding, removing and copying projects.
+// Commands that act on writing projects: finding the project a file belongs to, choosing its main file, adding, removing and copying projects, and creating and opening project notes.
 import * as vscode from "vscode";
 
 import {
   PROJECT_FILE, createBlankTemplate, detectFormat, findEntryCandidates, isInside, updateProjectFile, withProjectId,
-  type PathOps, type ProjectEntry, type ProjectFormat, type TemplateFile,
+  type ILogger, type PathOps, type ProjectEntry, type ProjectFormat, type ProjectNotesStore, type TemplateFile,
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
 import { readActiveProject } from "../build/index.js";
@@ -233,6 +233,65 @@ async function copyProject(deps: ItemCommandsDeps, entry: ProjectEntry | undefin
     if (!title) { return; }
     await copyProjectEntry(deps, entry, title);
   });
+}
+
+// ---- Project notes
+
+interface ProjectNoteCommandsDeps {
+  context: vscode.ExtensionContext;
+  projects: ProjectFinder;
+  store: ProjectNotesStore;
+  logger: ILogger;
+}
+
+const NEW_NOTE_COMMAND = "labshelf.projects.newNote";
+const NO_NOTES_LABEL = "No notes yet — New Note…"; // D16: QMD_VOCABULARY.item
+
+async function openNoteFile({ projects }: ProjectNoteCommandsDeps, project: ReadyProject, path: string): Promise<void> {
+  const file = projects.paths.join(project.folder, ...path.split("/"));
+  await vscode.window.showTextDocument(vscode.Uri.file(file));
+}
+
+async function newNote(deps: ProjectNoteCommandsDeps): Promise<void> {
+  const project = readActiveProject(deps.projects);
+  if (!project) {
+    await vscode.window.showInformationMessage("Open a writing project first");
+    return;
+  }
+  await runSafely(deps.logger, NEW_NOTE_COMMAND, async () => {
+    const title = (await vscode.window.showInputBox({ prompt: "Note title" }))?.trim(); // D16: QMD_VOCABULARY.item
+    if (!title) { return; }
+    const path = await deps.store.create(project.settings.id, title);
+    await openNoteFile(deps, project, path);
+  });
+}
+
+async function openNote(deps: ProjectNoteCommandsDeps): Promise<void> {
+  const project = readActiveProject(deps.projects);
+  if (!project) {
+    await vscode.window.showInformationMessage("Open a writing project first");
+    return;
+  }
+  await runSafely(deps.logger, "labshelf.projects.openNote", async () => {
+    const notes = await deps.store.list(project.settings.id);
+    if (notes.length === 0) {
+      const none = await vscode.window.showQuickPick([{ label: NO_NOTES_LABEL }], { placeHolder: "Open note" }); // D16: QMD_VOCABULARY.item
+      if (none) { await vscode.commands.executeCommand(NEW_NOTE_COMMAND); }
+      return;
+    }
+    const picked = await vscode.window.showQuickPick(
+      notes.map((note) => ({ label: note.title, description: note.path, path: note.path })),
+      { placeHolder: "Open note" }, // D16: QMD_VOCABULARY.item
+    );
+    if (picked) { await openNoteFile(deps, project, picked.path); }
+  });
+}
+
+export function registerProjectNoteCommands(deps: ProjectNoteCommandsDeps): void {
+  deps.context.subscriptions.push(
+    vscode.commands.registerCommand(NEW_NOTE_COMMAND, () => newNote(deps)),
+    vscode.commands.registerCommand("labshelf.projects.openNote", () => openNote(deps)),
+  );
 }
 
 export function registerProjectItemCommands(deps: ItemCommandsDeps): void {
