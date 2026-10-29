@@ -8,9 +8,10 @@ import type { ILogger } from "../../ports/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
-import { createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
+import { createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
+import { createCellHandlers } from "./cellHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
 import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer, type HelperHandler } from "./helperHandlers.js";
 import { createLibraryProjects } from "./helperProjects.js";
@@ -90,6 +91,11 @@ function runOnce(task: (() => Promise<void>) | undefined, onError: (error: unkno
   };
 }
 
+/** A project id resolves to the folder of the open project, `paper:<id>` to the temp folder; anything else is unknown. */
+function resolveCellCwd(scope: string, rootOf: (projectId: string) => string | undefined): string | undefined {
+  return scope.startsWith("paper:") ? os.tmpdir() : rootOf(scope);
+}
+
 export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const { dataDir, logger, helperVersion, host } = options;
   // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
@@ -106,12 +112,14 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const publishing = createTemplatePublishHandlers({ dataDir, logger, fetch, build: {
     logger, tex, typst: openTypst((run) => run()), ...(biber && { biber }),
   } });
+  const cells = createCellHandlers({ runner: createNodeCellRunner({ python, logger }), resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
   const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
       compile: builds.compile, cancel: builds.cancel,
       ...publishing.handlers,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
+      runCell: cells.runCell, cancelCell: cells.cancelCell,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
     },
     logger,

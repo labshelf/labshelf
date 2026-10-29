@@ -28,13 +28,15 @@ Every message has `v`, an `id` of 1 to 64 characters chosen by the page, and a `
 - `pages` carries only the pages that differ from the last `pages` on this socket for the project, all of them after `openProject`. A successful build sends `pages` even when nothing changed.
 - A `.typ` compile runs the bundled WASM Typst compiler with fonts and packages only from the helper's data folder.
 - `installPython` installs the managed Python ([managed-tools.md](managed-tools.md#python)) and answers `progress` with phase `python`, then `ready`; a failure answers `error` with code `python-install-failed`.
+- `runCell` `{code, cwd, timeoutMs}` runs one code cell with the managed Python and answers `cellResult` `{status, latex?, text?, error?, durationMs}` under the same `id`; `status` is `ok`, `error`, `timeout`, `cancelled` or `missing-python`. `code` is at most 1 MiB (larger is refused with `limit`) and `timeoutMs` an integer from 1 to 600000. `cwd` is a scope, never a path: a project id or `paper:<paperId>`. A project id resolves to the folder of that project while it is open, `paper:<paperId>` to the temp folder; an unknown scope is refused with an `error` under the request `id` and nothing runs. A malformed scope is refused with `project-id`.
+- `cancelCell` `{requestId}` aborts the run that `runCell` started under that `id`, which then answers `cellResult` with `cancelled`. It does not wait in the queue behind other messages, and for an id that is not running it answers nothing.
 - `ready` carries `python` (`missing` or `installed`) when the host reports it, on `hello` and after an install. A helper that omits it predates Python.
 - `texlive-rollover` means a managed TeX Live is a year behind the package repository. The page asks before reinstalling ([managed-tools.md](managed-tools.md#rollover)).
 - `publishTemplate` follows [templates.md](templates.md#publish): it publishes saved files only, repeats every check on a snapshot before submitting and keeps no GitHub token on disk.
 
 ## Version
 
-The protocol version is 6. The page compares `ready.protocol` with its own. A lower helper version asks to update the program that `host` names; a higher one asks to update LabShelf in the browser. When the helper refuses `hello` for `version`, its `error` carries the helper's `v` so the page can tell which side is older. It cannot know the host then, so it names LabShelf Helper, the VS Code extension and the terminal app. The page never shows the raw error. The standalone helper then runs its update check at once.
+The protocol version is 7. The page compares `ready.protocol` with its own. A lower helper version asks to update the program that `host` names; a higher one asks to update LabShelf in the browser. When the helper refuses `hello` for `version`, its `error` carries the helper's `v` so the page can tell which side is older. It cannot know the host then, so it names LabShelf Helper, the VS Code extension and the terminal app. The page never shows the raw error. The standalone helper then runs its update check at once.
 
 ## Data folder
 

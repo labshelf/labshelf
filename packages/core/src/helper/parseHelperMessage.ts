@@ -8,7 +8,7 @@ import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_EDIT_CHANGES, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
+  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
   type ChangedPage, type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type TemplatePublishEvent, type TemplatePublishRequest, type TexToolchain, type TextChange, type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
@@ -97,6 +97,31 @@ function readProjectId(body: Body): string {
 const isNonNegativeInteger = (n: number): boolean => Number.isInteger(n) && n >= 0;
 const isPositiveInteger = (n: number): boolean => Number.isInteger(n) && n > 0;
 const isSha256 = (text: string): boolean => /^[0-9a-f]{64}$/.test(text);
+
+const MAX_CELL_SCOPE_LENGTH = 128;
+const PAPER_SCOPE = "paper:";
+
+/** A cell's cwd names a project id or `paper:<paperId>`, never a path; the helper resolves it from what it knows. */
+function isCellScope(scope: string): boolean {
+  if (isHelperProjectId(scope)) { return true; }
+  if (!scope.startsWith(PAPER_SCOPE) || scope.length > MAX_CELL_SCOPE_LENGTH) { return false; }
+  const paperId = scope.slice(PAPER_SCOPE.length);
+  return paperId !== "" && paperId !== ".." && !/[\\/\u0000]/.test(paperId) && !paperId.startsWith("~");
+}
+
+function readCellScope(body: Body, key: string): string {
+  const scope = readString(body, key);
+  if (!isCellScope(scope)) { throw new FieldError("project-id", `${key} is neither a project id nor paper:<paperId>`); }
+  return scope;
+}
+
+function readCellCode(body: Body, key: string): string {
+  const code = readString(body, key);
+  // The UTF-8 size is at least the length and at most three times it, so only the middle band needs the encoder.
+  const tooLarge = code.length > MAX_CELL_CODE_BYTES || (code.length * 3 > MAX_CELL_CODE_BYTES && new TextEncoder().encode(code).length > MAX_CELL_CODE_BYTES);
+  if (tooLarge) { throw new FieldError("limit", `${key} is larger than ${MAX_CELL_CODE_BYTES} bytes`); }
+  return code;
+}
 
 function readSha256(body: Body, key: string): string {
   const value = readString(body, key);
@@ -201,6 +226,11 @@ const TO_HELPER_READERS: ToHelperReaders = {
   installTex: (body, envelope) => ({ ...envelope, type: "installTex", kind: readChoice(body, "kind", TEX_INSTALL_KINDS) }),
   installAllPackages: (_body, envelope) => ({ ...envelope, type: "installAllPackages" }),
   installPython: (_body, envelope) => ({ ...envelope, type: "installPython" }),
+  runCell: (body, envelope) => ({
+    ...envelope, type: "runCell", code: readCellCode(body, "code"), cwd: readCellScope(body, "cwd"),
+    timeoutMs: readNumber(body, "timeoutMs", (n) => Number.isInteger(n) && n >= 1 && n <= MAX_CELL_TIMEOUT_MS),
+  }),
+  cancelCell: (body, envelope) => ({ ...envelope, type: "cancelCell", requestId: readText(body, "requestId") }),
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -277,6 +307,10 @@ const TO_PAGE_READERS: ToPageReaders = {
   pages: (body, envelope) => ({
     ...envelope, type: "pages", pdfSha256: readSha256(body, "pdfSha256"),
     pageCount: readNumber(body, "pageCount", isNonNegativeInteger), changed: readChangedPages(body),
+  }),
+  cellResult: (body, envelope) => ({
+    ...envelope, type: "cellResult", status: readChoice(body, "status", CELL_STATUSES), durationMs: readNumber(body, "durationMs", (n) => n >= 0),
+    ...readOptionalField(body, "latex", readString), ...readOptionalField(body, "text", readString), ...readOptionalField(body, "error", readString),
   }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),
 };

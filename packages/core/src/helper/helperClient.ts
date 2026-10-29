@@ -2,7 +2,8 @@
 import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
 import { PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
-import type { HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
+import type { CellResult } from "../qmd/compute/cellRunner.js";
+import type { HelperCellRequest, HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,
 } from "./helperClientConnection.js";
@@ -96,6 +97,10 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
   };
 }
 
+function cellResultOf({ status, latex, text, error, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
+  return { status, durationMs, ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}) };
+}
+
 class NativeLatexHelper implements ILatexHelper {
   private readonly edits = new UpdateTracker();
   private readonly session: NativeHelperSession;
@@ -173,6 +178,25 @@ class NativeLatexHelper implements ILatexHelper {
 
   installAllPackages(onProgress: OnHelperProgress): Promise<void> {
     return this.logged("installAllPackages", {}, () => this.install({ type: "installAllPackages" }, onProgress));
+  }
+
+  runCell(request: HelperCellRequest, signal: AbortSignal): Promise<CellResult> {
+    return this.logged("runCell", { cwd: request.cwd }, async () => {
+      const socket = await this.session.readySocket();
+      signal.throwIfAborted();
+      let runId: string | undefined;
+      // The page never sees the id: an abort posts cancelCell with it, and the helper then answers the run as cancelled.
+      const cancel = () => { if (runId !== undefined && socket.isOpen) { socket.post({ type: "cancelCell", requestId: runId }); } };
+      signal.addEventListener("abort", cancel, { once: true });
+      try {
+        return await socket.request({ type: "runCell", ...request }, (m) => m.type === "cellResult" ? { done: cellResultOf(m) } : undefined, (id) => {
+          runId = id;
+          if (signal.aborted) { cancel(); }
+        });
+      } finally {
+        signal.removeEventListener("abort", cancel);
+      }
+    });
   }
 
   publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void> {

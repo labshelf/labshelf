@@ -274,16 +274,20 @@ export interface LibraryProjectsOptions {
 
 export interface LibraryProjects extends HelperProjects {
   closeAll(): Promise<void>;
+  /** The folder of an open project, or undefined when `projectId` is not open. */
+  rootOf(projectId: string): string | undefined;
 }
 
 export function createLibraryProjects(options: LibraryProjectsOptions): LibraryProjects {
   const { logger } = options;
   let current: { root: string; projects: HelperProjects } | undefined;
   const open = new Set<string>();
+  const roots = new Map<string, string>();
 
   const closeAll = async () => {
     for (const id of [...open]) { await current?.projects.close(id); }
     open.clear();
+    roots.clear();
   };
 
   // INVARIANT: every open project belongs to `current`, so a changed library root first closes them all.
@@ -307,12 +311,15 @@ export function createLibraryProjects(options: LibraryProjectsOptions): LibraryP
     async open(projectId, root) {
       const result = await (await projectsFor()).open(projectId, root);
       open.add(projectId);
+      roots.set(projectId, await resolveConfinedPath(current?.root ?? "", root));
       return result;
     },
     async close(projectId) {
       await owner(projectId).close(projectId);
       open.delete(projectId);
+      roots.delete(projectId);
     },
+    rootOf: (projectId) => roots.get(projectId),
     edit: (projectId, path, version, body) => owner(projectId).edit(projectId, path, version, body),
     save: (projectId, path) => owner(projectId).save(projectId, path),
     textOf: (projectId, path) => owner(projectId).textOf(projectId, path),
