@@ -1,4 +1,4 @@
-// Shows and stores a project's comment threads: the store over comments.json, its routing to a share's live threads, and the editor's marks and Add comment action.
+// Shows and stores a project's comment threads: the store over comments.qmd, its routing to a share's live threads, and the editor's marks and Add comment action.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import { type Extension, Prec, RangeSet, StateEffect, StateField, type Text } from "@codemirror/state";
 import { EditorView, keymap, showPanel, Decoration, gutter, GutterMarker } from "@codemirror/view";
@@ -6,13 +6,15 @@ import {
   addThread, lineAt, deriveAnchor, COMMENTS_PATH, deriveCommentThreads, updateCommentsDocument, loadCommentsDocument, findThread, posixPathOps, addThreadReply, setThreadResolved, renderIcon,
   type Comment, type CommentsFileAccess, type CommentThread, type ILogger, type LibraryFileSystem, type TextRange,
 } from "@labshelf/core";
-import { askInputBox, showToast } from "@labshelf/core/dom";
+import { mountFormDialog, mountQmdEditor, renderElement, showToast, type QmdEditorHandle } from "@labshelf/core/dom";
 import { createSourceFooter } from "../libraryUi";
 import type { ProjectSession } from "../writing";
 import type { PageShares } from "./pageShares";
 
 const THREADS_MODULE = "collab.comments";
 const AUTHOR = "You";
+/** mountQmdEditor reports an edit 300 ms after the last one and cannot be flushed, so a body read right after typing waits this long. */
+const CHANGE_SETTLE_MS = 350;
 
 /** A thread with its place in the file's saved text. */
 export interface LocatedThread extends CommentThread {
@@ -21,7 +23,7 @@ export interface LocatedThread extends CommentThread {
 }
 
 export interface CommentThreads {
-  /** The project's threads in file order of the store, optionally of one file. Throws when comments.json is not valid. */
+  /** The project's threads in file order of the store, optionally of one file. Throws when comments.qmd is not valid. */
   threads(projectId: string, path?: string): Promise<LocatedThread[]>;
   /** Calls the listener now and after each change with the ranges of the file's open threads. */
   commentAnchorsFor(projectId: string, path: string): { subscribe(listener: (ranges: TextRange[]) => void): () => void };
@@ -65,7 +67,7 @@ async function readFileText(fs: LibraryFileSystem, folder: string, path: string)
 
 async function stored(fs: LibraryFileSystem, folder: string): Promise<CommentThread[]> {
   const doc = await loadCommentsDocument(accessOf(fs, folder));
-  if (!doc) { throw new Error(`${COMMENTS_PATH} is not valid JSON with a threads list. Fix the file to see and add comments.`); }
+  if (!doc) { throw new Error(`${COMMENTS_PATH} is not a valid comments file. Fix the file to see and add comments.`); }
   return deriveCommentThreads(doc);
 }
 
@@ -134,7 +136,7 @@ export function createCommentThreads({ fs, session, logger }: CommentThreadsOpti
 
 
 export interface RoutedCommentThreadsOptions {
-  /** The store over comments.json. */
+  /** The store over comments.qmd. */
   files: CommentThreads;
   shares: Pick<PageShares, "live" | "onChange">;
   session: Pick<ProjectSession, "current">;
@@ -254,6 +256,64 @@ export function addCommentSupport(add: (range: TextRange) => void): Extension {
 
 const EDITOR_MODULE = "editor.comments";
 
+export interface BodyInput {
+  editor: QmdEditorHandle;
+  /** The body as typed, once the editor has reported the last edit. */
+  body(): Promise<string>;
+}
+
+/** Mounts an editable core editor for a comment body in `host`; Mod-Enter calls `onSubmit` and Escape calls `onCancel`. */
+export function mountBodyInput(host: HTMLElement, { onSubmit, onCancel }: { onSubmit(): void; onCancel?(): void }): BodyInput {
+  let body = "";
+  let dirty = false;
+  const isSubmit = (event: KeyboardEvent): boolean => event.key === "Enter" && (event.metaKey || event.ctrlKey);
+  host.addEventListener("input", () => { dirty = true; }, true);
+  host.addEventListener("keydown", (event) => {
+    if (isSubmit(event)) { event.preventDefault(); event.stopPropagation(); onSubmit(); return; }
+    if (event.key === "Escape" && onCancel) { event.preventDefault(); event.stopPropagation(); onCancel(); return; }
+    if (!["Control", "Meta", "Alt", "Shift", "Escape"].includes(event.key)) { dirty = true; }
+  }, true);
+  const editor = mountQmdEditor(host, { body: "", onChange: (value) => { body = value; dirty = false; } });
+  return {
+    editor,
+    async body() {
+      if (dirty) { await new Promise((resolve) => setTimeout(resolve, CHANGE_SETTLE_MS)); }
+      return body;
+    },
+  };
+}
+
+/** Opens the Add comment dialog; resolves the typed comment, or undefined when it is dismissed. */
+function askCommentBody(): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const host = renderElement("div", { class: "ls-comment-editor" });
+    const error = renderElement("p", { class: "ls-comment-status", role: "alert" });
+    const form = renderElement("form", { class: "ls-dialog", role: "dialog", "aria-modal": "true", "aria-label": "Add comment", novalidate: true },
+      renderElement("h2", { text: "Add comment" }), host, error);
+    let settled = false;
+    let submitting = false;
+    const submit = async (): Promise<void> => {
+      if (submitting) return;
+      submitting = true;
+      const text = (await input.body()).trim();
+      submitting = false;
+      if (text === "") { error.textContent = "Write a comment"; return; }
+      settle(text);
+      close();
+    };
+    const input = mountBodyInput(host, { onSubmit: () => void submit() });
+    const settle = (value: string | undefined): void => {
+      if (settled) return;
+      settled = true;
+      input.editor.destroy();
+      resolve(value);
+    };
+    const close = mountFormDialog(form, { submitLabel: "Add comment", unsubscribe: () => settle(undefined) });
+    form.addEventListener("submit", (event) => { event.preventDefault(); void submit(); });
+    input.editor.focus();
+  });
+}
+
 /** What the editor needs from the comment threads of its file; ranges are offsets in the saved file text. */
 export interface EditorComments {
   /** The listener runs with the ranges of the file's unresolved threads now and after each change. */
@@ -285,7 +345,7 @@ export function createCommentSupport(deps: CommentSupportDeps): CommentSupport {
   let view: EditorView | undefined;
   // The saved file is what the store anchors the thread in, so the edits are written before the offsets are read.
   const addOnSelection = async (range: TextRange): Promise<void> => {
-    const text = await askInputBox({ title: "Add comment", prompt: "Comment on the selected text", validate: (value) => (value.trim() ? null : "Write a comment") });
+    const text = await askCommentBody();
     if (!text || !view) return;
     if (!(await deps.flush())) { showToast("Could not save the file, so the comment was not added.", "error"); return; }
     const { doc } = view.state;

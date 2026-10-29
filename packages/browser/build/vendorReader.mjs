@@ -37,7 +37,7 @@ export async function vendorReader({ outDir, pkgRoot }) {
   await copyFile(previewCss, join(outDir, "reader/preview.css"));
   await copyDir(join(dirname(previewCss), "preview"), join(outDir, "reader/preview"));
   await mkdir(join(outDir, "ui/styles"), { recursive: true });
-  for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "all-projects", "template-gallery", "template-publish", "project-history", "project-search"]) {
+  for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "qmd-editor", "all-projects", "template-gallery", "template-publish", "project-history", "project-search"]) {
     await copyFile(require.resolve(`@labshelf/core/styles/${sheet}.css`), join(outDir, `ui/styles/${sheet}.css`));
   }
   for (const sheet of ["page-widgets", "spaces-catalog", "spaces", "research-chat"]) {
