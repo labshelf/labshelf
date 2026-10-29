@@ -2,8 +2,7 @@
 import { formatError } from "@labshelf/core";
 import { formatShortTime, mountQmdEditor, renderElement, renderIcon, type QmdEditorHandle } from "@labshelf/core/dom";
 import type { TabModule } from "./tabKinds";
-import type { CommentThreads, LocatedThread } from "../../collab";
-import { mountBodyInput } from "../../collab/comments";
+import { mountBodyInput, type CommentThreads, type LocatedThread } from "../../collab";
 
 const MODULE = "libraryUi.comments";
 

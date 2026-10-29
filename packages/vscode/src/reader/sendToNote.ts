@@ -5,7 +5,7 @@ import {
   createProjectNoteWriter, createRecentTargets, deriveSendTargetChoices, sendTo,
   type IKeyValueStore, type ILogger, type IProjectAssetWriter, type ProjectNotesStore, type ReadyProject, type SendTarget, type SendTargetChoice,
 } from "@labshelf/core";
-import type { WritingProjects } from "../writing/projects/session.js";
+import type { WritingProjects } from "../writing/projects/index.js";
 
 export const SEND_TO_RECENT_KEY = "labshelf.sendTo.recent";
 

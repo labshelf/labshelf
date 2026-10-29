@@ -67,7 +67,7 @@ const hasMath = (doc: BodyNode): boolean => {
 /** The math renderer of the LaTeX hover, loaded only when a body has math; undefined when it cannot be loaded. */
 async function loadMathImage(): Promise<MathImage | undefined> {
   try {
-    return (await import("../latex/editing.js")).createThemedMathMarkdown;
+    return (await import("../latex/index.js")).createThemedMathMarkdown;
   } catch {
     return undefined;
   }
@@ -111,7 +111,7 @@ function appendList(markdown: vscode.MarkdownString, list: BodyNode, math: MathI
   const ordered = list.type.name === "ordered_list";
   list.forEach((item, _offset, index) => {
     const marker = item.type.name === "task_item"
-      ? (item.attrs.checked ? "☑ " : "☐ ")
+      ? (item.attrs.checked ? "[x] " : "[ ] ")
       : ordered ? `${(list.attrs.order as number) + index}. ` : "- ";
     item.forEach((child, _childOffset, childIndex) => appendBlock(markdown, child, math, childIndex === 0 ? marker : ""));
   });

@@ -17,10 +17,9 @@ import { registerInstallCommand } from "../writing/index.js";
 import { registerExportCommands } from "../writing/index.js";
 import { registerEditorActions, registerInsertActions } from "../writing/index.js";
 import {
-  ProjectFigures, createSignalsReader, registerAllProjects, registerProjectSession, registerProjectValues, registerProjectViews, registerProjectWriteEvents,
+  ProjectFigures, createProjectNoteFiles, createSignalsReader, registerAllProjects, registerProjectSession, registerProjectValues, registerProjectViews, registerProjectWriteEvents,
   watchFigureFiles, type ProjectSession, type ProjectTreeMirror, type SidebarProjectsSource,
 } from "../writing/projects/index.js";
-import { createProjectNoteFiles } from "../writing/projects/noteFiles.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";

@@ -11,12 +11,13 @@ export { deriveNestedSymbols } from "./outline.js";
 export type { BuildRootOf, PlatformWriting, ProjectHistoryRecorder, RegisterPlatformWriting } from "./platformPort.js";
 export { registerExportCommands, registerInstallCommand, type ConvertProject, type InstallServices } from "./exportInstall.js";
 export {
-  deriveBuildRootPath, findOwningProject, registerAddExistingFolder, registerBuildRootCommands,
+  deriveBuildRootPath, findOwningProject, registerProjectNoteCommands, registerAddExistingFolder, registerBuildRootCommands,
   registerBuildRootStatusBar, registerProjectCommands, registerProjectItemCommands,
   type ProjectFinder, type ReadyProject,
 } from "./commands.js";
 export type { FigureNode } from "./projectFigures.js";
 export { watchFigureFiles, ProjectFigures } from "./projectFigures.js";
 export { ProjectFiguresView } from "./figuresView.js";
+export { createProjectNoteFiles } from "./noteFiles.js";
 export { registerProjectValues } from "./projectValues.js";
 export { ProjectReadingLists, registerReadingListCommands } from "./readingList.js";

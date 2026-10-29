@@ -148,7 +148,7 @@ async function boot(): Promise<void> {
     onFolderOpen: (folder) => { host.post({ type: "navigate", folder }); workspace.openTab("library"); },
   });
   let projectsLibrary: ProjectLibraryPort | null = null;
-  const spaces = createPageSpaces({ fs, logger: log, transport, selection: hub, workspace: () => workspace, projects: () => projectsLibrary,
+  const spaces = createPageSpaces({ fs, logger: log, transport, selection: hub, workspace: () => workspace, projects: () => projectsLibrary, notes: () => project?.notes,
     openProject: async entry => {
       if (!project) throw new Error(`Project ${entry.settings.id} is not on this device`);
       await project.services.session.openProject(entry);

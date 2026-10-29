@@ -6,3 +6,5 @@ export { createIdbHistoryStorage } from "./idb";
 export { writeStagedPdf, readStagedPdf, removeStagedPdf, removeStagedPdfsExcept } from "./staging";
 export { createBrowserDeviceIdentity, removeBrowserCollabDocs, openBrowserCollabStorage } from "./collab";
 export { openTabLease, updateTabLease, createTabLeaseName, watchTabLease, type TabLease } from "./tabLease";
+export { createProjectNoteFiles, createProjectAssetWriter } from "./projectNoteFiles";
+export { createRecentSendTargetsStore } from "./recentSendTargets";
