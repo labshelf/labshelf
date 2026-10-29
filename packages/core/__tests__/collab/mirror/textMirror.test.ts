@@ -2,10 +2,10 @@
 import * as Y from "yjs";
 import { readFileText, readShareIndexDocFiles, setFileText, deriveSharedFileKind } from "../../../src/collab/index";
 import { DISK_ORIGIN } from "../../../src/collab/mirror/index";
-import { readQmdDoc, readQmdDocText, setQmdDocText } from "../../../src/qmd/collab/sharedQmdDoc";
-import { nodeFiles } from "../../collab/mirror/mirrorFiles";
-import { openMirror, readFile, writeFile, type MirrorFixture } from "../../collab/mirror/mirrorFixture";
-import { qmdFixtures } from "../fixtures/qmdFixtures";
+import { readQmdDoc, readQmdDocText, setQmdDocText } from "../../../src/qmd/sharedQmdDoc";
+import { nodeFiles } from "./mirrorFiles";
+import { openMirror, readFile, writeFile, type MirrorFixture } from "./mirrorFixture";
+import { qmdFixtures } from "../../qmd/fixtures/qmdFixtures";
 
 const item = (id: string, body: string): string => `::: {#${id} .labshelf-item author="Ana"}\n${body}\n:::\n`;
 const base = `Intro text.\n\n${item("n-AAA", "First body.")}\n${item("n-BBB", "Second body.")}`;

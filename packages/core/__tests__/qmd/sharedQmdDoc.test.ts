@@ -1,10 +1,10 @@
 // Pins the Yjs doc of a shared .qmd file: items as ProseMirror fragments, item-level edits that merge, and a byte-exact text round trip.
 import * as Y from "yjs";
 import { yXmlFragmentToProsemirrorJSON } from "y-prosemirror";
-import { readQmdDoc, readQmdDocText, setQmdDocText } from "../../../src/qmd/collab/sharedQmdDoc";
-import { docToBody, qmdSchema } from "../../../src/qmd/editor/index";
-import { parseItemFile, type ItemSegment } from "../../../src/qmd/item/itemFile";
-import { qmdFixtures, readQmdFixture } from "../fixtures/qmdFixtures";
+import { readQmdDoc, readQmdDocText, setQmdDocText } from "../../src/qmd/sharedQmdDoc";
+import { docToBody, qmdSchema } from "../../src/qmd/editor/index";
+import { parseItemFile, type ItemSegment } from "../../src/qmd/item/itemFile";
+import { qmdFixtures, readQmdFixture } from "./fixtures/qmdFixtures";
 
 const items = (text: string): ItemSegment[] => parseItemFile(text).segments.filter((segment): segment is ItemSegment => segment.kind === "item");
 

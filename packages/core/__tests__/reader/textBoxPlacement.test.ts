@@ -1,5 +1,5 @@
-import { fitEmptyBox, snapBox } from "../../../src/reader/text/textBoxPlacement";
-import type { PageRect } from "../../../src/reader/text/textBoxPlacement";
+import { fitEmptyBox, snapBox } from "../../src/reader/textBoxPlacement";
+import type { PageRect } from "../../src/reader/textBoxPlacement";
 
 const EPS = 1e-9;
 const right = (r: PageRect): number => r.x + r.w;

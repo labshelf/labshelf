@@ -16,6 +16,9 @@ Read when you decide what a feature does or what it says. How it looks is in [ui
 ## Projects
 
 - Projects are LabShelf's Overleaf or Typst app: a project is a writing project that cites papers from the Library and builds to a PDF. Coauthors can share a project.
+- A project has notes, plain `.qmd` files in the project. The browser sidebar has New note, and a note opens as a source tab of the project. The checklist counts note tasks and ticks them in the note.
+- The reader's Send to appends the quoted passage and its page link to a project note, or to a new one. The last targets are remembered per device.
+- A manuscript line that cites a paper with notes shows how many notes it has: a code lens and hover in VS Code, a gutter marker and popover in the browser source editor.
 
 ## Spaces
 

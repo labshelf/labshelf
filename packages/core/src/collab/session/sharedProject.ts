@@ -3,7 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import type { ProjectCatalogContext } from "../../writing/project/index.js";
 import { COMMENTS_PATH, importCommentsFile } from "../commentsFile.js";
 import { readFileText, isSafeSharePath, setFileText } from "../sharedFiles.js";
-import { readQmdDocText, setQmdDocText } from "../../qmd/collab/sharedQmdDoc.js";
+import { readQmdDocText, setQmdDocText } from "../../qmd/index.js";
 import { readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind } from "../shareIndexDoc.js";
 import { type ShareSession } from "../docSync.js";
 import { joinShare, startShare } from "../../share/index.js";

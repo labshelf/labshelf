@@ -37,7 +37,7 @@ packages:
       - path: packages/core/src/qmd/paperNotes.ts
         lines: 1-200
         why: PaperNotesStore.editItem, the write-back for paper notes (created by 6.1)
-      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+      - path: packages/core/src/qmd/projectNotesStore.ts
         lines: 1-200
         why: ProjectNotesStore.editItem, the write-back for project notes (created by 9.1)
       - path: packages/vscode/src/writing/build/node/toolchain.ts

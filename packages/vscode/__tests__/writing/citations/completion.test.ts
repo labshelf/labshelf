@@ -76,7 +76,7 @@ describe("findPageArgumentCompletion", () => {
     p1: [
       highlight({ id: "a", pageNumber: 4, content: "Attention is all\nyou need" }),
       highlight({ id: "b", pageNumber: 9, content: "x".repeat(80) }),
-      highlight({ id: "n", type: "note", content: "a note" }),
+      highlight({ id: "n", type: "comment", content: "a note" }),
       highlight({ id: "e", content: "  " }),
     ],
     p2: [highlight({ id: "c", paperId: "p2", pageNumber: 2, content: "Residual blocks" })],
@@ -248,7 +248,7 @@ describe("citationFromLibrary", () => {
     });
 
     it("cites the page of the accepted highlight, and quotes it when its button is clicked", async () => {
-      const { edits } = setup("typst", { p1: [highlight(), highlight({ id: "h2", type: "note" }), highlight({ id: "h3", content: "  " })] });
+      const { edits } = setup("typst", { p1: [highlight(), highlight({ id: "h2", type: "comment" }), highlight({ id: "h3", content: "  " })] });
       const picker = fakePicker(({ items, selectedItems, accept }) => { selectedItems.push(items[1]); accept.forEach((fn) => fn()); });
 
       await commandHandler("labshelf.writing.citeFromLibrary")();

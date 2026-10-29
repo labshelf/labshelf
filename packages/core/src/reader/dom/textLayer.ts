@@ -1,9 +1,10 @@
 // Reads the text of pdf pages and resolves citations and figure or table floats from it.
+import { deriveFloatRegion, type PdfRegion } from "../geometry.js";
+import type { FloatKind } from "../inTextReferences.js";
+import { findEntryAtY, findEntryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery, type ReferenceEntry } from "../referenceList.js";
 import {
-  findEntryAtY, findEntryByNumber, findReferencesStart, matchAuthorYear, splitReferenceEntries, type AuthorYearQuery,
-  type ReferenceEntry, type TextLine, findCaptionLines, deriveFloatRegion, pickCaption, type PdfRegion, type FloatKind,
-  detectColumns, deriveLinesFromItems, deriveReadableItems, runOrientation, type TextItemBox,
-} from "../text/index.js";
+  type TextLine, findCaptionLines, pickCaption, detectColumns, deriveLinesFromItems, deriveReadableItems, runOrientation, type TextItemBox,
+} from "../textLines.js";
 import type { ReaderContext } from "./readerSession.js";
 
 /**

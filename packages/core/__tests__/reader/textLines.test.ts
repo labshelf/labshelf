@@ -7,7 +7,7 @@ import {
   findCaptionLines,
   pickCaption,
   type TextLine,
-} from "../../../src/reader/text/textLines";
+} from "../../src/reader/textLines";
 
 function item(str: string, x: number, y: number, width: number, height = 10): TextItemBox {
   return { str, x, y, width, height };

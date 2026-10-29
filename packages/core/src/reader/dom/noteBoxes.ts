@@ -1,9 +1,9 @@
 // Draws the paper's text-box notes over their rendered pages: clipped read-only content that expands on click to edit.
 import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
-import { snapBox, type PageRect } from "../text/textBoxPlacement.js";
+import { snapBox, type PageRect } from "../textBoxPlacement.js";
 import { renderElement } from "../../ui/dom/index.js";
-import type { ReaderNote } from "../protocol/messages.js";
+import type { ReaderNote } from "../protocol/index.js";
 import { derivePageFrame, deriveBoxInPage } from "./pageHighlights.js";
 import type { ReaderContext } from "./readerSession.js";
 

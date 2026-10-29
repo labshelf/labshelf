@@ -3,7 +3,7 @@ export * from "./invite/index.js";
 export * from "./relays/index.js";
 export * from "./mirror/index.js";
 export * from "./session/index.js";
-export { readQmdDoc, readQmdDocText, reconcileQmd, setQmdDocText } from "../qmd/collab/index.js";
+export { readQmdDoc, readQmdDocText, setQmdDocText } from "../qmd/index.js";
 
 // The encrypted peer mesh a share session runs its channels over, the wire format of its messages, and the presence shared over it.
 export { createSecureMesh } from "./peerMesh.js";

@@ -6,7 +6,7 @@ import {
   type DestPreview, findDestAnchor, DestContent, createDestHoverAnchor, renderTextContent, runUnderPointer, TextAnchors,
 } from "./hoverTarget.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
-import type { FloatKind, InTextReference } from "../text/index.js";
+import type { FloatKind, InTextReference } from "../inTextReferences.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import { renderIcon } from "../../ui/index.js";
 

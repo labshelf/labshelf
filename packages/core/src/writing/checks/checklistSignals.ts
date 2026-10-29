@@ -8,7 +8,7 @@ import {
 } from "./checklist.js";
 import { scanTodos, type TodoItem } from "./todoMarkers.js";
 import { scanNoteTasks, type NoteTask } from "./noteTasks.js";
-import type { ProjectNotesStore } from "../../qmd/projectNotes/projectNotesStore.js";
+import type { ProjectNotesStore } from "../../qmd/index.js";
 
 const MODULE = "checklist";
 

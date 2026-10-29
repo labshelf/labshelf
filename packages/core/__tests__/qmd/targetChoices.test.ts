@@ -1,4 +1,4 @@
-import { deriveSendTargetChoices, type SendTarget, type SendTargetChoice } from "../../../src/qmd/sendTo/targetChoices";
+import { deriveSendTargetChoices, type SendTarget, type SendTargetChoice } from "../../src/qmd/targetChoices";
 
 const note = (projectId: string, path: string): SendTarget => ({ kind: "projectNote", projectId, path });
 

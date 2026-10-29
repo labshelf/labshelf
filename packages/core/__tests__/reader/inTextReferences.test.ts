@@ -6,7 +6,7 @@ import {
   findReferenceAtOffset,
   type InTextReference,
   type LinePart,
-} from '../../../src/reader/text/inTextReferences';
+} from '../../src/reader/inTextReferences';
 
 const at = (text: string, needle: string): InTextReference | null =>
   findReferenceAtOffset(findInTextReferences(text), text.indexOf(needle) + Math.floor(needle.length / 2));

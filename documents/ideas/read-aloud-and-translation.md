@@ -13,7 +13,7 @@ The UI follows [product.md](../product.md): core components, core tokens, core i
 
 ## Text source
 
-Both features read the same text the reader already builds: the pdf.js text layer turned into reading-order lines by `packages/core/src/reader/text/`. That code already handles two-column layouts, sideways margin stamps, captions, float regions and the reference list, so read aloud and translation reuse it and never parse the PDF themselves.
+Both features read the same text the reader already builds: the pdf.js text layer turned into reading-order lines by `packages/core/src/reader/`. That code already handles two-column layouts, sideways margin stamps, captions, float regions and the reference list, so read aloud and translation reuse it and never parse the PDF themselves.
 
 On top of the lines, a small core step builds **speakable paragraphs**:
 

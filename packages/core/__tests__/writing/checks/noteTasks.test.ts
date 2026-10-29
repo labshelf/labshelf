@@ -1,5 +1,5 @@
 /** Verifies scanning `- [ ]` / `- [x]` tasks out of project notes and ticking one through ProjectNotesStore. */
-import { createProjectNotesStore, type IProjectNoteFiles } from "../../../src/qmd/projectNotes/projectNotesStore";
+import { createProjectNotesStore, type IProjectNoteFiles } from "../../../src/qmd/projectNotesStore";
 import { scanNoteTasks, toggleNoteTask, type NoteTask } from "../../../src/writing/checks/noteTasks";
 import { fakeLogger } from "../../support/fakeLogger";
 

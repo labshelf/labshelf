@@ -113,7 +113,7 @@ packages:
       - path: packages/core/src/writing/noteLinks/index.ts
         lines: 1-12
         why: the origin API from 13.1
-      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+      - path: packages/core/src/qmd/projectNotesStore.ts
         lines: 1-200
         why: "ProjectNotesStore.list and read: the project notes to scan for equations (created by 9.1)"
       - path: packages/core/src/qmd/paperNotes.ts

@@ -48,7 +48,7 @@ packages:
       - path: packages/core/src/ports/fileSystem.ts
         lines: 1-52
         why: LibraryFileSystem port used by the stores
-      - path: packages/core/src/qmd/projectNotes/noteSlug.ts
+      - path: packages/core/src/qmd/projectNotesStore.ts
         lines: 1-40
         why: deriveNoteSlug (created by 9.1)
     seams:
@@ -73,7 +73,7 @@ packages:
     decided:
       - 'One file per note and one per thread. A note file: items as in any `.qmd`; the first item starts with `# <title>`. A thread file: the first item is the topic (`# <title>` plus body, attribute `status="open"|"resolved"`); each message is one item with `author` and `created`, in file order.'
       - "Code is flat in `packages/core/src/spaces/` per documents/code.md#modules: `spaceNotesStore.ts` and `spaceDiscussionsStore.ts`, no subfolder. Shared path helpers (slug-to-path, the `notes/` and `discussions/` folder names) live in `spaceNotesStore.ts` and are imported by the discussions store, never copied."
-      - Slugs reuse `deriveNoteSlug(title, taken)` from `packages/core/src/qmd/projectNotes/noteSlug.ts` (created by 9.1), imported, never copied.
+      - Slugs reuse `deriveNoteSlug(title, taken)` from `packages/core/src/qmd/projectNotesStore.ts` (created by 9.1), imported, never copied.
       - Writes go through `runSerially(ctx, spaceId, …)` of `spaceStore.ts` (serial per Space), re-read first, atomic, identical bytes in all apps (documents/code.md#files). If importing from `spaceStore.ts` makes an import cycle, move `StoreContext` and `runSerially` to the new notes file and re-export them from `spaceStore.ts`.
       - "`SpaceStore` exposes `notes` and `discussions` built from its own context, so `serveSpaces` and the apps take them from the store they already have."
       - Merge across devices is session 2's block merge (the Space scan already walks `spaces/<id>/**/*.qmd`); nothing here.
@@ -211,7 +211,7 @@ packages:
       - path: packages/core/src/spaces/spaceDiscussionsStore.ts
         lines: 1-400
         why: store created by 10.1 (whole file)
-      - path: packages/core/src/qmd/sendTo/sendTo.ts
+      - path: packages/core/src/qmd/sendTo.ts
         lines: 1-120
         why: SendTarget and ISendTargetWriter (created by 9.3)
     seams:
@@ -219,10 +219,10 @@ packages:
         signature: "export interface SpaceAssetWriter { write(spaceId: string, path: string, bytes: Uint8Array): Promise<void> }"
       - path: packages/core/src/spaces/spaceSendTargets.ts
         signature: "export function createSpaceSendWriters(notes: SpaceNotesStore, discussions: SpaceDiscussionsStore, assets: SpaceAssetWriter): { spaceNote: ISendTargetWriter; discussion: ISendTargetWriter }"
-      - path: packages/core/src/qmd/sendTo/sendTo.ts
+      - path: packages/core/src/qmd/sendTo.ts
         signature: "export interface ISendTargetWriter { append(target: SendTarget, body: string, extra?: SendExtra): Promise<void> } (from 9.3; SendExtra = { itemId?: string; author?: string; blob?: { path: string; bytes: Uint8Array } })"
     decided:
-      - The writers implement the `ISendTargetWriter` of Send to (`packages/core/src/qmd/sendTo/sendTo.ts`, created by 9.3; `SendTarget` kinds `spaceNote` and `discussion`). They live in `spaces/` so session 10 does not edit session 9's files; the apps register them where they register the project-note writer.
+      - The writers implement the `ISendTargetWriter` of Send to (`packages/core/src/qmd/sendTo.ts`, created by 9.3; `SendTarget` kinds `spaceNote` and `discussion`). They live in `spaces/` so session 10 does not edit session 9's files; the apps register them where they register the project-note writer.
       - "`spaceNote` appends with `notes.addItem(spaceId, target.path, body, extra?.author, extra?.itemId)`; `discussion` appends a message with `discussions.addMessage(spaceId, target.path, body, extra?.author, extra?.itemId)`. The author is the `sender` of the send request, passed by `sendTo` as `extra.author`; the item id is the one `sendTo` chose (`extra.itemId`), so the body's image path already holds it."
       - "A figure blob: `extra.blob.path` is `assets/<item id>.png`, relative to the folder of the target file; the writer writes it with `assets.write(spaceId, <dirname of target.path>/<blob.path>, bytes)` (path relative to the Space folder, e.g. `discussions/assets/<item id>.png`), before the append. A rejected asset write rejects `append` and nothing is appended; `sendTo` logs it (9.3)."
       - "Listing: Send to lists the Space notes and threads from the 10.1 `list` calls."

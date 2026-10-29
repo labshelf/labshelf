@@ -203,7 +203,7 @@ function threadMap(thread: Record<string, unknown>): Y.Map<unknown> {
 }
 
 /** Each thread as the plain JSON a client wrote, unknown keys included; entries that are not a thread map are skipped. */
-export function readRawLiveThreads(doc: Y.Doc): Record<string, unknown>[] {
+function readRawLiveThreads(doc: Y.Doc): Record<string, unknown>[] {
   const threads: Record<string, unknown>[] = [];
   readShareIndexDocComments(doc).forEach((value) => { if (value instanceof Y.Map) { threads.push(value.toJSON()); } });
   return threads;

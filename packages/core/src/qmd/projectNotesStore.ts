@@ -1,8 +1,8 @@
 // Lists, creates, reads and edits the .qmd notes of a project through an injected file port, one queued load-modify-save per file.
 // CONTRACT: documents/contracts/qmd-items.md#items
-import { KeyedQueue } from "../../async/index.js";
-import { stemOf } from "../../path/index.js";
-import type { ILogger } from "../../ports/index.js";
+import { KeyedQueue } from "../async/index.js";
+import { stemOf } from "../path/index.js";
+import type { ILogger } from "../ports/index.js";
 import {
   addItem,
   newItemId,
@@ -11,8 +11,22 @@ import {
   serializeItemFile,
   setItemBody,
   type ItemFile,
-} from "../item/index.js";
-import { deriveNoteSlug } from "./noteSlug.js";
+} from "./item/index.js";
+
+/** @returns lowercase ASCII words of the title joined by `-`, suffixed `-2`, `-3` while taken; `note` when the title has no words. */
+export function deriveNoteSlug(title: string, taken: ReadonlySet<string>): string {
+  const words = title
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .match(/[a-z0-9]+/g);
+  const base = words && words.length > 0 ? words.join("-") : "note";
+  if (!taken.has(base)) { return base; }
+  for (let n = 2; ; n++) {
+    const candidate = `${base}-${n}`;
+    if (!taken.has(candidate)) { return candidate; }
+  }
+}
 
 /** Paths are relative to the project folder, e.g. `notes/<slug>.qmd`. */
 export interface IProjectNoteFiles {
@@ -57,14 +71,11 @@ function titleOf(text: string, path: string): string {
   return stemOf(path);
 }
 
-export function createProjectNotesStore(files: IProjectNoteFiles, logger: ILogger): ProjectNotesStore {
-  const queue = new KeyedQueue();
+type Mutate = <T>(projectId: string, path: string, change: (file: ItemFile) => { file: ItemFile; result: T }) => Promise<T>;
 
-  const mutate = <T>(
-    projectId: string,
-    path: string,
-    change: (file: ItemFile) => { file: ItemFile; result: T },
-  ): Promise<T> =>
+/** Reads, changes and writes one note file, one change at a time per file. */
+function createMutate(files: IProjectNoteFiles, logger: ILogger, queue: KeyedQueue): Mutate {
+  return (projectId, path, change) =>
     queue.run(`${projectId}\u0000${path}`, async () => {
       const { file, result } = change(parseItemFile((await files.read(projectId, path)) ?? ""));
       try {
@@ -75,6 +86,11 @@ export function createProjectNotesStore(files: IProjectNoteFiles, logger: ILogge
       }
       return result;
     });
+}
+
+export function createProjectNotesStore(files: IProjectNoteFiles, logger: ILogger): ProjectNotesStore {
+  const queue = new KeyedQueue();
+  const mutate = createMutate(files, logger, queue);
 
   const listPaths = async (projectId: string): Promise<string[]> => (await files.list(projectId)).filter(isNotePath);
 

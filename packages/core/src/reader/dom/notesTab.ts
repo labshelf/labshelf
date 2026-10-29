@@ -5,7 +5,7 @@ import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/
 import { parseAnchor } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
-import type { ReaderNote } from "../protocol/messages.js";
+import type { ReaderNote } from "../protocol/index.js";
 import { renderReaderIconButton } from "./elements.js";
 import type { HostBridge, ReaderContext } from "./readerSession.js";
 import type { SidebarPanel } from "./sidebar.js";

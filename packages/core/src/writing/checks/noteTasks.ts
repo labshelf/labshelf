@@ -2,7 +2,7 @@
 import {
   OUTPUT_CLASS, extractLineContent, findCodeFences, findTopLevelDivs, parseDivOpener, parseItemFile, splitLines,
 } from "../../qmd/item/index.js";
-import type { ProjectNotesStore } from "../../qmd/projectNotes/projectNotesStore.js";
+import type { ProjectNotesStore } from "../../qmd/index.js";
 
 export interface NoteTask { file: string; itemId: string; line: number; text: string; done: boolean }
 

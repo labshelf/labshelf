@@ -1,5 +1,5 @@
-import { deriveFloatRegion, deriveCropRectForPreview, deriveDestPoint } from "../../../src/reader/text/geometry";
-import type { TextLine } from "../../../src/reader/text/textLines";
+import { deriveFloatRegion, deriveCropRectForPreview, deriveDestPoint } from "../../src/reader/geometry";
+import type { TextLine } from "../../src/reader/textLines";
 
 const W = 612;
 const H = 792;

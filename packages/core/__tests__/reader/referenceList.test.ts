@@ -7,11 +7,11 @@ import {
   isReferencesHeading,
   matchAuthorYear,
   splitReferenceEntries,
-} from "../../../src/reader/text/referenceList";
-import type { TextLine } from "../../../src/reader/text/textLines";
+} from "../../src/reader/referenceList";
+import type { TextLine } from "../../src/reader/textLines";
 
 function loadFixture(name: string): TextLine[] {
-  const filePath = path.join(__dirname, '../fixtures/references', name);
+  const filePath = path.join(__dirname, 'fixtures/references', name);
   return JSON.parse(fs.readFileSync(filePath, 'utf8')) as TextLine[];
 }
 

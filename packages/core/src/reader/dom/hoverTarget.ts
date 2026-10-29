@@ -1,9 +1,7 @@
 // Finds what the pointer hovers (text references and link destinations) and previews a link destination.
 import type { PageViewport, RenderTask } from "pdfjs-dist";
-import {
-  findReferenceAtOffset, type InTextReference, findInTextReferences, joinLineParts, type JoinedLine, type LinePart,
-  type PdfRegion,
-} from "../text/index.js";
+import type { PdfRegion } from "../geometry.js";
+import { findReferenceAtOffset, type InTextReference, findInTextReferences, joinLineParts, type JoinedLine, type LinePart } from "../inTextReferences.js";
 import type { HoverAnchor, PdfDestination, PopupContent } from "./hoverPreview.js";
 import { deriveDestPoint, deriveCropRectForPreview, type Rect } from "../index.js";
 import type { CitationResolver } from "./textLayer.js";
