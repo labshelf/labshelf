@@ -8,3 +8,4 @@ export * from "./projectNoteWriter.js";
 export * from "./recentTargets.js";
 export * from "./targetChoices.js";
 export * from "./sharedQmdDoc.js";
+export * from "./compute/index.js";
