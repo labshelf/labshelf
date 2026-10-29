@@ -1,5 +1,5 @@
 // Send to writers for Space notes and Space threads: append the sent item through the 10.1 stores, writing a figure blob first.
-import type { ISendTargetWriter, SendExtra, SendTarget } from "../qmd/sendTo.js";
+import type { ISendTargetWriter, SendExtra, SendTarget } from "../qmd/index.js";
 import type { SpaceDiscussionsStore } from "./spaceDiscussionsStore.js";
 import type { SpaceNotesStore } from "./spaceNotesStore.js";
 

@@ -3,8 +3,7 @@ import { mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import type { FetchLike, ILogger } from "../../../ports/index.js";
-import { downloadVerified, extractArchive } from "../../../latex/node/verify.js";
-import { findSingleTopDir, removeQuarantine, withStagingDir, type RunFile } from "../../../latex/node/texInstallers.js";
+import { downloadVerified, extractArchive, findSingleTopDir, removeQuarantine, withStagingDir, type RunFile } from "../../../latex/node/index.js";
 import type { PythonPin } from "../pythonPin.js";
 
 export const PIN_FILE = ".pin.json";

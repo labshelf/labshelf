@@ -5,7 +5,7 @@ import { stemOf } from "../path/index.js";
 import type { ILogger, LibraryFileSystem } from "../ports/index.js";
 import type { LibraryLayout } from "../library/index.js";
 import { addItem, newItemId, parseItemFile, removeItem, serializeItemFile, setItemBody, type ItemFile, type ItemSegment } from "../qmd/item/index.js";
-import { deriveNoteSlug } from "../qmd/projectNotesStore.js";
+import { deriveNoteSlug } from "../qmd/index.js";
 
 export interface StoreContext {
   readonly fs: LibraryFileSystem;

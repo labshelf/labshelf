@@ -2,8 +2,7 @@
 import { readFile, rmdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { FetchLike, ILogger } from "../../../ports/index.js";
-import { resolveSharedToolsDir, withToolLock } from "../../../latex/node/managedTex.js";
-import type { RunFile } from "../../../latex/node/texInstallers.js";
+import { resolveSharedToolsDir, withToolLock, type RunFile } from "../../../latex/node/index.js";
 import { PYTHON_PIN } from "../pythonPin.js";
 import { PIN_FILE, installPythonTree } from "./installPython.js";
 
