@@ -15,7 +15,7 @@ owns:
   - packages/browser/src/libraryUi/editorArea/sourceTab.ts
   - packages/browser/src/libraryPage/page.css
   - packages/core/src/writing/noteLinks/index.ts
-status: pending
+status: blocked
 packages:
   - id: "13.6"
     plan: qmd-notes
@@ -396,3 +396,4 @@ packages:
     do_not_touch:
       - packages/core/
       - packages/browser/src/collab/
+blocked_reason: "13.6: no report"
