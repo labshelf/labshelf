@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paleta LabShelf</title>
+<style>
+:root{--bg:#141414;--panel:#1f1f1f;--fg:#cccccc;--desc:#9d9d9d;--line:#2b2b2b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;padding:32px 16px 64px}
+main{max-width:1040px;margin:0 auto}
+h1{font-size:24px;margin:0 0 4px;color:#e5e5e5}
+h2{font-size:17px;margin:44px 0 6px;color:#e5e5e5}
+h3{font-size:13px;margin:22px 0 8px;color:var(--desc);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+p{margin:0 0 10px;color:var(--desc);max-width:72ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sw{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.sw i{display:block;height:54px}
+.sw div{padding:7px 9px;font-size:12px}
+.sw b{display:block;font-weight:600;color:#e5e5e5}
+.sw code{font:11px Menlo,monospace;color:var(--desc)}
+.sw small{display:block;color:var(--desc);font-size:11px}
+.tag{display:inline-block;font:10px Menlo,monospace;padding:1px 5px;border-radius:3px;background:#2b2b2b;color:var(--desc);margin-left:4px}
+.scale{display:flex;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.scale div{flex:1;min-width:0;padding:46px 6px 7px;font:10.5px Menlo,monospace}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:760px){.cols{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--desc);font-weight:600}
+.dot{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px;border:1px solid rgba(255,255,255,.12)}
+.big{font-size:32px;font-weight:600;color:#e5e5e5;line-height:1}
+.stats{display:flex;gap:32px;flex-wrap:wrap;margin:18px 0 0}
+.stats p{margin:4px 0 0}
+</style>
+</head>
+<body>
+<main>
+<h1>Paleta LabShelf: hoje e proposta</h1>
+<p>Valores lidos do tokens.json do design system e do CSS do site e do reader. Só tema escuro na comparação, que é onde a diferença aparece mais.</p>
+
+<div class="stats">
+  <div><div class="big">125</div><p>tokens de cor hoje</p></div>
+  <div><div class="big">10</div><p>azuis diferentes só no tema escuro</p></div>
+  <div><div class="big">3</div><p>famílias de cinza (app, reader, site)</p></div>
+</div>
+
+<h2>1. Os azuis de hoje</h2>
+<p>A maioria tem o mesmo matiz (~208°) e só muda de claridade. O site e os ícones de arquivo usam outro matiz, puxado para o lilás (~220°): é isso que dá a sensação de "outro azul".</p>
+<div class="grid">
+  <div class="sw"><i style="background:#0571df"></i><div><b>Logo (prompt &gt;)</b><code>#0571df</code><small>ls-brand-mark</small></div></div>
+  <div class="sw"><i style="background:#0078d4"></i><div><b>Botão, foco, progresso</b><code>#0078d4</code><small>6 tokens com o mesmo valor</small></div></div>
+  <div class="sw"><i style="background:#3794ff"></i><div><b>Info, Unread, ícone de aba</b><code>#3794ff</code><small>ls-blue</small></div></div>
+  <div class="sw"><i style="background:#4daafc"></i><div><b>Link</b><code>#4daafc</code><small>ls-link</small></div></div>
+  <div class="sw"><i style="background:#66b1f3"></i><div><b>Botão soft</b><code>#66b1f3</code><small>ls-button-soft-fg</small></div></div>
+  <div class="sw"><i style="background:#6ea3e0"></i><div><b>Arc mark (Reading)</b><code>#6ea3e0</code><small>ls-mark-accent</small></div></div>
+  <div class="sw"><i style="background:#7d9fe0"></i><div><b>Arquivo .md/.bib · destaque do site</b><code>#7d9fe0</code><small>matiz 219°</small></div></div>
+  <div class="sw"><i style="background:#86a9ec"></i><div><b>Link do site</b><code>#86a9ec</code><small>matiz 219°</small></div></div>
+  <div class="sw"><i style="background:#2a55a8"></i><div><b>Link do manual (site)</b><code>#2a55a8</code><small>valor solto no CSS</small></div></div>
+  <div class="sw"><i style="background:#04395e"></i><div><b>Item selecionado</b><code>#04395e</code><small>ls-list-active-bg</small></div></div>
+</div>
+
+<h2>2. Os fundos de hoje</h2>
+<p>O app usa cinza neutro. O reader usa outro cinza (herdado de outro tema do VS Code). O site usa cinzas azulados, então a mesma "cor de fundo" muda de tom quando você sai do app e entra no site.</p>
+<div class="cols">
+<div>
+<h3>App (extensão, Helper)</h3>
+<div class="scale">
+  <div style="background:#141414">#141414</div><div style="background:#181818">#181818</div><div style="background:#1f1f1f">#1f1f1f</div><div style="background:#202020">#202020</div><div style="background:#2b2b2b">#2b2b2b</div><div style="background:#313131">#313131</div>
+</div>
+<h3>Reader</h3>
+<div class="scale">
+  <div style="background:#1e1e1e">#1e1e1e</div><div style="background:#252526">#252526</div><div style="background:#3c3c3c">#3c3c3c</div>
+</div>
+</div>
+<div>
+<h3>Site</h3>
+<div class="scale">
+  <div style="background:#0d1118">#0d1118</div><div style="background:#141a24">#141a24</div><div style="background:#151a23">#151a23</div><div style="background:#161c26">#161c26</div><div style="background:#1a202b">#1a202b</div><div style="background:#1c2431">#1c2431</div><div style="background:#262d3a">#262d3a</div><div style="background:#273041">#273041</div>
+</div>
+<p style="margin-top:8px">5 desses estão escritos direto no CSS, fora dos tokens.</p>
+</div>
+</div>
+
+<h2>3. Proposta: uma paleta base, todo o resto aponta para ela</h2>
+<p>Os nomes de token continuam existindo (o código e o VS Code dependem deles), mas viram apelidos de poucas cores base. Mudou o azul base, mudou em todo lugar.</p>
+
+<h3>Azul · um matiz só (~208°)</h3>
+<div class="scale">
+  <div style="background:#d6ebff;color:#141414">100<br>#d6ebff</div>
+  <div style="background:#add6ff;color:#141414">200<br>#add6ff</div>
+  <div style="background:#4daafc;color:#141414">300<br>#4daafc</div>
+  <div style="background:#0078d4">500<br>#0078d4</div>
+  <div style="background:#005fb8">600<br>#005fb8</div>
+  <div style="background:#04395e">900<br>#04395e</div>
+</div>
+<table style="margin-top:12px">
+<tr><th>Passo</th><th>Usado em</th></tr>
+<tr><td><span class="dot" style="background:#0078d4"></span>500</td><td><b>A cor da marca.</b> Logo, botão primário, foco, progresso (tema escuro). Texto branco em cima: 4.53:1.</td></tr>
+<tr><td><span class="dot" style="background:#4daafc"></span>300</td><td>Tudo que é azul <i>sobre fundo escuro</i>: link, info, Unread, Arc, arquivo .md/.bib, ícone de aba escuro, link e destaque do site. 6.65:1 sobre #1f1f1f.</td></tr>
+<tr><td><span class="dot" style="background:#005fb8"></span>600</td><td>O mesmo papel no tema claro: botão, foco, link, ícone de aba claro. 6.31:1 sobre branco.</td></tr>
+<tr><td><span class="dot" style="background:#04395e"></span>900 · 100 · 200</td><td>Seleção e alvo de arraste (escuro e claro).</td></tr>
+</table>
+
+<h3>Cinza · neutro, o mesmo no app, no reader e no site</h3>
+<div class="scale">
+  <div style="background:#141414">950</div><div style="background:#181818">900</div><div style="background:#1f1f1f">850</div><div style="background:#2b2b2b">800</div><div style="background:#313131">750</div><div style="background:#3c3c3c">700</div><div style="background:#616161">500</div><div style="background:#9d9d9d;color:#141414">400</div><div style="background:#cccccc;color:#141414">200</div><div style="background:#e5e5e5;color:#141414">100</div><div style="background:#f8f8f8;color:#141414">50</div><div style="background:#ffffff;color:#141414">0</div>
+</div>
+<p style="margin-top:8px">Os valores são os que o app já usa. O que muda: o site deixa os cinzas azulados, o reader deixa #1e1e1e/#252526, e #202020 (widgets) vira #1f1f1f.</p>
+
+<h3>Fica fora da paleta de marca, em blocos próprios</h3>
+<p>Não são cores do LabShelf, são cores de conteúdo ou temas que o usuário escolhe: sintaxe do editor (e os temas alternativos), cores ANSI do terminal, as 5 cores de highlight de PDF e os modos de página do reader (sépia, alto contraste). Ficam onde estão, só separados.</p>
+
+<h2>Resultado</h2>
+<table>
+<tr><th></th><th>Hoje</th><th>Proposta</th></tr>
+<tr><td>Azuis de interface (os dois temas)</td><td>13</td><td>6, um matiz</td></tr>
+<tr><td>Cinzas de fundo (escuro)</td><td>17, três famílias</td><td>6, uma família</td></tr>
+<tr><td>Verde / âmbar / vermelho</td><td>3 conjuntos por cor (status, Arc, site)</td><td>1 por cor e tema (a verificar contraste)</td></tr>
+<tr><td>Nomes de token</td><td>125</td><td>~120, quase todos apelidos</td></tr>
+</table>
+</main>
+</body>
+</html>
