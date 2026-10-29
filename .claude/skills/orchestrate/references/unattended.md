@@ -30,6 +30,7 @@ This session is a lint milestone (the runner says so, or the YAML session has `m
 ## Resume
 
 A previous run of this session stopped (usage limit, context stop, or it ended its turn early) before it finished. The uncommitted changes are that run's partial work:
+- YAML: first run `plan finished <session> --check`. "finished on this tree": the finishing pass already passed on this exact tree, so run `plan close <session>` and nothing else. "changed since the finishing pass": run `finish session <session file> changed: <the listed files>`, then `plan close`. "not finished": go on below;
 - read `git status` and `git diff --stat`, then the session's progress: the session file's OK column and its `research/` files (legacy), or each package's report in `.git/labshelf-runs/<plan>/` and the `plan status` output (YAML);
 - keep what is correct, do not redo finished packages, and continue from there.
 

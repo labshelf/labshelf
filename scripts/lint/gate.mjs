@@ -1,12 +1,13 @@
 // Runs typecheck, tests and lint for the packages a change touches, then the module rules once, and prints only PASS/FAIL with the errors that matter.
 // Usage: pnpm gate [--no-lint] [pkg...] — with no packages, gates those touched by the uncommitted change (core pulls in
 // every app). --no-lint runs only typecheck and tests, and skips the module rules.
-// A PASS is cached per working tree in .git/labshelf-gate, so a second run on the same tree returns at once.
-import { execFileSync, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// The result is recorded per working tree in .git/labshelf-gate (gateRecord.mjs): a second run on the same tree, or
+// `plan close` after it, returns at once when a PASS at least as strong covered the same packages.
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gatePassed, touchedPackages, treeState, writeGateRecord } from "./gateRecord.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STEPS = ["typecheck", "test", "lint"];
@@ -15,26 +16,6 @@ const ERROR_LINE = /error|\u25CF|\u2715|FAIL\b/;
 const NOISE = /^(\[?ELIFECYCLE|Error: ERR_PNPM|Found \d+ errors? in|\u25CF Test suite failed to run)/;
 const LOCATED = /\.\w+:\d+/;
 const ANSI = /\x1b\[[0-9;]*m/g;
-
-const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "buffer", maxBuffer: 1 << 30 });
-
-function touchedPackages() {
-  const changed = new Set();
-  for (const line of git("status", "--porcelain").toString().split("\n")) {
-    const match = line.slice(3).match(/^packages\/([^/]+)\//);
-    if (match) changed.add(match[1]);
-  }
-  if (changed.has("core")) for (const app of ["vscode", "browser", "terminal"]) changed.add(app);
-  return [...changed].filter((pkg) => existsSync(join(root, "packages", pkg, "package.json"))).sort();
-}
-
-function treeFingerprint() {
-  const hash = createHash("sha1").update(git("rev-parse", "HEAD")).update(git("diff", "HEAD", "--binary"));
-  for (const file of git("ls-files", "--others", "--exclude-standard", "-z").toString().split("\0").filter(Boolean)) {
-    hash.update(file).update(readFileSync(join(root, file)));
-  }
-  return hash.digest("hex").slice(0, 12);
-}
 
 function runStep(pkg, step) {
   const scripts = JSON.parse(readFileSync(join(root, "packages", pkg, "package.json"), "utf8")).scripts ?? {};
@@ -51,16 +32,14 @@ const args = process.argv.slice(2);
 const noLint = args.includes("--no-lint");
 const named = args.filter((arg) => !arg.startsWith("--"));
 const steps = noLint ? STEPS.filter((step) => step !== "lint") : STEPS;
-const packages = named.length ? named : touchedPackages();
+const packages = named.length ? named : touchedPackages(root);
+const { fingerprint } = treeState(root);
 if (packages.length === 0) {
+  writeGateRecord(root, { fingerprint, passed: true, lint: !noLint, packages });
   console.log("Gate: PASS (no package changed)");
   process.exit(0);
 }
-
-const cacheFile = join(git("rev-parse", "--absolute-git-dir").toString().trim(), "labshelf-gate");
-const fingerprint = treeFingerprint();
-const cached = existsSync(cacheFile) ? readFileSync(cacheFile, "utf8").trim().split(" ") : [];
-if (cached[0] === fingerprint && cached[1] === "PASS" && packages.every((pkg) => cached.slice(2).includes(pkg))) {
+if (gatePassed(root, { fingerprint, lint: !noLint, packages })) {
   console.log(`Gate: PASS (cached ${fingerprint}: ${packages.join(", ")})`);
   process.exit(0);
 }
@@ -89,6 +68,5 @@ if (!passed) {
   errors.sort((a, b) => Number(LOCATED.test(b)) - Number(LOCATED.test(a)));
   console.log(errors.slice(0, MAX_ERRORS).map((line) => `- ${line}`).join("\n"));
 }
-// A --no-lint pass proves less than a full one, so only a full run is cached.
-if (!noLint) writeFileSync(cacheFile, `${fingerprint} ${passed ? "PASS" : "FAIL"} ${packages.join(" ")}\n`);
+writeGateRecord(root, { fingerprint, passed, lint: !noLint, packages });
 process.exit(passed ? 0 : 1);

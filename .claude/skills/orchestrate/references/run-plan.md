@@ -21,7 +21,8 @@ A session reads its `sessions/<id>.yaml` and nothing else of the plan. The specs
    4. An implementer that returns twice without `done` on Sonnet moves to `opus`; never start a third Sonnet attempt.
 3. After all packages:
    - `finish session <session file>`: the finisher gates the session's `owns`, reviews, and checks every `possible duplicate` note `dup-guard` printed (reused, extended, or a stated reason why not). The gate, `pnpm lint` and the fixes they need run inside the finisher, never in the main thread. The main thread only routes its result: each needs-judgment item becomes a spec package in the session file, run by an `implementer`.
-   - `plan close <session>`: it marks the session `done`, logs it and commits the session's `owns`. Never commit by hand in the YAML flow.
+     A passing finisher records its gate and leaves `.git/labshelf-runs/<plan>/<session>.finished` for the exact tree. A reopened session runs `plan finished <session> --check` first: on a match it goes straight to `plan close`; otherwise it runs `finish session` with `changed: <files>` on only what it lists.
+   - `plan close <session>`: it reuses the finisher's gate when the tree is unchanged (else gates again), marks the session `done`, logs it, commits the session's `owns` and removes the finished marker. Never commit by hand in the YAML flow.
 4. After the plan's last session: `finish plan <plan dir>`.
 5. Reply with the handoff message from [handoff.md](handoff.md) and stop.
 

@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, afterEach, before, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadSession, saveSession } from "../planFiles.mjs";
+import { treeState, writeGateRecord } from "../../lint/gateRecord.mjs";
 import { planClose } from "../planClose.mjs";
+import { checkFinished, markFinished } from "../planFinished.mjs";
 import { planNew } from "../planNew.mjs";
 
 const cli = fileURLToPath(new URL("../plan.mjs", import.meta.url));
@@ -194,6 +196,48 @@ describe("planClose", () => {
     assert.equal(result.status, "blocked");
     assert.match(loadSession(dir, "1").blocked_reason, /1\.2.*no report/);
     assert.equal(readFileSync(join(root, "src/b.mjs"), "utf8"), "b1\n");
+  });
+
+  it("skips its gate when a pass at least as strong was recorded for this exact tree", () => {
+    const { root, dir, runs } = setup();
+    putReport(runs, "1.1", "done");
+    putReport(runs, "1.2", "done");
+    write(root, "src/a.mjs", "a2\n");
+    writeGateRecord(root, { fingerprint: treeState(root).fingerprint, passed: true, lint: false, packages: [] });
+    process.env.LABSHELF_CLOSE_GATE = "false";
+    assert.equal(planClose(root, { planDir: dir, sessionId: "1" }).gate, "recorded");
+  });
+
+  it("runs its gate when the tree changed since the recorded pass, or the pass is weaker", () => {
+    const { root, dir, runs } = setup({ milestone: true });
+    putReport(runs, "1.1", "done");
+    putReport(runs, "1.2", "done");
+    write(root, "src/a.mjs", "a2\n");
+    process.env.LABSHELF_CLOSE_GATE = "false";
+    writeGateRecord(root, { fingerprint: treeState(root).fingerprint, passed: true, lint: false, packages: [] });
+    assert.throws(() => planClose(root, { planDir: dir, sessionId: "1" }), /gate failed/);
+    writeGateRecord(root, { fingerprint: treeState(root).fingerprint, passed: true, lint: true, packages: [] });
+    write(root, "src/b.mjs", "b2\n");
+    assert.throws(() => planClose(root, { planDir: dir, sessionId: "1" }), /gate failed/);
+  });
+
+  it("checks the finished marker against the tree, and close removes it", () => {
+    const { root, dir, runs } = setup();
+    putReport(runs, "1.1", "done");
+    putReport(runs, "1.2", "done");
+    write(root, "src/a.mjs", "a2\n");
+    assert.deepEqual(checkFinished(root, { planDir: dir, sessionId: "1" }), { state: "none" });
+    const marker = markFinished(root, { planDir: dir, sessionId: "1" });
+    assert.equal(marker, join(runs, "1.finished"));
+    assert.deepEqual(checkFinished(root, { planDir: dir, sessionId: "1" }), { state: "unchanged" });
+    write(root, "src/b.mjs", "b2\n");
+    write(root, "src/new1.mjs", "n1\n");
+    assert.deepEqual(checkFinished(root, { planDir: dir, sessionId: "1" }), { state: "changed", files: ["src/b.mjs", "src/new1.mjs"] });
+    const check = spawnSync("node", [cli, "finished", "1", "--check", "--plan", dir], { cwd: root, encoding: "utf8", env: process.env });
+    assert.equal(check.status, 1);
+    assert.match(check.stdout, /changed since the finishing pass:\n {2}src\/b\.mjs\n {2}src\/new1\.mjs/);
+    planClose(root, { planDir: dir, sessionId: "1" });
+    assert.equal(existsSync(marker), false);
   });
 
   it("runs through the plan CLI", () => {
