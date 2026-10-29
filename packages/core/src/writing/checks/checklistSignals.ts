@@ -7,6 +7,8 @@ import {
   type BrokenReference, type ChecklistDocument, type ChecklistSource, type ManualItem, type StaleFigure,
 } from "./checklist.js";
 import { scanTodos, type TodoItem } from "./todoMarkers.js";
+import { scanNoteTasks, type NoteTask } from "./noteTasks.js";
+import type { ProjectNotesStore } from "../../qmd/projectNotes/projectNotesStore.js";
 
 const MODULE = "checklist";
 
@@ -59,6 +61,32 @@ export interface ChecklistSignals {
   brokenRefs: BrokenReference[];
   staleFigures: StaleFigure[];
   manual: ManualItem[];
+  /** The task lines of the project's notes; empty without a notes store. */
+  noteTasks: NoteTask[];
+  /** Note file to note title; empty without a notes store. */
+  noteTitles: Map<string, string>;
+}
+
+/** The project's notes store and the project id it reads them by. */
+export interface ProjectNotesSource { store: ProjectNotesStore; projectId: string }
+
+/** A note that cannot be read is logged and left out, so one bad file never hides the others. */
+async function readNoteTasks({ logger }: ProjectReadContext, { store, projectId }: ProjectNotesSource): Promise<Pick<ChecklistSignals, "noteTasks" | "noteTitles">> {
+  const noteTasks: NoteTask[] = [];
+  const noteTitles = new Map<string, string>();
+  try {
+    for (const { path, title } of await store.list(projectId)) {
+      noteTitles.set(path, title);
+      try {
+        noteTasks.push(...scanNoteTasks(path, (await store.read(projectId, path)) ?? ""));
+      } catch (error) {
+        await logger.error(MODULE, error, { projectId, path, action: "read note tasks" });
+      }
+    }
+  } catch (error) {
+    await logger.error(MODULE, error, { projectId, action: "list notes" });
+  }
+  return { noteTasks, noteTitles };
 }
 
 const readProjectFile = ({ fs, paths }: ProjectReadContext, folder: string, relative: string): Promise<string | undefined> =>
@@ -90,9 +118,12 @@ async function readStaleFigures(context: ProjectReadContext, project: ReadyProje
 }
 
 /** An unreadable or missing main file yields empty signals and one warning, so a list row never fails on one project. */
-export async function readChecklistSignals(context: ProjectReadContext, project: ReadyProject): Promise<ChecklistSignals> {
+export async function readChecklistSignals(
+  context: ProjectReadContext, project: ReadyProject, notes?: ProjectNotesSource,
+): Promise<ChecklistSignals> {
   const { logger } = context;
-  const empty: ChecklistSignals = { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [] };
+  const { noteTasks, noteTitles } = notes ? await readNoteTasks(context, notes) : { noteTasks: [], noteTitles: new Map<string, string>() };
+  const empty: ChecklistSignals = { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks, noteTitles };
   const main = project.main;
   const where = { folder: project.folder, main };
   if (main === undefined) {
@@ -112,5 +143,5 @@ export async function readChecklistSignals(context: ProjectReadContext, project:
   }
   const todos = read.sources.flatMap((source) => scanTodos(source.format, source.path, source.text));
   const [staleFigures, manual] = await Promise.all([readStaleFigures(context, project), readManualItems(context, project.folder)]);
-  return { sources: read.sources, todos, brokenRefs: read.brokenRefs, staleFigures, manual };
+  return { sources: read.sources, todos, brokenRefs: read.brokenRefs, staleFigures, manual, noteTasks, noteTitles };
 }

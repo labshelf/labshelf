@@ -22,6 +22,7 @@ type ReadingChecklistItem = Extract<ChecklistItem, { kind: "reading" }>;
 function createItemKey(item: ChecklistItem): string {
   switch (item.kind) {
     case "todo": return `todo:${item.todo.file}:${item.todo.line}`;
+    case "noteTask": return `noteTask:${item.task.file}:${item.task.itemId}:${item.task.line}`;
     case "ref": return `ref:${item.ref.file}:${item.ref.line}:${item.ref.ref}`;
     case "figure": return `figure:${item.figure.name}`;
     case "pages": return "pages";
@@ -31,9 +32,8 @@ function createItemKey(item: ChecklistItem): string {
 }
 
 /** A source location row: `<file stem>:<line>` as description and a click that opens it. */
-function located(paths: PathOps, key: string, label: string, file: string, line: number): SidebarTreeNode {
-  const at = line + 1;
-  return { key, label, description: `${paths.basename(file, paths.extname(file))}:${at}`, tooltip: `${file}:${at}`, clickable: true };
+function located(paths: PathOps, key: string, label: string, file: string, line: number, tooltip = `${file}:${line + 1}`): SidebarTreeNode {
+  return { key, label, description: `${paths.basename(file, paths.extname(file))}:${line + 1}`, tooltip, clickable: true };
 }
 
 const pagesText = (pages: number): string => Number.isInteger(pages) ? String(pages) : pages.toFixed(1);
@@ -62,9 +62,13 @@ function readingRow(key: string, item: ReadingChecklistItem, paper: ReadingPaper
   };
 }
 
-function createItemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>): SidebarTreeNode {
+function createItemRow(paths: PathOps, key: string, item: ChecklistItem, reading: ReadonlyMap<string, ReadingPaper>, noteTitles: ReadonlyMap<string, string>): SidebarTreeNode {
   switch (item.kind) {
     case "todo": return located(paths, key, item.todo.text, item.todo.file, item.todo.line);
+    case "noteTask": return {
+      ...located(paths, key, item.task.text, item.task.file, item.task.line, noteTitles.get(item.task.file) ?? item.task.file),
+      checked: item.done, ...(item.done ? { struck: true } : {}),
+    };
     case "ref": return located(paths, key, `\\ref{${item.ref.ref}}`, item.ref.file, item.ref.line);
     case "figure": return { key, label: item.figure.name, tooltip: "Stale figure", inlineAction: { action: "regenerate", label: "Regenerate" } };
     case "pages": return { key, ...createPagesHead(item.overflow) };
@@ -85,6 +89,8 @@ export interface ChecklistTreeInput {
   /** Shown as the Pages row in By kind; undefined without a page limit or a count. */
   pageCount: PageOverflow | undefined;
   reading: ReadonlyMap<string, ReadingPaper>;
+  /** Note file to note title, the tooltip of a note task row. */
+  noteTitles: ReadonlyMap<string, string>;
   isExpanded: (groupId: string, byDefault: boolean) => boolean;
 }
 
@@ -124,7 +130,7 @@ function groupNode(input: ChecklistTreeInput, tree: ChecklistTree, group: Checkl
   const row = (item: ChecklistItem): SidebarTreeNode => {
     const rowKey = `${key}/${createItemKey(item)}`;
     tree.items.set(rowKey, item);
-    return createItemRow(input.paths, rowKey, item, input.reading);
+    return createItemRow(input.paths, rowKey, item, input.reading, input.noteTitles);
   };
   // Manual items follow the group's own rows, the folded "N read" row included.
   const own = group.items.filter((item) => item.kind !== "manual" || group.id === "manual" || group.id.startsWith("#"));

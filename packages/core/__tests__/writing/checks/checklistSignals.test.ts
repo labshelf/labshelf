@@ -175,7 +175,7 @@ describe("readChecklistSignals", () => {
 
       const signals = await readChecklistSignals(reads(fs, logger), readyProject(FOLDER, "latex", "main.tex"));
 
-      expect(signals).toEqual({ sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [] });
+      expect(signals).toEqual({ sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks: [], noteTitles: new Map() });
       expect(logger.logs.map((entry) => entry.level)).toEqual(["WARN"]);
     });
   });

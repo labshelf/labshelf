@@ -276,6 +276,8 @@ describe("buildChecklist", () => {
     ],
     placeSection,
     citeSections: new Map<string, ChecklistSection[]>([["a", [intro, methods]], ["b", [methods]]]),
+    noteTasks: [],
+    noteTitles: new Map<string, string>(),
   };
 
   const empty = { ...base, todos: [], brokenRefs: [], staleFigures: [], pageOverflow: undefined, manual: [], reading: [] };

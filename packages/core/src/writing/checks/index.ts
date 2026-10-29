@@ -5,7 +5,8 @@ export { derivePaperBody, derivePdfTextLines, walkOperators, readPdfFacts, deriv
 export type { OperatorList, PageOperators, PdfFacts, PdfPageFacts, PdfTextItem, PlacedFigure } from "./pdfFacts.js";
 export * from "./checklist.js";
 export { scanTodos, type TodoItem } from "./todoMarkers.js";
+export { scanNoteTasks, toggleNoteTask, type NoteTask } from "./noteTasks.js";
 export { readManualItems, readChecklistSignals, updateChecklist } from "./checklistSignals.js";
-export type { ChecklistSignals } from "./checklistSignals.js";
+export type { ChecklistSignals, ProjectNotesSource } from "./checklistSignals.js";
 export { deriveChecklistSidebarNodes } from "./checklistSidebar.js";
 export type { ChecklistTree, ChecklistTreeInput, ReadingPaper } from "./checklistSidebar.js";

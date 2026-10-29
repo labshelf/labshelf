@@ -5,6 +5,7 @@ import { isRecord, isTimestamp } from "../../guards/index.js";
 import { parseJsonObject } from "../../json/index.js";
 import type { ProjectFormat } from "../project/index.js";
 import type { TodoItem } from "./todoMarkers.js";
+import type { NoteTask } from "./noteTasks.js";
 import { findCitationSites, findSourceHeadings, type SourceHeading } from "../citations/index.js";
 
 // --- Checklist file ---
@@ -159,10 +160,15 @@ export interface ChecklistInput {
   reading: readonly ReadingItem[];
   placeSection: SectionPlacer;
   citeSections: ReadonlyMap<string, readonly ChecklistSection[]>;
+  /** The task lines of the project's notes. */
+  noteTasks: readonly NoteTask[];
+  /** Note file to note title. */
+  noteTitles: ReadonlyMap<string, string>;
 }
 
 export type ChecklistItem =
   | { kind: "todo"; done: false; todo: TodoItem }
+  | { kind: "noteTask"; done: boolean; task: NoteTask }
   | { kind: "ref"; done: false; ref: BrokenReference }
   | { kind: "figure"; done: false; figure: StaleFigure }
   | { kind: "pages"; done: false; overflow: PageOverflow }
@@ -188,6 +194,7 @@ export type ChecklistGrouping = "kind" | "section";
 
 interface Items {
   todos: ChecklistItem[];
+  notes: ChecklistItem[];
   refs: ChecklistItem[];
   figures: ChecklistItem[];
   pages: ChecklistItem[];
@@ -198,6 +205,7 @@ interface Items {
 function toItems(input: ChecklistInput): Items {
   return {
     todos: input.todos.map((todo) => ({ kind: "todo", done: false, todo })),
+    notes: input.noteTasks.map((task) => ({ kind: "noteTask", done: task.done, task })),
     refs: input.brokenRefs.map((ref) => ({ kind: "ref", done: false, ref })),
     figures: input.staleFigures.map((figure) => ({ kind: "figure", done: false, figure })),
     pages: input.pageOverflow ? [{ kind: "pages", done: false, overflow: input.pageOverflow }] : [],
@@ -213,7 +221,7 @@ function byKind(items: Items): ChecklistGroup[] {
   const placed = (id: string, own: ChecklistItem[]): ChecklistItem[] =>
     [...own, ...items.manual.filter((item) => item.kind === "manual" && item.manual.group === id)];
   return [
-    group("todo", "TODOs", placed("todo", items.todos)),
+    group("todo", "TODOs", placed("todo", [...items.todos, ...items.notes])),
     group("ref", "References", placed("ref", items.refs)),
     group("figure", "Figures", placed("figure", items.figures)),
     group("pages", "Pages", placed("pages", items.pages)),
@@ -237,6 +245,11 @@ function bySection(input: ChecklistInput, items: Items): ChecklistGroup[] {
   };
   for (const item of items.todos) { if (item.kind === "todo") { add(input.placeSection(item.todo.file, item.todo.line), item); } }
   for (const item of items.refs) { if (item.kind === "ref") { add(input.placeSection(item.ref.file, item.ref.line), item); } }
+  for (const item of items.notes) {
+    if (item.kind !== "noteTask") { continue; }
+    const { file } = item.task;
+    add({ id: `note:${file}`, title: input.noteTitles.get(file) ?? file, file }, item);
+  }
   const uncited: ChecklistItem[] = [];
   for (const item of items.reading) {
     const citing = item.kind === "reading" ? input.citeSections.get(item.paper.key) ?? [] : [];
