@@ -1,6 +1,6 @@
 // Mounts the Notes tab of a Space: the list of its note files and the editors of the open note's items.
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
-import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/qmdEditor.js";
+import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 
@@ -46,7 +46,7 @@ export function bindQmdCreate(button: HTMLElement, ctx: OverviewContext, title: 
 }
 
 /** Applies a new snapshot to `ctx`; returns the controller to keep when the read-only state changed, undefined otherwise. */
-export function syncQmdReadOnly(ctx: OverviewContext, data: OverviewContext["data"], controller: AbortController): AbortController | undefined {
+function syncQmdReadOnly(ctx: OverviewContext, data: OverviewContext["data"], controller: AbortController): AbortController | undefined {
   const readOnly = !!data.readOnlyReason;
   ctx.data = data;
   if (readOnly === ctx.readOnly) return undefined;
@@ -56,6 +56,14 @@ export function syncQmdReadOnly(ctx: OverviewContext, data: OverviewContext["dat
   const next = new AbortController();
   ctx.signal = next.signal;
   return next;
+}
+
+/** Applies a new snapshot to a mounted space; runs `repaint` only when the read-only state changed. */
+export function updateQmdSpace(s: { ctx: OverviewContext; controller: AbortController; create: HTMLButtonElement }, data: OverviewContext["data"], repaint: () => void): void {
+  const next = syncQmdReadOnly(s.ctx, data, s.controller);
+  if (!next) return;
+  s.controller = next; s.create.disabled = s.ctx.readOnly;
+  repaint();
 }
 
 interface ItemEditor {
@@ -69,116 +77,130 @@ interface ItemEditor {
   handle: QmdEditorHandle;
 }
 
-export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { notes?: SpaceNoteEntry[] }): SpaceBody {
-  let controller = new AbortController();
-  const ctx: OverviewContext = { data: context.data, end: context.end, readOnly: context.readOnly, signal: controller.signal };
-  let notes = context.notes;
-  let selected: string | undefined;
-  let items: SpaceQmdItem[] | undefined;
-  let known: Set<string> | undefined;
-  let editors: ItemEditor[] = [];
-  const spaceId = (): string => ctx.data.space.id;
+interface NotesState {
+  controller: AbortController;
+  ctx: OverviewContext;
+  notes: SpaceNoteEntry[] | undefined;
+  selected: string | undefined;
+  items: SpaceQmdItem[] | undefined;
+  known: Set<string> | undefined;
+  editors: ItemEditor[];
+  create: HTMLButtonElement;
+  column: HTMLElement;
+  detail: HTMLElement;
+}
 
+const notesSpaceId = (s: NotesState): string => s.ctx.data.space.id;
+const canWriteNotes = (s: NotesState): boolean => !s.ctx.readOnly && !s.ctx.signal?.aborted;
+
+function buildNotesState(root: HTMLElement, context: OverviewContext & { notes?: SpaceNoteEntry[] }): NotesState {
+  const controller = new AbortController();
+  const ctx: OverviewContext = { data: context.data, end: context.end, readOnly: context.readOnly, signal: controller.signal };
   const create = renderElement("button", { type: "button", class: "ls-btn", text: `New ${QMD_VOCABULARY.item}`, disabled: ctx.readOnly });
   const column = renderElement("section", { class: "nt-list", "aria-label": "Notes" });
   const detail = renderElement("section", { class: "nt-detail", "aria-label": "Note" });
   root.replaceChildren(renderElement("div", { class: "nt-notes" },
     renderElement("header", { class: "nt-head" }, renderElement("p", { text: "Keep ideas, meeting notes and comparisons with this Space." }), create),
     renderElement("div", { class: "nt-layout" }, column, detail)));
+  return { controller, ctx, notes: context.notes, selected: undefined, items: undefined, known: undefined, editors: [], create, column, detail };
+}
 
-  const destroyEditors = (): void => { for (const editor of editors) editor.handle.destroy(); editors = []; };
-  const canWrite = (): boolean => !ctx.readOnly && !ctx.signal?.aborted;
-  const hasFocus = (): boolean => editors.some(editor => editor.host.contains(document.activeElement));
+function destroyNoteEditors(s: NotesState): void {
+  for (const editor of s.editors) editor.handle.destroy();
+  s.editors = [];
+}
 
-  const addEditor = (item: SpaceQmdItem | undefined): ItemEditor => {
-    const host = renderElement("div", { class: "nt-item" });
-    const editor: ItemEditor = { id: item?.id, body: item?.body ?? "", added: false, host, handle: undefined as unknown as QmdEditorHandle };
-    editor.handle = mountQmdEditor(host, {
-      body: editor.body, readOnly: ctx.readOnly, ...(item ? { meta: qmdItemMeta(item) } : {}),
-      onChange: body => {
-        editor.body = body;
-        if (!canWrite() || selected === undefined) return;
-        if (editor.id !== undefined) ctx.end.post({ type: "editSpaceItem", spaceId: spaceId(), path: selected, id: editor.id, body });
-        else if (!editor.added && body.trim()) { editor.added = true; ctx.end.post({ type: "addSpaceItem", spaceId: spaceId(), path: selected, body }); }
-      },
+function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEditor {
+  const host = renderElement("div", { class: "nt-item" });
+  const editor: ItemEditor = { id: item?.id, body: item?.body ?? "", added: false, host, handle: undefined as unknown as QmdEditorHandle };
+  editor.handle = mountQmdEditor(host, {
+    body: editor.body, readOnly: s.ctx.readOnly, ...(item ? { meta: qmdItemMeta(item) } : {}),
+    onChange: body => {
+      editor.body = body;
+      const path = s.selected;
+      if (!canWriteNotes(s) || path === undefined) return;
+      if (editor.id !== undefined) s.ctx.end.post({ type: "editSpaceItem", spaceId: notesSpaceId(s), path, id: editor.id, body });
+      else if (!editor.added && body.trim()) { editor.added = true; s.ctx.end.post({ type: "addSpaceItem", spaceId: notesSpaceId(s), path, body }); }
+    },
+  });
+  return editor;
+}
+
+function renderNoteDetail(s: NotesState): void {
+  destroyNoteEditors(s);
+  if (s.selected === undefined) { s.detail.replaceChildren(renderEmptyNotice({ text: "No note open.", hint: "Choose a note in the list." })); return; }
+  if (!s.items) { s.detail.replaceChildren(renderEmptyNotice({ text: "Loading note…" })); return; }
+  s.editors = (s.items.length ? s.items : [undefined]).map(item => addNoteEditor(s, item));
+  s.detail.replaceChildren(...s.editors.map(editor => editor.host));
+}
+
+/** True when the placeholder's first item came back and the new items were fully handled. */
+function adoptPlaceholderItem(s: NotesState, next: SpaceQmdItem[]): boolean {
+  const first = s.editors[0];
+  if (!(s.items && first && first.id === undefined && first.added && next.length)) return false;
+  // The placeholder's first item came back with its id; edits typed since go to that item.
+  first.id = next[0]!.id;
+  if (next.length !== 1) return false;
+  s.items = next;
+  if (first.body !== next[0]!.body && canWriteNotes(s) && s.selected !== undefined) {
+    s.ctx.end.post({ type: "editSpaceItem", spaceId: notesSpaceId(s), path: s.selected, id: first.id, body: first.body });
+  }
+  return true;
+}
+
+function applyNoteItems(s: NotesState, next: SpaceQmdItem[]): void {
+  if (adoptPlaceholderItem(s, next)) return;
+  const same = s.items !== undefined && s.editors.length === next.length && s.editors.every((editor, at) => editor.id === next[at]!.id);
+  if (same) {
+    next.forEach((item, at) => {
+      const editor = s.editors[at]!;
+      if (editor.body === item.body || editor.host.contains(document.activeElement)) return;
+      editor.body = item.body; editor.handle.setBody(item.body);
     });
-    return editor;
-  };
+    s.items = next;
+    return;
+  }
+  if (s.editors.some(editor => editor.host.contains(document.activeElement))) return;
+  s.items = next; renderNoteDetail(s);
+}
 
-  const renderDetail = (): void => {
-    destroyEditors();
-    if (selected === undefined) { detail.replaceChildren(renderEmptyNotice({ text: "No note open.", hint: "Choose a note in the list." })); return; }
-    if (!items) { detail.replaceChildren(renderEmptyNotice({ text: "Loading note…" })); return; }
-    editors = (items.length ? items : [undefined]).map(addEditor);
-    detail.replaceChildren(...editors.map(editor => editor.host));
-  };
+function paintNotesList(s: NotesState): void {
+  const { notes, column } = s;
+  if (!notes) { column.replaceChildren(renderEmptyNotice({ text: "Loading notes…" })); return; }
+  if (!notes.length) { column.replaceChildren(renderEmptyNotice({ text: "No notes yet.", hint: "New note keeps ideas and meeting notes with this Space.", inline: true })); return; }
+  paintQmdRows(column, "Notes", notes.map(note => ({ path: note.path, title: note.title, meta: note.updated })), s.selected, path => openNote(s, path));
+}
 
-  const applyItems = (next: SpaceQmdItem[]): void => {
-    const first = editors[0];
-    if (items && first && first.id === undefined && first.added && next.length) {
-      // The placeholder's first item came back with its id; edits typed since go to that item.
-      first.id = next[0]!.id;
-      if (next.length === 1) {
-        items = next;
-        if (first.body !== next[0]!.body && canWrite() && selected !== undefined) {
-          ctx.end.post({ type: "editSpaceItem", spaceId: spaceId(), path: selected, id: first.id, body: first.body });
-        }
-        return;
-      }
-    }
-    const same = items !== undefined && editors.length === next.length && editors.every((editor, at) => editor.id === next[at]!.id);
-    if (same) {
-      next.forEach((item, at) => {
-        const editor = editors[at]!;
-        if (editor.body === item.body || editor.host.contains(document.activeElement)) return;
-        editor.body = item.body; editor.handle.setBody(item.body);
-      });
-      items = next;
-      return;
-    }
-    if (hasFocus()) return;
-    items = next; renderDetail();
-  };
+function openNote(s: NotesState, path: string): void {
+  s.selected = path; s.items = undefined; paintNotesList(s); renderNoteDetail(s);
+  s.ctx.end.post({ type: "readSpaceQmd", spaceId: notesSpaceId(s), path });
+}
 
-  const paintList = (): void => {
-    if (!notes) { column.replaceChildren(renderEmptyNotice({ text: "Loading notes…" })); return; }
-    if (!notes.length) { column.replaceChildren(renderEmptyNotice({ text: "No notes yet.", hint: "New note keeps ideas and meeting notes with this Space.", inline: true })); return; }
-    paintQmdRows(column, "Notes", notes.map(note => ({ path: note.path, title: note.title, meta: note.updated })), selected, open);
-  };
+function setNotes(s: NotesState, next: SpaceNoteEntry[]): void {
+  s.notes = next;
+  if (s.selected !== undefined && !next.some(note => note.path === s.selected)) { s.selected = undefined; s.items = undefined; renderNoteDetail(s); }
+  paintNotesList(s);
+  const known = s.known;
+  if (known) {
+    const added = next.find(note => !known.has(note.path));
+    if (added) { s.known = undefined; openNote(s, added.path); }
+  }
+}
 
-  const open = (path: string): void => {
-    selected = path; items = undefined; paintList(); renderDetail();
-    ctx.end.post({ type: "readSpaceQmd", spaceId: spaceId(), path });
-  };
-
-  const setNotes = (next: SpaceNoteEntry[]): void => {
-    notes = next;
-    if (selected !== undefined && !next.some(note => note.path === selected)) { selected = undefined; items = undefined; renderDetail(); }
-    paintList();
-    if (known) {
-      const added = next.find(note => !known!.has(note.path));
-      if (added) { known = undefined; open(added.path); }
-    }
-  };
-
-  bindQmdCreate(create, ctx, "New note", canWrite, title => {
-    known = new Set((notes ?? []).map(note => note.path));
-    ctx.end.post({ type: "createSpaceNote", spaceId: spaceId(), title });
+export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { notes?: SpaceNoteEntry[] }): SpaceBody {
+  const s = buildNotesState(root, context);
+  bindQmdCreate(s.create, s.ctx, "New note", () => canWriteNotes(s), title => {
+    s.known = new Set((s.notes ?? []).map(note => note.path));
+    s.ctx.end.post({ type: "createSpaceNote", spaceId: notesSpaceId(s), title });
   });
-
-  const unsubscribe = ctx.end.subscribe(message => {
-    if (message.type === "spaceNotes" && message.spaceId === spaceId()) setNotes(message.notes);
-    else if (message.type === "spaceQmd" && message.spaceId === spaceId() && message.path === selected) applyItems(message.items);
+  const unsubscribe = s.ctx.end.subscribe(message => {
+    if (message.type === "spaceNotes" && message.spaceId === notesSpaceId(s)) setNotes(s, message.notes);
+    else if (message.type === "spaceQmd" && message.spaceId === notesSpaceId(s) && message.path === s.selected) applyNoteItems(s, message.items);
   });
-  paintList(); renderDetail();
+  paintNotesList(s); renderNoteDetail(s);
 
   return {
-    update(data) {
-      const next = syncQmdReadOnly(ctx, data, controller);
-      if (!next) return;
-      controller = next; create.disabled = ctx.readOnly;
-      renderDetail();
-    },
-    dispose() { unsubscribe(); controller.abort(); destroyEditors(); root.replaceChildren(); },
+    update(data) { updateQmdSpace(s, data, () => renderNoteDetail(s)); },
+    dispose() { unsubscribe(); s.controller.abort(); destroyNoteEditors(s); root.replaceChildren(); },
   };
 }
