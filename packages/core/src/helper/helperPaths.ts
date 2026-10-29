@@ -138,4 +138,5 @@ export interface ILatexHelper {
   cancel(projectId: string): Promise<void>;
   installTex(kind: TexInstallKind, onProgress: OnHelperProgress): Promise<void>;
   installAllPackages(onProgress: OnHelperProgress): Promise<void>;
+  installPython(onProgress: OnHelperProgress): Promise<void>;
 }

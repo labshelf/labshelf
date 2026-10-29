@@ -30,6 +30,7 @@ function fakeHelper(first: HelperState | Error): FakeHelper {
     cancel: jest.fn(),
     installTex: jest.fn(async () => { current = ready({ source: "tinytex", year: 2026, complete: false }); }),
     installAllPackages: jest.fn(async () => { current = ready({ source: "texlive", year: 2026, complete: true }); }),
+    installPython: jest.fn(async () => { if (current?.state === "ready") { current = { ...current, python: "installed" }; } }),
   } as unknown as FakeHelper;
 }
 
@@ -60,6 +61,64 @@ const setVisibility = (state: "visible" | "hidden"): void => {
 
 beforeEach(() => { jest.useFakeTimers(); setVisibility("visible"); });
 afterEach(() => { jest.useRealTimers(); });
+
+describe("setup card Python row", () => {
+  const withPython = (python: "missing" | "installed" | undefined): HelperState => ({ ...ready({ source: "tinytex", year: 2026, complete: true }), python } as HelperState);
+
+  it("shows no row when the helper does not report Python", async () => {
+    const { root, card } = setup(fakeHelper(withPython(undefined)));
+    await settle();
+    expect(root.textContent).not.toContain("Python for calculations");
+    card.dispose();
+  });
+
+  it("missing: offers Install, which sends installPython and shows progress, then Installed", async () => {
+    const helper = fakeHelper(withPython("missing"));
+    let report: OnHelperProgress = () => undefined;
+    helper.installPython = jest.fn(async (onProgress: OnHelperProgress) => { report = onProgress; await new Promise<void>(() => undefined); }) as never;
+    const { root, card } = setup(helper);
+    await settle();
+    expect(root.textContent).toContain("Python for calculations");
+    expect(root.textContent).toContain("Not installed. Code cells in notes run in it.");
+    installButtons(root)[0]!.click();
+    await settle();
+    expect(helper.installPython).toHaveBeenCalledTimes(1);
+    expect(root.textContent).toContain("Installing Python for calculations…");
+    report({ message: "Downloading Python", fraction: 0.5 } as HelperProgress);
+    expect(root.textContent).toContain("Downloading Python");
+    card.dispose();
+  });
+
+  it("missing: after a successful install the row reads Installed with no control", async () => {
+    const helper = fakeHelper(withPython("missing"));
+    const { root, card } = setup(helper);
+    await settle();
+    installButtons(root)[0]!.click();
+    await settle();
+    expect(root.textContent).toContain("Installed");
+    expect(installButtons(root)).toHaveLength(0);
+    card.dispose();
+  });
+
+  it("tex missing: the row follows the TeX choices", async () => {
+    const { root, card } = setup(fakeHelper({ ...ready({ source: "none", complete: false }), python: "missing" } as HelperState));
+    await settle();
+    expect(installButtons(root)).toHaveLength(3);
+    card.dispose();
+  });
+
+  it("a failed install shows the helper error text", async () => {
+    const helper = fakeHelper(withPython("missing"));
+    helper.installPython = jest.fn(async () => { throw new Error("pip exploded"); }) as never;
+    const { root, card } = setup(helper);
+    await settle();
+    installButtons(root)[0]!.click();
+    await settle();
+    expect(root.textContent).toContain("pip exploded");
+    expect(buttons(root)).toContain("Try again");
+    card.dispose();
+  });
+});
 
 describe("setup card states", () => {
   it("shows the checking state with no action until connect resolves", async () => {

@@ -18,6 +18,8 @@ import type {
   TexToolchain,
 } from "@labshelf/core/helper";
 
+type PythonState = NonNullable<Extract<HelperState, { state: "ready" }>["python"]>;
+
 const RELEASES = "https://github.com/labshelf/labshelf/releases/latest";
 
 // The release workflow publishes installers under these names.
@@ -73,6 +75,7 @@ interface SetupActions {
   retry(): Promise<void>;
   install(kind: TexInstallKind): Promise<void>;
   installAllPackages(): Promise<void>;
+  installPython(): Promise<void>;
 }
 
 interface SetupView {
@@ -107,21 +110,33 @@ function notInstalled(os: string, actions: SetupActions): SetupView {
   return { text: "LabShelf Helper is not installed on this computer.", tone: "idle", controls };
 }
 
-function chooseTex(actions: SetupActions): SetupView {
+// An older helper reports no Python, so it gets no row.
+function pythonRow(python: PythonState | undefined, actions: SetupActions): Node[] {
+  if (python === undefined) { return []; }
+  const label = "Python for calculations";
+  if (python === "installed") { return [renderSettingRow({ label, description: "Installed" }, renderElement("span"))]; }
+  return [renderSettingRow(
+    { label, description: "Not installed. Code cells in notes run in it." },
+    renderActionButton({ label: "Install", icon: "download", onClick: actions.installPython }),
+  )];
+}
+
+function chooseTex(python: PythonState | undefined, actions: SetupActions): SetupView {
   const rows = INSTALL_CHOICES.map((choice, index) => renderSettingRow(
     { label: choice.label, description: choice.description },
     renderActionButton({ label: "Install", icon: "download", primary: index === 0, onClick: () => actions.install(choice.kind) }),
   ));
-  return { text: "Choose a TeX distribution to compile LaTeX.", tone: "idle", controls: rows };
+  return { text: "Choose a TeX distribution to compile LaTeX.", tone: "idle", controls: [...rows, ...pythonRow(python, actions)] };
 }
 
 const HOST_SUFFIX: Record<HelperHost, string> = { helper: "", vscode: " · through VS Code", terminal: " · through the terminal app" };
 
-function readyView(tex: TexToolchain, host: HelperHost, actions: SetupActions): SetupView {
+function readyView(tex: TexToolchain, host: HelperHost, python: PythonState | undefined, actions: SetupActions): SetupView {
   const name = [TEX_NAME[tex.source], tex.year].filter((part) => part !== undefined && part !== "").join(" ");
-  const controls = tex.source === "tinytex" && !tex.complete
+  const controls: Node[] = tex.source === "tinytex" && !tex.complete
     ? [renderActionButton({ label: INSTALL_ALL_LABEL, icon: "download", onClick: actions.installAllPackages })]
     : [];
+  controls.push(...pythonRow(python, actions));
   return { text: `Ready: ${name}${HOST_SUFFIX[host]}`, tone: "ok", controls };
 }
 
@@ -145,7 +160,7 @@ function statusView(status: HelperState, os: string, actions: SetupActions): Set
     case "update-helper": return updateHelper(status.host, actions);
     case "update-extension":
       return { text: "Update LabShelf: LabShelf Helper needs a newer version of the LabShelf extension.", tone: "idle", controls: [retry("Check again", actions)] };
-    case "ready": return status.tex.source === "none" ? chooseTex(actions) : readyView(status.tex, status.host, actions);
+    case "ready": return status.tex.source === "none" ? chooseTex(status.python, actions) : readyView(status.tex, status.host, status.python, actions);
   }
 }
 
@@ -272,6 +287,7 @@ function createActions(card: () => Card, helper: ILatexHelper, deps: HelperSetup
     openMacosGuide: () => deps.openUrl(MACOS_GUIDE_URL),
     retry: () => connect(card(), helper, true),
     install: (kind) => install(`install-${kind}`, `Installing ${TEX_LABEL[kind]}…`, (onProgress) => helper.installTex(kind, onProgress)),
+    installPython: () => install("install-python", "Installing Python for calculations…", (onProgress) => helper.installPython(onProgress)),
     async installAllPackages() {
       if (!(await askDialog(INSTALL_ALL_LABEL.replace(" to compile offline", "?"), INSTALL_ALL_WARNING, "Download"))) { return; }
       await install("install-all-packages", "Installing TeX Live…", (onProgress) => helper.installAllPackages(onProgress));
