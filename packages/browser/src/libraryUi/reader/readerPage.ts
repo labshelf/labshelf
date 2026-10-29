@@ -18,6 +18,7 @@ import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } 
 import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange } from "../../platform";
 import { createLibraryFileSystem, createSidecarPort, readCachedPaperRecord } from "../../storage";
 import { loadReaderPrefs, onReaderPrefsChange, parseReaderQuery } from "./readerTabs";
+import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
 // First statement, so scriptStart measures the whole open like in VS Code.
@@ -86,6 +87,7 @@ function createHostWithChannel(
   getPrefs: () => ReaderPrefs,
   store: ReaderSidecarStore,
   preview?: PreviewPorts,
+  sendToNote?: (request: SendToNoteRequest) => Promise<void>,
 ): { host: ReaderHostController; channel: ReturnType<typeof createInPageChannel> } {
   // The host answers through the channel, which needs the host to exist first.
   let send: (msg: HostToWebview) => void = () => undefined;
@@ -102,6 +104,7 @@ function createHostWithChannel(
     logger,
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : {}),
+    ...(sendToNote ? { sendToNote } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
   send = channel.send;
@@ -181,7 +184,12 @@ async function main(): Promise<void> {
   const { paper, prefs } = opened;
 
   let currentPrefs = prefs;
-  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)));
+  // Offered only when the library has a project to send to.
+  const sendToNote = await createReaderSendToNote(fs, logger).catch((err: unknown) => {
+    void logger.error("reader", err, { op: "sendToNote" });
+    return undefined;
+  });
+  const { host, channel } = createHostWithChannel(paper, page, () => currentPrefs, new PaperSidecarStore(createSidecarPort(fs)), undefined, sendToNote);
   const boot = bootParams(paper, prefs, false);
 
   exposeReaderApi(paper, host);

@@ -2,10 +2,12 @@
 import {
   type ILogger,
   type LibraryFileSystem,
+  type ProjectNotesStore,
   type ProjectShareDeps,
   type RelayAccount,
   type ShareHost,
   type TabKindName,
+  createProjectNotesStore,
   offerOwnRelayToShares,
   createStoreFailureNotices,
   removeOwnRelayOfferFromShares,
@@ -14,12 +16,12 @@ import { createHelperProject } from "@labshelf/core/helper";
 import { createBrowserLatexHelper } from "../helper";
 import { readSettings } from "../platform";
 import { updateOwnRelayOnStart, type PageRelay } from "../relay";
-import { createOpenProjectSnapshot, createProjectSession, createProjectsSource, openRestoredProject, showInOpenEditor, showPdfInTab } from "../writing";
+import { createBrowserProjectContent, createOpenProjectSnapshot, createProjectSession, createProjectsSource, openRestoredProject, showInOpenEditor, showPdfInTab, type SessionNotes } from "../writing";
 import { createSidebarProjects, type SidebarProjects } from "./sidebar";
 import type { ProjectServices } from "./editorArea";
 import type { Workspace } from "./editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
-import { createBrowserProjects, readCurrentLibraryId, readLibraryLocations } from "../storage";
+import { createBrowserProjects, createProjectNoteFiles, readCurrentLibraryId, readLibraryLocations } from "../storage";
 import { createCommentThreads, createPageShare, createResumeReports, createRoutedCommentThreads, type PageShare } from "../collab";
 
 interface PageSharingWiringOptions {
@@ -79,6 +81,8 @@ export interface ProjectWiringOptions {
 
 export interface ProjectWiring {
   services: ProjectServices;
+  /** The page's one project notes store. */
+  notes: ProjectNotesStore;
   /** The project half of the page's sharing host. */
   projectSharing: ProjectShareDeps;
   /** Builds the sidebar's Projects section. */
@@ -91,13 +95,29 @@ export interface ProjectWiring {
   withdrawRelayFromShares(relayUrl: string): Promise<void>;
 }
 
+/** The notes store over the project folders of the library; a project id is found by listing the library once and again when an id is missing. */
+function createNotesStore(fs: LibraryFileSystem, logger: ILogger): ProjectNotesStore {
+  const content = createBrowserProjectContent({ fs, logger });
+  const folders = new Map<string, string>();
+  const folderOf = async (projectId: string): Promise<string> => {
+    if (!folders.has(projectId)) {
+      for (const entry of await content.listProjects("")) { if (entry.kind === "ready") folders.set(entry.settings.id, entry.folder); }
+    }
+    const folder = folders.get(projectId);
+    if (folder === undefined) throw new Error(`Project ${projectId} is not in the library folder`);
+    return folder;
+  };
+  return createProjectNotesStore(createProjectNoteFiles(fs, folderOf), logger);
+}
+
 export function mountProjectWiring({ workspace, fs, logger, openTab, relay, relayAccounts, sharing: host }: ProjectWiringOptions): ProjectWiring {
   const helperProject = createHelperProject({
     helper: createBrowserLatexHelper(logger), logger,
     buildSettings: async () => { const { autoCompile, haltOnError } = await readSettings(); return { autoCompile, haltOnError }; },
   });
+  const notes: SessionNotes = { store: createNotesStore(fs, logger), tasks: new Map() };
   const session = createProjectSession({
-    workspace, snapshot: createOpenProjectSnapshot({ fs, logger }), logger,
+    workspace, snapshot: createOpenProjectSnapshot({ fs, logger, notes }), logger, notes,
     onProjectChange: helperProject.projectChanged,
     onReveal: (path, line) => {
       const open = session.current();
@@ -112,7 +132,8 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
   // Never awaited: mounting does not wait on the network.
   void updateOwnRelayOnStart(logger);
   return {
-    services: { session, helperProject, comments, sharing },
+    services: { session, helperProject, comments, sharing, notes: notes.store },
+    notes: notes.store,
     // Every surface keys a project by its folder, as the open-project snapshot does.
     projectSharing: { ports: sharing.ports, idOf: (entry) => entry.folder, open: async (entry) => { await session.openProject(entry); } },
     sidebarProjects: () => {

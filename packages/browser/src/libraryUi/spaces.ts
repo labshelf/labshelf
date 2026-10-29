@@ -17,6 +17,7 @@ import {
   deriveSpaceChecklistProgress,
   derivePapersByCiteKey,
   readChecklistSignals,
+  type ProjectNotesStore,
   type Progress,
 } from '@labshelf/core';
 import { downloadTextFile, watchVisibility } from '../platform';
@@ -25,8 +26,8 @@ import { onLocalFileChanges } from '../collab';
 import { createBrowserProjectContent } from '../writing';
 import type { Workspace } from './editorArea';
 
-async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: Extract<ProjectEntry, { kind: 'ready' }>, library: LibraryPapers): Promise<Progress | undefined> {
-  const signals = await readChecklistSignals({ fs, logger, paths: posixPathOps }, entry);
+async function projectChecklist(fs: LibraryFileSystem, logger: ILogger, entry: Extract<ProjectEntry, { kind: 'ready' }>, library: LibraryPapers, notes: ProjectNotesStore | undefined): Promise<Progress | undefined> {
+  const signals = await readChecklistSignals({ fs, logger, paths: posixPathOps }, entry, notes && { store: notes, projectId: entry.settings.id });
   const papers = derivePapersByCiteKey([...library.values()].map(value => value.record));
   const reading = (entry.settings.papers ?? []).flatMap(({ key }) => {
     const paper = papers.get(key);
@@ -42,6 +43,7 @@ interface SpaceProjectsOptions {
   projects(): ProjectLibraryPort | null;
   openProject(entry: ReadyProject): Promise<void>;
   library(): LibraryPapers;
+  notes(): ProjectNotesStore | undefined;
 }
 
 function rowOf(entry: ReadyProject): ProjectRow {
@@ -62,7 +64,7 @@ function createSpaceProjects(options: SpaceProjectsOptions) {
       if (!options.projects()) return [];
       const ready = await entries();
       const byFolder = new Map(ready.map(entry => [entry.folder, entry]));
-      const infos = await createSpaceProjectList(ready.map(rowOf), row => projectChecklist(fs, logger, byFolder.get(row.id)!, options.library()), logger);
+      const infos = await createSpaceProjectList(ready.map(rowOf), row => projectChecklist(fs, logger, byFolder.get(row.id)!, options.library(), options.notes()), logger);
       return infos.map(info => ({ ...info, projectId: byFolder.get(info.projectId)!.settings.id }));
     },
     async openProject(id: string): Promise<void> {
@@ -96,6 +98,8 @@ export interface PageSpacesOptions {
   selection: SelectionHub;
   projects(): ProjectLibraryPort | null;
   openProject(entry: Extract<ProjectEntry, { kind: 'ready' }>): Promise<void>;
+  /** The page's project notes store; undefined on a page without project wiring, where note tasks do not count. */
+  notes?(): ProjectNotesStore | undefined;
 }
 
 export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
@@ -122,7 +126,7 @@ export function createPageSpaces(options: PageSpacesOptions): PageSpaces {
 
 function createPort(options: PageSpacesOptions, library: () => LibraryPapers, listeners: Listeners): SpacesHostPort {
   const { transport, selection } = options;
-  const projects = createSpaceProjects({ ...options, library });
+  const projects = createSpaceProjects({ ...options, library, notes: () => options.notes?.() });
   return {
     library,
     onLibraryChange: listener => listeners.add(listener),

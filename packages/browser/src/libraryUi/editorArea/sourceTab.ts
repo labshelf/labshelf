@@ -1,14 +1,12 @@
 // Shows a project source file in the lazily loaded source editor: a local file on disk, a shared file in its share's text.
-import { listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
+import { PaperNotesStore, listProjectFiles, posixPathOps, type LibraryFileSystem, type ProjectEntry } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
-import { listCachedPaperRecords } from "../../storage";
+import { createPaperNotesPort, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
   type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceFileMode,
 } from "../../writing";
 import type { TabContext, TabModule } from "./tabKinds";
-
-export { readSourceFileMode };
 
 const MODULE = "tabs.source";
 
@@ -22,7 +20,7 @@ function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAcc
 }
 
 /** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
-function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode): SourceEditorDeps {
+function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode): SourceEditorDeps {
   const { helperProject, comments } = project();
   const { projectId, path } = file;
   const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
@@ -30,6 +28,13 @@ function editorDeps({ fs, logger, tab, workspace, project }: TabContext, entry: 
     projectId, path, files: projectFiles(fs, entry), papers: listCachedPaperRecords,
     helper: helperProject.editorPort(projectId), problems: helperProject.problems.subscribe,
     openTab: workspace.openTab, logger, onDirty: tab.setDirty,
+    notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
+    // Shows the paper in the Details pane on its Notes tab, the pane the library page lists a paper's notes in.
+    openNotes: (paperId) => {
+      prefs.save({ detailTab: "notes" });
+      selection.publish("source-notes", { kind: "paper", ids: [paperId] });
+      selection.activate("source-notes");
+    },
     ...(mode.kind === "shared" ? { collab: mode.collab } : {}),
     ...(readOnly ? { readOnly: true } : {
       comments: {

@@ -1,6 +1,6 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
 import { TAB_KIND_SPECS } from "@labshelf/core";
-import type { ILogger, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
+import type { ProjectNotesStore, ILogger, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import type { EditorTabBody } from "@labshelf/core/dom";
 import type { CommentThreads, PageShare } from "../../collab";
 import type { HelperProject } from "@labshelf/core/helper";
@@ -25,6 +25,8 @@ export interface ProjectServices {
   comments: CommentThreads;
   /** The shared projects of this page: their connections and the share workflows. */
   sharing: PageShare;
+  /** The page's project notes store, which a project note's tab saves through. */
+  notes: ProjectNotesStore;
 }
 
 export interface TabContext {
@@ -54,6 +56,15 @@ export interface TabKind extends TabKindSpec {
   load(): Promise<TabModule>;
 }
 
+/** The notes the notes store lists live in the project's `notes` folder. */
+const isProjectNotePath = (path: string | undefined): boolean => path !== undefined && path.startsWith("notes/") && path.endsWith(".qmd");
+
+/** A project note opens in the note editor and any other source file in the source editor; both chunks load on the first source tab. */
+async function loadSource(): Promise<TabModule> {
+  const [{ mountTab: mountSource }, { mountTab: mountNote }] = await Promise.all([import("./sourceTab.js"), import("./projectNoteTab.js")]);
+  return { mountTab: (el, params, ctx) => (isProjectNotePath(params["path"]) ? mountNote : mountSource)(el, params, ctx) };
+}
+
 const define = (kind: TabKindName, load: () => Promise<TabModule>): TabKind => ({ ...TAB_KIND_SPECS[kind], load });
 
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
@@ -63,7 +74,7 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   library: define("library", () => import("./libraryTab.js")),
   "all-projects": define("all-projects", () => import("./projectListTab.js")),
   templates: define("templates", () => import("./templatesTab.js")),
-  source: define("source", () => import("./sourceTab.js")),
+  source: define("source", loadSource),
   preview: define("preview", () => import("./previewTab.js")),
   comments: define("comments", () => import("./commentsTab.js")),
   history: define("history", () => import("./historyTab.js")),

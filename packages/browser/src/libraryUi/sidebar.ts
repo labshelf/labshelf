@@ -15,7 +15,7 @@ const BROWSER_OFFERS: Partial<ProjectOffers> = { addExisting: false, newBlank: f
 
 const ignore = (): void => undefined;
 
-export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "closeProject" | "attachSidebar" | "treeClick" | "treeAction">;
+export type SidebarSession = Pick<ProjectSession, "current" | "openProject" | "closeProject" | "attachSidebar" | "treeClick" | "treeAction"> & Partial<Pick<ProjectSession, "treeCheck">>;
 
 export interface SidebarProjects {
   actions: SidebarProjectActions;
@@ -60,7 +60,8 @@ export function createSidebarProjects(
     },
     // The offers hide the first five; check boxes and inline add are not offered here.
     newBlank: ignore, addExisting: ignore, newFolder: ignore, renameFolder: ignore, deleteFolder: ignore,
-    treeToggle: ignore, treeCheck: ignore, treeMenu: ignore, treeAdd: ignore,
+    treeCheck: (view, key) => { if (isProjectTreeView(view)) void session.treeCheck?.(view, key); },
+    treeToggle: ignore, treeMenu: ignore, treeAdd: ignore,
   };
   return {
     actions,

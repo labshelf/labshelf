@@ -1,9 +1,13 @@
 // Keeps the page's project session: its open source editors, the sidebar snapshot it publishes, opening and closing the project and reopening a restored one.
 import {
-  parseTab, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, listProjectFileTree, readChecklistSignals, createSectionPlacer,
-  type ChecklistGrouping, type HeadingNode, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext, type ProjectTreeView,
+  parseTab, toggleNoteTask, formatError, buildChecklist, deriveChecklistSidebarNodes, deriveCitationSections, deriveNestedHeadings, findOutlineHeadings, posixPathOps, listProjectFileTree, readChecklistSignals, createSectionPlacer,
+  type ChecklistGrouping, type HeadingNode, type NoteTask, type ProjectNotesStore, type ILogger, type LibraryFileSystem, type OutlineHeading, type ProjectEntry, type ProjectReadContext, type ProjectTreeView,
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
+import { QMD_VOCABULARY, askInputBox, showToast } from "@labshelf/core/dom";
+import { Annotation } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
+import type { HelperUpdates, SourceEditorDeps, WriteScheduler } from "./editor";
 import type { Workspace } from "../libraryUi/editorArea";
 
 export interface OpenEditor {
@@ -60,14 +64,60 @@ export async function refreshProjectEditors(projectId: string): Promise<void> {
 }
 
 const MODULE = "writing.session";
+const LOAD_MODULE = "editor.mount";
+
+/** Marks the transaction that loads the file's text from disk, which is not an edit to save. */
+export const fromDisk = Annotation.define<boolean>();
+
+/**
+ * Replaces the editor's text with the file on disk. A shared file's change goes into its shared text, so the peers get it
+ * and its file writer saves it; a local file's change is not an edit to save.
+ */
+export async function loadFromDisk(view: EditorView, { files, path, projectId, logger }: SourceEditorDeps, onLoaded: (disk: string) => void): Promise<void> {
+  try {
+    const disk = await files.read(path);
+    onLoaded(disk);
+    if (disk === view.state.doc.sliceString(0, undefined, view.state.lineBreak)) return;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk }, annotations: fromDisk.of(true) });
+  } catch (error) {
+    void logger.error(LOAD_MODULE, error, { action: "reloadSource", projectId, path });
+  }
+}
+
+/** Tells the helper which write the user asked for with Mod-s. */
+export function explicitSaves(helperEdits: HelperUpdates): { written(): void; flush(save: Pick<WriteScheduler, "flush" | "dirty">): void } {
+  // INVARIANT: set only while a Mod-s flush runs, so exactly the write it causes reaches the helper as an explicit save.
+  let requested = false;
+  return {
+    written() { helperEdits.saved(requested); requested = false; },
+    // Writing a dirty file already asks the helper for a full build; a clean or shared file asks for it here.
+    flush(save) {
+      const wasDirty = save.dirty();
+      requested = wasDirty;
+      void save.flush().then((clean) => {
+        requested = false;
+        if (clean && !wasDirty) helperEdits.saved(true);
+      });
+    },
+  };
+}
+
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
 export type OpenProjectSnapshot = (entry: ProjectEntry, grouping: ChecklistGrouping) => Promise<SidebarOpenProject>;
 
+/** The project notes the checklist reads and ticks: the store, and the note tasks of the last checklist built by their row keys. */
+export interface SessionNotes {
+  store: ProjectNotesStore;
+  tasks: Map<string, NoteTask>;
+}
+
 export interface OpenProjectSnapshotOptions {
   fs: LibraryFileSystem;
   logger: ILogger;
+  /** Without it the checklist shows no note tasks. */
+  notes?: SessionNotes;
 }
 
 function outlineNodes(main: string, headings: HeadingNode<OutlineHeading>[]): SidebarTreeNode[] {
@@ -85,16 +135,21 @@ async function readOutline(context: ProjectReadContext, project: ReadyProject): 
   return outlineNodes(project.main, deriveNestedHeadings(findOutlineHeadings(project.settings.format, text)));
 }
 
-async function checklistNodes(context: ProjectReadContext, project: ReadyProject, grouping: ChecklistGrouping): Promise<SidebarTreeNode[]> {
-  const signals = await readChecklistSignals(context, project);
+async function checklistNodes(context: ProjectReadContext, project: ReadyProject, grouping: ChecklistGrouping, notes: SessionNotes | undefined): Promise<SidebarTreeNode[]> {
+  const signals = await readChecklistSignals(context, project, notes && { store: notes.store, projectId: project.settings.id });
   const main = project.main ?? "";
   const checklist = buildChecklist({
     ...signals, pageOverflow: undefined, reading: [], placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
   }, grouping);
-  return deriveChecklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), noteTitles: signals.noteTitles, isExpanded: (_, byDefault) => byDefault }).nodes;
+  const tree = deriveChecklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), noteTitles: signals.noteTitles, isExpanded: (_, byDefault) => byDefault });
+  if (notes) {
+    notes.tasks.clear();
+    for (const [key, item] of tree.items) { if (item.kind === "noteTask") notes.tasks.set(key, item.task); }
+  }
+  return tree.nodes;
 }
 
-export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOptions): OpenProjectSnapshot {
+export function createOpenProjectSnapshot({ fs, logger, notes }: OpenProjectSnapshotOptions): OpenProjectSnapshot {
   const context: ProjectReadContext = { fs, paths: posixPathOps, logger };
 
   // One unreadable tree must not blank the others: it is logged and shown empty.
@@ -110,12 +165,12 @@ export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOpt
     const [files, outline, checklist] = await Promise.all([
       guard("files", entry, () => listProjectFileTree(context, entry, entry.folder, "")),
       guard("outline", entry, () => readOutline(context, entry)),
-      guard("checklist", entry, () => checklistNodes(context, entry, grouping)),
+      guard("checklist", entry, () => checklistNodes(context, entry, grouping, notes)),
     ]);
     return {
       id: entry.folder, name: entry.settings.title ?? entry.settings.id, format: entry.settings.format,
       trees: [
-        { view: "files", title: "Files", actions: [{ action: "history", label: "History", icon: "history" }, { action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
+        { view: "files", title: "Files", actions: [...(notes ? [{ action: "newNote", label: `New ${QMD_VOCABULARY.item}`, icon: "plus" as const }] : []), { action: "history", label: "History", icon: "history" }, { action: "comments", label: "Comments", icon: "message" }], nodes: files, empty: "No files." },
         { view: "outline", title: "Outline", actions: [], nodes: outline, empty: "Open a source file to see its outline." },
         {
           view: "checklist", title: "Checklist", actions: [], nodes: checklist, empty: "Nothing to do.",
@@ -139,6 +194,8 @@ export interface ProjectSessionOptions {
   logger: ILogger;
   /** Called for an outline click with the file and the zero-based line of the heading. */
   onReveal?: (path: string, line: number) => void;
+  /** The project's notes; without them New note and ticking a note task do nothing. */
+  notes?: SessionNotes;
   /** Called after a project opens (with its entry) and after it closes (undefined). */
   onProjectChange?: (entry: ProjectEntry | undefined) => void | Promise<void>;
 }
@@ -151,6 +208,8 @@ export interface ProjectSession {
   current(): ProjectEntry | undefined;
   attachSidebar(sidebar: SessionSidebar): void;
   treeClick(view: ProjectTreeView, key: string): void;
+  /** Ticks a checklist row: a note task flips its box in its note; the checklist is read again afterwards. */
+  treeCheck(view: ProjectTreeView, key: string): Promise<void>;
   /** Runs a toolbar or toggle action of a tree: byKind and bySection switch the checklist grouping. */
   treeAction(action: string): Promise<void>;
 }
@@ -174,7 +233,12 @@ async function notifyProjectChange({ logger, onProjectChange }: Pick<ProjectSess
 }
 
 /** A click in the files tree opens the file; one in the outline reveals the heading (its key is the path, a colon and the zero-based line). */
-function clickTree({ workspace, onReveal }: Pick<ProjectSessionOptions, "workspace" | "onReveal">, projectId: string, view: ProjectTreeView, key: string): void {
+function clickTree({ workspace, onReveal, notes }: Pick<ProjectSessionOptions, "workspace" | "onReveal" | "notes">, projectId: string, view: ProjectTreeView, key: string): void {
+  if (view === "checklist") {
+    const task = notes?.tasks.get(key);
+    if (task) workspace.openTab("source", { projectId, path: task.file }, 0);
+    return;
+  }
   if (view === "files") { workspace.openTab("source", { projectId, path: key }, 0); return; }
   if (view !== "outline") { return; }
   const colon = key.lastIndexOf(":");
@@ -233,10 +297,46 @@ async function closeProject(context: SessionContext): Promise<boolean> {
   return true;
 }
 
+async function createNote(context: SessionContext, projectId: string): Promise<void> {
+  const { workspace, notes, logger, state } = context;
+  if (!notes) { return; }
+  const title = await askInputBox({
+    title: `New ${QMD_VOCABULARY.item}`, prompt: `${QMD_VOCABULARY.item[0]!.toUpperCase()}${QMD_VOCABULARY.item.slice(1)} title`,
+    validate: (value) => (value.trim() === "" ? "Enter a title." : undefined),
+  });
+  if (title === undefined || title.trim() === "") { return; }
+  try {
+    const path = await notes.store.create(projectId, title.trim());
+    workspace.openTab("source", { projectId, path }, 0);
+    const open = state.open;
+    if (open !== undefined) { await publish(context, open, ++state.generation); }
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "create note", projectId });
+    showToast(formatError(error), "error");
+  }
+}
+
+async function tickChecklistRow(context: SessionContext, key: string): Promise<void> {
+  const { notes, state, logger } = context;
+  const task = notes?.tasks.get(key);
+  const open = state.open;
+  const id = open === undefined ? undefined : projectIdOf(open);
+  if (!notes || !task || open === undefined || id === undefined) { return; }
+  try {
+    const result = await toggleNoteTask(notes.store, id, task);
+    if (result.status === "changed") { showToast("The note changed; the checklist was refreshed", "info"); }
+  } catch (error) {
+    await logger.error(MODULE, error, { action: "tick note task", projectId: id, file: task.file });
+    showToast(formatError(error), "error");
+  }
+  await publish(context, open, ++state.generation);
+}
+
 async function runTreeAction(context: SessionContext, action: string): Promise<void> {
   const { workspace, state } = context;
   const id = state.open === undefined ? undefined : projectIdOf(state.open);
   if (state.open === undefined || id === undefined) { return; }
+  if (action === "newNote") { await createNote(context, id); return; }
   if (action === "comments" || action === "history") { workspace.openTab(action, { projectId: id }, 1); return; }
   if (action !== "byKind" && action !== "bySection") { return; }
   state.grouping = action === "byKind" ? "kind" : "section";
@@ -256,6 +356,7 @@ export function createProjectSession(options: ProjectSessionOptions): ProjectSes
       if (id !== undefined) { clickTree(context, id, view, key); }
     },
     treeAction: (action) => runTreeAction(context, action),
+    treeCheck: (view, key) => (view === "checklist" ? tickChecklistRow(context, key) : Promise.resolve()),
   };
   return session;
 }
