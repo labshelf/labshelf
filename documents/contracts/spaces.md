@@ -10,11 +10,34 @@ A Space groups papers, writing projects, dates and a glossary around one piece o
 <library root>/spaces/<space id>/    the folder name is the space id
   space.json                         required: a folder holding it is a Space
   glossary.json                      optional: a missing file is an empty glossary
+  notes/<slug>.qmd                   optional: one file per note
+  discussions/<slug>.qmd             optional: one file per thread
 ```
 
-Hidden entries in `spaces/` and folders without `space.json` are not Spaces. The `.qmd` item files of a Space (notes, discussions) follow [qmd-items.md](qmd-items.md).
+Hidden entries in `spaces/` and folders without `space.json` are not Spaces.
 
 `space.json` holds folders, paper references, project ids and dates. Papers are referenced by paper id and projects by project id ([library-format.md](library-format.md#labshelfyaml)); the paper or project stays where it is. `glossary.json` holds terms with an optional symbol and source paper.
+
+## Notes and discussions
+
+The `.qmd` files of a Space are item files ([qmd-items.md](qmd-items.md#items)). A folder is created on the first write, and a missing folder lists as empty. A file path is relative to the Space folder and is `notes/<name>.qmd` or `discussions/<name>.qmd`, with one visible name (no slash, no leading dot). No other path is read or written.
+
+- A note is titled by the first `# ` heading of its first item, else the file name without `.qmd`. The slug is made as for [project notes](qmd-items.md#project-notes), and the first item of a new note has the body `# <title>`.
+- A thread is a topic item, then one item per message in file order. The topic body is `# <title>`, a blank line and the text, and its attribute `status` is `open` or `resolved`. A topic without `status`, or with another value, reads as open. Changing the status rewrites only that value.
+- A message is one item with the `author` and `created` of the writer.
+- "Send to…" ([qmd-items.md](qmd-items.md#project-notes)) has the targets `spaceNote` and `discussion`, which append an item or a message with the id of the sent item. A figure's PNG is written first, as `assets/<item id>.png` next to the target file.
+- Spaces are not shared: the files stay in the library and notes and threads show only in the local UI.
+
+The page and the host talk in these messages. A message with a bad space id or path, or a field of the wrong type, is dropped whole.
+
+| Page to host | The host changes | And answers with |
+|---|---|---|
+| `createSpaceNote`, `createSpaceThread` | a new file | `spaceNotes`, `spaceDiscussions` |
+| `readSpaceQmd` | nothing | `spaceQmd`: the items of one file |
+| `addSpaceItem`, `editSpaceItem`, `removeSpaceItem` | the item, or the message in a thread | `spaceQmd`, then the list of that folder, whose title, count or time may have moved |
+| `setThreadStatus` | the topic's `status` | `spaceDiscussions` |
+
+The host also posts `spaceNotes` and `spaceDiscussions` after each `space` view. An edit or removal of an id the file does not hold writes nothing and answers with `error`. The author of an added item or a new thread is the app's author name.
 
 ## Ids
 
