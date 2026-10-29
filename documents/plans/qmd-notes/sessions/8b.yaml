@@ -104,9 +104,6 @@ packages:
       - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
         lines: 24-24
         why: the doc comment names comments.qmd instead of comments.json
-      - path: packages/browser/__tests__/collab/comments.test.ts
-        lines: 15-106
-        why: "the comments.json assertions (lines 15, 40, 50, 73-77, 106) move to .labshelf/comments.qmd: files keyed by the .qmd path, threads read with parseCommentsQmd instead of JSON.parse, the invalid file is `<<<<<<< ours\\n`"
     create: []
     read:
       - path: packages/browser/src/collab/comments.ts

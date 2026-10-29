@@ -157,8 +157,8 @@ describe("8.1 comments.qmd mapping", () => {
   });
 
   it("8.1c a file with interleaved items reads threads by first item and replies by file order", () => {
-    const t1 = thread("t1");
-    const t2 = thread("t2");
+    const t1 = thread("t1", { comments: [comment("t1", "Ana", "Which one?", "2026-10-16T09:12:00.000Z")] });
+    const t2 = thread("t2", { comments: [comment("t2", "Ana", "Which one?", "2026-10-16T09:12:00.000Z")] });
     const text = [
       firstItem(t1),
       firstItem(t2),
@@ -168,12 +168,12 @@ describe("8.1 comments.qmd mapping", () => {
     ].join("\n");
     const threads = threadsOf(text);
     expect(threads.map((each) => each.id)).toEqual(["t1", "t2"]);
-    expect(threads[0]!.comments.map((each) => each.id)).toEqual(["t1-c1", "r1", "r3"]);
-    expect(threads[1]!.comments.map((each) => each.id)).toEqual(["t2-c1", "r2"]);
+    expect(threads[0]!.comments.map((each) => each.id)).toEqual(["t1", "r1", "r3"]);
+    expect(threads[1]!.comments.map((each) => each.id)).toEqual(["t2", "r2"]);
   });
 
   it("8.1c a hand-written first item carries author, date, body and anchor of the comment", () => {
-    const t = thread("t1", { resolved: true });
+    const t = thread("t1", { resolved: true, comments: [comment("t1", "Ana", "Which one?", "2026-10-16T09:12:00.000Z")] });
     const text = firstItem(t, ' resolved="true"');
     expect(threadsOf(text)).toEqual([t]);
   });

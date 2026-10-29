@@ -247,6 +247,7 @@ sessions:
       - packages/core/__tests__/qmd/collab/
       - packages/core/__tests__/qmd/
       - packages/core/__tests__/templates/node/
+      - packages/browser/__tests__/collab/comments.test.ts
   - id: 8b
     file: sessions/8b.yaml
     depends_on:

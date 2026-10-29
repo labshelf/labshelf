@@ -23,7 +23,8 @@ owns:
   - packages/core/__tests__/qmd/collab/
   - packages/core/__tests__/qmd/
   - packages/core/__tests__/templates/node/
-status: pending
+  - packages/browser/__tests__/collab/comments.test.ts
+status: blocked
 packages:
   - id: "8.1"
     plan: qmd-notes
@@ -70,9 +71,24 @@ packages:
       - path: packages/core/src/qmd/index.ts
         lines: 1-6
         why: parse/serialize of item files, newItemId, anchors
-      - path: packages/core/src/collab/commentsFile.ts
-        lines: 1-180
-        why: the document type and the load/update API to keep
+      - path: packages/core/src/qmd/item/index.ts
+        lines: 1-5
+        why: the item module's re-exports
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 1-385
+        why: LooseText, ItemSegment, Segment, ItemFile, ItemAttributes, parseDivOpener/formatDivOpener/readAttribute, ParsedAnchor/parseAnchor/formatAnchor, parseItemFile/serializeItemFile (read only, do not edit)
+      - path: packages/core/src/qmd/item/itemUpdate.ts
+        lines: 1-80
+        why: newItemId (line 45) and how items are built and updated (read only)
+      - path: packages/core/__tests__/collab/commentsFile.test.ts
+        lines: 1-207
+        why: the visible test file listed in edit, to convert
+      - path: packages/core/__tests__/templates/node/writeProjectAsTemplate.test.ts
+        lines: 40-48
+        why: the visible test line listed in edit
+      - path: packages/core/__tests__/templates/node/checkTemplateForPublish.test.ts
+        lines: 142-150
+        why: the visible test line listed in edit
     seams:
       - path: packages/core/src/collab/commentsQmd.ts
         signature: "export function parseCommentsQmd(text: string): CommentsDocument | undefined"
@@ -93,10 +109,12 @@ packages:
     decided:
       - "D8: comments, review comments and suggestions become items in `.labshelf/comments.qmd`; the anchor is the existing quote/prefix/suffix anchor."
       - 'Mapping: each comment is one item. The first comment of a thread carries the thread: `#<thread id>`, `anchor="quote:…"`, `file="<POSIX path>"`, `resolved="true"` only when resolved, and optional `start`/`end` (base64 Yjs relative positions, shared projects only). Replies are items with `thread="<thread id>"` and no anchor. Author and `created` come from the comment. The body is the comment body (LabShelf Markdown).'
+      - "The first comment's own id: a first item has `comment=\"<comment id>\"` only when that id differs from the thread id; a first item without it reads the thread id as the comment id. qmd-items.md#comments documents this."
       - Thread order is the order of the first items; reply order is file order. Flat items keep D4's merge per id, so two offline replies both survive.
       - Existing ids are kept verbatim as item ids (thread and comment ids need no `n-` prefix; the contract allows any id the parser accepts); new ids use `newItemId`.
       - "`COMMENTS_PATH` is `.labshelf/comments.qmd`. An unreadable file is never overwritten (the kept rule of `updateCommentsDocument`). Unknown attributes and text outside items survive a rewrite."
-      - "No migration (documents/code.md#contracts): `comments.json` is not read and its parse code is deleted. `parseCommentsFile`, `serializeCommentsFile` and their key-order helpers in `commentsFile.ts` go; search all packages for other users before deleting and update them."
+      - "No migration (documents/code.md#contracts): `comments.json` is not read and its parse code is deleted. `parseCommentsFile`, `serializeCommentsFile` and their key-order helpers in `commentsFile.ts` go; their only callers are inside `commentsFile.ts` (facts callers: loadCommentsDocument, updateCommentsDocument, renderCommentsFile, importCommentsFile) and the visible `commentsFile.test.ts`."
+      - "The edit list includes visible test files (`commentsFile.test.ts`, the two template tests); editing them is part of this package. The stub `commentsQmd.ts` has no imports and its `threadsToItems` line comment swallows the brace: rewrite the file."
       - Document the mapping in `documents/contracts/qmd-items.md` under a `#comments` anchor and point the `comments.json` bullet of `library-format.md#project-folder-labshelf` (now line 78) to it.
       - "Unreadable means top-level git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>` lines outside items): `parseCommentsQmd` returns undefined, `loadCommentsDocument` returns undefined, `updateCommentsDocument` rejects without writing. Any other text parses: a `comments.json` text is loose text and yields zero threads (A7)."
       - "`CommentsDocument.threads` holds `CommentThread` values; `addThreadReply`, `setThreadResolved`, `addThread` and `deriveCommentThreads` stay exported and operate on them. The extra keys of a parsed document are what makes a rewrite keep unknown attributes and loose text; `serializeCommentsQmd({threads})` of plain threads writes none."
@@ -182,6 +200,21 @@ packages:
       - path: documents/contracts/collaboration.md
         lines: 54-57
         why: the Comments section to update
+      - path: packages/core/src/collab/commentsFile.ts
+        lines: 1-200
+        why: renderCommentsFile, importCommentsFile, COMMENTS_PATH after 8.1 (read only)
+      - path: packages/core/src/collab/commentsQmd.ts
+        lines: 1-220
+        why: parseCommentsQmd, serializeCommentsQmd from 8.1 (read only)
+      - path: packages/core/src/collab/mirror/projectMirror.ts
+        lines: 1-220
+        why: the comments reconcile and its messages
+      - path: packages/core/__tests__/collab/session/sharedProject.test.ts
+        lines: 1-120
+        why: visible test listed in edit
+      - path: packages/core/__tests__/collab/mirror/projectMirror.test.ts
+        lines: 190-260
+        why: visible test listed in edit
     decided:
       - The Y.Map shape stays (collaboration.md `### Comments`); only the disk side changes to `comments.qmd` via 8.1.
       - "`.labshelf/comments.qmd` is never a text doc (as `comments.json` was): `deriveSharedFileKind` excludes it by path before the extension check."
@@ -189,6 +222,7 @@ packages:
       - "`renderCommentsFile` and `importCommentsFile` are converted to the .qmd by 8.1 (they used the deleted JSON helpers); 8.3 does not edit `commentsFile.ts`."
       - A disk edit of `comments.qmd` reaches the Y.Map only through `importCommentsFile` and the share-time seeding in `ensureSharedProject` (as `comments.json` did); the running mirror does not import a changed file, and a mirror that finds the file on disk creates no text doc for it. An empty map writes no file; an unreadable file is kept with a WARN naming `comments.qmd`.
       - "`deriveSharedFileKind` returns `blob` for `.labshelf/comments.qmd`; `deriveSharedPaths` and `isSafeSharePath` already exclude the path, and a peer's index entry naming it is refused."
+      - Visible test files in `edit` are part of this package. After 8.1, a full `test core` fails 4 projectMirror tests (expect comments.json on disk), 1 shareConnection test and sharedProject seeding tests; this package makes them pass.
       - finish checks this against documents/contracts/collaboration.md.
     acceptance:
       - id: 8.3a
@@ -264,6 +298,42 @@ packages:
       - path: packages/core/src/qmd/index.ts
         lines: 1-6
         why: parseItemFile and serializeItemFile
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 1-385
+        why: Segment, ItemSegment, LooseText, ItemFile, parseItemFile, serializeItemFile (read only)
+      - path: packages/core/src/qmd/editor/qmdDoc.ts
+        lines: 1-60
+        why: bodyToDoc, docToBody
+      - path: packages/core/src/qmd/editor/qmdSchema.ts
+        lines: 160-180
+        why: qmdSchema export
+      - path: packages/core/src/collab/mirror/fileReconcile.ts
+        lines: 1-247
+        why: MirrorContext (line 23) and reconcileUntracked
+      - path: packages/core/src/collab/mirror/pathQueue.ts
+        lines: 1-20
+        why: ReconcileOutcome
+      - path: packages/core/src/collab/mirror/mirrorFileSystem.ts
+        lines: 1-30
+        why: MirrorFileRead
+      - path: packages/core/src/collab/mirror/projectMirror.ts
+        lines: 1-220
+        why: the reconcile routing
+      - path: packages/core/src/collab/docSync.ts
+        lines: 1-165
+        why: how entries are opened
+      - path: packages/core/src/collab/session/sharedProject.ts
+        lines: 1-114
+        why: textPaths
+      - path: packages/core/src/collab/shareIndexDoc.ts
+        lines: 1-110
+        why: ShareFileEntry
+      - path: packages/core/__tests__/qmd/fixtures/qmdFixtures.ts
+        lines: 1-200
+        why: the session 1 fixtures (8.4b)
+      - path: documents/contracts/collaboration.md
+        lines: 35-60
+        why: the Docs section to update
     seams:
       - path: packages/core/src/collab/shareIndexDoc.ts
         signature: 'export interface ShareFileEntry { kind: "text" | "blob" | "qmd"; hash?: string }'
@@ -284,6 +354,8 @@ packages:
       - Update `documents/contracts/collaboration.md` (the doc layout in `### Docs`, now line 41, and the text rule, now line 48) for `.qmd` docs only.
       - Loose segments are keyed `loose-<n>` (n counts loose segments in file order); an unchanged item keeps its `Y.XmlFragment` by identity across `setQmdDocText` (no replace); `setQmdDocText` with equal text makes no update; the whole call is one transaction under `origin`.
       - "`ShareFileEntry['kind']` gains `\"qmd\"`; every site that tests `kind === \"text\"` or treats not-text as blob (projectMirror, docSync, sharedProject, fileReconcile) handles `qmd` (see edit)."
+      - "Applied in 8.4: the `qmd` map also holds `tails: Y.Map<key, string>` (JSON of an item's close line, line ending, trailing text and unterminated flag), needed for byte identity because `yXmlFragmentToProsemirrorJSON` drops doc attrs. Loose text is stored in `attrs` under `loose-<n>`. Duplicate ids get the key `<id>~<n>`."
+      - "`y-prosemirror` (^1.3.7) and the prosemirror packages are already core dependencies. `MirrorContext` is in `mirror/fileReconcile.ts`, `ReconcileOutcome` in `mirror/pathQueue.ts`, `MirrorFileRead` in `mirror/mirrorFileSystem.ts`. The generated stubs in `packages/core/src/qmd/collab/` may lack imports or have a signature comment that swallows the brace: rewrite them."
       - finish checks this against documents/contracts/collaboration.md and documents/contracts/qmd-items.md.
     acceptance:
       - id: 8.4a
@@ -303,3 +375,40 @@ packages:
     do_not_touch:
       - packages/core/src/collab/textBinding.ts and the text binding of shared text docs
       - packages/vscode/, packages/browser/
+  - id: "8.9"
+    plan: qmd-notes
+    goal: The browser comments store test reads and writes `.labshelf/comments.qmd`, so the gate is green after 8.1 moved COMMENTS_PATH.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "8.4"
+    edit:
+      - path: packages/browser/__tests__/collab/comments.test.ts
+        lines: 1-110
+        why: "the comments.json assertions (lines 15, 40, 50, 73-77, 106) move to .labshelf/comments.qmd: files keyed by the .qmd path, threads read with parseCommentsQmd (from @labshelf/core) instead of JSON.parse, the invalid file stays `<<<<<<< ours\\n`"
+    create: []
+    read:
+      - path: packages/core/src/collab/commentsQmd.ts
+        lines: 1-220
+        why: parseCommentsQmd
+      - path: packages/core/src/collab/index.ts
+        lines: 1-60
+        why: the exported names
+    seams: []
+    decided:
+      - "Moved from 8.8 (session 8b): session 8 changed COMMENTS_PATH, so the browser test must follow before session 8 closes. Only this test file changes; browser source (doc comments, the editor UI) stays for 8.8."
+      - Only the two failing tests and the doc comments of the test file change.
+    acceptance:
+      - id: 8.9a
+        check: packages/browser/__tests__/collab/comments.test.ts passes
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab/comments.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+    do_not_touch:
+      - packages/browser/src/
+      - packages/core/
+blocked_reason: "8.4: missing; 8.9: no report"

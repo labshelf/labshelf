@@ -28,7 +28,7 @@ const thread: CommentThread = {
 };
 
 const threadIds = (text: string): string[] =>
-  (parseCommentsQmd(text)!.threads as { id: string }[]).map((each) => each.id);
+  (parseCommentsQmd(text)!.threads as readonly { id: string }[]).map((each) => each.id);
 
 describe.each([nodeFiles, memoryFiles()])("8.3a comments.qmd in a mirror over a $name", (files) => {
   let fixture: MirrorFixture;
@@ -188,9 +188,9 @@ describe("8.3c comments.qmd is not a text doc", () => {
     expect(deriveSharedFileKind(QMD, bytes)).toBe("blob");
   });
 
-  it("8.3c still derives text for a .qmd note elsewhere", () => {
-    expect(deriveSharedFileKind("notes/ideas.qmd", bytes)).toBe("text");
-    expect(deriveSharedFileKind("comments.qmd", bytes)).toBe("text");
+  it("8.3c derives qmd for a .qmd note elsewhere", () => {
+    expect(deriveSharedFileKind("notes/ideas.qmd", bytes)).toBe("qmd");
+    expect(deriveSharedFileKind("comments.qmd", bytes)).toBe("qmd");
   });
 
   it("8.3c does not list .labshelf/comments.qmd among the shared paths", () => {
