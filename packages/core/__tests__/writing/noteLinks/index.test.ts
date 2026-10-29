@@ -2,11 +2,10 @@ import { deriveTextSha256Hex } from "../../../src/hash/index";
 import {
   deriveOriginHash,
   deriveOriginState,
-  formatOriginComment,
-  parseOriginComment,
   scanOrigins,
   type ManuscriptOrigin,
 } from "../../../src/writing/noteLinks/index";
+import { formatOriginComment, parseOriginComment } from "../../../src/writing/noteLinks/originSyntax";
 
 const HASH = "0123456789ab";
 const PROJECT_ORIGIN = { notePath: "notes/physics.qmd", label: "eq-energy", hash: HASH };

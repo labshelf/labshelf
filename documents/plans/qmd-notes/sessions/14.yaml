@@ -6,7 +6,14 @@ depends_on:
 owns:
   - documents/ideas/computational-notes.md
   - documents/plans/qmd-notes/
-status: pending
+  - packages/browser/src/
+  - packages/browser/__tests__/
+  - packages/core/src/
+  - packages/core/__tests__/
+  - packages/vscode/src/
+  - packages/vscode/__tests__/
+  - scripts/lint/modulesBaseline.json
+status: blocked
 packages:
   - id: "14.2"
     plan: qmd-notes
@@ -135,6 +142,175 @@ packages:
         check: "A9 by hand in the browser: with the helper and no Python the install prompt appears, after install a SymPy cell runs and its result is written into the note, a stuck cell is cancelled, editing the cell marks the result out of date"
     tests:
       none: checked by the user by hand in the app
+  - id: 14.L1
+    plan: qmd-notes
+    goal: "`createNoteLinks` in the browser writing note links is split by concept so every function is at most 50 lines and browser lint passes."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/browser/src/writing/noteLinks.ts
+        lines: 1-339
+        why: "`createNoteLinks` (line ~152) is 157 lines against the 50-line limit"
+    read:
+      - path: packages/browser/__tests__/writing/noteLinks.test.ts
+        lines: 1-80
+        why: the behaviour the split must keep
+    decided:
+      - "Split by concept into module-level functions taking `deps`, `refresh` and `guarded`: refresh, insert (picker and build), update and diff, hover tooltip. `createNoteLinks` keeps the same signature and returned API."
+      - No behaviour change. Do not run pnpm gate or any lint; check only with the commands below.
+    acceptance:
+      - id: 14.L1a
+        check: every function in noteLinks.ts is at most 50 lines and the existing noteLinks tests pass unchanged
+    tests:
+      none: refactor with no behaviour change; the existing tests in commands must pass
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser -- __tests__/writing/noteLinks.test.ts
+  - id: 14.L2
+    plan: qmd-notes
+    goal: "`packages/core/src/writing/noteLinks` hides at least one file from outside, so the `hides-nothing` module rule passes."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/writing/noteLinks/index.ts
+        lines: 1-5
+        why: exports every file of the folder
+      - path: packages/core/src/writing/noteLinks/index.ts
+        lines: 1-6
+        why: the five files (originComment, originState, scanOrigins, noteInsertables)
+      - path: packages/core/src/writing/noteLinks/noteInsertables.ts
+        lines: 1-122
+        why: the five files (originComment, originState, scanOrigins, noteInsertables)
+      - path: packages/core/src/writing/noteLinks/originComment.ts
+        lines: 1-37
+        why: the five files (originComment, originState, scanOrigins, noteInsertables)
+      - path: packages/core/src/writing/noteLinks/originState.ts
+        lines: 1-16
+        why: the five files (originComment, originState, scanOrigins, noteInsertables)
+      - path: packages/core/src/writing/noteLinks/scanOrigins.ts
+        lines: 1-85
+        why: the five files (originComment, originState, scanOrigins, noteInsertables)
+      - path: packages/core/src/writing/index.ts
+        lines: 1-35
+        why: re-exports from noteLinks
+    read:
+      - path: scripts/lint/modules.mjs
+        lines: 78-90
+        why: "hides-nothing: fails when every member file has a user outside the module"
+      - path: packages/core/__tests__/writing/noteLinks/index.test.ts
+        lines: 1-256
+        why: tests that import the folder
+      - path: packages/core/__tests__/writing/noteLinks/noteInsertables.test.ts
+        lines: 1-230
+        why: tests that import the folder
+    decided:
+      - Find with `node scripts/code/facts.mjs callers <name>` which exports are used outside the folder only by tests or not at all, and stop exporting them from the index so at least one file (e.g. originState or originComment helpers used only by scanOrigins/noteInsertables) is used only inside the folder. Tests of internals import through the index or test via the public functions. If no export can be hidden without breaking a real outside user, fold the files into `packages/core/src/writing/` instead.
+      - Check with `node scripts/lint/modules.mjs` (read-only, never --update) that `hides-nothing` for this folder is gone. Do not run pnpm gate or pnpm lint.
+    acceptance:
+      - id: 14.L2a
+        check: "`node scripts/lint/modules.mjs` reports no hides-nothing for packages/core/src/writing/noteLinks and core typecheck and noteLinks tests pass"
+    tests:
+      none: refactor with no behaviour change; the existing tests in commands must pass
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- __tests__/writing/noteLinks
+  - id: 14.L3
+    plan: qmd-notes
+    goal: The two satellite files of the cell runner are folded into their only user, so the `satellite` module rule passes.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/browser/src/helper/cellRunner.ts
+        lines: 1-7
+        why: 7-line satellite; fold into cellPorts.ts and delete
+      - path: packages/browser/src/helper/cellPorts.ts
+        lines: 1-62
+        why: receives cellRunner.ts
+      - path: packages/browser/src/helper/index.ts
+        lines: 1-5
+        why: update the export source
+      - path: packages/browser/__tests__/helper/cellRunner.test.ts
+        lines: 1-89
+        why: import from the new place (rename to cellPorts test only if that file does not exist; otherwise keep the name)
+      - path: packages/core/src/helper/node/cellHandlers.ts
+        lines: 1-50
+        why: 50-line satellite with one user; fold into runHelperHost.ts and delete
+      - path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 1-148
+        why: receives cellHandlers.ts
+      - path: packages/core/__tests__/helper/node/cellHandlers.test.ts
+        lines: 1-133
+        why: import from the new place
+    decided:
+      - Move code verbatim; keep exported names the same; keep each function at most 50 lines. Find users with `node scripts/code/facts.mjs uses <file>`.
+      - Check with `node scripts/lint/modules.mjs` (read-only, never --update). Do not run pnpm gate or pnpm lint.
+    acceptance:
+      - id: 14.L3a
+        check: both files are gone, `node scripts/lint/modules.mjs` reports no satellite for them, and the moved tests pass
+    tests:
+      none: refactor with no behaviour change; the existing tests in commands must pass
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test browser -- __tests__/helper/cellRunner.test.ts
+      - node scripts/agents/run.mjs test core -- __tests__/helper/node/cellHandlers.test.ts __tests__/helper/node/runHelperHost.test.ts
+    read: []
+  - id: 14.L4
+    plan: qmd-notes
+    goal: The VS Code cell hosts and the cell run port live in a Node-only folder and reach the neutral activation through the desktop platform, so `lint:deps` reports no Node imports outside a node folder.
+    level: contract
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - path: packages/vscode/src/activation/startExtension.ts
+        lines: 1-213
+        why: "`createCellHosts` (line ~101) imports node:os, node:path and @labshelf/core/node in neutral code"
+      - path: packages/vscode/src/qmd/runCell.ts
+        lines: 1-41
+        why: imports node:os and @labshelf/core/node outside a node folder
+      - path: packages/vscode/src/qmd/index.ts
+        lines: 1-2
+        why: neutral index that re-exports runCell
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 1-98
+        why: the desktop platform, the seam Node-only parts reach activation through
+      - path: packages/vscode/src/activation/node/index.ts
+        lines: 1-3
+        why: part of the change
+      - path: packages/vscode/src/activation/extensionPlatform.ts
+        lines: 1-19
+        why: the platform type the neutral activation receives
+    read:
+      - path: packages/vscode/src/writing/templates/node/index.ts
+        lines: 1-3
+        why: example of a node folder reached through an allowed node entry
+      - path: packages/vscode/src/reader/panel.ts
+        lines: 1-360
+        why: a user of the cell hosts / run port
+      - path: packages/vscode/src/spaces/view.ts
+        lines: 1-385
+        why: a user of the cell hosts / run port
+      - path: packages/vscode/src/libraryUi/handlers.ts
+        lines: 1-368
+        why: a user of the cell hosts / run port
+    decided:
+      - "Read `node scripts/docs/doc.mjs code#placement` first. Move `createCellHosts` and runCell.ts into a node folder (e.g. `packages/vscode/src/qmd/node/` exported only to `activation/node`, or into `activation/node/`) and have the desktop platform provide the cell hosts as an optional platform member; the neutral startExtension uses what the platform gives (web build without it keeps the current web behaviour: no local cell runner). A plain move of runCell.ts to qmd/node/ re-exported from the neutral qmd/index.ts fails the `vscode-neutral-no-vscode-node-folder` rule, so neutral code must not import the node folder."
+      - No behaviour change on desktop. Do not run pnpm gate or pnpm lint; you may run `pnpm lint:deps` and `node scripts/lint/modules.mjs` (read-only) to check.
+    acceptance:
+      - id: 14.L4a
+        check: "`pnpm lint:deps` reports no errors for startExtension.ts or runCell.ts, vscode typecheck and the activation tests pass"
+    tests:
+      none: refactor with no behaviour change; the existing tests in commands must pass
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode -- __tests__/activation
   - id: "14.4"
     plan: qmd-notes
     goal: The plan directory is deleted and no document links to it.
@@ -156,3 +332,5 @@ packages:
         check: the plan directory is gone and `grep -r plans/qmd-notes documents` finds nothing
     tests:
       none: docs
+milestone: true
+blocked_reason: "14.3: no report; 5.3: no report; 6.9: no report; 11.8: no report; 12.9: no report; 14.4: no report"

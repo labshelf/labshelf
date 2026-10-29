@@ -329,6 +329,16 @@ function changeListener({ path, save, helperEdits, labels }: {
   });
 }
 
+// The share's doc file writer saves a shared file, so the editor has nothing to write.
+function createSaver(deps: SourceEditorDeps, text: () => string, saved: { text: string }, onSaved: () => void): Pick<WriteScheduler, "changed" | "flush" | "dirty"> {
+  if (deps.collab) return { changed: () => undefined, flush: async () => true, dirty: () => false };
+  return createWriteScheduler({
+    file: deps.path, logger: deps.logger, text,
+    write: async (content) => { await deps.files.write(deps.path, content); saved.text = content; },
+    onDirty: deps.onDirty, onSaved,
+  });
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab } = deps;
   const labels = createProjectLabels(logger);
@@ -342,20 +352,15 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const currentText = (): string => (view ? view.state.doc.sliceString(0, undefined, view.state.lineBreak) : text);
   const language = sourceLanguage(deps, labels);
   const kind = deriveSourceLanguage(path);
-  let savedText = text;
+  const saved = { text };
   const explicit = explicitSaves(helperEdits);
-  // The share's doc file writer saves a shared file, so the editor has nothing to write.
-  const save: Pick<WriteScheduler, "changed" | "flush" | "dirty"> = collab ? { changed: () => undefined, flush: async () => true, dirty: () => false } : createWriteScheduler({
-    file: path, logger, text: currentText,
-    write: async (content) => { await deps.files.write(path, content); savedText = content; },
-    onDirty: deps.onDirty, onSaved: () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); },
-  });
+  const save = createSaver(deps, currentText, saved, () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); });
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
   const refreshLinks = (): void => { if (noteLinks && view) void noteLinks.refresh(view); };
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
   const refreshNotes = noteRefresh.refresh;
-  const commentsSupport = deps.comments && createCommentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => savedText, flush: save.flush, logger });
+  const commentsSupport = deps.comments && createCommentSupport({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => saved.text, flush: save.flush, logger });
   const onUpdate = changeListener({ path, save, helperEdits, labels });
   const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, () => explicit.flush(save), noteGutter.extension), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
@@ -366,7 +371,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, {
     revealLine: (line) => showLine(view!, line), flush: save.flush,
-    reload: () => loadFromDisk(view!, deps, (disk) => { savedText = disk; }).then(() => { refreshNotes(); refreshLinks(); }),
+    reload: () => loadFromDisk(view!, deps, (disk) => { saved.text = disk; }).then(() => { refreshNotes(); refreshLinks(); }),
   });
   return {
     ...createSourceUpdates(view, kind),

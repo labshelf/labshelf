@@ -1,7 +1,7 @@
 /** Checks that a project path or project id is safe inside the helper's data folder, frames one helper socket message, and declares the port an app implements to build LaTeX through LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#messages
 
-import type { CellResult } from "../qmd/compute/cellRunner.js";
+import type { CellResult } from "../qmd/compute/index.js";
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {

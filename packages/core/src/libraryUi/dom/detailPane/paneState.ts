@@ -143,6 +143,12 @@ function mountItemEditor(el: HTMLElement, body: string, readOnly: boolean, onCha
   return mountQmdEditor(el, { body, readOnly, onChange, ...(onRunCell ? { onRunCell } : {}) });
 }
 
+function mountNewItemEditor(ctx: UiContext, el: HTMLElement, paper: string, body: string, readOnly: boolean): QmdEditorHandle {
+  let added = false;
+  const onChange = (text: string): void => { if (!added && text.trim()) { added = true; addNote(ctx, paper, text); } };
+  return mountQmdEditor(el, { body, readOnly, onChange });
+}
+
 /** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
 export function createNoteEditor(ctx: UiContext): NoteEditor {
   const drafts = new Map<string, { paper: string; body: string }>();
@@ -169,8 +175,7 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
         const itemId = el.dataset["item"];
         const body = itemId ? items(id).find((n) => n.id === itemId)?.body ?? "" : "";
         if (!itemId) {
-          let added = false;
-          const handle = mountQmdEditor(el, { body, readOnly, onChange: (text) => { if (!added && text.trim()) { added = true; addNote(ctx, id, text); } } });
+          const handle = mountNewItemEditor(ctx, el, id, body, readOnly);
           handles.push({ itemId: "", handle });
           if (wantNewFocus) { wantNewFocus = false; handle.focus(); }
           continue;

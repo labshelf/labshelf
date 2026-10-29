@@ -187,6 +187,28 @@ function isKnownAnchor(value: unknown): boolean {
   return isString(value) && parseAnchor(value).kind !== "unknown";
 }
 
+// Validates the note and cell commands; null when `m` is not one of them.
+function checkNoteMessage(m: Record<string, unknown>): boolean | null {
+  switch (m["command"]) {
+    case "addNote":
+      return isString(m["body"]) && isKnownAnchor(m["anchor"]);
+    case "editNote":
+      return isNonEmptyString(m["id"]) && isString(m["body"]);
+    case "moveNote":
+      return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
+    case "removeNote":
+      return isNonEmptyString(m["id"]);
+    case "runCell":
+      return isNonEmptyString(m["itemId"]) && isNonEmptyString(m["label"]) && isNonEmptyString(m["code"]) && isNonEmptyString(m["requestId"]);
+    case "cancelCell":
+      return isNonEmptyString(m["requestId"]);
+    case "installPython":
+      return true;
+    default:
+      return null;
+  }
+}
+
 /**
  * Validates an untrusted webview message against the protocol; anything malformed is rejected so host handlers never see partial payloads.
  * @returns true when `raw` is a well-formed WebviewToHost message.
@@ -194,7 +216,7 @@ function isKnownAnchor(value: unknown): boolean {
 export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
   if (!isRecord(raw) || !isString(raw["command"])) { return false; }
   const m = raw;
-  const preview = checkPreviewRequest(m);
+  const preview = checkPreviewRequest(m) ?? checkNoteMessage(m);
   if (preview !== null) { return preview; }
   switch (m["command"] as Exclude<WebviewToHost, PreviewRequest>["command"]) {
     case "ready-for-init":
@@ -210,20 +232,6 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
         && isNumber(m["pageNumber"]) && isString(m["content"]);
     case "deleteAnnotation":
       return isString(m["id"]) && m["id"].length > 0;
-    case "addNote":
-      return isString(m["body"]) && isKnownAnchor(m["anchor"]);
-    case "editNote":
-      return isNonEmptyString(m["id"]) && isString(m["body"]);
-    case "moveNote":
-      return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
-    case "removeNote":
-      return isNonEmptyString(m["id"]);
-    case "runCell":
-      return isNonEmptyString(m["itemId"]) && isNonEmptyString(m["label"]) && isNonEmptyString(m["code"]) && isNonEmptyString(m["requestId"]);
-    case "cancelCell":
-      return isNonEmptyString(m["requestId"]);
-    case "installPython":
-      return true;
     case "updateAnnotation":
       return isString(m["id"]) && m["id"].length > 0 && isString(m["content"]) && m["content"].length > 0;
     case "saveReadingState":

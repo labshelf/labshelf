@@ -8,8 +8,8 @@ import {
   type ILogger, type ManuscriptOrigin, type NoteInsertable, type NoteInsertSource, type OriginState, type PaperRecord, type ProjectNotesStore,
 } from "@labshelf/core";
 import { runSafely } from "../command/index.js";
-import { deriveVscodeRange } from "../latex/project.js";
-import { findCitingProject } from "./citations/backlinks.js";
+import { deriveVscodeRange } from "../latex/index.js";
+import { findCitingProject } from "./citations/index.js";
 import type { ReadyProject, WritingProjects } from "./projects/index.js";
 
 const MODULE = "writing/noteLinks";

@@ -1,6 +1,7 @@
 import { buildInsert, buildUpdate, listNoteInsertables, type NoteInsertable, type NoteInsertSource } from "../../../src/writing/noteLinks/noteInsertables";
 import { deriveCodeHash } from "../../../src/qmd/item/cellOutput";
-import { deriveOriginHash, formatOriginComment, parseOriginComment } from "../../../src/writing/noteLinks/originComment";
+import { deriveOriginHash } from "../../../src/writing/noteLinks/originComment";
+import { formatOriginComment, parseOriginComment } from "../../../src/writing/noteLinks/originSyntax";
 import { scanOrigins } from "../../../src/writing/noteLinks/scanOrigins";
 import type { ManuscriptOrigin } from "../../../src/writing/noteLinks/scanOrigins";
 import type { OriginState } from "../../../src/writing/noteLinks/originState";

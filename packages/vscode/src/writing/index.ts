@@ -6,7 +6,7 @@ export {
 } from "./projects/index.js";
 export { registerBibliographyCheck } from "./bibliographyCheck.js";
 export { registerEditorActions, registerInsertActions, registerPaperLinks, ProjectBacklinks } from "./citations/index.js";
-export { registerNoteLinks, type NoteLinkDeps, type NoteLinkLibrary } from "./noteLinks.js";
+export { registerNoteLinks } from "./noteLinks.js";
 export { readActiveProject } from "./build/index.js";
 export { WritingProjects } from "./projects/index.js";
 export type { WritingHost, WritingSession } from "./projects/index.js";
