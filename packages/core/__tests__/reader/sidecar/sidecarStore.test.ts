@@ -76,17 +76,23 @@ describe('PaperSidecarStore', () => {
     expect(await store(memoryPort({ p: '{not json' })).load('p')).toEqual(createEmptyPaperSidecar());
   });
 
-  it('adds highlights and notes, and lists them by page then creation time', async () => {
+  it('adds highlights, and lists them by page then creation time', async () => {
     const port = memoryPort();
     const s = store(port);
     await s.addHighlight('p', 3, 'later page', 'blue');
     const h = await s.addHighlight('p', 1, 'first', 'yellow', { x: 0, y: 0, width: 0.5, height: 0.1 });
-    await s.addNote('p', 2, 'a note');
+    await s.addHighlight('p', 2, 'middle', 'green');
     expect(h).toMatchObject({ type: 'highlight', color: 'yellow', paperId: 'p', createdAt: '2026-10-07T12:00:00.000Z' });
     expect((await s.getAnnotations('p')).map((a) => a.pageNumber)).toEqual([1, 2, 3]);
-    const note = (await s.getAnnotations('p')).find((a) => a.type === 'note')!;
-    expect(note).not.toHaveProperty('color');
-    expect(note).not.toHaveProperty('position');
+  });
+
+  it('neither reads nor rewrites an annotation of the retired type note', async () => {
+    const old = { id: 'n', paperId: 'p', type: 'note', pageNumber: 1, content: 'old', createdAt: 't', updatedAt: 't' };
+    const port = memoryPort({ p: JSON.stringify({ annotations: [old], theme: 'auto' }) });
+    const s = store(port);
+    expect(await s.getAnnotations('p')).toEqual([]);
+    await s.addHighlight('p', 1, 'x', 'yellow');
+    expect((JSON.parse(port.files['p']!) as { annotations: { type: string }[] }).annotations.map((a) => a.type)).toEqual(['highlight']);
   });
 
   it('rejects invalid colors, pages and empty content without writing', async () => {
@@ -95,14 +101,13 @@ describe('PaperSidecarStore', () => {
     await expect(s.addHighlight('p', 1, 'x', 'purple')).rejects.toThrow('Invalid annotation color');
     await expect(s.addHighlight('p', 0, 'x', 'red')).rejects.toThrow('Invalid page number');
     await expect(s.addHighlight('p', 1, '  ', 'red')).rejects.toThrow('cannot be empty');
-    await expect(s.addNote('p', 1, '')).rejects.toThrow('cannot be empty');
     expect(port.writes).toBe(0);
   });
 
   it('updates and deletes annotations; unknown ids fail or no-op without a write', async () => {
     const port = memoryPort();
     const s = store(port);
-    const a = await s.addNote('p', 1, 'old');
+    const a = await s.addHighlight('p', 1, 'old', 'yellow');
     expect((await s.updateAnnotation('p', a.id, 'new')).content).toBe('new');
     await expect(s.updateAnnotation('p', 'missing', 'x')).rejects.toThrow('not found');
     const before = port.writes;
@@ -117,7 +122,7 @@ describe('PaperSidecarStore', () => {
     const fresh = { id: 'kept', deletedAt: '2026-09-01T00:00:00.000Z' };
     const port = memoryPort({ p: JSON.stringify({ annotations: [], theme: 'auto', deleted: [old, fresh] }) });
     const s = store(port);
-    const a = await s.addNote('p', 1, 'n');
+    const a = await s.addHighlight('p', 1, 'n', 'yellow');
     expect(JSON.parse(port.files['p']!).deleted).toEqual([fresh]);
     await s.deleteAnnotation('p', a.id);
     expect(JSON.parse(port.files['p']!).deleted).toEqual([{ id: a.id, deletedAt: '2026-10-07T12:00:00.000Z' }, fresh]);
@@ -129,8 +134,8 @@ describe('PaperSidecarStore', () => {
     await Promise.all([
       s.setTheme('p', 'sepia'),
       s.setReadingState('p', { page: 4, scaleValue: 'page-fit', updatedAt: 't' }),
-      s.addNote('p', 1, 'n1'),
-      s.addNote('p', 2, 'n2'),
+      s.addHighlight('p', 1, 'n1', 'yellow'),
+      s.addHighlight('p', 2, 'n2', 'yellow'),
     ]);
     const data = await s.load('p');
     expect(data.theme).toBe('sepia');
@@ -163,7 +168,7 @@ describe('PaperSidecarStore theme and reading state', () => {
 
   it('keeps theme, annotations and reading state independent', async () => {
     const s = store(memoryPort());
-    await s.addNote('p', 1, 'a');
+    await s.addHighlight('p', 1, 'a', 'yellow');
     await s.setTheme('p', 'sepia');
     const withSidebar = { ...reading, sidebar: { open: true, tab: 'outline' as const, width: 260 } };
     await s.setReadingState('p', withSidebar);
@@ -224,16 +229,10 @@ describe('PaperSidecarStore annotations', () => {
     expect((await s.getAnnotations('p'))[0]).toEqual(h);
   });
 
-  it('stores a note with its text and page', async () => {
-    const s = store(memoryPort());
-    const note = await s.addNote('p', 4, 'remember');
-    expect(note).toMatchObject({ type: 'note', pageNumber: 4, content: 'remember', paperId: 'p' });
-  });
-
   it('keeps annotations of different papers apart', async () => {
     const s = store(memoryPort());
-    await s.addNote('a', 1, 'in a');
-    await s.addNote('b', 1, 'in b');
+    await s.addHighlight('a', 1, 'in a', 'yellow');
+    await s.addHighlight('b', 1, 'in b', 'yellow');
     expect((await s.getAnnotations('a')).map((x) => x.content)).toEqual(['in a']);
     expect((await s.getAnnotations('b')).map((x) => x.content)).toEqual(['in b']);
   });
@@ -242,10 +241,10 @@ describe('PaperSidecarStore annotations', () => {
     const port = memoryPort();
     const s = store(port);
     await s.addHighlight('p', 2, 'text', 'green', { x: 0.1, y: 0.2, width: 0.3, height: 0.1 });
-    await s.addNote('p', 1, 'note');
-    const [highlight, note] = (JSON.parse(port.files['p']!) as { annotations: object[] }).annotations;
+    await s.addHighlight('p', 1, 'plain', 'red');
+    const [highlight, plain] = (JSON.parse(port.files['p']!) as { annotations: object[] }).annotations;
     expect(Object.keys(highlight!)).toEqual(['id', 'paperId', 'type', 'pageNumber', 'content', 'color', 'position', 'createdAt', 'updatedAt']);
-    expect(Object.keys(note!)).toEqual(['id', 'paperId', 'type', 'pageNumber', 'content', 'createdAt', 'updatedAt']);
+    expect(Object.keys(plain!)).toEqual(['id', 'paperId', 'type', 'pageNumber', 'content', 'color', 'createdAt', 'updatedAt']);
     expect(port.files['p']).toContain('"id": "id-');
     expect(port.files['p']!.indexOf('"id"')).toBeLessThan(port.files['p']!.indexOf('"paperId"'));
   });
@@ -288,7 +287,6 @@ describe("createPreviewStore", () => {
 
   it.each([
     ["addHighlight", (s: ReturnType<typeof createPreviewStore>) => s.addHighlight("preview:p", 1, "text", "yellow")],
-    ["addNote", (s: ReturnType<typeof createPreviewStore>) => s.addNote("preview:p", 1, "note")],
     ["updateAnnotation", (s: ReturnType<typeof createPreviewStore>) => s.updateAnnotation("preview:p", "a", "text")],
     ["deleteAnnotation", (s: ReturnType<typeof createPreviewStore>) => s.deleteAnnotation("preview:p", "a")],
   ])("rejects %s and stores nothing", async (_name, write) => {

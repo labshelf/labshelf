@@ -5,12 +5,13 @@ import type { Annotation, PdfTheme } from "../model/index.js";
 import { formatError } from "../errors/index.js";
 import {
   type BuildState, type PageArea, type PagePoint, type PreviewBuildRoots, isWebviewMessage, type EffectiveTheme,
-  type HostToWebview, type WebviewToHost,
+  type HostToWebview, type ReaderNote, type WebviewToHost,
 } from "./protocol/index.js";
 import { annotationHandlers, previewHandlers, sessionHandlers, shareHandlers } from "./hostMessages.js";
+import { noteHandlers } from "./noteMessages.js";
 import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers, type ReaderHostPorts } from "./hostPorts.js";
 
-const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...shareHandlers, ...previewHandlers };
+const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...noteHandlers, ...shareHandlers, ...previewHandlers };
 
 export interface ReaderHostOptions {
   /** Page to show once the reader has laid out the document. */
@@ -23,13 +24,14 @@ export class ReaderHostController {
 
   constructor(private readonly ports: ReaderHostPorts, options: ReaderHostOptions = {}) {
     const now = ports.now ?? Date.now;
-    this.state = { themePreference: "auto", ready: false, held: new Map(), lastAnnotationsKey: "", openedAt: now() };
+    this.state = { themePreference: "auto", ready: false, held: new Map(), lastAnnotationsKey: "", lastNotesKey: "", openedAt: now() };
     this.ctx = {
       ports,
       state: this.state,
       now,
       effectiveTheme: (theme) => this.effectiveTheme(theme),
       pushAnnotations: (annotations, force) => this.pushAnnotations(annotations, force),
+      pushNotes: (items, force) => this.pushNotes(items, force),
     };
     if (options.page !== undefined) { this.requestPage(options.page); }
   }
@@ -147,6 +149,13 @@ export class ReaderHostController {
     if (!force && key === this.state.lastAnnotationsKey) { return; }
     this.state.lastAnnotationsKey = key;
     this.ports.post({ type: "updateAnnotations", annotations });
+  }
+
+  private pushNotes(items: ReaderNote[], force: boolean): void {
+    const key = JSON.stringify(items);
+    if (!force && key === this.state.lastNotesKey) { return; }
+    this.state.lastNotesKey = key;
+    this.ports.post({ type: "updateNotes", items });
   }
 
   private effectiveTheme(theme: PdfTheme): EffectiveTheme {

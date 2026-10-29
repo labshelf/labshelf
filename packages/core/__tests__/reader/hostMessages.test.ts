@@ -29,12 +29,6 @@ describe("reader annotation messages", () => {
       expect(stored(files)[0]).not.toHaveProperty("position");
     });
 
-    it("stores a note", async () => {
-      const { host, files } = setupHost();
-      await host.handle({ command: "createAnnotation", type: "note", pageNumber: 4, content: "a note" });
-      expect(stored(files)[0]).toMatchObject({ type: "note", pageNumber: 4, content: "a note" });
-    });
-
     it("logs and reports an invalid annotation without writing, pushing or reporting a change", async () => {
       const { host, files, ports, posted, changes } = setupHost();
       await host.handle({ command: "createAnnotation", type: "highlight", pageNumber: 1, content: "q", color: "purple" as never });
@@ -49,7 +43,7 @@ describe("reader annotation messages", () => {
   describe("updateAnnotation", () => {
     it("updates an annotation the reader was never sent, pushes the list and reports the change", async () => {
       const { host, posted, files, changes, ports } = setupHost();
-      const ann = await ports.store.addNote("p1", 1, "old");
+      const ann = await ports.store.addHighlight("p1", 1, "old", "yellow");
       await host.handle({ command: "updateAnnotation", id: ann.id, content: "edited" });
       expect(stored(files)[0]!.content).toBe("edited");
       expect(posted.at(-1)).toMatchObject({ type: "updateAnnotations" });
@@ -112,7 +106,9 @@ describe("exportAnnotations", () => {
     await exportAnnotations(ports, "clipboard");
     const markdown = ports.writeClipboard.mock.calls[0]![0];
     expect(markdown).toContain("# Efficient Algorithms");
-    expect(markdown.indexOf("## Page 1")).toBeLessThan(markdown.indexOf("## Page 2"));
+    expect(markdown).toContain("## Page 1");
+    expect(markdown).not.toContain("## Page 2");
+    expect(markdown).not.toContain("**Note:**");
     expect(ports.notify).toHaveBeenCalledWith("Annotations copied as Markdown", "ok");
     expect(ports.saveAnnotations).not.toHaveBeenCalled();
   });
@@ -129,12 +125,27 @@ describe("exportAnnotations", () => {
 describe("reader session messages", () => {
   describe("ready-for-init", () => {
     it("answers with the sidecar's theme, sorted annotations, reading position and prefs", async () => {
-      const { host, posted } = setupHost({ seed: sidecar });
+      const highlight = (id: string, pageNumber: number, createdAt: string) =>
+        ({ id, paperId: "p1", type: "highlight", pageNumber, content: id, color: "blue", createdAt, updatedAt: "x" });
+      const seed = JSON.stringify({
+        annotations: [highlight("b", 2, "2026-01-02T00:00:00.000Z"), highlight("a", 1, "2026-01-01T00:00:00.000Z")],
+        theme: "sepia",
+        reading: { page: 5, scaleValue: "page-width", updatedAt: "t" },
+      });
+      const { host, posted } = setupHost({ seed });
       await host.handle({ command: "ready-for-init" });
       expect(posted).toHaveLength(1);
       const init = posted[0] as Extract<HostToWebview, { type: "init" }>;
-      expect(init).toMatchObject({ type: "init", theme: "sepia", effectiveTheme: "sepia", prefs: DEFAULT_READER_PREFS, reading: { page: 5 } });
+      expect(init).toMatchObject({ type: "init", theme: "sepia", effectiveTheme: "sepia", prefs: DEFAULT_READER_PREFS, reading: { page: 5 }, notes: [] });
       expect(init.annotations.map((a) => a.id)).toEqual(["a", "b"]);
+    });
+
+    it("does not read an old note annotation of the sidecar", async () => {
+      const { host, posted } = setupHost({ seed: sidecar });
+      await host.handle({ command: "ready-for-init" });
+      const init = posted[0] as Extract<HostToWebview, { type: "init" }>;
+      expect(init.annotations.map((a) => a.id)).toEqual(["a"]);
+      expect(init.notes).toEqual([]);
     });
 
     it("resolves an auto theme through the host and sends reading: null for a paper never opened", async () => {

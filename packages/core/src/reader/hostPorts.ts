@@ -2,11 +2,12 @@
 import type { Annotation, PaperRecord, PdfTheme } from "../model/index.js";
 import type { ILogger } from "../ports/index.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
+import type { PaperNotesStore } from "../qmd/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type {
   CitationEntry, CitationQuery, PagePoint, CheckLimitsChange, CitationFix, ProjectCommandId, CitationInProjectRequest,
-  EffectiveTheme, HostToWebview, ReaderPrefs, WebviewToHost,
+  EffectiveTheme, HostToWebview, ReaderNote, ReaderPrefs, WebviewToHost,
 } from "./protocol/index.js";
 
 // Declares the ports a reader host implements so the shared host controller can answer the reader's messages on any platform.
@@ -57,6 +58,8 @@ export interface PreviewPorts {
 export interface ReaderHostPorts {
   paper: PaperRecord;
   store: ReaderSidecarStore;
+  /** The paper's notes.qmd; absent in a build preview, which refuses note writes and shows no notes. */
+  notes?: PaperNotesStore;
   /** Sends a message to the reader UI. */
   post(msg: HostToWebview): void;
   getPrefs(): ReaderPrefs;
@@ -90,6 +93,8 @@ export interface HostState {
   held: Map<HostToWebview["type"], HostToWebview>;
   /** JSON of the annotations the reader last received, so an unchanged list is not pushed again. */
   lastAnnotationsKey: string;
+  /** JSON of the notes the reader last received. */
+  lastNotesKey: string;
   openedAt: number;
 }
 
@@ -100,6 +105,8 @@ export interface HostContext {
   effectiveTheme(theme: PdfTheme): EffectiveTheme;
   /** Posts the list unless it equals the last one sent; `force` posts it regardless. */
   pushAnnotations(annotations: Annotation[], force: boolean): void;
+  /** Posts `updateNotes` with the full list unless it equals the last one sent; `force` posts it regardless. */
+  pushNotes(items: ReaderNote[], force: boolean): void;
 }
 
 export type MessageAnswer<C extends WebviewToHost["command"]> = (

@@ -54,9 +54,10 @@ export function createEmptyPaperSidecar(): PaperSidecar {
 export function normalizePaperSidecar(parsed: unknown): PaperSidecar {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) { return createEmptyPaperSidecar(); }
   const obj = parsed as Record<string, unknown>;
+  // An entry of the retired type `note` is neither read nor rewritten: notes live in notes.qmd now.
   const annotations = Array.isArray(obj["annotations"])
     ? (obj["annotations"].filter(
-        (a) => a && typeof a === "object" && typeof (a as Annotation).id === "string",
+        (a) => a && typeof a === "object" && typeof (a as Annotation).id === "string" && (a as { type?: unknown }).type !== "note",
       ) as Annotation[])
     : [];
   const theme = isPdfTheme(obj["theme"]) ? obj["theme"] : "auto";
@@ -203,15 +204,6 @@ export class PaperSidecarStore {
     });
   }
 
-  /**
-   * @returns the stored note.
-   */
-  async addNote(paperId: string, pageNumber: number, content: string): Promise<Annotation> {
-    validatePageNumber(pageNumber);
-    if (!content.trim()) { throw new Error("Note content cannot be empty"); }
-    return this.add(paperId, { type: "note", pageNumber, content });
-  }
-
   private async add(paperId: string, fields: Pick<Annotation, "type" | "pageNumber" | "content" | "color" | "position">): Promise<Annotation> {
     const at = this.now();
     // Key order is the on-disk contract (library-format.md), so every app writes the same bytes.
@@ -282,7 +274,7 @@ export class PaperSidecarStore {
 /** The part of the store the reader host uses: reads, plus the writes a host without a library may refuse. */
 export type ReaderSidecarStore = Pick<
   PaperSidecarStore,
-  "load" | "getAnnotations" | "addHighlight" | "addNote" | "updateAnnotation" | "deleteAnnotation" | "setTheme" | "setReadingState"
+  "load" | "getAnnotations" | "addHighlight" | "updateAnnotation" | "deleteAnnotation" | "setTheme" | "setReadingState"
 >;
 
 // Keeps a build preview's reading position and theme in memory for the life of its panel and refuses annotation writes.
@@ -308,7 +300,6 @@ export function createPreviewStore(): ReaderSidecarStore {
     setTheme: (id, theme) => store.setTheme(id, theme),
     setReadingState: (id, reading) => store.setReadingState(id, reading),
     addHighlight: refuse,
-    addNote: refuse,
     updateAnnotation: refuse,
     deleteAnnotation: refuse,
   };
