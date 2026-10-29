@@ -1,7 +1,7 @@
 // Builds the preview pane content as styled lines: a paper's tabs or a summary of the hovered folder.
 // Pure functions of the snapshot and the sidecar, so tests render them without a terminal.
 import {
-  type Annotation, type FolderNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, normalizeQuote, formatAuthors, formatBytes, listPapersUnderFolder, describeTextLayer, formatVenueLine, type PaperSidecar,
+  type Annotation, type FolderNode, type LibrarySnapshot, type PaperEntry, type PaperRecord, normalizeQuote, formatAuthors, formatBytes, listPapersUnderFolder, describeTextLayer, formatVenueLine, type PaperSidecar, type ItemFile, type ItemSegment,
 } from "@labshelf/core";
 
 import type { Style } from "../screen/index.js";
@@ -57,7 +57,7 @@ function field(label: string, value: string, width: number, valueStyle?: Style):
  * The Info tab: title, authors, venue, status and tags, identifiers, where it lives, PDF and reading state, note.
  * @returns the lines
  */
-export function listMetadataLines(entry: PaperEntry, data: PaperSidecar | undefined, width: number): Line[] {
+export function listMetadataLines(entry: PaperEntry, data: PaperSidecar | undefined, width: number, notes?: ItemFile): Line[] {
   const r = entry.record;
   const lines: Line[] = [];
   lines.push(...para(r.title, width, theme.title, 4));
@@ -86,10 +86,11 @@ export function listMetadataLines(entry: PaperEntry, data: PaperSidecar | undefi
     if (highlights) { lines.push(...field("Notes", `${highlights} highlight${highlights === 1 ? "" : "s"} — Tab to read`, width)); }
     if (data.reading?.page) { lines.push(...field("Read", `stopped at page ${data.reading.page}`, width)); }
   }
-  if (r.note?.trim()) {
+  const lastNote = [...(notes?.segments ?? [])].reverse().find((segment): segment is ItemSegment => segment.kind === "item" && segment.body.trim() !== "");
+  if (lastNote) {
     lines.push([]);
     lines.push([{ text: "Note", style: theme.label }]);
-    lines.push(...para(r.note.trim(), width, theme.text, 6));
+    lines.push(...para(lastNote.body.trim(), width, theme.text, 6));
   }
   return lines;
 }
@@ -139,9 +140,11 @@ function annotationLines(annotations: Annotation[], width: number): Line[] {
  * Lines of one preview tab of a paper.
  * @returns the lines and whether a thumbnail fits under them
  */
-export function createPaperPreview(entry: PaperEntry, data: PaperSidecar | undefined, tab: PreviewTab, width: number, bibtex: string): PaperPreview {
+export function createPaperPreview(
+  entry: PaperEntry, data: PaperSidecar | undefined, tab: PreviewTab, width: number, bibtex: string, notes?: ItemFile,
+): PaperPreview {
   switch (tab) {
-    case "Info": return { lines: listMetadataLines(entry, data, width), wantsImage: entry.record.hasPdf !== false };
+    case "Info": return { lines: listMetadataLines(entry, data, width, notes), wantsImage: entry.record.hasPdf !== false };
     case "Abstract": return { lines: abstractLines(entry.record, width), wantsImage: false };
     case "Notes": return { lines: annotationLines(data?.annotations ?? [], width), wantsImage: false };
     case "BibTeX": return { lines: bibtex.split("\n").flatMap((l) => wrapIndented(l, width).map((t) => [{ text: t }])), wantsImage: false };

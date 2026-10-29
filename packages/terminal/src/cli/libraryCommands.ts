@@ -18,6 +18,8 @@ import {
   formatBytes,
   formatVenueLine,
   formatError,
+  formatAnchor,
+  type ItemFile,
 } from "@labshelf/core";
 
 import type { AppContext } from "../compositionRoot.js";
@@ -35,7 +37,23 @@ function requirePaper(ctx: AppContext, id: string): PaperEntry {
   return entry;
 }
 
-function showText(entry: PaperEntry, highlights: number, page: number | undefined): string {
+// The notes.qmd segments in file order: a dated (and anchored) line before each item's body, loose text as is.
+function notesLines(notes: ItemFile): string[] {
+  const lines: string[] = [];
+  for (const segment of notes.segments) {
+    if (segment.kind === "loose") {
+      const text = segment.text.replace(/\r\n|\r/g, "\n").replace(/\n+$/, "");
+      if (text.trim() !== "") { lines.push(...text.split("\n")); }
+      continue;
+    }
+    lines.push(`— ${[segment.created?.slice(0, 10), formatAnchor(segment.anchor)].filter(Boolean).join(" ")}`.trimEnd());
+    const body = segment.body.replace(/\r\n|\r/g, "\n").replace(/\n+$/, "");
+    if (body !== "") { lines.push(...body.split("\n")); }
+  }
+  return lines;
+}
+
+function showText(entry: PaperEntry, highlights: number, page: number | undefined, notes: ItemFile): string {
   const r = entry.record;
   const lines = [r.title];
   if (r.authors?.length) { lines.push(r.authors.join(", ")); }
@@ -54,7 +72,8 @@ function showText(entry: PaperEntry, highlights: number, page: number | undefine
     ["read", page ? `stopped at page ${page}` : undefined],
   ];
   for (const [label, value] of rows) { if (value) { lines.push(`${label.padEnd(7)}${value}`); } }
-  if (r.note?.trim()) { lines.push("", "note:", r.note.trim()); }
+  const noteLines = notesLines(notes);
+  if (noteLines.length) { lines.push("", ...noteLines); }
   if (r.summary?.trim()) { lines.push("", r.summary.trim()); }
   return lines.join("\n");
 }
@@ -186,7 +205,7 @@ async function runShow(ctx: AppContext, positionals: string[], io: Output, json:
     io.out(JSON.stringify({ ...asJson(entry), annotations: data.annotations, reading: data.reading ?? null }, null, 2));
     return 0;
   }
-  io.out(showText(entry, data.annotations.length, data.reading?.page));
+  io.out(showText(entry, data.annotations.length, data.reading?.page, await ctx.notes.read(entry.record.id)));
   return 0;
 }
 

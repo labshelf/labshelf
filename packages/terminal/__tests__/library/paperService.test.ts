@@ -15,9 +15,9 @@ describe("updateFields", () => {
 
   it("writes the patch, returns the record, reloads the store and tells the sync once", async () => {
     const h = await harness([base]);
-    const next = await h.service.updateFields("p1", { status: "reading", tags: ["NLP"], note: "Read section 3 again" });
+    const next = await h.service.updateFields("p1", { status: "reading", tags: ["NLP"] });
 
-    expect(next).toMatchObject({ status: "reading", tags: ["NLP"], note: "Read section 3 again" });
+    expect(next).toMatchObject({ status: "reading", tags: ["NLP"] });
     expect(await readYaml(metaFile(h, "p1", "ML"))).toMatchObject({ status: "reading", tags: ["NLP"], doi: "10.5555/1" });
     expect(h.store.paper("p1")!.record.status).toBe("reading");
   });

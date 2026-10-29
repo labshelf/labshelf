@@ -36,7 +36,6 @@ export interface PaperSpec {
   tags?: string[];
   doi?: string;
   summary?: string;
-  note?: string;
   pdf: boolean;
 }
 
@@ -61,7 +60,7 @@ export const PAPERS: PaperSpec[] = [
   },
   {
     id: "zebra2020study", folder: "", title: "Zebra Study of Stripes",
-    authors: ["Zoe Zebra"], year: 2020, status: "unread", note: "Check the stripes", pdf: true,
+    authors: ["Zoe Zebra"], year: 2020, status: "unread", pdf: true,
   },
 ];
 
@@ -81,7 +80,6 @@ export function yamlOf(spec: PaperSpec): string {
   if (spec.tags) { lines.push("tags:", ...spec.tags.map((t) => `  - ${JSON.stringify(t)}`)); }
   if (spec.doi) { lines.push(`doi: ${JSON.stringify(spec.doi)}`); }
   if (spec.summary) { lines.push(`summary: ${JSON.stringify(spec.summary)}`); }
-  if (spec.note) { lines.push(`note: ${JSON.stringify(spec.note)}`); }
   return lines.join("\n") + "\n";
 }
 
@@ -99,6 +97,12 @@ export async function writePaper(root: string, spec: PaperSpec): Promise<void> {
   const dir = paperDir(root, spec.folder, spec.id);
   await writeFile(path.join(dir, "metadata.yaml"), yamlOf(spec));
   if (spec.pdf) { await writeFile(path.join(dir, "paper.pdf"), "%PDF-1.4\n% LabShelf test fixture\n"); }
+}
+
+/** Seeds the notes.qmd of a paper with one item holding `body`. */
+export async function writeNotes(root: string, id: string, body: string): Promise<void> {
+  const item = `::: {#n-${id} .labshelf-item author="Ana" created="2026-10-22T12:00:00.000Z"}\n${body}\n:::\n`;
+  await writeFile(path.join(root, ".research", "papers", id, "notes.qmd"), item);
 }
 
 /** Writes every fixture paper and an empty "Empty" folder; the starting point of every App test. */

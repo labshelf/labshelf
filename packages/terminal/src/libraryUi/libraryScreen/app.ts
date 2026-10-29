@@ -1,6 +1,6 @@
 // Runs the TUI: folders, papers, writing and preview panes driven by the keymap over the library the VS Code extension uses.
 // Holds UI state only; library changes go through TerminalPaperService, .
-import type { PaperSidecar, PaperEntry } from "@labshelf/core";
+import type { ItemFile, PaperSidecar, PaperEntry } from "@labshelf/core";
 
 import type { SortField } from "../../config.js";
 import type { AppContext } from "../../compositionRoot.js";
@@ -40,6 +40,9 @@ export class App {
   // Preview-pane sidecar cache: loaded lazily, one request in flight per paper id.
   readonly sidecars = new Map<string, PaperSidecar>();
   readonly sidecarLoading = new Set<string>();
+  // Same for each paper's notes.qmd, cleared with the sidecars and after the note key edits a file.
+  readonly notes = new Map<string, ItemFile>();
+  readonly notesLoading = new Set<string>();
 
   image: { key: string; rect: CellRect } | undefined;
   size: ScreenSize;
@@ -67,6 +70,7 @@ export class App {
     ctx.store.onChange(() => {
       this.listModel.invalidateCaches();
       this.sidecars.clear();
+      this.notes.clear();
       this.listModel.dropStale();
       void this.writing.load();
       this.scheduleRender();

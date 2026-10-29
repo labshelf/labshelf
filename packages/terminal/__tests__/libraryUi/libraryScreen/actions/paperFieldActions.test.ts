@@ -6,7 +6,7 @@ import * as system from "../../../../src/platform/system";
 import { App } from "../../../../src/libraryUi/libraryScreen";
 import {
   ATTENTION, BERT, EINSTEIN, ZEBRA, eventually, exists, hoveredId, idle, makeTmpRoot, openApp, pane, paperDir, press, readMeta, screenText,
-  seedLibrary, typeText,
+  seedLibrary, typeText, writeNotes,
 } from "../../../fixtures/appHarness";
 
 jest.mock("../../../../src/platform/system", () => ({
@@ -25,6 +25,7 @@ beforeEach(async () => {
   mocked.runEditor.mockReset().mockReturnValue(true);
   ({ tmp, root } = await makeTmpRoot());
   await seedLibrary(root);
+  await writeNotes(root, ZEBRA, "Check the stripes");
   ({ ctx, app } = await openApp(root, tmp));
 });
 
@@ -198,46 +199,58 @@ describe("App tags (t)", () => {
 });
 
 describe("App editing notes (e)", () => {
-  it("opens $EDITOR on the current note and saves what the user wrote", async () => {
+  const notesPath = (): string => path.join(root, ".research", "papers", ZEBRA, "notes.qmd");
+  const metaPath = (): string => path.join(paperDir(root, "", ZEBRA), "metadata.yaml");
+
+  it("opens notes.qmd itself in $EDITOR and reloads it afterwards, leaving metadata.yaml untouched", async () => {
+    const before = await fs.readFile(metaPath(), "utf8");
+    let seenFile = "";
     let seen = "";
     mocked.runEditor.mockImplementation((file: string) => {
+      seenFile = file;
       seen = readFileSync(file, "utf8");
       writeFileSync(file, "Revised note\nwith two lines\n");
       return true;
     });
     press(app, "G", "e");
-    await eventually(async () => (await readMeta(root, "", ZEBRA))["note"] === "Revised note\nwith two lines", "the note to be saved", app);
-    expect(seen).toBe("Check the stripes");
-    await eventually(() => app.message?.text === "Note saved", "the message", app);
+    await eventually(() => app.message?.text === "Notes reloaded", "the message", app);
+    expect(seenFile).toBe(notesPath());
+    expect(seen).toContain("Check the stripes");
+    expect(readFileSync(notesPath(), "utf8")).toBe("Revised note\nwith two lines\n");
+    expect(await fs.readFile(metaPath(), "utf8")).toBe(before);
   });
 
-  it("does not rewrite the paper when the note is unchanged", async () => {
-    const file = path.join(paperDir(root, "", ZEBRA), "metadata.yaml");
-    const before = await fs.readFile(file, "utf8");
+  it("does not rewrite the paper when the notes are unchanged", async () => {
+    const before = await fs.readFile(metaPath(), "utf8");
+    const notes = await fs.readFile(notesPath(), "utf8");
     press(app, "G", "e");
     await eventually(() => mocked.runEditor.mock.calls.length === 1, "the editor to run", app);
     await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(await fs.readFile(file, "utf8")).toBe(before);
+    expect(await fs.readFile(metaPath(), "utf8")).toBe(before);
+    expect(await fs.readFile(notesPath(), "utf8")).toBe(notes);
   });
 
-  it("clears the note when the user empties it", async () => {
+  it("keeps an emptied notes.qmd as the editor left it and metadata.yaml untouched", async () => {
+    const before = await fs.readFile(metaPath(), "utf8");
     mocked.runEditor.mockImplementation((file: string) => {
       writeFileSync(file, "\n");
       return true;
     });
     press(app, "G", "e");
-    await eventually(() => app.message?.text === "Note cleared", "the message", app);
-    expect(["", undefined]).toContain((await readMeta(root, "", ZEBRA))["note"]);
+    await eventually(() => app.message?.text === "Notes reloaded", "the message", app);
+    expect(readFileSync(notesPath(), "utf8")).toBe("\n");
+    expect(await fs.readFile(metaPath(), "utf8")).toBe(before);
   });
 
-  it("does not save when the editor fails", async () => {
+  it("warns when the editor fails and leaves metadata.yaml untouched", async () => {
+    const before = await fs.readFile(metaPath(), "utf8");
     mocked.runEditor.mockImplementation((file: string) => {
       writeFileSync(file, "Half-written");
       return false;
     });
     press(app, "G", "e");
     await eventually(() => app.message?.level === "warn", "the warning", app);
-    expect(app.message?.text).toBe("The editor exited with an error; note not saved");
-    expect((await readMeta(root, "", ZEBRA))["note"]).toBe("Check the stripes");
+    expect(app.message?.text).toBe("The editor exited with an error; notes may not be saved");
+    expect(await fs.readFile(metaPath(), "utf8")).toBe(before);
   });
 });

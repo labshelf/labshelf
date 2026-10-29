@@ -179,7 +179,14 @@ describe("search", () => {
 
 describe("show", () => {
   it("prints the details of a paper: authors, venue, id, status, tags, doi, collection, PDF, highlights and reading position", async () => {
-    const s = await harness.session();
+    const notes = '::: {#n-01JB2Q8Z5K7M3V9X4C6T8R2W0Y .labshelf-item author="Ana" created="2026-10-22T12:00:00.000Z"}\nRead section 3\n:::\n';
+    const s = await harness.session(PAPERS, {
+      prepare: async (lib) => {
+        const file = lib.paths.layout.paperNotesPath("vaswani2017attention");
+        await fs.mkdir(path.dirname(file), { recursive: true });
+        await fs.writeFile(file, notes);
+      },
+    });
     expect(await s.run("show", "vaswani2017attention")).toBe(0);
     const lines = s.text().split("\n");
     expect(lines.slice(0, 3)).toEqual(["Attention Is All You Need", "Ashish Vaswani, Noam Shazeer", "NeurIPS · 2017"]);
@@ -191,7 +198,7 @@ describe("show", () => {
     expect(lines).toContain(`pdf    ${path.join(s.lib.paperDir("vaswani2017attention", "ML"), "paper.pdf")} (18 B)`);
     expect(lines).toContain("notes  2 highlight(s)");
     expect(lines).toContain("read   stopped at page 7");
-    expect(lines).toContain("note:");
+    expect(lines).toContain("— 2026-10-22");
     expect(lines).toContain("Read section 3");
     expect(lines).toContain("The Transformer.");
   });
@@ -354,7 +361,7 @@ describe("status", () => {
     expect(await s.run("status", "vaswani2017attention", "reading")).toBe(0);
     const yaml = await readYaml(path.join(s.lib.paperDir("vaswani2017attention", "ML"), "metadata.yaml"));
     expect(yaml["status"]).toBe("reading");
-    expect(yaml).toMatchObject({ tags: ["nlp"], note: "Read section 3", journal: "NeurIPS", vscodeOnly: { keep: true } });
+    expect(yaml).toMatchObject({ tags: ["nlp"], journal: "NeurIPS", vscodeOnly: { keep: true } });
     expect(s.ctx.store.paper("vaswani2017attention")!.record.status).toBe("reading");
   });
 

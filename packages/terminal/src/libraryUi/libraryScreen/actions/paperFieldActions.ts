@@ -1,6 +1,5 @@
-/** Edits per-paper fields: opening the PDF, marking status, editing tags and editing the note in $EDITOR. */
+/** Edits per-paper fields: opening the PDF, marking status, editing tags and opening the paper's notes.qmd in $EDITOR. */
 import { promises as fs } from "node:fs";
-import * as os from "node:os";
 import * as path from "node:path";
 
 import type { PaperEntry, ReadingStatus } from "@labshelf/core";
@@ -53,20 +52,21 @@ export function askTags(app: App): void {
 export function updateNote(app: App): void {
   const paper = readSelectedPapers(app)[0];
   if (!paper) { return; }
-  const record = paper.record;
-  const file = path.join(os.tmpdir(), `labshelf-note-${record.id.replace(/[^\w.-]/g, "_")}.md`);
-  const before = record.note ?? "";
+  const id = paper.record.id;
+  const file = app.ctx.paths.layout.paperNotesPath(id);
   void (async () => {
-    await fs.writeFile(file, before);
+    // The editor opens notes.qmd itself; a paper without one gets an empty file first.
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, "", { flag: "a" });
     const ok = app.term.suspend(() => runEditor(file));
     app.image = undefined;
-    const after = (await fs.readFile(file, "utf8")).replace(/\s+$/, "");
-    await fs.rm(file, { force: true });
     if (!ok) {
-      app.taskStatus.notify("The editor exited with an error; note not saved", "warn");
-    } else if (after !== before.replace(/\s+$/, "")) {
-      await app.ctx.papers.updateFields(record.id, { note: after });
-      app.taskStatus.notify(after ? "Note saved" : "Note cleared");
+      app.taskStatus.notify("The editor exited with an error; notes may not be saved", "warn");
+    } else {
+      // notes.qmd is not metadata.yaml, so the store does not fire: drop the cached notes and re-index the search text here.
+      app.notes.delete(id);
+      await app.ctx.indexSearchText();
+      app.taskStatus.notify("Notes reloaded");
     }
     app.render();
   })().catch((error: unknown) => app.taskStatus.fail(error));

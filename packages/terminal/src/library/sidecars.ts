@@ -2,18 +2,34 @@
 // Format and store come from @labshelf/core, so the terminal never writes a sidecar the other apps cannot read.
 import { promises as fs } from "node:fs";
 
-import { PaperSidecarStore, compareAnnotations, type ILogger, type PaperSidecar } from "@labshelf/core";
-import { createNodeSidecarPort } from "@labshelf/core/node";
+import { PaperNotesStore, PaperSidecarStore, compareAnnotations, notesText, type ILogger, type PaperSidecar } from "@labshelf/core";
+import { createNodePaperNotesPort, createNodeSidecarPort } from "@labshelf/core/node";
 
 import { LibraryRoot } from "./libraryRoot.js";
 
-/** Cached sidecar reads, invalidated by mtime so edits from VS Code show up. */
+/** Cached sidecar reads, invalidated by mtime so edits from VS Code show up. Also holds the notes.qmd store of the library. */
 export class SidecarReader {
   private readonly store: PaperSidecarStore;
+  /** The papers' notes.qmd files; the terminal reads them and opens the file itself in $EDITOR. */
+  readonly notes: PaperNotesStore;
   private readonly cache = new Map<string, { mtimeMs: number; data: PaperSidecar }>();
 
   constructor(private readonly paths: LibraryRoot, logger?: ILogger) {
     this.store = new PaperSidecarStore(createNodeSidecarPort(paths.layout, logger), logger ? { logger } : {});
+    this.notes = new PaperNotesStore(createNodePaperNotesPort(paths.layout, logger), logger ? { logger } : {});
+  }
+
+  /**
+   * The notes.qmd text of every paper that has notes, for the library search.
+   * @returns paperId → item bodies and loose text
+   */
+  async notesIndex(paperIds: Iterable<string>): Promise<Map<string, string>> {
+    const out = new Map<string, string>();
+    for (const id of paperIds) {
+      const text = notesText(await this.notes.read(id));
+      if (text) { out.set(id, text); }
+    }
+    return out;
   }
 
   /**

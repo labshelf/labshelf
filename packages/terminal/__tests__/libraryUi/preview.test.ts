@@ -1,4 +1,4 @@
-import type { Annotation, PaperSidecar, PaperRecord } from "@labshelf/core";
+import { parseItemFile, type Annotation, type ItemFile, type PaperSidecar, type PaperRecord } from "@labshelf/core";
 
 import { deriveStringWidth } from "../../src/screen/text";
 import {
@@ -22,6 +22,14 @@ function annotation(pageNumber: number, content: string, extra: Partial<Annotati
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...extra,
   };
+}
+
+/** A notes.qmd with one item per body, oldest first. */
+function notesFile(...bodies: string[]): ItemFile {
+  const ulid = "01JB2Q8Z5K7M3V9X4C6T8R2W0Y";
+  return parseItemFile(bodies
+    .map((body, i) => `::: {#n-${ulid.slice(0, -2)}${String(i).padStart(2, "0")} .labshelf-item author="Ana" created="2026-10-2${i}T12:00:00.000Z"}\n${body}\n:::\n`)
+    .join("\n"));
 }
 
 function sidecar(annotations: Annotation[], extra: Partial<PaperSidecar> = {}): PaperSidecar {
@@ -131,13 +139,15 @@ describe("listMetadataLines", () => {
     expect(text(listMetadataLines(entry(), data, 60))).toContain("Read   stopped at page 7");
   });
 
-  it("shows the user's note below a blank line", () => {
-    const lines = text(listMetadataLines(entry({ note: "Revisit section 3.2" }), undefined, 50));
+  it("shows the last non-empty note item below a blank line", () => {
+    const notes = notesFile("First thought", "Revisit section 3.2", "   ");
+    const lines = text(listMetadataLines(entry(), undefined, 50, notes));
     expect(lines.slice(-3)).toEqual(["", "Note", "Revisit section 3.2"]);
   });
 
-  it("omits a blank note", () => {
-    expect(text(listMetadataLines(entry({ note: "   \n " }), undefined, 50))).not.toContain("Note");
+  it("omits the note when every item is blank or there is no notes file", () => {
+    expect(text(listMetadataLines(entry(), undefined, 50, notesFile("   ")))).not.toContain("Note");
+    expect(text(listMetadataLines(entry(), undefined, 50))).not.toContain("Note");
   });
 
   it("limits the title to four lines and marks the cut", () => {
@@ -162,10 +172,10 @@ describe("listMetadataLines", () => {
       title: "A very long title that goes on and on about transformers and attention",
       authors: ["First Author", "Second Author", "Third Author"],
       doi: "10.1234/" + "y".repeat(60),
-      note: "A long note ".repeat(20),
     }, "Some/Deep/Folder/Path");
+    const notes = notesFile("A long note ".repeat(20));
     for (const width of [24, 40, 80]) {
-      for (const line of text(listMetadataLines(wide, undefined, width))) {
+      for (const line of text(listMetadataLines(wide, undefined, width, notes))) {
         expect(deriveStringWidth(line)).toBeLessThanOrEqual(width);
       }
     }

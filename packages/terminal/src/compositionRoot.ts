@@ -4,7 +4,7 @@ import * as path from "node:path";
 
 import {
   BibtexService, FileProjectVersionStore, Logger, PdfImportParser, formatError,
-  applyChangeBatch, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PdfjsLoader,
+  applyChangeBatch, type ConflictCopy, type ConflictResolution, type ILogger, type LibraryStore, type PaperNotesStore, type PdfjsLoader,
 } from "@labshelf/core";
 import {
   FileLogSink, NodeLibraryFileSystem, NodePdfOpener, TesseractOcrEngine, resolveCacheDir, createPdfjsLoader,
@@ -29,6 +29,10 @@ export interface AppContext {
   /** The terminal's query language over the store; it also holds the annotation text that searches see. */
   papers: TerminalPaperService;
   sidecars: SidecarReader;
+  /** The papers' notes.qmd files. */
+  notes: PaperNotesStore;
+  /** Rebuilds the highlight and notes text that searches see (after notes.qmd was edited here). */
+  indexSearchText(): Promise<void>;
   thumbnails: ThumbnailService;
   thumbnailRenderer: string;
   imageProtocol: ImageProtocol;
@@ -111,12 +115,15 @@ function startWatcher(
   return watcher;
 }
 
-// Highlights and notes become searchable; refreshed in the background whenever the library changes.
+// Highlights and notes.qmd text become searchable; refreshed in the background whenever the library changes.
 function annotationIndexer(sidecars: SidecarReader, store: AppContext["store"], logger: ILogger): () => Promise<void> {
-  return () => sidecars.annotationIndex(store.snapshot.papers.keys()).then(
-    (index) => store.setAnnotationText(index),
-    (error: unknown) => logger.log("WARN", "terminal/app", "Annotation text not indexed for search", { message: formatError(error) }),
-  );
+  const warn = (what: string) => (error: unknown) => logger.log("WARN", "terminal/app", `${what} not indexed for search`, { message: formatError(error) });
+  return async () => {
+    await Promise.all([
+      sidecars.annotationIndex(store.snapshot.papers.keys()).then((index) => store.setAnnotationText(index), warn("Annotation text")),
+      sidecars.notesIndex(store.snapshot.papers.keys()).then((index) => store.setNotesText(index), warn("Notes text")),
+    ]);
+  };
 }
 
 // Only a watched library scans at start, since nothing would keep an unwatched feed current.
@@ -168,6 +175,8 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
     paths, config: options.config,
     logger, logPath,
     store, papers, sidecars,
+    notes: sidecars.notes,
+    indexSearchText: indexAnnotations,
     thumbnails,
     thumbnailRenderer: renderer.name,
     imageProtocol,

@@ -25,7 +25,7 @@ export const PAPERS: PaperFixture[] = [
     pdf: "%PDF-1.4 attention",
     meta: {
       authors: ["Ashish Vaswani", "Noam Shazeer"], year: 2017, status: "unread", tags: ["nlp"], doi: "10.5555/3295222.3295349",
-      journal: "NeurIPS", summary: "The Transformer.", note: "Read section 3", vscodeOnly: { keep: true },
+      journal: "NeurIPS", summary: "The Transformer.", vscodeOnly: { keep: true },
     },
     sidecar: {
       annotations: [highlight("h2", 2, "positional encodings"), highlight("h1", 1, "self-attention replaces recurrence")],

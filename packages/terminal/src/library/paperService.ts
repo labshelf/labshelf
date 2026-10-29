@@ -136,7 +136,7 @@ export class TerminalPaperService {
   }
 
   /**
-   * Changes reading status, tags and/or note of one paper.
+   * Changes reading status and/or tags of one paper.
    * @returns the updated record, or undefined when the paper is unknown
    */
   async updateFields(id: string, patch: PaperFieldsUpdate): Promise<PaperRecord | undefined> {

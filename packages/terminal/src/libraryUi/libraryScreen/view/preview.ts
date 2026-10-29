@@ -1,5 +1,5 @@
 /** Draws the preview pane: the folder summary or the library overview, and the paper's Info/Abstract/Notes/BibTeX tabs. */
-import type { PaperSidecar, PaperEntry } from "@labshelf/core";
+import type { ItemFile, PaperSidecar, PaperEntry } from "@labshelf/core";
 import { createPaperComparator, createPaperFiles } from "@labshelf/core";
 import * as path from "node:path";
 
@@ -39,7 +39,7 @@ function drawPaperSide(app: App, screen: Screen, inner: Rect, paper: PaperEntry)
   drawLines(screen, { ...inner, h: 1 }, [createTabBar(tab, data?.annotations.length ?? 0)]);
   const body = { ...inner, y: inner.y + 2, h: inner.h - 2 };
   const bibtex = tab === "BibTeX" ? app.ctx.papers.bibtexFor([paper.record]) : "";
-  const preview = createPaperPreview(paper, data, tab, body.w, bibtex);
+  const preview = createPaperPreview(paper, data, tab, body.w, bibtex, notesFor(app, paper.record.id));
   app.previewScroll = Math.min(app.previewScroll, Math.max(0, preview.lines.length - 1));
   const used = drawLines(screen, body, preview.lines, app.previewScroll);
   if (!preview.wantsImage || app.ctx.imageProtocol === "none" || app.overlay || app.previewScroll > 0) { return undefined; }
@@ -59,6 +59,21 @@ function sidecarFor(app: App, id: string): PaperSidecar | undefined {
       app.sidecarLoading.delete(id);
       app.scheduleRender();
     }, () => app.sidecarLoading.delete(id));
+  }
+  return undefined;
+}
+
+// Caches each paper's notes.qmd the same way: a miss kicks off the read and redraws once it resolves.
+function notesFor(app: App, id: string): ItemFile | undefined {
+  const cached = app.notes.get(id);
+  if (cached) { return cached; }
+  if (!app.notesLoading.has(id)) {
+    app.notesLoading.add(id);
+    void app.ctx.notes.read(id).then((file) => {
+      app.notes.set(id, file);
+      app.notesLoading.delete(id);
+      app.scheduleRender();
+    }, () => app.notesLoading.delete(id));
   }
   return undefined;
 }

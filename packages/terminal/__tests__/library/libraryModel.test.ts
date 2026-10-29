@@ -110,12 +110,13 @@ describe("search", () => {
   const papers: PaperFixture[] = [
     { id: "t", title: "Quantum computing basics", meta: { year: 2019, authors: ["Zed Smith"] } },
     { id: "a", title: "Cooking", meta: { year: 2021, authors: ["Quantum Chef"] } },
-    { id: "r", title: "Gardening", meta: { year: 2020, note: "quantum of solace" } },
+    { id: "r", title: "Gardening", meta: { year: 2020 } },
     { id: "n", title: "Nothing relevant", meta: { year: 2018 } },
   ];
 
   it("returns every paper for an empty query and ranks matches title, then author, then the rest", async () => {
     const { store } = await openStore(papers);
+    store.setNotesText(new Map([["r", "quantum of solace"]]));
     expect(store.search("   ", TITLE)).toHaveLength(4);
     expect(store.search("quantum", TITLE).map((e) => e.record.id)).toEqual(["t", "a", "r"]);
     expect(store.search("zzzz", TITLE)).toEqual([]);
