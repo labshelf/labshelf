@@ -35,3 +35,4 @@
 - 2026-10-29 06:45 — session 10 blocked: 10.1: no report
 - 2026-10-29 06:54 — session 10 done: 10.1, 10.2, 10.2.1, 10.3, 10.7
 - 2026-10-29 08:06 — session 10b done: 10.5, 10.6
+- 2026-10-29 08:44 — session 11 blocked: 11.2: missing; 11.7: missing
