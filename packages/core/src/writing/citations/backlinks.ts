@@ -49,3 +49,20 @@ export async function deriveProjectBacklinks(
   }
   return index;
 }
+
+// --- Notes per cite site ---
+
+/** A cite site and how many notes the cited paper has, for the "N notes" label in the editors. */
+export interface CiteSiteNotes { file: string; line: number; citeKey: string; notes: number }
+
+/** Keeps the sites whose cited paper has notes, in input order; resolving a cite key to its count is the caller's. */
+export function citeSiteNotes(
+  sites: readonly { file: string; line: number; key: string }[], notesCount: (citeKey: string) => number,
+): CiteSiteNotes[] {
+  const result: CiteSiteNotes[] = [];
+  for (const site of sites) {
+    const notes = notesCount(site.key);
+    if (notes > 0) { result.push({ file: site.file, line: site.line, citeKey: site.key, notes }); }
+  }
+  return result;
+}

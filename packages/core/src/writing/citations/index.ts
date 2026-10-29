@@ -18,8 +18,8 @@ export type { BibliographyProblem, BibliographyFix, BibliographyCheckRule, Publi
 export { syncListedPapers, buildReadingList } from "./papersSync.js";
 export type { BibliographyUpdate, CitingProject, ReadingList, ReadingListEntry, ReadingListInput } from "./papersSync.js";
 
-export { addBacklinks, deriveProjectBacklinks } from "./backlinks.js";
-export type { Backlink, BacklinkMap } from "./backlinks.js";
+export { addBacklinks, deriveProjectBacklinks, citeSiteNotes } from "./backlinks.js";
+export type { Backlink, BacklinkMap, CiteSiteNotes } from "./backlinks.js";
 export { DISK_ONLY, walkProjectSources } from "./projectSources.js";
 export type { ProjectSource } from "./projectSources.js";
 
