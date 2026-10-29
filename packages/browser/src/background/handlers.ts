@@ -2,7 +2,7 @@
 // finding and attaching a PDF, opening the page that stood in the way of one, and the library folders, lookup, open and
 // remove requests.
 import {
-  PAPERS_DIR, PDF_FILE, createFolderHash, deriveParentDir, findInLibrary, findPublishedDoi, isPrePublication,
+  PAPERS_DIR, PDF_FILE, PaperNotesStore, createFolderHash, deriveParentDir, findInLibrary, findPublishedDoi, isPrePublication,
   type FolderTreeNode, type ILogger, type MissingPdfAction, type PdfAccess,
 } from "@labshelf/core";
 import { bx, readSettings } from "../platform";
@@ -15,7 +15,7 @@ import {
   refreshPdfSearch, writeOrAsk,
 } from "../capture/index";
 import type { AccessTabDeps, CaptureDraft, SavedPaper, WriteDecision } from "../capture/index";
-import { buildFolderTree, createLibraryFileSystem, listCachedPaperRecords, listPdfDirs } from "../storage";
+import { buildFolderTree, createLibraryFileSystem, createPaperNotesPort, listCachedPaperRecords, listPdfDirs } from "../storage";
 import type { LibraryMutations } from "../storage";
 import { sendLibraryChanged } from "./broadcast";
 import { readHitDraft, readTabDraft, removePaperDrafts } from "./drafts";
@@ -147,7 +147,7 @@ export async function answerCaptureWrite(
   const decision = await writeOrAsk(log, mutations, draft, {
     ...(msg.folder ? { folder: msg.folder } : {}),
     ...(msg.tags ? { tags: msg.tags } : {}),
-    ...(msg.note ? { note: msg.note } : {}),
+    ...(msg.note ? { note: msg.note, notes: new PaperNotesStore(createPaperNotesPort(createLibraryFileSystem()), { logger: log }) } : {}),
   }, ifNoPdf);
   const reply = outcome(draft, decision);
   await afterSave({ log, mutations }, draft, reply, ifNoPdf, msg.tabId);

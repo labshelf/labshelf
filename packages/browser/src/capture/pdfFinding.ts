@@ -7,7 +7,7 @@ import {
 } from "@labshelf/core";
 import type {
   DetectedIds, ILogger, MetadataOrigin, MetadataSource, MissingPdfAction, PageFacts, PaperRecord, PdfAttempt, PdfCandidate, PdfFetchOptions,
-  PdfMiss, PdfVersion, RawPage, ResolvedMetadata, ResolvedPdf,
+  PaperNotesStore, PdfMiss, PdfVersion, RawPage, ResolvedMetadata, ResolvedPdf,
 } from "@labshelf/core";
 import { extractIdentifiersFromHit } from "../content";
 import { bx, readSettings, updateSettings, type SearchHit } from "../platform";
@@ -40,10 +40,13 @@ export interface CaptureDraft {
   page?: RawPage;
 }
 
-interface SaveOptions {
+export interface SaveOptions {
   folder?: string;
   tags?: string[];
+  /** Becomes the first item of the paper's notes.qmd; blank writes nothing. */
   note?: string;
+  /** Where the note is written; only `addItem` is used. */
+  notes?: Pick<PaperNotesStore, "addItem">;
 }
 
 export interface SavedPaper {
@@ -142,9 +145,16 @@ async function saveDraft(log: ILogger, mutations: LibraryMutations, draft: Captu
     metadata: { ...metadata, title: metadata.title ?? "Untitled" },
     pdf: pdf?.bytes,
     pdfVersion: pdf?.version,
-    extra: { ...(tags.length ? { tags } : {}), ...(note ? { note } : {}) },
+    extra: { ...(tags.length ? { tags } : {}) },
     log: { message: "Paper captured", context: { page: draft.pageUrl, pdfSource: pdf?.source ?? null, origin: draft.origin } },
   });
+  if (note && opts.notes) {
+    try {
+      await opts.notes.addItem(paper.id, { body: note });
+    } catch (err) {
+      void log.error(MODULE, err, { op: "addNote", paper: paper.id });
+    }
+  }
   if (folder !== settings.lastFolder) await updateSettings({ lastFolder: folder });
   draft.existing = paper;
   return { paper, folder, pdfSource: pdf?.source ?? null };

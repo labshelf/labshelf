@@ -42,13 +42,14 @@ describe("writeOrAsk", () => {
     expect(importPaper).not.toHaveBeenCalled();
   });
 
-  it("saves the reference when the user confirms, with normalised tags, a trimmed note and the remembered folder", async () => {
+  it("saves the reference when the user confirms, with normalised tags, no note in extra and the remembered folder", async () => {
     const decision = await writeOrAsk(log, mutations, draft(), { tags: ["NLP", "nlp", " Deep   Learning "], note: "  read  " }, "save");
 
     expect(decision).toMatchObject({ kind: "saved", saved: { folder: "papers/Thesis", pdfSource: null } });
     const [folder, paper] = importPaper.mock.calls[0]!;
     expect(folder).toBe("papers/Thesis");
-    expect(paper).toMatchObject({ metadata: { title: "Attention", authors: ["Ann Lee"], year: 2020 }, extra: { tags: ["NLP", "Deep Learning"], note: "read" } });
+    expect(paper).toMatchObject({ metadata: { title: "Attention", authors: ["Ann Lee"], year: 2020 }, extra: { tags: ["NLP", "Deep Learning"] } });
+    expect(paper.extra).not.toHaveProperty("note");
     expect(paper.pdf).toBeUndefined();
     expect(mockUpdateSettings).not.toHaveBeenCalled();
   });
