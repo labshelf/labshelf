@@ -33,7 +33,7 @@ describe('isWebviewMessage', () => {
       ).toBe(true);
       expect(
         isWebviewMessage({ command: 'createAnnotation', type: 'note', pageNumber: 2, content: 'a note' }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it('deleteAnnotation', () => {

@@ -7,6 +7,7 @@ import { formatError } from "../errors/index.js";
 import { normalizeReadingPosition, compareAnnotations } from "./sidecar/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers, type ExportAnnotationsPorts } from "./hostPorts.js";
 import { isPdfTheme } from "../model/index.js";
+import { loadReaderNotes } from "./noteMessages.js";
 
 // Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
 
@@ -38,10 +39,9 @@ export const annotationHandlers: Pick<
 > = {
   createAnnotation: async (ctx, msg) => {
     const { store, paper } = ctx.ports;
-    const result = await writeAnnotation(ctx, "create", msg.command, () => msg.type === "highlight"
-      // The reader sends null for a highlight without a stored rectangle.
-      ? store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined)
-      : store.addNote(paper.id, msg.pageNumber, msg.content));
+    // The reader sends null for a highlight without a stored rectangle.
+    const result = await writeAnnotation(ctx, "create", msg.command, () =>
+      store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined));
     if (!result.ok) { return; }
     await pushStoredAnnotations(ctx);
     ctx.ports.sidecarChanged?.({ kind: "annotationCreated", annotation: result.value });
@@ -189,10 +189,17 @@ export const sessionHandlers: Pick<
     state.themePreference = data.theme;
     const annotations = [...data.annotations].sort(compareAnnotations);
     state.lastAnnotationsKey = JSON.stringify(annotations);
+    // An unreadable notes file must not keep the reader from opening the PDF.
+    const notes = await loadReaderNotes(ports.notes, ports.paper.id).catch((err: unknown) => {
+      void ports.logger.error(READER_LOG_MODULE, err, { paperId: ports.paper.id, command: "ready-for-init" });
+      return [];
+    });
+    state.lastNotesKey = JSON.stringify(notes);
     ports.post({
       type: "init",
       reading: data.reading ?? null,
       annotations,
+      notes,
       prefs: ports.getPrefs(),
       theme: data.theme,
       effectiveTheme: ctx.effectiveTheme(data.theme),

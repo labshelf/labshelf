@@ -5,7 +5,8 @@ import {
   checkPreviewRequest,
 } from "./previewProtocol.js";
 import type { ReadingState } from "../sidecar/index.js";
-import { isNumber, isRecord, isString } from "../../guards/index.js";
+import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/index.js";
+import { parseAnchor } from "../../qmd/item/index.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
@@ -78,12 +79,15 @@ export type HostToWebview =
       type: "init";
       reading: ReadingState | null;
       annotations: Annotation[];
+      notes: ReaderNote[];
       prefs: ReaderPrefs;
       theme: PdfTheme;
       effectiveTheme: EffectiveTheme;
     }
   | { type: "applyTheme"; theme: PdfTheme; effectiveTheme: EffectiveTheme }
   | { type: "updateAnnotations"; annotations: Annotation[] }
+  /** Replaces the paper's notes (the `notes.qmd` items) with this list. */
+  | { type: "updateNotes"; items: ReaderNote[] }
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
@@ -135,13 +139,19 @@ export type WebviewToHost =
   | { command: "selectTheme"; theme: string }
   | {
       command: "createAnnotation";
-      type: "highlight" | "note";
+      type: "highlight";
       pageNumber: number;
       content: string;
       color?: AnnotationColor;
       position?: Record<string, number>;
     }
   | { command: "deleteAnnotation"; id: string }
+  /** `anchor` is the anchor attribute string; empty for an unanchored note. */
+  | { command: "addNote"; anchor: string; body: string }
+  | { command: "editNote"; id: string; body: string }
+  /** Moves or resizes a text-box note: `anchor` is its new anchor attribute string. */
+  | { command: "moveNote"; id: string; anchor: string }
+  | { command: "removeNote"; id: string }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
@@ -160,6 +170,11 @@ function isCiteInProject(m: Record<string, unknown>): boolean {
   return isString(paperId) && paperId.length > 0
     && (page === undefined || (Number.isInteger(page) && (page as number) >= 1))
     && (quote === undefined || (isString(quote) && quote.length <= MAX_CITE_QUOTE_LENGTH));
+}
+
+// An empty anchor is valid (an unanchored note); a non-empty one must be in a known form.
+function isKnownAnchor(value: unknown): boolean {
+  return isString(value) && parseAnchor(value).kind !== "unknown";
 }
 
 /**
@@ -181,10 +196,18 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
     case "selectTheme":
       return isString(m["theme"]);
     case "createAnnotation":
-      return (m["type"] === "highlight" || m["type"] === "note")
+      return m["type"] === "highlight"
         && isNumber(m["pageNumber"]) && isString(m["content"]);
     case "deleteAnnotation":
       return isString(m["id"]) && m["id"].length > 0;
+    case "addNote":
+      return isString(m["body"]) && isKnownAnchor(m["anchor"]);
+    case "editNote":
+      return isNonEmptyString(m["id"]) && isString(m["body"]);
+    case "moveNote":
+      return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
+    case "removeNote":
+      return isNonEmptyString(m["id"]);
     case "updateAnnotation":
       return isString(m["id"]) && m["id"].length > 0 && isString(m["content"]) && m["content"].length > 0;
     case "saveReadingState":
@@ -217,3 +240,5 @@ export function isSafeExternalUrl(url: string): boolean {
     return false;
   }
 }
+
+export interface ReaderNote { id: string; anchor: string; body: string; created: string; author: string }
