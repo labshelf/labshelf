@@ -6,12 +6,19 @@ depends_on:
 owns:
   - packages/browser/src/helper/cellRunner.ts
   - packages/browser/src/helper/index.ts
+  - packages/browser/src/helper/cellPorts.ts
   - packages/browser/src/libraryUi/
   - packages/vscode/src/qmd/
   - packages/vscode/src/activation/startExtension.ts
   - packages/vscode/src/libraryUi/
   - packages/browser/__tests__/helper/
-status: pending
+  - packages/vscode/src/activation/registerPanelCommands.ts
+  - packages/vscode/src/reader/
+  - packages/vscode/src/spaces/
+  - packages/vscode/build/host.mjs
+  - packages/browser/src/reader/
+  - packages/browser/__tests__/libraryUi/host/paperSidecarHandlers.test.ts
+status: blocked
 packages:
   - id: "12.7"
     plan: qmd-notes
@@ -127,3 +134,91 @@ packages:
       - node scripts/agents/run.mjs test browser
     do_not_touch:
       - packages/core/
+  - id: 12.7c
+    plan: qmd-notes
+    goal: The VS Code reader host, Space host and project notes editor run cells through the cell hosts 12.7 built.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "12.7"
+    edit:
+      - path: packages/vscode/src/activation/startExtension.ts
+        lines: 1-200
+        why: build createCellHosts once before registerSpaces and pass it to registerSpaces and registerPanelCommands
+      - path: packages/vscode/src/activation/registerPanelCommands.ts
+        lines: 1-200
+        why: forward runCell and installPython to PdfReaderPanel.createOrShow deps (the sendTo spread is the pattern)
+      - path: packages/vscode/src/reader/panel.ts
+        lines: 1-300
+        why: pass runCell and installPython into the ReaderHostPorts (optional there already; noteHandlers uses them)
+      - path: packages/vscode/src/spaces/view.ts
+        lines: 150-230
+        why: serveSpaces at line 195 gets runCell and installPython (ServeSpacesOptions already has them)
+    read:
+      - path: packages/vscode/src/qmd/runCell.ts
+        lines: 1-200
+        why: createRunCell, createRunCellPort, createInstallPython and NoteBodyStore from 12.7
+      - path: packages/core/src/reader/noteMessages.ts
+        lines: 60-200
+        why: noteHandlers runCell/cancelCell/installPython and the ports they need
+      - path: packages/core/src/spaces/serveSpaces.ts
+        lines: 1-120
+        why: ServeSpacesOptions runCell and installPython
+    seams: []
+    decided:
+      - One cells object ({runCell, installPython} from createCellHosts) per extension activation, shared by the library panel, the reader and Spaces.
+      - "Project notes (9.7): find where the VS Code project notes editor mounts with `node scripts/code/facts.mjs callers mountQmdEditor`; if it is under packages/vscode/src/ in the session's owns, pass onRunCell built from createRunCell with a NoteBodyStore over ProjectNotesStore.editItem and mount createCellRunStatus under the editor; if it is a core view, wire its port; if it needs a file outside owns, list it as not_touched."
+      - If noteHandlers needs a notes port the VS Code reader does not pass yet, pass the PaperNotesStore the library panel already uses.
+      - Opening a note runs nothing. packages/core/ stays untouched.
+      - "No pnpm gate, no lint: check only with the commands below."
+    acceptance:
+      - id: 12.7c-a
+        check: typecheck and vscode tests pass
+    tests:
+      none: UI wiring checked by the user by hand in the app
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode
+    do_not_touch:
+      - packages/core/
+  - id: 12.8b
+    plan: qmd-notes
+    goal: The browser reader runs cells against its paper notes, and the paper.details test expects canRunCells.
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "12.8"
+    edit:
+      - path: packages/browser/src/libraryUi/reader/readerPage.ts
+        lines: 1-300
+        why: the ReaderHostController ports have runCell and installPython but no notes port; core noteHandlers only runs a cell when notes is present
+      - path: packages/browser/__tests__/libraryUi/host/paperSidecarHandlers.test.ts
+        lines: 105-115
+        why: "the 'paper.details reports no PDF' toEqual now also gets canRunCells: true from the runCell port 12.8 passes"
+    read:
+      - path: packages/core/src/reader/noteMessages.ts
+        lines: 60-200
+        why: noteHandlers and the notes port it reads
+      - path: packages/browser/src/libraryUi/host/handlers.ts
+        lines: 1-320
+        why: how the library host builds the PaperNotesStore the reader can reuse
+    seams: []
+    decided:
+      - Pass the same PaperNotesStore construction the library host uses (no second store type); if the reader already loads notes through another port, reuse it.
+      - "Update the test's expected object to include canRunCells: true; change nothing else in it."
+      - packages/core/ stays untouched. No pnpm gate, no lint.
+    acceptance:
+      - id: 12.8b-a
+        check: typecheck browser and test browser pass, 0 failed
+    tests:
+      none: wiring and one updated expectation
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser
+    do_not_touch:
+      - packages/core/
+blocked_reason: "12.7: missing"

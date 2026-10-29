@@ -5,7 +5,7 @@
  */
 import * as vscode from 'vscode';
 import { createNonce, isUnderDir } from '@labshelf/core';
-import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, RunCellPort, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { LibraryEvents } from '../library/index.js';
 import { sharingWebviews } from '../share/index.js';
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from '../ui/index.js';
@@ -65,6 +65,10 @@ export interface ListPanelDeps {
   loadSidecar?: (paperId: string) => Promise<PaperSidecar>;
   /** The paper notes (notes.qmd). Without it the panel serves read-only notes. */
   paperNotes?: PaperNotesStore;
+  /** Runs a note's code cell; without it the notes show no Run button. */
+  runCell?: RunCellPort;
+  /** Installs the Python cells run with, when the missing-python prompt asks. */
+  installPython?: () => void;
   projectBacklinks?: ListProjectBacklinks;
   /** Papers with similar content, when the AI index is running. */
   findSimilar?: (paper: PaperRecord) => Promise<SimilarPaper[]>;

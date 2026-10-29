@@ -1,6 +1,6 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, PaperNotesStore, addPaperNote, editPaperNote, formatError, movePaperFolders, removePaperNote, removePapers, sendPaperDetails, setPaperTags,
+  PAPERS_DIR, PaperNotesStore, addPaperNote, cancelPaperCell, installPaperPython, runPaperCell, editPaperNote, formatError, movePaperFolders, removePaperNote, removePapers, sendPaperDetails, setPaperTags,
   type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
@@ -117,6 +117,9 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
     case "paper.addNote": run(ctx, async () => { requirePaper(ctx, m.id); await addPaperNote(ui, m.id, m.body); }); return;
     case "paper.editNote": run(ctx, async () => { requirePaper(ctx, m.id); await editPaperNote(ui, m.id, m.itemId, m.body); }); return;
     case "paper.removeNote": run(ctx, async () => { requirePaper(ctx, m.id); await removePaperNote(ui, m.id, m.itemId); }); return;
+    case "paper.runCell": run(ctx, () => runPaperCell(ui, m)); return;
+    case "paper.cancelCell": cancelPaperCell(m.requestId); return;
+    case "paper.installPython": installPaperPython(ui); return;
     case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
     case "paper.addToSpace":
       run(ctx, async () => {

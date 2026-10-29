@@ -1,6 +1,7 @@
 // Serves the Spaces host over an in-page loopback and mounts a core Spaces view on its UI end.
 import { createLoopbackTransport, formatLocalDay, serveSpaces, type SpacesToHost, type HostToSpaces } from "@labshelf/core";
 import type { EditorTabBody } from "@labshelf/core/dom";
+import { getBrowserCellPorts } from "../../helper";
 import type { TabContext } from "./tabKinds";
 
 type SpacesUi = ReturnType<typeof createLoopbackTransport<SpacesToHost, HostToSpaces>>["ui"];
@@ -12,7 +13,8 @@ export function mountSpacesTab(
   mount: (host: HTMLElement, ui: SpacesUi) => () => void,
 ): EditorTabBody {
   const { ui, host: endpoint } = createLoopbackTransport<SpacesToHost, HostToSpaces>();
-  const stop = serveSpaces(endpoint, { ...ctx.spaces, logger: ctx.logger, today: () => formatLocalDay(Date.now()) });
+  const cells = getBrowserCellPorts(ctx.logger);
+  const stop = serveSpaces(endpoint, { ...ctx.spaces, logger: ctx.logger, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, installPython: cells.installPython });
   const dispose = mount(host, ui);
   return { dispose: () => { dispose(); stop(); } };
 }

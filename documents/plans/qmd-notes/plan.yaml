@@ -419,11 +419,18 @@ sessions:
     owns:
       - packages/browser/src/helper/cellRunner.ts
       - packages/browser/src/helper/index.ts
+      - packages/browser/src/helper/cellPorts.ts
       - packages/browser/src/libraryUi/
       - packages/vscode/src/qmd/
       - packages/vscode/src/activation/startExtension.ts
       - packages/vscode/src/libraryUi/
       - packages/browser/__tests__/helper/
+      - packages/vscode/src/activation/registerPanelCommands.ts
+      - packages/vscode/src/reader/
+      - packages/vscode/src/spaces/
+      - packages/vscode/build/host.mjs
+      - packages/browser/src/reader/
+      - packages/browser/__tests__/libraryUi/host/paperSidecarHandlers.test.ts
   - id: "13"
     file: sessions/13.yaml
     depends_on:
