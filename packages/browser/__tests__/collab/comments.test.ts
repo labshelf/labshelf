@@ -9,8 +9,27 @@ import { parseCommentsQmd, type IFileSystem, type ILogger, type LibraryFileSyste
 import { addCommentSupport, createCommentThreads, createRoutedCommentThreads, type CommentThreads, type EditorComments } from "../../src/collab/comments";
 import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
 
-const mockInputBox = jest.fn<Promise<string | undefined>, []>();
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), askInputBox: () => mockInputBox() }));
+// The core editor reports edits through onChange; the test types by calling the last one mounted.
+const typed: { type?: (body: string) => void } = {};
+jest.mock("@labshelf/core/dom", () => ({
+  ...jest.requireActual("@labshelf/core/dom"),
+  mountQmdEditor: (_root: HTMLElement, options: { onChange(body: string): void }) => {
+    typed.type = options.onChange;
+    return { setBody: () => {}, focus: () => {}, destroy: () => {} };
+  },
+}));
+
+/** Waits for the Add comment dialog, types `text` in it and submits it, or dismisses it when `text` is undefined. */
+async function answerDialog(text: string | undefined): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const form = document.body.querySelector("form")!;
+  if (text === undefined) {
+    form.querySelectorAll("button")[0]!.click();
+    return;
+  }
+  typed.type!(text);
+  form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+}
 
 // Verifies the page's comment store persists add, reply and resolve in comments.qmd and leaves an invalid file untouched.
 describe("comments", () => {
@@ -244,11 +263,11 @@ describe("commentMarks", () => {
     });
 
     it("adds the typed text on the selection, in file offsets, after saving", async () => {
-      mockInputBox.mockResolvedValue("check this");
       const { editor, host, view, added, written } = await mount("one\r\ntwo\r\n", []);
       view.dispatch({ changes: { from: 0, insert: "x" } });
       view.dispatch({ selection: { anchor: 5, head: 8 } });
       button(host).click();
+      await answerDialog("check this");
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(written).toEqual(["xone\r\ntwo\r\n"]);
       expect(added).toEqual([{ range: { start: 6, end: 9 }, text: "check this" }]);
@@ -256,10 +275,10 @@ describe("commentMarks", () => {
     });
 
     it("adds nothing when the input is cancelled", async () => {
-      mockInputBox.mockResolvedValue(undefined);
       const { editor, host, view, added } = await mount("one\ntwo\n", []);
       view.dispatch({ selection: { anchor: 4, head: 7 } });
       button(host).click();
+      await answerDialog(undefined);
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(added).toEqual([]);
       await editor.dispose();

@@ -26,3 +26,4 @@
 - 2026-10-29 00:02 — session 7b done: 7.4, 7.6, 7.7
 - 2026-10-29 01:19 — session 8 blocked: 8.4: missing; 8.9: no report
 - 2026-10-29 01:28 — session 8 done: 8.1, 8.3, 8.4, 8.9
+- 2026-10-29 01:45 — session 8b done: 8.6, 8.7, 8.8, 8.10
