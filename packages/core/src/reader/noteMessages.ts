@@ -1,7 +1,7 @@
 // Handles the reader messages that write the paper's notes.qmd: note add, edit, move and remove, each followed by the full list.
 import { formatError } from "../errors/index.js";
 import { parseAnchor, type ItemAnchor, type ItemFile } from "../qmd/item/index.js";
-import type { PaperNotesStore } from "../qmd/index.js";
+import { createCellRuns, type PaperNotesStore } from "../qmd/index.js";
 import type { ReaderNote, WebviewToHost } from "./protocol/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers } from "./hostPorts.js";
 
@@ -56,7 +56,30 @@ async function writeNote(
   }
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote"> = {
+/** Request ids are made by each reader, so one registry serves every reader host. */
+const cellRuns = createCellRuns();
+
+/** Runs a note's cell, stores its output with the note, pushes `updateNotes`, then answers `cellState`. */
+function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "runCell" }>): Promise<void> {
+  const { notes, paper, logger, runCell } = ctx.ports;
+  const { itemId, requestId } = msg;
+  return cellRuns.run(notes ? runCell : undefined, msg, {
+    read: async () => {
+      const item = notes ? (await notes.read(paper.id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
+      return item?.kind === "item" ? item.body : undefined;
+    },
+    write: (body) => notes ? notes.editItem(paper.id, itemId, body) : Promise.resolve(),
+    push: async () => { ctx.pushNotes(await loadReaderNotes(notes, paper.id), true); },
+    post: (state) => { ctx.ports.post({ type: "cellState", requestId, state }); },
+    fail: (error) => { void logger.error(READER_LOG_MODULE, error, { paperId: paper.id, command: "runCell" }); },
+  });
+}
+
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "cancelCell" | "installPython"> = {
+  runCell: runNoteCell,
+  cancelCell: (_ctx, msg) => { cellRuns.cancel(msg.requestId); },
+  installPython: (ctx) => { ctx.ports.installPython?.(); },
+
   addNote: (ctx, msg) =>
     writeNote(ctx, "add", msg.command, (notes, id) => notes.addItem(id, { anchor: toAnchor(msg.anchor), body: msg.body })),
 

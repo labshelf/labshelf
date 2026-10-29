@@ -1,6 +1,6 @@
 // Mounts the Notes tab of a Space: the list of its note files and the editors of the open note's items.
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
-import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 
@@ -66,6 +66,22 @@ export function updateQmdSpace(s: { ctx: OverviewContext; controller: AbortContr
   repaint();
 }
 
+/** The run status rows of a Space view; Cancel and Install Python post through the view's end. */
+export function createSpaceCellRuns(ctx: OverviewContext): CellRunGroup {
+  return createCellRunGroup({
+    onCancel: requestId => ctx.end.post({ type: "space.cancelCell", requestId }),
+    onInstallPython: () => ctx.end.post({ type: "space.installPython" }),
+  });
+}
+
+/** The `onRunCell` option of an item editor mounted in `host` (which must have a parent, where the status row goes), present only when the Space state says the host can run cells. */
+export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, path: string | undefined, itemId: string | undefined, host: HTMLElement):
+  { onRunCell?(label: string, code: string): void } {
+  if (ctx.readOnly || ctx.data.canRunCells !== true || path === undefined || itemId === undefined) return {};
+  return { onRunCell: runs.attach(`${path}\n${itemId}`, host, (label, code, requestId) =>
+    ctx.end.post({ type: "space.runCell", path, itemId, label, code, requestId })) };
+}
+
 interface ItemEditor {
   /** Undefined for the placeholder editor of a file with no item yet. */
   id: string | undefined;
@@ -88,6 +104,7 @@ interface NotesState {
   create: HTMLButtonElement;
   column: HTMLElement;
   detail: HTMLElement;
+  runs: CellRunGroup;
 }
 
 const notesSpaceId = (s: NotesState): string => s.ctx.data.space.id;
@@ -102,7 +119,7 @@ function buildNotesState(root: HTMLElement, context: OverviewContext & { notes?:
   root.replaceChildren(renderElement("div", { class: "nt-notes" },
     renderElement("header", { class: "nt-head" }, renderElement("p", { text: "Keep ideas, meeting notes and comparisons with this Space." }), create),
     renderElement("div", { class: "nt-layout" }, column, detail)));
-  return { controller, ctx, notes: context.notes, selected: undefined, items: undefined, known: undefined, editors: [], create, column, detail };
+  return { controller, ctx, notes: context.notes, selected: undefined, items: undefined, known: undefined, editors: [], create, column, detail, runs: createSpaceCellRuns(ctx) };
 }
 
 function destroyNoteEditors(s: NotesState): void {
@@ -111,10 +128,12 @@ function destroyNoteEditors(s: NotesState): void {
 }
 
 function addNoteEditor(s: NotesState, item: SpaceQmdItem | undefined): ItemEditor {
-  const host = renderElement("div", { class: "nt-item" });
+  const mount = renderElement("div", { class: "nt-item-editor" });
+  const host = renderElement("div", { class: "nt-item" }, mount);
   const editor: ItemEditor = { id: item?.id, body: item?.body ?? "", added: false, host, handle: undefined as unknown as QmdEditorHandle };
-  editor.handle = mountQmdEditor(host, {
+  editor.handle = mountQmdEditor(mount, {
     body: editor.body, readOnly: s.ctx.readOnly, ...(item ? { meta: qmdItemMeta(item) } : {}),
+    ...spaceRunOption(s.ctx, s.runs, s.selected, item?.id, mount),
     onChange: body => {
       editor.body = body;
       const path = s.selected;
@@ -196,6 +215,7 @@ export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { 
   const unsubscribe = s.ctx.end.subscribe(message => {
     if (message.type === "spaceNotes" && message.spaceId === notesSpaceId(s)) setNotes(s, message.notes);
     else if (message.type === "spaceQmd" && message.spaceId === notesSpaceId(s) && message.path === s.selected) applyNoteItems(s, message.items);
+    else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
   });
   paintNotesList(s); renderNoteDetail(s);
 

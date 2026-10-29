@@ -2,6 +2,7 @@
 import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
+import type { CellRunState } from "../qmd/compute/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import type { GlossaryTerm, Space } from "./space.js";
 import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
@@ -51,6 +52,10 @@ export type SpacesToHost =
   | { type: "exportIcs"; id: string }
   | { type: "listPapers" }
   | { type: "listProjects" }
+  /** Runs one code cell of a note or discussion item; the page makes `requestId` and the host echoes it in `space.cellState`. */
+  | { type: "space.runCell"; path: string; itemId: string; label: string; code: string; requestId: string }
+  | { type: "space.cancelCell"; requestId: string }
+  | { type: "space.installPython" }
   | SpaceQmdAction;
 
 /** Actions on the notes and discussions of a Space; they act on those stores, not on the Space file. Every `path` is relative to the Space folder. */
@@ -79,6 +84,8 @@ export type HostToSpaces =
     glossary: { terms: readonly GlossaryTerm[]; readOnlyReason?: string };
     /** Every project the host reports, linked or not. */
     projects: SpaceProjectEntry[];
+    /** True only where the host has a cell runner; absent means false. */
+    canRunCells?: boolean;
   }
   | { type: "papers"; items: PaperPickItem[] }
   | { type: "projects"; items: SpaceProjectEntry[] }
@@ -86,6 +93,7 @@ export type HostToSpaces =
   | { type: "spaceDiscussions"; spaceId: string; threads: SpaceThreadEntry[] }
   /** The items of one note or thread file, in file order. */
   | { type: "spaceQmd"; spaceId: string; path: string; items: SpaceQmdItem[] }
+  | { type: "space.cellState"; requestId: string; state: CellRunState }
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -230,6 +238,19 @@ function parseQmdAction(value: Fields): SpaceQmdAction | undefined {
   }
 }
 
+/** The run, cancel or install message, or undefined when the type is not one or a field or the path is invalid. */
+function parseCellMessage(value: Fields): SpacesToHost | undefined {
+  const { type, path, itemId, label, code, requestId } = value;
+  switch (type) {
+    case "space.runCell":
+      return isQmdFilePath(path) && isNonEmptyString(itemId) && isNonEmptyString(label) && isNonEmptyString(code) && isNonEmptyString(requestId)
+        ? { type, path, itemId, label, code, requestId } : undefined;
+    case "space.cancelCell": return isNonEmptyString(requestId) ? { type, requestId } : undefined;
+    case "space.installPython": return { type };
+    default: return undefined;
+  }
+}
+
 /** The typed message, or undefined when the type is unknown or a field is missing or of the wrong type. */
 export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
   if (!isRecord(value)) { return undefined; }
@@ -246,6 +267,7 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
     case "exportIcs": return isNonEmptyString(id) ? { type, id } : undefined;
     case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
     case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);
+    case "space.runCell": case "space.cancelCell": case "space.installPython": return parseCellMessage(value);
     default: return parseSpaceMutation(value);
   }
 }

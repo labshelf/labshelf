@@ -203,6 +203,7 @@ export const sessionHandlers: Pick<
       prefs: ports.getPrefs(),
       theme: data.theme,
       effectiveTheme: ctx.effectiveTheme(data.theme),
+      ...(ports.runCell ? { canRunCells: true } : {}),
     });
   },
 

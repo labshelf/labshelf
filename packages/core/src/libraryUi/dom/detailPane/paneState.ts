@@ -12,7 +12,7 @@ import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
-import { mountQmdEditor, type QmdEditorHandle } from "../../../qmd/dom/index.js";
+import { createCellRunGroup, mountQmdEditor, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
   ctx: UiContext;
@@ -110,12 +110,46 @@ export interface NoteEditor {
   dispose(): void;
 }
 
+/** The run status of each note item, kept across renders so a pushed body does not lose a run in flight. */
+interface NoteRuns {
+  /** The editor's `onRunCell`, or undefined when the host cannot run cells; it mounts the item's status row under `editorEl`. */
+  attach(editorEl: HTMLElement, paper: string, itemId: string): ((label: string, code: string) => void) | undefined;
+  dispose(): void;
+}
+
+function createNoteRuns(ctx: UiContext): NoteRuns {
+  const group = createCellRunGroup({
+    onCancel: (requestId) => ctx.transport.post({ type: "paper.cancelCell", requestId }),
+    onInstallPython: () => ctx.transport.post({ type: "paper.installPython" }),
+  });
+  // A cellState for a request no status started is ignored. Listens only once a status exists.
+  let off: (() => void) | null = null;
+  const listen = (): void => {
+    off ??= ctx.transport.subscribe((m) => { if (m.type === "paper.cellState") group.show(m.requestId, m.state); });
+  };
+  return {
+    attach(editorEl, paper, itemId) {
+      if (ctx.readOnly || ctx.store.get().details[paper]?.canRunCells !== true) return undefined;
+      listen();
+      return group.attach(`${paper}\n${itemId}`, editorEl, (label, code, requestId) =>
+        ctx.transport.post({ type: "paper.runCell", id: paper, itemId, label, code, requestId }));
+    },
+    dispose() { off?.(); off = null; group.clear(); },
+  };
+}
+
+function mountItemEditor(el: HTMLElement, body: string, readOnly: boolean, onChange: (text: string) => void,
+  onRunCell: ((label: string, code: string) => void) | undefined): QmdEditorHandle {
+  return mountQmdEditor(el, { body, readOnly, onChange, ...(onRunCell ? { onRunCell } : {}) });
+}
+
 /** The Notes tab's editors: one `mountQmdEditor` per item and one empty one for a new item, saved after a pause. */
 export function createNoteEditor(ctx: UiContext): NoteEditor {
   const drafts = new Map<string, { paper: string; body: string }>();
   let handles: Array<{ itemId: string; handle: QmdEditorHandle }> = [];
   let wantNewFocus = false;
   const timer = createDebouncer(() => flush(), SAVE_AFTER_MS);
+  const runs = createNoteRuns(ctx);
   const items = (id: string): PaperNoteView[] =>
     (ctx.store.get().details[id]?.notes ?? []).map((n) => (drafts.has(n.id) ? { ...n, body: drafts.get(n.id)!.body } : n));
   const flush = (): void => {
@@ -141,8 +175,8 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
           if (wantNewFocus) { wantNewFocus = false; handle.focus(); }
           continue;
         }
-        const handle = mountQmdEditor(el, { body, readOnly, onChange: (text) => { drafts.set(itemId, { paper: id, body: text }); timer.call(); } });
-        handles.push({ itemId, handle });
+        const onChange = (text: string): void => { drafts.set(itemId, { paper: id, body: text }); timer.call(); };
+        handles.push({ itemId, handle: mountItemEditor(el, body, readOnly, onChange, readOnly ? undefined : runs.attach(el, id, itemId)) });
       }
     },
     append(id, markdown) {
@@ -158,6 +192,6 @@ export function createNoteEditor(ctx: UiContext): NoteEditor {
       if (fresh) fresh.handle.focus(); else wantNewFocus = true;
     },
     flush,
-    dispose() { flush(); destroy(); document.removeEventListener("visibilitychange", onHide); },
+    dispose() { flush(); destroy(); runs.dispose(); document.removeEventListener("visibilitychange", onHide); },
   };
 }

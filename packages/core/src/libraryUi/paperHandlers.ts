@@ -1,6 +1,6 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
-import type { PaperNotesStore } from "../qmd/index.js";
+import { createCellRuns, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
 import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";
 
@@ -21,7 +21,14 @@ export interface LibraryUiHost {
   /** The folder name a move notice shows, or undefined for the library root. */
   folderName(target: string): string | undefined;
   details(paper: PaperRecord): Promise<PaperDetails>;
+  /** Runs a note's code cell; absent means the host has no runner and the notes show no Run button. */
+  readonly runCell?: RunCellPort;
+  /** Installs the Python that cells run with, as the missing-python prompt asks. */
+  installPython?(): void;
 }
+
+/** Request ids are made by each view, so one registry serves every library UI host. */
+const paperRuns = createCellRuns();
 
 export async function setPaperTags(host: LibraryUiHost, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
   const { failed } = await host.editTags(ids, deriveCleanTags(add), deriveCleanTags(remove));
@@ -72,7 +79,33 @@ export async function sendPaperDetails(host: LibraryUiHost, id: string): Promise
   if (!paper) return;
   const details = await host.details(paper);
   const notes = host.notes ? await readNoteViews(host.notes, id) : undefined;
-  await host.post({ type: "details", id, details: notes ? { ...details, notes } : details });
+  const canRunCells = !!(notes && host.runCell);
+  const payload = notes ? { ...details, notes, ...(canRunCells ? { canRunCells } : {}) } : details;
+  await host.post({ type: "details", id, details: payload, ...(canRunCells ? { canRunCells } : {}) });
+}
+
+/** Runs a note's cell, stores its output with the note, resends the details, then answers `paper.cellState`. */
+export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemId: string; label: string; code: string; requestId: string }): Promise<void> {
+  const { id, itemId, requestId } = msg;
+  const notes = host.notes;
+  await paperRuns.run(notes ? host.runCell : undefined, msg, {
+    read: async () => {
+      const item = notes ? (await notes.read(id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
+      return item?.kind === "item" ? item.body : undefined;
+    },
+    write: (body) => notes ? notes.editItem(id, itemId, body) : Promise.resolve(),
+    push: () => sendPaperDetails(host, id),
+    post: (state) => { void host.post({ type: "paper.cellState", requestId, state }); },
+    fail: (error) => { host.notice("error", `The cell could not run — ${error instanceof Error ? error.message : String(error)}`); },
+  });
+}
+
+export function cancelPaperCell(requestId: string): void {
+  paperRuns.cancel(requestId);
+}
+
+export function installPaperPython(host: LibraryUiHost): void {
+  host.installPython?.();
 }
 
 async function readNoteViews(store: PaperNotesStore, id: string): Promise<PaperNoteView[]> {

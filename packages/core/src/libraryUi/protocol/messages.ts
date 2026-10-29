@@ -3,6 +3,7 @@ import { type ReadingStatus, type FolderTreeNode, type PaperFilesState, PAPER_ST
 import type { CitationEdge, MissingWork } from "../citationMap/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
+import type { CellRunState } from "../../qmd/compute/index.js";
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import { type AllProjectsToHost, type HostToAllProjects, parseAllProjectsMessage } from "../../writing/allProjects/index.js";
@@ -44,6 +45,10 @@ export type UiToHost =
   | { type: "paper.addNote"; id: string; body: string }
   | { type: "paper.editNote"; id: string; itemId: string; body: string }
   | { type: "paper.removeNote"; id: string; itemId: string }
+  /** Asks the host to run one code cell of a note item; the view makes `requestId` and the host echoes it in `paper.cellState`. */
+  | { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; requestId: string }
+  | { type: "paper.cancelCell"; requestId: string }
+  | { type: "paper.installPython" }
   | { type: "paper.addToSpace"; ids: string[] }
   | { type: "paper.move"; ids: string[]; target: string }
   | { type: "paper.remove"; ids: string[] }
@@ -66,7 +71,9 @@ export type HostToUi =
   | { type: "files"; id: string; state: PaperFilesState }
   | { type: "notice"; kind: "info" | "ok" | "error"; text: string }
   | { type: "progress"; key: string; text: string | null }
-  | { type: "details"; id: string; details: PaperDetails }
+  /** `canRunCells` is true only where the host has a cell runner; absent means false. */
+  | { type: "details"; id: string; details: PaperDetails; canRunCells?: boolean }
+  | { type: "paper.cellState"; requestId: string; state: CellRunState }
   | { type: "similar"; id: string; items: SimilarPaper[] }
   | { type: "sidecarChanged"; id: string | null }
   | { type: "jobs"; jobs: TextLayerJobView[] }
@@ -113,6 +120,8 @@ export interface PaperDetails {
   citedIn?: Backlink[];
   /** The paper's note items in file order; absent where the host serves no notes, and the pane is read-only then. */
   notes?: PaperNoteView[];
+  /** The host can run code cells of the notes; absent means false. */
+  canRunCells?: boolean;
 }
 
 /** A paper waiting for, or in the middle of, OCR. */
@@ -224,6 +233,9 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.addNote": { id: isNonEmptyString, body: isString },
   "paper.editNote": { id: isNonEmptyString, itemId: isNonEmptyString, body: isString },
   "paper.removeNote": { id: isNonEmptyString, itemId: isNonEmptyString },
+  "paper.runCell": { id: isNonEmptyString, itemId: isNonEmptyString, label: isNonEmptyString, code: isNonEmptyString, requestId: isNonEmptyString },
+  "paper.cancelCell": { requestId: isNonEmptyString },
+  "paper.installPython": {},
   "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },
   "paper.move": { ids: isNonEmptyStringList, target: isLibraryPath },
   "paper.remove": { ids: isNonEmptyStringList },

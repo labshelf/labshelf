@@ -14,6 +14,7 @@ import type { SpaceStore } from "./spaceStore.js";
 import { buildIcs, buildOverview } from "./spaceOverview.js";
 import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
+import { createCellRuns, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -54,6 +55,9 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   exportIcs: "Export calendar",
   listPapers: "List papers",
   listProjects: "List projects",
+  "space.runCell": "Run cell",
+  "space.cancelCell": "Cancel cell",
+  "space.installPython": "Install Python",
 };
 
 /** Resolves to the new id for the mutations that create something. */
@@ -93,10 +97,15 @@ export interface ServeSpacesOptions {
   readonly today: () => string;
   /** The author stamped on the items and thread messages the page adds; DEFAULT_AUTHOR when absent. */
   readonly author?: string;
+  /** Runs a note's code cell; absent means the host has no runner and the notes show no Run button. */
+  readonly runCell?: RunCellPort;
+  /** Installs the Python that cells run with, as the missing-python prompt asks. */
+  readonly installPython?: () => void;
 }
 
 type OpenView = Extract<SpacesToHost, { type: "ready" }>;
-type Action = Exclude<SpacesToHost, { type: "ready" }>;
+type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.cancelCell" | "space.installPython" }>;
+type Action = Exclude<SpacesToHost, { type: "ready" } | CellMessage>;
 type Post = (message: HostToSpaces) => void;
 type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions">;
 
@@ -153,13 +162,28 @@ async function runQmdAction(stores: NotesAndThreads, author: string, post: Post,
   }
 }
 
+/** Runs a cell of an open Space's note or thread, stores its output with the item, posts the items again, then `space.cellState`. */
+function runSpaceCell(
+  { store, runCell, logger }: ServeSpacesOptions, runs: CellRuns, post: Post, spaceId: string, m: Extract<CellMessage, { type: "space.runCell" }>,
+): Promise<void> {
+  const thread = isThreadPath(m.path);
+  return runs.run(runCell, m, {
+    read: async () => (await (thread ? store.discussions : store.notes).read(spaceId, m.path)).find((item) => item.id === m.itemId)?.body,
+    write: (body) => thread ? store.discussions.editMessage(spaceId, m.path, m.itemId, body) : store.notes.editItem(spaceId, m.path, m.itemId, body),
+    push: async () => { await postQmd(store, post, spaceId, m.path); await postListOf(store, post, spaceId, m.path); },
+    post: (state) => post({ type: "space.cellState", requestId: m.requestId, state }),
+    fail: (error) => { void logger.log("ERROR", MODULE, "Running a cell failed", { path: m.path, error: formatError(error) }); },
+  });
+}
+
 async function readReadySpace(store: SpaceStore, id: string) {
   const result = await store.read(id);
   if (result.state === "unreadable") { throw new Error(result.reason); }
   return result;
 }
 
-async function spaceMessage({ store, port, today }: ServeSpacesOptions, id: string): Promise<HostToSpaces> {
+async function spaceMessage(options: ServeSpacesOptions, id: string): Promise<HostToSpaces> {
+  const { store, port, today } = options;
   const [{ space, readOnlyReason }, glossary, projects] = await Promise.all([readReadySpace(store, id), store.readGlossary(id), port.projects()]);
   const library = port.library();
   return {
@@ -170,6 +194,7 @@ async function spaceMessage({ store, port, today }: ServeSpacesOptions, id: stri
     papers: buildPapersTree(space, library),
     glossary: { terms: glossary.glossary.terms, ...(glossary.readOnlyReason !== undefined ? { readOnlyReason: glossary.readOnlyReason } : {}) },
     projects,
+    ...(options.runCell ? { canRunCells: true } : {}),
   };
 }
 
@@ -206,6 +231,25 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
   }
 }
 
+type Fail = (action: string, error: unknown, context: Record<string, unknown>) => void;
+
+/** A cell runs in the Space the page has open; its path is relative to that Space. */
+function answerCell(options: ServeSpacesOptions, runs: CellRuns, post: Post, open: OpenView | undefined, message: CellMessage, fail: Fail): void {
+  switch (message.type) {
+    case "space.cancelCell": runs.cancel(message.requestId); return;
+    case "space.installPython": options.installPython?.(); return;
+    case "space.runCell": {
+      const label = ACTION_LABELS[message.type];
+      if (open?.view !== "space") {
+        fail(label, new Error("No Space is open."), failureContext(message));
+        post({ type: "space.cellState", requestId: message.requestId, state: "error" });
+        return;
+      }
+      runSpaceCell(options, runs, post, open.id, message).catch((error: unknown) => fail(label, error, failureContext(message)));
+    }
+  }
+}
+
 function failureContext(message: object): Record<string, unknown> {
   return Object.fromEntries(Object.entries(message).filter(([, value]) => typeof value === "string"));
 }
@@ -216,6 +260,7 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
   let open: OpenView | undefined;
   let queued = false;
   let tail: Promise<void> = Promise.resolve();
+  const runs = createCellRuns();
 
   const fail = (action: string, error: unknown, context: Record<string, unknown>): void => {
     const reason = formatError(error);
@@ -249,6 +294,7 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
       return;
     }
     if (message.type === "ready") { open = message; schedule(); return; }
+    if (message.type === "space.runCell" || message.type === "space.cancelCell" || message.type === "space.installPython") { answerCell(options, runs, post, open, message, fail); return; }
     runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
   });
   const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule)];

@@ -7,6 +7,7 @@ import {
 import type { ReadingState } from "../sidecar/index.js";
 import { isNonEmptyString, isNumber, isRecord, isString } from "../../guards/index.js";
 import { parseAnchor } from "../../qmd/item/index.js";
+import type { CellRunState } from "../../qmd/compute/index.js";
 
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
@@ -83,11 +84,15 @@ export type HostToWebview =
       prefs: ReaderPrefs;
       theme: PdfTheme;
       effectiveTheme: EffectiveTheme;
+      /** True only where the host has a cell runner; absent means false. */
+      canRunCells?: boolean;
     }
   | { type: "applyTheme"; theme: PdfTheme; effectiveTheme: EffectiveTheme }
   | { type: "updateAnnotations"; annotations: Annotation[] }
   /** Replaces the paper's notes (the `notes.qmd` items) with this list. */
   | { type: "updateNotes"; items: ReaderNote[] }
+  /** Answers `runCell` with the same `requestId`; the end states follow the `updateNotes` of the written output. */
+  | { type: "cellState"; requestId: string; state: CellRunState }
   | { type: "scrollToPage"; pageNumber: number }
   | { type: "prefsChanged"; prefs: ReaderPrefs }
   | { type: "command"; id: ReaderCommandId }
@@ -152,6 +157,10 @@ export type WebviewToHost =
   /** Moves or resizes a text-box note: `anchor` is its new anchor attribute string. */
   | { command: "moveNote"; id: string; anchor: string }
   | { command: "removeNote"; id: string }
+  /** Runs one code cell of a note item; the reader makes `requestId` and the host echoes it in `cellState`. */
+  | { command: "runCell"; itemId: string; label: string; code: string; requestId: string }
+  | { command: "cancelCell"; requestId: string }
+  | { command: "installPython" }
   | { command: "updateAnnotation"; id: string; content: string }
   | { command: "saveReadingState"; state: ReadingState }
   | { command: "copyWithCitation"; text: string; pageNumber: number }
@@ -209,6 +218,12 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isNonEmptyString(m["id"]) && isKnownAnchor(m["anchor"]);
     case "removeNote":
       return isNonEmptyString(m["id"]);
+    case "runCell":
+      return isNonEmptyString(m["itemId"]) && isNonEmptyString(m["label"]) && isNonEmptyString(m["code"]) && isNonEmptyString(m["requestId"]);
+    case "cancelCell":
+      return isNonEmptyString(m["requestId"]);
+    case "installPython":
+      return true;
     case "updateAnnotation":
       return isString(m["id"]) && m["id"].length > 0 && isString(m["content"]) && m["content"].length > 0;
     case "saveReadingState":

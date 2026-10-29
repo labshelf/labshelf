@@ -94,3 +94,13 @@ input.qmd-math-source { min-width: calc(var(--ls-space-9) * 3); border: 1px soli
 .qmd-editor-source:focus { outline: 1px solid var(--ls-focus); outline-offset: 0; }
 
 @media (max-width: 560px) { .qmd-editor-header { flex-wrap: wrap; } .qmd-toolbar-group { padding: 0 var(--ls-space-2); } }
+
+/* The run status row under an editor that runs cells. */
+.qmd-run-status { display: flex; align-items: center; gap: var(--ls-space-3); min-height: var(--ls-row-h); padding: var(--ls-space-1) 0; color: var(--ls-desc); font-size: var(--ls-text-sm); }
+.qmd-run-status[hidden] { display: none; }
+.qmd-run-status-spinner { display: inline-flex; animation: qmd-run-spin 1s linear infinite; }
+.qmd-run-status-error { color: var(--ls-error); }
+.qmd-run-status-muted { color: var(--ls-desc); }
+.qmd-run-status-missing { color: var(--ls-fg); }
+@keyframes qmd-run-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner { animation: none; } }

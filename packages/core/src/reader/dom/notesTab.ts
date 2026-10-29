@@ -1,7 +1,8 @@
 // Renders the Notes tab: the paper's notes grouped by page, filtered, each edited in the core item editor.
 import type { Annotation } from "../../model/index.js";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
-import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import type { CellRunState } from "../../qmd/compute/index.js";
+import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { parseAnchor } from "../../qmd/item/index.js";
 import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -73,6 +74,11 @@ export class NotesTab implements SidebarPanel {
   private annotations: ReadonlyMap<string, Annotation> = new Map();
   private awaitingHighlight = false;
   private focusAnchor: string | null = null;
+  private canRunCells = false;
+  private readonly runs = createCellRunGroup({
+    onCancel: (requestId) => this.host.post({ command: "cancelCell", requestId }),
+    onInstallPython: () => this.host.post({ command: "installPython" }),
+  });
 
   constructor(
     private readonly host: HostBridge,
@@ -124,6 +130,18 @@ export class NotesTab implements SidebarPanel {
     this.render();
     this.focusPending();
   }
+
+  /** Whether the host can run cells; editors get a Run button only when it can, so a change remounts every row. */
+  setCanRunCells(canRun: boolean): void {
+    if (canRun === this.canRunCells) { return; }
+    this.canRunCells = canRun;
+    for (const [id, row] of this.rows) { this.destroyRow(id, row); }
+    if (!canRun) { this.runs.clear(); }
+    this.render();
+  }
+
+  /** Shows the host's state of a run under its editor; a request this tab did not send is ignored. */
+  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
   /**
    * Called by "Add to note": the next new annotation gets an empty item that opens focused.
@@ -248,6 +266,7 @@ export class NotesTab implements SidebarPanel {
           row.latest = body;
           if (row.focused) { save.call(); } else { this.send(row); }
         },
+        ...this.runOption(note.id, root),
       }),
     };
     root.addEventListener("focusin", () => { row.focused = true; });
@@ -263,6 +282,12 @@ export class NotesTab implements SidebarPanel {
     remove.addEventListener("blur", () => this.setConfirming(row, false));
     remove.addEventListener("keydown", (e) => { if (e.key === "Escape") { this.setConfirming(row, false); } });
     return row;
+  }
+
+  private runOption(itemId: string, root: HTMLElement): { onRunCell?(label: string, code: string): void } {
+    if (!this.canRunCells) { return {}; }
+    return { onRunCell: this.runs.attach(itemId, root, (label, code, requestId) =>
+      this.host.post({ command: "runCell", itemId, label, code, requestId })) };
   }
 
   private send(row: Row): void {

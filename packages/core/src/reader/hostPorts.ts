@@ -2,7 +2,7 @@
 import type { Annotation, PaperRecord, PdfTheme } from "../model/index.js";
 import type { ILogger } from "../ports/index.js";
 import type { ReaderSidecarStore } from "./sidecar/index.js";
-import type { PaperNotesStore } from "../qmd/index.js";
+import type { PaperNotesStore, RunCellPort } from "../qmd/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
 import type {
@@ -76,6 +76,10 @@ export interface ReaderHostPorts {
   citeInProject?(request: CitationInProjectRequest): Promise<void>;
   /** Appends a selection to a note the host lets the user pick; the host owns the picker, the write and the success notice. Absent when the host cannot send. */
   sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
+  /** Runs a note's code cell; absent means the host has no runner and the reader shows no Run button. */
+  runCell?: RunCellPort;
+  /** Installs the Python that cells run with, as the missing-python prompt asks. */
+  installPython?(): void;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;

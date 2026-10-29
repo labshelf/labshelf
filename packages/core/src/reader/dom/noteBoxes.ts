@@ -1,5 +1,6 @@
 // Draws the paper's text-box notes over their rendered pages: clipped read-only content that expands on click to edit.
-import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import type { CellRunState } from "../../qmd/compute/index.js";
+import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
 import { snapBox, type PageRect } from "../textBoxPlacement.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -73,6 +74,11 @@ function pageElement(pageNumber: number): HTMLElement | null {
 export class NoteBoxLayer {
   private readonly views = new Map<string, BoxView>();
   private pendingOpen: string | null = null;
+  private canRunCells = false;
+  private readonly runs = createCellRunGroup({
+    onCancel: (requestId) => this.ctx.host.post({ command: "cancelCell", requestId }),
+    onInstallPython: () => this.ctx.host.post({ command: "installPython" }),
+  });
 
   constructor(private readonly ctx: Pick<ReaderContext, "eventBus" | "host">) {
     // PLATFORM: pdf.js drops unknown page children on every re-render (zoom, scrolling back into view).
@@ -114,6 +120,17 @@ export class NoteBoxLayer {
     for (const page of pages) { this.paintPage(page); }
     this.openPending(notes);
   }
+
+  /** Whether the host can run cells; editors get a Run button only when it can, so a change remounts every box editor. */
+  setCanRunCells(canRun: boolean): void {
+    if (canRun === this.canRunCells) { return; }
+    this.canRunCells = canRun;
+    if (!canRun) { this.runs.clear(); }
+    for (const view of this.views.values()) { this.mount(view, !view.open); }
+  }
+
+  /** Shows the host's state of a run under its box editor; a request this layer did not send is ignored. */
+  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
   /** The note added with `anchor` opens expanded with focus once the host lists it. */
   expectBox(anchor: string): void { this.pendingOpen = anchor; }
@@ -170,7 +187,7 @@ export class NoteBoxLayer {
     }, moveStrip, content, resize);
     const view: BoxView = {
       id, rect, el, content, open: false, latest: body, sent: body, settle: null,
-      editor: mountQmdEditor(content, { body, readOnly: true, onChange: () => undefined }),
+      editor: mountQmdEditor(content, { body, readOnly: true, onChange: () => undefined, ...this.runOption(id, content) }),
     };
     el.addEventListener("click", (e) => {
       if (!view.open && !(e.target instanceof Element && e.target.closest(".rd-note-box-move, .rd-note-box-resize"))) { this.expand(view); }
@@ -196,7 +213,14 @@ export class NoteBoxLayer {
       body: view.latest,
       readOnly,
       onChange: (body) => { view.latest = body; },
+      ...this.runOption(view.id, view.content),
     });
+  }
+
+  private runOption(itemId: string, content: HTMLElement): { onRunCell?(label: string, code: string): void } {
+    if (!this.canRunCells) { return {}; }
+    return { onRunCell: this.runs.attach(itemId, content, (label, code, requestId) =>
+      this.ctx.host.post({ command: "runCell", itemId, label, code, requestId })) };
   }
 
   private expand(view: BoxView): void {
@@ -234,6 +258,7 @@ export class NoteBoxLayer {
     if (view.latest !== view.sent) { this.ctx.host.post({ command: "editNote", id: view.id, body: view.latest }); }
     view.editor.destroy();
     view.el.remove();
+    this.runs.drop(view.id);
     this.views.delete(view.id);
   }
 
