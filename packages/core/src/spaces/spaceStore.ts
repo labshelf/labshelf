@@ -1,7 +1,7 @@
 // Lists, reads and changes Spaces through the library file system, notifying listeners after each change.
 import { createListeners } from "../events/index.js";
 import { formatError } from "../errors/index.js";
-import { createLibraryLayout, type LibraryLayout } from "../library/index.js";
+import { createLibraryLayout } from "../library/index.js";
 import type { ILogger, LibraryFileSystem } from "../ports/index.js";
 import type { PathOps } from "../path/index.js";
 import {
@@ -15,6 +15,8 @@ import {
 } from "./space.js";
 import { parseSpaceFile } from "./parseSpaceFile.js";
 import * as edit from "./spaceMutations.js";
+import { createSpaceNotesStore, runSerially, type SpaceNotesStore, type StoreContext } from "./spaceNotesStore.js";
+import { createSpaceDiscussionsStore, type SpaceDiscussionsStore } from "./spaceDiscussionsStore.js";
 import { updateGlossary, updateSpace, type ReadySpace, type SpaceDateInput, type TermInput } from "./spaceMutations.js";
 
 
@@ -28,14 +30,7 @@ export interface SpaceStoreOptions {
   readonly now?: () => string;
 }
 
-export interface StoreContext {
-  readonly fs: LibraryFileSystem;
-  readonly logger: ILogger;
-  readonly layout: LibraryLayout<string>;
-  readonly now: () => string;
-  /** The tail of each key's write queue: a space id, or the spaces root for creation. */
-  readonly writes: Map<string, Promise<unknown>>;
-}
+export { runSerially, type StoreContext };
 
 export const SPACE_STORE_MODULE = "spaces/store";
 
@@ -45,16 +40,6 @@ export class SpaceReadOnlyError extends Error {
   constructor(readonly path: string, readonly reason: string) {
     super(`${path} is read-only: ${reason}`);
   }
-}
-
-/** A failed write settles its slot, so the writes queued after it still run. */
-export function runSerially<T>(ctx: StoreContext, key: string, write: () => Promise<T>): Promise<T> {
-  const previous = ctx.writes.get(key) ?? Promise.resolve();
-  const result = previous.then(write);
-  const settled = result.then(() => undefined, () => undefined);
-  ctx.writes.set(key, settled);
-  void settled.then(() => { if (ctx.writes.get(key) === settled) { ctx.writes.delete(key); } });
-  return result;
 }
 
 export async function readSpaceFile(ctx: StoreContext, id: string): Promise<SpaceReadResult> {
@@ -160,6 +145,10 @@ const idOf = (result: SpaceReadResult): string => (result.state === "ready" ? re
 
 export class SpaceStore {
   private readonly ctx: StoreContext;
+  /** The notes of each Space: `spaces/<id>/notes/<slug>.qmd`. */
+  readonly notes: SpaceNotesStore;
+  /** The discussion threads of each Space: `spaces/<id>/discussions/<slug>.qmd`. */
+  readonly discussions: SpaceDiscussionsStore;
   private spaces: SpaceReadResult[] = [];
   private readonly listeners = createListeners();
 
@@ -169,6 +158,8 @@ export class SpaceStore {
       fs: options.fs, logger: options.logger, layout: createLibraryLayout(options.root, join),
       now: options.now ?? (() => new Date().toISOString().replace(/\.\d{3}Z$/, "Z")), writes: new Map(),
     };
+    this.notes = createSpaceNotesStore(this.ctx);
+    this.discussions = createSpaceDiscussionsStore(this.ctx);
   }
 
   /** The Spaces of the last reload or mutation, sorted by id. */
