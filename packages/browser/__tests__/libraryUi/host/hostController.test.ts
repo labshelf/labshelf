@@ -12,6 +12,7 @@ jest.mock("../../../src/storage", () => ({
   scanLibrary: async () => ({ tree: [], pdfDirs: new Set() }),
   createLibraryFileSystem: () => ({}),
   createSidecarPort: () => ({}),
+  createPaperNotesPort: () => ({ read: async () => null, write: async () => {} }),
   onPaperRecordsRebuilt: () => () => undefined,
 }));
 jest.mock("../../../src/capture", () => ({ attachPdfToPaper: jest.fn() }));
