@@ -7,6 +7,7 @@ import {
   type SpacesEndpoint,
   type SpacesToHost,
   type SpaceMutation,
+  type SpaceQmdAction,
 } from "./spacesProtocol.js";
 import type { SpacesHostPort } from "./spacesHostPort.js";
 import type { SpaceStore } from "./spaceStore.js";
@@ -38,6 +39,13 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   addTerm: "Add term",
   updateTerm: "Update term",
   removeTerm: "Remove term",
+  createSpaceNote: "Create note",
+  createSpaceThread: "Create thread",
+  readSpaceQmd: "Open note or thread",
+  addSpaceItem: "Add item",
+  editSpaceItem: "Edit item",
+  removeSpaceItem: "Remove item",
+  setThreadStatus: "Set thread status",
   openPaper: "Open paper",
   selectPaper: "Show paper details",
   openProject: "Open project",
@@ -75,6 +83,7 @@ function applySpaceMutation(store: SpaceStore, m: SpaceMutation): Promise<unknow
 }
 
 const MODULE = "spaces/server";
+const DEFAULT_AUTHOR = "Me";
 
 export interface ServeSpacesOptions {
   readonly store: SpaceStore;
@@ -82,11 +91,67 @@ export interface ServeSpacesOptions {
   readonly logger: ILogger;
   /** The local calendar day, YYYY-MM-DD. */
   readonly today: () => string;
+  /** The author stamped on the items and thread messages the page adds; DEFAULT_AUTHOR when absent. */
+  readonly author?: string;
 }
 
 type OpenView = Extract<SpacesToHost, { type: "ready" }>;
 type Action = Exclude<SpacesToHost, { type: "ready" }>;
 type Post = (message: HostToSpaces) => void;
+type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions">;
+
+const isThreadPath = (path: string): boolean => path.startsWith("discussions/");
+
+/** Posts the items of one file, from the notes or the discussions store by its folder. */
+async function postQmd({ notes, discussions }: NotesAndThreads, post: Post, spaceId: string, path: string): Promise<void> {
+  const items = await (isThreadPath(path) ? discussions : notes).read(spaceId, path);
+  post({ type: "spaceQmd", spaceId, path, items });
+}
+
+async function postNotes({ notes }: NotesAndThreads, post: Post, spaceId: string): Promise<void> {
+  post({ type: "spaceNotes", spaceId, notes: await notes.list(spaceId) });
+}
+
+async function postThreads({ discussions }: NotesAndThreads, post: Post, spaceId: string): Promise<void> {
+  post({ type: "spaceDiscussions", spaceId, threads: await discussions.list(spaceId) });
+}
+
+/** Posts the list of the folder the file is in, whose title, count or status the change may have moved. */
+function postListOf(stores: NotesAndThreads, post: Post, spaceId: string, path: string): Promise<void> {
+  return isThreadPath(path) ? postThreads(stores, post, spaceId) : postNotes(stores, post, spaceId);
+}
+
+type ItemChange = Extract<SpaceQmdAction, { type: "addSpaceItem" | "editSpaceItem" | "removeSpaceItem" | "setThreadStatus" }>;
+
+/** Applies the change to the notes or the discussions store by the folder of its path. */
+async function changeItem({ notes, discussions }: NotesAndThreads, author: string, m: ItemChange): Promise<void> {
+  const thread = isThreadPath(m.path);
+  switch (m.type) {
+    case "addSpaceItem":
+      await (thread ? discussions.addMessage(m.spaceId, m.path, m.body, author) : notes.addItem(m.spaceId, m.path, m.body, author));
+      return;
+    case "editSpaceItem":
+      await (thread ? discussions.editMessage(m.spaceId, m.path, m.id, m.body) : notes.editItem(m.spaceId, m.path, m.id, m.body));
+      return;
+    case "removeSpaceItem":
+      await (thread ? discussions.removeMessage(m.spaceId, m.path, m.id) : notes.removeItem(m.spaceId, m.path, m.id));
+      return;
+    case "setThreadStatus": await discussions.setStatus(m.spaceId, m.path, m.status);
+  }
+}
+
+async function runQmdAction(stores: NotesAndThreads, author: string, post: Post, m: SpaceQmdAction): Promise<void> {
+  switch (m.type) {
+    case "createSpaceNote": await stores.notes.create(m.spaceId, m.title); return postNotes(stores, post, m.spaceId);
+    case "createSpaceThread": await stores.discussions.create(m.spaceId, m.title, m.body, author); return postThreads(stores, post, m.spaceId);
+    case "readSpaceQmd": return postQmd(stores, post, m.spaceId, m.path);
+    case "setThreadStatus": await changeItem(stores, author, m); return postThreads(stores, post, m.spaceId);
+    default:
+      await changeItem(stores, author, m);
+      await postQmd(stores, post, m.spaceId, m.path);
+      return postListOf(stores, post, m.spaceId, m.path);
+  }
+}
 
 async function readReadySpace(store: SpaceStore, id: string) {
   const result = await store.read(id);
@@ -135,6 +200,8 @@ async function runAction(options: ServeSpacesOptions, post: Post, message: Actio
     case "listPapers": post({ type: "papers", items: pickablePapers(port) }); return;
     case "listProjects": post({ type: "projects", items: await port.projects() }); return;
     case "createSpace": return port.openSpace(await store.createSpace(message.name));
+    case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
+    case "removeSpaceItem": case "setThreadStatus": return runQmdAction(store, options.author ?? DEFAULT_AUTHOR, post, message);
     default: await applySpaceMutation(store, message);
   }
 }
@@ -160,6 +227,10 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
     if (!view) { return; }
     try {
       post(await viewMessage(options, view));
+      if (view.view === "space") {
+        await postNotes(store, post, view.id);
+        await postThreads(store, post, view.id);
+      }
     } catch (error) {
       if (view.view === "space") { fail(LOAD_SPACE, error, { id: view.id }); } else { fail(LOAD_CATALOG, error, { view: "catalog" }); }
     }

@@ -4,6 +4,8 @@ import { isCalendarDay } from "../time/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import type { GlossaryTerm, Space } from "./space.js";
+import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
+import { isQmdFilePath, type SpaceNoteEntry, type SpaceQmdItem } from "./spaceNotesStore.js";
 import type { SpaceDateInput, TermInput } from "./spaceMutations.js";
 import type { CatalogRow, PapersTree, ResolvedPaper, SpaceOverview, SpaceProjectEntry } from "./spaceViews.js";
 
@@ -48,7 +50,20 @@ export type SpacesToHost =
   | { type: "openCatalog" }
   | { type: "exportIcs"; id: string }
   | { type: "listPapers" }
-  | { type: "listProjects" };
+  | { type: "listProjects" }
+  | SpaceQmdAction;
+
+/** Actions on the notes and discussions of a Space; they act on those stores, not on the Space file. Every `path` is relative to the Space folder. */
+export type SpaceQmdAction =
+  | { type: "createSpaceNote"; spaceId: string; title: string }
+  | { type: "createSpaceThread"; spaceId: string; title: string; body: string }
+  /** Asks for the items of one file; the host answers with `spaceQmd`. */
+  | { type: "readSpaceQmd"; spaceId: string; path: string }
+  /** In a thread, the item is a message. */
+  | { type: "addSpaceItem"; spaceId: string; path: string; body: string }
+  | { type: "editSpaceItem"; spaceId: string; path: string; id: string; body: string }
+  | { type: "removeSpaceItem"; spaceId: string; path: string; id: string }
+  | { type: "setThreadStatus"; spaceId: string; path: string; status: ThreadStatus };
 
 export type PaperPickItem = Extract<ResolvedPaper, { missing: false }>;
 
@@ -67,6 +82,10 @@ export type HostToSpaces =
   }
   | { type: "papers"; items: PaperPickItem[] }
   | { type: "projects"; items: SpaceProjectEntry[] }
+  | { type: "spaceNotes"; spaceId: string; notes: SpaceNoteEntry[] }
+  | { type: "spaceDiscussions"; spaceId: string; threads: SpaceThreadEntry[] }
+  /** The items of one note or thread file, in file order. */
+  | { type: "spaceQmd"; spaceId: string; path: string; items: SpaceQmdItem[] }
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -182,6 +201,35 @@ function parseReady(view: unknown, id: unknown): SpacesToHost | undefined {
   return view === "space" && isNonEmptyString(id) ? { type: "ready", view, id } : undefined;
 }
 
+const isSpaceId = (value: unknown): value is string => isNonEmptyString(value) && !/[/\\]/.test(value) && !value.startsWith(".");
+
+/** INVARIANT: a valid path is `notes/<name>.qmd` or `discussions/<name>.qmd` with one plain, visible name, so it stays inside the Space folder. */
+export function isSpaceQmdPath(spaceId: string, path: unknown): path is string {
+  return isSpaceId(spaceId) && isQmdFilePath(path);
+}
+
+const isThreadStatus = (value: unknown): value is ThreadStatus => value === "open" || value === "resolved";
+
+/** The note or thread action, or undefined when the type is not one or a field or the path is invalid. */
+function parseQmdAction(value: Fields): SpaceQmdAction | undefined {
+  const { type, spaceId, title, body, path, id, status } = value;
+  if (!isSpaceId(spaceId)) { return undefined; }
+  switch (type) {
+    case "createSpaceNote": return isNonBlankString(title) ? { type, spaceId, title } : undefined;
+    case "createSpaceThread": return isNonBlankString(title) && isString(body) ? { type, spaceId, title, body } : undefined;
+    default: break;
+  }
+  if (!isSpaceQmdPath(spaceId, path)) { return undefined; }
+  switch (type) {
+    case "readSpaceQmd": return { type, spaceId, path };
+    case "addSpaceItem": return isString(body) ? { type, spaceId, path, body } : undefined;
+    case "editSpaceItem": return isNonEmptyString(id) && isString(body) ? { type, spaceId, path, id, body } : undefined;
+    case "removeSpaceItem": return isNonEmptyString(id) ? { type, spaceId, path, id } : undefined;
+    case "setThreadStatus": return isThreadStatus(status) ? { type, spaceId, path, status } : undefined;
+    default: return undefined;
+  }
+}
+
 /** The typed message, or undefined when the type is unknown or a field is missing or of the wrong type. */
 export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
   if (!isRecord(value)) { return undefined; }
@@ -196,6 +244,9 @@ export function parseSpacesMessage(value: unknown): SpacesToHost | undefined {
       return isTab(tab) ? { type, id, tab } : undefined;
     case "openCatalog": case "listPapers": case "listProjects": return { type };
     case "exportIcs": return isNonEmptyString(id) ? { type, id } : undefined;
+    case "createSpaceNote": case "createSpaceThread": case "readSpaceQmd": case "addSpaceItem": case "editSpaceItem":
+    case "removeSpaceItem": case "setThreadStatus": return parseQmdAction(value);
     default: return parseSpaceMutation(value);
   }
 }
+
