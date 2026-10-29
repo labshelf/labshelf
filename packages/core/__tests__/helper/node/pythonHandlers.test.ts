@@ -4,7 +4,7 @@ import { PROTOCOL_VERSION } from "../../../src/helper/index.js";
 import type { TexToolchain, ToHelperMessage, ToPageMessage } from "../../../src/helper/index.js";
 import { answerHello, type HelloMessage } from "../../../src/helper/node/helperHandlers.js";
 import type { HelperLogger } from "../../../src/helper/node/helperPrivacy.js";
-import { createPythonHandlers } from "../../../src/helper/node/pythonHandlers.js";
+import { createPythonHandlers } from "../../../src/helper/node/runHelperHost.js";
 import type { PythonProvider, PythonStatus } from "../../../src/qmd/compute/node/managedPython.js";
 
 const TEX: TexToolchain = { source: "texlive", year: 2026, complete: true };

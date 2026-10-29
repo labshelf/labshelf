@@ -3,17 +3,59 @@
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { HelperHost } from "../index.js";
+import { formatError } from "../../errors/index.js";
+import type { ILogger } from "../../ports/index.js";
+import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
 import { createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
-import { createPythonHandlers } from "./pythonHandlers.js";
-import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer } from "./helperHandlers.js";
+import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer, type HelperHandler } from "./helperHandlers.js";
 import { createLibraryProjects } from "./helperProjects.js";
 import { createFrameWriter, type HelperServer } from "./helperConnection.js";
+
+const MODULE = "helper-python";
+
+export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }
+
+export function createPythonHandlers(options: PythonHandlersOptions): { installPython: HelperHandler } {
+  const { python, logger } = options;
+  const installPython: HelperHandler = async (message, send) => {
+    if (message.type !== "installPython") { throw new Error(`installPython handler received ${message.type}`); }
+    const { id } = message;
+    const onProgress = (_text: string, fraction?: number) =>
+      send({ v: PROTOCOL_VERSION, id, type: "progress", phase: "python", message: "Installing Python", ...(fraction === undefined ? {} : { fraction }) });
+    try {
+      const status = await python.install(onProgress);
+      send({
+        v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host,
+        tex: await options.texStatus(), python: status.state,
+      });
+    } catch (error) {
+      await logger.error(MODULE, error, { step: "python", id });
+      send({ v: PROTOCOL_VERSION, id, type: "error", code: "python-install-failed", message: formatError(error) });
+    }
+  };
+  return { installPython };
+}
+
+/** The `--install-python` mode of the helper binary: installs Python through `provider` and returns the process exit code; failures are reported through `write`, never thrown. */
+export async function runInstallPython(provider: PythonProvider, write: (message: string) => void): Promise<number> {
+  try {
+    const status = await provider.install((message) => write(message));
+    if (status.state !== "installed") {
+      write("Python install failed: the install finished without a usable Python");
+      return 1;
+    }
+    write(`Python ${status.version} installed`);
+    return 0;
+  } catch (error) {
+    write(`Python install failed: ${formatError(error)}`);
+    return 1;
+  }
+}
 
 export interface HelperHostOptions {
   dataDir: string;
@@ -38,6 +80,15 @@ export interface HelperHostOptions {
 }
 
 const callerOriginIn = (args: readonly string[]) => args.find((arg) => arg.startsWith("chrome-extension://"));
+
+/** Starts `task` on the first `run` only, logs its failure through `onError`, and lets the caller await it. */
+function runOnce(task: (() => Promise<void>) | undefined, onError: (error: unknown) => Promise<void> | void) {
+  let started: Promise<void> | undefined;
+  return {
+    run: () => { started ??= (task?.() ?? Promise.resolve()).catch(onError); },
+    settled: async () => { await started; },
+  };
+}
 
 export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const { dataDir, logger, helperVersion, host } = options;
@@ -73,19 +124,16 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     if (socket) { options.afterHello?.(); }
     return socket !== undefined;
   };
-  let versionRejected: Promise<void> | undefined;
-  const onVersionRejected = () => {
-    versionRejected ??= (options.afterVersionRejected?.() ?? Promise.resolve()).catch((error: unknown) => logger.error("helper", error, { step: "afterVersionRejected" }));
-  };
+  const rejection = runOnce(options.afterVersionRejected, (error) => logger.error("helper", error, { step: "afterVersionRejected" }));
   await logger.log("INFO", "helper", "Helper started", { version: helperVersion, host, dataDir });
   try {
-    await runHelperLoop(options.input ?? process.stdin, hello, send, logger, onVersionRejected);
+    await runHelperLoop(options.input ?? process.stdin, hello, send, logger, rejection.run);
   } finally {
     builds.cancelAll();
     publishing.dispose();
     await socket?.close();
     await dispatcher.drain();
-    await versionRejected;
+    await rejection.settled();
     await projects.closeAll();
     await logger.log("INFO", "helper", "Input closed; helper exits");
   }
