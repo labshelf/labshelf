@@ -5,7 +5,7 @@
 // Assumptions about what the spec leaves open: the Run and Cancel controls are <button>s whose text, aria-label or title match
 // /run/i and /cancel/i; the NotesTab lists every note with its editor under the default filter; a text box shows its editor after a
 // click on the first element inside `.rd-note-layer` (the box) if Run is not visible yet; the layer draws on `#viewer .page` when
-// pdf.js fires `textlayerrendered`; the NotesTab constructor takes the ctx (`{ host, eventBus }`), and the same object also works as
+// pdf.js fires `textlayerrendered`; NotesTab is built as (host, goToPage, currentPage, eventBus), NoteBoxLayer takes the ctx (`{ host, eventBus }`) which also works as
 // a bare host (it has `post`), so either 7.4 constructor shape is served.
 import { TextEncoder as NodeTextEncoder } from "node:util";
 import { NotesTab } from "../../../src/reader/dom/notesTab";
@@ -34,9 +34,10 @@ function makeCtx() {
     off: () => undefined,
     dispatch: (name: string, e?: unknown) => (handlers.get(name) ?? []).forEach((fn) => fn(e)),
   };
-  const ctx = { host: { post }, eventBus, post } as never;
+  const host = { post };
+  const ctx = { host, eventBus, post } as never;
   const runs = () => sent.filter((m) => m["command"] === "runCell");
-  return { ctx, sent, runs, eventBus };
+  return { ctx, host, sent, runs, eventBus };
 }
 
 const KINDS: Array<{ name: string; make: () => { subject: Subject; c: ReturnType<typeof makeCtx> } }> = [
@@ -45,7 +46,7 @@ const KINDS: Array<{ name: string; make: () => { subject: Subject; c: ReturnType
     make: () => {
       const c = makeCtx();
       document.body.replaceChildren();
-      const tab = new NotesTab(c.ctx, jest.fn() as never);
+      const tab = new NotesTab(c.host as never, jest.fn(), () => 1, c.eventBus as never);
       document.body.append(tab.el);
       const subject: Subject = {
         root: tab.el,

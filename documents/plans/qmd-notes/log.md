@@ -40,3 +40,4 @@
 - 2026-10-29 09:27 — session 11b blocked: 11.5: no report
 - 2026-10-29 09:27 — session 11b done: 11.5, 11.6
 - 2026-10-29 11:36 — session 12 done: 12.1, 12.2, 12.3, 12.10, 12.11, 12.12, 12.13, 12.14, 12.15
+- 2026-10-29 12:29 — session 12b blocked: 12.4: blocked_tests; 12.6: no report; 12.5: blocked_tests

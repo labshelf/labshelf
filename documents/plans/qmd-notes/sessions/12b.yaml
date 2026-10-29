@@ -35,7 +35,22 @@ owns:
   - packages/core/__tests__/reader/protocol.test.ts
   - packages/core/__tests__/libraryUi/dom/
   - packages/core/__tests__/reader/dom/
-status: pending
+  - packages/core/src/qmd/compute/cellRunner.ts
+  - packages/core/src/qmd/compute/index.ts
+  - packages/core/src/qmd/dom/cellRunStatus.ts
+  - packages/core/src/qmd/dom/index.ts
+  - packages/core/src/qmd/dom/qmd-editor.css
+  - packages/core/__tests__/qmd/dom/
+  - packages/core/src/helper/helperClientConnection.ts
+  - packages/core/src/libraryUi/index.ts
+  - packages/core/src/libraryUi/dom/detailPane/paneState.ts
+  - packages/core/src/reader/hostMessages.ts
+  - packages/core/src/reader/hostController.ts
+  - packages/core/src/libraryUi/dom/hostMessages.ts
+  - packages/core/src/reader/dom/readerUi.ts
+  - packages/core/src/reader/dom/startup.ts
+  - packages/core/__tests__/reader/cellMessages.test.ts
+status: blocked
 packages:
   - id: "12.4"
     plan: qmd-notes
@@ -100,15 +115,11 @@ packages:
     seams:
       - path: packages/core/src/helper/node/cellHandlers.ts
         signature: "export function createCellHandlers(options: { runner: ICellRunner; resolveCwd(scope: string): string | undefined; logger: ILogger }): { runCell: HelperHandler; cancelCell: HelperHandler }"
-      - path: packages/core/src/helper/helperPaths.ts
-        signature: "runCell(request: { code: string; cwd: string; timeoutMs: number }, signal: AbortSignal): Promise<CellResult>;"
-      - path: packages/core/src/helper/helperMessages.ts
-        signature: '| { type: "runCell"; code: string; cwd: string; timeoutMs: number } | { type: "cancelCell"; requestId: string } // ToHelperMessage; ToPageMessage gains { type: "cellResult"; status: CellStatus; latex?: string; text?: string; error?: string; durationMs: number }'
-      - path: packages/core/src/helper/helperMessages.ts
-        signature: export const MAX_CELL_CODE_BYTES = 1024 * 1024; export const MAX_CELL_TIMEOUT_MS = 600_000;
-      - path: packages/core/src/helper/node/helperProjects.ts
-        signature: "rootOf(projectId: string): string | undefined; // on LibraryProjects"
     decided:
+      - "Seam in packages/core/src/helper/helperMessages.ts: export const MAX_CELL_CODE_BYTES = 1024 * 1024; export const MAX_CELL_TIMEOUT_MS = 600_000;"
+      - "Seam in packages/core/src/helper/helperPaths.ts: runCell(request: { code: string; cwd: string; timeoutMs: number }, signal: AbortSignal): Promise<CellResult>;"
+      - 'Seam in packages/core/src/helper/helperMessages.ts: | { type: "runCell"; code: string; cwd: string; timeoutMs: number } | { type: "cancelCell"; requestId: string } // ToHelperMessage; ToPageMessage gains { type: "cellResult"; status: CellStatus; latex?: string; text?: string; error?: string; durationMs: number }'
+      - "Seam in packages/core/src/helper/node/helperProjects.ts: rootOf(projectId: string): string | undefined; // on LibraryProjects"
       - "Message runCell {code, cwd, timeoutMs} answers cellResult carrying the CellResult fields, with the envelope id as the request id. cwd names a project id or a paper scope, never a raw path: the helper resolves it from its known projects and papers and refuses an unknown one with an error reply."
       - Message cancelCell {requestId} is UNQUEUED (added to the UNQUEUED set in helperHandlers.ts) and aborts that run signal.
       - Handlers live in packages/core/src/helper/node/cellHandlers.ts (flat in helper/node, per the current layout); the abort controller of a run is registered before any await, as the build token is.
@@ -213,7 +224,32 @@ packages:
       - path: packages/core/src/spaces/dom/mountSpaceDiscussions.ts
         lines: 1-200
         why: discussion editors (10.6) pass `onRunCell` when `canRunCells` is true
-    create: []
+      - path: packages/core/src/qmd/compute/cellRunner.ts
+        lines: 1-8
+        why: CellRunState type
+      - path: packages/core/src/qmd/compute/index.ts
+        lines: 1-4
+        why: export CellRunState
+      - path: packages/core/src/qmd/dom/index.ts
+        lines: 1-10
+        why: export createCellRunStatus
+      - path: packages/core/src/qmd/dom/qmd-editor.css
+        lines: 1-400
+        why: cell run status styles, tokens only
+      - path: packages/core/src/libraryUi/dom/detailPane/paneState.ts
+        lines: 130-150
+        why: the paper notes editors are mounted here (lines 139, 144); pass onRunCell and mount the run status
+      - path: packages/core/src/reader/hostMessages.ts
+        lines: 190-210
+        why: the reader init message is built here (line 199); set canRunCells when the runCell port exists
+      - path: packages/core/src/reader/hostController.ts
+        lines: 1-200
+        why: the HANDLERS table must stay exhaustive for runCell, cancelCell, installPython
+      - path: packages/core/src/libraryUi/index.ts
+        lines: 1-80
+        why: export the paper run handlers
+    create:
+      - packages/core/src/qmd/dom/cellRunStatus.ts
     read:
       - path: packages/core/src/qmd/dom/qmdEditor.ts
         lines: 1-60
@@ -225,27 +261,18 @@ packages:
         lines: 1-40
         why: layout of the existing guard tests
     seams:
-      - path: packages/core/src/libraryUi/protocol/messages.ts
-        signature: '| { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; requestId: string }'
-      - path: packages/core/src/libraryUi/protocol/messages.ts
-        signature: '| { type: "paper.cancelCell"; requestId: string }'
-      - path: packages/core/src/libraryUi/protocol/messages.ts
-        signature: '| { type: "paper.cellState"; requestId: string; state: CellRunState }'
-      - path: packages/core/src/reader/protocol/messages.ts
-        signature: '| { command: "runCell"; itemId: string; label: string; code: string; requestId: string } | { command: "cancelCell"; requestId: string } // WebviewToHost, guarded by isWebviewMessage'
-      - path: packages/core/src/reader/protocol/messages.ts
-        signature: '| { type: "cellState"; requestId: string; state: CellRunState } // HostToWebview; init gains canRunCells?: boolean'
-      - path: packages/core/src/spaces/spacesProtocol.ts
-        signature: '| { type: "space.cancelCell"; requestId: string } // SpacesToHost, parsed by parseSpacesMessage; HostToSpaces gains { type: "space.cellState"; requestId: string; state: CellRunState }; SpaceSnapshot gains canRunCells?: boolean'
-      - path: packages/core/src/reader/dom/notesTab.ts
-        signature: "setCanRunCells(canRun: boolean): void; showCellState(requestId: string, state: CellRunState): void // on NotesTab"
-      - path: packages/core/src/reader/dom/noteBoxes.ts
-        signature: "setCanRunCells(canRun: boolean): void; showCellState(requestId: string, state: CellRunState): void // on NoteBoxLayer"
-      - path: packages/core/src/spaces/spacesProtocol.ts
-        signature: '| { type: "space.runCell"; path: string; itemId: string; label: string; code: string; requestId: string }'
       - path: packages/core/src/qmd/compute/cellRunner.ts
         signature: export type CellRunState = "running" | "done" | "error" | "cancelled" | "missing-python";
     decided:
+      - 'Seam in packages/core/src/libraryUi/protocol/messages.ts: | { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; requestId: string }'
+      - 'Seam in packages/core/src/libraryUi/protocol/messages.ts: | { type: "paper.cancelCell"; requestId: string }'
+      - 'Seam in packages/core/src/libraryUi/protocol/messages.ts: | { type: "paper.cellState"; requestId: string; state: CellRunState }'
+      - 'Seam in packages/core/src/reader/protocol/messages.ts: | { command: "runCell"; itemId: string; label: string; code: string; requestId: string } | { command: "cancelCell"; requestId: string } // WebviewToHost, guarded by isWebviewMessage'
+      - 'Seam in packages/core/src/reader/protocol/messages.ts: | { type: "cellState"; requestId: string; state: CellRunState } // HostToWebview; init gains canRunCells?: boolean'
+      - 'Seam in packages/core/src/spaces/spacesProtocol.ts: | { type: "space.cancelCell"; requestId: string } // SpacesToHost, parsed by parseSpacesMessage; HostToSpaces gains { type: "space.cellState"; requestId: string; state: CellRunState }; SpaceSnapshot gains canRunCells?: boolean'
+      - "Seam in packages/core/src/reader/dom/notesTab.ts: setCanRunCells(canRun: boolean): void; showCellState(requestId: string, state: CellRunState): void // on NotesTab"
+      - "Seam in packages/core/src/reader/dom/noteBoxes.ts: setCanRunCells(canRun: boolean): void; showCellState(requestId: string, state: CellRunState): void // on NoteBoxLayer"
+      - 'Seam in packages/core/src/spaces/spacesProtocol.ts: | { type: "space.runCell"; path: string; itemId: string; label: string; code: string; requestId: string }'
       - "D11: a view never runs code; it asks its host. One pair per protocol, in that protocol's naming style: library UI `paper.runCell {id, itemId, label, code, requestId}` / `paper.cancelCell {requestId}`, reader `runCell {itemId, label, code, requestId}` / `cancelCell {requestId}`, spaces `space.runCell {path, itemId, label, code, requestId}` / `space.cancelCell {requestId}`. Host to view: `cellState {requestId, state}` with state `running | done | error | cancelled | missing-python` (`CellRunState`, declared once in `packages/core/src/qmd/compute/cellRunner.ts`, the three protocols import it)."
       - "`requestId` is made by the view and echoed by the host; a view ignores a `cellState` for an unknown request. Guards drop a message whole when `itemId`, `label`, `code` or `requestId` is missing, empty or not a string, or when `state` is not one of the five values."
       - The host finds the item, runs the code with the runner of 12.7 or 12.8, writes the result with `writeCellOutput` into the item body, stores it through the notes store of that area (`PaperNotesStore.editItem`, the reader notes store, the Space notes store) and then pushes the updated items exactly as after any other write (`details`, `updateNotes`, the Space items message). `cellState done|error|cancelled|missing-python` follows that push; `cancelled` and `missing-python` write nothing.
@@ -253,11 +280,15 @@ packages:
       - 'A host without the runner port that receives a `runCell` anyway answers `cellState {state: "error"}`, logs it and writes nothing.'
       - "Opening a note runs nothing: a view sends `runCell` only on the user pressing Run."
       - "These are core files; the host-side runner (`NodeCellRunner`, helper client) and the wiring of the port are 12.7 (VS Code) and 12.8 (browser). Project notes and comments use no core view protocol: project notes are 9.7 and 9.8, comments pass no `onRunCell`."
-      - Apply the design outcome of 12.6 for the states shown (Run, running with Cancel, error, install prompt).
+      - "Design of 12.6, one shared component: `createCellRunStatus(options: { onCancel(requestId: string): void; onInstallPython?(): void }): CellRunStatus` in the new `packages/core/src/qmd/dom/cellRunStatus.ts`, exported from `packages/core/src/qmd/dom/index.ts`; `CellRunStatus` is `{ el: HTMLElement; start(requestId: string, label: string): void; show(requestId: string, state: CellRunState): boolean; owns(requestId: string): boolean }` (`show` returns false and changes nothing for a request it did not `start`). Every view mounts one status element directly under each editor that has `onRunCell` and calls `start` from its `onRunCell` before posting the run message (`start` only registers the request and changes nothing visible; the running row appears on the host's `cellState running`); the views share this component and add only their message glue."
+      - "Status states (12.6): idle = `el` hidden (`hidden` attribute), the Run button stays in the cell header as built in session 4. running (shown on `cellState running`, which every host posts through createCellRuns before it calls the runner) = a row with role=status and aria-live=polite: a spinner icon, the text `Running <label>…` (or `Running cell…` without a label) and a ghost Cancel button (`ls-btn ls-btn-ghost`, text `Cancel`) that calls onCancel with the request id. done = hidden again (the pushed body shows the new output, and the out-of-date mark of session 4 clears on its own). error = the row in the danger tone with the text `The cell failed; its output shows the error.`, no button. cancelled = muted text `Run cancelled.`, no button. missing-python = the text `Python for calculations is not installed.` plus a primary `Install Python` button only when onInstallPython is given. Any later `start` replaces the row. No button other than Cancel and Install Python, and no visible text other than the Run button matches /run/i as a button. Styles go in `packages/core/src/qmd/dom/qmd-editor.css` with tokens only (no pixel or colour literals); keyboard focus moves to nothing (the row never steals focus)."
+      - While a run of an editor is running, Run in that editor is ignored (one run per editor at a time). The out-of-date mark stays as built in session 4 (codeCellView `is-out-of-date`); 12.5 does not change codeCellView.
+      - 'Install prompt messages (so 12.7 and 12.8 stay outside core): the Install Python button posts library UI `{ type: "paper.installPython" }`, reader `{ command: "installPython" }`, spaces `{ type: "space.installPython" }`; each has no field, is accepted by its view-to-host guard and is added to the same tables as runCell. In 12.5 core hosts (paperHandlers, reader noteMessages, serveSpaces) pass it to an optional injected `installPython?(): void` port and ignore it when absent.'
+      - "`CellRunState` is added to `packages/core/src/qmd/compute/cellRunner.ts` and exported from `packages/core/src/qmd/compute/index.ts` next to CellStatus."
       - "Reader view-to-host messages use the `command` discriminant like every WebviewToHost message (`runCell`, `cancelCell`); host-to-view uses `type: cellState`. Library UI and Spaces use `type` (`paper.*`, `space.*`)."
       - "Host-to-view messages are not guarded: views trust their host, as for every existing host message. The only view-side check is that a `cellState` for a requestId the view did not send is ignored."
       - "canRunCells placement: library UI on the `details` message and in its `details` payload (either is read); reader on `init`; Spaces on the `space` state (SpaceSnapshot). Absent means false."
-      - "Reader seam: NotesTab and NoteBoxLayer keep their 7.x constructors (ctx with `eventBus` and `host`); the reader's init handler calls setCanRunCells(init.canRunCells === true) on both, a `cellState` message is routed to showCellState on both, and Run posts `{command: runCell, ...}` through ctx.host like the other reader messages."
+      - "Reader seam: NotesTab keeps its constructor (host, goToPage, currentPage, eventBus) and NoteBoxLayer its constructor (ctx with `eventBus` and `host`); the reader's init handler calls setCanRunCells(init.canRunCells === true) on both, a `cellState` message is routed to showCellState on both, and Run posts `{command: runCell, ...}` through ctx.host like the other reader messages."
       - "View affordances (12.6): the Run control is a <button> whose text, aria-label or title matches /run/i; while running it shows a Cancel <button> matching /cancel/i that sends the cancel message with the same requestId; done, error, cancelled and missing-python remove Cancel; missing-python shows text that mentions Python (the install prompt)."
       - A `space.runCell` whose path is outside `notes/` or `discussions/` is dropped by parseSpacesMessage.
     acceptance:
@@ -281,3 +312,4 @@ packages:
       - packages/vscode/
       - packages/browser/
       - packages/terminal/
+blocked_reason: "12.4: blocked_tests; 12.6: no report; 12.5: blocked_tests"

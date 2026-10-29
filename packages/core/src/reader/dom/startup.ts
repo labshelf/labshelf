@@ -73,6 +73,8 @@ export class ReadingPositionRestore {
     ui.annotationsTab.setAnnotations(msg.annotations);
     ui.highlights.show(msg.annotations);
     ui.notesTab.setAnnotations(msg.annotations);
+    ui.notesTab.setCanRunCells(msg.canRunCells === true);
+    ui.noteBoxes.setCanRunCells(msg.canRunCells === true);
     ui.notesTab.show(msg.notes);
     ui.noteBoxes.show(msg.notes);
     if (!this.pagesReady || this.restored) { return; }

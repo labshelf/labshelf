@@ -9,6 +9,7 @@ import { createNoteEditor } from "../../../../src/libraryUi/dom/detailPane/paneS
 // Item editors are ProseMirror views; the tests drive them through the options the pane gives each one.
 const editors: Array<{ root: HTMLElement; options: { body: string; readOnly?: boolean; onChange(body: string): void } }> = [];
 jest.mock("../../../../src/qmd/dom/index", () => ({
+  ...jest.requireActual("../../../../src/qmd/dom/index"),
   QMD_VOCABULARY: { item: "note" },
   mountQmdEditor: (root: HTMLElement, options: never) => {
     editors.push({ root, options });

@@ -43,7 +43,7 @@ async function open(kind: (typeof KINDS)[number], canRunCells: boolean) {
   await settle();
   const opener = button(root, new RegExp(kind.title, "i"));
   if (opener && !button(root, /run/i)) { opener.click(); receive({ type: "spaceQmd", spaceId: "s", path: kind.path, items: [{ id: "i1", body: BODY, author: "Ana", created: "2026-10-01T00:00:00.000Z" }] }); await settle(); }
-  const runs = () => sent.filter((m) => (m as { type: string }).type === "space.runCell") as unknown as Array<Record<string, string>>;
+  const runs = () => sent.filter((m) => (m as { type: string }).type === "space.runCell") as unknown as Array<Record<string, string> & { requestId: string }>;
   return { root, sent, receive, runs, body };
 }
 

@@ -57,7 +57,7 @@ packages:
       - status missing-python shows the install prompt that runs the shared provider `install` with progress; cancelled and missing-python write nothing.
       - "Opening a note runs nothing: Run is only ever called by the user pressing it."
       - "The VS Code hosts answer the run-cell messages of 12.5 (core protocols, the views already pass `onRunCell`): the library UI host answers `paper.runCell`/`paper.cancelCell` in `packages/vscode/src/libraryUi/handlers.ts` (paper notes, 6.5) and sets `canRunCells`; the reader host and the Space host receive the runner as the `runCell` port of 12.5 built from `createRunCell` in the composition root `startExtension.ts`; project notes (9.7) pass `onRunCell` from `createRunCell`. Writes go back through the notes store of each area and the host pushes the updated items after each write as it already does; `cellState` follows. `packages/core/` stays untouched here."
-      - The result of 12.6 (button states, out-of-date mark, prompt) is written here when 12.6 is done.
+      - "12.6 outcome: the core views already show the run status (createCellRunStatus of 12.5: running with Cancel, error, cancelled, missing-python with Install Python) and the out-of-date mark of session 4. The hosts here only answer: `paper.cancelCell`/`cancelCell`/`space.cancelCell` abort the run's signal; `paper.installPython`/`installPython`/`space.installPython` run the shared provider `install` with VS Code progress, then nothing re-runs by itself. Project notes (9.7) mount createCellRunStatus under the editor themselves."
     acceptance:
       - id: 12.7a
         check: typecheck and vscode tests pass
@@ -114,7 +114,7 @@ packages:
       - "No helper: Run shows the helper setup link. Helper without Python (cellResult missing-python): the install prompt sends installPython (session 11). Cancel sends cancelCell."
       - "The browser hosts answer the run-cell messages of 12.5 (core protocols, the views already pass `onRunCell`) with `createHelperCellRunner`: `paper.runCell`/`paper.cancelCell` in `packages/browser/src/libraryUi/host/handlers.ts` (paper notes, 6.5, sets `canRunCells`), the reader and Space hosts through the `runCell` port of 12.5, and the project note tab (9.8, `packages/browser/src/libraryUi/editorArea/projectNoteTab.ts`) passes `onRunCell` to `mountQmdEditor` itself. Results are written with `writeCellOutput` through each area's notes store, then the host pushes the updated items as it already does and sends `cellState`. `packages/core/` stays untouched here."
       - Opening a note runs nothing.
-      - The result of 12.6 is written here when 12.6 is done.
+      - "12.6 outcome: the core views already show the run status (createCellRunStatus of 12.5) and the out-of-date mark. Cancel messages abort the run's signal (createHelperCellRunner sends cancelCell); `paper.installPython`/`installPython`/`space.installPython` send the helper's installPython (session 11). Without a helper the host does not set `canRunCells`, so Run stays hidden, and the setup link is shown where the helper status already is. The project note tab (9.8) mounts createCellRunStatus under its editor itself."
     acceptance:
       - id: 12.8a
         check: a test shows aborting the signal posts cancelCell for the running request

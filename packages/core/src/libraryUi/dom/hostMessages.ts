@@ -21,7 +21,11 @@ function applyData(ctx: UiContext, m: HostToUi): boolean {
       // A record may have changed under the paper on show (its PDF, its file size); ask again for what it shows.
       ctx.data.invalidate(null);
       return true;
-    case "details": ctx.data.received(m.id); ctx.store.setDetails(m.id, m.details); return true;
+    case "details":
+      ctx.data.received(m.id);
+      // canRunCells may come on the message or in its payload; the view reads the payload.
+      ctx.store.setDetails(m.id, m.canRunCells === true ? { ...m.details, canRunCells: true } : m.details);
+      return true;
     case "files":
       if (m.state.status === "failed") reportFilesFailure(ctx, m.id, m.state.message);
       ctx.store.setFiles(m.id, m.state);
@@ -59,6 +63,8 @@ export function attachHostMessages(ctx: UiContext): () => void {
       case "pdf.findResult": void onFindMiss(ctx, m.id, m.miss); return;
       case "add.sources": void onAddSources(ctx, m.folder, m.sources); return;
       case "add.noPdf": void onAddNoPdf(ctx, m.folder, m.sourceId, m.title, m.miss); return;
+      // The Notes tab's run statuses listen for their own request ids.
+      case "paper.cellState": return;
     }
   });
 }

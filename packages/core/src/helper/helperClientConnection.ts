@@ -76,13 +76,15 @@ export class HelperConnection {
     return id;
   }
 
-  request<T>(body: RequestBody, step: FrameStep<T>): Promise<T> {
+  /** `onSent` receives the request's id as the message goes out, before any reply, for a caller that must name the request later (`cancelCell`). */
+  request<T>(body: RequestBody, step: FrameStep<T>, onSent?: (id: string) => void): Promise<T> {
     if (this.closed) { return Promise.reject(new HelperClosedError(`LabShelf Helper is not connected (${body.type})`, undefined)); }
     return new Promise<T>((resolve, reject) => {
       const id = String(this.nextId);
       this.pending.set(id, { type: body.type, step, resolve: resolve as (value: unknown) => void, reject });
       try {
-        this.post(body);
+        const sentId = this.post(body);
+        onSent?.(sentId);
       } catch (error) {
         this.pending.delete(id);
         reject(error as Error);

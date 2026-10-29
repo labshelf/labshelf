@@ -27,7 +27,7 @@ async function open(canRunCells: boolean) {
   await settle();
   return t;
 }
-const runs = (t: Awaited<ReturnType<typeof open>>) => t.sent.filter((m) => m.type === ("paper.runCell" as string)) as unknown as Array<Record<string, string>>;
+const runs = (t: Awaited<ReturnType<typeof open>>) => t.sent.filter((m) => m.type === ("paper.runCell" as string)) as unknown as Array<Record<string, string> & { requestId: string }>;
 
 describe("paper notes run cells", () => {
   it("12.5b shows no Run button when the host does not say canRunCells", async () => {
