@@ -3,14 +3,19 @@ import * as vscode from "vscode";
 
 import {
   createDebouncer,
+  citeSiteNotes,
   createSectionPlacer,
   deriveCitationSections,
+  derivePapersByCiteKey,
+  formatError,
   isInside,
   type Annotation,
   type BacklinkMap,
   type ChecklistSection,
   type ChecklistSource,
+  type CiteSiteNotes,
   type ILogger,
+  type ItemFile,
   type OpenSources,
   type PaperRecord,
   type PathOps,
@@ -116,8 +121,26 @@ export class CitationSectionsCache implements vscode.Disposable {
 const REBUILD_DEBOUNCE_MS = 1000;
 const SOURCE_FILE = /\.(tex|typ)$/;
 
+/** The open library as the "N notes" lens reads it: its papers and their notes. */
+export interface NoteLibrary {
+  root: string;
+  logger: ILogger;
+  listPapers(): Promise<PaperRecord[]>;
+  readNotes(paperId: string): Promise<ItemFile>;
+}
+
+/** How many notes a cited paper has, and the paper's id. */
+interface PaperNoteCount { paperId: string; notes: number }
+
+/** The number of items in a notes file; loose text is not a note. */
+export function countNoteItems(file: ItemFile): number {
+  return file.segments.filter((segment) => segment.kind === "item").length;
+}
+
 export class ProjectBacklinks implements vscode.Disposable {
   private built: BacklinkMap = new Map();
+  private noteCounts: ReadonlyMap<string, PaperNoteCount> = new Map();
+  private noteLibrary: (() => NoteLibrary | undefined) | undefined;
   private rebuildCount = 0;
   private readonly rebuildSoon = createDebouncer(() => void this.rebuild(), REBUILD_DEBOUNCE_MS);
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -138,6 +161,28 @@ export class ProjectBacklinks implements vscode.Disposable {
   /** The index as last built; empty until the first rebuild finishes. */
   index(): BacklinkMap {
     return this.built;
+  }
+
+  /**
+   * Starts counting the notes of the cited papers at every refresh, from the library `library` returns.
+   * @returns a disposable that stops it.
+   */
+  trackNotes(library: () => NoteLibrary | undefined): vscode.Disposable {
+    this.noteLibrary = library;
+    // Notes are added in the reader, so coming back to the window rereads them.
+    const focus = vscode.window.onDidChangeWindowState((state) => { if (state.focused) { this.schedule(); } });
+    this.schedule();
+    return { dispose: () => { focus.dispose(); if (this.noteLibrary === library) { this.noteLibrary = undefined; } } };
+  }
+
+  /** The cite sites (file, zero-based line, key) whose cited paper has notes, as of the last refresh. */
+  noteSites(sites: readonly { file: string; line: number; key: string }[]): CiteSiteNotes[] {
+    return citeSiteNotes(sites, (key) => this.noteCounts.get(key)?.notes ?? 0);
+  }
+
+  /** The paper cited by this key and how many notes it had at the last refresh; absent when it has none. */
+  notesOf(citeKey: string): PaperNoteCount | undefined {
+    return this.noteCounts.get(citeKey);
   }
 
   /** The folder of the ready project with this id. */
@@ -167,10 +212,37 @@ export class ProjectBacklinks implements vscode.Disposable {
         return;
       }
     }
+    const counts = await this.countNotes(index);
     // A slower, older rebuild must not overwrite a newer result.
     if (ticket !== this.rebuildCount) { return; }
     this.built = index;
+    this.noteCounts = counts;
     this.changeEmitter.fire();
+  }
+
+  /** Reads the notes of each cited paper once; a paper whose notes cannot be read counts 0 and is logged. */
+  private async countNotes(index: BacklinkMap): Promise<Map<string, PaperNoteCount>> {
+    const counts = new Map<string, PaperNoteCount>();
+    const library = this.noteLibrary?.();
+    if (!library || index.size === 0) { return counts; }
+    let papers: Map<string, PaperRecord>;
+    try {
+      papers = derivePapersByCiteKey(await library.listPapers());
+    } catch (error) {
+      await library.logger.error("writing/citations", error, { action: "note-counts-papers" });
+      return counts;
+    }
+    await Promise.all([...index.keys()].map(async (key) => {
+      const paper = papers.get(key);
+      if (!paper) { return; }
+      try {
+        const notes = countNoteItems(await library.readNotes(paper.id));
+        if (notes > 0) { counts.set(key, { paperId: paper.id, notes }); }
+      } catch (error) {
+        await library.logger.log("WARN", "writing/citations", "paper notes unreadable", { paperId: paper.id, error: formatError(error) });
+      }
+    }));
+    return counts;
   }
 
   dispose(): void {

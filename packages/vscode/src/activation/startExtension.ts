@@ -17,7 +17,8 @@ import { registerLibrarySidebar } from "./registerLibrarySidebar.js";
 import { registerPanelCommands } from "./registerPanelCommands.js";
 import { registerSettingsMenu } from "./registerSettingsMenu.js";
 import { registerWritingView } from "./registerWritingView.js";
-import { registerProjectNoteCommands } from "../writing/projects/commands.js";
+import { registerProjectNoteCommands } from "../writing/projects/index.js";
+import { registerNoteLens } from "../writing/citations/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
 
@@ -42,6 +43,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const sources = createSelectionSources(createSelectionHub((target) => details?.show(target)), openLibraryLogger(controller));
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
+  registerNoteLensOf(context, controller, writing);
   const spaces = registerSpaces(context, controller, adapters, writing, async id => {
     await vscode.commands.executeCommand("labshelf.revealPaper", id);
     sources.listSelected([id]);
@@ -58,11 +60,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
-    sendTo: {
-      projects: writing.projects, notes: writing.notes, logger: writing.logger,
-      recent: createRecentTargets(createMementoKeyValueStore(context.globalState), SEND_TO_RECENT_KEY),
-      newItemId: () => globalThis.crypto.randomUUID(),
-    },
+    sendTo: sendToDeps(context, writing),
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
@@ -73,6 +71,29 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerAiCommands(context, () => aiService);
 
   logPaperEvents(events, controller.currentServices());
+}
+
+/** Registers the note lens over the open project, reading the paper library through the active services. */
+function registerNoteLensOf(context: vscode.ExtensionContext, controller: LibraryRootController, writing: ReturnType<typeof registerWritingView>): void {
+  registerNoteLens({
+    context, projects: writing.projects, backlinks: writing.backlinks,
+    library: () => {
+      const root = controller.currentRoot();
+      const services = controller.currentServices();
+      return root && services ? {
+        root: root.fsPath, logger: services.logger,
+        listPapers: () => services.paperService.listPapers(), readNotes: (paperId) => services.paperNotesStore.read(paperId),
+      } : undefined;
+    },
+  });
+}
+
+function sendToDeps(context: vscode.ExtensionContext, writing: ReturnType<typeof registerWritingView>) {
+  return {
+    projects: writing.projects, notes: writing.notes, logger: writing.logger,
+    recent: createRecentTargets(createMementoKeyValueStore(context.globalState), SEND_TO_RECENT_KEY),
+    newItemId: () => globalThis.crypto.randomUUID(),
+  };
 }
 
 function createFolderHost(

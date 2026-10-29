@@ -3,3 +3,4 @@ export { registerCitationProviders } from "./completion.js";
 export { createPaperHover } from "./hover.js";
 export { CitationSectionsCache, ProjectBacklinks, type CitationSession, type CitationWorkspace } from "./backlinks.js";
 export { registerEditorActions, registerInsertActions, registerPaperLinks } from "./editing.js";
+export { registerNoteLens } from "./noteLens.js";
