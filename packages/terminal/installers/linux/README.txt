@@ -8,6 +8,10 @@ Install for your user:
      ~/.local/share/labshelf-helper/bin/ (create the folder first).
   2. Run: ./labshelf-helper --register
 
+Or let the script do both steps: run ./install.sh from this folder. It copies the helper into
+~/.local/share/labshelf-helper/bin/ and registers it. Add --with-python
+to also install Python for calculations. If the Python install fails, the helper is still installed.
+
 --register writes the native messaging host manifests (helper and bridge) for each browser found
 in your home directory. To remove the registration, run: ./labshelf-helper --unregister
 
