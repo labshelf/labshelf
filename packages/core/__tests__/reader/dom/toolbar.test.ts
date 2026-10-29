@@ -5,17 +5,17 @@ import { Toolbar, type ToolbarActions, BuildBanner, TabList } from "../../../src
 function setupToolbar() {
   document.body.innerHTML = `<div id="pdf-shell"><div id="toolbar"></div></div>`;
   const noop = () => undefined;
-  const actions: ToolbarActions = { toggleSidebar: noop, historyBack: noop, historyForward: noop, openFind: noop, openTheme: noop, openCheatsheet: noop };
+  const actions: ToolbarActions = { toggleSidebar: noop, historyBack: noop, historyForward: noop, openFind: noop, toggleBoxTool: noop, openTheme: noop, openCheatsheet: noop };
   const toolbar = new Toolbar(document.createElement("div"), "A paper", false, true, actions);
   return { toolbar, root: document.getElementById("toolbar")! };
 }
 
 describe("Toolbar", () => {
-  it("keeps its six buttons", () => {
+  it("keeps its seven buttons", () => {
     const { root } = setupToolbar();
     const titles = [...root.querySelectorAll("button")].map((b) => b.title);
     expect(titles).toEqual([
-      "Toggle sidebar (F4)", "Back (Alt+Left)", "Forward (Alt+Right)", "Find (Ctrl+F)", "Page theme", "Keyboard shortcuts (?)",
+      "Toggle sidebar (F4)", "Back (Alt+Left)", "Forward (Alt+Right)", "Text box (Ctrl+Alt+B)", "Find (Ctrl+F)", "Page theme", "Keyboard shortcuts (?)",
     ]);
   });
 });

@@ -220,6 +220,9 @@ sessions:
     owns:
       - packages/core/src/reader/dom/
       - packages/core/src/reader/sidecar/readingState.ts
+      - packages/core/src/reader/keymap.ts
+      - packages/core/src/ui/icons/renderIcon.ts
+      - packages/core/__tests__/reader/dom/
   - id: "8"
     file: sessions/8.yaml
     depends_on:

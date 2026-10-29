@@ -62,7 +62,7 @@ function setupHighlights() {
   const handlers = new Map<string, Handler>();
   const targets = {
     ctx: { host: { on: (type: string, handler: Handler) => handlers.set(type, handler) } },
-    ui: { annotationsTab: { setAnnotations: jest.fn() }, highlights: new PageHighlights({ eventBus: { on: jest.fn() } } as never) },
+    ui: { annotationsTab: { setAnnotations: jest.fn() }, notesTab: { setAnnotations: jest.fn() }, highlights: new PageHighlights({ eventBus: { on: jest.fn() } } as never) },
   } as unknown as HostMessageParts;
   attachReaderHostMessages(targets);
   return { send: (msg: HostToWebview) => handlers.get(msg.type)!(msg), page: document.querySelector<HTMLElement>("#viewer .page")! };
