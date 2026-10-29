@@ -4,7 +4,7 @@ import type { AppContext } from "../../../../src/compositionRoot";
 import { App } from "../../../../src/libraryUi/libraryScreen";
 import {
   ATTENTION, BERT, BERT_QUERY, EINSTEIN, LECUN, ZEBRA, eventually, goToFolder, highlight, hoveredId, idle, ids, makeTmpRoot, openApp, pane,
-  press, seedLibrary, typeText, writeSidecar,
+  press, seedLibrary, typeText, writeNotes, writeSidecar,
 } from "../../../fixtures/appHarness";
 
 let tmp: string;
@@ -15,6 +15,7 @@ let app: App;
 beforeEach(async () => {
   ({ tmp, root } = await makeTmpRoot());
   await seedLibrary(root);
+  await writeNotes(root, ZEBRA, "Check the stripes");
   ({ ctx, app } = await openApp(root, tmp));
 });
 
