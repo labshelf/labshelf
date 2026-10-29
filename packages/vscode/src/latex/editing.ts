@@ -139,10 +139,15 @@ async function macrosFor(document: vscode.TextDocument, sources: LatexProjectSou
   return project ? project.files.flatMap((file) => file.facts.macros) : scanLatexSource(text).macros;
 }
 
+/** The markdown image of rendered math in the editor theme's colours; throws TeX's own error when the math does not parse. */
+export function createThemedMathMarkdown(tex: string, display: boolean, macros: ReturnType<typeof deriveMathJaxMacros> = {}): string {
+  const colors = { text: themed(COLOR_TOKENS.fg), error: themed(COLOR_TOKENS.error) };
+  return `![math](${createMathImageUri(renderMathSvg(tex, display, macros), colors)})`;
+}
+
 function previewMarkdown(tex: string, display: boolean, macros: ReturnType<typeof deriveMathJaxMacros>): vscode.MarkdownString {
   try {
-    const colors = { text: themed(COLOR_TOKENS.fg), error: themed(COLOR_TOKENS.error) };
-    return new vscode.MarkdownString(`![math](${createMathImageUri(renderMathSvg(tex, display, macros), colors)})`);
+    return new vscode.MarkdownString(createThemedMathMarkdown(tex, display, macros));
   } catch (error) {
     // The message is TeX's own parse error, which is what the writer needs to fix the math.
     const message = formatError(error);

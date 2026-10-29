@@ -9,9 +9,17 @@ jest.mock("vscode", () => {
   class FileSystemError extends Error {
     constructor(readonly code: string) { super(code); }
   }
+  // Like VS Code's, appendText escapes markdown and appendMarkdown adds the text as it is.
+  class MarkdownString {
+    value = "";
+    isTrusted: boolean | undefined = undefined;
+    appendMarkdown(text: string) { this.value += text; return this; }
+    appendText(text: string) { this.value += text.replace(/[\\`*_{}[\]()#+\-.!<>]/g, "\\$&"); return this; }
+  }
   return {
     ...actual,
     FileSystemError,
+    MarkdownString,
     CommentMode: { Editing: 0, Preview: 1 },
     CommentThreadState: { Unresolved: 0, Resolved: 1 },
     CommentThreadCollapsibleState: { Collapsed: 0, Expanded: 1 },
@@ -63,7 +71,7 @@ describe("readTextFile", () => {
 });
 
 describe("ThreadView", () => {
-  it("shows a located thread on its text, with its comments as escaped text", async () => {
+  it("shows a located thread on its text, with its comments as plain text", async () => {
     const { view, created } = setup([threadOf("t1")], () => ({ start: 11, end: 28 }));
     await view.refresh();
 
@@ -71,12 +79,22 @@ describe("ThreadView", () => {
     expect(shown.uri.fsPath).toBe("/project/sections/intro.tex");
     expect(shown.range).toMatchObject({ start: { line: 0, character: 11 }, end: { line: 0, character: 28 } });
     expect(shown.comments[0]).toMatchObject({ author: { name: "Ana" }, mode: vscode.CommentMode.Preview });
-    expect(shown.comments[0].body.value).toBe("**why?**");
+    expect(shown.comments[0].body.value).toBe("why?");
     expect(shown.label).toBeUndefined();
     expect(shown.state).toBe(vscode.CommentThreadState.Unresolved);
     expect(shown.contextValue).toBe("labshelf.thread.open");
     expect(shown.canReply).toBe(true);
     expect(view.idOf(shown as unknown as vscode.CommentThread)).toBe("t1");
+  });
+
+  it("never shows a body as trusted markdown", async () => {
+    const body = "<b>x</b> [a](b)";
+    const { view, created } = setup([threadOf("t1", { comments: [{ id: "c1", author: "Ana", body, createdAt: "2026-10-16T09:12:00.000Z" }] })], () => ({ start: 0, end: 1 }));
+    await view.refresh();
+
+    const shown = created[0]!.comments[0].body;
+    expect(shown.isTrusted).toBeFalsy();
+    expect(shown.value.trimEnd()).toBe("\\<b\\>x\\</b\\> \\[a\\]\\(b\\)");
   });
 
   it("shows a thread whose text is gone at the file start, labelled with a shortened quote", async () => {

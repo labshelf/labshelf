@@ -36,7 +36,7 @@ import {
 } from "./threads.js";
 import { disposeAll } from "../disposables/index.js";
 
-/** An unshared project's threads, read from and written to its comments.json. */
+/** An unshared project's threads, read from and written to its comments.qmd. */
 class FileComments implements ProjectComments {
   private readonly uri: vscode.Uri;
   private readonly access: CommentsFileAccess;
@@ -114,7 +114,7 @@ class FileComments implements ProjectComments {
   private reportInvalid(text: string): void {
     if (this.reported === text) { return; }
     this.reported = text;
-    void this.logger.log("WARN", COMMENTS_LOG_MODULE, "comments.json is not valid; its threads are not shown and it is not written", { folder: this.folder, path: COMMENTS_PATH });
+    void this.logger.log("WARN", COMMENTS_LOG_MODULE, "comments.qmd is not valid; its threads are not shown and it is not written", { folder: this.folder, path: COMMENTS_PATH });
     void vscode.window.showWarningMessage(`LabShelf cannot read ${COMMENTS_PATH} in ${this.folder}. Fix the file to see and add comments.`);
   }
 
