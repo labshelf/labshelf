@@ -17,9 +17,11 @@ import {
 } from "@labshelf/core/helper/node";
 import { HELPER_VERSION } from "@labshelf/core/helper";
 import { createSystemNativeHostEnv } from "@labshelf/core/nativeHost/node";
+import { createSharedPythonProvider } from "@labshelf/core/node";
 
 import { registerStandaloneHosts, detectServedHost, uninstallStandaloneHelper, uninstallStandaloneHosts } from "./nativeHost/index.js";
 import { createSelfUpdater } from "./release/index.js";
+import { runInstallPython } from "./installPythonFlag.js";
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
@@ -71,7 +73,8 @@ function seaBiberAssets(dataDir: string): BiberWasmAssets | undefined {
 
 // The SEA asset name `build/sea.mjs` packs the compiler WASM under.
 const TYPST_WASM_ASSET = "typst_ts_web_compiler_bg.wasm";
-const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall"];
+const INSTALL_PYTHON_FLAG = "--install-python";
+const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall", INSTALL_PYTHON_FLAG];
 
 async function main(): Promise<number | undefined> {
   const dataDir = resolveHelperDir(process.env, process.platform, os.homedir());
@@ -95,6 +98,11 @@ async function main(): Promise<number | undefined> {
   }
   const logger = createHelperLogger(dataDir);
   if (managing) {
+    if (flag === INSTALL_PYTHON_FLAG) {
+      // PLATFORM: installers read this line; stdout carries Native Messaging frames only when served, which --install-python never is.
+      const python = createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+      return runInstallPython(python, (message) => { process.stdout.write(`${message}\n`); });
+    }
     const env = createSystemNativeHostEnv(logger);
     if (flag === "--register") return registerStandaloneHosts(env, process.execPath);
     if (flag === "--unregister") return uninstallStandaloneHosts(env, process.execPath);

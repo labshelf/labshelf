@@ -27,11 +27,16 @@ OutputBaseFilename=labshelf-helper-windows-setup
 Compression=lzma2
 SolidCompression=yes
 
+[Tasks]
+Name: "installpython"; Description: "Install Python for calculations in notes"; Flags: unchecked
+
 [Files]
 Source: "{#SourceBinary}"; DestDir: "{app}"; DestName: "labshelf-helper.exe"; Flags: ignoreversion
 
 [Run]
 Filename: "{app}\labshelf-helper.exe"; Parameters: "--register"; Flags: runhidden waituntilterminated
+; A failed Python install never fails the helper install: the exit code is ignored, and the browser offers the install again.
+Filename: "{app}\labshelf-helper.exe"; Parameters: "--install-python"; Tasks: installpython; StatusMsg: "Installing Python..."; Flags: runhidden waituntilterminated
 
 [UninstallRun]
 Filename: "{app}\labshelf-helper.exe"; Parameters: "--unregister"; Flags: runhidden waituntilterminated; RunOnceId: "UnregisterHelper"

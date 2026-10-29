@@ -49,5 +49,30 @@ dpkg-deb --build --root-owner-group "$pkg" "$out/labshelf-helper-linux.deb"
 tarball="$work/tar"
 install -d "$tarball/labshelf-helper"
 install -m 755 "$binary" "$tarball/labshelf-helper/labshelf-helper"
+# The per-user install script; --with-python also installs Python for calculations, and a failure there never fails the helper install.
+cat > "$tarball/labshelf-helper/install.sh" <<'INSTALL'
+#!/bin/bash
+# Installs LabShelf Helper for your user and registers it with your browsers.
+# Usage: ./install.sh [--with-python]
+set -euo pipefail
+
+with_python=0
+for arg in "$@"; do
+  case "$arg" in
+    --with-python) with_python=1 ;;
+    *) echo "usage: ./install.sh [--with-python]" >&2; exit 2 ;;
+  esac
+done
+
+here="$(cd "$(dirname "$0")" && pwd)"
+bin_dir="${XDG_DATA_HOME:-$HOME/.local/share}/labshelf-helper/bin"
+mkdir -p "$bin_dir"
+install -m 755 "$here/labshelf-helper" "$bin_dir/labshelf-helper"
+"$bin_dir/labshelf-helper" --register
+if [ "$with_python" = 1 ]; then
+  "$bin_dir/labshelf-helper" --install-python || echo "The Python install failed; the helper is installed without it." >&2
+fi
+INSTALL
+chmod 755 "$tarball/labshelf-helper/install.sh"
 install -m 644 "$here/README.txt" "$tarball/labshelf-helper/README.txt"
 tar -C "$tarball" -czf "$out/labshelf-helper-linux.tar.gz" labshelf-helper

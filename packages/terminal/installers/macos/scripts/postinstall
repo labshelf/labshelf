@@ -1,9 +1,19 @@
 #!/bin/bash
-# Registers the installed LabShelf Helper with the user's browsers.
+# Registers the installed LabShelf Helper with the user's browsers; the optional python package installs Python for calculations instead.
 # PLATFORM: a current-user-home install runs this script as the user, with HOME set to the home the payload was laid into.
 set -eu
 
 helper="$HOME/Library/Application Support/LabShelf Helper/bin/labshelf-helper"
+
+# Both packages are built from this scripts folder; Installer names the running package in INSTALL_PKG_SESSION_ID.
+if [ "${INSTALL_PKG_SESSION_ID:-}" = "dev.labshelf.helper.python" ]; then
+  # A failed Python install never fails the helper install; the browser offers it again.
+  if [ -x "$helper" ]; then
+    "$helper" --install-python || echo "labshelf-helper postinstall: the Python install failed; the helper is installed without it" >&2
+  fi
+  exit 0
+fi
+
 if [ ! -x "$helper" ]; then
   echo "labshelf-helper postinstall: $helper is missing; the payload was not installed into this home" >&2
   exit 1

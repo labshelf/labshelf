@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds labshelf-helper-macos.pkg, a current-user installer that lays the helper into its data folder's bin/ and registers it.
+# Builds labshelf-helper-macos.pkg, a current-user installer that lays the helper into its data folder's bin/ and registers it, with an optional choice that installs Python.
 # Usage: build-pkg.sh <helper binary> <version> <output dir>
 set -euo pipefail
 
@@ -21,6 +21,9 @@ pkgbuild --root "$work/payload" \
   --identifier dev.labshelf.helper --version "$version" \
   --install-location "/Library/Application Support/LabShelf Helper/bin" \
   --scripts "$work/scripts" "$work/component.pkg"
+# The optional "Python for calculations" choice: no payload, its postinstall runs the helper's --install-python after the helper package.
+pkgbuild --nopayload --identifier dev.labshelf.helper.python --version "$version" \
+  --scripts "$work/scripts" "$work/python.pkg"
 
 sed -e "s/VERSION/$version/" -e "s/HOST_ARCH/$arch/" "$here/distribution.xml" > "$work/distribution.xml"
 productbuild --distribution "$work/distribution.xml" --resources "$here/resources" --package-path "$work" "$out/labshelf-helper-macos.pkg"
