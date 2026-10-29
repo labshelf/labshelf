@@ -189,6 +189,8 @@ export interface SearchDoc extends Record<SearchField, string> {
 export interface SearchExtra {
   annotations?: string;
   folder?: string;
+  /** The bodies of the paper's notes.qmd items, joined; `note:` and plain words match it. */
+  notesText?: string;
 }
 
 /**
@@ -197,7 +199,7 @@ export interface SearchExtra {
  */
 export function searchDoc(record: PaperRecord, extra: SearchExtra = {}): SearchDoc {
   const rest = [
-    record.id, record.citeKey, record.journal, record.publisher, record.doi, record.url, record.summary, record.note,
+    record.id, record.citeKey, record.journal, record.publisher, record.doi, record.url, record.summary, extra.notesText,
     record.year?.toString(), ...(record.keywords ?? []), ...(record.tags ?? []), extra.annotations, extra.folder,
   ].filter(Boolean).join("\n");
   return {
@@ -205,7 +207,7 @@ export function searchDoc(record: PaperRecord, extra: SearchExtra = {}): SearchD
     authors: normalizeText((record.authors ?? []).join("; ")),
     keywords: normalizeText((record.keywords ?? []).join("; ")),
     venue: normalizeText([record.journal, record.publisher].filter(Boolean).join("; ")),
-    note: normalizeText(record.note ?? ""),
+    note: normalizeText(extra.notesText ?? ""),
     citeKey: normalizeText(record.citeKey),
     summary: normalizeText(record.summary ?? ""),
     rest: normalizeText(rest),
@@ -213,10 +215,10 @@ export function searchDoc(record: PaperRecord, extra: SearchExtra = {}): SearchD
   };
 }
 
-function has(record: PaperRecord, what: HasField): boolean {
+function has(record: PaperRecord, doc: SearchDoc, what: HasField): boolean {
   switch (what) {
     case "pdf": return record.hasPdf !== false;
-    case "note": return Boolean(record.note?.trim());
+    case "note": return doc.note.trim() !== "";
     case "doi": return Boolean(record.doi);
     case "tags": return Boolean(record.tags?.length);
     case "abstract": return Boolean(record.summary?.trim());
@@ -229,8 +231,8 @@ function passesFilters(record: PaperRecord, doc: SearchDoc, q: Query): boolean {
   if (q.yearMax !== undefined && (record.year === undefined || record.year > q.yearMax)) { return false; }
   if (q.tags.some((tag) => !doc.tags.includes(tag))) { return false; }
   if (q.fields.some((f) => !doc[f.field].includes(f.value))) { return false; }
-  if (q.has.some((h) => !has(record, h))) { return false; }
-  return !q.missing.some((m) => has(record, m));
+  if (q.has.some((h) => !has(record, doc, h))) { return false; }
+  return !q.missing.some((m) => has(record, doc, m));
 }
 
 /**
@@ -282,6 +284,6 @@ export const SYNTAX_HELP: readonly SyntaxHelpRow[] = [
   { syntax: "status:reading  is:r", description: "unread, reading, done" },
   { syntax: "year:2015..2020", description: "publication year; also year:2017, >2018, <2000" },
   { syntax: "author:vaswani", description: "author" },
-  { syntax: "kw:graphs  note:todo", description: "keywords, note; also venue:, key:, abstract:" },
+  { syntax: "kw:graphs  note:todo", description: "keywords, notes (notes.qmd); also venue:, key:, abstract:" },
   { syntax: "has:pdf  no:pdf", description: "also has:note, has:doi, has:tags, has:abstract" },
 ];

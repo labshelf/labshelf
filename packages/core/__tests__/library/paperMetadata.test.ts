@@ -23,7 +23,6 @@ describe("paperRecordFromMetadata", () => {
       doi: "10.5555/3295222",
       keywords: ["transformers"],
       tags: ["nlp", ""],
-      note: "great",
       textLayer: { state: "native", checkedAt: "2026-01-01" },
       hasPdf: false,
       path: "/somewhere/else",
@@ -39,7 +38,6 @@ describe("paperRecordFromMetadata", () => {
       journal: "NeurIPS",
       doi: "10.5555/3295222",
       keywords: ["transformers"],
-      note: "great",
       textLayer: { state: "native" },
     });
     expect(record.tags).toEqual(["nlp", ""]);

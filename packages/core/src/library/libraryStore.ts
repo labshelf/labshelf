@@ -110,11 +110,17 @@ export function deriveSnapshot(root: string, scan: LibraryScan, scannedAt: numbe
   return { root, papers, collections, duplicates: [...scan.duplicates], orphans: [...scan.orphans], scannedAt };
 }
 
-interface CachedDoc { record: PaperRecord; annotations: string; doc: SearchDoc }
+interface CachedDoc { record: PaperRecord; annotations: string; notesText: string; doc: SearchDoc }
 
 class PaperSearchIndex {
   private readonly docs = new Map<string, CachedDoc>();
   private annotationText = new Map<string, string>();
+  private notesText = new Map<string, string>();
+
+  /** The notes.qmd text per paper, so `note:`, `has:note` and plain words find a paper by its notes. */
+  setNotesText(text: Map<string, string>): void {
+    this.notesText = text;
+  }
 
   /** Annotation text per paper, folded into the search so a highlight finds its paper. */
   setAnnotationText(text: Map<string, string>): void {
@@ -139,10 +145,11 @@ class PaperSearchIndex {
 
   private doc(entry: PaperEntry): SearchDoc {
     const annotations = this.annotationText.get(entry.record.id) ?? "";
+    const notesText = this.notesText.get(entry.record.id) ?? "";
     const cached = this.docs.get(entry.record.id);
-    if (cached && cached.record === entry.record && cached.annotations === annotations) { return cached.doc; }
-    const doc = searchDoc(entry.record, { annotations });
-    this.docs.set(entry.record.id, { record: entry.record, annotations, doc });
+    if (cached && cached.record === entry.record && cached.annotations === annotations && cached.notesText === notesText) { return cached.doc; }
+    const doc = searchDoc(entry.record, { annotations, notesText });
+    this.docs.set(entry.record.id, { record: entry.record, annotations, notesText, doc });
     return doc;
   }
 }
@@ -251,6 +258,11 @@ export class LibraryStore {
   /** Annotation text per paper id, so a query finds a paper by its highlights and notes. */
   setAnnotationText(text: Map<string, string>): void {
     this.searchIndex.setAnnotationText(text);
+  }
+
+  /** The notes.qmd text per paper id, so a query finds a paper by its notes. */
+  setNotesText(text: Map<string, string>): void {
+    this.searchIndex.setNotesText(text);
   }
 
   /** @returns a test for whether a paper matches the query; every paper matches a query without conditions */

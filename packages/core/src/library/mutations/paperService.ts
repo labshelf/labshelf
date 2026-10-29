@@ -132,7 +132,7 @@ export class PaperService {
     return this.applyResolvedMetadata(paperId, parsed);
   }
 
-  /** Rewrites a record's files, keeping the reading status, tags and note the files hold, then updates the index. */
+  /** Rewrites a record's files, keeping the reading status and tags the files hold, then updates the index. */
   async rewriteRecord(record: PaperRecord): Promise<PaperRecord> {
     const written = await writePaperRecord(this.ctx, record, { ownsStatus: false });
     await this.reindex();
@@ -175,7 +175,7 @@ export class PaperService {
   private resolveOwnedFields(current: PaperRecord, written: PaperRecord): { next: PaperRecord; changed: boolean } {
     const { hasPdf: _diskHasPdf, ...fields } = written;
     const next: PaperRecord = { ...fields, ...(current.hasPdf === undefined ? {} : { hasPdf: current.hasPdf }) };
-    const same = next.status === current.status && (next.note ?? "") === (current.note ?? "")
+    const same = next.status === current.status
       && (next.tags ?? []).join("\n") === (current.tags ?? []).join("\n");
     return { next, changed: !same };
   }

@@ -44,7 +44,7 @@ export interface ImportedPaper {
   /** Which version `pdf` is, when its source said so. */
   pdfVersion?: PdfVersion | undefined;
   /** Fields set on top of the metadata (an identifier the user typed, an abstract URL, the user's tags). */
-  extra?: Partial<Pick<PaperRecord, "doi" | "url" | "tags" | "note">>;
+  extra?: Partial<Pick<PaperRecord, "doi" | "url" | "tags">>;
   /** The cite key the paper asks for instead of the one built from its metadata. */
   citeKey?: string;
   /** The file name the sidecar records as the paper's source. */

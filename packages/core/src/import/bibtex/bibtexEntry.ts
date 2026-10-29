@@ -89,19 +89,15 @@ function metadataFromRecord(paper: PaperRecord, source: string): Record<string, 
   return metadata;
 }
 
-// Keys this service does not derive from the record (the browser's tags and
-// note, the PDF version, when the status changed, a hand edit) belong to whoever wrote them, so a rewrite from a
-// surface that does not know them — the VS Code index has no tag column —
+// Keys this service does not derive from the record (the browser's tags, the
+// PDF version, when the status changed, a hand edit) belong to whoever wrote
+// them, so a rewrite from a surface that does not know them — the VS Code index has no tag column —
 // carries them over instead of deleting them.
 function carryOverUserKeys(metadata: Record<string, unknown>, paper: PaperRecord, existing: Record<string, unknown>): void {
   const carried = Object.fromEntries(Object.entries(existing).filter(([key]) => !OWNED_KEYS.has(key)));
   if (paper.tags !== undefined) {
     delete carried["tags"];
     if (paper.tags.length) { metadata["tags"] = paper.tags; }
-  }
-  if (paper.note !== undefined) {
-    delete carried["note"];
-    if (paper.note.trim()) { metadata["note"] = paper.note; }
   }
   if (paper.files !== undefined) {
     delete carried["files"];

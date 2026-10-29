@@ -21,7 +21,7 @@ describe("searchDoc", () => {
   });
 
   it("keeps a folded text per field for field operators", () => {
-    const doc = searchDoc(rec({ citeKey: "Smith2020", journal: "Nature", publisher: "Springer", keywords: ["Café"], summary: "Abstract", note: "Note" }));
+    const doc = searchDoc(rec({ citeKey: "Smith2020", journal: "Nature", publisher: "Springer", keywords: ["Café"], summary: "Abstract" }), { notesText: "Note" });
     expect(doc).toMatchObject({ citeKey: "smith2020", venue: "nature; springer", keywords: "cafe", summary: "abstract", note: "note" });
   });
 

@@ -58,7 +58,6 @@ export function createPaperRecord(meta: Record<string, unknown>, location: Paper
   if (keywords.length) { record.keywords = keywords; }
   if (textLayer) { record.textLayer = textLayer; }
   if (tags.length) { record.tags = tags; }
-  if (typeof meta["note"] === "string") { record.note = meta["note"]; }
   if (isPdfVersion(meta["pdfVersion"])) { record.pdfVersion = meta["pdfVersion"]; }
   const files = fileDescriptions(meta["files"]);
   if (files) { record.files = files; }

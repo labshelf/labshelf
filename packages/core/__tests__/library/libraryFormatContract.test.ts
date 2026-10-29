@@ -34,9 +34,9 @@ describe("metadata.yaml", () => {
     expect(createPaperRecord(meta, { ...folder, hasPdf: true }).hasPdf).toBe(true);
   });
 
-  it("reads status, tags and note as the user's own keys", () => {
-    const meta = parsePaperMetadata("status: done\ntags: [ml, nlp]\nnote: worth a reread\n")!;
-    expect(createPaperRecord(meta, folder)).toMatchObject({ status: "done", tags: ["ml", "nlp"], note: "worth a reread" });
+  it("reads status and tags as the user's own keys", () => {
+    const meta = parsePaperMetadata("status: done\ntags: [ml, nlp]\n")!;
+    expect(createPaperRecord(meta, folder)).toMatchObject({ status: "done", tags: ["ml", "nlp"] });
   });
 
   it("takes pdfRequestedAt only as a day", () => {

@@ -37,10 +37,9 @@ export interface PaperRecord extends BibliographicFields {
   status: ReadingStatus;
   // Absent until the PDF has been checked (papers imported before this existed).
   textLayer?: TextLayerDetails;
-  // The user's own labels and comment, set when saving from the browser.
+  // The user's own labels, set when saving from the browser.
   // Undefined means "not known here": a rewrite keeps whatever the sidecar has.
   tags?: string[];
-  note?: string;
   // Which version paper.pdf is, set when a PDF is attached. Undefined means "not known here": a rewrite keeps the
   // file's key. Null means the attached PDF's version is unknown, and the key is removed.
   // CONTRACT: documents/contracts/library-format.md#metadatayaml

@@ -1,6 +1,6 @@
 /**
  * The write path every metadata.yaml change goes through: the ports a mutation runs over, the read of a paper as its
- * folder holds it now, the record write under the library-format and sync ownership rules (tags, note and the reading
+ * folder holds it now, the record write under the library-format and sync ownership rules (tags and the reading
  * status belong to whoever set them, hasPdf is never stored).
  */
 import type { PaperRecord } from "../../model/index.js";
@@ -53,8 +53,6 @@ export interface WriteRecordOptions {
   ownsStatus: boolean;
   /** Set to replace the file's tags; left out, the file's own tags stay. */
   tags?: string[];
-  /** Set to replace the file's note; left out, the file's own note stays. */
-  note?: string;
 }
 
 /**
@@ -68,11 +66,10 @@ export async function writePaperRecord(
 ): Promise<PaperRecord> {
   // The status and its timestamp go together: when the file's status wins, so does the file's timestamp.
   const { statusChangedAt: _changedAt, ...unstamped } = record;
-  const { tags: _tags, note: _note, hasPdf: _hasPdf, ...rest } = unstamped;
+  const { tags: _tags, hasPdf: _hasPdf, ...rest } = unstamped;
   const status = options.ownsStatus ? statusFields(record) : await keptStatus(ctx, record);
-  const owned: Pick<PaperRecord, "tags" | "note"> = {};
+  const owned: Pick<PaperRecord, "tags"> = {};
   if (options.tags !== undefined) { owned.tags = options.tags; }
-  if (options.note !== undefined) { owned.note = options.note; }
   await ctx.artifacts.writePaperArtifacts(record.path, { ...rest, ...status, ...owned }, ctx.paths.join(record.path, PDF_FILE));
   return { ...unstamped, ...status, ...owned };
 }

@@ -114,7 +114,6 @@ export async function movePapersToTrash(ctx: MutationContext, papers: Reference[
 export interface PaperFieldsUpdate {
   status?: ReadingStatus;
   tags?: string[];
-  note?: string;
   /** The day (YYYY-MM-DD) the user asked the author for a copy; null removes it. */
   pdfRequestedAt?: string | null;
 }
@@ -156,9 +155,8 @@ export function updatePaperTags(
 }
 
 async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: PaperFieldsUpdate): Promise<PaperRecord> {
-  const owned: Pick<PaperRecord, "tags" | "note"> = {};
+  const owned: Pick<PaperRecord, "tags"> = {};
   if (patch.tags !== undefined) { owned.tags = normalizeTags(patch.tags); }
-  if (patch.note !== undefined) { owned.note = patch.note; }
   const requested = patch.pdfRequestedAt === undefined ? {} : { pdfRequestedAt: patch.pdfRequestedAt };
   // CONTRACT: documents/contracts/library-format.md#metadatayaml
   const stamp = patch.status !== undefined && patch.status !== current.status
@@ -167,7 +165,6 @@ async function applyPatch(ctx: MutationContext, current: PaperRecord, patch: Pap
   const next: PaperRecord = { ...current, ...stamp, ...owned, ...requested };
   const changed = next.status !== current.status
     || (owned.tags !== undefined && owned.tags.join("\n") !== (current.tags ?? []).join("\n"))
-    || (owned.note !== undefined && owned.note !== (current.note ?? ""))
     || (patch.pdfRequestedAt !== undefined && patch.pdfRequestedAt !== (current.pdfRequestedAt ?? null));
   if (!changed) { return current; }
   // `current` was just read from the file, so its status is the file's: writing it back changes nothing.
