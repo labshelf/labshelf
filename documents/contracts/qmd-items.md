@@ -61,6 +61,20 @@ The one in Table 2.
 - Existing thread and comment ids are kept as written; new ones are created as in [Ids](#ids).
 - Git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>` lines) outside items make the file unreadable, and LabShelf never overwrites it. Any other text reads; an item that is not a valid comment, unknown attributes and text outside items are kept on a rewrite.
 
+## Project notes
+
+A project's notes are the `.qmd` files in its `notes/` folder, one file per note: `notes/<slug>.qmd`. The files are listed by name; a note's title is the first `# ` heading of its first item, else the file name without `.qmd`.
+
+- The slug is the title as lowercase ASCII words (accents removed) joined by `-`, or `note` when the title has no words. A taken slug gets `-2`, `-3`, … The first item of a new note has the body `# <title>`.
+- A task-list line (`- [ ] text` or `- [x] text`, also `*` and `+` bullets, indented lists included) inside an item body is a task of the project's Checklist ([library-format.md](library-format.md#project-folder-labshelf)). Lines in code fences, in output blocks and outside items are not tasks. A task is identified by its file, item id and line.
+- Ticking a task in the Checklist edits only the box character of that line, through the item's body ([Items](#items)). When the note does not hold that task, with that text and state, on that line, nothing is written and the toggle reports `changed`.
+- "Send to…" appends one item to a note, with the id of the sent item. The body by payload, blocks separated by one blank line:
+  - quote: the selection as a block quote, then `[<key>, p. <page>](labshelf:…)` ([links.md](links.md#grammar)).
+  - equation: `$$` … `$$` around the LaTeX, then the same paper link.
+  - figure: `![](assets/<item id>.png)`, then the same paper link. The PNG is written first, in `assets/` next to the note, and the item only after that write succeeded.
+  - item: the body of the source item, then `[Source](<source path>#<item id>)`.
+- The recent "Send to…" targets (at most 8, most recent first) are per device, in the app's own storage. They are never in the library or the project.
+
 ## Outputs
 
 A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`. Results travel inside the file, so a reader sees them without running anything.

@@ -74,12 +74,14 @@ LabShelf owns these in a project. The first line says so, and edits are overwrit
 
 Files that travel with a project.
 
-- `checklist.json`: the Checklist's hand-added items. Item ids are unique and never reused.
+- `checklist.json`: the Checklist's hand-added items. Item ids are unique and never reused. Tasks written in the project's notes are derived from the note files and never stored here ([qmd-items.md](qmd-items.md#project-notes)).
 - `comments.qmd`: comment threads on the project's text files, one item per comment ([qmd-items.md](qmd-items.md#comments)), anchored by a quote with 32 characters of context on each side. Ids are unique and never reused. A thread whose quote is found nowhere stays listed as detached. In a shared project the share writes the file and the anchor also holds `start` and `end` ([collaboration.md](collaboration.md#comments)).
 - `versions/<slug>/`: a named snapshot (`version.json`, the built `paper.pdf`, `sources/`). The same slug replaces the version. A snapshot is built in a hidden `.<slug>.tmp-*` folder and renamed, so a sync tool never uploads a half snapshot; hidden folders are ignored. `version.json` comes from other machines, so an invalid one skips the folder.
 - `writes/<device id>.json`: each device's record of the versions it wrote, read by every device to find divergent versions. A device writes only its own file, so devices never conflict on it. Timestamps in it are not an order across devices.
 - `mirror-lease.json`: see [collaboration.md](collaboration.md#mirror-ownership).
 - `state.json` is per device and is not read.
+
+Beside `.labshelf/`, in the project folder, `notes/<slug>.qmd` holds the project's notes, as item files ([qmd-items.md](qmd-items.md#project-notes)).
 
 ## Sidecar: `data.json`
 
