@@ -97,3 +97,30 @@ Two versions of one item file merge item by item, three-way against the device's
 - Without a base the result is the union by id, and no delete is honoured. A base that shares no item with one side counts as no base.
 - The merged file is read again. If it would not hold the merged ids in the merged order, the merge fails and both files stay.
 - The base never takes a copy's text, because a copy may be this device's own version.
+
+## Manuscript links
+
+"Insert from note" puts an equation or an output of a note into a manuscript and records where it came from in a comment, so the manuscript can later be compared with the note.
+
+```
+\begin{equation}
+E = mc^2
+\label{eq-energy}
+\end{equation} % labshelf: notes/physics.qmd#eq-energy @3f2a9c01b7de
+```
+
+- The origin comment is the last thing on the `\end{equation}` line: `% labshelf: <note path>#<label> @<hash>` in LaTeX, `// labshelf: …` in Typst. A comment that does not match (no `#label`, a hash that is not 12 lowercase hex characters, extra text after the hash) is ignored, and the equation is not tracked.
+- The note path is the POSIX path relative to the project folder (`notes/physics.qmd`), or `paper:<paper id>/notes.qmd` for a cited paper's notes.
+- The label is the equation's `{#eq-…}` label with its `eq-` prefix, or the `cell` label of the output.
+- The hash is the first 12 lowercase hex characters of the SHA-256 of the trimmed LaTeX between `\begin{equation}` and `\label{…}`. In Typst it covers the text between the `$` pair.
+- The inserted block runs from `\begin{equation}` to the end of the comment line.
+- An origin is in one of five states, from the recorded hash, the manuscript's current hash and the note's current equation hash:
+  - `fresh`: neither changed.
+  - `stale`: the note changed, the manuscript did not.
+  - `diverged`: the manuscript changed, the note did not.
+  - `both`: both changed.
+  - `missing`: the note or its label is gone.
+- Update replaces the whole inserted block, comment included, with the note's current text, and only for `stale`. It never overwrites a manuscript edit: `diverged` and `both` are refused.
+- The Typst insert is not offered until a LaTeX to Typst converter exists.
+- The list offers the equations and outputs of the project's notes, then of the cited papers' notes. An output whose `source` is out of date ([Outputs](#outputs)) is listed but not insertable.
+- The writing checklist lists `stale`, `diverged`, `both` and `missing` origins under References, not `fresh` ones.

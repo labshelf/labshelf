@@ -16,3 +16,4 @@ web+labshelf:<cite key>[#p<page>]
 - In free text, a link is not preceded by a letter, digit, `_` or `+`. Without a page, trailing `.`, `:` and `-` belong to the sentence, not the key.
 - `web+labshelf:` is the same link in the form browsers can register. Apps accept both and write `labshelf:`. A whole link may arrive percent-encoded once, as a browser protocol handler passes it.
 - A key that matches no paper opens nothing and tells the user which key was missing.
+- The `% labshelf: <note path>#<label> @<hash>` comment of an equation inserted from a note is not a paper link: [qmd-items.md](qmd-items.md#manuscript-links).
