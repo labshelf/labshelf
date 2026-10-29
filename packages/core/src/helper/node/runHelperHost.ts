@@ -5,19 +5,64 @@ import * as path from "node:path";
 
 import { formatError } from "../../errors/index.js";
 import type { ILogger } from "../../ports/index.js";
+import type { ICellRunner } from "../../qmd/compute/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
 import { createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
-import { createCellHandlers } from "./cellHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
 import { answerHello, createHelperAnswerer, runHelperLoop, type HelloAnswer, type HelperHandler } from "./helperHandlers.js";
 import { createLibraryProjects } from "./helperProjects.js";
 import { createFrameWriter, type HelperServer } from "./helperConnection.js";
 
 const MODULE = "helper-python";
+
+const CELL_MODULE = "helper-cells";
+
+export interface CellHandlersOptions {
+  runner: ICellRunner;
+  /** The folder a cwd scope (a project id or `paper:<id>`) names, or undefined for one the helper does not know. */
+  resolveCwd(scope: string): string | undefined;
+  logger: ILogger;
+}
+
+/** Runs and cancels code cells for the page: runCell answers cellResult under the request id, and cancelCell aborts a run by that id. */
+export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler } {
+  const { runner, resolveCwd, logger } = options;
+  const running = new Map<string, AbortController>();
+
+  // INVARIANT: the controller is registered before any await, because the dispatcher runs a `cancelCell` without waiting for this run.
+  const runCell: HelperHandler = async (message, send) => {
+    if (message.type !== "runCell") { throw new Error(`runCell handler received ${message.type}`); }
+    const { id } = message;
+    const cwd = resolveCwd(message.cwd);
+    if (cwd === undefined) {
+      void logger.log("WARN", CELL_MODULE, "Cell refused: unknown cwd scope", { id, scope: message.cwd });
+      send({ v: PROTOCOL_VERSION, id, type: "error", code: "project-id", message: `cwd "${message.cwd}" is not a project that is open or a known paper` });
+      return;
+    }
+    const controller = new AbortController();
+    running.set(id, controller);
+    try {
+      const result = await runner.run(message.code, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
+      send({ v: PROTOCOL_VERSION, id, type: "cellResult", ...result });
+    } finally {
+      running.delete(id);
+    }
+  };
+
+  const cancelCell: HelperHandler = (message) => {
+    if (message.type !== "cancelCell") { throw new Error(`cancelCell handler received ${message.type}`); }
+    const controller = running.get(message.requestId);
+    void logger.log("INFO", CELL_MODULE, controller ? "Cancelling the running cell" : "Cancel with no running cell", { requestId: message.requestId });
+    controller?.abort();
+    return Promise.resolve();
+  };
+
+  return { runCell, cancelCell };
+}
 
 export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }
 

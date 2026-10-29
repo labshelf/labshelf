@@ -1,6 +1,6 @@
 /** Pins the helper's cell handlers: a run answers cellResult under the envelope id, cancelCell aborts it by request id even while another message waits, and an unknown cwd scope is refused. */
 import { PROTOCOL_VERSION, type ToHelperMessage } from "../../../src/helper/index";
-import { createCellHandlers } from "../../../src/helper/node/cellHandlers";
+import { createCellHandlers } from "../../../src/helper/node/runHelperHost";
 import { createHelperAnswerer, type HelperHandlers } from "../../../src/helper/node/helperHandlers";
 import type { CellResult, ICellRunner } from "../../../src/qmd/compute/cellRunner";
 import type { ILogger } from "../../../src/ports/index.js";

@@ -1,8 +1,7 @@
 // The cell runner the browser pages share: one LabShelf Helper connection per page, the Run port the core hosts call and the Python install.
-import { formatError, type ILogger, type RunCellPort } from "@labshelf/core";
+import { formatError, type ICellRunner, type ILogger, type RunCellPort } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import type { ILatexHelper } from "@labshelf/core/helper";
-import { createHelperCellRunner } from "./cellRunner";
 import { createBrowserLatexHelper } from "./client";
 
 const MODULE = "browser.helper";
@@ -18,6 +17,11 @@ export interface BrowserCellPorts {
   runCellIn(projectId: string): RunCellPort;
   /** Installs the helper's Python and says when it is done; a second call while one runs does nothing. */
   installPython(): void;
+}
+
+/** The browser's ICellRunner: runs a code cell through LabShelf Helper; aborting the signal makes the helper client post cancelCell. */
+export function createHelperCellRunner(helper: ILatexHelper): ICellRunner {
+  return { run: (code, opts) => helper.runCell({ code, cwd: opts.cwd, timeoutMs: opts.timeoutMs }, opts.signal) };
 }
 
 function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): BrowserCellPorts {
