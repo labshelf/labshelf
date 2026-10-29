@@ -71,7 +71,7 @@ describe("App preview tabs", () => {
   it("shows highlights from the sidecar on the Notes tab, with the PDF's line breaks collapsed", async () => {
     await writeSidecar(root, ATTENTION, [
       highlight(ATTENTION, 1, "The dominant sequence\ntransduction mod-\nels are based on complex recurrent"),
-      highlight(ATTENTION, 2, "Compare with the RNN baseline", { type: "note" }),
+      highlight(ATTENTION, 2, "Compare with the RNN baseline"),
     ]);
     await ctx.store.reload();
     press(app, "tab", "tab");

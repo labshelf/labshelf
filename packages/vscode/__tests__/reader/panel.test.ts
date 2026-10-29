@@ -70,7 +70,7 @@ describe('ReaderPanel.test', () => {
 
     it('shows a notice instead of saving an annotation', async () => {
       const { panel } = open();
-      panel.webview._fireMessage({ command: 'createAnnotation', type: 'note', pageNumber: 1, content: 'x' });
+      panel.webview._fireMessage({ command: 'createAnnotation', type: 'highlight', pageNumber: 1, content: 'x' });
       await flush();
       await flush();
       expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(expect.stringContaining('Annotations are not saved in a build preview.'));
@@ -402,7 +402,7 @@ describe('readerPaperOpener.test', () => {
         const { panel, events, store, paper } = open();
         const changed = jest.fn();
         events.annotationChanged.event(changed);
-        panel.webview._fireMessage({ command: 'createAnnotation', type: 'note', pageNumber: 2, content: 'a note' });
+        panel.webview._fireMessage({ command: 'createAnnotation', type: 'highlight', pageNumber: 2, content: 'a highlight' });
         await flush();
         await flush();
         const [stored] = await store.getAnnotations(paper.id);
