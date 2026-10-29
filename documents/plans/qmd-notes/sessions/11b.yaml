@@ -5,7 +5,9 @@ depends_on:
   - "11"
 owns:
   - packages/browser/src/helper/
-status: pending
+  - packages/browser/__tests__/helper/setup.test.ts
+  - packages/core/src/helper/helperPaths.ts
+status: blocked
 packages:
   - id: "11.5"
     plan: qmd-notes
@@ -51,21 +53,31 @@ packages:
       - path: packages/browser/src/helper/setupProgress.css
         lines: 1-6
         why: row styles, tokens only
+      - path: packages/core/src/helper/helperPaths.ts
+        lines: 123-141
+        why: add installPython to ILatexHelper (one line)
+      - path: packages/browser/__tests__/helper/setup.test.ts
+        lines: 1-340
+        why: cover the Python row states, Install and failure
     create: []
     read:
       - path: packages/core/src/helper/helperClient.ts
         lines: 1-189
         why: client API from 11.2
-      - path: packages/browser/__tests__/helper/setup.test.ts
-        lines: 1-340
-        why: existing setup tests to extend
     decided:
       - The row reads `ready.python`; Install sends `installPython` and shows `progress`; failures show the helper error text. Tokens only.
       - The design outcome of 11.5 is appended here before the run.
       - "Browser A9 (part): without Python, the setup state shows Python for calculations: not installed with an install action."
+      - "Design (11.5): the row appears only when the helper is ready and its `ready.python` is defined (an older helper that does not report Python shows no row). It sits after the TeX controls in both ready views (chooseTex and readyView), built with renderSettingRow like the TeX choices."
+      - "Design (11.5) missing: renderSettingRow label `Python for calculations`, description `Not installed. Code cells in notes run in it.`, control renderActionButton label `Install`, icon `download`, not primary (the TeX choice keeps the primary button)."
+      - "Design (11.5) installing: reuse runInstall exactly like the TeX installs: label `Installing Python for calculations…`, createSetupProgress with the helper's progress, logger action `install-python`. Add `installPython()` to SetupActions."
+      - "Design (11.5) installed: same row, description `Installed`, no control. The protocol's PythonState is only missing | installed, so there is no version to show; do not invent one (the version is out of scope for this session)."
+      - "Design (11.5) failure: runInstall's existing error state, which shows formatError(error) (the helper's error text) with Try again. After a successful install the card re-renders from helper.status(), which keeps `python: installed`."
+      - "Gap fix: `ILatexHelper` (packages/core/src/helper/helperPaths.ts:123) lacks `installPython`, which NativeLatexHelper already implements. Add `installPython(onProgress: OnHelperProgress): Promise<void>;` after installTex in the interface; no other core change. Do not cast in the browser."
+      - "Tests: extend packages/browser/__tests__/helper/setup.test.ts (FakeHelper gets installPython) for the three row states, Install sending installPython, and the failure text."
     acceptance:
       - id: 11.6a
-        check: the row shows not installed, installing with progress, and installed with version, and Install sends installPython
+        check: the row shows not installed, installing with progress, and installed (no version, the protocol has none), and Install sends installPython
       - id: 11.6b
         check: a failed install shows the helper error text
       - id: A9
@@ -73,7 +85,9 @@ packages:
     tests:
       none: UI checked by the user by hand in the app
     commands:
+      - node scripts/agents/run.mjs typecheck core
       - node scripts/agents/run.mjs typecheck browser
-      - node scripts/agents/run.mjs test browser
+      - node scripts/agents/run.mjs test browser -- __tests__/helper/setup.test.ts
     do_not_touch:
-      - packages/core/
+      - packages/core/ except the one ILatexHelper line in helperPaths.ts
+blocked_reason: "11.5: no report"
