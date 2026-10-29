@@ -11,6 +11,7 @@ import {
   type HostToWebview,
   type ILogger,
   type NoticeKind,
+  type PaperNotesStore,
   type PaperRecord,
   type PaperSidecarStore,
   type PreviewPorts,
@@ -18,6 +19,7 @@ import {
   type ReaderHostPorts,
   type ReaderPrefs,
   type ReaderSidecarStore,
+  type RunCellPort,
   type SidecarChange,
 } from "@labshelf/core";
 import type { LibraryEvents } from "../library/index.js";
@@ -127,6 +129,9 @@ export interface ReaderPanelDeps {
   isMac: boolean;
   /** The reader's "Send to…" over the window's writing projects; absent where the host cannot send. */
   sendTo?: ReaderSendToDeps;
+  /** Runs a note's code cell and installs the Python it needs; the reader shows Run only when present. */
+  runCell?: RunCellPort;
+  installPython?: () => void;
 }
 
 /** What one reader panel shows and where its data lives. */
@@ -135,6 +140,8 @@ export interface ReaderSource {
   key: string;
   paper: PaperRecord;
   store: ReaderSidecarStore;
+  /** The paper's notes; absent in a build preview, which shows no notes. */
+  notes?: PaperNotesStore;
   pdfUri: vscode.Uri;
   /** The folder the webview may read the PDF from. */
   rootDir: vscode.Uri;
@@ -230,6 +237,9 @@ export class ReaderPanel {
       autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
       ...(deps.sendTo ? { sendToNote: createSendToNote(deps.sendTo) } : {}),
+      ...(source.notes ? { notes: source.notes } : {}),
+      ...(deps.runCell ? { runCell: deps.runCell } : {}),
+      ...(deps.installPython ? { installPython: deps.installPython } : {}),
       logger: deps.logger,
       ...(source.sidecarChanged ? { sidecarChanged: source.sidecarChanged } : {}),
       ...(source.preview ? { preview: source.preview } : {}),
@@ -319,6 +329,8 @@ export interface PdfReaderDeps extends ReaderPanelDeps {
   events: LibraryEvents;
   store: PaperSidecarStore;
   logger: ILogger;
+  /** The library's paper notes, which the reader's Notes tab and text boxes read and write. */
+  notes?: PaperNotesStore;
 }
 
 export interface OpenOptions {
@@ -336,6 +348,7 @@ export class PdfReaderPanel {
       key: paper.id,
       paper,
       store: deps.store,
+      ...(deps.notes ? { notes: deps.notes } : {}),
       pdfUri: createPaperFiles(paperDirUri, vscode.Uri.joinPath).pdf,
       rootDir: paperDirUri,
       sidecarChanged: createSidecarChangeSender(deps.events, paper.id),

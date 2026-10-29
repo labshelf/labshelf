@@ -2,7 +2,7 @@
 // annotation export and the reader's own contributed keybindings.
 import * as vscode from "vscode";
 
-import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId } from "@labshelf/core";
+import { PaperFileService, exportAnnotations, findSimilarPapers, type AiService, type ILogger, type ProjectLibraryPort, type ReaderCommandId, type RunCellPort } from "@labshelf/core";
 import { PdfReaderPanel, ReaderPanel, createVsCodeExportPorts, type ReaderSendToDeps } from "../reader/index.js";
 import {
   DetailsView,
@@ -75,6 +75,9 @@ export interface PanelCommandsDeps {
   sources: SelectionSources;
   /** The reader's "Send to…" over the writing projects. */
   sendTo?: ReaderSendToDeps;
+  /** Runs a note's code cell and installs the Python it needs; the list panel and the reader show Run only when present. */
+  runCell?: RunCellPort;
+  installPython?: () => void;
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
@@ -93,6 +96,7 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
     paperNotes: services.paperNotesStore,
     findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
     projectBacklinks, ...(deps.addToSpace ? { addToSpace: deps.addToSpace } : {}),
+    ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
     paperFiles: new PaperFileService(
       services.fileSystem, (id) => services.paperService.findPaper(id), services.mutations, services.logger, services.reindexLibrary,
     ),
@@ -145,10 +149,12 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           extensionUri: context.extensionUri,
           events,
           store: services.paperDataStore,
+          notes: services.paperNotesStore,
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,
           ...(deps.sendTo ? { sendTo: deps.sendTo } : {}),
+          ...(deps.runCell ? { runCell: deps.runCell } : {}), ...(deps.installPython ? { installPython: deps.installPython } : {}),
         },
         paper,
         typeof page === "number" ? { page } : {},

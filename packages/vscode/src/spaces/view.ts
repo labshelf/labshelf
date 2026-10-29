@@ -73,7 +73,10 @@ async function saveFile(name: string, text: string, logger: ILogger): Promise<vo
   }
 }
 
-export interface ActiveSpaces {
+/** Runs a note's code cell and installs the Python it needs; Spaces show Run only when present. */
+export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "installPython">;
+
+export interface ActiveSpaces extends SpacesCellHosts {
   store: SpaceStore;
   port: SpacesHostPort;
   logger: ILogger;
@@ -87,6 +90,7 @@ export interface SpacesServiceOptions {
   projectId: (hostId: string) => string | undefined;
   logger: ILogger;
   selectPaper: (id: string) => Promise<void>;
+  cells?: SpacesCellHosts;
 }
 
 export class SpacesService implements vscode.Disposable {
@@ -130,7 +134,8 @@ export class SpacesService implements vscode.Disposable {
     disposeAll(this.rootSubscriptions);
     const store = new SpaceStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
     const port = createSpacesHostPort({ ...this.options, services, logger: services.logger });
-    this.active = { store, port, logger: services.logger };
+    const { runCell, installPython } = this.options.cells ?? {};
+    this.active = { store, port, logger: services.logger, ...(runCell ? { runCell } : {}), ...(installPython ? { installPython } : {}) };
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'spaces/**'));
     const reload = (): void => {
       void store.reload().catch((error: unknown) => {
@@ -360,10 +365,10 @@ export async function readProjectChecklist(writing: WritingViewResult, row: Proj
 
 export function registerSpaces(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: HostAdapters, writing: WritingViewResult,
-  selectPaper: (id: string) => Promise<void>,
+  selectPaper: (id: string) => Promise<void>, cells: SpacesCellHosts,
 ): SpacesService {
   const spaces = new SpacesService({
-    controller, paths: adapters.paths, projectLibrary: writing.projectLibrary, logger: writing.logger, selectPaper,
+    controller, paths: adapters.paths, projectLibrary: writing.projectLibrary, logger: writing.logger, selectPaper, cells,
     projectId: hostId => {
       const entry = writing.projects.list().find(project => project.folder === hostId);
       return entry?.kind === "ready" ? entry.settings.id : undefined;
