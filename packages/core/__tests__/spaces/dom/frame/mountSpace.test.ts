@@ -258,7 +258,7 @@ test('mounts working Papers and Glossary tabs and each positioned surface', () =
   click('Glossary');
   expect(c.root.textContent).toContain('Add term');
   click('Notes');
-  expect(c.root.textContent).toContain('Space notes');
+  expect(c.root.textContent).toContain('Keep ideas, meeting notes');
   click('Discussions');
   expect(c.root.textContent).toContain('New topic');
   click('Discover');
@@ -316,13 +316,10 @@ test('restores the reading position of each Space view', () => {
   c.dispose();
 });
 
-test.each([
-  ['notes', ['New note', 'Space notes', 'Paper notes', 'No Space notes yet.', 'No Paper notes yet.']],
-  ['discussions', ['New topic', 'Topics', 'Decisions', 'Tasks', 'No topics yet.', 'No discussion selected.']],
-  ['discover', ['All', 'Gaps', 'For this project', 'Later versions', 'No suggestions yet.', 'arXiv alerts', 'Watch']],
-] as const)('renders the %s layout with explained unavailable controls', (tab, labels) => {
+test('renders the discover layout with explained unavailable controls', () => {
+  const labels = ['All', 'Gaps', 'For this project', 'Later versions', 'No suggestions yet.', 'arXiv alerts', 'Watch'];
   const root = document.createElement('div');
-  const dispose = mountSpacePositioned(root, tab);
+  const dispose = mountSpacePositioned(root);
   for (const label of labels) expect(root.textContent).toContain(label);
   const controls = [...root.querySelectorAll<HTMLElement>('button, input, textarea, select')];
   expect(controls.length).toBeGreaterThan(0);

@@ -5,6 +5,7 @@
 @import "./papers.css";
 @import "./glossary.css";
 @import "./positioned.css";
+@import "../../qmd/dom/qmd-editor.css";
 .sp { max-width: var(--ls-gallery-content-w); margin: 0 auto; padding: var(--ls-space-9); width: 100%; height: 100%; min-height: 0; overflow: auto; color: var(--ls-fg); background: var(--ls-bg); font: var(--ls-font-size) var(--ls-font); }
 .sp-head { display: flex; align-items: center; gap: var(--ls-space-7); padding-bottom: var(--ls-space-7); }
 .sp-title { flex: 1; min-width: 0; }

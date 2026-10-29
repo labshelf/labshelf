@@ -1,9 +1,13 @@
 // Mounts a Space page with persistent inner-tab navigation over its host transport.
 import { renderElement, renderEmptyNotice, mountPageTabs, renderIcon, renderMemberChip, setPlannedNotice } from "../../ui/dom/index.js";
 import { SPACE_TABS, type SpacesTransport, type SpaceTab } from "../spacesProtocol.js";
+import type { SpaceThreadEntry } from "../spaceDiscussionsStore.js";
+import type { SpaceNoteEntry } from "../spaceNotesStore.js";
 import { mountOverview, type SpaceBody, type SpaceSnapshot, type OverviewContext } from "./mountOverview.js";
 import { mountSpacePapers } from "./mountSpacePapers.js";
 import { mountSpaceGlossary } from "./mountSpaceGlossary.js";
+import { mountSpaceNotes } from "./mountSpaceNotes.js";
+import { mountSpaceDiscussions } from "./mountSpaceDiscussions.js";
 
 function editable(value: string, label: string, className: string, disabled: boolean, save: (text: string) => void): HTMLInputElement {
   const input = renderElement("input", { class: className, value, title: value || label, "aria-label": label, placeholder: label, disabled });
@@ -26,20 +30,6 @@ function spaceHeader(ctx: OverviewContext): HTMLElement {
   setPlannedNotice(share, "Sharing needs a signed-in account");
   return renderElement("header", { class: "sp-head" }, renderElement("div", { class: "sp-title" }, renderElement("h1", {}, title), description),
     renderElement("div", { class: "sp-people" }, renderMemberChip("You")), share);
-}
-
-function spaceNotes(): HTMLElement {
-  return renderElement("div", { class: "nt-notes" },
-    renderElement("div", { class: "nt-bar" },
-      renderElement("p", { text: "Keep ideas, comparisons and quotes alongside this Space's papers." }),
-      renderPlannedButton("New note", "Notes need a connected note editor", "ls-btn ls-btn-ghost")),
-    group("Space notes", "No Space notes yet.", "Space notes will keep meeting notes and ideas together."),
-    group("Paper notes", "No Paper notes yet.", "Paper notes will keep your notes beside their paper."));
-}
-
-function group(title: string, text: string, hint: string): HTMLElement {
-  return renderElement("section", { class: "nt-group", "aria-label": title },
-    renderElement("h2", { text: title }), renderEmptyNotice({ text, hint, inline: true }));
 }
 
 const discoverReason = "Discover needs a connected discovery service";
@@ -70,11 +60,9 @@ function card(title: string, text: string, hint: string, label: string, missing:
     renderPlannedButton(label, missing));
 }
 
-export function mountSpacePositioned(root: HTMLElement, tab: "notes" | "discussions" | "discover"): () => void {
-  const build = { notes: spaceNotes, discussions: renderSpaceDiscussions, discover: spaceDiscover };
-  const reasons = { notes: "Notes need a connected note editor.", discussions: "Discussions need collaboration.", discover: "Discover needs a connected discovery service." };
+export function mountSpacePositioned(root: HTMLElement): () => void {
   root.replaceChildren(renderElement("div", { class: "sp-availability", role: "note" },
-    renderElement("strong", { text: "Not available yet" }), renderElement("span", { text: reasons[tab] })), build[tab]());
+    renderElement("strong", { text: "Not available yet" }), renderElement("span", { text: "Discover needs a connected discovery service." })), spaceDiscover());
   return () => root.replaceChildren();
 }
 
@@ -93,6 +81,8 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   let tab = opts.tab ?? (opts.folder ? "papers" : "overview");
   let data: SpaceSnapshot | undefined;
   let mounted: SpaceBody | undefined;
+  // The host posts these lists after `ready` and after a change, so a tab opened later reads the latest from here.
+  const lists: SpaceLists = {};
   const scroll = new Map<SpaceTab, number>();
   const paint = (): void => {
     if (!data) { body.replaceChildren(renderEmptyNotice({ text: "Loading Space…" })); return; }
@@ -101,7 +91,7 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
     }
     error.textContent = data.readOnlyReason ?? "";
     if (mounted) mounted.update(data);
-    else mounted = mountBody(body, end, tab, data, opts.folder);
+    else mounted = mountBody(body, end, tab, data, lists, opts.folder);
   };
   const tabs = mountPageTabs(body, { label: "Space views", selected: tab,
     tabs: SPACE_TABS.map(id => ({ id, label: id[0]!.toUpperCase() + id.slice(1) })),
@@ -115,20 +105,24 @@ export function mountSpace(root: HTMLElement, end: SpacesTransport, opts: MountS
   page.append(head, tabs.el, error, body); root.replaceChildren(page);
   const unsubscribe = end.subscribe(message => {
     if (message.type === "space" && message.space.id === opts.id) { data = message; paint(); }
+    if (message.type === "spaceNotes" && message.spaceId === opts.id) lists.notes = message.notes;
+    if (message.type === "spaceDiscussions" && message.spaceId === opts.id) lists.threads = message.threads;
     if (message.type === "error") error.textContent = `${message.action}: ${message.message}`;
   });
   paint(); end.post({ type: "ready", view: "space", id: opts.id });
   return () => { unsubscribe(); mounted?.dispose(); page.remove(); };
 }
-function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot, folder?: string): SpaceBody {
+interface SpaceLists { notes?: SpaceNoteEntry[]; threads?: SpaceThreadEntry[] }
+function mountBody(body: HTMLElement, end: SpacesTransport, tab: SpaceTab, data: SpaceSnapshot, lists: SpaceLists, folder?: string): SpaceBody {
   const context = { data, end, readOnly: !!data.readOnlyReason };
   if (tab === "overview") return mountOverview(body, context);
   if (tab === "papers") return mountSpacePapers(body, { ...context, ...(folder ? { folder } : {}) });
   if (tab === "glossary") return mountSpaceGlossary(body, context);
-  const dispose = mountSpacePositioned(body, tab);
+  if (tab === "notes") return mountSpaceNotes(body, { ...context, ...(lists.notes ? { notes: lists.notes } : {}) });
+  if (tab === "discussions") return mountSpaceDiscussions(body, { ...context, ...(lists.threads ? { threads: lists.threads } : {}) });
+  const dispose = mountSpacePositioned(body);
   return { update: () => {}, dispose };
 }
-
 
 function renderPlannedButton(label: string, reason: string, className = "ls-btn ls-btn-ghost"): HTMLButtonElement {
   const button = renderElement("button", { type: "button", class: className, text: label });
@@ -142,26 +136,3 @@ function renderPlannedSearch(label: string, reason: string): HTMLInputElement {
   return input;
 }
 
-
-const discussionsReason = "Discussions need collaboration";
-
-function renderSpaceDiscussions(): HTMLElement {
-  const views = ["Topics", "Decisions", "Tasks"].map((label, index) => {
-    const button = renderPlannedButton(label, discussionsReason);
-    button.setAttribute("aria-pressed", String(index === 0));
-    return button;
-  });
-  return renderElement("div", { class: "discussions" },
-    renderElement("header", { class: "ds-heading" },
-      renderElement("div", {}, renderElement("h2", { text: "Discussions" }),
-        renderElement("p", { text: "Discuss papers and keep decisions and tasks together." })),
-      renderPlannedButton("New topic", discussionsReason, "ls-btn ls-btn-ghost")),
-    renderElement("div", { class: "ds-toolbar" },
-      renderElement("div", { role: "group", "aria-label": "Discussion views" }, ...views),
-      renderPlannedSearch("Search discussions", discussionsReason)),
-    renderElement("div", { class: "ds-layout" },
-      renderElement("section", { class: "ds-topics", "aria-label": "Topics" },
-        renderEmptyNotice({ text: "No topics yet.", hint: "Topics will hold conversations about this Space.", inline: true })),
-      renderElement("section", { class: "ds-detail", "aria-label": "Discussion thread" },
-        renderEmptyNotice({ text: "No discussion selected.", hint: "A topic's conversation, decisions and tasks will appear here." }))));
-}
