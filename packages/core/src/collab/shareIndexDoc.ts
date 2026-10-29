@@ -4,9 +4,9 @@ import { Array as YArray, type Doc, type Map as YMap } from "yjs";
 export const SHARE_KINDS = ["project"] as const;
 export type ShareKind = (typeof SHARE_KINDS)[number];
 
-/** One file of a share: a text file has its own doc keyed by its path, a blob is fetched by its sha256 hex. */
+/** One file of a share: a text or qmd file has its own doc keyed by its path, a blob is fetched by its sha256 hex. */
 export interface ShareFileEntry {
-  kind: "text" | "blob";
+  kind: "text" | "blob" | "qmd";
   hash?: string;
 }
 

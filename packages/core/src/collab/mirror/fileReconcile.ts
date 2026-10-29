@@ -12,6 +12,7 @@ import { type ShareSession } from "../docSync.js";
 import type { CollabStore } from "../session/index.js";
 import type { MirrorFileRead, MirrorFileSystem } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
+import { setQmdDocText } from "../../qmd/collab/sharedQmdDoc.js";
 
 export const LOG_MODULE = "collab.mirror";
 /** The transaction origin of every edit the mirror makes to the share from disk. */
@@ -180,10 +181,10 @@ export async function reconcileUntracked(context: MirrorContext, path: string, d
   if (await holdConflictCopy(context, path, disk.bytes, diskHash)) { return "done"; }
   if (readShareIndexDocFiles(session.index).has(path)) { context.request(path, false); return "done"; }
   const kind = deriveSharedFileKind(path, disk.bytes);
-  const content = kind === "text" ? new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes) : disk.bytes;
+  const content = kind === "blob" ? disk.bytes : new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes);
   let entry: ShareFileEntry = { kind };
   if (typeof content === "string") {
-    setFileText(session.openDoc(path), content, DISK_ORIGIN);
+    if (kind === "qmd") { setQmdDocText(session.openDoc(path), content, DISK_ORIGIN); } else { setFileText(session.openDoc(path), content, DISK_ORIGIN); }
   } else {
     entry = { kind, hash: await store.blobs.put(disk.bytes) };
   }

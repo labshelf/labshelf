@@ -1,5 +1,7 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
 import { deriveTextSha256Hex } from "../../hash/index.js";
+import type { Doc } from "yjs";
+import { readQmdDocText, setQmdDocText } from "../../qmd/collab/sharedQmdDoc.js";
 import { readFileText, setFileText } from "../sharedFiles.js";
 import { readShareIndexDocFiles, readWrittenHashes } from "../shareIndexDoc.js";
 import {
@@ -33,17 +35,32 @@ const decodeText = (bytes: Uint8Array): string | undefined => {
   try { return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return undefined; }
 };
 
-export async function reconcileText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
+/** How a mirror reads a shared doc's file text and sets it; a text doc and a .qmd doc differ only here. */
+export interface DocTextAccess {
+  read(doc: Doc): string;
+  write(doc: Doc, text: string, origin: unknown): void;
+}
+
+const TEXT_ACCESS: DocTextAccess = { read: (doc) => readFileText(doc).toString(), write: setFileText };
+/** A `qmd` entry's doc holds items, not a Y.Text; the echo guard and merging are the ones of text docs. */
+export const QMD_ACCESS: DocTextAccess = { read: (doc) => readQmdDocText(doc), write: (doc, text, origin) => setQmdDocText(doc, text, origin) };
+
+export function reconcileText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
+  const qmd = readShareIndexDocFiles(context.session.index).get(path)?.kind === "qmd";
+  return reconcileDocText(context, path, disk, settled, qmd ? QMD_ACCESS : TEXT_ACCESS);
+}
+
+export async function reconcileDocText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean, access: DocTextAccess): Promise<ReconcileOutcome> {
   const { session, store, logger } = context;
   const known = store.known.get(path);
   if (disk.state === "changing") { return "changing"; }
-  if (disk.state === "missing") { return reconcileMissing(context, path, settled); }
+  if (disk.state === "missing") { return reconcileMissing(context, path, settled, access); }
   const diskText = decodeText(disk.bytes);
   // TRAP: A text file cut inside a UTF-8 sequence is mid-write.
   if (diskText === undefined) { return settled ? "changing" : (context.request(path, true), "done"); }
   const diskHash = await deriveTextSha256Hex(diskText);
   const doc = session.openDoc(path);
-  const docText = readFileText(doc).toString();
+  const docText = access.read(doc);
   if (diskText === docText) { addMirroredPath(context, path, docText, diskHash); return "done"; }
   if (diskHash === known) { await writeMirrored(context, path, docText); return "done"; }
   if (!settled) { context.request(path, true); return "done"; }
@@ -60,18 +77,21 @@ export async function reconcileText(context: MirrorContext, path: string, disk: 
   const wait = await checkWaitingWrite(context, path, diskHash);
   if (wait.waiting) { return "done"; }
   if (readShareIndexDocFiles(session.index).get(path) !== entry) { context.request(path, false); return "done"; }
-  return takeOutsideText(context, path, diskText, diskHash, wait.parent);
+  return takeOutsideText(context, path, { text: diskText, hash: diskHash }, access, wait.parent);
 }
 
-async function takeOutsideText(context: MirrorContext, path: string, diskText: string, diskHash: string, parent?: string): Promise<ReconcileOutcome> {
+async function takeOutsideText(
+  context: MirrorContext, path: string, disk: { text: string; hash: string }, access: DocTextAccess, parent?: string,
+): Promise<ReconcileOutcome> {
   const { session, logger } = context;
+  const { text: diskText, hash: diskHash } = disk;
   const doc = session.openDoc(path);
-  const docText = readFileText(doc).toString();
+  const docText = access.read(doc);
   if (readWrittenHashes(session.index, path).has(diskHash)) { context.request(path, false); return "done"; }
   const merged = mergeDiskText(context, path, docText, diskText, parent);
   const next = merged?.text ?? diskText;
   // INVARIANT: No await separates reading the doc for merging from applying the outside edit.
-  setFileText(doc, next, DISK_ORIGIN);
+  access.write(doc, next, DISK_ORIGIN);
   if (next === diskText) { addMirroredPath(context, path, next, diskHash); } else { await writeMirrored(context, path, next); }
   if (!merged || merged.conflicted) {
     const message = merged ? "Doc and disk changed the same lines; marked both" : "Doc and disk both changed with no common text; took the disk text";
@@ -81,9 +101,9 @@ async function takeOutsideText(context: MirrorContext, path: string, diskText: s
   return "done";
 }
 
-async function reconcileMissing(context: MirrorContext, path: string, settled: boolean): Promise<ReconcileOutcome> {
+async function reconcileMissing(context: MirrorContext, path: string, settled: boolean, access: DocTextAccess): Promise<ReconcileOutcome> {
   if (context.store.known.get(path) === undefined) {
-    await writeMirrored(context, path, readFileText(context.session.openDoc(path)).toString());
+    await writeMirrored(context, path, access.read(context.session.openDoc(path)));
     return "done";
   }
   if (!settled) { context.request(path, true); return "done"; }

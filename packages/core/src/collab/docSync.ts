@@ -135,7 +135,7 @@ export function createShareSession(options: ShareSessionOptions): ShareSession {
   const stopBackground = startInterval(scheduler, options.backgroundIntervalMs ?? DEFAULT_BACKGROUND_INTERVAL_MS, () => {
     if (mesh.peers.length === 0) { return; }
     for (const [path, entry] of readShareIndexDocFiles(index)) {
-      if (entry.kind === "text" && !sync.docs.has(path)) { sync.open(path); return; }
+      if ((entry.kind === "text" || entry.kind === "qmd") && !sync.docs.has(path)) { sync.open(path); return; }
     }
   });
   return {
