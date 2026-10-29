@@ -27,22 +27,24 @@ Every message has `v`, an `id` of 1 to 64 characters chosen by the page, and a `
 - An `edit` carries the whole text or non-overlapping `changes` in UTF-16 offsets of the previous version. Changes that do not apply answer `stale` and the page sends the whole text.
 - `pages` carries only the pages that differ from the last `pages` on this socket for the project, all of them after `openProject`. A successful build sends `pages` even when nothing changed.
 - A `.typ` compile runs the bundled WASM Typst compiler with fonts and packages only from the helper's data folder.
+- `installPython` installs the managed Python ([managed-tools.md](managed-tools.md#python)) and answers `progress` with phase `python`, then `ready`; a failure answers `error` with code `python-install-failed`.
+- `ready` carries `python` (`missing` or `installed`) when the host reports it, on `hello` and after an install. A helper that omits it predates Python.
 - `texlive-rollover` means a managed TeX Live is a year behind the package repository. The page asks before reinstalling ([managed-tools.md](managed-tools.md#rollover)).
 - `publishTemplate` follows [templates.md](templates.md#publish): it publishes saved files only, repeats every check on a snapshot before submitting and keeps no GitHub token on disk.
 
 ## Version
 
-The page compares `ready.protocol` with its own. A lower helper version asks to update the program that `host` names; a higher one asks to update LabShelf in the browser. When the helper refuses `hello` for `version`, its `error` carries the helper's `v` so the page can tell which side is older. It cannot know the host then, so it names LabShelf Helper, the VS Code extension and the terminal app. The page never shows the raw error. The standalone helper then runs its update check at once.
+The protocol version is 6. The page compares `ready.protocol` with its own. A lower helper version asks to update the program that `host` names; a higher one asks to update LabShelf in the browser. When the helper refuses `hello` for `version`, its `error` carries the helper's `v` so the page can tell which side is older. It cannot know the host then, so it names LabShelf Helper, the VS Code extension and the terminal app. The page never shows the raw error. The standalone helper then runs its update check at once.
 
 ## Data folder
 
-The data folder holds the build copies (`projects/<projectId>/src`, with latexmk output kept in `build/`), template publication snapshots (`publishing/`, deleted when done), Typst fonts and packages, biber's WASM tree named by its sha256, `bin/` and `logs/`. The managed TeX is not here: it is in the folder every app shares ([managed-tools.md](managed-tools.md)).
+The data folder holds the build copies (`projects/<projectId>/src`, with latexmk output kept in `build/`), template publication snapshots (`publishing/`, deleted when done), Typst fonts and packages, biber's WASM tree named by its sha256, `bin/` and `logs/`. The managed TeX and Python are not here: they are in the folder every app shares ([managed-tools.md](managed-tools.md)).
 
 On macOS and Linux the folder and `logs/` are `0o700` and log files `0o600`. The standalone helper exits non-zero, naming the path, when its binary, the folder holding it (unless root owns it), its data folder or `bin/` is writable by group or others.
 
 ## Registration and updates
 
-- `labshelf-helper --register` writes the manifests of this host and of the [bridge](bridge.md) for every supported browser; `--unregister` removes both. `--uninstall` also removes the bridge name and `bin/`, keeping projects and the shared TeX. It writes nothing outside the user's home. Precedence over the desktop apps' launchers is in [native-host.md](native-host.md#precedence).
+- `labshelf-helper --register` writes the manifests of this host and of the [bridge](bridge.md) for every supported browser; `--unregister` removes both. `--uninstall` also removes the bridge name and `bin/`, keeping projects and the shared managed tools (TeX and Python). It writes nothing outside the user's home. Precedence over the desktop apps' launchers is in [native-host.md](native-host.md#precedence).
 - Only the standalone binary updates itself, rate-limited after `hello`, from `latest.json` of the latest GitHub release. It accepts an update only when the Ed25519 signature verifies against the built-in key and the download matches its `sha256`. The new binary runs from the next launch.
 
 ## Build safety
