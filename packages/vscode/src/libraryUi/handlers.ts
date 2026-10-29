@@ -6,17 +6,20 @@ import * as vscode from 'vscode';
 import {
   PDF_FILE,
   addPaperNote,
+  cancelPaperCell,
   createPaperFiles,
   createSidecarReader,
   derivePaperDetails,
   editPaperNote,
   formatError,
   formatKeptFieldNotice,
+  installPaperPython,
   isShareMessage,
   movePaperFolders,
   parseUiMessage,
   removePaperNote,
   removePapers,
+  runPaperCell,
   sendPaperDetails,
   setPaperTags,
   type HostToUi,
@@ -255,6 +258,8 @@ function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
     refresh: async () => {},
     editTags: (ids, add, remove) => service.editTags([...ids], add, remove),
     ...(ctx.deps.paperNotes ? { notes: ctx.deps.paperNotes } : {}),
+    ...(ctx.deps.runCell ? { runCell: ctx.deps.runCell } : {}),
+    ...(ctx.deps.installPython ? { installPython: ctx.deps.installPython } : {}),
     trashPapers: (papers) => service.trashPapers(papers.map((p) => p.id)),
     movePapers: (ids, target) => service.movePapers([...ids], target),
     folderName: (target) => (target === ctx.paths()?.root ? undefined : ctx.deps.pathOps.basename(target)),
@@ -327,6 +332,9 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.addNote': await requirePaper(ctx, m.id); await addPaperNote(libraryUiHost(ctx), m.id, m.body); return true;
     case 'paper.editNote': await requirePaper(ctx, m.id); await editPaperNote(libraryUiHost(ctx), m.id, m.itemId, m.body); return true;
     case 'paper.removeNote': await requirePaper(ctx, m.id); await removePaperNote(libraryUiHost(ctx), m.id, m.itemId); return true;
+    case 'paper.runCell': await runPaperCell(libraryUiHost(ctx), m); return true;
+    case 'paper.cancelCell': cancelPaperCell(m.requestId); return true;
+    case 'paper.installPython': installPaperPython(libraryUiHost(ctx)); return true;
     case 'paper.remove': await removePapers(libraryUiHost(ctx), m.ids); return true;
     case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;
     case 'clipboard.write': await writeClipboard(ctx, m.text, m.label); return true;

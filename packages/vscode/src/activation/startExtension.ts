@@ -1,7 +1,10 @@
 // Activates the extension on either platform: wires services, commands, the Library sidebar, the list panel and the Writing view.
+import * as os from "node:os";
+import * as path from "node:path";
 import * as vscode from "vscode";
 
-import { createSelectionHub, createLibraryLayout, createRecentTargets, type AiService } from "@labshelf/core";
+import { createSelectionHub, createLibraryLayout, createRecentTargets, type AiService, type ILogger } from "@labshelf/core";
+import { createNodeCellRunner, createSharedPythonProvider } from "@labshelf/core/node";
 import { SEND_TO_RECENT_KEY, createMementoKeyValueStore } from "../reader/index.js";
 import { ListWebviewPanel, createSelectionSources, type DetailsView } from "../libraryUi/index.js";
 import { registerCommands, registerAiCommands, type FolderCommandHost, type ActiveServices } from "../command/index.js";
@@ -21,6 +24,7 @@ import { registerProjectNoteCommands } from "../writing/projects/index.js";
 import { registerNoteLens } from "../writing/citations/index.js";
 import { registerSpaces, addToSpace } from "../spaces/index.js";
 import { startAiService } from "./startAiService.js";
+import { createInstallPython, createRunCellPort } from "../qmd/runCell.js";
 
 export async function startExtension(context: vscode.ExtensionContext, platform: ExtensionPlatform): Promise<void> {
   const { adapters } = platform;
@@ -44,11 +48,13 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   registerNoteLensOf(context, controller, writing);
+  // One runner and one Python per activation, shared by the list panel, the reader and Spaces.
+  const cells = createCellHosts(context, writing.logger);
   const spaces = registerSpaces(context, controller, adapters, writing, async id => {
     await vscode.commands.executeCommand("labshelf.revealPaper", id);
     sources.listSelected([id]);
     sources.listActivated();
-  });
+  }, cells);
   const { librarySidebar, showFolderInSidebar, showPaperInSidebar, refreshLibraryViews: refreshViews } = registerLibrarySidebar({
     context, events, controller, papersRootUri, folderHost, adapters, projects: writing.projectsSource, projectTrees: writing.projectTrees, spaces,
   });
@@ -57,6 +63,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerSettingsMenu(context, controller);
 
   details = registerPanelCommands({
+    ...cells,
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
@@ -71,6 +78,14 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   registerAiCommands(context, () => aiService);
 
   logPaperEvents(events, controller.currentServices());
+}
+
+/** The shared Python and the cell runner built once, as the ports the note hosts run cells and install Python through. */
+function createCellHosts(context: vscode.ExtensionContext, logger: ILogger) {
+  const python = createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  // The bundle copies the driver beside extension.js.
+  const runner = createNodeCellRunner({ python, logger, driverPath: path.join(context.extensionPath, "out", "cellDriver.py") });
+  return { runCell: createRunCellPort(runner), installPython: createInstallPython(python, logger) };
 }
 
 /** Registers the note lens over the open project, reading the paper library through the active services. */
