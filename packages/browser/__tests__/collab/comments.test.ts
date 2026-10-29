@@ -5,14 +5,14 @@
 // The page's comment store, routing between live and stored threads, and the source editor's comment marks and Add comment button.
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import type { IFileSystem, ILogger, LibraryFileSystem, ProjectEntry, TextRange } from "@labshelf/core";
+import { parseCommentsQmd, type IFileSystem, type ILogger, type LibraryFileSystem, type ProjectEntry, type TextRange } from "@labshelf/core";
 import { addCommentSupport, createCommentThreads, createRoutedCommentThreads, type CommentThreads, type EditorComments } from "../../src/collab/comments";
 import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
 
 const mockInputBox = jest.fn<Promise<string | undefined>, []>();
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), askInputBox: () => mockInputBox() }));
 
-// Verifies the page's comment store persists add, reply and resolve in comments.json and leaves an invalid file untouched.
+// Verifies the page's comment store persists add, reply and resolve in comments.qmd and leaves an invalid file untouched.
 describe("comments", () => {
   function writableFs(files: Record<string, string>): LibraryFileSystem {
     const dirs = new Set<string>();
@@ -37,7 +37,7 @@ describe("comments", () => {
   }
 
   describe("comment threads", () => {
-    it("persists an added comment, a reply and a resolve in comments.json", async () => {
+    it("persists an added comment, a reply and a resolve in comments.qmd", async () => {
       const { files, store } = setup();
       await store.addComment("p", "main.tex", range, "Which baseline?");
       const [added] = await store.threads("p", "main.tex");
@@ -47,7 +47,7 @@ describe("comments", () => {
       const [saved] = await store.threads("p");
       expect(saved!.comments.map((each) => each.body)).toEqual(["Which baseline?", "The first one."]);
       expect(saved!.resolved).toBe(true);
-      expect(JSON.parse(files["/lib/p/.labshelf/comments.json"]!).threads).toHaveLength(1);
+      expect(parseCommentsQmd(files["/lib/p/.labshelf/comments.qmd"]!)!.threads).toHaveLength(1);
     });
 
     it("tells subscribers the ranges of open threads after each change", async () => {
@@ -70,11 +70,11 @@ describe("comments", () => {
       expect((await store.threads("p"))[0]!.line).toBeUndefined();
     });
 
-    it("leaves an invalid comments.json as it is and refuses to read or write it", async () => {
-      const { files, store } = setup({ "/lib/p/.labshelf/comments.json": "<<<<<<< ours\n" });
+    it("leaves an invalid comments.qmd as it is and refuses to read or write it", async () => {
+      const { files, store } = setup({ "/lib/p/.labshelf/comments.qmd": "<<<<<<< ours\n" });
       await expect(store.threads("p")).rejects.toThrow(/Fix the file/);
       await expect(store.addComment("p", "main.tex", range, "x")).rejects.toThrow(/left as it is/);
-      expect(files["/lib/p/.labshelf/comments.json"]).toBe("<<<<<<< ours\n");
+      expect(files["/lib/p/.labshelf/comments.qmd"]).toBe("<<<<<<< ours\n");
     });
 
     it("rejects a project that is not the open one", async () => {
@@ -103,7 +103,7 @@ describe("commentSupport", () => {
   });
 });
 
-// Routed comments use a shared project's live threads while its share is connected and the comments.json store otherwise.
+// Routed comments use a shared project's live threads while its share is connected and the comments.qmd store otherwise.
 describe("commentRouting", () => {
   const entry = { kind: "ready", folder: "/lib/p", settings: { id: "p" } } as unknown as ProjectEntry;
 
