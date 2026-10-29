@@ -62,7 +62,7 @@ describe('fitEmptyBox', () => {
     const point = { x: 0.7, y: 0.5 };
     const box = fitEmptyBox(point, rects);
     expect(box).not.toBeNull();
-    expect(overlaps(box!, rects[0])).toBe(false);
+    expect(overlaps(box!, rects[0]!)).toBe(false);
     expect(contains(box!, point)).toBe(true);
     expect(box!.w).toBeCloseTo(0.4, 4);
     expect(box!.h).toBeCloseTo(0.25, 4);

@@ -174,8 +174,7 @@ export async function openLibrary(root: string, options: OpenOptions): Promise<A
   return {
     paths, config: options.config,
     logger, logPath,
-    store, papers, sidecars,
-    notes: sidecars.notes,
+    store, papers, sidecars, notes: sidecars.notes,
     indexSearchText: indexAnnotations,
     thumbnails,
     thumbnailRenderer: renderer.name,

@@ -35,8 +35,9 @@ describe("note messages", () => {
 
     it("7.2a ReaderNote and the host messages carry the note list", () => {
       const note: ReaderNote = { id: "n1", anchor: "", body: "b", created: "2025-01-01T00:00:00.000Z", author: "me" };
-      const update: HostToWebview = { command: "updateNotes", items: [note] } as HostToWebview;
-      expect(update.command).toBe("updateNotes");
+      const update: HostToWebview = { type: "updateNotes", items: [note] };
+      expect(update.type).toBe("updateNotes");
+      expect(update).toEqual({ type: "updateNotes", items: [note] });
     });
   });
 

@@ -14,7 +14,16 @@ owns:
   - packages/core/src/reader/sidecar/sidecarStore.ts
   - packages/core/src/model/annotation.ts
   - packages/core/__tests__/reader/
-status: pending
+  - scripts/lint/modulesBaseline.json
+  - packages/terminal/src/compositionRoot.ts
+  - documents/plans/qmd-notes/sessions/7b.yaml
+  - packages/vscode/__tests__/reader/panel.test.ts
+  - packages/terminal/__tests__/libraryUi/libraryScreen/view/preview.test.ts
+  - packages/core/__tests__/library/conflicts/
+  - packages/core/__tests__/share/folderShare.test.ts
+  - packages/core/__tests__/share/shareImport.test.ts
+  - packages/core/__tests__/writing/citations/quotes.test.ts
+status: blocked
 packages:
   - id: "7.1"
     plan: qmd-notes
@@ -150,15 +159,21 @@ packages:
       - path: packages/core/__tests__/reader/hostFixture.ts
         lines: 1-1
         why: fixture the host tests build ports with (re-read whole file)
-    seams:
-      - path: packages/core/src/reader/noteMessages.ts
-        signature: 'export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote">'
+      - path: packages/core/src/qmd/paperNotes.ts
+        lines: 1-152
+        why: "PaperNotesStore: read(paperId) -> ItemFile, addItem(paperId, NewPaperNote) -> id, editItem, setAnchor(paperId, id, ItemAnchor), removeItem"
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 1-295
+        why: ItemFile, ItemSegment, item attributes, parseAnchor and formatAnchor
+    seams: []
     decided:
+      - '`noteMessages.ts` exports `export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote">`, spread into HANDLERS in `hostController.ts` (session 7.2 already added the four commands to the protocol, so `typecheck core` fails until HANDLERS has them and `init` carries `notes`).'
       - "The handlers go in the sibling file `packages/core/src/reader/noteMessages.ts`, with the same push-after-write shape as `annotationHandlers` in `hostMessages.ts`: write, then post `updateNotes` with the full list read back from the store."
       - "`moveNote` replaces the item's `anchor` attribute only (`PaperNotesStore.setAnchor` from session 6)."
       - The store is injected through `ReaderHostPorts.notes` (apps already build it in session 6); the host does not construct it.
       - A host without the notes port (build preview documents, whose store is `createPreviewStore`) refuses note writes with a notice like `PREVIEW_ANNOTATION_REFUSAL` and sends an empty list in `init` and `updateNotes`.
       - "No migration (documents/code.md#contracts): `AnnotationType` is `highlight | comment | tag`; an annotation of type `note` in an old `data.json` is not read. Search all packages for other uses of the `note` type before removing it."
+      - "Search already done by the orchestrator: the annotation type `note` is used only in `sidecarStore.ts:212` (its `addNote`); every other `\"note\"` string in packages is unrelated (library search fields, tray kind, terminal keymap, bib checks). Other `addNote` names (`paper.addNote` in libraryUi, `paperFlows.addNote`, vscode/browser handlers) are the library's paper notes, not the sidecar method: leave them. No search is needed."
       - Delete `addNote` of the sidecar store; a search of all packages finds only `hostMessages.ts`, `sidecarStore.ts` and their tests using it (re-run the search before deleting).
       - A failed write (including an unknown item id) is logged with `ctx.ports.logger.error` and shown with `notify(<message>, "error")`; no `updateNotes` is posted and the reader keeps the list it has.
       - 'A host without `ports.notes` answers each note write with exactly one `notify(<message>, "info")` and posts `{type: "updateNotes", items: []}`; it writes no file. Its `init` carries `notes: []`.'
@@ -246,3 +261,115 @@ packages:
       - node scripts/agents/run.mjs test core
     do_not_touch:
       - packages/core/src/reader/dom/
+  - id: "7.7"
+    plan: qmd-notes
+    goal: The core test suites pass after the annotation type `note` and the sidecar `addNote` were removed and `init` gained `notes`.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "7.3"
+    edit:
+      - path: packages/core/__tests__/library/conflicts/node/conflictScan.test.ts
+        lines: 1-40
+        why: "fixture annotation of type note (:13): use type comment"
+      - path: packages/core/__tests__/library/conflicts/node/sidecarConflictMerge.test.ts
+        lines: 1-40
+        why: "fixture of type note (:20): use comment"
+      - path: packages/core/__tests__/library/conflicts/sidecarMerge.test.ts
+        lines: 1-30
+        why: "fixture of type note (:6): use comment"
+      - path: packages/core/__tests__/reader/protocol/readerPrefs.test.ts
+        lines: 135-205
+        why: "export cases use type note (:143-201): use comment and update the expected Markdown label accordingly (Comment)"
+      - path: packages/core/__tests__/share/folderShare.test.ts
+        lines: 20-35
+        why: "fixture of type note (:27): use comment"
+      - path: packages/core/__tests__/share/shareImport.test.ts
+        lines: 70-85
+        why: "fixture of type note (:78): use comment"
+      - path: packages/core/__tests__/writing/citations/quotes.test.ts
+        lines: 25-40
+        why: "fixture of type note (:32): use comment (the test checks non-highlights are skipped)"
+      - path: packages/core/__tests__/reader/hostMessages.test.ts
+        lines: 1-400
+        why: "two failing cases: 'exportAnnotations copies the Markdown to the clipboard and confirms' and 'ready-for-init answers with the sidecar theme, sorted annotations, reading position and prefs' (init now carries `notes`; the old `note` annotation b of hostFixture is no longer read)"
+      - path: packages/core/__tests__/reader/hostController.test.ts
+        lines: 1-300
+        why: failing case 'refreshAnnotations pushes the annotations only when they changed since the last push', same cause
+    create: []
+    read:
+      - path: packages/core/__tests__/reader/hostFixture.ts
+        lines: 1-1
+        why: seeded annotations (b is of type note and must stay, read whole file)
+      - path: packages/core/src/reader/hostMessages.ts
+        lines: 1-220
+        why: current init and export behaviour
+      - path: packages/core/src/reader/sidecar/sidecarStore.ts
+        lines: 40-80
+        why: normalizePaperSidecar now drops type note entries
+      - path: packages/core/src/reader/protocol/readerPrefs.ts
+        lines: 130-170
+        why: Markdown export labels per type
+    seams: []
+    decided:
+      - Only tests change; the source behaviour from 7.2 and 7.3 is the intended one (the `note` type is gone, old `note` entries are not read, `init` carries `notes`).
+      - Fixtures that used type `note` for a non-highlight annotation switch to `comment`, keeping what each case checks.
+      - "Host tests expect `init` to include `notes: []` (the fixture has no notes port) and expect the old `note` entry b of hostFixture to be absent from annotations and exports."
+      - Never run `pnpm gate` or lint; run only the commands below, typed exactly.
+    acceptance:
+      - id: 7.7a
+        check: node scripts/agents/run.mjs test core passes, except the hidden 7.5 suite whose fix runs in parallel
+    tests:
+      none: test-only package
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - packages/core/src/
+  - id: "7.8"
+    plan: qmd-notes
+    goal: The vscode and terminal suites pass without the annotation type `note`, and the reader protocol imports the item format through its module index.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "7.7"
+    edit:
+      - path: packages/vscode/__tests__/reader/panel.test.ts
+        lines: 60-80
+        why: "'as a build preview shows a notice instead of saving an annotation' posts createAnnotation type note (:73), which the guard now rejects: post a valid highlight createAnnotation instead"
+      - path: packages/vscode/__tests__/reader/panel.test.ts
+        lines: 395-420
+        why: "'host controller wiring announces annotation changes for the list and sync' posts createAnnotation type note (:405): post a valid highlight"
+      - path: packages/terminal/__tests__/libraryUi/libraryScreen/view/preview.test.ts
+        lines: 60-100
+        why: "'shows highlights from the sidecar on the Notes tab' seeds an annotation with `{ type: \"note\" }` (:74), which the sidecar no longer reads: drop the override so it is a highlight, keeping what the case checks"
+      - path: packages/core/src/reader/protocol/messages.ts
+        lines: 1-12
+        why: "import parseAnchor from `../../qmd/item/index.js` instead of `../../qmd/item/itemFile.js` (module rule: go through the module index)"
+    create: []
+    read:
+      - path: packages/core/src/reader/protocol/messages.ts
+        lines: 120-215
+        why: createAnnotation highlight shape and its guard
+    seams: []
+    decided:
+      - Only these test cases and the one import change; source behaviour is intended.
+      - Never run `pnpm gate` or lint; run only the commands below, typed exactly.
+    acceptance:
+      - id: 7.8a
+        check: node scripts/agents/run.mjs test vscode and test terminal pass; typecheck core passes
+    tests:
+      none: test-only package plus one import
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test vscode
+      - node scripts/agents/run.mjs test terminal
+      - node scripts/agents/run.mjs test core
+    do_not_touch:
+      - packages/vscode/src/
+      - packages/terminal/src/
+blocked_reason: "7.1: no report; 7.3: missing; 7.5: blocked_tests"

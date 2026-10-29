@@ -21,3 +21,4 @@
 - 2026-10-28 21:07 — session 6 done: 6.1, 6.3, 6.4
 - 2026-10-28 21:37 — session 6b blocked: 6.5: missing
 - 2026-10-28 21:39 — session 6b done: 6.5, 6.5r, 6.6, 6.7, 6.7r, 6.8
+- 2026-10-28 23:12 — session 7 blocked: 7.1: no report; 7.3: missing; 7.5: blocked_tests

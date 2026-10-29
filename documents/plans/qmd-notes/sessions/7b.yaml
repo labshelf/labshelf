@@ -6,6 +6,8 @@ depends_on:
 owns:
   - packages/core/src/reader/dom/
   - packages/core/src/reader/sidecar/readingState.ts
+  - packages/core/src/reader/keymap.ts
+  - packages/core/src/ui/icons/renderIcon.ts
 status: pending
 packages:
   - id: "7.4"
@@ -32,6 +34,9 @@ packages:
       - path: packages/core/src/reader/dom/styles/reader.css
         lines: 1-278
         why: panel styles with tokens only
+      - path: packages/core/src/ui/icons/renderIcon.ts
+        lines: 1-80
+        why: add the `text-box` icon (lucide `type`)
     create:
       - packages/core/src/reader/dom/notesTab.ts
     read:
@@ -57,8 +62,16 @@ packages:
       - path: packages/core/src/reader/dom/notesTab.ts
         signature: "export class NotesTab implements SidebarPanel { readonly el: HTMLElement; show(notes: readonly ReaderNote[]): void; onShow(): void; onHide(): void }"
     decided:
-      - The 7.1 design outcome is written here before this package runs.
-      - UI text names an item "note" through the vocabulary entry of `packages/core/src/qmd/dom/vocabulary.ts` (D16).
+      - UI text names an item "note" through `QMD_VOCABULARY.item` exported from `packages/core/src/qmd/dom/qmdEditor.ts` (re-exported by `qmd/dom/index.ts`) (D16); every user-visible "note"/"Notes" string below is built from it, capitalised where it starts a label.
+      - "7.1 design, tab: TAB_META gains `notes: { label: \"Notes\", icon: \"note\" }` after `annotations` (the `note` icon exists in `renderIcon.ts`). The panel reuses `rd-panel` and `rd-panel-header` like AnnotationsTab: the header shows the label and the item count."
+      - "7.1 design, filter: a row under the header with a native `<select>` (aria-label \"Show\") holding All / This page / On highlights / Text boxes / Unanchored, and an `<input type=search>` (placeholder \"Filter notes\", aria-label the same) matching the body case-insensitively. The row wraps to two lines at narrow sidebar width. Filter state lives in the tab and survives each `show()` (pushes never reset it). \"This page\" follows the current page (the tab takes a `currentPage(): number` getter and re-filters on the pdf.js `pagechanging` event)."
+      - "7.1 design, rows: grouped like AnnotationsTab with `rd-ann-group` headings \"Page N\", then a last group \"Unanchored\". A row is: an anchor chip button, the item's editor, a delete icon button (`trash`). Chip by anchor kind: highlight → the colour dot `rd-color-<colour>` of the referenced annotation (from `setAnnotations`); a highlight id missing from the annotation list shows the `warning` icon with title \"Highlight not found\" and the row sorts under Unanchored; box → the `text-box` icon; page → the text \"p. N\". Chip title \"Go to page N\"; clicking it jumps; unanchored rows have no chip."
+      - "7.1 design, NotesTab API: besides the seam it has `setAnnotations(annotations: readonly Annotation[]): void` (fed from the same `updateAnnotations` as AnnotationsTab) so chips and page groups resolve highlight anchors. Constructor: `(host: HostBridge, goToPage: (page: number) => void, currentPage: () => number, eventBus)`."
+      - "7.1 design, editing: rows are keyed by item id; `show()` updates rows in place, so a row whose editor has focus keeps its editor and caret and only unfocused rows take a changed body. The editor sends `editNote` on blur and after typing pauses (debounce in the tab, about one second), only when the body changed. Escape in an editor blurs it."
+      - "7.1 design, delete (principle 5): an item with an empty body is removed at once; otherwise the first click turns the trash button into a confirm state (class `rd-danger`, aria-label \"Confirm delete\") and a second click sends `removeNote`; blur or Escape cancels the confirm state."
+      - "7.1 design, states: no items → `rd-empty` \"No notes yet. Select text and choose Add to note, or draw a text box.\"; items but none match the filter → `rd-empty` \"No notes match.\"; light, dark and the page themes come from `--ls-reader-*` tokens only; every control has keyboard focus with the existing `:focus-visible` rule."
+      - "7.1 design, icon: add lucide's `type` icon to `renderIcon.ts` as `text-box` in the same style as its neighbours (paths `<path d=\"M12 4v16\"/><path d=\"M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2\"/><path d=\"M9 20h6\"/>`); 7.6 uses it for the toolbar tool."
+      - "7.1 design, selection bubble: \"Add to note\" is an icon button (`note` icon, title and aria-label \"Add to note\") after the colour buttons, separated by the bubble's existing divider style if one exists, else a gap. It highlights in the first colour of the bubble's list. When the new item arrives it opens the sidebar on the Notes tab and focuses that item's editor."
       - "Filter: All / This page / On highlights / Text boxes / Unanchored, plus a text filter on the body. Order by page then created; unanchored items last."
       - Each row edits its body in `mountQmdEditor` (session 4, `packages/core/src/qmd/dom/`); an edit sends `editNote`, delete sends `removeNote`. No `onRunCell` here (cells run from session 12 on).
       - "\"Add to note\" posts the existing `createAnnotation` highlight, and when the next `updateAnnotations` list holds an annotation id not in the previous list, posts `addNote {anchor: \"hl:<that annotation id>\", body: \"\"}` and focuses the new item's editor. D6: a note on a highlight anchors to the annotation id; geometry stays in `data.json`."
@@ -97,6 +110,9 @@ packages:
       - path: packages/core/src/reader/dom/styles/reader.css
         lines: 250-278
         why: "`.rd-note-layer`, box, clip fade and expanded state, tokens only"
+      - path: packages/core/src/reader/keymap.ts
+        lines: 35-60
+        why: "base binding `{ key: \"b\", mod: true, alt: true, action: \"toggleBoxTool\", label: \"Text box tool\", group: \"View\" }`, beside the other mod+alt chord (goToPage); re-locate the bindings list and the action type with grep"
     create:
       - packages/core/src/reader/dom/noteBoxes.ts
       - packages/core/src/reader/dom/boxTool.ts
@@ -122,7 +138,12 @@ packages:
       - path: packages/core/src/reader/dom/boxTool.ts
         signature: "export class BoxTool { constructor(ctx: ReaderContext); setActive(on: boolean): void }"
     decided:
-      - The 7.1 design outcome is written here before this package runs.
+      - "7.1 design, tool: a toggle icon button (`text-box` icon from 7.4) in the toolbar's right group before Find, title \"Text box (<Mod>+<Alt>+B)\" built like the other titles, `aria-pressed` reflecting the mode; pressed state uses `--ls-reader-active`. `ToolbarActions` gains `toggleBoxTool(): void`; `Toolbar` gains `setBoxToolActive(on: boolean): void`. The keymap action `toggleBoxTool` (Mod+Alt+B) does the same and shows in the `?` cheatsheet."
+      - "7.1 design, mode: while on, the viewer container has class `rd-box-mode`: crosshair cursor over pages and no text selection on the text layer. A drag shows a draft rectangle `.rd-box-draft` (dashed border in `--ls-reader-active`). The mode is one-shot: it ends after a box is created, on Escape or on the toggle. A click where `fitEmptyBox` returns null creates nothing and the mode stays on."
+      - "7.1 design, box look: `.rd-note-box` has background `--ls-reader-surface`, a thin border `--ls-reader-border`, a small radius and text `--ls-reader-fg`; its font size is the reader's small UI size times pdf.js' `--scale-factor`, so the box clips the same content at every zoom and on every device. Content taller than the box is clipped with a bottom fade made with `mask-image` (alpha only, so no colour) and the class `rd-note-box-clipped`. An empty box shows the editor placeholder."
+      - "7.1 design, expanded: class `rd-note-box-open`: height grows to the content up to the page bottom, then scrolls; it is raised above other boxes, gets `--ls-reader-shadow` and a border in `--ls-reader-active`; the editor is editable (remount with `readOnly: false` or toggle it, whichever `QmdEditorHandle` allows). Collapsing (outside click, Escape) sends `editNote` when the body changed. A newly created box opens expanded with focus."
+      - "7.1 design, handles: shown only while expanded or on hover/focus: a move strip along the top edge and a resize handle at the bottom-right corner; a drag shows the draft rectangle and on release sends `moveNote` with the `snapBox` result."
+      - "7.1 design, keyboard and a11y: each box has `tabindex=0`, role `button`, aria-label \"Note on page N\" (vocabulary word); Enter or Space expands it, Escape collapses it. Deleting is done in the Notes tab."
       - 'Creation mode is a toolbar toggle. In it a click calls `fitEmptyBox` and a drag calls `snapBox`; Escape leaves the mode. Then the tool sends `addNote {anchor: formatAnchor({kind: "box", ...}), body: ""}` and the box opens in edit state.'
       - "The layer `.rd-note-layer` per page is built like `.rd-hl-layer`: rebuilt on pdf.js `textlayerrendered` (PLATFORM: pdf.js drops page children on re-render), positions in percent so zoom needs no recompute. The layer has `pointer-events: none` and the boxes `pointer-events: auto`; it is inserted above the text layer so boxes are clickable while empty space still selects text. Unrendered pages have no layer."
       - "Box content renders read-only through the core editor (`mountQmdEditor` with `readOnly: true`, session 4); it is clipped to the box with a token-based fade; a click expands it to show all content and edit it, an outside click or Escape collapses it."
