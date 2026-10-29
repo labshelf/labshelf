@@ -18,9 +18,15 @@ export interface RunOutcome {
   code: number | null;
   /** The tail of stdout and stderr, interleaved. */
   output: string;
+  /** The tail of stdout alone; present only with `separateStreams`. */
+  stdout?: string;
+  /** The tail of stderr alone; present only with `separateStreams`. */
+  stderr?: string;
 }
 
 const OUTPUT_LIMIT = 64 * 1024;
+const DEFAULT_KILL_GRACE_MS = 2000;
+const MODULE_RUN = "process/run";
 
 export interface CancellableOptions {
   /** Runs `executable` as a shell command line, with `args` empty. */
@@ -29,6 +35,14 @@ export interface CancellableOptions {
   onOutput?: (chunk: string) => void;
   /** The child's environment; the parent's when absent. */
   env?: NodeJS.ProcessEnv;
+  /** Ends the run with SIGTERM to the process group after this long; no limit when absent. */
+  timeoutMs?: number;
+  /** How long a child may ignore SIGTERM before its group gets SIGKILL; 2000 when absent. */
+  killGraceMs?: number;
+  /** Keeps a tail of stdout and of stderr apart, besides the merged `output`. */
+  separateStreams?: boolean;
+  /** Receives the timeout and each escalation to SIGKILL. */
+  logger?: ILogger;
 }
 
 export class BuildCancelled extends Error {
@@ -38,45 +52,130 @@ export class BuildCancelled extends Error {
   }
 }
 
+export class ProcessTimedOut extends Error {
+  constructor(timeoutMs: number) {
+    super(`The process timed out after ${timeoutMs} ms`);
+    this.name = "ProcessTimedOut";
+  }
+}
+
 // PLATFORM: latexmk starts the engine as a child; killing latexmk alone leaves it writing to the build folder,
 // so the whole process group (Unix) or tree (Windows) goes.
-function killTree(pid: number): void {
+function killTree(pid: number, signal: "SIGTERM" | "SIGKILL"): void {
   if (process.platform === "win32") {
     spawn("taskkill", ["/pid", String(pid), "/T", "/F"], { windowsHide: true }).on("error", () => undefined);
     return;
   }
   try {
-    process.kill(-pid, "SIGTERM");
+    process.kill(-pid, signal);
   } catch {
     // The group already exited.
   }
+}
+
+interface OutputTail {
+  collect: (kind: "stdout" | "stderr") => (chunk: Buffer) => void;
+  outcome: (code: number | null) => RunOutcome;
+}
+
+/** Keeps the last OUTPUT_LIMIT characters of the merged output and, with `separateStreams`, of each stream. */
+function createOutputTail(separateStreams: boolean, onOutput: ((chunk: string) => void) | undefined): OutputTail {
+  let output = "";
+  let stdout = "";
+  let stderr = "";
+  return {
+    collect: (kind) => (chunk) => {
+      const text = chunk.toString("utf8");
+      output = (output + text).slice(-OUTPUT_LIMIT);
+      if (separateStreams) {
+        if (kind === "stdout") { stdout = (stdout + text).slice(-OUTPUT_LIMIT); } else { stderr = (stderr + text).slice(-OUTPUT_LIMIT); }
+      }
+      onOutput?.(text);
+    },
+    outcome: (code) => (separateStreams ? { code, output, stdout, stderr } : { code, output }),
+  };
+}
+
+interface KillSwitch {
+  /** SIGTERM to the group; a group still open after the grace period gets SIGKILL, grandchildren included. */
+  terminate: () => void;
+  timedOut: () => boolean;
+  /** Marks the child closed and clears both timers. */
+  close: () => void;
+}
+
+interface KillSwitchOptions {
+  timeoutMs: number | undefined;
+  graceMs: number;
+  note: (message: string) => void;
+}
+
+function createKillSwitch(child: { readonly pid?: number | undefined }, { timeoutMs, graceMs, note }: KillSwitchOptions): KillSwitch {
+  let closed = false;
+  let timedOut = false;
+  let timeoutTimer: NodeJS.Timeout | undefined;
+  let graceTimer: NodeJS.Timeout | undefined;
+  const terminate = (): void => {
+    if (child.pid === undefined || closed) { return; }
+    const pid = child.pid;
+    killTree(pid, "SIGTERM");
+    graceTimer ??= setTimeout(() => {
+      if (closed) { return; }
+      note("The process ignored SIGTERM; sending SIGKILL");
+      killTree(pid, "SIGKILL");
+    }, graceMs);
+  };
+  if (timeoutMs !== undefined) {
+    timeoutTimer = setTimeout(() => {
+      if (closed) { return; }
+      timedOut = true;
+      note("The process timed out; sending SIGTERM");
+      terminate();
+    }, timeoutMs);
+  }
+  return {
+    terminate,
+    timedOut: () => timedOut,
+    close: () => {
+      closed = true;
+      clearTimeout(timeoutTimer);
+      clearTimeout(graceTimer);
+    },
+  };
 }
 
 export function runCancellable(
   executable: string, args: string[], cwd: string, signal: AbortSignal, options: CancellableOptions = {},
 ): Promise<RunOutcome> {
   if (signal.aborted) { return Promise.reject(new BuildCancelled()); }
+  const { timeoutMs, logger, separateStreams = false } = options;
+  const graceMs = options.killGraceMs ?? DEFAULT_KILL_GRACE_MS;
   return new Promise((resolve, reject) => {
     const child = spawn(executable, args, {
       cwd, env: options.env ?? process.env, shell: options.shell ?? false, detached: process.platform !== "win32", windowsHide: true, stdio: ["ignore", "pipe", "pipe"],
     });
-    let output = "";
-    const collect = (chunk: Buffer): void => {
-      const text = chunk.toString("utf8");
-      output = (output + text).slice(-OUTPUT_LIMIT);
-      options.onOutput?.(text);
+    const tail = createOutputTail(separateStreams, options.onOutput);
+    const note = (message: string): void => {
+      void logger?.log("WARN", MODULE_RUN, message, { executable, pid: child.pid, timeoutMs, killGraceMs: graceMs }).catch(() => undefined);
     };
-    const onAbort = (): void => { if (child.pid !== undefined) { killTree(child.pid); } };
-    child.stdout.on("data", collect);
-    child.stderr.on("data", collect);
+    child.stdout.on("data", tail.collect("stdout"));
+    child.stderr.on("data", tail.collect("stderr"));
+    const onAbort = (): void => { kill.terminate(); };
     signal.addEventListener("abort", onAbort, { once: true });
-    child.on("error", (error) => {
+    const kill = createKillSwitch(child, { timeoutMs, graceMs, note });
+    const cleanup = (): void => {
+      kill.close();
       signal.removeEventListener("abort", onAbort);
+    };
+    child.on("error", (error) => {
+      cleanup();
       reject(error);
     });
     child.on("close", (code) => {
-      signal.removeEventListener("abort", onAbort);
-      if (signal.aborted) { reject(new BuildCancelled()); } else { resolve({ code, output }); }
+      cleanup();
+      if (signal.aborted) { reject(new BuildCancelled()); }
+      else if (kill.timedOut()) { reject(new ProcessTimedOut(timeoutMs ?? 0)); }
+      else { resolve(tail.outcome(code)); }
     });
   });
 }
