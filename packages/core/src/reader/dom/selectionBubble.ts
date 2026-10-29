@@ -1,5 +1,5 @@
 /**
- * Shows a floating bubble over a text selection: five highlight colours, "copy with citation" and, in a build preview, "comment".
+ * Shows a floating bubble over a text selection: five highlight colours, "send to…", "copy with citation" and, in a build preview, "comment".
  */
 import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
 import type { ReaderContext } from "./readerSession.js";
@@ -40,6 +40,10 @@ export class SelectionBubble {
       add.addEventListener("click", () => this.highlight(ANNOTATION_COLORS[0]!, true));
       this.el.append(renderElement("div", { class: "rd-pill-sep" }), add);
     }
+    const send = renderReaderIconButton(renderIcon("send"), "Send to…", "rd-btn-sm");
+    send.setAttribute("aria-label", "Send to…");
+    send.addEventListener("click", () => this.sendToNote());
+    this.el.append(renderElement("div", { class: "rd-pill-sep" }), send);
     const cite = renderReaderIconButton(renderIcon("quote"), `Copy with citation (${mod}+Shift+C)`, "rd-btn-sm");
     cite.addEventListener("click", () => this.copyWithCitation());
     this.el.append(renderElement("div", { class: "rd-pill-sep" }), cite);
@@ -92,6 +96,15 @@ export class SelectionBubble {
     const info = this.currentSelection();
     if (!info) { return; }
     this.ctx.host.post({ command: "copyWithCitation", text: info.text, pageNumber: info.pageNumber });
+    this.hide();
+  }
+
+  /** Sends the current selection to the host to be appended to a chosen note; it creates no highlight. */
+  private sendToNote(): void {
+    const info = this.currentSelection();
+    if (!info) { return; }
+    this.ctx.host.post({ command: "sendToNote", text: info.text, pageNumber: info.pageNumber });
+    window.getSelection()?.removeAllRanges();
     this.hide();
   }
 

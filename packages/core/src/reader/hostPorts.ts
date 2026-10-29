@@ -74,6 +74,8 @@ export interface ReaderHostPorts {
   sidecarChanged?(change: SidecarChange): void;
   /** Adds a citation of a paper to a writing project; present only when the host has projects to cite in. */
   citeInProject?(request: CitationInProjectRequest): Promise<void>;
+  /** Appends a selection to a note the host lets the user pick; the host owns the picker, the write and the success notice. Absent when the host cannot send. */
+  sendToNote?(request: { key: string; page: number; text: string }): Promise<void>;
   /** Present only when the reader previews a build. */
   preview?: PreviewPorts;
   now?: () => number;

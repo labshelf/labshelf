@@ -3,3 +3,4 @@ export * from "./sendBody.js";
 export * from "./sendTo.js";
 export * from "./projectNoteWriter.js";
 export * from "./recentTargets.js";
+export * from "./targetChoices.js";

@@ -240,7 +240,7 @@ export const sessionHandlers: Pick<
 
 export const shareHandlers: Pick<
   MessageAnswers,
-  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject"
+  "copyText" | "copyWithCitation" | "exportAnnotations" | "openExternalLink" | "citeInProject" | "sendToNote"
 > = {
   copyText: async (ctx, msg) => {
     await ctx.ports.writeClipboard(msg.text);
@@ -265,6 +265,20 @@ export const shareHandlers: Pick<
       ...(msg.page === undefined ? {} : { page: msg.page }),
       ...(msg.quote === undefined ? {} : { quote: msg.quote }),
     });
+  },
+
+  sendToNote: async (ctx, msg) => {
+    const { ports } = ctx;
+    if (!ports.sendToNote) {
+      ports.notify("Send to is not available here", "info");
+      return;
+    }
+    try {
+      await ports.sendToNote({ key: ports.paper.citeKey, page: msg.pageNumber, text: msg.text });
+    } catch (error) {
+      void ports.logger.error(READER_LOG_MODULE, error, { paperId: ports.paper.id });
+      ports.notify(`Failed to send: ${formatError(error)}`, "error");
+    }
   },
 
   exportAnnotations: (ctx, msg) => exportAnnotations(ctx.ports, msg.target),
