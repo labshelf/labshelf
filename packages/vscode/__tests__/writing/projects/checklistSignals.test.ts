@@ -11,7 +11,7 @@ import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtu
 
 describe("openProjectSignals", () => {
   const emptySignals = (todo = ""): ChecklistSignals => ({
-    sources: [], todos: todo ? [{ file: "main.tex", line: 0, text: todo } as never] : [], brokenRefs: [], staleFigures: [], manual: [], noteTasks: [], noteTitles: new Map(),
+    sources: [], todos: todo ? [{ file: "main.tex", line: 0, text: todo } as never] : [], brokenRefs: [], staleFigures: [], manual: [], noteTasks: [], noteOrigins: [], noteTitles: new Map(),
   });
   const withPages = (folder: string, pages: number | undefined) =>
     readyEntry(folder, { settings: { id: "paper", format: "latex", ...(pages === undefined ? {} : { check: { pages, anonymous: true } }) } as never }) as ReadyProject;

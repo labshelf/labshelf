@@ -127,8 +127,10 @@ describe("13.1a scanOrigins", () => {
       ["latex", LATEX_MANUSCRIPT],
       ["typst", TYPST_MANUSCRIPT],
     ] as const) {
-      const [first, second] = scanOrigins(language, text);
-      expect(second.line).toBeGreaterThan(first.line);
+      const found = scanOrigins(language, text);
+      expect(found).toHaveLength(2);
+      const [first, second] = found;
+      expect(second!.line).toBeGreaterThan(first!.line);
     }
   });
 
@@ -140,7 +142,9 @@ describe("13.1a scanOrigins", () => {
   });
 
   it("13.1a spans the whole equation block in the LaTeX range", () => {
-    const [first] = scanOrigins("latex", LATEX_MANUSCRIPT);
+    const found = scanOrigins("latex", LATEX_MANUSCRIPT);
+    expect(found.length).toBeGreaterThan(0);
+    const first = found[0]!;
     expect(first.insertedRange.end.line - first.insertedRange.start.line).toBeGreaterThanOrEqual(3);
   });
 
@@ -177,7 +181,9 @@ describe("13.1b states computed from a scanned manuscript", () => {
     const latex = "E = mc^2";
     const hash = await deriveOriginHash(latex);
     const text = `\\begin{equation}\n${latex}\n\\label{eq-energy}\n\\end{equation} ${formatOriginComment("latex", { notePath: "notes/physics.qmd", label: "eq-energy", hash })}\n`;
-    const [origin] = scanOrigins("latex", text);
+    const scanned = scanOrigins("latex", text);
+    expect(scanned).toHaveLength(1);
+    const origin = scanned[0]!;
     expect(origin.hash).toBe(hash);
     expect(deriveOriginState(origin, await deriveOriginHash(latex), { hash })).toBe("fresh");
     expect(deriveOriginState(origin, await deriveOriginHash("E = m c^2 + 1"), { hash })).toBe("diverged");

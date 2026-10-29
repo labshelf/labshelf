@@ -25,7 +25,7 @@ describe("checklistView", () => {
   const MAIN = "\\section{Intro}\n\\TODO{one}\n\\section{Method}\n\\cite{smith}\n";
   const signalsWith = (over: Partial<ChecklistSignals> = {}): ChecklistSignals => ({
     sources: [{ path: "main.tex", format: "latex", text: MAIN }, { path: "chap.tex", format: "latex", text: "x\n" }],
-    todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks: [], noteTitles: new Map(), ...over,
+    todos: [], brokenRefs: [], staleFigures: [], manual: [], noteTasks: [], noteOrigins: [], noteTitles: new Map(), ...over,
   });
   const paper = (key: string, status: PaperRecord["status"], statusChangedAt?: string): ReadingList["entries"][number] => ({
     key, cited: true, listed: false, opened: true,
@@ -226,7 +226,7 @@ describe("checklistManualItems", () => {
       current: undefined as unknown,
       onDidChange: changed.event,
       refresh: jest.fn(async () => {
-        signals.current = { project, signals: { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: await readManualItems(createNodeProjectReadCompositionRoot(logger), folder), noteTasks: [], noteTitles: new Map() }, pageOverflow: undefined, pageCount: undefined };
+        signals.current = { project, signals: { sources: [], todos: [], brokenRefs: [], staleFigures: [], manual: await readManualItems(createNodeProjectReadCompositionRoot(logger), folder), noteTasks: [], noteOrigins: [], noteTitles: new Map() }, pageOverflow: undefined, pageCount: undefined };
         changed.fire();
       }),
     };

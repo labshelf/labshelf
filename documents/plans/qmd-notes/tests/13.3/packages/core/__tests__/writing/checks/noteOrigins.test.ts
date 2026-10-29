@@ -15,7 +15,7 @@ const missing: Origin = { file: "main.tex", line: 14, notePath: "notes/d.qmd", l
 function input(noteOrigins: readonly Origin[]): ChecklistInput {
   return {
     todos: [], brokenRefs: [], staleFigures: [], pageOverflow: undefined, manual: [], reading: [],
-    noteTasks: [], noteOrigins,
+    noteTasks: [], noteOrigins, noteTitles: new Map(),
     placeSection: () => section, citeSections: new Map(),
   } as ChecklistInput;
 }
@@ -61,7 +61,7 @@ describe("noteOrigins in the checklist", () => {
   it("13.3a renders a row with the file, the line and the state in the sidebar", () => {
     const checklist = buildChecklist(input([stale, diverged]), "kind");
     const tree = deriveChecklistSidebarNodes({
-      paths: posixPathOps, checklist, grouping: "kind", pageCount: undefined, reading: new Map(), isExpanded: (_id, byDefault) => byDefault,
+      paths: posixPathOps, checklist, grouping: "kind", pageCount: undefined, reading: new Map(), noteTitles: new Map(), isExpanded: (_id, byDefault) => byDefault,
     });
     const group = tree.nodes.find((node) => node.label === "References");
     const rows = group?.children ?? [];

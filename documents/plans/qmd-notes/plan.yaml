@@ -442,6 +442,8 @@ sessions:
       - documents/contracts/links.md
       - packages/core/__tests__/writing/noteLinks/
       - packages/core/__tests__/writing/checks/
+      - packages/vscode/__tests__/spaces/view.test.ts
+      - packages/vscode/__tests__/writing/projects/
   - id: 13b
     file: sessions/13b.yaml
     depends_on:
