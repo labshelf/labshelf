@@ -14,7 +14,13 @@ owns:
   - packages/core/__tests__/qmd/projectNotes/
   - packages/core/__tests__/qmd/sendTo/
   - packages/core/__tests__/writing/checks/
-status: pending
+  - packages/browser/src/writing/session.ts
+  - packages/vscode/src/writing/projects/checklist.ts
+  - packages/vscode/__tests__/spaces/view.test.ts
+  - packages/vscode/__tests__/writing/projects/checklist.test.ts
+  - packages/vscode/__tests__/writing/projects/checklistSignals.test.ts
+  - packages/vscode/__tests__/writing/projects/sidebar.test.ts
+status: blocked
 packages:
   - id: "9.1"
     plan: qmd-notes
@@ -127,6 +133,15 @@ packages:
       - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
         lines: 1-200
         why: ProjectNotesStore (created by 9.1)
+      - path: packages/core/src/qmd/item/itemFile.ts
+        lines: 1-395
+        why: "ITEM_CLASS (:7), ItemSegment/ItemFile (:10-44), splitLines (:45), findCodeFences (:71), parseDivOpener (:118), findTopLevelDivs (:182), parseItemFile (:341): the `.labshelf-item` block syntax and the line mapping"
+      - path: packages/core/src/qmd/item/cellOutput.ts
+        lines: 1-75
+        why: OUTPUT_CLASS and findOutputs, the `.labshelf-output` block syntax
+      - path: packages/core/src/qmd/item/index.ts
+        lines: 1-5
+        why: item module exports
     seams:
       - path: packages/core/src/writing/checks/noteTasks.ts
         signature: "export interface NoteTask { file: string; itemId: string; line: number; text: string; done: boolean }"
@@ -271,3 +286,48 @@ packages:
         check: contracts describe `notes/*.qmd` and the derived checklist
     tests:
       none: docs
+  - id: "9.10"
+    plan: qmd-notes
+    goal: Finisher follow-ups — a test for the noteTask title tooltip, and the shared helpers instead of private copies.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "9.2"
+      - "9.3"
+    edit:
+      - path: packages/core/__tests__/writing/checks/checklistSidebar.test.ts
+        lines: 1-400
+        why: add one case with a noteTask item and a non-empty `noteTitles`
+      - path: packages/core/src/qmd/projectNotes/projectNotesStore.ts
+        lines: 40-110
+        why: private `baseName` (:48) strips `.qmd`; use `stemOf` from `core/src/path` instead (keep behaviour)
+      - path: packages/core/src/qmd/sendTo/recentTargets.ts
+        lines: 1-30
+        why: private `isString` (:9); import it from `core/src/guards`
+    read:
+      - path: packages/core/src/writing/checks/checklistSidebar.ts
+        lines: 1-140
+        why: ChecklistTreeInput.noteTitles and the noteTask row tooltip
+      - path: packages/core/src/path/pathStrings.ts
+        lines: 1-30
+        why: baseName, stemOf
+      - path: packages/core/src/guards/primitives.ts
+        lines: 1-10
+        why: isString
+    decided:
+      - The sidebar test asserts a noteTask row's tooltip is the note title from `noteTitles`, and the file path when the map has no entry.
+      - "`projectNotesStore.ts` drops its private `baseName` and uses `stemOf` (only for paths already filtered to end in `.qmd`); `recentTargets.ts` drops its private `isString` and imports the shared one. No behaviour change."
+      - The satellite files `noteSlug.ts` and `sendBody.ts` stay as the specs decided; folding them is left to the next lint milestone.
+    acceptance:
+      - id: 9.10a
+        check: the new sidebar test passes and the projectNotes and sendTo tests still pass
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/checks/checklistSidebar.test.ts packages/core/__tests__/qmd/projectNotes/projectNotesStore.test.ts packages/core/__tests__/qmd/sendTo/sendTo.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+    do_not_touch:
+      - apps
+blocked_reason: "9.10: no report"

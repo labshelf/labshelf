@@ -91,7 +91,7 @@ async function checklistNodes(context: ProjectReadContext, project: ReadyProject
   const checklist = buildChecklist({
     ...signals, pageOverflow: undefined, reading: [], placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
   }, grouping);
-  return deriveChecklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), isExpanded: (_, byDefault) => byDefault }).nodes;
+  return deriveChecklistSidebarNodes({ paths: posixPathOps, checklist, grouping, pageCount: undefined, reading: new Map(), noteTitles: signals.noteTitles, isExpanded: (_, byDefault) => byDefault }).nodes;
 }
 
 export function createOpenProjectSnapshot({ fs, logger }: OpenProjectSnapshotOptions): OpenProjectSnapshot {

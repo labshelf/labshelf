@@ -11,7 +11,7 @@ describe("sidebarProjectsSource", () => {
   const DEBOUNCE_MS = 300;
   const flush = async (): Promise<void> => { for (let i = 0; i < 10; i++) { await Promise.resolve(); } };
   const signals = (open: number) => ({
-    sources: [], todos: Array.from({ length: open }, (_, i) => ({ file: "main.tex", line: i, text: "x", kind: "TODO" })), brokenRefs: [], staleFigures: [], manual: [],
+    sources: [], todos: Array.from({ length: open }, (_, i) => ({ file: "main.tex", line: i, text: "x", kind: "TODO" })), brokenRefs: [], staleFigures: [], manual: [], noteTasks: [], noteTitles: new Map(),
   }) as never;
 
   function setup(options: { entries: ProjectEntry[]; open?: number; last?: { ok: boolean; at: Date }; failSignals?: boolean }) {

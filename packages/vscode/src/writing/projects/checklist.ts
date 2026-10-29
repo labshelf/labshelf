@@ -87,7 +87,7 @@ export interface ChecklistViewDeps {
 
 interface ReadingCache { folder: string; items: ReadingItem[]; papers: Map<string, ReadingPaper> }
 
-interface Rendered { project: ReadyProject; grouping: ChecklistGrouping; checklist: Checklist; pageCount: ProjectSignals["pageCount"] }
+interface Rendered { project: ReadyProject; grouping: ChecklistGrouping; checklist: Checklist; pageCount: ProjectSignals["pageCount"]; noteTitles: ReadonlyMap<string, string> }
 
 export class ChecklistView implements vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
@@ -113,9 +113,9 @@ export class ChecklistView implements vscode.Disposable {
   nodes(): SidebarTreeNode[] {
     const rendered = this.rendered;
     if (!rendered) { this.items.clear(); this.groups.clear(); return []; }
-    const { project, grouping, checklist, pageCount } = rendered;
+    const { project, grouping, checklist, pageCount, noteTitles } = rendered;
     const tree = deriveChecklistSidebarNodes({
-      paths: this.deps.paths, checklist, grouping, pageCount, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
+      paths: this.deps.paths, checklist, grouping, pageCount, noteTitles, reading: this.reading?.folder === project.folder ? this.reading.papers : new Map(),
       isExpanded: (groupId, byDefault) => this.memory.isExpanded(project.folder, grouping, groupId, byDefault),
     });
     this.items = tree.items;
@@ -278,7 +278,7 @@ export class ChecklistView implements vscode.Disposable {
     const checklist = buildChecklist({
       ...signals, pageOverflow, reading, placeSection: createSectionPlacer(signals.sources, main), citeSections: deriveCitationSections(signals.sources, main),
     }, grouping);
-    this.rendered = { project, grouping, checklist, pageCount };
+    this.rendered = { project, grouping, checklist, pageCount, noteTitles: signals.noteTitles };
     this.changeEmitter.fire();
   }
 
