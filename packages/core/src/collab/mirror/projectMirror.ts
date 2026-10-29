@@ -15,8 +15,7 @@ import { DISK_ORIGIN, LOG_MODULE, reconcileShareBlob, reconcileUntracked, writeM
 import { MirrorLostError } from "./projectLease.js";
 import { MirrorProjectDirUnavailable, type MirrorFileRead, type MirrorFileSystem } from "./mirrorFileSystem.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
-import { reconcileText } from "./textMirror.js";
-import { reconcileQmd } from "../../qmd/collab/sharedQmdMirror.js";
+import { reconcileQmd, reconcileText } from "./textMirror.js";
 
 async function reconcileComments(context: MirrorContext, disk: MirrorFileRead): Promise<ReconcileOutcome> {
   if (disk.state === "changing") { return "changing"; }

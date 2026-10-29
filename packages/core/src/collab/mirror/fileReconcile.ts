@@ -12,7 +12,7 @@ import { type ShareSession } from "../docSync.js";
 import type { CollabStore } from "../session/index.js";
 import type { MirrorFileRead, MirrorFileSystem } from "./mirrorFileSystem.js";
 import type { ReconcileOutcome } from "./pathQueue.js";
-import { setQmdDocText } from "../../qmd/collab/sharedQmdDoc.js";
+import { setQmdDocText } from "../../qmd/index.js";
 
 export const LOG_MODULE = "collab.mirror";
 /** The transaction origin of every edit the mirror makes to the share from disk. */

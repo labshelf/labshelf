@@ -1,7 +1,7 @@
 // Reconciles a shared text file with its disk copy while preserving edits across versions.
 import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { Doc } from "yjs";
-import { readQmdDocText, setQmdDocText } from "../../qmd/collab/sharedQmdDoc.js";
+import { readQmdDocText, setQmdDocText } from "../../qmd/index.js";
 import { readFileText, setFileText } from "../sharedFiles.js";
 import { readShareIndexDocFiles, readWrittenHashes } from "../shareIndexDoc.js";
 import {
@@ -36,21 +36,21 @@ const decodeText = (bytes: Uint8Array): string | undefined => {
 };
 
 /** How a mirror reads a shared doc's file text and sets it; a text doc and a .qmd doc differ only here. */
-export interface DocTextAccess {
+interface DocTextAccess {
   read(doc: Doc): string;
   write(doc: Doc, text: string, origin: unknown): void;
 }
 
 const TEXT_ACCESS: DocTextAccess = { read: (doc) => readFileText(doc).toString(), write: setFileText };
 /** A `qmd` entry's doc holds items, not a Y.Text; the echo guard and merging are the ones of text docs. */
-export const QMD_ACCESS: DocTextAccess = { read: (doc) => readQmdDocText(doc), write: (doc, text, origin) => setQmdDocText(doc, text, origin) };
+const QMD_ACCESS: DocTextAccess = { read: (doc) => readQmdDocText(doc), write: (doc, text, origin) => setQmdDocText(doc, text, origin) };
 
 export function reconcileText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
   const qmd = readShareIndexDocFiles(context.session.index).get(path)?.kind === "qmd";
   return reconcileDocText(context, path, disk, settled, qmd ? QMD_ACCESS : TEXT_ACCESS);
 }
 
-export async function reconcileDocText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean, access: DocTextAccess): Promise<ReconcileOutcome> {
+async function reconcileDocText(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean, access: DocTextAccess): Promise<ReconcileOutcome> {
   const { session, store, logger } = context;
   const known = store.known.get(path);
   if (disk.state === "changing") { return "changing"; }
@@ -111,4 +111,9 @@ async function reconcileMissing(context: MirrorContext, path: string, settled: b
   removeMirroredPath(context, path);
   await context.logger.log("INFO", LOG_MODULE, "Removed a file deleted on disk from the share", { folder: context.folder, path });
   return "done";
+}
+
+/** Reconciles a shared .qmd file with its disk copy: disk edits become an item-level diff of the doc, doc edits are written as the serialized file. Same echo guard, merge and outcomes as a text doc; only reading and setting the doc's text differ. */
+export function reconcileQmd(context: MirrorContext, path: string, disk: MirrorFileRead, settled: boolean): Promise<ReconcileOutcome> {
+  return reconcileDocText(context, path, disk, settled, QMD_ACCESS);
 }
