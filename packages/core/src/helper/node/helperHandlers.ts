@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 
 import type { ILogger } from "../../ports/index.js";
 import { formatError } from "../../errors/index.js";
+import type { PythonStatus } from "../../qmd/compute/node/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type HelperParseResult, type TexToolchain, type ToHelperMessage, type ToPageMessage } from "../helperMessages.js";
 import { parseHelperMessage } from "../parseHelperMessage.js";
 import { HelperProjectError } from "./helperProjects.js";
@@ -31,6 +32,8 @@ export interface HelloOptions {
   host: HelperHost;
   /** Read on each hello, since an install changes it. */
   texStatus(): Promise<TexToolchain>;
+  /** Read on each hello when given; the `ready` then carries whether Python is installed. */
+  pythonStatus?(): Promise<PythonStatus>;
   /** The caller origin Chrome passed on the command line, when it did. */
   callerOrigin?: string | undefined;
   logger: HelperLogger;
@@ -49,7 +52,12 @@ export async function answerHello(message: HelloMessage, send: HelperSend, optio
   const token = randomBytes(32).toString("base64url");
   logger.redact(token);
   const socket = await startHelperServer({ token, origin, callerOrigin: options.callerOrigin, logger, handle: options.handle });
-  send({ v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex: await options.texStatus() });
+  const tex = await options.texStatus();
+  const python = options.pythonStatus && (await options.pythonStatus()).state;
+  send({
+    v: PROTOCOL_VERSION, id, type: "ready", protocol: PROTOCOL_VERSION, helperVersion: options.helperVersion, host: options.host, tex,
+    ...(python && { python }),
+  });
   send({ v: PROTOCOL_VERSION, id, type: "session", port: socket.port, token });
   await logger.log("INFO", SESSION_LOG_MODULE, "Session started", { port: socket.port, origin, extensionVersion: message.extensionVersion });
   return socket;

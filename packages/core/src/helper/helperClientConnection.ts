@@ -154,7 +154,7 @@ function deriveVersionErrorStatus(error: HelperVersionError, pageProtocol: numbe
 export function deriveHelperStatus(ready: Extract<ToPageMessage, { type: "ready" }>, pageProtocol: number): HelperState {
   if (ready.protocol < pageProtocol) { return { state: "update-helper", protocol: ready.protocol, host: ready.host }; }
   if (ready.protocol > pageProtocol) { return { state: "update-extension", protocol: ready.protocol }; }
-  return { state: "ready", helperVersion: ready.helperVersion, tex: ready.tex, host: ready.host };
+  return { state: "ready", helperVersion: ready.helperVersion, tex: ready.tex, host: ready.host, ...(ready.python && { python: ready.python }) };
 }
 
 export interface HandshakeDeps {

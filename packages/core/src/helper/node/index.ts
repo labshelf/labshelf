@@ -5,6 +5,8 @@ export type { HelperLogger } from "./helperPrivacy.js";
 export { assertHelperPrivatePaths } from "./helperPrivacy.js";
 export { runHelperBiber } from "./runHelperScriptHost.js";
 export { BIBER_ASSET_FILES, BIBER_FLAG, parseBiberReleaseManifest, type BiberWasmAssets } from "../../latex/biber/index.js";
+export { createPythonHandlers } from "./pythonHandlers.js";
+export type { PythonHandlersOptions } from "./pythonHandlers.js";
 export { runHelperHost } from "./runHelperHost.js";
 export type { HelperHostOptions } from "./runHelperHost.js";
 export { runHelperScriptHost } from "./runHelperScriptHost.js";

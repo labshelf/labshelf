@@ -156,7 +156,15 @@ class NativeLatexHelper implements ILatexHelper {
       if (m.type === "progress") onProgress(deriveProgress(m));
       return m.type === "ready" ? { done: m } : undefined;
     });
-    this.session.status = deriveHelperStatus(ready, PROTOCOL_VERSION);
+    const previous = this.session.status;
+    const status = deriveHelperStatus(ready, PROTOCOL_VERSION);
+    // A `ready` without `python` (the TeX installs') leaves the last known value.
+    const kept = previous?.state === "ready" && previous.python !== undefined ? previous.python : undefined;
+    this.session.status = status.state === "ready" && status.python === undefined && kept ? { ...status, python: kept } : status;
+  }
+
+  installPython(onProgress: OnHelperProgress): Promise<void> {
+    return this.logged("installPython", {}, () => this.install({ type: "installPython" }, onProgress));
   }
 
   installTex(kind: "tinytex" | "texlive", onProgress: OnHelperProgress): Promise<void> {

@@ -8,7 +8,7 @@ import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_EDIT_CHANGES, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, TEX_SOURCES,
+  COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_EDIT_CHANGES, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
   type ChangedPage, type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type TemplatePublishEvent, type TemplatePublishRequest, type TexToolchain, type TextChange, type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
@@ -200,6 +200,7 @@ const TO_HELPER_READERS: ToHelperReaders = {
   cancel: (body, envelope) => ({ ...envelope, type: "cancel", projectId: readProjectId(body) }),
   installTex: (body, envelope) => ({ ...envelope, type: "installTex", kind: readChoice(body, "kind", TEX_INSTALL_KINDS) }),
   installAllPackages: (_body, envelope) => ({ ...envelope, type: "installAllPackages" }),
+  installPython: (_body, envelope) => ({ ...envelope, type: "installPython" }),
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -256,6 +257,7 @@ const TO_PAGE_READERS: ToPageReaders = {
   ready: (body, envelope) => ({
     ...envelope, type: "ready", protocol: readNumber(body, "protocol", isPositiveInteger),
     helperVersion: readText(body, "helperVersion"), host: readChoice(body, "host", HELPER_HOSTS), tex: readTex(body),
+    ...readOptionalField(body, "python", (b, k) => readChoice(b, k, PYTHON_STATES)),
   }),
   session: (body, envelope) => ({
     ...envelope, type: "session", port: readNumber(body, "port", (n) => Number.isInteger(n) && n >= 1 && n <= 65535),

@@ -6,7 +6,7 @@ import type { LatexEngine } from "../writing/project/index.js";
 import {
   MAX_PATH_LENGTH, MAX_SOCKET_MESSAGE_BYTES,
   type BuildKind, type HelperBuildState, type HelperHost, type HelperProgress, type TemplatePublishEvent, type TemplatePublishRequest,
-  type TexToolchain, type TextChange,
+  type PythonState, type TexToolchain, type TextChange,
 } from "./helperMessages.js";
 
 // INVARIANT: matches what deriveProjectIdSlug produces, so every id LabShelf derives passes and none can name a parent folder.
@@ -86,7 +86,7 @@ export type HelperState =
   | { state: "not-installed" }
   | { state: "update-helper"; protocol: number; host: HelperHost | undefined }
   | { state: "update-extension"; protocol: number }
-  | { state: "ready"; helperVersion: string; tex: TexToolchain; host: HelperHost };
+  | { state: "ready"; helperVersion: string; tex: TexToolchain; host: HelperHost; python?: PythonState };
 
 export type OnHelperProgress = (progress: HelperProgress) => void;
 

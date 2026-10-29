@@ -6,7 +6,7 @@ import type { HostToGallery, PublishDraft, PublishFromHost } from "../templates/
 import type { LatexEngine } from "../writing/project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 5;
+export const PROTOCOL_VERSION = 6;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
 export const HELPER_VERSION = "0.3.0";
 
@@ -19,11 +19,13 @@ export const MAX_EDIT_CHANGES = 10000;
 export const MAX_PATH_LENGTH = 260;
 
 export const TEX_SOURCES = ["none", "tinytex", "texlive", "system"] as const;
+export const PYTHON_STATES = ["missing", "installed"] as const;
+export type PythonState = (typeof PYTHON_STATES)[number];
 export type TexSource = (typeof TEX_SOURCES)[number];
 /** The program that answers: the standalone LabShelf Helper, or a desktop app running the helper script. */
 export const HELPER_HOSTS = ["helper", "vscode", "terminal"] as const;
 export type HelperHost = (typeof HELPER_HOSTS)[number];
-export const PROGRESS_PHASES = ["installing-tex", "installing-package", "building", "updating"] as const;
+export const PROGRESS_PHASES = ["installing-tex", "installing-package", "python", "building", "updating"] as const;
 export type HelperPhase = (typeof PROGRESS_PHASES)[number];
 export const HELPER_BUILD_STATUSES = ["succeeded", "failed", "cancelled", "toolchain-missing", "needs-shell-escape"] as const;
 export type HelperBuildState = (typeof HELPER_BUILD_STATUSES)[number];
@@ -61,12 +63,13 @@ export type ToHelperMessage =
   | Envelope<"compile"> & { projectId: string; main: string; mode: BuildKind; engine?: LatexEngine; editedFile?: string; editedLine?: number; haltOnError?: boolean }
   | Envelope<"cancel"> & { projectId: string }
   | Envelope<"installTex"> & { kind: TexInstallKind }
-  | Envelope<"installAllPackages">;
+  | Envelope<"installAllPackages">
+  | Envelope<"installPython">;
 
 export type ToPageMessage =
   | TemplatePublishReply
   | Envelope<"templatePreview">
-  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexToolchain }
+  | Envelope<"ready"> & { protocol: number; helperVersion: string; host: HelperHost; tex: TexToolchain; python?: PythonState }
   | Envelope<"session"> & { port: number; token: string }
   | Envelope<"authed">
   | Envelope<"opened"> & { projectId: string; files: string[] }
