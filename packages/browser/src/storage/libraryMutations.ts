@@ -19,8 +19,6 @@ export interface LibraryMutations {
   setStatus(papers: Reference[], status: ReadingStatus): Promise<FieldsBatchOutcome>;
   /** Adds and removes tags on several papers. */
   editTags(papers: Reference[], add: string[], remove: string[]): Promise<FieldsBatchOutcome>;
-  /** Sets a paper's note; resolves to undefined when the paper's folder holds no paper. */
-  setNote(paper: Reference, note: string): Promise<PaperRecord | undefined>;
   /** Records the day (YYYY-MM-DD) the authors were asked for a copy; undefined when the paper's folder holds no paper. */
   setPdfRequestedAt(paper: Reference, day: string): Promise<PaperRecord | undefined>;
   /**
@@ -118,7 +116,6 @@ export function createLibraryMutations(logger: ILogger): LibraryMutations {
       for (const record of outcome.records) { await writeCachedPaperRecord(record, record.path); }
       return outcome;
     },
-    setNote: (paper, note) => updateFieldsInCache(ctx, paper.path, { note }),
     setPdfRequestedAt: (paper, day) => updateFieldsInCache(ctx, paper.path, { pdfRequestedAt: day }),
     async recordPdfAttached(record, version) {
       const { textLayer: _stale, ...current } = (await readPaperOnFileSystem(ctx, record.path)) ?? record;

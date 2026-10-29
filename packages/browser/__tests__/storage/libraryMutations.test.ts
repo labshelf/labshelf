@@ -106,25 +106,6 @@ describe("libraryMutations", () => {
     });
   });
 
-  describe("setNote", () => {
-    it("writes the note to metadata.yaml and the cache", async () => {
-      const record = paper("a2020");
-      seed(record, "title: A\nstatus: unread\ncitekey: a2020\n");
-
-      const written = await mutations.setNote({ id: record.id, path: record.path }, "Read chapter 3 again");
-
-      expect(written?.note).toBe("Read chapter 3 again");
-      expect(textAt("papers/a2020/metadata.yaml")).toMatch(/Read chapter 3 again/);
-      expect(mockCache.get("a2020")?.note).toBe("Read chapter 3 again");
-    });
-
-    it("resolves to undefined for a paper whose folder is gone and leaves the cache alone", async () => {
-      mockCache.set("gone", paper("gone"));
-      expect(await mutations.setNote({ id: "gone", path: "papers/gone" }, "x")).toBeUndefined();
-      expect(mockCache.get("gone")?.note).toBeUndefined();
-    });
-  });
-
   describe("setPdfRequestedAt", () => {
     it("writes the day to metadata.yaml and the cache", async () => {
       const record = paper("a2020");
@@ -159,13 +140,13 @@ describe("libraryMutations", () => {
   });
 
   describe("recordPdfAttached version", () => {
-    it("writes the version to the yaml and the cache, keeping status, tags and note", async () => {
-      const record = paper("a2020", "papers", { tags: ["nlp"], note: "keep me" });
-      seed(record, "title: A\nstatus: reading\ncitekey: a2020\ntags: [nlp]\nnote: keep me\n");
+    it("writes the version to the yaml and the cache, keeping status and tags", async () => {
+      const record = paper("a2020", "papers", { tags: ["nlp"] });
+      seed(record, "title: A\nstatus: reading\ncitekey: a2020\ntags: [nlp]\n");
 
       const written = await mutations.recordPdfAttached(record, "accepted");
 
-      expect(written).toMatchObject({ pdfVersion: "accepted", status: "reading", tags: ["nlp"], note: "keep me", hasPdf: true });
+      expect(written).toMatchObject({ pdfVersion: "accepted", status: "reading", tags: ["nlp"], hasPdf: true });
       expect(textAt("papers/a2020/metadata.yaml")).toMatch(/pdfVersion: accepted/);
       expect(mockCache.get("a2020")?.pdfVersion).toBe("accepted");
     });

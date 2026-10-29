@@ -5,17 +5,19 @@
 import * as vscode from 'vscode';
 import {
   PDF_FILE,
+  addPaperNote,
   createPaperFiles,
   createSidecarReader,
   derivePaperDetails,
+  editPaperNote,
   formatError,
   formatKeptFieldNotice,
   isShareMessage,
   movePaperFolders,
   parseUiMessage,
+  removePaperNote,
   removePapers,
   sendPaperDetails,
-  setPaperNote,
   setPaperTags,
   type HostToUi,
   type ILogger,
@@ -252,7 +254,7 @@ function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
     notice: (kind, text) => ctx.notice(kind, text),
     refresh: async () => {},
     editTags: (ids, add, remove) => service.editTags([...ids], add, remove),
-    setNote: async (id, note) => !!(await service.updatePaperFields(id, { note })),
+    ...(ctx.deps.paperNotes ? { notes: ctx.deps.paperNotes } : {}),
     trashPapers: (papers) => service.trashPapers(papers.map((p) => p.id)),
     movePapers: (ids, target) => service.movePapers([...ids], target),
     folderName: (target) => (target === ctx.paths()?.root ? undefined : ctx.deps.pathOps.basename(target)),
@@ -281,8 +283,9 @@ const FAILURE: Partial<Record<UiToHost['type'], string>> = {
   'paper.addToSpace': 'Could not add papers to Space',
   'folder.create': 'Could not create the folder', 'folder.rename': 'Could not rename the folder', 'folder.delete': 'Could not delete the folder',
   'paper.move': 'Could not move the papers', 'paper.remove': 'Could not remove the papers', 'paper.setStatus': 'Could not change the status',
-  'paper.setTags': 'Could not change the tags', 'project.openSource': 'Could not open the source', 'paper.setNote': 'Could not save the note', 'clipboard.write': 'Could not copy',
+  'paper.setTags': 'Could not change the tags', 'project.openSource': 'Could not open the source', 'clipboard.write': 'Could not copy',
   'paper.describeFile': 'Could not save the file description', 'paper.openFile': 'Could not open the file',
+  'paper.addNote': 'Could not add the note', 'paper.editNote': 'Could not save the note', 'paper.removeNote': 'Could not remove the note',
   'paper.revealFile': 'Could not reveal the file', 'paper.copyFilePath': 'Could not copy the path',
 };
 
@@ -297,6 +300,11 @@ async function onFolderMessage(ctx: ListHostContext, m: UiToHost, toDisk: (ui: s
     case 'paper.add': await runCommand(ctx, 'labshelf.addPaperHere', { label: m.folder.split('/').pop(), dirPath: toDisk(m.folder) }); return true;
     default: return false;
   }
+}
+
+/** A note change for a paper that is not in the library writes nothing; the throw reaches the action's failure notice. */
+async function requirePaper(ctx: ListHostContext, id: string): Promise<void> {
+  if (!(await ctx.papers([id])).length) { throw new Error('the paper is not in the library'); }
 }
 
 async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolean> {
@@ -316,7 +324,9 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.similar': await sendSimilar(ctx, m.id); return true;
     case 'paper.setStatus': await setStatus(ctx, m.ids, m.status); return true;
     case 'paper.setTags': await setPaperTags(libraryUiHost(ctx), m.ids, m.add, m.remove); return true;
-    case 'paper.setNote': await setPaperNote(libraryUiHost(ctx), m.id, m.note); return true;
+    case 'paper.addNote': await requirePaper(ctx, m.id); await addPaperNote(libraryUiHost(ctx), m.id, m.body); return true;
+    case 'paper.editNote': await requirePaper(ctx, m.id); await editPaperNote(libraryUiHost(ctx), m.id, m.itemId, m.body); return true;
+    case 'paper.removeNote': await requirePaper(ctx, m.id); await removePaperNote(libraryUiHost(ctx), m.id, m.itemId); return true;
     case 'paper.remove': await removePapers(libraryUiHost(ctx), m.ids); return true;
     case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;
     case 'clipboard.write': await writeClipboard(ctx, m.text, m.label); return true;

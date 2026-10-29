@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { deriveSnapshot, type HostToUi, type LibraryUiSnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
+import { PaperNotesStore, deriveSnapshot, type HostToUi, type LibraryUiSnapshot, type PaperEntry, type PaperRecord } from '@labshelf/core';
 import { ListWebviewPanel, listPanelHtml } from '../../src/libraryUi/listPanel';
 import { createLibraryEvents } from '../../src/library/index';
 import type { ListPanelDeps } from '../../src/libraryUi/listPanel';
@@ -180,15 +180,41 @@ describe('ListWebviewPanel — paper actions', () => {
     expect(h.last('notice')).toEqual({ type: 'notice', kind: 'error', text: '0 removed, 1 failed — "Title p1" — EPERM' });
   });
 
-  it('routes status, tags and notes to the paper service', async () => {
+  it('routes status and tags to the paper service', async () => {
     const h = open();
     await h.fire({ type: 'ready' });
     await h.fire({ type: 'paper.setStatus', ids: ['p1', 'p3'], status: 'done' });
     await h.fire({ type: 'paper.setTags', ids: ['p1', 'p2'], add: ['nlp '], remove: ['old'] });
-    await h.fire({ type: 'paper.setNote', id: 'p1', note: 'Key idea' });
     expect(h.paperService.updatePapersStatus).toHaveBeenCalledWith(['p1', 'p3'], 'done');
     expect(h.paperService.editTags).toHaveBeenCalledWith(['p1', 'p2'], ['nlp'], ['old']);
-    expect(h.paperService.updatePaperFields).toHaveBeenCalledWith('p1', { note: 'Key idea' });
+  });
+
+  it('adds, edits and removes paper notes through the notes store and shows them in the details', async () => {
+    const files = new Map<string, string>();
+    const paperNotes = new PaperNotesStore({ read: async (id) => files.get(id) ?? null, write: async (id, text) => { files.set(id, text); } });
+    const h = open(undefined, { paperNotes });
+    await h.fire({ type: 'ready' });
+    await h.fire({ type: 'paper.addNote', id: 'p1', body: 'Key idea' });
+    const added = h.last('details')!;
+    expect(added.id).toBe('p1');
+    expect(added.details.notes?.map((n) => n.body.trim())).toEqual(['Key idea']);
+    const itemId = added.details.notes![0]!.id;
+    await h.fire({ type: 'paper.editNote', id: 'p1', itemId, body: 'Better idea' });
+    expect(files.get('p1')).toContain('Better idea');
+    await h.fire({ type: 'paper.removeNote', id: 'p1', itemId });
+    expect(h.last('details')!.details.notes?.some((n) => n.id === itemId)).toBe(false);
+    expect(files.get('p1')).not.toContain('idea');
+    expect(h.paperService.updatePaperFields).not.toHaveBeenCalled();
+  });
+
+  it('writes no notes file for a paper that is not in the library and shows the failure notice', async () => {
+    const files = new Map<string, string>();
+    const paperNotes = new PaperNotesStore({ read: async (id) => files.get(id) ?? null, write: async (id, text) => { files.set(id, text); } });
+    const h = open(undefined, { paperNotes });
+    await h.fire({ type: 'ready' });
+    await h.fire({ type: 'paper.addNote', id: 'zz', body: 'x' });
+    expect(files.size).toBe(0);
+    expect(h.last('notice')).toMatchObject({ kind: 'error', text: expect.stringContaining('Could not add the note') });
   });
 
   it('writes the clipboard and says what was copied', async () => {

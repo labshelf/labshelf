@@ -1,7 +1,7 @@
 // Declares everything the extension needs from its host runtime, so activation code never touches Node directly.
 import type {
   ConflictCopy, ConflictResolution, ILogger, LibraryFileSystem, LibraryLayout, OpenAiStorage, PathOps, PdfOpener, PdfjsLoader,
-  PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectWriteTracking, SidecarPort,
+  PdfTextLayerBuilder, PdfOcrEngine, ProjectContentPort, ProjectDeviceDirs, ProjectWriteTracking, SidecarPort, PaperNotesPort,
 } from "@labshelf/core";
 import type { PdfjsLocator } from "../reader/index.js";
 import type { SharedLibraryConfig, UriOfPath } from "../library/index.js";
@@ -33,6 +33,7 @@ export interface HostAdapters {
   pdfjs: PdfjsLoader;
   createPdfTextServices(logger: ILogger): PdfTextServices;
   createSidecarPort(layout: Pick<LibraryLayout<string>, "paperDataPath" | "tmpDir">, logger: ILogger): SidecarPort;
+  createPaperNotesPort(layout: Pick<LibraryLayout<string>, "paperNotesPath" | "tmpDir">, logger: ILogger): PaperNotesPort;
   openAiStorage: OpenAiStorage;
   deviceLayout(root: string): HostDeviceLayout;
   /** Project data over the library's writing projects; logger and dirs are the open library's, which change with it. */

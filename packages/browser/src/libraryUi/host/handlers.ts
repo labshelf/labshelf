@@ -37,10 +37,7 @@ export function createLibraryUiHost(ctx: HostContext): LibraryUiHost {
     notice: ctx.notice,
     refresh: () => ctx.snapshots.refresh(),
     editTags: (ids, add, remove) => ctx.mutations.editTags(deriveReferences(ctx.papers(ids)), add, remove),
-    async setNote(id, note) {
-      const [paper] = ctx.papers([id]);
-      return !!paper && !!(await ctx.mutations.setNote({ id: paper.id, path: paper.path }, note));
-    },
+    notes: ctx.notes,
     trashPapers: (papers) => ctx.mutations.trashPapers(deriveReferences(papers)),
     movePapers: (ids, target) => ctx.mutations.movePapers(deriveReferences(ctx.papers(ids)), target),
     folderName: (target) => (target === PAPERS_DIR ? undefined : deriveBaseName(target, "/")),

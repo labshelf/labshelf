@@ -5,7 +5,7 @@
  */
 import * as vscode from 'vscode';
 import { createNonce, isUnderDir } from '@labshelf/core';
-import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperRecord, PaperService, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { LibraryEvents } from '../library/index.js';
 import { sharingWebviews } from '../share/index.js';
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from '../ui/index.js';
@@ -63,6 +63,8 @@ export interface ListPanelDeps {
   };
   /** Reads a paper's reader sidecar (annotations, reading position). Without it the panel shows no annotations. */
   loadSidecar?: (paperId: string) => Promise<PaperSidecar>;
+  /** The paper notes (notes.qmd). Without it the panel serves read-only notes. */
+  paperNotes?: PaperNotesStore;
   projectBacklinks?: ListProjectBacklinks;
   /** Papers with similar content, when the AI index is running. */
   findSimilar?: (paper: PaperRecord) => Promise<SimilarPaper[]>;

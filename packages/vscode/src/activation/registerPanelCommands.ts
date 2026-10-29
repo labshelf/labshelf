@@ -88,6 +88,7 @@ function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListP
     onDidActivate: sources.listActivated,
     textLayerJobs: { current: listTextLayerJobs, onDidChange: onTextLayerJobsChanged },
     loadSidecar: (paperId) => services.paperDataStore.load(paperId),
+    paperNotes: services.paperNotesStore,
     findSimilar: (paper) => findSimilarPapers(getAiService(), paper),
     projectBacklinks, ...(deps.addToSpace ? { addToSpace: deps.addToSpace } : {}),
     paperFiles: new PaperFileService(

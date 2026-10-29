@@ -3,7 +3,7 @@
 import {
   PAPERS_DIR, checkRelativePath, createLibraryLayout, deriveFoldersFromFilePaths, derivePdfDirs, deriveSha256Hex,
   findLibraryProjectFolder, isCaseOnlyRename, joinWith, listProjects, posixPathOps, scanLibrary as scanPapers,
-  type FolderTreeNode, type ILogger, type LibraryFileSystem, type LocalStat, type PaperRecord, type ProjectEntry, type SidecarPort,
+  type FolderTreeNode, type ILogger, type LibraryFileSystem, type LocalStat, type PaperNotesPort, type PaperRecord, type ProjectEntry, type SidecarPort,
 } from "@labshelf/core";
 import { openDb } from "./idb";
 import { createLibraryFileSystem, readLibraryLocation, type LibraryLocation } from "./libraryFileSystem";
@@ -121,20 +121,34 @@ export async function readCurrentLibraryId(): Promise<string> {
 
 const layout = createLibraryLayout("", joinWith("/"));
 
-/**
- * @returns a SidecarPort reading and writing UTF-8 JSON through the library file system; a missing file reads as null.
- */
-export function createSidecarPort(fs: Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">): SidecarPort {
+type TextFileFs = Pick<LibraryFileSystem, "stat" | "readFile" | "writeFile">;
+
+// A text file per paper at the path the layout gives; a missing file reads as null.
+function createPaperTextPort(fs: TextFileFs, pathOf: (paperId: string) => string): SidecarPort & PaperNotesPort {
   return {
     async read(paperId) {
-      const path = layout.paperDataPath(paperId);
+      const path = pathOf(paperId);
       if (!(await fs.stat(path))?.isFile) return null;
       return new TextDecoder().decode(await fs.readFile(path));
     },
     async write(paperId, text) {
-      await fs.writeFile(layout.paperDataPath(paperId), new TextEncoder().encode(text));
+      await fs.writeFile(pathOf(paperId), new TextEncoder().encode(text));
     },
   };
+}
+
+/**
+ * @returns a SidecarPort reading and writing UTF-8 JSON through the library file system; a missing file reads as null.
+ */
+export function createSidecarPort(fs: TextFileFs): SidecarPort {
+  return createPaperTextPort(fs, layout.paperDataPath);
+}
+
+/**
+ * @returns a PaperNotesPort reading and writing UTF-8 text at the paper's notes.qmd through the library file system; a missing file reads as null.
+ */
+export function createPaperNotesPort(fs: TextFileFs): PaperNotesPort {
+  return createPaperTextPort(fs, layout.paperNotesPath);
 }
 
 // Gives the editor and the writing tab the library's writing projects and their files through the library folder file system.

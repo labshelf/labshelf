@@ -17,6 +17,7 @@ import {
   NodePdfOpener,
   exportWithPandoc,
   createNodeSidecarPort,
+  createNodePaperNotesPort,
   createDeviceLocalLayout,
   openAiStorage,
   resolveConflictCopy,
@@ -56,6 +57,7 @@ export function createNodeAdapters(context: vscode.ExtensionContext): HostAdapte
       return { ocr, textLayerBuilder: createTextLayerBuilder(ocr) };
     },
     createSidecarPort: createNodeSidecarPort,
+    createPaperNotesPort: createNodePaperNotesPort,
     openAiStorage,
     deviceLayout: createDeviceLocalLayout,
     createProjectWriteTracking: (root, logger) => createProjectWriteTracking(fs, root, logger),

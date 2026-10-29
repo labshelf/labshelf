@@ -1,10 +1,11 @@
 // Wires the library page host: what its handlers share (the channel to the UI, snapshots, mutations, logger, current folder), the dispatch of UI messages to them and adding papers to a Space.
 import {
-  PAPERS_DIR, formatError, movePaperFolders, removePapers, sendPaperDetails, setPaperNote, setPaperTags, type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
+  PAPERS_DIR, PaperNotesStore, addPaperNote, editPaperNote, formatError, movePaperFolders, removePaperNote, removePapers, sendPaperDetails, setPaperTags,
+  type HostEndpoint, type LibraryUiHost, type ILogger, type PaperRecord, type ProjectShareDeps, type ShareHost, type SpaceStore, type UiToHost,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry } from "@labshelf/core/dom";
 import { bx, type LibraryChangedEvent } from "../../platform";
-import { createLibraryMutations, type LibraryMutations } from "../../storage";
+import { createLibraryFileSystem, createLibraryMutations, createPaperNotesPort, type LibraryMutations } from "../../storage";
 import {
   addTabPaper, createFolder, createLibraryUiHost, createPaperFileHandlers, createPdfHandlers, exportAnnotations, offerOpenTabs, removeFolder,
   renameFolder, setReadingStatus, writeClipboard, type PaperFileHandlers, type PdfHandlers,
@@ -18,6 +19,8 @@ export interface HostContext {
   snapshots: LibrarySnapshots;
   sidecars: SidecarReads;
   mutations: LibraryMutations;
+  /** The paper notes (notes.qmd) in the library files. */
+  notes: PaperNotesStore;
   log: ILogger;
   /** The folder the UI shows, kept from its navigate messages. */
   folder: string;
@@ -32,6 +35,7 @@ function createHostCompositionRoot(endpoint: HostEndpoint, log: ILogger): HostCo
   return {
     endpoint, snapshots, sidecars, log,
     mutations: createLibraryMutations(log),
+    notes: new PaperNotesStore(createPaperNotesPort(createLibraryFileSystem()), { logger: log }),
     folder: PAPERS_DIR,
     notice: (kind, text) => endpoint.post({ type: "notice", kind, text }),
     papers: (ids) => {
@@ -71,6 +75,11 @@ function run(ctx: HostContext, work: () => Promise<void>): void {
   });
 }
 
+/** Throws for an id absent from the snapshot, so no notes file is written for it; `run` shows the error notice. */
+function requirePaper(ctx: HostContext, id: string): void {
+  if (ctx.papers([id]).length === 0) throw new Error("That paper is not in the library.");
+}
+
 // A repeat ready (another surface mounting after the load) gets the snapshot the first load already posted.
 async function onReady(ctx: HostContext, loaded: () => Promise<void>, initialPaper: string | null | undefined, repeat: boolean): Promise<void> {
   await loaded();
@@ -105,7 +114,9 @@ function dispatch(ctx: HostContext, { ui, pdf, files }: Handlers, loaded: () => 
     case "paper.copyFilePath": run(ctx, () => files.copyPath(m.id, m.name)); return;
     case "paper.details": run(ctx, () => sendPaperDetails(ui, m.id)); return;
     case "paper.setTags": run(ctx, () => setPaperTags(ui, m.ids, m.add, m.remove)); return;
-    case "paper.setNote": run(ctx, () => setPaperNote(ui, m.id, m.note)); return;
+    case "paper.addNote": run(ctx, async () => { requirePaper(ctx, m.id); await addPaperNote(ui, m.id, m.body); }); return;
+    case "paper.editNote": run(ctx, async () => { requirePaper(ctx, m.id); await editPaperNote(ui, m.id, m.itemId, m.body); }); return;
+    case "paper.removeNote": run(ctx, async () => { requirePaper(ctx, m.id); await removePaperNote(ui, m.id, m.itemId); }); return;
     case "annotations.export": run(ctx, () => exportAnnotations(ctx, m.id)); return;
     case "paper.addToSpace":
       run(ctx, async () => {

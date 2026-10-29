@@ -109,7 +109,7 @@ describe("paper.details", () => {
     const app = start();
     await app.send({ type: "ready" });
     await app.send({ type: "paper.details", id: "smith2020" });
-    expect(app.last("details")?.details).toEqual({ annotations: [], reading: null, pdf: null });
+    expect(app.last("details")?.details).toEqual({ annotations: [], reading: null, pdf: null, notes: [] });
   });
 });
 
@@ -131,20 +131,29 @@ describe("tag and note edits", () => {
     expect(app.last("snapshot")?.snapshot.stats["smith2020"]?.annotations).toBe(1);
   });
 
-  it("saves the note to the paper folder", async () => {
+  it("adds, edits and removes a note in notes.qmd and shows the items in the details", async () => {
     await seedLibrary(sidecar([]));
     const app = start();
     await app.send({ type: "ready" });
-    await app.send({ type: "paper.setNote", id: "smith2020", note: "Check the appendix" });
-    expect(app.last("snapshot")?.snapshot.papers[0]?.note).toBe("Check the appendix");
-    expect(textAt("papers/smith2020/metadata.yaml")).toMatch(/Check the appendix/);
+    await app.send({ type: "paper.addNote", id: "smith2020", body: "Check the appendix" });
+    const added = app.last("details")!;
+    expect(added.details.notes?.map((n) => n.body.trim())).toEqual(["Check the appendix"]);
+    expect(textAt(".research/papers/smith2020/notes.qmd")).toMatch(/Check the appendix/);
+    expect(textAt("papers/smith2020/metadata.yaml")).not.toMatch(/Check the appendix/);
+    const itemId = added.details.notes![0]!.id;
+    await app.send({ type: "paper.editNote", id: "smith2020", itemId, body: "Check the proof" });
+    expect(textAt(".research/papers/smith2020/notes.qmd")).toMatch(/Check the proof/);
+    await app.send({ type: "paper.removeNote", id: "smith2020", itemId });
+    expect(app.last("details")!.details.notes?.some((n) => n.id === itemId)).toBe(false);
+    expect(textAt(".research/papers/smith2020/notes.qmd")).not.toMatch(/Check the/);
   });
 
-  it("answers an error notice for a note on a paper that is not in the library", async () => {
+  it("answers an error notice and writes no notes.qmd for a note on a paper that is not in the library", async () => {
     const app = start();
     await app.send({ type: "ready" });
-    await app.send({ type: "paper.setNote", id: "ghost", note: "x" });
+    await app.send({ type: "paper.addNote", id: "ghost", body: "x" });
     expect(app.last("notice")).toMatchObject({ kind: "error" });
+    expect((await import("../../support/fakeIdb")).fakeFiles.has(".research/papers/ghost/notes.qmd")).toBe(false);
   });
 });
 
