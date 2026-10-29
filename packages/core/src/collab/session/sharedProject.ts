@@ -3,6 +3,7 @@ import type { ILogger } from "../../ports/index.js";
 import type { ProjectCatalogContext } from "../../writing/project/index.js";
 import { COMMENTS_PATH, importCommentsFile } from "../commentsFile.js";
 import { readFileText, isSafeSharePath, setFileText } from "../sharedFiles.js";
+import { readQmdDocText, setQmdDocText } from "../../qmd/collab/sharedQmdDoc.js";
 import { readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocKind } from "../shareIndexDoc.js";
 import { type ShareSession } from "../docSync.js";
 import { joinShare, startShare } from "../../share/index.js";
@@ -54,7 +55,7 @@ export interface PlacedProject {
   joinedId: string | undefined;
 }
 
-/** Seeds the share's comments map from the project's comments.json, which the map stands for from then on. */
+/** Seeds the share's comments map from the project's comments.qmd, which the map stands for from then on. */
 async function importComments({ fs, paths }: ProjectCatalogContext, folder: string, session: ShareSession, logger: ILogger): Promise<void> {
   const file = paths.join(folder, ...COMMENTS_PATH.split("/"));
   // PLATFORM: adapters report a missing file differently (ENOENT, a bridge `createNotFoundAnswer`, a plain Error), so absence is asked of `exists`.
@@ -62,7 +63,7 @@ async function importComments({ fs, paths }: ProjectCatalogContext, folder: stri
   const text = await fs.readText(file);
   const added = importCommentsFile(session.index, text);
   if (added === undefined) {
-    void logger.log("WARN", "collab", "comments.json is not valid, so its threads are not shared", { folder, path: COMMENTS_PATH });
+    void logger.log("WARN", "collab", "comments.qmd is not valid, so its threads are not shared", { folder, path: COMMENTS_PATH });
     return;
   }
   void logger.log("INFO", "collab", "Shared the project's comment threads", { folder, threads: added });
@@ -96,15 +97,17 @@ export interface ApplyRestoredFilesOptions {
 
 export async function applyRestoredFiles({ session, restored, origin, logger }: ApplyRestoredFilesOptions): Promise<void> {
   const files = readShareIndexDocFiles(session.index);
-  const textPaths = [...files.entries()].filter(([path, entry]) => entry.kind === "text" && isSafeSharePath(path)).map(([path]) => path);
+  const textPaths = [...files.entries()]
+    .filter(([path, entry]) => (entry.kind === "text" || entry.kind === "qmd") && isSafeSharePath(path)).map(([path]) => path);
   const removed: string[] = [];
   let updated = 0;
   for (const path of textPaths) {
     const next = await restored(path);
     if (next === null) { removed.push(path); continue; }
     const doc = session.openDoc(path);
-    if (readFileText(doc).toString() === next) { continue; }
-    setFileText(doc, next, origin);
+    const qmd = files.get(path)?.kind === "qmd";
+    if ((qmd ? readQmdDocText(doc) : readFileText(doc).toString()) === next) { continue; }
+    if (qmd) { setQmdDocText(doc, next, origin); } else { setFileText(doc, next, origin); }
     updated += 1;
   }
   if (removed.length > 0) {

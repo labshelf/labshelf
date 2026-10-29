@@ -31,7 +31,7 @@ describe("deriveSharedPaths", () => {
   });
 
   it("admits only the checklist of .labshelf/, because comments travel in the index doc", () => {
-    const list = [".labshelf/checklist.json", ".labshelf/comments.json", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
+    const list = [".labshelf/checklist.json", ".labshelf/comments.qmd", ".labshelf/state.json", "sub/.labshelf/checklist.json"];
     expect(deriveSharedPaths(list)).toEqual([".labshelf/checklist.json"]);
   });
 
@@ -177,8 +177,8 @@ describe("isSafeSharePath", () => {
   it.each([
     "", "/etc/passwd", "\\win", "a\\b", "../x", "a/../x", "a/..", "./x", "a/./b", "a//b", "a/", "a\0b", "C:/x", "c:x", "C:\\x",
     "CON", "con.txt", "a/NUL", "a/com1.log", "LPT9", "aux.tex", "a/prn", "a/name.", "a/name ",
-    "labshelf.yaml", ".labshelf/comments.json", ".labshelf/secret.json", ".labshelf",
-    "LabShelf.yaml", ".LABSHELF/comments.json", ".Labshelf/x", ".Labshelf/checklist.json",
+    "labshelf.yaml", ".labshelf/comments.qmd", ".labshelf/secret.json", ".labshelf",
+    "LabShelf.yaml", ".LABSHELF/comments.qmd", ".Labshelf/x", ".Labshelf/checklist.json",
   ])("rejects %j", (path) => { expect(isSafeSharePath(path)).toBe(false); });
 
   it("rejects values that are not strings", () => {

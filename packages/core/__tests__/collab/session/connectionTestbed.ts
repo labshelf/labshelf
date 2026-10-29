@@ -1,4 +1,6 @@
 /** Runs share connections of separate devices over in-process relays, each with in-memory state and an in-memory library. */
+import type { CommentsDocument } from "../../../src/collab/commentsFile";
+import { serializeCommentsQmd } from "../../../src/collab/commentsQmd";
 import { createLibraryMirrorFileSystem, startProjectMirror } from "../../../src/collab/mirror/index";
 import { createWriteRecordStore } from "../../../src/library/writeRecords";
 import { connectShare, type MirrorFactory, type ShareConnection, type ShareStart } from "../../../src/collab/session/index";
@@ -32,12 +34,12 @@ export function newDevice(): Device {
   };
 }
 
-/** A project folder holding labshelf.yaml, main.typ and, when given, comments.json. */
-export async function writeProject(device: Device, comments?: unknown): Promise<void> {
+/** A project folder holding labshelf.yaml, main.typ and, when given, comments.qmd. */
+export async function writeProject(device: Device, comments?: CommentsDocument): Promise<void> {
   await writeTree(device.catalog.fs, FOLDER, {
     "labshelf.yaml": "id: thesis\ntitle: Thesis\nformat: typst\nmain: main.typ\n",
     "main.typ": "= Hello\n",
-    ...(comments ? { ".labshelf/comments.json": JSON.stringify(comments) } : {}),
+    ...(comments ? { ".labshelf/comments.qmd": serializeCommentsQmd(comments) } : {}),
   });
 }
 

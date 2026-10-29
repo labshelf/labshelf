@@ -16,13 +16,14 @@ import { MirrorLostError } from "./projectLease.js";
 import { MirrorProjectDirUnavailable, type MirrorFileRead, type MirrorFileSystem } from "./mirrorFileSystem.js";
 import { PathQueue, type ReconcileOutcome } from "./pathQueue.js";
 import { reconcileText } from "./textMirror.js";
+import { reconcileQmd } from "../../qmd/collab/sharedQmdMirror.js";
 
 async function reconcileComments(context: MirrorContext, disk: MirrorFileRead): Promise<ReconcileOutcome> {
   if (disk.state === "changing") { return "changing"; }
   const existing = disk.state === "present" ? new TextDecoder("utf-8", { ignoreBOM: true }).decode(disk.bytes) : undefined;
   const rendered = renderCommentsFile(context.session.index, existing);
   if (rendered === undefined) {
-    await context.logger.log("WARN", LOG_MODULE, "Kept a comments.json that is not valid; fix or delete it to save the shared threads there", {
+    await context.logger.log("WARN", LOG_MODULE, "Kept a comments.qmd that is not valid; fix or delete it to save the shared threads there", {
       folder: context.folder, path: COMMENTS_PATH,
     });
     return "done";
@@ -30,7 +31,7 @@ async function reconcileComments(context: MirrorContext, disk: MirrorFileRead): 
   // An empty map writes no file into a project that has none.
   if (rendered === existing || (existing === undefined && readShareIndexDocComments(context.session.index).size === 0)) { return "done"; }
   await context.disk.write(COMMENTS_PATH, new TextEncoder().encode(rendered));
-  await context.logger.log("INFO", LOG_MODULE, "Wrote the shared comment threads to comments.json", { folder: context.folder });
+  await context.logger.log("INFO", LOG_MODULE, "Wrote the shared comment threads to comments.qmd", { folder: context.folder });
   return "done";
 }
 
@@ -159,7 +160,8 @@ export function startProjectMirror(options: ProjectMirrorOptions): ProjectMirror
 function observeDocuments(context: MirrorContext, detach: (() => void)[], stopped: () => boolean): (path: string) => void {
   const attached = new Set<string>();
   return (path) => {
-    if (stopped() || attached.has(path) || !isSafeSharePath(path) || readShareIndexDocFiles(context.session.index).get(path)?.kind !== "text") { return; }
+    const kind = readShareIndexDocFiles(context.session.index).get(path)?.kind;
+    if (stopped() || attached.has(path) || !isSafeSharePath(path) || (kind !== "text" && kind !== "qmd")) { return; }
     attached.add(path);
     const doc = context.session.openDoc(path);
     const onUpdate = (_update: Uint8Array, origin: unknown) => { if (origin !== DISK_ORIGIN) { context.request(path, false); } };
@@ -178,7 +180,7 @@ async function refuse(context: MirrorContext, path: string, refused: Set<string>
 function reconcilePath(isEditorOwned: (path: string) => boolean, refused: Set<string>, stableMs: number) {
   return async (context: MirrorContext, path: string, settled: boolean): Promise<ReconcileOutcome> => {
     if (path !== PROJECT_FILE && !isSafeSharePath(path)) {
-      // The comments map, not a peer's file entry, writes comments.json; an entry naming it is refused all the same.
+      // The comments map, not a peer's file entry, writes comments.qmd; an entry naming it is refused all the same.
       if (path !== COMMENTS_PATH || readShareIndexDocFiles(context.session.index).has(path)) { await refuse(context, path, refused); }
       if (path !== COMMENTS_PATH) { return "done"; }
       return reconcileComments(context, await context.disk.read(path));
@@ -188,11 +190,12 @@ function reconcilePath(isEditorOwned: (path: string) => boolean, refused: Set<st
     if (isEditorOwned(path)) { return "done"; }
     const entry = readShareIndexDocFiles(context.session.index).get(path);
     if (!entry) { return reconcileUntracked(context, path, disk, settled); }
+    if (entry.kind === "qmd") { return reconcileQmd(context, path, disk, settled); }
     return entry.kind === "text" ? reconcileText(context, path, disk, settled) : reconcileShareBlob(context, path, entry, disk, settled);
   };
 }
 
-/** Index edits reach disk: a listed, changed or removed file is reconciled, new text docs are listened to, and comments.json follows the map. */
+/** Index edits reach disk: a listed, changed or removed file is reconciled, new text docs are listened to, and comments.qmd follows the map. */
 function observe(index: Y.Doc, context: MirrorContext, attach: (path: string) => void, detach: (() => void)[]): void {
   const files = readShareIndexDocFiles(index);
   const onFiles = (event: Y.YMapEvent<ShareFileEntry>) => {

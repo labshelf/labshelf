@@ -38,14 +38,14 @@ A message is a clear envelope followed by one frame. The envelope version is rai
 
 ### Docs
 
-One Yjs doc per shared text file, keyed by its POSIX path, with its text in the `Y.Text` `content`, plus the index doc `/index`. The index holds these maps:
+One Yjs doc per shared text file, keyed by its POSIX path, with its text in the `Y.Text` `content`, plus the index doc `/index`. A `.qmd` file's doc instead holds the `Y.Map` `qmd`: `order` (a `Y.Array` of segment keys: an item's id, `loose-<n>` for the n-th text outside items), `attrs` (key to the item's exact fence line, or the loose text), `bodies` (item key to its body as a y-prosemirror `Y.XmlFragment` of the [qmd-items.md](qmd-items.md) editor schema) and `tails` (item key to its closing line and body document attributes, as JSON). Writing the file serializes the segments in order; reading it changes only the items that changed, so concurrent edits of different items merge. The index holds these maps:
 
 - `share`: `kind: "project"`. Any other kind is refused with a typed error, so a later kind never opens as a project.
-- `files`: path to `{kind: "text" | "blob", hash?}`. Renames and deletes are edits here.
+- `files`: path to `{kind: "text" | "blob" | "qmd", hash?}`. Renames and deletes are edits here.
 - `written`: path to the newest agreed disk versions, the mirror's record of what disk and doc last agreed on.
 - `settings`, `comments`, `relays`: see below.
 
-A file is text when its extension is a known text extension and its bytes are UTF-8, else a blob. Shared files are what an export would hold, plus `labshelf.bib` and `.labshelf/checklist.json`. `labshelf.yaml` and `comments.json` travel only through `settings` and `comments`.
+A file is text when its extension is a known text extension and its bytes are UTF-8, else a blob; a `.qmd` file with UTF-8 bytes is `qmd`, one without is a blob. Shared files are what an export would hold, plus `labshelf.bib` and `.labshelf/checklist.json`. `labshelf.yaml` and `.labshelf/comments.qmd` travel only through `settings` and `comments`.
 
 ### Settings
 
@@ -53,7 +53,7 @@ The shared `labshelf.yaml` keys are the ones [library-format.md](library-format.
 
 ### Comments
 
-A thread is a `Y.Map` with the keys of a [comments.json](library-format.md#project-folder-labshelf) thread. Its `comments` is a `Y.Array`, so concurrent replies both survive. A live anchor adds `start` and `end` as Yjs relative positions in `content`; `start` binds right and `end` left, so text typed at either edge stays outside. Each mirror writes `.labshelf/comments.json` from the map, and sharing imports the existing file.
+A thread is a `Y.Map` with the keys of a [comments.qmd](library-format.md#project-folder-labshelf) thread; its comment bodies are LabShelf Markdown strings. Its `comments` is a `Y.Array`, so concurrent replies both survive. A live anchor adds `start` and `end` as Yjs relative positions in `content`; `start` binds right and `end` left, so text typed at either edge stays outside. Each mirror writes `.labshelf/comments.qmd` from the map, and sharing imports the existing file.
 
 ### Bibliography
 

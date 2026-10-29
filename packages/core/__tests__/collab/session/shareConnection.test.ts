@@ -1,5 +1,6 @@
 /** Pins the connection lifecycle both apps share: start, join, rollback of a partial start, close ordering and persistence failure; how connections pick relays; and that one leased mirror at a time writes a shared project folder. */
 import { readFileText, readShareIndexDocFiles } from "../../../src/collab/index";
+import { parseCommentsQmd } from "../../../src/collab/commentsQmd";
 import { createLibraryMirrorFileSystem, type LeaseScheduler } from "../../../src/collab/mirror/index";
 import { createLeasedMirrorFactory, type ShareConnection } from "../../../src/collab/session/index";
 import { mergeText } from "../../../src/writing/conflict/node/index";
@@ -26,7 +27,7 @@ describe("a share connection", () => {
 
     expect(member.joinedId).toBe("thesis");
     expect(grace.read(`${member.folder}/main.typ`)).toBe("= Hello\n");
-    expect(JSON.parse(grace.read(`${member.folder}/.labshelf/comments.json`) ?? "{}").threads.map((each: { id: string }) => each.id)).toEqual(["t1"]);
+    expect(parseCommentsQmd(grace.read(`${member.folder}/.labshelf/comments.qmd`) ?? "")?.threads.map((each) => each.id)).toEqual(["t1"]);
     expect(member.state()).toMatchObject({ status: "open", mirror: { kind: "running" }, persistenceFailure: undefined });
     await net.drive(member.close());
     await net.drive(owner.close());

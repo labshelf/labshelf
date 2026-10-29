@@ -9,7 +9,7 @@ import { parseBibEntries, readBibField, type BibEntry } from "../writing/citatio
 import { deriveBuiltPdfPaths, isBuildOrToolPath, PROJECT_FILE } from "../writing/project/index.js";
 import type { ShareFileEntry } from "./shareIndexDoc.js";
 
-// The rest of .labshelf/ is device state or, for comments.json, written from the index doc's comments map.
+// The rest of .labshelf/ is device state or, for comments.qmd, written from the index doc's comments map.
 export const SHARED_TOOL_FILES: readonly string[] = [".labshelf/checklist.json"];
 
 /**
@@ -24,6 +24,8 @@ export function deriveSharedPaths(list: readonly string[]): string[] {
 
 const WINDOWS_DEVICE = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 const TOOL_FOLDER = ".labshelf";
+// commentsFile.ts owns COMMENTS_PATH but imports this file, so the path is repeated here.
+const COMMENTS_FILE_PATH = ".labshelf/comments.qmd";
 
 /**
  * True for a relative POSIX path that stays inside the folder on every platform: no empty, `.` or `..` segment,
@@ -42,7 +44,15 @@ export function isSafeSharePath(path: string): boolean {
 
 /** A file with a text extension and valid UTF-8 is a text doc; anything else would be corrupted by character edits. */
 export function deriveSharedFileKind(path: string, bytes: Uint8Array): ShareFileEntry["kind"] {
+  // comments.qmd is written from the comments map, so it is never a text doc whatever its bytes.
+  if (path === COMMENTS_FILE_PATH) { return "blob"; }
+  // A .qmd doc holds its items as ProseMirror fragments rather than one Y.Text.
+  if (path.toLowerCase().endsWith(".qmd")) { return isValidUtf8(bytes) ? "qmd" : "blob"; }
   return isMergeableTextFile(path, bytes) ? "text" : "blob";
+}
+
+function isValidUtf8(bytes: Uint8Array): boolean {
+  try { new TextDecoder("utf-8", { fatal: true }).decode(bytes); return true; } catch { return false; }
 }
 
 /** The Y.Text that holds a shared text file's content. */

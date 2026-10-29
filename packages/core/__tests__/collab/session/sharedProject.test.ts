@@ -1,9 +1,10 @@
-/** Pins the project a share connection mirrors: sharing seeds the comments map from comments.json, and a history restore reaches peers as doc edits and index removals. */
+/** Pins the project a share connection mirrors: sharing seeds the comments map from comments.qmd, and a history restore reaches peers as doc edits and index removals. */
 import * as Y from "yjs";
 import { readFileText, readLiveThreads, readShareIndexDocFiles, type ShareSession } from "../../../src/collab/index";
 import { applyRestoredFiles, ensureSharedProject } from "../../../src/collab/session/index";
 import type { ILogger } from "../../../src/ports/index";
 import type { ProjectCatalogContext } from "../../../src/writing/project/index";
+import { serializeCommentsQmd } from "../../../src/collab/commentsQmd";
 import { fakeLogger } from "../testSession";
 
 const FOLDER = "/lib/p";
@@ -32,7 +33,7 @@ const share = (context: ProjectCatalogContext, index: Y.Doc) =>
   ensureSharedProject({ context, libraryRoot: "/lib" }, SHARE_ID, { index } as unknown as ShareSession, { mode: "share", folder: FOLDER });
 
 describe("ensureSharedProject in share mode", () => {
-  it("shares a project that has no comments.json", async () => {
+  it("shares a project that has no comments.qmd", async () => {
     const { context, logger } = projectContext(new Map([[`${FOLDER}/labshelf.yaml`, "id: p\n"]]));
     const index = new Y.Doc();
     await expect(share(context, index)).resolves.toEqual({ folder: FOLDER, joinedId: undefined });
@@ -40,14 +41,14 @@ describe("ensureSharedProject in share mode", () => {
     expect(readLiveThreads(index)).toEqual([]);
   });
 
-  it("imports the threads of comments.json into the session", async () => {
+  it("imports the threads of comments.qmd into the session", async () => {
     const thread = {
       id: "t1", file: "main.tex", anchor: { quote: "q", prefix: "a", suffix: "b" },
       comments: [{ id: "c1", author: "Ana", body: "x", createdAt: "2026-10-16T09:00:00.000Z" }], resolved: false,
     };
     const { context } = projectContext(new Map([
       [`${FOLDER}/labshelf.yaml`, "id: p\n"],
-      [`${FOLDER}/.labshelf/comments.json`, JSON.stringify({ threads: [thread] })],
+      [`${FOLDER}/.labshelf/comments.qmd`, serializeCommentsQmd({ threads: [thread] })],
     ]));
     const index = new Y.Doc();
     await share(context, index);
