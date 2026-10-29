@@ -15,6 +15,7 @@ import {
 } from "../../platform";
 import { openReader } from "../reader";
 import { createLibraryFileSystem } from "../../storage";
+import { getBrowserCellPorts } from "../../helper";
 import type { HostContext } from "./context";
 
 const deriveReferences = (papers: readonly PaperRecord[]): Reference[] => papers.map((p) => ({ id: p.id, path: p.path }));
@@ -31,7 +32,10 @@ export async function setReadingStatus(ctx: HostContext, ids: readonly string[],
 
 /** The port the core paper handlers (tags, note, move, remove, details) answer the UI through; changes go only to papers the snapshot knows. */
 export function createLibraryUiHost(ctx: HostContext): LibraryUiHost {
+  const cells = getBrowserCellPorts(ctx.log);
   return {
+    runCell: cells.runCell,
+    installPython: cells.installPython,
     papers: async (ids) => ctx.papers(ids),
     post: (m) => ctx.endpoint.post(m),
     notice: ctx.notice,
