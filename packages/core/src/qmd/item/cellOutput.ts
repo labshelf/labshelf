@@ -24,6 +24,8 @@ export interface CreateOutputInput {
   readonly engine: string;
   readonly ran: string;
   readonly content: string;
+  /** Written as the opener's last attribute; an ok result has none. */
+  readonly status?: "error";
 }
 
 /** Output blocks at the top level of `body`; a block without `cell` or `source` is text, not an output. */
@@ -57,7 +59,10 @@ export function findOutputs(body: string): CellOutputBlock[] {
 export function formatOutput(output: CreateOutputInput, eol = "\n"): string {
   const opener = formatDivOpener({
     classes: [OUTPUT_CLASS],
-    pairs: [["cell", output.cell], ["source", output.source], ["engine", output.engine], ["ran", output.ran]],
+    pairs: [
+      ["cell", output.cell], ["source", output.source], ["engine", output.engine], ["ran", output.ran],
+      ...(output.status === undefined ? [] : [["status", output.status] as [string, string]]),
+    ],
   });
   const content = output.content.replace(/\r\n|\n|\r/g, eol);
   const ended = content === "" || content.endsWith(eol) ? content : content + eol;

@@ -83,6 +83,9 @@ A code cell's result follows the cell inside the same item, as a fenced div with
 - `source` is the first 12 hex characters of the SHA-256 of the cell's code with the `#|` lines removed, lines joined with `\n` and trailing line endings removed. Every device must compute it the same way, and line endings must never make a result out of date.
 - A result whose `source` differs from its cell's current code is shown as out of date. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
 - A result that would close its block early is rejected, not written.
+- A failed run (an error or a timeout) writes its error text in a plain fenced code block and adds `status="error"` as the opener's last attribute; a successful result has no `status`. A cancelled run, or one with no Python available, writes nothing.
+- A run writes its block on the line after the cell's closing fence, and a rerun replaces the cell's block in place. A cell without a label gets `#| label: cell-<n>` (its 1-based position among the item's cells) on its first run.
+- The Node cell runner runs each cell through a driver script shipped with core (`@labshelf/core/qmd/compute/node/cellDriver.py`) in the managed Python; a run ends on cancel or after its timeout, killing the process group.
 
 ## Merge
 
