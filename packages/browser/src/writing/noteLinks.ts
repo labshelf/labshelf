@@ -149,28 +149,36 @@ function originAtCursor(view: EditorView, language: NoteLinkDeps["language"]): M
     origin.line === line || (toOffset(doc, origin.insertedRange.start) <= head && head <= toOffset(doc, origin.insertedRange.end)));
 }
 
-export function createNoteLinks(deps: NoteLinkDeps): NoteLinks {
-  const { language, logger } = deps;
-  const requests = new WeakMap<EditorView, number>();
-  let closed = false;
+/** What every concept below shares: the deps, the refresh of the marks, and the guard that logs and shows what an action throws. */
+interface LinkRuntime {
+  deps: NoteLinkDeps;
+  refresh(view: EditorView): Promise<void>;
+  guarded(action: string, run: () => Promise<void>): Promise<void>;
+}
 
+/** Recomputes the marks; a later call for the same view wins over an earlier one still reading. */
+function createRefresh(deps: NoteLinkDeps, isClosed: () => boolean): LinkRuntime["refresh"] {
+  const requests = new WeakMap<EditorView, number>();
   const refresh = async (view: EditorView): Promise<void> => {
     const mine = (requests.get(view) ?? 0) + 1;
     requests.set(view, mine);
     const doc = view.state.doc;
     try {
       const resolved = await resolveOrigins(deps, doc.toString());
-      if (closed || requests.get(view) !== mine) return;
+      if (isClosed() || requests.get(view) !== mine) return;
       // The text moved on while the notes were read: positions would not fit, so read again.
       if (view.state.doc !== doc) { await refresh(view); return; }
       view.dispatch({ effects: replaceMarks.of(toMarks(doc, resolved)) });
     } catch (error) {
-      void logger.error(MODULE, error, { action: "refreshOrigins" });
+      void deps.logger.error(MODULE, error, { action: "refreshOrigins" });
     }
   };
+  return refresh;
+}
 
-  /** Runs an action; whatever it throws is logged and shown. */
-  const guarded = async (action: string, run: () => Promise<void>): Promise<void> => {
+/** Runs an action; whatever it throws is logged and shown. */
+function createGuard(logger: ILogger): LinkRuntime["guarded"] {
+  return async (action, run) => {
     try {
       await run();
     } catch (error) {
@@ -178,138 +186,158 @@ export function createNoteLinks(deps: NoteLinkDeps): NoteLinks {
       showToast(`Could not ${action}: ${formatError(error)}`, "error");
     }
   };
+}
 
-  const titleOfItem = (papers: readonly PaperRecord[]) => (item: NoteInsertable): string => {
-    const id = PAPER_NOTE.exec(item.notePath)?.[1];
-    return id === undefined ? item.title : (papers.find((paper) => paper.id === id)?.title || id);
-  };
+const titleOfItem = (papers: readonly PaperRecord[]) => (item: NoteInsertable): string => {
+  const id = PAPER_NOTE.exec(item.notePath)?.[1];
+  return id === undefined ? item.title : (papers.find((paper) => paper.id === id)?.title || id);
+};
 
-  const insert = (view: EditorView): Promise<void> => guarded("insert from the notes", async () => {
-    let items: NoteInsertable[];
-    try {
-      items = await listNoteInsertables(deps.source);
-    } catch (error) {
-      void logger.error(MODULE, error, { action: "listNoteInsertables" });
-      showToast(`Could not read the notes: ${formatError(error)}`, "error");
-      return;
-    }
-    if (items.length === 0) {
-      showToast("No equations or outputs found in this project's notes or the cited papers' notes.", "info");
-      return;
-    }
-    const entries = pickerEntries(items, titleOfItem(await deps.papers()));
-    const item = await pickQuickEntry(entries, { title: "Insert from note", placeholder: "Search equations and outputs by label or note" });
-    if (!item) return;
-    let block: string;
-    try {
-      block = await buildInsert(item, language);
-    } catch (error) {
-      showToast(formatError(error), "info");
-      return;
-    }
-    const { doc, selection } = view.state;
-    const { from, to } = selection.main;
-    const before = doc.sliceString(doc.lineAt(from).from, from).trim() !== "";
-    const after = doc.sliceString(to, doc.lineAt(to).to).trim() !== "";
-    const text = withLineBreaks(view, `${before ? "\n" : ""}${block}${after ? "\n" : ""}`);
-    view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length - (after ? view.state.lineBreak.length : 0) }, scrollIntoView: true, userEvent: "input" });
-    view.focus();
-    await refresh(view);
-  });
-
-  /** The origin on `line` with its state, or undefined (after a new refresh) when the text changed while the notes were read. */
-  const resolveLine = async (view: EditorView, line: number): Promise<ResolvedOrigin | undefined> => {
-    const doc = view.state.doc;
-    const found = (await resolveOrigins(deps, doc.toString())).find((entry) => entry.origin.line === line);
-    if (found && view.state.doc === doc) return found;
-    void refresh(view);
+/** The notes' equations and outputs, or undefined (after telling the user why) when there are none to pick. */
+async function readInsertables({ deps }: LinkRuntime): Promise<NoteInsertable[] | undefined> {
+  let items: NoteInsertable[];
+  try {
+    items = await listNoteInsertables(deps.source);
+  } catch (error) {
+    void deps.logger.error(MODULE, error, { action: "listNoteInsertables" });
+    showToast(`Could not read the notes: ${formatError(error)}`, "error");
     return undefined;
-  };
+  }
+  if (items.length === 0) {
+    showToast("No equations or outputs found in this project's notes or the cited papers' notes.", "info");
+    return undefined;
+  }
+  return items;
+}
 
-  const applyUpdate = async (view: EditorView, line: number): Promise<void> => {
-    const doc = view.state.doc;
-    const found = await resolveLine(view, line);
-    if (!found) return;
-    if (found.state !== "stale" || !found.item) {
-      showToast(sentenceOf(found), "info");
-      return;
-    }
-    let update: Awaited<ReturnType<typeof buildUpdate>>;
-    try {
-      update = await buildUpdate(found.origin, found.state, found.item, language);
-    } catch (error) {
-      showToast(formatError(error), "info");
-      return;
-    }
-    if (!update || view.state.doc !== doc) { void refresh(view); return; }
-    view.dispatch({
-      changes: { from: toOffset(doc, update.range.start), to: toOffset(doc, update.range.end), insert: withLineBreaks(view, update.text) },
-      userEvent: "input",
-    });
-    await refresh(view);
-  };
+/** The block to insert for the item the user picks, or undefined when nothing was picked or it cannot be built. */
+async function pickBlock(rt: LinkRuntime): Promise<string | undefined> {
+  const items = await readInsertables(rt);
+  if (!items) return undefined;
+  const entries = pickerEntries(items, titleOfItem(await rt.deps.papers()));
+  const item = await pickQuickEntry(entries, { title: "Insert from note", placeholder: "Search equations and outputs by label or note" });
+  if (!item) return undefined;
+  try {
+    return await buildInsert(item, rt.deps.language);
+  } catch (error) {
+    showToast(formatError(error), "info");
+    return undefined;
+  }
+}
 
-  const showDiff = async (view: EditorView, line: number): Promise<void> => {
-    const found = await resolveLine(view, line);
-    if (!found) return;
-    const { origin, item, state } = found;
-    if (!item || state === "fresh") {
-      showToast(sentenceOf(found), "info");
-      return;
-    }
-    const texts = diffOrigin(origin, readOriginLatex(language, view.state.doc.toString(), origin), item);
-    openDiffDialog({
-      view, title: `${origin.label}: manuscript ↔ note`, noteTitle: item.title, texts,
-      update: state === "stale" ? () => applyUpdate(view, line).catch((error: unknown) => {
-        void logger.error(MODULE, error, { action: "updateFromNote" });
-        showToast(`Could not update from the note: ${formatError(error)}`, "error");
-      }) : undefined,
-    });
-  };
+/** Puts `block` at the selection, on lines of its own. */
+function insertBlock(view: EditorView, block: string): void {
+  const { doc, selection } = view.state;
+  const { from, to } = selection.main;
+  const before = doc.sliceString(doc.lineAt(from).from, from).trim() !== "";
+  const after = doc.sliceString(to, doc.lineAt(to).to).trim() !== "";
+  const text = withLineBreaks(view, `${before ? "\n" : ""}${block}${after ? "\n" : ""}`);
+  view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length - (after ? view.state.lineBreak.length : 0) }, scrollIntoView: true, userEvent: "input" });
+  view.focus();
+}
 
-  const atCursor = (view: EditorView, act: (line: number) => Promise<void>): Promise<void> => guarded("read the equation", async () => {
-    const origin = originAtCursor(view, language);
-    if (!origin) { showToast("Place the cursor on an equation inserted from a note.", "info"); return; }
-    await act(origin.line);
+const insertFromNotes = (rt: LinkRuntime, view: EditorView): Promise<void> => rt.guarded("insert from the notes", async () => {
+  const block = await pickBlock(rt);
+  if (block === undefined) return;
+  insertBlock(view, block);
+  await rt.refresh(view);
+});
+
+/** The origin on `line` with its state, or undefined (after a new refresh) when the text changed while the notes were read. */
+async function resolveLine(rt: LinkRuntime, view: EditorView, line: number): Promise<ResolvedOrigin | undefined> {
+  const doc = view.state.doc;
+  const found = (await resolveOrigins(rt.deps, doc.toString())).find((entry) => entry.origin.line === line);
+  if (found && view.state.doc === doc) return found;
+  void rt.refresh(view);
+  return undefined;
+}
+
+async function applyUpdate(rt: LinkRuntime, view: EditorView, line: number): Promise<void> {
+  const doc = view.state.doc;
+  const found = await resolveLine(rt, view, line);
+  if (!found) return;
+  if (found.state !== "stale" || !found.item) {
+    showToast(sentenceOf(found), "info");
+    return;
+  }
+  let update: Awaited<ReturnType<typeof buildUpdate>>;
+  try {
+    update = await buildUpdate(found.origin, found.state, found.item, rt.deps.language);
+  } catch (error) {
+    showToast(formatError(error), "info");
+    return;
+  }
+  if (!update || view.state.doc !== doc) { void rt.refresh(view); return; }
+  view.dispatch({
+    changes: { from: toOffset(doc, update.range.start), to: toOffset(doc, update.range.end), insert: withLineBreaks(view, update.text) },
+    userEvent: "input",
   });
+  await rt.refresh(view);
+}
 
-  const hover = hoverTooltip((view, pos): Tooltip | null => {
-    const mark = view.state.field(marksField).find((candidate) => candidate.to > candidate.from && pos >= candidate.from && pos <= candidate.to);
-    if (!mark) return null;
-    const line = view.state.doc.lineAt(mark.from).number - 1;
-    return {
-      pos: mark.from, end: mark.to, above: true,
-      create: () => {
-        const actions = renderElement("div", { class: "ls-origin-tip-actions" });
-        const add = (label: string, primary: boolean, run: () => Promise<void>): void => {
-          const button = renderElement("button", { type: "button", class: primary ? "ls-btn ls-btn-primary" : "ls-btn", text: label });
-          button.addEventListener("click", () => void guarded("read the equation", run));
-          actions.append(button);
-        };
-        if (mark.state === "stale") add("Update from note", true, () => applyUpdate(view, line));
-        if (mark.state !== "missing") add("Show differences", false, () => showDiff(view, line));
-        const dom = renderElement("div", { class: "ls-origin-tip" }, renderElement("p", { class: "ls-dialog-msg", text: mark.sentence }));
-        if (actions.childElementCount > 0) dom.append(actions);
-        return { dom };
-      },
-    };
+async function showDiff(rt: LinkRuntime, view: EditorView, line: number): Promise<void> {
+  const found = await resolveLine(rt, view, line);
+  if (!found) return;
+  const { origin, item, state } = found;
+  if (!item || state === "fresh") {
+    showToast(sentenceOf(found), "info");
+    return;
+  }
+  const texts = diffOrigin(origin, readOriginLatex(rt.deps.language, view.state.doc.toString(), origin), item);
+  openDiffDialog({
+    view, title: `${origin.label}: manuscript ↔ note`, noteTitle: item.title, texts,
+    update: state === "stale" ? () => applyUpdate(rt, view, line).catch((error: unknown) => {
+      void rt.deps.logger.error(MODULE, error, { action: "updateFromNote" });
+      showToast(`Could not update from the note: ${formatError(error)}`, "error");
+    }) : undefined,
   });
+}
 
+const atCursor = (rt: LinkRuntime, view: EditorView, act: (line: number) => Promise<void>): Promise<void> => rt.guarded("read the equation", async () => {
+  const origin = originAtCursor(view, rt.deps.language);
+  if (!origin) { showToast("Place the cursor on an equation inserted from a note.", "info"); return; }
+  await act(origin.line);
+});
+
+/** The tooltip over a mark: what its state means, with the actions that fit it. */
+function tooltipFor(rt: LinkRuntime, view: EditorView, mark: OriginMark): Tooltip {
+  const line = view.state.doc.lineAt(mark.from).number - 1;
   return {
-    extension: [marksField, markDecorations, hover, originTheme],
-    refresh,
-    close() { closed = true; },
-    actionsFor: (view) => ({
-      insert: () => insert(view),
-      update: () => atCursor(view, (line) => applyUpdate(view, line)),
-      showDifferences: () => atCursor(view, (line) => showDiff(view, line)),
-    }),
+    pos: mark.from, end: mark.to, above: true,
+    create: () => {
+      const actions = renderElement("div", { class: "ls-origin-tip-actions" });
+      const add = (label: string, primary: boolean, run: () => Promise<void>): void => {
+        const button = renderElement("button", { type: "button", class: primary ? "ls-btn ls-btn-primary" : "ls-btn", text: label });
+        button.addEventListener("click", () => void rt.guarded("read the equation", run));
+        actions.append(button);
+      };
+      if (mark.state === "stale") add("Update from note", true, () => applyUpdate(rt, view, line));
+      if (mark.state !== "missing") add("Show differences", false, () => showDiff(rt, view, line));
+      const dom = renderElement("div", { class: "ls-origin-tip" }, renderElement("p", { class: "ls-dialog-msg", text: mark.sentence }));
+      if (actions.childElementCount > 0) dom.append(actions);
+      return { dom };
+    },
   };
 }
 
-/** Marks the origin comments of the notes' equations and offers the actions on hover; the actions of a keyboard come from `createNoteLinks`. */
-export function noteLinkExtension(deps: NoteLinkDeps): Extension {
-  return createNoteLinks(deps).extension;
+const createHover = (rt: LinkRuntime): Extension => hoverTooltip((view, pos): Tooltip | null => {
+  const mark = view.state.field(marksField).find((candidate) => candidate.to > candidate.from && pos >= candidate.from && pos <= candidate.to);
+  return mark ? tooltipFor(rt, view, mark) : null;
+});
+
+export function createNoteLinks(deps: NoteLinkDeps): NoteLinks {
+  let closed = false;
+  const rt: LinkRuntime = { deps, refresh: createRefresh(deps, () => closed), guarded: createGuard(deps.logger) };
+  return {
+    extension: [marksField, markDecorations, createHover(rt), originTheme],
+    refresh: rt.refresh,
+    close() { closed = true; },
+    actionsFor: (view) => ({
+      insert: () => insertFromNotes(rt, view),
+      update: () => atCursor(rt, view, (line) => applyUpdate(rt, view, line)),
+      showDifferences: () => atCursor(rt, view, (line) => showDiff(rt, view, line)),
+    }),
+  };
 }
 
 interface DiffDialog {
