@@ -31,7 +31,7 @@ export interface TexInstallRun {
 }
 
 /** Calls `step` with an empty directory inside `texRoot`, so the final rename stays on one file system. */
-async function withStagingDir<T>(texRoot: string, prefix: string, step: (staging: string) => Promise<T>): Promise<T> {
+export async function withStagingDir<T>(texRoot: string, prefix: string, step: (staging: string) => Promise<T>): Promise<T> {
   await mkdir(texRoot, { recursive: true });
   const staging = await mkdtemp(join(texRoot, `.staging-${prefix}-`));
   try {
@@ -41,7 +41,7 @@ async function withStagingDir<T>(texRoot: string, prefix: string, step: (staging
   }
 }
 
-async function findSingleTopDir(parent: string): Promise<string> {
+export async function findSingleTopDir(parent: string): Promise<string> {
   const dirs = (await readdir(parent, { withFileTypes: true })).filter((entry) => entry.isDirectory());
   const [only] = dirs;
   if (dirs.length !== 1 || only === undefined) {
