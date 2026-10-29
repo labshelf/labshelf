@@ -17,6 +17,7 @@ export interface ToolbarActions {
   historyBack(): void;
   historyForward(): void;
   openFind(): void;
+  toggleBoxTool(): void;
   openTheme(anchor: HTMLElement): void;
   openCheatsheet(): void;
 }
@@ -26,6 +27,7 @@ export class Toolbar {
   private readonly backBtn: HTMLButtonElement;
   private readonly forwardBtn: HTMLButtonElement;
   private readonly sidebarBtn: HTMLButtonElement;
+  private readonly boxBtn: HTMLButtonElement;
   private state: AutohideState = initialAutohide;
   private lastScrollTop = 0;
   private pointerY: number | null = null;
@@ -46,6 +48,8 @@ export class Toolbar {
     this.sidebarBtn = renderReaderIconButton(renderIcon("panel-left"), "Toggle sidebar (F4)");
     this.backBtn = renderReaderIconButton(renderIcon("arrow-left"), `Back (${alt}+Left)`);
     this.forwardBtn = renderReaderIconButton(renderIcon("arrow-right"), `Forward (${alt}+Right)`);
+    this.boxBtn = renderReaderIconButton(renderIcon("text-box"), `Text box (${mod}+${alt}+B)`);
+    this.boxBtn.setAttribute("aria-pressed", "false");
     const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
     const themeBtn = renderReaderIconButton(renderIcon("droplet"), "Page theme");
     const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
@@ -55,6 +59,7 @@ export class Toolbar {
     this.sidebarBtn.addEventListener("click", actions.toggleSidebar);
     this.backBtn.addEventListener("click", actions.historyBack);
     this.forwardBtn.addEventListener("click", actions.historyForward);
+    this.boxBtn.addEventListener("click", actions.toggleBoxTool);
     findBtn.addEventListener("click", actions.openFind);
     themeBtn.addEventListener("click", () => actions.openTheme(themeBtn));
     helpBtn.addEventListener("click", actions.openCheatsheet);
@@ -62,7 +67,7 @@ export class Toolbar {
     this.el.append(
       renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.backBtn, this.forwardBtn),
       renderElement("div", { class: "rd-toolbar-title", title }, title),
-      renderElement("div", { class: "rd-toolbar-group" }, findBtn, themeBtn, helpBtn),
+      renderElement("div", { class: "rd-toolbar-group" }, this.boxBtn, findBtn, themeBtn, helpBtn),
     );
 
     this.bindAutohide();
@@ -81,6 +86,20 @@ export class Toolbar {
    */
   setSidebarOpen(open: boolean): void {
     this.sidebarBtn.setAttribute("aria-pressed", open ? "true" : "false");
+  }
+
+  /**
+   * Reflects the text-box creation mode on its toggle button.
+   */
+  setBoxToolActive(on: boolean): void {
+    this.boxBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  /**
+   * Hides the text-box button in readers that have no text boxes (the preview).
+   */
+  hideBoxTool(): void {
+    this.boxBtn.hidden = true;
   }
 
   /**
