@@ -12,6 +12,7 @@ import type { UiContext } from "../uiContext.js";
 import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
+import type { CellLanguage } from "../../../qmd/compute/index.js";
 import { createCellRunGroup, mountQmdEditor, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
@@ -110,10 +111,16 @@ export interface NoteEditor {
   dispose(): void;
 }
 
+/** The editor options that run and restart a note item's cells. */
+interface RunOptions {
+  onRunCell(label: string, code: string, language: CellLanguage): void;
+  onRestartCell?(language: CellLanguage): void;
+}
+
 /** The run status of each note item, kept across renders so a pushed body does not lose a run in flight. */
 interface NoteRuns {
-  /** The editor's `onRunCell`, or undefined when the host cannot run cells; it mounts the item's status row under `editorEl`. */
-  attach(editorEl: HTMLElement, paper: string, itemId: string): ((label: string, code: string) => void) | undefined;
+  /** The editor's run options, or undefined when the host cannot run cells; it mounts the item's status row under `editorEl`. */
+  attach(editorEl: HTMLElement, paper: string, itemId: string): RunOptions | undefined;
   dispose(): void;
 }
 
@@ -131,16 +138,20 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
     attach(editorEl, paper, itemId) {
       if (ctx.readOnly || ctx.store.get().details[paper]?.canRunCells !== true) return undefined;
       listen();
-      return group.attach(`${paper}\n${itemId}`, editorEl, (label, code, requestId) =>
-        ctx.transport.post({ type: "paper.runCell", id: paper, itemId, label, code, language: "python", requestId }));
+      const key = `${paper}\n${itemId}`;
+      const onRunCell = group.attach(key, editorEl,
+        (label, code, requestId, language) => ctx.transport.post({ type: "paper.runCell", id: paper, itemId, label, code, language, requestId }),
+        (language) => ctx.transport.post({ type: "paper.restartCell", id: paper, language }));
+      const onRestartCell = group.restartCell(key);
+      return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
     },
     dispose() { off?.(); off = null; group.clear(); },
   };
 }
 
 function mountItemEditor(el: HTMLElement, body: string, readOnly: boolean, onChange: (text: string) => void,
-  onRunCell: ((label: string, code: string) => void) | undefined): QmdEditorHandle {
-  return mountQmdEditor(el, { body, readOnly, onChange, ...(onRunCell ? { onRunCell } : {}) });
+  run: RunOptions | undefined): QmdEditorHandle {
+  return mountQmdEditor(el, { body, readOnly, onChange, ...run });
 }
 
 function mountNewItemEditor(ctx: UiContext, el: HTMLElement, paper: string, body: string, readOnly: boolean): QmdEditorHandle {

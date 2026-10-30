@@ -1,5 +1,5 @@
 // Shows a project note: each of its items in the core editor, saved through the project notes store.
-import { createCellRuns, formatError, parseItemFile } from "@labshelf/core";
+import { createCellRuns, formatError, parseItemFile, type CellLanguage } from "@labshelf/core";
 import { QMD_VOCABULARY, createCellRunGroup, mountQmdEditor, renderElement, showToast, type CellRunGroup, type QmdEditorHandle } from "@labshelf/core/dom";
 import { getBrowserCellPorts } from "../../helper";
 import type { TabContext, TabModule } from "./tabKinds";
@@ -54,8 +54,10 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
     const root = body.appendChild(renderElement("div", { class: "ls-project-note-item" }));
     saver.loaded(item.id, item.body);
     let editor: QmdEditorHandle | undefined;
-    const onRunCell = runs.attach(item.id, root, (label, code, requestId) => runs.run(item.id, label, code, requestId, (next) => { editor?.setBody(next); saver.change(item.id, next); }));
-    editor = mountQmdEditor(root, { body: item.body, onChange: (next) => saver.change(item.id, next), onRunCell });
+    const onRunCell = runs.attach(item.id, root, (label, code, requestId, language) => runs.run(item.id, label, code, requestId, language, (next) => { editor?.setBody(next); saver.change(item.id, next); }),
+      (language) => runs.restart(language));
+    const onRestartCell = runs.group.restartCell(item.id);
+    editor = mountQmdEditor(root, { body: item.body, onChange: (next) => saver.change(item.id, next), onRunCell, ...(onRestartCell ? { onRestartCell } : {}) });
     return editor;
   });
 }
@@ -63,10 +65,13 @@ function mountNoteItems(body: HTMLElement, text: string | null, saver: NoteSaver
 /** Runs the cells of one note through the helper, with their status rows under the editors. */
 interface CellRunner {
   attach: CellRunGroup["attach"];
-  run(itemId: string, label: string, code: string, requestId: string, replace: (body: string) => void): void;
+  group: CellRunGroup;
+  run(itemId: string, label: string, code: string, requestId: string, language: CellLanguage, replace: (body: string) => void): void;
+  /** Drops this note's process for `language`. */
+  restart(language: CellLanguage): void;
 }
 
-function createCellRunner(ctx: TabContext, projectId: string, path: string, saver: NoteSaver): CellRunner & { group: CellRunGroup } {
+function createCellRunner(ctx: TabContext, projectId: string, path: string, saver: NoteSaver): CellRunner {
   const ports = getBrowserCellPorts(ctx.logger);
   const runs = createCellRuns();
   // The D2 note key: the cells of one project note share a process per language.
@@ -75,8 +80,11 @@ function createCellRunner(ctx: TabContext, projectId: string, path: string, save
   return {
     group,
     attach: group.attach,
-    run(itemId, label, code, requestId, replace) {
-      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language: "python", noteKey }, {
+    restart(language) {
+      void ports.restartCell(noteKey, language).catch((error: unknown) => { void ctx.logger.error(MODULE, error, { action: "restart cell", projectId, language }); });
+    },
+    run(itemId, label, code, requestId, language, replace) {
+      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language, noteKey }, {
         read: () => Promise.resolve(saver.text(itemId)),
         write: (next) => { replace(next); return Promise.resolve(); },
         push: () => undefined,
