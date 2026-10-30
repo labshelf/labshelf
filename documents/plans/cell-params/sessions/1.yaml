@@ -1,0 +1,51 @@
+schema: session/v1
+id: "1"
+goal: The contracts define param lines, params in driver requests, controls in responses and the output params attribute; core parses and rewrites param lines and stores params on outputs.
+depends_on: []
+owns: [documents/contracts/qmd-items.md, documents/contracts/helper.md, packages/core/src/qmd/item/, packages/core/src/qmd/compute/writeCellOutput.ts, packages/core/__tests__/qmd/item/, packages/core/__tests__/qmd/compute/writeCellOutput.test.ts]
+status: pending
+packages:
+  - id: "1.1"
+    plan: cell-params
+    sha: a79dfa69
+    goal: qmd-items and helper contracts state D1, D2, D4, D5 and D7.
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/qmd-items.md, lines: "1-400", why: "new subsection Cell parameters under Outputs; #cell-languages driver request/response; #outputs params attribute"}
+      - {path: documents/contracts/helper.md, lines: "1-400", why: "#messages runCell params, cellResult controls; #version +1"}
+    decided:
+      - "Fetch and edit only those sections (node scripts/docs/doc.mjs <file>#<anchor>). Present tense."
+    acceptance:
+      - {id: 1.1a, check: "the contracts state the param syntax, data injection, preview rule, params attribute, Manipulate controls and the protocol fields"}
+    tests: {none: docs}
+  - id: "1.2"
+    plan: cell-params
+    sha: a79dfa69
+    goal: "parseCellParams reads the param lines of a cell's options, setCellParamValue rewrites one value, and formatOutputParams/readOutputParams give the output attribute."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["1.1"]
+    create: [packages/core/src/qmd/item/cellParams.ts]
+    edit:
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "1-120", why: "output attrs: params; stale rule"}
+      - {path: packages/core/src/qmd/item/index.ts, lines: "1-60", why: "exports"}
+      - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "1-90", why: "write params attribute when the request has params"}
+    read:
+      - {path: documents/plans/cell-params/research/editor.brief.yaml, lines: "1-40", why: "options attr, hash rule"}
+      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "78-100", why: "leading #| lines become options"}
+    seams:
+      - {path: packages/core/src/qmd/item/cellParams.ts, signature: "export type CellParamValue = number | string | boolean; export type CellParam = { name: string; kind: \"slider\"; min: number; max: number; step?: number; log?: boolean; value: number } | { name: string; kind: \"select\"; choices: (number | string)[]; value: number | string } | { name: string; kind: \"checkbox\"; value: boolean }; export function parseCellParams(options: string): CellParam[]; export function setCellParamValue(options: string, name: string, value: CellParamValue): string; export function formatCellParamLine(param: CellParam): string; export function paramValues(params: CellParam[]): Record<string, CellParamValue>; export function formatOutputParams(values: Record<string, CellParamValue>): string; export function readOutputParams(attr: string): Record<string, CellParamValue> | undefined"}
+    decided:
+      - "Grammar exactly as plan D1; whitespace-tolerant; strings in double quotes with \\\" escapes; a slider value outside [min, max] is clamped on read, not rewritten."
+      - "setCellParamValue changes only the value token and keeps every other byte, including the line ending; an unknown name returns options unchanged."
+      - "Output attribute: names sorted, `name=value` joined by `;`, numbers in shortest round-trip form, strings JSON-quoted, booleans true/false."
+      - "An output is out of date when its params attribute differs from paramValues(parseCellParams(options)); no params on either side means unchanged behaviour."
+    acceptance:
+      - {id: 1.2a, check: "slider, select and checkbox lines parse; a malformed line, a 9th param and a bad name are ignored"}
+      - {id: 1.2b, check: "setCellParamValue rewrites only the value, byte for byte elsewhere, CRLF kept"}
+      - {id: 1.2c, check: "an output written with params carries the attribute and reads back equal; a different value marks it out of date"}
+      - {id: A1, check: "param lines parse, round-trip and rewrite only the value"}
+    tests:
+      hidden: [documents/plans/cell-params/tests/1.2/cellParams.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 1.2 --plan cell-params -- packages/core/__tests__/qmd/item packages/core/__tests__/qmd/compute/writeCellOutput.test.ts"

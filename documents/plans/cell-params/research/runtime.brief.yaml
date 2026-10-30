@@ -1,0 +1,31 @@
+schema: brief/v1
+area: cell-params runtime
+question: "what a params field touches from driver to host messages; cancel, write and Manipulate today"
+sha: a79dfa69
+reuse:
+  - {symbol: sendRequest, path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "167-190", why: "writes {id, code} at 184; abort kills the group (173): no soft cancel"}
+  - {symbol: createCellSessions, path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "57-116", why: "runs chained per key; cancel/timeout mark restarted"}
+  - {symbol: parseResponse, path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "10-68", why: "extra response fields pass through"}
+  - {symbol: createCellRuns, path: packages/core/src/qmd/compute/cellRunner.ts, lines: "44-83", why: "every non-cancelled run writes the note and pushes (storeResult 61-83)"}
+  - {symbol: parse_json_line, path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "8-105", why: "parses objects, numbers, booleans, strings; main 204-215; driver names live in .GlobalEnv"}
+  - {symbol: run_cell, path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "47-85", why: "one scope dict; scope.update(params)"}
+  - {symbol: staticFrame, path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "35-110", why: "Manipulate -> one frame at initial values; initialValue reads control specs; main 93-110"}
+edit:
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "9-83", why: "CellRequest.params, CellResult.controls, preview branch"}
+  - {path: packages/core/src/helper/helperMessages.ts, lines: "10-75", why: "PROTOCOL_VERSION 8 (regex-read by packages/terminal/build/sea.mjs:17), runCell fields"}
+  - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "236-241", why: "runCell reader"}
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "32-75", why: "forwards fields explicitly"}
+  - {path: packages/browser/src/helper/cellPorts.ts, lines: "20-40", why: "builds the request field by field"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "170-225", why: "runCell type 179 and validator 221-224"}
+  - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "45-240", why: "paper.runCell 49, validator 238"}
+  - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "50-254", why: "space.runCell 56, parseCellMessage 244-254"}
+read:
+  - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "27-95", why: "stale response ids dropped at 91"}
+  - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "107-137", why: "port passes the request whole; 60 s timeout"}
+risks:
+  - "Contracts qmd-items#cell-languages, helper#messages, helper#version move together."
+  - "No soft cancel: coalesce latest-wins on the caller; never cancel a preview mid-drag."
+  - "Write amplification: previews must not write; only the release writes."
+  - "Injection: identifier names validated at the helper boundary and in each driver; data injection, never code strings; R driver names must be reserved."
+  - "Manipulate: rules {var -> value} on the held body; report control specs as JSON."
+  - "Per-run cost (render + base64) is 100s of ms: coalescing required."

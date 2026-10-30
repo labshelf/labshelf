@@ -1,0 +1,52 @@
+schema: session/v1
+id: "3"
+goal: Helper and webview protocols carry params, preview and controls, and a cellPreview message brings preview results to the view.
+depends_on: ["2"]
+owns: [packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/core/src/reader/protocol/, packages/core/src/reader/noteMessages.ts, packages/core/src/libraryUi/protocol/, packages/core/src/libraryUi/paperHandlers.ts, packages/core/src/spaces/spacesProtocol.ts, packages/core/src/spaces/serveSpaces.ts, packages/core/__tests__/reader/, packages/core/__tests__/libraryUi/, packages/core/__tests__/spaces/]
+status: pending
+packages:
+  - id: "3.1"
+    plan: cell-params
+    sha: a79dfa69
+    goal: "Helper protocol +1: runCell carries params (validated), cellResult carries controls; the browser ports pass params and preview through."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/helper/helperMessages.ts, lines: "1-90", why: "PROTOCOL_VERSION line format must stay `export const PROTOCOL_VERSION = N;` (read by packages/terminal/build/sea.mjs:17)"}
+      - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "220-320", why: "params reader; controls in cellResult"}
+      - {path: packages/core/src/helper/helperPaths.ts, lines: "120-150", why: "HelperCellRequest"}
+      - {path: packages/core/src/helper/helperClient.ts, lines: "180-205", why: "client"}
+      - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "30-80", why: "forward params, return controls"}
+      - {path: packages/browser/src/helper/cellPorts.ts, lines: "1-70", why: "request built field by field"}
+    decided:
+      - "params: object of at most 8 entries; names by the D1 rule; values finite numbers, booleans, or strings up to 200 chars; anything else rejects the message."
+      - "Previews use timeoutMs 20000 from the port."
+    acceptance:
+      - {id: 3.1a, check: "runCell with valid params parses; a bad name, a 9th entry or a NaN rejects it"}
+      - {id: 3.1b, check: "controls survive cellResult parsing; protocol version is one higher"}
+    tests:
+      hidden: [documents/plans/cell-params/tests/3.1/helperParams.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 3.1 --plan cell-params -- packages/core/__tests__/helper"
+  - id: "3.2"
+    plan: cell-params
+    sha: a79dfa69
+    goal: "Reader runCell, paper.runCell and space.runCell carry params and preview; hosts answer previews with cellPreview {requestId, result}; each webview protocol version +1; browser project notes pass them to runs.run."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["3.1"]
+    edit:
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "1-230", why: "runCell 179, validator 221-224, cellPreview, version"}
+      - {path: packages/core/src/reader/noteMessages.ts, lines: "60-85", why: "target.preview posts cellPreview"}
+      - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "45-240", why: "paper.runCell, paper.cellPreview"}
+      - {path: packages/core/src/libraryUi/paperHandlers.ts, lines: "90-110", why: "preview target"}
+      - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "50-254", why: "space.runCell, space.cellPreview"}
+      - {path: packages/core/src/spaces/serveSpaces.ts, lines: "170-195", why: "preview target"}
+    decided:
+      - "Validators use the same params rule as 3.1 (one shared validator in core qmd/item/cellParams or compute)."
+      - "The view never sends a timeout; hosts choose 20 s for previews."
+    acceptance:
+      - {id: 3.2a, check: "each host runs a preview without writing and posts cellPreview with the result"}
+      - {id: 3.2b, check: "invalid params are rejected by each validator"}
+    tests:
+      hidden: [documents/plans/cell-params/tests/3.2/hostPreview.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 3.2 --plan cell-params -- packages/core/__tests__/reader packages/core/__tests__/libraryUi packages/core/__tests__/spaces"

@@ -1,0 +1,20 @@
+schema: session/v1
+id: "5"
+goal: The test note gets slider cells in the three languages and the user checks A5 by hand.
+depends_on: ["4"]
+owns: [documents/plans/cell-params/]
+milestone: true
+status: pending
+packages:
+  - id: "5.1"
+    plan: cell-params
+    sha: a79dfa69
+    goal: The user checks A5 in VS Code and in the browser.
+    level: task
+    runner: {agent: main, model: opus}
+    edit: []
+    decided:
+      - "Give the user cells to paste into the Adam test note (Documents/LabShelf Teste/.research/papers/kingma2015adam/notes.qmd): a Python cell with #| param beta and lr, an R cell with #| param grau, and the existing Mathematica Manipulate cell."
+    acceptance:
+      - {id: A5, check: "dragging a slider on Python, R and a Mathematica Manipulate cell updates the plot while dragging and keeps the value after reopening (VS Code and browser)"}
+    tests: {none: checked by the user by hand in the app}

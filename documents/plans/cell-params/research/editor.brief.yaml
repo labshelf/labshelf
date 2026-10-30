@@ -1,0 +1,33 @@
+schema: brief/v1
+area: cell-params editor side
+question: "how are #| lines parsed, where a param strip mounts, run/cancel, does writing a #| line mark output stale"
+sha: a79dfa69
+reuse:
+  - {symbol: readCellLabel, path: packages/core/src/qmd/dom/outputView.ts, lines: "10-13", why: "only #| parser (label); no generic parser"}
+  - {symbol: deriveCodeHash, path: packages/core/src/qmd/item/cellOutput.ts, lines: "75-80", why: "drops lines starting with #| at column 0: rewriting a param line does not make output stale"}
+  - {symbol: setViewNodeAttribute, path: packages/core/src/qmd/dom/inlineViews.ts, lines: "65-71", why: "write the options attr back"}
+  - {symbol: CellControls, path: packages/core/src/qmd/dom/inlineViews.ts, lines: "84-110", why: "run, isRunning, subscribe"}
+  - {symbol: createCellRunGroup, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "70-155", why: "attach drops a run while one is in flight; requestId private; running per item"}
+edit:
+  - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "52-266", why: "panel 52-120, render ~178, folded panel ~148, run 243-250, stopEvent 262-266"}
+  - {path: packages/core/src/qmd/dom/outputView.ts, lines: "10-13", why: "readCellLabel home"}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "110-135", why: "cell action styles"}
+read:
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "78-100", why: "leading #| lines -> attr options verbatim; rest -> code"}
+  - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "30-45", why: "label inserted on first run"}
+  - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "28-70", why: "status row"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, covers: "cell view"}
+  - {path: packages/core/__tests__/qmd/dom/cellRunStatus.test.ts, covers: "run group"}
+  - {path: packages/core/__tests__/qmd/dom/inlineViews.test.ts, covers: "controls"}
+  - {path: packages/core/__tests__/qmd/item/cellOutput.test.ts, covers: "hash"}
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom"
+risks:
+  - "Only #| is an option prefix in every language (Mathematica too); options never reach the kernel."
+  - "Malformed param line: no slider, no throw."
+  - "Debounced re-run needs cancel of the current requestId: extend the group API."
+  - "Write back on pointerup/change, not per tick (undo history)."
+  - "Folded cells hide the panel: the strip must stay visible next to the output."
+  - "No slider widget exists; native input type=range with accessible name and aria-valuetext."
+  - "Hash attrs.code only; send injected code so output never looks stale."
