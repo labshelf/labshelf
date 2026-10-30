@@ -173,7 +173,14 @@ describe("registerBuildCommand", () => {
       readyEntry("/p/typ", { main: "main.typ", settings: { id: "typ", format: "typst" } }),
     ]);
     const buildRootOf = jest.fn(async (_folder: string, main: string, _file: string) => main);
-    registerBuildCommand({ context: { subscriptions: [] } as never, projects, builders, buildRootOf });
+    // The focused source is read live, since the editor opens after the command registers.
+    const activeSource = {
+      current: () => {
+        const editor = vscode.window.activeTextEditor;
+        return editor && { uri: editor.document.uri, line: () => editor.selection.active.line + 1, reveal: () => {} };
+      },
+    };
+    registerBuildCommand({ context: { subscriptions: [] } as never, projects, builders, buildRootOf, activeSource });
     return { builders, order, buildRootOf };
   }
 

@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { findPagePoint, findSourcePosition, formatError, type ILogger, type PagePoint, type PathOps, type SynctexFinder } from "@labshelf/core";
 import { addSourceComment } from "../../collab/index.js";
+import type { ActiveSource } from "../activeSource.js";
 import { BUILD_COMMAND, readActiveProject } from "../build/index.js";
 import type { WritingProjects } from "../projects/index.js";
 import { NOT_BUILT_MESSAGE, NOT_IN_PREVIEW_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE, readBuiltPdf, type BuildPreviews } from "./panel.js";
@@ -12,8 +13,13 @@ function editorColumn(): vscode.ViewColumn {
   return vscode.window.visibleTextEditors.find((editor) => editor.viewColumn !== undefined)?.viewColumn ?? vscode.ViewColumn.One;
 }
 
-/** Puts the cursor at the start of the 1-based `line` of `file` and shows that line in the middle of the editor, in an editor column, so the source never replaces the preview. */
-export async function openSourceLine(file: string, line: number): Promise<void> {
+/** Puts the cursor at the start of the 1-based `line` of `file` and shows that line in the middle of the editor, in an editor column, so the source never replaces the preview. An open LabShelf editor on the file (found through `views`) is revealed instead of opening a text editor. */
+export async function openSourceLine(file: string, line: number, views?: Pick<ActiveSource, "openFor">): Promise<void> {
+  const open = views?.openFor(vscode.Uri.file(file));
+  if (open) {
+    open.reveal(line);
+    return;
+  }
   const position = Math.max(0, line - 1);
   const range = new vscode.Range(position, 0, position, 0);
   const editor = await vscode.window.showTextDocument(vscode.Uri.file(file), { viewColumn: editorColumn(), selection: range });
@@ -26,6 +32,8 @@ export interface ShowSourceDeps {
   paths: PathOps;
   projectFolder: string;
   synctex: () => Promise<SynctexFinder>;
+  /** The open LabShelf editors reverse search reveals in; absent, the source opens in a text editor. */
+  activeSource?: Pick<ActiveSource, "openFor">;
 }
 
 /** Opens the source line behind a point of the build preview, found through the project's SyncTeX data. */
@@ -48,7 +56,7 @@ export async function showSource(deps: ShowSourceDeps, point: PagePoint): Promis
     return;
   }
   try {
-    await openSourceLine(source.file, source.line);
+    await openSourceLine(source.file, source.line, deps.activeSource);
     await logger.log("INFO", PREVIEW_LOG_MODULE, "Opened source from the preview", { projectFolder, file: source.file, line: source.line, page: point.page });
   } catch (error) {
     await logger.error(PREVIEW_LOG_MODULE, error, { projectFolder, file: source.file, line: source.line, page: point.page });
@@ -71,7 +79,7 @@ export async function addPreviewComment(deps: ShowSourceDeps, point: PagePoint, 
   }
   try {
     await addSourceComment({ projectFolder, file: source.file, line: source.line, quote, body: note });
-    await openSourceLine(source.file, source.line);
+    await openSourceLine(source.file, source.line, deps.activeSource);
   } catch (error) {
     await logger.error(PREVIEW_LOG_MODULE, error, { ...context, action: "add a review note", file: source.file, line: source.line });
     void vscode.window.showErrorMessage(`LabShelf could not add the note to ${deps.paths.basename(source.file)}: ${formatError(error)}`);
@@ -107,23 +115,25 @@ interface ShowInPreviewCommandDeps {
   context: vscode.ExtensionContext;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
   previews: Pick<BuildPreviews, "show" | "revealSource">;
+  /** The focused source editor, native or LabShelf. */
+  activeSource: Pick<ActiveSource, "current">;
 }
 
 async function showInPreviewAtCursor(deps: ShowInPreviewCommandDeps): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  const file = editor?.document.uri;
-  const project = readActiveProject(deps.projects);
+  const source = deps.activeSource.current();
+  const file = source?.uri;
+  const project = readActiveProject(deps.projects, deps.activeSource);
   const pdf = await readBuiltPdf(deps.projects, project, project?.main);
-  if (!editor || !file || !project?.main || !pdf) {
+  if (!source || !file || !project?.main || !pdf) {
     // The build command opens the preview on success and explains a missing project, main file or format.
     await vscode.commands.executeCommand(BUILD_COMMAND);
     return;
   }
   deps.previews.show(project, project.main, pdf, { beside: true });
-  await deps.previews.revealSource(project, file.fsPath, editor.selection.active.line + 1);
+  await deps.previews.revealSource(project, file.fsPath, source.line());
 }
 
-/** Registers Show in Preview: scrolls the active project's preview to the output of the line under the editor cursor. */
+/** Registers Show in Preview: scrolls the active project's preview to the output of the line under the cursor of the focused source editor. */
 export function registerShowInPreview(deps: ShowInPreviewCommandDeps): void {
   deps.context.subscriptions.push(vscode.commands.registerCommand(SHOW_IN_PREVIEW_COMMAND, () => showInPreviewAtCursor(deps)));
 }

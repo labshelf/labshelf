@@ -28,6 +28,16 @@ svg { display: block; }
 :focus { outline: none; }
 :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
 
+/* ── Card ─────────────────────────────────────────────────────── */
+/* The rounded panel the PDF preview and the LabShelf editor sit in. --ls-card-border lets a host pick its border colour. */
+:root { --ls-card-margin: 6px; --ls-card-border-width: 1px; --ls-card-radius: 8px; }
+.ls-card {
+  margin: var(--ls-card-margin);
+  border: var(--ls-card-border-width) solid var(--ls-card-border, var(--ls-border-soft));
+  border-radius: var(--ls-card-radius);
+  overflow: hidden;
+}
+
 /* ── Buttons ──────────────────────────────────────────────────── */
 .ls-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;

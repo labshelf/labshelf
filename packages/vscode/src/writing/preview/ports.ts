@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import { deriveCheckLimitsPatch, formatError, type CheckLimitsChange, type ILogger, type LatexEngine, type PreviewPorts } from "@labshelf/core";
+import type { ActiveSource } from "../activeSource.js";
 import type { IncludeOnlyState } from "../build/index.js";
 import { setAutoCompile, setHaltOnError } from "../build/index.js";
 import type { ReadyProject } from "../projects/index.js";
@@ -107,6 +108,8 @@ export interface PreviewPortsDeps extends PreviewCitationDeps {
   projectActions?: ProjectActions;
   /** The citation-card fixes, when a library is open; cards carry no fix without it. */
   fixes?: () => CitationFixDeps | undefined;
+  /** The open LabShelf editors a click in the preview reveals the source line in; absent, the source opens in a text editor. */
+  activeSource?: Pick<ActiveSource, "openFor">;
 }
 
 export function createPreviewPorts(deps: PreviewPortsDeps): PreviewPorts {

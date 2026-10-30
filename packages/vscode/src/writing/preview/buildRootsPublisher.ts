@@ -7,7 +7,7 @@ import { buildOptions, onAutoCompileChange } from "../build/index.js";
 import { createProjectSourceReader } from "../../latex/index.js";
 import type { ReadyProject } from "../projects/index.js";
 import { PREVIEW_LOG_MODULE, type BuildPreviewsDeps } from "./panel.js";
-import { readActiveProjectEditor, readFocusedBuildRoot, createPreviewBuildRootsMessage, createProjectPreprints } from "./buildRoots.js";
+import { readActiveProjectSource, readFocusedBuildRoot, createPreviewBuildRootsMessage, createProjectPreprints } from "./buildRoots.js";
 import { disposeAll } from "../../disposables/index.js";
 
 export class MeasureCache {
@@ -61,6 +61,7 @@ export class BuildRootsPublisher implements vscode.Disposable {
       deps.projects.onDidChange(() => { this.measures.clear(); this.resendAll(); }),
       deps.checkCounts.onChange((folder) => this.resend(folder)),
       vscode.window.onDidChangeActiveTextEditor(() => this.resendAll()),
+      ...(deps.activeSource ? [deps.activeSource.onDidChange(() => this.resendAll())] : []),
     ];
   }
 
@@ -94,7 +95,7 @@ export class BuildRootsPublisher implements vscode.Disposable {
     const checks = checkCounts.get(project.folder);
     const logger = this.deps.host.current()?.logger;
     try {
-      const focused = await readFocusedBuildRoot(paths, buildRootOf, project);
+      const focused = await readFocusedBuildRoot(paths, buildRootOf, project, this.deps.activeSource);
       panel.controller.setPreviewRoots(await createPreviewBuildRootsMessage({
         paths, data, project, focused, shown, built: builds.builtRoots(project.folder),
         problemsOf: (root) => builds.problemsOf(project.folder, root) ?? [],
@@ -124,8 +125,8 @@ export class BuildRootsPublisher implements vscode.Disposable {
   // The include-only toggle exists for the shown root when the editor focuses a file that root `\include`s.
   private async optionsOf(project: ReadyProject, shown: string) {
     const { paths, includeOnly } = this.deps;
-    const editor = readActiveProjectEditor(paths, project.folder);
-    const focusedFile = editor && paths.relative(project.folder, editor.document.uri.fsPath).split(paths.sep).join("/");
+    const source = readActiveProjectSource(paths, project.folder, this.deps.activeSource);
+    const focusedFile = source && paths.relative(project.folder, source.uri.fsPath).split(paths.sep).join("/");
     const chapter = focusedFile === undefined ? undefined : await includeOnly?.option(project, shown, focusedFile);
     return { ...buildOptions(project), ...(chapter && { includeOnly: chapter }) };
   }

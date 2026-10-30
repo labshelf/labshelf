@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 
 import { CheckCounts, deriveBuildRootFolder } from "@labshelf/core";
 import { ReaderPanel } from "../../../src/reader";
+import { createActiveSource } from "../../../src/writing/activeSource";
 import { BuildPreviews } from "../../../src/writing/preview";
 import { FocusFollower, readBuiltPdf, registerShowPreview } from "../../../src/writing/preview/panel";
 import { commandHandler, fakeHost, fakeProjectData, fakeProjects, openInEditor, readyEntry } from "../../support/writingFixtures";
@@ -277,6 +278,7 @@ describe("focus follower", () => {
       builders: { latex: { request }, typst: { request: jest.fn() } },
       previews: { show },
       host: fakeHost(),
+      activeSource: createActiveSource(vscode.window),
     });
     return { follower, request, show };
   }

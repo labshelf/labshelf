@@ -20,10 +20,10 @@ body {
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
 #app { display: flex; height: 100%; }
-/* The page area is a rounded card like the sidebar; with the sidebar open the resizer is the gutter between them. */
+/* The page area is a card (ls-card values, ui/dom/base.css); with the sidebar open the resizer is the gutter. */
 #pdf-shell {
-  position: relative; flex: 1; min-width: 0; margin: 6px; background: var(--ls-reader-bg);
-  border: 1px solid var(--ls-reader-border); border-radius: 8px; overflow: hidden;
+  position: relative; flex: 1; min-width: 0; margin: var(--ls-card-margin, 6px); background: var(--ls-reader-bg);
+  border: 1px solid var(--ls-reader-border); border-radius: var(--ls-card-radius, 8px); overflow: hidden;
 }
 #sidebar-resizer:not([hidden]) + #pdf-shell { margin-left: 0; }
 #viewerContainer {

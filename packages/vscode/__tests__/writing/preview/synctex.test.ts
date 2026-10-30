@@ -142,7 +142,14 @@ describe("source from a preview double-click", () => {
 describe("Show in Preview command", () => {
   function register(cursorLine: number, file = "main.tex") {
     const ctx = setup();
-    registerShowInPreview({ context: { subscriptions: [] } as never, projects: fakeProjects([ctx.project]), previews: ctx.previews });
+    // The focused source is read live, since the editor opens after the command registers.
+    const activeSource = {
+      current: () => {
+        const editor = vscode.window.activeTextEditor;
+        return editor && { uri: editor.document.uri, line: () => editor.selection.active.line + 1, reveal: () => {} };
+      },
+    };
+    registerShowInPreview({ context: { subscriptions: [] } as never, projects: fakeProjects([ctx.project]), previews: ctx.previews, activeSource });
     openInEditor(path.join(dir, file));
     (vscode.window.activeTextEditor as unknown as { selection: unknown }).selection = { active: { line: cursorLine } };
     return ctx;

@@ -22,7 +22,9 @@ import {
 } from "../writing/projects/index.js";
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
-import { BuildPreviews, FocusFollower, readActiveProjectEditor, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
+import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
+import { readActiveProjectSource } from "../writing/preview/buildRoots.js";
+import { createActiveSource, type ActiveSource } from "../writing/activeSource.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
@@ -48,6 +50,8 @@ export interface WritingViewResult {
   /** The window's one notes store, so Send to and Checklist ticks queue on the same note file. */
   notes: ProjectNotesStore;
   logger: ILogger;
+  /** The focused source editor, native or LabShelf; the LabShelf editor registers its panels with it. */
+  activeSource: ActiveSource;
 }
 
 type Controller = LibraryRootController;
@@ -106,6 +110,7 @@ interface WritingParts {
   includeOnlyTarget: FindIncludeOnly;
   publishedLookup: PublishedVersionFinder;
   adapters: WritingAdapters;
+  activeSource: ActiveSource;
 }
 
 /** The host values the Writing view reads; `convertDocument` is absent where documents cannot be converted. */
@@ -151,7 +156,7 @@ function citationFixDeps(
 function registerBuildAndPreviewCommands(
   parts: WritingParts, registerPlatformWriting: RegisterPlatformWriting, outcomes: BuildOutcomes,
 ): { session: ProjectSession; previews: BuildPreviews; recompile: (folder: string, root: string) => Promise<unknown> } {
-  const { context, controller, host, projects, figures, listPapers, includeOnly, includeOnlyTarget, publishedLookup, adapters: { reader, uriOf } } = parts;
+  const { context, controller, host, projects, figures, listPapers, includeOnly, includeOnlyTarget, publishedLookup, activeSource, adapters: { reader, uriOf } } = parts;
   // The platform registrations need `previews`, and `previews` needs their builders, so it reaches them through this variable once assigned.
   let platform: PlatformWriting | undefined;
   const counts = new CheckCounts();
@@ -162,7 +167,7 @@ function registerBuildAndPreviewCommands(
     highlightsOf: async (paperId) => await controller.currentServices()?.paperDataStore.getAnnotations(paperId) ?? [], data: projects.data, extensionUri: context.extensionUri, ...reader,
     buildRootOf: rootOf,
     recompile,
-    projects, checkCounts: counts, includeOnly,
+    projects, checkCounts: counts, includeOnly, activeSource,
     setEngine: async (project, engine) => { await setEngine({ host, projects }, project, engine); },
     fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder, projects.paths),
   });
@@ -176,11 +181,11 @@ function registerBuildAndPreviewCommands(
   };
   platform = registerPlatformWriting({ context, host, projects, figures, previews: builds, diagnostics, reader, onFindings: (folder, count) => counts.record(folder, count), includeOnlyTarget });
   const { builders, history } = platform;
-  registerBuildCommand({ context, projects, builders, buildRootOf: rootOf });
-  context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host }));
+  registerBuildCommand({ context, projects, builders, buildRootOf: rootOf, activeSource });
+  context.subscriptions.push(new FocusFollower({ session, projects, buildRootOf: rootOf, builders, previews, host, activeSource }));
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });
-  registerShowPreview({ context, projects, previews });
-  registerShowInPreview({ context, projects, previews });
+  registerShowPreview({ context, projects, previews, activeSource });
+  registerShowInPreview({ context, projects, previews, activeSource });
   registerEditorActions({ context, host });
   registerInsertActions({ context, host, projects });
   registerProjectSearch({ context, projects, host });
@@ -211,15 +216,15 @@ function registerEditingSupport(parts: WritingParts): void {
 }
 
 function createIncludeOnly(
-  controller: LibraryRootController, projects: WritingProjects,
+  controller: LibraryRootController, projects: WritingProjects, activeSource: ActiveSource,
 ): { includeOnly: IncludeOnlyState; includeOnlyTarget: FindIncludeOnly } {
   const includeOnly = new IncludeOnlyState({
     readerFor: (folder) => createProjectSourceReader(vscode.Uri.file(folder), () => controller.currentServices()?.logger),
   });
   const includeOnlyTarget: FindIncludeOnly = async (project, root) => {
-    const editor = readActiveProjectEditor(projects.paths, project.folder);
-    if (!editor) { return undefined; }
-    const focused = projects.paths.relative(project.folder, editor.document.uri.fsPath).split(projects.paths.sep).join("/");
+    const source = readActiveProjectSource(projects.paths, project.folder, activeSource);
+    if (!source) { return undefined; }
+    const focused = projects.paths.relative(project.folder, source.uri.fsPath).split(projects.paths.sep).join("/");
     return includeOnly.target(project, root, focused);
   };
   return { includeOnly, includeOnlyTarget };
@@ -261,10 +266,12 @@ export function registerWritingView(
     onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
   });
   context.subscriptions.push(citeSections);
-  const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects);
+  // One for the extension, next to the focus follower that reads it; the LabShelf editor registers its panels with it.
+  const activeSource = createActiveSource(vscode.window);
+  const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects, activeSource);
   const publishedLookup = createPublishedVersionFinder({ fetch: globalThis.fetch, get logger() { return logger; } });
   const parts: WritingParts = {
-    context, controller, host, projects, figures, readingLists, listPapers, citeSections, includeOnly, includeOnlyTarget, publishedLookup, adapters,
+    context, controller, host, projects, figures, readingLists, listPapers, citeSections, includeOnly, includeOnlyTarget, publishedLookup, adapters, activeSource,
   };
   registerProjectAndFigureCommands(parts);
   const outcomes = new BuildOutcomes();
@@ -284,5 +291,5 @@ export function registerWritingView(
   });
   registerEditingSupport(parts);
   void projects.reload();
-  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger };
+  return { projects, readingLists, backlinks, projectsSource, projectTrees, projectLibrary, notes, logger, activeSource };
 }

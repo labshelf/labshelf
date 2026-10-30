@@ -6,6 +6,7 @@ import { BuildRootBuilds, ProjectSynctex, StaleSources, buildTypstPreviewPdf, cr
 import { disposeAll } from "../../disposables/index.js";
 import { ReaderPanel, type ReaderPanelDeps } from "../../reader/index.js";
 import type { UriOfPath } from "../../library/index.js";
+import type { ActiveSource } from "../activeSource.js";
 import { BUILD_COMMAND, readActiveProject, type BuildListener, type BuildTrigger, type IncludeOnlyState } from "../build/index.js";
 import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { BuildRootOf, WritingHost, WritingProjects } from "../projects/index.js";
@@ -49,6 +50,8 @@ export interface BuildPreviewsDeps extends Pick<ReaderPanelDeps, "extensionUri" 
   fixes: (projectFolder: string) => CitationFixDeps | undefined;
   /** Offers the include-only toggle and the toolbar's project actions; absent where builds cannot run. */
   includeOnly?: Pick<IncludeOnlyState, "option" | "set">;
+  /** The focused source editor, native or LabShelf; absent, the active text editor is the source. */
+  activeSource?: Pick<ActiveSource, "current" | "openFor" | "onDidChange">;
 }
 
 /** The paper a preview reader opens for a project's PDF. */
@@ -88,6 +91,8 @@ export interface FocusFollowerDeps {
   builders: Record<ProjectFormat, { request(projectFolder: string, root: string, trigger: "focus"): Promise<unknown> }>;
   previews: { show(project: ReadyProject, root: string, pdf: string, options: { beside: boolean }): void };
   host: Pick<WritingHost, "current">;
+  /** The focused source editor, native or LabShelf; its changes are what the preview follows. */
+  activeSource: Pick<ActiveSource, "onDidChange">;
 }
 
 /** Keeps the open project's preview on the PDF of the focused file's build root, building the root only when it has no PDF. */
@@ -95,8 +100,8 @@ export class FocusFollower implements vscode.Disposable {
   private readonly subscription: vscode.Disposable;
 
   constructor(private readonly deps: FocusFollowerDeps) {
-    this.subscription = vscode.window.onDidChangeActiveTextEditor((editor) => {
-      const uri = editor?.document.uri;
+    this.subscription = deps.activeSource.onDidChange((source) => {
+      const uri = source?.uri;
       if (uri?.scheme === "file") { void this.follow(uri.fsPath); }
     });
   }
@@ -178,13 +183,13 @@ function previewPanelSource(context: PreviewPanelContext): ReaderSource {
     pdfUri: deps.uriOf(pdf),
     rootDir: deps.uriOf(previewRootDir(deps, project)),
     preview: createPreviewPorts({
-      bodyPages: context.bodyPages, fixes, ...(actions && { projectActions: actions }),
+      bodyPages: context.bodyPages, fixes, ...(actions && { projectActions: actions }), ...(deps.activeSource && { activeSource: deps.activeSource }),
       logger, paths: deps.paths, projectFolder: project.folder, format: project.settings.format, listPapers: deps.listPapers,
       highlightsOf: deps.highlightsOf,
       synctex: () => synctex.load(project, shownRoot() ?? project.main),
       typstCites: () => builds.citesOf(project.folder, shownRoot() ?? project.main ?? "") ?? [],
       actions: createWritingActions({
-        logger, paths: deps.paths, data: deps.data, project, recompile: deps.recompile,
+        logger, paths: deps.paths, data: deps.data, project, recompile: deps.recompile, ...(deps.activeSource && { activeSource: deps.activeSource }),
         shownRoot: () => shownRoot() ?? project.main ?? "",
         problemsOf: (reported) => builds.problemsOf(project.folder, reported),
         reveal: context.reveal,
@@ -367,10 +372,11 @@ interface ShowPreviewDeps {
   context: vscode.ExtensionContext;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "fs">;
   previews: Pick<BuildPreviews, "show">;
+  activeSource?: Pick<ActiveSource, "current">;
 }
 
 async function showPreview(deps: ShowPreviewDeps): Promise<void> {
-  const project = readActiveProject(deps.projects);
+  const project = readActiveProject(deps.projects, deps.activeSource);
   const pdf = await readBuiltPdf(deps.projects, project, project?.main);
   if (project?.main && pdf) {
     deps.previews.show(project, project.main, pdf, { beside: false });
