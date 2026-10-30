@@ -2,6 +2,10 @@
 # Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|error}; anything the cell prints goes to stdout before it.
 # Run as: Rscript --vanilla cellDriver.R. Base R only: no package is loaded, so the driver needs no installed library.
 
+# The driver's own functions and constants live in a private environment, so a cell or a param can never see or replace them.
+local({
+driver <- environment()
+
 SENTINEL <- "\001LABSHELF\001"
 
 # The request is parsed on code points so the driver does not depend on the locale Rscript starts with.
@@ -156,6 +160,14 @@ run_cell <- function(code) {
   list(payload = if (length(text) > 0L) list(text = paste(text, collapse = "\n")) else list(), printed = printed)
 }
 
+# A param name must be a plain identifier and must not be one of the driver's own names.
+invalid_param_name <- function(params) {
+  for (name in names(params)) {
+    if (!grepl("^[A-Za-z][A-Za-z0-9_]*$", name, perl = TRUE) || name %in% ls(driver, all.names = TRUE)) return(name)
+  }
+  NULL
+}
+
 main <- function() {
   con <- file("stdin", open = "r")
   repeat {
@@ -164,9 +176,19 @@ main <- function() {
     if (!nzchar(trimws(line))) next
     request <- tryCatch(parse_json_line(line), error = function(e) NULL)
     if (!is.list(request) || is.null(request$id) || !is.numeric(request$id) || !is.character(request$code)) next
+    id_token <- format(request$id, scientific = FALSE)
+    params <- if (is.list(request$params)) request$params else list()
+    rejected <- invalid_param_name(params)
+    if (!is.null(rejected)) {
+      emit(id_token, list(error = paste("Invalid parameter name", rejected)), character(0))
+      next
+    }
+    # Values come from the parsed JSON and are assigned as data, never evaluated.
+    for (name in names(params)) assign(name, params[[name]], envir = .GlobalEnv)
     outcome <- run_cell(request$code)
-    emit(format(request$id, scientific = FALSE), outcome$payload, outcome$printed)
+    emit(id_token, outcome$payload, outcome$printed)
   }
 }
 
 main()
+})

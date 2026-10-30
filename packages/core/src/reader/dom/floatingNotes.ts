@@ -24,7 +24,8 @@ export class FloatingNotes {
   private readonly source = renderElement("button", { class: "rd-floating-note-source", type: "button" });
   private readonly body = renderElement("div", { class: "rd-floating-note-body" });
   private readonly status = renderElement("span", { class: "rd-floating-note-status", role: "status", "aria-live": "polite" }, "Saved");
-  private readonly runs: ReaderCellRuns;
+  /** Runs this surface's note cells; readerUi routes the host's cellPreview to it. */
+  readonly runs: ReaderCellRuns;
 
   constructor(private readonly ctx: ReaderContext, private readonly openFull: (id: string, body: string) => void) {
     this.runs = new ReaderCellRuns(ctx.host);
@@ -98,6 +99,7 @@ export class FloatingNotes {
 
   /** Shows the host's state of a run under the open note; a request this editor did not send is ignored. */
   showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
+
 
   close(flush = true): void {
     if (flush) { this.current?.editor.flush(); }

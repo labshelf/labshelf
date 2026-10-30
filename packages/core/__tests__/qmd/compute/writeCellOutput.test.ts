@@ -1,4 +1,5 @@
 import { deriveCodeHash, findOutputs } from "../../../src/qmd/item/cellOutput";
+import { isOutputParamsStale, readOutputParams } from "../../../src/qmd/item/cellParams";
 import type { CellResult } from "../../../src/qmd/compute/cellRunner";
 import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
 
@@ -170,4 +171,51 @@ it("leaves non-PNG data URLs as text rather than rendering active image formats"
   const text = "data:image/svg+xml;base64,PHN2Zy8+";
   const written = await writeCellOutput(LABELED, "bound", { status: "ok", language: "python", text, durationMs: 10 }, META);
   expect(findOutputs(written)[0]!.content).toContain("```\n" + text);
+});
+
+describe("writeCellOutput params", () => {
+  const VALUES = { beta: 0.9, label: 'a "b";c', on: true };
+  const opener = (written: string): string => written.split("\n").find((line) => line.startsWith("::: {.labshelf-output"))!;
+
+  it("1.3a writes a params attribute that findOutputs and readOutputParams read back equal", async () => {
+    const written = await writeCellOutput(LABELED, "bound", ok("y"), { ...META, params: VALUES });
+    const [output] = findOutputs(written);
+    expect(opener(written)).toContain("params=");
+    expect(output!.params).toBeDefined();
+    expect(readOutputParams(output!.params!)).toEqual(VALUES);
+  });
+
+  it("1.3b writes no params attribute without params", async () => {
+    const written = await writeCellOutput(LABELED, "bound", ok("y"), META);
+    expect(findOutputs(written)[0]!.params).toBeUndefined();
+    expect(opener(written)).not.toContain("params");
+  });
+
+  it("1.3b writes no params attribute for an empty params object", async () => {
+    const written = await writeCellOutput(LABELED, "bound", ok("y"), { ...META, params: {} });
+    expect(opener(written)).not.toContain("params");
+  });
+
+  describe("isOutputParamsStale", () => {
+    const OPTIONS = "#| label: bound\n#| param: beta = slider(0, 1, 0.9)\n#| param: on = checkbox(true)\n";
+    const stored = async (params: Record<string, number | string | boolean>): Promise<string | undefined> =>
+      findOutputs(await writeCellOutput(LABELED, "bound", ok("y"), { ...META, params }))[0]!.params;
+
+    it("1.3c is false for matching values", async () => {
+      expect(isOutputParamsStale(await stored({ beta: 0.9, on: true }), OPTIONS)).toBe(false);
+    });
+
+    it("1.3c is true when a param line's value differs", async () => {
+      expect(isOutputParamsStale(await stored({ beta: 0.5, on: true }), OPTIONS)).toBe(true);
+      expect(isOutputParamsStale(await stored({ beta: 0.9, on: false }), OPTIONS)).toBe(true);
+    });
+
+    it("1.3c is true when the cell has params and the output has none", () => {
+      expect(isOutputParamsStale(undefined, OPTIONS)).toBe(true);
+    });
+
+    it("1.3c is false when neither has params", () => {
+      expect(isOutputParamsStale(undefined, "#| label: bound\n")).toBe(false);
+    });
+  });
 });

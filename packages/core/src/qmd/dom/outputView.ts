@@ -1,9 +1,10 @@
-// Shows the stored output of a code cell as text, a plot or display math with its cell's quiet action line under the last one, marking it out of date when its cell's code hashes to something other than the output's `source`.
+// Shows the stored output of a code cell as text, a plot or display math with its cell's quiet action line under the last one (or a param drag's preview result in its place), marking it out of date when its cell's code hashes to something other than the output's `source` or its param values changed.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { mountOverlay, renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { deriveCodeHash, readOutputImage } from "../item/index.js";
+import type { CellResult } from "../compute/index.js";
+import { deriveCodeHash, findOutputs, isOutputParamsStale, readOutputImage } from "../item/index.js";
 import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 
@@ -18,6 +19,25 @@ export function outputContent(raw: string): string {
   if (lines.at(-1) === "") lines.pop();
   if (lines.length > 0 && lines.at(-1)?.trim() === ":::") lines.pop();
   return lines.slice(1).join("\n");
+}
+
+/** What a preview result shows in place of the stored output: its display math, its text, or its error. */
+function previewContent(result: CellResult): string {
+  return result.latex ? `$$${result.latex}$$` : result.text ?? result.error ?? "";
+}
+
+/** A preview result drawn by itself, for a cell without a stored output: its display math, or its text or error in monospace. */
+export function renderPreviewResult(result: CellResult, loadMath: MathLoader = loadCoreMath): HTMLElement {
+  return renderOutputText(previewContent(result), loadMath);
+}
+
+/** Output content that is not a plot: display math for one `$$ … $$` block, else its text in monospace without a wrapping fence. */
+function renderOutputText(content: string, loadMath: MathLoader): HTMLElement {
+  const tex = displayMath(content);
+  if (tex === null) return renderElement("pre", { class: "qmd-output-text", text: plainOutput(content) });
+  const rendered = renderElement("div", { class: "qmd-math-rendered" });
+  void renderMathInto(rendered, tex, true, loadMath);
+  return renderElement("div", { class: "qmd-math qmd-math-display" }, rendered);
 }
 
 /** Removes a whole code fence from text results while preserving the stored Markdown. */
@@ -47,7 +67,8 @@ function openPlot(src: string, alt: string): () => void {
 class OutputView implements NodeView {
   readonly dom: HTMLElement;
   private readonly body: HTMLElement;
-  private shownRaw: string | null = null;
+  /** What the body shows: the stored output (`raw`) or a preview's content, keyed so an unchanged one is not redrawn. */
+  private shownKey: string | null = null;
   private checkedKey: string | null = null;
   private readonly observer: MutationObserver;
   private destroyed = false;
@@ -68,30 +89,45 @@ class OutputView implements NodeView {
     this.observer = new MutationObserver(() => { this.checkSource(); this.renderActions(); });
     this.observer.observe(view.dom, { childList: true, subtree: true, characterData: true });
     this.render();
-    queueMicrotask(() => { this.ready = true; this.cell()?.refresh(); this.renderActions(); });
+    // Drawn with the editor's first document: its cell folds at once, so the note does not show the code first.
+    if (view.isDestroyed) this.cell()?.refresh(true);
+    queueMicrotask(() => { this.ready = true; this.cell()?.refresh(); this.render(); });
   }
 
+  /** Follows the controls of this output's cell, so a drag preview and the run state reach every output of it. */
+  private connect(): void {
+    if (this.destroyed || !this.ready || this.view.isDestroyed) return;
+    const controls = this.cell();
+    if (controls === this.controls) return;
+    this.unsubscribe?.();
+    this.controls = controls;
+    this.unsubscribe = controls?.subscribe(() => this.render()) ?? null;
+  }
+
+  /** Shows the stored output, or while its cell's params are dragged the preview result in the last output, the others hidden. */
   private render(): void {
+    if (this.destroyed) return;
+    this.connect();
     const raw = this.node.attrs.raw as string;
-    if (raw !== this.shownRaw) {
+    const result = this.controls?.previewResult();
+    const last = result === undefined || this.isLast();
+    const preview = result !== undefined && last ? previewContent(result) : null;
+    this.body.hidden = !last;
+    this.dom.classList.toggle("is-preview", preview !== null);
+    const key = preview === null ? `raw\u0000${raw}` : `preview\u0000${preview}`;
+    if (key !== this.shownKey) {
       this.preview?.();
       this.preview = null;
-      this.shownRaw = raw;
-      const content = outputContent(raw);
-      const tex = displayMath(content);
+      this.shownKey = key;
+      const content = preview ?? outputContent(raw);
       const image = readOutputImage(content);
       this.dom.classList.toggle("qmd-output-figure", image !== null);
       if (image) {
         const expand = renderElement("button", { class: "qmd-output-expand", type: "button", "aria-label": "Expand plot", title: "Expand plot", html: renderIcon("external") });
         expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlot(image.src, image.alt); });
         this.body.replaceChildren(renderElement("img", { class: "qmd-output-image", src: image.src, alt: image.alt, draggable: "false" }), expand);
-      } else if (tex === null) {
-        this.body.replaceChildren(renderElement("pre", { class: "qmd-output-text", text: plainOutput(content) }));
       } else {
-        const rendered = renderElement("div", { class: "qmd-math-rendered" });
-        const math = renderElement("div", { class: "qmd-math qmd-math-display" }, rendered);
-        this.body.replaceChildren(math);
-        void renderMathInto(rendered, tex, true, this.loadMath);
+        this.body.replaceChildren(renderOutputText(content, this.loadMath));
       }
     }
     this.checkSource();
@@ -113,12 +149,8 @@ class OutputView implements NodeView {
   /** Under the last output of a cell with a result: the language picker, Run again, Restart and Show or Hide code; redrawn only when one of them changes. */
   private renderActions(): void {
     if (this.destroyed || !this.ready || this.view.isDestroyed) return;
-    const controls = this.isLast() ? this.cell() : null;
-    if (controls !== this.controls) {
-      this.unsubscribe?.();
-      this.controls = controls;
-      this.unsubscribe = controls?.subscribe(() => this.renderActions()) ?? null;
-    }
+    this.connect();
+    const controls = this.isLast() ? this.controls : null;
     const show = controls?.hasResult() === true;
     this.dom.classList.toggle("is-running", show && controls.isRunning());
     const key = show ? [controls.language(), controls.canRun(), controls.canRestart(), controls.isOpen(), this.view.editable].join("\u0000") : null;
@@ -147,7 +179,7 @@ class OutputView implements NodeView {
     this.dom.append(line);
   }
 
-  /** The position of the cell this output belongs to, as `cellCode` finds it. */
+  /** The position of the cell this output belongs to, as `cellNode` finds it. */
   private cellPos(): number | null {
     const pos = this.getPos();
     if (pos === undefined) return null;
@@ -162,41 +194,45 @@ class OutputView implements NodeView {
     return found;
   }
 
-  /** The `code` of the cell this output belongs to: the nearest earlier `code_cell` labelled `cell`, or the nearest earlier cell when the output names none. */
-  private cellCode(): string | null {
+  /** The cell this output belongs to: the nearest earlier `code_cell` labelled `cell`, or the nearest earlier cell when the output names none. */
+  private cellNode(): ProseNode | null {
     const pos = this.cellPos();
-    return pos === null ? null : (this.view.state.doc.nodeAt(pos)?.attrs.code as string | undefined) ?? null;
+    return pos === null ? null : this.view.state.doc.nodeAt(pos);
   }
 
+  /** Out of date when the cell's code hashes to something other than `source`, or its param values differ from the output's `params`. */
   private checkSource(): void {
     if (this.destroyed) return;
-    const code = this.cellCode();
+    const cell = this.cellNode();
+    const code = cell?.attrs.code as string | undefined;
+    const options = (cell?.attrs.options as string | undefined) ?? "";
+    const raw = this.node.attrs.raw as string;
     const source = this.node.attrs.source as string;
-    const key = code === null ? null : `${source}\u0000${code}`;
+    const key = code === undefined ? null : `${source}\u0000${code}\u0000${options}\u0000${raw}`;
     if (key === this.checkedKey) return;
     this.checkedKey = key;
-    if (code === null) {
-      this.showStale(false);
+    if (code === undefined) {
+      this.showStale(null);
       return;
     }
+    const paramsStale = isOutputParamsStale(findOutputs(raw)[0]?.params, options);
     void deriveCodeHash(code).then((hash) => {
       if (this.destroyed || this.checkedKey !== key) return;
-      this.showStale(hash !== source);
+      this.showStale(hash !== source ? "code" : paramsStale ? "params" : null);
     }, () => undefined);
   }
 
-  /** The caption exists only while the output is out of date, so a current output carries no trace of the state; its words carry the state without colour. */
-  private showStale(stale: boolean): void {
-    this.dom.classList.toggle("is-out-of-date", stale);
-    if (!stale) {
-      this.caption?.remove();
-      this.caption = null;
-    } else if (!this.caption) {
-      this.caption = renderElement("div", { class: "qmd-output-caption", role: "note" },
-        renderElement("span", { class: "qmd-output-caption-icon", html: renderIcon("warning"), "aria-hidden": "true" }),
-        renderElement("span", { class: "qmd-output-caption-text" }, "Out of date — the code changed since this ran"));
-      this.dom.prepend(this.caption);
-    }
+  /** The caption exists only while the output is out of date, so a current output carries no trace of the state; its words carry the state, and what changed, without colour. */
+  private showStale(changed: "code" | "params" | null): void {
+    this.dom.classList.toggle("is-out-of-date", changed !== null);
+    this.caption?.remove();
+    this.caption = null;
+    if (changed === null) return;
+    const what = changed === "code" ? "the code changed" : "the parameters changed";
+    this.caption = renderElement("div", { class: "qmd-output-caption", role: "note" },
+      renderElement("span", { class: "qmd-output-caption-icon", html: renderIcon("warning"), "aria-hidden": "true" }),
+      renderElement("span", { class: "qmd-output-caption-text" }, `Out of date — ${what} since this ran`));
+    this.dom.prepend(this.caption);
   }
 
   update(node: ProseNode): boolean {

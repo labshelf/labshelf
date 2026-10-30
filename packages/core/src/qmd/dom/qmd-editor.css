@@ -134,6 +134,23 @@ textarea.qmd-math-input { white-space: pre-wrap; overflow-wrap: anywhere; }
 .qmd-cell-code .cm-editor .cm-content:focus, .qmd-cell-code .cm-editor .cm-content:focus-visible { outline: none; }
 .qmd-cell-code .cm-editor .cm-lineNumbers .cm-gutterElement { min-width: 2ch; padding: 0 var(--ls-space-3) 0 0; }
 
+/* The param strip: one native control per param with its name and value, shown even when the cell is folded. */
+.qmd-param-strip { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) var(--ls-space-5); margin-top: var(--ls-space-2); padding: var(--ls-space-2) var(--ls-space-3); border-radius: var(--ls-radius-lg); background: var(--ls-code-bg); color: var(--ls-desc); font: var(--ls-text-xs) / 1.4 var(--ls-font); }
+.qmd-param-strip[hidden] { display: none; }
+.qmd-param { display: inline-flex; align-items: center; gap: var(--ls-space-2); min-height: calc(var(--ls-row-h) - var(--ls-space-2)); }
+.qmd-param-name { color: var(--ls-fg); font-family: var(--ls-mono); }
+.qmd-param-range { width: calc(var(--ls-row-h) * 6); margin: 0; accent-color: var(--ls-focus); }
+.qmd-param-check { margin: 0; accent-color: var(--ls-focus); }
+.qmd-param-select { padding: 0 var(--ls-space-1); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius-sm); background: var(--ls-input-bg); color: var(--ls-input-fg); font: inherit; }
+.qmd-param-value { min-width: 4ch; color: var(--ls-fg); font-family: var(--ls-mono); font-variant-numeric: tabular-nums; }
+.qmd-param-range:focus-visible, .qmd-param-check:focus-visible, .qmd-param-select:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
+.qmd-param :disabled { cursor: default; opacity: 0.6; }
+.qmd-param-strip[aria-busy="true"] .qmd-param-value { color: var(--ls-desc); }
+.qmd-output.is-preview .qmd-output-body { opacity: 1; }
+/* A preview result of a cell without a stored output, drawn after the cell until the release run ends. */
+.qmd-cell-preview { margin-top: var(--ls-space-2); }
+.qmd-cell-preview[hidden] { display: none; }
+
 /* Output: shown in the flow of the text under its cell, like a figure or a quoted result; out-of-date output is dimmed under a worded caption. */
 .qmd-output { position: relative; border-radius: var(--ls-radius-sm); }
 .qmd-output[draggable="true"]:active { cursor: grabbing; }

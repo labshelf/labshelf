@@ -77,11 +77,13 @@ export function createSpaceCellRuns(ctx: OverviewContext): CellRunGroup {
 
 /** The `onRunCell` and `onRestartCell` options of an item editor mounted in `host` (which must have a parent, where the status row goes), present only when the Space state says the host can run cells. */
 export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, path: string | undefined, itemId: string | undefined, host: HTMLElement):
-  { onRunCell?(label: string, code: string, language: CellLanguage): void; onRestartCell?(language: CellLanguage): void } {
+  { onRunCell?: ReturnType<CellRunGroup["attach"]>; onRestartCell?(language: CellLanguage): void } {
   if (ctx.readOnly || ctx.data.canRunCells !== true || path === undefined || itemId === undefined) return {};
   const key = `${path}\n${itemId}`;
   const onRunCell = runs.attach(key, host,
-    (label, code, requestId, language) => ctx.end.post({ type: "space.runCell", path, itemId, label, code, language, requestId }),
+    (label, code, requestId, language, params, preview) => ctx.end.post({
+      type: "space.runCell", path, itemId, label, code, language, requestId, ...(params ? { params } : {}), ...(preview ? { preview: true } : {}),
+    }),
     (language) => ctx.end.post({ type: "space.restartCell", path, language }));
   const onRestartCell = runs.restartCell(key);
   return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
@@ -221,6 +223,7 @@ export function mountSpaceNotes(root: HTMLElement, context: OverviewContext & { 
     if (message.type === "spaceNotes" && message.spaceId === notesSpaceId(s)) setNotes(s, message.notes);
     else if (message.type === "spaceQmd" && message.spaceId === notesSpaceId(s) && message.path === s.selected) applyNoteItems(s, message.items);
     else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
+    else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
   });
   paintNotesList(s); renderNoteDetail(s);
 

@@ -1,6 +1,6 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
-import { createCellRuns, type CellLanguage, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
+import { createCellRuns, type CellLanguage, type CellRequest, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
 import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";
 
@@ -90,10 +90,10 @@ export async function sendPaperDetails(host: LibraryUiHost, id: string): Promise
 }
 
 /** Runs a note's cell, stores its output with the note, resends the details, then answers `paper.cellState`. */
-export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string }): Promise<void> {
-  const { id, itemId, label, code, language, requestId } = msg;
+export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string; params?: CellRequest["params"]; preview?: boolean }): Promise<void> {
+  const { id, itemId, label, code, language, requestId, params, preview } = msg;
   const notes = host.notes;
-  await paperRuns.run(notes ? host.runCell : undefined, { label, code, language, requestId, noteKey: paperNoteKey(id) }, {
+  await paperRuns.run(notes ? host.runCell : undefined, { label, code, language, requestId, noteKey: paperNoteKey(id), ...(params ? { params } : {}), ...(preview ? { preview } : {}) }, {
     read: async () => {
       const item = notes ? (await notes.read(id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
       return item?.kind === "item" ? item.body : undefined;
@@ -101,6 +101,7 @@ export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemI
     write: (body) => notes ? notes.editItem(id, itemId, body) : Promise.resolve(),
     push: () => sendPaperDetails(host, id),
     post: (state) => { void host.post({ type: "paper.cellState", requestId, state }); },
+    preview: (result) => { void host.post({ type: "paper.cellPreview", requestId, result }); },
     fail: (error) => { host.notice("error", `The cell could not run — ${error instanceof Error ? error.message : String(error)}`); },
   });
 }

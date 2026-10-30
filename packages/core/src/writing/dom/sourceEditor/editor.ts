@@ -374,25 +374,22 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const kind = deriveSourceLanguage(path);
   const saved = { text };
   const explicit = explicitSaves(helperEdits);
-  const save = createSaver(deps, currentText, saved, () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); }, () => view);
+  const save = createSaver(deps, currentText, saved, () => { explicit.written(); refreshAll(); deps.onSaved?.(); }, () => view);
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
-  const refreshLinks = (): void => { if (noteLinks && view) void noteLinks.refresh(view); };
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
-  const refreshNotes = noteRefresh.refresh;
+  const refreshAll = (): void => { noteRefresh.refresh(); if (noteLinks && view) void noteLinks.refresh(view); };
   const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText: collab || document ? currentText : () => saved.text, flush: save.flush, logger });
   // Mod-s on a host document asks the host to save; the host reports when it is clean.
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
-  const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshNotes(); refreshLinks(); } };
-  const onUpdate = changeListener({ path, save, helperEdits, labels });
-  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...hostExtensions(deps)];
+  const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) refreshAll(); };
+  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), ...hostExtensions(deps)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
-  refreshNotes();
-  refreshLinks();
+  refreshAll();
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
-  const unregister = registerEditor(view, deps, save.flush, saved, () => { refreshNotes(); refreshLinks(); });
+  const unregister = registerEditor(view, deps, save.flush, saved, refreshAll);
   return {
     ...createSourceUpdates(view, kind),
     noteLinks: noteLinks && noteLinks.actionsFor(view),

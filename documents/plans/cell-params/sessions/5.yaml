@@ -1,20 +1,104 @@
 schema: session/v1
 id: "5"
 goal: The test note gets slider cells in the three languages and the user checks A5 by hand.
-depends_on: ["4"]
-owns: [documents/plans/cell-params/]
+depends_on:
+  - "4"
+owns:
+  - documents/plans/cell-params/
+  - packages/core/src/qmd/dom/
+  - packages/core/__tests__/qmd/dom/
+  - packages/core/src/qmd/item/
+  - packages/core/src/qmd/compute/
+  - packages/core/__tests__/qmd/item/
+  - packages/core/src/writing/dom/sourceEditor/
+  - scripts/lint/modulesBaseline.json
 milestone: true
-status: pending
+status: blocked
 packages:
   - id: "5.1"
     plan: cell-params
     sha: a79dfa69
     goal: The user checks A5 in VS Code and in the browser.
     level: task
-    runner: {agent: main, model: opus}
+    runner:
+      agent: main
+      model: opus
     edit: []
     decided:
       - "Give the user cells to paste into the Adam test note (Documents/LabShelf Teste/.research/papers/kingma2015adam/notes.qmd): a Python cell with #| param beta and lr, an R cell with #| param grau, and the existing Mathematica Manipulate cell."
     acceptance:
-      - {id: A5, check: "dragging a slider on Python, R and a Mathematica Manipulate cell updates the plot while dragging and keeps the value after reopening (VS Code and browser)"}
-    tests: {none: checked by the user by hand in the app}
+      - id: A5
+        check: dragging a slider on Python, R and a Mathematica Manipulate cell updates the plot while dragging and keeps the value after reopening (VS Code and browser)
+    tests:
+      none: checked by the user by hand in the app
+  - id: "5.2"
+    plan: cell-params
+    sha: b39f326b
+    goal: pnpm lint max-lines errors from the lint milestone are gone, behaviour unchanged.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/qmd/dom/cellParamStrip.ts
+        lines: 63-175
+        why: "createCellParamStrip is 110 lines (limit 50): split into one builder per control kind plus the preview/release wiring"
+      - path: packages/core/__tests__/qmd/dom/cellParamStrip.test.ts
+        lines: 1-556
+        why: "556 lines (limit 500): split by concept into this file and a new sibling test file in the same folder, e.g. rendering vs preview/release; keep every test"
+      - path: packages/core/src/qmd/dom/cellRunStatus.ts
+        lines: 121-190
+        why: "createCellRunGroup is 66 lines (limit 50): extract helpers"
+      - path: packages/core/src/qmd/dom/codeCellView.ts
+        lines: 1-411
+        why: "file 411 lines (limit 400) and constructor 51 lines (limit 50): move the param-strip wiring into its own module in qmd/dom"
+      - path: packages/core/src/writing/dom/sourceEditor/editor.ts
+        lines: 380-402
+        why: "402 lines (limit 400): trim or extract a small helper"
+    create:
+      - packages/core/src/qmd/dom/
+      - packages/core/__tests__/qmd/dom/
+      - packages/core/src/writing/dom/sourceEditor/
+    decided:
+      - "Pure refactors: no behaviour, API or test-assertion change. Never raise a lint limit or add a lint-disable comment."
+      - Do not run pnpm gate or any lint; check only with node scripts/agents/run.mjs typecheck core and the test command below.
+    acceptance:
+      - id: 5.2a
+        check: the five files are under their max-lines limits and the qmd/dom and writing tests still pass
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 5.2 --plan cell-params -- packages/core/__tests__/qmd/dom packages/core/__tests__/writing
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+  - id: "5.3"
+    plan: cell-params
+    sha: b39f326b
+    goal: node scripts/lint/modules.mjs no longer reports orphan-file for packages/core/src/qmd/item/cellParams.ts, without growing scripts/lint/modulesBaseline.json.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/qmd/item/cellParams.ts
+        lines: 1-205
+        why: no other file of qmd/item uses it (rule at scripts/lint/modules.mjs:93); its users are qmd/compute/writeCellOutput.ts, qmd/dom/*, qmd/editor/qmdBlocks.ts
+      - path: packages/core/src/qmd/item/cellOutput.ts
+        lines: 1-100
+        why: owns the params attribute of the output block; a natural link if it formats or reads params through cellParams
+      - path: packages/core/src/qmd/compute/writeCellOutput.ts
+        lines: 15-40
+        why: caller that formats params today
+    decided:
+      - Prefer a real link inside qmd/item (e.g. cellOutput.ts writing the params attribute from a value record through formatOutputParams, with writeCellOutput passing the record) over moving files; if no link is natural, move cellParams.ts to the module where its users are and update imports. No artificial imports.
+      - Contract format of the params attribute is unchanged (documents/contracts/qmd-items.md#cell-parameters).
+      - Do not run pnpm gate or any lint except node scripts/lint/modules.mjs (without --update) to confirm; otherwise check with node scripts/agents/run.mjs typecheck core and the test command below.
+    acceptance:
+      - id: 5.3a
+        check: node scripts/lint/modules.mjs passes with the baseline unchanged; qmd item and compute tests pass
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 5.3 --plan cell-params -- packages/core/__tests__/qmd/item packages/core/__tests__/qmd/compute
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/lint/modules.mjs
+blocked_reason: "A5 waits for the user to check it by hand (cells in a5-cells.md); 5.2 and 5.3 passed the milestone gate in the finisher"

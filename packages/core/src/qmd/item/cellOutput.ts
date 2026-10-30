@@ -11,6 +11,8 @@ export interface CellOutputBlock {
   readonly source: string;
   readonly engine?: string;
   readonly ran?: string;
+  /** The raw `params` attribute: the parameter values the result was made with; see `isOutputParamsStale`. */
+  readonly params?: string;
   /** The result's Markdown, the bytes between the block's fences. */
   readonly content: string;
   /** UTF-16 offsets of the whole block in the body, from its opening line to after its closing line. */
@@ -23,6 +25,8 @@ export interface CreateOutputInput {
   readonly source: string;
   readonly engine: string;
   readonly ran: string;
+  /** Written as the `params` attribute (see `formatOutputParams`) when the cell has parameters. */
+  readonly params?: string;
   readonly content: string;
   /** Written as the opener's last attribute; an ok result has none. */
   readonly status?: "error";
@@ -42,11 +46,13 @@ export function findOutputs(body: string): CellOutputBlock[] {
     if (!cell || !source) { continue; }
     const engine = readAttribute(attributes, "engine");
     const ran = readAttribute(attributes, "ran");
+    const params = readAttribute(attributes, "params");
     outputs.push({
       cell,
       source,
       ...(engine === undefined ? {} : { engine }),
       ...(ran === undefined ? {} : { ran }),
+      ...(params === undefined ? {} : { params }),
       content: lines.slice(open + 1, close).join(""),
       start: offsets[open]!,
       end: offsets[close + 1]!,
@@ -61,6 +67,7 @@ export function formatOutput(output: CreateOutputInput, eol = "\n"): string {
     classes: [OUTPUT_CLASS],
     pairs: [
       ["cell", output.cell], ["source", output.source], ["engine", output.engine], ["ran", output.ran],
+      ...(output.params === undefined ? [] : [["params", output.params] as [string, string]]),
       ...(output.status === undefined ? [] : [["status", output.status] as [string, string]]),
     ],
   });

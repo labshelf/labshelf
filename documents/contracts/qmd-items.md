@@ -77,23 +77,38 @@ A project's notes are the `.qmd` files in its `notes/` folder, one file per note
 
 ## Outputs
 
-A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`. `engine` is the cell's language ([Cell languages](#cell-languages)). Results travel inside the file, so a reader sees them without running anything.
+A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`, plus `params` when the cell has [parameters](#cell-parameters). `engine` is the cell's language ([Cell languages](#cell-languages)). Results travel inside the file, so a reader sees them without running anything.
 
 - `cell` is the cell's `#| label:`. A cell with a result has a label.
 - `source` is the first 12 hex characters of the SHA-256 of the cell's code with the `#|` lines removed, lines joined with `\n` and trailing line endings removed. Every device must compute it the same way, and line endings must never make a result out of date.
-- A result whose `source` differs from its cell's current code is shown as out of date. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
+- `params` lists the parameter values the result was made with: `name=value` pairs sorted by name and joined by `;`, numbers in shortest round-trip form, strings JSON-quoted, booleans `true` or `false` (`params="beta=0.9;label=\"a\";log=true"`).
+- A result whose `source` differs from its cell's current code, or whose `params` differ from the values of its cell's param lines, is shown as out of date. A result and a cell that both lack parameters compare by `source` alone. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
 - A result that would close its block early is rejected, not written.
 - A failed run (an error or a timeout) writes its error text in a plain fenced code block and adds `status="error"` as the opener's last attribute; a successful result has no `status`. A cancelled run, or one whose language is not installed, writes nothing.
 - A run writes its block on the line after the cell's closing fence, and a rerun replaces the cell's block in place. A cell without a label gets `#| label: cell-<n>` (its 1-based position among the item's cells) on its first run.
 
 An output may contain one Markdown image with an embedded PNG (`![Python plot](data:image/png;base64,…)`). Images come only from Python cells. It is a stored figure, shown directly by each host; rerunning a cell replaces its output as usual. Other image formats and remote URLs are not plot results. A returned Matplotlib figure, a plotting command, or the last open figure when the cell returns no value is captured as PNG. Explicitly returned PNG data URLs are accepted too. Matplotlib is required by cells that import it.
 
+### Cell parameters
+
+A cell declares parameters among its leading `#|` lines, one line each, with the same syntax in every language:
+
+- `#| param: <name> = slider(<min>, <max>, <value>[, step = <s>][, log])`
+- `#| param: <name> = select(<a>, <b>, …; <value>)`, choices being numbers or double-quoted strings with `\"` escapes
+- `#| param: <name> = checkbox(<true|false>)`
+
+Spaces around tokens are free. A name matches `^[A-Za-z][A-Za-z0-9_]*$`, and a cell has at most 8 parameters; a malformed line, a bad name or a ninth parameter is kept as text and draws nothing. A slider value outside `[min, max]` is clamped when read, not rewritten. The value is the last argument and is the only part LabShelf rewrites: every other byte of the line, its line ending included, stays as written. Like every `#|` line, param lines do not count towards `source`.
+
+- Values reach the driver as data, never as code: the request carries `params: {name: value}`. Python sets them in the note's scope, R assigns them in the global environment, Mathematica sets `Global`<name>` from the parsed JSON value. Each driver checks the names again and rejects its own reserved names; the note's other variables stay.
+- Moving a control runs a preview: debounced 150 ms, at most one in flight per cell, the latest value wins and nothing is cancelled. The cell draws its params as a strip of native controls (a range, a select or a checkbox, labelled by name, with the value beside it), also while the code is folded. A preview's result is shown under the cell, in place of the stored output, or as a temporary output after a cell that has none, until the release run ends; it is never written. An output whose `params` differ from the cell's param lines is marked out of date with the caption "the parameters changed". Releasing the control writes the new value into its param line and runs the cell once more as a normal run, which writes the output with its `params`. Previews time out after 20 s.
+- Mathematica: when a cell's last value is `Manipulate[body, specs…]`, the driver evaluates `body` with the request's params, or each control's initial value, returns that frame, and adds `controls: [{name, kind, min?, max?, step?, choices?, value}]`. A cell without param lines draws those controls; the first release writes them as `#| param:` lines, and from then on the lines win. `Animate` and `Dynamic` stay errors.
+
 ### Cell languages
 
 Cell languages are `python`, `mathematica` and `r`, written as the fence ```` ```{python} ````, ```` ```{mathematica} ```` and ```` ```{r} ````, the same syntax as Quarto and Pandoc. A fence with any other language is kept as text and has no Run action.
 
 - The Node cell runner runs each cell through a driver file shipped with core next to the runner (`@labshelf/core/qmd/compute/node/`): `cellDriver.py` in the managed Python, `cellDriver.wl` in the `WolframKernel` found beside `wolframscript` (`-noprompt -script`, because `wolframscript -file` waits for stdin EOF), `cellDriver.R` in `Rscript --vanilla`. One driver process per note and language keeps variables between that note's cells; languages never share variables.
-- Driver protocol: the runner writes one JSON request per stdin line, `{id, code}`. The driver answers with one JSON line on stdout that starts with the sentinel `\u0001LABSHELF\u0001` and carries `{id, latex?|text?|error?}`. Anything else on stdout or stderr is the cell's printed output, so prints never desync results. A launch can ask for a ready handshake: the driver then writes one sentinel line `{ready: true}` after start-up, and output before it goes to the log instead of a cell (the Mathematica launch uses it, so kernel start-up banners never reach a cell).
+- Driver protocol: the runner writes one JSON request per stdin line, `{id, code, params?}`. The driver answers with one JSON line on stdout that starts with the sentinel `\u0001LABSHELF\u0001` and carries `{id, latex?|text?|error?, controls?}`. Anything else on stdout or stderr is the cell's printed output, so prints never desync results. A launch can ask for a ready handshake: the driver then writes one sentinel line `{ready: true}` after start-up, and output before it goes to the log instead of a cell (the Mathematica launch uses it, so kernel start-up banners never reach a cell).
 - A response line can be large (a PNG data URL), so the runner never caps line length. Drivers read UTF-8, accept CRLF line endings and exit on stdin EOF, so a dead parent never leaves a driver running.
 - Cancel and timeout kill that language's process for that note, killing its process group. The next run starts a fresh process, and its result carries `restarted: true`, shown as "<Language> restarted, earlier definitions are gone". "Restart <Language>" in a cell header kills the process without running. Process start-up time does not count towards the timeout.
 - A run whose language has no executable ends with status `missing` and writes nothing.
