@@ -1,0 +1,32 @@
+schema: brief/v1
+area: reader hover preview for PDF link annotations (DestContent / DestPreview wiring)
+question: "how can DestContent.prepare classify a destination and crop via PageTextCache lines + DestPreview.renderRegion"
+sha: 88bc5ca5
+reuse:
+  - {symbol: DestPreview.renderRegion, path: packages/core/src/reader/dom/hoverTarget.ts, lines: "260-273", why: "renderRegion(pageNumber, region: PdfRegion): Promise<HTMLCanvasElement | null>"}
+  - {symbol: PageTextCache.get, path: packages/core/src/reader/dom/textLayer.ts, lines: "225-264", why: "get(pageNumber): Promise<PageText{lines, columnSplit, width, height}>, memoised"}
+  - {symbol: FloatResolver.find, path: packages/core/src/reader/dom/textLayer.ts, lines: "158-190", why: "model for building a region from page lines"}
+edit:
+  - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "165-205", why: "DestContent ctor and prepare; dest is still the raw named string at line ~180"}
+  - {path: packages/core/src/reader/dom/hoverPreview.ts, lines: "105-135", why: "HoverPreview ctor and useText build DestContent"}
+  - {path: packages/core/src/reader/dom/readerUi.ts, lines: "157-205", why: "DeferredHover.readText creates PageTextCache per document; DocumentText = {citations, floats}; DOCUMENT_REPLACED calls useText"}
+read:
+  - {path: packages/core/src/reader/dom/citations.ts, lines: "62-80", why: "LinkAnnotationData {id; dest?: string | unknown[] | null; rect?: number[]}"}
+  - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "140-160", why: "findDestAnchor, createDestHoverAnchor; the link section holds no text"}
+  - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "227-300", why: "DestPreview render/renderRegion"}
+callers:
+  - {symbol: DestContent, path: packages/core/src/reader/dom/hoverPreview.ts, lines: "114-114"}
+  - {symbol: DestContent, path: packages/core/src/reader/dom/hoverPreview.ts, lines: "133-133"}
+  - {symbol: HoverPreview, path: packages/core/src/reader/dom/readerUi.ts, lines: "192-192"}
+  - {symbol: HoverPreview.useText, path: packages/core/src/reader/dom/readerUi.ts, lines: "172-176"}
+tests:
+  - {path: packages/core/__tests__/reader/dom/readerUi.test.ts, covers: "reader UI wiring"}
+  - {path: packages/core/__tests__/reader/dom/citations.test.ts, covers: "jsdom docblock example"}
+contracts: []
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/dom/readerUi.test.ts"
+risks:
+  - "No tests for hoverTarget/hoverPreview/textLayer; the pure seam is the testable part."
+  - "No helper reads a link's visible text."
+  - "readText() makes a fresh PageTextCache on DOCUMENT_REPLACED; it must be threaded through useText."
+  - "New region logic goes after the linkCard and References branches, before the band; check isCurrent() after each await."

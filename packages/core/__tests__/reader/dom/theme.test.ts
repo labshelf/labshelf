@@ -52,6 +52,28 @@ describe("ThemeController", () => {
     expect(theme.colors.bg).toBe(findPagePreset("dark").bg);
     expect(document.documentElement.dataset["pdfPages"]).toBe("dark");
   });
+
+  it("adapts link ink to the page even when its preset differs from the chrome", () => {
+    const container = document.createElement("div");
+    const theme = new ThemeController(container, "dark", "dark");
+    expect(container.dataset["pdfLinkTone"]).toBe("light");
+
+    theme.lockPages("light");
+    theme.apply("dark", "dark");
+    expect(container.dataset["pdfLinkTone"]).toBe("dark");
+
+    theme.lockPages("dark");
+    expect(container.dataset["pdfLinkTone"]).toBe("light");
+  });
+
+  it("adapts link ink to custom page colours", () => {
+    const container = document.createElement("div");
+    const theme = new ThemeController(container, "dark", "dark");
+    theme.applyPageColors("#faf6ee", "#4a3728");
+    expect(container.dataset["pdfLinkTone"]).toBe("dark");
+    theme.applyPageColors("#18232b", "#e7edf0");
+    expect(container.dataset["pdfLinkTone"]).toBe("light");
+  });
 });
 
 

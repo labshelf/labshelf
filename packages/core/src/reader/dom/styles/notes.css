@@ -49,17 +49,19 @@
 /* ── Editor: one top bar, the source passage, then the note ────── */
 .rd-notes-editor-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
 .rd-notes-editor-pane[hidden] { display: none; }
-.rd-notes-editor-nav { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--ls-space-2); box-sizing: border-box; height: var(--rd-notes-bar-h); flex-shrink: 0; padding: 0 var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); background: var(--ls-reader-surface); }
+.rd-notes-editor-nav { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--ls-space-2); box-sizing: border-box; height: calc(var(--ls-row-h) + var(--ls-space-3)); flex-shrink: 0; padding: 0 var(--ls-space-2); background: var(--ls-reader-surface); font-size: var(--ls-text-sm); border-bottom: 1px solid var(--ls-reader-border); }
 .rd-notes-back { flex-shrink: 0; color: var(--ls-reader-desc); }
 .rd-notes-back:hover { color: var(--ls-reader-fg); }
-.rd-note-source { display: inline-flex; align-items: center; gap: var(--ls-space-3); min-width: 0; height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-4); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-pill); background: none; color: var(--ls-reader-fg); cursor: pointer; font: inherit; font-size: var(--ls-text-sm); }
-.rd-note-source:hover:enabled { background: var(--ls-reader-hover); }
+.rd-note-source { display: inline-flex; align-items: center; gap: var(--ls-space-2); min-width: 0; padding: 0; border: 0; background: none; color: var(--ls-link); cursor: pointer; font: inherit; font-size: var(--ls-text-xs); opacity: 0.85; }
+.rd-note-source:hover:enabled { opacity: 1; text-decoration: underline; }
 .rd-note-source:disabled { color: var(--ls-reader-desc); cursor: default; }
-.rd-note-source .rd-ann-dot { margin: 0; }
-.rd-note-source-icon { display: inline-flex; flex-shrink: 0; color: var(--ls-reader-desc); }
-.rd-note-source-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
 .rd-note-source-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rd-note-save-status { flex: 1; min-width: 0; overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.rd-note-save-status { min-width: 0; overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.rd-notes-editor-title { flex: none; color: var(--ls-reader-desc); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.rd-note-row { position: relative; }
+.rd-note-row .rd-note-preview { padding-right: calc(var(--ls-space-3) + var(--ls-row-h)); }
+.rd-note-row .rd-note-delete { position: absolute; top: var(--ls-space-3); right: var(--ls-space-2); opacity: 0; transition: opacity var(--ls-fast); }
+.rd-note-row:hover .rd-note-delete, .rd-note-row .rd-note-delete:focus-visible, .rd-note-row .rd-note-delete.rd-danger { opacity: 1; }
 .rd-note-delete { flex-shrink: 0; color: var(--ls-reader-desc); }
 .rd-note-delete:hover { color: var(--ls-reader-fg); }
 .rd-note-delete.rd-danger, .rd-note-delete.rd-danger:hover { background: var(--ls-error); color: var(--ls-reader-surface); }
@@ -75,15 +77,11 @@
 
 .rd-note-editor { flex: 1; min-width: 0; padding: var(--ls-space-3) var(--ls-space-6) var(--ls-space-8); }
 
-/* The shared editor is sized for a full pane; the sidebar uses a calmer, smaller scale. */
-.rd-note-editor.qmd-editor { gap: var(--ls-space-3); font-size: var(--ls-text-md); line-height: 1.6; }
-.rd-note-editor.qmd-editor .qmd-editor-toolbar { top: var(--rd-notes-bar-h); margin: 0 calc(-1 * var(--ls-space-6)); padding-left: var(--ls-space-6); padding-right: var(--ls-space-6); background: var(--ls-reader-surface); }
+/* The sidebar's text and headings match the floating note's (the editor defaults); plots are capped so they do not dominate the text. */
+.rd-note-editor.qmd-editor { gap: var(--ls-space-3); font-size: var(--ls-text-lg); line-height: 1.6; }
+.rd-note-editor .qmd-output-figure .qmd-output-body { max-width: 360px; margin: 0 auto; }
 .rd-note-editor.qmd-editor .ProseMirror { min-height: calc(var(--ls-row-h) * 6); }
-.rd-note-editor.qmd-editor .ProseMirror h1, .rd-note-editor.qmd-editor .ProseMirror h2, .rd-note-editor.qmd-editor .ProseMirror h3 { margin: var(--ls-space-5) 0 var(--ls-space-2); line-height: 1.35; }
 .rd-note-editor.qmd-editor .ProseMirror > :first-child { margin-top: 0; }
-.rd-note-editor.qmd-editor .ProseMirror h1 { font-size: var(--ls-text-xl); }
-.rd-note-editor.qmd-editor .ProseMirror h2 { font-size: var(--ls-text-lg); }
-.rd-note-editor.qmd-editor .ProseMirror h3 { font-size: var(--ls-text-md); }
 .rd-note-editor.qmd-editor .ProseMirror > p + p { margin-top: var(--ls-space-4); }
 .rd-note-editor.qmd-editor .ProseMirror ul, .rd-note-editor.qmd-editor .ProseMirror ol { padding-left: var(--ls-space-7); }
 

@@ -93,6 +93,14 @@ describe("code cell keys", () => {
     expect(stored(view)).toBe("print(1)\n");
   });
 
+  it("Shift-Enter runs the cell and puts the caret in the text after the cell", () => {
+    const view = cellDoc("print(1)\n");
+    editNodeAt(view, cellPos, "end");
+    key(content(view), { key: "Enter", shiftKey: true });
+    expect(runs).toEqual([["cell-1", "print(1)\n"]]);
+    expect(view.state.selection.$from.parent.textContent).toBe("below");
+  });
+
   it("undo goes through the note's history and brings the code back into the editor", () => {
     const view = cellDoc("x\n", [history(), keymap({ "Mod-z": undo })]);
     editNodeAt(view, cellPos, "end");
@@ -141,12 +149,14 @@ describe("code cell keys", () => {
     expect(view.state.doc.textContent).toBe("abovebelow");
   });
 
-  it("collapsed cells show their first line of code", () => {
-    const view = cellDoc("\nimport numpy as np\nx = 1\n");
-    view.dom.querySelector<HTMLButtonElement>(".qmd-cell-toggle")!.click();
-    const summary = view.dom.querySelector<HTMLElement>(".qmd-cell-summary")!;
-    expect(summary.hidden).toBe(false);
-    expect(summary.textContent).toBe("import numpy as np");
+  it("a new cell shows its code with one quiet line under it: the language and Run", () => {
+    const view = cellDoc("x = 1\n");
+    const panel = view.dom.querySelector<HTMLElement>(".qmd-cell-panel")!;
+    expect(panel.hidden).toBe(false);
+    expect([...panel.children].map((child) => child.className)).toEqual(["qmd-cell-code", "qmd-cell-actions"]);
+    expect(panel.querySelector(".qmd-cell-actions")!.textContent!.replace(/\s+/g, " ")).toBe("Python·Run");
+    view.dom.querySelector<HTMLButtonElement>(".qmd-cell-run")!.click();
+    expect(runs).toEqual([["cell-1", "x = 1\n"]]);
   });
 
   it("a read-only note shows the code without letting it be edited", () => {

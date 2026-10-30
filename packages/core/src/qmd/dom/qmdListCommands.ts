@@ -1,4 +1,4 @@
-// Holds the list editing commands of the rich Markdown editor: Enter, Tab and Shift-Tab in list items, and the toolbar's list toggles.
+// Holds the list editing commands of the rich Markdown editor: Enter, Tab and Shift-Tab in list items, and the Insert menu's list toggles.
 import { Fragment, NodeRange, Slice, type Node as ProseNode, type NodeType } from "prosemirror-model";
 import type { Command, EditorState, Transaction } from "prosemirror-state";
 import { canJoin, canSplit, findWrapping, liftTarget, ReplaceAroundStep } from "prosemirror-transform";

@@ -2,15 +2,22 @@
 @import "../../../ui/dom/widgets/overlays.css";
 .rd-note-mode .page { cursor: crosshair; }
 .rd-note-mode .textLayer { cursor: crosshair; }
-.rd-btn.rd-note-pin { position: absolute; z-index: 8; transform: translate(-50%, -50%); width: var(--ls-space-8); height: var(--ls-space-8); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-sm); background: var(--ls-reader-surface); color: var(--ls-link); box-shadow: var(--ls-reader-shadow); }
-.rd-floating-note { position: fixed; z-index: 80; display: flex; flex-direction: column; width: min(380px, calc(100vw - 16px)); max-height: calc(100vh - 16px); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius); background: var(--ls-reader-surface); color: var(--ls-reader-fg); box-shadow: var(--ls-reader-shadow); }
-.rd-floating-note-header { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-3); border-bottom: 1px solid var(--ls-reader-border); }
-.rd-floating-note-title { display: flex; align-items: center; gap: var(--ls-space-3); flex: 1; min-width: 0; }
-.rd-floating-note svg { width: var(--ls-text-md); height: var(--ls-text-md); vertical-align: middle; }
-.rd-floating-note-full, .rd-floating-note-source { display: flex; align-items: center; gap: var(--ls-space-2); border: 0; background: none; color: var(--ls-link); font: inherit; cursor: pointer; }
-.rd-floating-note-full { font-size: var(--ls-text-sm); }
-.rd-floating-note-source { padding: var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); }
-.rd-floating-note-body { padding: var(--ls-space-4); min-height: 180px; overflow: auto; }
-.rd-floating-note-body .qmd-editor-toolbar { background: var(--ls-reader-surface); }
-.rd-floating-note-footer { display: flex; justify-content: flex-end; padding: var(--ls-space-3) var(--ls-space-4); border-top: 1px solid var(--ls-reader-border); font-size: var(--ls-text-sm); color: var(--ls-reader-desc); }
+.rd-btn.rd-note-pin { position: absolute; z-index: 8; transform: translate(-50%, -50%); width: auto; min-width: 40px; height: 36px; padding: 4px; border: 0; background: none; color: var(--rd-link-ink, var(--ls-link)); box-shadow: none; }
+.rd-note-pin-label { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 6px; border-left: 2px solid currentColor; border-radius: 3px; background: color-mix(in srgb, currentColor 12%, transparent); font: 500 12px var(--ls-font); font-variant-numeric: tabular-nums; }
+.rd-btn.rd-note-pin:hover, .rd-btn.rd-note-pin[aria-expanded="true"] { background: none; }
+.rd-note-pin:hover .rd-note-pin-label, .rd-note-pin[aria-expanded="true"] .rd-note-pin-label { background: color-mix(in srgb, currentColor 22%, transparent); }
+.rd-floating-note { position: fixed; z-index: 80; display: flex; flex-direction: column; width: min(380px, calc(100vw - 16px)); max-height: calc(100vh - 16px); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-xl); overflow: hidden; background: var(--ls-reader-surface); color: var(--ls-reader-fg); box-shadow: var(--ls-reader-shadow); }
+.rd-floating-note-header { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-2) var(--ls-space-2) var(--ls-space-2) var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
+.rd-floating-note-actions { display: flex; align-items: center; gap: var(--ls-space-1); margin-left: auto; }
+/* The title is a small grey uppercase label, like the hover popup's "Reference"; the source beside it is a quiet link. */
+.rd-floating-note-title { flex: none; color: var(--ls-reader-desc); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+/* Only the header's icons are sized here: equations in the body are SVG too and size themselves. */
+.rd-floating-note-header svg { width: var(--ls-text-md); height: var(--ls-text-md); vertical-align: middle; }
+.rd-floating-note-source { min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: var(--ls-link); font: inherit; font-size: var(--ls-text-xs); opacity: 0.85; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.rd-floating-note-source:hover { opacity: 1; text-decoration: underline; }
+.rd-floating-note-source[hidden] { display: none; }
+.rd-floating-note-status { color: var(--ls-reader-desc); font-size: var(--ls-text-xs); white-space: nowrap; }
+.rd-floating-note-header .rd-btn { flex: none; color: var(--ls-reader-desc); }
+.rd-floating-note-body { padding: var(--ls-space-2) var(--ls-space-4) var(--ls-space-3); min-height: 180px; overflow: auto; }
+.rd-floating-note-body .qmd-editor-footer { position: sticky; bottom: 0; background: var(--ls-reader-surface); }
 .rd-floating-note :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }

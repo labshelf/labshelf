@@ -246,7 +246,7 @@ describe("compact note browsing", () => {
     expect(tab.el.querySelector(".rd-note-preview-quote")!.textContent).toBe("The quoted passage");
     expect(tab.el.querySelector(".rd-note-accent.rd-color-green")).not.toBeNull();
     tab.reveal("n3");
-    expect(tab.el.querySelector(".rd-note-source")!.textContent).toBe("p. 4 · Highlight");
+    expect(tab.el.querySelector(".rd-note-source")!.textContent).toBe("Page 4");
     expect(tab.el.querySelector(".rd-notes-back")!.getAttribute("aria-label")).toBe("All notes");
     expect(tab.el.querySelector(".rd-note-quote")!.textContent).toContain("The quoted passage");
     tab.onHide();
@@ -264,4 +264,25 @@ it("delegates PDF text-box editing to the floating editor", () => {
   document.querySelector<HTMLElement>(".rd-note-box")!.click();
   expect(layer.onEdit).toHaveBeenCalledWith("n1");
   expect(document.querySelector(".rd-note-box .ProseMirror")!.getAttribute("contenteditable")).toBe("false");
+});
+
+it("an open note's nav holds only back, Note and its page; deleting is a confirmed trash icon on the list row", async () => {
+  const c = makeCtx();
+  document.body.replaceChildren();
+  const tab = new NotesTab(c.host as never, jest.fn(), () => 1, c.eventBus as never);
+  document.body.append(tab.el);
+  tab.show([note]);
+  const trash = tab.el.querySelector<HTMLButtonElement>(".rd-note-row .rd-note-delete")!;
+  trash.click();
+  expect(c.sent.some((m) => m["command"] === "removeNote")).toBe(false);
+  expect(trash.getAttribute("aria-label")).toBe("Click again to delete this note");
+  trash.click();
+  expect(c.sent).toContainEqual({ command: "removeNote", id: "n1" });
+  tab.reveal(note.id);
+  await settle();
+  const nav = tab.el.querySelector(".rd-notes-editor-nav")!;
+  expect(nav.querySelector(".rd-note-delete, svg:not(.rd-notes-back svg)")).toBeNull();
+  expect([...nav.children].map((child) => child.textContent)).toEqual(["", "Note", "Page 2"]);
+  expect(tab.el.querySelector(".qmd-editor-footer .rd-note-save-status")).not.toBeNull();
+  tab.onHide();
 });

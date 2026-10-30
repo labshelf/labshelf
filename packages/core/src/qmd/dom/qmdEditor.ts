@@ -2,7 +2,7 @@
 import { baseKeymap } from "prosemirror-commands";
 import { history, redo, undo } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
-import { EditorState, Plugin, TextSelection, type Command } from "prosemirror-state";
+import { EditorState, Plugin, type Command } from "prosemirror-state";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 import { redoCommand, undoCommand, yCursorPlugin, ySyncPlugin, yUndoPlugin } from "y-prosemirror";
 import type * as Y from "yjs";
@@ -12,14 +12,16 @@ import { renderElement } from "../../ui/dom/index.js";
 import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
 import { createCodeCellView } from "./codeCellView.js";
 import { createOutputView } from "./outputView.js";
-import { createCitationView, createLinkView, createTaskItemView, editNodeAt } from "./inlineViews.js";
+import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
+import { blockDragPlugin, blockNavigationPlugin, placeCaretForInsert, placeCaretFromClick } from "./qmdBlocks.js";
 import { createMathView } from "./mathView.js";
 import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
 import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
 import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
-import { mountQmdToolbar } from "./qmdToolbar.js";
+import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
-export interface QmdEditorOptions { body: string; onChange(body: string): void; onRunCell?(label: string, code: string): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+/** `status` is a host element (a save status, say) shown at the right of the row under the text. */
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?(label: string, code: string): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
 
 export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
 
@@ -30,32 +32,6 @@ const EXTERNAL = "qmdExternal";
 
 /** UI words for a LabShelf Markdown item (D16); renaming "note" is a change here only. */
 export const QMD_VOCABULARY: { readonly item: string } = { item: "note" };
-
-const codeCell = qmdSchema.nodes.code_cell!;
-
-/** Arrow keys at the edge of a textblock next to a code cell move the caret into the cell's code. */
-const enterCellKeys: Record<string, { dir: 1 | -1; edge: "up" | "down" | "left" | "right" }> = {
-  ArrowDown: { dir: 1, edge: "down" }, ArrowRight: { dir: 1, edge: "right" }, ArrowUp: { dir: -1, edge: "up" }, ArrowLeft: { dir: -1, edge: "left" },
-};
-
-function cellNavigationPlugin(): Plugin {
-  return new Plugin({
-    props: {
-      handleKeyDown(view, event) {
-        const key = enterCellKeys[event.key];
-        const selection = view.state.selection;
-        if (!key || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey || !(selection instanceof TextSelection) || !selection.empty) return false;
-        const { $from } = selection;
-        if ($from.depth < 1 || !view.endOfTextblock(key.edge)) return false;
-        const edge = key.dir > 0 ? $from.after() : $from.before();
-        const $edge = view.state.doc.resolve(edge);
-        const neighbour = key.dir > 0 ? $edge.nodeAfter : $edge.nodeBefore;
-        if (neighbour?.type !== codeCell) return false;
-        return editNodeAt(view, key.dir > 0 ? edge : edge - neighbour.nodeSize, key.dir > 0 ? "start" : "end");
-      },
-    },
-  });
-}
 
 /** Shows the empty-item placeholder through a node decoration with a class. */
 function placeholderPlugin(text: string): Plugin {
@@ -93,7 +69,7 @@ function collabCursor(user: { name?: string }): HTMLElement {
   return renderElement("span", { class: "qmd-editor-cursor" }, "⁠", renderElement("span", { class: "qmd-editor-cursor-name", text: user.name ?? "" }), "⁠");
 }
 
-interface Chrome { header: HTMLElement; toggle: HTMLButtonElement; toolbar: HTMLElement; source: HTMLTextAreaElement }
+interface Chrome { header: HTMLElement; toggle: HTMLButtonElement; footer: HTMLElement; source: HTMLTextAreaElement }
 
 /** The mutable state one mounted editor shares between its functions. */
 interface Session { options: QmdEditorOptions; readOnly: boolean; chrome: Chrome; view: EditorView; changed: Debouncer<[]>; mode: "visual" | "source"; destroyed: boolean; createState(body: string): EditorState }
@@ -104,18 +80,20 @@ function createChrome(options: QmdEditorOptions, readOnly: boolean): Chrome {
   if (metaText) header.append(renderElement("span", { class: "qmd-editor-meta", text: metaText }));
   const toggle = renderElement("button", { class: "ls-btn ls-btn-ghost qmd-editor-toggle", type: "button" });
   header.append(toggle);
-  const toolbar = renderElement("div", { class: "qmd-editor-toolbar" });
-  toolbar.hidden = readOnly;
+  // The row under the text: the Insert button on the left, the host's status on the right.
+  const footer = renderElement("div", { class: "qmd-editor-footer" });
+  if (options.status) footer.append(options.status);
+  footer.hidden = readOnly && !options.status;
   const source = renderElement("textarea", { class: "qmd-editor-source", spellcheck: "false" });
   source.readOnly = readOnly;
-  return { header, toggle, toolbar, source };
+  return { header, toggle, footer, source };
 }
 
 const chainEnter: Command = (state, dispatch, view) => codeFenceEnter(state, dispatch, view) || splitItem(state, dispatch, view);
 
 function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugin[] {
   const { collab } = options;
-  const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), cellNavigationPlugin()];
+  const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), blockNavigationPlugin(), blockDragPlugin()];
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
   if (collab) {
     plugins.push(
@@ -191,17 +169,18 @@ function renderToggle(session: Session): void {
 
 function toggleMode(session: Session): void {
   const { view, chrome, readOnly } = session;
-  const { source, toolbar } = chrome;
+  const { source } = chrome;
+  const insert = chrome.footer.querySelector<HTMLElement>(".qmd-editor-insert");
   if (session.mode === "visual") {
     source.value = docToBody(view.state.doc);
     session.mode = "source";
-    toolbar.hidden = true;
+    if (insert) insert.hidden = true;
     view.dom.replaceWith(source);
     source.focus();
   } else {
     const body = source.value;
     session.mode = "visual";
-    toolbar.hidden = readOnly;
+    if (insert) insert.hidden = readOnly;
     source.replaceWith(view.dom);
     if (body !== docToBody(view.state.doc)) showBody(session, body);
     view.focus();
@@ -250,8 +229,21 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   const { chrome, view, changed } = session;
   bindChrome(session);
   root.classList.add("qmd-editor");
-  root.replaceChildren(chrome.header, chrome.toolbar, view.dom);
-  const toolbarHandle = session.readOnly ? null : mountQmdToolbar(chrome.toolbar, view, () => toggleMode(session));
+  root.replaceChildren(chrome.header, view.dom, chrome.footer);
+  const onEmptyClick = (event: MouseEvent): void => {
+    const onSpace = event.target === root || event.target === view.dom;
+    if (onSpace && event.button === 0 && session.mode === "visual" && !session.readOnly && placeCaretFromClick(view, event)) event.preventDefault();
+  };
+  root.addEventListener("mousedown", onEmptyClick);
+  // A double click on empty space opens the Insert menu there, inserting at that spot.
+  const onEmptyDoubleClick = (event: MouseEvent): void => {
+    if (event.button !== 0 || session.mode !== "visual" || session.readOnly || !placeCaretForInsert(view, event)) return;
+    event.preventDefault();
+    showInsertMenu(view, { x: event.clientX, y: event.clientY }, () => toggleMode(session));
+  };
+  root.addEventListener("dblclick", onEmptyDoubleClick);
+  if (!session.readOnly) chrome.footer.prepend(renderInsertButton(view, () => toggleMode(session)));
+  const bubble = session.readOnly ? null : mountSelectionBubble(root, view);
   renderToggle(session);
 
   return {
@@ -270,7 +262,9 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       if (session.destroyed) return;
       session.destroyed = true;
       changed.cancel();
-      toolbarHandle?.destroy();
+      bubble?.destroy();
+      root.removeEventListener("mousedown", onEmptyClick);
+      root.removeEventListener("dblclick", onEmptyDoubleClick);
       view.destroy();
       root.replaceChildren();
       root.classList.remove("qmd-editor");

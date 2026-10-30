@@ -3,7 +3,7 @@ import type { Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, TextSelection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
-import { exitNode, registerNodeEditor, setViewNodeAttribute } from "./inlineViews.js";
+import { exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
 
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
 
@@ -50,7 +50,7 @@ export async function renderMathInto(target: HTMLElement, tex: string, display: 
   }
 }
 
-const HINT = { display: "↵ finish · ⇧↵ new line · Esc cancel", inline: "↵ finish · Esc cancel" };
+const HINT = { display: "↵ finish · ⇧↵ new line · arrows leave · Esc cancel", inline: "↵ finish · ← → leave · Esc cancel" };
 const PLACEHOLDER = { display: "Empty equation — click to write LaTeX", inline: "LaTeX" };
 
 /**
@@ -74,7 +74,7 @@ class MathView implements NodeView {
     this.dom.addEventListener("click", (event) => {
       if (view.editable && event.target instanceof Node && this.rendered.contains(event.target)) this.editSource();
     });
-    registerNodeEditor(this.dom, () => this.editSource());
+    registerNodeEditor(this.dom, (side) => this.editSource(side));
     this.render();
   }
 
@@ -120,7 +120,8 @@ class MathView implements NodeView {
 
   selectNode(): void { this.dom.classList.add("ProseMirror-selectednode"); }
 
-  private editSource(): void {
+  /** Opens the LaTeX field with the caret at its `side`: the end when clicked, the side the caret came from when arrowed into. */
+  private editSource(side: EditSide = "end"): void {
     if (!this.view.editable) return;
     if (this.editor) { this.editor.focus(); return; }
     const pos = this.getPos();
@@ -140,8 +141,11 @@ class MathView implements NodeView {
     input.addEventListener("keydown", (raw) => {
       const event = raw as KeyboardEvent;
       if (event.isComposing) return;
+      const dir = this.leaveDirection(input, event);
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.finish(true); }
       else if (event.key === "Enter" && (!this.display || !event.shiftKey)) { event.preventDefault(); this.finish(false); }
+      else if (dir !== 0) { event.preventDefault(); this.finish(false, dir); }
+      else if (event.key === "Backspace" && input.value === "") { event.preventDefault(); this.finish(false); }
     });
     // Clicking anywhere else keeps the edit and closes the field.
     input.addEventListener("focusout", (raw) => {
@@ -158,8 +162,22 @@ class MathView implements NodeView {
     queueMicrotask(() => {
       if (this.editor !== input) return;
       input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
+      const at = side === "start" ? 0 : input.value.length;
+      input.setSelectionRange(at, at);
     });
+  }
+
+  /** Where an arrow key leaves the field: -1 before the equation, 1 after it, 0 when it moves inside the TeX. */
+  private leaveDirection(input: HTMLInputElement | HTMLTextAreaElement, event: KeyboardEvent): -1 | 0 | 1 {
+    if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey || input.selectionStart !== input.selectionEnd) return 0;
+    const at = input.selectionStart ?? 0;
+    const value = input.value;
+    if (event.key === "ArrowLeft" && at === 0) return -1;
+    if (event.key === "ArrowRight" && at === value.length) return 1;
+    if (!this.display) return 0;
+    if (event.key === "ArrowUp" && !value.slice(0, at).includes("\n")) return -1;
+    if (event.key === "ArrowDown" && !value.slice(at).includes("\n")) return 1;
+    return 0;
   }
 
   /** Places the inline popup under the formula, kept inside the window. */
@@ -184,8 +202,8 @@ class MathView implements NodeView {
     panel?.remove();
   }
 
-  /** Closes the field and puts the caret after the equation; `cancel` restores the TeX it had, and an equation left empty is removed. */
-  private finish(cancel: boolean): void {
+  /** Closes the field and puts the caret after the equation (`dir` -1: before it); `cancel` restores the TeX it had, and an equation left empty is removed. */
+  private finish(cancel: boolean, dir: 1 | -1 = 1): void {
     if (cancel) this.commit(this.originalTex);
     this.close();
     const pos = this.getPos();
@@ -198,8 +216,8 @@ class MathView implements NodeView {
       this.view.focus();
       return;
     }
-    if (this.display) { exitNode(this.view, this.getPos, 1); return; }
-    this.view.dispatch(this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, pos + this.node.nodeSize)));
+    if (this.display) { exitNode(this.view, this.getPos, dir); return; }
+    this.view.dispatch(this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, dir > 0 ? pos + this.node.nodeSize : pos)));
     this.view.focus();
   }
 

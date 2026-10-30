@@ -87,6 +87,24 @@ describe("LaTeX editing", () => {
     expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
   });
 
+  it("ArrowDown on the last line of a display equation leaves it for the paragraph after", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.setSelectionRange(1, 1);
+    expect(key(input, { key: "ArrowDown" })).toBe(false);
+    expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
+    expect(view.state.selection.$from.parent.textContent).toBe("Continue");
+  });
+
+  it("Backspace in an emptied display equation removes it", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    key(input, { key: "Backspace" });
+    expect(view.state.doc.firstChild!.type.name).toBe("paragraph");
+  });
+
   it("keeps Shift-Enter for a new line in a display equation", () => {
     const view = selected();
     const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;

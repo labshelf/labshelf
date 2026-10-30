@@ -1,0 +1,106 @@
+schema: session/v1
+id: "1"
+goal: Linked hover previews of statements, figures, tables and equations crop to the target; everything else keeps the band.
+depends_on: []
+owns:
+  - packages/core/src/reader/destTarget.ts
+  - packages/core/src/reader/index.ts
+  - packages/core/src/reader/dom/hoverTarget.ts
+  - packages/core/src/reader/dom/hoverPreview.ts
+  - packages/core/src/reader/dom/readerUi.ts
+  - packages/core/__tests__/reader/destTarget.test.ts
+  - documents/plans/dest-preview-crop/
+status: pending
+packages:
+  - id: "1.1"
+    plan: dest-preview-crop
+    goal: A runtime-neutral core module classifies a link destination (by named destination or by the text ending at the link) and derives the PDF region of a theorem-like statement or picks the caption line of a float near the destination.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    sha: 88bc5ca5
+    depends_on: []
+    create:
+      - packages/core/src/reader/destTarget.ts
+    edit:
+      - {path: packages/core/src/reader/index.ts, lines: "1-40", why: "re-export the new module next to geometry"}
+    read:
+      - {path: packages/core/src/reader/textLines.ts, lines: "1-30", why: "TextLine: text, x, xEnd, y (baseline, PDF space, y up), height, column (0 left or single, 1 right)"}
+      - {path: packages/core/src/reader/textLines.ts, lines: "160-235", why: "CaptionMatch, findCaptionLines, deriveColumnBounds, pickCaption to reuse"}
+      - {path: packages/core/src/reader/geometry.ts, lines: "1-30", why: "PdfRegion and the style of the region helpers (clampY, pads in fractions of line height)"}
+      - {path: packages/core/src/reader/inTextReferences.ts, lines: "170-195", why: "FLOAT_LABEL, FIGURE_WORD, deriveFloatKind to reuse for link-text classification"}
+      - {path: packages/core/__tests__/reader/geometry.test.ts, lines: "1-12", why: "test helpers line() and body(), W=612, H=792"}
+    seams:
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export type DestTarget = { kind: \"statement\" } | { kind: \"float\"; floatKind: import(\"./inTextReferences.js\").FloatKind; label: string | null }"}
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export interface PageLayout { width: number; height: number; columnSplit: number | null }"}
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export interface DestPoint { x: number | null; y: number }"}
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export function classifyDestName(name: string): DestTarget | null"}
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export function classifyLinkText(text: string): DestTarget | null"}
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export function deriveStatementRegion(lines: readonly import(\"./textLines.js\").TextLine[], page: PageLayout, dest: DestPoint): import(\"./geometry.js\").PdfRegion | null"}
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export function findFloatCaptionNear(lines: readonly import(\"./textLines.js\").TextLine[], page: PageLayout, target: { floatKind: import(\"./inTextReferences.js\").FloatKind; label: string | null }, dest: DestPoint): import(\"./textLines.js\").CaptionMatch | null"}
+    decided:
+      - "classifyDestName: lower-case the name and take the segment before the first `.` or `:`. Statement words: theorem, thm, lemma, lem, proposition, prop, corollary, cor, definition, defn, def, remark, rem, conjecture, conj, claim, example, exercise, problem, assumption, hypothesis, notation, observation, fact, question, property → {kind: statement}. figure, subfigure → float figure; table, subtable → float table; equation, eq, ams → float equation. The float label is the rest of the name after the first segment when it matches FLOAT_LABEL exactly (`figure.3` → \"3\", `equation.2.5` → \"2.5\", `figure.caption.5` → null), lower-cased. Anything else (section.3, Item.12, cite.x, page.4, opaque names) → null."
+      - "classifyLinkText(text): text is the visual line up to the end of the link; only its end matters. Statement: the text ends with a statement word (the list above in full form, the abbreviations thm, lem, prop, cor, defn, def followed by an optional `.`, and Portuguese teorema, lema, proposição, corolário, definição, observação, exemplo), optional plural s, optional `.`, spaces, then a number like 2, 2.1 or 3a → {kind: statement}. Float: ends with FIGURE_WORD or a table word (Table, Tabela, Tab.) then FLOAT_LABEL → float with deriveFloatKind and the label lower-cased; ends with `Eq.`/`Equation`/`Eqs.` optionally followed by `(` label `)`, or with a bare `(` label `)` → float equation with that label. Case-insensitive. Otherwise null."
+      - "deriveStatementRegion, column: when columnSplit is not null and dest.x is not null, the column is dest.x > columnSplit ? 1 : 0; when columnSplit is null the column is 0; when dest.x is null on a split page both columns are candidates and the start line decides the column. Only lines of that column are used after that."
+      - "deriveStatementRegion, start line: the line with the greatest y among lines with y <= dest.y + 2. If none, or dest.y - start.y > 3 * start.height + 12, return null."
+      - "deriveStatementRegion, pitch: the median of the positive baseline gaps between consecutive lines of the column sorted by y descending; when there are fewer than 3 gaps, 1.2 * start.height."
+      - "deriveStatementRegion, text edges of the column: textLeft = the minimum x of the column's lines, textRight = the maximum xEnd. A line is a display line when line.x - textLeft >= 0.12 * (textRight - textLeft)."
+      - "deriveStatementRegion, walk: from the start line, take the next lines of the column below it in descending y. Stop before (exclude) a line when: (a) its trimmed text starts with Proof, Demonstração or Prova as a word; (b) it starts with a statement word (full forms and Portuguese forms above) followed by a number, `(`, `.` or `:`; (c) it is a section heading: starts with a number like `3`, `3.2`, `3.2.` or a roman numeral with `.`, then spaces and an upper-case letter, is at most 70 characters long and does not end with `.`, `,`, `;` or `:`; (d) the gap prev.y - line.y exceeds 1.45 * pitch, or 3 * pitch when prev or line is a display line; (e) including it would make the region taller than half the page height. The start line itself is never tested against (a)-(c)."
+      - "deriveStatementRegion, region: x0 = max(columnLeft, min x of the included lines - 6), x1 = min(columnRight, max xEnd of the included lines + 6) where [columnLeft, columnRight] = deriveColumnBounds(start, page.width, page.columnSplit); yTop = start.y + 1.4 * start.height; yBottom = last.y - 0.6 * last.height; both clamped to [0, page.height]."
+      - "findFloatCaptionNear: hits = findCaptionLines(lines, page.width, page.columnSplit) filtered to target.floatKind. When target.label is not null and pickCaption finds it among those hits, return that hit. Otherwise keep hits in the dest's column (same column rule as deriveStatementRegion; all hits when dest.x is null or no split); among those with caption line y <= dest.y + 2 return the one with the greatest y; if none, the one with the smallest |y - dest.y|; if no hits, null."
+      - "Pure module: no DOM, no pdf.js imports; reuse FLOAT_LABEL, FIGURE_WORD, deriveFloatKind, findCaptionLines, pickCaption, deriveColumnBounds instead of copying them."
+    acceptance:
+      - {id: 1.1a, check: "classifyDestName maps theorem.2.1 and lemma.3 to statement, figure.3 to figure with label 3, equation.2.5 to equation with label 2.5, figure.caption.5 to figure with label null, section.3 and cite.Green to null"}
+      - {id: 1.1b, check: "classifyLinkText reads 'by Theorem 2.1', 'see Lemma 3', 'Fig. 4', 'Table 2', 'equation (3.1)' and '(3.1)' at the end of the text and returns null for 'see [12]'"}
+      - {id: 1.1c, check: "deriveStatementRegion on a single-column page: a theorem of three lines followed by a Proof line yields a region that contains the three lines and excludes the Proof line"}
+      - {id: 1.1d, check: "deriveStatementRegion keeps an indented display line inside the statement across a gap of about 2 pitches, and stops at a gap of about 2 pitches between two full-width lines"}
+      - {id: 1.1e, check: "deriveStatementRegion stops before the next statement heading and before a numbered section heading, and caps the region at half the page height"}
+      - {id: 1.1f, check: "deriveStatementRegion on a two-column page with dest.x in the right column uses only right-column lines and keeps x0 >= columnSplit"}
+      - {id: 1.1g, check: "deriveStatementRegion returns null when no line lies under the destination within reach"}
+      - {id: 1.1h, check: "findFloatCaptionNear picks the label match, else the caption at or below the destination in its column, else the nearest, else null"}
+    tests:
+      hidden: [documents/plans/dest-preview-crop/tests/1.1/packages/core/__tests__/reader/destTarget.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 1.1 --plan dest-preview-crop -- packages/core/__tests__/reader/destTarget.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+    do_not_touch:
+      - packages/core/src/reader/geometry.ts
+      - packages/core/src/reader/textLines.ts
+  - id: "1.2"
+    plan: dest-preview-crop
+    goal: The hover popup of an internal link crops to the target that destTarget finds on the target page, and keeps the band when it finds none.
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    sha: 88bc5ca5
+    depends_on: ["1.1"]
+    edit:
+      - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "140-215", why: "DestContent: new PageTextCache dependency, classification, region, fallback; a helper reading the text that ends at the link"}
+      - {path: packages/core/src/reader/dom/hoverPreview.ts, lines: "100-140", why: "HoverPreview ctor and useText build DestContent; thread the PageTextCache"}
+      - {path: packages/core/src/reader/dom/readerUi.ts, lines: "155-210", why: "DocumentText gains pageText: PageTextCache; readText returns it; createWhenIdle and the DOCUMENT_REPLACED handler pass it"}
+    read:
+      - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "227-300", why: "DestPreview.render (band) and renderRegion(pageNumber, region)"}
+      - {path: packages/core/src/reader/dom/textLayer.ts, lines: "200-265", why: "PageTextCache.get(page): {lines, columnSplit, width, height}"}
+      - {path: packages/core/src/reader/geometry.ts, lines: "105-125", why: "deriveFloatRegion(lines, hit, width, height, columnSplit)"}
+      - {path: packages/core/src/reader/dom/citations.ts, lines: "62-80", why: "LinkAnnotationData.dest is the named-destination string when the PDF uses names"}
+    callers:
+      - {symbol: DestContent, path: packages/core/src/reader/dom/hoverPreview.ts, lines: "114-114"}
+      - {symbol: DestContent, path: packages/core/src/reader/dom/hoverPreview.ts, lines: "133-133"}
+      - {symbol: HoverPreview, path: packages/core/src/reader/dom/readerUi.ts, lines: "192-192"}
+      - {symbol: HoverPreview.useText, path: packages/core/src/reader/dom/readerUi.ts, lines: "172-176"}
+    decided:
+      - "Order in DestContent.prepare is unchanged up to and including the References branch (linkCard first, then reference text). After it, and before the band: target = (typeof dest === 'string' ? classifyDestName(dest) : null) ?? classifyLinkText(text ending at the link). When target and point.y are not null: read pages.get(targetPage); statement → deriveStatementRegion(lines, page, {x: point.x, y: point.y}); float → findFloatCaptionNear(...) then deriveFloatRegion(lines, hit, width, height, columnSplit). A region renders through preview.renderRegion(targetPage, region). Check isCurrent() after every await. Any null (no target, no region, no canvas) or a thrown text extraction falls through to today's preview.render band."
+      - "Title: `Page N` as today for statements; for floats with a known label `<Figure|Table|Equation> <LABEL> · Page N` like ReferenceContent.prepareFloat. copyText null; jump unchanged."
+      - "Text ending at the link: the `.textLayer` of the link's `.page`; spans `span[role=presentation]` whose bounding box vertical centre is within 0.6 * link height of the link's centre and whose left is < link right - 1; sorted by left, joined with a space; the last 60 characters. A missing text layer gives an empty string."
+      - "DestContent takes the PageTextCache as a constructor parameter; HoverPreview gets it in its constructor and in useText(resolver, floats, pageText); readerUi's DocumentText gains `pageText` and both creation sites pass the same instance the resolvers use, so a replaced document never reads the old pages."
+    acceptance:
+      - {id: 1.2a, check: "typecheck of core passes and the existing reader tests pass"}
+      - {id: A1, check: "Hovering a theorem link in a hyperref paper shows only the statement (checked by the user in VS Code)"}
+      - {id: A2, check: "Hovering a figure or table link shows the figure and caption only (checked by the user in VS Code)"}
+      - {id: A3, check: "Citation links still show reference text; unknown targets still show the band"}
+    tests: {none: "DOM glue over pdf.js with no existing test harness; the logic is tested in 1.1 and the visible result is checked by the user by hand"}
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader"
+    do_not_touch:
+      - packages/core/src/reader/destTarget.ts
+      - packages/core/src/reader/geometry.ts
+      - packages/core/src/reader/textLines.ts

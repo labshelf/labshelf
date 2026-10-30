@@ -194,3 +194,78 @@ it("offers less frequent content through the labelled Insert menu", () => {
   root.querySelector<HTMLButtonElement>(".qmd-editor-toggle")!.click();
   expect(root.querySelector(".ProseMirror")).not.toBeNull();
 });
+
+describe("visible controls instead of a toolbar", () => {
+  const afterEachCleanup: Array<() => void> = [];
+  afterEach(() => { while (afterEachCleanup.length > 0) afterEachCleanup.pop()!(); });
+  /** Selects the first `length` characters of the first paragraph, as dragging over them would. */
+  async function selectStart(root: HTMLElement, handle: QmdEditorHandle, length: number): Promise<void> {
+    handle.focus();
+    const node = document.createTreeWalker(surface(root)!, NodeFilter.SHOW_TEXT).nextNode() as Text;
+    const range = document.createRange();
+    range.setStart(node, 0);
+    range.setEnd(node, length);
+    document.getSelection()!.removeAllRanges();
+    document.getSelection()!.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+    await flushDom();
+  }
+
+  it("has no formatting toolbar", () => {
+    const { root } = setup("Hello\n");
+    expect(root.querySelector(".qmd-editor-toolbar, [role='toolbar']:not([hidden])")).toBeNull();
+  });
+
+  it("shows the formatting bubble over a selection and its Bold button bolds it", async () => {
+    const { root, handle, changes } = setup("Hello world\n");
+    const bubble = root.querySelector<HTMLElement>(".qmd-bubble")!;
+    expect(bubble.hidden).toBe(true);
+    await selectStart(root, handle, 5);
+    expect(bubble.hidden).toBe(false);
+    bubble.querySelector<HTMLButtonElement>('button[aria-label="Bold"]')!.click();
+    await settleDebounce();
+    expect(changes.at(-1)).toBe("**Hello** world\n");
+  });
+
+  it("the round + under the text inserts a code cell at the caret", async () => {
+    // The cell's code editor measures text ranges, which jsdom lacks.
+    const proto = Range.prototype as unknown as Record<string, unknown>;
+    proto.getClientRects = () => [];
+    proto.getBoundingClientRect = () => new DOMRect();
+    afterEachCleanup.push(() => { delete proto.getClientRects; delete proto.getBoundingClientRect; });
+    const { root, handle, changes } = setup("Hello\n");
+    handle.focus();
+    const insert = root.querySelector<HTMLButtonElement>(".qmd-editor-footer .qmd-editor-insert")!;
+    insert.click();
+    const item = [...document.querySelectorAll<HTMLButtonElement>(".ls-menu button")].find((button) => button.textContent?.includes("Code cell"))!;
+    item.click();
+    await settleDebounce();
+    expect(root.querySelector(".qmd-cell")).not.toBeNull();
+    expect(changes.at(-1)).toContain("```{python}");
+  });
+
+  it("a double click on empty space below the text opens the Insert menu and inserts there; on text it does not", async () => {
+    const proto = Range.prototype as unknown as Record<string, unknown>;
+    proto.getClientRects = () => [];
+    proto.getBoundingClientRect = () => new DOMRect();
+    afterEachCleanup.push(() => { delete proto.getClientRects; delete proto.getBoundingClientRect; });
+    const { root, changes } = setup("Hello\n");
+    surface(root)!.querySelector("p")!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, clientY: 1 }));
+    expect(document.querySelector(".ls-menu")).toBeNull();
+    surface(root)!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true, clientX: 40, clientY: 400 }));
+    const item = [...document.querySelectorAll<HTMLButtonElement>(".ls-menu button")].find((button) => button.textContent?.includes("Code cell"))!;
+    item.click();
+    await settleDebounce();
+    expect(changes.at(-1)).toMatch(/^Hello\n\n```\{python\}/);
+  });
+
+  it("shows the host's status at the right of the Insert row and hides Insert when read-only", () => {
+    const status = document.createElement("span");
+    status.textContent = "Saved";
+    const root = document.createElement("div");
+    document.body.append(root);
+    mounted.push(mountQmdEditor(root, { body: "Hi\n", onChange: () => undefined, readOnly: true, status }));
+    expect(root.querySelector(".qmd-editor-footer")!.lastElementChild).toBe(status);
+    expect(root.querySelector(".qmd-editor-insert")).toBeNull();
+  });
+});

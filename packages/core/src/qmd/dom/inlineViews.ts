@@ -74,6 +74,38 @@ export type EditSide = "start" | "end";
 
 const nodeEditors = new WeakMap<Node, (side: EditSide) => void>();
 
+/** What a code cell view offers the outputs under it: its language, running it, and folding its code. */
+export interface CellControls {
+  language(): string;
+  readonly canRun: boolean;
+  run(): void;
+  /** Whether the cell has a result, whose outputs then carry the cell's line. */
+  hasResult(): boolean;
+  /** Whether the cell's code is folded away behind its result. */
+  folded(): boolean;
+  isOpen(): boolean;
+  /** Unfolds the code in place above the outputs, or folds it again. */
+  setOpen(open: boolean): void;
+  isRunning(): boolean;
+  /** Calls `listener` when the open, running or folded state changes; returns the unsubscribe. */
+  subscribe(listener: () => void): () => void;
+  /** Rechecks the cell's outputs after one was added or removed. */
+  refresh(): void;
+}
+
+const cellControls = new WeakMap<Node, CellControls>();
+
+/** Lets outputs and navigation reach the code cell view whose outer element is `dom`. */
+export function registerCellControls(dom: HTMLElement, controls: CellControls): void {
+  cellControls.set(dom, controls);
+}
+
+/** The controls of the code cell view at `pos`, or null. */
+export function cellControlsAt(view: EditorView, pos: number): CellControls | null {
+  const dom = pos >= 0 && pos < view.state.doc.content.size ? view.nodeDOM(pos) : null;
+  return (dom && cellControls.get(dom)) ?? null;
+}
+
 /** Lets `editNodeAt` open the editor of the node view whose outer element is `dom`, such as a code cell's code or an equation's LaTeX field. */
 export function registerNodeEditor(dom: HTMLElement, edit: (side: EditSide) => void): void {
   nodeEditors.set(dom, edit);

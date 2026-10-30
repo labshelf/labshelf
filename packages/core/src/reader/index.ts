@@ -6,4 +6,5 @@ export { ReaderHostController, type ReaderHostOptions } from "./hostController.j
 export { exportAnnotations } from "./hostMessages.js";
 export type { ExportAnnotationsPorts, NoticeKind, PreviewPorts, ReaderHostPorts, SidecarChange } from "./hostPorts.js";
 export { deriveCropRectForPreview, deriveDestPoint, type CropOptions, type PdfDestinationSpec, type Rect } from "./geometry.js";
+export { classifyDestName, classifyLinkText, deriveStatementRegion, findFloatCaptionNear, type DestPoint, type DestTarget, type PageLayout } from "./destTarget.js";
 export * from "./outline.js";

@@ -159,6 +159,7 @@ function pageJumper(ctx: ReaderContext, history: NavigationHistory): (page: numb
 interface DocumentText {
   citations: CitationResolver;
   floats: FloatResolver;
+  pageText: PageTextCache;
 }
 
 export class DeferredHover {
@@ -172,7 +173,7 @@ export class DeferredHover {
     ctx.eventBus.on(DOCUMENT_REPLACED, () => {
       if (!this.preview) { return; }
       const text = this.readText();
-      this.preview.useText(text.citations, text.floats);
+      this.preview.useText(text.citations, text.floats, text.pageText);
     });
   }
 
@@ -189,14 +190,14 @@ export class DeferredHover {
   createWhenIdle(): void {
     requestIdleCallback(() => {
       const text = this.readText();
-      this.preview = new HoverPreview(this.ctx, text.citations, text.floats, new DestPreview(this.ctx, this.theme), this.citations);
+      this.preview = new HoverPreview(this.ctx, text.citations, text.floats, new DestPreview(this.ctx, this.theme), this.citations, text.pageText);
     });
   }
 
   // The reference list is located and captions are indexed in the background, so the first hover answers at once.
   private readText(): DocumentText {
     const pageText = new PageTextCache(this.ctx);
-    const text = { citations: new CitationResolver(pageText), floats: new FloatResolver(pageText) };
+    const text = { citations: new CitationResolver(pageText), floats: new FloatResolver(pageText), pageText };
     if (this.ctx.prefs.hoverPreviews) { text.citations.warmUp(); text.floats.warmUp(); }
     return text;
   }

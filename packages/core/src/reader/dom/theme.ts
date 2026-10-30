@@ -4,7 +4,7 @@ import type { CustomReaderTheme, ReaderThemeRef } from "../../model/index.js";
 import { type EffectiveTheme, findPagePreset, derivePageColors } from "../index.js";
 import type { ReaderContext } from "./readerSession.js";
 import { renderElement, findElement } from "../../ui/dom/index.js";
-import { deriveReaderTheme, readerThemeCssVars } from "../../ui/tokens/index.js";
+import { deriveReaderTheme, isLightColour, readerThemeCssVars } from "../../ui/tokens/index.js";
 import { deriveCheatsheetRows } from "../keymap.js";
 
 // Applies the selected colour preset to the PDF reader.
@@ -112,6 +112,7 @@ export class ThemeController {
   applyPageColors(bg: string, text: string): void {
     this.bg = bg;
     this.text = text;
+    this.container.dataset["pdfLinkTone"] = isLightColour(bg) ? "dark" : "light";
     // A locked page preset leaves the desk to the preview stylesheet.
     if (this.pagesLock === null) { this.container.style.background = bg; }
     const viewer = this.pdfViewer;

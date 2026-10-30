@@ -1,9 +1,9 @@
 /** @jest-environment jsdom */
 /**
  * Tests the writing behaviour of the rich note editor: Markdown input rules while typing, Python fence shortcuts,
- * Backspace on a heading, and opening a new node's source editor.
+ * Backspace on a heading, opening a new node's source editor, and moving the caret through cells, outputs and equations.
  */
-import { EditorState, TextSelection, type Plugin } from "prosemirror-state";
+import { EditorState, NodeSelection, TextSelection, type Plugin } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import type { Node as PmNode } from "prosemirror-model";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
@@ -12,6 +12,9 @@ import { codeFenceEnter, qmdInputRules } from "../../../src/qmd/dom/qmdInputRule
 import { editRequestPlugin, headingToParagraph, QMD_ACTIONS } from "../../../src/qmd/dom/qmdCommands";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { createMathView } from "../../../src/qmd/dom/mathView";
+import { blockDragPlugin, blockNavigationPlugin } from "../../../src/qmd/dom/qmdBlocks";
+import { createOutputView } from "../../../src/qmd/dom/outputView";
+import { formatOutput } from "../../../src/qmd/item/cellOutput";
 import { para, text } from "../../support/nodeViewHarness";
 
 const views: EditorView[] = [];
@@ -171,5 +174,83 @@ describe("editing commands", () => {
     QMD_ACTIONS.codeCell.command(view.state, view.dispatch, view);
     await tick();
     expect(document.activeElement?.closest(".qmd-cell-code")).not.toBeNull();
+  });
+});
+
+describe("moving through blocks", () => {
+  const output = () => s.node("output", { cell: "c", source: "s", engine: "python", ran: "2026-10-30", raw: formatOutput({ cell: "c", source: "s", engine: "python", ran: "2026-10-30", content: "42\n" }) });
+  const cellWithOutput = () => s.node("doc", null, [s.node("code_cell", { lang: "python", options: "#| label: c\n", code: "print(42)\n", info: "{python}" }), output()]);
+  const keyDown = (view: EditorView, key: string) => view.someProp("handleKeyDown", (handle) => handle(view, new KeyboardEvent("keydown", { key }))) ?? false;
+  const selectOutput = (view: EditorView) => view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, view.state.doc.firstChild!.nodeSize)));
+
+  it("typing on a selected output writes a new paragraph after it and keeps the output", () => {
+    const view = mountDoc(cellWithOutput(), [blockNavigationPlugin()]);
+    selectOutput(view);
+    type(view, "Hi");
+    expect(view.state.doc.childCount).toBe(3);
+    expect(view.state.doc.child(1).type.name).toBe("output");
+    expect(view.state.doc.lastChild!.textContent).toBe("Hi");
+    expect(view.state.selection.from).toBe(view.state.doc.content.size - 1);
+  });
+
+  it.each(["ArrowDown", "Enter"])("%s on a selected output at the end of the note opens a paragraph after it", (key) => {
+    const view = mountDoc(cellWithOutput(), [blockNavigationPlugin()]);
+    selectOutput(view);
+    expect(keyDown(view, key)).toBe(true);
+    expect(view.state.doc.lastChild!.type.name).toBe("paragraph");
+    expect(view.state.selection).toBeInstanceOf(TextSelection);
+    expect(view.state.selection.$from.parent).toBe(view.state.doc.lastChild);
+  });
+
+  it("ArrowUp on a selected output opens its cell's code at the end", async () => {
+    const view = mountDoc(cellWithOutput(), [blockNavigationPlugin()]);
+    selectOutput(view);
+    expect(keyDown(view, "ArrowUp")).toBe(true);
+    expect(document.activeElement?.closest(".qmd-cell-code")).not.toBeNull();
+  });
+
+  it("ArrowRight beside an inline equation opens its LaTeX field at the start, and ArrowLeft there returns before it", async () => {
+    const view = mountDoc(s.node("doc", null, [para(text("see "), s.node("math_inline", { tex: "x^2" }), text(" here"))]), [blockNavigationPlugin()], 5);
+    expect(keyDown(view, "ArrowRight")).toBe(true);
+    await tick();
+    const input = view.dom.querySelector<HTMLInputElement>('input[aria-label="TeX source"]')!;
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(0);
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }));
+    expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
+    expect(view.state.selection.from).toBe(5);
+  });
+});
+
+describe("dragging a cell with its outputs", () => {
+  const output = (cell: string) => s.node("output", { cell, source: "s", engine: "python", ran: "2026-10-30", raw: formatOutput({ cell, source: "s", engine: "python", ran: "2026-10-30", content: `${cell}\n` }) });
+  const cell = (label: string) => s.node("code_cell", { lang: "python", options: `#| label: ${label}\n`, code: `print("${label}")\n`, info: "{python}" });
+  const names = (view: EditorView) => { const out: string[] = []; view.state.doc.forEach((node) => out.push(node.type.name === "paragraph" ? `p:${node.textContent}` : `${node.type.name}:${node.attrs.cell || node.attrs.options.trim()}`)); return out; };
+
+  function dragTo(view: EditorView, from: Element, drop: number): void {
+    const transfer = { data: {} as Record<string, string>, clearData() { this.data = {}; }, setData(type: string, value: string) { this.data[type] = value; }, effectAllowed: "" };
+    const started = view.someProp("handleDOMEvents", (handlers) => handlers.dragstart?.(view, { target: from, dataTransfer: transfer } as unknown as DragEvent));
+    expect(started).toBe(true);
+    expect(transfer.data["text/plain"]).toContain("```{python}");
+    view.posAtCoords = () => ({ pos: drop, inside: -1 });
+    expect(view.someProp("handleDrop", (handle) => handle(view, { clientX: 0, clientY: 0 } as DragEvent, view.dragging!.slice, true))).toBe(true);
+  }
+
+  it("dragging an output moves its cell along with it", () => {
+    const doc = s.node("doc", null, [cell("a"), output("a"), para(text("text")), cell("b")]);
+    const host = document.createElement("div");
+    document.body.append(host);
+    const view = new EditorView(host, { state: EditorState.create({ doc, plugins: [blockDragPlugin()] }), nodeViews: { ...nodeViews, output: createOutputView() }, handleScrollToSelection: () => true });
+    views.push(view);
+    dragTo(view, view.dom.querySelector(".qmd-output")!, view.state.doc.content.size);
+    expect(names(view)).toEqual(["p:text", "code_cell:#| label: b", "code_cell:#| label: a", "output:a"]);
+  });
+
+  it("a drop just before another cell's output lands after that output", () => {
+    const doc = s.node("doc", null, [cell("a"), output("a"), cell("b"), output("b")]);
+    const view = mountDoc(doc, [blockDragPlugin()]);
+    const beforeOutputB = doc.child(0).nodeSize + doc.child(1).nodeSize + doc.child(2).nodeSize;
+    dragTo(view, view.dom.querySelector(".qmd-cell-actions")!, beforeOutputB);
+    expect(names(view)).toEqual(["code_cell:#| label: b", "output:b", "code_cell:#| label: a", "output:a"]);
   });
 });

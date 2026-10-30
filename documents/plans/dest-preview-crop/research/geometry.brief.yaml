@@ -1,0 +1,35 @@
+schema: brief/v1
+area: reader layout geometry (text lines, captions, float regions, dest crop)
+question: "types, region/caption logic, column order, heading regex reuse and tests for cropping linked-destination previews to the actual target"
+sha: 88bc5ca5
+reuse:
+  - {symbol: TextLine, path: packages/core/src/reader/textLines.ts, lines: "18-27", why: "fields text, x, xEnd, y (BASELINE, PDF user space, origin bottom-left, y up), height (max item height of the line), column (0 = single-column page or left column, 1 = right column). Larger y = higher on page."}
+  - {symbol: PdfRegion, path: packages/core/src/reader/geometry.ts, lines: "6-12", why: "{x0,x1,yTop,yBottom} in PDF user space, yTop > yBottom"}
+  - {symbol: CaptionMatch, path: packages/core/src/reader/textLines.ts, lines: "162-167", why: "{kind: FloatKind, label, lineIndex into the lines array}"}
+  - {symbol: deriveColumnBounds, path: packages/core/src/reader/textLines.ts, lines: "206-212", why: "EXPORTED. (line,pageWidth,columnSplit)->[x0,x1]"}
+  - {symbol: deriveFloatRegion, path: packages/core/src/reader/geometry.ts, lines: "110-123", why: "exported; dispatches on hit.kind to equation/table/figure region"}
+  - {symbol: findCaptionLines, path: packages/core/src/reader/textLines.ts, lines: "175-199", why: "caption and equation-number line detection; returns hits in line order"}
+  - {symbol: pickCaption, path: packages/core/src/reader/textLines.ts, lines: "219-225", why: "exact kind+label match, else sub-figure letter stripped"}
+  - {symbol: deriveLinesFromItems, path: packages/core/src/reader/textLines.ts, lines: "123-160", why: "reading order: column 0 top-to-bottom, then column 1; lines array not globally y-sorted on two-column pages"}
+  - {symbol: findReferencesStart, path: packages/core/src/reader/referenceList.ts, lines: "9-38", why: "only heading detection; numbered-heading stripping pattern"}
+edit:
+  - {path: packages/core/src/reader/geometry.ts, lines: "103-195", why: "deriveCropRectForPreview fixed band; deriveDestPoint"}
+  - {path: packages/core/src/reader/textLines.ts, lines: "1-235", why: "line classifiers"}
+read:
+  - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "180-260", why: "destinations become crops"}
+  - {path: packages/core/src/reader/dom/textLayer.ts, lines: "160-265", why: "FloatResolver.find and PageTextCache"}
+callers:
+  - {symbol: deriveFloatRegion, path: packages/core/src/reader/dom/textLayer.ts, lines: "183-183"}
+  - {symbol: findCaptionLines, path: packages/core/src/reader/dom/textLayer.ts, lines: "199-199"}
+  - {symbol: deriveCropRectForPreview, path: packages/core/src/reader/dom/hoverTarget.ts, lines: "253-253"}
+tests:
+  - {path: packages/core/__tests__/reader/geometry.test.ts, covers: "deriveFloatRegion, deriveDestPoint, deriveCropRectForPreview; helper line(text,y,over) defaults x 72, xEnd 540, height 11, column 0; W=612,H=792"}
+  - {path: packages/core/__tests__/reader/textLines.test.ts, covers: "findCaptionLines, pickCaption, deriveLinesFromItems"}
+contracts: []
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader/geometry.test.ts packages/core/__tests__/reader/textLines.test.ts"
+risks:
+  - "No Theorem/Lemma/Proof/section heading detection exists; must be written new."
+  - "Two-column pages: scans for lines below must filter by column."
+  - "TextLine.y is the baseline; top ~ y + height, bottom ~ y - 0.35*height."
+  - "FloatFrame and the per-kind region helpers are module-private."

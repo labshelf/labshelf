@@ -55,6 +55,29 @@ it("reopens a stored page note from its pin", () => {
   expect(dialog().hidden).toBe(false);
 });
 
+it("numbers free and anchored markers per page without changing the notes or their editor", () => {
+  const { post, dialog } = setup();
+  floating.setAnnotations([{ id: "a1", pageNumber: 4, position: { x: 0.1, y: 0.2, width: 0.4, height: 0.03 } } as Annotation]);
+  const free = note("p4 point 0.7 0.3", "Free note");
+  const linked = { ...note("hl:a1", "Linked note"), id: "n2" };
+  const others = [{ ...note("p2 point 0.2 0.3"), id: "n0" }, { ...note("p4 box 0.1 0.2 0.4 0.1"), id: "box" }];
+  floating.show([linked, ...others, free]);
+  const pin = (id: string) => document.querySelector<HTMLButtonElement>(`.rd-note-pin[data-note-id="${id}"]`)!;
+  expect(pin("n1").textContent).toBe("01");
+  expect(pin("n2").textContent).toBe("02");
+  expect(pin("n2").getAttribute("aria-label")).toBe("Open note 02 on page 4");
+  expect(pin("n2").querySelector("svg")).toBeNull();
+  pin("n2").click();
+  expect(dialog().textContent).toContain("Linked note");
+  expect(pin("n2").getAttribute("aria-expanded")).toBe("true");
+  floating.show([free, linked, ...others]);
+  expect(pin("n2").textContent).toBe("02");
+  expect(pin("n2").getAttribute("aria-expanded")).toBe("true");
+  floating.close();
+  expect(pin("n2").getAttribute("aria-expanded")).toBe("false");
+  expect(post).not.toHaveBeenCalled();
+});
+
 it("flushes the last edit when closing before the editor debounce fires", () => {
   const { post, dialog } = setup();
   floating.addPoint(4, 0.7, 0.3);
@@ -140,4 +163,16 @@ it("keeps typing that the host has not acknowledged when an output arrives", () 
   floating.show([note("p4 point 0.7 0.3", "Start\n\n::: {.labshelf-output cell=\"one\" source=\"3f9a1c0b7d2e\"}\nPrinted one\n:::\n")]);
   expect(dialog().querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Start and more");
   expect(dialog().querySelector(".rd-floating-note-status")!.textContent).toBe("Saving…");
+});
+
+it("keeps the header to the title, the source and the expand and close icons, with the save status under the text", () => {
+  const { dialog } = setup();
+  floating.addPoint(2, 0.2, 0.3);
+  floating.show([note("p2 point 0.2 0.3")]);
+  const header = dialog().querySelector(".rd-floating-note-header")!;
+  expect(header.querySelector(".rd-floating-note-status")).toBeNull();
+  expect([...header.querySelectorAll("button")].map((button) => button.getAttribute("aria-label") ?? button.textContent)).toEqual(["Page 2", "Open full note", "Close note"]);
+  const status = dialog().querySelector(".qmd-editor-footer .rd-floating-note-status")!;
+  expect(status.textContent).toBe("Saved");
+  expect(status.parentElement!.querySelector(".qmd-editor-insert")).not.toBeNull();
 });

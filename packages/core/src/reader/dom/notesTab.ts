@@ -37,13 +37,11 @@ export class NotesTab implements SidebarPanel {
   private readonly status = renderElement("span", { class: "rd-note-save-status", role: "status", "aria-live": "polite" });
   private readonly source = renderElement("button", { class: "rd-note-source", type: "button" });
   private readonly context = renderElement("div", { class: "rd-note-context" });
-  private readonly remove = renderReaderIconButton(renderIcon("trash"), `Delete ${ITEM}`, "rd-btn-sm rd-note-delete");
   private readonly quoteObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => this.measureQuote());
   private readonly drafts = new Map<string, string>();
   private notes: readonly ReaderNote[] = [];
   private annotations = new Map<string, Annotation>();
   private active: ActiveNote | null = null;
-  private confirming = false;
   private quoteOpen = false;
   private listScroll = 0;
   private readonly runs: ReaderCellRuns;
@@ -57,8 +55,6 @@ export class NotesTab implements SidebarPanel {
     this.list.addEventListener("scroll", () => { if (!this.list.hidden) { this.listScroll = this.list.scrollTop; } }, { passive: true });
     eventBus.on("pagechanging", () => { if (this.select.value === "page") { this.renderList(); } });
     this.source.addEventListener("click", () => { const page = Number(this.source.dataset["page"]); if (page) { this.goToPage(page); } });
-    this.remove.addEventListener("click", () => this.deleteActive());
-    this.remove.addEventListener("blur", () => this.confirmDelete(false));
     this.renderList();
   }
 
@@ -115,15 +111,16 @@ export class NotesTab implements SidebarPanel {
     const back = renderReaderIconButton(renderIcon("arrow-left"), "All notes", "rd-btn-sm rd-notes-back");
     back.addEventListener("click", () => this.closeEditor());
     this.quoteOpen = false;
-    this.pane.replaceChildren(renderElement("div", { class: "rd-notes-editor-nav" }, back, this.source, this.status, this.remove), this.context, root);
+    this.pane.replaceChildren(renderElement("div", { class: "rd-notes-editor-nav" }, back, renderElement("span", { class: "rd-notes-editor-title" }, "Note"), this.source), this.context, root);
     const save = createDebouncer(() => this.send(active), SAVE_DELAY_MS);
     const active: ActiveNote = { id, root, latest, lastSent: latest, save, editor: mountQmdEditor(root, {
       body: latest,
       onChange: (next) => { active.latest = next; this.drafts.set(id, next); this.status.textContent = "Saving…"; save.call(); },
+      // The save status sits small under the text, beside the Insert button.
+      status: this.status,
       ...this.runs.option(id, root),
     }) };
     this.active = active;
-    this.confirmDelete(false);
     this.status.textContent = this.drafts.has(id) ? "Saving…" : "Saved";
     this.filters.hidden = this.list.hidden = true;
     this.pane.hidden = false;
@@ -194,7 +191,7 @@ export class NotesTab implements SidebarPanel {
     if (!children.length) { children.push(this.renderEmpty()); }
     this.list.replaceChildren(...children);
     this.list.scrollTop = this.listScroll;
-    if (focused) { children.find((child) => child.dataset["noteId"] === focused)?.focus({ preventScroll: true }); }
+    if (focused) { this.list.querySelectorAll<HTMLElement>(".rd-note-preview").forEach((button) => { if (button.dataset["noteId"] === focused) { button.focus({ preventScroll: true }); } }); }
   }
 
   private renderEmpty(): HTMLElement {
@@ -220,17 +217,34 @@ export class NotesTab implements SidebarPanel {
           kind ? renderElement("span", { class: "rd-note-preview-kind", role: "img", "aria-label": kind[1], title: kind[1], html: renderIcon(kind[0] as Parameters<typeof renderIcon>[0]) }) : null),
         body ? renderElement("span", { class: "rd-note-preview-body" }, body) : (title ? null : renderElement("span", { class: "rd-note-preview-body" }, "Start writing…"))));
     button.addEventListener("click", () => this.reveal(note.id));
-    return button;
+    return renderElement("div", { class: "rd-note-row" }, button, this.renderDelete(note));
+  }
+
+  /** A quiet trash icon shown on hover; a note with text asks for a second click before it is deleted. */
+  private renderDelete(note: ReaderNote): HTMLElement {
+    const label = `Delete ${ITEM}`;
+    const remove = renderReaderIconButton(renderIcon("trash"), label, "rd-btn-sm rd-note-delete");
+    let confirming = false;
+    const confirm = (on: boolean): void => {
+      confirming = on;
+      remove.classList.toggle("rd-danger", on);
+      remove.title = on ? "Click again to delete this note" : label;
+      remove.setAttribute("aria-label", remove.title);
+    };
+    remove.addEventListener("click", () => {
+      if ((this.drafts.get(note.id) ?? note.body).trim() && !confirming) { confirm(true); return; }
+      this.drafts.delete(note.id);
+      this.host.post({ command: "removeNote", id: note.id });
+    });
+    remove.addEventListener("blur", () => confirm(false));
+    return remove;
   }
 
   private renderContext(): void {
     const note = this.notes.find((item) => item.id === this.active?.id);
     if (!note) { return; }
     const placement = this.place(note);
-    const marker = placement.annotation
-      ? renderElement("span", { class: `rd-ann-dot rd-color-${placement.annotation.color ?? "note"}`, "aria-hidden": "true" })
-      : renderElement("span", { class: "rd-note-source-icon", html: renderIcon((KIND_ICON[placement.kind]?.[0] ?? "note") as Parameters<typeof renderIcon>[0]), "aria-hidden": "true" });
-    this.source.replaceChildren(marker, renderElement("span", { class: "rd-note-source-label" }, placement.page === null ? placement.label : `p. ${placement.page} · ${placement.label}`));
+    this.source.replaceChildren(renderElement("span", { class: "rd-note-source-label" }, placement.page === null ? placement.label : `Page ${placement.page}`));
     this.source.disabled = placement.page === null;
     this.source.dataset["page"] = String(placement.page ?? "");
     this.source.title = placement.page === null ? placement.label : `Go to page ${placement.page}`;
@@ -251,22 +265,6 @@ export class NotesTab implements SidebarPanel {
     const toggle = this.context.querySelector<HTMLButtonElement>(".rd-note-quote-toggle");
     if (!text || !toggle) { return; }
     toggle.hidden = !this.quoteOpen && text.scrollHeight <= text.clientHeight + 1;
-  }
-
-
-  private deleteActive(): void {
-    if (!this.active) { return; }
-    this.active.editor.flush();
-    if (this.active.latest.trim() && !this.confirming) { this.confirmDelete(true); return; }
-    this.active.save.cancel();
-    this.host.post({ command: "removeNote", id: this.active.id });
-  }
-
-  private confirmDelete(on: boolean): void {
-    this.confirming = on;
-    this.remove.classList.toggle("rd-danger", on);
-    this.remove.title = on ? "Click again to delete this note" : `Delete ${ITEM}`;
-    this.remove.setAttribute("aria-label", this.remove.title);
   }
 }
 

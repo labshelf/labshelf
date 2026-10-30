@@ -20,7 +20,12 @@ body {
 [hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
 #app { display: flex; height: 100%; }
-#pdf-shell { position: relative; flex: 1; min-width: 0; background: var(--ls-reader-bg); overflow: hidden; }
+/* The page area is a rounded card like the sidebar; with the sidebar open the resizer is the gutter between them. */
+#pdf-shell {
+  position: relative; flex: 1; min-width: 0; margin: 6px; background: var(--ls-reader-bg);
+  border: 1px solid var(--ls-reader-border); border-radius: 8px; overflow: hidden;
+}
+#sidebar-resizer:not([hidden]) + #pdf-shell { margin-left: 0; }
 #viewerContainer {
   position: absolute; inset: 0; overflow: auto; outline: none;
   /* Room for the overlay toolbar so page one is never covered at scrollTop 0. */
@@ -28,6 +33,34 @@ button { font: inherit; color: inherit; }
   background: var(--ls-reader-page); transition: background-color 120ms ease;
 }
 #viewer .page { box-shadow: var(--ls-page-shadow); }
+#viewerContainer { --rd-link-ink: #91b8d0; --rd-link-ink-hover: #6fb9e5; --rd-link-blend: darken; }
+#viewerContainer[data-pdf-link-tone="dark"] { --rd-link-ink: #3c6c88; --rd-link-ink-hover: #235675; --rd-link-blend: lighten; }
+/* TRAP: PDF links can carry inline borders or SVG border backgrounds; both must yield to the reader treatment. */
+#viewer .annotationLayer .linkAnnotation {
+  border: 0 !important;
+  background: none !important;
+  /* TRAP: The glyphs live on the PDF canvas; blend the link surface with its ink while preserving the paper. */
+  mix-blend-mode: var(--rd-link-blend);
+}
+#viewer .annotationLayer .linkAnnotation > a {
+  background: var(--rd-link-ink);
+  transition: background-color 120ms ease;
+}
+#viewer .annotationLayer .linkAnnotation > a:hover {
+  opacity: 1;
+  background: var(--rd-link-ink-hover);
+}
+#viewer .annotationLayer .linkAnnotation:has(> a:focus-visible) { mix-blend-mode: normal; }
+#viewer .annotationLayer .linkAnnotation > a:focus-visible {
+  background: none;
+  outline: 1px solid var(--ls-reader-fg);
+  outline-offset: 1px;
+}
+@media (forced-colors: active) {
+  #viewer .annotationLayer .linkAnnotation { mix-blend-mode: normal; outline: 1px solid LinkText; }
+  #viewer .annotationLayer .linkAnnotation > a { background: none; }
+  #viewer .annotationLayer .linkAnnotation > a:focus-visible { outline-color: Highlight; }
+}
 .rd-resizing, .rd-resizing * { cursor: col-resize !important; user-select: none !important; }
 
 /* ── Buttons ────────────────────────────────────────────────── */
@@ -116,9 +149,15 @@ button { font: inherit; color: inherit; }
 .rd-zoom-label:hover { background: var(--ls-reader-hover); }
 
 /* ── Sidebar ────────────────────────────────────────────────── */
-#sidebar { display: flex; flex-direction: column; flex-shrink: 0; min-width: 0; background: var(--ls-reader-surface); overflow: hidden; }
-#sidebar-resizer { width: 4px; margin-right: -3px; z-index: 40; flex-shrink: 0; cursor: col-resize; border-left: 1px solid var(--ls-reader-border); }
-#sidebar-resizer:hover, .rd-resizing #sidebar-resizer { background: var(--ls-focus); }
+/* The sidebar floats as a rounded card over the reader background, like VS Code's side bar beside the editor;
+   the resizer is the gutter between it and the pages. */
+#sidebar {
+  display: flex; flex-direction: column; flex-shrink: 0; min-width: 0; margin: 6px 0 6px 6px;
+  background: var(--ls-reader-surface); border: 1px solid var(--ls-reader-border); border-radius: 8px;
+  box-shadow: var(--ls-reader-shadow); overflow: hidden;
+}
+#sidebar-resizer { width: 6px; z-index: 40; flex-shrink: 0; cursor: col-resize; }
+#sidebar-resizer:hover, .rd-resizing #sidebar-resizer { background: linear-gradient(var(--ls-focus), var(--ls-focus)) center / 2px 100% no-repeat; }
 .rd-tabs { display: flex; gap: 2px; padding: 5px 6px; border-bottom: 1px solid var(--ls-reader-border); }
 .rd-tab {
   display: inline-flex; align-items: center; justify-content: center; flex: 1; height: 26px;
@@ -314,7 +353,7 @@ kbd {
 .rd-note-box-content { flex: 1; min-height: 0; overflow: hidden; padding: 0 .4em .3em; }
 .rd-note-box-clipped .rd-note-box-content { mask-image: linear-gradient(to bottom, currentColor calc(100% - 1.6em), transparent); }
 .rd-note-box .qmd-editor { gap: 0; color: inherit; font: inherit; }
-.rd-note-box .qmd-editor-header, .rd-note-box .qmd-editor-toolbar { display: none; }
+.rd-note-box .qmd-editor-header, .rd-note-box .qmd-editor-footer { display: none; }
 .rd-note-box .qmd-editor .ProseMirror { min-height: 0; padding: 0; }
 .rd-note-box .qmd-editor .ProseMirror > * + * { margin-top: .4em; }
 .rd-note-box .qmd-editor .ProseMirror h1 { font-size: 1.4em; }

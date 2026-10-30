@@ -28,17 +28,17 @@ export class FloatingNotes {
 
   constructor(private readonly ctx: ReaderContext, private readonly openFull: (id: string, body: string) => void) {
     this.runs = new ReaderCellRuns(ctx.host);
-    const close = renderReaderIconButton(renderIcon("x"), "Close note");
+    const close = renderReaderIconButton(renderIcon("x"), "Close note", "rd-btn-sm");
     close.addEventListener("click", () => { const id = this.current?.id; this.close(); if (id) { this.pins.get(id)?.focus(); } });
-    const full = renderElement("button", { class: "rd-floating-note-full", type: "button" }, renderElement("span", { html: renderIcon("external"), "aria-hidden": "true" }), "Open full note");
+    const full = renderReaderIconButton(renderIcon("external"), "Open full note", "rd-btn-sm rd-floating-note-full");
     full.addEventListener("click", () => this.revealFull());
     this.source.addEventListener("click", () => {
       const note = this.notes.find((item) => item.id === this.current?.id);
       const at = note && this.position(note);
       if (at) { ctx.pdfViewer.currentPageNumber = at.page; }
     });
-    this.el.append(renderElement("header", { class: "rd-floating-note-header" }, renderElement("span", { class: "rd-floating-note-title" }, renderElement("span", { html: renderIcon("note"), "aria-hidden": "true" }), "Paper note"), full, close), this.source, this.body,
-      renderElement("footer", { class: "rd-floating-note-footer" }, this.status));
+    // One quiet line over the text: what it is and where it points, then the two actions; the save status sits under the text.
+    this.el.append(renderElement("header", { class: "rd-floating-note-header" }, renderElement("span", { class: "rd-floating-note-title" }, "Note"), this.source, renderElement("span", { class: "rd-floating-note-actions" }, full, close)), this.body);
     document.body.append(this.el);
     ctx.eventBus.on("textlayerrendered", () => this.paint());
     ctx.container.addEventListener("scroll", () => this.place(), { passive: true });
@@ -104,6 +104,7 @@ export class FloatingNotes {
     this.current?.editor.destroy();
     this.current = null;
     this.el.hidden = true;
+    for (const pin of this.pins.values()) { pin.setAttribute("aria-expanded", "false"); }
   }
 
   private create(anchor: string): void {
@@ -122,12 +123,21 @@ export class FloatingNotes {
   private paint(): void {
     for (const pin of this.pins.values()) { pin.remove(); }
     this.pins.clear();
-    for (const note of this.notes) {
+    const counts = new Map<number, number>();
+    const ordered = [...this.notes].sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
+    for (const note of ordered) {
       if (parseAnchor(note.anchor).kind === "box") { continue; }
       const at = this.position(note);
-      const page = at && document.querySelector<HTMLElement>(`#viewer .page[data-page-number="${at.page}"]`);
-      if (!page || !at) { continue; }
-      const pin = renderReaderIconButton(renderIcon("note"), `Open note on page ${at.page}`, "rd-note-pin");
+      if (!at) { continue; }
+      const index = (counts.get(at.page) ?? 0) + 1;
+      counts.set(at.page, index);
+      const number = String(index).padStart(2, "0");
+      const page = document.querySelector<HTMLElement>(`#viewer .page[data-page-number="${at.page}"]`);
+      if (!page) { continue; }
+      const pin = renderElement("button", {
+        class: "rd-btn rd-note-pin", type: "button", title: `Note ${number} · Page ${at.page}`,
+        "aria-label": `Open note ${number} on page ${at.page}`, "aria-expanded": String(this.current?.id === note.id),
+      }, renderElement("span", { class: "rd-note-pin-label", "aria-hidden": "true" }, number));
       pin.dataset["noteId"] = note.id;
       pin.style.left = `${at.x * 100}%`;
       pin.style.top = `${at.y * 100}%`;
@@ -153,11 +163,14 @@ export class FloatingNotes {
         this.status.textContent = "Saving…";
         this.ctx.host.post({ command: "editNote", id: note.id, body });
       },
+      status: this.status,
       ...this.runs.option(note.id, root),
     });
     this.current = { id: note.id, editor, latest: body };
+    for (const [id, pin] of this.pins) { pin.setAttribute("aria-expanded", String(id === note.id)); }
     const at = this.position(note);
-    this.source.textContent = at ? `↗ Page ${at.page}` : "Paper note";
+    this.source.textContent = at ? `Page ${at.page}` : "";
+    this.source.hidden = !at;
     this.status.textContent = this.drafts.has(note.id) ? "Saving…" : "Saved";
     this.el.hidden = false;
     this.place();

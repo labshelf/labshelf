@@ -1,4 +1,4 @@
-// Holds the editing commands of the rich Markdown editor, shared by its keymap and its formatting toolbar: marks, headings, lists, math, code cells and links.
+// Holds the editing commands of the rich Markdown editor, shared by its keymap, its selection bubble and its Insert menu: marks, headings, lists, math, code cells and links.
 import { setBlockType, toggleMark } from "prosemirror-commands";
 import type { Mark, MarkType, Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, Plugin, PluginKey, TextSelection, type Command, type EditorState, type Transaction } from "prosemirror-state";

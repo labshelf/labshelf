@@ -1,10 +1,12 @@
 // Finds what the pointer hovers (text references and link destinations) and previews a link destination.
 import type { PageViewport, RenderTask } from "pdfjs-dist";
-import type { PdfRegion } from "../geometry.js";
+import { deriveFloatRegion, type PdfRegion } from "../geometry.js";
+import { classifyDestName, classifyLinkText, deriveStatementRegion, findFloatCaptionNear, type DestTarget } from "../destTarget.js";
+import type { FloatKind } from "../inTextReferences.js";
 import { findReferenceAtOffset, type InTextReference, findInTextReferences, joinLineParts, type JoinedLine, type LinePart } from "../inTextReferences.js";
 import type { HoverAnchor, PdfDestination, PopupContent } from "./hoverPreview.js";
 import { deriveDestPoint, deriveCropRectForPreview, type Rect } from "../index.js";
-import type { CitationResolver } from "./textLayer.js";
+import type { CitationResolver, PageTextCache } from "./textLayer.js";
 import type { PreviewCitations } from "./citations.js";
 import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED } from "./pdfLoader.js";
@@ -162,10 +164,34 @@ export function createDestHoverAnchor(link: HTMLElement): HoverAnchor {
   return { group: [link], ref: null, rect: () => link.getBoundingClientRect() };
 }
 
+export const FLOAT_TITLES: Record<FloatKind, string> = { figure: "Figure", table: "Table", equation: "Equation" };
+
+// Link text is judged by the words that end at the link ("Theorem", "Figure"), so only the tail of the line matters.
+const LINK_TEXT_CHARS = 60;
+
+/**
+ * @returns the text on the link's line that ends at the link, or an empty string when the page has no text layer.
+ */
+function readTextEndingAt(link: HTMLElement): string {
+  const layer = link.closest<HTMLElement>(".page")?.querySelector<HTMLElement>(".textLayer");
+  if (!layer) { return ""; }
+  const box = link.getBoundingClientRect();
+  const centre = box.top + box.height / 2;
+  const reach = box.height * 0.6;
+  const runs: Array<{ left: number; text: string }> = [];
+  for (const el of layer.querySelectorAll<HTMLElement>(TEXT_RUN_SELECTOR)) {
+    const r = el.getBoundingClientRect();
+    if (Math.abs(r.top + r.height / 2 - centre) <= reach && r.left < box.right - 1) { runs.push({ left: r.left, text: el.textContent ?? "" }); }
+  }
+  runs.sort((a, b) => a.left - b.left);
+  return runs.map((r) => r.text).join(" ").slice(-LINK_TEXT_CHARS);
+}
+
 export class DestContent {
   constructor(
     private readonly ctx: ReaderContext,
     private readonly resolver: CitationResolver,
+    private readonly pages: PageTextCache,
     private readonly preview: DestPreview,
     private readonly citations: PreviewCitations,
   ) {}
@@ -195,8 +221,45 @@ export class DestContent {
       // No reliable entry boundaries: a picture of the destination is never wrong, extracted text could be.
     }
     if (!isCurrent()) { return null; }
+    const target = (typeof dest === "string" ? classifyDestName(dest) : null) ?? classifyLinkText(readTextEndingAt(link));
+    if (target && point.y !== null) {
+      const cropped = await this.prepareCrop(target, targetPage, { x: point.x, y: point.y }, jump, isCurrent);
+      if (cropped) { return cropped; }
+      if (!isCurrent()) { return null; }
+    }
     const canvas = await this.preview.render(targetPage, point.x, point.y);
     return canvas ? { title: `Page ${targetPage}`, body: canvas, copyText: null, jump } : null;
+  }
+
+  /** @returns the popup of the statement or float the destination points at, or null when it cannot be located. */
+  private async prepareCrop(
+    target: DestTarget,
+    targetPage: number,
+    dest: { x: number | null; y: number },
+    jump: () => void,
+    isCurrent: () => boolean,
+  ): Promise<PopupContent | null> {
+    try {
+      const { lines, columnSplit, width, height } = await this.pages.get(targetPage);
+      if (!isCurrent()) { return null; }
+      const layout = { width, height, columnSplit };
+      let region: PdfRegion | null;
+      let title = `Page ${targetPage}`;
+      if (target.kind === "statement") {
+        region = deriveStatementRegion(lines, layout, dest);
+      } else {
+        const hit = findFloatCaptionNear(lines, layout, target, dest);
+        region = hit ? deriveFloatRegion(lines, hit, width, height, columnSplit) : null;
+        if (target.label !== null) { title = `${FLOAT_TITLES[target.floatKind]} ${target.label.toUpperCase()} · Page ${targetPage}`; }
+      }
+      if (!region) { return null; }
+      const canvas = await this.preview.renderRegion(targetPage, region);
+      if (!canvas || !isCurrent()) { return null; }
+      return { title, body: canvas, copyText: null, jump };
+    } catch {
+      // A page whose text cannot be extracted keeps the band.
+      return null;
+    }
   }
 }
 

@@ -82,13 +82,65 @@ it("renders the stored PNG of a Python plot as an image", () => {
   expect(view.dom.querySelector(".qmd-output-text")).toBeNull();
 });
 
-it("collapses code without changing the stored cell", async () => {
-  const view = mount(await outputDoc(await deriveCodeHash(CODE)), outputViews());
-  view.dom.querySelector<HTMLButtonElement>(".qmd-cell-toggle")!.click();
-  expect(view.dom.querySelector<HTMLElement>(".qmd-cell-code")!.hidden).toBe(true);
-  expect(view.state.doc.firstChild!.attrs.code).toBe(CODE);
-  view.dom.querySelector<HTMLButtonElement>(".qmd-cell-toggle")!.click();
-  expect(view.dom.querySelector<HTMLElement>(".qmd-cell-code")!.hidden).toBe(false);
+describe("a cell with a result reads like a figure", () => {
+  const runs: Array<[string, string]> = [];
+  const runnable = () => ({ code_cell: createCodeCellView((label, code) => runs.push([label, code])), output: createOutputView(async () => ({ renderMathSvg: () => "<svg></svg>" })) });
+  const panel = (view: { dom: HTMLElement }) => view.dom.querySelector<HTMLElement>(".qmd-cell-panel")!;
+  const line = (view: { dom: HTMLElement }) => view.dom.querySelector<HTMLElement>(".qmd-output-actions");
+  const words = (el: Element) => el.textContent!.replace(/\s*·\s*/g, " · ").trim();
+  beforeEach(() => { runs.length = 0; });
+
+  it("folds its code away and shows Python · Run again · Show code under its output", async () => {
+    const view = mount(await outputDoc(await deriveCodeHash(CODE)), runnable());
+    await until(() => line(view) !== null);
+    expect(panel(view).hidden).toBe(true);
+    expect(words(line(view)!)).toBe("Python · Run again · Show code");
+    expect(view.state.doc.firstChild!.attrs.code).toBe(CODE);
+  });
+
+  it("Run again runs the cell and marks it as the one requested", async () => {
+    const view = mount(await outputDoc(await deriveCodeHash(CODE)), runnable());
+    await until(() => line(view) !== null);
+    line(view)!.querySelector<HTMLButtonElement>(".qmd-output-run")!.click();
+    expect(runs).toEqual([["bound", CODE]]);
+    expect(view.dom.querySelector(".qmd-cell")!.classList.contains("is-run-requested")).toBe(true);
+  });
+
+  it("Show code unfolds the code in place above the output and Hide code folds it again", async () => {
+    const view = mount(await outputDoc(await deriveCodeHash(CODE)), runnable());
+    await until(() => line(view) !== null);
+    line(view)!.querySelector<HTMLButtonElement>(".qmd-output-code")!.click();
+    expect(panel(view).hidden).toBe(false);
+    expect(panel(view).closest(".qmd-cell")!.nextElementSibling!.classList.contains("qmd-output")).toBe(true);
+    expect(panel(view).querySelector(".cm-content")!.textContent).toBe("print(1)");
+    expect(line(view)!.querySelector(".qmd-output-code")!.textContent).toBe("Hide code");
+    line(view)!.querySelector<HTMLButtonElement>(".qmd-output-code")!.click();
+    expect(panel(view).hidden).toBe(true);
+    expect(line(view)!.querySelector(".qmd-output-code")!.textContent).toBe("Show code");
+  });
+
+  it("a double click on the output leaves the code folded", async () => {
+    const view = mount(await outputDoc(await deriveCodeHash(CODE)), runnable());
+    await until(() => line(view) !== null);
+    view.dom.querySelector(".qmd-output-body")!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
+    expect(panel(view).hidden).toBe(true);
+  });
+
+  it("Shift-Enter in unfolded code runs it, folds it and moves the caret below the output", async () => {
+    const view = mount(s.node("doc", null, [...(await outputDoc(await deriveCodeHash(CODE))).content.content, s.node("paragraph", null, [s.text("after")])]), runnable());
+    await until(() => line(view) !== null);
+    line(view)!.querySelector<HTMLButtonElement>(".qmd-output-code")!.click();
+    panel(view).querySelector(".cm-content")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, bubbles: true, cancelable: true }));
+    expect(runs).toEqual([["bound", CODE]]);
+    expect(panel(view).hidden).toBe(true);
+    expect(view.state.selection.$from.parent.textContent).toBe("after");
+  });
+
+  it("omits Run again when the note cannot run cells", async () => {
+    const view = mount(await outputDoc(await deriveCodeHash(CODE)), outputViews());
+    await until(() => line(view) !== null);
+    expect(words(line(view)!)).toBe("Python · Show code");
+  });
 });
 
 

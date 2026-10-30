@@ -165,6 +165,8 @@ export const SHAPE_TOKENS = {
   "radius-sm": createDesignToken("3px"),
   radius: createDesignToken("4px"),
   "radius-lg": createDesignToken("6px"),
+  // Floating windows, like VS Code's own panels and dialogs.
+  "radius-xl": createDesignToken("10px"),
   "radius-pill": createDesignToken("999px"),
   "row-h": createDesignToken("22px"),
   "pane-footer-h": createDesignToken("24px"),

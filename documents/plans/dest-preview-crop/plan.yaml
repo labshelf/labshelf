@@ -1,0 +1,41 @@
+schema: plan/v1
+slug: dest-preview-crop
+title: Crop linked hover previews to their target
+status: approved
+level: N2
+goal: Hovering an internal PDF link to a theorem-like statement, a figure, a table or an equation shows only that target, cropped to its block and column, instead of a fixed full-width band of 38% of the page with the surrounding text.
+decisions:
+  - id: D1
+    text: The target is classified from the named destination's first segment (hyperref writes `theorem.2.1`, `lemma.3`, `figure.4`, `table.1`, `equation.2.5`), falling back to the text that ends at the link on its visual line ("Theorem 2.1", "Fig. 3", "(2.5)").
+    why: The name is what the PDF author's toolchain wrote, so it is the cheapest reliable signal; the link text covers PDFs with opaque names.
+  - id: D2
+    text: A statement's region is measured from the target page's text lines, from the first line under the destination down to a Proof line, the next statement or section heading, a paragraph-size gap (larger gaps allowed around indented display lines) or half the page; its width is the lines' own extent inside their column.
+    why: Theorem bodies have no caption to anchor on; their own lines are the only boundary available.
+  - id: D3
+    text: A figure, table or equation reuses `deriveFloatRegion` with the caption (or equation-number line) of that kind on the target page that sits at or below the destination, in its column, preferring an exact label match.
+    why: The caption-based float regions already exist for the unlinked path.
+  - id: D4
+    text: Whatever is not classified or yields no region keeps today's band; citations into References keep the text card.
+    why: A worse crop than today must never happen silently.
+  - id: D5
+    text: Image bounds from the operator list are out of scope.
+    why: Separate, heavier change; the user agreed to do it later if figures still show extra.
+acceptance:
+  - id: A1
+    check: Hovering a link to a theorem or lemma in a hyperref math paper (e.g. Green–Tao) shows the statement and not the following proof or paragraph (checked by the user in VS Code)
+  - id: A2
+    check: Hovering a link to a figure or table shows the figure with its caption and not the page band (checked by the user in VS Code)
+  - id: A3
+    check: Citation links still show the reference text, and links with unknown targets still show the band
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - packages/core/src/reader/destTarget.ts
+      - packages/core/src/reader/index.ts
+      - packages/core/src/reader/dom/hoverTarget.ts
+      - packages/core/src/reader/dom/hoverPreview.ts
+      - packages/core/src/reader/dom/readerUi.ts
+      - packages/core/__tests__/reader/destTarget.test.ts
+      - documents/plans/dest-preview-crop/

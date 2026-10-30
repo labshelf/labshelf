@@ -1,12 +1,12 @@
 // Shows the hover preview of in-text references and links: the preview itself, its popup and where it anchors.
-import type { CitationResolver, FloatResolver } from "./textLayer.js";
+import type { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";
 import type { ReaderContext } from "./readerSession.js";
 import type { PreviewCitations } from "./citations.js";
 import {
-  type DestPreview, findDestAnchor, DestContent, createDestHoverAnchor, renderTextContent, runUnderPointer, TextAnchors,
+  type DestPreview, findDestAnchor, DestContent, FLOAT_TITLES, createDestHoverAnchor, renderTextContent, runUnderPointer, TextAnchors,
 } from "./hoverTarget.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
-import type { FloatKind, InTextReference } from "../inTextReferences.js";
+import type { InTextReference } from "../inTextReferences.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import { renderIcon } from "../../ui/index.js";
 
@@ -14,7 +14,6 @@ import { renderIcon } from "../../ui/index.js";
 // Owns the timers, targets and the `attempt` token that drops stale async work.
 
 const MAX_MARKER_ENTRIES = 3;
-const FLOAT_TITLES: Record<FloatKind, string> = { figure: "Figure", table: "Table", equation: "Equation" };
 // Hovering a caption's own label ("Figure 3.") should not pop up a picture of itself.
 const SAME_PLACE_POINTS = 16;
 
@@ -110,8 +109,9 @@ export class HoverPreview {
     floats: FloatResolver,
     private readonly preview: DestPreview,
     private readonly citations: PreviewCitations,
+    pageText: PageTextCache,
   ) {
-    this.links = new DestContent(ctx, resolver, preview, citations);
+    this.links = new DestContent(ctx, resolver, pageText, preview, citations);
     this.references = new ReferenceContent(ctx, resolver, floats, preview, citations);
     const viewer = findElement("viewer");
     viewer.addEventListener("mouseover", (e) => this.onOver(e));
@@ -128,9 +128,9 @@ export class HoverPreview {
   /**
    * Answers from another document's text, e.g. after a reload; any open popup belonged to the old one.
    */
-  useText(resolver: CitationResolver, floats: FloatResolver): void {
+  useText(resolver: CitationResolver, floats: FloatResolver, pageText: PageTextCache): void {
     this.close();
-    this.links = new DestContent(this.ctx, resolver, this.preview, this.citations);
+    this.links = new DestContent(this.ctx, resolver, pageText, this.preview, this.citations);
     this.references = new ReferenceContent(this.ctx, resolver, floats, this.preview, this.citations);
   }
 
