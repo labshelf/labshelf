@@ -1,93 +1,168 @@
 schema: session/v1
 id: "4"
-goal: "The LabShelf editor in VS Code has the browser's features: diagnostics, library citations, the note gutter, insert from note, comments, and the editor title actions and context keys act on it."
-depends_on: ["3"]
+goal: "The LabShelf editor in VS Code gets the host bridges: diagnostics, library papers, paper notes, note insertables and opening notes or files, wired into the extension."
+depends_on:
+  - "3"
 owns:
-  - packages/vscode/package.json
   - packages/vscode/src/writing/sourceEditor/
-  - packages/vscode/src/writing/projects/session.ts
-  - packages/vscode/src/writing/build/toolchain.ts
-  - packages/vscode/src/writing/outline.ts
-  - packages/vscode/src/writing/citations/completion.ts
-  - packages/vscode/src/latex/editing.ts
-  - packages/vscode/src/collab/comments.ts
+  - packages/vscode/src/activation/registerPanelCommands.ts
+  - packages/vscode/src/activation/registerWritingView.ts
+  - packages/vscode/src/activation/startExtension.ts
+  - packages/vscode/src/writing/noteLinks.ts
   - packages/vscode/__tests__/writing/sourceEditor/
-status: pending
+status: blocked
 packages:
   - id: "4.1"
     plan: vscode-source-editor
-    sha: f521e273
+    sha: 5d2a6ed7
     goal: "The host bridges serve the editor: diagnostics for the file (D8), library papers, paper notes, note insertables and opening notes or files, all as protocol requests backed by existing VS Code services."
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     create:
       - packages/vscode/src/writing/sourceEditor/bridges.ts
       - packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
     edit:
-      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "route request messages to bridges; post problems on onDidChangeDiagnostics for this uri"}
+      - path: packages/vscode/src/writing/sourceEditor/provider.ts
+        lines: 1-169
+        why: every request message goes to the bridges (answerRequest and readProjectFile move into bridges.ts); post the bridges' problems after init and on vscode.languages.onDidChangeDiagnostics when it lists this uri
+      - path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts
+        lines: 1-124
+        why: the request helper and files move to hostPorts.ts; mount with papers, notes, noteLinks, openNotes, openTab and problems from hostPorts; deliver problems messages
+      - path: packages/vscode/src/activation/registerPanelCommands.ts
+        lines: 190-205
+        why: registerSourceEditor gets the library papers, the paper notes store, the note insert source and openNotes
+      - path: packages/vscode/src/activation/registerWritingView.ts
+        lines: 255-285
+        why: where listPapers and the project notes store are built; pass them down if registerPanelCommands cannot reach them
     read:
-      - {path: packages/vscode/src/writing/noteLinks.ts, lines: "100-385", why: "how VS Code builds NoteInsertSource today"}
-      - {path: packages/vscode/src/writing/citations/completion.ts, lines: "230-260", why: "where VS Code reads library papers"}
-      - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "51-120", why: "which deps the browser passes, the list to match"}
-      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, lines: "1-30", why: "NoteInsertSource"}
+      - path: packages/vscode/src/writing/noteLinks.ts
+        lines: 100-385
+        why: how VS Code builds NoteInsertSource today
+      - path: packages/vscode/src/writing/citations/completion.ts
+        lines: 230-260
+        why: where VS Code reads library papers
+      - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+        lines: 51-120
+        why: which deps the browser passes, the list to match
+      - path: packages/core/src/writing/noteLinks/noteInsertables.ts
+        lines: 1-30
+        why: NoteInsertSource
+      - path: packages/core/src/writing/sourceEditor/protocol.ts
+        lines: 1-40
+        why: the problems message and the request methods, already defined
+      - path: packages/core/src/writing/dom/sourceEditor/editor.ts
+        lines: 243-275
+        why: "SourceEditorDeps: papers, problems, openTab, openNotes, notes, noteLinks"
     seams:
-      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, signature: "export function createSourceBridges(deps: { uri: import(\"vscode\").Uri; projectRoot: import(\"vscode\").Uri | undefined; library: unknown; notes: import(\"@labshelf/core\").NoteInsertSource & Pick<import(\"@labshelf/core\").PaperNotesStore, \"read\">; openNotes(paperId: string): void; logger: import(\"@labshelf/core\").ILogger }): { handle(method: string, params: unknown): Promise<unknown>; problems(): { type: \"problems\"; problems: { line: number; severity: \"error\" | \"warning\" | \"info\"; message: string }[] } }"}
+      - path: packages/vscode/src/writing/sourceEditor/bridges.ts
+        signature: 'export function createSourceBridges(deps: { uri: import("vscode").Uri; projectRoot: import("vscode").Uri | undefined; library: unknown; notes: import("@labshelf/core").NoteInsertSource & Pick<import("@labshelf/core").PaperNotesStore, "read">; openNotes(paperId: string): void; logger: import("@labshelf/core").ILogger }): { handle(method: string, params: unknown): Promise<unknown>; problems(): { type: "problems"; problems: { line: number; severity: "error" | "warning" | "info"; message: string }[] } }'
     decided:
-      - "The library dep is unknown in the seam; narrow it to the reader citations/completion.ts uses."
-      - "LibraryAccess is not a type yet: use the library reader citations/completion.ts uses (around line 240) and type the dep as the narrow Pick of it; papers returns PaperRecord[] with params {}. readFile {path} returns string, listFiles {} returns project-relative paths."
-      - "Find the notes store the VS Code side already uses with facts.mjs def; do not add a second library reader."
-      - "Diagnostics map severity Error/Warning to error/warning, the rest to info; line is range.start.line + 1."
-      - "hostPorts.ts in the webview turns the request/response messages into the editor deps (papers, notes, noteLinks, openNotes, openTab, problems)."
-      - "Paths in requests are project-relative and checked inside the project root; a path outside is an error response."
+      - "The library dep is unknown in the seam; narrow it to the reader registerWritingView.ts:262 already builds (listPapers: () => Promise<PaperRecord[]>, from controller.currentServices()?.paperService); papers returns PaperRecord[] with params {}. Do not add a second library reader."
+      - notes is createProjectNotesStore (registerWritingView.ts) or the store noteLinks.ts uses; find it with facts.mjs def. readNote {paperId} answers notes.read(paperId).
+      - readFile {path} returns string (the open TextDocument's text wins over the disk, via vscode.workspace.fs otherwise); listFiles {} returns project-relative paths. Paths in requests are project-relative and checked inside projectRoot; a path outside, an absolute path, or any path when projectRoot is undefined rejects. handle rejects an unknown method; the provider turns a rejection into an ok:false response.
+      - openFile {path} opens the project file in VS Code (vscode.window.showTextDocument), same path check.
+      - Diagnostics come from vscode.languages.getDiagnostics(uri), read afresh on each problems() call; severity Error/Warning map to error/warning, the rest to info; line is range.start.line + 1.
+      - hostPorts.ts in the webview turns the request/response messages into the editor deps (files, papers, notes, noteLinks, openNotes, openTab, problems); problems is a ProblemSource fed by problems messages.
+      - "Implementers never run pnpm gate or any lint: only node scripts/agents/run.mjs typecheck vscode and the tests.command."
     acceptance:
-      - {id: 4.1a, check: "problems lists the file's diagnostics from every collection and updates when they change"}
-      - {id: 4.1b, check: "papers, readNote and the note insertables answer from the VS Code services; a path outside the project is refused"}
+      - id: 4.1a
+        check: problems lists the file's diagnostics from every collection and updates when they change
+      - id: 4.1b
+        check: papers, readNote and the note insertables answer from the VS Code services; a path outside the project is refused
     tests:
-      hidden: [documents/plans/vscode-source-editor/tests/4.1/packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts]
-      command: "node scripts/agents/run.mjs test vscode --spec 4.1 --plan vscode-source-editor -- __tests__/writing/sourceEditor/"
-  - id: "4.2"
+      hidden:
+        - documents/plans/vscode-source-editor/tests/4.1/packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts
+      command: node scripts/agents/run.mjs test vscode --spec 4.1 --plan vscode-source-editor -- __tests__/writing/sourceEditor/
+  - id: "4.4"
     plan: vscode-source-editor
-    sha: f521e273
-    goal: "The editor title actions (insert symbol, table, image, cite from library, bold, italic) and the context keys (labshelf.writing.inProject, toolchain status, outline) use activeSource, so they act on the LabShelf editor when it is focused."
+    sha: 5d2a6ed7
+    goal: "The LabShelf editor's new provider deps are wired: 4.1 left registerPanelCommands requiring sourceEditor (paperNotes, noteSource, openNotes) that no caller supplies yet, so the vscode package does not typecheck."
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.1"
     edit:
-      - {path: packages/vscode/src/writing/projects/session.ts, lines: "100-190", why: "inProject context from activeSource"}
-      - {path: packages/vscode/src/writing/build/toolchain.ts, lines: "70-115", why: "status bar from activeSource"}
-      - {path: packages/vscode/src/writing/outline.ts, lines: "100-115", why: "outline follows activeSource"}
-      - {path: packages/vscode/src/writing/citations/completion.ts, lines: "1-340", why: "the cite-from-library command inserts through SourceView.updates"}
-      - {path: packages/vscode/src/latex/editing.ts, lines: "50-235", why: "symbol, table, image, bold, italic through SourceView.updates"}
-      - {path: packages/vscode/package.json, lines: "765-1290", why: "palette and keybinding when clauses add activeCustomEditorId == 'labshelf.sourceEditor'"}
+      - path: packages/vscode/src/activation/startExtension.ts
+        lines: 40-80
+        why: the caller of registerPanelCommands passes sourceEditor
+      - path: packages/vscode/src/activation/registerWritingView.ts
+        lines: 255-295
+        why: the window's notes store (createProjectNotesStore) is built here and returned; expose what startExtension needs
+      - path: packages/vscode/src/writing/noteLinks.ts
+        lines: 100-140
+        why: NoteLinks.sourceOf(project) is private; export a function building a project's NoteInsertSource so noteSource reuses it
+      - path: packages/vscode/src/writing/sourceEditor/index.ts
+        lines: 1-41
+        why: forward the new provider deps if needed
+      - path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
+        lines: 1-200
+        why: check the casts of problems and openTab against the real ProblemSource and DefinitionDeps['openTab'] types
     read:
-      - {path: packages/vscode/src/writing/activeSource.ts, lines: "1-120", why: "the registry from 3.3"}
+      - path: packages/vscode/src/activation/registerPanelCommands.ts
+        lines: 80-95
+        why: PanelCommandsDeps.sourceEditor as 4.1 left it
+      - path: packages/vscode/src/writing/sourceEditor/provider.ts
+        lines: 1-80
+        why: SourceEditorProviderDeps after 4.1
+      - path: packages/vscode/src/writing/sourceEditor/bridges.ts
+        lines: 1-60
+        why: the bridges' deps
     decided:
-      - "Commands call activeSource.current()?.updates (insertText, insertSnippet, wrap); the LabShelf view's updates post a {type: command} message."
-      - "Bold and italic in the LabShelf editor are already handled by its own keymap; the keybinding when clauses must not fire them twice, so only the title buttons route there."
-      - "noteLinks.ts:195,381 and collab/node/commands.ts are left native-only; list them in the report."
+      - openNotes(paperId) opens the paper's notes the way the extension already does (find the existing command with facts.mjs; no new UI).
+      - "Do not change bridges.ts behaviour: its tests (4.1) pass and must keep passing."
+      - Done when node scripts/agents/run.mjs typecheck vscode passes and the tests.command passes. Implementers never run pnpm gate or any lint.
     acceptance:
-      - {id: 4.2a, check: "with a LabShelf view current, the insert and cite commands post one command message to it and do not touch a text editor"}
-      - {id: 4.2b, check: "labshelf.writing.inProject is true while a LabShelf editor on a project file is focused"}
-      - {id: A4, check: "the title buttons act on the LabShelf editor (check by hand)"}
-    tests: {none: "seams depend on provider.ts and activeSource from session 3; at session start, after plan stale, add seams to this spec and run the tester before the implementer"}
-  - id: "4.3"
+      - id: 4.4a
+        check: the vscode package typechecks with the LabShelf editor given the library papers, the paper notes store, a project's note insert source and openNotes
+      - id: 4.4b
+        check: the 4.1 bridge tests still pass
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 4.4 --plan vscode-source-editor -- __tests__/writing/sourceEditor/bridges.test.ts
+  - id: "4.5"
     plan: vscode-source-editor
-    sha: f521e273
-    goal: "Comments: the LabShelf editor shows the file's comment threads from the VS Code comment manager and adds new ones through it; opening a thread focuses VS Code's Comments view on it."
+    sha: 5d2a6ed7
+    goal: hostPorts.ts typechecks against core's real ProblemSource and DefinitionDeps['openTab'], so the vscode package typechecks (4.4a).
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["4.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.4"
     edit:
-      - {path: packages/vscode/src/collab/comments.ts, lines: "140-321", why: "expose subscribe(uri, listener) and add(uri, range, text) on the manager"}
-      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "1-200", why: "addComment, openComments requests; post comments on change"}
-      - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "1-120", why: "EditorComments over messages"}
+      - path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
+        lines: 1-110
+        why: "tsc: 10,28 TS2344, 90,7 TS2349, 101,43 TS2349 — ProblemSource is (path, listener) => unsubscribe, not (listener)"
     read:
-      - {path: packages/core/src/collab/dom/editorComments.ts, lines: "1-60", why: "EditorComments shape"}
-      - {path: documents/contracts/collaboration.md, lines: "1-200", why: "#comments; fetch the section with doc.mjs"}
+      - path: packages/core/src/writing/dom/sourceEditor/editor.ts
+        lines: 190-200
+        why: "export type ProblemSource = (path: string, listener: (problems: readonly HelperProblem[]) => void) => () => void"
+      - path: packages/core/src/writing/dom/sourceEditor/typst.ts
+        lines: 105-112
+        why: "DefinitionDeps.openTab(kind: 'source', params: {projectId, path}, group: 0 | 1): void"
+      - path: packages/core/src/latex/build.ts
+        lines: 1-12
+        why: "LocatedProblem = Omit<BuildProblem, 'file'> & {file: string}; HelperProblem is LocatedProblem"
+      - path: packages/core/src/latex/log.ts
+        lines: 160-180
+        why: BuildProblem fields
     decided:
-      - "Ranges are character offsets in the LF text, converted at the host with document.offsetAt/positionAt and the line break."
-      - "The comment manager stays the only writer of comments.qmd and the Y.Map threads; the bridge only calls it."
+      - Type ProblemListener as Parameters<ProblemSource>[1]; problems is (path, listener) => unsubscribe, ignoring path (the webview edits one file) and calling the listener at once with the current problems.
+      - deliverProblems maps each protocol problem {line, severity, message} to a HelperProblem with file set to the path the listener subscribed with (keep the latest path from problems()), severity as is, no `as unknown as` cast; drop casts that stop being needed.
+      - "openTab is typed as DefinitionDeps['openTab'] directly: (kind, params, group) => request('openFile', {path: params.path}); no args sniffing."
+      - Do not change bridges.ts. Check with node scripts/agents/run.mjs typecheck vscode (no --spec flag; run.mjs rejects --spec for typecheck) and the tests.command, each as a single command from the repo root, no cd, no pipes or &&. Never pnpm gate or lint.
     acceptance:
-      - {id: 4.3a, check: "threads of the file reach the webview with the right ranges, CRLF included, and update when one is added elsewhere"}
-      - {id: 4.3b, check: "addComment creates the thread through the manager"}
-      - {id: A6, check: "comments show and can be added in the LabShelf editor (check by hand)"}
-    tests: {none: "seams depend on provider.ts and activeSource from session 3; at session start, after plan stale, add seams to this spec and run the tester before the implementer"}
+      - id: 4.5a
+        check: node scripts/agents/run.mjs typecheck vscode exits 0
+      - id: 4.5b
+        check: the 4.1 bridge tests still pass
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode --spec 4.5 --plan vscode-source-editor -- __tests__/writing/sourceEditor/
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+blocked_reason: "4.4: missing"

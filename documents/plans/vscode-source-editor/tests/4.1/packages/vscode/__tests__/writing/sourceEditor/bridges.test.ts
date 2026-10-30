@@ -20,11 +20,19 @@ const notes = {
 };
 const openNotes = jest.fn();
 
-function create(projectRoot: vscode.Uri | undefined = vscode.Uri.file("/proj")) {
+function build(projectRoot: vscode.Uri | undefined) {
   return createSourceBridges({
     uri: vscode.Uri.file("/proj/main.tex"), projectRoot,
     library: {} as never, notes: notes as never, openNotes, logger: logger as never,
   });
+}
+
+function create() {
+  return build(vscode.Uri.file("/proj"));
+}
+
+function createWithoutProject() {
+  return build(undefined);
 }
 
 beforeEach(() => {
@@ -119,7 +127,7 @@ describe("paths are project-relative and checked inside the project root", () =>
   });
 
   it("4.1b readFile refuses every path when the file is in no project", async () => {
-    await expect(create(undefined).handle("readFile", { path: "main.tex" })).rejects.toBeDefined();
+    await expect(createWithoutProject().handle("readFile", { path: "main.tex" })).rejects.toBeDefined();
     expect(workspaceFs.readFile).not.toHaveBeenCalled();
   });
 });

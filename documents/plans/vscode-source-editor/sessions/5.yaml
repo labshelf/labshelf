@@ -1,7 +1,7 @@
 schema: session/v1
 id: "5"
 goal: "In a shared project the LabShelf editor shows peers' cursors, publishes its own, and undo stays own-only (D5); the docs describe the editor."
-depends_on: ["4"]
+depends_on: ["4b"]
 owns:
   - packages/vscode/src/writing/sourceEditor/
   - packages/vscode/src/collab/node/editors.ts

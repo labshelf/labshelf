@@ -92,18 +92,34 @@ sessions:
     file: sessions/4.yaml
     depends_on: ["3"]
     owns:
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/vscode/src/activation/registerPanelCommands.ts
+      - packages/vscode/src/activation/registerWritingView.ts
+      - packages/vscode/src/activation/startExtension.ts
+      - packages/vscode/src/writing/noteLinks.ts
+      - packages/vscode/__tests__/writing/sourceEditor/
+  - id: "4b"
+    file: sessions/4b.yaml
+    depends_on: ["4"]
+    owns:
       - packages/vscode/package.json
       - packages/vscode/src/writing/sourceEditor/
+      - packages/vscode/src/writing/activeSource.ts
       - packages/vscode/src/writing/projects/session.ts
+      - packages/vscode/src/writing/projects/outline.ts
       - packages/vscode/src/writing/build/toolchain.ts
-      - packages/vscode/src/writing/outline.ts
+      - packages/vscode/src/writing/citations/editing.ts
       - packages/vscode/src/writing/citations/completion.ts
-      - packages/vscode/src/latex/editing.ts
+      - packages/vscode/src/activation/registerWritingView.ts
+      - packages/vscode/src/activation/registerPanelCommands.ts
       - packages/vscode/src/collab/comments.ts
+      - packages/vscode/src/collab/node/register.ts
       - packages/vscode/__tests__/writing/sourceEditor/
+      - packages/vscode/__tests__/writing/
+      - packages/vscode/__tests__/collab/
   - id: "5"
     file: sessions/5.yaml
-    depends_on: ["4"]
+    depends_on: ["4b"]
     owns:
       - packages/vscode/src/writing/sourceEditor/
       - packages/vscode/src/collab/node/editors.ts
