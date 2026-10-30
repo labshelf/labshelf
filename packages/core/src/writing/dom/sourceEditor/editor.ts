@@ -9,7 +9,7 @@ import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } f
 import { tags } from "@lezer/highlight";
 import type * as Y from "yjs";
 import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
-import type { EditorHelperPort, HelperProblem, TextChange } from "../../../helper/index.js";
+import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
 import { createCollabExtensions } from "../../../collab/dom/editorCollab.js";
 import { createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/editorComments.js";
 import { createLatexSupport } from "./latex.js";
@@ -18,6 +18,8 @@ import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type
 import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperUpdates, type WriteScheduler } from "./openEditors.js";
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
+import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
+import { listChanges } from "../../sourceEditor/authority.js";
 
 const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
@@ -92,13 +94,6 @@ export const editorTheme: Extension = [theme, syntaxHighlighting(codeHighlight)]
 
 const HELPER_MODULE = "editor.helperEdits";
 
-/** CodeMirror reports each change against the text before the transaction, which is what the helper expects. */
-function textChanges(changes: ChangeSet): TextChange[] {
-  const result: TextChange[] = [];
-  changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => { result.push({ from: fromA, to: toA, insert: inserted.toString() }); });
-  return result;
-}
-
 /** The 1-based line, in the new text, of the first change; undefined when nothing changed. */
 function firstChangedLine(changes: ChangeSet, doc: Text): number | undefined {
   let line: number | undefined;
@@ -127,7 +122,7 @@ export function createHelperUpdates(helper: EditorHelper | undefined, projectId:
     changed(changes, doc) {
       if (!ready()) return;
       version += 1;
-      const edit = wholeText ? { text: doc.toString() } : { changes: textChanges(changes) };
+      const edit = wholeText ? { text: doc.toString() } : { changes: listChanges(changes) };
       wholeText = false;
       helper!.edit(projectId, path, version, edit, firstChangedLine(changes, doc)).catch((error: unknown) => {
         // The helper's copy of the file may now differ, so the next edit carries the whole text again.
@@ -270,6 +265,8 @@ export interface SourceEditorDeps {
   collab?: { text: Y.Text; presence: PresenceStore; name: string };
   /** Shows the file without letting the user edit it, as a shared file whose session could not start is shown. */
   readOnly?: boolean;
+  /** The host's copy of the file (D3): the editor starts from its text, sends edits to it and never writes the file; the host saves it and reports it dirty. */
+  document?: SourceDocument;
   logger: ILogger;
   onDirty(dirty: boolean): void;
   /** Runs after each successful write of the file. */
@@ -296,9 +293,15 @@ function sourceLanguage(deps: SourceEditorDeps, labels: ProjectLabels): Extensio
 }
 
 /** The editing extensions; a shared file binds to its Y.Text, which brings its own undo history and line separator. */
-function documentExtensions({ collab, path }: SourceEditorDeps, languageSupport: Extension, lineBreak: string, onSave: () => void, notesGutter: Extension): Extension[] {
+function documentExtensions({ collab, path, document }: SourceEditorDeps, languageSupport: Extension, lineBreak: string, onSave: () => void, notesGutter: Extension, onDirty: (dirty: boolean) => void): Extension[] {
+  // The host's document is LF inside the editor; the host restores its own line break.
+  if (document) return [createDocumentExtensions(document, newClientID()), documentDirty.of(onDirty), ...createEditorExtensions(languageSupport, { onSave, notesGutter })];
   if (!collab) return [EditorState.lineSeparator.of(lineBreak), ...createEditorExtensions(languageSupport, { onSave, notesGutter })];
   return [createCollabExtensions({ ...collab, file: path }), ...createEditorExtensions(languageSupport, { history: false, onSave, notesGutter })];
+}
+
+function newClientID(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function readOnlyExtensions(readOnly: boolean | undefined): Extension[] {
@@ -317,8 +320,12 @@ function changeListener({ path, save, helperEdits, labels }: {
   });
 }
 
-// The share's doc file writer saves a shared file, so the editor has nothing to write.
-function createSaver(deps: SourceEditorDeps, text: () => string, saved: { text: string }, onSaved: () => void): Pick<WriteScheduler, "changed" | "flush" | "dirty"> {
+// The share's doc file writer saves a shared file, and the host saves its document, so the editor has nothing to write.
+function createSaver(deps: SourceEditorDeps, text: () => string, saved: { text: string }, onSaved: () => void, view: () => EditorView | undefined): Pick<WriteScheduler, "changed" | "flush" | "dirty"> {
+  if (deps.document) {
+    const sync = (): ReturnType<typeof documentSync> => { const current = view(); return current && documentSync(current); };
+    return { changed: () => undefined, flush: async () => (await sync()?.flush()) ?? true, dirty: () => false };
+  }
   if (deps.collab) return { changed: () => undefined, flush: async () => true, dirty: () => false };
   return createWriteScheduler({
     file: deps.path, logger: deps.logger, text,
@@ -328,29 +335,32 @@ function createSaver(deps: SourceEditorDeps, text: () => string, saved: { text: 
 }
 
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
-  const { path, logger, collab } = deps;
+  const { path, logger, collab, document } = deps;
   const labels = createProjectLabels(logger);
-  const text = collab ? collab.text.toString() : await deps.files.read(path);
+  const text = document ? document.text : collab ? collab.text.toString() : await deps.files.read(path);
   void deps.files.list().then((files) => labels.load(files, deps.files.read))
     .catch((error: unknown) => logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));
   const helperEdits = createHelperUpdates(deps.helper, deps.projectId, path, logger);
   // The document is split on the file's own line break, so saving writes back the endings the file was read with; a shared text is LF only.
-  const lineBreak = !collab && text.includes("\r\n") ? "\r\n" : "\n";
+  const lineBreak = !collab && !document && text.includes("\r\n") ? "\r\n" : "\n";
   let view: EditorView | undefined;
   const currentText = (): string => (view ? view.state.doc.sliceString(0, undefined, view.state.lineBreak) : text);
   const language = sourceLanguage(deps, labels);
   const kind = deriveSourceLanguage(path);
   const saved = { text };
   const explicit = explicitSaves(helperEdits);
-  const save = createSaver(deps, currentText, saved, () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); });
+  const save = createSaver(deps, currentText, saved, () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); }, () => view);
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
   const refreshLinks = (): void => { if (noteLinks && view) void noteLinks.refresh(view); };
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
   const refreshNotes = noteRefresh.refresh;
-  const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText: collab ? currentText : () => saved.text, flush: save.flush, logger });
+  const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText: collab || document ? currentText : () => saved.text, flush: save.flush, logger });
+  // Mod-s on a host document asks the host to save; the host reports when it is clean.
+  const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
+  const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshNotes(); refreshLinks(); } };
   const onUpdate = changeListener({ path, save, helperEdits, labels });
-  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, () => explicit.flush(save), noteGutter.extension), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
+  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   refreshNotes();
@@ -359,7 +369,8 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const stopComments = commentsSupport?.attach(view);
   const unregister = registerOpenEditor(deps.projectId, path, {
     revealLine: (line) => showLine(view!, line), flush: save.flush,
-    reload: () => loadFromDisk(view!, deps, (disk) => { saved.text = disk; }).then(() => { refreshNotes(); refreshLinks(); }),
+    // The host's document follows the file itself, so there is nothing to load.
+    reload: document ? async () => undefined : () => loadFromDisk(view!, deps, (disk) => { saved.text = disk; }).then(() => { refreshNotes(); refreshLinks(); }),
   });
   return {
     ...createSourceUpdates(view, kind),
@@ -372,7 +383,9 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
       stopProblems?.();
       stopComments?.();
       labels.dispose();
-      await save.flush();
+      // A host document is not waited on: the host may never confirm, and it keeps what it accepted.
+      if (document) documentSync(view!)?.sendNow();
+      else await save.flush();
       view?.destroy();
     },
   };
