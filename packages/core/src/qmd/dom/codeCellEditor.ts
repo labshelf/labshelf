@@ -9,6 +9,7 @@ import { Annotation, Compartment, EditorState, Prec, type Extension } from "@cod
 import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, tooltips, type KeyBinding } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { cellLanguageLabel, type CellLanguage } from "../compute/index.js";
+import { readPageNonce } from "../../ui/dom/index.js";
 
 const words = (list: string): string[] => list.trim().split(/\s+/);
 
@@ -152,8 +153,6 @@ function languageSupport(language: CellLanguage | undefined, noteCode: () => str
   return [python(), pythonLanguage.data.of({ autocomplete: noteCompletionSource(noteCode) }), label];
 }
 
-/** The page's script nonce; the webview hosts allow it for styles too, so the stylesheet CodeMirror injects is not blocked. */
-const pageNonce = (): string => document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce ?? "";
 
 const editability = (editable: boolean): Extension => [EditorView.editable.of(editable), EditorState.readOnly.of(!editable)];
 
@@ -177,7 +176,7 @@ export function createCodeCellEditor(options: CodeCellEditorOptions): EditorView
     cellTheme,
     editableCompartment.of(editability(options.editable)),
     EditorView.updateListener.of((update) => { if (update.docChanged && update.transactions.some((tr) => !tr.annotation(externalSync))) options.onChange(update.state.doc.toString()); }),
-    EditorView.cspNonce.of(pageNonce()),
+    EditorView.cspNonce.of(readPageNonce()),
   ];
   const editor = new EditorView({ state: EditorState.create({ doc: options.text, extensions }) });
   editorLanguages.set(editor, options.language);

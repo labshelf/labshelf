@@ -19,6 +19,7 @@ import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
 import { listChanges } from "../../authority.js";
+import { readPageNonce } from "../../../ui/dom/index.js";
 import { createSelectionListener } from "./selectionListener.js";
 
 const theme = EditorView.theme({
@@ -227,6 +228,8 @@ export function createEditorExtensions(languageSupport: Extension, { history: wi
   return [
     // A snippet's repeated field (\begin{…} … \end{…}) is one selection per place; without this only the first is edited.
     EditorState.allowMultipleSelections.of(true),
+    // TRAP: A webview's CSP blocks the stylesheet CodeMirror injects unless it carries the page's nonce; without it the gutter and the text stack.
+    EditorView.cspNonce.of(readPageNonce()),
     lineNumbers(), ...(notesGutter ? [notesGutter] : []), ...(withHistory ? [history()] : []), drawSelection(), highlightActiveLine(), indentOnInput(), bracketMatching(), closeBrackets(),
     highlightSelectionMatches(), EditorView.lineWrapping, editorTheme, languageSupport,
     keymap.of([{ key: "Mod-s", preventDefault: true, run: () => { onSave(); return true; } }, ...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...(withHistory ? historyKeymap : []), ...completionKeymap, ...lintKeymap, indentWithTab]),

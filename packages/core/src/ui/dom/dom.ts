@@ -1,6 +1,6 @@
 /**
  * Provides the DOM helpers every DOM surface shares: element lookup that fails loudly, search-term
- * highlighting, and a terse element factory. Framework-free on purpose.
+ * highlighting, a terse element factory, and the page's script nonce. Framework-free on purpose.
  */
 import { escapeHtml } from "../htmlSafety.js";
 import { findHighlightRanges } from "../../library/index.js";
@@ -59,3 +59,6 @@ export function formatShortTime(iso: string): string {
     ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     : d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
+
+/** The page's script nonce; the webview hosts allow it for styles too, so the stylesheet CodeMirror injects is not blocked. */
+export const readPageNonce = (): string => document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce ?? "";
