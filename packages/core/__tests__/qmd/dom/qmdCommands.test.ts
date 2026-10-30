@@ -97,6 +97,17 @@ describe("Markdown input rules", () => {
     expect(document.activeElement).toBe(view.dom.querySelector('textarea[aria-label="TeX source"]'));
   });
 
+  it("opens \\begin{align} on an empty line as display math holding aligned, the caret on its empty line", async () => {
+    const view = mountDoc(emptyDoc());
+    type(view, "\\begin{align}");
+    expect(view.state.doc.firstChild!.type.name).toBe("math_display");
+    expect(view.state.doc.firstChild!.attrs.tex).toBe("\\begin{aligned}\n\n\\end{aligned}");
+    await tick();
+    const input = view.dom.querySelector<HTMLTextAreaElement>('textarea[aria-label="TeX source"]')!;
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe("\\begin{aligned}\n".length);
+  });
+
   it("opens an empty display equation for \\[ on an empty line, as $$ does", async () => {
     const view = mountDoc(emptyDoc());
     type(view, "\\[");

@@ -80,7 +80,7 @@
 .qmd-math-inline:hover { background: var(--ls-toolbar-hover); }
 .qmd-math-display { display: block; max-width: 100%; border-radius: var(--ls-radius-lg); text-align: center; transition: background var(--ls-fast); }
 .qmd-math-display > .qmd-math-rendered { display: block; max-width: 100%; overflow-x: auto; padding: var(--ls-space-4) var(--ls-space-4); box-sizing: border-box; }
-.qmd-math-display:hover, .qmd-math-display.qmd-math-editing { background: var(--ls-code-bg); }
+.qmd-math-display:not(.qmd-math-editing):hover { background: var(--ls-code-bg); }
 .qmd-math-rendered svg { vertical-align: var(--qmd-math-valign); max-width: none; }
 .qmd-math-source { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-mono); white-space: pre; }
 .qmd-math-error { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-error); font: var(--ls-text-sm) var(--ls-mono); white-space: pre-wrap; }
@@ -93,16 +93,29 @@
 .qmd-editor .qmd-math-display.ProseMirror-selectednode:not(.qmd-math-editing) { box-shadow: inset 0 0 0 1px var(--ls-focus); }
 .qmd-editor .qmd-math-inline.ProseMirror-selectednode { background: var(--ls-editor-selection-bg); }
 
-/* The LaTeX field: attached under a display equation, or a small popup under an inline one. */
-.qmd-math-edit { display: flex; flex-direction: column; gap: var(--ls-space-1); padding: 0 var(--ls-space-3) var(--ls-space-3); text-align: left; cursor: auto; }
-.qmd-math-input { display: block; width: 100%; box-sizing: border-box; min-width: 0; margin: 0; padding: var(--ls-space-3) var(--ls-space-4); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius); background: var(--ls-input-bg); color: var(--ls-input-fg); font: var(--ls-text-md) / 1.5 var(--ls-mono); resize: none; }
-.qmd-math-input:focus { outline: 1px solid var(--ls-focus); outline-offset: -1px; border-color: var(--ls-focus); }
+/* Editing: the LaTeX in place between its dimmed dollar signs, without a box, in place of the typeset form. */
+.qmd-math.qmd-math-editing { cursor: auto; }
+.qmd-math-edit { position: relative; text-align: left; cursor: text; }
+/* The environment names offered after \begin{, under the LaTeX. */
+.qmd-math-suggest { position: absolute; top: 100%; left: var(--ls-space-4); z-index: 110; display: flex; flex-direction: column; min-width: 140px; padding: var(--ls-space-1); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-bg); box-shadow: var(--ls-popup-shadow); font: var(--ls-text-sm) var(--ls-mono); }
+.qmd-math-suggest[hidden] { display: none; }
+.qmd-math-inline .qmd-math-suggest { left: 0; }
+.qmd-math-suggest-item { padding: var(--ls-space-1) var(--ls-space-2); border-radius: var(--ls-radius-sm); color: var(--ls-fg); cursor: pointer; white-space: nowrap; }
+.qmd-math-suggest-item[aria-selected="true"], .qmd-math-suggest-item:hover { background: var(--ls-editor-selection-bg); }
+.qmd-math-display > .qmd-math-edit { display: flex; flex-direction: column; padding: var(--ls-space-2) var(--ls-space-4); }
+.qmd-math-inline > .qmd-math-edit { display: inline; white-space: nowrap; }
+.qmd-math-editing > .qmd-math-rendered { display: none; }
+.qmd-math-inline.qmd-math-editing:hover { background: none; }
+.qmd-math-delimiter { color: var(--ls-desc); font: var(--ls-text-md) / 1.5 var(--ls-mono); user-select: none; }
+.qmd-math-input { margin: 0; padding: 0; border: 0; border-radius: 0; outline: none; background: transparent; color: var(--ls-fg); font: var(--ls-text-md) / 1.5 var(--ls-mono); resize: none; caret-color: var(--ls-focus); }
 .qmd-math-input::placeholder { color: var(--ls-input-placeholder); }
-textarea.qmd-math-input { white-space: pre-wrap; overflow-wrap: anywhere; }
-.qmd-math-hint { color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-font); user-select: none; }
+/* The host styles focused fields with an outline; the LaTeX in place has none. */
+.qmd-editor .qmd-math-input:is(:focus, :focus-visible) { outline: none; border: 0; box-shadow: none; }
+textarea.qmd-math-input { display: block; width: 100%; box-sizing: border-box; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+input.qmd-math-input { display: inline; min-width: 2ch; vertical-align: baseline; }
+.qmd-math-inline > .qmd-math-invalid .qmd-math-input { text-decoration: wavy underline var(--ls-error); }
 .qmd-math-edit-error { color: var(--ls-error); font: var(--ls-text-xs) var(--ls-font); }
-.qmd-math-edit-error[hidden] { display: none; }
-.qmd-math-inline > .qmd-math-edit { position: fixed; z-index: 110; width: min(280px, calc(100vw - 16px)); padding: var(--ls-space-3); box-sizing: border-box; border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg); background: var(--ls-bg); box-shadow: var(--ls-popup-shadow); }
+.qmd-math-edit-error[hidden], .qmd-math-inline .qmd-math-edit-error { display: none; }
 
 /* Code cells: a new cell's code in a soft block over one quiet grey line (language and Run) that drags the cell; a cell with a result is folded away until Show code unfolds its code above its outputs. */
 .qmd-cell { border-radius: var(--ls-radius-lg); }

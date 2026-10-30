@@ -1,9 +1,11 @@
-// Shows typeset inline and display equations, with LaTeX editing in a compact field attached to the equation.
-import type { Node as ProseNode } from "prosemirror-model";
+// Shows typeset inline and display equations; editing shows the LaTeX in place between its visible dollar signs, and
+// typing or deleting a dollar sign there turns one kind into the other.
+import { Fragment, type Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, TextSelection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
-import { exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
+import { attachEnvironmentHelp, emptyEnvironmentCaret } from "./mathEnvironments.js";
+import { editNodeAt, exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
 
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
 
@@ -50,12 +52,13 @@ export async function renderMathInto(target: HTMLElement, tex: string, display: 
   }
 }
 
-const HINT = { display: "↵ finish · ⇧↵ new line · arrows leave · Esc cancel", inline: "↵ finish · ← → leave · Esc cancel" };
 const PLACEHOLDER = { display: "Empty equation — click to write LaTeX", inline: "LaTeX" };
 
 /**
- * Shows an equation typeset. Clicking it, Enter on it or creating it empty opens a compact LaTeX field attached to it:
- * under a display equation, whose preview updates as you type, or in a small popup under an inline one.
+ * Shows an equation typeset. Clicking it, Enter on it or creating it empty shows its LaTeX in place between `$$` (or `$`)
+ * in the text's flow, without a box, in place of the typeset form; leaving the LaTeX typesets it again.
+ * `$` typed against an inline equation's dollar sign makes it a display one; Backspace at the start of a display
+ * equation's LaTeX makes it inline.
  */
 class MathView implements NodeView {
   readonly dom: HTMLElement;
@@ -102,9 +105,11 @@ class MathView implements NodeView {
     });
   }
 
-  /** While editing, the parse error shows as text under the field. */
+  /** While editing, the parse error shows as text under a display equation's LaTeX and as the inline LaTeX's tooltip. */
   private showError(): void {
     if (!this.errorText) return;
+    this.sourcePanel?.classList.toggle("qmd-math-invalid", this.error !== null);
+    if (this.editor) this.editor.title = this.error ?? "";
     this.errorText.textContent = this.error ?? "";
     this.errorText.hidden = this.error === null;
   }
@@ -120,7 +125,7 @@ class MathView implements NodeView {
 
   selectNode(): void { this.dom.classList.add("ProseMirror-selectednode"); }
 
-  /** Opens the LaTeX field with the caret at its `side`: the end when clicked, the side the caret came from when arrowed into. */
+  /** Shows the LaTeX in place with the caret at its `side`: the end when clicked, the side the caret came from when arrowed into. */
   private editSource(side: EditSide = "end"): void {
     if (!this.view.editable) return;
     if (this.editor) { this.editor.focus(); return; }
@@ -131,38 +136,43 @@ class MathView implements NodeView {
     }
     this.dom.classList.add("qmd-math-editing");
     const input = this.display
-      ? renderElement("textarea", { rows: 1, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source", placeholder: "LaTeX, e.g. \\frac{a}{b}" })
+      ? renderElement("textarea", { rows: 1, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source", placeholder: "\\frac{a}{b}" })
       : renderElement("input", { class: "qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source", placeholder: "LaTeX" });
     this.originalTex = this.tex;
     input.value = this.tex;
-    const fit = (): void => { if (input instanceof HTMLTextAreaElement) input.rows = Math.max(1, input.value.split("\n").length); };
+    const fit = (): void => {
+      if (input instanceof HTMLTextAreaElement) input.rows = Math.max(1, input.value.split("\n").length);
+      else input.style.width = `${Math.max(input.value.length, input.placeholder.length) + 1}ch`;
+    };
     fit();
+    const suggestions = attachEnvironmentHelp(input);
     input.addEventListener("input", () => { fit(); this.commit(input.value); });
     input.addEventListener("keydown", (raw) => {
       const event = raw as KeyboardEvent;
       if (event.isComposing) return;
       const dir = this.leaveDirection(input, event);
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.finish(true); }
-      else if (event.key === "Enter" && (!this.display || !event.shiftKey)) { event.preventDefault(); this.finish(false); }
+      else if (event.key === "Enter" && this.endsOnEnter(input, event)) { event.preventDefault(); this.commit(input.value.replace(/\n$/, "")); this.finish(false); }
       else if (dir !== 0) { event.preventDefault(); this.finish(false, dir); }
       else if (event.key === "Backspace" && input.value === "") { event.preventDefault(); this.finish(false); }
+      else if (this.convertsOn(input, event)) { event.preventDefault(); this.convert(); }
     });
-    // Clicking anywhere else keeps the edit and closes the field.
+    // Clicking anywhere else keeps the edit and hides the LaTeX.
     input.addEventListener("focusout", (raw) => {
       const next = (raw as FocusEvent).relatedTarget;
       if (!(next instanceof Node && this.sourcePanel?.contains(next))) this.close();
     });
     this.editor = input;
     this.errorText = renderElement("span", { class: "qmd-math-edit-error", role: "alert", hidden: true });
-    this.sourcePanel = renderElement("span", { class: "qmd-math-edit", contenteditable: "false" },
-      input, this.errorText, renderElement("span", { class: "qmd-math-hint", "aria-hidden": "true", text: HINT[this.display ? "display" : "inline"] }));
+    const dollars = this.display ? "$$" : "$";
+    const delimiter = (): HTMLElement => renderElement("span", { class: "qmd-math-delimiter", "aria-hidden": "true", text: dollars });
+    this.sourcePanel = renderElement("span", { class: "qmd-math-edit", contenteditable: "false" }, delimiter(), input, delimiter(), suggestions, this.errorText);
     this.showError();
-    this.dom.append(this.sourcePanel);
-    if (!this.display) this.placePopup(this.sourcePanel);
+    this.dom.prepend(this.sourcePanel);
     queueMicrotask(() => {
       if (this.editor !== input) return;
       input.focus();
-      const at = side === "start" ? 0 : input.value.length;
+      const at = emptyEnvironmentCaret(input.value) ?? (side === "start" ? 0 : input.value.length);
       input.setSelectionRange(at, at);
     });
   }
@@ -180,11 +190,14 @@ class MathView implements NodeView {
     return 0;
   }
 
-  /** Places the inline popup under the formula, kept inside the window. */
-  private placePopup(panel: HTMLElement): void {
-    const rect = this.dom.getBoundingClientRect();
-    panel.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - panel.offsetWidth - 8))}px`;
-    panel.style.top = `${Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - panel.offsetHeight - 8))}px`;
+  /**
+   * Whether Enter leaves the LaTeX: always inline; in a display equation only on an empty last line (Enter twice at the
+   * end) or in an empty equation, any other Enter (or Shift-Enter) adding a line.
+   */
+  private endsOnEnter(input: HTMLInputElement | HTMLTextAreaElement, event: KeyboardEvent): boolean {
+    if (!this.display) return true;
+    if (event.shiftKey || input.selectionStart !== input.selectionEnd || input.selectionStart !== input.value.length) return false;
+    return input.value === "" || input.value.endsWith("\n");
   }
 
   deselectNode(): void {
@@ -192,7 +205,47 @@ class MathView implements NodeView {
     this.close();
   }
 
-  /** Removes the field, keeping what was written. */
+  /** Whether the key adds or deletes a dollar sign at the LaTeX's edge: `$` at either edge of inline math, Backspace at the start of display math. */
+  private convertsOn(input: HTMLInputElement | HTMLTextAreaElement, event: KeyboardEvent): boolean {
+    if (event.altKey || event.metaKey || event.ctrlKey || input.selectionStart !== input.selectionEnd) return false;
+    const at = input.selectionStart ?? 0;
+    if (!this.display) return event.key === "$" && (at === 0 || at === input.value.length);
+    return event.key === "Backspace" && at === 0;
+  }
+
+  /**
+   * Turns inline math into display math, splitting its paragraph around it, or display math into inline math in a
+   * paragraph of its own, and opens the new equation's LaTeX. A labelled display equation, or one whose place does
+   * not take the other kind, stays as it is.
+   */
+  private convert(): void {
+    const pos = this.getPos();
+    if (pos === undefined) return;
+    const { schema, doc } = this.view.state;
+    const paragraph = schema.nodes.paragraph!;
+    let from: number, to: number, nodes: ProseNode[], editAt: number;
+    if (this.display) {
+      if (this.node.attrs.label) return;
+      const inline = schema.nodes.math_inline!.create({ tex: this.tex.replace(/\s*\n\s*/g, " ").trim() });
+      [from, to, nodes, editAt] = [pos, pos + this.node.nodeSize, [paragraph.create(null, inline)], pos + 1];
+    } else {
+      const $pos = doc.resolve(pos);
+      const offset = pos - $pos.start();
+      const before = $pos.parent.content.cut(0, offset), after = $pos.parent.content.cut(offset + this.node.nodeSize);
+      const display = schema.nodes.math_display!.create({ tex: this.tex });
+      nodes = [...(before.size ? [paragraph.create(null, before)] : []), display];
+      if (after.size || $pos.after() === doc.content.size) nodes.push(paragraph.create(null, after));
+      [from, to, editAt] = [$pos.before(), $pos.after(), $pos.before() + (before.size ? nodes[0]!.nodeSize : 0)];
+    }
+    const $from = doc.resolve(from);
+    if (!$from.parent.canReplace($from.index(), $from.index() + 1, Fragment.from(nodes))) return;
+    this.close();
+    this.view.dispatch(this.view.state.tr.replaceWith(from, to, nodes).scrollIntoView());
+    const view = this.view;
+    queueMicrotask(() => editNodeAt(view, editAt, this.display ? "start" : "end"));
+  }
+
+  /** Hides the LaTeX, keeping what was written. */
   private close(): void {
     this.dom.classList.remove("qmd-math-editing");
     const panel = this.sourcePanel;
@@ -202,7 +255,7 @@ class MathView implements NodeView {
     panel?.remove();
   }
 
-  /** Closes the field and puts the caret after the equation (`dir` -1: before it); `cancel` restores the TeX it had, and an equation left empty is removed. */
+  /** Hides the LaTeX and puts the caret after the equation (`dir` -1: before it); `cancel` restores the TeX it had, and an equation left empty is removed. */
   private finish(cancel: boolean, dir: 1 | -1 = 1): void {
     if (cancel) this.commit(this.originalTex);
     this.close();

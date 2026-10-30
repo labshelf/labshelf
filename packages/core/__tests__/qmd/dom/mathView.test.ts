@@ -74,17 +74,70 @@ describe("LaTeX editing", () => {
     expect(view.dom.querySelector("textarea")).toBeNull();
   });
 
-  it("edits display equations in a field attached to the equation and finishes on Enter", () => {
+  it("edits display equations in place between visible $$ and finishes on Enter on an empty last line", () => {
     const view = selected();
     const input = view.dom.querySelector<HTMLTextAreaElement>('.qmd-math-display textarea[aria-label="TeX source"]')!;
     expect(input).not.toBeNull();
-    expect(view.dom.querySelector(".qmd-math-hint")!.textContent).toMatch(/Esc/);
+    expect(Array.from(view.dom.querySelectorAll(".qmd-math-delimiter"), (d) => d.textContent)).toEqual(["$$", "$$"]);
     input.value = "x^2 +\ny^2";
     input.dispatchEvent(new Event("input", { bubbles: true }));
     expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2 +\ny^2");
+    input.setSelectionRange(input.value.length, input.value.length);
+    expect(key(input, { key: "Enter" })).toBe(true);
+    expect(view.dom.querySelector(".qmd-math-edit")).not.toBeNull();
+    input.value = "x^2 +\ny^2\n";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.setSelectionRange(input.value.length, input.value.length);
     key(input, { key: "Enter" });
     expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2 +\ny^2");
     expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
+  });
+
+  it("turns inline math into display math, splitting its paragraph, when $ is typed against its dollar sign", () => {
+    const view = mount(inlineMathDoc("x^2"), { math_inline: createMathView(false, async () => ({ renderMathSvg: () => SVG })) });
+    view.dom.querySelector<HTMLElement>(".qmd-math-rendered")!.click();
+    const input = view.dom.querySelector<HTMLInputElement>(".qmd-math-inline input")!;
+    input.setSelectionRange(3, 3);
+    expect(key(input, { key: "$" })).toBe(false);
+    const blocks: [string, string][] = [];
+    view.state.doc.forEach((node) => blocks.push([node.type.name, node.type.name === "math_display" ? node.attrs.tex as string : node.textContent]));
+    expect(blocks).toEqual([["paragraph", "see "], ["math_display", "x^2"], ["paragraph", " here"]]);
+  });
+
+  it("turns display math into inline math on Backspace at the start of its LaTeX", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "x^2 +\ny^2";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.setSelectionRange(0, 0);
+    expect(key(input, { key: "Backspace" })).toBe(false);
+    const first = view.state.doc.firstChild!;
+    expect(first.type.name).toBe("paragraph");
+    expect(first.firstChild!.type.name).toBe("math_inline");
+    expect(first.firstChild!.attrs.tex).toBe("x^2 + y^2");
+  });
+
+  it("closes a \\begin{name} typed in the LaTeX, swapping align for aligned, with the caret inside", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "\\begin{align}";
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(view.state.doc.firstChild!.attrs.tex).toBe("\\begin{aligned}\n\n\\end{aligned}");
+    expect(input.selectionStart).toBe("\\begin{aligned}\n".length);
+  });
+
+  it("offers environment names after \\begin{ and picks one on Enter without leaving the equation", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "\\begin{pm";
+    input.setSelectionRange(input.value.length, input.value.length);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(Array.from(view.dom.querySelectorAll(".qmd-math-suggest-item"), (item) => item.textContent)).toEqual(["pmatrix"]);
+    expect(key(input, { key: "Enter" })).toBe(false);
+    expect(view.state.doc.firstChild!.attrs.tex).toBe("\\begin{pmatrix}\n\n\\end{pmatrix}");
+    expect(view.dom.querySelector(".qmd-math-edit")).not.toBeNull();
+    expect(view.dom.querySelector<HTMLElement>(".qmd-math-suggest")!.hidden).toBe(true);
   });
 
   it("ArrowDown on the last line of a display equation leaves it for the paragraph after", () => {
