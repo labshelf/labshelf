@@ -1,7 +1,7 @@
 // Declares the ports a reader host implements and the per-reader context the message handlers share.
-import type { Annotation, PaperRecord, PdfTheme } from "../model/index.js";
+import type { Annotation, CustomReaderTheme, PaperRecord, ReaderThemeRef } from "../model/index.js";
 import type { ILogger } from "../ports/index.js";
-import type { ReaderSidecarStore } from "./sidecar/index.js";
+import type { ReaderSidecarStore, ReaderThemeStore } from "./sidecar/index.js";
 import type { PaperNotesStore, RunCellPort } from "../qmd/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";
@@ -19,7 +19,9 @@ export type SidecarChange =
   | { kind: "annotationCreated"; annotation: Annotation }
   | { kind: "annotationUpdated"; annotation: Annotation }
   | { kind: "annotationDeleted"; annotationId: string }
-  | { kind: "theme" };
+  | { kind: "theme" }
+  /** The library's custom themes changed; other open readers should receive `themes`. */
+  | { kind: "customThemes"; themes: CustomReaderTheme[] };
 
 /** What a host that shows a build's output as a preview does with the reader's requests. */
 export interface PreviewPorts {
@@ -57,9 +59,13 @@ export interface PreviewPorts {
 
 export interface ReaderHostPorts {
   paper: PaperRecord;
+  /** Toggles the host's LabShelf Details for this paper. */
+  toggleDetails?(paperId: string): Promise<void>;
   store: ReaderSidecarStore;
   /** The paper's notes.qmd; absent in a build preview, which refuses note writes and shows no notes. */
   notes?: PaperNotesStore;
+  /** The library's custom reader themes; absent where the host has no library (a build preview). */
+  themes?: Pick<ReaderThemeStore, "list" | "save" | "remove">;
   /** Sends a message to the reader UI. */
   post(msg: HostToWebview): void;
   getPrefs(): ReaderPrefs;
@@ -92,7 +98,9 @@ export type ExportAnnotationsPorts = Pick<ReaderHostPorts, "paper" | "store" | "
 export const READER_LOG_MODULE = "reader";
 
 export interface HostState {
-  themePreference: PdfTheme;
+  themePreference: ReaderThemeRef;
+  /** The live custom themes the reader last received. */
+  customThemes: CustomReaderTheme[];
   /** True once the reader has laid out the document; the reader drops every message but `init` and `applyTheme` before that. */
   ready: boolean;
   /** Messages held until `ready`, the latest one per type. */
@@ -104,11 +112,19 @@ export interface HostState {
   openedAt: number;
 }
 
+/** The fields of `applyTheme` for one theme ref. */
+export interface ResolvedTheme {
+  theme: ReaderThemeRef;
+  effectiveTheme: EffectiveTheme;
+  customTheme?: CustomReaderTheme;
+}
+
 export interface HostContext {
   readonly ports: ReaderHostPorts;
   readonly state: HostState;
   now(): number;
-  effectiveTheme(theme: PdfTheme): EffectiveTheme;
+  /** Resolves a theme ref against `state.customThemes`: a custom ref whose theme is gone resolves as auto. */
+  resolveTheme(theme: ReaderThemeRef): ResolvedTheme;
   /** Posts the list unless it equals the last one sent; `force` posts it regardless. */
   pushAnnotations(annotations: Annotation[], force: boolean): void;
   /** Posts `updateNotes` with the full list unless it equals the last one sent; `force` posts it regardless. */

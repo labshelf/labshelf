@@ -51,7 +51,7 @@ interface Placement {
   readonly note: ReaderNote;
   /** The page the note belongs to; null sorts under Unanchored. */
   readonly page: number | null;
-  readonly kind: "highlight" | "box" | "none";
+  readonly kind: "highlight" | "box" | "point" | "none";
   readonly annotation: Annotation | null;
   readonly boxPage: number | null;
 }
@@ -68,12 +68,10 @@ export class NotesTab implements SidebarPanel {
   private readonly list = renderElement("div", { class: "rd-notes-list" });
   private readonly rows = new Map<string, Row>();
   private readonly headings = new Map<string, HTMLElement>();
-  private readonly emptyNone = renderElement("div", { class: "rd-empty" }, `No ${ITEMS} yet. Select text and choose Add to ${ITEM}, or draw a text box.`);
+  private readonly emptyNone = renderElement("div", { class: "rd-empty" }, `No ${ITEMS} yet. Choose Add note and click a page, select text to add a note on a highlight, or draw a text box.`);
   private readonly emptyMatch = renderElement("div", { class: "rd-empty" }, `No ${ITEMS} match.`);
   private notes: readonly ReaderNote[] = [];
   private annotations: ReadonlyMap<string, Annotation> = new Map();
-  private awaitingHighlight = false;
-  private focusAnchor: string | null = null;
   private canRunCells = false;
   private readonly runs = createCellRunGroup({
     onCancel: (requestId) => this.host.post({ command: "cancelCell", requestId }),
@@ -106,19 +104,9 @@ export class NotesTab implements SidebarPanel {
 
   /**
    * Replaces the paper's annotations, which chips and page groups resolve highlight anchors against.
-   * When "Add to note" is waiting for its highlight, the first annotation not seen before gets an item.
    */
   setAnnotations(annotations: readonly Annotation[]): void {
-    const previous = this.annotations;
     this.annotations = new Map(annotations.map((a) => [a.id, a]));
-    if (this.awaitingHighlight) {
-      const added = annotations.find((a) => !previous.has(a.id));
-      if (added) {
-        this.awaitingHighlight = false;
-        this.focusAnchor = `hl:${added.id}`;
-        this.host.post({ command: "addNote", anchor: this.focusAnchor, body: "" });
-      }
-    }
     this.render();
   }
 
@@ -128,7 +116,6 @@ export class NotesTab implements SidebarPanel {
   show(notes: readonly ReaderNote[]): void {
     this.notes = notes;
     this.render();
-    this.focusPending();
   }
 
   /** Whether the host can run cells; editors get a Run button only when it can, so a change remounts every row. */
@@ -143,26 +130,18 @@ export class NotesTab implements SidebarPanel {
   /** Shows the host's state of a run under its editor; a request this tab did not send is ignored. */
   showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
-  /**
-   * Called by "Add to note": the next new annotation gets an empty item that opens focused.
-   */
-  expectHighlight(): void { this.awaitingHighlight = true; }
+  /** Opens the full editor of a note selected in the PDF. */
+  reveal(id: string, body?: string): void {
+    this.select.value = "all";
+    this.search.value = "";
+    this.render();
+    const row = this.rows.get(id);
+    if (row && body !== undefined) { row.latest = body; row.editor.setBody(body); }
+    this.onReveal?.();
+    row?.editor.focus();
+  }
 
   private filter(): FilterKind { return this.select.value as FilterKind; }
-
-  private focusPending(): void {
-    if (this.focusAnchor === null) { return; }
-    const note = this.notes.find((n) => n.anchor === this.focusAnchor);
-    if (!note) { return; }
-    this.focusAnchor = null;
-    if (!this.rows.has(note.id) || !this.rows.get(note.id)!.el.isConnected) {
-      this.select.value = "all";
-      this.search.value = "";
-      this.render();
-    }
-    this.onReveal?.();
-    this.rows.get(note.id)?.editor.focus();
-  }
 
   private place(note: ReaderNote): Placement {
     const anchor = parseAnchor(note.anchor);
@@ -170,6 +149,7 @@ export class NotesTab implements SidebarPanel {
       const annotation = this.annotations.get(anchor.annotationId) ?? null;
       return { note, kind: "highlight", annotation, page: annotation ? annotation.pageNumber : null, boxPage: null };
     }
+    if (anchor.kind === "point") { return { note, kind: "point", annotation: null, page: anchor.page, boxPage: null }; }
     if (anchor.kind === "box") {
       return { note, kind: "box", annotation: null, page: anchor.page, boxPage: anchor.page };
     }
@@ -335,7 +315,7 @@ export class NotesTab implements SidebarPanel {
     const page = p.page;
     const content = p.kind === "highlight"
       ? renderElement("span", { class: `rd-ann-dot rd-color-${p.annotation?.color ?? "note"}` })
-      : renderElement("span", { class: "rd-note-chip-icon", html: renderIcon("text-box") });
+      : renderElement("span", { class: "rd-note-chip-icon", html: renderIcon(p.kind === "point" ? "note" : "text-box") });
     const chip = renderElement("button", { class: "rd-note-chip", type: "button", title: `Go to page ${page}`, "aria-label": `Go to page ${page}` }, content);
     chip.addEventListener("click", () => this.goToPage(page));
     return [chip];

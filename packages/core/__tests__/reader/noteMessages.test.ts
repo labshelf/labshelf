@@ -38,6 +38,14 @@ const items = (text: string): ItemSegment[] =>
 
 describe("reader note messages", () => {
   describe("addNote, editNote and removeNote", () => {
+    it("persists a page pin without creating a highlight", async () => {
+      const { host, notesFiles, files, updates } = setupNotesHost();
+      await host.handle({ command: "addNote", anchor: "p4 point 0.7 0.3", body: "Independent note" });
+      expect(items(notesFiles.p1!)[0]!.anchor).toEqual({ kind: "point", page: 4, x: 0.7, y: 0.3 });
+      expect(updates()[0]!.items[0]).toMatchObject({ anchor: "p4 point 0.7 0.3", body: "Independent note\n" });
+      expect(files.p1).toBeUndefined();
+    });
+
     it("7.3a addNote writes a new item through the store and pushes the full list", async () => {
       const { host, notesFiles, updates } = setupNotesHost({ seed: SEED });
       await host.handle({ command: "addNote", anchor: "hl:a9", body: "Added body" });

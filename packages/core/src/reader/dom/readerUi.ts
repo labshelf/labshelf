@@ -1,7 +1,8 @@
 // Builds the reader UI, the hover previews created after first render, and wires the host messages to them.
 import { deriveClampedPage, type WebviewToHost } from "../index.js";
 import { BuildBanner, PagePill, Toolbar } from "./toolbar.js";
-import { Cheatsheet, type ThemeController, openThemePopover } from "./theme.js";
+import { Cheatsheet, type ThemeController } from "./theme.js";
+import { ViewModes, openAppearancePopover } from "./appearance.js";
 import { SelectionBubble } from "./selectionBubble.js";
 import { PageHighlights } from "./pageHighlights.js";
 import { FindBar, type ChangeMarks } from "./findMarks.js";
@@ -11,9 +12,10 @@ import { LogsView } from "./previewProblems.js";
 import { CommentAsk } from "./previewFooter.js";
 import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED, type PdfReloader } from "./pdfLoader.js";
-import { AnnotationsTab, DetailsPanel, Sidebar } from "./sidebar.js";
+import { AnnotationsTab, Sidebar } from "./sidebar.js";
 import { OutlineTab, ThumbnailsTab } from "./sidebarTabs.js";
 import { NotesTab } from "./notesTab.js";
+import { FloatingNotes } from "./floatingNotes.js";
 import { NoteBoxLayer } from "./noteBoxes.js";
 import { BoxTool } from "./boxTool.js";
 import { ReadingPositionReporter } from "./startup.js";
@@ -33,6 +35,7 @@ export interface ReaderUi {
   goToPage(page: number): void;
   annotationsTab: AnnotationsTab;
   notesTab: NotesTab;
+  floatingNotes: FloatingNotes;
   noteBoxes: NoteBoxLayer;
   boxTool: BoxTool;
   highlights: PageHighlights;
@@ -43,7 +46,7 @@ export interface ReaderUi {
   bubble: SelectionBubble;
   reporter: ReadingPositionReporter;
   toolbar: Toolbar;
-  details: DetailsPanel;
+  viewModes: ViewModes;
   buildBanner: BuildBanner;
   /** The preview's header, logs view and page count; null in the paper reader. */
   previewChrome: PreviewChrome | null;
@@ -75,25 +78,28 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const cheatsheet = new Cheatsheet(ctx);
   const pill = new PagePill(ctx, zoom, goToPage);
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
-  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => notesTab.expectHighlight());
+  const floatingNotes = new FloatingNotes(ctx, (id, body) => notesTab.reveal(id, body));
+  const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight());
+  bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);
-  const details = new DetailsPanel(ctx.boot.paperTitle, ctx.pdfDocument.numPages);
+  const viewModes = new ViewModes(ctx);
   const toolbar = new Toolbar(ctx.container, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
     toggleSidebar: () => sidebar.toggle(),
     previousPage: () => goToPage(ctx.pdfViewer.currentPageNumber - 1),
     nextPage: () => goToPage(ctx.pdfViewer.currentPageNumber + 1),
-    toggleDetails: () => details.toggle(),
+    toggleDetails: () => ctx.host.post({ command: "toggleDetails" }),
+    selectColor: (color) => bubble.setColor(color),
     selectTool: (tool) => { boxTool.setActive(false); bubble.setTool(tool); },
     openFind: () => findBar.show(),
     toggleBoxTool: () => boxTool.toggle(),
-    openTheme: (anchor) => openThemePopover(anchor, theme, ctx.host),
+    openAppearance: (anchor) => openAppearancePopover(anchor, { ctx, theme, modes: viewModes }),
     openCheatsheet: () => cheatsheet.toggle(),
   });
-  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble, details });
+  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble });
   if (ctx.boot.preview) { toolbar.hideBoxTool(); }
   const buildBanner = new BuildBanner();
   const ui: ReaderUi = {
-    history, zoom, goToPage, annotationsTab, notesTab, noteBoxes, boxTool, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, details, buildBanner,
+    history, zoom, goToPage, annotationsTab, notesTab, floatingNotes, noteBoxes, boxTool, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, viewModes, buildBanner,
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
   };
@@ -102,12 +108,12 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
 }
 
 /** Keeps page bounds, annotation modes and panel toggles in step with the header. */
-function bindReaderToolbar(ctx: ReaderContext, { toolbar, sidebar, findBar, boxTool, bubble, details }: Pick<ReaderUi, "toolbar" | "sidebar" | "findBar" | "boxTool" | "bubble" | "details">): void {
+function bindReaderToolbar(ctx: ReaderContext, { toolbar, sidebar, findBar, boxTool, bubble }: Pick<ReaderUi, "toolbar" | "sidebar" | "findBar" | "boxTool" | "bubble">): void {
   const syncPage = (): void => toolbar.setPageState(ctx.pdfViewer.currentPageNumber, ctx.pdfDocument.numPages);
   ctx.eventBus.on("pagechanging", syncPage);
   ctx.eventBus.on(DOCUMENT_REPLACED, syncPage);
   syncPage();
-  details.onChange = (open) => toolbar.setDetailsOpen(open);
+  bubble.onColorChange = (color) => toolbar.setAnnotationColor(color);
   bubble.onToolChange = (tool) => toolbar.setSelectionTool(tool);
   sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
   findBar.onToggle((open) => toolbar.setFindOpen(open));
@@ -222,9 +228,11 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
     ui.annotationsTab.setAnnotations(msg.annotations ?? []);
     ui.highlights.show(msg.annotations ?? []);
     ui.notesTab.setAnnotations(msg.annotations ?? []);
+    ui.floatingNotes.setAnnotations(msg.annotations ?? []);
   });
   host.on("updateNotes", (msg) => {
     ui.notesTab.show(msg.items);
+    ui.floatingNotes.show(msg.items);
     ui.noteBoxes.show(msg.items);
   });
   host.on("cellState", (msg) => {

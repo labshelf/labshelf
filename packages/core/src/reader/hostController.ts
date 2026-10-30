@@ -1,7 +1,8 @@
 /**
  * Answers the reader's messages on the host side: validates each one and replies through the host's ports.
  */
-import type { Annotation, PdfTheme } from "../model/index.js";
+import { customThemeIdOf, type Annotation, type CustomReaderTheme, type ReaderThemeRef } from "../model/index.js";
+import { isLightColour } from "../ui/tokens/index.js";
 import { formatError } from "../errors/index.js";
 import {
   type BuildState, type PageArea, type PagePoint, type PreviewBuildRoots, isWebviewMessage, type EffectiveTheme,
@@ -9,7 +10,7 @@ import {
 } from "./protocol/index.js";
 import { annotationHandlers, previewHandlers, sessionHandlers, shareHandlers } from "./hostMessages.js";
 import { noteHandlers } from "./noteMessages.js";
-import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers, type ReaderHostPorts } from "./hostPorts.js";
+import { READER_LOG_MODULE, type HostContext, type HostState, type MessageAnswer, type MessageAnswers, type ReaderHostPorts, type ResolvedTheme } from "./hostPorts.js";
 
 const HANDLERS: MessageAnswers = { ...sessionHandlers, ...annotationHandlers, ...noteHandlers, ...shareHandlers, ...previewHandlers };
 
@@ -24,12 +25,12 @@ export class ReaderHostController {
 
   constructor(private readonly ports: ReaderHostPorts, options: ReaderHostOptions = {}) {
     const now = ports.now ?? Date.now;
-    this.state = { themePreference: "auto", ready: false, held: new Map(), lastAnnotationsKey: "", lastNotesKey: "", openedAt: now() };
+    this.state = { themePreference: "auto", customThemes: [], ready: false, held: new Map(), lastAnnotationsKey: "", lastNotesKey: "", openedAt: now() };
     this.ctx = {
       ports,
       state: this.state,
       now,
-      effectiveTheme: (theme) => this.effectiveTheme(theme),
+      resolveTheme: (theme) => this.resolveTheme(theme),
       pushAnnotations: (annotations, force) => this.pushAnnotations(annotations, force),
       pushNotes: (items, force) => this.pushNotes(items, force),
     };
@@ -59,8 +60,20 @@ export class ReaderHostController {
    * Papers whose reader theme is "auto" follow the host's theme.
    */
   onAutoThemeChange(effective: EffectiveTheme): void {
-    if (this.state.themePreference === "auto") {
+    // A custom ref whose theme is gone resolves as auto, so it follows the host as well.
+    if (this.resolveTheme(this.state.themePreference).theme === "auto") {
       this.ports.post({ type: "applyTheme", theme: "auto", effectiveTheme: effective });
+    }
+  }
+
+  /**
+   * Takes a custom theme list another reader saved: posts it and re-applies this paper's theme when it was one of them.
+   */
+  onCustomThemesChange(themes: CustomReaderTheme[]): void {
+    this.state.customThemes = themes;
+    this.ports.post({ type: "customThemes", themes });
+    if (customThemeIdOf(this.state.themePreference) !== null) {
+      this.ports.post({ type: "applyTheme", ...this.resolveTheme(this.state.themePreference) });
     }
   }
 
@@ -158,7 +171,11 @@ export class ReaderHostController {
     this.ports.post({ type: "updateNotes", items });
   }
 
-  private effectiveTheme(theme: PdfTheme): EffectiveTheme {
-    return theme === "auto" ? this.ports.autoTheme() : theme;
+  private resolveTheme(theme: ReaderThemeRef): ResolvedTheme {
+    const id = customThemeIdOf(theme);
+    if (id === null) { return { theme, effectiveTheme: theme === "auto" ? this.ports.autoTheme() : (theme as EffectiveTheme) }; }
+    const custom = this.state.customThemes.find((t) => t.id === id);
+    if (!custom) { return { theme: "auto", effectiveTheme: this.ports.autoTheme() }; }
+    return { theme, effectiveTheme: isLightColour(custom.page) ? "light" : "dark", customTheme: custom };
   }
 }

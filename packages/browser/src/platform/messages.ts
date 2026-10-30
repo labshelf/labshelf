@@ -1,5 +1,5 @@
 // Declares the typed runtime messages between the background, the extension pages and the content scripts, with their replies.
-import type { MissingPdfAction, PdfAccess, PdfMiss } from "@labshelf/core";
+import type { CustomReaderTheme, MissingPdfAction, PdfAccess, PdfMiss } from "@labshelf/core";
 
 export type RuntimeMessage = CaptureMessage | LibraryMessage;
 
@@ -154,6 +154,12 @@ export interface LibraryChangedEvent {
   paperId?: string;
   /** A sentence for open library pages to show, for a change the user did not start there (a watched tab's PDF). */
   notice?: string;
+}
+
+/** A reader tab -> the other reader tabs after it saved or deleted a custom reader theme. Kept out of RuntimeMessage like LibraryChangedEvent. */
+export interface ReaderThemesChangedEvent {
+  type: "reader.themesChanged";
+  themes: CustomReaderTheme[];
 }
 
 export interface FolderOption {

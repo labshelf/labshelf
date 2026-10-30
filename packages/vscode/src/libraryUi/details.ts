@@ -208,6 +208,15 @@ export class DetailsView implements vscode.WebviewViewProvider, vscode.Disposabl
     await vscode.commands.executeCommand(`${DETAILS_VIEW}.focus`);
   }
 
+  /** Closes visible Details, or reveals it when hidden or collapsed. */
+  async toggle(): Promise<void> {
+    if (this._view?.visible) {
+      await vscode.commands.executeCommand("workbench.action.closeAuxiliaryBar");
+      return;
+    }
+    await this.reveal();
+  }
+
   /** Re-serves the library to the page after the library root changed. */
   async rebindLibrary(): Promise<void> {
     await this._session?.rebind();
@@ -223,6 +232,7 @@ export function registerDetailsView(context: vscode.ExtensionContext, deps: Deta
   const view = new DetailsView(deps);
   context.subscriptions.push(
     view,
+    vscode.commands.registerCommand("labshelf.details.toggle", () => view.toggle()),
     vscode.window.registerWebviewViewProvider(DETAILS_VIEW, view, { webviewOptions: { retainContextWhenHidden: true } }),
   );
   return view;

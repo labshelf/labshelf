@@ -40,7 +40,8 @@ export function startReader({ boot, transport, perf, pdf }: ReaderStartOptions):
   const restore = new ReadingPositionRestore(host);
   const theme = new ThemeController(container, boot.themePreference, boot.effectiveTheme);
   if (boot.preview) { theme.lockPages("light"); }
-  host.on("applyTheme", (msg) => theme.apply(msg.theme, msg.effectiveTheme));
+  host.on("applyTheme", (msg) => theme.apply(msg.theme, msg.effectiveTheme, msg.customTheme));
+  host.on("customThemes", (msg) => theme.setCustomThemes(msg.themes));
 
   async function start(): Promise<void> {
     const loaded = await loadPdf(boot.assets, perf, pdf);

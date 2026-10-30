@@ -14,6 +14,8 @@ describe("itemAnchor", () => {
   it.each<[string, ItemAnchor]>([
     ["hl:3f1c2a9e-8b7d-4c1e-9a2b-5d6e7f809a1b", { kind: "highlight", annotationId: "3f1c2a9e-8b7d-4c1e-9a2b-5d6e7f809a1b" }],
     ["p10 box 0.12 0.4 0.3 0.1", { kind: "box", page: 10, x: 0.12, y: 0.4, w: 0.3, h: 0.1 }],
+    ["p4 point 0.12 0.4", { kind: "point", page: 4, x: 0.12, y: 0.4 }],
+    ["p1 point 0 1", { kind: "point", page: 1, x: 0, y: 1 }],
     ["p1 box 0 0 1 1", { kind: "box", page: 1, x: 0, y: 0, w: 1, h: 1 }],
   ])("parses and writes %s", (text, anchor) => {
     expect(parseAnchor(text)).toEqual(anchor);
@@ -38,6 +40,10 @@ describe("itemAnchor", () => {
   });
 
   it.each([
+    "p0 point 0.1 0.1",
+    "p1 point -0.1 0.2",
+    "p1 point 1.1 0.2",
+    "p1 point 0.12345 0.2",
     "p0 box 0.1 0.1 0.1 0.1",
     "p1 box 0.1 0.1 0.1",
     "p1 box 0.12345 0.1 0.1 0.1",
@@ -58,6 +64,8 @@ describe("itemAnchor", () => {
   });
 
   it("refuses to write an invalid anchor", () => {
+    expect(() => formatAnchor({ kind: "point", page: 0, x: 0, y: 0 })).toThrow(/point/);
+    expect(() => formatAnchor({ kind: "point", page: 1, x: NaN, y: 0 })).toThrow(/point/);
     expect(() => formatAnchor({ kind: "box", page: 0, x: 0, y: 0, w: 0.1, h: 0.1 })).toThrow(/box/);
     expect(() => formatAnchor({ kind: "box", page: 1, x: 0.95, y: 0, w: 0.1, h: 0.1 })).toThrow(/box/);
     expect(() => formatAnchor({ kind: "quote", quote: "", prefix: "", suffix: "" })).toThrow(/quote/);

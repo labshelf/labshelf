@@ -68,6 +68,62 @@ function themeDeclarations(theme: ReaderTheme): string[] {
   ];
 }
 
+/** Every CSS custom property a reader theme sets, by name, for themes applied inline (custom themes). */
+export function readerThemeCssVars(theme: ReaderTheme): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const role of CSS_ROLES) { vars[`--ls-reader-${role}`] = theme[role]; }
+  vars["--ls-reader-find-hit"] = theme.findHit;
+  vars["--ls-reader-find-current"] = theme.findCurrent;
+  vars["--ls-reader-change"] = theme.change;
+  return vars;
+}
+
+function parseHex(hex: string): [number, number, number] {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function toHex(rgb: readonly number[]): string {
+  return `#${rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** @returns `a` moved toward `b` by `t` (0..1), as #rrggbb. */
+function mixHex(a: string, b: string, t: number): string {
+  const x = parseHex(a);
+  const y = parseHex(b);
+  return toHex(x.map((c, i) => c + (y[i]! - c) * t));
+}
+
+/** True when a #rrggbb colour reads as light (WCAG relative luminance of at least 0.5). */
+export function isLightColour(hex: string): boolean {
+  const [r, g, b] = parseHex(hex).map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b >= 0.5;
+}
+
+/**
+ * Builds a full reader theme from a custom theme's page and ink (#rrggbb): the chrome is mixed from the two, and the
+ * shadow and find colours come from the light or dark preset the page colour is closest to.
+ */
+export function deriveReaderTheme(page: string, ink: string): ReaderTheme {
+  const base = READER_THEMES[isLightColour(page) ? "light" : "dark"];
+  const [r, g, b] = parseHex(ink);
+  return {
+    ...base,
+    page,
+    ink,
+    bg: mixHex(page, ink, 0.06),
+    surface: mixHex(page, ink, 0.04),
+    border: mixHex(page, ink, 0.2),
+    fg: mixHex(ink, page, 0.1),
+    desc: mixHex(ink, page, 0.38),
+    hover: `rgba(${r}, ${g}, ${b}, .09)`,
+    active: `rgba(${r}, ${g}, ${b}, .15)`,
+  };
+}
+
 // The reader marks its theme on <html data-pdf-theme>; dark is also the default before
 // the attribute is set. A theme block declares only what differs from dark, which it inherits from :root.
 // The swatches of the theme picker show every theme at once.

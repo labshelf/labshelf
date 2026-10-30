@@ -4,6 +4,7 @@ import {
   PROTOCOL_VERSION,
   PaperSidecarStore,
   PaperNotesStore,
+  ReaderThemeStore,
   createPreviewStore,
   ReaderHostController,
   type EffectiveTheme,
@@ -16,10 +17,10 @@ import {
 } from "@labshelf/core";
 import { PDF_FILE, formatError } from "@labshelf/core";
 import { createInPageChannel, startReader, PerfMarks, resolveTheme, showToast } from "@labshelf/core/dom";
-import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange } from "../../platform";
+import { bx, createBrowserLogger, downloadTextFile, readThemePref, onThemeChange, type ReaderThemesChangedEvent } from "../../platform";
 import { getBrowserCellPorts } from "../../helper";
-import { createLibraryFileSystem, createPaperNotesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
-import { loadReaderPrefs, onReaderPrefsChange, parseReaderQuery } from "./readerTabs";
+import { createLibraryFileSystem, createPaperNotesPort, createReaderThemesPort, createSidecarPort, readCachedPaperRecord } from "../../storage";
+import { loadReaderPrefs, onReaderPrefsChange, toggleLibraryDetails, parseReaderQuery } from "./readerTabs";
 import { createReaderSendToNote, type SendToNoteRequest } from "./sendToNote";
 import { installPageGuards, isMacPlatform, sendSidecarChange, attachPreviewPage, findPreviewPaper, createPreviewPorts } from "./readerPreview";
 
@@ -95,6 +96,7 @@ function createHostWithChannel(
   let send: (msg: HostToWebview) => void = () => undefined;
   const host = new ReaderHostController({
     paper,
+    toggleDetails: toggleLibraryDetails,
     store,
     post: (msg) => send(msg),
     getPrefs,
@@ -108,7 +110,7 @@ function createHostWithChannel(
     runCell: getBrowserCellPorts(logger).runCell,
     installPython: getBrowserCellPorts(logger).installPython,
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
-    ...(preview ? { preview } : {}),
+    ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),
     ...(sendToNote ? { sendToNote } : {}),
   }, page !== undefined ? { page } : {});
   const channel = createInPageChannel((msg) => { void host.handle(msg); });
@@ -155,6 +157,10 @@ function exposeReaderApi(paper: PaperRecord, host: ReaderHostController): void {
 function forwardChangesToHost(host: ReaderHostController, setPrefs: (prefs: ReaderPrefs) => void): void {
   onThemeChange((theme) => host.onAutoThemeChange(theme));
   onReaderPrefsChange((next) => { setPrefs(next); host.onPrefsChange(); });
+  bx.runtime.onMessage.addListener((message: unknown) => {
+    const event = message as Partial<ReaderThemesChangedEvent> | null;
+    if (event?.type === "reader.themesChanged" && Array.isArray(event.themes)) { host.onCustomThemesChange(event.themes); }
+  });
   // Annotations may have changed while this tab was in the background.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void host.refreshAnnotations().catch(() => undefined);

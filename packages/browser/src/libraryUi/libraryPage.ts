@@ -9,7 +9,7 @@ import { mountMoveOffer, mountSourceBanner } from "../storage/library";
 import { createPageRelay, openBrowserRelayAccountStore, type PageRelay } from "../relay";
 import { createLibraryFileSystem } from "../storage";
 import { reportPageWrites } from "../collab";
-import { createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
+import { attachDetailsReveal, createRightPane, mergeEndpoints, mountPageDetails, PAGE_CAPABILITIES, PAGE_LABELS, splitDetailsChannels } from "./details";
 import { attachLibraryHost } from "./host";
 import { attachPaperLinkHandling } from "./paperLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
@@ -182,6 +182,7 @@ async function boot(): Promise<void> {
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
+  attachDetailsReveal(shell, (id) => { openTab("library"); hub.publish("reader", { kind: "paper", ids: [id] }); });
   project?.start(invite);
   mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
   attachPaperLinkHandling(log);

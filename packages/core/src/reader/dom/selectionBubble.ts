@@ -24,6 +24,9 @@ export class SelectionBubble {
   private readonly el = findElement("selection-toolbar");
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
   onToolChange: ((tool: "highlight" | "underline" | "note" | null) => void) | null = null;
+  onColorChange: ((color: AnnotationColor) => void) | null = null;
+  onPlaceNote: ((page: number, x: number, y: number) => void) | null = null;
+  private color: AnnotationColor = "yellow";
   private tool: "highlight" | "underline" | "note" | null = null;
   private commentButton: HTMLButtonElement | null = null;
 
@@ -32,7 +35,7 @@ export class SelectionBubble {
     const mod = ctx.boot.isMac ? "Cmd" : "Ctrl";
     for (const color of ANNOTATION_COLORS) {
       const btn = renderElement("button", { class: `rd-color-btn rd-color-${color}`, type: "button", title: `Highlight ${color}`, "aria-label": `Highlight ${color}` });
-      btn.addEventListener("click", () => this.highlight(color));
+      btn.addEventListener("click", () => { this.setColor(color); this.highlight(color); });
       this.el.append(btn);
     }
     if (addToNote) {
@@ -75,6 +78,7 @@ export class SelectionBubble {
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") { this.setTool(null); }
     });
+    ctx.container.addEventListener("pointerup", (event) => { setTimeout(() => this.placeNote(event), 0); });
     ctx.container.addEventListener("scroll", () => this.hide(), { passive: true });
   }
 
@@ -137,14 +141,27 @@ export class SelectionBubble {
 
   setTool(tool: "highlight" | "underline" | "note" | null): void {
     this.tool = this.tool === tool ? null : tool;
+    this.ctx.container.classList.toggle("rd-note-mode", this.tool === "note");
     this.onToolChange?.(this.tool);
     if (this.tool && this.currentSelection()) { this.applyTool(); }
+  }
+
+  setColor(color: AnnotationColor): void { this.color = color; this.onColorChange?.(color); }
+
+  private placeNote(event: PointerEvent): void {
+    if (this.tool !== "note" || event.button !== 0 || this.currentSelection() || !(event.target instanceof Element)) { return; }
+    if (event.target.closest(".rd-note-pin, .rd-note-box")) { return; }
+    const page = event.target.closest<HTMLElement>("#viewer .page");
+    const frame = page && derivePageFrame(page);
+    if (!page || !frame) { return; }
+    this.onPlaceNote?.(Number(page.dataset["pageNumber"]), Math.max(0, Math.min(1, (event.clientX - frame.left) / frame.width)), Math.max(0, Math.min(1, (event.clientY - frame.top) / frame.height)));
+    this.setTool(null);
   }
 
   private applyTool(): void {
     const tool = this.tool;
     if (!tool) { return; }
-    this.highlight(ANNOTATION_COLORS[0]!, tool === "note", tool === "underline");
+    this.highlight(this.color, tool === "note", tool === "underline");
   }
 
   private highlight(color: AnnotationColor, asNote = false, underline = false): void {
@@ -161,6 +178,7 @@ export class SelectionBubble {
       ...(position ? { position: { ...position } } : {}),
     });
     sel.removeAllRanges();
+    if (asNote) { this.setTool(null); }
     this.hide();
   }
 

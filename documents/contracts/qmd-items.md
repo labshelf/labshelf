@@ -35,7 +35,7 @@ An item id is `n-` plus a [ULID](https://github.com/ulid/spec). Any device creat
 
 ## Anchors
 
-`anchor` says what an item is attached to: nothing, a highlight of the paper (`hl:<annotation id>` in the paper's `data.json`, [library-format.md](library-format.md#sidecar-datajson)), a text box on a PDF page (`p<page> box <x> <y> <w> <h>`, fractions of the page from the top-left, like highlights) or a passage of a project text file (`quote:<base64url>` of the JSON `{quote, prefix, suffix}`, the rules of a comment anchor in [library-format.md](library-format.md#project-folder-labshelf)).
+`anchor` says what an item is attached to: nothing, a highlight of the paper (`hl:<annotation id>` in the paper's `data.json`, [library-format.md](library-format.md#sidecar-datajson)), a text box on a PDF page (`p<page> box <x> <y> <w> <h>`, fractions of the page from the top-left, like highlights) a note pin on a PDF page (`p<page> point <x> <y>`, positive integer page and coordinates from 0 to 1, at most four decimal places, independent of any highlight), or a passage of a project text file (`quote:<base64url>` of the JSON `{quote, prefix, suffix}`, the rules of a comment anchor in [library-format.md](library-format.md#project-folder-labshelf)).
 
 An anchor in no known form, or one that breaks its rules, is kept verbatim and the item is shown as not attached.
 

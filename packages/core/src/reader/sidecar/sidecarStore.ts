@@ -1,17 +1,20 @@
 // Defines the per-paper sidecar and the stores over it: the on-disk store and the in-memory preview store.
 import { KeyedQueue } from "../../async/index.js";
-import { isPdfTheme, type Annotation, type PdfTheme, ANNOTATION_COLORS, type AnnotationColor, type AnnotationPosition } from "../../model/index.js";
+import { isReaderThemeRef, normalizeReaderView, type ReaderThemeRef, type ReaderView, type Annotation, ANNOTATION_COLORS, type AnnotationColor, type AnnotationPosition } from "../../model/index.js";
 import { normalizeReadingPosition, type ReadingState } from "./readingState.js";
 import type { ILogger, SidecarPort } from "../../ports/index.js";
 
-// Defines the per-paper sidecar (data.json: annotations, theme, reading position) every app reads and writes.
+// Defines the per-paper sidecar (data.json: annotations, theme, reading position, view mode) every app reads and writes.
 // INVARIANT: every app reads and writes the same data.json, so the format must not drift.
 
 export interface PaperSidecar {
   annotations: Annotation[];
-  theme: PdfTheme;
+  /** A preset name or `custom:<id>`; a custom ref whose theme is gone reads as auto without rewriting the file. */
+  theme: ReaderThemeRef;
   /** Last reading position; absent until the paper has been opened in the reader. */
   reading?: ReadingState;
+  /** Scroll and spread mode; absent until the reader changes them. Kept apart from `reading`, which position saves replace whole. */
+  view?: ReaderView;
   /** Annotations the user removed, so a stale copy of the file cannot bring them back. Absent when there are none. */
   deleted?: DeletedAnnotation[];
 }
@@ -60,23 +63,26 @@ export function normalizePaperSidecar(parsed: unknown): PaperSidecar {
         (a) => a && typeof a === "object" && typeof (a as Annotation).id === "string" && (a as { type?: unknown }).type !== "note",
       ) as Annotation[])
     : [];
-  const theme = isPdfTheme(obj["theme"]) ? obj["theme"] : "auto";
+  const theme = isReaderThemeRef(obj["theme"]) ? obj["theme"] : "auto";
   const data: PaperSidecar = { annotations, theme };
   const reading = normalizeReadingPosition(obj["reading"]);
   if (reading) { data.reading = reading; }
+  const view = normalizeReaderView(obj["view"]);
+  if (view) { data.view = view; }
   const deleted = Array.isArray(obj["deleted"]) ? obj["deleted"].filter(isDeletionMarker).map(({ id, deletedAt }) => ({ id, deletedAt })) : [];
   if (deleted.length > 0) { data.deleted = deleted; }
   return data;
 }
 
 /**
- * The exact bytes both extensions write: fixed key order, two-space indent, `reading` and `deleted` omitted until set,
+ * The exact bytes both extensions write: fixed key order, two-space indent, `reading`, `view` and `deleted` omitted until set,
  * markers sorted by id so two devices holding the same markers write the same bytes.
  * @returns the JSON text of the sidecar.
  */
 export function serializePaperSidecar(data: PaperSidecar): string {
   const payload: PaperSidecar = { annotations: data.annotations, theme: data.theme };
   if (data.reading) { payload.reading = data.reading; }
+  if (data.view) { payload.view = { scroll: data.view.scroll, spread: data.view.spread }; }
   if (data.deleted && data.deleted.length > 0) { payload.deleted = [...data.deleted].sort((a, b) => a.id.localeCompare(b.id)); }
   return JSON.stringify(payload, null, 2);
 }
@@ -253,11 +259,11 @@ export class PaperSidecarStore {
   /**
    * @returns the paper's stored reader theme ("auto" when never chosen).
    */
-  async getTheme(paperId: string): Promise<PdfTheme> {
+  async getTheme(paperId: string): Promise<ReaderThemeRef> {
     return (await this.load(paperId)).theme;
   }
 
-  async setTheme(paperId: string, theme: PdfTheme): Promise<void> {
+  async setTheme(paperId: string, theme: ReaderThemeRef): Promise<void> {
     await this.mutate(paperId, (data) => { data.theme = theme; return true; });
   }
 
@@ -271,12 +277,16 @@ export class PaperSidecarStore {
   async setReadingState(paperId: string, reading: ReadingState): Promise<void> {
     await this.mutate(paperId, (data) => { data.reading = reading; return true; });
   }
+
+  async setView(paperId: string, view: ReaderView): Promise<void> {
+    await this.mutate(paperId, (data) => { data.view = view; return true; });
+  }
 }
 
 /** The part of the store the reader host uses: reads, plus the writes a host without a library may refuse. */
 export type ReaderSidecarStore = Pick<
   PaperSidecarStore,
-  "load" | "getAnnotations" | "addHighlight" | "updateAnnotation" | "deleteAnnotation" | "setTheme" | "setReadingState"
+  "load" | "getAnnotations" | "addHighlight" | "updateAnnotation" | "deleteAnnotation" | "setTheme" | "setReadingState" | "setView"
 >;
 
 // Keeps a build preview's reading position and theme in memory for the life of its panel and refuses annotation writes.
@@ -301,6 +311,7 @@ export function createPreviewStore(): ReaderSidecarStore {
     getAnnotations: (id) => store.getAnnotations(id),
     setTheme: (id, theme) => store.setTheme(id, theme),
     setReadingState: (id, reading) => store.setReadingState(id, reading),
+    setView: (id, view) => store.setView(id, view),
     addHighlight: refuse,
     updateAnnotation: refuse,
     deleteAnnotation: refuse,

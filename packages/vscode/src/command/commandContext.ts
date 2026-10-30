@@ -3,7 +3,7 @@
 import * as vscode from "vscode";
 
 import type { PaperImporter, PaperTextLayers, RefreshLibraryResult } from "../library/index.js";
-import { formatError, type PaperNotesStore, type PaperSidecarStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext, type PaperService } from "@labshelf/core";
+import { formatError, type PaperNotesStore, type PaperSidecarStore, type ReaderThemeStore, type LibraryFileSystem, type ILogger, type LibraryStore, type MutationContext, type PaperService } from "@labshelf/core";
 
 const LOG_MODULE = "command";
 
@@ -17,6 +17,7 @@ export type ActiveServices = {
   library: LibraryStore;
   paperDataStore: PaperSidecarStore;
   paperNotesStore: PaperNotesStore;
+  readerThemeStore: ReaderThemeStore;
   // The adapter of this library root; its temp folder for atomic writes is inside the root.
   fileSystem: LibraryFileSystem;
   // Rebuilds the index from disk and emits the resulting paper events. Bound in

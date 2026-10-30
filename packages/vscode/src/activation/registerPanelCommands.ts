@@ -150,6 +150,7 @@ function registerReaderPanelCommands(deps: PanelCommandsDeps): void {
           events,
           store: services.paperDataStore,
           notes: services.paperNotesStore,
+          themes: services.readerThemeStore,
           logger: services.logger,
           locatePdfjs: adapters.reader.locatePdfjs,
           isMac: adapters.reader.isMac,

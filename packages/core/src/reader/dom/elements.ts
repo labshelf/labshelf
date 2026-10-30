@@ -1,4 +1,6 @@
 // Shares the reader's small DOM helpers: icon buttons, number clamping, text input checks and popover menus.
+import { ANNOTATION_COLORS, type AnnotationColor } from "../../model/index.js";
+import { renderIcon } from "../../ui/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 
 /**
@@ -118,4 +120,52 @@ export function buildMenu(items: readonly MenuItem[]): HTMLElement {
     menu.append(btn);
   }
   return menu;
+}
+
+
+/** Shows the active annotation colour and a palette shared by highlight and underline tools. */
+export class AnnotationColorPicker {
+  readonly el = renderElement("div", { class: "rd-annotation-color", hidden: true });
+  private color: AnnotationColor = "yellow";
+  private readonly swatch = renderElement("span", { class: "rd-annotation-swatch rd-color-yellow", "aria-hidden": "true" });
+  private readonly button = renderReaderIconButton("", "Annotation color: yellow");
+
+  constructor(private readonly select: (color: AnnotationColor) => void) {
+    this.button.classList.add("rd-annotation-color-button");
+    this.button.setAttribute("aria-haspopup", "menu");
+    this.button.setAttribute("aria-expanded", "false");
+    this.button.append(this.swatch, renderElement("span", { class: "rd-color-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
+    this.button.addEventListener("click", () => this.open());
+    this.el.append(this.button);
+  }
+
+  setColor(color: AnnotationColor): void {
+    this.color = color;
+    this.swatch.className = `rd-annotation-swatch rd-color-${color}`;
+    this.button.title = `Annotation color: ${color}`;
+    this.button.setAttribute("aria-label", this.button.title);
+  }
+
+  setVisible(visible: boolean): void {
+    this.el.hidden = !visible;
+    if (!visible && this.button.getAttribute("aria-expanded") === "true") { closePopover(); }
+  }
+
+  private open(): void {
+    const menu = renderElement("div", { class: "rd-menu", role: "menu", "aria-label": "Annotation color" });
+    for (const color of ANNOTATION_COLORS) {
+      const item = renderElement("button", { class: "rd-menu-item", type: "button", role: "menuitemradio", "aria-checked": String(color === this.color) },
+        renderElement("span", { class: `rd-annotation-swatch rd-color-${color}`, "aria-hidden": "true" }), color);
+      item.addEventListener("click", () => { this.setColor(color); this.select(color); closePopover(); this.button.focus({ preventScroll: true }); });
+      menu.append(item);
+    }
+    menu.addEventListener("mousedown", (event) => event.preventDefault());
+    menu.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") { return; }
+      event.stopPropagation();
+      closePopover();
+      this.button.focus({ preventScroll: true });
+    });
+    updatePopoverOpen(this.button, menu, "below");
+  }
 }

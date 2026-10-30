@@ -318,3 +318,12 @@ describe("reader sendToNote message", () => {
     expect(isSendToWebviewMessage({ command: "sendToNote", text: "", pageNumber: 7 })).toBe(false);
   });
 });
+
+
+describe("reader LabShelf Details", () => {
+  it("asks the host to reveal Details for the reader's own paper", async () => {
+    const { host, ports } = setupHost();
+    await host.handle({ command: "toggleDetails" });
+    expect(ports.toggleDetails).toHaveBeenCalledWith("p1");
+  });
+});

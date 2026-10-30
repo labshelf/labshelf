@@ -16,6 +16,7 @@ A library is a folder the user owns, moved between devices by their sync tool. E
   .research/
     papers/<paper id>/data.json    the sidecar; synced
     papers/<paper id>/notes.qmd    the paper's notes, see qmd-items.md; synced
+    reader-themes.json             the user's custom reader themes, shared by every paper; synced
     tmp/ staging/ templates/       scratch the apps rebuild; the user may exclude them from sync
 ```
 
@@ -85,13 +86,33 @@ Beside `.labshelf/`, in the project folder, `notes/<slug>.qmd` holds the project
 
 ## Sidecar: `data.json`
 
-Annotations, theme and reading position of one paper. The annotation types are `highlight`, `comment` and `tag`; the paper's notes live in `notes.qmd` ([qmd-items.md](qmd-items.md)).
+Annotations, theme, reading position and view mode of one paper. The annotation types are `highlight`, `comment` and `tag`; the paper's notes live in `notes.qmd` ([qmd-items.md](qmd-items.md)).
 
-- Every app writes identical bytes for the same state (key order, `reading` omitted until first opened, `deleted` omitted while empty and sorted by `id`), so two apps never make the sync tool see a conflict.
+- Every app writes identical bytes for the same state (key order `annotations`, `theme`, `reading`, `view`, `deleted`; `reading` omitted until first opened, `view` omitted until the reader changes it, `deleted` omitted while empty and sorted by `id`), so two apps never make the sync tool see a conflict.
+- `theme` is a preset (`auto`, `light`, `dark`, `sepia`, `high-contrast`) or `custom:<id>`, a theme of `reader-themes.json`. A custom ref whose theme is missing or deleted reads as `auto`; the file is not rewritten for it.
+- `view` is `{"scroll": "vertical" | "horizontal" | "wrapped", "spread": "none" | "odd" | "even"}`. It is kept apart from `reading`, which every position save replaces.
 - Highlights may carry `style: "underline"` to draw a line beneath the text; absent means a filled highlight.
 - Annotation positions are normalised to the page (0..1), so any app and zoom reads them.
 - Removing an annotation leaves a `deleted` marker. Without it a stale copy of the file from another device would bring the annotation back. Markers are dropped after 90 days, so a copy older than that can bring an annotation back; every app keeps them at least that long.
-- Copies merge per annotation, the larger `updatedAt` winning; a marker removes its annotation unless the annotation was edited after it. `theme` and `reading` follow the newer file.
+- Copies merge per annotation, the larger `updatedAt` winning; a marker removes its annotation unless the annotation was edited after it. `theme`, `reading` and `view` follow the newer file.
+
+## Reader themes: `reader-themes.json`
+
+The custom reader themes, one list for the whole library, so every app and paper offers the same ones.
+
+```json
+{
+  "themes": [
+    { "id": "c-k3x9a0qz", "name": "Night", "page": "#101820", "ink": "#e0e0e0", "updatedAt": "2026-10-30T12:00:00.000Z" }
+  ]
+}
+```
+
+- `id` is `c-` and 8 lowercase base36 characters; `page` and `ink` are lowercase `#rrggbb`; `name` is 1 to 40 characters.
+- Every app writes identical bytes: themes sorted by `id`, keys in the order shown, `deleted` last and only on tombstones, two-space indent.
+- Deleting a theme leaves a tombstone (`"deleted": true`, newer `updatedAt`) so a stale copy cannot bring it back. Per `id` the larger `updatedAt` wins.
+- An entry with a bad id, colour, name or date is ignored on read; a file that is not JSON reads as empty.
+- The reader derives its chrome (surfaces, borders, text) from `page` and `ink`, and falls back to the light or dark preset's shadow and find colours by the page's luminance.
 
 ## Device-local files
 

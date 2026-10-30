@@ -5,7 +5,7 @@ import { Toolbar, type ToolbarActions, BuildBanner, TabList } from "../../../src
 function setupToolbar() {
   document.body.innerHTML = `<div id="pdf-shell"><div id="toolbar"></div></div>`;
   const noop = () => undefined;
-  const actions: ToolbarActions = { toggleSidebar: noop, previousPage: jest.fn(), nextPage: jest.fn(), toggleDetails: jest.fn(), selectTool: jest.fn(), openFind: noop, toggleBoxTool: noop, openTheme: noop, openCheatsheet: noop };
+  const actions: ToolbarActions = { toggleSidebar: noop, previousPage: jest.fn(), nextPage: jest.fn(), toggleDetails: jest.fn(), selectTool: jest.fn(), selectColor: jest.fn(), openFind: noop, toggleBoxTool: noop, openAppearance: noop, openCheatsheet: noop };
   const toolbar = new Toolbar(document.createElement("div"), false, true, actions);
   return { toolbar, actions, root: document.getElementById("toolbar")! };
 }
@@ -13,10 +13,10 @@ function setupToolbar() {
 describe("Toolbar", () => {
   it("groups page navigation, annotation tools and panel controls without a title", () => {
     const { root } = setupToolbar();
-    const titles = [...root.querySelectorAll("button")].map((b) => b.title);
+    const titles = [...root.querySelectorAll("button")].filter((b) => !b.closest("[hidden]")).map((b) => b.title);
     expect(root.querySelector(".rd-toolbar-title")).toBeNull();
     expect(titles).toEqual([
-      "Toggle sidebar (F4)", "Previous page", "Next page", "Highlight", "Underline", "Add note", "Text box (Ctrl+Alt+B)", "Find (Ctrl+F)", "Page theme", "Keyboard shortcuts (?)", "Toggle details",
+      "Toggle sidebar (F4)", "Previous page", "Next page", "Highlight", "Underline", "Add note", "Text box (Ctrl+Alt+B)", "Find (Ctrl+F)", "Appearance", "Keyboard shortcuts (?)", "Toggle LabShelf Details",
     ]);
   });
   it("navigates pages and disables the arrows at document boundaries", () => {
@@ -42,14 +42,32 @@ describe("Toolbar", () => {
     expect(actions.selectTool).toHaveBeenCalledWith("underline");
     toolbar.setSelectionTool("underline");
     expect(underline.getAttribute("aria-pressed")).toBe("true");
-    const details = root.querySelector<HTMLButtonElement>('[title="Toggle details"]')!;
+    const details = root.querySelector<HTMLButtonElement>('[title="Toggle LabShelf Details"]')!;
     details.click();
     expect(actions.toggleDetails).toHaveBeenCalledTimes(1);
-    toolbar.setDetailsOpen(true);
-    expect(details.getAttribute("aria-pressed")).toBe("true");
     const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
     underline.dispatchEvent(down);
     expect(down.defaultPrevented).toBe(true);
+  });
+
+  it("shows the colour picker only for highlight and underline, and keeps its selected colour", () => {
+    const { toolbar, actions, root } = setupToolbar();
+    const picker = root.querySelector<HTMLElement>(".rd-annotation-color")!;
+    expect(picker.hidden).toBe(true);
+    toolbar.setSelectionTool("highlight");
+    expect(picker.hidden).toBe(false);
+    picker.querySelector("button")!.click();
+    const blue = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].find((button) => button.textContent === "blue")!;
+    blue.click();
+    expect(actions.selectColor).toHaveBeenCalledWith("blue");
+    expect(picker.querySelector(".rd-color-blue")).not.toBeNull();
+    toolbar.setSelectionTool("underline");
+    expect(picker.hidden).toBe(false);
+    expect(picker.querySelector(".rd-color-blue")).not.toBeNull();
+    toolbar.setSelectionTool("note");
+    expect(picker.hidden).toBe(true);
+    toolbar.setSelectionTool(null);
+    expect(picker.hidden).toBe(true);
   });
 
 });

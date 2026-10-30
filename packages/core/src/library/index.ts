@@ -20,7 +20,7 @@ export { FOLDER_NAME_MAX_LENGTH, checkFolderName, scanLibrary } from "./folders.
 export type { ScanFileSystem } from "./folders.js";
 export {
   PAPERS_DIR, RESEARCH_DIR, PROJECTS_DIR, SPACES_DIR,
-  PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE, PAPER_NOTES_FILE, SPACE_FILE, GLOSSARY_FILE,
+  PDF_FILE, METADATA_FILE, BIB_FILE, SIDECAR_FILE, PAPER_NOTES_FILE, SPACE_FILE, GLOSSARY_FILE, READER_THEMES_FILE,
   joinWith, createLibraryLayout, createPaperFiles,
   SHARED_CONFIG_VERSION, mergeSharedConfig, parseSharedConfig, serializeSharedConfig,
 } from "./layout.js";

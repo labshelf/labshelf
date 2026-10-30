@@ -13,7 +13,7 @@ interface ReaderWindowHandle {
 }
 
 declare global {
-  interface Window { labshelfReader?: ReaderWindowHandle }
+  interface Window { labshelfReader?: ReaderWindowHandle; labshelfLibraryDetails?: { reveal(paperId: string): Promise<void>; toggle(paperId: string): Promise<void> } }
 }
 
 /**
@@ -48,6 +48,16 @@ export async function openReader(paperId: string, page?: number): Promise<void> 
     }
   }
   await bx.tabs.create({ url: createReaderUrl(paperId, page) });
+}
+
+/** Toggles the existing library's Details, or opens the library with this paper selected. */
+export async function toggleLibraryDetails(paperId: string): Promise<void> {
+  const views = (bx.extension.getViews?.({ type: "tab" }) ?? []) as Window[];
+  for (const view of views) {
+    if (view.labshelfLibraryDetails) { await view.labshelfLibraryDetails.toggle(paperId); return; }
+  }
+  const query = new URLSearchParams({ paper: paperId, details: "1" });
+  await bx.tabs.create({ url: `${bx.runtime.getURL("libraryPage/index.html")}?${query}` });
 }
 
 const READER_PREFS_KEY = "labshelf.readerPrefs";

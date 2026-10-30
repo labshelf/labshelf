@@ -3,10 +3,14 @@ import { join } from "node:path";
 import { READER_SHELL_BODY } from "@labshelf/core";
 import { createInPageChannel } from "@labshelf/core/dom";
 
-jest.mock("webextension-polyfill", () => ({ runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` } }));
+jest.mock("webextension-polyfill", () => ({
+  runtime: { getURL: (p: string) => `chrome-extension://ext/${p}` },
+  extension: { getViews: jest.fn(() => []) },
+  tabs: { create: jest.fn(async () => ({})) },
+}));
 
 import { createSidecarPort } from "../../../src/storage/records";
-import { parseReaderQuery, createReaderUrl } from "../../../src/libraryUi/reader/readerTabs";
+import { parseReaderQuery, createReaderUrl, toggleLibraryDetails } from "../../../src/libraryUi/reader/readerTabs";
 
 describe("reader page shell", () => {
   it("embeds exactly the shared skeleton the VS Code shell uses", () => {
@@ -69,5 +73,25 @@ describe("in-page channel", () => {
     expect(received).toEqual([msg]);
     expect(received[0]).not.toBe(msg);
     expect(toReader).toEqual([{ type: "scrollToPage", pageNumber: 2 }]);
+  });
+});
+
+
+describe("reader opens LabShelf Details", () => {
+  const browser = require("webextension-polyfill");
+  beforeEach(() => jest.clearAllMocks());
+
+  it("reuses an existing library page's Details", async () => {
+    const toggle = jest.fn(async () => undefined);
+    browser.extension.getViews.mockReturnValue([{ labshelfLibraryDetails: { toggle } }]);
+    await toggleLibraryDetails("p1");
+    expect(toggle).toHaveBeenCalledWith("p1");
+    expect(browser.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("opens the library with this paper and its Details when no library is open", async () => {
+    browser.extension.getViews.mockReturnValue([]);
+    await toggleLibraryDetails("p /1");
+    expect(browser.tabs.create).toHaveBeenCalledWith({ url: "chrome-extension://ext/libraryPage/index.html?paper=p+%2F1&details=1" });
   });
 });

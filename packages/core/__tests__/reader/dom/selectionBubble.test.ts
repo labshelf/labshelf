@@ -24,7 +24,7 @@ function setup(commentOn?: () => void) {
   Object.defineProperty(page, "clientWidth", { value: 1000 });
   Object.defineProperty(page, "clientHeight", { value: 1000 });
   page.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 1000, width: 1000, height: 1000, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
-  return { post, bubble };
+  return { post, bubble, ctx };
 }
 
 describe("SelectionBubble highlight", () => {
@@ -68,4 +68,26 @@ describe("SelectionBubble header tools", () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(bubble.onToolChange).toHaveBeenLastCalledWith(null);
   });
+});
+
+
+it.each(["highlight", "underline"] as const)("uses the chosen colour for the header %s tool", (tool) => {
+  const { post, bubble } = setup();
+  bubble.setColor("pink");
+  bubble.setTool(tool);
+  expect(post).toHaveBeenCalledWith(expect.objectContaining({ command: "createAnnotation", color: "pink", ...(tool === "underline" ? { style: "underline" } : {}) }));
+});
+
+
+it("places an unhighlighted note by clicking the page with Add note active", async () => {
+  const { bubble, ctx, post } = setup();
+  window.getSelection()?.removeAllRanges();
+  ctx.container.append(document.getElementById("viewer")!);
+  document.body.append(ctx.container);
+  bubble.onPlaceNote = jest.fn();
+  bubble.setTool("note");
+  document.querySelector(".page")!.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 700, clientY: 400 }));
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(bubble.onPlaceNote).toHaveBeenCalledWith(3, 0.7, 0.4);
+  expect(post).not.toHaveBeenCalledWith(expect.objectContaining({ command: "createAnnotation" }));
 });

@@ -67,19 +67,23 @@ export class ReadingPositionRestore {
   }
 
   private applyInit({ ctx, ui, theme }: RestoreAnchor, msg: InitMessage): void {
-    if (msg.paper) { ui.details.show(msg.paper); }
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
-    theme.apply(msg.theme, msg.effectiveTheme);
+    theme.customThemes = msg.customThemes;
+    theme.apply(msg.theme, msg.effectiveTheme, msg.customTheme);
     ui.annotationsTab.setAnnotations(msg.annotations);
     ui.highlights.show(msg.annotations);
     ui.notesTab.setAnnotations(msg.annotations);
+    ui.floatingNotes.setAnnotations(msg.annotations);
     ui.notesTab.setCanRunCells(msg.canRunCells === true);
     ui.noteBoxes.setCanRunCells(msg.canRunCells === true);
     ui.notesTab.show(msg.notes);
+    ui.floatingNotes.show(msg.notes);
     ui.noteBoxes.show(msg.notes);
     if (!this.pagesReady || this.restored) { return; }
     this.restored = true;
+    // The layout must be in place before the stored offsets are mapped onto it.
+    ui.viewModes.restore(msg.view);
     const reading = msg.prefs.restorePosition && !this.readerMoved ? msg.reading : null;
     if (reading) {
       ctx.pdfViewer.currentScaleValue = reading.scaleValue;

@@ -1,10 +1,10 @@
-// Applies the reader theme, offers the theme popover and shows the shortcut cheatsheet.
+// Applies the reader theme (a preset or a custom one) and shows the shortcut cheatsheet.
 import type { PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
-import { type PdfTheme, PDF_THEMES } from "../../model/index.js";
+import type { CustomReaderTheme, ReaderThemeRef } from "../../model/index.js";
 import { type EffectiveTheme, findPagePreset, derivePageColors } from "../index.js";
-import type { HostBridge, ReaderContext } from "./readerSession.js";
-import { updatePopoverOpen } from "./elements.js";
+import type { ReaderContext } from "./readerSession.js";
 import { renderElement, findElement } from "../../ui/dom/index.js";
+import { deriveReaderTheme, readerThemeCssVars } from "../../ui/tokens/index.js";
 import { deriveCheatsheetRows } from "../keymap.js";
 
 // Applies the selected colour preset to the PDF reader.
@@ -14,8 +14,10 @@ type PageColors = { background: string; foreground: string } | null;
 const REFRESH_DELAY_MS = 80;
 
 export class ThemeController {
-  preference: PdfTheme;
+  preference: ReaderThemeRef;
   effective: EffectiveTheme;
+  /** The library's custom themes, for the appearance popover. */
+  customThemes: CustomReaderTheme[] = [];
   private bg: string;
   /** The page preset the preview pins; null follows the effective theme. */
   private pagesLock: EffectiveTheme | null = null;
@@ -24,8 +26,11 @@ export class ThemeController {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly listeners: Array<() => void> = [];
   private readonly effectiveListeners: Array<(effective: EffectiveTheme) => void> = [];
+  private readonly themeListeners: Array<() => void> = [];
+  /** The custom properties a custom theme set inline on <html>, cleared when a preset returns. */
+  private inlineVars: string[] = [];
 
-  constructor(private readonly container: HTMLElement, preference: PdfTheme, effective: EffectiveTheme) {
+  constructor(private readonly container: HTMLElement, preference: ReaderThemeRef, effective: EffectiveTheme) {
     this.preference = preference;
     this.effective = effective;
     const preset = findPagePreset(effective);
@@ -56,6 +61,14 @@ export class ThemeController {
    */
   onEffectiveChange(fn: (effective: EffectiveTheme) => void): void { this.effectiveListeners.push(fn); }
 
+  /** Fires when the selected theme or the custom theme list changes, so an open popover can redraw. */
+  onThemesChange(fn: () => void): void { this.themeListeners.push(fn); }
+
+  setCustomThemes(themes: CustomReaderTheme[]): void {
+    this.customThemes = themes;
+    for (const fn of this.themeListeners) { fn(); }
+  }
+
   /**
    * Pins the pages to one preset: later themes update the chrome only. The preview uses it so pages stay light paper unless Dark PDF is pressed.
    */
@@ -68,18 +81,29 @@ export class ThemeController {
   }
 
   /**
-   * Applies a theme preference/effective pair: updates the chrome's data attribute and, unless the pages are locked, the page preset colours.
+   * Applies a theme preference/effective pair: updates the chrome's data attribute and, unless the pages are locked, the page colours.
+   * A custom theme also sets the chrome tokens inline on <html>, derived from its page and ink; a preset clears them.
    */
-  apply(preference: PdfTheme | undefined, effective: EffectiveTheme | undefined): void {
+  apply(preference: ReaderThemeRef | undefined, effective: EffectiveTheme | undefined, customTheme?: CustomReaderTheme): void {
     if (preference) { this.preference = preference; }
     if (!effective) { return; }
     this.effective = effective;
-    document.documentElement.dataset["pdfTheme"] = effective;
+    const root = document.documentElement;
+    root.dataset["pdfTheme"] = effective;
+    for (const name of this.inlineVars) { root.style.removeProperty(name); }
+    this.inlineVars = [];
+    if (customTheme) {
+      for (const [name, value] of Object.entries(readerThemeCssVars(deriveReaderTheme(customTheme.page, customTheme.ink)))) {
+        root.style.setProperty(name, value);
+        this.inlineVars.push(name);
+      }
+    }
     if (this.pagesLock === null) {
-      const preset = findPagePreset(effective);
-      this.applyPageColors(preset.bg, preset.text);
+      const colors = customTheme ? { bg: customTheme.page, text: customTheme.ink } : findPagePreset(effective);
+      this.applyPageColors(colors.bg, colors.text);
     }
     for (const fn of this.effectiveListeners) { fn(effective); }
+    for (const fn of this.themeListeners) { fn(); }
   }
 
   /**
@@ -111,59 +135,6 @@ export class ThemeController {
       for (const fn of this.listeners) { fn(); }
     }, REFRESH_DELAY_MS);
   }
-}
-
-/**
- * Renders the theme picker: the five persisted presets plus session-only custom page colours.
- */
-
-const THEME_LABELS: Record<PdfTheme, string> = {
-  auto: "Auto",
-  light: "Light",
-  dark: "Dark",
-  sepia: "Sepia",
-  "high-contrast": "High contrast",
-};
-
-/**
- * A preset is persisted per paper by the host; custom colours apply to this session only.
- */
-export function openThemePopover(anchor: HTMLElement, theme: ThemeController, host: HostBridge): void {
-  const list = renderElement("div", { class: "rd-theme-list", role: "radiogroup", "aria-label": "Page theme" });
-  for (const value of PDF_THEMES) {
-    const btn = renderElement(
-      "button",
-      { class: "rd-theme-item", type: "button", role: "radio", "aria-checked": theme.preference === value ? "true" : "false" },
-      renderElement("span", { class: `rd-theme-swatch rd-theme-swatch-${value}` }),
-      THEME_LABELS[value],
-    );
-    btn.addEventListener("click", () => {
-      // The host persists the choice and echoes `applyTheme` with the resolved effective theme.
-      host.post({ command: "selectTheme", theme: value });
-      for (const b of list.querySelectorAll("button")) { b.setAttribute("aria-checked", b === btn ? "true" : "false"); }
-    });
-    list.append(btn);
-  }
-
-  const { bg, text } = theme.colors;
-  const bgInput = renderElement("input", { type: "color", value: bg, "aria-label": "Page background colour" });
-  const textInput = renderElement("input", { type: "color", value: text, "aria-label": "Text colour" });
-  const applyCustom = (): void => theme.applyPageColors(bgInput.value, textInput.value);
-  bgInput.addEventListener("change", applyCustom);
-  textInput.addEventListener("change", applyCustom);
-
-  const content = renderElement(
-    "div",
-    { class: "rd-theme-popover" },
-    list,
-    renderElement("div", { class: "rd-menu-sep" }),
-    renderElement("div", { class: "rd-theme-custom" },
-      renderElement("span", { class: "rd-theme-custom-title" }, "Custom"),
-      renderElement("label", {}, "Page", bgInput),
-      renderElement("label", {}, "Text", textInput),
-    ),
-  );
-  updatePopoverOpen(anchor, content, "below");
 }
 
 /**

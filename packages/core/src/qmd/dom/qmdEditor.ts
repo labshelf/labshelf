@@ -20,7 +20,7 @@ import { mountQmdToolbar } from "./qmdToolbar.js";
 
 export interface QmdEditorOptions { body: string; onChange(body: string): void; onRunCell?(label: string, code: string): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
 
-export interface QmdEditorHandle { setBody(body: string): void; focus(): void; destroy(): void }
+export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
 
 const CHANGE_DELAY_MS = 300;
 const TOGGLE_KEY = "Mod-Alt-s";
@@ -293,6 +293,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
       if (session.mode === "source") chrome.source.value = body;
       else showBody(session, body);
     },
+    flush() { changed.flush(); },
     focus() {
       if (session.mode === "source") chrome.source.focus();
       else view.focus();

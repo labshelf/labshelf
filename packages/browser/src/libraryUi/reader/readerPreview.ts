@@ -1,6 +1,6 @@
 // Reader page pieces that tests import without running the page: the browser-chord guards, the library-changed notice and the build-preview mode.
 import type { BuildState, ILogger, PaperRecord, PreviewPorts, PreviewRequest, PreviewBuildRoots, ReaderHostController, SidecarChange } from "@labshelf/core";
-import { bx, type LibraryChangedEvent } from "../../platform";
+import { bx, type LibraryChangedEvent, type ReaderThemesChangedEvent } from "../../platform";
 
 /** @returns whether the page runs on an Apple platform, where the command key is the shortcut modifier. */
 export function isMacPlatform(): boolean {
@@ -26,6 +26,12 @@ export function installPageGuards(): void {
 export function sendSidecarChange(paperId: string, change: SidecarChange): void {
   // A theme change shows nowhere in the library.
   if (change.kind === "theme") return;
+  if (change.kind === "customThemes") {
+    // runtime.sendMessage reaches every other extension page, not this one, which already shows the list.
+    const themesChanged: ReaderThemesChangedEvent = { type: "reader.themesChanged", themes: change.themes };
+    void bx.runtime.sendMessage(themesChanged).catch(() => undefined);
+    return;
+  }
   const changed: LibraryChangedEvent = { type: "library.changed", reason: "annotations", paperId };
   // Chrome rejects when no page is listening; that is not an error here.
   void bx.runtime.sendMessage(changed).catch(() => undefined);

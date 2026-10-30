@@ -249,6 +249,7 @@ function startsBlock(lines: readonly string[], index: number, fenceCloses: Reado
 
 export type ItemAnchor =
   | { readonly kind: "none" }
+  | { readonly kind: "point"; readonly page: number; readonly x: number; readonly y: number }
   | { readonly kind: "highlight"; readonly annotationId: string }
   | { readonly kind: "box"; readonly page: number; readonly x: number; readonly y: number; readonly w: number; readonly h: number }
   | { readonly kind: "quote"; readonly quote: string; readonly prefix: string; readonly suffix: string };
@@ -261,6 +262,7 @@ export type ParsedAnchor = ItemAnchor | UnknownAnchor;
 const HIGHLIGHT = /^hl:(\S+)$/;
 const FRACTION = "(0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?|\\.\\d{1,4})";
 const BOX = new RegExp(`^p([1-9]\\d*) box ${FRACTION} ${FRACTION} ${FRACTION} ${FRACTION}$`);
+const POINT = new RegExp(`^p([1-9]\\d*) point ${FRACTION} ${FRACTION}$`);
 const QUOTE = /^quote:([A-Za-z0-9_-]+)$/;
 const CONTEXT_LIMIT = 32;
 // Fractions carry at most 4 decimals, so a sum that exceeds 1 by less than this is rounding.
@@ -270,6 +272,8 @@ export function parseAnchor(attr: string | undefined): ParsedAnchor {
   if (attr === undefined || attr === "") { return { kind: "none" }; }
   const highlight = HIGHLIGHT.exec(attr);
   if (highlight) { return { kind: "highlight", annotationId: highlight[1]! }; }
+  const point = POINT.exec(attr);
+  if (point && Number.isSafeInteger(Number(point[1]))) { return { kind: "point", page: Number(point[1]), x: Number(point[2]), y: Number(point[3]) }; }
   const box = BOX.exec(attr);
   if (box) {
     const [page, x, y, w, h] = box.slice(1).map(Number) as [number, number, number, number, number];
@@ -289,6 +293,9 @@ export function formatAnchor(anchor: ParsedAnchor): string {
     case "highlight":
       if (!/^\S+$/.test(anchor.annotationId)) { throw new Error(`Anchor: invalid annotation id "${anchor.annotationId}"`); }
       return `hl:${anchor.annotationId}`;
+    case "point":
+      if (!Number.isSafeInteger(anchor.page) || anchor.page < 1 || ![anchor.x, anchor.y].every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) { throw new Error("Anchor: invalid point"); }
+      return `p${anchor.page} point ${round(anchor.x)} ${round(anchor.y)}`;
     case "box": {
       const rounded = { ...anchor, x: round(anchor.x), y: round(anchor.y), w: round(anchor.w), h: round(anchor.h) };
       if (!Number.isSafeInteger(anchor.page) || anchor.page < 1 || !isValidBox(rounded)) {

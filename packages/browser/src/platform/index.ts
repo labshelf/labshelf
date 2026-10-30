@@ -6,6 +6,6 @@ export { readSettings, updateSettings, withSidebarSection, type ExtensionSetting
 export { applyTheme, readThemePref, onThemeChange, setThemePref } from "./theme";
 export type {
   CopyRequestReply, AttachPdfReply, DraftView, FolderOption, FoldersReply,
-  LibraryChangedEvent, LibraryReference, LibraryFindReply, LibraryFindItem, PdfOfferView, FindPdfReply, RuntimeMessage,
+  LibraryChangedEvent, ReaderThemesChangedEvent, LibraryReference, LibraryFindReply, LibraryFindItem, PdfOfferView, FindPdfReply, RuntimeMessage,
   RuntimeResponse, WriteOutcome, WrittenPaperReply, SearchHit, BrowserTab,
 } from "./messages";

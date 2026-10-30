@@ -1,5 +1,5 @@
 // Declares the reader protocol: boot parameters, both message directions and the guards that validate untrusted messages.
-import type { PdfTheme, Annotation, AnnotationColor, PaperRecord } from "../../model/index.js";
+import type { PdfTheme, Annotation, AnnotationColor, CustomReaderTheme, ReaderThemeRef, ReaderView } from "../../model/index.js";
 import {
   type BuildState, type CitationEntry, type PageArea, type PagePoint, type PreviewBuildRoots, type PreviewRequest,
   checkPreviewRequest,
@@ -12,7 +12,7 @@ import type { CellRunState } from "../../qmd/compute/index.js";
 // Declares the boot parameters, preferences and shared vocabulary of the reader protocol.
 // DOM-free and vscode-free so both TypeScript programs (and jest) can compile it.
 
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 
 export type EffectiveTheme = Exclude<PdfTheme, "auto">;
 export type ZoomKind = "page-width" | "page-fit" | "page-actual" | "auto";
@@ -78,17 +78,25 @@ export type ReaderCommandId =
 export type HostToWebview =
   | {
       type: "init";
-      paper?: PaperRecord;
       reading: ReadingState | null;
       annotations: Annotation[];
       notes: ReaderNote[];
       prefs: ReaderPrefs;
-      theme: PdfTheme;
+      theme: ReaderThemeRef;
       effectiveTheme: EffectiveTheme;
+      /** The colours of the paper's custom theme; absent for a preset or a custom ref whose theme is gone. */
+      customTheme?: CustomReaderTheme;
+      /** The library's custom themes, live ones only; empty where the host has no library. */
+      customThemes: CustomReaderTheme[];
+      /** The paper's scroll and spread mode; null until the reader changed them. */
+      view: ReaderView | null;
       /** True only where the host has a cell runner; absent means false. */
       canRunCells?: boolean;
     }
-  | { type: "applyTheme"; theme: PdfTheme; effectiveTheme: EffectiveTheme }
+  /** `effectiveTheme` is the preset the chrome falls back to; a custom theme also sends its colours. */
+  | { type: "applyTheme"; theme: ReaderThemeRef; effectiveTheme: EffectiveTheme; customTheme?: CustomReaderTheme }
+  /** Replaces the list of custom themes, after this or another reader saved or deleted one. */
+  | { type: "customThemes"; themes: CustomReaderTheme[] }
   | { type: "updateAnnotations"; annotations: Annotation[] }
   /** Replaces the paper's notes (the `notes.qmd` items) with this list. */
   | { type: "updateNotes"; items: ReaderNote[] }
@@ -132,6 +140,7 @@ export interface CitationInProjectRequest {
 }
 
 export type WebviewToHost =
+  | { command: "toggleDetails" }
   | { command: "ready-for-init" }
   | { command: "ready"; totalPages: number }
   | {
@@ -143,6 +152,10 @@ export type WebviewToHost =
       canvas: string | null;
     }
   | { command: "selectTheme"; theme: string }
+  /** Creates a custom theme (no `id`) and selects it for the paper, or edits the theme `id`. */
+  | { command: "saveCustomTheme"; theme: { id?: string; name: string; page: string; ink: string } }
+  | { command: "deleteCustomTheme"; id: string }
+  | { command: "setViewMode"; scroll: string; spread: string }
   | {
       command: "createAnnotation";
       type: "highlight";
@@ -221,6 +234,7 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
   const preview = checkPreviewRequest(m) ?? checkNoteMessage(m);
   if (preview !== null) { return preview; }
   switch (m["command"] as Exclude<WebviewToHost, PreviewRequest>["command"]) {
+    case "toggleDetails":
     case "ready-for-init":
       return true;
     case "ready":
@@ -229,6 +243,15 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isRecord(m["timeline"]);
     case "selectTheme":
       return isString(m["theme"]);
+    case "saveCustomTheme": {
+      const theme = m["theme"];
+      return isRecord(theme) && isString(theme["name"]) && isString(theme["page"]) && isString(theme["ink"])
+        && (theme["id"] === undefined || isString(theme["id"]));
+    }
+    case "deleteCustomTheme":
+      return isNonEmptyString(m["id"]);
+    case "setViewMode":
+      return isString(m["scroll"]) && isString(m["spread"]);
     case "createAnnotation":
       return m["type"] === "highlight"
         && isNumber(m["pageNumber"]) && isString(m["content"])

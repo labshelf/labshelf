@@ -4,6 +4,7 @@ import {
 } from "@labshelf/core";
 import { mountDetails, mountResearchChat, renderElement, renderIcon } from "@labshelf/core/dom";
 import type { PageShell } from "./editorArea";
+import { bx } from "../platform";
 import type { PagePrefs } from "./prefs";
 
 // ---- Page capabilities
@@ -102,4 +103,28 @@ export function createRightPane(shell: PageShell, store: Pick<SpaceStore, "list"
     },
     dispose(): void { observer.disconnect(); unsubscribe(); chat.dispose(); buttons.remove(); },
   };
+}
+
+
+/** Lets reader tabs reveal the library's existing Details for their paper. */
+export function attachDetailsReveal(shell: PageShell, select: (paperId: string) => void): void {
+  window.labshelfLibraryDetails = {
+    async toggle(paperId) {
+      if (shell.root.dataset["rightPane"] === "details" && !shell.root.classList.contains("details-collapsed")) {
+        shell.togglePane("details");
+        return;
+      }
+      await window.labshelfLibraryDetails!.reveal(paperId);
+    },
+    async reveal(paperId) {
+      select(paperId);
+      if (shell.root.dataset["rightPane"] !== "details" || shell.root.classList.contains("details-collapsed")) shell.togglePane("details");
+      const tab = await bx.tabs.getCurrent();
+      if (tab?.id !== undefined) await bx.tabs.update(tab.id, { active: true });
+      if (tab?.windowId !== undefined) await bx.windows.update(tab.windowId, { focused: true });
+    },
+  };
+  const query = new URLSearchParams(location.search);
+  const paper = query.get("paper");
+  if (query.get("details") === "1" && paper) void window.labshelfLibraryDetails.reveal(paper);
 }

@@ -35,6 +35,7 @@ export function setupHost(options: { seed?: string; page?: number; prefs?: typeo
   let clock = 1000;
   const ports = {
     paper,
+    toggleDetails: jest.fn(async (_paperId: string) => undefined),
     store: new PaperSidecarStore(port, { now: () => "2026-10-07T00:00:00.000Z", newId: () => `a${++ids}` }),
     post: (m: HostToWebview) => { posted.push(m); },
     getPrefs: () => prefs,

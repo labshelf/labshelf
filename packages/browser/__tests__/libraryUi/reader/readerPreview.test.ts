@@ -87,4 +87,10 @@ describe("sendSidecarChange", () => {
     sendSidecarChange("smith2020", { kind: "theme" });
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it("passes a custom theme list on to the other reader tabs", () => {
+    const themes = [{ id: "c-aaaaaaaa", name: "Night", page: "#101820", ink: "#e0e0e0", updatedAt: "2026-10-30T00:00:00.000Z" }];
+    sendSidecarChange("smith2020", { kind: "customThemes", themes });
+    expect(sendMessage).toHaveBeenCalledWith({ type: "reader.themesChanged", themes });
+  });
 });

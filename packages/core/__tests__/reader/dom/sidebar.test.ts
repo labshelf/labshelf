@@ -1,21 +1,17 @@
 /** @jest-environment jsdom */
-// Checks the shared reader's details toggle and safely rendered bibliographic fields.
-import { DetailsPanel } from "../../../src/reader/dom/sidebar";
-import type { PaperRecord } from "../../../src/model/index";
+// Checks that the reader sidebar opens notes without creating a separate paper-details panel.
+import { Sidebar } from "../../../src/reader/dom/sidebar";
 
-it("opens and closes the right panel and renders paper metadata as text", () => {
-  document.body.innerHTML = '<div id="app"><main id="pdf-shell"></main></div>';
-  const panel = new DetailsPanel("A paper", 10);
-  panel.onChange = jest.fn();
-  const aside = document.querySelector<HTMLElement>('[aria-label="Paper details"]')!;
-  expect(aside.hidden).toBe(true);
-  panel.show({ title: "<img src=x>", authors: ["Ada", "Grace"], year: 2026, citeKey: "key", summary: "Abstract text" } as PaperRecord);
-  panel.toggle();
-  expect(aside.hidden).toBe(false);
-  expect(aside.textContent).toContain("Ada, Grace");
-  expect(aside.textContent).toContain("Abstract text");
-  expect(aside.querySelector("img")).toBeNull();
-  aside.querySelector<HTMLButtonElement>('button[title="Close details"]')!.click();
-  expect(aside.hidden).toBe(true);
-  expect(panel.onChange).toHaveBeenLastCalledWith(false);
+it("keeps reader notes in the left sidebar and leaves Details to the host", () => {
+  document.body.innerHTML = '<div id="app"><aside id="sidebar"></aside><div id="sidebar-resizer"></div><main id="pdf-shell"></main></div>';
+  const panel = () => ({ el: document.createElement("div"), onShow: jest.fn(), onHide: jest.fn() });
+  const panels = { thumbnails: panel(), outline: panel(), annotations: panel(), notes: panel() };
+  const sidebar = new Sidebar(panels);
+  sidebar.select("notes");
+  expect(sidebar.state).toMatchObject({ open: true, tab: "notes" });
+  expect(panels.notes.onShow).toHaveBeenCalledTimes(1);
+  expect(document.querySelector("#sidebar")?.contains(panels.notes.el)).toBe(true);
+  expect(document.querySelector(".rd-details")).toBeNull();
+  sidebar.toggle();
+  expect(panels.notes.onHide).toHaveBeenCalledTimes(1);
 });

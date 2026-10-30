@@ -6,7 +6,7 @@ import {
 import { formatError } from "../errors/index.js";
 import { normalizeReadingPosition, compareAnnotations } from "./sidecar/index.js";
 import { READER_LOG_MODULE, type HostContext, type MessageAnswers, type ExportAnnotationsPorts } from "./hostPorts.js";
-import { isPdfTheme } from "../model/index.js";
+import { customThemeIdOf, isReaderThemeRef, normalizeReaderView, toCustomThemeRef, type ReaderThemeRef } from "../model/index.js";
 import { loadReaderNotes } from "./noteMessages.js";
 
 // Handles the reader messages that write the paper's sidecar: annotation create, update and delete, and the reading position.
@@ -181,12 +181,19 @@ export const previewHandlers: Pick<
 
 export const sessionHandlers: Pick<
   MessageAnswers,
-  "ready-for-init" | "ready" | "perf" | "selectTheme"
+  "toggleDetails" | "ready-for-init" | "ready" | "perf" | "selectTheme" | "saveCustomTheme" | "deleteCustomTheme" | "setViewMode"
 > = {
+  toggleDetails: async (ctx) => { await ctx.ports.toggleDetails?.(ctx.ports.paper.id); },
+
   "ready-for-init": async (ctx) => {
     const { ports, state } = ctx;
     const data = await ports.store.load(ports.paper.id);
     state.themePreference = data.theme;
+    // An unreadable themes file must not keep the reader from opening; the paper then shows auto.
+    state.customThemes = await (ports.themes?.list() ?? Promise.resolve([])).catch((err: unknown) => {
+      void ports.logger.error(READER_LOG_MODULE, err, { paperId: ports.paper.id, command: "ready-for-init" });
+      return [];
+    });
     const annotations = [...data.annotations].sort(compareAnnotations);
     state.lastAnnotationsKey = JSON.stringify(annotations);
     // An unreadable notes file must not keep the reader from opening the PDF.
@@ -197,13 +204,13 @@ export const sessionHandlers: Pick<
     state.lastNotesKey = JSON.stringify(notes);
     ports.post({
       type: "init",
-      paper: ports.paper,
       reading: data.reading ?? null,
       annotations,
       notes,
       prefs: ports.getPrefs(),
-      theme: data.theme,
-      effectiveTheme: ctx.effectiveTheme(data.theme),
+      ...ctx.resolveTheme(data.theme),
+      customThemes: state.customThemes,
+      view: data.view ?? null,
       ...(ports.runCell ? { canRunCells: true } : {}),
     });
   },
@@ -229,14 +236,57 @@ export const sessionHandlers: Pick<
   },
 
   selectTheme: async (ctx, msg) => {
-    if (!isPdfTheme(msg.theme)) { return; }
+    if (!isReaderThemeRef(msg.theme)) { return; }
+    const id = customThemeIdOf(msg.theme);
+    if (id !== null && !ctx.state.customThemes.some((t) => t.id === id)) { return; }
+    await selectTheme(ctx, msg.theme);
+  },
+
+  saveCustomTheme: async (ctx, msg) => {
     const { ports, state } = ctx;
-    state.themePreference = msg.theme;
-    await ports.store.setTheme(ports.paper.id, msg.theme);
-    ports.post({ type: "applyTheme", theme: msg.theme, effectiveTheme: ctx.effectiveTheme(msg.theme) });
-    ports.sidecarChanged?.({ kind: "theme" });
+    if (!ports.themes) { return; }
+    const saved = await ports.themes.save(msg.theme);
+    if (!saved) { return; }
+    await pushCustomThemes(ctx);
+    if (msg.theme.id === undefined) {
+      await selectTheme(ctx, toCustomThemeRef(saved.id));
+    } else if (customThemeIdOf(state.themePreference) === saved.id) {
+      ports.post({ type: "applyTheme", ...ctx.resolveTheme(state.themePreference) });
+    }
+  },
+
+  deleteCustomTheme: async (ctx, msg) => {
+    const { ports, state } = ctx;
+    if (!ports.themes) { return; }
+    await ports.themes.remove(msg.id);
+    await pushCustomThemes(ctx);
+    // The paper keeps its ref, which now reads as auto (library-format.md#reader-themes).
+    if (customThemeIdOf(state.themePreference) === msg.id) {
+      ports.post({ type: "applyTheme", ...ctx.resolveTheme(state.themePreference) });
+    }
+  },
+
+  setViewMode: async (ctx, msg) => {
+    const view = normalizeReaderView({ scroll: msg.scroll, spread: msg.spread });
+    if (view) { await ctx.ports.store.setView(ctx.ports.paper.id, view); }
   },
 };
+
+async function selectTheme(ctx: HostContext, theme: ReaderThemeRef): Promise<void> {
+  const { ports, state } = ctx;
+  state.themePreference = theme;
+  await ports.store.setTheme(ports.paper.id, theme);
+  ports.post({ type: "applyTheme", ...ctx.resolveTheme(theme) });
+  ports.sidecarChanged?.({ kind: "theme" });
+}
+
+/** Re-reads the library's custom themes, posts them to this reader and tells the host so other readers follow. */
+async function pushCustomThemes(ctx: HostContext): Promise<void> {
+  const themes = await ctx.ports.themes!.list();
+  ctx.state.customThemes = themes;
+  ctx.ports.post({ type: "customThemes", themes });
+  ctx.ports.sidecarChanged?.({ kind: "customThemes", themes });
+}
 
 // Handles the messages that move text out of the reader: clipboard copies, the Markdown export, external links and citations into a project.
 

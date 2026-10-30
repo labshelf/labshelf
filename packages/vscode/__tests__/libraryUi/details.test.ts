@@ -23,6 +23,21 @@ beforeEach(() => {
 });
 
 describe('DetailsView', () => {
+  it('closes the auxiliary sidebar when Details is visible', async () => {
+    const h = open();
+    await h.resolve();
+    (h.panel as unknown as { visible: boolean }).visible = true;
+    await h.view.toggle();
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('workbench.action.closeAuxiliaryBar');
+  });
+
+  it('reveals Details when it is hidden', async () => {
+    const h = open();
+    const reveal = jest.spyOn(h.view, 'reveal').mockResolvedValue();
+    await h.view.toggle();
+    expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
   it('holds a target shown before ready, then sends it with the ready answer', async () => {
     const h = open();
     await h.resolve();

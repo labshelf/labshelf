@@ -19,6 +19,7 @@ import {
   type ReaderHostPorts,
   type ReaderPrefs,
   type ReaderSidecarStore,
+  type ReaderThemeStore,
   type RunCellPort,
   type SidecarChange,
 } from "@labshelf/core";
@@ -86,7 +87,8 @@ export function createSidecarChangeSender(events: LibraryEvents, paperId: string
       case "annotationCreated":
       case "annotationUpdated":
       case "annotationDeleted": events.annotationChanged.fire({ paperId }); break;
-      case "theme": break;
+      case "theme":
+      case "customThemes": break;
     }
   };
 }
@@ -142,6 +144,8 @@ export interface ReaderSource {
   store: ReaderSidecarStore;
   /** The paper's notes; absent in a build preview, which shows no notes. */
   notes?: PaperNotesStore;
+  /** The library's custom reader themes; absent in a build preview. */
+  themes?: ReaderThemeStore;
   pdfUri: vscode.Uri;
   /** The folder the webview may read the PDF from. */
   rootDir: vscode.Uri;
@@ -232,16 +236,27 @@ export class ReaderPanel {
     this.controller = new ReaderHostController({
       paper,
       store: source.store,
+      toggleDetails: async (paperId) => {
+        ReaderPanel._activated.fire(paperId);
+        await vscode.commands.executeCommand("labshelf.details.toggle");
+      },
       post: (msg) => this._post(msg),
       getPrefs: getReaderPrefs,
       autoTheme: readAutoReaderTheme,
       ...createVsCodeOutputPorts(paper),
       ...(deps.sendTo ? { sendToNote: createSendToNote(deps.sendTo) } : {}),
       ...(source.notes ? { notes: source.notes } : {}),
+      ...(source.themes ? { themes: source.themes } : {}),
       ...(deps.runCell ? { runCell: deps.runCell } : {}),
       ...(deps.installPython ? { installPython: deps.installPython } : {}),
       logger: deps.logger,
-      ...(source.sidecarChanged ? { sidecarChanged: source.sidecarChanged } : {}),
+      sidecarChanged: (change) => {
+        // A custom theme saved here reaches every other open reader; this one already has the list.
+        if (change.kind === "customThemes") {
+          for (const other of openPanels.values()) { if (other !== this) { other.controller.onCustomThemesChange(change.themes); } }
+        }
+        source.sidecarChanged?.(change);
+      },
       ...(source.preview ? { preview: source.preview } : {}),
     }, source.page !== undefined ? { page: source.page } : {});
     openPanels.set(source.key, this);
@@ -331,6 +346,8 @@ export interface PdfReaderDeps extends ReaderPanelDeps {
   logger: ILogger;
   /** The library's paper notes, which the reader's Notes tab and text boxes read and write. */
   notes?: PaperNotesStore;
+  /** The library's custom reader themes. */
+  themes?: ReaderThemeStore;
 }
 
 export interface OpenOptions {
@@ -349,6 +366,7 @@ export class PdfReaderPanel {
       paper,
       store: deps.store,
       ...(deps.notes ? { notes: deps.notes } : {}),
+      ...(deps.themes ? { themes: deps.themes } : {}),
       pdfUri: createPaperFiles(paperDirUri, vscode.Uri.joinPath).pdf,
       rootDir: paperDirUri,
       sidecarChanged: createSidecarChangeSender(deps.events, paper.id),

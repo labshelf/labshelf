@@ -2,7 +2,7 @@
 // comes from the first-run question, a move or a saved setting.
 import * as vscode from "vscode";
 
-import { LibraryStore, PaperService, PaperNotesStore, PaperSidecarStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
+import { LibraryStore, PaperService, PaperNotesStore, PaperSidecarStore, ReaderThemeStore, PdfImportParser, BibtexService, createLibraryLayout, scanLibrary, type MutationContext } from "@labshelf/core";
 import type { ILogger } from "@labshelf/core";
 import { PaperImporter, PaperTextLayers, VscodeFileSystem, ensureLibraryStructure, pdfFileExists, refreshLibrary, type LibraryEvents, type RefreshLibraryResult } from "../library/index.js";
 import { addTextLayerJobs } from "../command/index.js";
@@ -64,6 +64,7 @@ async function buildServices(
   const importer = new PaperImporter(mutations, store, reindex, parse, network);
   textLayers = new PaperTextLayers(mutations, paperService, textLayerBuilder);
   const paperDataStore = new PaperSidecarStore(adapters.createSidecarPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
+  const readerThemeStore = new ReaderThemeStore(adapters.createReaderThemesPort(createLibraryLayout(root.fsPath, adapters.paths.join)));
   const paperNotesStore = new PaperNotesStore(adapters.createPaperNotesPort(createLibraryLayout(root.fsPath, adapters.paths.join), logger), { logger });
 
   // Seeds the store from disk. Nothing has subscribed to events for this root yet — the AI service, the
@@ -72,7 +73,7 @@ async function buildServices(
   await reindex();
 
   return {
-    paperService, importer, textLayers, mutations, logger, library: store, paperDataStore, paperNotesStore, fileSystem,
+    paperService, importer, textLayers, mutations, logger, library: store, paperDataStore, paperNotesStore, readerThemeStore, fileSystem,
     reindexLibrary: reindex,
     aiDatabasePath: device.aiDatabasePath,
     citationCacheDir: device.openAlexCacheDir,

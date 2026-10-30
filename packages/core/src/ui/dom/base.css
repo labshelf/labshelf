@@ -1,4 +1,5 @@
 /* Styles the primitives (buttons, inputs, badges, overlays) for every LabShelf web surface. Requires tokens.css. */
+@import "./widgets/overlays.css";
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -125,76 +126,6 @@ kbd {
 .ls-empty-icon svg { width: 44px; height: 44px; }
 .ls-empty-text { font-size: 13px; }
 .ls-empty-hint { font-size: 11px; opacity: .6; margin-top: 2px; max-width: 360px; line-height: 1.5; }
-
-/* ── Overlay widgets: menu, quick pick, dialog, toast ─────────── */
-.ls-menu, .ls-quick, .ls-dialog {
-  position: fixed;
-  background: var(--ls-widget-bg); border: 1px solid var(--ls-border); border-radius: var(--ls-radius-lg);
-  box-shadow: var(--ls-widget-shadow); animation: ls-pop var(--ls-fast) ease-out;
-}
-.ls-menu { z-index: 1000; min-width: 160px; padding: 4px; }
-.ls-menu-item {
-  display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 10px 0 8px;
-  border: 0; border-radius: var(--ls-radius); background: none; text-align: left; font-size: 12px; cursor: pointer; white-space: nowrap;
-}
-.ls-menu-lead { width: 14px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.ls-menu-item svg { width: 14px; height: 14px; opacity: .85; flex-shrink: 0; }
-.ls-menu-label { overflow: hidden; text-overflow: ellipsis; }
-.ls-menu-item .hint { margin-left: auto; padding-left: 16px; color: var(--ls-desc); font-size: 11px; }
-.ls-menu-item:hover, .ls-menu-item:focus-visible { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); outline: none; }
-.ls-menu-item:hover .hint, .ls-menu-item:focus-visible .hint { color: inherit; opacity: .8; }
-.ls-menu-item:disabled { opacity: .45; cursor: default; }
-.ls-menu-item:disabled:hover { background: none; color: inherit; }
-.ls-menu-item.danger { color: var(--ls-error); }
-.ls-menu-sep { height: 1px; margin: 4px 6px; background: var(--ls-border); }
-
-.ls-scrim { position: fixed; inset: 0; z-index: 900; background: transparent; }
-.ls-scrim.dim { background: var(--ls-overlay); }
-
-/* Quick pick / input box — VS Code's quick input widget, centred at the top. */
-.ls-quick {
-  z-index: 1001; left: 50%; top: 12vh; transform: translateX(-50%);
-  width: min(600px, 92vw); padding: 6px; display: flex; flex-direction: column; gap: 6px;
-}
-.ls-quick-title { padding: 2px 6px 0; font-size: 11px; color: var(--ls-desc); }
-.ls-quick .ls-input { height: 26px; }
-.ls-quick-list { max-height: 44vh; overflow-y: auto; display: flex; flex-direction: column; }
-.ls-quick-item {
-  display: flex; align-items: center; gap: 8px; height: var(--ls-row-h); padding: 0 8px; border-radius: var(--ls-radius-sm);
-  cursor: pointer; font-size: 13px; white-space: nowrap;
-}
-.ls-quick-sep {
-  height: var(--ls-row-h); padding: 0 8px; display: flex; align-items: center; flex-shrink: 0;
-  border-top: 1px solid var(--ls-border); color: var(--ls-desc); font-size: 11px;
-}
-.ls-quick-sep:first-child { border-top: 0; }
-.ls-quick-item svg { width: 16px; height: 16px; opacity: .8; flex-shrink: 0; }
-.ls-quick-item .label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.ls-quick-item .desc { color: var(--ls-desc); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
-.ls-quick-item:hover { background: var(--ls-list-hover); }
-.ls-quick-item.active { background: var(--ls-list-active-bg); color: var(--ls-list-active-fg); }
-.ls-quick-item.active .desc, .ls-quick-item.active svg { color: inherit; opacity: .8; }
-.ls-quick-empty { padding: 8px; color: var(--ls-desc); font-size: 12px; }
-.ls-quick-msg { padding: 4px 8px 6px; font-size: 12px; color: var(--ls-desc); }
-.ls-quick-msg.error { color: var(--ls-error); }
-
-/* Dialog — VS Code custom modal. */
-.ls-dialog {
-  z-index: 1001; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  width: min(460px, 92vw); padding: 18px 20px 16px;
-}
-.ls-dialog-head { display: flex; align-items: flex-start; gap: 12px; }
-.ls-dialog-head svg { width: 22px; height: 22px; flex-shrink: 0; color: var(--ls-yellow); }
-.ls-dialog-head svg.danger { color: var(--ls-error); }
-.ls-dialog-title { font-size: 13px; font-weight: 600; line-height: 1.4; }
-.ls-dialog-msg { margin-top: 4px; font-size: 12px; color: var(--ls-desc); line-height: 1.5; overflow-wrap: anywhere; }
-.ls-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 16px; }
-
-@keyframes ls-pop { from { opacity: 0; transform: translateX(-50%) translateY(-4px); } to { opacity: 1; } }
-.ls-menu { animation-name: ls-pop-menu; }
-@keyframes ls-pop-menu { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
-.ls-dialog { animation-name: ls-pop-dialog; }
-@keyframes ls-pop-dialog { from { opacity: 0; transform: translate(-50%, -50%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

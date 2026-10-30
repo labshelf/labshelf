@@ -361,6 +361,18 @@ describe('readerPaperOpener.test', () => {
     });
 
     describe('host controller wiring', () => {
+      it('reveals LabShelf Details with the reader paper selected', async () => {
+        const selected = jest.fn();
+        const subscription = ReaderPanel.onDidActivatePaper(selected);
+        const { panel, paper } = open();
+        selected.mockClear();
+        panel.webview._fireMessage({ command: 'toggleDetails' });
+        await flush();
+        expect(selected).toHaveBeenCalledWith(paper.id);
+        expect(vscode.commands.executeCommand).toHaveBeenCalledWith('labshelf.details.toggle');
+        subscription.dispose();
+      });
+
       it('answers ready-for-init from the sidecar through the shared controller', async () => {
         const { panel, store, paper } = open();
         await store.setTheme(paper.id, 'sepia');

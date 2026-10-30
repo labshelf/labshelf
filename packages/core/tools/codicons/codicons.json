@@ -14,5 +14,7 @@
   "italic": "italic",
   "table": "table",
   "file-media": "file-media",
-  "symbol-operator": "symbol-operator"
+  "symbol-operator": "symbol-operator",
+  "note": "note",
+  "text-size": "text-size"
 }

@@ -4,7 +4,7 @@ import { MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, type SidebarState, type SidebarTa
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import { renderIcon, type IconName } from "../../ui/index.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
-import type { Annotation, PaperRecord } from "../../model/index.js";
+import type { Annotation } from "../../model/index.js";
 import { QMD_VOCABULARY } from "../../qmd/dom/index.js";
 import { compareAnnotations } from "../sidecar/index.js";
 import type { HostBridge } from "./readerSession.js";
@@ -240,37 +240,4 @@ export async function resolveOutlinePages(
     }
   }
   return pages;
-}
-
-export class DetailsPanel {
-  private readonly el = renderElement("aside", { class: "rd-details", "aria-label": "Paper details", hidden: true });
-  private readonly body = renderElement("div", { class: "rd-details-body" });
-  onChange: ((open: boolean) => void) | null = null;
-
-  constructor(title: string, pages: number) {
-    const close = renderReaderIconButton(renderIcon("x"), "Close details");
-    close.addEventListener("click", () => this.toggle());
-    this.el.append(renderElement("div", { class: "rd-panel-header" }, renderElement("span", {}, "Details"), close), this.body);
-    findElement("pdf-shell").after(this.el);
-    this.body.append(renderElement("h2", {}, title), renderElement("p", {}, `${pages} pages`));
-  }
-
-  show(paper: PaperRecord): void {
-    const fields: Array<[string, string | undefined]> = [
-      ["Authors", paper.authors?.join(", ")], ["Year", paper.year?.toString()],
-      ["Journal", paper.journal], ["Publisher", paper.publisher], ["DOI", paper.doi],
-      ["Citation key", paper.citeKey], ["Tags", paper.tags?.join(", ")],
-    ];
-    const list = renderElement("dl", {});
-    for (const [label, value] of fields) {
-      if (value) { list.append(renderElement("dt", {}, label), renderElement("dd", {}, value)); }
-    }
-    this.body.replaceChildren(renderElement("h2", {}, paper.title), list);
-    if (paper.summary) { this.body.append(renderElement("h3", {}, "Abstract"), renderElement("p", {}, paper.summary)); }
-  }
-
-  toggle(): void {
-    this.el.hidden = !this.el.hidden;
-    this.onChange?.(!this.el.hidden);
-  }
 }
