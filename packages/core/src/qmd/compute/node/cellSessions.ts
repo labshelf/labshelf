@@ -15,7 +15,8 @@ const STDERR_TAIL_LINES = 20;
 /** How long a session waits for its pipes to close after the process exits before it settles. */
 const CLOSE_WAIT_MS = 200;
 
-export interface DriverLaunch { command: string; args: string[]; env?: Record<string, string> }
+/** `ready`: the driver writes one sentinel line `{"ready": true}` after its startup; output before it goes to the logger, not to a cell. */
+export interface DriverLaunch { command: string; args: string[]; env?: Record<string, string>; ready?: boolean }
 
 export interface CellSessionsOptions { launch(language: CellLanguage): Promise<DriverLaunch | undefined>; idleMs?: number; now?: () => number; logger?: ILogger }
 
@@ -44,6 +45,15 @@ function parseResponse(line: string): DriverResponse | undefined {
     return typeof id === "number" ? parsed as DriverResponse : undefined;
   } catch {
     return undefined;
+  }
+}
+
+function isReadyLine(line: string): boolean {
+  try {
+    const parsed: unknown = JSON.parse(line.slice(SENTINEL.length));
+    return typeof parsed === "object" && parsed !== null && (parsed as { ready?: unknown }).ready === true;
+  } catch {
+    return false;
   }
 }
 
@@ -141,8 +151,18 @@ export function createCellSessions(options: CellSessionsOptions): ICellRunner {
       },
     };
 
+    // Without the handshake every line belongs to the running cell from the start.
+    let ready = !launch.ready;
+    const logStartup = (stream: string, line: string): void => { note("Cell driver output before it was ready", { key, stream, line }); };
+
     const onStdout = lineReader((line) => {
       const pending = session.pending;
+      if (!ready) {
+        // Lines of the other stream written just before the ready line may still be in flight; give them one turn.
+        if (line.startsWith(SENTINEL) && isReadyLine(line)) { setImmediate(() => { ready = true; }); return; }
+        // A response means the driver is up, so only plain lines are startup noise.
+        if (!line.startsWith(SENTINEL)) { logStartup("stdout", line); return; }
+      }
       if (line.startsWith(SENTINEL)) {
         const response = parseResponse(line);
         if (response && pending && response.id === pending.id) {
@@ -157,6 +177,7 @@ export function createCellSessions(options: CellSessionsOptions): ICellRunner {
     const onStderr = lineReader((line) => {
       stderrTail.push(line);
       if (stderrTail.length > STDERR_TAIL_LINES) { stderrTail.shift(); }
+      if (!ready) { logStartup("stderr", line); return; }
       session.pending?.output.push(line);
     });
     child.stdout?.on("data", onStdout.push);
