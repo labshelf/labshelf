@@ -61,6 +61,17 @@ describe("projectStore", () => {
   });
 });
 
+/** An active-source stub mirroring the native text editor: its file, no updates. */
+function nativeActiveSource(onDidChange: vscode.Event<unknown>) {
+  return {
+    current: () => {
+      const editor = vscode.window.activeTextEditor;
+      return editor ? { uri: editor.document.uri } : undefined;
+    },
+    onDidChange,
+  };
+}
+
 describe("projectSession", () => {
   const executeCommand = vscode.commands.executeCommand as jest.Mock;
   const window = vscode.window as unknown as Record<string, jest.Mock>;
@@ -85,9 +96,11 @@ describe("projectSession", () => {
     const changed = new vscode.EventEmitter<void>();
     const projects = { ...fakeProjects(entries), onDidChange: changed.event };
     const previews = { show: jest.fn(), close: jest.fn() };
-    const session = new ProjectSession({ workspaceState: state, projects, previews, host: fakeHost() });
+    const activeChanged = new vscode.EventEmitter<unknown>();
+    const activeSource = nativeActiveSource(activeChanged.event);
+    const session = new ProjectSession({ workspaceState: state, projects, previews, host: fakeHost(), activeSource: activeSource as never });
     sessions.push(session);
-    return { session, projects, previews, state, changed };
+    return { session, projects, previews, state, changed, activeChanged };
   }
 
   function tab(fsPath: string): { input: unknown } {
@@ -229,13 +242,16 @@ describe("projectSession", () => {
   describe("inProject key", () => {
     it("follows whether the active editor belongs to the open project", async () => {
       const nested = readyEntry("/code/a/sub");
-      const { session } = setup([a, b, nested]);
+      const { session, activeChanged } = setup([a, b, nested]);
       await session.open(a);
       openInEditor("/code/a/ch/intro.tex");
+      activeChanged.fire(undefined);
       expect(contextKey("labshelf.writing.inProject")).toBe(true);
       openInEditor("/code/b/main.tex");
+      activeChanged.fire(undefined);
       expect(contextKey("labshelf.writing.inProject")).toBe(false);
       openInEditor("/code/a/sub/main.tex");
+      activeChanged.fire(undefined);
       expect(contextKey("labshelf.writing.inProject")).toBe(false);
     });
   });
@@ -272,7 +288,8 @@ describe("registerProjectSession", () => {
     const context = { subscriptions: [] as vscode.Disposable[], workspaceState: { get: () => undefined, update: jest.fn(async () => {}) } };
     const projects = { ...fakeProjects([entry]), onDidChange: new vscode.EventEmitter<void>().event };
     const previews = { show: jest.fn(), close: jest.fn() };
-    const session = registerProjectSession({ context: context as never, host: fakeHost(), projects, previews });
+    const activeSource = nativeActiveSource(new vscode.EventEmitter<unknown>().event);
+    const session = registerProjectSession({ context: context as never, host: fakeHost(), projects, previews, activeSource: activeSource as never });
     return { context, session, previews };
   }
 

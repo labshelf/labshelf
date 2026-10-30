@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { createDebouncer, createProjectFileRow, formatError, listVisibleEntries, type ILogger, type LibraryFileSystem, type ProjectNotesStore, type ReadingStatus } from "@labshelf/core";
 import type { ArcIcon } from "../../ui/index.js";
+import type { ActiveSource } from "../activeSource.js";
 import type { BuildOutcomes } from "../build/index.js";
 import type { ProjectReadingLists } from "./readingList.js";
 import type { ReadyProject } from "./commands.js";
@@ -225,6 +226,8 @@ interface ProjectViewsDeps {
   setStatus: (paperIds: string[], status: ReadingStatus) => Promise<string[]>;
   /** The window's one notes store, shared with Send to. */
   notes: ProjectNotesStore;
+  /** The file in the LabShelf or native editor, which the outline follows. */
+  activeSource: Pick<ActiveSource, "current" | "onDidChange">;
 }
 
 /** What the library sidebar view renders in its Projects section. */
@@ -272,7 +275,7 @@ export function registerProjectViews(deps: ProjectViewsDeps): ProjectViewsResult
     figuresView,
     watchProjectFiles(session, () => files.refresh()),
     figuresTree,
-    outline.follow(),
+    outline.follow(deps.activeSource),
     vscode.commands.registerCommand(REVEAL_OUTLINE_COMMAND, showOutline),
     registerTypstOutline(),
   );

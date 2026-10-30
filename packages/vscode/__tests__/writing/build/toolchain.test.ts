@@ -45,12 +45,23 @@ describe("askToolchain", () => {
   });
 });
 
+/** An active-source stub mirroring the native text editor: its file, updated where the editor event fires. */
+function nativeActiveSource() {
+  return {
+    current: () => {
+      const editor = vscode.window.activeTextEditor;
+      return editor ? { uri: editor.document.uri } : undefined;
+    },
+    onDidChange: vscode.window.onDidChangeActiveTextEditor as vscode.Event<unknown>,
+  };
+}
+
 // Tests the compiler status bar item: the engine of the active LaTeX project, hidden for Typst and outside projects.
 describe("compilerStatusBar", () => {
   function setup(entries: ProjectEntry[]) {
     const changes = new vscode.EventEmitter<void>();
     let current = entries;
-    registerCompilerStatusBar({ subscriptions: [] } as never, { list: () => current, paths: path, onDidChange: changes.event });
+    registerCompilerStatusBar({ subscriptions: [] } as never, { list: () => current, paths: path, onDidChange: changes.event }, nativeActiveSource() as never);
     const item = (vscode.window.createStatusBarItem as jest.Mock).mock.results[0]!.value;
     return { item, setProjects: (next: ProjectEntry[]) => { current = next; changes.fire(); } };
   }
@@ -115,7 +126,7 @@ describe("pickCompiler", () => {
   function setup(settings: { format: "latex" | "typst"; engine?: "pdflatex" | "lualatex" }) {
     const projects = fakeProjects([readyEntry("/code/repo", { settings: { id: "repo", ...settings } })]);
     const host = fakeHost();
-    registerPickCompiler({ context: { subscriptions: [] } as never, host, projects });
+    registerPickCompiler({ context: { subscriptions: [] } as never, host, projects, activeSource: nativeActiveSource() as never });
     return { projects, update: projects.data.updateProjectSettings, run: commandHandler("labshelf.writing.pickCompiler") };
   }
 

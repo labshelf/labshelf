@@ -5,6 +5,17 @@ import { citationWorkspace, PAPERS, highlight } from "../../support/citationFixt
 import { fakeDocument, withCursor } from "../../support/textDocument";
 import { commandHandler } from "../../support/writingFixtures";
 
+/** An active-source stub mirroring the native text editor: its file, no updates. */
+function nativeActiveSource() {
+  return {
+    current: () => {
+      const editor = vscode.window.activeTextEditor;
+      return editor ? { uri: editor.document.uri } : undefined;
+    },
+    onDidChange: new vscode.EventEmitter<unknown>().event,
+  };
+}
+
 describe("citationCompletion", () => {
   async function complete(format: "latex" | "typst", marked: string, file = format === "latex" ? "/code/repo/a.tex" : "/code/repo/a.typ") {
     const { text, position } = withCursor(marked);
@@ -225,7 +236,7 @@ describe("citationFromLibrary", () => {
     });
     const file = format === "latex" ? "/code/repo/a.tex" : "/code/repo/a.typ";
     window.activeTextEditor = { document: { uri: { fsPath: file } }, selections, edit };
-    registerCitationFromLibrary({ subscriptions: [] } as never, workspace);
+    registerCitationFromLibrary({ subscriptions: [] } as never, workspace, nativeActiveSource() as never);
     return { edits, edit, workspace };
   }
 
@@ -332,7 +343,7 @@ describe("bibliographySync", () => {
     workspace.projects = { ...workspace.projects, reload: jest.fn(async () => {}) };
     update = workspace.projects.data.updateProjectBibliography as jest.Mock;
     update.mockResolvedValue(result("not-needed"));
-    registerCitationProviders({ subscriptions: [] } as never, workspace);
+    registerCitationProviders({ subscriptions: [] } as never, workspace, nativeActiveSource() as never);
     return workspace as typeof workspace & { projects: { reload: jest.Mock } };
   }
   const accept = (file = "/code/repo/a.tex") => commandHandler("labshelf.citations.updateBibliography")(vscode.Uri.file(file));

@@ -44,7 +44,11 @@ describe("editor actions", () => {
     (vscode.window as { activeTextEditor: unknown }).activeTextEditor = editor;
     const log = jest.fn(async () => undefined);
     const context = { subscriptions: [] as unknown[] } as unknown as vscode.ExtensionContext;
-    registerEditorActions({ context, host: { current: () => ({ logger: { log } }), require: jest.fn() } as never });
+    const activeSource = {
+      current: () => (vscode.window.activeTextEditor ? { uri: vscode.window.activeTextEditor.document.uri } : undefined),
+      onDidChange: new vscode.EventEmitter<unknown>().event,
+    };
+    registerEditorActions({ context, host: { current: () => ({ logger: { log } }), require: jest.fn() } as never, activeSource: activeSource as never });
     const run = (id: string): Promise<void> => {
       const call = (vscode.commands.registerCommand as jest.Mock).mock.calls.filter(([name]) => name === id).pop()!;
       return call[1]();
