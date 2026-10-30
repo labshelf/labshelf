@@ -21,7 +21,7 @@ const prompt = args[1];
 const match = /^\\/orchestrate (\\S+)\\/plan\\.(md|yaml) session (\\S+)$/.exec(prompt ?? "");
 if (!match) { console.log(JSON.stringify({ type: "result", is_error: false, result: "OK" })); process.exit(0); }
 const [, dir, format, id] = match;
-fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ args, prompt, runId: process.env.LABSHELF_PLAN_RUN_ID, plan: process.env.LABSHELF_PLAN, session: process.env.LABSHELF_PLAN_SESSION }) + "\\n");
+fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ args, prompt, runId: process.env.LABSHELF_PLAN_RUN_ID, plan: process.env.LABSHELF_PLAN, session: process.env.LABSHELF_PLAN_SESSION, noBackground: process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, bashTimeout: process.env.BASH_DEFAULT_TIMEOUT_MS }) + "\\n");
 console.log(JSON.stringify({ type: "system", subtype: "init", session_id: "sid-" + id, model: "fake-model" }));
 const file = dir + "/sessions/" + id + "." + format;
 if ((process.env.FAKE_BLOCK ?? "").split(",").includes(id)) {
@@ -71,10 +71,12 @@ const mdPlan = (names, status = "approved") => {
   commitAll();
 };
 
+// The two variables the runner defaults are dropped from the parent environment unless a test sets them.
+const { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: _noBackground, BASH_DEFAULT_TIMEOUT_MS: _bashTimeout, ...parentEnv } = process.env;
 const run = (args, env = {}) =>
   spawnSync("node", [runner, PLAN, ...args], {
     encoding: "utf8",
-    env: { ...process.env, LABSHELF_PLAN_ROOT: repo, LABSHELF_TELEMETRY_SPOOL: spool, PATH: `${join(tmp, "bin")}:${process.env.PATH}`, FAKE_LOG: join(tmp, "fake.log"), ...env },
+    env: { ...parentEnv, LABSHELF_PLAN_ROOT: repo, LABSHELF_TELEMETRY_SPOOL: spool, PATH: `${join(tmp, "bin")}:${process.env.PATH}`, FAKE_LOG: join(tmp, "fake.log"), ...env },
   });
 
 const fakeCalls = () => (existsSync(join(tmp, "fake.log")) ? readFileSync(join(tmp, "fake.log"), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : []);
@@ -124,6 +126,18 @@ describe("runPlan --dry-run", () => {
 });
 
 describe("runPlan on a YAML plan", () => {
+  it("runs the session with background tasks off and a 10 min Bash timeout", () => {
+    yamlPlan([["1", "pending"]]);
+    assert.equal(run([]).status, 0);
+    assert.deepEqual(fakeCalls().map((c) => [c.noBackground, c.bashTimeout]), [["1", "600000"]]);
+  });
+
+  it("keeps the background and Bash timeout values the parent environment already sets", () => {
+    yamlPlan([["1", "pending"]]);
+    assert.equal(run([], { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "0", BASH_DEFAULT_TIMEOUT_MS: "120000" }).status, 0);
+    assert.deepEqual(fakeCalls().map((c) => [c.noBackground, c.bashTimeout]), [["0", "120000"]]);
+  });
+
   it("runs the sessions in order, goes on past a blocked one, and reports to telemetry", () => {
     yamlPlan([
       ["1", "pending"],
@@ -181,7 +195,7 @@ describe("runPlan on a YAML plan", () => {
   });
 });
 
-// A fake whose first run of each session hits the context stop: it records the stop where the hook would, commits a
+// A fake whose first run of each session crosses the context warning: it records the stop where the hook would, commits a
 // partial change when FAKE_PROGRESS is set, and leaves the session pending; later runs finish the session.
 const STOPPING_CLAUDE = `#!/usr/bin/env node
 const { execFileSync } = require("node:child_process");
@@ -192,9 +206,9 @@ const [, dir, id] = match;
 const count = process.env.FAKE_LOG + "." + id;
 const runs = fs.existsSync(count) ? Number(fs.readFileSync(count, "utf8")) + 1 : 1;
 fs.writeFileSync(count, String(runs));
-fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ session: id, stopFile: process.env.LABSHELF_BUDGET_STOP_FILE, system: process.argv[process.argv.indexOf("--append-system-prompt") + 1] }) + "\\n");
+fs.appendFileSync(process.env.FAKE_LOG, JSON.stringify({ session: id, warnFile: process.env.LABSHELF_BUDGET_WARN_FILE, system: process.argv[process.argv.indexOf("--append-system-prompt") + 1] }) + "\\n");
 if (runs === 1) {
-  fs.writeFileSync(process.env.LABSHELF_BUDGET_STOP_FILE, "{}");
+  fs.writeFileSync(process.env.LABSHELF_BUDGET_WARN_FILE, "{}");
   if (process.env.FAKE_PROGRESS) {
     fs.writeFileSync("partial-" + id + ".txt", "x");
     execFileSync("git", ["add", "-A"]);
@@ -208,28 +222,28 @@ if (runs === 1) {
 console.log(JSON.stringify({ type: "result", is_error: false, total_cost_usd: 0.5, result: "stopped" }));
 `;
 
-describe("runPlan after a context stop", () => {
-  it("runs the session again in a fresh process when the stopped run made progress", () => {
+describe("runPlan after a context warning", () => {
+  it("runs the session again in a fresh process when the warned run made progress", () => {
     yamlPlan([["1", "pending"]]);
     writeFileSync(join(tmp, "bin", "claude"), STOPPING_CLAUDE);
     const out = run([], { FAKE_PROGRESS: "1" });
     assert.equal(out.status, 0, out.stdout + out.stderr);
     const calls = fakeCalls();
     assert.deepEqual(calls.map((c) => c.session), ["1", "1"]);
-    assert.ok(calls[0].stopFile && calls[0].stopFile !== calls[1].stopFile);
+    assert.ok(calls[0].warnFile && calls[0].warnFile !== calls[1].warnFile);
     assert.doesNotMatch(calls[0].system, /Resume/);
     assert.match(calls[1].system, /"Resume" section/);
     assert.match(calls[1].system, /plan\.mjs finished 1 --check`: on "finished on this tree" run `plan close 1`/);
-    assert.match(out.stdout, /session 1 stopped at the context limit after progress; running it again in a fresh process \(1\/5\)/);
+    assert.match(out.stdout, /session 1 crossed the context warning and ended pending after progress; running it again in a fresh process \(1\/5\)/);
     assert.deepEqual(events().filter((e) => e.kind === "session_closed").map((e) => [e.session, e.status, e.cost_usd]), [["1", "done", 1]]);
   });
 
-  it("stops the runner when the stopped run made no progress", () => {
+  it("stops the runner when the warned run made no progress", () => {
     yamlPlan([["1", "pending"]]);
     writeFileSync(join(tmp, "bin", "claude"), STOPPING_CLAUDE);
     const out = run([]);
     assert.equal(out.status, 1);
-    assert.match(out.stderr, /session 1 hit the context limit without progress/);
+    assert.match(out.stderr, /session 1 crossed the context warning without progress/);
     assert.equal(fakeCalls().length, 1);
   });
 });

@@ -1,41 +1,35 @@
 #!/usr/bin/env node
-// Warns the running agent once when its context passes the token budget (PostToolUse hook).
-// In an unattended plan session (runPlan.mjs sets LABSHELF_PLAN and LABSHELF_PLAN_SESSION) the main thread is instead
-// checked before each tool call (PreToolUse hook), in three stages:
-// - past LABSHELF_MAIN_CONTEXT_WARN (or the older LABSHELF_MAIN_CONTEXT_STOP; default 100k) a warning, on crossing and
-//   every 20k after, to weigh what is left and either finish here or hand off;
-// - past LABSHELF_MAIN_CONTEXT_HARD (default 150k) calls that start new work are denied (an implementer, tester or
-//   diagnoser agent, `plan.mjs start|prompt`); report routing, the finisher, `plan close` and plan edits still pass;
-// - past LABSHELF_MAIN_CONTEXT_KILL (default 190k) any tool call ends the session, as a last resort.
-// The first warning writes the file LABSHELF_BUDGET_STOP_FILE names, so a session that hands off and ends pending is
-// run again in a fresh process when it made progress (runPlan.mjs); a session that finishes leaves the marker unused.
+// Warns the running agent when its context grows large (PostToolUse hook). A context size is only ever a warning,
+// never a stop: models degrade past ~100k tokens, so the warnings push the agent to wrap up, but it must always be
+// able to finish what is in flight and return its report.
+// - A subagent of any type is warned past 80k tokens, on crossing and every 20k after: no new broad reads, finish the
+//   work in flight, then return the report with what is left undone.
+// - In an unattended plan session (runPlan.mjs sets LABSHELF_PLAN and LABSHELF_PLAN_SESSION) the main thread is instead
+//   checked before each tool call (PreToolUse hook): past LABSHELF_MAIN_CONTEXT_WARN (or the older
+//   LABSHELF_MAIN_CONTEXT_STOP; default 100k) it is warned on crossing and every 20k after, to weigh what is left and
+//   either finish here or hand off. Nothing is denied and the session is never ended, however large the context.
+// The first main-thread warning writes the file LABSHELF_BUDGET_WARN_FILE names (`.budget-warn.json` in the run folder),
+// so a session that hands off and ends pending is run again in a fresh process when it made progress (runPlan.mjs); a
+// session that finishes leaves the marker unused.
 import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { emit } from '../../scripts/agents/telemetry.mjs';
 
-// Token budget by agent type; the main thread has no agent_id, any other subagent type gets the default.
-const BUDGETS = { main: 150_000, explorer: 100_000 };
-const DEFAULT_SUBAGENT_BUDGET = 60_000;
-const REWARN_STEP = 40_000;
+// Warning threshold of the attended main thread (it has no agent_id); every subagent type shares one threshold.
+const MAIN_BUDGET = 100_000;
+const MAIN_STEP = 20_000;
+const SUBAGENT_WARN = 80_000;
+const SUBAGENT_STEP = 20_000;
 const TAIL_BYTES = 256 * 1024;
-const MAIN_WARN = 100_000;
-const MAIN_HARD = 150_000;
-const MAIN_KILL = 190_000;
-const MAIN_REWARN_STEP = 20_000;
-// Agents that start a new package (tests, code, a diagnosis) rather than finish one in flight.
-const NEW_WORK_AGENTS = new Set(['implementer', 'tester', 'diagnoser']);
-const NEW_WORK_COMMAND = /scripts\/plans\/plan\.mjs\s+(start|prompt)\b/;
+const UNATTENDED_WARN = 100_000;
+const UNATTENDED_STEP = 20_000;
 
 const MESSAGES = {
-  subagent: (k, budget) => `Context ≈${k}k tokens, over the ${budget / 1000}k budget: finish the current edit, run no new broad reads, and return your report now with what is left undone.`,
+  subagent: (k, budget) => `Context ≈${k}k tokens, over the ${budget / 1000}k warning: your context is large. Do not start new broad reads. Finish the work in flight (including the deterministic scripts, edits and test runs needed to finish it), then return your report with what is left undone.`,
   main: (k, budget) => `Context ≈${k}k tokens, over the ${budget / 1000}k budget: avoid new broad reads and delegate what is left of the session; write a new session file only if it cannot finish here.`,
-  warn: (k, limit, hard) =>
-    `Context ≈${k}k tokens, over the ${limit / 1000}k warning of an unattended session; from ${hard / 1000}k new packages are denied. Weigh what is left: finish here if it is little, else hand off (record the packages not yet started as pending in the session file, finish what is in flight, end the turn; the runner reopens the session).`,
-  deny: (k, limit) =>
-    `Context ≈${k}k tokens, over the ${limit / 1000}k limit of an unattended session: start no new package. Record the packages not yet started as pending in the session file, finish what is in flight (route open reports, \`finish session\` if every started package is done, \`plan close\`), then end the turn. The runner reopens the session for the rest.`,
-  kill: (k, limit) =>
-    `Context ≈${k}k tokens, over the ${limit / 1000}k last-resort ceiling of an unattended session: the session is ended here. The runner reopens it in a fresh process.`,
+  warn: (k, limit) =>
+    `Context ≈${k}k tokens, over the ${limit / 1000}k warning of an unattended session; quality degrades as it grows. Weigh what is left: if much is left, hand off (record the packages not yet started as pending in the session file, finish what is in flight, end the turn; the runner reopens the session); if little is left, finish here.`,
 };
 
 // Context tokens an agent carries into a turn: everything the API read or cached for it.
@@ -81,34 +75,27 @@ function readWarnedAt(file) {
   }
 }
 
-const budgetFor = (agentType) => BUDGETS[agentType] ?? DEFAULT_SUBAGENT_BUDGET;
+const thresholdFor = (role) => (role === 'main' ? { budget: MAIN_BUDGET, step: MAIN_STEP } : { budget: SUBAGENT_WARN, step: SUBAGENT_STEP });
 
 // Returns the warning to show, or undefined; keeps the context of the last warning in a state file.
-function decide(role, budget, context, stateFile) {
+function decide(role, { budget, step }, context, stateFile) {
   const warnedAt = readWarnedAt(stateFile);
   if (context <= budget) {
     // Compaction or a fresh start brought the context back under budget, so the next crossing warns again.
     if (warnedAt !== undefined) rmSync(stateFile, { force: true });
     return undefined;
   }
-  if (warnedAt !== undefined && context < warnedAt + REWARN_STEP) return undefined;
+  if (warnedAt !== undefined && context < warnedAt + step) return undefined;
   mkdirSync(dirname(stateFile), { recursive: true });
   writeFileSync(stateFile, JSON.stringify({ warnedAt: context }));
   return MESSAGES[role](Math.round(context / 1000), budget);
 }
 
 const unattended = () => Boolean(process.env.LABSHELF_PLAN && process.env.LABSHELF_PLAN_SESSION);
-const limit = (name, fallback) => Number(process.env[name]) || fallback;
-const warnLimit = () => Number(process.env.LABSHELF_MAIN_CONTEXT_WARN) || limit('LABSHELF_MAIN_CONTEXT_STOP', MAIN_WARN);
-
-function startsNewWork({ tool_name: tool, tool_input: args = {} }) {
-  if (tool === 'Agent' || tool === 'Task') return NEW_WORK_AGENTS.has(args.subagent_type);
-  if (tool === 'Bash') return NEW_WORK_COMMAND.test(String(args.command ?? ''));
-  return false;
-}
+const warnLimit = () => Number(process.env.LABSHELF_MAIN_CONTEXT_WARN) || Number(process.env.LABSHELF_MAIN_CONTEXT_STOP) || UNATTENDED_WARN;
 
 function writeMarker(input, context, limit) {
-  const marker = process.env.LABSHELF_BUDGET_STOP_FILE;
+  const marker = process.env.LABSHELF_BUDGET_WARN_FILE;
   if (!marker || existsSync(marker)) return;
   mkdirSync(dirname(marker), { recursive: true });
   writeFileSync(marker, JSON.stringify({ session_id: input.session_id, context_tokens: context, limit }));
@@ -122,45 +109,29 @@ function readState(file) {
   }
 }
 
-// PreToolUse output for an unattended main thread, or undefined: a warning past the warn limit (on crossing, then every
-// MAIN_REWARN_STEP), a deny for a call that starts new work past the hard limit, the end of the session past the kill one.
+// PreToolUse output for an unattended main thread, or undefined: a warning past the warn limit, on crossing and then
+// every UNATTENDED_STEP. It never denies a call or ends the session.
 function boundaryDecision(input, context, stateFile) {
   const warn = warnLimit();
-  const hard = limit('LABSHELF_MAIN_CONTEXT_HARD', MAIN_HARD);
-  const kill = limit('LABSHELF_MAIN_CONTEXT_KILL', MAIN_KILL);
-  const k = Math.round(context / 1000);
   if (context <= warn) {
     // Compaction or a fresh start brought the context back under the limit, so the next crossing warns again.
     rmSync(stateFile, { force: true });
     return undefined;
   }
-  const stopEvent = (budget) => emit('budget_stop', { agent_type: 'main', session_id: input.session_id, context_tokens: context, budget });
   writeMarker(input, context, warn);
-  if (context > kill) {
-    stopEvent(kill);
-    return { continue: false, stopReason: MESSAGES.kill(k, kill) };
-  }
-  const state = readState(stateFile);
-  const save = (next) => {
-    mkdirSync(dirname(stateFile), { recursive: true });
-    writeFileSync(stateFile, JSON.stringify({ ...state, ...next }));
-  };
-  if (context > hard && startsNewWork(input)) {
-    if (!state.denied) stopEvent(hard);
-    save({ denied: true });
-    return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: MESSAGES.deny(k, hard) } };
-  }
-  if (state.warnedAt !== undefined && context < state.warnedAt + MAIN_REWARN_STEP) return undefined;
-  if (state.warnedAt === undefined) emit('budget_warning', { agent_type: 'main', session_id: input.session_id, context_tokens: context, budget: warn });
-  save({ warnedAt: context });
-  return { hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: MESSAGES.warn(k, warn, hard) } };
+  const { warnedAt } = readState(stateFile);
+  if (warnedAt !== undefined && context < warnedAt + UNATTENDED_STEP) return undefined;
+  if (warnedAt === undefined) emit('budget_warning', { agent_type: 'main', session_id: input.session_id, context_tokens: context, budget: warn });
+  mkdirSync(dirname(stateFile), { recursive: true });
+  writeFileSync(stateFile, JSON.stringify({ warnedAt: context }));
+  return { hookSpecificOutput: { hookEventName: 'PreToolUse', additionalContext: MESSAGES.warn(Math.round(context / 1000), warn) } };
 }
 
 try {
   const input = JSON.parse(readFileSync(0, 'utf8'));
   const role = input.agent_id ? 'subagent' : 'main';
   const agentType = input.agent_id ? input.agent_type : 'main';
-  const budget = budgetFor(agentType);
+  const threshold = thresholdFor(role);
   const stateDir = process.env.LABSHELF_BUDGET_STATE_DIR ?? join(tmpdir(), 'labshelf-context-budget');
   // A session whose id is a file in <stateDir>/off gets no warnings, its subagents included (benchmark and test sessions).
   const off = existsSync(join(stateDir, 'off', input.session_id));
@@ -168,13 +139,13 @@ try {
   const pre = input.hook_event_name === 'PreToolUse';
   if (role === 'main' && unattended()) {
     // The unattended main thread is checked before each call (PreToolUse) and gets no budget warning after it.
-    const output = context !== undefined && pre && boundaryDecision(input, context, join(stateDir, `${input.session_id}-main-stop.json`));
+    const output = context !== undefined && pre && boundaryDecision(input, context, join(stateDir, `${input.session_id}-main-warn.json`));
     if (output) process.stdout.write(JSON.stringify(output));
   } else if (context !== undefined && !pre) {
     const stateFile = join(stateDir, `${input.session_id}-${input.agent_id ?? 'main'}.json`);
-    const additionalContext = decide(role, budget, context, stateFile);
+    const additionalContext = decide(role, threshold, context, stateFile);
     if (additionalContext) {
-      emit('budget_warning', { agent_type: agentType ?? null, session_id: input.session_id, context_tokens: context, budget });
+      emit('budget_warning', { agent_type: agentType ?? null, session_id: input.session_id, context_tokens: context, budget: threshold.budget });
       process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext } }));
     }
   }

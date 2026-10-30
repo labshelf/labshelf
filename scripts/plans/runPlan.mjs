@@ -12,8 +12,8 @@
 // a one-line probe prompt on the same model; while the probe fails it stands by (until the reset time the message
 // names, else re-probing every 20 minutes), then runs the same session again, telling it that the uncommitted changes
 // are its own partial work. A session silent for 60 minutes counts as stalled and is killed.
-// A session left pending after the context-budget hook marked it (its main thread passed the unattended warning) runs again in a fresh process
-// when that run made progress (a commit or a package report turned done), and stops the runner when it made none. --no-wait stops instead. --resume does the same
+// A session left pending after the context-budget hook marked it (its main thread crossed the unattended context warning)
+// runs again in a fresh process when that run made progress (a commit or a package report turned done), and stops the runner when it made none. --no-wait stops instead. --resume does the same
 // by hand: it runs the first pending session on top of the uncommitted changes a stopped run left behind.
 // Logs: .git/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
 import { execFileSync, spawn, spawnSync } from "node:child_process";
@@ -81,7 +81,7 @@ const MARGIN_MS = 3 * 60 * 1000;
 const STALL_MS = 60 * 60 * 1000;
 const MAX_RESUMES = 10; // limit interruptions of one session before the runner gives up
 const MAX_CONTINUES = 3; // runs of one session that end without a commit before the runner gives up
-const MAX_BUDGET_RESTARTS = 5; // context stops of one session before the runner gives up
+const MAX_BUDGET_RESTARTS = 5; // context-warning restarts of one session before the runner gives up
 
 // Returns when to retry if the text says the usage limit was hit, else null.
 function limitRetryAt(text, now = new Date()) {
@@ -140,7 +140,7 @@ function refreshFacts() {
   if (run.status !== 0) console.log(`[plan] warning: facts build failed (exit ${run.status}); continuing`);
 }
 
-function runSession(options, slug, entry, logPath, resume, milestone, stopFile) {
+function runSession(options, slug, entry, logPath, resume, milestone, warnFile) {
   const session = entry.id;
   const prompt = entry.format === "yaml"
     ? `/orchestrate ${options.planDir}/plan.yaml session ${session}`
@@ -153,7 +153,14 @@ function runSession(options, slug, entry, logPath, resume, milestone, stopFile) 
   console.log(`[plan] ${slug} session ${session}: claude ${args.slice(0, 6).join(" ")} …`);
   console.log(`[plan] transcript: ${logPath}`);
   return new Promise((resolvePromise) => {
-    const env = { ...process.env, LABSHELF_PLAN: slug, LABSHELF_PLAN_SESSION: session, LABSHELF_BUDGET_STOP_FILE: stopFile };
+    // In `claude -p` ending the turn ends the process, so the session must never wait on a background task: with
+    // background tasks disabled subagents and Bash run in the foreground and the main thread never polls. Without
+    // auto-backgrounding a long command (the core suite and pnpm gate take ~7 min) would hit the 2 min Bash default,
+    // so its timeout is raised. Values already set in the parent environment win.
+    const env = {
+      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1", BASH_DEFAULT_TIMEOUT_MS: "600000",
+      ...process.env, LABSHELF_PLAN: slug, LABSHELF_PLAN_SESSION: session, LABSHELF_BUDGET_WARN_FILE: warnFile,
+    };
     const child = spawn("claude", args, { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
     const log = createWriteStream(logPath);
     let result = null;
@@ -266,10 +273,10 @@ async function main() {
     const started = Date.now();
     const doneBefore = donePackages(planDir, slug, entry);
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const stopFile = join(logDir, `${session}-${stamp}.budget-stop.json`);
+    const warnFile = join(logDir, `${session}-${stamp}.budget-warn.json`);
     refreshFacts();
     const { code, result, stalled, tail } = await runSession(options, slug, entry, join(logDir, `${session}-${stamp}.jsonl`), resume === session,
-      isMilestone(pending.length, options.lintEvery), stopFile);
+      isMilestone(pending.length, options.lintEvery), warnFile);
     costs.set(session, (costs.get(session) ?? 0) + (result?.total_cost_usd ?? 0));
     const closeEvent = (status) => emit("session_closed", {
       session, status, commits: Number(git("rev-list", "--count", `${headBefore}..HEAD`)), cost_usd: costs.get(session),
@@ -280,18 +287,18 @@ async function main() {
       (result?.total_cost_usd ? `, $${result.total_cost_usd.toFixed(2)}` : ""));
     if (result?.result) console.log(result.result.trim().split("\n").map((l) => `  ${l}`).join("\n"));
 
-    // A context stop that leaves the session pending runs it again in a fresh process, but only after progress.
-    const budgetStopped = existsSync(stopFile);
-    if (budgetStopped && sessionState(planDir, entry) === "pending") {
+    // A context warning that leaves the session pending runs it again in a fresh process, but only after progress.
+    const budgetWarned = existsSync(warnFile);
+    if (budgetWarned && sessionState(planDir, entry) === "pending") {
       const progressed = git("rev-parse", "HEAD") !== headBefore || donePackages(planDir, slug, entry) > doneBefore;
-      if (!progressed) fail(`session ${session} hit the context limit without progress (no commit, no package done)`);
-      if ((budgetRestarts.get(session) ?? 0) >= MAX_BUDGET_RESTARTS) fail(`session ${session} hit the context limit ${MAX_BUDGET_RESTARTS + 1} times`);
+      if (!progressed) fail(`session ${session} crossed the context warning without progress (no commit, no package done)`);
+      if ((budgetRestarts.get(session) ?? 0) >= MAX_BUDGET_RESTARTS) fail(`session ${session} crossed the context warning ${MAX_BUDGET_RESTARTS + 1} times`);
       budgetRestarts.set(session, (budgetRestarts.get(session) ?? 0) + 1);
-      console.log(`[plan] session ${session} stopped at the context limit after progress; running it again in a fresh process (${budgetRestarts.get(session)}/${MAX_BUDGET_RESTARTS})`);
+      console.log(`[plan] session ${session} crossed the context warning and ended pending after progress; running it again in a fresh process (${budgetRestarts.get(session)}/${MAX_BUDGET_RESTARTS})`);
       resume = session;
       continue;
     }
-    const failed = !budgetStopped && (stalled || code !== 0 || !result || result.is_error);
+    const failed = !budgetWarned && (stalled || code !== 0 || !result || result.is_error);
     if (failed && options.wait && (resumes.get(session) ?? 0) < MAX_RESUMES) {
       const hinted = limitRetryAt(tail);
       console.log(`[plan] session ${session} ${stalled ? "stalled" : "failed"}; checking whether Claude is at the usage limit`);

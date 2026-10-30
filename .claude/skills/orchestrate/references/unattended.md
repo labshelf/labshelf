@@ -12,9 +12,9 @@ If the session cannot finish:
 
 Never leave tracked changes uncommitted.
 
-The main thread routes; it does not implement. The `main-guard` hook denies its Edit and Write outside `documents/plans/<slug>/`: turn any code change into a spec package in the session file and run it with an `implementer`. The `context-budget` hook watches the main thread's context. Past 100k tokens it warns, again every 20k: weigh what is left and either finish here or hand off (record the packages not yet started as pending in the session file, finish what is in flight, end the turn). Past 150k it denies anything that starts new work (an `implementer`, `tester` or `diagnoser` agent, `plan.mjs start` or `prompt`), while report routing, the finisher, `plan close` and plan-folder edits still pass. Past 190k it ends the session as a last resort. A session that ends pending after the warning runs again in a fresh process when the run made progress (a commit or a package done).
+The main thread routes; it does not implement. The `main-guard` hook denies its Edit and Write outside `documents/plans/<slug>/`: turn any code change into a spec package in the session file and run it with an `implementer`. The `context-budget` hook watches the main thread's context and only ever warns; it never denies a call or ends the session. Past 100k tokens it warns, again every 20k, because quality drops as the context grows: weigh what is left and either finish here if little is left, or hand off if much is (record the packages not yet started as pending in the session file, finish what is in flight, route open reports, end the turn). A session that ends pending after the warning runs again in a fresh process when the run made progress (a commit or a package done). Subagents get their own warning past 80k: they finish what is in flight and return their report with what is left undone, which you split into a new package.
 
-TRAP: this is `claude -p`, so ending your turn ends the process and the session never finishes. Launch every subagent with `run_in_background: false` so its report returns inside the same turn, never end a turn to wait for an agent, and do not stop until the session is closed (YAML: `plan close`; legacy: session file deleted and committed) or set blocked (YAML) or a remainder file is committed (legacy).
+TRAP: this is `claude -p`, so ending your turn ends the process and the session never finishes. The runner sets `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, so every subagent and Bash command runs in the foreground and its result returns inside the same turn; Bash has a 10 minute default timeout (`BASH_DEFAULT_TIMEOUT_MS=600000`) for the long suites. Never poll for an agent or a command with `until`, `sleep` or similar loops, and never end a turn to wait for one. Do not stop until the session is closed (YAML: `plan close`; legacy: session file deleted and committed) or set blocked (YAML) or a remainder file is committed (legacy).
 
 ### Testing policy
 
@@ -29,7 +29,7 @@ This session is a lint milestone (the runner says so, or the YAML session has `m
 
 ## Resume
 
-A previous run of this session stopped (usage limit, context stop, or it ended its turn early) before it finished. The uncommitted changes are that run's partial work:
+A previous run of this session stopped (usage limit, a handoff after the context warning, or it ended its turn early) before it finished. The uncommitted changes are that run's partial work:
 - YAML: first run `plan finished <session> --check`. "finished on this tree": the finishing pass already passed on this exact tree, so run `plan close <session>` and nothing else. "changed since the finishing pass": run `finish session <session file> changed: <the listed files>`, then `plan close`. "not finished": go on below;
 - read `git status` and `git diff --stat`, then the session's progress: the session file's OK column and its `research/` files (legacy), or each package's report in `.git/labshelf-runs/<plan>/` and the `plan status` output (YAML);
 - keep what is correct, do not redo finished packages, and continue from there.

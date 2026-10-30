@@ -2,5 +2,5 @@ schema: verdict/v1
 spec: "3.2"
 verdict: code_wrong
 evidence:
-  - {test: "A2 rejects unknown keys", assertion: "...", spec_ref: "acceptance A2", reason: "..."}
+  - {test: "A2 rejects unknown keys", spec_ref: "acceptance A2", reason: "..."}
 hint: "change the validator"

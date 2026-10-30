@@ -71,3 +71,13 @@ export function runnerReason(words) {
   else equivalent = toolCommand(command, args, null);
   return equivalent ? `Use: ${equivalent}` : null;
 }
+
+// Returns the deny reason when an implementer runs a whole package suite through run.mjs, or null. A full core run takes about 6 minutes and the gate already runs it once per session.
+export function scopeReason(words, agentType) {
+  if (agentType !== 'implementer') return null;
+  const at = words.findIndex((word) => word.endsWith('run.mjs'));
+  if (at < 0 || words[at + 1] !== 'test') return null;
+  const dash = words.indexOf('--', at);
+  if (dash >= 0 && dash < words.length - 1) return null;
+  return `Run only the tests under your own paths: ${RUNNER} test ${words[at + 2] ?? '<pkg>'} ${words.slice(at + 3, dash < 0 ? undefined : dash).join(' ')} -- <paths>`.replace(/  +/g, ' ');
+}

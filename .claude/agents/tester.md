@@ -13,7 +13,7 @@ You write the tests an implementer will have to turn green without seeing them. 
 4. When an acceptance item cannot be tested at a seam (layout, a live session), write no test for it and say why in its `note`.
 5. Follow the repo's test conventions: jest under `packages/<pkg>/__tests__/` mirroring `src/`, `node:test` for `scripts/` and `.claude/hooks/`, temp dirs from `fs.mkdtempSync(os.tmpdir())`, state paths through their env overrides, never the real `.git/`.
 
-**Fixing after `test_wrong`.** When the prompt also holds a ```` ```yaml verdict/v1 ```` block with `verdict: test_wrong`, change only what its `fix` names, in the test files under `documents/plans/<slug>/tests/<spec-id>/` and their copies in the repo if `plan start` already made them; keep every other assertion as it is.
+**Fixing after `test_wrong`.** You are the only role that edits tests. After a `test_wrong` verdict, `scripts/agents/run.mjs` starts you itself as a headless `claude --agent tester -p` (env `LABSHELF_ROLE=tester`) with the spec and the verdict, then tells the implementer to rerun the tests; it needs your `report/v1` with `status: done`, anything else sends the package back as blocked. When the prompt also holds a ```` ```yaml verdict/v1 ```` block with `verdict: test_wrong`, change only what its `fix` names, in the test files under `documents/plans/<slug>/tests/<spec-id>/` and their copies in the repo if `plan start` already made them; keep every other assertion as it is.
 
 If the spec is too vague to write a test for an item (no seam, an untestable check, two readings), return `status: missing` with one `missing` entry per gap rather than guessing.
 

@@ -96,13 +96,54 @@ test('implementer may write only edit and create paths', () => {
   assertDenied(call(env, 'implementer', 'NotebookEdit', { notebook_path: join(env.dir, 'scripts/n.ipynb') }));
 });
 
-test('hidden tests are denied to the implementer for Read and for Bash naming them', () => {
-  const env = setup(specBlock());
-  assertDenied(call(env, 'implementer', 'Read', { file_path: join(env.dir, HIDDEN) }));
+const TEST_REASON = /^Tests are read-only: only the tester changes them.*blocked_tests/;
+const COPY = 'scripts/__tests__/thing.test.mjs';
+const assertTestDenied = (output) => {
+  assert.equal(output?.permissionDecision, 'deny');
+  assert.match(output.permissionDecisionReason, TEST_REASON);
+};
+
+test('the implementer reads its spec tests and their in-place copies but never writes them', () => {
+  const env = setup(specBlock({ create: ['scripts/newdir/', 'scripts/__tests__/'] }));
+  assert.equal(call(env, 'implementer', 'Read', { file_path: join(env.dir, HIDDEN) }), null);
+  assert.equal(call(env, 'implementer', 'Read', { file_path: join(env.dir, COPY) }), null);
   assertDenied(call(env, 'implementer', 'Read', { file_path: join(env.dir, 'documents/plans/demo/tests/other/x.test.mjs') }));
-  assertDenied(call(env, 'implementer', 'Bash', { command: `cat ${HIDDEN}` }));
-  assertDenied(call(env, 'implementer', 'Bash', { command: 'node scripts/docs/doc.mjs documents/plans/demo/tests/9.1/x' }));
+  for (const tool of ['Edit', 'Write', 'MultiEdit']) {
+    assertTestDenied(call(env, 'implementer', tool, { file_path: join(env.dir, HIDDEN) }));
+    assertTestDenied(call(env, 'implementer', tool, { file_path: join(env.dir, COPY) }));
+  }
+  assertTestDenied(call(env, 'implementer', 'Write', { file_path: join(env.dir, 'documents/plans/demo/tests/other/x.test.mjs') }));
+  for (const command of [`sed -i '' s/a/b/ ${COPY}`, `rm ${HIDDEN}`, `perl -pi -e s/a/b/ ${COPY}`, `echo x > ${COPY}`, `cp /tmp/x ${HIDDEN}`, `mv ${COPY} x`, `git checkout -- ${COPY}`, 'rm documents/plans/demo/tests/*']) {
+    assertTestDenied(call(env, 'implementer', 'Bash', { command }));
+  }
   assertDenied(call(env, 'implementer', 'Bash', { command: 'cat scripts/thing.mjs' }));
+});
+
+test('the tester edits its tests and their in-place copies', () => {
+  const env = setup(specBlock({ runner: { agent: 'tester', model: 'sonnet' } }));
+  assert.equal(call(env, 'tester', 'Edit', { file_path: join(env.dir, HIDDEN) }), null);
+  assert.equal(call(env, 'tester', 'Edit', { file_path: join(env.dir, COPY) }), null);
+});
+
+test('a subagent without a spec cannot write plan tests; a tester without one can', () => {
+  const noSpec = setup('Please fix the bug in scripts/thing.mjs.');
+  assertTestDenied(call(noSpec, 'implementer', 'Edit', { file_path: join(noSpec.dir, HIDDEN) }));
+  assertTestDenied(call(noSpec, 'finisher', 'Bash', { command: `sed -i '' s/a/b/ ${HIDDEN}` }));
+  assert.equal(call(noSpec, 'implementer', 'Read', { file_path: join(noSpec.dir, HIDDEN) }), null);
+  assert.equal(call(noSpec, 'implementer', 'Bash', { command: `cat ${HIDDEN}` }), null);
+  assert.equal(call(noSpec, 'tester', 'Edit', { file_path: join(noSpec.dir, HIDDEN) }), null);
+});
+
+test('every role reads logs under .git/labshelf-logs', () => {
+  for (const role of ['implementer', 'tester', 'arbiter']) {
+    const env = setup(specBlock({ runner: { agent: role, model: 'sonnet' } }));
+    const log = '.git/labshelf-logs/a.log';
+    assert.equal(call(env, role, 'Read', { file_path: join(env.dir, log) }), null, role);
+    for (const command of [`cat ${log}`, `tail -n 50 ${log}`, `grep "not ok" ${log}`]) assert.equal(call(env, role, 'Bash', { command }), null, `${role}: ${command}`);
+    assert.equal(call(env, role, 'Grep', { pattern: 'not ok', path: '.git/labshelf-logs' }), null, role);
+    assertDenied(call(env, role, 'Bash', { command: `cat scripts/unrelated.mjs ${log}` }));
+    assertDenied(call(env, role, 'Write', { file_path: join(env.dir, log) }));
+  }
 });
 
 test('Grep and Glob are denied to the implementer', () => {
@@ -225,4 +266,31 @@ test('bad input or a missing transcript exits 0 with no output', () => {
   const env = setup(specBlock());
   const missing = { ...env, agentId: 'nobody' };
   assert.equal(call(missing, 'implementer', 'Read', { file_path: '/etc/passwd' }), null);
+});
+
+// A headless `claude --agent <role> -p` main thread that run.mjs spawned: no agent_id, the spec is in the session transcript.
+function callMain(env, role, toolName, toolInput) {
+  const input = { hook_event_name: 'PreToolUse', session_id: env.sessionId, transcript_path: env.main, cwd: env.dir, agent_type: 'arbiter', tool_name: toolName, tool_input: toolInput };
+  const childEnv = { ...process.env, CLAUDE_PROJECT_DIR: env.dir, LABSHELF_HOOK_STATE_DIR: env.state, LABSHELF_TELEMETRY_SPOOL: env.spool };
+  delete childEnv.LABSHELF_ROLE;
+  if (role) childEnv.LABSHELF_ROLE = role;
+  const result = spawnSync('node', [hook], { input: JSON.stringify(input), encoding: 'utf8', env: childEnv });
+  assert.equal(result.status, 0);
+  return result.stdout.trim() ? JSON.parse(result.stdout).hookSpecificOutput : null;
+}
+
+test('LABSHELF_ROLE makes a headless main thread that role, with its spec read from the session transcript', () => {
+  const env = setup(specBlock());
+  writeFileSync(env.main, JSON.stringify({ type: 'user', message: { role: 'user', content: specBlock() } }) + '\n');
+  assertDenied(callMain(env, 'arbiter', 'Read', { file_path: join(env.dir, 'scripts/unrelated.mjs') }));
+  assert.equal(callMain(env, 'arbiter', 'Read', { file_path: join(env.dir, HIDDEN) }), null);
+  assertDenied(callMain(env, 'arbiter', 'Edit', { file_path: join(env.dir, 'scripts/thing.mjs') }));
+  assert.equal(callMain(env, 'tester', 'Edit', { file_path: join(env.dir, HIDDEN) }), null);
+  assertDenied(callMain(env, 'tester', 'Edit', { file_path: join(env.dir, 'scripts/thing.mjs') }));
+});
+
+test('without LABSHELF_ROLE a main thread passes untouched', () => {
+  const env = setup(specBlock());
+  writeFileSync(env.main, JSON.stringify({ type: 'user', message: { role: 'user', content: specBlock() } }) + '\n');
+  assert.equal(callMain(env, undefined, 'Read', { file_path: join(env.dir, 'scripts/unrelated.mjs') }), null);
 });

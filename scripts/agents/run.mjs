@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Runs test, typecheck, build or any command; keeps the full log, prints at most 40 summary lines (cmd: logs of up to 60 lines whole, longer ones cut by a deterministic filter to the error lines, repeats counted, and the last lines), counts spec test attempts and blocks stalled ones.
+// Runs test, typecheck, build or any command; keeps the full log, prints at most 40 summary lines (cmd: logs of up to 60 lines whole, longer ones cut by a deterministic filter to the error lines, repeats counted, and the last lines), counts spec test attempts and sends stalled ones to the automatic arbiter (autoArbiter.mjs), else blocks them.
 import { spawnSync } from "node:child_process";
 import { constants as osConstants, tmpdir } from "node:os";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ARBITER_EXIT, arbiterRound } from "./autoArbiter.mjs";
 import { emit } from "./telemetry.mjs";
 
 const MAX_LINES = 40;
@@ -25,7 +26,10 @@ export const USAGE = `usage:
   node scripts/agents/run.mjs build <pkg>
   node scripts/agents/run.mjs cmd -- <command> [args]
 <pkg> is a folder under packages/. 'tooling' runs node --test (default: the test:tooling globs).
-Prints at most ${MAX_LINES} lines and the log path; the exit code is the command's. With --spec, attempts are counted: a stalled or fifth attempt prints BLOCKED and exits ${BLOCKED_EXIT}.
+Prints at most ${MAX_LINES} lines and the log path; the exit code is the command's. With --spec, attempts are counted. A stalled or fifth attempt starts the automatic
+arbiter (headless \`claude --agent arbiter\`, at most 2 rounds per spec; LABSHELF_AUTO_ARBITER=0 turns it off): on code_wrong or test_wrong
+it prints ARBITER lines, resets the attempt budget and exits ${ARBITER_EXIT} (keep working on the same package); on spec_ambiguous, a third stall or
+an arbiter failure it prints BLOCKED and exits ${BLOCKED_EXIT} (return blocked_tests). Verdicts: <runs>/<plan>/<spec>.verdict-<round>.yaml.
 State: LABSHELF_LOGS_DIR (default .git/labshelf-logs), LABSHELF_RUNS_DIR (default .git/labshelf-runs).`;
 
 const ANSI = /\u001b\[[0-9;]*m/g;
@@ -62,6 +66,21 @@ export function failingJest(json, { root }) {
   return failing;
 }
 
+const MAX_DIFF_LINES = 8;
+const MAX_REASON_LINES = 6;
+
+/** Header plus the first changed lines of a jest `- Expected` / `+ Received` diff, or [] when the message has none. */
+function diffExcerpt(text) {
+  const start = text.findIndex((l) => /^\s*-\s+Expected\b/.test(l));
+  if (start < 0) return [];
+  const out = [text[start], ...(/^\s*\+\s+Received\b/.test(text[start + 1] ?? "") ? [text[start + 1]] : [])];
+  const changed = text.slice(start + out.length).filter((l) => /^\s*[-+]/.test(l) && !/^\s*[-+]\s*$/.test(l) && !/^\s*at\s/.test(l));
+  return [...out, ...changed.slice(0, MAX_DIFF_LINES)].map((l) => clip(`  ${l.trim()}`));
+}
+
+/** The first meaningful lines of a suite-failed-to-run message (compile or import error). */
+const suiteReason = (text) => text.filter((l) => l.trim() && !/^\s*at\s/.test(l)).slice(0, MAX_REASON_LINES).map((l) => clip(`  ${l.trim()}`));
+
 /** Summary lines of a jest --json result: failing names, expected/received and the first frame outside node_modules and tests. */
 export function summarizeJest(json, { root }) {
   const lines = [`jest: ${json.numFailedTests ?? 0} failed, ${json.numTotalTests ?? 0} total`];
@@ -70,19 +89,21 @@ export function summarizeJest(json, { root }) {
     const file = rel(root, suite.name ?? "");
     const failed = (suite.assertionResults ?? []).filter((t) => t.status === "failed");
     for (const t of failed) entries.push({ title: `FAIL ${file} > ${t.fullName ?? t.title}`, message: (t.failureMessages ?? []).join("\n") });
-    if (!failed.length && suite.status === "failed") entries.push({ title: `FAIL ${file} (suite failed to run)`, message: suite.message ?? "" });
+    if (!failed.length && suite.status === "failed") entries.push({ title: `FAIL ${file} (suite failed to run)`, message: suite.message ?? "", suiteFailed: true });
   }
   for (const entry of entries.slice(0, MAX_JEST_FAILURES)) {
     lines.push(clip(entry.title));
     const text = splitLines(entry.message);
     const expected = text.find((l) => /^\s*Expected\b/.test(l));
     const received = text.find((l) => /^\s*Received\b/.test(l));
-    if (expected || received) {
+    if (entry.suiteFailed) lines.push(...suiteReason(text));
+    else if (expected || received) {
       if (expected) lines.push(clip(`  ${expected.trim()}`));
       if (received) lines.push(clip(`  ${received.trim()}`));
     } else {
       const first = text.find((l) => l.trim() && !/^\s*at\s/.test(l));
       if (first) lines.push(clip(`  ${first.trim()}`));
+      lines.push(...diffExcerpt(text));
     }
     const frame = firstFrame(entry.message, root);
     if (frame) lines.push(`  at ${frame}`);
@@ -91,11 +112,11 @@ export function summarizeJest(json, { root }) {
   return lines;
 }
 
-/** Summary lines of tsc output: `file(l,c): error TSxxxx` grouped by file, at most 20 errors. */
+/** Summary lines of tsc output (plain `file(l,c): error TSxxxx` or pretty `file:l:c - error TSxxxx`, ANSI stripped) grouped by file, at most 20 errors. */
 export function summarizeTsc(text) {
   const errors = [];
   for (const line of splitLines(text)) {
-    const match = line.match(/^(.+?)\((\d+),(\d+)\): error (TS\d+): (.*)$/);
+    const match = line.match(/^(.+?)\((\d+),(\d+)\): error (TS\d+): (.*)$/) ?? line.match(/^(.+?):(\d+):(\d+) - error (TS\d+): (.*)$/);
     if (match) errors.push({ file: match[1], at: `${match[2]},${match[3]}`, code: match[4], message: match[5] });
   }
   if (!errors.length) return ["tsc: no errors found in the output"];
@@ -333,8 +354,13 @@ export async function main(argv, deps = {}) {
   const reason = stateFile ? blockReason(runs) : null;
   if (reason) {
     emit("test_blocked", { plan: parsed.plan, spec: parsed.spec, attempt: runs.length, reason });
-    out(`BLOCKED: return report status blocked_tests (${reason === "max_runs" ? `${runs.length} test runs used for ${parsed.spec}` : `the last two runs of ${parsed.spec} did not shrink the failing set`})`);
-    return BLOCKED_EXIT;
+    const why = reason === "max_runs" ? `${runs.length} test runs used for ${parsed.spec}` : `the last two runs of ${parsed.spec} did not shrink the failing set`;
+    const blockedLine = `BLOCKED: return report status blocked_tests (${why})`;
+    if (process.env.LABSHELF_AUTO_ARBITER === "0") {
+      out(blockedLine);
+      return BLOCKED_EXIT;
+    }
+    return arbiterRound({ root, plan: parsed.plan, spec: parsed.spec, stateFile, reason: why, blockedLine, logFile: runs.at(-1)?.log, out, spawn: deps.spawnAgent });
   }
 
   const tooling = parsed.kind === "test" && parsed.pkg === "tooling";
@@ -381,7 +407,7 @@ export async function main(argv, deps = {}) {
 
   if (stateFile) {
     if (code !== 0 && !failing.length) failing = ["(run failed)"];
-    runs.push({ ts: new Date().toISOString(), failing, exit: code });
+    runs.push({ ts: new Date().toISOString(), failing, exit: code, log: logFile });
     mkdirSync(dirname(stateFile), { recursive: true });
     writeFileSync(stateFile, `${JSON.stringify(runs, null, 2)}\n`);
     emit("test_run", { plan: parsed.plan, spec: parsed.spec, failing: failing.length, attempt: runs.length, exit: code });

@@ -57,7 +57,7 @@ Per package, in `depends_on` order, independent packages in one message so they 
    - `failed` → `diagnoser`; its `diagnosis/v1` `spec` becomes the next spec.
 4. After all packages: `finish session <file>` (the finisher review, which also checks every `possible duplicate` note from `dup-guard`), then `plan close <session>`, which commits. Never commit by hand in the YAML flow.
 
-Details in [references/run-plan.md](references/run-plan.md). If a report shows a design problem, fix the spec or the plan; do not patch around it. Context budget: `.claude/hooks/context-budget.mjs` warns a subagent past 60k tokens and this thread past 150k; a subagent that stops on the warning returns what is left, and you split that into a new package.
+Details in [references/run-plan.md](references/run-plan.md). If a report shows a design problem, fix the spec or the plan; do not patch around it. Context budget: `.claude/hooks/context-budget.mjs` warns a subagent past 80k tokens and this thread past 100k, never stops them; a warned subagent finishes the work in flight and returns its report, and what it left undone becomes a new package.
 
 ## 5. Finish and report
 

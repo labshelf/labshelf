@@ -24,6 +24,8 @@ beforeEach(() => {
   delete process.env.LABSHELF_TELEMETRY;
   delete process.env.LABSHELF_PLAN;
   delete process.env.LABSHELF_SPEC;
+  // The automatic arbiter has its own tests (run-arbiter.test.mjs); here a stall keeps today's BLOCKED behaviour.
+  process.env.LABSHELF_AUTO_ARBITER = "0";
 });
 
 afterEach(() => {
@@ -104,6 +106,32 @@ describe("summarizeJest", () => {
     assert.doesNotMatch(text, /thing\.test\.ts:12/);
     assert.doesNotMatch(text, /\u001b/);
   });
+
+  it("prints a bounded excerpt of the diff when the message has no Expected/Received lines", () => {
+    const message = ["expect(received).toEqual(expected) // deep equality", "", "- Expected  - 1", "+ Received  + 1", "", "  Object {", '-   "a": 1,', '+   "a": 2,', ...Array.from({ length: 20 }, (_, i) => `+   "k${i}": ${i},`), "    at Object.<anonymous> (/repo/packages/core/src/x.ts:3:1)"].join("\n");
+    const json = { numFailedTests: 1, numTotalTests: 1, testResults: [{ name: join(root, "packages/core/__tests__/x.test.ts"), status: "failed", assertionResults: [{ fullName: "diffs", status: "failed", failureMessages: [message] }] }] };
+    const lines = summarizeJest(json, { root });
+    const text = lines.join("\n");
+    assert.match(text, /toEqual\(expected\)/);
+    assert.match(text, /- Expected {2}- 1/);
+    assert.match(text, /\+ Received {2}\+ 1/);
+    assert.match(text, /- {3}"a": 1,/);
+    assert.match(text, /\+ {3}"a": 2,/);
+    assert.ok(lines.filter((l) => /"k\d+"/.test(l)).length <= 7);
+    assert.ok(lines.length <= 16);
+  });
+
+  it("prints the first meaningful lines of a suite that failed to run", () => {
+    const message = ["\u001b[1m\u001b[31m  \u001b[1m\u2022 Test suite failed to run\u001b[22m\u001b[39m", "", "    src/x.ts:4:7 - error TS2322: Type 'string' is not assignable to type 'number'.", "", ...Array.from({ length: 12 }, (_, i) => `    detail ${i}`)].join("\n");
+    const json = { numFailedTests: 0, numTotalTests: 0, testResults: [{ name: join(root, "packages/core/__tests__/x.test.ts"), status: "failed", message, assertionResults: [] }] };
+    const lines = summarizeJest(json, { root });
+    const text = lines.join("\n");
+    assert.match(text, /suite failed to run/);
+    assert.match(text, /error TS2322/);
+    assert.doesNotMatch(text, /\u001b/);
+    assert.doesNotMatch(text, /detail 6/);
+    assert.ok(lines.length <= 8);
+  });
 });
 
 describe("summarizeTsc", () => {
@@ -113,6 +141,22 @@ describe("summarizeTsc", () => {
     assert.equal(lines.filter((l) => /TS2322/.test(l)).length, 20);
     assert.ok(lines.some((l) => /f0\.ts/.test(l)));
     assert.ok(lines.length <= 36);
+  });
+
+  it("parses the colored pretty format file:line:col - error TSxxxx", () => {
+    const c = (code, t) => `\u001b[${code}m${t}\u001b[0m`;
+    const text = [
+      "$ pnpm --filter @labshelf/core typecheck",
+      `${c(96, "src/qmd/dom/qmdEditor.ts")}:${c(93, 190)}:${c(93, 7)} - ${c(91, "error")}${c(90, " TS2345: ")}Argument of type 'A' is not assignable.`,
+      "  The types are incompatible.",
+      `${c(96, "src/other.ts")}:${c(93, 3)}:${c(93, 1)} - ${c(91, "error")}${c(90, " TS2304: ")}Cannot find name 'x'.`,
+    ].join("\n");
+    const out = summarizeTsc(text);
+    assert.match(out.join("\n"), /2 errors in 2 files/);
+    assert.ok(out.includes("src/qmd/dom/qmdEditor.ts"));
+    assert.ok(out.some((l) => /190,7 TS2345 Argument of type/.test(l)));
+    assert.ok(out.some((l) => /3,1 TS2304/.test(l)));
+    assert.doesNotMatch(out.join("\n"), /\u001b/);
   });
 
   it("says so when there are no errors", () => {

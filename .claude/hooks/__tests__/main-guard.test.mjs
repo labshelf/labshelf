@@ -1,7 +1,7 @@
 // Pins the main-guard hook: in an unattended plan session the main thread edits only its plan folder.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -41,7 +41,20 @@ test('the main thread of an unattended session cannot edit code', () => {
 test('documents stay editable: the plan folder, contracts and docs', () => {
   assert.equal(run(edit('/repo/documents/contracts/qmd-items.md')), undefined);
   assert.equal(run(edit('/repo/documents/plans/demo/sessions/3.yaml')), undefined);
-  assert.equal(run({ tool_name: 'Write', tool_input: { file_path: 'documents/plans/demo/tests/3.1/a.test.mjs' } }), undefined);
+});
+
+test('plan tests and their in-place copies are not editable by the main thread', () => {
+  for (const input of [{ tool_name: 'Write', tool_input: { file_path: 'documents/plans/demo/tests/3.1/a.test.mjs' } }, edit('/repo/documents/plans/other/tests/1.1/b.test.mjs')]) {
+    const output = run(input);
+    assert.equal(output?.permissionDecision, 'deny', JSON.stringify(input));
+    assert.match(output.permissionDecisionReason, /never edits a test.*arbiter.*tester/);
+  }
+  const root = mkdtempSync(join(tmpdir(), 'main-guard-root-'));
+  mkdirSync(join(root, 'documents/plans/demo/tests/3.1/scripts/__tests__'), { recursive: true });
+  writeFileSync(join(root, 'documents/plans/demo/tests/3.1/scripts/__tests__/a.test.mjs'), '');
+  const copy = run({ cwd: root, ...edit(join(root, 'scripts/__tests__/a.test.mjs')) }, { ...UNATTENDED, CLAUDE_PROJECT_DIR: root });
+  assert.match(copy?.permissionDecisionReason ?? '', /never edits a test/);
+  assert.equal(run({ cwd: root, ...edit(join(root, 'documents/plans/demo/sessions/3.yaml')) }, { ...UNATTENDED, CLAUDE_PROJECT_DIR: root }), undefined);
 });
 
 test('subagents, attended sessions and other tools pass untouched', () => {
@@ -56,4 +69,9 @@ test('bad stdin exits 0 without output', () => {
   const result = spawnSync('node', [hook], { input: 'not json', encoding: 'utf8', env: { ...process.env, ...UNATTENDED } });
   assert.equal(result.status, 0);
   assert.equal(result.stdout, '');
+});
+
+test('a headless arbiter or tester spawned by run.mjs (LABSHELF_ROLE) is left to spec-guard', () => {
+  assert.equal(run(edit('/repo/scripts/a.mjs'), { ...UNATTENDED, LABSHELF_ROLE: 'arbiter' }), undefined);
+  assert.equal(run(edit('/repo/documents/plans/demo/tests/1.1/x.test.mjs', { agent_type: 'tester' }), { ...UNATTENDED, LABSHELF_ROLE: 'tester' }), undefined);
 });

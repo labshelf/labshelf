@@ -3,7 +3,7 @@
 // `cat`, `nl`, `head -n`, `tail -n`, `sed -n 'a,bp'`). PreToolUse denies a read whose lines are all covered by earlier reads of the
 // unchanged file, since sessions never compact and that content is still in context; PostToolUse records a read only after the tool
 // succeeded, so a read that another hook denied or that failed is never counted as seen. Ledger per (session_id, agent_id or "main"), so a subagent
-// and the main thread never block each other. Allowed without a trace: files under 2 KB, logs under .git/labshelf-logs/, files
+// and the main thread never block each other. Allowed without a trace: files under 2 KB, logs under .git/labshelf-logs/ (for every role), files
 // whose mtime or content changed (the ledger restarts from that read). Edit/Write are not tracked; the changed file lets the next
 // read through. Acts unless LABSHELF_READ_LEDGER is "off". Any error: no output, exit 0.
 import { createHash } from 'node:crypto';
