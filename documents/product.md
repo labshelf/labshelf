@@ -41,4 +41,4 @@ LabShelf is local-first. The user's own sync tool moves the library between devi
 
 The browser extension, VS Code extension and terminal app offer different ways into the work. Keep shared concepts and behavior consistent and check the host's capabilities when designing a flow.
 
-Product direction is broader than current implementation. A screen, primitive or proposal does not establish that a capability works. Check the relevant host before claiming support. [Ideas](ideas/) explore future work and can lag behind implementation; they are not feature specifications.
+LabShelf is in active development. Screens with mock data and prototype interactions can express and help evaluate product direction before the underlying capability is integrated. Preserve that exploration while distinguishing it from working persistence, computation or collaboration. Check the relevant host before claiming support. [Ideas](ideas/) explore future work and can lag behind implementation; they are not feature specifications.

@@ -20,7 +20,7 @@ LabShelf should feel like a research workbench: material stays close at hand, re
 - Support direct manipulation and discoverable actions, with keyboard access and shortcuts for frequent work. Shortcuts accelerate a usable interface.
 - Resolve destructive consequences before committing an action. Confirm destructive operations; avoid routine prompts that merely interrupt safe work. Preserve edits through navigation and recoverable failures.
 - Account for empty, loading, error and unavailable states, long content, narrow widths, keyboard focus and light and dark themes. Use semantic controls and accessible names; status must remain understandable without color alone.
-- An unavailable feature must clearly say that it is unavailable. Show it only when it helps explain the work or an actionable prerequisite; avoid turning normal navigation into a roadmap of disabled controls.
+- LabShelf is in active development. Screens with mock data, prototype interactions and unfinished controls are expected ways to explore the intended experience. Keep them available for evaluation and distinguish sample content from the user's saved work. Make an action's current limits clear without requiring its screen or navigation entry to be hidden.
 
 ## Implementation
 
