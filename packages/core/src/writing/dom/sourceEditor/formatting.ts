@@ -3,6 +3,7 @@ import { snippet } from "@codemirror/autocomplete";
 import { EditorSelection, type Extension } from "@codemirror/state";
 import { keymap, type EditorView } from "@codemirror/view";
 import { deriveSelectionWrap, type WrapKind } from "../../../index.js";
+import { reviewEdit } from "./review.js";
 
 /** `$1` and `${1:Caption}` become CodeMirror fields, `$0` the final cursor, and `\\`, `\$`, `\}` their literal characters. */
 export function deriveCodeMirrorTemplate(textMate: string): string {
@@ -35,7 +36,7 @@ export interface SourceUpdates {
 function insertText(view: EditorView, text: string): void {
   view.dispatch(view.state.update(
     view.state.changeByRange((range) => ({ changes: { from: range.from, to: range.to, insert: text }, range: EditorSelection.cursor(range.from + text.length) })),
-    { scrollIntoView: true, userEvent: "input" },
+    { scrollIntoView: true, userEvent: "input", annotations: reviewEdit.of(true) },
   ));
 }
 
@@ -49,7 +50,7 @@ function wrapSelections(view: EditorView, language: SourceLanguage, style: WrapK
         range: cursor === undefined ? EditorSelection.range(range.from, range.from + text.length) : EditorSelection.cursor(range.from + cursor),
       };
     }),
-    { scrollIntoView: true, userEvent: "input" },
+    { scrollIntoView: true, userEvent: "input", annotations: reviewEdit.of(true) },
   ));
 }
 

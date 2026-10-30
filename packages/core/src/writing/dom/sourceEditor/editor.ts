@@ -22,6 +22,8 @@ import { readPageNonce } from "../../../ui/dom/index.js";
 import { createSelectionListener } from "./selectionListener.js";
 import { createFolding } from "./folding.js";
 import { editorTheme } from "./editorTheme.js";
+import { createReviewSupport, type EditorReview, type ReviewMode } from "./review.js";
+import type { SourceToolbarDropdown } from "./toolbar.js";
 
 const HELPER_MODULE = "editor.helperEdits";
 
@@ -200,6 +202,8 @@ export interface SourceEditorDeps {
   readOnly?: boolean;
   /** The host's copy of the file (D3): the editor starts from its text, sends edits to it and never writes the file; the host saves it and reports it dirty. */
   document?: SourceDocument;
+  /** Review mode: the author, the opening mode and the file's suggestions; without it the editor records no suggestions. A read-only editor ignores it. */
+  review?: EditorReview;
   /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
   extensions?: readonly Extension[];
   /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
@@ -217,6 +221,10 @@ export interface SourceEditor extends SourceUpdates {
   flush(): Promise<boolean>;
   /** Saves pending edits, then removes the editor. */
   dispose(): Promise<void>;
+  /** Switches between Editing and Reviewing in place; does nothing without deps.review or on a read-only editor. */
+  setReviewMode(mode: ReviewMode): void;
+  /** The toolbar's review mode dropdown; undefined without deps.review or on a read-only editor. */
+  reviewDropdown: SourceToolbarDropdown | undefined;
 }
 
 const MODULE = "editor.mount";
@@ -304,7 +312,12 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const kind = deriveSourceLanguage(path);
   const saved = { text };
   const explicit = explicitSaves(helperEdits);
-  const save = createSaver(deps, currentText, saved, () => { explicit.written(); refreshNotes(); refreshLinks(); deps.onSaved?.(); }, () => view);
+  const review = deps.review && !deps.readOnly
+    ? createReviewSupport(deps.review, { lineBreak, savedText: collab || document ? currentText : () => saved.text, shared: Boolean(collab), logger })
+    : undefined;
+  // The suggestions go after a save only while the text is the one written, since their offsets are in it; a newer edit's save sends them.
+  const onWritten = (): void => { explicit.written(); refreshNotes(); refreshLinks(); if (!save.dirty()) review?.saved(); deps.onSaved?.(); };
+  const save = createSaver(deps, currentText, saved, onWritten, () => view);
   const noteLinks = deps.noteLinks ? createNoteLinks({ language: kind, source: deps.noteLinks, papers: deps.papers, logger }) : undefined;
   const refreshLinks = (): void => { if (noteLinks && view) void noteLinks.refresh(view); };
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
@@ -313,20 +326,26 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText: collab || document ? currentText : () => saved.text, flush: save.flush, logger });
   // Mod-s on a host document asks the host to save; the host reports when it is clean.
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
-  const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshNotes(); refreshLinks(); } };
+  const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshNotes(); refreshLinks(); review?.saved(); } };
   const onUpdate = changeListener({ path, save, helperEdits, labels });
-  const extensions = [createFormattingKeymap(kind), createFolding(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...hostExtensions(deps)];
+  const extensions = [
+    createFormattingKeymap(kind), createFolding(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty),
+    ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), ...(review?.extensions ?? []), onUpdate, ...hostExtensions(deps),
+  ];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   refreshNotes();
   refreshLinks();
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
+  const stopReview = review?.attach(view);
   const unregister = registerEditor(view, deps, save.flush, saved, () => { refreshNotes(); refreshLinks(); });
   return {
     ...createSourceUpdates(view, kind),
     noteLinks: noteLinks && noteLinks.actionsFor(view),
     flush: save.flush,
-    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), unregister, stopProblems, stopComments, () => labels.dispose()]),
+    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), unregister, stopProblems, stopComments, stopReview, () => labels.dispose()]),
+    setReviewMode: (mode) => review?.setMode(mode),
+    reviewDropdown: review?.dropdown,
   };
 }
