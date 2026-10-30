@@ -95,6 +95,8 @@
     "./styles/tokens.css": "./src/ui/dom/tokens.css",
     "./styles/vscodeHost.css": "./src/ui/dom/vscodeHost.css",
     "./qmd/compute/node/cellDriver.py": "./src/qmd/compute/node/cellDriver.py",
+    "./qmd/compute/node/cellDriver.wl": "./src/qmd/compute/node/cellDriver.wl",
+    "./qmd/compute/node/cellDriver.R": "./src/qmd/compute/node/cellDriver.R",
     "./package.json": "./package.json"
   }
 }
