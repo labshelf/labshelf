@@ -5,103 +5,17 @@ import {
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
 import { QMD_VOCABULARY, askInputBox, showToast } from "@labshelf/core/dom";
-import { Annotation } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
-import type { HelperUpdates, SourceEditorDeps, WriteScheduler } from "./editor";
 import type { Workspace } from "../libraryUi/editorArea";
 
-export interface OpenEditor {
-  /** Scrolls to the zero-based line and selects it. */
-  revealLine(line: number): void;
-  /** Writes pending edits now; resolves whether the file is saved afterwards. */
-  flush(): Promise<boolean>;
-  /** Replaces the editor's text with the file's text on disk, without marking it dirty. */
-  reload(): Promise<void>;
-}
+// The open-editor registry lives in core; these keep the browser's import path.
+export { explicitSaves, fromDisk, loadFromDisk, refreshProjectEditors, registerOpenEditor, showInOpenEditor, writeProjectEditors, type OpenEditor } from "@labshelf/core/sourceEditor";
 
-const editors = new Map<string, OpenEditor>();
-const pending = new Map<string, number>();
-// INVARIANT: encodeURIComponent escapes ":", so the project part of a key never runs into its path part.
-const projectPrefix = (projectId: string): string => `${encodeURIComponent(projectId)}:`;
-const keyOf = (projectId: string, path: string): string => `${projectPrefix(projectId)}${encodeURIComponent(path)}`;
-const editorsOf = (projectId: string): OpenEditor[] =>
-  [...editors].filter(([key]) => key.startsWith(projectPrefix(projectId))).map(([, editor]) => editor);
-
-/** Loads the CodeMirror source editor in its own chunk, so a page downloads it only when it opens a source file. */
+/** Loads core's CodeMirror source editor, with the browser's comment support, in its own chunk, so a page downloads it only when it opens a source file. */
 export function loadSourceEditor(): Promise<typeof import("./editor.js")> {
   return import("./editor.js");
 }
 
-/** Adds a mounted editor and applies a reveal asked for before it mounted; returns the call that removes it. */
-export function registerOpenEditor(projectId: string, path: string, editor: OpenEditor): () => void {
-  const key = keyOf(projectId, path);
-  editors.set(key, editor);
-  const line = pending.get(key);
-  if (line !== undefined) {
-    pending.delete(key);
-    editor.revealLine(line);
-  }
-  return () => { if (editors.get(key) === editor) editors.delete(key); };
-}
-
-/** Reveals the line in the file's editor; when none is mounted yet (its tab is still loading), the editor reveals it on mount. */
-export function showInOpenEditor(projectId: string, path: string, line: number): void {
-  const key = keyOf(projectId, path);
-  const editor = editors.get(key);
-  if (editor) editor.revealLine(line);
-  else pending.set(key, line);
-}
-
-/** Saves the pending edits of every open editor of the project; resolves whether all of them are saved. */
-export async function writeProjectEditors(projectId: string): Promise<boolean> {
-  const saved = await Promise.all(editorsOf(projectId).map((editor) => editor.flush()));
-  return saved.every(Boolean);
-}
-
-/** Reloads every open editor of the project from disk. */
-export async function refreshProjectEditors(projectId: string): Promise<void> {
-  await Promise.all(editorsOf(projectId).map((editor) => editor.reload()));
-}
-
 const MODULE = "writing.session";
-const LOAD_MODULE = "editor.mount";
-
-/** Marks the transaction that loads the file's text from disk, which is not an edit to save. */
-export const fromDisk = Annotation.define<boolean>();
-
-/**
- * Replaces the editor's text with the file on disk. A shared file's change goes into its shared text, so the peers get it
- * and its file writer saves it; a local file's change is not an edit to save.
- */
-export async function loadFromDisk(view: EditorView, { files, path, projectId, logger }: SourceEditorDeps, onLoaded: (disk: string) => void): Promise<void> {
-  try {
-    const disk = await files.read(path);
-    onLoaded(disk);
-    if (disk === view.state.doc.sliceString(0, undefined, view.state.lineBreak)) return;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: disk }, annotations: fromDisk.of(true) });
-  } catch (error) {
-    void logger.error(LOAD_MODULE, error, { action: "reloadSource", projectId, path });
-  }
-}
-
-/** Tells the helper which write the user asked for with Mod-s. */
-export function explicitSaves(helperEdits: HelperUpdates): { written(): void; flush(save: Pick<WriteScheduler, "flush" | "dirty">): void } {
-  // INVARIANT: set only while a Mod-s flush runs, so exactly the write it causes reaches the helper as an explicit save.
-  let requested = false;
-  return {
-    written() { helperEdits.saved(requested); requested = false; },
-    // Writing a dirty file already asks the helper for a full build; a clean or shared file asks for it here.
-    flush(save) {
-      const wasDirty = save.dirty();
-      requested = wasDirty;
-      void save.flush().then((clean) => {
-        requested = false;
-        if (clean && !wasDirty) helperEdits.saved(true);
-      });
-    },
-  };
-}
-
 
 type ReadyProject = Extract<ProjectEntry, { kind: "ready" }>;
 
