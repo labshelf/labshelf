@@ -110,7 +110,9 @@ const CELL_TIMEOUT_MS = 60_000;
 function createCellHosts(context: vscode.ExtensionContext, logger: ILogger): CellHosts {
   const python = createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
   // The bundle copies the driver beside extension.js.
-  const runner = createNodeCellRunner({ python, logger, driverPath: path.join(context.extensionPath, "out", "cellDriver.py") });
+  const out = path.join(context.extensionPath, "out");
+  const drivers = { python: path.join(out, "cellDriver.py"), mathematica: path.join(out, "cellDriver.wl"), r: path.join(out, "cellDriver.R") };
+  const runner = createNodeCellRunner({ python, drivers, logger });
   return { runCell: createRunCellPort(runner), installPython: createInstallPython(python, logger) };
 }
 

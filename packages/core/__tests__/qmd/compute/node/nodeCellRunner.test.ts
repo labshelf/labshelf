@@ -41,8 +41,18 @@ beforeAll(async () => {
   }
 });
 
-const runnerFor = (provider: PythonProvider = python, driverPath?: string): ICellRunner =>
-  createNodeCellRunner({ python: provider, logger: fakeLogger(), ...(driverPath ? { driverPath } : {}) });
+const BUNDLED_DRIVER = path.resolve(__dirname, "../../../../src/qmd/compute/node/cellDriver.py");
+const openRunners: ICellRunner[] = [];
+
+afterEach(async () => {
+  await Promise.all(openRunners.splice(0, openRunners.length).map((runner) => runner.dispose().catch(() => undefined)));
+});
+
+const runnerFor = (provider: PythonProvider = python, driverPath: string = BUNDLED_DRIVER): ICellRunner => {
+  const runner = createNodeCellRunner({ python: provider, drivers: { python: driverPath, mathematica: "unused.wl", r: "unused.R" }, logger: fakeLogger() });
+  openRunners.push(runner);
+  return runner;
+};
 
 /** The RGBA of a PNG's top-left pixel: whatever the row filter, the first pixel of the first row is stored raw. */
 const topLeftRgba = (dataUrl: string): number[] => {
@@ -92,37 +102,18 @@ describe("NodeCellRunner with the managed Python", () => {
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
-  it("12.3a keeps Python stderr out of the result", async () => {
+  it("12.3a shows Python stderr as output before the value", async () => {
     if (skipReason) { return; }
     const result = await run("import sys\nsys.stderr.write('NOISE-ON-STDERR')\n7");
     expect(result.status).toBe("ok");
-    expect(JSON.stringify(result)).not.toContain("NOISE-ON-STDERR");
-  });
-
-  it("12.3a deletes the temp file holding the cell code after the run", async () => {
-    if (skipReason) { return; }
-    const tmp = await makeTempDir("cell-tmp-");
-    const cwd = await makeTempDir("cell-cwd-");
-    const saved = { TMPDIR: process.env["TMPDIR"], TEMP: process.env["TEMP"], TMP: process.env["TMP"] };
-    process.env["TMPDIR"] = tmp;
-    process.env["TEMP"] = tmp;
-    process.env["TMP"] = tmp;
-    try {
-      await run("1 + 1", { cwd });
-      await run("raise ValueError('x')", { cwd });
-    } finally {
-      for (const [key, value] of Object.entries(saved)) {
-        if (value === undefined) { delete process.env[key]; } else { process.env[key] = value; }
-      }
-    }
-    expect(await fs.readdir(tmp)).toEqual([]);
+    expect(result.text?.trim().endsWith("7")).toBe(true);
   });
 
   it("12.3a runs the driver given by driverPath", async () => {
     if (skipReason) { return; }
     const dir = await makeTempDir("cell-driver-");
     const driver = path.join(dir, "driver.py");
-    await fs.writeFile(driver, "import json\nprint(json.dumps({'text': 'from custom driver'}))\n");
+    await fs.writeFile(driver, "import json, sys\nfor line in sys.stdin:\n    print('\\x01LABSHELF\\x01' + json.dumps({'id': json.loads(line)['id'], 'text': 'from custom driver'}), flush=True)\n");
     const result = await run("1", { runner: runnerFor(python, driver) });
     expect(result.status).toBe("ok");
     expect(result.text).toBe("from custom driver");

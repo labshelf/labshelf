@@ -9,7 +9,7 @@ import type { ICellRunner } from "../../qmd/compute/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
-import { createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
+import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
@@ -159,7 +159,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const publishing = createTemplatePublishHandlers({ dataDir, logger, fetch, build: {
     logger, tex, typst: openTypst((run) => run()), ...(biber && { biber }),
   } });
-  const cells = createCellHandlers({ runner: createNodeCellRunner({ python, logger }), resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
+  const cells = createCellHandlers({ runner: createNodeCellRunner({ python, drivers: bundledCellDrivers(), logger }), resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
   const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),

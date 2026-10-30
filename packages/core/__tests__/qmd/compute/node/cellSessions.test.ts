@@ -488,4 +488,30 @@ describe("createCellSessions", () => {
       expect(next.text).toBe("undefined");
     }
   });
+
+  test("2.2 a launch with ready keeps the output printed before the ready line out of the first cell", async () => {
+    const readyDriver = path.join(workDir, "readyDriver.js");
+    await fs.writeFile(readyDriver, String.raw`
+const readline = require("node:readline");
+const SENT = "\u0001LABSHELF\u0001";
+process.stderr.write("licence banner\n");
+process.stdout.write("startup noise\n");
+setTimeout(() => {
+  process.stderr.write("late banner\n");
+  process.stdout.write(SENT + JSON.stringify({ ready: true }) + "\n");
+  // Like the Wolfram kernel, the driver reads requests only once it has started.
+  readline.createInterface({ input: process.stdin }).on("line", (line) => {
+    const req = JSON.parse(line);
+    process.stdout.write(SENT + JSON.stringify({ id: req.id, text: "answer" }) + "\n");
+  });
+}, 100);
+`, "utf8");
+    const logger = fakeLogger();
+    const sessions = createCellSessions({ logger, launch: async () => ({ command: process.execPath, args: [readyDriver], ready: true }) });
+    live.push(sessions);
+    const first = await run(sessions, "anything");
+    expect(first.status).toBe("ok");
+    expect(first.text).toBe("answer");
+    expect(logger.logs.some((entry) => entry.level === "INFO" && entry.message.includes("before it was ready"))).toBe(true);
+  });
 });
