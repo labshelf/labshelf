@@ -125,7 +125,12 @@ test('a log under .git/labshelf-logs is always allowed', () => {
   const log = join(dir, '.git', 'labshelf-logs', 'run.log');
   writeFileSync(log, lines(200));
   assert.equal(run('Read', { file_path: log }), undefined);
-  assert.equal(run('Read', { file_path: log }), undefined);
+  assert.equal(run('Read', { file_path: log }), undefined);  const implementer = { agent_id: 'a1', agent_type: 'implementer' };
+  for (const command of ['cat .git/labshelf-logs/run.log', 'tail -n 50 .git/labshelf-logs/run.log']) {
+    assert.equal(run('Bash', { command }, implementer), undefined, command);
+    assert.equal(run('Bash', { command }, implementer), undefined, command);
+  }
+  assert.equal(run('Read', { file_path: '.git/labshelf-logs/run.log' }, { agent_id: 'a2', agent_type: 'arbiter' }), undefined);
 });
 
 test('a missing file, other tools and malformed input exit 0 without output', () => {

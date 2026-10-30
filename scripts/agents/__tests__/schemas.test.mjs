@@ -103,6 +103,14 @@ describe("validate", () => {
     assert.deepEqual(validate("verdict", { ...base, verdict: "test_wrong", fix: "f" }), []);
   });
 
+  it("takes verdict evidence in spec terms only: test, spec_ref, reason, no assertion", () => {
+    const entry = { test: "A2 rejects unknown keys", spec_ref: "acceptance A2", reason: "A2 says unknown keys are errors at every depth; nested objects accept them" };
+    const base = { schema: "verdict/v1", spec: "1", verdict: "code_wrong", hint: "check nested objects strictly too" };
+    assert.deepEqual(validate("verdict", { ...base, evidence: [entry] }), []);
+    assert.ok(validate("verdict", { ...base, evidence: [{ ...entry, assertion: "validate returned []" }] }).some((e) => e.includes("assertion")));
+    assert.ok(validate("verdict", { ...base, evidence: [{ test: entry.test, reason: entry.reason }] }).some((e) => e.includes("spec_ref")));
+  });
+
   it("rejects non-object values and unknown kinds without throwing", () => {
     assert.ok(validate("spec", null).length > 0);
     assert.ok(validate("spec", [1]).length > 0);

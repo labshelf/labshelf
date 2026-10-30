@@ -40,7 +40,7 @@ Escalation: a Sonnet package that fails its acceptance checks twice, or returns 
 
 Rules for the plan:
 - If the user named models ("Fable does the visual"), follow them.
-- Size each package by what its agent must read, not by the feature: its brief names 5–8 files with line ranges, so it finishes under the 60k subagent budget. A package that needs more is two packages. A sweep ("what is unused?", "where is X used?") is a scout's job before the brief is written; the brief gets the list of candidates, never the sweep.
+- Size each package by what its agent must read, not by the feature: its brief names 5–8 files with line ranges, so it finishes before the 80k subagent context warning. A package that needs more is two packages. A sweep ("what is unused?", "where is X used?") is a scout's job before the brief is written; the brief gets the list of candidates, never the sweep.
 - A session holds at most 3 packages that run an `implementer` (task packages do not count); split a larger session in two. `plan lint` flags a session over the limit.
 - Packages that touch the same files run in sequence. Only packages with disjoint files run in parallel.
 - Shared logic lands in core first; app packages depend on it.

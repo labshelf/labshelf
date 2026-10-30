@@ -190,7 +190,8 @@ const SCHEMAS = {
       schema: literal("verdict/v1"),
       spec: string,
       verdict: oneOf("code_wrong", "test_wrong", "spec_ambiguous"),
-      evidence: list(shape({ test: string, assertion: string, spec_ref: string, reason: string })),
+      // Per failing test: its name, the spec item it is judged by, and why in spec terms (no test code or copied literals).
+      evidence: list(shape({ test: string, spec_ref: string, reason: string })),
     },
     { hint: string, fix: string, question: string },
     verdictAfter,

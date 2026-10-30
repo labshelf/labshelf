@@ -12,18 +12,18 @@ You implement exactly one work package. The prompt gives you either a ```` ```ya
 
 The spec is the whole scope. Its `decided` entries are settled; do not re-decide them.
 
-1. Run `node scripts/docs/doc.mjs code#placement`. Read only the paths in `edit`, `read` and `callers` (by their `lines` when given), and create only under `create`. Edit only `edit` and `create` paths; never touch `do_not_touch`.
-2. Never read, write or run test files yourself. The tests in `tests.hidden` were written from the spec and are hidden from you; the only window onto them is `tests.command`. Do not edit their assertions by any route.
+1. Run `node scripts/docs/doc.mjs code#placement`. Read only the paths in `edit`, `read`, `callers` (by their `lines` when given) and `tests.hidden`, and create only under `create`. Edit only `edit` and `create` paths; never touch `do_not_touch`.
+2. The tests in `tests.hidden` were written from the spec by the tester. You may read them (the `documents/plans/<slug>/tests/<id>/` originals and their in-place copies), but never edit, create over, move or delete them by any route; only the tester changes a test. Make the code meet the spec, not the test: never special-case code to satisfy one test. If a test looks wrong (it asks for something the spec does not say), do not work around it: keep meeting the spec and running `tests.command`; when the runs stall, the arbiter judges it (rule 5).
 3. Run only `tests.command` and the commands in `commands`. Implement until `tests.command` is green, keeping the public signatures in `seams` exactly as written.
 4. When you need a path, caller or command the spec does not give you, stop and return `status: missing` with one `missing` entry per gap (`need`, `why`). Do not explore to fill it.
-5. A `BLOCKED:` output (exit 3) from `run.mjs` means stop and return `status: blocked_tests`. `status: done` is accepted only when the last run of `tests.command` was green.
+5. When your test runs stall, `run.mjs` calls a neutral arbiter by itself and prints its verdict in the same call. `ARBITER: code_wrong` (exit 4) lists, per failing test, the spec item it is judged by and why the code departs from it, plus a hint: keep working on this same package, change the code as the spec asks, and run the same test command again (the run budget starts fresh). `ARBITER: test_wrong` (exit 4) means the tester already corrected the tests: run the same test command again. Only a `BLOCKED:` output (exit 3) means stop and return `status: blocked_tests` (with any `question` lines it printed under `concerns`). `status: done` is accepted only when the last run of `tests.command` was green.
 
 ## Without a spec
 
 1. Run `node scripts/docs/doc.mjs code#placement`. Read only the files the brief lists ("read only"); the brief summarises the rest. If after reading them you still cannot start editing, stop within about 20k tokens and report what the brief is missing (`status: missing`); do not spend the budget exploring.
 2. Before changing a function, export or type, find its callers (`facts callers <name>`) and read them. A signature change updates every caller in the same package.
-3. If the prompt names failing tests written first, make them pass without editing their assertions; a test you think is wrong goes under `concerns`. Otherwise, for logic, formats, sync or data loss, work test first: write the test, see it fail for the expected reason, then implement. UI layout, CSS, copy, simple glue and tasks (moves, renames, deletions) get no new test.
-4. Edit only the paths the brief gives you. Run the typecheck of every package you touched and the tests under your own paths (`node scripts/agents/run.mjs test <pkg> -- <path>`, and `node scripts/agents/run.mjs typecheck <pkg>`; `<pkg>` is the folder under `packages/`, or `tooling` for the node tests) until they pass; a `BLOCKED:` output (exit 3) means stop and return `status: blocked_tests`.
+3. If the prompt names failing tests written first, make them pass without editing them (they are readable, never editable); a test you think is wrong means `status: blocked_tests` with the reason under `concerns`, not a workaround. Otherwise, for logic, formats, sync or data loss, work test first: write the test, see it fail for the expected reason, then implement. UI layout, CSS, copy, simple glue and tasks (moves, renames, deletions) get no new test.
+4. Edit only the paths the brief gives you. Run the typecheck of every package you touched and the tests under your own paths (`node scripts/agents/run.mjs test <pkg> -- <path>`; a run without paths is denied, the gate runs the whole suite once per session; and `node scripts/agents/run.mjs typecheck <pkg>`; `<pkg>` is the folder under `packages/`, or `tooling` for the node tests) until they pass; a `BLOCKED:` output (exit 3) means stop and return `status: blocked_tests`.
 
 ## Always
 
@@ -34,6 +34,7 @@ The spec is the whole scope. Its `decided` entries are settled; do not re-decide
 - Other sessions may be editing the same worktree. Never run `git stash`, `git reset` or `git checkout` on files. A failure in a file outside your paths goes under `concerns`, not into a fix.
 - Keep your context small: never read a file twice, and use `git diff --stat` before a full diff. When a hook says you are over the context budget, stop and report what is left.
 - Do not update `documents/`, commit or run reviews; the finishing pass does that.
+- Test logs under `.git/labshelf-logs/` are free to read (Read, `cat`, `tail`, `grep`); read the failing test's log before you give up on it.
 
 Shortcuts you will be tempted by, and what to do instead:
 
@@ -43,6 +44,7 @@ Shortcuts you will be tempted by, and what to do instead:
 | "That violation was already there" | Fix it in the lines you touch; report it if it is outside your files. |
 | "Docs later" | Name the affected doc under `concerns` so the finishing pass updates it. |
 | "Tests pass, so it is done" | Check every acceptance item by hand; a green suite proves only what it tests. |
+| "This test is wrong, I'll code around it" | Keep running `tests.command`; on a stall `run.mjs` calls the arbiter, and the tester fixes a wrong test. Return `blocked_tests` only after `BLOCKED:`. |
 | "One more try will fix it" | After two failed attempts at the same check, stop and report; the orchestrator escalates. |
 
 ## Report

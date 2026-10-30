@@ -39,6 +39,13 @@ verdict: spec_ambiguous
 evidence: []
 question: "one or two?"`;
 
+const VERDICT_WITH_ASSERTION = `schema: verdict/v1
+spec: "3.3"
+verdict: code_wrong
+evidence:
+  - {test: "A1 works", assertion: "expected 2, got 1", spec_ref: "acceptance A1", reason: "A1 says it works"}
+hint: "make it work"`;
+
 const BRIEF = `schema: brief/v1
 area: hooks
 question: where
@@ -144,6 +151,7 @@ test('explorer needs a brief, arbiter a verdict (emitted), diagnoser a diagnosis
   assert.match(notice(run(env, { type: 'explorer', agentId: 'e2' })).additionalContext, /brief\/v1/);
   assert.equal(run(env, { type: 'arbiter', response: reply(fence('verdict', VERDICT)) }).stdout, '');
   assert.equal(events(dir).find((event) => event.kind === 'arbiter_verdict').verdict, 'spec_ambiguous');
+  assert.match(notice(run(env, { type: 'arbiter', agentId: 'a2', response: reply(fence('verdict', VERDICT_WITH_ASSERTION)) })).additionalContext, /assertion/);
   assert.match(notice(run(env, { type: 'diagnoser', agentId: 'd1' })).additionalContext, /diagnosis\/v1/);
   assert.match(notice(run(env, { type: 'tester', agentId: 't1' })).additionalContext, /report\/v1/);
 });

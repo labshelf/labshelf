@@ -191,3 +191,17 @@ test('does not parse heredoc bodies as commands', () => {
   denyAny(`cat <<EOF > f\nbody\nEOF\ngit mv a.ts b.ts`, 'moveFiles.mjs');
   denyAny(`pnpm test <<EOF\nx\nEOF`, 'run.mjs');
 });
+
+test('denies an implementer a whole-suite run.mjs test and allows a scoped one', () => {
+  const as = (agent_type, command) => run(command, { session_id: newSession(), agent_id: 'a1', agent_type, tool_name: 'Bash', tool_input: { command } });
+  for (const command of ['node scripts/agents/run.mjs test core', 'node scripts/agents/run.mjs test core --spec 6.3 --plan qmd-notes', 'node scripts/agents/run.mjs test core -- ', 'cd x && node scripts/agents/run.mjs test core 2>&1 | tail -5']) {
+    const output = as('implementer', command);
+    assert.equal(output?.permissionDecision, 'deny', command);
+    assert.match(output.permissionDecisionReason, /-- <paths>$/);
+  }
+  assert.match(as('implementer', 'node scripts/agents/run.mjs test core --spec 6.3 --plan p').permissionDecisionReason, /test core --spec 6\.3 --plan p -- <paths>/);
+  assert.equal(as('implementer', 'node scripts/agents/run.mjs test core --spec 6.3 --plan p -- packages/core/__tests__/a.test.ts'), null);
+  assert.equal(as('implementer', 'node scripts/agents/run.mjs typecheck core'), null);
+  assert.equal(as('finisher', 'node scripts/agents/run.mjs test core'), null);
+  assert.equal(run('node scripts/agents/run.mjs test core'), null);
+});
