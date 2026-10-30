@@ -8,8 +8,7 @@ import { EditorView } from "@codemirror/view";
 import { type PresenceStore, deriveRelativeSelection, type PresenceState } from "@labshelf/core";
 import { yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
-import { createCollabExtensions } from "../../src/collab/register";
-import { createRemoteCursors } from "../../src/collab/register";
+import { createCollabExtensions, createRemoteCursors } from "@labshelf/core/dom";
 
 const presence = {
   awareness: { clientID: 7, on: () => undefined, off: () => undefined, getStates: () => new Map() },

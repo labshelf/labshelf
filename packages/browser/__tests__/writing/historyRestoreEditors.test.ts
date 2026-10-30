@@ -7,7 +7,7 @@ import { EditorView } from "@codemirror/view";
 import type { HistoryToHost, HostToHistory, ILogger } from "@labshelf/core";
 import { createLoopbackTransport } from "@labshelf/core";
 import { askDialog } from "@labshelf/core/dom";
-import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
+import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/session";
 import { mountHistoryHost } from "../../src/writing/history";
 import { clearFakeDb } from "../support/fakeIdb";
 import { memoryLibraryFs } from "../support/memoryLibraryFs";

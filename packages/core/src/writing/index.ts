@@ -26,10 +26,10 @@ export * from "./conflict/index.js";
 export { createTextMerge, deriveLineSimilarity } from "./textMerge.js";
 export * from "./outline/index.js";
 // collab already exports a TextChange of another shape, so the source editor's goes out as SourceTextChange.
-export { createSourceAuthority, parseSourceEditorInbound, parseSourceEditorOutbound } from "./sourceEditor/index.js";
-export type {
-  SourceAuthority, SourceUpdate, TextChange as SourceTextChange, SourceEditorInbound, SourceEditorOutbound,
-} from "./sourceEditor/index.js";
+export { createSourceAuthority } from "./authority.js";
+export type { SourceAuthority, SourceUpdate, TextChange as SourceTextChange } from "./authority.js";
+export { parseSourceEditorInbound, parseSourceEditorOutbound } from "./protocol.js";
+export type { SourceEditorInbound, SourceEditorOutbound } from "./protocol.js";
 export { StaleSources, type SourceEvents, type StaleSourcesState } from "./staleSources.js";
 export { ProjectSynctex, type SynctexFinder, type SynctexLogHost } from "./projectSynctex.js";
 export { BuildRootBuilds, type BuildRootBuildState, type FinishedBuild } from "./buildRootBuilds.js";

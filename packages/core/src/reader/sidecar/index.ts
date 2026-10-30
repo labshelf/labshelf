@@ -1,4 +1,4 @@
-/** Exports the paper sidecar's public API: annotations, theme and reading position, with the stores over them. */
+/** Exports the paper sidecar's public API: annotations and reading position, with the stores over them. */
 export {
   compareAnnotations, createEmptyPaperSidecar, createPreviewStore, normalizePaperSidecar, PaperSidecarStore, PREVIEW_ANNOTATION_REFUSAL,
   serializePaperSidecar, type PaperSidecar, type PaperSidecarStoreOptions, type ReaderSidecarStore,
@@ -7,7 +7,3 @@ export {
   deriveClampedPage, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, normalizeReadingPosition,
   type ReadingState, type SidebarState, type SidebarTab,
 } from "./readingState.js";
-export {
-  mergeReaderThemes, normalizeHexColour, parseReaderThemes, ReaderThemeStore, serializeReaderThemes,
-  type ReaderThemesPort, type ReaderThemeStoreOptions,
-} from "./readerThemeStore.js";

@@ -6,7 +6,7 @@ import { promises as fs } from "node:fs";
 
 import type { LibraryLayout } from "../../library/index.js";
 import { writeFileAtomic } from "../../library/node/index.js";
-import type { ReaderThemesPort } from "../sidecar/readerThemeStore.js";
+import type { ReaderThemesPort } from "../readerThemeStore.js";
 
 /**
  * @returns a port reading and writing the layout's readerThemesPath; a missing or unreadable file reads as null.

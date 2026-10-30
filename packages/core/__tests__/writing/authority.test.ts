@@ -1,6 +1,6 @@
 // Pins the source authority (D4): one document's text and versions, late client updates rebased, external changes recorded, CRLF kept, no lost or doubled character.
 import { ChangeSet, Text } from "@codemirror/state";
-import { createSourceAuthority, type SourceAuthority, type SourceUpdate, type TextChange } from "../../../src/writing/sourceEditor/authority";
+import { createSourceAuthority, type SourceAuthority, type SourceUpdate, type TextChange } from "../../src/writing/authority";
 
 /** Applies changes that all refer to the same original text (the way a WorkspaceEdit or a CodeMirror change spec does). */
 function applyChanges(text: string, changes: readonly TextChange[]): string {

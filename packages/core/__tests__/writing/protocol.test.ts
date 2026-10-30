@@ -4,7 +4,7 @@ import {
   parseSourceEditorOutbound,
   type SourceEditorInbound,
   type SourceEditorOutbound,
-} from "../../../src/writing/sourceEditor/protocol";
+} from "../../src/writing/protocol";
 
 const updates = [
   { clientID: "c1", changes: [{ from: 0, to: 0, insert: "x" }] },

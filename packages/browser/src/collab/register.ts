@@ -203,8 +203,6 @@ export class ProjectShare {
   }
 }
 
-export { createCollabExtensions, createRemoteCursors, type CollabExtensionsOptions } from "@labshelf/core/dom";
-
 export type ShareSources = Pick<LibraryLocations, "fileSystem" | "folderFileSystem" | "browserFileSystem" | "getLibrarySource" | "onLibraryFilesChanged">;
 
 export interface BrowserShareOptions {

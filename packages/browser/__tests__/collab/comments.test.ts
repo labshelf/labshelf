@@ -7,7 +7,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { parseCommentsQmd, type IFileSystem, type ILogger, type LibraryFileSystem, type ProjectEntry, type TextRange } from "@labshelf/core";
 import { addCommentSupport, createCommentThreads, createRoutedCommentThreads, type CommentThreads, type EditorComments } from "../../src/collab/comments";
-import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
+import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/session";
 
 // The core editor reports edits through onChange; the test types by calling the last one mounted.
 const typed: { type?: (body: string) => void } = {};

@@ -9,9 +9,9 @@ import {
   createTypstLanguageOf,
   createTypstSources,
   type TypstLanguageOf,
-} from "../../src/writing/typstLanguage";
-import { fakeDocument } from "../support/textDocument";
-import { fakeLogger, fakeProjects, readyEntry } from "../support/writingFixtures";
+} from "../../../src/writing/projects/typstLanguage";
+import { fakeDocument } from "../../support/textDocument";
+import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
 
 describe("Typst sources and roots", () => {
   const fsMock = vscode.workspace.fs as unknown as { readDirectory: jest.Mock; readFile: jest.Mock };

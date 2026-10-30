@@ -1,5 +1,4 @@
 // LaTeX editor support lives in core; this keeps the browser's import path.
 export {
-  createCitationCompletion, createCitationOption, createLatexSupport, createReferenceCompletion, closeEnvironmentOnEnter, findLatexCommandCompletion, listLibraryCitations,
-  type LatexSupportDeps,
+  createCitationCompletion, createCitationOption, createReferenceCompletion, closeEnvironmentOnEnter, findLatexCommandCompletion,
 } from "@labshelf/core/sourceEditor";

@@ -8,7 +8,7 @@ import { NodeLibraryFileSystem } from "@labshelf/core/node";
 import { registerWritingView } from "../../src/activation/registerWritingView";
 import type { LibraryRootController } from "../../src/activation/index";
 import { registerNoteLinks, type RegisterPlatformWriting } from "../../src/writing/index";
-import { registerNodeWriting } from "../../src/writing/node";
+import { registerNodeWriting } from "../../src/activation/node/desktopPlatform";
 import { fakeLogger, fakeProjectData } from "../support/writingFixtures";
 
 const manifest = JSON.parse(readFileSync(join(__dirname, "../../package.json"), "utf8")) as {

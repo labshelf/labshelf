@@ -7,7 +7,7 @@
 import { isolateHistory, undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import type { ILogger } from "../../../../src/ports";
-import type { SourceUpdate } from "../../../../src/writing/sourceEditor/authority";
+import type { SourceUpdate } from "../../../../src/writing/authority";
 import type { SourceDocument } from "../../../../src/writing/dom/sourceEditor/documentMode";
 import { mountSourceEditor, type SourceEditorDeps, type SourceFileAccess } from "../../../../src/writing/dom/sourceEditor/editor";
 

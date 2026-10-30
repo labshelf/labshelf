@@ -7,7 +7,7 @@ import { EditorSelection } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { type ILogger, type ProjectEntry, createImageSnippet, createTableSnippet, readShareIndexDocFiles } from "@labshelf/core";
 import type { PageShare } from "../../src/collab";
-import { mountSourceEditor } from "../../src/writing/editor";
+import { mountSourceEditor } from "../../src/writing/session";
 import { deriveCodeMirrorTemplate, readSourceFileMode } from "../../src/writing/source";
 
 // Pins read-only access until a shared file has a text index entry.

@@ -21,7 +21,7 @@ decisions:
     text: "Collaboration needs no Yjs in the webview: the existing binding (vscode/src/collab/binding.ts) already mirrors TextDocument changes to the shared Y.Text, and remote Yjs edits reach the editor as host updates. Presence goes through the host: the webview sends its selection, the host publishes it like a native editor's and sends peers' cursors back, drawn with core's cursor helpers."
     why: One path for shared text whatever editor is open; cursors are the only thing a webview must render itself.
   - id: D6
-    text: "The webview protocol is types plus a shared parser in `packages/core/src/writing/sourceEditor/protocol.ts` (code#messages): an invalid message is rejected whole, the host buffers until `ready`, payloads are never logged. It is not a documents/contracts section (code#contracts)."
+    text: "The webview protocol is types plus a shared parser in `packages/core/src/writing/protocol.ts` (code#messages): an invalid message is rejected whole, the host buffers until `ready`, payloads are never logged. It is not a documents/contracts section (code#contracts)."
     why: Same rule as every other webview surface.
   - id: D7
     text: "VS Code commands that read `window.activeTextEditor` go through one `activeSource` registry in `packages/vscode/src/writing/activeSource.ts` that answers {uri, line, reveal(line), updates} for the focused native editor or the focused LabShelf editor. Keybindings and palette `when` clauses add `activeCustomEditorId == 'labshelf.sourceEditor'` next to `editorLangId`."
@@ -96,7 +96,7 @@ sessions:
       - packages/vscode/src/activation/registerPanelCommands.ts
       - packages/vscode/src/activation/registerWritingView.ts
       - packages/vscode/src/activation/startExtension.ts
-      - packages/vscode/src/writing/noteLinks.ts
+      - packages/vscode/src/writing/citations/noteLinks.ts
       - packages/vscode/__tests__/writing/sourceEditor/
   - id: "4b"
     file: sessions/4b.yaml

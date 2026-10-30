@@ -10,12 +10,12 @@ import type { SourceLanguage, SourceUpdates } from "@labshelf/core/sourceEditor"
 import type { PageShare } from "../collab";
 import type { TabContext } from "../libraryUi/editorArea";
 import { createSidecarPort } from "../storage";
-import type { SourceEditorDeps } from "./editor";
+import type { SourceEditorDeps } from "./session";
 import type { NoteLinkActions } from "./noteLinks";
 import { createBrowserProjectContent } from "./project";
 
 // The text updates and the source language live in core; these keep the browser's import path.
-export { createFormattingKeymap, createSourceUpdates, deriveCodeMirrorTemplate, deriveSourceLanguage, type SourceLanguage, type SourceUpdates } from "@labshelf/core/sourceEditor";
+export { deriveCodeMirrorTemplate, deriveSourceLanguage, type SourceLanguage, type SourceUpdates } from "@labshelf/core/sourceEditor";
 
 /** Every symbol as a pick item, a category heading before its first one. */
 export function listSymbolEntries(language: SourceLanguage): QuickPickEntry<string>[] {

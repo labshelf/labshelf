@@ -1,4 +1,5 @@
-import { deriveFloatRegion, deriveCropRectForPreview, deriveDestPoint } from "../../src/reader/geometry";
+import { findFloatCaptionNear } from "../../src/reader/destTarget";
+import { deriveFloatRegion, deriveCropRectForPreview, deriveDestPoint, type PdfRegion } from "../../src/reader/geometry";
 import type { TextLine } from "../../src/reader/textLines";
 
 const W = 612;
@@ -161,5 +162,81 @@ describe('deriveCropRectForPreview', () => {
   it('defaults to the top of the page when the anchor is null', () => {
     const rect = deriveCropRectForPreview(null, pageWidth, pageHeight);
     expect(rect.y).toBe(0);
+  });
+});
+
+// Regression: hover previews on real page geometry, lines extracted with pdf.js the way PageTextCache does.
+const PAGE = { width: 612, height: 792, columnSplit: null };
+const at = (y: number, x: number, xEnd: number, text: string, height = 12): TextLine => ({ text, x, xEnd, y, height, column: 0 });
+const contains = (r: PdfRegion, l: TextLine): boolean => r.yTop >= l.y + 0.7 * l.height && r.yBottom <= l.y;
+const excludesBelow = (r: PdfRegion, l: TextLine): boolean => l.y + 0.7 * l.height <= r.yBottom;
+
+describe('figure preview of a hyperref figure link (Mnih et al. 2013, "Playing Atari", page 7)', () => {
+  // Figure 2 is four plots ABOVE its caption; their small-font tick labels and axis titles are extracted as text and
+  // the four panels' labels on one baseline join into page-wide lines. Figure 3's graphic and caption follow below.
+  const lines = [
+    at(704.8, 134.8, 481.9, 'Average Reward on Breakout Average Reward on Seaquest Average Q on Breakout Average Q on Seaquest', 4),
+    at(702.0, 114.1, 419.8, '250 1800 4 9', 4),
+    at(696.3, 211.5, 419.8, '1600 3.5 8', 4),
+    at(691.8, 114.1, 419.8, '200 1400 7', 4),
+    at(689.3, 317.9, 320.2, '3', 4),
+    at(685.0, 211.5, 419.8, '1200 6', 4),
+    at(681.6, 114.1, 320.2, '150 2.5', 4),
+    at(679.4, 211.5, 419.8, '1000 5', 4),
+    at(676.5, 317.9, 320.2, '2', 4),
+    at(673.7, 213.8, 419.8, '800 4', 4),
+    at(671.4, 114.1, 320.2, '100 1.5', 4),
+    at(668.0, 213.8, 419.8, '600 3', 4),
+    at(662.4, 213.8, 419.8, '400 1 2', 4),
+    at(661.3, 116.4, 120.9, '50', 4),
+    at(656.7, 213.8, 419.8, '200 0.5 1', 4),
+    at(651.1, 118.6, 419.8, '0 0 0 0', 4),
+    at(647.5, 122.0, 503.1, '0 10 20 30 40 50 60 70 80 90 100 0 10 20 30 40 50 60 70 80 90 100 0 10 20 30 40 50 60 70 80 90 100', 4),
+    at(643.5, 146.7, 474.9, 'Training Epochs Training Epochs Training Epochs Training Epochs', 4),
+    at(610.3, 108.0, 504.0, 'Figure 2: The two plots on the left show average reward per episode on Breakout and Seaquest', 10),
+    at(599.4, 108.0, 504.0, 'respectively during training. The statistics were computed by running an ε-greedy policy with ε =', 10),
+    at(588.4, 108.0, 504.0, '0.05 for 10000 steps. The two plots on the right show the average maximum predicted action-value', 10),
+    at(577.5, 108.0, 504.0, 'of a held out set of states on Breakout and Seaquest respectively. One epoch corresponds to 50000', 10),
+    at(566.5, 108.0, 368.1, 'minibatch weight updates or roughly 30 minutes of training time.', 10),
+    at(463.0, 108.0, 504.0, 'Figure 3: The leftmost plot shows the predicted value function for a 30 frame segment of the game', 10),
+    at(452.0, 108.0, 482.2, 'Seaquest. The three screenshots correspond to the frames labeled by A, B, and C respectively.', 10),
+  ];
+
+  it('1.3a shows the whole figure above its caption, not the space below the caption', () => {
+    // Link "figure.2": XYZ dest at y = 642.228, just under the plots.
+    const hit = findFloatCaptionNear(lines, PAGE, { floatKind: 'figure', label: '2' }, { x: 108, y: 642.228 });
+    expect(hit).not.toBeNull();
+    expect(lines[hit!.lineIndex]!.text).toMatch(/^Figure 2:/);
+    const region = deriveFloatRegion(lines, hit!, PAGE.width, PAGE.height, PAGE.columnSplit);
+    // The plot titles at the top of the figure and the whole caption are inside; Figure 3's caption is not.
+    expect(contains(region, lines[0]!)).toBe(true);
+    expect(contains(region, lines[22]!)).toBe(true);
+    expect(excludesBelow(region, lines[23]!)).toBe(true);
+  });
+
+  it('A2 covers the four plot titles, the plots and the caption of Figure 2', () => {
+    const hit = findFloatCaptionNear(lines, PAGE, { floatKind: 'figure', label: '2' }, { x: 108, y: 642.228 });
+    expect(hit).not.toBeNull();
+    const region = deriveFloatRegion(lines, hit!, PAGE.width, PAGE.height, PAGE.columnSplit);
+    expect(contains(region, lines[0]!)).toBe(true); // plot titles
+    expect(contains(region, lines[17]!)).toBe(true); // x-axis titles
+    for (const i of [18, 19, 20, 21, 22]) { expect(contains(region, lines[i]!)).toBe(true); }
+  });
+});
+
+describe('deriveFloatRegion with full-height body text above a figure', () => {
+  it('1.3b still bounds the band at the body text when small-font labels sit inside the figure', () => {
+    const lines = [
+      ...body(760, 4),
+      line('0 10 20 30 40', 600, { x: 100, xEnd: 500, height: 4 }),
+      line('Time Time', 480, { x: 100, xEnd: 500, height: 4 }),
+      line('Figure 1: caption below the plot', 430, { height: 11 }),
+      ...body(400, 8),
+    ];
+    const region = deriveFloatRegion(lines, { kind: 'figure', label: '1', lineIndex: 6 }, W, H, null);
+    // last body line above the figure is at y 715
+    expect(region.yTop).toBeLessThanOrEqual(715 + 1);
+    expect(region.yTop).toBeGreaterThan(640);
+    expect(region.yBottom).toBeLessThan(430);
   });
 });

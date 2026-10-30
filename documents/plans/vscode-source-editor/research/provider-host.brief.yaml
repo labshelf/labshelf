@@ -14,7 +14,7 @@ edit:
   - {path: packages/vscode/src/activation/startExtension.ts, lines: "47-66", why: "pass projects: writing.projects to registerPanelCommands"}
 read:
   - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "236-345", why: "SourceFileAccess, SourceEditorDeps, mountSourceEditor"}
-  - {path: packages/core/src/writing/sourceEditor/protocol.ts, lines: "1-202", why: "request/response methods listFiles, readFile, ...; init shape"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "1-202", why: "request/response methods listFiles, readFile, ...; init shape"}
 risks:
   - "core's writing/sourceEditor (authority, protocol) is not re-exported from @labshelf/core"
   - "no writeFile request: document mode only"

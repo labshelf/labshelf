@@ -2,9 +2,9 @@
 import * as vscode from "vscode";
 
 import { buildInsert, scanOrigins } from "@labshelf/core";
-import { registerNoteLinks } from "../../src/writing/noteLinks";
-import { fakeLogger, fakeProjects, readyEntry } from "../support/writingFixtures";
-import { fakeDocument } from "../support/textDocument";
+import { registerNoteLinks } from "../../../src/writing/citations/noteLinks";
+import { fakeLogger, fakeProjects, readyEntry } from "../../support/writingFixtures";
+import { fakeDocument } from "../../support/textDocument";
 
 const FOLDER = "/p/proj";
 const FILE = `${FOLDER}/main.tex`;

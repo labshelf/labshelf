@@ -2,7 +2,7 @@
 import { collab, getSyncedVersion, receiveUpdates, sendableUpdates, type Update } from "@codemirror/collab";
 import { ChangeSet, Compartment, EditorState, Facet, Transaction, type Extension } from "@codemirror/state";
 import { ViewPlugin, type EditorView, type PluginValue, type ViewUpdate } from "@codemirror/view";
-import { listChanges, type SourceUpdate } from "../../sourceEditor/authority.js";
+import { listChanges, type SourceUpdate } from "../../authority.js";
 import { fromDisk } from "./openEditors.js";
 
 export interface SourceDocument {
