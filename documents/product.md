@@ -29,6 +29,8 @@ A Project is a writing project: a LaTeX or Typst manuscript and its supporting f
 
 Moving material into a manuscript should preserve a useful route back to its source. A note or calculation can remain exploratory while the manuscript presents the result.
 
+In VS Code a `.tex` or `.typ` file of a project opens in the native editor unless the user picks the LabShelf editor (Reopen Editor With, or the Reopen with LabShelf Editor command). The LabShelf editor is a card like the PDF preview with the project's own tools: build problems as squiggles, a note gutter, insert from a note, citation completion from the library, labels, and comments. The title actions, build and preview act on it when it is focused. It edits the same document as a native editor on the file, so both show every edit. In a shared project it shows peers' edits and cursors, publishes the user's selection and undoes only the user's own edits; closing it withdraws the selection it published. LaTeX Workshop, language servers, Copilot, Vim, VS Code's native completion, hover and definition providers, `.bib` files and the terminal app stay with the native editor, and the LabShelf editor is never the default.
+
 ## Spaces
 
 A Space provides context around a topic or research effort: papers, linked writing projects, notes, discussions, dates and a glossary. It is encouraged through its usefulness and is optional. Reading a paper or creating a project never requires creating a Space.
