@@ -1,46 +1,136 @@
 schema: session/v1
 id: "3"
 goal: "The browser's source tab offers the review mode: a suggestion store for local and shared projects, the author, the remembered mode and the dropdown in the toolbar."
-depends_on: ["1", "2"]
-owns: [packages/browser/src/collab/suggestions.ts, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/libraryUi/mountProjectWiring.ts, packages/browser/__tests__/collab/suggestions.test.ts]
-status: pending
+depends_on:
+  - "1"
+  - "2"
+owns:
+  - packages/core/src/collab/index.ts
+  - packages/browser/src/collab/suggestions.ts
+  - packages/browser/src/collab/register.ts
+  - packages/browser/src/collab/comments.ts
+  - packages/browser/src/collab/index.ts
+  - packages/browser/src/libraryUi/editorArea/sourceTab.ts
+  - packages/browser/src/libraryUi/editorArea/tabKinds.ts
+  - packages/browser/src/libraryUi/mountProjectWiring.ts
+  - packages/browser/__tests__/collab/suggestions.test.ts
+status: blocked
 packages:
   - id: "3.1"
     plan: review-mode
-    sha: 3b1e2389
-    goal: "createRoutedSuggestions gives each file an EditorSuggestions over comments.qmd for a local project and over the share's suggestions map for a shared one."
+    sha: 504275cb
+    goal: createRoutedSuggestions gives each file an EditorSuggestions over comments.qmd for a local project and over the share's suggestions store for a shared one, reachable as services.suggestions.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    create: [packages/browser/src/collab/suggestions.ts]
+    runner:
+      agent: implementer
+      model: sonnet
+    create:
+      - packages/browser/src/collab/suggestions.ts
+      - packages/browser/__tests__/collab/suggestions.test.ts
     edit:
-      - {path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "120-140", why: "build it beside createRoutedCommentThreads"}
+      - path: packages/core/src/collab/index.ts
+        lines: 25-31
+        why: export createSharedProjectSuggestions and type SharedProjectSuggestions from ./suggestions.js
+      - path: packages/browser/src/collab/register.ts
+        lines: 73-200
+        why: "LiveShare gets suggestions: SharedProjectSuggestions, built in adopt() beside comments (line 125), returned by live() (109-112), cleared in disconnect() (197)"
+      - path: packages/browser/src/libraryUi/mountProjectWiring.ts
+        lines: 120-140
+        why: build it beside createRoutedCommentThreads (131) and return it in services (135)
+      - path: packages/browser/src/libraryUi/editorArea/tabKinds.ts
+        lines: 20-31
+        why: ProjectServices gets suggestions beside comments
     read:
-      - {path: documents/plans/review-mode/research/hosts.brief.yaml, lines: "1-60", why: "host map"}
-      - {path: packages/browser/src/collab/comments.ts, lines: "1-200", why: "local and routed comment stores to mirror"}
-      - {path: packages/browser/src/collab/register.ts, lines: "14-70", why: "shared store"}
+      - path: documents/plans/review-mode/research/browser-suggestions.brief.yaml
+        lines: 1-60
+        why: signatures, seams and helpers for this package
+      - path: packages/core/src/writing/dom/sourceEditor/review.ts
+        lines: 217-335
+        why: FileSuggestion, EditorSuggestions, EditorReview and how the editor uses the port
+      - path: packages/core/src/collab/suggestions.ts
+        lines: 1-208
+        why: Suggestion, deriveSuggestionAnchor, findSuggestion, createSharedProjectSuggestions
+      - path: packages/core/src/collab/commentsFile.ts
+        lines: 15-78
+        why: CommentsDocument, addSuggestions, removeSuggestions, deriveSuggestions, updateCommentsDocument
+      - path: packages/browser/src/collab/comments.ts
+        lines: 1-200
+        why: local and routed comment stores to mirror
+      - path: packages/browser/src/collab/register.ts
+        lines: 14-200
+        why: shared store and LiveShare
+      - path: packages/browser/__tests__/collab/comments.test.ts
+        lines: 35-199
+        why: fakes to copy into the new test
+      - path: packages/core/__tests__/collab/suggestions.test.ts
+        lines: 700-730
+        why: session()/sharedFile() helpers for a shared-store test
     decided:
-      - "Local: updateCommentsDocument with addSuggestions/removeSuggestions, anchors from deriveSuggestionAnchor on the saved text, positions from findSuggestion; listeners notified after each write."
-      - "Shared: createSharedProjectSuggestions; onChange notifies the file's listeners."
+      - "API: createRoutedSuggestions({files, shares, session}) returns { suggestionsFor(projectId, path): EditorSuggestions }; the file store is createFileSuggestions({fs, session, logger}) with the same shape, mirroring createCommentThreads/createRoutedCommentThreads."
+      - "Local: updateCommentsDocument with addSuggestions/removeSuggestions, anchors from deriveSuggestionAnchor on the saved text read after the flush, positions from findSuggestion; listeners notified after each write."
+      - "Shared: LiveShare.suggestions = createSharedProjectSuggestions(connection.session), built per connection in register.ts; locate() for positions, anchor() for new ones; onChange notifies the file's listeners."
+      - "add replaces by id in both stores: remove the ids already present, then add, in one write."
+      - "Routing follows createRoutedCommentThreads: shares.live(projectId)?.suggestions ?? files, re-subscribing on shares.onChange."
+      - Suggestions of other files and detached ones are left out of subscribe().
     acceptance:
-      - {id: 3.1a, check: "add, subscribe and remove round-trip in a local project and in a shared one; detached suggestions are left out"}
-      - {id: A3, check: "accept/reject in a local and a shared project"}
-    tests: {none: "behaviour package: the implementer writes the failing tests first in packages/browser/__tests__/collab/suggestions.test.ts"}
-    commands: ["node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab"]
+      - id: 3.1a
+        check: add, subscribe and remove round-trip in a local project and in a shared one; detached suggestions are left out
+      - id: A3
+        check: accept/reject in a local and a shared project
+    tests:
+      none: "behaviour package: the implementer writes the failing tests first in packages/browser/__tests__/collab/suggestions.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab
   - id: "3.2"
     plan: review-mode
-    sha: 3b1e2389
-    goal: "sourceTab passes deps.review (author from shares.name(), the stored mode, the routed suggestions) and puts the mode dropdown in the toolbar."
+    sha: 504275cb
+    goal: sourceTab passes deps.review (author from shares.name(), the stored mode, the routed suggestions) and puts the mode dropdown in the toolbar.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["3.1"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "3.1"
     edit:
-      - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "56-180", why: "editorDeps and mountTab toolbar; mode state in mountTab so retry() keeps it"}
+      - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+        lines: 50-190
+        why: editorDeps (comments dep at 70-74, only when !readOnly) and mountTab toolbar; mode state in mountTab so retry() keeps it
     read:
-      - {path: packages/browser/src/collab/pageShares.ts, lines: "100-190", why: "name()"}
+      - path: packages/core/src/writing/dom/sourceEditor/review.ts
+        lines: 217-241
+        why: EditorReview { author(), mode, suggestions, onMode? }
+      - path: packages/core/src/writing/dom/sourceEditor/editor.ts
+        lines: 200-330
+        why: SourceEditorDeps.review and setReviewMode
+      - path: packages/browser/src/collab/pageShares.ts
+        lines: 100-190
+        why: name()
+      - path: packages/browser/src/libraryUi/editorArea/tabKinds.ts
+        lines: 20-31
+        why: ProjectServices.suggestions from 3.1
+      - path: packages/core/src/writing/dom/sourceEditor/reviewView.ts
+        lines: 170-190
+        why: "reviewModeDropdown(current, pick): SourceToolbarDropdown for renderSourceToolbar"
+      - path: packages/core/src/writing/dom/sourceEditor/toolbar.ts
+        lines: 1-80
+        why: SourceToolbarItem, renderSourceToolbar
+      - path: packages/browser/src/collab/suggestions.ts
+        lines: 1-60
+        why: ProjectSuggestions.suggestionsFor(projectId, path)
     decided:
-      - "Mode stored in localStorage under `labshelf.reviewMode.<projectId>`; default editing; read-only tabs get neither the dropdown nor deps.review."
+      - Mode stored in localStorage under `labshelf.reviewMode.<projectId>`; default editing; read-only tabs get neither the dropdown nor deps.review.
+      - review.suggestions = services.suggestions.suggestionsFor(projectId, path).
+      - The dropdown is reviewModeDropdown(() => mode, pick) in the toolbar's groups; pick stores the mode and calls editor.setReviewMode. The toolbar is built before the file's mode is known, so it shows the dropdown only once a writable editor is open (hide or rebuild it for read-only and notice states).
     acceptance:
-      - {id: 3.2a, check: "by hand: the dropdown switches modes, survives reopening the tab and a retry; suggestions show and resolve"}
-      - {id: A5, check: "browser half of A5"}
-    tests: {none: "glue; checked by hand (A5)"}
-    commands: ["node scripts/agents/run.mjs typecheck browser", "node scripts/agents/run.mjs build browser"]
+      - id: 3.2a
+        check: "by hand: the dropdown switches modes, survives reopening the tab and a retry; suggestions show and resolve"
+      - id: A5
+        check: browser half of A5
+    tests:
+      none: glue; checked by hand (A5)
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs build browser
+blocked_reason: "3.2: missing"

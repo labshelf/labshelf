@@ -42,17 +42,17 @@ export interface CommentThreadsOptions {
   logger: ILogger;
 }
 
-type Session = Pick<ProjectSession, "current">;
+export type Session = Pick<ProjectSession, "current">;
 
-function openFolder(session: Session, projectId?: string): string {
+export function openFolder(session: Session, projectId?: string): string {
   const entry = session.current();
   if (entry?.kind !== "ready" || (projectId !== undefined && entry.settings.id !== projectId)) {
-    throw new Error(`Project ${projectId ?? "(none)"} is not the open project, so its comments cannot be used`);
+    throw new Error(`Project ${projectId ?? "(none)"} is not the open project, so its comments and suggestions cannot be used`);
   }
   return entry.folder;
 }
 
-function accessOf(fs: LibraryFileSystem, folder: string): CommentsFileAccess {
+export function accessOf(fs: LibraryFileSystem, folder: string): CommentsFileAccess {
   const file = posixPathOps.join(folder, COMMENTS_PATH);
   return {
     read: async () => (await fs.exists(file) ? fs.readText(file) : undefined),
@@ -60,7 +60,7 @@ function accessOf(fs: LibraryFileSystem, folder: string): CommentsFileAccess {
   };
 }
 
-async function readFileText(fs: LibraryFileSystem, folder: string, path: string): Promise<string | undefined> {
+export async function readFileText(fs: LibraryFileSystem, folder: string, path: string): Promise<string | undefined> {
   const file = posixPathOps.join(folder, path);
   return await fs.exists(file) ? fs.readText(file) : undefined;
 }
@@ -89,22 +89,33 @@ async function openRanges(fs: LibraryFileSystem, folder: string, path: string): 
   return located.filter((each): each is TextRange => each !== "detached");
 }
 
-const newComment = (body: string): Comment => ({ id: globalThis.crypto.randomUUID(), author: AUTHOR, body, createdAt: new Date().toISOString() });
-
-export function createCommentThreads({ fs, session, logger }: CommentThreadsOptions): CommentThreads {
-  const listeners = new Set<() => void>();
-  const notify = (): void => { for (const listener of [...listeners]) { listener(); } };
-  const onDidChange = (listener: () => void): (() => void) => { listeners.add(listener); return () => void listeners.delete(listener); };
-
-  const edit = async (folder: string, change: Parameters<typeof updateCommentsDocument>[1], action: string): Promise<void> => {
+/** Applies a change to the folder's comments file, logging a failure under `module` and calling `notify` after a success. */
+export function editComments(fs: LibraryFileSystem, logger: ILogger, module: string, notify: () => void): (folder: string, change: Parameters<typeof updateCommentsDocument>[1], action: string) => Promise<void> {
+  return async (folder, change, action) => {
     try {
       await updateCommentsDocument(accessOf(fs, folder), change);
     } catch (error) {
-      await logger.error(THREADS_MODULE, error, { action, folder });
+      await logger.error(module, error, { action, folder });
       throw error;
     }
     notify();
   };
+}
+
+/** A set of change listeners with the call that notifies them. */
+export function createChangeEmitter(): { notify: () => void; onDidChange: (listener: () => void) => () => void } {
+  const listeners = new Set<() => void>();
+  const notify = (): void => { for (const listener of [...listeners]) { listener(); } };
+  const onDidChange = (listener: () => void): (() => void) => { listeners.add(listener); return () => void listeners.delete(listener); };
+  return { notify, onDidChange };
+}
+
+const newComment = (body: string): Comment => ({ id: globalThis.crypto.randomUUID(), author: AUTHOR, body, createdAt: new Date().toISOString() });
+
+export function createCommentThreads({ fs, session, logger }: CommentThreadsOptions): CommentThreads {
+  const { notify, onDidChange } = createChangeEmitter();
+
+  const edit = editComments(fs, logger, THREADS_MODULE, notify);
   const rangesOf = async (projectId: string, path: string): Promise<TextRange[]> => openRanges(fs, openFolder(session, projectId), path);
 
   return {

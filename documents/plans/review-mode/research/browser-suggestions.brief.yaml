@@ -1,0 +1,41 @@
+schema: brief/v1
+area: review-mode 3.1 browser createRoutedSuggestions
+question: "what core/browser surfaces does createRoutedSuggestions (packages/browser/src/collab/suggestions.ts) mirror and wire"
+sha: 504275cb
+reuse:
+  - {symbol: createRoutedCommentThreads, path: packages/browser/src/collab/comments.ts, lines: "146-180", why: "template: storeFor(projectId) = shares.live(id)?.X ?? files; re-subscribes on shares.onChange; onDidChange attaches to live store plus files store"}
+  - {symbol: createCommentThreads (accessOf/openFolder helpers), path: packages/browser/src/collab/comments.ts, lines: "47-75", why: "openFolder(session, projectId) guard, accessOf(fs, folder) -> CommentsFileAccess over COMMENTS_PATH, edit() wrapper with logger.error + notify"}
+  - {symbol: createSharedProjectSuggestions, path: packages/core/src/collab/suggestions.ts, lines: "164-208", why: "live store: takes Pick<ShareSession,'index'|'openDoc'>; has suggestions/locate/anchor/add/remove/onChange"}
+  - {symbol: createLiveCommentThreads, path: packages/browser/src/collab/register.ts, lines: "14-70", why: "how the per-connection comment store is built"}
+edit:
+  - {path: packages/browser/src/collab/register.ts, lines: "73-78", why: "LiveShare {session, presence, comments}: add suggestions"}
+  - {path: packages/browser/src/collab/register.ts, lines: "96-98", why: "private comments field; add a suggestions field"}
+  - {path: packages/browser/src/collab/register.ts, lines: "109-112", why: "live() returns {session, presence, comments}; add suggestions"}
+  - {path: packages/browser/src/collab/register.ts, lines: "125-125", why: "adopt() builds comments; build suggestions next"}
+  - {path: packages/browser/src/collab/register.ts, lines: "197-197", why: "disconnect() clears comments; clear suggestions"}
+  - {path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "131-135", why: "comments built at 131; services returned at 135"}
+  - {path: packages/browser/src/libraryUi/editorArea/tabKinds.ts, lines: "20-31", why: "ProjectServices (comments at 25); add suggestions"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "50-80", why: "editorDeps: line 52 reads project(); comments dep at 70-74 only when !readOnly"}
+read:
+  - {path: packages/core/src/writing/dom/sourceEditor/review.ts, lines: "217-241", why: "FileSuggestion, EditorSuggestions, EditorReview"}
+  - {path: packages/core/src/writing/dom/sourceEditor/review.ts, lines: "243-335", why: "how the editor consumes subscribe() and sends add/remove after the save flush"}
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "206-206", why: "SourceEditorDeps.review?: EditorReview; ignored if readOnly (315-316)"}
+  - {path: packages/core/src/collab/suggestions.ts, lines: "1-135", why: "Suggestion, SuggestionKind, deriveSuggestionAnchor, findSuggestion"}
+  - {path: packages/core/src/collab/commentsFile.ts, lines: "15-78", why: "CommentsDocument, add/removeSuggestions, deriveSuggestions, updateCommentsDocument"}
+  - {path: packages/core/src/collab/index.ts, lines: "25-31", why: "exports from @labshelf/core"}
+  - {path: packages/browser/src/collab/pageShares.ts, lines: "15-25", why: "PageShares.live, onChange, name"}
+  - {path: packages/browser/__tests__/collab/comments.test.ts, lines: "35-199", why: "test helpers to copy"}
+callers:
+  - {symbol: createRoutedCommentThreads, path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "131-131"}
+  - {symbol: LiveShare, path: packages/browser/src/collab/pageShares.ts, lines: "10-10"}
+tests:
+  - {path: packages/browser/__tests__/collab/comments.test.ts, covers: "35-105 file store fakes; 126-199 routing fakes"}
+  - {path: packages/core/__tests__/collab/suggestions.test.ts, covers: "700-730 session()/sharedFile() helpers for createSharedProjectSuggestions"}
+  - {path: packages/core/__tests__/writing/dom/sourceEditor/editorReview.test.ts, covers: "14-23 fakePort EditorSuggestions"}
+contracts: ["collaboration#comments", "qmd-items#comments"]
+commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab/comments.test.ts"]
+risks:
+  - "EditorSuggestions { subscribe(listener: (s: readonly FileSuggestion[]) => void): () => void; add(s: readonly FileSuggestion[]): Promise<void> /* replaces by id */; remove(ids: readonly string[]): Promise<void> }. FileSuggestion { id; kind: insert|delete; start; end; text?; group?; author; created }, offsets in the saved file text."
+  - "SharedProjectSuggestions { suggestions(); locate(s): TextRange|detached; anchor(file, kind, range): CommentAnchor; add(s) /* throws on a present id */; remove(ids); onChange(l): () => void }; not exported from @labshelf/core yet (collab/index.ts)."
+  - "addSuggestions only appends (no id dedupe); both stores need remove-then-add for replace."
+  - "The file store reads the file after the save flush (as addComment does, comments.ts 127-129) before deriveSuggestionAnchor."
