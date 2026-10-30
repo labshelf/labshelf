@@ -84,6 +84,21 @@ describe('deriveFloatRegion', () => {
     expect(region.yBottom).toBe(0);
     expect(region.yTop).toBeGreaterThan(31);
   });
+
+  it('1.3b still bounds the band at the body text when small-font labels sit inside the figure', () => {
+    const lines = [
+      ...body(760, 4),
+      line('0 10 20 30 40', 600, { x: 100, xEnd: 500, height: 4 }),
+      line('Time Time', 480, { x: 100, xEnd: 500, height: 4 }),
+      line('Figure 1: caption below the plot', 430, { height: 11 }),
+      ...body(400, 8),
+    ];
+    const region = deriveFloatRegion(lines, { kind: 'figure', label: '1', lineIndex: 6 }, W, H, null);
+    // last body line above the figure is at y 715
+    expect(region.yTop).toBeLessThanOrEqual(715 + 1);
+    expect(region.yTop).toBeGreaterThan(640);
+    expect(region.yBottom).toBeLessThan(430);
+  });
 });
 
 describe('deriveDestPoint', () => {
