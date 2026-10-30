@@ -15,10 +15,10 @@ interface CellLocation {
 /**
  * Returns `body` with the result's output block inserted after the cell labelled `cellLabel`, or replacing that
  * cell's existing block. An unlabeled cell is addressed as `cell-<n>` (1-based) and gets that label written.
- * Cancelled and missing-python results, and a label no cell has, return `body` unchanged.
+ * Cancelled and missing results, and a label no cell has, return `body` unchanged.
  */
-export async function writeCellOutput(body: string, cellLabel: string, result: CellResult, meta: { engine: string; ran: string }): Promise<string> {
-  if (result.status === "cancelled" || result.status === "missing-python") { return body; }
+export async function writeCellOutput(body: string, cellLabel: string, result: CellResult, meta: { ran: string }): Promise<string> {
+  if (result.status === "cancelled" || result.status === "missing") { return body; }
   const lines = splitLines(body);
   const cell = findCell(lines, body, cellLabel);
   if (!cell) { return body; }
@@ -28,7 +28,7 @@ export async function writeCellOutput(body: string, cellLabel: string, result: C
   const block = formatOutput({
     cell: cellLabel,
     source: await deriveCodeHash(code),
-    engine: meta.engine,
+    engine: result.language,
     ran: meta.ran,
     content: formatContent(result),
     ...(error ? { status: "error" as const } : {}),

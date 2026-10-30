@@ -58,7 +58,7 @@ const topLeftRgba = (dataUrl: string): number[] => {
 
 const run = async (code: string, opts: { timeoutMs?: number; signal?: AbortSignal; cwd?: string; runner?: ICellRunner } = {}) => {
   const cwd = opts.cwd ?? (await makeTempDir("cell-cwd-"));
-  return (opts.runner ?? runnerFor()).run(code, { cwd, signal: opts.signal ?? new AbortController().signal, timeoutMs: opts.timeoutMs ?? 30_000 });
+  return (opts.runner ?? runnerFor()).run({ code, language: "python", noteKey: "note-1" }, { cwd, signal: opts.signal ?? new AbortController().signal, timeoutMs: opts.timeoutMs ?? 30_000 });
 };
 
 describe("NodeCellRunner with the managed Python", () => {
@@ -173,12 +173,12 @@ describe("NodeCellRunner with the managed Python", () => {
 });
 
 describe("NodeCellRunner without Python", () => {
-  it("12.3d yields status missing-python for a fake provider reporting missing", async () => {
+  it("12.3d yields status missing for a fake provider reporting missing", async () => {
     const result = await run("1 + 1", { runner: runnerFor(missingProvider) });
-    expect(result.status).toBe("missing-python");
+    expect(result.status).toBe("missing");
   });
 
-  it("12.3d carries a numeric durationMs and no output with missing-python", async () => {
+  it("12.3d carries a numeric durationMs and no output with missing", async () => {
     const result = await run("1 + 1", { runner: runnerFor(missingProvider) });
     expect(typeof result.durationMs).toBe("number");
     expect(result.latex).toBeUndefined();

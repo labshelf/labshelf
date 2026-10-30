@@ -46,8 +46,10 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     const controller = new AbortController();
     running.set(id, controller);
     try {
-      const result = await runner.run(message.code, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
-      send({ v: PROTOCOL_VERSION, id, type: "cellResult", ...result });
+      const result = await runner.run({ code: message.code, language: "python", noteKey: message.cwd }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
+      // The wire result is Python-only until the helper protocol carries languages.
+      const { status, latex, text, error, durationMs } = result;
+      send({ v: PROTOCOL_VERSION, id, type: "cellResult", status, ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), durationMs });
     } finally {
       running.delete(id);
     }

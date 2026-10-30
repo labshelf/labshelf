@@ -16,12 +16,14 @@ function fakeRunner() {
   const calls: RunCall[] = [];
   const finishers: Array<(result: CellResult) => void> = [];
   const runner: ICellRunner = {
-    run: (code, opts) => new Promise<CellResult>((resolve) => {
-      calls.push({ code, ...opts });
+    run: (request, opts) => new Promise<CellResult>((resolve) => {
+      calls.push({ code: request.code, ...opts });
       finishers.push(resolve);
-      const onAbort = () => resolve({ status: "cancelled", durationMs: 1 });
+      const onAbort = () => resolve({ status: "cancelled", language: "python", durationMs: 1 });
       if (opts.signal.aborted) { onAbort(); } else { opts.signal.addEventListener("abort", onAbort, { once: true }); }
     }),
+    restart: () => Promise.resolve(),
+    dispose: () => Promise.resolve(),
   };
   return { runner, calls, finish: (result: CellResult) => finishers.shift()?.(result) };
 }
@@ -53,7 +55,7 @@ describe("12.4b runCell and cancelCell handlers", () => {
     await until(() => h.calls.length === 1);
     expect(h.calls[0]).toMatchObject({ code: "print(1)", cwd: CWD, timeoutMs: 5000 });
     expect(h.calls[0]!.signal.aborted).toBe(false);
-    h.finish({ status: "ok", latex: "x^{2}", text: "x**2", durationMs: 42 });
+    h.finish({ status: "ok", language: "python", latex: "x^{2}", text: "x**2", durationMs: 42 });
     await h.drain();
     expect(h.sent).toEqual([{ v: PROTOCOL_VERSION, id: "run-1", type: "cellResult", status: "ok", latex: "x^{2}", text: "x**2", durationMs: 42 }]);
   });
@@ -62,7 +64,7 @@ describe("12.4b runCell and cancelCell handlers", () => {
     const h = setup();
     h.handle(runMessage("run-2"));
     await until(() => h.calls.length === 1);
-    h.finish({ status: "error", error: "NameError: y", durationMs: 7 });
+    h.finish({ status: "error", language: "python", error: "NameError: y", durationMs: 7 });
     await h.drain();
     expect(h.sent).toMatchObject([{ id: "run-2", type: "cellResult", status: "error", error: "NameError: y", durationMs: 7 }]);
   });
@@ -125,7 +127,7 @@ describe("12.4c unknown cwd scope", () => {
     h.handle(runMessage("run-9", { cwd: "thesis" }));
     await until(() => h.calls.length === 1);
     expect(h.calls[0]!.cwd).toBe(CWD);
-    h.finish({ status: "ok", durationMs: 1 });
+    h.finish({ status: "ok", language: "python", durationMs: 1 });
     await h.drain();
     expect(h.sent.map((m) => [m.id, m.type])).toEqual([["run-8", "error"], ["run-9", "cellResult"]]);
   });

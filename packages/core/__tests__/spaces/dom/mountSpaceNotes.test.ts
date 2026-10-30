@@ -86,7 +86,7 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     t.body.dispose();
   });
 
-  it.each(["done", "error", "cancelled", "missing-python"])(`12.5b drops the Cancel button in ${kind.name} on a matching %s state`, async (state) => {
+  it.each(["done", "error", "cancelled", "missing"])(`12.5b drops the Cancel button in ${kind.name} on a matching %s state`, async (state) => {
     const t = await open(kind, true);
     button(t.root, /run/i)!.click();
     await settle();
@@ -104,7 +104,7 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     const t = await open(kind, true);
     button(t.root, /run/i)!.click();
     await settle();
-    t.receive({ type: "space.cellState", requestId: t.runs()[0]!["requestId"], state: "missing-python" });
+    t.receive({ type: "space.cellState", requestId: t.runs()[0]!["requestId"], state: "missing" });
     await settle();
     expect(t.root.textContent).toMatch(/python/i);
     t.body.dispose();

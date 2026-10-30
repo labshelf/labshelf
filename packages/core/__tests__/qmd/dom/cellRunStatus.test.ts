@@ -57,14 +57,14 @@ describe("createCellRunStatus", () => {
     let installs = 0;
     const withInstall = createCellRunStatus({ onCancel: () => {}, onInstallPython: () => { installs += 1; } });
     withInstall.start("r1", "a");
-    withInstall.show("r1", "missing-python");
+    withInstall.show("r1", "missing");
     expect(withInstall.el.textContent).toContain("Python for calculations is not installed.");
     expect(buttons(withInstall.el)).toEqual(["Install Python"]);
     withInstall.el.querySelector("button")!.click();
     expect(installs).toBe(1);
     const without = createCellRunStatus({ onCancel: () => {} });
     without.start("r1", "a");
-    without.show("r1", "missing-python");
+    without.show("r1", "missing");
     expect(buttons(without.el)).toEqual([]);
   });
 });

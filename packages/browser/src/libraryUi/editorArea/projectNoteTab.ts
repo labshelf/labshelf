@@ -74,7 +74,7 @@ function createCellRunner(ctx: TabContext, projectId: string, saver: NoteSaver):
     group,
     attach: group.attach,
     run(itemId, label, code, requestId, replace) {
-      void runs.run(ports.runCellIn(projectId), { requestId, label, code }, {
+      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language: "python", noteKey: projectId }, {
         read: () => Promise.resolve(saver.text(itemId)),
         write: (next) => { replace(next); return Promise.resolve(); },
         push: () => undefined,

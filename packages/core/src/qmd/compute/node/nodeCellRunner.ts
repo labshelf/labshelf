@@ -6,6 +6,7 @@ import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import { BuildCancelled, ProcessTimedOut, runCancellable } from "../../../latex/node/index.js";
+import type { CellLanguage } from "../cellLanguage.js";
 import type { CellResult, ICellRunner } from "../cellRunner.js";
 import type { PythonProvider } from "./managedPython.js";
 
@@ -39,11 +40,12 @@ function parseDriverLine(stdout: string): DriverLine | undefined {
   }
 }
 
-function toResult(line: DriverLine | undefined, durationMs: number, code: number | null): CellResult {
-  if (line?.error !== undefined) { return { status: "error", error: line.error, durationMs }; }
-  if (!line) { return { status: "error", error: `The cell driver ended with exit code ${String(code)} and no result`, durationMs }; }
+function toResult(line: DriverLine | undefined, language: CellLanguage, durationMs: number, code: number | null): CellResult {
+  if (line?.error !== undefined) { return { status: "error", language, error: line.error, durationMs }; }
+  if (!line) { return { status: "error", error: `The cell driver ended with exit code ${String(code)} and no result`, language, durationMs }; }
   return {
     status: "ok",
+    language,
     ...(line.latex !== undefined ? { latex: line.latex } : {}),
     ...(line.text !== undefined ? { text: line.text } : {}),
     durationMs,
@@ -52,12 +54,12 @@ function toResult(line: DriverLine | undefined, durationMs: number, code: number
 
 export function createNodeCellRunner({ python, logger, driverPath }: NodeCellRunnerOptions): ICellRunner {
   return {
-    async run(code, opts) {
+    async run({ code, language }, opts) {
       const started = Date.now();
       const elapsed = (): number => Date.now() - started;
       const status = await python.status();
       const interpreter = status.state === "installed" ? python.pythonPath?.() : undefined;
-      if (!interpreter) { return { status: "missing-python", durationMs: elapsed() }; }
+      if (!interpreter) { return { status: "missing", language, durationMs: elapsed() }; }
       const codeFile = path.join(os.tmpdir(), `labshelf-cell-${randomUUID()}.py`);
       try {
         await fs.writeFile(codeFile, code, "utf8");
@@ -65,14 +67,16 @@ export function createNodeCellRunner({ python, logger, driverPath }: NodeCellRun
           timeoutMs: opts.timeoutMs, separateStreams: true, logger,
         });
         if (outcome.stderr) { void logger.log("INFO", MODULE_CELL, "The cell wrote to stderr", { stderr: outcome.stderr }).catch(() => undefined); }
-        return toResult(parseDriverLine(outcome.stdout ?? ""), elapsed(), outcome.code);
+        return toResult(parseDriverLine(outcome.stdout ?? ""), language, elapsed(), outcome.code);
       } catch (error) {
-        if (error instanceof ProcessTimedOut) { return { status: "timeout", durationMs: elapsed() }; }
-        if (error instanceof BuildCancelled) { return { status: "cancelled", durationMs: elapsed() }; }
+        if (error instanceof ProcessTimedOut) { return { status: "timeout", language, durationMs: elapsed() }; }
+        if (error instanceof BuildCancelled) { return { status: "cancelled", language, durationMs: elapsed() }; }
         throw error;
       } finally {
         await fs.rm(codeFile, { force: true });
       }
     },
+    async restart() { /* session 1.3 adds the session manager */ },
+    async dispose() { /* session 1.3 adds the session manager */ },
   };
 }

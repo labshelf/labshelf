@@ -88,7 +88,7 @@ export async function sendPaperDetails(host: LibraryUiHost, id: string): Promise
 export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemId: string; label: string; code: string; requestId: string }): Promise<void> {
   const { id, itemId, requestId } = msg;
   const notes = host.notes;
-  await paperRuns.run(notes ? host.runCell : undefined, msg, {
+  await paperRuns.run(notes ? host.runCell : undefined, { ...msg, language: "python", noteKey: id }, {
     read: async () => {
       const item = notes ? (await notes.read(id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
       return item?.kind === "item" ? item.body : undefined;

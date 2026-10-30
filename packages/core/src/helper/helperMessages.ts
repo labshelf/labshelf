@@ -20,7 +20,7 @@ export const MAX_EDIT_CHANGES = 10000;
 export const MAX_PATH_LENGTH = 260;
 export const MAX_CELL_CODE_BYTES = 1024 * 1024;
 export const MAX_CELL_TIMEOUT_MS = 600_000;
-const CELL_STATUS_FLAGS: Record<CellStatus, true> = { ok: true, error: true, timeout: true, cancelled: true, "missing-python": true };
+const CELL_STATUS_FLAGS: Record<CellStatus, true> = { ok: true, error: true, timeout: true, cancelled: true, missing: true };
 // INVARIANT: the Record above makes the compiler fail when CellStatus gains a value this list lacks.
 export const CELL_STATUSES = Object.keys(CELL_STATUS_FLAGS) as CellStatus[];
 

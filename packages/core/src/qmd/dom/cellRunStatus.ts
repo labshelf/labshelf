@@ -40,7 +40,7 @@ export function createCellRunStatus(options: CellRunStatusOptions): CellRunStatu
     done: () => render(""),
     error: () => render("error", text("The cell failed; its output shows the error.")),
     cancelled: () => render("muted", text("Run cancelled.")),
-    "missing-python": () => {
+    missing: () => {
       const install = options.onInstallPython;
       render("missing", text("Python for calculations is not installed."),
         ...(install ? [button("ls-btn ls-btn-primary", "Install Python", () => install())] : []));

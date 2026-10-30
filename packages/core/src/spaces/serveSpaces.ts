@@ -167,7 +167,7 @@ function runSpaceCell(
   { store, runCell, logger }: ServeSpacesOptions, runs: CellRuns, post: Post, spaceId: string, m: Extract<CellMessage, { type: "space.runCell" }>,
 ): Promise<void> {
   const thread = isThreadPath(m.path);
-  return runs.run(runCell, m, {
+  return runs.run(runCell, { ...m, language: "python", noteKey: `${spaceId}/${m.path}` }, {
     read: async () => (await (thread ? store.discussions : store.notes).read(spaceId, m.path)).find((item) => item.id === m.itemId)?.body,
     write: (body) => thread ? store.discussions.editMessage(spaceId, m.path, m.itemId, body) : store.notes.editItem(spaceId, m.path, m.itemId, body),
     push: async () => { await postQmd(store, post, spaceId, m.path); await postListOf(store, post, spaceId, m.path); },

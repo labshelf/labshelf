@@ -21,7 +21,12 @@ export interface BrowserCellPorts {
 
 /** The browser's ICellRunner: runs a code cell through LabShelf Helper; aborting the signal makes the helper client post cancelCell. */
 export function createHelperCellRunner(helper: ILatexHelper): ICellRunner {
-  return { run: (code, opts) => helper.runCell({ code, cwd: opts.cwd, timeoutMs: opts.timeoutMs }, opts.signal) };
+  return {
+    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs }, opts.signal),
+    // The helper holds no sessions yet; the session manager arrives with the helper's language runners.
+    restart: () => Promise.resolve(),
+    dispose: () => Promise.resolve(),
+  };
 }
 
 function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): BrowserCellPorts {
@@ -35,9 +40,9 @@ function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): Bro
     });
     if (state?.state !== "ready") { throw new Error(NO_HELPER); }
   };
-  const runIn = (cwd: string): RunCellPort => async (code, signal) => {
+  const runIn = (cwd: string): RunCellPort => async (request, signal) => {
     await ready();
-    return createHelperCellRunner(use()).run(code, { cwd, signal, timeoutMs: CELL_TIMEOUT_MS });
+    return createHelperCellRunner(use()).run(request, { cwd, signal, timeoutMs: CELL_TIMEOUT_MS });
   };
   let installing = false;
   return {

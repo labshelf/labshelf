@@ -98,7 +98,7 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
 }
 
 function cellResultOf({ status, latex, text, error, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
-  return { status, durationMs, ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}) };
+  return { status, language: "python", durationMs, ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}) };
 }
 
 class NativeLatexHelper implements ILatexHelper {

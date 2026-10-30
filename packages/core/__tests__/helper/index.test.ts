@@ -79,7 +79,7 @@ describe("12.4a cellResult guard", () => {
     { ...env("run-1"), type: "cellResult", status: "error", error: "NameError: name 'y' is not defined", durationMs: 3 },
     { ...env("run-1"), type: "cellResult", status: "timeout", durationMs: 60_000 },
     { ...env("run-1"), type: "cellResult", status: "cancelled", durationMs: 5 },
-    { ...env("run-1"), type: "cellResult", status: "missing-python", durationMs: 0 },
+    { ...env("run-1"), type: "cellResult", status: "missing", durationMs: 0 },
   ];
 
   it.each(results.map((m) => [(m as { status: string }).status, m] as const))("12.4a reads a cellResult with status %s", (_status, message) => {

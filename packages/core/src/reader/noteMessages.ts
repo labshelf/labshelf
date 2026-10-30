@@ -63,7 +63,7 @@ const cellRuns = createCellRuns();
 function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "runCell" }>): Promise<void> {
   const { notes, paper, logger, runCell } = ctx.ports;
   const { itemId, requestId } = msg;
-  return cellRuns.run(notes ? runCell : undefined, msg, {
+  return cellRuns.run(notes ? runCell : undefined, { ...msg, language: "python", noteKey: paper.id }, {
     read: async () => {
       const item = notes ? (await notes.read(paper.id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
       return item?.kind === "item" ? item.body : undefined;
