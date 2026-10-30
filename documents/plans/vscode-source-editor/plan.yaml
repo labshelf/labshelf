@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: vscode-source-editor
 title: LabShelf source editor in VS Code
-status: approved
+status: done
 level: N3
 goal: "A LaTeX or Typst project file in VS Code can be reopened in the LabShelf editor: the browser's CodeMirror editor, in a rounded card like the PDF preview, with the note gutter, insert from note, library citations, comments, build problems and live collaboration. The native text editor stays the default; the VS Code TextDocument stays the source of truth, so save, auto save, hot exit, git and the native editor side by side keep working."
 decisions:
