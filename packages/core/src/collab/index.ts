@@ -28,7 +28,10 @@ export {
   type CommentsDocument, type CommentsFileAccess, type SharedProjectComments,
 } from "./commentsFile.js";
 export { parseCommentsQmd, serializeCommentsQmd, threadsToItems } from "./commentsQmd.js";
-export { deriveSuggestionAnchor, findSuggestion, readSuggestion, resolveSuggestionText, type Suggestion, type SuggestionKind } from "./suggestions.js";
+export {
+  createSharedProjectSuggestions, deriveSuggestionAnchor, findSuggestion, readSuggestion, resolveSuggestionText,
+  type SharedProjectSuggestions, type Suggestion, type SuggestionKind,
+} from "./suggestions.js";
 export {
   addLiveThread, addLiveThreadReply, createEditorCommentRange, deriveAnchor, deriveLiveAnchor, deriveOffset, derivePosition, findSourceCommentRange,
   findThread, readLiveThreads, setLiveThreadResolved,

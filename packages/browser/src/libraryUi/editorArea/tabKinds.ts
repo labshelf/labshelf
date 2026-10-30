@@ -2,7 +2,7 @@
 import { TAB_KIND_SPECS } from "@labshelf/core";
 import type { ProjectNotesStore, ILogger, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
 import type { EditorTabBody } from "@labshelf/core/dom";
-import type { CommentThreads, PageShare } from "../../collab";
+import type { CommentThreads, PageShare, ProjectSuggestions } from "../../collab";
 import type { HelperProject } from "@labshelf/core/helper";
 import type { PagePrefs } from "../prefs";
 import type { ProjectSession } from "../../writing";
@@ -23,6 +23,8 @@ export interface ProjectServices {
   helperProject: HelperProject;
   /** The open project's comment threads, shared by every tab. */
   comments: CommentThreads;
+  /** The open project's suggestions for the editor's review mode, shared by every tab. */
+  suggestions: ProjectSuggestions;
   /** The shared projects of this page: their connections and the share workflows. */
   sharing: PageShare;
   /** The page's project notes store, which a project note's tab saves through. */

@@ -1,8 +1,8 @@
 // Runs one shared project in this page while the page holds the share's tab lease and waits for the lease while another tab does, and connects the page to the share; the editor's binding to the shared text comes from core.
 // CONTRACT: documents/contracts/collaboration.md#device-local-state
 import {
-  lineAt, createSharedProjectComments, connectShare, posixPathOps,
-  type ILogger, type ShareConnection, type ShareConnectionState, type Comment, type CommentThread, type ShareSession, type TextRange,
+  lineAt, createSharedProjectComments, createSharedProjectSuggestions, connectShare, posixPathOps,
+  type ILogger, type ShareConnection, type ShareConnectionState, type Comment, type CommentThread, type ShareSession, type SharedProjectSuggestions, type TextRange,
   type Invite, type MirrorFactory, type MirrorStart, type ProjectFolderRegistry, type RelayNetwork, type ShareStart,
 } from "@labshelf/core";
 import { openBrowserCollabStorage, updateTabLease, createTabLeaseName, watchTabLease, type LibraryLocations, type TabLease } from "../storage";
@@ -75,6 +75,8 @@ export interface LiveShare {
   session: ShareConnection["session"];
   presence: ShareConnection["presence"];
   comments: CommentThreads;
+  /** The share's suggestions, which the editor's review mode reads and writes. */
+  suggestions: SharedProjectSuggestions;
 }
 
 export interface ShareEntryOptions {
@@ -95,6 +97,7 @@ export interface ShareEntryOptions {
 export class ProjectShare {
   private connection: ShareConnection | undefined;
   private comments: CommentThreads | undefined;
+  private suggestions: SharedProjectSuggestions | undefined;
   private lease: TabLease | undefined;
   private waiting: AbortController | undefined;
   private stopState: (() => void) | undefined;
@@ -107,8 +110,8 @@ export class ProjectShare {
   get running(): ShareConnection | undefined { return this.connection; }
 
   live(): LiveShare | undefined {
-    const { connection, comments } = this;
-    return connection && comments ? { session: connection.session, presence: connection.presence, comments } : undefined;
+    const { connection, comments, suggestions } = this;
+    return connection && comments && suggestions ? { session: connection.session, presence: connection.presence, comments, suggestions } : undefined;
   }
 
   state(): ShareEntryState {
@@ -123,6 +126,7 @@ export class ProjectShare {
     this.connection = connection;
     const { projectId, logger, name } = this.options;
     this.comments = projectId === undefined ? undefined : createLiveCommentThreads({ session: connection.session, projectId, author: name, logger });
+    this.suggestions = projectId === undefined ? undefined : createSharedProjectSuggestions(connection.session);
     this.stopState = connection.onStateChange(this.options.notify);
     this.options.notify();
   }
@@ -195,6 +199,7 @@ export class ProjectShare {
     const { connection } = this;
     this.connection = undefined;
     this.comments = undefined;
+    this.suggestions = undefined;
     this.stopState?.();
     this.stopState = undefined;
     if (!connection) { return; }

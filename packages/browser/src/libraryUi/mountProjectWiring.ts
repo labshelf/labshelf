@@ -22,7 +22,7 @@ import type { ProjectServices } from "./editorArea";
 import type { Workspace } from "./editorArea";
 import { runJoinProjectDialog, showToast } from "@labshelf/core/dom";
 import { createBrowserProjects, createProjectNoteFiles, readCurrentLibraryId, readLibraryLocations } from "../storage";
-import { createCommentThreads, createPageShare, createResumeReports, createRoutedCommentThreads, type PageShare } from "../collab";
+import { createCommentThreads, createFileSuggestions, createPageShare, createResumeReports, createRoutedCommentThreads, createRoutedSuggestions, type PageShare } from "../collab";
 
 interface PageSharingWiringOptions {
   logger: ILogger;
@@ -129,10 +129,11 @@ export function mountProjectWiring({ workspace, fs, logger, openTab, relay, rela
   const wired = wirePageSharing({ logger, host, relay, relayAccounts });
   const { sharing } = wired;
   const comments = createRoutedCommentThreads({ files: createCommentThreads({ fs, session, logger }), shares: sharing.shares, session });
+  const suggestions = createRoutedSuggestions({ files: createFileSuggestions({ fs, session, logger }), shares: sharing.shares });
   // Never awaited: mounting does not wait on the network.
   void updateOwnRelayOnStart(logger);
   return {
-    services: { session, helperProject, comments, sharing, notes: notes.store },
+    services: { session, helperProject, comments, suggestions, sharing, notes: notes.store },
     notes: notes.store,
     // Every surface keys a project by its folder, as the open-project snapshot does.
     projectSharing: { ports: sharing.ports, idOf: (entry) => entry.folder, open: async (entry) => { await session.openProject(entry); } },
