@@ -1,6 +1,6 @@
 // The status row a view mounts under an editor that runs cells: running with Cancel, the end states, what a missing language needs
 // (with the Install Python prompt for Python), and the note that a language was restarted.
-import { cellLanguageLabel, type CellLanguage, type CellRunState } from "../compute/index.js";
+import { cellLanguageLabel, type CellLanguage, type CellResult, type CellRunState } from "../compute/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
 
 export interface CellRunStatusOptions {
@@ -76,19 +76,28 @@ export function createCellRunStatus(options: CellRunStatusOptions): CellRunStatu
   };
 }
 
+type CellParams = Record<string, number | string | boolean>;
+/** Called once when a preview ends: with its result, or with undefined when it ended without one. */
+type PreviewDone = (result: CellResult | undefined) => void;
+
 /** The run status rows of one view, one per item, kept across re-renders so a pushed body does not lose a run in flight. */
 export interface CellRunGroup {
   /**
    * Mounts the status row of `key` right after `editorEl` and returns the editor's `onRunCell`, which ignores Run while that
-   * item's run is in flight; otherwise it registers a new request id and hands it with the cell's language to `send`.
+   * item's run is in flight; otherwise it registers a new request id and hands it with the cell's language and params to `send`.
+   * A preview (a 5th argument) gets its own request id and `preview` true, runs even while a normal run is in flight, and never
+   * shows in the status row; its callback is called once, by `showPreview` or by `show` with an end state.
    * `onRestart`, when given, is what `restartCell(key)` hands a language to.
    */
-  attach(key: string, editorEl: HTMLElement, send: (label: string, code: string, requestId: string, language: CellLanguage) => void,
-    onRestart?: (language: CellLanguage) => void): (label: string, code: string, language: CellLanguage) => void;
+  attach(key: string, editorEl: HTMLElement,
+    send: (label: string, code: string, requestId: string, language: CellLanguage, params?: CellParams, preview?: boolean) => void,
+    onRestart?: (language: CellLanguage) => void): (label: string, code: string, language: CellLanguage, params?: CellParams, preview?: PreviewDone) => void;
   /** The editor's `onRestartCell` for `key`: shows the restarted note in its row and calls the `onRestart` given to `attach`; undefined without one. */
   restartCell(key: string): ((language: CellLanguage) => void) | undefined;
-  /** Routes a host `cellState`; @returns false for a request no row of this group started. */
+  /** Routes a host `cellState`; @returns false for a request no row of this group started. An end state ends a preview without a result. */
   show(requestId: string, state: CellRunState): boolean;
+  /** Routes a host `cellPreview`: calls and forgets that preview's callback; @returns false for an unknown request. */
+  showPreview(requestId: string, result: CellResult): boolean;
   /** Removes the row of `key`, e.g. when its item is gone. */
   drop(key: string): void;
   clear(): void;
@@ -99,7 +108,7 @@ let runSeq = 0;
 /** @returns a request id unique within this page. */
 function nextRequestId(): string { return `cell-${Date.now().toString(36)}-${++runSeq}`; }
 
-interface RunRow { status: CellRunStatus; running: boolean; editorEl: HTMLElement | null; onRestart?: (language: CellLanguage) => void }
+interface RunRow { status: CellRunStatus; running: boolean; editorEl: HTMLElement | null; onRestart?: (language: CellLanguage) => void; previews: Map<string, PreviewDone> }
 
 /** Shows the run in the cell whose Run was pressed (the code cell view marks it `is-run-requested`) while it is running. */
 function markRunningCell(run: RunRow): void {
@@ -113,8 +122,26 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
   const rows = new Map<string, RunRow>();
   const row = (key: string): RunRow => {
     let found = rows.get(key);
-    if (!found) { found = { status: createCellRunStatus(options), running: false, editorEl: null }; rows.set(key, found); }
+    if (!found) { found = { status: createCellRunStatus(options), running: false, editorEl: null, previews: new Map() }; rows.set(key, found); }
     return found;
+  };
+  /** Calls and forgets the callback of preview `requestId`; false when no row has it. */
+  const endPreview = (requestId: string, result: CellResult | undefined): boolean => {
+    for (const run of rows.values()) {
+      const done = run.previews.get(requestId);
+      if (!done) continue;
+      run.previews.delete(requestId);
+      done(result);
+      return true;
+    }
+    return false;
+  };
+  /** Ends the previews of a row that goes away, so its cell does not wait for them. */
+  const endRow = (run: RunRow): void => {
+    run.status.el.remove();
+    const pending = Array.from(run.previews.values());
+    run.previews.clear();
+    for (const done of pending) done(undefined);
   };
   return {
     attach(key, editorEl, send, onRestart) {
@@ -122,12 +149,19 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
       run.editorEl = editorEl;
       if (onRestart) run.onRestart = onRestart; else delete run.onRestart;
       if (editorEl.nextSibling !== run.status.el) editorEl.after(run.status.el);
-      return (label, code, language) => {
+      return (label, code, language, params, preview) => {
+        if (preview) {
+          const requestId = nextRequestId();
+          run.previews.set(requestId, preview);
+          send(label, code, requestId, language, params, true);
+          return;
+        }
         if (run.running) return;
         const requestId = nextRequestId();
         run.running = true;
         run.status.start(requestId, label, language);
-        send(label, code, requestId, language);
+        if (params === undefined) send(label, code, requestId, language);
+        else send(label, code, requestId, language, params);
       };
     },
     restartCell(key) {
@@ -138,11 +172,15 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
     },
     show(requestId, state) {
       for (const run of rows.values()) {
+        if (run.previews.has(requestId)) { if (state !== "running") endPreview(requestId, undefined); return true; }
+      }
+      for (const run of rows.values()) {
         if (run.status.show(requestId, state)) { run.running = state === "running"; markRunningCell(run); return true; }
       }
       return false;
     },
-    drop(key) { rows.get(key)?.status.el.remove(); rows.delete(key); },
-    clear() { for (const run of rows.values()) run.status.el.remove(); rows.clear(); },
+    showPreview: (requestId, result) => endPreview(requestId, result),
+    drop(key) { const run = rows.get(key); rows.delete(key); if (run) endRow(run); },
+    clear() { const all = Array.from(rows.values()); rows.clear(); for (const run of all) endRow(run); },
   };
 }

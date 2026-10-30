@@ -4,7 +4,7 @@ import { TextSelection } from "prosemirror-state";
 import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage } from "../compute/index.js";
+import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage, type CellResult } from "../compute/index.js";
 
 /** A node view for `citation`: its `[@key]` keys as one chip; the keys are not looked up. */
 export function createCitationView(): NodeViewConstructor {
@@ -104,10 +104,12 @@ export interface CellControls {
   /** Unfolds the code in place above the outputs, or folds it again. */
   setOpen(open: boolean): void;
   isRunning(): boolean;
-  /** Calls `listener` when the open, running or folded state changes; returns the unsubscribe. */
+  /** The result of the latest param drag preview, which the outputs show in place of the stored one until the release run ends. */
+  previewResult(): CellResult | undefined;
+  /** Calls `listener` when the open, running, folded or preview state changes; returns the unsubscribe. */
   subscribe(listener: () => void): () => void;
-  /** Rechecks the cell's outputs after one was added or removed. */
-  refresh(): void;
+  /** Rechecks the cell's outputs after one was added or removed; `now` rechecks at once, while the editor draws its first document. */
+  refresh(now?: boolean): void;
 }
 
 const cellControls = new WeakMap<Node, CellControls>();
@@ -138,13 +140,21 @@ export function renderRestartButton(controls: CellControls, className: string): 
   return button;
 }
 
-/** Lets outputs and navigation reach the code cell view whose outer element is `dom`. */
-export function registerCellControls(dom: HTMLElement, controls: CellControls): void {
+/** The controls of the cells drawn while an editor draws its first document, by position: it has no doc view to look them up in yet. */
+const drawingCellControls = new WeakMap<EditorView, Map<number, CellControls>>();
+
+/** Lets outputs and navigation reach the code cell view whose outer element is `dom`; `view` and `pos`, when given, let the outputs drawn in the same first draw find the cell before the editor has a doc view. */
+export function registerCellControls(dom: HTMLElement, controls: CellControls, view?: EditorView, pos?: number): void {
   cellControls.set(dom, controls);
+  if (!view || pos === undefined || !view.isDestroyed) return;
+  let drawing = drawingCellControls.get(view);
+  if (!drawing) { drawing = new Map(); drawingCellControls.set(view, drawing); }
+  drawing.set(pos, controls);
 }
 
 /** The controls of the code cell view at `pos`, or null. */
 export function cellControlsAt(view: EditorView, pos: number): CellControls | null {
+  if (view.isDestroyed) return drawingCellControls.get(view)?.get(pos) ?? null;
   const dom = pos >= 0 && pos < view.state.doc.content.size ? view.nodeDOM(pos) : null;
   return (dom && cellControls.get(dom)) ?? null;
 }

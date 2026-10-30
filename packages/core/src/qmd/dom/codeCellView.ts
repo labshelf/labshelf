@@ -6,11 +6,13 @@ import { renderIcon } from "../../ui/icons/index.js";
 import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
-import { cellLanguageLabel, type CellLanguage } from "../compute/index.js";
+import { cellLanguageLabel, type CellLanguage, type CellResult } from "../compute/index.js";
+import { formatCellParamLine, paramValues, parseCellParams, setCellParamValue, type CellParam, type CellParamValue } from "../item/index.js";
+import { createCellParamStrip, paramsFromControls, withParamValue, type CellParamStrip, type CellParamValues } from "./cellParamStrip.js";
 import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCodeCellEditor } from "./codeCellEditor.js";
 import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { shortcutLabel } from "./qmdCommands.js";
-import { outputContent, readCellLabel } from "./outputView.js";
+import { outputContent, readCellLabel, renderPreviewResult } from "./outputView.js";
 
 const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.ctrlKey) && !event.altKey && /^[zy]$/i.test(event.key);
 
@@ -23,8 +25,11 @@ const cellLanguageName = (lang: string | null): string => {
   return language ? cellLanguageLabel(language) : lang ?? "";
 };
 
-/** Runs a cell: its label, its code and its language. */
-export type RunCell = (label: string, code: string, language: CellLanguage) => void;
+/**
+ * Runs a cell: its label, its code, its language and its param values. A preview passes `preview`, which the host calls exactly
+ * once: with the result when its cellPreview arrives, or with undefined when the request ends without one; a normal run passes none.
+ */
+export type RunCell = (label: string, code: string, language: CellLanguage, params?: Record<string, CellParamValue>, preview?: (result: CellResult | undefined) => void) => void;
 /** Restarts the session of one language. */
 export type RestartCell = (language: CellLanguage) => void;
 
@@ -48,6 +53,16 @@ class CodeCellView implements NodeView {
   private hasOutput = false;
   private open = false;
   private running = false;
+  private readonly strip: CellParamStrip;
+  /** The params the last result's Manipulate controls describe; drawn while the cell has no param lines. */
+  private resultParams: CellParam[] = [];
+  /** The result of the latest drag preview, shown in place of the stored output until the release run ends. */
+  private previewResult: CellResult | null = null;
+  /** Set by a release; the end of the next normal run drops the preview result. */
+  private releaseRun: "pending" | "running" | null = null;
+  /** A preview result of a cell without a stored output, drawn after the cell inside this view (never in the document). */
+  private readonly previewOutput: HTMLElement;
+  private shownPreview: CellResult | null = null;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
     private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell) {
@@ -63,7 +78,10 @@ class CodeCellView implements NodeView {
     });
     this.pre = renderElement("div", { class: "qmd-cell-code" }, this.editor.dom);
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
-    this.dom = renderElement("div", { class: "qmd-cell" }, this.panel);
+    // The strip is a sibling of the panel, so a folded cell still shows it above its outputs.
+    this.strip = createCellParamStrip({ preview: (values, done) => this.preview(values, done), release: (values) => this.release(values) });
+    this.previewOutput = renderElement("div", { class: "qmd-output qmd-cell-preview is-preview", contenteditable: "false", hidden: true });
+    this.dom = renderElement("div", { class: "qmd-cell" }, this.panel, this.strip.el, this.previewOutput);
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
     this.controls = {
       language: () => cellLanguageName(this.node.attrs.lang as string | null),
@@ -78,14 +96,19 @@ class CodeCellView implements NodeView {
       isOpen: () => this.open,
       setOpen: (open) => (open ? this.openCode() : this.closeCode()),
       isRunning: () => this.running,
+      previewResult: () => this.previewResult ?? undefined,
       subscribe: (listener) => { this.listeners.add(listener); return () => this.listeners.delete(listener); },
-      refresh: () => queueMicrotask(() => this.syncOutputs()),
+      refresh: (now) => { if (now) this.syncOutputs(true); else queueMicrotask(() => this.syncOutputs()); },
     };
-    registerCellControls(this.dom, this.controls);
+    registerCellControls(this.dom, this.controls, view, getPos());
     // The run status marks the cell `is-running`; outputs show it in their line.
     this.classObserver = new MutationObserver(() => {
       const running = this.dom.classList.contains("is-running");
-      if (running !== this.running) { this.running = running; this.notify(); }
+      if (running === this.running) return;
+      this.running = running;
+      if (!running) this.runEnded();
+      else if (this.releaseRun === "pending") this.releaseRun = "running";
+      this.notify();
     });
     this.classObserver.observe(this.dom, { attributes: true, attributeFilter: ["class"] });
     this.render();
@@ -93,13 +116,81 @@ class CodeCellView implements NodeView {
     this.syncOutputs();
   }
 
+  /** After a normal run: a release run drops the preview result; a param-less Manipulate cell asks for its controls. */
+  private runEnded(): void {
+    if (this.releaseRun === "running") { this.releaseRun = null; this.previewResult = null; }
+    const language = this.language();
+    if (!this.onRunCell || language !== "mathematica" || this.params().length > 0 || !(this.node.attrs.code as string).includes("Manipulate[")) return;
+    this.onRunCell(this.label(), this.node.attrs.code as string, language, {}, (result) => {
+      if (!result?.controls || this.view.isDestroyed) return;
+      this.resultParams = paramsFromControls(result.controls);
+      this.renderStrip();
+    });
+  }
+
+  /** The params the strip draws: the cell's param lines, or else the last result's Manipulate controls. */
+  private params(): CellParam[] {
+    return parseCellParams(this.node.attrs.options as string);
+  }
+
+  private stripParams(): CellParam[] {
+    const declared = this.params();
+    return declared.length > 0 ? declared : this.resultParams;
+  }
+
+  private renderStrip(): void {
+    this.strip.render(this.stripParams(), this.canRun());
+  }
+
+  /** A drag preview: runs the cell with `values`, showing the result in place of the stored output. */
+  private preview(values: CellParamValues, done: () => void): void {
+    const language = this.language();
+    if (!this.onRunCell || !language) { done(); return; }
+    this.onRunCell(this.label(), this.node.attrs.code as string, language, values, (result) => {
+      if (result && !this.view.isDestroyed) { this.previewResult = result; this.notify(); }
+      done();
+    });
+  }
+
+  /** A release: writes the values into the param lines (Manipulate controls become param lines) in one step, then runs. */
+  private release(values: CellParamValues): void {
+    const options = this.node.attrs.options as string;
+    const declared = this.params();
+    let next = options;
+    if (declared.length > 0) {
+      for (const param of declared) if (values[param.name] !== undefined) next = setCellParamValue(next, param.name, values[param.name]!);
+    } else if (this.resultParams.length > 0) {
+      const base = options === "" || options.endsWith("\n") ? options : `${options}\n`;
+      next = base + this.resultParams.map((param) => `${formatCellParamLine(withParamValue(param, values[param.name]))}\n`).join("");
+    }
+    if (next !== options && this.view.editable) setViewNodeAttribute(this.view, this.getPos, "options", next);
+    this.releaseRun = "pending";
+    this.run(values);
+  }
+
+  private label(): string {
+    return readCellLabel(this.node.attrs.options as string) || this.positionLabel();
+  }
+
   private notify(): void {
+    this.renderPreviewOutput();
     for (const listener of this.listeners) listener();
   }
 
+  /** Shows the preview result after the cell while it has no stored output (an output shows it in place otherwise). */
+  private renderPreviewOutput(): void {
+    const result = this.hasOutput ? null : this.previewResult;
+    this.previewOutput.hidden = result === null;
+    if (result === this.shownPreview) return;
+    this.shownPreview = result;
+    if (result === null) this.previewOutput.replaceChildren();
+    else this.previewOutput.replaceChildren(renderElement("div", { class: "qmd-output-body" }, renderPreviewResult(result)));
+  }
+
   /** Folds the cell while it has a result; a result arriving while its code has the caret leaves the code unfolded. */
-  private syncOutputs(): void {
-    if (this.view.isDestroyed) return;
+  /** `drawing`: called while the editor draws its first document, before it has a doc view (`isDestroyed`). */
+  private syncOutputs(drawing = false): void {
+    if (!drawing && this.view.isDestroyed) return;
     const pos = this.getPos();
     const label = readCellLabel(this.node.attrs.options as string);
     let hasOutput = false;
@@ -181,6 +272,7 @@ class CodeCellView implements NodeView {
     this.renderActions();
     setCodeCellLanguage(this.editor, this.language());
     this.dom.dataset.cellLabel = label;
+    this.renderStrip();
     const code = this.node.attrs.code as string;
     syncCodeCellEditor(this.editor, editorText(code));
   }
@@ -240,13 +332,17 @@ class CodeCellView implements NodeView {
     return true;
   }
 
-  private run(): void {
+  /** A normal run, with `params` or else the values of the cell's param lines. */
+  private run(params?: CellParamValues): void {
     const language = this.language();
     if (!this.onRunCell || !language) return;
+    const values = params ?? paramValues(this.params());
     // Marks the cell whose run is pending, so the run status can show it running in place.
     for (const cell of Array.from(this.view.dom.querySelectorAll(".qmd-cell.is-run-requested"))) cell.classList.remove("is-run-requested");
     this.dom.classList.add("is-run-requested");
-    this.onRunCell(readCellLabel(this.node.attrs.options as string) || this.positionLabel(), this.node.attrs.code as string, language);
+    const code = this.node.attrs.code as string;
+    if (Object.keys(values).length > 0) this.onRunCell(this.label(), code, language, values);
+    else this.onRunCell(this.label(), code, language);
   }
 
   private restart(): void {
@@ -290,7 +386,7 @@ class CodeCellView implements NodeView {
 
   stopEvent(event: Event): boolean {
     const target = event.target as Node | null;
-    if (target === null || this.pre.contains(target)) return target !== null;
+    if (target === null || this.pre.contains(target) || this.strip.el.contains(target)) return target !== null;
     // A drag from the line goes to the editor, which moves the cell with its outputs.
     return event.type !== "dragstart" && (target as Element).closest?.(".qmd-cell-actions") != null;
   }
@@ -301,12 +397,13 @@ class CodeCellView implements NodeView {
 
   destroy(): void {
     this.classObserver.disconnect();
+    this.strip.destroy();
     this.editor.destroy();
   }
 }
 
 /**
- * A node view for `code_cell`; the Run link and Mod-Enter call `onRunCell(label, code, language)` and are absent without it or
+ * A node view for `code_cell`; the Run link and Mod-Enter call `onRunCell(label, code, language, params?)` and are absent without it or
  * for a fence language that is not a cell language; Restart <Language> calls `onRestartCell(language)` and shows only with it.
  */
 export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell): NodeViewConstructor {
