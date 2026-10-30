@@ -1,5 +1,5 @@
 // Declares the reader protocol: boot parameters, both message directions and the guards that validate untrusted messages.
-import type { PdfTheme, Annotation, AnnotationColor } from "../../model/index.js";
+import type { PdfTheme, Annotation, AnnotationColor, PaperRecord } from "../../model/index.js";
 import {
   type BuildState, type CitationEntry, type PageArea, type PagePoint, type PreviewBuildRoots, type PreviewRequest,
   checkPreviewRequest,
@@ -78,6 +78,7 @@ export type ReaderCommandId =
 export type HostToWebview =
   | {
       type: "init";
+      paper?: PaperRecord;
       reading: ReadingState | null;
       annotations: Annotation[];
       notes: ReaderNote[];
@@ -149,6 +150,7 @@ export type WebviewToHost =
       content: string;
       color?: AnnotationColor;
       position?: Record<string, number>;
+      style?: "underline";
     }
   | { command: "deleteAnnotation"; id: string }
   /** `anchor` is the anchor attribute string; empty for an unanchored note. */
@@ -229,7 +231,8 @@ export function isWebviewMessage(raw: unknown): raw is WebviewToHost {
       return isString(m["theme"]);
     case "createAnnotation":
       return m["type"] === "highlight"
-        && isNumber(m["pageNumber"]) && isString(m["content"]);
+        && isNumber(m["pageNumber"]) && isString(m["content"])
+        && (m["style"] === undefined || m["style"] === "underline");
     case "deleteAnnotation":
       return isString(m["id"]) && m["id"].length > 0;
     case "updateAnnotation":

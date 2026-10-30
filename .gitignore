@@ -41,3 +41,6 @@ tools/biber-wasm/dist/
 
 # Code facts database, rebuilt by scripts/code/facts.mjs.
 .code-facts/
+
+# Local development library (libraryRoot in ~/.config/labshelf/config.json)
+/dev-library/

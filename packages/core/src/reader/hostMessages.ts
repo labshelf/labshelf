@@ -41,7 +41,7 @@ export const annotationHandlers: Pick<
     const { store, paper } = ctx.ports;
     // The reader sends null for a highlight without a stored rectangle.
     const result = await writeAnnotation(ctx, "create", msg.command, () =>
-      store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined));
+      store.addHighlight(paper.id, msg.pageNumber, msg.content, msg.color ?? "yellow", msg.position ?? undefined, msg.style));
     if (!result.ok) { return; }
     await pushStoredAnnotations(ctx);
     ctx.ports.sidecarChanged?.({ kind: "annotationCreated", annotation: result.value });
@@ -197,6 +197,7 @@ export const sessionHandlers: Pick<
     state.lastNotesKey = JSON.stringify(notes);
     ports.post({
       type: "init",
+      paper: ports.paper,
       reading: data.reading ?? null,
       annotations,
       notes,

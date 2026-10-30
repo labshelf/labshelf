@@ -67,6 +67,7 @@ export class ReadingPositionRestore {
   }
 
   private applyInit({ ctx, ui, theme }: RestoreAnchor, msg: InitMessage): void {
+    if (msg.paper) { ui.details.show(msg.paper); }
     ctx.prefs = msg.prefs;
     ui.toolbar.setAutoHide(msg.prefs.toolbarAutoHide);
     theme.apply(msg.theme, msg.effectiveTheme);

@@ -1,0 +1,59 @@
+schema: brief/v1
+area: host glue and contracts for running note code cells
+question: "where do RunCellPort/ICellRunner/runCell messages flow, and where can per-note identity and cell language be threaded"
+sha: 006c2a0b
+reuse:
+  - {symbol: createCellRuns, path: packages/core/src/qmd/compute/cellRunner.ts, lines: "36-72", why: "shared run registry; request {requestId,label,code}; ENGINE='python' hard-coded"}
+  - {symbol: createNodeCellRunner, path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, lines: "53-85", why: "one-shot python: temp .py + cellDriver.py via runCancellable; result from last stdout line"}
+  - {symbol: createCellHandlers, path: packages/core/src/helper/node/runHelperHost.ts, lines: "31-64", why: "helper runCell: resolveCwd scope, AbortController by message id (register before any await, line 36), cellResult; cancelCell aborts by id"}
+edit:
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "9-72", why: "add language and note key to RunCellPort/ICellRunner; per-language engine"}
+  - {path: packages/core/src/reader/protocol/messages.ts, lines: "161-162", why: "runCell {itemId,label,code,requestId}; type-only"}
+  - {path: packages/core/src/reader/noteMessages.ts, lines: "60-80", why: "runNoteCell; key = paper.id; module-level cellRuns"}
+  - {path: packages/core/src/reader/dom/noteBoxes.ts, lines: "220-223", why: "posts runCell"}
+  - {path: packages/core/src/reader/dom/notesTab.ts, lines: "288-290", why: "posts runCell"}
+  - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "49-50,236-237", why: "paper.runCell type and validator"}
+  - {path: packages/core/src/libraryUi/paperHandlers.ts, lines: "31,80-100", why: "runPaperCell, module-level paperRuns; key = msg.id"}
+  - {path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "122-135", why: "posts paper.runCell"}
+  - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "56-57,242-270", why: "space.runCell type and parseCellMessage"}
+  - {path: packages/core/src/spaces/serveSpaces.ts, lines: "101,167-176,241,263", why: "runSpaceCell; key = spaceId + path"}
+  - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "72-82", why: "posts space.runCell"}
+  - {path: packages/core/src/helper/helperMessages.ts, lines: "10-12,23,74-75", why: "PROTOCOL_VERSION 7, HELPER_VERSION 0.3.0, CELL_STATUS_FLAGS, runCell/cancelCell"}
+  - {path: packages/core/src/helper/parseHelperMessage.ts, lines: "220-233", why: "runCell validator; readChoice pattern"}
+  - {path: packages/core/src/helper/helperPaths.ts, lines: "125,147", why: "HelperCellRequest, ILatexHelper.runCell"}
+  - {path: packages/core/src/helper/helperClient.ts, lines: "183-203", why: "client runCell/cancel"}
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "31-64,160", why: "helper handler and runner construction"}
+  - {path: packages/core/src/helper/node/helperHandlers.ts, lines: "70-70", why: "UNQUEUED list"}
+  - {path: packages/browser/src/helper/cellPorts.ts, lines: "1-60", why: "browser binder; 'paper:notes' scope; runCellIn(projectId)"}
+  - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "104-119", why: "VS Code binder; cwd os.tmpdir; one shared port"}
+  - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "65-85", why: "project notes: projectId + path + itemId"}
+read:
+  - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "", why: "current one-shot driver"}
+  - {path: packages/core/src/qmd/compute/node/managedPython.ts, lines: "", why: "PythonProvider; system Python never used"}
+  - {path: packages/vscode/src/activation/extensionPlatform.ts, lines: "4-13", why: "CellHosts type threaded to reader, libraryUi, spaces"}
+  - {path: packages/browser/src/libraryUi/host/context.ts, lines: "120-121", why: "browser paper.runCell dispatch"}
+callers:
+  - {symbol: runPaperCell, path: packages/vscode/src/libraryUi/handlers.ts, lines: "335-336"}
+  - {symbol: runPaperCell, path: packages/browser/src/libraryUi/host/context.ts, lines: "120-121"}
+  - {symbol: createHelperCellRunner, path: packages/browser/src/helper/cellPorts.ts, lines: "23-41"}
+  - {symbol: getBrowserCellPorts, path: packages/browser/src/libraryUi/reader/readerPage.ts, lines: "108"}
+  - {symbol: createNodeCellRunner, path: packages/core/src/helper/node/runHelperHost.ts, lines: "160"}
+tests:
+  - {path: packages/core/__tests__/helper/node/cellHandlers.test.ts, covers: "helper cell handlers"}
+  - {path: packages/core/__tests__/qmd/compute/node/nodeCellRunner.test.ts, covers: "node python runner"}
+  - {path: packages/core/__tests__/reader/cellMessages.test.ts, covers: "reader cell messages"}
+  - {path: packages/core/__tests__/libraryUi/paperHandlers.test.ts, covers: "runPaperCell"}
+  - {path: packages/core/__tests__/spaces/serveSpacesCells.test.ts, covers: "space.runCell"}
+  - {path: packages/core/__tests__/helper/parseHelperMessage.test.ts, covers: "helper validators"}
+  - {path: packages/browser/__tests__/helper/cellPorts.test.ts, covers: "browser cell ports"}
+contracts: ["qmd-items#outputs", "helper#messages", "helper#version", "managed-tools#python"]
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/helper packages/core/__tests__/qmd/compute"
+  - "node scripts/agents/run.mjs test browser -- packages/browser/__tests__/helper/cellPorts.test.ts"
+  - "node scripts/agents/run.mjs typecheck vscode"
+risks:
+  - "Contracts list no languages; qmd-items#outputs, helper#messages and helper#version (protocol 7 -> 8) need updates."
+  - "cwd is not a per-note key (VS Code os.tmpdir, browser 'paper:notes'); the key must travel in the request."
+  - "Helper has no note concept; restart needs a new message and an UNQUEUED entry."
+  - "Module-level registries need disposal on deactivate and helper shutdown."
+  - "No path settings exist in VS Code; browser has no options for tool paths; the helper must find Mathematica/R itself."

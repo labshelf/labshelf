@@ -88,6 +88,7 @@ Beside `.labshelf/`, in the project folder, `notes/<slug>.qmd` holds the project
 Annotations, theme and reading position of one paper. The annotation types are `highlight`, `comment` and `tag`; the paper's notes live in `notes.qmd` ([qmd-items.md](qmd-items.md)).
 
 - Every app writes identical bytes for the same state (key order, `reading` omitted until first opened, `deleted` omitted while empty and sorted by `id`), so two apps never make the sync tool see a conflict.
+- Highlights may carry `style: "underline"` to draw a line beneath the text; absent means a filled highlight.
 - Annotation positions are normalised to the page (0..1), so any app and zoom reads them.
 - Removing an annotation leaves a `deleted` marker. Without it a stale copy of the file from another device would bring the annotation back. Markers are dropped after 90 days, so a copy older than that can bring an annotation back; every app keeps them at least that long.
 - Copies merge per annotation, the larger `updatedAt` winning; a marker removes its annotation unless the annotation was edited after it. `theme` and `reading` follow the newer file.

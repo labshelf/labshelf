@@ -11,7 +11,7 @@ import { LogsView } from "./previewProblems.js";
 import { CommentAsk } from "./previewFooter.js";
 import type { ReaderContext } from "./readerSession.js";
 import { DOCUMENT_REPLACED, type PdfReloader } from "./pdfLoader.js";
-import { AnnotationsTab, Sidebar } from "./sidebar.js";
+import { AnnotationsTab, DetailsPanel, Sidebar } from "./sidebar.js";
 import { OutlineTab, ThumbnailsTab } from "./sidebarTabs.js";
 import { NotesTab } from "./notesTab.js";
 import { NoteBoxLayer } from "./noteBoxes.js";
@@ -43,6 +43,7 @@ export interface ReaderUi {
   bubble: SelectionBubble;
   reporter: ReadingPositionReporter;
   toolbar: Toolbar;
+  details: DetailsPanel;
   buildBanner: BuildBanner;
   /** The preview's header, logs view and page count; null in the paper reader. */
   previewChrome: PreviewChrome | null;
@@ -76,28 +77,41 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => notesTab.expectHighlight());
   const reporter = new ReadingPositionReporter(ctx, sidebar);
-  const toolbar = new Toolbar(ctx.container, ctx.boot.paperTitle, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
+  const details = new DetailsPanel(ctx.boot.paperTitle, ctx.pdfDocument.numPages);
+  const toolbar = new Toolbar(ctx.container, ctx.boot.isMac, ctx.prefs.toolbarAutoHide, {
     toggleSidebar: () => sidebar.toggle(),
-    historyBack: () => history.back(),
-    historyForward: () => history.forward(),
+    previousPage: () => goToPage(ctx.pdfViewer.currentPageNumber - 1),
+    nextPage: () => goToPage(ctx.pdfViewer.currentPageNumber + 1),
+    toggleDetails: () => details.toggle(),
+    selectTool: (tool) => { boxTool.setActive(false); bubble.setTool(tool); },
     openFind: () => findBar.show(),
     toggleBoxTool: () => boxTool.toggle(),
     openTheme: (anchor) => openThemePopover(anchor, theme, ctx.host),
     openCheatsheet: () => cheatsheet.toggle(),
   });
-  history.onChange(() => toolbar.setHistoryState(history.canGoBack, history.canGoForward));
-  sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
-  findBar.onToggle((open) => toolbar.setFindOpen(open));
-  boxTool.onChange = (on) => toolbar.setBoxToolActive(on);
+  bindReaderToolbar(ctx, { toolbar, sidebar, findBar, boxTool, bubble, details });
   if (ctx.boot.preview) { toolbar.hideBoxTool(); }
   const buildBanner = new BuildBanner();
   const ui: ReaderUi = {
-    history, zoom, goToPage, annotationsTab, notesTab, noteBoxes, boxTool, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, buildBanner,
+    history, zoom, goToPage, annotationsTab, notesTab, noteBoxes, boxTool, highlights, sidebar, findBar, cheatsheet, pill, bubble, reporter, toolbar, details, buildBanner,
     previewChrome: null,
     openLogs: (rootPath) => console.warn(`LabShelf reader: no logs view to open for ${rootPath}`),
   };
   if (ctx.boot.preview) { attachPreview(ctx, theme, ui); }
   return ui;
+}
+
+/** Keeps page bounds, annotation modes and panel toggles in step with the header. */
+function bindReaderToolbar(ctx: ReaderContext, { toolbar, sidebar, findBar, boxTool, bubble, details }: Pick<ReaderUi, "toolbar" | "sidebar" | "findBar" | "boxTool" | "bubble" | "details">): void {
+  const syncPage = (): void => toolbar.setPageState(ctx.pdfViewer.currentPageNumber, ctx.pdfDocument.numPages);
+  ctx.eventBus.on("pagechanging", syncPage);
+  ctx.eventBus.on(DOCUMENT_REPLACED, syncPage);
+  syncPage();
+  details.onChange = (open) => toolbar.setDetailsOpen(open);
+  bubble.onToolChange = (tool) => toolbar.setSelectionTool(tool);
+  sidebar.onChange((s) => toolbar.setSidebarOpen(s.open));
+  findBar.onToggle((open) => toolbar.setFindOpen(open));
+  boxTool.onChange = (on) => { if (on) { bubble.setTool(null); } toolbar.setBoxToolActive(on); };
 }
 
 /** Mounts the preview's logs view and chrome; Comment in the selection bubble follows the shown root's source links. */

@@ -92,7 +92,7 @@ export class PageHighlights {
 /** Positioned in percent of the page, so the overlay keeps its place while pdf.js scales the page before re-rendering it. */
 function overlay(box: AnnotationPosition, ann: Annotation): HTMLElement {
   const div = document.createElement("div");
-  div.className = `rd-hl rd-color-${ann.color ?? "note"}`;
+  div.className = `rd-hl rd-color-${ann.color ?? "note"}${ann.style === "underline" ? " rd-hl-underline" : ""}`;
   div.dataset["annotationId"] = ann.id;
   div.style.left = `${box.x * 100}%`;
   div.style.top = `${box.y * 100}%`;

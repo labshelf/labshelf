@@ -1,0 +1,33 @@
+schema: session/v1
+id: "5"
+goal: The user checks A5 and A6 by hand, the ideas doc drops what this plan built, and the plan closes.
+depends_on: ["4"]
+owns:
+  - documents/plans/multi-language-cells/
+  - documents/ideas/computational-notes.md
+milestone: true
+status: pending
+packages:
+  - id: "5.1"
+    plan: multi-language-cells
+    goal: The ideas doc no longer lists Mathematica kernels as future work.
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/ideas/computational-notes.md, lines: "20-30", why: "line 25 names SageMath or Mathematica through their kernels"}
+    decided:
+      - "Say checks may use any cell language the note supports; keep SageMath as an idea."
+    acceptance:
+      - {id: 5.1a, check: "the ideas doc matches what is built"}
+    tests: {none: docs}
+  - id: "5.2"
+    plan: multi-language-cells
+    goal: The user checks A5 and A6 by hand in VS Code and in the browser.
+    level: task
+    runner: {agent: main, model: opus}
+    depends_on: ["5.1"]
+    edit: []
+    acceptance:
+      - {id: A5, check: "a note with a Python, a Mathematica and an R cell runs all three in VS Code and in the browser; picker and Restart work"}
+      - {id: A6, check: "without wolframscript or R, Run explains what to install; Python missing still offers its install button"}
+    tests: {none: checked by the user by hand in the app}

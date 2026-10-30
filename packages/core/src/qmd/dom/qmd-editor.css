@@ -14,7 +14,7 @@
 .qmd-toolbar-group { display: flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-3); }
 .qmd-toolbar-group:first-child { padding-left: 0; }
 .qmd-toolbar-group + .qmd-toolbar-group { border-left: 1px solid var(--ls-border-soft); }
-.qmd-toolbar-btn { display: inline-flex; align-items: center; justify-content: center; min-width: var(--ls-row-h); min-height: var(--ls-row-h); padding: var(--ls-space-1); border-radius: var(--ls-radius-sm); color: var(--ls-fg); transition: background var(--ls-fast), color var(--ls-fast); }
+.qmd-toolbar-btn { display: inline-flex; align-items: center; justify-content: center; border: none; background: none; cursor: pointer; font: inherit; min-width: var(--ls-row-h); min-height: var(--ls-row-h); padding: var(--ls-space-1); border-radius: var(--ls-radius-sm); color: var(--ls-fg); transition: background var(--ls-fast), color var(--ls-fast); }
 .qmd-toolbar-btn svg { width: var(--ls-text-md); height: var(--ls-text-md); }
 .qmd-toolbar-btn:hover:enabled { background: var(--ls-toolbar-hover); }
 .qmd-toolbar-btn[aria-pressed="true"] { background: var(--ls-toolbar-active); color: var(--ls-fg); }

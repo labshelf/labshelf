@@ -57,9 +57,21 @@ button { font: inherit; color: inherit; }
 }
 #toolbar.rd-toolbar-hidden { transform: translateY(-100%); opacity: 0; pointer-events: none; }
 .rd-toolbar-group { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
-.rd-toolbar-title {
-  flex: 1; min-width: 0; text-align: center; font-size: 12px; color: var(--ls-reader-desc);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+.rd-toolbar-tools { justify-content: center; }
+.rd-toolbar-end { justify-content: flex-end; }
+#toolbar { display: grid; grid-template-columns: 1fr auto 1fr; }
+.rd-details { width: 300px; max-width: 40vw; min-width: 0; flex-shrink: 0; border-left: 1px solid var(--ls-reader-border); background: var(--ls-reader-surface); overflow-y: auto; }
+.rd-details-body { padding: var(--ls-space-4); overflow-wrap: anywhere; }
+.rd-details h2 { font-size: var(--ls-text-lg); }
+.rd-details h3 { font-size: var(--ls-font-size); }
+.rd-details dt { color: var(--ls-reader-desc); margin-top: var(--ls-space-4); }
+.rd-details dd { margin: var(--ls-space-1) 0 0; }
+.rd-details p { white-space: pre-wrap; }
+@media (max-width: 520px) {
+  #toolbar { gap: 2px; padding: 0 2px; }
+  #toolbar .rd-btn { width: 26px; height: 28px; }
+  #toolbar .rd-toolbar-group { gap: 0; }
+  .rd-details { max-width: 45vw; }
 }
 
 /* ── Find bar ───────────────────────────────────────────────── */
@@ -345,3 +357,6 @@ kbd {
   #toolbar, #find-bar, #status-pill, #viewerContainer, #build-banner { transition: none; }
   .rd-sync-marker { animation: none; }
 }
+
+/* Underlines keep the text clear and follow each measured line of the selection. */
+.rd-hl.rd-hl-underline { opacity: 1; background: none; border-radius: 0; border-bottom: 2px solid var(--ls-focus); box-sizing: border-box; }

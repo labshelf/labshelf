@@ -23,6 +23,8 @@ type CommentOnSelection = (selection: SelectionBubbleContent & { start: DOMRect;
 export class SelectionBubble {
   private readonly el = findElement("selection-toolbar");
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
+  onToolChange: ((tool: "highlight" | "underline" | "note" | null) => void) | null = null;
+  private tool: "highlight" | "underline" | "note" | null = null;
   private commentButton: HTMLButtonElement | null = null;
 
   /** `addToNote` runs just before the highlight of "Add to note" is posted. */
@@ -69,6 +71,9 @@ export class SelectionBubble {
     document.addEventListener("mousedown", (e) => {
       if (this.el.contains(e.target as Node)) { return; }
       this.hideTimer = setTimeout(() => this.hide(), HIDE_GRACE_MS);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") { this.setTool(null); }
     });
     ctx.container.addEventListener("scroll", () => this.hide(), { passive: true });
   }
@@ -130,7 +135,19 @@ export class SelectionBubble {
     this.el.classList.remove("rd-visible");
   }
 
-  private highlight(color: AnnotationColor, asNote = false): void {
+  setTool(tool: "highlight" | "underline" | "note" | null): void {
+    this.tool = this.tool === tool ? null : tool;
+    this.onToolChange?.(this.tool);
+    if (this.tool && this.currentSelection()) { this.applyTool(); }
+  }
+
+  private applyTool(): void {
+    const tool = this.tool;
+    if (!tool) { return; }
+    this.highlight(ANNOTATION_COLORS[0]!, tool === "note", tool === "underline");
+  }
+
+  private highlight(color: AnnotationColor, asNote = false, underline = false): void {
     const info = this.currentSelection();
     const sel = window.getSelection();
     if (!info || !sel) { return; }
@@ -140,6 +157,7 @@ export class SelectionBubble {
     const position = frame ? deriveBoxInPage(sel.getRangeAt(0).getBoundingClientRect(), frame) : null;
     this.ctx.host.post({
       command: "createAnnotation", type: "highlight", pageNumber: info.pageNumber, content: info.text, color,
+      ...(underline ? { style: "underline" as const } : {}),
       ...(position ? { position: { ...position } } : {}),
     });
     sel.removeAllRanges();
@@ -150,6 +168,7 @@ export class SelectionBubble {
     const info = this.currentSelection();
     const sel = window.getSelection();
     if (!info || !sel || sel.rangeCount === 0) { this.hide(); return; }
+    if (this.tool) { this.applyTool(); return; }
     const rect = sel.getRangeAt(0).getBoundingClientRect();
     this.el.classList.add("rd-visible");
     const own = this.el.getBoundingClientRect();

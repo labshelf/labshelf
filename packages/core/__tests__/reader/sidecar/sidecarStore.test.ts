@@ -71,6 +71,15 @@ let seq = 0;
 const store = (port: SidecarPort) => new PaperSidecarStore(port, { now: () => '2026-10-07T12:00:00.000Z', newId: () => `id-${++seq}` });
 
 describe('PaperSidecarStore', () => {
+  it('preserves underline presentation across saves, reloads and text edits', async () => {
+    const port = memoryPort();
+    const first = store(port);
+    const mark = await first.addHighlight('p', 1, 'Selected text', 'yellow', { x: 0.1, y: 0.2, width: 0.4, height: 0.03 }, 'underline');
+    const reopened = store(port);
+    await reopened.updateAnnotation('p', mark.id, 'Edited text');
+    expect(await reopened.getAnnotations('p')).toEqual([expect.objectContaining({ style: 'underline', content: 'Edited text' })]);
+  });
+
   it('returns empty data when the sidecar is absent or corrupt', async () => {
     expect(await store(memoryPort()).load('p')).toEqual(createEmptyPaperSidecar());
     expect(await store(memoryPort({ p: '{not json' })).load('p')).toEqual(createEmptyPaperSidecar());

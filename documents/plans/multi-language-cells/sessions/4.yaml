@@ -1,0 +1,64 @@
+schema: session/v1
+id: "4"
+goal: The note editor creates Python, Mathematica and R cells, shows and switches a cell's language, sends it with Run, offers Restart, and explains a missing language.
+depends_on: ["3"]
+owns:
+  - packages/core/src/qmd/dom/
+  - packages/core/src/qmd/editor/
+  - packages/core/__tests__/qmd/dom/
+  - packages/core/src/reader/dom/
+  - packages/core/src/spaces/dom/
+  - packages/core/src/libraryUi/dom/detailPane/paneState.ts
+  - packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+status: pending
+packages:
+  - id: "4.1"
+    plan: multi-language-cells
+    goal: "The code cell header has a language picker and a Restart <Language> action; onRunCell receives the language; the toolbar code-cell button opens a language menu; ```{mathematica} and ```{r} input rules create cells; the status row explains a missing language."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    edit:
+      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "16-73", why: "header picker, restart, lang to onRunCell"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "15-190", why: "options, input rule"}
+      - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "330-345", why: "codeCell per language"}
+      - {path: packages/core/src/qmd/dom/qmdToolbar.ts, lines: "8-65", why: "menu button like heading"}
+      - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "23-115", why: "missing per language, restarted note, restart hook"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "76-106", why: "picker styles"}
+      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "285-296", why: "a language switch rewrites the fence"}
+    read:
+      - {path: documents/plans/multi-language-cells/research/editor.brief.yaml, lines: "1-80", why: "map"}
+      - {path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-80", why: "showMenu"}
+    decided:
+      - "Read node scripts/docs/doc.mjs ui first; the picker is a showMenu with radio entries labelled Python, Mathematica, R, anchored on the language label in the header."
+      - "QmdEditorOptions.onRunCell(label, code, language) and onRestartCell(language); Restart shows only when the host gives onRestartCell."
+      - "Cells whose lang is not a CellLanguage show the lang as text and no Run."
+      - "Missing text: Python keeps Install Python; Mathematica \"Mathematica cells need Wolfram Engine or Mathematica with wolframscript.\"; R \"R cells need R (Rscript).\"; restarted: \"<Language> restarted, earlier definitions are gone.\""
+      - "Toolbar code-cell button becomes a menu with the three languages; Mod-Alt-c still inserts Python."
+    acceptance:
+      - {id: 4.1a, check: "picking R on a Python cell serialises the fence as ```{r}"}
+      - {id: 4.1b, check: "Run and Mod-Enter call onRunCell with the cell language; Restart calls onRestartCell"}
+      - {id: 4.1c, check: "a missing mathematica result shows the Mathematica text without an install button"}
+      - {id: 4.1d, check: "```{mathematica} plus space creates a mathematica cell"}
+    tests:
+      hidden: [documents/plans/multi-language-cells/tests/4.1/cellLanguageUi.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.1 --plan multi-language-cells -- packages/core/__tests__/qmd"
+  - id: "4.2"
+    plan: multi-language-cells
+    goal: "Reader notes tab, note boxes, Space notes, the library detail pane and browser project notes post the language with Run and post restartCell."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.1"]
+    edit:
+      - {path: packages/core/src/reader/dom/notesTab.ts, lines: "70-295", why: "runCell with language, restartCell"}
+      - {path: packages/core/src/reader/dom/noteBoxes.ts, lines: "70-225", why: "same"}
+      - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "60-90", why: "same"}
+      - {path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "115-140", why: "same"}
+      - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "60-90", why: "same, through ports"}
+    decided:
+      - "Remove every language: \"python\" placeholder left by 1.2 in these files."
+    acceptance:
+      - {id: 4.2a, check: "each surface posts its runCell with the cell language and a restartCell message"}
+      - {id: 4.2b, check: "no language: \"python\" placeholder remains (grep)"}
+    tests:
+      hidden: [documents/plans/multi-language-cells/tests/4.2/viewCellMessages.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 4.2 --plan multi-language-cells -- packages/core/__tests__/reader packages/core/__tests__/spaces packages/core/__tests__/libraryUi"

@@ -1,0 +1,33 @@
+schema: brief/v1
+area: core cell-execution runtime for persistent per-language drivers
+question: "how do cells run today, what is reusable for long-lived per-language processes, and what constrains the change"
+sha: 006c2a0b
+reuse:
+  - {symbol: runCancellable, path: packages/core/src/latex/node/run.ts, lines: "145-182", why: "one-shot spawn, stdin ignored; not usable for a persistent process"}
+  - {symbol: killTree, path: packages/core/src/latex/node/run.ts, lines: "62-74", why: "private; group kill POSIX, taskkill /T /F Windows; export for the session manager"}
+  - {symbol: createKillSwitch, path: packages/core/src/latex/node/run.ts, lines: "113-143", why: "private SIGTERM then SIGKILL escalation"}
+  - {symbol: toResult/parseDriverLine, path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, lines: "28-48", why: "driver JSON {latex?|text?|error?} to CellResult"}
+  - {symbol: findExecutable, path: packages/core/src/latex/node/systemTex.ts, lines: "", why: "PATH lookup, exported by latex/node/index.ts:2"}
+edit:
+  - {path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, lines: "1-78", why: "one python process per cell; temp file; missing-python check; runCancellable"}
+  - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "1-27", why: "one-shot exec/eval of last expression; sympy -> latex; needs stdin loop with framed ids"}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-75", why: "no language/note key; ENGINE python; CellStatus missing-python"}
+  - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "21-87", why: "missing-python hard-coded at 22; engine meta"}
+  - {path: packages/core/src/helper/node/runHelperHost.ts, lines: "150-193", why: "runner built once at 160; finally block is the dispose point"}
+  - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "104-125", why: "driverPath out/cellDriver.py; no dispose"}
+read:
+  - {path: packages/core/src/qmd/compute/node/managedPython.ts, lines: "11-35,97-119", why: "PythonProvider"}
+  - {path: packages/core/src/latex/node/run.ts, lines: "1-182", why: "process helpers"}
+tests:
+  - {path: packages/core/__tests__/qmd/compute/node/nodeCellRunner.test.ts, covers: "real managed Python; skipped without it"}
+  - {path: packages/core/__tests__/qmd/compute/writeCellOutput.test.ts, covers: "output write"}
+  - {path: packages/core/__tests__/helper/node/cellHandlers.test.ts, covers: "helper handlers"}
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute"
+  - "pnpm lint:deps"
+risks:
+  - "Cancel/timeout of a persistent process loses state; interrupt not portable (Windows, wolframscript)."
+  - "Leaks: detached children; dispose in helper finally, vscode deactivate; idle timer unref; driver exits on stdin EOF."
+  - "Framing: result line must carry an id; user prints must not desync; CRLF; UTF-8 env per driver."
+  - "Drivers bundled to out/ by the vscode build; new .wl/.R drivers need the same."
+  - "Tests should use a fake driver so they need no Python/Wolfram/R."

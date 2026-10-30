@@ -14,8 +14,10 @@ import type { Zoom } from "./navigation.js";
 
 export interface ToolbarActions {
   toggleSidebar(): void;
-  historyBack(): void;
-  historyForward(): void;
+  previousPage(): void;
+  nextPage(): void;
+  toggleDetails(): void;
+  selectTool(tool: "highlight" | "underline" | "note"): void;
   openFind(): void;
   toggleBoxTool(): void;
   openTheme(anchor: HTMLElement): void;
@@ -24,10 +26,12 @@ export interface ToolbarActions {
 
 export class Toolbar {
   private readonly el = findElement("toolbar");
-  private readonly backBtn: HTMLButtonElement;
-  private readonly forwardBtn: HTMLButtonElement;
+  private readonly previousBtn: HTMLButtonElement;
+  private readonly nextBtn: HTMLButtonElement;
   private readonly sidebarBtn: HTMLButtonElement;
   private readonly boxBtn: HTMLButtonElement;
+  private readonly detailsBtn: HTMLButtonElement;
+  private readonly tools = new Map<string, HTMLButtonElement>();
   private state: AutohideState = initialAutohide;
   private lastScrollTop = 0;
   private pointerY: number | null = null;
@@ -37,7 +41,6 @@ export class Toolbar {
 
   constructor(
     private readonly container: HTMLElement,
-    title: string,
     isMac: boolean,
     autoHide: boolean,
     actions: ToolbarActions,
@@ -46,39 +49,60 @@ export class Toolbar {
     const mod = isMac ? "Cmd" : "Ctrl";
     const alt = isMac ? "Option" : "Alt";
     this.sidebarBtn = renderReaderIconButton(renderIcon("panel-left"), "Toggle sidebar (F4)");
-    this.backBtn = renderReaderIconButton(renderIcon("arrow-left"), `Back (${alt}+Left)`);
-    this.forwardBtn = renderReaderIconButton(renderIcon("arrow-right"), `Forward (${alt}+Right)`);
+    this.previousBtn = renderReaderIconButton(renderIcon("chevron-up"), "Previous page");
+    this.nextBtn = renderReaderIconButton(renderIcon("chevron-down"), "Next page");
     this.boxBtn = renderReaderIconButton(renderIcon("text-box"), `Text box (${mod}+${alt}+B)`);
     this.boxBtn.setAttribute("aria-pressed", "false");
+    this.detailsBtn = renderReaderIconButton(renderIcon("panel-right"), "Toggle details");
+    this.detailsBtn.setAttribute("aria-pressed", "false");
+    this.detailsBtn.addEventListener("click", actions.toggleDetails);
+    const editing = renderElement("div", { class: "rd-toolbar-group rd-toolbar-tools", role: "group", "aria-label": "Annotations" });
+    for (const [tool, label, icon] of [["highlight", "Highlight", "highlighter"], ["underline", "Underline", "underline"], ["note", "Add note", "note"]] as const) {
+      const button = renderReaderIconButton(renderIcon(icon), label);
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => actions.selectTool(tool));
+      this.tools.set(tool, button);
+      editing.append(button);
+    }
+    editing.append(this.boxBtn);
+    editing.addEventListener("mousedown", (event) => event.preventDefault());
     const findBtn = renderReaderIconButton(renderIcon("search"), `Find (${mod}+F)`);
     const themeBtn = renderReaderIconButton(renderIcon("droplet"), "Page theme");
     const helpBtn = renderReaderIconButton(renderIcon("help"), "Keyboard shortcuts (?)");
-    this.backBtn.disabled = true;
-    this.forwardBtn.disabled = true;
+    this.previousBtn.disabled = true;
+    this.nextBtn.disabled = true;
 
     this.sidebarBtn.addEventListener("click", actions.toggleSidebar);
-    this.backBtn.addEventListener("click", actions.historyBack);
-    this.forwardBtn.addEventListener("click", actions.historyForward);
+    this.previousBtn.addEventListener("click", actions.previousPage);
+    this.nextBtn.addEventListener("click", actions.nextPage);
     this.boxBtn.addEventListener("click", actions.toggleBoxTool);
     findBtn.addEventListener("click", actions.openFind);
     themeBtn.addEventListener("click", () => actions.openTheme(themeBtn));
     helpBtn.addEventListener("click", actions.openCheatsheet);
 
     this.el.append(
-      renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.backBtn, this.forwardBtn),
-      renderElement("div", { class: "rd-toolbar-title", title }, title),
-      renderElement("div", { class: "rd-toolbar-group" }, this.boxBtn, findBtn, themeBtn, helpBtn),
+      renderElement("div", { class: "rd-toolbar-group" }, this.sidebarBtn, this.previousBtn, this.nextBtn),
+      editing,
+      renderElement("div", { class: "rd-toolbar-group rd-toolbar-end" }, findBtn, themeBtn, helpBtn, this.detailsBtn),
     );
 
     this.bindAutohide();
   }
 
   /**
-   * Enables or disables the back/forward buttons.
+   * Disables page navigation at the document boundaries.
    */
-  setHistoryState(canGoBack: boolean, canGoForward: boolean): void {
-    this.backBtn.disabled = !canGoBack;
-    this.forwardBtn.disabled = !canGoForward;
+  setPageState(page: number, total: number): void {
+    this.previousBtn.disabled = page <= 1;
+    this.nextBtn.disabled = page >= total;
+  }
+
+  setDetailsOpen(open: boolean): void {
+    this.detailsBtn.setAttribute("aria-pressed", String(open));
+  }
+
+  setSelectionTool(tool: string | null): void {
+    for (const [name, button] of this.tools) { button.setAttribute("aria-pressed", String(name === tool)); }
   }
 
   /**

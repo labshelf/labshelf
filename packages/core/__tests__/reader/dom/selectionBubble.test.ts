@@ -51,3 +51,21 @@ describe("SelectionBubble comment", () => {
     expect(commentButton().hidden).toBe(true);
   });
 });
+
+
+describe("SelectionBubble header tools", () => {
+  it("underlines an existing selection with a persisted style", () => {
+    const { post, bubble } = setup();
+    bubble.setTool("underline");
+    expect(post).toHaveBeenCalledWith(expect.objectContaining({ command: "createAnnotation", style: "underline", pageNumber: 3 }));
+  });
+
+  it("clears the active tool on Escape", () => {
+    const { bubble } = setup();
+    window.getSelection()?.removeAllRanges();
+    bubble.onToolChange = jest.fn();
+    bubble.setTool("highlight");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(bubble.onToolChange).toHaveBeenLastCalledWith(null);
+  });
+});

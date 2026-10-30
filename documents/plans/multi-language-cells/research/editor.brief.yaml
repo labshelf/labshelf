@@ -1,0 +1,45 @@
+schema: brief/v1
+area: notes editor code cells (packages/core/src/qmd/dom) and run-state UI
+question: "where to add cell language picking, {mathematica}/{r} cells, per-language run states / not-installed guidance, and restart <language>"
+sha: 006c2a0b
+reuse:
+  - {symbol: showMenu, path: packages/core/src/ui/dom/widgets/menu.ts, lines: "43-43", why: "anchored menu with radio entries; heading dropdown in qmdToolbar.ts:33-52 is the pattern for a language picker"}
+  - {symbol: headButton, path: packages/core/src/ui/dom/headButton.ts, lines: "6-6", why: "Run cell icon button in the cell header; reuse for Restart"}
+  - {symbol: createCellRunStatus, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "23-70", why: "status row; missing-python text hardcoded at 43-47"}
+  - {symbol: createCellRunGroup, path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "84-115", why: "one status row per item key; onRunCell(label, code), no language, no restart"}
+edit:
+  - {path: packages/core/src/qmd/editor/qmdSchema.ts, lines: "139-151", why: "code_cell lang is already a free string"}
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "66-96", why: "fence parse: any word parses as lang"}
+  - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "285-296", why: "serializeCodeCell reuses stored fence/info while they agree with lang; check a language switch rewrites the fence"}
+  - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "16-73", why: "cell header: read-only lang span, Run button, Mod-Enter; add picker, pass lang to onRunCell, add Restart"}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "21-21", why: "QmdEditorOptions.onRunCell(label, code); wired at 182"}
+  - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "78-79", why: "codeCellRule python only"}
+  - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "340-340", why: "codeCell inserts lang python"}
+  - {path: packages/core/src/qmd/dom/qmdToolbar.ts, lines: "8-65", why: "codeCell plain button; heading menu button pattern 33-52"}
+  - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "36-48", why: "Python-specific missing text"}
+  - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "4-72", why: "CellStatus has missing-python; ENGINE python; RunCellPort(code, signal)"}
+  - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "76-106", why: "cell and run-status styles"}
+callers:
+  - {symbol: createCellRunGroup, path: packages/core/src/reader/dom/notesTab.ts, lines: "75-82"}
+  - {symbol: createCellRunGroup, path: packages/core/src/reader/dom/noteBoxes.ts, lines: "75-82"}
+  - {symbol: createCellRunGroup, path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "66-76"}
+  - {symbol: createCellRunGroup, path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "118-136"}
+  - {symbol: createCellRuns, path: packages/core/src/reader/noteMessages.ts, lines: "63-80"}
+  - {symbol: createCellRuns, path: packages/core/src/libraryUi/paperHandlers.ts, lines: "82-91"}
+  - {symbol: createCellRuns, path: packages/core/src/spaces/serveSpaces.ts, lines: "167-175"}
+  - {symbol: createCellRuns, path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "77-80"}
+  - {symbol: installPython, path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "104-112"}
+  - {symbol: code_cell, path: packages/vscode/src/collab/threads.ts, lines: "131-131"}
+tests:
+  - {path: packages/core/__tests__/qmd/dom/codeCellView.test.ts, covers: "cell/output views, run, out-of-date"}
+  - {path: packages/core/__tests__/qmd/dom/cellRunStatus.test.ts, covers: "status row and group"}
+  - {path: packages/core/__tests__/qmd/dom/qmdEditor.test.ts, covers: "editor, input rules, commands"}
+  - {path: packages/core/__tests__/qmd/editor/serializeBlocks.test.ts, covers: "code_cell fence round-trip"}
+  - {path: packages/core/__tests__/qmd/editor/bodyToDoc.test.ts, covers: "fence parsing"}
+commands:
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/dom"
+  - "node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/editor"
+risks:
+  - "No language in runCell/cancelCell/cellState (reader, libraryUi paper.*, spaces space.*), RunCellPort, ICellRunner or helper wire; four duplicated view call sites."
+  - "Status row per item; CellStatus not language-aware; CELL_STATUS_FLAGS exhaustive Record in helperMessages.ts:23."
+  - "Install offer is Python-only; Mathematica/R guidance text-only."

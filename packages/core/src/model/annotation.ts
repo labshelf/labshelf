@@ -26,6 +26,7 @@ export interface Annotation {
   content: string;
   color?: AnnotationColor;
   position?: AnnotationPosition;
+  style?: "underline";
   createdAt: string;
   updatedAt: string;
 }

@@ -194,23 +194,25 @@ export class PaperSidecarStore {
     content: string,
     color: string,
     position?: unknown,
+    style?: "underline",
   ): Promise<Annotation> {
     const validColor = validateAnnotationColor(color);
     validatePageNumber(pageNumber);
     if (!content.trim()) { throw new Error("Highlight content cannot be empty"); }
     const validPosition = position === undefined ? undefined : checkAnnotationPosition(position);
     return this.add(paperId, {
-      type: "highlight", pageNumber, content, color: validColor, ...(validPosition ? { position: validPosition } : {}),
+      type: "highlight", pageNumber, content, color: validColor, ...(style ? { style } : {}), ...(validPosition ? { position: validPosition } : {}),
     });
   }
 
-  private async add(paperId: string, fields: Pick<Annotation, "type" | "pageNumber" | "content" | "color" | "position">): Promise<Annotation> {
+  private async add(paperId: string, fields: Pick<Annotation, "type" | "pageNumber" | "content" | "color" | "position" | "style">): Promise<Annotation> {
     const at = this.now();
     // Key order is the on-disk contract (library-format.md), so every app writes the same bytes.
     const annotation: Annotation = {
       id: this.newId(), paperId, type: fields.type, pageNumber: fields.pageNumber, content: fields.content,
       ...(fields.color === undefined ? {} : { color: fields.color }),
       ...(fields.position === undefined ? {} : { position: fields.position }),
+      ...(fields.style ? { style: fields.style } : {}),
       createdAt: at, updatedAt: at,
     };
     await this.mutate(paperId, (data) => { data.annotations.push(annotation); return annotation; });

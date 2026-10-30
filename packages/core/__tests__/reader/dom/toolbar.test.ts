@@ -5,19 +5,53 @@ import { Toolbar, type ToolbarActions, BuildBanner, TabList } from "../../../src
 function setupToolbar() {
   document.body.innerHTML = `<div id="pdf-shell"><div id="toolbar"></div></div>`;
   const noop = () => undefined;
-  const actions: ToolbarActions = { toggleSidebar: noop, historyBack: noop, historyForward: noop, openFind: noop, toggleBoxTool: noop, openTheme: noop, openCheatsheet: noop };
-  const toolbar = new Toolbar(document.createElement("div"), "A paper", false, true, actions);
-  return { toolbar, root: document.getElementById("toolbar")! };
+  const actions: ToolbarActions = { toggleSidebar: noop, previousPage: jest.fn(), nextPage: jest.fn(), toggleDetails: jest.fn(), selectTool: jest.fn(), openFind: noop, toggleBoxTool: noop, openTheme: noop, openCheatsheet: noop };
+  const toolbar = new Toolbar(document.createElement("div"), false, true, actions);
+  return { toolbar, actions, root: document.getElementById("toolbar")! };
 }
 
 describe("Toolbar", () => {
-  it("keeps its seven buttons", () => {
+  it("groups page navigation, annotation tools and panel controls without a title", () => {
     const { root } = setupToolbar();
     const titles = [...root.querySelectorAll("button")].map((b) => b.title);
+    expect(root.querySelector(".rd-toolbar-title")).toBeNull();
     expect(titles).toEqual([
-      "Toggle sidebar (F4)", "Back (Alt+Left)", "Forward (Alt+Right)", "Text box (Ctrl+Alt+B)", "Find (Ctrl+F)", "Page theme", "Keyboard shortcuts (?)",
+      "Toggle sidebar (F4)", "Previous page", "Next page", "Highlight", "Underline", "Add note", "Text box (Ctrl+Alt+B)", "Find (Ctrl+F)", "Page theme", "Keyboard shortcuts (?)", "Toggle details",
     ]);
   });
+  it("navigates pages and disables the arrows at document boundaries", () => {
+    const { toolbar, actions, root } = setupToolbar();
+    const previous = root.querySelector<HTMLButtonElement>('[title="Previous page"]')!;
+    const next = root.querySelector<HTMLButtonElement>('[title="Next page"]')!;
+    toolbar.setPageState(1, 3);
+    expect(previous.disabled).toBe(true);
+    next.click();
+    expect(actions.nextPage).toHaveBeenCalledTimes(1);
+    toolbar.setPageState(3, 3);
+    expect(next.disabled).toBe(true);
+    previous.click();
+    expect(actions.previousPage).toHaveBeenCalledTimes(1);
+    toolbar.setPageState(1, 1);
+    expect(previous.disabled && next.disabled).toBe(true);
+  });
+
+  it("dispatches annotation tools and details, and reflects their state", () => {
+    const { toolbar, actions, root } = setupToolbar();
+    const underline = root.querySelector<HTMLButtonElement>('[title="Underline"]')!;
+    underline.click();
+    expect(actions.selectTool).toHaveBeenCalledWith("underline");
+    toolbar.setSelectionTool("underline");
+    expect(underline.getAttribute("aria-pressed")).toBe("true");
+    const details = root.querySelector<HTMLButtonElement>('[title="Toggle details"]')!;
+    details.click();
+    expect(actions.toggleDetails).toHaveBeenCalledTimes(1);
+    toolbar.setDetailsOpen(true);
+    expect(details.getAttribute("aria-pressed")).toBe("true");
+    const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    underline.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+  });
+
 });
 
 type Id = "a" | "b" | "c";

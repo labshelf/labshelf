@@ -1,0 +1,101 @@
+schema: plan/v1
+slug: multi-language-cells
+title: Python, Mathematica and R cells in notes
+status: draft
+level: N3
+goal: A note's code cells run in Python, Mathematica or R, mixed in the same note. Each language keeps its own state per note in a persistent driver process that LabShelf starts on the first run, closes when idle and restarts on request. Python stays the managed default; Mathematica (wolframscript) and R (Rscript) are used when the user has them installed. No Jupyter.
+decisions:
+  - id: D1
+    text: "Cell languages are `python`, `mathematica` and `r`, written as the fence ```` ```{python} ````, ```` ```{mathematica} ````, ```` ```{r} ````. The output block's `engine` is the cell language. A fence with any other language is kept as text and has no Run action."
+    why: Same fence syntax as Quarto and Pandoc; the .qmd format does not change.
+  - id: D2
+    text: "One driver process per (note key, language). Note keys: `paper:<paper id>`, `space:<space id>:<note path>`, `project:<project id>:<note path>`. A process starts on the first run of that language in that note, keeps variables between cells, and closes after 10 minutes without a run, when its note host closes, on VS Code deactivate and on helper shutdown. Languages never share variables."
+    why: State between cells as in a notebook, without paying for processes nobody uses.
+  - id: D3
+    text: "Driver protocol: one JSON request per stdin line `{id, code}`, one JSON response per stdout line prefixed by a sentinel `\\u0001LABSHELF\\u0001` and carrying `{id, latex?|text?|error?}`; anything else on stdout or stderr is the cell's printed output. Drivers read UTF-8, tolerate CRLF and exit on stdin EOF. Drivers are files next to the runner: `cellDriver.py`, `cellDriver.wl`, `cellDriver.R`."
+    why: Prints cannot desync results; a dead parent never leaves a driver running.
+  - id: D4
+    text: "Cancel and timeout kill that language's process for that note; the next run starts a fresh one and its result carries `restarted: true`, which the view shows as \"<Language> restarted, earlier definitions are gone\". Restart is an explicit action per cell header (\"Restart <Language>\") that kills the process without running. Process start-up time does not count towards the 60 s timeout."
+    why: Interrupting is not portable (Windows, wolframscript); losing state must never be silent.
+  - id: D5
+    text: "`CellStatus` replaces `missing-python` with `missing` and the result carries `language`. Python missing keeps the \"Install Python for calculations\" button; Mathematica and R missing show text naming what to install (Wolfram Engine or Mathematica with wolframscript; R) and where LabShelf looked."
+    why: One status for every language; only Python is a managed tool.
+  - id: D6
+    text: "Finding executables: Python is the managed one only (unchanged). `wolframscript` and `Rscript` are looked up on PATH, then in the usual install locations per OS (macOS `/Applications/Wolfram Engine.app`, `/Applications/Mathematica.app`, `/Applications/Wolfram.app`, `/usr/local/bin`, `/opt/homebrew/bin`, `/Library/Frameworks/R.framework/Resources/bin`; Windows `Program Files\\Wolfram Research\\*`, `Program Files\\R\\R-*\\bin`; Linux `/usr/bin`, `/usr/local/bin`). VS Code settings `labshelf.cells.wolframscriptPath` and `labshelf.cells.rscriptPath` override the lookup; the browser goes through the helper, which uses the same lookup."
+    why: Works with no configuration on a normal install; VS Code users can point at an unusual one.
+  - id: D7
+    text: "Results: Python keeps the SymPy rule (SymPy object → LaTeX, else text). Mathematica returns `TeXForm` of the last expression unless it is `Null`, and text for strings and graphics-free messages. R returns the printed value of the last visible expression as text. Graphics are out of scope."
+    why: The note already renders LaTeX and text outputs.
+  - id: D8
+    text: "The helper protocol goes from 7 to 8: `runCell` gains `language` and `noteKey`, a new unqueued `restartCell {noteKey, language}` is added, and `cellResult` gains `language` and `restarted`. Webview protocols (reader, libraryUi `paper.*`, spaces `space.*`) gain `language` on `runCell` and a `restartCell` message; hosts derive the note key, views never send it."
+    why: The helper has no note concept; the view should not choose process identity.
+  - id: D9
+    text: "Terminal: no cells (unchanged). Variable sharing between languages, graphics outputs, Julia and Jupyter kernels are out of scope."
+    why: Keeps the plan bounded.
+acceptance:
+  - id: A1
+    check: "`.qmd` notes with `{python}`, `{mathematica}` and `{r}` cells round-trip byte for byte, and each written output carries `engine` equal to its cell language (tests)"
+  - id: A2
+    check: "Two Python cells in one note share state (`x = 2` then `x + 1` gives 3); the same in R and Mathematica; two notes do not share state (tests with fake drivers; real drivers when the tool is installed)"
+  - id: A3
+    check: "Cancel, timeout and Restart kill the process; the next run starts fresh and the view says the earlier definitions are gone; idle processes close after 10 minutes; no driver survives VS Code deactivate or helper shutdown (tests)"
+  - id: A4
+    check: "Helper protocol 8 carries language, noteKey and restartCell; older helpers get the update prompt (tests)"
+  - id: A5
+    check: "In VS Code and in the browser, a note with a Python, a Mathematica and an R cell runs all three, each result rendered under its cell; the cell header shows its language with a picker and a Restart action (check by hand in VS Code and in the browser)"
+  - id: A6
+    check: "Without wolframscript or R installed, Run on that cell explains what to install; Python missing still offers its install button (check by hand)"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - documents/contracts/qmd-items.md
+      - documents/contracts/helper.md
+      - packages/core/src/qmd/compute/cellRunner.ts
+      - packages/core/src/qmd/compute/writeCellOutput.ts
+      - packages/core/src/qmd/compute/cellLanguage.ts
+      - packages/core/src/qmd/compute/index.ts
+      - packages/core/src/qmd/compute/node/cellSessions.ts
+      - packages/core/src/latex/node/run.ts
+      - packages/core/__tests__/qmd/compute/
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/core/src/qmd/compute/node/
+      - packages/core/__tests__/qmd/compute/node/
+      - packages/vscode/scripts/
+      - packages/vscode/package.json
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns:
+      - packages/core/src/helper/
+      - packages/core/__tests__/helper/
+      - packages/core/src/reader/
+      - packages/core/src/libraryUi/protocol/
+      - packages/core/src/libraryUi/paperHandlers.ts
+      - packages/core/src/spaces/spacesProtocol.ts
+      - packages/core/src/spaces/serveSpaces.ts
+      - packages/browser/src/helper/
+      - packages/browser/src/libraryUi/
+      - packages/vscode/src/
+      - packages/vscode/package.json
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns:
+      - packages/core/src/qmd/dom/
+      - packages/core/src/qmd/editor/
+      - packages/core/__tests__/qmd/dom/
+      - packages/core/src/reader/dom/
+      - packages/core/src/spaces/dom/
+      - packages/core/src/libraryUi/dom/detailPane/paneState.ts
+      - packages/browser/src/libraryUi/editorArea/projectNoteTab.ts
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns:
+      - documents/plans/multi-language-cells/
+      - documents/
