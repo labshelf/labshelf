@@ -215,7 +215,10 @@ function showBody(session: Session, body: string): void {
 
 function renderToggle(session: Session): void {
   const label = session.mode === "visual" ? "Source" : "Visual";
-  const { toggle } = session.chrome;
+  const { toggle, header } = session.chrome;
+  toggle.hidden = session.mode === "visual" && !session.readOnly;
+  header.hidden = toggle.hidden && !header.querySelector(".qmd-editor-meta");
+  header.parentElement?.setAttribute("data-qmd-mode", session.mode);
   toggle.textContent = label;
   toggle.title = `${label} (${shortcutLabel(TOGGLE_KEY)})`;
   toggle.setAttribute("aria-pressed", String(session.mode === "source"));
@@ -283,7 +286,7 @@ export function mountQmdEditor(root: HTMLElement, options: QmdEditorOptions): Qm
   bindChrome(session);
   root.classList.add("qmd-editor");
   root.replaceChildren(chrome.header, chrome.toolbar, view.dom);
-  const toolbarHandle = session.readOnly ? null : mountQmdToolbar(chrome.toolbar, view);
+  const toolbarHandle = session.readOnly ? null : mountQmdToolbar(chrome.toolbar, view, () => toggleMode(session));
   renderToggle(session);
 
   return {

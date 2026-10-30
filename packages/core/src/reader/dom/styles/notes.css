@@ -1,0 +1,37 @@
+/* Separates browsing PDF notes from editing a single note in the reader sidebar. */
+.rd-notes { overflow: hidden; }
+.rd-notes-count { font-variant-numeric: tabular-nums; }
+.rd-notes-filters { display: flex; flex-direction: column; gap: var(--ls-space-3); padding: var(--ls-space-4) var(--ls-space-6); }
+.rd-notes-filter, .rd-notes-search { width: 100%; min-width: 0; min-height: var(--ls-row-h); padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius); background: var(--ls-input-bg); color: var(--ls-reader-fg); font: inherit; }
+.rd-notes-filter { border-color: transparent; background: transparent; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
+.rd-notes-list { min-height: 0; overflow: auto; padding: 0 var(--ls-space-4) var(--ls-space-6); }
+.rd-notes-group { padding: var(--ls-space-6) var(--ls-space-2) var(--ls-space-3); font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-reader-desc); }
+.rd-note-preview { display: flex; flex-direction: column; gap: var(--ls-space-2); width: 100%; min-width: 0; padding: var(--ls-space-6) var(--ls-space-4); margin-bottom: var(--ls-space-2); border: 0; border-radius: var(--ls-radius); background: transparent; color: var(--ls-reader-fg); text-align: left; cursor: pointer; font: inherit; }
+.rd-note-preview:hover, .rd-note-preview:focus-visible { background: var(--ls-reader-hover); }
+.rd-note-preview-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-weight: 600; line-height: 1.5; }
+.rd-note-preview-body { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-md); line-height: 1.5; }
+.rd-note-preview-meta { display: flex; align-items: center; gap: var(--ls-space-3); margin-top: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-reader-desc); }
+.rd-note-preview-meta svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.rd-note-preview-meta .rd-ann-dot { margin: 0; }
+.rd-notes-editor-pane { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow: auto; }
+.rd-notes-editor-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4); padding: var(--ls-space-3) var(--ls-space-6); }
+.rd-notes-back, .rd-note-source { display: inline-flex; align-items: center; gap: var(--ls-space-3); border: 0; background: none; padding: var(--ls-space-2) 0; color: var(--ls-link); cursor: pointer; font: inherit; font-size: var(--ls-text-md); }
+.rd-notes-back svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.rd-note-context { padding: 0 var(--ls-space-6); }
+.rd-note-source:disabled { color: var(--ls-reader-desc); cursor: default; }
+.rd-note-quote { margin: var(--ls-space-3) 0 var(--ls-space-6); padding-left: var(--ls-space-4); border-left: var(--ls-space-1) solid var(--ls-reader-border); color: var(--ls-reader-desc); font-size: var(--ls-text-md); line-height: 1.6; max-height: calc(var(--ls-row-h) * 4); overflow: auto; }
+.rd-note-editor { min-width: 0; flex: 1; padding: var(--ls-space-6); }
+.rd-note-editor-footer { padding: var(--ls-space-4) var(--ls-space-6); color: var(--ls-reader-desc); font-size: var(--ls-text-sm); text-align: right; }
+.rd-note-delete.rd-danger { background: var(--ls-error); color: var(--ls-reader-surface); }
+.rd-notes :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+
+.rd-note-editor .qmd-editor-toolbar { background: var(--ls-reader-surface); }
+
+/* The reader's page theme can differ from the surrounding application's theme. */
+.rd-note-editor, .rd-floating-note-body, .rd-note-box-content {
+  --ls-fg: var(--ls-reader-fg); --ls-desc: var(--ls-reader-desc);
+  --ls-border: var(--ls-reader-border); --ls-border-soft: var(--ls-reader-border);
+  --ls-code-bg: color-mix(in srgb, var(--ls-reader-fg) 5%, var(--ls-reader-surface));
+  --ls-toolbar-hover: var(--ls-reader-hover); --ls-toolbar-active: var(--ls-reader-active);
+  --ls-input-bg: var(--ls-reader-page); --ls-input-fg: var(--ls-reader-fg); --ls-input-border: var(--ls-reader-border);
+}

@@ -1,7 +1,7 @@
 // Opens anchored PDF notes in a floating rich editor and draws their page pins independently of highlights.
 import type { Annotation } from "../../model/index.js";
 import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
-import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
+import { formatAnchor, parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
 import type { ReaderNote } from "../protocol/index.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
@@ -41,12 +41,14 @@ export class FloatingNotes {
     window.addEventListener("resize", () => this.place());
     this.el.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.stopPropagation(); close.click(); } });
     document.addEventListener("pointerdown", (event) => {
-      if (this.current && event.target instanceof Element && !this.el.contains(event.target) && !event.target.closest(".rd-note-pin, .ls-menu, .ls-quick, .ls-dialog, .ls-scrim")) { this.close(); }
+      if (this.current && event.target instanceof Element && !this.el.contains(event.target) && !event.target.closest(".rd-note-pin, .ls-menu, .ls-quick, .ls-dialog, .ls-scrim, .qmd-plot-preview")) { this.close(); }
     });
   }
 
   /** The next annotation made by Add to note gets an item and a floating editor. */
   expectHighlight(): void { this.awaitingHighlight = true; }
+
+  openNote(id: string): void { const note = this.notes.find((item) => item.id === id); if (note) { this.open(note); } }
 
   addPoint(page: number, x: number, y: number): void {
     this.create(formatAnchor({ kind: "point", page, x, y }));
@@ -63,18 +65,18 @@ export class FloatingNotes {
     this.notes = notes;
     for (const [id, body] of this.drafts) {
       const stored = notes.find((note) => note.id === id);
-      if (!stored || sameBody(stored.body, body)) { this.drafts.delete(id); }
+      if (!stored || sameItemBody(stored.body, body)) { this.drafts.delete(id); }
     }
     const current = this.current;
     const stored = notes.find((item) => item.id === current?.id);
     if (current && !stored) { this.close(false); }
     if (current && stored) {
-      if (sameBody(current.latest, current.sent) && !current.root.contains(document.activeElement)) {
+      if (sameItemBody(current.latest, current.sent) && !current.root.contains(document.activeElement)) {
         current.latest = stored.body;
         current.editor.setBody(stored.body);
       }
       current.sent = stored.body;
-      this.status.textContent = sameBody(current.latest, stored.body) ? "Saved" : "Saving…";
+      this.status.textContent = sameItemBody(current.latest, stored.body) ? "Saved" : "Saving…";
     }
     this.paint();
     const pending = this.pending;
@@ -97,6 +99,7 @@ export class FloatingNotes {
   private position(note: ReaderNote): NotePosition | null {
     const anchor = parseAnchor(note.anchor);
     if (anchor.kind === "point") { return anchor; }
+    if (anchor.kind === "box") { return { page: anchor.page, x: Math.min(1, anchor.x + anchor.w), y: anchor.y }; }
     const mark = anchor.kind === "highlight" ? this.annotations.get(anchor.annotationId) : undefined;
     return mark?.position ? { page: mark.pageNumber, x: Math.min(1, mark.position.x + mark.position.width + 0.012), y: mark.position.y + mark.position.height / 2 } : null;
   }
@@ -105,6 +108,7 @@ export class FloatingNotes {
     for (const pin of this.pins.values()) { pin.remove(); }
     this.pins.clear();
     for (const note of this.notes) {
+      if (parseAnchor(note.anchor).kind === "box") { continue; }
       const at = this.position(note);
       const page = at && document.querySelector<HTMLElement>(`#viewer .page[data-page-number="${at.page}"]`);
       if (!page || !at) { continue; }
@@ -146,7 +150,8 @@ export class FloatingNotes {
 
   private place(): void {
     if (!this.current || this.el.hidden) { return; }
-    const pin = this.pins.get(this.current.id)?.getBoundingClientRect();
+    const anchor = this.pins.get(this.current.id) ?? [...document.querySelectorAll<HTMLElement>(".rd-note-box")].find((box) => box.dataset["noteId"] === this.current?.id);
+    const pin = anchor?.getBoundingClientRect();
     const box = this.el.getBoundingClientRect();
     const right = pin ? pin.right + 12 : window.innerWidth - box.width - 16;
     const left = pin && right + box.width > window.innerWidth - 8 ? pin.left - box.width - 12 : right;
@@ -162,11 +167,4 @@ export class FloatingNotes {
     this.close();
     this.openFull(id, latest);
   }
-}
-
-
-// CONTRACT: documents/contracts/qmd-items.md#items — the host normalizes line endings and appends a missing final newline.
-function sameBody(a: string, b: string): boolean {
-  const canonical = (text: string): string => text.replace(/\r\n|\r/g, "\n").replace(/([^\n])$/, "$1\n");
-  return canonical(a) === canonical(b);
 }

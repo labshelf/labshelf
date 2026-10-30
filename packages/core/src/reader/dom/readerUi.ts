@@ -79,6 +79,7 @@ export function buildReaderUi(ctx: ReaderContext, theme: ThemeController): Reade
   const pill = new PagePill(ctx, zoom, goToPage);
   const reviewNote = ctx.boot.preview ? new CommentAsk(ctx) : null;
   const floatingNotes = new FloatingNotes(ctx, (id, body) => notesTab.reveal(id, body));
+  noteBoxes.onEdit = (id) => floatingNotes.openNote(id);
   const bubble = new SelectionBubble(ctx, reviewNote ? (selection) => reviewNote.open(selection) : undefined, () => floatingNotes.expectHighlight());
   bubble.onPlaceNote = (page, x, y) => floatingNotes.addPoint(page, x, y);
   const reporter = new ReadingPositionReporter(ctx, sidebar);

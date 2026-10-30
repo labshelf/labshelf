@@ -179,3 +179,18 @@ describe("QMD_VOCABULARY", () => {
     expect(QMD_VOCABULARY.item.length).toBeGreaterThan(0);
   });
 });
+
+
+it("offers less frequent content through the labelled Insert menu", () => {
+  const { root } = setup("Hello\n");
+  root.querySelector<HTMLButtonElement>('button[aria-label="Insert"]')!.click();
+  const menu = document.querySelector(".ls-menu")!;
+  expect(menu.textContent).toContain("Inline math");
+  expect(menu.textContent).toContain("Code cell");
+  const source = [...menu.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent?.includes("Edit Markdown source"))!;
+  source.click();
+  expect(root.querySelector("textarea")).not.toBeNull();
+  expect(root.querySelector<HTMLButtonElement>(".qmd-editor-toggle")!.hidden).toBe(false);
+  root.querySelector<HTMLButtonElement>(".qmd-editor-toggle")!.click();
+  expect(root.querySelector(".ProseMirror")).not.toBeNull();
+});

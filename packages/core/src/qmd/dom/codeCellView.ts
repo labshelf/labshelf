@@ -1,9 +1,9 @@
 // Shows code cells with their Run button and the stored outputs under them, marking an output out of date when its cell's code hashes to something other than the output's `source`.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { headButton, renderElement } from "../../ui/dom/index.js";
+import { mountOverlay, renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { deriveCodeHash } from "../item/index.js";
+import { deriveCodeHash, readOutputImage } from "../item/index.js";
 import { setViewNodeAttribute } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 
@@ -19,22 +19,43 @@ class CodeCellView implements NodeView {
   private readonly labelText: HTMLElement;
   private readonly langText: HTMLElement;
   private readonly code: HTMLElement;
+  private readonly pre: HTMLPreElement;
+  private readonly toggle: HTMLButtonElement;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly onRunCell?: (label: string, code: string) => void) {
     this.langText = renderElement("span", { class: "qmd-cell-lang" });
     this.labelText = renderElement("span", { class: "qmd-cell-label" });
     const header = renderElement("div", { class: "qmd-cell-header", contenteditable: "false" }, this.langText, this.labelText);
-    if (onRunCell) header.append(headButton("ls-btn ls-btn-ghost ls-btn-icon qmd-cell-run", "Run cell", "play", () => this.run()));
+    if (onRunCell) {
+      const run = renderElement("button", { class: "qmd-cell-run", type: "button", title: "Run cell (Ctrl/Cmd+Enter)", "aria-label": "Run cell" }, renderElement("span", { html: renderIcon("play"), "aria-hidden": "true" }), "Run");
+      run.addEventListener("click", () => this.run());
+      header.append(run);
+    }
+    this.toggle = renderElement("button", { class: "qmd-cell-toggle", type: "button" });
+    this.toggle.addEventListener("click", () => this.showCode(this.pre.hidden === true));
+    header.append(this.toggle);
     this.code = renderElement("code", { spellcheck: "false" });
     this.code.contentEditable = String(view.editable);
     this.code.addEventListener("input", () => this.commit());
-    this.dom = renderElement("div", { class: "qmd-cell" }, header, renderElement("pre", { class: "qmd-cell-code" }, this.code));
+    this.pre = renderElement("pre", { class: "qmd-cell-code" }, this.code);
+    this.dom = renderElement("div", { class: "qmd-cell" }, header, this.pre);
+    const label = readCellLabel(node.attrs.options as string);
+    let hasResult = false;
+    view.state.doc.descendants((child) => { if (label && child.type.name === "output" && child.attrs.cell === label && outputContent(child.attrs.raw as string).trim()) { hasResult = true; } });
+    this.showCode(!hasResult || (node.attrs.code as string).split("\n").length <= 12);
     this.dom.addEventListener("keydown", (event) => {
       if (!isRunKey(event) || !this.onRunCell) return;
       event.preventDefault();
       this.run();
     });
     this.render();
+  }
+
+  private showCode(show: boolean): void {
+    this.pre.hidden = !show;
+    this.toggle.textContent = show ? "Hide code" : "Show code";
+    this.toggle.setAttribute("aria-expanded", String(show));
+    this.dom.classList.toggle("qmd-cell-collapsed", !show);
   }
 
   private render(): void {
@@ -85,9 +106,28 @@ function outputContent(raw: string): string {
   return lines.slice(1).join("\n");
 }
 
+/** Removes a whole code fence from text results while preserving the stored Markdown. */
+function plainOutput(text: string): string {
+  const content = text.split("\n");
+  const fence = /^(`{3,}|~{3,})[^\n]*$/.exec(content[0] ?? "")?.[1];
+  const closing = content.at(-1)?.trim() ?? "";
+  return fence && closing[0] === fence[0] && closing.length >= fence.length && [...closing].every((char) => char === fence[0])
+    ? content.slice(1, -1).join("\n") : content.join("\n");
+}
+
 /** The TeX of an output that is one `$$ … $$` block, or null. */
 function displayMath(content: string): string | null {
   return /^\s*\$\$([\s\S]*?)\$\$\s*$/.exec(content)?.[1]?.trim() ?? null;
+}
+
+function openPlot(src: string, alt: string): () => void {
+  const close = renderElement("button", { class: "qmd-plot-close", type: "button", "aria-label": "Close plot", html: renderIcon("x") });
+  const panel = renderElement("section", { class: "qmd-plot-preview", role: "dialog", "aria-modal": "true", "aria-label": "Python plot" },
+    renderElement("header", { class: "qmd-plot-header" }, renderElement("span", {}, alt), close), renderElement("img", { src, alt }));
+  const overlay = mountOverlay(panel, () => undefined);
+  close.addEventListener("click", overlay.close);
+  close.focus();
+  return overlay.close;
 }
 
 class OutputView implements NodeView {
@@ -98,10 +138,11 @@ class OutputView implements NodeView {
   private readonly observer: MutationObserver;
   private destroyed = false;
   private badge: HTMLElement | null = null;
+  private preview: (() => void) | null = null;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadMath: MathLoader) {
     this.body = renderElement("div", { class: "qmd-output-body" });
-    this.dom = renderElement("div", { class: "qmd-output", contenteditable: "false" }, this.body);
+    this.dom = renderElement("div", { class: "qmd-output", contenteditable: "false" }, renderElement("div", { class: "qmd-output-heading" }, "Result"), this.body);
     // An unchanged output keeps its view when only its cell changes, so the view watches the editor for edits.
     this.observer = new MutationObserver(() => this.checkSource());
     this.observer.observe(view.dom, { childList: true, subtree: true, characterData: true });
@@ -111,15 +152,24 @@ class OutputView implements NodeView {
   private render(): void {
     const raw = this.node.attrs.raw as string;
     if (raw !== this.shownRaw) {
+      this.preview?.();
+      this.preview = null;
       this.shownRaw = raw;
       const content = outputContent(raw);
       const tex = displayMath(content);
-      if (tex === null) {
-        this.body.replaceChildren(renderElement("pre", { class: "qmd-output-text", text: content }));
+      const image = readOutputImage(content);
+      this.dom.classList.toggle("qmd-output-figure", image !== null);
+      if (image) {
+        const expand = renderElement("button", { class: "qmd-output-image-button", type: "button", "aria-label": "Expand plot", title: "Expand plot" }, renderElement("img", { class: "qmd-output-image", src: image.src, alt: image.alt }));
+        expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlot(image.src, image.alt); });
+        this.body.replaceChildren(expand);
+      } else if (tex === null) {
+        this.body.replaceChildren(renderElement("pre", { class: "qmd-output-text", text: plainOutput(content) }));
       } else {
-        const math = renderElement("div", { class: "qmd-math qmd-math-display" });
+        const rendered = renderElement("div", { class: "qmd-math-rendered" });
+        const math = renderElement("div", { class: "qmd-math qmd-math-display" }, rendered);
         this.body.replaceChildren(math);
-        void renderMathInto(math, tex, true, this.loadMath);
+        void renderMathInto(rendered, tex, true, this.loadMath);
       }
     }
     this.checkSource();
@@ -182,6 +232,7 @@ class OutputView implements NodeView {
 
   destroy(): void {
     this.destroyed = true;
+    this.preview?.();
     this.observer.disconnect();
   }
 }

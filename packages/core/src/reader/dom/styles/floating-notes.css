@@ -11,6 +11,6 @@
 .rd-floating-note-full { font-size: var(--ls-text-sm); }
 .rd-floating-note-source { padding: var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); }
 .rd-floating-note-body { padding: var(--ls-space-4); min-height: 180px; overflow: auto; }
-.rd-floating-note-body .qmd-editor-header { display: none; }
+.rd-floating-note-body .qmd-editor-toolbar { background: var(--ls-reader-surface); }
 .rd-floating-note-footer { display: flex; justify-content: flex-end; padding: var(--ls-space-3) var(--ls-space-4); border-top: 1px solid var(--ls-reader-border); font-size: var(--ls-text-sm); color: var(--ls-reader-desc); }
 .rd-floating-note :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }

@@ -1,7 +1,8 @@
-// Shows `math_inline` and `math_display` nodes as MathJax SVG, loading MathJax only when a math node first renders, with the TeX source editable while the node is selected.
+// Shows typeset inline and display equations, with explicit LaTeX editing in a separate field.
 import type { Node as ProseNode } from "prosemirror-model";
+import { NodeSelection, Selection, TextSelection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { renderElement } from "../../ui/dom/index.js";
+import { renderElement, renderIcon } from "../../ui/dom/index.js";
 import { setViewNodeAttribute } from "./inlineViews.js";
 
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
@@ -45,13 +46,23 @@ export async function renderMathInto(target: HTMLElement, tex: string, display: 
 class MathView implements NodeView {
   readonly dom: HTMLElement;
   private readonly rendered: HTMLElement;
-  private editor: HTMLInputElement | null = null;
+  private editor: HTMLInputElement | HTMLTextAreaElement | null = null;
+  private sourcePanel: HTMLElement | null = null;
+  private originalTex = "";
   private token = 0;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly display: boolean, private readonly loadMath: MathLoader) {
-    this.dom = renderElement(display ? "div" : "span", { class: display ? "qmd-math qmd-math-display" : "qmd-math qmd-math-inline" });
+    this.dom = renderElement(display ? "div" : "span", { class: display ? "qmd-math qmd-math-display" : "qmd-math qmd-math-inline", title: "Click to edit equation" });
     this.rendered = renderElement(display ? "div" : "span", { class: "qmd-math-rendered" });
     this.dom.append(this.rendered);
+    if (view.editable && display) {
+      const edit = renderElement("button", { class: "qmd-math-edit-button", type: "button", "aria-label": "Edit equation", contenteditable: "false", html: renderIcon("edit") });
+      edit.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); this.editSource(); });
+      this.dom.append(edit);
+    }
+    this.dom.addEventListener("click", (event) => {
+      if (view.editable && event.target instanceof Node && this.rendered.contains(event.target)) { this.editSource(); }
+    });
     this.render();
   }
 
@@ -77,25 +88,62 @@ class MathView implements NodeView {
     return true;
   }
 
-  selectNode(): void {
-    this.dom.classList.add("ProseMirror-selectednode");
+  selectNode(): void { this.dom.classList.add("ProseMirror-selectednode"); }
+
+  private editSource(): void {
     if (this.editor || !this.view.editable) return;
-    const input = renderElement("input", { class: "qmd-math-source qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source" });
+    const pos = this.getPos();
+    if (pos === undefined) { return; }
+    this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+    this.dom.classList.add("qmd-math-editing");
+    const input = this.display
+      ? renderElement("textarea", { rows: 3, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source" })
+      : renderElement("input", { class: "qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source" });
+    this.originalTex = this.tex;
     input.value = this.tex;
     input.addEventListener("input", () => this.commit(input.value));
-    input.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== "Escape") return;
-      event.preventDefault();
-      this.view.focus();
+    input.addEventListener("keydown", (raw) => {
+      const event = raw as KeyboardEvent;
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.finish(true); }
+      else if (event.key === "Enter" && (!this.display || event.ctrlKey || event.metaKey)) { event.preventDefault(); this.finish(false); }
     });
+    const apply = renderElement("button", { class: "qmd-math-apply", type: "button", text: "Apply", title: "Apply (Ctrl/Cmd+Enter)" });
+    const cancel = renderElement("button", { class: "qmd-math-cancel", type: "button", text: "Cancel" });
+    apply.addEventListener("click", () => this.finish(false));
+    cancel.addEventListener("click", () => this.finish(true));
     this.editor = input;
-    this.dom.append(input);
+    this.sourcePanel = renderElement("span", { class: "qmd-math-edit", contenteditable: "false" },
+      renderElement("label", { class: "qmd-math-field" }, renderElement("span", { class: "qmd-math-field-label", text: "LaTeX" }), input),
+      renderElement("span", { class: "qmd-math-actions" }, cancel, apply));
+    this.dom.append(this.sourcePanel);
+    if (!this.display) {
+      const rect = this.dom.getBoundingClientRect();
+      this.sourcePanel.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - this.sourcePanel.offsetWidth - 8))}px`;
+      this.sourcePanel.style.top = `${Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - this.sourcePanel.offsetHeight - 8))}px`;
+    }
+    queueMicrotask(() => this.editor?.focus());
   }
 
   deselectNode(): void {
-    this.dom.classList.remove("ProseMirror-selectednode");
-    this.editor?.remove();
+    this.dom.classList.remove("ProseMirror-selectednode", "qmd-math-editing");
+    this.sourcePanel?.remove();
+    this.sourcePanel = null;
     this.editor = null;
+  }
+
+  private finish(cancel: boolean): void {
+    if (cancel) { this.commit(this.originalTex); }
+    const pos = this.getPos();
+    if (pos === undefined) { return; }
+    const tr = this.view.state.tr;
+    const after = pos + this.node.nodeSize;
+    if (this.display && !tr.doc.resolve(after).nodeAfter) {
+      if (cancel) { this.deselectNode(); this.view.focus(); return; }
+      tr.insert(after, this.view.state.schema.nodes["paragraph"]!.create());
+    }
+    tr.setSelection(this.display ? Selection.near(tr.doc.resolve(after), 1) : TextSelection.create(tr.doc, after));
+    this.view.dispatch(tr);
+    this.view.focus();
   }
 
   private commit(tex: string): void {
@@ -103,7 +151,7 @@ class MathView implements NodeView {
   }
 
   stopEvent(event: Event): boolean {
-    return this.editor !== null && event.target === this.editor;
+    return this.sourcePanel !== null && event.target instanceof Node && this.sourcePanel.contains(event.target);
   }
 
   ignoreMutation(): boolean {
@@ -112,6 +160,7 @@ class MathView implements NodeView {
 
   destroy(): void {
     this.token++;
+    this.editor = null;
   }
 }
 

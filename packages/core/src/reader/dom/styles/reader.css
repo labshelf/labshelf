@@ -2,6 +2,7 @@
    Loaded after pdf.js' pdf_viewer.css so these rules win. */
 @import "./citation-card.css";
 @import "./floating-notes.css";
+@import "./notes.css";
 @import "../../../qmd/dom/qmd-editor.css";
 /* ── Reset & layout ─────────────────────────────────────────── */
 /* The reset stops at pdf.js' own DOM. pdf.js sizes .page as a content box with a 9px border and gives the text and
@@ -145,35 +146,6 @@ button { font: inherit; color: inherit; }
 .rd-ann-item:hover .rd-ann-delete, .rd-ann-item:focus-within .rd-ann-delete { visibility: visible; }
 .rd-color-yellow { --rd-annotation-color: var(--ls-hl-yellow); background: var(--ls-hl-yellow); } .rd-color-green { --rd-annotation-color: var(--ls-hl-green); background: var(--ls-hl-green); } .rd-color-blue { --rd-annotation-color: var(--ls-hl-blue); background: var(--ls-hl-blue); }
 .rd-color-red { --rd-annotation-color: var(--ls-hl-red); background: var(--ls-hl-red); } .rd-color-pink { --rd-annotation-color: var(--ls-hl-pink); background: var(--ls-hl-pink); } .rd-color-note { background: var(--ls-hl-note); }
-
-/* Notes */
-.rd-notes-count { font-variant-numeric: tabular-nums; }
-.rd-notes-filters { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 8px 6px; }
-.rd-notes-filter, .rd-notes-search {
-  height: 24px; min-width: 0; padding: 0 6px; border-radius: 4px; outline: none; font: inherit; font-size: 12px;
-  border: 1px solid var(--ls-reader-border); background: var(--ls-reader-page); color: var(--ls-reader-fg);
-}
-.rd-notes-filter { flex: 0 1 auto; }
-.rd-notes-search { flex: 1 1 90px; }
-.rd-notes-filter:focus-visible, .rd-notes-search:focus-visible { border-color: var(--ls-focus); outline: 1px solid var(--ls-focus); outline-offset: -1px; }
-.rd-note-row { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px 6px 10px; border-bottom: 1px solid var(--ls-reader-border); }
-.rd-note-row:focus-within { background: var(--ls-reader-hover); }
-.rd-note-head { display: flex; align-items: center; justify-content: space-between; min-height: 24px; }
-.rd-note-chip-slot { display: inline-flex; align-items: center; }
-.rd-note-chip {
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 24px; height: 22px; padding: 0 5px;
-  border: 0; border-radius: 4px; background: none; color: var(--ls-reader-desc); font-size: 11px; cursor: pointer;
-}
-button.rd-note-chip:hover { background: var(--ls-reader-hover); }
-button.rd-note-chip:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
-.rd-note-chip .rd-ann-dot { margin-top: 0; }
-.rd-note-chip svg { width: 14px; height: 14px; }
-.rd-note-chip-icon { display: inline-flex; }
-.rd-note-missing { color: var(--ls-error); cursor: default; }
-.rd-note-delete { flex-shrink: 0; }
-.rd-note-delete.rd-danger { background: var(--ls-error); color: var(--ls-reader-surface); }
-.rd-note-editor { min-width: 0; font-size: 12px; }
-.rd-note-editor:focus-within { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
 
 /* Outline */
 .rd-outline-item { display: flex; align-items: center; gap: 2px; padding: 3px 8px; font-size: 12px; line-height: 1.5; cursor: pointer; }
@@ -335,7 +307,7 @@ kbd {
 /* The font follows pdf.js' --scale-factor, so a box clips the same content at every zoom and on every device. */
 .rd-note-box {
   position: absolute; display: flex; flex-direction: column; overflow: hidden; pointer-events: auto; cursor: pointer;
-  background: var(--ls-reader-surface); border: 1px solid var(--ls-reader-border); border-radius: 3px; color: var(--ls-reader-fg);
+  background: transparent; border: 1px solid transparent; border-radius: 0; color: var(--ls-reader-fg);
   font-size: calc(var(--ls-text-sm) * var(--scale-factor, 1)); line-height: 1.35;
 }
 .rd-note-box:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 1px; }
@@ -350,20 +322,18 @@ kbd {
 .rd-note-box .qmd-editor .ProseMirror h3 { font-size: 1.1em; }
 .rd-note-box .qmd-editor .ProseMirror h1, .rd-note-box .qmd-editor .ProseMirror h2, .rd-note-box .qmd-editor .ProseMirror h3 { margin: .3em 0 .2em; }
 .rd-note-box .qmd-editor .ProseMirror code { font-size: .9em; }
-.rd-note-box-open { z-index: 1; cursor: auto; border-color: var(--ls-reader-active); box-shadow: var(--ls-reader-shadow); }
-.rd-note-box-open .rd-note-box-content { overflow: auto; }
-.rd-note-box-open .qmd-editor:focus-within .qmd-editor-toolbar { display: flex; }
-/* Handles: a move strip along the top edge and a resize corner, shown while expanded, hovered or focused. */
-.rd-note-box-move { flex: none; height: .5em; cursor: move; }
+/* Handles reveal the text-box bounds on hover without placing editor chrome over the paper. */
+.rd-note-box-move { position: absolute; top: 0; left: 0; right: 0; height: .5em; cursor: move; }
 .rd-note-box-resize {
   position: absolute; right: 0; bottom: 0; width: .8em; height: .8em; cursor: nwse-resize;
   border-right: 2px solid var(--ls-reader-border); border-bottom: 2px solid var(--ls-reader-border);
 }
 .rd-note-box-move, .rd-note-box-resize { visibility: hidden; }
 .rd-note-box:hover .rd-note-box-move, .rd-note-box:hover .rd-note-box-resize,
-.rd-note-box:focus-within .rd-note-box-move, .rd-note-box:focus-within .rd-note-box-resize,
-.rd-note-box-open .rd-note-box-move, .rd-note-box-open .rd-note-box-resize { visibility: visible; }
-.rd-note-box:hover .rd-note-box-move, .rd-note-box-open .rd-note-box-move { background: var(--ls-reader-hover); }
+.rd-note-box:focus-within .rd-note-box-move, .rd-note-box:focus-within .rd-note-box-resize { visibility: visible; }
+.rd-note-box:hover { border-color: var(--ls-reader-border); }
+.rd-note-box:hover .rd-note-box-move { background: var(--ls-reader-hover); }
+.rd-note-box .qmd-citation { padding: 0; background: transparent; color: inherit; font-size: inherit; }
 /* Creation mode: crosshair over pages and no text selection; the draft shows the box being drawn. */
 .rd-box-mode .page, .rd-box-mode .textLayer, .rd-box-mode .textLayer span { cursor: crosshair; }
 .rd-box-mode .textLayer { user-select: none; }

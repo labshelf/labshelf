@@ -157,3 +157,17 @@ describe("writeCellOutput", () => {
     await expect(writeCellOutput(LABELED, "bound", ok("x $$\n:::\nescaped"), META)).rejects.toThrow();
   });
 });
+
+
+it("stores a PNG returned by Python as a rendered plot rather than a base64 text block", async () => {
+  const png = "data:image/png;base64,iVBORw0KGgo=";
+  const written = await writeCellOutput(LABELED, "bound", { status: "ok", text: png, durationMs: 10 }, META);
+  expect(findOutputs(written)[0]!.content).toBe(`![Python plot](${png})\n`);
+});
+
+
+it("leaves non-PNG data URLs as text rather than rendering active image formats", async () => {
+  const text = "data:image/svg+xml;base64,PHN2Zy8+";
+  const written = await writeCellOutput(LABELED, "bound", { status: "ok", text, durationMs: 10 }, META);
+  expect(findOutputs(written)[0]!.content).toContain("```\n" + text);
+});

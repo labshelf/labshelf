@@ -1,5 +1,5 @@
 /* Styles the .qmd notes editor: header, formatting toolbar, Visual body, node views and Source mode. Colours come from the tokens only. */
-.qmd-editor { display: flex; flex-direction: column; gap: var(--ls-space-3); min-width: 0; color: var(--ls-fg); font: var(--ls-font-size) / 1.6 var(--ls-font); }
+.qmd-editor { display: flex; flex-direction: column; gap: var(--ls-space-4); min-width: 0; color: var(--ls-fg); font: var(--ls-text-lg) / 1.7 var(--ls-font); }
 .qmd-editor :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: var(--ls-space-1); }
 
 /* Header: author and date on the left, the Visual/Source toggle on the right. */
@@ -7,9 +7,8 @@
 .qmd-editor-meta { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ls-desc); font-size: var(--ls-text-sm); }
 .qmd-editor-toggle { margin-left: auto; font-size: var(--ls-text-sm); }
 
-/* Toolbar: one row of ghost icon buttons, shown only while focus is inside the editor; wraps at narrow width. */
-.qmd-editor-toolbar { display: none; flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) 0; padding: var(--ls-space-1) 0; border-bottom: 1px solid var(--ls-border-soft); }
-.qmd-editor:focus-within .qmd-editor-toolbar { display: flex; }
+/* Keeps common formatting visible and groups less frequent insertions in one labelled menu. */
+.qmd-editor-toolbar { display: flex; position: sticky; top: 0; z-index: 2; background: var(--ls-bg); flex-wrap: wrap; align-items: center; gap: var(--ls-space-2) 0; padding: var(--ls-space-2) 0 var(--ls-space-3); border-bottom: 1px solid var(--ls-border-soft); }
 .qmd-editor .qmd-editor-toolbar[hidden] { display: none; }
 .qmd-toolbar-group { display: flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-3); }
 .qmd-toolbar-group:first-child { padding-left: 0; }
@@ -22,14 +21,16 @@
 .qmd-toolbar-btn:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
 
 /* Visual body. */
-.qmd-editor .ProseMirror { position: relative; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0; outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
+.qmd-editor .ProseMirror { position: relative; flex: 1; min-height: calc(var(--ls-row-h) * 4); padding: var(--ls-space-2) 0; outline: none; white-space: pre-wrap; overflow-wrap: break-word; caret-color: var(--ls-editor-cursor); }
 .qmd-editor .ProseMirror:focus-visible { outline: none; }
 .qmd-editor .ProseMirror > * + * { margin-top: var(--ls-space-4); }
 .qmd-editor .ProseMirror p { margin: 0; }
+.qmd-editor .ProseMirror > p + p { margin-top: var(--ls-space-6); }
+.qmd-editor .ProseMirror > :first-child { margin-top: 0; }
 .qmd-editor .ProseMirror h1, .qmd-editor .ProseMirror h2, .qmd-editor .ProseMirror h3 { margin: var(--ls-space-6) 0 var(--ls-space-3); font-family: var(--ls-font); font-weight: 600; line-height: 1.3; }
-.qmd-editor .ProseMirror h1 { font-size: var(--ls-text-2xl); }
-.qmd-editor .ProseMirror h2 { font-size: var(--ls-text-xl); }
-.qmd-editor .ProseMirror h3 { font-size: var(--ls-text-lg); }
+.qmd-editor .ProseMirror h1 { font-size: var(--ls-text-3xl); }
+.qmd-editor .ProseMirror h2 { font-size: var(--ls-text-2xl); }
+.qmd-editor .ProseMirror h3 { font-size: var(--ls-text-xl); }
 .qmd-editor .ProseMirror ul, .qmd-editor .ProseMirror ol { margin: 0; padding-left: var(--ls-space-7); }
 .qmd-editor .ProseMirror li + li { margin-top: var(--ls-space-1); }
 .qmd-editor .ProseMirror code { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); font: var(--ls-text-sm) var(--ls-mono); }
@@ -64,24 +65,24 @@
 .qmd-task[data-task="done"] .qmd-task-content { color: var(--ls-desc); text-decoration: line-through; }
 
 /* Math: inline sits on the baseline; display math scrolls horizontally. */
-.qmd-math { cursor: pointer; }
+.qmd-math { cursor: pointer; color: inherit; }
 .qmd-math-inline { display: inline-block; max-width: 100%; vertical-align: baseline; }
-.qmd-math-display { display: block; max-width: 100%; overflow-x: auto; padding: var(--ls-space-3) 0; text-align: center; }
+.qmd-math-display { display: block; max-width: 100%; overflow: visible; padding: var(--ls-space-6) 0; text-align: center; }
 .qmd-math-rendered svg { vertical-align: var(--qmd-math-valign); max-width: none; }
 .qmd-math-source { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-fg); font: var(--ls-text-sm) var(--ls-mono); white-space: pre; }
 input.qmd-math-source { min-width: calc(var(--ls-space-9) * 3); border: 1px solid var(--ls-input-border); background: var(--ls-input-bg); color: var(--ls-input-fg); }
 .qmd-math-error { padding: 0 var(--ls-space-1); border-radius: var(--ls-radius-sm); background: var(--ls-code-bg); color: var(--ls-error); font: var(--ls-text-sm) var(--ls-mono); white-space: pre; }
 
 /* Code cells: a header with language and label, then code that scrolls horizontally. */
-.qmd-cell { border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius); background: var(--ls-code-bg); overflow: hidden; }
-.qmd-cell-header { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-1) var(--ls-space-4); border-bottom: 1px solid var(--ls-border-soft); color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-mono); user-select: none; }
+.qmd-cell { border: 1px solid var(--ls-border-soft); border-radius: var(--ls-radius-lg); background: color-mix(in srgb, var(--ls-code-bg) 60%, transparent); overflow: hidden; }
+.qmd-cell-header { display: flex; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-4) var(--ls-space-6) 0; color: var(--ls-desc); font: var(--ls-text-xs) var(--ls-mono); user-select: none; }
 .qmd-cell-lang { font-weight: 600; }
 .qmd-cell-label:empty { display: none; }
-.qmd-cell-code { margin: 0; padding: var(--ls-space-3) var(--ls-space-4); overflow-x: auto; color: var(--ls-fg); font: var(--ls-text-sm) / 1.5 var(--ls-mono); white-space: pre; tab-size: 4; }
-.qmd-cell-code code { padding: 0; background: none; font: inherit; }
+.qmd-cell-code { margin: 0; padding: var(--ls-space-6); overflow-x: auto; color: var(--ls-fg); font: var(--ls-text-md) / 1.65 var(--ls-mono); white-space: pre; tab-size: 4; }
+.qmd-editor .ProseMirror .qmd-cell-code code { padding: 0; background: none; font: inherit; }
 
 /* Cell output; out-of-date output is dimmed under a warning badge. */
-.qmd-output { position: relative; margin-top: var(--ls-space-2); padding: var(--ls-space-3) var(--ls-space-4); border-left: 1px solid var(--ls-border); }
+.qmd-output { position: relative; margin-top: var(--ls-space-2); padding: var(--ls-space-4) var(--ls-space-6); border-left: var(--ls-space-1) solid var(--ls-border-soft); }
 .qmd-output-body { min-width: 0; overflow-x: auto; transition: opacity var(--ls-fast); }
 .qmd-output-text { margin: 0; color: var(--ls-fg); font: var(--ls-text-sm) / 1.5 var(--ls-mono); white-space: pre; }
 .qmd-output.is-out-of-date { border-left-color: var(--ls-warning-border); }
@@ -104,3 +105,54 @@ input.qmd-math-source { min-width: calc(var(--ls-space-9) * 3); border: 1px soli
 .qmd-run-status-missing { color: var(--ls-fg); }
 @keyframes qmd-run-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .qmd-run-status-spinner { animation: none; } }
+
+.qmd-toolbar-text-button { gap: var(--ls-space-2); padding: var(--ls-space-2) var(--ls-space-3); font-size: var(--ls-text-md); white-space: nowrap; }
+.qmd-toolbar-caret { display: inline-flex; color: var(--ls-desc); }
+.qmd-toolbar-caret svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-toolbar-insert { margin-left: auto; color: var(--ls-desc); }
+.qmd-toolbar-insert > span { display: inline-flex; }
+.qmd-editor[data-qmd-mode="source"] > .qmd-editor-header { display: flex; }
+.qmd-editor-toggle { padding: var(--ls-space-2) var(--ls-space-3); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; font-size: var(--ls-text-sm); }
+.qmd-cell-run { display: inline-flex; align-items: center; gap: var(--ls-space-2); margin-left: auto; padding: var(--ls-space-2) var(--ls-space-3); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-link); cursor: pointer; font: var(--ls-text-sm) var(--ls-font); }
+.qmd-cell-run:hover { background: var(--ls-toolbar-hover); }
+.qmd-cell-run svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.qmd-output-heading { margin-bottom: var(--ls-space-3); color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
+
+/* Equations remain typeset; selecting one opens a separate, labelled LaTeX field. */
+.qmd-editor .qmd-math.ProseMirror-selectednode { outline: none; border-radius: 0; }
+.qmd-math-edit { display: block; margin-top: var(--ls-space-6); padding: var(--ls-space-6) 0 0; border-top: 1px solid var(--ls-border-soft); text-align: left; cursor: auto; }
+.qmd-math-field { display: flex; flex-direction: column; gap: var(--ls-space-3); }
+.qmd-math-field-label { color: var(--ls-desc); font: var(--ls-text-sm) var(--ls-font); }
+.qmd-math-input { display: block; width: 100%; box-sizing: border-box; min-width: 0; padding: var(--ls-space-4); border: 1px solid var(--ls-input-border); border-radius: var(--ls-radius-sm); background: var(--ls-input-bg); color: var(--ls-input-fg); font: var(--ls-text-md) / 1.6 var(--ls-mono); resize: vertical; }
+.qmd-math-actions { display: flex; justify-content: flex-end; gap: var(--ls-space-3); margin-top: var(--ls-space-4); }
+.qmd-math-actions button { padding: var(--ls-space-2) var(--ls-space-4); border: 0; border-radius: var(--ls-radius-sm); cursor: pointer; font: var(--ls-text-md) var(--ls-font); }
+.qmd-math-apply { background: var(--ls-focus); color: var(--ls-bg); }
+.qmd-math-cancel { background: transparent; color: var(--ls-desc); }
+.qmd-math-inline > .qmd-math-edit { position: fixed; z-index: 110; width: min(320px, calc(100vw - 16px)); margin: 0; padding: var(--ls-space-6); border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-bg); box-shadow: var(--ls-popup-shadow); }
+.qmd-output-image, .qmd-editor .ProseMirror img { display: block; max-width: 100%; height: auto; }
+.qmd-output.qmd-output-figure { padding: 0; border-left: 0; }
+.qmd-output-figure .qmd-output-heading { margin-bottom: var(--ls-space-4); }
+.qmd-output-image { border-radius: var(--ls-radius-sm); }
+
+.qmd-cell-toggle { margin-left: var(--ls-space-3); padding: var(--ls-space-2) 0; border: 0; background: transparent; color: var(--ls-desc); cursor: pointer; font: var(--ls-text-sm) var(--ls-font); }
+.qmd-cell-collapsed .qmd-cell-header { padding-bottom: var(--ls-space-4); }
+.qmd-cell-code[hidden] { display: none; }
+
+.qmd-cell-header { flex-wrap: wrap; }
+.qmd-cell-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.qmd-math { position: relative; }
+.qmd-math-edit-button { position: absolute; top: 0; right: 0; display: inline-flex; padding: var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); opacity: 0; cursor: pointer; }
+.qmd-math-edit-button svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.qmd-math:hover .qmd-math-edit-button, .qmd-math:focus-within .qmd-math-edit-button, .qmd-math.ProseMirror-selectednode .qmd-math-edit-button { opacity: 1; }
+.qmd-math-editing .qmd-math-edit-button { display: none; }
+
+.qmd-output-image-button { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.qmd-plot-preview { position: fixed; z-index: 1001; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; width: min(1040px, 94vw); max-height: 94vh; overflow: auto; border: 1px solid var(--ls-border); border-radius: var(--ls-radius); background: var(--ls-bg); color: var(--ls-fg); box-shadow: var(--ls-popup-shadow); }
+.qmd-plot-header { display: flex; align-items: center; justify-content: space-between; padding: var(--ls-space-4) var(--ls-space-6); font: var(--ls-font-size) var(--ls-font); }
+.qmd-plot-close { display: flex; align-items: center; padding: var(--ls-space-3); border: 0; background: transparent; color: var(--ls-fg); cursor: pointer; }
+.qmd-plot-close svg { width: var(--ls-text-lg); height: var(--ls-text-lg); }
+.qmd-plot-preview > img { display: block; max-width: 100%; max-height: 84vh; object-fit: contain; }
+
+.qmd-math-display > .qmd-math-rendered { display: block; max-width: 100%; overflow-x: auto; }
+textarea.qmd-math-input { min-height: calc(var(--ls-row-h) * 4); white-space: pre-wrap; overflow-wrap: anywhere; }

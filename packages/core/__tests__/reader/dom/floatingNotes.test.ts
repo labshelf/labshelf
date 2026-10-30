@@ -99,3 +99,13 @@ it("keeps the editor open while its formatting menu is used", () => {
   menu.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
   expect(dialog().hidden).toBe(false);
 });
+
+
+it("opens the floating editor for a PDF text box without creating a second pin", () => {
+  const { dialog } = setup();
+  floating.show([note("p4 box 0.1 0.2 0.4 0.1", "Text on the paper")]);
+  floating.openNote("n1");
+  expect(dialog().hidden).toBe(false);
+  expect(dialog().textContent).toContain("Text on the paper");
+  expect(document.querySelector(".rd-note-pin")).toBeNull();
+});

@@ -1,4 +1,4 @@
-// Draws the paper's text-box notes over their rendered pages: clipped read-only content that expands on click to edit.
+// Draws page-scaled text notes over the PDF and delegates editing to the floating note editor.
 import type { CellRunState } from "../../qmd/compute/index.js";
 import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
@@ -10,8 +10,6 @@ import type { ReaderContext } from "./readerSession.js";
 
 const LAYER_CLASS = "rd-note-layer";
 const DRAFT_CLASS = "rd-box-draft";
-// The editor reports changes after 300 ms; collapsing waits for that last report before remounting read-only.
-const SETTLE_MS = 350;
 const ITEM = QMD_VOCABULARY.item;
 
 interface BoxRect { page: number; x: number; y: number; w: number; h: number }
@@ -22,12 +20,7 @@ interface BoxView {
   readonly el: HTMLElement;
   readonly content: HTMLElement;
   editor: QmdEditorHandle;
-  open: boolean;
-  /** The body the editor holds. */
-  latest: string;
-  /** The body the host last had. */
-  sent: string;
-  settle: ReturnType<typeof setTimeout> | null;
+  body: string;
 }
 
 /** Text and other boxes of a page in page fractions, the obstacles `fitEmptyBox` and `snapBox` place around. */
@@ -72,6 +65,7 @@ function pageElement(pageNumber: number): HTMLElement | null {
 }
 
 export class NoteBoxLayer {
+  onEdit: ((id: string) => void) | null = null;
   private readonly views = new Map<string, BoxView>();
   private pendingOpen: string | null = null;
   private canRunCells = false;
@@ -83,14 +77,10 @@ export class NoteBoxLayer {
   constructor(private readonly ctx: Pick<ReaderContext, "eventBus" | "host">) {
     // PLATFORM: pdf.js drops unknown page children on every re-render (zoom, scrolling back into view).
     ctx.eventBus.on("textlayerrendered", ({ pageNumber }: { pageNumber: number }) => this.paintPage(pageNumber));
-    document.addEventListener("pointerdown", (e) => {
-      for (const view of this.views.values()) {
-        if (view.open && !(e.target instanceof Node && view.el.contains(e.target))) { this.collapse(view); }
-      }
-    }, true);
+
   }
 
-  /** Replaces the drawn boxes with the text-box notes of `notes`; a box being edited keeps its editor. */
+  /** Replaces the drawn text boxes while retaining their read-only views. */
   show(notes: readonly ReaderNote[]): void {
     const pages = new Set<number>([...this.views.values()].map((v) => v.rect.page));
     const seen = new Set<string>();
@@ -103,11 +93,8 @@ export class NoteBoxLayer {
       const existing = this.views.get(note.id);
       if (existing) {
         existing.rect = rect;
-        // An unsent local edit (being settled, or not yet sent) wins over the host body; the settle step then sends it.
-        const unsentEdit = existing.settle !== null || existing.latest !== existing.sent;
-        existing.sent = note.body;
-        if (!unsentEdit && !existing.open && note.body !== existing.latest) {
-          existing.latest = note.body;
+        if (note.body !== existing.body) {
+          existing.body = note.body;
           existing.editor.setBody(note.body);
         }
       } else {
@@ -126,13 +113,13 @@ export class NoteBoxLayer {
     if (canRun === this.canRunCells) { return; }
     this.canRunCells = canRun;
     if (!canRun) { this.runs.clear(); }
-    for (const view of this.views.values()) { this.mount(view, !view.open); }
+    for (const view of this.views.values()) { this.mount(view); }
   }
 
   /** Shows the host's state of a run under its box editor; a request this layer did not send is ignored. */
   showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
-  /** The note added with `anchor` opens expanded with focus once the host lists it. */
+  /** Opens the floating editor of the added box after the host confirms it. */
   expectBox(anchor: string): void { this.pendingOpen = anchor; }
 
   private openPending(notes: readonly ReaderNote[]): void {
@@ -141,7 +128,7 @@ export class NoteBoxLayer {
     const view = note ? this.views.get(note.id) : undefined;
     if (!view) { return; }
     this.pendingOpen = null;
-    this.expand(view);
+    this.onEdit?.(view.id);
   }
 
   private paintPage(pageNumber: number): void {
@@ -163,18 +150,11 @@ export class NoteBoxLayer {
 
   private place(view: BoxView): void {
     placeRect(view.el, view.rect);
-    if (view.open) {
-      view.el.style.height = "auto";
-      view.el.style.minHeight = `${view.rect.h * 100}%`;
-      view.el.style.maxHeight = `${(1 - view.rect.y) * 100}%`;
-    } else {
-      view.el.style.removeProperty("min-height");
-      view.el.style.removeProperty("max-height");
-    }
+
   }
 
   private measure(view: BoxView): void {
-    const clipped = !view.open && view.content.scrollHeight > view.content.clientHeight + 1;
+    const clipped = view.content.scrollHeight > view.content.clientHeight + 1;
     view.el.classList.toggle("rd-note-box-clipped", clipped);
   }
 
@@ -186,20 +166,16 @@ export class NoteBoxLayer {
       class: "rd-note-box", tabindex: "0", role: "button", "data-note-id": id, "aria-label": `${capital(ITEM)} on page ${rect.page}`,
     }, moveStrip, content, resize);
     const view: BoxView = {
-      id, rect, el, content, open: false, latest: body, sent: body, settle: null,
+      id, rect, el, content, body,
       editor: mountQmdEditor(content, { body, readOnly: true, onChange: () => undefined, ...this.runOption(id, content) }),
     };
     el.addEventListener("click", (e) => {
-      if (!view.open && !(e.target instanceof Element && e.target.closest(".rd-note-box-move, .rd-note-box-resize"))) { this.expand(view); }
+      if (!(e.target instanceof Element && e.target.closest(".rd-note-box-move, .rd-note-box-resize, button, a, input, textarea"))) { this.onEdit?.(id); }
     });
     el.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && view.open) {
-        e.stopPropagation();
-        this.collapse(view);
-        el.focus();
-      } else if ((e.key === "Enter" || e.key === " ") && !view.open && e.target === el) {
+      if ((e.key === "Enter" || e.key === " ") && e.target === el) {
         e.preventDefault();
-        this.expand(view);
+        this.onEdit?.(id);
       }
     });
     this.bindDrag(view, moveStrip, "move");
@@ -207,12 +183,12 @@ export class NoteBoxLayer {
     return view;
   }
 
-  private mount(view: BoxView, readOnly: boolean): void {
+  private mount(view: BoxView): void {
     view.editor.destroy();
     view.editor = mountQmdEditor(view.content, {
-      body: view.latest,
-      readOnly,
-      onChange: (body) => { view.latest = body; },
+      body: view.body,
+      readOnly: true,
+      onChange: () => undefined,
       ...this.runOption(view.id, view.content),
     });
   }
@@ -223,39 +199,7 @@ export class NoteBoxLayer {
       this.ctx.host.post({ command: "runCell", itemId, label, code, requestId })) };
   }
 
-  private expand(view: BoxView): void {
-    if (view.settle !== null) { clearTimeout(view.settle); view.settle = null; }
-    if (!view.open) {
-      view.open = true;
-      view.el.classList.add("rd-note-box-open");
-      view.el.classList.remove("rd-note-box-clipped");
-      this.place(view);
-      this.mount(view, false);
-    }
-    view.editor.focus();
-  }
-
-  private collapse(view: BoxView): void {
-    if (!view.open) { return; }
-    view.open = false;
-    view.el.classList.remove("rd-note-box-open");
-    this.place(view);
-    // Waits for the editor's last debounced change, which `destroy` would drop.
-    view.settle = setTimeout(() => {
-      view.settle = null;
-      if (view.open) { return; }
-      if (view.latest !== view.sent) {
-        view.sent = view.latest;
-        this.ctx.host.post({ command: "editNote", id: view.id, body: view.latest });
-      }
-      this.mount(view, true);
-      this.measure(view);
-    }, SETTLE_MS);
-  }
-
   private destroy(view: BoxView): void {
-    if (view.settle !== null) { clearTimeout(view.settle); }
-    if (view.latest !== view.sent) { this.ctx.host.post({ command: "editNote", id: view.id, body: view.latest }); }
     view.editor.destroy();
     view.el.remove();
     this.runs.drop(view.id);

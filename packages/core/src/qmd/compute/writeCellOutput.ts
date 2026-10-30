@@ -1,6 +1,6 @@
 // Writes a cell's run result into its item body as the output block right after the cell.
 // CONTRACT: documents/contracts/qmd-items.md#outputs
-import { deriveCodeHash, extractLineContent, extractLineEnding, findCodeFences, findOutputs, formatOutput, splitLines } from "../item/index.js";
+import { deriveCodeHash, extractLineContent, extractLineEnding, findCodeFences, findOutputs, formatOutput, pngOutput, splitLines } from "../item/index.js";
 import type { CellResult } from "./cellRunner.js";
 
 const LABEL = /^#\|[ \t]*label:[ \t]*(.*?)[ \t]*$/;
@@ -54,6 +54,8 @@ function formatContent(result: CellResult): string {
     return fenced(result.error ?? fallback);
   }
   if (result.latex !== undefined) { return `$$ ${result.latex} $$\n`; }
+  const image = result.text && pngOutput(result.text);
+  if (image) { return `![Python plot](${image})\n`; }
   return result.text === undefined ? "" : fenced(result.text);
 }
 

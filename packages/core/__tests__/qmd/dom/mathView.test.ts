@@ -2,6 +2,7 @@
 /**
  * Tests the math node view of the Markdown item editor: rendering through a stubbed loader and the parse error state.
  */
+import { NodeSelection } from "prosemirror-state";
 import type { Node as PmNode } from "prosemirror-model";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { createMathView } from "../../../src/qmd/dom/mathView";
@@ -53,5 +54,42 @@ describe("math view", () => {
     const view = mount(doc, { math_display: createMathView(true, loadMath) });
     await until(() => view.dom.querySelector('[class*="error"]') !== null);
     expect(view.dom.querySelector('[class*="error"]')!.textContent).toContain("\\bad{");
+  });
+});
+
+
+describe("LaTeX editing", () => {
+  function selected() {
+    const view = mount(s.node("doc", null, [s.node("math_display", { tex: "x^2" }), para(text("Continue"))]), { math_display: createMathView(true, async () => ({ renderMathSvg: () => SVG })) });
+    view.dom.querySelector<HTMLButtonElement>(".qmd-math-edit-button")!.click();
+    return view;
+  }
+
+  it("keeps selected equations typeset until editing is requested", () => {
+    const view = mount(s.node("doc", null, [s.node("math_display", { tex: "x^2" }), para(text("Continue"))]), { math_display: createMathView(true, async () => ({ renderMathSvg: () => SVG })) });
+    view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, 0)));
+    view.focus();
+    expect(view.dom.querySelector("textarea")).toBeNull();
+  });
+
+  it("edits display equations in a multiline field and applies them", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>('textarea[aria-label="TeX source"]')!;
+    expect(input).not.toBeNull();
+    input.value = "x^2 +\ny^2";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    view.dom.querySelector<HTMLButtonElement>(".qmd-math-apply")!.click();
+    expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2 +\ny^2");
+    expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
+  });
+
+  it("cancels the source edit without leaving the changed equation behind", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "changed";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    view.dom.querySelector<HTMLButtonElement>(".qmd-math-cancel")!.click();
+    expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2");
+    expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
   });
 });

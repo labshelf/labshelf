@@ -50,3 +50,50 @@ describe("output view", () => {
     expect(view.dom.innerHTML).toMatch(OUT_OF_DATE);
   });
 });
+
+
+it("shows fenced text results without their Markdown delimiters", async () => {
+  const raw = formatOutput({ cell: "bound", source: await deriveCodeHash(CODE), engine: "python", ran: "2026-10-30", content: "```text\n42\n```\n" });
+  const view = mount(s.node("doc", null, [s.node("output", { raw })]), outputViews());
+  expect(view.dom.querySelector(".qmd-output-text")!.textContent).toBe("42");
+  expect(view.dom.querySelector(".qmd-output-heading")!.textContent).toBe("Result");
+});
+
+
+it("keeps fenced TeX as literal text instead of changing the result into math", () => {
+  const raw = formatOutput({ cell: "bound", source: "s", engine: "python", ran: "2026-10-30", content: "```text\n$$x$$\n```\n" });
+  const loadMath = jest.fn(async () => ({ renderMathSvg: () => "<svg></svg>" }));
+  const view = mount(s.node("doc", null, [s.node("output", { raw })]), { output: createOutputView(loadMath) });
+  expect(view.dom.querySelector(".qmd-output-text")!.textContent).toBe("$$x$$");
+  expect(loadMath).not.toHaveBeenCalled();
+});
+
+
+it("renders the stored PNG of a Python plot as an image", () => {
+  const src = "data:image/png;base64,iVBORw0KGgo=";
+  const raw = formatOutput({ cell: "plot", source: "s", engine: "python", ran: "2026-10-30", content: `![Python plot](${src})` });
+  const view = mount(s.node("doc", null, [s.node("output", { raw })]), outputViews());
+  const image = view.dom.querySelector<HTMLImageElement>(".qmd-output-image")!;
+  expect(image.src).toBe(src);
+  expect(image.alt).toBe("Python plot");
+  expect(view.dom.querySelector(".qmd-output-text")).toBeNull();
+});
+
+it("collapses code without changing the stored cell", async () => {
+  const view = mount(await outputDoc(await deriveCodeHash(CODE)), outputViews());
+  view.dom.querySelector<HTMLButtonElement>(".qmd-cell-toggle")!.click();
+  expect(view.dom.querySelector<HTMLElement>(".qmd-cell-code")!.hidden).toBe(true);
+  expect(view.state.doc.firstChild!.attrs.code).toBe(CODE);
+  view.dom.querySelector<HTMLButtonElement>(".qmd-cell-toggle")!.click();
+  expect(view.dom.querySelector<HTMLElement>(".qmd-cell-code")!.hidden).toBe(false);
+});
+
+
+it("expands a plot into an accessible preview and closes it", () => {
+  const raw = formatOutput({ cell: "plot", source: "s", engine: "python", ran: "2026-10-30", content: "![Python plot](data:image/png;base64,iVBORw0KGgo=)" });
+  const view = mount(s.node("doc", null, [s.node("output", { raw })]), outputViews());
+  view.dom.querySelector<HTMLButtonElement>('[aria-label="Expand plot"]')!.click();
+  expect(document.querySelector('[role="dialog"][aria-label="Python plot"]')).not.toBeNull();
+  document.querySelector<HTMLButtonElement>('[aria-label="Close plot"]')!.click();
+  expect(document.querySelector(".qmd-plot-preview")).toBeNull();
+});

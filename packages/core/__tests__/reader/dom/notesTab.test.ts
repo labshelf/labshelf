@@ -53,7 +53,7 @@ const KINDS: Array<{ name: string; make: () => { subject: Subject; c: ReturnType
         setCanRunCells: (on) => tab.setCanRunCells(on),
         showCellState: (id, state) => tab.showCellState(id, state),
         show: () => tab.show([note]),
-        open: async () => { tab.onShow(); await settle(); },
+        open: async () => { tab.reveal(note.id); await settle(); },
       };
       return { subject, c };
     },
@@ -163,4 +163,85 @@ describe.each(KINDS)("reader $name run cells", (kind) => {
     expect(button(s.root, /cancel/i)).toBeUndefined();
     expect(s.root.textContent).toBe(before);
   });
+});
+
+
+describe("compact note browsing", () => {
+  function setup() {
+    document.body.replaceChildren();
+    const c = makeCtx();
+    const tab = new NotesTab(c.host as never, jest.fn(), () => 2, c.eventBus as never);
+    document.body.append(tab.el);
+    const second = { ...note, id: "n2", anchor: "p3 point 0.4 0.2", body: "# A second thought\n\nA short explanation.\n" };
+    tab.show([note, second]);
+    return { tab, c, second };
+  }
+
+  it("shows previews instead of mounting an editor for every note", () => {
+    const { tab } = setup();
+    expect(tab.el.querySelectorAll(".rd-note-preview")).toHaveLength(2);
+    expect(tab.el.querySelector(".ProseMirror")).toBeNull();
+    expect(tab.el.textContent).toContain("A second thought");
+    expect(tab.el.textContent).toContain("Page 3");
+  });
+
+  it("opens one editor and returns to the same search", () => {
+    const { tab } = setup();
+    const search = tab.el.querySelector<HTMLInputElement>("input[type=search]")!;
+    search.value = "second";
+    search.dispatchEvent(new Event("input"));
+    expect(tab.el.querySelectorAll(".rd-note-preview")).toHaveLength(1);
+    tab.el.querySelector<HTMLButtonElement>(".rd-note-preview")!.click();
+    expect(tab.el.querySelectorAll(".ProseMirror")).toHaveLength(1);
+    expect(tab.el.querySelector<HTMLElement>(".rd-notes-list")!.hidden).toBe(true);
+    tab.el.querySelector<HTMLButtonElement>(".rd-notes-back")!.click();
+    expect(tab.el.querySelector(".ProseMirror")).toBeNull();
+    expect(search.value).toBe("second");
+  });
+
+  it("sends the last edit before changing notes", () => {
+    const { tab, c } = setup();
+    tab.reveal(note.id);
+    tab.el.querySelector<HTMLButtonElement>(".qmd-editor-toggle")!.click();
+    const input = tab.el.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "Latest edit";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    tab.reveal("n2");
+    expect(c.sent).toContainEqual({ command: "editNote", id: "n1", body: "Latest edit" });
+    expect(tab.el.querySelectorAll(".ProseMirror")).toHaveLength(1);
+    expect(tab.el.querySelector(".ProseMirror")!.textContent).toContain("A second thought");
+    tab.onHide();
+  });
+  it("keeps unsent typing when a host update arrives", () => {
+    const { tab, c, second } = setup();
+    tab.reveal(note.id);
+    tab.el.querySelector<HTMLButtonElement>(".qmd-editor-toggle")!.click();
+    const input = tab.el.querySelector<HTMLTextAreaElement>("textarea")!;
+    input.value = "Unsent typing";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    tab.show([note, second]);
+    expect(input.value).toBe("Unsent typing");
+    tab.onHide();
+    expect(c.sent).toContainEqual({ command: "editNote", id: "n1", body: "Unsent typing" });
+  });
+
+  it("gives math-only and code-only notes readable previews", () => {
+    const { tab } = setup();
+    tab.show([{ ...note, body: "$$\nx^2 + y^2\n$$\n" }, { ...note, id: "n2", body: "```python\nprint(1)\n```\n" }]);
+    expect(tab.el.querySelectorAll(".rd-note-preview-title")[0]!.textContent).toBe("Equation note");
+    expect(tab.el.querySelectorAll(".rd-note-preview-title")[1]!.textContent).toBe("Code note");
+  });
+
+});
+
+
+it("delegates PDF text-box editing to the floating editor", () => {
+  document.body.innerHTML = '<div id="viewer"><div class="page" data-page-number="2"><div class="textLayer"></div></div></div>';
+  const c = makeCtx();
+  const layer = new NoteBoxLayer(c.ctx);
+  layer.onEdit = jest.fn();
+  layer.show([note]);
+  document.querySelector<HTMLElement>(".rd-note-box")!.click();
+  expect(layer.onEdit).toHaveBeenCalledWith("n1");
+  expect(document.querySelector(".rd-note-box .ProseMirror")!.getAttribute("contenteditable")).toBe("false");
 });

@@ -207,3 +207,10 @@ function joinLoose(segments: readonly Segment[]): Segment[] {
   }
   return joined;
 }
+
+
+/** Compares item bodies across the line endings and final newline a writer may normalize. */
+export function sameItemBody(a: string, b: string): boolean {
+  const canonical = (text: string): string => text.replace(/\r\n|\r/g, "\n").replace(/([^\n])$/, "$1\n");
+  return canonical(a) === canonical(b);
+}
