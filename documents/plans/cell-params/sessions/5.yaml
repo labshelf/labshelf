@@ -101,4 +101,4 @@ packages:
     commands:
       - node scripts/agents/run.mjs typecheck core
       - node scripts/lint/modules.mjs
-blocked_reason: "5.1: no report; 5.3: missing"
+blocked_reason: "A5 waits for the user to check it by hand (cells in a5-cells.md); 5.2 and 5.3 passed the milestone gate in the finisher"
