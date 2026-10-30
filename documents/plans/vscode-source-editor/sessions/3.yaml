@@ -1,0 +1,114 @@
+schema: session/v1
+id: "3"
+goal: "VS Code offers the LabShelf editor for .tex and .typ through Reopen Editor With…, edits the TextDocument through the authority, shows it in the PDF preview's rounded card, and Build, Show in Preview and SyncTeX work with it focused."
+depends_on: ["2"]
+owns:
+  - packages/vscode/package.json
+  - packages/vscode/build/webviews.mjs
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/vscode/src/writing/activeSource.ts
+  - packages/vscode/src/writing/preview/
+  - packages/vscode/src/writing/build/builds.ts
+  - packages/vscode/src/activation/
+  - packages/vscode/__mocks__/vscode/
+  - packages/vscode/__tests__/writing/sourceEditor/
+  - packages/core/src/ui/dom/
+  - packages/core/src/reader/dom/styles/reader.css
+status: pending
+packages:
+  - id: "3.1"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "A CustomTextEditorProvider `labshelf.sourceEditor` (D1) hosts the core editor in a webview, keeps the TextDocument and the authority in step both ways (D4), saves through the document, and the two reopen commands exist."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    create:
+      - packages/vscode/src/writing/sourceEditor/index.ts
+      - packages/vscode/src/writing/sourceEditor/provider.ts
+      - packages/vscode/src/writing/sourceEditor/documentSync.ts
+      - packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts
+      - packages/vscode/src/writing/sourceEditor/webview/sourceEditor.css
+    edit:
+      - {path: packages/vscode/package.json, lines: "14-1070", why: "contributes.customEditors (selector *.tex, *.typ; priority option); the two commands; @codemirror/* only if the webview bundle cannot resolve them through core"}
+      - {path: packages/vscode/build/webviews.mjs, lines: "10-23", why: "BUNDLES entry sourceEditor/sourceEditor"}
+      - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "1-200", why: "registerCustomEditorProvider with retainContextWhenHidden and supportsMultipleEditorsPerDocument true"}
+      - {path: packages/vscode/__mocks__/vscode/api/webviewPanel.js, lines: "1-80", why: "mock registerCustomEditorProvider and a WebviewPanel the tests can drive"}
+    read:
+      - {path: packages/vscode/src/writing/history/historyPanel.ts, lines: "18-70", why: "bundle dir, chunks dir, renderHtmlShell"}
+      - {path: packages/vscode/src/ui/htmlShell.ts, lines: "1-35", why: "CSP shell"}
+      - {path: packages/vscode/src/webview/transport.ts, lines: "13-59", why: "createWebviewChannel"}
+      - {path: packages/vscode/src/writing/webview/allProjectsEntry.ts, lines: "1-40", why: "which core styles a webview entry imports"}
+      - {path: packages/vscode/src/collab/binding.ts, lines: "20-60", why: "how the Yjs binding listens to the same document; must keep working"}
+    seams:
+      - {path: packages/vscode/src/writing/sourceEditor/documentSync.ts, signature: "export function createDocumentSync(deps: { document: import(\"vscode\").TextDocument; authority: { readonly version: number; text(): string; receive(baseVersion: number, updates: readonly { clientID: string; changes: { from: number; to: number; insert: string }[] }[]): { from: number; to: number; insert: string }[][] | undefined; external(changes: readonly { from: number; to: number; insert: string }[]): void; since(version: number): { clientID: string; changes: { from: number; to: number; insert: string }[] }[] }; applyEdit(edit: import(\"vscode\").WorkspaceEdit): Thenable<boolean>; post(message: { type: string; [key: string]: unknown }): void; logger: import(\"@labshelf/core\").ILogger }): { receive(message: { type: string; [key: string]: unknown }): Promise<void>; dispose(): void }"}
+    decided:
+      - "The seam inlines SourceAuthority and the message types only because core did not export them at plan time; import them from @labshelf/core."
+      - "One authority per document, shared by every LabShelf editor panel on it; created on the first panel and dropped with the last."
+      - "Syncs that share an authority coordinate through state keyed by that authority (a WeakMap): the in-flight expected changes and the onDidChangeTextDocument listener are per authority, so an echo of any panel's edit is recognised by all, an outside edit is recorded with authority.external once, and every panel gets the resulting updates."
+      - "Accepted client changes become one WorkspaceEdit each, applied in order; while an edit is in flight onDidChangeTextDocument events for this document are compared with the expected changes and swallowed when they match, otherwise recorded with authority.external."
+      - "If applyEdit returns false, the client gets a resync from document.getText()."
+      - "save → document.save(); dirty → document.isDirty after each change and on onDidSaveTextDocument."
+      - "The webview's files.read/list serve project files through the existing project service, bounded to the project folder; papers and notes are 'not available' until session 4 (the editor degrades)."
+      - "projectId comes from the existing project lookup for the document's folder; a file outside a project still opens, with no project features."
+      - "The webview entry imports tokens.css, vscodeHost.css, base.css and mounts the core editor in document mode inside the card (3.2)."
+    acceptance:
+      - {id: 3.1b, check: "a push from the webview reaches the TextDocument through one WorkspaceEdit and its echo is not sent back"}
+      - {id: 3.1c, check: "an edit to the TextDocument from elsewhere reaches the webview as host updates; two panels on one document stay equal"}
+      - {id: 3.1d, check: "save message saves the document; dirty follows the document"}
+    tests:
+      hidden: [documents/plans/vscode-source-editor/tests/3.1/packages/vscode/__tests__/writing/sourceEditor/documentSync.test.ts]
+      command: "node scripts/agents/run.mjs test vscode --spec 3.1 --plan vscode-source-editor -- __tests__/writing/sourceEditor/"
+  - id: "3.2"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "The PDF preview's card (6px margin, 1px border, 8px radius, overflow hidden) becomes one shared `ls-card` class in core ui, used by the reader and by the LabShelf editor (D9)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["3.1"]
+    edit:
+      - {path: packages/core/src/reader/dom/styles/reader.css, lines: "15-33", why: "#pdf-shell takes its card values from ls-card; the sidebar-open margin rule stays"}
+      - {path: packages/core/src/ui/dom/base.css, lines: "1-40", why: "the ls-card class; border colour from a token both hosts define"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditor.css, lines: "1-40", why: "the editor's host element uses ls-card and fills the panel"}
+    read:
+      - {path: packages/core/src/ui/dom/vscodeHost.css, lines: "1-60", why: "which border token maps to VS Code"}
+      - {path: documents/ui.md, lines: "1-80", why: "design rules; fetch through node scripts/docs/doc.mjs ui"}
+    decided:
+      - "Do not edit generated tokens; if a border token is missing, use the one the reader's border maps to in vscodeHost.css."
+      - "The editor's gutter and active line keep their current colours; only the container changes."
+    acceptance:
+      - {id: 3.2a, check: "the reader looks the same as before (check by hand)"}
+      - {id: 3.1a, check: "the manifest has customEditors labshelf.sourceEditor with priority option for *.tex and *.typ, not .bib, and the two reopen commands (read package.json)"}
+      - {id: A1, check: "the LabShelf editor sits in a rounded card matching the PDF preview beside it (check by hand)"}
+      - {id: A2, check: "with the native editor and the LabShelf editor side by side, edits in either appear in the other, Cmd+S and auto save work (check by hand)"}
+      - {id: A4, check: "Build and Show in Preview with the LabShelf editor focused act on its file and line; a click in the PDF reveals the line in it (check by hand)"}
+    tests: {none: "CSS"}
+  - id: "3.3"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "activeSource (D7) answers the focused source editor, native or LabShelf, and Build, Show in Preview (forward search), SyncTeX reverse search and the preview's focus follower use it."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["3.1"]
+    create:
+      - packages/vscode/src/writing/activeSource.ts
+    edit:
+      - {path: packages/vscode/src/writing/build/builds.ts, lines: "135-165", why: "build root from activeSource"}
+      - {path: packages/vscode/src/writing/preview/synctex.ts, lines: "8-129", why: "reverse: reveal in an open LabShelf editor for the file, else showTextDocument as today; forward: line from activeSource"}
+      - {path: packages/vscode/src/writing/preview/panel.ts, lines: "85-130", why: "FocusFollower also follows activeSource changes"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "register panels with activeSource on focus/selection messages; reveal posts {type: reveal}"}
+      - {path: packages/vscode/package.json, lines: "765-1290", why: "when clauses: add activeCustomEditorId == 'labshelf.sourceEditor' to build and showInPreview"}
+    seams:
+      - {path: packages/vscode/src/writing/activeSource.ts, signature: "export interface SourceView { uri: import(\"vscode\").Uri; line(): number; reveal(line: number): void; updates?: unknown }"}
+      - {path: packages/vscode/src/writing/activeSource.ts, signature: "export interface ActiveSource { current(): SourceView | undefined; openFor(uri: import(\"vscode\").Uri): SourceView | undefined; onDidChange: import(\"vscode\").Event<SourceView | undefined>; register(view: SourceView, focused: import(\"vscode\").Event<boolean>): import(\"vscode\").Disposable }"}
+      - {path: packages/vscode/src/writing/activeSource.ts, signature: "export function createActiveSource(window: Pick<typeof import(\"vscode\").window, \"activeTextEditor\" | \"onDidChangeActiveTextEditor\" | \"onDidChangeTextEditorSelection\">): ActiveSource"}
+    decided:
+      - "SourceView.updates is the core SourceUpdates type once session 1 has moved it; the seam says unknown only for the plan-time stub."
+      - "A native editor wraps as a SourceView with line = selection.active.line + 1 and reveal = revealRange in center; its updates insert through TextEditor.edit / insertSnippet."
+      - "When a LabShelf panel loses focus to a native editor, current() follows the native one; a webview panel of another kind (PDF preview) does not clear current()."
+      - "Lines are 1-based at this interface."
+    acceptance:
+      - {id: 3.3a, check: "current() is the LabShelf view while it is focused and the native editor after focusing it"}
+      - {id: 3.3b, check: "openFor finds an open LabShelf view for a uri; reverse search reveals there instead of opening a text editor"}
+    tests:
+      hidden: [documents/plans/vscode-source-editor/tests/3.3/packages/vscode/__tests__/writing/activeSource.test.ts]
+      command: "node scripts/agents/run.mjs test vscode --spec 3.3 --plan vscode-source-editor -- __tests__/writing/activeSource"

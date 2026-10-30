@@ -1,0 +1,23 @@
+schema: brief/v1
+area: contracts, docs and in-flight plans
+question: "which contracts, docs and plans constrain bringing the browser CodeMirror editor to VS Code"
+sha: f521e273
+reuse:
+  - {symbol: core/src/writing, path: packages/core/src/writing/index.ts, why: "Runtime-neutral project domain already used by VS Code."}
+  - {symbol: codeCellEditor, path: packages/core/src/qmd/dom/codeCellEditor.ts, why: "Precedent: CodeMirror in core/<domain>/dom/."}
+  - {symbol: renderHtmlShell / webviewChunksDir, path: packages/vscode/src/ui/bundleMissing.ts, why: "Webview bundle plumbing."}
+edit:
+  - {path: packages/vscode/package.json, why: "customEditors; CodeMirror deps are not in vscode (only yjs). Manifest is owned by qmd-notes 13b and multi-language-cells 2-3."}
+read:
+  - {path: packages/vscode/src/webview/transport.ts, why: "VS Code webview transport"}
+callers: []
+tests:
+  - {path: packages/vscode/__tests__/writing/, covers: "VS Code writing host"}
+contracts: ["code#placement", "code#messages", "code#contracts", "ui#implementation", "contracts/collaboration#comments", "contracts/collaboration#mirror-ownership"]
+commands: ["node scripts/docs/doc.mjs code#messages", "pnpm lint:modules"]
+risks:
+  - "code#placement: shared UI goes to packages/core/src/<domain>/dom/; hosts supply platform integration only."
+  - "code#messages: shared protocol parser rejects invalid messages whole; one shared controller per surface; host buffers until `ready`; CSP nonce + cspSource; never log payloads; hosts enforce path boundaries."
+  - "code#contracts: a webview protocol inside one build is types + tests, not a documents/contracts section."
+  - "collaboration#mirror-ownership: in a shared project the mirror writes files; the editor must not write disk itself."
+  - "Conflicts: qmd-notes (in_progress) 13b owns vscode/src/writing, browser/src/writing, vscode/package.json; 9c owns browser/src/writing. multi-language-cells 2-3 own vscode/package.json and vscode/src. Run after them."

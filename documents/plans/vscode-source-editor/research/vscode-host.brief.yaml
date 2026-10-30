@@ -1,0 +1,35 @@
+schema: brief/v1
+area: VS Code webview hosting and native-editor assumptions
+question: "what an optional CustomTextEditorProvider for .tex/.typ plugs into, and what assumes a native TextEditor"
+sha: f521e273
+reuse:
+  - {symbol: renderHtmlShell, path: packages/vscode/src/ui/htmlShell.ts, lines: "1-35", why: "Strict CSP shell for bundle-backed webviews."}
+  - {symbol: history panel pattern, path: packages/vscode/src/writing/history/historyPanel.ts, lines: "18-70", why: "Bundle dir + chunks dir in localResourceRoots, asWebviewUri, enableScripts."}
+  - {symbol: BUNDLES, path: packages/vscode/build/webviews.mjs, lines: "10-45", why: "esbuild entry map; esm, splitting, platform browser, tsconfig.webview.json."}
+  - {symbol: attachDocument, path: packages/vscode/src/collab/binding.ts, lines: "1-100", why: "Yjs bound to TextDocument via onDidChangeTextDocument; works for WorkspaceEdits from a custom editor. Selection, undo grouping and decorations do not."}
+edit:
+  - {path: packages/vscode/package.json, lines: "1011-1070", why: "No customEditors today. editor/title uses resourceLangId (works for custom editors); palette/keybindings use editorLangId and editorTextFocus (false in webviews)."}
+  - {path: packages/vscode/build/webviews.mjs, lines: "10-23", why: "Register the new entry."}
+  - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "1-200", why: "Registration point (also startExtension.ts)."}
+read:
+  - {path: packages/core/src/reader/dom/styles/reader.css, lines: "15-33", why: "Rounded PDF card: #pdf-shell margin 6px, border 1px var(--ls-reader-border), radius 8px, overflow hidden."}
+  - {path: packages/vscode/src/writing/preview/panel.ts, lines: "85-130, 305-386", why: "FocusFollower uses onDidChangeActiveTextEditor; BuildPreviews per project."}
+  - {path: packages/vscode/src/writing/preview/synctex.ts, lines: "8-24, 104-129", why: "Reverse search uses showTextDocument + revealRange; forward search reads activeTextEditor selection; keybinding gated on editorLangId == latex."}
+  - {path: packages/vscode/src/collab/binding.ts, lines: "140-283", why: "Own-only undo compares activeTextEditor; peer cursors via decorations."}
+  - {path: packages/vscode/src/collab/node/editors.ts, lines: "100-209", why: "Presence from TextEditor selections and visibleTextEditors."}
+  - {path: packages/vscode/src/collab/comments.ts, lines: "140-321", why: "vscode.comments controller; not shown in a webview."}
+  - {path: packages/vscode/src/writing/build/builds.ts, lines: "50-70, 135-165", why: "DiagnosticCollection; build root from activeTextEditor. Same pattern: toolchain.ts:77,111, outline.ts:103-112, session.ts:106,185, noteLinks.ts:195,381, citations/editing.ts:33,154, citations/completion.ts:240, latex/editing.ts:57,208-230, collab/node/commands.ts:162,212."}
+  - {path: packages/vscode/src/writing/build/autoBuild.ts, lines: "95-110, 217", why: "Document triggers keep working."}
+callers:
+  - {symbol: openSourceLine, path: packages/vscode/src/writing/preview/synctex.ts, lines: "15-21"}
+  - {symbol: showInPreviewAtCursor, path: packages/vscode/src/writing/preview/synctex.ts, lines: "112-125"}
+  - {symbol: attachDocument, path: packages/vscode/src/collab/binding.ts, lines: "27-60"}
+tests:
+  - {path: packages/vscode/__tests__/reader/shell.test.ts, covers: "reader shell HTML, CSP"}
+  - {path: packages/vscode/__mocks__/vscode/api/webviewPanel.js, covers: "createWebviewPanel mock; no registerCustomEditorProvider yet"}
+contracts: []
+commands: ["node packages/vscode/build/webviews.mjs --watch"]
+risks:
+  - "packages/vscode has no notes editor webview and no CodeMirror; the CodeMirror editors live in browser and core/qmd."
+  - "labshelf.writing.inProject is set from activeTextEditor and goes stale when a custom editor is focused."
+  - "Native language providers (completion, hover, definition, codelens, code actions) do not run in a webview."

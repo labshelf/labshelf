@@ -1,0 +1,107 @@
+schema: session/v1
+id: "2"
+goal: "Core has the sync authority, the webview protocol and the editor's document mode (D3, D4, D6), all tested without VS Code."
+depends_on: ["1"]
+owns:
+  - packages/core/package.json
+  - packages/core/src/writing/sourceEditor/
+  - packages/core/src/writing/dom/sourceEditor/
+  - packages/core/__tests__/writing/sourceEditor/
+  - packages/core/__tests__/writing/dom/sourceEditor/
+status: pending
+packages:
+  - id: "2.1"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "createSourceAuthority keeps one document's text and versions, accepts client updates (rebasing late ones), turns external changes into host updates, and never loses or doubles a character."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    create:
+      - packages/core/src/writing/sourceEditor/authority.ts
+      - packages/core/src/writing/sourceEditor/index.ts
+    edit:
+      - {path: packages/core/package.json, lines: "15-50", why: "add @codemirror/collab (same version line as @codemirror/state)"}
+    read:
+      - {path: packages/core/src/writing/textMerge.ts, lines: "1-80", why: "existing text merge helpers; reuse what fits"}
+    seams:
+      - {path: packages/core/src/writing/sourceEditor/authority.ts, signature: "export interface TextChange { from: number; to: number; insert: string }"}
+      - {path: packages/core/src/writing/sourceEditor/authority.ts, signature: "export interface SourceUpdate { clientID: string; changes: TextChange[] }"}
+      - {path: packages/core/src/writing/sourceEditor/authority.ts, signature: "export interface SourceAuthority {\n  readonly version: number;\n  text(): string;\n  /** Applies a client's updates made on top of `baseVersion`; returns the accepted (rebased) changes to apply to the host document, or undefined when baseVersion is unknown and the client must resync. */\n  receive(baseVersion: number, updates: readonly SourceUpdate[]): TextChange[][] | undefined;\n  /** Records a change made to the host document by someone else (another editor, git, a collaborator). */\n  external(changes: readonly TextChange[]): void;\n  /** The updates after `version`, for a client that is behind. */\n  since(version: number): SourceUpdate[];\n}"}
+      - {path: packages/core/src/writing/sourceEditor/authority.ts, signature: "export function createSourceAuthority(initial: { text: string; lineBreak: \"\\n\" | \"\\r\\n\"; historyLimit?: number }): SourceAuthority"}
+    decided:
+      - "Positions are in the editor's LF-normalised text; the authority converts to and from the host's line break at its edges so a CRLF file stays CRLF and offsets match the TextDocument."
+      - "Rebasing uses ChangeSet.map from @codemirror/state as @codemirror/collab's reference authority does; host updates use clientID \"host\"."
+      - "historyLimit (default 500 updates) bounds memory; a client further behind gets undefined from receive and resyncs from text()."
+      - "Pure: no DOM, no vscode, no timers."
+      - "A TextChange[] is simultaneous, in the coordinates of the document before it (as ChangeSet.iterChanges and a WorkspaceEdit give). receive() returns and external() takes host-text offsets (CRLF kept); since() and client updates use LF offsets; text() is the host text."
+      - "version counts accepted updates from 0; historyLimit N keeps the last N updates. Ties use collab's rule: the authority maps a client change after earlier ones."
+    acceptance:
+      - {id: 2.1a, check: "a client update on the current version is accepted unchanged and text() reflects it"}
+      - {id: 2.1b, check: "a client update based on an older version, after an external change, is rebased so both the external and the client characters are present exactly once"}
+      - {id: 2.1c, check: "since(v) returns the external and accepted updates after v in order"}
+      - {id: 2.1d, check: "a CRLF document round-trips: changes in LF space map to the right CRLF offsets and text() keeps CRLF"}
+      - {id: 2.1e, check: "receive with a version older than the kept history returns undefined"}
+      - {id: A3, check: "randomised concurrent client and external edits converge to the same text on the authority and on a simulated client"}
+    tests:
+      hidden: [documents/plans/vscode-source-editor/tests/2.1/packages/core/__tests__/writing/sourceEditor/authority.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.1 --plan vscode-source-editor -- __tests__/writing/sourceEditor/"
+  - id: "2.2"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "The webview protocol for the source editor: message types both ways and a parser that rejects any invalid message whole (D6)."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.1"]
+    create:
+      - packages/core/src/writing/sourceEditor/protocol.ts
+    edit:
+      - {path: packages/core/src/writing/sourceEditor/index.ts, lines: "1-10", why: "export the protocol"}
+    read:
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "1-80", why: "the shared protocol parser pattern to follow"}
+    seams:
+      - {path: packages/core/src/writing/sourceEditor/protocol.ts, signature: "export type SourceEditorInbound =\n  | { type: \"init\"; path: string; projectId: string; language: \"latex\" | \"typst\"; text: string; lineBreak: \"\\n\" | \"\\r\\n\"; version: number; readOnly: boolean; dirty: boolean }\n  | { type: \"updates\"; version: number; updates: { clientID: string; changes: { from: number; to: number; insert: string }[] }[] }\n  | { type: \"resync\"; text: string; version: number }\n  | { type: \"dirty\"; dirty: boolean }\n  | { type: \"reveal\"; line: number }\n  | { type: \"problems\"; problems: { line: number; severity: \"error\" | \"warning\" | \"info\"; message: string }[] }\n  | { type: \"command\"; command: { kind: \"insertText\"; text: string } | { kind: \"insertSnippet\"; snippet: string } | { kind: \"wrap\"; style: import(\"../snippets.js\").WrapKind } }\n  | { type: \"response\"; id: number; ok: true; value: unknown } | { type: \"response\"; id: number; ok: false; error: string }\n  | { type: \"comments\"; ranges: unknown[] }\n  | { type: \"peers\"; peers: { name: string; colour: string; anchor: number; head: number }[] }"}
+      - {path: packages/core/src/writing/sourceEditor/protocol.ts, signature: "export type SourceEditorOutbound =\n  | { type: \"ready\" }\n  | { type: \"push\"; version: number; updates: { clientID: string; changes: { from: number; to: number; insert: string }[] }[] }\n  | { type: \"save\" }\n  | { type: \"selection\"; anchor: number; head: number; line: number }\n  | { type: \"focus\"; focused: boolean }\n  | { type: \"request\"; id: number; method: \"papers\" | \"readNote\" | \"listProjectNotes\" | \"readProjectNote\" | \"listCitedPaperIds\" | \"readPaperNote\" | \"listFiles\" | \"readFile\" | \"openNotes\" | \"openFile\" | \"addComment\" | \"openComments\"; params: unknown }"}
+      - {path: packages/core/src/writing/sourceEditor/protocol.ts, signature: "export function parseSourceEditorInbound(value: unknown): SourceEditorInbound | undefined"}
+      - {path: packages/core/src/writing/sourceEditor/protocol.ts, signature: "export function parseSourceEditorOutbound(value: unknown): SourceEditorOutbound | undefined"}
+    decided:
+      - "SourceUpdate is inlined in the protocol seam only because authority.ts did not exist at plan time; import it from ./authority."
+      - "Shape the `comments` ranges after EditorComments' listener argument in core/src/collab/dom/editorComments.ts; tighten `unknown` to that type."
+      - "Params per method: papers {}, readNote {paperId}, listProjectNotes {}, readProjectNote {path}, listCitedPaperIds {}, readPaperNote {paperId}, listFiles {}, readFile {path}, openNotes {paperId}, openFile {path, line?}, addComment {from, to, text}, openComments {id?}. Comment ranges are {id: string, from: number, to: number} in LF offsets; widen at 4.3 if EditorComments needs more."
+      - "Request params are validated per method in the parser; an unknown method rejects the message."
+      - "Never log payloads; log only the message type when rejecting."
+    acceptance:
+      - {id: 2.2a, check: "every message kind round-trips through its parser"}
+      - {id: 2.2b, check: "a message with a wrong or missing field, an unknown type or an unknown request method is rejected whole"}
+    tests:
+      hidden: [documents/plans/vscode-source-editor/tests/2.2/packages/core/__tests__/writing/sourceEditor/protocol.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.2 --plan vscode-source-editor -- __tests__/writing/sourceEditor/"
+  - id: "2.3"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "mountSourceEditor's document mode (D3): with deps.document the editor starts from the host's text, sends its changes as collab updates, applies host updates outside its undo history, shows the host's dirty state and asks the host to save on Mod-s."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["2.1"]
+    create:
+      - packages/core/src/writing/dom/sourceEditor/documentMode.ts
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "251-391", why: "SourceEditorDeps.document; createSaver gets a document branch like the collab one; documentExtensions adds the collab client"}
+    read:
+      - {path: packages/core/src/writing/sourceEditor/authority.ts, lines: "1-80", why: "SourceUpdate, TextChange"}
+      - {path: packages/core/__tests__/writing/dom/sourceEditor/editorSave.test.ts, lines: "1-60", why: "the fake-deps harness to copy"}
+    seams:
+      - {path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, signature: "export interface SourceDocument {\n  text: string; lineBreak: \"\\n\" | \"\\r\\n\"; version: number; dirty: boolean;\n  /** Sends the editor's unconfirmed updates made on top of `version`. */\n  push(version: number, updates: SourceUpdate[]): void;\n  /** Host updates and confirmations of the editor's own; `resync` replaces the text. */\n  subscribe(listener: { updates(version: number, updates: SourceUpdate[]): void; resync(text: string, version: number): void; dirty(dirty: boolean): void }): () => void;\n  save(): void;\n}\nexport function createDocumentExtensions(document: SourceDocument, clientID: string): Extension[]"}
+    decided:
+      - "Use @codemirror/collab's collab(), sendableUpdates, receiveUpdates and getSyncedVersion; push is debounced to one animation frame."
+      - "Host updates carry Transaction.addToHistory.of(false) and the fromDisk annotation so they neither autosave nor enter undo."
+      - "In document mode files.write is never called and onDirty mirrors the host's dirty flag; flush() resolves true once no update is unconfirmed."
+      - "files.read and files.list are still used for labels and Typst definitions; the host serves them."
+      - "A resync replaces the document keeping the cursor at the same line and column when it still exists."
+    acceptance:
+      - {id: 2.3a, check: "typing pushes updates on top of the given version and never calls files.write"}
+      - {id: 2.3b, check: "a host update is applied, is not undone by undo, and own edits before and after it still undo"}
+      - {id: 2.3c, check: "Mod-s calls document.save; the dirty flag follows the host's messages"}
+      - {id: 2.3d, check: "a resync replaces the text and keeps the cursor line"}
+    tests:
+      hidden: [documents/plans/vscode-source-editor/tests/2.3/packages/core/__tests__/writing/dom/sourceEditor/documentMode.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.3 --plan vscode-source-editor -- __tests__/writing/dom/sourceEditor/"

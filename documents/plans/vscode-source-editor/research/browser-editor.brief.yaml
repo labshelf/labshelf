@@ -1,0 +1,37 @@
+schema: brief/v1
+area: browser source editor in a VS Code webview
+question: "what it takes to mount packages/browser/src/writing/editor.ts (mountSourceEditor) inside a VS Code webview"
+sha: f521e273
+reuse:
+  - {symbol: mountSourceEditor, path: packages/browser/src/writing/editor.ts, lines: "342-391", why: "The seam: mountSourceEditor(host, deps: SourceEditorDeps). No chrome.*, OPFS, IndexedDB or storage access; everything environmental arrives through deps."}
+  - {symbol: SourceEditorDeps, path: packages/browser/src/writing/editor.ts, lines: "251-282", why: "projectId, path, files (list/read/write), papers(), helper, logger, onDirty; optional problems, openTab, openNotes, notes, noteLinks, comments, collab {text, presence, name}, readOnly, onSaved. Each optional feature degrades when absent."}
+  - {symbol: createWriteScheduler / createSaver, path: packages/browser/src/writing/editor.ts, lines: "135-210, 322-330", why: "Autosave (AUTO_SAVE_DELAY_MS 300). createSaver already has a no-op mode for collab, the precedent for a host-owned document mode."}
+  - {symbol: toProblems / applyProblems / showLine, path: packages/browser/src/writing/editor.ts, lines: "93-133, 213-240", why: "ProblemSource = (path, listener) => unsubscribe; problems become setDiagnostics."}
+  - {symbol: createCollabExtensions, path: packages/browser/src/collab/register.ts, lines: "233-329", why: "yCollab + Y.UndoManager + publishSelection + createRemoteCursors; transport-agnostic, but shares a file with the browser share connection (storage, locks)."}
+  - {symbol: createCommentSupport / EditorComments, path: packages/browser/src/collab/comments.ts, lines: "1-30, 318-371", why: "EditorComments = {subscribe, add, open}. CM marks, gutter and add panel are portable; file imports createSourceFooter (libraryUi) and ProjectSession (writing)."}
+  - {symbol: PresenceStore / cursors, path: packages/core/src/collab/presence.ts, lines: "54-70", why: "Core types; cursor math in core/src/collab/cursors.ts."}
+  - {symbol: NoteInsertSource, path: packages/core/src/writing/noteLinks/noteInsertables.ts, lines: "13", why: "Four-method port used by noteLinks.ts and noteGutter.ts."}
+  - {symbol: tokens.css / vscodeHost.css, path: packages/core/src/ui/dom/tokens.css, lines: "1-131", why: "--ls-* tokens are generated (pnpm --filter @labshelf/core tokens); vscodeHost.css maps them to --vscode-*. editor.ts themes only with var(--ls-*)."}
+edit:
+  - {path: packages/browser/src/writing/session.ts, lines: "12-110", why: "Portable part: OpenEditor registry, fromDisk, loadFromDisk, explicitSaves. Lines ~120-381 are the browser sidebar snapshot."}
+  - {path: packages/browser/src/writing/typst.ts, lines: "15-17, 105-115", why: "Imports Workspace type from libraryUi only for openTab; retype as a callback."}
+  - {path: packages/browser/src/writing/source.ts, lines: "1-20, 192, 225, 322-360", why: "Only createSourceUpdates, createFormattingKeymap and deriveSourceLanguage are used by editor.ts and are pure CM; the rest drags storage and libraryUi."}
+read:
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "51-120", why: "Only production caller of mountSourceEditor; reference wiring of deps."}
+  - {path: packages/browser/src/writing/latex.ts, lines: "14-133", why: "Pure CM plus core."}
+  - {path: packages/browser/src/writing/noteGutter.ts, lines: "1-281", why: "Pure CM gutter."}
+  - {path: packages/browser/src/writing/noteLinks.ts, lines: "1-372", why: "Pure CM plus core/dom overlays."}
+  - {path: packages/vscode/src/webview/transport.ts, lines: "13-59", why: "createWebviewChannel pattern."}
+callers:
+  - {symbol: mountSourceEditor, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "88-94"}
+  - {symbol: loadSourceEditor, path: packages/browser/src/writing/session.ts, lines: "31-33"}
+tests:
+  - {path: packages/browser/__tests__/writing/editorSave.test.ts, covers: "mount with fake files and helper: autosave, explicit save, dirty"}
+  - {path: packages/browser/__tests__/writing/editorCollab.test.ts, covers: "mount bound to a Y.Text with a PresenceStore"}
+contracts: ["collaboration#comments", "collaboration#device-local-state"]
+commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/writing/", "pnpm exec depcruise packages/*/src --config scripts/lint/dependencyCruiser.cjs --reaches 'browser/src/storage'"]
+risks:
+  - "The problem is the import graph, not the code: editor.ts pulls ../collab/index.ts (pageShares, mirror, keys, shareRegistry -> ../storage) and source.ts, typst.ts, session.ts pull storage and libraryUi. Extract narrow modules."
+  - "Line endings: the editor keeps CRLF via EditorState.lineSeparator; a shared Y.Text is LF only."
+  - "Mod-s is bound with preventDefault; clipboard, IME and find behave differently in a webview."
+  - "core/src/qmd/dom/codeCellEditor.ts already hosts CodeMirror in core; check theme overlap before adding a second copy."

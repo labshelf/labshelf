@@ -1,0 +1,93 @@
+schema: session/v1
+id: "4"
+goal: "The LabShelf editor in VS Code has the browser's features: diagnostics, library citations, the note gutter, insert from note, comments, and the editor title actions and context keys act on it."
+depends_on: ["3"]
+owns:
+  - packages/vscode/package.json
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/vscode/src/writing/projects/session.ts
+  - packages/vscode/src/writing/build/toolchain.ts
+  - packages/vscode/src/writing/outline.ts
+  - packages/vscode/src/writing/citations/completion.ts
+  - packages/vscode/src/latex/editing.ts
+  - packages/vscode/src/collab/comments.ts
+  - packages/vscode/__tests__/writing/sourceEditor/
+status: pending
+packages:
+  - id: "4.1"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "The host bridges serve the editor: diagnostics for the file (D8), library papers, paper notes, note insertables and opening notes or files, all as protocol requests backed by existing VS Code services."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    create:
+      - packages/vscode/src/writing/sourceEditor/bridges.ts
+      - packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
+    edit:
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "route request messages to bridges; post problems on onDidChangeDiagnostics for this uri"}
+    read:
+      - {path: packages/vscode/src/writing/noteLinks.ts, lines: "100-385", why: "how VS Code builds NoteInsertSource today"}
+      - {path: packages/vscode/src/writing/citations/completion.ts, lines: "230-260", why: "where VS Code reads library papers"}
+      - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "51-120", why: "which deps the browser passes, the list to match"}
+      - {path: packages/core/src/writing/noteLinks/noteInsertables.ts, lines: "1-30", why: "NoteInsertSource"}
+    seams:
+      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, signature: "export function createSourceBridges(deps: { uri: import(\"vscode\").Uri; projectRoot: import(\"vscode\").Uri | undefined; library: unknown; notes: import(\"@labshelf/core\").NoteInsertSource & Pick<import(\"@labshelf/core\").PaperNotesStore, \"read\">; openNotes(paperId: string): void; logger: import(\"@labshelf/core\").ILogger }): { handle(method: string, params: unknown): Promise<unknown>; problems(): { type: \"problems\"; problems: { line: number; severity: \"error\" | \"warning\" | \"info\"; message: string }[] } }"}
+    decided:
+      - "The library dep is unknown in the seam; narrow it to the reader citations/completion.ts uses."
+      - "LibraryAccess is not a type yet: use the library reader citations/completion.ts uses (around line 240) and type the dep as the narrow Pick of it; papers returns PaperRecord[] with params {}. readFile {path} returns string, listFiles {} returns project-relative paths."
+      - "Find the notes store the VS Code side already uses with facts.mjs def; do not add a second library reader."
+      - "Diagnostics map severity Error/Warning to error/warning, the rest to info; line is range.start.line + 1."
+      - "hostPorts.ts in the webview turns the request/response messages into the editor deps (papers, notes, noteLinks, openNotes, openTab, problems)."
+      - "Paths in requests are project-relative and checked inside the project root; a path outside is an error response."
+    acceptance:
+      - {id: 4.1a, check: "problems lists the file's diagnostics from every collection and updates when they change"}
+      - {id: 4.1b, check: "papers, readNote and the note insertables answer from the VS Code services; a path outside the project is refused"}
+    tests:
+      hidden: [documents/plans/vscode-source-editor/tests/4.1/packages/vscode/__tests__/writing/sourceEditor/bridges.test.ts]
+      command: "node scripts/agents/run.mjs test vscode --spec 4.1 --plan vscode-source-editor -- __tests__/writing/sourceEditor/"
+  - id: "4.2"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "The editor title actions (insert symbol, table, image, cite from library, bold, italic) and the context keys (labshelf.writing.inProject, toolchain status, outline) use activeSource, so they act on the LabShelf editor when it is focused."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/vscode/src/writing/projects/session.ts, lines: "100-190", why: "inProject context from activeSource"}
+      - {path: packages/vscode/src/writing/build/toolchain.ts, lines: "70-115", why: "status bar from activeSource"}
+      - {path: packages/vscode/src/writing/outline.ts, lines: "100-115", why: "outline follows activeSource"}
+      - {path: packages/vscode/src/writing/citations/completion.ts, lines: "1-340", why: "the cite-from-library command inserts through SourceView.updates"}
+      - {path: packages/vscode/src/latex/editing.ts, lines: "50-235", why: "symbol, table, image, bold, italic through SourceView.updates"}
+      - {path: packages/vscode/package.json, lines: "765-1290", why: "palette and keybinding when clauses add activeCustomEditorId == 'labshelf.sourceEditor'"}
+    read:
+      - {path: packages/vscode/src/writing/activeSource.ts, lines: "1-120", why: "the registry from 3.3"}
+    decided:
+      - "Commands call activeSource.current()?.updates (insertText, insertSnippet, wrap); the LabShelf view's updates post a {type: command} message."
+      - "Bold and italic in the LabShelf editor are already handled by its own keymap; the keybinding when clauses must not fire them twice, so only the title buttons route there."
+      - "noteLinks.ts:195,381 and collab/node/commands.ts are left native-only; list them in the report."
+    acceptance:
+      - {id: 4.2a, check: "with a LabShelf view current, the insert and cite commands post one command message to it and do not touch a text editor"}
+      - {id: 4.2b, check: "labshelf.writing.inProject is true while a LabShelf editor on a project file is focused"}
+      - {id: A4, check: "the title buttons act on the LabShelf editor (check by hand)"}
+    tests: {none: "seams depend on provider.ts and activeSource from session 3; at session start, after plan stale, add seams to this spec and run the tester before the implementer"}
+  - id: "4.3"
+    plan: vscode-source-editor
+    sha: f521e273
+    goal: "Comments: the LabShelf editor shows the file's comment threads from the VS Code comment manager and adds new ones through it; opening a thread focuses VS Code's Comments view on it."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.1"]
+    edit:
+      - {path: packages/vscode/src/collab/comments.ts, lines: "140-321", why: "expose subscribe(uri, listener) and add(uri, range, text) on the manager"}
+      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "1-200", why: "addComment, openComments requests; post comments on change"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "1-120", why: "EditorComments over messages"}
+    read:
+      - {path: packages/core/src/collab/dom/editorComments.ts, lines: "1-60", why: "EditorComments shape"}
+      - {path: documents/contracts/collaboration.md, lines: "1-200", why: "#comments; fetch the section with doc.mjs"}
+    decided:
+      - "Ranges are character offsets in the LF text, converted at the host with document.offsetAt/positionAt and the line break."
+      - "The comment manager stays the only writer of comments.qmd and the Y.Map threads; the bridge only calls it."
+    acceptance:
+      - {id: 4.3a, check: "threads of the file reach the webview with the right ranges, CRLF included, and update when one is added elsewhere"}
+      - {id: 4.3b, check: "addComment creates the thread through the manager"}
+      - {id: A6, check: "comments show and can be added in the LabShelf editor (check by hand)"}
+    tests: {none: "seams depend on provider.ts and activeSource from session 3; at session start, after plan stale, add seams to this spec and run the tester before the implementer"}

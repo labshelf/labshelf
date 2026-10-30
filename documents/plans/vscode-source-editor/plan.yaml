@@ -1,0 +1,113 @@
+schema: plan/v1
+slug: vscode-source-editor
+title: LabShelf source editor in VS Code
+status: approved
+level: N3
+goal: "A LaTeX or Typst project file in VS Code can be reopened in the LabShelf editor: the browser's CodeMirror editor, in a rounded card like the PDF preview, with the note gutter, insert from note, library citations, comments, build problems and live collaboration. The native text editor stays the default; the VS Code TextDocument stays the source of truth, so save, auto save, hot exit, git and the native editor side by side keep working."
+decisions:
+  - id: D1
+    text: "The editor is a CustomTextEditorProvider with viewType `labshelf.sourceEditor`, selector `*.tex` and `*.typ`, priority `option`. It opens through \"Reopen Editor With…\" and the commands `labshelf.writing.openInLabShelfEditor` and `labshelf.writing.openInTextEditor`; users who want it by default set `workbench.editorAssociations` themselves. `.bib` stays native."
+    why: Opt-in keeps LaTeX Workshop, language servers, Copilot and Vim for everyone who relies on them; .bib has no CodeMirror support in the browser editor.
+  - id: D2
+    text: "The editor's portable modules move to core: the editor and its language, note gutter, note links, formatting and open-editor registry to `packages/core/src/writing/dom/sourceEditor/`; the CodeMirror Yjs binding and comment marks to `packages/core/src/collab/dom/`. The browser imports them back and keeps only its wiring (sourceTab, sidebar session, share connection). No core module reaches `browser/src/storage` or `libraryUi`."
+    why: code#placement puts shared UI in core/<domain>/dom; one editor for both hosts.
+  - id: D3
+    text: "Document mode: `SourceEditorDeps` gains `document?: SourceDocument`. With it the editor neither reads nor writes files: it starts from the host's text, version and line break, sends its own changes as `@codemirror/collab` updates, receives the host's updates, and asks the host to save on Mod-s. The dirty state is the host's. Changes that came from the host are not added to the editor's undo history."
+    why: The TextDocument is the source of truth; VS Code owns save, auto save, backup and the dirty mark.
+  - id: D4
+    text: "Sync is the `@codemirror/collab` authority model. A pure authority in core (`createSourceAuthority`) holds a version counter and the updates since each version, rebases late client updates with ChangeSet.map, and turns external document changes into host updates. The VS Code host applies accepted client updates to the TextDocument with one WorkspaceEdit each and recognises their echo in onDidChangeTextDocument, so no edit is applied twice and none is lost. `@codemirror/collab` is added to core."
+    why: The standard, tested CodeMirror model for one authority and late clients; no data loss under concurrent typing and external edits.
+  - id: D5
+    text: "Collaboration needs no Yjs in the webview: the existing binding (vscode/src/collab/binding.ts) already mirrors TextDocument changes to the shared Y.Text, and remote Yjs edits reach the editor as host updates. Presence goes through the host: the webview sends its selection, the host publishes it like a native editor's and sends peers' cursors back, drawn with core's cursor helpers."
+    why: One path for shared text whatever editor is open; cursors are the only thing a webview must render itself.
+  - id: D6
+    text: "The webview protocol is types plus a shared parser in `packages/core/src/writing/sourceEditor/protocol.ts` (code#messages): an invalid message is rejected whole, the host buffers until `ready`, payloads are never logged. It is not a documents/contracts section (code#contracts)."
+    why: Same rule as every other webview surface.
+  - id: D7
+    text: "VS Code commands that read `window.activeTextEditor` go through one `activeSource` registry in `packages/vscode/src/writing/activeSource.ts` that answers {uri, line, reveal(line), updates} for the focused native editor or the focused LabShelf editor. Keybindings and palette `when` clauses add `activeCustomEditorId == 'labshelf.sourceEditor'` next to `editorLangId`."
+    why: Build, Show in Preview, SyncTeX, insert and cite commands must work whichever editor is focused, without a fork per call site.
+  - id: D8
+    text: "Diagnostics shown in the editor are `vscode.languages.getDiagnostics(uri)` for the file, refreshed on onDidChangeDiagnostics, so build problems, bibliography and label checks and other extensions' diagnostics all appear. Library papers, paper notes, note insertables and comments come from the host through request/response messages backed by the existing VS Code services."
+    why: Reuses what VS Code already computes; the webview never touches disk or the library.
+  - id: D9
+    text: "The card: the editor sits in a 6px margin, 1px border, 8px radius, overflow hidden card, the same values as the PDF preview. The values become one shared class in core ui (`ls-card`) used by both the reader and the editor."
+    why: The request is visual parity with the PDF preview.
+  - id: D10
+    text: "Out of scope: LaTeX Workshop, language servers, Copilot and Vim inside the LabShelf editor; VS Code's native completion, hover and definition providers in it; .bib; the terminal app; making it the default editor."
+    why: Inherent to a webview editor; the native editor remains for them.
+acceptance:
+  - id: A1
+    check: "On a project .tex or .typ, Reopen Editor With… lists LabShelf Editor; choosing it shows the CodeMirror editor in a rounded card like the PDF preview; without that choice the native editor opens as before (check by hand)"
+  - id: A2
+    check: "Typing in the LabShelf editor marks the tab dirty, Cmd+S saves, files.autoSave is honoured, and the same file open side by side in the native editor shows every edit both ways (authority and host tests; check by hand)"
+  - id: A3
+    check: "An external change to the document (another editor, git checkout, a collaborator) while the user types merges without losing either side's characters, CRLF files stay CRLF (authority tests)"
+  - id: A4
+    check: "With the LabShelf editor focused, Build, Show in Preview, the insert, cite, bold and italic title actions and their shortcuts act on it, and a click in the PDF reveals the line in it (activeSource tests; check by hand)"
+  - id: A5
+    check: "Build problems and other diagnostics show as squiggles; the note gutter, insert from note, library citation completion and labels work (bridge tests; check by hand)"
+  - id: A6
+    check: "Comments show in the editor and can be added; in a shared project peers' edits appear, peers' cursors render, and Cmd+Z undoes only one's own edits (bridge tests; check by hand with two VS Code windows)"
+  - id: A7
+    check: "The browser editor is unchanged: browser writing tests pass and no core module reaches browser storage or libraryUi (tests, depcruise)"
+sessions:
+  - id: "1"
+    file: sessions/1.yaml
+    depends_on: []
+    owns:
+      - packages/browser/src/writing/
+      - packages/browser/src/collab/register.ts
+      - packages/browser/src/collab/comments.ts
+      - packages/browser/src/collab/index.ts
+      - packages/browser/src/libraryUi/editorArea/sourceTab.ts
+      - packages/browser/__tests__/writing/
+      - packages/core/src/writing/dom/sourceEditor/
+      - packages/core/src/collab/dom/
+      - packages/core/__tests__/writing/dom/sourceEditor/
+  - id: "2"
+    file: sessions/2.yaml
+    depends_on: ["1"]
+    owns:
+      - packages/core/package.json
+      - packages/core/src/writing/sourceEditor/
+      - packages/core/src/writing/dom/sourceEditor/
+      - packages/core/__tests__/writing/sourceEditor/
+      - packages/core/__tests__/writing/dom/sourceEditor/
+  - id: "3"
+    file: sessions/3.yaml
+    depends_on: ["2"]
+    owns:
+      - packages/vscode/package.json
+      - packages/vscode/build/webviews.mjs
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/vscode/src/writing/activeSource.ts
+      - packages/vscode/src/writing/preview/
+      - packages/vscode/src/writing/build/builds.ts
+      - packages/vscode/src/activation/
+      - packages/vscode/__mocks__/vscode/
+      - packages/vscode/__tests__/writing/sourceEditor/
+      - packages/core/src/ui/dom/
+      - packages/core/src/reader/dom/styles/reader.css
+  - id: "4"
+    file: sessions/4.yaml
+    depends_on: ["3"]
+    owns:
+      - packages/vscode/package.json
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/vscode/src/writing/projects/session.ts
+      - packages/vscode/src/writing/build/toolchain.ts
+      - packages/vscode/src/writing/outline.ts
+      - packages/vscode/src/writing/citations/completion.ts
+      - packages/vscode/src/latex/editing.ts
+      - packages/vscode/src/collab/comments.ts
+      - packages/vscode/__tests__/writing/sourceEditor/
+  - id: "5"
+    file: sessions/5.yaml
+    depends_on: ["4"]
+    owns:
+      - packages/vscode/src/writing/sourceEditor/
+      - packages/vscode/src/collab/node/editors.ts
+      - packages/vscode/src/collab/binding.ts
+      - packages/core/src/collab/dom/
+      - packages/vscode/__tests__/writing/sourceEditor/
+      - documents/
