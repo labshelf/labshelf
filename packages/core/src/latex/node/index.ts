@@ -6,8 +6,8 @@ export type { ToolsDirLockOptions, ManagedTex, ManagedTexKind, ManagedTexProvide
 export { deriveProgressFraction, runTexTool, TEX_MODULE, createTexLiveProfile, createTlmgr, isRollover, TlmgrError, installTexLive, installTinyTex, resolveManagedTexDir, withStagingDir, findSingleTopDir, removeQuarantine } from "./texInstallers.js";
 export type { TexToolRun, Tlmgr, TexInstallDeps, TexInstallRun, RunFile } from "./texInstallers.js";
 export { findBiberAssetsInFolder, runBiber } from "../biber/node/index.js";
-export { BuildCancelled, ProcessTimedOut, runCancellable } from "./run.js";
-export type { CancellableOptions, RunOutcome } from "./run.js";
+export { BuildCancelled, ProcessTimedOut, runCancellable, createKillSwitch } from "./run.js";
+export type { CancellableOptions, RunOutcome, KillSwitch } from "./run.js";
 export { runLatexBuild } from "./build.js";
 export type { LatexBuildRequest } from "./build.js";
 export { readSectionBuildStates, writeSectionBuildStatePackage } from "./preview.js";

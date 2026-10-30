@@ -154,7 +154,7 @@ it("expands a plot into an accessible preview and closes it", () => {
 });
 
 const bareCell = (code: string, options = "") => s.node("code_cell", { lang: "python", options, code, info: "{python}" });
-const META = { engine: "python", ran: "2026-10-30T00:00:00.000Z" };
+const META = { ran: "2026-10-30T00:00:00.000Z" };
 
 describe("Run on a cell without a label", () => {
   it("sends cell-<n> for an unlabeled cell, counting every cell of the item", () => {
@@ -172,7 +172,7 @@ describe("Run on a cell without a label", () => {
     const sent: string[] = [];
     const view = mount(s.node("doc", null, [bareCell("print(1)\n")]), { code_cell: createCodeCellView((label) => sent.push(label)) });
     view.dom.querySelector<HTMLButtonElement>(".qmd-cell-run")!.click();
-    const next = await writeCellOutput(body, sent[0]!, { status: "ok", text: "1", durationMs: 1 }, META);
+    const next = await writeCellOutput(body, sent[0]!, { status: "ok", language: "python", text: "1", durationMs: 1 }, META);
     expect(next).not.toBe(body);
   });
 });
