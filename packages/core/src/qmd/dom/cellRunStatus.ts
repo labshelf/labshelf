@@ -117,6 +117,46 @@ function markRunningCell(run: RunRow): void {
   if (!run.running) cell?.classList.remove("is-run-requested");
 }
 
+type SendCell = Parameters<CellRunGroup["attach"]>[2];
+
+/** Calls and forgets the callback of preview `requestId`; false when no row has it. */
+function endPreview(rows: ReadonlyMap<string, RunRow>, requestId: string, result: CellResult | undefined): boolean {
+  for (const run of rows.values()) {
+    const done = run.previews.get(requestId);
+    if (!done) continue;
+    run.previews.delete(requestId);
+    done(result);
+    return true;
+  }
+  return false;
+}
+
+/** Ends the previews of a row that goes away, so its cell does not wait for them. */
+function endRow(run: RunRow): void {
+  run.status.el.remove();
+  const pending = Array.from(run.previews.values());
+  run.previews.clear();
+  for (const done of pending) done(undefined);
+}
+
+/** The `onRunCell` of a row: a preview is sent at once; a normal run starts the row's status and is ignored while one is in flight. */
+function rowRunner(run: RunRow, send: SendCell): ReturnType<CellRunGroup["attach"]> {
+  return (label, code, language, params, preview) => {
+    if (preview) {
+      const requestId = nextRequestId();
+      run.previews.set(requestId, preview);
+      send(label, code, requestId, language, params, true);
+      return;
+    }
+    if (run.running) return;
+    const requestId = nextRequestId();
+    run.running = true;
+    run.status.start(requestId, label, language);
+    if (params === undefined) send(label, code, requestId, language);
+    else send(label, code, requestId, language, params);
+  };
+}
+
 /** @returns an empty group; every row shares `options`. */
 export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup {
   const rows = new Map<string, RunRow>();
@@ -125,44 +165,13 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
     if (!found) { found = { status: createCellRunStatus(options), running: false, editorEl: null, previews: new Map() }; rows.set(key, found); }
     return found;
   };
-  /** Calls and forgets the callback of preview `requestId`; false when no row has it. */
-  const endPreview = (requestId: string, result: CellResult | undefined): boolean => {
-    for (const run of rows.values()) {
-      const done = run.previews.get(requestId);
-      if (!done) continue;
-      run.previews.delete(requestId);
-      done(result);
-      return true;
-    }
-    return false;
-  };
-  /** Ends the previews of a row that goes away, so its cell does not wait for them. */
-  const endRow = (run: RunRow): void => {
-    run.status.el.remove();
-    const pending = Array.from(run.previews.values());
-    run.previews.clear();
-    for (const done of pending) done(undefined);
-  };
   return {
     attach(key, editorEl, send, onRestart) {
       const run = row(key);
       run.editorEl = editorEl;
       if (onRestart) run.onRestart = onRestart; else delete run.onRestart;
       if (editorEl.nextSibling !== run.status.el) editorEl.after(run.status.el);
-      return (label, code, language, params, preview) => {
-        if (preview) {
-          const requestId = nextRequestId();
-          run.previews.set(requestId, preview);
-          send(label, code, requestId, language, params, true);
-          return;
-        }
-        if (run.running) return;
-        const requestId = nextRequestId();
-        run.running = true;
-        run.status.start(requestId, label, language);
-        if (params === undefined) send(label, code, requestId, language);
-        else send(label, code, requestId, language, params);
-      };
+      return rowRunner(run, send);
     },
     restartCell(key) {
       const run = rows.get(key);
@@ -172,14 +181,14 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
     },
     show(requestId, state) {
       for (const run of rows.values()) {
-        if (run.previews.has(requestId)) { if (state !== "running") endPreview(requestId, undefined); return true; }
+        if (run.previews.has(requestId)) { if (state !== "running") endPreview(rows, requestId, undefined); return true; }
       }
       for (const run of rows.values()) {
         if (run.status.show(requestId, state)) { run.running = state === "running"; markRunningCell(run); return true; }
       }
       return false;
     },
-    showPreview: (requestId, result) => endPreview(requestId, result),
+    showPreview: (requestId, result) => endPreview(rows, requestId, result),
     drop(key) { const run = rows.get(key); rows.delete(key); if (run) endRow(run); },
     clear() { const all = Array.from(rows.values()); rows.clear(); for (const run of all) endRow(run); },
   };

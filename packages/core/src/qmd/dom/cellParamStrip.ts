@@ -59,23 +59,74 @@ const shownNumber = (value: number): string => String(Number(value.toPrecision(4
 /** One control: its row and how to show a value set from outside. */
 interface Row { el: HTMLElement; show(value: CellParamValue): void }
 
-/** @returns an empty, hidden strip; `render` fills it. */
-export function createCellParamStrip(options: CellParamStripOptions): CellParamStrip {
-  const el = renderElement("div", { class: "qmd-param-strip", contenteditable: "false", hidden: true });
-  let shape: string | null = null;
-  let values: CellParamValues = {};
-  let rows = new Map<string, Row>();
+/** What a row calls when its control moves (`changed`, while dragging) and is let go (`release`). */
+interface RowHooks { changed(name: string, value: CellParamValue): void; release(): void }
+
+const nameLabel = (param: CellParam, id: string): HTMLElement => renderElement("label", { class: "qmd-param-name", for: id, text: param.name });
+
+function sliderRow(param: Extract<CellParam, { kind: "slider" }>, id: string, enabled: boolean, hooks: RowHooks): Row {
+  const log = isLog(param);
+  const toValue = (position: number): number => (log ? Number((param.min * (param.max / param.min) ** (position / LOG_STEPS)).toPrecision(6)) : position);
+  const toPosition = (value: number): number => (log ? Math.round((LOG_STEPS * Math.log(value / param.min)) / Math.log(param.max / param.min)) : value);
+  const input = renderElement("input", { class: "qmd-param-range", type: "range", id,
+    min: log ? 0 : param.min, max: log ? LOG_STEPS : param.max, step: log ? 1 : param.step ?? "any", disabled: !enabled });
+  const text = renderElement("output", { class: "qmd-param-value", for: id });
+  const show = (value: number): void => { text.textContent = shownNumber(value); input.setAttribute("aria-valuetext", shownNumber(value)); };
+  input.value = String(toPosition(param.value));
+  show(param.value);
+  input.addEventListener("input", () => { const value = toValue(Number(input.value)); show(value); hooks.changed(param.name, value); });
+  input.addEventListener("change", hooks.release);
+  const row = renderElement("div", { class: "qmd-param qmd-param-slider" }, nameLabel(param, id), input, text);
+  return { el: row, show: (value) => { if (typeof value !== "number") return; input.value = String(toPosition(value)); show(value); } };
+}
+
+function selectRow(param: Extract<CellParam, { kind: "select" }>, id: string, enabled: boolean, hooks: RowHooks): Row {
+  const input = renderElement("select", { class: "qmd-param-select", id, disabled: !enabled },
+    ...param.choices.map((choice) => renderElement("option", { value: String(choice), text: String(choice) })));
+  input.value = String(param.value);
+  input.addEventListener("input", () => {
+    const choice = param.choices.find((candidate) => String(candidate) === input.value);
+    if (choice !== undefined) hooks.changed(param.name, choice);
+  });
+  input.addEventListener("change", hooks.release);
+  const row = renderElement("div", { class: "qmd-param qmd-param-choice" }, nameLabel(param, id), input);
+  return { el: row, show: (value) => { input.value = String(value); } };
+}
+
+function checkboxRow(param: Extract<CellParam, { kind: "checkbox" }>, id: string, enabled: boolean, hooks: RowHooks): Row {
+  const input = renderElement("input", { class: "qmd-param-check", type: "checkbox", id, disabled: !enabled });
+  input.checked = param.value;
+  input.addEventListener("input", () => hooks.changed(param.name, input.checked));
+  input.addEventListener("change", hooks.release);
+  const row = renderElement("div", { class: "qmd-param qmd-param-toggle" }, input, nameLabel(param, id));
+  return { el: row, show: (value) => { input.checked = value === true; } };
+}
+
+function paramRow(param: CellParam, id: string, enabled: boolean, hooks: RowHooks): Row {
+  if (param.kind === "slider") return sliderRow(param, id, enabled, hooks);
+  return param.kind === "select" ? selectRow(param, id, enabled, hooks) : checkboxRow(param, id, enabled, hooks);
+}
+
+interface PreviewLoop extends RowHooks {
+  /** The values as last set or dragged. */
+  values: CellParamValues;
+  /** Between a control's first input and its release, so a redraw does not reset the value being dragged. */
+  dirty: boolean;
+  destroy(): void;
+}
+
+/** The debounced, latest-wins preview requests and the release that waits for the one in flight. */
+function createPreviewLoop(el: HTMLElement, options: CellParamStripOptions): PreviewLoop {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let inFlight = false;
   let queued: CellParamValues | null = null;
   let released: CellParamValues | null = null;
-  /** Between a control's first input and its release, so a redraw does not reset the value being dragged. */
-  let dirty = false;
   let destroyed = false;
+  const loop: PreviewLoop = { values: {}, dirty: false, changed, release, destroy() { destroyed = true; clearTimeout(timer); } };
 
-  const setBusy = (busy: boolean): void => { if (busy) el.setAttribute("aria-busy", "true"); else el.removeAttribute("aria-busy"); };
-  const commit = (next: CellParamValues): void => { dirty = false; options.release(next); };
-  const start = (next: CellParamValues): void => {
+  function commit(next: CellParamValues): void { loop.dirty = false; options.release(next); }
+  function setBusy(busy: boolean): void { if (busy) el.setAttribute("aria-busy", "true"); else el.removeAttribute("aria-busy"); }
+  function start(next: CellParamValues): void {
     inFlight = true;
     setBusy(true);
     let ended = false;
@@ -87,60 +138,31 @@ export function createCellParamStrip(options: CellParamStripOptions): CellParamS
       if (released) { const values = released; released = null; queued = null; commit(values); }
       else if (queued) { const values = queued; queued = null; start(values); }
     });
-  };
-  const changed = (name: string, value: CellParamValue): void => {
-    dirty = true;
-    values[name] = value;
+  }
+  function changed(name: string, value: CellParamValue): void {
+    loop.dirty = true;
+    loop.values[name] = value;
     clearTimeout(timer);
     timer = setTimeout(() => {
       timer = undefined;
-      if (inFlight) queued = { ...values }; else start({ ...values });
+      if (inFlight) queued = { ...loop.values }; else start({ ...loop.values });
     }, DEBOUNCE_MS);
-  };
-  const release = (): void => {
+  }
+  function release(): void {
     clearTimeout(timer);
     timer = undefined;
     queued = null;
-    if (inFlight) released = { ...values }; else commit({ ...values });
-  };
+    if (inFlight) released = { ...loop.values }; else commit({ ...loop.values });
+  }
+  return loop;
+}
 
-  const slider = (param: Extract<CellParam, { kind: "slider" }>, id: string, enabled: boolean): Row => {
-    const log = isLog(param);
-    const toValue = (position: number): number => (log ? Number((param.min * (param.max / param.min) ** (position / LOG_STEPS)).toPrecision(6)) : position);
-    const toPosition = (value: number): number => (log ? Math.round((LOG_STEPS * Math.log(value / param.min)) / Math.log(param.max / param.min)) : value);
-    const input = renderElement("input", { class: "qmd-param-range", type: "range", id,
-      min: log ? 0 : param.min, max: log ? LOG_STEPS : param.max, step: log ? 1 : param.step ?? "any", disabled: !enabled });
-    const text = renderElement("output", { class: "qmd-param-value", for: id });
-    const show = (value: number): void => { text.textContent = shownNumber(value); input.setAttribute("aria-valuetext", shownNumber(value)); };
-    input.value = String(toPosition(param.value));
-    show(param.value);
-    input.addEventListener("input", () => { const value = toValue(Number(input.value)); show(value); changed(param.name, value); });
-    input.addEventListener("change", release);
-    const row = renderElement("div", { class: "qmd-param qmd-param-slider" }, renderElement("label", { class: "qmd-param-name", for: id, text: param.name }), input, text);
-    return { el: row, show: (value) => { if (typeof value !== "number") return; input.value = String(toPosition(value)); show(value); } };
-  };
-
-  const select = (param: Extract<CellParam, { kind: "select" }>, id: string, enabled: boolean): Row => {
-    const input = renderElement("select", { class: "qmd-param-select", id, disabled: !enabled },
-      ...param.choices.map((choice) => renderElement("option", { value: String(choice), text: String(choice) })));
-    input.value = String(param.value);
-    input.addEventListener("input", () => {
-      const choice = param.choices.find((candidate) => String(candidate) === input.value);
-      if (choice !== undefined) changed(param.name, choice);
-    });
-    input.addEventListener("change", release);
-    const row = renderElement("div", { class: "qmd-param qmd-param-choice" }, renderElement("label", { class: "qmd-param-name", for: id, text: param.name }), input);
-    return { el: row, show: (value) => { input.value = String(value); } };
-  };
-
-  const checkbox = (param: Extract<CellParam, { kind: "checkbox" }>, id: string, enabled: boolean): Row => {
-    const input = renderElement("input", { class: "qmd-param-check", type: "checkbox", id, disabled: !enabled });
-    input.checked = param.value;
-    input.addEventListener("input", () => changed(param.name, input.checked));
-    input.addEventListener("change", release);
-    const row = renderElement("div", { class: "qmd-param qmd-param-toggle" }, input, renderElement("label", { class: "qmd-param-name", for: id, text: param.name }));
-    return { el: row, show: (value) => { input.checked = value === true; } };
-  };
+/** @returns an empty, hidden strip; `render` fills it. */
+export function createCellParamStrip(options: CellParamStripOptions): CellParamStrip {
+  const el = renderElement("div", { class: "qmd-param-strip", contenteditable: "false", hidden: true });
+  const loop = createPreviewLoop(el, options);
+  let shape: string | null = null;
+  let rows = new Map<string, Row>();
 
   return {
     el,
@@ -148,25 +170,20 @@ export function createCellParamStrip(options: CellParamStripOptions): CellParamS
       const key = JSON.stringify([enabled, params.map((param) => ({ ...param, value: undefined }))]);
       if (key !== shape) {
         shape = key;
-        dirty = false;
-        values = paramValues([...params]);
-        rows = new Map();
-        for (const param of params) {
-          const id = `qmd-param-${++idSeq}`;
-          const row = param.kind === "slider" ? slider(param, id, enabled) : param.kind === "select" ? select(param, id, enabled) : checkbox(param, id, enabled);
-          rows.set(param.name, row);
-        }
+        loop.dirty = false;
+        loop.values = paramValues([...params]);
+        rows = new Map(params.map((param) => [param.name, paramRow(param, `qmd-param-${++idSeq}`, enabled, loop)]));
         el.replaceChildren(...Array.from(rows.values(), (row) => row.el));
         el.hidden = params.length === 0;
         return;
       }
-      if (dirty) return;
+      if (loop.dirty) return;
       for (const param of params) {
-        if (values[param.name] === param.value) continue;
-        values[param.name] = param.value;
+        if (loop.values[param.name] === param.value) continue;
+        loop.values[param.name] = param.value;
         rows.get(param.name)?.show(param.value);
       }
     },
-    destroy() { destroyed = true; clearTimeout(timer); },
+    destroy: loop.destroy,
   };
 }
