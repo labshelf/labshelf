@@ -1,13 +1,15 @@
 schema: session/v1
-id: "4b"
-goal: "The editor title actions and context keys act on the LabShelf editor, and it shows and adds comments through VS Code's comment manager."
-depends_on: ["4"]
+id: 4b
+goal: The editor title actions and context keys act on the LabShelf editor, and it shows and adds comments through VS Code's comment manager.
+depends_on:
+  - "4"
 owns:
   - packages/vscode/package.json
   - packages/vscode/src/writing/sourceEditor/
   - packages/vscode/src/writing/activeSource.ts
   - packages/vscode/src/writing/projects/session.ts
   - packages/vscode/src/writing/projects/outline.ts
+  - packages/vscode/src/writing/projects/tree.ts
   - packages/vscode/src/writing/build/toolchain.ts
   - packages/vscode/src/writing/citations/editing.ts
   - packages/vscode/src/writing/citations/completion.ts
@@ -18,80 +20,227 @@ owns:
   - packages/vscode/__tests__/writing/sourceEditor/
   - packages/vscode/__tests__/writing/
   - packages/vscode/__tests__/collab/
-status: pending
+status: blocked
 packages:
   - id: "4.2"
     plan: vscode-source-editor
-    sha: 5d2a6ed7
-    goal: "The editor title actions (insert symbol, table, image, cite from library, bold, italic) and the context keys (labshelf.writing.inProject, toolchain status, outline) use activeSource, so they act on the LabShelf editor when it is focused."
+    sha: 89b57a3d
+    goal: The editor title actions (insert symbol, table, image, cite from library, bold, italic) and the context keys (labshelf.writing.inProject, toolchain status, outline) use activeSource, so they act on the LabShelf editor when it is focused.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     edit:
-      - {path: packages/vscode/src/writing/activeSource.ts, lines: "1-20", why: "type SourceView.updates as SourceViewUpdates"}
-      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "120-135", why: "the view's updates post {type: command}"}
-      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "95-124", why: "a command message calls the mounted editor's insertText, insertSnippet or wrap"}
-      - {path: packages/vscode/src/writing/citations/editing.ts, lines: "1-160", why: "bold, italic, symbol, table and image route to activeSource.current()?.updates when it has them"}
-      - {path: packages/vscode/src/writing/citations/completion.ts, lines: "225-350", why: "cite from library inserts through updates.insertText for a LabShelf view"}
-      - {path: packages/vscode/src/writing/projects/session.ts, lines: "100-215", why: "inProject context from activeSource.current() and its onDidChange"}
-      - {path: packages/vscode/src/writing/build/toolchain.ts, lines: "70-115", why: "pick compiler and status bar from activeSource.current()"}
-      - {path: packages/vscode/src/writing/projects/outline.ts, lines: "95-120", why: "the outline follows activeSource: a LabShelf view refreshes from its open TextDocument"}
-      - {path: packages/vscode/src/activation/registerWritingView.ts, lines: "170-215", why: "pass parts.activeSource to the register functions"}
-      - {path: packages/vscode/package.json, lines: "560-1290", why: "editor/title and palette when clauses add activeCustomEditorId == 'labshelf.sourceEditor'"}
+      - path: packages/vscode/src/writing/activeSource.ts
+        lines: 1-20
+        why: type SourceView.updates as SourceViewUpdates
+      - path: packages/vscode/src/writing/sourceEditor/provider.ts
+        lines: 110-175
+        why: "the view's updates post {type: command}"
+      - path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts
+        lines: 60-94
+        why: a command message calls the mounted editor's insertText, insertSnippet or wrap
+      - path: packages/vscode/src/writing/citations/editing.ts
+        lines: 1-160
+        why: bold, italic, symbol, table and image route to activeSource.current()?.updates when it has them
+      - path: packages/vscode/src/writing/citations/completion.ts
+        lines: 225-350
+        why: cite from library inserts through updates.insertText for a LabShelf view
+      - path: packages/vscode/src/writing/projects/session.ts
+        lines: 100-215
+        why: inProject context from activeSource.current() and its onDidChange
+      - path: packages/vscode/src/writing/build/toolchain.ts
+        lines: 70-115
+        why: pick compiler and status bar from activeSource.current()
+      - path: packages/vscode/src/writing/projects/outline.ts
+        lines: 95-120
+        why: "the outline follows activeSource: a LabShelf view refreshes from its open TextDocument"
+      - path: packages/vscode/src/activation/registerWritingView.ts
+        lines: 170-215
+        why: pass parts.activeSource to the register functions
+      - path: packages/vscode/package.json
+        lines: 560-1290
+        why: editor/title and palette when clauses add activeCustomEditorId == 'labshelf.sourceEditor'
     read:
-      - {path: packages/vscode/src/writing/activeSource.ts, lines: "1-77", why: "the registry from 3.3"}
-      - {path: packages/core/src/writing/dom/sourceEditor/formatting.ts, lines: "20-35", why: "SourceUpdates, what the webview editor exposes"}
+      - path: packages/vscode/src/writing/activeSource.ts
+        lines: 1-77
+        why: the registry from 3.3
+      - path: packages/core/src/writing/dom/sourceEditor/formatting.ts
+        lines: 20-35
+        why: SourceUpdates, what the webview editor exposes
     seams:
-      - {path: packages/vscode/src/writing/activeSource.ts, signature: "export interface SourceViewUpdates { insertText(text: string): void; insertSnippet(snippet: string): void; wrap(style: import(\"@labshelf/core\").WrapKind): void } // SourceView.updates?: SourceViewUpdates; native views have none"}
-      - {path: packages/vscode/src/writing/citations/editing.ts, signature: "export function registerEditorActions(deps: { context: vscode.ExtensionContext; host: WritingHost; activeSource: Pick<ActiveSource, \"current\"> }): void; export function registerInsertActions(deps: { context: vscode.ExtensionContext; host: WritingHost; projects: ProjectFinder; activeSource: Pick<ActiveSource, \"current\"> }): void"}
-      - {path: packages/vscode/src/writing/citations/completion.ts, signature: "export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace, activeSource: Pick<ActiveSource, \"current\">): void"}
+      - path: packages/vscode/src/writing/activeSource.ts
+        signature: 'export interface SourceViewUpdates { insertText(text: string): void; insertSnippet(snippet: string): void; wrap(style: import("@labshelf/core").WrapKind): void } // SourceView.updates?: SourceViewUpdates; native views have none'
+      - path: packages/vscode/src/writing/citations/editing.ts
+        signature: 'export function registerEditorActions(deps: { context: vscode.ExtensionContext; host: WritingHost; activeSource: Pick<ActiveSource, "current"> }): void; export function registerInsertActions(deps: { context: vscode.ExtensionContext; host: WritingHost; projects: ProjectFinder; activeSource: Pick<ActiveSource, "current"> }): void'
+      - path: packages/vscode/src/writing/citations/completion.ts
+        signature: 'export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace, activeSource: Pick<ActiveSource, "current">): void'
     decided:
       - "Routing: when activeSource.current()?.updates exists the command acts on it and never touches vscode.window.activeTextEditor's document; otherwise the current native path runs unchanged."
-      - "For a LabShelf view the language is typst for a .typ uri, latex otherwise; symbol uses updates.insertText(source), table and image use updates.insertSnippet(the same core snippet), bold and italic use updates.wrap(style); image's document path is view.uri.fsPath."
-      - "Cite from library builds the same citation text and calls updates.insertText(text) once, then runs the bibliography update command with view.uri."
+      - For a LabShelf view the language is typst for a .typ uri, latex otherwise; symbol uses updates.insertText(source), table and image use updates.insertSnippet(the same core snippet), bold and italic use updates.wrap(style); image's document path is view.uri.fsPath.
+      - Cite from library builds the same citation text and calls updates.insertText(text) once, then runs the bibliography update command with view.uri.
       - "The provider's view.updates posts exactly one {type: 'command', command: {kind, ...}} message per call (kinds insertText {text}, insertSnippet {snippet}, wrap {style})."
-      - "Bold and italic in the LabShelf editor are already handled by its own keymap; keybinding when clauses stay unchanged so they do not fire twice; only editor/title and command palette when clauses add the LabShelf editor."
+      - Bold and italic in the LabShelf editor are already handled by its own keymap; keybinding when clauses stay unchanged so they do not fire twice; only editor/title and command palette when clauses add the LabShelf editor.
       - "labshelf.writing.inProject follows activeSource.current()?.uri and is recomputed on activeSource.onDidChange as well as on project open and close; ProjectSessionDeps gains activeSource: Pick<ActiveSource, 'current' | 'onDidChange'> (the hidden test passes that key)."
-      - "noteLinks.ts:195,381 and collab/node/commands.ts are left native-only; list them in the report."
+      - noteLinks.ts:195,381 and collab/node/commands.ts are left native-only; list them in the report.
       - "Implementers never run pnpm gate or any lint: only node scripts/agents/run.mjs typecheck vscode and the tests.command."
     acceptance:
-      - {id: 4.2a, check: "with a LabShelf view current, the insert, wrap and cite commands call its updates once and do not edit a text editor; with a native editor current they keep editing it"}
-      - {id: 4.2b, check: "labshelf.writing.inProject is true while a LabShelf editor on a file of the open project is current"}
-      - {id: 4.2c, check: "the LabShelf view's updates post one command message to its webview per call"}
+      - id: 4.2a
+        check: with a LabShelf view current, the insert, wrap and cite commands call its updates once and do not edit a text editor; with a native editor current they keep editing it
+      - id: 4.2b
+        check: labshelf.writing.inProject is true while a LabShelf editor on a file of the open project is current
+      - id: 4.2c
+        check: the LabShelf view's updates post one command message to its webview per call
     tests:
-      hidden: [documents/plans/vscode-source-editor/tests/4.2/packages/vscode/__tests__/writing/citations.test.ts, documents/plans/vscode-source-editor/tests/4.2/packages/vscode/__tests__/writing/projects.test.ts, documents/plans/vscode-source-editor/tests/4.2/packages/vscode/__tests__/writing/sourceEditor/provider.test.ts]
-      command: "node scripts/agents/run.mjs test vscode --spec 4.2 --plan vscode-source-editor -- __tests__/writing/sourceEditor/ __tests__/writing/citations.test.ts __tests__/writing/projects.test.ts"
+      hidden:
+        - documents/plans/vscode-source-editor/tests/4.2/packages/vscode/__tests__/writing/citations.test.ts
+        - documents/plans/vscode-source-editor/tests/4.2/packages/vscode/__tests__/writing/projects.test.ts
+        - documents/plans/vscode-source-editor/tests/4.2/packages/vscode/__tests__/writing/sourceEditor/provider.test.ts
+      command: node scripts/agents/run.mjs test vscode --spec 4.2 --plan vscode-source-editor -- __tests__/writing/sourceEditor/ __tests__/writing/citations.test.ts __tests__/writing/projects.test.ts
+  - id: 4.2.1
+    plan: vscode-source-editor
+    sha: 89b57a3d
+    goal: "The outline view follows the LabShelf editor: registerProjectViews passes activeSource to outline.follow, which 4.2 added but left without a caller."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.2"
+    edit:
+      - path: packages/vscode/src/writing/projects/tree.ts
+        lines: 214-280
+        why: ProjectViewsDeps gains activeSource; outline.follow(deps.activeSource)
+      - path: packages/vscode/src/activation/registerWritingView.ts
+        lines: 278-292
+        why: pass parts.activeSource to registerProjectViews
+      - path: packages/vscode/__tests__/writing/citations/completion.test.ts
+        lines: 220-340
+        why: registerCitationFromLibrary and registerCitationProviders now take activeSource (TS2554 at 228, 335)
+      - path: packages/vscode/__tests__/writing/projects/session.test.ts
+        lines: 80-280
+        why: ProjectSession and registerProjectSession deps now need activeSource (TS2345 at 88, 275)
+      - path: packages/vscode/__tests__/writing/build/toolchain.test.ts
+        lines: 45-125
+        why: registerCompilerStatusBar third argument and PickCompilerDeps.activeSource (TS2554 at 53, TS2345 at 118)
+      - path: packages/vscode/__tests__/writing/citations/editing.test.ts
+        lines: 40-60
+        why: EditorActionDeps.activeSource (TS2345 at 47)
+    read:
+      - path: packages/vscode/src/writing/projects/outline.ts
+        lines: 95-140
+        why: "follow(activeSource?: Pick<ActiveSource, 'current' | 'onDidChange'>)"
+    seams:
+      - path: packages/vscode/src/writing/projects/tree.ts
+        signature: 'interface ProjectViewsDeps { ...; activeSource: Pick<ActiveSource, "current" | "onDidChange"> }'
+    decided:
+      - "Only wiring: no change to outline.ts behaviour. Existing tests that build ProjectViewsDeps may need an activeSource stub; add it in those tests only if typecheck asks."
+      - "The four existing test suites listed in edit stopped compiling after 4.2 made activeSource required. Pass them a native activeSource stub that mirrors the editor the test already drives: current() returns {uri: vscode.window.activeTextEditor.document.uri} (no updates) when a text editor is active, else undefined; onDidChange is an event the test fires where it used to fire onDidChangeActiveTextEditor. Keep every assertion unchanged; if one can only pass by changing it, report that instead."
+      - "Implementers never run pnpm gate or any lint: only node scripts/agents/run.mjs typecheck vscode and the tests.command."
+    acceptance:
+      - id: 4.2.1a
+        check: node scripts/agents/run.mjs typecheck vscode is clean and registerProjectViews calls outline.follow with activeSource
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode -- __tests__/writing/
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
   - id: "4.3"
     plan: vscode-source-editor
-    sha: 5d2a6ed7
+    sha: 89b57a3d
     goal: "Comments: the LabShelf editor shows the file's comment threads from the VS Code comment manager and adds new ones through it; opening a thread focuses VS Code's Comments view."
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["4.2"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.2"
     edit:
-      - {path: packages/vscode/src/collab/comments.ts, lines: "130-321", why: "the SourceFileComments port; CommentsController implements it"}
-      - {path: packages/vscode/src/collab/node/register.ts, lines: "78-90", why: "provideSourceFileComments(comments) when the controller starts, undefined on dispose"}
-      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "1-250", why: "addComment, openComments requests; watchComments posts comments messages"}
-      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "start watchComments after ready, dispose with the panel"}
-      - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "1-200", why: "EditorComments over messages"}
-      - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "190-205", why: "bridges get comments: currentSourceFileComments() read at call time"}
+      - path: packages/vscode/src/collab/comments.ts
+        lines: 130-321
+        why: the SourceFileComments port; CommentsController implements it
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 78-90
+        why: provideSourceFileComments(comments) when the controller starts, undefined on dispose
+      - path: packages/vscode/src/writing/sourceEditor/bridges.ts
+        lines: 1-144
+        why: addComment, openComments requests; watchComments posts comments messages
+      - path: packages/vscode/src/writing/sourceEditor/provider.ts
+        lines: 1-175
+        why: start watchComments after ready, dispose with the panel
+      - path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
+        lines: 1-102
+        why: EditorComments over messages
+      - path: packages/vscode/src/activation/registerPanelCommands.ts
+        lines: 85-215
+        why: "bridges get comments: currentSourceFileComments() read at call time"
     read:
-      - {path: packages/core/src/collab/dom/editorComments.ts, lines: "160-200", why: "EditorComments and CommentSupportDeps; in document mode lineBreak is LF and savedText is the LF text, so ranges pass through unchanged"}
-      - {path: packages/core/src/writing/sourceEditor/protocol.ts, lines: "1-40", why: "the comments message {id, from, to} and the addComment/openComments methods"}
-      - {path: packages/vscode/src/collab/comments.ts, lines: "1-130", why: "ThreadView, ProjectComments.locate/anchor/textOf"}
+      - path: packages/core/src/collab/dom/editorComments.ts
+        lines: 160-200
+        why: EditorComments and CommentSupportDeps; in document mode lineBreak is LF and savedText is the LF text, so ranges pass through unchanged
+      - path: packages/core/src/writing/sourceEditor/protocol.ts
+        lines: 1-40
+        why: the comments message {id, from, to} and the addComment/openComments methods
+      - path: packages/vscode/src/collab/comments.ts
+        lines: 1-130
+        why: ThreadView, ProjectComments.locate/anchor/textOf
     seams:
-      - {path: packages/vscode/src/collab/comments.ts, signature: "export interface SourceFileComments { subscribe(uri: vscode.Uri, listener: (ranges: { id: string; from: number; to: number }[]) => void): vscode.Disposable; add(uri: vscode.Uri, range: { from: number; to: number }, text: string): Promise<void> } export function provideSourceFileComments(port: SourceFileComments | undefined): void; export function currentSourceFileComments(): SourceFileComments | undefined"}
-      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, signature: "createSourceBridges deps gain comments?: SourceFileComments; the result gains watchComments(post: (message: { type: \"comments\"; ranges: { id: string; from: number; to: number }[] }) => void): vscode.Disposable; handle(\"addComment\", { from, to, text }) and handle(\"openComments\", {})"}
+      - path: packages/vscode/src/collab/comments.ts
+        signature: "export interface SourceFileComments { subscribe(uri: vscode.Uri, listener: (ranges: { id: string; from: number; to: number }[]) => void): vscode.Disposable; add(uri: vscode.Uri, range: { from: number; to: number }, text: string): Promise<void> } export function provideSourceFileComments(port: SourceFileComments | undefined): void; export function currentSourceFileComments(): SourceFileComments | undefined"
+      - path: packages/vscode/src/writing/sourceEditor/bridges.ts
+        signature: 'createSourceBridges deps gain comments?: SourceFileComments; the result gains watchComments(post: (message: { type: "comments"; ranges: { id: string; from: number; to: number }[] }) => void): vscode.Disposable; handle("addComment", { from, to, text }) and handle("openComments", {})'
     decided:
-      - "Ranges on the port and in the protocol are character offsets in the LF text of the file; the controller converts from its file-text offsets (CRLF counts as one) when it posts and back when it adds."
-      - "subscribe calls the listener at once with the file's unresolved threads and again after each store change or relocation; a file outside every open project gets []."
-      - "The comment manager stays the only writer of comments.qmd and the Y.Map threads; the bridge only calls the port."
-      - "Without a port (the web) addComment rejects with 'comments work in the desktop app' and watchComments posts nothing."
-      - "openComments runs vscode.commands.executeCommand('workbench.panel.comments.focus')."
-      - "hostPorts' EditorComments maps {from,to} to TextRange {start,end} both ways; open() sends openComments."
+      - Ranges on the port and in the protocol are character offsets in the LF text of the file; the controller converts from its file-text offsets (CRLF counts as one) when it posts and back when it adds.
+      - subscribe calls the listener at once with the file's unresolved threads and again after each store change or relocation; a file outside every open project gets [].
+      - The comment manager stays the only writer of comments.qmd and the Y.Map threads; the bridge only calls the port.
+      - Without a port (the web) addComment rejects with 'comments work in the desktop app' and watchComments posts nothing.
+      - openComments runs vscode.commands.executeCommand('workbench.panel.comments.focus').
+      - hostPorts' EditorComments maps {from,to} to TextRange {start,end} both ways; open() sends openComments.
       - "Implementers never run pnpm gate or any lint: only node scripts/agents/run.mjs typecheck vscode and the tests.command."
     acceptance:
-      - {id: 4.3a, check: "threads of the file reach the webview with LF ranges, CRLF files included, and update when one is added elsewhere"}
-      - {id: 4.3b, check: "addComment creates the thread through the port; without a port it is refused"}
+      - id: 4.3a
+        check: threads of the file reach the webview with LF ranges, CRLF files included, and update when one is added elsewhere
+      - id: 4.3b
+        check: addComment creates the thread through the port; without a port it is refused
     tests:
-      hidden: [documents/plans/vscode-source-editor/tests/4.3/packages/vscode/__tests__/collab/comments.test.ts]
-      command: "node scripts/agents/run.mjs test vscode --spec 4.3 --plan vscode-source-editor -- __tests__/writing/sourceEditor/ __tests__/collab/"
+      hidden:
+        - documents/plans/vscode-source-editor/tests/4.3/packages/vscode/__tests__/collab/comments.test.ts
+      command: node scripts/agents/run.mjs test vscode --spec 4.3 --plan vscode-source-editor -- __tests__/writing/sourceEditor/ __tests__/collab/
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+  - id: 4.3.1
+    plan: vscode-source-editor
+    sha: 89b57a3d
+    goal: "The webview entry wires 4.3's comments port into the editor: ports.comments goes to mountSourceEditor and an inbound comments message reaches ports.deliverComments."
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.3"
+    edit:
+      - path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts
+        lines: 95-130
+        why: pass ports.comments in the mountSourceEditor deps; on message.type === 'comments' call ports.deliverComments(message), next to deliverProblems
+    read:
+      - path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
+        lines: 1-160
+        why: comments port and deliverComments added by 4.3
+      - path: packages/core/src/writing/dom/sourceEditor/editor.ts
+        lines: 240-300
+        why: "SourceEditorDeps: the comments dependency name and type"
+      - path: packages/core/src/writing/sourceEditor/protocol.ts
+        lines: 20-30
+        why: the inbound comments message
+    decided:
+      - "Only wiring: no change to hostPorts or core. If SourceEditorDeps names the dependency differently or its type does not match ports.comments, return missing with the exact mismatch."
+      - "Implementers never run pnpm gate or any lint: only node scripts/agents/run.mjs typecheck vscode and the tests.command."
+    acceptance:
+      - id: 4.3.1a
+        check: node scripts/agents/run.mjs typecheck vscode is clean; sourceEditorEntry passes ports.comments to mountSourceEditor and routes inbound comments messages to ports.deliverComments
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test vscode -- __tests__/writing/sourceEditor/
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+blocked_reason: "4.2.1: missing; 4.3.1: no report"

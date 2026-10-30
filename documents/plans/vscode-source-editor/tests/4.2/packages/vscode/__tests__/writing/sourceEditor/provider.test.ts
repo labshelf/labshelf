@@ -5,6 +5,16 @@ import { createSourceEditorProvider } from "../../../src/writing/sourceEditor/pr
 import type { SourceView } from "../../../src/writing/activeSource";
 import { fakeLogger, fakeProjects } from "../../support/writingFixtures";
 
+// The shared vscode mock has no EndOfLine enum and no languages.onDidChangeDiagnostics, which the provider uses.
+jest.mock("vscode", () => {
+  const actual = jest.requireActual("vscode");
+  return {
+    ...actual,
+    EndOfLine: { LF: 1, CRLF: 2 },
+    languages: { ...actual.languages, onDidChangeDiagnostics: jest.fn(() => ({ dispose() {} })), getDiagnostics: jest.fn(() => []) },
+  };
+});
+
 type Posted = { type: string; [key: string]: unknown };
 type Updates = { insertText(text: string): void; insertSnippet(snippet: string): void; wrap(style: "bold" | "italic"): void };
 
@@ -30,7 +40,7 @@ function fakeDocument(file: string, initial: string) {
 function fakePanel() {
   const received: Array<(message: unknown) => void> = [];
   const disposed: Array<() => void> = [];
-  const postMessage = jest.fn(async () => true);
+  const postMessage = jest.fn(async (_message: unknown) => true);
   const panel = {
     active: true, visible: true, viewColumn: 1, reveal: jest.fn(),
     webview: {
@@ -58,6 +68,10 @@ async function open() {
     projects: fakeProjects([]),
     logger: fakeLogger(),
     activeSource: { register } as never,
+    library: { listPapers: async () => [] },
+    paperNotes: { read: async () => undefined } as never,
+    noteSource: () => ({ listProjectNotes: async () => [], readProjectNote: async () => undefined, listCitedPaperIds: async () => [], readPaperNote: async () => undefined }),
+    openNotes: jest.fn(),
   });
   const host = fakePanel();
   await provider.resolveCustomTextEditor(fakeDocument("/p/main.tex", "hello") as never, host.panel as never, { isCancellationRequested: false } as never);

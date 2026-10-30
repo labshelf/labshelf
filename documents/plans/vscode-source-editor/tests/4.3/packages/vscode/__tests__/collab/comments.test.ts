@@ -83,7 +83,7 @@ describe("watchComments", () => {
     create(fake.port).watchComments(post);
     fake.emit([{ id: "t1", from: 9, to: 17 }]);
     fake.emit([]);
-    expect((post.mock.calls as Message[][]).map(([message]) => message.ranges)).toEqual([
+    expect((post.mock.calls as Message[][]).map(([message]) => message?.ranges)).toEqual([
       [{ id: "t1", from: 4, to: 12 }], [{ id: "t1", from: 9, to: 17 }], [],
     ]);
   });
@@ -101,7 +101,7 @@ describe("watchComments", () => {
     const post = jest.fn();
     const watcher = create(fake.port).watchComments(post);
     watcher.dispose();
-    expect(fake.disposables[0].dispose).toHaveBeenCalledTimes(1);
+    expect(fake.disposables[0]?.dispose).toHaveBeenCalledTimes(1);
     fake.emit([{ id: "t9", from: 1, to: 2 }]);
     expect(post).toHaveBeenCalledTimes(1);
   });
