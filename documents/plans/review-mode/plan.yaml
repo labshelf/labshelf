@@ -1,0 +1,50 @@
+schema: plan/v1
+slug: review-mode
+title: Editing and Reviewing modes for the source editor
+status: approved
+level: N3
+goal: "The LaTeX/Typst source editor in the browser and in VS Code gets an Overleaf-style mode switch in its toolbar. In Editing, edits apply as today; in Reviewing, every edit is kept in the file but tracked as a suggestion (insertions highlighted, deletions shown struck through) with its author and time, and anyone can accept or reject each one, or all, in local and shared projects."
+decisions:
+  - id: D1
+    text: "Proposal applied: the file on disk holds the suggested text. Inserted text stays in the file; deleted text is removed from the file and kept in the suggestion record. Accept drops the record. Reject of an insertion removes its range; reject of a deletion reinserts its text at its position. The PDF compiles the proposal."
+    why: The user chose it; the helper, the compiler and the document protocol stay unchanged.
+  - id: D2
+    text: "A suggestion is {id, file, kind: insert|delete, anchor: CommentAnchor, text (the deleted text, delete only), group?, author, created (ISO)}. An insert's anchor quotes the inserted text; a delete's anchor is an empty range with prefix and suffix. A replacement is a delete and an insert sharing `group`, accepted or rejected together. Suggestions are re-found like threads: live relative positions in shared projects, quote with context otherwise, else detached."
+    why: Reuses the comment anchors and their re-finding.
+  - id: D3
+    text: "Storage: a local project keeps suggestions as suggestion items in .labshelf/comments.qmd; a shared project keeps them in a `suggestions` map of the index doc (one Y.Map per suggestion, unknown keys kept), which the mirror renders into the same comments.qmd and sharing seeds from it. The file stays out of the shared text docs as today."
+    why: One review file per project; the same sync path as comments.
+  - id: D4
+    text: "Editor: a review extension in core sourceEditor holds the mode in a Compartment. In Reviewing, user edits (tr.isUserEvent input, delete, paste, drop, move, and toolbar or formatting inserts tagged with the reviewEdit annotation) are recorded in a StateField of tracked changes; the text is not altered. Exempt: fromDisk, Transaction.remote, ySyncAnnotation, undo and redo. Typing next to one's own insertion extends it; deleting inside one's own insertion shrinks it and records no deletion; an insertion that becomes empty disappears; an undo that reinserts a deletion's text at its position removes that deletion. Changes reach the store after the save flush, in saved-text offsets, as comments do."
+    why: Text stays what the file holds; the store stays the source of truth across reloads and peers.
+  - id: D5
+    text: "UI in core, the same in both hosts: insertions get a translucent accent background, deletions an inline struck-through widget; hovering a change shows a tooltip with author, relative time, Accept and Reject; a bottom panel while Reviewing or while the file has suggestions shows 'N suggestions · Accept all · Reject all'. The toolbar gets a mode dropdown: a pencil icon button with a chevron opening showMenu with radio items 'Editing — Edit content directly' and 'Reviewing — Edits become suggestions'. Hidden for read-only files."
+    why: VS Code has no LabShelf comments list, so the review UI lives in the editor.
+  - id: D6
+    text: "The mode is per user and per project and is remembered: browser local storage keyed by project, VS Code workspaceState keyed by project. It survives the browser retry() remount and the VS Code toolbar being drawn before the editor mounts. A new project starts in Editing."
+    why: Matches Overleaf; mode state lives outside the editor instance.
+  - id: D7
+    text: "The host gives the author: the browser uses shares.name() (the stored member name, also when the project is not shared); VS Code uses userName(). Accept and reject are open to anyone who can edit the file."
+    why: The same names comments and presence use.
+  - id: D8
+    text: "VS Code: the source editor protocol gains suggestions (host→webview list in saved-text offsets), addSuggestions, removeSuggestions, resolveSuggestions and reviewMode messages; its version goes up by one. The extension keeps a suggestion store beside FileComments and SharedComments."
+    why: The webview has no file access.
+  - id: D9
+    text: "Out of scope: per-author colours, forcing Reviewing on collaborators, a separate suggestions tab or list, the terminal app, suggestions in qmd notes."
+    why: Keeps the first version small.
+acceptance:
+  - id: A1
+    check: "Suggestion records round-trip through comments.qmd and the index doc map, keeping unknown attributes; old comment items are unchanged (tests)"
+  - id: A2
+    check: "In Reviewing, typing and deleting produce the tracked changes of D4; Editing produces none; disk, host, peer, undo and redo transactions are not tracked (tests)"
+  - id: A3
+    check: "Accept and reject, one, a group and all, give the right text and records in a local and a shared project (tests)"
+  - id: A4
+    check: "The source editor protocol decodes every new message and rejects malformed ones (tests)"
+  - id: A5
+    check: "By hand in the browser and VS Code: switch to Reviewing, type and delete, see the marks and tooltip, accept and reject one and all, close and reopen the file and see pending suggestions again, and a peer in a shared project sees them"
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [documents/contracts/qmd-items.md, documents/contracts/collaboration.md, documents/contracts/library-format.md, packages/core/src/collab/suggestions.ts, packages/core/src/collab/commentsQmd.ts, packages/core/src/collab/commentsFile.ts, packages/core/src/collab/shareIndexDoc.ts, packages/core/src/collab/mirror/projectMirror.ts, packages/core/src/collab/session/sharedProject.ts, packages/core/src/collab/index.ts, packages/core/__tests__/collab/]}
+  - {id: "2", file: sessions/2.yaml, depends_on: ["1"], owns: [packages/core/src/writing/dom/sourceEditor/, packages/core/__tests__/writing/dom/sourceEditor/]}
+  - {id: "3", file: sessions/3.yaml, depends_on: ["1", "2"], owns: [packages/browser/src/collab/suggestions.ts, packages/browser/src/libraryUi/editorArea/sourceTab.ts, packages/browser/src/libraryUi/mountProjectWiring.ts, packages/browser/__tests__/collab/suggestions.test.ts]}
+  - {id: "4", file: sessions/4.yaml, depends_on: ["1", "2"], owns: [packages/core/src/writing/protocol.ts, packages/core/__tests__/writing/protocol.test.ts, packages/vscode/src/writing/sourceEditor/, packages/vscode/src/collab/suggestions.ts, packages/vscode/src/collab/node/register.ts, packages/vscode/__tests__/collab/suggestions.test.ts]}

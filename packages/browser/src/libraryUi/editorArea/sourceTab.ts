@@ -4,10 +4,10 @@ import {
   type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
 } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
-import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "@labshelf/core/sourceEditor";
+import { renderSourceToolbar, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
-  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
+  addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions,
   type SourceFileMode,
 } from "../../writing";
 import type { TabContext, TabModule } from "./tabKinds";
@@ -131,7 +131,8 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   const { fs, logger, workspace } = context;
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
-  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill" }));
+  // The pane is already the editor's card: the toolbar stays on top, and the body's other children are the editor or its notice.
+  const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
   let disposed = false;
   let editor: SourceEditor | undefined;
   let loaded: ProjectEntry | undefined;
@@ -145,7 +146,6 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
       const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       loaded = readOnly ? undefined : opened.entry;
-      body.classList.toggle("ls-source-unresolved", readOnly);
       prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
@@ -155,18 +155,20 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     editor = loaded = mode = undefined;
     await previous?.dispose();
     if (disposed) return;
-    body.replaceChildren();
-    body.classList.remove("ls-source-unresolved");
+    body.replaceChildren(toolbar);
     open(retried);
   };
   const stopShares = mountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
-  open(false);
-  const actions = createSourceActions({
+  const sourceActions = createSourceActions({
     projectId, path, language: deriveSourceLanguage(path), fs, logger,
     target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined),
     openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
     papers: listCachedPaperRecords,
   });
+  const { toolbar: groups, tab: actions } = splitSourceActions(sourceActions);
+  const toolbar = renderSourceToolbar(groups);
+  body.append(toolbar);
+  open(false);
   return {
     actions,
     dispose: () => {

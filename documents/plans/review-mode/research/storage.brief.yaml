@@ -1,0 +1,45 @@
+schema: brief/v1
+area: comment thread storage and sync, as the model for tracked-change suggestions
+question: "how LabShelf anchors, stores and syncs comment threads, and what a parallel suggestions store reuses"
+sha: 3b1e2389
+reuse:
+  - {symbol: CommentAnchor, path: packages/core/src/collab/comments.ts, lines: "10-16", why: "{quote, prefix, suffix} plus optional base64 Yjs relative positions start/end"}
+  - {symbol: deriveAnchor, path: packages/core/src/collab/comments.ts, lines: "79-85", why: "local anchor, 32 chars of context"}
+  - {symbol: deriveLiveAnchor, path: packages/core/src/collab/comments.ts, lines: "87-91", why: "start binds right, end binds left"}
+  - {symbol: findThread, path: packages/core/src/collab/comments.ts, lines: "168-211", why: "live positions, then exact quote with context, then fuzzy; else detached"}
+  - {symbol: readThread, path: packages/core/src/collab/comments.ts, lines: "52-59", why: "validator model for readSuggestion"}
+  - {symbol: addLiveThread, path: packages/core/src/collab/comments.ts, lines: "173-245", why: "Y.Map per record in an index-doc map; unknown keys survive"}
+  - {symbol: readShareIndexDocComments, path: packages/core/src/collab/shareIndexDoc.ts, lines: "44-44", why: "doc.getMap('comments'); add a 'suggestions' sibling"}
+  - {symbol: parseCommentsQmd, path: packages/core/src/collab/commentsQmd.ts, lines: "13-75", why: "KNOWN_ATTRS; unknown items survive a rewrite"}
+  - {symbol: updateCommentsDocument, path: packages/core/src/collab/commentsFile.ts, lines: "50-68", why: "read-modify-write of comments.qmd through a port"}
+  - {symbol: renderCommentsFile, path: packages/core/src/collab/commentsFile.ts, lines: "67-92", why: "map -> file and file -> map"}
+  - {symbol: createSharedProjectComments, path: packages/core/src/collab/commentsFile.ts, lines: "89-150", why: "facade over a ShareSession"}
+  - {symbol: reconcileComments, path: packages/core/src/collab/mirror/projectMirror.ts, lines: "20-36", why: "mirror writes comments.qmd from the map; observer at 222"}
+  - {symbol: importComments, path: packages/core/src/collab/session/sharedProject.ts, lines: "59-72", why: "seeds the map from comments.qmd when sharing"}
+edit:
+  - {path: packages/core/src/collab/commentsQmd.ts, lines: "1-160", why: "suggestion item form, KNOWN_ATTRS"}
+  - {path: packages/core/src/collab/commentsFile.ts, lines: "1-150", why: "document editors, render/import of suggestions, shared facade"}
+  - {path: packages/core/src/collab/shareIndexDoc.ts, lines: "40-50", why: "suggestions map accessor"}
+  - {path: packages/core/src/collab/mirror/projectMirror.ts, lines: "15-225", why: "render suggestions too; observe the suggestions map"}
+  - {path: packages/core/src/collab/session/sharedProject.ts, lines: "55-75", why: "seed suggestions on share"}
+read:
+  - {path: packages/core/src/collab/cursors.ts, lines: "10-21", why: "relative position encode/decode"}
+  - {path: packages/core/src/collab/sharedFiles.ts, lines: "27-47", why: "COMMENTS_FILE_PATH exclusion"}
+callers:
+  - {symbol: updateCommentsDocument, path: packages/browser/src/collab/comments.ts, lines: "101-101"}
+  - {symbol: updateCommentsDocument, path: packages/vscode/src/collab/comments.ts, lines: "122-122"}
+  - {symbol: createSharedProjectComments, path: packages/browser/src/collab/register.ts, lines: "24-24"}
+  - {symbol: createSharedProjectComments, path: packages/vscode/src/collab/comments.ts, lines: "338-338"}
+  - {symbol: renderCommentsFile, path: packages/core/src/collab/mirror/projectMirror.ts, lines: "23-23"}
+  - {symbol: importCommentsFile, path: packages/core/src/collab/session/sharedProject.ts, lines: "64-64"}
+tests:
+  - {path: packages/core/__tests__/collab/comments.test.ts, covers: "anchors, findThread, live map helpers"}
+  - {path: packages/core/__tests__/collab/commentsFile.test.ts, covers: "file load/update, render/import, shared facade"}
+  - {path: packages/core/__tests__/collab/commentsQmd.test.ts, covers: "qmd round trips"}
+contracts: ["collaboration#comments", "collaboration#docs", "qmd-items#comments", "qmd-items#anchors", "qmd-items#merge", "library-format#project-folder-labshelf"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/collab"]
+risks:
+  - "Author is a display name with no stable id."
+  - "Local mode has only quote/prefix/suffix anchors; ranges can drift or detach."
+  - "comments.qmd is derived from the map in shared mode; hand edits after sharing are overwritten."
+  - "Old versions see suggestion items as invalid comment items: kept verbatim, not shown."

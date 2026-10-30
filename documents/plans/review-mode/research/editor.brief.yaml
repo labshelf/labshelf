@@ -1,0 +1,34 @@
+schema: brief/v1
+area: source editor edit flow for a Reviewing (suggestion) mode
+question: "where can a transactionFilter intercept user edits in plain, shared Y.Text and host-document modes; what is exempt; undo; toolbar mount points"
+sha: 3b1e2389
+reuse:
+  - {symbol: fromDisk, path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "56-57", why: "Annotation set on loadFromDisk and host resync; documentMode's extender adds it to every Transaction.remote transaction. Exemption test: tr.annotation(fromDisk) || tr.annotation(Transaction.remote)."}
+  - {symbol: createDocumentExtensions, path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "178-192", why: "template for a mode extension with an EditorState.transactionExtender"}
+  - {symbol: renderSourceToolbar, path: packages/core/src/writing/dom/sourceEditor/toolbar.ts, lines: "9-20", why: "groups of {label, glyph, run} icon buttons; a dropdown needs a new item kind"}
+  - {symbol: createFormattingKeymap, path: packages/core/src/writing/dom/sourceEditor/formatting.ts, lines: "1-75", why: "createSourceUpdates inserts/wraps dispatch user-style changes; they must become suggestions in Reviewing (tag them)"}
+edit:
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "120-140", why: "createEditorExtensions is shared by all three document modes"}
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "250-332", why: "mountSourceEditor extensions array and returned SourceEditor: add the review extension before hostExtensions and a setMode handle"}
+  - {path: packages/core/src/writing/dom/sourceEditor/toolbar.ts, lines: "1-20", why: "mode dropdown item kind"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "139-170", why: "browser toolbar mount; retry() recreates the editor and keeps the toolbar"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "120-170", why: "static TOOLBAR rendered before mount(); host document mode only"}
+read:
+  - {path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "50-175", why: "host updates arrive as Transaction.remote; resync replaces the whole doc with addToHistory false + remote + fromDisk; only ChangeSets reach the host"}
+  - {path: packages/core/src/collab/dom/editorCollab.ts, lines: "148-167", why: "yCollab applies peer edits with ySyncAnnotation (no remote/fromDisk); shared mode uses a Y.UndoManager"}
+  - {path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "50-114", why: "fromDisk, loadFromDisk whole-doc replace"}
+callers:
+  - {symbol: renderSourceToolbar, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "169-170"}
+  - {symbol: renderSourceToolbar, path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "169-169"}
+  - {symbol: mountSourceEditor, path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "139-153"}
+tests:
+  - {path: packages/core/__tests__/writing/dom/sourceEditor/documentMode.test.ts, covers: "document mode push/receive/resync"}
+  - {path: packages/core/__tests__/writing/dom/sourceEditor/folding.test.ts, covers: "pattern for an extension test"}
+contracts: ["D3 host document mode (documentMode.ts header)"]
+commands: ["node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/dom/sourceEditor"]
+risks:
+  - "Use tr.isUserEvent input|delete|paste|drop|move as the positive test; exempt fromDisk, Transaction.remote, ySyncAnnotation, undo/redo."
+  - "Shared mode undo is a Y.UndoManager whose reverts arrive as ySync transactions; suggestion state in a CM StateField must be mapped, and re-found from the store after a whole-doc reload."
+  - "Marks in a StateField do not reach host, disk or peers: the store is the source of truth across reloads."
+  - "VS Code toolbar is built before mount and browser retry() remounts the editor: mode state lives outside the SourceEditor instance."
+  - "Working tree has uncommitted edits in these files; line numbers are of the working tree."

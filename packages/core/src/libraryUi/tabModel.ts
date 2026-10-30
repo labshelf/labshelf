@@ -3,7 +3,7 @@ import { PAPERS_DIR } from "../library/index.js";
 import { baseName, isLibraryPath } from "../path/index.js";
 import type { IconName } from "../ui/index.js";
 
-export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search";
+export type TabKindName = "library" | "spaces" | "space" | "all-projects" | "templates" | "source" | "preview" | "comments" | "history" | "search" | "paper";
 
 export type TabParams = Readonly<Record<string, string>>;
 
@@ -34,6 +34,8 @@ export const TAB_KIND_SPECS: Record<TabKindName, TabKindSpec> = {
   comments: define("comments", ["projectId"], () => "Comments", "message"),
   history: define("history", ["projectId"], () => "History", "history"),
   search: define("search", ["projectId"], () => "Search", "search"),
+  // The app retitles it with the paper's title; the spec only knows the id.
+  paper: define("paper", ["paperId"], () => "PDF", "book-open"),
 };
 
 const isKindName = (name: string): name is TabKindName => Object.hasOwn(TAB_KIND_SPECS, name);

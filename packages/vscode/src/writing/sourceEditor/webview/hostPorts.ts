@@ -1,6 +1,6 @@
 // The editor's dependencies inside the webview, each a request to the extension host (writing/sourceEditor/bridges.ts) or a feed of its messages.
 import type { DefinitionDeps, SourceEditorDeps } from "@labshelf/core/sourceEditor";
-import type { NoteInsertSource, PaperNotesStore, SourceEditorInbound, SourceEditorOutbound, TextRange } from "@labshelf/core";
+import type { NoteInsertSource, PaperNotesStore, SourceEditorAction, SourceEditorInbound, SourceEditorOutbound, TextRange } from "@labshelf/core";
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
 type Response = Extract<SourceEditorInbound, { type: "response" }>;
@@ -28,6 +28,8 @@ export interface HostPorts {
   openTab: OpenTab;
   problems: ProblemSource;
   comments: CommentsPort;
+  /** Runs a toolbar action on the host (an insert dialog, the citation picker, project search or history). */
+  runAction(action: SourceEditorAction): void;
   /** Settles the request a response answers. */
   settle(response: Response): void;
   /** Gives the listeners the file's current problems. */
@@ -154,6 +156,7 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     openTab: (_kind, params) => { void ask("openFile", { path: params.path }).catch(() => undefined); },
     problems: problems.port,
     comments: comments.port,
+    runAction: (action) => { void ask("runAction", { action }).catch(() => undefined); },
     settle,
     deliverProblems: problems.deliver,
     deliverComments: comments.deliver,

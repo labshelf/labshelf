@@ -1,7 +1,7 @@
 // What the LabShelf editor asks of the extension host besides its text: the file's diagnostics (D8), the library's papers, paper notes, note insertables and the project's files, each backed by an existing VS Code service.
 import * as vscode from "vscode";
 
-import type { ILogger, NoteInsertSource, PaperNotesStore, PaperRecord, SourceEditorInbound } from "@labshelf/core";
+import { SOURCE_EDITOR_ACTIONS, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceEditorAction, type SourceEditorInbound } from "@labshelf/core";
 import type { SourceFileComments } from "../../collab/index.js";
 import { openSourceAt } from "../openSourceAt.js";
 
@@ -109,6 +109,13 @@ async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unkn
   await openSourceAt(target, typeof line === "number" ? line : undefined);
 }
 
+/** Runs a toolbar action as its labshelf.writing command, which acts on the focused LabShelf editor like the editor title buttons did. */
+async function runAction(params: unknown): Promise<void> {
+  const action = stringParam(params, "action");
+  if (!(SOURCE_EDITOR_ACTIONS as readonly string[]).includes(action)) { throw new Error(`unknown action ${action}`); }
+  await vscode.commands.executeCommand(`labshelf.writing.${action as SourceEditorAction}`);
+}
+
 function problemsOf(uri: vscode.Uri): ProblemsMessage {
   return {
     type: "problems",
@@ -143,6 +150,7 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
       case "openFile": await openProjectFile(projectRoot, params); return undefined;
       case "addComment": await addComment(params); return undefined;
       case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
+      case "runAction": await runAction(params); return undefined;
       default: throw new Error(`not available: ${method}`);
     }
   }

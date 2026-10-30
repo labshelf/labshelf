@@ -6,7 +6,7 @@ import {
   type Annotation, type HighlightChoice, type ILogger, type LibraryFileSystem, type PaperRecord, type ProjectEntry,
 } from "@labshelf/core";
 import { askInputBox, pickQuickEntry, renderElement, renderIcon, showToast, type EditorTabAction, type IconName, type QuickPickEntry } from "@labshelf/core/dom";
-import type { SourceLanguage, SourceUpdates } from "@labshelf/core/sourceEditor";
+import type { SourceLanguage, SourceToolbarButton, SourceUpdates } from "@labshelf/core/sourceEditor";
 import type { PageShare } from "../collab";
 import type { TabContext } from "../libraryUi/editorArea";
 import { createSidecarPort } from "../storage";
@@ -222,6 +222,23 @@ export function createSourceActions({ path, language, fs, logger, target, openHi
     { id: "updateFromNote", icon: "refresh", label: "Update from note", overflow: true, run: withNoteLinks((links) => links.update()) },
     { id: "showNoteDifferences", icon: "replace", label: "Show differences", overflow: true, run: withNoteLinks((links) => links.showDifferences()) },
   ];
+}
+
+/** The ids of the actions the in-editor toolbar shows, in groups like the VS Code editor's; the other actions stay in the tab's menu. */
+const TOOLBAR_GROUPS: readonly (readonly string[])[] = [
+  ["bold", "italic"],
+  ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary"],
+  ["searchInProject", "history"],
+];
+
+/** Splits the source actions into the toolbar's button groups and the actions left for the tab strip. */
+export function splitSourceActions(actions: readonly EditorTabAction[]): { toolbar: SourceToolbarButton[][]; tab: EditorTabAction[] } {
+  const byId = new Map(actions.map((action) => [action.id, action]));
+  const shown = new Set(TOOLBAR_GROUPS.flat());
+  return {
+    toolbar: TOOLBAR_GROUPS.map((ids) => ids.flatMap((id) => byId.get(id) ?? []).map(({ label, icon, run }) => ({ label, glyph: icon, run }))),
+    tab: actions.filter((action) => !shown.has(action.id)),
+  };
 }
 
 function readOnlyNotice(iconName: IconName, text: string, action: { label: string; icon: IconName; run: () => void }): HTMLElement {

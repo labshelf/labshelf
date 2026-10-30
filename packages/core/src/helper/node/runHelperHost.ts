@@ -9,7 +9,7 @@ import type { ICellRunner } from "../../qmd/compute/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
-import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, locateTool, type PythonProvider } from "../../qmd/compute/node/index.js";
+import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, locateTool, type NodeCellRunnerOptions, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
@@ -126,6 +126,8 @@ export interface HelperHostOptions {
   typstWasm(): Promise<Uint8Array>;
   /** The program and arguments that start this helper's `--biber` mode; latexmk then runs biber's WASM build through it. Native biber when absent. */
   biber?: readonly string[];
+  /** The cell driver scripts, which each composition root locates in its own bundle; beside this module when absent. */
+  cellDrivers?: NodeCellRunnerOptions["drivers"];
   /** The managed Python the helper installs and reports; the shared one when absent. */
   python?: PythonProvider;
   /** Runs after the hello opened the session. */
@@ -170,9 +172,9 @@ function createBuildAndPublish(options: HelperHostOptions, projects: LibraryProj
 }
 
 /** The cell runner over the managed Python and the located Wolfram and R tools, with the handlers that serve the page. */
-function createCells(python: PythonProvider, projects: LibraryProjects, logger: HelperLogger) {
+function createCells(python: PythonProvider, projects: LibraryProjects, logger: HelperLogger, drivers: NodeCellRunnerOptions["drivers"] | undefined) {
   const runner = createNodeCellRunner({
-    python, drivers: bundledCellDrivers(), logger,
+    python, drivers: drivers ?? bundledCellDrivers(), logger,
     locate: (language) => locateTool(language === "mathematica" ? "wolframscript" : "Rscript"),
   });
   const cells = createCellHandlers({ runner, resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
@@ -187,7 +189,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const python = options.python ?? createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
   const projects = createLibraryProjects({ logger });
   const { builds, publishing } = createBuildAndPublish(options, projects, tex);
-  const { runner, cells } = createCells(python, projects, logger);
+  const { runner, cells } = createCells(python, projects, logger, options.cellDrivers);
   const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
