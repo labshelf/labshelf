@@ -10,8 +10,7 @@ import { tags } from "@lezer/highlight";
 import type * as Y from "yjs";
 import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
-import { createCollabExtensions } from "../../../collab/dom/editorCollab.js";
-import { createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/editorComments.js";
+import { createCollabExtensions, createCommentSupport, type CommentSupport, type CommentSupportDeps, type EditorComments } from "../../../collab/dom/index.js";
 import { createLatexSupport } from "./latex.js";
 import { typstLanguage, createTypstSupport, type DefinitionDeps } from "./typst.js";
 import { createSourceUpdates, createFormattingKeymap, deriveSourceLanguage, type SourceUpdates } from "./formatting.js";
@@ -19,7 +18,8 @@ import { explicitSaves, fromDisk, loadFromDisk, registerOpenEditor, type HelperU
 import { createNoteGutter, createNoteRefresh } from "./noteGutter.js";
 import { createNoteLinks, type NoteLinkActions } from "./noteLinks.js";
 import { createDocumentExtensions, documentDirty, documentSync, type SourceDocument } from "./documentMode.js";
-import { listChanges } from "../../sourceEditor/authority.js";
+import { listChanges } from "../../authority.js";
+import { createSelectionListener } from "./selectionListener.js";
 
 const theme = EditorView.theme({
   "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
@@ -267,6 +267,10 @@ export interface SourceEditorDeps {
   readOnly?: boolean;
   /** The host's copy of the file (D3): the editor starts from its text, sends edits to it and never writes the file; the host saves it and reports it dirty. */
   document?: SourceDocument;
+  /** CodeMirror extensions added after the editor's own, e.g. a host's peer cursors. */
+  extensions?: readonly Extension[];
+  /** Runs when the main selection changes; offsets are in the editor's text and the line is 1-based, the line of the head. */
+  onSelection?(selection: { anchor: number; head: number; line: number }): void;
   logger: ILogger;
   onDirty(dirty: boolean): void;
   /** Runs after each successful write of the file. */
@@ -304,8 +308,9 @@ function newClientID(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function readOnlyExtensions(readOnly: boolean | undefined): Extension[] {
-  return readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [];
+/** What the host asks of the editor, last in the list so it wins: read-only, the selection hook and its own extensions. */
+function hostExtensions({ readOnly, onSelection, extensions }: SourceEditorDeps): Extension[] {
+  return [...(readOnly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []), ...(onSelection ? [createSelectionListener(onSelection)] : []), ...(extensions ?? [])];
 }
 
 /** Reacts to each edit: schedules the save, tells the helper, and refreshes the labels of a LaTeX file; loading from disk is no edit to save. */
@@ -334,6 +339,23 @@ function createSaver(deps: SourceEditorDeps, text: () => string, saved: { text: 
   });
 }
 
+function registerEditor(view: EditorView, deps: SourceEditorDeps, flush: () => Promise<boolean>, saved: { text: string }, onReloaded: () => void): () => void {
+  return registerOpenEditor(deps.projectId, deps.path, {
+    revealLine: (line) => showLine(view, line), flush,
+    // The host's document follows the file itself, so there is nothing to load.
+    reload: deps.document ? async () => undefined : () => loadFromDisk(view, deps, (disk) => { saved.text = disk; }).then(onReloaded),
+  });
+}
+
+/** Runs the stop callbacks, then settles the pending edits and removes the view. */
+async function closeEditor(view: EditorView, { document }: SourceEditorDeps, flush: () => Promise<boolean>, stops: ReadonlyArray<(() => void) | undefined>): Promise<void> {
+  for (const stop of stops) stop?.();
+  // A host document is not waited on: the host may never confirm, and it keeps what it accepted.
+  if (document) documentSync(view)?.sendNow();
+  else await flush();
+  view.destroy();
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab, document } = deps;
   const labels = createProjectLabels(logger);
@@ -360,33 +382,18 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshNotes(); refreshLinks(); } };
   const onUpdate = changeListener({ path, save, helperEdits, labels });
-  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...readOnlyExtensions(deps.readOnly)];
+  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), onUpdate, ...hostExtensions(deps)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   refreshNotes();
   refreshLinks();
   const stopProblems = deps.problems?.(path, (problems) => applyProblems(view!, problems));
   const stopComments = commentsSupport?.attach(view);
-  const unregister = registerOpenEditor(deps.projectId, path, {
-    revealLine: (line) => showLine(view!, line), flush: save.flush,
-    // The host's document follows the file itself, so there is nothing to load.
-    reload: document ? async () => undefined : () => loadFromDisk(view!, deps, (disk) => { saved.text = disk; }).then(() => { refreshNotes(); refreshLinks(); }),
-  });
+  const unregister = registerEditor(view, deps, save.flush, saved, () => { refreshNotes(); refreshLinks(); });
   return {
     ...createSourceUpdates(view, kind),
     noteLinks: noteLinks && noteLinks.actionsFor(view),
     flush: save.flush,
-    async dispose() {
-      noteRefresh.close();
-      noteLinks?.close();
-      unregister();
-      stopProblems?.();
-      stopComments?.();
-      labels.dispose();
-      // A host document is not waited on: the host may never confirm, and it keeps what it accepted.
-      if (document) documentSync(view!)?.sendNow();
-      else await save.flush();
-      view?.destroy();
-    },
+    dispose: () => closeEditor(view!, deps, save.flush, [() => noteRefresh.close(), () => noteLinks?.close(), unregister, stopProblems, stopComments, () => labels.dispose()]),
   };
 }
