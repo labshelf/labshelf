@@ -197,6 +197,7 @@ export function mountSpaceDiscussions(root: HTMLElement, context: OverviewContex
     if (message.type === "spaceDiscussions" && message.spaceId === discussionsSpaceId(s)) setThreads(s, message.threads);
     else if (message.type === "spaceQmd" && message.spaceId === discussionsSpaceId(s) && message.path === s.selected) { s.items = message.items; paintMessages(s); }
     else if (message.type === "space.cellState") s.runs.show(message.requestId, message.state);
+    else if (message.type === "space.cellPreview") s.runs.showPreview(message.requestId, message.result);
   });
   paintTopics(s); paintThread(s);
 
