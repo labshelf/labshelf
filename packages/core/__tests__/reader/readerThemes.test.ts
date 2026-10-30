@@ -1,8 +1,8 @@
 import { ReaderHostController, isWebviewMessage, type HostToWebview } from "../../src/reader/index";
+import { normalizePaperSidecar, serializePaperSidecar } from "../../src/reader/sidecar/index";
 import {
-  ReaderThemeStore, mergeReaderThemes, normalizePaperSidecar, parseReaderThemes, serializePaperSidecar, serializeReaderThemes,
-  type ReaderThemesPort,
-} from "../../src/reader/sidecar/index";
+  ReaderThemeStore, mergeReaderThemes, parseReaderThemes, serializeReaderThemes, type ReaderThemesPort,
+} from "../../src/reader/readerThemes";
 import type { CustomReaderTheme } from "../../src/model/index";
 import { deriveReaderTheme, isLightColour } from "../../src/ui/tokens/index";
 import { setupHost, sidecar } from "./hostFixture";
