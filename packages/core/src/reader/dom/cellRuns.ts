@@ -1,8 +1,11 @@
 // Runs the code cells of reader note editors through the host: one run group per surface, and a Run hook only while the host can run cells.
 import type { CellLanguage } from "../../qmd/compute/index.js";
-import type { CellRunState } from "../../qmd/compute/index.js";
-import { createCellRunGroup } from "../../qmd/dom/index.js";
+import type { CellResult, CellRunState } from "../../qmd/compute/index.js";
+import { createCellRunGroup, type CellRunGroup } from "../../qmd/dom/index.js";
 import type { HostBridge } from "./readerSession.js";
+
+/** The editor's `onRunCell` a run group hands out; a preview passes its callback as the fifth argument. */
+type CellRunGroupRun = ReturnType<CellRunGroup["attach"]>;
 
 export class ReaderCellRuns {
   private canRun = false;
@@ -24,15 +27,20 @@ export class ReaderCellRuns {
   /** Routes a host `cellState`; a request this surface did not send is ignored. */
   show(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
+  /** Routes a host `cellPreview`; a request this surface did not send is ignored. */
+  showPreview(requestId: string, result: CellResult): void { this.runs.showPreview(requestId, result); }
+
   /** Removes the status row of an item that is gone. */
   drop(itemId: string): void { this.runs.drop(itemId); }
 
   /** The `onRunCell` and `onRestartCell` options of an editor mounted in `root` for item `itemId`, or none while the host cannot run cells. */
-  option(itemId: string, root: HTMLElement): { onRunCell?(label: string, code: string, language: CellLanguage): void; onRestartCell?(language: CellLanguage): void } {
+  option(itemId: string, root: HTMLElement): { onRunCell?: CellRunGroupRun; onRestartCell?(language: CellLanguage): void } {
     if (!this.canRun) { return {}; }
     const onRunCell = this.runs.attach(
       itemId, root,
-      (label, code, requestId, language) => this.host.post({ command: "runCell", itemId, label, code, language, requestId }),
+      (label, code, requestId, language, params, preview) => this.host.post({
+        command: "runCell", itemId, label, code, language, requestId, ...(params ? { params } : {}), ...(preview ? { preview: true } : {}),
+      }),
       (language) => this.host.post({ command: "restartCell", language }),
     );
     const onRestartCell = this.runs.restartCell(itemId);

@@ -13,7 +13,7 @@ import { escapeHtml, renderIcon, type IconName } from "../../../ui/index.js";
 import { createDebouncer } from "../../../async/index.js";
 import { addNote, editNote } from "../flows/index.js";
 import type { CellLanguage } from "../../../qmd/compute/index.js";
-import { createCellRunGroup, mountQmdEditor, type QmdEditorHandle } from "../../../qmd/dom/index.js";
+import { createCellRunGroup, mountQmdEditor, type CellRunGroup, type QmdEditorHandle } from "../../../qmd/dom/index.js";
 
 export interface PaneState {
   ctx: UiContext;
@@ -113,7 +113,7 @@ export interface NoteEditor {
 
 /** The editor options that run and restart a note item's cells. */
 interface RunOptions {
-  onRunCell(label: string, code: string, language: CellLanguage): void;
+  onRunCell: ReturnType<CellRunGroup["attach"]>;
   onRestartCell?(language: CellLanguage): void;
 }
 
@@ -132,7 +132,10 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
   // A cellState for a request no status started is ignored. Listens only once a status exists.
   let off: (() => void) | null = null;
   const listen = (): void => {
-    off ??= ctx.transport.subscribe((m) => { if (m.type === "paper.cellState") group.show(m.requestId, m.state); });
+    off ??= ctx.transport.subscribe((m) => { 
+      if (m.type === "paper.cellState") group.show(m.requestId, m.state);
+      else if (m.type === "paper.cellPreview") group.showPreview(m.requestId, m.result);
+    });
   };
   return {
     attach(editorEl, paper, itemId) {
@@ -140,7 +143,9 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
       listen();
       const key = `${paper}\n${itemId}`;
       const onRunCell = group.attach(key, editorEl,
-        (label, code, requestId, language) => ctx.transport.post({ type: "paper.runCell", id: paper, itemId, label, code, language, requestId }),
+        (label, code, requestId, language, params, preview) => ctx.transport.post({
+          type: "paper.runCell", id: paper, itemId, label, code, language, requestId, ...(params ? { params } : {}), ...(preview ? { preview: true } : {}),
+        }),
         (language) => ctx.transport.post({ type: "paper.restartCell", id: paper, language }));
       const onRestartCell = group.restartCell(key);
       return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
