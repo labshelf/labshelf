@@ -1,5 +1,13 @@
 // Which source editor the user is working in (D7): the focused LabShelf editor or the native text editor, behind one interface so Build, Show in Preview, SyncTeX and the preview's focus follower do not care which.
 import * as vscode from "vscode";
+import type { WrapKind } from "@labshelf/core";
+
+/** The text updates the LabShelf editor accepts, the same as core's SourceUpdates. */
+export interface SourceViewUpdates {
+  insertText(text: string): void;
+  insertSnippet(snippet: string): void;
+  wrap(style: WrapKind): void;
+}
 
 /** One open source editor. Lines are 1-based. */
 export interface SourceView {
@@ -8,7 +16,8 @@ export interface SourceView {
   line(): number;
   /** Scrolls the editor so the line is in the middle. */
   reveal(line: number): void;
-  updates?: unknown;
+  /** Edits the LabShelf editor's document through its page; a native view has none and is edited as a text editor. */
+  updates?: SourceViewUpdates;
 }
 
 export interface ActiveSource {

@@ -3,7 +3,8 @@ import * as vscode from "vscode";
 
 import { LATEX_ENGINES, formatEngineLabel, type LatexEngine, type TexSetupAsk } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
-import { findOwningProject, type ReadyProject } from "../projects/index.js";
+import type { ActiveSource } from "../activeSource.js";
+import type { ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readActiveProject } from "./builds.js";
 
@@ -61,6 +62,7 @@ interface PickCompilerDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: Pick<WritingProjects, "data" | "list" | "paths" | "reload">;
+  activeSource: Pick<ActiveSource, "current">;
 }
 
 type EnginePick = vscode.QuickPickItem & { engine: LatexEngine };
@@ -74,8 +76,7 @@ function enginePick(engine: LatexEngine, current: LatexEngine | undefined): Engi
 }
 
 async function pickCompiler(deps: PickCompilerDeps): Promise<void> {
-  const active = vscode.window.activeTextEditor?.document.uri.fsPath;
-  const project = active ? findOwningProject(deps.projects, active) : undefined;
+  const project = readActiveProject(deps.projects, deps.activeSource);
   if (project?.settings.format !== "latex") { return; }
   const current = project.settings.engine;
   const picked = await vscode.window.showQuickPick(
@@ -91,13 +92,15 @@ export function registerPickCompiler(deps: PickCompilerDeps): void {
 }
 
 /** Shows the LaTeX compiler of the project that owns the active editor's file in the status bar and opens the compiler pick on click. */
-export function registerCompilerStatusBar(context: vscode.ExtensionContext, projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">): void {
+export function registerCompilerStatusBar(
+  context: vscode.ExtensionContext, projects: Pick<WritingProjects, "list" | "paths" | "onDidChange">, activeSource: Pick<ActiveSource, "current" | "onDidChange">,
+): void {
   // Priority 49 places it right after the main-document item (50).
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 49);
   item.command = PICK_COMPILER_COMMAND;
 
   const update = (): void => {
-    const project = readActiveProject(projects);
+    const project = readActiveProject(projects, activeSource);
     if (project?.settings.format !== "latex") {
       item.hide();
       return;
@@ -108,6 +111,6 @@ export function registerCompilerStatusBar(context: vscode.ExtensionContext, proj
     item.show();
   };
 
-  context.subscriptions.push(item, projects.onDidChange(update), vscode.window.onDidChangeActiveTextEditor(update));
+  context.subscriptions.push(item, projects.onDidChange(update), activeSource.onDidChange(update));
   update();
 }

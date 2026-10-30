@@ -10,6 +10,7 @@ import {
 import { createPaperHover, type CitationSession } from "./index.js";
 import { findOwningProject, type ProjectFinder, type ReadyProject, type WritingHost } from "../projects/index.js";
 import { IMPORT_SHARE_COMMAND } from "../../share/index.js";
+import type { ActiveSource, SourceView, SourceViewUpdates } from "../activeSource.js";
 
 // ---- Language of the active editor
 
@@ -27,9 +28,23 @@ const COMMANDS: Record<WrapKind, string> = { bold: "labshelf.writing.bold", ital
 interface EditorActionDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
+  activeSource: Pick<ActiveSource, "current">;
+}
+
+/** The updates of the focused LabShelf editor; undefined when a native editor is the current source. */
+function readLabShelfView(activeSource: Pick<ActiveSource, "current">): (SourceView & { updates: SourceViewUpdates }) | undefined {
+  const view = activeSource.current();
+  return view?.updates ? { ...view, updates: view.updates } : undefined;
+}
+
+/** Typst for a `.typ` file, LaTeX for any other, as the LabShelf editor decides. */
+function readViewLanguage(view: SourceView): WritingLanguage {
+  return view.uri.fsPath.endsWith(".typ") ? "typst" : "latex";
 }
 
 async function wrapActiveSelections(deps: EditorActionDeps, style: WrapKind): Promise<void> {
+  const labshelf = readLabShelfView(deps.activeSource);
+  if (labshelf) { labshelf.updates.wrap(style); return; }
   const editor = vscode.window.activeTextEditor;
   const language = readWritingLanguage(editor);
   if (!editor || !language) { return; }
@@ -78,8 +93,44 @@ async function copyIntoProject(projects: ProjectFinder, project: ReadyProject, s
   return target;
 }
 
-async function insertImage(editor: vscode.TextEditor, language: WritingLanguage, projects: ProjectFinder, logger: ILogger | undefined): Promise<void> {
-  const documentPath = editor.document.uri.fsPath;
+/** Where an insert goes: the native text editor or the LabShelf editor's updates, with the document's language and path. */
+interface InsertTarget {
+  language: WritingLanguage;
+  documentPath: string;
+  insertText(text: string): Thenable<unknown> | void;
+  insertSnippet(snippet: string): Thenable<unknown> | void;
+}
+
+function createNativeTarget(editor: vscode.TextEditor, language: WritingLanguage): InsertTarget {
+  return {
+    language,
+    documentPath: editor.document.uri.fsPath,
+    // A snippet inserts its text literally once `\`, `$` and `}` are escaped.
+    insertText: (text) => editor.insertSnippet(new vscode.SnippetString(text.replace(/[\\$}]/g, "\\$&"))),
+    insertSnippet: (snippet) => editor.insertSnippet(new vscode.SnippetString(snippet)),
+  };
+}
+
+function createLabShelfTarget(view: SourceView, updates: SourceViewUpdates): InsertTarget {
+  return {
+    language: readViewLanguage(view),
+    documentPath: view.uri.fsPath,
+    insertText: (text) => updates.insertText(text),
+    insertSnippet: (snippet) => updates.insertSnippet(snippet),
+  };
+}
+
+/** The LabShelf editor when it is the current source, otherwise the native writing editor; undefined when neither takes an insert. */
+function findInsertTarget(activeSource: Pick<ActiveSource, "current">): InsertTarget | undefined {
+  const view = activeSource.current();
+  if (view?.updates) { return createLabShelfTarget(view, view.updates); }
+  const editor = vscode.window.activeTextEditor;
+  const language = readWritingLanguage(editor);
+  return editor && language ? createNativeTarget(editor, language) : undefined;
+}
+
+async function insertImage(target: InsertTarget, projects: ProjectFinder, logger: ILogger | undefined): Promise<void> {
+  const { language, documentPath } = target;
   const project = findOwningProject(projects, documentPath);
   if (!project) { return; }
   const picked = await vscode.window.showOpenDialog({
@@ -103,13 +154,14 @@ async function insertImage(editor: vscode.TextEditor, language: WritingLanguage,
     }
   }
   const relative = paths.relative(deriveImageBaseFolder(language, project.folder, project.main, documentPath, paths), image).split(paths.sep).join("/");
-  await editor.insertSnippet(new vscode.SnippetString(createImageSnippet(language, relative)));
+  await target.insertSnippet(createImageSnippet(language, relative));
 }
 
 interface InsertActionDeps {
   context: vscode.ExtensionContext;
   host: WritingHost;
   projects: ProjectFinder;
+  activeSource: Pick<ActiveSource, "current">;
 }
 
 interface SymbolItem extends vscode.QuickPickItem {
@@ -125,13 +177,13 @@ function symbolItems(language: WritingLanguage): SymbolItem[] {
   });
 }
 
-async function insertSymbol(editor: vscode.TextEditor, language: WritingLanguage): Promise<void> {
-  const picked = await vscode.window.showQuickPick(symbolItems(language), { title: "Insert Symbol", placeHolder: "Search by name, e.g. alpha or arrow", matchOnDescription: true });
+async function insertSymbol(target: InsertTarget): Promise<void> {
+  const picked = await vscode.window.showQuickPick(symbolItems(target.language), { title: "Insert Symbol", placeHolder: "Search by name, e.g. alpha or arrow", matchOnDescription: true });
   if (!picked?.source) { return; }
-  await editor.insertSnippet(new vscode.SnippetString().appendText(picked.source));
+  await target.insertText(picked.source);
 }
 
-async function insertTable(editor: vscode.TextEditor, language: WritingLanguage): Promise<void> {
+async function insertTable(target: InsertTarget): Promise<void> {
   const input = await vscode.window.showInputBox({
     title: "Insert Table",
     prompt: "Columns x rows",
@@ -140,20 +192,19 @@ async function insertTable(editor: vscode.TextEditor, language: WritingLanguage)
   });
   const size = input === undefined ? undefined : parseTableSize(input);
   if (!size) { return; }
-  await editor.insertSnippet(new vscode.SnippetString(createTableSnippet(language, size)));
+  await target.insertSnippet(createTableSnippet(target.language, size));
 }
 
 export function registerInsertActions(deps: InsertActionDeps): void {
-  const actions: Record<string, (editor: vscode.TextEditor, language: WritingLanguage) => Promise<void>> = {
+  const actions: Record<string, (target: InsertTarget) => Promise<void>> = {
     "labshelf.writing.insertSymbol": insertSymbol,
     "labshelf.writing.insertTable": insertTable,
-    "labshelf.writing.insertImage": (editor, language) => insertImage(editor, language, deps.projects, deps.host.current()?.logger),
+    "labshelf.writing.insertImage": (target) => insertImage(target, deps.projects, deps.host.current()?.logger),
   };
   for (const [command, action] of Object.entries(actions)) {
     deps.context.subscriptions.push(vscode.commands.registerCommand(command, () => {
-      const editor = vscode.window.activeTextEditor;
-      const language = readWritingLanguage(editor);
-      return editor && language ? action(editor, language) : undefined;
+      const target = findInsertTarget(deps.activeSource);
+      return target ? action(target) : undefined;
     }));
   }
 }

@@ -171,7 +171,7 @@ function registerBuildAndPreviewCommands(
     setEngine: async (project, engine) => { await setEngine({ host, projects }, project, engine); },
     fixes: (projectFolder) => citationFixDeps(controller, listPapers, publishedLookup, projectFolder, projects.paths),
   });
-  const session = registerProjectSession({ context, host, projects, previews });
+  const session = registerProjectSession({ context, host, projects, previews, activeSource });
   const diagnostics = new BuildProblems();
   context.subscriptions.push(diagnostics);
   const builds = {
@@ -186,17 +186,17 @@ function registerBuildAndPreviewCommands(
   registerMarkVersionCommand({ context, host, projects, builders, onMarked: (project, name) => history?.recordVersion(project, name) });
   registerShowPreview({ context, projects, previews, activeSource });
   registerShowInPreview({ context, projects, previews, activeSource });
-  registerEditorActions({ context, host });
-  registerInsertActions({ context, host, projects });
+  registerEditorActions({ context, host, activeSource });
+  registerInsertActions({ context, host, projects, activeSource });
   registerProjectSearch({ context, projects, host });
-  registerPickCompiler({ context, host, projects });
-  registerCompilerStatusBar(context, projects);
+  registerPickCompiler({ context, host, projects, activeSource });
+  registerCompilerStatusBar(context, projects, activeSource);
   registerLatexWorkshopNotice({ context, host, projects });
   return { session, previews, recompile };
 }
 
 function registerEditingSupport(parts: WritingParts): void {
-  const { context, controller, projects, citeSections } = parts;
+  const { context, controller, projects, citeSections, activeSource } = parts;
   const session = (): ReturnType<CitationWorkspace["session"]> => {
     const services = controller.currentServices();
     return services ? {
@@ -207,7 +207,7 @@ function registerEditingSupport(parts: WritingParts): void {
     } : undefined;
   };
   const logger = (): ILogger | undefined => controller.currentServices()?.logger;
-  registerCitationProviders(context, { projects, session });
+  registerCitationProviders(context, { projects, session }, activeSource);
   registerPaperLinks(context, { session });
   registerLatexCommandCompletion(context);
   registerLatexEditing(context, { projects, logger });
@@ -282,7 +282,7 @@ export function registerWritingView(
   const setStatus = async (ids: string[], status: ReadingStatus): Promise<string[]> =>
     await controller.currentServices()?.paperService.updatePapersStatus(ids, status) ?? ids;
   const { projectsSource, projectTrees } = registerProjectViews({
-    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus, notes,
+    context, projects, figures, session, logger, arcIcon, readingLists, outcomes, previews, onDidChangeBacklinks: backlinks.onDidChange, setStatus, notes, activeSource: parts.activeSource,
   });
   const projectLibrary = registerAllProjects({
     context, host, projects, session, source: projectsSource, logger, outcomes, builds: previews.builds,

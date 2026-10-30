@@ -23,6 +23,7 @@ import {
   type ProjectFormat,
 } from "@labshelf/core";
 import { createPaperPickItem } from "../../command/index.js";
+import type { ActiveSource } from "../activeSource.js";
 import type { ReadyProject } from "../projects/index.js";
 import { findCitingProject, openEditorSources, type CitationSession, type CitationWorkspace } from "./backlinks.js";
 import { CitationHoverProvider } from "./hover.js";
@@ -236,24 +237,35 @@ async function insertCitation(
   return applied;
 }
 
-async function citeFromLibrary(workspace: CitationWorkspace): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
+async function citeFromLibrary(workspace: CitationWorkspace, activeSource: Pick<ActiveSource, "current">): Promise<void> {
+  const view = activeSource.current();
+  // A LabShelf editor takes the citation through its page and the native editor is not touched.
+  const labshelf = view?.updates ? { uri: view.uri, updates: view.updates } : undefined;
+  const editor = labshelf ? undefined : vscode.window.activeTextEditor;
+  const uri = labshelf?.uri ?? editor?.document.uri;
   const session = workspace.session();
   // The project's source extension stands in for the language id: Typst has no built-in one.
-  const project = editor && findCitingProject(workspace.projects, editor.document.uri.fsPath);
-  if (!editor || !session || !project) { return; }
+  const project = uri && findCitingProject(workspace.projects, uri.fsPath);
+  if (!uri || !session || !project) { return; }
   const paper = await pickPaper(session);
   if (!paper) { return; }
   const choice = await pickHighlight(session, paper);
   if (!choice) { return; }
-  if (await insertCitation(editor, session, project.settings.format, paper, choice)) {
+  let inserted: boolean;
+  if (labshelf) {
+    labshelf.updates.insertText(createCitationSnippet(project.settings.format, paper.citeKey, deriveChoiceCitationSpec(choice)));
+    inserted = true;
+  } else {
+    inserted = await insertCitation(editor!, session, project.settings.format, paper, choice);
+  }
+  if (inserted) {
     // The paper's BibTeX entry reaches labshelf.bib through the bibliography sync.
-    await vscode.commands.executeCommand(UPDATE_BIBLIOGRAPHY_COMMAND, editor.document.uri);
+    await vscode.commands.executeCommand(UPDATE_BIBLIOGRAPHY_COMMAND, uri);
   }
 }
 
-export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace): void {
-  context.subscriptions.push(vscode.commands.registerCommand(CITE_FROM_LIBRARY_COMMAND, () => citeFromLibrary(workspace)));
+export function registerCitationFromLibrary(context: vscode.ExtensionContext, workspace: CitationWorkspace, activeSource: Pick<ActiveSource, "current">): void {
+  context.subscriptions.push(vscode.commands.registerCommand(CITE_FROM_LIBRARY_COMMAND, () => citeFromLibrary(workspace, activeSource)));
 }
 
 // A definition provider must answer with a source Location, so the paper opens through a document link.
@@ -328,6 +340,7 @@ const SOURCES = [
 export function registerCitationProviders(
   context: vscode.ExtensionContext,
   workspace: CitationWorkspace,
+  activeSource: Pick<ActiveSource, "current">,
 ): void {
   const sync = new BibliographySync(workspace);
   const completion = new CitationCompletionProvider(workspace);
@@ -344,5 +357,5 @@ export function registerCitationProviders(
     vscode.commands.registerCommand(UPDATE_BIBLIOGRAPHY_COMMAND, (uri: vscode.Uri) => sync.update(uri.fsPath)),
     vscode.workspace.onDidSaveTextDocument((document) => void sync.update(document.uri.fsPath)),
   );
-  registerCitationFromLibrary(context, workspace);
+  registerCitationFromLibrary(context, workspace, activeSource);
 }

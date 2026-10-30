@@ -8,6 +8,7 @@ import { runSafely } from "../../command/index.js";
 import { BUILD_COMMAND } from "../build/index.js";
 import { findOwningProject, type ReadyProject } from "./commands.js";
 import { readBuiltPdf } from "../preview/index.js";
+import type { ActiveSource } from "../activeSource.js";
 import { disposeAll } from "../../disposables/index.js";
 
 /** The open library as writing code needs it: a folder path and the logger of that library. */
@@ -91,6 +92,8 @@ export interface ProjectSessionDeps {
   projects: Pick<WritingProjects, "list" | "paths" | "data" | "onDidChange" | "fs">;
   previews: SessionPreviews;
   host: Pick<WritingHost, "current">;
+  /** The focused source editor, native or LabShelf; the inProject key follows it. */
+  activeSource: Pick<ActiveSource, "current" | "onDidChange">;
 }
 
 export class ProjectSession implements vscode.Disposable {
@@ -103,7 +106,7 @@ export class ProjectSession implements vscode.Disposable {
   constructor(private readonly deps: ProjectSessionDeps) {
     this.subscriptions = [
       deps.projects.onDidChange(() => this.projectsChanged()),
-      vscode.window.onDidChangeActiveTextEditor(() => this.updateInProject()),
+      deps.activeSource.onDidChange(() => this.updateInProject()),
     ];
   }
 
@@ -182,9 +185,9 @@ export class ProjectSession implements vscode.Disposable {
   }
 
   private updateInProject(): void {
-    const document = vscode.window.activeTextEditor?.document;
-    const inProject = !!this.openFolder && document?.uri.scheme === "file"
-      && findOwningProject(this.deps.projects, document.uri.fsPath)?.folder === this.openFolder;
+    const uri = this.deps.activeSource.current()?.uri;
+    const inProject = !!this.openFolder && uri?.scheme === "file"
+      && findOwningProject(this.deps.projects, uri.fsPath)?.folder === this.openFolder;
     void vscode.commands.executeCommand("setContext", IN_PROJECT_KEY, inProject);
   }
 

@@ -5,6 +5,7 @@ import {
   createNonce, createSourceAuthority, parseSourceEditorOutbound,
   type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
 } from "@labshelf/core";
+import type { SourceFileComments } from "../../collab/comments.js";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
@@ -28,6 +29,8 @@ export interface SourceEditorProviderDeps {
   noteSource(project: NonNullable<ReturnType<typeof findOwningProject>>): NoteInsertSource;
   /** Shows a paper's notes where the library page does. */
   openNotes(paperId: string): void;
+  /** The comment manager's port, read when a panel opens; absent where comments do not run (the web). */
+  comments?(): SourceFileComments | undefined;
 }
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
@@ -113,7 +116,9 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri)] };
       const authority = authorities.acquire(document);
       const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
+      const comments = deps.comments?.();
       const bridges = createSourceBridges({
+        comments,
         uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
         notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
         openNotes: deps.openNotes, logger,
@@ -135,9 +140,18 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
           panel.reveal(panel.viewColumn, true);
           if (ready) { post({ type: "reveal", line }); } else { pendingReveal = line; }
         },
+        // The editor title actions and the citation insert reach the page as one command each.
+        updates: {
+          insertText: (text) => post({ type: "command", command: { kind: "insertText", text } }),
+          insertSnippet: (snippet) => post({ type: "command", command: { kind: "insertSnippet", snippet } }),
+          wrap: (style) => post({ type: "command", command: { kind: "wrap", style } }),
+        },
       };
+      // The file's comment threads, followed from the page's first ready until the panel closes.
+      let commentWatch: vscode.Disposable | undefined;
       const subscriptions: vscode.Disposable[] = [
         focus,
+        { dispose: () => commentWatch?.dispose() },
         deps.activeSource.register(view, focus.event),
         panel.onDidChangeViewState(() => focus.fire(panel.active)),
         // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
@@ -152,6 +166,8 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
             ready = true;
             post(initMessage(document, authority, deps.projects));
             post(bridges.problems());
+            commentWatch?.dispose();
+            commentWatch = bridges.watchComments(post);
             if (pendingReveal !== undefined) { post({ type: "reveal", line: pendingReveal }); pendingReveal = undefined; }
           } else if (message.type === "focus") {
             focus.fire(message.focused);

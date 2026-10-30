@@ -5,7 +5,7 @@ import "@labshelf/core/styles/base.css";
 import "./sourceEditor.css";
 import { findElement } from "@labshelf/core/dom";
 import { mountSourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
-import { parseSourceEditorInbound, type ILogger, type SourceEditorInbound, type SourceEditorOutbound } from "@labshelf/core";
+import { parseSourceEditorInbound, type ILogger, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
 
@@ -61,16 +61,53 @@ function createHostDocument(init: Init): { document: SourceDocument; deliver(mes
 
 // ---- Mount
 
+type MountedEditor = Awaited<ReturnType<typeof mountSourceEditor>>;
+
+type EditorCommand =
+  | { kind: "insertText"; text: string }
+  | { kind: "insertSnippet"; snippet: string }
+  | { kind: "wrap"; style: WrapKind };
+
+/** A `{type: "command"}` message from the host (the editor title actions); anything else is undefined. */
+function parseCommand(raw: unknown): EditorCommand | undefined {
+  if (typeof raw !== "object" || raw === null || (raw as { type?: unknown }).type !== "command") { return undefined; }
+  const command = (raw as { command?: unknown }).command;
+  if (typeof command !== "object" || command === null) { return undefined; }
+  const { kind, text, snippet, style } = command as Record<string, unknown>;
+  if (kind === "insertText" && typeof text === "string") { return { kind, text }; }
+  if (kind === "insertSnippet" && typeof snippet === "string") { return { kind, snippet }; }
+  if (kind === "wrap" && (style === "bold" || style === "italic")) { return { kind, style }; }
+  return undefined;
+}
+
+/** The mounted editor, once it is; commands that arrive while it mounts wait for it. */
+function createCommandRunner(): { attach(editor: MountedEditor): void; run(command: EditorCommand): void } {
+  let editor: MountedEditor | undefined;
+  const waiting: EditorCommand[] = [];
+  const apply = (target: MountedEditor, command: EditorCommand): void => {
+    if (command.kind === "insertText") { target.insertText(command.text); }
+    else if (command.kind === "insertSnippet") { target.insertSnippet(command.snippet); }
+    else { target.wrap(command.style); }
+  };
+  return {
+    attach(next) { editor = next; for (const command of waiting.splice(0)) { apply(next, command); } },
+    run(command) { if (editor) { apply(editor, command); } else { waiting.push(command); } },
+  };
+}
+
+const commands = createCommandRunner();
+
 function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => void {
   const host = createHostDocument(init);
   void mountSourceEditor(card, {
     projectId: init.projectId, path: init.path, helper: undefined,
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
     openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
+    comments: ports.comments,
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.
     onDirty: (dirty) => { card.dataset.dirty = String(dirty); },
-  }).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
+  }).then(commands.attach).catch((error: unknown) => logger.error("sourceEditor.webview", error, { action: "mount" }));
   return host.deliver;
 }
 
@@ -81,10 +118,13 @@ function start(): void {
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
   transport.subscribe((raw) => {
+    const command = parseCommand(raw);
+    if (command) { commands.run(command); return; }
     const message = parseSourceEditorInbound(raw);
     if (!message) { return; }
     if (message.type === "response") { ports.settle(message); }
     else if (message.type === "problems") { ports.deliverProblems(message); }
+    else if (message.type === "comments") { ports.deliverComments(message); }
     else if (message.type === "init") { deliver ??= mount(message, card); }
     else if (message.type === "updates" || message.type === "resync" || message.type === "dirty") { deliver?.(message); }
   });

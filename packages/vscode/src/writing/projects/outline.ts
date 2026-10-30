@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { createDebouncer, deriveNestedHeadings, findDeepestContaining, type HeadingNode, type ILogger } from "@labshelf/core";
 import { scanTypstHeadings } from "@labshelf/core/typst";
+import type { ActiveSource, SourceView } from "../activeSource.js";
 
 const KIND_BY_DEPTH = [
   vscode.SymbolKind.Module, vscode.SymbolKind.Namespace, vscode.SymbolKind.Class, vscode.SymbolKind.Struct,
@@ -62,6 +63,12 @@ export async function showOutline(uri: vscode.Uri, range: vscode.Range): Promise
   editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 }
 
+/** What the tree shows: a document and where its cursor is. */
+interface OutlineSource {
+  uri: vscode.Uri;
+  cursor: vscode.Position;
+}
+
 const MODULE = "writing/outline";
 const REFRESH_DELAY_MS = 300;
 
@@ -76,13 +83,17 @@ export class OutlineTreeProvider implements vscode.TreeDataProvider<OutlineNode>
   constructor(private readonly logger: ILogger) {}
 
   /** Reloads the symbols of the editor's document; an editor-less call empties the tree. */
-  async refresh(editor: vscode.TextEditor | undefined): Promise<void> {
+  refresh(editor: vscode.TextEditor | undefined): Promise<void> {
+    return this.show(editor && { uri: editor.document.uri, cursor: editor.selection.active });
+  }
+
+  private async show(source: OutlineSource | undefined): Promise<void> {
     const request = ++this.requests;
-    const symbols = editor ? await this.loadSymbols(editor.document.uri) : [];
+    const symbols = source ? await this.loadSymbols(source.uri) : [];
     if (request !== this.requests) { return; }
-    this.uri = editor?.document.uri;
+    this.uri = source?.uri;
     this.symbols = symbols;
-    this.mark(editor);
+    this.mark(source?.cursor);
   }
 
   getChildren(node?: OutlineNode): OutlineNode[] {
@@ -98,27 +109,40 @@ export class OutlineTreeProvider implements vscode.TreeDataProvider<OutlineNode>
     return item;
   }
 
-  /** Keeps the tree on the active editor: its document, its cursor and, after a pause, its edits. */
-  follow(): vscode.Disposable {
-    const active = (): vscode.TextEditor | undefined => vscode.window.activeTextEditor;
-    const refreshSoon = createDebouncer(() => void this.refresh(active()), REFRESH_DELAY_MS);
-    void this.refresh(active());
+  /**
+   * Keeps the tree on the active source: its document, its cursor and, after a pause, its edits.
+   * A LabShelf editor has no text editor, so its document is read from the TextDocument it edits and its cursor line from the view.
+   */
+  follow(activeSource?: Pick<ActiveSource, "current" | "onDidChange">): vscode.Disposable {
+    const labshelfView = (): SourceView | undefined => {
+      const view = activeSource?.current();
+      return view?.updates ? view : undefined;
+    };
+    const active = (): OutlineSource | undefined => {
+      const view = labshelfView();
+      if (view) { return { uri: view.uri, cursor: new vscode.Position(Math.max(0, view.line() - 1), 0) }; }
+      const editor = vscode.window.activeTextEditor;
+      return editor && { uri: editor.document.uri, cursor: editor.selection.active };
+    };
+    const refreshSoon = createDebouncer(() => void this.show(active()), REFRESH_DELAY_MS);
+    void this.show(active());
     return vscode.Disposable.from(
       // An editor-less focus (a webview, a panel) keeps the outline of the last document.
       vscode.window.onDidChangeActiveTextEditor((editor) => { if (editor) { void this.refresh(editor); } }),
+      ...(activeSource ? [activeSource.onDidChange((view) => { if (view) { void this.show(active()); } })] : []),
       vscode.window.onDidChangeTextEditorSelection((event) => {
-        if (event.textEditor.document.uri.toString() === this.uri?.toString()) { this.mark(event.textEditor); }
+        if (event.textEditor.document.uri.toString() === this.uri?.toString()) { this.mark(event.textEditor.selection.active); }
       }),
       vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.document !== active()?.document) { return; }
+        if (event.document.uri.toString() !== active()?.uri.toString()) { return; }
         refreshSoon.call();
       }),
       { dispose: () => refreshSoon.cancel() },
     );
   }
 
-  private mark(editor: vscode.TextEditor | undefined): void {
-    this.roots = editor ? createOutlineNodes(this.symbols, editor.selection.active) : [];
+  private mark(cursor: vscode.Position | undefined): void {
+    this.roots = cursor ? createOutlineNodes(this.symbols, cursor) : [];
     this.changed.fire();
   }
 

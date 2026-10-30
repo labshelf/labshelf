@@ -817,7 +817,7 @@
         },
         {
           "command": "labshelf.writing.citeFromLibrary",
-          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+          "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
         },
         {
           "command": "labshelf.writing.insertFromNote",
@@ -837,15 +837,15 @@
         },
         {
           "command": "labshelf.writing.insertSymbol",
-          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+          "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
         },
         {
           "command": "labshelf.writing.insertTable",
-          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+          "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
         },
         {
           "command": "labshelf.writing.insertImage",
-          "when": "labshelf.writing.inProject && editorLangId =~ /^(latex|typst)$/"
+          "when": "labshelf.writing.inProject && (editorLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor')"
         },
         {
           "command": "labshelf.reader.zoomIn",
@@ -1049,17 +1049,17 @@
         },
         {
           "command": "labshelf.writing.insertSymbol",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
           "group": "navigation@3"
         },
         {
           "command": "labshelf.writing.insertTable",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
           "group": "navigation@4"
         },
         {
           "command": "labshelf.writing.insertImage",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
           "group": "navigation@5"
         },
         {
@@ -1069,17 +1069,17 @@
         },
         {
           "command": "labshelf.writing.citeFromLibrary",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
           "group": "navigation@7"
         },
         {
           "command": "labshelf.writing.bold",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
           "group": "1_format@1"
         },
         {
           "command": "labshelf.writing.italic",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
           "group": "1_format@2"
         }
       ],
