@@ -13,14 +13,14 @@ import type { TextRange } from "../comments.js";
 const CHANGE_SETTLE_MS = 350;
 
 /** The document offset of `offset` in the file text `readFileText`. */
-function fileOffsetToDoc(fileText: string, offset: number): number {
+export function fileOffsetToDoc(fileText: string, offset: number): number {
   if (!fileText.includes("\r\n")) return offset;
   const before = fileText.slice(0, offset);
   return offset - (before.match(/\r\n/g)?.length ?? 0);
 }
 
 /** The file offset of document offset `offset`, for a file whose line break is `lineBreak`. */
-function docOffsetToFile(doc: Text, lineBreak: string, offset: number): number {
+export function docOffsetToFile(doc: Text, lineBreak: string, offset: number): number {
   return lineBreak === "\r\n" ? offset + doc.lineAt(offset).number - 1 : offset;
 }
 
