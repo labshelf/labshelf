@@ -40,6 +40,8 @@ export const readShareIndexDocSettings = (doc: Doc): YMap<unknown> => doc.getMap
 
 export const readShareIndexDocComments = (doc: Doc): YMap<unknown> => doc.getMap("comments");
 
+export const readShareIndexDocSuggestions = (doc: Doc): YMap<unknown> => doc.getMap("suggestions");
+
 export const WRITTEN_PER_PATH = 200;
 export interface WrittenVersion { hash: string; at: number }
 interface ObservedVersions { array: YArray<WrittenVersion>; entries: WrittenVersion[] }

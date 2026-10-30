@@ -6,7 +6,7 @@ import { deriveTextSha256Hex } from "../../hash/index.js";
 import type { ILogger } from "../../ports/index.js";
 import { PROJECT_FILE } from "../../writing/project/index.js";
 import { COMMENTS_PATH, renderCommentsFile } from "../commentsFile.js";
-import { readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readWrittenVersions, type ShareFileEntry } from "../shareIndexDoc.js";
+import { readShareIndexDocComments, readShareIndexDocFiles, readShareIndexDocSettings, readShareIndexDocSuggestions, readWrittenVersions, type ShareFileEntry } from "../shareIndexDoc.js";
 import { isSafeSharePath, deriveSharedPaths, applySharedSettings, readSettingsMap, parseSharedSettings, writeSettingsChanges, writeSettingsMap } from "../sharedFiles.js";
 import { type ShareBlobExchange } from "../shareBlobs.js";
 import { type ShareSession } from "../docSync.js";
@@ -28,7 +28,7 @@ async function reconcileComments(context: MirrorContext, disk: MirrorFileRead): 
     return "done";
   }
   // An empty map writes no file into a project that has none.
-  if (rendered === existing || (existing === undefined && readShareIndexDocComments(context.session.index).size === 0)) { return "done"; }
+  if (rendered === existing || (existing === undefined && readShareIndexDocComments(context.session.index).size === 0 && readShareIndexDocSuggestions(context.session.index).size === 0)) { return "done"; }
   await context.disk.write(COMMENTS_PATH, new TextEncoder().encode(rendered));
   await context.logger.log("INFO", LOG_MODULE, "Wrote the shared comment threads to comments.qmd", { folder: context.folder });
   return "done";
@@ -222,7 +222,9 @@ function observe(index: Y.Doc, context: MirrorContext, attach: (path: string) =>
   const comments = readShareIndexDocComments(index);
   const onComments = () => context.request(COMMENTS_PATH, false);
   comments.observeDeep(onComments);
-  detach.push(() => files.unobserve(onFiles), () => settings.unobserve(onSettings), () => comments.unobserveDeep(onComments));
+  const suggestions = readShareIndexDocSuggestions(index);
+  suggestions.observeDeep(onComments);
+  detach.push(() => files.unobserve(onFiles), () => settings.unobserve(onSettings), () => comments.unobserveDeep(onComments), () => suggestions.unobserveDeep(onComments));
 }
 
 async function scan(context: MirrorContext, queue: PathQueue): Promise<void> {
