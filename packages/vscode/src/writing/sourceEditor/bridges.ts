@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, NoteInsertSource, PaperNotesStore, PaperRecord, SourceEditorInbound } from "@labshelf/core";
-import type { SourceFileComments } from "../../collab/comments.js";
+import type { SourceFileComments } from "../../collab/index.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -69,56 +69,65 @@ function relativeSegments(path: string): string[] {
   return segments;
 }
 
+function resolveInProject(projectRoot: vscode.Uri | undefined, path: string): { target: vscode.Uri; segments: string[] } {
+  if (!projectRoot) { throw new Error("outside the project"); }
+  const segments = relativeSegments(path);
+  return { target: vscode.Uri.joinPath(projectRoot, ...segments), segments };
+}
+
+async function readProjectFile(projectRoot: vscode.Uri | undefined, path: string): Promise<string> {
+  const { target } = resolveInProject(projectRoot, path);
+  const key = target.toString();
+  const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === key);
+  if (open) { return open.getText(); }
+  return new TextDecoder().decode(await vscode.workspace.fs.readFile(target));
+}
+
+/** Project-relative paths of the files under a folder of the project, without dot folders and node_modules. */
+async function listProjectFiles(projectRoot: vscode.Uri | undefined, path: string): Promise<string[]> {
+  const { target, segments } = resolveInProject(projectRoot, path);
+  const files: string[] = [];
+  const walk = async (folder: vscode.Uri, prefix: string[]): Promise<void> => {
+    for (const [name, type] of await vscode.workspace.fs.readDirectory(folder)) {
+      if (files.length >= MAX_LISTED_FILES) { return; }
+      if (type & vscode.FileType.Directory) {
+        if (name.startsWith(".") || SKIPPED_FOLDERS.has(name)) { continue; }
+        await walk(vscode.Uri.joinPath(folder, name), [...prefix, name]);
+      } else if (type & vscode.FileType.File) {
+        files.push([...prefix, name].join("/"));
+      }
+    }
+  };
+  await walk(target, segments);
+  return files.sort();
+}
+
+async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unknown): Promise<void> {
+  const { target } = resolveInProject(projectRoot, stringParam(params, "path"));
+  const line = typeof params === "object" && params !== null ? (params as Record<string, unknown>).line : undefined;
+  const options: vscode.TextDocumentShowOptions = {};
+  if (typeof line === "number") {
+    const at = new vscode.Position(Math.max(0, line - 1), 0);
+    options.selection = new vscode.Range(at, at);
+  }
+  await vscode.window.showTextDocument(target, options);
+}
+
+function problemsOf(uri: vscode.Uri): ProblemsMessage {
+  return {
+    type: "problems",
+    problems: vscode.languages.getDiagnostics(uri).map((diagnostic) => ({
+      line: diagnostic.range.start.line + 1, severity: severityOf(diagnostic.severity), message: diagnostic.message,
+    })),
+  };
+}
+
 export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
   const { uri, projectRoot, library, notes, openNotes, comments, logger } = deps;
 
   async function addComment(params: unknown): Promise<void> {
     if (!comments) { throw new Error("comments work in the desktop app"); }
     await comments.add(uri, { from: numberParam(params, "from"), to: numberParam(params, "to") }, stringParam(params, "text"));
-  }
-
-  const resolve = (path: string): { target: vscode.Uri; segments: string[] } => {
-    if (!projectRoot) { throw new Error("outside the project"); }
-    const segments = relativeSegments(path);
-    return { target: vscode.Uri.joinPath(projectRoot, ...segments), segments };
-  };
-
-  async function readFile(path: string): Promise<string> {
-    const { target } = resolve(path);
-    const key = target.toString();
-    const open = vscode.workspace.textDocuments.find((document) => document.uri.toString() === key);
-    if (open) { return open.getText(); }
-    return new TextDecoder().decode(await vscode.workspace.fs.readFile(target));
-  }
-
-  /** Project-relative paths of the files under a folder of the project, without dot folders and node_modules. */
-  async function listFiles(path: string): Promise<string[]> {
-    const { target, segments } = resolve(path);
-    const files: string[] = [];
-    const walk = async (folder: vscode.Uri, prefix: string[]): Promise<void> => {
-      for (const [name, type] of await vscode.workspace.fs.readDirectory(folder)) {
-        if (files.length >= MAX_LISTED_FILES) { return; }
-        if (type & vscode.FileType.Directory) {
-          if (name.startsWith(".") || SKIPPED_FOLDERS.has(name)) { continue; }
-          await walk(vscode.Uri.joinPath(folder, name), [...prefix, name]);
-        } else if (type & vscode.FileType.File) {
-          files.push([...prefix, name].join("/"));
-        }
-      }
-    };
-    await walk(target, segments);
-    return files.sort();
-  }
-
-  async function openFile(params: unknown): Promise<void> {
-    const { target } = resolve(stringParam(params, "path"));
-    const line = typeof params === "object" && params !== null ? (params as Record<string, unknown>).line : undefined;
-    const options: vscode.TextDocumentShowOptions = {};
-    if (typeof line === "number") {
-      const at = new vscode.Position(Math.max(0, line - 1), 0);
-      options.selection = new vscode.Range(at, at);
-    }
-    await vscode.window.showTextDocument(target, options);
   }
 
   async function answer(method: string, params: unknown): Promise<unknown> {
@@ -130,12 +139,12 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
       case "listCitedPaperIds": return await notes.listCitedPaperIds();
       case "readPaperNote": return await notes.readPaperNote(stringParam(params, "paperId"));
       case "openNotes": openNotes(stringParam(params, "paperId")); return undefined;
-      case "readFile": return await readFile(stringParam(params, "path"));
+      case "readFile": return await readProjectFile(projectRoot, stringParam(params, "path"));
       case "listFiles": {
         const folder = typeof params === "object" && params !== null ? (params as Record<string, unknown>).path : undefined;
-        return await listFiles(typeof folder === "string" ? folder : "");
+        return await listProjectFiles(projectRoot, typeof folder === "string" ? folder : "");
       }
-      case "openFile": await openFile(params); return undefined;
+      case "openFile": await openProjectFile(projectRoot, params); return undefined;
       case "addComment": await addComment(params); return undefined;
       case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
       default: throw new Error(`not available: ${method}`);
@@ -154,13 +163,6 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
     watchComments(post) {
       return comments?.subscribe(uri, (ranges) => post({ type: "comments", ranges })) ?? { dispose: () => undefined };
     },
-    problems() {
-      return {
-        type: "problems",
-        problems: vscode.languages.getDiagnostics(uri).map((diagnostic) => ({
-          line: diagnostic.range.start.line + 1, severity: severityOf(diagnostic.severity), message: diagnostic.message,
-        })),
-      };
-    },
+    problems: () => problemsOf(uri),
   };
 }

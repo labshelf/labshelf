@@ -120,54 +120,55 @@ function toWorkspaceEdit(document: vscode.TextDocument, changes: readonly Change
   return edit;
 }
 
+/** Applies each accepted batch to the document in turn; a rejected edit sends the member the document's own text and stops. */
+async function applyAccepted(deps: DocumentSyncDeps, shared: Shared, member: Member, accepted: readonly Change[][]): Promise<void> {
+  const { document, authority, logger } = deps;
+  for (const changes of accepted) {
+    if (changes.length === 0) continue;
+    shared.expected.push(changes);
+    let applied = false;
+    try {
+      applied = await deps.applyEdit(toWorkspaceEdit(document, changes));
+    } catch (error) {
+      void logger.log("ERROR", "sourceEditor", "applyEdit failed", { error: String(error) });
+    }
+    // The echo is normally swallowed during applyEdit; drop the expectation if it never came.
+    const index = shared.expected.indexOf(changes);
+    if (index >= 0) shared.expected.splice(index, 1);
+    if (!applied) {
+      member.post(resyncMessage(document.getText(), authority.version));
+      return;
+    }
+  }
+}
+
+async function pushUpdates(deps: DocumentSyncDeps, shared: Shared, member: Member, message: Message): Promise<void> {
+  const { authority } = deps;
+  const version = message["version"];
+  const updates = message["updates"];
+  if (typeof version !== "number" || !Array.isArray(updates)) return;
+  const before = authority.version;
+  const accepted = authority.receive(version, updates as Update[]);
+  if (!accepted) {
+    member.post(resyncMessage(authority.text(), authority.version));
+    return;
+  }
+  broadcastSince(shared, before);
+  await applyAccepted(deps, shared, member, accepted);
+  postDirty(shared);
+}
+
 export function createDocumentSync(deps: DocumentSyncDeps): { receive(message: Message): Promise<void>; dispose(): void } {
   let disposed = false;
   const member: Member = { post: (message) => { if (!disposed) deps.post(message); } };
   const shared = joinShared(deps, member);
-  const { document, authority, logger } = deps;
-
-  const resyncFromAuthority = () => member.post(resyncMessage(authority.text(), authority.version));
-
-  async function applyAccepted(accepted: readonly Change[][]): Promise<void> {
-    for (const changes of accepted) {
-      if (changes.length === 0) continue;
-      shared.expected.push(changes);
-      let applied = false;
-      try {
-        applied = await deps.applyEdit(toWorkspaceEdit(document, changes));
-      } catch (error) {
-        void logger.log("ERROR", "sourceEditor", "applyEdit failed", { error: String(error) });
-      }
-      // The echo is normally swallowed during applyEdit; drop the expectation if it never came.
-      const index = shared.expected.indexOf(changes);
-      if (index >= 0) shared.expected.splice(index, 1);
-      if (!applied) {
-        member.post(resyncMessage(document.getText(), authority.version));
-        return;
-      }
-    }
-  }
-
-  async function push(message: Message): Promise<void> {
-    const version = message["version"];
-    const updates = message["updates"];
-    if (typeof version !== "number" || !Array.isArray(updates)) return;
-    const before = authority.version;
-    const accepted = authority.receive(version, updates as Update[]);
-    if (!accepted) {
-      resyncFromAuthority();
-      return;
-    }
-    broadcastSince(shared, before);
-    await applyAccepted(accepted);
-    postDirty(shared);
-  }
+  const { document, logger } = deps;
 
   return {
     async receive(message) {
       if (disposed) return;
       try {
-        if (message.type === "push") await push(message);
+        if (message.type === "push") await pushUpdates(deps, shared, member, message);
         else if (message.type === "save") await document.save();
       } catch (error) {
         void logger.log("ERROR", "sourceEditor", `handling ${message.type} failed`, { error: String(error) });
