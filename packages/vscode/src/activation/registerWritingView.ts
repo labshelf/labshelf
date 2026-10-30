@@ -23,8 +23,8 @@ import {
 import { registerProjectSearch } from "../writing/search/index.js";
 import { registerMarkVersionCommand } from "../writing/history/index.js";
 import { BuildPreviews, FocusFollower, registerShowInPreview, registerShowPreview, type CitationFixDeps } from "../writing/preview/index.js";
-import { readActiveProjectSource } from "../writing/preview/buildRoots.js";
-import { createActiveSource, type ActiveSource } from "../writing/activeSource.js";
+import { readActiveProjectSource } from "../writing/preview/index.js";
+import { createActiveSource, type ActiveSource } from "../writing/index.js";
 import { CitationSectionsCache, registerCitationProviders, type CitationWorkspace } from "../writing/citations/index.js";
 import { registerPaperLinks } from "../writing/index.js";
 import { createProjectSourceReader, registerLatexCommandCompletion, registerLatexEditing } from "../latex/index.js";
@@ -241,6 +241,16 @@ function createTrackedProjects(
   return { projects, data };
 }
 
+function createCitationSections(context: vscode.ExtensionContext, projects: WritingProjects, notes: ProjectNotesStore): CitationSectionsCache {
+  const readSignals = createSignalsReader(projects, notes);
+  const citeSections = new CitationSectionsCache({
+    readSources: async (project, siteLogger) => (await readSignals(project, siteLogger)).sources,
+    onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
+  });
+  context.subscriptions.push(citeSections);
+  return citeSections;
+}
+
 export function registerWritingView(
   context: vscode.ExtensionContext, controller: LibraryRootController, adapters: WritingAdapters,
   registerPlatformWriting: RegisterPlatformWriting, sources: Pick<SelectionSources, "projectSelected" | "projectsActivated">,
@@ -260,12 +270,7 @@ export function registerWritingView(
   );
   const listPapers = async (): Promise<PaperRecord[]> => await controller.currentServices()?.paperService.listPapers() ?? [];
   const notes = createProjectNotesStore(createProjectNoteFiles(projects), logger);
-  const readSignals = createSignalsReader(projects, notes);
-  const citeSections = new CitationSectionsCache({
-    readSources: async (project, siteLogger) => (await readSignals(project, siteLogger)).sources,
-    onDidSaveTextDocument: vscode.workspace.onDidSaveTextDocument, paths: projects.paths,
-  });
-  context.subscriptions.push(citeSections);
+  const citeSections = createCitationSections(context, projects, notes);
   // One for the extension, next to the focus follower that reads it; the LabShelf editor registers its panels with it.
   const activeSource = createActiveSource(vscode.window);
   const { includeOnly, includeOnlyTarget } = createIncludeOnly(controller, projects, activeSource);

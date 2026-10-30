@@ -6,7 +6,12 @@ import { nodeSharedLibraryConfig, pickLibraryRoot, offerLibraryMove, runMoveLibr
 import { registerShareLinks } from "../../share/node/index.js";
 import { sharingWebviews } from "../../share/index.js";
 import { createVscodeShareHost, serveShareOn } from "../../share/node/index.js";
-import { registerNodeWriting } from "../../writing/node/index.js";
+import { createSessionLogger, createVscodeTex, registerCheckCommand, registerLatexBuild } from "../../writing/build/node/index.js";
+import { registerRegenerateFigure } from "../../writing/projects/node/index.js";
+import { registerAddExistingFolder, registerTypstLanguage, type RegisterPlatformWriting } from "../../writing/projects/index.js";
+import { registerTemplates } from "../../writing/templates/node/index.js";
+import { registerTypstBuild } from "../../writing/typst/node/index.js";
+import { registerCompareVersionsCommand, registerProjectHistory } from "../../writing/history/node/index.js";
 import type { CellHosts, ExtensionPlatform } from "../extensionPlatform.js";
 import { registerNativeHostCommands } from "./nativeHost/index.js";
 import * as os from "node:os";
@@ -38,6 +43,25 @@ import {
   findPdfjs,
 } from "../../reader/node/index.js";
 import type { HostAdapters } from "../hostAdapters.js";
+
+/** Registers the Writing commands and builds that need Node: figures, external project folders, LaTeX and Typst builds, checks, version compare, the project history and the template gallery. */
+export const registerNodeWriting: RegisterPlatformWriting = ({ context, host, projects, figures, previews, diagnostics, reader, onFindings, includeOnlyTarget }) => {
+  const output = vscode.window.createOutputChannel("LabShelf Figures");
+  context.subscriptions.push(output);
+  registerRegenerateFigure({ context, host, figures, output });
+  registerAddExistingFolder({ context, host, projects });
+  const tex = createVscodeTex(host);
+  const builders = {
+    latex: registerLatexBuild({ context, host, tex, projects, previews, diagnostics, ...(includeOnlyTarget && { includeOnlyTarget }) }),
+    typst: registerTypstBuild({ context, host, tex, projects, previews, diagnostics, hasPreview: (folder) => previews.hasPreview(folder) }),
+  };
+  registerCheckCommand({ context, host, projects, builders, pdfjs: hostPdfjs, ...(onFindings && { onFindings }) });
+  registerCompareVersionsCommand({ context, host, tex, projects, builders, pdfjs: hostPdfjs, reader });
+  registerTemplates({ context, host, tex, projects, builders });
+  registerTypstLanguage({ context, logger: createSessionLogger(host), projects });
+  const history = registerProjectHistory({ context, host, projects });
+  return { builders, history };
+};
 
 /** Builds the extension's logger: the rotating app.log file, with the extension host console as the fallback channel when the sink fails. */
 export function createExtensionLogger(appLogPath: string): ILogger {

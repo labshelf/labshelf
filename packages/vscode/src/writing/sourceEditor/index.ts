@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 
 import { SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider, type SourceEditorProviderDeps } from "./provider.js";
 
-export { SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider, type SourceEditorProviderDeps } from "./provider.js";
-export { createDocumentSync } from "./documentSync.js";
+export type { SourceEditorProviderDeps } from "./provider.js";
+export { provideSourcePresence, type PeerSelection, type SourcePresencePort } from "./presenceBridge.js";
 
 const REOPEN_IN_SOURCE_EDITOR_COMMAND = "labshelf.sourceEditor.reopen";
 const REOPEN_AS_TEXT_COMMAND = "labshelf.sourceEditor.reopenAsText";

@@ -19,5 +19,6 @@ export type { FigureNode } from "./projectFigures.js";
 export { watchFigureFiles, ProjectFigures } from "./projectFigures.js";
 export { ProjectFiguresView } from "./figuresView.js";
 export { createProjectNoteFiles } from "./noteFiles.js";
+export { registerTypstLanguage } from "./typstLanguage.js";
 export { registerProjectValues } from "./projectValues.js";
 export { ProjectReadingLists, registerReadingListCommands } from "./readingList.js";

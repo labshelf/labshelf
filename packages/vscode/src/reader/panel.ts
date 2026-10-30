@@ -264,14 +264,20 @@ export class ReaderPanel {
 
     panel.webview.onDidReceiveMessage((msg: unknown) => { void this.controller.handle(msg); }, null, this._disposables);
 
-    // The shell is assigned as soon as the bundle check returns so the webview starts fetching pdf.js and the PDF;
-    // everything that needs disk (theme, annotations, reading position) follows in the `init` reply.
+    this._renderShell(deps, source, pdfjs);
+
+    this._subscribe(source);
+  }
+
+  /** Assigns the shell as soon as the bundle check returns so the webview starts fetching pdf.js and the PDF; the `init` reply carries the rest. */
+  private _renderShell(deps: ReaderPanelDeps, source: ReaderSource, pdfjs: PdfjsFiles | null): void {
+    const panel = this._panel;
     void renderReaderShell({
       webview: panel.webview,
       extensionUri: deps.extensionUri,
       pdfUri: source.pdfUri,
-      paperId: paper.id,
-      paperTitle: paper.title,
+      paperId: source.paper.id,
+      paperTitle: source.paper.title,
       preview: source.preview !== undefined,
       prefs: getReaderPrefs(),
       pdfjs,
@@ -279,8 +285,6 @@ export class ReaderPanel {
     }).then((html) => {
       if (!this._disposed) { panel.webview.html = html; }
     });
-
-    this._subscribe(source);
   }
 
   /**

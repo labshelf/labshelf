@@ -7,10 +7,10 @@ import {
   listNoteInsertables, listProjectCiteKeys, readOriginLatex, scanOrigins,
   type ILogger, type ManuscriptOrigin, type NoteInsertable, type NoteInsertSource, type OriginState, type PaperRecord, type ProjectNotesStore,
 } from "@labshelf/core";
-import { runSafely } from "../command/index.js";
-import { deriveVscodeRange } from "../latex/index.js";
-import { findCitingProject } from "./citations/index.js";
-import type { ReadyProject, WritingProjects } from "./projects/index.js";
+import { runSafely } from "../../command/index.js";
+import { deriveVscodeRange } from "../../latex/index.js";
+import { findCitingProject } from "./backlinks.js";
+import type { ReadyProject, WritingProjects } from "../projects/index.js";
 
 const MODULE = "writing/noteLinks";
 const MARK_SOURCE = "LabShelf";

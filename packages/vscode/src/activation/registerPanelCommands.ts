@@ -15,13 +15,13 @@ import {
   type ListPanelDeps,
   type SelectionSources,
 } from "../libraryUi/index.js";
-import { currentSourceFileComments } from "../collab/comments.js";
+import { currentSourceFileComments } from "../collab/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
-import type { ActiveSource } from "../writing/activeSource.js";
+import type { ActiveSource } from "../writing/index.js";
 import type { WritingProjects } from "../writing/projects/index.js";
 import { registerSourceEditor } from "../writing/sourceEditor/index.js";
-import type { SourceEditorProviderDeps } from "../writing/sourceEditor/provider.js";
+import type { SourceEditorProviderDeps } from "../writing/sourceEditor/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 interface DetailsWiring {

@@ -14,7 +14,7 @@ import { LibraryRootController } from "./libraryRootController.js";
 import { openLibraryLogger } from "./openLibraryLogger.js";
 import { registerLibraryCommands } from "./registerLibraryCommands.js";
 import { registerLibrarySidebar } from "./registerLibrarySidebar.js";
-import { registerPanelCommands } from "./registerPanelCommands.js";
+import { registerPanelCommands, type PanelCommandsDeps } from "./registerPanelCommands.js";
 import { registerSettingsMenu } from "./registerSettingsMenu.js";
 import { registerWritingView } from "./registerWritingView.js";
 import { registerProjectNoteCommands } from "../writing/projects/index.js";
@@ -62,35 +62,49 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
-    sourceEditor: {
-      // The open library's notes; with no library open the editor lists no papers, so the read is never asked for.
-      paperNotes: {
-        read: async (paperId) => {
-          const services = controller.currentServices();
-          if (!services) { throw new Error("No library is open"); }
-          return await services.paperNotesStore.read(paperId);
-        },
-      },
-      noteSource,
-      // The library page shows a paper's notes in its detail, so the editor's "N notes" popover reveals the paper there.
-      openNotes: (paperId) => { void vscode.commands.executeCommand("labshelf.revealPaper", paperId); },
-    },
+    sourceEditor: libraryEditorDeps(controller, noteSource),
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
-  registerSyncGuideCommand(context, () => controller.currentServices()?.logger);
   platform.registerPlatformCommands?.(context, controller, writing.projects);
 
-  registerCommands(context, requireServices);
-  registerAiCommands(context, () => aiService);
+  registerServiceCommands(context, controller, requireServices, aiService);
 
   logPaperEvents(events, controller.currentServices());
+}
+
+/** The commands that act on the open library's services, the sync guide and the AI commands. */
+function registerServiceCommands(
+  context: vscode.ExtensionContext, controller: LibraryRootController, requireServices: () => Promise<ActiveServices | null>, aiService: AiService | null,
+): void {
+  registerSyncGuideCommand(context, () => controller.currentServices()?.logger);
+  registerCommands(context, requireServices);
+  registerAiCommands(context, () => aiService);
 }
 
 async function revealPaperSelected(sources: ReturnType<typeof createSelectionSources>, id: string): Promise<void> {
   await vscode.commands.executeCommand("labshelf.revealPaper", id);
   sources.listSelected([id]);
   sources.listActivated();
+}
+
+/** What the LabShelf editor reads from the open library: a paper's notes, the note links, and where its notes popover opens. */
+function libraryEditorDeps(
+  controller: LibraryRootController, noteSource: ReturnType<typeof registerLibraryNoteLinks>,
+): PanelCommandsDeps["sourceEditor"] {
+  return {
+    // The open library's notes; with no library open the editor lists no papers, so the read is never asked for.
+    paperNotes: {
+      read: async (paperId) => {
+        const services = controller.currentServices();
+        if (!services) { throw new Error("No library is open"); }
+        return await services.paperNotesStore.read(paperId);
+      },
+    },
+    noteSource,
+    // The library page shows a paper's notes in its detail, so the editor's "N notes" popover reveals the paper there.
+    openNotes: (paperId) => { void vscode.commands.executeCommand("labshelf.revealPaper", paperId); },
+  };
 }
 
 function registerLibraryNoteLinks(context: vscode.ExtensionContext, controller: ReturnType<typeof createLibraryController>, writing: ReturnType<typeof registerWritingView>) {
