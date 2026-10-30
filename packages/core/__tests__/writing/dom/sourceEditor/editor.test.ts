@@ -9,8 +9,8 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
 import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
-import { codeHighlight, createEditorExtensions, createWriteScheduler, toProblems, type WriteSchedulerDeps } from "../../src/writing/editor";
-import { typstLanguage } from "../../src/writing/typst";
+import { codeHighlight, createEditorExtensions, createWriteScheduler, toProblems, type WriteSchedulerDeps } from "../../../../src/writing/dom/sourceEditor/editor";
+import { typstLanguage } from "../../../../src/writing/dom/sourceEditor/typst";
 
 // Build problems become editor diagnostics on their line, clamped to the document, with the hint in the message.
 const view = { state: EditorState.create({ doc: "one\ntwo\nthree" }) };

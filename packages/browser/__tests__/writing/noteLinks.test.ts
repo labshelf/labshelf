@@ -10,7 +10,8 @@ import { buildInsert, listNoteInsertables, type ILogger, type NoteInsertable, ty
 import { pickQuickEntry, showToast, type QuickPickEntry } from "@labshelf/core/dom";
 import { createNoteLinks } from "../../src/writing/noteLinks";
 
-jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), pickQuickEntry: jest.fn(), showToast: jest.fn() }));
+// The moved noteLinks imports pickQuickEntry and showToast from core's ui/dom module, which @labshelf/core/dom re-exports, so the mock targets that module.
+jest.mock("../../../core/src/ui/dom/index", () => ({ ...jest.requireActual("../../../core/src/ui/dom/index"), pickQuickEntry: jest.fn(), showToast: jest.fn() }));
 jest.mock("@labshelf/core", () => {
   const actual = jest.requireActual("@labshelf/core");
   return { ...actual, listNoteInsertables: jest.fn(actual.listNoteInsertables) };

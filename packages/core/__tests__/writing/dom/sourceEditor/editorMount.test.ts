@@ -5,9 +5,9 @@
 // The source editor saves a file with the line endings it was read with, flushes on demand and reveals a line.
 import { EditorView } from "@codemirror/view";
 import type { ILogger } from "@labshelf/core";
-import type { HelperChange } from "@labshelf/core/helper";
-import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
-import { showInOpenEditor } from "../../src/writing/session";
+import type { HelperChange } from "../../../../src/helper/index";
+import { mountSourceEditor, type SourceFileAccess } from "../../../../src/writing/dom/sourceEditor/editor";
+import { showInOpenEditor } from "../../../../src/writing/dom/sourceEditor/openEditors";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 

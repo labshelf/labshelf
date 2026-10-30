@@ -7,9 +7,9 @@
 import { undo } from "@codemirror/commands";
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PresenceStore } from "@labshelf/core";
-import type { HelperChange } from "@labshelf/core/helper";
+import type { HelperChange } from "../../../../src/helper/index";
 import * as Y from "yjs";
-import { mountSourceEditor, type SourceFileAccess } from "../../src/writing/editor";
+import { mountSourceEditor, type SourceFileAccess } from "../../../../src/writing/dom/sourceEditor/editor";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const presence = {

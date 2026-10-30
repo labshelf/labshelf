@@ -6,7 +6,7 @@
 import { EditorView } from "@codemirror/view";
 import type { ILogger, PresenceStore } from "@labshelf/core";
 import * as Y from "yjs";
-import { mountSourceEditor, type SourceEditorDeps, type SourceFileAccess } from "../../src/writing/editor";
+import { mountSourceEditor, type SourceEditorDeps, type SourceFileAccess } from "../../../../src/writing/dom/sourceEditor/editor";
 
 const logger: ILogger = { log: jest.fn(async () => undefined), error: jest.fn(async () => undefined) };
 const ready = { state: "ready" as const, helperVersion: "1", tex: { source: "none" as const, complete: false }, host: "helper" as const };
