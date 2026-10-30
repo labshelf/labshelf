@@ -6,3 +6,4 @@ export * from "./noteLinks.js";
 export * from "./formatting.js";
 export * from "./openEditors.js";
 export * from "./editor.js";
+export { createSelectionListener } from "./selectionListener.js";
