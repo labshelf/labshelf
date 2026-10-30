@@ -35,7 +35,7 @@ An item id is `n-` plus a [ULID](https://github.com/ulid/spec). Any device creat
 
 ## Anchors
 
-`anchor` says what an item is attached to: nothing, a highlight of the paper (`hl:<annotation id>` in the paper's `data.json`, [library-format.md](library-format.md#sidecar-datajson)), a text box on a PDF page (`p<page> box <x> <y> <w> <h>`, fractions of the page from the top-left, like highlights) a note pin on a PDF page (`p<page> point <x> <y>`, positive integer page and coordinates from 0 to 1, at most four decimal places, independent of any highlight), or a passage of a project text file (`quote:<base64url>` of the JSON `{quote, prefix, suffix}`, the rules of a comment anchor in [library-format.md](library-format.md#project-folder-labshelf)).
+`anchor` says what an item is attached to: nothing, a highlight of the paper (`hl:<annotation id>` in the paper's `data.json`, [library-format.md](library-format.md#sidecar-datajson)), a text box on a PDF page (`p<page> box <x> <y> <w> <h>`, fractions of the page from the top-left, like highlights) a note pin on a PDF page (`p<page> point <x> <y>`, positive integer page and coordinates from 0 to 1, at most four decimal places, independent of any highlight), or a passage of a project text file (`quote:<base64url>` of the JSON `{quote, prefix, suffix}`, the rules of a comment anchor in [library-format.md](library-format.md#project-folder-labshelf)). A quote is never empty, except in the anchor of an item with `suggestion="delete"` ([Comments](#comments)).
 
 An anchor in no known form, or one that breaks its rules, is kept verbatim and the item is shown as not attached.
 
@@ -60,6 +60,24 @@ The one in Table 2.
 - Thread order is the order of their first items; reply order is file order. Items merge per id ([Merge](#merge)), so two replies written offline both survive.
 - Existing thread and comment ids are kept as written; new ones are created as in [Ids](#ids).
 - Git conflict markers (`<<<<<<<`, `=======`, `>>>>>>>` lines) outside items make the file unreadable, and LabShelf never overwrites it. Any other text reads; an item that is not a valid comment, unknown attributes and text outside items are kept on a rewrite.
+
+A pending suggestion is an item with a `suggestion` attribute:
+
+```
+::: {#s1 .labshelf-item suggestion="delete" file="main.tex" anchor="quote:…" group="g1" author="Bo" created="2026-10-18T08:00:00.000Z"}
+a strong
+:::
+
+::: {#s2 .labshelf-item suggestion="insert" file="main.tex" anchor="quote:…" group="g1" author="Bo" created="2026-10-18T08:00:00.000Z"}
+:::
+```
+
+- The proposal is applied: the file on disk holds the suggested text, and the PDF compiles it. Inserted text stays in the file; deleted text is removed from the file and kept only in the suggestion.
+- `suggestion` is `insert` or `delete`; `file` is the POSIX path of the text file relative to the project folder; `anchor` is a quote anchor ([Anchors](#anchors)), with `start`/`end` only in a shared project, as for a thread. An insert's anchor quotes the inserted text and its body is empty. A delete's anchor has an empty quote with its prefix and suffix marking the position, and its body is the deleted text, non-empty, the item body without its last line ending.
+- `group` is present only on a replacement: a delete and an insert sharing a `group` are accepted or rejected together. `author` and `created` (ISO time) are the suggestion's.
+- A suggestion is re-found like a thread: by its live positions in a shared project, else by its quote with context, else it is listed as detached.
+- Accepting a suggestion removes its item and leaves the file as it is. Rejecting an insert removes its range from the file; rejecting a delete inserts its text back at its position; then the item is removed. Nothing keeps an accepted or rejected suggestion: the file's history is the record.
+- Suggestion items are written after all threads, sorted by `created` then id. Threads and other items keep their bytes, and items merge per id ([Merge](#merge)).
 
 ## Project notes
 

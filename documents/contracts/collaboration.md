@@ -43,9 +43,9 @@ One Yjs doc per shared text file, keyed by its POSIX path, with its text in the 
 - `share`: `kind: "project"`. Any other kind is refused with a typed error, so a later kind never opens as a project.
 - `files`: path to `{kind: "text" | "blob" | "qmd", hash?}`. Renames and deletes are edits here.
 - `written`: path to the newest agreed disk versions, the mirror's record of what disk and doc last agreed on.
-- `settings`, `comments`, `relays`: see below.
+- `settings`, `comments`, `suggestions`, `relays`: see below.
 
-A file is text when its extension is a known text extension and its bytes are UTF-8, else a blob; a `.qmd` file with UTF-8 bytes is `qmd`, one without is a blob. Shared files are what an export would hold, plus `labshelf.bib` and `.labshelf/checklist.json`. `labshelf.yaml` and `.labshelf/comments.qmd` travel only through `settings` and `comments`.
+A file is text when its extension is a known text extension and its bytes are UTF-8, else a blob; a `.qmd` file with UTF-8 bytes is `qmd`, one without is a blob. Shared files are what an export would hold, plus `labshelf.bib` and `.labshelf/checklist.json`. `labshelf.yaml` and `.labshelf/comments.qmd` travel only through `settings`, and `comments` with `suggestions`.
 
 ### Settings
 
@@ -54,6 +54,8 @@ The shared `labshelf.yaml` keys are the ones [library-format.md](library-format.
 ### Comments
 
 A thread is a `Y.Map` with the keys of a [comments.qmd](library-format.md#project-folder-labshelf) thread; its comment bodies are LabShelf Markdown strings. Its `comments` is a `Y.Array`, so concurrent replies both survive. A live anchor adds `start` and `end` as Yjs relative positions in `content`; `start` binds right and `end` left, so text typed at either edge stays outside. Each mirror writes `.labshelf/comments.qmd` from the map, and sharing imports the existing file.
+
+Pending suggestions live in the index's `suggestions` map, one `Y.Map` per suggestion keyed by its id, holding the fields of a [comments.qmd](qmd-items.md#comments) suggestion item: `kind` (`insert` or `delete`, the item's `suggestion` attribute), `file`, `anchor` (with `start` and `end` as for a thread), `text` (the deleted text, delete only), `group` (only on a replacement), `author` and `created`. Unknown keys are kept. The suggested text is already in the file's `content` (the proposal is applied); accepting deletes the entry, and rejecting first removes an insert's range or reinserts a delete's text at its position in `content`, then deletes the entry. The mirror writes the suggestions into the same `.labshelf/comments.qmd`, after the threads, and sharing seeds the map from the file's suggestion items.
 
 ### Bibliography
 
