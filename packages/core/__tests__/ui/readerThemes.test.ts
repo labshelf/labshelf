@@ -23,8 +23,13 @@ describe("reader themes", () => {
   });
 
   it("leave reader.css on the --ls-* tokens with no colour of its own", () => {
-    expect(READER_CSS).not.toMatch(/--vscode-|--rd-|--pdf-/);
-    expect(READER_CSS).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    // Two reader-local properties are deliberate: the PDF link ink pair (a tone blended over the page canvas, one per
+    // page tone) and the annotation colour a swatch hands to the underline highlight. Everything else stays on --ls-*.
+    const localLinkInk = /^#viewerContainer(\[data-pdf-link-tone="dark"\])? \{ --rd-link-ink: [^;]+; --rd-link-ink-hover: [^;]+; --rd-link-blend: \w+; \}$/gm;
+    const own = READER_CSS.replace(localLinkInk, "");
+    expect(own).not.toMatch(/--vscode-|--pdf-/);
+    expect(own.replace(/--rd-(link-ink|link-ink-hover|link-blend|annotation-color)\b/g, "")).not.toMatch(/--rd-/);
+    expect(own).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
   });
 
   it("invert plot ink on dark themes and leave it on light ones", () => {

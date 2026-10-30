@@ -18,7 +18,7 @@ function makeRequireServices(paperService?: Partial<PaperService>, logger?: Part
   const store = makeMemoryPaperDataStore();
   const reindexLibrary = jest.fn(async () => ({ added: [], updated: [], removed: [] }));
   return jest.fn(async () => ({
-    paperService: ps as PaperService, logger: lg as ILogger, library: {} as any, paperDataStore: store, paperNotesStore: {} as any,
+    paperService: ps as PaperService, logger: lg as ILogger, library: {} as any, paperDataStore: store, paperNotesStore: {} as any, readerThemeStore: {} as any,
     fileSystem: {} as any, importer: {} as any, textLayers: {} as any, mutations: {} as any, reindexLibrary,
     aiDatabasePath: '/lib/.labshelf/index.sqlite', citationCacheDir: '/lib/.research/openalex',
   }));
