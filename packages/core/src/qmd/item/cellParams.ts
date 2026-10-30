@@ -56,6 +56,26 @@ export function formatOutputParams(values: Record<string, CellParamValue>): stri
   return Object.keys(values).sort().map((name) => `${name}=${formatScalar(values[name]!)}`).join(";");
 }
 
+const MAX_REQUEST_STRING = 200;
+const PARAM_NAME = /^[A-Za-z][A-Za-z0-9_]*$/;
+
+/** The params of a run request: an object of at most 8 entries with named values (finite number, boolean or string up to 200 characters); undefined when `value` is anything else. */
+export function readRequestParams(value: unknown): Record<string, CellParamValue> | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) { return undefined; }
+  const names = Object.keys(value);
+  if (names.length > MAX_PARAMS) { return undefined; }
+  const params: Record<string, CellParamValue> = {};
+  for (const name of names) {
+    const entry = (value as Record<string, unknown>)[name];
+    const valid = typeof entry === "boolean"
+      || (typeof entry === "number" && Number.isFinite(entry))
+      || (typeof entry === "string" && entry.length <= MAX_REQUEST_STRING);
+    if (!PARAM_NAME.test(name) || !valid) { return undefined; }
+    params[name] = entry as CellParamValue;
+  }
+  return params;
+}
+
 /** The values a raw `params` attribute lists, or undefined when it is not a params list. */
 export function readOutputParams(attr: string): Record<string, CellParamValue> | undefined {
   const values: Record<string, CellParamValue> = {};

@@ -4,6 +4,7 @@ import {
   paramValues,
   parseCellParams,
   readOutputParams,
+  readRequestParams,
   setCellParamValue,
   type CellParam,
 } from "../../../src/qmd/item/cellParams";
@@ -287,5 +288,27 @@ describe("formatOutputParams and readOutputParams", () => {
     const one = lines("#| param: a = checkbox(true)", "#| param: b = checkbox(false)");
     const two = lines("#| param: b = checkbox(false)", "#| param: a = checkbox(true)");
     expect(formatOutputParams(paramValues(parseCellParams(one)))).toBe(formatOutputParams(paramValues(parseCellParams(two))));
+  });
+});
+
+describe("readRequestParams", () => {
+  it("3.1a keeps valid numbers, booleans and strings", () => {
+    const params = { beta: 0.93, mode: "fast", on: true, Count_2: -4 };
+    expect(readRequestParams(params)).toEqual(params);
+    expect(readRequestParams({})).toEqual({});
+  });
+
+  it("3.1a rejects bad names, a 9th entry, non-finite numbers, long strings and other values", () => {
+    expect(readRequestParams({ "1a": 1 })).toBeUndefined();
+    expect(readRequestParams({ _x: 1 })).toBeUndefined();
+    expect(readRequestParams(Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`p${i}`, i])))).toBeUndefined();
+    expect(readRequestParams({ a: Number.NaN })).toBeUndefined();
+    expect(readRequestParams({ a: Number.POSITIVE_INFINITY })).toBeUndefined();
+    expect(readRequestParams({ a: "x".repeat(201) })).toBeUndefined();
+    expect(readRequestParams({ a: null })).toBeUndefined();
+    expect(readRequestParams({ a: [1] })).toBeUndefined();
+    expect(readRequestParams([1])).toBeUndefined();
+    expect(readRequestParams(null)).toBeUndefined();
+    expect(readRequestParams("beta")).toBeUndefined();
   });
 });

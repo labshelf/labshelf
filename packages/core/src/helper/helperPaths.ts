@@ -1,7 +1,7 @@
 /** Checks that a project path or project id is safe inside the helper's data folder, frames one helper socket message, and declares the port an app implements to build LaTeX through LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#messages
 
-import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
+import type { CellLanguage, CellRequest, CellResult } from "../qmd/compute/index.js";
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
@@ -122,7 +122,7 @@ export type HelperChange = { text: string } | { changes: TextChange[] };
 
 
 /** `cwd` names a project id or `paper:<paperId>`; the helper resolves it to a folder and refuses one it does not know. `noteKey` names the note whose `language` session runs the code. */
-export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string }
+export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string; params?: NonNullable<CellRequest["params"]> }
 
 export interface ILatexHelper {
   publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void>;

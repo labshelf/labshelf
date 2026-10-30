@@ -97,9 +97,9 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
   };
 }
 
-function cellResultOf({ status, language, restarted, latex, text, error, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
+function cellResultOf({ status, language, restarted, latex, text, error, controls, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
   return {
-    status, language, durationMs, ...(restarted !== undefined ? { restarted } : {}),
+    status, language, durationMs, ...(restarted !== undefined ? { restarted } : {}), ...(controls !== undefined ? { controls } : {}),
     ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}),
   };
 }

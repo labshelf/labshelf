@@ -6,6 +6,8 @@ import { createBrowserLatexHelper } from "./client";
 
 const MODULE = "browser.helper";
 const CELL_TIMEOUT_MS = 60_000;
+/** A preview re-runs a cell while a control moves, so it gets a shorter limit. */
+const PREVIEW_TIMEOUT_MS = 20_000;
 /** A cell with no project runs in the helper's temp folder: `paper:<id>` names that scope. */
 const TEMP_SCOPE = "paper:notes";
 const NO_HELPER = "LabShelf Helper is not ready. Install it from the extension's settings page, then run the cell again.";
@@ -24,7 +26,7 @@ export interface BrowserCellPorts {
 /** The browser's ICellRunner: runs a code cell through LabShelf Helper; aborting the signal makes the helper client post cancelCell. */
 export function createHelperCellRunner(helper: ILatexHelper): ICellRunner {
   return {
-    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs, language: request.language, noteKey: request.noteKey }, opts.signal),
+    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs, language: request.language, noteKey: request.noteKey, ...(request.params !== undefined && { params: request.params }) }, opts.signal),
     restart: (noteKey, language) => helper.restartCell(noteKey, language),
     // The helper disposes its sessions when its input closes.
     dispose: () => Promise.resolve(),
@@ -44,7 +46,7 @@ function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): Bro
   };
   const runIn = (cwd: string): RunCellPort => async (request, signal) => {
     await ready();
-    return createHelperCellRunner(use()).run(request, { cwd, signal, timeoutMs: CELL_TIMEOUT_MS });
+    return createHelperCellRunner(use()).run(request, { cwd, signal, timeoutMs: request.preview ? PREVIEW_TIMEOUT_MS : CELL_TIMEOUT_MS });
   };
   let installing = false;
   return {
