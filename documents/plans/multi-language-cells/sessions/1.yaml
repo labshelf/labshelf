@@ -16,6 +16,7 @@ status: pending
 packages:
   - id: "1.1"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: qmd-items#outputs and helper#messages/#version state D1, D3, D4, D5 and D8.
     level: task
     runner: {agent: main, model: opus}
@@ -26,12 +27,15 @@ packages:
       - Fetch only the sections through node scripts/docs/doc.mjs; edit those sections.
       - "qmd-items gets a \"Cell languages\" subsection with D1 and the driver protocol of D3; the output block's engine is the cell language."
       - "helper#messages lists runCell {code, cwd, timeoutMs, language, noteKey}, restartCell {noteKey, language} (unqueued), cellResult {status, language, restarted?, latex?, text?, error?, durationMs}; helper#version says protocol 8."
+      - "Keep the contract's PNG paragraph in qmd-items#outputs and say images come only from Python."
+      - "Reword the bullet \"A cancelled run, or one with no Python available, writes nothing\" to \"A cancelled run, or one whose language is not installed, writes nothing\"."
       - Present tense, no history words.
     acceptance:
       - {id: 1.1a, check: "both contracts state the languages, the driver protocol, the protocol 8 cell messages and the missing status"}
     tests: {none: docs}
   - id: "1.2"
     plan: multi-language-cells
+    sha: f3d0bf49
     goal: "Core cell types carry the language and the note key, the engine written into an output is the cell language, and CellStatus has `missing` instead of `missing-python`."
     level: contract
     runner: {agent: implementer, model: sonnet}
@@ -39,11 +43,12 @@ packages:
     create:
       - packages/core/src/qmd/compute/cellLanguage.ts
     edit:
-      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-75", why: "CellStatus, CellResult, ICellRunner, RunCellPort, CellRuns request, ENGINE"}
-      - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "18-35", why: "missing-python check; engine from language"}
+      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-75", why: "CellStatus 4, CellResult 6, ICellRunner 9, CellRunState 11, RunCellPort 14, toCellRunState 17-20, ENGINE 22, CellRuns.run request 38, missing-python filter 56, ENGINE use 72"}
+      - {path: packages/core/src/qmd/compute/writeCellOutput.ts, lines: "18-60", why: "doc comment 18, status check 21, engine from language; PNG branch 51-60 kept unchanged"}
       - {path: packages/core/src/qmd/compute/index.ts, lines: "1-10", why: "exports"}
     read:
       - {path: documents/plans/multi-language-cells/research/hosts.brief.yaml, lines: "1-80", why: "every caller this type change reaches"}
+      - {path: packages/core/src/qmd/item/cellOutput.ts, lines: "82-93", why: "pngOutput and readOutputImage stay as they are"}
     seams:
       - {path: packages/core/src/qmd/compute/cellLanguage.ts, signature: "export type CellLanguage = \"python\" | \"mathematica\" | \"r\"; export const CELL_LANGUAGES: readonly CellLanguage[]; export function toCellLanguage(lang: string | null | undefined): CellLanguage | undefined; export function cellLanguageLabel(language: CellLanguage): string"}
       - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface CellRequest { code: string; language: CellLanguage; noteKey: string }; export type RunCellPort = (request: CellRequest, signal: AbortSignal) => Promise<CellResult>; export interface ICellRunner { run(request: CellRequest, opts: { cwd: string; signal: AbortSignal; timeoutMs: number }): Promise<CellResult>; restart(noteKey: string, language: CellLanguage): Promise<void>; dispose(): Promise<void> }"}
@@ -52,6 +57,7 @@ packages:
       - "toCellLanguage is case-insensitive and maps wolfram and wl to mathematica; anything else is undefined."
       - "CellRuns.run takes {requestId, label, code, language, noteKey}; the engine written is the request language."
       - "Every caller outside packages/core/src/qmd/compute keeps compiling by passing language: \"python\" and its existing scope as noteKey; sessions 3 and 4 replace those. Touch callers only for that."
+      - "Rename missing-python to missing in CellStatus and CellRunState and in every caller (cellRunStatus.ts, the reader, libraryUi and spaces cellState values, CELL_STATUS_FLAGS). Keep pngOutput and readOutputImage in qmd/item/cellOutput.ts unchanged."
       - "CELL_STATUS_FLAGS in helperMessages.ts follows the union (missing replaces missing-python); views that test missing-python test missing."
     acceptance:
       - {id: 1.2a, check: "an output written for a mathematica cell has engine=\"mathematica\""}
@@ -64,6 +70,7 @@ packages:
       command: "node scripts/agents/run.mjs test core --spec 1.2 --plan multi-language-cells -- packages/core/__tests__/qmd/compute"
   - id: "1.3"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: "A node session manager runs one persistent driver per (note key, language) with the D3 protocol, lazy start, idle close, cancel/timeout as kill plus restarted flag, restart and dispose."
     level: behaviour
     runner: {agent: implementer, model: opus}

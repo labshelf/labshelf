@@ -18,6 +18,7 @@ status: pending
 packages:
   - id: "3.1"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: "Helper protocol 8: runCell carries language and noteKey, restartCell is unqueued, cellResult carries language and restarted; the helper builds the multi-language runner, disposes it on shutdown, and the browser ports pass language and key through."
     level: contract
     runner: {agent: implementer, model: sonnet}
@@ -47,24 +48,26 @@ packages:
       command: "node scripts/agents/run.mjs test core --spec 3.1 --plan multi-language-cells -- packages/core/__tests__/helper"
   - id: "3.2"
     plan: multi-language-cells
+    sha: f3d0bf49
     goal: "Reader runCell, libraryUi paper.runCell and Spaces space.runCell carry language and have a restartCell message; their hosts derive the D2 note key; VS Code builds the runner with the drivers and the two settings, and disposes it on deactivate."
     level: contract
     runner: {agent: implementer, model: opus}
     depends_on: ["3.1"]
     edit:
-      - {path: packages/core/src/reader/protocol/messages.ts, lines: "90-210", why: "runCell, restartCell"}
+      - {path: packages/core/src/reader/protocol/messages.ts, lines: "100-220", why: "cellState 103-104, runCell 176, cancelCell 177, guards 216-219, PROTOCOL_VERSION 15"}
       - {path: packages/core/src/reader/noteMessages.ts, lines: "55-85", why: "key paper:<id>"}
       - {path: packages/core/src/libraryUi/protocol/messages.ts, lines: "45-240", why: "paper.runCell, paper.restartCell and validators"}
       - {path: packages/core/src/libraryUi/paperHandlers.ts, lines: "25-100", why: "key paper:<id>"}
       - {path: packages/core/src/spaces/spacesProtocol.ts, lines: "50-275", why: "space.runCell, space.restartCell, parseCellMessage"}
       - {path: packages/core/src/spaces/serveSpaces.ts, lines: "95-300", why: "key space:<id>:<path>"}
       - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "60-90", why: "key project:<id>:<path>"}
-      - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "100-125", why: "drivers, locate with settings override, dispose"}
+      - {path: packages/vscode/src/activation/node/desktopPlatform.ts, lines: "106-145", why: "createCellHosts 109-115, runner at 113, createRunCellPort 117-120; drivers, locate with settings override, dispose"}
       - {path: packages/vscode/package.json, lines: "1090-1200", why: "labshelf.cells.wolframscriptPath and rscriptPath"}
     read:
       - {path: documents/plans/multi-language-cells/research/hosts.brief.yaml, lines: "1-80", why: "map and callers"}
       - {path: packages/vscode/src/activation/extensionPlatform.ts, lines: "1-20", why: "CellHosts"}
     decided:
+      - "Bump the reader PROTOCOL_VERSION from 8 to 9 (messages.ts:15)."
       - "A message whose language is not a CellLanguage is rejected by the validator; views never send noteKey."
       - "CellHosts gains restartCell; the browser libraryUi context and mountSpacesTab bind it the same way."
       - "VS Code reads the settings at each launch, so a change applies to the next process."

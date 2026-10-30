@@ -10,6 +10,7 @@ status: pending
 packages:
   - id: "5.1"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: The ideas doc no longer lists Mathematica kernels as future work.
     level: task
     runner: {agent: main, model: opus}
@@ -22,6 +23,7 @@ packages:
     tests: {none: docs}
   - id: "5.2"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: The user checks A5 and A6 by hand in VS Code and in the browser.
     level: task
     runner: {agent: main, model: opus}

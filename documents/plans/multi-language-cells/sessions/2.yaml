@@ -11,11 +11,12 @@ status: pending
 packages:
   - id: "2.1"
     plan: multi-language-cells
+    sha: f3d0bf49
     goal: "cellDriver.py becomes a persistent D3 driver with one namespace per process, and createNodeCellRunner runs Python through createCellSessions."
     level: behaviour
     runner: {agent: implementer, model: sonnet}
     edit:
-      - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "1-27", why: "stdin loop, framed responses, same SymPy rule"}
+      - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "1-54", why: "stdin loop, framed responses, figure_result kept"}
       - {path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, lines: "1-78", why: "build on createCellSessions; python launch from PythonProvider"}
     read:
       - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "1-200", why: "the manager from 1.3"}
@@ -23,19 +24,21 @@ packages:
     seams:
       - {path: packages/core/src/qmd/compute/node/nodeCellRunner.ts, signature: "export function createNodeCellRunner(options: { python: PythonProvider; drivers: { python: string; mathematica: string; r: string }; locate?: (language: \"mathematica\" | \"r\") => Promise<string | undefined>; logger?: ILogger }): ICellRunner"}
     decided:
-      - "The driver keeps one globals dict for the life of the process; sys.path has the cwd; the last expression rule and the SymPy to LaTeX rule are unchanged."
+      - "The driver is today one-shot (code file in argv[1]). The persistent version reads D3 requests on stdin and keeps one globals dict for the life of the process, keeps MPLBACKEND=Agg, and per request runs figure_result (a returned figure or the last open pyplot figure becomes a transparent PNG data URL at dpi 160, then pyplot.close) before the SymPy to LaTeX rule and the text rule, so no figure leaks into the next cell; sys.path has the cwd."
       - "python missing (provider status missing) gives status missing, language python."
       - "Mathematica and R launchers come from 2.2 and 2.3; until then locate returns undefined for them."
       - "Tests that need real Python skip without it, as today."
     acceptance:
       - {id: 2.1a, check: "with managed Python, x = 2 then x + 1 gives 3 in one note key; a SymPy cell still gives LaTeX"}
       - {id: 2.1b, check: "a print in a cell appears as text and the result still parses"}
+      - {id: 2.1c, check: "a cell that plots with Matplotlib returns a PNG data URL and the next cell has no open figure"}
       - {id: A2, check: "state shared within a note per language and not across notes (fake drivers; real ones when installed)"}
     tests:
       hidden: [documents/plans/multi-language-cells/tests/2.1/pythonDriver.test.ts]
       command: "node scripts/agents/run.mjs test core --spec 2.1 --plan multi-language-cells -- packages/core/__tests__/qmd/compute/node"
   - id: "2.2"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: "cellDriver.wl runs Wolfram Language cells persistently through wolframscript and returns TeXForm, and locateTool finds wolframscript and Rscript per D6."
     level: behaviour
     runner: {agent: implementer, model: sonnet}
@@ -62,6 +65,7 @@ packages:
       command: "node scripts/agents/run.mjs test core --spec 2.2 --plan multi-language-cells -- packages/core/__tests__/qmd/compute/node"
   - id: "2.3"
     plan: multi-language-cells
+    sha: 006c2a0b
     goal: "cellDriver.R runs R cells persistently through Rscript and returns the printed value as text; the VS Code bundle ships all three drivers."
     level: behaviour
     runner: {agent: implementer, model: sonnet}

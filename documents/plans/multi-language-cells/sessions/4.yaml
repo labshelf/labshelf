@@ -14,17 +14,22 @@ status: pending
 packages:
   - id: "4.1"
     plan: multi-language-cells
-    goal: "The code cell header has a language picker and a Restart <Language> action; onRunCell receives the language; the toolbar code-cell button opens a language menu; ```{mathematica} and ```{r} input rules create cells; the status row explains a missing language."
+    sha: f3d0bf49
+    goal: "The code cell header has a language picker and a Restart <Language> action; onRunCell receives the language; the Insert menu has one Code cell entry per language; ```{mathematica} and ```{r} input rules create cells; the status row explains a missing language."
     level: behaviour
     runner: {agent: implementer, model: opus}
     edit:
-      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "16-73", why: "header picker, restart, lang to onRunCell"}
-      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "15-190", why: "options, input rule"}
-      - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "330-345", why: "codeCell per language"}
-      - {path: packages/core/src/qmd/dom/qmdToolbar.ts, lines: "8-65", why: "menu button like heading"}
-      - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "23-115", why: "missing per language, restarted note, restart hook"}
-      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "76-106", why: "picker styles"}
-      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "285-296", why: "a language switch rewrites the fence"}
+      - {path: packages/core/src/qmd/dom/codeCellView.ts, lines: "19-259", why: "languageName 19-20 becomes cellLanguageLabel; header 42-53; registerCellControls 63-76; update 141-147; keymap 154-175; run() ~203-210 passes language; factory 256-259"}
+      - {path: packages/core/src/qmd/dom/outputView.ts, lines: "113-140", why: "output action line with .qmd-output-lang and Run again; add the picker and Restart here too, because the cell header .qmd-cell-actions is hidden once a cell has output (css .qmd-cell-has-output .qmd-cell-actions)"}
+      - {path: packages/core/src/qmd/dom/inlineViews.ts, lines: "78-99", why: "CellControls: add restart and setLanguage"}
+      - {path: packages/core/src/qmd/dom/codeCellEditor.ts, lines: "1-170", why: "CodeMirror is Python-only (python() 156, completion 157, aria-label 165): for mathematica and r use plain text editing, no language extension, aria-label \"<Language> code\""}
+      - {path: packages/core/src/qmd/dom/qmdControls.ts, lines: "9-47", why: "Insert menu insertItems 22-33: one Code cell entry per language (Python, Mathematica, R)"}
+      - {path: packages/core/src/qmd/dom/qmdCommands.ts, lines: "219-219", why: "QMD_ACTIONS.codeCell; add codeCellMathematica and codeCellR or a parameterised action; Mod-Alt-c stays Python"}
+      - {path: packages/core/src/qmd/dom/qmdInputRules.ts, lines: "96-154", why: "CODE_FENCE 97, codeCellRule 100, codeFenceEnter 103-110: accept ```{mathematica}, ```{r} and ```wolfram and keep the matched language"}
+      - {path: packages/core/src/qmd/dom/qmdEditor.ts, lines: "24-245", why: "QmdEditorOptions.onRunCell at 24, createCodeCellView at 121, Insert button at 245"}
+      - {path: packages/core/src/qmd/editor/qmdBlocks.ts, lines: "284-296", why: "a language switch must clear the stored info so the fence is rewritten"}
+      - {path: packages/core/src/qmd/dom/cellRunStatus.ts, lines: "1-125", why: "views 39-48: missing text per language and the restarted note; CellRunGroup.attach 68-125 returns (label, code, language) and gets an onRestart option"}
+      - {path: packages/core/src/qmd/dom/qmd-editor.css, lines: "108-172", why: "picker styles"}
     read:
       - {path: documents/plans/multi-language-cells/research/editor.brief.yaml, lines: "1-80", why: "map"}
       - {path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-80", why: "showMenu"}
@@ -33,32 +38,36 @@ packages:
       - "QmdEditorOptions.onRunCell(label, code, language) and onRestartCell(language); Restart shows only when the host gives onRestartCell."
       - "Cells whose lang is not a CellLanguage show the lang as text and no Run."
       - "Missing text: Python keeps Install Python; Mathematica \"Mathematica cells need Wolfram Engine or Mathematica with wolframscript.\"; R \"R cells need R (Rscript).\"; restarted: \"<Language> restarted, earlier definitions are gone.\""
-      - "Toolbar code-cell button becomes a menu with the three languages; Mod-Alt-c still inserts Python."
+      - "The toolbar is gone (qmdToolbar.ts is deleted). The Insert menu has one \"Code cell\" entry per language (Python, Mathematica, R); Mod-Alt-c still inserts Python."
     acceptance:
       - {id: 4.1a, check: "picking R on a Python cell serialises the fence as ```{r}"}
       - {id: 4.1b, check: "Run and Mod-Enter call onRunCell with the cell language; Restart calls onRestartCell"}
       - {id: 4.1c, check: "a missing mathematica result shows the Mathematica text without an install button"}
       - {id: 4.1d, check: "```{mathematica} plus space creates a mathematica cell"}
+      - {id: 4.1e, check: "a cell with a result still shows its language picker and Restart in the output action line"}
     tests:
       hidden: [documents/plans/multi-language-cells/tests/4.1/cellLanguageUi.test.ts]
       command: "node scripts/agents/run.mjs test core --spec 4.1 --plan multi-language-cells -- packages/core/__tests__/qmd"
   - id: "4.2"
     plan: multi-language-cells
+    sha: f3d0bf49
     goal: "Reader notes tab, note boxes, Space notes, the library detail pane and browser project notes post the language with Run and post restartCell."
     level: behaviour
     runner: {agent: implementer, model: sonnet}
     depends_on: ["4.1"]
     edit:
-      - {path: packages/core/src/reader/dom/notesTab.ts, lines: "70-295", why: "runCell with language, restartCell"}
-      - {path: packages/core/src/reader/dom/noteBoxes.ts, lines: "70-225", why: "same"}
-      - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "60-90", why: "same"}
-      - {path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "115-140", why: "same"}
-      - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "60-90", why: "same, through ports"}
+      - {path: packages/core/src/reader/dom/cellRuns.ts, lines: "1-34", why: "the single reader posting site: option() posts runCell at 32; add language and a restartCell post"}
+      - {path: packages/core/src/reader/dom/notesTab.ts, lines: "40-125", why: "only if its ReaderCellRuns wiring needs the restart option"}
+      - {path: packages/core/src/reader/dom/noteBoxes.ts, lines: "70-190", why: "only if its ReaderCellRuns wiring needs the restart option"}
+      - {path: packages/core/src/reader/dom/floatingNotes.ts, lines: "25-170", why: "only if its ReaderCellRuns wiring needs the restart option"}
+      - {path: packages/core/src/spaces/dom/mountSpaceNotes.ts, lines: "70-83", why: "same"}
+      - {path: packages/core/src/libraryUi/dom/detailPane/paneState.ts, lines: "115-143", why: "same"}
+      - {path: packages/browser/src/libraryUi/editorArea/projectNoteTab.ts, lines: "50-90", why: "same, through ports"}
     decided:
       - "Remove every language: \"python\" placeholder left by 1.2 in these files."
     acceptance:
       - {id: 4.2a, check: "each surface posts its runCell with the cell language and a restartCell message"}
-      - {id: 4.2b, check: "no language: \"python\" placeholder remains (grep)"}
+      - {id: 4.2b, check: "no language: \"python\" placeholder remains (grep over these files plus qmdCommands.ts, qmdInputRules.ts and codeCellView.ts for leftover hard-coded python)"}
     tests:
       hidden: [documents/plans/multi-language-cells/tests/4.2/viewCellMessages.test.ts]
       command: "node scripts/agents/run.mjs test core --spec 4.2 --plan multi-language-cells -- packages/core/__tests__/reader packages/core/__tests__/spaces packages/core/__tests__/libraryUi"

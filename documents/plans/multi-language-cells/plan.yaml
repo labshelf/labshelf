@@ -12,25 +12,25 @@ decisions:
     text: "One driver process per (note key, language). Note keys: `paper:<paper id>`, `space:<space id>:<note path>`, `project:<project id>:<note path>`. A process starts on the first run of that language in that note, keeps variables between cells, and closes after 10 minutes without a run, when its note host closes, on VS Code deactivate and on helper shutdown. Languages never share variables."
     why: State between cells as in a notebook, without paying for processes nobody uses.
   - id: D3
-    text: "Driver protocol: one JSON request per stdin line `{id, code}`, one JSON response per stdout line prefixed by a sentinel `\\u0001LABSHELF\\u0001` and carrying `{id, latex?|text?|error?}`; anything else on stdout or stderr is the cell's printed output. Drivers read UTF-8, tolerate CRLF and exit on stdin EOF. Drivers are files next to the runner: `cellDriver.py`, `cellDriver.wl`, `cellDriver.R`."
+    text: "Driver protocol: one JSON request per stdin line `{id, code}`, one JSON response per stdout line prefixed by a sentinel `\\u0001LABSHELF\\u0001` and carrying `{id, latex?|text?|error?}`; anything else on stdout or stderr is the cell's printed output. Response lines can be large (a PNG data URL), so the reader must not cap line length. Drivers read UTF-8, tolerate CRLF and exit on stdin EOF. Drivers are files next to the runner: `cellDriver.py`, `cellDriver.wl`, `cellDriver.R`."
     why: Prints cannot desync results; a dead parent never leaves a driver running.
   - id: D4
     text: "Cancel and timeout kill that language's process for that note; the next run starts a fresh one and its result carries `restarted: true`, which the view shows as \"<Language> restarted, earlier definitions are gone\". Restart is an explicit action per cell header (\"Restart <Language>\") that kills the process without running. Process start-up time does not count towards the 60 s timeout."
     why: Interrupting is not portable (Windows, wolframscript); losing state must never be silent.
   - id: D5
-    text: "`CellStatus` replaces `missing-python` with `missing` and the result carries `language`. Python missing keeps the \"Install Python for calculations\" button; Mathematica and R missing show text naming what to install (Wolfram Engine or Mathematica with wolframscript; R) and where LabShelf looked."
+    text: "`CellStatus` replaces `missing-python` with `missing` and the result carries `language`. `CellRunState` and every cellState message value (reader `cellState`, `paper.cellState`, `space.cellState`) use `missing` too. Python missing keeps the \"Install Python for calculations\" button; Mathematica and R missing show text naming what to install (Wolfram Engine or Mathematica with wolframscript; R) and where LabShelf looked."
     why: One status for every language; only Python is a managed tool.
   - id: D6
     text: "Finding executables: Python is the managed one only (unchanged). `wolframscript` and `Rscript` are looked up on PATH, then in the usual install locations per OS (macOS `/Applications/Wolfram Engine.app`, `/Applications/Mathematica.app`, `/Applications/Wolfram.app`, `/usr/local/bin`, `/opt/homebrew/bin`, `/Library/Frameworks/R.framework/Resources/bin`; Windows `Program Files\\Wolfram Research\\*`, `Program Files\\R\\R-*\\bin`; Linux `/usr/bin`, `/usr/local/bin`). VS Code settings `labshelf.cells.wolframscriptPath` and `labshelf.cells.rscriptPath` override the lookup; the browser goes through the helper, which uses the same lookup."
     why: Works with no configuration on a normal install; VS Code users can point at an unusual one.
   - id: D7
-    text: "Results: Python keeps the SymPy rule (SymPy object → LaTeX, else text). Mathematica returns `TeXForm` of the last expression unless it is `Null`, and text for strings and graphics-free messages. R returns the printed value of the last visible expression as text. Graphics are out of scope."
+    text: "Results: Python keeps the SymPy rule (SymPy object → LaTeX, else text) and the Matplotlib rule (a returned figure or the last open pyplot figure becomes a PNG data URL in `text`, written as `![Python plot](data:image/png;base64,...)`, see qmd-items#outputs). Mathematica returns `TeXForm` of the last expression unless it is `Null`, and text for strings and graphics-free messages. R returns the printed value of the last visible expression as text. Graphics are out of scope for Mathematica and R."
     why: The note already renders LaTeX and text outputs.
   - id: D8
-    text: "The helper protocol goes from 7 to 8: `runCell` gains `language` and `noteKey`, a new unqueued `restartCell {noteKey, language}` is added, and `cellResult` gains `language` and `restarted`. Webview protocols (reader, libraryUi `paper.*`, spaces `space.*`) gain `language` on `runCell` and a `restartCell` message; hosts derive the note key, views never send it."
+    text: "The helper protocol goes from 7 to 8 (helperMessages.ts:10): `runCell` gains `language` and `noteKey`, a new unqueued `restartCell {noteKey, language}` is added, and `cellResult` gains `language` and `restarted`. Webview protocols (reader, libraryUi `paper.*`, spaces `space.*`) gain `language` on `runCell` and a `restartCell` message; hosts derive the note key, views never send it. The reader webview protocol is already at version 8 (reader/protocol/messages.ts:15); adding `language` and `restartCell` bumps it to 9."
     why: The helper has no note concept; the view should not choose process identity.
   - id: D9
-    text: "Terminal: no cells (unchanged). Variable sharing between languages, graphics outputs, Julia and Jupyter kernels are out of scope."
+    text: "Terminal: no cells (unchanged). Variable sharing between languages, Mathematica and R graphics outputs, Julia and Jupyter kernels are out of scope."
     why: Keeps the plan bounded.
 acceptance:
   - id: A1
