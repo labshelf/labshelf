@@ -268,7 +268,7 @@ describe("paperPreview Notes tab", () => {
   });
 
   it("keeps the line breaks of a typed note and draws it in bold", () => {
-    const data = sidecar([annotation(4, "Check section 3\nagainst Table 2", { type: "note" })]);
+    const data = sidecar([annotation(4, "Check section 3\nagainst Table 2", { type: "comment" })]);
     const lines = createPaperPreview(entry(), data, "Notes", 60, "").lines;
     expect(text(lines)).toEqual(["p. 4", "▌ Check section 3", "▌ against Table 2"]);
     expect(lines[1]![1]!.style).toEqual(theme.bold);

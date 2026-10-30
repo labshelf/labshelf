@@ -23,8 +23,11 @@ describe("reader themes", () => {
   });
 
   it("leave reader.css on the --ls-* tokens with no colour of its own", () => {
-    expect(READER_CSS).not.toMatch(/--vscode-|--rd-|--pdf-/);
-    expect(READER_CSS).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    // The PDF link ink is tuned to the page canvas, not the theme, so it keeps its own two tones and the --rd-* locals that carry them.
+    const css = READER_CSS.split("\n").filter((line) => !/^#viewerContainer(\[data-pdf-link-tone="dark"\])? \{ --rd-link-ink:/.test(line)).join("\n")
+      .replace(/--rd-(link-ink-hover|link-ink|link-blend|annotation-color)\b/g, "");
+    expect(css).not.toMatch(/--vscode-|--rd-|--pdf-/);
+    expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
   });
 
   it("invert plot ink on dark themes and leave it on light ones", () => {
