@@ -1,9 +1,9 @@
-// Shows typeset inline and display equations, with explicit LaTeX editing in a separate field.
+// Shows typeset inline and display equations, with LaTeX editing in a compact field attached to the equation.
 import type { Node as ProseNode } from "prosemirror-model";
-import { NodeSelection, Selection, TextSelection } from "prosemirror-state";
+import { NodeSelection, TextSelection } from "prosemirror-state";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { renderElement, renderIcon } from "../../ui/dom/index.js";
-import { setViewNodeAttribute } from "./inlineViews.js";
+import { renderElement } from "../../ui/dom/index.js";
+import { exitNode, registerNodeEditor, setViewNodeAttribute } from "./inlineViews.js";
 
 export type MathLoader = () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>;
 
@@ -31,38 +31,50 @@ function parseMathSvg(markup: string): Element {
   return svg;
 }
 
-/** Renders `tex` into `target`: the TeX in `.qmd-math-source` while MathJax loads, then the SVG, or `.qmd-math-error` with the parser message in `title`. */
-export async function renderMathInto(target: HTMLElement, tex: string, display: boolean, loadMath: MathLoader): Promise<void> {
+/**
+ * Renders `tex` into `target`: the TeX in `.qmd-math-source` while MathJax loads, then the SVG. A parse error shows the
+ * TeX as `.qmd-math-error` with the message in `title`, and for display math also as visible text under it.
+ * @returns the parser's message, or null once the TeX rendered.
+ */
+export async function renderMathInto(target: HTMLElement, tex: string, display: boolean, loadMath: MathLoader): Promise<string | null> {
   target.replaceChildren(renderElement("code", { class: "qmd-math-source", text: tex }));
   try {
     const math = await loadMath();
     target.replaceChildren(parseMathSvg(math.renderMathSvg(tex, display)));
+    return null;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    target.replaceChildren(renderElement("code", { class: "qmd-math-error", title: message, text: tex }));
+    const source = renderElement("code", { class: "qmd-math-error", title: message, text: tex });
+    target.replaceChildren(display ? renderElement("span", { class: "qmd-math-error-block" }, source, renderElement("span", { class: "qmd-math-error-message", text: message })) : source);
+    return message;
   }
 }
 
+const HINT = { display: "↵ finish · ⇧↵ new line · Esc cancel", inline: "↵ finish · Esc cancel" };
+const PLACEHOLDER = { display: "Empty equation — click to write LaTeX", inline: "LaTeX" };
+
+/**
+ * Shows an equation typeset. Clicking it, Enter on it or creating it empty opens a compact LaTeX field attached to it:
+ * under a display equation, whose preview updates as you type, or in a small popup under an inline one.
+ */
 class MathView implements NodeView {
   readonly dom: HTMLElement;
   private readonly rendered: HTMLElement;
   private editor: HTMLInputElement | HTMLTextAreaElement | null = null;
   private sourcePanel: HTMLElement | null = null;
+  private errorText: HTMLElement | null = null;
+  private error: string | null = null;
   private originalTex = "";
   private token = 0;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly display: boolean, private readonly loadMath: MathLoader) {
-    this.dom = renderElement(display ? "div" : "span", { class: display ? "qmd-math qmd-math-display" : "qmd-math qmd-math-inline", title: "Click to edit equation" });
+    this.dom = renderElement(display ? "div" : "span", { class: display ? "qmd-math qmd-math-display" : "qmd-math qmd-math-inline", title: view.editable ? "Click to edit equation" : "" });
     this.rendered = renderElement(display ? "div" : "span", { class: "qmd-math-rendered" });
     this.dom.append(this.rendered);
-    if (view.editable && display) {
-      const edit = renderElement("button", { class: "qmd-math-edit-button", type: "button", "aria-label": "Edit equation", contenteditable: "false", html: renderIcon("edit") });
-      edit.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); this.editSource(); });
-      this.dom.append(edit);
-    }
     this.dom.addEventListener("click", (event) => {
-      if (view.editable && event.target instanceof Node && this.rendered.contains(event.target)) { this.editSource(); }
+      if (view.editable && event.target instanceof Node && this.rendered.contains(event.target)) this.editSource();
     });
+    registerNodeEditor(this.dom, () => this.editSource());
     this.render();
   }
 
@@ -72,11 +84,29 @@ class MathView implements NodeView {
 
   private render(): void {
     const token = ++this.token;
+    const kind = this.display ? "display" : "inline";
+    this.dom.classList.toggle("qmd-math-empty", !this.tex.trim());
+    if (!this.tex.trim()) {
+      this.error = null;
+      this.showError();
+      this.rendered.replaceChildren(renderElement("span", { class: "qmd-math-placeholder", text: PLACEHOLDER[kind] }));
+      return;
+    }
     const target = renderElement(this.display ? "div" : "span", { class: "qmd-math-rendered" });
-    this.rendered.replaceChildren(renderElement("code", { class: "qmd-math-source", text: this.tex }));
-    void renderMathInto(target, this.tex, this.display, this.loadMath).then(() => {
-      if (token === this.token) this.rendered.replaceChildren(...Array.from(target.childNodes));
+    if (!this.rendered.querySelector("svg")) this.rendered.replaceChildren(renderElement("code", { class: "qmd-math-source", text: this.tex }));
+    void renderMathInto(target, this.tex, this.display, this.loadMath).then((error) => {
+      if (token !== this.token) return;
+      this.rendered.replaceChildren(...Array.from(target.childNodes));
+      this.error = error;
+      this.showError();
     });
+  }
+
+  /** While editing, the parse error shows as text under the field. */
+  private showError(): void {
+    if (!this.errorText) return;
+    this.errorText.textContent = this.error ?? "";
+    this.errorText.hidden = this.error === null;
   }
 
   update(node: ProseNode): boolean {
@@ -91,58 +121,85 @@ class MathView implements NodeView {
   selectNode(): void { this.dom.classList.add("ProseMirror-selectednode"); }
 
   private editSource(): void {
-    if (this.editor || !this.view.editable) return;
+    if (!this.view.editable) return;
+    if (this.editor) { this.editor.focus(); return; }
     const pos = this.getPos();
-    if (pos === undefined) { return; }
-    this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+    if (pos === undefined) return;
+    if (!(this.view.state.selection instanceof NodeSelection && this.view.state.selection.from === pos)) {
+      this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+    }
     this.dom.classList.add("qmd-math-editing");
     const input = this.display
-      ? renderElement("textarea", { rows: 3, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source" })
-      : renderElement("input", { class: "qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source" });
+      ? renderElement("textarea", { rows: 1, class: "qmd-math-input", spellcheck: "false", "aria-label": "TeX source", placeholder: "LaTeX, e.g. \\frac{a}{b}" })
+      : renderElement("input", { class: "qmd-math-input", type: "text", spellcheck: "false", "aria-label": "TeX source", placeholder: "LaTeX" });
     this.originalTex = this.tex;
     input.value = this.tex;
-    input.addEventListener("input", () => this.commit(input.value));
+    const fit = (): void => { if (input instanceof HTMLTextAreaElement) input.rows = Math.max(1, input.value.split("\n").length); };
+    fit();
+    input.addEventListener("input", () => { fit(); this.commit(input.value); });
     input.addEventListener("keydown", (raw) => {
       const event = raw as KeyboardEvent;
+      if (event.isComposing) return;
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); this.finish(true); }
-      else if (event.key === "Enter" && (!this.display || event.ctrlKey || event.metaKey)) { event.preventDefault(); this.finish(false); }
+      else if (event.key === "Enter" && (!this.display || !event.shiftKey)) { event.preventDefault(); this.finish(false); }
     });
-    const apply = renderElement("button", { class: "qmd-math-apply", type: "button", text: "Apply", title: "Apply (Ctrl/Cmd+Enter)" });
-    const cancel = renderElement("button", { class: "qmd-math-cancel", type: "button", text: "Cancel" });
-    apply.addEventListener("click", () => this.finish(false));
-    cancel.addEventListener("click", () => this.finish(true));
+    // Clicking anywhere else keeps the edit and closes the field.
+    input.addEventListener("focusout", (raw) => {
+      const next = (raw as FocusEvent).relatedTarget;
+      if (!(next instanceof Node && this.sourcePanel?.contains(next))) this.close();
+    });
     this.editor = input;
+    this.errorText = renderElement("span", { class: "qmd-math-edit-error", role: "alert", hidden: true });
     this.sourcePanel = renderElement("span", { class: "qmd-math-edit", contenteditable: "false" },
-      renderElement("label", { class: "qmd-math-field" }, renderElement("span", { class: "qmd-math-field-label", text: "LaTeX" }), input),
-      renderElement("span", { class: "qmd-math-actions" }, cancel, apply));
+      input, this.errorText, renderElement("span", { class: "qmd-math-hint", "aria-hidden": "true", text: HINT[this.display ? "display" : "inline"] }));
+    this.showError();
     this.dom.append(this.sourcePanel);
-    if (!this.display) {
-      const rect = this.dom.getBoundingClientRect();
-      this.sourcePanel.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - this.sourcePanel.offsetWidth - 8))}px`;
-      this.sourcePanel.style.top = `${Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - this.sourcePanel.offsetHeight - 8))}px`;
-    }
-    queueMicrotask(() => this.editor?.focus());
+    if (!this.display) this.placePopup(this.sourcePanel);
+    queueMicrotask(() => {
+      if (this.editor !== input) return;
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    });
+  }
+
+  /** Places the inline popup under the formula, kept inside the window. */
+  private placePopup(panel: HTMLElement): void {
+    const rect = this.dom.getBoundingClientRect();
+    panel.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - panel.offsetWidth - 8))}px`;
+    panel.style.top = `${Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - panel.offsetHeight - 8))}px`;
   }
 
   deselectNode(): void {
-    this.dom.classList.remove("ProseMirror-selectednode", "qmd-math-editing");
-    this.sourcePanel?.remove();
-    this.sourcePanel = null;
-    this.editor = null;
+    this.dom.classList.remove("ProseMirror-selectednode");
+    this.close();
   }
 
+  /** Removes the field, keeping what was written. */
+  private close(): void {
+    this.dom.classList.remove("qmd-math-editing");
+    const panel = this.sourcePanel;
+    this.sourcePanel = null;
+    this.editor = null;
+    this.errorText = null;
+    panel?.remove();
+  }
+
+  /** Closes the field and puts the caret after the equation; `cancel` restores the TeX it had, and an equation left empty is removed. */
   private finish(cancel: boolean): void {
-    if (cancel) { this.commit(this.originalTex); }
+    if (cancel) this.commit(this.originalTex);
+    this.close();
     const pos = this.getPos();
-    if (pos === undefined) { return; }
-    const tr = this.view.state.tr;
-    const after = pos + this.node.nodeSize;
-    if (this.display && !tr.doc.resolve(after).nodeAfter) {
-      if (cancel) { this.deselectNode(); this.view.focus(); return; }
-      tr.insert(after, this.view.state.schema.nodes["paragraph"]!.create());
+    if (pos === undefined) return;
+    if (!this.tex.trim()) {
+      const tr = this.view.state.tr;
+      if (this.display) tr.replaceWith(pos, pos + this.node.nodeSize, this.view.state.schema.nodes.paragraph!.create()).setSelection(TextSelection.create(tr.doc, pos + 1));
+      else tr.delete(pos, pos + this.node.nodeSize).setSelection(TextSelection.create(tr.doc, pos));
+      this.view.dispatch(tr.scrollIntoView());
+      this.view.focus();
+      return;
     }
-    tr.setSelection(this.display ? Selection.near(tr.doc.resolve(after), 1) : TextSelection.create(tr.doc, after));
-    this.view.dispatch(tr);
+    if (this.display) { exitNode(this.view, this.getPos, 1); return; }
+    this.view.dispatch(this.view.state.tr.setSelection(TextSelection.create(this.view.state.doc, pos + this.node.nodeSize)));
     this.view.focus();
   }
 
@@ -160,7 +217,7 @@ class MathView implements NodeView {
 
   destroy(): void {
     this.token++;
-    this.editor = null;
+    this.close();
   }
 }
 

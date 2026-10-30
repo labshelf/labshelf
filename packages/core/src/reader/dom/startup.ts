@@ -77,6 +77,7 @@ export class ReadingPositionRestore {
     ui.floatingNotes.setAnnotations(msg.annotations);
     ui.notesTab.setCanRunCells(msg.canRunCells === true);
     ui.noteBoxes.setCanRunCells(msg.canRunCells === true);
+    ui.floatingNotes.setCanRunCells(msg.canRunCells === true);
     ui.notesTab.show(msg.notes);
     ui.floatingNotes.show(msg.notes);
     ui.noteBoxes.show(msg.notes);

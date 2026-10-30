@@ -1,11 +1,14 @@
 /** @jest-environment jsdom */
 /**
  * Tests the output node view of the Markdown item editor: it is marked out of date exactly when the hash of its cell code differs from its `source`.
+ * Also tests that Run on a cell without a `#| label:` line asks the host for `cell-<n>`, the address the host writes the result under.
  */
 import type { Node as PmNode } from "prosemirror-model";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { deriveCodeHash, formatOutput } from "../../../src/qmd/item/cellOutput";
-import { createCodeCellView, createOutputView } from "../../../src/qmd/dom/codeCellView";
+import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
+import { createOutputView } from "../../../src/qmd/dom/outputView";
+import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
 import { mount, until, settle } from "../../support/nodeViewHarness";
 
 const CODE = "print(1)\n";
@@ -56,7 +59,7 @@ it("shows fenced text results without their Markdown delimiters", async () => {
   const raw = formatOutput({ cell: "bound", source: await deriveCodeHash(CODE), engine: "python", ran: "2026-10-30", content: "```text\n42\n```\n" });
   const view = mount(s.node("doc", null, [s.node("output", { raw })]), outputViews());
   expect(view.dom.querySelector(".qmd-output-text")!.textContent).toBe("42");
-  expect(view.dom.querySelector(".qmd-output-heading")!.textContent).toBe("Result");
+  expect(view.dom.querySelector(".qmd-output-caption")).toBeNull();
 });
 
 
@@ -96,4 +99,28 @@ it("expands a plot into an accessible preview and closes it", () => {
   expect(document.querySelector('[role="dialog"][aria-label="Python plot"]')).not.toBeNull();
   document.querySelector<HTMLButtonElement>('[aria-label="Close plot"]')!.click();
   expect(document.querySelector(".qmd-plot-preview")).toBeNull();
+});
+
+const bareCell = (code: string, options = "") => s.node("code_cell", { lang: "python", options, code, info: "{python}" });
+const META = { engine: "python", ran: "2026-10-30T00:00:00.000Z" };
+
+describe("Run on a cell without a label", () => {
+  it("sends cell-<n> for an unlabeled cell, counting every cell of the item", () => {
+    const runs: Array<[string, string]> = [];
+    const view = mount(s.node("doc", null, [bareCell("a = 1\n"), bareCell("print(2)\n", "#| label: named\n"), bareCell("print(3)\n")]),
+      { code_cell: createCodeCellView((label, code) => runs.push([label, code])) });
+    const buttons = view.dom.querySelectorAll<HTMLButtonElement>(".qmd-cell-run");
+    buttons[2]!.click();
+    buttons[1]!.click();
+    expect(runs).toEqual([["cell-3", "print(3)\n"], ["named", "print(2)\n"]]);
+  });
+
+  it("the label a bare cell sends lets the host store its output", async () => {
+    const body = "```{python}\nprint(1)\n```\n";
+    const sent: string[] = [];
+    const view = mount(s.node("doc", null, [bareCell("print(1)\n")]), { code_cell: createCodeCellView((label) => sent.push(label)) });
+    view.dom.querySelector<HTMLButtonElement>(".qmd-cell-run")!.click();
+    const next = await writeCellOutput(body, sent[0]!, { status: "ok", text: "1", durationMs: 1 }, META);
+    expect(next).not.toBe(body);
+  });
 });

@@ -1,5 +1,7 @@
 // Opens anchored PDF notes in a floating rich editor and draws their page pins independently of highlights.
 import type { Annotation } from "../../model/index.js";
+import type { CellRunState } from "../../qmd/compute/index.js";
+import { ReaderCellRuns } from "./cellRuns.js";
 import { mountQmdEditor, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor, sameItemBody } from "../../qmd/item/index.js";
 import { renderElement, renderIcon } from "../../ui/dom/index.js";
@@ -8,7 +10,7 @@ import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";
 import type { ReaderContext } from "./readerSession.js";
 
 interface NotePosition { page: number; x: number; y: number }
-interface OpenNote { id: string; editor: QmdEditorHandle; root: HTMLElement; latest: string; sent: string }
+interface OpenNote { id: string; editor: QmdEditorHandle; latest: string }
 
 export class FloatingNotes {
   private readonly drafts = new Map<string, string>();
@@ -22,8 +24,10 @@ export class FloatingNotes {
   private readonly source = renderElement("button", { class: "rd-floating-note-source", type: "button" });
   private readonly body = renderElement("div", { class: "rd-floating-note-body" });
   private readonly status = renderElement("span", { class: "rd-floating-note-status", role: "status", "aria-live": "polite" }, "Saved");
+  private readonly runs: ReaderCellRuns;
 
   constructor(private readonly ctx: ReaderContext, private readonly openFull: (id: string, body: string) => void) {
+    this.runs = new ReaderCellRuns(ctx.host);
     const close = renderReaderIconButton(renderIcon("x"), "Close note");
     close.addEventListener("click", () => { const id = this.current?.id; this.close(); if (id) { this.pins.get(id)?.focus(); } });
     const full = renderElement("button", { class: "rd-floating-note-full", type: "button" }, renderElement("span", { html: renderIcon("external"), "aria-hidden": "true" }), "Open full note");
@@ -61,7 +65,9 @@ export class FloatingNotes {
     this.paint();
   }
 
+  /** Applies the stored notes; the open editor takes the stored body (a cell output, say) unless it holds edits the host has not acknowledged. */
   show(notes: readonly ReaderNote[]): void {
+    this.current?.editor.flush();
     this.notes = notes;
     for (const [id, body] of this.drafts) {
       const stored = notes.find((note) => note.id === id);
@@ -71,18 +77,27 @@ export class FloatingNotes {
     const stored = notes.find((item) => item.id === current?.id);
     if (current && !stored) { this.close(false); }
     if (current && stored) {
-      if (sameItemBody(current.latest, current.sent) && !current.root.contains(document.activeElement)) {
+      if (!this.drafts.has(current.id) && !sameItemBody(current.latest, stored.body)) {
         current.latest = stored.body;
         current.editor.setBody(stored.body);
       }
-      current.sent = stored.body;
-      this.status.textContent = sameItemBody(current.latest, stored.body) ? "Saved" : "Saving…";
+      this.status.textContent = this.drafts.has(current.id) ? "Saving…" : "Saved";
     }
     this.paint();
     const pending = this.pending;
     const added = pending && notes.find((item) => item.anchor === pending.anchor && !pending.known.has(item.id));
     if (added) { this.pending = null; this.open(added); }
   }
+
+  /** Whether the host can run cells; an open note is remounted so its cells gain or lose the Run button. */
+  setCanRunCells(canRun: boolean): void {
+    if (!this.runs.setCanRun(canRun)) { return; }
+    const note = this.notes.find((item) => item.id === this.current?.id);
+    if (note) { this.close(); this.open(note); }
+  }
+
+  /** Shows the host's state of a run under the open note; a request this editor did not send is ignored. */
+  showCellState(requestId: string, state: CellRunState): void { this.runs.show(requestId, state); }
 
   close(flush = true): void {
     if (flush) { this.current?.editor.flush(); }
@@ -138,8 +153,9 @@ export class FloatingNotes {
         this.status.textContent = "Saving…";
         this.ctx.host.post({ command: "editNote", id: note.id, body });
       },
+      ...this.runs.option(note.id, root),
     });
-    this.current = { id: note.id, root, editor, latest: body, sent: note.body };
+    this.current = { id: note.id, editor, latest: body };
     const at = this.position(note);
     this.source.textContent = at ? `↗ Page ${at.page}` : "Paper note";
     this.status.textContent = this.drafts.has(note.id) ? "Saving…" : "Saved";

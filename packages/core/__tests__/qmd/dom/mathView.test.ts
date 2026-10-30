@@ -59,9 +59,11 @@ describe("math view", () => {
 
 
 describe("LaTeX editing", () => {
+  const key = (target: Element, init: KeyboardEventInit) => target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+
   function selected() {
     const view = mount(s.node("doc", null, [s.node("math_display", { tex: "x^2" }), para(text("Continue"))]), { math_display: createMathView(true, async () => ({ renderMathSvg: () => SVG })) });
-    view.dom.querySelector<HTMLButtonElement>(".qmd-math-edit-button")!.click();
+    view.dom.querySelector<HTMLElement>(".qmd-math-rendered")!.click();
     return view;
   }
 
@@ -72,24 +74,52 @@ describe("LaTeX editing", () => {
     expect(view.dom.querySelector("textarea")).toBeNull();
   });
 
-  it("edits display equations in a multiline field and applies them", () => {
+  it("edits display equations in a field attached to the equation and finishes on Enter", () => {
     const view = selected();
-    const input = view.dom.querySelector<HTMLTextAreaElement>('textarea[aria-label="TeX source"]')!;
+    const input = view.dom.querySelector<HTMLTextAreaElement>('.qmd-math-display textarea[aria-label="TeX source"]')!;
     expect(input).not.toBeNull();
+    expect(view.dom.querySelector(".qmd-math-hint")!.textContent).toMatch(/Esc/);
     input.value = "x^2 +\ny^2";
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    view.dom.querySelector<HTMLButtonElement>(".qmd-math-apply")!.click();
+    expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2 +\ny^2");
+    key(input, { key: "Enter" });
     expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2 +\ny^2");
     expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
   });
 
-  it("cancels the source edit without leaving the changed equation behind", () => {
+  it("keeps Shift-Enter for a new line in a display equation", () => {
+    const view = selected();
+    const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(key(input, { key: "Enter", shiftKey: true })).toBe(true);
+    expect(view.dom.querySelector(".qmd-math-edit")).not.toBeNull();
+  });
+
+  it("cancels the source edit on Escape without leaving the changed equation behind", () => {
     const view = selected();
     const input = view.dom.querySelector<HTMLTextAreaElement>("textarea")!;
     input.value = "changed";
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    view.dom.querySelector<HTMLButtonElement>(".qmd-math-cancel")!.click();
+    key(input, { key: "Escape" });
     expect(view.state.doc.firstChild!.attrs.tex).toBe("x^2");
     expect(view.dom.querySelector(".qmd-math-edit")).toBeNull();
+  });
+
+  it("shows a placeholder for an empty equation and removes it when left empty", () => {
+    const view = mount(s.node("doc", null, [s.node("math_display", { tex: "" }), para(text("Continue"))]), { math_display: createMathView(true, async () => ({ renderMathSvg: () => SVG })) });
+    expect(view.dom.querySelector(".qmd-math-placeholder")!.textContent).toMatch(/empty equation/i);
+    view.dom.querySelector<HTMLElement>(".qmd-math-rendered")!.click();
+    key(view.dom.querySelector("textarea")!, { key: "Enter" });
+    expect(view.state.doc.firstChild!.type.name).toBe("paragraph");
+  });
+
+  it("shows the parse error message as text while editing", async () => {
+    const loadMath = async (): Promise<MathModule> => ({ renderMathSvg: () => { throw new Error("Missing close brace"); } });
+    const view = mount(s.node("doc", null, [s.node("math_display", { tex: "\\frac{1" })]), { math_display: createMathView(true, loadMath) });
+    await until(() => view.dom.querySelector(".qmd-math-error-message") !== null);
+    expect(view.dom.querySelector(".qmd-math-error-message")!.textContent).toBe("Missing close brace");
+    view.dom.querySelector<HTMLElement>(".qmd-math-rendered")!.click();
+    view.dom.querySelector<HTMLTextAreaElement>("textarea")!.dispatchEvent(new Event("input", { bubbles: true }));
+    await until(() => view.dom.querySelector<HTMLElement>(".qmd-math-edit-error")?.hidden === false);
+    expect(view.dom.querySelector(".qmd-math-edit-error")!.textContent).toBe("Missing close brace");
   });
 });

@@ -239,6 +239,7 @@ export function attachReaderHostMessages({ ctx, ui, keyboard, hover, reloader, s
   host.on("cellState", (msg) => {
     ui.notesTab.showCellState(msg.requestId, msg.state);
     ui.noteBoxes.showCellState(msg.requestId, msg.state);
+    ui.floatingNotes.showCellState(msg.requestId, msg.state);
   });
   host.on("prefsChanged", (msg) => {
     ctx.prefs = msg.prefs;

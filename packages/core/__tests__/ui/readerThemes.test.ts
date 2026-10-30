@@ -3,7 +3,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { READER_THEMES, THEME_PRESETS, renderTokensCss } from "@labshelf/core";
+import { READER_THEMES, THEME_PRESETS, deriveReaderTheme, readerThemeCssVars, renderTokensCss, renderVscodeHostCss } from "@labshelf/core";
 
 const READER_CSS = readFileSync(join(__dirname, "../../src/reader/dom/styles/reader.css"), "utf8");
 
@@ -25,5 +25,20 @@ describe("reader themes", () => {
   it("leave reader.css on the --ls-* tokens with no colour of its own", () => {
     expect(READER_CSS).not.toMatch(/--vscode-|--rd-|--pdf-/);
     expect(READER_CSS).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+  });
+
+  it("invert plot ink on dark themes and leave it on light ones", () => {
+    const invert = "invert(1) hue-rotate(180deg)";
+    const css = renderTokensCss();
+    expect(css).toMatch(new RegExp(`:root \\{[^}]*--ls-plot-filter: invert\\(1\\) hue-rotate\\(180deg\\);`));
+    expect(css).toMatch(/:root\[data-theme="light"\] \{[^}]*--ls-plot-filter: none;/);
+    expect(READER_THEMES.dark.plotFilter).toBe(invert);
+    expect(READER_THEMES["high-contrast"].plotFilter).toBe(invert);
+    expect(READER_THEMES.light.plotFilter).toBe("none");
+    expect(READER_THEMES.sepia.plotFilter).toBe("none");
+    expect(css).toMatch(/\[data-pdf-theme="sepia"\] \{[^}]*--ls-reader-plot-filter: none;/);
+    expect(readerThemeCssVars(deriveReaderTheme("#fdfdf0", "#202020"))["--ls-reader-plot-filter"]).toBe("none");
+    expect(readerThemeCssVars(deriveReaderTheme("#101820", "#e0e0e0"))["--ls-reader-plot-filter"]).toBe(invert);
+    expect(renderVscodeHostCss()).toMatch(/body\.vscode-light, body\.vscode-high-contrast-light \{[^}]*--ls-plot-filter: none;/);
   });
 });

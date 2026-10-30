@@ -83,17 +83,27 @@ let runSeq = 0;
 /** @returns a request id unique within this page. */
 function nextRequestId(): string { return `cell-${Date.now().toString(36)}-${++runSeq}`; }
 
+interface RunRow { status: CellRunStatus; running: boolean; editorEl: HTMLElement | null }
+
+/** Shows the run in the cell whose Run was pressed (the code cell view marks it `is-run-requested`) while it is running. */
+function markRunningCell(run: RunRow): void {
+  const cell = run.editorEl?.querySelector(".qmd-cell.is-run-requested");
+  cell?.classList.toggle("is-running", run.running);
+  if (!run.running) cell?.classList.remove("is-run-requested");
+}
+
 /** @returns an empty group; every row shares `options`. */
 export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup {
-  const rows = new Map<string, { status: CellRunStatus; running: boolean }>();
-  const row = (key: string): { status: CellRunStatus; running: boolean } => {
+  const rows = new Map<string, RunRow>();
+  const row = (key: string): RunRow => {
     let found = rows.get(key);
-    if (!found) { found = { status: createCellRunStatus(options), running: false }; rows.set(key, found); }
+    if (!found) { found = { status: createCellRunStatus(options), running: false, editorEl: null }; rows.set(key, found); }
     return found;
   };
   return {
     attach(key, editorEl, send) {
       const run = row(key);
+      run.editorEl = editorEl;
       if (editorEl.nextSibling !== run.status.el) editorEl.after(run.status.el);
       return (label, code) => {
         if (run.running) return;
@@ -105,7 +115,7 @@ export function createCellRunGroup(options: CellRunStatusOptions): CellRunGroup 
     },
     show(requestId, state) {
       for (const run of rows.values()) {
-        if (run.status.show(requestId, state)) { run.running = state === "running"; return true; }
+        if (run.status.show(requestId, state)) { run.running = state === "running"; markRunningCell(run); return true; }
       }
       return false;
     },

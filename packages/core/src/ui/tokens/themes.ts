@@ -1,7 +1,7 @@
 /**
  * Declares the colour themes: the reader's page themes and the source editor's syntax themes, with the CSS each renders.
  */
-import { createDesignToken, type DesignToken } from "./tokens.js";
+import { PLOT_INVERT_FILTER, createDesignToken, type DesignToken } from "./tokens.js";
 
 const READER_THEME_NAMES = ["dark", "light", "sepia", "high-contrast"] as const;
 export type ReaderThemeName = (typeof READER_THEME_NAMES)[number];
@@ -24,6 +24,8 @@ export interface ReaderTheme {
   findCurrent: string;
   /** Fill of a region another version of the paper shows differently. */
   change: string;
+  /** CSS filter over a plot image, whose stored ink is dark on a transparent background: dark themes invert it, keeping hues. */
+  plotFilter: string;
 }
 
 const DARK_FIND = { findHit: "rgba(255, 213, 0, .35)", findCurrent: "rgba(255, 140, 0, .6)", change: "rgba(255, 140, 0, .2)" };
@@ -34,19 +36,19 @@ export const READER_THEMES: Record<ReaderThemeName, ReaderTheme> = {
     page: "#1e1e1e", ink: "#e8e8e8", bg: "#1e1e1e",
     surface: "#252526", border: "#3c3c3c", fg: "#cccccc", desc: "#9a9a9a",
     hover: "rgba(255, 255, 255, .09)", active: "rgba(255, 255, 255, .15)",
-    shadow: "0 4px 18px rgba(0, 0, 0, .45)", ...DARK_FIND,
+    shadow: "0 4px 18px rgba(0, 0, 0, .45)", ...DARK_FIND, plotFilter: PLOT_INVERT_FILTER,
   },
   light: {
     page: "#ffffff", ink: "#000000", bg: "#f0f0f0",
     surface: "#f6f6f6", border: "#d4d4d4", fg: "#2b2b2b", desc: "#6b6b6b",
     hover: "rgba(0, 0, 0, .07)", active: "rgba(0, 0, 0, .12)",
-    shadow: "0 4px 18px rgba(0, 0, 0, .18)", ...DARK_FIND,
+    shadow: "0 4px 18px rgba(0, 0, 0, .18)", ...DARK_FIND, plotFilter: "none",
   },
   sepia: {
     page: "#faf6ee", ink: "#3a2a1a", bg: "#e8dfc8",
     surface: "#ede6d3", border: "#c8b89a", fg: "#4a3728", desc: "#72604e",
     hover: "rgba(74, 55, 40, .1)", active: "rgba(74, 55, 40, .17)",
-    shadow: "0 4px 18px rgba(74, 55, 40, .25)", ...DARK_FIND,
+    shadow: "0 4px 18px rgba(74, 55, 40, .25)", ...DARK_FIND, plotFilter: "none",
   },
   "high-contrast": {
     page: "#000000", ink: "#ffffff", bg: "#000000",
@@ -54,6 +56,7 @@ export const READER_THEMES: Record<ReaderThemeName, ReaderTheme> = {
     hover: "rgba(255, 255, 255, .2)", active: "rgba(255, 255, 255, .3)",
     shadow: "0 4px 18px rgba(0, 0, 0, .45)",
     findHit: "rgba(0, 255, 255, .4)", findCurrent: "rgba(255, 0, 255, .6)", change: "rgba(255, 0, 255, .3)",
+    plotFilter: PLOT_INVERT_FILTER,
   },
 };
 
@@ -65,6 +68,7 @@ function themeDeclarations(theme: ReaderTheme): string[] {
     `  --ls-reader-find-hit: ${theme.findHit};`,
     `  --ls-reader-find-current: ${theme.findCurrent};`,
     `  --ls-reader-change: ${theme.change};`,
+    `  --ls-reader-plot-filter: ${theme.plotFilter};`,
   ];
 }
 
@@ -75,6 +79,7 @@ export function readerThemeCssVars(theme: ReaderTheme): Record<string, string> {
   vars["--ls-reader-find-hit"] = theme.findHit;
   vars["--ls-reader-find-current"] = theme.findCurrent;
   vars["--ls-reader-change"] = theme.change;
+  vars["--ls-reader-plot-filter"] = theme.plotFilter;
   return vars;
 }
 
@@ -105,7 +110,7 @@ export function isLightColour(hex: string): boolean {
 
 /**
  * Builds a full reader theme from a custom theme's page and ink (#rrggbb): the chrome is mixed from the two, and the
- * shadow and find colours come from the light or dark preset the page colour is closest to.
+ * shadow, find colours and plot filter come from the light or dark preset the page colour is closest to.
  */
 export function deriveReaderTheme(page: string, ink: string): ReaderTheme {
   const base = READER_THEMES[isLightColour(page) ? "light" : "dark"];

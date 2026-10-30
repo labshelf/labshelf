@@ -1,5 +1,6 @@
 // Shows the small inline and list parts of an item body: citation chips, task item checkboxes and `labshelf:` links as internal links.
 import type { Mark, Node as ProseNode } from "prosemirror-model";
+import { TextSelection } from "prosemirror-state";
 import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } from "prosemirror-view";
 import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
@@ -65,6 +66,55 @@ export function setViewNodeAttribute(view: EditorView, getPos: () => number | un
   const pos = getPos();
   if (pos === undefined) return false;
   view.dispatch(view.state.tr.setNodeAttribute(pos, name, value));
+  return true;
+}
+
+/** Where the caret lands when a node's own editor opens: at the start of its source or at its end. */
+export type EditSide = "start" | "end";
+
+const nodeEditors = new WeakMap<Node, (side: EditSide) => void>();
+
+/** Lets `editNodeAt` open the editor of the node view whose outer element is `dom`, such as a code cell's code or an equation's LaTeX field. */
+export function registerNodeEditor(dom: HTMLElement, edit: (side: EditSide) => void): void {
+  nodeEditors.set(dom, edit);
+}
+
+/** Opens the editor of the node view at `pos`; false when the node there has none. */
+export function editNodeAt(view: EditorView, pos: number, side: EditSide = "start"): boolean {
+  if (view.isDestroyed || !view.editable) return false;
+  const dom = pos >= 0 && pos < view.state.doc.content.size ? view.nodeDOM(pos) : null;
+  const edit = dom ? nodeEditors.get(dom) : undefined;
+  if (!edit) return false;
+  edit(side);
+  return true;
+}
+
+/**
+ * Moves the editor's caret out of the atom node at `getPos()`: into the textblock right after it (`dir` 1, skipping the
+ * outputs that follow a code cell) or right before it (`dir` -1), creating an empty paragraph there when there is none.
+ */
+export function exitNode(view: EditorView, getPos: () => number | undefined, dir: 1 | -1): boolean {
+  const pos = getPos();
+  const node = pos === undefined ? null : view.state.doc.nodeAt(pos);
+  if (pos === undefined || !node) return false;
+  const tr = view.state.tr;
+  let target = dir > 0 ? pos + node.nodeSize : pos;
+  if (dir > 0) {
+    for (let next = tr.doc.resolve(target).nodeAfter; next?.type.name === "output"; next = tr.doc.resolve(target).nodeAfter) target += next.nodeSize;
+  }
+  const $target = tr.doc.resolve(target);
+  const neighbour = dir > 0 ? $target.nodeAfter : $target.nodeBefore;
+  let caret: number;
+  if (neighbour?.isTextblock) {
+    caret = dir > 0 ? target + 1 : target - 1;
+  } else {
+    const paragraph = view.state.schema.nodes.paragraph!;
+    if (!$target.parent.canReplaceWith($target.index(), $target.index(), paragraph)) return false;
+    tr.insert(target, paragraph.create());
+    caret = target + 1;
+  }
+  view.dispatch(tr.setSelection(TextSelection.create(tr.doc, caret)).scrollIntoView());
+  view.focus();
   return true;
 }
 

@@ -3,7 +3,7 @@
  * Tests the cell run status row: hidden until the host says running, Cancel while running, the end states, the Install Python prompt,
  * and no change for a request it did not start.
  */
-import { createCellRunStatus } from "../../../src/qmd/dom/cellRunStatus";
+import { createCellRunGroup, createCellRunStatus } from "../../../src/qmd/dom/cellRunStatus";
 
 const buttons = (el: HTMLElement): string[] => [...el.querySelectorAll("button")].map((b) => b.textContent ?? "");
 
@@ -67,4 +67,20 @@ describe("createCellRunStatus", () => {
     without.show("r1", "missing-python");
     expect(buttons(without.el)).toEqual([]);
   });
+});
+
+it("shows the run in the cell whose Run was pressed while it is running", () => {
+  const editor = document.createElement("div");
+  document.body.append(editor);
+  const cell = document.createElement("div");
+  cell.className = "qmd-cell is-run-requested";
+  editor.append(cell);
+  let request = "";
+  const group = createCellRunGroup({ onCancel: () => undefined });
+  group.attach("note", editor, (_label, _code, id) => { request = id; })("scale", "x\n");
+  group.show(request, "running");
+  expect(cell.classList.contains("is-running")).toBe(true);
+  group.show(request, "done");
+  expect(cell.classList.contains("is-running")).toBe(false);
+  expect(cell.classList.contains("is-run-requested")).toBe(false);
 });

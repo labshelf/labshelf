@@ -1,7 +1,7 @@
 // Builds the HTML document a bundle-backed webview page loads: strict CSP, one stylesheet, one module script and the mount point.
 
 export interface HtmlShellOptions {
-  /** Fresh per render; the only inline script the CSP allows. Module files, including lazy chunks, load through `cspSource`. */
+  /** Fresh per render; the only inline script the CSP allows, also allowed for the stylesheets editors inject. Module files, including lazy chunks, load through `cspSource`. */
   nonce: string;
   /** `webview.cspSource`: scripts, styles, fonts and images load only from the extension. */
   cspSource: string;
@@ -15,7 +15,7 @@ export interface HtmlShellOptions {
 export function renderHtmlShell(options: HtmlShellOptions): string {
   const { nonce, cspSource, title, stylesheetUrl, scriptUrl, dataImages = false } = options;
   const images = dataImages ? ` img-src ${cspSource} data:;` : "";
-  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src ${cspSource};${images} font-src ${cspSource};`;
+  const csp = `default-src 'none'; script-src 'nonce-${nonce}' ${cspSource}; style-src 'nonce-${nonce}' ${cspSource};${images} font-src ${cspSource};`;
   return `<!doctype html>
 <html lang="en">
 <head>

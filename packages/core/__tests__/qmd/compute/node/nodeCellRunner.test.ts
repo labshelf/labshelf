@@ -2,6 +2,7 @@
 import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { inflateSync } from "node:zlib";
 
 import type { ICellRunner } from "../../../../src/qmd/compute/cellRunner";
 import { createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../../../src/qmd/compute/node/index";
@@ -42,6 +43,18 @@ beforeAll(async () => {
 
 const runnerFor = (provider: PythonProvider = python, driverPath?: string): ICellRunner =>
   createNodeCellRunner({ python: provider, logger: fakeLogger(), ...(driverPath ? { driverPath } : {}) });
+
+/** The RGBA of a PNG's top-left pixel: whatever the row filter, the first pixel of the first row is stored raw. */
+const topLeftRgba = (dataUrl: string): number[] => {
+  const png = Buffer.from(dataUrl.slice(dataUrl.indexOf(",") + 1), "base64");
+  const idat: Buffer[] = [];
+  for (let at = 8; at < png.length;) {
+    const length = png.readUInt32BE(at);
+    if (png.toString("ascii", at + 4, at + 8) === "IDAT") { idat.push(png.subarray(at + 8, at + 8 + length)); }
+    at += 12 + length;
+  }
+  return [...inflateSync(Buffer.concat(idat)).subarray(1, 5)];
+};
 
 const run = async (code: string, opts: { timeoutMs?: number; signal?: AbortSignal; cwd?: string; runner?: ICellRunner } = {}) => {
   const cwd = opts.cwd ?? (await makeTempDir("cell-cwd-"));
@@ -147,6 +160,15 @@ describe("NodeCellRunner with the managed Python", () => {
     setTimeout(() => controller.abort(), 800);
     const result = await run("while True: pass", { signal: controller.signal, timeoutMs: 30_000 });
     expect(result.status).toBe("cancelled");
+  });
+
+  it("saves a Matplotlib figure with a transparent background", async () => {
+    if (skipReason) { return; }
+    const result = await run("import matplotlib.pyplot as plt\nfig, ax = plt.subplots()\nax.plot([0, 1], [0, 1], label='y')\nax.legend()\nfig");
+    if (result.error?.includes("No module named")) { return; }
+    expect(result.status).toBe("ok");
+    expect(result.text).toMatch(/^data:image\/png;base64,/);
+    expect(topLeftRgba(result.text!)[3]).toBe(0);
   });
 });
 

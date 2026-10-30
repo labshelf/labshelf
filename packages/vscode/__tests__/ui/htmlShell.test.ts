@@ -9,7 +9,7 @@ describe("renderHtmlShell", () => {
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-N' SRC; style-src SRC; font-src SRC;"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-N' SRC; style-src 'nonce-N' SRC; font-src SRC;"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>T</title>
 <link rel="stylesheet" href="css-url"/>
@@ -23,6 +23,6 @@ describe("renderHtmlShell", () => {
 
   it("allows data: images only when asked", () => {
     expect(renderHtmlShell(base)).not.toContain("img-src");
-    expect(renderHtmlShell({ ...base, dataImages: true })).toContain("style-src SRC; img-src SRC data:; font-src SRC;");
+    expect(renderHtmlShell({ ...base, dataImages: true })).toContain("style-src 'nonce-N' SRC; img-src SRC data:; font-src SRC;");
   });
 });

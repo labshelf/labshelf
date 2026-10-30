@@ -1,10 +1,8 @@
 // Mounts the rich editor of a LabShelf Markdown item body: ProseMirror state, keymap, input rules, the Visual/Source toggle and optional collab.
 import { baseKeymap } from "prosemirror-commands";
-import { InputRule, inputRules, textblockTypeInputRule, wrappingInputRule } from "prosemirror-inputrules";
-import type { Node as ProseNode } from "prosemirror-model";
 import { history, redo, undo } from "prosemirror-history";
 import { keymap } from "prosemirror-keymap";
-import { EditorState, Plugin, type Command, type Transaction } from "prosemirror-state";
+import { EditorState, Plugin, TextSelection, type Command } from "prosemirror-state";
 import { Decoration, DecorationSet, EditorView } from "prosemirror-view";
 import { redoCommand, undoCommand, yCursorPlugin, ySyncPlugin, yUndoPlugin } from "y-prosemirror";
 import type * as Y from "yjs";
@@ -12,10 +10,13 @@ import type { Awareness } from "y-protocols/awareness";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
-import { createCodeCellView, createOutputView } from "./codeCellView.js";
-import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
+import { createCodeCellView } from "./codeCellView.js";
+import { createOutputView } from "./outputView.js";
+import { createCitationView, createLinkView, createTaskItemView, editNodeAt } from "./inlineViews.js";
 import { createMathView } from "./mathView.js";
-import { liftItem, qmdKeymap, shortcutLabel, sinkItem, splitItem } from "./qmdCommands.js";
+import { editRequestPlugin, qmdKeymap, shortcutLabel } from "./qmdCommands.js";
+import { codeFenceEnter, qmdInputRules } from "./qmdInputRules.js";
+import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountQmdToolbar } from "./qmdToolbar.js";
 
 export interface QmdEditorOptions { body: string; onChange(body: string): void; onRunCell?(label: string, code: string): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
@@ -30,71 +31,29 @@ const EXTERNAL = "qmdExternal";
 /** UI words for a LabShelf Markdown item (D16); renaming "note" is a change here only. */
 export const QMD_VOCABULARY: { readonly item: string } = { item: "note" };
 
-const bulletList = qmdSchema.nodes.bullet_list!;
 const codeCell = qmdSchema.nodes.code_cell!;
-const heading = qmdSchema.nodes.heading!;
-const listItem = qmdSchema.nodes.list_item!;
-const mathDisplay = qmdSchema.nodes.math_display!;
-const mathInline = qmdSchema.nodes.math_inline!;
-const orderedList = qmdSchema.nodes.ordered_list!;
-const paragraph = qmdSchema.nodes.paragraph!;
-const taskItem = qmdSchema.nodes.task_item!;
 
-/** `[ ] ` or `[x] ` at the start of a paragraph makes a task item, turning a fresh bullet item into one in place. */
-const taskRule = new InputRule(/^\[( |x|X)\]\s$/, (state, match, start, end) => {
-  const checked = match[1] !== " ";
-  const attrs = { checked, mark: checked ? (match[1] as string) : "x" };
-  const $start = state.doc.resolve(start);
-  if ($start.parent.type !== paragraph) return null;
-  const tr = state.tr.delete(start, end);
-  if ($start.depth >= 2 && $start.node(-1).type === listItem && $start.index(-1) === 0 && $start.node(-2).type === bulletList) {
-    return tr.setNodeMarkup($start.before(-1), taskItem, attrs);
-  }
-  const range = tr.doc.resolve(start).blockRange();
-  if (!range) return null;
-  try {
-    return tr.wrap(range, [{ type: bulletList }, { type: taskItem, attrs }]);
-  } catch {
-    return null;
-  }
-});
+/** Arrow keys at the edge of a textblock next to a code cell move the caret into the cell's code. */
+const enterCellKeys: Record<string, { dir: 1 | -1; edge: "up" | "down" | "left" | "right" }> = {
+  ArrowDown: { dir: 1, edge: "down" }, ArrowRight: { dir: 1, edge: "right" }, ArrowUp: { dir: -1, edge: "up" }, ArrowLeft: { dir: -1, edge: "left" },
+};
 
-/** `$tex$` becomes inline math. */
-const inlineMathRule = new InputRule(/(?:^|[^$\\])\$([^$\s](?:[^$]*[^$\s])?)\$$/, (state, match, start, end) => {
-  const lead = match[0].startsWith("$") ? 0 : 1;
-  return state.tr.replaceWith(start + lead, end, mathInline.create({ tex: match[1] }));
-});
-
-/** Replaces the paragraph holding `start` by `node` when the matched text is all it holds. */
-function replaceWholeParagraph(state: EditorState, start: number, end: number, create: () => ProseNode): Transaction | null {
-  const $start = state.doc.resolve(start);
-  if ($start.parent.type !== paragraph || $start.parentOffset !== 0 || end - $start.start() !== $start.parent.content.size) return null;
-  return state.tr.replaceWith($start.before(), $start.after(), create());
-}
-
-/** `$$` on an empty line becomes display math. */
-const displayMathRule = new InputRule(/^\$\$$/, (state, _match, start, end) => replaceWholeParagraph(state, start, end, () => mathDisplay.create()));
-
-/** Three backticks followed by `python` (or `{python}`) and a space become a Python code cell. */
-const codeCellRule = new InputRule(/^```\{?python\}?\s$/, (state, _match, start, end) => replaceWholeParagraph(state, start, end, () => codeCell.create({ lang: "python" })));
-
-/** The input rules plugin of the qmd editor. */
-function qmdInputRules(): Plugin {
-  return inputRules({
-    rules: [
-      textblockTypeInputRule(/^(#{1,6})\s$/, heading, (match) => ({ level: (match[1] as string).length })),
-      taskRule,
-      wrappingInputRule(/^\s*([-+*])\s$/, bulletList, (match) => ({ marker: match[1] })),
-      wrappingInputRule(
-        /^(\d+)([.)])\s$/,
-        orderedList,
-        (match) => ({ order: Number(match[1]), delimiter: match[2] }),
-        (match, node) => node.childCount + (node.attrs.order as number) === Number(match[1]),
-      ),
-      displayMathRule,
-      inlineMathRule,
-      codeCellRule,
-    ],
+function cellNavigationPlugin(): Plugin {
+  return new Plugin({
+    props: {
+      handleKeyDown(view, event) {
+        const key = enterCellKeys[event.key];
+        const selection = view.state.selection;
+        if (!key || event.shiftKey || event.altKey || event.metaKey || event.ctrlKey || !(selection instanceof TextSelection) || !selection.empty) return false;
+        const { $from } = selection;
+        if ($from.depth < 1 || !view.endOfTextblock(key.edge)) return false;
+        const edge = key.dir > 0 ? $from.after() : $from.before();
+        const $edge = view.state.doc.resolve(edge);
+        const neighbour = key.dir > 0 ? $edge.nodeAfter : $edge.nodeBefore;
+        if (neighbour?.type !== codeCell) return false;
+        return editNodeAt(view, key.dir > 0 ? edge : edge - neighbour.nodeSize, key.dir > 0 ? "start" : "end");
+      },
+    },
   });
 }
 
@@ -152,9 +111,11 @@ function createChrome(options: QmdEditorOptions, readOnly: boolean): Chrome {
   return { header, toggle, toolbar, source };
 }
 
+const chainEnter: Command = (state, dispatch, view) => codeFenceEnter(state, dispatch, view) || splitItem(state, dispatch, view);
+
 function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugin[] {
   const { collab } = options;
-  const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`)];
+  const plugins: Plugin[] = [qmdInputRules(), placeholderPlugin(`Empty ${QMD_VOCABULARY.item} — type to start`), editRequestPlugin(), cellNavigationPlugin()];
   if (options.onOpenLink) plugins.push(linkPlugin(options.onOpenLink));
   if (collab) {
     plugins.push(
@@ -167,7 +128,7 @@ function createPlugins(options: QmdEditorOptions, toggleCommand: Command): Plugi
   } else {
     plugins.push(history(), keymap({ "Mod-z": undo, "Mod-Shift-z": redo, "Mod-y": redo }));
   }
-  plugins.push(keymap(qmdKeymap()), keymap({ Enter: splitItem, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
+  plugins.push(keymap(qmdKeymap()), keymap({ Enter: chainEnter, Tab: sinkItem, "Shift-Tab": liftItem, [TOGGLE_KEY]: toggleCommand }), keymap(baseKeymap));
   return plugins;
 }
 
@@ -200,15 +161,19 @@ function currentBody(session: Session): string {
   return session.mode === "source" ? session.chrome.source.value : docToBody(session.view.state.doc);
 }
 
-/** Shows `body` without reporting a change. */
+/** Shows `body` without reporting a change, replacing only the blocks that differ so the caret stays where it was. */
 function showBody(session: Session, body: string): void {
   const { view } = session;
-  if (!session.options.collab) {
-    view.updateState(session.createState(body));
-    return;
-  }
   const doc = bodyToDoc(body);
-  const tr = view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content).setMeta(EXTERNAL, true);
+  const current = view.state.doc.content;
+  const tr = view.state.tr.setMeta(EXTERNAL, true).setMeta("addToHistory", false);
+  const start = current.findDiffStart(doc.content);
+  if (start !== null) {
+    const ends = current.findDiffEnd(doc.content)!;
+    // Both ends step back over a run the two bodies share, so they never cross the start.
+    const overlap = Math.max(0, start - Math.min(ends.a, ends.b));
+    tr.replace(start, ends.a + overlap, doc.slice(start, ends.b + overlap));
+  }
   for (const [name, value] of Object.entries(doc.attrs)) tr.setDocAttribute(name, value);
   view.dispatch(tr);
 }

@@ -19,8 +19,16 @@ def figure_result(value):
     figure = value if hasattr(value, "savefig") else pyplot.figure(numbers[-1]) if numbers else None
     if figure is None:
         return None
+    # The PNG stays theme-neutral: dark ink on a transparent background, which dark themes invert when they show it.
+    for axes in figure.get_axes():
+        axes.patch.set_facecolor("none")
+    legends = list(figure.legends) + [axes.get_legend() for axes in figure.get_axes() if axes.get_legend() is not None]
+    for legend in legends:
+        frame = legend.get_frame()
+        frame.set_alpha(None)
+        frame.set_facecolor((1, 1, 1, 0.5))
     buffer = io.BytesIO()
-    figure.savefig(buffer, format="png", dpi=160)
+    figure.savefig(buffer, format="png", dpi=160, transparent=True, facecolor="none", edgecolor="none", bbox_inches="tight", pad_inches=0.05)
     pyplot.close(figure)
     return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
 

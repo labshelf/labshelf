@@ -1,78 +1,172 @@
 // Shows code cells with their Run button and the stored outputs under them, marking an output out of date when its cell's code hashes to something other than the output's `source`.
 import type { Node as ProseNode } from "prosemirror-model";
 import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { mountOverlay, renderElement } from "../../ui/dom/index.js";
+import { renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { deriveCodeHash, readOutputImage } from "../item/index.js";
-import { setViewNodeAttribute } from "./inlineViews.js";
-import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
+import { TextSelection } from "prosemirror-state";
+import { completionStatus } from "@codemirror/autocomplete";
+import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
+import { createCodeCellEditor, setCodeCellEditable, syncCodeCellEditor } from "./codeCellEditor.js";
+import { exitNode, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
+import { shortcutLabel } from "./qmdCommands.js";
+import { outputContent, readCellLabel } from "./outputView.js";
 
-/** The value of the `#| label:` line in a cell's `options`, or "". */
-function readCellLabel(options: string): string {
-  return /^#\|\s*label:\s*(.*?)\s*$/m.exec(options)?.[1] ?? "";
+const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.ctrlKey) && !event.altKey && /^[zy]$/i.test(event.key);
+
+/** Cells with more lines than this start collapsed when they already have a result. */
+const COLLAPSE_LINES = 12;
+
+/** The first line of `code` with text, shown in place of a collapsed cell's code. */
+function summaryLine(code: string): string {
+  return code.split("\n").find((line) => line.trim())?.trim() ?? "Empty cell";
 }
 
-const isRunKey = (event: KeyboardEvent): boolean => event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey;
+/** The editor shows `code` without the final newline that ends its last line. */
+const editorText = (code: string): string => (code.endsWith("\n") ? code.slice(0, -1) : code);
 
+/** The name a cell's language is shown by in its header. */
+const languageName = (lang: string | null): string => (lang === "python" ? "Python" : lang ?? "");
+
+/**
+ * Shows a code cell as one card: a slim header (collapse chevron, language, label, Run) over its code in a CodeMirror
+ * editor. Edits become transactions on the cell's `code`; arrow keys past the first or last line, and Escape, hand the
+ * caret back to the note, and undo and redo go through the note's history.
+ */
 class CodeCellView implements NodeView {
   readonly dom: HTMLElement;
   private readonly labelText: HTMLElement;
   private readonly langText: HTMLElement;
-  private readonly code: HTMLElement;
-  private readonly pre: HTMLPreElement;
+  private readonly summary: HTMLButtonElement;
+  private readonly pre: HTMLElement;
   private readonly toggle: HTMLButtonElement;
+  private readonly editor: CodeEditorView;
 
   constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly onRunCell?: (label: string, code: string) => void) {
+    this.toggle = renderElement("button", { class: "qmd-cell-toggle", type: "button", html: renderIcon("chevron-down") });
+    this.toggle.addEventListener("click", () => this.showCode(this.pre.hidden === true));
     this.langText = renderElement("span", { class: "qmd-cell-lang" });
     this.labelText = renderElement("span", { class: "qmd-cell-label" });
-    const header = renderElement("div", { class: "qmd-cell-header", contenteditable: "false" }, this.langText, this.labelText);
+    this.summary = renderElement("button", { class: "qmd-cell-summary", type: "button", title: "Show code" });
+    this.summary.addEventListener("click", () => this.focusCode("start"));
+    const header = renderElement("div", { class: "qmd-cell-bar", contenteditable: "false" }, this.toggle, this.langText, this.labelText, this.summary);
     if (onRunCell) {
-      const run = renderElement("button", { class: "qmd-cell-run", type: "button", title: "Run cell (Ctrl/Cmd+Enter)", "aria-label": "Run cell" }, renderElement("span", { html: renderIcon("play"), "aria-hidden": "true" }), "Run");
+      const run = renderElement("button", { class: "qmd-cell-run", type: "button", title: `Run (${shortcutLabel("Mod-Enter")})`, "aria-label": "Run cell" },
+        renderElement("span", { class: "qmd-cell-run-icon", html: renderIcon("play"), "aria-hidden": "true" }),
+        renderElement("span", { class: "qmd-cell-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }),
+        renderElement("span", { class: "qmd-cell-run-text", text: "Run", "aria-hidden": "true" }));
       run.addEventListener("click", () => this.run());
       header.append(run);
     }
-    this.toggle = renderElement("button", { class: "qmd-cell-toggle", type: "button" });
-    this.toggle.addEventListener("click", () => this.showCode(this.pre.hidden === true));
-    header.append(this.toggle);
-    this.code = renderElement("code", { spellcheck: "false" });
-    this.code.contentEditable = String(view.editable);
-    this.code.addEventListener("input", () => this.commit());
-    this.pre = renderElement("pre", { class: "qmd-cell-code" }, this.code);
+    this.editor = createCodeCellEditor({
+      text: editorText(node.attrs.code as string),
+      editable: view.editable,
+      keys: this.keys(),
+      onChange: (text) => this.commit(text),
+      noteCode: () => this.noteCode(),
+    });
+    this.pre = renderElement("div", { class: "qmd-cell-code" }, this.editor.dom);
     this.dom = renderElement("div", { class: "qmd-cell" }, header, this.pre);
+    registerNodeEditor(this.dom, (side) => this.focusCode(side));
     const label = readCellLabel(node.attrs.options as string);
     let hasResult = false;
     view.state.doc.descendants((child) => { if (label && child.type.name === "output" && child.attrs.cell === label && outputContent(child.attrs.raw as string).trim()) { hasResult = true; } });
-    this.showCode(!hasResult || (node.attrs.code as string).split("\n").length <= 12);
-    this.dom.addEventListener("keydown", (event) => {
-      if (!isRunKey(event) || !this.onRunCell) return;
-      event.preventDefault();
-      this.run();
-    });
     this.render();
+    this.showCode(!hasResult || (node.attrs.code as string).split("\n").length <= COLLAPSE_LINES);
   }
 
   private showCode(show: boolean): void {
     this.pre.hidden = !show;
-    this.toggle.textContent = show ? "Hide code" : "Show code";
     this.toggle.setAttribute("aria-expanded", String(show));
+    this.toggle.setAttribute("aria-label", show ? "Collapse code" : "Expand code");
+    this.toggle.title = show ? "Collapse code" : "Expand code";
+    this.summary.hidden = show;
     this.dom.classList.toggle("qmd-cell-collapsed", !show);
+    if (show) this.editor.requestMeasure();
   }
 
   private render(): void {
-    this.langText.textContent = (this.node.attrs.lang as string | null) ?? "";
-    this.labelText.textContent = readCellLabel(this.node.attrs.options as string);
+    const label = readCellLabel(this.node.attrs.options as string);
+    this.langText.textContent = languageName(this.node.attrs.lang as string | null);
+    this.labelText.textContent = label;
+    this.dom.dataset.cellLabel = label;
     const code = this.node.attrs.code as string;
-    if (this.code.textContent !== code) this.code.textContent = code;
+    this.summary.textContent = summaryLine(code);
+    syncCodeCellEditor(this.editor, editorText(code));
+  }
+
+  /** The keys the cell handles before the code editor: run, history, Escape, Backspace in an empty cell, and arrows past the edges. */
+  private keys(): KeyBinding[] {
+    const idle = (editor: CodeEditorView): boolean => completionStatus(editor.state) !== "active";
+    const caret = (editor: CodeEditorView): number | null => (editor.state.selection.main.empty ? editor.state.selection.main.head : null);
+    const leave = (dir: 1 | -1, atEdge: (editor: CodeEditorView, head: number) => boolean) => (editor: CodeEditorView): boolean => {
+      const head = caret(editor);
+      return head !== null && idle(editor) && atEdge(editor, head) && exitNode(this.view, this.getPos, dir);
+    };
+    const run = (): boolean => { if (!this.onRunCell) return false; this.run(); return true; };
+    return [
+      // Undo and redo go through the note's history, which also holds the code edits.
+      { any: (_editor, event) => isHistoryKey(event) && (this.view.someProp("handleKeyDown", (handle) => handle(this.view, event)) ?? false) },
+      { key: "Mod-Enter", run },
+      { key: "Shift-Enter", run },
+      { key: "Escape", run: (editor) => idle(editor) && exitNode(this.view, this.getPos, 1) },
+      { key: "Backspace", run: (editor) => editor.state.doc.length === 0 && this.removeCell() },
+      { key: "ArrowUp", run: leave(-1, (editor, head) => editor.state.doc.lineAt(head).number === 1) },
+      { key: "ArrowLeft", run: leave(-1, (_editor, head) => head === 0) },
+      { key: "ArrowDown", run: leave(1, (editor, head) => editor.state.doc.lineAt(head).number === editor.state.doc.lines) },
+      { key: "ArrowRight", run: leave(1, (editor, head) => head === editor.state.doc.length) },
+    ];
+  }
+
+  /** The code of every cell in the note, for completion. */
+  private noteCode(): string {
+    const codes: string[] = [];
+    this.view.state.doc.descendants((child) => { if (child.type.name === "code_cell") codes.push(child.attrs.code as string); return !child.isAtom; });
+    return codes.join("\n");
+  }
+
+  /** Puts the caret into the code at its `side`, expanding a collapsed cell. */
+  private focusCode(side: EditSide): void {
+    if (!this.view.editable) return;
+    if (this.pre.hidden) this.showCode(true);
+    this.editor.focus();
+    this.editor.dispatch({ selection: { anchor: side === "start" ? 0 : this.editor.state.doc.length }, scrollIntoView: true });
+  }
+
+  /** Backspace in an empty cell replaces it with an empty paragraph holding the caret. */
+  private removeCell(): boolean {
+    const pos = this.getPos();
+    if (pos === undefined) return false;
+    const paragraph = this.view.state.schema.nodes.paragraph!;
+    const tr = this.view.state.tr.replaceWith(pos, pos + this.node.nodeSize, paragraph.create());
+    this.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, pos + 1)).scrollIntoView());
+    this.view.focus();
+    return true;
   }
 
   private run(): void {
-    this.onRunCell?.(readCellLabel(this.node.attrs.options as string), this.node.attrs.code as string);
+    if (!this.onRunCell) return;
+    // Marks the cell whose run is pending, so the run status can show it running in place.
+    for (const cell of Array.from(this.view.dom.querySelectorAll(".qmd-cell.is-run-requested"))) cell.classList.remove("is-run-requested");
+    this.dom.classList.add("is-run-requested");
+    this.onRunCell(readCellLabel(this.node.attrs.options as string) || this.positionLabel(), this.node.attrs.code as string);
   }
 
-  /** Writes the edited text back; `code` holds whole lines, so a missing final newline is restored. */
-  private commit(): void {
-    const text = this.code.textContent ?? "";
-    const code = text === "" || text.endsWith("\n") ? text : `${text}\n`;
+  /** The host's address of an unlabeled cell: `cell-<n>`, its 1-based position among the item's cells (contract qmd-items#outputs). */
+  private positionLabel(): string {
+    const pos = this.getPos();
+    let position = 0;
+    this.view.state.doc.descendants((child, childPos) => {
+      if (pos === undefined || childPos > pos) return false;
+      if (child.type.name === "code_cell") position++;
+      return child.type.name !== "code_cell";
+    });
+    return `cell-${position}`;
+  }
+
+  /** Writes the edited text back; `code` holds whole lines, so the final newline the editor does not show is restored. */
+  private commit(text: string): void {
+    const code = text === "" ? "" : `${text}\n`;
+    this.summary.textContent = summaryLine(code);
     if (code !== this.node.attrs.code) setViewNodeAttribute(this.view, this.getPos, "code", code);
   }
 
@@ -80,150 +174,13 @@ class CodeCellView implements NodeView {
     if (node.type !== this.node.type) return false;
     this.node = node;
     this.render();
+    setCodeCellEditable(this.editor, this.view.editable);
     return true;
   }
 
   stopEvent(event: Event): boolean {
     const target = event.target as Node | null;
-    return target !== null && (this.code.contains(target) || (target as Element).closest?.(".qmd-cell-header") != null);
-  }
-
-  ignoreMutation(): boolean {
-    return true;
-  }
-}
-
-/** A node view for `code_cell`; the Run button and Mod-Enter call `onRunCell(label, code)` and are absent without it. */
-export function createCodeCellView(onRunCell?: (label: string, code: string) => void): NodeViewConstructor {
-  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell);
-}
-
-/** The lines of an output block between its opening line and its closing `:::`. */
-function outputContent(raw: string): string {
-  const lines = raw.split(/\r\n|\n|\r/);
-  if (lines.at(-1) === "") lines.pop();
-  if (lines.length > 0 && lines.at(-1)?.trim() === ":::") lines.pop();
-  return lines.slice(1).join("\n");
-}
-
-/** Removes a whole code fence from text results while preserving the stored Markdown. */
-function plainOutput(text: string): string {
-  const content = text.split("\n");
-  const fence = /^(`{3,}|~{3,})[^\n]*$/.exec(content[0] ?? "")?.[1];
-  const closing = content.at(-1)?.trim() ?? "";
-  return fence && closing[0] === fence[0] && closing.length >= fence.length && [...closing].every((char) => char === fence[0])
-    ? content.slice(1, -1).join("\n") : content.join("\n");
-}
-
-/** The TeX of an output that is one `$$ … $$` block, or null. */
-function displayMath(content: string): string | null {
-  return /^\s*\$\$([\s\S]*?)\$\$\s*$/.exec(content)?.[1]?.trim() ?? null;
-}
-
-function openPlot(src: string, alt: string): () => void {
-  const close = renderElement("button", { class: "qmd-plot-close", type: "button", "aria-label": "Close plot", html: renderIcon("x") });
-  const panel = renderElement("section", { class: "qmd-plot-preview", role: "dialog", "aria-modal": "true", "aria-label": "Python plot" },
-    renderElement("header", { class: "qmd-plot-header" }, renderElement("span", {}, alt), close), renderElement("img", { src, alt }));
-  const overlay = mountOverlay(panel, () => undefined);
-  close.addEventListener("click", overlay.close);
-  close.focus();
-  return overlay.close;
-}
-
-class OutputView implements NodeView {
-  readonly dom: HTMLElement;
-  private readonly body: HTMLElement;
-  private shownRaw: string | null = null;
-  private checkedKey: string | null = null;
-  private readonly observer: MutationObserver;
-  private destroyed = false;
-  private badge: HTMLElement | null = null;
-  private preview: (() => void) | null = null;
-
-  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly loadMath: MathLoader) {
-    this.body = renderElement("div", { class: "qmd-output-body" });
-    this.dom = renderElement("div", { class: "qmd-output", contenteditable: "false" }, renderElement("div", { class: "qmd-output-heading" }, "Result"), this.body);
-    // An unchanged output keeps its view when only its cell changes, so the view watches the editor for edits.
-    this.observer = new MutationObserver(() => this.checkSource());
-    this.observer.observe(view.dom, { childList: true, subtree: true, characterData: true });
-    this.render();
-  }
-
-  private render(): void {
-    const raw = this.node.attrs.raw as string;
-    if (raw !== this.shownRaw) {
-      this.preview?.();
-      this.preview = null;
-      this.shownRaw = raw;
-      const content = outputContent(raw);
-      const tex = displayMath(content);
-      const image = readOutputImage(content);
-      this.dom.classList.toggle("qmd-output-figure", image !== null);
-      if (image) {
-        const expand = renderElement("button", { class: "qmd-output-image-button", type: "button", "aria-label": "Expand plot", title: "Expand plot" }, renderElement("img", { class: "qmd-output-image", src: image.src, alt: image.alt }));
-        expand.addEventListener("click", () => { this.preview?.(); this.preview = openPlot(image.src, image.alt); });
-        this.body.replaceChildren(expand);
-      } else if (tex === null) {
-        this.body.replaceChildren(renderElement("pre", { class: "qmd-output-text", text: plainOutput(content) }));
-      } else {
-        const rendered = renderElement("div", { class: "qmd-math-rendered" });
-        const math = renderElement("div", { class: "qmd-math qmd-math-display" }, rendered);
-        this.body.replaceChildren(math);
-        void renderMathInto(rendered, tex, true, this.loadMath);
-      }
-    }
-    this.checkSource();
-  }
-
-  /** The `code` of the cell this output belongs to: the nearest earlier `code_cell` labelled `cell`, or the nearest earlier cell when the output names none. */
-  private cellCode(): string | null {
-    const pos = this.getPos();
-    if (pos === undefined) return null;
-    const wanted = this.node.attrs.cell as string;
-    let code: string | null = null;
-    this.view.state.doc.nodesBetween(0, pos, (child, childPos) => {
-      if (childPos >= pos) return false;
-      if (child.type.name !== "code_cell") return true;
-      if (!wanted || readCellLabel(child.attrs.options as string) === wanted) code = child.attrs.code as string;
-      return false;
-    });
-    return code;
-  }
-
-  private checkSource(): void {
-    if (this.destroyed) return;
-    const code = this.cellCode();
-    const source = this.node.attrs.source as string;
-    const key = code === null ? null : `${source}\u0000${code}`;
-    if (key === this.checkedKey) return;
-    this.checkedKey = key;
-    if (code === null) {
-      this.showStale(false);
-      return;
-    }
-    void deriveCodeHash(code).then((hash) => {
-      if (this.destroyed || this.checkedKey !== key) return;
-      this.showStale(hash !== source);
-    }, () => undefined);
-  }
-
-  /** The badge exists only while the output is out of date, so a current output carries no trace of the state. */
-  private showStale(stale: boolean): void {
-    this.dom.classList.toggle("is-out-of-date", stale);
-    if (!stale) {
-      this.badge?.remove();
-      this.badge = null;
-    } else if (!this.badge) {
-      this.badge = renderElement("span", { class: "qmd-output-badge", html: renderIcon("warning") }, "Out of date");
-      this.dom.prepend(this.badge);
-    }
-  }
-
-  update(node: ProseNode): boolean {
-    if (node.type !== this.node.type) return false;
-    this.node = node;
-    this.render();
-    return true;
+    return target !== null && (this.pre.contains(target) || (target as Element).closest?.(".qmd-cell-bar") != null);
   }
 
   ignoreMutation(): boolean {
@@ -231,14 +188,11 @@ class OutputView implements NodeView {
   }
 
   destroy(): void {
-    this.destroyed = true;
-    this.preview?.();
-    this.observer.disconnect();
+    this.editor.destroy();
   }
 }
 
-/** A node view for `output`: text in monospace, a `$$ … $$` output as display math, and `is-out-of-date` when its cell's code hash differs from `source`. */
-export function createOutputView(loadMath?: () => Promise<{ renderMathSvg(tex: string, display: boolean): string }>): NodeViewConstructor {
-  const loader = loadMath ?? loadCoreMath;
-  return (node, view, getPos) => new OutputView(node, view, getPos, loader);
+/** A node view for `code_cell`; the Run button and Mod-Enter call `onRunCell(label, code)` and are absent without it. */
+export function createCodeCellView(onRunCell?: (label: string, code: string) => void): NodeViewConstructor {
+  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell);
 }

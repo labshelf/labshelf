@@ -228,8 +228,28 @@ describe("compact note browsing", () => {
   it("gives math-only and code-only notes readable previews", () => {
     const { tab } = setup();
     tab.show([{ ...note, body: "$$\nx^2 + y^2\n$$\n" }, { ...note, id: "n2", body: "```python\nprint(1)\n```\n" }]);
-    expect(tab.el.querySelectorAll(".rd-note-preview-title")[0]!.textContent).toBe("Equation note");
-    expect(tab.el.querySelectorAll(".rd-note-preview-title")[1]!.textContent).toBe("Code note");
+    expect(tab.el.querySelectorAll(".rd-note-preview-title")[0]!.textContent).toBe("x^2 + y^2");
+    expect(tab.el.querySelectorAll(".rd-note-preview-title")[1]!.textContent).toBe("print(1)");
+  });
+
+  it("falls back to a kind title for an empty code note and strips inline math delimiters", () => {
+    const { tab } = setup();
+    tab.show([{ ...note, body: "```python\n```\n" }, { ...note, id: "n2", body: "Scale by $\\sqrt{d_k}$ here\n" }]);
+    const titles = [...tab.el.querySelectorAll(".rd-note-preview-title")].map((el) => el.textContent);
+    expect(titles).toEqual(["Code note", "Scale by √d_k here"]);
+  });
+
+  it("shows the highlighted passage in the list and a page chip in the editor", () => {
+    const { tab, second } = setup();
+    tab.setAnnotations([{ id: "a1", pageNumber: 4, color: "green", content: "The quoted passage", type: "highlight" } as never]);
+    tab.show([{ ...second, id: "n3", anchor: "hl:a1" }]);
+    expect(tab.el.querySelector(".rd-note-preview-quote")!.textContent).toBe("The quoted passage");
+    expect(tab.el.querySelector(".rd-note-accent.rd-color-green")).not.toBeNull();
+    tab.reveal("n3");
+    expect(tab.el.querySelector(".rd-note-source")!.textContent).toBe("p. 4 · Highlight");
+    expect(tab.el.querySelector(".rd-notes-back")!.getAttribute("aria-label")).toBe("All notes");
+    expect(tab.el.querySelector(".rd-note-quote")!.textContent).toContain("The quoted passage");
+    tab.onHide();
   });
 
 });

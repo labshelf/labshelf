@@ -1,4 +1,4 @@
-// Fills the formatting toolbar of the rich Markdown editor: ghost icon buttons for marks, headings, lists, math, code cells and links, with their pressed and disabled states kept in step with the selection.
+// Fills the formatting toolbar of the rich Markdown editor: one compact row of icon buttons for headings, marks, lists, links and inline math, and an Insert menu, with their pressed and disabled states kept in step with the selection and arrow keys moving between them.
 import type { Command } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { renderElement, showMenu } from "../../ui/dom/index.js";
@@ -6,7 +6,7 @@ import { renderIcon, type IconName } from "../../ui/icons/index.js";
 import { QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
 
 const GROUPS: (keyof typeof QMD_ACTIONS | "heading")[][] = [
-  ["heading"], ["bold", "italic"], ["bullet", "ordered", "task"],
+  ["heading", "bold", "italic"], ["bullet", "ordered", "task"], ["link", "inlineMath"],
 ];
 const INSERT_ACTIONS = ["inlineMath", "displayMath", "codeCell", "link"] as const;
 
@@ -27,14 +27,16 @@ function renderButton(label: string, icon: IconName, shortcut: string): HTMLButt
 
 const runCommand = (view: EditorView, command: Command): boolean => command(view.state, view.dispatch.bind(view), view);
 
+/** The paragraph style menu: the button shows the current heading level (H1–H3) or the heading icon for body text. */
 function createHeadingButton(view: EditorView, buttons: ToolbarButton[]): HTMLButtonElement {
   const levels = QMD_HEADINGS.filter((heading) => heading.level > 0);
   const range = `${shortcutLabel(levels[0]?.shortcut ?? "")}–${levels[levels.length - 1]?.level ?? ""}`;
   const button = renderButton(HEADING_LABEL, "heading", range);
   button.setAttribute("aria-haspopup", "menu");
-  button.classList.add("qmd-toolbar-text-button");
-  const caption = renderElement("span", {}, "Text");
-  button.replaceChildren(caption, renderElement("span", { class: "qmd-toolbar-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
+  button.classList.add("qmd-toolbar-heading");
+  const caption = renderElement("span", { class: "qmd-toolbar-heading-level", "aria-hidden": "true" });
+  const icon = renderElement("span", { class: "qmd-toolbar-heading-icon", "aria-hidden": "true", html: renderIcon("heading") });
+  button.replaceChildren(icon, caption, renderElement("span", { class: "qmd-toolbar-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
   button.addEventListener("click", () => {
     showMenu(
       button,
@@ -53,7 +55,13 @@ function createHeadingButton(view: EditorView, buttons: ToolbarButton[]): HTMLBu
   });
   // Enabled while any heading level or the paragraph applies.
   const anyHeading: Command = (state) => QMD_HEADINGS.some((heading) => heading.active(state) || heading.command(state));
-  buttons.push({ button, command: anyHeading, update: () => { caption.textContent = QMD_HEADINGS.find((heading) => heading.active(view.state) && heading.level > 0)?.label ?? "Text"; } });
+  const update = (): void => {
+    const level = QMD_HEADINGS.find((heading) => heading.active(view.state) && heading.level > 0)?.level;
+    caption.textContent = level ? `H${level}` : "";
+    icon.hidden = level !== undefined;
+    button.setAttribute("aria-label", level ? `${HEADING_LABEL}: level ${level}` : `${HEADING_LABEL}: body text`);
+  };
+  buttons.push({ button, command: anyHeading, update });
   return button;
 }
 
@@ -69,7 +77,7 @@ function createActionButton(view: EditorView, buttons: ToolbarButton[], action: 
 }
 
 function createInsertButton(view: EditorView, source?: () => void): HTMLButtonElement {
-  const button = renderElement("button", { class: "qmd-toolbar-btn qmd-toolbar-text-button qmd-toolbar-insert", type: "button", "aria-haspopup": "menu", "aria-label": "Insert" }, renderElement("span", { html: renderIcon("plus"), "aria-hidden": "true" }), "Insert");
+  const button = renderElement("button", { class: "qmd-toolbar-btn qmd-toolbar-insert", type: "button", "aria-haspopup": "menu", "aria-label": "Insert", title: "Insert", html: renderIcon("plus") });
   button.addEventListener("click", () => showMenu(button, [
     ...INSERT_ACTIONS.map((id) => {
       const action = QMD_ACTIONS[id];
@@ -78,6 +86,29 @@ function createInsertButton(view: EditorView, source?: () => void): HTMLButtonEl
     ...(source ? ["separator" as const, { label: "Edit Markdown source", icon: "code" as const, onSelect: source }] : []),
   ]));
   return button;
+}
+
+/** Arrow keys, Home and End move focus between the toolbar's enabled buttons; Tab enters and leaves the toolbar at one stop. */
+function rovingFocus(root: HTMLElement): { refresh(): void; destroy(): void } {
+  const enabled = (): HTMLButtonElement[] => Array.from(root.querySelectorAll<HTMLButtonElement>("button")).filter((button) => !button.disabled);
+  const refresh = (): void => {
+    const all = enabled();
+    const current = all.find((button) => button.tabIndex === 0) ?? all[0];
+    for (const button of root.querySelectorAll<HTMLButtonElement>("button")) button.tabIndex = button === current ? 0 : -1;
+  };
+  const onKey = (event: KeyboardEvent): void => {
+    const all = enabled();
+    const index = all.indexOf(event.target as HTMLButtonElement);
+    if (index < 0) return;
+    const next = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: all.length - 1 }[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    const target = all[(next + all.length) % all.length]!;
+    for (const button of all) button.tabIndex = button === target ? 0 : -1;
+    target.focus();
+  };
+  root.addEventListener("keydown", onKey);
+  return { refresh, destroy: () => root.removeEventListener("keydown", onKey) };
 }
 
 /** Mounts the toolbar's buttons into `root` and drives `view` with them; `destroy` removes them and their listeners. */
@@ -92,6 +123,7 @@ export function mountQmdToolbar(root: HTMLElement, view: EditorView, source?: ()
   }
 
   root.append(createInsertButton(view, source));
+  const roving = rovingFocus(root);
 
   function refresh(): void {
     if (view.isDestroyed) return;
@@ -101,6 +133,7 @@ export function mountQmdToolbar(root: HTMLElement, view: EditorView, source?: ()
       button.disabled = !command(state);
       if (active) button.setAttribute("aria-pressed", String(active(state)));
     }
+    roving.refresh();
   }
 
   // Keeps the editor focused, and its selection, when a button is pressed with the mouse.
@@ -121,6 +154,7 @@ export function mountQmdToolbar(root: HTMLElement, view: EditorView, source?: ()
   return {
     destroy() {
       root.removeEventListener("mousedown", keepFocus);
+      roving.destroy();
       editorRoot?.removeEventListener("focusin", refresh);
       if (!view.isDestroyed && previous) view.setProps({ dispatchTransaction: previous });
       root.replaceChildren();

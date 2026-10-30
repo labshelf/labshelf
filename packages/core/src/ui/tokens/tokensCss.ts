@@ -1,7 +1,7 @@
 /**
  * Renders the design tokens as the `--ls-*` stylesheet that `ui/dom/tokens.css` holds, and maps them to the host's VS Code theme in `ui/dom/vscodeHost.css`.
  */
-import { CODE_FONT_TOKENS, COLOR_TOKENS, ELEVATION_TOKENS, FILE_TYPE_TOKENS, HIGHLIGHT_COLORS, MARK_TOKENS, MOTION_TOKENS, SHAPE_TOKENS, SHEET_TOKENS, SPACE_TOKENS, STATUS_TOKENS, TYPE_TOKENS, createDesignToken, renderCodeFontsCss, type DesignToken } from "./tokens.js";
+import { CODE_FONT_TOKENS, COLOR_TOKENS, ELEVATION_TOKENS, FILE_TYPE_TOKENS, HIGHLIGHT_COLORS, MARK_TOKENS, MOTION_TOKENS, PLOT_TOKENS, SHAPE_TOKENS, SHEET_TOKENS, SPACE_TOKENS, STATUS_TOKENS, TYPE_TOKENS, createDesignToken, renderCodeFontsCss, type DesignToken } from "./tokens.js";
 import { CODE_THEME_TOKENS, renderCodeThemesCss, renderReaderThemesCss } from "./themes.js";
 
 const ALL_TOKENS: Record<string, DesignToken> = {
@@ -10,6 +10,7 @@ const ALL_TOKENS: Record<string, DesignToken> = {
   ...MARK_TOKENS,
   ...FILE_TYPE_TOKENS,
   ...SHEET_TOKENS,
+  ...PLOT_TOKENS,
   ...CODE_THEME_TOKENS,
   ...Object.fromEntries(Object.entries(HIGHLIGHT_COLORS).map(([name, value]) => [`hl-${name}`, createDesignToken(value)])),
   ...TYPE_TOKENS,
@@ -127,7 +128,7 @@ export function renderVscodeHostCss(): string {
     ...lines,
     "}",
     "",
-    "body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; }",
+    "body.vscode-light, body.vscode-high-contrast-light { color-scheme: light; --ls-plot-filter: none; }",
     "",
   ].join("\n");
 }

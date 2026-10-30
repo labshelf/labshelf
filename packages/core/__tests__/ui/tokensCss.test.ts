@@ -16,7 +16,7 @@ describe("tokens.css", () => {
   });
 
   it("points each picked code font at its family, falling back to the monospace stack", () => {
-    expect(renderTokensCss()).toContain(':root[data-code-font="opendyslexic"] {\n  --ls-code-font: "OpenDyslexic", var(--ls-mono);\n}');
+    expect(renderTokensCss()).toContain(':root[data-code-font="opendyslexic"] { --ls-code-font: "OpenDyslexic", var(--ls-mono); }');
   });
 
   it("lists the serif title face", () => {

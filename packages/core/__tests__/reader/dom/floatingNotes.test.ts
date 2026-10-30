@@ -109,3 +109,35 @@ it("opens the floating editor for a PDF text box without creating a second pin",
   expect(dialog().textContent).toContain("Text on the paper");
   expect(document.querySelector(".rd-note-pin")).toBeNull();
 });
+
+it("runs a Python cell from the floating editor when the host can run cells", () => {
+  const { post } = setup();
+  floating.show([note("p4 point 0.7 0.3", "```{python}\n#| label: one\nprint(1)\n```")]);
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  expect(document.querySelector(".rd-floating-note .qmd-cell-run")).toBeNull();
+  floating.setCanRunCells(true);
+  document.querySelector<HTMLButtonElement>('.rd-floating-note [aria-label="Run cell"]')!.click();
+  expect(post).toHaveBeenCalledWith(expect.objectContaining({ command: "runCell", itemId: "n1", label: "one", code: "print(1)\n" }));
+});
+
+it("shows an output the host writes while the caret is inside the editor", () => {
+  const { dialog } = setup();
+  const cell = "```{python}\n#| label: one\nprint(1)\n```\n";
+  floating.show([note("p4 point 0.7 0.3", cell)]);
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  dialog().querySelector<HTMLElement>(".ProseMirror")!.focus();
+  expect(dialog().contains(document.activeElement)).toBe(true);
+  floating.show([note("p4 point 0.7 0.3", `${cell}\n::: {.labshelf-output cell="one" source="3f9a1c0b7d2e"}\nPrinted one\n:::\n`)]);
+  expect(dialog().textContent).toContain("Printed one");
+  expect(dialog().querySelector(".rd-floating-note-status")!.textContent).toBe("Saved");
+});
+
+it("keeps typing that the host has not acknowledged when an output arrives", () => {
+  const { dialog } = setup();
+  floating.show([note("p4 point 0.7 0.3", "Start")]);
+  document.querySelector<HTMLButtonElement>(".rd-note-pin")!.click();
+  edit("Start and more");
+  floating.show([note("p4 point 0.7 0.3", "Start\n\n::: {.labshelf-output cell=\"one\" source=\"3f9a1c0b7d2e\"}\nPrinted one\n:::\n")]);
+  expect(dialog().querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("Start and more");
+  expect(dialog().querySelector(".rd-floating-note-status")!.textContent).toBe("Saving…");
+});

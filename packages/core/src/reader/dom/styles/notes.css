@@ -1,31 +1,91 @@
 /* Separates browsing PDF notes from editing a single note in the reader sidebar. */
-.rd-notes { overflow: hidden; }
-.rd-notes-count { font-variant-numeric: tabular-nums; }
-.rd-notes-filters { display: flex; flex-direction: column; gap: var(--ls-space-3); padding: var(--ls-space-4) var(--ls-space-6); }
-.rd-notes-filter, .rd-notes-search { width: 100%; min-width: 0; min-height: var(--ls-row-h); padding: var(--ls-space-2) var(--ls-space-3); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius); background: var(--ls-input-bg); color: var(--ls-reader-fg); font: inherit; }
-.rd-notes-filter { border-color: transparent; background: transparent; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); }
-.rd-notes-list { min-height: 0; overflow: auto; padding: 0 var(--ls-space-4) var(--ls-space-6); }
-.rd-notes-group { padding: var(--ls-space-6) var(--ls-space-2) var(--ls-space-3); font-size: var(--ls-text-sm); font-weight: 600; color: var(--ls-reader-desc); }
-.rd-note-preview { display: flex; flex-direction: column; gap: var(--ls-space-2); width: 100%; min-width: 0; padding: var(--ls-space-6) var(--ls-space-4); margin-bottom: var(--ls-space-2); border: 0; border-radius: var(--ls-radius); background: transparent; color: var(--ls-reader-fg); text-align: left; cursor: pointer; font: inherit; }
-.rd-note-preview:hover, .rd-note-preview:focus-visible { background: var(--ls-reader-hover); }
-.rd-note-preview-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-weight: 600; line-height: 1.5; }
-.rd-note-preview-body { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-md); line-height: 1.5; }
-.rd-note-preview-meta { display: flex; align-items: center; gap: var(--ls-space-3); margin-top: var(--ls-space-2); font-size: var(--ls-text-sm); color: var(--ls-reader-desc); }
-.rd-note-preview-meta svg { width: var(--ls-text-md); height: var(--ls-text-md); }
-.rd-note-preview-meta .rd-ann-dot { margin: 0; }
-.rd-notes-editor-pane { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow: auto; }
-.rd-notes-editor-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--ls-space-4); padding: var(--ls-space-3) var(--ls-space-6); }
-.rd-notes-back, .rd-note-source { display: inline-flex; align-items: center; gap: var(--ls-space-3); border: 0; background: none; padding: var(--ls-space-2) 0; color: var(--ls-link); cursor: pointer; font: inherit; font-size: var(--ls-text-md); }
-.rd-notes-back svg { width: var(--ls-text-md); height: var(--ls-text-md); }
-.rd-note-context { padding: 0 var(--ls-space-6); }
-.rd-note-source:disabled { color: var(--ls-reader-desc); cursor: default; }
-.rd-note-quote { margin: var(--ls-space-3) 0 var(--ls-space-6); padding-left: var(--ls-space-4); border-left: var(--ls-space-1) solid var(--ls-reader-border); color: var(--ls-reader-desc); font-size: var(--ls-text-md); line-height: 1.6; max-height: calc(var(--ls-row-h) * 4); overflow: auto; }
-.rd-note-editor { min-width: 0; flex: 1; padding: var(--ls-space-6); }
-.rd-note-editor-footer { padding: var(--ls-space-4) var(--ls-space-6); color: var(--ls-reader-desc); font-size: var(--ls-text-sm); text-align: right; }
-.rd-note-delete.rd-danger { background: var(--ls-error); color: var(--ls-reader-surface); }
+.rd-notes { --rd-notes-bar-h: calc(var(--ls-row-h) + var(--ls-space-7)); overflow: hidden; }
 .rd-notes :focus-visible { outline: 1px solid var(--ls-focus); outline-offset: -1px; }
+.rd-notes-field-icon { display: inline-flex; flex-shrink: 0; color: var(--ls-reader-desc); pointer-events: none; }
+.rd-notes-field-icon svg { width: var(--ls-text-md); height: var(--ls-text-md); }
 
-.rd-note-editor .qmd-editor-toolbar { background: var(--ls-reader-surface); }
+/* ── List: one header row with search, filter and count ───────── */
+.rd-notes-filters { display: flex; align-items: center; gap: var(--ls-space-2); min-height: var(--rd-notes-bar-h); padding: 0 var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); flex-shrink: 0; }
+.rd-notes-filters[hidden] { display: none; }
+.rd-notes-search-field, .rd-notes-filter-field { position: relative; display: flex; align-items: center; min-width: 0; height: calc(var(--ls-row-h) + var(--ls-space-1)); border-radius: var(--ls-radius); border: 1px solid transparent; }
+.rd-notes-search-field { flex: 1; gap: var(--ls-space-3); padding: 0 var(--ls-space-3); background: var(--ls-reader-hover); }
+.rd-notes-search-field:focus-within { border-color: var(--ls-focus); background: transparent; }
+.rd-notes-search { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: none; color: var(--ls-reader-fg); font: inherit; font-size: var(--ls-text-md); outline: none; }
+.rd-notes-search::placeholder { color: var(--ls-reader-desc); }
+.rd-notes .rd-notes-search:focus-visible { outline: none; }
+.rd-notes-filter-field { flex-shrink: 0; max-width: 45%; }
+.rd-notes-filter-field:hover { background: var(--ls-reader-hover); }
+.rd-notes-filter-field:focus-within { border-color: var(--ls-focus); }
+.rd-notes-filter { field-sizing: content; appearance: none; -webkit-appearance: none; min-width: 0; max-width: 100%; height: 100%; padding: 0 calc(var(--ls-space-3) + var(--ls-text-md)) 0 var(--ls-space-3); border: 0; background: none; color: var(--ls-reader-desc); font: inherit; font-size: var(--ls-text-sm); text-overflow: ellipsis; cursor: pointer; outline: none; }
+.rd-notes .rd-notes-filter:focus-visible { outline: none; }
+.rd-notes-filter option { background: var(--ls-reader-surface); color: var(--ls-reader-fg); }
+.rd-notes-filter-field .rd-notes-field-icon { position: absolute; right: var(--ls-space-2); }
+.rd-notes-count { flex-shrink: 0; min-width: var(--ls-space-6); padding: 0 var(--ls-space-1); color: var(--ls-reader-desc); font-size: var(--ls-text-sm); font-variant-numeric: tabular-nums; text-align: right; }
+
+.rd-notes-list { flex: 1; min-height: 0; overflow: auto; padding: 0 var(--ls-space-3) var(--ls-space-6); }
+.rd-notes-list[hidden] { display: none; }
+.rd-notes-group { position: sticky; top: 0; z-index: 1; padding: var(--ls-space-5) var(--ls-space-3) var(--ls-space-2); background: var(--ls-reader-surface); color: var(--ls-reader-desc); font-size: var(--ls-text-xs); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+
+.rd-note-preview { display: flex; align-items: stretch; gap: var(--ls-space-4); width: 100%; min-width: 0; margin-top: var(--ls-space-1); padding: var(--ls-space-4) var(--ls-space-3); border: 0; border-radius: var(--ls-radius-lg); background: transparent; color: var(--ls-reader-fg); text-align: left; cursor: pointer; font: inherit; transition: background var(--ls-fast); }
+.rd-note-preview:hover { background: var(--ls-reader-hover); }
+.rd-note-preview:focus-visible { background: var(--ls-reader-hover); }
+.rd-note-preview:active { background: var(--ls-reader-active); }
+.rd-note-accent { flex-shrink: 0; width: var(--ls-space-1); align-self: stretch; border-radius: var(--ls-radius-pill); background: var(--ls-reader-border); }
+.rd-note-preview-text { display: flex; flex-direction: column; gap: var(--ls-space-1); flex: 1; min-width: 0; }
+.rd-note-preview-quote { overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); font-style: italic; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.rd-note-preview-head { display: flex; align-items: center; gap: var(--ls-space-3); min-width: 0; }
+.rd-note-preview-title { flex: 1; min-width: 0; overflow: hidden; font-size: var(--ls-text-md); font-weight: 600; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.rd-note-preview-kind { display: inline-flex; flex-shrink: 0; color: var(--ls-reader-desc); }
+.rd-note-preview-kind svg { width: var(--ls-text-md); height: var(--ls-text-md); }
+.rd-note-preview-body { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-md); line-height: 1.5; overflow-wrap: anywhere; }
+
+.rd-notes-empty { display: flex; flex-direction: column; align-items: center; gap: var(--ls-space-3); padding: var(--ls-space-9) var(--ls-space-7); text-align: center; }
+.rd-notes-empty strong { color: var(--ls-reader-fg); font-size: var(--ls-text-md); font-weight: 600; }
+.rd-notes-empty-icon { display: inline-flex; margin-bottom: var(--ls-space-2); color: var(--ls-reader-desc); opacity: .7; }
+.rd-notes-empty-icon svg { width: var(--ls-space-8); height: var(--ls-space-8); }
+.rd-notes-clear { padding: var(--ls-space-2) var(--ls-space-4); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius); background: none; color: var(--ls-reader-fg); cursor: pointer; font: inherit; font-size: var(--ls-text-sm); }
+.rd-notes-clear:hover { background: var(--ls-reader-hover); }
+
+/* ── Editor: one top bar, the source passage, then the note ────── */
+.rd-notes-editor-pane { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
+.rd-notes-editor-pane[hidden] { display: none; }
+.rd-notes-editor-nav { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: var(--ls-space-2); box-sizing: border-box; height: var(--rd-notes-bar-h); flex-shrink: 0; padding: 0 var(--ls-space-4); border-bottom: 1px solid var(--ls-reader-border); background: var(--ls-reader-surface); }
+.rd-notes-back { flex-shrink: 0; color: var(--ls-reader-desc); }
+.rd-notes-back:hover { color: var(--ls-reader-fg); }
+.rd-note-source { display: inline-flex; align-items: center; gap: var(--ls-space-3); min-width: 0; height: calc(var(--ls-row-h) + var(--ls-space-1)); padding: 0 var(--ls-space-4); border: 1px solid var(--ls-reader-border); border-radius: var(--ls-radius-pill); background: none; color: var(--ls-reader-fg); cursor: pointer; font: inherit; font-size: var(--ls-text-sm); }
+.rd-note-source:hover:enabled { background: var(--ls-reader-hover); }
+.rd-note-source:disabled { color: var(--ls-reader-desc); cursor: default; }
+.rd-note-source .rd-ann-dot { margin: 0; }
+.rd-note-source-icon { display: inline-flex; flex-shrink: 0; color: var(--ls-reader-desc); }
+.rd-note-source-icon svg { width: var(--ls-text-sm); height: var(--ls-text-sm); }
+.rd-note-source-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rd-note-save-status { flex: 1; min-width: 0; overflow: hidden; color: var(--ls-reader-desc); font-size: var(--ls-text-sm); text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.rd-note-delete { flex-shrink: 0; color: var(--ls-reader-desc); }
+.rd-note-delete:hover { color: var(--ls-reader-fg); }
+.rd-note-delete.rd-danger, .rd-note-delete.rd-danger:hover { background: var(--ls-error); color: var(--ls-reader-surface); }
+
+.rd-note-context { display: flex; flex-direction: column; align-items: flex-start; gap: var(--ls-space-1); padding: var(--ls-space-5) var(--ls-space-6) 0; }
+.rd-note-context:empty { display: none; }
+.rd-note-quote { display: flex; gap: var(--ls-space-4); width: 100%; box-sizing: border-box; margin: 0; padding: var(--ls-space-4) var(--ls-space-5) var(--ls-space-4) var(--ls-space-4); border-radius: var(--ls-radius-lg); background: var(--ls-reader-hover); color: var(--ls-reader-desc); font-size: var(--ls-text-sm); font-style: italic; line-height: 1.55; }
+.rd-note-quote-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.rd-note-quote.is-clamped .rd-note-quote-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.rd-note-quote-toggle { padding: var(--ls-space-1) var(--ls-space-2); border: 0; border-radius: var(--ls-radius-sm); background: none; color: var(--ls-link); cursor: pointer; font: inherit; font-size: var(--ls-text-sm); }
+.rd-note-quote-toggle:hover { background: var(--ls-reader-hover); }
+.rd-note-quote-toggle[hidden] { display: none; }
+
+.rd-note-editor { flex: 1; min-width: 0; padding: var(--ls-space-3) var(--ls-space-6) var(--ls-space-8); }
+
+/* The shared editor is sized for a full pane; the sidebar uses a calmer, smaller scale. */
+.rd-note-editor.qmd-editor { gap: var(--ls-space-3); font-size: var(--ls-text-md); line-height: 1.6; }
+.rd-note-editor.qmd-editor .qmd-editor-toolbar { top: var(--rd-notes-bar-h); margin: 0 calc(-1 * var(--ls-space-6)); padding-left: var(--ls-space-6); padding-right: var(--ls-space-6); background: var(--ls-reader-surface); }
+.rd-note-editor.qmd-editor .ProseMirror { min-height: calc(var(--ls-row-h) * 6); }
+.rd-note-editor.qmd-editor .ProseMirror h1, .rd-note-editor.qmd-editor .ProseMirror h2, .rd-note-editor.qmd-editor .ProseMirror h3 { margin: var(--ls-space-5) 0 var(--ls-space-2); line-height: 1.35; }
+.rd-note-editor.qmd-editor .ProseMirror > :first-child { margin-top: 0; }
+.rd-note-editor.qmd-editor .ProseMirror h1 { font-size: var(--ls-text-xl); }
+.rd-note-editor.qmd-editor .ProseMirror h2 { font-size: var(--ls-text-lg); }
+.rd-note-editor.qmd-editor .ProseMirror h3 { font-size: var(--ls-text-md); }
+.rd-note-editor.qmd-editor .ProseMirror > p + p { margin-top: var(--ls-space-4); }
+.rd-note-editor.qmd-editor .ProseMirror ul, .rd-note-editor.qmd-editor .ProseMirror ol { padding-left: var(--ls-space-7); }
 
 /* The reader's page theme can differ from the surrounding application's theme. */
 .rd-note-editor, .rd-floating-note-body, .rd-note-box-content {
@@ -34,4 +94,16 @@
   --ls-code-bg: color-mix(in srgb, var(--ls-reader-fg) 5%, var(--ls-reader-surface));
   --ls-toolbar-hover: var(--ls-reader-hover); --ls-toolbar-active: var(--ls-reader-active);
   --ls-input-bg: var(--ls-reader-page); --ls-input-fg: var(--ls-reader-fg); --ls-input-border: var(--ls-reader-border);
+  --ls-plot-filter: var(--ls-reader-plot-filter);
+}
+/* Code colours follow the application's theme; mixing in the page's text colour keeps them readable on a page of the other brightness. */
+.rd-note-editor .qmd-cell, .rd-floating-note-body .qmd-cell, .rd-note-box-content .qmd-cell {
+  --qmd-syntax-keyword: color-mix(in srgb, var(--ls-code-keyword) 70%, var(--ls-reader-fg));
+  --qmd-syntax-argument: color-mix(in srgb, var(--ls-code-argument) 70%, var(--ls-reader-fg));
+  --qmd-syntax-string: color-mix(in srgb, var(--ls-code-string) 70%, var(--ls-reader-fg));
+  --qmd-syntax-number: color-mix(in srgb, var(--ls-code-number) 70%, var(--ls-reader-fg));
+  --qmd-syntax-comment: color-mix(in srgb, var(--ls-code-comment) 70%, var(--ls-reader-fg));
+  --qmd-syntax-math: color-mix(in srgb, var(--ls-code-math) 70%, var(--ls-reader-fg));
+  --qmd-syntax-command: color-mix(in srgb, var(--ls-code-command) 70%, var(--ls-reader-fg));
+  --qmd-syntax-reference: color-mix(in srgb, var(--ls-code-reference) 70%, var(--ls-reader-fg));
 }

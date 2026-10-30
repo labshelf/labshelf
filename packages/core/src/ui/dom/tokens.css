@@ -85,6 +85,7 @@
   --ls-file-typ: #4cc4c9;
   --ls-file-dir: #d2a865;
   --ls-sheet-light: #f4f3f0;
+  --ls-plot-filter: invert(1) hue-rotate(180deg);
   --ls-code-keyword: #c586c0;
   --ls-code-command: #569cd6;
   --ls-code-argument: #4ec9b0;
@@ -218,6 +219,7 @@
   --ls-file-tex: #4a8a3a;
   --ls-file-typ: #1f8a93;
   --ls-file-dir: #946618;
+  --ls-plot-filter: none;
   --ls-code-keyword: #af00db;
   --ls-code-command: #0000ff;
   --ls-code-argument: #267e97;
@@ -246,6 +248,7 @@
   --ls-reader-find-hit: rgba(255, 213, 0, .35);
   --ls-reader-find-current: rgba(255, 140, 0, .6);
   --ls-reader-change: rgba(255, 140, 0, .2);
+  --ls-reader-plot-filter: invert(1) hue-rotate(180deg);
   --ls-reader-swatch-dark: #1e1e1e;
   --ls-reader-swatch-dark-ink: #e8e8e8;
   --ls-reader-swatch-light: #ffffff;
@@ -266,6 +269,7 @@
   --ls-reader-hover: rgba(0, 0, 0, .07);
   --ls-reader-active: rgba(0, 0, 0, .12);
   --ls-reader-shadow: 0 4px 18px rgba(0, 0, 0, .18);
+  --ls-reader-plot-filter: none;
 }
 
 [data-pdf-theme="sepia"] {
@@ -278,6 +282,7 @@
   --ls-reader-hover: rgba(74, 55, 40, .1);
   --ls-reader-active: rgba(74, 55, 40, .17);
   --ls-reader-shadow: 0 4px 18px rgba(74, 55, 40, .25);
+  --ls-reader-plot-filter: none;
 }
 
 [data-pdf-theme="high-contrast"] {
@@ -397,18 +402,7 @@
   --ls-code-reference: #936f00;
   --ls-code-bracket: #586e75;
 }
-:root[data-code-font="jetbrains-mono"] {
-  --ls-code-font: "JetBrains Mono", var(--ls-mono);
-}
-
-:root[data-code-font="fira-code"] {
-  --ls-code-font: "Fira Code", var(--ls-mono);
-}
-
-:root[data-code-font="atkinson-hyperlegible-mono"] {
-  --ls-code-font: "Atkinson Hyperlegible Mono", var(--ls-mono);
-}
-
-:root[data-code-font="opendyslexic"] {
-  --ls-code-font: "OpenDyslexic", var(--ls-mono);
-}
+:root[data-code-font="jetbrains-mono"] { --ls-code-font: "JetBrains Mono", var(--ls-mono); }
+:root[data-code-font="fira-code"] { --ls-code-font: "Fira Code", var(--ls-mono); }
+:root[data-code-font="atkinson-hyperlegible-mono"] { --ls-code-font: "Atkinson Hyperlegible Mono", var(--ls-mono); }
+:root[data-code-font="opendyslexic"] { --ls-code-font: "OpenDyslexic", var(--ls-mono); }

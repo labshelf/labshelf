@@ -1,6 +1,7 @@
 // Draws page-scaled text notes over the PDF and delegates editing to the floating note editor.
 import type { CellRunState } from "../../qmd/compute/index.js";
-import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import { ReaderCellRuns } from "./cellRuns.js";
+import { mountQmdEditor, QMD_VOCABULARY, type QmdEditorHandle } from "../../qmd/dom/index.js";
 import { formatAnchor, parseAnchor } from "../../qmd/item/index.js";
 import { snapBox, type PageRect } from "../textBoxPlacement.js";
 import { renderElement } from "../../ui/dom/index.js";
@@ -68,13 +69,10 @@ export class NoteBoxLayer {
   onEdit: ((id: string) => void) | null = null;
   private readonly views = new Map<string, BoxView>();
   private pendingOpen: string | null = null;
-  private canRunCells = false;
-  private readonly runs = createCellRunGroup({
-    onCancel: (requestId) => this.ctx.host.post({ command: "cancelCell", requestId }),
-    onInstallPython: () => this.ctx.host.post({ command: "installPython" }),
-  });
+  private readonly runs: ReaderCellRuns;
 
   constructor(private readonly ctx: Pick<ReaderContext, "eventBus" | "host">) {
+    this.runs = new ReaderCellRuns(ctx.host);
     // PLATFORM: pdf.js drops unknown page children on every re-render (zoom, scrolling back into view).
     ctx.eventBus.on("textlayerrendered", ({ pageNumber }: { pageNumber: number }) => this.paintPage(pageNumber));
 
@@ -110,9 +108,7 @@ export class NoteBoxLayer {
 
   /** Whether the host can run cells; editors get a Run button only when it can, so a change remounts every box editor. */
   setCanRunCells(canRun: boolean): void {
-    if (canRun === this.canRunCells) { return; }
-    this.canRunCells = canRun;
-    if (!canRun) { this.runs.clear(); }
+    if (!this.runs.setCanRun(canRun)) { return; }
     for (const view of this.views.values()) { this.mount(view); }
   }
 
@@ -167,7 +163,7 @@ export class NoteBoxLayer {
     }, moveStrip, content, resize);
     const view: BoxView = {
       id, rect, el, content, body,
-      editor: mountQmdEditor(content, { body, readOnly: true, onChange: () => undefined, ...this.runOption(id, content) }),
+      editor: mountQmdEditor(content, { body, readOnly: true, onChange: () => undefined, ...this.runs.option(id, content) }),
     };
     el.addEventListener("click", (e) => {
       if (!(e.target instanceof Element && e.target.closest(".rd-note-box-move, .rd-note-box-resize, button, a, input, textarea"))) { this.onEdit?.(id); }
@@ -189,14 +185,8 @@ export class NoteBoxLayer {
       body: view.body,
       readOnly: true,
       onChange: () => undefined,
-      ...this.runOption(view.id, view.content),
+      ...this.runs.option(view.id, view.content),
     });
-  }
-
-  private runOption(itemId: string, content: HTMLElement): { onRunCell?(label: string, code: string): void } {
-    if (!this.canRunCells) { return {}; }
-    return { onRunCell: this.runs.attach(itemId, content, (label, code, requestId) =>
-      this.ctx.host.post({ command: "runCell", itemId, label, code, requestId })) };
   }
 
   private destroy(view: BoxView): void {

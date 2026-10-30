@@ -5,7 +5,8 @@
 import type { Node as PmNode } from "prosemirror-model";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { deriveCodeHash, formatOutput } from "../../../src/qmd/item/cellOutput";
-import { createCodeCellView, createOutputView } from "../../../src/qmd/dom/codeCellView";
+import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
+import { createOutputView } from "../../../src/qmd/dom/outputView";
 import { mount, until, settle } from "../../support/nodeViewHarness";
 
 const CODE = "print(1)\n";

@@ -125,6 +125,14 @@ export const SHEET_TOKENS = {
   "sheet-light": createDesignToken("#f4f3f0"),
 } satisfies Record<string, DesignToken>;
 
+/** Turns a plot's dark ink light while `hue-rotate` brings its line colours back to their own hues. */
+export const PLOT_INVERT_FILTER = "invert(1) hue-rotate(180deg)";
+
+// Plot images are stored with dark ink on a transparent background; dark themes invert them (the reader's page themes too).
+export const PLOT_TOKENS = {
+  "plot-filter": createDesignToken(PLOT_INVERT_FILTER, "none"),
+} satisfies Record<string, DesignToken>;
+
 export const TYPE_TOKENS = {
   font: createDesignToken('-apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif'),
   // A brand face for paper titles, so it stays the same in every host; no font file ships, so the stack falls back to Georgia.
@@ -199,8 +207,8 @@ export const CODE_FONT_TOKENS: Record<string, DesignToken> = { "code-font": crea
 // The library page marks the pick on <html data-code-font>.
 export function renderCodeFontsCss(): string {
   return CODE_FONT_NAMES.filter((name) => name !== "system")
-    .flatMap((name) => [`:root[data-code-font="${name}"] {`, `  --ls-code-font: ${CODE_FONTS[name].family};`, "}", ""])
-    .join("\n");
+    .map((name) => `:root[data-code-font="${name}"] { --ls-code-font: ${CODE_FONTS[name].family}; }\n`)
+    .join("");
 }
 
 // `note` paints an annotation that carries no colour of its own.

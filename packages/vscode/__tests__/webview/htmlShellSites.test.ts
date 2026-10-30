@@ -27,7 +27,7 @@ function page(title: string, folder: string, name: string, dataImages = false): 
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-NONCE' vscode-resource:; style-src vscode-resource:;${images} font-src vscode-resource:;"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-NONCE' vscode-resource:; style-src 'nonce-NONCE' vscode-resource:;${images} font-src vscode-resource:;"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>${title}</title>
 <link rel="stylesheet" href="vscode-resource:/ext/dist/${folder}/${name}.css"/>
