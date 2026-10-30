@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import type { BuildSchedule, BuildOptions, FinishedBuild, LatexEngine, LocatedProblem, ProjectFormat } from "@labshelf/core";
+import type { ActiveSource } from "../activeSource.js";
 import { findOwningProject, type ReadyProject } from "../projects/index.js";
 import type { BuildRootOf, WritingProjects } from "../projects/index.js";
 import { readAutoCompileMode } from "./autoBuild.js";
@@ -134,9 +135,14 @@ export async function setEngine(deps: WriteEngineDeps, project: ReadyProject, en
   return saved;
 }
 
-/** Finds the writing project that owns the file open in the active editor. */
-export function readActiveProject(projects: Pick<WritingProjects, "list" | "paths">): ReadyProject | undefined {
-  const file = vscode.window.activeTextEditor?.document.uri;
+/** The file of the focused source editor: from `activeSource` (native or LabShelf) when given, else the active text editor. */
+function readActiveSourceFile(activeSource?: Pick<ActiveSource, "current">): vscode.Uri | undefined {
+  return activeSource ? activeSource.current()?.uri : vscode.window.activeTextEditor?.document.uri;
+}
+
+/** Finds the writing project that owns the file open in the focused source editor. */
+export function readActiveProject(projects: Pick<WritingProjects, "list" | "paths">, activeSource?: Pick<ActiveSource, "current">): ReadyProject | undefined {
+  const file = readActiveSourceFile(activeSource);
   return file?.scheme === "file" ? findOwningProject(projects, file.fsPath) : undefined;
 }
 
@@ -147,17 +153,19 @@ interface BuildCommandDeps {
   projects: Pick<WritingProjects, "list" | "paths">;
   builders: ProjectBuilders;
   buildRootOf: BuildRootOf;
+  /** The focused source editor, native or LabShelf. */
+  activeSource: Pick<ActiveSource, "current">;
 }
 
 async function buildActive(deps: BuildCommandDeps): Promise<void> {
-  const project = readActiveProject(deps.projects);
+  const project = readActiveProject(deps.projects, deps.activeSource);
   if (!project) {
     await vscode.window.showInformationMessage("Open a file of a writing project to build it.");
     return;
   }
   await vscode.workspace.saveAll(false);
   const main = project.main ?? "";
-  const file = vscode.window.activeTextEditor?.document.uri.fsPath;
+  const file = readActiveSourceFile(deps.activeSource)?.fsPath;
   const root = file ? await deps.buildRootOf(project.folder, main, file) : main;
   await deps.builders[project.settings.format].request(project.folder, root, "command");
 }

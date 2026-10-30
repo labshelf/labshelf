@@ -20,6 +20,7 @@ import {
   type ProjectContentPort,
   type PublishedVersionFinder,
 } from "@labshelf/core";
+import type { ActiveSource, SourceView } from "../activeSource.js";
 import type { ReadyProject } from "../projects/index.js";
 import type { BuildRootOf } from "../projects/index.js";
 import { listUserBibliographyFiles } from "./citationFixes.js";
@@ -47,11 +48,21 @@ export function readActiveProjectEditor(paths: PathOps, folder: string): vscode.
   return editor && uri?.scheme === "file" && isInside(paths, folder, uri.fsPath) ? editor : undefined;
 }
 
-/** The root the active project editor builds into; the project's main root when no project file is active. */
-export async function readFocusedBuildRoot(paths: PathOps, buildRootOf: BuildRootOf, project: ReadyProject): Promise<string> {
+/** The focused source editor (native or LabShelf, from `activeSource`; else the active text editor) when its file is inside the project folder. */
+export function readActiveProjectSource(paths: PathOps, folder: string, activeSource?: Pick<ActiveSource, "current">): Pick<SourceView, "uri" | "line"> | undefined {
+  if (!activeSource) {
+    const editor = readActiveProjectEditor(paths, folder);
+    return editor ? { uri: editor.document.uri, line: () => editor.selection.active.line + 1 } : undefined;
+  }
+  const view = activeSource.current();
+  return view?.uri.scheme === "file" && isInside(paths, folder, view.uri.fsPath) ? view : undefined;
+}
+
+/** The root the focused project source builds into; the project's main root when no project file is focused. */
+export async function readFocusedBuildRoot(paths: PathOps, buildRootOf: BuildRootOf, project: ReadyProject, activeSource?: Pick<ActiveSource, "current">): Promise<string> {
   const main = project.main ?? "";
-  const editor = readActiveProjectEditor(paths, project.folder);
-  return editor ? await buildRootOf(project.folder, main, editor.document.uri.fsPath) : main;
+  const source = readActiveProjectSource(paths, project.folder, activeSource);
+  return source ? await buildRootOf(project.folder, main, source.uri.fsPath) : main;
 }
 
 interface RootFindingsInput {
@@ -152,6 +163,8 @@ export interface WritingActionsDeps extends RawLogDeps {
   problemsOf: (root: string) => readonly LocatedProblem[] | undefined;
   /** Scrolls the preview to the output of a source line (1-based). */
   reveal: (file: string, line: number) => Promise<void>;
+  /** The focused source editor, native or LabShelf; absent, the active text editor is the source. */
+  activeSource?: Pick<ActiveSource, "current" | "openFor">;
 }
 
 const NO_EDITOR_MESSAGE = "Open a file of this project to show its cursor in the preview.";
@@ -160,7 +173,7 @@ const NO_RAW_LOG_MESSAGE = "This build kept no raw log.";
 // Opens a file at a line; a failure is logged and shown, since the reader that asked has no way to report it.
 async function openOrReport(deps: WritingActionsDeps, file: string, line: number, context: Record<string, unknown>): Promise<boolean> {
   try {
-    await openSourceLine(file, line);
+    await openSourceLine(file, line, deps.activeSource);
     return true;
   } catch (error) {
     await deps.logger.error(PREVIEW_LOG_MODULE, error, { projectFolder: deps.project.folder, file, line, ...context });
@@ -170,12 +183,12 @@ async function openOrReport(deps: WritingActionsDeps, file: string, line: number
 }
 
 async function revealCursor(deps: WritingActionsDeps): Promise<void> {
-  const editor = readActiveProjectEditor(deps.paths, deps.project.folder);
-  if (!editor) {
+  const source = readActiveProjectSource(deps.paths, deps.project.folder, deps.activeSource);
+  if (!source) {
     await vscode.window.showInformationMessage(NO_EDITOR_MESSAGE);
     return;
   }
-  await deps.reveal(editor.document.uri.fsPath, editor.selection.active.line + 1);
+  await deps.reveal(source.uri.fsPath, source.line());
 }
 
 async function openProblem(deps: WritingActionsDeps, root: string, index: number): Promise<void> {
