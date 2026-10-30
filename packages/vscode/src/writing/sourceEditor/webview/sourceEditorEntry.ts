@@ -3,8 +3,8 @@ import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
 import "./sourceEditor.css";
-import { findElement } from "@labshelf/core/dom";
-import { mountSourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
+import { createPeerCursors, findElement, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
+import { createSelectionListener, mountSourceEditor, showInOpenEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
 import { parseSourceEditorInbound, type ILogger, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
@@ -59,6 +59,21 @@ function createHostDocument(init: Init): { document: SourceDocument; deliver(mes
   };
 }
 
+// ---- The peers
+
+/** The peers the host last posted; the editor draws them and redraws when a new list arrives. */
+function createPeerStore(): PeerCursorSource & { set(peers: readonly PeerCursor[]): void } {
+  let peers: readonly PeerCursor[] = [];
+  const listeners = new Set<() => void>();
+  return {
+    peers: () => peers,
+    subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    set(next) { peers = next; for (const listener of [...listeners]) { listener(); } },
+  };
+}
+
+const peerStore = createPeerStore();
+
 // ---- Mount
 
 type MountedEditor = Awaited<ReturnType<typeof mountSourceEditor>>;
@@ -104,6 +119,10 @@ function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => voi
     files: ports.files, papers: ports.papers, notes: ports.notes, noteLinks: ports.noteLinks,
     openNotes: ports.openNotes, openTab: ports.openTab, problems: ports.problems,
     comments: ports.comments,
+    extensions: [
+      createPeerCursors(peerStore),
+      createSelectionListener(({ anchor, head, line }) => post({ type: "selection", anchor, head, line })),
+    ],
     readOnly: init.readOnly, document: host.document, logger,
     // The tab shows the TextDocument's dirty state; the card only mirrors it.
     onDirty: (dirty) => { card.dataset.dirty = String(dirty); },
@@ -117,6 +136,7 @@ function start(): void {
   findElement("root").append(card);
   // The host sends init first after ready; document messages before it are already part of it.
   let deliver: ((message: DocumentMessage) => void) | undefined;
+  let init: Init | undefined;
   transport.subscribe((raw) => {
     const command = parseCommand(raw);
     if (command) { commands.run(command); return; }
@@ -125,7 +145,9 @@ function start(): void {
     if (message.type === "response") { ports.settle(message); }
     else if (message.type === "problems") { ports.deliverProblems(message); }
     else if (message.type === "comments") { ports.deliverComments(message); }
-    else if (message.type === "init") { deliver ??= mount(message, card); }
+    else if (message.type === "peers") { peerStore.set(message.peers); }
+    else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
+    else if (message.type === "init") { init = message; deliver ??= mount(message, card); }
     else if (message.type === "updates" || message.type === "resync" || message.type === "dirty") { deliver?.(message); }
   });
   post({ type: "ready" });

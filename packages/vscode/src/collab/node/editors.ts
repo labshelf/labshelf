@@ -16,6 +16,7 @@ import {
 import { nodePathOps } from "@labshelf/core/node";
 import { attachDocument, PeerCursors, registerUndoRedo, RemoteUpdateQueue, type DocumentBinding, type PeerCursor } from "../binding.js";
 import { disposeAll } from "../../disposables/index.js";
+import { provideSourcePresence, type PeerSelection, type SourcePresencePort } from "../../writing/sourceEditor/index.js";
 
 export interface SharedDocument {
   share: ShareConnection;
@@ -112,21 +113,52 @@ export class SharedEditors implements vscode.Disposable {
 
 const PUBLISH_DELAY_MS = 100;
 
-export class SharedPresence implements vscode.Disposable {
+interface PeerSubscription { uri: vscode.Uri; listener: (peers: PeerSelection[]) => void }
+
+export class SharedPresence implements vscode.Disposable, SourcePresencePort {
   private readonly cursors = new PeerCursors();
   private readonly pending = new Map<ShareConnection, ReturnType<typeof setTimeout>>();
   private readonly subscriptions: vscode.Disposable[];
+  private readonly peerSubscriptions = new Set<PeerSubscription>();
+  /** The selection a LabShelf editor reported, standing for the active text editor's until a text editor is active again. */
+  private sourceSelection: { uri: vscode.Uri; anchor: number; head: number } | undefined;
 
   constructor(private readonly editors: SharedEditors, private readonly shares: () => readonly ShareConnection[], private readonly userName: string) {
     const publishOf = (document: vscode.TextDocument) => { const shared = editors.of(document); if (shared) { this.schedule(shared.share); } };
     this.subscriptions = [
       vscode.window.onDidChangeTextEditorSelection(({ textEditor }) => publishOf(textEditor.document)),
-      vscode.window.onDidChangeActiveTextEditor(() => this.shares().forEach((share) => this.schedule(share))),
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (editor) { this.sourceSelection = undefined; }
+        this.shares().forEach((share) => this.schedule(share));
+      }),
       vscode.window.onDidChangeVisibleTextEditors(() => this.renderAll()),
       // A local edit moves the absolute offsets the peers' relative positions resolve to.
       vscode.workspace.onDidChangeTextDocument(({ document }) => { const shared = editors.of(document); if (shared) { this.render(shared.share); } }),
       editors.onDidChange(() => { this.renderAll(); this.shares().forEach((share) => this.schedule(share)); }),
     ];
+    provideSourcePresence(this);
+  }
+
+  /** Publishes the selection of a LabShelf editor on the file, as a text editor's selection on it would be; offsets are the document's. */
+  publishSelection(uri: vscode.Uri, selection: { anchor: number; head: number }): void {
+    this.sourceSelection = { uri, ...selection };
+    const shared = this.sharedAt(uri);
+    if (shared) { this.schedule(shared.share); }
+  }
+
+  /** Drops the selection a LabShelf editor published on the file, as when its panel closes. */
+  dropSelection(uri: vscode.Uri): void {
+    if (this.sourceSelection?.uri.toString() !== uri.toString()) { return; }
+    this.sourceSelection = undefined;
+    this.shares().forEach((share) => this.schedule(share));
+  }
+
+  /** Calls the listener now and after each change with the peers on the file, their offsets the document's. */
+  peersOf(uri: vscode.Uri, listener: (peers: PeerSelection[]) => void): () => void {
+    const subscription: PeerSubscription = { uri, listener };
+    this.peerSubscriptions.add(subscription);
+    listener(this.peersAt(uri));
+    return () => { this.peerSubscriptions.delete(subscription); };
   }
 
   /** Publishes this user's presence in the share and draws its peers until disposed. */
@@ -149,7 +181,9 @@ export class SharedPresence implements vscode.Disposable {
   }
 
   dispose(): void {
+    provideSourcePresence(undefined);
     this.pending.forEach((timer) => clearTimeout(timer));
+    this.peerSubscriptions.clear();
     disposeAll(this.subscriptions);
     this.cursors.dispose();
   }
@@ -162,19 +196,47 @@ export class SharedPresence implements vscode.Disposable {
   private publish(share: ShareConnection): void {
     const { presence } = share;
     const base = { name: this.userName, colour: derivePeerColour("", presence.awareness.clientID) };
-    const editor = vscode.window.activeTextEditor;
-    const shared = editor && this.editors.of(editor.document);
-    if (!editor || shared?.share !== share) {
+    const current = this.currentSelection();
+    const shared = current && this.sharedAt(current.uri);
+    if (!current || shared?.share !== share) {
       presence.setLocal({ ...base, file: null, anchor: null, head: null });
       return;
     }
-    const { document, selection } = editor;
     const { text } = shared.binding;
     const relative = deriveRelativeSelection(readFileText(share.session.openDoc(shared.path)), {
-      anchor: text.toNormalizedOffset(document.offsetAt(selection.anchor)),
-      head: text.toNormalizedOffset(document.offsetAt(selection.active)),
+      anchor: text.toNormalizedOffset(current.anchor),
+      head: text.toNormalizedOffset(current.head),
     });
     presence.setLocal({ ...base, file: shared.path, ...relative });
+  }
+
+  /** The selection in focus: the active text editor's, or else the LabShelf editor's last one; offsets the document's. */
+  private currentSelection(): { uri: vscode.Uri; anchor: number; head: number } | undefined {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      const { document, selection } = editor;
+      return { uri: document.uri, anchor: document.offsetAt(selection.anchor), head: document.offsetAt(selection.active) };
+    }
+    return this.sourceSelection;
+  }
+
+  private sharedAt(uri: vscode.Uri): SharedDocument | undefined {
+    const key = uri.toString();
+    const document = vscode.workspace.textDocuments.find((open) => open.uri.toString() === key);
+    return document && this.editors.of(document);
+  }
+
+  private peersAt(uri: vscode.Uri): PeerSelection[] {
+    const shared = this.sharedAt(uri);
+    if (!shared) { return []; }
+    return peerCursorsIn(shared.share, shared.path, shared.binding.text, shared.share.presence.remote())
+      .map(({ name, colour, anchor, head }) => ({ name, colour, anchor, head }));
+  }
+
+  private notifyPeers(share: ShareConnection): void {
+    for (const { uri, listener } of this.peerSubscriptions) {
+      if (this.sharedAt(uri)?.share === share) { listener(this.peersAt(uri)); }
+    }
   }
 
   private renderAll(): void {
@@ -182,6 +244,7 @@ export class SharedPresence implements vscode.Disposable {
   }
 
   private render(share: ShareConnection): void {
+    this.notifyPeers(share);
     const remote = share.presence.remote();
     for (const editor of vscode.window.visibleTextEditors) {
       const shared = this.editors.of(editor.document);
