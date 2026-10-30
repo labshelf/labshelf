@@ -34,10 +34,11 @@ export interface CommentThread {
   resolved: boolean;
 }
 
-function readAnchor(value: unknown): CommentAnchor | undefined {
+/** @param options.emptyQuote accept an empty quote, as a delete suggestion's anchor has */
+export function readAnchor(value: unknown, options: { emptyQuote?: boolean } = {}): CommentAnchor | undefined {
   if (!isRecord(value)) { return undefined; }
   const { quote, prefix, suffix, start, end } = value;
-  if (!isNonEmptyString(quote) || typeof prefix !== "string" || typeof suffix !== "string") { return undefined; }
+  if (typeof quote !== "string" || (quote === "" && !options.emptyQuote) || typeof prefix !== "string" || typeof suffix !== "string") { return undefined; }
   const live = isNonEmptyString(start) && isNonEmptyString(end) ? { start, end } : {};
   return { quote, prefix, suffix, ...live };
 }
@@ -86,7 +87,8 @@ export function deriveLiveAnchor(yText: Y.Text, start: number, end: number): Com
   return { ...deriveAnchor(yText.toString(), start, end), start: encodeRelativePosition(yText, start), end: encodeRelativePosition(yText, end, -1) };
 }
 
-function decode(yText: Y.Text, encoded: string): number | undefined {
+/** @throws on malformed bytes */
+export function decode(yText: Y.Text, encoded: string): number | undefined {
   if (!yText.doc) { return undefined; }
   const position = Y.createAbsolutePositionFromRelativePosition(Y.decodeRelativePosition(base64ToBytes(encoded)), yText.doc);
   // A position into another type of the doc is not a position in this text.
@@ -110,7 +112,8 @@ const SEED_LENGTH = 8;
 const CONTEXT_SEED = 16;
 const MIN_SIMILARITY = 0.7;
 
-function occurrences(text: string, part: string): number[] {
+/** Every index where `part` starts in `text`, overlapping ones included; none for an empty part. */
+export function occurrences(text: string, part: string): number[] {
   const found: number[] = [];
   if (part === "") { return found; }
   for (let at = text.indexOf(part); at !== -1; at = text.indexOf(part, at + 1)) { found.push(at); }
@@ -151,7 +154,7 @@ function bigrams(text: string): Map<string, number> {
 }
 
 /** Dice coefficient over character bigrams: 1 for equal strings, 0 for nothing in common. */
-function similarity(a: string, b: string): number {
+export function similarity(a: string, b: string): number {
   if (a.length < 2 || b.length < 2) { return a === b ? 1 : 0; }
   const left = bigrams(a);
   let shared = 0;

@@ -268,7 +268,10 @@ const CONTEXT_LIMIT = 32;
 // Fractions carry at most 4 decimals, so a sum that exceeds 1 by less than this is rounding.
 const EPSILON = 1e-9;
 
-export function parseAnchor(attr: string | undefined): ParsedAnchor {
+/** Options of a quote anchor; `emptyQuote` lets the quote be empty, as a delete suggestion's is. */
+export interface AnchorOptions { readonly emptyQuote?: boolean }
+
+export function parseAnchor(attr: string | undefined, options: AnchorOptions = {}): ParsedAnchor {
   if (attr === undefined || attr === "") { return { kind: "none" }; }
   const highlight = HIGHLIGHT.exec(attr);
   if (highlight) { return { kind: "highlight", annotationId: highlight[1]! }; }
@@ -281,12 +284,12 @@ export function parseAnchor(attr: string | undefined): ParsedAnchor {
     return Number.isSafeInteger(page) && isValidBox(anchor) ? anchor : unknown(attr);
   }
   const quote = QUOTE.exec(attr);
-  if (quote) { return parseQuote(quote[1]!) ?? unknown(attr); }
+  if (quote) { return parseQuote(quote[1]!, options) ?? unknown(attr); }
   return unknown(attr);
 }
 
 /** Throws when a box or quote breaks the contract's rules, so an invalid anchor is never written. */
-export function formatAnchor(anchor: ParsedAnchor): string {
+export function formatAnchor(anchor: ParsedAnchor, options: AnchorOptions = {}): string {
   switch (anchor.kind) {
     case "none": return "";
     case "unknown": return anchor.raw;
@@ -304,7 +307,7 @@ export function formatAnchor(anchor: ParsedAnchor): string {
       return `p${anchor.page} box ${rounded.x} ${rounded.y} ${rounded.w} ${rounded.h}`;
     }
     case "quote":
-      if (!isValidQuote(anchor)) { throw new Error(`Anchor: invalid quote (${anchor.quote.length} characters)`); }
+      if (!isValidQuote(anchor, options)) { throw new Error(`Anchor: invalid quote (${anchor.quote.length} characters)`); }
       return `quote:${bytesToBase64Url(new TextEncoder().encode(JSON.stringify({ quote: anchor.quote, prefix: anchor.prefix, suffix: anchor.suffix })))}`;
   }
 }
@@ -319,22 +322,22 @@ function round(value: number): number {
   return Number(value.toFixed(4));
 }
 
-function parseQuote(encoded: string): ItemAnchor | undefined {
+function parseQuote(encoded: string, options: AnchorOptions): ItemAnchor | undefined {
   try {
     const json: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(base64UrlToBytes(encoded)));
     if (typeof json !== "object" || json === null) { return undefined; }
     const { quote, prefix, suffix } = json as Record<string, unknown>;
     if (typeof quote !== "string" || typeof prefix !== "string" || typeof suffix !== "string") { return undefined; }
     const anchor = { kind: "quote", quote, prefix, suffix } as const;
-    return isValidQuote(anchor) ? anchor : undefined;
+    return isValidQuote(anchor, options) ? anchor : undefined;
   } catch {
     // An undecodable value is an unknown anchor, kept verbatim by the caller.
     return undefined;
   }
 }
 
-function isValidQuote(anchor: { quote: string; prefix: string; suffix: string }): boolean {
-  return anchor.quote !== "" && anchor.prefix.length <= CONTEXT_LIMIT && anchor.suffix.length <= CONTEXT_LIMIT;
+function isValidQuote(anchor: { quote: string; prefix: string; suffix: string }, options: AnchorOptions): boolean {
+  return (options.emptyQuote === true || anchor.quote !== "") && anchor.prefix.length <= CONTEXT_LIMIT && anchor.suffix.length <= CONTEXT_LIMIT;
 }
 
 function unknown(raw: string): UnknownAnchor {

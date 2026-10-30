@@ -6,20 +6,38 @@ import type * as Y from "yjs";
 import { deriveLiveAnchor, findThread, readThread, compareThreads, addLiveThread, readLiveThreads, addLiveThreadReply, setLiveThreadResolved, type Comment, type CommentAnchor, type CommentThread, type TextRange } from "./comments.js";
 import { parseCommentsQmd, serializeCommentsQmd } from "./commentsQmd.js";
 import type { ShareSession } from "./docSync.js";
-import { readShareIndexDocComments, readShareIndexDocFiles } from "./shareIndexDoc.js";
-import { readFileText } from "./sharedFiles.js";
+import { addLiveSuggestion, readLiveSuggestions, readSuggestion, type Suggestion } from "./suggestions.js";
+import { readShareIndexDocComments } from "./shareIndexDoc.js";
+import { openListedText } from "./sharedFiles.js";
 
 export const COMMENTS_PATH = ".labshelf/comments.qmd";
 
-/** The threads of the file; the other keys carry what a rewrite must keep (unknown attributes, other items, loose text) and are opaque to callers. */
+/** The threads and pending suggestions of the file (none when `suggestions` is absent); the other keys carry what a rewrite must keep (unknown attributes, other items, loose text) and are opaque to callers. */
 export interface CommentsDocument {
   [key: string]: unknown;
   threads: readonly CommentThread[];
+  suggestions?: readonly Suggestion[];
 }
 
 /** @returns the valid threads in file order, each with its valid comments */
 export function deriveCommentThreads(doc: CommentsDocument): CommentThread[] {
   return doc.threads.map(readThread).filter((each): each is CommentThread => each !== undefined);
+}
+
+/** @returns the valid suggestions in document order */
+export function deriveSuggestions(doc: CommentsDocument): Suggestion[] {
+  return (doc.suggestions ?? []).map(readSuggestion).filter((each): each is Suggestion => each !== undefined);
+}
+
+export function addSuggestions(doc: CommentsDocument, suggestions: readonly Suggestion[]): CommentsDocument {
+  return { ...doc, suggestions: [...(doc.suggestions ?? []), ...suggestions] };
+}
+
+/** Removes exactly the listed ids; a group is not expanded, so callers pass every id of it. */
+export function removeSuggestions(doc: CommentsDocument, ids: readonly string[]): CommentsDocument {
+  if (!doc.suggestions) { return doc; }
+  const gone = new Set(ids);
+  return { ...doc, suggestions: doc.suggestions.filter((each) => !gone.has(each.id)) };
 }
 
 export function addThread(doc: CommentsDocument, thread: CommentThread): CommentsDocument {
@@ -60,18 +78,18 @@ export async function updateCommentsDocument(access: CommentsFileAccess, change:
 }
 
 /**
- * The map's threads in member order, with the other items, unknown attributes and loose text of `existing`.
+ * The map's threads and suggestions in member order, with the other items, unknown attributes and loose text of `existing`.
  * @param existing the current file's text, undefined when there is none
  * @returns undefined when `existing` is unreadable, which is never overwritten
  */
 export function renderCommentsFile(doc: Y.Doc, existing: string | undefined): string | undefined {
   const current: CommentsDocument | undefined = existing === undefined ? { threads: [] } : parseCommentsQmd(existing);
   if (!current) { return undefined; }
-  return serializeCommentsQmd({ ...current, threads: [...readLiveThreads(doc)].sort(compareThreads) });
+  return serializeCommentsQmd({ ...current, threads: [...readLiveThreads(doc)].sort(compareThreads), suggestions: readLiveSuggestions(doc) });
 }
 
 /**
- * Adds the file's valid threads that the map does not hold.
+ * Adds the file's valid threads, and its valid suggestions, that the map does not hold (by id).
  * @returns how many were added, or undefined when the text is unreadable
  */
 export function importCommentsFile(doc: Y.Doc, text: string): number | undefined {
@@ -82,6 +100,7 @@ export function importCommentsFile(doc: Y.Doc, text: string): number | undefined
     for (const thread of file.threads) {
       if (addLiveThread(doc, thread)) { added += 1; }
     }
+    for (const suggestion of deriveSuggestions(file)) { addLiveSuggestion(doc, suggestion); }
   });
   return added;
 }
@@ -107,8 +126,7 @@ export interface SharedProjectComments {
 
 export function createSharedProjectComments(session: Pick<ShareSession, "index" | "openDoc">): SharedProjectComments {
   const { index } = session;
-  // INVARIANT: only a listed text file is opened, so a thread naming another path never creates a doc for it.
-  const liveText = (file: string): Y.Text | undefined => (readShareIndexDocFiles(index).get(file)?.kind === "text" ? readFileText(session.openDoc(file)) : undefined);
+  const liveText = (file: string): Y.Text | undefined => openListedText(session, file);
   const requireText = (file: string): Y.Text => {
     const yText = liveText(file);
     if (!yText) { throw new Error(`The share holds no text file ${file}, so a comment cannot be anchored in it`); }
@@ -140,3 +158,4 @@ export function createSharedProjectComments(session: Pick<ShareSession, "index" 
     },
   };
 }
+

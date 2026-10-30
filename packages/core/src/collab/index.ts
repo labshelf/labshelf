@@ -23,11 +23,12 @@ export { NormalizedText, type EditorSelection, type PendingChange, type TextChan
 export { derivePeerColour, deriveAbsoluteSelection, deriveRelativeSelection, type RelativeSelection, type TextSelection } from "./cursors.js";
 export { TextUndoManager, type UndoSelection } from "./textUndoManager.js";
 export {
-  addThread, COMMENTS_PATH, deriveCommentThreads, addThreadReply, setThreadResolved,
+  addThread, COMMENTS_PATH, deriveCommentThreads, addThreadReply, setThreadResolved, deriveSuggestions, addSuggestions, removeSuggestions,
   createSharedProjectComments, importCommentsFile, loadCommentsDocument, renderCommentsFile, updateCommentsDocument,
   type CommentsDocument, type CommentsFileAccess, type SharedProjectComments,
 } from "./commentsFile.js";
 export { parseCommentsQmd, serializeCommentsQmd, threadsToItems } from "./commentsQmd.js";
+export { deriveSuggestionAnchor, findSuggestion, readSuggestion, resolveSuggestionText, type Suggestion, type SuggestionKind } from "./suggestions.js";
 export {
   addLiveThread, addLiveThreadReply, createEditorCommentRange, deriveAnchor, deriveLiveAnchor, deriveOffset, derivePosition, findSourceCommentRange,
   findThread, readLiveThreads, setLiveThreadResolved,
