@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { createDebouncer, deriveNestedHeadings, findDeepestContaining, type HeadingNode, type ILogger } from "@labshelf/core";
 import { scanTypstHeadings } from "@labshelf/core/typst";
 import type { ActiveSource, SourceView } from "../activeSource.js";
+import { openSourceAt } from "../openSourceAt.js";
 
 const KIND_BY_DEPTH = [
   vscode.SymbolKind.Module, vscode.SymbolKind.Namespace, vscode.SymbolKind.Class, vscode.SymbolKind.Struct,
@@ -59,8 +60,7 @@ export function createOutlineNodes(symbols: readonly vscode.DocumentSymbol[], cu
 export const REVEAL_OUTLINE_COMMAND = "labshelf.writing.revealOutline";
 
 export async function showOutline(uri: vscode.Uri, range: vscode.Range): Promise<void> {
-  const editor = await vscode.window.showTextDocument(uri, { selection: range });
-  editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+  await openSourceAt(uri, range.start.line + 1, { selection: range, revealType: vscode.TextEditorRevealType.InCenterIfOutsideViewport });
 }
 
 /** What the tree shows: a document and where its cursor is. */

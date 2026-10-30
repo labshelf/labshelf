@@ -7,6 +7,7 @@ import {
 } from "@labshelf/core";
 import { runSafely } from "../../command/index.js";
 import { readActiveProject } from "../build/index.js";
+import { openSourceAt } from "../openSourceAt.js";
 import { OPEN_PROJECT_COMMAND, type WritingHost, type WritingProjects } from "./session.js";
 import { listProjectZipEntries } from "./exportInstall.js";
 
@@ -249,7 +250,7 @@ const NO_NOTES_LABEL = "No notes yet — New Note…"; // D16: QMD_VOCABULARY.it
 
 async function openNoteFile({ projects }: ProjectNoteCommandsDeps, project: ReadyProject, path: string): Promise<void> {
   const file = projects.paths.join(project.folder, ...path.split("/"));
-  await vscode.window.showTextDocument(vscode.Uri.file(file));
+  await openSourceAt(vscode.Uri.file(file), undefined);
 }
 
 async function newNote(deps: ProjectNoteCommandsDeps): Promise<void> {

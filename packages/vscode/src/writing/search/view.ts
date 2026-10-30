@@ -6,6 +6,7 @@ import {
   type HostToSearch, type ILogger, type MatchPosition, type SearchOptions, type SearchRun, type SearchScopeKind, type SearchToHost,
 } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
+import { openSourceAt } from "../openSourceAt.js";
 import { deriveBuildRootPath, findOwningProject, type ProjectFinder, type ReadyProject } from "../projects/index.js";
 import type { WritingHost, WritingProjects } from "../projects/index.js";
 import { readScopeTexts, SEARCH_LOG_MODULE, writeReplacementsInProject, type SearchScope } from "./replace.js";
@@ -68,9 +69,7 @@ export async function searchHtml(webview: vscode.Webview, extensionUri: vscode.U
 
 async function openMatch({ path, line, column, length }: MatchPosition): Promise<void> {
   const range = new vscode.Range(line, column, line, column + length);
-  const editor = await vscode.window.showTextDocument(vscode.Uri.file(path));
-  editor.selection = new vscode.Selection(range.start, range.end);
-  editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+  await openSourceAt(vscode.Uri.file(path), line + 1, { selection: range });
 }
 
 async function runSearch(query: string, options: SearchOptions, scope: SearchScope, logger: ILogger): Promise<SearchRun> {

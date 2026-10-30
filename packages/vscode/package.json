@@ -54,7 +54,7 @@
             "filenamePattern": "*.typ"
           }
         ],
-        "priority": "option"
+        "priority": "default"
       }
     ],
     "grammars": [
@@ -68,12 +68,14 @@
       {
         "command": "labshelf.sourceEditor.reopen",
         "title": "Reopen with LabShelf Editor",
-        "category": "LabShelf"
+        "category": "LabShelf",
+        "icon": "$(edit)"
       },
       {
         "command": "labshelf.sourceEditor.reopenAsText",
-        "title": "Reopen with Text Editor",
-        "category": "LabShelf"
+        "title": "Reopen in Text Editor",
+        "category": "LabShelf",
+        "icon": "$(go-to-file)"
       },
       {
         "command": "labshelf.spaces.all",
@@ -1042,6 +1044,16 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "labshelf.sourceEditor.reopenAsText",
+          "when": "activeCustomEditorId == 'labshelf.sourceEditor'",
+          "group": "navigation@0"
+        },
+        {
+          "command": "labshelf.sourceEditor.reopen",
+          "when": "resourceExtname =~ /^\\.(tex|typ)$/ && activeEditor == 'workbench.editors.files.textFileEditor'",
+          "group": "navigation@0"
+        },
         {
           "command": "labshelf.writing.showHistory",
           "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",

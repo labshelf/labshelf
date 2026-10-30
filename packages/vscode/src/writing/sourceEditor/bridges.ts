@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import type { ILogger, NoteInsertSource, PaperNotesStore, PaperRecord, SourceEditorInbound } from "@labshelf/core";
 import type { SourceFileComments } from "../../collab/index.js";
+import { openSourceAt } from "../openSourceAt.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -105,12 +106,7 @@ async function listProjectFiles(projectRoot: vscode.Uri | undefined, path: strin
 async function openProjectFile(projectRoot: vscode.Uri | undefined, params: unknown): Promise<void> {
   const { target } = resolveInProject(projectRoot, stringParam(params, "path"));
   const line = typeof params === "object" && params !== null ? (params as Record<string, unknown>).line : undefined;
-  const options: vscode.TextDocumentShowOptions = {};
-  if (typeof line === "number") {
-    const at = new vscode.Position(Math.max(0, line - 1), 0);
-    options.selection = new vscode.Range(at, at);
-  }
-  await vscode.window.showTextDocument(target, options);
+  await openSourceAt(target, typeof line === "number" ? line : undefined);
 }
 
 function problemsOf(uri: vscode.Uri): ProblemsMessage {

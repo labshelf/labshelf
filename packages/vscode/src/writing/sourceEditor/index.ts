@@ -1,6 +1,8 @@
 // Registers the LabShelf editor for .tex and .typ files and the two commands that reopen a file in it or in the text editor.
 import * as vscode from "vscode";
 
+import type { ActiveSource } from "../activeSource.js";
+import { useActiveSourceForOpens } from "../openSourceAt.js";
 import { SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider, type SourceEditorProviderDeps } from "./provider.js";
 
 export type { SourceEditorProviderDeps } from "./provider.js";
@@ -28,9 +30,13 @@ async function reopenWith(viewType: string, uri: vscode.Uri | undefined): Promis
   if (reopened) { await vscode.window.tabGroups.close(active.tab, true); }
 }
 
-/** `deps.activeSource` is the extension's one ActiveSource, so every LabShelf editor panel registers with the same registry. */
-export function registerSourceEditor(context: vscode.ExtensionContext, deps: SourceEditorProviderDeps): void {
+/** `deps.activeSource` is the extension's one ActiveSource, so every LabShelf editor panel registers with the same registry, and every jump to a line (openSourceAt) reveals in its views. */
+export function registerSourceEditor(
+  context: vscode.ExtensionContext, deps: SourceEditorProviderDeps & { activeSource: Pick<ActiveSource, "register" | "openFor"> },
+): void {
+  useActiveSourceForOpens(deps.activeSource);
   context.subscriptions.push(
+    { dispose: () => useActiveSourceForOpens(undefined) },
     vscode.window.registerCustomEditorProvider(SOURCE_EDITOR_VIEW_TYPE, createSourceEditorProvider(deps), {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: true,

@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { findPagePoint, findSourcePosition, formatError, type ILogger, type PagePoint, type PathOps, type SynctexFinder } from "@labshelf/core";
 import { addSourceComment } from "../../collab/index.js";
 import type { ActiveSource } from "../activeSource.js";
+import { openSourceAt } from "../openSourceAt.js";
 import { BUILD_COMMAND, readActiveProject } from "../build/index.js";
 import type { WritingProjects } from "../projects/index.js";
 import { NOT_BUILT_MESSAGE, NOT_IN_PREVIEW_MESSAGE, NO_SOURCE_MESSAGE, PREVIEW_LOG_MODULE, TYPST_SOURCE_LINKS_MESSAGE, readBuiltPdf, type BuildPreviews } from "./panel.js";
@@ -13,17 +14,9 @@ function editorColumn(): vscode.ViewColumn {
   return vscode.window.visibleTextEditors.find((editor) => editor.viewColumn !== undefined)?.viewColumn ?? vscode.ViewColumn.One;
 }
 
-/** Puts the cursor at the start of the 1-based `line` of `file` and shows that line in the middle of the editor, in an editor column, so the source never replaces the preview. An open LabShelf editor on the file (found through `views`) is revealed instead of opening a text editor. */
+/** Opens the 1-based `line` of `file` in an editor column, so the source never replaces the preview: an open LabShelf editor on the file (found through `views`) is revealed, a file the LabShelf editor is the effective editor for opens in it, anything else in a text editor with the line in the middle. */
 export async function openSourceLine(file: string, line: number, views?: Pick<ActiveSource, "openFor">): Promise<void> {
-  const open = views?.openFor(vscode.Uri.file(file));
-  if (open) {
-    open.reveal(line);
-    return;
-  }
-  const position = Math.max(0, line - 1);
-  const range = new vscode.Range(position, 0, position, 0);
-  const editor = await vscode.window.showTextDocument(vscode.Uri.file(file), { viewColumn: editorColumn(), selection: range });
-  editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+  await openSourceAt(vscode.Uri.file(file), line, { viewColumn: editorColumn(), ...(views ? { activeSource: views } : {}) });
 }
 
 /** What opening the source behind a point of the preview needs. */
