@@ -1,7 +1,7 @@
 // Tests that the Spaces guard accepts space.runCell and space.cancelCell and drops them whole with a missing or mistyped field.
 import { parseSpacesMessage } from "../src/spaces/spacesProtocol";
 
-const run = { type: "space.runCell", path: "notes/ideas.qmd", itemId: "i1", label: "calc", code: "print(1)", requestId: "r1" };
+const run = { type: "space.runCell", path: "notes/ideas.qmd", itemId: "i1", label: "calc", code: "print(1)", language: "python", requestId: "r1" };
 const cancel = { type: "space.cancelCell", requestId: "r1" };
 
 describe("space.runCell and space.cancelCell guards", () => {
