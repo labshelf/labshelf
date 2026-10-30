@@ -130,6 +130,7 @@ export function createDesktopPlatform(context: vscode.ExtensionContext): Extensi
 
 const MODULE = "qmd/runCell";
 const CELL_TIMEOUT_MS = 60_000;
+const PREVIEW_TIMEOUT_MS = 20_000;
 
 /** The shared Python and the cell runner built once, as the ports the note hosts run cells and install Python through. */
 function createCellHosts(context: vscode.ExtensionContext, logger: ILogger): CellHosts {
@@ -154,9 +155,9 @@ function locateCellTool(language: "mathematica" | "r"): Promise<string | undefin
   return locateTool(tool, override ? { override } : {});
 }
 
-/** @returns the port the core hosts run cells through: the runner with the default timeout, in the temp folder. */
+/** @returns the port the core hosts run cells through: the runner in the temp folder, with the default timeout, or a shorter one for a preview. */
 function createRunCellPort(runner: ICellRunner): RunCellPort {
-  return (code, signal) => runner.run(code, { cwd: os.tmpdir(), signal, timeoutMs: CELL_TIMEOUT_MS });
+  return (request, signal) => runner.run(request, { cwd: os.tmpdir(), signal, timeoutMs: request.preview ? PREVIEW_TIMEOUT_MS : CELL_TIMEOUT_MS });
 }
 
 /** @returns an installer of the shared Python that shows its progress; a second call while one runs does nothing. Nothing re-runs after it. */

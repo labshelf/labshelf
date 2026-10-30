@@ -2,7 +2,8 @@
 import { isBoolean, isNonBlankString, isNonEmptyString, isNonEmptyStringList, isOptional, isRecord, isString } from "../guards/index.js";
 import { isCalendarDay } from "../time/index.js";
 import type { MessageEnd } from "../libraryUi/protocol/index.js";
-import { isCellLanguage, type CellLanguage, type CellRunState } from "../qmd/compute/index.js";
+import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../qmd/compute/index.js";
+import { readRequestParams } from "../qmd/item/index.js";
 import { isPage } from "./parseSpaceFile.js";
 import type { GlossaryTerm, Space } from "./space.js";
 import type { SpaceThreadEntry, ThreadStatus } from "./spaceDiscussionsStore.js";
@@ -52,8 +53,8 @@ export type SpacesToHost =
   | { type: "exportIcs"; id: string }
   | { type: "listPapers" }
   | { type: "listProjects" }
-  /** Runs one code cell of a note or discussion item; the page makes `requestId` and the host echoes it in `space.cellState`. */
-  | { type: "space.runCell"; path: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string }
+  /** Runs one code cell of a note or discussion item; the page makes `requestId` and the host echoes it in `space.cellState`. A `preview` run with `params` is answered with `space.cellPreview` and writes nothing. */
+  | { type: "space.runCell"; path: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string; params?: CellRequest["params"]; preview?: boolean }
   /** Restarts the `language` process of the note or thread at `path`, dropping what its cells defined. */
   | { type: "space.restartCell"; path: string; language: CellLanguage }
   | { type: "space.cancelCell"; requestId: string }
@@ -96,6 +97,8 @@ export type HostToSpaces =
   /** The items of one note or thread file, in file order. */
   | { type: "spaceQmd"; spaceId: string; path: string; items: SpaceQmdItem[] }
   | { type: "space.cellState"; requestId: string; state: CellRunState }
+  /** Answers a `space.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
+  | { type: "space.cellPreview"; requestId: string; result: CellResult }
   /** `action` is the label of the failed action. */
   | { type: "error"; action: string; message: string };
 
@@ -242,12 +245,15 @@ function parseQmdAction(value: Fields): SpaceQmdAction | undefined {
 
 /** The run, restart, cancel or install message, or undefined when the type is not one or a field or the path is invalid. */
 function parseCellMessage(value: Fields): SpacesToHost | undefined {
-  const { type, path, itemId, label, code, language, requestId } = value;
+  const { type, path, itemId, label, code, language, requestId, params, preview } = value;
   switch (type) {
-    case "space.runCell":
+    case "space.runCell": {
+      const parsed = params === undefined ? undefined : readRequestParams(params);
       return isQmdFilePath(path) && isNonEmptyString(itemId) && isNonEmptyString(label) && isNonEmptyString(code)
         && isCellLanguage(language) && isNonEmptyString(requestId)
-        ? { type, path, itemId, label, code, language, requestId } : undefined;
+        && (params === undefined || parsed !== undefined) && (preview === undefined || isBoolean(preview))
+        ? { type, path, itemId, label, code, language, requestId, ...(parsed ? { params: parsed } : {}), ...(preview === undefined ? {} : { preview }) } : undefined;
+    }
     case "space.restartCell": return isQmdFilePath(path) && isCellLanguage(language) ? { type, path, language } : undefined;
     case "space.cancelCell": return isNonEmptyString(requestId) ? { type, requestId } : undefined;
     case "space.installPython": return { type };

@@ -3,7 +3,8 @@ import { type ReadingStatus, type FolderTreeNode, type PaperFilesState, PAPER_ST
 import type { CitationEdge, MissingWork } from "../citationMap/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
-import { isCellLanguage, type CellLanguage, type CellRunState } from "../../qmd/compute/index.js";
+import { isCellLanguage, type CellLanguage, type CellRequest, type CellResult, type CellRunState } from "../../qmd/compute/index.js";
+import { readRequestParams } from "../../qmd/item/index.js";
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import { type AllProjectsToHost, type HostToAllProjects, parseAllProjectsMessage } from "../../writing/allProjects/index.js";
@@ -45,8 +46,8 @@ export type UiToHost =
   | { type: "paper.addNote"; id: string; body: string }
   | { type: "paper.editNote"; id: string; itemId: string; body: string }
   | { type: "paper.removeNote"; id: string; itemId: string }
-  /** Asks the host to run one code cell of a note item; the view makes `requestId` and the host echoes it in `paper.cellState`. */
-  | { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string }
+  /** Asks the host to run one code cell of a note item; the view makes `requestId` and the host echoes it in `paper.cellState`. A `preview` run with `params` is answered with `paper.cellPreview` and writes nothing. */
+  | { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string; params?: CellRequest["params"]; preview?: boolean }
   /** Restarts the `language` process of paper `id`'s notes, dropping what its cells defined. */
   | { type: "paper.restartCell"; id: string; language: CellLanguage }
   | { type: "paper.cancelCell"; requestId: string }
@@ -76,6 +77,8 @@ export type HostToUi =
   /** `canRunCells` is true only where the host has a cell runner; absent means false. */
   | { type: "details"; id: string; details: PaperDetails; canRunCells?: boolean }
   | { type: "paper.cellState"; requestId: string; state: CellRunState }
+  /** Answers a `paper.runCell` with `preview` set: the result of a run that was not stored, with the cell's controls. */
+  | { type: "paper.cellPreview"; requestId: string; result: CellResult }
   | { type: "similar"; id: string; items: SimilarPaper[] }
   | { type: "sidecarChanged"; id: string | null }
   | { type: "jobs"; jobs: TextLayerJobView[] }
@@ -198,6 +201,8 @@ const isWorkId = (v: unknown): boolean => typeof v === "string" && /^W\d+$/.test
 // One entry of a paper folder: a single segment, never "." or "..", never a path.
 const isEntryName = (v: unknown): boolean =>
   typeof v === "string" && v !== "" && v !== "." && v !== ".." && !v.includes("/") && !v.includes("\\");
+const isRequestParams = (v: unknown): boolean => v === undefined || readRequestParams(v) !== undefined;
+const isOptionalBoolean = (v: unknown): boolean => v === undefined || isBoolean(v);
 const isDoi = (v: unknown): boolean => typeof v === "string" && /^10\.\d{4,9}\/\S+$/.test(v);
 
 const isWebUrl = (v: unknown): boolean => typeof v === "string" && /^https?:\/\//i.test(v) && URL.canParse(v);
@@ -235,7 +240,7 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.addNote": { id: isNonEmptyString, body: isString },
   "paper.editNote": { id: isNonEmptyString, itemId: isNonEmptyString, body: isString },
   "paper.removeNote": { id: isNonEmptyString, itemId: isNonEmptyString },
-  "paper.runCell": { id: isNonEmptyString, itemId: isNonEmptyString, label: isNonEmptyString, code: isNonEmptyString, language: isCellLanguage, requestId: isNonEmptyString },
+  "paper.runCell": { id: isNonEmptyString, itemId: isNonEmptyString, label: isNonEmptyString, code: isNonEmptyString, language: isCellLanguage, requestId: isNonEmptyString, params: isRequestParams, preview: isOptionalBoolean },
   "paper.restartCell": { id: isNonEmptyString, language: isCellLanguage },
   "paper.cancelCell": { requestId: isNonEmptyString },
   "paper.installPython": {},
