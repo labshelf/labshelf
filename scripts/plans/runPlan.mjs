@@ -15,7 +15,7 @@
 // A session left pending after the context-budget hook marked it (its main thread crossed the unattended context warning)
 // runs again in a fresh process when that run made progress (a commit or a package report turned done), and stops the runner when it made none. --no-wait stops instead. --resume does the same
 // by hand: it runs the first pending session on top of the uncommitted changes a stopped run left behind.
-// Logs: .git/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
+// Logs: <git dir>/plan-runs/<slug>/<session>-<time>.jsonl (the stream-json transcript of each session).
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -28,6 +28,13 @@ import { pendingSessions, planQueue } from "./planQueue.mjs";
 
 // LABSHELF_PLAN_ROOT points the runner at another repo; the end-to-end tests use it with a temp git repo.
 const root = process.env.LABSHELF_PLAN_ROOT ? resolve(process.env.LABSHELF_PLAN_ROOT) : resolve(import.meta.dirname, "..", "..");
+
+// The repo's git directory; in a worktree `.git` is a file, so ask git.
+function gitDir() {
+  const run = spawnSync("git", ["rev-parse", "--git-dir"], { cwd: root, encoding: "utf8" });
+  const out = run.status === 0 ? run.stdout.trim() : "";
+  return out ? resolve(root, out) : join(root, ".git");
+}
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 
 function parseArgs(argv) {
@@ -247,7 +254,7 @@ async function main() {
   emit("run_started", { options: { ...options, maxSessions: Number.isFinite(options.maxSessions) ? options.maxSessions : null } });
   if (!options.resume && dirtyTracked()) throw new Error("tracked changes are uncommitted; commit or stash them, or pass --resume to continue the stopped session on top of them");
   ensureBranch(slug);
-  const logDir = join(root, ".git", "plan-runs", slug);
+  const logDir = join(gitDir(), "plan-runs", slug);
   mkdirSync(logDir, { recursive: true });
 
   const attempts = new Map();
