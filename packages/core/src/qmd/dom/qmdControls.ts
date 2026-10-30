@@ -49,17 +49,54 @@ export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAncho
 /** Whether the focus is in a node's own editor, such as a cell's code or an equation's LaTeX field. */
 const inNodeEditor = (): boolean => document.activeElement?.closest?.(".qmd-cell-code, .qmd-math-edit") != null;
 
-/**
- * Mounts the formatting bubble into `root`: bold, italic, inline math and link over a non-empty text selection of
- * `view`, with their pressed states, hidden otherwise and while a node's own editor or nothing in `root` has the focus.
- */
-export function mountSelectionBubble(root: HTMLElement, view: EditorView): { refresh(): void; destroy(): void } {
-  const buttons = BUBBLE_ACTIONS.map((id) => {
+type BubbleButton = { button: HTMLButtonElement; action: QmdAction };
+
+/** One bubble button per mark action, each running its action on `view`. */
+function renderBubbleButtons(view: EditorView): BubbleButton[] {
+  return BUBBLE_ACTIONS.map((id) => {
     const action: QmdAction = QMD_ACTIONS[id];
     const button = renderElement("button", { class: "qmd-bubble-btn", type: "button", title: `${action.label} (${shortcutLabel(action.shortcut)})`, "aria-label": action.label, html: renderIcon(action.icon) });
     button.addEventListener("click", () => runAction(view, action));
     return { button, action };
   });
+}
+
+/** Centres `bubble` over the text from `from` to `to`, or under it when there is no room above, kept inside the window. */
+function placeBubble(view: EditorView, bubble: HTMLElement, from: number, to: number): void {
+  let start: { left: number; top: number; bottom: number };
+  let end: { left: number; top: number };
+  try {
+    start = view.coordsAtPos(from);
+    end = view.coordsAtPos(to);
+  } catch {
+    return;
+  }
+  const { offsetWidth: width, offsetHeight: height } = bubble;
+  const centre = start.top === end.top ? (start.left + end.left) / 2 : start.left + width / 2;
+  const top = start.top - GAP - height >= MARGIN ? start.top - GAP - height : start.bottom + GAP;
+  bubble.style.left = `${Math.max(MARGIN, Math.min(centre - width / 2, window.innerWidth - width - MARGIN))}px`;
+  bubble.style.top = `${Math.max(MARGIN, top)}px`;
+}
+
+/** Calls `onChange` after every transaction `view` applies, keeping its own dispatch. @returns a function that restores the previous dispatch. */
+function watchTransactions(view: EditorView, onChange: () => void): () => void {
+  const previous = view.props.dispatchTransaction;
+  view.setProps({
+    dispatchTransaction(tr) {
+      if (previous) previous.call(this, tr);
+      else view.updateState(view.state.apply(tr));
+      onChange();
+    },
+  });
+  return () => { if (!view.isDestroyed && previous) view.setProps({ dispatchTransaction: previous }); };
+}
+
+/**
+ * Mounts the formatting bubble into `root`: bold, italic, inline math and link over a non-empty text selection of
+ * `view`, with their pressed states, hidden otherwise and while a node's own editor or nothing in `root` has the focus.
+ */
+export function mountSelectionBubble(root: HTMLElement, view: EditorView): { refresh(): void; destroy(): void } {
+  const buttons = renderBubbleButtons(view);
   const bubble = renderElement("div", { class: "qmd-bubble", role: "toolbar", "aria-label": "Formatting", hidden: true }, ...buttons.map(({ button }) => button));
   // Keeps the editor focused, and its selection, when a button is pressed with the mouse.
   bubble.addEventListener("mousedown", (event) => event.preventDefault());
@@ -76,24 +113,7 @@ export function mountSelectionBubble(root: HTMLElement, view: EditorView): { ref
       button.disabled = !action.command(view.state);
       if (action.active) button.setAttribute("aria-pressed", String(action.active(view.state)));
     }
-    place(selection.from, selection.to);
-  }
-
-  /** Centres the bubble over the selection, or under it when there is no room above, kept inside the window. */
-  function place(from: number, to: number): void {
-    let start: { left: number; top: number; bottom: number };
-    let end: { left: number; top: number };
-    try {
-      start = view.coordsAtPos(from);
-      end = view.coordsAtPos(to);
-    } catch {
-      return;
-    }
-    const { offsetWidth: width, offsetHeight: height } = bubble;
-    const centre = start.top === end.top ? (start.left + end.left) / 2 : start.left + width / 2;
-    const top = start.top - GAP - height >= MARGIN ? start.top - GAP - height : start.bottom + GAP;
-    bubble.style.left = `${Math.max(MARGIN, Math.min(centre - width / 2, window.innerWidth - width - MARGIN))}px`;
-    bubble.style.top = `${Math.max(MARGIN, top)}px`;
+    placeBubble(view, bubble, selection.from, selection.to);
   }
 
   const onFocusIn = (): void => { blurred = false; refresh(); };
@@ -106,14 +126,7 @@ export function mountSelectionBubble(root: HTMLElement, view: EditorView): { ref
   root.addEventListener("focusin", onFocusIn);
   root.addEventListener("focusout", onFocusOut);
   window.addEventListener("scroll", onScroll, true);
-  const previous = view.props.dispatchTransaction;
-  view.setProps({
-    dispatchTransaction(tr) {
-      if (previous) previous.call(this, tr);
-      else view.updateState(view.state.apply(tr));
-      refresh();
-    },
-  });
+  const stopWatching = watchTransactions(view, refresh);
 
   return {
     refresh,
@@ -121,7 +134,7 @@ export function mountSelectionBubble(root: HTMLElement, view: EditorView): { ref
       root.removeEventListener("focusin", onFocusIn);
       root.removeEventListener("focusout", onFocusOut);
       window.removeEventListener("scroll", onScroll, true);
-      if (!view.isDestroyed && previous) view.setProps({ dispatchTransaction: previous });
+      stopWatching();
       bubble.remove();
     },
   };
