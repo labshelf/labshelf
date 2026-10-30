@@ -1,7 +1,7 @@
 // Tests serveSpaces' run-cell flow: space.cellState running first, output written through the notes store, the items pushed before the end space.cellState, and the missing-runner answer.
 import { createLoopbackTransport } from "../../src/libraryUi/protocol/index";
 import type { ILogger } from "../../src/ports/index";
-import type { CellResult } from "../../src/qmd/compute/index";
+import type { CellRequest, CellResult } from "../../src/qmd/compute/index";
 import { serveSpaces, type HostToSpaces, type SpacesHostPort, type SpacesToHost } from "../../src/spaces/index";
 import { seededFixture } from "./store/spaceStoreFixture";
 import { library } from "./viewModel/viewFixture";
@@ -10,7 +10,7 @@ const base = { version: 1, name: "Thesis", folders: [], papers: [{ id: "p1" }], 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
 const NOTE = "```{python}\n#| label: calc\nprint(1)\n```\n";
 
-async function setup(runCell?: (code: string, signal: AbortSignal) => Promise<CellResult>) {
+async function setup(runCell?: (request: CellRequest, signal: AbortSignal) => Promise<CellResult>) {
   const f = await seededFixture({ thesis: base });
   await f.store.reload();
   const path = await f.store.notes.create("thesis", "Calc");
@@ -36,7 +36,7 @@ async function setup(runCell?: (code: string, signal: AbortSignal) => Promise<Ce
 
 describe("serveSpaces space.runCell", () => {
   it("posts running, writes the output, pushes the items, then posts space.cellState done", async () => {
-    const { f, ui, posted, path, itemId } = await setup(async () => ({ status: "ok", text: "1", durationMs: 1 }));
+    const { f, ui, posted, path, itemId } = await setup(async () => ({ status: "ok", language: "python", text: "1", durationMs: 1 }));
     ui.post({ type: "space.runCell", path, itemId, label: "calc", code: "print(1)", requestId: "r1" });
     await settle();
     const item = (await f.store.notes.read("thesis", path)).find((i) => i.id === itemId);
