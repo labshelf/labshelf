@@ -4,7 +4,7 @@ import {
   type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
 } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
-import { renderSourceToolbar, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
+import { renderSourceToolbar, reviewModeDropdown, type ReviewMode, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions,
@@ -13,6 +13,29 @@ import {
 import type { TabContext, TabModule } from "./tabKinds";
 
 const MODULE = "tabs.source";
+
+/** The review mode a project's source tabs open in, kept per project so it survives reopening a tab; Editing until the user picks Reviewing. */
+interface ReviewModeState {
+  get(): ReviewMode;
+  /** Stores the mode; true when it differs from the stored one. */
+  set(mode: ReviewMode): boolean;
+  /** Runs when the editor reports a mode picked on its side. */
+  onMode(mode: ReviewMode): void;
+}
+
+function createReviewModeState(projectId: string, logger: ILogger, changed: () => void): ReviewModeState {
+  const key = `labshelf.reviewMode.${projectId}`;
+  let current: ReviewMode = "editing";
+  // PLATFORM: localStorage throws when the browser blocks storage; the mode then lasts for this tab only.
+  try { if (window.localStorage.getItem(key) === "reviewing") current = "reviewing"; } catch (error) { void logger.error(MODULE, error, { action: "readReviewMode", projectId }); }
+  const set = (mode: ReviewMode): boolean => {
+    if (mode === current) return false;
+    current = mode;
+    try { window.localStorage.setItem(key, mode); } catch (error) { void logger.error(MODULE, error, { action: "storeReviewMode", projectId }); }
+    return true;
+  };
+  return { get: () => current, set, onMode: (mode) => { if (set(mode)) changed(); } };
+}
 
 function projectFiles(fs: LibraryFileSystem, entry: ProjectEntry): SourceFileAccess {
   const full = (path: string): string => posixPathOps.join(entry.folder, path);
@@ -49,8 +72,9 @@ function noteLinkSource(fs: LibraryFileSystem, logger: ILogger, entry: ProjectEn
 }
 
 /** What the editor of a project file gets; a shared file this tab does not run opens read-only and takes no comments, which would land in comments.qmd and never reach the share. */
-function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode): SourceEditorDeps {
-  const { helperProject, comments } = project();
+function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: TabContext, entry: ProjectEntry, file: { projectId: string; path: string }, mode: SourceFileMode, review: ReviewModeState,
+): SourceEditorDeps {
+  const { helperProject, comments, sharing, suggestions } = project();
   const { projectId, path } = file;
   const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
   return {
@@ -72,6 +96,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
         add: (range, text) => comments.addComment(projectId, path, range, text),
         open: () => workspace.openTab("comments", { projectId }, 1),
       },
+      review: { author: () => sharing.shares.name(), mode: review.get(), suggestions: suggestions.suggestionsFor(projectId, path), onMode: review.onMode },
     }),
     onSaved: () => void addProjectUpdateEvent({ fs, logger }, { id: projectId, folder: entry.folder }),
   };
@@ -79,7 +104,7 @@ function editorDeps({ fs, logger, tab, workspace, project, selection, prefs }: T
 
 /** Mounts the file's editor in `body`; undefined when the tab closed first or the file could not be opened, which the body then says. */
 async function loadEditor(
-  body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, disposed: () => boolean,
+  body: HTMLElement, context: TabContext, file: { projectId: string; path: string; retried: boolean }, review: ReviewModeState, disposed: () => boolean,
 ): Promise<{ editor: SourceEditor; entry: ProjectEntry; mode: SourceFileMode } | undefined> {
   const { fs, logger, project } = context;
   const { projectId, path, retried } = file;
@@ -92,7 +117,7 @@ async function loadEditor(
     if (disposed()) return undefined;
     const mode = await readSourceFileMode(sharing, entry, path, logger, retried);
     if (disposed()) return undefined;
-    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode));
+    const editor = await mountSourceEditor(body, editorDeps(context, entry, { projectId, path }, mode, review));
     loading.remove();
     if (disposed()) { void editor.dispose(); return undefined; }
     return { editor, entry, mode };
@@ -137,15 +162,29 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
   let editor: SourceEditor | undefined;
   let loaded: ProjectEntry | undefined;
   let mode: SourceFileMode | undefined;
+  const isReadOnly = (): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
+  // The toolbar offers the mode dropdown only while a writable editor is open; `toolbar` is the one on screen.
+  let toolbar: HTMLElement;
+  const buildToolbar = (withReview: boolean): HTMLElement => renderSourceToolbar(withReview
+    ? [...groups, [reviewModeDropdown(review.get, (picked) => { review.set(picked); editor?.setReviewMode(picked); })]]
+    : groups);
+  const showToolbar = (withReview: boolean): void => {
+    const next = buildToolbar(withReview);
+    toolbar.replaceWith(next);
+    toolbar = next;
+  };
+  // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
+  const review = createReviewModeState(projectId, logger, () => { if (!disposed && editor && !isReadOnly()) showToolbar(true); });
   const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => editor);
   const open = (retried: boolean): void => {
-    void loadEditor(body, context, { projectId, path, retried }, () => disposed).then((opened) => {
+    void loadEditor(body, context, { projectId, path, retried }, review, () => disposed).then((opened) => {
       if (!opened) return;
       editor = opened.editor;
       mode = opened.mode;
       const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
       loaded = readOnly ? undefined : opened.entry;
+      if (!readOnly) showToolbar(true);
       prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
@@ -155,6 +194,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     editor = loaded = mode = undefined;
     await previous?.dispose();
     if (disposed) return;
+    toolbar = buildToolbar(false);
     body.replaceChildren(toolbar);
     open(retried);
   };
@@ -166,7 +206,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     papers: listCachedPaperRecords,
   });
   const { toolbar: groups, tab: actions } = splitSourceActions(sourceActions);
-  const toolbar = renderSourceToolbar(groups);
+  toolbar = buildToolbar(false);
   body.append(toolbar);
   open(false);
   return {
