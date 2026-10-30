@@ -1,10 +1,17 @@
 // The editor's dependencies inside the webview, each a request to the extension host (writing/sourceEditor/bridges.ts) or a feed of its messages.
 import type { DefinitionDeps, SourceEditorDeps } from "@labshelf/core/sourceEditor";
-import type { NoteInsertSource, PaperNotesStore, SourceEditorInbound, SourceEditorOutbound } from "@labshelf/core";
+import type { NoteInsertSource, PaperNotesStore, SourceEditorInbound, SourceEditorOutbound, TextRange } from "@labshelf/core";
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
 type Response = Extract<SourceEditorInbound, { type: "response" }>;
 type ProblemsMessage = Extract<SourceEditorInbound, { type: "problems" }>;
+type CommentsMessage = Extract<SourceEditorInbound, { type: "comments" }>;
+/** The editor's EditorComments (core): ranges are LF offsets of the document. */
+interface CommentsPort {
+  subscribe(listener: (ranges: TextRange[]) => void): () => void;
+  add(range: TextRange, text: string): Promise<void>;
+  open(): void;
+}
 type ProblemSource = NonNullable<SourceEditorDeps["problems"]>;
 type ProblemListener = Parameters<ProblemSource>[1];
 type Problems = Parameters<ProblemListener>[0];
@@ -20,10 +27,13 @@ export interface HostPorts {
   openNotes(paperId: string): void;
   openTab: OpenTab;
   problems: ProblemSource;
+  comments: CommentsPort;
   /** Settles the request a response answers. */
   settle(response: Response): void;
   /** Gives the listeners the file's current problems. */
   deliverProblems(message: ProblemsMessage): void;
+  /** Gives the listeners the file's current comment ranges. */
+  deliverComments(message: CommentsMessage): void;
 }
 
 function strings(value: unknown): string[] {
@@ -46,6 +56,8 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
   const listeners = new Set<ProblemListener>();
   let path = "";
   let current: Problems = [];
+  const commentListeners = new Set<(ranges: TextRange[]) => void>();
+  let currentRanges: TextRange[] = [];
 
   return {
     files: {
@@ -88,6 +100,15 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
       listener(current);
       return () => { listeners.delete(listener); };
     },
+    comments: {
+      subscribe: (listener) => {
+        commentListeners.add(listener);
+        listener(currentRanges);
+        return () => { commentListeners.delete(listener); };
+      },
+      add: async (range, text) => { await request("addComment", { from: range.start, to: range.end, text }); },
+      open: () => { void request("openComments", {}).catch(() => undefined); },
+    },
     settle(response) {
       const waiting = pending.get(response.id);
       if (!waiting) { return; }
@@ -97,6 +118,10 @@ export function createHostPorts(post: (message: SourceEditorOutbound) => void): 
     deliverProblems(message) {
       current = message.problems.map((problem) => ({ file: path, line: problem.line, severity: problem.severity, message: problem.message }));
       for (const listener of listeners) { listener(current); }
+    },
+    deliverComments(message) {
+      currentRanges = message.ranges.map((range) => ({ start: range.from, end: range.to }));
+      for (const listener of commentListeners) { listener(currentRanges); }
     },
   };
 }

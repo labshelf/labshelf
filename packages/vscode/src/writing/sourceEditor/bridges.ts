@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 
 import type { ILogger, NoteInsertSource, PaperNotesStore, PaperRecord, SourceEditorInbound } from "@labshelf/core";
+import type { SourceFileComments } from "../../collab/comments.js";
 
 const MODULE = "writing/sourceEditor";
 /** vscode.DiagnosticSeverity.Error and .Warning; everything else (information, hint) is shown as info. */
@@ -11,6 +12,7 @@ const MAX_LISTED_FILES = 5000;
 const SKIPPED_FOLDERS: ReadonlySet<string> = new Set(["node_modules"]);
 
 type ProblemsMessage = Extract<SourceEditorInbound, { type: "problems" }>;
+type CommentsMessage = Extract<SourceEditorInbound, { type: "comments" }>;
 
 export interface SourceBridgeDeps {
   /** The file the editor shows, whose diagnostics it lists. */
@@ -21,6 +23,8 @@ export interface SourceBridgeDeps {
   library: { listPapers(): Promise<PaperRecord[]> };
   notes: NoteInsertSource & Pick<PaperNotesStore, "read">;
   openNotes(paperId: string): void;
+  /** The comment manager's port for the file's threads; undefined where it does not run (the web). */
+  comments?: SourceFileComments | undefined;
   logger: ILogger;
 }
 
@@ -29,6 +33,14 @@ export interface SourceBridges {
   handle(method: string, params: unknown): Promise<unknown>;
   /** The file's diagnostics from every collection, read afresh. */
   problems(): ProblemsMessage;
+  /** Posts the file's comment threads now and after each change, until the result is disposed; posts nothing without a port. */
+  watchComments(post: (message: CommentsMessage) => void): vscode.Disposable;
+}
+
+function numberParam(params: unknown, key: string): number {
+  const value = typeof params === "object" && params !== null ? (params as Record<string, unknown>)[key] : undefined;
+  if (typeof value !== "number") { throw new Error(`missing ${key}`); }
+  return value;
 }
 
 function severityOf(severity: number): "error" | "warning" | "info" {
@@ -58,7 +70,12 @@ function relativeSegments(path: string): string[] {
 }
 
 export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
-  const { uri, projectRoot, library, notes, openNotes, logger } = deps;
+  const { uri, projectRoot, library, notes, openNotes, comments, logger } = deps;
+
+  async function addComment(params: unknown): Promise<void> {
+    if (!comments) { throw new Error("comments work in the desktop app"); }
+    await comments.add(uri, { from: numberParam(params, "from"), to: numberParam(params, "to") }, stringParam(params, "text"));
+  }
 
   const resolve = (path: string): { target: vscode.Uri; segments: string[] } => {
     if (!projectRoot) { throw new Error("outside the project"); }
@@ -119,6 +136,8 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
         return await listFiles(typeof folder === "string" ? folder : "");
       }
       case "openFile": await openFile(params); return undefined;
+      case "addComment": await addComment(params); return undefined;
+      case "openComments": await vscode.commands.executeCommand("workbench.panel.comments.focus"); return undefined;
       default: throw new Error(`not available: ${method}`);
     }
   }
@@ -131,6 +150,9 @@ export function createSourceBridges(deps: SourceBridgeDeps): SourceBridges {
         void logger.error(MODULE, error, { action: method });
         throw error;
       }
+    },
+    watchComments(post) {
+      return comments?.subscribe(uri, (ranges) => post({ type: "comments", ranges })) ?? { dispose: () => undefined };
     },
     problems() {
       return {

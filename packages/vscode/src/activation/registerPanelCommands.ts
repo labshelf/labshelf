@@ -15,6 +15,7 @@ import {
   type ListPanelDeps,
   type SelectionSources,
 } from "../libraryUi/index.js";
+import { currentSourceFileComments } from "../collab/comments.js";
 import type { LibraryEvents } from "../library/index.js";
 import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
 import type { ActiveSource } from "../writing/activeSource.js";
@@ -204,6 +205,8 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
     // The same reader the writing view's citations use: no library open lists no papers.
     library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
     ...deps.sourceEditor,
+    // Read when a panel opens: the controller provides it only on the desktop.
+    comments: currentSourceFileComments,
   });
   deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
   wireDetailsSources({

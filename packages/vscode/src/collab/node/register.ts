@@ -17,7 +17,7 @@ import type { LibraryRootController } from "../../activation/index.js";
 import { openLibraryLogger } from "../../activation/index.js";
 import { openRelayAccounts, registerRelay, CONNECT_RELAY_COMMAND } from "../../relay/node/index.js";
 import type { WritingProjects } from "../../writing/index.js";
-import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, type CommentsDeps, type SourceComment } from "../comments.js";
+import { ADD_SOURCE_COMMENT_COMMAND, CommentsController, provideSourceFileComments, type CommentsDeps, type SourceComment } from "../comments.js";
 import {
   showRefusedOffer,
   type CollabHost,
@@ -77,8 +77,11 @@ function guarded<T>(deps: CommentsDeps, action: string, run: (arg: T) => Promise
 
 function registerComments(context: vscode.ExtensionContext, deps: CommentsDeps): void {
   const comments = new CommentsController(deps);
+  // The LabShelf editor lists and adds the file's threads through the controller while it runs.
+  provideSourceFileComments(comments);
   context.subscriptions.push(
     comments,
+    { dispose: () => provideSourceFileComments(undefined) },
     vscode.commands.registerCommand(REPLY_COMMAND, guarded(deps, "add the comment", (reply: vscode.CommentReply) => comments.reply(reply))),
     vscode.commands.registerCommand(RESOLVE_COMMAND, guarded(deps, "resolve the thread", (thread: vscode.CommentThread) => comments.setResolved(thread, true))),
     vscode.commands.registerCommand(REOPEN_COMMAND, guarded(deps, "reopen the thread", (thread: vscode.CommentThread) => comments.setResolved(thread, false))),

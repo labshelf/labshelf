@@ -129,6 +129,26 @@ const RELOCATE_DELAY_MS = 300;
 /** A review note to add as a thread; `file` is absolute and inside the project folder, `line` counts from 1. */
 export interface SourceComment { projectFolder: string; file: string; line: number; quote: string; body: string }
 
+/** A thread's range in the LF text of the file: character offsets where CRLF counts as one. */
+interface SourceFileRange { id: string; from: number; to: number }
+
+/** What the LabShelf editor asks of the comment manager for its file. */
+export interface SourceFileComments {
+  /** The listener gets the file's unresolved threads at once and after each change; [] for a file outside every open project. */
+  subscribe(uri: vscode.Uri, listener: (ranges: SourceFileRange[]) => void): vscode.Disposable;
+  add(uri: vscode.Uri, range: { from: number; to: number }, text: string): Promise<void>;
+}
+
+/** Walks the text one character at a time (CRLF is one) until `done`; returns the file offset and the LF offset reached. */
+function walkLf(text: string, done: (file: number, lf: number) => boolean): { file: number; lf: number } {
+  let file = 0;
+  let lf = 0;
+  while (!done(file, lf) && file < text.length) { file += text.startsWith("\r\n", file) ? 2 : 1; lf += 1; }
+  return { file, lf };
+}
+
+interface SourceSubscription { uri: vscode.Uri; listener: (ranges: SourceFileRange[]) => void; generation: number; active: boolean }
+
 export interface CommentsDeps {
   projects: Pick<WritingProjects, "list" | "onDidChange" | "paths">;
   shares: { list(): readonly CommentShare[]; readonly onDidChange: vscode.Event<void> };
@@ -141,10 +161,11 @@ interface ProjectView { key: string; view: ThreadView; subscription: vscode.Disp
 
 const isOpenProject = (entry: ProjectEntry): entry is Extract<ProjectEntry, { kind: "ready" }> => entry.kind === "ready" && !entry.settings.trashed;
 
-export class CommentsController implements vscode.Disposable {
+export class CommentsController implements vscode.Disposable, SourceFileComments {
   private readonly controller = vscode.comments.createCommentController("labshelf.comments", "LabShelf");
   private readonly views = new Map<string, ProjectView>();
-  private readonly relocate = createKeyedDebouncer<string>(RELOCATE_DELAY_MS, (folder) => { void this.views.get(folder)?.view.refresh(); });
+  private readonly sourceSubscriptions = new Set<SourceSubscription>();
+  private readonly relocate = createKeyedDebouncer<string>(RELOCATE_DELAY_MS, (folder) => { void this.views.get(folder)?.view.refresh(); this.notifySources(); });
   private readonly subscriptions: vscode.Disposable[];
 
   constructor(private readonly deps: CommentsDeps) {
@@ -196,11 +217,54 @@ export class CommentsController implements vscode.Disposable {
     void this.deps.logger.log("INFO", COMMENTS_LOG_MODULE, "Added a review note as a comment", { folder: target.folder, file: target.file, line: request.line });
   }
 
+  subscribe(uri: vscode.Uri, listener: (ranges: SourceFileRange[]) => void): vscode.Disposable {
+    const subscription: SourceSubscription = { uri, listener, generation: 0, active: true };
+    this.sourceSubscriptions.add(subscription);
+    void this.deliver(subscription);
+    return { dispose: () => { subscription.active = false; this.sourceSubscriptions.delete(subscription); } };
+  }
+
+  async add(uri: vscode.Uri, range: { from: number; to: number }, text: string): Promise<void> {
+    const target = this.locate(uri);
+    if (!target) { throw new Error("the file is not inside an open LabShelf project"); }
+    const source = await target.view.store.textOf(target.file);
+    if (source === undefined) { throw new Error(`${target.file} is not a text file of the project`); }
+    const anchored = { start: walkLf(source, (_, lf) => lf >= range.from).file, end: walkLf(source, (_, lf) => lf >= range.to).file };
+    if (anchored.start >= anchored.end) { throw new Error("select text to comment on"); }
+    await this.addThread(target.view, target.file, source, anchored, text);
+  }
+
   dispose(): void {
+    this.sourceSubscriptions.clear();
     this.relocate.dispose();
     disposeAll(this.subscriptions);
     [...this.views.keys()].forEach((folder) => this.drop(folder));
     this.controller.dispose();
+  }
+
+  /** Gives a subscriber the unresolved threads of its file; a late answer that a newer one has overtaken is dropped. */
+  private async deliver(subscription: SourceSubscription): Promise<void> {
+    const generation = ++subscription.generation;
+    const ranges = await this.rangesOf(subscription.uri).catch((error: unknown): SourceFileRange[] => {
+      void this.deps.logger.error(COMMENTS_LOG_MODULE, error, { action: "list the comments of a file", uri: subscription.uri.toString() });
+      return [];
+    });
+    if (subscription.active && subscription.generation === generation) { subscription.listener(ranges); }
+  }
+
+  private async rangesOf(uri: vscode.Uri): Promise<SourceFileRange[]> {
+    const target = this.locate(uri);
+    const source = target && await target.view.store.textOf(target.file);
+    if (!target || source === undefined) { return []; }
+    const { store } = target.view;
+    return store.threads().flatMap((thread) => {
+      const at = thread.file === target.file && !thread.resolved ? store.locate(thread, source) : undefined;
+      return at && at !== "detached" ? [{ id: thread.id, from: walkLf(source, (file) => file >= at.start).lf, to: walkLf(source, (file) => file >= at.end).lf }] : [];
+    });
+  }
+
+  private notifySources(): void {
+    for (const subscription of [...this.sourceSubscriptions]) { void this.deliver(subscription); }
   }
 
   private comment(body: string): Comment {
@@ -238,9 +302,10 @@ export class CommentsController implements vscode.Disposable {
       this.drop(folder);
       const store: ProjectComments = share ? new SharedComments(share) : new FileComments(folder, this.deps.logger);
       const view = new ThreadView(this.controller, store, this.deps.logger);
-      this.views.set(folder, { key, view, subscription: store.onDidChange(() => void view.refresh()) });
+      this.views.set(folder, { key, view, subscription: store.onDidChange(() => { void view.refresh(); this.notifySources(); }) });
       void view.refresh();
     }
+    this.notifySources();
   }
 
   private drop(folder: string): void {
@@ -319,3 +384,10 @@ export async function addSourceComment(request: SourceComment): Promise<void> {
   }
   await vscode.commands.executeCommand(ADD_SOURCE_COMMENT_COMMAND, request);
 }
+
+let sourceFileComments: SourceFileComments | undefined;
+
+/** Set when the controller starts and cleared when it is disposed; the LabShelf editor reads it for the file's threads. */
+export function provideSourceFileComments(port: SourceFileComments | undefined): void { sourceFileComments = port; }
+
+export function currentSourceFileComments(): SourceFileComments | undefined { return sourceFileComments; }
