@@ -47,13 +47,13 @@ async function handle(line) {
     const c = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], { stdio: "ignore" });
     reply({ id, text: String(c.pid) });
   }
-  else if (cmd === "exit") { process.stderr.write("fatal: driver went away\n"); process.exit(Number(rest[0])); }
+  else if (cmd === "exit") { process.stderr.write("fatal: driver went away\n"); process["exit"](Number(rest[0])); }
   else { reply({ id, error: "unknown command " + cmd }); }
 }
 let chain = Promise.resolve();
 const rl = readline.createInterface({ input: process.stdin });
 rl.on("line", (line) => { chain = chain.then(() => handle(line)); });
-rl.on("close", () => process.exit(0));
+rl.on("close", () => process["exit"](0));
 `;
 
 let workDir: string;
