@@ -1,7 +1,9 @@
 // Finds what the pointer hovers (text references and link destinations) and previews a link destination.
 import type { PageViewport, RenderTask } from "pdfjs-dist";
 import { deriveFloatRegion, type PdfRegion } from "../geometry.js";
-import { classifyDestName, classifyLinkText, deriveStatementRegion, findFloatCaptionNear, type DestTarget } from "../destTarget.js";
+import {
+  classifyDestName, classifyLinkText, deriveStatementRegion, findFloatCaptionNear, findStatementStart, type DestTarget,
+} from "../destTarget.js";
 import type { FloatKind } from "../inTextReferences.js";
 import { findReferenceAtOffset, type InTextReference, findInTextReferences, joinLineParts, type JoinedLine, type LinePart } from "../inTextReferences.js";
 import type { HoverAnchor, PdfDestination, PopupContent } from "./hoverPreview.js";
@@ -169,6 +171,15 @@ export const FLOAT_TITLES: Record<FloatKind, string> = { figure: "Figure", table
 // Link text is judged by the words that end at the link ("Theorem", "Figure"), so only the tail of the line matters.
 const LINK_TEXT_CHARS = 60;
 
+// A run may carry on past the link ("Theorem 1.2 (Szemerédi"): keep only the characters that end inside it.
+function cutRunAt(run: HTMLElement, text: string, right: number): string {
+  let kept = "";
+  for (let i = 0; i < text.length; i++) {
+    if (deriveCharRangeRect(run, i, i + 1).right <= right) { kept += text[i]; }
+  }
+  return kept;
+}
+
 /**
  * @returns the text on the link's line that ends at the link, or an empty string when the page has no text layer.
  */
@@ -181,7 +192,9 @@ function readTextEndingAt(link: HTMLElement): string {
   const runs: Array<{ left: number; text: string }> = [];
   for (const el of layer.querySelectorAll<HTMLElement>(TEXT_RUN_SELECTOR)) {
     const r = el.getBoundingClientRect();
-    if (Math.abs(r.top + r.height / 2 - centre) <= reach && r.left < box.right - 1) { runs.push({ left: r.left, text: el.textContent ?? "" }); }
+    if (Math.abs(r.top + r.height / 2 - centre) > reach || r.left >= box.right - 1) { continue; }
+    const text = el.textContent ?? "";
+    runs.push({ left: r.left, text: r.right <= box.right + 1 ? text : cutRunAt(el, text, box.right + 1) });
   }
   runs.sort((a, b) => a.left - b.left);
   return runs.map((r) => r.text).join(" ").slice(-LINK_TEXT_CHARS);
@@ -221,7 +234,10 @@ export class DestContent {
       // No reliable entry boundaries: a picture of the destination is never wrong, extracted text could be.
     }
     if (!isCurrent()) { return null; }
-    const target = (typeof dest === "string" ? classifyDestName(dest) : null) ?? classifyLinkText(readTextEndingAt(link));
+    const target = (typeof dest === "string" ? classifyDestName(dest) : null)
+      ?? classifyLinkText(readTextEndingAt(link))
+      ?? (point.y !== null ? await this.findStatementAt(targetPage, { x: point.x, y: point.y }) : null);
+    if (!isCurrent()) { return null; }
     if (target && point.y !== null) {
       const cropped = await this.prepareCrop(target, targetPage, { x: point.x, y: point.y }, jump, isCurrent);
       if (cropped) { return cropped; }
@@ -229,6 +245,19 @@ export class DestContent {
     }
     const canvas = await this.preview.render(targetPage, point.x, point.y);
     return canvas ? { title: `Page ${targetPage}`, body: canvas, copyText: null, jump } : null;
+  }
+
+  /**
+   * Shared-counter names ("subsection.1.2") hide a theorem: a statement heading right under the destination reveals it.
+   * @returns a statement target when one is found, else null (a real subsection link keeps the band).
+   */
+  private async findStatementAt(targetPage: number, dest: { x: number | null; y: number }): Promise<DestTarget | null> {
+    try {
+      const { lines, columnSplit, width, height } = await this.pages.get(targetPage);
+      return findStatementStart(lines, { width, height, columnSplit }, dest) === null ? null : { kind: "statement" };
+    } catch {
+      return null;
+    }
   }
 
   /** @returns the popup of the statement or float the destination points at, or null when it cannot be located. */
@@ -250,7 +279,8 @@ export class DestContent {
       } else {
         const hit = findFloatCaptionNear(lines, layout, target, dest);
         region = hit ? deriveFloatRegion(lines, hit, width, height, columnSplit) : null;
-        if (target.label !== null) { title = `${FLOAT_TITLES[target.floatKind]} ${target.label.toUpperCase()} · Page ${targetPage}`; }
+        // The caption's printed label: LLNCS names printed Figure 1 "figure.1.1".
+        if (hit) { title = `${FLOAT_TITLES[hit.kind]} ${hit.label.toUpperCase()} · Page ${targetPage}`; }
       }
       if (!region) { return null; }
       const canvas = await this.preview.renderRegion(targetPage, region);

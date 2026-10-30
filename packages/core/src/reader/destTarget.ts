@@ -59,6 +59,17 @@ const BARE_LABEL_LINK_END = new RegExp(`\\(\\s*(${FLOAT_LABEL})\\s*\\)\\s*$`, "i
  * @returns what the text that ends at the link says it refers to ("by Theorem 2.1", "Fig. 4", "(3.1)"), or null.
  */
 export function classifyLinkText(text: string): DestTarget | null {
+  // Punctuation after the link ("Theorem 1.2.", "(see Fig. 3)") is not part of it; "(3.1)" keeps its parenthesis.
+  for (let t = text.trimEnd(); t; t = t.slice(0, -1).trimEnd()) {
+    const target = classifyLinkTextEnd(t);
+    if (target || !TRAILING_PUNCTUATION.test(t)) { return target; }
+  }
+  return null;
+}
+
+const TRAILING_PUNCTUATION = /[.,;:)]$/;
+
+function classifyLinkTextEnd(text: string): DestTarget | null {
   if (STATEMENT_LINK_END.test(text)) { return { kind: "statement" }; }
   const fig = FIGURE_TABLE_LINK_END.exec(text);
   if (fig) { return { kind: "float", floatKind: deriveFloatKind(fig[1]!), label: fig[2]!.toLowerCase() }; }
@@ -108,19 +119,28 @@ function destColumn(page: PageLayout, dest: DestPoint): number | null {
   return dest.x > page.columnSplit ? 1 : 0;
 }
 
+// The statement's first line: its heading below the anchor, else the first line whose top is under the destination.
+function findRegionStart(lines: readonly TextLine[], page: PageLayout, dest: DestPoint): TextLine | null {
+  const heading = findStatementStart(lines, page, dest);
+  if (heading !== null) { return lines[heading]!; }
+  const wantedColumn = destColumn(page, dest);
+  let start: TextLine | null = null;
+  for (const l of lines) {
+    if (wantedColumn !== null && l.column !== wantedColumn) { continue; }
+    if (l.y + l.height <= dest.y + 1 && (start === null || l.y > start.y)) { start = l; }
+  }
+  if (!start || dest.y - start.y > MAX_START_DISTANCE_LINES * start.height + MAX_START_DISTANCE_PAD) { return null; }
+  return start;
+}
+
 /**
  * Derives the region a theorem-like statement occupies: from the line under the destination down to the line before
  * the proof, the next statement, a section heading, a large gap or half a page.
  * @returns the region in PDF space, or null when no line lies under the destination within reach.
  */
 export function deriveStatementRegion(lines: readonly TextLine[], page: PageLayout, dest: DestPoint): PdfRegion | null {
-  const wantedColumn = destColumn(page, dest);
-  const candidates = wantedColumn === null ? lines : lines.filter((l) => l.column === wantedColumn);
-  let start: TextLine | null = null;
-  for (const l of candidates) {
-    if (l.y <= dest.y + START_REACH_SLACK && (start === null || l.y > start.y)) { start = l; }
-  }
-  if (!start || dest.y - start.y > MAX_START_DISTANCE_LINES * start.height + MAX_START_DISTANCE_PAD) { return null; }
+  const start = findRegionStart(lines, page, dest);
+  if (!start) { return null; }
 
   const column = lines.filter((l) => l.column === start.column).sort((a, b) => b.y - a.y);
   const startIndex = column.indexOf(start);
@@ -185,4 +205,28 @@ export function findFloatCaptionNear(
     if (nearest === null || Math.abs(yOf(h) - dest.y) < Math.abs(yOf(nearest) - dest.y)) { nearest = h; }
   }
   return below ?? nearest;
+}
+
+const HEADING_LOOKAHEAD_LINES = 3;
+const HEADING_REACH_PAD = 30;
+
+/**
+ * Finds the heading of a theorem-like statement a destination anchors: hyperref puts the anchor in the gap above the
+ * heading, 26-34 pt over its baseline, so one of the first lines below the destination must open with a statement word.
+ * @returns the index into `lines` of that heading line, or null when none of the first lines below is one.
+ */
+export function findStatementStart(lines: readonly TextLine[], page: PageLayout, dest: DestPoint): number | null {
+  const wantedColumn = destColumn(page, dest);
+  const under = lines
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => (wantedColumn === null || l.column === wantedColumn) && l.y < dest.y + START_REACH_SLACK)
+    .sort((a, b) => b.l.y - a.l.y);
+  // Without a column from the destination, the first line under it decides the column (as in deriveStatementRegion).
+  const column = wantedColumn ?? under[0]?.l.column;
+  const below = under.filter(({ l }) => l.column === column).slice(0, HEADING_LOOKAHEAD_LINES);
+  for (const { l, i } of below) {
+    if (dest.y - l.y > HEADING_LOOKAHEAD_LINES * l.height + HEADING_REACH_PAD) { break; }
+    if (STATEMENT_HEADING_START.test(l.text.trim())) { return i; }
+  }
+  return null;
 }

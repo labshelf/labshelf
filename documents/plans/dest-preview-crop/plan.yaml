@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: dest-preview-crop
 title: Crop linked hover previews to their target
-status: approved
+status: done
 level: N2
 goal: Hovering an internal PDF link to a theorem-like statement, a figure, a table or an equation shows only that target, cropped to its block and column, instead of a fixed full-width band of 38% of the page with the surrounding text.
 decisions:
@@ -38,4 +38,5 @@ sessions:
       - packages/core/src/reader/dom/hoverPreview.ts
       - packages/core/src/reader/dom/readerUi.ts
       - packages/core/__tests__/reader/destTarget.test.ts
+      - packages/core/src/reader/geometry.ts
       - documents/plans/dest-preview-crop/

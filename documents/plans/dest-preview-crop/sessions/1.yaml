@@ -9,8 +9,9 @@ owns:
   - packages/core/src/reader/dom/hoverPreview.ts
   - packages/core/src/reader/dom/readerUi.ts
   - packages/core/__tests__/reader/destTarget.test.ts
+  - packages/core/src/reader/geometry.ts
   - documents/plans/dest-preview-crop/
-status: pending
+status: done
 packages:
   - id: "1.1"
     plan: dest-preview-crop
@@ -104,3 +105,41 @@ packages:
       - packages/core/src/reader/destTarget.ts
       - packages/core/src/reader/geometry.ts
       - packages/core/src/reader/textLines.ts
+  - id: "1.3"
+    plan: dest-preview-crop
+    goal: "Fix from the diagnosis: a theorem-like link shows exactly its statement even when its dest is a shared-counter name (subsection.1.2), and a figure link shows the whole figure, not the other side of its caption."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    sha: 88bc5ca5
+    depends_on: ["1.1", "1.2"]
+    edit:
+      - {path: packages/core/src/reader/destTarget.ts, lines: "100-190", why: "statement start below the hyperref anchor; new findStatementStart"}
+      - {path: packages/core/src/reader/geometry.ts, lines: "72-101", why: "figureRegion body-text test ignores small-font in-figure labels"}
+      - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "169-265", why: "readTextEndingAt cuts runs at the link's right edge; classification falls back to a statement heading at the destination; float title uses the caption's printed label"}
+    read:
+      - {path: packages/core/__tests__/reader/destTarget.test.ts, lines: "370-470", why: "real-geometry regression fixtures (Green-Tao p2 dest y 467.154 / 524.368; Mnih p7 Figure 2)"}
+      - {path: packages/core/__tests__/reader/geometry.test.ts, lines: "1-80", why: "deriveFloatRegion behaviours that must stay green"}
+      - {path: packages/core/src/reader/textLines.ts, lines: "18-27", why: "TextLine; height is the font size"}
+      - {path: packages/core/src/reader/dom/hoverTarget.ts, lines: "90-110", why: "deriveCharRangeRect: per-character screen boxes inside a run, the model for cutting a run at the link edge"}
+    seams:
+      - {path: packages/core/src/reader/destTarget.ts, signature: "export function findStatementStart(lines: readonly import(\"./textLines.js\").TextLine[], page: PageLayout, dest: DestPoint): number | null"}
+    decided:
+      - "Hyperref anchors sit in the gap ABOVE a statement heading: 26-34 pt above the heading baseline and only 7-11 pt below the previous paragraph's last baseline (measured on 11 Green-Tao links)."
+      - "findStatementStart: column rule as deriveStatementRegion. Look at the first 3 lines of the column whose baseline is below dest.y + 2, in descending y, within dest.y - line.y <= 3 * line.height + 30. Return the index (into `lines`) of the first of them whose trimmed text starts with a statement word heading (stop rule (b)'s pattern: statement word, full or Portuguese form, followed by a number, `(`, `.` or `:`). Otherwise null."
+      - "deriveStatementRegion start line: findStatementStart when it is not null; otherwise the first line of the column whose top (y + height) <= dest.y + 1, within the existing reach limit (dest.y - start.y <= 3 * start.height + 12, measured from the baseline); otherwise null. The rest of the walk and the region formula are unchanged."
+      - "Classification in DestContent.prepare: target = classifyDestName(name) ?? classifyLinkText(text ending at the link); when still null and point.y is not null, read the target page and, when findStatementStart finds a heading, treat it as a statement. A real subsection link (its heading has no statement word) still gets the band."
+      - "readTextEndingAt: for the run that crosses the link's right edge, keep only its characters whose right edge (per-character Range box, as deriveCharRangeRect does) is <= link right + 1; runs entirely right of the edge are dropped as now. classifyLinkText also ignores trailing `.`, `,`, `;`, `:` and `)` that are not part of an `(label)` equation reference."
+      - "figureRegion isBodyText: a line is body text only when it is at least 30% of the frame wide AND its height >= 0.75 * the caption line's height. Small-font in-figure labels merged across panels no longer bound the band."
+      - "Float popup title uses the matched caption's own label (hit.label, upper-cased), not the label parsed from the dest name (LLNCS names figure.1.1 for printed Figure 1)."
+    acceptance:
+      - {id: 1.3a, check: "the 3 regression tests in destTarget.test.ts (Theorem 1.2, Theorem 1.1, Mnih Figure 2) pass, with the 41 earlier ones"}
+      - {id: 1.3b, check: "geometry.test.ts and every test under packages/core/__tests__/reader pass; typecheck core passes"}
+      - {id: 1.3c, check: "findStatementStart returns null for a dest above a numbered section heading and for a dest above a plain paragraph"}
+      - {id: A1, check: "Green-Tao: hovering 'Theorem 1.2' shows only the statement (checked by the user)"}
+      - {id: A2, check: "Mnih 2013: hovering Figure 2 shows the four plots and caption (checked by the user)"}
+    tests:
+      hidden: [documents/plans/dest-preview-crop/tests/1.3/packages/core/__tests__/reader/destTarget.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 1.3 --plan dest-preview-crop -- packages/core/__tests__/reader/destTarget.test.ts packages/core/__tests__/reader/geometry.test.ts"
+    commands:
+      - "node scripts/agents/run.mjs typecheck core"
+      - "node scripts/agents/run.mjs test core -- packages/core/__tests__/reader"

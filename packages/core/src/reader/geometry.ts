@@ -74,7 +74,8 @@ function figureRegion(lines: readonly TextLine[], hit: CaptionMatch, f: FloatFra
   const cap = lines[hit.lineIndex]!;
   const last = captionBlockEnd(lines, hit);
   const inColumn = (l: TextLine): boolean => l.xEnd > x0 + 2 && l.x < x1 - 2;
-  const isBodyText = (l: TextLine): boolean => (l.xEnd - l.x) >= (x1 - x0) * 0.3;
+  // Small-font tick labels merged across panels can be page-wide; body text also has (about) the caption's font size.
+  const isBodyText = (l: TextLine): boolean => (l.xEnd - l.x) >= (x1 - x0) * 0.3 && l.height >= cap.height * 0.75;
   const captionTop = cap.y + cap.height;
   const captionBottom = lines[last]!.y - lines[last]!.height * 0.35;
 
