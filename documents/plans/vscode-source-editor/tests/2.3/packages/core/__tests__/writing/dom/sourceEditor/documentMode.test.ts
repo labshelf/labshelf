@@ -94,12 +94,12 @@ describe("document mode: starting and pushing", () => {
     type(0, "x");
     await until(() => push.mock.calls.length > 0);
     expect(push).toHaveBeenCalledTimes(1);
-    const [version, updates] = push.mock.calls[0];
+    const [version, updates] = push.mock.calls[0]!;
     expect(version).toBe(3);
     expect(updates).toHaveLength(1);
-    expect(updates[0].clientID).toEqual(expect.any(String));
-    expect(updates[0].clientID).not.toBe("");
-    expect(updates[0].changes).toEqual([{ from: 0, to: 0, insert: "x" }]);
+    expect(updates[0]!.clientID).toEqual(expect.any(String));
+    expect(updates[0]!.clientID).not.toBe("");
+    expect(updates[0]!.changes).toEqual([{ from: 0, to: 0, insert: "x" }]);
     await editor.dispose();
   });
 
@@ -107,7 +107,7 @@ describe("document mode: starting and pushing", () => {
     const { editor, push, type } = await mount({ text: "hello", version: 0 });
     type(1, "", 3);
     await until(() => push.mock.calls.length > 0);
-    expect(push.mock.calls[0][1].flatMap((u) => u.changes)).toEqual([{ from: 1, to: 3, insert: "" }]);
+    expect(push.mock.calls[0]![1].flatMap((u) => u.changes)).toEqual([{ from: 1, to: 3, insert: "" }]);
     await editor.dispose();
   });
 
@@ -119,7 +119,7 @@ describe("document mode: starting and pushing", () => {
     await until(() => push.mock.calls.length > 0);
     await settle();
     expect(push).toHaveBeenCalledTimes(1);
-    const inserted = push.mock.calls[0][1].flatMap((u) => u.changes).map((c) => c.insert).join("");
+    const inserted = push.mock.calls[0]![1].flatMap((u) => u.changes).map((c) => c.insert).join("");
     expect(inserted).toBe("abc");
     await editor.dispose();
   });
@@ -128,7 +128,7 @@ describe("document mode: starting and pushing", () => {
     const { editor, write, push, host, type } = await mount({ text: "hello", version: 3 });
     type(0, "x");
     await until(() => push.mock.calls.length > 0);
-    const own = push.mock.calls[0][1];
+    const own = push.mock.calls[0]![1];
     host.updates(4, own);
     await expect(editor.flush()).resolves.toBe(true);
     type(1, "y");
@@ -152,7 +152,7 @@ describe("document mode: starting and pushing", () => {
     const flushed = editor.flush().then((value) => { resolved = value; return value; });
     await settle();
     expect(resolved).toBeUndefined();
-    host.updates(4, push.mock.calls[0][1]);
+    host.updates(4, push.mock.calls[0]![1]);
     await expect(flushed).resolves.toBe(true);
     await editor.dispose();
   });
@@ -167,11 +167,11 @@ describe("document mode: starting and pushing", () => {
     const { editor, push, host, type } = await mount({ text: "hello", version: 3 });
     type(0, "a");
     await until(() => push.mock.calls.length === 1);
-    host.updates(4, push.mock.calls[0][1]);
+    host.updates(4, push.mock.calls[0]![1]);
     type(1, "b");
     await until(() => push.mock.calls.length === 2);
-    expect(push.mock.calls[1][0]).toBe(4);
-    expect(push.mock.calls[1][1].flatMap((u) => u.changes)).toEqual([{ from: 1, to: 1, insert: "b" }]);
+    expect(push.mock.calls[1]![0]).toBe(4);
+    expect(push.mock.calls[1]![1].flatMap((u) => u.changes)).toEqual([{ from: 1, to: 1, insert: "b" }]);
     await editor.dispose();
   });
 });
@@ -326,8 +326,8 @@ describe("document mode: resync", () => {
     host.resync("new", 10);
     type(3, "!");
     await until(() => push.mock.calls.length > 0);
-    expect(push.mock.calls[0][0]).toBe(10);
-    expect(push.mock.calls[0][1].flatMap((u) => u.changes)).toEqual([{ from: 3, to: 3, insert: "!" }]);
+    expect(push.mock.calls[0]![0]).toBe(10);
+    expect(push.mock.calls[0]![1].flatMap((u) => u.changes)).toEqual([{ from: 3, to: 3, insert: "!" }]);
     await editor.dispose();
   });
 });

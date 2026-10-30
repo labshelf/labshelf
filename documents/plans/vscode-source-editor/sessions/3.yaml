@@ -47,6 +47,7 @@ packages:
       - "Syncs that share an authority coordinate through state keyed by that authority (a WeakMap): the in-flight expected changes and the onDidChangeTextDocument listener are per authority, so an echo of any panel's edit is recognised by all, an outside edit is recorded with authority.external once, and every panel gets the resulting updates."
       - "Accepted client changes become one WorkspaceEdit each, applied in order; while an edit is in flight onDidChangeTextDocument events for this document are compared with the expected changes and swallowed when they match, otherwise recorded with authority.external."
       - "If applyEdit returns false, the client gets a resync from document.getText()."
+      - "authority.since(v) throws RangeError when v is outside the kept history; catch it and resync the client from authority.text(). receive() does not drop updates it already accepted, so the client never re-pushes before confirmation (2.3)."
       - "save → document.save(); dirty → document.isDirty after each change and on onDidSaveTextDocument."
       - "The webview's files.read/list serve project files through the existing project service, bounded to the project folder; papers and notes are 'not available' until session 4 (the editor degrades)."
       - "projectId comes from the existing project lookup for the document's folder; a file outside a project still opens, with no project features."
