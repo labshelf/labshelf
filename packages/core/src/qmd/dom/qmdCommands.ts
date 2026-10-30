@@ -4,6 +4,7 @@ import type { Mark, MarkType, Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, Plugin, PluginKey, TextSelection, type Command, type EditorState, type Transaction } from "prosemirror-state";
 import type { IconName } from "../../ui/icons/index.js";
 import { askInputBox, type InputBoxOptions } from "../../ui/dom/index.js";
+import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
 import { editNodeAt, type EditSide } from "./inlineViews.js";
 import { listActive, toggleList } from "./qmdListCommands.js";
@@ -205,6 +206,11 @@ function linkCommand(ask: (opts: InputBoxOptions) => Promise<string | undefined>
   };
 }
 
+/** Inserts an empty code cell of `language` at the caret. */
+export function insertCodeCell(language: CellLanguage): Command {
+  return insertBlock(() => nodes.code_cell.create({ lang: language }));
+}
+
 export interface QmdAction { id: string; label: string; icon: IconName; shortcut: string; command: Command; active?: (state: EditorState) => boolean }
 
 /** The toolbar actions other than headings, keyed by id. */
@@ -216,7 +222,7 @@ export const QMD_ACTIONS = {
   task: { id: "task", label: "Task list", icon: "check-square", shortcut: "Mod-Shift-9", command: toggleList("task"), active: listActive("task") },
   inlineMath: { id: "inlineMath", label: "Inline math", icon: "sigma", shortcut: "Mod-m", command: toggleInlineMath, active: inlineMathActive },
   displayMath: { id: "displayMath", label: "Display math", icon: "sigma-block", shortcut: "Mod-Shift-m", command: insertBlock(() => nodes.math_display.create()) },
-  codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertBlock(() => nodes.code_cell.create({ lang: "python" })) },
+  codeCell: { id: "codeCell", label: "Code cell", icon: "code", shortcut: "Mod-Alt-c", command: insertCodeCell("python") },
   link: { id: "link", label: "Link", icon: "link", shortcut: "Mod-k", command: linkCommand(), active: (state: EditorState) => linkAt(state) !== null },
 } satisfies Record<string, QmdAction>;
 

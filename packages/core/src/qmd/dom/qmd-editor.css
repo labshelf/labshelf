@@ -118,6 +118,14 @@ textarea.qmd-math-input { white-space: pre-wrap; overflow-wrap: anywhere; }
 .qmd-action-sep { opacity: 0.6; }
 .qmd-cell-run, .qmd-output-action { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: var(--ls-desc); cursor: pointer; font: inherit; }
 .qmd-cell-run:hover, .qmd-output-action:hover { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+/* The language picker reads as the quiet language name with a small caret; it opens the language menu. */
+.qmd-cell-lang-picker { display: inline-flex; align-items: center; gap: var(--ls-space-1); padding: 0 var(--ls-space-1); border: 0; border-radius: var(--ls-radius-sm); background: transparent; color: inherit; cursor: pointer; font: inherit; }
+.qmd-cell-lang-picker:hover:not(:disabled) { background: var(--ls-toolbar-hover); color: var(--ls-fg); }
+.qmd-cell-lang-picker:disabled { cursor: default; }
+.qmd-cell-lang-picker:disabled .qmd-cell-lang-caret { display: none; }
+.qmd-cell-lang-caret { display: inline-flex; opacity: 0.7; }
+.qmd-cell-lang-caret svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
+.qmd-cell-lang-picker:focus-visible, .qmd-cell-run:focus-visible, .qmd-output-action:focus-visible { outline: 1px solid var(--ls-focus); outline-offset: 0; }
 .qmd-cell-run svg, .qmd-output-action svg { width: var(--ls-text-xs); height: var(--ls-text-xs); }
 .qmd-cell-run-icon, .qmd-cell-run-spinner, .qmd-output-run-icon, .qmd-output-run-spinner { display: inline-flex; }
 .qmd-cell-run-spinner, .qmd-cell.is-running .qmd-cell-run-icon, .qmd-output-run-spinner, .qmd-output.is-running .qmd-output-run-icon { display: none; }

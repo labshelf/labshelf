@@ -4,7 +4,7 @@ import type { EditorView, NodeView, NodeViewConstructor } from "prosemirror-view
 import { mountOverlay, renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import { deriveCodeHash, readOutputImage } from "../item/index.js";
-import { cellControlsAt, type CellControls } from "./inlineViews.js";
+import { cellControlsAt, renderLanguagePicker, renderRestartButton, type CellControls } from "./inlineViews.js";
 import { loadCoreMath, renderMathInto, type MathLoader } from "./mathView.js";
 
 /** The value of the `#| label:` line in a cell's `options`, or "". */
@@ -110,7 +110,7 @@ class OutputView implements NodeView {
     return pos === undefined || this.view.state.doc.resolve(pos + this.node.nodeSize).nodeAfter?.type.name !== "output";
   }
 
-  /** Under the last output of a cell with a result: the language, Run again and Show or Hide code; redrawn only when one of them changes. */
+  /** Under the last output of a cell with a result: the language picker, Run again, Restart and Show or Hide code; redrawn only when one of them changes. */
   private renderActions(): void {
     if (this.destroyed || !this.ready || this.view.isDestroyed) return;
     const controls = this.isLast() ? this.cell() : null;
@@ -121,21 +121,24 @@ class OutputView implements NodeView {
     }
     const show = controls?.hasResult() === true;
     this.dom.classList.toggle("is-running", show && controls.isRunning());
-    const key = show ? `${controls.language()}\u0000${controls.canRun}\u0000${controls.isOpen()}` : null;
+    const key = show ? [controls.language(), controls.canRun(), controls.canRestart(), controls.isOpen(), this.view.editable].join("\u0000") : null;
     if (key === this.actionsKey) return;
     this.actionsKey = key;
     this.actions?.remove();
     this.actions = null;
     if (!show) return;
     const sep = (): HTMLElement => renderElement("span", { class: "qmd-action-sep", "aria-hidden": "true" }, "·");
-    const line = renderElement("div", { class: "qmd-output-actions" }, renderElement("span", { class: "qmd-output-lang" }, controls.language()));
-    if (controls.canRun) {
+    // The cell's own line is hidden once it has a result, so the picker and Restart live here too.
+    const line = renderElement("div", { class: "qmd-output-actions" }, renderLanguagePicker(controls, "qmd-output-lang", this.view.editable));
+    if (controls.canRun()) {
       const run = renderElement("button", { class: "qmd-output-action qmd-output-run", type: "button", "aria-label": "Run again" }, "Run again",
         renderElement("span", { class: "qmd-output-run-icon", html: renderIcon("refresh"), "aria-hidden": "true" }),
         renderElement("span", { class: "qmd-output-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
       run.addEventListener("click", () => controls.run());
       line.append(sep(), run);
     }
+    const restart = renderRestartButton(controls, "qmd-output-action qmd-output-restart");
+    if (restart) line.append(sep(), restart);
     const open = controls.isOpen();
     const code = renderElement("button", { class: "qmd-output-action qmd-output-code", type: "button", "aria-expanded": String(open) }, open ? "Hide code" : "Show code");
     code.addEventListener("click", () => controls.setOpen(!controls.isOpen()));

@@ -3,7 +3,9 @@
 import { InputRule, inputRules, textblockTypeInputRule, wrappingInputRule } from "prosemirror-inputrules";
 import type { Attrs, MarkType, Node as ProseNode } from "prosemirror-model";
 import { NodeSelection, TextSelection, type Command, type EditorState, type Plugin, type Transaction } from "prosemirror-state";
+import type { CellLanguage } from "../compute/index.js";
 import { qmdSchema } from "../editor/index.js";
+import { fenceCellLanguage } from "./inlineViews.js";
 import { requestNodeEdit } from "./qmdCommands.js";
 
 const bulletList = qmdSchema.nodes.bullet_list!;
@@ -93,17 +95,28 @@ const taskRule = new InputRule(/^\[( |x|X)\]\s$/, (state, match, start, end) => 
   }
 });
 
-/** A Python fence opener: three backticks, optionally followed by `python`, `py` or `{python}`. */
-const CODE_FENCE = /^```(?:\{?(?:python|py)\}?)?$/;
+/** A fence opener: three backticks, optionally followed by a language word, bare or in braces, such as `{python}`, `r` or `{mathematica}`. */
+const CODE_FENCE = /^```(?:\{(\w+)\}|(\w+))?$/;
 
-/** A Python fence opener followed by a space becomes a Python code cell. */
-const codeCellRule = new InputRule(/^```(?:\{?(?:python|py)\}?)?\s$/, (state, _match, start, end) => replaceWholeParagraph(state, start, end, () => codeCell.create({ lang: "python" })));
+/** The cell language a typed fence opener names: Python for bare backticks or `py`, undefined for a word that is not a cell language. */
+function fenceLanguage(match: RegExpExecArray | RegExpMatchArray | null): CellLanguage | undefined {
+  if (!match) return undefined;
+  return fenceCellLanguage(match[1] ?? match[2] ?? null);
+}
 
-/** Enter at the end of a line holding only a Python fence opener makes a code cell, as the space does. */
+/** A cell-language fence opener followed by a space becomes a code cell of that language. */
+const codeCellRule = new InputRule(/^```(?:\{(\w+)\}|(\w+))?\s$/, (state, match, start, end) => {
+  const lang = fenceLanguage(match);
+  return lang ? replaceWholeParagraph(state, start, end, () => codeCell.create({ lang })) : null;
+});
+
+/** Enter at the end of a line holding only a cell-language fence opener makes a code cell, as the space does. */
 export const codeFenceEnter: Command = (state, dispatch) => {
   const { $from, empty } = state.selection;
-  if (!empty || $from.parent.type !== paragraph || $from.parentOffset !== $from.parent.content.size || !CODE_FENCE.test($from.parent.textContent)) return false;
-  const tr = replaceWholeParagraph(state, $from.start(), $from.pos, () => codeCell.create({ lang: "python" }));
+  if (!empty || $from.parent.type !== paragraph || $from.parentOffset !== $from.parent.content.size) return false;
+  const lang = fenceLanguage(CODE_FENCE.exec($from.parent.textContent));
+  if (!lang) return false;
+  const tr = replaceWholeParagraph(state, $from.start(), $from.pos, () => codeCell.create({ lang }));
   if (!tr) return false;
   dispatch?.(tr.scrollIntoView());
   return true;
@@ -137,7 +150,7 @@ const markRules = [
   markRule(/(^|[^`])`([^`]+)`$/, "`", code, { ticks: 1 }),
 ];
 
-/** The input rules plugin of the qmd editor: block shortcuts, math, Python fences and Markdown marks while typing. */
+/** The input rules plugin of the qmd editor: block shortcuts, math, code cell fences and Markdown marks while typing. */
 export function qmdInputRules(): Plugin {
   return inputRules({
     rules: [

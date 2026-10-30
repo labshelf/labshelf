@@ -3,11 +3,12 @@ import { TextSelection, type Command } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { renderElement, showMenu, type MenuAnchor, type MenuEntry, type MenuItem } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
+import { CELL_LANGUAGES, cellLanguageLabel } from "../compute/index.js";
+import { insertCodeCell, QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
 
 const BUBBLE_ACTIONS = ["bold", "italic", "inlineMath", "link"] as const;
 const LIST_ACTIONS = ["bullet", "ordered", "task"] as const;
-const BLOCK_ACTIONS = ["displayMath", "codeCell", "inlineMath", "link"] as const;
+const BLOCK_ACTIONS = ["inlineMath", "link"] as const;
 const GAP = 6;
 const MARGIN = 8;
 
@@ -19,7 +20,7 @@ function runAction(view: EditorView, action: QmdAction): void {
   if (action.id !== "link") view.focus();
 }
 
-/** The Insert menu: paragraph styles, lists, then blocks, and the Markdown source when the host offers it. */
+/** The Insert menu: paragraph styles, lists, then blocks (one code cell entry per cell language), and the Markdown source when the host offers it. */
 function insertItems(view: EditorView, source?: () => void): MenuEntry[] {
   const actionItem = (action: QmdAction): MenuItem => ({ label: action.label, icon: action.icon, hint: shortcutLabel(action.shortcut), disabled: !action.command(view.state), onSelect: () => runAction(view, action) });
   return [
@@ -27,6 +28,15 @@ function insertItems(view: EditorView, source?: () => void): MenuEntry[] {
     "separator" as const,
     ...LIST_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
     "separator" as const,
+    actionItem(QMD_ACTIONS.displayMath),
+    ...CELL_LANGUAGES.map((language): MenuItem => {
+      const command = language === "python" ? QMD_ACTIONS.codeCell.command : insertCodeCell(language);
+      return {
+        label: `Code cell (${cellLanguageLabel(language)})`, icon: "code",
+        ...(language === "python" ? { hint: shortcutLabel(QMD_ACTIONS.codeCell.shortcut) } : {}),
+        disabled: !command(view.state), onSelect: () => { runCommand(view, command); view.focus(); },
+      };
+    }),
     ...BLOCK_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
     ...(source ? ["separator" as const, { label: "Edit Markdown source", icon: "code" as const, onSelect: source }] : []),
   ];

@@ -10,6 +10,7 @@ import type { Awareness } from "y-protocols/awareness";
 import { createDebouncer, type Debouncer } from "../../async/index.js";
 import { renderElement } from "../../ui/dom/index.js";
 import { bodyToDoc, docToBody, qmdSchema } from "../editor/index.js";
+import type { CellLanguage } from "../compute/index.js";
 import { createCodeCellView } from "./codeCellView.js";
 import { createOutputView } from "./outputView.js";
 import { createCitationView, createLinkView, createTaskItemView } from "./inlineViews.js";
@@ -21,7 +22,7 @@ import { liftItem, sinkItem, splitItem } from "./qmdListCommands.js";
 import { mountSelectionBubble, renderInsertButton, showInsertMenu } from "./qmdControls.js";
 
 /** `status` is a host element (a save status, say) shown at the right of the row under the text. */
-export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?(label: string, code: string): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
+export interface QmdEditorOptions { body: string; onChange(body: string): void; status?: HTMLElement; onRunCell?(label: string, code: string, language: CellLanguage): void; onRestartCell?(language: CellLanguage): void; onOpenLink?(href: string): void; readOnly?: boolean; meta?: { author?: string; date?: string }; collab?: { fragment: Y.XmlFragment; awareness: Awareness } }
 
 export interface QmdEditorHandle { setBody(body: string): void; flush(): void; focus(): void; destroy(): void }
 
@@ -118,7 +119,7 @@ function createView(session: Session): EditorView {
     nodeViews: {
       math_inline: createMathView(false),
       math_display: createMathView(true),
-      code_cell: createCodeCellView(options.onRunCell),
+      code_cell: createCodeCellView(options.onRunCell, options.onRestartCell),
       output: createOutputView(),
       task_item: createTaskItemView(),
       citation: createCitationView(),
