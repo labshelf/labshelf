@@ -99,3 +99,6 @@ sessions:
     owns:
       - documents/plans/multi-language-cells/
       - documents/
+      - packages/core/
+      - packages/vscode/src/
+      - scripts/lint/

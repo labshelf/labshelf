@@ -1,35 +1,230 @@
 schema: session/v1
 id: "5"
 goal: The user checks A5 and A6 by hand, the ideas doc drops what this plan built, and the plan closes.
-depends_on: ["4"]
+depends_on:
+  - "4"
 owns:
   - documents/plans/multi-language-cells/
   - documents/ideas/computational-notes.md
+  - packages/core/
+  - packages/vscode/src/
+  - scripts/lint/
 milestone: true
-status: pending
+status: blocked
 packages:
   - id: "5.1"
     plan: multi-language-cells
     sha: 006c2a0b
     goal: The ideas doc no longer lists Mathematica kernels as future work.
     level: task
-    runner: {agent: main, model: opus}
+    runner:
+      agent: main
+      model: opus
     edit:
-      - {path: documents/ideas/computational-notes.md, lines: "20-30", why: "line 25 names SageMath or Mathematica through their kernels"}
+      - path: documents/ideas/computational-notes.md
+        lines: 20-30
+        why: line 25 names SageMath or Mathematica through their kernels
     decided:
-      - "Say checks may use any cell language the note supports; keep SageMath as an idea."
+      - Say checks may use any cell language the note supports; keep SageMath as an idea.
     acceptance:
-      - {id: 5.1a, check: "the ideas doc matches what is built"}
-    tests: {none: docs}
+      - id: 5.1a
+        check: the ideas doc matches what is built
+    tests:
+      none: docs
   - id: "5.2"
     plan: multi-language-cells
     sha: 006c2a0b
     goal: The user checks A5 and A6 by hand in VS Code and in the browser.
     level: task
-    runner: {agent: main, model: opus}
-    depends_on: ["5.1"]
+    runner:
+      agent: main
+      model: opus
+    depends_on:
+      - "5.1"
     edit: []
     acceptance:
-      - {id: A5, check: "a note with a Python, a Mathematica and an R cell runs all three in VS Code and in the browser; picker and Restart work"}
-      - {id: A6, check: "without wolframscript or R, Run explains what to install; Python missing still offers its install button"}
-    tests: {none: checked by the user by hand in the app}
+      - id: A5
+        check: a note with a Python, a Mathematica and an R cell runs all three in VS Code and in the browser; picker and Restart work
+      - id: A6
+        check: without wolframscript or R, Run explains what to install; Python missing still offers its install button
+    tests:
+      none: checked by the user by hand in the app
+  - id: "5.3"
+    plan: multi-language-cells
+    sha: 6f44e719
+    goal: cellSessions.ts and its test file pass lint (max-lines-per-function 50, max-lines 500) with no change in behaviour.
+    level: task
+    runner:
+      agent: implementer
+      model: opus
+    edit:
+      - path: packages/core/src/qmd/compute/node/cellSessions.ts
+        lines: 1-400
+        why: createCellSessions (97) is 201 lines, startSession (118) 96, run (228) 51; all over 50
+      - path: packages/core/__tests__/qmd/compute/node/cellSessions.test.ts
+        lines: 1-517
+        why: 517 lines, over 500
+    create:
+      - packages/core/src/qmd/compute/node/
+      - packages/core/__tests__/qmd/compute/node/
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs cmd -- npx eslint packages/core/src/qmd/compute/node packages/core/__tests__/qmd/compute/node
+    decided:
+      - "Split cellSessions.ts by concept: one per-(note, language) session module (start with the ready handshake, run, kill, idle timer) and the registry that owns the map, restart, closeAll; keep the public API exported from packages/core/src/qmd/compute/node/index.ts unchanged."
+      - Split the test file by concept (for example lifecycle/restart/idle vs run/output) into files in the same folder; every existing test stays, none weakened.
+      - "No lint run, no pnpm gate: check with node scripts/agents/run.mjs typecheck core and node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute packages/core/__tests__/helper. Then run npx eslint on the files you changed only, to confirm the max-lines rules pass."
+      - Never grow a lint baseline or add eslint-disable comments.
+    acceptance:
+      - id: 5.3a
+        check: no function in the split cellSessions modules is over 50 lines and no test file is over 500 lines
+      - id: 5.3b
+        check: all qmd/compute and helper tests pass unchanged in what they assert
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 5.3 --plan multi-language-cells -- packages/core/__tests__/qmd/compute packages/core/__tests__/helper
+  - id: "5.4"
+    plan: multi-language-cells
+    sha: 6f44e719
+    goal: runHelperHost, mountSelectionBubble, hoverTarget.ts and destTarget.test.ts pass lint with no change in behaviour, and every test file is named after the source it tests.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "5.3"
+    edit:
+      - path: packages/core/src/reader/destTarget.ts
+        lines: 1-232
+        why: "split by concept: classification (classifyDestName, classifyLinkText) stays; statement and caption region finding (deriveStatementRegion, findFloatCaptionNear, findStatementStart and their private helpers) moves to the new reader/destRegion.ts"
+      - path: packages/core/src/reader/dom/hoverTarget.ts
+        lines: 1-20
+        why: "importer: deriveStatementRegion, findFloatCaptionNear, findStatementStart now come from ../destRegion.js"
+      - path: packages/core/src/reader/index.ts
+        lines: 1-40
+        why: re-exports destTarget.ts; also re-export destRegion.ts so the public API is unchanged
+      - path: packages/core/__tests__/reader/destTarget.test.ts
+        lines: 1-120
+        why: keeps the classify tests
+      - path: packages/core/__tests__/reader/geometry.test.ts
+        lines: 1-400
+        why: receives the deriveFloatRegion tests (deriveFloatRegion lives in reader/geometry.ts) if they do not fit in destRegion.test.ts
+      - path: packages/core/__tests__/reader/destRegions.test.ts
+        lines: 1-329
+        why: stray name with no mirrored source; its tests move to destRegion.test.ts / geometry.test.ts, then the file is deleted
+      - path: packages/core/__tests__/reader/destPageRegression.test.ts
+        lines: 1-167
+        why: stray name; its real-page regression tests move to the test file mirroring the source they exercise, then the file is deleted
+      - path: packages/core/__tests__/reader/destTarget.pages.test.ts
+        lines: 1-167
+        why: "stray duplicate of destPageRegression.test.ts: delete"
+      - path: packages/core/__tests__/qmd/compute/node/cellSessions.lifecycle.test.ts
+        lines: 1-300
+        why: "stray duplicate of cellSession.test.ts left by 5.3: delete"
+    read:
+      - path: packages/core/src/reader/geometry.ts
+        lines: 100-160
+        why: deriveFloatRegion
+      - path: scripts/lint/sourceRules.mjs
+        lines: 115-133
+        why: a new test file __tests__/a/b.test.ts needs src/a/b.ts (or folder src/a/b/)
+    create:
+      - packages/core/src/reader/destRegion.ts
+      - packages/core/__tests__/reader/destRegion.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs cmd -- npx eslint packages/core/src/helper/node packages/core/src/qmd/dom/qmdControls.ts packages/core/src/reader packages/core/__tests__/reader
+      - rm packages/core/__tests__/reader/destTarget.pages.test.ts packages/core/__tests__/qmd/compute/node/cellSessions.lifecycle.test.ts
+      - rm packages/core/__tests__/reader/destRegions.test.ts packages/core/__tests__/reader/destPageRegression.test.ts
+    decided:
+      - "Already done and verified in the tree, keep: runHelperHost.ts (createBuildAndPublish, createCells), qmdControls.ts (placeBubble, bubbleButtons, afterTransactions), reader/dom/destPreview.ts split out of hoverTarget.ts with hoverPreview.ts and readerUi.ts importing it."
+      - "Remaining: split destTarget.ts source into destTarget.ts + destRegion.ts and put the tests in files named after the source they exercise (destTarget.test.ts, destRegion.test.ts, geometry.test.ts), each at most 500 lines; every test of the original destTarget.test.ts (sha 6f44e719) stays exactly once, assertions unchanged. Then run the two rm commands."
+      - "Pure refactor: no behaviour change; reader/index.ts keeps exporting the same names."
+      - Never grow a lint baseline or add eslint-disable comments. Do not touch packages/core/src/qmd/compute/.
+    acceptance:
+      - id: 5.4a
+        check: the eslint command in commands exits 0
+      - id: 5.4b
+        check: the tests command passes; no stray or duplicate test file remains
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 5.4 --plan multi-language-cells -- packages/core/__tests__/helper packages/core/__tests__/qmd packages/core/__tests__/reader
+  - id: "5.5"
+    plan: multi-language-cells
+    sha: 6f44e719
+    goal: node scripts/lint/modules.mjs reports no new orphan-file for qmd/compute/node/locateTool.ts and reader/sidecar/readerThemeStore.ts, without growing scripts/lint/modulesBaseline.json.
+    level: task
+    runner:
+      agent: implementer
+      model: opus
+    depends_on:
+      - "5.3"
+      - "5.4"
+    edit:
+      - path: packages/core/src/qmd/compute/node/locateTool.ts
+        lines: 1-200
+        why: "orphan-file: no sibling in qmd/compute/node uses it or is used by it (users are index.ts, helper/node/runHelperHost.ts and vscode activation)"
+      - path: packages/core/src/reader/sidecar/readerThemeStore.ts
+        lines: 1-200
+        why: "orphan-file: no sibling in reader/sidecar uses it (users: sidecar index.ts, reader/node/nodeReaderThemesPort.ts)"
+    read:
+      - path: scripts/lint/modules.mjs
+        lines: 60-130
+        why: "the orphan-file rule: a direct file of a module with 2+ direct files must use or be used by a sibling; the message says move it to where its users are"
+    create:
+      - packages/core/src/
+      - packages/vscode/src/
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs cmd -- npx eslint packages/core/src/qmd/compute/node packages/core/src/reader
+      - node scripts/lint/modules.mjs
+    decided:
+      - Fix the structure the rule asks for (move the file next to its users, or make the sibling that conceptually owns it use it, e.g. the session/driver launch code resolving tool paths through locateTool); choose the option that reads most naturally and keeps every public import working (update importers in core and vscode).
+      - Run node scripts/lint/modules.mjs (without --update) before and after; the two flags must be gone and no new violation may appear. Never edit modulesBaseline.json to add entries.
+      - "No pnpm gate, no full lint: check with node scripts/agents/run.mjs typecheck core, typecheck vscode, and node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute packages/core/__tests__/helper packages/core/__tests__/reader."
+    acceptance:
+      - id: 5.5a
+        check: modules.mjs reports neither orphan-file flag and no new violation
+      - id: 5.5b
+        check: core and vscode typecheck; the listed tests pass
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 5.5 --plan multi-language-cells -- packages/core/__tests__/qmd/compute packages/core/__tests__/helper packages/core/__tests__/reader
+  - id: "5.6"
+    plan: multi-language-cells
+    sha: 6f44e719
+    goal: The reader themes move to reader/readerThemes.ts is complete; the old reader/sidecar/readerThemeStore.ts is gone and readerThemes.test.ts compiles.
+    level: task
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "5.5"
+    edit:
+      - path: packages/core/__tests__/reader/readerThemes.test.ts
+        lines: 1-20
+        why: import ReaderThemeStore, mergeReaderThemes, parseReaderThemes, serializeReaderThemes from ../../src/reader/readerThemes; normalizePaperSidecar and serializePaperSidecar stay on sidecar/index
+      - path: packages/core/src/reader/sidecar/readerThemeStore.ts
+        lines: 1-200
+        why: moved to reader/readerThemes.ts by 5.5; delete
+    read:
+      - path: packages/core/src/reader/readerThemes.ts
+        lines: 1-200
+        why: the new home
+    commands:
+      - rm packages/core/src/reader/sidecar/readerThemeStore.ts
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/lint/modules.mjs
+    decided:
+      - Change only the import lines of the test; assertions unchanged. Then run the rm command.
+      - modules.mjs must report no failing violation; a stale baseline entry (hides-nothing packages/core/src/reader/sidecar) is expected and is removed later by the finisher's --update.
+    acceptance:
+      - id: 5.6a
+        check: readerThemeStore.ts no longer exists; the tests command passes; typecheck core exits 0
+      - id: 5.6b
+        check: modules.mjs reports 0 failing
+    tests:
+      hidden: []
+      command: node scripts/agents/run.mjs test core --spec 5.6 --plan multi-language-cells -- packages/core/__tests__/reader
+blocked_reason: "5.2: no report"
