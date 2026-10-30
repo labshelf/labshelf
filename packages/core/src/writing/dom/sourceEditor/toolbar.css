@@ -13,6 +13,34 @@
   gap: 2px;
 }
 
+.source-editor-toolbar-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ls-space-2);
+  height: var(--ls-row-h);
+  padding: 0 var(--ls-space-2);
+  border: none;
+  border-radius: var(--ls-radius-sm);
+  background: none;
+  color: var(--ls-fg);
+  font-size: var(--ls-text-sm);
+  cursor: pointer;
+}
+
+.source-editor-toolbar-dropdown svg {
+  width: var(--ls-space-6);
+  height: var(--ls-space-6);
+  flex-shrink: 0;
+}
+
+.source-editor-toolbar-dropdown:hover {
+  background: var(--ls-toolbar-hover);
+}
+
+.source-editor-toolbar-dropdown:focus-visible {
+  outline: thin solid var(--ls-focus);
+}
+
 .source-editor-toolbar-group + .source-editor-toolbar-group {
   padding-left: 4px;
   border-left: 1px solid var(--ls-border);
