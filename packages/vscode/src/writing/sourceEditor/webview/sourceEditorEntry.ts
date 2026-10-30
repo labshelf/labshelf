@@ -2,10 +2,11 @@
 import "@labshelf/core/styles/tokens.css";
 import "@labshelf/core/styles/vscodeHost.css";
 import "@labshelf/core/styles/base.css";
+import "@labshelf/core/styles/source-editor-toolbar.css";
 import "./sourceEditor.css";
-import { createPeerCursors, findElement, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
-import { createSelectionListener, mountSourceEditor, showInOpenEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
-import { parseSourceEditorInbound, type ILogger, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
+import { createPeerCursors, findElement, type IconName, type PeerCursor, type PeerCursorSource } from "@labshelf/core/dom";
+import { createSelectionListener, mountSourceEditor, renderSourceToolbar, showInOpenEditor, type SourceEditorDeps, type SourceToolbarButton } from "@labshelf/core/sourceEditor";
+import { parseSourceEditorInbound, type ILogger, type SourceEditorAction, type SourceEditorInbound, type WrapKind, type SourceEditorOutbound } from "@labshelf/core";
 import { createWebviewTransport } from "../../../webview/index.js";
 import { createHostPorts } from "./hostPorts.js";
 
@@ -112,6 +113,21 @@ function createCommandRunner(): { attach(editor: MountedEditor): void; run(comma
 
 const commands = createCommandRunner();
 
+// ---- Toolbar
+
+const action = (label: string, glyph: IconName, name: SourceEditorAction): SourceToolbarButton => ({ label, glyph, run: () => ports.runAction(name) });
+const wrap = (label: string, glyph: IconName, style: WrapKind): SourceToolbarButton => ({ label, glyph, run: () => commands.run({ kind: "wrap", style }) });
+
+/** The project actions the VS Code editor title shows for a text editor, in groups; they live here so they sit inside the editor. */
+const TOOLBAR: readonly (readonly SourceToolbarButton[])[] = [
+  [wrap("Bold", "bold", "bold"), wrap("Italic", "italic", "italic")],
+  [
+    action("Insert Symbol", "symbol-operator", "insertSymbol"), action("Insert Table", "table", "insertTable"),
+    action("Insert Image", "file-media", "insertImage"), action("Cite from Library", "quote", "citeFromLibrary"),
+  ],
+  [action("Search in Project", "search", "searchInProject"), action("Show Project History", "history", "showHistory")],
+];
+
 function mount(init: Init, card: HTMLElement): (message: DocumentMessage) => void {
   const host = createHostDocument(init);
   void mountSourceEditor(card, {
@@ -147,7 +163,12 @@ function start(): void {
     else if (message.type === "comments") { ports.deliverComments(message); }
     else if (message.type === "peers") { peerStore.set(message.peers); }
     else if (message.type === "reveal") { if (init) { showInOpenEditor(init.projectId, init.path, Math.max(0, message.line - 1)); } }
-    else if (message.type === "init") { init = message; deliver ??= mount(message, card); }
+    else if (message.type === "init") {
+      init = message;
+      // The actions are the project's (labshelf.writing.inProject), so a file outside any project has no toolbar.
+      if (!deliver && message.projectId !== "") { card.append(renderSourceToolbar(TOOLBAR)); }
+      deliver ??= mount(message, card);
+    }
     else if (message.type === "updates" || message.type === "resync" || message.type === "dirty") { deliver?.(message); }
   });
   post({ type: "ready" });

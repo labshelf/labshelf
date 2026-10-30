@@ -8,7 +8,7 @@ import { BIBER_FLAG, type BiberWasmAssets } from "../../latex/biber/index.js";
 import { findBiberAssetsInFolder, runBiber } from "../../latex/biber/node/index.js";
 import { HELPER_VERSION, type HelperHost } from "../index.js";
 import { createHelperLogger } from "./helperPrivacy.js";
-import { runHelperHost } from "./runHelperHost.js";
+import { runHelperHost, type HelperHostOptions } from "./runHelperHost.js";
 
 // --- The helper's data folder: build working copies and logs; the managed TeX lives in the shared TeX folder ---
 
@@ -32,6 +32,11 @@ const TYPST_WASM_FILE = "typst_ts_web_compiler_bg.wasm";
 // The folder the apps' builds copy biber's WASM assets into, beside the helper script.
 const BIBER_WASM_FOLDER = "biber-wasm";
 
+// The apps' builds copy the cell driver scripts beside the helper script.
+const scriptCellDrivers = (dir: string): NonNullable<HelperHostOptions["cellDrivers"]> => ({
+  python: path.join(dir, "cellDriver.py"), mathematica: path.join(dir, "cellDriver.wl"), r: path.join(dir, "cellDriver.R"),
+});
+
 // PLATFORM: the browser starts the script as `node <bundle>`, so argv[1] locates the bundle whatever the app's module format.
 async function run(host: Exclude<HelperHost, "helper">): Promise<number> {
   const script = await realpath(process.argv[1] ?? "");
@@ -44,6 +49,7 @@ async function run(host: Exclude<HelperHost, "helper">): Promise<number> {
   await runHelperHost({
     dataDir, logger: createHelperLogger(dataDir), helperVersion: HELPER_VERSION, host, args: process.argv.slice(2),
     typstWasm: async () => new Uint8Array(await readFile(path.join(path.dirname(script), TYPST_WASM_FILE))),
+    cellDrivers: scriptCellDrivers(path.dirname(script)),
     ...(biberAssets && { biber: [process.execPath, script] }),
   });
   return 0;

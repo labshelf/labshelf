@@ -1056,42 +1056,42 @@
         },
         {
           "command": "labshelf.writing.showHistory",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "navigation@1"
         },
         {
           "command": "labshelf.writing.insertSymbol",
-          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "navigation@3"
         },
         {
           "command": "labshelf.writing.insertTable",
-          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "navigation@4"
         },
         {
           "command": "labshelf.writing.insertImage",
-          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "navigation@5"
         },
         {
           "command": "labshelf.writing.searchInProject",
-          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "navigation@6"
         },
         {
           "command": "labshelf.writing.citeFromLibrary",
-          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "navigation@7"
         },
         {
           "command": "labshelf.writing.bold",
-          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "1_format@1"
         },
         {
           "command": "labshelf.writing.italic",
-          "when": "(resourceLangId =~ /^(latex|typst)$/ || activeCustomEditorId == 'labshelf.sourceEditor') && labshelf.writing.inProject",
+          "when": "resourceLangId =~ /^(latex|typst)$/ && labshelf.writing.inProject && activeCustomEditorId != 'labshelf.sourceEditor'",
           "group": "1_format@2"
         }
       ],

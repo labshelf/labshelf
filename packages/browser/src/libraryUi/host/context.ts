@@ -66,6 +66,8 @@ export interface LibraryHostOptions {
   onSelection?: (ids: string[]) => void;
   /** The owner's relay, which a folder shared as a link is uploaded to. */
   shareRelay: ShareLinkRelay;
+  /** Shows a paper's PDF; without it the reader opens in its own browser tab. */
+  openPaper?: (id: string) => Promise<void>;
 }
 
 function run(ctx: HostContext, work: () => Promise<void>): void {
@@ -162,9 +164,9 @@ export async function addToSpace(
 /** Starts answering the UI on `endpoint`. */
 export function attachLibraryHost(
   endpoint: HostEndpoint, options: LibraryHostOptions,
-): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
+): { reloadSnapshots(): Promise<void>; paperIdAtPath(path: string): Promise<string | null>; paperTitle(id: string): string | undefined; sharing: ShareHost; addProjectSharing(deps: ProjectShareDeps): void } {
   const ctx = createHostCompositionRoot(endpoint, options.log);
-  const pdf = createPdfHandlers(ctx);
+  const pdf = createPdfHandlers(ctx, options.openPaper);
   const { host: sharing, addProjects } = createBrowserShareHost(ctx, options.shareRelay, options.log);
   const handlers: Handlers = { ui: createLibraryUiHost(ctx), pdf, files: createPaperFileHandlers(ctx, pdf.open) };
   // The router asks for a paper path while the first load is still running; both wait on the same load.
@@ -182,6 +184,7 @@ export function attachLibraryHost(
     reloadSnapshots: () => ctx.snapshots.reload(),
     sharing,
     addProjectSharing: addProjects,
+    paperTitle: (id) => ctx.papers([id])[0]?.title,
     paperIdAtPath: async (path) => {
       await loaded();
       return ctx.snapshots.current().papers.find((p) => p.path === path)?.id ?? null;

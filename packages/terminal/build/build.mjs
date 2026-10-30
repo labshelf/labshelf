@@ -6,6 +6,7 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BIBER_WASM_FILES, biberWasmDir } from "./biberWasm.mjs";
 import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
+import { CELL_DRIVER_FILES, cellDriverPath } from "./cellDrivers.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
@@ -63,6 +64,8 @@ function assertHelperBundle(result, name) {
 // The helper script loads nothing from node_modules, so its Typst compiler WASM sits beside it (`runHelperScriptHost` reads it there).
 await mkdir(resolve(root, "dist"), { recursive: true });
 await copyFile(typstWasmPath(), resolve(root, "dist", TYPST_WASM_FILE));
+// `runHelperScriptHost` runs the cell drivers from beside the script too.
+await Promise.all(CELL_DRIVER_FILES.map((file) => copyFile(cellDriverPath(file), resolve(root, "dist", file))));
 // `runHelperScriptHost` reads biber's WASM from dist/biber-wasm/ beside the script.
 const biberDir = biberWasmDir();
 if (biberDir) {

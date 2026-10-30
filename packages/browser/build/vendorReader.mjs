@@ -30,14 +30,14 @@ export async function vendorReader({ outDir, pkgRoot }) {
   await copyDir(join(pdfjsRoot, "wasm"), join(vendor, "wasm"), SKIP_WASM);
 
   await mkdir(join(outDir, "reader"), { recursive: true });
-  await copyFile(require.resolve("@labshelf/core/styles/reader.css"), join(outDir, "reader/reader.css"));
-  await copyFile(join(dirname(require.resolve("@labshelf/core/styles/reader.css")), "citation-card.css"), join(outDir, "reader/citation-card.css"));
+  // reader.css @imports the notes sheets and the qmd editor's from outside its folder, so it is bundled into one file.
+  await build({ entryPoints: [require.resolve("@labshelf/core/styles/reader.css")], outfile: join(outDir, "reader/reader.css"), bundle: true });
   // preview.css @imports the files of preview/ by relative path, so the folder is copied beside it.
   const previewCss = require.resolve("@labshelf/core/styles/preview.css");
   await copyFile(previewCss, join(outDir, "reader/preview.css"));
   await copyDir(join(dirname(previewCss), "preview"), join(outDir, "reader/preview"));
   await mkdir(join(outDir, "ui/styles"), { recursive: true });
-  for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "qmd-editor", "all-projects", "template-gallery", "template-publish", "project-history", "project-search"]) {
+  for (const sheet of ["tokens", "base", "toast", "settings", "library-ui", "library-list", "library-detail", "library-tabs", "library-sidebar", "editor-area", "qmd-editor", "all-projects", "template-gallery", "template-publish", "project-history", "project-search", "source-editor-toolbar"]) {
     await copyFile(require.resolve(`@labshelf/core/styles/${sheet}.css`), join(outDir, `ui/styles/${sheet}.css`));
   }
   for (const sheet of ["page-widgets", "spaces-catalog", "spaces", "research-chat"]) {

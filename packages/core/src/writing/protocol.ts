@@ -27,7 +27,11 @@ export type SourceEditorInbound =
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
-  | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments";
+  | "listFiles" | "readFile" | "openNotes" | "openFile" | "addComment" | "openComments" | "runAction";
+
+/** The project actions of the editor's toolbar, each run by the host as the command of the same name. */
+export const SOURCE_EDITOR_ACTIONS = ["insertSymbol", "insertTable", "insertImage", "citeFromLibrary", "searchInProject", "showHistory"] as const;
+export type SourceEditorAction = typeof SOURCE_EDITOR_ACTIONS[number];
 
 export type SourceEditorOutbound =
   | { type: "ready" }
@@ -155,6 +159,7 @@ const PARAMS: Record<SourceEditorRequestMethod, Parse<Record<string, unknown>>> 
     if (p.id === undefined) { return {}; }
     return isString(p.id) ? { id: p.id } : undefined;
   },
+  runAction: (p) => isRecord(p) && isOneOf(SOURCE_EDITOR_ACTIONS, p.action) ? { action: p.action } : undefined,
 };
 
 function parseOutboundBody(value: Record<string, unknown>): SourceEditorOutbound | undefined {

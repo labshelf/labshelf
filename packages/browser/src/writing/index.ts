@@ -6,4 +6,4 @@ export { createProjectsSource, showPdfInTab, type BrowserProjectRow, type Projec
 export { mountSearchHost } from "./searchHost";
 export { createBrowserPublish } from "./templates";
 export { createOpenProjectSnapshot, createProjectSession, loadSourceEditor, openRestoredProject, showInOpenEditor, type ProjectSession, type SessionNotes } from "./session";
-export { createSourceActions, deriveSourceLanguage, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, type SourceFileMode } from "./source";
+export { createSourceActions, deriveSourceLanguage, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice, splitSourceActions, type SourceFileMode } from "./source";

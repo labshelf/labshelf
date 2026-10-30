@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { inject } from "postject";
 import { BIBER_WASM_FILES, biberWasmDir } from "./biberWasm.mjs";
 import { TYPST_WASM_FILE, typstWasmPath } from "./typstWasm.mjs";
+import { CELL_DRIVER_FILES, cellDriverPath } from "./cellDrivers.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const seaDir = resolve(root, "dist/sea");
@@ -53,11 +54,16 @@ function biberAssets() {
   return dir ? Object.fromEntries(BIBER_WASM_FILES.map((file) => [`biber-wasm/${file}`, join(dir, file)])) : {};
 }
 
+// The cell driver scripts go in as `cell-drivers/<file>`, the names `helperEntry.ts` writes out to the data folder.
+function cellDriverAssets() {
+  return Object.fromEntries(CELL_DRIVER_FILES.map((file) => [`cell-drivers/${file}`, cellDriverPath(file)]));
+}
+
 // The executable has no node_modules, so the compiler WASM is a SEA asset that `main.ts` reads with getAsset.
 async function writeBlob(tmpDir, mainFile) {
   const config = join(tmpDir, "sea-config.json");
   const blob = join(tmpDir, "sea-prep.blob");
-  const assets = { [TYPST_WASM_FILE]: typstWasmPath(), ...biberAssets() };
+  const assets = { [TYPST_WASM_FILE]: typstWasmPath(), ...biberAssets(), ...cellDriverAssets() };
   await writeFile(config, JSON.stringify({ main: mainFile, output: blob, disableExperimentalSEAWarning: true, assets }));
   try {
     execFileSync(process.execPath, ["--experimental-sea-config", config], { stdio: "inherit" });

@@ -1,0 +1,58 @@
+schema: session/v1
+id: "4"
+goal: "The VS Code source editor offers the review mode: protocol messages, the webview port, the extension's suggestion store, the author and the remembered mode."
+depends_on: ["1", "2"]
+owns: [packages/core/src/writing/protocol.ts, packages/core/__tests__/writing/protocol.test.ts, packages/vscode/src/writing/sourceEditor/, packages/vscode/src/collab/suggestions.ts, packages/vscode/src/collab/node/register.ts, packages/vscode/__tests__/collab/suggestions.test.ts]
+status: pending
+packages:
+  - id: "4.1"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "The source editor protocol carries suggestions (host→webview) and addSuggestions, removeSuggestions and reviewMode (webview→host), with the version raised by one."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/writing/protocol.ts, lines: "1-140", why: "message types and decoder cases"}
+    decided:
+      - "Inbound `{type: 'suggestions', suggestions: FileSuggestion[]}` and init gains `review: {mode, author}`; outbound `{type: 'addSuggestions', suggestions}`, `{type: 'removeSuggestions', ids}`, `{type: 'reviewMode', mode}`. The decoder drops malformed suggestions and rejects a malformed message."
+    acceptance:
+      - {id: 4.1a, check: "each new message decodes; a wrong field is rejected"}
+      - {id: A4, check: "protocol decode"}
+    tests: {none: "contract package: the implementer writes the failing tests first in packages/core/__tests__/writing/protocol.test.ts"}
+    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/protocol.test.ts"]
+  - id: "4.2"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "The extension's suggestion store per source file, local over comments.qmd and shared over the share's map, as FileComments and SharedComments are."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    create: [packages/vscode/src/collab/suggestions.ts]
+    edit:
+      - {path: packages/vscode/src/collab/node/register.ts, lines: "120-160", why: "build the store beside registerComments"}
+    read:
+      - {path: documents/plans/review-mode/research/hosts.brief.yaml, lines: "1-60", why: "host map"}
+      - {path: packages/vscode/src/collab/comments.ts, lines: "60-360", why: "FileComments and SharedComments to mirror"}
+    acceptance:
+      - {id: 4.2a, check: "add, subscribe and remove round-trip for a local and a shared project"}
+      - {id: A3, check: "accept/reject in a local and a shared project"}
+    tests: {none: "behaviour package: the implementer writes the failing tests first in packages/vscode/__tests__/collab/suggestions.test.ts"}
+    commands: ["node scripts/agents/run.mjs typecheck vscode", "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab"]
+  - id: "4.3"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "The webview passes deps.review through a suggestions port, the toolbar's dropdown sets the mode through the host, and the bridges and provider serve the store, the author (userName()) and the mode in workspaceState."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["4.1", "4.2"]
+    edit:
+      - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "1-170", why: "createSuggestionsPort beside createCommentsPort"}
+      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "120-175", why: "TOOLBAR dropdown with a lazy editor reference; route inbound suggestions"}
+      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "120-175", why: "answer addSuggestions/removeSuggestions/reviewMode; post suggestions on change"}
+      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "init review {mode, author}; store per panel"}
+    decided:
+      - "Mode in workspaceState under `labshelf.reviewMode.<projectId>`; default editing; read-only panels get neither the dropdown nor review."
+    acceptance:
+      - {id: 4.3a, check: "by hand in VS Code: the dropdown switches modes and survives reopening; suggestions show, resolve and persist; a peer sees them"}
+      - {id: A5, check: "VS Code half of A5"}
+    tests: {none: "glue; checked by hand (A5)"}
+    commands: ["node scripts/agents/run.mjs typecheck vscode", "node scripts/agents/run.mjs build vscode"]

@@ -22,7 +22,10 @@
 .ls-workspace-fill > .cm-editor { flex: 1; min-width: 0; }
 .ls-workspace-fill .ls-history, .ls-workspace-fill .ls-psearch { flex: 1; min-width: 0; height: 100%; }
 .ls-workspace-placeholder { padding: var(--ls-space-4); color: var(--ls-desc); }
-.ls-workspace-fill.ls-source-unresolved { flex-direction: column; }
+/* A source file: the toolbar above the text, which sits on the tab strip's tone; the body clips to the card radius so the toolbar's corners round like the PDF preview header's. */
+.ls-workspace-fill.ls-source-body { flex-direction: column; background: var(--ls-code-bg); border-radius: var(--ls-card-radius); overflow: hidden; }
+.ls-source-body > .cm-editor { min-height: 0; }
+.ls-source-body > .cm-editor, .ls-source-body > .cm-editor .cm-gutters { background-color: transparent; }
 .ls-source-notice { display: flex; align-items: center; gap: var(--ls-space-2); padding: var(--ls-space-2) var(--ls-space-4); border-bottom: 1px solid var(--ls-border-soft); color: var(--ls-fg); }
 .ls-source-notice-icon { display: flex; color: var(--ls-warning); }
 .ls-source-notice-icon svg { width: 1em; height: 1em; }
@@ -69,3 +72,4 @@
 .ls-page-details > .ls-workspace-fill { flex: 1; }
 
 .ls-workspace-pane-buttons { display: flex; }
+.ls-paper-frame { border: 0; display: block; }

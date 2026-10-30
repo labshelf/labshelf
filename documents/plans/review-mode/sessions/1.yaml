@@ -1,0 +1,91 @@
+schema: session/v1
+id: "1"
+goal: "The contracts define suggestion records; core reads, writes and re-finds them in comments.qmd and in the share's index doc, renders and seeds them like comment threads, and computes the text of an accept or reject."
+depends_on: []
+owns: [documents/contracts/qmd-items.md, documents/contracts/collaboration.md, documents/contracts/library-format.md, packages/core/src/collab/suggestions.ts, packages/core/src/collab/commentsQmd.ts, packages/core/src/collab/commentsFile.ts, packages/core/src/collab/shareIndexDoc.ts, packages/core/src/collab/mirror/projectMirror.ts, packages/core/src/collab/session/sharedProject.ts, packages/core/src/collab/index.ts, packages/core/__tests__/collab/]
+status: pending
+packages:
+  - id: "1.1"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "qmd-items#comments, collaboration#comments and #docs, and library-format#project-folder-labshelf state D1, D2 and D3."
+    level: task
+    runner: {agent: main, model: opus}
+    edit:
+      - {path: documents/contracts/qmd-items.md, lines: "1-400", why: "#comments: the suggestion item form (attributes suggestion=insert|delete, file, anchor, group, author, created; the deleted text as the item body), merge by id"}
+      - {path: documents/contracts/collaboration.md, lines: "1-400", why: "#comments: the suggestions map; #docs: list the map beside comments"}
+      - {path: documents/contracts/library-format.md, lines: "1-300", why: "#project-folder-labshelf: comments.qmd also holds pending suggestions"}
+    decided:
+      - "Fetch and edit only those sections (node scripts/docs/doc.mjs <file>#<anchor>). Present tense."
+      - "An accepted or rejected suggestion is removed, not kept with a state: the file's history is the record."
+    acceptance:
+      - {id: 1.1a, check: "the three sections state the record, both storages, accept/reject and the proposal-applied rule"}
+    tests: {none: docs}
+  - id: "1.2"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "Suggestion records: validation, anchors, re-finding, the text of an accept or reject, and their items in comments.qmd."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["1.1"]
+    create: [packages/core/src/collab/suggestions.ts]
+    edit:
+      - {path: packages/core/src/collab/commentsQmd.ts, lines: "1-160", why: "parse and serialize suggestion items; KNOWN_ATTRS"}
+      - {path: packages/core/src/collab/commentsFile.ts, lines: "12-70", why: "CommentsDocument gains suggestions; pure editors"}
+      - {path: packages/core/src/collab/index.ts, lines: "1-80", why: "exports"}
+    read:
+      - {path: documents/plans/review-mode/research/storage.brief.yaml, lines: "1-60", why: "comment storage map"}
+      - {path: packages/core/src/collab/comments.ts, lines: "1-300", why: "CommentAnchor, deriveAnchor, deriveLiveAnchor, findThread, readThread"}
+    seams:
+      - {path: packages/core/src/collab/suggestions.ts, signature: "export type SuggestionKind = \"insert\" | \"delete\"; export interface Suggestion { id: string; file: string; kind: SuggestionKind; anchor: CommentAnchor; text?: string; group?: string; author: string; created: string } export function readSuggestion(value: unknown): Suggestion | undefined; export function deriveSuggestionAnchor(text: string, kind: SuggestionKind, start: number, end: number): CommentAnchor; export function findSuggestion(suggestion: Suggestion, text: string, yText?: Y.Text): TextRange | \"detached\"; export function resolveSuggestionText(text: string, suggestion: Suggestion, range: TextRange, decision: \"accept\" | \"reject\"): string"}
+      - {path: packages/core/src/collab/commentsFile.ts, signature: "export function deriveSuggestions(doc: CommentsDocument): Suggestion[]; export function addSuggestions(doc: CommentsDocument, suggestions: readonly Suggestion[]): CommentsDocument; export function removeSuggestions(doc: CommentsDocument, ids: readonly string[]): CommentsDocument"}
+    decided:
+      - "CommentsDocument gains `suggestions?: readonly Suggestion[]`; a document without it has none. parseCommentsQmd fills it; serializeCommentsQmd writes suggestion items after the threads, sorted by created then id; threads and other items keep their bytes."
+      - "readSuggestion needs a non-empty id and file, kind insert|delete, a valid anchor, a non-empty author and created; a delete needs a non-empty text and an empty quote; an insert needs a non-empty quote and no text."
+      - "deriveSuggestionAnchor: insert quotes text[start,end) with 32 chars of context like deriveAnchor; delete gets an empty quote at start (end ignored) with the context around it."
+      - "findSuggestion: insert as findThread; delete finds the position where prefix ends and suffix starts (exact, else the best context overlap of at least 0.7), as an empty range; live relative positions first when yText is given."
+      - "resolveSuggestionText: accept returns text unchanged; reject of an insert removes range; reject of a delete inserts suggestion.text at range.start."
+      - "removeSuggestions does not expand a group: callers pass every id."
+    acceptance:
+      - {id: 1.2a, check: "readSuggestion accepts valid inserts and deletes and rejects each malformed field"}
+      - {id: 1.2b, check: "an insert and a delete are found again after unrelated edits before them; a delete whose context is gone is detached"}
+      - {id: 1.2c, check: "reject of an insert and of a delete give the original text; accept leaves the text"}
+      - {id: 1.2d, check: "a comments.qmd with threads and suggestions round-trips; add and remove change only suggestions"}
+    tests:
+      hidden: [documents/plans/review-mode/tests/1.2/packages/core/__tests__/collab/suggestions.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 1.2 --plan review-mode -- packages/core/__tests__/collab/suggestions.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core"]
+  - id: "1.3"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "The share's suggestions map: live helpers, the shared facade, rendering into comments.qmd by the mirror and seeding on share."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["1.2"]
+    edit:
+      - {path: packages/core/src/collab/suggestions.ts, lines: "1-200", why: "live map helpers and createSharedProjectSuggestions"}
+      - {path: packages/core/src/collab/shareIndexDoc.ts, lines: "38-44", why: "readShareIndexDocSuggestions"}
+      - {path: packages/core/src/collab/commentsFile.ts, lines: "60-110", why: "renderCommentsFile writes the map's suggestions; importCommentsFile seeds them"}
+      - {path: packages/core/src/collab/mirror/projectMirror.ts, lines: "15-225", why: "observe the suggestions map like comments (line ~222)"}
+      - {path: packages/core/src/collab/session/sharedProject.ts, lines: "55-75", why: "the seed comes through importCommentsFile"}
+    read:
+      - {path: packages/core/src/collab/comments.ts, lines: "170-250", why: "threadMap, addLiveThread, readLiveThreads pattern"}
+      - {path: packages/core/src/collab/commentsFile.ts, lines: "86-150", why: "createSharedProjectComments facade"}
+    seams:
+      - {path: packages/core/src/collab/shareIndexDoc.ts, signature: "export function readShareIndexDocSuggestions(doc: Doc): YMap<unknown>"}
+      - {path: packages/core/src/collab/suggestions.ts, signature: "export function readLiveSuggestions(doc: Y.Doc): Suggestion[]; export function addLiveSuggestion(doc: Y.Doc, suggestion: Suggestion | Record<string, unknown>): boolean; export function removeLiveSuggestions(doc: Y.Doc, ids: readonly string[]): number; export interface SharedProjectSuggestions { suggestions(): Suggestion[]; locate(suggestion: Suggestion): TextRange | \"detached\"; anchor(file: string, kind: SuggestionKind, range: TextRange): CommentAnchor; add(suggestions: readonly Suggestion[]): void; remove(ids: readonly string[]): void; onChange(listener: () => void): () => void } export function createSharedProjectSuggestions(session: Pick<ShareSession, \"index\" | \"openDoc\">): SharedProjectSuggestions"}
+    decided:
+      - "One Y.Map per suggestion keyed by id; every key a plain value; unknown keys survive a read and an add; addLiveSuggestion is a no-op returning false when the id exists; removeLiveSuggestions returns how many it removed, in one transact."
+      - "renderCommentsFile(doc, existing) also writes the map's suggestions; importCommentsFile also seeds the suggestions the map lacks, by id; its return value stays the count of threads added."
+      - "The mirror rewrites comments.qmd on a suggestions change as on a comments change."
+      - "A delete's live anchor puts start and end at the same index (start binds right, end binds left)."
+      - "The hidden test lands at the same path as 1.2's and replaces it, so it keeps 1.2's cases and adds the live ones."
+    acceptance:
+      - {id: 1.3a, check: "add, read and remove on the map, with unknown keys kept and duplicates refused"}
+      - {id: 1.3b, check: "render then import moves suggestions between file and map unchanged"}
+      - {id: 1.3c, check: "a shared insert is located after a concurrent edit before it through relative positions"}
+      - {id: A1, check: "records round-trip through the index doc map"}
+    tests:
+      hidden: [documents/plans/review-mode/tests/1.3/packages/core/__tests__/collab/suggestions.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 1.3 --plan review-mode -- packages/core/__tests__/collab/suggestions.test.ts"
+    commands: ["node scripts/agents/run.mjs typecheck core"]

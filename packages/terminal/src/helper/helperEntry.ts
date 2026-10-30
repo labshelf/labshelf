@@ -73,6 +73,22 @@ function seaBiberAssets(dataDir: string): BiberWasmAssets | undefined {
 
 // The SEA asset name `build/sea.mjs` packs the compiler WASM under.
 const TYPST_WASM_ASSET = "typst_ts_web_compiler_bg.wasm";
+
+// The SEA asset folder `build/sea.mjs` packs the cell driver scripts under.
+const CELL_DRIVER_FILES = { python: "cellDriver.py", mathematica: "cellDriver.wl", r: "cellDriver.R" } as const;
+
+/** Python and the other tools run the drivers as files, so the executable writes its embedded copies under the data folder, rewriting any that changed. */
+async function writeCellDrivers(dataDir: string): Promise<Record<keyof typeof CELL_DRIVER_FILES, string>> {
+  const dir = path.join(dataDir, "cell-drivers");
+  await fs.mkdir(dir, { recursive: true });
+  const entries = await Promise.all(Object.entries(CELL_DRIVER_FILES).map(async ([language, file]) => {
+    const target = path.join(dir, file);
+    const text = getAsset(`cell-drivers/${file}`, "utf8");
+    if ((await fs.readFile(target, "utf8").catch(() => undefined)) !== text) await fs.writeFile(target, text);
+    return [language, target] as const;
+  }));
+  return Object.fromEntries(entries) as Record<keyof typeof CELL_DRIVER_FILES, string>;
+}
 const INSTALL_PYTHON_FLAG = "--install-python";
 const MANAGEMENT_FLAGS = ["--register", "--unregister", "--uninstall", INSTALL_PYTHON_FLAG];
 
@@ -117,6 +133,7 @@ async function main(): Promise<number | undefined> {
   await runHelperHost({ dataDir, logger, helperVersion: HELPER_VERSION, host: "helper", args: process.argv.slice(2),
     // PLATFORM: getAsset returns a view of the executable's memory; slice copies it before the compiler takes it.
     typstWasm: async () => new Uint8Array(getAsset(TYPST_WASM_ASSET).slice(0)),
+    cellDrivers: await writeCellDrivers(dataDir),
     ...(biberAssets && { biber: [process.execPath] }),
     afterHello: () => updater.checkInBackground(),
     afterVersionRejected: async () => { await updater.check({ bypassThrottle: true }); } });

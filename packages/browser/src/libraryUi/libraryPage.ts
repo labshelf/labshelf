@@ -1,7 +1,7 @@
 // Mounts the browser library workspace with its shared Details pane, and binds the open folder to the URL hash
 // (`#/papers/Project/Refs`) so back/forward walk the folder history and a reload lands on the same folder.
 import {
-  type TabKindName, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
+  type TabKindName, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
@@ -17,7 +17,7 @@ import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
 import { createPageSpaces } from "./spaces";
 import { derivePagePlan, type PagePlan } from "./pagePlan";
-import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, type ProjectServices, type Workspace } from "./editorArea";
+import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTitles, type ProjectServices, type Workspace } from "./editorArea";
 
 const log = createBrowserLogger();
 
@@ -159,7 +159,9 @@ async function boot(): Promise<void> {
     log, spaces, initialPaper: new URLSearchParams(location.search).get("paper"),
     shareRelay: { requireRelay: () => relay.requireBrowserRelay(), connectedRelay: () => relayAccounts.get() },
     onSelection: (ids) => hub.publish("list", ids.length ? { kind: "paper", ids } : null),
+    openPaper: async (paperId) => { workspace.openTab("paper", { paperId }); },
   });
+  setPaperTitles(libraryHost.paperTitle);
   attachHashHandlers(host, libraryHost.paperIdAtPath);
   const rightPane = createRightPane(shell, spaces.store);
   const libraryView = renderElement("div", { class: "ls-workspace-fill" });
@@ -170,7 +172,13 @@ async function boot(): Promise<void> {
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
-    onActivateTab: (id) => { rightPane.activateTab(id); if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces"); },
+    onActivateTab: (id) => {
+      rightPane.activateTab(id);
+      const parsed = parseTab(id);
+      const paperId = parsed?.kind === "paper" ? parsed.params["paperId"] : undefined;
+      if (paperId) hub.publish("reader", { kind: "paper", ids: [paperId] });
+      else if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces");
+    },
     services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
@@ -182,7 +190,11 @@ async function boot(): Promise<void> {
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
-  attachDetailsReveal(shell, (id) => { openTab("library"); hub.publish("reader", { kind: "paper", ids: [id] }); });
+  // A reader framed in a paper tab keeps its tab in front; a reader in its own browser tab brings the Library forward.
+  attachDetailsReveal(shell, (id) => {
+    if (!workspace.tabs().some((t) => t.focused && t.id === TAB_KIND_SPECS.paper.id({ paperId: id }))) openTab("library");
+    hub.publish("reader", { kind: "paper", ids: [id] });
+  });
   project?.start(invite);
   mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
   attachPaperLinkHandling(log);

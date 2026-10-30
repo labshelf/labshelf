@@ -7,8 +7,9 @@ body,
   padding: 0;
 }
 
+/* The page around the card has the PDF preview's tone (.rd-preview #viewerContainer), so the editor floats like a page does. */
 body {
-  background: var(--ls-bg);
+  background: color-mix(in srgb, var(--ls-bg) 92%, var(--ls-fg));
   color: var(--ls-fg);
   font-family: var(--ls-font);
   font-size: var(--ls-font-size);
@@ -26,13 +27,20 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--ls-input-bg);
+  /* The text sits on the tab strip's tone; the toolbar takes the darker editor background. */
+  background: var(--vscode-editorGroupHeader-tabsBackground, var(--ls-bg));
   box-shadow: var(--ls-pane-shadow);
 }
 
 .source-editor-card > .cm-editor {
   flex: 1;
   min-height: 0;
+}
+
+/* The core theme paints the editor and gutters with --ls-bg; here they show the card's tone instead. */
+.source-editor-card > .cm-editor,
+.source-editor-card > .cm-editor .cm-gutters {
+  background-color: transparent;
 }
 
 .source-editor-card .cm-scroller {

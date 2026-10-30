@@ -50,8 +50,11 @@ export async function openReader(paperId: string, page?: number): Promise<void> 
   await bx.tabs.create({ url: createReaderUrl(paperId, page) });
 }
 
-/** Toggles the existing library's Details, or opens the library with this paper selected. */
+/** Toggles the Details of the library framing this reader, else of an open library, else opens the library with this paper selected. */
 export async function toggleLibraryDetails(paperId: string): Promise<void> {
+  const self = globalThis.window as Window | undefined;
+  const framing = self && self.parent !== self ? self.parent.labshelfLibraryDetails : undefined;
+  if (framing) { await framing.toggle(paperId); return; }
   const views = (bx.extension.getViews?.({ type: "tab" }) ?? []) as Window[];
   for (const view of views) {
     if (view.labshelfLibraryDetails) { await view.labshelfLibraryDetails.toggle(paperId); return; }

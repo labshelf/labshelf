@@ -1,0 +1,86 @@
+schema: session/v1
+id: "2"
+goal: "The core source editor tracks edits as suggestions in Reviewing, shows them with Accept/Reject, offers the Editing/Reviewing dropdown in its toolbar and keeps them in sync with a host's suggestion port."
+depends_on: ["1"]
+owns: [packages/core/src/writing/dom/sourceEditor/, packages/core/__tests__/writing/dom/sourceEditor/]
+status: pending
+packages:
+  - id: "2.1"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "createReviewTracking records the user's edits in Reviewing as tracked changes following D4, and accepts or rejects them."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    create: [packages/core/src/writing/dom/sourceEditor/review.ts]
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/index.ts, lines: "1-15", why: "export the review module"}
+    read:
+      - {path: documents/plans/review-mode/research/editor.brief.yaml, lines: "1-60", why: "interception map, exemptions, undo"}
+      - {path: packages/core/src/writing/dom/sourceEditor/openEditors.ts, lines: "50-60", why: "fromDisk"}
+      - {path: packages/core/src/writing/dom/sourceEditor/documentMode.ts, lines: "170-192", why: "transactionExtender pattern"}
+      - {path: packages/core/src/collab/dom/editorCollab.ts, lines: "140-170", why: "ySyncAnnotation"}
+    seams:
+      - {path: packages/core/src/writing/dom/sourceEditor/review.ts, signature: "export type ReviewMode = \"editing\" | \"reviewing\"; export interface TrackedChange { id: string; kind: \"insert\" | \"delete\"; from: number; to: number; text?: string; group?: string; author: string; created: string } export const reviewEdit: AnnotationType<boolean>; export interface ReviewTracking { extension: Extension; setMode(view: EditorView, mode: ReviewMode): void; changes(state: EditorState): readonly TrackedChange[]; load(view: EditorView, changes: readonly TrackedChange[]): void; accept(view: EditorView, ids: readonly string[]): void; reject(view: EditorView, ids: readonly string[]): void } export function createReviewTracking(options: { author(): string; now?(): string; newId?(): string }): ReviewTracking"}
+    decided:
+      - "Tracked: transactions with isUserEvent input, delete, move (drop) or the reviewEdit annotation. Untracked: fromDisk, Transaction.remote, ySyncAnnotation, isUserEvent undo or redo, and everything in Editing. All changes map through every transaction."
+      - "A delete change has from === to and its text; an insert has from < to and no text. A replaced range gives a delete and an insert with the same group."
+      - "Typing at either edge of the author's own insert extends it; deleting inside the author's own insert shrinks it and adds no delete; an insert that becomes empty is dropped; deleting across a delete's position merges the texts in document order into one delete."
+      - "An undo that inserts exactly a delete's text at its position drops that delete."
+      - "reject reverts the text in one transaction annotated so it is not tracked and not in history as a suggestion, then drops the records; accept only drops the records; both expand to every change of the same group."
+      - "load replaces all records (used after the store reports); setMode reconfigures a Compartment."
+    acceptance:
+      - {id: 2.1a, check: "Editing records nothing; Reviewing records typing, deletion and replacement with author and created"}
+      - {id: 2.1b, check: "extend, shrink, empty-drop and merge rules hold"}
+      - {id: 2.1c, check: "fromDisk, remote, undo and redo transactions are not recorded"}
+      - {id: 2.1d, check: "accept and reject of one, of a group and of all give the right text and records"}
+      - {id: A2, check: "tracking rules of D4"}
+    tests: {none: "behaviour package: the implementer writes the failing tests first in packages/core/__tests__/writing/dom/sourceEditor/review.test.ts"}
+    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/dom/sourceEditor"]
+  - id: "2.2"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "The review UI of D5: change marks, the struck-through deletion widget, the tooltip with Accept/Reject, the bottom panel with Accept all/Reject all, and the toolbar's mode dropdown item."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["2.1"]
+    create: [packages/core/src/writing/dom/sourceEditor/reviewView.ts]
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/toolbar.ts, lines: "1-24", why: "a dropdown item kind: icon, chevron, showMenu with radio items"}
+      - {path: packages/core/src/writing/dom/sourceEditor/toolbar.css, lines: "1-80", why: "dropdown button"}
+      - {path: packages/core/src/writing/dom/sourceEditor/editorTheme.ts, lines: "1-90", why: "or keep the review theme in reviewView.ts if editorTheme grows past its concept"}
+    read:
+      - {path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-60", why: "showMenu, radio MenuItem"}
+      - {path: packages/core/src/collab/dom/editorComments.ts, lines: "40-140", why: "gutter, panel and marker patterns"}
+    decided:
+      - "Read `node scripts/docs/doc.mjs ui` first; tokens only, no new colours: insert background color-mix of --ls-mark-accent at 22%, deletion text in --ls-error with line-through."
+      - "Tooltip: author, relative time, Accept (check icon) and Reject (close icon) buttons, keyboard reachable; the panel shows while Reviewing or while the file has changes."
+      - "Dropdown items: 'Editing' / 'Edit content directly' and 'Reviewing' / 'Edits become suggestions', pencil icon, checked radio for the current mode."
+    acceptance:
+      - {id: 2.2a, check: "changes render as marks and widgets; Accept and Reject in the tooltip and panel call accept/reject with the right ids"}
+      - {id: 2.2b, check: "the dropdown shows the current mode and calls back with the picked one"}
+    tests: {none: "behaviour package: the implementer writes jsdom tests first for the panel buttons and the dropdown callback"}
+    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/dom/sourceEditor"]
+  - id: "2.3"
+    plan: review-mode
+    sha: 3b1e2389
+    goal: "mountSourceEditor takes a review dep (author, mode, suggestion port), loads the file's suggestions, sends new and resolved ones after the save flush in saved-text offsets, and returns setReviewMode."
+    level: contract
+    runner: {agent: implementer, model: opus}
+    depends_on: ["2.2"]
+    edit:
+      - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "150-332", why: "SourceEditorDeps.review, extension assembly before hostExtensions, SourceEditor.setReviewMode"}
+      - {path: packages/core/src/writing/dom/sourceEditor/formatting.ts, lines: "1-75", why: "tag toolbar inserts and wraps with reviewEdit"}
+      - {path: packages/core/src/writing/dom/sourceEditor/index.ts, lines: "1-15", why: "exports"}
+    read:
+      - {path: packages/core/src/collab/dom/editorComments.ts, lines: "230-275", why: "flush first, then file offsets (docOffsetToFile)"}
+    seams:
+      - {path: packages/core/src/writing/dom/sourceEditor/review.ts, signature: "export interface FileSuggestion { id: string; kind: \"insert\" | \"delete\"; start: number; end: number; text?: string; group?: string; author: string; created: string } export interface EditorSuggestions { subscribe(listener: (suggestions: readonly FileSuggestion[]) => void): () => void; add(suggestions: readonly FileSuggestion[]): Promise<void>; remove(ids: readonly string[]): Promise<void> } export interface EditorReview { author(): string; mode: ReviewMode; suggestions: EditorSuggestions; onMode?(mode: ReviewMode): void }"}
+    decided:
+      - "Offsets in FileSuggestion are in the saved file text, CRLF-aware, as comments; a detached suggestion is not sent to the editor."
+      - "New and changed tracked changes are sent after each successful save (debounced with it); accept/reject send remove after the save of the reverted text."
+      - "Read-only editors get no review extension; without deps.review the editor behaves as today."
+    acceptance:
+      - {id: 2.3a, check: "with a fake port: reviewing edits reach add after flush with saved offsets; accept and reject reach remove; the port's list loads into the editor"}
+      - {id: 2.3b, check: "setReviewMode switches tracking without remounting"}
+    tests: {none: "contract package: the implementer writes the failing tests first in packages/core/__tests__/writing/dom/sourceEditor/editorReview.test.ts"}
+    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/dom/sourceEditor"]

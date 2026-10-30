@@ -1,12 +1,11 @@
 // Mounts a CodeMirror editor on one project source file: its theme and extensions, the autosave, the helper's edits and the build problems.
 import { closeBrackets, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
+import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { lintKeymap, setDiagnostics, type Diagnostic } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorState, type ChangeSet, type Extension, type Text } from "@codemirror/state";
 import { drawSelection, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
-import { tags } from "@lezer/highlight";
 import type * as Y from "yjs";
 import { AUTO_SAVE_DELAY_MS, createDebouncer, createProjectLabels, type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type PresenceStore, type ProjectLabels } from "../../../index.js";
 import type { EditorHelperPort, HelperProblem } from "../../../helper/index.js";
@@ -21,77 +20,8 @@ import { createDocumentExtensions, documentDirty, documentSync, type SourceDocum
 import { listChanges } from "../../authority.js";
 import { readPageNonce } from "../../../ui/dom/index.js";
 import { createSelectionListener } from "./selectionListener.js";
-
-const theme = EditorView.theme({
-  "&": { height: "100%", color: "var(--ls-fg)", backgroundColor: "var(--ls-bg)", fontSize: "var(--ls-font-size)" },
-  "&.cm-focused": { outline: "none" },
-  ".cm-scroller": { fontFamily: "var(--ls-code-font)" },
-  ".cm-content": { caretColor: "var(--ls-editor-cursor)" },
-  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--ls-editor-cursor)", borderLeftWidth: "var(--ls-editor-cursor-width)" },
-  ".cm-gutters": { backgroundColor: "var(--ls-bg)", color: "var(--ls-section-fg)", borderRight: "1px solid var(--ls-border-faint)" },
-  // TRAP: The active line sits above the selection layer, so its background must be translucent.
-  ".cm-activeLine, .cm-activeLineGutter": { backgroundColor: "var(--ls-row-open)" },
-  ".cm-selectionBackground": { backgroundColor: "var(--ls-editor-inactive-selection-bg)" },
-  "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": { backgroundColor: "var(--ls-editor-selection-bg)" },
-  ".cm-tooltip": {
-    backgroundColor: "var(--ls-widget-bg)", color: "var(--ls-menu-fg)", border: "1px solid var(--ls-menu-border)",
-    borderRadius: "var(--ls-radius)", boxShadow: "var(--ls-widget-shadow)",
-  },
-  ".cm-tooltip-autocomplete ul li[aria-selected]": { backgroundColor: "var(--ls-menu-selection-bg)", color: "var(--ls-menu-selection-fg)" },
-  ".cm-completionDetail": { color: "var(--ls-section-fg)" },
-  ".cm-lintRange-error": { backgroundImage: "none", textDecoration: "underline wavy var(--ls-error)" },
-  ".cm-lintRange-warning": { backgroundImage: "none", textDecoration: "underline wavy var(--ls-warning)" },
-  ".cm-lintRange-info": { backgroundImage: "none", textDecoration: "underline wavy var(--ls-section-fg)" },
-  ".cm-lint-marker-error": { content: "none", backgroundColor: "var(--ls-error)", borderRadius: "50%", width: "0.6em", height: "0.6em" },
-  ".cm-lint-marker-warning": { content: "none", backgroundColor: "var(--ls-warning)", borderRadius: "50%", width: "0.6em", height: "0.6em" },
-  ".ls-comment-range": { backgroundColor: "color-mix(in srgb, var(--ls-mark-accent) 22%, transparent)", borderBottom: "1px solid var(--ls-mark-accent)" },
-  ".ls-comment-gutter": { width: "1.6em" },
-  ".ls-comment-marker": {
-    display: "flex", alignItems: "center", justifyContent: "center", width: "100%", padding: "0", border: "none", background: "none",
-    color: "var(--ls-mark-accent)", cursor: "pointer",
-  },
-  ".ls-comment-marker svg": { width: "var(--ls-space-6)", height: "var(--ls-space-6)" },
-  ".cm-panels": { backgroundColor: "var(--ls-bg)", color: "var(--ls-fg)", borderTop: "thin solid var(--ls-border)" },
-  ".ls-add-comment-panel": {
-    display: "flex", alignItems: "center", gap: "var(--ls-space-2)", height: "calc(var(--ls-pane-footer-h) - 1px)",
-    padding: "0 var(--ls-space-3)", boxSizing: "border-box",
-  },
-  ".ls-source-style": {
-    display: "inline-flex", alignItems: "center", gap: "var(--ls-space-2)", minWidth: "0", maxWidth: "40%",
-    height: "var(--ls-row-h)", padding: "0 var(--ls-space-2)", border: "none", background: "none",
-    color: "var(--ls-desc)", fontSize: "var(--ls-text-sm)", borderRadius: "var(--ls-radius-sm)", cursor: "pointer",
-  },
-  ".ls-source-style span": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  ".ls-source-style svg": { width: "var(--ls-space-6)", height: "var(--ls-space-6)", flexShrink: "0" },
-  ".ls-source-style:hover": { background: "var(--ls-toolbar-hover)", color: "var(--ls-fg)" },
-  ".ls-source-style:focus-visible": { outline: "thin solid var(--ls-focus)" },
-  ".ls-add-comment-panel .ls-add-comment": {
-    marginLeft: "auto", flexShrink: "0",
-    height: "var(--ls-row-h)", padding: "0 var(--ls-space-3)", fontSize: "var(--ls-text-sm)",
-  },
-  ".cm-diagnostic": { whiteSpace: "pre-wrap" },
-  ".cm-diagnostic-error": { borderLeft: "3px solid var(--ls-error)" },
-  ".cm-diagnostic-warning": { borderLeft: "3px solid var(--ls-warning)" },
-});
-
-// Both languages are stream parsers: stex and the Typst parser emit the legacy style names these tags come from.
-export const codeHighlight = HighlightStyle.define([
-  { tag: tags.keyword, color: "var(--ls-code-keyword)" },
-  { tag: [tags.tagName, tags.variableName], color: "var(--ls-code-command)" },
-  { tag: tags.atom, color: "var(--ls-code-argument)" },
-  { tag: [tags.string, tags.special(tags.string)], color: "var(--ls-code-string)" },
-  { tag: tags.number, color: "var(--ls-code-number)" },
-  { tag: tags.special(tags.variableName), color: "var(--ls-code-math)" },
-  { tag: tags.comment, color: "var(--ls-code-comment)", fontStyle: "italic" },
-  { tag: tags.heading, color: "var(--ls-code-heading)", fontWeight: "bold" },
-  { tag: tags.meta, color: "var(--ls-code-reference)" },
-  { tag: tags.bracket, color: "var(--ls-code-bracket)" },
-  { tag: tags.strong, fontWeight: "bold" },
-  { tag: tags.emphasis, fontStyle: "italic" },
-  { tag: tags.invalid, color: "var(--ls-error)" },
-]);
-
-export const editorTheme: Extension = [theme, syntaxHighlighting(codeHighlight)];
+import { createFolding } from "./folding.js";
+import { editorTheme } from "./editorTheme.js";
 
 const HELPER_MODULE = "editor.helperEdits";
 
@@ -383,7 +313,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   // Mod-s on a host document asks the host to save; the host reports when it is clean.
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) refreshAll(); };
-  const extensions = [createFormattingKeymap(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), ...hostExtensions(deps)];
+  const extensions = [createFormattingKeymap(kind), createFolding(kind), ...documentExtensions(deps, language, lineBreak, onSave, noteGutter.extension, onDocumentDirty), ...(noteLinks ? [noteLinks.extension] : []), ...(commentsSupport?.extensions ?? []), changeListener({ path, save, helperEdits, labels }), ...hostExtensions(deps)];
   view = new EditorView({ parent: host, state: EditorState.create({ doc: text, extensions }) });
   helperEdits.changed(view.state.changes(), view.state.doc);
   refreshAll();

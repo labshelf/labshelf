@@ -6,4 +6,7 @@ export * from "./noteLinks.js";
 export * from "./formatting.js";
 export * from "./openEditors.js";
 export * from "./editor.js";
+export { codeHighlight, editorTheme } from "./editorTheme.js";
 export { createSelectionListener } from "./selectionListener.js";
+export { renderSourceToolbar, type SourceToolbarButton } from "./toolbar.js";
+export { createFolding, findFoldRange } from "./folding.js";

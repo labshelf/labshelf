@@ -1,0 +1,39 @@
+schema: brief/v1
+area: browser and VS Code host glue for the source editor and comments UI
+question: "where do the hosts wire the source editor and comments, where does author identity come from, which widget gives the dropdown"
+sha: 3b1e2389
+reuse:
+  - {symbol: showMenu, path: packages/core/src/ui/dom/widgets/menu.ts, lines: "1-60", why: "design-system dropdown; MenuItem has checked and radio (menuitemradio)"}
+  - {symbol: commentItem, path: packages/browser/src/libraryUi/editorArea/commentsTab.ts, lines: "11-60", why: "browser comments list rendering with ls-btn buttons"}
+  - {symbol: CommentThreads, path: packages/browser/src/collab/comments.ts, lines: "33-50", why: "browser store API; AUTHOR='You' for an unshared project (line 29, 92)"}
+  - {symbol: createLiveCommentThreads, path: packages/browser/src/collab/register.ts, lines: "19-33", why: "shared comments; author from name()"}
+edit:
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "56-84", why: "editorDeps builds SourceEditorDeps; comments port inside the !readOnly branch; add the review port, author and mode"}
+  - {path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "136-180", why: "mountTab builds the toolbar and keeps it across retry"}
+  - {path: packages/browser/src/collab/comments.ts, lines: "1-160", why: "local + routed comment stores; the suggestion stores sit beside them"}
+  - {path: packages/core/src/writing/protocol.ts, lines: "1-140", why: "SourceEditorInbound/Outbound and decoder; add suggestion and mode messages"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "1-164", why: "createCommentsPort pattern; add a suggestions port and deliver function"}
+  - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "120-170", why: "passes ports to the editor, routes inbound messages, builds the toolbar"}
+  - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "1-170", why: "answer() switch for host requests; comments.subscribe posts ranges"}
+  - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "deps.comments?() per panel; init message"}
+  - {path: packages/vscode/src/collab/comments.ts, lines: "60-140", why: "FileComments/SharedComments stores; SourceFileComments interface"}
+read:
+  - {path: packages/vscode/src/collab/node/register.ts, lines: "37-157", why: "userName() = os.userInfo().username, fallback 'LabShelf user'"}
+  - {path: packages/browser/src/collab/pageShares.ts, lines: "100-190", why: "shares.name(): stored member name, default DEFAULT_DISPLAY_NAME"}
+  - {path: packages/browser/src/libraryUi/mountProjectWiring.ts, lines: "120-140", why: "createRoutedCommentThreads wiring"}
+callers:
+  - {symbol: editorDeps, path: packages/browser/src/libraryUi/editorArea/sourceTab.ts, lines: "56-84"}
+  - {symbol: createCommentsPort, path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "120-120"}
+  - {symbol: createSourceBridges, path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "128-128"}
+tests:
+  - {path: packages/browser/__tests__/collab/comments.test.ts, covers: "browser local and routed comment stores"}
+  - {path: packages/vscode/__tests__/collab/comments.test.ts, covers: "vscode file and shared comment stores"}
+  - {path: packages/core/__tests__/writing/protocol.test.ts, covers: "source editor protocol decode"}
+contracts: ["collaboration#comments", "ui#implementation"]
+commands: ["node scripts/agents/run.mjs test browser -- packages/browser/__tests__/collab", "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab"]
+risks:
+  - "VS Code's comments.open() goes to the native Comments panel; there is no LabShelf list there, so the review UI must live inside the editor webview (D5 panel)."
+  - "Read-only shared files get no comments dep; review mode must be hidden there too."
+  - "Author identity differs by host: browser unshared 'You', shared shares.name(), VS Code OS username; the webview never sees the name today."
+  - "browser retry() recreates the editor: mode state lives in mountTab."
+  - "Uncommitted edits in these files."

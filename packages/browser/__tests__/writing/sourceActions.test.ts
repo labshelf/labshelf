@@ -5,7 +5,7 @@
 // The source tab's title-bar actions: their order, labels and overflow, and what they do before the editor has loaded.
 import type { ILogger, LibraryFileSystem, ProjectEntry } from "@labshelf/core";
 import { pickQuickEntry } from "@labshelf/core/dom";
-import { createSourceActions, type SourceActionDeps } from "../../src/writing/source";
+import { createSourceActions, splitSourceActions, type SourceActionDeps } from "../../src/writing/source";
 
 jest.mock("@labshelf/core/dom", () => ({ ...jest.requireActual("@labshelf/core/dom"), showToast: jest.fn(), pickQuickEntry: jest.fn(async () => undefined), askInputBox: jest.fn(async () => undefined) }));
 
@@ -22,6 +22,24 @@ function setup(over: Partial<SourceActionDeps> = {}) {
   const run = (id: string): void => actions.find((action) => action.id === id)!.run();
   return { actions, edits, openHistory, openSearch, run };
 }
+
+describe("splitSourceActions", () => {
+  it("groups the toolbar buttons like the VS Code editor and leaves the note actions to the tab menu", () => {
+    const { toolbar, tab } = splitSourceActions(setup().actions);
+    expect(toolbar.map((group) => group.map(({ label, glyph }) => [label, glyph]))).toEqual([
+      [["Bold", "bold"], ["Italic", "italic"]],
+      [["Insert Symbol", "symbol-operator"], ["Insert Table", "table"], ["Insert Image", "file-media"], ["Cite from Library", "quote"]],
+      [["Search in Project", "search"], ["Show Project History", "history"]],
+    ]);
+    expect(tab.map(({ id, overflow }) => [id, overflow])).toEqual([["insertFromNote", true], ["updateFromNote", true], ["showNoteDifferences", true]]);
+  });
+
+  it("runs the same actions as the tab did, and none of them edits without a target", () => {
+    const { actions, edits } = setup({ target: () => undefined });
+    splitSourceActions(actions).toolbar[0]![0]!.run();
+    expect(edits.wrap).not.toHaveBeenCalled();
+  });
+});
 
 describe("createSourceActions", () => {
   it("lists the actions in the VS Code order, with bold and italic in the overflow menu", () => {

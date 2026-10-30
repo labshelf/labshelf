@@ -11,7 +11,7 @@ export function derivePagePlan(sections: SidebarSections): PagePlan {
   return { ...sections, defaultTab: sections.library ? "library" : "all-projects" };
 }
 
-/** Keeps Library and Spaces tabs under the Library section setting. */
+/** Keeps Library, Spaces and paper tabs under the Library section setting. */
 export function isKindShown(plan: PagePlan, kind: string): boolean {
-  return ["library", "spaces", "space"].includes(kind) ? plan.library : plan.projects;
+  return ["library", "spaces", "space", "paper"].includes(kind) ? plan.library : plan.projects;
 }

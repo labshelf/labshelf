@@ -67,6 +67,13 @@ async function loadSource(): Promise<TabModule> {
 
 const define = (kind: TabKindName, load: () => Promise<TabModule>): TabKind => ({ ...TAB_KIND_SPECS[kind], load });
 
+let paperTitle: (paperId: string) => string | undefined = () => undefined;
+
+/** Names paper tabs after their paper; a tab opened before the library has loaded keeps the spec's title. */
+export function setPaperTitles(lookup: (paperId: string) => string | undefined): void {
+  paperTitle = lookup;
+}
+
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {
   spaces: define("spaces", () => import("./spacesCatalogTab.js")),
@@ -79,4 +86,5 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   comments: define("comments", () => import("./commentsTab.js")),
   history: define("history", () => import("./historyTab.js")),
   search: define("search", () => import("./searchTab.js")),
+  paper: { ...define("paper", () => import("./paperTab.js")), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
 };

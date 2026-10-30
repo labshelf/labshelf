@@ -248,14 +248,14 @@ async function reportFind(ctx: HostContext, id: string, result: AttachPdfReply, 
   ctx.endpoint.post({ type: "pdf.findResult", id, miss: result.miss ?? { tried: 0, sources: [], blocked: false, needsLogin: false } });
 }
 
-async function openPdf(ctx: HostContext, fs: LibraryFileSystem, id: string): Promise<void> {
+async function openPdf(ctx: HostContext, fs: LibraryFileSystem, openPaper: (id: string) => Promise<void>, id: string): Promise<void> {
   const paper = ctx.papers([id])[0];
   if (!paper) return;
   // A key can exist with zero or corrupt bytes, so the header is checked before the reader opens.
   const pdfPath = `${paper.path}/${PDF_FILE}`;
   const bytes = (await fs.stat(pdfPath)) ? await fs.readFile(pdfPath).catch(() => undefined) : undefined;
   if (!bytes || !isPdfBytes(bytes)) { ctx.endpoint.post({ type: "pdf.missing", id }); return; }
-  await openReader(paper.id);
+  await openPaper(paper.id);
 }
 
 async function findPdfOnline(ctx: HostContext, searching: Set<string>, id: string, replace: boolean): Promise<void> {
@@ -285,11 +285,12 @@ function pickLocalPdf(ctx: HostContext, id: string): void {
   input.click();
 }
 
-export function createPdfHandlers(ctx: HostContext): PdfHandlers {
+/** `openPaper` shows a paper whose PDF checked out; it defaults to the reader page in its own browser tab. */
+export function createPdfHandlers(ctx: HostContext, openPaper: (id: string) => Promise<void> = (id) => openReader(id)): PdfHandlers {
   const fs = createLibraryFileSystem();
   const searching = new Set<string>();
   return {
-    open: (id) => openPdf(ctx, fs, id),
+    open: (id) => openPdf(ctx, fs, openPaper, id),
     find: (id, replace) => findPdfOnline(ctx, searching, id, replace),
     attach: (id) => pickLocalPdf(ctx, id),
     async openForPdf(id, access) {
