@@ -20,6 +20,7 @@ import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHo
 import type { ActiveSource } from "../writing/activeSource.js";
 import type { WritingProjects } from "../writing/projects/index.js";
 import { registerSourceEditor } from "../writing/sourceEditor/index.js";
+import type { SourceEditorProviderDeps } from "../writing/sourceEditor/provider.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 interface DetailsWiring {
@@ -85,6 +86,8 @@ export interface PanelCommandsDeps {
   projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
   /** The extension's one ActiveSource, which every LabShelf editor panel registers with. */
   activeSource: ActiveSource;
+  /** What the LabShelf editor reads besides the library's papers: the paper notes store, the note insert source of a project and how to show a paper's notes. */
+  sourceEditor: Pick<SourceEditorProviderDeps, "paperNotes" | "noteSource" | "openNotes">;
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
@@ -196,7 +199,12 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
   });
   registerOpenListTabCommand(deps, details);
   registerReaderPanelCommands(deps);
-  registerSourceEditor(deps.context, { extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource });
+  registerSourceEditor(deps.context, {
+    extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource,
+    // The same reader the writing view's citations use: no library open lists no papers.
+    library: { listPapers: async () => await deps.currentServices()?.paperService.listPapers() ?? [] },
+    ...deps.sourceEditor,
+  });
   deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
   wireDetailsSources({
     context: deps.context, details, currentServices: deps.currentServices, onDidChangeRoot: deps.onDidChangeRoot,

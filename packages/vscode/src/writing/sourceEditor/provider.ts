@@ -2,18 +2,16 @@
 import * as vscode from "vscode";
 
 import {
-  createNonce, createSourceAuthority, isInside, parseSourceEditorOutbound,
-  type ILogger, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
+  createNonce, createSourceAuthority, parseSourceEditorOutbound,
+  type ILogger, type NoteInsertSource, type PaperNotesStore, type PaperRecord, type SourceAuthority, type SourceEditorInbound, type SourceEditorOutbound,
 } from "@labshelf/core";
 import { hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from "../../ui/index.js";
 import type { ActiveSource, SourceView } from "../activeSource.js";
 import { deriveBuildRootPath, findOwningProject, type WritingProjects } from "../projects/index.js";
+import { createSourceBridges, type SourceBridges } from "./bridges.js";
 import { createDocumentSync } from "./documentSync.js";
 
 export const SOURCE_EDITOR_VIEW_TYPE = "labshelf.sourceEditor";
-
-const MODULE = "writing/sourceEditor";
-const NOT_AVAILABLE = "not available";
 
 export interface SourceEditorProviderDeps {
   extensionUri: vscode.Uri;
@@ -22,6 +20,14 @@ export interface SourceEditorProviderDeps {
   logger: ILogger;
   /** Each open panel registers its view here, so Build, Show in Preview and reverse search find it. */
   activeSource: Pick<ActiveSource, "register">;
+  /** The open library's papers, for the editor's citations. */
+  library: { listPapers(): Promise<PaperRecord[]> };
+  /** The papers' notes, for the "N notes" gutter. */
+  paperNotes: Pick<PaperNotesStore, "read">;
+  /** Where the equations and outputs of a project's notes and its cited papers' notes are read from, for "Insert from note". */
+  noteSource(project: NonNullable<ReturnType<typeof findOwningProject>>): NoteInsertSource;
+  /** Shows a paper's notes where the library page does. */
+  openNotes(paperId: string): void;
 }
 
 type Request = Extract<SourceEditorOutbound, { type: "request" }>;
@@ -63,32 +69,20 @@ function initMessage(document: vscode.TextDocument, authority: SourceAuthority, 
   };
 }
 
-/** Reads a project file: the open TextDocument's text wins over the disk, and no path may leave the project folder. */
-async function readProjectFile(projects: SourceEditorProviderDeps["projects"], folder: string, path: string): Promise<string> {
-  const { paths, fs } = projects;
-  const file = paths.join(folder, path);
-  if (!isInside(paths, folder, file)) { throw new Error("outside the project"); }
-  const open = vscode.workspace.textDocuments.find((document) => document.uri.scheme === "file" && document.uri.fsPath === file);
-  return open ? open.getText() : await fs.readText(file);
-}
-
-/** Answers the webview's requests; papers and notes come in session 4, so the editor degrades without them. */
-async function answerRequest(request: Request, document: vscode.TextDocument, deps: SourceEditorProviderDeps): Promise<Response> {
+/** Answers a request of the page from the bridges; a rejection is its error response. */
+async function answerRequest(request: Request, bridges: SourceBridges): Promise<Response> {
   const { id, method, params } = request;
-  const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
   try {
-    if (method === "listFiles") {
-      return { type: "response", id, ok: true, value: project ? await deps.projects.data.listProjectFiles(project.folder) : [] };
-    }
-    if (method === "readFile" && project) {
-      return { type: "response", id, ok: true, value: await readProjectFile(deps.projects, project.folder, String((params as { path: string }).path)) };
-    }
-    return { type: "response", id, ok: false, error: NOT_AVAILABLE };
+    return { type: "response", id, ok: true, value: await bridges.handle(method, params) };
   } catch (error) {
-    void deps.logger.error(MODULE, error, { action: method });
     return { type: "response", id, ok: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
+
+/** Notes of a file that belongs to no project: nothing to list or read. */
+const NO_NOTES: NoteInsertSource = {
+  listProjectNotes: async () => [], readProjectNote: async () => undefined, listCitedPaperIds: async () => [], readPaperNote: async () => undefined,
+};
 
 /** The authorities of the documents open in a LabShelf editor: created with the first panel on a document, dropped with the last. */
 function createAuthorities() {
@@ -118,6 +112,12 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
       const { extensionUri, logger } = deps;
       panel.webview.options = { enableScripts: true, localResourceRoots: [bundleDirectory(extensionUri), webviewChunksDir(extensionUri)] };
       const authority = authorities.acquire(document);
+      const project = document.uri.scheme === "file" ? findOwningProject(deps.projects, document.uri.fsPath) : undefined;
+      const bridges = createSourceBridges({
+        uri: document.uri, projectRoot: project ? vscode.Uri.file(project.folder) : undefined, library: deps.library,
+        notes: { ...(project ? deps.noteSource(project) : NO_NOTES), read: (paperId) => deps.paperNotes.read(paperId) },
+        openNotes: deps.openNotes, logger,
+      });
       // Nothing reaches the page before it is listening; its init carries everything sent until then.
       let ready = false;
       const post = (message: SourceEditorInbound | { type: string; [key: string]: unknown }): void => {
@@ -140,19 +140,25 @@ export function createSourceEditorProvider(deps: SourceEditorProviderDeps): vsco
         focus,
         deps.activeSource.register(view, focus.event),
         panel.onDidChangeViewState(() => focus.fire(panel.active)),
+        // The build's and other extensions' diagnostics of this file, whenever any collection changes them.
+        vscode.languages.onDidChangeDiagnostics((event) => {
+          const key = document.uri.toString();
+          if (event.uris.some((changed) => changed.toString() === key)) { post(bridges.problems()); }
+        }),
         panel.webview.onDidReceiveMessage((raw: unknown) => {
           const message = parseSourceEditorOutbound(raw);
           if (!message) { return; }
           if (message.type === "ready") {
             ready = true;
             post(initMessage(document, authority, deps.projects));
+            post(bridges.problems());
             if (pendingReveal !== undefined) { post({ type: "reveal", line: pendingReveal }); pendingReveal = undefined; }
           } else if (message.type === "focus") {
             focus.fire(message.focused);
           } else if (message.type === "selection") {
             cursorLine = message.line;
           } else if (message.type === "request") {
-            void answerRequest(message, document, deps).then(post);
+            void answerRequest(message, bridges).then(post);
           } else {
             void sync.receive(message);
           }
