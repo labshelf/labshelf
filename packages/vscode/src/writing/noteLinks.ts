@@ -105,6 +105,35 @@ function paperIdOf(notePath: string): string | undefined {
   return PAPER_NOTE.exec(notePath)?.[1];
 }
 
+async function guarded<T>(deps: NoteLinkDeps, fallback: T, action: string, read: () => Promise<T>): Promise<T> {
+  try { return await read(); } catch (error) {
+    await deps.logger.error(MODULE, error, { action });
+    return fallback;
+  }
+}
+
+/** Where the equations and outputs of a project's notes and of its cited papers' notes are read from; a failed read logs and answers nothing. */
+function createNoteInsertSource(deps: NoteLinkDeps, project: ReadyProject): NoteInsertSource {
+  const id = project.settings.id;
+  return {
+    listProjectNotes: () => guarded(deps, [], "list-notes", () => deps.notes.list(id)),
+    readProjectNote: (path) => guarded<string | undefined>(deps, undefined, "read-note", async () => (await deps.notes.read(id, path)) ?? undefined),
+    listCitedPaperIds: () => guarded<string[]>(deps, [], "list-cited-papers", async () => {
+      const library = deps.library();
+      if (!library) { return []; }
+      const keys = await listProjectCiteKeys({ fs: deps.projects.fs, paths: deps.projects.paths }, project.folder, project.settings.format);
+      const byKey = derivePapersByCiteKey(await library.listPapers());
+      const ids = new Set<string>();
+      for (const key of keys) {
+        const paper = byKey.get(key);
+        if (paper) { ids.add(paper.id); }
+      }
+      return [...ids];
+    }),
+    readPaperNote: (paperId) => guarded<string | undefined>(deps, undefined, "read-paper-note", async () => (await deps.library()?.readNotesText(paperId)) ?? undefined),
+  };
+}
+
 class NoteLinks {
   private readonly marks = vscode.languages.createDiagnosticCollection(COLLECTION);
   private readonly views = new Map<string, OriginView[]>();
@@ -119,32 +148,8 @@ class NoteLinks {
 
   // ---- Notes as insertable sources
 
-  private async guarded<T>(fallback: T, action: string, read: () => Promise<T>): Promise<T> {
-    try { return await read(); } catch (error) {
-      await this.deps.logger.error(MODULE, error, { action });
-      return fallback;
-    }
-  }
-
   private sourceOf(project: ReadyProject): NoteInsertSource {
-    const id = project.settings.id;
-    return {
-      listProjectNotes: () => this.guarded([], "list-notes", () => this.deps.notes.list(id)),
-      readProjectNote: (path) => this.guarded<string | undefined>(undefined, "read-note", async () => (await this.deps.notes.read(id, path)) ?? undefined),
-      listCitedPaperIds: () => this.guarded<string[]>([], "list-cited-papers", async () => {
-        const library = this.deps.library();
-        if (!library) { return []; }
-        const keys = await listProjectCiteKeys({ fs: this.deps.projects.fs, paths: this.deps.projects.paths }, project.folder, project.settings.format);
-        const byKey = derivePapersByCiteKey(await library.listPapers());
-        const ids = new Set<string>();
-        for (const key of keys) {
-          const paper = byKey.get(key);
-          if (paper) { ids.add(paper.id); }
-        }
-        return [...ids];
-      }),
-      readPaperNote: (paperId) => this.guarded<string | undefined>(undefined, "read-paper-note", async () => (await this.deps.library()?.readNotesText(paperId)) ?? undefined),
-    };
+    return createNoteInsertSource(this.deps, project);
   }
 
   // ---- State of the origins of a document
@@ -234,7 +239,7 @@ class NoteLinks {
 
   private async paperTitles(): Promise<Map<string, string>> {
     const library = this.deps.library();
-    const papers = library ? await this.guarded<PaperRecord[]>([], "list-papers", () => library.listPapers()) : [];
+    const papers = library ? await guarded<PaperRecord[]>(this.deps, [], "list-papers", () => library.listPapers()) : [];
     return new Map(papers.map((paper) => [paper.id, paper.title]));
   }
 
@@ -359,8 +364,11 @@ class NoteActionProvider implements vscode.CodeActionProvider {
   }
 }
 
-/** Registers "Insert from note", the marks on inserted copies, their hover and the "Update from note" and "Show differences" actions. */
-export function registerNoteLinks(context: vscode.ExtensionContext, deps: NoteLinkDeps): void {
+/**
+ * Registers "Insert from note", the marks on inserted copies, their hover and the "Update from note" and "Show differences" actions.
+ * @returns the note insert source of a project, which the LabShelf editor's "Insert from note" reads
+ */
+export function registerNoteLinks(context: vscode.ExtensionContext, deps: NoteLinkDeps): (project: ReadyProject) => NoteInsertSource {
   const links = new NoteLinks(deps);
   const run = (id: string, action: () => Promise<void>): Promise<void> => runSafely(deps.logger, id, action);
   const subscriptions = context.subscriptions;
@@ -379,4 +387,5 @@ export function registerNoteLinks(context: vscode.ExtensionContext, deps: NoteLi
     vscode.workspace.onDidCloseTextDocument((document) => links.forget(document)),
   );
   for (const editor of vscode.window.visibleTextEditors ?? []) { void links.refresh(editor.document); }
+  return (project) => createNoteInsertSource(deps, project);
 }

@@ -45,7 +45,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
   const writing = registerWritingView(context, controller, adapters, platform.registerWriting, sources);
   registerProjectNoteCommands({ context, projects: writing.projects, store: writing.notes, logger: writing.logger });
   registerNoteLensOf(context, controller, writing);
-  registerLibraryNoteLinks(context, controller, writing);
+  const noteSource = registerLibraryNoteLinks(context, controller, writing);
   // One runner and one Python per activation, shared by the list panel, the reader and Spaces; none on the web.
   const cells = platform.createCellHosts?.(context, writing.logger) ?? {};
   const spaces = registerSpaces(context, controller, adapters, writing, id => revealPaperSelected(sources, id), cells);
@@ -62,6 +62,19 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
     sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
+    sourceEditor: {
+      // The open library's notes; with no library open the editor lists no papers, so the read is never asked for.
+      paperNotes: {
+        read: async (paperId) => {
+          const services = controller.currentServices();
+          if (!services) { throw new Error("No library is open"); }
+          return await services.paperNotesStore.read(paperId);
+        },
+      },
+      noteSource,
+      // The library page shows a paper's notes in its detail, so the editor's "N notes" popover reveals the paper there.
+      openNotes: (paperId) => { void vscode.commands.executeCommand("labshelf.revealPaper", paperId); },
+    },
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });
@@ -80,8 +93,8 @@ async function revealPaperSelected(sources: ReturnType<typeof createSelectionSou
   sources.listActivated();
 }
 
-function registerLibraryNoteLinks(context: vscode.ExtensionContext, controller: ReturnType<typeof createLibraryController>, writing: ReturnType<typeof registerWritingView>): void {
-  registerNoteLinks(context, {
+function registerLibraryNoteLinks(context: vscode.ExtensionContext, controller: ReturnType<typeof createLibraryController>, writing: ReturnType<typeof registerWritingView>) {
+  return registerNoteLinks(context, {
     projects: writing.projects, notes: writing.notes, logger: writing.logger,
     library: () => {
       const services = controller.currentServices();
