@@ -1,0 +1,20 @@
+schema: brief/v1
+area: VS Code source editor provider host wiring
+question: "project lookup, project file service, panel deps and file-access protocol for a new CustomTextEditorProvider"
+sha: 28063aaa
+reuse:
+  - {symbol: findOwningProject, path: packages/vscode/src/writing/projects/commands.ts, lines: "17-27", why: "findOwningProject(projects: Pick<WritingProjects,'list'|'paths'>, filePath): ReadyProject | undefined; .folder, .settings.id, .settings.format"}
+  - {symbol: WritingProjects, path: packages/vscode/src/writing/projects/session.ts, lines: "25-45", why: "the instance (paths, fs, data); built in registerWritingView.ts 229-236, returned as writing.projects"}
+  - {symbol: ProjectContentPort.listProjectFiles, path: packages/core/src/writing/projectService.ts, lines: "21-35", why: "listFiles answer; no read in the port"}
+  - {symbol: isInside, path: packages/core/src/path/isInside.ts, lines: "5-9", why: "bound readFile to the project folder"}
+  - {symbol: deriveBuildRootPath, path: packages/vscode/src/writing/projects/commands.ts, lines: "30-32", why: "project-relative path"}
+  - {symbol: createProjectSourceReader, path: packages/vscode/src/latex/project.ts, lines: "17-34", why: "open TextDocument text wins over disk"}
+edit:
+  - {path: packages/vscode/src/activation/registerPanelCommands.ts, lines: "55-81", why: "PanelCommandsDeps has no projects field"}
+  - {path: packages/vscode/src/activation/startExtension.ts, lines: "47-66", why: "pass projects: writing.projects to registerPanelCommands"}
+read:
+  - {path: packages/core/src/writing/dom/sourceEditor/editor.ts, lines: "236-345", why: "SourceFileAccess, SourceEditorDeps, mountSourceEditor"}
+  - {path: packages/core/src/writing/sourceEditor/protocol.ts, lines: "1-202", why: "request/response methods listFiles, readFile, ...; init shape"}
+risks:
+  - "core's writing/sourceEditor (authority, protocol) is not re-exported from @labshelf/core"
+  - "no writeFile request: document mode only"

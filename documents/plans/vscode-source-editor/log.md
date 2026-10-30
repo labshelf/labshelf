@@ -5,3 +5,4 @@
 - 2026-10-30 06:31 — session 1 done: 1.1, 1.2, 1.3, 1.4
 - 2026-10-30 06:58 — session 2: 2.3 red proved by hand (only the expected SourceEditorDeps.document error; plan red cannot stub an edit to an existing interface) after a test_wrong fix (non-null assertions); added the one-push-in-flight decision to 2.3 and since() RangeError handling to session 3
 - 2026-10-30 07:13 — session 2 done: 2.1, 2.2, 2.3
+- 2026-10-30 07:57 — session 3 blocked: 3.1: missing
