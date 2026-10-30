@@ -21,7 +21,7 @@ decisions:
     text: "`CellStatus` replaces `missing-python` with `missing` and the result carries `language`. `CellRunState` and every cellState message value (reader `cellState`, `paper.cellState`, `space.cellState`) use `missing` too. Python missing keeps the \"Install Python for calculations\" button; Mathematica and R missing show text naming what to install (Wolfram Engine or Mathematica with wolframscript; R) and where LabShelf looked."
     why: One status for every language; only Python is a managed tool.
   - id: D6
-    text: "Finding executables: Python is the managed one only (unchanged). `wolframscript` and `Rscript` are looked up on PATH, then in the usual install locations per OS (macOS `/Applications/Wolfram Engine.app`, `/Applications/Mathematica.app`, `/Applications/Wolfram.app`, `/usr/local/bin`, `/opt/homebrew/bin`, `/Library/Frameworks/R.framework/Resources/bin`; Windows `Program Files\\Wolfram Research\\*`, `Program Files\\R\\R-*\\bin`; Linux `/usr/bin`, `/usr/local/bin`). VS Code settings `labshelf.cells.wolframscriptPath` and `labshelf.cells.rscriptPath` override the lookup; the browser goes through the helper, which uses the same lookup."
+    text: "Finding executables: Python is the managed one only (unchanged). `wolframscript` and `Rscript` are looked up on PATH, then in the usual install locations per OS (macOS `/Applications/Wolfram Engine.app`, `/Applications/Mathematica.app`, `/Applications/Wolfram.app`, `/usr/local/bin`, `/opt/homebrew/bin`, `/Library/Frameworks/R.framework/Resources/bin`; Windows `Program Files\\Wolfram Research\\*`, `Program Files\\R\\R-*\\bin`; Linux `/usr/bin`, `/usr/local/bin`). VS Code settings `labshelf.cells.wolframscriptPath` and `labshelf.cells.rscriptPath` override the lookup; the browser goes through the helper, which uses the same lookup. Mathematica runs as the `WolframKernel` beside the located `wolframscript` with `-noprompt -script cellDriver.wl` (`wolframscript -file` waits for stdin EOF), and that launch uses the D3 ready handshake (`ready: true` on the launch, one sentinel `{ready: true}` line from the driver; earlier output goes to the log), so kernel startup banners never reach a cell."
     why: Works with no configuration on a normal install; VS Code users can point at an unusual one.
   - id: D7
     text: "Results: Python keeps the SymPy rule (SymPy object → LaTeX, else text) and the Matplotlib rule (a returned figure or the last open pyplot figure becomes a PNG data URL in `text`, written as `![Python plot](data:image/png;base64,...)`, see qmd-items#outputs). Mathematica returns `TeXForm` of the last expression unless it is `Null`, and text for strings and graphics-free messages. R returns the printed value of the last visible expression as text. Graphics are out of scope for Mathematica and R."
@@ -99,3 +99,6 @@ sessions:
     owns:
       - documents/plans/multi-language-cells/
       - documents/
+      - packages/core/
+      - packages/vscode/src/
+      - scripts/lint/

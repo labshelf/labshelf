@@ -1,0 +1,73 @@
+schema: session/v1
+id: "2"
+goal: Requests carry params as data to all three drivers, previews never write, and a Mathematica Manipulate returns its controls and a frame at the requested values.
+depends_on: ["1"]
+owns: [packages/core/src/qmd/compute/cellRunner.ts, packages/core/src/qmd/compute/node/, packages/core/__tests__/qmd/compute/]
+status: pending
+packages:
+  - id: "2.1"
+    plan: cell-params
+    sha: a79dfa69
+    goal: "CellRequest gains params and preview, CellResult gains controls; sessions send params; createCellRuns skips the write for previews and passes the result to a new target.preview."
+    level: contract
+    runner: {agent: implementer, model: sonnet}
+    edit:
+      - {path: packages/core/src/qmd/compute/cellRunner.ts, lines: "1-90", why: "types and preview branch (storeResult 61-83)"}
+      - {path: packages/core/src/qmd/compute/node/cellSession.ts, lines: "160-195", why: "sendRequest payload {id, code, params}"}
+      - {path: packages/core/src/qmd/compute/node/cellSessions.ts, lines: "50-120", why: "pass params"}
+      - {path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts, lines: "1-70", why: "controls in the response and result"}
+    read:
+      - {path: documents/plans/cell-params/research/runtime.brief.yaml, lines: "1-40", why: "map and risks"}
+    seams:
+      - {path: packages/core/src/qmd/compute/cellRunner.ts, signature: "export interface CellControl { name: string; kind: \"slider\" | \"select\" | \"checkbox\"; min?: number; max?: number; step?: number; choices?: (number | string)[]; value: number | string | boolean }; CellRequest gains params?: Record<string, number | string | boolean>; preview?: boolean; CellResult gains controls?: CellControl[]; CellRunTarget gains preview?(result: CellResult): void"}
+    decided:
+      - "A preview run posts running, runs, calls target.preview(result) and posts the end state; it never calls write or push. A non-preview run with params writes the output with the params attribute (1.2)."
+      - "Preview timeout is passed by the host (20 s); the runner adds nothing."
+      - "The request JSON omits params when empty."
+    acceptance:
+      - {id: 2.1a, check: "a preview run calls preview with the result and never write or push"}
+      - {id: 2.1b, check: "params reach the driver request line; controls in a response reach CellResult"}
+      - {id: A3, check: "previews write nothing; a normal run with params writes one output with the matching params attribute"}
+    tests:
+      hidden: [documents/plans/cell-params/tests/2.1/previewRuns.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.1 --plan cell-params -- packages/core/__tests__/qmd/compute"
+  - id: "2.2"
+    plan: cell-params
+    sha: a79dfa69
+    goal: "The Python and R drivers set request params as variables before running the cell and reject reserved or invalid names; the R driver's own functions live in a private environment."
+    level: behaviour
+    runner: {agent: implementer, model: sonnet}
+    depends_on: ["2.1"]
+    edit:
+      - {path: packages/core/src/qmd/compute/node/cellDriver.py, lines: "40-90", why: "scope[name] = value"}
+      - {path: packages/core/src/qmd/compute/node/cellDriver.R, lines: "1-230", why: "assign into .GlobalEnv; move driver functions into a private env"}
+    decided:
+      - "Name rule ^[A-Za-z][A-Za-z0-9_]*$; Python also rejects names starting with __; a rejected name gives {error: 'Invalid parameter name <name>'} without running."
+      - "Values come from the parsed JSON only."
+      - "Real-driver tests skip when the tool is missing, as the existing ones do."
+    acceptance:
+      - {id: 2.2a, check: "beta = 0.93 is visible to the cell in Python and R; a variable defined by an earlier cell survives"}
+      - {id: 2.2b, check: "a param named emit or SENTINEL in R, or __import__ in Python, is rejected and the driver keeps working"}
+      - {id: A2, check: "params set as data in Python and R, other variables kept, reserved and invalid names rejected"}
+    tests:
+      hidden: [documents/plans/cell-params/tests/2.2/driverParams.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.2 --plan cell-params -- packages/core/__tests__/qmd/compute/node"
+  - id: "2.3"
+    plan: cell-params
+    sha: a79dfa69
+    goal: "The Mathematica driver sets params as Global` symbols and, for a Manipulate last value, returns the frame at the requested values plus its controls."
+    level: behaviour
+    runner: {agent: implementer, model: opus}
+    depends_on: ["2.2"]
+    edit:
+      - {path: packages/core/src/qmd/compute/node/cellDriver.wl, lines: "1-140", why: "params; staticFrame with given values; controls JSON"}
+    decided:
+      - "Names checked with the same rule before Symbol[\"Global`\" <> name]; values from the parsed RawJSON only, never ToExpression."
+      - "Control specs: {v, min, max}, {v, min, max, step}, {{v, init}, min, max[, step]}, {{v, init, label}, …}, {v, {choices}}, {v, {True, False}} → slider, select, checkbox; any other spec makes the cell an error naming the spec."
+      - "Requested params override control initial values; unknown params are ignored."
+    acceptance:
+      - {id: 2.3a, check: "Manipulate[Plot[Sin[a x], {x, 0, 6}], {a, 1, 5}] returns a PNG and controls [{name: a, kind: slider, min: 1, max: 5, value: 1}]; with params a = 3 the PNG differs"}
+      - {id: A4, check: "Manipulate returns controls and a frame at the requested values"}
+    tests:
+      hidden: [documents/plans/cell-params/tests/2.3/wolframParams.test.ts]
+      command: "node scripts/agents/run.mjs test core --spec 2.3 --plan cell-params -- packages/core/__tests__/qmd/compute/node"

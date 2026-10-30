@@ -3,7 +3,7 @@ import { type ReadingStatus, type FolderTreeNode, type PaperFilesState, PAPER_ST
 import type { CitationEdge, MissingWork } from "../citationMap/index.js";
 import type { Annotation, PaperRecord } from "../../model/index.js";
 import type { Backlink } from "../../writing/index.js";
-import type { CellRunState } from "../../qmd/compute/index.js";
+import { isCellLanguage, type CellLanguage, type CellRunState } from "../../qmd/compute/index.js";
 import { isBoolean, isCount, isNonEmptyString, isNonEmptyStringList, isString, isStringArray } from "../../guards/index.js";
 import { isLibraryPath, isProjectPath } from "../../path/index.js";
 import { type AllProjectsToHost, type HostToAllProjects, parseAllProjectsMessage } from "../../writing/allProjects/index.js";
@@ -46,7 +46,9 @@ export type UiToHost =
   | { type: "paper.editNote"; id: string; itemId: string; body: string }
   | { type: "paper.removeNote"; id: string; itemId: string }
   /** Asks the host to run one code cell of a note item; the view makes `requestId` and the host echoes it in `paper.cellState`. */
-  | { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; requestId: string }
+  | { type: "paper.runCell"; id: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string }
+  /** Restarts the `language` process of paper `id`'s notes, dropping what its cells defined. */
+  | { type: "paper.restartCell"; id: string; language: CellLanguage }
   | { type: "paper.cancelCell"; requestId: string }
   | { type: "paper.installPython" }
   | { type: "paper.addToSpace"; ids: string[] }
@@ -233,7 +235,8 @@ const SHAPES: Record<UiToHost["type"], Record<string, FieldCheck>> = {
   "paper.addNote": { id: isNonEmptyString, body: isString },
   "paper.editNote": { id: isNonEmptyString, itemId: isNonEmptyString, body: isString },
   "paper.removeNote": { id: isNonEmptyString, itemId: isNonEmptyString },
-  "paper.runCell": { id: isNonEmptyString, itemId: isNonEmptyString, label: isNonEmptyString, code: isNonEmptyString, requestId: isNonEmptyString },
+  "paper.runCell": { id: isNonEmptyString, itemId: isNonEmptyString, label: isNonEmptyString, code: isNonEmptyString, language: isCellLanguage, requestId: isNonEmptyString },
+  "paper.restartCell": { id: isNonEmptyString, language: isCellLanguage },
   "paper.cancelCell": { requestId: isNonEmptyString },
   "paper.installPython": {},
   "paper.addToSpace": { ids: (v) => isNonEmptyStringList(v) && v.length > 0 },

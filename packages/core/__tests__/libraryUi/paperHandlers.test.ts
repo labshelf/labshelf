@@ -1,5 +1,5 @@
 import {
-  movePaperFolders, removePapers, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, type LibraryUiHost,
+  movePaperFolders, removePapers, sendPaperDetails, addPaperNote, editPaperNote, removePaperNote, setPaperTags, runPaperCell, restartPaperCell, type LibraryUiHost,
 } from "../../src/libraryUi/paperHandlers";
 import type { PaperDetails } from "../../src/libraryUi/protocol";
 import type { PaperRecord } from "../../src/model";
@@ -134,6 +134,27 @@ describe("removePapers", () => {
     const { host, events } = fakeHost({ trashPapers: async () => ({ done: ["a"], failed: [{ id: "b", error: "busy" }] }) });
     await removePapers(host, ["a", "b"]);
     expect(events).toEqual(["refresh", 'error: 1 removed, 1 failed — "Beta" — busy']);
+  });
+});
+
+describe("runPaperCell and restartPaperCell", () => {
+  const body = "```{python}\nprint(1)\n```";
+  const notesWithCell = () => fakeNotes({
+    read: jest.fn(async () => ({ segments: [{ kind: "item", id: "n1", anchor: { kind: "none" }, classes: ["labshelf-item"], attrs: [], fence: "", body, close: "", created: "2026-01-01T00:00:00Z", author: "me" }] })),
+  });
+
+  it("passes the code, the language and the paper's note key to the runner", async () => {
+    const runCell = jest.fn(async () => ({ status: "ok" as const, language: "r" as const, text: "1", durationMs: 1 }));
+    const { host } = fakeHost({ notes: notesWithCell(), runCell });
+    await runPaperCell(host, { id: "a", itemId: "n1", label: "calc", code: "print(1)", language: "r", requestId: "r1" });
+    expect(runCell).toHaveBeenCalledWith({ code: "print(1)", language: "r", noteKey: "paper:a" }, expect.anything());
+  });
+
+  it("restarts the paper's note key for the language", async () => {
+    const restartCell = jest.fn(async () => undefined);
+    const { host } = fakeHost({ restartCell });
+    await restartPaperCell(host, { id: "a", language: "mathematica" });
+    expect(restartCell).toHaveBeenCalledWith("paper:a", "mathematica");
   });
 });
 

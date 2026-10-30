@@ -22,7 +22,7 @@ A PDF's text layer turns mathematics into scrambled glyphs, so the LaTeX comes f
 
 ## 2. Check this step
 
-Selecting two captured equations, or one equation and the step before it, offers "Check this step". LabShelf writes the check for a computer algebra system (CAS): SymPy by default, or SageMath or Mathematica through their kernels. The check is an ordinary code cell in the note: visible, editable, and run like any other cell. The cell's result is one of:
+Selecting two captured equations, or one equation and the step before it, offers "Check this step". LabShelf writes the check for a computer algebra system (CAS): SymPy in a Python cell by default, or a Mathematica or R cell when the note uses one (a SageMath cell is a further idea). The check is an ordinary code cell in the note: visible, editable, and run like any other cell. The cell's result is one of:
 
 | Result | Meaning |
 |---|---|

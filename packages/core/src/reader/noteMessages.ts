@@ -59,11 +59,14 @@ async function writeNote(
 /** Request ids are made by each reader, so one registry serves every reader host. */
 const cellRuns = createCellRuns();
 
+/** The D2 note key: the cells of one paper's notes share a process per language. */
+const paperNoteKey = (paperId: string): string => `paper:${paperId}`;
+
 /** Runs a note's cell, stores its output with the note, pushes `updateNotes`, then answers `cellState`. */
 function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "runCell" }>): Promise<void> {
   const { notes, paper, logger, runCell } = ctx.ports;
-  const { itemId, requestId } = msg;
-  return cellRuns.run(notes ? runCell : undefined, msg, {
+  const { itemId, label, code, language, requestId } = msg;
+  return cellRuns.run(notes ? runCell : undefined, { label, code, language, requestId, noteKey: paperNoteKey(paper.id) }, {
     read: async () => {
       const item = notes ? (await notes.read(paper.id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
       return item?.kind === "item" ? item.body : undefined;
@@ -75,8 +78,9 @@ function runNoteCell(ctx: HostContext, msg: Extract<WebviewToHost, { command: "r
   });
 }
 
-export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "cancelCell" | "installPython"> = {
+export const noteHandlers: Pick<MessageAnswers, "addNote" | "editNote" | "moveNote" | "removeNote" | "runCell" | "restartCell" | "cancelCell" | "installPython"> = {
   runCell: runNoteCell,
+  restartCell: (ctx, msg) => ctx.ports.restartCell?.(paperNoteKey(ctx.ports.paper.id), msg.language),
   cancelCell: (_ctx, msg) => { cellRuns.cancel(msg.requestId); },
   installPython: (ctx) => { ctx.ports.installPython?.(); },
 

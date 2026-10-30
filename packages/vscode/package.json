@@ -1163,6 +1163,16 @@
           ],
           "description": "Tesseract language codes used for OCR, for example [\"eng\", \"por\"]. Language data is downloaded once on first use."
         },
+        "labshelf.cells.wolframscriptPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path of the `wolframscript` that runs Mathematica cells in notes. When empty, LabShelf searches PATH and the usual install locations."
+        },
+        "labshelf.cells.rscriptPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path of the `Rscript` that runs R cells in notes. When empty, LabShelf searches PATH and the usual install locations."
+        },
         "labshelf.reader.vimKeys": {
           "type": "boolean",
           "default": false,

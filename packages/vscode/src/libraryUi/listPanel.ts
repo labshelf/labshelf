@@ -5,7 +5,7 @@
  */
 import * as vscode from 'vscode';
 import { createNonce, isUnderDir } from '@labshelf/core';
-import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, RunCellPort, SimilarPaper, TextLayerJobView } from '@labshelf/core';
+import type { Annotation, BacklinkMap, ILogger, LibrarySnapshot, LibraryUiHost, PaperFilesState, PaperNotesStore, PaperRecord, PaperService, PathOps, RunCellPort, SimilarPaper, TextLayerJobView } from '@labshelf/core';
 import type { LibraryEvents } from '../library/index.js';
 import { sharingWebviews } from '../share/index.js';
 import { createTabIcon, hasBundleFile, renderBundleMissingHtml, renderHtmlShell, webviewChunksDir } from '../ui/index.js';
@@ -67,6 +67,8 @@ export interface ListPanelDeps {
   paperNotes?: PaperNotesStore;
   /** Runs a note's code cell; without it the notes show no Run button. */
   runCell?: RunCellPort;
+  /** Stops a note's process of one language, so its next cell starts fresh. */
+  restartCell?: NonNullable<LibraryUiHost['restartCell']>;
   /** Installs the Python cells run with, when the missing-python prompt asks. */
   installPython?: () => void;
   projectBacklinks?: ListProjectBacklinks;

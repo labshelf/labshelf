@@ -1,16 +1,15 @@
-// Finds what the pointer hovers (text references and link destinations) and builds the content of a link destination popup.
+// Finds what the pointer hovers (text references and link destinations) and previews a link destination.
 import { deriveFloatRegion, type PdfRegion } from "../geometry.js";
-import {
-  classifyDestName, classifyLinkText, deriveStatementRegion, findFloatCaptionNear, findStatementStart, type DestTarget,
-} from "../destTarget.js";
+import { classifyDestName, classifyLinkText, type DestTarget } from "../destTarget.js";
+import { deriveStatementRegion, findFloatCaptionNear, findStatementStart } from "../destRegion.js";
 import type { FloatKind } from "../inTextReferences.js";
 import { findReferenceAtOffset, type InTextReference, findInTextReferences, joinLineParts, type JoinedLine, type LinePart } from "../inTextReferences.js";
 import type { HoverAnchor, PdfDestination, PopupContent } from "./hoverPreview.js";
 import { deriveDestPoint } from "../index.js";
 import type { CitationResolver, PageTextCache } from "./textLayer.js";
 import type { PreviewCitations } from "./citations.js";
-import type { DestPreview } from "./destPreview.js";
 import type { ReaderContext } from "./readerSession.js";
+import type { DestPreview } from "./destPreview.js";
 import { renderElement } from "../../ui/dom/index.js";
 
 /** Finds the reference under the pointer in plain text (scans, papers without link annotations) and describes it as a hover target. */

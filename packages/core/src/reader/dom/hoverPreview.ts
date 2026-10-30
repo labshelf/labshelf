@@ -2,10 +2,10 @@
 import type { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";
 import type { ReaderContext } from "./readerSession.js";
 import type { PreviewCitations } from "./citations.js";
+import type { DestPreview } from "./destPreview.js";
 import {
   findDestAnchor, DestContent, FLOAT_TITLES, createDestHoverAnchor, renderTextContent, runUnderPointer, TextAnchors,
 } from "./hoverTarget.js";
-import type { DestPreview } from "./destPreview.js";
 import { findElement, renderElement } from "../../ui/dom/index.js";
 import type { InTextReference } from "../inTextReferences.js";
 import { deriveClampedNumber, renderReaderIconButton } from "./elements.js";

@@ -3,11 +3,12 @@ import { TextSelection, type Command } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
 import { renderElement, showMenu, type MenuAnchor, type MenuEntry, type MenuItem } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
-import { QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
+import { CELL_LANGUAGES, cellLanguageLabel } from "../compute/index.js";
+import { insertCodeCell, QMD_ACTIONS, QMD_HEADINGS, shortcutLabel, type QmdAction } from "./qmdCommands.js";
 
 const BUBBLE_ACTIONS = ["bold", "italic", "inlineMath", "link"] as const;
 const LIST_ACTIONS = ["bullet", "ordered", "task"] as const;
-const BLOCK_ACTIONS = ["displayMath", "codeCell", "inlineMath", "link"] as const;
+const BLOCK_ACTIONS = ["inlineMath", "link"] as const;
 const GAP = 6;
 const MARGIN = 8;
 
@@ -19,7 +20,7 @@ function runAction(view: EditorView, action: QmdAction): void {
   if (action.id !== "link") view.focus();
 }
 
-/** The Insert menu: paragraph styles, lists, then blocks, and the Markdown source when the host offers it. */
+/** The Insert menu: paragraph styles, lists, then blocks (one code cell entry per cell language), and the Markdown source when the host offers it. */
 function insertItems(view: EditorView, source?: () => void): MenuEntry[] {
   const actionItem = (action: QmdAction): MenuItem => ({ label: action.label, icon: action.icon, hint: shortcutLabel(action.shortcut), disabled: !action.command(view.state), onSelect: () => runAction(view, action) });
   return [
@@ -27,6 +28,15 @@ function insertItems(view: EditorView, source?: () => void): MenuEntry[] {
     "separator" as const,
     ...LIST_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
     "separator" as const,
+    actionItem(QMD_ACTIONS.displayMath),
+    ...CELL_LANGUAGES.map((language): MenuItem => {
+      const command = language === "python" ? QMD_ACTIONS.codeCell.command : insertCodeCell(language);
+      return {
+        label: `Code cell (${cellLanguageLabel(language)})`, icon: "code",
+        ...(language === "python" ? { hint: shortcutLabel(QMD_ACTIONS.codeCell.shortcut) } : {}),
+        disabled: !command(view.state), onSelect: () => { runCommand(view, command); view.focus(); },
+      };
+    }),
     ...BLOCK_ACTIONS.map((id) => actionItem(QMD_ACTIONS[id])),
     ...(source ? ["separator" as const, { label: "Edit Markdown source", icon: "code" as const, onSelect: source }] : []),
   ];
@@ -49,19 +59,7 @@ export function showInsertMenu(view: EditorView, anchor: HTMLElement | MenuAncho
 /** Whether the focus is in a node's own editor, such as a cell's code or an equation's LaTeX field. */
 const inNodeEditor = (): boolean => document.activeElement?.closest?.(".qmd-cell-code, .qmd-math-edit") != null;
 
-type BubbleButton = { button: HTMLButtonElement; action: QmdAction };
-
-/** One bubble button per mark action, each running its action on `view`. */
-function renderBubbleButtons(view: EditorView): BubbleButton[] {
-  return BUBBLE_ACTIONS.map((id) => {
-    const action: QmdAction = QMD_ACTIONS[id];
-    const button = renderElement("button", { class: "qmd-bubble-btn", type: "button", title: `${action.label} (${shortcutLabel(action.shortcut)})`, "aria-label": action.label, html: renderIcon(action.icon) });
-    button.addEventListener("click", () => runAction(view, action));
-    return { button, action };
-  });
-}
-
-/** Centres `bubble` over the text from `from` to `to`, or under it when there is no room above, kept inside the window. */
+/** Centres the bubble over the selection from `from` to `to`, or under it when there is no room above, kept inside the window. */
 function placeBubble(view: EditorView, bubble: HTMLElement, from: number, to: number): void {
   let start: { left: number; top: number; bottom: number };
   let end: { left: number; top: number };
@@ -78,17 +76,27 @@ function placeBubble(view: EditorView, bubble: HTMLElement, from: number, to: nu
   bubble.style.top = `${Math.max(MARGIN, top)}px`;
 }
 
-/** Calls `onChange` after every transaction `view` applies, keeping its own dispatch. @returns a function that restores the previous dispatch. */
-function watchTransactions(view: EditorView, onChange: () => void): () => void {
+/** One button per bubble action, each running its action on `view` when clicked. */
+function bubbleButtons(view: EditorView): { button: HTMLButtonElement; action: QmdAction }[] {
+  return BUBBLE_ACTIONS.map((id) => {
+    const action: QmdAction = QMD_ACTIONS[id];
+    const button = renderElement("button", { class: "qmd-bubble-btn", type: "button", title: `${action.label} (${shortcutLabel(action.shortcut)})`, "aria-label": action.label, html: renderIcon(action.icon) });
+    button.addEventListener("click", () => runAction(view, action));
+    return { button, action };
+  });
+}
+
+/** Calls `after` once every transaction `view` dispatches is applied; returns the dispatcher it replaced, to restore. */
+function afterTransactions(view: EditorView, after: () => void): EditorView["props"]["dispatchTransaction"] {
   const previous = view.props.dispatchTransaction;
   view.setProps({
     dispatchTransaction(tr) {
       if (previous) previous.call(this, tr);
       else view.updateState(view.state.apply(tr));
-      onChange();
+      after();
     },
   });
-  return () => { if (!view.isDestroyed && previous) view.setProps({ dispatchTransaction: previous }); };
+  return previous;
 }
 
 /**
@@ -96,7 +104,7 @@ function watchTransactions(view: EditorView, onChange: () => void): () => void {
  * `view`, with their pressed states, hidden otherwise and while a node's own editor or nothing in `root` has the focus.
  */
 export function mountSelectionBubble(root: HTMLElement, view: EditorView): { refresh(): void; destroy(): void } {
-  const buttons = renderBubbleButtons(view);
+  const buttons = bubbleButtons(view);
   const bubble = renderElement("div", { class: "qmd-bubble", role: "toolbar", "aria-label": "Formatting", hidden: true }, ...buttons.map(({ button }) => button));
   // Keeps the editor focused, and its selection, when a button is pressed with the mouse.
   bubble.addEventListener("mousedown", (event) => event.preventDefault());
@@ -126,7 +134,7 @@ export function mountSelectionBubble(root: HTMLElement, view: EditorView): { ref
   root.addEventListener("focusin", onFocusIn);
   root.addEventListener("focusout", onFocusOut);
   window.addEventListener("scroll", onScroll, true);
-  const stopWatching = watchTransactions(view, refresh);
+  const previous = afterTransactions(view, refresh);
 
   return {
     refresh,
@@ -134,7 +142,7 @@ export function mountSelectionBubble(root: HTMLElement, view: EditorView): { ref
       root.removeEventListener("focusin", onFocusIn);
       root.removeEventListener("focusout", onFocusOut);
       window.removeEventListener("scroll", onScroll, true);
-      stopWatching();
+      if (!view.isDestroyed && previous) view.setProps({ dispatchTransaction: previous });
       bubble.remove();
     },
   };

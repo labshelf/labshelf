@@ -2,12 +2,12 @@ import { deriveCodeHash, findOutputs } from "../../../src/qmd/item/cellOutput";
 import type { CellResult } from "../../../src/qmd/compute/cellRunner";
 import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
 
-const META = { engine: "python-3.12 sympy-1.13", ran: "2026-10-22T09:15:03.000Z" };
+const META = { ran: "2026-10-22T09:15:03.000Z" };
 const CODE_A = 'import sympy as sp\nx = sp.symbols("x")\nsp.integrate(x, x)\n';
 const CODE_B = "print(1 + 1)\n";
 
 const cell = (code: string, options: string[] = []): string => "```{python}\n" + options.map((o) => `#| ${o}\n`).join("") + code + "```\n";
-const ok = (latex: string): CellResult => ({ status: "ok", latex, durationMs: 12 });
+const ok = (latex: string): CellResult => ({ status: "ok", language: "python", latex, durationMs: 12 });
 
 const LABELED = `Intro text\n\n${cell(CODE_A, ["label: bound"])}\nTail text\n`;
 
@@ -16,7 +16,7 @@ describe("writeCellOutput", () => {
     const written = await writeCellOutput(LABELED, "bound", ok("\\frac{x^2}{2}"), META);
     const outputs = findOutputs(written);
     expect(outputs).toHaveLength(1);
-    expect(outputs[0]).toMatchObject({ cell: "bound", source: await deriveCodeHash(CODE_A), ...META });
+    expect(outputs[0]).toMatchObject({ cell: "bound", source: await deriveCodeHash(CODE_A), engine: "python", ...META });
     const cellEnd = written.indexOf("```\n", written.indexOf("```{python}") + 3) + 4;
     expect(written.slice(cellEnd, outputs[0]!.start)).toMatch(/^\n?$/);
     expect(written.slice(outputs[0]!.end)).toContain("Tail text");
@@ -28,7 +28,7 @@ describe("writeCellOutput", () => {
   });
 
   it("12.1a writes text without latex in a plain fenced code block", async () => {
-    const written = await writeCellOutput(LABELED, "bound", { status: "ok", text: "2", durationMs: 3 }, META);
+    const written = await writeCellOutput(LABELED, "bound", { status: "ok", language: "python", text: "2", durationMs: 3 }, META);
     expect(findOutputs(written)[0]!.content).toBe("```\n2\n```\n");
   });
 
@@ -42,7 +42,7 @@ describe("writeCellOutput", () => {
 
   it("12.1b replaces the existing block on a rerun instead of adding a second", async () => {
     const first = await writeCellOutput(LABELED, "bound", ok("one"), META);
-    const second = await writeCellOutput(first, "bound", ok("two"), { engine: META.engine, ran: "2026-10-23T10:00:00.000Z" });
+    const second = await writeCellOutput(first, "bound", ok("two"), { ran: "2026-10-23T10:00:00.000Z" });
     const outputs = findOutputs(second);
     expect(outputs).toHaveLength(1);
     expect(outputs[0]).toMatchObject({ cell: "bound", ran: "2026-10-23T10:00:00.000Z" });
@@ -70,7 +70,7 @@ describe("writeCellOutput", () => {
   });
 
   it("12.1c writes the error text in the block with status=error", async () => {
-    const written = await writeCellOutput(LABELED, "bound", { status: "error", error: "NameError: name 'q' is not defined", durationMs: 5 }, META);
+    const written = await writeCellOutput(LABELED, "bound", { status: "error", language: "python", error: "NameError: name 'q' is not defined", durationMs: 5 }, META);
     const outputs = findOutputs(written);
     expect(outputs).toHaveLength(1);
     expect(outputs[0]!.content).toContain("NameError: name 'q' is not defined");
@@ -80,13 +80,13 @@ describe("writeCellOutput", () => {
   });
 
   it("12.1c a timeout result is not an ok block with latex", async () => {
-    const written = await writeCellOutput(LABELED, "bound", { status: "ok", latex: "1", durationMs: 1 }, META);
+    const written = await writeCellOutput(LABELED, "bound", { status: "ok", language: "python", latex: "1", durationMs: 1 }, META);
     expect(written.split("\n").find((line) => line.startsWith("::: {.labshelf-output"))!).not.toMatch(/status=/);
   });
 
   it("12.1c an error result replaces an earlier ok block", async () => {
     const first = await writeCellOutput(LABELED, "bound", ok("fine"), META);
-    const second = await writeCellOutput(first, "bound", { status: "error", error: "boom", durationMs: 1 }, META);
+    const second = await writeCellOutput(first, "bound", { status: "error", language: "python", error: "boom", durationMs: 1 }, META);
     expect(findOutputs(second)).toHaveLength(1);
     expect(second).toContain("boom");
     expect(second).not.toContain("fine");
@@ -136,21 +136,21 @@ describe("writeCellOutput", () => {
   });
 
   it("12.1e returns the body unchanged for a cancelled result", async () => {
-    expect(await writeCellOutput(LABELED, "bound", { status: "cancelled", durationMs: 1 }, META)).toBe(LABELED);
+    expect(await writeCellOutput(LABELED, "bound", { status: "cancelled", language: "python", durationMs: 1 }, META)).toBe(LABELED);
   });
 
   it("12.1e returns the body unchanged for a missing-python result", async () => {
-    expect(await writeCellOutput(LABELED, "bound", { status: "missing-python", durationMs: 0 }, META)).toBe(LABELED);
+    expect(await writeCellOutput(LABELED, "bound", { status: "missing", language: "python", durationMs: 0 }, META)).toBe(LABELED);
   });
 
   it("12.1e a cancelled result leaves an unlabeled cell without a label", async () => {
     const body = `${cell(CODE_B)}\n`;
-    expect(await writeCellOutput(body, "cell-1", { status: "cancelled", durationMs: 1 }, META)).toBe(body);
+    expect(await writeCellOutput(body, "cell-1", { status: "cancelled", language: "python", durationMs: 1 }, META)).toBe(body);
   });
 
   it("12.1e a cancelled rerun keeps the old block", async () => {
     const first = await writeCellOutput(LABELED, "bound", ok("keep"), META);
-    expect(await writeCellOutput(first, "bound", { status: "cancelled", durationMs: 1 }, META)).toBe(first);
+    expect(await writeCellOutput(first, "bound", { status: "cancelled", language: "python", durationMs: 1 }, META)).toBe(first);
   });
 
   it("12.1e rejects content that closes the block early and does not return a body", async () => {
@@ -161,13 +161,13 @@ describe("writeCellOutput", () => {
 
 it("stores a PNG returned by Python as a rendered plot rather than a base64 text block", async () => {
   const png = "data:image/png;base64,iVBORw0KGgo=";
-  const written = await writeCellOutput(LABELED, "bound", { status: "ok", text: png, durationMs: 10 }, META);
+  const written = await writeCellOutput(LABELED, "bound", { status: "ok", language: "python", text: png, durationMs: 10 }, META);
   expect(findOutputs(written)[0]!.content).toBe(`![Python plot](${png})\n`);
 });
 
 
 it("leaves non-PNG data URLs as text rather than rendering active image formats", async () => {
   const text = "data:image/svg+xml;base64,PHN2Zy8+";
-  const written = await writeCellOutput(LABELED, "bound", { status: "ok", text, durationMs: 10 }, META);
+  const written = await writeCellOutput(LABELED, "bound", { status: "ok", language: "python", text, durationMs: 10 }, META);
   expect(findOutputs(written)[0]!.content).toContain("```\n" + text);
 });

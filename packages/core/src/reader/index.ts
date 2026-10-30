@@ -5,10 +5,11 @@ export * from "./sidecar/index.js";
 export {
   mergeReaderThemes, normalizeHexColour, parseReaderThemes, ReaderThemeStore, serializeReaderThemes,
   type ReaderThemesPort, type ReaderThemeStoreOptions,
-} from "./readerThemeStore.js";
+} from "./readerThemes.js";
 export { ReaderHostController, type ReaderHostOptions } from "./hostController.js";
 export { exportAnnotations } from "./hostMessages.js";
 export type { ExportAnnotationsPorts, NoticeKind, PreviewPorts, ReaderHostPorts, SidecarChange } from "./hostPorts.js";
 export { deriveCropRectForPreview, deriveDestPoint, type CropOptions, type PdfDestinationSpec, type Rect } from "./geometry.js";
-export { classifyDestName, classifyLinkText, deriveStatementRegion, findFloatCaptionNear, type DestPoint, type DestTarget, type PageLayout } from "./destTarget.js";
+export { classifyDestName, classifyLinkText, type DestPoint, type DestTarget, type PageLayout } from "./destTarget.js";
+export { deriveStatementRegion, findFloatCaptionNear } from "./destRegion.js";
 export * from "./outline.js";

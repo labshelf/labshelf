@@ -133,6 +133,8 @@ export interface ReaderPanelDeps {
   sendTo?: ReaderSendToDeps;
   /** Runs a note's code cell and installs the Python it needs; the reader shows Run only when present. */
   runCell?: RunCellPort;
+  /** Stops the note's process of one language, so its next cell starts fresh. */
+  restartCell?: NonNullable<ReaderHostPorts["restartCell"]>;
   installPython?: () => void;
 }
 
@@ -248,6 +250,7 @@ export class ReaderPanel {
       ...(source.notes ? { notes: source.notes } : {}),
       ...(source.themes ? { themes: source.themes } : {}),
       ...(deps.runCell ? { runCell: deps.runCell } : {}),
+      ...(deps.restartCell ? { restartCell: deps.restartCell } : {}),
       ...(deps.installPython ? { installPython: deps.installPython } : {}),
       logger: deps.logger,
       sidecarChanged: (change) => {
@@ -269,11 +272,11 @@ export class ReaderPanel {
     this._subscribe(source);
   }
 
-  /** Assigns the shell as soon as the bundle check returns so the webview starts fetching pdf.js and the PDF; the `init` reply carries the rest. */
   private _renderShell(deps: ReaderPanelDeps, source: ReaderSource, pdfjs: PdfjsFiles | null): void {
-    const panel = this._panel;
+    // The shell is assigned as soon as the bundle check returns so the webview starts fetching pdf.js and the PDF;
+    // everything that needs disk (theme, annotations, reading position) follows in the `init` reply.
     void renderReaderShell({
-      webview: panel.webview,
+      webview: this._panel.webview,
       extensionUri: deps.extensionUri,
       pdfUri: source.pdfUri,
       paperId: source.paper.id,
@@ -283,7 +286,7 @@ export class ReaderPanel {
       pdfjs,
       isMac: deps.isMac,
     }).then((html) => {
-      if (!this._disposed) { panel.webview.html = html; }
+      if (!this._disposed) { this._panel.webview.html = html; }
     });
   }
 

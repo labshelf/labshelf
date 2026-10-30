@@ -1,5 +1,6 @@
-// The CodeMirror setup of a code cell's code: Python highlighting in the code theme's colours, line numbers, indentation, and completion from
-// the names of every cell in the note and the members of common modules it imports.
+// The CodeMirror setup of a code cell's code: line numbers and indentation for every cell language; for Python also highlighting in the code
+// theme's colours and completion from the names of every cell in the note and the members of common modules it imports. Mathematica and R
+// cells are plain text.
 import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap, type Completion, type CompletionContext, type CompletionResult, type CompletionSource } from "@codemirror/autocomplete";
 import { defaultKeymap, indentLess, indentMore } from "@codemirror/commands";
 import { python, pythonLanguage } from "@codemirror/lang-python";
@@ -7,6 +8,7 @@ import { bracketMatching, HighlightStyle, indentOnInput, indentUnit, syntaxHighl
 import { Annotation, Compartment, EditorState, Prec, type Extension } from "@codemirror/state";
 import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers, tooltips, type KeyBinding } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import { cellLanguageLabel, type CellLanguage } from "../compute/index.js";
 
 const words = (list: string): string[] => list.trim().split(/\s+/);
 
@@ -118,6 +120,8 @@ const cellTheme = EditorView.theme({
 export interface CodeCellEditorOptions {
   /** The code text the editor starts with. */
   text: string;
+  /** The cell's language; Python gets highlighting and completion, any other is edited as plain text. */
+  language: CellLanguage | undefined;
   editable: boolean;
   /** Keys the node view handles before the editor's own: run, history, leaving the cell. */
   keys: readonly KeyBinding[];
@@ -135,6 +139,18 @@ const insertIndent = (view: EditorView): boolean => {
 };
 
 const editableCompartment = new Compartment();
+const languageCompartment = new Compartment();
+/** The language of each editor, so a switch reconfigures only when it changes. */
+const editorLanguages = new WeakMap<EditorView, CellLanguage | undefined>();
+/** The note-code reader of each editor, for the Python completion a language switch brings back. */
+const noteCodeSources = new WeakMap<EditorView, () => string>();
+
+/** Python's highlighting and note completion; plain text for the other languages. The editor is labelled "<Language> code". */
+function languageSupport(language: CellLanguage | undefined, noteCode: () => string): Extension {
+  const label = EditorView.contentAttributes.of({ "aria-label": language ? `${cellLanguageLabel(language)} code` : "Code" });
+  if (language !== "python") return label;
+  return [python(), pythonLanguage.data.of({ autocomplete: noteCompletionSource(noteCode) }), label];
+}
 
 /** The page's script nonce; the webview hosts allow it for styles too, so the stylesheet CodeMirror injects is not blocked. */
 const pageNonce = (): string => document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce ?? "";
@@ -153,8 +169,7 @@ export function createCodeCellEditor(options: CodeCellEditorOptions): EditorView
     indentOnInput(),
     indentUnit.of("    "),
     EditorState.tabSize.of(4),
-    python(),
-    pythonLanguage.data.of({ autocomplete: noteCompletionSource(options.noteCode) }),
+    languageCompartment.of(languageSupport(options.language, options.noteCode)),
     autocompletion({ icons: false }),
     tooltips({ parent: document.body }),
     keymap.of([...closeBracketsKeymap, ...completionKeymap, { key: "Tab", run: insertIndent, shift: indentLess }, ...defaultKeymap]),
@@ -162,10 +177,12 @@ export function createCodeCellEditor(options: CodeCellEditorOptions): EditorView
     cellTheme,
     editableCompartment.of(editability(options.editable)),
     EditorView.updateListener.of((update) => { if (update.docChanged && update.transactions.some((tr) => !tr.annotation(externalSync))) options.onChange(update.state.doc.toString()); }),
-    EditorView.contentAttributes.of({ "aria-label": "Python code" }),
     EditorView.cspNonce.of(pageNonce()),
   ];
-  return new EditorView({ state: EditorState.create({ doc: options.text, extensions }) });
+  const editor = new EditorView({ state: EditorState.create({ doc: options.text, extensions }) });
+  editorLanguages.set(editor, options.language);
+  noteCodeSources.set(editor, options.noteCode);
+  return editor;
 }
 
 /** Marks a change that brings the editor in line with the note, so it is not written back. */
@@ -180,6 +197,13 @@ export function syncCodeCellEditor(editor: EditorView, text: string): void {
   let end = 0;
   while (end < current.length - start && end < text.length - start && current[current.length - 1 - end] === text[text.length - 1 - end]) end++;
   editor.dispatch({ changes: { from: start, to: current.length - end, insert: text.slice(start, text.length - end) }, annotations: externalSync.of(true) });
+}
+
+/** Switches the editor to `language`'s support after the cell's language changed. */
+export function setCodeCellLanguage(editor: EditorView, language: CellLanguage | undefined): void {
+  if (editorLanguages.get(editor) === language) return;
+  editorLanguages.set(editor, language);
+  editor.dispatch({ effects: languageCompartment.reconfigure(languageSupport(language, noteCodeSources.get(editor) ?? (() => ""))) });
 }
 
 /** Turns editing of the code on or off, as the note's own editability changes. */

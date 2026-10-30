@@ -17,9 +17,9 @@ async function isExecutable(file: string): Promise<boolean> {
   }
 }
 
-function envValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
+export function envValue(env: NodeJS.ProcessEnv, key: string): string | undefined {
   // PLATFORM: Windows environment variable names are case-insensitive, so PATH may be spelled Path.
-  const name = Object.keys(env).find((candidate) => candidate.toUpperCase() === key);
+  const name = Object.keys(env).find((candidate) => candidate.toUpperCase() === key.toUpperCase());
   return name === undefined ? undefined : env[name];
 }
 
@@ -38,7 +38,7 @@ export async function findExecutable(name: string, env: NodeJS.ProcessEnv = proc
   return undefined;
 }
 
-async function subdirs(dir: string): Promise<string[]> {
+export async function subdirs(dir: string): Promise<string[]> {
   try {
     return (await fs.readdir(dir, { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
   } catch {

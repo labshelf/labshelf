@@ -6,8 +6,9 @@ import { renderIcon } from "../../ui/icons/index.js";
 import { TextSelection } from "prosemirror-state";
 import { completionStatus } from "@codemirror/autocomplete";
 import type { EditorView as CodeEditorView, KeyBinding } from "@codemirror/view";
-import { createCodeCellEditor, setCodeCellEditable, syncCodeCellEditor } from "./codeCellEditor.js";
-import { exitNode, registerCellControls, registerNodeEditor, setViewNodeAttribute, type EditSide } from "./inlineViews.js";
+import { cellLanguageLabel, type CellLanguage } from "../compute/index.js";
+import { createCodeCellEditor, setCodeCellEditable, setCodeCellLanguage, syncCodeCellEditor } from "./codeCellEditor.js";
+import { exitNode, fenceCellLanguage, registerCellControls, registerNodeEditor, renderLanguagePicker, renderRestartButton, setViewNodeAttribute, type CellControls, type EditSide } from "./inlineViews.js";
 import { shortcutLabel } from "./qmdCommands.js";
 import { outputContent, readCellLabel } from "./outputView.js";
 
@@ -16,12 +17,20 @@ const isHistoryKey = (event: KeyboardEvent): boolean => (event.metaKey || event.
 /** The editor shows `code` without the final newline that ends its last line. */
 const editorText = (code: string): string => (code.endsWith("\n") ? code.slice(0, -1) : code);
 
-/** The name a cell's language is shown by. */
-const languageName = (lang: string | null): string => (lang === "python" ? "Python" : lang ?? "");
+/** The name a cell's fence language is shown by: a cell language's label, or the fence language as written. */
+const cellLanguageName = (lang: string | null): string => {
+  const language = fenceCellLanguage(lang);
+  return language ? cellLanguageLabel(language) : lang ?? "";
+};
+
+/** Runs a cell: its label, its code and its language. */
+export type RunCell = (label: string, code: string, language: CellLanguage) => void;
+/** Restarts the session of one language. */
+export type RestartCell = (language: CellLanguage) => void;
 
 /**
  * Shows a code cell like a figure. A cell without a result shows its code in a CodeMirror editor with one quiet line
- * under it (the language and Run), which also drags the cell. A cell with a result keeps its code out of the note: its
+ * under it (the language picker, Run and Restart), which also drags the cell. A cell with a result keeps its code out of the note: its
  * outputs carry the line, and Show code unfolds the code in place above them.
  * Edits become transactions on the cell's `code`; arrow keys past the first or last line, and Escape, hand the caret
  * back to the note, and undo and redo go through the note's history.
@@ -31,7 +40,8 @@ class CodeCellView implements NodeView {
   private readonly pre: HTMLElement;
   private readonly panel: HTMLElement;
   private readonly actions: HTMLElement;
-  private readonly langText: HTMLElement;
+  private readonly controls: CellControls;
+  private actionsKey: string | null = null;
   private readonly editor: CodeEditorView;
   private readonly listeners = new Set<() => void>();
   private readonly classObserver: MutationObserver;
@@ -39,20 +49,13 @@ class CodeCellView implements NodeView {
   private open = false;
   private running = false;
 
-  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined, private readonly onRunCell?: (label: string, code: string) => void) {
-    this.langText = renderElement("span", { class: "qmd-cell-lang" });
+  constructor(private node: ProseNode, private readonly view: EditorView, private readonly getPos: () => number | undefined,
+    private readonly onRunCell?: RunCell, private readonly onRestartCell?: RestartCell) {
     // The line is the cell's handle: dragging it moves the cell with its outputs (blockDragPlugin).
-    this.actions = renderElement("div", { class: "qmd-cell-actions", contenteditable: "false", draggable: "true" }, this.langText);
-    if (onRunCell) {
-      const run = renderElement("button", { class: "qmd-cell-run", type: "button", title: `Run (${shortcutLabel("Mod-Enter")}) · run and continue below (${shortcutLabel("Shift-Enter")})`, "aria-label": "Run cell" },
-        "Run",
-        renderElement("span", { class: "qmd-cell-run-icon", html: renderIcon("play"), "aria-hidden": "true" }),
-        renderElement("span", { class: "qmd-cell-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
-      run.addEventListener("click", () => this.run());
-      this.actions.append(renderElement("span", { class: "qmd-action-sep", "aria-hidden": "true" }, "·"), run);
-    }
+    this.actions = renderElement("div", { class: "qmd-cell-actions", contenteditable: "false", draggable: "true" });
     this.editor = createCodeCellEditor({
       text: editorText(node.attrs.code as string),
+      language: this.language(),
       editable: view.editable,
       keys: this.keys(),
       onChange: (text) => this.commit(text),
@@ -62,10 +65,14 @@ class CodeCellView implements NodeView {
     this.panel = renderElement("div", { class: "qmd-cell-panel" }, this.pre, this.actions);
     this.dom = renderElement("div", { class: "qmd-cell" }, this.panel);
     registerNodeEditor(this.dom, (side) => this.focusCode(side));
-    registerCellControls(this.dom, {
-      language: () => languageName(this.node.attrs.lang as string | null),
-      canRun: onRunCell !== undefined,
+    this.controls = {
+      language: () => cellLanguageName(this.node.attrs.lang as string | null),
+      cellLanguage: () => this.language(),
+      setLanguage: (language) => this.setLanguage(language),
+      canRun: () => this.canRun(),
       run: () => this.run(),
+      canRestart: () => this.onRestartCell !== undefined && this.language() !== undefined,
+      restart: () => this.restart(),
       hasResult: () => this.hasOutput,
       folded: () => this.hasOutput && !this.open,
       isOpen: () => this.open,
@@ -73,7 +80,8 @@ class CodeCellView implements NodeView {
       isRunning: () => this.running,
       subscribe: (listener) => { this.listeners.add(listener); return () => this.listeners.delete(listener); },
       refresh: () => queueMicrotask(() => this.syncOutputs()),
-    });
+    };
+    registerCellControls(this.dom, this.controls);
     // The run status marks the cell `is-running`; outputs show it in their line.
     this.classObserver = new MutationObserver(() => {
       const running = this.dom.classList.contains("is-running");
@@ -138,9 +146,40 @@ class CodeCellView implements NodeView {
     this.notify();
   }
 
+  /** The cell's language when it is one the editor runs. */
+  private language(): CellLanguage | undefined {
+    return fenceCellLanguage(this.node.attrs.lang as string | null);
+  }
+
+  /** Whether Run, Mod-Enter and Shift-Enter run this cell: the host runs cells and the cell's language is a cell language. */
+  private canRun(): boolean {
+    return this.onRunCell !== undefined && this.language() !== undefined;
+  }
+
+  /** The quiet line under the code: the language picker (or the fence language as text), Run and Restart; redrawn only when one of them changes. */
+  private renderActions(): void {
+    const key = `${this.node.attrs.lang as string | null}\u0000${this.view.editable}`;
+    if (key === this.actionsKey) return;
+    this.actionsKey = key;
+    const sep = (): HTMLElement => renderElement("span", { class: "qmd-action-sep", "aria-hidden": "true" }, "·");
+    const children: Node[] = [renderLanguagePicker(this.controls, "qmd-cell-lang", this.view.editable)];
+    if (this.canRun()) {
+      const run = renderElement("button", { class: "qmd-cell-run", type: "button", title: `Run (${shortcutLabel("Mod-Enter")}) · run and continue below (${shortcutLabel("Shift-Enter")})`, "aria-label": "Run cell" },
+        "Run",
+        renderElement("span", { class: "qmd-cell-run-icon", html: renderIcon("play"), "aria-hidden": "true" }),
+        renderElement("span", { class: "qmd-cell-run-spinner", html: renderIcon("loader"), "aria-hidden": "true" }));
+      run.addEventListener("click", () => this.run());
+      children.push(sep(), run);
+    }
+    const restart = renderRestartButton(this.controls, "qmd-cell-run qmd-cell-restart");
+    if (restart) children.push(sep(), restart);
+    this.actions.replaceChildren(...children);
+  }
+
   private render(): void {
     const label = readCellLabel(this.node.attrs.options as string);
-    this.langText.textContent = languageName(this.node.attrs.lang as string | null);
+    this.renderActions();
+    setCodeCellLanguage(this.editor, this.language());
     this.dom.dataset.cellLabel = label;
     const code = this.node.attrs.code as string;
     syncCodeCellEditor(this.editor, editorText(code));
@@ -159,13 +198,13 @@ class CodeCellView implements NodeView {
       const head = caret(editor);
       return head !== null && idle(editor) && atEdge(editor, head) && this.leave(dir);
     };
-    const run = (): boolean => { if (!this.onRunCell) return false; this.run(); return true; };
+    const run = (): boolean => { if (!this.canRun()) return false; this.run(); return true; };
     return [
       // Undo and redo go through the note's history, which also holds the code edits.
       { any: (_editor, event) => isHistoryKey(event) && (this.view.someProp("handleKeyDown", (handle) => handle(this.view, event)) ?? false) },
       { key: "Mod-Enter", run },
       // Shift-Enter runs the cell and carries on writing below its result, so a note reads as text with results in it.
-      { key: "Shift-Enter", run: () => { if (this.onRunCell) this.run(); this.closeCode(); return this.leave(1); } },
+      { key: "Shift-Enter", run: () => { if (this.canRun()) this.run(); this.closeCode(); return this.leave(1); } },
       { key: "Escape", run: (editor) => idle(editor) && this.leave(1) },
       { key: "Backspace", run: (editor) => editor.state.doc.length === 0 && this.removeCell() },
       { key: "ArrowUp", run: leave(-1, (editor, head) => editor.state.doc.lineAt(head).number === 1) },
@@ -202,11 +241,24 @@ class CodeCellView implements NodeView {
   }
 
   private run(): void {
-    if (!this.onRunCell) return;
+    const language = this.language();
+    if (!this.onRunCell || !language) return;
     // Marks the cell whose run is pending, so the run status can show it running in place.
     for (const cell of Array.from(this.view.dom.querySelectorAll(".qmd-cell.is-run-requested"))) cell.classList.remove("is-run-requested");
     this.dom.classList.add("is-run-requested");
-    this.onRunCell(readCellLabel(this.node.attrs.options as string) || this.positionLabel(), this.node.attrs.code as string);
+    this.onRunCell(readCellLabel(this.node.attrs.options as string) || this.positionLabel(), this.node.attrs.code as string, language);
+  }
+
+  private restart(): void {
+    const language = this.language();
+    if (this.onRestartCell && language) this.onRestartCell(language);
+  }
+
+  /** Switches the cell to `language`, dropping the stored fence info so the fence is written for the new language. */
+  private setLanguage(language: CellLanguage): void {
+    const pos = this.getPos();
+    if (pos === undefined || !this.view.editable || this.language() === language) return;
+    this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, lang: language, info: null }));
   }
 
   /** The host's address of an unlabeled cell: `cell-<n>`, its 1-based position among the item's cells (contract qmd-items#outputs). */
@@ -253,7 +305,10 @@ class CodeCellView implements NodeView {
   }
 }
 
-/** A node view for `code_cell`; the Run link and Mod-Enter call `onRunCell(label, code)` and are absent without it. */
-export function createCodeCellView(onRunCell?: (label: string, code: string) => void): NodeViewConstructor {
-  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell);
+/**
+ * A node view for `code_cell`; the Run link and Mod-Enter call `onRunCell(label, code, language)` and are absent without it or
+ * for a fence language that is not a cell language; Restart <Language> calls `onRestartCell(language)` and shows only with it.
+ */
+export function createCodeCellView(onRunCell?: RunCell, onRestartCell?: RestartCell): NodeViewConstructor {
+  return (node, view, getPos) => new CodeCellView(node, view, getPos, onRunCell, onRestartCell);
 }

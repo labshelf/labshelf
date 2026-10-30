@@ -1,6 +1,7 @@
 // Mounts the Notes tab of a Space: the list of its note files and the editors of the open note's items.
 import { askInputBox, renderElement, renderEmptyNotice } from "../../ui/dom/index.js";
 import { createCellRunGroup, mountQmdEditor, QMD_VOCABULARY, type CellRunGroup, type QmdEditorHandle } from "../../qmd/dom/index.js";
+import type { CellLanguage } from "../../qmd/compute/index.js";
 import type { SpaceNoteEntry, SpaceQmdItem } from "../spaceNotesStore.js";
 import type { OverviewContext, SpaceBody } from "./mountOverview.js";
 
@@ -74,12 +75,16 @@ export function createSpaceCellRuns(ctx: OverviewContext): CellRunGroup {
   });
 }
 
-/** The `onRunCell` option of an item editor mounted in `host` (which must have a parent, where the status row goes), present only when the Space state says the host can run cells. */
+/** The `onRunCell` and `onRestartCell` options of an item editor mounted in `host` (which must have a parent, where the status row goes), present only when the Space state says the host can run cells. */
 export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, path: string | undefined, itemId: string | undefined, host: HTMLElement):
-  { onRunCell?(label: string, code: string): void } {
+  { onRunCell?(label: string, code: string, language: CellLanguage): void; onRestartCell?(language: CellLanguage): void } {
   if (ctx.readOnly || ctx.data.canRunCells !== true || path === undefined || itemId === undefined) return {};
-  return { onRunCell: runs.attach(`${path}\n${itemId}`, host, (label, code, requestId) =>
-    ctx.end.post({ type: "space.runCell", path, itemId, label, code, requestId })) };
+  const key = `${path}\n${itemId}`;
+  const onRunCell = runs.attach(key, host,
+    (label, code, requestId, language) => ctx.end.post({ type: "space.runCell", path, itemId, label, code, language, requestId }),
+    (language) => ctx.end.post({ type: "space.restartCell", path, language }));
+  const onRestartCell = runs.restartCell(key);
+  return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
 }
 
 interface ItemEditor {

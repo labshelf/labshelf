@@ -1,4 +1,5 @@
-// Runs the Python cells of reader note editors through the host: one run group per surface, and a Run hook only while the host can run cells.
+// Runs the code cells of reader note editors through the host: one run group per surface, and a Run hook only while the host can run cells.
+import type { CellLanguage } from "../../qmd/compute/index.js";
 import type { CellRunState } from "../../qmd/compute/index.js";
 import { createCellRunGroup } from "../../qmd/dom/index.js";
 import type { HostBridge } from "./readerSession.js";
@@ -26,9 +27,15 @@ export class ReaderCellRuns {
   /** Removes the status row of an item that is gone. */
   drop(itemId: string): void { this.runs.drop(itemId); }
 
-  /** The `onRunCell` option of an editor mounted in `root` for item `itemId`, or none while the host cannot run cells. */
-  option(itemId: string, root: HTMLElement): { onRunCell?(label: string, code: string): void } {
+  /** The `onRunCell` and `onRestartCell` options of an editor mounted in `root` for item `itemId`, or none while the host cannot run cells. */
+  option(itemId: string, root: HTMLElement): { onRunCell?(label: string, code: string, language: CellLanguage): void; onRestartCell?(language: CellLanguage): void } {
     if (!this.canRun) { return {}; }
-    return { onRunCell: this.runs.attach(itemId, root, (label, code, requestId) => this.host.post({ command: "runCell", itemId, label, code, requestId })) };
+    const onRunCell = this.runs.attach(
+      itemId, root,
+      (label, code, requestId, language) => this.host.post({ command: "runCell", itemId, label, code, language, requestId }),
+      (language) => this.host.post({ command: "restartCell", language }),
+    );
+    const onRestartCell = this.runs.restartCell(itemId);
+    return onRestartCell ? { onRunCell, onRestartCell } : { onRunCell };
   }
 }

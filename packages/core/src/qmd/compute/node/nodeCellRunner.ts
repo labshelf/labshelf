@@ -1,78 +1,43 @@
-// Runs one code cell with the managed Python: the cell goes to a temp file that the bundled driver executes, and the driver's last stdout line is the result.
-import { promises as fs } from "node:fs";
-import { randomUUID } from "node:crypto";
-import * as os from "node:os";
+// Runs code cells through the session manager: one persistent driver process per (note key, language), launched from the managed Python or a located tool.
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
-import { BuildCancelled, ProcessTimedOut, runCancellable } from "../../../latex/node/index.js";
-import type { CellResult, ICellRunner } from "../cellRunner.js";
+import type { ICellRunner } from "../cellRunner.js";
+import { createCellSessions, type DriverLaunch } from "./cellSessions.js";
+import { kernelBeside } from "./locateTool.js";
 import type { PythonProvider } from "./managedPython.js";
 
-const MODULE_CELL = "qmd/cellRunner";
-const DRIVER_FILE = "cellDriver.py";
+type LocatedLanguage = "mathematica" | "r";
 
 export interface NodeCellRunnerOptions {
   python: PythonProvider;
-  logger: ILogger;
-  /** The driver script; the cellDriver.py beside this module when absent. */
-  driverPath?: string;
+  /** The driver script of each language; hosts resolve them next to the bundle. */
+  drivers: { python: string; mathematica: string; r: string };
+  /** Finds wolframscript or Rscript; a language without a located tool is reported as missing. */
+  locate?: (language: LocatedLanguage) => Promise<string | undefined>;
+  logger?: ILogger;
 }
 
-interface DriverLine { latex?: string; text?: string; error?: string }
-
-// PLATFORM: core compiles to CommonJS for Node, where __dirname is the folder of this file; an ESM bundle must pass `driverPath`.
-function bundledDriverPath(): string {
-  if (typeof __dirname === "undefined") { throw new Error("The cell driver path is unknown here: pass driverPath"); }
-  return path.join(__dirname, DRIVER_FILE);
+/** @returns the driver scripts that sit beside this module. PLATFORM: core compiles to CommonJS for Node, where __dirname is this folder; an ESM bundle must pass the paths itself. */
+export function bundledCellDrivers(): NodeCellRunnerOptions["drivers"] {
+  if (typeof __dirname === "undefined") { throw new Error("The cell driver folder is unknown here: pass the driver paths"); }
+  return { python: path.join(__dirname, "cellDriver.py"), mathematica: path.join(__dirname, "cellDriver.wl"), r: path.join(__dirname, "cellDriver.R") };
 }
 
-function parseDriverLine(stdout: string): DriverLine | undefined {
-  const lines = stdout.trim().split(/\r?\n/);
-  const last = lines[lines.length - 1];
-  if (!last) { return undefined; }
-  try {
-    const parsed: unknown = JSON.parse(last);
-    return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) ? parsed as DriverLine : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function toResult(line: DriverLine | undefined, durationMs: number, code: number | null): CellResult {
-  if (line?.error !== undefined) { return { status: "error", error: line.error, durationMs }; }
-  if (!line) { return { status: "error", error: `The cell driver ended with exit code ${String(code)} and no result`, durationMs }; }
-  return {
-    status: "ok",
-    ...(line.latex !== undefined ? { latex: line.latex } : {}),
-    ...(line.text !== undefined ? { text: line.text } : {}),
-    durationMs,
-  };
-}
-
-export function createNodeCellRunner({ python, logger, driverPath }: NodeCellRunnerOptions): ICellRunner {
-  return {
-    async run(code, opts) {
-      const started = Date.now();
-      const elapsed = (): number => Date.now() - started;
+export function createNodeCellRunner({ python, drivers, locate, logger }: NodeCellRunnerOptions): ICellRunner {
+  async function launch(language: "python" | LocatedLanguage): Promise<DriverLaunch | undefined> {
+    if (language === "python") {
       const status = await python.status();
       const interpreter = status.state === "installed" ? python.pythonPath?.() : undefined;
-      if (!interpreter) { return { status: "missing-python", durationMs: elapsed() }; }
-      const codeFile = path.join(os.tmpdir(), `labshelf-cell-${randomUUID()}.py`);
-      try {
-        await fs.writeFile(codeFile, code, "utf8");
-        const outcome = await runCancellable(interpreter, [driverPath ?? bundledDriverPath(), codeFile], opts.cwd, opts.signal, {
-          timeoutMs: opts.timeoutMs, separateStreams: true, logger,
-        });
-        if (outcome.stderr) { void logger.log("INFO", MODULE_CELL, "The cell wrote to stderr", { stderr: outcome.stderr }).catch(() => undefined); }
-        return toResult(parseDriverLine(outcome.stdout ?? ""), elapsed(), outcome.code);
-      } catch (error) {
-        if (error instanceof ProcessTimedOut) { return { status: "timeout", durationMs: elapsed() }; }
-        if (error instanceof BuildCancelled) { return { status: "cancelled", durationMs: elapsed() }; }
-        throw error;
-      } finally {
-        await fs.rm(codeFile, { force: true });
-      }
-    },
-  };
+      return interpreter ? { command: interpreter, args: ["-u", drivers.python] } : undefined;
+    }
+    const tool = await locate?.(language);
+    if (!tool) { return undefined; }
+    if (language === "mathematica") {
+      const kernel = await kernelBeside(tool);
+      return kernel ? { command: kernel, args: ["-noprompt", "-script", drivers.mathematica], ready: true } : undefined;
+    }
+    return { command: tool, args: ["--vanilla", drivers.r] };
+  }
+  return createCellSessions({ launch, ...(logger ? { logger } : {}) });
 }

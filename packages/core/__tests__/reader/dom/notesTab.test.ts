@@ -22,7 +22,7 @@ const text = (b: Element) => `${b.textContent ?? ""} ${b.getAttribute("aria-labe
 const button = (root: ParentNode, re: RegExp) => [...root.querySelectorAll("button")].find((b) => re.test(text(b)));
 const note: ReaderNote = { id: "n1", anchor: "p2 box 0.1 0.2 0.3 0.4", body: BODY, created: "2026-10-01T00:00:00.000Z", author: "Ana" } as ReaderNote;
 
-type Cell = "running" | "done" | "error" | "cancelled" | "missing-python";
+type Cell = "running" | "done" | "error" | "cancelled" | "missing";
 interface Subject { root: HTMLElement; setCanRunCells(on: boolean): void; showCellState(id: string, state: Cell): void; open(): Promise<void>; show(): void }
 
 function makeCtx() {
@@ -113,7 +113,8 @@ describe.each(KINDS)("reader $name run cells", (kind) => {
     button(s.root, /run/i)!.click();
     await settle();
     expect(c.runs()).toHaveLength(1);
-    expect(c.runs()[0]).toMatchObject({ command: "runCell", itemId: "n1", label: "calc" });
+    expect(c.runs()[0]).toMatchObject({ command: "runCell", itemId: "n1", label: "calc", language: "python" });
+    expect(c.runs()[0]).not.toHaveProperty("noteKey");
     expect(String(c.runs()[0]!["code"])).toContain("print(1)");
     expect(String(c.runs()[0]!["requestId"]).length).toBeGreaterThan(0);
   });
@@ -131,7 +132,7 @@ describe.each(KINDS)("reader $name run cells", (kind) => {
     expect(c.sent).toContainEqual({ command: "cancelCell", requestId });
   });
 
-  it.each(["done", "error", "cancelled", "missing-python"] as const)(`12.5b drops the Cancel button in the ${kind.name} on a matching %s state`, async (state) => {
+  it.each(["done", "error", "cancelled", "missing"] as const)(`12.5b drops the Cancel button in the ${kind.name} on a matching %s state`, async (state) => {
     const { s, c } = await ready(kind, true);
     button(s.root, /run/i)!.click();
     await settle();
@@ -148,7 +149,7 @@ describe.each(KINDS)("reader $name run cells", (kind) => {
     const { s, c } = await ready(kind, true);
     button(s.root, /run/i)!.click();
     await settle();
-    s.showCellState(String(c.runs()[0]!["requestId"]), "missing-python");
+    s.showCellState(String(c.runs()[0]!["requestId"]), "missing");
     await settle();
     expect(s.root.textContent).toMatch(/python/i);
   });

@@ -1,0 +1,48 @@
+schema: plan/v1
+slug: cell-params
+title: Sliders that re-run a cell
+status: draft
+level: N3
+goal: "A code cell in Python, R or Mathematica declares parameters as Quarto-style option lines (`#| param: beta = slider(0.5, 0.999, 0.9)`); the editor draws a slider per parameter, moving it re-runs the cell in the note's live driver with the new values and shows the result while dragging, and releasing it writes the value and the result into the note. A Mathematica `Manipulate` gets the same sliders. A reader without the language sees the stored result of the last chosen values."
+decisions:
+  - id: D1
+    text: "Syntax, one line per parameter among the cell's leading `#|` lines, in every language: `#| param: <name> = slider(<min>, <max>, <value>[, step = <s>][, log])`, `#| param: <name> = select(<a>, <b>, …; <value>)` (numbers or quoted strings), `#| param: <name> = checkbox(<true|false>)`. Names match `^[A-Za-z][A-Za-z0-9_]*$`, at most 8 per cell. A malformed line is kept as text and draws nothing. The value is the last argument and is the only part LabShelf rewrites."
+    why: Quarto option syntax keeps the .qmd readable elsewhere; one rewritable value keeps hand edits safe.
+  - id: D2
+    text: "Values reach the driver as data, never as code: the request gains `params: {name: value}`; Python sets `scope[name]`, R `assign(name, value, envir = .GlobalEnv)`, Mathematica sets `Global`<name>` from the parsed JSON value. Names are validated at the helper boundary and again in each driver; each driver rejects its own reserved names (the R driver's helper functions move into a private environment)."
+    why: No injection from a note someone shared.
+  - id: D3
+    text: "Moving a slider runs a preview: debounced 150 ms, latest wins, at most one preview in flight per cell (a value that arrives while one runs replaces the queued value; nothing is cancelled, so the note's state survives). A preview result is shown under the cell and never written. Releasing (change event, pointer up, key up) writes the param line through the editor and runs once more as a normal run, which writes the output."
+    why: The driver has no soft cancel, and writing per tick would flood sync and history.
+  - id: D4
+    text: "The output block gains `params=\"<name>=<value>;…\"` when the cell has parameters. An output whose params differ from the cell's param lines shows as out of date, like a changed source hash; the source hash keeps ignoring `#|` lines."
+    why: The stored image always says which values made it.
+  - id: D5
+    text: "Mathematica: when a cell's last value is `Manipulate[body, specs…]`, the driver evaluates body with the request params (or each control's initial value) and returns the frame plus `controls: [{name, kind, min, max, step?, choices?, value}]`. When the cell has no param lines, the view draws those controls; the first release writes them as `#| param:` lines, after which the lines win. Animate and Dynamic stay errors."
+    why: Manipulate gets real sliders through the same mechanism.
+  - id: D6
+    text: "UI: a strip between the code and the output, visible when the cell is folded, one native `input type=range` (or select, checkbox) per parameter with the name as label, the value as text beside it, `aria-valuetext`, arrow-key steps, and a busy state on the strip while a preview runs. Without a runner the controls are disabled and the stored result stays."
+    why: Semantic controls, keyboard access and no colour-only state (documents/ui.md).
+  - id: D7
+    text: "Protocols: helper runCell gains `params` and cellResult `controls` (helper protocol +1); reader `runCell`, libraryUi `paper.runCell` and Spaces `space.runCell` gain `params` and `preview: boolean`, and a host→view `cellPreview {requestId, result}` carries preview results (each webview protocol +1). Preview runs use a 20 s timeout."
+    why: Previews need their result in the view without a file write.
+  - id: D8
+    text: "Out of scope: client-side interactive charts (Vega-Lite), precomputed frames, sliders in the terminal, sharing variables between cells of different languages."
+    why: Keeps the plan to option 2.
+acceptance:
+  - id: A1
+    check: "Param lines parse, round-trip byte for byte, and rewriting a value changes only that value; malformed lines draw nothing (tests)"
+  - id: A2
+    check: "A params run sets the values as data in Python, R and Mathematica, keeps the note's other variables, and rejects a reserved or non-identifier name (tests; real drivers when installed)"
+  - id: A3
+    check: "Previews write nothing; at most one is in flight per cell and the last value wins; release writes the param line and one output whose params attribute matches (tests)"
+  - id: A4
+    check: "A Mathematica Manipulate returns its controls and a frame at the requested values (test with the kernel)"
+  - id: A5
+    check: "In VS Code and in the browser, dragging a slider on a Python, an R and a Mathematica Manipulate cell updates the plot while dragging and keeps the chosen value after reopening the note (check by hand)"
+sessions:
+  - {id: "1", file: sessions/1.yaml, depends_on: [], owns: [documents/contracts/qmd-items.md, documents/contracts/helper.md, packages/core/src/qmd/item/, packages/core/src/qmd/compute/writeCellOutput.ts, packages/core/__tests__/qmd/item/, packages/core/__tests__/qmd/compute/writeCellOutput.test.ts]}
+  - {id: "2", file: sessions/2.yaml, depends_on: ["1"], owns: [packages/core/src/qmd/compute/cellRunner.ts, packages/core/src/qmd/compute/node/, packages/core/__tests__/qmd/compute/]}
+  - {id: "3", file: sessions/3.yaml, depends_on: ["2"], owns: [packages/core/src/helper/, packages/core/__tests__/helper/, packages/browser/src/helper/, packages/core/src/reader/protocol/, packages/core/src/reader/noteMessages.ts, packages/core/src/libraryUi/protocol/, packages/core/src/libraryUi/paperHandlers.ts, packages/core/src/spaces/spacesProtocol.ts, packages/core/src/spaces/serveSpaces.ts, packages/core/__tests__/reader/, packages/core/__tests__/libraryUi/, packages/core/__tests__/spaces/]}
+  - {id: "4", file: sessions/4.yaml, depends_on: ["3"], owns: [packages/core/src/qmd/dom/, packages/core/__tests__/qmd/dom/, packages/core/src/reader/dom/, packages/core/src/spaces/dom/, packages/core/src/libraryUi/dom/detailPane/paneState.ts, packages/browser/src/libraryUi/editorArea/projectNoteTab.ts]}
+  - {id: "5", file: sessions/5.yaml, depends_on: ["4"], owns: [documents/plans/cell-params/]}

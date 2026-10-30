@@ -47,7 +47,7 @@ describe("renderHighlightedHtml palette (B6)", () => {
   it("is what the reader paints its colour swatches with", () => {
     const readerCss = readFileSync(join(SRC, "reader/dom/styles/reader.css"), "utf8");
     for (const name of Object.keys(HIGHLIGHT_COLORS)) {
-      expect(readerCss).toMatch(new RegExp(`\\.rd-color-${name} \\{[^}]*background: var\\(--ls-hl-${name}\\); \\}`));
+      expect(readerCss).toMatch(new RegExp(`\\.rd-color-${name} \\{ (--rd-annotation-color: var\\(--ls-hl-${name}\\); )?background: var\\(--ls-hl-${name}\\); \\}`));
       expect(renderTokensCss()).toContain(`--ls-hl-${name}: ${HIGHLIGHT_COLORS[name as keyof typeof HIGHLIGHT_COLORS]};`);
     }
   });

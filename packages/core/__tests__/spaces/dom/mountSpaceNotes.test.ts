@@ -66,7 +66,8 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     button(t.root, /run/i)!.click();
     await settle();
     expect(t.runs()).toHaveLength(1);
-    expect(t.runs()[0]).toMatchObject({ type: "space.runCell", path: kind.path, itemId: "i1", label: "calc" });
+    expect(t.runs()[0]).toMatchObject({ type: "space.runCell", path: kind.path, itemId: "i1", label: "calc", language: "python" });
+    expect(t.runs()[0]).not.toHaveProperty("noteKey");
     expect(t.runs()[0]!["code"]).toContain("print(1)");
     expect(t.runs()[0]!["requestId"].length).toBeGreaterThan(0);
     t.body.dispose();
@@ -86,7 +87,7 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     t.body.dispose();
   });
 
-  it.each(["done", "error", "cancelled", "missing-python"])(`12.5b drops the Cancel button in ${kind.name} on a matching %s state`, async (state) => {
+  it.each(["done", "error", "cancelled", "missing"])(`12.5b drops the Cancel button in ${kind.name} on a matching %s state`, async (state) => {
     const t = await open(kind, true);
     button(t.root, /run/i)!.click();
     await settle();
@@ -104,7 +105,7 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     const t = await open(kind, true);
     button(t.root, /run/i)!.click();
     await settle();
-    t.receive({ type: "space.cellState", requestId: t.runs()[0]!["requestId"], state: "missing-python" });
+    t.receive({ type: "space.cellState", requestId: t.runs()[0]!["requestId"], state: "missing" });
     await settle();
     expect(t.root.textContent).toMatch(/python/i);
     t.body.dispose();

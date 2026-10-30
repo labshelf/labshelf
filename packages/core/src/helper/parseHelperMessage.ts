@@ -3,12 +3,13 @@
 
 import { formatError } from "../errors/index.js";
 import { isRecord } from "../guards/index.js";
+import { CELL_LANGUAGES } from "../qmd/compute/index.js";
 import { TEX_INSTALL_KINDS, type BuildProblemKind, type LocatedProblem } from "../latex/index.js";
 import { TEMPLATE_CATEGORIES } from "../templates/templateManifest/index.js";
 import { PUBLISH_CHECK_IDS } from "../templates/index.js";
 import { LATEX_ENGINES } from "../writing/project/index.js";
 import {
-  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
+  CELL_STATUSES, COMPILE_MODES, HELPER_BUILD_STATUSES, HELPER_HOSTS, MAX_CELL_CODE_BYTES, MAX_CELL_TIMEOUT_MS, MAX_EDIT_CHANGES, MAX_NOTE_KEY_LENGTH, MAX_PROJECT_FILES, PROGRESS_PHASES, PROTOCOL_VERSION, PYTHON_STATES, TEX_SOURCES,
   type ChangedPage, type HelperDirection, type HelperParseResult, type HelperRejection, type HelperRejectionKind,
   type TemplatePublishEvent, type TemplatePublishRequest, type TexToolchain, type TextChange, type ToHelperMessage, type ToPageMessage,
 } from "./helperMessages.js";
@@ -123,6 +124,12 @@ function readCellCode(body: Body, key: string): string {
   return code;
 }
 
+function readNoteKey(body: Body, key: string): string {
+  const value = readText(body, key);
+  if (value.length > MAX_NOTE_KEY_LENGTH) { throw new FieldError("invalid-field", `${key} is longer than ${MAX_NOTE_KEY_LENGTH} characters`); }
+  return value;
+}
+
 function readSha256(body: Body, key: string): string {
   const value = readString(body, key);
   if (!isSha256(value)) { throw new FieldError("invalid-field", `${key} is not a lowercase hex SHA-256`); }
@@ -229,8 +236,10 @@ const TO_HELPER_READERS: ToHelperReaders = {
   runCell: (body, envelope) => ({
     ...envelope, type: "runCell", code: readCellCode(body, "code"), cwd: readCellScope(body, "cwd"),
     timeoutMs: readNumber(body, "timeoutMs", (n) => Number.isInteger(n) && n >= 1 && n <= MAX_CELL_TIMEOUT_MS),
+    language: readChoice(body, "language", CELL_LANGUAGES), noteKey: readNoteKey(body, "noteKey"),
   }),
   cancelCell: (body, envelope) => ({ ...envelope, type: "cancelCell", requestId: readText(body, "requestId") }),
+  restartCell: (body, envelope) => ({ ...envelope, type: "restartCell", noteKey: readNoteKey(body, "noteKey"), language: readChoice(body, "language", CELL_LANGUAGES) }),
 };
 
 /** The validated message, or undefined when `type` is not one a page sends. */
@@ -309,7 +318,8 @@ const TO_PAGE_READERS: ToPageReaders = {
     pageCount: readNumber(body, "pageCount", isNonNegativeInteger), changed: readChangedPages(body),
   }),
   cellResult: (body, envelope) => ({
-    ...envelope, type: "cellResult", status: readChoice(body, "status", CELL_STATUSES), durationMs: readNumber(body, "durationMs", (n) => n >= 0),
+    ...envelope, type: "cellResult", status: readChoice(body, "status", CELL_STATUSES), language: readChoice(body, "language", CELL_LANGUAGES), durationMs: readNumber(body, "durationMs", (n) => n >= 0),
+    ...readOptionalField(body, "restarted", readBoolean),
     ...readOptionalField(body, "latex", readString), ...readOptionalField(body, "text", readString), ...readOptionalField(body, "error", readString),
   }),
   error: (body, envelope) => ({ ...envelope, type: "error", code: readText(body, "code"), message: readString(body, "message") }),

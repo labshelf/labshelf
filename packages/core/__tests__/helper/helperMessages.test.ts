@@ -1,7 +1,7 @@
 /** Verifies the installPython message, the python phase and ready.python at the parser, and that the bumped protocol version refuses the old one. */
 import { PROGRESS_PHASES, PROTOCOL_VERSION, parseHelperMessage, type ToHelperMessage, type ToPageMessage } from "../../src/helper/index";
 
-const OLD_PROTOCOL_VERSION = 6;
+const OLD_PROTOCOL_VERSION = 7;
 const env = (id: string) => ({ v: PROTOCOL_VERSION, id });
 const roundTrip = (message: object): unknown => JSON.parse(JSON.stringify(message));
 const reject = (raw: unknown, direction: "toHelper" | "toPage" = "toHelper") => {

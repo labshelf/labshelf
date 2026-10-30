@@ -14,7 +14,7 @@ import type { SpaceStore } from "./spaceStore.js";
 import { buildIcs, buildOverview } from "./spaceOverview.js";
 import { buildPapersTree, deriveCatalogRows, resolvePaper } from "./spaceViews.js";
 import { formatError } from "../errors/index.js";
-import { createCellRuns, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
+import { createCellRuns, type CellLanguage, type CellRuns, type RunCellPort } from "../qmd/compute/index.js";
 
 const LOAD_CATALOG = "Load Spaces";
 const LOAD_SPACE = "Load Space";
@@ -56,6 +56,7 @@ const ACTION_LABELS: Record<Exclude<SpacesToHost["type"], "ready">, string> = {
   listPapers: "List papers",
   listProjects: "List projects",
   "space.runCell": "Run cell",
+  "space.restartCell": "Restart cell process",
   "space.cancelCell": "Cancel cell",
   "space.installPython": "Install Python",
 };
@@ -99,12 +100,19 @@ export interface ServeSpacesOptions {
   readonly author?: string;
   /** Runs a note's code cell; absent means the host has no runner and the notes show no Run button. */
   readonly runCell?: RunCellPort;
+  /** Restarts one note's process for a language; absent where the host has no runner. */
+  readonly restartCell?: (noteKey: string, language: CellLanguage) => Promise<void>;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   readonly installPython?: () => void;
 }
 
 type OpenView = Extract<SpacesToHost, { type: "ready" }>;
-type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.cancelCell" | "space.installPython" }>;
+type CellMessage = Extract<SpacesToHost, { type: "space.runCell" | "space.restartCell" | "space.cancelCell" | "space.installPython" }>;
+const CELL_TYPES: ReadonlySet<SpacesToHost["type"]> = new Set(["space.runCell", "space.restartCell", "space.cancelCell", "space.installPython"]);
+const isCellMessage = (message: SpacesToHost): message is CellMessage => CELL_TYPES.has(message.type);
+
+/** The D2 note key: the cells of one Space note or thread share a process per language. */
+const spaceNoteKey = (spaceId: string, path: string): string => `space:${spaceId}:${path}`;
 type Action = Exclude<SpacesToHost, { type: "ready" } | CellMessage>;
 type Post = (message: HostToSpaces) => void;
 type NotesAndThreads = Pick<SpaceStore, "notes" | "discussions">;
@@ -167,7 +175,8 @@ function runSpaceCell(
   { store, runCell, logger }: ServeSpacesOptions, runs: CellRuns, post: Post, spaceId: string, m: Extract<CellMessage, { type: "space.runCell" }>,
 ): Promise<void> {
   const thread = isThreadPath(m.path);
-  return runs.run(runCell, m, {
+  const { label, code, language, requestId } = m;
+  return runs.run(runCell, { label, code, language, requestId, noteKey: spaceNoteKey(spaceId, m.path) }, {
     read: async () => (await (thread ? store.discussions : store.notes).read(spaceId, m.path)).find((item) => item.id === m.itemId)?.body,
     write: (body) => thread ? store.discussions.editMessage(spaceId, m.path, m.itemId, body) : store.notes.editItem(spaceId, m.path, m.itemId, body),
     push: async () => { await postQmd(store, post, spaceId, m.path); await postListOf(store, post, spaceId, m.path); },
@@ -238,6 +247,12 @@ function answerCell(options: ServeSpacesOptions, runs: CellRuns, post: Post, ope
   switch (message.type) {
     case "space.cancelCell": runs.cancel(message.requestId); return;
     case "space.installPython": options.installPython?.(); return;
+    case "space.restartCell": {
+      if (open?.view !== "space") { fail(ACTION_LABELS[message.type], new Error("No Space is open."), failureContext(message)); return; }
+      const restart = options.restartCell?.(spaceNoteKey(open.id, message.path), message.language);
+      restart?.catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
+      return;
+    }
     case "space.runCell": {
       const label = ACTION_LABELS[message.type];
       if (open?.view !== "space") {
@@ -294,7 +309,7 @@ export function serveSpaces(endpoint: SpacesEndpoint, options: ServeSpacesOption
       return;
     }
     if (message.type === "ready") { open = message; schedule(); return; }
-    if (message.type === "space.runCell" || message.type === "space.cancelCell" || message.type === "space.installPython") { answerCell(options, runs, post, open, message, fail); return; }
+    if (isCellMessage(message)) { answerCell(options, runs, post, open, message, fail); return; }
     runAction(options, post, message).catch((error: unknown) => fail(ACTION_LABELS[message.type], error, failureContext(message)));
   });
   const stops = [stopMessages, store.onChange(schedule), port.onLibraryChange(schedule), port.onProjectsChange(schedule)];

@@ -2,8 +2,9 @@
 import type { Mark, Node as ProseNode } from "prosemirror-model";
 import { TextSelection } from "prosemirror-state";
 import type { EditorView, MarkViewConstructor, NodeView, NodeViewConstructor } from "prosemirror-view";
-import { renderElement } from "../../ui/dom/index.js";
+import { renderElement, showMenu } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
+import { CELL_LANGUAGES, cellLanguageLabel, toCellLanguage, type CellLanguage } from "../compute/index.js";
 
 /** A node view for `citation`: its `[@key]` keys as one chip; the keys are not looked up. */
 export function createCitationView(): NodeViewConstructor {
@@ -69,16 +70,32 @@ export function setViewNodeAttribute(view: EditorView, getPos: () => number | un
   return true;
 }
 
+/** The cell language a fence language word names: Python for a bare fence (null) or `py`, otherwise what `toCellLanguage` says; undefined for a word that is not a cell language. */
+export function fenceCellLanguage(word: string | null | undefined): CellLanguage | undefined {
+  if (word === null || word === undefined) return "python";
+  return word.toLowerCase() === "py" ? "python" : toCellLanguage(word);
+}
+
 /** Where the caret lands when a node's own editor opens: at the start of its source or at its end. */
 export type EditSide = "start" | "end";
 
 const nodeEditors = new WeakMap<Node, (side: EditSide) => void>();
 
-/** What a code cell view offers the outputs under it: its language, running it, and folding its code. */
+/** What a code cell view offers the outputs under it: its language, switching and restarting it, running it, and folding its code. */
 export interface CellControls {
+  /** The name the cell's language is shown by: a cell language's label, or the fence language as written. */
   language(): string;
-  readonly canRun: boolean;
+  /** The cell's language when it is one the editor runs; undefined for any other fence language. */
+  cellLanguage(): CellLanguage | undefined;
+  /** Rewrites the cell's fence for `language`. */
+  setLanguage(language: CellLanguage): void;
+  /** Whether the cell can run: the host runs cells and the cell's language is a cell language. */
+  canRun(): boolean;
   run(): void;
+  /** Whether the host restarts a language's session; Restart shows only then. */
+  canRestart(): boolean;
+  /** Restarts the session of the cell's language. */
+  restart(): void;
   /** Whether the cell has a result, whose outputs then carry the cell's line. */
   hasResult(): boolean;
   /** Whether the cell's code is folded away behind its result. */
@@ -94,6 +111,32 @@ export interface CellControls {
 }
 
 const cellControls = new WeakMap<Node, CellControls>();
+
+/**
+ * The cell's language as a picker button opening a radio menu of the cell languages, or the fence language as plain text
+ * when it is not one; the picker is disabled while the note is read-only.
+ */
+export function renderLanguagePicker(controls: CellControls, className: string, editable: boolean): HTMLElement {
+  const current = controls.cellLanguage();
+  const name = controls.language();
+  if (!current) return renderElement("span", { class: className }, name);
+  const picker = renderElement("button", { class: `${className} qmd-cell-lang-picker`, type: "button", "aria-haspopup": "menu", "aria-label": `Language: ${name}`, title: "Change the cell's language", disabled: editable ? undefined : true },
+    name, renderElement("span", { class: "qmd-cell-lang-caret", html: renderIcon("chevron-down"), "aria-hidden": "true" }));
+  picker.addEventListener("click", () => {
+    showMenu(picker, CELL_LANGUAGES.map((language) => ({ label: cellLanguageLabel(language), radio: true, checked: language === controls.cellLanguage(), onSelect: () => controls.setLanguage(language) })));
+  });
+  return picker;
+}
+
+/** Restart <Language>, which drops the session of the cell's language; null when the host restarts nothing or the language is not a cell language. */
+export function renderRestartButton(controls: CellControls, className: string): HTMLButtonElement | null {
+  const language = controls.cellLanguage();
+  if (!controls.canRestart() || !language) return null;
+  const label = `Restart ${cellLanguageLabel(language)}`;
+  const button = renderElement("button", { class: className, type: "button", "aria-label": label, title: `${label}: earlier definitions are gone` }, "Restart");
+  button.addEventListener("click", () => controls.restart());
+  return button;
+}
 
 /** Lets outputs and navigation reach the code cell view whose outer element is `dom`. */
 export function registerCellControls(dom: HTMLElement, controls: CellControls): void {

@@ -19,6 +19,7 @@ import {
   parseUiMessage,
   removePaperNote,
   removePapers,
+  restartPaperCell,
   runPaperCell,
   sendPaperDetails,
   setPaperTags,
@@ -259,6 +260,7 @@ function libraryUiHost(ctx: ListHostContext): LibraryUiHost {
     editTags: (ids, add, remove) => service.editTags([...ids], add, remove),
     ...(ctx.deps.paperNotes ? { notes: ctx.deps.paperNotes } : {}),
     ...(ctx.deps.runCell ? { runCell: ctx.deps.runCell } : {}),
+    ...(ctx.deps.restartCell ? { restartCell: ctx.deps.restartCell } : {}),
     ...(ctx.deps.installPython ? { installPython: ctx.deps.installPython } : {}),
     trashPapers: (papers) => service.trashPapers(papers.map((p) => p.id)),
     movePapers: (ids, target) => service.movePapers([...ids], target),
@@ -334,6 +336,7 @@ async function onPaperMessage(ctx: ListHostContext, m: UiToHost): Promise<boolea
     case 'paper.removeNote': await requirePaper(ctx, m.id); await removePaperNote(libraryUiHost(ctx), m.id, m.itemId); return true;
     case 'paper.runCell': await runPaperCell(libraryUiHost(ctx), m); return true;
     case 'paper.cancelCell': cancelPaperCell(m.requestId); return true;
+    case 'paper.restartCell': await restartPaperCell(libraryUiHost(ctx), m); return true;
     case 'paper.installPython': installPaperPython(libraryUiHost(ctx)); return true;
     case 'paper.remove': await removePapers(libraryUiHost(ctx), m.ids); return true;
     case 'project.openSource': await openProjectSource(ctx, m.project, m.file, m.line); return true;

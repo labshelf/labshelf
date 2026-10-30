@@ -2,7 +2,7 @@
 import { formatError } from "../errors/index.js";
 import type { ILogger } from "../ports/index.js";
 import { PROTOCOL_VERSION, type TemplatePublishEvent, type TemplatePublishRequest, type ToPageMessage } from "./helperMessages.js";
-import type { CellResult } from "../qmd/compute/index.js";
+import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
 import type { HelperCellRequest, HelperCompileRequest, HelperChange, HelperState, ILatexHelper, OnHelperProgress } from "./helperPaths.js";
 import {
   deriveHelperStatus, runHandshake, type HelperConnection, type HelperPortFactory, type HelperSocketOpener, type RequestBody,
@@ -97,8 +97,11 @@ function compileBody({ projectId, main, mode, engine, editedFile, editedLine, ha
   };
 }
 
-function cellResultOf({ status, latex, text, error, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
-  return { status, durationMs, ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}) };
+function cellResultOf({ status, language, restarted, latex, text, error, durationMs }: Extract<ToPageMessage, { type: "cellResult" }>): CellResult {
+  return {
+    status, language, durationMs, ...(restarted !== undefined ? { restarted } : {}),
+    ...(latex !== undefined ? { latex } : {}), ...(text !== undefined ? { text } : {}), ...(error !== undefined ? { error } : {}),
+  };
 }
 
 class NativeLatexHelper implements ILatexHelper {
@@ -196,6 +199,12 @@ class NativeLatexHelper implements ILatexHelper {
       } finally {
         signal.removeEventListener("abort", cancel);
       }
+    });
+  }
+
+  restartCell(noteKey: string, language: CellLanguage): Promise<void> {
+    return this.logged("restartCell", { language }, async () => {
+      (await this.session.readySocket()).post({ type: "restartCell", noteKey, language });
     });
   }
 

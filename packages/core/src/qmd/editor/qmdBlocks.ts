@@ -281,7 +281,13 @@ function longestClosingRun(lines: string, fence: string): number {
   return longest;
 }
 
-/** Returns the cell's lines joined and ended with "\n". */
+/** The language a fence's info string names, as `readCodeCell` reads it. */
+const infoLanguage = (info: string): string | null => {
+  const lang = LANG.exec(info);
+  return lang?.[1] ?? lang?.[2] ?? null;
+};
+
+/** Returns the cell's lines joined and ended with "\n"; the stored info is kept only while it still names the cell's language, so a language switch rewrites the fence. */
 function serializeCodeCell(node: Node): string {
   const { lang, options, code, fence, info, close } = node.attrs as {
     lang: string | null; options: string; code: string; fence: string; info: string | null; close: string | null;
@@ -292,7 +298,8 @@ function serializeCodeCell(node: Node): string {
     const longer = (fence[0] ?? "`").repeat(run + 1);
     return `${longer}${langInfo}\n${options}${code}${longer}\n`;
   }
-  return `${fence}${info ?? langInfo}\n${options}${code}${close ?? fence}\n`;
+  const keptInfo = info !== null && infoLanguage(info) === lang ? info : langInfo;
+  return `${fence}${keptInfo}\n${options}${code}${close ?? fence}\n`;
 }
 
 const VERBATIM: Record<string, string> = { output: "raw", raw_block: "text" };

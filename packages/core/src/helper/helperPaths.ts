@@ -1,7 +1,7 @@
 /** Checks that a project path or project id is safe inside the helper's data folder, frames one helper socket message, and declares the port an app implements to build LaTeX through LabShelf Helper. */
 // CONTRACT: documents/contracts/helper.md#messages
 
-import type { CellResult } from "../qmd/compute/index.js";
+import type { CellLanguage, CellResult } from "../qmd/compute/index.js";
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import {
@@ -121,8 +121,8 @@ export interface HelperCompileResult {
 export type HelperChange = { text: string } | { changes: TextChange[] };
 
 
-/** `cwd` names a project id or `paper:<paperId>`; the helper resolves it to a folder and refuses one it does not know. */
-export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number }
+/** `cwd` names a project id or `paper:<paperId>`; the helper resolves it to a folder and refuses one it does not know. `noteKey` names the note whose `language` session runs the code. */
+export interface HelperCellRequest { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string }
 
 export interface ILatexHelper {
   publishTemplate(projectId: string, request: TemplatePublishRequest, onEvent: (event: TemplatePublishEvent) => void, renderThumbnail: (pdf: Uint8Array) => Promise<Uint8Array>): Promise<void>;
@@ -143,6 +143,8 @@ export interface ILatexHelper {
   installTex(kind: TexInstallKind, onProgress: OnHelperProgress): Promise<void>;
   installAllPackages(onProgress: OnHelperProgress): Promise<void>;
   installPython(onProgress: OnHelperProgress): Promise<void>;
-  /** Runs one code cell with the helper's managed Python; aborting `signal` cancels the run, which then settles as `cancelled`. */
+  /** Runs one code cell in the note's session for its language; aborting `signal` cancels the run, which then settles as `cancelled`. */
   runCell(request: HelperCellRequest, signal: AbortSignal): Promise<CellResult>;
+  /** Drops the `language` session the note `noteKey` holds in the helper; the helper does not wait for a run in flight and sends no reply. */
+  restartCell(noteKey: string, language: CellLanguage): Promise<void>;
 }

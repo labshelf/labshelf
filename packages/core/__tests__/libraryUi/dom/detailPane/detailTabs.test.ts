@@ -50,7 +50,8 @@ describe("paper notes run cells", () => {
     button(t.detail(), /run/i)!.click();
     await settle();
     expect(runs(t)).toHaveLength(1);
-    expect(runs(t)[0]).toMatchObject({ type: "paper.runCell", id: "a", itemId: "n1", label: "calc" });
+    expect(runs(t)[0]).toMatchObject({ type: "paper.runCell", id: "a", itemId: "n1", label: "calc", language: "python" });
+    expect(runs(t)[0]).not.toHaveProperty("noteKey");
     expect(runs(t)[0]!["code"]).toContain("print(1)");
     expect(runs(t)[0]!["requestId"].length).toBeGreaterThan(0);
   });
@@ -68,7 +69,7 @@ describe("paper notes run cells", () => {
     expect(t.sent).toContainEqual({ type: "paper.cancelCell", requestId });
   });
 
-  it.each(["done", "error", "cancelled", "missing-python"])("12.5b drops the Cancel button on a matching %s state", async (state) => {
+  it.each(["done", "error", "cancelled", "missing"])("12.5b drops the Cancel button on a matching %s state", async (state) => {
     const t = await open(true);
     button(t.detail(), /run/i)!.click();
     await settle();
@@ -84,7 +85,7 @@ describe("paper notes run cells", () => {
     const t = await open(true);
     button(t.detail(), /run/i)!.click();
     await settle();
-    t.host.post({ type: "paper.cellState", requestId: runs(t)[0]!["requestId"], state: "missing-python" } as never);
+    t.host.post({ type: "paper.cellState", requestId: runs(t)[0]!["requestId"], state: "missing" } as never);
     await settle();
     expect(t.detail().textContent).toMatch(/python/i);
   });
