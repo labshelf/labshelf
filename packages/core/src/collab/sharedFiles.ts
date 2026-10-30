@@ -7,7 +7,8 @@ import { extractArxivIdentifierFromDoi, extractArxivIdentifierFromUrl, extractDo
 import { isMergeableTextFile } from "../library/conflicts/index.js";
 import { parseBibEntries, readBibField, type BibEntry } from "../writing/citations/index.js";
 import { deriveBuiltPdfPaths, isBuildOrToolPath, PROJECT_FILE } from "../writing/project/index.js";
-import type { ShareFileEntry } from "./shareIndexDoc.js";
+import type { ShareSession } from "./docSync.js";
+import { readShareIndexDocFiles, type ShareFileEntry } from "./shareIndexDoc.js";
 
 // The rest of .labshelf/ is device state or, for comments.qmd, written from the index doc's comments map.
 export const SHARED_TOOL_FILES: readonly string[] = [".labshelf/checklist.json"];
@@ -57,6 +58,12 @@ function isValidUtf8(bytes: Uint8Array): boolean {
 
 /** The Y.Text that holds a shared text file's content. */
 export const readFileText = (doc: Doc): Text => doc.getText("content");
+
+// INVARIANT: only a file the index lists as text is opened, so a path the share does not list never creates a doc.
+/** @returns the live text of a listed text file, or undefined when the share lists no text file at that path */
+export function openListedText(session: Pick<ShareSession, "index" | "openDoc">, file: string): Text | undefined {
+  return readShareIndexDocFiles(session.index).get(file)?.kind === "text" ? readFileText(session.openDoc(file)) : undefined;
+}
 
 const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
 const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff;

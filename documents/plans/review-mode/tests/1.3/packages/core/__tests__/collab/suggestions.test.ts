@@ -728,7 +728,7 @@ describe("shared project suggestions", () => {
     const start = TEXT.indexOf("a strong baseline");
     const anchor = suggestions.anchor("main.tex", "insert", { start, end: start + 17 });
     expect(anchor.quote).toBe("a strong baseline");
-    expect(anchor.prefix).toBe(TEXT.slice(start - 32, start));
+    expect(anchor.prefix).toBe(TEXT.slice(Math.max(0, start - 32), start));
     expect(anchor.suffix).toBe(TEXT.slice(start + 17, start + 17 + 32));
     expect(typeof anchor.start).toBe("string");
     expect(typeof anchor.end).toBe("string");
@@ -741,7 +741,7 @@ describe("shared project suggestions", () => {
     const at = TEXT.indexOf("compare");
     const anchor = suggestions.anchor("main.tex", "delete", { start: at, end: at });
     expect(anchor.quote).toBe("");
-    expect(anchor.prefix).toBe(TEXT.slice(at - 32, at));
+    expect(anchor.prefix).toBe(TEXT.slice(Math.max(0, at - 32), at));
     expect(anchor.suffix).toBe(TEXT.slice(at, at + 32));
     expect(typeof anchor.start).toBe("string");
     expect(typeof anchor.end).toBe("string");
