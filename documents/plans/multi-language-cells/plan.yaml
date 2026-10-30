@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: multi-language-cells
 title: Python, Mathematica and R cells in notes
-status: draft
+status: approved
 level: N3
 goal: A note's code cells run in Python, Mathematica or R, mixed in the same note. Each language keeps its own state per note in a persistent driver process that LabShelf starts on the first run, closes when idle and restarts on request. Python stays the managed default; Mathematica (wolframscript) and R (Rscript) are used when the user has them installed. No Jupyter.
 decisions:
