@@ -29,6 +29,7 @@ import {
   FileLogSink,
   createNodeCellRunner,
   createSharedPythonProvider,
+  locateTool,
   type PythonProvider,
 } from "@labshelf/core/node";
 import {
@@ -112,8 +113,21 @@ function createCellHosts(context: vscode.ExtensionContext, logger: ILogger): Cel
   // The bundle copies the driver beside extension.js.
   const out = path.join(context.extensionPath, "out");
   const drivers = { python: path.join(out, "cellDriver.py"), mathematica: path.join(out, "cellDriver.wl"), r: path.join(out, "cellDriver.R") };
-  const runner = createNodeCellRunner({ python, drivers, logger });
-  return { runCell: createRunCellPort(runner), installPython: createInstallPython(python, logger) };
+  const runner = createNodeCellRunner({ python, drivers, logger, locate: locateCellTool });
+  // Deactivation stops every cell process the runner started.
+  context.subscriptions.push({ dispose: () => runner.dispose() });
+  return {
+    runCell: createRunCellPort(runner),
+    restartCell: (noteKey, language) => runner.restart(noteKey, language),
+    installPython: createInstallPython(python, logger),
+  };
+}
+
+/** Finds wolframscript or Rscript; the path setting is read at each launch, so a change applies to the next process, and an empty one searches. */
+function locateCellTool(language: "mathematica" | "r"): Promise<string | undefined> {
+  const [tool, setting] = language === "mathematica" ? ["wolframscript", "wolframscriptPath"] as const : ["Rscript", "rscriptPath"] as const;
+  const override = vscode.workspace.getConfiguration("labshelf.cells").get<string>(setting)?.trim();
+  return locateTool(tool, override ? { override } : {});
 }
 
 /** @returns the port the core hosts run cells through: the runner with the default timeout, in the temp folder. */

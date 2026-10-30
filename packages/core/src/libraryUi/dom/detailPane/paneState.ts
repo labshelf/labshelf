@@ -132,7 +132,7 @@ function createNoteRuns(ctx: UiContext): NoteRuns {
       if (ctx.readOnly || ctx.store.get().details[paper]?.canRunCells !== true) return undefined;
       listen();
       return group.attach(`${paper}\n${itemId}`, editorEl, (label, code, requestId) =>
-        ctx.transport.post({ type: "paper.runCell", id: paper, itemId, label, code, requestId }));
+        ctx.transport.post({ type: "paper.runCell", id: paper, itemId, label, code, language: "python", requestId }));
     },
     dispose() { off?.(); off = null; group.clear(); },
   };

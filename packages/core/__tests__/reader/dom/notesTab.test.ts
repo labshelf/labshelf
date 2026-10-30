@@ -113,7 +113,8 @@ describe.each(KINDS)("reader $name run cells", (kind) => {
     button(s.root, /run/i)!.click();
     await settle();
     expect(c.runs()).toHaveLength(1);
-    expect(c.runs()[0]).toMatchObject({ command: "runCell", itemId: "n1", label: "calc" });
+    expect(c.runs()[0]).toMatchObject({ command: "runCell", itemId: "n1", label: "calc", language: "python" });
+    expect(c.runs()[0]).not.toHaveProperty("noteKey");
     expect(String(c.runs()[0]!["code"])).toContain("print(1)");
     expect(String(c.runs()[0]!["requestId"]).length).toBeGreaterThan(0);
   });

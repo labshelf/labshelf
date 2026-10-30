@@ -1,16 +1,18 @@
 // Declares what the desktop and the web composition roots hand the shared activation: adapters and the flows that differ.
 import type * as vscode from "vscode";
 
-import type { ILogger, RunCellPort } from "@labshelf/core";
+import type { ILogger, LibraryUiHost, RunCellPort } from "@labshelf/core";
 
 import type { WritingProjects } from "../writing/index.js";
 import type { RegisterPlatformWriting } from "../writing/index.js";
 import type { LibraryRootController } from "./libraryRootController.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
-/** The ports the note hosts run cells and install Python through. */
+/** The ports the note hosts run cells, restart a note's process and install Python through. */
 export interface CellHosts {
   runCell: RunCellPort;
+  /** Stops the process of `language` that runs the cells of `noteKey`. */
+  restartCell: NonNullable<LibraryUiHost["restartCell"]>;
   installPython: () => void;
 }
 

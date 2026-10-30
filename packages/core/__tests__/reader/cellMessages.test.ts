@@ -13,9 +13,16 @@ function setup(runCell?: (request: CellRequest, signal: AbortSignal) => Promise<
   return { ...base, files };
 }
 
-const runMessage = { command: "runCell", itemId: ID, label: "calc", code: "print(1)", requestId: "r1" } as const;
+const runMessage = { command: "runCell", itemId: ID, label: "calc", code: "print(1)", language: "python", requestId: "r1" } as const;
 
 describe("reader runCell", () => {
+  it("passes the code, the language and the paper's note key to the port", async () => {
+    const requests: CellRequest[] = [];
+    const { host } = setup(async (request) => { requests.push(request); return { status: "ok", language: "python", text: "1", durationMs: 1 }; });
+    await host.handle(runMessage);
+    expect(requests).toEqual([{ code: "print(1)", language: "python", noteKey: "paper:p1" }]);
+  });
+
   it("posts running, writes the output, pushes updateNotes, then posts cellState done", async () => {
     const { host, posted, files } = setup(async () => ({ status: "ok", language: "python", text: "1", durationMs: 1 }));
     await host.handle(runMessage);

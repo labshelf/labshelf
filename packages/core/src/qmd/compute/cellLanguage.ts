@@ -14,6 +14,11 @@ export function toCellLanguage(lang: string | null | undefined): CellLanguage | 
   return Object.hasOwn(ALIASES, key) ? ALIASES[key] : undefined;
 }
 
+/** @returns whether `value` is one of CELL_LANGUAGES exactly (no aliases, case-sensitive). */
+export function isCellLanguage(value: unknown): value is CellLanguage {
+  return typeof value === "string" && (CELL_LANGUAGES as readonly string[]).includes(value);
+}
+
 /** @returns the name a view shows for `language`. */
 export function cellLanguageLabel(language: CellLanguage): string {
   return LABELS[language];

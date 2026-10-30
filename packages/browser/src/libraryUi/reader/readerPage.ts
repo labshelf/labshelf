@@ -108,6 +108,7 @@ function createHostWithChannel(
     logger,
     notes: new PaperNotesStore(createPaperNotesPort(fs), { logger }),
     runCell: getBrowserCellPorts(logger).runCell,
+    restartCell: getBrowserCellPorts(logger).restartCell,
     installPython: getBrowserCellPorts(logger).installPython,
     sidecarChanged: (change) => sendSidecarChange(paper.id, change),
     ...(preview ? { preview } : { themes: new ReaderThemeStore(createReaderThemesPort(fs)) }),

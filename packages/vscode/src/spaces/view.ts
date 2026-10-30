@@ -73,8 +73,8 @@ async function saveFile(name: string, text: string, logger: ILogger): Promise<vo
   }
 }
 
-/** Runs a note's code cell and installs the Python it needs; Spaces show Run only when present. */
-export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "installPython">;
+/** Runs a note's code cell, restarts a note's process and installs the Python it needs; Spaces show Run only when present. */
+export type SpacesCellHosts = Pick<ServeSpacesOptions, "runCell" | "restartCell" | "installPython">;
 
 export interface ActiveSpaces extends SpacesCellHosts {
   store: SpaceStore;
@@ -134,8 +134,11 @@ export class SpacesService implements vscode.Disposable {
     disposeAll(this.rootSubscriptions);
     const store = new SpaceStore({ root: root.fsPath, fs: services.fileSystem, paths: this.options.paths, logger: services.logger });
     const port = createSpacesHostPort({ ...this.options, services, logger: services.logger });
-    const { runCell, installPython } = this.options.cells ?? {};
-    this.active = { store, port, logger: services.logger, ...(runCell ? { runCell } : {}), ...(installPython ? { installPython } : {}) };
+    const { runCell, restartCell, installPython } = this.options.cells ?? {};
+    this.active = {
+      store, port, logger: services.logger,
+      ...(runCell ? { runCell } : {}), ...(restartCell ? { restartCell } : {}), ...(installPython ? { installPython } : {}),
+    };
     const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(root, 'spaces/**'));
     const reload = (): void => {
       void store.reload().catch((error: unknown) => {

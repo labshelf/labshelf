@@ -29,6 +29,6 @@ export class ReaderCellRuns {
   /** The `onRunCell` option of an editor mounted in `root` for item `itemId`, or none while the host cannot run cells. */
   option(itemId: string, root: HTMLElement): { onRunCell?(label: string, code: string): void } {
     if (!this.canRun) { return {}; }
-    return { onRunCell: this.runs.attach(itemId, root, (label, code, requestId) => this.host.post({ command: "runCell", itemId, label, code, requestId })) };
+    return { onRunCell: this.runs.attach(itemId, root, (label, code, requestId) => this.host.post({ command: "runCell", itemId, label, code, language: "python", requestId })) };
   }
 }

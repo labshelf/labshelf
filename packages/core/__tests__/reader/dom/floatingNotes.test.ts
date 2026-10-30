@@ -140,7 +140,7 @@ it("runs a Python cell from the floating editor when the host can run cells", ()
   expect(document.querySelector(".rd-floating-note .qmd-cell-run")).toBeNull();
   floating.setCanRunCells(true);
   document.querySelector<HTMLButtonElement>('.rd-floating-note [aria-label="Run cell"]')!.click();
-  expect(post).toHaveBeenCalledWith(expect.objectContaining({ command: "runCell", itemId: "n1", label: "one", code: "print(1)\n" }));
+  expect(post).toHaveBeenCalledWith(expect.objectContaining({ command: "runCell", itemId: "n1", label: "one", code: "print(1)\n", language: "python" }));
 });
 
 it("shows an output the host writes while the caret is inside the editor", () => {

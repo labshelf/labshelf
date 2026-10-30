@@ -2,7 +2,7 @@
 import type { ILatexHelper } from "@labshelf/core/helper";
 import { createHelperCellRunner } from "../../src/helper/cellPorts";
 
-interface RunRequest { code: string; cwd: string; timeoutMs: number }
+interface RunRequest { code: string; language: string; noteKey: string; cwd: string; timeoutMs: number }
 interface RunResult { status: string; latex?: string; text?: string; error?: string; durationMs: number }
 
 interface FakeRun { request: RunRequest; signal: AbortSignal; resolve(result: RunResult): void; reject(error: unknown): void }
@@ -26,7 +26,7 @@ describe("createHelperCellRunner", () => {
     const runner = createHelperCellRunner(helper);
     const pending = runner.run(req("print(1 + 1)\n"), OPTS(new AbortController().signal));
     expect(runs).toHaveLength(1);
-    expect(runs[0]!.request).toEqual({ code: "print(1 + 1)\n", cwd: "project-1", timeoutMs: 60_000 });
+    expect(runs[0]!.request).toEqual({ code: "print(1 + 1)\n", language: "python", noteKey: "note-1", cwd: "project-1", timeoutMs: 60_000 });
     runs[0]!.resolve({ status: "ok", latex: "2", durationMs: 12 });
     await expect(pending).resolves.toEqual({ status: "ok", latex: "2", durationMs: 12 });
   });

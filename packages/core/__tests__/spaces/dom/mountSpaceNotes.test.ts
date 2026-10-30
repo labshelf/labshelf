@@ -66,7 +66,8 @@ describe.each(KINDS)("Space $name run cells", (kind) => {
     button(t.root, /run/i)!.click();
     await settle();
     expect(t.runs()).toHaveLength(1);
-    expect(t.runs()[0]).toMatchObject({ type: "space.runCell", path: kind.path, itemId: "i1", label: "calc" });
+    expect(t.runs()[0]).toMatchObject({ type: "space.runCell", path: kind.path, itemId: "i1", label: "calc", language: "python" });
+    expect(t.runs()[0]).not.toHaveProperty("noteKey");
     expect(t.runs()[0]!["code"]).toContain("print(1)");
     expect(t.runs()[0]!["requestId"].length).toBeGreaterThan(0);
     t.body.dispose();

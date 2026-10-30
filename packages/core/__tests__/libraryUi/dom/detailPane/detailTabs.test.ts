@@ -50,7 +50,8 @@ describe("paper notes run cells", () => {
     button(t.detail(), /run/i)!.click();
     await settle();
     expect(runs(t)).toHaveLength(1);
-    expect(runs(t)[0]).toMatchObject({ type: "paper.runCell", id: "a", itemId: "n1", label: "calc" });
+    expect(runs(t)[0]).toMatchObject({ type: "paper.runCell", id: "a", itemId: "n1", label: "calc", language: "python" });
+    expect(runs(t)[0]).not.toHaveProperty("noteKey");
     expect(runs(t)[0]!["code"]).toContain("print(1)");
     expect(runs(t)[0]!["requestId"].length).toBeGreaterThan(0);
   });

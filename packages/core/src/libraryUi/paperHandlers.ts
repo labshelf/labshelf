@@ -1,6 +1,6 @@
 // Answers the library UI's paper changes shared by every host (tags, note, move, remove, the detail pane) over the LibraryUiHost port each app builds.
 import type { PaperRecord } from "../model/index.js";
-import { createCellRuns, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
+import { createCellRuns, type CellLanguage, type PaperNotesStore, type RunCellPort } from "../qmd/index.js";
 import type { HostToUi, PaperDetails, PaperNoteView } from "./protocol/index.js";
 import { deriveCleanTags, formatKeptFieldNotice, moveNotice, removeNotice, titleResolver, type BatchError } from "./copy.js";
 
@@ -23,12 +23,17 @@ export interface LibraryUiHost {
   details(paper: PaperRecord): Promise<PaperDetails>;
   /** Runs a note's code cell; absent means the host has no runner and the notes show no Run button. */
   readonly runCell?: RunCellPort;
+  /** Restarts one note's process for a language; absent where the host has no runner. */
+  readonly restartCell?: (noteKey: string, language: CellLanguage) => Promise<void>;
   /** Installs the Python that cells run with, as the missing-python prompt asks. */
   installPython?(): void;
 }
 
 /** Request ids are made by each view, so one registry serves every library UI host. */
 const paperRuns = createCellRuns();
+
+/** The D2 note key: the cells of one paper's notes share a process per language. */
+const paperNoteKey = (id: string): string => `paper:${id}`;
 
 export async function setPaperTags(host: LibraryUiHost, ids: readonly string[], add: readonly string[], remove: readonly string[]): Promise<void> {
   const { failed } = await host.editTags(ids, deriveCleanTags(add), deriveCleanTags(remove));
@@ -85,10 +90,10 @@ export async function sendPaperDetails(host: LibraryUiHost, id: string): Promise
 }
 
 /** Runs a note's cell, stores its output with the note, resends the details, then answers `paper.cellState`. */
-export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemId: string; label: string; code: string; requestId: string }): Promise<void> {
-  const { id, itemId, requestId } = msg;
+export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemId: string; label: string; code: string; language: CellLanguage; requestId: string }): Promise<void> {
+  const { id, itemId, label, code, language, requestId } = msg;
   const notes = host.notes;
-  await paperRuns.run(notes ? host.runCell : undefined, { ...msg, language: "python", noteKey: id }, {
+  await paperRuns.run(notes ? host.runCell : undefined, { label, code, language, requestId, noteKey: paperNoteKey(id) }, {
     read: async () => {
       const item = notes ? (await notes.read(id)).segments.find((s) => s.kind === "item" && s.id === itemId) : undefined;
       return item?.kind === "item" ? item.body : undefined;
@@ -98,6 +103,11 @@ export async function runPaperCell(host: LibraryUiHost, msg: { id: string; itemI
     post: (state) => { void host.post({ type: "paper.cellState", requestId, state }); },
     fail: (error) => { host.notice("error", `The cell could not run — ${error instanceof Error ? error.message : String(error)}`); },
   });
+}
+
+/** Restarts the `language` process of the paper's notes; a host without a runner restarts nothing. */
+export async function restartPaperCell(host: LibraryUiHost, msg: { id: string; language: CellLanguage }): Promise<void> {
+  await host.restartCell?.(paperNoteKey(msg.id), msg.language);
 }
 
 export function cancelPaperCell(requestId: string): void {

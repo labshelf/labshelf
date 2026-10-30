@@ -66,15 +66,17 @@ interface CellRunner {
   run(itemId: string, label: string, code: string, requestId: string, replace: (body: string) => void): void;
 }
 
-function createCellRunner(ctx: TabContext, projectId: string, saver: NoteSaver): CellRunner & { group: CellRunGroup } {
+function createCellRunner(ctx: TabContext, projectId: string, path: string, saver: NoteSaver): CellRunner & { group: CellRunGroup } {
   const ports = getBrowserCellPorts(ctx.logger);
   const runs = createCellRuns();
+  // The D2 note key: the cells of one project note share a process per language.
+  const noteKey = `project:${projectId}:${path}`;
   const group = createCellRunGroup({ onCancel: (requestId) => runs.cancel(requestId), onInstallPython: () => ports.installPython() });
   return {
     group,
     attach: group.attach,
     run(itemId, label, code, requestId, replace) {
-      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language: "python", noteKey: projectId }, {
+      void runs.run(ports.runCellIn(projectId), { requestId, label, code, language: "python", noteKey }, {
         read: () => Promise.resolve(saver.text(itemId)),
         write: (next) => { replace(next); return Promise.resolve(); },
         push: () => undefined,
@@ -91,7 +93,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, ctx) => {
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-project-note", role: "group", "aria-label": QMD_VOCABULARY.item }));
   const saver = createNoteSaver(ctx, projectId, path);
   const editors: QmdEditorHandle[] = [];
-  const runs = createCellRunner(ctx, projectId, saver);
+  const runs = createCellRunner(ctx, projectId, path, saver);
   let disposed = false;
   ctx.tab.onBeforeClose(saver.flush);
 

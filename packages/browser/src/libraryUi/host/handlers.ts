@@ -35,6 +35,7 @@ export function createLibraryUiHost(ctx: HostContext): LibraryUiHost {
   const cells = getBrowserCellPorts(ctx.log);
   return {
     runCell: cells.runCell,
+    restartCell: async (noteKey, language) => { await cells.restartCell(noteKey, language); },
     installPython: cells.installPython,
     papers: async (ids) => ctx.papers(ids),
     post: (m) => ctx.endpoint.post(m),

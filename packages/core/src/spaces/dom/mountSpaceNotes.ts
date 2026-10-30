@@ -79,7 +79,7 @@ export function spaceRunOption(ctx: OverviewContext, runs: CellRunGroup, path: s
   { onRunCell?(label: string, code: string): void } {
   if (ctx.readOnly || ctx.data.canRunCells !== true || path === undefined || itemId === undefined) return {};
   return { onRunCell: runs.attach(`${path}\n${itemId}`, host, (label, code, requestId) =>
-    ctx.end.post({ type: "space.runCell", path, itemId, label, code, requestId })) };
+    ctx.end.post({ type: "space.runCell", path, itemId, label, code, language: "python", requestId })) };
 }
 
 interface ItemEditor {

@@ -14,7 +14,7 @@ export function mountSpacesTab(
 ): EditorTabBody {
   const { ui, host: endpoint } = createLoopbackTransport<SpacesToHost, HostToSpaces>();
   const cells = getBrowserCellPorts(ctx.logger);
-  const stop = serveSpaces(endpoint, { ...ctx.spaces, logger: ctx.logger, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, installPython: cells.installPython });
+  const stop = serveSpaces(endpoint, { ...ctx.spaces, logger: ctx.logger, today: () => formatLocalDay(Date.now()), runCell: cells.runCell, restartCell: cells.restartCell, installPython: cells.installPython });
   const dispose = mount(host, ui);
   return { dispose: () => { dispose(); stop(); } };
 }
