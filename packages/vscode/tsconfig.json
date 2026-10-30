@@ -15,6 +15,7 @@
     "src/writing/templates/webview",
     "src/writing/search/webview",
     "src/writing/history/webview",
+    "src/writing/sourceEditor/webview",
     "src/writing/webview",
     "src/library/webview",
     "src/webviewGlobals.d.ts",

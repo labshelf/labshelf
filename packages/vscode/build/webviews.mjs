@@ -15,6 +15,7 @@ const BUNDLES = {
   "templates/templates": "src/writing/templates/webview/galleryEntry.ts",
   "search/search": "src/writing/search/webview/searchEntry.ts",
   "history/history": "src/writing/history/webview/historyEntry.ts",
+  "sourceEditor/sourceEditor": "src/writing/sourceEditor/webview/sourceEditorEntry.ts",
   "spaces/chat": "src/spaces/webview/researchChatEntry.ts",
   "spaces/spaces": "src/spaces/webview/spacesEntry.ts",
   "projects/projects": "src/writing/webview/allProjectsEntry.ts",

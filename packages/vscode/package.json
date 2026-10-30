@@ -42,6 +42,21 @@
         }
       }
     ],
+    "customEditors": [
+      {
+        "viewType": "labshelf.sourceEditor",
+        "displayName": "LabShelf Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.tex"
+          },
+          {
+            "filenamePattern": "*.typ"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
     "grammars": [
       {
         "language": "typst",
@@ -50,6 +65,16 @@
       }
     ],
     "commands": [
+      {
+        "command": "labshelf.sourceEditor.reopen",
+        "title": "Reopen with LabShelf Editor",
+        "category": "LabShelf"
+      },
+      {
+        "command": "labshelf.sourceEditor.reopenAsText",
+        "title": "Reopen with Text Editor",
+        "category": "LabShelf"
+      },
       {
         "command": "labshelf.spaces.all",
         "title": "All Spaces",
@@ -751,6 +776,14 @@
       ],
       "commandPalette": [
         {
+          "command": "labshelf.sourceEditor.reopen",
+          "when": "resourceExtname =~ /^\\.(tex|typ)$/ && activeCustomEditorId != labshelf.sourceEditor"
+        },
+        {
+          "command": "labshelf.sourceEditor.reopenAsText",
+          "when": "activeCustomEditorId == labshelf.sourceEditor"
+        },
+        {
           "command": "labshelf.writing.revealOutline",
           "when": "false"
         },
@@ -772,7 +805,7 @@
         },
         {
           "command": "labshelf.writing.showInPreview",
-          "when": "editorLangId == latex"
+          "when": "editorLangId == latex || activeCustomEditorId == 'labshelf.sourceEditor'"
         },
         {
           "command": "labshelf.writing.bold",
@@ -1053,7 +1086,7 @@
       "editor/context": [
         {
           "command": "labshelf.writing.showInPreview",
-          "when": "editorLangId == latex",
+          "when": "editorLangId == latex || activeCustomEditorId == 'labshelf.sourceEditor'",
           "group": "navigation@9"
         }
       ],

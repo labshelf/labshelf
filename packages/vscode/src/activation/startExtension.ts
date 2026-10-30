@@ -61,7 +61,7 @@ export async function startExtension(context: vscode.ExtensionContext, platform:
     context, events, requireServices, papersRootUri, folderHost, showFolderInSidebar, showPaperInSidebar, adapters,
     getAiService: () => aiService, projectBacklinks: writing.backlinks, addToSpace: ids => addToSpace(spaces, ids),
     currentServices: () => controller.currentServices(), onDidChangeRoot: controller.onDidChangeRoot, projectLibrary: writing.projectLibrary, logger: writing.logger, sources,
-    sendTo: sendToDeps(context, writing),
+    sendTo: sendToDeps(context, writing), projects: writing.projects, activeSource: writing.activeSource,
   });
 
   registerLibraryCommands({ context, controller, folderHost, librarySidebar });

@@ -27,6 +27,7 @@ const window = {
   registerUriHandler: jest.fn(() => ({ dispose: () => {} })),
   showTextDocument: jest.fn(async () => ({ revealRange: jest.fn() })),
   createWebviewPanel: jest.fn((viewType, title, column, options) => makeWebviewPanel(viewType, title, column, options)),
+  registerCustomEditorProvider: makeWebviewPanel.registerCustomEditorProvider,
   activeColorTheme: { kind: ColorThemeKind.Dark },
   onDidChangeActiveColorTheme: jest.fn((handler) => {
     _themeChangeListeners.push(handler);

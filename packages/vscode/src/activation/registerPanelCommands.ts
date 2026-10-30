@@ -17,6 +17,9 @@ import {
 } from "../libraryUi/index.js";
 import type { LibraryEvents } from "../library/index.js";
 import { resolvePaper, ensurePaperPdf, createFolderActions, type FolderCommandHost, type ActiveServices, listTextLayerJobs, onTextLayerJobsChanged } from "../command/index.js";
+import type { ActiveSource } from "../writing/activeSource.js";
+import type { WritingProjects } from "../writing/projects/index.js";
+import { registerSourceEditor } from "../writing/sourceEditor/index.js";
 import type { HostAdapters } from "./hostAdapters.js";
 
 interface DetailsWiring {
@@ -78,6 +81,10 @@ export interface PanelCommandsDeps {
   /** Runs a note's code cell and installs the Python it needs; the list panel and the reader show Run only when present. */
   runCell?: RunCellPort;
   installPython?: () => void;
+  /** The writing projects, whose files the LabShelf editor for .tex and .typ reads. */
+  projects: Pick<WritingProjects, "list" | "paths" | "data" | "fs">;
+  /** The extension's one ActiveSource, which every LabShelf editor panel registers with. */
+  activeSource: ActiveSource;
 }
 
 function listPanelDeps(deps: PanelCommandsDeps, services: ActiveServices): ListPanelDeps {
@@ -189,6 +196,7 @@ export function registerPanelCommands(deps: PanelCommandsDeps): DetailsView {
   });
   registerOpenListTabCommand(deps, details);
   registerReaderPanelCommands(deps);
+  registerSourceEditor(deps.context, { extensionUri: deps.context.extensionUri, projects: deps.projects, logger: deps.logger, activeSource: deps.activeSource });
   deps.context.subscriptions.push(ReaderPanel.onDidActivatePaper(deps.sources.readerActivated));
   wireDetailsSources({
     context: deps.context, details, currentServices: deps.currentServices, onDidChangeRoot: deps.onDidChangeRoot,

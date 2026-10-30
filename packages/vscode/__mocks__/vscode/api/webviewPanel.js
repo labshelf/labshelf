@@ -1,4 +1,4 @@
-// Mocks the webview panel factory behind window.createWebviewPanel.
+// Mocks the webview panel factory behind window.createWebviewPanel, and the custom editor registry tests drive with a panel of their own.
 
 function makeWebviewPanel(viewType, title, column, options) {
   const messageListeners = [];
@@ -47,5 +47,20 @@ function makeWebviewPanel(viewType, title, column, options) {
   };
   return panel;
 }
+
+// Custom editor providers by view type; `_resolveCustomEditor(viewType, document)` opens a panel on the document as VS Code does and returns it.
+const customEditorProviders = new Map();
+makeWebviewPanel.registerCustomEditorProvider = jest.fn((viewType, provider, options) => {
+  customEditorProviders.set(viewType, { provider, options });
+  return { dispose: () => { if (customEditorProviders.get(viewType)?.provider === provider) customEditorProviders.delete(viewType); } };
+});
+makeWebviewPanel._customEditorProviders = customEditorProviders;
+makeWebviewPanel._resolveCustomEditor = async (viewType, document) => {
+  const registered = customEditorProviders.get(viewType);
+  if (!registered) throw new Error(`No custom editor provider for ${viewType}`);
+  const panel = makeWebviewPanel(viewType, document.fileName || String(document.uri), 1, registered.options?.webviewOptions);
+  await registered.provider.resolveCustomTextEditor(document, panel, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose: () => {} }) });
+  return panel;
+};
 
 module.exports = makeWebviewPanel;

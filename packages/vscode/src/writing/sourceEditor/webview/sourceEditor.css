@@ -1,0 +1,40 @@
+/* The LabShelf editor tab: the core source editor inside one card that fills the webview. */
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ls-bg);
+  color: var(--ls-fg);
+  font-family: var(--ls-font);
+  font-size: var(--ls-font-size);
+}
+
+#root {
+  box-sizing: border-box;
+  display: flex;
+}
+
+/* Margin, border, radius and overflow come from ls-card (core ui/dom/base.css); this only lays the editor out inside it. */
+.source-editor-card {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ls-input-bg);
+  box-shadow: var(--ls-pane-shadow);
+}
+
+.source-editor-card > .cm-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.source-editor-card .cm-scroller {
+  font-family: var(--ls-code-font);
+}
