@@ -1,6 +1,6 @@
 # Persistent cell driver: reads one JSON request per stdin line and keeps one namespace for the life of the process.
 # Each response is a line "\u0001LABSHELF\u0001" + JSON {id, text|latex|error}; anything the cell prints goes to stdout before it.
-import ast, base64, contextlib, io, json, os, sys, traceback
+import ast, base64, contextlib, io, json, os, re, sys, traceback
 
 # PLATFORM: cells run headlessly in the helper, including when the user calls pyplot.show().
 os.environ.setdefault("MPLBACKEND", "Agg")
@@ -60,6 +60,15 @@ def run_cell(code, scope):
         return {"latex": sympy.latex(value)}
     return {"text": str(value)}
 
+PARAM_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+
+def invalid_param_name(params):
+    # A name must be a plain identifier, and a dunder name could replace the builtins the cell runs on.
+    for name in params:
+        if not PARAM_NAME.fullmatch(name) or name.startswith("__"):
+            return name
+    return None
+
 def main():
     sys.path.insert(0, os.getcwd())
     for stream in (sys.stdin, sys.stdout, sys.stderr):
@@ -73,6 +82,14 @@ def main():
             request_id, code = request["id"], request["code"]
         except (ValueError, KeyError, TypeError):
             continue
+        # Param values come from the parsed JSON only and are set as data, never evaluated.
+        params = request.get("params")
+        params = params if isinstance(params, dict) else {}
+        rejected = invalid_param_name(params)
+        if rejected is not None:
+            emit(request_id, {"error": "Invalid parameter name " + rejected})
+            continue
+        scope.update(params)
         captured = io.StringIO()
         try:
             with contextlib.redirect_stdout(captured):
