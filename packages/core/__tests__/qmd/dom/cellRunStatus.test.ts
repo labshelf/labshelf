@@ -12,7 +12,7 @@ describe("createCellRunStatus", () => {
     const cancelled: string[] = [];
     const status = createCellRunStatus({ onCancel: (id) => cancelled.push(id) });
     expect(status.el.hidden).toBe(true);
-    status.start("r1", "bound");
+    status.start("r1", "bound", "python");
     expect(status.el.hidden).toBe(true);
     expect(buttons(status.el)).toEqual([]);
     expect(status.show("r1", "running")).toBe(true);
@@ -29,7 +29,7 @@ describe("createCellRunStatus", () => {
     const status = createCellRunStatus({ onCancel: () => {} });
     expect(status.show("r9", "error")).toBe(false);
     expect(status.el.hidden).toBe(true);
-    status.start("r1", "");
+    status.start("r1", "", "python");
     expect(status.show("r9", "running")).toBe(false);
     expect(status.el.hidden).toBe(true);
     status.show("r1", "running");
@@ -40,14 +40,14 @@ describe("createCellRunStatus", () => {
 
   it("hides on done and shows the error and cancelled texts without a button", () => {
     const status = createCellRunStatus({ onCancel: () => {} });
-    status.start("r1", "a");
+    status.start("r1", "a", "python");
     expect(status.show("r1", "done")).toBe(true);
     expect(status.el.hidden).toBe(true);
-    status.start("r2", "a");
+    status.start("r2", "a", "python");
     status.show("r2", "error");
     expect(status.el.textContent).toBe("The cell failed; its output shows the error.");
     expect(buttons(status.el)).toEqual([]);
-    status.start("r3", "a");
+    status.start("r3", "a", "python");
     status.show("r3", "cancelled");
     expect(status.el.textContent).toBe("Run cancelled.");
     expect(buttons(status.el)).toEqual([]);
@@ -56,14 +56,14 @@ describe("createCellRunStatus", () => {
   it("offers Install Python on missing-python only when the view can install it", () => {
     let installs = 0;
     const withInstall = createCellRunStatus({ onCancel: () => {}, onInstallPython: () => { installs += 1; } });
-    withInstall.start("r1", "a");
+    withInstall.start("r1", "a", "python");
     withInstall.show("r1", "missing");
     expect(withInstall.el.textContent).toContain("Python for calculations is not installed.");
     expect(buttons(withInstall.el)).toEqual(["Install Python"]);
     withInstall.el.querySelector("button")!.click();
     expect(installs).toBe(1);
     const without = createCellRunStatus({ onCancel: () => {} });
-    without.start("r1", "a");
+    without.start("r1", "a", "python");
     without.show("r1", "missing");
     expect(buttons(without.el)).toEqual([]);
   });
@@ -77,7 +77,7 @@ it("shows the run in the cell whose Run was pressed while it is running", () => 
   editor.append(cell);
   let request = "";
   const group = createCellRunGroup({ onCancel: () => undefined });
-  group.attach("note", editor, (_label, _code, id) => { request = id; })("scale", "x\n");
+  group.attach("note", editor, (_label, _code, id) => { request = id; })("scale", "x\n", "python");
   group.show(request, "running");
   expect(cell.classList.contains("is-running")).toBe(true);
   group.show(request, "done");
