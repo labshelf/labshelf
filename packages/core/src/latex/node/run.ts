@@ -96,7 +96,7 @@ function createOutputTail(separateStreams: boolean, onOutput: ((chunk: string) =
   };
 }
 
-interface KillSwitch {
+export interface KillSwitch {
   /** SIGTERM to the group; a group still open after the grace period gets SIGKILL, grandchildren included. */
   terminate: () => void;
   timedOut: () => boolean;
@@ -104,13 +104,13 @@ interface KillSwitch {
   close: () => void;
 }
 
-interface KillSwitchOptions {
+export interface KillSwitchOptions {
   timeoutMs: number | undefined;
   graceMs: number;
   note: (message: string) => void;
 }
 
-function createKillSwitch(child: { readonly pid?: number | undefined }, { timeoutMs, graceMs, note }: KillSwitchOptions): KillSwitch {
+export function createKillSwitch(child: { readonly pid?: number | undefined }, { timeoutMs, graceMs, note }: KillSwitchOptions): KillSwitch {
   let closed = false;
   let timedOut = false;
   let timeoutTimer: NodeJS.Timeout | undefined;
