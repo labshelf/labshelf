@@ -1,32 +1,30 @@
 # UI and UX
 
-Read when you design or change a visible surface in an app. Not for the website.
+Read when designing or changing an app surface. Product purpose and concepts are in [product.md](product.md). This document does not govern the website.
 
-LabShelf is one product in three hosts. Good UI here is consistent with what already exists, not distinctive. Every design choice traces to one of the principles below.
+LabShelf should feel like a research workbench: material stays close at hand, related work is easy to consult and the next action is apparent. Balance useful density with a clean workspace. Fluency in research tools should not require learning LabShelf's internal organization.
 
 ## Principles
 
-1. **Paper-first, not a file explorer.** Zotero is the reference. Folders are for navigation and papers are the content, so a list shows papers only and never mixes folder rows into it. Folder structure appears as a path header, chips or a separate pane. Avoid file-manager idioms such as an "up" button or Backspace to go to the parent folder.
-2. **Fluid navigation over features.** Navigating never rebuilds a view. Selection, scroll position and search survive a folder change. State is pushed to an open view rather than the view being reloaded.
-3. **Abstract first.** The detail pane leads with what helps decide whether to read: title, authors, venue, abstract, then actions.
-4. **Keyboard everywhere.** Every action has a key. The reader offers optional vim keys, and the terminal follows yazi's columns and keys while keeping Zotero's pane model (folders | papers | preview).
-5. **Never lose the user's work.** LabShelf never deletes a file because of something it cannot explain. Destructive actions ask for confirmation.
-6. **Redesign within the structure.** A redesign polishes the existing structure (pane dividers, sortable column headers, tree twisties on the left) instead of stripping it; familiar structure is what makes the UI unambiguous.
-7. **Preview-led templates.** The gallery gives document previews the main area. Sources, search and filters support browsing without a second navigation pane. Template details put the preview and the choice to create a project before technical metadata.
+1. **Make basic work self-explanatory.** Importing a paper, reading, annotating, writing a note and starting a manuscript should have recognizable actions and sensible defaults. If these need lengthy instructions, revisit the interaction. Offer advanced configuration when the task calls for it.
+2. **Keep the thread of work.** Moving between a paper, note and manuscript should preserve the place the person left. Retain relevant selection, scroll, search and unsaved work. Updates should not reset the surface or take focus away from an edit.
+3. **Bring related material within reach.** Support consulting a source while developing a note or writing a manuscript. Use adjacent panes, previews and links where they reduce switching. Let people resize or dismiss supporting views so the main material has room.
+4. **Make density serve the task.** Give the current material and frequent actions priority. Group supporting tools and reveal less frequent controls as needed. Avoid both a wall of equally prominent controls and a sparse interface that makes routine work take extra steps. A library list, a note full of equations and a manuscript editor need different arrangements.
+5. **Keep sources and results interpretable.** Make source links recognizable and easy to follow. Keep equations readable and code associated with its output. When a result is stale, fails or has not been checked, communicate that state where the person uses it; visual polish must not imply verification.
+6. **Let organization grow with the work.** A paper or project is useful on its own. Offer Spaces when grouping material helps; do not make them a setup requirement. Keep a local edit, removing a reference, deleting material and sharing it distinguishable in the interaction.
 
-## Where things are
+## Applying the principles
 
-- **Tokens:** data in `packages/core/src/ui/tokens/`, rendered into `packages/core/src/ui/dom/tokens.css` as `--ls-*` properties by `pnpm --filter @labshelf/core tokens`. Never edit `tokens.css` by hand. A missing value is a new token in the data, not a literal in app CSS.
-- **Components:** `packages/core/src/ui/dom/` (button, menu, dialog, toast, quick input, settings rows) and `packages/core/src/libraryUi/dom/` (library list and detail pane). Reuse one before you write markup.
-- **Icons:** `packages/core/src/ui/icons/`, a Feather-based inline-SVG set. A missing icon is added there, in the same style.
-- **Reader:** `packages/core/src/reader/`, whose page themes come from the same tokens.
-- **Terminal:** maps the colour roles onto the 16 ANSI colours. It has no SVG icons, so it uses plain text there.
+- Design around a concrete task and the material needed to finish it. Reuse an existing interaction when it fits; change its structure when the task needs something different.
+- Show research concepts in labels and actions. Storage formats, host protocols and transport details belong out of the basic flow. Source text, code and technical controls remain accessible when they help the researcher.
+- Support direct manipulation and discoverable actions, with keyboard access and shortcuts for frequent work. Shortcuts accelerate a usable interface.
+- Resolve destructive consequences before committing an action. Confirm destructive operations; avoid routine prompts that merely interrupt safe work. Preserve edits through navigation and recoverable failures.
+- Account for empty, loading, error and unavailable states, long content, narrow widths, keyboard focus and light and dark themes. Use semantic controls and accessible names; status must remain understandable without color alone.
+- An unavailable feature must clearly say that it is unavailable. Show it only when it helps explain the work or an actionable prerequisite; avoid turning normal navigation into a roadmap of disabled controls.
 
-## How to design
+## Implementation
 
-1. Find the closest surface that already exists in any app and start from its structure. Two apps showing the same thing use the same core component, and the apps add only host glue.
-2. Use the product words from [product.md](product.md#general) exactly: folder, paper, Unread / Reading / Done. Use no synonyms.
-3. Design the states as well as the happy path: empty, loading, error, long titles, narrow width, light and dark, keyboard focus. Accessibility is not optional.
-4. Describe the design in the plan step as the components, the tokens and the states. Do not use pixel values or colours.
-
-The user checks a surface by hand in light and dark; `/verify` takes screenshots only when they ask. The `check-rules` hook and `pnpm lint` catch hard-coded values and size limits, not whether the UI looks right.
+- Reuse shared components in `packages/core/src/ui/dom/` and domain UI such as `libraryUi/dom/`, `reader/dom/` and `qmd/dom/`. Shared surfaces belong in core; hosts supply platform integration.
+- Use the token data in `packages/core/src/ui/tokens/`. Generate CSS with `pnpm --filter @labshelf/core tokens`; do not edit generated `tokens.css`. Add a missing design value to the token data instead of hard-coding it in app CSS.
+- Use the shared icon set in `packages/core/src/ui/icons/`. Terminal surfaces express the same meanings through text and ANSI color roles.
+- Explain a proposed design through the task, arrangement, components and interaction states. Validate the changed flow visually in light and dark and at relevant widths; lint cannot establish that it is understandable or pleasant to use.

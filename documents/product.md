@@ -1,26 +1,44 @@
 # Product
 
-Read when you decide what a feature does or what it says. How it looks is in [ui.md](ui.md).
+Read when deciding what a feature should do, how concepts relate or what the product says. Interaction guidance is in [ui.md](ui.md); file formats and protocols belong in [contracts/](contracts/).
+
+## Purpose
+
+LabShelf connects reading, developing ideas and writing in scientific research. Its audience is researchers and students who read papers with equations, work with code and usually write in LaTeX or Typst: mathematicians, engineers, data scientists, programmers and researchers using statistics in fields such as biology.
+
+Their work is spread across reference managers, manuscript editors, computational notebooks and conversations with advisors or collaborators. Each tool requires its own organization and sharing, while the relationships between the work are left to the researcher. LabShelf should reduce that fragmentation and the dependence on multiple paid tools.
+
+Judge a feature by how it helps someone understand a paper, develop or reproduce a result, discuss the work or carry it into a manuscript. Preserve the connections between these activities as the work develops.
 
 ## General
 
-- LabShelf is a local-first manager for research papers, shipped as a VS Code extension, a browser extension and a terminal app. 
-- Concepts stay the same across apps. A folder is a "folder" and a paper is a "paper" in every app.
-- The user's own sync tool (Dropbox, Google Drive, iCloud Drive, Syncthing, any other) moves the folder between devices. 
+- Basic work should be easy to discover and complete without reading documentation. Advanced tools can expose deeper controls without making the basic path harder.
+- Reading, notes, calculations, discussion and writing belong to the same research workflow. Make their connections useful: return to a source passage, consult a note while writing or keep a discussion with the material it concerns.
+- Equations, code and results are research content. Support examining, editing and reusing them alongside prose and references.
+- Library, Projects and Spaces describe different responsibilities. Use these concepts consistently across apps, while adapting the available tools to the host.
 
 ## Library
 
-- The Library is LabShelf's Zotero or Paperpile: it holds every paper the user has, with its metadata, and annotations. Folders organise papers for navigation.
-- Without a folder, the browser extension keeps the library in the browser and warns that uninstalling the extension deletes it.
+The Library is the researcher's reusable collection of papers, metadata, PDFs, annotations and paper notes. It remains useful across topics and manuscripts. Folders organize the collection; a paper can be recorded before its PDF is available.
+
+Use paper and folder consistently. Reading states are Unread, Reading and Done.
 
 ## Projects
 
-- Projects are LabShelf's Overleaf or Typst app: a project is a writing project that cites papers from the Library and builds to a PDF. Coauthors can share a project.
-- A project has notes, plain `.qmd` files in the project. The browser sidebar has New note, and a note opens as a source tab of the project. The checklist counts note tasks and ticks them in the note.
-- The reader's Send to appends the quoted passage and its page link to a project note, or to a new one. The last targets are remembered per device.
-- A manuscript line that cites a paper with notes shows how many notes it has: a code lens and hover in VS Code, a gutter marker and popover in the browser source editor.
+A Project is a writing project: a LaTeX or Typst manuscript and its supporting files, notes, references and work toward a PDF. It draws on the Library. Coauthors can collaborate on a writing project.
+
+Moving material into a manuscript should preserve a useful route back to its source. A note or calculation can remain exploratory while the manuscript presents the result.
 
 ## Spaces
 
-- A Space groups references to papers, projects, dates and a glossary around one piece of work. Library and Projects stay global: a paper or project can belong to several Spaces without a copy, and removing a reference leaves it in place. Space folders organise references independently of Library folders.
-- A capability a Space does not have yet shows as an unavailable control that explains what is missing.
+A Space provides context around a topic or research effort: papers, linked writing projects, notes, discussions, dates and a glossary. It is encouraged through its usefulness and is optional. Reading a paper or creating a project never requires creating a Space.
+
+Library and Projects remain global. A paper or project can belong to several Spaces without a copy; removing its reference from a Space leaves the original in place. Space folders organize references independently of Library folders.
+
+## Supporting choices and scope
+
+LabShelf is local-first. The user's own sync tool moves the library between devices; this is distinct from live collaboration. Without a folder, the browser stores the library internally and must explain that uninstalling the extension deletes that storage.
+
+The browser extension, VS Code extension and terminal app offer different ways into the work. Keep shared concepts and behavior consistent and check the host's capabilities when designing a flow.
+
+Product direction is broader than current implementation. A screen, primitive or proposal does not establish that a capability works. Check the relevant host before claiming support. [Ideas](ideas/) explore future work and can lag behind implementation; they are not feature specifications.

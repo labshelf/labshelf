@@ -2,7 +2,7 @@
 
 Read when you change Space storage.
 
-A Space groups papers, writing projects, dates and a glossary around one piece of work. Every app reads and writes the same two files, and the user's sync tool moves them between devices, so a file name, a key or a rule here changes the contract for every app and for libraries already on disk.
+A Space groups references to papers and writing projects, dates, a glossary, notes and discussion threads. Hosts use the same file formats, and a sync tool can move these files between devices. This contract defines their persistent layout; the product role of a Space is in [product.md](../product.md#spaces).
 
 ## Layout
 
@@ -28,16 +28,7 @@ The `.qmd` files of a Space are item files ([qmd-items.md](qmd-items.md#items)).
 - "Send to…" ([qmd-items.md](qmd-items.md#project-notes)) has the targets `spaceNote` and `discussion`, which append an item or a message with the id of the sent item. A figure's PNG is written first, as `assets/<item id>.png` next to the target file.
 - Spaces are not shared: the files stay in the library and notes and threads show only in the local UI.
 
-The page and the host talk in these messages. A message with a bad space id or path, or a field of the wrong type, is dropped whole.
-
-| Page to host | The host changes | And answers with |
-|---|---|---|
-| `createSpaceNote`, `createSpaceThread` | a new file | `spaceNotes`, `spaceDiscussions` |
-| `readSpaceQmd` | nothing | `spaceQmd`: the items of one file |
-| `addSpaceItem`, `editSpaceItem`, `removeSpaceItem` | the item, or the message in a thread | `spaceQmd`, then the list of that folder, whose title, count or time may have moved |
-| `setThreadStatus` | the topic's `status` | `spaceDiscussions` |
-
-The host also posts `spaceNotes` and `spaceDiscussions` after each `space` view. An edit or removal of an id the file does not hold writes nothing and answers with `error`. The author of an added item or a new thread is the app's author name.
+An edit or removal of an id the file does not hold writes nothing and reports an error. The author of an added item or a new thread is the app's author name. The internal page/host protocol is defined by the types and parser in `packages/core/src/spaces/spacesProtocol.ts`.
 
 ## Ids
 
