@@ -1,8 +1,8 @@
-// Finds wolframscript or Rscript: an explicit override, then PATH, then the usual install locations of each OS.
+// Finds wolframscript or Rscript (an explicit override, then PATH, then the usual install locations of each OS) and the WolframKernel beside wolframscript.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
-import { envValue, findExecutable, subdirs } from "../../../latex/node/systemTex.js";
+import { envValue, findExecutable, subdirs } from "../../../latex/node/index.js";
 
 type LocatedTool = "wolframscript" | "Rscript";
 
@@ -60,6 +60,16 @@ export async function locateTool(tool: LocatedTool, options: LocateToolOptions =
   for (const dir of dirs) {
     const candidate = path.join(dir, file);
     if (await exists(candidate)) { return candidate; }
+  }
+  return undefined;
+}
+
+/** The WolframKernel installed beside wolframscript. wolframscript reads stdin to its end before it runs a script, so a persistent driver cannot run under `wolframscript -file`. */
+export async function kernelBeside(wolframscript: string): Promise<string | undefined> {
+  const dir = path.dirname(await fs.realpath(wolframscript).catch(() => wolframscript));
+  for (const name of ["WolframKernel", "WolframKernel.exe"]) {
+    const candidate = path.join(dir, name);
+    if (await isFile(candidate)) { return candidate; }
   }
   return undefined;
 }

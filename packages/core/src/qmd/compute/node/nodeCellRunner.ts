@@ -1,10 +1,10 @@
 // Runs code cells through the session manager: one persistent driver process per (note key, language), launched from the managed Python or a located tool.
-import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import type { ILogger } from "../../../ports/index.js";
 import type { ICellRunner } from "../cellRunner.js";
 import { createCellSessions, type DriverLaunch } from "./cellSessions.js";
+import { kernelBeside } from "./locateTool.js";
 import type { PythonProvider } from "./managedPython.js";
 
 type LocatedLanguage = "mathematica" | "r";
@@ -22,16 +22,6 @@ export interface NodeCellRunnerOptions {
 export function bundledCellDrivers(): NodeCellRunnerOptions["drivers"] {
   if (typeof __dirname === "undefined") { throw new Error("The cell driver folder is unknown here: pass the driver paths"); }
   return { python: path.join(__dirname, "cellDriver.py"), mathematica: path.join(__dirname, "cellDriver.wl"), r: path.join(__dirname, "cellDriver.R") };
-}
-
-/** The WolframKernel installed beside wolframscript. wolframscript reads stdin to its end before it runs a script, so a persistent driver cannot run under `wolframscript -file`. */
-async function kernelBeside(wolframscript: string): Promise<string | undefined> {
-  const dir = path.dirname(await fs.realpath(wolframscript).catch(() => wolframscript));
-  for (const name of ["WolframKernel", "WolframKernel.exe"]) {
-    const candidate = path.join(dir, name);
-    if (await fs.stat(candidate).then((stat) => stat.isFile(), () => false)) { return candidate; }
-  }
-  return undefined;
 }
 
 export function createNodeCellRunner({ python, drivers, locate, logger }: NodeCellRunnerOptions): ICellRunner {
