@@ -77,17 +77,26 @@ A project's notes are the `.qmd` files in its `notes/` folder, one file per note
 
 ## Outputs
 
-A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`. Results travel inside the file, so a reader sees them without running anything.
+A code cell's result follows the cell inside the same item, as a fenced div with the class `labshelf-output` and the attributes `cell`, `source`, `engine` and `ran`. `engine` is the cell's language ([Cell languages](#cell-languages)). Results travel inside the file, so a reader sees them without running anything.
 
 - `cell` is the cell's `#| label:`. A cell with a result has a label.
 - `source` is the first 12 hex characters of the SHA-256 of the cell's code with the `#|` lines removed, lines joined with `\n` and trailing line endings removed. Every device must compute it the same way, and line endings must never make a result out of date.
 - A result whose `source` differs from its cell's current code is shown as out of date. A result whose cell is gone, or that lacks `cell` or `source`, is shown as text.
 - A result that would close its block early is rejected, not written.
-- A failed run (an error or a timeout) writes its error text in a plain fenced code block and adds `status="error"` as the opener's last attribute; a successful result has no `status`. A cancelled run, or one with no Python available, writes nothing.
+- A failed run (an error or a timeout) writes its error text in a plain fenced code block and adds `status="error"` as the opener's last attribute; a successful result has no `status`. A cancelled run, or one whose language is not installed, writes nothing.
 - A run writes its block on the line after the cell's closing fence, and a rerun replaces the cell's block in place. A cell without a label gets `#| label: cell-<n>` (its 1-based position among the item's cells) on its first run.
-- The Node cell runner runs each cell through a driver script shipped with core (`@labshelf/core/qmd/compute/node/cellDriver.py`) in the managed Python; a run ends on cancel or after its timeout, killing the process group.
 
-An output may contain one Markdown image with an embedded PNG (`![Python plot](data:image/png;base64,…)`). It is a stored figure, shown directly by each host; rerunning a cell replaces its output as usual. Other image formats and remote URLs are not plot results. A returned Matplotlib figure, a plotting command, or the last open figure when the cell returns no value is captured as PNG. Explicitly returned PNG data URLs are accepted too. Matplotlib is required by cells that import it.
+An output may contain one Markdown image with an embedded PNG (`![Python plot](data:image/png;base64,…)`). Images come only from Python cells. It is a stored figure, shown directly by each host; rerunning a cell replaces its output as usual. Other image formats and remote URLs are not plot results. A returned Matplotlib figure, a plotting command, or the last open figure when the cell returns no value is captured as PNG. Explicitly returned PNG data URLs are accepted too. Matplotlib is required by cells that import it.
+
+### Cell languages
+
+Cell languages are `python`, `mathematica` and `r`, written as the fence ```` ```{python} ````, ```` ```{mathematica} ```` and ```` ```{r} ````, the same syntax as Quarto and Pandoc. A fence with any other language is kept as text and has no Run action.
+
+- The Node cell runner runs each cell through a driver file shipped with core next to the runner (`@labshelf/core/qmd/compute/node/`): `cellDriver.py` in the managed Python, `cellDriver.wl` in `wolframscript`, `cellDriver.R` in `Rscript`. One driver process per note and language keeps variables between that note's cells; languages never share variables.
+- Driver protocol: the runner writes one JSON request per stdin line, `{id, code}`. The driver answers with one JSON line on stdout that starts with the sentinel `\u0001LABSHELF\u0001` and carries `{id, latex?|text?|error?}`. Anything else on stdout or stderr is the cell's printed output, so prints never desync results.
+- A response line can be large (a PNG data URL), so the runner never caps line length. Drivers read UTF-8, accept CRLF line endings and exit on stdin EOF, so a dead parent never leaves a driver running.
+- Cancel and timeout kill that language's process for that note, killing its process group. The next run starts a fresh process, and its result carries `restarted: true`, shown as "<Language> restarted, earlier definitions are gone". "Restart <Language>" in a cell header kills the process without running. Process start-up time does not count towards the timeout.
+- A run whose language has no executable ends with status `missing` and writes nothing.
 
 ## Merge
 
