@@ -1,7 +1,7 @@
 schema: plan/v1
 slug: cell-params
 title: Sliders that re-run a cell
-status: draft
+status: approved
 level: N3
 goal: "A code cell in Python, R or Mathematica declares parameters as Quarto-style option lines (`#| param: beta = slider(0.5, 0.999, 0.9)`); the editor draws a slider per parameter, moving it re-runs the cell in the note's live driver with the new values and shows the result while dragging, and releasing it writes the value and the result into the note. A Mathematica `Manipulate` gets the same sliders. A reader without the language sees the stored result of the last chosen values."
 decisions:
