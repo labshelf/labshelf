@@ -4,10 +4,11 @@ import {
   type ILogger, type LibraryFileSystem, type NoteInsertSource, type ProjectEntry,
 } from "@labshelf/core";
 import { renderElement, showToast } from "@labshelf/core/dom";
+import type { SourceEditor, SourceEditorDeps, SourceFileAccess } from "@labshelf/core/sourceEditor";
 import { createPaperNotesPort, createProjectNoteFiles, listCachedPaperRecords } from "../../storage";
 import {
   addProjectUpdateEvent, createSourceActions, deriveSourceLanguage, findProject, loadSourceEditor, mountOnTakeover, openSharedProjectHere, readSourceFileMode, renderObservingNotice, renderUnresolvedNotice,
-  type SourceEditor, type SourceEditorDeps, type SourceFileAccess, type SourceFileMode,
+  type SourceFileMode,
 } from "../../writing";
 import type { TabContext, TabModule } from "./tabKinds";
 
