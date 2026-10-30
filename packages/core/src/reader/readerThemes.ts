@@ -1,7 +1,7 @@
 // Keeps the user's custom reader themes in the library's reader-themes.json, shared by every paper and app.
-// CONTRACT: documents/contracts/library-format.md#reader-themes
-import { KeyedQueue } from "../../async/index.js";
-import { isCustomThemeId, type CustomReaderTheme } from "../../model/index.js";
+// CONTRACT: documents/contracts/library-format.md#reader-themes-reader-themesjson
+import { KeyedQueue } from "../async/index.js";
+import { isCustomThemeId, type CustomReaderTheme } from "../model/index.js";
 
 /** Reads and writes the whole reader-themes.json; a missing file reads as null. */
 export interface ReaderThemesPort {

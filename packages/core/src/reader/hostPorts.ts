@@ -1,7 +1,8 @@
 // Declares the ports a reader host implements and the per-reader context the message handlers share.
 import type { Annotation, CustomReaderTheme, PaperRecord, ReaderThemeRef } from "../model/index.js";
 import type { ILogger } from "../ports/index.js";
-import type { ReaderSidecarStore, ReaderThemeStore } from "./sidecar/index.js";
+import type { ReaderThemeStore } from "./readerThemes.js";
+import type { ReaderSidecarStore } from "./sidecar/index.js";
 import type { CellLanguage, PaperNotesStore, RunCellPort } from "../qmd/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 import type { BuildSchedule } from "../writing/build/index.js";

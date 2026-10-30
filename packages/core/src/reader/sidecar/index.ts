@@ -7,7 +7,3 @@ export {
   deriveClampedPage, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH, normalizeReadingPosition,
   type ReadingState, type SidebarState, type SidebarTab,
 } from "./readingState.js";
-export {
-  mergeReaderThemes, normalizeHexColour, parseReaderThemes, ReaderThemeStore, serializeReaderThemes,
-  type ReaderThemesPort, type ReaderThemeStoreOptions,
-} from "./readerThemeStore.js";

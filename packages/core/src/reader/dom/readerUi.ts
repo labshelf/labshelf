@@ -19,7 +19,7 @@ import { FloatingNotes } from "./floatingNotes.js";
 import { NoteBoxLayer } from "./noteBoxes.js";
 import { BoxTool } from "./boxTool.js";
 import { ReadingPositionReporter } from "./startup.js";
-import { DestPreview } from "./hoverTarget.js";
+import { DestPreview } from "./destPreview.js";
 import { HoverPreview } from "./hoverPreview.js";
 import type { PreviewCitations } from "./citations.js";
 import { CitationResolver, FloatResolver, PageTextCache } from "./textLayer.js";

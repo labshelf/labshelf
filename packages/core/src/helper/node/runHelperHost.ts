@@ -152,13 +152,11 @@ function resolveCellCwd(scope: string, rootOf: (projectId: string) => string | u
   return scope.startsWith("paper:") ? os.tmpdir() : rootOf(scope);
 }
 
-export async function runHelperHost(options: HelperHostOptions): Promise<void> {
-  const { dataDir, logger, helperVersion, host } = options;
-  // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
-  const send = createFrameWriter(options.output ?? process.stdout, logger);
-  const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
-  const python = options.python ?? createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
-  const projects = createLibraryProjects({ logger });
+type LibraryProjects = ReturnType<typeof createLibraryProjects>;
+
+/** The build handlers and the template publishing, which share one Typst compiler host factory and the optional native biber. */
+function createBuildAndPublish(options: HelperHostOptions, projects: LibraryProjects, tex: ReturnType<typeof createSharedTexProvider>) {
+  const { dataDir, logger } = options;
   const packageDirs = { data: path.join(dataDir, "typst-packages", "local"), cache: path.join(dataDir, "typst-packages", "cache") };
   const openTypst = (withFontDownload: <T>(run: () => Promise<T>) => Promise<T>): TypstCompilerHost =>
     new TypstCompilerHost({ wasm: options.typstWasm, fontsDir: path.join(dataDir, "typst-fonts"), packageDirs, withFontDownload });
@@ -168,11 +166,28 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const publishing = createTemplatePublishHandlers({ dataDir, logger, fetch, build: {
     logger, tex, typst: openTypst((run) => run()), ...(biber && { biber }),
   } });
+  return { builds, publishing };
+}
+
+/** The cell runner over the managed Python and the located Wolfram and R tools, with the handlers that serve the page. */
+function createCells(python: PythonProvider, projects: LibraryProjects, logger: HelperLogger) {
   const runner = createNodeCellRunner({
     python, drivers: bundledCellDrivers(), logger,
     locate: (language) => locateTool(language === "mathematica" ? "wolframscript" : "Rscript"),
   });
   const cells = createCellHandlers({ runner, resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
+  return { runner, cells };
+}
+
+export async function runHelperHost(options: HelperHostOptions): Promise<void> {
+  const { dataDir, logger, helperVersion, host } = options;
+  // INVARIANT: stdout carries frames only, so nothing in the helper may call console.log.
+  const send = createFrameWriter(options.output ?? process.stdout, logger);
+  const tex = createSharedTexProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  const python = options.python ?? createSharedPythonProvider({ env: process.env, platform: process.platform, homeDir: os.homedir(), logger, fetchImpl: fetch });
+  const projects = createLibraryProjects({ logger });
+  const { builds, publishing } = createBuildAndPublish(options, projects, tex);
+  const { runner, cells } = createCells(python, projects, logger);
   const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
