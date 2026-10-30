@@ -9,6 +9,7 @@ import { deriveCodeHash, formatOutput } from "../../../src/qmd/item/cellOutput";
 import { createCodeCellView } from "../../../src/qmd/dom/codeCellView";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
 import { writeCellOutput } from "../../../src/qmd/compute/writeCellOutput";
+import { bodyToDoc, docToBody } from "../../../src/qmd/editor";
 import { mount, until, settle } from "../../support/nodeViewHarness";
 
 const CODE = "print(1)\n";
@@ -174,5 +175,37 @@ describe("Run on a cell without a label", () => {
     view.dom.querySelector<HTMLButtonElement>(".qmd-cell-run")!.click();
     const next = await writeCellOutput(body, sent[0]!, { status: "ok", language: "python", text: "1", durationMs: 1 }, META);
     expect(next).not.toBe(body);
+  });
+});
+
+describe("a loaded note's {py} or bare fence is a Python cell", () => {
+  const BODIES = { "{py}": "```{py}\nprint(1)\n```\n", bare: "```\nprint(1)\n```\n" };
+  const load = (body: string, runs: Array<[string, string, string]>) =>
+    mount(bodyToDoc(body), { code_cell: createCodeCellView((label, code, language) => runs.push([label, code, language]), () => undefined) });
+
+  for (const [name, body] of Object.entries(BODIES)) {
+    it(`4.3a ${name}: shows Run, the Python picker and Restart, and Run calls onRunCell with python`, () => {
+      const runs: Array<[string, string, string]> = [];
+      const view = load(body, runs);
+      const run = view.dom.querySelector<HTMLButtonElement>(".qmd-cell-run:not(.qmd-cell-restart)");
+      expect(run).not.toBeNull();
+      expect(view.dom.querySelector(".qmd-cell-lang")!.textContent).toBe("Python");
+      expect(view.dom.querySelector(".qmd-cell-restart")).not.toBeNull();
+      run!.click();
+      expect(runs).toEqual([["cell-1", "print(1)\n", "python"]]);
+    });
+
+    it(`4.3b ${name}: serialises unchanged to the same body`, () => {
+      const view = load(body, []);
+      expect(docToBody(view.state.doc)).toBe(body);
+    });
+  }
+
+  it("4.3b picking R on the bare cell serialises ```{r}", () => {
+    const view = load(BODIES.bare, []);
+    view.dom.querySelector<HTMLButtonElement>(".qmd-cell-lang-picker")!.click();
+    const r = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((item) => item.textContent!.trim() === "R")!;
+    r.click();
+    expect(docToBody(view.state.doc)).toBe("```{r}\nprint(1)\n```\n");
   });
 });
