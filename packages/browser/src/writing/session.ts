@@ -5,14 +5,21 @@ import {
   type SidebarOpenProject, type SidebarProjectTree, type SidebarTreeNode,
 } from "@labshelf/core";
 import { QMD_VOCABULARY, askInputBox, showToast } from "@labshelf/core/dom";
+import { mountSourceEditor as mountCoreSourceEditor, type SourceEditor, type SourceEditorDeps } from "@labshelf/core/sourceEditor";
+import { createCommentSupport } from "../collab";
 import type { Workspace } from "../libraryUi/editorArea";
 
-// The open-editor registry lives in core; these keep the browser's import path.
-export { explicitSaves, fromDisk, loadFromDisk, refreshProjectEditors, registerOpenEditor, showInOpenEditor, writeProjectEditors, type OpenEditor } from "@labshelf/core/sourceEditor";
+// The open-editor registry and the editor types live in core; these keep the browser's import path.
+export { refreshProjectEditors, registerOpenEditor, showInOpenEditor, writeProjectEditors, type SourceEditor, type SourceEditorDeps, type SourceFileAccess } from "@labshelf/core/sourceEditor";
 
-/** Loads core's CodeMirror source editor, with the browser's comment support, in its own chunk, so a page downloads it only when it opens a source file. */
-export function loadSourceEditor(): Promise<typeof import("./editor.js")> {
-  return import("./editor.js");
+/** Mounts core's CodeMirror source editor with the browser's comment support (its source footer and body editor). */
+export function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
+  return mountCoreSourceEditor(host, { commentSupport: createCommentSupport, ...deps });
+}
+
+/** The source editor's mount function, for the source tab. */
+export function loadSourceEditor(): Promise<{ mountSourceEditor: typeof mountSourceEditor }> {
+  return Promise.resolve({ mountSourceEditor });
 }
 
 const MODULE = "writing.session";
