@@ -9,27 +9,28 @@ const logger = { log: jest.fn(async () => {}), error: jest.fn(async () => {}), r
 const CWD = "/work/thesis";
 const resolveCwd = jest.fn((scope: string): string | undefined => (scope === "thesis" ? CWD : undefined));
 
-interface RunCall { code: string; cwd: string; timeoutMs: number; signal: AbortSignal }
+interface RunCall { code: string; language: string; noteKey: string; cwd: string; timeoutMs: number; signal: AbortSignal }
 
 /** A runner that finishes only when `finish` is called, or as cancelled when its signal aborts. */
 function fakeRunner() {
   const calls: RunCall[] = [];
+  const restarts: Array<{ noteKey: string; language: string }> = [];
   const finishers: Array<(result: CellResult) => void> = [];
   const runner: ICellRunner = {
     run: (request, opts) => new Promise<CellResult>((resolve) => {
-      calls.push({ code: request.code, ...opts });
+      calls.push({ code: request.code, language: request.language, noteKey: request.noteKey, ...opts });
       finishers.push(resolve);
       const onAbort = () => resolve({ status: "cancelled", language: "python", durationMs: 1 });
       if (opts.signal.aborted) { onAbort(); } else { opts.signal.addEventListener("abort", onAbort, { once: true }); }
     }),
-    restart: () => Promise.resolve(),
+    restart: (noteKey, language) => { restarts.push({ noteKey, language }); return Promise.resolve(); },
     dispose: () => Promise.resolve(),
   };
-  return { runner, calls, finish: (result: CellResult) => finishers.shift()?.(result) };
+  return { runner, calls, restarts, finish: (result: CellResult) => finishers.shift()?.(result) };
 }
 
 const runMessage = (id: string, over: Record<string, unknown> = {}): ToHelperMessage =>
-  ({ v: PROTOCOL_VERSION, id, type: "runCell", code: "print(1)", cwd: "thesis", timeoutMs: 60_000, ...over }) as ToHelperMessage;
+  ({ v: PROTOCOL_VERSION, id, type: "runCell", code: "print(1)", cwd: "thesis", timeoutMs: 60_000, language: "python", noteKey: "notes/a.qmd", ...over }) as ToHelperMessage;
 const cancelMessage = (id: string, requestId: string): ToHelperMessage => ({ v: PROTOCOL_VERSION, id, type: "cancelCell", requestId });
 
 function setup(extra: HelperHandlers = {}) {
@@ -51,13 +52,13 @@ beforeEach(() => { jest.clearAllMocks(); });
 describe("12.4b runCell and cancelCell handlers", () => {
   it("12.4b runs the code with the resolved cwd and timeout and answers cellResult under the envelope id", async () => {
     const h = setup();
-    h.handle(runMessage("run-1", { timeoutMs: 5000 }));
+    h.handle(runMessage("run-1", { timeoutMs: 5000, language: "r", noteKey: "notes/b.qmd" }));
     await until(() => h.calls.length === 1);
-    expect(h.calls[0]).toMatchObject({ code: "print(1)", cwd: CWD, timeoutMs: 5000 });
+    expect(h.calls[0]).toMatchObject({ code: "print(1)", language: "r", noteKey: "notes/b.qmd", cwd: CWD, timeoutMs: 5000 });
     expect(h.calls[0]!.signal.aborted).toBe(false);
-    h.finish({ status: "ok", language: "python", latex: "x^{2}", text: "x**2", durationMs: 42 });
+    h.finish({ status: "ok", language: "r", latex: "x^{2}", text: "x**2", durationMs: 42 });
     await h.drain();
-    expect(h.sent).toEqual([{ v: PROTOCOL_VERSION, id: "run-1", type: "cellResult", status: "ok", latex: "x^{2}", text: "x**2", durationMs: 42 }]);
+    expect(h.sent).toEqual([{ v: PROTOCOL_VERSION, id: "run-1", type: "cellResult", status: "ok", language: "r", latex: "x^{2}", text: "x**2", durationMs: 42 }]);
   });
 
   it("12.4b carries an error result through unchanged", async () => {

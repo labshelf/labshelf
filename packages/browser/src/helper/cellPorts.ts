@@ -1,5 +1,5 @@
 // The cell runner the browser pages share: one LabShelf Helper connection per page, the Run port the core hosts call and the Python install.
-import { formatError, type ICellRunner, type ILogger, type RunCellPort } from "@labshelf/core";
+import { formatError, type CellLanguage, type ICellRunner, type ILogger, type RunCellPort } from "@labshelf/core";
 import { showToast } from "@labshelf/core/dom";
 import type { ILatexHelper } from "@labshelf/core/helper";
 import { createBrowserLatexHelper } from "./client";
@@ -15,6 +15,8 @@ export interface BrowserCellPorts {
   runCell: RunCellPort;
   /** Runs a cell in the folder of the open project `projectId`. */
   runCellIn(projectId: string): RunCellPort;
+  /** Drops the helper's `language` session of the note `noteKey`; it does not wait for a run in flight. */
+  restartCell(noteKey: string, language: CellLanguage): Promise<void>;
   /** Installs the helper's Python and says when it is done; a second call while one runs does nothing. */
   installPython(): void;
 }
@@ -22,9 +24,9 @@ export interface BrowserCellPorts {
 /** The browser's ICellRunner: runs a code cell through LabShelf Helper; aborting the signal makes the helper client post cancelCell. */
 export function createHelperCellRunner(helper: ILatexHelper): ICellRunner {
   return {
-    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs }, opts.signal),
-    // The helper holds no sessions yet; the session manager arrives with the helper's language runners.
-    restart: () => Promise.resolve(),
+    run: (request, opts) => helper.runCell({ code: request.code, cwd: opts.cwd, timeoutMs: opts.timeoutMs, language: request.language, noteKey: request.noteKey }, opts.signal),
+    restart: (noteKey, language) => helper.restartCell(noteKey, language),
+    // The helper disposes its sessions when its input closes.
     dispose: () => Promise.resolve(),
   };
 }
@@ -48,6 +50,10 @@ function createCellPorts(createHelper: () => ILatexHelper, logger: ILogger): Bro
   return {
     runCell: runIn(TEMP_SCOPE),
     runCellIn: runIn,
+    async restartCell(noteKey, language) {
+      await ready();
+      await createHelperCellRunner(use()).restart(noteKey, language);
+    },
     installPython() {
       if (installing) { return; }
       installing = true;

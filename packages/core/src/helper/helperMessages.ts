@@ -2,12 +2,12 @@
 // CONTRACT: documents/contracts/helper.md#messages
 
 import type { LocatedProblem, TexInstallKind } from "../latex/index.js";
-import type { CellStatus } from "../qmd/compute/index.js";
+import type { CellLanguage, CellStatus } from "../qmd/compute/index.js";
 import type { HostToGallery, PublishDraft, PublishFromHost } from "../templates/index.js";
 import type { LatexEngine } from "../writing/project/index.js";
 
 export const HELPER_HOST_NAME = "dev.labshelf.helper";
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
 // The helper program's version, kept beside the program so every app that bundles it reports the same one.
 export const HELPER_VERSION = "0.3.0";
 
@@ -20,6 +20,7 @@ export const MAX_EDIT_CHANGES = 10000;
 export const MAX_PATH_LENGTH = 260;
 export const MAX_CELL_CODE_BYTES = 1024 * 1024;
 export const MAX_CELL_TIMEOUT_MS = 600_000;
+export const MAX_NOTE_KEY_LENGTH = 512;
 const CELL_STATUS_FLAGS: Record<CellStatus, true> = { ok: true, error: true, timeout: true, cancelled: true, missing: true };
 // INVARIANT: the Record above makes the compiler fail when CellStatus gains a value this list lacks.
 export const CELL_STATUSES = Object.keys(CELL_STATUS_FLAGS) as CellStatus[];
@@ -71,8 +72,9 @@ export type ToHelperMessage =
   | Envelope<"installTex"> & { kind: TexInstallKind }
   | Envelope<"installAllPackages">
   | Envelope<"installPython">
-  | Envelope<"runCell"> & { code: string; cwd: string; timeoutMs: number }
-  | Envelope<"cancelCell"> & { requestId: string };
+  | Envelope<"runCell"> & { code: string; cwd: string; timeoutMs: number; language: CellLanguage; noteKey: string }
+  | Envelope<"cancelCell"> & { requestId: string }
+  | Envelope<"restartCell"> & { noteKey: string; language: CellLanguage };
 
 export type ToPageMessage =
   | TemplatePublishReply
@@ -85,7 +87,7 @@ export type ToPageMessage =
   | Envelope<"progress"> & HelperProgress
   | Envelope<"built"> & { status: HelperBuildState; problems: LocatedProblem[]; pdfSha256?: string }
   | Envelope<"pages"> & { pdfSha256: string; pageCount: number; changed: ChangedPage[] }
-  | Envelope<"cellResult"> & { status: CellStatus; latex?: string; text?: string; error?: string; durationMs: number }
+  | Envelope<"cellResult"> & { status: CellStatus; language: CellLanguage; restarted?: boolean; latex?: string; text?: string; error?: string; durationMs: number }
   | (Omit<Envelope<"error">, "id"> & { id?: string | undefined; code: string; message: string });
 
 export type HelperDirection = "toHelper" | "toPage";

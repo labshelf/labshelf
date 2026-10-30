@@ -9,7 +9,7 @@ import type { ICellRunner } from "../../qmd/compute/index.js";
 import { PROTOCOL_VERSION, type HelperHost, type TexToolchain } from "../helperMessages.js";
 import { TypstCompilerHost } from "../../typst/node/index.js";
 import { createSharedTexProvider } from "../../latex/node/index.js";
-import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../qmd/compute/node/index.js";
+import { bundledCellDrivers, createNodeCellRunner, createSharedPythonProvider, locateTool, type PythonProvider } from "../../qmd/compute/node/index.js";
 import type { HelperLogger } from "./helperPrivacy.js";
 import { createProjectHandlers, createTemplatePublishHandlers, createTexInstallHandlers } from "./projectHandlers.js";
 import { createBuildHandlers } from "./helperBuild.js";
@@ -28,8 +28,8 @@ export interface CellHandlersOptions {
   logger: ILogger;
 }
 
-/** Runs and cancels code cells for the page: runCell answers cellResult under the request id, and cancelCell aborts a run by that id. */
-export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler } {
+/** Runs, cancels and restarts code cells for the page: runCell answers cellResult under the request id, cancelCell aborts a run by that id, and restartCell drops a note's session for a language and sends no reply. */
+export function createCellHandlers(options: CellHandlersOptions): { runCell: HelperHandler; cancelCell: HelperHandler; restartCell: HelperHandler } {
   const { runner, resolveCwd, logger } = options;
   const running = new Map<string, AbortController>();
 
@@ -46,10 +46,12 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     const controller = new AbortController();
     running.set(id, controller);
     try {
-      const result = await runner.run({ code: message.code, language: "python", noteKey: message.cwd }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
-      // The wire result is Python-only until the helper protocol carries languages.
-      const { status, latex, text, error, durationMs } = result;
-      send({ v: PROTOCOL_VERSION, id, type: "cellResult", status, ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), durationMs });
+      const result = await runner.run({ code: message.code, language: message.language, noteKey: message.noteKey }, { cwd, signal: controller.signal, timeoutMs: message.timeoutMs });
+      const { status, language, restarted, latex, text, error, durationMs } = result;
+      send({
+        v: PROTOCOL_VERSION, id, type: "cellResult", status, language, ...(restarted !== undefined && { restarted }),
+        ...(latex !== undefined && { latex }), ...(text !== undefined && { text }), ...(error !== undefined && { error }), durationMs,
+      });
     } finally {
       running.delete(id);
     }
@@ -63,7 +65,14 @@ export function createCellHandlers(options: CellHandlersOptions): { runCell: Hel
     return Promise.resolve();
   };
 
-  return { runCell, cancelCell };
+  // The dispatcher runs this one ahead of the queue, so a restart lands while a run is still pending.
+  const restartCell: HelperHandler = async (message) => {
+    if (message.type !== "restartCell") { throw new Error(`restartCell handler received ${message.type}`); }
+    void logger.log("INFO", CELL_MODULE, "Restarting the note's cell session", { language: message.language });
+    await runner.restart(message.noteKey, message.language);
+  };
+
+  return { runCell, cancelCell, restartCell };
 }
 
 export interface PythonHandlersOptions { python: PythonProvider; texStatus(): Promise<TexToolchain>; helperVersion: string; host: HelperHost; logger: ILogger }
@@ -159,14 +168,18 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
   const publishing = createTemplatePublishHandlers({ dataDir, logger, fetch, build: {
     logger, tex, typst: openTypst((run) => run()), ...(biber && { biber }),
   } });
-  const cells = createCellHandlers({ runner: createNodeCellRunner({ python, drivers: bundledCellDrivers(), logger }), resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
+  const runner = createNodeCellRunner({
+    python, drivers: bundledCellDrivers(), logger,
+    locate: (language) => locateTool(language === "mathematica" ? "wolframscript" : "Rscript"),
+  });
+  const cells = createCellHandlers({ runner, resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
   const dispatcher = createHelperAnswerer(
     {
       ...createProjectHandlers({ dataDir, projects, forgetBuilds: builds.forget }),
       compile: builds.compile, cancel: builds.cancel,
       ...publishing.handlers,
       ...createTexInstallHandlers({ tex, helperVersion, host, logger }),
-      runCell: cells.runCell, cancelCell: cells.cancelCell,
+      runCell: cells.runCell, cancelCell: cells.cancelCell, restartCell: cells.restartCell,
       ...createPythonHandlers({ python, texStatus: () => tex.status(), helperVersion, host, logger }),
     },
     logger,
@@ -188,6 +201,7 @@ export async function runHelperHost(options: HelperHostOptions): Promise<void> {
     publishing.dispose();
     await socket?.close();
     await dispatcher.drain();
+    await runner.dispose();
     await rejection.settled();
     await projects.closeAll();
     await logger.log("INFO", "helper", "Input closed; helper exits");

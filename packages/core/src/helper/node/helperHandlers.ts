@@ -66,8 +66,8 @@ export async function answerHello(message: HelloMessage, send: HelperSend, optio
 const DISPATCH_LOG_MODULE = "helper-dispatch";
 // A message or frame that never parsed has no id to answer; the envelope still needs one.
 const NO_ID = "0";
-// INVARIANT: cancellation and thumbnail replies must reach work that is waiting inside the ordered queue.
-const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "cancelCell", "templateThumbnail"]);
+// INVARIANT: cancellation, restarts and thumbnail replies must reach work that is waiting inside the ordered queue.
+const UNQUEUED: ReadonlySet<ToHelperMessage["type"]> = new Set(["cancel", "cancelCell", "restartCell", "templateThumbnail"]);
 
 async function runHandler(handlers: HelperHandlers, message: ToHelperMessage, send: HelperSend, logger: ILogger, payload: Uint8Array): Promise<void> {
   const reply = createErrorReply(send);
