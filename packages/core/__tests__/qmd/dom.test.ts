@@ -6,7 +6,7 @@
  */
 import { qmdSchema as s } from "../../src/qmd/editor/qmdSchema";
 import { formatOutput, formatPlotContent } from "../../src/qmd/item/cellOutput";
-import { formatPlotSpec, type PlotSpec } from "../../src/qmd/plot/plotSpec";
+import { formatPlotSpec, type PlotSpec } from "../../src/qmd/item/plotSpec";
 import { OK, OPTIONS, cell, drag, finishNormalRun, mountCell, rangeOf, release, resultOutput, useStripLifecycle } from "./dom/cellParamStripHarness";
 
 const mockApi = { react: jest.fn(async (..._args: unknown[]) => ({})), purge: jest.fn(), Plots: { resize: jest.fn() } };

@@ -1,10 +1,15 @@
-// Draws a labshelf-plot spec with plotly.js: the lazy bundle loader, the spec-to-figure mapping with the page theme's
-// colours, and a plot handle that updates in place (latest wins) and redraws when the page theme changes.
-import type { PlotAxis, PlotSpec, PlotTrace } from "../plot/index.js";
+// Draws a labshelf-plot spec with plotly.js: the lazy bundle loader and the spec-to-figure mapping with the page theme's
+// colours; the plot handle that updates in place and redraws on a theme change is in plotRender.ts.
+import type { PlotAxis, PlotSpec, PlotTrace } from "../item/index.js";
 
-type PlotlyApi = import("../plot/plotly.js").PlotlyApi;
+/** The part of the plotly.js API core calls. */
+export interface PlotlyApi {
+  react(root: HTMLElement, data: readonly object[], layout?: object, config?: object): Promise<unknown>;
+  purge(root: HTMLElement): void;
+  Plots: { resize(root: HTMLElement): unknown };
+}
 
-export type PlotlyLoader = () => Promise<import("../plot/plotly.js").PlotlyApi>;
+export type PlotlyLoader = () => Promise<PlotlyApi>;
 
 /**
  * The ids of the <style> elements Plotly looks up before creating its own: its global style sheet and the bundled
@@ -37,14 +42,16 @@ export function preparePlotlyStyles(doc: Document): void {
 let plotlyLoad: Promise<PlotlyApi> | null = null;
 
 /**
- * Loads the plotly bundle once per page, after pre-creating the style elements it looks up.
- * TRAP: it is about 5 MB of minified UMD with import-time side effects; only ever import it lazily, never statically.
+ * Loads the plotly.js strict bundle (no `eval`, no `new Function`) once per page, after pre-creating the style elements it looks up.
+ * TRAP: it is about 5 MB of minified UMD with import-time side effects (it injects a <style> element); only ever a
+ * dynamic import, never static.
  */
 export const loadCorePlotly: PlotlyLoader = () => {
   if (!plotlyLoad) {
     preparePlotlyStyles(document);
-    plotlyLoad = import("../plot/plotly.js").then(
-      (mod) => mod.Plotly,
+    // @ts-expect-error the package ships no types; PlotlyApi above names the part core uses.
+    plotlyLoad = import("plotly.js-strict-dist-min").then(
+      (mod: { default?: unknown }) => (mod.default ?? mod) as PlotlyApi,
       (error: unknown) => {
         plotlyLoad = null;
         throw error;
@@ -56,7 +63,7 @@ export const loadCorePlotly: PlotlyLoader = () => {
 
 export interface PlotTheme { text: string; grid: string; font: string; palette: string[] }
 
-export const DEFAULT_PLOT_PALETTE: readonly string[] = [
+const DEFAULT_PLOT_PALETTE: readonly string[] = [
   "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f", "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
 ];
 
@@ -73,7 +80,7 @@ export function readPlotTheme(element: Element): PlotTheme {
   };
 }
 
-function sameTheme(a: PlotTheme, b: PlotTheme): boolean {
+export function sameTheme(a: PlotTheme, b: PlotTheme): boolean {
   return a.text === b.text && a.grid === b.grid && a.font === b.font
     && a.palette.length === b.palette.length && a.palette.every((colour, i) => colour === b.palette[i]);
 }
@@ -119,7 +126,7 @@ function toAxis(axis: PlotAxis | undefined, theme: PlotTheme): object {
   return out;
 }
 
-export function toPlotlyFigure(spec: import("../plot/index.js").PlotSpec, theme: PlotTheme): PlotlyFigure {
+export function toPlotlyFigure(spec: PlotSpec, theme: PlotTheme): PlotlyFigure {
   const data = spec.traces.map((trace, i) =>
     toTrace(trace, trace.color ?? theme.palette[i % theme.palette.length]!, spec.dim));
   const layout: Record<string, unknown> = {
@@ -142,160 +149,4 @@ export function toPlotlyFigure(spec: import("../plot/index.js").PlotSpec, theme:
     layout.yaxis = toAxis(spec.axes.y, theme);
   }
   return { data, layout, config: { displaylogo: false, responsive: true } };
-}
-
-export interface PlotHandle { readonly drawn: Promise<void>; update(spec: import("../plot/index.js").PlotSpec): Promise<void>; destroy(): void }
-
-/** One shared theme watcher for every live plot: created with the first, disconnected with the last. */
-const themeListeners = new Set<() => void>();
-let stopThemeWatch: (() => void) | null = null;
-
-function notifyTheme(): void {
-  for (const listener of [...themeListeners]) listener();
-}
-
-function watchTheme(listener: () => void): void {
-  themeListeners.add(listener);
-  if (stopThemeWatch) return;
-  const observer = new MutationObserver(notifyTheme);
-  const options: MutationObserverInit = { attributes: true, attributeFilter: ["class", "data-theme", "style"] };
-  observer.observe(document.documentElement, options);
-  if (document.body) observer.observe(document.body, options);
-  const media = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-  media?.addEventListener("change", notifyTheme);
-  stopThemeWatch = () => {
-    observer.disconnect();
-    media?.removeEventListener("change", notifyTheme);
-  };
-}
-
-function unwatchTheme(listener: () => void): void {
-  if (!themeListeners.delete(listener) || themeListeners.size > 0 || !stopThemeWatch) return;
-  stopThemeWatch();
-  stopThemeWatch = null;
-}
-
-interface Waiter { resolve(): void; reject(error: unknown): void }
-
-export function renderPlot(root: HTMLElement, spec: import("../plot/index.js").PlotSpec, loadPlotly: PlotlyLoader): PlotHandle {
-  let plotly: PlotlyApi | null = null;
-  let destroyed = false;
-  let busy = false;
-  let firstDone = false;
-  let current: PlotSpec = spec;
-  let lastTheme: PlotTheme | null = null;
-  /** The latest spec not yet handed to react, and every caller waiting on it or an earlier dropped one. */
-  let next: PlotSpec | null = spec;
-  let waiters: Waiter[] = [];
-  let themeDirty = false;
-  let loadFailed: { error: unknown } | null = null;
-
-  let resolveDrawn!: () => void;
-  let rejectDrawn!: (error: unknown) => void;
-  const drawn = new Promise<void>((resolve, reject) => { resolveDrawn = resolve; rejectDrawn = reject; });
-  drawn.catch(() => undefined);
-
-  const settle = (list: Waiter[], error?: unknown): void => {
-    for (const waiter of list) {
-      if (error === undefined) waiter.resolve();
-      else waiter.reject(error);
-    }
-  };
-
-  const pump = (): void => {
-    if (destroyed || busy || !plotly) return;
-    let target: PlotSpec;
-    let theme: PlotTheme;
-    if (next) {
-      target = next;
-      theme = readPlotTheme(root);
-    } else if (themeDirty) {
-      themeDirty = false;
-      theme = readPlotTheme(root);
-      if (lastTheme && sameTheme(theme, lastTheme)) return;
-      target = current;
-    } else {
-      return;
-    }
-    const batch = waiters;
-    next = null;
-    waiters = [];
-    themeDirty = false;
-    current = target;
-    lastTheme = theme;
-    busy = true;
-    const figure = toPlotlyFigure(target, theme);
-    const api = plotly;
-    let call: Promise<unknown>;
-    try {
-      call = api.react(root, figure.data, figure.layout, figure.config);
-    } catch (error) {
-      call = Promise.reject(error);
-    }
-    call.then(
-      () => {
-        busy = false;
-        if (!firstDone) { firstDone = true; resolveDrawn(); }
-        settle(batch);
-        pump();
-      },
-      (error: unknown) => {
-        busy = false;
-        if (!firstDone) { firstDone = true; rejectDrawn(error); }
-        settle(batch, error);
-        pump();
-      },
-    );
-  };
-
-  const onTheme = (): void => {
-    if (destroyed || !firstDone) return;
-    themeDirty = true;
-    pump();
-  };
-
-  watchTheme(onTheme);
-
-  loadPlotly().then(
-    (api) => {
-      if (destroyed) return;
-      plotly = api;
-      pump();
-    },
-    (error: unknown) => {
-      if (destroyed) return;
-      loadFailed = { error };
-      firstDone = true;
-      rejectDrawn(error);
-      const batch = waiters;
-      waiters = [];
-      next = null;
-      settle(batch, error);
-      unwatchTheme(onTheme);
-    },
-  );
-
-  return {
-    drawn,
-    update(nextSpec: PlotSpec): Promise<void> {
-      if (destroyed) return Promise.resolve();
-      if (loadFailed) return Promise.reject(loadFailed.error);
-      return new Promise<void>((resolve, reject) => {
-        next = nextSpec;
-        waiters.push({ resolve, reject });
-        pump();
-      });
-    },
-    destroy(): void {
-      if (destroyed) return;
-      destroyed = true;
-      unwatchTheme(onTheme);
-      const batch = waiters;
-      waiters = [];
-      next = null;
-      settle(batch);
-      if (!firstDone) resolveDrawn();
-      if (plotly) plotly.purge(root);
-    },
-  };
 }
