@@ -5,7 +5,7 @@
  */
 import type { EditorView } from "prosemirror-view";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
-import { DEBOUNCE, OK, cell, controlsOf, drag, finishNormalRun, flush, mountCell, nameOf, rangeOf, release, useStripLifecycle } from "./cellParamStripHarness";
+import { OK, cell, controlsOf, drag, finishNormalRun, flush, endPreviews, mountCell, nameOf, rangeOf, release, useStripLifecycle } from "./cellParamStripHarness";
 
 useStripLifecycle();
 
@@ -25,7 +25,6 @@ describe("4.1d Manipulate controls", () => {
     runButton(m.view).click();
     expect(m.normals()).toHaveLength(1);
     await finishNormalRun(m.view);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()).toHaveLength(1);
     m.previews()[0]!.preview!({ ...OK, language: "mathematica", text: "frame", controls: CONTROLS });
     await flush();
@@ -41,7 +40,6 @@ describe("4.1d Manipulate controls", () => {
     const m = mountCell([mma()]);
     runButton(m.view).click();
     await finishNormalRun(m.view);
-    jest.advanceTimersByTime(DEBOUNCE * 5);
     expect(m.previews()).toHaveLength(1);
     expect(m.previews()[0]!.params).toEqual({});
     expect(m.previews()[0]!.language).toBe("mathematica");
@@ -51,7 +49,6 @@ describe("4.1d Manipulate controls", () => {
     const m = mountCell([cell("#| label: sim\n")]);
     runButton(m.view).click();
     await finishNormalRun(m.view);
-    jest.advanceTimersByTime(DEBOUNCE * 5);
     expect(m.previews()).toHaveLength(0);
   });
 
@@ -77,6 +74,7 @@ describe("4.1d Manipulate controls", () => {
     const m = await withControls();
     const range = rangeOf(m.view);
     drag(range, 6);
+    endPreviews(m);
     release(range);
     jest.advanceTimersByTime(2000);
     expect(m.options()).toBe('#| label: sim\n#| param: a = slider(0, 10, 6, step = 1)\n#| param: mode = select("x", "y"; "y")\n#| param: on = checkbox(true)\n');
@@ -87,6 +85,7 @@ describe("4.1d Manipulate controls", () => {
     const m = await withControls();
     const range = rangeOf(m.view);
     drag(range, 6);
+    endPreviews(m);
     release(range);
     jest.advanceTimersByTime(2000);
     expect(m.normals()).toHaveLength(2);
@@ -97,7 +96,6 @@ describe("4.1d Manipulate controls", () => {
   it("4.1d dragging a Manipulate control previews with all control values", async () => {
     const m = await withControls();
     drag(rangeOf(m.view), 5);
-    jest.advanceTimersByTime(DEBOUNCE);
     expect(m.previews()).toHaveLength(2);
     expect(m.previews()[1]!.params).toEqual({ a: 5, mode: "y", on: true });
   });
@@ -106,7 +104,6 @@ describe("4.1d Manipulate controls", () => {
     const m = mountCell([mma("#| label: sim\n#| param: a = slider(0, 10, 2, step = 1)\n")]);
     runButton(m.view).click();
     await finishNormalRun(m.view);
-    jest.advanceTimersByTime(DEBOUNCE);
     for (const call of m.previews()) call.preview!({ ...OK, language: "mathematica", controls: CONTROLS });
     await flush();
     expect(controlsOf(m.view)).toHaveLength(1);
