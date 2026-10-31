@@ -75,6 +75,8 @@ Per share, under `collab/<share id>/` in the library's [state folder](library-fo
 - An edit is durable once its append (or IndexedDB transaction) completes.
 - A relay cursor is saved only after every update received so far is stored.
 
+The editor's review mode (editing or reviewing) is per user and project and never travels in a share: the browser keeps it in local storage, VS Code in `workspaceState` under `labshelf.reviewMode.<projectId>`. The VS Code source editor page asks its host to add or remove suggestions and to store the mode; the host answers with the file's suggestion list.
+
 The mirror between docs and the project folder treats a disk version the share already knows (in the agreed records or in `written`) as the doc's, so the doc wins. Before writing a file it appends to the file's [write record](library-format.md#project-folder-labshelf) with `by: "mirror"`; a disk version recorded that way but not yet in `written` is in flight and waits. Any other disk text is an outside edit and is merged three-way, keeping overlaps in conflict markers. Conflict copies stay out of the share until the user resolves them.
 
 ## Mirror ownership

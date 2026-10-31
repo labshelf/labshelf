@@ -1,58 +1,256 @@
 schema: session/v1
 id: "4"
 goal: "The VS Code source editor offers the review mode: protocol messages, the webview port, the extension's suggestion store, the author and the remembered mode."
-depends_on: ["1", "2"]
-owns: [packages/core/src/writing/protocol.ts, packages/core/__tests__/writing/protocol.test.ts, packages/vscode/src/writing/sourceEditor/, packages/vscode/src/collab/suggestions.ts, packages/vscode/src/collab/node/register.ts, packages/vscode/__tests__/collab/suggestions.test.ts]
-status: pending
+depends_on:
+  - "1"
+  - "2"
+owns:
+  - documents/contracts/collaboration.md
+  - packages/core/__tests__/collab/
+  - packages/core/src/collab/dom/index.ts
+  - packages/browser/src/collab/suggestions.ts
+  - packages/core/src/collab/index.ts
+  - packages/core/src/collab/suggestions.ts
+  - packages/core/src/writing/dom/sourceEditor/
+  - packages/core/__tests__/writing/dom/sourceEditor/
+  - packages/vscode/src/collab/comments.ts
+  - packages/vscode/src/collab/projectEntries.ts
+  - packages/browser/src/libraryUi/editorArea/
+  - packages/browser/src/libraryUi/libraryPage.ts
+  - packages/vscode/src/activation/registerPanelCommands.ts
+  - packages/vscode/src/collab/index.ts
+  - packages/core/src/writing/protocol.ts
+  - packages/core/__tests__/writing/protocol.test.ts
+  - packages/vscode/src/writing/sourceEditor/
+  - packages/vscode/src/collab/suggestions.ts
+  - packages/vscode/src/collab/node/register.ts
+  - packages/vscode/__tests__/collab/suggestions.test.ts
+status: blocked
 packages:
   - id: "4.1"
     plan: review-mode
-    sha: 3b1e2389
-    goal: "The source editor protocol carries suggestions (host→webview) and addSuggestions, removeSuggestions and reviewMode (webview→host), with the version raised by one."
+    sha: 0ef569f0
+    goal: The source editor protocol carries suggestions (host→webview) and addSuggestions, removeSuggestions and reviewMode (webview→host).
     level: contract
-    runner: {agent: implementer, model: sonnet}
+    runner:
+      agent: implementer
+      model: sonnet
     edit:
-      - {path: packages/core/src/writing/protocol.ts, lines: "1-140", why: "message types and decoder cases"}
+      - path: packages/core/src/writing/protocol.ts
+        lines: 1-200
+        why: message types and decoder cases
+      - path: packages/core/__tests__/writing/protocol.test.ts
+        lines: 1-400
+        why: the failing tests first
+    read:
+      - path: packages/core/src/writing/dom/sourceEditor/review.ts
+        lines: 210-240
+        why: FileSuggestion {id, kind insert|delete, start, end, text?, group?, author, created} and ReviewMode
     decided:
       - "Inbound `{type: 'suggestions', suggestions: FileSuggestion[]}` and init gains `review: {mode, author}`; outbound `{type: 'addSuggestions', suggestions}`, `{type: 'removeSuggestions', ids}`, `{type: 'reviewMode', mode}`. The decoder drops malformed suggestions and rejects a malformed message."
+      - The source editor protocol has no version constant (checked at 0ef569f0), so nothing is bumped; the parser for a FileSuggestion lives in protocol.ts since core has none.
     acceptance:
-      - {id: 4.1a, check: "each new message decodes; a wrong field is rejected"}
-      - {id: A4, check: "protocol decode"}
-    tests: {none: "contract package: the implementer writes the failing tests first in packages/core/__tests__/writing/protocol.test.ts"}
-    commands: ["node scripts/agents/run.mjs typecheck core", "node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/protocol.test.ts"]
+      - id: 4.1a
+        check: each new message decodes; a wrong field is rejected
+      - id: A4
+        check: protocol decode
+    tests:
+      none: "contract package: the implementer writes the failing tests first in packages/core/__tests__/writing/protocol.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/writing/protocol.test.ts
   - id: "4.2"
     plan: review-mode
-    sha: 3b1e2389
-    goal: "The extension's suggestion store per source file, local over comments.qmd and shared over the share's map, as FileComments and SharedComments are."
+    sha: 0ef569f0
+    goal: The extension's suggestion store per source file, local over comments.qmd and shared over the share's map, as FileComments and SharedComments are.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    create: [packages/vscode/src/collab/suggestions.ts]
+    runner:
+      agent: implementer
+      model: sonnet
+    create:
+      - packages/vscode/src/collab/suggestions.ts
+      - packages/vscode/__tests__/collab/suggestions.test.ts
     edit:
-      - {path: packages/vscode/src/collab/node/register.ts, lines: "120-160", why: "build the store beside registerComments"}
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 120-160
+        why: build the store beside registerComments
     read:
-      - {path: documents/plans/review-mode/research/hosts.brief.yaml, lines: "1-60", why: "host map"}
-      - {path: packages/vscode/src/collab/comments.ts, lines: "60-360", why: "FileComments and SharedComments to mirror"}
+      - path: documents/plans/review-mode/research/hosts.brief.yaml
+        lines: 1-60
+        why: host map
+      - path: packages/vscode/src/collab/comments.ts
+        lines: 60-360
+        why: FileComments and SharedComments to mirror
+      - path: packages/vscode/__tests__/collab/comments.test.ts
+        lines: 1-300
+        why: test setup for the vscode stores to copy
+      - path: packages/browser/src/collab/register.ts
+        lines: 1-60
+        why: how the browser gets SharedProjectSuggestions from a live share
+      - path: packages/core/src/collab/index.ts
+        lines: 1-200
+        why: addSuggestions, removeSuggestions, deriveSuggestions, findSuggestion, deriveSuggestionAnchor, SharedProjectSuggestions
+      - path: packages/core/src/writing/dom/sourceEditor/review.ts
+        lines: 210-240
+        why: FileSuggestion and EditorSuggestions
+      - path: packages/browser/src/collab/suggestions.ts
+        lines: 1-131
+        why: the browser's routed suggestion store from session 3; mirror its shape and reuse the core pieces it uses
     acceptance:
-      - {id: 4.2a, check: "add, subscribe and remove round-trip for a local and a shared project"}
-      - {id: A3, check: "accept/reject in a local and a shared project"}
-    tests: {none: "behaviour package: the implementer writes the failing tests first in packages/vscode/__tests__/collab/suggestions.test.ts"}
-    commands: ["node scripts/agents/run.mjs typecheck vscode", "node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab"]
+      - id: 4.2a
+        check: add, subscribe and remove round-trip for a local and a shared project
+      - id: A3
+        check: accept/reject in a local and a shared project
+    tests:
+      none: "behaviour package: the implementer writes the failing tests first in packages/vscode/__tests__/collab/suggestions.test.ts"
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab
   - id: "4.3"
     plan: review-mode
-    sha: 3b1e2389
-    goal: "The webview passes deps.review through a suggestions port, the toolbar's dropdown sets the mode through the host, and the bridges and provider serve the store, the author (userName()) and the mode in workspaceState."
+    sha: 0ef569f0
+    goal: The webview passes deps.review through a suggestions port, the toolbar's dropdown sets the mode through the host, and the bridges and provider serve the store, the author (userName()) and the mode in workspaceState.
     level: behaviour
-    runner: {agent: implementer, model: sonnet}
-    depends_on: ["4.1", "4.2"]
+    runner:
+      agent: implementer
+      model: sonnet
+    depends_on:
+      - "4.1"
+      - "4.2"
     edit:
-      - {path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts, lines: "1-170", why: "createSuggestionsPort beside createCommentsPort"}
-      - {path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts, lines: "120-175", why: "TOOLBAR dropdown with a lazy editor reference; route inbound suggestions"}
-      - {path: packages/vscode/src/writing/sourceEditor/bridges.ts, lines: "120-175", why: "answer addSuggestions/removeSuggestions/reviewMode; post suggestions on change"}
-      - {path: packages/vscode/src/writing/sourceEditor/provider.ts, lines: "1-200", why: "init review {mode, author}; store per panel"}
+      - path: packages/vscode/src/writing/sourceEditor/webview/hostPorts.ts
+        lines: 1-170
+        why: createSuggestionsPort beside createCommentsPort
+      - path: packages/vscode/src/writing/sourceEditor/webview/sourceEditorEntry.ts
+        lines: 120-175
+        why: TOOLBAR dropdown with a lazy editor reference; route inbound suggestions
+      - path: packages/vscode/src/writing/sourceEditor/bridges.ts
+        lines: 120-175
+        why: answer addSuggestions/removeSuggestions/reviewMode; post suggestions on change
+      - path: packages/vscode/src/writing/sourceEditor/provider.ts
+        lines: 1-200
+        why: init review {mode, author}; store per panel
+      - path: packages/vscode/src/activation/registerPanelCommands.ts
+        lines: 1-200
+        why: "passes comments: currentSourceFileComments to the provider; pass suggestions: currentSourceFileSuggestions beside it"
+      - path: packages/vscode/src/collab/index.ts
+        lines: 1-20
+        why: re-export currentSourceFileSuggestions and SourceFileSuggestions beside the comments ones
+      - path: packages/vscode/src/collab/suggestions.ts
+        lines: 1-330
+        why: SourceFileSuggestions gains author(); the controller gets it from its deps
+      - path: packages/vscode/src/collab/node/register.ts
+        lines: 30-200
+        why: registerSuggestions passes userName() as the author
+    read:
+      - path: packages/core/src/writing/protocol.ts
+        lines: 1-260
+        why: "the 4.1 messages: inbound suggestions, init review {mode, author}, outbound addSuggestions/removeSuggestions/reviewMode"
+      - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+        lines: 1-200
+        why: "the browser glue from session 3: deps.review, reviewModeDropdown in renderSourceToolbar, setReviewMode, onMode; mirror it"
     decided:
-      - "Mode in workspaceState under `labshelf.reviewMode.<projectId>`; default editing; read-only panels get neither the dropdown nor review."
+      - Mode in workspaceState under `labshelf.reviewMode.<projectId>`; default editing; read-only panels get neither the dropdown nor review.
+      - "The author is the extension's userName() (OS user name, the name a share shows), exposed as `author(): string` on SourceFileSuggestions; the provider sends it in init.review."
+      - The webview builds its EditorReview from init.review and a suggestions port in hostPorts.ts (subscribe fed by inbound `suggestions`, add/remove posted as addSuggestions/removeSuggestions); onMode posts reviewMode; the toolbar adds core's reviewModeDropdown as a last group, as the browser's sourceTab does, and calls editor.setReviewMode.
+      - The webview code may import core/dom and core/sourceEditor; the extension host side (bridges, provider, collab) may not import core/dom, so it uses the local types in collab/suggestions.ts.
     acceptance:
-      - {id: 4.3a, check: "by hand in VS Code: the dropdown switches modes and survives reopening; suggestions show, resolve and persist; a peer sees them"}
-      - {id: A5, check: "VS Code half of A5"}
-    tests: {none: "glue; checked by hand (A5)"}
-    commands: ["node scripts/agents/run.mjs typecheck vscode", "node scripts/agents/run.mjs build vscode"]
+      - id: 4.3a
+        check: "by hand in VS Code: the dropdown switches modes and survives reopening; suggestions show, resolve and persist; a peer sees them"
+      - id: A5
+        check: VS Code half of A5
+    tests:
+      none: glue; checked by hand (A5)
+    commands:
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs build vscode
+  - id: "4.4"
+    plan: review-mode
+    sha: 0ef569f0
+    depends_on:
+      - "4.3"
+    goal: "Lint milestone: the core review code passes max-lines-per-function, and ReviewMode and EditorSuggestions live in DOM-free core so the protocol and the extension host import them instead of mirroring them."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/core/src/writing/dom/sourceEditor/review.ts
+        lines: 150-376
+        why: createReviewTracking (61 lines, line 156) and createReviewSupport (94 lines, line 283) over the 50-line limit; move ReviewMode (line 11) and EditorSuggestions (line 221) out and re-export them
+      - path: packages/core/src/writing/dom/sourceEditor/reviewView.ts
+        lines: 60-186
+        why: createReviewView is 101 lines
+      - path: packages/core/src/writing/dom/sourceEditor/editor.ts
+        lines: 290-351
+        why: mountSourceEditor is 52 lines
+      - path: packages/core/src/collab/suggestions.ts
+        lines: 1-221
+        why: home of FileSuggestion; add ReviewMode and EditorSuggestions beside it
+      - path: packages/core/src/collab/index.ts
+        lines: 1-200
+        why: export the moved types
+      - path: packages/core/src/writing/protocol.ts
+        lines: 1-260
+        why: replace the local SourceReviewMode with ReviewMode
+      - path: packages/vscode/src/collab/suggestions.ts
+        lines: 1-330
+        why: replace the local EditorSuggestions mirror with core's
+      - path: packages/vscode/src/collab/index.ts
+        lines: 1-20
+        why: re-exports
+    decided:
+      - Split each long function by extracting named helpers in the same file, or a sibling file in dom/sourceEditor/ when a concept stands alone (e.g. the suggestion load/sync of createReviewSupport); behaviour does not change.
+      - ReviewMode and EditorSuggestions move to packages/core/src/collab/suggestions.ts (no DOM, no CodeMirror) and are re-exported from review.ts and @labshelf/core, so existing imports keep working.
+      - Never add eslint-disable comments or raise limits.
+    acceptance:
+      - id: 4.4a
+        check: "`node scripts/agents/run.mjs cmd -- npx eslint packages/core/src/writing/dom/sourceEditor packages/core/src/collab packages/core/src/writing/protocol.ts` reports no max-lines-per-function errors"
+      - id: 4.4b
+        check: the existing review, reviewView, editorReview, editor and protocol tests and the vscode collab tests pass unchanged
+    tests:
+      none: "refactor: the existing tests are the check"
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/writing
+      - node scripts/agents/run.mjs test vscode -- packages/vscode/__tests__/collab
+      - node scripts/agents/run.mjs cmd -- npx eslint packages/core/src/writing/dom/sourceEditor packages/core/src/collab packages/core/src/writing/protocol.ts
+  - id: "4.5"
+    plan: review-mode
+    sha: 0ef569f0
+    depends_on:
+      - "4.3"
+    goal: "Lint milestone: the browser's sourceTab and libraryPage pass max-lines-per-function, and paperTab.ts is folded into tabKinds.ts."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    edit:
+      - path: packages/browser/src/libraryUi/editorArea/sourceTab.ts
+        lines: 140-220
+        why: the arrow function at line 155 is 66 lines
+      - path: packages/browser/src/libraryUi/libraryPage.ts
+        lines: 130-204
+        why: boot (line 141) is 62 lines
+      - path: packages/browser/src/libraryUi/editorArea/paperTab.ts
+        lines: 1-10
+        why: "satellite: fold into tabKinds.ts and delete"
+      - path: packages/browser/src/libraryUi/editorArea/tabKinds.ts
+        lines: 1-92
+        why: receives paperTab's content
+    decided:
+      - Extract named helpers; behaviour does not change; never add eslint-disable comments. Update paperTab.ts importers (find them with `node scripts/code/facts.mjs uses packages/browser/src/libraryUi/editorArea/paperTab.ts`).
+    acceptance:
+      - id: 4.5a
+        check: "`node scripts/agents/run.mjs cmd -- npx eslint packages/browser/src/libraryUi` reports no errors and `node scripts/lint/modules.mjs` no longer names paperTab.ts"
+      - id: 4.5b
+        check: browser typecheck and the libraryUi tests pass
+    tests:
+      none: "refactor: the existing tests are the check"
+    commands:
+      - node scripts/agents/run.mjs typecheck browser
+      - node scripts/agents/run.mjs test browser -- packages/browser/__tests__
+      - node scripts/agents/run.mjs cmd -- npx eslint packages/browser/src/libraryUi
+      - node scripts/agents/run.mjs cmd -- node scripts/lint/modules.mjs
+blocked_reason: "4.1: missing; 4.5: blocked_tests"

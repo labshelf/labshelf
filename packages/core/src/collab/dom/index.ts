@@ -3,6 +3,6 @@ export { runJoinProjectDialog, runLeaveProjectDialog, runShareProjectDialog } fr
 export { createProjectShareMenuEntries } from "./projectShareMenu.js";
 export { createCollabExtensions, createRemoteCursors, createPeerCursors, type CollabExtensionsOptions, type PeerCursor, type PeerCursorSource } from "./editorCollab.js";
 export {
-  addCommentSupport, createCommentSupport, mountBodyInput,
+  addCommentSupport, createCommentSupport, docOffsetToFile, fileOffsetToDoc, mountBodyInput,
   type BodyInput, type CommentSupport, type CommentSupportDeps, type EditorComments, type MountBodyEditor, type RenderCommentFooter,
 } from "./editorComments.js";

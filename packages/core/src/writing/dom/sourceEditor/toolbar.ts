@@ -1,6 +1,5 @@
 // Draws the source editor's in-editor toolbar: groups of icon buttons and dropdowns that act on the editor without taking its focus.
-import { headButton, renderElement, type IconName } from "../../../ui/dom/index.js";
-import { showMenu } from "../../../ui/dom/widgets/menu.js";
+import { headButton, renderElement, showMenu, type IconName } from "../../../ui/dom/index.js";
 import { renderIcon } from "../../../ui/icons/index.js";
 
 export interface SourceToolbarButton {

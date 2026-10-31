@@ -4,7 +4,6 @@ import * as vscode from "vscode";
 import {
   type Comment,
   type ILogger,
-  type ProjectEntry,
   addThread,
   createEditorCommentRange,
   createKeyedDebouncer,
@@ -35,6 +34,7 @@ import {
   readTextFile,
 } from "./threads.js";
 import { disposeAll } from "../disposables/index.js";
+import { reconcileProjects } from "./projectEntries.js";
 
 /** An unshared project's threads, read from and written to its comments.qmd. */
 class FileComments implements ProjectComments {
@@ -140,7 +140,7 @@ export interface SourceFileComments {
 }
 
 /** Walks the text one character at a time (CRLF is one) until `done`; returns the file offset and the LF offset reached. */
-function walkLf(text: string, done: (file: number, lf: number) => boolean): { file: number; lf: number } {
+export function walkLf(text: string, done: (file: number, lf: number) => boolean): { file: number; lf: number } {
   let file = 0;
   let lf = 0;
   while (!done(file, lf) && file < text.length) { file += text.startsWith("\r\n", file) ? 2 : 1; lf += 1; }
@@ -158,8 +158,6 @@ export interface CommentsDeps {
 }
 
 interface ProjectView { key: string; view: ThreadView; subscription: vscode.Disposable }
-
-const isOpenProject = (entry: ProjectEntry): entry is Extract<ProjectEntry, { kind: "ready" }> => entry.kind === "ready" && !entry.settings.trashed;
 
 export class CommentsController implements vscode.Disposable, SourceFileComments {
   private readonly controller = vscode.comments.createCommentController("labshelf.comments", "LabShelf");
@@ -291,20 +289,12 @@ export class CommentsController implements vscode.Disposable, SourceFileComments
   }
 
   private sync(): void {
-    const open = this.deps.projects.list().filter(isOpenProject);
-    for (const folder of this.views.keys()) {
-      if (!open.some((project) => project.folder === folder)) { this.drop(folder); }
-    }
-    for (const { folder } of open) {
-      const share = this.deps.shares.list().find((candidate) => candidate.folder === folder);
-      const key = share ? `share:${share.shareId}` : "file";
-      if (this.views.get(folder)?.key === key) { continue; }
-      this.drop(folder);
+    reconcileProjects(this.deps, this.views, (folder) => this.drop(folder), (folder, share, key) => {
       const store: ProjectComments = share ? new SharedComments(share) : new FileComments(folder, this.deps.logger);
       const view = new ThreadView(this.controller, store, this.deps.logger);
       this.views.set(folder, { key, view, subscription: store.onDidChange(() => { void view.refresh(); this.notifySources(); }) });
       void view.refresh();
-    }
+    });
     this.notifySources();
   }
 

@@ -5,3 +5,4 @@
 - 2026-10-30 17:48 — session 2 done: 2.1, 2.2, 2.3
 - 2026-10-30 18:37 — session 3 blocked: 3.2: missing
 - 2026-10-30 18:38 — session 3 done: 3.1, 3.2
+- 2026-10-30 21:28 — session 4 blocked: 4.1: missing; 4.5: blocked_tests

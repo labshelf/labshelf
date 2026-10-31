@@ -1,10 +1,10 @@
 // Stores a file's tracked changes for the editor's review mode: over comments.qmd in a local project, over the share's suggestions in a shared one, and the routing between them.
 // CONTRACT: documents/contracts/collaboration.md#comments
 import {
-  addSuggestions, COMMENTS_PATH, deriveSuggestionAnchor, deriveSuggestions, findSuggestion, loadCommentsDocument, removeSuggestions,
-  type ILogger, type LibraryFileSystem, type SharedProjectSuggestions, type Suggestion, type TextRange,
+  addSuggestions, COMMENTS_PATH, deriveSuggestionAnchor, deriveSuggestions, findSuggestion, loadCommentsDocument, removeSuggestions, toFileSuggestion, toSuggestion,
+  type FileSuggestion, type ILogger, type LibraryFileSystem, type SharedProjectSuggestions, type Suggestion, type TextRange,
 } from "@labshelf/core";
-import type { EditorSuggestions, FileSuggestion } from "@labshelf/core/dom";
+import type { EditorSuggestions } from "@labshelf/core/dom";
 import { accessOf, createChangeEmitter, editComments, openFolder, readFileText, type Session } from "./comments";
 import type { PageShares } from "./pageShares";
 
@@ -19,18 +19,6 @@ export interface FileSuggestionsOptions {
   fs: LibraryFileSystem;
   session: Session;
   logger: ILogger;
-}
-
-/** The editor's record of a stored suggestion at `range`; a delete's range is empty. */
-function toFileSuggestion(s: Suggestion, range: TextRange): FileSuggestion {
-  const { id, kind, author, created, text, group } = s;
-  return { id, kind, start: range.start, end: s.kind === "delete" ? range.start : range.end, author, created, ...(text === undefined ? {} : { text }), ...(group === undefined ? {} : { group }) };
-}
-
-/** The stored record of the editor's suggestion in `file`, anchored by `anchor`. */
-function toSuggestion(s: FileSuggestion, file: string, anchor: Suggestion["anchor"]): Suggestion {
-  const { id, kind, author, created, text, group } = s;
-  return { id, file, kind, anchor, ...(text === undefined ? {} : { text }), ...(group === undefined ? {} : { group }), author, created };
 }
 
 /** The suggestions of `path` that still sit in the text, with their positions; the detached ones are left out. */
