@@ -2,6 +2,7 @@
 import { isBoolean, isNumber, isOneOf, isRecord, isString } from "../guards/index.js";
 import type { WrapKind } from "./snippets.js";
 import type { SourceUpdate } from "./authority.js";
+import type { FileSuggestion, ReviewMode } from "../collab/index.js";
 
 interface SourceProblem { line: number; severity: "error" | "warning" | "info"; message: string }
 /** A thread's range in LF offsets of the document. */
@@ -14,7 +15,7 @@ type SourceEditorCommand =
   | { kind: "wrap"; style: WrapKind };
 
 export type SourceEditorInbound =
-  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean }
+  | { type: "init"; path: string; projectId: string; language: "latex" | "typst"; text: string; lineBreak: "\n" | "\r\n"; version: number; readOnly: boolean; dirty: boolean; review?: { mode: ReviewMode; author: string } }
   | { type: "updates"; version: number; updates: SourceUpdate[] }
   | { type: "resync"; text: string; version: number }
   | { type: "dirty"; dirty: boolean }
@@ -23,7 +24,8 @@ export type SourceEditorInbound =
   | { type: "command"; command: SourceEditorCommand }
   | { type: "response"; id: number; ok: true; value: unknown } | { type: "response"; id: number; ok: false; error: string }
   | { type: "comments"; ranges: SourceCommentRange[] }
-  | { type: "peers"; peers: SourcePeer[] };
+  | { type: "peers"; peers: SourcePeer[] }
+  | { type: "suggestions"; suggestions: FileSuggestion[] };
 
 type SourceEditorRequestMethod =
   | "papers" | "readNote" | "listProjectNotes" | "readProjectNote" | "listCitedPaperIds" | "readPaperNote"
@@ -39,12 +41,17 @@ export type SourceEditorOutbound =
   | { type: "save" }
   | { type: "selection"; anchor: number; head: number; line: number }
   | { type: "focus"; focused: boolean }
+  | { type: "addSuggestions"; suggestions: FileSuggestion[] }
+  | { type: "removeSuggestions"; ids: string[] }
+  | { type: "reviewMode"; mode: ReviewMode }
   | { type: "request"; id: number; method: SourceEditorRequestMethod; params: unknown };
 
 const LANGUAGES = ["latex", "typst"] as const;
 const LINE_BREAKS = ["\n", "\r\n"] as const;
 const SEVERITIES = ["error", "warning", "info"] as const;
 const WRAP_KINDS = ["bold", "italic"] as const satisfies readonly WrapKind[];
+const REVIEW_MODES = ["editing", "reviewing"] as const satisfies readonly ReviewMode[];
+const SUGGESTION_KINDS = ["insert", "delete"] as const;
 
 type Parse<T> = (value: unknown) => T | undefined;
 
@@ -85,6 +92,31 @@ function parsePeer(value: unknown): SourcePeer | undefined {
   return { name: value.name, colour: value.colour, anchor: value.anchor, head: value.head };
 }
 
+function parseSuggestion(value: unknown): FileSuggestion | undefined {
+  if (!isRecord(value) || !isString(value.id) || !isOneOf(SUGGESTION_KINDS, value.kind) || !isNumber(value.start) || !isNumber(value.end)
+    || !isString(value.author) || !isString(value.created)) { return undefined; }
+  if ((value.text !== undefined && !isString(value.text)) || (value.group !== undefined && !isString(value.group))) { return undefined; }
+  const suggestion: FileSuggestion = { id: value.id, kind: value.kind, start: value.start, end: value.end, author: value.author, created: value.created };
+  if (value.text !== undefined) { suggestion.text = value.text; }
+  if (value.group !== undefined) { suggestion.group = value.group; }
+  return suggestion;
+}
+
+/** @returns the well-formed suggestions of the list, dropping the malformed ones; undefined when the value is not a list */
+function parseSuggestions(value: unknown): FileSuggestion[] | undefined {
+  if (!Array.isArray(value)) { return undefined; }
+  const out: FileSuggestion[] = [];
+  for (const item of value) {
+    const parsed = parseSuggestion(item);
+    if (parsed) { out.push(parsed); }
+  }
+  return out;
+}
+
+function parseReview(value: unknown): { mode: ReviewMode; author: string } | undefined {
+  return isRecord(value) && isOneOf(REVIEW_MODES, value.mode) && isString(value.author) ? { mode: value.mode, author: value.author } : undefined;
+}
+
 function parseCommand(value: unknown): SourceEditorCommand | undefined {
   if (!isRecord(value)) { return undefined; }
   if (value.kind === "insertText" && isString(value.text)) { return { kind: "insertText", text: value.text }; }
@@ -93,15 +125,22 @@ function parseCommand(value: unknown): SourceEditorCommand | undefined {
   return undefined;
 }
 
+function parseInit(value: Record<string, unknown>): SourceEditorInbound | undefined {
+  if (!isString(value.path) || !isString(value.projectId) || !isOneOf(LANGUAGES, value.language) || !isString(value.text)
+    || !isOneOf(LINE_BREAKS, value.lineBreak) || !isNumber(value.version) || !isBoolean(value.readOnly) || !isBoolean(value.dirty)) { return undefined; }
+  const review = value.review === undefined ? undefined : parseReview(value.review);
+  if (value.review !== undefined && !review) { return undefined; }
+  return {
+    type: "init", path: value.path, projectId: value.projectId, language: value.language, text: value.text,
+    lineBreak: value.lineBreak, version: value.version, readOnly: value.readOnly, dirty: value.dirty,
+    ...(review && { review }),
+  };
+}
+
 function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound | undefined {
   switch (value.type) {
     case "init":
-      if (!isString(value.path) || !isString(value.projectId) || !isOneOf(LANGUAGES, value.language) || !isString(value.text)
-        || !isOneOf(LINE_BREAKS, value.lineBreak) || !isNumber(value.version) || !isBoolean(value.readOnly) || !isBoolean(value.dirty)) { return undefined; }
-      return {
-        type: "init", path: value.path, projectId: value.projectId, language: value.language, text: value.text,
-        lineBreak: value.lineBreak, version: value.version, readOnly: value.readOnly, dirty: value.dirty,
-      };
+      return parseInit(value);
     case "updates": {
       const updates = parseList(value.updates, parseUpdate);
       return isNumber(value.version) && updates ? { type: "updates", version: value.version, updates } : undefined;
@@ -131,6 +170,10 @@ function parseInboundBody(value: Record<string, unknown>): SourceEditorInbound |
     case "peers": {
       const peers = parseList(value.peers, parsePeer);
       return peers && { type: "peers", peers };
+    }
+    case "suggestions": {
+      const suggestions = parseSuggestions(value.suggestions);
+      return suggestions && { type: "suggestions", suggestions };
     }
     default:
       return undefined;
@@ -177,6 +220,16 @@ function parseOutboundBody(value: Record<string, unknown>): SourceEditorOutbound
         ? { type: "selection", anchor: value.anchor, head: value.head, line: value.line } : undefined;
     case "focus":
       return isBoolean(value.focused) ? { type: "focus", focused: value.focused } : undefined;
+    case "addSuggestions": {
+      const suggestions = parseSuggestions(value.suggestions);
+      return suggestions && { type: "addSuggestions", suggestions };
+    }
+    case "removeSuggestions": {
+      const ids = parseList(value.ids, (id) => isString(id) ? id : undefined);
+      return ids && { type: "removeSuggestions", ids };
+    }
+    case "reviewMode":
+      return isOneOf(REVIEW_MODES, value.mode) ? { type: "reviewMode", mode: value.mode } : undefined;
     case "request": {
       if (!isNumber(value.id) || !isString(value.method) || !Object.hasOwn(PARAMS, value.method)) { return undefined; }
       const method = value.method as SourceEditorRequestMethod;

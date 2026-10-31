@@ -64,6 +64,93 @@ describe("source editor protocol: round trip", () => {
   });
 });
 
+const insert = { id: "s1", kind: "insert" as const, start: 3, end: 8, author: "Ada", created: "2026-01-01T00:00:00.000Z" };
+const del = { id: "s2", kind: "delete" as const, start: 5, end: 5, text: "gone", group: "g1", author: "Bo", created: "2026-01-02T00:00:00.000Z" };
+
+describe("source editor protocol: review messages", () => {
+  const messages = [
+    ["init with review", { ...init, review: { mode: "reviewing", author: "Ada" } }],
+    ["init with review editing", { ...init, review: { mode: "editing", author: "" } }],
+    ["suggestions", { type: "suggestions", suggestions: [insert, del] }],
+    ["empty suggestions", { type: "suggestions", suggestions: [] }],
+  ] as const;
+  const sent = [
+    ["addSuggestions", { type: "addSuggestions", suggestions: [insert, del] }],
+    ["empty addSuggestions", { type: "addSuggestions", suggestions: [] }],
+    ["removeSuggestions", { type: "removeSuggestions", ids: ["s1", "s2"] }],
+    ["empty removeSuggestions", { type: "removeSuggestions", ids: [] }],
+    ["reviewMode editing", { type: "reviewMode", mode: "editing" }],
+    ["reviewMode reviewing", { type: "reviewMode", mode: "reviewing" }],
+  ] as const;
+
+  it.each(messages)("4.1a parses the inbound %s as sent, also through JSON", (_name, message) => {
+    expect(parseSourceEditorInbound(message)).toEqual(message);
+    expect(parseSourceEditorInbound(JSON.parse(JSON.stringify(message)))).toEqual(message);
+  });
+
+  it.each(sent)("4.1a parses the outbound %s as sent, also through JSON", (_name, message) => {
+    expect(parseSourceEditorOutbound(message)).toEqual(message);
+    expect(parseSourceEditorOutbound(JSON.parse(JSON.stringify(message)))).toEqual(message);
+  });
+
+  it("4.1a an init without review still parses, with no review key", () => {
+    expect(parseSourceEditorInbound(init)).toEqual(init);
+    expect(parseSourceEditorInbound(init)).not.toHaveProperty("review");
+  });
+
+  it.each([
+    ["a mode that is not editing or reviewing", { mode: "suggesting", author: "Ada" }],
+    ["no author", { mode: "editing" }],
+    ["an author that is a number", { mode: "editing", author: 4 }],
+    ["no mode", { author: "Ada" }],
+    ["null", null],
+    ["a string", "reviewing"],
+  ])("4.1a rejects an init whose review is %s", (_name, review) => {
+    expect(parseSourceEditorInbound({ ...init, review })).toBeUndefined();
+  });
+
+  it.each(["suggestions", "addSuggestions"] as const)("4.1a rejects %s whose list is missing or not an array", (type) => {
+    const parse = type === "suggestions" ? parseSourceEditorInbound : parseSourceEditorOutbound;
+    expect(parse({ type })).toBeUndefined();
+    expect(parse({ type, suggestions: insert })).toBeUndefined();
+    expect(parse({ type, suggestions: "none" })).toBeUndefined();
+    expect(parse({ type, suggestions: null })).toBeUndefined();
+  });
+
+  it.each(["suggestions", "addSuggestions"] as const)("4.1a drops the malformed suggestions of %s and keeps the rest", (type) => {
+    const parse = type === "suggestions" ? parseSourceEditorInbound : parseSourceEditorOutbound;
+    const bad = [
+      null, 5, "s", { ...insert, id: 1 }, { ...insert, kind: "replace" }, { ...insert, start: "3" }, { ...insert, end: undefined },
+      { ...insert, author: null }, { ...insert, created: 7 }, { ...insert, text: 3 }, { ...insert, group: 3 }, { id: "s9" },
+    ];
+    expect(parse({ type, suggestions: [insert, ...bad, del] })).toEqual({ type, suggestions: [insert, del] });
+  });
+
+  it("4.1a rebuilds a suggestion from its fields so unknown keys never pass through", () => {
+    expect(parseSourceEditorInbound({ type: "suggestions", suggestions: [{ ...insert, extra: "x" }] })).toEqual({ type: "suggestions", suggestions: [insert] });
+  });
+
+  it("4.1a rejects removeSuggestions whose ids are missing, not an array or hold a non-string", () => {
+    expect(parseSourceEditorOutbound({ type: "removeSuggestions" })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "removeSuggestions", ids: "s1" })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "removeSuggestions", ids: ["s1", 2] })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "removeSuggestions", ids: ["s1", null] })).toBeUndefined();
+  });
+
+  it("4.1a rejects reviewMode with a missing or wrong mode", () => {
+    expect(parseSourceEditorOutbound({ type: "reviewMode" })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "reviewMode", mode: "suggesting" })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "reviewMode", mode: 1 })).toBeUndefined();
+  });
+
+  it("4.1a rejects each review message in the other direction", () => {
+    expect(parseSourceEditorInbound({ type: "addSuggestions", suggestions: [] })).toBeUndefined();
+    expect(parseSourceEditorInbound({ type: "removeSuggestions", ids: [] })).toBeUndefined();
+    expect(parseSourceEditorInbound({ type: "reviewMode", mode: "editing" })).toBeUndefined();
+    expect(parseSourceEditorOutbound({ type: "suggestions", suggestions: [] })).toBeUndefined();
+  });
+});
+
 describe("source editor protocol: rejection", () => {
   it.each([null, undefined, 5, "init", true, [], [init]])("2.2b rejects a value that is not a message object (%p)", (value) => {
     expect(parseSourceEditorInbound(value)).toBeUndefined();
