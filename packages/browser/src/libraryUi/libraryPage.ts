@@ -1,7 +1,7 @@
 // Mounts the browser library workspace with its shared Details pane, and binds the open folder to the URL hash
 // (`#/papers/Project/Refs`) so back/forward walk the folder history and a reload lands on the same folder.
 import {
-  type TabKindName, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
+  type TabKindName, type SelectionHub, type ShareHost, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
@@ -15,7 +15,7 @@ import { attachPaperLinkHandling } from "./paperLink";
 import { applyCodeStyle, createLocalStoragePrefs } from "./prefs";
 import type { ProjectWiring, ProjectWiringOptions } from "./mountProjectWiring";
 import { mountSidebarTree, createSidebarSpaces, type SidebarProjectParts } from "./sidebar";
-import { createPageSpaces } from "./spaces";
+import { createPageSpaces, type PageSpaces } from "./spaces";
 import { derivePagePlan, type PagePlan } from "./pagePlan";
 import { createPageShell, createWorkspace, extractJoinInvite, JOIN_PREFIX, setPaperTitles, type ProjectServices, type Workspace } from "./editorArea";
 
@@ -138,8 +138,52 @@ async function preparePage() {
   return { plan, root, prefs, transport, host, details, fs, shell };
 }
 
+type Page = Awaited<ReturnType<typeof preparePage>>;
+
+/** Creates the tab workspace; its tabs read the page's services lazily, and a tab becoming active tells the right pane and the Details selection. */
+function createPageWorkspace(
+  { plan, prefs, fs, shell }: Page,
+  { hub, rightPane, spaces, libraryView, sharing, project }: {
+    hub: SelectionHub; rightPane: ReturnType<typeof createRightPane>; spaces: PageSpaces; libraryView: HTMLElement; sharing: ShareHost; project: () => ProjectServices;
+  },
+): Workspace {
+  return createWorkspace(shell.centre, {
+    prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
+    onActivateTab: (id) => {
+      rightPane.activateTab(id);
+      const parsed = parseTab(id);
+      const paperId = parsed?.kind === "paper" ? parsed.params["paperId"] : undefined;
+      if (paperId) hub.publish("reader", { kind: "paper", ids: [paperId] });
+      else if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces");
+    },
+    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing, project }),
+  });
+}
+
+/** Mounts what needs the loaded project: Details, the sidebar and the restored tabs, then starts the project wiring. */
+function mountLoadedPage(
+  { plan, root, prefs, host, details, shell }: Page,
+  { ui, project, relay, spaces, libraryHost, workspace, hub, invite, openTab }: {
+    ui: ReturnType<typeof mountLibraryUi>; project: ProjectWiring | null; relay: PageRelay; spaces: PageSpaces; libraryHost: ReturnType<typeof attachLibraryHost>;
+    workspace: Workspace; hub: SelectionHub; invite: string | undefined; openTab: (kind: TabKindName) => void;
+  },
+): void {
+  mountPageDetails(shell.details, details.ui, prefs);
+  const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
+  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
+  workspace.restore(location.hash);
+  // A reader framed in a paper tab keeps its tab in front; a reader in its own browser tab brings the Library forward.
+  attachDetailsReveal(shell, (id) => {
+    if (!workspace.tabs().some((t) => t.focused && t.id === TAB_KIND_SPECS.paper.id({ paperId: id }))) openTab("library");
+    hub.publish("reader", { kind: "paper", ids: [id] });
+  });
+  project?.start(invite);
+  mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
+}
+
 async function boot(): Promise<void> {
-  const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
+  const page = await preparePage();
+  const { plan, prefs, transport, host, details, fs, shell } = page;
   let project: ProjectWiring | null = null;
   const { relay, relayAccounts } = createRelayParts(() => project);
   const hub = createSelectionHub((target) => details.host.post({ type: "details.show", target }));
@@ -170,33 +214,13 @@ async function boot(): Promise<void> {
     capabilities: PAGE_CAPABILITIES, labels: PAGE_LABELS, sharing: libraryHost.sharing,
   });
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
-  const workspace: Workspace = createWorkspace(shell.centre, {
-    prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
-    onActivateTab: (id) => {
-      rightPane.activateTab(id);
-      const parsed = parseTab(id);
-      const paperId = parsed?.kind === "paper" ? parsed.params["paperId"] : undefined;
-      if (paperId) hub.publish("reader", { kind: "paper", ids: [paperId] });
-      else if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces");
-    },
-    services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
-  });
+  const workspace = createPageWorkspace(page, { hub, rightPane, spaces, libraryView, sharing: libraryHost.sharing, project: projectServices });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
   const invite = takeInviteOffAddress();
   project = await loadProjectWiring(plan, invite, { workspace, fs, logger: log, openTab, relay, relayAccounts, sharing: libraryHost.sharing });
   if (project) libraryHost.addProjectSharing(project.projectSharing);
   if (project) projectsLibrary = await serveProjectsToDetails(channels.projects, project.services, workspace, fs);
-  mountPageDetails(shell.details, details.ui, prefs);
-  const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
-  mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
-  workspace.restore(location.hash);
-  // A reader framed in a paper tab keeps its tab in front; a reader in its own browser tab brings the Library forward.
-  attachDetailsReveal(shell, (id) => {
-    if (!workspace.tabs().some((t) => t.focused && t.id === TAB_KIND_SPECS.paper.id({ paperId: id }))) openTab("library");
-    hub.publish("reader", { kind: "paper", ids: [id] });
-  });
-  project?.start(invite);
-  mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
+  mountLoadedPage(page, { ui, project, relay, spaces, libraryHost, workspace, hub, invite, openTab });
   attachPaperLinkHandling(log);
   void log.log("INFO", "library", "library page mounted");
 }

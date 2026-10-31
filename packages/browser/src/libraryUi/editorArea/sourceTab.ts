@@ -127,8 +127,22 @@ function prependNotice(body: HTMLElement, mode: SourceFileMode, on: { retry: () 
   if (mode.kind === "observing") body.prepend(renderObservingNotice(on.useHere));
 }
 
+/** The tab's toolbar and menu actions; they edit the file only while an editor with a writable entry is open. */
+function buildSourceActions(
+  { fs, logger, workspace }: TabContext,
+  { projectId, path }: { projectId: string; path: string },
+  open: () => { editor: SourceEditor; entry: ProjectEntry } | undefined,
+): ReturnType<typeof createSourceActions> {
+  return createSourceActions({
+    projectId, path, language: deriveSourceLanguage(path), fs, logger,
+    target: () => { const o = open(); return o ? { edits: o.editor, flush: o.editor.flush, entry: o.entry, noteLinks: o.editor.noteLinks } : undefined; },
+    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
+    papers: listCachedPaperRecords,
+  });
+}
+
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
-  const { fs, logger, workspace } = context;
+  const { logger } = context;
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
   // The pane is already the editor's card: the toolbar stays on top, and the body's other children are the editor or its notice.
@@ -159,12 +173,7 @@ export const mountTab: TabModule["mountTab"] = (host, params, context) => {
     open(retried);
   };
   const stopShares = mountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
-  const sourceActions = createSourceActions({
-    projectId, path, language: deriveSourceLanguage(path), fs, logger,
-    target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined),
-    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
-    papers: listCachedPaperRecords,
-  });
+  const sourceActions = buildSourceActions(context, { projectId, path }, () => (editor && loaded ? { editor, entry: loaded } : undefined));
   const { toolbar: groups, tab: actions } = splitSourceActions(sourceActions);
   const toolbar = renderSourceToolbar(groups);
   body.append(toolbar);
