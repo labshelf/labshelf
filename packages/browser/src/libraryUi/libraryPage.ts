@@ -1,7 +1,7 @@
 // Mounts the browser library workspace with its shared Details pane, and binds the open folder to the URL hash
 // (`#/papers/Project/Refs`) so back/forward walk the folder history and a reload lands on the same folder.
 import {
-  type TabKindName, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort,
+  type TabKindName, TAB_KIND_SPECS, parseTab, createFolderHash, createFolderTitle, deriveParentDir, parseFolderHash, type HostEndpoint, createLoopbackTransport, createSelectionHub, serveAllProjects, type AllProjectsEndpoint, type DetailsToHost, type HostToDetails, type LibraryFileSystem, type ProjectLibraryPort, type SelectionHub,
 } from "@labshelf/core";
 import { renderElement, mountLibraryUi } from "@labshelf/core/dom";
 import { applyTheme, createBrowserLogger, readSettings } from "../platform";
@@ -138,6 +138,41 @@ async function preparePage() {
   return { plan, root, prefs, transport, host, details, fs, shell };
 }
 
+// Keeps the right pane and the Details selection following the tab in front.
+function activateTabHandler(rightPane: ReturnType<typeof createRightPane>, hub: SelectionHub): (id: string) => void {
+  return (id) => {
+    rightPane.activateTab(id);
+    const parsed = parseTab(id);
+    const paperId = parsed?.kind === "paper" ? parsed.params["paperId"] : undefined;
+    if (paperId) hub.publish("reader", { kind: "paper", ids: [paperId] });
+    else if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces");
+  };
+}
+
+// A reader framed in a paper tab keeps its tab in front; a reader in its own browser tab brings the Library forward.
+function revealReaderDetails(shell: ReturnType<typeof createPageShell>, workspace: Workspace, hub: SelectionHub, openTab: (kind: TabKindName) => void): void {
+  attachDetailsReveal(shell, (id) => {
+    if (!workspace.tabs().some((t) => t.focused && t.id === TAB_KIND_SPECS.paper.id({ paperId: id }))) openTab("library");
+    hub.publish("reader", { kind: "paper", ids: [id] });
+  });
+}
+
+// Opens a project the spaces list names; it is only on this device when the project wiring loaded.
+function projectOpener(project: () => ProjectWiring | null): Parameters<typeof createPageSpaces>[0]["openProject"] {
+  return async (entry) => {
+    const wiring = project();
+    if (!wiring) throw new Error(`Project ${entry.settings.id} is not on this device`);
+    await wiring.services.session.openProject(entry);
+  };
+}
+
+// What the page does once everything is mounted.
+function finishMount(root: HTMLElement, libraryHost: ReturnType<typeof attachLibraryHost>, spaces: ReturnType<typeof createPageSpaces>): void {
+  mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
+  attachPaperLinkHandling(log);
+  void log.log("INFO", "library", "library page mounted");
+}
+
 async function boot(): Promise<void> {
   const { plan, root, prefs, transport, host, details, fs, shell } = await preparePage();
   let project: ProjectWiring | null = null;
@@ -149,10 +184,7 @@ async function boot(): Promise<void> {
   });
   let projectsLibrary: ProjectLibraryPort | null = null;
   const spaces = createPageSpaces({ fs, logger: log, transport, selection: hub, workspace: () => workspace, projects: () => projectsLibrary, notes: () => project?.notes,
-    openProject: async entry => {
-      if (!project) throw new Error(`Project ${entry.settings.id} is not on this device`);
-      await project.services.session.openProject(entry);
-    },
+    openProject: projectOpener(() => project),
   });
   await spaces.reload();
   const libraryHost = attachLibraryHost(mergeEndpoints(host, channels.library), {
@@ -172,13 +204,7 @@ async function boot(): Promise<void> {
   const projectServices = (): ProjectServices => { if (!project) throw new Error("The project services are not loaded: this page hides Projects"); return project.services; };
   const workspace: Workspace = createWorkspace(shell.centre, {
     prefs: { load: prefs.editorWidth, save: prefs.saveEditorWidth }, logger: log, plan, trailing: rightPane.buttons,
-    onActivateTab: (id) => {
-      rightPane.activateTab(id);
-      const parsed = parseTab(id);
-      const paperId = parsed?.kind === "paper" ? parsed.params["paperId"] : undefined;
-      if (paperId) hub.publish("reader", { kind: "paper", ids: [paperId] });
-      else if (id === "library") hub.activate("list"); else if (id === "all-projects") hub.activate("projects"); else if (id.startsWith("space:")) hub.activate("spaces");
-    },
+    onActivateTab: activateTabHandler(rightPane, hub),
     services: () => ({ spaces, libraryView, logger: log, fs, prefs, selection: hub, sharing: libraryHost.sharing, project: projectServices }),
   });
   const openTab = (kind: TabKindName): void => workspace.openTab(kind);
@@ -190,15 +216,9 @@ async function boot(): Promise<void> {
   const projectParts = plan.projects && project ? sidebarProjectParts(project, relay) : null;
   mountSidebarTree(ui, shell.sidebar, prefs, host, projectParts, openTab, plan.library, libraryHost.sharing, plan.library ? createSidebarSpaces(spaces, log) : undefined);
   workspace.restore(location.hash);
-  // A reader framed in a paper tab keeps its tab in front; a reader in its own browser tab brings the Library forward.
-  attachDetailsReveal(shell, (id) => {
-    if (!workspace.tabs().some((t) => t.focused && t.id === TAB_KIND_SPECS.paper.id({ paperId: id }))) openTab("library");
-    hub.publish("reader", { kind: "paper", ids: [id] });
-  });
+  revealReaderDetails(shell, workspace, hub, openTab);
   project?.start(invite);
-  mountSourceSurfaces(root, async () => { await Promise.all([libraryHost.reloadSnapshots(), spaces.reload()]); });
-  attachPaperLinkHandling(log);
-  void log.log("INFO", "library", "library page mounted");
+  finishMount(root, libraryHost, spaces);
 }
 
 boot().catch((err: unknown) => { void log.error("library", err); });

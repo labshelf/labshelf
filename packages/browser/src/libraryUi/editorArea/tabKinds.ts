@@ -1,7 +1,8 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
 import { TAB_KIND_SPECS } from "@labshelf/core";
 import type { ProjectNotesStore, ILogger, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
-import type { EditorTabBody } from "@labshelf/core/dom";
+import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
+import { createReaderUrl } from "../reader";
 import type { CommentThreads, PageShare, ProjectSuggestions } from "../../collab";
 import type { HelperProject } from "@labshelf/core/helper";
 import type { PagePrefs } from "../prefs";
@@ -76,6 +77,15 @@ export function setPaperTitles(lookup: (paperId: string) => string | undefined):
   paperTitle = lookup;
 }
 
+/** Shows a paper's PDF as a tab of the library page: the reader page in a frame, so it keeps its own pdf.js, host and keys. */
+const loadPaper = async (): Promise<TabModule> => ({
+  mountTab: (host, params) => {
+    const frame = renderElement("iframe", { class: "ls-workspace-fill ls-paper-frame", src: createReaderUrl(params["paperId"] ?? ""), title: "PDF reader" });
+    host.append(frame);
+    return { dispose: () => frame.remove() };
+  },
+});
+
 // Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {
   spaces: define("spaces", () => import("./spacesCatalogTab.js")),
@@ -88,5 +98,5 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   comments: define("comments", () => import("./commentsTab.js")),
   history: define("history", () => import("./historyTab.js")),
   search: define("search", () => import("./searchTab.js")),
-  paper: { ...define("paper", () => import("./paperTab.js")), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
+  paper: { ...define("paper", loadPaper), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
 };

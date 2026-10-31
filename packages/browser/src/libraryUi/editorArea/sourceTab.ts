@@ -152,69 +152,89 @@ function prependNotice(body: HTMLElement, mode: SourceFileMode, on: { retry: () 
   if (mode.kind === "observing") body.prepend(renderObservingNotice(on.useHere));
 }
 
+/** What a source tab holds while it is open: the editor, the project entry its insert actions target (none while read-only) and the shared file's mode. */
+interface SourceTabState {
+  disposed: boolean;
+  editor: SourceEditor | undefined;
+  loaded: ProjectEntry | undefined;
+  mode: SourceFileMode | undefined;
+}
+
+const isReadOnly = (mode: SourceFileMode | undefined): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
+
+/** The toolbar offers the mode dropdown only while a writable editor is open; `element` is the one on screen. */
+function createToolbarSlot(groups: ReturnType<typeof splitSourceActions>["toolbar"], review: () => ReviewModeState, editor: () => SourceEditor | undefined): {
+  element(): HTMLElement; show(withReview: boolean): void; reset(): HTMLElement;
+} {
+  const build = (withReview: boolean): HTMLElement => renderSourceToolbar(withReview
+    ? [...groups, [reviewModeDropdown(() => review().get(), (picked) => { review().set(picked); editor()?.setReviewMode(picked); })]]
+    : groups);
+  let current = build(false);
+  return {
+    element: () => current,
+    show: (withReview) => {
+      const next = build(withReview);
+      current.replaceWith(next);
+      current = next;
+    },
+    reset: () => (current = build(false)),
+  };
+}
+
+function sourceActionDeps({ fs, logger, workspace }: TabContext, { projectId, path }: { projectId: string; path: string }, state: SourceTabState): Parameters<typeof createSourceActions>[0] {
+  return {
+    projectId, path, language: deriveSourceLanguage(path), fs, logger,
+    target: () => {
+      const { editor, loaded } = state;
+      return editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined;
+    },
+    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
+    papers: listCachedPaperRecords,
+  };
+}
+
+function disposeSourceTab(state: SourceTabState, body: HTMLElement, stops: Array<() => void>): void {
+  state.disposed = true;
+  for (const stop of stops) stop();
+  const { editor } = state;
+  if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
+}
+
 export const mountTab: TabModule["mountTab"] = (host, params, context) => {
-  const { fs, logger, workspace } = context;
+  const { logger } = context;
   const projectId = params["projectId"] ?? "";
   const path = params["path"] ?? "";
   // The pane is already the editor's card: the toolbar stays on top, and the body's other children are the editor or its notice.
   const body = host.appendChild(renderElement("div", { class: "ls-workspace-fill ls-source-body" }));
-  let disposed = false;
-  let editor: SourceEditor | undefined;
-  let loaded: ProjectEntry | undefined;
-  let mode: SourceFileMode | undefined;
-  const isReadOnly = (): boolean => mode === undefined || mode.kind === "unresolved" || mode.kind === "observing";
-  // The toolbar offers the mode dropdown only while a writable editor is open; `toolbar` is the one on screen.
-  let toolbar: HTMLElement;
-  const buildToolbar = (withReview: boolean): HTMLElement => renderSourceToolbar(withReview
-    ? [...groups, [reviewModeDropdown(review.get, (picked) => { review.set(picked); editor?.setReviewMode(picked); })]]
-    : groups);
-  const showToolbar = (withReview: boolean): void => {
-    const next = buildToolbar(withReview);
-    toolbar.replaceWith(next);
-    toolbar = next;
-  };
+  const state: SourceTabState = { disposed: false, editor: undefined, loaded: undefined, mode: undefined };
+  const { toolbar: groups, tab: actions } = splitSourceActions(createSourceActions(sourceActionDeps(context, { projectId, path }, state)));
+  const toolbar = createToolbarSlot(groups, () => review, () => state.editor);
   // The mode outlives the editor: reopening the tab or a retry starts from it. A mode the editor reports redraws the dropdown.
-  const review = createReviewModeState(projectId, logger, () => { if (!disposed && editor && !isReadOnly()) showToolbar(true); });
-  const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => editor);
+  const review = createReviewModeState(projectId, logger, () => { if (!state.disposed && state.editor && !isReadOnly(state.mode)) toolbar.show(true); });
+  const stopGuard = guardUnsavedEdits(context, { projectId, path }, () => state.editor);
   const open = (retried: boolean): void => {
-    void loadEditor(body, context, { projectId, path, retried }, review, () => disposed).then((opened) => {
+    void loadEditor(body, context, { projectId, path, retried }, review, () => state.disposed).then((opened) => {
       if (!opened) return;
-      editor = opened.editor;
-      mode = opened.mode;
-      const readOnly = mode.kind === "unresolved" || mode.kind === "observing";
+      const readOnly = isReadOnly(opened.mode);
+      state.editor = opened.editor;
+      state.mode = opened.mode;
       // INVARIANT: a read-only shared file offers the insert actions no target, so none of them edits it outside the share.
-      loaded = readOnly ? undefined : opened.entry;
-      if (!readOnly) showToolbar(true);
-      prependNotice(body, mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
+      state.loaded = readOnly ? undefined : opened.entry;
+      if (!readOnly) toolbar.show(true);
+      prependNotice(body, opened.mode, { retry: () => void retry(true), useHere: () => void openSharedProjectHere(context, { projectId, path }, opened.mode, () => retry(false)) });
     });
   };
   const retry = async (retried: boolean): Promise<void> => {
     void logger.log("INFO", MODULE, "reopening the shared session of a source tab", { projectId, path, retried });
-    const previous = editor;
-    editor = loaded = mode = undefined;
+    const previous = state.editor;
+    state.editor = state.loaded = state.mode = undefined;
     await previous?.dispose();
-    if (disposed) return;
-    toolbar = buildToolbar(false);
-    body.replaceChildren(toolbar);
+    if (state.disposed) return;
+    body.replaceChildren(toolbar.reset());
     open(retried);
   };
-  const stopShares = mountOnTakeover(context, () => ({ loaded, mode, disposed }), () => void retry(false));
-  const sourceActions = createSourceActions({
-    projectId, path, language: deriveSourceLanguage(path), fs, logger,
-    target: () => (editor && loaded ? { edits: editor, flush: editor.flush, entry: loaded, noteLinks: editor.noteLinks } : undefined),
-    openHistory: () => workspace.openTab("history", { projectId }, 1), openSearch: () => workspace.openTab("search", { projectId }, 1),
-    papers: listCachedPaperRecords,
-  });
-  const { toolbar: groups, tab: actions } = splitSourceActions(sourceActions);
-  toolbar = buildToolbar(false);
-  body.append(toolbar);
+  const stopShares = mountOnTakeover(context, () => state, () => void retry(false));
+  body.append(toolbar.element());
   open(false);
-  return {
-    actions,
-    dispose: () => {
-      disposed = true;
-      stopGuard(); stopShares();
-      if (editor) void editor.dispose().then(() => body.remove()); else body.remove();
-    },
-  };
+  return { actions, dispose: () => disposeSourceTab(state, body, [stopGuard, stopShares]) };
 };
