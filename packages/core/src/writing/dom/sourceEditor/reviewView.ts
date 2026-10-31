@@ -1,7 +1,7 @@
 /** Review mode's look (D5): tracked changes as marks and struck-through widgets, a tooltip to accept or reject one, a panel for all, and the mode dropdown. */
 import { StateEffect, StateField, type EditorState, type Extension } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, type Panel, showPanel, showTooltip, type Tooltip, WidgetType } from "@codemirror/view";
-import { formatRelativeTime } from "../../../time/elapsed.js";
+import { formatRelativeTime } from "../../../time/index.js";
 import { renderElement } from "../../../ui/dom/index.js";
 import { renderIcon, type IconName } from "../../../ui/icons/index.js";
 import type { ReviewMode, ReviewTracking, TrackedChange } from "./review.js";
@@ -69,6 +69,66 @@ function changesAt(changes: readonly TrackedChange[], state: EditorState): Track
   return changes.filter((c) => (c.kind === "insert" ? c.from <= head && head <= c.to : c.from === head));
 }
 
+function buildMarks(tracking: ReviewTracking, state: EditorState): DecorationSet {
+  const length = state.doc.length;
+  const ranges = tracking.changes(state).flatMap((c) => {
+    if (c.kind === "insert") { return c.to > c.from && c.from >= 0 && c.to <= length ? [insertMark.range(c.from, c.to)] : []; }
+    return c.text && c.from >= 0 && c.from <= length ? [Decoration.widget({ widget: new DeletedText(c.text), side: -1 }).range(c.from)] : [];
+  });
+  return Decoration.set(ranges, true);
+}
+
+/** The tooltip's row of one change: who suggested it and when, with its accept and reject buttons. */
+function tooltipEntry(tracking: ReviewTracking, change: TrackedChange, view: EditorView, now: number): HTMLElement {
+  const entry = renderElement("div", { class: "ls-review-entry" });
+  entry.append(
+    renderElement("span", { class: "ls-review-author" }, change.author),
+    renderElement("span", { class: "ls-review-time", title: change.created }, formatRelativeTime(change.created, now)),
+  );
+  const actions = renderElement("div", { class: "ls-review-actions" });
+  actions.append(
+    actionButton("Accept", "check", () => tracking.accept(view, [change.id])),
+    actionButton("Reject", "x", () => tracking.reject(view, [change.id])),
+  );
+  entry.append(actions);
+  return entry;
+}
+
+function tooltipFor(tracking: ReviewTracking, state: EditorState, now: () => number): Tooltip | null {
+  const at = changesAt(tracking.changes(state), state);
+  if (at.length === 0) { return null; }
+  return {
+    pos: state.selection.main.head,
+    above: true,
+    create(view) {
+      const dom = renderElement("div", { class: "ls-review-tooltip", role: "group", "aria-label": "Suggestion" });
+      for (const change of at) { dom.append(tooltipEntry(tracking, change, view, now())); }
+      return { dom };
+    },
+  };
+}
+
+/** The panel with the suggestion count and the accept-all and reject-all buttons. */
+function createPanel(tracking: ReviewTracking, modeField: StateField<ReviewMode>, view: EditorView): Panel {
+  const dom = renderElement("div", { class: "ls-review-panel", role: "region", "aria-label": "Suggestions" });
+  const summary = renderElement("span", { class: "ls-review-summary" });
+  const ids = (): string[] => tracking.changes(view.state).map((c) => c.id);
+  const acceptAll = actionButton("Accept all", "check", () => tracking.accept(view, ids()));
+  const rejectAll = actionButton("Reject all", "x", () => tracking.reject(view, ids()));
+  const actions = renderElement("div", { class: "ls-review-actions" });
+  actions.append(acceptAll, rejectAll);
+  dom.append(summary, actions);
+  const refresh = (state: EditorState): void => {
+    const count = tracking.changes(state).length;
+    const reviewing = state.field(modeField) === "reviewing";
+    summary.textContent = count === 0 ? "Reviewing: edits become suggestions" : `${count} ${count === 1 ? "suggestion" : "suggestions"}${reviewing ? " · Reviewing" : ""}`;
+    acceptAll.disabled = count === 0;
+    rejectAll.disabled = count === 0;
+  };
+  refresh(view.state);
+  return { dom, update: (update) => refresh(update.state) };
+}
+
 export function createReviewView(tracking: ReviewTracking, options: { now?(): number } = {}): ReviewView {
   const now = options.now ?? ((): number => Date.now());
   const setViewMode = StateEffect.define<ReviewMode>();
@@ -81,85 +141,30 @@ export function createReviewView(tracking: ReviewTracking, options: { now?(): nu
     },
   });
 
-  const build = (state: EditorState): DecorationSet => {
-    const length = state.doc.length;
-    const ranges = tracking.changes(state).flatMap((c) => {
-      if (c.kind === "insert") { return c.to > c.from && c.from >= 0 && c.to <= length ? [insertMark.range(c.from, c.to)] : []; }
-      return c.text && c.from >= 0 && c.from <= length ? [Decoration.widget({ widget: new DeletedText(c.text), side: -1 }).range(c.from)] : [];
-    });
-    return Decoration.set(ranges, true);
-  };
-
   // Fields read the tracking's records through tr.state, so they follow both edits and accept/reject effects.
   const marksField = StateField.define<DecorationSet>({
-    create: build,
+    create: (state) => buildMarks(tracking, state),
     update(value, tr) {
-      return tracking.changes(tr.state) === tracking.changes(tr.startState) ? value.map(tr.changes) : build(tr.state);
+      return tracking.changes(tr.state) === tracking.changes(tr.startState) ? value.map(tr.changes) : buildMarks(tracking, tr.state);
     },
     provide: (field) => EditorView.decorations.from(field),
   });
 
-  const tooltipFor = (state: EditorState): Tooltip | null => {
-    const at = changesAt(tracking.changes(state), state);
-    if (at.length === 0) { return null; }
-    return {
-      pos: state.selection.main.head,
-      above: true,
-      create(view) {
-        const dom = renderElement("div", { class: "ls-review-tooltip", role: "group", "aria-label": "Suggestion" });
-        for (const change of at) {
-          const entry = renderElement("div", { class: "ls-review-entry" });
-          entry.append(
-            renderElement("span", { class: "ls-review-author" }, change.author),
-            renderElement("span", { class: "ls-review-time", title: change.created }, formatRelativeTime(change.created, now())),
-          );
-          const actions = renderElement("div", { class: "ls-review-actions" });
-          actions.append(
-            actionButton("Accept", "check", () => tracking.accept(view, [change.id])),
-            actionButton("Reject", "x", () => tracking.reject(view, [change.id])),
-          );
-          entry.append(actions);
-          dom.append(entry);
-        }
-        return { dom };
-      },
-    };
-  };
-
   const tooltipField = StateField.define<Tooltip | null>({
-    create: tooltipFor,
+    create: (state) => tooltipFor(tracking, state, now),
     update(value, tr) {
       const same = tracking.changes(tr.state) === tracking.changes(tr.startState) && !tr.selection && !tr.docChanged;
-      return same ? value : tooltipFor(tr.state);
+      return same ? value : tooltipFor(tracking, tr.state, now);
     },
     provide: (field) => showTooltip.from(field),
   });
 
-  const createPanel = (view: EditorView): Panel => {
-    const dom = renderElement("div", { class: "ls-review-panel", role: "region", "aria-label": "Suggestions" });
-    const summary = renderElement("span", { class: "ls-review-summary" });
-    const ids = (): string[] => tracking.changes(view.state).map((c) => c.id);
-    const acceptAll = actionButton("Accept all", "check", () => tracking.accept(view, ids()));
-    const rejectAll = actionButton("Reject all", "x", () => tracking.reject(view, ids()));
-    const actions = renderElement("div", { class: "ls-review-actions" });
-    actions.append(acceptAll, rejectAll);
-    dom.append(summary, actions);
-    const refresh = (state: EditorState): void => {
-      const count = tracking.changes(state).length;
-      const reviewing = state.field(modeField) === "reviewing";
-      summary.textContent = count === 0 ? "Reviewing: edits become suggestions" : `${count} ${count === 1 ? "suggestion" : "suggestions"}${reviewing ? " · Reviewing" : ""}`;
-      acceptAll.disabled = count === 0;
-      rejectAll.disabled = count === 0;
-    };
-    refresh(view.state);
-    return { dom, update: (update) => refresh(update.state) };
-  };
-
+  const panel = (view: EditorView): Panel => createPanel(tracking, modeField, view);
   const panelShown = (state: EditorState): boolean => state.field(modeField) === "reviewing" || tracking.changes(state).length > 0;
   const panelField = StateField.define<boolean>({
     create: panelShown,
     update: (_value, tr) => panelShown(tr.state),
-    provide: (field) => showPanel.from(field, (shown) => (shown ? createPanel : null)),
+    provide: (field) => showPanel.from(field, (shown) => (shown ? panel : null)),
   });
 
   return {

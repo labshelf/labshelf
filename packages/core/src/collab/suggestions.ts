@@ -8,6 +8,21 @@ import type { ShareSession } from "./docSync.js";
 import { readShareIndexDocSuggestions } from "./shareIndexDoc.js";
 import { openListedText } from "./sharedFiles.js";
 
+/** A tracked change as the file's suggestion list holds it: start and end are offsets in the saved file text, CRLF included; a delete's range is empty. */
+export interface FileSuggestion { id: string; kind: "insert" | "delete"; start: number; end: number; text?: string; group?: string; author: string; created: string }
+
+/** How the editor treats edits: Editing changes the text, Reviewing records them as suggestions. */
+export type ReviewMode = "editing" | "reviewing";
+
+/** The file's suggestions: the editor loads the list and sends what it records or resolves. */
+export interface EditorSuggestions {
+  /** Listens to the file's attached suggestions; returns the function that stops listening. */
+  subscribe(listener: (suggestions: FileSuggestion[]) => void): () => void;
+  /** Adds the suggestions, or replaces those whose id is already there. */
+  add(suggestions: readonly FileSuggestion[]): Promise<void>;
+  remove(ids: readonly string[]): Promise<void>;
+}
+
 export type SuggestionKind = "insert" | "delete";
 
 /** A proposal already applied to the file: an insert quotes the text it added; a delete marks a position and keeps the text it removed. */
@@ -203,4 +218,16 @@ export function createSharedProjectSuggestions(session: Pick<ShareSession, "inde
       return () => map.unobserveDeep(observer);
     },
   };
+}
+
+/** The editor's record of a stored suggestion at `range`; a delete's range is empty. */
+export function toFileSuggestion(s: Suggestion, range: TextRange): FileSuggestion {
+  const { id, kind, author, created, text, group } = s;
+  return { id, kind, start: range.start, end: s.kind === "delete" ? range.start : range.end, author, created, ...(text === undefined ? {} : { text }), ...(group === undefined ? {} : { group }) };
+}
+
+/** The stored record of the editor's suggestion in `file`, anchored by `anchor`. */
+export function toSuggestion(s: FileSuggestion, file: string, anchor: Suggestion["anchor"]): Suggestion {
+  const { id, kind, author, created, text, group } = s;
+  return { id, file, kind, anchor, ...(text === undefined ? {} : { text }), ...(group === undefined ? {} : { group }), author, created };
 }

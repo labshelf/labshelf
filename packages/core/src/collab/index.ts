@@ -30,7 +30,7 @@ export {
 export { parseCommentsQmd, serializeCommentsQmd, threadsToItems } from "./commentsQmd.js";
 export {
   createSharedProjectSuggestions, deriveSuggestionAnchor, findSuggestion, readSuggestion, resolveSuggestionText,
-  type SharedProjectSuggestions, type Suggestion, type SuggestionKind,
+  toFileSuggestion, toSuggestion, type EditorSuggestions, type FileSuggestion, type ReviewMode, type SharedProjectSuggestions, type Suggestion, type SuggestionKind,
 } from "./suggestions.js";
 export {
   addLiveThread, addLiveThreadReply, createEditorCommentRange, deriveAnchor, deriveLiveAnchor, deriveOffset, derivePosition, findSourceCommentRange,

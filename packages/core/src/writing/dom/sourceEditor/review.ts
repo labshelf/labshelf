@@ -1,14 +1,12 @@
 /** Review mode: records the user's edits in Reviewing as tracked changes (D4), accepts or rejects them, and keeps the file's suggestion list in step. */
-import { Annotation, type AnnotationType, Compartment, EditorState, Facet, StateEffect, StateField, type Text, Transaction, type Extension } from "@codemirror/state";
+import { Annotation, type AnnotationType, Compartment, EditorState, Facet, StateEffect, type StateEffectType, StateField, type Text, Transaction, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { ySyncAnnotation } from "y-codemirror.next";
-import { AUTO_SAVE_DELAY_MS, createDebouncer, type ILogger } from "../../../index.js";
-import { docOffsetToFile, fileOffsetToDoc } from "../../../collab/dom/editorComments.js";
+import { AUTO_SAVE_DELAY_MS, createDebouncer, type EditorSuggestions, type FileSuggestion, type ILogger, type ReviewMode } from "../../../index.js";
+import { docOffsetToFile, fileOffsetToDoc } from "../../../collab/dom/index.js";
 import { fromDisk } from "./openEditors.js";
 import { createReviewView, reviewModeDropdown } from "./reviewView.js";
 import type { SourceToolbarDropdown } from "./toolbar.js";
-
-export type ReviewMode = "editing" | "reviewing";
 
 /** One suggestion: an insert covers from..to of the current text; a delete sits at from === to and holds the removed text. */
 export interface TrackedChange { id: string; kind: "insert" | "delete"; from: number; to: number; text?: string; group?: string; author: string; created: string }
@@ -153,23 +151,20 @@ function trackTransaction(records: readonly TrackedChange[], tr: Transaction, ct
   return next;
 }
 
-export function createReviewTracking(options: { author(): string; now?(): string; newId?(): string }): ReviewTracking {
-  const now = options.now ?? ((): string => new Date().toISOString());
-  const newId = options.newId ?? ((): string => globalThis.crypto.randomUUID());
-  const mode = new Compartment();
-  const replaceRecords = StateEffect.define<readonly TrackedChange[]>();
-  const dropRecords = StateEffect.define<readonly string[]>();
+interface RecordEffects { replace: StateEffectType<readonly TrackedChange[]>; drop: StateEffectType<readonly string[]> }
 
-  const field = StateField.define<readonly TrackedChange[]>({
+/** The tracked records of a state: tracked edits add to them, other edits map them, the effects replace or drop them. */
+function createRecordsField(author: () => string, now: () => string, newId: () => string, effects: RecordEffects): StateField<readonly TrackedChange[]> {
+  return StateField.define<readonly TrackedChange[]>({
     create: () => [],
     update(value, tr) {
       let next: readonly TrackedChange[] = value;
       if (tr.docChanged) {
-        next = isTracked(tr) ? trackTransaction(value, tr, { author: options.author(), now, newId }) : mapUntracked(value, tr);
+        next = isTracked(tr) ? trackTransaction(value, tr, { author: author(), now, newId }) : mapUntracked(value, tr);
       }
       for (const effect of tr.effects) {
-        if (effect.is(replaceRecords)) { next = [...effect.value]; }
-        if (effect.is(dropRecords)) {
+        if (effect.is(effects.replace)) { next = [...effect.value]; }
+        if (effect.is(effects.drop)) {
           const ids = new Set(effect.value);
           next = next.filter((r) => !ids.has(r.id));
         }
@@ -177,16 +172,23 @@ export function createReviewTracking(options: { author(): string; now?(): string
       return next === value ? value : sortRecords(next);
     },
   });
+}
 
+/** The records of ids and every record sharing a group with one of them. */
+function expandGroups(all: readonly TrackedChange[], ids: readonly string[]): TrackedChange[] {
+  const wanted = new Set(ids);
+  const groups = new Set(all.filter((r) => wanted.has(r.id) && r.group !== undefined).map((r) => r.group));
+  return all.filter((r) => wanted.has(r.id) || (r.group !== undefined && groups.has(r.group)));
+}
+
+export function createReviewTracking(options: { author(): string; now?(): string; newId?(): string }): ReviewTracking {
+  const now = options.now ?? ((): string => new Date().toISOString());
+  const newId = options.newId ?? ((): string => globalThis.crypto.randomUUID());
+  const mode = new Compartment();
+  const effects: RecordEffects = { replace: StateEffect.define<readonly TrackedChange[]>(), drop: StateEffect.define<readonly string[]>() };
+  const field = createRecordsField(options.author, now, newId, effects);
   const changes = (state: EditorState): readonly TrackedChange[] => state.field(field, false) ?? [];
-
-  /** The records of ids and every record sharing a group with one of them. */
-  const expand = (state: EditorState, ids: readonly string[]): TrackedChange[] => {
-    const all = changes(state);
-    const wanted = new Set(ids);
-    const groups = new Set(all.filter((r) => wanted.has(r.id) && r.group !== undefined).map((r) => r.group));
-    return all.filter((r) => wanted.has(r.id) || (r.group !== undefined && groups.has(r.group)));
-  };
+  const expand = (state: EditorState, ids: readonly string[]): TrackedChange[] => expandGroups(changes(state), ids);
 
   return {
     extension: [field, mode.of(reviewMode.of("editing"))],
@@ -195,12 +197,12 @@ export function createReviewTracking(options: { author(): string; now?(): string
     },
     changes,
     load(view, records) {
-      view.dispatch({ effects: replaceRecords.of(records) });
+      view.dispatch({ effects: effects.replace.of(records) });
     },
     accept(view, ids) {
       const chosen = expand(view.state, ids);
       if (chosen.length === 0) { return; }
-      view.dispatch({ effects: dropRecords.of(chosen.map((r) => r.id)) });
+      view.dispatch({ effects: effects.drop.of(chosen.map((r) => r.id)) });
     },
     reject(view, ids) {
       const chosen = expand(view.state, ids);
@@ -208,24 +210,14 @@ export function createReviewTracking(options: { author(): string; now?(): string
       const reverts = chosen.map((r) => (r.kind === "insert" ? { from: r.from, to: r.to } : { from: r.from, insert: r.text ?? "" }));
       view.dispatch({
         changes: reverts,
-        effects: dropRecords.of(chosen.map((r) => r.id)),
+        effects: effects.drop.of(chosen.map((r) => r.id)),
         annotations: [reviewRevert.of(true), Transaction.addToHistory.of(false)],
       });
     },
   };
 }
 
-/** A tracked change as the file's suggestion list holds it: start and end are offsets in the saved file text, CRLF included. */
-export interface FileSuggestion { id: string; kind: "insert" | "delete"; start: number; end: number; text?: string; group?: string; author: string; created: string }
-
-/** The file's suggestions: the editor loads the list and sends what it records or resolves. */
-export interface EditorSuggestions {
-  /** Listens to the file's attached suggestions; returns the function that stops listening. */
-  subscribe(listener: (suggestions: readonly FileSuggestion[]) => void): () => void;
-  /** Adds the suggestions, or replaces those whose id is already there. */
-  add(suggestions: readonly FileSuggestion[]): Promise<void>;
-  remove(ids: readonly string[]): Promise<void>;
-}
+export type { EditorSuggestions, FileSuggestion, ReviewMode };
 
 /** What the editor needs for review mode. */
 export interface EditorReview {
@@ -281,76 +273,106 @@ export interface ReviewSupportDeps {
   logger: ILogger;
 }
 
+interface SendState { sent: Map<string, string>; pending: Set<string> }
+
+/** Sends the suggestions to the port, recording each as sent at once and undoing that when the port refuses. */
+function pushSuggestions(review: EditorReview, logger: ILogger, state: SendState, added: readonly FileSuggestion[], removed: readonly string[]): void {
+  const previous = new Map(state.sent);
+  const restore = (id: string): void => { const key = previous.get(id); if (key === undefined) { state.sent.delete(id); } else { state.sent.set(id, key); } };
+  for (const s of added) { state.sent.set(s.id, suggestionKey(s)); state.pending.add(s.id); }
+  for (const id of removed) { state.sent.delete(id); }
+  if (added.length > 0) {
+    review.suggestions.add(added)
+      .catch((error: unknown) => {
+        for (const s of added) { restore(s.id); }
+        void logger.error(REVIEW_MODULE, error, { action: "addSuggestions" });
+      })
+      .finally(() => { for (const s of added) { state.pending.delete(s.id); } });
+  }
+  if (removed.length > 0) {
+    review.suggestions.remove(removed).catch((error: unknown) => {
+      for (const id of removed) { restore(id); }
+      void logger.error(REVIEW_MODULE, error, { action: "removeSuggestions" });
+    });
+  }
+}
+
+/** The records the list stands for: the editor's own where the list holds what it sent, plus the records not sent yet or still in flight. */
+function mergeSuggestions(list: readonly FileSuggestion[], local: ReadonlyMap<string, TrackedChange>, state: SendState, fileText: string, length: number): TrackedChange[] {
+  const incoming = new Set(list.map((s) => s.id));
+  const next: TrackedChange[] = [];
+  for (const s of list) {
+    const mine = local.get(s.id);
+    // The port's copy of what this editor sent: the local record may have grown since, so it stays.
+    if (mine && state.sent.get(s.id) === suggestionKey(s)) { next.push(mine); continue; }
+    const record = toTrackedChange(s, fileText, length);
+    if (record) { next.push(record); }
+  }
+  // Records not sent yet, or whose add is still in flight, are missing from the list but not gone.
+  for (const change of local.values()) {
+    if (!incoming.has(change.id) && (!state.sent.has(change.id) || state.pending.has(change.id))) { next.push(change); }
+  }
+  return next;
+}
+
+interface SuggestionSync {
+  readonly loading: boolean;
+  /** Sends the records added or changed since the last send, and the removal of those gone. */
+  send(): void;
+  /** Sends the removal of the sent suggestions the state does not hold. */
+  sendRemovals(state: EditorState): void;
+  load(list: readonly FileSuggestion[]): void;
+}
+
+/** The sync of the editor's records with the port's list. */
+function createSuggestionSync(review: EditorReview, tracking: ReviewTracking, deps: Pick<ReviewSupportDeps, "lineBreak" | "savedText" | "logger">, getView: () => EditorView | undefined): SuggestionSync {
+  // INVARIANT: sent holds, by id, the version of each suggestion the port has or is being sent; pending, the ids whose add is in flight.
+  const state: SendState = { sent: new Map(), pending: new Set() };
+  let loading = false;
+  const push = (added: readonly FileSuggestion[], removed: readonly string[]): void => pushSuggestions(review, deps.logger, state, added, removed);
+  const goneFrom = (ids: ReadonlySet<string>): string[] => [...state.sent.keys()].filter((id) => !ids.has(id));
+
+  const send = (): void => {
+    const view = getView();
+    if (!view) { return; }
+    const { doc } = view.state;
+    const current = tracking.changes(view.state).map((change) => toFileSuggestion(change, doc, deps.lineBreak));
+    push(current.filter((s) => state.sent.get(s.id) !== suggestionKey(s)), goneFrom(new Set(current.map((s) => s.id))));
+  };
+
+  const load = (list: readonly FileSuggestion[]): void => {
+    const view = getView();
+    if (!view) { return; }
+    const local = new Map(tracking.changes(view.state).map((change) => [change.id, change]));
+    const next = mergeSuggestions(list, local, state, deps.savedText(), view.state.doc.length);
+    const incoming = new Set(list.map((s) => s.id));
+    const inFlight = [...state.pending].flatMap((id): [string, string][] => { const key = state.sent.get(id); return key === undefined || incoming.has(id) ? [] : [[id, key]]; });
+    state.sent = new Map([...list.map((s): [string, string] => [s.id, suggestionKey(s)]), ...inFlight]);
+    loading = true;
+    try { tracking.load(view, next); } finally { loading = false; }
+  };
+
+  return {
+    get loading() { return loading; },
+    send,
+    sendRemovals: (editor) => push([], goneFrom(new Set(tracking.changes(editor).map((change) => change.id)))),
+    load,
+  };
+}
+
 export function createReviewSupport(review: EditorReview, { lineBreak, savedText, shared, logger }: ReviewSupportDeps): ReviewSupport {
   const tracking = createReviewTracking({ author: review.author });
   const reviewView = createReviewView(tracking);
   let view: EditorView | undefined;
   let mode = review.mode;
-  let loading = false;
-  // INVARIANT: sent holds, by id, the version of each suggestion the port has or is being sent; pending, the ids whose add is in flight.
-  let sent = new Map<string, string>();
-  const pending = new Set<string>();
-
-  const push = (added: readonly FileSuggestion[], removed: readonly string[]): void => {
-    const previous = new Map(sent);
-    const restore = (id: string): void => { const key = previous.get(id); if (key === undefined) { sent.delete(id); } else { sent.set(id, key); } };
-    for (const s of added) { sent.set(s.id, suggestionKey(s)); pending.add(s.id); }
-    for (const id of removed) { sent.delete(id); }
-    if (added.length > 0) {
-      review.suggestions.add(added)
-        .catch((error: unknown) => {
-          for (const s of added) { restore(s.id); }
-          void logger.error(REVIEW_MODULE, error, { action: "addSuggestions" });
-        })
-        .finally(() => { for (const s of added) { pending.delete(s.id); } });
-    }
-    if (removed.length > 0) {
-      review.suggestions.remove(removed).catch((error: unknown) => {
-        for (const id of removed) { restore(id); }
-        void logger.error(REVIEW_MODULE, error, { action: "removeSuggestions" });
-      });
-    }
-  };
-
-  const send = (): void => {
-    if (!view) { return; }
-    const { doc } = view.state;
-    const current = tracking.changes(view.state).map((change) => toFileSuggestion(change, doc, lineBreak));
-    const ids = new Set(current.map((s) => s.id));
-    push(current.filter((s) => sent.get(s.id) !== suggestionKey(s)), [...sent.keys()].filter((id) => !ids.has(id)));
-  };
-  const sharedSend = createDebouncer(send, AUTO_SAVE_DELAY_MS);
-
-  const load = (list: readonly FileSuggestion[]): void => {
-    if (!view) { return; }
-    const fileText = savedText();
-    const length = view.state.doc.length;
-    const local = new Map(tracking.changes(view.state).map((change) => [change.id, change]));
-    const incoming = new Set(list.map((s) => s.id));
-    const next: TrackedChange[] = [];
-    for (const s of list) {
-      const mine = local.get(s.id);
-      // The port's copy of what this editor sent: the local record may have grown since, so it stays.
-      if (mine && sent.get(s.id) === suggestionKey(s)) { next.push(mine); continue; }
-      const record = toTrackedChange(s, fileText, length);
-      if (record) { next.push(record); }
-    }
-    // Records not sent yet, or whose add is still in flight, are missing from the list but not gone.
-    for (const change of local.values()) {
-      if (!incoming.has(change.id) && (!sent.has(change.id) || pending.has(change.id))) { next.push(change); }
-    }
-    const inFlight = [...pending].flatMap((id): [string, string][] => { const key = sent.get(id); return key === undefined || incoming.has(id) ? [] : [[id, key]]; });
-    sent = new Map([...list.map((s): [string, string] => [s.id, suggestionKey(s)]), ...inFlight]);
-    loading = true;
-    try { tracking.load(view, next); } finally { loading = false; }
-  };
+  const sync = createSuggestionSync(review, tracking, { lineBreak, savedText, logger }, () => view);
+  const sharedSend = createDebouncer(sync.send, AUTO_SAVE_DELAY_MS);
 
   // An accept changes no text, so its remove goes at once; an edit or a reject waits for the save of its text.
   const listener = EditorView.updateListener.of((update) => {
-    if (loading || tracking.changes(update.startState) === tracking.changes(update.state)) { return; }
+    if (sync.loading || tracking.changes(update.startState) === tracking.changes(update.state)) { return; }
     if (update.docChanged) { if (shared) { sharedSend.call(); } return; }
-    const ids = new Set(tracking.changes(update.state).map((change) => change.id));
-    push([], [...sent.keys()].filter((id) => !ids.has(id)));
+    sync.sendRemovals(update.state);
   });
 
   const setMode = (next: ReviewMode): void => {
@@ -363,14 +385,14 @@ export function createReviewSupport(review: EditorReview, { lineBreak, savedText
     attach(editorView) {
       view = editorView;
       if (mode !== "editing") { reviewView.setMode(editorView, mode); }
-      const stop = review.suggestions.subscribe(load);
+      const stop = review.suggestions.subscribe(sync.load);
       // The view stays set: closing the editor saves after this, and that save still sends.
       return () => {
         stop();
-        if (shared) { sharedSend.cancel(); send(); }
+        if (shared) { sharedSend.cancel(); sync.send(); }
       };
     },
-    saved: send,
+    saved: sync.send,
     setMode,
     dropdown: reviewModeDropdown(() => mode, (next) => { setMode(next); review.onMode?.(next); }),
   };

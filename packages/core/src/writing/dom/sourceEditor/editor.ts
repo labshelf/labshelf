@@ -297,12 +297,18 @@ async function closeEditor(view: EditorView, { document }: SourceEditorDeps, flu
   view.destroy();
 }
 
+/** The project's labels, filled from its file list as it arrives. */
+function startProjectLabels(deps: SourceEditorDeps): ReturnType<typeof createProjectLabels> {
+  const labels = createProjectLabels(deps.logger);
+  void deps.files.list().then((files) => labels.load(files, deps.files.read))
+    .catch((error: unknown) => deps.logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));
+  return labels;
+}
+
 export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDeps): Promise<SourceEditor> {
   const { path, logger, collab, document } = deps;
-  const labels = createProjectLabels(logger);
   const text = document ? document.text : collab ? collab.text.toString() : await deps.files.read(path);
-  void deps.files.list().then((files) => labels.load(files, deps.files.read))
-    .catch((error: unknown) => logger.error(MODULE, error, { action: "listProjectFiles", projectId: deps.projectId }));
+  const labels = startProjectLabels(deps);
   const helperEdits = createHelperUpdates(deps.helper, deps.projectId, path, logger);
   // The document is split on the file's own line break, so saving writes back the endings the file was read with; a shared text is LF only.
   const lineBreak = !collab && !document && text.includes("\r\n") ? "\r\n" : "\n";
@@ -311,10 +317,9 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const language = sourceLanguage(deps, labels);
   const kind = deriveSourceLanguage(path);
   const saved = { text };
+  const savedText = collab || document ? currentText : (): string => saved.text;
   const explicit = explicitSaves(helperEdits);
-  const review = deps.review && !deps.readOnly
-    ? createReviewSupport(deps.review, { lineBreak, savedText: collab || document ? currentText : () => saved.text, shared: Boolean(collab), logger })
-    : undefined;
+  const review = deps.review && !deps.readOnly ? createReviewSupport(deps.review, { lineBreak, savedText, shared: Boolean(collab), logger }) : undefined;
   // The suggestions go after a save only while the text is the one written, since their offsets are in it; a newer edit's save sends them.
   const onWritten = (): void => { explicit.written(); refreshNotes(); refreshLinks(); if (!save.dirty()) review?.saved(); deps.onSaved?.(); };
   const save = createSaver(deps, currentText, saved, onWritten, () => view);
@@ -323,7 +328,7 @@ export async function mountSourceEditor(host: HTMLElement, deps: SourceEditorDep
   const noteGutter = createNoteGutter(deps.openNotes ? { openNotes: deps.openNotes } : {});
   const noteRefresh = createNoteRefresh(noteGutter, { language: kind, path, projectId: deps.projectId, papers: deps.papers, notes: deps.notes, logger, view: () => view, text: currentText });
   const refreshNotes = noteRefresh.refresh;
-  const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText: collab || document ? currentText : () => saved.text, flush: save.flush, logger });
+  const commentsSupport = deps.comments && (deps.commentSupport ?? createCommentSupport)({ comments: deps.comments, lineBreak, savedText, flush: save.flush, logger });
   // Mod-s on a host document asks the host to save; the host reports when it is clean.
   const onSave = (): void => { if (document && view) documentSync(view)?.save(); else explicit.flush(save); };
   const onDocumentDirty = (dirty: boolean): void => { deps.onDirty(dirty); if (!dirty) { refreshNotes(); refreshLinks(); review?.saved(); } };
