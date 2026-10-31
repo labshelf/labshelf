@@ -1,7 +1,225 @@
 schema: session/v1
 id: "4"
-goal: "First write this session's spec packages into this file from plan.yaml decisions and research/*.brief.yaml (plan from-brief, tester, plan red, plan lint). Then: Python and R drivers: interpreter order and labshelf.cells.pythonPath, matplotlib extraction, pip command on a missing module; R png() device, ggplot spec, install.packages command, raw JSON emitter (D5, D6, D7)."
-depends_on: ["3"]
-owns: []
-status: pending
-packages: []
+goal: "Python and R drivers: interpreter order and labshelf.cells.pythonPath, matplotlib extraction, pip command on a missing module; R png() device, ggplot spec, install.packages command, raw JSON emitter (D5, D6, D7)."
+depends_on:
+  - "3"
+owns:
+  - packages/core/src/qmd/compute/node/cellDriver.py
+  - packages/core/src/qmd/compute/node/cellDriver.R
+  - packages/core/src/qmd/compute/node/nodeCellRunner.ts
+  - packages/core/src/qmd/compute/node/locateTool.ts
+  - packages/core/src/helper/node/runHelperHost.ts
+  - packages/vscode/package.json
+  - packages/vscode/src/activation/node/desktopPlatform.ts
+  - packages/core/__tests__/qmd/compute/node/
+  - documents/contracts/helper.md
+  - documents/contracts/qmd-items.md
+  - documents/plans/interactive-plots/sessions/4.yaml
+  - documents/plans/interactive-plots/sessions/5.yaml
+  - documents/plans/interactive-plots/plan.yaml
+  - documents/plans/interactive-plots/tests/4.1/
+  - documents/plans/interactive-plots/tests/4.2/
+  - documents/plans/interactive-plots/tests/4.3/
+status: blocked
+packages:
+  - id: "4.1"
+    plan: interactive-plots
+    goal: "Python cells run on the user's interpreter: the `labshelf.cells.pythonPath` setting, else the first python3 or python on PATH, else the managed Python (D5)."
+    level: behaviour
+    runner:
+      agent: implementer
+      model: sonnet
+    sha: bb37baf9
+    depends_on: []
+    create: []
+    edit:
+      - path: packages/core/src/qmd/compute/node/locateTool.ts
+        lines: 1-65
+        why: LocatedTool gains "python"; locateTool("python") = override, then PATH python3, then PATH python; no install-folder search (the managed Python is the fallback)
+      - path: packages/core/src/qmd/compute/node/nodeCellRunner.ts
+        lines: 10-42
+        why: locate gains the python language; launch tries locate("python") before the managed Python
+      - path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 173-180
+        why: createCells' locate maps python to locateTool("python"), mathematica to wolframscript, r to Rscript
+      - path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 135-161
+        why: locateCellTool handles python with the pythonPath setting, read at each launch like the others
+      - path: packages/vscode/package.json
+        lines: 1160-1180
+        why: new setting labshelf.cells.pythonPath beside rscriptPath
+    read:
+      - path: packages/core/src/latex/node/systemTex.ts
+        lines: 20-40
+        why: findExecutable(name, env) searches PATH with PATHEXT on Windows
+      - path: packages/core/__tests__/qmd/compute/node/locateTool.test.ts
+        lines: 1-80
+        why: how locateTool is tested (temp PATH dirs, injected exists/platform)
+      - path: packages/core/__tests__/qmd/compute/node/nodeCellRunner.test.ts
+        lines: 1-80
+        why: how createNodeCellRunner's launch is tested
+    callers:
+      - symbol: createNodeCellRunner
+        path: packages/vscode/src/activation/node/desktopPlatform.ts
+        lines: 141-141
+      - symbol: createNodeCellRunner
+        path: packages/core/src/helper/node/runHelperHost.ts
+        lines: 176-179
+    seams:
+      - path: packages/core/src/qmd/compute/node/locateTool.ts
+        signature: 'export async function locateTool(tool: "wolframscript" | "Rscript" | "python", options?: LocateToolOptions): Promise<string | undefined>'
+      - path: packages/core/src/qmd/compute/node/nodeCellRunner.ts
+        signature: 'export interface NodeCellRunnerOptions { python: PythonProvider; drivers: { python: string; mathematica: string; r: string }; locate?: (language: "python" | "mathematica" | "r") => Promise<string | undefined>; logger?: ILogger }'
+    decided:
+      - 'locateTool("python", {override, platform, env, exists}): an override that exists wins; else findExecutable("python3", env), then findExecutable("python", env); the first acceptable one is returned; else undefined. No install-folder search for python.'
+      - "Stubs are not acceptable: on win32 a path containing `\\WindowsApps\\` (the Microsoft Store alias, case-insensitive) is skipped; on darwin `/usr/bin/python3` and `/usr/bin/python` are skipped unless `exists` is true for `/Library/Developer/CommandLineTools/usr/bin/python3` or `/Applications/Xcode.app/Contents/Developer/usr/bin/python3` (otherwise running it opens the Command Line Tools installer). A skipped name moves on to the next name."
+      - "createNodeCellRunner's python launch: `await locate?.(\"python\")`; when it returns a path, launch it with [\"-u\", drivers.python]; when it returns undefined (or locate is absent), fall back to today's managed Python (installed state and pythonPath), else undefined (reported missing as today)."
+      - 'VS Code: setting `labshelf.cells.pythonPath`, string, default "", markdownDescription: "Path of the Python interpreter that runs Python cells in notes. When empty, LabShelf uses the first `python3` or `python` on PATH, then its own managed Python." locateCellTool reads it at each launch (trimmed; empty means search).'
+      - 'The helper (browser) has no setting: its locate passes python to locateTool("python") with no override.'
+      - The managed Python provider, its install flow and its status reporting are unchanged.
+    acceptance:
+      - id: 4.1a
+        check: locateTool("python") returns an existing override first; else python3 on PATH; else python on PATH; else undefined
+      - id: 4.1b
+        check: locateTool("python") skips a win32 WindowsApps alias and, on darwin, /usr/bin/python3 when no Command Line Tools python exists, and returns the next candidate
+      - id: 4.1c
+        check: createNodeCellRunner launches Python cells with the located interpreter when locate("python") returns one, and with the managed Python when it returns undefined; with neither the run reports Python missing as today
+    tests:
+      hidden:
+        - documents/plans/interactive-plots/tests/4.1/packages/core/__tests__/qmd/compute/node/locateTool.test.ts
+        - documents/plans/interactive-plots/tests/4.1/packages/core/__tests__/qmd/compute/node/nodeCellRunner.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4.1 --plan interactive-plots -- packages/core/__tests__/qmd/compute/node/locateTool.test.ts packages/core/__tests__/qmd/compute/node/nodeCellRunner.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs typecheck vscode
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/pythonDriver.test.ts
+      - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
+    do_not_touch:
+      - packages/core/src/qmd/compute/node/cellDriver.py
+      - packages/core/src/qmd/compute/node/cellDriver.R
+      - packages/core/src/qmd/compute/node/managedPython.ts
+      - packages/core/src/qmd/dom/
+  - id: "4.2"
+    plan: interactive-plots
+    goal: The Python driver returns a labshelf-plot spec beside the PNG for a matplotlib figure made only of lines, scatters and 3D surfaces (D6), and a missing module error names the pip command for the interpreter in use (D5).
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    sha: bb37baf9
+    depends_on: []
+    create: []
+    edit:
+      - path: packages/core/src/qmd/compute/node/cellDriver.py
+        lines: 1-102
+        why: "figure_result (17-40) gains the spec extractor; run_cell returns {text: png, plot: spec json}; the except branch in main (97-99) builds the pip hint"
+    read:
+      - path: packages/core/src/qmd/plot/plotSpec.ts
+        lines: 1-30
+        why: the spec types (PlotSpec, PlotAxis, line/points/mesh traces) and the caps PLOT_LINE_POINTS, PLOT_MESH_TRIANGLES
+      - path: packages/core/src/qmd/compute/node/cellDriverProtocol.ts
+        lines: 9-9
+        why: DriverResponse.plot is the spec JSON as a string
+      - path: packages/core/__tests__/qmd/compute/node/cellDriver.py.test.ts
+        lines: 1-80
+        why: how the real driver is spawned and spoken to in tests
+    callers: []
+    seams: []
+    decided:
+      - 'Response: when figure_result makes a PNG and the figure is extractable, the payload is {"text": <png data URL>, "plot": <spec JSON string, json.dumps(spec, separators=(",", ":"), allow_nan=False)>}; otherwise {"text": <png>} as today. The PNG is always made (preview skipping is session 5). Extraction never raises: any exception inside it means no spec.'
+      - Extract before savefig and before the PNG facecolor/legend changes; read the figure state only, never change it.
+      - "A figure is extractable only when it has exactly one Axes and nothing else visible: figure.texts empty (a suptitle is allowed and is the title when the axes title is empty), no figure-level images, no colorbar (a second Axes already excludes it). In the Axes, every visible child is one of: Line2D (2D) / Line3D (3D) in axes.lines; a scatter PathCollection (2D) / Path3DCollection (3D) in axes.collections; a Poly3DCollection from plot_surface or plot_trisurf (3D only). Any other visible collection (PolyCollection from fill_between or bar3d, LineCollection from errorbar or vlines, QuadMesh, contour sets), any visible patch in axes.patches (bars, histograms), any image, any text in axes.texts, any table means no spec. Legends, ticks, grid and spines are ignored. Invisible artists are ignored."
+      - dim is 3 when the axes has a `get_zlim` (mplot3d Axes3D), else 2.
+      - "Line2D -> {type: \"line\", x, y} (3D: x, y, z from get_data_3d()); a line with linestyle none or \"\" and a marker -> type \"points\". Scatter -> {type: \"points\"} from get_offsets() (3D: the collection's _offsets3d). name = the artist label unless it starts with \"_\". color = the artist's colour as #rrggbb (matplotlib.colors.to_hex); for a scatter or a mesh whose face colours are not all equal, no color key (the theme palette)."
+      - "Surfaces (plot_surface, plot_trisurf) -> one {type: \"mesh\", vertices, faces} per collection: the 3D polygons of the collection (read from the collection's stored 3D vertices; quads split into two triangles (0,1,2),(0,2,3); polygons with more than 4 corners fan-triangulated), vertices deduplicated by exact coordinates, faces as index triples. If the stored 3D vertices cannot be read on the installed matplotlib, no spec. More than 20 000 triangles in total means no spec."
+      - 'Numbers: every coordinate rounded to 4 significant digits in Python (float(f"{v:.4g}")); NaN and infinities become null in line/points arrays; a mesh vertex that is not finite drops the polygon. A line or points trace over 2000 points is passed whole (core decimates).'
+      - 'Axes: x, y (and z for 3D) each {label?: get_xlabel() if non-empty, log?: true when get_xscale() == "log", range?: [lo, hi] = get_xlim() only when autoscaling of that axis is off}. title = axes.get_title() if non-empty, else the suptitle text if any. v = 1.'
+      - 'Missing module: when the cell raises ModuleNotFoundError with a non-empty .name, the error is the usual last traceback line, then a newline, then `Install it with: "<sys.executable>" -m pip install <top-level module>` (top-level = name.split(".")[0]). Other errors are unchanged. Session 5 adds the copy button for a line starting `Install it with: `.'
+      - No new dependency; matplotlib and numpy are only used when the cell already imported matplotlib.pyplot (today's rule). The driver header comment mentions the plot field.
+      - Real-matplotlib tests find their interpreter in env LABSHELF_TEST_PYTHON, else python3 on PATH; they skip with a console.warn reason when that interpreter cannot import matplotlib. In this session LABSHELF_TEST_PYTHON points at a scratch venv with matplotlib 3.11 (see tests.command).
+    acceptance:
+      - id: 4.2a
+        check: plt.plot of a line with a label and xlabel/ylabel/title/log y returns text = PNG data URL and plot = a dim 2 spec with one line trace, its name, its colour, the labels, title and log flag
+      - id: 4.2b
+        check: plt.scatter returns a points trace; plot_surface on a 3D axes returns a dim 3 spec with a mesh whose faces index its vertices and whose triangle count is 2 per grid cell; ax.plot of a 3D line returns a line with z
+      - id: 4.2c
+        check: a figure with plt.bar, with plt.text, with imshow, with two subplots, or with fill_between returns the PNG and no plot key
+      - id: 4.2d
+        check: '`import surely_missing_module_xyz` returns an error whose first line names the missing module and whose second line is exactly `Install it with: "<sys.executable of the driver>" -m pip install surely_missing_module_xyz`; `import a_missing_pkg.sub` names a_missing_pkg'
+    tests:
+      hidden:
+        - documents/plans/interactive-plots/tests/4.2/packages/core/__tests__/qmd/compute/node/cellDriver.py.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4.2 --plan interactive-plots -- packages/core/__tests__/qmd/compute/node/cellDriver.py.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - Run tests.command with LABSHELF_TEST_PYTHON=/private/tmp/claude-501/-Users-lucanasser-Developer-pessoal-labshelf/b9bd62fe-2960-4672-9d06-008b91bfda2f/scratchpad/mplvenv/bin/python exported (a venv with matplotlib 3.11 and numpy); without it the matplotlib cases skip and prove nothing.
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/pythonDriver.test.ts
+      - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
+    do_not_touch:
+      - packages/core/src/qmd/compute/node/cellDriver.R
+      - packages/core/src/qmd/compute/node/cellDriver.wl
+      - packages/core/src/qmd/compute/node/nodeCellRunner.ts
+      - packages/core/src/qmd/compute/node/locateTool.ts
+      - packages/core/src/qmd/plot/
+      - packages/core/src/qmd/dom/
+  - id: "4.3"
+    plan: interactive-plots
+    goal: The R driver returns a PNG for anything a cell draws, a labshelf-plot spec beside it for a ggplot of line, path and point layers, and the install.packages command for a missing package, through a raw-JSON emitter with fast escaping (D7).
+    level: behaviour
+    runner:
+      agent: implementer
+      model: opus
+    sha: bb37baf9
+    depends_on: []
+    create: []
+    edit:
+      - path: packages/core/src/qmd/compute/node/cellDriver.R
+        lines: 1-194
+        why: json_string (112-123) gains an ASCII fast path; emit (126-133) writes raw JSON fields; run_cell (136-161) opens a png device around the evaluation, builds the spec for a ggplot last value and the install hint
+    read:
+      - path: packages/core/src/qmd/plot/plotSpec.ts
+        lines: 1-30
+        why: the spec types and caps
+      - path: packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts
+        lines: 1-80
+        why: how the real R driver is run in tests (findRscript, skip when missing)
+      - path: packages/core/__tests__/qmd/compute/node/rDriver.test.ts
+        lines: 1-60
+        why: R driver through the runner and the bundle copy check
+    callers: []
+    seams: []
+    decided:
+      - "Graphics: before evaluating a cell the driver opens `png(<tempfile pattern>%03d.png, width = 6.4, height = 4.8, units = \"in\", res = 160, bg = \"transparent\")` with the display list enabled, and remembers its device number. After the evaluation (and after printing a visible last value, which draws a ggplot or lattice object into it), if that device is still open and something was drawn on it, the driver closes it and returns the newest page file as `data:image/png;base64,...` in `text`; otherwise it closes it (when still open) and returns today's text. Temp files are deleted after reading. Devices the cell opened itself are left alone. A cell that drew nothing behaves exactly as today."
+      - When a PNG is returned, the visible value's printed text and warnings are not returned (the PNG is the result, as in Python); printed output still goes to stdout before the sentinel as today.
+      - Base64 is implemented in base R on the raw bytes (vectorised with bitwAnd/bitwShiftL/bitwShiftR on integer vectors, no per-byte loop); no package is needed.
+      - "ggplot spec: when the visible last value inherits \"ggplot\" and requireNamespace(\"ggplot2\", quietly = TRUE), build b <- ggplot2::ggplot_build(value). No spec unless: every layer's geom inherits GeomLine, GeomPath or GeomPoint; the plot has one panel (no facets: every layer's PANEL has one level); x and y scales are continuous with an identity or log10 transformation; inside each (layer, group) the colour is constant. Then one trace per (layer, group): GeomPoint -> points, GeomLine and GeomPath -> line (GeomLine sorted by x, as ggplot draws it); x and y from the built data (10^value on a log10 axis, with log: true on that axis); color = the group's colour as #rrggbb via grDevices::col2rgb (alpha dropped); no name. Axes labels and title from the plot's resolved labels (ggplot2::get_labs(value) when it exists, else value$labels): x, y, title, each only when a non-empty string. dim 2, v 1. Any error while building the spec means no spec."
+      - Numbers are written with signif(x, 4) and up to 4 significant digits (format with `digits = 4`, no scientific padding issues, `-0` written as 0); NA, NaN and infinite values are null.
+      - "Emitter: emit's payload values are either character (escaped through json_string) or raw JSON (a value of class \"labshelf_json\", written as is). The spec is built with a small raw-JSON writer (objects, arrays of numbers, strings) inside the driver. json_string keeps its exact output, but text with only printable ASCII and no quote or backslash, plus \\n, \\r and \\t, goes through a vectorised gsub path instead of the per-code-point loop; the loop stays only for text with other characters."
+      - "Missing package: an error condition of class packageNotFoundError uses its $package; otherwise a message matching `there is no package called [‘'\"]<pkg>[’'\"]` gives <pkg>. The error becomes the usual message, a newline, then `Install it with: install.packages(\"<pkg>\")`. Other errors are unchanged. Session 5 adds the copy button for a line starting `Install it with: `."
+      - "The driver stays base R: ggplot2 is only touched through requireNamespace when the last value is a ggplot. The header comment mentions graphics and the plot field."
+    acceptance:
+      - id: 4.3a
+        check: "`plot(1:10)` returns text = a PNG data URL (decodes to a PNG signature) and no plot key; a cell that draws nothing returns its text as today"
+      - id: 4.3b
+        check: "with ggplot2 installed, a ggplot with geom_line, or geom_point with a colour per group, returns the PNG and a dim 2 spec: one trace per group of the right type, x/y values matching the data to 4 significant digits, #rrggbb colours, labels from labs(x, y, title); scale_y_log10 gives log: true and untransformed y values"
+      - id: 4.3c
+        check: a ggplot with geom_bar, or with facet_wrap, returns the PNG and no plot key
+      - id: 4.3d
+        check: '`library(surelyMissingPkgXyz)` returns an error whose last line is exactly `Install it with: install.packages("surelyMissingPkgXyz")`'
+      - id: 4.3e
+        check: text with non-ASCII, quotes, backslashes, tabs and newlines round-trips through the driver unchanged (JSON parse of the response), and a 200 000 character ASCII value is returned in under 2 s
+    tests:
+      hidden:
+        - documents/plans/interactive-plots/tests/4.3/packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts
+      command: node scripts/agents/run.mjs test core --spec 4.3 --plan interactive-plots -- packages/core/__tests__/qmd/compute/node/cellDriver.R.test.ts
+    commands:
+      - node scripts/agents/run.mjs typecheck core
+      - node scripts/agents/run.mjs test core -- packages/core/__tests__/qmd/compute/node/rDriver.test.ts
+      - "Testing policy: never run pnpm gate or any lint; check only with the commands above and tests.command."
+    do_not_touch:
+      - packages/core/src/qmd/compute/node/cellDriver.py
+      - packages/core/src/qmd/compute/node/cellDriver.wl
+      - packages/core/src/qmd/compute/node/nodeCellRunner.ts
+      - packages/core/src/qmd/plot/
+      - packages/core/src/qmd/dom/
+blocked_reason: "4.2: blocked_tests; 4.3: no report"

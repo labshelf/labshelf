@@ -94,7 +94,7 @@ describe("createNodeCellRunner with a fake driver", () => {
     await fs.rm(sandbox, { recursive: true, force: true });
   });
 
-  const fakeRunner = (extra: { python?: PythonProvider; locate?: (language: "mathematica" | "r") => Promise<string | undefined> } = {}): ICellRunner =>
+  const fakeRunner = (extra: { python?: PythonProvider; locate?: (language: "python" | "mathematica" | "r") => Promise<string | undefined> } = {}): ICellRunner =>
     track(createNodeCellRunner({
       python: extra.python ?? providerFor(fakePython),
       drivers: { python: driverPath, mathematica: driverPath, r: driverPath },
