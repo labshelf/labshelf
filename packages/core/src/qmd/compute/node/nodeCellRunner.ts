@@ -13,8 +13,8 @@ export interface NodeCellRunnerOptions {
   python: PythonProvider;
   /** The driver script of each language; hosts resolve them next to the bundle. */
   drivers: { python: string; mathematica: string; r: string };
-  /** Finds wolframscript or Rscript; a language without a located tool is reported as missing. */
-  locate?: (language: LocatedLanguage) => Promise<string | undefined>;
+  /** Finds the interpreter or tool of a language; Python falls back to the managed Python, the others are reported as missing. */
+  locate?: (language: "python" | LocatedLanguage) => Promise<string | undefined>;
   logger?: ILogger;
 }
 
@@ -27,6 +27,8 @@ export function bundledCellDrivers(): NodeCellRunnerOptions["drivers"] {
 export function createNodeCellRunner({ python, drivers, locate, logger }: NodeCellRunnerOptions): ICellRunner {
   async function launch(language: "python" | LocatedLanguage): Promise<DriverLaunch | undefined> {
     if (language === "python") {
+      const located = await locate?.("python");
+      if (located) { return { command: located, args: ["-u", drivers.python] }; }
       const status = await python.status();
       const interpreter = status.state === "installed" ? python.pythonPath?.() : undefined;
       return interpreter ? { command: interpreter, args: ["-u", drivers.python] } : undefined;

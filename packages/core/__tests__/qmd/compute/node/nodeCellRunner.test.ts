@@ -187,3 +187,85 @@ describe("NodeCellRunner without Python", () => {
     expect(calls).not.toContain("install");
   });
 });
+
+describe("NodeCellRunner launch of the Python interpreter", () => {
+  const posixOnly = process.platform === "win32" ? it.skip : it;
+  const DRIVER = "/driver/path/cellDriver.py";
+
+  /** A fake interpreter: a script that writes its arguments, one per line, to `log` and exits. */
+  const fakeInterpreter = async (name: string): Promise<{ file: string; log: string }> => {
+    const dir = await makeTempDir(`fake-${name}-`);
+    const log = path.join(dir, "args.log");
+    const file = path.join(dir, name);
+    await fs.writeFile(file, `#!/bin/sh\nprintf '%s\\n' "$@" > '${log}'\nexit 0\n`, { mode: 0o755 });
+    await fs.chmod(file, 0o755);
+    return { file, log };
+  };
+
+  const readLog = async (log: string): Promise<string[] | undefined> => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const text = await fs.readFile(log, "utf8").catch(() => undefined);
+      if (text !== undefined) { return text.split("\n").filter(Boolean); }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return undefined;
+  };
+
+  const managed = (pythonPath: string | undefined, installed = true): PythonProvider => ({
+    status: async () => (installed ? { state: "installed", version: "3.12.0", sympy: "1.0" } : { state: "missing" }),
+    install: async () => ({ state: "missing" }),
+    ...(pythonPath ? { pythonPath: () => pythonPath } : {}),
+  });
+
+  const runWith = async (provider: PythonProvider, locate?: (language: "python" | "mathematica" | "r") => Promise<string | undefined>) => {
+    const runner = createNodeCellRunner({
+      python: provider,
+      drivers: { python: DRIVER, mathematica: "unused.wl", r: "unused.R" },
+      ...(locate ? { locate } : {}),
+      logger: fakeLogger(),
+    });
+    openRunners.push(runner);
+    return runner.run(
+      { code: "1 + 1", language: "python", noteKey: "note-launch" },
+      { cwd: await makeTempDir("cell-cwd-"), signal: new AbortController().signal, timeoutMs: 10_000 },
+    );
+  };
+
+  posixOnly("4.1c launches the located interpreter with -u and the python driver", async () => {
+    const located = await fakeInterpreter("located-python");
+    const requested: string[] = [];
+    await runWith(managed(undefined, false), async (language) => { requested.push(language); return language === "python" ? located.file : undefined; });
+    expect(requested).toContain("python");
+    expect(await readLog(located.log)).toEqual(["-u", DRIVER]);
+  });
+
+  posixOnly("4.1c prefers the located interpreter over an installed managed Python", async () => {
+    const located = await fakeInterpreter("located-python");
+    const managedPython = await fakeInterpreter("managed-python");
+    await runWith(managed(managedPython.file), async () => located.file);
+    expect(await readLog(located.log)).toEqual(["-u", DRIVER]);
+    expect(await fs.stat(managedPython.log).then(() => true, () => false)).toBe(false);
+  });
+
+  posixOnly("4.1c launches the managed Python when locate gives undefined for python", async () => {
+    const managedPython = await fakeInterpreter("managed-python");
+    await runWith(managed(managedPython.file), async () => undefined);
+    expect(await readLog(managedPython.log)).toEqual(["-u", DRIVER]);
+  });
+
+  posixOnly("4.1c launches the managed Python when there is no locate", async () => {
+    const managedPython = await fakeInterpreter("managed-python");
+    await runWith(managed(managedPython.file));
+    expect(await readLog(managedPython.log)).toEqual(["-u", DRIVER]);
+  });
+
+  it("4.1c reports Python missing when locate gives undefined and the managed Python is missing", async () => {
+    const result = await runWith(managed(undefined, false), async () => undefined);
+    expect(result.status).toBe("missing");
+  });
+
+  it("4.1c reports Python missing when there is no locate and the managed Python is missing", async () => {
+    const result = await runWith(managed(undefined, false));
+    expect(result.status).toBe("missing");
+  });
+});

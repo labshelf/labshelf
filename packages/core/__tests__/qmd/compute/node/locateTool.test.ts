@@ -153,3 +153,145 @@ describe("locateTool in the D6 locations", () => {
     expect(await locateTool("wolframscript", { platform: "win32", env: { PATH: "", ProgramFiles: programFiles } })).toBeUndefined();
   });
 });
+
+describe("locateTool for python", () => {
+  const posixOnly = process.platform === "win32" ? it.skip : it;
+
+  it("4.1a returns an existing override before python3 on PATH", async () => {
+    const onPath = await makeTempDir("path-python-");
+    await fakeTool(onPath, "python3");
+    const elsewhere = await makeTempDir("override-python-");
+    const override = await fakeTool(elsewhere, "python3");
+    const found = await locateTool("python", { override, platform: process.platform, env: { PATH: onPath } });
+    expect(found).toBe(override);
+  });
+
+  it("4.1a falls through a missing override to python3 on PATH", async () => {
+    const onPath = await makeTempDir("path-python-");
+    const file = await fakeTool(onPath, "python3");
+    const missing = path.join(await makeTempDir("no-override-"), "python3");
+    const found = await locateTool("python", {
+      override: missing,
+      platform: process.platform,
+      env: { PATH: onPath },
+      exists: async (candidate) => candidate !== missing && (await fs.stat(candidate).then((s) => s.isFile(), () => false)),
+    });
+    expect(found).toBe(file);
+  });
+
+  it("4.1a prefers python3 over python on PATH", async () => {
+    const dir = await makeTempDir("path-python-");
+    await fakeTool(dir, "python");
+    const file = await fakeTool(dir, "python3");
+    const found = await locateTool("python", { platform: process.platform, env: { PATH: dir } });
+    expect(found).toBe(file);
+  });
+
+  it("4.1a finds python3 in a later PATH directory when python is in an earlier one", async () => {
+    const first = await makeTempDir("path-python-a-");
+    await fakeTool(first, "python");
+    const second = await makeTempDir("path-python-b-");
+    const file = await fakeTool(second, "python3");
+    const found = await locateTool("python", { platform: process.platform, env: { PATH: [first, second].join(path.delimiter) } });
+    expect(found).toBe(file);
+  });
+
+  it("4.1a falls back to python on PATH when there is no python3", async () => {
+    const dir = await makeTempDir("path-python-");
+    const file = await fakeTool(dir, "python");
+    const found = await locateTool("python", { platform: process.platform, env: { PATH: dir } });
+    expect(found).toBe(file);
+  });
+
+  it("4.1a gives undefined when python is nowhere", async () => {
+    expect(await locateTool("python", { platform: "linux", env: await emptyPath(), exists: nothing })).toBeUndefined();
+    expect(await locateTool("python", { platform: "darwin", env: await emptyPath(), exists: nothing })).toBeUndefined();
+    expect(await locateTool("python", { platform: "win32", env: await emptyPath(), exists: nothing })).toBeUndefined();
+  });
+
+  it("4.1a does not search install folders for python", async () => {
+    for (const platform of ["linux", "darwin", "win32"] as const) {
+      expect(await locateTool("python", { platform, env: await emptyPath(), exists: async () => true })).toBeUndefined();
+    }
+  });
+
+  // The Microsoft Store alias: the PATH entry is named like the real folder; on POSIX the backslashes are part of one directory name.
+  const aliasDir = async (name: string): Promise<string> => {
+    const dir = path.join(await makeTempDir("alias-root-"), name);
+    await fs.mkdir(dir, { recursive: true });
+    return dir;
+  };
+
+  it("4.1b skips a python3 under a WindowsApps alias folder and returns python from a later PATH folder", async () => {
+    const alias = await aliasDir("Microsoft\\WindowsApps\\");
+    await fakeTool(alias, "python3");
+    const real = await makeTempDir("path-python-");
+    const file = await fakeTool(real, "python");
+    const found = await locateTool("python", {
+      platform: "win32",
+      env: { PATH: [alias, real].join(path.delimiter) },
+      exists: async () => false,
+    });
+    expect(found).toBe(file);
+  });
+
+  it("4.1b skips a WindowsApps alias whatever its letter case", async () => {
+    const alias = await aliasDir("MICROSOFT\\windowsapps\\");
+    await fakeTool(alias, "python3");
+    const real = await makeTempDir("path-python-");
+    const file = await fakeTool(real, "python3");
+    const found = await locateTool("python", {
+      platform: "win32",
+      env: { PATH: [alias, real].join(path.delimiter) },
+      exists: async () => false,
+    });
+    expect(found).toBe(file);
+  });
+
+  it("4.1b gives undefined on win32 when only WindowsApps aliases exist", async () => {
+    const alias = await aliasDir("Microsoft\\WindowsApps\\");
+    await fakeTool(alias, "python3");
+    await fakeTool(alias, "python");
+    const found = await locateTool("python", { platform: "win32", env: { PATH: alias }, exists: async () => false });
+    expect(found).toBeUndefined();
+  });
+
+  it("4.1b does not skip a WindowsApps path on linux", async () => {
+    const alias = await aliasDir("Microsoft\\WindowsApps\\");
+    const file = await fakeTool(alias, "python3");
+    const found = await locateTool("python", { platform: "linux", env: { PATH: alias }, exists: async () => false });
+    expect(found).toBe(file);
+  });
+
+  posixOnly("4.1b skips /usr/bin/python3 and /usr/bin/python on darwin without a Command Line Tools python", async () => {
+    const real = await makeTempDir("path-python-");
+    const file = await fakeTool(real, "python3");
+    const found = await locateTool("python", {
+      platform: "darwin",
+      env: { PATH: ["/usr/bin", real].join(path.delimiter) },
+      exists: async () => false,
+    });
+    expect(found).toBe(file);
+  });
+
+  posixOnly("4.1b gives undefined on darwin when /usr/bin is the only PATH folder and no Command Line Tools python exists", async () => {
+    const found = await locateTool("python", { platform: "darwin", env: { PATH: "/usr/bin" }, exists: async () => false });
+    expect(found).toBeUndefined();
+  });
+
+  const hostHasUsrBinPython3 = (): Promise<boolean> =>
+    fs.access("/usr/bin/python3", fs.constants.X_OK).then(() => true, () => false);
+
+  it.each([
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+  ])("4.1b accepts /usr/bin/python3 on darwin when %s exists", async (installed) => {
+    if (process.platform === "win32" || !(await hostHasUsrBinPython3())) { return; }
+    const found = await locateTool("python", {
+      platform: "darwin",
+      env: { PATH: "/usr/bin" },
+      exists: async (candidate) => candidate === installed,
+    });
+    expect(found).toBe("/usr/bin/python3");
+  });
+});

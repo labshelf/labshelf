@@ -171,11 +171,11 @@ function createBuildAndPublish(options: HelperHostOptions, projects: LibraryProj
   return { builds, publishing };
 }
 
-/** The cell runner over the managed Python and the located Wolfram and R tools, with the handlers that serve the page. */
+/** The cell runner over the located Python (else the managed one) and the located Wolfram and R tools, with the handlers that serve the page. */
 function createCells(python: PythonProvider, projects: LibraryProjects, logger: HelperLogger, drivers: NodeCellRunnerOptions["drivers"] | undefined) {
   const runner = createNodeCellRunner({
     python, drivers: drivers ?? bundledCellDrivers(), logger,
-    locate: (language) => locateTool(language === "mathematica" ? "wolframscript" : "Rscript"),
+    locate: (language) => locateTool(language === "python" ? "python" : language === "mathematica" ? "wolframscript" : "Rscript"),
   });
   const cells = createCellHandlers({ runner, resolveCwd: (scope) => resolveCellCwd(scope, projects.rootOf), logger });
   return { runner, cells };

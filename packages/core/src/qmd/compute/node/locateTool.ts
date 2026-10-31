@@ -1,10 +1,10 @@
-// Finds wolframscript or Rscript (an explicit override, then PATH, then the usual install locations of each OS) and the WolframKernel beside wolframscript.
+// Finds wolframscript or Rscript (an explicit override, then PATH, then the usual install locations of each OS), python (an override, then python3 or python on PATH) and the WolframKernel beside wolframscript.
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 
 import { envValue, findExecutable, subdirs } from "../../../latex/node/index.js";
 
-type LocatedTool = "wolframscript" | "Rscript";
+type LocatedTool = "wolframscript" | "Rscript" | "python";
 
 interface LocateToolOptions {
   override?: string;
@@ -24,7 +24,7 @@ async function isFile(file: string): Promise<boolean> {
 const newestFirst = (names: string[]): string[] => [...names].sort().reverse();
 
 /** Every directory the tool may live in on Windows: Wolfram products (with or without a version folder) or R versions, newest first. */
-async function windowsDirs(tool: LocatedTool, env: NodeJS.ProcessEnv): Promise<string[]> {
+async function windowsDirs(tool: "wolframscript" | "Rscript", env: NodeJS.ProcessEnv): Promise<string[]> {
   const programFiles = envValue(env, "ProgramFiles") ?? "C:\\Program Files";
   if (tool === "Rscript") {
     const root = path.join(programFiles, "R");
@@ -40,17 +40,44 @@ async function windowsDirs(tool: LocatedTool, env: NodeJS.ProcessEnv): Promise<s
   return dirs;
 }
 
-function macDirs(tool: LocatedTool): string[] {
+function macDirs(tool: "wolframscript" | "Rscript"): string[] {
   const common = ["/usr/local/bin", "/opt/homebrew/bin"];
   if (tool === "Rscript") { return ["/Library/Frameworks/R.framework/Resources/bin", ...common]; }
   const apps = ["Wolfram Engine", "Mathematica", "Wolfram"].map((app) => `/Applications/${app}.app/Contents/MacOS`);
   return [...apps, ...common];
 }
 
-/** The path of `tool`, or undefined when it is nowhere: override first, then PATH, then the install locations of `platform`. */
+const MAC_STUB_PYTHONS = ["/usr/bin/python3", "/usr/bin/python"];
+const MAC_REAL_PYTHONS = ["/Library/Developer/CommandLineTools/usr/bin/python3", "/Applications/Xcode.app/Contents/Developer/usr/bin/python3"];
+
+/** Whether running `candidate` starts Python: the Microsoft Store alias on Windows and the macOS shim without the Command Line Tools only open an installer. */
+async function isRealPython(candidate: string, platform: NodeJS.Platform, exists: (path: string) => Promise<boolean>): Promise<boolean> {
+  if (platform === "win32") { return !candidate.toLowerCase().includes("\\windowsapps\\"); }
+  if (platform === "darwin" && MAC_STUB_PYTHONS.includes(candidate)) {
+    for (const real of MAC_REAL_PYTHONS) { if (await exists(real)) { return true; } }
+    return false;
+  }
+  return true;
+}
+
+/** The first python3, else python, in a PATH folder that is not an installer stub: a stub's folder is passed over for the next one. */
+async function locatePython(platform: NodeJS.Platform, env: NodeJS.ProcessEnv, exists: (path: string) => Promise<boolean>): Promise<string | undefined> {
+  const dirs = (envValue(env, "PATH") ?? "").split(path.delimiter).filter(Boolean);
+  const rest = Object.fromEntries(Object.entries(env).filter(([key]) => key.toUpperCase() !== "PATH"));
+  for (const name of ["python3", "python"]) {
+    for (const dir of dirs) {
+      const found = await findExecutable(name, { ...rest, PATH: dir });
+      if (found !== undefined && await isRealPython(found, platform, exists)) { return found; }
+    }
+  }
+  return undefined;
+}
+
+/** The path of `tool`, or undefined when it is nowhere: override first, then PATH, then (not for python, whose fallback is the managed Python) the install locations of `platform`. */
 export async function locateTool(tool: LocatedTool, options: LocateToolOptions = {}): Promise<string | undefined> {
   const { override, platform = process.platform, env = process.env, exists = isFile } = options;
   if (override && await exists(override)) { return override; }
+  if (tool === "python") { return locatePython(platform, env, exists); }
   const onPath = await findExecutable(tool, env);
   if (onPath !== undefined) { return onPath; }
   const file = platform === "win32" ? `${tool}.exe` : tool;
