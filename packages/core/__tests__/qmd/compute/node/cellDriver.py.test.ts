@@ -5,7 +5,7 @@ import * as path from "node:path";
 
 import type { CellLanguage } from "../../../../src/qmd/compute/cellLanguage";
 import type { ICellRunner } from "../../../../src/qmd/compute/cellRunner";
-import { parsePlotSpec, type PlotSpec, type PlotTrace } from "../../../../src/qmd/plot/plotSpec";
+import { parsePlotSpec, type PlotSpec, type PlotTrace } from "../../../../src/qmd/item/plotSpec";
 import { createNodeCellRunner, createSharedPythonProvider, type PythonProvider } from "../../../../src/qmd/compute/node/index";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";

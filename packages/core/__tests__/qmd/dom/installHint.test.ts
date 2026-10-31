@@ -7,7 +7,7 @@ import type { Node as PmNode } from "prosemirror-model";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { formatOutput } from "../../../src/qmd/item/cellOutput";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
-import { renderInstallHints } from "../../../src/qmd/dom/installHint";
+import { renderInstallHints } from "../../../src/qmd/dom/outputView";
 import { showToast } from "../../../src/ui/dom/widgets/toast";
 import { mount, until, settle } from "../../support/nodeViewHarness";
 

@@ -1,10 +1,11 @@
 // Declares what a browser tab body gets and exports, and registers each kind's body next to its core spec.
 import { TAB_KIND_SPECS } from "@labshelf/core";
 import type { ProjectNotesStore, ILogger, LibraryFileSystem, SelectionHub, ShareHost, TabKindName, TabKindSpec, TabParams } from "@labshelf/core";
-import type { EditorTabBody } from "@labshelf/core/dom";
+import { renderElement, type EditorTabBody } from "@labshelf/core/dom";
 import type { CommentThreads, PageShare } from "../../collab";
 import type { HelperProject } from "@labshelf/core/helper";
 import type { PagePrefs } from "../prefs";
+import { createReaderUrl } from "../reader";
 import type { ProjectSession } from "../../writing";
 import type { PageSpaces } from "../spaces";
 import type { Workspace } from "./workspace";
@@ -67,6 +68,13 @@ async function loadSource(): Promise<TabModule> {
 
 const define = (kind: TabKindName, load: () => Promise<TabModule>): TabKind => ({ ...TAB_KIND_SPECS[kind], load });
 
+/** Shows a paper's PDF as a tab: the reader page in a frame, so it keeps its own pdf.js, host and keys. */
+const mountPaperTab: TabModule["mountTab"] = (host, params) => {
+  const frame = renderElement("iframe", { class: "ls-workspace-fill ls-paper-frame", src: createReaderUrl(params["paperId"] ?? ""), title: "PDF reader" });
+  host.append(frame);
+  return { dispose: () => frame.remove() };
+};
+
 let paperTitle: (paperId: string) => string | undefined = () => undefined;
 
 /** Names paper tabs after their paper; a tab opened before the library has loaded keeps the spec's title. */
@@ -74,7 +82,7 @@ export function setPaperTitles(lookup: (paperId: string) => string | undefined):
   paperTitle = lookup;
 }
 
-// Each body is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
+// Each body except paper is a dynamic import, so the bundler emits it as its own chunk and the page loads it on first open.
 export const TAB_KINDS: Record<TabKindName, TabKind> = {
   spaces: define("spaces", () => import("./spacesCatalogTab.js")),
   space: define("space", () => import("./spacesPageTab.js")),
@@ -86,5 +94,5 @@ export const TAB_KINDS: Record<TabKindName, TabKind> = {
   comments: define("comments", () => import("./commentsTab.js")),
   history: define("history", () => import("./historyTab.js")),
   search: define("search", () => import("./searchTab.js")),
-  paper: { ...define("paper", () => import("./paperTab.js")), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
+  paper: { ...define("paper", async () => ({ mountTab: mountPaperTab })), title: (p) => paperTitle(p["paperId"] ?? "") ?? TAB_KIND_SPECS.paper.title(p) },
 };

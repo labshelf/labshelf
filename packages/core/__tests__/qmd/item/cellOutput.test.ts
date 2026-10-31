@@ -8,7 +8,7 @@ import {
   readOutputPlot,
 } from "../../../src/qmd/item/cellOutput";
 import { bodyToDoc, docToBody } from "../../../src/qmd/editor/qmdDoc";
-import { formatPlotSpec, parsePlotSpec, type PlotSpec } from "../../../src/qmd/plot/plotSpec";
+import { formatPlotSpec, parsePlotSpec, type PlotSpec } from "../../../src/qmd/item/plotSpec";
 import { readQmdFixture } from "../fixtures/qmdFixtures";
 
 describe("outputBlock", () => {

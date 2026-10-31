@@ -4,7 +4,7 @@ import * as path from "node:path";
 import type { ICellRunner } from "../../../../src/qmd/compute/cellRunner";
 import * as nodeIndex from "../../../../src/qmd/compute/node/index";
 import { locateTool } from "../../../../src/qmd/compute/node/locateTool";
-import { parsePlotSpec, type PlotSpec } from "../../../../src/qmd/plot/plotSpec";
+import { parsePlotSpec, type PlotSpec } from "../../../../src/qmd/item/plotSpec";
 import { fakeLogger } from "../../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../../support/tempDirs";
 

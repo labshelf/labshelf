@@ -2,8 +2,9 @@
 import { mountOverlay, renderElement } from "../../ui/dom/index.js";
 import { renderIcon } from "../../ui/icons/index.js";
 import type { OutputImage } from "../item/index.js";
-import type { PlotSpec } from "../plot/index.js";
-import { renderPlot, type PlotHandle, type PlotlyLoader } from "./plotView.js";
+import type { PlotSpec } from "../item/index.js";
+import { renderPlot, type PlotHandle } from "./plotRender.js";
+import type { PlotlyLoader } from "./plotView.js";
 
 export interface OutputPlotContent { image: OutputImage | null; spec: PlotSpec }
 

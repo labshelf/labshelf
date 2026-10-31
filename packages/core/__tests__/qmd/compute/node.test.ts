@@ -8,7 +8,7 @@ import type { ICellRunner } from "../../../src/qmd/compute/cellRunner";
 import { createCellSessions, type DriverLaunch } from "../../../src/qmd/compute/node/cellSessions";
 import { createNodeCellRunner, type PythonProvider } from "../../../src/qmd/compute/node/index";
 import { locateTool } from "../../../src/qmd/compute/node/locateTool";
-import { parsePlotSpec, type PlotSpec } from "../../../src/qmd/plot/plotSpec";
+import { parsePlotSpec, type PlotSpec } from "../../../src/qmd/item/plotSpec";
 import { fakeLogger } from "../../support/fakeLogger";
 import { cleanupTempDirs, makeTempDir } from "../../support/tempDirs";
 import { dirs, installDriverHooks, track } from "./node/cellSessionsHarness";

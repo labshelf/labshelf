@@ -4,7 +4,7 @@
  * updates it in place, keeps the PNG or shows an error line when drawing fails, and destroys it; openPlotFigure and openPlotImage open the expand overlays.
  */
 import { renderOutputPlot, openPlotFigure, openPlotImage, type OutputPlot, type OutputPlotContent } from "../../../src/qmd/dom/outputPlot";
-import type { PlotSpec } from "../../../src/qmd/plot/plotSpec";
+import type { PlotSpec } from "../../../src/qmd/item/plotSpec";
 import { until, settle } from "../../support/nodeViewHarness";
 
 const SRC = "data:image/png;base64,iVBORw0KGgo=";

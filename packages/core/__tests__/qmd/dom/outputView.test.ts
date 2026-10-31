@@ -7,7 +7,7 @@ import type { Node as PmNode } from "prosemirror-model";
 import type { NodeView, NodeViewConstructor } from "prosemirror-view";
 import { qmdSchema as s } from "../../../src/qmd/editor/qmdSchema";
 import { formatOutput, formatPlotContent } from "../../../src/qmd/item/cellOutput";
-import type { PlotSpec } from "../../../src/qmd/plot/plotSpec";
+import type { PlotSpec } from "../../../src/qmd/item/plotSpec";
 import { createOutputView } from "../../../src/qmd/dom/outputView";
 import { mount, until, settle } from "../../support/nodeViewHarness";
 

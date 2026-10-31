@@ -7,7 +7,7 @@ import { toCellLanguage, type CellLanguage } from "../../../../src/qmd/compute/c
 import { createCellRuns, type CellResult, type CellRunState, type CellRunTarget, type CellRuns, type RunCellPort } from "../../../../src/qmd/compute/cellRunner";
 import { createCellSessions } from "../../../../src/qmd/compute/node/cellSessions";
 import { findOutputs } from "../../../../src/qmd/item/cellOutput";
-import { readOutputParams } from "../../../../src/qmd/item/cellParams";
+import { readOutputParams } from "../../../../src/qmd/item/cellOutput";
 import { fakeLogger } from "../../../support/fakeLogger";
 
 const PY = toCellLanguage("python") as CellLanguage;

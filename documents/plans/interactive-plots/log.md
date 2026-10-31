@@ -10,3 +10,4 @@
 - 2026-10-31 03:48 — session 4 done: 4.1, 4.2, 4.3
 - 2026-10-31 04:23 — session 5 done: 5.1, 5.2, 5.3
 - 2026-10-31 04:25 — session 6 blocked: Wolfram kernel licence expired; 3.3 patch not applied
+- 2026-10-31 16:01 — session 6 blocked: 6.1: no report
