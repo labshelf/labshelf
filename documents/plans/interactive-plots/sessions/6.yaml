@@ -7,7 +7,8 @@ owns:
   - packages/core/__tests__/qmd/compute/node/
   - documents/plans/interactive-plots/sessions/6.yaml
   - documents/plans/interactive-plots/tests/3.3/
-status: pending
+status: blocked
+blocked_reason: "Wolfram 14.3.0 Kernel licence still expired on 2026-10-31 (WolframKernel: No valid password found); renew it, set status back to pending and rerun"
 packages:
   - id: "3.3"
     plan: interactive-plots
