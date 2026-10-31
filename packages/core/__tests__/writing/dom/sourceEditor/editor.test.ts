@@ -9,7 +9,8 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
 import { AUTO_SAVE_DELAY_MS, type ILogger } from "@labshelf/core";
-import { codeHighlight, createEditorExtensions, createWriteScheduler, toProblems, type WriteSchedulerDeps } from "../../../../src/writing/dom/sourceEditor/editor";
+import { createEditorExtensions, createWriteScheduler, toProblems, type WriteSchedulerDeps } from "../../../../src/writing/dom/sourceEditor/editor";
+import { codeHighlight } from "../../../../src/writing/dom/sourceEditor/editorTheme";
 import { typstLanguage } from "../../../../src/writing/dom/sourceEditor/typst";
 
 // Build problems become editor diagnostics on their line, clamped to the document, with the hint in the message.
@@ -44,7 +45,7 @@ function paint(language: StreamLanguage<unknown>, text: string): Map<string, str
   const rules = codeHighlight.module!.getRules();
   const painted = new Map<string, string>();
   highlightTree(language.parser.parse(text), codeHighlight, (from, to, classes) => {
-    const rule = classes.split(" ").map((c) => rules.split("\n").find((r) => r.startsWith(`.${c} `)) ?? "").join(" ");
+    const rule = classes.split(" ").map((c) => rules.split("\n").find((r: string) => r.startsWith(`.${c} `)) ?? "").join(" ");
     painted.set(text.slice(from, to), rule);
   });
   return painted;
