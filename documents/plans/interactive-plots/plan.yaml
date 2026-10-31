@@ -36,7 +36,7 @@ decisions:
     text: "Protocol: DriverResponse, CellResult and helper cellResult gain `plot?: string` (the spec JSON); helper runCell gains `preview?`; helper PROTOCOL_VERSION +1. Webview messages carry CellResult unchanged in shape."
     why: One optional field end to end.
   - id: D11
-    text: "Supersedes multi-language-cells D9 (R and Mathematica graphics) and cell-params D8 (client-side interactive charts). By user decision (2026-10-30), sessions 2–5 run without waiting for cell-params session 5 and multi-language-cells session 5; their pending hand checks are done afterwards on the new behaviour (no debounce, interactive figures).
+    text: "Supersedes multi-language-cells D9 (R and Mathematica graphics) and cell-params D8 (client-side interactive charts). By user decision (2026-10-30), sessions 2–5 run without waiting for cell-params session 5 and multi-language-cells session 5; their pending hand checks are done afterwards on the new behaviour (no debounce, interactive figures)."
     why: "User allowed sessions 3 to 5 to touch the shared qmd/compute and qmd/dom paths now."
   - id: D12
     text: "Out of scope: Plotly figures in Python, interactivity for base R plot(), Mathematica Dynamic and styling parity (lighting, ColorFunction, legends beyond names), precomputed frames, plots in the terminal app, bundling numpy/matplotlib."
